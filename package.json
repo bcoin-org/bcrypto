@@ -1,0 +1,79 @@
+{
+  "name": "bcrypto",
+  "version": "0.0.0",
+  "description": "Bcoin crypto module",
+  "keywords": [
+    "cipher",
+    "crypto",
+    "digest",
+    "hash",
+    "hashing"
+  ],
+  "license": "MIT",
+  "repository": "git://github.com/bcoin-org/bcrypto.git",
+  "homepage": "https://github.com/bcoin-org/bcrypto",
+  "bugs": {
+    "url": "https://github.com/bcoin-org/bcrypto/issues"
+  },
+  "author": "Christopher Jeffrey <chjjeffrey@gmail.com>",
+  "main": "./lib/bcrypto.js",
+  "scripts": {
+    "install": "node-gyp rebuild || echo 'Build failed.'",
+    "browserify": "browserify -s bcrypto lib/bcrypto.js | uglifyjs -c > bcrypto.js",
+    "clean": "rm -f bcrypto.js",
+    "lint": "eslint lib/ test/ || exit 0",
+    "test": "mocha --reporter spec test/*-test.js",
+    "webpack": "webpack --config webpack.config.js"
+  },
+  "dependencies": {
+    "bindings": "^1.3.0",
+    "bn.js": "4.11.8",
+    "elliptic": "6.4.0",
+    "nan": "^2.7.0"
+  },
+  "optionalDependencies": {
+    "secp256k1": "3.3.0"
+  },
+  "devDependencies": {
+    "babelify": "^7.3.0",
+    "babel-core": "^6.26.0",
+    "babel-loader": "^7.1.2",
+    "babel-preset-env": "^1.6.1",
+    "browserify": "^14.5.0",
+    "eslint": "^4.9.0",
+    "mocha": "^4.0.1",
+    "uglifyjs-webpack-plugin": "^1.0.0-beta.3",
+    "uglify-es": "^3.1.3",
+    "webpack": "^3.8.1"
+  },
+  "engines": {
+    "node": ">=7.6.0"
+  },
+  "gypfile": true,
+  "browser": {
+    "./lib/aes": "./lib/aes-browser.js",
+    "./lib/blake2b": "./lib/blake2b-browser.js",
+    "./lib/chacha20": "./lib/chacha20-browser.js",
+    "./lib/cleanse": "./lib/cleanse-browser.js",
+    "./lib/pbkdf2": "./lib/pbkdf2-browser.js",
+    "./lib/poly1305": "./lib/poly1305-browser.js",
+    "./lib/random": "./lib/random-browser.js",
+    "./lib/ripemd160": "./lib/ripemd160-browser.js",
+    "./lib/rsa": "./lib/rsa-browser.js",
+    "./lib/scrypt": "./lib/scrypt-browser.js",
+    "./lib/secp256k1": "./lib/secp256k1-browser.js",
+    "./lib/sha1": "./lib/sha1-browser.js",
+    "./lib/sha256": "./lib/sha256-browser.js",
+    "./lib/sha3": "./lib/sha3-browser.js",
+    "./lib/sha512": "./lib/sha512-browser.js",
+    "./lib/siphash": "./lib/siphash-browser.js",
+    "./lib/hash160": "./lib/hash160-browser.js",
+    "./lib/hash256": "./lib/hash256-browser.js",
+    "./lib/keccak": "./lib/keccak-browser.js"
+  },
+  "browserify": {
+    "transform": [
+      "babelify"
+    ]
+  }
+}
