@@ -4,6 +4,12 @@ NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj);
 
 static Nan::Persistent<v8::FunctionTemplate> blake2b_constructor;
 
+Blake2b::Blake2b() {
+  memset(&ctx, 0, sizeof(blake2b_ctx));
+}
+
+Blake2b::~Blake2b() {}
+
 void
 Blake2b::Init(v8::Local<v8::Object> &target) {
   Nan::HandleScope scope;

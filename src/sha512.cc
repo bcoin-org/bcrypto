@@ -4,6 +4,12 @@ NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj);
 
 static Nan::Persistent<v8::FunctionTemplate> sha512_constructor;
 
+SHA512::SHA512() {
+  memset(&ctx, 0, sizeof(SHA512_CTX));
+}
+
+SHA512::~SHA512() {}
+
 void
 SHA512::Init(v8::Local<v8::Object> &target) {
   Nan::HandleScope scope;

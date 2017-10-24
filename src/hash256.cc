@@ -4,6 +4,12 @@ NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj);
 
 static Nan::Persistent<v8::FunctionTemplate> hash256_constructor;
 
+Hash256::Hash256() {
+  memset(&ctx, 0, sizeof(SHA256_CTX));
+}
+
+Hash256::~Hash256() {}
+
 void
 Hash256::Init(v8::Local<v8::Object> &target) {
   Nan::HandleScope scope;

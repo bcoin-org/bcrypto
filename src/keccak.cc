@@ -4,6 +4,12 @@ NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj);
 
 static Nan::Persistent<v8::FunctionTemplate> keccak_constructor;
 
+Keccak::Keccak() {
+  memset(&ctx, 0, sizeof(keccak_ctx));
+}
+
+Keccak::~Keccak() {}
+
 void
 Keccak::Init(v8::Local<v8::Object> &target) {
   Nan::HandleScope scope;

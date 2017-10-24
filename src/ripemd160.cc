@@ -4,6 +4,12 @@ NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj);
 
 static Nan::Persistent<v8::FunctionTemplate> ripemd160_constructor;
 
+RIPEMD160::RIPEMD160() {
+  memset(&ctx, 0, sizeof(RIPEMD160_CTX));
+}
+
+RIPEMD160::~RIPEMD160() {}
+
 void
 RIPEMD160::Init(v8::Local<v8::Object> &target) {
   Nan::HandleScope scope;
