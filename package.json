@@ -55,6 +55,9 @@
     "./lib/blake2b": "./lib/blake2b-browser.js",
     "./lib/chacha20": "./lib/chacha20-browser.js",
     "./lib/cleanse": "./lib/cleanse-browser.js",
+    "./lib/hash160": "./lib/hash160-browser.js",
+    "./lib/hash256": "./lib/hash256-browser.js",
+    "./lib/keccak": "./lib/keccak-browser.js",
     "./lib/pbkdf2": "./lib/pbkdf2-browser.js",
     "./lib/poly1305": "./lib/poly1305-browser.js",
     "./lib/random": "./lib/random-browser.js",
@@ -66,10 +69,7 @@
     "./lib/sha256": "./lib/sha256-browser.js",
     "./lib/sha3": "./lib/sha3-browser.js",
     "./lib/sha512": "./lib/sha512-browser.js",
-    "./lib/siphash": "./lib/siphash-browser.js",
-    "./lib/hash160": "./lib/hash160-browser.js",
-    "./lib/hash256": "./lib/hash256-browser.js",
-    "./lib/keccak": "./lib/keccak-browser.js"
+    "./lib/siphash": "./lib/siphash-browser.js"
   },
   "browserify": {
     "transform": [
