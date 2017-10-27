@@ -16,8 +16,8 @@ const bhash = {
 const algs = [
   'ripemd160',
   'sha1',
-  'sha256'
-  // 'sha512'
+  'sha256',
+  'sha512'
 ];
 
 function nhash(alg, msg) {
@@ -32,8 +32,23 @@ function nhmac(alg, msg, key) {
   return nctx.digest();
 }
 
+function nencipher(data, key, iv) {
+  const ctx = crypto.createCipheriv('aes-256-cbc', key, iv);
+  return Buffer.concat([ctx.update(data), ctx.final()]);
+};
+
+function ndecipher(data, key, iv) {
+  const ctx = crypto.createDecipheriv('aes-256-cbc', key, iv);
+  try {
+    return Buffer.concat([ctx.update(data), ctx.final()]);
+  } catch (e) {
+    throw new Error('Bad key for decryption.');
+  }
+}
+
 for (const alg of algs) {
   console.log(alg);
+
   for (let i = 0; i < 100000; i++) {
     const data = crypto.randomBytes((Math.random() * 1000) | 0);
     const key = crypto.randomBytes((Math.random() * 1000) | 0);
@@ -62,6 +77,7 @@ const js = {
 
 for (const alg of Object.keys(native)) {
   console.log(alg);
+
   for (let i = 0; i < 100000; i++) {
     const data = crypto.randomBytes((Math.random() * 1000) | 0);
 
@@ -69,11 +85,34 @@ for (const alg of Object.keys(native)) {
     const h2 = native[alg].digest(data);
     assert.bufferEqual(h1, h2);
 
-    if (0 && alg === 'blake2b') {
+    if (alg === 'blake2b') {
       const key = crypto.randomBytes((Math.random() * 65) | 0);
       const m1 = js[alg].mac(data, key);
       const m2 = native[alg].mac(data, key);
       assert.bufferEqual(m1, m2);
     }
   }
+}
+
+const aes = require('../lib/js/aes');
+const nativeAES = require('../lib/native/aes');
+
+console.log('aes');
+
+for (let i = 0; i < 100000; i++) {
+  const data = crypto.randomBytes((Math.random() * 1000) | 0);
+  const key = crypto.randomBytes(32);
+  const iv = crypto.randomBytes(16);
+
+  const h1 = aes.encipher(data, key, iv);
+  const h2 = nencipher(data, key, iv);
+  const h3 = nativeAES.encipher(data, key, iv);
+  assert.bufferEqual(h2, h1);
+  assert.bufferEqual(h3, h1);
+
+  const m1 = aes.decipher(h1, key, iv);
+  const m2 = ndecipher(h2, key, iv);
+  const m3 = nativeAES.decipher(h3, key, iv);
+  assert.bufferEqual(m2, m1);
+  assert.bufferEqual(m3, m1);
 }
