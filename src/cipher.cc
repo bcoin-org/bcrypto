@@ -2,8 +2,6 @@
 
 #include "cipher.h"
 #include "common.h"
-#include "openssl/err.h"
-#include "openssl/evp.h"
 #include "openssl/aes.h"
 #include "common.h"
 
