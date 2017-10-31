@@ -27,8 +27,8 @@
   },
   "dependencies": {
     "bindings": "^1.3.0",
-    "bn.js": "4.11.8",
-    "elliptic": "6.4.0",
+    "bn.js": "^4.11.8",
+    "elliptic": "^6.4.0",
     "nan": "^2.7.0"
   },
   "optionalDependencies": {
