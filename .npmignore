@@ -2,9 +2,7 @@
 bench/
 docs/
 build/
-src/
 test/
 node_modules/
-binding.gyp
 npm-debug.log
 package-lock.json
