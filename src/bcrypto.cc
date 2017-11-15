@@ -3,13 +3,16 @@
  * Copyright (c) 2016-2017, Christopher Jeffrey (MIT License)
  */
 
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include <node.h>
 #include <nan.h>
 
 #include "openssl/evp.h"
 #include "openssl/rand.h"
 
-#include "common.h"
 #include "cipher.h"
 #include "chacha20.h"
 #include "poly1305.h"

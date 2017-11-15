@@ -1,9 +1,9 @@
 #include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "cipher.h"
-#include "common.h"
 #include "openssl/aes.h"
-#include "common.h"
 
 static inline void
 XOR(uint8_t *out, uint8_t *a, uint8_t *b) {
