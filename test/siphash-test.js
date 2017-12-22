@@ -5,7 +5,6 @@
 
 const n64 = require('n64');
 const assert = require('./util/assert');
-const {siphash} = require('../lib/siphash');
 const {siphash256} = require('../');
 
 const vectors = [
@@ -74,9 +73,9 @@ const vectors = [
   Buffer.from('575ff28e60381be5', 'hex'), Buffer.from('724506eb4c328a95', 'hex')
 ];
 
-function testHash(data, expected) {
+function testHash(msg, expected) {
   const key = Buffer.from('000102030405060708090a0b0c0d0e0f', 'hex');
-  const [hi, lo] = siphash(data, key);
+  const [hi, lo] = siphash256(msg, key);
   const hash = n64.U64.fromBits(hi, lo).toRaw(Buffer);
   assert.bufferEqual(hash, expected);
 }
@@ -103,16 +102,16 @@ describe('SipHash', function() {
   });
 
   for (const [i, expected] of vectors.entries()) {
-    it(`should get siphash of test case#${i}`, () => {
-      let data = Buffer.from('');
+    let msg = Buffer.from('');
 
-      const k = Buffer.from('00', 'hex');
-      for (let j=0; j<i; j++) {
-        data = Buffer.concat([data, k]);
+    const k = Buffer.from('00', 'hex');
+    for (let j=0; j<i; j++) {
+        msg = Buffer.concat([msg, k]);
         k[0]++;
-      }
+    }
 
-      testHash(data, expected);
+    it(`should get siphash of ${expected.toString('hex')}`, () => {
+      testHash(msg, expected);
     });
   }
 });
