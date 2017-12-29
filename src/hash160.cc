@@ -1,8 +1,6 @@
 #include "hash160.h"
 #include "openssl/ripemd.h"
 
-NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj);
-
 static Nan::Persistent<v8::FunctionTemplate> hash160_constructor;
 
 Hash160::Hash160() {
@@ -152,9 +150,4 @@ NAN_METHOD(Hash160::Root) {
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&out[0], 20).ToLocalChecked());
-}
-
-NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj) {
-  Nan::HandleScope scope;
-  return obj->IsNull() || obj->IsUndefined();
 }

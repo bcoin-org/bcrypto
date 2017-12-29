@@ -1,7 +1,5 @@
 #include "hash256.h"
 
-NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj);
-
 static Nan::Persistent<v8::FunctionTemplate> hash256_constructor;
 
 Hash256::Hash256() {
@@ -145,9 +143,4 @@ NAN_METHOD(Hash256::Root) {
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&out[0], 32).ToLocalChecked());
-}
-
-NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj) {
-  Nan::HandleScope scope;
-  return obj->IsNull() || obj->IsUndefined();
 }

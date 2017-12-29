@@ -1,7 +1,5 @@
 #include "sha1.h"
 
-NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj);
-
 static Nan::Persistent<v8::FunctionTemplate> sha1_constructor;
 
 SHA1::SHA1() {
@@ -136,9 +134,4 @@ NAN_METHOD(SHA1::Root) {
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&out[0], 20).ToLocalChecked());
-}
-
-NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj) {
-  Nan::HandleScope scope;
-  return obj->IsNull() || obj->IsUndefined();
 }
