@@ -80,6 +80,9 @@ _siphash(
       break;
   }
 
+  f0 &= 0XFFFFFFFFFFFFFF;
+  f0 |= len << 56;
+
   v3 ^= f0;
   SIPROUND;
   SIPROUND;
