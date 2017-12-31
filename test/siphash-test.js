@@ -3,94 +3,110 @@
 
 'use strict';
 
-const n64 = require('n64');
-const assert = require('./util/assert');
-const {siphash256} = require('../');
+const assert = require('assert');
+const {siphash, sipmod} = require('../lib/siphash');
 
 const vectors = [
-  Buffer.from('310e0edd47db6f72', 'hex'), Buffer.from('fd67dc93c539f874', 'hex')
-  ,
-  Buffer.from('5a4fa9d909806c0d', 'hex'), Buffer.from('2d7efbd796666785', 'hex')
-  ,
-  Buffer.from('b7877127e09427cf', 'hex'), Buffer.from('8da699cd64557618', 'hex')
-  ,
-  Buffer.from('cee3fe586e46c9cb', 'hex'), Buffer.from('37d1018bf50002ab', 'hex')
-  ,
-  Buffer.from('6224939a79f5f593', 'hex'), Buffer.from('b0e4a90bdf82009e', 'hex')
-  ,
-  Buffer.from('f3b9dd94c5bb5d7a', 'hex'), Buffer.from('a7ad6b22462fb3f4', 'hex')
-  ,
-  Buffer.from('fbe50e86bc8f1e75', 'hex'), Buffer.from('903d84c02756ea14', 'hex')
-  ,
-  Buffer.from('eef27a8e90ca23f7', 'hex'), Buffer.from('e545be4961ca29a1', 'hex')
-  ,
-  Buffer.from('db9bc2577fcc2a3f', 'hex'), Buffer.from('9447be2cf5e99a69', 'hex')
-  ,
-  Buffer.from('9cd38d96f0b3c14b', 'hex'), Buffer.from('bd6179a71dc96dbb', 'hex')
-  ,
-  Buffer.from('98eea21af25cd6be', 'hex'), Buffer.from('c7673b2eb0cbf2d0', 'hex')
-  ,
-  Buffer.from('883ea3e395675393', 'hex'), Buffer.from('c8ce5ccd8c030ca8', 'hex')
-  ,
-  Buffer.from('94af49f6c650adb8', 'hex'), Buffer.from('eab8858ade92e1bc', 'hex')
-  ,
-  Buffer.from('f315bb5bb835d817', 'hex'), Buffer.from('adcf6b0763612e2f', 'hex')
-  ,
-  Buffer.from('a5c91da7acaa4dde', 'hex'), Buffer.from('716595876650a2a6', 'hex')
-  ,
-  Buffer.from('28ef495c53a387ad', 'hex'), Buffer.from('42c341d8fa92d832', 'hex')
-  ,
-  Buffer.from('ce7cf2722f512771', 'hex'), Buffer.from('e37859f94623f3a7', 'hex')
-  ,
-  Buffer.from('381205bb1ab0e012', 'hex'), Buffer.from('ae97a10fd434e015', 'hex')
-  ,
-  Buffer.from('b4a31508beff4d31', 'hex'), Buffer.from('81396229f0907902', 'hex')
-  ,
-  Buffer.from('4d0cf49ee5d4dcca', 'hex'), Buffer.from('5c73336a76d8bf9a', 'hex')
-  ,
-  Buffer.from('d0a704536ba93e0e', 'hex'), Buffer.from('925958fcd6420cad', 'hex')
-  ,
-  Buffer.from('a915c29bc8067318', 'hex'), Buffer.from('952b79f3bc0aa6d4', 'hex')
-  ,
-  Buffer.from('f21df2e41d4535f9', 'hex'), Buffer.from('87577519048f53a9', 'hex')
-  ,
-  Buffer.from('10a56cf5dfcd9adb', 'hex'), Buffer.from('eb75095ccd986cd0', 'hex')
-  ,
-  Buffer.from('51a9cb9ecba312e6', 'hex'), Buffer.from('96afadfc2ce666c7', 'hex')
-  ,
-  Buffer.from('72fe52975a4364ee', 'hex'), Buffer.from('5a1645b276d592a1', 'hex')
-  ,
-  Buffer.from('b274cb8ebf87870a', 'hex'), Buffer.from('6f9bb4203de7b381', 'hex')
-  ,
-  Buffer.from('eaecb2a30b22a87f', 'hex'), Buffer.from('9924a43cc1315724', 'hex')
-  ,
-  Buffer.from('bd838d3aafbf8db7', 'hex'), Buffer.from('0b1a2a3265d51aea', 'hex')
-  ,
-  Buffer.from('135079a3231ce660', 'hex'), Buffer.from('932b2846e4d70666', 'hex')
-  ,
-  Buffer.from('e1915f5cb1eca46c', 'hex'), Buffer.from('f325965ca16d629f', 'hex')
-  ,
-  Buffer.from('575ff28e60381be5', 'hex'), Buffer.from('724506eb4c328a95', 'hex')
+  [1919933255, -586281423],
+  [1962424773, -1814272003],
+  [225214473, -643215526],
+  [-2056821098, -671384019],
+  [-819489568, 661751735],
+  [410408292, -845568371],
+  [-876001682, 1493099470],
+  [-1425932043, -1962815177],
+  [-1812597383, -1701632926],
+  [-1644133665, 195683504],
+  [2052963269, -1797408269],
+  [-189583546, 577482151],
+  [1964937148, -2045843973],
+  [350901799, -1065075312],
+  [-148649328, -1904545042],
+  [-1591096735, 1237206501],
+  [1059769471, 1472371675],
+  [1771760117, 750667668],
+  [1270985712, -1769090148],
+  [-1150432995, -1485217347],
+  [-1093247758, 446885528],
+  [-789394512, 775645127],
+  [-1823250539, -475840888],
+  [-1475607668, -849555768],
+  [-1196601146, -162943084],
+  [-1126067490, -1970947862],
+  [400045496, 1538987507],
+  [791568739, 124506029],
+  [-565335380, -1491220059],
+  [-1499312026, -2020252303],
+  [-1383619757, 1548349224],
+  [853054202, -666778814],
+  [1898402095, 1928494286],
+  [-1477237946, -111576861],
+  [316715034, -1157295560],
+  [367015124, 262248366],
+  [827195326, 135635892],
+  [41521392, 694303105],
+  [-891497243, -1628173235],
+  [-1698703242, 1781756764],
+  [238987627, 1392814032],
+  [-1391705386, -61318766],
+  [410191560, -1681779287],
+  [-727315780, -210162795],
+  [-113949411, -453894670],
+  [-1454141692, 427120519],
+  [-610611745, -177429232],
+  [-798189363, 1544123883],
+  [-434986037, -1630820015],
+  [-949557716, -55726186],
+  [-295419046, -1756168590],
+  [-1584212618, -1304095142],
+  [176654271, -1899268942],
+  [-2118916291, 548707183],
+  [2141725195, -1548555030],
+  [609694145, 1017390233],
+  [-1215447121, 982352829],
+  [-367340187, 841619979],
+  [1625693219, -1552330733],
+  [1711724516, 1177037715],
+  [1822747825, 1549767137],
+  [-1620939359, 1553343987],
+  [-451200928, -1896718505],
+  [-1786105268, -351910542]
 ];
 
-function testHash(msg, expected) {
+function toHex(expect) {
+  let [hi, lo] = expect;
+
+  hi >>>= 0;
+  lo >>>= 0;
+
+  hi = hi.toString(16);
+  lo = lo.toString(16);
+
+  while (hi.length < 8)
+    hi = '0' + hi;
+
+  while (lo.length < 8)
+    lo = '0' + hi;
+
+  return hi + lo;
+}
+
+function testHash(msg, expect) {
   const key = Buffer.from('000102030405060708090a0b0c0d0e0f', 'hex');
-  const [hi, lo] = siphash256(msg, key);
-  const hash = n64.U64.fromBits(hi, lo).toRaw(Buffer);
-  assert.bufferEqual(hash, expected);
+  assert.deepStrictEqual(siphash(msg, key), expect);
 }
 
 describe('SipHash', function() {
   it('should perform siphash with no data', () => {
     const data = Buffer.alloc(0);
     const key = Buffer.from('000102030405060708090a0b0c0d0e0f', 'hex');
-    assert.deepStrictEqual(siphash256(data, key), [1919933255, -586281423]);
+    assert.deepStrictEqual(siphash(data, key), [1919933255, -586281423]);
   });
 
   it('should perform siphash with data', () => {
     const data = Buffer.from('0001020304050607', 'hex');
     const key = Buffer.from('000102030405060708090a0b0c0d0e0f', 'hex');
-    assert.deepStrictEqual(siphash256(data, key), [-1812597383, -1701632926]);
+    assert.deepStrictEqual(siphash(data, key), [-1812597383, -1701632926]);
   });
 
   it('should perform siphash with uint256', () => {
@@ -98,20 +114,51 @@ describe('SipHash', function() {
       '000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f',
       'hex');
     const key = Buffer.from('000102030405060708090a0b0c0d0e0f', 'hex');
-    assert.deepStrictEqual(siphash256(data, key), [1898402095, 1928494286]);
+    assert.deepStrictEqual(siphash(data, key), [1898402095, 1928494286]);
   });
 
-  for (const [i, expected] of vectors.entries()) {
-    let msg = Buffer.from('');
+  for (let i = 0; i < vectors.length; i++) {
+    const expect = vectors[i];
+    const msg = Buffer.alloc(i, 0x00);
 
-    const k = Buffer.from('00', 'hex');
-    for (let j=0; j<i; j++) {
-        msg = Buffer.concat([msg, k]);
-        k[0]++;
-    }
+    for (let j = 0; j < i; j++)
+      msg[j] = j & 0xff;
 
-    it(`should get siphash of ${expected.toString('hex')}`, () => {
-      testHash(msg, expected);
+    it(`should get siphash of ${toHex(expect)}`, () => {
+      testHash(msg, expect);
     });
   }
+
+  it('should test sipmod', () => {
+    const value = Buffer.from([0xab]);
+    const key = Buffer.from('9dcb553a73b4e2ae9316f6b25f848656', 'hex');
+
+    assert.deepStrictEqual(
+      sipmod(value, key, 0, 100),
+      [0, 93]);
+
+    assert.deepStrictEqual(
+      sipmod(value, key, 100, 100),
+      [93, -24689725]);
+
+    assert.deepStrictEqual(
+      sipmod(value, key, 0, 0x1fffffff),
+      [0, 504627794]);
+
+    assert.deepStrictEqual(
+      sipmod(value, key, 0, 0xffffffff),
+      [0, -257944937]);
+
+    assert.deepStrictEqual(
+      sipmod(value, key, 0x000000ff, 0xffffffff),
+      [240, -1609394163]);
+
+    assert.deepStrictEqual(
+      sipmod(value, key, 0x1fffffff, 0xffffffff),
+      [504627795, 30211052]);
+
+    assert.deepStrictEqual(
+      sipmod(value, key, 0xffffffff, 0xffffffff),
+      [-257944936, 241688429]);
+  });
 });
