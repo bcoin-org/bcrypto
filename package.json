@@ -1,6 +1,6 @@
 {
   "name": "bcrypto",
-  "version": "0.0.2",
+  "version": "0.1.0",
   "description": "Bcoin crypto module",
   "keywords": [
     "cipher",
