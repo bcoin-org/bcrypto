@@ -18,7 +18,7 @@
   "author": "Christopher Jeffrey <chjjeffrey@gmail.com>",
   "main": "./lib/bcrypto.js",
   "scripts": {
-    "install": "node-gyp rebuild || echo 'Build failed.'",
+    "install": "node-gyp rebuild || (echo 'Build failed.' && exit 1)",
     "browserify": "browserify -s bcrypto lib/bcrypto.js | uglifyjs -c > bcrypto.js",
     "clean": "rm -f bcrypto.js",
     "lint": "eslint lib/ test/ || exit 0",
