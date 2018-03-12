@@ -63,8 +63,7 @@
     "./lib/sha1": "./lib/sha1-browser.js",
     "./lib/sha256": "./lib/sha256-browser.js",
     "./lib/sha3": "./lib/sha3-browser.js",
-    "./lib/sha512": "./lib/sha512-browser.js",
-    "./lib/siphash": "./lib/siphash-browser.js"
+    "./lib/sha512": "./lib/sha512-browser.js"
   },
   "browserify": {
     "transform": [

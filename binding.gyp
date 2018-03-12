@@ -21,7 +21,6 @@
       "./src/pbkdf2_async.cc",
       "./src/scrypt.cc",
       "./src/scrypt_async.cc",
-      "./src/siphash.cc",
       "./src/ripemd160.cc",
       "./src/sha1.cc",
       "./src/sha256.cc",
