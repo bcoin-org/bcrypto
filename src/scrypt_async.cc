@@ -56,5 +56,5 @@ ScryptWorker::HandleOKCallback() {
 
   v8::Local<v8::Value> argv[] = { Nan::Null(), keyBuffer };
 
-  callback->Call(2, argv);
+  callback->Call(2, argv, async_resource);
 }
