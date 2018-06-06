@@ -1,5 +1,5 @@
-#ifndef _BCRYPTO_SHA224_H
-#define _BCRYPTO_SHA224_H
+#ifndef _BCRYPTO_SHA224_HH
+#define _BCRYPTO_SHA224_HH
 #include <node.h>
 #include <nan.h>
 #include "openssl/sha.h"

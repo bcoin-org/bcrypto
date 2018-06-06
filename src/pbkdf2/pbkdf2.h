@@ -1,5 +1,5 @@
-#ifndef _BCRYPTO_PBKDF2_H_C
-#define _BCRYPTO_PBKDF2_H_C
+#ifndef _BCRYPTO_PBKDF2_H
+#define _BCRYPTO_PBKDF2_H
 
 #include <stdint.h>
 #include <stdlib.h>

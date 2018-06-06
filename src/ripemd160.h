@@ -1,5 +1,5 @@
-#ifndef _BCRYPTO_RIPEMD160_H
-#define _BCRYPTO_RIPEMD160_H
+#ifndef _BCRYPTO_RIPEMD160_HH
+#define _BCRYPTO_RIPEMD160_HH
 #include <node.h>
 #include <nan.h>
 #include "openssl/ripemd.h"

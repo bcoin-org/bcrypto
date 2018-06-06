@@ -1,5 +1,5 @@
-#ifndef _BCRYPTO_BLAKE2B_H
-#define _BCRYPTO_BLAKE2B_H
+#ifndef _BCRYPTO_BLAKE2B_HH
+#define _BCRYPTO_BLAKE2B_HH
 #include <node.h>
 #include <nan.h>
 #include "blake2b/blake2b.h"

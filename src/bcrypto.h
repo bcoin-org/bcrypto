@@ -1,5 +1,5 @@
-#ifndef _BCRYPTO_BCRYPTO_H
-#define _BCRYPTO_BCRYPTO_H
+#ifndef _BCRYPTO_BCRYPTO_HH
+#define _BCRYPTO_BCRYPTO_HH
 
 #include <node.h>
 #include <nan.h>

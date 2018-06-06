@@ -1,5 +1,5 @@
-#ifndef _BCRYPTO_RSA_H
-#define _BCRYPTO_RSA_H
+#ifndef _BCRYPTO_RSA_HH
+#define _BCRYPTO_RSA_HH
 #include <node.h>
 #include <nan.h>
 

@@ -6,8 +6,8 @@
  * http://www.opensource.org/licenses/mit-license.php
  */
 
-#ifndef _BCRYPTO_POLY1305_H_C
-#define _BCRYPTO_POLY1305_H_C
+#ifndef _BCRYPTO_POLY1305_H
+#define _BCRYPTO_POLY1305_H
 
 #include <stddef.h>
 

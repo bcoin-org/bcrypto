@@ -17,8 +17,8 @@
  * or FITNESS FOR A PARTICULAR PURPOSE.  Use this program  at  your own risk!
  */
 
-#ifndef _BCRYPTO_SHA3_H_C
-#define _BCRYPTO_SHA3_H_C
+#ifndef _BCRYPTO_SHA3_H
+#define _BCRYPTO_SHA3_H
 
 #ifdef __cplusplus
 extern "C" {

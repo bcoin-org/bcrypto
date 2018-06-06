@@ -1,5 +1,5 @@
-#ifndef _BCRYPTO_CHACHA20_H
-#define _BCRYPTO_CHACHA20_H
+#ifndef _BCRYPTO_CHACHA20_HH
+#define _BCRYPTO_CHACHA20_HH
 
 #include <node.h>
 #include <nan.h>

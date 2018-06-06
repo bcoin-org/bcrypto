@@ -1,5 +1,5 @@
-#ifndef _BCRYPTO_KECCAK_H
-#define _BCRYPTO_KECCAK_H
+#ifndef _BCRYPTO_KECCAK_HH
+#define _BCRYPTO_KECCAK_HH
 #include <node.h>
 #include <nan.h>
 #include "sha3/sha3.h"

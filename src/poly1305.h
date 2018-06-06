@@ -1,5 +1,5 @@
-#ifndef _BCRYPTO_POLY1305_H
-#define _BCRYPTO_POLY1305_H
+#ifndef _BCRYPTO_POLY1305_HH
+#define _BCRYPTO_POLY1305_HH
 #include <node.h>
 #include <nan.h>
 

@@ -1,5 +1,5 @@
-#ifndef _BCRYPTO_MD5_H
-#define _BCRYPTO_MD5_H
+#ifndef _BCRYPTO_MD5_HH
+#define _BCRYPTO_MD5_HH
 #include <node.h>
 #include <nan.h>
 #include "openssl/md5.h"

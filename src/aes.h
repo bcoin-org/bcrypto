@@ -1,5 +1,5 @@
-#ifndef _BCRYPTO_AES_H
-#define _BCRYPTO_AES_H
+#ifndef _BCRYPTO_AES_HH
+#define _BCRYPTO_AES_HH
 #include <node.h>
 #include <nan.h>
 #include "openssl/aes.h"

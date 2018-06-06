@@ -20,8 +20,8 @@
  *   performed.
  */
 
-#ifndef _BCRYPTO_CHACHA20_H_C
-#define _BCRYPTO_CHACHA20_H_C
+#ifndef _BCRYPTO_CHACHA20_H
+#define _BCRYPTO_CHACHA20_H
 
 #include <stdint.h>
 

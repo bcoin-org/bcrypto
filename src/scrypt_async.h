@@ -1,5 +1,5 @@
-#ifndef _BCRYPTO_SCRYPT_ASYNC_H
-#define _BCRYPTO_SCRYPT_ASYNC_H
+#ifndef _BCRYPTO_SCRYPT_ASYNC_HH
+#define _BCRYPTO_SCRYPT_ASYNC_HH
 
 #include <node.h>
 #include <nan.h>

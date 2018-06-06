@@ -1,5 +1,5 @@
-#ifndef _BCRYPTO_SYSENDIAN_H_C
-#define _BCRYPTO_SYSENDIAN_H_C
+#ifndef _BCRYPTO_SYSENDIAN_H
+#define _BCRYPTO_SYSENDIAN_H
 
 #include <stdint.h>
 

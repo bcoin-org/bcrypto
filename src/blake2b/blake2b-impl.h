@@ -16,8 +16,8 @@
  * https://blake2.net.
  */
 
-#ifndef _BCRYPTO_BLAKE2_IMPL_H_C
-#define _BCRYPTO_BLAKE2_IMPL_H_C
+#ifndef _BCRYPTO_BLAKE2_IMPL_H
+#define _BCRYPTO_BLAKE2_IMPL_H
 
 #include <stdint.h>
 #include <string.h>

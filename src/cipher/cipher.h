@@ -4,6 +4,13 @@
 #define BCRYPTO_ENCIPHER_SIZE(len) ((len) + (16 - ((len) % 16)));
 #define BCRYPTO_DECIPHER_SIZE(len) (len)
 
+#include <stdbool.h>
+#include <stdint.h>
+
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 bool
 bcrypto_encipher(
   const uint8_t *data,
@@ -23,4 +30,9 @@ bcrypto_decipher(
   uint8_t *out,
   uint32_t *outlen
 );
+
+#if defined(__cplusplus)
+}
+#endif
+
 #endif

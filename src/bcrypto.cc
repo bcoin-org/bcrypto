@@ -13,7 +13,7 @@
 #include "openssl/evp.h"
 #include "openssl/rand.h"
 
-#include "cipher.h"
+#include "cipher/cipher.h"
 #include "chacha20.h"
 #include "poly1305.h"
 #include "pbkdf2/pbkdf2.h"
