@@ -21,8 +21,11 @@
 #include "scrypt.h"
 #include "scrypt_async.h"
 #include "ripemd160.h"
+#include "md5.h"
 #include "sha1.h"
+#include "sha224.h"
 #include "sha256.h"
+#include "sha384.h"
 #include "sha512.h"
 #include "hash160.h"
 #include "hash256.h"
@@ -392,9 +395,12 @@ NAN_MODULE_INIT(init) {
   Nan::Export(target, "decipher", decipher);
   Nan::Export(target, "randomBytes", random_bytes);
 
+  MD5::Init(target);
   RIPEMD160::Init(target);
   SHA1::Init(target);
+  SHA224::Init(target);
   SHA256::Init(target);
+  SHA384::Init(target);
   SHA512::Init(target);
   Hash160::Init(target);
   Hash256::Init(target);
