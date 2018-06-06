@@ -29,6 +29,7 @@
       "./src/hash256.cc",
       "./src/keccak.cc",
       "./src/blake2b.cc",
+      "./src/rsa.cc",
       "./src/bcrypto.cc"
     ],
     "cflags": [

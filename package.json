@@ -27,6 +27,9 @@
   },
   "dependencies": {
     "bindings": "~1.3.0",
+    "bn.js": "~4.11.8",
+    "bufio": "~0.1.0",
+    "elliptic": "~6.4.0",
     "nan": "~2.9.2",
     "secp256k1": "3.5.0"
   },
@@ -54,15 +57,19 @@
     "./lib/hash160": "./lib/hash160-browser.js",
     "./lib/hash256": "./lib/hash256-browser.js",
     "./lib/keccak": "./lib/keccak-browser.js",
+    "./lib/md5": "./lib/md5-browser.js",
     "./lib/pbkdf2": "./lib/pbkdf2-browser.js",
     "./lib/poly1305": "./lib/poly1305-browser.js",
     "./lib/random": "./lib/random-browser.js",
     "./lib/ripemd160": "./lib/ripemd160-browser.js",
+    "./lib/rsa": "./lib/rsa-browser.js",
     "./lib/scrypt": "./lib/scrypt-browser.js",
     "./lib/secp256k1-backend": "./lib/secp256k1-backend-browser.js",
     "./lib/sha1": "./lib/sha1-browser.js",
+    "./lib/sha224": "./lib/sha224-browser.js",
     "./lib/sha256": "./lib/sha256-browser.js",
     "./lib/sha3": "./lib/sha3-browser.js",
+    "./lib/sha384": "./lib/sha384-browser.js",
     "./lib/sha512": "./lib/sha512-browser.js"
   },
   "browserify": {

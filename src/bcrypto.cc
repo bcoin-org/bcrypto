@@ -28,6 +28,7 @@
 #include "hash256.h"
 #include "keccak.h"
 #include "blake2b.h"
+#include "rsa.h"
 #include "bcrypto.h"
 
 NAN_METHOD(pbkdf2) {
@@ -402,6 +403,8 @@ NAN_MODULE_INIT(init) {
 
   ChaCha20::Init(target);
   Poly1305::Init(target);
+
+  BRSA::Init(target);
 }
 
 NODE_MODULE(bcrypto, init)
