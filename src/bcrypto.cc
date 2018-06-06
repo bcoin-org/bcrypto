@@ -61,7 +61,7 @@ NAN_METHOD(pbkdf2) {
   const char *name = (const char *)*name_;
 
   const uint8_t *data = (const uint8_t *)node::Buffer::Data(kbuf);
-  uint32_t datalen = (const uint32_t)node::Buffer::Length(kbuf);
+  uint32_t datalen = (uint32_t)node::Buffer::Length(kbuf);
   const uint8_t *salt = (const uint8_t *)node::Buffer::Data(sbuf);
   uint32_t saltlen = (size_t)node::Buffer::Length(sbuf);
   uint32_t iter = info[3]->Uint32Value();
@@ -116,7 +116,7 @@ NAN_METHOD(pbkdf2_async) {
     return Nan::ThrowTypeError("Could not allocate context.");
 
   const uint8_t *data = (const uint8_t *)node::Buffer::Data(dbuf);
-  uint32_t datalen = (const uint32_t)node::Buffer::Length(dbuf);
+  uint32_t datalen = (uint32_t)node::Buffer::Length(dbuf);
   const uint8_t *salt = (const uint8_t *)node::Buffer::Data(sbuf);
   uint32_t saltlen = (size_t)node::Buffer::Length(sbuf);
   uint32_t iter = info[3]->Uint32Value();
@@ -165,7 +165,7 @@ NAN_METHOD(scrypt) {
     return Nan::ThrowTypeError("Sixth argument must be a number.");
 
   const uint8_t *pass = (const uint8_t *)node::Buffer::Data(pbuf);
-  const uint32_t passlen = (const uint32_t)node::Buffer::Length(pbuf);
+  const uint32_t passlen = (uint32_t)node::Buffer::Length(pbuf);
   const uint8_t *salt = (const uint8_t *)node::Buffer::Data(sbuf);
   size_t saltlen = (size_t)node::Buffer::Length(sbuf);
   uint64_t N = (uint64_t)info[2]->IntegerValue();
@@ -217,7 +217,7 @@ NAN_METHOD(scrypt_async) {
   v8::Local<v8::Function> callback = info[6].As<v8::Function>();
 
   const uint8_t *pass = (const uint8_t *)node::Buffer::Data(pbuf);
-  const uint32_t passlen = (const uint32_t)node::Buffer::Length(pbuf);
+  const uint32_t passlen = (uint32_t)node::Buffer::Length(pbuf);
   const uint8_t *salt = (const uint8_t *)node::Buffer::Data(sbuf);
   size_t saltlen = (size_t)node::Buffer::Length(sbuf);
   uint64_t N = (uint64_t)info[2]->IntegerValue();
