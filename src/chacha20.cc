@@ -5,8 +5,8 @@ static Nan::Persistent<v8::FunctionTemplate> chacha20_constructor;
 NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj);
 
 ChaCha20::ChaCha20() {
-  memset(&ctx, 0, sizeof(chacha20_ctx));
-  ctx.iv_size = 8;
+  memset(&ctx, 0, sizeof(bcrypto_chacha20_ctx));
+  ctx.nonce_size = 8;
 }
 
 ChaCha20::~ChaCha20() {}
@@ -43,7 +43,7 @@ ChaCha20::InitKey(char *key, size_t len) {
   if (len != 32)
     return Nan::ThrowError("Invalid key size.");
 
-  chacha20_keysetup(&ctx, (uint8_t *)key, 32);
+  bcrypto_chacha20_keysetup(&ctx, (uint8_t *)key, 32);
 }
 
 void
@@ -53,8 +53,8 @@ ChaCha20::InitIV(char *iv, size_t len, uint64_t ctr) {
   if (len != 8 && len != 12)
     return Nan::ThrowError("Invalid IV size.");
 
-  chacha20_ivsetup(&ctx, (uint8_t *)iv, (uint8_t)len);
-  chacha20_counter_set(&ctx, ctr);
+  bcrypto_chacha20_ivsetup(&ctx, (uint8_t *)iv, (uint8_t)len);
+  bcrypto_chacha20_counter_set(&ctx, ctr);
 }
 
 NAN_METHOD(ChaCha20::New) {
@@ -157,7 +157,7 @@ NAN_METHOD(ChaCha20::Encrypt) {
   const uint8_t *data = (uint8_t *)node::Buffer::Data(buf);
   size_t len = node::Buffer::Length(buf);
 
-  chacha20_encrypt(&chacha->ctx, (uint8_t *)data, (uint8_t *)data, len);
+  bcrypto_chacha20_encrypt(&chacha->ctx, (uint8_t *)data, (uint8_t *)data, len);
 
   info.GetReturnValue().Set(buf);
 }
@@ -171,13 +171,13 @@ NAN_METHOD(ChaCha20::SetCounter) {
   if (!info[0]->IsNumber())
     return Nan::ThrowError("First argument must be a number.");
 
-  chacha20_counter_set(&chacha->ctx, (uint64_t)info[0]->IntegerValue());
+  bcrypto_chacha20_counter_set(&chacha->ctx, (uint64_t)info[0]->IntegerValue());
 }
 
 NAN_METHOD(ChaCha20::GetCounter) {
   ChaCha20 *chacha = ObjectWrap::Unwrap<ChaCha20>(info.Holder());
   info.GetReturnValue().Set(
-    Nan::New<v8::Number>((double)chacha20_counter_get(&chacha->ctx)));
+    Nan::New<v8::Number>((double)bcrypto_chacha20_counter_get(&chacha->ctx)));
 }
 
 NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj) {

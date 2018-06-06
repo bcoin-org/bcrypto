@@ -1,4 +1,4 @@
-#include "scrypt.h"
+#include "scrypt/scrypt.h"
 #include "scrypt_async.h"
 
 ScryptWorker::ScryptWorker (

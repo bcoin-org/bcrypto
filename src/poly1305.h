@@ -3,9 +3,7 @@
 #include <node.h>
 #include <nan.h>
 
-extern "C" {
-#include "poly1305/poly1305-donna.h"
-}
+#include "poly1305/poly1305.h"
 
 class Poly1305 : public Nan::ObjectWrap {
 public:
@@ -15,7 +13,7 @@ public:
   Poly1305();
   ~Poly1305();
 
-  poly1305_context ctx;
+  bcrypto_poly1305_ctx ctx;
 
 private:
   static NAN_METHOD(Init);

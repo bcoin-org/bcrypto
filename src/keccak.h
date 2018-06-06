@@ -12,7 +12,7 @@ public:
   Keccak();
   ~Keccak();
 
-  keccak_ctx ctx;
+  bcrypto_keccak_ctx ctx;
 
 private:
   static NAN_METHOD(Init);

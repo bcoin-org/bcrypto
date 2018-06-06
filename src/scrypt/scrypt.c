@@ -35,9 +35,7 @@
 #include "sha256.h"
 #include "sysendian.h"
 
-#include "crypto_scrypt.h"
-
-
+#include "scrypt.h"
 
 static void blkcpy(uint8_t *, uint8_t *, size_t);
 static void blkxor(uint8_t *, uint8_t *, size_t);
@@ -47,8 +45,7 @@ static uint64_t integerify(uint8_t *, size_t);
 static void smix(uint8_t *, size_t, uint64_t, uint8_t *, uint8_t *);
 
 static void
-blkcpy(uint8_t * dest, uint8_t * src, size_t len)
-{
+blkcpy(uint8_t *dest, uint8_t *src, size_t len) {
 	size_t i;
 
 	for (i = 0; i < len; i++)
@@ -56,8 +53,7 @@ blkcpy(uint8_t * dest, uint8_t * src, size_t len)
 }
 
 static void
-blkxor(uint8_t * dest, uint8_t * src, size_t len)
-{
+blkxor(uint8_t *dest, uint8_t *src, size_t len) {
 	size_t i;
 
 	for (i = 0; i < len; i++)
@@ -69,8 +65,7 @@ blkxor(uint8_t * dest, uint8_t * src, size_t len)
  * Apply the salsa20/8 core to the provided block.
  */
 static void
-salsa20_8(uint8_t B[64])
-{
+salsa20_8(uint8_t B[64]) {
 	uint32_t B32[16];
 	uint32_t x[16];
 	size_t i;
@@ -82,6 +77,7 @@ salsa20_8(uint8_t B[64])
 	/* Compute x = doubleround^4(B32). */
 	for (i = 0; i < 16; i++)
 		x[i] = B32[i];
+
 	for (i = 0; i < 8; i += 2) {
 #define R(a,b) (((a) << (b)) | ((a) >> (32 - (b))))
 		/* Operate on columns. */
@@ -127,8 +123,7 @@ salsa20_8(uint8_t B[64])
  * length; the temporary space Y must also be the same size.
  */
 static void
-blockmix_salsa8(uint8_t * B, uint8_t * Y, size_t r)
-{
+blockmix_salsa8(uint8_t *B, uint8_t *Y, size_t r) {
 	uint8_t X[64];
 	size_t i;
 
@@ -157,8 +152,7 @@ blockmix_salsa8(uint8_t * B, uint8_t * Y, size_t r)
  * Return the result of parsing B_{2r-1} as a little-endian integer.
  */
 static uint64_t
-integerify(uint8_t * B, size_t r)
-{
+integerify(uint8_t * B, size_t r) {
 	uint8_t * X = &B[(2 * r - 1) * 64];
 
 	return (le64dec(X));
@@ -171,8 +165,7 @@ integerify(uint8_t * B, size_t r)
  * XY must be 256r bytes in length.  The value N must be a power of 2.
  */
 static void
-smix(uint8_t * B, size_t r, uint64_t N, uint8_t * V, uint8_t * XY)
-{
+smix(uint8_t * B, size_t r, uint64_t N, uint8_t * V, uint8_t * XY) {
 	uint8_t * X = XY;
 	uint8_t * Y = &XY[128 * r];
 	uint64_t i;
@@ -213,14 +206,21 @@ smix(uint8_t * B, size_t r, uint64_t N, uint8_t * V, uint8_t * XY)
  *
  * Return 0 on success; or -1 on error.
  */
-int
-crypto_scrypt(const uint8_t * passwd, size_t passwdlen,
-    const uint8_t * salt, size_t saltlen, uint64_t N, uint32_t _r, uint32_t _p,
-    uint8_t * buf, size_t buflen)
-{
-	uint8_t * B;
-	uint8_t * V;
-	uint8_t * XY;
+static int
+crypto_scrypt(
+  const uint8_t *passwd,
+  size_t passwdlen,
+  const uint8_t *salt,
+  size_t saltlen,
+  uint64_t N,
+  uint32_t _r,
+  uint32_t _p,
+  uint8_t *buf,
+  size_t buflen
+) {
+	uint8_t *B;
+	uint8_t *V;
+	uint8_t *XY;
 	size_t r = _r, p = _p;
 	uint32_t i;
 
@@ -231,14 +231,17 @@ crypto_scrypt(const uint8_t * passwd, size_t passwdlen,
 		goto err0;
 	}
 #endif
+
 	if ((uint64_t)(r) * (uint64_t)(p) >= (1 << 30)) {
 		errno = EFBIG;
 		goto err0;
 	}
+
 	if (((N & (N - 1)) != 0) || (N == 0)) {
 		errno = EINVAL;
 		goto err0;
 	}
+
 	if ((r > SIZE_MAX / 128 / p) ||
 #if SIZE_MAX / 256 <= UINT32_MAX
 	    (r > SIZE_MAX / 256) ||
@@ -251,8 +254,10 @@ crypto_scrypt(const uint8_t * passwd, size_t passwdlen,
 	/* Allocate memory. */
 	if ((B = malloc(128 * r * p)) == NULL)
 		goto err0;
+
 	if ((XY = malloc(256 * r)) == NULL)
 		goto err1;
+
 	if ((V = malloc(128 * r * N)) == NULL)
 		goto err2;
 
@@ -274,7 +279,7 @@ crypto_scrypt(const uint8_t * passwd, size_t passwdlen,
 	free(B);
 
 	/* Success! */
-	return (0);
+	return 0;
 
 err2:
 	free(XY);
@@ -282,5 +287,24 @@ err1:
 	free(B);
 err0:
 	/* Failure! */
-	return (-1);
+	return -1;
+}
+
+bool
+bcrypto_scrypt(
+  const uint8_t *pass,
+  const uint32_t passlen,
+  const uint8_t *salt,
+  size_t saltlen,
+  uint64_t N,
+  uint64_t r,
+  uint64_t p,
+  uint8_t *key,
+  size_t keylen
+) {
+  int32_t result = crypto_scrypt(
+    pass, passlen, salt, saltlen,
+    N, r, p, key, keylen);
+
+  return result == 0;
 }

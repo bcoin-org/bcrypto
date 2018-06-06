@@ -1,5 +1,5 @@
-#ifndef _SHA256_H_
-#define _SHA256_H_
+#ifndef _BCRYPTO_SCRYPT_SHA256_H_C
+#define _BCRYPTO_SCRYPT_SHA256_H_C
 
 #include <stddef.h>
 #include <stdint.h>
@@ -8,16 +8,16 @@
  * Use #defines in order to avoid namespace collisions with anyone else's
  * SHA256 code (e.g., the code in OpenSSL).
  */
-#define SHA256_Init libcperciva_SHA256_Init
-#define SHA256_Update libcperciva_SHA256_Update
-#define SHA256_Final libcperciva_SHA256_Final
-#define SHA256_Buf libcperciva_SHA256_Buf
-#define SHA256_CTX libcperciva_SHA256_CTX
-#define HMAC_SHA256_Init libcperciva_HMAC_SHA256_Init
-#define HMAC_SHA256_Update libcperciva_HMAC_SHA256_Update
-#define HMAC_SHA256_Final libcperciva_HMAC_SHA256_Final
-#define HMAC_SHA256_Buf libcperciva_HMAC_SHA256_Buf
-#define HMAC_SHA256_CTX libcperciva_HMAC_SHA256_CTX
+#define SHA256_Init bcrypto_scrypt_SHA256_Init
+#define SHA256_Update bcrypto_scrypt_SHA256_Update
+#define SHA256_Final bcrypto_scrypt_SHA256_Final
+#define SHA256_Buf bcrypto_scrypt_SHA256_Buf
+#define SHA256_CTX bcrypto_scrypt_SHA256_CTX
+#define HMAC_SHA256_Init bcrypto_scrypt_HMAC_SHA256_Init
+#define HMAC_SHA256_Update bcrypto_scrypt_HMAC_SHA256_Update
+#define HMAC_SHA256_Final bcrypto_scrypt_HMAC_SHA256_Final
+#define HMAC_SHA256_Buf bcrypto_scrypt_HMAC_SHA256_Buf
+#define HMAC_SHA256_CTX bcrypto_scrypt_HMAC_SHA256_CTX
 
 /* Context structure for SHA256 operations. */
 typedef struct {

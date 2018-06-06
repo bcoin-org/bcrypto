@@ -6,20 +6,18 @@
   "targets": [{
     "target_name": "bcrypto",
     "sources": [
-      "./src/poly1305/poly1305-donna.c",
+      "./src/poly1305/poly1305.c",
       "./src/chacha20/chacha20.c",
       "./src/scrypt/insecure_memzero.c",
       "./src/scrypt/sha256.c",
-      "./src/scrypt/crypto_scrypt.c",
-      "./src/sha3/byte_order.c",
-      "./src/sha3/sha3.c",
+      "./src/scrypt/scrypt.c",
+      "./src/pbkdf2/pbkdf2.c",
       "./src/blake2b/blake2b.c",
+      "./src/sha3/sha3.c",
       "./src/chacha20.cc",
       "./src/poly1305.cc",
       "./src/cipher.cc",
-      "./src/pbkdf2.cc",
       "./src/pbkdf2_async.cc",
-      "./src/scrypt.cc",
       "./src/scrypt_async.cc",
       "./src/ripemd160.cc",
       "./src/md5.cc",
@@ -79,11 +77,11 @@
       }],
       ["target_arch=='x64' and OS!='win'", {
         "defines": [
-          "POLY1305_64BIT"
+          "BCRYPTO_POLY1305_64BIT"
         ]
       }, {
         "defines": [
-          "POLY1305_32BIT"
+          "BCRYPTO_POLY1305_32BIT"
         ]
       }],
       ["OS=='win'", {

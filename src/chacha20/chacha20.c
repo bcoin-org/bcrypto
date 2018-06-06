@@ -1,71 +1,117 @@
-/*
-Copyright (C) 2014 insane coder (http://insanecoding.blogspot.com/, http://chacha20.insanecoding.org/)
-
-Permission to use, copy, modify, and distribute this software for any
-purpose with or without fee is hereby granted, provided that the above
-copyright notice and this permission notice appear in all copies.
-
-THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
-WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
-MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
-ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
-WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
-ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
-OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
-This implementation is intended to be simple, many optimizations can be performed.
-*/
+/**
+ * Parts of this software are based on chacha20-simple:
+ * http://chacha20.insanecoding.org/
+ *
+ *   Copyright (C) 2014 insane coder
+ *
+ *   Permission to use, copy, modify, and distribute this software for any
+ *   purpose with or without fee is hereby granted, provided that the above
+ *   copyright notice and this permission notice appear in all copies.
+ *
+ *   THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ *   WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ *   MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+ *   SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ *   WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ *   ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR
+ *   IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ *   This implementation is intended to be simple, many optimizations can be
+ *   performed.
+ */
 
 #include <string.h>
+
 #include "chacha20.h"
 
-void chacha20_setup(chacha20_ctx *ctx, const uint8_t *key, size_t length, uint8_t *nonce, uint8_t iv_size)
-{
-  chacha20_keysetup(ctx, key, length);
-  chacha20_ivsetup(ctx, nonce, iv_size);
+#define ROTL32(v, n) ((v) << (n)) | ((v) >> (32 - (n)))
+
+#define READLE(p)                   \
+  (((uint32_t)((p)[0]))         \
+  | ((uint32_t)((p)[1]) << 8)   \
+  | ((uint32_t)((p)[2]) << 16)  \
+  | ((uint32_t)((p)[3]) << 24))
+
+#define WRITELE(b, i)         \
+  (b)[0] = i & 0xFF;         \
+  (b)[1] = (i >> 8) & 0xFF;  \
+  (b)[2] = (i >> 16) & 0xFF; \
+  (b)[3] = (i >> 24) & 0xFF;
+
+#ifndef MIN
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#endif
+
+#define QUARTERROUND(x, a, b, c, d)             \
+  x[a] += x[b]; x[d] = ROTL32(x[d] ^ x[a], 16); \
+  x[c] += x[d]; x[b] = ROTL32(x[b] ^ x[c], 12); \
+  x[a] += x[b]; x[d] = ROTL32(x[d] ^ x[a], 8);  \
+  x[c] += x[d]; x[b] = ROTL32(x[b] ^ x[c], 7);
+
+void
+bcrypto_chacha20_setup(
+  bcrypto_chacha20_ctx *ctx,
+  const uint8_t *key,
+  size_t length,
+  const uint8_t *nonce,
+  uint8_t nonce_size
+) {
+  bcrypto_chacha20_keysetup(ctx, key, length);
+  bcrypto_chacha20_ivsetup(ctx, nonce, nonce_size);
 }
 
-void chacha20_keysetup(chacha20_ctx *ctx, const uint8_t *key, size_t length)
-{
-  const char *constants = (length == 32) ? "expand 32-byte k" : "expand 16-byte k";
+void
+bcrypto_chacha20_keysetup(
+  bcrypto_chacha20_ctx *ctx,
+  const uint8_t *key,
+  size_t length
+) {
+  const char *constants = (length == 32)
+    ? "expand 32-byte k"
+    : "expand 16-byte k";
 
-  ctx->schedule[0] = LE(constants + 0);
-  ctx->schedule[1] = LE(constants + 4);
-  ctx->schedule[2] = LE(constants + 8);
-  ctx->schedule[3] = LE(constants + 12);
-  ctx->schedule[4] = LE(key + 0);
-  ctx->schedule[5] = LE(key + 4);
-  ctx->schedule[6] = LE(key + 8);
-  ctx->schedule[7] = LE(key + 12);
-  ctx->schedule[8] = LE(key + 16 % length);
-  ctx->schedule[9] = LE(key + 20 % length);
-  ctx->schedule[10] = LE(key + 24 % length);
-  ctx->schedule[11] = LE(key + 28 % length);
-  ctx->schedule[12] = 0; //Counter
+  ctx->schedule[0] = READLE(constants + 0);
+  ctx->schedule[1] = READLE(constants + 4);
+  ctx->schedule[2] = READLE(constants + 8);
+  ctx->schedule[3] = READLE(constants + 12);
+  ctx->schedule[4] = READLE(key + 0);
+  ctx->schedule[5] = READLE(key + 4);
+  ctx->schedule[6] = READLE(key + 8);
+  ctx->schedule[7] = READLE(key + 12);
+  ctx->schedule[8] = READLE(key + 16 % length);
+  ctx->schedule[9] = READLE(key + 20 % length);
+  ctx->schedule[10] = READLE(key + 24 % length);
+  ctx->schedule[11] = READLE(key + 28 % length);
+  ctx->schedule[12] = 0;
 
   ctx->available = 0;
-  ctx->iv_size = 8;
+  ctx->nonce_size = 8;
 }
 
-void chacha20_ivsetup(chacha20_ctx *ctx, uint8_t *nonce, uint8_t iv_size)
-{
-  //Surprise! This is really a block cipher in CTR mode
-  ctx->schedule[12] = 0; //Counter
-  if (iv_size == 8) {
-    ctx->schedule[13] = 0; //Counter
-    ctx->schedule[14] = LE(nonce+0);
-    ctx->schedule[15] = LE(nonce+4);
+void
+bcrypto_chacha20_ivsetup(
+  bcrypto_chacha20_ctx *ctx,
+  const uint8_t *nonce,
+  uint8_t nonce_size
+) {
+  ctx->schedule[12] = 0;
+
+  if (nonce_size == 8) {
+    ctx->schedule[13] = 0;
+    ctx->schedule[14] = READLE(nonce + 0);
+    ctx->schedule[15] = READLE(nonce + 4);
   } else {
-    ctx->schedule[13] = LE(nonce+0);
-    ctx->schedule[14] = LE(nonce+4);
-    ctx->schedule[15] = LE(nonce+8);
+    ctx->schedule[13] = READLE(nonce + 0);
+    ctx->schedule[14] = READLE(nonce + 4);
+    ctx->schedule[15] = READLE(nonce + 8);
   }
-  ctx->iv_size = iv_size;
+
+  ctx->nonce_size = nonce_size;
 }
 
-void chacha20_counter_set(chacha20_ctx *ctx, uint64_t counter)
-{
-  if (ctx->iv_size == 8) {
+void
+bcrypto_chacha20_counter_set(bcrypto_chacha20_ctx *ctx, uint64_t counter) {
+  if (ctx->nonce_size == 8) {
     ctx->schedule[12] = counter & UINT32_C(0xFFFFFFFF);
     ctx->schedule[13] = counter >> 32;
   } else {
@@ -74,29 +120,22 @@ void chacha20_counter_set(chacha20_ctx *ctx, uint64_t counter)
   ctx->available = 0;
 }
 
-uint64_t chacha20_counter_get(chacha20_ctx *ctx)
-{
-  if (ctx->iv_size == 8)
+uint64_t
+bcrypto_chacha20_counter_get(bcrypto_chacha20_ctx *ctx) {
+  if (ctx->nonce_size == 8)
     return ((uint64_t)ctx->schedule[13] << 32) | ctx->schedule[12];
 
   return (uint64_t)ctx->schedule[12];
 }
 
-#define QUARTERROUND(x, a, b, c, d) \
-    x[a] += x[b]; x[d] = ROTL32(x[d] ^ x[a], 16); \
-    x[c] += x[d]; x[b] = ROTL32(x[b] ^ x[c], 12); \
-    x[a] += x[b]; x[d] = ROTL32(x[d] ^ x[a], 8); \
-    x[c] += x[d]; x[b] = ROTL32(x[b] ^ x[c], 7);
-
-void chacha20_block(chacha20_ctx *ctx, uint32_t output[16])
-{
-  uint32_t *const nonce = ctx->schedule+12; //12 is where the 128 bit counter is
+void
+bcrypto_chacha20_block(bcrypto_chacha20_ctx *ctx, uint32_t output[16]) {
+  uint32_t *nonce = ctx->schedule + 12;
   int i = 10;
 
   memcpy(output, ctx->schedule, sizeof(ctx->schedule));
 
-  while (i--)
-  {
+  while (i--) {
     QUARTERROUND(output, 0, 4, 8, 12)
     QUARTERROUND(output, 1, 5, 9, 13)
     QUARTERROUND(output, 2, 6, 10, 14)
@@ -106,59 +145,65 @@ void chacha20_block(chacha20_ctx *ctx, uint32_t output[16])
     QUARTERROUND(output, 2, 7, 8, 13)
     QUARTERROUND(output, 3, 4, 9, 14)
   }
-  for (i = 0; i < 16; ++i)
-  {
+
+  for (i = 0; i < 16; i++) {
     uint32_t result = output[i] + ctx->schedule[i];
-    FROMLE((uint8_t *)(output+i), result);
+    WRITELE((uint8_t *)(output + i), result);
   }
 
-  /*
-  Official specs calls for performing a 64 bit increment here, and limit usage to 2^64 blocks.
-  However, recommendations for CTR mode in various papers recommend including the nonce component for a 128 bit increment.
-  This implementation will remain compatible with the official up to 2^64 blocks, and past that point, the official is not intended to be used.
-  This implementation with this change also allows this algorithm to become compatible for a Fortuna-like construct.
-  */
   if (!++nonce[0]) {
-    if (ctx->iv_size == 8)
+    if (ctx->nonce_size == 8)
       nonce[1]++;
   }
-  // if (!++nonce[0] && !++nonce[1] && !++nonce[2]) { ++nonce[3]; }
 }
 
-static inline void chacha20_xor(uint8_t *keystream, const uint8_t **in, uint8_t **out, size_t length)
-{
+static inline
+void bcrypto_chacha20_xor(
+  uint8_t *keystream,
+  const uint8_t **in,
+  uint8_t **out,
+  size_t length
+) {
   uint8_t *end_keystream = keystream + length;
-  do { *(*out)++ = *(*in)++ ^ *keystream++; } while (keystream < end_keystream);
+  do {
+    *(*out)++ = *(*in)++ ^ *keystream++;
+  } while (keystream < end_keystream);
 }
 
-void chacha20_encrypt(chacha20_ctx *ctx, const uint8_t *in, uint8_t *out, size_t length)
-{
-  if (length)
-  {
-    uint8_t *const k = (uint8_t *)ctx->keystream;
+void
+bcrypto_chacha20_encrypt(
+  bcrypto_chacha20_ctx *ctx,
+  const uint8_t *in,
+  uint8_t *out,
+  size_t length
+) {
+  if (length) {
+    uint8_t *k = (uint8_t *)ctx->keystream;
 
-    //First, use any buffered keystream from previous calls
-    if (ctx->available)
-    {
+    if (ctx->available) {
       size_t amount = MIN(length, ctx->available);
-      chacha20_xor(k + (sizeof(ctx->keystream)-ctx->available), &in, &out, amount);
+      size_t size = sizeof(ctx->keystream) - ctx->available;
+      bcrypto_chacha20_xor(k + size, &in, &out, amount);
       ctx->available -= amount;
       length -= amount;
     }
 
-    //Then, handle new blocks
-    while (length)
-    {
+    while (length) {
       size_t amount = MIN(length, sizeof(ctx->keystream));
-      chacha20_block(ctx, ctx->keystream);
-      chacha20_xor(k, &in, &out, amount);
+      bcrypto_chacha20_block(ctx, ctx->keystream);
+      bcrypto_chacha20_xor(k, &in, &out, amount);
       length -= amount;
       ctx->available = sizeof(ctx->keystream) - amount;
     }
   }
 }
 
-void chacha20_decrypt(chacha20_ctx *ctx, const uint8_t *in, uint8_t *out, size_t length)
-{
-  chacha20_encrypt(ctx, in, out, length);
+void
+bcrypto_chacha20_decrypt(
+  bcrypto_chacha20_ctx *ctx,
+  const uint8_t *in,
+  uint8_t *out,
+  size_t length
+) {
+  bcrypto_chacha20_encrypt(ctx, in, out, length);
 }

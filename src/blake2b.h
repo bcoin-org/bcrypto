@@ -12,7 +12,7 @@ public:
   Blake2b();
   ~Blake2b();
 
-  blake2b_ctx ctx;
+  bcrypto_blake2b_ctx ctx;
 
 private:
   static NAN_METHOD(Init);

@@ -1,13 +1,14 @@
 #include <assert.h>
-#include <openssl/bn.h>
-#include <openssl/rsa.h>
-#include <openssl/objects.h>
 #include <string.h>
+
+#include "openssl/bn.h"
+#include "openssl/rsa.h"
+#include "openssl/objects.h"
 
 #include "rsa.h"
 
 static RSA *
-bc_rsa_generate(int bits) {
+bcrypto_rsa_generate(int bits) {
   RSA *key = NULL;
   BIGNUM *exp = NULL;
 
@@ -42,7 +43,7 @@ fail:
 }
 
 static int
-bc_rsa_type(const char *alg) {
+bcrypto_rsa_type(const char *alg) {
   int type = -1;
 
   if (strcmp(alg, "md5") == 0)
@@ -66,7 +67,7 @@ bc_rsa_type(const char *alg) {
 }
 
 static bool
-bc_rsa_sign(
+bcrypto_rsa_sign(
   int type,
   const uint8_t *m,
   size_t ml,
@@ -92,14 +93,14 @@ bc_rsa_sign(
 }
 
 static bool
-bc_rsa_validate(const RSA *key) {
+bcrypto_rsa_validate(const RSA *key) {
   if (!RSA_check_key(key))
     return false;
   return true;
 }
 
 static bool
-bc_rsa_verify(
+bcrypto_rsa_verify(
   int type,
   const uint8_t *m,
   size_t ml,
@@ -113,7 +114,7 @@ bc_rsa_verify(
 }
 
 static RSA *
-bc_rsa_sign_ctx(
+bcrypto_rsa_sign_ctx(
   const uint8_t *nd,
   size_t nl,
   const uint8_t *ed,
@@ -208,7 +209,7 @@ fail:
 }
 
 static RSA *
-bc_rsa_verify_ctx(
+bcrypto_rsa_verify_ctx(
   const uint8_t *nd,
   size_t nl,
   const uint8_t *ed,
@@ -290,7 +291,7 @@ NAN_METHOD(BRSA::PrivateKeyGenerate) {
 
   uint32_t bits = info[0]->Uint32Value();
 
-  RSA *key = bc_rsa_generate((int)bits);
+  RSA *key = bcrypto_rsa_generate((int)bits);
 
   if (!key)
     return Nan::ThrowTypeError("Could not allocate context.");
@@ -434,12 +435,12 @@ NAN_METHOD(BRSA::Sign) {
   if (!nd || !ed || !dd || !pd || !qd || !dpd || !dqd || !qid)
     return Nan::ThrowTypeError("Invalid parameters.");
 
-  int type = bc_rsa_type(name);
+  int type = bcrypto_rsa_type(name);
 
   if (type == -1)
     return Nan::ThrowTypeError("Unknown algorithm.");
 
-  RSA *key = bc_rsa_sign_ctx(
+  RSA *key = bcrypto_rsa_sign_ctx(
     nd, nl, ed, el, dd, dl, pd, pl, qd, ql, dpd, dpl, dqd, dql, qid, qil);
 
   if (!key)
@@ -448,7 +449,7 @@ NAN_METHOD(BRSA::Sign) {
   uint8_t *s;
   size_t sl;
 
-  bool result = bc_rsa_sign(type, md, ml, key, &s, &sl);
+  bool result = bcrypto_rsa_sign(type, md, ml, key, &s, &sl);
 
   RSA_free(key);
 
@@ -510,13 +511,13 @@ NAN_METHOD(BRSA::PrivateKeyVerify) {
   if (!nd || !ed || !dd || !pd || !qd || !dpd || !dqd || !qid)
     return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
 
-  RSA *key = bc_rsa_sign_ctx(
+  RSA *key = bcrypto_rsa_sign_ctx(
     nd, nl, ed, el, dd, dl, pd, pl, qd, ql, dpd, dpl, dqd, dql, qid, qil);
 
   if (!key)
     return Nan::ThrowTypeError("Could not allocate context.");
 
-  bool result = bc_rsa_validate(key);
+  bool result = bcrypto_rsa_validate(key);
 
   RSA_free(key);
 
@@ -560,17 +561,17 @@ NAN_METHOD(BRSA::Verify) {
   if (!sd || !nd || !ed)
     return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
 
-  int type = bc_rsa_type(name);
+  int type = bcrypto_rsa_type(name);
 
   if (type == -1)
     return Nan::ThrowTypeError("Unknown algorithm.");
 
-  RSA *key = bc_rsa_verify_ctx(nd, nl, ed, el);
+  RSA *key = bcrypto_rsa_verify_ctx(nd, nl, ed, el);
 
   if (!key)
     return Nan::ThrowTypeError("Could not allocate context.");
 
-  bool result = bc_rsa_verify(type, md, ml, sd, sl, key);
+  bool result = bcrypto_rsa_verify(type, md, ml, sd, sl, key);
 
   RSA_free(key);
 
@@ -598,12 +599,12 @@ NAN_METHOD(BRSA::PublicKeyVerify) {
   if (!nd || !ed)
     return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
 
-  RSA *key = bc_rsa_verify_ctx(nd, nl, ed, el);
+  RSA *key = bcrypto_rsa_verify_ctx(nd, nl, ed, el);
 
   if (!key)
     return Nan::ThrowTypeError("Could not allocate context.");
 
-  bool result = bc_rsa_validate(key);
+  bool result = bcrypto_rsa_validate(key);
 
   RSA_free(key);
 

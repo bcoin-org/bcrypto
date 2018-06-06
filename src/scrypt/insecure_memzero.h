@@ -1,5 +1,5 @@
-#ifndef _INSECURE_MEMZERO_H_
-#define _INSECURE_MEMZERO_H_
+#ifndef _BCRYPTO_SCRYPT_INSECURE_MEMZERO_H_C
+#define _BCRYPTO_SCRYPT_INSECURE_MEMZERO_H_C
 
 #include <stddef.h>
 
@@ -28,9 +28,7 @@ extern void (* volatile insecure_memzero_ptr)(volatile void *, size_t);
  * http://www.daemonology.net/blog/2014-09-06-zeroing-buffers-is-insufficient.html
  */
 static inline void
-insecure_memzero(volatile void * buf, size_t len)
-{
-
+insecure_memzero(volatile void *buf, size_t len) {
 	(insecure_memzero_ptr)(buf, len);
 }
 

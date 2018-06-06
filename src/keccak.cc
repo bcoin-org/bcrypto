@@ -1,6 +1,6 @@
 #include "keccak.h"
 
-static keccak_ctx global_ctx;
+static bcrypto_keccak_ctx global_ctx;
 static uint8_t global_out[64];
 
 NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj);
@@ -8,7 +8,7 @@ NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj);
 static Nan::Persistent<v8::FunctionTemplate> keccak_constructor;
 
 Keccak::Keccak() {
-  memset(&ctx, 0, sizeof(keccak_ctx));
+  memset(&ctx, 0, sizeof(bcrypto_keccak_ctx));
 }
 
 Keccak::~Keccak() {}
@@ -61,16 +61,16 @@ NAN_METHOD(Keccak::Init) {
 
   switch (bits) {
     case 224:
-      keccak_224_init(&keccak->ctx);
+      bcrypto_keccak_224_init(&keccak->ctx);
       break;
     case 256:
-      keccak_256_init(&keccak->ctx);
+      bcrypto_keccak_256_init(&keccak->ctx);
       break;
     case 384:
-      keccak_384_init(&keccak->ctx);
+      bcrypto_keccak_384_init(&keccak->ctx);
       break;
     case 512:
-      keccak_512_init(&keccak->ctx);
+      bcrypto_keccak_512_init(&keccak->ctx);
       break;
     default:
       return Nan::ThrowTypeError("Could not allocate context.");
@@ -93,7 +93,7 @@ NAN_METHOD(Keccak::Update) {
   const uint8_t *in = (uint8_t *)node::Buffer::Data(buf);
   size_t inlen = node::Buffer::Length(buf);
 
-  keccak_update(&keccak->ctx, in, inlen);
+  bcrypto_keccak_update(&keccak->ctx, in, inlen);
 
   info.GetReturnValue().Set(info.This());
 }
@@ -113,9 +113,9 @@ NAN_METHOD(Keccak::Final) {
   uint32_t outlen = 100 - keccak->ctx.block_size / 2;
 
   if (std)
-    sha3_final(&keccak->ctx, global_out);
+    bcrypto_sha3_final(&keccak->ctx, global_out);
   else
-    keccak_final(&keccak->ctx, global_out);
+    bcrypto_keccak_final(&keccak->ctx, global_out);
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&global_out[0], outlen).ToLocalChecked());
@@ -153,29 +153,29 @@ NAN_METHOD(Keccak::Digest) {
 
   switch (bits) {
     case 224:
-      keccak_224_init(&global_ctx);
+      bcrypto_keccak_224_init(&global_ctx);
       break;
     case 256:
-      keccak_256_init(&global_ctx);
+      bcrypto_keccak_256_init(&global_ctx);
       break;
     case 384:
-      keccak_384_init(&global_ctx);
+      bcrypto_keccak_384_init(&global_ctx);
       break;
     case 512:
-      keccak_512_init(&global_ctx);
+      bcrypto_keccak_512_init(&global_ctx);
       break;
     default:
       return Nan::ThrowTypeError("Could not allocate context.");
   }
 
-  keccak_update(&global_ctx, in, inlen);
+  bcrypto_keccak_update(&global_ctx, in, inlen);
 
   uint32_t outlen = 100 - global_ctx.block_size / 2;
 
   if (std)
-    sha3_final(&global_ctx, global_out);
+    bcrypto_sha3_final(&global_ctx, global_out);
   else
-    keccak_final(&global_ctx, global_out);
+    bcrypto_keccak_final(&global_ctx, global_out);
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&global_out[0], outlen).ToLocalChecked());
@@ -224,30 +224,30 @@ NAN_METHOD(Keccak::Root) {
 
   switch (bits) {
     case 224:
-      keccak_224_init(&global_ctx);
+      bcrypto_keccak_224_init(&global_ctx);
       break;
     case 256:
-      keccak_256_init(&global_ctx);
+      bcrypto_keccak_256_init(&global_ctx);
       break;
     case 384:
-      keccak_384_init(&global_ctx);
+      bcrypto_keccak_384_init(&global_ctx);
       break;
     case 512:
-      keccak_512_init(&global_ctx);
+      bcrypto_keccak_512_init(&global_ctx);
       break;
     default:
       return Nan::ThrowTypeError("Could not allocate context.");
   }
 
-  keccak_update(&global_ctx, left, leftlen);
-  keccak_update(&global_ctx, right, rightlen);
+  bcrypto_keccak_update(&global_ctx, left, leftlen);
+  bcrypto_keccak_update(&global_ctx, right, rightlen);
 
   uint32_t outlen = 100 - global_ctx.block_size / 2;
 
   if (std)
-    sha3_final(&global_ctx, global_out);
+    bcrypto_sha3_final(&global_ctx, global_out);
   else
-    keccak_final(&global_ctx, global_out);
+    bcrypto_keccak_final(&global_ctx, global_out);
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&global_out[0], outlen).ToLocalChecked());
@@ -306,32 +306,32 @@ NAN_METHOD(Keccak::Multi) {
 
   switch (bits) {
     case 224:
-      keccak_224_init(&global_ctx);
+      bcrypto_keccak_224_init(&global_ctx);
       break;
     case 256:
-      keccak_256_init(&global_ctx);
+      bcrypto_keccak_256_init(&global_ctx);
       break;
     case 384:
-      keccak_384_init(&global_ctx);
+      bcrypto_keccak_384_init(&global_ctx);
       break;
     case 512:
-      keccak_512_init(&global_ctx);
+      bcrypto_keccak_512_init(&global_ctx);
       break;
     default:
       return Nan::ThrowTypeError("Could not allocate context.");
   }
 
-  keccak_update(&global_ctx, one, onelen);
-  keccak_update(&global_ctx, two, twolen);
+  bcrypto_keccak_update(&global_ctx, one, onelen);
+  bcrypto_keccak_update(&global_ctx, two, twolen);
   if (three)
-    keccak_update(&global_ctx, three, threelen);
+    bcrypto_keccak_update(&global_ctx, three, threelen);
 
   uint32_t outlen = 100 - global_ctx.block_size / 2;
 
   if (std)
-    sha3_final(&global_ctx, global_out);
+    bcrypto_sha3_final(&global_ctx, global_out);
   else
-    keccak_final(&global_ctx, global_out);
+    bcrypto_keccak_final(&global_ctx, global_out);
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&global_out[0], outlen).ToLocalChecked());

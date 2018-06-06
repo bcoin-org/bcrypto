@@ -26,10 +26,15 @@
  * This file was originally written by Colin Percival as part of the Tarsnap
  * online backup system.
  */
-#ifndef _CRYPTO_SCRYPT_H_
-#define _CRYPTO_SCRYPT_H_
+#ifndef _BCRYPTO_SCRYPT_H_C
+#define _BCRYPTO_SCRYPT_H_C
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include <stdint.h>
+#include <stdbool.h>
 #ifndef _WIN32
 #include <unistd.h>
 #endif
@@ -43,7 +48,21 @@
  *
  * Return 0 on success; or -1 on error.
  */
-int crypto_scrypt(const uint8_t *, size_t, const uint8_t *, size_t, uint64_t,
-    uint32_t, uint32_t, uint8_t *, size_t);
+bool
+bcrypto_scrypt(
+  const uint8_t *pass,
+  const uint32_t passlen,
+  const uint8_t *salt,
+  size_t saltlen,
+  uint64_t N,
+  uint64_t r,
+  uint64_t p,
+  uint8_t *key,
+  size_t keylen
+);
 
-#endif /* !_CRYPTO_SCRYPT_H_ */
+#ifdef __cplusplus
+}
+#endif
+
+#endif

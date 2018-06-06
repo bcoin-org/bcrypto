@@ -16,9 +16,9 @@
 #include "cipher.h"
 #include "chacha20.h"
 #include "poly1305.h"
-#include "pbkdf2.h"
+#include "pbkdf2/pbkdf2.h"
 #include "pbkdf2_async.h"
-#include "scrypt.h"
+#include "scrypt/scrypt.h"
 #include "scrypt_async.h"
 #include "ripemd160.h"
 #include "md5.h"
@@ -167,7 +167,7 @@ NAN_METHOD(scrypt) {
     return Nan::ThrowTypeError("Sixth argument must be a number.");
 
   const uint8_t *pass = (const uint8_t *)node::Buffer::Data(pbuf);
-  const uint32_t passlen = (uint32_t)node::Buffer::Length(pbuf);
+  uint32_t passlen = (uint32_t)node::Buffer::Length(pbuf);
   const uint8_t *salt = (const uint8_t *)node::Buffer::Data(sbuf);
   size_t saltlen = (size_t)node::Buffer::Length(sbuf);
   uint64_t N = (uint64_t)info[2]->IntegerValue();
@@ -221,7 +221,7 @@ NAN_METHOD(scrypt_async) {
   v8::Local<v8::Function> callback = info[6].As<v8::Function>();
 
   const uint8_t *pass = (const uint8_t *)node::Buffer::Data(pbuf);
-  const uint32_t passlen = (uint32_t)node::Buffer::Length(pbuf);
+  uint32_t passlen = (uint32_t)node::Buffer::Length(pbuf);
   const uint8_t *salt = (const uint8_t *)node::Buffer::Data(sbuf);
   size_t saltlen = (size_t)node::Buffer::Length(sbuf);
   uint64_t N = (uint64_t)info[2]->IntegerValue();
@@ -362,7 +362,7 @@ NAN_METHOD(random_bytes) {
   if (!info[0]->IsNumber())
     return Nan::ThrowTypeError("First argument must be a number.");
 
-  const uint32_t outlen = info[0]->Uint32Value();
+  uint32_t outlen = info[0]->Uint32Value();
 
   if (outlen & 0x80000000)
     return Nan::ThrowError("Size too large.");
@@ -384,7 +384,7 @@ NAN_METHOD(random_bytes) {
       break;
   }
 
-  const int r = RAND_bytes(out, outlen);
+  int r = RAND_bytes(out, outlen);
 
   if (r == 0) {
     free(out);

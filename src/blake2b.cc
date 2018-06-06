@@ -1,14 +1,14 @@
 #include "blake2b.h"
 
-static blake2b_ctx global_ctx;
-static uint8_t global_out[BLAKE2B_OUTBYTES];
+static bcrypto_blake2b_ctx global_ctx;
+static uint8_t global_out[BCRYPTO_BLAKE2B_OUTBYTES];
 
 NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj);
 
 static Nan::Persistent<v8::FunctionTemplate> blake2b_constructor;
 
 Blake2b::Blake2b() {
-  memset(&ctx, 0, sizeof(blake2b_ctx));
+  memset(&ctx, 0, sizeof(bcrypto_blake2b_ctx));
 }
 
 Blake2b::~Blake2b() {}
@@ -59,7 +59,7 @@ NAN_METHOD(Blake2b::Init) {
 
     outlen = info[0]->Uint32Value();
 
-    if (outlen == 0 || outlen > BLAKE2B_OUTBYTES)
+    if (outlen == 0 || outlen > BCRYPTO_BLAKE2B_OUTBYTES)
       return Nan::ThrowTypeError("First argument must be a number.");
   }
 
@@ -75,15 +75,15 @@ NAN_METHOD(Blake2b::Init) {
     key = (uint8_t *)node::Buffer::Data(buf);
     keylen = node::Buffer::Length(buf);
 
-    if (keylen > BLAKE2B_OUTBYTES)
+    if (keylen > BCRYPTO_BLAKE2B_OUTBYTES)
       return Nan::ThrowTypeError("Bad key size.");
   }
 
   if (keylen > 0) {
-    if (blake2b_init_key(&blake->ctx, outlen, key, keylen) < 0)
+    if (bcrypto_blake2b_init_key(&blake->ctx, outlen, key, keylen) < 0)
       return Nan::ThrowTypeError("Could not allocate context");
   } else {
-    if (blake2b_init(&blake->ctx, outlen) < 0)
+    if (bcrypto_blake2b_init(&blake->ctx, outlen) < 0)
       return Nan::ThrowTypeError("Could not allocate context");
   }
 
@@ -104,7 +104,7 @@ NAN_METHOD(Blake2b::Update) {
   const uint8_t *in = (uint8_t *)node::Buffer::Data(buf);
   size_t inlen = node::Buffer::Length(buf);
 
-  blake2b_update(&blake->ctx, in, inlen);
+  bcrypto_blake2b_update(&blake->ctx, in, inlen);
 
   info.GetReturnValue().Set(info.This());
 }
@@ -114,7 +114,7 @@ NAN_METHOD(Blake2b::Final) {
 
   uint32_t outlen = blake->ctx.outlen;
 
-  blake2b_final(&blake->ctx, global_out, outlen);
+  bcrypto_blake2b_final(&blake->ctx, global_out, outlen);
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&global_out[0], outlen).ToLocalChecked());
@@ -142,7 +142,7 @@ NAN_METHOD(Blake2b::Digest) {
 
     outlen = info[1]->Uint32Value();
 
-    if (outlen == 0 || outlen > BLAKE2B_OUTBYTES)
+    if (outlen == 0 || outlen > BCRYPTO_BLAKE2B_OUTBYTES)
       return Nan::ThrowTypeError("Second argument must be a number.");
   }
 
@@ -155,20 +155,20 @@ NAN_METHOD(Blake2b::Digest) {
     key = (uint8_t *)node::Buffer::Data(kbuf);
     keylen = node::Buffer::Length(kbuf);
 
-    if (keylen > BLAKE2B_OUTBYTES)
+    if (keylen > BCRYPTO_BLAKE2B_OUTBYTES)
       return Nan::ThrowTypeError("Third argument must be a number.");
   }
 
   if (keylen > 0) {
-    if (blake2b_init_key(&global_ctx, outlen, key, keylen) < 0)
+    if (bcrypto_blake2b_init_key(&global_ctx, outlen, key, keylen) < 0)
       return Nan::ThrowTypeError("Could not allocate context.");
   } else {
-    if (blake2b_init(&global_ctx, outlen) < 0)
+    if (bcrypto_blake2b_init(&global_ctx, outlen) < 0)
       return Nan::ThrowTypeError("Could not allocate context.");
   }
 
-  blake2b_update(&global_ctx, in, inlen);
-  blake2b_final(&global_ctx, global_out, outlen);
+  bcrypto_blake2b_update(&global_ctx, in, inlen);
+  bcrypto_blake2b_final(&global_ctx, global_out, outlen);
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&global_out[0], outlen).ToLocalChecked());
@@ -206,12 +206,12 @@ NAN_METHOD(Blake2b::Root) {
   if (leftlen != outlen || rightlen != outlen)
     return Nan::ThrowTypeError("Bad node sizes.");
 
-  if (blake2b_init(&global_ctx, outlen) < 0)
+  if (bcrypto_blake2b_init(&global_ctx, outlen) < 0)
     return Nan::ThrowTypeError("Could not allocate context.");
 
-  blake2b_update(&global_ctx, left, leftlen);
-  blake2b_update(&global_ctx, right, rightlen);
-  blake2b_final(&global_ctx, global_out, outlen);
+  bcrypto_blake2b_update(&global_ctx, left, leftlen);
+  bcrypto_blake2b_update(&global_ctx, right, rightlen);
+  bcrypto_blake2b_final(&global_ctx, global_out, outlen);
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&global_out[0], outlen).ToLocalChecked());
@@ -259,16 +259,16 @@ NAN_METHOD(Blake2b::Multi) {
     outlen = info[3]->Uint32Value();
   }
 
-  if (blake2b_init(&global_ctx, outlen) < 0)
+  if (bcrypto_blake2b_init(&global_ctx, outlen) < 0)
     return Nan::ThrowTypeError("Could not allocate context.");
 
-  blake2b_update(&global_ctx, one, onelen);
-  blake2b_update(&global_ctx, two, twolen);
+  bcrypto_blake2b_update(&global_ctx, one, onelen);
+  bcrypto_blake2b_update(&global_ctx, two, twolen);
 
   if (three)
-    blake2b_update(&global_ctx, three, threelen);
+    bcrypto_blake2b_update(&global_ctx, three, threelen);
 
-  blake2b_final(&global_ctx, global_out, outlen);
+  bcrypto_blake2b_final(&global_ctx, global_out, outlen);
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&global_out[0], outlen).ToLocalChecked());
@@ -298,7 +298,7 @@ NAN_METHOD(Blake2b::Mac) {
   key = (uint8_t *)node::Buffer::Data(kbuf);
   keylen = node::Buffer::Length(kbuf);
 
-  if (keylen > BLAKE2B_OUTBYTES)
+  if (keylen > BCRYPTO_BLAKE2B_OUTBYTES)
     return Nan::ThrowTypeError("Second argument must be a number.");
 
   if (info.Length() > 2 && !IsNull(info[2])) {
@@ -307,20 +307,20 @@ NAN_METHOD(Blake2b::Mac) {
 
     outlen = info[2]->Uint32Value();
 
-    if (outlen == 0 || outlen > BLAKE2B_OUTBYTES)
+    if (outlen == 0 || outlen > BCRYPTO_BLAKE2B_OUTBYTES)
       return Nan::ThrowTypeError("Third argument must be a number.");
   }
 
   if (keylen > 0) {
-    if (blake2b_init_key(&global_ctx, outlen, key, keylen) < 0)
+    if (bcrypto_blake2b_init_key(&global_ctx, outlen, key, keylen) < 0)
       return Nan::ThrowTypeError("Could not allocate context.");
   } else {
-    if (blake2b_init(&global_ctx, outlen) < 0)
+    if (bcrypto_blake2b_init(&global_ctx, outlen) < 0)
       return Nan::ThrowTypeError("Could not allocate context.");
   }
 
-  blake2b_update(&global_ctx, in, inlen);
-  blake2b_final(&global_ctx, global_out, outlen);
+  bcrypto_blake2b_update(&global_ctx, in, inlen);
+  bcrypto_blake2b_final(&global_ctx, global_out, outlen);
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&global_out[0], outlen).ToLocalChecked());

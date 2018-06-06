@@ -1,8 +1,13 @@
-#ifndef _BCRYPTO_PBKDF2_H
-#define _BCRYPTO_PBKDF2_H
+#ifndef _BCRYPTO_PBKDF2_H_C
+#define _BCRYPTO_PBKDF2_H_C
 
 #include <stdint.h>
 #include <stdlib.h>
+#include <stdbool.h>
+
+#if defined(__cplusplus)
+extern "C" {
+#endif
 
 bool
 bcrypto_pbkdf2(
@@ -15,5 +20,9 @@ bcrypto_pbkdf2(
   uint8_t *key,
   uint32_t keylen
 );
+
+#if defined(__cplusplus)
+}
+#endif
 
 #endif

@@ -3,7 +3,7 @@
 static Nan::Persistent<v8::FunctionTemplate> poly1305_constructor;
 
 Poly1305::Poly1305() {
-  memset(&ctx, 0, sizeof(poly1305_context));
+  memset(&ctx, 0, sizeof(bcrypto_poly1305_ctx));
 }
 
 Poly1305::~Poly1305() {}
@@ -58,7 +58,7 @@ NAN_METHOD(Poly1305::Init) {
   if (len != 32)
     return Nan::ThrowError("Invalid key size.");
 
-  poly1305_init(&poly->ctx, data);
+  bcrypto_poly1305_init(&poly->ctx, data);
 
   info.GetReturnValue().Set(info.This());
 }
@@ -77,7 +77,7 @@ NAN_METHOD(Poly1305::Update) {
   const uint8_t *data = (uint8_t *)node::Buffer::Data(buf);
   size_t len = node::Buffer::Length(buf);
 
-  poly1305_update(&poly->ctx, data, len);
+  bcrypto_poly1305_update(&poly->ctx, data, len);
 
   info.GetReturnValue().Set(info.This());
 }
@@ -87,7 +87,7 @@ NAN_METHOD(Poly1305::Final) {
 
   uint8_t mac[16];
 
-  poly1305_finish(&poly->ctx, mac);
+  bcrypto_poly1305_finish(&poly->ctx, mac);
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&mac[0], 16).ToLocalChecked());
@@ -118,7 +118,7 @@ NAN_METHOD(Poly1305::Auth) {
 
   uint8_t mac[16];
 
-  poly1305_auth(mac, data, len, kdata);
+  bcrypto_poly1305_auth(mac, data, len, kdata);
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&mac[0], 16).ToLocalChecked());
@@ -150,7 +150,7 @@ NAN_METHOD(Poly1305::Verify) {
   if (blen != 16)
     return Nan::ThrowError("Invalid mac size.");
 
-  int32_t result = poly1305_verify(adata, bdata);
+  int32_t result = bcrypto_poly1305_verify(adata, bdata);
 
   info.GetReturnValue().Set(Nan::New<v8::Boolean>((bool)result));
 }
