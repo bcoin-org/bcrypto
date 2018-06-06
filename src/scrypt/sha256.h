@@ -21,9 +21,9 @@
 
 /* Context structure for SHA256 operations. */
 typedef struct {
-	uint32_t state[8];
-	uint64_t count;
-	uint8_t buf[64];
+  uint32_t state[8];
+  uint64_t count;
+  uint8_t buf[64];
 } SHA256_CTX;
 
 /**
@@ -53,8 +53,8 @@ void SHA256_Buf(const void *, size_t, uint8_t[32]);
 
 /* Context structure for HMAC-SHA256 operations. */
 typedef struct {
-	SHA256_CTX ictx;
-	SHA256_CTX octx;
+  SHA256_CTX ictx;
+  SHA256_CTX octx;
 } HMAC_SHA256_CTX;
 
 /**

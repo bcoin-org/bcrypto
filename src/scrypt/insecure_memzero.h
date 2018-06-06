@@ -29,7 +29,7 @@ extern void (* volatile insecure_memzero_ptr)(volatile void *, size_t);
  */
 static inline void
 insecure_memzero(volatile void *buf, size_t len) {
-	(insecure_memzero_ptr)(buf, len);
+  (insecure_memzero_ptr)(buf, len);
 }
 
 #endif /* !_INSECURE_MEMZERO_H_ */
