@@ -1,5 +1,10 @@
 #include "sha256.h"
 
+static SHA256_CTX global_ctx;
+static uint8_t global_out[32];
+
+NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj);
+
 static Nan::Persistent<v8::FunctionTemplate> sha256_constructor;
 
 SHA256::SHA256() {
@@ -25,6 +30,7 @@ SHA256::Init(v8::Local<v8::Object> &target) {
   Nan::SetPrototypeMethod(tpl, "final", SHA256::Final);
   Nan::SetMethod(tpl, "digest", SHA256::Digest);
   Nan::SetMethod(tpl, "root", SHA256::Root);
+  Nan::SetMethod(tpl, "multi", SHA256::Multi);
 
   v8::Local<v8::FunctionTemplate> ctor =
     Nan::New<v8::FunctionTemplate>(sha256_constructor);
@@ -71,12 +77,10 @@ NAN_METHOD(SHA256::Update) {
 NAN_METHOD(SHA256::Final) {
   SHA256 *sha = ObjectWrap::Unwrap<SHA256>(info.Holder());
 
-  uint8_t out[32];
-
-  SHA256_Final(out, &sha->ctx);
+  SHA256_Final(global_out, &sha->ctx);
 
   info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)&out[0], 32).ToLocalChecked());
+    Nan::CopyBuffer((char *)&global_out[0], 32).ToLocalChecked());
 }
 
 NAN_METHOD(SHA256::Digest) {
@@ -91,15 +95,12 @@ NAN_METHOD(SHA256::Digest) {
   const uint8_t *in = (uint8_t *)node::Buffer::Data(buf);
   size_t inlen = node::Buffer::Length(buf);
 
-  uint8_t out[32];
-
-  SHA256_CTX ctx;
-  SHA256_Init(&ctx);
-  SHA256_Update(&ctx, in, inlen);
-  SHA256_Final(out, &ctx);
+  SHA256_Init(&global_ctx);
+  SHA256_Update(&global_ctx, in, inlen);
+  SHA256_Final(global_out, &global_ctx);
 
   info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)&out[0], 32).ToLocalChecked());
+    Nan::CopyBuffer((char *)&global_out[0], 32).ToLocalChecked());
 }
 
 NAN_METHOD(SHA256::Root) {
@@ -124,14 +125,59 @@ NAN_METHOD(SHA256::Root) {
   if (leftlen != 32 || rightlen != 32)
     return Nan::ThrowTypeError("Bad node sizes.");
 
-  uint8_t out[32];
-
-  SHA256_CTX ctx;
-  SHA256_Init(&ctx);
-  SHA256_Update(&ctx, left, leftlen);
-  SHA256_Update(&ctx, right, rightlen);
-  SHA256_Final(out, &ctx);
+  SHA256_Init(&global_ctx);
+  SHA256_Update(&global_ctx, left, leftlen);
+  SHA256_Update(&global_ctx, right, rightlen);
+  SHA256_Final(global_out, &global_ctx);
 
   info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)&out[0], 32).ToLocalChecked());
+    Nan::CopyBuffer((char *)&global_out[0], 32).ToLocalChecked());
+}
+
+NAN_METHOD(SHA256::Multi) {
+  if (info.Length() < 2)
+    return Nan::ThrowError("sha256.multi() requires arguments.");
+
+  v8::Local<v8::Object> onebuf = info[0].As<v8::Object>();
+  v8::Local<v8::Object> twobuf = info[1].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(onebuf))
+    return Nan::ThrowTypeError("First argument must be a buffer.");
+
+  if (!node::Buffer::HasInstance(twobuf))
+    return Nan::ThrowTypeError("Second argument must be a buffer.");
+
+  const uint8_t *one = (uint8_t *)node::Buffer::Data(onebuf);
+  const uint8_t *two = (uint8_t *)node::Buffer::Data(twobuf);
+
+  size_t onelen = node::Buffer::Length(onebuf);
+  size_t twolen = node::Buffer::Length(twobuf);
+
+  uint8_t *three = NULL;
+  size_t threelen = 0;
+
+  if (info.Length() > 2 && !IsNull(info[2])) {
+    v8::Local<v8::Object> threebuf = info[2].As<v8::Object>();
+
+    if (!node::Buffer::HasInstance(threebuf))
+      return Nan::ThrowTypeError("Third argument must be a buffer.");
+
+    three = (uint8_t *)node::Buffer::Data(threebuf);
+    threelen = node::Buffer::Length(threebuf);
+  }
+
+  SHA256_Init(&global_ctx);
+  SHA256_Update(&global_ctx, one, onelen);
+  SHA256_Update(&global_ctx, two, twolen);
+  if (three)
+    SHA256_Update(&global_ctx, three, threelen);
+  SHA256_Final(global_out, &global_ctx);
+
+  info.GetReturnValue().Set(
+    Nan::CopyBuffer((char *)&global_out[0], 32).ToLocalChecked());
+}
+
+NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj) {
+  Nan::HandleScope scope;
+  return obj->IsNull() || obj->IsUndefined();
 }

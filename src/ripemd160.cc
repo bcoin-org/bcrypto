@@ -1,5 +1,10 @@
 #include "ripemd160.h"
 
+static RIPEMD160_CTX global_ctx;
+static uint8_t global_out[20];
+
+NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj);
+
 static Nan::Persistent<v8::FunctionTemplate> ripemd160_constructor;
 
 RIPEMD160::RIPEMD160() {
@@ -25,6 +30,7 @@ RIPEMD160::Init(v8::Local<v8::Object> &target) {
   Nan::SetPrototypeMethod(tpl, "final", RIPEMD160::Final);
   Nan::SetMethod(tpl, "digest", RIPEMD160::Digest);
   Nan::SetMethod(tpl, "root", RIPEMD160::Root);
+  Nan::SetMethod(tpl, "multi", RIPEMD160::Multi);
 
   v8::Local<v8::FunctionTemplate> ctor =
     Nan::New<v8::FunctionTemplate>(ripemd160_constructor);
@@ -71,12 +77,10 @@ NAN_METHOD(RIPEMD160::Update) {
 NAN_METHOD(RIPEMD160::Final) {
   RIPEMD160 *rmd = ObjectWrap::Unwrap<RIPEMD160>(info.Holder());
 
-  uint8_t out[20];
-
-  RIPEMD160_Final(out, &rmd->ctx);
+  RIPEMD160_Final(global_out, &rmd->ctx);
 
   info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)&out[0], 20).ToLocalChecked());
+    Nan::CopyBuffer((char *)&global_out[0], 20).ToLocalChecked());
 }
 
 NAN_METHOD(RIPEMD160::Digest) {
@@ -91,15 +95,12 @@ NAN_METHOD(RIPEMD160::Digest) {
   const uint8_t *in = (uint8_t *)node::Buffer::Data(buf);
   size_t inlen = node::Buffer::Length(buf);
 
-  uint8_t out[20];
-
-  RIPEMD160_CTX ctx;
-  RIPEMD160_Init(&ctx);
-  RIPEMD160_Update(&ctx, in, inlen);
-  RIPEMD160_Final(out, &ctx);
+  RIPEMD160_Init(&global_ctx);
+  RIPEMD160_Update(&global_ctx, in, inlen);
+  RIPEMD160_Final(global_out, &global_ctx);
 
   info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)&out[0], 20).ToLocalChecked());
+    Nan::CopyBuffer((char *)&global_out[0], 20).ToLocalChecked());
 }
 
 NAN_METHOD(RIPEMD160::Root) {
@@ -124,14 +125,59 @@ NAN_METHOD(RIPEMD160::Root) {
   if (leftlen != 20 || rightlen != 20)
     return Nan::ThrowTypeError("Bad node sizes.");
 
-  uint8_t out[20];
-
-  RIPEMD160_CTX ctx;
-  RIPEMD160_Init(&ctx);
-  RIPEMD160_Update(&ctx, left, leftlen);
-  RIPEMD160_Update(&ctx, right, rightlen);
-  RIPEMD160_Final(out, &ctx);
+  RIPEMD160_Init(&global_ctx);
+  RIPEMD160_Update(&global_ctx, left, leftlen);
+  RIPEMD160_Update(&global_ctx, right, rightlen);
+  RIPEMD160_Final(global_out, &global_ctx);
 
   info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)&out[0], 20).ToLocalChecked());
+    Nan::CopyBuffer((char *)&global_out[0], 20).ToLocalChecked());
+}
+
+NAN_METHOD(RIPEMD160::Multi) {
+  if (info.Length() < 2)
+    return Nan::ThrowError("ripemd160.multi() requires arguments.");
+
+  v8::Local<v8::Object> onebuf = info[0].As<v8::Object>();
+  v8::Local<v8::Object> twobuf = info[1].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(onebuf))
+    return Nan::ThrowTypeError("First argument must be a buffer.");
+
+  if (!node::Buffer::HasInstance(twobuf))
+    return Nan::ThrowTypeError("Second argument must be a buffer.");
+
+  const uint8_t *one = (uint8_t *)node::Buffer::Data(onebuf);
+  const uint8_t *two = (uint8_t *)node::Buffer::Data(twobuf);
+
+  size_t onelen = node::Buffer::Length(onebuf);
+  size_t twolen = node::Buffer::Length(twobuf);
+
+  uint8_t *three = NULL;
+  size_t threelen = 0;
+
+  if (info.Length() > 2 && !IsNull(info[2])) {
+    v8::Local<v8::Object> threebuf = info[2].As<v8::Object>();
+
+    if (!node::Buffer::HasInstance(threebuf))
+      return Nan::ThrowTypeError("Third argument must be a buffer.");
+
+    three = (uint8_t *)node::Buffer::Data(threebuf);
+    threelen = node::Buffer::Length(threebuf);
+  }
+
+  RIPEMD160_Init(&global_ctx);
+  RIPEMD160_Update(&global_ctx, one, onelen);
+  RIPEMD160_Update(&global_ctx, two, twolen);
+  if (three)
+    RIPEMD160_Update(&global_ctx, three, threelen);
+  RIPEMD160_Final(global_out, &global_ctx);
+
+  info.GetReturnValue().Set(
+    Nan::CopyBuffer((char *)&global_out[0], 20).ToLocalChecked());
+}
+
+NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj) {
+  Nan::HandleScope scope;
+  return obj->IsNull() || obj->IsUndefined();
 }

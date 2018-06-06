@@ -20,5 +20,6 @@ private:
   static NAN_METHOD(Final);
   static NAN_METHOD(Digest);
   static NAN_METHOD(Root);
+  static NAN_METHOD(Multi);
 };
 #endif

@@ -1,5 +1,8 @@
 #include "keccak.h"
 
+static keccak_ctx global_ctx;
+static uint8_t global_out[64];
+
 NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj);
 
 static Nan::Persistent<v8::FunctionTemplate> keccak_constructor;
@@ -27,6 +30,7 @@ Keccak::Init(v8::Local<v8::Object> &target) {
   Nan::SetPrototypeMethod(tpl, "final", Keccak::Final);
   Nan::SetMethod(tpl, "digest", Keccak::Digest);
   Nan::SetMethod(tpl, "root", Keccak::Root);
+  Nan::SetMethod(tpl, "multi", Keccak::Multi);
 
   v8::Local<v8::FunctionTemplate> ctor =
     Nan::New<v8::FunctionTemplate>(keccak_constructor);
@@ -107,15 +111,14 @@ NAN_METHOD(Keccak::Final) {
   }
 
   uint32_t outlen = 100 - keccak->ctx.block_size / 2;
-  uint8_t out[64];
 
   if (std)
-    sha3_final(&keccak->ctx, out);
+    sha3_final(&keccak->ctx, global_out);
   else
-    keccak_final(&keccak->ctx, out);
+    keccak_final(&keccak->ctx, global_out);
 
   info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)&out[0], outlen).ToLocalChecked());
+    Nan::CopyBuffer((char *)&global_out[0], outlen).ToLocalChecked());
 }
 
 NAN_METHOD(Keccak::Digest) {
@@ -148,37 +151,34 @@ NAN_METHOD(Keccak::Digest) {
     std = info[2]->BooleanValue();
   }
 
-  keccak_ctx ctx;
-
   switch (bits) {
     case 224:
-      keccak_224_init(&ctx);
+      keccak_224_init(&global_ctx);
       break;
     case 256:
-      keccak_256_init(&ctx);
+      keccak_256_init(&global_ctx);
       break;
     case 384:
-      keccak_384_init(&ctx);
+      keccak_384_init(&global_ctx);
       break;
     case 512:
-      keccak_512_init(&ctx);
+      keccak_512_init(&global_ctx);
       break;
     default:
       return Nan::ThrowTypeError("Could not allocate context.");
   }
 
-  keccak_update(&ctx, in, inlen);
+  keccak_update(&global_ctx, in, inlen);
 
-  uint32_t outlen = 100 - ctx.block_size / 2;
-  uint8_t out[64];
+  uint32_t outlen = 100 - global_ctx.block_size / 2;
 
   if (std)
-    sha3_final(&ctx, out);
+    sha3_final(&global_ctx, global_out);
   else
-    keccak_final(&ctx, out);
+    keccak_final(&global_ctx, global_out);
 
   info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)&out[0], outlen).ToLocalChecked());
+    Nan::CopyBuffer((char *)&global_out[0], outlen).ToLocalChecked());
 }
 
 NAN_METHOD(Keccak::Root) {
@@ -222,38 +222,119 @@ NAN_METHOD(Keccak::Root) {
     std = info[3]->BooleanValue();
   }
 
-  keccak_ctx ctx;
-
   switch (bits) {
     case 224:
-      keccak_224_init(&ctx);
+      keccak_224_init(&global_ctx);
       break;
     case 256:
-      keccak_256_init(&ctx);
+      keccak_256_init(&global_ctx);
       break;
     case 384:
-      keccak_384_init(&ctx);
+      keccak_384_init(&global_ctx);
       break;
     case 512:
-      keccak_512_init(&ctx);
+      keccak_512_init(&global_ctx);
       break;
     default:
       return Nan::ThrowTypeError("Could not allocate context.");
   }
 
-  keccak_update(&ctx, left, leftlen);
-  keccak_update(&ctx, right, rightlen);
+  keccak_update(&global_ctx, left, leftlen);
+  keccak_update(&global_ctx, right, rightlen);
 
-  uint32_t outlen = 100 - ctx.block_size / 2;
-  uint8_t out[64];
+  uint32_t outlen = 100 - global_ctx.block_size / 2;
 
   if (std)
-    sha3_final(&ctx, out);
+    sha3_final(&global_ctx, global_out);
   else
-    keccak_final(&ctx, out);
+    keccak_final(&global_ctx, global_out);
 
   info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)&out[0], outlen).ToLocalChecked());
+    Nan::CopyBuffer((char *)&global_out[0], outlen).ToLocalChecked());
+}
+
+NAN_METHOD(Keccak::Multi) {
+  if (info.Length() < 2)
+    return Nan::ThrowError("keccak.multi() requires arguments.");
+
+  v8::Local<v8::Object> onebuf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(onebuf))
+    return Nan::ThrowTypeError("First argument must be a buffer.");
+
+  const uint8_t *one = (uint8_t *)node::Buffer::Data(onebuf);
+  size_t onelen = node::Buffer::Length(onebuf);
+
+  v8::Local<v8::Object> twobuf = info[1].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(twobuf))
+    return Nan::ThrowTypeError("Second argument must be a buffer.");
+
+  const uint8_t *two = (uint8_t *)node::Buffer::Data(twobuf);
+  size_t twolen = node::Buffer::Length(twobuf);
+
+  uint8_t *three = NULL;
+  size_t threelen = 0;
+
+  if (info.Length() > 2 && !IsNull(info[2])) {
+    v8::Local<v8::Object> threebuf = info[2].As<v8::Object>();
+
+    if (!node::Buffer::HasInstance(threebuf))
+      return Nan::ThrowTypeError("Third argument must be a buffer.");
+
+    three = (uint8_t *)node::Buffer::Data(threebuf);
+    threelen = node::Buffer::Length(threebuf);
+  }
+
+  uint32_t bits = 256;
+
+  if (info.Length() > 3 && !IsNull(info[3])) {
+    if (!info[3]->IsNumber())
+      return Nan::ThrowTypeError("Fourth argument must be a number.");
+
+    bits = info[3]->Uint32Value();
+  }
+
+  bool std = false;
+
+  if (info.Length() > 4 && !IsNull(info[4])) {
+    if (!info[4]->IsBoolean())
+      return Nan::ThrowTypeError("Fifth argument must be a boolean.");
+
+    std = info[4]->BooleanValue();
+  }
+
+  switch (bits) {
+    case 224:
+      keccak_224_init(&global_ctx);
+      break;
+    case 256:
+      keccak_256_init(&global_ctx);
+      break;
+    case 384:
+      keccak_384_init(&global_ctx);
+      break;
+    case 512:
+      keccak_512_init(&global_ctx);
+      break;
+    default:
+      return Nan::ThrowTypeError("Could not allocate context.");
+  }
+
+  keccak_update(&global_ctx, one, onelen);
+  keccak_update(&global_ctx, two, twolen);
+  if (three)
+    keccak_update(&global_ctx, three, threelen);
+
+  uint32_t outlen = 100 - global_ctx.block_size / 2;
+
+  if (std)
+    sha3_final(&global_ctx, global_out);
+  else
+    keccak_final(&global_ctx, global_out);
+
+  info.GetReturnValue().Set(
+    Nan::CopyBuffer((char *)&global_out[0], outlen).ToLocalChecked());
 }
 
 NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj) {
