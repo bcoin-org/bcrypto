@@ -31,12 +31,11 @@ extern "C" {
 #define bcrypto_sha3_max_permutation_size 25
 #define bcrypto_sha3_max_rate_in_qwords 24
 
-typedef struct bcrypto_sha3_ctx
-{
-	uint64_t hash[bcrypto_sha3_max_permutation_size];
-	uint64_t message[bcrypto_sha3_max_rate_in_qwords];
-	unsigned rest;
-	unsigned block_size;
+typedef struct bcrypto_sha3_ctx {
+  uint64_t hash[bcrypto_sha3_max_permutation_size];
+  uint64_t message[bcrypto_sha3_max_rate_in_qwords];
+  unsigned rest;
+  unsigned block_size;
 } bcrypto_sha3_ctx;
 
 void bcrypto_sha3_224_init(bcrypto_sha3_ctx *ctx);
