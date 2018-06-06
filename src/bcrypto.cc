@@ -72,8 +72,10 @@ NAN_METHOD(pbkdf2) {
   if (key == NULL)
     return Nan::ThrowError("Could not allocate key.");
 
-  if (!bcrypto_pbkdf2(name, data, datalen, salt, saltlen, iter, key, keylen))
+  if (!bcrypto_pbkdf2(name, data, datalen, salt, saltlen, iter, key, keylen)) {
+    free(key);
     return Nan::ThrowError("PBKDF2 failed.");
+  }
 
   info.GetReturnValue().Set(
     Nan::NewBuffer((char *)key, keylen).ToLocalChecked());
@@ -178,8 +180,10 @@ NAN_METHOD(scrypt) {
   if (key == NULL)
     return Nan::ThrowError("Could not allocate key.");
 
-  if (!bcrypto_scrypt(pass, passlen, salt, saltlen, N, r, p, key, keylen))
+  if (!bcrypto_scrypt(pass, passlen, salt, saltlen, N, r, p, key, keylen)) {
+    free(key);
     return Nan::ThrowError("Scrypt failed.");
+  }
 
   info.GetReturnValue().Set(
     Nan::NewBuffer((char *)key, keylen).ToLocalChecked());
@@ -295,8 +299,10 @@ NAN_METHOD(encipher) {
   if (out == NULL)
     return Nan::ThrowError("Could not allocate ciphertext.");
 
-  if (!bcrypto_encipher(data, dlen, key, iv, out, &olen))
+  if (!bcrypto_encipher(data, dlen, key, iv, out, &olen)) {
+    free(out);
     return Nan::ThrowError("Encipher failed.");
+  }
 
   info.GetReturnValue().Set(
     Nan::NewBuffer((char *)out, olen).ToLocalChecked());
@@ -340,8 +346,10 @@ NAN_METHOD(decipher) {
   if (out == NULL)
     return Nan::ThrowError("Could not allocate plaintext.");
 
-  if (!bcrypto_decipher(data, dlen, key, iv, out, &olen))
+  if (!bcrypto_decipher(data, dlen, key, iv, out, &olen)) {
+    free(out);
     return Nan::ThrowError("Decipher failed.");
+  }
 
   info.GetReturnValue().Set(
     Nan::NewBuffer((char *)out, olen).ToLocalChecked());
@@ -378,8 +386,10 @@ NAN_METHOD(random_bytes) {
 
   const int r = RAND_bytes(out, outlen);
 
-  if (r == 0)
+  if (r == 0) {
+    free(out);
     return Nan::ThrowError("Could not get random bytes.");
+  }
 
   info.GetReturnValue().Set(
     Nan::NewBuffer((char *)out, outlen).ToLocalChecked());
