@@ -4,13 +4,13 @@
 #include <nan.h>
 #include "openssl/aes.h"
 
-class AESCipher : public Nan::ObjectWrap {
+class BAESCipher : public Nan::ObjectWrap {
 public:
   static NAN_METHOD(New);
   static void Init(v8::Local<v8::Object> &target);
 
-  AESCipher();
-  ~AESCipher();
+  BAESCipher();
+  ~BAESCipher();
 
   uint32_t bits;
   bool chain;
@@ -25,13 +25,13 @@ private:
   static NAN_METHOD(Final);
 };
 
-class AESDecipher : public Nan::ObjectWrap {
+class BAESDecipher : public Nan::ObjectWrap {
 public:
   static NAN_METHOD(New);
   static void Init(v8::Local<v8::Object> &target);
 
-  AESDecipher();
-  ~AESDecipher();
+  BAESDecipher();
+  ~BAESDecipher();
 
   uint32_t bits;
   bool chain;

@@ -7,30 +7,30 @@ NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj);
 
 static Nan::Persistent<v8::FunctionTemplate> sha224_constructor;
 
-SHA224::SHA224() {
+BSHA224::BSHA224() {
   memset(&ctx, 0, sizeof(SHA256_CTX));
 }
 
-SHA224::~SHA224() {}
+BSHA224::~BSHA224() {}
 
 void
-SHA224::Init(v8::Local<v8::Object> &target) {
+BSHA224::Init(v8::Local<v8::Object> &target) {
   Nan::HandleScope scope;
 
   v8::Local<v8::FunctionTemplate> tpl =
-    Nan::New<v8::FunctionTemplate>(SHA224::New);
+    Nan::New<v8::FunctionTemplate>(BSHA224::New);
 
   sha224_constructor.Reset(tpl);
 
   tpl->SetClassName(Nan::New("SHA224").ToLocalChecked());
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
 
-  Nan::SetPrototypeMethod(tpl, "init", SHA224::Init);
-  Nan::SetPrototypeMethod(tpl, "update", SHA224::Update);
-  Nan::SetPrototypeMethod(tpl, "final", SHA224::Final);
-  Nan::SetMethod(tpl, "digest", SHA224::Digest);
-  Nan::SetMethod(tpl, "root", SHA224::Root);
-  Nan::SetMethod(tpl, "multi", SHA224::Multi);
+  Nan::SetPrototypeMethod(tpl, "init", BSHA224::Init);
+  Nan::SetPrototypeMethod(tpl, "update", BSHA224::Update);
+  Nan::SetPrototypeMethod(tpl, "final", BSHA224::Final);
+  Nan::SetMethod(tpl, "digest", BSHA224::Digest);
+  Nan::SetMethod(tpl, "root", BSHA224::Root);
+  Nan::SetMethod(tpl, "multi", BSHA224::Multi);
 
   v8::Local<v8::FunctionTemplate> ctor =
     Nan::New<v8::FunctionTemplate>(sha224_constructor);
@@ -38,25 +38,25 @@ SHA224::Init(v8::Local<v8::Object> &target) {
   target->Set(Nan::New("SHA224").ToLocalChecked(), ctor->GetFunction());
 }
 
-NAN_METHOD(SHA224::New) {
+NAN_METHOD(BSHA224::New) {
   if (!info.IsConstructCall())
     return Nan::ThrowError("Could not create SHA224 instance.");
 
-  SHA224 *sha = new SHA224();
+  BSHA224 *sha = new BSHA224();
   sha->Wrap(info.This());
   info.GetReturnValue().Set(info.This());
 }
 
-NAN_METHOD(SHA224::Init) {
-  SHA224 *sha = ObjectWrap::Unwrap<SHA224>(info.Holder());
+NAN_METHOD(BSHA224::Init) {
+  BSHA224 *sha = ObjectWrap::Unwrap<BSHA224>(info.Holder());
 
   SHA224_Init(&sha->ctx);
 
   info.GetReturnValue().Set(info.This());
 }
 
-NAN_METHOD(SHA224::Update) {
-  SHA224 *sha = ObjectWrap::Unwrap<SHA224>(info.Holder());
+NAN_METHOD(BSHA224::Update) {
+  BSHA224 *sha = ObjectWrap::Unwrap<BSHA224>(info.Holder());
 
   if (info.Length() < 1)
     return Nan::ThrowError("sha224.update() requires arguments.");
@@ -74,8 +74,8 @@ NAN_METHOD(SHA224::Update) {
   info.GetReturnValue().Set(info.This());
 }
 
-NAN_METHOD(SHA224::Final) {
-  SHA224 *sha = ObjectWrap::Unwrap<SHA224>(info.Holder());
+NAN_METHOD(BSHA224::Final) {
+  BSHA224 *sha = ObjectWrap::Unwrap<BSHA224>(info.Holder());
 
   SHA224_Final(global_out, &sha->ctx);
 
@@ -83,7 +83,7 @@ NAN_METHOD(SHA224::Final) {
     Nan::CopyBuffer((char *)&global_out[0], 28).ToLocalChecked());
 }
 
-NAN_METHOD(SHA224::Digest) {
+NAN_METHOD(BSHA224::Digest) {
   if (info.Length() < 1)
     return Nan::ThrowError("sha224.digest() requires arguments.");
 
@@ -103,7 +103,7 @@ NAN_METHOD(SHA224::Digest) {
     Nan::CopyBuffer((char *)&global_out[0], 28).ToLocalChecked());
 }
 
-NAN_METHOD(SHA224::Root) {
+NAN_METHOD(BSHA224::Root) {
   if (info.Length() < 2)
     return Nan::ThrowError("sha224.root() requires arguments.");
 
@@ -134,7 +134,7 @@ NAN_METHOD(SHA224::Root) {
     Nan::CopyBuffer((char *)&global_out[0], 28).ToLocalChecked());
 }
 
-NAN_METHOD(SHA224::Multi) {
+NAN_METHOD(BSHA224::Multi) {
   if (info.Length() < 2)
     return Nan::ThrowError("sha224.multi() requires arguments.");
 

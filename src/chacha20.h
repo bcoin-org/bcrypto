@@ -4,17 +4,15 @@
 #include <node.h>
 #include <nan.h>
 
-extern "C" {
 #include "chacha20/chacha20.h"
-}
 
-class ChaCha20 : public Nan::ObjectWrap {
+class BChaCha20 : public Nan::ObjectWrap {
 public:
   static NAN_METHOD(New);
   static void Init(v8::Local<v8::Object> &target);
 
-  ChaCha20();
-  ~ChaCha20();
+  BChaCha20();
+  ~BChaCha20();
   void InitKey(char *key, size_t len);
   void InitIV(char *iv, size_t len, uint64_t ctr);
 

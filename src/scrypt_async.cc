@@ -1,7 +1,7 @@
 #include "scrypt/scrypt.h"
 #include "scrypt_async.h"
 
-ScryptWorker::ScryptWorker (
+BScryptWorker::BScryptWorker (
   v8::Local<v8::Object> &passHandle,
   v8::Local<v8::Object> &saltHandle,
   const uint8_t *pass,
@@ -29,10 +29,10 @@ ScryptWorker::ScryptWorker (
   SaveToPersistent("salt", saltHandle);
 }
 
-ScryptWorker::~ScryptWorker() {}
+BScryptWorker::~BScryptWorker() {}
 
 void
-ScryptWorker::Execute() {
+BScryptWorker::Execute() {
   key = (uint8_t *)malloc(keylen);
 
   if (key == NULL) {
@@ -48,7 +48,7 @@ ScryptWorker::Execute() {
 }
 
 void
-ScryptWorker::HandleOKCallback() {
+BScryptWorker::HandleOKCallback() {
   Nan::HandleScope scope;
 
   v8::Local<v8::Value> keyBuffer =

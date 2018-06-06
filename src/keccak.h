@@ -4,13 +4,13 @@
 #include <nan.h>
 #include "sha3/sha3.h"
 
-class Keccak : public Nan::ObjectWrap {
+class BKeccak : public Nan::ObjectWrap {
 public:
   static NAN_METHOD(New);
   static void Init(v8::Local<v8::Object> &target);
 
-  Keccak();
-  ~Keccak();
+  BKeccak();
+  ~BKeccak();
 
   bcrypto_keccak_ctx ctx;
 

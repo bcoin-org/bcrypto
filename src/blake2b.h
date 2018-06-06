@@ -4,13 +4,13 @@
 #include <nan.h>
 #include "blake2b/blake2b.h"
 
-class Blake2b : public Nan::ObjectWrap {
+class BBlake2b : public Nan::ObjectWrap {
 public:
   static NAN_METHOD(New);
   static void Init(v8::Local<v8::Object> &target);
 
-  Blake2b();
-  ~Blake2b();
+  BBlake2b();
+  ~BBlake2b();
 
   bcrypto_blake2b_ctx ctx;
 

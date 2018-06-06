@@ -5,9 +5,9 @@
 #include <nan.h>
 #include "openssl/evp.h"
 
-class PBKDF2Worker : public Nan::AsyncWorker {
+class BPBKDF2Worker : public Nan::AsyncWorker {
 public:
-  PBKDF2Worker (
+  BPBKDF2Worker (
     v8::Local<v8::Object> &dataHandle,
     v8::Local<v8::Object> &saltHandle,
     const EVP_MD* md,
@@ -20,7 +20,7 @@ public:
     Nan::Callback *callback
   );
 
-  virtual ~PBKDF2Worker ();
+  virtual ~BPBKDF2Worker ();
   virtual void Execute ();
   void HandleOKCallback();
 

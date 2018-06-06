@@ -2,29 +2,29 @@
 
 static Nan::Persistent<v8::FunctionTemplate> poly1305_constructor;
 
-Poly1305::Poly1305() {
+BPoly1305::BPoly1305() {
   memset(&ctx, 0, sizeof(bcrypto_poly1305_ctx));
 }
 
-Poly1305::~Poly1305() {}
+BPoly1305::~BPoly1305() {}
 
 void
-Poly1305::Init(v8::Local<v8::Object> &target) {
+BPoly1305::Init(v8::Local<v8::Object> &target) {
   Nan::HandleScope scope;
 
   v8::Local<v8::FunctionTemplate> tpl =
-    Nan::New<v8::FunctionTemplate>(Poly1305::New);
+    Nan::New<v8::FunctionTemplate>(BPoly1305::New);
 
   poly1305_constructor.Reset(tpl);
 
   tpl->SetClassName(Nan::New("Poly1305").ToLocalChecked());
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
 
-  Nan::SetPrototypeMethod(tpl, "init", Poly1305::Init);
-  Nan::SetPrototypeMethod(tpl, "update", Poly1305::Update);
-  Nan::SetPrototypeMethod(tpl, "final", Poly1305::Final);
-  Nan::SetMethod(tpl, "auth", Poly1305::Auth);
-  Nan::SetMethod(tpl, "verify", Poly1305::Verify);
+  Nan::SetPrototypeMethod(tpl, "init", BPoly1305::Init);
+  Nan::SetPrototypeMethod(tpl, "update", BPoly1305::Update);
+  Nan::SetPrototypeMethod(tpl, "final", BPoly1305::Final);
+  Nan::SetMethod(tpl, "auth", BPoly1305::Auth);
+  Nan::SetMethod(tpl, "verify", BPoly1305::Verify);
 
   v8::Local<v8::FunctionTemplate> ctor =
     Nan::New<v8::FunctionTemplate>(poly1305_constructor);
@@ -32,17 +32,17 @@ Poly1305::Init(v8::Local<v8::Object> &target) {
   target->Set(Nan::New("Poly1305").ToLocalChecked(), ctor->GetFunction());
 }
 
-NAN_METHOD(Poly1305::New) {
+NAN_METHOD(BPoly1305::New) {
   if (!info.IsConstructCall())
-    return Nan::ThrowError("Could not create Poly1305 instance.");
+    return Nan::ThrowError("Could not create BPoly1305 instance.");
 
-  Poly1305 *poly = new Poly1305();
+  BPoly1305 *poly = new BPoly1305();
   poly->Wrap(info.This());
   info.GetReturnValue().Set(info.This());
 }
 
-NAN_METHOD(Poly1305::Init) {
-  Poly1305 *poly = ObjectWrap::Unwrap<Poly1305>(info.Holder());
+NAN_METHOD(BPoly1305::Init) {
+  BPoly1305 *poly = ObjectWrap::Unwrap<BPoly1305>(info.Holder());
 
   if (info.Length() < 1)
     return Nan::ThrowError("poly1305.init() requires arguments.");
@@ -63,8 +63,8 @@ NAN_METHOD(Poly1305::Init) {
   info.GetReturnValue().Set(info.This());
 }
 
-NAN_METHOD(Poly1305::Update) {
-  Poly1305 *poly = ObjectWrap::Unwrap<Poly1305>(info.Holder());
+NAN_METHOD(BPoly1305::Update) {
+  BPoly1305 *poly = ObjectWrap::Unwrap<BPoly1305>(info.Holder());
 
   if (info.Length() < 1)
     return Nan::ThrowError("poly1305.update() requires arguments.");
@@ -82,8 +82,8 @@ NAN_METHOD(Poly1305::Update) {
   info.GetReturnValue().Set(info.This());
 }
 
-NAN_METHOD(Poly1305::Final) {
-  Poly1305 *poly = ObjectWrap::Unwrap<Poly1305>(info.Holder());
+NAN_METHOD(BPoly1305::Final) {
+  BPoly1305 *poly = ObjectWrap::Unwrap<BPoly1305>(info.Holder());
 
   uint8_t mac[16];
 
@@ -93,7 +93,7 @@ NAN_METHOD(Poly1305::Final) {
     Nan::CopyBuffer((char *)&mac[0], 16).ToLocalChecked());
 }
 
-NAN_METHOD(Poly1305::Auth) {
+NAN_METHOD(BPoly1305::Auth) {
   if (info.Length() < 2)
     return Nan::ThrowError("poly1305.auth() requires arguments.");
 
@@ -124,7 +124,7 @@ NAN_METHOD(Poly1305::Auth) {
     Nan::CopyBuffer((char *)&mac[0], 16).ToLocalChecked());
 }
 
-NAN_METHOD(Poly1305::Verify) {
+NAN_METHOD(BPoly1305::Verify) {
   if (info.Length() < 2)
     return Nan::ThrowError("poly1305.verify() requires arguments.");
 

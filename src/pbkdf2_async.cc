@@ -1,6 +1,6 @@
 #include "pbkdf2_async.h"
 
-PBKDF2Worker::PBKDF2Worker (
+BPBKDF2Worker::BPBKDF2Worker (
   v8::Local<v8::Object> &dataHandle,
   v8::Local<v8::Object> &saltHandle,
   const EVP_MD *md,
@@ -26,10 +26,10 @@ PBKDF2Worker::PBKDF2Worker (
   SaveToPersistent("salt", saltHandle);
 }
 
-PBKDF2Worker::~PBKDF2Worker() {}
+BPBKDF2Worker::~BPBKDF2Worker() {}
 
 void
-PBKDF2Worker::Execute() {
+BPBKDF2Worker::Execute() {
   key = (uint8_t *)malloc(keylen);
 
   if (key == NULL) {
@@ -49,7 +49,7 @@ PBKDF2Worker::Execute() {
 }
 
 void
-PBKDF2Worker::HandleOKCallback() {
+BPBKDF2Worker::HandleOKCallback() {
   Nan::HandleScope scope;
 
   v8::Local<v8::Value> keyBuffer =

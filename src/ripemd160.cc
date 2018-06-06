@@ -7,30 +7,30 @@ NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj);
 
 static Nan::Persistent<v8::FunctionTemplate> ripemd160_constructor;
 
-RIPEMD160::RIPEMD160() {
+BRIPEMD160::BRIPEMD160() {
   memset(&ctx, 0, sizeof(RIPEMD160_CTX));
 }
 
-RIPEMD160::~RIPEMD160() {}
+BRIPEMD160::~BRIPEMD160() {}
 
 void
-RIPEMD160::Init(v8::Local<v8::Object> &target) {
+BRIPEMD160::Init(v8::Local<v8::Object> &target) {
   Nan::HandleScope scope;
 
   v8::Local<v8::FunctionTemplate> tpl =
-    Nan::New<v8::FunctionTemplate>(RIPEMD160::New);
+    Nan::New<v8::FunctionTemplate>(BRIPEMD160::New);
 
   ripemd160_constructor.Reset(tpl);
 
   tpl->SetClassName(Nan::New("RIPEMD160").ToLocalChecked());
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
 
-  Nan::SetPrototypeMethod(tpl, "init", RIPEMD160::Init);
-  Nan::SetPrototypeMethod(tpl, "update", RIPEMD160::Update);
-  Nan::SetPrototypeMethod(tpl, "final", RIPEMD160::Final);
-  Nan::SetMethod(tpl, "digest", RIPEMD160::Digest);
-  Nan::SetMethod(tpl, "root", RIPEMD160::Root);
-  Nan::SetMethod(tpl, "multi", RIPEMD160::Multi);
+  Nan::SetPrototypeMethod(tpl, "init", BRIPEMD160::Init);
+  Nan::SetPrototypeMethod(tpl, "update", BRIPEMD160::Update);
+  Nan::SetPrototypeMethod(tpl, "final", BRIPEMD160::Final);
+  Nan::SetMethod(tpl, "digest", BRIPEMD160::Digest);
+  Nan::SetMethod(tpl, "root", BRIPEMD160::Root);
+  Nan::SetMethod(tpl, "multi", BRIPEMD160::Multi);
 
   v8::Local<v8::FunctionTemplate> ctor =
     Nan::New<v8::FunctionTemplate>(ripemd160_constructor);
@@ -38,25 +38,25 @@ RIPEMD160::Init(v8::Local<v8::Object> &target) {
   target->Set(Nan::New("RIPEMD160").ToLocalChecked(), ctor->GetFunction());
 }
 
-NAN_METHOD(RIPEMD160::New) {
+NAN_METHOD(BRIPEMD160::New) {
   if (!info.IsConstructCall())
     return Nan::ThrowError("Could not create RIPEMD160 instance.");
 
-  RIPEMD160 *rmd = new RIPEMD160();
+  BRIPEMD160 *rmd = new BRIPEMD160();
   rmd->Wrap(info.This());
   info.GetReturnValue().Set(info.This());
 }
 
-NAN_METHOD(RIPEMD160::Init) {
-  RIPEMD160 *rmd = ObjectWrap::Unwrap<RIPEMD160>(info.Holder());
+NAN_METHOD(BRIPEMD160::Init) {
+  BRIPEMD160 *rmd = ObjectWrap::Unwrap<BRIPEMD160>(info.Holder());
 
   RIPEMD160_Init(&rmd->ctx);
 
   info.GetReturnValue().Set(info.This());
 }
 
-NAN_METHOD(RIPEMD160::Update) {
-  RIPEMD160 *rmd = ObjectWrap::Unwrap<RIPEMD160>(info.Holder());
+NAN_METHOD(BRIPEMD160::Update) {
+  BRIPEMD160 *rmd = ObjectWrap::Unwrap<BRIPEMD160>(info.Holder());
 
   if (info.Length() < 1)
     return Nan::ThrowError("ripemd160.update() requires arguments.");
@@ -74,8 +74,8 @@ NAN_METHOD(RIPEMD160::Update) {
   info.GetReturnValue().Set(info.This());
 }
 
-NAN_METHOD(RIPEMD160::Final) {
-  RIPEMD160 *rmd = ObjectWrap::Unwrap<RIPEMD160>(info.Holder());
+NAN_METHOD(BRIPEMD160::Final) {
+  BRIPEMD160 *rmd = ObjectWrap::Unwrap<BRIPEMD160>(info.Holder());
 
   RIPEMD160_Final(global_out, &rmd->ctx);
 
@@ -83,7 +83,7 @@ NAN_METHOD(RIPEMD160::Final) {
     Nan::CopyBuffer((char *)&global_out[0], 20).ToLocalChecked());
 }
 
-NAN_METHOD(RIPEMD160::Digest) {
+NAN_METHOD(BRIPEMD160::Digest) {
   if (info.Length() < 1)
     return Nan::ThrowError("ripemd160.digest() requires arguments.");
 
@@ -103,7 +103,7 @@ NAN_METHOD(RIPEMD160::Digest) {
     Nan::CopyBuffer((char *)&global_out[0], 20).ToLocalChecked());
 }
 
-NAN_METHOD(RIPEMD160::Root) {
+NAN_METHOD(BRIPEMD160::Root) {
   if (info.Length() < 2)
     return Nan::ThrowError("ripemd160.root() requires arguments.");
 
@@ -134,7 +134,7 @@ NAN_METHOD(RIPEMD160::Root) {
     Nan::CopyBuffer((char *)&global_out[0], 20).ToLocalChecked());
 }
 
-NAN_METHOD(RIPEMD160::Multi) {
+NAN_METHOD(BRIPEMD160::Multi) {
   if (info.Length() < 2)
     return Nan::ThrowError("ripemd160.multi() requires arguments.");
 

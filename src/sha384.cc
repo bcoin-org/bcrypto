@@ -7,30 +7,30 @@ NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj);
 
 static Nan::Persistent<v8::FunctionTemplate> sha384_constructor;
 
-SHA384::SHA384() {
+BSHA384::BSHA384() {
   memset(&ctx, 0, sizeof(SHA512_CTX));
 }
 
-SHA384::~SHA384() {}
+BSHA384::~BSHA384() {}
 
 void
-SHA384::Init(v8::Local<v8::Object> &target) {
+BSHA384::Init(v8::Local<v8::Object> &target) {
   Nan::HandleScope scope;
 
   v8::Local<v8::FunctionTemplate> tpl =
-    Nan::New<v8::FunctionTemplate>(SHA384::New);
+    Nan::New<v8::FunctionTemplate>(BSHA384::New);
 
   sha384_constructor.Reset(tpl);
 
   tpl->SetClassName(Nan::New("SHA384").ToLocalChecked());
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
 
-  Nan::SetPrototypeMethod(tpl, "init", SHA384::Init);
-  Nan::SetPrototypeMethod(tpl, "update", SHA384::Update);
-  Nan::SetPrototypeMethod(tpl, "final", SHA384::Final);
-  Nan::SetMethod(tpl, "digest", SHA384::Digest);
-  Nan::SetMethod(tpl, "root", SHA384::Root);
-  Nan::SetMethod(tpl, "multi", SHA384::Multi);
+  Nan::SetPrototypeMethod(tpl, "init", BSHA384::Init);
+  Nan::SetPrototypeMethod(tpl, "update", BSHA384::Update);
+  Nan::SetPrototypeMethod(tpl, "final", BSHA384::Final);
+  Nan::SetMethod(tpl, "digest", BSHA384::Digest);
+  Nan::SetMethod(tpl, "root", BSHA384::Root);
+  Nan::SetMethod(tpl, "multi", BSHA384::Multi);
 
   v8::Local<v8::FunctionTemplate> ctor =
     Nan::New<v8::FunctionTemplate>(sha384_constructor);
@@ -38,25 +38,25 @@ SHA384::Init(v8::Local<v8::Object> &target) {
   target->Set(Nan::New("SHA384").ToLocalChecked(), ctor->GetFunction());
 }
 
-NAN_METHOD(SHA384::New) {
+NAN_METHOD(BSHA384::New) {
   if (!info.IsConstructCall())
     return Nan::ThrowError("Could not create SHA384 instance.");
 
-  SHA384 *sha = new SHA384();
+  BSHA384 *sha = new BSHA384();
   sha->Wrap(info.This());
   info.GetReturnValue().Set(info.This());
 }
 
-NAN_METHOD(SHA384::Init) {
-  SHA384 *sha = ObjectWrap::Unwrap<SHA384>(info.Holder());
+NAN_METHOD(BSHA384::Init) {
+  BSHA384 *sha = ObjectWrap::Unwrap<BSHA384>(info.Holder());
 
   SHA384_Init(&sha->ctx);
 
   info.GetReturnValue().Set(info.This());
 }
 
-NAN_METHOD(SHA384::Update) {
-  SHA384 *sha = ObjectWrap::Unwrap<SHA384>(info.Holder());
+NAN_METHOD(BSHA384::Update) {
+  BSHA384 *sha = ObjectWrap::Unwrap<BSHA384>(info.Holder());
 
   if (info.Length() < 1)
     return Nan::ThrowError("sha384.update() requires arguments.");
@@ -74,8 +74,8 @@ NAN_METHOD(SHA384::Update) {
   info.GetReturnValue().Set(info.This());
 }
 
-NAN_METHOD(SHA384::Final) {
-  SHA384 *sha = ObjectWrap::Unwrap<SHA384>(info.Holder());
+NAN_METHOD(BSHA384::Final) {
+  BSHA384 *sha = ObjectWrap::Unwrap<BSHA384>(info.Holder());
 
   SHA384_Final(global_out, &sha->ctx);
 
@@ -83,7 +83,7 @@ NAN_METHOD(SHA384::Final) {
     Nan::CopyBuffer((char *)&global_out[0], 48).ToLocalChecked());
 }
 
-NAN_METHOD(SHA384::Digest) {
+NAN_METHOD(BSHA384::Digest) {
   if (info.Length() < 1)
     return Nan::ThrowError("sha384.digest() requires arguments.");
 
@@ -103,7 +103,7 @@ NAN_METHOD(SHA384::Digest) {
     Nan::CopyBuffer((char *)&global_out[0], 48).ToLocalChecked());
 }
 
-NAN_METHOD(SHA384::Root) {
+NAN_METHOD(BSHA384::Root) {
   if (info.Length() < 2)
     return Nan::ThrowError("sha384.root() requires arguments.");
 
@@ -134,7 +134,7 @@ NAN_METHOD(SHA384::Root) {
     Nan::CopyBuffer((char *)&global_out[0], 48).ToLocalChecked());
 }
 
-NAN_METHOD(SHA384::Multi) {
+NAN_METHOD(BSHA384::Multi) {
   if (info.Length() < 2)
     return Nan::ThrowError("sha384.multi() requires arguments.");
 

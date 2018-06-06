@@ -7,30 +7,30 @@ NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj);
 
 static Nan::Persistent<v8::FunctionTemplate> sha512_constructor;
 
-SHA512::SHA512() {
+BSHA512::BSHA512() {
   memset(&ctx, 0, sizeof(SHA512_CTX));
 }
 
-SHA512::~SHA512() {}
+BSHA512::~BSHA512() {}
 
 void
-SHA512::Init(v8::Local<v8::Object> &target) {
+BSHA512::Init(v8::Local<v8::Object> &target) {
   Nan::HandleScope scope;
 
   v8::Local<v8::FunctionTemplate> tpl =
-    Nan::New<v8::FunctionTemplate>(SHA512::New);
+    Nan::New<v8::FunctionTemplate>(BSHA512::New);
 
   sha512_constructor.Reset(tpl);
 
   tpl->SetClassName(Nan::New("SHA512").ToLocalChecked());
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
 
-  Nan::SetPrototypeMethod(tpl, "init", SHA512::Init);
-  Nan::SetPrototypeMethod(tpl, "update", SHA512::Update);
-  Nan::SetPrototypeMethod(tpl, "final", SHA512::Final);
-  Nan::SetMethod(tpl, "digest", SHA512::Digest);
-  Nan::SetMethod(tpl, "root", SHA512::Root);
-  Nan::SetMethod(tpl, "multi", SHA512::Multi);
+  Nan::SetPrototypeMethod(tpl, "init", BSHA512::Init);
+  Nan::SetPrototypeMethod(tpl, "update", BSHA512::Update);
+  Nan::SetPrototypeMethod(tpl, "final", BSHA512::Final);
+  Nan::SetMethod(tpl, "digest", BSHA512::Digest);
+  Nan::SetMethod(tpl, "root", BSHA512::Root);
+  Nan::SetMethod(tpl, "multi", BSHA512::Multi);
 
   v8::Local<v8::FunctionTemplate> ctor =
     Nan::New<v8::FunctionTemplate>(sha512_constructor);
@@ -38,25 +38,25 @@ SHA512::Init(v8::Local<v8::Object> &target) {
   target->Set(Nan::New("SHA512").ToLocalChecked(), ctor->GetFunction());
 }
 
-NAN_METHOD(SHA512::New) {
+NAN_METHOD(BSHA512::New) {
   if (!info.IsConstructCall())
     return Nan::ThrowError("Could not create SHA512 instance.");
 
-  SHA512 *sha = new SHA512();
+  BSHA512 *sha = new BSHA512();
   sha->Wrap(info.This());
   info.GetReturnValue().Set(info.This());
 }
 
-NAN_METHOD(SHA512::Init) {
-  SHA512 *sha = ObjectWrap::Unwrap<SHA512>(info.Holder());
+NAN_METHOD(BSHA512::Init) {
+  BSHA512 *sha = ObjectWrap::Unwrap<BSHA512>(info.Holder());
 
   SHA512_Init(&sha->ctx);
 
   info.GetReturnValue().Set(info.This());
 }
 
-NAN_METHOD(SHA512::Update) {
-  SHA512 *sha = ObjectWrap::Unwrap<SHA512>(info.Holder());
+NAN_METHOD(BSHA512::Update) {
+  BSHA512 *sha = ObjectWrap::Unwrap<BSHA512>(info.Holder());
 
   if (info.Length() < 1)
     return Nan::ThrowError("sha512.update() requires arguments.");
@@ -74,8 +74,8 @@ NAN_METHOD(SHA512::Update) {
   info.GetReturnValue().Set(info.This());
 }
 
-NAN_METHOD(SHA512::Final) {
-  SHA512 *sha = ObjectWrap::Unwrap<SHA512>(info.Holder());
+NAN_METHOD(BSHA512::Final) {
+  BSHA512 *sha = ObjectWrap::Unwrap<BSHA512>(info.Holder());
 
   SHA512_Final(global_out, &sha->ctx);
 
@@ -83,7 +83,7 @@ NAN_METHOD(SHA512::Final) {
     Nan::CopyBuffer((char *)&global_out[0], 64).ToLocalChecked());
 }
 
-NAN_METHOD(SHA512::Digest) {
+NAN_METHOD(BSHA512::Digest) {
   if (info.Length() < 1)
     return Nan::ThrowError("sha512.digest() requires arguments.");
 
@@ -103,7 +103,7 @@ NAN_METHOD(SHA512::Digest) {
     Nan::CopyBuffer((char *)&global_out[0], 64).ToLocalChecked());
 }
 
-NAN_METHOD(SHA512::Root) {
+NAN_METHOD(BSHA512::Root) {
   if (info.Length() < 2)
     return Nan::ThrowError("sha512.root() requires arguments.");
 
@@ -134,7 +134,7 @@ NAN_METHOD(SHA512::Root) {
     Nan::CopyBuffer((char *)&global_out[0], 64).ToLocalChecked());
 }
 
-NAN_METHOD(SHA512::Multi) {
+NAN_METHOD(BSHA512::Multi) {
   if (info.Length() < 2)
     return Nan::ThrowError("sha512.multi() requires arguments.");
 

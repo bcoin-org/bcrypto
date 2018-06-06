@@ -7,30 +7,30 @@ NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj);
 
 static Nan::Persistent<v8::FunctionTemplate> md5_constructor;
 
-MD5::MD5() {
+BMD5::BMD5() {
   memset(&ctx, 0, sizeof(MD5_CTX));
 }
 
-MD5::~MD5() {}
+BMD5::~BMD5() {}
 
 void
-MD5::Init(v8::Local<v8::Object> &target) {
+BMD5::Init(v8::Local<v8::Object> &target) {
   Nan::HandleScope scope;
 
   v8::Local<v8::FunctionTemplate> tpl =
-    Nan::New<v8::FunctionTemplate>(MD5::New);
+    Nan::New<v8::FunctionTemplate>(BMD5::New);
 
   md5_constructor.Reset(tpl);
 
   tpl->SetClassName(Nan::New("MD5").ToLocalChecked());
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
 
-  Nan::SetPrototypeMethod(tpl, "init", MD5::Init);
-  Nan::SetPrototypeMethod(tpl, "update", MD5::Update);
-  Nan::SetPrototypeMethod(tpl, "final", MD5::Final);
-  Nan::SetMethod(tpl, "digest", MD5::Digest);
-  Nan::SetMethod(tpl, "root", MD5::Root);
-  Nan::SetMethod(tpl, "multi", MD5::Multi);
+  Nan::SetPrototypeMethod(tpl, "init", BMD5::Init);
+  Nan::SetPrototypeMethod(tpl, "update", BMD5::Update);
+  Nan::SetPrototypeMethod(tpl, "final", BMD5::Final);
+  Nan::SetMethod(tpl, "digest", BMD5::Digest);
+  Nan::SetMethod(tpl, "root", BMD5::Root);
+  Nan::SetMethod(tpl, "multi", BMD5::Multi);
 
   v8::Local<v8::FunctionTemplate> ctor =
     Nan::New<v8::FunctionTemplate>(md5_constructor);
@@ -38,25 +38,25 @@ MD5::Init(v8::Local<v8::Object> &target) {
   target->Set(Nan::New("MD5").ToLocalChecked(), ctor->GetFunction());
 }
 
-NAN_METHOD(MD5::New) {
+NAN_METHOD(BMD5::New) {
   if (!info.IsConstructCall())
-    return Nan::ThrowError("Could not create MD5 instance.");
+    return Nan::ThrowError("Could not create BMD5 instance.");
 
-  MD5 *md5 = new MD5();
+  BMD5 *md5 = new BMD5();
   md5->Wrap(info.This());
   info.GetReturnValue().Set(info.This());
 }
 
-NAN_METHOD(MD5::Init) {
-  MD5 *md5 = ObjectWrap::Unwrap<MD5>(info.Holder());
+NAN_METHOD(BMD5::Init) {
+  BMD5 *md5 = ObjectWrap::Unwrap<BMD5>(info.Holder());
 
   MD5_Init(&md5->ctx);
 
   info.GetReturnValue().Set(info.This());
 }
 
-NAN_METHOD(MD5::Update) {
-  MD5 *md5 = ObjectWrap::Unwrap<MD5>(info.Holder());
+NAN_METHOD(BMD5::Update) {
+  BMD5 *md5 = ObjectWrap::Unwrap<BMD5>(info.Holder());
 
   if (info.Length() < 1)
     return Nan::ThrowError("md5.update() requires arguments.");
@@ -74,8 +74,8 @@ NAN_METHOD(MD5::Update) {
   info.GetReturnValue().Set(info.This());
 }
 
-NAN_METHOD(MD5::Final) {
-  MD5 *md5 = ObjectWrap::Unwrap<MD5>(info.Holder());
+NAN_METHOD(BMD5::Final) {
+  BMD5 *md5 = ObjectWrap::Unwrap<BMD5>(info.Holder());
 
   MD5_Final(global_out, &md5->ctx);
 
@@ -83,7 +83,7 @@ NAN_METHOD(MD5::Final) {
     Nan::CopyBuffer((char *)&global_out[0], 16).ToLocalChecked());
 }
 
-NAN_METHOD(MD5::Digest) {
+NAN_METHOD(BMD5::Digest) {
   if (info.Length() < 1)
     return Nan::ThrowError("md5.digest() requires arguments.");
 
@@ -103,7 +103,7 @@ NAN_METHOD(MD5::Digest) {
     Nan::CopyBuffer((char *)&global_out[0], 16).ToLocalChecked());
 }
 
-NAN_METHOD(MD5::Root) {
+NAN_METHOD(BMD5::Root) {
   if (info.Length() < 2)
     return Nan::ThrowError("md5.root() requires arguments.");
 
@@ -134,7 +134,7 @@ NAN_METHOD(MD5::Root) {
     Nan::CopyBuffer((char *)&global_out[0], 16).ToLocalChecked());
 }
 
-NAN_METHOD(MD5::Multi) {
+NAN_METHOD(BMD5::Multi) {
   if (info.Length() < 2)
     return Nan::ThrowError("md5.multi() requires arguments.");
 

@@ -7,30 +7,30 @@ NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj);
 
 static Nan::Persistent<v8::FunctionTemplate> hash256_constructor;
 
-Hash256::Hash256() {
+BHash256::BHash256() {
   memset(&ctx, 0, sizeof(SHA256_CTX));
 }
 
-Hash256::~Hash256() {}
+BHash256::~BHash256() {}
 
 void
-Hash256::Init(v8::Local<v8::Object> &target) {
+BHash256::Init(v8::Local<v8::Object> &target) {
   Nan::HandleScope scope;
 
   v8::Local<v8::FunctionTemplate> tpl =
-    Nan::New<v8::FunctionTemplate>(Hash256::New);
+    Nan::New<v8::FunctionTemplate>(BHash256::New);
 
   hash256_constructor.Reset(tpl);
 
   tpl->SetClassName(Nan::New("Hash256").ToLocalChecked());
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
 
-  Nan::SetPrototypeMethod(tpl, "init", Hash256::Init);
-  Nan::SetPrototypeMethod(tpl, "update", Hash256::Update);
-  Nan::SetPrototypeMethod(tpl, "final", Hash256::Final);
-  Nan::SetMethod(tpl, "digest", Hash256::Digest);
-  Nan::SetMethod(tpl, "root", Hash256::Root);
-  Nan::SetMethod(tpl, "multi", Hash256::Multi);
+  Nan::SetPrototypeMethod(tpl, "init", BHash256::Init);
+  Nan::SetPrototypeMethod(tpl, "update", BHash256::Update);
+  Nan::SetPrototypeMethod(tpl, "final", BHash256::Final);
+  Nan::SetMethod(tpl, "digest", BHash256::Digest);
+  Nan::SetMethod(tpl, "root", BHash256::Root);
+  Nan::SetMethod(tpl, "multi", BHash256::Multi);
 
   v8::Local<v8::FunctionTemplate> ctor =
     Nan::New<v8::FunctionTemplate>(hash256_constructor);
@@ -38,25 +38,25 @@ Hash256::Init(v8::Local<v8::Object> &target) {
   target->Set(Nan::New("Hash256").ToLocalChecked(), ctor->GetFunction());
 }
 
-NAN_METHOD(Hash256::New) {
+NAN_METHOD(BHash256::New) {
   if (!info.IsConstructCall())
-    return Nan::ThrowError("Could not create Hash256 instance.");
+    return Nan::ThrowError("Could not create BHash256 instance.");
 
-  Hash256 *hash = new Hash256();
+  BHash256 *hash = new BHash256();
   hash->Wrap(info.This());
   info.GetReturnValue().Set(info.This());
 }
 
-NAN_METHOD(Hash256::Init) {
-  Hash256 *hash = ObjectWrap::Unwrap<Hash256>(info.Holder());
+NAN_METHOD(BHash256::Init) {
+  BHash256 *hash = ObjectWrap::Unwrap<BHash256>(info.Holder());
 
   SHA256_Init(&hash->ctx);
 
   info.GetReturnValue().Set(info.This());
 }
 
-NAN_METHOD(Hash256::Update) {
-  Hash256 *hash = ObjectWrap::Unwrap<Hash256>(info.Holder());
+NAN_METHOD(BHash256::Update) {
+  BHash256 *hash = ObjectWrap::Unwrap<BHash256>(info.Holder());
 
   if (info.Length() < 1)
     return Nan::ThrowError("hash256.update() requires arguments.");
@@ -74,8 +74,8 @@ NAN_METHOD(Hash256::Update) {
   info.GetReturnValue().Set(info.This());
 }
 
-NAN_METHOD(Hash256::Final) {
-  Hash256 *hash = ObjectWrap::Unwrap<Hash256>(info.Holder());
+NAN_METHOD(BHash256::Final) {
+  BHash256 *hash = ObjectWrap::Unwrap<BHash256>(info.Holder());
 
   SHA256_Final(global_out, &hash->ctx);
   SHA256_Init(&hash->ctx);
@@ -86,7 +86,7 @@ NAN_METHOD(Hash256::Final) {
     Nan::CopyBuffer((char *)&global_out[0], 32).ToLocalChecked());
 }
 
-NAN_METHOD(Hash256::Digest) {
+NAN_METHOD(BHash256::Digest) {
   if (info.Length() < 1)
     return Nan::ThrowError("hash256.digest() requires arguments.");
 
@@ -109,7 +109,7 @@ NAN_METHOD(Hash256::Digest) {
     Nan::CopyBuffer((char *)&global_out[0], 32).ToLocalChecked());
 }
 
-NAN_METHOD(Hash256::Root) {
+NAN_METHOD(BHash256::Root) {
   if (info.Length() < 2)
     return Nan::ThrowError("hash256.root() requires arguments.");
 
@@ -143,7 +143,7 @@ NAN_METHOD(Hash256::Root) {
     Nan::CopyBuffer((char *)&global_out[0], 32).ToLocalChecked());
 }
 
-NAN_METHOD(Hash256::Multi) {
+NAN_METHOD(BHash256::Multi) {
   if (info.Length() < 2)
     return Nan::ThrowError("hash256.multi() requires arguments.");
 

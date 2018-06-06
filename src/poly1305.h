@@ -5,13 +5,13 @@
 
 #include "poly1305/poly1305.h"
 
-class Poly1305 : public Nan::ObjectWrap {
+class BPoly1305 : public Nan::ObjectWrap {
 public:
   static NAN_METHOD(New);
   static void Init(v8::Local<v8::Object> &target);
 
-  Poly1305();
-  ~Poly1305();
+  BPoly1305();
+  ~BPoly1305();
 
   bcrypto_poly1305_ctx ctx;
 

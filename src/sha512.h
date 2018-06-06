@@ -4,13 +4,13 @@
 #include <nan.h>
 #include "openssl/sha.h"
 
-class SHA512 : public Nan::ObjectWrap {
+class BSHA512 : public Nan::ObjectWrap {
 public:
   static NAN_METHOD(New);
   static void Init(v8::Local<v8::Object> &target);
 
-  SHA512();
-  ~SHA512();
+  BSHA512();
+  ~BSHA512();
 
   SHA512_CTX ctx;
 

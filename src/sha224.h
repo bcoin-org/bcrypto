@@ -4,13 +4,13 @@
 #include <nan.h>
 #include "openssl/sha.h"
 
-class SHA224 : public Nan::ObjectWrap {
+class BSHA224 : public Nan::ObjectWrap {
 public:
   static NAN_METHOD(New);
   static void Init(v8::Local<v8::Object> &target);
 
-  SHA224();
-  ~SHA224();
+  BSHA224();
+  ~BSHA224();
 
   SHA256_CTX ctx;
 

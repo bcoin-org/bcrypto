@@ -124,7 +124,7 @@ NAN_METHOD(pbkdf2_async) {
   uint32_t iter = info[3]->Uint32Value();
   uint32_t keylen = info[4]->Uint32Value();
 
-  PBKDF2Worker *worker = new PBKDF2Worker(
+  BPBKDF2Worker *worker = new BPBKDF2Worker(
     dbuf,
     sbuf,
     md,
@@ -229,7 +229,7 @@ NAN_METHOD(scrypt_async) {
   uint64_t p = (uint64_t)info[4]->IntegerValue();
   size_t keylen = (size_t)info[5]->IntegerValue();
 
-  ScryptWorker* worker = new ScryptWorker(
+  BScryptWorker* worker = new BScryptWorker(
     pbuf,
     sbuf,
     pass,
@@ -405,20 +405,20 @@ NAN_MODULE_INIT(init) {
   Nan::Export(target, "decipher", decipher);
   Nan::Export(target, "randomBytes", random_bytes);
 
-  MD5::Init(target);
-  RIPEMD160::Init(target);
-  SHA1::Init(target);
-  SHA224::Init(target);
-  SHA256::Init(target);
-  SHA384::Init(target);
-  SHA512::Init(target);
-  Hash160::Init(target);
-  Hash256::Init(target);
-  Keccak::Init(target);
-  Blake2b::Init(target);
+  BMD5::Init(target);
+  BRIPEMD160::Init(target);
+  BSHA1::Init(target);
+  BSHA224::Init(target);
+  BSHA256::Init(target);
+  BSHA384::Init(target);
+  BSHA512::Init(target);
+  BHash160::Init(target);
+  BHash256::Init(target);
+  BKeccak::Init(target);
+  BBlake2b::Init(target);
 
-  ChaCha20::Init(target);
-  Poly1305::Init(target);
+  BChaCha20::Init(target);
+  BPoly1305::Init(target);
 
   BRSA::Init(target);
 }

@@ -23,7 +23,7 @@ XOR(uint8_t *out, uint8_t *a, uint8_t *b) {
   } \
 } while (0)
 
-AESCipher::AESCipher() {
+BAESCipher::BAESCipher() {
   bits = 256;
   chain = false;
   memset(&key, 0, sizeof(AES_KEY));
@@ -32,23 +32,23 @@ AESCipher::AESCipher() {
   bpos = FINALIZED;
 }
 
-AESCipher::~AESCipher() {}
+BAESCipher::~BAESCipher() {}
 
 void
-AESCipher::Init(v8::Local<v8::Object> &target) {
+BAESCipher::Init(v8::Local<v8::Object> &target) {
   Nan::HandleScope scope;
 
   v8::Local<v8::FunctionTemplate> tpl =
-    Nan::New<v8::FunctionTemplate>(AESCipher::New);
+    Nan::New<v8::FunctionTemplate>(BAESCipher::New);
 
   aes_constructor.Reset(tpl);
 
   tpl->SetClassName(Nan::New("AESCipher").ToLocalChecked());
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
 
-  Nan::SetPrototypeMethod(tpl, "init", AESCipher::Init);
-  Nan::SetPrototypeMethod(tpl, "update", AESCipher::Update);
-  Nan::SetPrototypeMethod(tpl, "final", AESCipher::Final);
+  Nan::SetPrototypeMethod(tpl, "init", BAESCipher::Init);
+  Nan::SetPrototypeMethod(tpl, "update", BAESCipher::Update);
+  Nan::SetPrototypeMethod(tpl, "final", BAESCipher::Final);
 
   v8::Local<v8::FunctionTemplate> ctor =
     Nan::New<v8::FunctionTemplate>(aes_constructor);
@@ -56,11 +56,11 @@ AESCipher::Init(v8::Local<v8::Object> &target) {
   target->Set(Nan::New("AESCipher").ToLocalChecked(), ctor->GetFunction());
 }
 
-NAN_METHOD(AESCipher::New) {
+NAN_METHOD(BAESCipher::New) {
   if (!info.IsConstructCall())
-    return Nan::ThrowError("Could not create AESCipher instance.");
+    return Nan::ThrowError("Could not create BAESCipher instance.");
 
-  AESCipher *aes = new AESCipher();
+  BAESCipher *aes = new BAESCipher();
 
   uint32_t bits = 256;
   bool chain = false;
@@ -89,8 +89,8 @@ NAN_METHOD(AESCipher::New) {
   info.GetReturnValue().Set(info.This());
 }
 
-NAN_METHOD(AESCipher::Init) {
-  AESCipher *aes = ObjectWrap::Unwrap<AESCipher>(info.Holder());
+NAN_METHOD(BAESCipher::Init) {
+  BAESCipher *aes = ObjectWrap::Unwrap<BAESCipher>(info.Holder());
 
   if (info.Length() < 1)
     return Nan::ThrowError("AESCipher.init() requires arguments.");
@@ -130,8 +130,8 @@ NAN_METHOD(AESCipher::Init) {
   info.GetReturnValue().Set(info.This());
 }
 
-NAN_METHOD(AESCipher::Update) {
-  AESCipher *aes = ObjectWrap::Unwrap<AESCipher>(info.Holder());
+NAN_METHOD(BAESCipher::Update) {
+  BAESCipher *aes = ObjectWrap::Unwrap<BAESCipher>(info.Holder());
 
   if (info.Length() < 1)
     return Nan::ThrowError("AESCipher.update() requires arguments.");
@@ -198,8 +198,8 @@ NAN_METHOD(AESCipher::Update) {
     Nan::NewBuffer((char *)&out[0], olen).ToLocalChecked());
 }
 
-NAN_METHOD(AESCipher::Final) {
-  AESCipher *aes = ObjectWrap::Unwrap<AESCipher>(info.Holder());
+NAN_METHOD(BAESCipher::Final) {
+  BAESCipher *aes = ObjectWrap::Unwrap<BAESCipher>(info.Holder());
 
   if (aes->bpos & FINALIZED)
     return Nan::ThrowError("Context is already finalized.");
@@ -237,7 +237,7 @@ static Nan::Persistent<v8::FunctionTemplate> aesd_constructor;
   } \
 } while (0)
 
-AESDecipher::AESDecipher() {
+BAESDecipher::BAESDecipher() {
   bits = 256;
   chain = false;
   memset(&key, 0, sizeof(AES_KEY));
@@ -246,23 +246,23 @@ AESDecipher::AESDecipher() {
   bpos = 0;
 }
 
-AESDecipher::~AESDecipher() {}
+BAESDecipher::~BAESDecipher() {}
 
 void
-AESDecipher::Init(v8::Local<v8::Object> &target) {
+BAESDecipher::Init(v8::Local<v8::Object> &target) {
   Nan::HandleScope scope;
 
   v8::Local<v8::FunctionTemplate> tpl =
-    Nan::New<v8::FunctionTemplate>(AESDecipher::New);
+    Nan::New<v8::FunctionTemplate>(BAESDecipher::New);
 
   aesd_constructor.Reset(tpl);
 
   tpl->SetClassName(Nan::New("AESDecipher").ToLocalChecked());
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
 
-  Nan::SetPrototypeMethod(tpl, "init", AESDecipher::Init);
-  Nan::SetPrototypeMethod(tpl, "update", AESDecipher::Update);
-  Nan::SetPrototypeMethod(tpl, "final", AESDecipher::Final);
+  Nan::SetPrototypeMethod(tpl, "init", BAESDecipher::Init);
+  Nan::SetPrototypeMethod(tpl, "update", BAESDecipher::Update);
+  Nan::SetPrototypeMethod(tpl, "final", BAESDecipher::Final);
 
   v8::Local<v8::FunctionTemplate> ctor =
     Nan::New<v8::FunctionTemplate>(aesd_constructor);
@@ -270,11 +270,11 @@ AESDecipher::Init(v8::Local<v8::Object> &target) {
   target->Set(Nan::New("AESDecipher").ToLocalChecked(), ctor->GetFunction());
 }
 
-NAN_METHOD(AESDecipher::New) {
+NAN_METHOD(BAESDecipher::New) {
   if (!info.IsConstructCall())
-    return Nan::ThrowError("Could not create AESDecipher instance.");
+    return Nan::ThrowError("Could not create BAESDecipher instance.");
 
-  AESDecipher *aes = new AESDecipher();
+  BAESDecipher *aes = new BAESDecipher();
 
   uint32_t bits = 256;
   bool chain = false;
@@ -303,8 +303,8 @@ NAN_METHOD(AESDecipher::New) {
   info.GetReturnValue().Set(info.This());
 }
 
-NAN_METHOD(AESDecipher::Init) {
-  AESDecipher *aes = ObjectWrap::Unwrap<AESDecipher>(info.Holder());
+NAN_METHOD(BAESDecipher::Init) {
+  BAESDecipher *aes = ObjectWrap::Unwrap<BAESDecipher>(info.Holder());
 
   if (info.Length() < 1)
     return Nan::ThrowError("AESDecipher.init() requires arguments.");
@@ -344,8 +344,8 @@ NAN_METHOD(AESDecipher::Init) {
   info.GetReturnValue().Set(info.This());
 }
 
-NAN_METHOD(AESDecipher::Update) {
-  AESDecipher *aes = ObjectWrap::Unwrap<AESDecipher>(info.Holder());
+NAN_METHOD(BAESDecipher::Update) {
+  BAESDecipher *aes = ObjectWrap::Unwrap<BAESDecipher>(info.Holder());
 
   if (info.Length() < 1)
     return Nan::ThrowError("AESDecipher.update() requires arguments.");
@@ -414,8 +414,8 @@ NAN_METHOD(AESDecipher::Update) {
     Nan::NewBuffer((char *)&out[0], olen - 16).ToLocalChecked());
 }
 
-NAN_METHOD(AESDecipher::Final) {
-  AESDecipher *aes = ObjectWrap::Unwrap<AESDecipher>(info.Holder());
+NAN_METHOD(BAESDecipher::Final) {
+  BAESDecipher *aes = ObjectWrap::Unwrap<BAESDecipher>(info.Holder());
 
   if (aes->bpos & FINALIZED)
     return Nan::ThrowError("Context is already finalized.");

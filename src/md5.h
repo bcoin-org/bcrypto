@@ -4,13 +4,13 @@
 #include <nan.h>
 #include "openssl/md5.h"
 
-class MD5 : public Nan::ObjectWrap {
+class BMD5 : public Nan::ObjectWrap {
 public:
   static NAN_METHOD(New);
   static void Init(v8::Local<v8::Object> &target);
 
-  MD5();
-  ~MD5();
+  BMD5();
+  ~BMD5();
 
   MD5_CTX ctx;
 

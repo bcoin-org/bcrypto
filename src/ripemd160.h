@@ -4,13 +4,13 @@
 #include <nan.h>
 #include "openssl/ripemd.h"
 
-class RIPEMD160 : public Nan::ObjectWrap {
+class BRIPEMD160 : public Nan::ObjectWrap {
 public:
   static NAN_METHOD(New);
   static void Init(v8::Local<v8::Object> &target);
 
-  RIPEMD160();
-  ~RIPEMD160();
+  BRIPEMD160();
+  ~BRIPEMD160();
 
   RIPEMD160_CTX ctx;
 

@@ -7,31 +7,31 @@ NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj);
 
 static Nan::Persistent<v8::FunctionTemplate> blake2b_constructor;
 
-Blake2b::Blake2b() {
+BBlake2b::BBlake2b() {
   memset(&ctx, 0, sizeof(bcrypto_blake2b_ctx));
 }
 
-Blake2b::~Blake2b() {}
+BBlake2b::~BBlake2b() {}
 
 void
-Blake2b::Init(v8::Local<v8::Object> &target) {
+BBlake2b::Init(v8::Local<v8::Object> &target) {
   Nan::HandleScope scope;
 
   v8::Local<v8::FunctionTemplate> tpl =
-    Nan::New<v8::FunctionTemplate>(Blake2b::New);
+    Nan::New<v8::FunctionTemplate>(BBlake2b::New);
 
   blake2b_constructor.Reset(tpl);
 
   tpl->SetClassName(Nan::New("Blake2b").ToLocalChecked());
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
 
-  Nan::SetPrototypeMethod(tpl, "init", Blake2b::Init);
-  Nan::SetPrototypeMethod(tpl, "update", Blake2b::Update);
-  Nan::SetPrototypeMethod(tpl, "final", Blake2b::Final);
-  Nan::SetMethod(tpl, "digest", Blake2b::Digest);
-  Nan::SetMethod(tpl, "root", Blake2b::Root);
-  Nan::SetMethod(tpl, "multi", Blake2b::Multi);
-  Nan::SetMethod(tpl, "mac", Blake2b::Mac);
+  Nan::SetPrototypeMethod(tpl, "init", BBlake2b::Init);
+  Nan::SetPrototypeMethod(tpl, "update", BBlake2b::Update);
+  Nan::SetPrototypeMethod(tpl, "final", BBlake2b::Final);
+  Nan::SetMethod(tpl, "digest", BBlake2b::Digest);
+  Nan::SetMethod(tpl, "root", BBlake2b::Root);
+  Nan::SetMethod(tpl, "multi", BBlake2b::Multi);
+  Nan::SetMethod(tpl, "mac", BBlake2b::Mac);
 
   v8::Local<v8::FunctionTemplate> ctor =
     Nan::New<v8::FunctionTemplate>(blake2b_constructor);
@@ -39,17 +39,17 @@ Blake2b::Init(v8::Local<v8::Object> &target) {
   target->Set(Nan::New("Blake2b").ToLocalChecked(), ctor->GetFunction());
 }
 
-NAN_METHOD(Blake2b::New) {
+NAN_METHOD(BBlake2b::New) {
   if (!info.IsConstructCall())
-    return Nan::ThrowError("Could not create Blake2b instance.");
+    return Nan::ThrowError("Could not create BBlake2b instance.");
 
-  Blake2b *blake = new Blake2b();
+  BBlake2b *blake = new BBlake2b();
   blake->Wrap(info.This());
   info.GetReturnValue().Set(info.This());
 }
 
-NAN_METHOD(Blake2b::Init) {
-  Blake2b *blake = ObjectWrap::Unwrap<Blake2b>(info.Holder());
+NAN_METHOD(BBlake2b::Init) {
+  BBlake2b *blake = ObjectWrap::Unwrap<BBlake2b>(info.Holder());
 
   uint32_t outlen = 32;
 
@@ -90,8 +90,8 @@ NAN_METHOD(Blake2b::Init) {
   info.GetReturnValue().Set(info.This());
 }
 
-NAN_METHOD(Blake2b::Update) {
-  Blake2b *blake = ObjectWrap::Unwrap<Blake2b>(info.Holder());
+NAN_METHOD(BBlake2b::Update) {
+  BBlake2b *blake = ObjectWrap::Unwrap<BBlake2b>(info.Holder());
 
   if (info.Length() < 1)
     return Nan::ThrowError("blake2b.update() requires arguments.");
@@ -109,8 +109,8 @@ NAN_METHOD(Blake2b::Update) {
   info.GetReturnValue().Set(info.This());
 }
 
-NAN_METHOD(Blake2b::Final) {
-  Blake2b *blake = ObjectWrap::Unwrap<Blake2b>(info.Holder());
+NAN_METHOD(BBlake2b::Final) {
+  BBlake2b *blake = ObjectWrap::Unwrap<BBlake2b>(info.Holder());
 
   uint32_t outlen = blake->ctx.outlen;
 
@@ -120,7 +120,7 @@ NAN_METHOD(Blake2b::Final) {
     Nan::CopyBuffer((char *)&global_out[0], outlen).ToLocalChecked());
 }
 
-NAN_METHOD(Blake2b::Digest) {
+NAN_METHOD(BBlake2b::Digest) {
   if (info.Length() < 1)
     return Nan::ThrowError("blake2b.digest() requires arguments.");
 
@@ -174,7 +174,7 @@ NAN_METHOD(Blake2b::Digest) {
     Nan::CopyBuffer((char *)&global_out[0], outlen).ToLocalChecked());
 }
 
-NAN_METHOD(Blake2b::Root) {
+NAN_METHOD(BBlake2b::Root) {
   if (info.Length() < 2)
     return Nan::ThrowError("blake2b.root() requires arguments.");
 
@@ -217,7 +217,7 @@ NAN_METHOD(Blake2b::Root) {
     Nan::CopyBuffer((char *)&global_out[0], outlen).ToLocalChecked());
 }
 
-NAN_METHOD(Blake2b::Multi) {
+NAN_METHOD(BBlake2b::Multi) {
   if (info.Length() < 2)
     return Nan::ThrowError("blake2b.multi() requires arguments.");
 
@@ -274,7 +274,7 @@ NAN_METHOD(Blake2b::Multi) {
     Nan::CopyBuffer((char *)&global_out[0], outlen).ToLocalChecked());
 }
 
-NAN_METHOD(Blake2b::Mac) {
+NAN_METHOD(BBlake2b::Mac) {
   if (info.Length() < 2)
     return Nan::ThrowError("blake2b.mac() requires arguments.");
 

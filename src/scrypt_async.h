@@ -4,9 +4,9 @@
 #include <node.h>
 #include <nan.h>
 
-class ScryptWorker : public Nan::AsyncWorker {
+class BScryptWorker : public Nan::AsyncWorker {
 public:
-  ScryptWorker (
+  BScryptWorker (
     v8::Local<v8::Object> &passHandle,
     v8::Local<v8::Object> &saltHandle,
     const uint8_t *pass,
@@ -20,7 +20,7 @@ public:
     Nan::Callback *callback
   );
 
-  virtual ~ScryptWorker ();
+  virtual ~BScryptWorker ();
   virtual void Execute ();
   void HandleOKCallback();
 

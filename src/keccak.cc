@@ -7,30 +7,30 @@ NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj);
 
 static Nan::Persistent<v8::FunctionTemplate> keccak_constructor;
 
-Keccak::Keccak() {
+BKeccak::BKeccak() {
   memset(&ctx, 0, sizeof(bcrypto_keccak_ctx));
 }
 
-Keccak::~Keccak() {}
+BKeccak::~BKeccak() {}
 
 void
-Keccak::Init(v8::Local<v8::Object> &target) {
+BKeccak::Init(v8::Local<v8::Object> &target) {
   Nan::HandleScope scope;
 
   v8::Local<v8::FunctionTemplate> tpl =
-    Nan::New<v8::FunctionTemplate>(Keccak::New);
+    Nan::New<v8::FunctionTemplate>(BKeccak::New);
 
   keccak_constructor.Reset(tpl);
 
   tpl->SetClassName(Nan::New("Keccak").ToLocalChecked());
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
 
-  Nan::SetPrototypeMethod(tpl, "init", Keccak::Init);
-  Nan::SetPrototypeMethod(tpl, "update", Keccak::Update);
-  Nan::SetPrototypeMethod(tpl, "final", Keccak::Final);
-  Nan::SetMethod(tpl, "digest", Keccak::Digest);
-  Nan::SetMethod(tpl, "root", Keccak::Root);
-  Nan::SetMethod(tpl, "multi", Keccak::Multi);
+  Nan::SetPrototypeMethod(tpl, "init", BKeccak::Init);
+  Nan::SetPrototypeMethod(tpl, "update", BKeccak::Update);
+  Nan::SetPrototypeMethod(tpl, "final", BKeccak::Final);
+  Nan::SetMethod(tpl, "digest", BKeccak::Digest);
+  Nan::SetMethod(tpl, "root", BKeccak::Root);
+  Nan::SetMethod(tpl, "multi", BKeccak::Multi);
 
   v8::Local<v8::FunctionTemplate> ctor =
     Nan::New<v8::FunctionTemplate>(keccak_constructor);
@@ -38,17 +38,17 @@ Keccak::Init(v8::Local<v8::Object> &target) {
   target->Set(Nan::New("Keccak").ToLocalChecked(), ctor->GetFunction());
 }
 
-NAN_METHOD(Keccak::New) {
+NAN_METHOD(BKeccak::New) {
   if (!info.IsConstructCall())
-    return Nan::ThrowError("Could not create Keccak instance.");
+    return Nan::ThrowError("Could not create BKeccak instance.");
 
-  Keccak *keccak = new Keccak();
+  BKeccak *keccak = new BKeccak();
   keccak->Wrap(info.This());
   info.GetReturnValue().Set(info.This());
 }
 
-NAN_METHOD(Keccak::Init) {
-  Keccak *keccak = ObjectWrap::Unwrap<Keccak>(info.Holder());
+NAN_METHOD(BKeccak::Init) {
+  BKeccak *keccak = ObjectWrap::Unwrap<BKeccak>(info.Holder());
 
   uint32_t bits = 256;
 
@@ -79,8 +79,8 @@ NAN_METHOD(Keccak::Init) {
   info.GetReturnValue().Set(info.This());
 }
 
-NAN_METHOD(Keccak::Update) {
-  Keccak *keccak = ObjectWrap::Unwrap<Keccak>(info.Holder());
+NAN_METHOD(BKeccak::Update) {
+  BKeccak *keccak = ObjectWrap::Unwrap<BKeccak>(info.Holder());
 
   if (info.Length() < 1)
     return Nan::ThrowError("keccak.update() requires arguments.");
@@ -98,8 +98,8 @@ NAN_METHOD(Keccak::Update) {
   info.GetReturnValue().Set(info.This());
 }
 
-NAN_METHOD(Keccak::Final) {
-  Keccak *keccak = ObjectWrap::Unwrap<Keccak>(info.Holder());
+NAN_METHOD(BKeccak::Final) {
+  BKeccak *keccak = ObjectWrap::Unwrap<BKeccak>(info.Holder());
 
   bool std = false;
 
@@ -121,7 +121,7 @@ NAN_METHOD(Keccak::Final) {
     Nan::CopyBuffer((char *)&global_out[0], outlen).ToLocalChecked());
 }
 
-NAN_METHOD(Keccak::Digest) {
+NAN_METHOD(BKeccak::Digest) {
   if (info.Length() < 1)
     return Nan::ThrowError("keccak.digest() requires arguments.");
 
@@ -181,7 +181,7 @@ NAN_METHOD(Keccak::Digest) {
     Nan::CopyBuffer((char *)&global_out[0], outlen).ToLocalChecked());
 }
 
-NAN_METHOD(Keccak::Root) {
+NAN_METHOD(BKeccak::Root) {
   if (info.Length() < 2)
     return Nan::ThrowError("keccak.root() requires arguments.");
 
@@ -253,7 +253,7 @@ NAN_METHOD(Keccak::Root) {
     Nan::CopyBuffer((char *)&global_out[0], outlen).ToLocalChecked());
 }
 
-NAN_METHOD(Keccak::Multi) {
+NAN_METHOD(BKeccak::Multi) {
   if (info.Length() < 2)
     return Nan::ThrowError("keccak.multi() requires arguments.");
 
