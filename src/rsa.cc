@@ -60,8 +60,33 @@ bcrypto_rsa_type(const char *alg) {
     type = NID_sha384;
   else if (strcmp(alg, "sha512") == 0)
     type = NID_sha512;
-  // else if (strcmp(alg, "sha3") == 0)
-  //   type = NID_sha3_256;
+
+#if 0
+  else if (strcmp(alg, "blake2b") == 0)
+    type = NID_blake2b256;
+  else if (strcmp(alg, "blake2b160") == 0)
+    type = NID_blake2b160;
+  else if (strcmp(alg, "blake2b256") == 0)
+    type = NID_blake2b256;
+  else if (strcmp(alg, "blake2b512") == 0)
+    type = NID_blake2b512;
+  else if (strcmp(alg, "keccak") == 0)
+    type = NID_sha3_256;
+  else if (strcmp(alg, "keccak256") == 0)
+    type = NID_sha3_256;
+  else if (strcmp(alg, "keccak384") == 0)
+    type = NID_sha3_384;
+  else if (strcmp(alg, "keccak512") == 0)
+    type = NID_sha3_512;
+  else if (strcmp(alg, "sha3") == 0)
+    type = NID_sha3_256;
+  else if (strcmp(alg, "sha3-256") == 0)
+    type = NID_sha3_256;
+  else if (strcmp(alg, "sha3-384") == 0)
+    type = NID_sha3_384;
+  else if (strcmp(alg, "sha3-512") == 0)
+    type = NID_sha3_512;
+#endif
 
   return type;
 }
@@ -526,7 +551,7 @@ NAN_METHOD(BRSA::PrivateKeyVerify) {
 
 NAN_METHOD(BRSA::Verify) {
   if (info.Length() < 5)
-    return Nan::ThrowError("sha256.multi() requires arguments.");
+    return Nan::ThrowError("rsa.verify() requires arguments.");
 
   if (!info[0]->IsString())
     return Nan::ThrowTypeError("First argument must be a string.");
