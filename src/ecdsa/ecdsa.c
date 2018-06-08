@@ -1,8 +1,11 @@
+#include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
 #include "openssl/ecdsa.h"
+
+// https://github.com/openssl/openssl/blob/master/include/openssl/ec.h
 
 static int
 bcrypto_ecdsa_curve(const char *name) {
@@ -24,6 +27,8 @@ bcrypto_ecdsa_curve(const char *name) {
   return type;
 }
 
+// Note: could do this in js-land by
+// hard-coding all the orders.
 bool
 bcrypto_ecdsa_generate(const char *name, uint8_t **key, size_t *key_len) {
   EC_KEY *priv = NULL;
@@ -85,12 +90,12 @@ bcrypto_ecdsa_create_pub(
   if (!EC_KEY_oct2priv(priv, key, key_len, NULL))
     goto fail;
 
-  point_conversion_form_t pcf = compress
+  point_conversion_form_t form = compress
     ? POINT_CONVERSION_COMPRESSED
     : POINT_CONVERSION_UNCOMPRESSED;
 
   uint8_t *buf = NULL;
-  size_t s = EC_KEY_key2buf(priv, pcf, &buf, NULL);
+  size_t s = EC_KEY_key2buf(priv, form, &buf, NULL);
 
   if (!buf)
     goto fail;
@@ -133,12 +138,12 @@ bcrypto_ecdsa_convert_pub(
   if (!EC_KEY_oct2key(pub, key, key_len, NULL))
     goto fail;
 
-  point_conversion_form_t pcf = compress
+  point_conversion_form_t form = compress
     ? POINT_CONVERSION_COMPRESSED
     : POINT_CONVERSION_UNCOMPRESSED;
 
   uint8_t *buf = NULL;
-  size_t s = EC_KEY_key2buf(pub, pcf, &buf, NULL);
+  size_t s = EC_KEY_key2buf(pub, form, &buf, NULL);
 
   if (!buf)
     goto fail;
@@ -210,6 +215,8 @@ fail:
   return false;
 }
 
+// Note: could do this in js-land by
+// hard-coding all the orders.
 bool
 bcrypto_ecdsa_verify_priv(
   const char *name,
@@ -326,12 +333,15 @@ bcrypto_ecdsa_ecdh(
   size_t privkey_len,
   const uint8_t *pubkey,
   size_t pubkey_len,
+  bool compress,
   const uint8_t **out,
   size_t *out_len
 ) {
   EC_KEY *priv = NULL;
   EC_KEY *pub = NULL;
-  uint8_t *o = NULL;
+  uint8_t *secret = NULL;
+  BIGNUM *n = NULL;
+  uint8_t *buf = NULL;
 
   int type = bcrypto_ecdsa_curve(name);
 
@@ -359,23 +369,48 @@ bcrypto_ecdsa_ecdh(
 
   // https://wiki.openssl.org/index.php/Elliptic_Curve_Diffie_Hellman
   int field_size = EC_GROUP_get_degree(EC_KEY_get0_group(priv));
-  size_t olen = (field_size + 7) / 8;
+  size_t secret_len = (field_size + 7) / 8;
 
-  o = malloc(olen);
+  secret = malloc(secret_len);
 
-  if (!o)
+  if (!secret)
     goto fail;
 
-  olen = ECDH_compute_key(o, olen, point, priv, NULL);
+  secret_len = ECDH_compute_key(secret, secret_len, point, priv, NULL);
 
-  if ((int)olen <= 0)
+  if ((int)secret_len <= 0)
+    goto fail;
+
+  n = BN_bin2bn(secret, secret_len, NULL);
+
+  if (!n)
+    goto fail;
+
+  const EC_GROUP *group = EC_KEY_get0_group(priv);
+  assert(group);
+
+  EC_POINT *point = EC_POINT_bn2point(group, n, NULL, NULL);
+
+  if (!point)
+    goto fail;
+
+  point_conversion_form_t form = compress
+    ? POINT_CONVERSION_COMPRESSED
+    : POINT_CONVERSION_UNCOMPRESSED;
+
+  size_t buf_len = EC_POINT_point2buf(group, point, form, &buf, NULL);
+
+  if ((int)buf_len <= 0)
     goto fail;
 
   EC_KEY_free(priv);
   EC_KEY_free(pub);
+  free(secret);
+  BN_free_clear(n);
+  EC_POINT_free(point);
 
-  *out = o;
-  *out_len = olen;
+  *out = buf;
+  *out_len = buf_len;
 
   return true;
 
@@ -386,8 +421,17 @@ fail:
   if (pub)
     EC_KEY_free(pub);
 
-  if (o)
-    free(o);
+  if (secret)
+    free(secret);
+
+  if (n)
+    BN_free_clear(n);
+
+  if (point)
+    EC_POINT_free(point);
+
+  if (buf)
+    free(buf);
 
   return false;
 }
@@ -396,9 +440,113 @@ fail:
  * TODO
  */
 
-// bcrypto_ecdsa_tweak_priv()
-// bcrypto_ecdsa_tweak_pub()
-// bcrypto_ecdsa_is_low_der() - could implement in js
+bool
+bcrypto_ecdsa_tweak_priv(
+  const char *name,
+  const uint8_t *key,
+  size_t key_len,
+  const uint8_t *tweak,
+  size_t tweak_len,
+  const uint8_t **out,
+  size_t *out_len
+) {
+  int type = bcrypto_ecdsa_curve(name);
+
+  if (type == -1)
+    goto fail;
+
+  // LOGIC:
+  // k = bin2bn(tweak)
+  // k = k + bin2bn(key)
+  // k = k % N
+  // return BN_bn2bin(k) - padded to field_size
+
+fail:
+  return false;
+}
+
+bool
+bcrypto_ecdsa_tweak_pub(
+  const char *name,
+  const uint8_t *key,
+  size_t key_len,
+  const uint8_t *tweak,
+  size_t tweak_len,
+  bool compress,
+  const uint8_t **out,
+  size_t *out_len
+) {
+  int type = bcrypto_ecdsa_curve(name);
+
+  if (type == -1)
+    goto fail;
+
+  // LOGIC:
+  // key_point = oct2point(key)
+  // tweak_bn = bin2bn(tweak)
+  // tweak_point = bn2point(tweak_bn)
+  // point = tweak_point + key_point
+  // return point2buf(point)
+fail:
+  return false;
+}
+
+bool
+bcrypto_ecdsa_is_low_der(
+  const char *name,
+  const uint8_t *sig,
+  size_t sig_len
+) {
+  int type = bcrypto_ecdsa_curve(name);
+
+  if (type == -1)
+    goto fail;
+
+  // Note: could do this in js-land by
+  // hard-coding all the half-orders.
+  // LOGIC:
+  // key = EC_KEY_new_by_curve_name(type);
+  // group = EC_KEY_get0_group(key)
+  // N = BN_new()
+  // EC_group_get_order(group, order, null)
+  // signature = d2i_ECDSA_SIG(sig)
+  // s = ECDSA_SIG_get0_s(signature)
+  // return s != 0 && s <= (N >> 1)
+fail:
+  return false;
+}
+
+bool
+bcrypto_ecdsa_is_low_s(
+  const char *name,
+  const uint8_t *sval,
+  size_t sval_len
+) {
+  int type = bcrypto_ecdsa_curve(name);
+
+  if (type == -1)
+    goto fail;
+
+  // Note: could do this in js-land by
+  // hard-coding all the half-orders.
+  // LOGIC:
+  // key = EC_KEY_new_by_curve_name(type);
+  // group = EC_KEY_get0_group(key)
+  // N = BN_new()
+  // EC_group_get_order(group, order, null)
+  // s = BN_bin2bn(s)
+  // return s != 0 && s <= (N >> 1)
+fail:
+  return false;
+}
+
+// Maybe also:
+// recover - no openssl function - hard
+// signatureImport
+// signatureImportLax
+// signatureExport
+// fromDER
+// toDER
 
 /*
  * Helpers
@@ -439,18 +587,25 @@ fail:
 static bool
 bcrypto_ecdsa_priv2buf(const EC_KEY *key, uint8_t **buf, size_t *buf_len) {
   const BIGNUM *n = EC_KEY_get0_private_key(key);
+  assert(n);
+
+  int field_size = EC_GROUP_get_degree(EC_KEY_get0_group(key));
+  size_t size = (field_size + 7) / 8;
+
   size_t s = BN_num_bytes(n);
-  uint8_t *nd = malloc(s);
+  assert(s <= size);
+  size_t off = size - s;
+
+  uint8_t *nd = malloc(size);
 
   if (!nd)
     return false;
 
-  assert(BN_bn2bin(n, nd) != 0);
-
-  // XXX need to pad here.
+  memset(nd, 0x00, off);
+  assert(BN_bn2bin(n, &nd[off]) != 0);
 
   *buf = nd;
-  *buf_len = s;
+  *buf_len = size;
 
   return true;
 }
