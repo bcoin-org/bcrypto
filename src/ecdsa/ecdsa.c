@@ -45,6 +45,9 @@ bcrypto_ecdsa_order(const char *name, size_t *size) {
   if (type == -1)
     goto fail;
 
+  // We need the group, and I have no
+  // idea how to easily get it by nid
+  // other than allocating a key!
   key_ec = EC_KEY_new_by_curve_name(type);
 
   if (!key_ec)
@@ -62,7 +65,7 @@ bcrypto_ecdsa_order(const char *name, size_t *size) {
     goto fail;
 
   if (size) {
-    int field_size = EC_GROUP_get_degree(EC_KEY_get0_group(key_ec));
+    int field_size = EC_GROUP_get_degree(group);
     *size = (field_size + 7) / 8;
   }
 
