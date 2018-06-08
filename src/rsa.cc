@@ -371,14 +371,14 @@ NAN_METHOD(BRSA::PrivateKeyGenerate) {
   uint8_t *qid = &arena[pos];
   pos += qil;
 
-  assert(BN_bn2bin(n, nd) != 0);
-  assert(BN_bn2bin(e, ed) != 0);
-  assert(BN_bn2bin(d, dd) != 0);
-  assert(BN_bn2bin(p, pd) != 0);
-  assert(BN_bn2bin(q, qd) != 0);
-  assert(BN_bn2bin(dp, dpd) != 0);
-  assert(BN_bn2bin(dq, dqd) != 0);
-  assert(BN_bn2bin(qi, qid) != 0);
+  assert(BN_bn2bin(n, nd) != -1);
+  assert(BN_bn2bin(e, ed) != -1);
+  assert(BN_bn2bin(d, dd) != -1);
+  assert(BN_bn2bin(p, pd) != -1);
+  assert(BN_bn2bin(q, qd) != -1);
+  assert(BN_bn2bin(dp, dpd) != -1);
+  assert(BN_bn2bin(dq, dqd) != -1);
+  assert(BN_bn2bin(qi, qid) != -1);
 
   RSA_free(key);
 
