@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "openssl/ecdsa.h"
+#include "openssl/objects.h"
 #include "ecdsa.h"
 
 // https://github.com/openssl/openssl/blob/master/include/openssl/bn.h
@@ -19,17 +20,17 @@ static int
 bcrypto_ecdsa_curve(const char *name) {
   int type = -1;
 
-  if (strcmp(alg, "p192") == 0)
-    type = NID_prime192v1;
-  else if (strcmp(alg, "p224") == 0)
+  if (strcmp(name, "p192") == 0)
+    type = NID_X9_62_prime192v1;
+  else if (strcmp(name, "p224") == 0)
     type = NID_secp224r1;
-  else if (strcmp(alg, "p256") == 0)
-    type = NID_prime256v1;
-  else if (strcmp(alg, "p384") == 0)
+  else if (strcmp(name, "p256") == 0)
+    type = NID_X9_62_prime256v1;
+  else if (strcmp(name, "p384") == 0)
     type = NID_secp384r1;
-  else if (strcmp(alg, "p521") == 0)
+  else if (strcmp(name, "p521") == 0)
     type = NID_secp521r1;
-  else if (strcmp(alg, "secp256k1") == 0)
+  else if (strcmp(name, "secp256k1") == 0)
     type = NID_secp256k1;
 
   return type;
@@ -37,12 +38,18 @@ bcrypto_ecdsa_curve(const char *name) {
 
 static BIGNUM *
 bcrypto_ecdsa_order(const char *name, size_t *size) {
+  BN_CTX *ctx = NULL;
   EC_KEY *key_ec = NULL;
   BIGNUM *order_bn = NULL;
 
   int type = bcrypto_ecdsa_curve(name);
 
   if (type == -1)
+    goto fail;
+
+  ctx = BN_CTX_new();
+
+  if (!ctx)
     goto fail;
 
   // We need the group, and I have no
@@ -53,7 +60,7 @@ bcrypto_ecdsa_order(const char *name, size_t *size) {
   if (!key_ec)
     goto fail;
 
-  const EC_GROUP *group = EC_KEY_get0_group(key_ec)
+  const EC_GROUP *group = EC_KEY_get0_group(key_ec);
   assert(group);
 
   order_bn = BN_new();
@@ -61,7 +68,7 @@ bcrypto_ecdsa_order(const char *name, size_t *size) {
   if (!order_bn)
     goto fail;
 
-  if (!EC_group_get_order(group, order_bn, NULL))
+  if (!EC_GROUP_get_order(group, order_bn, ctx))
     goto fail;
 
   if (size) {
@@ -70,6 +77,7 @@ bcrypto_ecdsa_order(const char *name, size_t *size) {
   }
 
   EC_KEY_free(key_ec);
+  BN_CTX_free(ctx);
 
   return order_bn;
 
@@ -80,7 +88,97 @@ fail:
   if (order_bn)
     BN_free(order_bn);
 
+  if (ctx)
+    BN_CTX_free(ctx);
+
   return NULL;
+}
+
+static ECDSA_SIG *
+bcrypto_ecdsa_rs2sig(
+  const uint8_t *r,
+  size_t r_len,
+  const uint8_t *s,
+  size_t s_len
+) {
+  ECDSA_SIG *sig_ec = NULL;
+  BIGNUM *r_bn = NULL;
+  BIGNUM *s_bn = NULL;
+
+  sig_ec = ECDSA_SIG_new();
+
+  if (!sig_ec)
+    goto fail;
+
+  r_bn = BN_bin2bn(r, r_len, NULL);
+
+  if (!r_bn)
+    goto fail;
+
+  s_bn = BN_bin2bn(s, s_len, NULL);
+
+  if (!s_bn)
+    goto fail;
+
+  if (!ECDSA_SIG_set0(sig_ec, r_bn, s_bn))
+    goto fail;
+
+  return sig_ec;
+
+fail:
+  if (sig_ec)
+    ECDSA_SIG_free(sig_ec);
+
+  if (r_bn)
+    BN_free(r_bn);
+
+  if (s_bn)
+    BN_free(s_bn);
+
+  return NULL;
+}
+
+static bool
+bcrypto_ecdsa_sig2rs(
+  const ECDSA_SIG *sig_ec,
+  size_t size,
+  uint8_t **r,
+  uint8_t **s
+) {
+  uint8_t *r_buf = NULL;
+  uint8_t *s_buf = NULL;
+
+  const BIGNUM *r_bn;
+  const BIGNUM *s_bn;
+
+  ECDSA_SIG_get0(sig_ec, &r_bn, &s_bn);
+
+  assert(r_bn && s_bn);
+  assert((size_t)BN_num_bytes(r_bn) <= size);
+  assert((size_t)BN_num_bytes(s_bn) <= size);
+
+  r_buf = malloc(size);
+  s_buf = malloc(size);
+
+  if (!r_buf || !s_buf)
+    goto fail;
+
+  assert(BN_bn2binpad(r_bn, r_buf, size) > 0);
+  assert(BN_bn2binpad(s_bn, s_buf, size) > 0);
+
+  *r = r_buf;
+  *s = s_buf;
+
+  return true;
+
+fail:
+  if (r_buf)
+    free(r_buf);
+
+  if (s_buf)
+    free(s_buf);
+
+  return false;
 }
 
 // Note: could do this in js-land by
@@ -129,13 +227,15 @@ fail:
 bool
 bcrypto_ecdsa_create_pub(
   const char *name,
-  uint8_t *priv,
+  const uint8_t *priv,
   size_t priv_len,
   bool compress,
   uint8_t **pub,
   size_t *pub_len
 ) {
+  BN_CTX *ctx = NULL;
   EC_KEY *priv_ec = NULL;
+  EC_POINT *pub_point = NULL;
   uint8_t *pub_buf = NULL;
   size_t pub_buf_len = 0;
 
@@ -144,24 +244,48 @@ bcrypto_ecdsa_create_pub(
   if (type == -1)
     goto fail;
 
+  ctx = BN_CTX_new();
+
+  if (!ctx)
+    goto fail;
+
   priv_ec = EC_KEY_new_by_curve_name(type);
 
   if (!priv_ec)
     goto fail;
 
-  if (!EC_KEY_oct2priv(priv_ec, priv, priv_len, NULL))
+  if (!EC_KEY_oct2priv(priv_ec, priv, priv_len))
+    goto fail;
+
+  const EC_GROUP *group = EC_KEY_get0_group(priv_ec);
+  assert(group);
+
+  pub_point = EC_POINT_new(group);
+
+  if (!pub_point)
+    goto fail;
+
+  const BIGNUM *priv_bn = EC_KEY_get0_private_key(priv_ec);
+  assert(priv_bn);
+
+  if (!EC_POINT_mul(group, pub_point, priv_bn, NULL, NULL, ctx))
+    goto fail;
+
+  if (!EC_KEY_set_public_key(priv_ec, pub_point))
     goto fail;
 
   point_conversion_form_t form = compress
     ? POINT_CONVERSION_COMPRESSED
     : POINT_CONVERSION_UNCOMPRESSED;
 
-  pub_buf_len = EC_KEY_key2buf(priv_ec, form, &pub_buf, NULL);
+  pub_buf_len = EC_KEY_key2buf(priv_ec, form, &pub_buf, ctx);
 
   if ((int)pub_buf_len <= 0)
     goto fail;
 
   EC_KEY_free(priv_ec);
+  EC_POINT_free(pub_point);
+  BN_CTX_free(ctx);
 
   *pub = pub_buf;
   *pub_len = pub_buf_len;
@@ -172,6 +296,12 @@ fail:
   if (priv_ec)
     EC_KEY_free(priv_ec);
 
+  if (pub_point)
+    EC_POINT_free(pub_point);
+
+  if (ctx)
+    BN_CTX_free(ctx);
+
   if (pub_buf)
     free(pub_buf);
 
@@ -181,12 +311,13 @@ fail:
 bool
 bcrypto_ecdsa_convert_pub(
   const char *name,
-  uint8_t *pub,
+  const uint8_t *pub,
   size_t pub_len,
   bool compress,
   uint8_t **npub,
   size_t *npub_len
 ) {
+  BN_CTX *ctx = NULL;
   EC_KEY *pub_ec = NULL;
   uint8_t *npub_buf = NULL;
   size_t npub_buf_len = 0;
@@ -196,24 +327,30 @@ bcrypto_ecdsa_convert_pub(
   if (type == -1)
     goto fail;
 
+  ctx = BN_CTX_new();
+
+  if (!ctx)
+    goto fail;
+
   pub_ec = EC_KEY_new_by_curve_name(type);
 
   if (!pub_ec)
     goto fail;
 
-  if (!EC_KEY_oct2key(pub_ec, pub, pub_len, NULL))
+  if (!EC_KEY_oct2key(pub_ec, pub, pub_len, ctx))
     goto fail;
 
   point_conversion_form_t form = compress
     ? POINT_CONVERSION_COMPRESSED
     : POINT_CONVERSION_UNCOMPRESSED;
 
-  npub_buf_len = EC_KEY_key2buf(pub_ec, form, &npub_buf, NULL);
+  npub_buf_len = EC_KEY_key2buf(pub_ec, form, &npub_buf, ctx);
 
   if ((int)npub_buf_len <= 0)
     goto fail;
 
   EC_KEY_free(pub_ec);
+  BN_CTX_free(ctx);
 
   *npub = npub_buf;
   *npub_len = npub_buf_len;
@@ -223,6 +360,9 @@ bcrypto_ecdsa_convert_pub(
 fail:
   if (pub_ec)
     EC_KEY_free(pub_ec);
+
+  if (ctx)
+    BN_CTX_free(ctx);
 
   if (npub_buf)
     free(npub_buf);
@@ -237,12 +377,13 @@ bcrypto_ecdsa_sign(
   size_t msg_len,
   const uint8_t *priv,
   size_t priv_len,
-  uint8_t **sig,
-  size_t *sig_len
+  uint8_t **r,
+  size_t *r_len,
+  uint8_t **s,
+  size_t *s_len
 ) {
   EC_KEY *priv_ec = NULL;
-  uint8_t *sig_buf = NULL;
-  size_t sig_buf_len = 0;
+  ECDSA_SIG *sig_ec = NULL;
 
   int type = bcrypto_ecdsa_curve(name);
 
@@ -254,22 +395,26 @@ bcrypto_ecdsa_sign(
   if (!priv_ec)
     goto fail;
 
-  if (!EC_KEY_oct2priv(priv_ec, priv, priv_len, NULL))
+  if (!EC_KEY_oct2priv(priv_ec, priv, priv_len))
     goto fail;
 
-  sig_buf_len = ECDSA_size(priv_ec);
-  sig_buf = malloc(sig_buf_len);
+  sig_ec = ECDSA_do_sign(msg, msg_len, priv_ec);
 
-  if (!sig_buf)
+  if (!sig_ec)
     goto fail;
 
-  if (!ECDSA_sign(type, msg, msg_len, sig_buf, &sig_buf_len, priv_ec))
+  const EC_GROUP *group = EC_KEY_get0_group(priv_ec);
+  int field_bits = EC_GROUP_get_degree(group);
+  size_t field_size = (field_bits + 7) / 8;
+
+  if (!bcrypto_ecdsa_sig2rs(sig_ec, field_size, r, s))
     goto fail;
 
-  *sig = sig_buf;
-  *sig_len = sig_buf_len;
+  *r_len = field_size;
+  *s_len = field_size;
 
   EC_KEY_free(priv_ec);
+  ECDSA_SIG_free(sig_ec);
 
   return true;
 
@@ -277,8 +422,8 @@ fail:
   if (priv_ec)
     EC_KEY_free(priv_ec);
 
-  if (sig_buf)
-    free(sig_buf);
+  if (sig_ec)
+    ECDSA_SIG_free(sig_ec);
 
   return false;
 }
@@ -303,7 +448,7 @@ bcrypto_ecdsa_verify_priv(
   if (!priv_ec)
     goto fail;
 
-  if (!EC_KEY_oct2priv(priv_ec, priv, priv_len, NULL))
+  if (!EC_KEY_oct2priv(priv_ec, priv, priv_len))
     goto fail;
 
   if (!EC_KEY_check_key(priv_ec))
@@ -325,16 +470,25 @@ bcrypto_ecdsa_verify(
   const char *name,
   const uint8_t *msg,
   size_t msg_len,
-  const uint8_t *sig,
-  size_t sig_len,
+  const uint8_t *r,
+  size_t r_len,
+  const uint8_t *s,
+  size_t s_len,
   const uint8_t *pub,
   size_t pub_len
 ) {
+  BN_CTX *ctx = NULL;
   EC_KEY *pub_ec = NULL;
+  ECDSA_SIG *sig_ec = NULL;
 
   int type = bcrypto_ecdsa_curve(name);
 
   if (type == -1)
+    goto fail;
+
+  ctx = BN_CTX_new();
+
+  if (!ctx)
     goto fail;
 
   pub_ec = EC_KEY_new_by_curve_name(type);
@@ -342,25 +496,39 @@ bcrypto_ecdsa_verify(
   if (!pub_ec)
     goto fail;
 
-  if (!EC_KEY_oct2key(pub_ec, pub, pub_len, NULL))
+  if (!EC_KEY_oct2key(pub_ec, pub, pub_len, ctx))
     goto fail;
 
-  if (!ECDSA_verify(type, msg, msg_len, sig, sig_len, pub_ec))
+  sig_ec = bcrypto_ecdsa_rs2sig(r, r_len, s, s_len);
+
+  if (!sig_ec)
+    goto fail;
+
+  if (!ECDSA_do_verify(msg, msg_len, sig_ec, pub_ec))
     goto fail;
 
   EC_KEY_free(pub_ec);
+  ECDSA_SIG_free(sig_ec);
+  BN_CTX_free(ctx);
 
   return true;
 
 fail:
   if (pub_ec)
     EC_KEY_free(pub_ec);
+
+  if (sig_ec)
+    ECDSA_SIG_free(sig_ec);
+
+  if (ctx)
+    BN_CTX_free(ctx);
 
   return false;
 }
 
 bool
 bcrypto_ecdsa_verify_pub(const char *name, const uint8_t *pub, size_t pub_len) {
+  BN_CTX *ctx = NULL;
   EC_KEY *pub_ec = NULL;
 
   int type = bcrypto_ecdsa_curve(name);
@@ -368,24 +536,33 @@ bcrypto_ecdsa_verify_pub(const char *name, const uint8_t *pub, size_t pub_len) {
   if (type == -1)
     goto fail;
 
+  ctx = BN_CTX_new();
+
+  if (!ctx)
+    goto fail;
+
   pub_ec = EC_KEY_new_by_curve_name(type);
 
   if (!pub_ec)
     goto fail;
 
-  if (!EC_KEY_oct2key(pub_ec, pub, pub_len, NULL))
+  if (!EC_KEY_oct2key(pub_ec, pub, pub_len, ctx))
     goto fail;
 
-  if (!ECDSA_check_key(pub_ec))
+  if (!EC_KEY_check_key(pub_ec))
     goto fail;
 
   EC_KEY_free(pub_ec);
+  BN_CTX_free(ctx);
 
   return true;
 
 fail:
   if (pub_ec)
     EC_KEY_free(pub_ec);
+
+  if (ctx)
+    BN_CTX_free(ctx);
 
   return false;
 }
@@ -393,14 +570,15 @@ fail:
 bool
 bcrypto_ecdsa_ecdh(
   const char *name,
-  const uint8_t *priv,
-  size_t priv_len,
   const uint8_t *pub,
   size_t pub_len,
+  const uint8_t *priv,
+  size_t priv_len,
   bool compress,
   uint8_t **secret,
   size_t *secret_len
 ) {
+  BN_CTX *ctx = NULL;
   EC_KEY *priv_ec = NULL;
   EC_KEY *pub_ec = NULL;
   uint8_t *raw_secret = NULL;
@@ -414,12 +592,17 @@ bcrypto_ecdsa_ecdh(
   if (type == -1)
     goto fail;
 
+  ctx = BN_CTX_new();
+
+  if (!ctx)
+    goto fail;
+
   priv_ec = EC_KEY_new_by_curve_name(type);
 
   if (!priv_ec)
     goto fail;
 
-  if (!EC_KEY_oct2priv(priv_ec, priv, priv_len, NULL))
+  if (!EC_KEY_oct2priv(priv_ec, priv, priv_len))
     goto fail;
 
   pub_ec = EC_KEY_new_by_curve_name(type);
@@ -427,7 +610,7 @@ bcrypto_ecdsa_ecdh(
   if (!pub_ec)
     goto fail;
 
-  if (!EC_KEY_oct2key(pub_ec, pub, pub_len, NULL))
+  if (!EC_KEY_oct2key(pub_ec, pub, pub_len, ctx))
     goto fail;
 
   const EC_POINT *pub_point = EC_KEY_get0_public_key(pub_ec);
@@ -460,9 +643,12 @@ bcrypto_ecdsa_ecdh(
   if (!secret_bn)
     goto fail;
 
-  secret_point = EC_POINT_bn2point(group, secret_bn, NULL, NULL);
+  secret_point = EC_POINT_new(group);
 
   if (!secret_point)
+    goto fail;
+
+  if (!EC_POINT_mul(group, secret_point, secret_bn, NULL, NULL, ctx))
     goto fail;
 
   point_conversion_form_t form = compress
@@ -485,6 +671,7 @@ bcrypto_ecdsa_ecdh(
   free(raw_secret);
   BN_clear_free(secret_bn);
   EC_POINT_free(secret_point);
+  BN_CTX_free(ctx);
 
   *secret = secret_buf;
   *secret_len = secret_buf_len;
@@ -507,6 +694,9 @@ fail:
   if (secret_point)
     EC_POINT_free(secret_point);
 
+  if (ctx)
+    BN_CTX_free(ctx);
+
   if (secret_buf)
     free(secret_buf);
 
@@ -523,10 +713,16 @@ bcrypto_ecdsa_tweak_priv(
   uint8_t **npriv,
   size_t *npriv_len
 ) {
+  BN_CTX *ctx = NULL;
   BIGNUM *order_bn = NULL;
   BIGNUM *priv_bn = NULL;
   BIGNUM *tweak_bn = NULL;
   uint8_t *npriv_buf = NULL;
+
+  ctx = BN_CTX_new();
+
+  if (!ctx)
+    goto fail;
 
   size_t size;
   order_bn = bcrypto_ecdsa_order(name, &size);
@@ -553,17 +749,13 @@ bcrypto_ecdsa_tweak_priv(
   if (!tweak_bn)
     goto fail;
 
-  // BN_mod_add??
-  if (!BN_add(priv_bn, priv_bn, tweak_bn))
-    goto fail;
-
-  if (!BN_mod(priv_bn, priv_bn, order_bn))
+  if (!BN_mod_add(priv_bn, priv_bn, tweak_bn, order_bn, ctx))
     goto fail;
 
   if (BN_is_zero(priv_bn))
     goto fail;
 
-  assert(BN_num_bytes(priv_bn) <= size);
+  assert((size_t)BN_num_bytes(priv_bn) <= size);
 
   npriv_buf = malloc(size);
 
@@ -575,6 +767,7 @@ bcrypto_ecdsa_tweak_priv(
   BN_free(order_bn);
   BN_clear_free(priv_bn);
   BN_clear_free(tweak_bn);
+  BN_CTX_free(ctx);
 
   *npriv = npriv_buf;
   *npriv_len = size;
@@ -590,6 +783,9 @@ fail:
 
   if (tweak_bn)
     BN_clear_free(tweak_bn);
+
+  if (ctx)
+    BN_CTX_free(ctx);
 
   if (npriv_buf)
     free(npriv_buf);
@@ -608,11 +804,17 @@ bcrypto_ecdsa_tweak_pub(
   uint8_t **npub,
   size_t *npub_len
 ) {
+  BN_CTX *ctx = NULL;
   EC_KEY *pub_ec = NULL;
   BIGNUM *tweak_bn = NULL;
   EC_POINT *tweak_point = NULL;
   uint8_t *npub_buf = NULL;
   size_t npub_buf_len = 0;
+
+  ctx = BN_CTX_new();
+
+  if (!ctx)
+    goto fail;
 
   int type = bcrypto_ecdsa_curve(name);
 
@@ -624,7 +826,7 @@ bcrypto_ecdsa_tweak_pub(
   if (!pub_ec)
     goto fail;
 
-  if (!EC_KEY_oct2key(pub_ec, pub, pub_len, NULL))
+  if (!EC_KEY_oct2key(pub_ec, pub, pub_len, ctx))
     goto fail;
 
   tweak_bn = BN_bin2bn(tweak, tweak_len, NULL);
@@ -638,12 +840,15 @@ bcrypto_ecdsa_tweak_pub(
   const EC_GROUP *group = EC_KEY_get0_group(pub_ec);
   assert(group);
 
-  tweak_point = EC_POINT_bn2point(group, tweak_bn, NULL, NULL);
+  tweak_point = EC_POINT_new(group);
 
   if (!tweak_point)
     goto fail;
 
-  if (!EC_POINT_add(group, tweak_point, key_point, tweak_point, NULL))
+  if (!EC_POINT_mul(group, tweak_point, tweak_bn, NULL, NULL, ctx))
+    goto fail;
+
+  if (!EC_POINT_add(group, tweak_point, key_point, tweak_point, ctx))
     goto fail;
 
   // EC_POINT_mod??
@@ -652,7 +857,7 @@ bcrypto_ecdsa_tweak_pub(
     ? POINT_CONVERSION_COMPRESSED
     : POINT_CONVERSION_UNCOMPRESSED;
 
-  npub_buf_len = EC_POINT_point2buf(group, tweak_point, form, &npub_buf, NULL);
+  npub_buf_len = EC_POINT_point2buf(group, tweak_point, form, &npub_buf, ctx);
 
   if ((int)npub_buf_len <= 0)
     goto fail;
@@ -660,6 +865,7 @@ bcrypto_ecdsa_tweak_pub(
   EC_KEY_free(pub_ec);
   BN_clear_free(tweak_bn);
   EC_POINT_free(tweak_point);
+  BN_CTX_free(ctx);
 
   *npub = npub_buf;
   *npub_len = npub_buf_len;
@@ -676,67 +882,11 @@ fail:
   if (tweak_point)
     EC_POINT_free(tweak_point);
 
+  if (ctx)
+    BN_CTX_free(ctx);
+
   if (npub_buf)
     free(npub_buf);
-
-  return false;
-}
-
-bool
-bcrypto_ecdsa_is_low_der(const char *name, const uint8_t *sig, size_t sig_len) {
-  ECDSA_SIG *sig_ec = NULL;
-  BIGNUM *order_bn = NULL;
-
-  if (!d2i_ECDSA_SIG(&sig_ec, &sig, sig_len))
-    goto fail;
-
-  const BIGNUM *r = ECDSA_SIG_get0_r(sig_ec);
-  assert(r);
-
-  const BIGNUM *s = ECDSA_SIG_get0_s(sig_ec);
-  assert(s);
-
-  if (BN_is_zero(r))
-    goto fail;
-
-  if (BN_is_negative(r))
-    goto fail;
-
-  if (BN_is_zero(s))
-    goto fail;
-
-  if (BN_is_negative(s))
-    goto fail;
-
-  size_t size;
-  order_bn = bcrypto_ecdsa_order(name, &size);
-
-  if (!order_bn)
-    goto fail;
-
-  if (BN_num_bytes(r) > size)
-    goto fail;
-
-  if (BN_num_bytes(s) > size)
-    goto fail;
-
-  if (!BN_rshift1(order_bn, order_bn))
-    goto fail;
-
-  if (BN_cmp(s, order_bn) > 0)
-    goto fail;
-
-  ECDSA_SIG_free(sig_ec);
-  BN_free(order_bn);
-
-  return true;
-
-fail:
-  if (sig_ec)
-    ECDSA_SIG_free(sig_ec);
-
-  if (order_bn)
-    BN_free(order_bn);
 
   return false;
 }

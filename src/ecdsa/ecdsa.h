@@ -14,7 +14,7 @@ bcrypto_ecdsa_generate(const char *name, uint8_t **priv, size_t *priv_len);
 bool
 bcrypto_ecdsa_create_pub(
   const char *name,
-  uint8_t *priv,
+  const uint8_t *priv,
   size_t priv_len,
   bool compress,
   uint8_t **pub,
@@ -24,7 +24,7 @@ bcrypto_ecdsa_create_pub(
 bool
 bcrypto_ecdsa_convert_pub(
   const char *name,
-  uint8_t *pub,
+  const uint8_t *pub,
   size_t pub_len,
   bool compress,
   uint8_t **npub,
@@ -38,8 +38,10 @@ bcrypto_ecdsa_sign(
   size_t msg_len,
   const uint8_t *priv,
   size_t priv_len,
-  uint8_t **sig,
-  size_t *sig_len
+  uint8_t **r,
+  size_t *r_len,
+  uint8_t **s,
+  size_t *s_len
 );
 
 bool
@@ -54,8 +56,10 @@ bcrypto_ecdsa_verify(
   const char *name,
   const uint8_t *msg,
   size_t msg_len,
-  const uint8_t *sig,
-  size_t sig_len,
+  const uint8_t *r,
+  size_t r_len,
+  const uint8_t *s,
+  size_t s_len,
   const uint8_t *pub,
   size_t pub_len
 );
@@ -66,10 +70,10 @@ bcrypto_ecdsa_verify_pub(const char *name, const uint8_t *pub, size_t pub_len);
 bool
 bcrypto_ecdsa_ecdh(
   const char *name,
-  const uint8_t *priv,
-  size_t priv_len,
   const uint8_t *pub,
   size_t pub_len,
+  const uint8_t *priv,
+  size_t priv_len,
   bool compress,
   uint8_t **secret,
   size_t *secret_len
@@ -97,9 +101,6 @@ bcrypto_ecdsa_tweak_pub(
   uint8_t **npub,
   size_t *npub_len
 );
-
-bool
-bcrypto_ecdsa_is_low_der(const char *name, const uint8_t *sig, size_t sig_len);
 
 #if defined(__cplusplus)
 }
