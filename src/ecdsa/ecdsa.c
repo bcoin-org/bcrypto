@@ -140,20 +140,49 @@ fail:
 
 static bool
 bcrypto_ecdsa_sig2rs(
+  const EC_GROUP *group,
   const ECDSA_SIG *sig_ec,
-  size_t size,
   uint8_t **r,
   uint8_t **s
 ) {
+  BN_CTX *ctx = NULL;
   uint8_t *r_buf = NULL;
   uint8_t *s_buf = NULL;
+  BIGNUM *order_bn = NULL;
+  BIGNUM *half_bn = NULL;
+
+  ctx = BN_CTX_new();
+
+  if (!ctx)
+    goto fail;
 
   const BIGNUM *r_bn;
   const BIGNUM *s_bn;
 
   ECDSA_SIG_get0(sig_ec, &r_bn, &s_bn);
-
   assert(r_bn && s_bn);
+
+  order_bn = BN_new();
+  half_bn = BN_new();
+
+  if (!order_bn || !half_bn)
+    goto fail;
+
+  if (!EC_GROUP_get_order(group, order_bn, ctx))
+    goto fail;
+
+  if (!BN_rshift1(half_bn, order_bn))
+    goto fail;
+
+  if (BN_cmp(s_bn, half_bn) > 0) {
+    if (!BN_sub(order_bn, order_bn, s_bn))
+      goto fail;
+    s_bn = (const BIGNUM *)order_bn;
+  }
+
+  int bits = EC_GROUP_get_degree(group);
+  size_t size = (bits + 7) / 8;
+
   assert((size_t)BN_num_bytes(r_bn) <= size);
   assert((size_t)BN_num_bytes(s_bn) <= size);
 
@@ -166,12 +195,25 @@ bcrypto_ecdsa_sig2rs(
   assert(BN_bn2binpad(r_bn, r_buf, size) > 0);
   assert(BN_bn2binpad(s_bn, s_buf, size) > 0);
 
+  BN_free(order_bn);
+  BN_free(half_bn);
+  BN_CTX_free(ctx);
+
   *r = r_buf;
   *s = s_buf;
 
   return true;
 
 fail:
+  if (order_bn)
+    BN_free(order_bn);
+
+  if (half_bn)
+    BN_free(half_bn);
+
+  if (ctx)
+    BN_CTX_free(ctx);
+
   if (r_buf)
     free(r_buf);
 
@@ -404,14 +446,14 @@ bcrypto_ecdsa_sign(
     goto fail;
 
   const EC_GROUP *group = EC_KEY_get0_group(priv_ec);
-  int field_bits = EC_GROUP_get_degree(group);
-  size_t field_size = (field_bits + 7) / 8;
+  int bits = EC_GROUP_get_degree(group);
+  size_t size = (bits + 7) / 8;
 
-  if (!bcrypto_ecdsa_sig2rs(sig_ec, field_size, r, s))
+  if (!bcrypto_ecdsa_sig2rs(group, sig_ec, r, s))
     goto fail;
 
-  *r_len = field_size;
-  *s_len = field_size;
+  *r_len = size;
+  *s_len = size;
 
   EC_KEY_free(priv_ec);
   ECDSA_SIG_free(sig_ec);
