@@ -13,6 +13,7 @@ public:
 
 private:
   static NAN_METHOD(PrivateKeyGenerate);
+  static NAN_METHOD(PrivateKeyGenerateAsync);
   static NAN_METHOD(Sign);
   static NAN_METHOD(PrivateKeyVerify);
   static NAN_METHOD(Verify);

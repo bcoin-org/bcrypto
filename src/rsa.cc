@@ -3,6 +3,7 @@
 
 #include "rsa/rsa.h"
 #include "rsa.h"
+#include "rsa_async.h"
 
 static Nan::Persistent<v8::FunctionTemplate> rsa_constructor;
 
@@ -23,6 +24,7 @@ BRSA::Init(v8::Local<v8::Object> &target) {
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
 
   Nan::SetMethod(tpl, "privateKeyGenerate", BRSA::PrivateKeyGenerate);
+  Nan::SetMethod(tpl, "privateKeyGenerateAsync", BRSA::PrivateKeyGenerateAsync);
   Nan::SetMethod(tpl, "sign", BRSA::Sign);
   Nan::SetMethod(tpl, "privateKeyVerify", BRSA::PrivateKeyVerify);
   Nan::SetMethod(tpl, "verify", BRSA::Verify);
@@ -65,6 +67,29 @@ NAN_METHOD(BRSA::PrivateKeyGenerate) {
   bcrypto_rsa_key_free(k);
 
   return info.GetReturnValue().Set(ret);
+}
+
+NAN_METHOD(BRSA::PrivateKeyGenerateAsync) {
+  if (info.Length() < 2)
+    return Nan::ThrowError("rsa.privateKeyGenerateAsync() requires arguments.");
+
+  if (!info[0]->IsNumber())
+    return Nan::ThrowTypeError("First argument must be a number.");
+
+  if (!info[1]->IsFunction())
+    return Nan::ThrowTypeError("Second argument must be a function.");
+
+  uint32_t bits = info[0]->Uint32Value();
+
+  v8::Local<v8::Function> callback = info[1].As<v8::Function>();
+
+  BRSAWorker *worker = new BRSAWorker(
+    (int)bits,
+    0,
+    new Nan::Callback(callback)
+  );
+
+  Nan::AsyncQueueWorker(worker);
 }
 
 NAN_METHOD(BRSA::Sign) {

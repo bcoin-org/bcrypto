@@ -46,4 +46,17 @@ describe('RSA', function() {
 
     assert(valid);
   });
+
+  it('should sign and verify (async)', async () => {
+    const priv = await rsa.privateKeyGenerateAsync(4096);
+    const pub = rsa.publicKeyCreate(priv);
+
+    assert(rsa.privateKeyVerify(priv));
+    assert(rsa.publicKeyVerify(pub));
+
+    const sig = rsa.sign(SHA256, msg, priv);
+    const valid = rsa.verify(SHA256, msg, sig, pub);
+
+    assert(valid);
+  });
 });

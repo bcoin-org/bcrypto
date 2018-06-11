@@ -29,6 +29,7 @@
       "./src/poly1305.cc",
       "./src/ripemd160.cc",
       "./src/rsa.cc",
+      "./src/rsa_async.cc",
       "./src/scrypt_async.cc",
       "./src/sha1.cc",
       "./src/sha224.cc",

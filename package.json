@@ -23,6 +23,7 @@
     "clean": "rm -f bcrypto.js",
     "lint": "eslint lib/ test/ || exit 0",
     "test": "mocha --reporter spec test/*-test.js",
+    "test-file": "mocha --reporter spec",
     "webpack": "webpack --mode production --config webpack.config.js"
   },
   "dependencies": {

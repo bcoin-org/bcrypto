@@ -1,6 +1,7 @@
 #ifndef _BCRYPTO_RSA_H
 #define _BCRYPTO_RSA_H
 
+#include <stdlib.h>
 #include <stdbool.h>
 #include <stdint.h>
 
