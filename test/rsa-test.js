@@ -4,7 +4,8 @@
 'use strict';
 
 const assert = require('./util/assert');
-const {rsa, SHA256} = require('../');
+const SHA256 = require('../lib/sha256');
+const rsa = require('../lib/rsa');
 const {RSAPrivateKey, RSAPublicKey} = rsa;
 
 const msg = Buffer.from('foobar', 'ascii');

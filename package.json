@@ -55,6 +55,8 @@
     "./lib/blake2b": "./lib/blake2b-browser.js",
     "./lib/chacha20": "./lib/chacha20-browser.js",
     "./lib/cleanse": "./lib/cleanse-browser.js",
+    "./lib/ecdsa": "./lib/ecdsa-browser.js",
+    "./lib/eddsa": "./lib/eddsa-browser.js",
     "./lib/hash160": "./lib/hash160-browser.js",
     "./lib/hash256": "./lib/hash256-browser.js",
     "./lib/keccak": "./lib/keccak-browser.js",
@@ -65,13 +67,13 @@
     "./lib/ripemd160": "./lib/ripemd160-browser.js",
     "./lib/rsa": "./lib/rsa-browser.js",
     "./lib/scrypt": "./lib/scrypt-browser.js",
-    "./lib/secp256k1-backend": "./lib/secp256k1-backend-browser.js",
+    "./lib/internal/secp256k1": "./lib/internal/secp256k1-browser.js",
     "./lib/sha1": "./lib/sha1-browser.js",
     "./lib/sha224": "./lib/sha224-browser.js",
     "./lib/sha256": "./lib/sha256-browser.js",
-    "./lib/sha3": "./lib/sha3-browser.js",
     "./lib/sha384": "./lib/sha384-browser.js",
-    "./lib/sha512": "./lib/sha512-browser.js"
+    "./lib/sha512": "./lib/sha512-browser.js",
+    "./lib/sha3": "./lib/sha3-browser.js"
   },
   "browserify": {
     "transform": [
