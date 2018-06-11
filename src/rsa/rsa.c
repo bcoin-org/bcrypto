@@ -116,6 +116,8 @@ fail:
 
 static RSA *
 bcrypto_rsa_key2pub(const bcrypto_rsa_key_t *pub) {
+  assert(pub);
+
   RSA *pub_r = NULL;
   BIGNUM *n = NULL;
   BIGNUM *e = NULL;
