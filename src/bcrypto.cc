@@ -32,6 +32,7 @@
 #include "keccak.h"
 #include "blake2b.h"
 #include "rsa.h"
+#include "ecdsa.h"
 #include "bcrypto.h"
 
 NAN_METHOD(pbkdf2) {
@@ -421,6 +422,7 @@ NAN_MODULE_INIT(init) {
   BPoly1305::Init(target);
 
   BRSA::Init(target);
+  BECDSA::Init(target);
 }
 
 NODE_MODULE(bcrypto, init)
