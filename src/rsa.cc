@@ -1,277 +1,8 @@
 #include <assert.h>
 #include <string.h>
 
-#include "openssl/bn.h"
-#include "openssl/rsa.h"
-#include "openssl/objects.h"
-
+#include "rsa/rsa.h"
 #include "rsa.h"
-
-static RSA *
-bcrypto_rsa_generate(int bits) {
-  RSA *key = NULL;
-  BIGNUM *exp = NULL;
-
-  key = RSA_new();
-
-  if (!key)
-    return NULL;
-
-  exp = BN_new();
-
-  if (!exp)
-    goto fail;
-
-  if (!BN_set_word(exp, 0x010001))
-    goto fail;
-
-  if (!RSA_generate_key_ex(key, bits, exp, NULL))
-    goto fail;
-
-  BN_free(exp);
-
-  return key;
-
-fail:
-  if (key)
-    RSA_free(key);
-
-  if (exp)
-    BN_free(exp);
-
-  return NULL;
-}
-
-static int
-bcrypto_rsa_type(const char *alg) {
-  int type = -1;
-
-  if (strcmp(alg, "md5") == 0)
-    type = NID_md5;
-  else if (strcmp(alg, "ripemd160") == 0)
-    type = NID_ripemd160;
-  else if (strcmp(alg, "sha1") == 0)
-    type = NID_sha1;
-  else if (strcmp(alg, "sha224") == 0)
-    type = NID_sha224;
-  else if (strcmp(alg, "sha256") == 0)
-    type = NID_sha256;
-  else if (strcmp(alg, "sha384") == 0)
-    type = NID_sha384;
-  else if (strcmp(alg, "sha512") == 0)
-    type = NID_sha512;
-
-#if 0
-  else if (strcmp(alg, "blake2b") == 0)
-    type = NID_blake2b256;
-  else if (strcmp(alg, "blake2b160") == 0)
-    type = NID_blake2b160;
-  else if (strcmp(alg, "blake2b256") == 0)
-    type = NID_blake2b256;
-  else if (strcmp(alg, "blake2b512") == 0)
-    type = NID_blake2b512;
-  else if (strcmp(alg, "keccak") == 0)
-    type = NID_sha3_256;
-  else if (strcmp(alg, "keccak256") == 0)
-    type = NID_sha3_256;
-  else if (strcmp(alg, "keccak384") == 0)
-    type = NID_sha3_384;
-  else if (strcmp(alg, "keccak512") == 0)
-    type = NID_sha3_512;
-  else if (strcmp(alg, "sha3") == 0)
-    type = NID_sha3_256;
-  else if (strcmp(alg, "sha3-256") == 0)
-    type = NID_sha3_256;
-  else if (strcmp(alg, "sha3-384") == 0)
-    type = NID_sha3_384;
-  else if (strcmp(alg, "sha3-512") == 0)
-    type = NID_sha3_512;
-#endif
-
-  return type;
-}
-
-static bool
-bcrypto_rsa_sign(
-  int type,
-  const uint8_t *m,
-  size_t ml,
-  RSA *key,
-  uint8_t **s,
-  size_t *sl
-) {
-  size_t siglen = RSA_size(key);
-  uint8_t *sig = (uint8_t *)malloc(siglen * sizeof(uint8_t));
-
-  if (!sig)
-    return false;
-
-  if (!RSA_sign(type, m, ml, sig, (unsigned int *)&siglen, key)) {
-    free(sig);
-    return false;
-  }
-
-  *s = sig;
-  *sl = siglen;
-
-  return true;
-}
-
-static bool
-bcrypto_rsa_validate(const RSA *key) {
-  if (!RSA_check_key(key))
-    return false;
-  return true;
-}
-
-static bool
-bcrypto_rsa_verify(
-  int type,
-  const uint8_t *m,
-  size_t ml,
-  const uint8_t *s,
-  size_t sl,
-  RSA *key
-) {
-  if (!RSA_verify(type, m, ml, s, sl, key))
-    return false;
-  return true;
-}
-
-static RSA *
-bcrypto_rsa_sign_ctx(
-  const uint8_t *nd,
-  size_t nl,
-  const uint8_t *ed,
-  size_t el,
-  const uint8_t *dd,
-  size_t dl,
-  const uint8_t *pd,
-  size_t pl,
-  const uint8_t *qd,
-  size_t ql,
-  const uint8_t *dpd,
-  size_t dpl,
-  const uint8_t *dqd,
-  size_t dql,
-  const uint8_t *qid,
-  size_t qil
-) {
-  RSA *rsa = NULL;
-  BIGNUM *n = NULL;
-  BIGNUM *e = NULL;
-  BIGNUM *d = NULL;
-  BIGNUM *p = NULL;
-  BIGNUM *q = NULL;
-  BIGNUM *dp = NULL;
-  BIGNUM *dq = NULL;
-  BIGNUM *qi = NULL;
-
-  rsa = RSA_new();
-
-  if (!rsa)
-    return NULL;
-
-  n = BN_bin2bn(nd, nl, NULL);
-  e = BN_bin2bn(ed, el, NULL);
-  d = BN_bin2bn(dd, dl, NULL);
-  p = BN_bin2bn(pd, pl, NULL);
-  q = BN_bin2bn(qd, ql, NULL);
-  dp = BN_bin2bn(dpd, dpl, NULL);
-  dq = BN_bin2bn(dqd, dql, NULL);
-  qi = BN_bin2bn(qid, qil, NULL);
-
-  if (!n || !e || !d || !p || !q || !dp || !dq || !qi)
-    goto fail;
-
-  if (!RSA_set0_key(rsa, n, e, d))
-    goto fail;
-
-  n = NULL;
-  e = NULL;
-  d = NULL;
-
-  if (!RSA_set0_factors(rsa, p, q))
-    goto fail;
-
-  p = NULL;
-  q = NULL;
-
-  if (!RSA_set0_crt_params(rsa, dp, dq, qi))
-    goto fail;
-
-  return rsa;
-
-fail:
-  if (rsa)
-    RSA_free(rsa);
-
-  if (n)
-    BN_free(n);
-
-  if (e)
-    BN_free(e);
-
-  if (d)
-    BN_free(d);
-
-  if (p)
-    BN_free(p);
-
-  if (q)
-    BN_free(q);
-
-  if (dp)
-    BN_free(dp);
-
-  if (dq)
-    BN_free(dq);
-
-  if (qi)
-    BN_free(qi);
-
-  return NULL;
-}
-
-static RSA *
-bcrypto_rsa_verify_ctx(
-  const uint8_t *nd,
-  size_t nl,
-  const uint8_t *ed,
-  size_t el
-) {
-  RSA *rsa = NULL;
-  BIGNUM *n = NULL;
-  BIGNUM *e = NULL;
-
-  rsa = RSA_new();
-
-  if (!rsa)
-    goto fail;
-
-  n = BN_bin2bn(nd, nl, NULL);
-  e = BN_bin2bn(ed, el, NULL);
-
-  if (!n || !e)
-    goto fail;
-
-  if (!RSA_set0_key(rsa, n, e, NULL))
-    goto fail;
-
-  return rsa;
-
-fail:
-  if (rsa)
-    RSA_free(rsa);
-
-  if (n)
-    BN_free(n);
-
-  if (e)
-    BN_free(e);
-
-  return NULL;
-}
 
 static Nan::Persistent<v8::FunctionTemplate> rsa_constructor;
 
@@ -316,83 +47,22 @@ NAN_METHOD(BRSA::PrivateKeyGenerate) {
 
   uint32_t bits = info[0]->Uint32Value();
 
-  RSA *key = bcrypto_rsa_generate((int)bits);
+  bcrypto_rsa_key_t *k = bcrypto_rsa_generate((int)bits, 0);
 
-  if (!key)
-    return Nan::ThrowTypeError("Could not allocate context.");
-
-  const BIGNUM *n = NULL;
-  const BIGNUM *e = NULL;
-  const BIGNUM *d = NULL;
-  const BIGNUM *p = NULL;
-  const BIGNUM *q = NULL;
-  const BIGNUM *dp = NULL;
-  const BIGNUM *dq = NULL;
-  const BIGNUM *qi = NULL;
-
-  RSA_get0_key(key, &n, &e, &d);
-  RSA_get0_factors(key, &p, &q);
-  RSA_get0_crt_params(key, &dp, &dq, &qi);
-
-  assert(n && e && d && p && q && dp && dq && qi);
-
-  size_t nl = BN_num_bytes(n);
-  size_t el = BN_num_bytes(e);
-  size_t dl = BN_num_bytes(d);
-  size_t pl = BN_num_bytes(p);
-  size_t ql = BN_num_bytes(q);
-  size_t dpl = BN_num_bytes(dp);
-  size_t dql = BN_num_bytes(dq);
-  size_t qil = BN_num_bytes(qi);
-
-  size_t s = nl + el + dl + pl + ql + dpl + dql + qil;
-  uint8_t *arena = (uint8_t *)malloc(s * sizeof(uint8_t));
-
-  if (!arena) {
-    RSA_free(key);
-    return Nan::ThrowTypeError("Could not allocate context.");
-  }
-
-  size_t pos = 0;
-  uint8_t *nd = &arena[pos];
-  pos += nl;
-  uint8_t *ed = &arena[pos];
-  pos += el;
-  uint8_t *dd = &arena[pos];
-  pos += dl;
-  uint8_t *pd = &arena[pos];
-  pos += pl;
-  uint8_t *qd = &arena[pos];
-  pos += ql;
-  uint8_t *dpd = &arena[pos];
-  pos += dpl;
-  uint8_t *dqd = &arena[pos];
-  pos += dql;
-  uint8_t *qid = &arena[pos];
-  pos += qil;
-
-  assert(BN_bn2bin(n, nd) != -1);
-  assert(BN_bn2bin(e, ed) != -1);
-  assert(BN_bn2bin(d, dd) != -1);
-  assert(BN_bn2bin(p, pd) != -1);
-  assert(BN_bn2bin(q, qd) != -1);
-  assert(BN_bn2bin(dp, dpd) != -1);
-  assert(BN_bn2bin(dq, dqd) != -1);
-  assert(BN_bn2bin(qi, qid) != -1);
-
-  RSA_free(key);
+  if (!k)
+    return Nan::ThrowTypeError("Could not generate key.");
 
   v8::Local<v8::Array> ret = Nan::New<v8::Array>();
-  ret->Set(0, Nan::CopyBuffer((char *)&nd[0], nl).ToLocalChecked());
-  ret->Set(1, Nan::CopyBuffer((char *)&ed[0], el).ToLocalChecked());
-  ret->Set(2, Nan::CopyBuffer((char *)&dd[0], dl).ToLocalChecked());
-  ret->Set(3, Nan::CopyBuffer((char *)&pd[0], pl).ToLocalChecked());
-  ret->Set(4, Nan::CopyBuffer((char *)&qd[0], ql).ToLocalChecked());
-  ret->Set(5, Nan::CopyBuffer((char *)&dpd[0], dpl).ToLocalChecked());
-  ret->Set(6, Nan::CopyBuffer((char *)&dqd[0], dql).ToLocalChecked());
-  ret->Set(7, Nan::CopyBuffer((char *)&qid[0], qil).ToLocalChecked());
+  ret->Set(0, Nan::CopyBuffer((char *)&k->nd[0], k->nl).ToLocalChecked());
+  ret->Set(1, Nan::CopyBuffer((char *)&k->ed[0], k->el).ToLocalChecked());
+  ret->Set(2, Nan::CopyBuffer((char *)&k->dd[0], k->dl).ToLocalChecked());
+  ret->Set(3, Nan::CopyBuffer((char *)&k->pd[0], k->pl).ToLocalChecked());
+  ret->Set(4, Nan::CopyBuffer((char *)&k->qd[0], k->ql).ToLocalChecked());
+  ret->Set(5, Nan::CopyBuffer((char *)&k->dpd[0], k->dpl).ToLocalChecked());
+  ret->Set(6, Nan::CopyBuffer((char *)&k->dqd[0], k->dql).ToLocalChecked());
+  ret->Set(7, Nan::CopyBuffer((char *)&k->qid[0], k->qil).ToLocalChecked());
 
-  free(arena);
+  bcrypto_rsa_key_free(k);
 
   return info.GetReturnValue().Set(ret);
 }
@@ -404,8 +74,8 @@ NAN_METHOD(BRSA::Sign) {
   if (!info[0]->IsString())
     return Nan::ThrowTypeError("First argument must be a string.");
 
-  Nan::Utf8String name_(info[0]);
-  const char *name = (const char *)*name_;
+  Nan::Utf8String alg_(info[0]);
+  const char *alg = (const char *)*alg_;
 
   v8::Local<v8::Object> mbuf = info[1].As<v8::Object>();
   v8::Local<v8::Object> nbuf = info[2].As<v8::Object>();
@@ -430,59 +100,44 @@ NAN_METHOD(BRSA::Sign) {
     return Nan::ThrowTypeError("Arguments must be buffers.");
   }
 
+  bcrypto_rsa_key_t priv;
+  bcrypto_rsa_key_init(&priv);
+
   const uint8_t *md = (uint8_t *)node::Buffer::Data(mbuf);
   size_t ml = node::Buffer::Length(mbuf);
 
-  const uint8_t *nd = (uint8_t *)node::Buffer::Data(nbuf);
-  size_t nl = node::Buffer::Length(nbuf);
+  priv.nd = (uint8_t *)node::Buffer::Data(nbuf);
+  priv.nl = node::Buffer::Length(nbuf);
 
-  const uint8_t *ed = (uint8_t *)node::Buffer::Data(ebuf);
-  size_t el = node::Buffer::Length(ebuf);
+  priv.ed = (uint8_t *)node::Buffer::Data(ebuf);
+  priv.el = node::Buffer::Length(ebuf);
 
-  const uint8_t *dd = (uint8_t *)node::Buffer::Data(dbuf);
-  size_t dl = node::Buffer::Length(dbuf);
+  priv.dd = (uint8_t *)node::Buffer::Data(dbuf);
+  priv.dl = node::Buffer::Length(dbuf);
 
-  const uint8_t *pd = (uint8_t *)node::Buffer::Data(pbuf);
-  size_t pl = node::Buffer::Length(pbuf);
+  priv.pd = (uint8_t *)node::Buffer::Data(pbuf);
+  priv.pl = node::Buffer::Length(pbuf);
 
-  const uint8_t *qd = (uint8_t *)node::Buffer::Data(qbuf);
-  size_t ql = node::Buffer::Length(qbuf);
+  priv.qd = (uint8_t *)node::Buffer::Data(qbuf);
+  priv.ql = node::Buffer::Length(qbuf);
 
-  const uint8_t *dpd = (uint8_t *)node::Buffer::Data(dpbuf);
-  size_t dpl = node::Buffer::Length(dpbuf);
+  priv.dpd = (uint8_t *)node::Buffer::Data(dpbuf);
+  priv.dpl = node::Buffer::Length(dpbuf);
 
-  const uint8_t *dqd = (uint8_t *)node::Buffer::Data(dqbuf);
-  size_t dql = node::Buffer::Length(dqbuf);
+  priv.dqd = (uint8_t *)node::Buffer::Data(dqbuf);
+  priv.dql = node::Buffer::Length(dqbuf);
 
-  const uint8_t *qid = (uint8_t *)node::Buffer::Data(qibuf);
-  size_t qil = node::Buffer::Length(qibuf);
+  priv.qid = (uint8_t *)node::Buffer::Data(qibuf);
+  priv.qil = node::Buffer::Length(qibuf);
 
-  if (!nd || !ed || !dd || !pd || !qd || !dpd || !dqd || !qid)
-    return Nan::ThrowTypeError("Invalid parameters.");
+  uint8_t *sig;
+  size_t sig_len;
 
-  int type = bcrypto_rsa_type(name);
-
-  if (type == -1)
-    return Nan::ThrowTypeError("Unknown algorithm.");
-
-  RSA *key = bcrypto_rsa_sign_ctx(
-    nd, nl, ed, el, dd, dl, pd, pl, qd, ql, dpd, dpl, dqd, dql, qid, qil);
-
-  if (!key)
-    return Nan::ThrowTypeError("Could not allocate context.");
-
-  uint8_t *s;
-  size_t sl;
-
-  bool result = bcrypto_rsa_sign(type, md, ml, key, &s, &sl);
-
-  RSA_free(key);
-
-  if (!result)
-    return Nan::ThrowTypeError("Could not allocate context.");
+  if (!bcrypto_rsa_sign(alg, md, ml, &priv, &sig, &sig_len))
+    return Nan::ThrowTypeError("Could not sign message.");
 
   info.GetReturnValue().Set(
-    Nan::NewBuffer((char *)&s[0], sl).ToLocalChecked());
+    Nan::NewBuffer((char *)&sig[0], sig_len).ToLocalChecked());
 }
 
 NAN_METHOD(BRSA::PrivateKeyVerify) {
@@ -509,42 +164,34 @@ NAN_METHOD(BRSA::PrivateKeyVerify) {
     return Nan::ThrowTypeError("Arguments must be buffers.");
   }
 
-  const uint8_t *nd = (uint8_t *)node::Buffer::Data(nbuf);
-  size_t nl = node::Buffer::Length(nbuf);
+  bcrypto_rsa_key_t priv;
+  bcrypto_rsa_key_init(&priv);
 
-  const uint8_t *ed = (uint8_t *)node::Buffer::Data(ebuf);
-  size_t el = node::Buffer::Length(ebuf);
+  priv.nd = (uint8_t *)node::Buffer::Data(nbuf);
+  priv.nl = node::Buffer::Length(nbuf);
 
-  const uint8_t *dd = (uint8_t *)node::Buffer::Data(dbuf);
-  size_t dl = node::Buffer::Length(dbuf);
+  priv.ed = (uint8_t *)node::Buffer::Data(ebuf);
+  priv.el = node::Buffer::Length(ebuf);
 
-  const uint8_t *pd = (uint8_t *)node::Buffer::Data(pbuf);
-  size_t pl = node::Buffer::Length(pbuf);
+  priv.dd = (uint8_t *)node::Buffer::Data(dbuf);
+  priv.dl = node::Buffer::Length(dbuf);
 
-  const uint8_t *qd = (uint8_t *)node::Buffer::Data(qbuf);
-  size_t ql = node::Buffer::Length(qbuf);
+  priv.pd = (uint8_t *)node::Buffer::Data(pbuf);
+  priv.pl = node::Buffer::Length(pbuf);
 
-  const uint8_t *dpd = (uint8_t *)node::Buffer::Data(dpbuf);
-  size_t dpl = node::Buffer::Length(dpbuf);
+  priv.qd = (uint8_t *)node::Buffer::Data(qbuf);
+  priv.ql = node::Buffer::Length(qbuf);
 
-  const uint8_t *dqd = (uint8_t *)node::Buffer::Data(dqbuf);
-  size_t dql = node::Buffer::Length(dqbuf);
+  priv.dpd = (uint8_t *)node::Buffer::Data(dpbuf);
+  priv.dpl = node::Buffer::Length(dpbuf);
 
-  const uint8_t *qid = (uint8_t *)node::Buffer::Data(qibuf);
-  size_t qil = node::Buffer::Length(qibuf);
+  priv.dqd = (uint8_t *)node::Buffer::Data(dqbuf);
+  priv.dql = node::Buffer::Length(dqbuf);
 
-  if (!nd || !ed || !dd || !pd || !qd || !dpd || !dqd || !qid)
-    return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
+  priv.qid = (uint8_t *)node::Buffer::Data(qibuf);
+  priv.qil = node::Buffer::Length(qibuf);
 
-  RSA *key = bcrypto_rsa_sign_ctx(
-    nd, nl, ed, el, dd, dl, pd, pl, qd, ql, dpd, dpl, dqd, dql, qid, qil);
-
-  if (!key)
-    return Nan::ThrowTypeError("Could not allocate context.");
-
-  bool result = bcrypto_rsa_validate(key);
-
-  RSA_free(key);
+  bool result = bcrypto_rsa_verify_priv(&priv);
 
   return info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
@@ -556,8 +203,8 @@ NAN_METHOD(BRSA::Verify) {
   if (!info[0]->IsString())
     return Nan::ThrowTypeError("First argument must be a string.");
 
-  Nan::Utf8String name_(info[0]);
-  const char *name = (const char *)*name_;
+  Nan::Utf8String alg_(info[0]);
+  const char *alg = (const char *)*alg_;
 
   v8::Local<v8::Object> mbuf = info[1].As<v8::Object>();
   v8::Local<v8::Object> sbuf = info[2].As<v8::Object>();
@@ -577,28 +224,16 @@ NAN_METHOD(BRSA::Verify) {
   const uint8_t *sd = (uint8_t *)node::Buffer::Data(sbuf);
   size_t sl = node::Buffer::Length(sbuf);
 
-  const uint8_t *nd = (uint8_t *)node::Buffer::Data(nbuf);
-  size_t nl = node::Buffer::Length(nbuf);
+  bcrypto_rsa_key_t pub;
+  bcrypto_rsa_key_init(&pub);
 
-  const uint8_t *ed = (uint8_t *)node::Buffer::Data(ebuf);
-  size_t el = node::Buffer::Length(ebuf);
+  pub.nd = (uint8_t *)node::Buffer::Data(nbuf);
+  pub.nl = node::Buffer::Length(nbuf);
 
-  if (!sd || !nd || !ed)
-    return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
+  pub.ed = (uint8_t *)node::Buffer::Data(ebuf);
+  pub.el = node::Buffer::Length(ebuf);
 
-  int type = bcrypto_rsa_type(name);
-
-  if (type == -1)
-    return Nan::ThrowTypeError("Unknown algorithm.");
-
-  RSA *key = bcrypto_rsa_verify_ctx(nd, nl, ed, el);
-
-  if (!key)
-    return Nan::ThrowTypeError("Could not allocate context.");
-
-  bool result = bcrypto_rsa_verify(type, md, ml, sd, sl, key);
-
-  RSA_free(key);
+  bool result = bcrypto_rsa_verify(alg, md, ml, sd, sl, &pub);
 
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
@@ -615,23 +250,16 @@ NAN_METHOD(BRSA::PublicKeyVerify) {
     return Nan::ThrowTypeError("Arguments must be buffers.");
   }
 
-  const uint8_t *nd = (uint8_t *)node::Buffer::Data(nbuf);
-  size_t nl = node::Buffer::Length(nbuf);
+  bcrypto_rsa_key_t pub;
+  bcrypto_rsa_key_init(&pub);
 
-  const uint8_t *ed = (uint8_t *)node::Buffer::Data(ebuf);
-  size_t el = node::Buffer::Length(ebuf);
+  pub.nd = (uint8_t *)node::Buffer::Data(nbuf);
+  pub.nl = node::Buffer::Length(nbuf);
 
-  if (!nd || !ed)
-    return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
+  pub.ed = (uint8_t *)node::Buffer::Data(ebuf);
+  pub.el = node::Buffer::Length(ebuf);
 
-  RSA *key = bcrypto_rsa_verify_ctx(nd, nl, ed, el);
-
-  if (!key)
-    return Nan::ThrowTypeError("Could not allocate context.");
-
-  bool result = bcrypto_rsa_validate(key);
-
-  RSA_free(key);
+  bool result = bcrypto_rsa_verify_pub(&pub);
 
   return info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }

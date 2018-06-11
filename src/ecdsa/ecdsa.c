@@ -32,6 +32,10 @@ bcrypto_ecdsa_curve(const char *name) {
     type = NID_secp521r1;
   else if (strcmp(name, "secp256k1") == 0)
     type = NID_secp256k1;
+#ifdef NID_curve25519
+  else if (strcmp(name, "curve25519") == 0)
+    type = NID_curve25519;
+#endif
 
   return type;
 }

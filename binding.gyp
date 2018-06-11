@@ -12,6 +12,7 @@
       "./src/ecdsa/ecdsa.c",
       "./src/pbkdf2/pbkdf2.c",
       "./src/poly1305/poly1305.c",
+      "./src/rsa/rsa.c",
       "./src/scrypt/insecure_memzero.c",
       "./src/scrypt/sha256.c",
       "./src/scrypt/scrypt.c",
