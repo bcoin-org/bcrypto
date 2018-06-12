@@ -5,7 +5,7 @@ const UglifyJsPlugin = require('uglifyjs-webpack-plugin');
 module.exports = {
   target: 'web',
   entry: {
-    'bcrypto': './lib/bcrypto'
+    'bcrypto': ['babel-polyfill', './lib/bcrypto']
   },
   output: {
     library: 'bcrypto',
