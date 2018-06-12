@@ -15,7 +15,8 @@ module.exports = {
   },
   resolve: {
     modules: ['node_modules'],
-    extensions: ['-browser.js', '.js', '.json']
+    extensions: ['-browser.js', '.js', '.json'],
+    alias: require('./compat')
   },
   module: {
     rules: [{
