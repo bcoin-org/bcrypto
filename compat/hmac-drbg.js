@@ -12,7 +12,7 @@ function HmacDRBG(options) {
   const pers = toBuffer(options.pers, options.persEnc || 'hex');
 
   this.hash = Hash;
-  this.predResist = !!options.predResist;
+  this.predResist = Boolean(options.predResist);
   this.outLen = Hash.outSize;
   this.minEntropy = options.minEntropy || Hash.hmacStrength;
   this.reseedInterval = 0x1000000000000;

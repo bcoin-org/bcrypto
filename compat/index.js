@@ -8,7 +8,6 @@ module.exports = {
 
   // Secp256k1
   'create-hash': Path.resolve(__dirname, './create-hash'),
-  'create-hmac': Path.resolve(__dirname, './create-hmac'),
   'drbg.js': Path.resolve(__dirname, './drbg.js'),
   'elliptic': require.resolve('elliptic'),
   'safe-buffer': Path.resolve(__dirname, './safe-buffer'),

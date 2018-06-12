@@ -21,7 +21,7 @@
     "install": "node-gyp rebuild || echo 'Build failed.'",
     "browserify": "browserify -s bcrypto lib/bcrypto.js | uglifyjs -c > bcrypto.js",
     "clean": "rm -f bcrypto.js",
-    "lint": "eslint lib/ test/ || exit 0",
+    "lint": "eslint lib/ compat/ test/ || exit 0",
     "test": "mocha --reporter spec test/*-test.js",
     "test-file": "mocha --reporter spec",
     "webpack": "webpack --mode production --config webpack.config.js"
