@@ -408,6 +408,9 @@ NAN_MODULE_INIT(init) {
   BBlake2b::Init(target);
   BChaCha20::Init(target);
   BECDSA::Init(target);
+  BHash160::Init(target);
+  BHash256::Init(target);
+  BKeccak::Init(target);
   BMD5::Init(target);
   BPoly1305::Init(target);
   BRIPEMD160::Init(target);
@@ -417,9 +420,6 @@ NAN_MODULE_INIT(init) {
   BSHA256::Init(target);
   BSHA384::Init(target);
   BSHA512::Init(target);
-  BHash160::Init(target);
-  BHash256::Init(target);
-  BKeccak::Init(target);
 }
 
 NODE_MODULE(bcrypto, init)
