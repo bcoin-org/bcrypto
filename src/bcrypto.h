@@ -11,6 +11,6 @@ NAN_METHOD(scrypt_async);
 NAN_METHOD(cleanse);
 NAN_METHOD(encipher);
 NAN_METHOD(decipher);
-NAN_METHOD(random_bytes);
+NAN_METHOD(random_fill);
 
 #endif

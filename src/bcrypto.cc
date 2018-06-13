@@ -356,22 +356,35 @@ NAN_METHOD(decipher) {
     Nan::NewBuffer((char *)out, olen).ToLocalChecked());
 }
 
-NAN_METHOD(random_bytes) {
-  if (info.Length() < 1)
-    return Nan::ThrowError("random_bytes() requires arguments.");
+NAN_METHOD(random_fill) {
+  if (info.Length() < 3)
+    return Nan::ThrowError("random_fill() requires arguments.");
 
-  if (!info[0]->IsNumber())
-    return Nan::ThrowTypeError("First argument must be a number.");
+  if (!node::Buffer::HasInstance(info[0]))
+    return Nan::ThrowTypeError("First argument must be a buffer.");
 
-  uint32_t outlen = info[0]->Uint32Value();
+  v8::Local<v8::Object> bdata = info[0].As<v8::Object>();
 
-  if (outlen & 0x80000000)
-    return Nan::ThrowError("Size too large.");
+  if (!info[1]->IsNumber())
+    return Nan::ThrowTypeError("Second argument must be a number.");
 
-  uint8_t *out = (uint8_t *)malloc(outlen);
+  if (!info[2]->IsNumber())
+    return Nan::ThrowTypeError("Third argument must be a number.");
 
-  if (out == NULL)
-    return Nan::ThrowError("Could not allocate random bytes.");
+  uint8_t *data = (uint8_t *)node::Buffer::Data(bdata);
+  size_t len = node::Buffer::Length(bdata);
+
+  uint32_t pos = info[1]->Uint32Value();
+  uint32_t size = info[2]->Uint32Value();
+
+  if ((len & 0x80000000) != 0
+      || (pos & 0x80000000) != 0
+      || (size & 0x80000000) != 0) {
+    return Nan::ThrowError("Invalid range.");
+  }
+
+  if (pos + size > len)
+    return Nan::ThrowError("Size exceeds length.");
 
   for (;;) {
     int status = RAND_status();
@@ -385,15 +398,12 @@ NAN_METHOD(random_bytes) {
       break;
   }
 
-  int r = RAND_bytes(out, outlen);
+  int r = RAND_bytes(&data[pos], size);
 
-  if (r == 0) {
-    free(out);
+  if (r == 0)
     return Nan::ThrowError("Could not get random bytes.");
-  }
 
-  info.GetReturnValue().Set(
-    Nan::NewBuffer((char *)out, outlen).ToLocalChecked());
+  info.GetReturnValue().Set(bdata);
 }
 
 NAN_MODULE_INIT(init) {
@@ -404,7 +414,7 @@ NAN_MODULE_INIT(init) {
   Nan::Export(target, "cleanse", cleanse);
   Nan::Export(target, "encipher", encipher);
   Nan::Export(target, "decipher", decipher);
-  Nan::Export(target, "randomBytes", random_bytes);
+  Nan::Export(target, "randomFill", random_fill);
 
   BMD5::Init(target);
   BRIPEMD160::Init(target);
