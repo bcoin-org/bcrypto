@@ -48,7 +48,8 @@ describe('RSA', function() {
   });
 
   it('should sign and verify (async)', async () => {
-    const priv = await rsa.privateKeyGenerateAsync(4096);
+    const bits = rsa.native < 2 ? 1024 : 4096;
+    const priv = await rsa.privateKeyGenerateAsync(bits);
     const pub = rsa.publicKeyCreate(priv);
 
     assert(rsa.privateKeyVerify(priv));
