@@ -10,29 +10,32 @@
 #include <node.h>
 #include <nan.h>
 
-#include "openssl/evp.h"
-#include "openssl/rand.h"
+// For "cleanse"
+#include "openssl/crypto.h"
 
 #include "cipher/cipher.h"
-#include "chacha20.h"
-#include "poly1305.h"
 #include "pbkdf2/pbkdf2.h"
-#include "pbkdf2_async.h"
+#include "random/random.h"
 #include "scrypt/scrypt.h"
-#include "scrypt_async.h"
-#include "ripemd160.h"
+
+#include "blake2b.h"
+#include "chacha20.h"
+#include "ecdsa.h"
+#include "hash160.h"
+#include "hash256.h"
+#include "keccak.h"
 #include "md5.h"
+#include "poly1305.h"
+#include "pbkdf2_async.h"
+#include "ripemd160.h"
+#include "rsa.h"
+#include "scrypt_async.h"
 #include "sha1.h"
 #include "sha224.h"
 #include "sha256.h"
 #include "sha384.h"
 #include "sha512.h"
-#include "hash160.h"
-#include "hash256.h"
-#include "keccak.h"
-#include "blake2b.h"
-#include "rsa.h"
-#include "ecdsa.h"
+
 #include "bcrypto.h"
 
 NAN_METHOD(pbkdf2) {
@@ -386,21 +389,7 @@ NAN_METHOD(random_fill) {
   if (pos + size > len)
     return Nan::ThrowError("Size exceeds length.");
 
-  for (;;) {
-    int status = RAND_status();
-
-    assert(status >= 0);
-
-    if (status != 0)
-      break;
-
-    if (RAND_poll() == 0)
-      break;
-  }
-
-  int r = RAND_bytes(&data[pos], size);
-
-  if (r == 0)
+  if (!bcrypto_random(&data[pos], size))
     return Nan::ThrowError("Could not get random bytes.");
 
   info.GetReturnValue().Set(bdata);
@@ -416,8 +405,13 @@ NAN_MODULE_INIT(init) {
   Nan::Export(target, "decipher", decipher);
   Nan::Export(target, "randomFill", random_fill);
 
+  BBlake2b::Init(target);
+  BChaCha20::Init(target);
+  BECDSA::Init(target);
   BMD5::Init(target);
+  BPoly1305::Init(target);
   BRIPEMD160::Init(target);
+  BRSA::Init(target);
   BSHA1::Init(target);
   BSHA224::Init(target);
   BSHA256::Init(target);
@@ -426,13 +420,6 @@ NAN_MODULE_INIT(init) {
   BHash160::Init(target);
   BHash256::Init(target);
   BKeccak::Init(target);
-  BBlake2b::Init(target);
-
-  BChaCha20::Init(target);
-  BPoly1305::Init(target);
-
-  BRSA::Init(target);
-  BECDSA::Init(target);
 }
 
 NODE_MODULE(bcrypto, init)

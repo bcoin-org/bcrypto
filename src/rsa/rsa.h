@@ -68,4 +68,3 @@ bcrypto_rsa_verify_pub(const bcrypto_rsa_key_t *pub);
 #endif
 
 #endif
-
