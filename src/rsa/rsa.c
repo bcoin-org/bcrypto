@@ -455,6 +455,10 @@ bcrypto_rsa_sign(
   if (!sig_buf)
     goto fail;
 
+  // Protect against side-channel attacks.
+  if (!RSA_blinding_on(priv_r, NULL))
+    goto fail;
+
   int result = RSA_sign(
     type,
     msg,
@@ -463,6 +467,8 @@ bcrypto_rsa_sign(
     (unsigned int *)&sig_buf_len,
     priv_r
   );
+
+  RSA_blinding_off(priv_r);
 
   if (!result)
     goto fail;
