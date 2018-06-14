@@ -55,7 +55,7 @@ function testAEAD(options) {
 }
 
 describe('ChaCha20 / Poly1305 / AEAD', function() {
-  it('should perform chacha20', () => {
+  it('should perform chacha20 (1)', () => {
     testChaCha({
       key: '000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f',
       nonce: '000000000000004a00000000',
@@ -73,7 +73,7 @@ describe('ChaCha20 / Poly1305 / AEAD', function() {
     });
   });
 
-  it('should perform chacha20', () => {
+  it('should perform chacha20 (2)', () => {
     testChaCha({
       key: '0000000000000000000000000000000000000000000000000000000000000000',
       nonce: '000000000000000000000000',
@@ -88,7 +88,7 @@ describe('ChaCha20 / Poly1305 / AEAD', function() {
     });
   });
 
-  it('should perform chacha20', () => {
+  it('should perform chacha20 (3)', () => {
     testChaCha({
       key: '0000000000000000000000000000000000000000000000000000000000000001',
       nonce: '000000000000000000000002',
@@ -125,7 +125,7 @@ describe('ChaCha20 / Poly1305 / AEAD', function() {
     });
   });
 
-  it('should perform chacha20', () => {
+  it('should perform chacha20 (4)', () => {
     testChaCha({
       key: '1c9240a5eb55d38af333888604f6b5f0473917c1402b80099dca5cbc207075c0',
       nonce: '000000000000000000000002',
@@ -145,7 +145,7 @@ describe('ChaCha20 / Poly1305 / AEAD', function() {
     });
   });
 
-  it('should perform poly1305', () => {
+  it('should perform poly1305 (1)', () => {
     const expected = Buffer.from('ddb9da7ddd5e52792730ed5cda5f90a4', 'hex');
     const key = Buffer.allocUnsafe(32);
     const msg = Buffer.allocUnsafe(73);
@@ -161,7 +161,7 @@ describe('ChaCha20 / Poly1305 / AEAD', function() {
     assert.bufferEqual(mac, expected);
   });
 
-  it('should perform poly1305', () => {
+  it('should perform poly1305 (2)', () => {
     const key = Buffer.from(''
       + '85d6be7857556d337f4452fe42d506a'
       + '80103808afb0db2fd4abff6af4149f51b',
@@ -179,7 +179,7 @@ describe('ChaCha20 / Poly1305 / AEAD', function() {
     assert(!Poly1305.verify(mac, tag));
   });
 
-  it('should create an AEAD and encrypt', () => {
+  it('should create an AEAD and encrypt (1)', () => {
     testAEAD({
       plain: ''
         + '4c616469657320616e642047656e746c656d656e206f662074686520636c6'
@@ -199,7 +199,7 @@ describe('ChaCha20 / Poly1305 / AEAD', function() {
     });
   });
 
-  it('should create an AEAD and encrypt', () => {
+  it('should create an AEAD and encrypt (2)', () => {
     testAEAD({
       key: '1c9240a5eb55d38af333888604f6b5f0473917c1402b80099dca5cbc207075c0',
       ciphertext: ''

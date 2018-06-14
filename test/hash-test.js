@@ -6,8 +6,10 @@
 const assert = require('./util/assert');
 const crypto = require('crypto');
 const bcrypto = require('../');
+const {random} = bcrypto;
 
 const algs = [
+  'md5',
   'ripemd160',
   'sha1',
   'sha256',
@@ -108,6 +110,23 @@ function testHmac(alg, msg, key) {
 describe('Hash', function() {
   for (const alg of algs) {
     for (const [msg, key] of vectors) {
+      const h = hash(alg, msg).toString('hex');
+      const m = hmac(alg, msg, key).toString('hex');
+
+      it(`should test ${alg} hash of ${h}`, () => {
+        testHash(alg, msg);
+      });
+
+      it(`should test ${alg} hmac of ${m}`, () => {
+        testHmac(alg, msg, key);
+      });
+    }
+  }
+
+  for (const alg of algs) {
+    for (let i = 0; i < 50; i++) {
+      const msg = random.randomBytes(Math.random() * 500 | 0);
+      const key = random.randomBytes(Math.random() * 500 | 0);
       const h = hash(alg, msg).toString('hex');
       const m = hmac(alg, msg, key).toString('hex');
 

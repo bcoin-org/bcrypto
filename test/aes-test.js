@@ -4,13 +4,29 @@
 'use strict';
 
 const assert = require('./util/assert');
-const {aes} = require('../');
+const crypto = require('crypto');
+const aes = require('../lib/aes');
+const random = require('../lib/random');
 
 const key = Buffer.from(
   '3a0c0bf669694ac7685e6806eeadee8e56c9b9bd22c3caa81c718ed4bbf809a1',
   'hex');
 
 const iv = Buffer.from('6dd26d9045b73c377a9ed2ffeca72ffd', 'hex');
+
+function testVector() {
+  const key = random.randomBytes(32);
+  const iv = random.randomBytes(16);
+  const data = random.randomBytes((Math.random() * 0x10000) >>> 0);
+  const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
+  const expect = Buffer.concat([cipher.update(data), cipher.final()]);
+  return {
+    key,
+    iv,
+    data,
+    expect
+  };
+}
 
 describe('AES', function() {
   it('should encrypt and decrypt with 2 blocks', () => {
@@ -46,4 +62,17 @@ describe('AES', function() {
     const plaintext = aes.decipher(ciphertext, key, iv);
     assert.bufferEqual(plaintext, data);
   });
+
+  for (let i = 0; i < 50; i++) {
+    const {key, iv, data, expect} = testVector();
+    const d = data.toString('hex', 0, 32);
+
+    it(`should encrypt and decrypt ${d}`, () => {
+      const ciphertext = aes.encipher(data, key, iv);
+      assert.bufferEqual(ciphertext, expect);
+
+      const plaintext = aes.decipher(ciphertext, key, iv);
+      assert.bufferEqual(plaintext, data);
+    });
+  }
 });
