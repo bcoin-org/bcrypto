@@ -36,8 +36,10 @@ function testAEAD(options) {
 
   const ctx1 = new AEAD();
   ctx1.init(key, nonce);
-  assert.strictEqual(ctx1.chacha20.getCounter(), 1);
-  assert.bufferEqual(ctx1.polyKey, pk);
+  if (ctx1.chacha20) {
+    assert.strictEqual(ctx1.chacha20.getCounter(), 1);
+    assert.bufferEqual(ctx1.polyKey, pk);
+  }
   ctx1.aad(aad);
   const plainenc = Buffer.from(plain);
   ctx1.encrypt(plainenc);
@@ -46,13 +48,35 @@ function testAEAD(options) {
 
   const ctx2 = new AEAD();
   ctx2.init(key, nonce);
-  assert.strictEqual(ctx2.chacha20.getCounter(), 1);
-  assert.bufferEqual(ctx2.polyKey, pk);
+  if (ctx2.chacha20) {
+    assert.strictEqual(ctx2.chacha20.getCounter(), 1);
+    assert.bufferEqual(ctx2.polyKey, pk);
+  }
   ctx2.aad(aad);
   ctx2.decrypt(ciphertext);
   assert.bufferEqual(ciphertext, plain);
   assert.bufferEqual(ctx2.final(), tag);
+
+  testAEAD2(options);
 }
+
+function testAEAD2(options) {
+  const plain = Buffer.from(options.plain, 'hex');
+  const aad = Buffer.from(options.aad, 'hex');
+  const key = Buffer.from(options.key, 'hex');
+  const nonce = Buffer.from(options.nonce, 'hex');
+  const ciphertext = Buffer.from(options.ciphertext, 'hex');
+  const tag = Buffer.from(options.tag, 'hex');
+
+  const plainenc = Buffer.from(plain);
+  const out = AEAD.encrypt(key, nonce, plainenc, aad);
+  assert.bufferEqual(plainenc, ciphertext);
+  assert.bufferEqual(out, tag);
+
+  assert(AEAD.decrypt(key, nonce, ciphertext, tag, aad));
+  assert.bufferEqual(ciphertext, plain);
+}
+
 
 describe('ChaCha20 / Poly1305 / AEAD', function() {
   it('should perform chacha20 (1)', () => {
@@ -173,10 +197,12 @@ describe('ChaCha20 / Poly1305 / AEAD', function() {
     const mac = Poly1305.auth(msg, key);
 
     assert(Poly1305.verify(mac, tag));
+    assert(AEAD.verify(mac, tag));
 
     mac[0] = 0;
 
     assert(!Poly1305.verify(mac, tag));
+    assert(!AEAD.verify(mac, tag));
   });
 
   it('should create an AEAD and encrypt (1)', () => {

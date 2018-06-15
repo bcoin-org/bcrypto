@@ -21,18 +21,19 @@
  */
 
 #include <string.h>
+#include <stdint.h>
 
 #include "chacha20.h"
 
 #define ROTL32(v, n) ((v) << (n)) | ((v) >> (32 - (n)))
 
-#define READLE(p)                   \
+#define READLE(p)               \
   (((uint32_t)((p)[0]))         \
   | ((uint32_t)((p)[1]) << 8)   \
   | ((uint32_t)((p)[2]) << 16)  \
   | ((uint32_t)((p)[3]) << 24))
 
-#define WRITELE(b, i)         \
+#define WRITELE(b, i)        \
   (b)[0] = i & 0xFF;         \
   (b)[1] = (i >> 8) & 0xFF;  \
   (b)[2] = (i >> 16) & 0xFF; \
@@ -70,19 +71,19 @@ bcrypto_chacha20_keysetup(
     ? "expand 32-byte k"
     : "expand 16-byte k";
 
-  ctx->schedule[0] = READLE(constants + 0);
-  ctx->schedule[1] = READLE(constants + 4);
-  ctx->schedule[2] = READLE(constants + 8);
-  ctx->schedule[3] = READLE(constants + 12);
-  ctx->schedule[4] = READLE(key + 0);
-  ctx->schedule[5] = READLE(key + 4);
-  ctx->schedule[6] = READLE(key + 8);
-  ctx->schedule[7] = READLE(key + 12);
-  ctx->schedule[8] = READLE(key + 16 % length);
-  ctx->schedule[9] = READLE(key + 20 % length);
-  ctx->schedule[10] = READLE(key + 24 % length);
-  ctx->schedule[11] = READLE(key + 28 % length);
-  ctx->schedule[12] = 0;
+  ctx->state[0] = READLE(constants + 0);
+  ctx->state[1] = READLE(constants + 4);
+  ctx->state[2] = READLE(constants + 8);
+  ctx->state[3] = READLE(constants + 12);
+  ctx->state[4] = READLE(key + 0);
+  ctx->state[5] = READLE(key + 4);
+  ctx->state[6] = READLE(key + 8);
+  ctx->state[7] = READLE(key + 12);
+  ctx->state[8] = READLE(key + 16 % length);
+  ctx->state[9] = READLE(key + 20 % length);
+  ctx->state[10] = READLE(key + 24 % length);
+  ctx->state[11] = READLE(key + 28 % length);
+  ctx->state[12] = 0;
 
   ctx->available = 0;
   ctx->nonce_size = 8;
@@ -94,16 +95,16 @@ bcrypto_chacha20_ivsetup(
   const uint8_t *nonce,
   uint8_t nonce_size
 ) {
-  ctx->schedule[12] = 0;
+  ctx->state[12] = 0;
 
   if (nonce_size == 8) {
-    ctx->schedule[13] = 0;
-    ctx->schedule[14] = READLE(nonce + 0);
-    ctx->schedule[15] = READLE(nonce + 4);
+    ctx->state[13] = 0;
+    ctx->state[14] = READLE(nonce + 0);
+    ctx->state[15] = READLE(nonce + 4);
   } else {
-    ctx->schedule[13] = READLE(nonce + 0);
-    ctx->schedule[14] = READLE(nonce + 4);
-    ctx->schedule[15] = READLE(nonce + 8);
+    ctx->state[13] = READLE(nonce + 0);
+    ctx->state[14] = READLE(nonce + 4);
+    ctx->state[15] = READLE(nonce + 8);
   }
 
   ctx->nonce_size = nonce_size;
@@ -112,10 +113,10 @@ bcrypto_chacha20_ivsetup(
 void
 bcrypto_chacha20_counter_set(bcrypto_chacha20_ctx *ctx, uint64_t counter) {
   if (ctx->nonce_size == 8) {
-    ctx->schedule[12] = counter & UINT32_C(0xFFFFFFFF);
-    ctx->schedule[13] = counter >> 32;
+    ctx->state[12] = counter & 0xffffffffu;
+    ctx->state[13] = counter >> 32;
   } else {
-    ctx->schedule[12] = (uint32_t)counter;
+    ctx->state[12] = (uint32_t)counter;
   }
   ctx->available = 0;
 }
@@ -123,9 +124,9 @@ bcrypto_chacha20_counter_set(bcrypto_chacha20_ctx *ctx, uint64_t counter) {
 uint64_t
 bcrypto_chacha20_counter_get(bcrypto_chacha20_ctx *ctx) {
   if (ctx->nonce_size == 8)
-    return ((uint64_t)ctx->schedule[13] << 32) | ctx->schedule[12];
+    return ((uint64_t)ctx->state[13] << 32) | ctx->state[12];
 
-  return (uint64_t)ctx->schedule[12];
+  return (uint64_t)ctx->state[12];
 }
 
 void
@@ -142,7 +143,7 @@ bcrypto_chacha20_block(bcrypto_chacha20_ctx *ctx, uint32_t output[16]) {
   // - https://wiki.cdot.senecacollege.ca/wiki/X86_64_Register_and_Instruction_Quick_Start
   //
   // Layout:
-  //   %rsi = src pointer (&ctx->schedule[0])
+  //   %rsi = src pointer (&ctx->state[0])
   //   %rdi = dst pointer (&output[0])
   //   %edx = rounds integer (nettle does `20 >> 1`)
   //
@@ -243,16 +244,20 @@ bcrypto_chacha20_block(bcrypto_chacha20_ctx *ctx, uint32_t output[16]) {
     "movups %%xmm3,48(%%rdi)\n"
 
     "incl 48(%%rsi)\n"
+    "cmpl $0, 48(%%rsi)\n"
+    "jnz out\n"
+    "incl 52(%%rsi)\n"
+    "out:\n"
     :
-    : [src] "r" (ctx->schedule),
+    : [src] "r" (ctx->state),
       [dst] "r" (output)
     : "rsi", "cc", "memory"
   );
 #else
-  uint32_t *nonce = ctx->schedule + 12;
+  uint32_t *nonce = ctx->state + 12;
   int i = 10;
 
-  memcpy(output, ctx->schedule, sizeof(ctx->schedule));
+  memcpy(output, ctx->state, sizeof(ctx->state));
 
   while (i--) {
     QUARTERROUND(output, 0, 4, 8, 12)
@@ -266,28 +271,26 @@ bcrypto_chacha20_block(bcrypto_chacha20_ctx *ctx, uint32_t output[16]) {
   }
 
   for (i = 0; i < 16; i++) {
-    uint32_t result = output[i] + ctx->schedule[i];
+    uint32_t result = output[i] + ctx->state[i];
     WRITELE((uint8_t *)(output + i), result);
   }
 
-  if (!++nonce[0]) {
-    if (ctx->nonce_size == 8)
-      nonce[1]++;
-  }
+  if (++nonce[0] == 0)
+    nonce[1] += 1;
 #endif
 }
 
 static inline
 void bcrypto_chacha20_xor(
-  uint8_t *keystream,
+  uint8_t *stream,
   const uint8_t **in,
   uint8_t **out,
   size_t length
 ) {
-  uint8_t *end_keystream = keystream + length;
+  uint8_t *end_stream = stream + length;
   do {
-    *(*out)++ = *(*in)++ ^ *keystream++;
-  } while (keystream < end_keystream);
+    *(*out)++ = *(*in)++ ^ *stream++;
+  } while (stream < end_stream);
 }
 
 void
@@ -298,32 +301,22 @@ bcrypto_chacha20_encrypt(
   size_t length
 ) {
   if (length) {
-    uint8_t *k = (uint8_t *)ctx->keystream;
+    uint8_t *k = (uint8_t *)ctx->stream;
 
     if (ctx->available) {
       size_t amount = MIN(length, ctx->available);
-      size_t size = sizeof(ctx->keystream) - ctx->available;
+      size_t size = sizeof(ctx->stream) - ctx->available;
       bcrypto_chacha20_xor(k + size, &in, &out, amount);
       ctx->available -= amount;
       length -= amount;
     }
 
     while (length) {
-      size_t amount = MIN(length, sizeof(ctx->keystream));
-      bcrypto_chacha20_block(ctx, ctx->keystream);
+      size_t amount = MIN(length, sizeof(ctx->stream));
+      bcrypto_chacha20_block(ctx, ctx->stream);
       bcrypto_chacha20_xor(k, &in, &out, amount);
       length -= amount;
-      ctx->available = sizeof(ctx->keystream) - amount;
+      ctx->available = sizeof(ctx->stream) - amount;
     }
   }
-}
-
-void
-bcrypto_chacha20_decrypt(
-  bcrypto_chacha20_ctx *ctx,
-  const uint8_t *in,
-  uint8_t *out,
-  size_t length
-) {
-  bcrypto_chacha20_encrypt(ctx, in, out, length);
 }

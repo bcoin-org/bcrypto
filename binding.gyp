@@ -6,6 +6,7 @@
   "targets": [{
     "target_name": "bcrypto",
     "sources": [
+      "./src/aead/aead.c",
       "./src/blake2b/blake2b.c",
       "./src/chacha20/chacha20.c",
       "./src/cipher/cipher.c",
@@ -18,6 +19,7 @@
       "./src/scrypt/sha256.c",
       "./src/scrypt/scrypt.c",
       "./src/sha3/sha3.c",
+      "./src/aead.cc",
       "./src/bcrypto.cc",
       "./src/blake2b.cc",
       "./src/chacha20.cc",

@@ -50,13 +50,8 @@ for (const size of [32, 64, 65, 512, 1024]) {
     poly1305.final();
   });
 
-  const aead = new AEAD();
-
   bench(`aead (${size})`, rounds, () => {
-    aead.init(key, iv);
-    // aead.aad(ad);
-    aead.encrypt(msg);
-    aead.final();
+    AEAD.encrypt(key, iv, msg);
   });
 
   if (size !== 1024)

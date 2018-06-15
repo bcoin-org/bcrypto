@@ -30,8 +30,8 @@ extern "C" {
 #endif
 
 typedef struct {
-  uint32_t schedule[16];
-  uint32_t keystream[16];
+  uint32_t state[16];
+  uint32_t stream[16];
   size_t available;
   uint8_t nonce_size;
 } bcrypto_chacha20_ctx;
@@ -62,6 +62,8 @@ bcrypto_chacha20_ivsetup(
 void
 bcrypto_chacha20_counter_set(bcrypto_chacha20_ctx *ctx, uint64_t counter);
 
+uint64_t bcrypto_chacha20_counter_get(bcrypto_chacha20_ctx *ctx);
+
 void
 bcrypto_chacha20_block(bcrypto_chacha20_ctx *ctx, uint32_t output[16]);
 
@@ -72,16 +74,6 @@ bcrypto_chacha20_encrypt(
   uint8_t *out,
   size_t length
 );
-
-void
-bcrypto_chacha20_decrypt(
-  bcrypto_chacha20_ctx *ctx,
-  const uint8_t *in,
-  uint8_t *out,
-  size_t length
-);
-
-uint64_t bcrypto_chacha20_counter_get(bcrypto_chacha20_ctx *ctx);
 
 #if defined(__cplusplus)
 }

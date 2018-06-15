@@ -13,8 +13,6 @@ public:
 
   BChaCha20();
   ~BChaCha20();
-  void InitKey(char *key, size_t len);
-  void InitIV(char *iv, size_t len, uint64_t ctr);
 
   bcrypto_chacha20_ctx ctx;
 

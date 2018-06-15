@@ -18,6 +18,7 @@
 #include "random/random.h"
 #include "scrypt/scrypt.h"
 
+#include "aead.h"
 #include "blake2b.h"
 #include "chacha20.h"
 #include "ecdsa.h"
@@ -405,6 +406,7 @@ NAN_MODULE_INIT(init) {
   Nan::Export(target, "decipher", decipher);
   Nan::Export(target, "randomFill", random_fill);
 
+  BAEAD::Init(target);
   BBlake2b::Init(target);
   BChaCha20::Init(target);
   BECDSA::Init(target);

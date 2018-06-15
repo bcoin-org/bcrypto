@@ -36,27 +36,6 @@ BChaCha20::Init(v8::Local<v8::Object> &target) {
   target->Set(Nan::New("ChaCha20").ToLocalChecked(), ctor->GetFunction());
 }
 
-void
-BChaCha20::InitKey(char *key, size_t len) {
-  Nan::HandleScope scope;
-
-  if (len != 32)
-    return Nan::ThrowError("Invalid key size.");
-
-  bcrypto_chacha20_keysetup(&ctx, (uint8_t *)key, 32);
-}
-
-void
-BChaCha20::InitIV(char *iv, size_t len, uint64_t ctr) {
-  Nan::HandleScope scope;
-
-  if (len != 8 && len != 12)
-    return Nan::ThrowError("Invalid IV size.");
-
-  bcrypto_chacha20_ivsetup(&ctx, (uint8_t *)iv, (uint8_t)len);
-  bcrypto_chacha20_counter_set(&ctx, ctr);
-}
-
 NAN_METHOD(BChaCha20::New) {
   if (!info.IsConstructCall())
     return Nan::ThrowError("Could not create BChaCha20 instance.");
@@ -72,32 +51,40 @@ NAN_METHOD(BChaCha20::Init) {
   if (info.Length() < 1)
     return Nan::ThrowError("chacha20.init() requires arguments.");
 
-  if (!IsNull(info[0])) {
-    v8::Local<v8::Object> key = info[0].As<v8::Object>();
+  v8::Local<v8::Object> key_buf = info[0].As<v8::Object>();
 
-    if (!node::Buffer::HasInstance(key))
-      return Nan::ThrowTypeError("First argument must be a buffer.");
+  if (!node::Buffer::HasInstance(key_buf))
+    return Nan::ThrowTypeError("First argument must be a buffer.");
 
-    chacha->InitKey(node::Buffer::Data(key), node::Buffer::Length(key));
+  v8::Local<v8::Value> iv_buf = info[1].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(iv_buf))
+    return Nan::ThrowTypeError("Second argument must be a buffer.");
+
+  const uint8_t *key = (uint8_t *)node::Buffer::Data(key_buf);
+  size_t key_len = node::Buffer::Length(key_buf);
+
+  if (key_len < 32)
+    return Nan::ThrowError("Invalid key size.");
+
+  const uint8_t *iv = (uint8_t *)node::Buffer::Data(iv_buf);
+  size_t iv_len = node::Buffer::Length(iv_buf);
+
+  if (iv_len != 8 && iv_len != 12)
+    return Nan::ThrowError("Invalid IV size.");
+
+  uint64_t ctr = 0;
+
+  if (info.Length() > 2 && !IsNull(info[2])) {
+    if (!info[2]->IsNumber())
+      return Nan::ThrowTypeError("Third argument must be a number.");
+
+    ctr = (uint64_t)info[2]->IntegerValue();
   }
 
-  if (info.Length() > 1 && !IsNull(info[1])) {
-    v8::Local<v8::Value> iv = info[1].As<v8::Object>();
-
-    if (!node::Buffer::HasInstance(iv))
-      return Nan::ThrowTypeError("Second argument must be a buffer.");
-
-    uint64_t ctr = 0;
-
-    if (info.Length() > 2 && !IsNull(info[2])) {
-      if (!info[2]->IsNumber())
-        return Nan::ThrowTypeError("Third argument must be a number.");
-
-      ctr = (uint64_t)info[2]->IntegerValue();
-    }
-
-    chacha->InitIV(node::Buffer::Data(iv), node::Buffer::Length(iv), ctr);
-  }
+  bcrypto_chacha20_keysetup(&chacha->ctx, (uint8_t *)key, 32);
+  bcrypto_chacha20_ivsetup(&chacha->ctx, (uint8_t *)iv, (uint8_t)iv_len);
+  bcrypto_chacha20_counter_set(&chacha->ctx, ctr);
 
   info.GetReturnValue().Set(info.This());
 }
@@ -108,12 +95,18 @@ NAN_METHOD(BChaCha20::InitKey) {
   if (info.Length() < 1)
     return Nan::ThrowError("chacha20.initKey() requires arguments.");
 
-  v8::Local<v8::Object> buf = info[0].As<v8::Object>();
+  v8::Local<v8::Object> key_buf = info[0].As<v8::Object>();
 
-  if (!node::Buffer::HasInstance(buf))
+  if (!node::Buffer::HasInstance(key_buf))
     return Nan::ThrowTypeError("First argument must be a buffer.");
 
-  chacha->InitKey(node::Buffer::Data(buf), node::Buffer::Length(buf));
+  const uint8_t *key = (uint8_t *)node::Buffer::Data(key_buf);
+  size_t key_len = node::Buffer::Length(key_buf);
+
+  if (key_len < 32)
+    return Nan::ThrowError("Invalid key size.");
+
+  bcrypto_chacha20_keysetup(&chacha->ctx, (uint8_t *)key, 32);
 
   info.GetReturnValue().Set(info.This());
 }
@@ -124,10 +117,16 @@ NAN_METHOD(BChaCha20::InitIV) {
   if (info.Length() < 1)
     return Nan::ThrowError("chacha20.initIV() requires arguments.");
 
-  v8::Local<v8::Object> iv = info[0].As<v8::Object>();
+  v8::Local<v8::Object> iv_buf = info[0].As<v8::Object>();
 
-  if (!node::Buffer::HasInstance(iv))
+  if (!node::Buffer::HasInstance(iv_buf))
     return Nan::ThrowTypeError("First argument must be a buffer.");
+
+  const uint8_t *iv = (uint8_t *)node::Buffer::Data(iv_buf);
+  size_t iv_len = node::Buffer::Length(iv_buf);
+
+  if (iv_len != 8 && iv_len != 12)
+    return Nan::ThrowError("Invalid IV size.");
 
   uint64_t ctr = 0;
 
@@ -138,7 +137,8 @@ NAN_METHOD(BChaCha20::InitIV) {
     ctr = (uint64_t)info[1]->IntegerValue();
   }
 
-  chacha->InitIV(node::Buffer::Data(iv), node::Buffer::Length(iv), ctr);
+  bcrypto_chacha20_ivsetup(&chacha->ctx, (uint8_t *)iv, (uint8_t)iv_len);
+  bcrypto_chacha20_counter_set(&chacha->ctx, ctr);
 
   info.GetReturnValue().Set(info.This());
 }
@@ -149,17 +149,17 @@ NAN_METHOD(BChaCha20::Encrypt) {
   if (info.Length() < 1)
     return Nan::ThrowError("chacha20.encrypt() requires arguments.");
 
-  v8::Local<v8::Object> buf = info[0].As<v8::Object>();
+  v8::Local<v8::Object> data_buf = info[0].As<v8::Object>();
 
-  if (!node::Buffer::HasInstance(buf))
+  if (!node::Buffer::HasInstance(data_buf))
     return Nan::ThrowTypeError("First argument must be a buffer.");
 
-  const uint8_t *data = (uint8_t *)node::Buffer::Data(buf);
-  size_t len = node::Buffer::Length(buf);
+  const uint8_t *data = (uint8_t *)node::Buffer::Data(data_buf);
+  size_t data_len = node::Buffer::Length(data_buf);
 
-  bcrypto_chacha20_encrypt(&chacha->ctx, (uint8_t *)data, (uint8_t *)data, len);
+  bcrypto_chacha20_encrypt(&chacha->ctx, data, (uint8_t *)data, data_len);
 
-  info.GetReturnValue().Set(buf);
+  info.GetReturnValue().Set(data_buf);
 }
 
 NAN_METHOD(BChaCha20::SetCounter) {
