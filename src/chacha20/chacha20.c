@@ -145,6 +145,9 @@ bcrypto_chacha20_block(bcrypto_chacha20_ctx *ctx, uint32_t output[16]) {
   //   %rsi = src pointer (&ctx->schedule[0])
   //   %rdi = dst pointer (&output[0])
   //   %edx = rounds integer (nettle does `20 >> 1`)
+  //
+  // For reference, our full range of clobbered registers:
+  // rsi, rdi
   __asm__ __volatile__(
     // rsi = src
     "movq %[src], %%rsi\n"

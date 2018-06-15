@@ -263,6 +263,9 @@ bcrypto_sha3_permutation(uint64_t *state) {
   //   %rdi = state pointer (&state[0])
   //   %r14 = constants pointer (&round_const[0] - reversed)
   //   %r8 = round counter (starts at 24, decrements)
+  //
+  // For reference, our full range of clobbered registers:
+  // rax, rbx, rcx, rdx, rdi, r8, r9, r10, r11, r12, r13, r14
   __asm__ __volatile__(
     "movq %[st], %%rdi\n"
     "movq %[rc], %%r14\n"
