@@ -108,6 +108,7 @@ void
 bcrypto_aead_final(bcrypto_aead_ctx *aead, uint8_t *tag) {
   uint8_t len[16];
 
+#ifdef BCRYPTO_BIG_ENDIAN
   len[0] = aead->aad_len & 0xff;
   len[1] = (aead->aad_len >> 8) & 0xff;
   len[2] = (aead->aad_len >> 16) & 0xff;
@@ -125,6 +126,10 @@ bcrypto_aead_final(bcrypto_aead_ctx *aead, uint8_t *tag) {
   len[13] = (aead->cipher_len >> 40) & 0xff;
   len[14] = (aead->cipher_len >> 48) & 0xff;
   len[15] = (aead->cipher_len >> 56) & 0xff;
+#else
+  memcpy(&len[0], (void *)&aead->aad_len, 8);
+  memcpy(&len[8], (void *)&aead->cipher_len, 8);
+#endif
 
   if (!aead->has_cipher)
     bcrypto_aead_pad16(aead, aead->aad_len);
