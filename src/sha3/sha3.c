@@ -118,6 +118,23 @@ swap_copy_u64_to_str(void *t, const void *f, size_t l) {
   memcpy((to), (from), (length))
 #endif
 
+#ifdef BCRYPTO_USE_ASM
+static uint64_t bcrypto_keccak_round_constants[BCRYPTO_SHA3_ROUNDS + 1] = {
+  I64(0x0000000000000000),
+  I64(0x8000000080008008), I64(0x0000000080000001),
+  I64(0x8000000000008080), I64(0x8000000080008081),
+  I64(0x800000008000000A), I64(0x000000000000800A),
+  I64(0x8000000000000080), I64(0x8000000000008002),
+  I64(0x8000000000008003), I64(0x8000000000008089),
+  I64(0x800000000000008B), I64(0x000000008000808B),
+  I64(0x000000008000000A), I64(0x0000000080008009),
+  I64(0x0000000000000088), I64(0x000000000000008A),
+  I64(0x8000000000008009), I64(0x8000000080008081),
+  I64(0x0000000080000001), I64(0x000000000000808B),
+  I64(0x8000000080008000), I64(0x800000000000808A),
+  I64(0x0000000000008082), I64(0x0000000000000001)
+};
+#else
 static uint64_t bcrypto_keccak_round_constants[BCRYPTO_SHA3_ROUNDS] = {
   I64(0x0000000000000001), I64(0x0000000000008082),
   I64(0x800000000000808A), I64(0x8000000080008000),
@@ -132,6 +149,7 @@ static uint64_t bcrypto_keccak_round_constants[BCRYPTO_SHA3_ROUNDS] = {
   I64(0x8000000080008081), I64(0x8000000000008080),
   I64(0x0000000080000001), I64(0x8000000080008008)
 };
+#endif
 
 static void
 bcrypto_keccak_init(bcrypto_sha3_ctx *ctx, unsigned bits) {
@@ -230,6 +248,414 @@ bcrypto_keccak_chi(uint64_t *A) {
 
 static void
 bcrypto_sha3_permutation(uint64_t *state) {
+#ifdef BCRYPTO_USE_ASM
+  // Borrowed from:
+  // https://github.com/gnutls/nettle/blob/master/x86_64/sha3-permute.asm
+  //
+  // Note: we stripped out the handmade clobber guards
+  // and use %rbx instead of %rbp (GCC doesn't allow
+  // clobber guards for %rbp).
+  //
+  // Also note: node.js really needs to build with sha3
+  // support so I don't have to do shit like this anymore.
+  //
+  // Layout:
+  //   %rdi = state pointer (&state[0])
+  //   %r14 = constants pointer (&round_const[0] - reversed)
+  //   %r8 = round counter (starts at 24, decrements)
+  __asm__ __volatile__(
+    "movq %[st], %%rdi\n"
+    "movq %[rc], %%r14\n"
+    "movl $24, %%r8d\n"
+
+    "movq (%%rdi), %%rax\n"
+    "movups 8(%%rdi), %%xmm0\n"
+    "movups 24(%%rdi), %%xmm1\n"
+    "movq %%rax, %%r10\n"
+
+    "movq 40(%%rdi), %%rcx\n"
+    "movdqa %%xmm0, %%xmm10\n"
+    "movups 48(%%rdi), %%xmm2\n"
+    "movdqa %%xmm1, %%xmm11\n"
+    "movups 64(%%rdi), %%xmm3\n"
+    "xorq %%rcx, %%r10\n"
+
+    "movq 80(%%rdi), %%rdx\n"
+    "pxor %%xmm2, %%xmm10\n"
+    "movups 88(%%rdi), %%xmm4\n"
+    "pxor %%xmm3, %%xmm11\n"
+    "movups 104(%%rdi), %%xmm5\n"
+    "xorq %%rdx, %%r10\n"
+
+    "movq 120(%%rdi), %%rbx\n"
+    "pxor %%xmm4, %%xmm10\n"
+    "movups 128(%%rdi), %%xmm6\n"
+    "pxor %%xmm5, %%xmm11\n"
+    "movups 144(%%rdi), %%xmm7\n"
+    "xorq %%rbx, %%r10\n"
+
+    "movq 160(%%rdi), %%r9\n"
+    "pxor %%xmm6, %%xmm10\n"
+    "movups 168(%%rdi), %%xmm8\n"
+    "pxor %%xmm7, %%xmm11\n"
+    "movups 184(%%rdi), %%xmm9\n"
+    "xorq %%r9, %%r10\n"
+    "pxor %%xmm8, %%xmm10\n"
+    "pxor %%xmm9, %%xmm11\n"
+
+    "loop:\n"
+
+    "pshufd $0x4e, %%xmm11, %%xmm11\n"
+    "movdqa %%xmm10, %%xmm13\n"
+
+    "movq %%r10, (%%rdi)\n"
+    "movq (%%rdi), %%xmm12\n"
+
+    "punpcklqdq %%xmm10, %%xmm12\n"
+    "punpckhqdq %%xmm11, %%xmm13\n"
+    "punpcklqdq %%xmm12, %%xmm11\n"
+
+    "movq %%xmm11, (%%rdi)\n"
+    "movq (%%rdi), %%r11\n"
+
+    "movq %%xmm10, (%%rdi)\n"
+    "movq (%%rdi), %%r12\n"
+
+    "rolq $1, %%r12\n"
+    "xorq %%r12, %%r11\n"
+
+    "movdqa %%xmm13, %%xmm14\n"
+    "movdqa %%xmm13, %%xmm15\n"
+    "psllq $1, %%xmm14\n"
+    "psrlq $63, %%xmm15\n"
+    "pxor %%xmm14, %%xmm12\n"
+    "pxor %%xmm15, %%xmm12\n"
+
+    "movdqa %%xmm11, %%xmm10\n"
+    "psrlq $63, %%xmm11\n"
+    "psllq $1, %%xmm10\n"
+    "pxor %%xmm11, %%xmm13\n"
+    "pxor %%xmm10, %%xmm13\n"
+
+    "xorq %%r11, %%rax\n"
+    "xorq %%r11, %%rcx\n"
+    "xorq %%r11, %%rdx\n"
+    "xorq %%r11, %%rbx\n"
+    "xorq %%r11, %%r9\n"
+    "pxor %%xmm12, %%xmm0\n"
+    "pxor %%xmm12, %%xmm2\n"
+    "pxor %%xmm12, %%xmm4\n"
+    "pxor %%xmm12, %%xmm6\n"
+    "pxor %%xmm12, %%xmm8\n"
+    "pxor %%xmm13, %%xmm1\n"
+    "pxor %%xmm13, %%xmm3\n"
+    "pxor %%xmm13, %%xmm5\n"
+    "pxor %%xmm13, %%xmm7\n"
+    "pxor %%xmm13, %%xmm9\n"
+
+    "movdqa %%xmm0, %%xmm14\n"
+    "movdqa %%xmm0, %%xmm15\n"
+    "movdqa %%xmm0, %%xmm12\n"
+    "psllq $1, %%xmm0\n"
+    "psrlq $63, %%xmm14\n"
+    "psllq $62, %%xmm15\n"
+    "por %%xmm0, %%xmm14\n"
+    "psrlq $2, %%xmm12\n"
+    "por %%xmm15, %%xmm12\n"
+
+    "movdqa %%xmm1, %%xmm0\n"
+    "movdqa %%xmm1, %%xmm15\n"
+    "psllq $28, %%xmm0\n"
+    "psrlq $36, %%xmm15\n"
+    "por %%xmm15, %%xmm0\n"
+    "movdqa %%xmm1, %%xmm15\n"
+    "psllq $27, %%xmm1\n"
+    "psrlq $37, %%xmm15\n"
+    "por %%xmm15, %%xmm1\n"
+
+    "punpcklqdq %%xmm14, %%xmm0\n"
+    "punpckhqdq %%xmm12, %%xmm1\n"
+
+    "rolq $36, %%rcx\n"
+
+    "movq %%rcx, (%%rdi)\n"
+    "movq (%%rdi), %%xmm14\n"
+
+    "movq %%xmm2, (%%rdi)\n"
+    "movq (%%rdi), %%rcx\n"
+
+    "rolq $44, %%rcx\n"
+
+    "movdqa %%xmm2, %%xmm15\n"
+    "psllq $6, %%xmm2\n"
+    "psrlq $58, %%xmm15\n"
+
+    "por %%xmm2, %%xmm15\n"
+    "movdqa %%xmm3, %%xmm2\n"
+
+    "movdqa %%xmm2, %%xmm12\n"
+    "psllq $20, %%xmm2\n"
+    "psrlq $44, %%xmm12\n"
+
+    "por %%xmm12, %%xmm2\n"
+    "punpckhqdq %%xmm15, %%xmm2\n"
+
+    "movdqa %%xmm3, %%xmm15\n"
+    "psllq $55, %%xmm3\n"
+    "psrlq $9, %%xmm15\n"
+
+    "por %%xmm3, %%xmm15\n"
+    "movdqa %%xmm14, %%xmm3\n"
+    "punpcklqdq %%xmm15, %%xmm3\n"
+
+    "rolq $42, %%rdx\n"
+    "pshufd $0x4e, %%xmm4, %%xmm14\n"
+
+    "movq %%rdx, (%%rdi)\n"
+    "movq (%%rdi), %%xmm4\n"
+
+    "movq %%xmm14, (%%rdi)\n"
+    "movq (%%rdi), %%rdx\n"
+
+    "rolq $43, %%rdx\n"
+
+    "punpcklqdq %%xmm5, %%xmm4\n"
+
+    "movdqa %%xmm4, %%xmm15\n"
+    "psllq $25, %%xmm4\n"
+    "psrlq $39, %%xmm15\n"
+
+    "por %%xmm15, %%xmm4\n"
+
+    "movdqa %%xmm5, %%xmm12\n"
+    "psllq $39, %%xmm5\n"
+    "psrlq $25, %%xmm12\n"
+
+    "por %%xmm5, %%xmm12\n"
+
+    "movdqa %%xmm14, %%xmm5\n"
+    "psllq $10, %%xmm14\n"
+    "psrlq $54, %%xmm5\n"
+
+    "por %%xmm14, %%xmm5\n"
+    "punpckhqdq %%xmm12, %%xmm5\n"
+
+    "pshufd $0x4e, %%xmm7, %%xmm14\n"
+    "rolq $41, %%rbx\n"
+
+    "movq %%rbx, (%%rdi)\n"
+    "movq (%%rdi), %%xmm15\n"
+
+    "movq %%xmm7, (%%rdi)\n"
+    "movq (%%rdi), %%rbx\n"
+
+    "rolq $21, %%rbx\n"
+    "pshufd $0x4e, %%xmm6, %%xmm7\n"
+
+    "movdqa %%xmm6, %%xmm12\n"
+    "psllq $45, %%xmm6\n"
+    "psrlq $19, %%xmm12\n"
+
+    "por %%xmm12, %%xmm6\n"
+
+    "movdqa %%xmm14, %%xmm13\n"
+    "psllq $8, %%xmm14\n"
+    "psrlq $56, %%xmm13\n"
+
+    "por %%xmm13, %%xmm14\n"
+    "punpcklqdq %%xmm14, %%xmm6\n"
+
+    "movdqa %%xmm7, %%xmm12\n"
+    "psllq $15, %%xmm7\n"
+    "psrlq $49, %%xmm12\n"
+
+    "por %%xmm12, %%xmm7\n"
+    "punpcklqdq %%xmm15, %%xmm7\n"
+
+    "rolq $18, %%r9\n"
+
+    "movq %%r9, (%%rdi)\n"
+    "movq (%%rdi), %%xmm14\n"
+
+    "pshufd $0x4e, %%xmm9, %%xmm15\n"
+    "movd %%xmm15, %%r9\n"
+    "rolq $14, %%r9\n"
+
+    "movdqa %%xmm9, %%xmm15\n"
+    "psllq $56, %%xmm9\n"
+    "psrlq $8, %%xmm15\n"
+
+    "por %%xmm15, %%xmm9\n"
+
+    "movdqa %%xmm8, %%xmm12\n"
+
+    "movdqa %%xmm12, %%xmm15\n"
+    "psllq $2, %%xmm12\n"
+    "psrlq $62, %%xmm15\n"
+
+    "por %%xmm15, %%xmm12\n"
+    "punpcklqdq %%xmm12, %%xmm9\n"
+
+    "movdqa %%xmm8, %%xmm15\n"
+    "psllq $61, %%xmm8\n"
+    "psrlq $3, %%xmm15\n"
+
+    "por %%xmm15, %%xmm8\n"
+    "psrldq $8, %%xmm8\n"
+    "punpcklqdq %%xmm14, %%xmm8\n"
+
+    "movq %%rcx, %%r12\n"
+    "notq %%r12\n"
+    "andq %%rdx, %%r12\n"
+    "movq %%rdx, %%r13\n"
+    "notq %%r13\n"
+    "andq %%rbx, %%r13\n"
+    "movq %%rbx, %%r11\n"
+    "notq %%r11\n"
+    "andq %%r9, %%r11\n"
+    "xorq %%r11, %%rdx\n"
+    "movq %%r9, %%r10\n"
+    "notq %%r10\n"
+    "andq %%rax, %%r10\n"
+    "xorq %%r10, %%rbx\n"
+    "movq %%rax, %%r11\n"
+    "notq %%r11\n"
+    "andq %%rcx, %%r11\n"
+    "xorq %%r11, %%r9\n"
+    "xorq %%r12, %%rax\n"
+    "xorq %%r13, %%rcx\n"
+
+    "movdqa %%xmm2, %%xmm14\n"
+    "pandn %%xmm4, %%xmm14\n"
+    "movdqa %%xmm4, %%xmm15\n"
+    "pandn %%xmm6, %%xmm15\n"
+    "movdqa %%xmm6, %%xmm12\n"
+    "pandn %%xmm8, %%xmm12\n"
+    "pxor %%xmm12, %%xmm4\n"
+    "movdqa %%xmm8, %%xmm13\n"
+    "pandn %%xmm0, %%xmm13\n"
+    "pxor %%xmm13, %%xmm6\n"
+    "movdqa %%xmm0, %%xmm12\n"
+    "pandn %%xmm2, %%xmm12\n"
+    "pxor %%xmm12, %%xmm8\n"
+    "pxor %%xmm14, %%xmm0\n"
+    "pxor %%xmm15, %%xmm2\n"
+
+    "movdqa %%xmm3, %%xmm14\n"
+    "pandn %%xmm5, %%xmm14\n"
+    "movdqa %%xmm5, %%xmm15\n"
+    "pandn %%xmm7, %%xmm15\n"
+    "movdqa %%xmm7, %%xmm12\n"
+    "pandn %%xmm9, %%xmm12\n"
+    "pxor %%xmm12, %%xmm5\n"
+    "movdqa %%xmm9, %%xmm13\n"
+    "pandn %%xmm1, %%xmm13\n"
+    "pxor %%xmm13, %%xmm7\n"
+    "movdqa %%xmm1, %%xmm12\n"
+    "pandn %%xmm3, %%xmm12\n"
+    "pxor %%xmm12, %%xmm9\n"
+    "pxor %%xmm14, %%xmm1\n"
+    "pxor %%xmm15, %%xmm3\n"
+
+    "xorq (%%r14, %%r8, 8), %%rax\n"
+
+    "movq %%rcx, (%%rdi)\n"
+    "movq (%%rdi), %%xmm10\n"
+
+    "movq %%rbx, (%%rdi)\n"
+    "movq (%%rdi), %%xmm11\n"
+
+    "movq %%rdx, (%%rdi)\n"
+    "movq (%%rdi), %%xmm14\n"
+
+    "movq %%r9, (%%rdi)\n"
+    "movq (%%rdi), %%xmm15\n"
+
+    "movq %%rax, %%r10\n"
+    "punpcklqdq %%xmm14, %%xmm10\n"
+    "punpcklqdq %%xmm15, %%xmm11\n"
+
+    "movq %%xmm0, (%%rdi)\n"
+    "movq (%%rdi), %%rcx\n"
+
+    "movq %%xmm1, (%%rdi)\n"
+    "movq (%%rdi), %%rbx\n"
+
+    "psrldq $8, %%xmm0\n"
+    "psrldq $8, %%xmm1\n"
+    "xorq %%rcx, %%r10\n"
+    "xorq %%rbx, %%r10\n"
+
+    "movq %%xmm0, (%%rdi)\n"
+    "movq (%%rdi), %%rdx\n"
+
+    "movq %%xmm1, (%%rdi)\n"
+    "movq (%%rdi), %%r9\n"
+
+    "movdqa %%xmm10, %%xmm0\n"
+    "movdqa %%xmm11, %%xmm1\n"
+
+    "movdqa %%xmm2, %%xmm14\n"
+    "punpcklqdq %%xmm4, %%xmm2\n"
+    "xorq %%rdx, %%r10\n"
+    "xorq %%r9, %%r10\n"
+    "punpckhqdq %%xmm14, %%xmm4\n"
+    "pshufd $0x4e, %%xmm4, %%xmm4\n"
+
+    "movdqa %%xmm7, %%xmm14\n"
+    "punpcklqdq %%xmm9, %%xmm7\n"
+    "pxor %%xmm2, %%xmm10\n"
+    "pxor %%xmm4, %%xmm10\n"
+    "punpckhqdq %%xmm14, %%xmm9\n"
+    "pshufd $0x4e, %%xmm9, %%xmm9\n"
+
+    "movdqa %%xmm3, %%xmm14\n"
+    "movdqa %%xmm5, %%xmm15\n"
+    "movdqa %%xmm6, %%xmm3\n"
+    "movdqa %%xmm8, %%xmm5\n"
+    "pxor %%xmm7, %%xmm11\n"
+    "pxor %%xmm9, %%xmm11\n"
+    "punpcklqdq %%xmm8, %%xmm3\n"
+    "punpckhqdq %%xmm6, %%xmm5\n"
+    "pshufd $0x4e, %%xmm5, %%xmm5\n"
+    "movdqa %%xmm14, %%xmm6\n"
+    "movdqa %%xmm15, %%xmm8\n"
+    "pxor %%xmm3, %%xmm11\n"
+    "pxor %%xmm5, %%xmm11\n"
+    "punpcklqdq %%xmm15, %%xmm6\n"
+    "punpckhqdq %%xmm14, %%xmm8\n"
+    "pshufd $0x4e, %%xmm8, %%xmm8\n"
+
+    "decl %%r8d\n"
+    "pxor %%xmm6, %%xmm10\n"
+    "pxor %%xmm8, %%xmm10\n"
+    "jnz loop\n"
+
+    "movq %%rax, (%%rdi)\n"
+    "movups %%xmm0, 8(%%rdi)\n"
+    "movups %%xmm1, 24(%%rdi)\n"
+
+    "movq %%rcx, 40(%%rdi)\n"
+    "movups %%xmm2, 48(%%rdi)\n"
+    "movups %%xmm3, 64(%%rdi)\n"
+
+    "movq %%rdx, 80(%%rdi)\n"
+    "movups %%xmm4, 88(%%rdi)\n"
+    "movups %%xmm5, 104(%%rdi)\n"
+
+    "movq %%rbx, 120(%%rdi)\n"
+    "movups %%xmm6, 128(%%rdi)\n"
+    "movups %%xmm7, 144(%%rdi)\n"
+
+    "movq %%r9, 160(%%rdi)\n"
+    "movups %%xmm8, 168(%%rdi)\n"
+    "movups %%xmm9, 184(%%rdi)\n"
+    :
+    : [st] "r" (state),
+      [rc] "r" (bcrypto_keccak_round_constants)
+    : "rbx", "r12", "r13", "r14", "cc", "memory"
+  );
+#else
   int round;
   for (round = 0; round < BCRYPTO_SHA3_ROUNDS; round++) {
     bcrypto_keccak_theta(state);
@@ -264,6 +690,7 @@ bcrypto_sha3_permutation(uint64_t *state) {
 
     *state ^= bcrypto_keccak_round_constants[round];
   }
+#endif
 }
 
 static void
