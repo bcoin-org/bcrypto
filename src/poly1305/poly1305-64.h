@@ -141,7 +141,7 @@ bcrypto_poly1305_blocks(
   s2 = r2 * (5 << 2);
 
   while (bytes >= bcrypto_poly1305_block_size) {
-    unsigned long long t0,t1;
+    unsigned long long t0, t1;
 
     // h += m[i]
     t0 = U8TO64(&m[0]);
@@ -186,7 +186,7 @@ bcrypto_poly1305_blocks(
     c = (h0 >> 44);
     h0 = h0 & 0xfffffffffff;
 
-    h1  += c;
+    h1 += c;
 
     m += bcrypto_poly1305_block_size;
     bytes -= bcrypto_poly1305_block_size;
