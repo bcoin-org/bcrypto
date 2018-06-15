@@ -222,8 +222,10 @@ bcrypto_blake2b_compress(
   __m128i b0, b1;
   __m128i t0, t1;
 #if defined(HAVE_SSSE3) && !defined(HAVE_XOP)
-  const __m128i r16 = _mm_setr_epi8(2, 3, 4, 5, 6, 7, 0, 1, 10, 11, 12, 13, 14, 15, 8, 9);
-  const __m128i r24 = _mm_setr_epi8(3, 4, 5, 6, 7, 0, 1, 2, 11, 12, 13, 14, 15, 8, 9, 10);
+  const __m128i r16 = _mm_setr_epi8(
+    2, 3, 4, 5, 6, 7, 0, 1, 10, 11, 12, 13, 14, 15, 8, 9);
+  const __m128i r24 = _mm_setr_epi8(
+    3, 4, 5, 6, 7, 0, 1, 2, 11, 12, 13, 14, 15, 8, 9, 10);
 #endif
 #if defined(HAVE_SSE41)
   const __m128i m0 = LOADU(block + 0);
