@@ -23,6 +23,30 @@
 #include "blake2b.h"
 #include "blake2b-impl.h"
 
+#ifdef BCRYPTO_USE_SSE
+#include "blake2b-config.h"
+
+#ifdef HAVE_SSE2
+#ifdef _MSC_VER
+#include <intrin.h> /* for _mm_set_epi64x */
+#endif
+#include <emmintrin.h>
+#if defined(HAVE_SSSE3)
+#include <tmmintrin.h>
+#endif
+#if defined(HAVE_SSE41)
+#include <smmintrin.h>
+#endif
+#if defined(HAVE_AVX)
+#include <immintrin.h>
+#endif
+#if defined(HAVE_XOP)
+#include <x86intrin.h>
+#endif
+#include "blake2b-round.h"
+#endif // HAVE_SSE2
+#endif // BCRYPTO_USE_SSE
+
 static const uint64_t bcrypto_blake2b_IV[8] = {
   0x6a09e667f3bcc908ULL, 0xbb67ae8584caa73bULL,
   0x3c6ef372fe94f82bULL, 0xa54ff53a5f1d36f1ULL,
@@ -30,6 +54,7 @@ static const uint64_t bcrypto_blake2b_IV[8] = {
   0x1f83d9abfb41bd6bULL, 0x5be0cd19137e2179ULL
 };
 
+#if !defined(BCRYPTO_USE_SSE) || !defined(HAVE_SSE2)
 static const uint8_t bcrypto_blake2b_sigma[12][16] = {
   {  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15 },
   { 14, 10,  4,  8,  9, 15, 13,  6,  1, 12,  0,  2, 11,  7,  5,  3 },
@@ -45,6 +70,30 @@ static const uint8_t bcrypto_blake2b_sigma[12][16] = {
   { 14, 10,  4,  8,  9, 15, 13,  6,  1, 12,  0,  2, 11,  7,  5,  3 }
 };
 
+#define G(r, i, a, b, c, d)                     \
+  do {                                          \
+    a = a + b + m[bcrypto_blake2b_sigma[r][2*i+0]]; \
+    d = rotr64(d ^ a, 32);                      \
+    c = c + d;                                  \
+    b = rotr64(b ^ c, 24);                      \
+    a = a + b + m[bcrypto_blake2b_sigma[r][2*i+1]]; \
+    d = rotr64(d ^ a, 16);                      \
+    c = c + d;                                  \
+    b = rotr64(b ^ c, 63);                      \
+  } while (0)
+
+#define ROUND(r)                       \
+  do {                                 \
+    G(r, 0, v[0], v[4], v[8], v[12]);  \
+    G(r, 1, v[1], v[5], v[9], v[13]);  \
+    G(r, 2, v[2], v[6], v[10], v[14]); \
+    G(r, 3, v[3], v[7], v[11], v[15]); \
+    G(r, 4, v[0], v[5], v[10], v[15]); \
+    G(r, 5, v[1], v[6], v[11], v[12]); \
+    G(r, 6, v[2], v[7], v[8], v[13]);  \
+    G(r, 7, v[3], v[4], v[9], v[14]);  \
+  } while (0)
+#endif
 
 static void
 bcrypto_blake2b_set_lastnode(bcrypto_blake2b_ctx *ctx) {
@@ -160,35 +209,78 @@ bcrypto_blake2b_init_key(
   return 0;
 }
 
-#define G(r, i, a, b, c, d)                     \
-  do {                                          \
-    a = a + b + m[bcrypto_blake2b_sigma[r][2*i+0]]; \
-    d = rotr64(d ^ a, 32);                      \
-    c = c + d;                                  \
-    b = rotr64(b ^ c, 24);                      \
-    a = a + b + m[bcrypto_blake2b_sigma[r][2*i+1]]; \
-    d = rotr64(d ^ a, 16);                      \
-    c = c + d;                                  \
-    b = rotr64(b ^ c, 63);                      \
-  } while (0)
-
-#define ROUND(r)                       \
-  do {                                 \
-    G(r, 0, v[0], v[4], v[8], v[12]);  \
-    G(r, 1, v[1], v[5], v[9], v[13]);  \
-    G(r, 2, v[2], v[6], v[10], v[14]); \
-    G(r, 3, v[3], v[7], v[11], v[15]); \
-    G(r, 4, v[0], v[5], v[10], v[15]); \
-    G(r, 5, v[1], v[6], v[11], v[12]); \
-    G(r, 6, v[2], v[7], v[8], v[13]);  \
-    G(r, 7, v[3], v[4], v[9], v[14]);  \
-  } while (0)
-
 static void
 bcrypto_blake2b_compress(
   bcrypto_blake2b_ctx *ctx,
   const uint8_t block[BCRYPTO_BLAKE2B_BLOCKBYTES]
 ) {
+#if defined(BCRYPTO_USE_SSE) && defined(HAVE_SSE2)
+  __m128i row1l, row1h;
+  __m128i row2l, row2h;
+  __m128i row3l, row3h;
+  __m128i row4l, row4h;
+  __m128i b0, b1;
+  __m128i t0, t1;
+#if defined(HAVE_SSSE3) && !defined(HAVE_XOP)
+  const __m128i r16 = _mm_setr_epi8(2, 3, 4, 5, 6, 7, 0, 1, 10, 11, 12, 13, 14, 15, 8, 9);
+  const __m128i r24 = _mm_setr_epi8(3, 4, 5, 6, 7, 0, 1, 2, 11, 12, 13, 14, 15, 8, 9, 10);
+#endif
+#if defined(HAVE_SSE41)
+  const __m128i m0 = LOADU(block + 0);
+  const __m128i m1 = LOADU(block + 16);
+  const __m128i m2 = LOADU(block + 32);
+  const __m128i m3 = LOADU(block + 48);
+  const __m128i m4 = LOADU(block + 64);
+  const __m128i m5 = LOADU(block + 80);
+  const __m128i m6 = LOADU(block + 96);
+  const __m128i m7 = LOADU(block + 112);
+#else
+  const uint64_t m0 = load64(block + 0 * sizeof(uint64_t));
+  const uint64_t m1 = load64(block + 1 * sizeof(uint64_t));
+  const uint64_t m2 = load64(block + 2 * sizeof(uint64_t));
+  const uint64_t m3 = load64(block + 3 * sizeof(uint64_t));
+  const uint64_t m4 = load64(block + 4 * sizeof(uint64_t));
+  const uint64_t m5 = load64(block + 5 * sizeof(uint64_t));
+  const uint64_t m6 = load64(block + 6 * sizeof(uint64_t));
+  const uint64_t m7 = load64(block + 7 * sizeof(uint64_t));
+  const uint64_t m8 = load64(block + 8 * sizeof(uint64_t));
+  const uint64_t m9 = load64(block + 9 * sizeof(uint64_t));
+  const uint64_t m10 = load64(block + 10 * sizeof(uint64_t));
+  const uint64_t m11 = load64(block + 11 * sizeof(uint64_t));
+  const uint64_t m12 = load64(block + 12 * sizeof(uint64_t));
+  const uint64_t m13 = load64(block + 13 * sizeof(uint64_t));
+  const uint64_t m14 = load64(block + 14 * sizeof(uint64_t));
+  const uint64_t m15 = load64(block + 15 * sizeof(uint64_t));
+#endif
+  row1l = LOADU(&ctx->h[0]);
+  row1h = LOADU(&ctx->h[2]);
+  row2l = LOADU(&ctx->h[4]);
+  row2h = LOADU(&ctx->h[6]);
+  row3l = LOADU(&bcrypto_blake2b_IV[0]);
+  row3h = LOADU(&bcrypto_blake2b_IV[2]);
+  row4l = _mm_xor_si128(LOADU(&bcrypto_blake2b_IV[4]), LOADU(&ctx->t[0]));
+  row4h = _mm_xor_si128(LOADU(&bcrypto_blake2b_IV[6]), LOADU(&ctx->f[0]));
+  ROUND(0);
+  ROUND(1);
+  ROUND(2);
+  ROUND(3);
+  ROUND(4);
+  ROUND(5);
+  ROUND(6);
+  ROUND(7);
+  ROUND(8);
+  ROUND(9);
+  ROUND(10);
+  ROUND(11);
+  row1l = _mm_xor_si128(row3l, row1l);
+  row1h = _mm_xor_si128(row3h, row1h);
+  STOREU(&ctx->h[0], _mm_xor_si128(LOADU(&ctx->h[0]), row1l));
+  STOREU(&ctx->h[2], _mm_xor_si128(LOADU(&ctx->h[2]), row1h));
+  row2l = _mm_xor_si128(row4l, row2l);
+  row2h = _mm_xor_si128(row4h, row2h);
+  STOREU(&ctx->h[4], _mm_xor_si128(LOADU(&ctx->h[4]), row2l));
+  STOREU(&ctx->h[6], _mm_xor_si128(LOADU(&ctx->h[6]), row2h));
+#else
   uint64_t m[16];
   uint64_t v[16];
   size_t i;
@@ -223,10 +315,10 @@ bcrypto_blake2b_compress(
 
   for (i = 0; i < 8; i++)
     ctx->h[i] = ctx->h[i] ^ v[i] ^ v[i + 8];
-}
-
 #undef G
 #undef ROUND
+#endif
+}
 
 int
 bcrypto_blake2b_update(bcrypto_blake2b_ctx *ctx, const void *pin, size_t inlen) {
