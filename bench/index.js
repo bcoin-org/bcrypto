@@ -10,13 +10,6 @@ const ChaCha20 = require('../lib/chacha20');
 const Poly1305 = require('../lib/poly1305');
 const AEAD = require('../lib/aead');
 
-assert.strictEqual(sha256.native, 2);
-assert.strictEqual(blake2b.native, 2);
-assert.strictEqual(sha3.native, 2);
-assert.strictEqual(ChaCha20.native, 2);
-assert.strictEqual(Poly1305.native, 2);
-assert.strictEqual(AEAD.native, 2);
-
 for (const size of [32, 64, 65, 512, 1024]) {
   const rounds = 2000000;
   const msg = random.randomBytes(size);
