@@ -149,11 +149,8 @@ bcrypto_chacha20_block(bcrypto_chacha20_ctx *ctx, uint32_t output[16]) {
   // For reference, our full range of clobbered registers:
   // rsi, rdi
   __asm__ __volatile__(
-    // rsi = src
     "movq %[src], %%rsi\n"
-    // rdi = dst
     "movq %[dst], %%rdi\n"
-    // edx = rounds (20)
     "movl $20, %%edx\n"
 
     "movups (%%rsi), %%xmm0\n"
