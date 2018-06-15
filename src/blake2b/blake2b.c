@@ -24,6 +24,10 @@
 #include "blake2b-impl.h"
 
 #ifdef BCRYPTO_USE_SSE
+#ifdef BCRYPTO_USE_SSE41
+#pragma GCC target("sse4.1")
+#endif
+
 #include "blake2b-config.h"
 
 #ifdef HAVE_SSE2
