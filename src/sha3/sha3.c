@@ -306,7 +306,7 @@ bcrypto_sha3_permutation(uint64_t *state) {
     "pxor %%xmm8, %%xmm10\n"
     "pxor %%xmm9, %%xmm11\n"
 
-    "loop:\n"
+    "1:\n"
 
     "pshufd $0x4e, %%xmm11, %%xmm11\n"
     "movdqa %%xmm10, %%xmm13\n"
@@ -632,7 +632,7 @@ bcrypto_sha3_permutation(uint64_t *state) {
     "decl %%r8d\n"
     "pxor %%xmm6, %%xmm10\n"
     "pxor %%xmm8, %%xmm10\n"
-    "jnz loop\n"
+    "jnz 1b\n"
 
     "movq %%rax, (%%rdi)\n"
     "movups %%xmm0, 8(%%rdi)\n"
@@ -656,7 +656,10 @@ bcrypto_sha3_permutation(uint64_t *state) {
     :
     : [st] "r" (state),
       [rc] "r" (bcrypto_keccak_round_constants)
-    : "rbx", "r12", "r13", "r14", "cc", "memory"
+    : "rbx", "r12", "r13", "r14", // Necessary
+      "rax", "rcx", "rdx", "rdi", // Not necessary (but better to be safe)
+      "r8",  "r9",  "r10", "r11",
+      "cc", "memory"
   );
 #else
   int round;

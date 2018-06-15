@@ -43,10 +43,8 @@
     "cflags": [
       "-Wall",
       "-Wno-implicit-fallthrough",
-      "-Wno-maybe-uninitialized",
       "-Wno-uninitialized",
       "-Wno-unused-function",
-      "-Wno-cast-function-type",
       "-Wextra",
       "-O3"
     ],
@@ -54,13 +52,18 @@
       "-std=c99"
     ],
     "cflags_cc+": [
-      "-std=c++0x"
+      "-std=c++0x",
+      "-Wno-maybe-uninitialized",
+      "-Wno-cast-function-type"
     ],
     "include_dirs": [
       "<!(node -e \"require('nan')\")"
     ],
     "variables": {
       "conditions": [
+        ["OS!='win'", {
+          "cc": "<!(echo $CC)",
+        }],
         ["OS=='win'", {
           "conditions": [
             ["target_arch=='ia32'", {
@@ -73,6 +76,11 @@
       ]
     },
     "conditions": [
+      ["target_arch=='x64' and OS!='win' and cc=='clang'", {
+        "cflags": [
+          "-msse4.1"
+        ]
+      }],
       ["bcrypto_byteorder=='little'", {
         "defines": [
           "BCRYPTO_LITTLE_ENDIAN"

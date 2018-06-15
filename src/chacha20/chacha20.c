@@ -137,6 +137,7 @@ bcrypto_chacha20_block(bcrypto_chacha20_ctx *ctx, uint32_t output[16]) {
   //
   // Note: Seems as though %rsi can't be clobbered here. Every ABI description
   // I've read says %rsi is clobber-able. Maybe GCC is doing something weird.
+  // Futhermore, clang breaks if %edx is clobbered.
   //
   // See:
   // - https://github.com/gnutls/nettle/blob/master/x86_64/README
@@ -148,7 +149,7 @@ bcrypto_chacha20_block(bcrypto_chacha20_ctx *ctx, uint32_t output[16]) {
   //   %edx = rounds integer (nettle does `20 >> 1`)
   //
   // For reference, our full range of clobbered registers:
-  // rsi, rdi
+  // rsi, rdi, edx
   __asm__ __volatile__(
     "movq %[src], %%rsi\n"
     "movq %[dst], %%rdi\n"
@@ -161,7 +162,7 @@ bcrypto_chacha20_block(bcrypto_chacha20_ctx *ctx, uint32_t output[16]) {
 
     "shrl $1, %%edx\n"
 
-    "loop:\n"
+    "1:\n"
 
     "paddd %%xmm1, %%xmm0\n"
     "pxor %%xmm0, %%xmm3\n"
@@ -228,7 +229,7 @@ bcrypto_chacha20_block(bcrypto_chacha20_ctx *ctx, uint32_t output[16]) {
     "pshufd $0x39, %%xmm3, %%xmm3\n"
 
     "decl %%edx\n"
-    "jnz loop\n"
+    "jnz 1b\n"
 
     "movups (%%rsi), %%xmm4\n"
     "movups 16(%%rsi), %%xmm5\n"
@@ -245,13 +246,13 @@ bcrypto_chacha20_block(bcrypto_chacha20_ctx *ctx, uint32_t output[16]) {
 
     "incl 48(%%rsi)\n"
     "cmpl $0, 48(%%rsi)\n"
-    "jnz out\n"
+    "jnz 2f\n"
     "incl 52(%%rsi)\n"
-    "out:\n"
+    "2:\n"
     :
     : [src] "r" (ctx->state),
       [dst] "r" (output)
-    : "rsi", "cc", "memory"
+    : "rsi", "rdi", "edx", "cc", "memory"
   );
 #else
   uint32_t *nonce = ctx->state + 12;
