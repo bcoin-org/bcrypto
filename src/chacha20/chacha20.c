@@ -130,6 +130,125 @@ bcrypto_chacha20_counter_get(bcrypto_chacha20_ctx *ctx) {
 
 void
 bcrypto_chacha20_block(bcrypto_chacha20_ctx *ctx, uint32_t output[16]) {
+#ifdef BCRYPTO_USE_ASM
+  // Borrowed from:
+  // https://github.com/gnutls/nettle/blob/master/x86_64/chacha-core-internal.asm
+  //
+  // Note: Seems as though %rsi can't be clobbered here. Every ABI description
+  // I've read says %rsi is clobber-able. Maybe GCC is doing something weird.
+  //
+  // See:
+  // - https://github.com/gnutls/nettle/blob/master/x86_64/README
+  // - https://wiki.cdot.senecacollege.ca/wiki/X86_64_Register_and_Instruction_Quick_Start
+  //
+  // Layout:
+  //   %rsi = src pointer (&ctx->schedule[0])
+  //   %rdi = dst pointer (&output[0])
+  //   %edx = rounds integer (nettle does `20 >> 1`)
+  __asm__ __volatile__(
+    // rsi = src
+    "movq %[src], %%rsi\n"
+    // rdi = dst
+    "movq %[dst], %%rdi\n"
+    // edx = rounds (20)
+    "movl $20, %%edx\n"
+
+    "movups (%%rsi), %%xmm0\n"
+    "movups 16(%%rsi), %%xmm1\n"
+    "movups 32(%%rsi), %%xmm2\n"
+    "movups 48(%%rsi), %%xmm3\n"
+
+    "shrl $1, %%edx\n"
+
+    "loop:\n"
+
+    "paddd %%xmm1, %%xmm0\n"
+    "pxor %%xmm0, %%xmm3\n"
+    "movaps %%xmm3, %%xmm4\n"
+
+    "pshufhw $0xb1, %%xmm3, %%xmm3\n"
+    "pshuflw $0xb1, %%xmm3, %%xmm3\n"
+
+    "paddd %%xmm3, %%xmm2\n"
+    "pxor %%xmm2, %%xmm1\n"
+    "movaps %%xmm1, %%xmm4\n"
+    "pslld $12, %%xmm1\n"
+    "psrld $20, %%xmm4\n"
+    "por %%xmm4, %%xmm1\n"
+
+    "paddd %%xmm1, %%xmm0\n"
+    "pxor %%xmm0, %%xmm3\n"
+    "movaps %%xmm3, %%xmm4\n"
+    "pslld $8, %%xmm3\n"
+    "psrld $24, %%xmm4\n"
+    "por %%xmm4, %%xmm3\n"
+
+    "paddd %%xmm3, %%xmm2\n"
+    "pxor %%xmm2, %%xmm1\n"
+    "movaps %%xmm1, %%xmm4\n"
+    "pslld $7, %%xmm1\n"
+    "psrld $25, %%xmm4\n"
+    "por %%xmm4, %%xmm1\n"
+
+    "pshufd $0x39, %%xmm1, %%xmm1\n"
+    "pshufd $0x4e, %%xmm2, %%xmm2\n"
+    "pshufd $0x93, %%xmm3, %%xmm3\n"
+
+    "paddd %%xmm1, %%xmm0\n"
+    "pxor %%xmm0, %%xmm3\n"
+    "movaps %%xmm3, %%xmm4\n"
+
+    "pshufhw $0xb1, %%xmm3, %%xmm3\n"
+    "pshuflw $0xb1, %%xmm3, %%xmm3\n"
+
+    "paddd %%xmm3, %%xmm2\n"
+    "pxor %%xmm2, %%xmm1\n"
+    "movaps %%xmm1, %%xmm4\n"
+    "pslld $12, %%xmm1\n"
+    "psrld $20, %%xmm4\n"
+    "por %%xmm4, %%xmm1\n"
+
+    "paddd %%xmm1, %%xmm0\n"
+    "pxor %%xmm0, %%xmm3\n"
+    "movaps %%xmm3, %%xmm4\n"
+    "pslld $8, %%xmm3\n"
+    "psrld $24, %%xmm4\n"
+    "por %%xmm4, %%xmm3\n"
+
+    "paddd %%xmm3, %%xmm2\n"
+    "pxor %%xmm2, %%xmm1\n"
+    "movaps %%xmm1, %%xmm4\n"
+    "pslld $7, %%xmm1\n"
+    "psrld $25, %%xmm4\n"
+    "por %%xmm4, %%xmm1\n"
+
+    "pshufd $0x93, %%xmm1, %%xmm1\n"
+    "pshufd $0x4e, %%xmm2, %%xmm2\n"
+    "pshufd $0x39, %%xmm3, %%xmm3\n"
+
+    "decl %%edx\n"
+    "jnz loop\n"
+
+    "movups (%%rsi), %%xmm4\n"
+    "movups 16(%%rsi), %%xmm5\n"
+    "paddd %%xmm4, %%xmm0\n"
+    "paddd %%xmm5, %%xmm1\n"
+    "movups %%xmm0,(%%rdi)\n"
+    "movups %%xmm1,16(%%rdi)\n"
+    "movups 32(%%rsi), %%xmm4\n"
+    "movups 48(%%rsi), %%xmm5\n"
+    "paddd %%xmm4, %%xmm2\n"
+    "paddd %%xmm5, %%xmm3\n"
+    "movups %%xmm2,32(%%rdi)\n"
+    "movups %%xmm3,48(%%rdi)\n"
+
+    "incl 48(%%rsi)\n"
+    :
+    : [src] "r" (ctx->schedule),
+      [dst] "r" (output)
+    : "rsi", "cc", "memory"
+  );
+#else
   uint32_t *nonce = ctx->schedule + 12;
   int i = 10;
 
@@ -155,6 +274,7 @@ bcrypto_chacha20_block(bcrypto_chacha20_ctx *ctx, uint32_t output[16]) {
     if (ctx->nonce_size == 8)
       nonce[1]++;
   }
+#endif
 }
 
 static inline
