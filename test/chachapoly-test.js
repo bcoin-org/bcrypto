@@ -77,7 +77,6 @@ function testAEAD2(options) {
   assert.bufferEqual(ciphertext, plain);
 }
 
-
 describe('ChaCha20 / Poly1305 / AEAD', function() {
   it('should perform chacha20 (1)', () => {
     testChaCha({

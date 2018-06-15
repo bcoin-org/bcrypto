@@ -9,7 +9,7 @@
 const assert = require('./util/assert');
 const DRBG = require('../lib/drbg');
 const SHA256 = require('../lib/sha256');
-const vectors = require('./data/drbg-nist.json')
+const vectors = require('./data/drbg-nist.json');
 
 describe('DRBG', function() {
   it('should support hmac-drbg-sha256', () => {
