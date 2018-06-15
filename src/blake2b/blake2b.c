@@ -24,7 +24,9 @@
 #include "blake2b-impl.h"
 
 #ifdef BCRYPTO_USE_SSE
-#ifdef BCRYPTO_USE_SSE41
+#if defined(BCRYPTO_USE_SSE41) \
+  && defined(__GNUC__) \
+  && ((__GNUC__ > 4) || (__GNUC__ == 4 && __GNUC_MINOR__ >= 4))
 #pragma GCC target("sse4.1")
 #endif
 
@@ -74,16 +76,16 @@ static const uint8_t bcrypto_blake2b_sigma[12][16] = {
   { 14, 10,  4,  8,  9, 15, 13,  6,  1, 12,  0,  2, 11,  7,  5,  3 }
 };
 
-#define G(r, i, a, b, c, d)                     \
-  do {                                          \
-    a = a + b + m[bcrypto_blake2b_sigma[r][2*i+0]]; \
-    d = rotr64(d ^ a, 32);                      \
-    c = c + d;                                  \
-    b = rotr64(b ^ c, 24);                      \
-    a = a + b + m[bcrypto_blake2b_sigma[r][2*i+1]]; \
-    d = rotr64(d ^ a, 16);                      \
-    c = c + d;                                  \
-    b = rotr64(b ^ c, 63);                      \
+#define G(r, i, a, b, c, d)                             \
+  do {                                                  \
+    a = a + b + m[bcrypto_blake2b_sigma[r][2 * i + 0]]; \
+    d = rotr64(d ^ a, 32);                              \
+    c = c + d;                                          \
+    b = rotr64(b ^ c, 24);                              \
+    a = a + b + m[bcrypto_blake2b_sigma[r][2 * i + 1]]; \
+    d = rotr64(d ^ a, 16);                              \
+    c = c + d;                                          \
+    b = rotr64(b ^ c, 63);                              \
   } while (0)
 
 #define ROUND(r)                       \
