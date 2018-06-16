@@ -17,8 +17,8 @@ extern "C" {
 typedef struct bcrypto_aead_s {
   bcrypto_chacha20_ctx chacha;
   bcrypto_poly1305_ctx poly;
-  size_t aad_len;
-  size_t cipher_len;
+  uint64_t aad_len;
+  uint64_t cipher_len;
   bool has_cipher;
   uint8_t poly_key[32];
 } bcrypto_aead_ctx;

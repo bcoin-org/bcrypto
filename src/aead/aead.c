@@ -9,7 +9,7 @@
 #include "../poly1305/poly1305.h"
 
 static void
-bcrypto_aead_pad16(bcrypto_aead_ctx *aead, size_t size);
+bcrypto_aead_pad16(bcrypto_aead_ctx *aead, uint64_t size);
 
 void
 bcrypto_aead_init(bcrypto_aead_ctx *aead) {
@@ -141,7 +141,7 @@ bcrypto_aead_final(bcrypto_aead_ctx *aead, uint8_t *tag) {
 }
 
 static void
-bcrypto_aead_pad16(bcrypto_aead_ctx *aead, size_t size) {
+bcrypto_aead_pad16(bcrypto_aead_ctx *aead, uint64_t size) {
   size %= 16;
 
   if (size == 0)
