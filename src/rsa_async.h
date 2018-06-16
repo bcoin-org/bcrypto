@@ -3,6 +3,8 @@
 
 #include <node.h>
 #include <nan.h>
+
+#if NODE_MAJOR_VERSION >= 10
 #include "rsa/rsa.h"
 
 class BRSAWorker : public Nan::AsyncWorker {
@@ -22,5 +24,6 @@ private:
   int exp;
   bcrypto_rsa_key_t *key;
 };
+#endif
 
 #endif

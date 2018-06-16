@@ -1,5 +1,9 @@
 #include <assert.h>
 #include <string.h>
+#include <node.h>
+#include <nan.h>
+
+#if NODE_MAJOR_VERSION >= 10
 
 #include "ecdsa/ecdsa.h"
 #include "ecdsa.h"
@@ -416,3 +420,5 @@ NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj) {
   Nan::HandleScope scope;
   return obj->IsNull() || obj->IsUndefined();
 }
+
+#endif

@@ -1,5 +1,9 @@
 #include <assert.h>
 #include <string.h>
+#include <node.h>
+#include <nan.h>
+
+#if NODE_MAJOR_VERSION >= 10
 
 #include "rsa/rsa.h"
 #include "rsa.h"
@@ -288,3 +292,4 @@ NAN_METHOD(BRSA::PublicKeyVerify) {
 
   return info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
+#endif

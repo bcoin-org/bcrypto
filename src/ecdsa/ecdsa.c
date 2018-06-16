@@ -3,9 +3,13 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
+#include "openssl/opensslv.h"
+#include "ecdsa.h"
+
+#if OPENSSL_VERSION_NUMBER >= 0x1010008fL
+
 #include "openssl/ecdsa.h"
 #include "openssl/objects.h"
-#include "ecdsa.h"
 
 // https://github.com/openssl/openssl/blob/master/include/openssl/bn.h
 // https://github.com/openssl/openssl/blob/master/include/openssl/ec.h
@@ -936,3 +940,121 @@ fail:
 
   return false;
 }
+
+#else
+
+bool
+bcrypto_ecdsa_generate(const char *name, uint8_t **priv, size_t *priv_len) {
+  return false;
+}
+
+bool
+bcrypto_ecdsa_create_pub(
+  const char *name,
+  const uint8_t *priv,
+  size_t priv_len,
+  bool compress,
+  uint8_t **pub,
+  size_t *pub_len
+) {
+  return false;
+}
+
+bool
+bcrypto_ecdsa_convert_pub(
+  const char *name,
+  const uint8_t *pub,
+  size_t pub_len,
+  bool compress,
+  uint8_t **npub,
+  size_t *npub_len
+) {
+  return false;
+}
+
+bool
+bcrypto_ecdsa_sign(
+  const char *name,
+  const uint8_t *msg,
+  size_t msg_len,
+  const uint8_t *priv,
+  size_t priv_len,
+  uint8_t **r,
+  size_t *r_len,
+  uint8_t **s,
+  size_t *s_len
+) {
+  return false;
+}
+
+bool
+bcrypto_ecdsa_verify_priv(
+  const char *name,
+  const uint8_t *priv,
+  size_t priv_len
+) {
+  return false;
+}
+
+bool
+bcrypto_ecdsa_verify(
+  const char *name,
+  const uint8_t *msg,
+  size_t msg_len,
+  const uint8_t *r,
+  size_t r_len,
+  const uint8_t *s,
+  size_t s_len,
+  const uint8_t *pub,
+  size_t pub_len
+) {
+  return false;
+}
+
+bool
+bcrypto_ecdsa_verify_pub(const char *name, const uint8_t *pub, size_t pub_len) {
+  return false;
+}
+
+bool
+bcrypto_ecdsa_ecdh(
+  const char *name,
+  const uint8_t *pub,
+  size_t pub_len,
+  const uint8_t *priv,
+  size_t priv_len,
+  bool compress,
+  uint8_t **secret,
+  size_t *secret_len
+) {
+  return false;
+}
+
+bool
+bcrypto_ecdsa_tweak_priv(
+  const char *name,
+  const uint8_t *priv,
+  size_t priv_len,
+  const uint8_t *tweak,
+  size_t tweak_len,
+  uint8_t **npriv,
+  size_t *npriv_len
+) {
+  return false;
+}
+
+bool
+bcrypto_ecdsa_tweak_pub(
+  const char *name,
+  const uint8_t *pub,
+  size_t pub_len,
+  const uint8_t *tweak,
+  size_t tweak_len,
+  bool compress,
+  uint8_t **npub,
+  size_t *npub_len
+) {
+  return false;
+}
+
+#endif

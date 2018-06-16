@@ -21,7 +21,9 @@
 #include "aead.h"
 #include "blake2b.h"
 #include "chacha20.h"
+#if NODE_MAJOR_VERSION >= 10
 #include "ecdsa.h"
+#endif
 #include "hash160.h"
 #include "hash256.h"
 #include "keccak.h"
@@ -29,7 +31,9 @@
 #include "poly1305.h"
 #include "pbkdf2_async.h"
 #include "ripemd160.h"
+#if NODE_MAJOR_VERSION >= 10
 #include "rsa.h"
+#endif
 #include "scrypt_async.h"
 #include "sha1.h"
 #include "sha224.h"
@@ -409,14 +413,18 @@ NAN_MODULE_INIT(init) {
   BAEAD::Init(target);
   BBlake2b::Init(target);
   BChaCha20::Init(target);
+#if NODE_MAJOR_VERSION >= 10
   BECDSA::Init(target);
+#endif
   BHash160::Init(target);
   BHash256::Init(target);
   BKeccak::Init(target);
   BMD5::Init(target);
   BPoly1305::Init(target);
   BRIPEMD160::Init(target);
+#if NODE_MAJOR_VERSION >= 10
   BRSA::Init(target);
+#endif
   BSHA1::Init(target);
   BSHA224::Init(target);
   BSHA256::Init(target);

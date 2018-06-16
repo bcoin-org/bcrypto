@@ -3,6 +3,7 @@
 #include <node.h>
 #include <nan.h>
 
+#if NODE_MAJOR_VERSION >= 10
 class BRSA : public Nan::ObjectWrap {
 public:
   static NAN_METHOD(New);
@@ -19,4 +20,6 @@ private:
   static NAN_METHOD(Verify);
   static NAN_METHOD(PublicKeyVerify);
 };
+#endif
+
 #endif

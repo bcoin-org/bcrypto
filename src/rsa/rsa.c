@@ -3,12 +3,14 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include "openssl/opensslv.h"
+#include "rsa.h"
+
+#if OPENSSL_VERSION_NUMBER >= 0x1010008fL
 
 #include "openssl/bn.h"
 #include "openssl/rsa.h"
 #include "openssl/objects.h"
-
-#include "rsa.h"
 
 void
 bcrypto_rsa_key_init(bcrypto_rsa_key_t *key) {
@@ -556,3 +558,52 @@ bcrypto_rsa_verify_pub(const bcrypto_rsa_key_t *pub) {
   assert(pub);
   return false;
 }
+
+#else
+
+void
+bcrypto_rsa_key_init(bcrypto_rsa_key_t *key) {}
+
+void
+bcrypto_rsa_key_free(bcrypto_rsa_key_t *key) {}
+
+bcrypto_rsa_key_t *
+bcrypto_rsa_generate(int bits, int exp) {
+  return NULL;
+}
+
+bool
+bcrypto_rsa_sign(
+  const char *alg,
+  const uint8_t *msg,
+  size_t msg_len,
+  const bcrypto_rsa_key_t *priv,
+  uint8_t **sig,
+  size_t *sig_len
+) {
+  return false;
+}
+
+bool
+bcrypto_rsa_verify(
+  const char *alg,
+  const uint8_t *msg,
+  size_t msg_len,
+  const uint8_t *sig,
+  size_t sig_len,
+  const bcrypto_rsa_key_t *pub
+) {
+  return false;
+}
+
+bool
+bcrypto_rsa_verify_priv(const bcrypto_rsa_key_t *priv) {
+  return false;
+}
+
+bool
+bcrypto_rsa_verify_pub(const bcrypto_rsa_key_t *pub) {
+  return false;
+}
+
+#endif

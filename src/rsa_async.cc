@@ -1,5 +1,8 @@
 #include <assert.h>
+#include <node.h>
+#include <nan.h>
 
+#if NODE_MAJOR_VERSION >= 10
 #include "rsa/rsa.h"
 #include "rsa_async.h"
 
@@ -48,3 +51,4 @@ BRSAWorker::HandleOKCallback() {
 
   callback->Call(2, argv, async_resource);
 }
+#endif

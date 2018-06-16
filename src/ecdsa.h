@@ -1,8 +1,10 @@
 #ifndef _BCRYPTO_ECDSA_HH
 #define _BCRYPTO_ECDSA_HH
+
 #include <node.h>
 #include <nan.h>
 
+#if NODE_MAJOR_VERSION >= 10
 class BECDSA : public Nan::ObjectWrap {
 public:
   static NAN_METHOD(New);
@@ -23,4 +25,6 @@ private:
   static NAN_METHOD(PrivateKeyTweakAdd);
   static NAN_METHOD(PublicKeyTweakAdd);
 };
+#endif
+
 #endif
