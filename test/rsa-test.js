@@ -32,6 +32,14 @@ describe('RSA', function() {
     const pubPem = pub.toPEM();
     assert(typeof pubPem === 'string');
     assert.deepStrictEqual(RSAPublicKey.fromPEM(pubPem), pub);
+
+    const privJSON = priv.toJSON();
+    assert(privJSON && typeof privJSON === 'object');
+    assert.deepStrictEqual(RSAPrivateKey.fromJSON(privJSON), priv);
+
+    const pubJSON = pub.toJSON();
+    assert(pubJSON && typeof pubJSON === 'object');
+    assert.deepStrictEqual(RSAPublicKey.fromJSON(pubJSON), pub);
   });
 
   it('should sign and verify', () => {
