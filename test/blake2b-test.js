@@ -5,6 +5,9 @@
 
 const assert = require('./util/assert');
 const {Blake2b} = require('../');
+const js = require('../lib/js/blake2b');
+const native = require('../lib/native/blake2b');
+const random = require('../lib/random');
 
 const vectors = [
   [
@@ -65,6 +68,18 @@ describe('Blake2b', function() {
 
   it(`should get Blake2b hash of ${expected.toString('hex')}`, () => {
     assert.bufferEqual(Blake2b.digest(msg, 32), expected);
+  });
+
+  it('should calculate Blake2b with keys', () => {
+    for (let i = 0; i < 1000; i++) {
+      const preimage = random.randomBytes((Math.random() * 2049) >>> 0);
+      const key = random.randomBytes(((Math.random() * 64) >>> 0) + 1);
+      const size = Math.random() > 0.5 ? 20 : 32;
+      const x = js.digest(preimage, size, key);
+      const y = native.digest(preimage, size, key);
+
+      assert.bufferEqual(x, y);
+    }
   });
 });
 
