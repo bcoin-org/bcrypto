@@ -6,8 +6,15 @@
 const assert = require('./util/assert');
 const {Blake2b} = require('../');
 const js = require('../lib/js/blake2b');
-const native = require('../lib/native/blake2b');
 const random = require('../lib/random');
+
+let native = null;
+
+try {
+  native = require('../lib/native/blake2b');
+} catch (e) {
+  ;
+}
 
 const vectors = [
   [
@@ -69,6 +76,9 @@ describe('Blake2b', function() {
   it(`should get Blake2b hash of ${expected.toString('hex')}`, () => {
     assert.bufferEqual(Blake2b.digest(msg, 32), expected);
   });
+
+  if (!native)
+    return;
 
   it('should calculate Blake2b with keys', () => {
     for (let i = 0; i < 1000; i++) {
