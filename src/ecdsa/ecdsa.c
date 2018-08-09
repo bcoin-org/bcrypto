@@ -554,7 +554,7 @@ bcrypto_ecdsa_verify(
   if (!sig_ec)
     goto fail;
 
-  if (!ECDSA_do_verify(msg, msg_len, sig_ec, pub_ec))
+  if (ECDSA_do_verify(msg, msg_len, sig_ec, pub_ec) <= 0)
     goto fail;
 
   EC_KEY_free(pub_ec);
