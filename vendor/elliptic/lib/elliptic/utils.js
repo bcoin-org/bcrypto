@@ -1,7 +1,7 @@
 'use strict';
 
 var utils = exports;
-var BN = require('bn.js');
+var BN = require('../../../bn.js');
 var minAssert = require('../../../minimalistic-assert');
 var minUtils = require('../../../minimalistic-crypto-utils');
 

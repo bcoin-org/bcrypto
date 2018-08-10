@@ -1,6 +1,6 @@
 'use strict';
 
-var BN = require('bn.js');
+var BN = require('../../../../bn.js');
 var HmacDRBG = require('../../../../hmac-drbg');
 var elliptic = require('../../elliptic');
 var utils = elliptic.utils;

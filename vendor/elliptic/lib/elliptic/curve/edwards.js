@@ -2,7 +2,7 @@
 
 var curve = require('../curve');
 var elliptic = require('../../elliptic');
-var BN = require('bn.js');
+var BN = require('../../../../bn.js');
 var inherits = require('../../../../inherits');
 var Base = curve.base;
 
