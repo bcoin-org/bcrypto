@@ -7,7 +7,7 @@ const assert = require('./util/assert');
 const fs = require('fs');
 const random = require('../lib/random');
 const ed25519 = require('../lib/ed25519');
-const derivations = require('./data/ed25519');
+const derivations = require('./data/ed25519.json');
 
 const filename = `${__dirname}/data/ed25519.input`;
 const lines = fs.readFileSync(filename, 'binary').trim().split('\n');
@@ -44,7 +44,6 @@ describe('EdDSA', function() {
       it(`vector ${i}`, () => {
         const split = line.toUpperCase().split(':');
         const secret = Buffer.from(split[0].slice(0, 64), 'hex');
-        const priv = ed25519.privateKeyCreate(secret);
         const pub = ed25519.publicKeyCreate(secret);
 
         const expectedPk = Buffer.from(split[0].slice(64), 'hex');
