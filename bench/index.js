@@ -1,6 +1,5 @@
 'use strict';
 
-const assert = require('assert');
 const bench = require('./bench');
 const sha256 = require('../lib/sha256');
 const blake2b = require('../lib/blake2b');
