@@ -19,7 +19,7 @@
   "main": "./lib/bcrypto.js",
   "scripts": {
     "install": "node-gyp rebuild || echo 'Build failed.'",
-    "lint": "eslint lib/ compat/ test/ || exit 0",
+    "lint": "eslint lib/ test/ || exit 0",
     "test": "mocha --reporter spec test/*-test.js",
     "test-file": "mocha --reporter spec"
   },

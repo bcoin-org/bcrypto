@@ -143,15 +143,6 @@ describe('Secp256k1', function() {
       });
     }
 
-    for (const vector of vectors.from_lax) {
-      const sig = Buffer.from(vector.sig, 'hex');
-      const result = Buffer.from(vector.result, 'hex');
-
-      it(`should convert DER to R/S (lax): ${vector.sig}`, () => {
-        assert.bufferEqual(secp256k1.fromLax(sig), result);
-      });
-    }
-
     for (const vector of vectors.to_der) {
       const sig = Buffer.from(vector.sig, 'hex');
       const result = Buffer.from(vector.result, 'hex');
