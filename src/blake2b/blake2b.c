@@ -201,7 +201,8 @@ bcrypto_blake2b_init_key(
   memset(P->salt, 0, sizeof(P->salt));
   memset(P->personal, 0, sizeof(P->personal));
 
-  bcrypto_blake2b_init_param(ctx, P);
+  if (bcrypto_blake2b_init_param(ctx, P) < 0)
+    return -1;
 
   {
     uint8_t block[BCRYPTO_BLAKE2B_BLOCKBYTES];
