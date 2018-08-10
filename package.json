@@ -55,7 +55,7 @@
     "./lib/ripemd160": "./lib/ripemd160-browser.js",
     "./lib/rsa": "./lib/rsa-browser.js",
     "./lib/scrypt": "./lib/scrypt-browser.js",
-    "./lib/internal/secp256k1": "./lib/internal/secp256k1-browser.js",
+    "./lib/secp256k1": "./lib/secp256k1-browser.js",
     "./lib/sha1": "./lib/sha1-browser.js",
     "./lib/sha224": "./lib/sha224-browser.js",
     "./lib/sha256": "./lib/sha256-browser.js",
