@@ -539,7 +539,7 @@ bcrypto_rsa_verify_priv(const bcrypto_rsa_key_t *priv) {
   if (!priv_r)
     goto fail;
 
-  if (!RSA_check_key(priv_r))
+  if (RSA_check_key(priv_r) <= 0)
     goto fail;
 
   RSA_free(priv_r);

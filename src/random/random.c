@@ -10,12 +10,10 @@ bcrypto_random(uint8_t *dst, size_t len) {
   for (;;) {
     int status = RAND_status();
 
-    assert(status >= 0);
-
-    if (status != 0)
+    if (status == 1)
       break;
 
-    if (RAND_poll() == 0)
+    if (RAND_poll() == 1)
       break;
   }
 
