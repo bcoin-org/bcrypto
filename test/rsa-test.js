@@ -76,7 +76,6 @@ describe('RSA', function() {
     const msg = Buffer.from(vector.msg, 'hex');
     const sig = Buffer.from(vector.sig, 'hex');
     const key = RSAPublicKey.fromJSON(vector.key);
-    const result = vector.result;
 
     it(`should verify vector #${i}`, () => {
       assert(rsa.verifyKey(hash, msg, sig, key));
