@@ -4,8 +4,10 @@
 'use strict';
 
 const assert = require('./util/assert');
+const SHA1 = require('../lib/sha1');
 const SHA256 = require('../lib/sha256');
 const rsa = require('../lib/rsa');
+const vectors = require('./data/rsa.json');
 const {RSAPrivateKey, RSAPublicKey} = rsa;
 
 const msg = Buffer.from('foobar', 'ascii');
@@ -68,4 +70,36 @@ describe('RSA', function() {
 
     assert(valid);
   });
+
+  for (const [i, vector] of vectors.entries()) {
+    const hash = vector.hash === 'sha1' ? SHA1 : SHA256;
+    const msg = Buffer.from(vector.msg, 'hex');
+    const sig = Buffer.from(vector.sig, 'hex');
+    const key = RSAPublicKey.fromJSON(vector.key);
+    const result = vector.result;
+
+    it(`should verify vector #${i}`, () => {
+      assert(rsa.verifyKey(hash, msg, sig, key));
+
+      msg[0] ^= 1;
+      assert(!rsa.verifyKey(hash, msg, sig, key));
+      msg[0] ^= 1;
+      assert(rsa.verifyKey(hash, msg, sig, key));
+
+      sig[0] ^= 1;
+      assert(!rsa.verifyKey(hash, msg, sig, key));
+      sig[0] ^= 1;
+      assert(rsa.verifyKey(hash, msg, sig, key));
+
+      key.n[0] ^= 1;
+      assert(!rsa.verifyKey(hash, msg, sig, key));
+      key.n[0] ^= 1;
+      assert(rsa.verifyKey(hash, msg, sig, key));
+
+      key.e[0] ^= 1;
+      assert(!rsa.verifyKey(hash, msg, sig, key));
+      key.e[0] ^= 1;
+      assert(rsa.verifyKey(hash, msg, sig, key));
+    });
+  }
 });
