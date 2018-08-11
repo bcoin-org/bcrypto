@@ -420,7 +420,7 @@ fail:
   if (exp_bn)
     BN_free(exp_bn);
 
-  return false;
+  return NULL;
 }
 
 bool
