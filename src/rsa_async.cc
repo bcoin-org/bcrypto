@@ -8,7 +8,7 @@
 
 BRSAWorker::BRSAWorker (
   int bits,
-  int exp,
+  unsigned long long exp,
   Nan::Callback *callback
 ) : Nan::AsyncWorker(callback)
   , bits(bits)

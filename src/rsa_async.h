@@ -11,7 +11,7 @@ class BRSAWorker : public Nan::AsyncWorker {
 public:
   BRSAWorker (
     int bits,
-    int exp,
+    unsigned long long exp,
     Nan::Callback *callback
   );
 
@@ -21,7 +21,7 @@ public:
 
 private:
   int bits;
-  int exp;
+  unsigned long long exp;
   bcrypto_rsa_key_t *key;
 };
 #endif

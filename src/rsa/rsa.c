@@ -377,18 +377,15 @@ bcrypto_rsa_type(const char *alg) {
 }
 
 bcrypto_rsa_key_t *
-bcrypto_rsa_generate(int bits, int exp) {
+bcrypto_rsa_generate(int bits, unsigned long long exp) {
   RSA *priv_r = NULL;
   BIGNUM *exp_bn = NULL;
 
-  if (bits < 0 || bits > 8192)
+  if (bits < 4 || bits > 16384)
     goto fail;
 
-  if (exp < 0)
+  if (exp < 2)
     goto fail;
-
-  if (exp == 0)
-    exp = 0x010001;
 
   priv_r = RSA_new();
 
@@ -400,7 +397,7 @@ bcrypto_rsa_generate(int bits, int exp) {
   if (!exp_bn)
     goto fail;
 
-  if (!BN_set_word(exp_bn, exp))
+  if (!BN_set_word(exp_bn, (BN_ULONG)exp))
     goto fail;
 
   if (!RSA_generate_key_ex(priv_r, bits, exp_bn, NULL))

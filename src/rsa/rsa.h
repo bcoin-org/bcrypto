@@ -35,7 +35,7 @@ void
 bcrypto_rsa_key_free(bcrypto_rsa_key_t *key);
 
 bcrypto_rsa_key_t *
-bcrypto_rsa_generate(int bits, int exp);
+bcrypto_rsa_generate(int bits, unsigned long long exp);
 
 bool
 bcrypto_rsa_sign(

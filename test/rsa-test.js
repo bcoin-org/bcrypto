@@ -20,6 +20,7 @@ describe('RSA', function() {
     const pubRaw = rsa.publicKeyCreate(privRaw);
 
     const priv = RSAPrivateKey.decode(privRaw);
+    assert.bufferEqual(priv.e, Buffer.from('010001', 'hex'));
     assert.bufferEqual(priv.encode(), privRaw);
     assert(rsa.privateVerify(priv));
 

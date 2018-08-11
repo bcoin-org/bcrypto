@@ -45,15 +45,20 @@ NAN_METHOD(BRSA::New) {
 }
 
 NAN_METHOD(BRSA::PrivateKeyGenerate) {
-  if (info.Length() < 1)
+  if (info.Length() < 2)
     return Nan::ThrowError("rsa.privateKeyGenerate() requires arguments.");
 
   if (!info[0]->IsNumber())
     return Nan::ThrowTypeError("First argument must be a number.");
 
-  uint32_t bits = info[0]->Uint32Value();
+  if (!info[1]->IsNumber())
+    return Nan::ThrowTypeError("Second argument must be a number.");
 
-  bcrypto_rsa_key_t *k = bcrypto_rsa_generate((int)bits, 0);
+  uint32_t bits = info[0]->Uint32Value();
+  uint64_t exp = info[1]->IntegerValue();
+
+  bcrypto_rsa_key_t *k = bcrypto_rsa_generate(
+    (int)bits, (unsigned long long)exp);
 
   if (!k)
     return Nan::ThrowTypeError("Could not generate key.");
@@ -80,16 +85,20 @@ NAN_METHOD(BRSA::PrivateKeyGenerateAsync) {
   if (!info[0]->IsNumber())
     return Nan::ThrowTypeError("First argument must be a number.");
 
-  if (!info[1]->IsFunction())
-    return Nan::ThrowTypeError("Second argument must be a function.");
+  if (!info[1]->IsNumber())
+    return Nan::ThrowTypeError("Second argument must be a number.");
+
+  if (!info[2]->IsFunction())
+    return Nan::ThrowTypeError("Third argument must be a function.");
 
   uint32_t bits = info[0]->Uint32Value();
+  uint64_t exp = info[1]->IntegerValue();
 
-  v8::Local<v8::Function> callback = info[1].As<v8::Function>();
+  v8::Local<v8::Function> callback = info[2].As<v8::Function>();
 
   BRSAWorker *worker = new BRSAWorker(
     (int)bits,
-    0,
+    (unsigned long long)exp,
     new Nan::Callback(callback)
   );
 
