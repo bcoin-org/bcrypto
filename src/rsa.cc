@@ -79,7 +79,7 @@ NAN_METHOD(BRSA::PrivateKeyGenerate) {
 }
 
 NAN_METHOD(BRSA::PrivateKeyGenerateAsync) {
-  if (info.Length() < 2)
+  if (info.Length() < 3)
     return Nan::ThrowError("rsa.privateKeyGenerateAsync() requires arguments.");
 
   if (!info[0]->IsNumber())
