@@ -20,6 +20,7 @@ describe('RSA', function() {
     const pubRaw = rsa.publicKeyCreate(privRaw);
 
     const priv = RSAPrivateKey.decode(privRaw);
+    assert.strictEqual(priv.n.length, 128);
     assert.bufferEqual(priv.e, Buffer.from('010001', 'hex'));
     assert.bufferEqual(priv.encode(), privRaw);
     assert(rsa.privateVerify(priv));
@@ -43,6 +44,20 @@ describe('RSA', function() {
     const pubJSON = pub.toJSON();
     assert(pubJSON && typeof pubJSON === 'object');
     assert.deepStrictEqual(RSAPublicKey.fromJSON(pubJSON), pub);
+  });
+
+  it('should generate keypair with custom exponent', () => {
+    const privRaw = rsa.privateKeyGenerate(1024, 0x0100000001);
+    const priv = RSAPrivateKey.decode(privRaw);
+    assert.strictEqual(priv.n.length, 128);
+    assert.bufferEqual(priv.e, Buffer.from('0100000001', 'hex'));
+  });
+
+  it('should generate keypair with custom exponent (async)', async () => {
+    const privRaw = await rsa.privateKeyGenerateAsync(1024, 0x0100000001);
+    const priv = RSAPrivateKey.decode(privRaw);
+    assert.strictEqual(priv.n.length, 128);
+    assert.bufferEqual(priv.e, Buffer.from('0100000001', 'hex'));
   });
 
   it('should sign and verify', () => {
