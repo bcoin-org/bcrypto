@@ -13,7 +13,7 @@ const {RSAPrivateKey, RSAPublicKey} = rsa;
 const msg = Buffer.from('foobar', 'ascii');
 
 describe('RSA', function() {
-  this.timeout(15000);
+  this.timeout(20000);
 
   it('should generate keypair', () => {
     const privRaw = rsa.privateKeyGenerate(1024);
@@ -78,7 +78,7 @@ describe('RSA', function() {
     const sig = Buffer.from(vector.sig, 'hex');
     const key = RSAPublicKey.fromJSON(vector.key);
 
-    it(`should verify vector #${i}`, () => {
+    it(`should verify RSA vector #${i}`, () => {
       assert(rsa.verifyKey(hash, msg, sig, key));
 
       msg[0] ^= 1;

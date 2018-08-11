@@ -28,7 +28,7 @@ describe('EdDSA', function() {
 
   describe('ed25519 derivations', () => {
     for (const [i, test] of derivations.entries()) {
-      it(`can compute correct a and A for secret: ${i}`, () => {
+      it(`should compute correct a and A for secret: ${i}`, () => {
         const secret = Buffer.from(test.secret_hex, 'hex');
         const priv = ed25519.privateKeyCreate(secret);
         const pub = ed25519.publicKeyCreate(secret);
@@ -41,7 +41,7 @@ describe('EdDSA', function() {
 
   describe('sign.input ed25519 test vectors', () => {
     for (const [i, line] of lines.entries()) {
-      it(`vector ${i}`, () => {
+      it(`should pass ed25519 vector #${i}`, () => {
         const split = line.toUpperCase().split(':');
         const secret = Buffer.from(split[0].slice(0, 64), 'hex');
         const pub = ed25519.publicKeyCreate(secret);
