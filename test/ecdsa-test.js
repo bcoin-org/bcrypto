@@ -436,6 +436,31 @@ describe('ECDSA', function() {
     }
   });
 
+  // https://github.com/indutny/elliptic/issues/78
+  const lax = {
+    msg: ''
+      + 'de17556d2111ef6a964c9c136054870495b005b3942ad7b626'
+      + '28af00293b9aa8',
+    sig: ''
+      + '3045022100a9379b66c22432585cb2f5e1e85736c69cf5fdc9'
+      + 'e1033ad583fc27f0b7c561d802202c7b5d9d92ceca742829ff'
+      + 'be28ba6565faa8f94556cb091cbc39d2f11d45946700',
+    pub: ''
+      + '04650a9a1deb523f636379ec70c29b3e1e832e314dea0f7911'
+      + '60f3dba628f4f509360e525318bf7892af9ffe2f585bf7b264'
+      + 'aa31792744ec1885ce17f3b1ef50f3'
+  };
+
+  for (const curve of [secp256k1, secp256k1n]) {
+    const msg = Buffer.from(lax.msg, 'hex');
+    const sig = Buffer.from(lax.sig, 'hex');
+    const pub = Buffer.from(lax.pub, 'hex');
+
+    it('should verify lax signature', () => {
+      assert.strictEqual(curve.verifyDER(msg, sig, pub), true);
+    });
+  }
+
   for (const curve of [secp256k1, secp256k1n]) {
     it('should recover the public key from a signature', () => {
       const priv = curve.privateKeyGenerate();
