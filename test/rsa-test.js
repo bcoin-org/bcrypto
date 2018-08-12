@@ -94,6 +94,8 @@ describe('RSA', function() {
     const key = RSAPublicKey.fromJSON(vector.key);
 
     it(`should verify RSA vector #${i}`, () => {
+      assert(key.verify());
+
       assert(rsa.verifyKey(hash, msg, sig, key));
 
       msg[0] ^= 1;
