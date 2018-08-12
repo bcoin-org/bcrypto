@@ -32,7 +32,6 @@ BECDSA::Init(v8::Local<v8::Object> &target) {
   Nan::SetMethod(tpl, "publicKeyCreate", BECDSA::PublicKeyCreate);
   Nan::SetMethod(tpl, "publicKeyConvert", BECDSA::PublicKeyConvert);
   Nan::SetMethod(tpl, "sign", BECDSA::Sign);
-  Nan::SetMethod(tpl, "privateKeyVerify", BECDSA::PrivateKeyVerify);
   Nan::SetMethod(tpl, "verify", BECDSA::Verify);
   Nan::SetMethod(tpl, "publicKeyVerify", BECDSA::PublicKeyVerify);
   Nan::SetMethod(tpl, "ecdh", BECDSA::ECDH);
@@ -191,32 +190,6 @@ NAN_METHOD(BECDSA::Sign) {
   ret->Set(1, Nan::NewBuffer((char *)&s[0], sl).ToLocalChecked());
 
   info.GetReturnValue().Set(ret);
-}
-
-NAN_METHOD(BECDSA::PrivateKeyVerify) {
-  if (info.Length() < 2)
-    return Nan::ThrowError("ecdsa.privateKeyVerify() requires arguments.");
-
-  if (!info[0]->IsString())
-    return Nan::ThrowTypeError("First argument must be a string.");
-
-  Nan::Utf8String name_(info[0]);
-  const char *name = (const char *)*name_;
-
-  v8::Local<v8::Object> pbuf = info[1].As<v8::Object>();
-
-  if (!node::Buffer::HasInstance(pbuf))
-    return Nan::ThrowTypeError("Second argument must be a buffer.");
-
-  const uint8_t *pd = (uint8_t *)node::Buffer::Data(pbuf);
-  size_t pl = node::Buffer::Length(pbuf);
-
-  if (!pd)
-    return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
-
-  bool result = bcrypto_ecdsa_verify_priv(name, pd, pl);
-
-  return info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
 
 NAN_METHOD(BECDSA::Verify) {

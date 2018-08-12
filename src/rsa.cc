@@ -32,7 +32,6 @@ BRSA::Init(v8::Local<v8::Object> &target) {
   Nan::SetMethod(tpl, "sign", BRSA::Sign);
   Nan::SetMethod(tpl, "privateKeyVerify", BRSA::PrivateKeyVerify);
   Nan::SetMethod(tpl, "verify", BRSA::Verify);
-  Nan::SetMethod(tpl, "publicKeyVerify", BRSA::PublicKeyVerify);
 
   v8::Local<v8::FunctionTemplate> ctor =
     Nan::New<v8::FunctionTemplate>(rsa_constructor);
@@ -274,31 +273,5 @@ NAN_METHOD(BRSA::Verify) {
   bool result = bcrypto_rsa_verify(alg, md, ml, sd, sl, &pub);
 
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
-}
-
-NAN_METHOD(BRSA::PublicKeyVerify) {
-  if (info.Length() < 2)
-    return Nan::ThrowError("rsa.publicKeyVerify() requires arguments.");
-
-  v8::Local<v8::Object> nbuf = info[0].As<v8::Object>();
-  v8::Local<v8::Object> ebuf = info[1].As<v8::Object>();
-
-  if (!node::Buffer::HasInstance(nbuf)
-      || !node::Buffer::HasInstance(ebuf)) {
-    return Nan::ThrowTypeError("Arguments must be buffers.");
-  }
-
-  bcrypto_rsa_key_t pub;
-  bcrypto_rsa_key_init(&pub);
-
-  pub.nd = (uint8_t *)node::Buffer::Data(nbuf);
-  pub.nl = node::Buffer::Length(nbuf);
-
-  pub.ed = (uint8_t *)node::Buffer::Data(ebuf);
-  pub.el = node::Buffer::Length(ebuf);
-
-  bool result = bcrypto_rsa_verify_pub(&pub);
-
-  return info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
 #endif

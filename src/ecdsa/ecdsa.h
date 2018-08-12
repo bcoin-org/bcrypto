@@ -46,13 +46,6 @@ bcrypto_ecdsa_sign(
 );
 
 bool
-bcrypto_ecdsa_verify_priv(
-  const char *name,
-  const uint8_t *priv,
-  size_t priv_len
-);
-
-bool
 bcrypto_ecdsa_verify(
   const char *name,
   const uint8_t *msg,

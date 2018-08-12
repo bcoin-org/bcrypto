@@ -478,43 +478,6 @@ fail:
   return false;
 }
 
-// Note: could do this in js-land by
-// hard-coding all the orders.
-bool
-bcrypto_ecdsa_verify_priv(
-  const char *name,
-  const uint8_t *priv,
-  size_t priv_len
-) {
-  EC_KEY *priv_ec = NULL;
-
-  int type = bcrypto_ecdsa_curve(name);
-
-  if (type == -1)
-    goto fail;
-
-  priv_ec = EC_KEY_new_by_curve_name(type);
-
-  if (!priv_ec)
-    goto fail;
-
-  if (!EC_KEY_oct2priv(priv_ec, priv, priv_len))
-    goto fail;
-
-  if (!EC_KEY_check_key(priv_ec))
-    goto fail;
-
-  EC_KEY_free(priv_ec);
-
-  return true;
-
-fail:
-  if (priv_ec)
-    EC_KEY_free(priv_ec);
-
-  return false;
-}
-
 bool
 bcrypto_ecdsa_verify(
   const char *name,
@@ -983,15 +946,6 @@ bcrypto_ecdsa_sign(
   size_t *r_len,
   uint8_t **s,
   size_t *s_len
-) {
-  return false;
-}
-
-bool
-bcrypto_ecdsa_verify_priv(
-  const char *name,
-  const uint8_t *priv,
-  size_t priv_len
 ) {
   return false;
 }

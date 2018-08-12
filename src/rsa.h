@@ -18,7 +18,6 @@ private:
   static NAN_METHOD(Sign);
   static NAN_METHOD(PrivateKeyVerify);
   static NAN_METHOD(Verify);
-  static NAN_METHOD(PublicKeyVerify);
 };
 #endif
 

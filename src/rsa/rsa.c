@@ -553,12 +553,6 @@ fail:
   return false;
 }
 
-bool
-bcrypto_rsa_verify_pub(const bcrypto_rsa_key_t *pub) {
-  assert(pub);
-  return false;
-}
-
 #else
 
 void
@@ -598,11 +592,6 @@ bcrypto_rsa_verify(
 
 bool
 bcrypto_rsa_verify_priv(const bcrypto_rsa_key_t *priv) {
-  return false;
-}
-
-bool
-bcrypto_rsa_verify_pub(const bcrypto_rsa_key_t *pub) {
   return false;
 }
 
