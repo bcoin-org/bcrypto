@@ -381,10 +381,13 @@ bcrypto_rsa_generate(int bits, unsigned long long exp) {
   RSA *priv_r = NULL;
   BIGNUM *exp_bn = NULL;
 
-  if (bits < 4 || bits > 16384)
+  if (bits < 4)
     goto fail;
 
-  if (exp < 2)
+  if (exp < 3)
+    goto fail;
+
+  if ((exp & 1) == 0)
     goto fail;
 
   priv_r = RSA_new();
