@@ -29,13 +29,13 @@ describe('RSA', function() {
     assert.bufferEqual(pub.encode(), pubRaw);
     assert(rsa.publicVerify(pub));
 
-    const privPem = priv.toPEM();
-    assert(typeof privPem === 'string');
-    assert.deepStrictEqual(RSAPrivateKey.fromPEM(privPem), priv);
+    const privPEM = priv.toPEM();
+    assert(typeof privPEM === 'string');
+    assert.deepStrictEqual(RSAPrivateKey.fromPEM(privPEM), priv);
 
-    const pubPem = pub.toPEM();
-    assert(typeof pubPem === 'string');
-    assert.deepStrictEqual(RSAPublicKey.fromPEM(pubPem), pub);
+    const pubPEM = pub.toPEM();
+    assert(typeof pubPEM === 'string');
+    assert.deepStrictEqual(RSAPublicKey.fromPEM(pubPEM), pub);
 
     const privJSON = priv.toJSON();
     assert(privJSON && typeof privJSON === 'object');
@@ -44,6 +44,18 @@ describe('RSA', function() {
     const pubJSON = pub.toJSON();
     assert(pubJSON && typeof pubJSON === 'object');
     assert.deepStrictEqual(RSAPublicKey.fromJSON(pubJSON), pub);
+
+    const pubDNS = pub.toDNS();
+    assert(Buffer.isBuffer(pubDNS));
+    assert.deepStrictEqual(RSAPublicKey.fromDNS(pubDNS), pub);
+
+    const pubSSH = pub.toSSH();
+    assert(Buffer.isBuffer(pubSSH));
+    assert.deepStrictEqual(RSAPublicKey.fromSSH(pubSSH), pub);
+
+    const pubSSHString = pub.toSSHString();
+    assert(typeof pubSSHString === 'string');
+    assert.deepStrictEqual(RSAPublicKey.fromSSHString(pubSSHString), pub);
   });
 
   it('should generate keypair with custom exponent', () => {
