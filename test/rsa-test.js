@@ -48,14 +48,6 @@ describe('RSA', function() {
     const pubDNS = pub.toDNS();
     assert(Buffer.isBuffer(pubDNS));
     assert.deepStrictEqual(RSAPublicKey.fromDNS(pubDNS), pub);
-
-    const pubSSH = pub.toSSH();
-    assert(Buffer.isBuffer(pubSSH));
-    assert.deepStrictEqual(RSAPublicKey.fromSSH(pubSSH), pub);
-
-    const pubSSHString = pub.toSSHString();
-    assert(typeof pubSSHString === 'string');
-    assert.deepStrictEqual(RSAPublicKey.fromSSHString(pubSSHString), pub);
   });
 
   it('should generate keypair with custom exponent', () => {
