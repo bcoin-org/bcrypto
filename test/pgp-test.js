@@ -16,6 +16,8 @@
 
 const assert = require('./util/assert');
 const pgp = require('../lib/internal/pgp');
+const fs = require('fs');
+const Path = require('path');
 
 const keys = [
 // JJs key
@@ -265,6 +267,17 @@ iT57d/OhWwA=
 -----END PGP MESSAGE-----`
 ];
 
+function read(name, enc) {
+  return fs.readFileSync(Path.resolve(__dirname, 'data', name), enc);
+}
+
+const PASSPHRASE = '1234567890';
+
+const pubring = read('pubring.gpg');
+const pubringArmor = read('pubring.asc', 'utf8');
+const secring = read('secring.gpg');
+const secringArmor = read('secring.asc', 'utf8');
+
 describe('PGP', function() {
   for (const key of keys) {
     it('should deserialize and reserialize keyrings', () => {
@@ -276,6 +289,219 @@ describe('PGP', function() {
 
       assert.deepStrictEqual(msg1, msg2);
       assert.strictEqual(str1, str2);
+    });
+  }
+
+  for (const data of [secring, secringArmor]) {
+    it('should decode/decrypt and encode private keys', () => {
+      const msg = typeof data === 'string'
+        ? pgp.PGPMessage.fromString(data)
+        : pgp.PGPMessage.decode(data);
+
+      const keys = [];
+      const master = [];
+      const subkeys = [];
+
+      for (const pkt of msg.packets) {
+        switch (pkt.type) {
+          case pgp.packetTypes.PRIVATE_KEY:
+            keys.push(pkt.body);
+            master.push(pkt.body);
+            break;
+          case pgp.packetTypes.PRIVATE_SUBKEY:
+            keys.push(pkt.body);
+            subkeys.push(pkt.body);
+            break;
+        }
+      }
+
+      assert.strictEqual(keys.length, 4);
+      assert.strictEqual(master.length, 1);
+      assert.strictEqual(subkeys.length, 3);
+
+      {
+        const priv = master[0];
+
+        assert.strictEqual(priv.key.algorithm, pgp.keyTypes.RSA);
+        assert.strictEqual(priv.key.timestamp, 1535394109);
+        assert.strictEqual(priv.key.n.length, 256);
+        assert.strictEqual(priv.key.e.length, 3);
+        assert.strictEqual(priv.params.encrypted, true);
+        assert.strictEqual(priv.params.checksum, true);
+        assert.strictEqual(priv.params.cipher, pgp.cipherTypes.AES128);
+        assert.strictEqual(priv.params.s2k.mode, 3);
+        assert.strictEqual(priv.params.s2k.hash, pgp.hashTypes.SHA1);
+        assert.strictEqual(priv.params.s2k.count, 35651584);
+        assert.strictEqual(priv.params.s2k.salt.length, 8);
+        assert.strictEqual(priv.params.iv.length, 16);
+        assert.strictEqual(priv.data.length, 668);
+
+        const secret = priv.secret(PASSPHRASE);
+
+        assert.strictEqual(secret.d.length, 256);
+        assert.strictEqual(secret.p.length, 128);
+        assert.strictEqual(secret.q.length, 128);
+        assert.strictEqual(secret.qi.length, 128);
+      }
+
+      {
+        const priv = subkeys[0];
+
+        assert.strictEqual(priv.key.algorithm, pgp.keyTypes.RSA);
+        assert.strictEqual(priv.key.timestamp, 1535394109);
+        assert.strictEqual(priv.key.n.length, 256);
+        assert.strictEqual(priv.key.e.length, 3);
+        assert.strictEqual(priv.params.encrypted, true);
+        assert.strictEqual(priv.params.checksum, true);
+        assert.strictEqual(priv.params.cipher, pgp.cipherTypes.AES128);
+        assert.strictEqual(priv.params.s2k.mode, 3);
+        assert.strictEqual(priv.params.s2k.hash, pgp.hashTypes.SHA1);
+        assert.strictEqual(priv.params.s2k.count, 35651584);
+        assert.strictEqual(priv.params.s2k.salt.length, 8);
+        assert.strictEqual(priv.params.iv.length, 16);
+        assert.strictEqual(priv.data.length, 668);
+
+        const secret = priv.secret(PASSPHRASE);
+
+        assert.strictEqual(secret.d.length, 256);
+        assert.strictEqual(secret.p.length, 128);
+        assert.strictEqual(secret.q.length, 128);
+        assert.strictEqual(secret.qi.length, 128);
+      }
+
+      {
+        const priv = subkeys[1];
+
+        assert.strictEqual(priv.key.algorithm, pgp.keyTypes.RSA);
+        assert.strictEqual(priv.key.timestamp, 1535394388);
+        assert.strictEqual(priv.key.n.length, 256);
+        assert.strictEqual(priv.key.e.length, 3);
+        assert.strictEqual(priv.params.encrypted, true);
+        assert.strictEqual(priv.params.checksum, true);
+        assert.strictEqual(priv.params.cipher, pgp.cipherTypes.AES128);
+        assert.strictEqual(priv.params.s2k.mode, 3);
+        assert.strictEqual(priv.params.s2k.hash, pgp.hashTypes.SHA1);
+        assert.strictEqual(priv.params.s2k.count, 35651584);
+        assert.strictEqual(priv.params.s2k.salt.length, 8);
+        assert.strictEqual(priv.params.iv.length, 16);
+        assert.strictEqual(priv.data.length, 668);
+
+        const secret = priv.secret(PASSPHRASE);
+
+        assert.strictEqual(secret.d.length, 256);
+        assert.strictEqual(secret.p.length, 128);
+        assert.strictEqual(secret.q.length, 128);
+        assert.strictEqual(secret.qi.length, 128);
+      }
+
+      {
+        const priv = subkeys[2];
+
+        assert.strictEqual(priv.key.algorithm, pgp.keyTypes.ELGAMAL);
+        assert.strictEqual(priv.key.timestamp, 1535394441);
+        assert.strictEqual(priv.key.p.length, 256);
+        assert.strictEqual(priv.key.g.length, 1);
+        assert.strictEqual(priv.key.y.length, 256);
+        assert.strictEqual(priv.params.encrypted, true);
+        assert.strictEqual(priv.params.checksum, true);
+        assert.strictEqual(priv.params.cipher, pgp.cipherTypes.AES128);
+        assert.strictEqual(priv.params.s2k.mode, 3);
+        assert.strictEqual(priv.params.s2k.hash, pgp.hashTypes.SHA1);
+        assert.strictEqual(priv.params.s2k.count, 35651584);
+        assert.strictEqual(priv.params.s2k.salt.length, 8);
+        assert.strictEqual(priv.params.iv.length, 16);
+        assert.strictEqual(priv.data.length, 65);
+
+        const secret = priv.secret(PASSPHRASE);
+
+        assert.strictEqual(secret.x.length, 43);
+      }
+
+      {
+        const msg1 = msg;
+        const str1 = msg1.toString('PGP PRIVATE KEY BLOCK');
+        const msg2 = pgp.PGPMessage.fromString(str1);
+        const str2 = msg2.toString('PGP PRIVATE KEY BLOCK');
+
+        assert.deepStrictEqual(msg1, msg2);
+        assert.strictEqual(str1, str2);
+      }
+    });
+  }
+
+  for (const data of [pubring, pubringArmor]) {
+    it('should decode and encode public keys', () => {
+      const msg = typeof data === 'string'
+        ? pgp.PGPMessage.fromString(data)
+        : pgp.PGPMessage.decode(data);
+
+      const keys = [];
+      const master = [];
+      const subkeys = [];
+
+      for (const pkt of msg.packets) {
+        switch (pkt.type) {
+          case pgp.packetTypes.PUBLIC_KEY:
+            keys.push(pkt.body);
+            master.push(pkt.body);
+            break;
+          case pgp.packetTypes.PUBLIC_SUBKEY:
+            keys.push(pkt.body);
+            subkeys.push(pkt.body);
+            break;
+        }
+      }
+
+      assert.strictEqual(keys.length, 4);
+      assert.strictEqual(master.length, 1);
+      assert.strictEqual(subkeys.length, 3);
+
+      {
+        const pub = master[0];
+
+        assert.strictEqual(pub.algorithm, pgp.keyTypes.RSA);
+        assert.strictEqual(pub.timestamp, 1535394109);
+        assert.strictEqual(pub.n.length, 256);
+        assert.strictEqual(pub.e.length, 3);
+      }
+
+      {
+        const pub = subkeys[0];
+
+        assert.strictEqual(pub.algorithm, pgp.keyTypes.RSA);
+        assert.strictEqual(pub.timestamp, 1535394109);
+        assert.strictEqual(pub.n.length, 256);
+        assert.strictEqual(pub.e.length, 3);
+      }
+
+      {
+        const pub = subkeys[1];
+
+        assert.strictEqual(pub.algorithm, pgp.keyTypes.RSA);
+        assert.strictEqual(pub.timestamp, 1535394388);
+        assert.strictEqual(pub.n.length, 256);
+        assert.strictEqual(pub.e.length, 3);
+      }
+
+      {
+        const pub = subkeys[2];
+
+        assert.strictEqual(pub.algorithm, pgp.keyTypes.ELGAMAL);
+        assert.strictEqual(pub.timestamp, 1535394441);
+        assert.strictEqual(pub.p.length, 256);
+        assert.strictEqual(pub.g.length, 1);
+        assert.strictEqual(pub.y.length, 256);
+      }
+
+      {
+        const msg1 = msg;
+        const str1 = msg1.toString('PGP PUBLIC KEY BLOCK');
+        const msg2 = pgp.PGPMessage.fromString(str1);
+        const str2 = msg2.toString('PGP PUBLIC KEY BLOCK');
+
+        assert.deepStrictEqual(msg1, msg2);
+        assert.strictEqual(str1, str2);
+      }
     });
   }
 });

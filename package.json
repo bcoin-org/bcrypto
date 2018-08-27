@@ -38,6 +38,7 @@
   },
   "gypfile": true,
   "browser": {
+    "./lib/internal/crypto": "./lib/internal/crypto-browser.js",
     "./lib/aes": "./lib/aes-browser.js",
     "./lib/blake2b": "./lib/blake2b-browser.js",
     "./lib/chacha20": "./lib/chacha20-browser.js",
