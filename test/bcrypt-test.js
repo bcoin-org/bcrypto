@@ -4,7 +4,7 @@
 'use strict';
 
 const assert = require('./util/assert');
-const bcrypt = require('../lib/internal/bcrypt');
+const bcrypt = require('../lib/bcrypt');
 
 const test = {
   pass: '1234567890',
