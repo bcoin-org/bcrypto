@@ -50,6 +50,22 @@ describe('RSA', function() {
     assert.deepStrictEqual(RSAPublicKey.fromDNS(pubDNS), pub);
   });
 
+  it('should generate keypair', () => {
+    const priv = rsa.generateKey(1024);
+    const {d, dp, dq, qi} = priv;
+
+    priv.d = Buffer.alloc(1);
+    priv.dp = Buffer.alloc(1);
+    priv.dq = Buffer.alloc(1);
+    priv.qi = Buffer.alloc(1);
+    priv.compute();
+
+    assert.bufferEqual(priv.d, d);
+    assert.bufferEqual(priv.dp, dp);
+    assert.bufferEqual(priv.dq, dq);
+    assert.bufferEqual(priv.qi, qi);
+  });
+
   it('should generate keypair with custom exponent', () => {
     const privRaw = rsa.privateKeyGenerate(1024, 0x0100000001);
     const priv = RSAPrivateKey.decode(privRaw);

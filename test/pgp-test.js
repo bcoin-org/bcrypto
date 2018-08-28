@@ -15,9 +15,11 @@
 'use strict';
 
 const assert = require('./util/assert');
-const pgp = require('../lib/internal/pgp');
 const fs = require('fs');
 const Path = require('path');
+const pgp = require('../lib/internal/pgp');
+const rsa = require('../lib/rsa');
+const SHA256 = require('../lib/sha256');
 
 const keys = [
 // JJs key
@@ -342,6 +344,29 @@ describe('PGP', function() {
         assert.strictEqual(secret.p.length, 128);
         assert.strictEqual(secret.q.length, 128);
         assert.strictEqual(secret.qi.length, 128);
+
+        const pub = new rsa.RSAPublicKey();
+        pub.setN(priv.key.n);
+        pub.setE(priv.key.e);
+
+        const key = new rsa.RSAPrivateKey();
+        key.setE(priv.key.e);
+        key.setP(secret.p);
+        key.setQ(secret.q);
+        // XXX
+        // GPG's private exponents are
+        // not computed with euler's totient?
+        key.setD(secret.d);
+        key.compute();
+
+        assert.bufferEqual(key.n, pub.n);
+        assert.bufferEqual(key.e, pub.e);
+        assert.bufferEqual(key.d, secret.d);
+        assert.bufferEqual(key.qi, secret.qi);
+
+        const m = Buffer.from('foobar');
+        const s = rsa.signKey(SHA256, m, key);
+        assert(rsa.verifyKey(SHA256, m, s, pub));
       }
 
       {
