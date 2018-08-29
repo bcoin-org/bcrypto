@@ -326,8 +326,8 @@ describe('PGP', function() {
 
         assert.strictEqual(priv.key.algorithm, pgp.keyTypes.RSA);
         assert.strictEqual(priv.key.timestamp, 1535394109);
-        assert.strictEqual(priv.key.n.length, 256);
-        assert.strictEqual(priv.key.e.length, 3);
+        assert.strictEqual(priv.key.n.get().length, 256);
+        assert.strictEqual(priv.key.e.get().length, 3);
         assert.strictEqual(priv.params.encrypted, true);
         assert.strictEqual(priv.params.checksum, true);
         assert.strictEqual(priv.params.cipher, pgp.cipherTypes.AES128);
@@ -340,29 +340,29 @@ describe('PGP', function() {
 
         const secret = priv.secret(PASSPHRASE);
 
-        assert.strictEqual(secret.d.length, 256);
-        assert.strictEqual(secret.p.length, 128);
-        assert.strictEqual(secret.q.length, 128);
-        assert.strictEqual(secret.qi.length, 128);
+        assert.strictEqual(secret.d.get().length, 256);
+        assert.strictEqual(secret.p.get().length, 128);
+        assert.strictEqual(secret.q.get().length, 128);
+        assert.strictEqual(secret.qi.get().length, 128);
 
         const pub = new rsa.RSAPublicKey();
-        pub.setN(priv.key.n);
-        pub.setE(priv.key.e);
+        pub.setN(priv.key.n.get());
+        pub.setE(priv.key.e.get());
 
         const key = new rsa.RSAPrivateKey();
-        key.setE(priv.key.e);
-        key.setP(secret.p);
-        key.setQ(secret.q);
+        key.setE(priv.key.e.get());
+        key.setP(secret.p.get());
+        key.setQ(secret.q.get());
         // XXX
         // GPG's private exponents are
         // not computed with euler's totient?
-        key.setD(secret.d);
+        key.setD(secret.d.get());
         key.compute();
 
         assert.bufferEqual(key.n, pub.n);
         assert.bufferEqual(key.e, pub.e);
-        assert.bufferEqual(key.d, secret.d);
-        assert.bufferEqual(key.qi, secret.qi);
+        assert.bufferEqual(key.d, secret.d.get());
+        assert.bufferEqual(key.qi, secret.qi.get());
 
         const m = Buffer.from('foobar');
         const s = rsa.signKey(SHA256, m, key);
@@ -374,8 +374,8 @@ describe('PGP', function() {
 
         assert.strictEqual(priv.key.algorithm, pgp.keyTypes.RSA);
         assert.strictEqual(priv.key.timestamp, 1535394109);
-        assert.strictEqual(priv.key.n.length, 256);
-        assert.strictEqual(priv.key.e.length, 3);
+        assert.strictEqual(priv.key.n.get().length, 256);
+        assert.strictEqual(priv.key.e.get().length, 3);
         assert.strictEqual(priv.params.encrypted, true);
         assert.strictEqual(priv.params.checksum, true);
         assert.strictEqual(priv.params.cipher, pgp.cipherTypes.AES128);
@@ -388,10 +388,10 @@ describe('PGP', function() {
 
         const secret = priv.secret(PASSPHRASE);
 
-        assert.strictEqual(secret.d.length, 256);
-        assert.strictEqual(secret.p.length, 128);
-        assert.strictEqual(secret.q.length, 128);
-        assert.strictEqual(secret.qi.length, 128);
+        assert.strictEqual(secret.d.get().length, 256);
+        assert.strictEqual(secret.p.get().length, 128);
+        assert.strictEqual(secret.q.get().length, 128);
+        assert.strictEqual(secret.qi.get().length, 128);
       }
 
       {
@@ -399,8 +399,8 @@ describe('PGP', function() {
 
         assert.strictEqual(priv.key.algorithm, pgp.keyTypes.RSA);
         assert.strictEqual(priv.key.timestamp, 1535394388);
-        assert.strictEqual(priv.key.n.length, 256);
-        assert.strictEqual(priv.key.e.length, 3);
+        assert.strictEqual(priv.key.n.get().length, 256);
+        assert.strictEqual(priv.key.e.get().length, 3);
         assert.strictEqual(priv.params.encrypted, true);
         assert.strictEqual(priv.params.checksum, true);
         assert.strictEqual(priv.params.cipher, pgp.cipherTypes.AES128);
@@ -413,10 +413,10 @@ describe('PGP', function() {
 
         const secret = priv.secret(PASSPHRASE);
 
-        assert.strictEqual(secret.d.length, 256);
-        assert.strictEqual(secret.p.length, 128);
-        assert.strictEqual(secret.q.length, 128);
-        assert.strictEqual(secret.qi.length, 128);
+        assert.strictEqual(secret.d.get().length, 256);
+        assert.strictEqual(secret.p.get().length, 128);
+        assert.strictEqual(secret.q.get().length, 128);
+        assert.strictEqual(secret.qi.get().length, 128);
       }
 
       {
@@ -424,9 +424,9 @@ describe('PGP', function() {
 
         assert.strictEqual(priv.key.algorithm, pgp.keyTypes.ELGAMAL);
         assert.strictEqual(priv.key.timestamp, 1535394441);
-        assert.strictEqual(priv.key.p.length, 256);
-        assert.strictEqual(priv.key.g.length, 1);
-        assert.strictEqual(priv.key.y.length, 256);
+        assert.strictEqual(priv.key.p.get().length, 256);
+        assert.strictEqual(priv.key.g.get().length, 1);
+        assert.strictEqual(priv.key.y.get().length, 256);
         assert.strictEqual(priv.params.encrypted, true);
         assert.strictEqual(priv.params.checksum, true);
         assert.strictEqual(priv.params.cipher, pgp.cipherTypes.AES128);
@@ -439,7 +439,7 @@ describe('PGP', function() {
 
         const secret = priv.secret(PASSPHRASE);
 
-        assert.strictEqual(secret.x.length, 43);
+        assert.strictEqual(secret.x.get().length, 43);
       }
 
       {
@@ -486,8 +486,8 @@ describe('PGP', function() {
 
         assert.strictEqual(pub.algorithm, pgp.keyTypes.RSA);
         assert.strictEqual(pub.timestamp, 1535394109);
-        assert.strictEqual(pub.n.length, 256);
-        assert.strictEqual(pub.e.length, 3);
+        assert.strictEqual(pub.n.get().length, 256);
+        assert.strictEqual(pub.e.get().length, 3);
       }
 
       {
@@ -495,8 +495,8 @@ describe('PGP', function() {
 
         assert.strictEqual(pub.algorithm, pgp.keyTypes.RSA);
         assert.strictEqual(pub.timestamp, 1535394109);
-        assert.strictEqual(pub.n.length, 256);
-        assert.strictEqual(pub.e.length, 3);
+        assert.strictEqual(pub.n.get().length, 256);
+        assert.strictEqual(pub.e.get().length, 3);
       }
 
       {
@@ -504,8 +504,8 @@ describe('PGP', function() {
 
         assert.strictEqual(pub.algorithm, pgp.keyTypes.RSA);
         assert.strictEqual(pub.timestamp, 1535394388);
-        assert.strictEqual(pub.n.length, 256);
-        assert.strictEqual(pub.e.length, 3);
+        assert.strictEqual(pub.n.get().length, 256);
+        assert.strictEqual(pub.e.get().length, 3);
       }
 
       {
@@ -513,9 +513,9 @@ describe('PGP', function() {
 
         assert.strictEqual(pub.algorithm, pgp.keyTypes.ELGAMAL);
         assert.strictEqual(pub.timestamp, 1535394441);
-        assert.strictEqual(pub.p.length, 256);
-        assert.strictEqual(pub.g.length, 1);
-        assert.strictEqual(pub.y.length, 256);
+        assert.strictEqual(pub.p.get().length, 256);
+        assert.strictEqual(pub.g.get().length, 1);
+        assert.strictEqual(pub.y.get().length, 256);
       }
 
       {
