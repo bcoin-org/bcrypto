@@ -43,6 +43,7 @@
     "./lib/blake2b": "./lib/blake2b-browser.js",
     "./lib/chacha20": "./lib/chacha20-browser.js",
     "./lib/cleanse": "./lib/cleanse-browser.js",
+    "./lib/dsa": "./lib/dsa-browser.js",
     "./lib/ecdsa": "./lib/ecdsa-browser.js",
     "./lib/eddsa": "./lib/eddsa-browser.js",
     "./lib/hash160": "./lib/hash160-browser.js",

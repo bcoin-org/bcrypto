@@ -10,24 +10,26 @@ const rsa = require('../lib/rsa');
 const vectors = require('./data/rsa.json');
 const {RSAPrivateKey, RSAPublicKey} = rsa;
 
-const msg = Buffer.from('foobar', 'ascii');
+const msg = SHA256.digest(Buffer.from('foobar'));
 
 describe('RSA', function() {
   this.timeout(20000);
 
   it('should generate keypair', () => {
-    const privRaw = rsa.privateKeyGenerate(1024);
-    const pubRaw = rsa.publicKeyCreate(privRaw);
+    const priv_ = rsa.privateKeyGenerate(1024);
+    const pub_ = rsa.publicKeyCreate(priv_);
+    const privRaw = priv_.encode();
+    const pubRaw = pub_.encode();
 
     const priv = RSAPrivateKey.decode(privRaw);
     assert.strictEqual(priv.n.length, 128);
     assert.bufferEqual(priv.e, Buffer.from('010001', 'hex'));
     assert.bufferEqual(priv.encode(), privRaw);
-    assert(rsa.privateVerify(priv));
+    assert(rsa.privateKeyVerify(priv));
 
     const pub = RSAPublicKey.decode(pubRaw);
     assert.bufferEqual(pub.encode(), pubRaw);
-    assert(rsa.publicVerify(pub));
+    assert(rsa.publicKeyVerify(pub));
 
     const privPEM = priv.toPEM();
     assert(typeof privPEM === 'string');
@@ -51,7 +53,7 @@ describe('RSA', function() {
   });
 
   it('should generate keypair', () => {
-    const priv = rsa.generateKey(1024);
+    const priv = rsa.privateKeyGenerate(1024);
     const {d, dp, dq, qi} = priv;
 
     priv.d = Buffer.alloc(1);
@@ -67,15 +69,13 @@ describe('RSA', function() {
   });
 
   it('should generate keypair with custom exponent', () => {
-    const privRaw = rsa.privateKeyGenerate(1024, 0x0100000001);
-    const priv = RSAPrivateKey.decode(privRaw);
+    const priv = rsa.privateKeyGenerate(1024, 0x0100000001);
     assert.strictEqual(priv.n.length, 128);
     assert.bufferEqual(priv.e, Buffer.from('0100000001', 'hex'));
   });
 
   it('should generate keypair with custom exponent (async)', async () => {
-    const privRaw = await rsa.privateKeyGenerateAsync(1024, 0x0100000001);
-    const priv = RSAPrivateKey.decode(privRaw);
+    const priv = await rsa.privateKeyGenerateAsync(1024, 0x0100000001);
     assert.strictEqual(priv.n.length, 128);
     assert.bufferEqual(priv.e, Buffer.from('0100000001', 'hex'));
   });
@@ -114,29 +114,31 @@ describe('RSA', function() {
     const key = RSAPublicKey.fromJSON(vector.key);
 
     it(`should verify RSA vector #${i}`, () => {
-      assert(key.verify());
+      assert(key.validate());
 
-      assert(rsa.verifyKey(hash, msg, sig, key));
+      const m = hash.digest(msg);
 
-      msg[0] ^= 1;
-      assert(!rsa.verifyKey(hash, msg, sig, key));
-      msg[0] ^= 1;
-      assert(rsa.verifyKey(hash, msg, sig, key));
+      assert(rsa.verify(hash, m, sig, key));
+
+      m[0] ^= 1;
+      assert(!rsa.verify(hash, m, sig, key));
+      m[0] ^= 1;
+      assert(rsa.verify(hash, m, sig, key));
 
       sig[0] ^= 1;
-      assert(!rsa.verifyKey(hash, msg, sig, key));
+      assert(!rsa.verify(hash, m, sig, key));
       sig[0] ^= 1;
-      assert(rsa.verifyKey(hash, msg, sig, key));
+      assert(rsa.verify(hash, m, sig, key));
 
       key.n[0] ^= 1;
-      assert(!rsa.verifyKey(hash, msg, sig, key));
+      assert(!rsa.verify(hash, m, sig, key));
       key.n[0] ^= 1;
-      assert(rsa.verifyKey(hash, msg, sig, key));
+      assert(rsa.verify(hash, m, sig, key));
 
       key.e[0] ^= 1;
-      assert(!rsa.verifyKey(hash, msg, sig, key));
+      assert(!rsa.verify(hash, m, sig, key));
       key.e[0] ^= 1;
-      assert(rsa.verifyKey(hash, msg, sig, key));
+      assert(rsa.verify(hash, m, sig, key));
     });
   }
 });

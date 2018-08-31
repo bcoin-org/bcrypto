@@ -281,6 +281,8 @@ const secring = read('secring.gpg');
 const secringArmor = read('secring.asc', 'utf8');
 
 describe('PGP', function() {
+  this.timeout(10000);
+
   for (const key of keys) {
     it('should deserialize and reserialize keyrings', () => {
       const msg1 = pgp.PGPMessage.fromString(key);
@@ -364,9 +366,9 @@ describe('PGP', function() {
         assert.bufferEqual(key.d, secret.d.get());
         assert.bufferEqual(key.qi, secret.qi.get());
 
-        const m = Buffer.from('foobar');
-        const s = rsa.signKey(SHA256, m, key);
-        assert(rsa.verifyKey(SHA256, m, s, pub));
+        const m = SHA256.digest(Buffer.from('foobar'));
+        const s = rsa.sign(SHA256, m, key);
+        assert(rsa.verify(SHA256, m, s, pub));
       }
 
       {

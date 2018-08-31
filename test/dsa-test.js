@@ -4,7 +4,7 @@
 'use strict';
 
 const assert = require('./util/assert');
-const dsa = require('../lib/internal/dsa');
+const dsa = require('../lib/dsa');
 const params = require('./data/dsa-params.json');
 
 const {
@@ -23,25 +23,25 @@ function createParams(json) {
 
 describe('DSA', function() {
   it('should sign and verify', () => {
-    // const key = dsa.generateKey(1024, 160);
+    // const priv = dsa.privateKeyGenerate(1024);
     const params = createParams(P2048_256);
-    const key = dsa.generateKeyFromParams(params);
-    const pub = key.toPublic();
+    const priv = dsa.privateKeyCreate(params);
+    const pub = priv.toPublic();
 
-    assert(key.toJSON());
-    assert(key.toPEM());
+    assert(priv.toJSON());
+    assert(priv.toPEM());
     assert(pub.toPEM());
 
-    const msg = Buffer.alloc(key.q.length, 0x01);
-    const sig = dsa.signKey(msg, key);
+    const msg = Buffer.alloc(priv.q.length, 0x01);
+    const sig = dsa.sign(msg, priv);
     assert(sig);
 
-    const result = dsa.verifyKey(msg, sig, pub);
+    const result = dsa.verify(msg, sig, pub);
     assert(result);
 
-    sig[(Math.random() * sig.length) | 0] ^= 1;
+    sig.s[(Math.random() * sig.s.length) | 0] ^= 1;
 
-    const result2 = dsa.verifyKey(msg, sig, pub);
+    const result2 = dsa.verify(msg, sig, pub);
     assert(!result2);
   });
 });

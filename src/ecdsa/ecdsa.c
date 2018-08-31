@@ -231,8 +231,6 @@ fail:
   return false;
 }
 
-// Note: could do this in js-land by
-// hard-coding all the orders.
 bool
 bcrypto_ecdsa_generate(const char *name, uint8_t **priv, size_t *priv_len) {
   EC_KEY *priv_ec = NULL;

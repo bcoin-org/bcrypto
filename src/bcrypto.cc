@@ -22,6 +22,7 @@
 #include "blake2b.h"
 #include "chacha20.h"
 #if NODE_MAJOR_VERSION >= 10
+#include "dsa.h"
 #include "ecdsa.h"
 #endif
 #include "hash160.h"
@@ -414,6 +415,7 @@ NAN_MODULE_INIT(init) {
   BBlake2b::Init(target);
   BChaCha20::Init(target);
 #if NODE_MAJOR_VERSION >= 10
+  BDSA::Init(target);
   BECDSA::Init(target);
 #endif
   BHash160::Init(target);
