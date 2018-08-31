@@ -22,6 +22,8 @@ function createParams(json) {
 }
 
 describe('DSA', function() {
+  this.timeout(10000);
+
   it('should sign and verify', () => {
     // const priv = dsa.privateKeyGenerate(1024);
     const params = createParams(P2048_256);
@@ -42,6 +44,70 @@ describe('DSA', function() {
     sig.s[(Math.random() * sig.s.length) | 0] ^= 1;
 
     const result2 = dsa.verify(msg, sig, pub);
+    assert(!result2);
+  });
+
+  it('should sign and verify (async)', async () => {
+    const params = await dsa.paramsGenerate(1024);
+    const priv = dsa.privateKeyCreate(params);
+    const pub = priv.toPublic();
+
+    assert(priv.toJSON());
+    assert(priv.toPEM());
+    assert(pub.toPEM());
+
+    const msg = Buffer.alloc(priv.q.length, 0x01);
+    const sig = dsa.sign(msg, priv);
+    assert(sig);
+
+    const result = dsa.verify(msg, sig, pub);
+    assert(result);
+
+    sig.s[(Math.random() * sig.s.length) | 0] ^= 1;
+
+    const result2 = dsa.verify(msg, sig, pub);
+    assert(!result2);
+  });
+
+  it('should sign and verify', () => {
+    const priv = dsa.DSAPrivateKey.generate(1024);
+    const pub = priv.toPublic();
+
+    assert(priv.toJSON());
+    assert(priv.toPEM());
+    assert(pub.toPEM());
+
+    const msg = Buffer.alloc(priv.size(), 0x01);
+    const sig = priv.sign(msg);
+    assert(sig);
+
+    const result = pub.verify(msg, sig);
+    assert(result);
+
+    sig.s[(Math.random() * sig.s.length) | 0] ^= 1;
+
+    const result2 = pub.verify(msg, sig);
+    assert(!result2);
+  });
+
+  it('should sign and verify (async)', async () => {
+    const priv = await dsa.DSAPrivateKey.generate(1024);
+    const pub = priv.toPublic();
+
+    assert(priv.toJSON());
+    assert(priv.toPEM());
+    assert(pub.toPEM());
+
+    const msg = Buffer.alloc(priv.size(), 0x01);
+    const sig = priv.sign(msg);
+    assert(sig);
+
+    const result = pub.verify(msg, sig);
+    assert(result);
+
+    sig.s[(Math.random() * sig.s.length) | 0] ^= 1;
+
+    const result2 = pub.verify(msg, sig);
     assert(!result2);
   });
 });
