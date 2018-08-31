@@ -24,6 +24,8 @@ function createParams(json) {
 describe('DSA', function() {
   this.timeout(10000);
 
+  const SIZE = dsa.native < 2 ? 1024 : 2048;
+
   it('should sign and verify', () => {
     // const priv = dsa.privateKeyGenerate(1024);
     const params = createParams(P2048_256);
@@ -48,7 +50,7 @@ describe('DSA', function() {
   });
 
   it('should sign and verify (async)', async () => {
-    const params = await dsa.paramsGenerate(1024);
+    const params = await dsa.paramsGenerateAsync(SIZE);
     const priv = dsa.privateKeyCreate(params);
     const pub = priv.toPublic();
 
@@ -70,7 +72,7 @@ describe('DSA', function() {
   });
 
   it('should sign and verify', () => {
-    const priv = dsa.DSAPrivateKey.generate(1024);
+    const priv = dsa.DSAPrivateKey.generate(SIZE);
     const pub = priv.toPublic();
 
     assert(priv.toJSON());
@@ -91,7 +93,7 @@ describe('DSA', function() {
   });
 
   it('should sign and verify (async)', async () => {
-    const priv = await dsa.DSAPrivateKey.generate(1024);
+    const priv = await dsa.DSAPrivateKey.generateAsync(SIZE);
     const pub = priv.toPublic();
 
     assert(priv.toJSON());
