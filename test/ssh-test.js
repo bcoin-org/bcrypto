@@ -6,7 +6,7 @@
 const assert = require('./util/assert');
 const fs = require('fs');
 const Path = require('path');
-const ssh = require('../lib/internal/ssh');
+const ssh = require('../lib/ssh');
 const {SSHPublicKey, SSHPrivateKey} = ssh;
 
 const pubs = [

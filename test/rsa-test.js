@@ -130,6 +130,11 @@ describe('RSA', function() {
       sig[0] ^= 1;
       assert(rsa.verify(hash, m, sig, key));
 
+      sig[40] ^= 1;
+      assert(!rsa.verify(hash, m, sig, key));
+      sig[40] ^= 1;
+      assert(rsa.verify(hash, m, sig, key));
+
       key.n[0] ^= 1;
       assert(!rsa.verify(hash, m, sig, key));
       key.n[0] ^= 1;

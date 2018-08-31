@@ -17,7 +17,7 @@
 const assert = require('./util/assert');
 const fs = require('fs');
 const Path = require('path');
-const pgp = require('../lib/internal/pgp');
+const pgp = require('../lib/pgp');
 const rsa = require('../lib/rsa');
 const SHA256 = require('../lib/sha256');
 

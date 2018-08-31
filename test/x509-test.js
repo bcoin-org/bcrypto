@@ -6,8 +6,8 @@
 const assert = require('./util/assert');
 const fs = require('fs');
 const Path = require('path');
-const x509 = require('../lib/internal/x509');
-const pem = require('../lib/internal/pem');
+const x509 = require('../lib/encoding/x509');
+const pem = require('../lib/encoding/pem');
 
 const file = Path.resolve(__dirname, 'data', 'certs.pem');
 const data = fs.readFileSync(file, 'utf8');
