@@ -4,8 +4,18 @@
 'use strict';
 
 const assert = require('./util/assert');
+const fs = require('fs');
+const Path = require('path');
 const dsa = require('../lib/dsa');
+const pkcs8 = require('../lib/encoding/pkcs8');
+const x509 = require('../lib/encoding/x509');
 const params = require('./data/dsa-params.json');
+
+const DSA_PATH = Path.resolve(__dirname, 'data', 'testdsa.pem');
+const DSA_PUB_PATH = Path.resolve(__dirname, 'data', 'testdsapub.pem');
+
+const dsaPem = fs.readFileSync(DSA_PATH, 'utf8');
+const dsaPubPem = fs.readFileSync(DSA_PUB_PATH, 'utf8');
 
 const {
   P1024_160,
@@ -111,5 +121,10 @@ describe('DSA', function() {
 
     const result2 = pub.verify(msg, sig);
     assert(!result2);
+  });
+
+  it('should parse SPKI', () => {
+    const info = x509.SubjectPublicKeyInfo.fromPEM(dsaPubPem);
+    assert(info.algorithm.algorithm.getKey() === 'dsa');
   });
 });
