@@ -21,6 +21,7 @@
 #include "aead.h"
 #include "blake2b.h"
 #include "chacha20.h"
+#include "cipherbase.h"
 #if NODE_MAJOR_VERSION >= 10
 #include "dsa.h"
 #include "ecdsa.h"
@@ -414,6 +415,7 @@ NAN_MODULE_INIT(init) {
   BAEAD::Init(target);
   BBlake2b::Init(target);
   BChaCha20::Init(target);
+  BCipherBase::Init(target);
 #if NODE_MAJOR_VERSION >= 10
   BDSA::Init(target);
   BECDSA::Init(target);

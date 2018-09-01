@@ -6,6 +6,7 @@
 const assert = require('./util/assert');
 const crypto = require('crypto');
 const aes = require('../lib/aes');
+const {Cipher, Decipher} = require('../lib/cipher');
 const random = require('../lib/random');
 
 const key = Buffer.from(
@@ -26,6 +27,24 @@ function testVector() {
     data,
     expect
   };
+}
+
+function encipher(data, key, iv) {
+  const c = new Cipher('AES-256-CBC');
+  c.init(key, iv);
+  return Buffer.concat([
+    c.update(data),
+    c.final()
+  ]);
+}
+
+function decipher(data, key, iv) {
+  const c = new Decipher('AES-256-CBC');
+  c.init(key, iv);
+  return Buffer.concat([
+    c.update(data),
+    c.final()
+  ]);
 }
 
 describe('AES', function() {
@@ -72,6 +91,53 @@ describe('AES', function() {
       assert.bufferEqual(ciphertext, expect);
 
       const plaintext = aes.decipher(ciphertext, key, iv);
+      assert.bufferEqual(plaintext, data);
+    });
+  }
+
+  it('should encrypt and decrypt with 2 blocks', () => {
+    const data = Buffer.from(
+      'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+      'hex');
+
+    const expected = Buffer.from(''
+      + '83de502a9c83112ca6383f2214a892a0cdad5ab2b3e192e'
+      + '9921ddb126b25262c41f1dcff4d67ccfb40e4116e5a4569c1',
+      'hex');
+
+    const ciphertext = encipher(data, key, iv);
+    assert.bufferEqual(ciphertext, expected);
+
+    const plaintext = decipher(ciphertext, key, iv);
+    assert.bufferEqual(plaintext, data);
+  });
+
+  it('should encrypt and decrypt with uneven blocks', () => {
+    const data = Buffer.from(
+      'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855010203',
+      'hex');
+
+    const expected = Buffer.from(''
+      + '83de502a9c83112ca6383f2214a892a0cdad5ab2b3e192e9'
+      + '921ddb126b25262c5211801019a30c0c6f795296923e0af8',
+      'hex');
+
+    const ciphertext = encipher(data, key, iv);
+    assert.bufferEqual(ciphertext, expected);
+
+    const plaintext = decipher(ciphertext, key, iv);
+    assert.bufferEqual(plaintext, data);
+  });
+
+  for (let i = 0; i < 50; i++) {
+    const {key, iv, data, expect} = testVector();
+    const d = data.toString('hex', 0, 32);
+
+    it(`should encrypt and decrypt ${d}`, () => {
+      const ciphertext = encipher(data, key, iv);
+      assert.bufferEqual(ciphertext, expect);
+
+      const plaintext = decipher(ciphertext, key, iv);
       assert.bufferEqual(plaintext, data);
     });
   }

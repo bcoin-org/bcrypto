@@ -24,6 +24,7 @@
       "./src/bcrypto.cc",
       "./src/blake2b.cc",
       "./src/chacha20.cc",
+      "./src/cipherbase.cc",
       "./src/dsa.cc",
       "./src/dsa_async.cc",
       "./src/ecdsa.cc",
