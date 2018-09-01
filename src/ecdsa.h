@@ -23,6 +23,7 @@ private:
   static NAN_METHOD(ECDH);
   static NAN_METHOD(PrivateKeyTweakAdd);
   static NAN_METHOD(PublicKeyTweakAdd);
+  static NAN_METHOD(Recover);
 };
 #endif
 

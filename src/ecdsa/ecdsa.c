@@ -11,6 +11,7 @@
 #include "openssl/ecdsa.h"
 #include "openssl/objects.h"
 
+// https://github.com/openssl/openssl/blob/master/include/openssl/obj_mac.h
 // https://github.com/openssl/openssl/blob/master/include/openssl/bn.h
 // https://github.com/openssl/openssl/blob/master/include/openssl/ec.h
 // https://github.com/openssl/openssl/tree/master/crypto/bn
@@ -902,6 +903,260 @@ fail:
   return false;
 }
 
+bool
+bcrypto_ecdsa_recover(
+  const char *name,
+  const uint8_t *msg,
+  size_t msg_len,
+  const uint8_t *r,
+  size_t r_len,
+  const uint8_t *s,
+  size_t s_len,
+  int param,
+  bool compress,
+  uint8_t **pub,
+  size_t *pub_len
+) {
+  BN_CTX *ctx = NULL;
+  EC_KEY *pub_ec = NULL;
+  ECDSA_SIG *sig_ec = NULL;
+  BIGNUM *N_bn = NULL;
+  BIGNUM *P_bn = NULL;
+  BIGNUM *A_bn = NULL;
+  BIGNUM *B_bn = NULL;
+  BIGNUM *x_bn = NULL;
+  EC_POINT *r_p = NULL;
+  BIGNUM *rinv = NULL;
+  BIGNUM *s1 = NULL;
+  BIGNUM *s2 = NULL;
+  BIGNUM *e_bn = NULL;
+  EC_POINT *Q_p = NULL;
+
+  int type = bcrypto_ecdsa_curve(name);
+
+  if (type == -1)
+    goto fail;
+
+  ctx = BN_CTX_new();
+
+  if (!ctx)
+    goto fail;
+
+  pub_ec = EC_KEY_new_by_curve_name(type);
+
+  if (!pub_ec)
+    goto fail;
+
+  sig_ec = bcrypto_ecdsa_rs2sig(r, r_len, s, s_len);
+
+  if (!sig_ec)
+    goto fail;
+
+  int y_odd = param & 1;
+  int second_key = param >> 1;
+
+  const BIGNUM *sig_r, *sig_s;
+
+  ECDSA_SIG_get0(sig_ec, &sig_r, &sig_s);
+  assert(sig_r);
+  assert(sig_s);
+
+  N_bn = BN_new();
+  P_bn = BN_new();
+  A_bn = BN_new();
+  B_bn = BN_new();
+
+  if (!N_bn || !P_bn || !A_bn || !B_bn)
+    goto fail;
+
+  const EC_GROUP *group = EC_KEY_get0_group(pub_ec);
+  assert(group);
+  const EC_POINT *G_p = EC_GROUP_get0_generator(group);
+  assert(G_p);
+
+  if (!EC_GROUP_get_order(group, N_bn, ctx))
+    goto fail;
+
+  if (!EC_GROUP_get_curve_GFp(group, P_bn, A_bn, B_bn, ctx))
+    goto fail;
+
+  // if (r.cmp(this.curve.p.umod(this.curve.n)) >= 0 && isSecondKey)
+  //   throw new Error('Unable to find sencond key candinate');
+  if (second_key) {
+    BIGNUM *res = BN_new();
+
+    if (!res)
+      goto fail;
+
+    if (!BN_mod(res, P_bn, N_bn, ctx)) {
+      BN_free(res);
+      goto fail;
+    }
+
+    // if r >= P % N
+    if (BN_ucmp(sig_r, res) >= 0) {
+      BN_free(res);
+      goto fail;
+    }
+
+    BN_free(res);
+  }
+
+  x_bn = BN_new();
+
+  if (!x_bn)
+    goto fail;
+
+  r_p = EC_POINT_new(group);
+
+  if (!r_p)
+    goto fail;
+
+  // if (isSecondKey)
+  //   r = this.curve.pointFromX(r.add(this.curve.n), isYOdd);
+  // else
+  //   r = this.curve.pointFromX(r, isYOdd);
+  {
+    if (second_key) {
+      if (!BN_add(x_bn, sig_r, N_bn))
+        goto fail;
+    } else {
+      if (!BN_copy(x_bn, sig_r))
+        goto fail;
+    }
+
+    if (!EC_POINT_set_compressed_coordinates_GFp(group, r_p, x_bn, y_odd, ctx))
+      goto fail;
+  }
+
+  // var rInv = signature.r.invm(n);
+  {
+    rinv = BN_new();
+
+    if (!rinv)
+      goto fail;
+
+    if (!BN_mod_inverse(rinv, sig_r, N_bn, ctx))
+      goto fail;
+  }
+
+  // var s1 = n.sub(e).mul(rInv).umod(n);
+  {
+    e_bn = BN_bin2bn(msg, msg_len, NULL);
+
+    if (!e_bn)
+      goto fail;
+
+    s1 = BN_new();
+
+    if (!s1)
+      goto fail;
+
+    if (!BN_sub(s1, N_bn, e_bn))
+      goto fail;
+
+    if (!BN_mul(s1, s1, rinv, ctx))
+      goto fail;
+
+    if (!BN_mod(s1, s1, N_bn, ctx))
+      goto fail;
+  }
+
+  // var s2 = s.mul(rInv).umod(n);
+  {
+    s2 = BN_new();
+
+    if (!s2)
+      goto fail;
+
+    if (!BN_mul(s2, sig_s, rinv, ctx))
+      goto fail;
+
+    if (!BN_mod(s2, s2, N_bn, ctx))
+      goto fail;
+  }
+
+  Q_p = EC_POINT_new(group);
+
+  if (!Q_p)
+    goto fail;
+
+  // this.g.mulAdd(s1, r, s2);
+  if (!EC_POINT_mul(group, Q_p, s1, r_p, s2, ctx))
+    goto fail;
+
+  point_conversion_form_t form = compress
+    ? POINT_CONVERSION_COMPRESSED
+    : POINT_CONVERSION_UNCOMPRESSED;
+
+  *pub_len = EC_POINT_point2buf(group, Q_p, form, pub, ctx);
+
+  if ((int)*pub_len <= 0)
+    goto fail;
+
+  BN_CTX_free(ctx);
+  EC_KEY_free(pub_ec);
+  ECDSA_SIG_free(sig_ec);
+  BN_free(N_bn);
+  BN_free(P_bn);
+  BN_free(A_bn);
+  BN_free(B_bn);
+  BN_free(x_bn);
+  EC_POINT_free(r_p);
+  BN_free(rinv);
+  BN_free(s1);
+  BN_free(s2);
+  BN_free(e_bn);
+  EC_POINT_free(Q_p);
+
+  return true;
+
+fail:
+  if (ctx)
+    BN_CTX_free(ctx);
+
+  if (pub_ec)
+    EC_KEY_free(pub_ec);
+
+  if (sig_ec)
+    ECDSA_SIG_free(sig_ec);
+
+  if (N_bn)
+    BN_free(N_bn);
+
+  if (P_bn)
+    BN_free(P_bn);
+
+  if (A_bn)
+    BN_free(A_bn);
+
+  if (B_bn)
+    BN_free(B_bn);
+
+  if (x_bn)
+    BN_free(x_bn);
+
+  if (r_p)
+    EC_POINT_free(r_p);
+
+  if (rinv)
+    BN_free(rinv);
+
+  if (s1)
+    BN_free(s1);
+
+  if (s2)
+    BN_free(s2);
+
+  if (e_bn)
+    BN_free(e_bn);
+
+  if (Q_p)
+    EC_POINT_free(Q_p);
+
+  return false;
+}
+
 #else
 
 bool
@@ -1005,6 +1260,23 @@ bcrypto_ecdsa_tweak_pub(
   bool compress,
   uint8_t **npub,
   size_t *npub_len
+) {
+  return false;
+}
+
+bool
+bcrypto_ecdsa_recover(
+  const char *name,
+  const uint8_t *msg,
+  size_t msg_len,
+  const uint8_t *r,
+  size_t r_len,
+  const uint8_t *s,
+  size_t s_len,
+  int param,
+  bool compress,
+  uint8_t **pub,
+  size_t *pub_len
 ) {
   return false;
 }

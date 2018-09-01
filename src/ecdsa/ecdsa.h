@@ -96,6 +96,21 @@ bcrypto_ecdsa_tweak_pub(
   size_t *npub_len
 );
 
+bool
+bcrypto_ecdsa_recover(
+  const char *name,
+  const uint8_t *msg,
+  size_t msg_len,
+  const uint8_t *r,
+  size_t r_len,
+  const uint8_t *s,
+  size_t s_len,
+  int param,
+  bool compress,
+  uint8_t **pub,
+  size_t *pub_len
+);
+
 #if defined(__cplusplus)
 }
 #endif

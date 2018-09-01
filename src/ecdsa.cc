@@ -37,6 +37,7 @@ BECDSA::Init(v8::Local<v8::Object> &target) {
   Nan::SetMethod(tpl, "ecdh", BECDSA::ECDH);
   Nan::SetMethod(tpl, "privateKeyTweakAdd", BECDSA::PrivateKeyTweakAdd);
   Nan::SetMethod(tpl, "publicKeyTweakAdd", BECDSA::PublicKeyTweakAdd);
+  Nan::SetMethod(tpl, "recover", BECDSA::Recover);
 
   v8::Local<v8::FunctionTemplate> ctor =
     Nan::New<v8::FunctionTemplate>(ecdsa_constructor);
@@ -384,6 +385,64 @@ NAN_METHOD(BECDSA::PublicKeyTweakAdd) {
 
   if (!result)
     return Nan::ThrowTypeError("Could not tweak public key.");
+
+  return info.GetReturnValue().Set(
+    Nan::NewBuffer((char *)&pub[0], pub_len).ToLocalChecked());
+}
+
+NAN_METHOD(BECDSA::Recover) {
+  if (info.Length() < 5)
+    return Nan::ThrowError("ecdsa.recover() requires arguments.");
+
+  if (!info[0]->IsString())
+    return Nan::ThrowTypeError("First argument must be a string.");
+
+  Nan::Utf8String name_(info[0]);
+  const char *name = (const char *)*name_;
+
+  v8::Local<v8::Object> mbuf = info[1].As<v8::Object>();
+  v8::Local<v8::Object> rbuf = info[2].As<v8::Object>();
+  v8::Local<v8::Object> sbuf = info[3].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(mbuf)
+      || !node::Buffer::HasInstance(rbuf)
+      || !node::Buffer::HasInstance(sbuf)) {
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+  }
+
+  if (!info[4]->IsNumber())
+    return Nan::ThrowTypeError("Argument must be a number.");
+
+  int param = (int)info[4]->Uint32Value();
+  bool compress = true;
+
+  if (info.Length() > 5 && !IsNull(info[5])) {
+    if (!info[5]->IsBoolean())
+      return Nan::ThrowTypeError("Argument must be a boolean.");
+
+    compress = info[5]->BooleanValue();
+  }
+
+  const uint8_t *md = (uint8_t *)node::Buffer::Data(mbuf);
+  size_t ml = node::Buffer::Length(mbuf);
+
+  const uint8_t *rd = (uint8_t *)node::Buffer::Data(rbuf);
+  size_t rl = node::Buffer::Length(rbuf);
+
+  const uint8_t *sd = (uint8_t *)node::Buffer::Data(sbuf);
+  size_t sl = node::Buffer::Length(sbuf);
+
+  if (!md || !rd || !sd)
+    return info.GetReturnValue().Set(Nan::Null());
+
+  uint8_t *pub;
+  size_t pub_len;
+
+  bool result = bcrypto_ecdsa_recover(
+    name, md, ml, rd, rl, sd, sl, param, compress, &pub, &pub_len);
+
+  if (!result)
+    return info.GetReturnValue().Set(Nan::Null());
 
   return info.GetReturnValue().Set(
     Nan::NewBuffer((char *)&pub[0], pub_len).ToLocalChecked());
