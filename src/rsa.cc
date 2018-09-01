@@ -32,6 +32,7 @@ BRSA::Init(v8::Local<v8::Object> &target) {
   Nan::SetMethod(tpl, "sign", BRSA::Sign);
   Nan::SetMethod(tpl, "privateKeyVerify", BRSA::PrivateKeyVerify);
   Nan::SetMethod(tpl, "verify", BRSA::Verify);
+  Nan::SetMethod(tpl, "compute", BRSA::Compute);
 
   v8::Local<v8::FunctionTemplate> ctor =
     Nan::New<v8::FunctionTemplate>(rsa_constructor);
@@ -273,5 +274,76 @@ NAN_METHOD(BRSA::Verify) {
   bool result = bcrypto_rsa_verify(alg, md, ml, sd, sl, &pub);
 
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
+}
+
+NAN_METHOD(BRSA::Compute) {
+  if (info.Length() < 8)
+    return Nan::ThrowError("rsa.compute() requires arguments.");
+
+  v8::Local<v8::Object> nbuf = info[0].As<v8::Object>();
+  v8::Local<v8::Object> ebuf = info[1].As<v8::Object>();
+  v8::Local<v8::Object> dbuf = info[2].As<v8::Object>();
+  v8::Local<v8::Object> pbuf = info[3].As<v8::Object>();
+  v8::Local<v8::Object> qbuf = info[4].As<v8::Object>();
+  v8::Local<v8::Object> dpbuf = info[5].As<v8::Object>();
+  v8::Local<v8::Object> dqbuf = info[6].As<v8::Object>();
+  v8::Local<v8::Object> qibuf = info[7].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(nbuf)
+      || !node::Buffer::HasInstance(ebuf)
+      || !node::Buffer::HasInstance(dbuf)
+      || !node::Buffer::HasInstance(pbuf)
+      || !node::Buffer::HasInstance(qbuf)
+      || !node::Buffer::HasInstance(dpbuf)
+      || !node::Buffer::HasInstance(dqbuf)
+      || !node::Buffer::HasInstance(qibuf)) {
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+  }
+
+  bcrypto_rsa_key_t priv;
+  bcrypto_rsa_key_init(&priv);
+
+  priv.nd = (uint8_t *)node::Buffer::Data(nbuf);
+  priv.nl = node::Buffer::Length(nbuf);
+
+  priv.ed = (uint8_t *)node::Buffer::Data(ebuf);
+  priv.el = node::Buffer::Length(ebuf);
+
+  priv.dd = (uint8_t *)node::Buffer::Data(dbuf);
+  priv.dl = node::Buffer::Length(dbuf);
+
+  priv.pd = (uint8_t *)node::Buffer::Data(pbuf);
+  priv.pl = node::Buffer::Length(pbuf);
+
+  priv.qd = (uint8_t *)node::Buffer::Data(qbuf);
+  priv.ql = node::Buffer::Length(qbuf);
+
+  priv.dpd = (uint8_t *)node::Buffer::Data(dpbuf);
+  priv.dpl = node::Buffer::Length(dpbuf);
+
+  priv.dqd = (uint8_t *)node::Buffer::Data(dqbuf);
+  priv.dql = node::Buffer::Length(dqbuf);
+
+  priv.qid = (uint8_t *)node::Buffer::Data(qibuf);
+  priv.qil = node::Buffer::Length(qibuf);
+
+  bcrypto_rsa_key_t *k;
+
+  if (!bcrypto_rsa_compute(&priv, &k))
+    return Nan::ThrowTypeError("Could not compute.");
+
+  if (!k)
+    return info.GetReturnValue().Set(Nan::Null());
+
+  v8::Local<v8::Array> ret = Nan::New<v8::Array>();
+  ret->Set(0, Nan::CopyBuffer((char *)&k->nd[0], k->nl).ToLocalChecked());
+  ret->Set(1, Nan::CopyBuffer((char *)&k->dd[0], k->dl).ToLocalChecked());
+  ret->Set(2, Nan::CopyBuffer((char *)&k->dpd[0], k->dpl).ToLocalChecked());
+  ret->Set(3, Nan::CopyBuffer((char *)&k->dqd[0], k->dql).ToLocalChecked());
+  ret->Set(4, Nan::CopyBuffer((char *)&k->qid[0], k->qil).ToLocalChecked());
+
+  bcrypto_rsa_key_free(k);
+
+  return info.GetReturnValue().Set(ret);
 }
 #endif

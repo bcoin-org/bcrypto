@@ -60,6 +60,9 @@ bcrypto_rsa_verify(
 bool
 bcrypto_rsa_verify_priv(const bcrypto_rsa_key_t *priv);
 
+bool
+bcrypto_rsa_compute(const bcrypto_rsa_key_t *priv, bcrypto_rsa_key_t **key);
+
 #if defined(__cplusplus)
 }
 #endif

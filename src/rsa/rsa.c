@@ -553,6 +553,273 @@ fail:
   return false;
 }
 
+bool
+bcrypto_rsa_compute(const bcrypto_rsa_key_t *priv, bcrypto_rsa_key_t **key) {
+  assert(priv && key);
+
+  bool ret = false;
+  RSA *priv_r = NULL;
+  BIGNUM *rsa_n = NULL;
+  BIGNUM *rsa_e = NULL;
+  BIGNUM *rsa_d = NULL;
+  BIGNUM *rsa_p = NULL;
+  BIGNUM *rsa_q = NULL;
+  BIGNUM *rsa_dmp1 = NULL;
+  BIGNUM *rsa_dmq1 = NULL;
+  BIGNUM *rsa_iqmp = NULL;
+  BN_CTX *ctx = NULL;
+  BIGNUM *r0 = NULL;
+  BIGNUM *r1 = NULL;
+  BIGNUM *r2 = NULL;
+  RSA *out_r = NULL;
+  bcrypto_rsa_key_t *out = NULL;
+
+  priv_r = bcrypto_rsa_key2priv(priv);
+
+  if (!priv_r)
+    goto fail;
+
+  const BIGNUM *n = NULL;
+  const BIGNUM *e = NULL;
+  const BIGNUM *d = NULL;
+  const BIGNUM *p = NULL;
+  const BIGNUM *q = NULL;
+  const BIGNUM *dp = NULL;
+  const BIGNUM *dq = NULL;
+  const BIGNUM *qi = NULL;
+
+  RSA_get0_key(priv_r, &n, &e, &d);
+  RSA_get0_factors(priv_r, &p, &q);
+  RSA_get0_crt_params(priv_r, &dp, &dq, &qi);
+  assert(n && e && d && p && q && dp && dq && qi);
+
+  if (BN_is_zero(e) || BN_is_zero(p) || BN_is_zero(q))
+    goto fail;
+
+  if (!BN_is_zero(n)
+      && !BN_is_zero(d)
+      && !BN_is_zero(dp)
+      && !BN_is_zero(dq)
+      && !BN_is_zero(qi)) {
+    *key = NULL;
+    ret = true;
+    goto fail;
+  }
+
+  int eb = BN_num_bits(e);
+  int nb = BN_num_bits(p) + BN_num_bits(q);
+
+  if (eb < 2 || eb > 33)
+    goto fail;
+
+  if (nb < 512 || nb > 16384)
+    goto fail;
+
+  if (!BN_is_odd(e))
+    goto fail;
+
+  rsa_n = BN_new();
+  rsa_e = BN_new();
+  rsa_d = BN_new();
+  rsa_p = BN_new();
+  rsa_q = BN_new();
+  rsa_dmp1 = BN_new();
+  rsa_dmq1 = BN_new();
+  rsa_iqmp = BN_new();
+
+  if (!rsa_n
+      || !rsa_e
+      || !rsa_d
+      || !rsa_p
+      || !rsa_q
+      || !rsa_dmp1
+      || !rsa_dmq1
+      || !rsa_iqmp) {
+    goto fail;
+  }
+
+  if (!BN_copy(rsa_n, n)
+      || !BN_copy(rsa_e, e)
+      || !BN_copy(rsa_d, d)
+      || !BN_copy(rsa_p, p)
+      || !BN_copy(rsa_q, q)
+      || !BN_copy(rsa_dmp1, dp)
+      || !BN_copy(rsa_dmq1, dq)
+      || !BN_copy(rsa_iqmp, qi)) {
+    goto fail;
+  }
+
+  ctx = BN_CTX_new();
+  r0 = BN_new();
+  r1 = BN_new();
+  r2 = BN_new();
+
+  if (!ctx || !r0 || !r1 || !r2)
+    goto fail;
+
+  // See: https://github.com/openssl/openssl/blob/master/crypto/rsa/rsa_gen.c
+
+  if (BN_is_zero(rsa_n)) {
+    // modulus n = p * q * r_3 * r_4
+    if (!BN_mul(rsa_n, rsa_p, rsa_q, ctx))
+      goto fail;
+  }
+
+  // p - 1
+  if (!BN_sub(r1, rsa_p, BN_value_one()))
+    goto fail;
+
+  // q - 1
+  if (!BN_sub(r2, rsa_q, BN_value_one()))
+    goto fail;
+
+  // (p - 1)(q - 1)
+  if (!BN_mul(r0, r1, r2, ctx))
+    goto fail;
+
+  if (BN_is_zero(rsa_d)) {
+    BIGNUM *pr0 = BN_new();
+
+    if (pr0 == NULL)
+      goto fail;
+
+    BN_with_flags(pr0, r0, BN_FLG_CONSTTIME);
+
+    if (!BN_mod_inverse(rsa_d, rsa_e, pr0, ctx)) {
+      BN_free(pr0);
+      goto fail;
+    }
+
+    BN_free(pr0);
+  }
+
+  if (BN_is_zero(rsa_dmp1) || BN_is_zero(rsa_dmq1)) {
+    BIGNUM *d = BN_new();
+
+    if (d == NULL)
+      goto fail;
+
+    BN_with_flags(d, rsa_d, BN_FLG_CONSTTIME);
+
+    // calculate d mod (p-1) and d mod (q - 1)
+    if (!BN_mod(rsa_dmp1, d, r1, ctx)
+        || !BN_mod(rsa_dmq1, d, r2, ctx)) {
+      BN_free(d);
+      goto fail;
+    }
+
+    BN_free(d);
+  }
+
+  if (BN_is_zero(rsa_iqmp)) {
+    BIGNUM *p = BN_new();
+
+    if (p == NULL)
+      goto fail;
+
+    BN_with_flags(p, rsa_p, BN_FLG_CONSTTIME);
+
+    // calculate inverse of q mod p
+    if (!BN_mod_inverse(rsa_iqmp, rsa_q, p, ctx)) {
+      BN_free(p);
+      goto fail;
+    }
+
+    BN_free(p);
+  }
+
+  out_r = RSA_new();
+
+  if (!out_r)
+    goto fail;
+
+  assert(RSA_set0_key(out_r, rsa_n, rsa_e, rsa_d));
+
+  rsa_n = NULL;
+  rsa_e = NULL;
+  rsa_d = NULL;
+
+  assert(RSA_set0_factors(out_r, rsa_p, rsa_q));
+
+  rsa_p = NULL;
+  rsa_q = NULL;
+
+  assert(RSA_set0_crt_params(out_r, rsa_dmp1, rsa_dmq1, rsa_iqmp));
+
+  rsa_dmp1 = NULL;
+  rsa_dmq1 = NULL;
+  rsa_iqmp = NULL;
+
+  out = bcrypto_rsa_priv2key(out_r);
+
+  if (!out)
+    goto fail;
+
+  RSA_free(priv_r);
+  // BN_free(rsa_n);
+  // BN_free(rsa_e);
+  // BN_free(rsa_d);
+  // BN_free(rsa_p);
+  // BN_free(rsa_q);
+  // BN_free(rsa_dmp1);
+  // BN_free(rsa_dmq1);
+  // BN_free(rsa_iqmp);
+  BN_CTX_free(ctx);
+  BN_free(r0);
+  BN_free(r1);
+  BN_free(r2);
+  RSA_free(out_r);
+
+  *key = out;
+
+  return 1;
+
+fail:
+  if (priv_r)
+    RSA_free(priv_r);
+
+  if (rsa_n)
+    BN_free(rsa_n);
+
+  if (rsa_e)
+    BN_free(rsa_e);
+
+  if (rsa_d)
+    BN_free(rsa_d);
+
+  if (rsa_p)
+    BN_free(rsa_p);
+
+  if (rsa_q)
+    BN_free(rsa_q);
+
+  if (rsa_dmp1)
+    BN_free(rsa_dmp1);
+
+  if (rsa_dmq1)
+    BN_free(rsa_dmq1);
+
+  if (rsa_iqmp)
+    BN_free(rsa_iqmp);
+
+  if (ctx)
+    BN_CTX_free(ctx);
+
+  if (r0)
+    BN_free(r0);
+
+  if (r1)
+    BN_free(r1);
+
+  if (r2)
+    BN_free(r2);
+
+  if (out_r)
+    RSA_free(out_r);
+
+  return ret;
+}
+
 #else
 
 void
@@ -595,4 +862,8 @@ bcrypto_rsa_verify_priv(const bcrypto_rsa_key_t *priv) {
   return false;
 }
 
+bool
+bcrypto_rsa_compute(const bcrypto_rsa_key_t *priv, bcrypto_rsa_key_t **key) {
+  return NULL;
+}
 #endif
