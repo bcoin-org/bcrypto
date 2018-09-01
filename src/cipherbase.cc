@@ -175,8 +175,13 @@ NAN_METHOD(BCipherBase::Update) {
     return Nan::ThrowError("Failed to update cipher.");
   }
 
+  if (out_len == 0) {
+    free(out);
+    out = NULL;
+  }
+
   return info.GetReturnValue().Set(
-    Nan::NewBuffer((char *)&out[0], out_len).ToLocalChecked());
+    Nan::NewBuffer((char *)out, out_len).ToLocalChecked());
 }
 
 NAN_METHOD(BCipherBase::Final) {
@@ -185,7 +190,8 @@ NAN_METHOD(BCipherBase::Final) {
   if (!cipher->ctx)
     return Nan::ThrowError("Cipher is not initialized.");
 
-  uint8_t *out = (uint8_t *)malloc(EVP_CIPHER_CTX_block_size(cipher->ctx));
+  size_t block_size = EVP_CIPHER_CTX_block_size(cipher->ctx);
+  uint8_t *out = (uint8_t *)malloc(block_size);
   int out_len = -1;
 
   if (!out)
@@ -201,8 +207,13 @@ NAN_METHOD(BCipherBase::Final) {
   EVP_CIPHER_CTX_free(cipher->ctx);
   cipher->ctx = NULL;
 
+  if (out_len == 0) {
+    free(out);
+    out = NULL;
+  }
+
   return info.GetReturnValue().Set(
-    Nan::NewBuffer((char *)&out[0], (size_t)out_len).ToLocalChecked());
+    Nan::NewBuffer((char *)out, (size_t)out_len).ToLocalChecked());
 }
 
 NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj) {

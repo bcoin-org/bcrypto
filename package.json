@@ -38,10 +38,10 @@
   },
   "gypfile": true,
   "browser": {
-    "./lib/internal/crypto": "./lib/internal/crypto-browser.js",
     "./lib/aes": "./lib/aes-browser.js",
     "./lib/blake2b": "./lib/blake2b-browser.js",
     "./lib/chacha20": "./lib/chacha20-browser.js",
+    "./lib/cipher": "./lib/cipher-browser.js",
     "./lib/cleanse": "./lib/cleanse-browser.js",
     "./lib/dsa": "./lib/dsa-browser.js",
     "./lib/ecdsa": "./lib/ecdsa-browser.js",
