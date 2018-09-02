@@ -331,7 +331,7 @@ describe('Secp256k1', function() {
 
     for (const vector of vectors.recover_der) {
       const msg = Buffer.from(vector.msg, 'hex');
-      const sig = Buffer.from(vector.sig, 'hex');
+      const rs = Buffer.from(vector.sig, 'hex');
       const param = vector.param;
       const compress = vector.compress;
       const result = Buffer.from(vector.result, 'hex');

@@ -1,5 +1,6 @@
 /* eslint-env mocha */
 /* eslint prefer-arrow-callback: "off" */
+/* eslint no-unused-vars: "off" */
 
 'use strict';
 
@@ -7,7 +8,6 @@ const assert = require('./util/assert');
 const fs = require('fs');
 const Path = require('path');
 const dsa = require('../lib/dsa');
-const pkcs8 = require('../lib/encoding/pkcs8');
 const x509 = require('../lib/encoding/x509');
 const params = require('./data/dsa-params.json');
 
