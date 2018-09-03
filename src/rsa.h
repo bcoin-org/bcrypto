@@ -19,6 +19,8 @@ private:
   static NAN_METHOD(PrivateKeyVerify);
   static NAN_METHOD(Verify);
   static NAN_METHOD(Compute);
+  static NAN_METHOD(Encrypt);
+  static NAN_METHOD(Decrypt);
 };
 #endif
 

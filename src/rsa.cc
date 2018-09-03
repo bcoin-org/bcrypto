@@ -33,6 +33,8 @@ BRSA::Init(v8::Local<v8::Object> &target) {
   Nan::SetMethod(tpl, "privateKeyVerify", BRSA::PrivateKeyVerify);
   Nan::SetMethod(tpl, "verify", BRSA::Verify);
   Nan::SetMethod(tpl, "compute", BRSA::Compute);
+  Nan::SetMethod(tpl, "encrypt", BRSA::Encrypt);
+  Nan::SetMethod(tpl, "decrypt", BRSA::Decrypt);
 
   v8::Local<v8::FunctionTemplate> ctor =
     Nan::New<v8::FunctionTemplate>(rsa_constructor);
@@ -345,5 +347,117 @@ NAN_METHOD(BRSA::Compute) {
   bcrypto_rsa_key_free(k);
 
   return info.GetReturnValue().Set(ret);
+}
+
+NAN_METHOD(BRSA::Encrypt) {
+  if (info.Length() < 4)
+    return Nan::ThrowError("rsa.encrypt() requires arguments.");
+
+  if (!info[0]->IsNumber())
+    return Nan::ThrowTypeError("First argument must be a number.");
+
+  int type = (int)info[0]->Uint32Value();
+
+  v8::Local<v8::Object> mbuf = info[1].As<v8::Object>();
+  v8::Local<v8::Object> nbuf = info[2].As<v8::Object>();
+  v8::Local<v8::Object> ebuf = info[3].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(mbuf)
+      || !node::Buffer::HasInstance(nbuf)
+      || !node::Buffer::HasInstance(ebuf)) {
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+  }
+
+  const uint8_t *md = (uint8_t *)node::Buffer::Data(mbuf);
+  size_t ml = node::Buffer::Length(mbuf);
+
+  bcrypto_rsa_key_t pub;
+  bcrypto_rsa_key_init(&pub);
+
+  pub.nd = (uint8_t *)node::Buffer::Data(nbuf);
+  pub.nl = node::Buffer::Length(nbuf);
+
+  pub.ed = (uint8_t *)node::Buffer::Data(ebuf);
+  pub.el = node::Buffer::Length(ebuf);
+
+  uint8_t *ct;
+  size_t ct_len;
+
+  if (!bcrypto_rsa_encrypt(type, md, ml, &pub, &ct, &ct_len))
+    return Nan::ThrowTypeError("Could not sign message.");
+
+  info.GetReturnValue().Set(
+    Nan::NewBuffer((char *)&ct[0], ct_len).ToLocalChecked());
+}
+
+NAN_METHOD(BRSA::Decrypt) {
+  if (info.Length() < 10)
+    return Nan::ThrowError("rsa.decrypt() requires arguments.");
+
+  if (!info[0]->IsNumber())
+    return Nan::ThrowTypeError("First argument must be a number.");
+
+  int type = (int)info[0]->Uint32Value();
+
+  v8::Local<v8::Object> mbuf = info[1].As<v8::Object>();
+  v8::Local<v8::Object> nbuf = info[2].As<v8::Object>();
+  v8::Local<v8::Object> ebuf = info[3].As<v8::Object>();
+  v8::Local<v8::Object> dbuf = info[4].As<v8::Object>();
+  v8::Local<v8::Object> pbuf = info[5].As<v8::Object>();
+  v8::Local<v8::Object> qbuf = info[6].As<v8::Object>();
+  v8::Local<v8::Object> dpbuf = info[7].As<v8::Object>();
+  v8::Local<v8::Object> dqbuf = info[8].As<v8::Object>();
+  v8::Local<v8::Object> qibuf = info[9].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(mbuf)
+      || !node::Buffer::HasInstance(nbuf)
+      || !node::Buffer::HasInstance(ebuf)
+      || !node::Buffer::HasInstance(dbuf)
+      || !node::Buffer::HasInstance(pbuf)
+      || !node::Buffer::HasInstance(qbuf)
+      || !node::Buffer::HasInstance(dpbuf)
+      || !node::Buffer::HasInstance(dqbuf)
+      || !node::Buffer::HasInstance(qibuf)) {
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+  }
+
+  bcrypto_rsa_key_t priv;
+  bcrypto_rsa_key_init(&priv);
+
+  const uint8_t *md = (uint8_t *)node::Buffer::Data(mbuf);
+  size_t ml = node::Buffer::Length(mbuf);
+
+  priv.nd = (uint8_t *)node::Buffer::Data(nbuf);
+  priv.nl = node::Buffer::Length(nbuf);
+
+  priv.ed = (uint8_t *)node::Buffer::Data(ebuf);
+  priv.el = node::Buffer::Length(ebuf);
+
+  priv.dd = (uint8_t *)node::Buffer::Data(dbuf);
+  priv.dl = node::Buffer::Length(dbuf);
+
+  priv.pd = (uint8_t *)node::Buffer::Data(pbuf);
+  priv.pl = node::Buffer::Length(pbuf);
+
+  priv.qd = (uint8_t *)node::Buffer::Data(qbuf);
+  priv.ql = node::Buffer::Length(qbuf);
+
+  priv.dpd = (uint8_t *)node::Buffer::Data(dpbuf);
+  priv.dpl = node::Buffer::Length(dpbuf);
+
+  priv.dqd = (uint8_t *)node::Buffer::Data(dqbuf);
+  priv.dql = node::Buffer::Length(dqbuf);
+
+  priv.qid = (uint8_t *)node::Buffer::Data(qibuf);
+  priv.qil = node::Buffer::Length(qibuf);
+
+  uint8_t *pt;
+  size_t pt_len;
+
+  if (!bcrypto_rsa_decrypt(type, md, ml, &priv, &pt, &pt_len))
+    return Nan::ThrowTypeError("Could not sign message.");
+
+  info.GetReturnValue().Set(
+    Nan::NewBuffer((char *)&pt[0], pt_len).ToLocalChecked());
 }
 #endif

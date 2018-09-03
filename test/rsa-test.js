@@ -15,6 +15,36 @@ const msg = SHA256.digest(Buffer.from('foobar'));
 describe('RSA', function() {
   this.timeout(20000);
 
+  it('should encrypt and decrypt', () => {
+    const priv = RSAPrivateKey.generate(1024);
+    const pub = priv.toPublic();
+    const msg = Buffer.from('hello world');
+
+    const ct = rsa.encrypt(msg, pub);
+
+    assert.notBufferEqual(ct, msg);
+
+    const pt = rsa.decrypt(ct, priv);
+
+    assert.bufferEqual(pt, msg);
+  });
+
+
+  it('should encrypt and decrypt (OAEP)', () => {
+    const priv = RSAPrivateKey.generate(1024);
+    const pub = priv.toPublic();
+    const label = Buffer.alloc(0);
+    const msg = Buffer.from('hello world');
+
+    const ct = rsa.encryptOAEP(SHA1, msg, label, pub);
+
+    assert.notBufferEqual(ct, msg);
+
+    const pt = rsa.decryptOAEP(SHA1, ct, label, priv);
+
+    assert.bufferEqual(pt, msg);
+  });
+
   it('should generate keypair', () => {
     const priv_ = rsa.privateKeyGenerate(1024);
     const pub_ = rsa.publicKeyCreate(priv_);

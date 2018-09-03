@@ -820,6 +820,106 @@ fail:
   return ret;
 }
 
+bool
+bcrypto_rsa_encrypt(
+  int type,
+  const uint8_t *msg,
+  size_t msg_len,
+  const bcrypto_rsa_key_t *pub,
+  uint8_t **ct,
+  size_t *ct_len
+) {
+  assert(pub && ct && ct_len);
+
+  RSA *pub_r = NULL;
+  uint8_t *out = NULL;
+
+  pub_r = bcrypto_rsa_key2pub(pub);
+
+  if (!pub_r)
+    goto fail;
+
+  int padding = type ? RSA_PKCS1_OAEP_PADDING : RSA_PKCS1_PADDING;
+  int max = type ? RSA_size(pub_r) - 41 : RSA_size(pub_r) - 11;
+
+  if (max < 0 || msg_len > (size_t)max)
+    goto fail;
+
+  out = malloc(RSA_size(pub_r) * 2);
+
+  if (!out)
+    goto fail;
+
+  int out_len = RSA_public_encrypt((int)msg_len, msg, out, pub_r, padding);
+
+  if (out_len < 0)
+    goto fail;
+
+  RSA_free(pub_r);
+
+  *ct = out;
+  *ct_len = (size_t)out_len;
+
+  return true;
+
+fail:
+  if (pub_r)
+    RSA_free(pub_r);
+
+  if (out)
+    free(out);
+
+  return false;
+}
+
+bool
+bcrypto_rsa_decrypt(
+  int type,
+  const uint8_t *msg,
+  size_t msg_len,
+  const bcrypto_rsa_key_t *priv,
+  uint8_t **pt,
+  size_t *pt_len
+) {
+  assert(priv && pt && pt_len);
+
+  RSA *priv_r = NULL;
+  uint8_t *out = NULL;
+
+  priv_r = bcrypto_rsa_key2priv(priv);
+
+  if (!priv_r)
+    goto fail;
+
+  int padding = type ? RSA_PKCS1_OAEP_PADDING : RSA_PKCS1_PADDING;
+
+  out = malloc(RSA_size(priv_r));
+
+  if (!out)
+    goto fail;
+
+  int out_len = RSA_private_decrypt((int)msg_len, msg, out, priv_r, padding);
+
+  if (out_len < 0)
+    goto fail;
+
+  RSA_free(priv_r);
+
+  *pt = out;
+  *pt_len = (size_t)out_len;
+
+  return true;
+
+fail:
+  if (priv_r)
+    RSA_free(priv_r);
+
+  if (out)
+    free(out);
+
+  return false;
+}
+
 #else
 
 void
@@ -865,5 +965,29 @@ bcrypto_rsa_verify_priv(const bcrypto_rsa_key_t *priv) {
 bool
 bcrypto_rsa_compute(const bcrypto_rsa_key_t *priv, bcrypto_rsa_key_t **key) {
   return NULL;
+}
+
+bool
+bcrypto_rsa_encrypt(
+  int type,
+  const uint8_t *msg,
+  size_t msg_len,
+  const bcrypto_rsa_key_t *pub,
+  uint8_t **ct,
+  size_t *ct_len
+) {
+  return false;
+}
+
+bool
+bcrypto_rsa_decrypt(
+  int type,
+  const uint8_t *msg,
+  size_t msg_len,
+  const bcrypto_rsa_key_t *priv,
+  uint8_t **pt,
+  size_t *pt_len
+) {
+  return false;
 }
 #endif

@@ -63,6 +63,26 @@ bcrypto_rsa_verify_priv(const bcrypto_rsa_key_t *priv);
 bool
 bcrypto_rsa_compute(const bcrypto_rsa_key_t *priv, bcrypto_rsa_key_t **key);
 
+bool
+bcrypto_rsa_encrypt(
+  int type,
+  const uint8_t *msg,
+  size_t msg_len,
+  const bcrypto_rsa_key_t *pub,
+  uint8_t **ct,
+  size_t *ct_len
+);
+
+bool
+bcrypto_rsa_decrypt(
+  int type,
+  const uint8_t *msg,
+  size_t msg_len,
+  const bcrypto_rsa_key_t *priv,
+  uint8_t **pt,
+  size_t *pt_len
+);
+
 #if defined(__cplusplus)
 }
 #endif
