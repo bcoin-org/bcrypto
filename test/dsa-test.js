@@ -7,7 +7,9 @@
 const assert = require('./util/assert');
 const fs = require('fs');
 const Path = require('path');
+const bio = require('bufio');
 const dsa = require('../lib/dsa');
+const asn1 = require('../lib/encoding/asn1');
 const x509 = require('../lib/encoding/x509');
 const params = require('./data/dsa-params.json');
 
@@ -40,8 +42,6 @@ function createParams(json) {
 describe('DSA', function() {
   this.timeout(20000);
 
-  const SIZE = dsa.native < 2 ? 1024 : 2048;
-
   it('should sign and verify', () => {
     // const priv = DSAPrivateKey.generate(1024);
     const params = createParams(P2048_256);
@@ -66,7 +66,8 @@ describe('DSA', function() {
   });
 
   it('should sign and verify (async)', async () => {
-    const params = await DSAParams.generateAsync(SIZE);
+    const size = dsa.native < 2 ? 1024 : 2048;
+    const params = await DSAParams.generateAsync(size);
     const priv = DSAPrivateKey.create(params);
     const pub = priv.toPublic();
 
@@ -90,5 +91,21 @@ describe('DSA', function() {
   it('should parse SPKI', () => {
     const info = x509.SubjectPublicKeyInfo.fromPEM(dsaPubPem);
     assert(info.algorithm.algorithm.getKey() === 'dsa');
+    assert(info.algorithm.parameters.type === 16); // SEQ
+    assert(Buffer.isBuffer(info.algorithm.parameters.value));
+    assert(Buffer.isBuffer(info.subjectPublicKey.value));
+
+    const br = bio.read(info.algorithm.parameters.value);
+    const p = asn1.Integer.read(br);
+    const q = asn1.Integer.read(br);
+    const g = asn1.Integer.read(br);
+    const key = new DSAPublicKey();
+
+    key.setP(p.value);
+    key.setQ(q.value);
+    key.setG(g.value);
+    key.setY(info.subjectPublicKey.value);
+
+    assert(key.validate());
   });
 });
