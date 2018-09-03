@@ -216,7 +216,7 @@ describe('Secp256k1', function() {
 
       it(`should tweak private key: ${vector.key}`, () => {
         const priv = new secp256k1.PrivateKey(key);
-        assert.bufferEqual(priv.tweakAdd(tweak).d, result);
+        assert.bufferEqual(priv.tweakAdd(tweak).key, result);
       });
     }
 
@@ -229,7 +229,7 @@ describe('Secp256k1', function() {
       it(`should perform ECDH: ${vector.pub}`, () => {
         const priv = new secp256k1.PrivateKey(bpriv);
         const pub = secp256k1.PublicKey.fromPoint(bpub);
-        assert.bufferEqual(priv.ecdh(pub).toPoint(compress), result);
+        assert.bufferEqual(priv.derive(pub).toPoint(compress), result);
       });
     }
 
@@ -255,12 +255,14 @@ describe('Secp256k1', function() {
 
       it(`should verify private key: ${vector.key}`, () => {
         let priv;
+
         try {
           priv = new secp256k1.PrivateKey(key);
         } catch (e) {
           assert.strictEqual(false, result);
           return;
         }
+
         assert.strictEqual(priv.validate(), result);
       });
     }
@@ -279,6 +281,7 @@ describe('Secp256k1', function() {
           assert.strictEqual(false, result);
           return;
         }
+
         let sig;
         try {
           sig = secp256k1.Signature.decode(rs);
@@ -286,6 +289,7 @@ describe('Secp256k1', function() {
           assert.strictEqual(false, result);
           return;
         }
+
         assert.strictEqual(pub.verify(msg, sig), result);
       });
     }
@@ -324,7 +328,8 @@ describe('Secp256k1', function() {
 
       it(`should recover key from R/S signature: ${vector.sig}`, () => {
         const sig = secp256k1.Signature.decode(rs);
-        const key = secp256k1.PublicKey.recover(msg, sig, param);
+        sig.param = param;
+        const key = secp256k1.PublicKey.recover(msg, sig);
         assert.bufferEqual(key.toPoint(compress), result);
       });
     }
@@ -338,7 +343,8 @@ describe('Secp256k1', function() {
 
       it(`should recover key from DER signature: ${vector.sig}`, () => {
         const sig = secp256k1.Signature.fromDER(rs);
-        const key = secp256k1.PublicKey.recover(msg, sig, param);
+        sig.param = param;
+        const key = secp256k1.PublicKey.recover(msg, sig);
         assert.bufferEqual(key.toPoint(compress), result);
       });
     }

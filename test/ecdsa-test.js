@@ -570,8 +570,8 @@ describe('ECDSA', function() {
       const bobPriv = ec.PrivateKey.generate();
       const bobPub = bobPriv.toPublic();
 
-      const aliceSecret = alicePriv.ecdh(bobPub);
-      const bobSecret = bobPriv.ecdh(alicePub);
+      const aliceSecret = alicePriv.derive(bobPub);
+      const bobSecret = bobPriv.derive(alicePub);
 
       assert.bufferEqual(aliceSecret.toPoint(false), bobSecret.toPoint(false));
       assert.bufferEqual(aliceSecret.toPoint(true), bobSecret.toPoint(true));
