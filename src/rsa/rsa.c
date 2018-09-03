@@ -427,109 +427,7 @@ fail:
 }
 
 bool
-bcrypto_rsa_sign(
-  const char *alg,
-  const uint8_t *msg,
-  size_t msg_len,
-  const bcrypto_rsa_key_t *priv,
-  uint8_t **sig,
-  size_t *sig_len
-) {
-  assert(priv && sig && sig_len);
-
-  RSA *priv_r = NULL;
-  uint8_t *sig_buf = NULL;
-  size_t sig_buf_len = 0;
-
-  int type = bcrypto_rsa_type(alg);
-
-  if (type == -1)
-    goto fail;
-
-  priv_r = bcrypto_rsa_key2priv(priv);
-
-  if (!priv_r)
-    goto fail;
-
-  sig_buf_len = RSA_size(priv_r);
-  sig_buf = (uint8_t *)malloc(sig_buf_len * sizeof(uint8_t));
-
-  if (!sig_buf)
-    goto fail;
-
-  // Protect against side-channel attacks.
-  if (!RSA_blinding_on(priv_r, NULL))
-    goto fail;
-
-  int result = RSA_sign(
-    type,
-    msg,
-    msg_len,
-    sig_buf,
-    (unsigned int *)&sig_buf_len,
-    priv_r
-  );
-
-  RSA_blinding_off(priv_r);
-
-  if (!result)
-    goto fail;
-
-  RSA_free(priv_r);
-
-  *sig = sig_buf;
-  *sig_len = sig_buf_len;
-
-  return true;
-
-fail:
-  if (priv_r)
-    RSA_free(priv_r);
-
-  if (sig_buf)
-    free(sig_buf);
-
-  return false;
-}
-
-bool
-bcrypto_rsa_verify(
-  const char *alg,
-  const uint8_t *msg,
-  size_t msg_len,
-  const uint8_t *sig,
-  size_t sig_len,
-  const bcrypto_rsa_key_t *pub
-) {
-  assert(pub);
-
-  RSA *pub_r = NULL;
-
-  int type = bcrypto_rsa_type(alg);
-
-  if (type == -1)
-    goto fail;
-
-  pub_r = bcrypto_rsa_key2pub(pub);
-
-  if (!pub_r)
-    goto fail;
-
-  if (!RSA_verify(type, msg, msg_len, sig, sig_len, pub_r))
-    goto fail;
-
-  RSA_free(pub_r);
-
-  return true;
-fail:
-  if (pub_r)
-    RSA_free(pub_r);
-
-  return false;
-}
-
-bool
-bcrypto_rsa_verify_priv(const bcrypto_rsa_key_t *priv) {
+bcrypto_rsa_validate(const bcrypto_rsa_key_t *priv) {
   assert(priv);
 
   RSA *priv_r = NULL;
@@ -821,6 +719,108 @@ fail:
 }
 
 bool
+bcrypto_rsa_sign(
+  const char *alg,
+  const uint8_t *msg,
+  size_t msg_len,
+  const bcrypto_rsa_key_t *priv,
+  uint8_t **sig,
+  size_t *sig_len
+) {
+  assert(priv && sig && sig_len);
+
+  RSA *priv_r = NULL;
+  uint8_t *sig_buf = NULL;
+  size_t sig_buf_len = 0;
+
+  int type = bcrypto_rsa_type(alg);
+
+  if (type == -1)
+    goto fail;
+
+  priv_r = bcrypto_rsa_key2priv(priv);
+
+  if (!priv_r)
+    goto fail;
+
+  sig_buf_len = RSA_size(priv_r);
+  sig_buf = (uint8_t *)malloc(sig_buf_len * sizeof(uint8_t));
+
+  if (!sig_buf)
+    goto fail;
+
+  // Protect against side-channel attacks.
+  if (!RSA_blinding_on(priv_r, NULL))
+    goto fail;
+
+  int result = RSA_sign(
+    type,
+    msg,
+    msg_len,
+    sig_buf,
+    (unsigned int *)&sig_buf_len,
+    priv_r
+  );
+
+  RSA_blinding_off(priv_r);
+
+  if (!result)
+    goto fail;
+
+  RSA_free(priv_r);
+
+  *sig = sig_buf;
+  *sig_len = sig_buf_len;
+
+  return true;
+
+fail:
+  if (priv_r)
+    RSA_free(priv_r);
+
+  if (sig_buf)
+    free(sig_buf);
+
+  return false;
+}
+
+bool
+bcrypto_rsa_verify(
+  const char *alg,
+  const uint8_t *msg,
+  size_t msg_len,
+  const uint8_t *sig,
+  size_t sig_len,
+  const bcrypto_rsa_key_t *pub
+) {
+  assert(pub);
+
+  RSA *pub_r = NULL;
+
+  int type = bcrypto_rsa_type(alg);
+
+  if (type == -1)
+    goto fail;
+
+  pub_r = bcrypto_rsa_key2pub(pub);
+
+  if (!pub_r)
+    goto fail;
+
+  if (!RSA_verify(type, msg, msg_len, sig, sig_len, pub_r))
+    goto fail;
+
+  RSA_free(pub_r);
+
+  return true;
+fail:
+  if (pub_r)
+    RSA_free(pub_r);
+
+  return false;
+}
+
+bool
 bcrypto_rsa_encrypt(
   int type,
   const uint8_t *msg,
@@ -934,6 +934,16 @@ bcrypto_rsa_generate(int bits, int exp) {
 }
 
 bool
+bcrypto_rsa_validate(const bcrypto_rsa_key_t *priv) {
+  return false;
+}
+
+bool
+bcrypto_rsa_compute(const bcrypto_rsa_key_t *priv, bcrypto_rsa_key_t **key) {
+  return NULL;
+}
+
+bool
 bcrypto_rsa_sign(
   const char *alg,
   const uint8_t *msg,
@@ -955,16 +965,6 @@ bcrypto_rsa_verify(
   const bcrypto_rsa_key_t *pub
 ) {
   return false;
-}
-
-bool
-bcrypto_rsa_verify_priv(const bcrypto_rsa_key_t *priv) {
-  return false;
-}
-
-bool
-bcrypto_rsa_compute(const bcrypto_rsa_key_t *priv, bcrypto_rsa_key_t **key) {
-  return NULL;
 }
 
 bool

@@ -38,6 +38,12 @@ bcrypto_rsa_key_t *
 bcrypto_rsa_generate(int bits, unsigned long long exp);
 
 bool
+bcrypto_rsa_validate(const bcrypto_rsa_key_t *priv);
+
+bool
+bcrypto_rsa_compute(const bcrypto_rsa_key_t *priv, bcrypto_rsa_key_t **key);
+
+bool
 bcrypto_rsa_sign(
   const char *alg,
   const uint8_t *msg,
@@ -56,12 +62,6 @@ bcrypto_rsa_verify(
   size_t sig_len,
   const bcrypto_rsa_key_t *pub
 );
-
-bool
-bcrypto_rsa_verify_priv(const bcrypto_rsa_key_t *priv);
-
-bool
-bcrypto_rsa_compute(const bcrypto_rsa_key_t *priv, bcrypto_rsa_key_t **key);
 
 bool
 bcrypto_rsa_encrypt(

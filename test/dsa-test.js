@@ -11,6 +11,12 @@ const dsa = require('../lib/dsa');
 const x509 = require('../lib/encoding/x509');
 const params = require('./data/dsa-params.json');
 
+const {
+  DSAParams,
+  DSAPublicKey,
+  DSAPrivateKey
+} = dsa;
+
 const DSA_PATH = Path.resolve(__dirname, 'data', 'testdsa.pem');
 const DSA_PUB_PATH = Path.resolve(__dirname, 'data', 'testdsapub.pem');
 
@@ -37,52 +43,9 @@ describe('DSA', function() {
   const SIZE = dsa.native < 2 ? 1024 : 2048;
 
   it('should sign and verify', () => {
-    // const priv = dsa.privateKeyGenerate(1024);
+    // const priv = DSAPrivateKey.generate(1024);
     const params = createParams(P2048_256);
-    const priv = dsa.privateKeyCreate(params);
-    const pub = priv.toPublic();
-
-    assert(priv.toJSON());
-    assert(priv.toPEM());
-    assert(pub.toPEM());
-
-    const msg = Buffer.alloc(priv.q.length, 0x01);
-    const sig = dsa.sign(msg, priv);
-    assert(sig);
-
-    const result = dsa.verify(msg, sig, pub);
-    assert(result);
-
-    sig.s[(Math.random() * sig.s.length) | 0] ^= 1;
-
-    const result2 = dsa.verify(msg, sig, pub);
-    assert(!result2);
-  });
-
-  it('should sign and verify (async)', async () => {
-    const params = await dsa.paramsGenerateAsync(SIZE);
-    const priv = dsa.privateKeyCreate(params);
-    const pub = priv.toPublic();
-
-    assert(priv.toJSON());
-    assert(priv.toPEM());
-    assert(pub.toPEM());
-
-    const msg = Buffer.alloc(priv.q.length, 0x01);
-    const sig = dsa.sign(msg, priv);
-    assert(sig);
-
-    const result = dsa.verify(msg, sig, pub);
-    assert(result);
-
-    sig.s[(Math.random() * sig.s.length) | 0] ^= 1;
-
-    const result2 = dsa.verify(msg, sig, pub);
-    assert(!result2);
-  });
-
-  it('should sign and verify', () => {
-    const priv = dsa.DSAPrivateKey.generate(SIZE);
+    const priv = DSAPrivateKey.create(params);
     const pub = priv.toPublic();
 
     assert(priv.toJSON());
@@ -103,7 +66,8 @@ describe('DSA', function() {
   });
 
   it('should sign and verify (async)', async () => {
-    const priv = await dsa.DSAPrivateKey.generateAsync(SIZE);
+    const params = await DSAParams.generateAsync(SIZE);
+    const priv = DSAPrivateKey.create(params);
     const pub = priv.toPublic();
 
     assert(priv.toJSON());

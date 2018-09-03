@@ -35,7 +35,7 @@ bcrypto_dsa_key_t *
 bcrypto_dsa_generate(bcrypto_dsa_key_t *params);
 
 bool
-bcrypto_dsa_create_pub(
+bcrypto_dsa_compute(
   bcrypto_dsa_key_t *priv,
   uint8_t **out,
   size_t *out_len
