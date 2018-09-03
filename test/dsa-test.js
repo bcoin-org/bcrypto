@@ -38,7 +38,7 @@ function createParams(json) {
 }
 
 describe('DSA', function() {
-  this.timeout(10000);
+  this.timeout(20000);
 
   const SIZE = dsa.native < 2 ? 1024 : 2048;
 

@@ -75,11 +75,11 @@ describe('RSA', function() {
     const pub = priv.toPublic();
     const msg = Buffer.from('hello world');
 
-    const ct = rsa.encrypt(msg, pub);
+    const ct = pub.encrypt(msg);
 
     assert.notBufferEqual(ct, msg);
 
-    const pt = rsa.decrypt(ct, priv);
+    const pt = priv.decrypt(ct);
 
     assert.bufferEqual(pt, msg);
   });
@@ -87,14 +87,13 @@ describe('RSA', function() {
   it('should encrypt and decrypt (OAEP)', () => {
     const priv = RSAPrivateKey.generate(1024);
     const pub = priv.toPublic();
-    const label = Buffer.alloc(0);
     const msg = Buffer.from('hello world');
 
-    const ct = rsa.encryptOAEP(SHA1, msg, label, pub);
+    const ct = pub.encryptOAEP(SHA1, msg);
 
     assert.notBufferEqual(ct, msg);
 
-    const pt = rsa.decryptOAEP(SHA1, ct, label, priv);
+    const pt = priv.decryptOAEP(SHA1, ct);
 
     assert.bufferEqual(pt, msg);
   });

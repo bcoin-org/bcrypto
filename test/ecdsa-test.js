@@ -953,7 +953,8 @@ describe('ECDSA', function() {
         let r;
 
         try {
-          r = curve.PublicKey.recover(msg, sig, i);
+          sig.param = i;
+          r = curve.PublicKey.recover(msg, sig);
         } catch (e) {
           continue;
         }
@@ -984,7 +985,8 @@ describe('ECDSA', function() {
       let r = null;
 
       try {
-        r = curve.PublicKey.recover(msg, sig, 0);
+        sig.param = 0;
+        r = curve.PublicKey.recover(msg, sig);
       } catch (e) {
         ;
       }
