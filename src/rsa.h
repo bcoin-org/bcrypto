@@ -13,9 +13,9 @@ public:
   ~BRSA();
 
 private:
-  static NAN_METHOD(Generate);
-  static NAN_METHOD(GenerateAsync);
-  static NAN_METHOD(Validate);
+  static NAN_METHOD(PrivateKeyGenerate);
+  static NAN_METHOD(PrivateKeyGenerateAsync);
+  static NAN_METHOD(PrivateKeyVerify);
   static NAN_METHOD(Compute);
   static NAN_METHOD(Sign);
   static NAN_METHOD(Verify);

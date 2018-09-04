@@ -43,6 +43,9 @@ describe('SSH', function() {
     });
   }
 
+  if (process.env.NODE_BACKEND === 'js')
+    return;
+
   for (const file of privs) {
     const str = fs.readFileSync(file, 'utf8');
 

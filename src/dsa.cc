@@ -27,9 +27,9 @@ BDSA::Init(v8::Local<v8::Object> &target) {
   tpl->SetClassName(Nan::New("DSA").ToLocalChecked());
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
 
-  Nan::SetMethod(tpl, "generate", BDSA::Generate);
-  Nan::SetMethod(tpl, "generateAsync", BDSA::GenerateAsync);
-  Nan::SetMethod(tpl, "create", BDSA::Create);
+  Nan::SetMethod(tpl, "paramsGenerate", BDSA::ParamsGenerate);
+  Nan::SetMethod(tpl, "paramsGenerateAsync", BDSA::ParamsGenerateAsync);
+  Nan::SetMethod(tpl, "privateKeyCreate", BDSA::PrivateKeyCreate);
   Nan::SetMethod(tpl, "computeY", BDSA::ComputeY);
   Nan::SetMethod(tpl, "sign", BDSA::Sign);
   Nan::SetMethod(tpl, "verify", BDSA::Verify);
@@ -44,9 +44,9 @@ NAN_METHOD(BDSA::New) {
   return Nan::ThrowError("Could not create DSA instance.");
 }
 
-NAN_METHOD(BDSA::Generate) {
+NAN_METHOD(BDSA::ParamsGenerate) {
   if (info.Length() < 1)
-    return Nan::ThrowError("dsa.generate() requires arguments.");
+    return Nan::ThrowError("dsa.paramsGenerate() requires arguments.");
 
   if (!info[0]->IsNumber())
     return Nan::ThrowTypeError("First argument must be a number.");
@@ -68,9 +68,9 @@ NAN_METHOD(BDSA::Generate) {
   return info.GetReturnValue().Set(ret);
 }
 
-NAN_METHOD(BDSA::GenerateAsync) {
+NAN_METHOD(BDSA::ParamsGenerateAsync) {
   if (info.Length() < 2)
-    return Nan::ThrowError("dsa.generateAsync() requires arguments.");
+    return Nan::ThrowError("dsa.paramsGenerateAsync() requires arguments.");
 
   if (!info[0]->IsNumber())
     return Nan::ThrowTypeError("First argument must be a number.");
@@ -90,9 +90,9 @@ NAN_METHOD(BDSA::GenerateAsync) {
   Nan::AsyncQueueWorker(worker);
 }
 
-NAN_METHOD(BDSA::Create) {
+NAN_METHOD(BDSA::PrivateKeyCreate) {
   if (info.Length() < 3)
-    return Nan::ThrowError("dsa.create() requires arguments.");
+    return Nan::ThrowError("dsa.privateKeyCreate() requires arguments.");
 
   v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
   v8::Local<v8::Object> qbuf = info[1].As<v8::Object>();

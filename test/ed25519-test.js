@@ -5,11 +5,12 @@
 
 const assert = require('./util/assert');
 const fs = require('fs');
+const Path = require('path');
 const random = require('../lib/random');
 const ed25519 = require('../lib/ed25519');
 const derivations = require('./data/ed25519.json');
 
-const filename = `${__dirname}/data/ed25519.input`;
+const filename = Path.resolve(__dirname, 'data', 'ed25519.input');
 const lines = fs.readFileSync(filename, 'binary').trim().split('\n');
 
 assert.strictEqual(lines.length, 1024);
@@ -19,10 +20,10 @@ describe('EdDSA', function() {
 
   it('should generate keypair and sign', () => {
     const msg = random.randomBytes(ed25519.size);
-    const priv = ed25519.privateKeyGenerate();
-    const pub = ed25519.publicKeyCreate(priv);
+    const secret = ed25519.secretGenerate();
+    const pub = ed25519.publicKeyCreate(secret);
 
-    const sig = ed25519.sign(msg, priv);
+    const sig = ed25519.sign(msg, secret);
     assert(ed25519.verify(msg, sig, pub));
   });
 

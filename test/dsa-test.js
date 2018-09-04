@@ -43,48 +43,40 @@ describe('DSA', function() {
   this.timeout(20000);
 
   it('should sign and verify', () => {
-    // const priv = DSAPrivateKey.generate(1024);
+    // const priv = dsa.privateKeyGenerate(1024);
     const params = createParams(P2048_256);
-    const priv = DSAPrivateKey.create(params);
-    const pub = priv.toPublic();
-
-    assert(priv.toJSON());
-    assert(priv.toPEM());
-    assert(pub.toPEM());
+    const priv = dsa.privateKeyCreate(params);
+    const pub = dsa.publicKeyCreate(priv);
 
     const msg = Buffer.alloc(priv.size(), 0x01);
-    const sig = priv.sign(msg);
+    const sig = dsa.sign(msg, priv);
     assert(sig);
 
-    const result = pub.verify(msg, sig);
+    const result = dsa.verify(msg, sig, pub);
     assert(result);
 
-    sig.s[(Math.random() * sig.s.length) | 0] ^= 1;
+    sig[(Math.random() * sig.length) | 0] ^= 1;
 
-    const result2 = pub.verify(msg, sig);
+    const result2 = dsa.verify(msg, sig, pub);
     assert(!result2);
   });
 
   it('should sign and verify (async)', async () => {
     const size = dsa.native < 2 ? 1024 : 2048;
-    const params = await DSAParams.generateAsync(size);
-    const priv = DSAPrivateKey.create(params);
-    const pub = priv.toPublic();
-
-    assert(priv.toJSON());
-    assert(priv.toPEM());
-    assert(pub.toPEM());
+    const params = await dsa.paramsGenerateAsync(size);
+    const priv = dsa.privateKeyCreate(params);
+    const pub = dsa.publicKeyCreate(priv);
 
     const msg = Buffer.alloc(priv.size(), 0x01);
-    const sig = priv.sign(msg);
+    const sig = dsa.sign(msg, priv);
     assert(sig);
 
-    const result = pub.verify(msg, sig);
+    const result = dsa.verify(msg, sig, pub);
     assert(result);
 
-    sig.s[(Math.random() * sig.s.length) | 0] ^= 1;
+    sig[(Math.random() * sig.length) | 0] ^= 1;
 
-    const result2 = pub.verify(msg, sig);
+    const result2 = dsa.verify(msg, sig, pub);
     assert(!result2);
   });
 
@@ -106,6 +98,6 @@ describe('DSA', function() {
     key.setG(g.value);
     key.setY(info.subjectPublicKey.value);
 
-    assert(key.validate());
+    assert(dsa.publicKeyVerify(key));
   });
 });

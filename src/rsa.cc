@@ -27,9 +27,9 @@ BRSA::Init(v8::Local<v8::Object> &target) {
   tpl->SetClassName(Nan::New("RSA").ToLocalChecked());
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
 
-  Nan::SetMethod(tpl, "generate", BRSA::Generate);
-  Nan::SetMethod(tpl, "generateAsync", BRSA::GenerateAsync);
-  Nan::SetMethod(tpl, "validate", BRSA::Validate);
+  Nan::SetMethod(tpl, "privateKeyGenerate", BRSA::PrivateKeyGenerate);
+  Nan::SetMethod(tpl, "privateKeyGenerateAsync", BRSA::PrivateKeyGenerateAsync);
+  Nan::SetMethod(tpl, "privateKeyVerify", BRSA::PrivateKeyVerify);
   Nan::SetMethod(tpl, "compute", BRSA::Compute);
   Nan::SetMethod(tpl, "sign", BRSA::Sign);
   Nan::SetMethod(tpl, "verify", BRSA::Verify);
@@ -46,9 +46,9 @@ NAN_METHOD(BRSA::New) {
   return Nan::ThrowError("Could not create RSA instance.");
 }
 
-NAN_METHOD(BRSA::Generate) {
+NAN_METHOD(BRSA::PrivateKeyGenerate) {
   if (info.Length() < 2)
-    return Nan::ThrowError("rsa.generate() requires arguments.");
+    return Nan::ThrowError("rsa.privateKeyGenerate() requires arguments.");
 
   if (!info[0]->IsNumber())
     return Nan::ThrowTypeError("First argument must be a number.");
@@ -80,9 +80,9 @@ NAN_METHOD(BRSA::Generate) {
   return info.GetReturnValue().Set(ret);
 }
 
-NAN_METHOD(BRSA::GenerateAsync) {
+NAN_METHOD(BRSA::PrivateKeyGenerateAsync) {
   if (info.Length() < 3)
-    return Nan::ThrowError("rsa.generateAsync() requires arguments.");
+    return Nan::ThrowError("rsa.privateKeyGenerateAsync() requires arguments.");
 
   if (!info[0]->IsNumber())
     return Nan::ThrowTypeError("First argument must be a number.");
@@ -107,9 +107,9 @@ NAN_METHOD(BRSA::GenerateAsync) {
   Nan::AsyncQueueWorker(worker);
 }
 
-NAN_METHOD(BRSA::Validate) {
+NAN_METHOD(BRSA::PrivateKeyVerify) {
   if (info.Length() < 8)
-    return Nan::ThrowError("rsa.validate() requires arguments.");
+    return Nan::ThrowError("rsa.privateKeyVerify() requires arguments.");
 
   v8::Local<v8::Object> nbuf = info[0].As<v8::Object>();
   v8::Local<v8::Object> ebuf = info[1].As<v8::Object>();

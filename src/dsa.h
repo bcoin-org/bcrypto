@@ -13,9 +13,9 @@ public:
   ~BDSA();
 
 private:
-  static NAN_METHOD(Generate);
-  static NAN_METHOD(GenerateAsync);
-  static NAN_METHOD(Create);
+  static NAN_METHOD(ParamsGenerate);
+  static NAN_METHOD(ParamsGenerateAsync);
+  static NAN_METHOD(PrivateKeyCreate);
   static NAN_METHOD(ComputeY);
   static NAN_METHOD(Sign);
   static NAN_METHOD(Verify);
