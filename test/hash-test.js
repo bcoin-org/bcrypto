@@ -56,14 +56,14 @@ function testHash(alg, msg) {
   nctx.update(msg);
   const expect = nctx.digest();
 
-  const ctx = bcrypto.get(alg).hash();
+  const ctx = bcrypto[alg.toUpperCase()].hash();
   ctx.init();
   ctx.update(msg);
   const hash = ctx.final();
 
   assert.bufferEqual(hash, expect);
 
-  const c = bcrypto.get(alg).hash();
+  const c = bcrypto[alg.toUpperCase()].hash();
   c.init();
 
   const ch = Buffer.allocUnsafe(1);
@@ -87,14 +87,14 @@ function testHmac(alg, msg, key) {
   nctx.update(msg);
   const expect = nctx.digest();
 
-  const ctx = bcrypto.get(alg).hmac();
+  const ctx = bcrypto[alg.toUpperCase()].hmac();
   ctx.init(key);
   ctx.update(msg);
   const hash = ctx.final();
 
   assert.bufferEqual(hash, expect);
 
-  const c = bcrypto.get(alg).hmac();
+  const c = bcrypto[alg.toUpperCase()].hmac();
   c.init(key);
 
   const ch = Buffer.allocUnsafe(1);

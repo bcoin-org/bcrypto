@@ -18,6 +18,7 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.Blake2b512.native, 0);
         assert.strictEqual(bcrypto.bcrypt.native, 0);
         assert.strictEqual(bcrypto.ChaCha20.native, 0);
+        assert.strictEqual(bcrypto.cipher.native, 0);
         assert.strictEqual(bcrypto.cleanse.native, 0);
         assert.strictEqual(bcrypto.dsa.native, 0);
         assert.strictEqual(bcrypto.eb2k.native, 0);
@@ -61,6 +62,7 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.Blake2b512.native, 0);
         assert.strictEqual(bcrypto.bcrypt.native, 0);
         assert.strictEqual(bcrypto.ChaCha20.native, 0);
+        assert.strictEqual(bcrypto.cipher.native, 1);
         assert.strictEqual(bcrypto.cleanse.native, 1);
         assert.strictEqual(bcrypto.dsa.native, 0);
         assert.strictEqual(bcrypto.eb2k.native, 0);
@@ -105,6 +107,7 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.Blake2b512.native, 2);
         assert.strictEqual(bcrypto.bcrypt.native, 0);
         assert.strictEqual(bcrypto.ChaCha20.native, 2);
+        assert.strictEqual(bcrypto.cipher.native, 2);
         assert.strictEqual(bcrypto.cleanse.native, 2);
         assert.strictEqual(bcrypto.dsa.native, 2);
         assert.strictEqual(bcrypto.eb2k.native, 0);
