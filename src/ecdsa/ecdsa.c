@@ -286,6 +286,77 @@ bcrypto_ecdsa_privkey_export(
   uint8_t **out,
   size_t *out_len
 ) {
+  BN_CTX *ctx = NULL;
+  EC_KEY *priv_ec = NULL;
+  EC_POINT *pub_point = NULL;
+
+  int type = bcrypto_ecdsa_curve(name);
+
+  if (type == -1)
+    goto fail;
+
+  ctx = BN_CTX_new();
+
+  if (!ctx)
+    goto fail;
+
+  priv_ec = EC_KEY_new_by_curve_name(type);
+
+  if (!priv_ec)
+    goto fail;
+
+  if (!EC_KEY_oct2priv(priv_ec, priv, priv_len))
+    goto fail;
+
+  const EC_GROUP *group = EC_KEY_get0_group(priv_ec);
+  assert(group);
+
+  pub_point = EC_POINT_new(group);
+
+  if (!pub_point)
+    goto fail;
+
+  const BIGNUM *priv_bn = EC_KEY_get0_private_key(priv_ec);
+  assert(priv_bn);
+
+  if (!EC_POINT_mul(group, pub_point, priv_bn, NULL, NULL, ctx))
+    goto fail;
+
+  if (!EC_KEY_set_public_key(priv_ec, pub_point))
+    goto fail;
+
+  point_conversion_form_t form = compress
+    ? POINT_CONVERSION_COMPRESSED
+    : POINT_CONVERSION_UNCOMPRESSED;
+
+  EC_KEY_set_conv_form(priv_ec, form);
+  EC_KEY_set_asn1_flag(priv_ec, OPENSSL_EC_NAMED_CURVE);
+
+  uint8_t *buf = NULL;
+  int len = i2d_ECPrivateKey(priv_ec, &buf);
+
+  if (len <= 0)
+    goto fail;
+
+  *out = buf;
+  *out_len = (size_t)len;
+
+  EC_KEY_free(priv_ec);
+  EC_POINT_free(pub_point);
+  BN_CTX_free(ctx);
+
+  return true;
+
+fail:
+  if (priv_ec)
+    EC_KEY_free(priv_ec);
+
+  if (pub_point)
+    EC_POINT_free(pub_point);
+
+  if (ctx)
+    BN_CTX_free(ctx);
+
   return false;
 }
 
@@ -297,6 +368,38 @@ bcrypto_ecdsa_privkey_import(
   uint8_t **out,
   size_t *out_len
 ) {
+  EC_KEY *priv_ec = NULL;
+
+  int type = bcrypto_ecdsa_curve(name);
+
+  if (type == -1)
+    goto fail;
+
+  priv_ec = EC_KEY_new_by_curve_name(type);
+
+  if (!priv_ec)
+    goto fail;
+
+  EC_KEY_set_asn1_flag(priv_ec, OPENSSL_EC_NAMED_CURVE);
+
+  const uint8_t *p = raw;
+
+  if (!d2i_ECPrivateKey(&priv_ec, &p, raw_len))
+    goto fail;
+
+  *out_len = EC_KEY_priv2buf(priv_ec, out);
+
+  if ((int)*out_len <= 0)
+    goto fail;
+
+  EC_KEY_free(priv_ec);
+
+  return true;
+
+fail:
+  if (priv_ec)
+    EC_KEY_free(priv_ec);
+
   return false;
 }
 

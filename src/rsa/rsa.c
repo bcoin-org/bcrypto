@@ -727,7 +727,23 @@ bcrypto_rsa_privkey_export(
   uint8_t **out,
   size_t *out_len
 ) {
-  return false;
+  RSA *priv_r = bcrypto_rsa_key2priv(priv);
+
+  if (!priv_r)
+    return false;
+
+  uint8_t *buf = NULL;
+  int len = i2d_RSAPrivateKey(priv_r, &buf);
+
+  RSA_free(priv_r);
+
+  if (len < 0)
+    return false;
+
+  *out = buf;
+  *out_len = (size_t)len;
+
+  return true;
 }
 
 bcrypto_rsa_key_t *
@@ -735,16 +751,42 @@ bcrypto_rsa_privkey_import(
   const uint8_t *raw,
   size_t raw_len
 ) {
-  return NULL;
+  RSA *priv_r = NULL;
+  const uint8_t *p = raw;
+
+  if (!d2i_RSAPrivateKey(&priv_r, &p, raw_len))
+    return false;
+
+  bcrypto_rsa_key_t *k = bcrypto_rsa_priv2key(priv_r);
+
+  RSA_free(priv_r);
+
+  return k;
 }
 
 bool
 bcrypto_rsa_pubkey_export(
-  const bcrypto_rsa_key_t *priv,
+  const bcrypto_rsa_key_t *pub,
   uint8_t **out,
   size_t *out_len
 ) {
-  return false;
+  RSA *pub_r = bcrypto_rsa_key2pub(pub);
+
+  if (!pub_r)
+    return false;
+
+  uint8_t *buf = NULL;
+  int len = i2d_RSAPublicKey(pub_r, &buf);
+
+  RSA_free(pub_r);
+
+  if (len < 0)
+    return false;
+
+  *out = buf;
+  *out_len = (size_t)len;
+
+  return true;
 }
 
 bcrypto_rsa_key_t *
@@ -752,7 +794,17 @@ bcrypto_rsa_pubkey_import(
   const uint8_t *raw,
   size_t raw_len
 ) {
-  return NULL;
+  RSA *pub_r = NULL;
+  const uint8_t *p = raw;
+
+  if (!d2i_RSAPublicKey(&pub_r, &p, raw_len))
+    return false;
+
+  bcrypto_rsa_key_t *k = bcrypto_rsa_pub2key(pub_r);
+
+  RSA_free(pub_r);
+
+  return k;
 }
 
 bool
@@ -1002,7 +1054,7 @@ bcrypto_rsa_privkey_import(
 
 bool
 bcrypto_rsa_pubkey_export(
-  const bcrypto_rsa_key_t *priv,
+  const bcrypto_rsa_key_t *pub,
   uint8_t **out,
   size_t *out_len
 ) {

@@ -61,7 +61,7 @@ bcrypto_rsa_privkey_import(
 
 bool
 bcrypto_rsa_pubkey_export(
-  const bcrypto_rsa_key_t *priv,
+  const bcrypto_rsa_key_t *pub,
   uint8_t **out,
   size_t *out_len
 );

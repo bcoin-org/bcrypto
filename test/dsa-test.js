@@ -59,6 +59,14 @@ describe('DSA', function() {
 
     const result2 = dsa.verify(msg, sig, pub);
     assert(!result2);
+
+    assert.deepStrictEqual(
+      dsa.privateKeyImport(dsa.privateKeyExport(priv)),
+      priv);
+
+    assert.deepStrictEqual(
+      dsa.publicKeyImport(dsa.publicKeyExport(pub)),
+      pub);
   });
 
   it('should sign and verify (async)', async () => {

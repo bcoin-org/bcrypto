@@ -41,6 +41,16 @@ describe('RSA', function() {
     assert.bufferEqual(priv.dp, dp);
     assert.bufferEqual(priv.dq, dq);
     assert.bufferEqual(priv.qi, qi);
+
+    assert.deepStrictEqual(
+      rsa.privateKeyImport(rsa.privateKeyExport(priv)),
+      priv);
+
+    const pub = rsa.publicKeyCreate(priv);
+
+    assert.deepStrictEqual(
+      rsa.publicKeyImport(rsa.publicKeyExport(pub)),
+      pub);
   });
 
   it('should generate keypair with custom exponent', () => {

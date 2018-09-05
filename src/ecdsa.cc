@@ -130,7 +130,7 @@ NAN_METHOD(BECDSA::PrivateKeyImport) {
   size_t out_len;
 
   if (!bcrypto_ecdsa_privkey_import(name, rd, rl, &out, &out_len))
-    return Nan::ThrowTypeError("Could not export key.");
+    return Nan::ThrowTypeError("Could not import key.");
 
   return info.GetReturnValue().Set(
     Nan::NewBuffer((char *)&out[0], out_len).ToLocalChecked());

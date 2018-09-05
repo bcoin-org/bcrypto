@@ -56,7 +56,7 @@ bcrypto_dsa_privkey_import(
 
 bool
 bcrypto_dsa_pubkey_export(
-  const bcrypto_dsa_key_t *priv,
+  const bcrypto_dsa_key_t *pub,
   uint8_t **out,
   size_t *out_len
 );

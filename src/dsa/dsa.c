@@ -450,7 +450,23 @@ bcrypto_dsa_privkey_export(
   uint8_t **out,
   size_t *out_len
 ) {
-  return false;
+  DSA *priv_d = bcrypto_dsa_key2priv(priv);
+
+  if (!priv_d)
+    return false;
+
+  uint8_t *buf = NULL;
+  int len = i2d_DSAPrivateKey(priv_d, &buf);
+
+  DSA_free(priv_d);
+
+  if (len < 0)
+    return false;
+
+  *out = buf;
+  *out_len = (size_t)len;
+
+  return true;
 }
 
 bcrypto_dsa_key_t *
@@ -458,16 +474,42 @@ bcrypto_dsa_privkey_import(
   const uint8_t *raw,
   size_t raw_len
 ) {
-  return NULL;
+  DSA *priv_d = NULL;
+  const uint8_t *p = raw;
+
+  if (!d2i_DSAPrivateKey(&priv_d, &p, raw_len))
+    return false;
+
+  bcrypto_dsa_key_t *k = bcrypto_dsa_priv2key(priv_d);
+
+  DSA_free(priv_d);
+
+  return k;
 }
 
 bool
 bcrypto_dsa_pubkey_export(
-  const bcrypto_dsa_key_t *priv,
+  const bcrypto_dsa_key_t *pub,
   uint8_t **out,
   size_t *out_len
 ) {
-  return false;
+  DSA *pub_d = bcrypto_dsa_key2pub(pub);
+
+  if (!pub_d)
+    return false;
+
+  uint8_t *buf = NULL;
+  int len = i2d_DSAPublicKey(pub_d, &buf);
+
+  DSA_free(pub_d);
+
+  if (len < 0)
+    return false;
+
+  *out = buf;
+  *out_len = (size_t)len;
+
+  return true;
 }
 
 bcrypto_dsa_key_t *
@@ -475,7 +517,17 @@ bcrypto_dsa_pubkey_import(
   const uint8_t *raw,
   size_t raw_len
 ) {
-  return NULL;
+  DSA *pub_d = NULL;
+  const uint8_t *p = raw;
+
+  if (!d2i_DSAPublicKey(&pub_d, &p, raw_len))
+    return false;
+
+  bcrypto_dsa_key_t *k = bcrypto_dsa_pub2key(pub_d);
+
+  DSA_free(pub_d);
+
+  return k;
 }
 
 bool
@@ -617,7 +669,7 @@ bcrypto_dsa_privkey_import(
 
 bool
 bcrypto_dsa_pubkey_export(
-  const bcrypto_dsa_key_t *priv,
+  const bcrypto_dsa_key_t *pub,
   uint8_t **out,
   size_t *out_len
 ) {
