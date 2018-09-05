@@ -1,0 +1,144 @@
+/* eslint-env mocha */
+/* eslint prefer-arrow-callback: "off" */
+
+'use strict';
+
+const assert = require('./util/assert');
+const bcrypto = require('../');
+
+describe('Bcrypto', function() {
+  it('should have correct environment', () => {
+    switch (process.env.NODE_BACKEND) {
+      case 'js':
+        assert.strictEqual(bcrypto.AEAD.native, 0);
+        assert.strictEqual(bcrypto.aes.native, 0);
+        assert.strictEqual(bcrypto.Blake2b.native, 0);
+        assert.strictEqual(bcrypto.Blake2b160.native, 0);
+        assert.strictEqual(bcrypto.Blake2b256.native, 0);
+        assert.strictEqual(bcrypto.Blake2b512.native, 0);
+        assert.strictEqual(bcrypto.bcrypt.native, 0);
+        assert.strictEqual(bcrypto.ChaCha20.native, 0);
+        assert.strictEqual(bcrypto.cleanse.native, 0);
+        assert.strictEqual(bcrypto.dsa.native, 0);
+        assert.strictEqual(bcrypto.eb2k.native, 0);
+        assert.strictEqual(bcrypto.ed25519.native, 0);
+        assert.strictEqual(bcrypto.Hash160.native, 0);
+        assert.strictEqual(bcrypto.Hash256.native, 0);
+        assert.strictEqual(bcrypto.Keccak.native, 0);
+        assert.strictEqual(bcrypto.Keccak256.native, 0);
+        assert.strictEqual(bcrypto.Keccak384.native, 0);
+        assert.strictEqual(bcrypto.Keccak512.native, 0);
+        assert.strictEqual(bcrypto.MD5.native, 0);
+        assert.strictEqual(bcrypto.p192.native, 0);
+        assert.strictEqual(bcrypto.p224.native, 0);
+        assert.strictEqual(bcrypto.p256.native, 0);
+        assert.strictEqual(bcrypto.p384.native, 0);
+        assert.strictEqual(bcrypto.p521.native, 0);
+        assert.strictEqual(bcrypto.pbkdf2.native, 0);
+        assert.strictEqual(bcrypto.Poly1305.native, 0);
+        assert.strictEqual(bcrypto.random.native, 0);
+        assert.strictEqual(bcrypto.RIPEMD160.native, 0);
+        assert.strictEqual(bcrypto.rsa.native, 0);
+        assert.strictEqual(bcrypto.scrypt.native, 0);
+        assert.strictEqual(bcrypto.secp256k1.native, 0);
+        assert.strictEqual(bcrypto.SHA1.native, 0);
+        assert.strictEqual(bcrypto.SHA224.native, 0);
+        assert.strictEqual(bcrypto.SHA256.native, 0);
+        assert.strictEqual(bcrypto.SHA256.native, 0);
+        assert.strictEqual(bcrypto.SHA384.native, 0);
+        assert.strictEqual(bcrypto.SHA512.native, 0);
+        assert.strictEqual(bcrypto.SHA3.native, 0);
+        assert.strictEqual(bcrypto.SHA3_256.native, 0);
+        assert.strictEqual(bcrypto.SHA3_384.native, 0);
+        assert.strictEqual(bcrypto.SHA3_512.native, 0);
+        break;
+      case 'node':
+        assert.strictEqual(bcrypto.AEAD.native, 0);
+        assert.strictEqual(bcrypto.aes.native, 1);
+        assert.strictEqual(bcrypto.Blake2b.native, 0);
+        assert.strictEqual(bcrypto.Blake2b160.native, 0);
+        assert.strictEqual(bcrypto.Blake2b256.native, 0);
+        assert.strictEqual(bcrypto.Blake2b512.native, 0);
+        assert.strictEqual(bcrypto.bcrypt.native, 0);
+        assert.strictEqual(bcrypto.ChaCha20.native, 0);
+        assert.strictEqual(bcrypto.cleanse.native, 1);
+        assert.strictEqual(bcrypto.dsa.native, 0);
+        assert.strictEqual(bcrypto.eb2k.native, 0);
+        assert.strictEqual(bcrypto.ed25519.native, 0);
+        assert.strictEqual(bcrypto.Hash160.native, 1);
+        assert.strictEqual(bcrypto.Hash256.native, 1);
+        assert.strictEqual(bcrypto.Keccak.native, 0);
+        assert.strictEqual(bcrypto.Keccak256.native, 0);
+        assert.strictEqual(bcrypto.Keccak384.native, 0);
+        assert.strictEqual(bcrypto.Keccak512.native, 0);
+        assert.strictEqual(bcrypto.MD5.native, 1);
+        assert.strictEqual(bcrypto.p192.native, 0);
+        assert.strictEqual(bcrypto.p224.native, 0);
+        assert.strictEqual(bcrypto.p256.native, 0);
+        assert.strictEqual(bcrypto.p384.native, 0);
+        assert.strictEqual(bcrypto.p521.native, 0);
+        assert.strictEqual(bcrypto.pbkdf2.native, 1);
+        assert.strictEqual(bcrypto.Poly1305.native, 0);
+        assert.strictEqual(bcrypto.random.native, 1);
+        assert.strictEqual(bcrypto.RIPEMD160.native, 1);
+        assert.strictEqual(bcrypto.rsa.native, 0);
+        assert.strictEqual(bcrypto.scrypt.native, 1);
+        assert.strictEqual(bcrypto.secp256k1.native, 0);
+        assert.strictEqual(bcrypto.SHA1.native, 1);
+        assert.strictEqual(bcrypto.SHA224.native, 1);
+        assert.strictEqual(bcrypto.SHA256.native, 1);
+        assert.strictEqual(bcrypto.SHA256.native, 1);
+        assert.strictEqual(bcrypto.SHA384.native, 1);
+        assert.strictEqual(bcrypto.SHA512.native, 1);
+        assert.strictEqual(bcrypto.SHA3.native, 0);
+        assert.strictEqual(bcrypto.SHA3_256.native, 0);
+        assert.strictEqual(bcrypto.SHA3_384.native, 0);
+        assert.strictEqual(bcrypto.SHA3_512.native, 0);
+        break;
+      case 'native':
+      default:
+        assert.strictEqual(bcrypto.AEAD.native, 2);
+        assert.strictEqual(bcrypto.aes.native, 2);
+        assert.strictEqual(bcrypto.Blake2b.native, 2);
+        assert.strictEqual(bcrypto.Blake2b160.native, 2);
+        assert.strictEqual(bcrypto.Blake2b256.native, 2);
+        assert.strictEqual(bcrypto.Blake2b512.native, 2);
+        assert.strictEqual(bcrypto.bcrypt.native, 0);
+        assert.strictEqual(bcrypto.ChaCha20.native, 2);
+        assert.strictEqual(bcrypto.cleanse.native, 2);
+        assert.strictEqual(bcrypto.dsa.native, 2);
+        assert.strictEqual(bcrypto.eb2k.native, 0);
+        assert.strictEqual(bcrypto.ed25519.native, 2);
+        assert.strictEqual(bcrypto.Hash160.native, 2);
+        assert.strictEqual(bcrypto.Hash256.native, 2);
+        assert.strictEqual(bcrypto.Keccak.native, 2);
+        assert.strictEqual(bcrypto.Keccak256.native, 2);
+        assert.strictEqual(bcrypto.Keccak384.native, 2);
+        assert.strictEqual(bcrypto.Keccak512.native, 2);
+        assert.strictEqual(bcrypto.MD5.native, 2);
+        assert.strictEqual(bcrypto.p192.native, 2);
+        assert.strictEqual(bcrypto.p224.native, 2);
+        assert.strictEqual(bcrypto.p256.native, 2);
+        assert.strictEqual(bcrypto.p384.native, 2);
+        assert.strictEqual(bcrypto.p521.native, 2);
+        assert.strictEqual(bcrypto.pbkdf2.native, 2);
+        assert.strictEqual(bcrypto.Poly1305.native, 2);
+        assert.strictEqual(bcrypto.random.native, 2);
+        assert.strictEqual(bcrypto.RIPEMD160.native, 2);
+        assert.strictEqual(bcrypto.rsa.native, 2);
+        assert.strictEqual(bcrypto.scrypt.native, 2);
+        assert.strictEqual(bcrypto.secp256k1.native, 2);
+        assert.strictEqual(bcrypto.SHA1.native, 2);
+        assert.strictEqual(bcrypto.SHA224.native, 2);
+        assert.strictEqual(bcrypto.SHA256.native, 2);
+        assert.strictEqual(bcrypto.SHA256.native, 2);
+        assert.strictEqual(bcrypto.SHA384.native, 2);
+        assert.strictEqual(bcrypto.SHA512.native, 2);
+        assert.strictEqual(bcrypto.SHA3.native, 2);
+        assert.strictEqual(bcrypto.SHA3_256.native, 2);
+        assert.strictEqual(bcrypto.SHA3_384.native, 2);
+        assert.strictEqual(bcrypto.SHA3_512.native, 2);
+        break;
+    }
+  });
+});

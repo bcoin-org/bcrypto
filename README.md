@@ -1,6 +1,7 @@
 # bcrypto
 
-Bcoin crypto module.
+The missing crypto module for node.js. bcrypto provides you with a consistent
+interface accross node.js and the browser.
 
 ## Usage
 
@@ -16,6 +17,6 @@ all code is your original work. `</legalese>`
 
 ## License
 
-- Copyright (c) 2017, Christopher Jeffrey (MIT License).
+- Copyright (c) 2017-2018, Christopher Jeffrey (MIT License).
 
 See LICENSE for more info.
