@@ -17,6 +17,10 @@ private:
   static NAN_METHOD(ParamsGenerateAsync);
   static NAN_METHOD(PrivateKeyCreate);
   static NAN_METHOD(ComputeY);
+  static NAN_METHOD(PrivateKeyExport);
+  static NAN_METHOD(PrivateKeyImport);
+  static NAN_METHOD(PublicKeyExport);
+  static NAN_METHOD(PublicKeyImport);
   static NAN_METHOD(Sign);
   static NAN_METHOD(Verify);
 };

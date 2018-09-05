@@ -15,15 +15,17 @@ public:
 
 private:
   static NAN_METHOD(PrivateKeyGenerate);
+  static NAN_METHOD(PrivateKeyExport);
+  static NAN_METHOD(PrivateKeyImport);
+  static NAN_METHOD(PrivateKeyTweakAdd);
   static NAN_METHOD(PublicKeyCreate);
   static NAN_METHOD(PublicKeyConvert);
+  static NAN_METHOD(PublicKeyVerify);
+  static NAN_METHOD(PublicKeyTweakAdd);
   static NAN_METHOD(Sign);
   static NAN_METHOD(Verify);
-  static NAN_METHOD(PublicKeyVerify);
-  static NAN_METHOD(ECDH);
-  static NAN_METHOD(PrivateKeyTweakAdd);
-  static NAN_METHOD(PublicKeyTweakAdd);
   static NAN_METHOD(Recover);
+  static NAN_METHOD(ECDH);
 };
 #endif
 

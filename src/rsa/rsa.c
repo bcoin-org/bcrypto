@@ -377,7 +377,7 @@ bcrypto_rsa_type(const char *alg) {
 }
 
 bcrypto_rsa_key_t *
-bcrypto_rsa_generate(int bits, unsigned long long exp) {
+bcrypto_rsa_privkey_generate(int bits, unsigned long long exp) {
   RSA *priv_r = NULL;
   BIGNUM *exp_bn = NULL;
 
@@ -427,32 +427,10 @@ fail:
 }
 
 bool
-bcrypto_rsa_validate(const bcrypto_rsa_key_t *priv) {
-  assert(priv);
-
-  RSA *priv_r = NULL;
-
-  priv_r = bcrypto_rsa_key2priv(priv);
-
-  if (!priv_r)
-    goto fail;
-
-  if (RSA_check_key(priv_r) <= 0)
-    goto fail;
-
-  RSA_free(priv_r);
-
-  return true;
-
-fail:
-  if (priv_r)
-    RSA_free(priv_r);
-
-  return false;
-}
-
-bool
-bcrypto_rsa_compute(const bcrypto_rsa_key_t *priv, bcrypto_rsa_key_t **key) {
+bcrypto_rsa_privkey_compute(
+  const bcrypto_rsa_key_t *priv,
+  bcrypto_rsa_key_t **key
+) {
   assert(priv && key);
 
   bool ret = false;
@@ -719,6 +697,65 @@ fail:
 }
 
 bool
+bcrypto_rsa_privkey_verify(const bcrypto_rsa_key_t *priv) {
+  assert(priv);
+
+  RSA *priv_r = NULL;
+
+  priv_r = bcrypto_rsa_key2priv(priv);
+
+  if (!priv_r)
+    goto fail;
+
+  if (RSA_check_key(priv_r) <= 0)
+    goto fail;
+
+  RSA_free(priv_r);
+
+  return true;
+
+fail:
+  if (priv_r)
+    RSA_free(priv_r);
+
+  return false;
+}
+
+bool
+bcrypto_rsa_privkey_export(
+  const bcrypto_rsa_key_t *priv,
+  uint8_t **out,
+  size_t *out_len
+) {
+  return false;
+}
+
+bcrypto_rsa_key_t *
+bcrypto_rsa_privkey_import(
+  const uint8_t *raw,
+  size_t raw_len
+) {
+  return NULL;
+}
+
+bool
+bcrypto_rsa_pubkey_export(
+  const bcrypto_rsa_key_t *priv,
+  uint8_t **out,
+  size_t *out_len
+) {
+  return false;
+}
+
+bcrypto_rsa_key_t *
+bcrypto_rsa_pubkey_import(
+  const uint8_t *raw,
+  size_t raw_len
+) {
+  return NULL;
+}
+
+bool
 bcrypto_rsa_sign(
   const char *alg,
   const uint8_t *msg,
@@ -929,17 +966,54 @@ void
 bcrypto_rsa_key_free(bcrypto_rsa_key_t *key) {}
 
 bcrypto_rsa_key_t *
-bcrypto_rsa_generate(int bits, int exp) {
+bcrypto_rsa_privkey_generate(int bits, int exp) {
   return NULL;
 }
 
 bool
-bcrypto_rsa_validate(const bcrypto_rsa_key_t *priv) {
+bcrypto_rsa_privkey_compute(
+  const bcrypto_rsa_key_t *priv,
+  bcrypto_rsa_key_t **key
+) {
+  return NULL;
+}
+
+bool
+bcrypto_rsa_privkey_verify(const bcrypto_rsa_key_t *priv) {
   return false;
 }
 
 bool
-bcrypto_rsa_compute(const bcrypto_rsa_key_t *priv, bcrypto_rsa_key_t **key) {
+bcrypto_rsa_privkey_export(
+  const bcrypto_rsa_key_t *priv,
+  uint8_t **out,
+  size_t *out_len
+) {
+  return false;
+}
+
+bcrypto_rsa_key_t *
+bcrypto_rsa_privkey_import(
+  const uint8_t *raw,
+  size_t raw_len
+) {
+  return NULL;
+}
+
+bool
+bcrypto_rsa_pubkey_export(
+  const bcrypto_rsa_key_t *priv,
+  uint8_t **out,
+  size_t *out_len
+) {
+  return false;
+}
+
+bcrypto_rsa_key_t *
+bcrypto_rsa_pubkey_import(
+  const uint8_t *raw,
+  size_t raw_len
+) {
   return NULL;
 }
 

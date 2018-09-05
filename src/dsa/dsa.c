@@ -312,7 +312,7 @@ fail:
 }
 
 bcrypto_dsa_key_t *
-bcrypto_dsa_generate_params(int bits) {
+bcrypto_dsa_params_generate(int bits) {
   DSA *params_d = NULL;
 
   params_d = DSA_new();
@@ -340,7 +340,7 @@ fail:
 }
 
 bcrypto_dsa_key_t *
-bcrypto_dsa_generate(bcrypto_dsa_key_t *params) {
+bcrypto_dsa_privkey_create(bcrypto_dsa_key_t *params) {
   assert(params);
 
   DSA *priv_d = NULL;
@@ -370,7 +370,7 @@ fail:
 }
 
 bool
-bcrypto_dsa_compute(
+bcrypto_dsa_compute_y(
   bcrypto_dsa_key_t *priv,
   uint8_t **out,
   size_t *out_len
@@ -442,6 +442,40 @@ fail:
     BN_free(prk_bn);
 
   return false;
+}
+
+bool
+bcrypto_dsa_privkey_export(
+  const bcrypto_dsa_key_t *priv,
+  uint8_t **out,
+  size_t *out_len
+) {
+  return false;
+}
+
+bcrypto_dsa_key_t *
+bcrypto_dsa_privkey_import(
+  const uint8_t *raw,
+  size_t raw_len
+) {
+  return NULL;
+}
+
+bool
+bcrypto_dsa_pubkey_export(
+  const bcrypto_dsa_key_t *priv,
+  uint8_t **out,
+  size_t *out_len
+) {
+  return false;
+}
+
+bcrypto_dsa_key_t *
+bcrypto_dsa_pubkey_import(
+  const uint8_t *raw,
+  size_t raw_len
+) {
+  return NULL;
 }
 
 bool
@@ -546,22 +580,56 @@ void
 bcrypto_dsa_key_free(bcrypto_dsa_key_t *key) {}
 
 bcrypto_dsa_key_t *
-bcrypto_dsa_generate_params(int bits) {
+bcrypto_dsa_params_generate(int bits) {
   return NULL;
 }
 
 bcrypto_dsa_key_t *
-bcrypto_dsa_generate(bcrypto_dsa_key_t *params) {
+bcrypto_dsa_privkey_create(bcrypto_dsa_key_t *params) {
   return NULL;
 }
 
 bool
-bcrypto_dsa_compute(
+bcrypto_dsa_compute_y(
   bcrypto_dsa_key_t *priv,
   uint8_t **out,
   size_t *out_len
 ) {
   return false;
+}
+
+bool
+bcrypto_dsa_privkey_export(
+  const bcrypto_dsa_key_t *priv,
+  uint8_t **out,
+  size_t *out_len
+) {
+  return false;
+}
+
+bcrypto_dsa_key_t *
+bcrypto_dsa_privkey_import(
+  const uint8_t *raw,
+  size_t raw_len
+) {
+  return NULL;
+}
+
+bool
+bcrypto_dsa_pubkey_export(
+  const bcrypto_dsa_key_t *priv,
+  uint8_t **out,
+  size_t *out_len
+) {
+  return false;
+}
+
+bcrypto_dsa_key_t *
+bcrypto_dsa_pubkey_import(
+  const uint8_t *raw,
+  size_t raw_len
+) {
+  return NULL;
 }
 
 bool

@@ -29,16 +29,42 @@ void
 bcrypto_dsa_key_free(bcrypto_dsa_key_t *key);
 
 bcrypto_dsa_key_t *
-bcrypto_dsa_generate_params(int bits);
+bcrypto_dsa_params_generate(int bits);
 
 bcrypto_dsa_key_t *
-bcrypto_dsa_generate(bcrypto_dsa_key_t *params);
+bcrypto_dsa_privkey_create(bcrypto_dsa_key_t *params);
 
 bool
-bcrypto_dsa_compute(
+bcrypto_dsa_compute_y(
   bcrypto_dsa_key_t *priv,
   uint8_t **out,
   size_t *out_len
+);
+
+bool
+bcrypto_dsa_privkey_export(
+  const bcrypto_dsa_key_t *priv,
+  uint8_t **out,
+  size_t *out_len
+);
+
+bcrypto_dsa_key_t *
+bcrypto_dsa_privkey_import(
+  const uint8_t *raw,
+  size_t raw_len
+);
+
+bool
+bcrypto_dsa_pubkey_export(
+  const bcrypto_dsa_key_t *priv,
+  uint8_t **out,
+  size_t *out_len
+);
+
+bcrypto_dsa_key_t *
+bcrypto_dsa_pubkey_import(
+  const uint8_t *raw,
+  size_t raw_len
 );
 
 bool

@@ -10,10 +10,44 @@ extern "C" {
 #endif
 
 bool
-bcrypto_ecdsa_generate(const char *name, uint8_t **priv, size_t *priv_len);
+bcrypto_ecdsa_privkey_generate(
+  const char *name,
+  uint8_t **priv,
+  size_t *priv_len
+);
 
 bool
-bcrypto_ecdsa_create_pub(
+bcrypto_ecdsa_privkey_export(
+  const char *name,
+  const uint8_t *priv,
+  size_t priv_len,
+  bool compress,
+  uint8_t **out,
+  size_t *out_len
+);
+
+bool
+bcrypto_ecdsa_privkey_import(
+  const char *name,
+  const uint8_t *raw,
+  size_t raw_len,
+  uint8_t **out,
+  size_t *out_len
+);
+
+bool
+bcrypto_ecdsa_privkey_tweak_add(
+  const char *name,
+  const uint8_t *priv,
+  size_t priv_len,
+  const uint8_t *tweak,
+  size_t tweak_len,
+  uint8_t **npriv,
+  size_t *npriv_len
+);
+
+bool
+bcrypto_ecdsa_pubkey_create(
   const char *name,
   const uint8_t *priv,
   size_t priv_len,
@@ -23,10 +57,29 @@ bcrypto_ecdsa_create_pub(
 );
 
 bool
-bcrypto_ecdsa_convert_pub(
+bcrypto_ecdsa_pubkey_convert(
   const char *name,
   const uint8_t *pub,
   size_t pub_len,
+  bool compress,
+  uint8_t **npub,
+  size_t *npub_len
+);
+
+bool
+bcrypto_ecdsa_pubkey_verify(
+  const char *name,
+  const uint8_t *pub,
+  size_t pub_len
+);
+
+bool
+bcrypto_ecdsa_pubkey_tweak_add(
+  const char *name,
+  const uint8_t *pub,
+  size_t pub_len,
+  const uint8_t *tweak,
+  size_t tweak_len,
   bool compress,
   uint8_t **npub,
   size_t *npub_len
@@ -59,44 +112,6 @@ bcrypto_ecdsa_verify(
 );
 
 bool
-bcrypto_ecdsa_verify_pub(const char *name, const uint8_t *pub, size_t pub_len);
-
-bool
-bcrypto_ecdsa_ecdh(
-  const char *name,
-  const uint8_t *pub,
-  size_t pub_len,
-  const uint8_t *priv,
-  size_t priv_len,
-  bool compress,
-  uint8_t **secret,
-  size_t *secret_len
-);
-
-bool
-bcrypto_ecdsa_tweak_priv(
-  const char *name,
-  const uint8_t *priv,
-  size_t priv_len,
-  const uint8_t *tweak,
-  size_t tweak_len,
-  uint8_t **npriv,
-  size_t *npriv_len
-);
-
-bool
-bcrypto_ecdsa_tweak_pub(
-  const char *name,
-  const uint8_t *pub,
-  size_t pub_len,
-  const uint8_t *tweak,
-  size_t tweak_len,
-  bool compress,
-  uint8_t **npub,
-  size_t *npub_len
-);
-
-bool
 bcrypto_ecdsa_recover(
   const char *name,
   const uint8_t *msg,
@@ -109,6 +124,18 @@ bcrypto_ecdsa_recover(
   bool compress,
   uint8_t **pub,
   size_t *pub_len
+);
+
+bool
+bcrypto_ecdsa_ecdh(
+  const char *name,
+  const uint8_t *pub,
+  size_t pub_len,
+  const uint8_t *priv,
+  size_t priv_len,
+  bool compress,
+  uint8_t **secret,
+  size_t *secret_len
 );
 
 #if defined(__cplusplus)

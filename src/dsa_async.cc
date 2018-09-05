@@ -20,7 +20,7 @@ BDSAWorker::~BDSAWorker() {}
 
 void
 BDSAWorker::Execute() {
-  key = bcrypto_dsa_generate_params(bits);
+  key = bcrypto_dsa_params_generate(bits);
 
   if (key == NULL)
     SetErrorMessage("Could not generate key.");

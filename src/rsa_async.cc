@@ -22,7 +22,7 @@ BRSAWorker::~BRSAWorker() {}
 
 void
 BRSAWorker::Execute() {
-  key = bcrypto_rsa_generate(bits, exp);
+  key = bcrypto_rsa_privkey_generate(bits, exp);
 
   if (key == NULL)
     SetErrorMessage("Could not generate key.");

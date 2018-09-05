@@ -357,7 +357,7 @@ describe('PGP', function() {
           key.setP(secret.p.get());
           key.setQ(secret.q.get());
           key.setD(secret.d.get());
-          rsa.compute(key);
+          rsa.privateKeyCompute(key);
 
           assert.bufferEqual(key.n, pub.n);
           assert.bufferEqual(key.e, pub.e);

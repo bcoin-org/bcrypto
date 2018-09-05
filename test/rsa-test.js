@@ -35,7 +35,7 @@ describe('RSA', function() {
     priv.setDP(null);
     priv.setDQ(null);
     priv.setQI(null);
-    rsa.compute(priv);
+    rsa.privateKeyCompute(priv);
 
     assert.bufferEqual(priv.d, d);
     assert.bufferEqual(priv.dp, dp);

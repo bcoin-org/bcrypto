@@ -35,13 +35,42 @@ void
 bcrypto_rsa_key_free(bcrypto_rsa_key_t *key);
 
 bcrypto_rsa_key_t *
-bcrypto_rsa_generate(int bits, unsigned long long exp);
+bcrypto_rsa_privkey_generate(int bits, unsigned long long exp);
 
 bool
-bcrypto_rsa_validate(const bcrypto_rsa_key_t *priv);
+bcrypto_rsa_privkey_compute(
+  const bcrypto_rsa_key_t *priv,
+  bcrypto_rsa_key_t **key
+);
 
 bool
-bcrypto_rsa_compute(const bcrypto_rsa_key_t *priv, bcrypto_rsa_key_t **key);
+bcrypto_rsa_privkey_verify(const bcrypto_rsa_key_t *priv);
+
+bool
+bcrypto_rsa_privkey_export(
+  const bcrypto_rsa_key_t *priv,
+  uint8_t **out,
+  size_t *out_len
+);
+
+bcrypto_rsa_key_t *
+bcrypto_rsa_privkey_import(
+  const uint8_t *raw,
+  size_t raw_len
+);
+
+bool
+bcrypto_rsa_pubkey_export(
+  const bcrypto_rsa_key_t *priv,
+  uint8_t **out,
+  size_t *out_len
+);
+
+bcrypto_rsa_key_t *
+bcrypto_rsa_pubkey_import(
+  const uint8_t *raw,
+  size_t raw_len
+);
 
 bool
 bcrypto_rsa_sign(
