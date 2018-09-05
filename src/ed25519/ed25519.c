@@ -115,6 +115,16 @@ ED25519_FN(ed25519_sign_open) (const unsigned char *m, size_t mlen, const ed2551
   return ed25519_verify(RS, checkR, 32) ? 0 : -1;
 }
 
+int
+ED25519_FN(ed25519_verify_key) (const ed25519_public_key pk) {
+  ge25519 ALIGN(16) A;
+
+  if (!ge25519_unpack_negative_vartime(&A, pk))
+    return -1;
+
+  return 0;
+}
+
 #include "ed25519-donna-batchverify.h"
 
 /*

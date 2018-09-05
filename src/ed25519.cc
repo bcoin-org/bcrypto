@@ -62,7 +62,7 @@ NAN_METHOD(BED25519::PublicKeyCreate) {
   ed25519_publickey(secret, pub);
 
   return info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)pub, 32).ToLocalChecked());
+    Nan::CopyBuffer((char *)&pub[0], 32).ToLocalChecked());
 }
 
 NAN_METHOD(BED25519::PublicKeyVerify) {
@@ -77,7 +77,12 @@ NAN_METHOD(BED25519::PublicKeyVerify) {
   const uint8_t *pub = (uint8_t *)node::Buffer::Data(pbuf);
   size_t pub_len = node::Buffer::Length(pbuf);
 
-  return info.GetReturnValue().Set(Nan::New<v8::Boolean>(pub_len == 32));
+  if (pub_len != 32)
+    return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
+
+  bool result = ed25519_verify_key(pub) == 0;
+
+  return info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
 
 NAN_METHOD(BED25519::Sign) {
@@ -108,7 +113,7 @@ NAN_METHOD(BED25519::Sign) {
   ed25519_sign(msg, msg_len, secret, pub, sig);
 
   return info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)sig, 64).ToLocalChecked());
+    Nan::CopyBuffer((char *)&sig[0], 64).ToLocalChecked());
 }
 
 NAN_METHOD(BED25519::Verify) {

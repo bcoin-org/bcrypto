@@ -23,8 +23,14 @@ describe('EdDSA', function() {
     const secret = ed25519.secretGenerate();
     const pub = ed25519.publicKeyCreate(secret);
 
+    assert(ed25519.publicKeyVerify(pub));
+
     const sig = ed25519.sign(msg, secret);
     assert(ed25519.verify(msg, sig, pub));
+
+    sig[(Math.random() * sig.length) | 0] ^= 1;
+
+    assert(!ed25519.verify(msg, sig, pub));
   });
 
   describe('ed25519 derivations', () => {
@@ -33,6 +39,8 @@ describe('EdDSA', function() {
         const secret = Buffer.from(test.secret_hex, 'hex');
         const priv = ed25519.privateKeyCreate(secret);
         const pub = ed25519.publicKeyCreate(secret);
+
+        assert(ed25519.publicKeyVerify(pub));
 
         assert.bufferEqual(priv, Buffer.from(test.a_hex, 'hex'));
         assert.bufferEqual(pub, Buffer.from(test.A_hex, 'hex'));
@@ -46,6 +54,8 @@ describe('EdDSA', function() {
         const split = line.toUpperCase().split(':');
         const secret = Buffer.from(split[0].slice(0, 64), 'hex');
         const pub = ed25519.publicKeyCreate(secret);
+
+        assert(ed25519.publicKeyVerify(pub));
 
         const expectedPk = Buffer.from(split[0].slice(64), 'hex');
 
