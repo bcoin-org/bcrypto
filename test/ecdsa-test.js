@@ -59,6 +59,10 @@ describe('ECDSA', function() {
       assert.bufferEqual(
         ec.publicKeyImport(ec.publicKeyExport(pub), true),
         pub);
+
+      assert.bufferEqual(
+        ec.publicKeyImport(ec.publicKeyExport(pubu), false),
+        pubu);
     });
 
     it(`should generate keypair and sign RS (${ec.id})`, () => {
