@@ -4,7 +4,9 @@
 'use strict';
 
 const assert = require('./util/assert');
-const ECDSA = require('../lib/ecdsa');
+const ECDSA = !process.env.NODE_BACKEND || process.env.NODE_BACKEND === 'native'
+  ? require('../lib/native/ecdsa')
+  : require('../lib/js/ecdsa');
 const random = require('../lib/random');
 const p192 = require('../lib/p192');
 const p224 = require('../lib/p224');
