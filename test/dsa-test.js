@@ -48,6 +48,9 @@ describe('DSA', function() {
     const priv = dsa.privateKeyCreate(params);
     const pub = dsa.publicKeyCreate(priv);
 
+    assert(dsa.privateKeyVerify(priv));
+    assert(dsa.publicKeyVerify(pub));
+
     const msg = Buffer.alloc(priv.size(), 0x01);
     const sig = dsa.sign(msg, priv);
     assert(sig);
@@ -75,6 +78,9 @@ describe('DSA', function() {
     const priv = dsa.privateKeyCreate(params);
     const pub = dsa.publicKeyCreate(priv);
 
+    assert(dsa.privateKeyVerify(priv));
+    assert(dsa.publicKeyVerify(pub));
+
     const msg = Buffer.alloc(priv.size(), 0x01);
     const sig = dsa.sign(msg, priv);
     assert(sig);
@@ -92,19 +98,19 @@ describe('DSA', function() {
     const info = x509.SubjectPublicKeyInfo.fromPEM(dsaPubPem);
     assert(info.algorithm.algorithm.getKey() === 'dsa');
     assert(info.algorithm.parameters.type === 16); // SEQ
-    assert(Buffer.isBuffer(info.algorithm.parameters.value));
-    assert(Buffer.isBuffer(info.subjectPublicKey.value));
+    assert(info.subjectPublicKey.type === 3); // BITSTRING
 
     const br = bio.read(info.algorithm.parameters.value);
     const p = asn1.Integer.read(br);
     const q = asn1.Integer.read(br);
     const g = asn1.Integer.read(br);
+    const y = asn1.Integer.decode(info.subjectPublicKey.value);
     const key = new DSAPublicKey();
 
     key.setP(p.value);
     key.setQ(q.value);
     key.setG(g.value);
-    key.setY(info.subjectPublicKey.value);
+    key.setY(y.value);
 
     assert(dsa.publicKeyVerify(key));
   });
