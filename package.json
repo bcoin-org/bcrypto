@@ -46,6 +46,7 @@
     "./lib/dsa": "./lib/dsa-browser.js",
     "./lib/ecdsa": "./lib/ecdsa-browser.js",
     "./lib/eddsa": "./lib/eddsa-browser.js",
+    "./lib/ed25519": "./lib/ed25519-browser.js",
     "./lib/hash160": "./lib/hash160-browser.js",
     "./lib/hash256": "./lib/hash256-browser.js",
     "./lib/keccak": "./lib/keccak-browser.js",
