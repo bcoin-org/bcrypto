@@ -195,7 +195,7 @@ NAN_METHOD(BAESCipher::Update) {
     memcpy(aes->block + 0, in + ipos, ilen);
 
   info.GetReturnValue().Set(
-    Nan::NewBuffer((char *)&out[0], olen).ToLocalChecked());
+    Nan::NewBuffer((char *)out, olen).ToLocalChecked());
 }
 
 NAN_METHOD(BAESCipher::Final) {
@@ -411,7 +411,7 @@ NAN_METHOD(BAESDecipher::Update) {
   memcpy(aes->last, out + olen - 16, 16);
 
   info.GetReturnValue().Set(
-    Nan::NewBuffer((char *)&out[0], olen - 16).ToLocalChecked());
+    Nan::NewBuffer((char *)out, olen - 16).ToLocalChecked());
 }
 
 NAN_METHOD(BAESDecipher::Final) {

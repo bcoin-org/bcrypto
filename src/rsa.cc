@@ -70,14 +70,14 @@ NAN_METHOD(BRSA::PrivateKeyGenerate) {
     return Nan::ThrowTypeError("Could not generate key.");
 
   v8::Local<v8::Array> ret = Nan::New<v8::Array>();
-  ret->Set(0, Nan::CopyBuffer((char *)&k->nd[0], k->nl).ToLocalChecked());
-  ret->Set(1, Nan::CopyBuffer((char *)&k->ed[0], k->el).ToLocalChecked());
-  ret->Set(2, Nan::CopyBuffer((char *)&k->dd[0], k->dl).ToLocalChecked());
-  ret->Set(3, Nan::CopyBuffer((char *)&k->pd[0], k->pl).ToLocalChecked());
-  ret->Set(4, Nan::CopyBuffer((char *)&k->qd[0], k->ql).ToLocalChecked());
-  ret->Set(5, Nan::CopyBuffer((char *)&k->dpd[0], k->dpl).ToLocalChecked());
-  ret->Set(6, Nan::CopyBuffer((char *)&k->dqd[0], k->dql).ToLocalChecked());
-  ret->Set(7, Nan::CopyBuffer((char *)&k->qid[0], k->qil).ToLocalChecked());
+  ret->Set(0, Nan::CopyBuffer((char *)k->nd, k->nl).ToLocalChecked());
+  ret->Set(1, Nan::CopyBuffer((char *)k->ed, k->el).ToLocalChecked());
+  ret->Set(2, Nan::CopyBuffer((char *)k->dd, k->dl).ToLocalChecked());
+  ret->Set(3, Nan::CopyBuffer((char *)k->pd, k->pl).ToLocalChecked());
+  ret->Set(4, Nan::CopyBuffer((char *)k->qd, k->ql).ToLocalChecked());
+  ret->Set(5, Nan::CopyBuffer((char *)k->dpd, k->dpl).ToLocalChecked());
+  ret->Set(6, Nan::CopyBuffer((char *)k->dqd, k->dql).ToLocalChecked());
+  ret->Set(7, Nan::CopyBuffer((char *)k->qid, k->qil).ToLocalChecked());
 
   bcrypto_rsa_key_free(k);
 
@@ -171,11 +171,11 @@ NAN_METHOD(BRSA::PrivateKeyCompute) {
     return info.GetReturnValue().Set(Nan::Null());
 
   v8::Local<v8::Array> ret = Nan::New<v8::Array>();
-  ret->Set(0, Nan::CopyBuffer((char *)&k->nd[0], k->nl).ToLocalChecked());
-  ret->Set(1, Nan::CopyBuffer((char *)&k->dd[0], k->dl).ToLocalChecked());
-  ret->Set(2, Nan::CopyBuffer((char *)&k->dpd[0], k->dpl).ToLocalChecked());
-  ret->Set(3, Nan::CopyBuffer((char *)&k->dqd[0], k->dql).ToLocalChecked());
-  ret->Set(4, Nan::CopyBuffer((char *)&k->qid[0], k->qil).ToLocalChecked());
+  ret->Set(0, Nan::CopyBuffer((char *)k->nd, k->nl).ToLocalChecked());
+  ret->Set(1, Nan::CopyBuffer((char *)k->dd, k->dl).ToLocalChecked());
+  ret->Set(2, Nan::CopyBuffer((char *)k->dpd, k->dpl).ToLocalChecked());
+  ret->Set(3, Nan::CopyBuffer((char *)k->dqd, k->dql).ToLocalChecked());
+  ret->Set(4, Nan::CopyBuffer((char *)k->qid, k->qil).ToLocalChecked());
 
   bcrypto_rsa_key_free(k);
 
@@ -296,7 +296,7 @@ NAN_METHOD(BRSA::PrivateKeyExport) {
     return Nan::ThrowError("Could not export.");
 
   info.GetReturnValue().Set(
-    Nan::NewBuffer((char *)&out[0], out_len).ToLocalChecked());
+    Nan::NewBuffer((char *)out, out_len).ToLocalChecked());
 }
 
 NAN_METHOD(BRSA::PrivateKeyImport) {
@@ -317,14 +317,14 @@ NAN_METHOD(BRSA::PrivateKeyImport) {
     return Nan::ThrowTypeError("Could not import.");
 
   v8::Local<v8::Array> ret = Nan::New<v8::Array>();
-  ret->Set(0, Nan::CopyBuffer((char *)&k->nd[0], k->nl).ToLocalChecked());
-  ret->Set(1, Nan::CopyBuffer((char *)&k->ed[0], k->el).ToLocalChecked());
-  ret->Set(2, Nan::CopyBuffer((char *)&k->dd[0], k->dl).ToLocalChecked());
-  ret->Set(3, Nan::CopyBuffer((char *)&k->pd[0], k->pl).ToLocalChecked());
-  ret->Set(4, Nan::CopyBuffer((char *)&k->qd[0], k->ql).ToLocalChecked());
-  ret->Set(5, Nan::CopyBuffer((char *)&k->dpd[0], k->dpl).ToLocalChecked());
-  ret->Set(6, Nan::CopyBuffer((char *)&k->dqd[0], k->dql).ToLocalChecked());
-  ret->Set(7, Nan::CopyBuffer((char *)&k->qid[0], k->qil).ToLocalChecked());
+  ret->Set(0, Nan::CopyBuffer((char *)k->nd, k->nl).ToLocalChecked());
+  ret->Set(1, Nan::CopyBuffer((char *)k->ed, k->el).ToLocalChecked());
+  ret->Set(2, Nan::CopyBuffer((char *)k->dd, k->dl).ToLocalChecked());
+  ret->Set(3, Nan::CopyBuffer((char *)k->pd, k->pl).ToLocalChecked());
+  ret->Set(4, Nan::CopyBuffer((char *)k->qd, k->ql).ToLocalChecked());
+  ret->Set(5, Nan::CopyBuffer((char *)k->dpd, k->dpl).ToLocalChecked());
+  ret->Set(6, Nan::CopyBuffer((char *)k->dqd, k->dql).ToLocalChecked());
+  ret->Set(7, Nan::CopyBuffer((char *)k->qid, k->qil).ToLocalChecked());
 
   bcrypto_rsa_key_free(k);
 
@@ -359,7 +359,7 @@ NAN_METHOD(BRSA::PublicKeyExport) {
     return Nan::ThrowError("Could not export.");
 
   info.GetReturnValue().Set(
-    Nan::NewBuffer((char *)&out[0], out_len).ToLocalChecked());
+    Nan::NewBuffer((char *)out, out_len).ToLocalChecked());
 }
 
 NAN_METHOD(BRSA::PublicKeyImport) {
@@ -380,8 +380,8 @@ NAN_METHOD(BRSA::PublicKeyImport) {
     return Nan::ThrowTypeError("Could not import.");
 
   v8::Local<v8::Array> ret = Nan::New<v8::Array>();
-  ret->Set(0, Nan::CopyBuffer((char *)&k->nd[0], k->nl).ToLocalChecked());
-  ret->Set(1, Nan::CopyBuffer((char *)&k->ed[0], k->el).ToLocalChecked());
+  ret->Set(0, Nan::CopyBuffer((char *)k->nd, k->nl).ToLocalChecked());
+  ret->Set(1, Nan::CopyBuffer((char *)k->ed, k->el).ToLocalChecked());
 
   bcrypto_rsa_key_free(k);
 
@@ -458,7 +458,7 @@ NAN_METHOD(BRSA::Sign) {
     return Nan::ThrowTypeError("Could not sign message.");
 
   info.GetReturnValue().Set(
-    Nan::NewBuffer((char *)&sig[0], sig_len).ToLocalChecked());
+    Nan::NewBuffer((char *)sig, sig_len).ToLocalChecked());
 }
 
 NAN_METHOD(BRSA::Verify) {
@@ -541,7 +541,7 @@ NAN_METHOD(BRSA::Encrypt) {
     return Nan::ThrowTypeError("Could not sign message.");
 
   info.GetReturnValue().Set(
-    Nan::NewBuffer((char *)&ct[0], ct_len).ToLocalChecked());
+    Nan::NewBuffer((char *)ct, ct_len).ToLocalChecked());
 }
 
 NAN_METHOD(BRSA::Decrypt) {
@@ -612,6 +612,6 @@ NAN_METHOD(BRSA::Decrypt) {
     return Nan::ThrowTypeError("Could not sign message.");
 
   info.GetReturnValue().Set(
-    Nan::NewBuffer((char *)&pt[0], pt_len).ToLocalChecked());
+    Nan::NewBuffer((char *)pt, pt_len).ToLocalChecked());
 }
 #endif

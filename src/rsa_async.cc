@@ -36,14 +36,14 @@ BRSAWorker::HandleOKCallback() {
   assert(k);
 
   v8::Local<v8::Array> ret = Nan::New<v8::Array>();
-  ret->Set(0, Nan::CopyBuffer((char *)&k->nd[0], k->nl).ToLocalChecked());
-  ret->Set(1, Nan::CopyBuffer((char *)&k->ed[0], k->el).ToLocalChecked());
-  ret->Set(2, Nan::CopyBuffer((char *)&k->dd[0], k->dl).ToLocalChecked());
-  ret->Set(3, Nan::CopyBuffer((char *)&k->pd[0], k->pl).ToLocalChecked());
-  ret->Set(4, Nan::CopyBuffer((char *)&k->qd[0], k->ql).ToLocalChecked());
-  ret->Set(5, Nan::CopyBuffer((char *)&k->dpd[0], k->dpl).ToLocalChecked());
-  ret->Set(6, Nan::CopyBuffer((char *)&k->dqd[0], k->dql).ToLocalChecked());
-  ret->Set(7, Nan::CopyBuffer((char *)&k->qid[0], k->qil).ToLocalChecked());
+  ret->Set(0, Nan::CopyBuffer((char *)k->nd, k->nl).ToLocalChecked());
+  ret->Set(1, Nan::CopyBuffer((char *)k->ed, k->el).ToLocalChecked());
+  ret->Set(2, Nan::CopyBuffer((char *)k->dd, k->dl).ToLocalChecked());
+  ret->Set(3, Nan::CopyBuffer((char *)k->pd, k->pl).ToLocalChecked());
+  ret->Set(4, Nan::CopyBuffer((char *)k->qd, k->ql).ToLocalChecked());
+  ret->Set(5, Nan::CopyBuffer((char *)k->dpd, k->dpl).ToLocalChecked());
+  ret->Set(6, Nan::CopyBuffer((char *)k->dqd, k->dql).ToLocalChecked());
+  ret->Set(7, Nan::CopyBuffer((char *)k->qid, k->qil).ToLocalChecked());
 
   bcrypto_rsa_key_free(k);
 
