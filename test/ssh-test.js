@@ -39,7 +39,7 @@ describe('SSH', function() {
 
       assert.deepStrictEqual(key1, key2);
       assert.strictEqual(str1, str2);
-      assert.strictEqual(key2.toString('chjj@slickrick'), str.trim());
+      assert.strictEqual(key2.toString(), str.trim());
     });
   }
 
