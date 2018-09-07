@@ -3,8 +3,6 @@
 #include <node.h>
 #include <nan.h>
 
-#if NODE_MAJOR_VERSION >= 10
-
 #include "ed25519/ed25519.h"
 #include "ed25519.h"
 
@@ -151,5 +149,3 @@ NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj) {
   Nan::HandleScope scope;
   return obj->IsNull() || obj->IsUndefined();
 }
-
-#endif

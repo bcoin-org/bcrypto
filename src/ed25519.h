@@ -4,7 +4,6 @@
 #include <node.h>
 #include <nan.h>
 
-#if NODE_MAJOR_VERSION >= 10
 class BED25519 : public Nan::ObjectWrap {
 public:
   static NAN_METHOD(New);
@@ -19,6 +18,5 @@ private:
   static NAN_METHOD(Sign);
   static NAN_METHOD(Verify);
 };
-#endif
 
 #endif
