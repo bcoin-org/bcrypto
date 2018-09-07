@@ -19,6 +19,7 @@ private:
   static NAN_METHOD(PrivateKeyVerify);
   static NAN_METHOD(PrivateKeyExport);
   static NAN_METHOD(PrivateKeyImport);
+  static NAN_METHOD(PublicKeyVerify);
   static NAN_METHOD(PublicKeyExport);
   static NAN_METHOD(PublicKeyImport);
   static NAN_METHOD(Sign);

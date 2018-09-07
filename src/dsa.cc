@@ -29,10 +29,13 @@ BDSA::Init(v8::Local<v8::Object> &target) {
 
   Nan::SetMethod(tpl, "paramsGenerate", BDSA::ParamsGenerate);
   Nan::SetMethod(tpl, "paramsGenerateAsync", BDSA::ParamsGenerateAsync);
+  Nan::SetMethod(tpl, "paramsVerify", BDSA::ParamsVerify);
   Nan::SetMethod(tpl, "privateKeyCreate", BDSA::PrivateKeyCreate);
-  Nan::SetMethod(tpl, "computeY", BDSA::ComputeY);
+  Nan::SetMethod(tpl, "privateKeyCompute", BDSA::PrivateKeyCompute);
+  Nan::SetMethod(tpl, "privateKeyVerify", BDSA::PrivateKeyVerify);
   Nan::SetMethod(tpl, "privateKeyExport", BDSA::PrivateKeyExport);
   Nan::SetMethod(tpl, "privateKeyImport", BDSA::PrivateKeyImport);
+  Nan::SetMethod(tpl, "publicKeyVerify", BDSA::PublicKeyVerify);
   Nan::SetMethod(tpl, "publicKeyExport", BDSA::PublicKeyExport);
   Nan::SetMethod(tpl, "publicKeyImport", BDSA::PublicKeyImport);
   Nan::SetMethod(tpl, "sign", BDSA::Sign);
@@ -94,6 +97,37 @@ NAN_METHOD(BDSA::ParamsGenerateAsync) {
   Nan::AsyncQueueWorker(worker);
 }
 
+NAN_METHOD(BDSA::ParamsVerify) {
+  if (info.Length() < 3)
+    return Nan::ThrowError("dsa.paramsVerify() requires arguments.");
+
+  v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
+  v8::Local<v8::Object> qbuf = info[1].As<v8::Object>();
+  v8::Local<v8::Object> gbuf = info[2].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(pbuf)
+      || !node::Buffer::HasInstance(qbuf)
+      || !node::Buffer::HasInstance(gbuf)) {
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+  }
+
+  bcrypto_dsa_key_t params;
+  bcrypto_dsa_key_init(&params);
+
+  params.pd = (uint8_t *)node::Buffer::Data(pbuf);
+  params.pl = node::Buffer::Length(pbuf);
+
+  params.qd = (uint8_t *)node::Buffer::Data(qbuf);
+  params.ql = node::Buffer::Length(qbuf);
+
+  params.gd = (uint8_t *)node::Buffer::Data(gbuf);
+  params.gl = node::Buffer::Length(gbuf);
+
+  bool result = bcrypto_dsa_params_verify(&params);
+
+  info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
+}
+
 NAN_METHOD(BDSA::PrivateKeyCreate) {
   if (info.Length() < 3)
     return Nan::ThrowError("dsa.privateKeyCreate() requires arguments.");
@@ -137,16 +171,20 @@ NAN_METHOD(BDSA::PrivateKeyCreate) {
   return info.GetReturnValue().Set(ret);
 }
 
-NAN_METHOD(BDSA::ComputeY) {
-  if (info.Length() < 3)
-    return Nan::ThrowError("dsa.computeY() requires arguments.");
+NAN_METHOD(BDSA::PrivateKeyCompute) {
+  if (info.Length() < 5)
+    return Nan::ThrowError("dsa.privateKeyVerify() requires arguments.");
 
   v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
-  v8::Local<v8::Object> gbuf = info[1].As<v8::Object>();
-  v8::Local<v8::Object> xbuf = info[2].As<v8::Object>();
+  v8::Local<v8::Object> qbuf = info[1].As<v8::Object>();
+  v8::Local<v8::Object> gbuf = info[2].As<v8::Object>();
+  v8::Local<v8::Object> ybuf = info[3].As<v8::Object>();
+  v8::Local<v8::Object> xbuf = info[4].As<v8::Object>();
 
   if (!node::Buffer::HasInstance(pbuf)
+      || !node::Buffer::HasInstance(qbuf)
       || !node::Buffer::HasInstance(gbuf)
+      || !node::Buffer::HasInstance(ybuf)
       || !node::Buffer::HasInstance(xbuf)) {
     return Nan::ThrowTypeError("Arguments must be buffers.");
   }
@@ -157,8 +195,14 @@ NAN_METHOD(BDSA::ComputeY) {
   priv.pd = (uint8_t *)node::Buffer::Data(pbuf);
   priv.pl = node::Buffer::Length(pbuf);
 
+  priv.qd = (uint8_t *)node::Buffer::Data(qbuf);
+  priv.ql = node::Buffer::Length(qbuf);
+
   priv.gd = (uint8_t *)node::Buffer::Data(gbuf);
   priv.gl = node::Buffer::Length(gbuf);
+
+  priv.yd = (uint8_t *)node::Buffer::Data(ybuf);
+  priv.yl = node::Buffer::Length(ybuf);
 
   priv.xd = (uint8_t *)node::Buffer::Data(xbuf);
   priv.xl = node::Buffer::Length(xbuf);
@@ -166,11 +210,55 @@ NAN_METHOD(BDSA::ComputeY) {
   uint8_t *y;
   size_t y_len;
 
-  if (!bcrypto_dsa_compute_y(&priv, &y, &y_len))
-    return Nan::ThrowTypeError("Could not create public key.");
+  if (!bcrypto_dsa_privkey_compute(&priv, &y, &y_len))
+    return Nan::ThrowTypeError("Could not compute private key.");
+
+  if (!y)
+    return info.GetReturnValue().Set(Nan::Null());
 
   info.GetReturnValue().Set(
     Nan::NewBuffer((char *)y, y_len).ToLocalChecked());
+}
+
+NAN_METHOD(BDSA::PrivateKeyVerify) {
+  if (info.Length() < 5)
+    return Nan::ThrowError("dsa.privateKeyVerify() requires arguments.");
+
+  v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
+  v8::Local<v8::Object> qbuf = info[1].As<v8::Object>();
+  v8::Local<v8::Object> gbuf = info[2].As<v8::Object>();
+  v8::Local<v8::Object> ybuf = info[3].As<v8::Object>();
+  v8::Local<v8::Object> xbuf = info[4].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(pbuf)
+      || !node::Buffer::HasInstance(qbuf)
+      || !node::Buffer::HasInstance(gbuf)
+      || !node::Buffer::HasInstance(ybuf)
+      || !node::Buffer::HasInstance(xbuf)) {
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+  }
+
+  bcrypto_dsa_key_t priv;
+  bcrypto_dsa_key_init(&priv);
+
+  priv.pd = (uint8_t *)node::Buffer::Data(pbuf);
+  priv.pl = node::Buffer::Length(pbuf);
+
+  priv.qd = (uint8_t *)node::Buffer::Data(qbuf);
+  priv.ql = node::Buffer::Length(qbuf);
+
+  priv.gd = (uint8_t *)node::Buffer::Data(gbuf);
+  priv.gl = node::Buffer::Length(gbuf);
+
+  priv.yd = (uint8_t *)node::Buffer::Data(ybuf);
+  priv.yl = node::Buffer::Length(ybuf);
+
+  priv.xd = (uint8_t *)node::Buffer::Data(xbuf);
+  priv.xl = node::Buffer::Length(xbuf);
+
+  bool result = bcrypto_dsa_privkey_verify(&priv);
+
+  info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
 
 NAN_METHOD(BDSA::PrivateKeyExport) {
@@ -246,6 +334,42 @@ NAN_METHOD(BDSA::PrivateKeyImport) {
   bcrypto_dsa_key_free(k);
 
   return info.GetReturnValue().Set(ret);
+}
+
+NAN_METHOD(BDSA::PublicKeyVerify) {
+  if (info.Length() < 4)
+    return Nan::ThrowError("dsa.publicKeyVerify() requires arguments.");
+
+  v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
+  v8::Local<v8::Object> qbuf = info[1].As<v8::Object>();
+  v8::Local<v8::Object> gbuf = info[2].As<v8::Object>();
+  v8::Local<v8::Object> ybuf = info[3].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(pbuf)
+      || !node::Buffer::HasInstance(qbuf)
+      || !node::Buffer::HasInstance(gbuf)
+      || !node::Buffer::HasInstance(ybuf)) {
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+  }
+
+  bcrypto_dsa_key_t pub;
+  bcrypto_dsa_key_init(&pub);
+
+  pub.pd = (uint8_t *)node::Buffer::Data(pbuf);
+  pub.pl = node::Buffer::Length(pbuf);
+
+  pub.qd = (uint8_t *)node::Buffer::Data(qbuf);
+  pub.ql = node::Buffer::Length(qbuf);
+
+  pub.gd = (uint8_t *)node::Buffer::Data(gbuf);
+  pub.gl = node::Buffer::Length(gbuf);
+
+  pub.yd = (uint8_t *)node::Buffer::Data(ybuf);
+  pub.yl = node::Buffer::Length(ybuf);
+
+  bool result = bcrypto_dsa_pubkey_verify(&pub);
+
+  info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
 
 NAN_METHOD(BDSA::PublicKeyExport) {

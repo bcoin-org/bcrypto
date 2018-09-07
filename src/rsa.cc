@@ -33,6 +33,7 @@ BRSA::Init(v8::Local<v8::Object> &target) {
   Nan::SetMethod(tpl, "privateKeyVerify", BRSA::PrivateKeyVerify);
   Nan::SetMethod(tpl, "privateKeyExport", BRSA::PrivateKeyExport);
   Nan::SetMethod(tpl, "privateKeyImport", BRSA::PrivateKeyImport);
+  Nan::SetMethod(tpl, "publicKeyVerify", BRSA::PublicKeyVerify);
   Nan::SetMethod(tpl, "publicKeyExport", BRSA::PublicKeyExport);
   Nan::SetMethod(tpl, "publicKeyImport", BRSA::PublicKeyImport);
   Nan::SetMethod(tpl, "sign", BRSA::Sign);
@@ -172,10 +173,11 @@ NAN_METHOD(BRSA::PrivateKeyCompute) {
 
   v8::Local<v8::Array> ret = Nan::New<v8::Array>();
   ret->Set(0, Nan::CopyBuffer((char *)k->nd, k->nl).ToLocalChecked());
-  ret->Set(1, Nan::CopyBuffer((char *)k->dd, k->dl).ToLocalChecked());
-  ret->Set(2, Nan::CopyBuffer((char *)k->dpd, k->dpl).ToLocalChecked());
-  ret->Set(3, Nan::CopyBuffer((char *)k->dqd, k->dql).ToLocalChecked());
-  ret->Set(4, Nan::CopyBuffer((char *)k->qid, k->qil).ToLocalChecked());
+  ret->Set(1, Nan::CopyBuffer((char *)k->ed, k->el).ToLocalChecked());
+  ret->Set(2, Nan::CopyBuffer((char *)k->dd, k->dl).ToLocalChecked());
+  ret->Set(3, Nan::CopyBuffer((char *)k->dpd, k->dpl).ToLocalChecked());
+  ret->Set(4, Nan::CopyBuffer((char *)k->dqd, k->dql).ToLocalChecked());
+  ret->Set(5, Nan::CopyBuffer((char *)k->qid, k->qil).ToLocalChecked());
 
   bcrypto_rsa_key_free(k);
 
@@ -329,6 +331,32 @@ NAN_METHOD(BRSA::PrivateKeyImport) {
   bcrypto_rsa_key_free(k);
 
   return info.GetReturnValue().Set(ret);
+}
+
+NAN_METHOD(BRSA::PublicKeyVerify) {
+  if (info.Length() < 2)
+    return Nan::ThrowError("rsa.publicKeyVerify() requires arguments.");
+
+  v8::Local<v8::Object> nbuf = info[0].As<v8::Object>();
+  v8::Local<v8::Object> ebuf = info[1].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(nbuf)
+      || !node::Buffer::HasInstance(ebuf)) {
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+  }
+
+  bcrypto_rsa_key_t pub;
+  bcrypto_rsa_key_init(&pub);
+
+  pub.nd = (uint8_t *)node::Buffer::Data(nbuf);
+  pub.nl = node::Buffer::Length(nbuf);
+
+  pub.ed = (uint8_t *)node::Buffer::Data(ebuf);
+  pub.el = node::Buffer::Length(ebuf);
+
+  bool result = bcrypto_rsa_pubkey_verify(&pub);
+
+  info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
 
 NAN_METHOD(BRSA::PublicKeyExport) {
