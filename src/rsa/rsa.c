@@ -731,14 +731,6 @@ bcrypto_rsa_privkey_compute(
     goto fail;
 
   RSA_free(priv_r);
-  // BN_free(rsa_n);
-  // BN_free(rsa_e);
-  // BN_free(rsa_d);
-  // BN_free(rsa_p);
-  // BN_free(rsa_q);
-  // BN_free(rsa_dmp1);
-  // BN_free(rsa_dmq1);
-  // BN_free(rsa_iqmp);
   BN_CTX_free(ctx);
   BN_free(r0);
   BN_free(r1);
