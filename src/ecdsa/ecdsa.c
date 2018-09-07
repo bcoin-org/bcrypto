@@ -25,6 +25,9 @@ static int
 bcrypto_ecdsa_curve(const char *name) {
   int type = -1;
 
+  if (name == NULL)
+    return type;
+
   if (strcmp(name, "p192") == 0)
     type = NID_X9_62_prime192v1;
   else if (strcmp(name, "p224") == 0)
@@ -45,16 +48,76 @@ bcrypto_ecdsa_curve(const char *name) {
   return type;
 }
 
+static size_t
+bcrypto_ecdsa_size(int type) {
+  switch (type) {
+    case NID_X9_62_prime192v1:
+      return 24;
+    case NID_secp224r1:
+      return 28;
+    case NID_X9_62_prime256v1:
+      return 32;
+    case NID_secp384r1:
+      return 48;
+    case NID_secp521r1:
+      return 66;
+    case NID_secp256k1:
+      return 32;
+#ifdef NID_curve25519
+    case NID_curve25519:
+      return 32;
+#endif
+    default:
+      return 0;
+  }
+}
+
+static bool
+bcrypto_ecdsa_valid_message(int type, const uint8_t *msg, size_t len) {
+  if (msg == NULL)
+    return false;
+
+  return len >= 1 && len <= 66;
+}
+
+static bool
+bcrypto_ecdsa_valid_scalar(int type, const uint8_t *scalar, size_t len) {
+  if (scalar == NULL)
+    return false;
+
+  return len == bcrypto_ecdsa_size(type);
+}
+
+static bool
+bcrypto_ecdsa_valid_point(int type, const uint8_t *point, size_t len) {
+  if (point == NULL)
+    return false;
+
+  size_t size = bcrypto_ecdsa_size(type);
+
+  if (len < 1 + size)
+    return false;
+
+  switch (point[0]) {
+    case 0x02:
+    case 0x03:
+      return len == 1 + size;
+    case 0x04:
+      return len == 1 + size * 2;
+    case 0x06:
+    case 0x07:
+      return len == 1 + size * 2
+          && (point[0] & 1) == (point[len - 1] & 1);
+    default:
+      return false;
+  }
+}
+
 static BIGNUM *
-bcrypto_ecdsa_order(const char *name, size_t *size) {
+bcrypto_ecdsa_order(int type) {
   BN_CTX *ctx = NULL;
   EC_KEY *key_ec = NULL;
   BIGNUM *order_bn = NULL;
-
-  int type = bcrypto_ecdsa_curve(name);
-
-  if (type == -1)
-    goto fail;
 
   ctx = BN_CTX_new();
 
@@ -79,11 +142,6 @@ bcrypto_ecdsa_order(const char *name, size_t *size) {
 
   if (!EC_GROUP_get_order(group, order_bn, ctx))
     goto fail;
-
-  if (size) {
-    int field_size = EC_GROUP_get_degree(group);
-    *size = (field_size + 7) / 8;
-  }
 
   EC_KEY_free(key_ec);
   BN_CTX_free(ctx);
@@ -154,6 +212,8 @@ bcrypto_ecdsa_sig2rs(
   uint8_t **r,
   uint8_t **s
 ) {
+  assert(group && sig_ec && r && s);
+
   BN_CTX *ctx = NULL;
   uint8_t *r_buf = NULL;
   uint8_t *s_buf = NULL;
@@ -238,6 +298,8 @@ bcrypto_ecdsa_privkey_generate(
   uint8_t **priv,
   size_t *priv_len
 ) {
+  assert(priv && priv_len);
+
   EC_KEY *priv_ec = NULL;
   uint8_t *priv_buf = NULL;
   size_t priv_buf_len = 0;
@@ -286,6 +348,8 @@ bcrypto_ecdsa_privkey_export(
   uint8_t **out,
   size_t *out_len
 ) {
+  assert(out && out_len);
+
   BN_CTX *ctx = NULL;
   EC_KEY *priv_ec = NULL;
   EC_POINT *pub_point = NULL;
@@ -293,6 +357,9 @@ bcrypto_ecdsa_privkey_export(
   int type = bcrypto_ecdsa_curve(name);
 
   if (type == -1)
+    goto fail;
+
+  if (!bcrypto_ecdsa_valid_scalar(type, priv, priv_len))
     goto fail;
 
   ctx = BN_CTX_new();
@@ -368,6 +435,8 @@ bcrypto_ecdsa_privkey_import(
   uint8_t **out,
   size_t *out_len
 ) {
+  assert(out && out_len);
+
   EC_KEY *priv_ec = NULL;
 
   int type = bcrypto_ecdsa_curve(name);
@@ -392,6 +461,9 @@ bcrypto_ecdsa_privkey_import(
   if ((int)*out_len <= 0)
     goto fail;
 
+  if (!bcrypto_ecdsa_valid_scalar(type, *out, *out_len))
+    goto fail;
+
   EC_KEY_free(priv_ec);
 
   return true;
@@ -413,24 +485,33 @@ bcrypto_ecdsa_privkey_tweak_add(
   uint8_t **npriv,
   size_t *npriv_len
 ) {
+  assert(npriv && npriv_len);
+
   BN_CTX *ctx = NULL;
   BIGNUM *order_bn = NULL;
   BIGNUM *priv_bn = NULL;
   BIGNUM *tweak_bn = NULL;
   uint8_t *npriv_buf = NULL;
 
+  int type = bcrypto_ecdsa_curve(name);
+
+  if (type == -1)
+    goto fail;
+
+  if (!bcrypto_ecdsa_valid_scalar(type, priv, priv_len))
+    goto fail;
+
+  if (!bcrypto_ecdsa_valid_scalar(type, tweak, tweak_len))
+    goto fail;
+
   ctx = BN_CTX_new();
 
   if (!ctx)
     goto fail;
 
-  size_t size;
-  order_bn = bcrypto_ecdsa_order(name, &size);
+  order_bn = bcrypto_ecdsa_order(type);
 
   if (!order_bn)
-    goto fail;
-
-  if (priv_len != size || tweak_len != size)
     goto fail;
 
   priv_bn = BN_bin2bn(priv, priv_len, NULL);
@@ -455,6 +536,9 @@ bcrypto_ecdsa_privkey_tweak_add(
   if (BN_is_zero(priv_bn))
     goto fail;
 
+  size_t size = bcrypto_ecdsa_size(type);
+
+  assert(size != 0);
   assert((size_t)BN_num_bytes(priv_bn) <= size);
 
   npriv_buf = malloc(size);
@@ -502,6 +586,8 @@ bcrypto_ecdsa_pubkey_create(
   uint8_t **pub,
   size_t *pub_len
 ) {
+  assert(pub && pub_len);
+
   BN_CTX *ctx = NULL;
   EC_KEY *priv_ec = NULL;
   EC_POINT *pub_point = NULL;
@@ -511,6 +597,9 @@ bcrypto_ecdsa_pubkey_create(
   int type = bcrypto_ecdsa_curve(name);
 
   if (type == -1)
+    goto fail;
+
+  if (!bcrypto_ecdsa_valid_scalar(type, priv, priv_len))
     goto fail;
 
   ctx = BN_CTX_new();
@@ -586,6 +675,8 @@ bcrypto_ecdsa_pubkey_convert(
   uint8_t **npub,
   size_t *npub_len
 ) {
+  assert(npub && npub_len);
+
   BN_CTX *ctx = NULL;
   EC_KEY *pub_ec = NULL;
   uint8_t *npub_buf = NULL;
@@ -594,6 +685,9 @@ bcrypto_ecdsa_pubkey_convert(
   int type = bcrypto_ecdsa_curve(name);
 
   if (type == -1)
+    goto fail;
+
+  if (!bcrypto_ecdsa_valid_point(type, pub, pub_len))
     goto fail;
 
   ctx = BN_CTX_new();
@@ -653,6 +747,9 @@ bcrypto_ecdsa_pubkey_verify(
   if (type == -1)
     goto fail;
 
+  if (!bcrypto_ecdsa_valid_point(type, pub, pub_len))
+    goto fail;
+
   ctx = BN_CTX_new();
 
   if (!ctx)
@@ -695,6 +792,8 @@ bcrypto_ecdsa_pubkey_tweak_add(
   uint8_t **npub,
   size_t *npub_len
 ) {
+  assert(npub && npub_len);
+
   BN_CTX *ctx = NULL;
   EC_KEY *pub_ec = NULL;
   BIGNUM *tweak_bn = NULL;
@@ -710,6 +809,12 @@ bcrypto_ecdsa_pubkey_tweak_add(
   int type = bcrypto_ecdsa_curve(name);
 
   if (type == -1)
+    goto fail;
+
+  if (!bcrypto_ecdsa_valid_point(type, pub, pub_len))
+    goto fail;
+
+  if (!bcrypto_ecdsa_valid_scalar(type, tweak, tweak_len))
     goto fail;
 
   pub_ec = EC_KEY_new_by_curve_name(type);
@@ -794,12 +899,20 @@ bcrypto_ecdsa_sign(
   uint8_t **s,
   size_t *s_len
 ) {
+  assert(r && r_len && s && s_len);
+
   EC_KEY *priv_ec = NULL;
   ECDSA_SIG *sig_ec = NULL;
 
   int type = bcrypto_ecdsa_curve(name);
 
   if (type == -1)
+    goto fail;
+
+  if (!bcrypto_ecdsa_valid_message(type, msg, msg_len))
+    goto fail;
+
+  if (!bcrypto_ecdsa_valid_scalar(type, priv, priv_len))
     goto fail;
 
   priv_ec = EC_KEY_new_by_curve_name(type);
@@ -861,6 +974,18 @@ bcrypto_ecdsa_verify(
   if (type == -1)
     goto fail;
 
+  if (!bcrypto_ecdsa_valid_message(type, msg, msg_len))
+    goto fail;
+
+  if (!bcrypto_ecdsa_valid_scalar(type, r, r_len))
+    goto fail;
+
+  if (!bcrypto_ecdsa_valid_scalar(type, s, s_len))
+    goto fail;
+
+  if (!bcrypto_ecdsa_valid_point(type, pub, pub_len))
+    goto fail;
+
   ctx = BN_CTX_new();
 
   if (!ctx)
@@ -915,6 +1040,8 @@ bcrypto_ecdsa_recover(
   uint8_t **pub,
   size_t *pub_len
 ) {
+  assert(pub && pub_len);
+
   BN_CTX *ctx = NULL;
   EC_KEY *pub_ec = NULL;
   ECDSA_SIG *sig_ec = NULL;
@@ -933,6 +1060,15 @@ bcrypto_ecdsa_recover(
   int type = bcrypto_ecdsa_curve(name);
 
   if (type == -1)
+    goto fail;
+
+  if (!bcrypto_ecdsa_valid_message(type, msg, msg_len))
+    goto fail;
+
+  if (!bcrypto_ecdsa_valid_scalar(type, r, r_len))
+    goto fail;
+
+  if (!bcrypto_ecdsa_valid_scalar(type, s, s_len))
     goto fail;
 
   ctx = BN_CTX_new();
@@ -1166,6 +1302,8 @@ bcrypto_ecdsa_ecdh(
   uint8_t **secret,
   size_t *secret_len
 ) {
+  assert(secret && secret_len);
+
   BN_CTX *ctx = NULL;
   EC_KEY *priv_ec = NULL;
   EC_KEY *pub_ec = NULL;
@@ -1178,6 +1316,12 @@ bcrypto_ecdsa_ecdh(
   int type = bcrypto_ecdsa_curve(name);
 
   if (type == -1)
+    goto fail;
+
+  if (!bcrypto_ecdsa_valid_point(type, pub, pub_len))
+    goto fail;
+
+  if (!bcrypto_ecdsa_valid_scalar(type, priv, priv_len))
     goto fail;
 
   ctx = BN_CTX_new();

@@ -65,7 +65,7 @@ NAN_METHOD(BECDSA::PrivateKeyGenerate) {
   size_t priv_len;
 
   if (!bcrypto_ecdsa_privkey_generate(name, &priv, &priv_len))
-    return Nan::ThrowTypeError("Could not generate key.");
+    return Nan::ThrowError("Could not generate key.");
 
   return info.GetReturnValue().Set(
     Nan::NewBuffer((char *)priv, priv_len).ToLocalChecked());
@@ -102,7 +102,7 @@ NAN_METHOD(BECDSA::PrivateKeyExport) {
   size_t out_len;
 
   if (!bcrypto_ecdsa_privkey_export(name, pd, pl, compress, &out, &out_len))
-    return Nan::ThrowTypeError("Could not export key.");
+    return Nan::ThrowError("Could not export key.");
 
   return info.GetReturnValue().Set(
     Nan::NewBuffer((char *)out, out_len).ToLocalChecked());
@@ -130,7 +130,7 @@ NAN_METHOD(BECDSA::PrivateKeyImport) {
   size_t out_len;
 
   if (!bcrypto_ecdsa_privkey_import(name, rd, rl, &out, &out_len))
-    return Nan::ThrowTypeError("Could not import key.");
+    return Nan::ThrowError("Could not import key.");
 
   return info.GetReturnValue().Set(
     Nan::NewBuffer((char *)out, out_len).ToLocalChecked());
@@ -167,7 +167,7 @@ NAN_METHOD(BECDSA::PrivateKeyTweakAdd) {
     name, pd, pl, td, tl, &priv, &priv_len);
 
   if (!result)
-    return Nan::ThrowTypeError("Could not tweak private key.");
+    return Nan::ThrowError("Could not tweak private key.");
 
   return info.GetReturnValue().Set(
     Nan::NewBuffer((char *)priv, priv_len).ToLocalChecked());
@@ -207,7 +207,7 @@ NAN_METHOD(BECDSA::PublicKeyCreate) {
     name, pd, pl, compress, &pub, &pub_len);
 
   if (!result)
-    return Nan::ThrowTypeError("Could not create key.");
+    return Nan::ThrowError("Could not create key.");
 
   return info.GetReturnValue().Set(
     Nan::NewBuffer((char *)pub, pub_len).ToLocalChecked());
@@ -247,7 +247,7 @@ NAN_METHOD(BECDSA::PublicKeyConvert) {
     name, pd, pl, compress, &pub, &pub_len);
 
   if (!result)
-    return Nan::ThrowTypeError("Could not convert key.");
+    return Nan::ThrowError("Could not convert key.");
 
   return info.GetReturnValue().Set(
     Nan::NewBuffer((char *)pub, pub_len).ToLocalChecked());
@@ -270,9 +270,6 @@ NAN_METHOD(BECDSA::PublicKeyVerify) {
 
   const uint8_t *pd = (uint8_t *)node::Buffer::Data(pbuf);
   size_t pl = node::Buffer::Length(pbuf);
-
-  if (!pd)
-    return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
 
   bool result = bcrypto_ecdsa_pubkey_verify(name, pd, pl);
 
@@ -319,7 +316,7 @@ NAN_METHOD(BECDSA::PublicKeyTweakAdd) {
     name, pd, pl, td, tl, compress, &pub, &pub_len);
 
   if (!result)
-    return Nan::ThrowTypeError("Could not tweak public key.");
+    return Nan::ThrowError("Could not tweak public key.");
 
   return info.GetReturnValue().Set(
     Nan::NewBuffer((char *)pub, pub_len).ToLocalChecked());
@@ -349,9 +346,6 @@ NAN_METHOD(BECDSA::Sign) {
   const uint8_t *pd = (uint8_t *)node::Buffer::Data(pbuf);
   size_t pl = node::Buffer::Length(pbuf);
 
-  if (!pd)
-    return Nan::ThrowTypeError("Invalid parameters.");
-
   uint8_t *r;
   size_t rl;
   uint8_t *s;
@@ -360,7 +354,7 @@ NAN_METHOD(BECDSA::Sign) {
   bool result = bcrypto_ecdsa_sign(name, md, ml, pd, pl, &r, &rl, &s, &sl);
 
   if (!result)
-    return Nan::ThrowTypeError("Signing failed.");
+    return Nan::ThrowError("Could not sign.");
 
   v8::Local<v8::Array> ret = Nan::New<v8::Array>();
   ret->Set(0, Nan::NewBuffer((char *)r, rl).ToLocalChecked());
@@ -402,9 +396,6 @@ NAN_METHOD(BECDSA::Verify) {
 
   const uint8_t *pd = (uint8_t *)node::Buffer::Data(pbuf);
   size_t pl = node::Buffer::Length(pbuf);
-
-  if (!rd || !sd || !pd)
-    return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
 
   bool result = bcrypto_ecdsa_verify(name, md, ml, rd, rl, sd, sl, pd, pl);
 
@@ -452,9 +443,6 @@ NAN_METHOD(BECDSA::Recover) {
 
   const uint8_t *sd = (uint8_t *)node::Buffer::Data(sbuf);
   size_t sl = node::Buffer::Length(sbuf);
-
-  if (!md || !rd || !sd)
-    return info.GetReturnValue().Set(Nan::Null());
 
   uint8_t *pub;
   size_t pub_len;
@@ -509,7 +497,7 @@ NAN_METHOD(BECDSA::ECDH) {
     name, kd, kl, pd, pl, compress, &secret, &secret_len);
 
   if (!result)
-    return Nan::ThrowTypeError("Could not perform ECDH.");
+    return Nan::ThrowError("Could not perform ECDH.");
 
   return info.GetReturnValue().Set(
     Nan::NewBuffer((char *)secret, secret_len).ToLocalChecked());
