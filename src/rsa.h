@@ -26,6 +26,10 @@ private:
   static NAN_METHOD(Verify);
   static NAN_METHOD(Encrypt);
   static NAN_METHOD(Decrypt);
+  static NAN_METHOD(EncryptOAEP);
+  static NAN_METHOD(DecryptOAEP);
+  static NAN_METHOD(SignPSS);
+  static NAN_METHOD(VerifyPSS);
 };
 #endif
 

@@ -86,7 +86,7 @@ describe('RSA', function() {
     assert(rsa.privateKeyVerify(priv));
     assert(rsa.publicKeyVerify(pub));
 
-    const sig1 = rsa.signPSS(SHA256, msg, priv);
+    const sig1 = rsa.signPSS(SHA256, msg, priv, -1);
     assert(rsa.verifyPSS(SHA256, msg, sig1, pub));
     sig1[(Math.random() * sig1.length) | 0] ^= 1;
     assert(!rsa.verifyPSS(SHA256, msg, sig1, pub));
@@ -130,11 +130,11 @@ describe('RSA', function() {
     const pub = rsa.publicKeyCreate(priv);
     const msg = Buffer.from('hello world');
 
-    const ct = rsa.encryptOAEP(SHA1, msg, null, pub);
+    const ct = rsa.encryptOAEP(SHA1, msg, pub);
 
     assert.notBufferEqual(ct, msg);
 
-    const pt = rsa.decryptOAEP(SHA1, ct, null, priv);
+    const pt = rsa.decryptOAEP(SHA1, ct, priv);
 
     assert.bufferEqual(pt, msg);
   });

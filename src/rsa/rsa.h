@@ -97,7 +97,6 @@ bcrypto_rsa_verify(
 
 bool
 bcrypto_rsa_encrypt(
-  int type,
   const uint8_t *msg,
   size_t msg_len,
   const bcrypto_rsa_key_t *pub,
@@ -107,12 +106,57 @@ bcrypto_rsa_encrypt(
 
 bool
 bcrypto_rsa_decrypt(
-  int type,
   const uint8_t *msg,
   size_t msg_len,
   const bcrypto_rsa_key_t *priv,
   uint8_t **pt,
   size_t *pt_len
+);
+
+bool
+bcrypto_rsa_encrypt_oaep(
+  const char *alg,
+  const uint8_t *msg,
+  size_t msg_len,
+  const bcrypto_rsa_key_t *pub,
+  const uint8_t *label,
+  size_t label_len,
+  uint8_t **ct,
+  size_t *ct_len
+);
+
+bool
+bcrypto_rsa_decrypt_oaep(
+  const char *alg,
+  const uint8_t *msg,
+  size_t msg_len,
+  const bcrypto_rsa_key_t *priv,
+  const uint8_t *label,
+  size_t label_len,
+  uint8_t **pt,
+  size_t *pt_len
+);
+
+bool
+bcrypto_rsa_sign_pss(
+  const char *alg,
+  const uint8_t *msg,
+  size_t msg_len,
+  const bcrypto_rsa_key_t *priv,
+  int salt_len,
+  uint8_t **sig,
+  size_t *sig_len
+);
+
+bool
+bcrypto_rsa_verify_pss(
+  const char *alg,
+  const uint8_t *msg,
+  size_t msg_len,
+  const uint8_t *sig,
+  size_t sig_len,
+  const bcrypto_rsa_key_t *pub,
+  int salt_len
 );
 
 #if defined(__cplusplus)
