@@ -66,16 +66,35 @@ describe('RSA', function() {
   });
 
   it('should sign and verify', () => {
-    const priv = rsa.privateKeyGenerate(2048);
+    const bits = rsa.native < 2 ? 1024 : 4096;
+    const priv = rsa.privateKeyGenerate(bits);
     const pub = rsa.publicKeyCreate(priv);
 
     assert(rsa.privateKeyVerify(priv));
     assert(rsa.publicKeyVerify(pub));
 
     const sig = rsa.sign(SHA256, msg, priv);
-    const valid = rsa.verify(SHA256, msg, sig, pub);
+    assert(rsa.verify(SHA256, msg, sig, pub));
+    sig[(Math.random() * sig.length) | 0] ^= 1;
+    assert(!rsa.verify(SHA256, msg, sig, pub));
+  });
 
-    assert(valid);
+  it('should sign and verify (PSS)', () => {
+    const priv = rsa.privateKeyGenerate(1024);
+    const pub = rsa.publicKeyCreate(priv);
+
+    assert(rsa.privateKeyVerify(priv));
+    assert(rsa.publicKeyVerify(pub));
+
+    const sig1 = rsa.signPSS(SHA256, msg, priv);
+    assert(rsa.verifyPSS(SHA256, msg, sig1, pub));
+    sig1[(Math.random() * sig1.length) | 0] ^= 1;
+    assert(!rsa.verifyPSS(SHA256, msg, sig1, pub));
+
+    const sig2 = rsa.signPSS(SHA256, msg, priv, 0);
+    assert(rsa.verifyPSS(SHA256, msg, sig2, pub, 0));
+    sig2[(Math.random() * sig1.length) | 0] ^= 1;
+    assert(!rsa.verifyPSS(SHA256, msg, sig2, pub, 0));
   });
 
   it('should sign and verify (async)', async () => {
