@@ -13,6 +13,7 @@
 #include "openssl/evp.h"
 #include "openssl/objects.h"
 #include "openssl/rsa.h"
+#include "../random/random.h"
 
 void
 bcrypto_rsa_key_init(bcrypto_rsa_key_t *key) {
@@ -502,11 +503,19 @@ bcrypto_rsa_hash_size(int type) {
 }
 
 static size_t
-bcrypto_rsa_mod_size(bcrypto_rsa_key_t *key) {
+bcrypto_rsa_mod_size(const bcrypto_rsa_key_t *key) {
   if (key == NULL)
     return 0;
 
   return (bcrypto_count_bits(key->nd, key->nl) + 7) / 8;
+}
+
+static size_t
+bcrypto_rsa_mod_bits(const bcrypto_rsa_key_t *key) {
+  if (key == NULL)
+    return 0;
+
+  return bcrypto_count_bits(key->nd, key->nl);
 }
 
 bcrypto_rsa_key_t *
@@ -535,6 +544,8 @@ bcrypto_rsa_privkey_generate(int bits, unsigned long long exp) {
 
   if (!BN_set_word(exp_bn, (BN_ULONG)exp))
     goto fail;
+
+  bcrypto_poll();
 
   if (!RSA_generate_key_ex(priv_r, bits, exp_bn, NULL))
     goto fail;
@@ -648,7 +659,7 @@ bcrypto_rsa_privkey_compute(
   if (!ctx || !r0 || !r1 || !r2)
     goto fail;
 
-  // See: https://github.com/openssl/openssl/blob/master/crypto/rsa/rsa_gen.c
+  // See: https://github.com/openssl/openssl/blob/82eba37/crypto/rsa/rsa_gen.c
 
   if (BN_is_zero(rsa_n)) {
     // modulus n = p * q * r_3 * r_4
@@ -957,16 +968,18 @@ bcrypto_rsa_sign(
 ) {
   assert(sig && sig_len);
 
+  int type = -1;
   RSA *priv_r = NULL;
+  unsigned int sig_buf_len = 0;
   uint8_t *sig_buf = NULL;
-  size_t sig_buf_len = 0;
+  int result = 0;
 
-  int type = bcrypto_rsa_hash_type(alg);
+  type = bcrypto_rsa_hash_type(alg);
 
   if (type == -1)
     goto fail;
 
-  if (msg == NULL || msg_len < 1 || msg_len > 64)
+  if (msg == NULL || msg_len != bcrypto_rsa_hash_size(type))
     goto fail;
 
   if (!bcrypto_rsa_sane_privkey(priv))
@@ -983,16 +996,18 @@ bcrypto_rsa_sign(
   if (!sig_buf)
     goto fail;
 
+  bcrypto_poll();
+
   // Protect against side-channel attacks.
   if (!RSA_blinding_on(priv_r, NULL))
     goto fail;
 
-  int result = RSA_sign(
+  result = RSA_sign(
     type,
     msg,
     msg_len,
     sig_buf,
-    (unsigned int *)&sig_buf_len,
+    &sig_buf_len,
     priv_r
   );
 
@@ -1004,7 +1019,7 @@ bcrypto_rsa_sign(
   RSA_free(priv_r);
 
   *sig = sig_buf;
-  *sig_len = sig_buf_len;
+  *sig_len = (size_t)sig_buf_len;
 
   return true;
 
@@ -1027,17 +1042,18 @@ bcrypto_rsa_verify(
   size_t sig_len,
   const bcrypto_rsa_key_t *pub
 ) {
+  int type = -1;
   RSA *pub_r = NULL;
 
-  int type = bcrypto_rsa_hash_type(alg);
+  type = bcrypto_rsa_hash_type(alg);
 
   if (type == -1)
     goto fail;
 
-  if (msg == NULL || msg_len < 1 || msg_len > 64)
+  if (msg == NULL || msg_len != bcrypto_rsa_hash_size(type))
     goto fail;
 
-  if (sig == NULL || sig_len < 1 || sig_len > 3072)
+  if (sig == NULL || sig_len > bcrypto_rsa_mod_size(pub))
     goto fail;
 
   if (!bcrypto_rsa_sane_pubkey(pub))
@@ -1048,7 +1064,7 @@ bcrypto_rsa_verify(
   if (!pub_r)
     goto fail;
 
-  if (!RSA_verify(type, msg, msg_len, sig, sig_len, pub_r))
+  if (RSA_verify(type, msg, msg_len, sig, sig_len, pub_r) <= 0)
     goto fail;
 
   RSA_free(pub_r);
@@ -1072,11 +1088,8 @@ bcrypto_rsa_encrypt(
   assert(ct && ct_len);
 
   RSA *pub_r = NULL;
-  uint8_t *out = NULL;
-  int out_len = 0;
-
-  // if (msg == NULL || msg_len < 1)
-  //   goto fail;
+  uint8_t *c = NULL;
+  int c_len = 0;
 
   if (!bcrypto_rsa_sane_pubkey(pub))
     goto fail;
@@ -1086,28 +1099,30 @@ bcrypto_rsa_encrypt(
   if (!pub_r)
     goto fail;
 
-  out = malloc(RSA_size(pub_r));
+  c = malloc(RSA_size(pub_r));
 
-  if (!out)
+  if (!c)
     goto fail;
+
+  bcrypto_poll();
 
   // $ man RSA_public_encrypt
   // `to` must point to `RSA_size(rsa)` bytes of memory.
-  out_len = RSA_public_encrypt(
+  c_len = RSA_public_encrypt(
     msg_len,          // int flen
     msg,              // const uint8_t *from
-    out,              // uint8_t *to
+    c,                // uint8_t *to
     pub_r,            // RSA *rsa
     RSA_PKCS1_PADDING // int padding
   );
 
-  if (out_len <= 0)
+  if (c_len <= 0)
     goto fail;
 
   RSA_free(pub_r);
 
-  *ct = out;
-  *ct_len = (size_t)out_len;
+  *ct = c;
+  *ct_len = (size_t)c_len;
 
   return true;
 
@@ -1115,8 +1130,8 @@ fail:
   if (pub_r)
     RSA_free(pub_r);
 
-  if (out)
-    free(out);
+  if (c)
+    free(c);
 
   return false;
 }
@@ -1135,7 +1150,7 @@ bcrypto_rsa_decrypt(
   uint8_t *out = NULL;
   int out_len = 0;
 
-  if (msg == NULL || msg_len < 1)
+  if (msg == NULL || msg_len > bcrypto_rsa_mod_size(priv))
     goto fail;
 
   if (!bcrypto_rsa_sane_privkey(priv))
@@ -1150,6 +1165,8 @@ bcrypto_rsa_decrypt(
 
   if (!out)
     goto fail;
+
+  bcrypto_poll();
 
   // Protect against side-channel attacks.
   if (!RSA_blinding_on(priv_r, NULL))
@@ -1205,16 +1222,20 @@ bcrypto_rsa_encrypt_oaep(
 ) {
   assert(ct && ct_len);
 
+  int type = -1;
+  const EVP_MD *md = NULL;
   RSA *pub_r = NULL;
   uint8_t *em = NULL;
   uint8_t *c = NULL;
+  int result = 0;
+  int c_len = 0;
 
-  int type = bcrypto_rsa_hash_type(alg);
+  type = bcrypto_rsa_hash_type(alg);
 
   if (type == -1)
     goto fail;
 
-  const EVP_MD *md = EVP_get_digestbynid(type);
+  md = EVP_get_digestbynid(type);
 
   if (!md)
     goto fail;
@@ -1239,9 +1260,11 @@ bcrypto_rsa_encrypt_oaep(
 
   memset(em, 0x00, RSA_size(pub_r));
 
+  bcrypto_poll();
+
   // $ man RSA_padding_add_PKCS1_OAEP
   // https://github.com/openssl/openssl/blob/82eba37/crypto/rsa/rsa_oaep.c#L41
-  int r = RSA_padding_add_PKCS1_OAEP_mgf1(
+  result = RSA_padding_add_PKCS1_OAEP_mgf1(
     em,              // uint8_t *to
     RSA_size(pub_r), // int tlen
     msg,             // const uint8_t *from
@@ -1252,12 +1275,12 @@ bcrypto_rsa_encrypt_oaep(
     md               // const EVP_MD *mgf1md
   );
 
-  if (!r)
+  if (!result)
     goto fail;
 
   // $ man RSA_public_encrypt
   // `to` must point to `RSA_size(rsa)` bytes of memory.
-  int c_len = RSA_public_encrypt(
+  c_len = RSA_public_encrypt(
     RSA_size(pub_r), // int flen
     em,              // const uint8_t *from
     c,               // uint8_t *to
@@ -1304,21 +1327,25 @@ bcrypto_rsa_decrypt_oaep(
 ) {
   assert(pt && pt_len);
 
+  int type = -1;
+  const EVP_MD *md = NULL;
   RSA *priv_r = NULL;
   uint8_t *em = NULL;
+  int em_len = 0;
   uint8_t *out = NULL;
+  int out_len = 0;
 
-  int type = bcrypto_rsa_hash_type(alg);
+  type = bcrypto_rsa_hash_type(alg);
 
   if (type == -1)
     goto fail;
 
-  const EVP_MD *md = EVP_get_digestbynid(type);
+  md = EVP_get_digestbynid(type);
 
   if (!md)
     goto fail;
 
-  if (msg == NULL || msg_len < 1)
+  if (msg == NULL || msg_len > bcrypto_rsa_mod_size(priv))
     goto fail;
 
   if (!bcrypto_rsa_sane_privkey(priv))
@@ -1334,10 +1361,7 @@ bcrypto_rsa_decrypt_oaep(
   if (!em)
     goto fail;
 
-  out = malloc(RSA_size(priv_r));
-
-  if (!out)
-    goto fail;
+  bcrypto_poll();
 
   // Protect against side-channel attacks.
   if (!RSA_blinding_on(priv_r, NULL))
@@ -1347,7 +1371,7 @@ bcrypto_rsa_decrypt_oaep(
 
   // $ man RSA_private_decrypt
   // `to` must point to `RSA_size(rsa) - 11` bytes of memory.
-  int em_len = RSA_private_decrypt(
+  em_len = RSA_private_decrypt(
     msg_len,       // int flen
     msg,           // const uint8_t *from
     em,            // uint8_t *to
@@ -1360,8 +1384,15 @@ bcrypto_rsa_decrypt_oaep(
   if (em_len <= 0)
     goto fail;
 
+  out = malloc(RSA_size(priv_r));
+
+  if (!out) {
+    OPENSSL_cleanse(em, RSA_size(priv_r));
+    goto fail;
+  }
+
   // https://github.com/openssl/openssl/blob/82eba37/crypto/rsa/rsa_oaep.c#L116
-  int out_len = RSA_padding_check_PKCS1_OAEP_mgf1(
+  out_len = RSA_padding_check_PKCS1_OAEP_mgf1(
     out,              // uint8_t *to
     RSA_size(priv_r), // int tlen
     em,               // const uint8_t *from
@@ -1416,24 +1447,25 @@ bcrypto_rsa_sign_pss(
 ) {
   assert(sig && sig_len);
 
+  int type = -1;
+  const EVP_MD *md = NULL;
   RSA *priv_r = NULL;
   uint8_t *em = NULL;
+  int result = 0;
   uint8_t *c = NULL;
+  int c_len = 0;
 
-  int type = bcrypto_rsa_hash_type(alg);
+  type = bcrypto_rsa_hash_type(alg);
 
   if (type == -1)
     goto fail;
 
-  const EVP_MD *md = EVP_get_digestbynid(type);
+  md = EVP_get_digestbynid(type);
 
   if (!md)
     goto fail;
 
-  if (msg == NULL || msg_len < 1)
-    goto fail;
-
-  if (msg_len != (size_t)EVP_MD_size(md))
+  if (msg == NULL || msg_len != bcrypto_rsa_hash_size(type))
     goto fail;
 
   if (!bcrypto_rsa_sane_privkey(priv))
@@ -1452,11 +1484,6 @@ bcrypto_rsa_sign_pss(
   if (!em)
     goto fail;
 
-  c = malloc(RSA_size(priv_r));
-
-  if (!c)
-    goto fail;
-
   if (salt_len == 0)
     salt_len = -2; // RSA_PSS_SALTLEN_MAX_SIGN
   else if (salt_len == -1)
@@ -1464,9 +1491,11 @@ bcrypto_rsa_sign_pss(
 
   memset(em, 0x00, RSA_size(priv_r));
 
+  bcrypto_poll();
+
   // https://github.com/openssl/openssl/blob/82eba37/crypto/rsa/rsa_pss.c#L145
   // https://github.com/openssl/openssl/blob/82eba37/crypto/rsa/rsa_pmeth.c#L122
-  int r = RSA_padding_add_PKCS1_PSS_mgf1(
+  result = RSA_padding_add_PKCS1_PSS_mgf1(
     priv_r,  // RSA *rsa
     em,      // uint8_t *EM
     msg,     // const uint8_t *mHash
@@ -1475,16 +1504,25 @@ bcrypto_rsa_sign_pss(
     salt_len // int sLen
   );
 
-  if (!r)
+  if (!result)
     goto fail;
 
-  // Protect against side-channel attacks.
-  if (!RSA_blinding_on(priv_r, NULL))
+  c = malloc(RSA_size(priv_r));
+
+  if (!c) {
+    OPENSSL_cleanse(em, RSA_size(priv_r));
     goto fail;
+  }
+
+  // Protect against side-channel attacks.
+  if (!RSA_blinding_on(priv_r, NULL)) {
+    OPENSSL_cleanse(em, RSA_size(priv_r));
+    goto fail;
+  }
 
   // $ man RSA_private_encrypt
   // `to` must point to `RSA_size(rsa)` bytes of memory.
-  int c_len = RSA_private_encrypt(
+  c_len = RSA_private_encrypt(
     RSA_size(priv_r), // int flen
     em,               // const uint8_t *from
     c,                // uint8_t *to
@@ -1530,26 +1568,27 @@ bcrypto_rsa_verify_pss(
   const bcrypto_rsa_key_t *pub,
   int salt_len
 ) {
+  int type = 0;
+  const EVP_MD *md = NULL;
   RSA *pub_r = NULL;
   uint8_t *em = NULL;
+  int em_len = 0;
+  int result = 0;
 
-  int type = bcrypto_rsa_hash_type(alg);
+  type = bcrypto_rsa_hash_type(alg);
 
   if (type == -1)
     goto fail;
 
-  const EVP_MD *md = EVP_get_digestbynid(type);
+  md = EVP_get_digestbynid(type);
 
   if (!md)
     goto fail;
 
-  if (sig == NULL || sig_len < 1 || sig_len > 3072)
+  if (msg == NULL || msg_len != bcrypto_rsa_hash_size(type))
     goto fail;
 
-  if (msg == NULL || msg_len < 1)
-    goto fail;
-
-  if (msg_len != (size_t)EVP_MD_size(md))
+  if (sig == NULL || sig_len > bcrypto_rsa_mod_size(pub))
     goto fail;
 
   if (!bcrypto_rsa_sane_pubkey(pub))
@@ -1560,9 +1599,6 @@ bcrypto_rsa_verify_pss(
   if (!pub_r)
     goto fail;
 
-  if (sig_len != (size_t)RSA_size(pub_r))
-    goto fail;
-
   em = malloc(RSA_size(pub_r));
 
   if (!em)
@@ -1571,8 +1607,8 @@ bcrypto_rsa_verify_pss(
   memset(em, 0x00, RSA_size(pub_r));
 
   // $ man RSA_public_decrypt
-  // `to` must be `RSA_size(rsa) - 11`
-  int em_len = RSA_public_decrypt(
+  // `to` must point to `RSA_size(rsa) - 11` bytes of memory.
+  em_len = RSA_public_decrypt(
     sig_len,       // int flen
     sig,           // const uint8_t *from
     em,            // uint8_t *to
@@ -1583,13 +1619,21 @@ bcrypto_rsa_verify_pss(
   if (em_len <= 0)
     goto fail;
 
+  int embits = bcrypto_rsa_mod_bits(pub) - 1;
+  int emlen = (embits + 7) / 8;
+
+  if (emlen < em_len) {
+    OPENSSL_cleanse(em, RSA_size(pub_r));
+    goto fail;
+  }
+
   if (salt_len == 0)
     salt_len = -2; // RSA_PSS_SALTLEN_AUTO
   else if (salt_len == -1)
     salt_len = -1; // RSA_PSS_SALTLEN_DIGEST
 
   // https://github.com/openssl/openssl/blob/82eba37/crypto/rsa/rsa_pss.c#L32
-  int r = RSA_verify_PKCS1_PSS_mgf1(
+  result = RSA_verify_PKCS1_PSS_mgf1(
     pub_r,   // RSA *rsa
     msg,     // const uint8_t *mHash
     md,      // const EVP_MD *Hash
@@ -1600,7 +1644,7 @@ bcrypto_rsa_verify_pss(
 
   OPENSSL_cleanse(em, RSA_size(pub_r));
 
-  if (!r)
+  if (!result)
     goto fail;
 
   RSA_free(pub_r);

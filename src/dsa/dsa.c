@@ -11,6 +11,7 @@
 #include "openssl/bn.h"
 #include "openssl/dsa.h"
 #include "openssl/objects.h"
+#include "../random/random.h"
 
 void
 bcrypto_dsa_key_init(bcrypto_dsa_key_t *key) {
@@ -137,6 +138,14 @@ bcrypto_dsa_needs_compute(const bcrypto_dsa_key_t *key) {
     return false;
 
   return bcrypto_count_bits(key->yd, key->yl) == 0;
+}
+
+static size_t
+bcrypto_dsa_subprime_size(const bcrypto_dsa_key_t *key) {
+  if (key == NULL)
+    return 0;
+
+  return (bcrypto_count_bits(key->qd, key->ql) + 7) / 8;
 }
 
 static DSA *
@@ -386,13 +395,13 @@ bcrypto_dsa_sig2rs(
   uint8_t *r_buf = NULL;
   uint8_t *s_buf = NULL;
 
-  const BIGNUM *r_bn;
-  const BIGNUM *s_bn;
+  const BIGNUM *r_bn = NULL;
+  const BIGNUM *s_bn = NULL;
 
   DSA_SIG_get0(sig_d, &r_bn, &s_bn);
   assert(r_bn && s_bn);
 
-  const BIGNUM *q_bn;
+  const BIGNUM *q_bn = NULL;
 
   DSA_get0_pqg(priv_d, NULL, &q_bn, NULL);
   assert(q_bn);
@@ -438,6 +447,8 @@ bcrypto_dsa_params_generate(int bits) {
 
   if (!params_d)
     goto fail;
+
+  bcrypto_poll();
 
   if (!DSA_generate_parameters_ex(params_d, bits, NULL, 0, NULL, NULL, NULL))
     goto fail;
@@ -558,6 +569,8 @@ bcrypto_dsa_privkey_create(bcrypto_dsa_key_t *params) {
 
   if (!priv_d)
     goto fail;
+
+  bcrypto_poll();
 
   if (!DSA_generate_key(priv_d))
     goto fail;
@@ -846,7 +859,7 @@ bcrypto_dsa_sign(
   DSA *priv_d = NULL;
   DSA_SIG *sig_d = NULL;
 
-  if (msg == NULL || msg_len < 1 || msg_len > 32)
+  if (msg == NULL || msg_len < 1 || msg_len > 64)
     goto fail;
 
   if (!bcrypto_dsa_sane_privkey(priv))
@@ -857,6 +870,8 @@ bcrypto_dsa_sign(
   if (!priv_d)
     goto fail;
 
+  bcrypto_poll();
+
   sig_d = DSA_do_sign(msg, msg_len, priv_d);
 
   if (!sig_d)
@@ -865,7 +880,7 @@ bcrypto_dsa_sign(
   if (!bcrypto_dsa_sig2rs(priv_d, sig_d, r, s))
     goto fail;
 
-  const BIGNUM *q_bn;
+  const BIGNUM *q_bn = NULL;
 
   DSA_get0_pqg(priv_d, NULL, &q_bn, NULL);
   assert(q_bn);
@@ -901,16 +916,19 @@ bcrypto_dsa_verify(
   size_t s_len,
   const bcrypto_dsa_key_t *pub
 ) {
+  size_t qsize = 0;
   DSA *pub_d = NULL;
   DSA_SIG *sig_d = NULL;
 
-  if (msg == NULL || msg_len < 1 || msg_len > 32)
+  if (msg == NULL || msg_len < 1 || msg_len > 64)
     goto fail;
 
-  if (r == NULL || r_len < 1 || r_len > 32)
+  qsize = bcrypto_dsa_subprime_size(pub);
+
+  if (r == NULL || r_len != qsize)
     goto fail;
 
-  if (s == NULL || s_len < 1 || s_len > 32)
+  if (s == NULL || s_len != qsize)
     goto fail;
 
   if (!bcrypto_dsa_sane_pubkey(pub))

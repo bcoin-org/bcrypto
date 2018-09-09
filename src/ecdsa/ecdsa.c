@@ -217,8 +217,8 @@ bcrypto_ecdsa_sig2rs(
   if (!ctx)
     goto fail;
 
-  const BIGNUM *r_bn;
-  const BIGNUM *s_bn;
+  const BIGNUM *r_bn = NULL;
+  const BIGNUM *s_bn = NULL;
 
   ECDSA_SIG_get0(sig_ec, &r_bn, &s_bn);
   assert(r_bn && s_bn);

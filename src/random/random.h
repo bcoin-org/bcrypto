@@ -9,6 +9,9 @@
 extern "C" {
 #endif
 
+void
+bcrypto_poll(void);
+
 bool
 bcrypto_random(uint8_t *dst, size_t len);
 
