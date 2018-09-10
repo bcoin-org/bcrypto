@@ -15,6 +15,15 @@
 #include "openssl/rsa.h"
 #include "../random/random.h"
 
+#define BCRYPTO_RSA_DEFAULT_BITS 2048
+#define BCRYPTO_RSA_DEFAULT_EXP 65537
+#define BCRYPTO_RSA_MIN_BITS 512
+#define BCRYPTO_RSA_MAX_BITS 16384
+#define BCRYPTO_RSA_MIN_EXP 3ull
+#define BCRYPTO_RSA_MAX_EXP 0x1ffffffffull
+#define BCRYPTO_RSA_MIN_EXP_BITS 2
+#define BCRYPTO_RSA_MAX_EXP_BITS 33
+
 void
 bcrypto_rsa_key_init(bcrypto_rsa_key_t *key) {
   assert(key);
@@ -63,12 +72,12 @@ bcrypto_rsa_sane_pubkey(const bcrypto_rsa_key_t *key) {
 
   size_t nb = bcrypto_count_bits(key->nd, key->nl);
 
-  if (nb < 512 || nb > 16384)
+  if (nb < BCRYPTO_RSA_MIN_BITS || nb > BCRYPTO_RSA_MAX_BITS)
     return false;
 
   size_t eb = bcrypto_count_bits(key->ed, key->el);
 
-  if (eb < 2 || eb > 33)
+  if (eb < BCRYPTO_RSA_MIN_EXP_BITS || eb > BCRYPTO_RSA_MAX_EXP_BITS)
     return false;
 
   if ((key->ed[key->el - 1] & 1) == 0)
@@ -133,7 +142,7 @@ bcrypto_rsa_sane_compute(const bcrypto_rsa_key_t *key) {
     return false;
 
   if (nb != 0) {
-    if (nb < 512 || nb > 16384)
+    if (nb < BCRYPTO_RSA_MIN_BITS || nb > BCRYPTO_RSA_MAX_BITS)
       return false;
 
     if (pb + qb != nb)
@@ -141,7 +150,7 @@ bcrypto_rsa_sane_compute(const bcrypto_rsa_key_t *key) {
   }
 
   if (eb != 0) {
-    if (eb < 2 || eb > 33)
+    if (eb < BCRYPTO_RSA_MIN_EXP_BITS || eb > BCRYPTO_RSA_MAX_EXP_BITS)
       return false;
 
     if ((key->ed[key->el - 1] & 1) == 0)
@@ -523,13 +532,13 @@ bcrypto_rsa_privkey_generate(int bits, unsigned long long exp) {
   RSA *priv_r = NULL;
   BIGNUM *exp_bn = NULL;
 
-  if (bits < 512 || bits > 16384)
+  if (bits < BCRYPTO_RSA_MIN_BITS || bits > BCRYPTO_RSA_MAX_BITS)
     goto fail;
 
-  if (exp < 3ull || exp > 0x1ffffffffull)
+  if (exp < BCRYPTO_RSA_MIN_EXP || exp > BCRYPTO_RSA_MAX_EXP)
     goto fail;
 
-  if ((exp & 1ull) == 0)
+  if ((exp & 1ull) == 0ull)
     goto fail;
 
   priv_r = RSA_new();

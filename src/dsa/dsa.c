@@ -13,6 +13,12 @@
 #include "openssl/objects.h"
 #include "../random/random.h"
 
+#define BCRYPTO_DSA_DEFAULT_BITS 2048
+#define BCRYPTO_DSA_MIN_BITS 512
+#define BCRYPTO_DSA_MAX_BITS 10000
+#define BCRYPTO_DSA_MIN_HASH_SIZE 20
+#define BCRYPTO_DSA_MAX_HASH_SIZE 64
+
 void
 bcrypto_dsa_key_init(bcrypto_dsa_key_t *key) {
   assert(key);
@@ -63,7 +69,7 @@ bcrypto_dsa_sane_params(const bcrypto_dsa_key_t *params) {
   size_t qb = bcrypto_count_bits(params->qd, params->ql);
   size_t gb = bcrypto_count_bits(params->gd, params->gl);
 
-  if (pb < 1024 || pb > 3072)
+  if (pb < BCRYPTO_DSA_MIN_BITS || pb > BCRYPTO_DSA_MAX_BITS)
     return false;
 
   if (qb != 160 && qb != 224 && qb != 256)
@@ -114,7 +120,7 @@ bcrypto_dsa_sane_compute(const bcrypto_dsa_key_t *key) {
   size_t yb = bcrypto_count_bits(key->yd, key->yl);
   size_t xb = bcrypto_count_bits(key->xd, key->xl);
 
-  if (pb < 1024 || pb > 3072)
+  if (pb < BCRYPTO_DSA_MIN_BITS || pb > BCRYPTO_DSA_MAX_BITS)
     return false;
 
   if (qb != 160 && qb != 224 && qb != 256)
@@ -440,7 +446,7 @@ bcrypto_dsa_key_t *
 bcrypto_dsa_params_generate(int bits) {
   DSA *params_d = NULL;
 
-  if (bits < 1024 || bits > 3072)
+  if (bits < BCRYPTO_DSA_MIN_BITS || bits > BCRYPTO_DSA_MAX_BITS)
     goto fail;
 
   params_d = DSA_new();
@@ -859,8 +865,11 @@ bcrypto_dsa_sign(
   DSA *priv_d = NULL;
   DSA_SIG *sig_d = NULL;
 
-  if (msg == NULL || msg_len < 1 || msg_len > 64)
+  if (msg == NULL
+      || msg_len < BCRYPTO_DSA_MIN_HASH_SIZE
+      || msg_len > BCRYPTO_DSA_MAX_HASH_SIZE) {
     goto fail;
+  }
 
   if (!bcrypto_dsa_sane_privkey(priv))
     goto fail;
@@ -920,8 +929,11 @@ bcrypto_dsa_verify(
   DSA *pub_d = NULL;
   DSA_SIG *sig_d = NULL;
 
-  if (msg == NULL || msg_len < 1 || msg_len > 64)
+  if (msg == NULL
+      || msg_len < BCRYPTO_DSA_MIN_HASH_SIZE
+      || msg_len > BCRYPTO_DSA_MAX_HASH_SIZE) {
     goto fail;
+  }
 
   qsize = bcrypto_dsa_subprime_size(pub);
 
