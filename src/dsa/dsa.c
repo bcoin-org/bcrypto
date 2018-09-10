@@ -17,7 +17,7 @@
 #define BCRYPTO_DSA_MIN_BITS 512
 #define BCRYPTO_DSA_MAX_BITS 10000
 #define BCRYPTO_DSA_MIN_HASH_SIZE 20
-#define BCRYPTO_DSA_MAX_HASH_SIZE 64
+#define BCRYPTO_DSA_MAX_HASH_SIZE 128
 
 void
 bcrypto_dsa_key_init(bcrypto_dsa_key_t *key) {

@@ -69,7 +69,7 @@ bcrypto_ecdsa_valid_message(int type, const uint8_t *msg, size_t len) {
   if (msg == NULL)
     return false;
 
-  return len >= 1 && len <= 66;
+  return len >= 20 && len <= 128;
 }
 
 static bool

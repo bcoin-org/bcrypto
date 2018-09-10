@@ -1062,7 +1062,7 @@ bcrypto_rsa_verify(
   if (msg == NULL || msg_len != bcrypto_rsa_hash_size(type))
     goto fail;
 
-  if (sig == NULL || sig_len > bcrypto_rsa_mod_size(pub))
+  if (sig == NULL || sig_len != bcrypto_rsa_mod_size(pub))
     goto fail;
 
   if (!bcrypto_rsa_sane_pubkey(pub))
@@ -1159,7 +1159,7 @@ bcrypto_rsa_decrypt(
   uint8_t *out = NULL;
   int out_len = 0;
 
-  if (msg == NULL || msg_len > bcrypto_rsa_mod_size(priv))
+  if (msg == NULL || msg_len != bcrypto_rsa_mod_size(priv))
     goto fail;
 
   if (!bcrypto_rsa_sane_privkey(priv))
@@ -1354,7 +1354,7 @@ bcrypto_rsa_decrypt_oaep(
   if (!md)
     goto fail;
 
-  if (msg == NULL || msg_len > bcrypto_rsa_mod_size(priv))
+  if (msg == NULL || msg_len != bcrypto_rsa_mod_size(priv))
     goto fail;
 
   if (!bcrypto_rsa_sane_privkey(priv))
@@ -1597,7 +1597,7 @@ bcrypto_rsa_verify_pss(
   if (msg == NULL || msg_len != bcrypto_rsa_hash_size(type))
     goto fail;
 
-  if (sig == NULL || sig_len > bcrypto_rsa_mod_size(pub))
+  if (sig == NULL || sig_len != bcrypto_rsa_mod_size(pub))
     goto fail;
 
   if (!bcrypto_rsa_sane_pubkey(pub))

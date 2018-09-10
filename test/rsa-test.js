@@ -4,8 +4,10 @@
 'use strict';
 
 const assert = require('./util/assert');
+const MD5 = require('../lib/md5');
 const SHA1 = require('../lib/sha1');
 const SHA256 = require('../lib/sha256');
+const random = require('../lib/random');
 const rsa = require('../lib/rsa');
 const base64 = require('../lib/internal/base64');
 const vectors = require('./data/rsa.json');
@@ -109,6 +111,40 @@ describe('RSA', function() {
     const valid = rsa.verify(SHA256, msg, sig, pub);
 
     assert(valid);
+  });
+
+  it('should test signature padding (PKCS1v1.5)', () => {
+    const priv = rsa.privateKeyGenerate(512);
+    const pub = rsa.publicKeyCreate(priv);
+
+    let msg, sig;
+
+    do {
+      msg = random.randomBytes(32);
+      sig = rsa.sign(SHA256, msg, priv);
+    } while (sig[0] !== 0x00);
+
+    sig = sig.slice(1);
+
+    assert(!rsa.verify(SHA256, msg, sig, pub));
+    assert(rsa.verify(SHA256, msg, rsa.signatureImport(sig, pub), pub));
+  });
+
+  it('should test signature padding (PSS)', () => {
+    const priv = rsa.privateKeyGenerate(512);
+    const pub = rsa.publicKeyCreate(priv);
+
+    let msg, sig;
+
+    do {
+      msg = random.randomBytes(16);
+      sig = rsa.signPSS(MD5, msg, priv);
+    } while (sig[0] !== 0x00);
+
+    sig = sig.slice(1);
+
+    assert(!rsa.verifyPSS(MD5, msg, sig, pub));
+    assert(rsa.verifyPSS(MD5, msg, rsa.signatureImport(sig, pub), pub));
   });
 
   it('should encrypt and decrypt', () => {
