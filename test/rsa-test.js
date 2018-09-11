@@ -127,7 +127,7 @@ describe('RSA', function() {
     sig = sig.slice(1);
 
     assert(!rsa.verify(SHA256, msg, sig, pub));
-    assert(rsa.verify(SHA256, msg, rsa.signatureImport(sig, pub), pub));
+    assert(rsa.verifyLax(SHA256, msg, sig, pub));
   });
 
   it('should test signature padding (PSS)', () => {
@@ -144,7 +144,7 @@ describe('RSA', function() {
     sig = sig.slice(1);
 
     assert(!rsa.verifyPSS(MD5, msg, sig, pub));
-    assert(rsa.verifyPSS(MD5, msg, rsa.signatureImport(sig, pub), pub));
+    assert(rsa.verifyPSSLax(MD5, msg, sig, pub));
   });
 
   it('should encrypt and decrypt', () => {

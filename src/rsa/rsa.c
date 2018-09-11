@@ -485,6 +485,8 @@ bcrypto_rsa_hash_type(const char *alg) {
     type = NID_sha384;
   else if (strcmp(alg, "sha512") == 0)
     type = NID_sha512;
+  else if (strcmp(alg, "md5-sha1") == 0)
+    type = NID_md5_sha1;
 
   return type;
 }
@@ -506,6 +508,8 @@ bcrypto_rsa_hash_size(int type) {
       return 48;
     case NID_sha512:
       return 64;
+    case NID_md5_sha1:
+      return 36;
     default:
       return 0;
   }
@@ -1628,13 +1632,7 @@ bcrypto_rsa_verify_pss(
   if (em_len <= 0)
     goto fail;
 
-  int embits = bcrypto_rsa_mod_bits(pub) - 1;
-  int emlen = (embits + 7) / 8;
-
-  if (emlen < em_len) {
-    OPENSSL_cleanse(em, RSA_size(pub_r));
-    goto fail;
-  }
+  assert(em_len == RSA_size(pub_r));
 
   if (salt_len == 0)
     salt_len = -2; // RSA_PSS_SALTLEN_AUTO
