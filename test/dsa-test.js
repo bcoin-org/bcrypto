@@ -95,10 +95,10 @@ describe('DSA', function() {
     assert(!result2);
   });
 
-  if (process.env.NODE_BACKEND === 'js'
-      || process.env.NODE_BACKEND === 'node') {
+  if (dsa.native < 2) {
     it('should do diffie hellman', () => {
-      const params = createParams(P2048_256);
+      // const params = createParams(P2048_256);
+      const params = dsa.paramsGenerate(1024);
       const alice = dsa.privateKeyCreate(params);
       const alicePub = dsa.publicKeyCreate(alice);
       const bob = dsa.privateKeyCreate(params);
@@ -111,7 +111,8 @@ describe('DSA', function() {
     });
 
     it('should do HD derivation', () => {
-      const params = createParams(P2048_256);
+      // const params = createParams(P2048_256);
+      const params = dsa.paramsGenerate(1024);
       const priv = dsa.privateKeyCreate(params);
       const pub = dsa.publicKeyCreate(priv);
       const tweak = random.randomBytes(priv.size());
