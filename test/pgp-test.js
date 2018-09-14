@@ -387,14 +387,12 @@ describe('PGP', function() {
         assert.strictEqual(priv.params.iv.length, 16);
         assert.strictEqual(priv.data.length, 668);
 
-        if (process.env.NODE_BACKEND !== 'js') {
-          const secret = priv.secret(PASSPHRASE);
+        const secret = priv.secret(PASSPHRASE);
 
-          assert.strictEqual(secret.d.get().length, 256);
-          assert.strictEqual(secret.p.get().length, 128);
-          assert.strictEqual(secret.q.get().length, 128);
-          assert.strictEqual(secret.qi.get().length, 128);
-        }
+        assert.strictEqual(secret.d.get().length, 256);
+        assert.strictEqual(secret.p.get().length, 128);
+        assert.strictEqual(secret.q.get().length, 128);
+        assert.strictEqual(secret.qi.get().length, 128);
       }
 
       {
@@ -414,14 +412,12 @@ describe('PGP', function() {
         assert.strictEqual(priv.params.iv.length, 16);
         assert.strictEqual(priv.data.length, 668);
 
-        if (process.env.NODE_BACKEND !== 'js') {
-          const secret = priv.secret(PASSPHRASE);
+        const secret = priv.secret(PASSPHRASE);
 
-          assert.strictEqual(secret.d.get().length, 256);
-          assert.strictEqual(secret.p.get().length, 128);
-          assert.strictEqual(secret.q.get().length, 128);
-          assert.strictEqual(secret.qi.get().length, 128);
-        }
+        assert.strictEqual(secret.d.get().length, 256);
+        assert.strictEqual(secret.p.get().length, 128);
+        assert.strictEqual(secret.q.get().length, 128);
+        assert.strictEqual(secret.qi.get().length, 128);
       }
 
       {
@@ -442,11 +438,9 @@ describe('PGP', function() {
         assert.strictEqual(priv.params.iv.length, 16);
         assert.strictEqual(priv.data.length, 65);
 
-        if (process.env.NODE_BACKEND !== 'js') {
-          const secret = priv.secret(PASSPHRASE);
+        const secret = priv.secret(PASSPHRASE);
 
-          assert.strictEqual(secret.x.get().length, 43);
-        }
+        assert.strictEqual(secret.x.get().length, 43);
       }
 
       {
