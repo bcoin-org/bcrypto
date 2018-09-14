@@ -32,7 +32,7 @@ module.exports = EDDSA;
 * @returns {Signature} - signature
 */
 EDDSA.prototype.sign = function sign(message, secret) {
-  message = parseBytes(message);
+  // message = parseBytes(message);
   var key = this.keyFromSecret(secret);
   var r = this.hashInt(key.messagePrefix(), message);
   var R = this.g.mul(r);
@@ -50,7 +50,7 @@ EDDSA.prototype.sign = function sign(message, secret) {
 * @returns {Boolean} - true if public key matches sig of message
 */
 EDDSA.prototype.verify = function verify(message, sig, pub) {
-  message = parseBytes(message);
+  // message = parseBytes(message);
   sig = this.makeSignature(sig);
   var key = this.keyFromPublic(pub);
   var h = this.hashInt(sig.Rencoded(), key.pubBytes(), message);
