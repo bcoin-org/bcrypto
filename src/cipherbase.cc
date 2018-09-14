@@ -69,7 +69,8 @@ NAN_METHOD(BCipherBase::New) {
   if (mode != EVP_CIPH_ECB_MODE
       && mode != EVP_CIPH_CBC_MODE
       && mode != EVP_CIPH_CTR_MODE
-      && mode != EVP_CIPH_CFB_MODE) {
+      && mode != EVP_CIPH_CFB_MODE
+      && mode != EVP_CIPH_OFB_MODE) {
     return Nan::ThrowError("Invalid cipher mode.");
   }
 
