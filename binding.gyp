@@ -59,12 +59,15 @@
       "-O3"
     ],
     "cflags_c": [
-      "-std=c99"
+      "-std=c99",
+      "-Wno-unused-parameter"
     ],
     "cflags_cc+": [
       "-std=c++0x",
       "-Wno-maybe-uninitialized",
-      "-Wno-cast-function-type"
+      "-Wno-cast-function-type",
+      "-Wno-unused-parameter",
+      "-Wno-unknown-warning-option"
     ],
     "include_dirs": [
       "<!(node -e \"require('nan')\")"
@@ -72,7 +75,7 @@
     "variables": {
       "conditions": [
         ["OS!='win'", {
-          "cc": "<!(echo $CC)",
+          "cc": "<!(echo $CC)"
         }],
         ["OS=='win'", {
           "conditions": [
@@ -115,10 +118,10 @@
       }],
       ["OS=='win'", {
         "libraries": [
-          "-l<(openssl_root)/lib/libeay32.lib",
+          "-l<(openssl_root)/lib/libeay32.lib"
         ],
         "include_dirs": [
-          "<(openssl_root)/include",
+          "<(openssl_root)/include"
         ]
       }, {
         "include_dirs": [
@@ -170,10 +173,14 @@
       "-Wno-cast-function-type",
       "-Wno-unused-result",
       "-Wno-nonnull-compare",
+      "-Wno-unknown-warning-option",
       "-Wextra"
     ],
     "cflags_cc+": [
-      "-std=c++0x"
+      "-std=c++0x",
+      "-Wno-unused-parameter",
+      "-Wno-unused-const-variable",
+      "-Wno-unknown-warning-option"
     ],
     "conditions": [
       [
