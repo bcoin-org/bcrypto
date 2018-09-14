@@ -1,11 +1,10 @@
+#include "common.h"
 #include "hash160.h"
 #include "openssl/ripemd.h"
 
 static SHA256_CTX global_sctx;
 static RIPEMD160_CTX global_rctx;
 static uint8_t global_out[32];
-
-NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj);
 
 static Nan::Persistent<v8::FunctionTemplate> hash160_constructor;
 
@@ -193,9 +192,4 @@ NAN_METHOD(BHash160::Multi) {
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&global_out[0], 20).ToLocalChecked());
-}
-
-NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj) {
-  Nan::HandleScope scope;
-  return obj->IsNull() || obj->IsUndefined();
 }

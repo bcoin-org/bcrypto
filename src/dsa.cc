@@ -5,50 +5,31 @@
 
 #if NODE_MAJOR_VERSION >= 10
 
+#include "common.h"
 #include "dsa/dsa.h"
 #include "dsa.h"
 #include "dsa_async.h"
 
-static Nan::Persistent<v8::FunctionTemplate> dsa_constructor;
-
-BDSA::BDSA() {}
-
-BDSA::~BDSA() {}
-
 void
 BDSA::Init(v8::Local<v8::Object> &target) {
   Nan::HandleScope scope;
+  v8::Local<v8::Object> obj = Nan::New<v8::Object>();
 
-  v8::Local<v8::FunctionTemplate> tpl =
-    Nan::New<v8::FunctionTemplate>(BDSA::New);
+  Nan::Export(obj, "paramsGenerate", BDSA::ParamsGenerate);
+  Nan::Export(obj, "paramsGenerateAsync", BDSA::ParamsGenerateAsync);
+  Nan::Export(obj, "paramsVerify", BDSA::ParamsVerify);
+  Nan::Export(obj, "privateKeyCreate", BDSA::PrivateKeyCreate);
+  Nan::Export(obj, "privateKeyCompute", BDSA::PrivateKeyCompute);
+  Nan::Export(obj, "privateKeyVerify", BDSA::PrivateKeyVerify);
+  Nan::Export(obj, "privateKeyExport", BDSA::PrivateKeyExport);
+  Nan::Export(obj, "privateKeyImport", BDSA::PrivateKeyImport);
+  Nan::Export(obj, "publicKeyVerify", BDSA::PublicKeyVerify);
+  Nan::Export(obj, "publicKeyExport", BDSA::PublicKeyExport);
+  Nan::Export(obj, "publicKeyImport", BDSA::PublicKeyImport);
+  Nan::Export(obj, "sign", BDSA::Sign);
+  Nan::Export(obj, "verify", BDSA::Verify);
 
-  dsa_constructor.Reset(tpl);
-
-  tpl->SetClassName(Nan::New("DSA").ToLocalChecked());
-  tpl->InstanceTemplate()->SetInternalFieldCount(1);
-
-  Nan::SetMethod(tpl, "paramsGenerate", BDSA::ParamsGenerate);
-  Nan::SetMethod(tpl, "paramsGenerateAsync", BDSA::ParamsGenerateAsync);
-  Nan::SetMethod(tpl, "paramsVerify", BDSA::ParamsVerify);
-  Nan::SetMethod(tpl, "privateKeyCreate", BDSA::PrivateKeyCreate);
-  Nan::SetMethod(tpl, "privateKeyCompute", BDSA::PrivateKeyCompute);
-  Nan::SetMethod(tpl, "privateKeyVerify", BDSA::PrivateKeyVerify);
-  Nan::SetMethod(tpl, "privateKeyExport", BDSA::PrivateKeyExport);
-  Nan::SetMethod(tpl, "privateKeyImport", BDSA::PrivateKeyImport);
-  Nan::SetMethod(tpl, "publicKeyVerify", BDSA::PublicKeyVerify);
-  Nan::SetMethod(tpl, "publicKeyExport", BDSA::PublicKeyExport);
-  Nan::SetMethod(tpl, "publicKeyImport", BDSA::PublicKeyImport);
-  Nan::SetMethod(tpl, "sign", BDSA::Sign);
-  Nan::SetMethod(tpl, "verify", BDSA::Verify);
-
-  v8::Local<v8::FunctionTemplate> ctor =
-    Nan::New<v8::FunctionTemplate>(dsa_constructor);
-
-  target->Set(Nan::New("dsa").ToLocalChecked(), ctor->GetFunction());
-}
-
-NAN_METHOD(BDSA::New) {
-  return Nan::ThrowError("Could not create DSA instance.");
+  target->Set(Nan::New("dsa").ToLocalChecked(), obj);
 }
 
 NAN_METHOD(BDSA::ParamsGenerate) {

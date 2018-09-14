@@ -1,3 +1,4 @@
+#include "common.h"
 #include "pbkdf2_async.h"
 
 BPBKDF2Worker::BPBKDF2Worker (

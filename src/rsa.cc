@@ -5,56 +5,35 @@
 
 #if NODE_MAJOR_VERSION >= 10
 
+#include "common.h"
 #include "rsa/rsa.h"
 #include "rsa.h"
 #include "rsa_async.h"
 
-NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj);
-
-static Nan::Persistent<v8::FunctionTemplate> rsa_constructor;
-
-BRSA::BRSA() {}
-
-BRSA::~BRSA() {}
-
 void
 BRSA::Init(v8::Local<v8::Object> &target) {
   Nan::HandleScope scope;
+  v8::Local<v8::Object> obj = Nan::New<v8::Object>();
 
-  v8::Local<v8::FunctionTemplate> tpl =
-    Nan::New<v8::FunctionTemplate>(BRSA::New);
+  Nan::Export(obj, "privateKeyGenerate", BRSA::PrivateKeyGenerate);
+  Nan::Export(obj, "privateKeyGenerateAsync", BRSA::PrivateKeyGenerateAsync);
+  Nan::Export(obj, "privateKeyCompute", BRSA::PrivateKeyCompute);
+  Nan::Export(obj, "privateKeyVerify", BRSA::PrivateKeyVerify);
+  Nan::Export(obj, "privateKeyExport", BRSA::PrivateKeyExport);
+  Nan::Export(obj, "privateKeyImport", BRSA::PrivateKeyImport);
+  Nan::Export(obj, "publicKeyVerify", BRSA::PublicKeyVerify);
+  Nan::Export(obj, "publicKeyExport", BRSA::PublicKeyExport);
+  Nan::Export(obj, "publicKeyImport", BRSA::PublicKeyImport);
+  Nan::Export(obj, "sign", BRSA::Sign);
+  Nan::Export(obj, "verify", BRSA::Verify);
+  Nan::Export(obj, "encrypt", BRSA::Encrypt);
+  Nan::Export(obj, "decrypt", BRSA::Decrypt);
+  Nan::Export(obj, "encryptOAEP", BRSA::EncryptOAEP);
+  Nan::Export(obj, "decryptOAEP", BRSA::DecryptOAEP);
+  Nan::Export(obj, "signPSS", BRSA::SignPSS);
+  Nan::Export(obj, "verifyPSS", BRSA::VerifyPSS);
 
-  rsa_constructor.Reset(tpl);
-
-  tpl->SetClassName(Nan::New("RSA").ToLocalChecked());
-  tpl->InstanceTemplate()->SetInternalFieldCount(1);
-
-  Nan::SetMethod(tpl, "privateKeyGenerate", BRSA::PrivateKeyGenerate);
-  Nan::SetMethod(tpl, "privateKeyGenerateAsync", BRSA::PrivateKeyGenerateAsync);
-  Nan::SetMethod(tpl, "privateKeyCompute", BRSA::PrivateKeyCompute);
-  Nan::SetMethod(tpl, "privateKeyVerify", BRSA::PrivateKeyVerify);
-  Nan::SetMethod(tpl, "privateKeyExport", BRSA::PrivateKeyExport);
-  Nan::SetMethod(tpl, "privateKeyImport", BRSA::PrivateKeyImport);
-  Nan::SetMethod(tpl, "publicKeyVerify", BRSA::PublicKeyVerify);
-  Nan::SetMethod(tpl, "publicKeyExport", BRSA::PublicKeyExport);
-  Nan::SetMethod(tpl, "publicKeyImport", BRSA::PublicKeyImport);
-  Nan::SetMethod(tpl, "sign", BRSA::Sign);
-  Nan::SetMethod(tpl, "verify", BRSA::Verify);
-  Nan::SetMethod(tpl, "encrypt", BRSA::Encrypt);
-  Nan::SetMethod(tpl, "decrypt", BRSA::Decrypt);
-  Nan::SetMethod(tpl, "encryptOAEP", BRSA::EncryptOAEP);
-  Nan::SetMethod(tpl, "decryptOAEP", BRSA::DecryptOAEP);
-  Nan::SetMethod(tpl, "signPSS", BRSA::SignPSS);
-  Nan::SetMethod(tpl, "verifyPSS", BRSA::VerifyPSS);
-
-  v8::Local<v8::FunctionTemplate> ctor =
-    Nan::New<v8::FunctionTemplate>(rsa_constructor);
-
-  target->Set(Nan::New("rsa").ToLocalChecked(), ctor->GetFunction());
-}
-
-NAN_METHOD(BRSA::New) {
-  return Nan::ThrowError("Could not create RSA instance.");
+  target->Set(Nan::New("rsa").ToLocalChecked(), obj);
 }
 
 NAN_METHOD(BRSA::PrivateKeyGenerate) {
@@ -909,11 +888,6 @@ NAN_METHOD(BRSA::VerifyPSS) {
   bool result = bcrypto_rsa_verify_pss(alg, md, ml, sd, sl, &pub, salt_len);
 
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
-}
-
-NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj) {
-  Nan::HandleScope scope;
-  return obj->IsNull() || obj->IsUndefined();
 }
 
 #endif

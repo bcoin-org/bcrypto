@@ -3,39 +3,20 @@
 #include <node.h>
 #include <nan.h>
 
+#include "common.h"
 #include "scrypt/scrypt.h"
 #include "scrypt.h"
 #include "scrypt_async.h"
 
-static Nan::Persistent<v8::FunctionTemplate> scrypt_constructor;
-
-BScrypt::BScrypt() {}
-
-BScrypt::~BScrypt() {}
-
 void
 BScrypt::Init(v8::Local<v8::Object> &target) {
   Nan::HandleScope scope;
+  v8::Local<v8::Object> obj = Nan::New<v8::Object>();
 
-  v8::Local<v8::FunctionTemplate> tpl =
-    Nan::New<v8::FunctionTemplate>(BScrypt::New);
+  Nan::Export(obj, "derive", BScrypt::Derive);
+  Nan::Export(obj, "deriveAsync", BScrypt::DeriveAsync);
 
-  scrypt_constructor.Reset(tpl);
-
-  tpl->SetClassName(Nan::New("Scrypt").ToLocalChecked());
-  tpl->InstanceTemplate()->SetInternalFieldCount(1);
-
-  Nan::SetMethod(tpl, "derive", BScrypt::Derive);
-  Nan::SetMethod(tpl, "deriveAsync", BScrypt::DeriveAsync);
-
-  v8::Local<v8::FunctionTemplate> ctor =
-    Nan::New<v8::FunctionTemplate>(scrypt_constructor);
-
-  target->Set(Nan::New("scrypt").ToLocalChecked(), ctor->GetFunction());
-}
-
-NAN_METHOD(BScrypt::New) {
-  return Nan::ThrowError("Could not create Scrypt instance.");
+  target->Set(Nan::New("scrypt").ToLocalChecked(), obj);
 }
 
 NAN_METHOD(BScrypt::Derive) {

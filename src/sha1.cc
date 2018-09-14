@@ -1,9 +1,8 @@
+#include "common.h"
 #include "sha1.h"
 
 static SHA_CTX global_ctx;
 static uint8_t global_out[20];
-
-NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj);
 
 static Nan::Persistent<v8::FunctionTemplate> sha1_constructor;
 
@@ -175,9 +174,4 @@ NAN_METHOD(BSHA1::Multi) {
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&global_out[0], 20).ToLocalChecked());
-}
-
-NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj) {
-  Nan::HandleScope scope;
-  return obj->IsNull() || obj->IsUndefined();
 }

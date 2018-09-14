@@ -3,37 +3,18 @@
 #include <node.h>
 #include <nan.h>
 
+#include "common.h"
 #include "random/random.h"
 #include "random.h"
-
-static Nan::Persistent<v8::FunctionTemplate> random_constructor;
-
-BRandom::BRandom() {}
-
-BRandom::~BRandom() {}
 
 void
 BRandom::Init(v8::Local<v8::Object> &target) {
   Nan::HandleScope scope;
+  v8::Local<v8::Object> obj = Nan::New<v8::Object>();
 
-  v8::Local<v8::FunctionTemplate> tpl =
-    Nan::New<v8::FunctionTemplate>(BRandom::New);
+  Nan::Export(obj, "randomFill", BRandom::RandomFill);
 
-  random_constructor.Reset(tpl);
-
-  tpl->SetClassName(Nan::New("Random").ToLocalChecked());
-  tpl->InstanceTemplate()->SetInternalFieldCount(1);
-
-  Nan::SetMethod(tpl, "randomFill", BRandom::RandomFill);
-
-  v8::Local<v8::FunctionTemplate> ctor =
-    Nan::New<v8::FunctionTemplate>(random_constructor);
-
-  target->Set(Nan::New("random").ToLocalChecked(), ctor->GetFunction());
-}
-
-NAN_METHOD(BRandom::New) {
-  return Nan::ThrowError("Could not create Random instance.");
+  target->Set(Nan::New("random").ToLocalChecked(), obj);
 }
 
 NAN_METHOD(BRandom::RandomFill) {

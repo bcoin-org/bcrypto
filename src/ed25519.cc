@@ -3,42 +3,21 @@
 #include <node.h>
 #include <nan.h>
 
+#include "common.h"
 #include "ed25519/ed25519.h"
 #include "ed25519.h"
-
-static Nan::Persistent<v8::FunctionTemplate> ed25519_constructor;
-
-NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj);
-
-BED25519::BED25519() {}
-
-BED25519::~BED25519() {}
 
 void
 BED25519::Init(v8::Local<v8::Object> &target) {
   Nan::HandleScope scope;
+  v8::Local<v8::Object> obj = Nan::New<v8::Object>();
 
-  v8::Local<v8::FunctionTemplate> tpl =
-    Nan::New<v8::FunctionTemplate>(BED25519::New);
+  Nan::Export(obj, "publicKeyCreate", BED25519::PublicKeyCreate);
+  Nan::Export(obj, "publicKeyVerify", BED25519::PublicKeyVerify);
+  Nan::Export(obj, "sign", BED25519::Sign);
+  Nan::Export(obj, "verify", BED25519::Verify);
 
-  ed25519_constructor.Reset(tpl);
-
-  tpl->SetClassName(Nan::New("ED25519").ToLocalChecked());
-  tpl->InstanceTemplate()->SetInternalFieldCount(1);
-
-  Nan::SetMethod(tpl, "publicKeyCreate", BED25519::PublicKeyCreate);
-  Nan::SetMethod(tpl, "publicKeyVerify", BED25519::PublicKeyVerify);
-  Nan::SetMethod(tpl, "sign", BED25519::Sign);
-  Nan::SetMethod(tpl, "verify", BED25519::Verify);
-
-  v8::Local<v8::FunctionTemplate> ctor =
-    Nan::New<v8::FunctionTemplate>(ed25519_constructor);
-
-  target->Set(Nan::New("ed25519").ToLocalChecked(), ctor->GetFunction());
-}
-
-NAN_METHOD(BED25519::New) {
-  return Nan::ThrowError("Could not create ED25519 instance.");
+  target->Set(Nan::New("ed25519").ToLocalChecked(), obj);
 }
 
 NAN_METHOD(BED25519::PublicKeyCreate) {
@@ -143,9 +122,4 @@ NAN_METHOD(BED25519::Verify) {
   bool result = ed25519_sign_open(msg, msg_len, pub, sig) == 0;
 
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
-}
-
-NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj) {
-  Nan::HandleScope scope;
-  return obj->IsNull() || obj->IsUndefined();
 }

@@ -1,3 +1,4 @@
+#include "common.h"
 #include "poly1305.h"
 
 static Nan::Persistent<v8::FunctionTemplate> poly1305_constructor;

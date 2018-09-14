@@ -1,3 +1,4 @@
+#include "common.h"
 #include "scrypt/scrypt.h"
 #include "scrypt_async.h"
 

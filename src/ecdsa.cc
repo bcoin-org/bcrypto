@@ -5,50 +5,29 @@
 
 #if NODE_MAJOR_VERSION >= 10
 
+#include "common.h"
 #include "ecdsa/ecdsa.h"
 #include "ecdsa.h"
-
-static Nan::Persistent<v8::FunctionTemplate> ecdsa_constructor;
-
-NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj);
-
-BECDSA::BECDSA() {}
-
-BECDSA::~BECDSA() {}
 
 void
 BECDSA::Init(v8::Local<v8::Object> &target) {
   Nan::HandleScope scope;
+  v8::Local<v8::Object> obj = Nan::New<v8::Object>();
 
-  v8::Local<v8::FunctionTemplate> tpl =
-    Nan::New<v8::FunctionTemplate>(BECDSA::New);
+  Nan::Export(obj, "privateKeyGenerate", BECDSA::PrivateKeyGenerate);
+  Nan::Export(obj, "privateKeyExport", BECDSA::PrivateKeyExport);
+  Nan::Export(obj, "privateKeyImport", BECDSA::PrivateKeyImport);
+  Nan::Export(obj, "privateKeyTweakAdd", BECDSA::PrivateKeyTweakAdd);
+  Nan::Export(obj, "publicKeyCreate", BECDSA::PublicKeyCreate);
+  Nan::Export(obj, "publicKeyConvert", BECDSA::PublicKeyConvert);
+  Nan::Export(obj, "publicKeyVerify", BECDSA::PublicKeyVerify);
+  Nan::Export(obj, "publicKeyTweakAdd", BECDSA::PublicKeyTweakAdd);
+  Nan::Export(obj, "sign", BECDSA::Sign);
+  Nan::Export(obj, "verify", BECDSA::Verify);
+  Nan::Export(obj, "recover", BECDSA::Recover);
+  Nan::Export(obj, "ecdh", BECDSA::ECDH);
 
-  ecdsa_constructor.Reset(tpl);
-
-  tpl->SetClassName(Nan::New("ECDSA").ToLocalChecked());
-  tpl->InstanceTemplate()->SetInternalFieldCount(1);
-
-  Nan::SetMethod(tpl, "privateKeyGenerate", BECDSA::PrivateKeyGenerate);
-  Nan::SetMethod(tpl, "privateKeyExport", BECDSA::PrivateKeyExport);
-  Nan::SetMethod(tpl, "privateKeyImport", BECDSA::PrivateKeyImport);
-  Nan::SetMethod(tpl, "privateKeyTweakAdd", BECDSA::PrivateKeyTweakAdd);
-  Nan::SetMethod(tpl, "publicKeyCreate", BECDSA::PublicKeyCreate);
-  Nan::SetMethod(tpl, "publicKeyConvert", BECDSA::PublicKeyConvert);
-  Nan::SetMethod(tpl, "publicKeyVerify", BECDSA::PublicKeyVerify);
-  Nan::SetMethod(tpl, "publicKeyTweakAdd", BECDSA::PublicKeyTweakAdd);
-  Nan::SetMethod(tpl, "sign", BECDSA::Sign);
-  Nan::SetMethod(tpl, "verify", BECDSA::Verify);
-  Nan::SetMethod(tpl, "recover", BECDSA::Recover);
-  Nan::SetMethod(tpl, "ecdh", BECDSA::ECDH);
-
-  v8::Local<v8::FunctionTemplate> ctor =
-    Nan::New<v8::FunctionTemplate>(ecdsa_constructor);
-
-  target->Set(Nan::New("ecdsa").ToLocalChecked(), ctor->GetFunction());
-}
-
-NAN_METHOD(BECDSA::New) {
-  return Nan::ThrowError("Could not create ECDSA instance.");
+  target->Set(Nan::New("ecdsa").ToLocalChecked(), obj);
 }
 
 NAN_METHOD(BECDSA::PrivateKeyGenerate) {
@@ -501,11 +480,6 @@ NAN_METHOD(BECDSA::ECDH) {
 
   return info.GetReturnValue().Set(
     Nan::NewBuffer((char *)secret, secret_len).ToLocalChecked());
-}
-
-NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj) {
-  Nan::HandleScope scope;
-  return obj->IsNull() || obj->IsUndefined();
 }
 
 #endif

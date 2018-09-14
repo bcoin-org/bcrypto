@@ -10,6 +10,7 @@
 #include <node.h>
 #include <nan.h>
 
+#include "common.h"
 #include "aead.h"
 #include "aes.h"
 #include "blake2b.h"

@@ -4,13 +4,9 @@
 #include <nan.h>
 
 #if NODE_MAJOR_VERSION >= 10
-class BRSA : public Nan::ObjectWrap {
+class BRSA {
 public:
-  static NAN_METHOD(New);
   static void Init(v8::Local<v8::Object> &target);
-
-  BRSA();
-  ~BRSA();
 
 private:
   static NAN_METHOD(PrivateKeyGenerate);

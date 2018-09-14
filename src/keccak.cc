@@ -1,9 +1,8 @@
+#include "common.h"
 #include "keccak.h"
 
 static bcrypto_keccak_ctx global_ctx;
 static uint8_t global_out[64];
-
-NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj);
 
 static Nan::Persistent<v8::FunctionTemplate> keccak_constructor;
 
@@ -335,9 +334,4 @@ NAN_METHOD(BKeccak::Multi) {
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&global_out[0], outlen).ToLocalChecked());
-}
-
-NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj) {
-  Nan::HandleScope scope;
-  return obj->IsNull() || obj->IsUndefined();
 }

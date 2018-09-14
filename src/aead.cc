@@ -1,9 +1,8 @@
+#include "common.h"
 #include "aead/aead.h"
 #include "aead.h"
 
 static Nan::Persistent<v8::FunctionTemplate> aead_constructor;
-
-NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj);
 
 BAEAD::BAEAD() {
   bcrypto_aead_init(&ctx);
@@ -418,9 +417,4 @@ NAN_METHOD(BAEAD::Verify) {
   bool result = bcrypto_aead_verify(adata, bdata);
 
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
-}
-
-NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj) {
-  Nan::HandleScope scope;
-  return obj->IsNull() || obj->IsUndefined();
 }

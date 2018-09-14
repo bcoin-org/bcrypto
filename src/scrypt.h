@@ -3,13 +3,9 @@
 #include <node.h>
 #include <nan.h>
 
-class BScrypt : public Nan::ObjectWrap {
+class BScrypt {
 public:
-  static NAN_METHOD(New);
   static void Init(v8::Local<v8::Object> &target);
-
-  BScrypt();
-  ~BScrypt();
 
 private:
   static NAN_METHOD(Derive);

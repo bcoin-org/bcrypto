@@ -3,40 +3,21 @@
 #include <node.h>
 #include <nan.h>
 
+#include "common.h"
 #include "openssl/evp.h"
 #include "pbkdf2/pbkdf2.h"
 #include "pbkdf2.h"
 #include "pbkdf2_async.h"
 
-static Nan::Persistent<v8::FunctionTemplate> pbkdf2_constructor;
-
-BPBKDF2::BPBKDF2() {}
-
-BPBKDF2::~BPBKDF2() {}
-
 void
 BPBKDF2::Init(v8::Local<v8::Object> &target) {
   Nan::HandleScope scope;
+  v8::Local<v8::Object> obj = Nan::New<v8::Object>();
 
-  v8::Local<v8::FunctionTemplate> tpl =
-    Nan::New<v8::FunctionTemplate>(BPBKDF2::New);
+  Nan::Export(obj, "derive", BPBKDF2::Derive);
+  Nan::Export(obj, "deriveAsync", BPBKDF2::DeriveAsync);
 
-  pbkdf2_constructor.Reset(tpl);
-
-  tpl->SetClassName(Nan::New("PBKDF2").ToLocalChecked());
-  tpl->InstanceTemplate()->SetInternalFieldCount(1);
-
-  Nan::SetMethod(tpl, "derive", BPBKDF2::Derive);
-  Nan::SetMethod(tpl, "deriveAsync", BPBKDF2::DeriveAsync);
-
-  v8::Local<v8::FunctionTemplate> ctor =
-    Nan::New<v8::FunctionTemplate>(pbkdf2_constructor);
-
-  target->Set(Nan::New("pbkdf2").ToLocalChecked(), ctor->GetFunction());
-}
-
-NAN_METHOD(BPBKDF2::New) {
-  return Nan::ThrowError("Could not create PBKDF2 instance.");
+  target->Set(Nan::New("pbkdf2").ToLocalChecked(), obj);
 }
 
 NAN_METHOD(BPBKDF2::Derive) {

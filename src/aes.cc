@@ -3,38 +3,19 @@
 #include <node.h>
 #include <nan.h>
 
+#include "common.h"
 #include "aes/aes.h"
 #include "aes.h"
-
-static Nan::Persistent<v8::FunctionTemplate> aes_constructor;
-
-BAES::BAES() {}
-
-BAES::~BAES() {}
 
 void
 BAES::Init(v8::Local<v8::Object> &target) {
   Nan::HandleScope scope;
+  v8::Local<v8::Object> obj = Nan::New<v8::Object>();
 
-  v8::Local<v8::FunctionTemplate> tpl =
-    Nan::New<v8::FunctionTemplate>(BAES::New);
+  Nan::Export(obj, "encipher", BAES::Encipher);
+  Nan::Export(obj, "decipher", BAES::Decipher);
 
-  aes_constructor.Reset(tpl);
-
-  tpl->SetClassName(Nan::New("AES").ToLocalChecked());
-  tpl->InstanceTemplate()->SetInternalFieldCount(1);
-
-  Nan::SetMethod(tpl, "encipher", BAES::Encipher);
-  Nan::SetMethod(tpl, "decipher", BAES::Decipher);
-
-  v8::Local<v8::FunctionTemplate> ctor =
-    Nan::New<v8::FunctionTemplate>(aes_constructor);
-
-  target->Set(Nan::New("aes").ToLocalChecked(), ctor->GetFunction());
-}
-
-NAN_METHOD(BAES::New) {
-  return Nan::ThrowError("Could not create AES instance.");
+  target->Set(Nan::New("aes").ToLocalChecked(), obj);
 }
 
 NAN_METHOD(BAES::Encipher) {

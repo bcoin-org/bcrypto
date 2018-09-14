@@ -1,9 +1,8 @@
+#include "common.h"
 #include "blake2b.h"
 
 static bcrypto_blake2b_ctx global_ctx;
 static uint8_t global_out[BCRYPTO_BLAKE2B_OUTBYTES];
-
-NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj);
 
 static Nan::Persistent<v8::FunctionTemplate> blake2b_constructor;
 
@@ -324,9 +323,4 @@ NAN_METHOD(BBlake2b::Mac) {
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&global_out[0], outlen).ToLocalChecked());
-}
-
-NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj) {
-  Nan::HandleScope scope;
-  return obj->IsNull() || obj->IsUndefined();
 }

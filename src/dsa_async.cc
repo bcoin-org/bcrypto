@@ -3,6 +3,7 @@
 #include <nan.h>
 
 #if NODE_MAJOR_VERSION >= 10
+#include "common.h"
 #include "dsa/dsa.h"
 #include "dsa_async.h"
 

@@ -4,13 +4,9 @@
 #include <nan.h>
 
 #if NODE_MAJOR_VERSION >= 10
-class BDSA : public Nan::ObjectWrap {
+class BDSA {
 public:
-  static NAN_METHOD(New);
   static void Init(v8::Local<v8::Object> &target);
-
-  BDSA();
-  ~BDSA();
 
 private:
   static NAN_METHOD(ParamsGenerate);

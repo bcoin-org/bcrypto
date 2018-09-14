@@ -1,8 +1,7 @@
+#include "common.h"
 #include "chacha20.h"
 
 static Nan::Persistent<v8::FunctionTemplate> chacha20_constructor;
-
-NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj);
 
 BChaCha20::BChaCha20() {
   memset(&ctx, 0, sizeof(bcrypto_chacha20_ctx));
@@ -178,9 +177,4 @@ NAN_METHOD(BChaCha20::GetCounter) {
   BChaCha20 *chacha = ObjectWrap::Unwrap<BChaCha20>(info.Holder());
   info.GetReturnValue().Set(
     Nan::New<v8::Number>((double)bcrypto_chacha20_counter_get(&chacha->ctx)));
-}
-
-NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj) {
-  Nan::HandleScope scope;
-  return obj->IsNull() || obj->IsUndefined();
 }

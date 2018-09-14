@@ -1,9 +1,8 @@
+#include "common.h"
 #include "cipherbase.h"
 #include "openssl/evp.h"
 
 static Nan::Persistent<v8::FunctionTemplate> cipher_constructor;
-
-NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj);
 
 BCipherBase::BCipherBase() {
   type = NULL;
@@ -215,9 +214,4 @@ NAN_METHOD(BCipherBase::Final) {
 
   return info.GetReturnValue().Set(
     Nan::NewBuffer((char *)out, (size_t)out_len).ToLocalChecked());
-}
-
-NAN_INLINE static bool IsNull(v8::Local<v8::Value> obj) {
-  Nan::HandleScope scope;
-  return obj->IsNull() || obj->IsUndefined();
 }

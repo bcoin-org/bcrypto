@@ -5,13 +5,9 @@
 #include <nan.h>
 
 #if NODE_MAJOR_VERSION >= 10
-class BECDSA : public Nan::ObjectWrap {
+class BECDSA {
 public:
-  static NAN_METHOD(New);
   static void Init(v8::Local<v8::Object> &target);
-
-  BECDSA();
-  ~BECDSA();
 
 private:
   static NAN_METHOD(PrivateKeyGenerate);
