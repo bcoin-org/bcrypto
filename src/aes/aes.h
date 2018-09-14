@@ -1,8 +1,8 @@
 #ifndef _BCRYPTO_CIPHER_H
 #define _BCRYPTO_CIPHER_H
 
-#define BCRYPTO_ENCIPHER_SIZE(len) ((len) + (16 - ((len) % 16)));
-#define BCRYPTO_DECIPHER_SIZE(len) (len)
+#define BCRYPTO_AES_ENCIPHER_SIZE(len) ((len) + (16 - ((len) % 16)));
+#define BCRYPTO_AES_DECIPHER_SIZE(len) (len)
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -12,7 +12,7 @@ extern "C" {
 #endif
 
 bool
-bcrypto_encipher(
+bcrypto_aes_encipher(
   const uint8_t *data,
   const uint32_t datalen,
   const uint8_t *key,
@@ -22,7 +22,7 @@ bcrypto_encipher(
 );
 
 bool
-bcrypto_decipher(
+bcrypto_aes_decipher(
   const uint8_t *data,
   const uint32_t datalen,
   const uint8_t *key,

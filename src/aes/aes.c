@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "cipher.h"
+#include "aes.h"
 #include "openssl/aes.h"
 
 static inline void
@@ -13,7 +13,7 @@ XOR(uint8_t *out, uint8_t *a, uint8_t *b) {
 }
 
 bool
-bcrypto_encipher(
+bcrypto_aes_encipher(
   const uint8_t *data,
   const uint32_t datalen,
   const uint8_t *key,
@@ -63,7 +63,7 @@ bcrypto_encipher(
 }
 
 bool
-bcrypto_decipher(
+bcrypto_aes_decipher(
   const uint8_t *data,
   const uint32_t datalen,
   const uint8_t *key,

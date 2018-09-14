@@ -10,15 +10,8 @@
 #include <node.h>
 #include <nan.h>
 
-// For "cleanse"
-#include "openssl/crypto.h"
-
-#include "cipher/cipher.h"
-#include "pbkdf2/pbkdf2.h"
-#include "random/random.h"
-#include "scrypt/scrypt.h"
-
 #include "aead.h"
+#include "aes.h"
 #include "blake2b.h"
 #include "chacha20.h"
 #include "cipherbase.h"
@@ -32,12 +25,13 @@
 #include "keccak.h"
 #include "md5.h"
 #include "poly1305.h"
-#include "pbkdf2_async.h"
+#include "pbkdf2.h"
+#include "random.h"
 #include "ripemd160.h"
 #if NODE_MAJOR_VERSION >= 10
 #include "rsa.h"
 #endif
-#include "scrypt_async.h"
+#include "scrypt.h"
 #include "sha1.h"
 #include "sha224.h"
 #include "sha256.h"
@@ -46,217 +40,8 @@
 
 #include "bcrypto.h"
 
-NAN_METHOD(pbkdf2) {
-  if (info.Length() < 5)
-    return Nan::ThrowError("pbkdf2() requires arguments.");
-
-  if (!info[0]->IsString())
-    return Nan::ThrowTypeError("First argument must be a string.");
-
-  v8::Local<v8::Object> kbuf = info[1].As<v8::Object>();
-
-  if (!node::Buffer::HasInstance(kbuf))
-    return Nan::ThrowTypeError("Second argument must be a buffer.");
-
-  v8::Local<v8::Object> sbuf = info[2].As<v8::Object>();
-
-  if (!node::Buffer::HasInstance(sbuf))
-    return Nan::ThrowTypeError("Third argument must be a buffer.");
-
-  if (!info[3]->IsNumber())
-    return Nan::ThrowTypeError("Fourth argument must be a number.");
-
-  if (!info[4]->IsNumber())
-    return Nan::ThrowTypeError("Fifth argument must be a number.");
-
-  Nan::Utf8String name_(info[0]);
-  const char *name = (const char *)*name_;
-
-  const uint8_t *data = (const uint8_t *)node::Buffer::Data(kbuf);
-  uint32_t datalen = (uint32_t)node::Buffer::Length(kbuf);
-  const uint8_t *salt = (const uint8_t *)node::Buffer::Data(sbuf);
-  uint32_t saltlen = (size_t)node::Buffer::Length(sbuf);
-  uint32_t iter = info[3]->Uint32Value();
-  uint32_t keylen = info[4]->Uint32Value();
-
-  uint8_t *key = (uint8_t *)malloc(keylen);
-
-  if (key == NULL)
-    return Nan::ThrowError("Could not allocate key.");
-
-  if (!bcrypto_pbkdf2(name, data, datalen, salt, saltlen, iter, key, keylen)) {
-    free(key);
-    return Nan::ThrowError("PBKDF2 failed.");
-  }
-
-  info.GetReturnValue().Set(
-    Nan::NewBuffer((char *)key, keylen).ToLocalChecked());
-}
-
-NAN_METHOD(pbkdf2_async) {
-  if (info.Length() < 6)
-    return Nan::ThrowError("pbkdf2_async() requires arguments.");
-
-  if (!info[0]->IsString())
-    return Nan::ThrowTypeError("First argument must be a string.");
-
-  v8::Local<v8::Object> dbuf = info[1].As<v8::Object>();
-
-  if (!node::Buffer::HasInstance(dbuf))
-    return Nan::ThrowTypeError("Second argument must be a buffer.");
-
-  v8::Local<v8::Object> sbuf = info[2].As<v8::Object>();
-
-  if (!node::Buffer::HasInstance(sbuf))
-    return Nan::ThrowTypeError("Third argument must be a buffer.");
-
-  if (!info[3]->IsNumber())
-    return Nan::ThrowTypeError("Fourth argument must be a number.");
-
-  if (!info[4]->IsNumber())
-    return Nan::ThrowTypeError("Fifth argument must be a number.");
-
-  if (!info[5]->IsFunction())
-    return Nan::ThrowTypeError("Sixth argument must be a Function.");
-
-  v8::Local<v8::Function> callback = info[5].As<v8::Function>();
-
-  Nan::Utf8String name_(info[0]);
-  const char *name = (const char *)*name_;
-
-  const EVP_MD* md = EVP_get_digestbyname(name);
-
-  if (md == NULL)
-    return Nan::ThrowTypeError("Could not allocate context.");
-
-  const uint8_t *data = (const uint8_t *)node::Buffer::Data(dbuf);
-  uint32_t datalen = (uint32_t)node::Buffer::Length(dbuf);
-  const uint8_t *salt = (const uint8_t *)node::Buffer::Data(sbuf);
-  uint32_t saltlen = (size_t)node::Buffer::Length(sbuf);
-  uint32_t iter = info[3]->Uint32Value();
-  uint32_t keylen = info[4]->Uint32Value();
-
-  BPBKDF2Worker *worker = new BPBKDF2Worker(
-    dbuf,
-    sbuf,
-    md,
-    data,
-    datalen,
-    salt,
-    saltlen,
-    iter,
-    keylen,
-    new Nan::Callback(callback)
-  );
-
-  Nan::AsyncQueueWorker(worker);
-}
-
-NAN_METHOD(scrypt) {
-  if (info.Length() < 6)
-    return Nan::ThrowError("scrypt() requires arguments.");
-
-  v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
-
-  if (!node::Buffer::HasInstance(pbuf))
-    return Nan::ThrowTypeError("First argument must be a buffer.");
-
-  v8::Local<v8::Object> sbuf = info[1].As<v8::Object>();
-
-  if (!node::Buffer::HasInstance(sbuf))
-    return Nan::ThrowTypeError("Second argument must be a buffer.");
-
-  if (!info[2]->IsNumber())
-    return Nan::ThrowTypeError("Third argument must be a number.");
-
-  if (!info[3]->IsNumber())
-    return Nan::ThrowTypeError("Fourth argument must be a number.");
-
-  if (!info[4]->IsNumber())
-    return Nan::ThrowTypeError("Fifth argument must be a number.");
-
-  if (!info[5]->IsNumber())
-    return Nan::ThrowTypeError("Sixth argument must be a number.");
-
-  const uint8_t *pass = (const uint8_t *)node::Buffer::Data(pbuf);
-  uint32_t passlen = (uint32_t)node::Buffer::Length(pbuf);
-  const uint8_t *salt = (const uint8_t *)node::Buffer::Data(sbuf);
-  size_t saltlen = (size_t)node::Buffer::Length(sbuf);
-  uint64_t N = (uint64_t)info[2]->IntegerValue();
-  uint64_t r = (uint64_t)info[3]->IntegerValue();
-  uint64_t p = (uint64_t)info[4]->IntegerValue();
-  size_t keylen = (size_t)info[5]->IntegerValue();
-
-  uint8_t *key = (uint8_t *)malloc(keylen);
-
-  if (key == NULL)
-    return Nan::ThrowError("Could not allocate key.");
-
-  if (!bcrypto_scrypt(pass, passlen, salt, saltlen, N, r, p, key, keylen)) {
-    free(key);
-    return Nan::ThrowError("Scrypt failed.");
-  }
-
-  info.GetReturnValue().Set(
-    Nan::NewBuffer((char *)key, keylen).ToLocalChecked());
-}
-
-NAN_METHOD(scrypt_async) {
-  if (info.Length() < 6)
-    return Nan::ThrowError("scrypt_async() requires arguments.");
-
-  v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
-
-  if (!node::Buffer::HasInstance(pbuf))
-    return Nan::ThrowTypeError("First argument must be a buffer.");
-
-  v8::Local<v8::Object> sbuf = info[1].As<v8::Object>();
-
-  if (!node::Buffer::HasInstance(sbuf))
-    return Nan::ThrowTypeError("Second argument must be a buffer.");
-
-  if (!info[2]->IsNumber())
-    return Nan::ThrowTypeError("Third argument must be a number.");
-
-  if (!info[3]->IsNumber())
-    return Nan::ThrowTypeError("Fourth argument must be a number.");
-
-  if (!info[4]->IsNumber())
-    return Nan::ThrowTypeError("Fifth argument must be a number.");
-
-  if (!info[5]->IsNumber())
-    return Nan::ThrowTypeError("Sixth argument must be a number.");
-
-  if (!info[6]->IsFunction())
-    return Nan::ThrowTypeError("Seventh argument must be a Function.");
-
-  v8::Local<v8::Function> callback = info[6].As<v8::Function>();
-
-  const uint8_t *pass = (const uint8_t *)node::Buffer::Data(pbuf);
-  uint32_t passlen = (uint32_t)node::Buffer::Length(pbuf);
-  const uint8_t *salt = (const uint8_t *)node::Buffer::Data(sbuf);
-  size_t saltlen = (size_t)node::Buffer::Length(sbuf);
-  uint64_t N = (uint64_t)info[2]->IntegerValue();
-  uint64_t r = (uint64_t)info[3]->IntegerValue();
-  uint64_t p = (uint64_t)info[4]->IntegerValue();
-  size_t keylen = (size_t)info[5]->IntegerValue();
-
-  BScryptWorker* worker = new BScryptWorker(
-    pbuf,
-    sbuf,
-    pass,
-    passlen,
-    salt,
-    saltlen,
-    N,
-    r,
-    p,
-    keylen,
-    new Nan::Callback(callback)
-  );
-
-  Nan::AsyncQueueWorker(worker);
-}
+// For "cleanse"
+#include "openssl/crypto.h"
 
 NAN_METHOD(cleanse) {
   if (info.Length() < 1)
@@ -273,150 +58,13 @@ NAN_METHOD(cleanse) {
   OPENSSL_cleanse((void *)data, len);
 }
 
-NAN_METHOD(encipher) {
-  if (info.Length() < 3)
-    return Nan::ThrowError("encipher() requires arguments.");
-
-  if (!node::Buffer::HasInstance(info[0]))
-    return Nan::ThrowTypeError("First argument must be a buffer.");
-
-  if (!node::Buffer::HasInstance(info[1]))
-    return Nan::ThrowTypeError("Second argument must be a buffer.");
-
-  if (!node::Buffer::HasInstance(info[2]))
-    return Nan::ThrowTypeError("Third argument must be a buffer.");
-
-  v8::Local<v8::Object> bdata = info[0].As<v8::Object>();
-  v8::Local<v8::Object> bkey = info[1].As<v8::Object>();
-  v8::Local<v8::Object> biv = info[2].As<v8::Object>();
-
-  uint8_t *data = (uint8_t *)node::Buffer::Data(bdata);
-  size_t dlen = node::Buffer::Length(bdata);
-
-  const uint8_t *key = (uint8_t *)node::Buffer::Data(bkey);
-  size_t klen = node::Buffer::Length(bkey);
-
-  const uint8_t *iv = (uint8_t *)node::Buffer::Data(biv);
-  size_t ilen = node::Buffer::Length(biv);
-
-  if (klen != 32)
-    return Nan::ThrowError("Bad key size.");
-
-  if (ilen != 16)
-    return Nan::ThrowError("Bad IV size.");
-
-  uint32_t olen = BCRYPTO_ENCIPHER_SIZE(dlen);
-  uint8_t *out = (uint8_t *)malloc(olen);
-
-  if (out == NULL)
-    return Nan::ThrowError("Could not allocate ciphertext.");
-
-  if (!bcrypto_encipher(data, dlen, key, iv, out, &olen)) {
-    free(out);
-    return Nan::ThrowError("Encipher failed.");
-  }
-
-  info.GetReturnValue().Set(
-    Nan::NewBuffer((char *)out, olen).ToLocalChecked());
-}
-
-NAN_METHOD(decipher) {
-  if (info.Length() < 3)
-    return Nan::ThrowError("decipher() requires arguments.");
-
-  if (!node::Buffer::HasInstance(info[0]))
-    return Nan::ThrowTypeError("First argument must be a buffer.");
-
-  if (!node::Buffer::HasInstance(info[1]))
-    return Nan::ThrowTypeError("Second argument must be a buffer.");
-
-  if (!node::Buffer::HasInstance(info[2]))
-    return Nan::ThrowTypeError("Third argument must be a buffer.");
-
-  v8::Local<v8::Object> bdata = info[0].As<v8::Object>();
-  v8::Local<v8::Object> bkey = info[1].As<v8::Object>();
-  v8::Local<v8::Object> biv = info[2].As<v8::Object>();
-
-  uint8_t *data = (uint8_t *)node::Buffer::Data(bdata);
-  size_t dlen = node::Buffer::Length(bdata);
-
-  const uint8_t *key = (uint8_t *)node::Buffer::Data(bkey);
-  size_t klen = node::Buffer::Length(bkey);
-
-  const uint8_t *iv = (uint8_t *)node::Buffer::Data(biv);
-  size_t ilen = node::Buffer::Length(biv);
-
-  if (klen != 32)
-    return Nan::ThrowError("Bad key size.");
-
-  if (ilen != 16)
-    return Nan::ThrowError("Bad IV size.");
-
-  uint32_t olen = BCRYPTO_DECIPHER_SIZE(dlen);
-  uint8_t *out = (uint8_t *)malloc(olen);
-
-  if (out == NULL)
-    return Nan::ThrowError("Could not allocate plaintext.");
-
-  if (!bcrypto_decipher(data, dlen, key, iv, out, &olen)) {
-    free(out);
-    return Nan::ThrowError("Decipher failed.");
-  }
-
-  info.GetReturnValue().Set(
-    Nan::NewBuffer((char *)out, olen).ToLocalChecked());
-}
-
-NAN_METHOD(random_fill) {
-  if (info.Length() < 3)
-    return Nan::ThrowError("random_fill() requires arguments.");
-
-  if (!node::Buffer::HasInstance(info[0]))
-    return Nan::ThrowTypeError("First argument must be a buffer.");
-
-  v8::Local<v8::Object> bdata = info[0].As<v8::Object>();
-
-  if (!info[1]->IsNumber())
-    return Nan::ThrowTypeError("Second argument must be a number.");
-
-  if (!info[2]->IsNumber())
-    return Nan::ThrowTypeError("Third argument must be a number.");
-
-  uint8_t *data = (uint8_t *)node::Buffer::Data(bdata);
-  size_t len = node::Buffer::Length(bdata);
-
-  uint32_t pos = info[1]->Uint32Value();
-  uint32_t size = info[2]->Uint32Value();
-
-  if ((len & 0x80000000) != 0
-      || (pos & 0x80000000) != 0
-      || (size & 0x80000000) != 0) {
-    return Nan::ThrowError("Invalid range.");
-  }
-
-  if (pos + size > len)
-    return Nan::ThrowError("Size exceeds length.");
-
-  if (!bcrypto_random(&data[pos], size))
-    return Nan::ThrowError("Could not get random bytes.");
-
-  info.GetReturnValue().Set(bdata);
-}
-
 NAN_MODULE_INIT(init) {
-  Nan::Export(target, "pbkdf2", pbkdf2);
-  Nan::Export(target, "pbkdf2Async", pbkdf2_async);
-  Nan::Export(target, "scrypt", scrypt);
-  Nan::Export(target, "scryptAsync", scrypt_async);
-  Nan::Export(target, "cleanse", cleanse);
-  Nan::Export(target, "encipher", encipher);
-  Nan::Export(target, "decipher", decipher);
-  Nan::Export(target, "randomFill", random_fill);
-
   BAEAD::Init(target);
+  BAES::Init(target);
   BBlake2b::Init(target);
   BChaCha20::Init(target);
   BCipherBase::Init(target);
+  Nan::Export(target, "cleanse", cleanse);
 #if NODE_MAJOR_VERSION >= 10
   BDSA::Init(target);
   BECDSA::Init(target);
@@ -427,10 +75,13 @@ NAN_MODULE_INIT(init) {
   BKeccak::Init(target);
   BMD5::Init(target);
   BPoly1305::Init(target);
+  BPBKDF2::Init(target);
+  BRandom::Init(target);
   BRIPEMD160::Init(target);
 #if NODE_MAJOR_VERSION >= 10
   BRSA::Init(target);
 #endif
+  BScrypt::Init(target);
   BSHA1::Init(target);
   BSHA224::Init(target);
   BSHA256::Init(target);
