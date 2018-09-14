@@ -79,7 +79,18 @@ const algs = [
     ]
   },
   {
-    name: 'Triple-DES',
+    name: 'Triple-DES (EDE)',
+    keyLen: 16,
+    ivLen: 8,
+    ids: [
+      'DES-EDE-ECB',
+      'DES-EDE-CBC',
+      'DES-EDE-CFB',
+      'DES-EDE-OFB'
+    ]
+  },
+  {
+    name: 'Triple-DES (EDE3)',
     keyLen: 24,
     ivLen: 8,
     ids: [

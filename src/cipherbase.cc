@@ -147,7 +147,7 @@ NAN_METHOD(BCipherBase::Update) {
   BCipherBase *cipher = ObjectWrap::Unwrap<BCipherBase>(info.Holder());
 
   if (info.Length() < 1)
-    return Nan::ThrowError("cipher.encrypt() requires arguments.");
+    return Nan::ThrowError("cipher.update() requires arguments.");
 
   if (!cipher->ctx)
     return Nan::ThrowError("Cipher is not initialized.");
