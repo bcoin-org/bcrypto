@@ -10,7 +10,31 @@ const random = require('../lib/random');
 
 const algs = [
   {
-    name: 'AES',
+    name: 'AES-128',
+    keyLen: 16,
+    ivLen: 16,
+    ids: [
+      'AES-128-ECB',
+      'AES-128-CBC',
+      'AES-128-CTR',
+      'AES-128-CFB',
+      'AES-128-OFB'
+    ]
+  },
+  {
+    name: 'AES-192',
+    keyLen: 24,
+    ivLen: 16,
+    ids: [
+      'AES-192-ECB',
+      'AES-192-CBC',
+      'AES-192-CTR',
+      'AES-192-CFB',
+      'AES-192-OFB'
+    ]
+  },
+  {
+    name: 'AES-256',
     keyLen: 32,
     ivLen: 16,
     ids: [

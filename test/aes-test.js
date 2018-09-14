@@ -14,11 +14,11 @@ const key = Buffer.from(
 
 const iv = Buffer.from('6dd26d9045b73c377a9ed2ffeca72ffd', 'hex');
 
-function testVector(name, ivLen, keyLen) {
+function testVector() {
   const key = random.randomBytes(32);
   const iv = random.randomBytes(16);
   const data = random.randomBytes((Math.random() * 0x10000) >>> 0);
-  const cipher = crypto.createCipheriv(name, key, iv);
+  const cipher = crypto.createCipheriv('AES-256-CBC', key, iv);
   const expect = Buffer.concat([cipher.update(data), cipher.final()]);
   return {
     key,
@@ -64,10 +64,10 @@ describe('AES', function() {
   });
 
   for (let i = 0; i < 50; i++) {
-    const {key, iv, data, expect} = testVector('AES-256-CBC');
-    const d = data.toString('hex', 0, 32);
+    const {key, iv, data, expect} = testVector();
+    const hex = data.toString('hex', 0, 32);
 
-    it(`should encrypt and decrypt ${d}`, () => {
+    it(`should encrypt and decrypt ${hex}`, () => {
       const ciphertext = aes.encipher(data, key, iv);
       assert.bufferEqual(ciphertext, expect);
 
