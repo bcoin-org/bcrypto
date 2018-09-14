@@ -9,6 +9,7 @@ const fs = require('fs');
 const Path = require('path');
 const bio = require('bufio');
 const dsa = require('../lib/dsa');
+const random = require('../lib/random');
 const asn1 = require('../lib/encoding/asn1');
 const x509 = require('../lib/encoding/x509');
 const params = require('./data/dsa-params.json');
@@ -93,6 +94,41 @@ describe('DSA', function() {
     const result2 = dsa.verify(msg, sig, pub);
     assert(!result2);
   });
+
+  if (process.env.NODE_BACKEND === 'js'
+      || process.env.NODE_BACKEND === 'node') {
+    it('should do diffie hellman', () => {
+      const params = createParams(P2048_256);
+      const alice = dsa.privateKeyCreate(params);
+      const alicePub = dsa.publicKeyCreate(alice);
+      const bob = dsa.privateKeyCreate(params);
+      const bobPub = dsa.publicKeyCreate(bob);
+
+      const aliceSecret = dsa.dh(bobPub, alice);
+      const bobSecret = dsa.dh(alicePub, bob);
+
+      assert.bufferEqual(aliceSecret, bobSecret);
+    });
+
+    it('should do HD derivation', () => {
+      const params = createParams(P2048_256);
+      const priv = dsa.privateKeyCreate(params);
+      const pub = dsa.publicKeyCreate(priv);
+      const tweak = random.randomBytes(priv.size());
+
+      const newPriv = dsa.privateKeyTweakAdd(priv, tweak);
+      const newPub = dsa.publicKeyTweakAdd(pub, tweak);
+
+      assert.bufferEqual(newPriv.y, newPub.y);
+
+      const msg = Buffer.alloc(newPriv.size(), 0x01);
+      const sig = dsa.sign(msg, newPriv);
+      assert(sig);
+
+      const result = dsa.verify(msg, sig, newPub);
+      assert(result);
+    });
+  }
 
   it('should parse SPKI', () => {
     const info = x509.SubjectPublicKeyInfo.fromPEM(dsaPubPem);
