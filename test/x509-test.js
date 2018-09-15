@@ -31,6 +31,12 @@ describe('X509', function() {
 
       assert.deepStrictEqual(crt1, crt2);
       assert.bufferEqual(raw1, raw2);
+
+      console.dir(crt1, {
+        colors: true,
+        depth: 100,
+        customInspect: true
+      });
     });
   }
 });

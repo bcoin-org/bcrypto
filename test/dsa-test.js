@@ -134,10 +134,10 @@ describe('DSA', function() {
   it('should parse SPKI', () => {
     const info = x509.SubjectPublicKeyInfo.fromPEM(dsaPubPem);
     assert(info.algorithm.algorithm.getKey() === 'dsa');
-    assert(info.algorithm.parameters.type === 16); // SEQ
+    assert(info.algorithm.parameters.node.type === 16); // SEQ
     assert(info.subjectPublicKey.type === 3); // BITSTRING
 
-    const br = bio.read(info.algorithm.parameters.value);
+    const br = bio.read(info.algorithm.parameters.node.value);
     const p = asn1.Integer.read(br);
     const q = asn1.Integer.read(br);
     const g = asn1.Integer.read(br);
