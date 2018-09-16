@@ -13,8 +13,8 @@ const SHA256 = require('../lib/sha256');
 const SHA384 = require('../lib/sha384');
 const SHA512 = require('../lib/sha512');
 const MD5SHA1 = require('../lib/md5sha1');
-const Blake2s256 = require('../lib/blake2s256');
-const Blake2b512 = require('../lib/blake2b512');
+const BLAKE2s256 = require('../lib/blake2s256');
+const BLAKE2b512 = require('../lib/blake2b512');
 const random = require('../lib/random');
 
 const algs = [
@@ -39,8 +39,8 @@ const hashes = {
   sha384: SHA384,
   sha512: SHA512,
   'md5-sha1': MD5SHA1,
-  blake2s256: Blake2s256,
-  blake2b512: Blake2b512
+  blake2s256: BLAKE2s256,
+  blake2b512: BLAKE2b512
 };
 
 const vectors = [

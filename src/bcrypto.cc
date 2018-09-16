@@ -63,8 +63,8 @@ NAN_METHOD(cleanse) {
 NAN_MODULE_INIT(init) {
   BAEAD::Init(target);
   BAES::Init(target);
-  BBlake2b::Init(target);
-  BBlake2s::Init(target);
+  BBLAKE2b::Init(target);
+  BBLAKE2s::Init(target);
   BChaCha20::Init(target);
   BCipherBase::Init(target);
   Nan::Export(target, "cleanse", cleanse);

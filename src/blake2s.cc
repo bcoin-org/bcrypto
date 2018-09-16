@@ -6,49 +6,49 @@ static uint8_t global_out[BCRYPTO_BLAKE2S_OUTBYTES];
 
 static Nan::Persistent<v8::FunctionTemplate> blake2s_constructor;
 
-BBlake2s::BBlake2s() {
+BBLAKE2s::BBLAKE2s() {
   memset(&ctx, 0, sizeof(bcrypto_blake2s_ctx));
 }
 
-BBlake2s::~BBlake2s() {}
+BBLAKE2s::~BBLAKE2s() {}
 
 void
-BBlake2s::Init(v8::Local<v8::Object> &target) {
+BBLAKE2s::Init(v8::Local<v8::Object> &target) {
   Nan::HandleScope scope;
 
   v8::Local<v8::FunctionTemplate> tpl =
-    Nan::New<v8::FunctionTemplate>(BBlake2s::New);
+    Nan::New<v8::FunctionTemplate>(BBLAKE2s::New);
 
   blake2s_constructor.Reset(tpl);
 
-  tpl->SetClassName(Nan::New("Blake2s").ToLocalChecked());
+  tpl->SetClassName(Nan::New("BLAKE2s").ToLocalChecked());
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
 
-  Nan::SetPrototypeMethod(tpl, "init", BBlake2s::Init);
-  Nan::SetPrototypeMethod(tpl, "update", BBlake2s::Update);
-  Nan::SetPrototypeMethod(tpl, "final", BBlake2s::Final);
-  Nan::SetMethod(tpl, "digest", BBlake2s::Digest);
-  Nan::SetMethod(tpl, "root", BBlake2s::Root);
-  Nan::SetMethod(tpl, "multi", BBlake2s::Multi);
-  Nan::SetMethod(tpl, "mac", BBlake2s::Mac);
+  Nan::SetPrototypeMethod(tpl, "init", BBLAKE2s::Init);
+  Nan::SetPrototypeMethod(tpl, "update", BBLAKE2s::Update);
+  Nan::SetPrototypeMethod(tpl, "final", BBLAKE2s::Final);
+  Nan::SetMethod(tpl, "digest", BBLAKE2s::Digest);
+  Nan::SetMethod(tpl, "root", BBLAKE2s::Root);
+  Nan::SetMethod(tpl, "multi", BBLAKE2s::Multi);
+  Nan::SetMethod(tpl, "mac", BBLAKE2s::Mac);
 
   v8::Local<v8::FunctionTemplate> ctor =
     Nan::New<v8::FunctionTemplate>(blake2s_constructor);
 
-  target->Set(Nan::New("Blake2s").ToLocalChecked(), ctor->GetFunction());
+  target->Set(Nan::New("BLAKE2s").ToLocalChecked(), ctor->GetFunction());
 }
 
-NAN_METHOD(BBlake2s::New) {
+NAN_METHOD(BBLAKE2s::New) {
   if (!info.IsConstructCall())
-    return Nan::ThrowError("Could not create BBlake2s instance.");
+    return Nan::ThrowError("Could not create BBLAKE2s instance.");
 
-  BBlake2s *blake = new BBlake2s();
+  BBLAKE2s *blake = new BBLAKE2s();
   blake->Wrap(info.This());
   info.GetReturnValue().Set(info.This());
 }
 
-NAN_METHOD(BBlake2s::Init) {
-  BBlake2s *blake = ObjectWrap::Unwrap<BBlake2s>(info.Holder());
+NAN_METHOD(BBLAKE2s::Init) {
+  BBLAKE2s *blake = ObjectWrap::Unwrap<BBLAKE2s>(info.Holder());
 
   uint32_t outlen = 32;
 
@@ -89,8 +89,8 @@ NAN_METHOD(BBlake2s::Init) {
   info.GetReturnValue().Set(info.This());
 }
 
-NAN_METHOD(BBlake2s::Update) {
-  BBlake2s *blake = ObjectWrap::Unwrap<BBlake2s>(info.Holder());
+NAN_METHOD(BBLAKE2s::Update) {
+  BBLAKE2s *blake = ObjectWrap::Unwrap<BBLAKE2s>(info.Holder());
 
   if (info.Length() < 1)
     return Nan::ThrowError("blake2s.update() requires arguments.");
@@ -108,8 +108,8 @@ NAN_METHOD(BBlake2s::Update) {
   info.GetReturnValue().Set(info.This());
 }
 
-NAN_METHOD(BBlake2s::Final) {
-  BBlake2s *blake = ObjectWrap::Unwrap<BBlake2s>(info.Holder());
+NAN_METHOD(BBLAKE2s::Final) {
+  BBLAKE2s *blake = ObjectWrap::Unwrap<BBLAKE2s>(info.Holder());
 
   uint32_t outlen = blake->ctx.outlen;
 
@@ -119,7 +119,7 @@ NAN_METHOD(BBlake2s::Final) {
     Nan::CopyBuffer((char *)&global_out[0], outlen).ToLocalChecked());
 }
 
-NAN_METHOD(BBlake2s::Digest) {
+NAN_METHOD(BBLAKE2s::Digest) {
   if (info.Length() < 1)
     return Nan::ThrowError("blake2s.digest() requires arguments.");
 
@@ -173,7 +173,7 @@ NAN_METHOD(BBlake2s::Digest) {
     Nan::CopyBuffer((char *)&global_out[0], outlen).ToLocalChecked());
 }
 
-NAN_METHOD(BBlake2s::Root) {
+NAN_METHOD(BBLAKE2s::Root) {
   if (info.Length() < 2)
     return Nan::ThrowError("blake2s.root() requires arguments.");
 
@@ -216,7 +216,7 @@ NAN_METHOD(BBlake2s::Root) {
     Nan::CopyBuffer((char *)&global_out[0], outlen).ToLocalChecked());
 }
 
-NAN_METHOD(BBlake2s::Multi) {
+NAN_METHOD(BBLAKE2s::Multi) {
   if (info.Length() < 2)
     return Nan::ThrowError("blake2s.multi() requires arguments.");
 
@@ -273,7 +273,7 @@ NAN_METHOD(BBlake2s::Multi) {
     Nan::CopyBuffer((char *)&global_out[0], outlen).ToLocalChecked());
 }
 
-NAN_METHOD(BBlake2s::Mac) {
+NAN_METHOD(BBLAKE2s::Mac) {
   if (info.Length() < 2)
     return Nan::ThrowError("blake2s.mac() requires arguments.");
 

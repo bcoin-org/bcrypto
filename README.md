@@ -35,7 +35,7 @@ Modern ciphers:
 Modern hash algorithms:
 
 - SHA3/Keccak
-- Blake2
+- BLAKE2
 
 Key Derivation:
 
