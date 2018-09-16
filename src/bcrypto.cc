@@ -14,6 +14,7 @@
 #include "aead.h"
 #include "aes.h"
 #include "blake2b.h"
+#include "blake2s.h"
 #include "chacha20.h"
 #include "cipherbase.h"
 #if NODE_MAJOR_VERSION >= 10
@@ -63,6 +64,7 @@ NAN_MODULE_INIT(init) {
   BAEAD::Init(target);
   BAES::Init(target);
   BBlake2b::Init(target);
+  BBlake2s::Init(target);
   BChaCha20::Init(target);
   BCipherBase::Init(target);
   Nan::Export(target, "cleanse", cleanse);

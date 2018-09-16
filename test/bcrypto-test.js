@@ -146,11 +146,11 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.Blake2b256.native, 2);
         assert.strictEqual(bcrypto.Blake2b384.native, 2);
         assert.strictEqual(bcrypto.Blake2b512.native, 2);
-        assert.strictEqual(bcrypto.Blake2s.native, 1);
-        assert.strictEqual(bcrypto.Blake2s128.native, 1);
-        assert.strictEqual(bcrypto.Blake2s160.native, 1);
-        assert.strictEqual(bcrypto.Blake2s224.native, 1);
-        assert.strictEqual(bcrypto.Blake2s256.native, 1);
+        assert.strictEqual(bcrypto.Blake2s.native, 2);
+        assert.strictEqual(bcrypto.Blake2s128.native, 2);
+        assert.strictEqual(bcrypto.Blake2s160.native, 2);
+        assert.strictEqual(bcrypto.Blake2s224.native, 2);
+        assert.strictEqual(bcrypto.Blake2s256.native, 2);
         assert.strictEqual(bcrypto.BN.native, undefined);
         assert.strictEqual(bcrypto.bcrypt.native, 0);
         assert.strictEqual(bcrypto.ChaCha20.native, 2);
