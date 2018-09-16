@@ -47,11 +47,11 @@ NAN_METHOD(BPBKDF2::Derive) {
   const char *name = (const char *)*name_;
 
   const uint8_t *data = (const uint8_t *)node::Buffer::Data(kbuf);
-  uint32_t datalen = (uint32_t)node::Buffer::Length(kbuf);
+  size_t datalen = (size_t)node::Buffer::Length(kbuf);
   const uint8_t *salt = (const uint8_t *)node::Buffer::Data(sbuf);
-  uint32_t saltlen = (size_t)node::Buffer::Length(sbuf);
+  size_t saltlen = (size_t)node::Buffer::Length(sbuf);
   uint32_t iter = info[3]->Uint32Value();
-  uint32_t keylen = info[4]->Uint32Value();
+  size_t keylen = (size_t)info[4]->Uint32Value();
 
   uint8_t *key = (uint8_t *)malloc(keylen);
 
@@ -98,22 +98,22 @@ NAN_METHOD(BPBKDF2::DeriveAsync) {
   Nan::Utf8String name_(info[0]);
   const char *name = (const char *)*name_;
 
-  const EVP_MD *md = EVP_get_digestbyname(name);
+  char *alg = strdup(name);
 
-  if (md == NULL)
-    return Nan::ThrowTypeError("Could not allocate context.");
+  if (alg == NULL)
+    return Nan::ThrowError("Could not allocate algorithm.");
 
   const uint8_t *data = (const uint8_t *)node::Buffer::Data(dbuf);
-  uint32_t datalen = (uint32_t)node::Buffer::Length(dbuf);
+  size_t datalen = (size_t)node::Buffer::Length(dbuf);
   const uint8_t *salt = (const uint8_t *)node::Buffer::Data(sbuf);
-  uint32_t saltlen = (size_t)node::Buffer::Length(sbuf);
+  size_t saltlen = (size_t)node::Buffer::Length(sbuf);
   uint32_t iter = info[3]->Uint32Value();
-  uint32_t keylen = info[4]->Uint32Value();
+  size_t keylen = (size_t)info[4]->Uint32Value();
 
   BPBKDF2Worker *worker = new BPBKDF2Worker(
     dbuf,
     sbuf,
-    md,
+    alg,
     data,
     datalen,
     salt,

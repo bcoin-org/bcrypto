@@ -52,6 +52,8 @@ void
 BScryptWorker::HandleOKCallback() {
   Nan::HandleScope scope;
 
+  assert(key);
+
   v8::Local<v8::Value> keyBuffer =
     Nan::NewBuffer((char *)key, keylen).ToLocalChecked();
 

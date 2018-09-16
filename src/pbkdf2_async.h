@@ -10,13 +10,13 @@ public:
   BPBKDF2Worker (
     v8::Local<v8::Object> &dataHandle,
     v8::Local<v8::Object> &saltHandle,
-    const EVP_MD* md,
+    char *name,
     const uint8_t *data,
-    uint32_t datalen,
+    size_t datalen,
     const uint8_t *salt,
-    uint32_t saltlen,
+    size_t saltlen,
     uint32_t iter,
-    uint32_t keylen,
+    size_t keylen,
     Nan::Callback *callback
   );
 
@@ -25,14 +25,14 @@ public:
   void HandleOKCallback();
 
 private:
-  const EVP_MD* md;
+  char *name;
   const uint8_t *data;
-  uint32_t datalen;
+  size_t datalen;
   const uint8_t *salt;
-  uint32_t saltlen;
+  size_t saltlen;
   uint32_t iter;
   uint8_t *key;
-  uint32_t keylen;
+  size_t keylen;
 };
 
 #endif

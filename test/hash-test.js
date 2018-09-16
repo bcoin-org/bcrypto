@@ -12,32 +12,35 @@ const SHA224 = require('../lib/sha224');
 const SHA256 = require('../lib/sha256');
 const SHA384 = require('../lib/sha384');
 const SHA512 = require('../lib/sha512');
+const MD5SHA1 = require('../lib/md5sha1');
 const Blake2s256 = require('../lib/blake2s256');
 const Blake2b512 = require('../lib/blake2b512');
 const random = require('../lib/random');
 
 const algs = [
-  ['MD5', true],
-  ['RIPEMD160', true],
-  ['SHA1', true],
-  ['SHA224', true],
-  ['SHA256', true],
-  ['SHA384', true],
-  ['SHA512', true],
-  ['BLAKE2S256', false],
-  ['BLAKE2B512', false]
+  ['md5', true],
+  ['ripemd160', true],
+  ['sha1', true],
+  ['sha224', true],
+  ['sha256', true],
+  ['sha384', true],
+  ['sha512', true],
+  ['md5-sha1', true],
+  ['blake2s256', false],
+  ['blake2b512', false]
 ];
 
 const hashes = {
-  MD5: MD5,
-  RIPEMD160: RIPEMD160,
-  SHA1: SHA1,
-  SHA224: SHA224,
-  SHA256: SHA256,
-  SHA384: SHA384,
-  SHA512: SHA512,
-  BLAKE2S256: Blake2s256,
-  BLAKE2B512: Blake2b512
+  md5: MD5,
+  ripemd160: RIPEMD160,
+  sha1: SHA1,
+  sha224: SHA224,
+  sha256: SHA256,
+  sha384: SHA384,
+  sha512: SHA512,
+  'md5-sha1': MD5SHA1,
+  blake2s256: Blake2s256,
+  blake2b512: Blake2b512
 };
 
 const vectors = [
@@ -55,8 +58,7 @@ function hash(alg, msg) {
   if (typeof msg === 'string')
     msg = Buffer.from(msg, 'utf8');
 
-  const id = alg.toLowerCase();
-  const ctx = crypto.createHash(id);
+  const ctx = crypto.createHash(alg);
   ctx.update(msg);
   return ctx.digest();
 }
@@ -68,8 +70,7 @@ function hmac(alg, msg, key) {
   if (typeof key === 'string')
     key = Buffer.from(key, 'utf8');
 
-  const id = alg.toLowerCase();
-  const ctx = crypto.createHmac(id, key);
+  const ctx = crypto.createHmac(alg, key);
   ctx.update(msg);
   return ctx.digest();
 }
@@ -78,8 +79,7 @@ function testHash(alg, msg) {
   if (typeof msg === 'string')
     msg = Buffer.from(msg, 'utf8');
 
-  const id = alg.toLowerCase();
-  const ctx1 = crypto.createHash(id);
+  const ctx1 = crypto.createHash(alg);
   ctx1.update(msg);
 
   const expect = ctx1.digest();
@@ -112,8 +112,7 @@ function testHmac(alg, msg, key) {
   if (typeof key === 'string')
     key = Buffer.from(key, 'utf8');
 
-  const id = alg.toLowerCase();
-  const ctx1 = crypto.createHmac(id, key);
+  const ctx1 = crypto.createHmac(alg, key);
   ctx1.update(msg);
 
   const expect = ctx1.digest();

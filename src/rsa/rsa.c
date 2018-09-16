@@ -485,8 +485,68 @@ bcrypto_rsa_hash_type(const char *alg) {
     type = NID_sha384;
   else if (strcmp(alg, "SHA512") == 0)
     type = NID_sha512;
-  else if (strcmp(alg, "MD5-SHA1") == 0)
+  else if (strcmp(alg, "MD5SHA1") == 0)
     type = NID_md5_sha1;
+
+#ifdef NID_sha3_224
+  else if (strcmp(alg, "SHA3_224") == 0)
+    type = NID_sha3_224;
+#endif
+
+#ifdef NID_sha3_256
+  else if (strcmp(alg, "SHA3_256") == 0)
+    type = NID_sha3_256;
+#endif
+
+#ifdef NID_sha3_384
+  else if (strcmp(alg, "SHA3_384") == 0)
+    type = NID_sha3_384;
+#endif
+
+#ifdef NID_sha3_512
+  else if (strcmp(alg, "SHA3_512") == 0)
+    type = NID_sha3_512;
+#endif
+
+#ifdef NID_blake2b160
+  else if (strcmp(alg, "BLAKE2B160") == 0)
+    type = NID_blake2b160;
+#endif
+
+#ifdef NID_blake2b256
+  else if (strcmp(alg, "BLAKE2B256") == 0)
+    type = NID_blake2b256;
+#endif
+
+#ifdef NID_blake2b384
+  else if (strcmp(alg, "BLAKE2B384") == 0)
+    type = NID_blake2b384;
+#endif
+
+#ifdef NID_blake2b512
+  else if (strcmp(alg, "BLAKE2B512") == 0)
+    type = NID_blake2b512;
+#endif
+
+#ifdef NID_blake2s128
+  else if (strcmp(alg, "BLAKE2S128") == 0)
+    type = NID_blake2s128;
+#endif
+
+#ifdef NID_blake2s160
+  else if (strcmp(alg, "BLAKE2S160") == 0)
+    type = NID_blake2s160;
+#endif
+
+#ifdef NID_blake2s224
+  else if (strcmp(alg, "BLAKE2S224") == 0)
+    type = NID_blake2s224;
+#endif
+
+#ifdef NID_blake2s256
+  else if (strcmp(alg, "BLAKE2S256") == 0)
+    type = NID_blake2s256;
+#endif
 
   return type;
 }
@@ -510,6 +570,67 @@ bcrypto_rsa_hash_size(int type) {
       return 64;
     case NID_md5_sha1:
       return 36;
+
+#ifdef NID_sha3_224
+    case NID_sha3_224:
+      return 28;
+#endif
+
+#ifdef NID_sha3_256
+    case NID_sha3_256:
+      return 32;
+#endif
+
+#ifdef NID_sha3_384
+    case NID_sha3_384:
+      return 48;
+#endif
+
+#ifdef NID_sha3_512
+    case NID_sha3_512:
+      return 64;
+#endif
+
+#ifdef NID_blake2b160
+    case NID_blake2b160:
+      return 20;
+#endif
+
+#ifdef NID_blake2b256
+    case NID_blake2b256:
+      return 32;
+#endif
+
+#ifdef NID_blake2b384
+    case NID_blake2b384:
+      return 48;
+#endif
+
+#ifdef NID_blake2b512
+    case NID_blake2b512:
+      return 64;
+#endif
+
+#ifdef NID_blake2s128
+    case NID_blake2s128:
+      return 16;
+#endif
+
+#ifdef NID_blake2s160
+    case NID_blake2s160:
+      return 20;
+#endif
+
+#ifdef NID_blake2s224
+    case NID_blake2s224:
+      return 28;
+#endif
+
+#ifdef NID_blake2s256
+    case NID_blake2s256:
+      return 32;
+#endif
+
     default:
       return 0;
   }

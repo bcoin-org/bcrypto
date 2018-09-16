@@ -302,7 +302,7 @@ bcrypto_scrypt(
   uint8_t *key,
   size_t keylen
 ) {
-  int32_t result = crypto_scrypt(
+  int result = crypto_scrypt(
     pass, passlen, salt, saltlen,
     N, r, p, key, keylen);
 
