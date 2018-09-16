@@ -10,6 +10,7 @@
 
 #include "openssl/ecdsa.h"
 #include "openssl/objects.h"
+#include "../random/random.h"
 
 // https://github.com/openssl/openssl/blob/master/include/openssl/obj_mac.h
 // https://github.com/openssl/openssl/blob/master/include/openssl/bn.h
@@ -313,6 +314,8 @@ bcrypto_ecdsa_privkey_generate(
 
   if (!priv_ec)
     goto fail;
+
+  bcrypto_poll();
 
   if (!EC_KEY_generate_key(priv_ec))
     goto fail;
@@ -922,6 +925,8 @@ bcrypto_ecdsa_sign(
 
   if (!EC_KEY_oct2priv(priv_ec, priv, priv_len))
     goto fail;
+
+  bcrypto_poll();
 
   sig_ec = ECDSA_do_sign(msg, msg_len, priv_ec);
 
