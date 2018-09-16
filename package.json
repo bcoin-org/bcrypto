@@ -41,6 +41,7 @@
     "./lib/internal/custom": "./lib/internal/custom-browser.js",
     "./lib/aes": "./lib/aes-browser.js",
     "./lib/blake2b": "./lib/blake2b-browser.js",
+    "./lib/blake2s": "./lib/blake2s-browser.js",
     "./lib/chacha20": "./lib/chacha20-browser.js",
     "./lib/cipher": "./lib/cipher-browser.js",
     "./lib/cleanse": "./lib/cleanse-browser.js",
