@@ -16,16 +16,16 @@
  * https://blake2.net.
  */
 
-#ifndef _BCRYPTO_BLAKE2_H
-#define _BCRYPTO_BLAKE2_H
+#ifndef _BCRYPTO_BLAKE2B_H
+#define _BCRYPTO_BLAKE2B_H
 
 #include <stddef.h>
 #include <stdint.h>
 
 #if defined(_MSC_VER)
-#define BCRYPTO_BLAKE2_PACKED(x) __pragma(pack(push, 1)) x __pragma(pack(pop))
+#define BCRYPTO_BLAKE2B_PACKED(x) __pragma(pack(push, 1)) x __pragma(pack(pop))
 #else
-#define BCRYPTO_BLAKE2_PACKED(x) x __attribute__((packed))
+#define BCRYPTO_BLAKE2B_PACKED(x) x __attribute__((packed))
 #endif
 
 #if defined(__cplusplus)
@@ -50,7 +50,7 @@ typedef struct bcrypto_blake2b_ctx__ {
   uint8_t last_node;
 } bcrypto_blake2b_ctx;
 
-BCRYPTO_BLAKE2_PACKED(struct bcrypto_blake2b_param__ {
+BCRYPTO_BLAKE2B_PACKED(struct bcrypto_blake2b_param__ {
   uint8_t digest_length;
   uint8_t key_length;
   uint8_t fanout;
@@ -68,7 +68,8 @@ BCRYPTO_BLAKE2_PACKED(struct bcrypto_blake2b_param__ {
 typedef struct bcrypto_blake2b_param__ bcrypto_blake2b_param;
 
 enum {
-  BCRYPTO_BLAKE2_DUMMY_1 = 1 / (sizeof(bcrypto_blake2b_param) == BCRYPTO_BLAKE2B_OUTBYTES)
+  BCRYPTO_BLAKE2B_DUMMY =
+    1 / (sizeof(bcrypto_blake2b_param) == BCRYPTO_BLAKE2B_OUTBYTES)
 };
 
 int bcrypto_blake2b_init(bcrypto_blake2b_ctx *ctx, size_t outlen);

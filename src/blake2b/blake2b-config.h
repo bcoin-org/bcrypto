@@ -12,8 +12,8 @@
    More information about the BLAKE2 hash function can be found at
    https://blake2.net.
 */
-#ifndef BCRYPTO_BLAKE2_CONFIG_H
-#define BCRYPTO_BLAKE2_CONFIG_H
+#ifndef BCRYPTO_BLAKE2B_CONFIG_H
+#define BCRYPTO_BLAKE2B_CONFIG_H
 
 /* These don't work everywhere */
 #if defined(__SSE2__) || defined(__x86_64__) || defined(__amd64__)
