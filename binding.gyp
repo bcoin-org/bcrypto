@@ -115,7 +115,7 @@
       }, {
         "defines": [
           "BCRYPTO_POLY1305_32BIT",
-          "ED25519_NO_INLINE_ASM"
+          "BCRYPTO_ED25519_NO_INLINE_ASM"
         ]
       }],
       ["OS=='win'", {

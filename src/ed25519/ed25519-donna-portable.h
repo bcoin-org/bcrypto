@@ -26,7 +26,7 @@
 #endif
 
 /* uint128_t */
-#if defined(CPU_64BITS) && !defined(ED25519_FORCE_32BIT)
+#if defined(CPU_64BITS) && !defined(BCRYPTO_ED25519_FORCE_32BIT)
   #if defined(COMPILER_CLANG) && (COMPILER_CLANG >= 30100)
     #define HAVE_NATIVE_UINT128
     typedef unsigned __int128 uint128_t;
@@ -87,7 +87,7 @@
 #endif
 
 /* endian */
-#if !defined(ED25519_OPENSSLRNG)
+#if !defined(BCRYPTO_ED25519_OPENSSLRNG)
 static inline void U32TO8_LE(unsigned char *p, const uint32_t v) {
   p[0] = (unsigned char)(v      );
   p[1] = (unsigned char)(v >>  8);

@@ -35,8 +35,8 @@ NAN_METHOD(BED25519::PublicKeyCreate) {
   if (secret_len != 32)
     return Nan::ThrowError("Invalid private key.");
 
-  ed25519_public_key pub;
-  ed25519_publickey(secret, pub);
+  bcrypto_ed25519_public_key pub;
+  bcrypto_ed25519_publickey(secret, pub);
 
   return info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&pub[0], 32).ToLocalChecked());
@@ -57,7 +57,7 @@ NAN_METHOD(BED25519::PublicKeyVerify) {
   if (pub_len != 32)
     return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
 
-  bool result = ed25519_verify_key(pub) == 0;
+  bool result = bcrypto_ed25519_verify_key(pub) == 0;
 
   return info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
@@ -83,11 +83,11 @@ NAN_METHOD(BED25519::Sign) {
   if (secret_len != 32)
     return Nan::ThrowTypeError("Invalid parameters.");
 
-  ed25519_public_key pub;
-  ed25519_publickey(secret, pub);
+  bcrypto_ed25519_public_key pub;
+  bcrypto_ed25519_publickey(secret, pub);
 
-  ed25519_signature sig;
-  ed25519_sign(msg, msg_len, secret, pub, sig);
+  bcrypto_ed25519_signature sig;
+  bcrypto_ed25519_sign(msg, msg_len, secret, pub, sig);
 
   return info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&sig[0], 64).ToLocalChecked());
@@ -119,7 +119,7 @@ NAN_METHOD(BED25519::Verify) {
   if (sig_len != 64 || pub_len != 32)
     return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
 
-  bool result = ed25519_sign_open(msg, msg_len, pub, sig) == 0;
+  bool result = bcrypto_ed25519_sign_open(msg, msg_len, pub, sig) == 0;
 
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }

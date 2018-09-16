@@ -372,7 +372,7 @@ curve25519_contract(unsigned char *out, const bignum25519 input) {
   write51(3)
 }
 
-#if !defined(ED25519_GCC_64BIT_CHOOSE)
+#if !defined(BCRYPTO_ED25519_GCC_64BIT_CHOOSE)
 
 /* out = (flag) ? in : out */
 DONNA_INLINE static void
@@ -407,7 +407,7 @@ curve25519_swap_conditional(bignum25519 a, bignum25519 b, uint64_t iswap) {
   x4 = swap & (a[4] ^ b[4]); a[4] ^= x4; b[4] ^= x4;
 }
 
-#endif /* ED25519_GCC_64BIT_CHOOSE */
+#endif /* BCRYPTO_ED25519_GCC_64BIT_CHOOSE */
 
-#define ED25519_64BIT_TABLES
+#define BCRYPTO_ED25519_64BIT_TABLES
 

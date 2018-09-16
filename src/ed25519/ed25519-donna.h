@@ -11,39 +11,39 @@
 
 #include "ed25519-donna-portable.h"
 
-#if defined(ED25519_SSE2)
+#if defined(BCRYPTO_ED25519_SSE2)
 #else
-  #if defined(HAVE_UINT128) && !defined(ED25519_FORCE_32BIT)
-    #define ED25519_64BIT
+  #if defined(HAVE_UINT128) && !defined(BCRYPTO_ED25519_FORCE_32BIT)
+    #define BCRYPTO_ED25519_64BIT
   #else
-    #define ED25519_32BIT
+    #define BCRYPTO_ED25519_32BIT
   #endif
 #endif
 
-#if !defined(ED25519_NO_INLINE_ASM)
+#if !defined(BCRYPTO_ED25519_NO_INLINE_ASM)
   /* detect extra features first so un-needed functions can be disabled throughout */
-  #if defined(ED25519_SSE2)
+  #if defined(BCRYPTO_ED25519_SSE2)
     #if defined(COMPILER_GCC) && defined(CPU_X86)
-      #define ED25519_GCC_32BIT_SSE_CHOOSE
+      #define BCRYPTO_ED25519_GCC_32BIT_SSE_CHOOSE
     #elif defined(COMPILER_GCC) && defined(CPU_X86_64)
-      #define ED25519_GCC_64BIT_SSE_CHOOSE
+      #define BCRYPTO_ED25519_GCC_64BIT_SSE_CHOOSE
     #endif
   #else
     #if defined(CPU_X86_64)
       #if defined(COMPILER_GCC)
-        #if defined(ED25519_64BIT)
-          #define ED25519_GCC_64BIT_X86_CHOOSE
+        #if defined(BCRYPTO_ED25519_64BIT)
+          #define BCRYPTO_ED25519_GCC_64BIT_X86_CHOOSE
         #else
-          #define ED25519_GCC_64BIT_32BIT_CHOOSE
+          #define BCRYPTO_ED25519_GCC_64BIT_32BIT_CHOOSE
         #endif
       #endif
     #endif
   #endif
 #endif
 
-#if defined(ED25519_SSE2)
+#if defined(BCRYPTO_ED25519_SSE2)
   #include "curve25519-donna-sse2.h"
-#elif defined(ED25519_64BIT)
+#elif defined(BCRYPTO_ED25519_64BIT)
   #include "curve25519-donna-64bit.h"
 #else
   #include "curve25519-donna-32bit.h"
@@ -52,7 +52,7 @@
 #include "curve25519-donna-helpers.h"
 
 /* separate uint128 check for 64 bit sse2 */
-#if defined(HAVE_UINT128) && !defined(ED25519_FORCE_32BIT)
+#if defined(HAVE_UINT128) && !defined(BCRYPTO_ED25519_FORCE_32BIT)
   #include "modm-donna-64bit.h"
 #else
   #include "modm-donna-32bit.h"
@@ -64,7 +64,11 @@ typedef unsigned char hash_512bits[64];
   Timing safe memory compare
 */
 static int
-ed25519_verify(const unsigned char *x, const unsigned char *y, size_t len) {
+bcrypto_ed25519_verify(
+  const unsigned char *x,
+  const unsigned char *y,
+  size_t len
+) {
   size_t differentbits = 0;
   while (len--)
     differentbits |= (*x++ ^ *y++);
@@ -96,7 +100,7 @@ typedef struct ge25519_pniels_t {
 
 #include "ed25519-donna-basepoint-table.h"
 
-#if defined(ED25519_64BIT)
+#if defined(BCRYPTO_ED25519_64BIT)
   #include "ed25519-donna-64bit-tables.h"
   #include "ed25519-donna-64bit-x86.h"
 #else
@@ -105,7 +109,7 @@ typedef struct ge25519_pniels_t {
 #endif
 
 
-#if defined(ED25519_SSE2)
+#if defined(BCRYPTO_ED25519_SSE2)
   #include "ed25519-donna-32bit-sse2.h"
   #include "ed25519-donna-64bit-sse2.h"
   #include "ed25519-donna-impl-sse2.h"
