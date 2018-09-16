@@ -133,7 +133,7 @@ describe('DSA', function() {
 
   it('should parse SPKI', () => {
     const info = x509.SubjectPublicKeyInfo.fromPEM(dsaPubPem);
-    assert(info.algorithm.algorithm.getKey() === 'dsa');
+    assert(info.algorithm.algorithm.getKeyAlgorithmName() === 'DSA');
     assert(info.algorithm.parameters.node.type === 16); // SEQ
     assert(info.subjectPublicKey.type === 3); // BITSTRING
 

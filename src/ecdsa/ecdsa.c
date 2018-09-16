@@ -28,17 +28,17 @@ bcrypto_ecdsa_curve(const char *name) {
   if (name == NULL)
     return type;
 
-  if (strcmp(name, "p192") == 0)
+  if (strcmp(name, "P192") == 0)
     type = NID_X9_62_prime192v1;
-  else if (strcmp(name, "p224") == 0)
+  else if (strcmp(name, "P224") == 0)
     type = NID_secp224r1;
-  else if (strcmp(name, "p256") == 0)
+  else if (strcmp(name, "P256") == 0)
     type = NID_X9_62_prime256v1;
-  else if (strcmp(name, "p384") == 0)
+  else if (strcmp(name, "P384") == 0)
     type = NID_secp384r1;
-  else if (strcmp(name, "p521") == 0)
+  else if (strcmp(name, "P521") == 0)
     type = NID_secp521r1;
-  else if (strcmp(name, "secp256k1") == 0)
+  else if (strcmp(name, "SECP256K1") == 0)
     type = NID_secp256k1;
 
   return type;

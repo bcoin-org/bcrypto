@@ -471,21 +471,21 @@ bcrypto_rsa_hash_type(const char *alg) {
 
   int type = -1;
 
-  if (strcmp(alg, "md5") == 0)
+  if (strcmp(alg, "MD5") == 0)
     type = NID_md5;
-  else if (strcmp(alg, "ripemd160") == 0)
+  else if (strcmp(alg, "RIPEMD160") == 0)
     type = NID_ripemd160;
-  else if (strcmp(alg, "sha1") == 0)
+  else if (strcmp(alg, "SHA1") == 0)
     type = NID_sha1;
-  else if (strcmp(alg, "sha224") == 0)
+  else if (strcmp(alg, "SHA224") == 0)
     type = NID_sha224;
-  else if (strcmp(alg, "sha256") == 0)
+  else if (strcmp(alg, "SHA256") == 0)
     type = NID_sha256;
-  else if (strcmp(alg, "sha384") == 0)
+  else if (strcmp(alg, "SHA384") == 0)
     type = NID_sha384;
-  else if (strcmp(alg, "sha512") == 0)
+  else if (strcmp(alg, "SHA512") == 0)
     type = NID_sha512;
-  else if (strcmp(alg, "md5-sha1") == 0)
+  else if (strcmp(alg, "MD5-SHA1") == 0)
     type = NID_md5_sha1;
 
   return type;

@@ -176,7 +176,7 @@ describe('RSA', function() {
   });
 
   for (const [i, vector] of vectors.entries()) {
-    const hash = vector.hash === 'sha1' ? SHA1 : SHA256;
+    const hash = vector.hash === 'SHA1' ? SHA1 : SHA256;
     const msg = Buffer.from(vector.msg, 'hex');
     const sig = Buffer.from(vector.sig, 'hex');
     const key = fromJSON(vector.key);
