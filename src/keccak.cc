@@ -39,7 +39,7 @@ BKeccak::Init(v8::Local<v8::Object> &target) {
 
 NAN_METHOD(BKeccak::New) {
   if (!info.IsConstructCall())
-    return Nan::ThrowError("Could not create BKeccak instance.");
+    return Nan::ThrowError("Could not create Keccak instance.");
 
   BKeccak *keccak = new BKeccak();
   keccak->Wrap(info.This());
@@ -58,22 +58,8 @@ NAN_METHOD(BKeccak::Init) {
     bits = info[0]->Uint32Value();
   }
 
-  switch (bits) {
-    case 224:
-      bcrypto_keccak_224_init(&keccak->ctx);
-      break;
-    case 256:
-      bcrypto_keccak_256_init(&keccak->ctx);
-      break;
-    case 384:
-      bcrypto_keccak_384_init(&keccak->ctx);
-      break;
-    case 512:
-      bcrypto_keccak_512_init(&keccak->ctx);
-      break;
-    default:
-      return Nan::ThrowTypeError("Could not allocate context.");
-  }
+  if (!bcrypto_keccak_init(&keccak->ctx, bits))
+    return Nan::ThrowError("Could not initialize context.");
 
   info.GetReturnValue().Set(info.This());
 }
@@ -100,21 +86,26 @@ NAN_METHOD(BKeccak::Update) {
 NAN_METHOD(BKeccak::Final) {
   BKeccak *keccak = ObjectWrap::Unwrap<BKeccak>(info.Holder());
 
-  bool std = false;
+  int pad = 0x01;
 
   if (info.Length() > 0 && !IsNull(info[0])) {
-    if (!info[0]->IsBoolean())
+    if (!info[0]->IsNumber())
       return Nan::ThrowTypeError("First argument must be a boolean.");
 
-    std = info[0]->BooleanValue();
+    pad = (int)info[0]->Uint32Value();
   }
 
-  uint32_t outlen = 100 - keccak->ctx.block_size / 2;
+  size_t outlen = 0;
 
-  if (std)
-    bcrypto_sha3_final(&keccak->ctx, global_out);
-  else
-    bcrypto_keccak_final(&keccak->ctx, global_out);
+  if (info.Length() > 1 && !IsNull(info[1])) {
+    if (!info[1]->IsNumber())
+      return Nan::ThrowTypeError("Second argument must be a number.");
+
+    outlen = (size_t)info[1]->Uint32Value();
+  }
+
+  if (!bcrypto_keccak_final(&keccak->ctx, pad, &outlen, global_out))
+    return Nan::ThrowError("Could not finalize context.");
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&global_out[0], outlen).ToLocalChecked());
@@ -141,40 +132,23 @@ NAN_METHOD(BKeccak::Digest) {
     bits = info[1]->Uint32Value();
   }
 
-  bool std = false;
+  int pad = 0x01;
 
   if (info.Length() > 2 && !IsNull(info[2])) {
-    if (!info[2]->IsBoolean())
-      return Nan::ThrowTypeError("Third argument must be a boolean.");
+    if (!info[2]->IsNumber())
+      return Nan::ThrowTypeError("Third argument must be a number.");
 
-    std = info[2]->BooleanValue();
+    pad = (int)info[2]->Uint32Value();
   }
 
-  switch (bits) {
-    case 224:
-      bcrypto_keccak_224_init(&global_ctx);
-      break;
-    case 256:
-      bcrypto_keccak_256_init(&global_ctx);
-      break;
-    case 384:
-      bcrypto_keccak_384_init(&global_ctx);
-      break;
-    case 512:
-      bcrypto_keccak_512_init(&global_ctx);
-      break;
-    default:
-      return Nan::ThrowTypeError("Could not allocate context.");
-  }
+  if (!bcrypto_keccak_init(&global_ctx, bits))
+    return Nan::ThrowError("Could not allocate context.");
 
   bcrypto_keccak_update(&global_ctx, in, inlen);
 
-  uint32_t outlen = 100 - global_ctx.block_size / 2;
+  size_t outlen = 0;
 
-  if (std)
-    bcrypto_sha3_final(&global_ctx, global_out);
-  else
-    bcrypto_keccak_final(&global_ctx, global_out);
+  assert(bcrypto_keccak_final(&global_ctx, pad, &outlen, global_out));
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&global_out[0], outlen).ToLocalChecked());
@@ -210,43 +184,26 @@ NAN_METHOD(BKeccak::Root) {
   }
 
   if (leftlen != bits / 8 || rightlen != bits / 8)
-    return Nan::ThrowTypeError("Bad node sizes.");
+    return Nan::ThrowError("Bad node sizes.");
 
-  bool std = false;
+  int pad = 0x01;
 
   if (info.Length() > 3 && !IsNull(info[3])) {
-    if (!info[3]->IsBoolean())
+    if (!info[3]->IsNumber())
       return Nan::ThrowTypeError("Fourth argument must be a boolean.");
 
-    std = info[3]->BooleanValue();
+    pad = (int)info[3]->Uint32Value();
   }
 
-  switch (bits) {
-    case 224:
-      bcrypto_keccak_224_init(&global_ctx);
-      break;
-    case 256:
-      bcrypto_keccak_256_init(&global_ctx);
-      break;
-    case 384:
-      bcrypto_keccak_384_init(&global_ctx);
-      break;
-    case 512:
-      bcrypto_keccak_512_init(&global_ctx);
-      break;
-    default:
-      return Nan::ThrowTypeError("Could not allocate context.");
-  }
+  if (!bcrypto_keccak_init(&global_ctx, bits))
+    return Nan::ThrowError("Could not initialize context.");
 
   bcrypto_keccak_update(&global_ctx, left, leftlen);
   bcrypto_keccak_update(&global_ctx, right, rightlen);
 
-  uint32_t outlen = 100 - global_ctx.block_size / 2;
+  size_t outlen = 0;
 
-  if (std)
-    bcrypto_sha3_final(&global_ctx, global_out);
-  else
-    bcrypto_keccak_final(&global_ctx, global_out);
+  assert(bcrypto_keccak_final(&global_ctx, pad, &outlen, global_out));
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&global_out[0], outlen).ToLocalChecked());
@@ -294,43 +251,26 @@ NAN_METHOD(BKeccak::Multi) {
     bits = info[3]->Uint32Value();
   }
 
-  bool std = false;
+  int pad = 0x01;
 
   if (info.Length() > 4 && !IsNull(info[4])) {
-    if (!info[4]->IsBoolean())
+    if (!info[4]->IsNumber())
       return Nan::ThrowTypeError("Fifth argument must be a boolean.");
 
-    std = info[4]->BooleanValue();
+    pad = (int)info[4]->Uint32Value();
   }
 
-  switch (bits) {
-    case 224:
-      bcrypto_keccak_224_init(&global_ctx);
-      break;
-    case 256:
-      bcrypto_keccak_256_init(&global_ctx);
-      break;
-    case 384:
-      bcrypto_keccak_384_init(&global_ctx);
-      break;
-    case 512:
-      bcrypto_keccak_512_init(&global_ctx);
-      break;
-    default:
-      return Nan::ThrowTypeError("Could not allocate context.");
-  }
+  if (!bcrypto_keccak_init(&global_ctx, bits))
+    return Nan::ThrowError("Could not initialize context.");
 
   bcrypto_keccak_update(&global_ctx, one, onelen);
   bcrypto_keccak_update(&global_ctx, two, twolen);
   if (three)
     bcrypto_keccak_update(&global_ctx, three, threelen);
 
-  uint32_t outlen = 100 - global_ctx.block_size / 2;
+  size_t outlen = 0;
 
-  if (std)
-    bcrypto_sha3_final(&global_ctx, global_out);
-  else
-    bcrypto_keccak_final(&global_ctx, global_out);
+  assert(bcrypto_keccak_final(&global_ctx, pad, &outlen, global_out));
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&global_out[0], outlen).ToLocalChecked());

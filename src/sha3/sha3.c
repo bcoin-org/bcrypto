@@ -22,8 +22,8 @@
 #include <stdint.h>
 #include "sha3.h"
 
-#define BCRYPTO_SHA3_ROUNDS 24
-#define BCRYPTO_SHA3_FINALIZED 0x80000000
+#define BCRYPTO_KECCAK_ROUNDS 24
+#define BCRYPTO_KECCAK_FINALIZED 0x80000000
 
 #if defined(i386) || defined(__i386__) || defined(__i486__) \
   || defined(__i586__) || defined(__i686__) || defined(__pentium__) \
@@ -119,7 +119,7 @@ swap_copy_u64_to_str(void *t, const void *f, size_t l) {
 #endif
 
 #ifdef BCRYPTO_USE_ASM
-static uint64_t bcrypto_keccak_round_constants[BCRYPTO_SHA3_ROUNDS + 1] = {
+static uint64_t bcrypto_keccak_round_constants[BCRYPTO_KECCAK_ROUNDS + 1] = {
   I64(0x0000000000000000),
   I64(0x8000000080008008), I64(0x0000000080000001),
   I64(0x8000000000008080), I64(0x8000000080008081),
@@ -135,7 +135,7 @@ static uint64_t bcrypto_keccak_round_constants[BCRYPTO_SHA3_ROUNDS + 1] = {
   I64(0x0000000000008082), I64(0x0000000000000001)
 };
 #else
-static uint64_t bcrypto_keccak_round_constants[BCRYPTO_SHA3_ROUNDS] = {
+static uint64_t bcrypto_keccak_round_constants[BCRYPTO_KECCAK_ROUNDS] = {
   I64(0x0000000000000001), I64(0x0000000000008082),
   I64(0x800000000000808A), I64(0x8000000080008000),
   I64(0x000000000000808B), I64(0x0000000080000001),
@@ -151,33 +151,40 @@ static uint64_t bcrypto_keccak_round_constants[BCRYPTO_SHA3_ROUNDS] = {
 };
 #endif
 
-static void
-bcrypto_keccak_init(bcrypto_sha3_ctx *ctx, unsigned bits) {
+int
+bcrypto_keccak_init(bcrypto_keccak_ctx *ctx, unsigned bits) {
+  if (bits < 128 || bits > 512)
+    return 0;
+
   unsigned rate = 1600 - bits * 2;
 
-  memset(ctx, 0, sizeof(bcrypto_sha3_ctx));
+  if (rate > 1600 || (rate & 63) != 0)
+    return 0;
+
+  memset(ctx, 0, sizeof(bcrypto_keccak_ctx));
   ctx->block_size = rate / 8;
-  assert(rate <= 1600 && (rate % 64) == 0);
+
+  return 1;
 }
 
 void
-bcrypto_sha3_224_init(bcrypto_sha3_ctx *ctx) {
-  bcrypto_keccak_init(ctx, 224);
+bcrypto_keccak_224_init(bcrypto_keccak_ctx *ctx) {
+  assert(bcrypto_keccak_init(ctx, 224));
 }
 
 void
-bcrypto_sha3_256_init(bcrypto_sha3_ctx *ctx) {
-  bcrypto_keccak_init(ctx, 256);
+bcrypto_keccak_256_init(bcrypto_keccak_ctx *ctx) {
+  assert(bcrypto_keccak_init(ctx, 256));
 }
 
 void
-bcrypto_sha3_384_init(bcrypto_sha3_ctx *ctx) {
-  bcrypto_keccak_init(ctx, 384);
+bcrypto_keccak_384_init(bcrypto_keccak_ctx *ctx) {
+  assert(bcrypto_keccak_init(ctx, 384));
 }
 
 void
-bcrypto_sha3_512_init(bcrypto_sha3_ctx *ctx) {
-  bcrypto_keccak_init(ctx, 512);
+bcrypto_keccak_512_init(bcrypto_keccak_ctx *ctx) {
+  assert(bcrypto_keccak_init(ctx, 512));
 }
 
 static void
@@ -247,7 +254,7 @@ bcrypto_keccak_chi(uint64_t *A) {
 }
 
 static void
-bcrypto_sha3_permutation(uint64_t *state) {
+bcrypto_keccak_permutation(uint64_t *state) {
 #ifdef BCRYPTO_USE_ASM
   // Borrowed from:
   // https://github.com/gnutls/nettle/blob/master/x86_64/sha3-permute.asm
@@ -663,7 +670,7 @@ bcrypto_sha3_permutation(uint64_t *state) {
   );
 #else
   int round;
-  for (round = 0; round < BCRYPTO_SHA3_ROUNDS; round++) {
+  for (round = 0; round < BCRYPTO_KECCAK_ROUNDS; round++) {
     bcrypto_keccak_theta(state);
 
     state[1] = ROTL64(state[1], 1);
@@ -700,62 +707,69 @@ bcrypto_sha3_permutation(uint64_t *state) {
 }
 
 static void
-bcrypto_sha3_process_block(
+bcrypto_keccak_process_block(
   uint64_t hash[25],
   const uint64_t *block,
   size_t block_size
 ) {
-  hash[0] ^= le2me_64(block[0]);
-  hash[1] ^= le2me_64(block[1]);
-  hash[2] ^= le2me_64(block[2]);
-  hash[3] ^= le2me_64(block[3]);
-  hash[4] ^= le2me_64(block[4]);
-  hash[5] ^= le2me_64(block[5]);
-  hash[6] ^= le2me_64(block[6]);
-  hash[7] ^= le2me_64(block[7]);
-  hash[8] ^= le2me_64(block[8]);
+  switch (block_size) {
+    case 144: { // SHA3-224
+      hash[17] ^= le2me_64(block[17]);
+    }
 
-  if (block_size > 72) {
-    hash[9] ^= le2me_64(block[9]);
-    hash[10] ^= le2me_64(block[10]);
-    hash[11] ^= le2me_64(block[11]);
-    hash[12] ^= le2me_64(block[12]);
-
-    if (block_size > 104) {
-      hash[13] ^= le2me_64(block[13]);
-      hash[14] ^= le2me_64(block[14]);
-      hash[15] ^= le2me_64(block[15]);
+    case 136: { // SHA3-256
       hash[16] ^= le2me_64(block[16]);
+      hash[15] ^= le2me_64(block[15]);
+      hash[14] ^= le2me_64(block[14]);
+      hash[13] ^= le2me_64(block[13]);
+    }
 
-      if (block_size > 136) {
-        hash[17] ^= le2me_64(block[17]);
+    case 104: { // SHA3-384
+      hash[12] ^= le2me_64(block[12]);
+      hash[11] ^= le2me_64(block[11]);
+      hash[10] ^= le2me_64(block[10]);
+      hash[9] ^= le2me_64(block[9]);
+    }
 
-        if (block_size > 144) {
-          hash[18] ^= le2me_64(block[18]);
-          hash[19] ^= le2me_64(block[19]);
-          hash[20] ^= le2me_64(block[20]);
-          hash[21] ^= le2me_64(block[21]);
-          hash[22] ^= le2me_64(block[22]);
-          hash[23] ^= le2me_64(block[23]);
-          hash[24] ^= le2me_64(block[24]);
-        }
-      }
+    case 72: { // SHA3-512
+      hash[8] ^= le2me_64(block[8]);
+      hash[7] ^= le2me_64(block[7]);
+      hash[6] ^= le2me_64(block[6]);
+      hash[5] ^= le2me_64(block[5]);
+      hash[4] ^= le2me_64(block[4]);
+      hash[3] ^= le2me_64(block[3]);
+      hash[2] ^= le2me_64(block[2]);
+      hash[1] ^= le2me_64(block[1]);
+      hash[0] ^= le2me_64(block[0]);
+      break;
+    }
+
+    default: {
+      assert(block_size <= 192);
+
+      size_t blocks = block_size / 8;
+      size_t i;
+
+      for (i = 0; i < blocks; i++)
+        hash[i] ^= le2me_64(block[i]);
+
+      break;
     }
   }
 
-  bcrypto_sha3_permutation(hash);
+  bcrypto_keccak_permutation(hash);
 }
 
 void
-bcrypto_sha3_update(
-  bcrypto_sha3_ctx *ctx,
+bcrypto_keccak_update(
+  bcrypto_keccak_ctx *ctx,
   const unsigned char *msg,
   size_t size
 ) {
   size_t index = (size_t)ctx->rest;
   size_t block_size = (size_t)ctx->block_size;
 
-  if (ctx->rest & BCRYPTO_SHA3_FINALIZED)
+  if (ctx->rest & BCRYPTO_KECCAK_FINALIZED)
     return;
 
   ctx->rest = (unsigned)((ctx->rest + size) % block_size);
@@ -767,7 +781,7 @@ bcrypto_sha3_update(
     if (size < left)
       return;
 
-    bcrypto_sha3_process_block(ctx->hash, ctx->message, block_size);
+    bcrypto_keccak_process_block(ctx->hash, ctx->message, block_size);
     msg += left;
     size -= left;
   }
@@ -782,7 +796,7 @@ bcrypto_sha3_update(
       aligned_message_block = ctx->message;
     }
 
-    bcrypto_sha3_process_block(ctx->hash, aligned_message_block, block_size);
+    bcrypto_keccak_process_block(ctx->hash, aligned_message_block, block_size);
     msg += block_size;
     size -= block_size;
   }
@@ -791,42 +805,39 @@ bcrypto_sha3_update(
     memcpy(ctx->message, msg, size);
 }
 
-void
-bcrypto_sha3_final(bcrypto_sha3_ctx *ctx, unsigned char *result) {
-  size_t digest_length = 100 - ctx->block_size / 2;
+int
+bcrypto_keccak_final(
+  bcrypto_keccak_ctx *ctx,
+  int pad,
+  size_t *digest_length,
+  unsigned char *result
+) {
+  assert(digest_length);
+
+  if (*digest_length == 0)
+    *digest_length = 100 - ctx->block_size / 2;
+
   const size_t block_size = ctx->block_size;
 
-  if (!(ctx->rest & BCRYPTO_SHA3_FINALIZED)) {
+  if (*digest_length > 64)
+    return 0;
+
+  if (*digest_length >= block_size)
+    return 0;
+
+  if (!(ctx->rest & BCRYPTO_KECCAK_FINALIZED)) {
     memset((char *)ctx->message + ctx->rest, 0, block_size - ctx->rest);
-    ((char *)ctx->message)[ctx->rest] |= 0x06;
+    ((char *)ctx->message)[ctx->rest] |= pad;
     ((char *)ctx->message)[block_size - 1] |= 0x80;
 
-    bcrypto_sha3_process_block(ctx->hash, ctx->message, block_size);
-    ctx->rest = BCRYPTO_SHA3_FINALIZED;
+    bcrypto_keccak_process_block(ctx->hash, ctx->message, block_size);
+    ctx->rest = BCRYPTO_KECCAK_FINALIZED;
   }
 
-  assert(block_size > digest_length);
+  assert(block_size > *digest_length);
 
   if (result)
-    me64_to_le_str(result, ctx->hash, digest_length);
-}
+    me64_to_le_str(result, ctx->hash, *digest_length);
 
-void
-bcrypto_keccak_final(bcrypto_sha3_ctx *ctx, unsigned char *result) {
-  size_t digest_length = 100 - ctx->block_size / 2;
-  const size_t block_size = ctx->block_size;
-
-  if (!(ctx->rest & BCRYPTO_SHA3_FINALIZED)) {
-    memset((char *)ctx->message + ctx->rest, 0, block_size - ctx->rest);
-    ((char *)ctx->message)[ctx->rest] |= 0x01;
-    ((char *)ctx->message)[block_size - 1] |= 0x80;
-
-    bcrypto_sha3_process_block(ctx->hash, ctx->message, block_size);
-    ctx->rest = BCRYPTO_SHA3_FINALIZED;
-  }
-
-  assert(block_size > digest_length);
-
-  if (result)
-    me64_to_le_str(result, ctx->hash, digest_length);
+  return 1;
 }
