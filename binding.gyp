@@ -21,7 +21,7 @@
       "./src/scrypt/insecure_memzero.c",
       "./src/scrypt/sha256.c",
       "./src/scrypt/scrypt.c",
-      "./src/sha3/sha3.c",
+      "./src/keccak/keccak.c",
       "./src/aead.cc",
       "./src/aes.cc",
       "./src/bcrypto.cc",

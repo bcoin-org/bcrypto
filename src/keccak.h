@@ -2,7 +2,7 @@
 #define _BCRYPTO_KECCAK_HH
 #include <node.h>
 #include <nan.h>
-#include "sha3/sha3.h"
+#include "keccak/keccak.h"
 
 class BKeccak : public Nan::ObjectWrap {
 public:
