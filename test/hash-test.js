@@ -26,8 +26,8 @@ const algs = [
   ['sha384', true],
   ['sha512', true],
   ['md5-sha1', true],
-  ['blake2s256', false],
-  ['blake2b512', false]
+  ['blake2s256', true],
+  ['blake2b512', true]
 ];
 
 const hashes = {
