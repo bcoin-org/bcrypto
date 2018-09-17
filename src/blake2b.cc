@@ -220,33 +220,33 @@ NAN_METHOD(BBLAKE2b::Multi) {
   if (info.Length() < 2)
     return Nan::ThrowError("blake2b.multi() requires arguments.");
 
-  v8::Local<v8::Object> onebuf = info[0].As<v8::Object>();
+  v8::Local<v8::Object> xbuf = info[0].As<v8::Object>();
 
-  if (!node::Buffer::HasInstance(onebuf))
+  if (!node::Buffer::HasInstance(xbuf))
     return Nan::ThrowTypeError("First argument must be a buffer.");
 
-  const uint8_t *one = (uint8_t *)node::Buffer::Data(onebuf);
-  size_t onelen = node::Buffer::Length(onebuf);
+  const uint8_t *x = (uint8_t *)node::Buffer::Data(xbuf);
+  size_t xlen = node::Buffer::Length(xbuf);
 
-  v8::Local<v8::Object> twobuf = info[1].As<v8::Object>();
+  v8::Local<v8::Object> ybuf = info[1].As<v8::Object>();
 
-  if (!node::Buffer::HasInstance(twobuf))
+  if (!node::Buffer::HasInstance(ybuf))
     return Nan::ThrowTypeError("Second argument must be a buffer.");
 
-  const uint8_t *two = (uint8_t *)node::Buffer::Data(twobuf);
-  size_t twolen = node::Buffer::Length(twobuf);
+  const uint8_t *y = (uint8_t *)node::Buffer::Data(ybuf);
+  size_t ylen = node::Buffer::Length(ybuf);
 
-  uint8_t *three = NULL;
-  size_t threelen = 0;
+  const uint8_t *z = NULL;
+  size_t zlen = 0;
 
   if (info.Length() > 2 && !IsNull(info[2])) {
-    v8::Local<v8::Object> threebuf = info[2].As<v8::Object>();
+    v8::Local<v8::Object> zbuf = info[2].As<v8::Object>();
 
-    if (!node::Buffer::HasInstance(threebuf))
+    if (!node::Buffer::HasInstance(zbuf))
       return Nan::ThrowTypeError("Third argument must be a buffer.");
 
-    three = (uint8_t *)node::Buffer::Data(threebuf);
-    threelen = node::Buffer::Length(threebuf);
+    z = (const uint8_t *)node::Buffer::Data(zbuf);
+    zlen = node::Buffer::Length(zbuf);
   }
 
   uint32_t outlen = 32;
@@ -261,11 +261,11 @@ NAN_METHOD(BBLAKE2b::Multi) {
   if (bcrypto_blake2b_init(&global_ctx, outlen) < 0)
     return Nan::ThrowTypeError("Could not allocate context.");
 
-  bcrypto_blake2b_update(&global_ctx, one, onelen);
-  bcrypto_blake2b_update(&global_ctx, two, twolen);
+  bcrypto_blake2b_update(&global_ctx, x, xlen);
+  bcrypto_blake2b_update(&global_ctx, y, ylen);
 
-  if (three)
-    bcrypto_blake2b_update(&global_ctx, three, threelen);
+  if (z)
+    bcrypto_blake2b_update(&global_ctx, z, zlen);
 
   bcrypto_blake2b_final(&global_ctx, global_out, outlen);
 
