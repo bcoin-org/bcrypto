@@ -20,7 +20,7 @@
 #include <assert.h>
 #include <string.h>
 #include <stdint.h>
-#include "sha3.h"
+#include "keccak.h"
 
 #define BCRYPTO_KECCAK_ROUNDS 24
 #define BCRYPTO_KECCAK_FINALIZED 0x80000000
