@@ -41,7 +41,7 @@ function createParams(json) {
 }
 
 describe('DSA', function() {
-  this.timeout(20000);
+  this.timeout(30000);
 
   it('should sign and verify', () => {
     // const priv = dsa.privateKeyGenerate(1024);

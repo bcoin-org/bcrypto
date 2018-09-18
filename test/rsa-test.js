@@ -27,7 +27,7 @@ function fromJSON(json) {
 }
 
 describe('RSA', function() {
-  this.timeout(20000);
+  this.timeout(30000);
 
   it('should generate keypair', () => {
     const priv = rsa.privateKeyGenerate(1024);

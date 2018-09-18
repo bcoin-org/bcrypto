@@ -7,6 +7,7 @@ const assert = require('./util/assert');
 const crypto = require('crypto');
 const {Cipher, Decipher} = require('../lib/cipher');
 const random = require('../lib/random');
+const NODE_MAJOR = parseInt(process.version.substring(1).split('.')[0], 10);
 
 const algs = [
   {
@@ -102,6 +103,12 @@ const algs = [
   }
 ];
 
+// node<10 has no support for triple-des ecb.
+if (NODE_MAJOR < 10) {
+  algs[algs.length - 2].ids.shift();
+  algs[algs.length - 1].ids.shift();
+}
+
 const key = Buffer.from(
   '3a0c0bf669694ac7685e6806eeadee8e56c9b9bd22c3caa81c718ed4bbf809a1',
   'hex');
@@ -111,7 +118,7 @@ const iv = Buffer.from('6dd26d9045b73c377a9ed2ffeca72ffd', 'hex');
 function testVector(name, keyLen, ivLen) {
   const key = random.randomBytes(keyLen);
 
-  let iv = null;
+  let iv = Buffer.alloc(0);
 
   if (!name.endsWith('-ECB'))
     iv = random.randomBytes(ivLen);

@@ -4,9 +4,17 @@
 'use strict';
 
 const assert = require('./util/assert');
-const ECDSA = !process.env.NODE_BACKEND || process.env.NODE_BACKEND === 'native'
-  ? require('../lib/native/ecdsa')
-  : require('../lib/js/ecdsa');
+
+const NODE_MAJOR = parseInt(process.version.substring(1).split('.')[0], 10);
+
+const ECDSA = (() => {
+  if (!process.env.NODE_BACKEND || process.env.NODE_BACKEND === 'native') {
+    if (NODE_MAJOR >= 10)
+      return require('../lib/native/ecdsa');
+  }
+  return require('../lib/js/ecdsa');
+})();
+
 const random = require('../lib/random');
 const p192 = require('../lib/p192');
 const p224 = require('../lib/p224');
