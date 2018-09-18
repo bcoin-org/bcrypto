@@ -1881,7 +1881,6 @@ bcrypto_rsa_verify(
 
 bool
 bcrypto_rsa_encrypt(
-  int type,
   const uint8_t *msg,
   size_t msg_len,
   const bcrypto_rsa_key_t *pub,
@@ -1893,7 +1892,6 @@ bcrypto_rsa_encrypt(
 
 bool
 bcrypto_rsa_decrypt(
-  int type,
   const uint8_t *msg,
   size_t msg_len,
   const bcrypto_rsa_key_t *priv,
@@ -1923,7 +1921,7 @@ bcrypto_rsa_decrypt_oaep(
   const uint8_t *msg,
   size_t msg_len,
   const bcrypto_rsa_key_t *priv,
-  uint8_t *label,
+  const uint8_t *label,
   size_t label_len,
   uint8_t **pt,
   size_t *pt_len
