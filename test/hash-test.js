@@ -12,10 +12,13 @@ const SHA224 = require('../lib/sha224');
 const SHA256 = require('../lib/sha256');
 const SHA384 = require('../lib/sha384');
 const SHA512 = require('../lib/sha512');
+const Hash160 = require('../lib/hash160');
+const Hash256 = require('../lib/hash256');
 const MD5SHA1 = require('../lib/md5sha1');
 const BLAKE2s256 = require('../lib/blake2s256');
 const BLAKE2b512 = require('../lib/blake2b512');
 const random = require('../lib/random');
+const createHash = require('./util/create-hash');
 const NODE_MAJOR = parseInt(process.version.substring(1).split('.')[0], 10);
 
 const algs = [
@@ -26,6 +29,8 @@ const algs = [
   ['sha256', true],
   ['sha384', true],
   ['sha512', true],
+  ['hash160', false],
+  ['hash256', false],
   ['md5-sha1', true],
   ['blake2s256', true],
   ['blake2b512', true]
@@ -45,6 +50,8 @@ const hashes = {
   sha256: SHA256,
   sha384: SHA384,
   sha512: SHA512,
+  hash160: Hash160,
+  hash256: Hash256,
   'md5-sha1': MD5SHA1,
   blake2s256: BLAKE2s256,
   blake2b512: BLAKE2b512
@@ -65,7 +72,7 @@ function hash(alg, msg) {
   if (typeof msg === 'string')
     msg = Buffer.from(msg, 'utf8');
 
-  const ctx = crypto.createHash(alg);
+  const ctx = createHash(alg);
   ctx.update(msg);
   return ctx.digest();
 }
@@ -86,7 +93,7 @@ function testHash(alg, msg) {
   if (typeof msg === 'string')
     msg = Buffer.from(msg, 'utf8');
 
-  const ctx1 = crypto.createHash(alg);
+  const ctx1 = createHash(alg);
   ctx1.update(msg);
 
   const expect = ctx1.digest();
