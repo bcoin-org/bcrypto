@@ -24,8 +24,11 @@ bcrypto_pbkdf2_hash_type(const char *alg) {
     type = NID_sha384;
   else if (strcmp(alg, "SHA512") == 0)
     type = NID_sha512;
+
+#ifdef NID_md5_sha1
   else if (strcmp(alg, "MD5SHA1") == 0)
     type = NID_md5_sha1;
+#endif
 
 #ifdef NID_sha3_224
   else if (strcmp(alg, "SHA3_224") == 0)
