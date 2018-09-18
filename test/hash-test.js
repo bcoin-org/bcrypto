@@ -34,6 +34,7 @@ const algs = [
 if (NODE_MAJOR < 10) {
   algs.pop();
   algs.pop();
+  algs.pop();
 }
 
 const hashes = {
