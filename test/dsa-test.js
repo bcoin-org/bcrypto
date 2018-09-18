@@ -13,6 +13,7 @@ const random = require('../lib/random');
 const asn1 = require('../lib/encoding/asn1');
 const x509 = require('../lib/encoding/x509');
 const params = require('./data/dsa-params.json');
+const vectors = require('./data/dsa.json');
 
 const {
   DSAParams,
@@ -151,4 +152,25 @@ describe('DSA', function() {
 
     assert(dsa.publicKeyVerify(key));
   });
+
+  for (const vector of vectors) {
+    it(`should verify signature: ${vector.sig}`, () => {
+      const msg = Buffer.from(vector.msg, 'hex');
+      const sig = Buffer.from(vector.sig, 'hex');
+      const pubRaw = Buffer.from(vector.pub, 'hex');
+      const privRaw = Buffer.from(vector.priv, 'hex');
+      const priv = dsa.privateKeyImport(privRaw);
+      const pub = dsa.publicKeyCreate(priv);
+
+      assert.bufferEqual(dsa.publicKeyExport(pub), pubRaw);
+
+      const result = dsa.verify(msg, sig, pub);
+      assert.strictEqual(result, true);
+
+      sig[(Math.random() * sig.length) | 0] ^= 1;
+
+      const result2 = dsa.verify(msg, sig, pub);
+      assert.strictEqual(result2, false);
+    });
+  }
 });

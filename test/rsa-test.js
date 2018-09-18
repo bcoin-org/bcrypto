@@ -214,4 +214,52 @@ describe('RSA', function() {
       assert(rsa.verify(hash, m, sig, key));
     });
   }
+
+  {
+    const vector = require('./data/rsa-other.json');
+    const priv = rsa.privateKeyImport(Buffer.from(vector.priv, 'hex'));
+    const pub = rsa.publicKeyCreate(priv);
+    const msg = Buffer.from('hello world');
+
+    it('should verify PKCS1v1.5 signature', () => {
+      const sig = Buffer.from(vector.sigPKCS1, 'hex');
+      const result = rsa.verify(SHA1, SHA1.digest(msg), sig, pub);
+      assert.strictEqual(result, true);
+    });
+
+    it('should decrypt PKCS1v1.5 type 2 ciphertext', () => {
+      const ct = Buffer.from(vector.ctPKCS1, 'hex');
+
+      const pt = rsa.decrypt(ct, priv);
+      assert.bufferEqual(pt, msg);
+    });
+
+    it('should decrypt OAEP ciphertext', () => {
+      const ct = Buffer.from(vector.ctOAEP, 'hex');
+
+      const pt = rsa.decryptOAEP(SHA1, ct, priv);
+      assert.bufferEqual(pt, msg);
+    });
+
+    it('should decrypt OAEP ciphertext (label=foo)', () => {
+      const ct = Buffer.from(vector.ctOAEPLabelFoo, 'hex');
+
+      const pt = rsa.decryptOAEP(SHA1, ct, priv, Buffer.from('foo'));
+      assert.bufferEqual(pt, msg);
+    });
+
+    it('should verify PSS signature (auto)', () => {
+      const sig = Buffer.from(vector.sigPSSAuto, 'hex');
+
+      const result = rsa.verifyPSS(SHA1, SHA1.digest(msg), sig, pub, 0);
+      assert.strictEqual(result, true);
+    });
+
+    it('should verify PSS signature (equals)', () => {
+      const sig = Buffer.from(vector.sigPSSEquals, 'hex');
+
+      const result = rsa.verifyPSS(SHA1, SHA1.digest(msg), sig, pub, -1);
+      assert.strictEqual(result, true);
+    });
+  }
 });
