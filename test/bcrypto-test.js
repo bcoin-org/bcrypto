@@ -79,16 +79,18 @@ describe('Bcrypto', function() {
       case 'node':
         assert.strictEqual(bcrypto.AEAD.native, 0);
         assert.strictEqual(bcrypto.aes.native, 1);
-        assert.strictEqual(bcrypto.BLAKE2b.native, 1);
-        assert.strictEqual(bcrypto.BLAKE2b160.native, 1);
-        assert.strictEqual(bcrypto.BLAKE2b256.native, 1);
-        assert.strictEqual(bcrypto.BLAKE2b384.native, 1);
-        assert.strictEqual(bcrypto.BLAKE2b512.native, 1);
-        assert.strictEqual(bcrypto.BLAKE2s.native, 1);
-        assert.strictEqual(bcrypto.BLAKE2s128.native, 1);
-        assert.strictEqual(bcrypto.BLAKE2s160.native, 1);
-        assert.strictEqual(bcrypto.BLAKE2s224.native, 1);
-        assert.strictEqual(bcrypto.BLAKE2s256.native, 1);
+        if (NODE_MAJOR < 10) {
+          assert.strictEqual(bcrypto.BLAKE2b.native, 1);
+          assert.strictEqual(bcrypto.BLAKE2b160.native, 1);
+          assert.strictEqual(bcrypto.BLAKE2b256.native, 1);
+          assert.strictEqual(bcrypto.BLAKE2b384.native, 1);
+          assert.strictEqual(bcrypto.BLAKE2b512.native, 1);
+          assert.strictEqual(bcrypto.BLAKE2s.native, 1);
+          assert.strictEqual(bcrypto.BLAKE2s128.native, 1);
+          assert.strictEqual(bcrypto.BLAKE2s160.native, 1);
+          assert.strictEqual(bcrypto.BLAKE2s224.native, 1);
+          assert.strictEqual(bcrypto.BLAKE2s256.native, 1);
+        }
         assert.strictEqual(bcrypto.BN.native, undefined);
         assert.strictEqual(bcrypto.bcrypt.native, 0);
         assert.strictEqual(bcrypto.ChaCha20.native, 0);

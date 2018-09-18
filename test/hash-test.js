@@ -16,6 +16,7 @@ const MD5SHA1 = require('../lib/md5sha1');
 const BLAKE2s256 = require('../lib/blake2s256');
 const BLAKE2b512 = require('../lib/blake2b512');
 const random = require('../lib/random');
+const NODE_MAJOR = parseInt(process.version.substring(1).split('.')[0], 10);
 
 const algs = [
   ['md5', true],
@@ -29,6 +30,11 @@ const algs = [
   ['blake2s256', true],
   ['blake2b512', true]
 ];
+
+if (NODE_MAJOR < 10) {
+  algs.pop();
+  algs.pop();
+}
 
 const hashes = {
   md5: MD5,
