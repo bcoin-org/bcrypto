@@ -39,6 +39,7 @@
   "gypfile": true,
   "browser": {
     "./lib/internal/custom": "./lib/internal/custom-browser.js",
+    "./lib/aead": "./lib/aead-browser.js",
     "./lib/aes": "./lib/aes-browser.js",
     "./lib/blake2b": "./lib/blake2b-browser.js",
     "./lib/blake2s": "./lib/blake2s-browser.js",
