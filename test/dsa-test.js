@@ -142,7 +142,7 @@ describe('DSA', function() {
     const p = asn1.Integer.read(br);
     const q = asn1.Integer.read(br);
     const g = asn1.Integer.read(br);
-    const y = asn1.Integer.decode(info.subjectPublicKey.align());
+    const y = asn1.Integer.decode(info.subjectPublicKey.rightAlign());
     const key = new DSAPublicKey();
 
     key.setP(p.value);

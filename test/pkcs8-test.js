@@ -29,7 +29,7 @@ describe('PKCS8', function() {
     const p = asn1.Integer.read(br);
     const q = asn1.Integer.read(br);
     const g = asn1.Integer.read(br);
-    const y = asn1.Integer.decode(pki.publicKey.align());
+    const y = asn1.Integer.decode(pki.publicKey.rightAlign());
     const key = new dsa.DSAPublicKey();
 
     key.setP(p.value);

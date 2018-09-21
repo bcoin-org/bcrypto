@@ -54,7 +54,7 @@ describe('SEC1', function() {
     assert.strictEqual(key.namedCurveOID.getCurveName(), 'SECP256K1');
     assert.strictEqual(key.publicKey.bits, 264);
     assert.strictEqual(key.publicKey.value.toString('hex'), secpPub);
-    assert.strictEqual(key.publicKey.align().toString('hex'), secpPub);
+    assert.strictEqual(key.publicKey.rightAlign().toString('hex'), secpPub);
     assert.strictEqual(key.toPEM().trim(), secpPem.trim());
   });
 
@@ -66,7 +66,7 @@ describe('SEC1', function() {
     assert.strictEqual(key.namedCurveOID.getCurveName(), null);
     assert.strictEqual(key.publicKey.bits, 264);
     assert.strictEqual(key.publicKey.value.toString('hex'), secpPub);
-    assert.strictEqual(key.publicKey.align().toString('hex'), secpPub);
+    assert.strictEqual(key.publicKey.rightAlign().toString('hex'), secpPub);
   });
 
   it('should parse secp256k1 key (backend)', () => {
@@ -92,7 +92,7 @@ describe('SEC1', function() {
     assert.strictEqual(key.namedCurveOID.getCurveName(), 'P256');
     assert.strictEqual(key.publicKey.bits, 264);
     assert.strictEqual(key.publicKey.value.toString('hex'), p256Pub);
-    assert.strictEqual(key.publicKey.align().toString('hex'), p256Pub);
+    assert.strictEqual(key.publicKey.rightAlign().toString('hex'), p256Pub);
     assert.strictEqual(key.toPEM().trim(), p256Pem.trim());
   });
 

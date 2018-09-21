@@ -115,4 +115,74 @@ describe('ASN1', function() {
       }
     });
   }
+
+  it('should handle bit string', () => {
+    const bs = new asn1.BitString(20); // 20 bits
+
+    assert(!bs.getBit(1));
+    bs.setBit(1, 1);
+    assert(bs.getBit(1));
+
+    assert(!bs.getBit(3));
+    bs.setBit(3, 1);
+    assert(bs.getBit(3));
+
+    assert(!bs.getBit(18));
+    bs.setBit(18, 1);
+    assert(bs.getBit(18));
+    bs.setBit(18, 0);
+    assert(!bs.getBit(18));
+    bs.setBit(18, 1);
+    assert(bs.getBit(18));
+
+    assert.strictEqual(bs.value.toString('hex'), '500020');
+    assert.strictEqual(bs.rightAlign().toString('hex'), '050002');
+
+    const r = asn1.BitString.decode(bs.encode());
+
+    assert.strictEqual(r.value.toString('hex'), '500020');
+    assert.strictEqual(r.rightAlign().toString('hex'), '050002');
+  });
+
+  it('should handle UTC time', () => {
+    const time = new asn1.UTCTime('2018-09-21T11:09:39.907Z');
+    assert.strictEqual(time.toString(), '2018-09-21T11:09:39Z');
+    assert.strictEqual(time.unix(), 1537528179);
+
+    const r = asn1.UTCTime.decode(time.encode());
+
+    assert.strictEqual(r.toString(), '2018-09-21T11:09:39Z');
+    assert.strictEqual(r.unix(), 1537528179);
+
+    r.offset = -6 * 60 * 60;
+
+    assert.strictEqual(r.toString(), '2018-09-21T11:09:39-0600');
+    assert.strictEqual(r.unix(), 1537549779);
+
+    const r2 = asn1.UTCTime.decode(r.encode());
+
+    assert.strictEqual(r2.toString(), '2018-09-21T11:09:39-0600');
+    assert.strictEqual(r2.unix(), 1537549779);
+  });
+
+  it('should handle GEN time', () => {
+    const time = new asn1.GenTime('2018-09-21T11:09:39.907Z');
+    assert.strictEqual(time.toString(), '2018-09-21T11:09:39Z');
+    assert.strictEqual(time.unix(), 1537528179);
+
+    const r = asn1.GenTime.decode(time.encode());
+
+    assert.strictEqual(r.toString(), '2018-09-21T11:09:39Z');
+    assert.strictEqual(r.unix(), 1537528179);
+
+    r.offset = -6 * 60 * 60;
+
+    assert.strictEqual(r.toString(), '2018-09-21T11:09:39-0600');
+    assert.strictEqual(r.unix(), 1537549779);
+
+    const r2 = asn1.GenTime.decode(r.encode());
+
+    assert.strictEqual(r2.toString(), '2018-09-21T11:09:39-0600');
+    assert.strictEqual(r2.unix(), 1537549779);
+  });
 });
