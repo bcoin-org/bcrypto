@@ -60,6 +60,10 @@ describe('DSA', function() {
     const result = dsa.verify(msg, sig, pub);
     assert(result);
 
+    const zero = Buffer.alloc(0);
+    assert(!dsa.verify(zero, sig, pub));
+    assert(!dsa.verify(msg, zero, pub));
+
     sig[(Math.random() * sig.length) | 0] ^= 1;
 
     const result2 = dsa.verify(msg, sig, pub);

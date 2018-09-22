@@ -14,6 +14,7 @@ const vectors = require('./data/rsa.json');
 const {RSAPublicKey} = rsa;
 
 const msg = SHA256.digest(Buffer.from('foobar'));
+const zero = Buffer.alloc(0);
 
 function fromJSON(json) {
   assert(json && typeof json === 'object');
@@ -77,6 +78,10 @@ describe('RSA', function() {
 
     const sig = rsa.sign(SHA256, msg, priv);
     assert(rsa.verify(SHA256, msg, sig, pub));
+
+    assert(!rsa.verify(SHA256, zero, sig, pub));
+    assert(!rsa.verify(SHA256, msg, zero, pub));
+
     sig[(Math.random() * sig.length) | 0] ^= 1;
     assert(!rsa.verify(SHA256, msg, sig, pub));
   });
@@ -90,6 +95,10 @@ describe('RSA', function() {
 
     const sig1 = rsa.signPSS(SHA256, msg, priv, -1);
     assert(rsa.verifyPSS(SHA256, msg, sig1, pub));
+
+    assert(!rsa.verifyPSS(SHA256, zero, sig1, pub));
+    assert(!rsa.verifyPSS(SHA256, msg, zero, pub));
+
     sig1[(Math.random() * sig1.length) | 0] ^= 1;
     assert(!rsa.verifyPSS(SHA256, msg, sig1, pub));
 
