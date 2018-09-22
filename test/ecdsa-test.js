@@ -95,6 +95,47 @@ describe('ECDSA', function() {
       assert(ec.verify(msg, sig, pubu));
     });
 
+    it(`should fail with padded key (${ec.id})`, () => {
+      const msg = random.randomBytes(ec.size);
+      const priv = ec.privateKeyGenerate();
+      const pub = ec.publicKeyCreate(priv);
+      const pubu = ec.publicKeyConvert(pub, false);
+
+      const sig = ec.sign(msg, priv);
+
+      assert(ec.verify(msg, sig, pub));
+      assert(ec.verify(msg, sig, pubu));
+
+      const pad = (a, b) => Buffer.concat([a, Buffer.from([b])]);
+
+      assert(!ec.verify(msg, sig, pad(pub, 0x00)));
+      assert(!ec.verify(msg, sig, pad(pubu, 0x00)));
+      assert(!ec.verify(msg, sig, pad(pub, 0x01)));
+      assert(!ec.verify(msg, sig, pad(pubu, 0x01)));
+      assert(!ec.verify(msg, sig, pad(pub, 0xff)));
+      assert(!ec.verify(msg, sig, pad(pubu, 0xff)));
+
+      if (pub[0] === 0x02)
+        pubu[0] = 0x06;
+      else
+        pubu[0] = 0x07;
+
+      assert(ec.verify(msg, sig, pubu));
+
+      if (pub[0] === 0x02)
+        pubu[0] = 0x07;
+      else
+        pubu[0] = 0x06;
+
+      assert(!ec.verify(msg, sig, pubu));
+
+      const zero = Buffer.alloc(0);
+
+      assert(!ec.verify(zero, sig, pub));
+      assert(!ec.verify(msg, zero, pub));
+      assert(!ec.verify(msg, sig, zero));
+    });
+
     it(`should tweak keys (${ec.id})`, () => {
       const priv = ec.privateKeyGenerate();
       const pub = ec.publicKeyCreate(priv);
