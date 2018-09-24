@@ -41,10 +41,6 @@ bcrypto_ecdsa_curve(const char *name) {
     type = NID_secp521r1;
   else if (strcmp(name, "SECP256K1") == 0)
     type = NID_secp256k1;
-#ifdef NID_X25519
-  else if (strcmp(name, "CURVE25519") == 0)
-    type = NID_X25519;
-#endif
 
   return type;
 }
@@ -64,10 +60,6 @@ bcrypto_ecdsa_size(int type) {
       return 66;
     case NID_secp256k1:
       return 32;
-#ifdef NID_X25519
-    case NID_X25519:
-      return 32;
-#endif
     default:
       return 0;
   }

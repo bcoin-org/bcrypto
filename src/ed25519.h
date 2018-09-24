@@ -10,6 +10,7 @@ public:
 
 private:
   static NAN_METHOD(PublicKeyCreate);
+  static NAN_METHOD(PublicKeyConvert);
   static NAN_METHOD(PublicKeyVerify);
   static NAN_METHOD(Sign);
   static NAN_METHOD(Verify);

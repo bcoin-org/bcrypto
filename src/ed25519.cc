@@ -13,6 +13,7 @@ BED25519::Init(v8::Local<v8::Object> &target) {
   v8::Local<v8::Object> obj = Nan::New<v8::Object>();
 
   Nan::Export(obj, "publicKeyCreate", BED25519::PublicKeyCreate);
+  Nan::Export(obj, "publicKeyConvert", BED25519::PublicKeyConvert);
   Nan::Export(obj, "publicKeyVerify", BED25519::PublicKeyVerify);
   Nan::Export(obj, "sign", BED25519::Sign);
   Nan::Export(obj, "verify", BED25519::Verify);
@@ -40,6 +41,30 @@ NAN_METHOD(BED25519::PublicKeyCreate) {
 
   return info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&pub[0], 32).ToLocalChecked());
+}
+
+NAN_METHOD(BED25519::PublicKeyConvert) {
+  if (info.Length() < 1)
+    return Nan::ThrowError("ed25519.publicKeyConvert() requires arguments.");
+
+  v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(pbuf))
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+
+  const uint8_t *pub = (uint8_t *)node::Buffer::Data(pbuf);
+  size_t pub_len = node::Buffer::Length(pbuf);
+
+  if (pub_len != 32)
+    return Nan::ThrowTypeError("Invalid parameters.");
+
+  bcrypto_curved25519_key out;
+
+  if (bcrypto_ed25519_pubkey_convert(out, pub) != 0)
+    return Nan::ThrowError("Invalid public key key.");
+
+  return info.GetReturnValue().Set(
+    Nan::CopyBuffer((char *)&out[0], 32).ToLocalChecked());
 }
 
 NAN_METHOD(BED25519::PublicKeyVerify) {

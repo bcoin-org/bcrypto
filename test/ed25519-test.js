@@ -33,6 +33,19 @@ describe('EdDSA', function() {
     assert(!ed25519.verify(msg, sig, pub));
   });
 
+  it('should do ECDH', () => {
+    const alicePriv = ed25519.secretGenerate();
+    const alicePub = ed25519.publicKeyCreate(alicePriv);
+
+    const bobPriv = ed25519.secretGenerate();
+    const bobPub = ed25519.publicKeyCreate(bobPriv);
+
+    const aliceSecret = ed25519.ecdh(bobPub, alicePriv);
+    const bobSecret = ed25519.ecdh(alicePub, bobPriv);
+
+    assert.bufferEqual(aliceSecret, bobSecret);
+  });
+
   describe('ed25519 derivations', () => {
     for (const [i, test] of derivations.entries()) {
       it(`should compute correct a and A for secret: ${i}`, () => {

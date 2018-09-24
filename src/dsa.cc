@@ -28,6 +28,7 @@ BDSA::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "publicKeyImport", BDSA::PublicKeyImport);
   Nan::Export(obj, "sign", BDSA::Sign);
   Nan::Export(obj, "verify", BDSA::Verify);
+  Nan::Export(obj, "dh", BDSA::DH);
 
   target->Set(Nan::New("dsa").ToLocalChecked(), obj);
 }
@@ -527,5 +528,75 @@ NAN_METHOD(BDSA::Verify) {
   bool result = bcrypto_dsa_verify(md, ml, rd, rl, sd, sl, &pub);
 
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
+}
+
+NAN_METHOD(BDSA::DH) {
+  if (info.Length() < 9)
+    return Nan::ThrowError("dsa.dh() requires arguments.");
+
+  v8::Local<v8::Object> ppbuf = info[0].As<v8::Object>();
+  v8::Local<v8::Object> pqbuf = info[1].As<v8::Object>();
+  v8::Local<v8::Object> pgbuf = info[2].As<v8::Object>();
+  v8::Local<v8::Object> pybuf = info[3].As<v8::Object>();
+
+  v8::Local<v8::Object> spbuf = info[4].As<v8::Object>();
+  v8::Local<v8::Object> sqbuf = info[5].As<v8::Object>();
+  v8::Local<v8::Object> sgbuf = info[6].As<v8::Object>();
+  v8::Local<v8::Object> sybuf = info[7].As<v8::Object>();
+  v8::Local<v8::Object> sxbuf = info[8].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(ppbuf)
+      || !node::Buffer::HasInstance(pqbuf)
+      || !node::Buffer::HasInstance(pgbuf)
+      || !node::Buffer::HasInstance(pybuf)
+      || !node::Buffer::HasInstance(spbuf)
+      || !node::Buffer::HasInstance(sqbuf)
+      || !node::Buffer::HasInstance(sgbuf)
+      || !node::Buffer::HasInstance(sybuf)
+      || !node::Buffer::HasInstance(sxbuf)) {
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+  }
+
+  bcrypto_dsa_key_t pub;
+  bcrypto_dsa_key_init(&pub);
+
+  pub.pd = (uint8_t *)node::Buffer::Data(ppbuf);
+  pub.pl = node::Buffer::Length(ppbuf);
+
+  pub.qd = (uint8_t *)node::Buffer::Data(pqbuf);
+  pub.ql = node::Buffer::Length(pqbuf);
+
+  pub.gd = (uint8_t *)node::Buffer::Data(pgbuf);
+  pub.gl = node::Buffer::Length(pgbuf);
+
+  pub.yd = (uint8_t *)node::Buffer::Data(pybuf);
+  pub.yl = node::Buffer::Length(pybuf);
+
+  bcrypto_dsa_key_t priv;
+  bcrypto_dsa_key_init(&priv);
+
+  priv.pd = (uint8_t *)node::Buffer::Data(spbuf);
+  priv.pl = node::Buffer::Length(spbuf);
+
+  priv.qd = (uint8_t *)node::Buffer::Data(sqbuf);
+  priv.ql = node::Buffer::Length(sqbuf);
+
+  priv.gd = (uint8_t *)node::Buffer::Data(sgbuf);
+  priv.gl = node::Buffer::Length(sgbuf);
+
+  priv.yd = (uint8_t *)node::Buffer::Data(sybuf);
+  priv.yl = node::Buffer::Length(sybuf);
+
+  priv.xd = (uint8_t *)node::Buffer::Data(sxbuf);
+  priv.xl = node::Buffer::Length(sxbuf);
+
+  uint8_t *out = NULL;
+  size_t out_len = 0;
+
+  if (!bcrypto_dsa_dh(&pub, &priv, &out, &out_len))
+    return Nan::ThrowError("Could not derive key.");
+
+  info.GetReturnValue().Set(
+    Nan::NewBuffer((char *)out, out_len).ToLocalChecked());
 }
 #endif

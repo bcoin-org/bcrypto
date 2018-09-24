@@ -974,6 +974,112 @@ fail:
   return false;
 }
 
+bool
+bcrypto_dsa_dh(
+  const bcrypto_dsa_key_t *pub,
+  const bcrypto_dsa_key_t *priv,
+  uint8_t **out,
+  size_t *out_len
+) {
+  assert(out && out_len);
+
+  DSA *pub_d = NULL;
+  DSA *priv_d = NULL;
+  BN_CTX *ctx = NULL;
+  BIGNUM *secret_bn = NULL;
+  uint8_t *secret = NULL;
+  size_t secret_len = 0;
+
+  const BIGNUM *p_pub = NULL;
+  const BIGNUM *q_pub = NULL;
+  const BIGNUM *g_pub = NULL;
+  const BIGNUM *y_pub = NULL;
+  const BIGNUM *p_priv = NULL;
+  const BIGNUM *q_priv = NULL;
+  const BIGNUM *g_priv = NULL;
+  const BIGNUM *x_priv = NULL;
+
+  if (!bcrypto_dsa_sane_pubkey(pub))
+    goto fail;
+
+  if (!bcrypto_dsa_sane_privkey(priv))
+    goto fail;
+
+  pub_d = bcrypto_dsa_key2pub(pub);
+
+  if (!pub_d)
+    goto fail;
+
+  priv_d = bcrypto_dsa_key2priv(priv);
+
+  if (!priv_d)
+    goto fail;
+
+  DSA_get0_pqg(pub_d, &p_pub, &q_pub, &g_pub);
+  DSA_get0_key(pub_d, &y_pub, NULL);
+  assert(p_pub && q_pub && g_pub && y_pub);
+
+  DSA_get0_pqg(priv_d, &p_priv, &q_priv, &g_priv);
+  DSA_get0_key(priv_d, NULL, &x_priv);
+  assert(p_priv && q_priv && g_priv && x_priv);
+
+  if (BN_cmp(p_pub, p_priv) != 0
+      || BN_cmp(q_pub, q_priv) != 0
+      || BN_cmp(g_pub, g_priv) != 0) {
+    goto fail;
+  }
+
+  ctx = BN_CTX_new();
+
+  if (!ctx)
+    goto fail;
+
+  secret_bn = BN_new();
+
+  if (!secret_bn)
+    goto fail;
+
+  // secret = (theirY^ourX) % p
+  if (!BN_mod_exp(secret_bn, y_pub, x_priv, p_pub, ctx))
+    goto fail;
+
+  secret_len = BN_num_bytes(secret_bn);
+  secret = malloc(secret_len);
+
+  if (!secret)
+    goto fail;
+
+  assert(BN_bn2binpad(secret_bn, secret, secret_len) != -1);
+
+  DSA_free(pub_d);
+  DSA_free(priv_d);
+  BN_CTX_free(ctx);
+  BN_free(secret_bn);
+
+  *out = secret;
+  *out_len = secret_len;
+
+  return true;
+
+fail:
+  if (pub_d)
+    DSA_free(pub_d);
+
+  if (priv_d)
+    DSA_free(priv_d);
+
+  if (ctx)
+    BN_CTX_free(ctx);
+
+  if (secret_bn)
+    BN_free(secret_bn);
+
+  if (secret)
+    free(secret);
+
+  return false;
+}
+
 #else
 
 void
@@ -1072,6 +1178,16 @@ bcrypto_dsa_verify(
   const uint8_t *s,
   size_t s_len,
   const bcrypto_dsa_key_t *pub
+) {
+  return false;
+}
+
+bool
+bcrypto_dsa_dh(
+  const bcrypto_dsa_key_t *pub,
+  const bcrypto_dsa_key_t *priv,
+  uint8_t **out,
+  size_t *out_len
 ) {
   return false;
 }

@@ -57,6 +57,12 @@ bcrypto_curved25519_scalarmult_basepoint(
   const bcrypto_curved25519_key e
 );
 
+int
+bcrypto_ed25519_pubkey_convert(
+  bcrypto_curved25519_key out,
+  const bcrypto_ed25519_public_key pk
+);
+
 #if defined(__cplusplus)
 }
 #endif

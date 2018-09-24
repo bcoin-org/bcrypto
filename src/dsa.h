@@ -22,6 +22,7 @@ private:
   static NAN_METHOD(PublicKeyImport);
   static NAN_METHOD(Sign);
   static NAN_METHOD(Verify);
+  static NAN_METHOD(DH);
 };
 #endif
 

@@ -169,3 +169,27 @@ bcrypto_curved25519_scalarmult_basepoint(
   curve25519_mul(yplusz, yplusz, zminusy);
   curve25519_contract(pk, yplusz);
 }
+
+int
+bcrypto_ed25519_pubkey_convert(
+  bcrypto_curved25519_key out,
+  const bcrypto_ed25519_public_key pk
+) {
+  bignum25519 ALIGN(16) yplusz, zminusy;
+  ge25519 ALIGN(16) p;
+
+  /* ed25519 pubkey -> ed25519 point */
+  if (!ge25519_unpack_negative_vartime(&p, pk))
+    return -1;
+
+  /* ed25519 point -> x25519 point */
+  curve25519_add(yplusz, p.y, p.z);
+  curve25519_sub(zminusy, p.z, p.y);
+  curve25519_recip(zminusy, zminusy);
+  curve25519_mul(yplusz, yplusz, zminusy);
+
+  /* output secret (little-endian x coord) */
+  curve25519_contract(out, yplusz);
+
+  return 0;
+}

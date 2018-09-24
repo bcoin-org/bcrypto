@@ -35,7 +35,9 @@ bcrypto_aead_setup(
 
   bcrypto_chacha20_keysetup(&aead->chacha, key, 32);
   bcrypto_chacha20_ivsetup(&aead->chacha, iv, iv_len);
-  bcrypto_chacha20_counter_set(&aead->chacha, 0);
+
+  if (iv_len != 16)
+    bcrypto_chacha20_counter_set(&aead->chacha, 0);
 
   bcrypto_chacha20_encrypt(&aead->chacha, aead->poly_key, aead->poly_key, 32);
 
@@ -46,7 +48,8 @@ bcrypto_aead_setup(
 
   bcrypto_chacha20_encrypt(&aead->chacha, half_block, half_block, 32);
 
-  assert(bcrypto_chacha20_counter_get(&aead->chacha) == 1);
+  if (iv_len != 16)
+    assert(bcrypto_chacha20_counter_get(&aead->chacha) == 1);
 
   aead->aad_len = 0;
   aead->cipher_len = 0;

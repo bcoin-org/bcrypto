@@ -95,6 +95,16 @@ bcrypto_chacha20_ivsetup(
   const uint8_t *nonce,
   uint8_t nonce_size
 ) {
+  if (nonce_size == 16) {
+    ctx->state[12] = READLE(nonce + 0);
+    ctx->state[13] = READLE(nonce + 4);
+    ctx->state[14] = READLE(nonce + 8);
+    ctx->state[15] = READLE(nonce + 12);
+    ctx->available = 0;
+    ctx->nonce_size = 12;
+    return;
+  }
+
   ctx->state[12] = 0;
 
   if (nonce_size == 8) {

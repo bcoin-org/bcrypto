@@ -69,7 +69,7 @@ NAN_METHOD(BChaCha20::Init) {
   const uint8_t *iv = (uint8_t *)node::Buffer::Data(iv_buf);
   size_t iv_len = node::Buffer::Length(iv_buf);
 
-  if (iv_len != 8 && iv_len != 12)
+  if (iv_len != 8 && iv_len != 12 && iv_len != 16)
     return Nan::ThrowError("Invalid IV size.");
 
   uint64_t ctr = 0;
@@ -124,7 +124,7 @@ NAN_METHOD(BChaCha20::InitIV) {
   const uint8_t *iv = (uint8_t *)node::Buffer::Data(iv_buf);
   size_t iv_len = node::Buffer::Length(iv_buf);
 
-  if (iv_len != 8 && iv_len != 12)
+  if (iv_len != 8 && iv_len != 12 && iv_len != 16)
     return Nan::ThrowError("Invalid IV size.");
 
   uint64_t ctr = 0;

@@ -98,6 +98,14 @@ bcrypto_dsa_verify(
   const bcrypto_dsa_key_t *pub
 );
 
+bool
+bcrypto_dsa_dh(
+  const bcrypto_dsa_key_t *pub,
+  const bcrypto_dsa_key_t *priv,
+  uint8_t **out,
+  size_t *out_len
+);
+
 #if defined(__cplusplus)
 }
 #endif

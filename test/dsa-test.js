@@ -100,21 +100,21 @@ describe('DSA', function() {
     assert(!result2);
   });
 
+  it('should do diffie hellman', () => {
+    // const params = createParams(P2048_256);
+    const params = dsa.paramsGenerate(1024);
+    const alice = dsa.privateKeyCreate(params);
+    const alicePub = dsa.publicKeyCreate(alice);
+    const bob = dsa.privateKeyCreate(params);
+    const bobPub = dsa.publicKeyCreate(bob);
+
+    const aliceSecret = dsa.dh(bobPub, alice);
+    const bobSecret = dsa.dh(alicePub, bob);
+
+    assert.bufferEqual(aliceSecret, bobSecret);
+  });
+
   if (dsa.native < 2) {
-    it('should do diffie hellman', () => {
-      // const params = createParams(P2048_256);
-      const params = dsa.paramsGenerate(1024);
-      const alice = dsa.privateKeyCreate(params);
-      const alicePub = dsa.publicKeyCreate(alice);
-      const bob = dsa.privateKeyCreate(params);
-      const bobPub = dsa.publicKeyCreate(bob);
-
-      const aliceSecret = dsa.dh(bobPub, alice);
-      const bobSecret = dsa.dh(alicePub, bob);
-
-      assert.bufferEqual(aliceSecret, bobSecret);
-    });
-
     it('should do HD derivation', () => {
       // const params = createParams(P2048_256);
       const params = dsa.paramsGenerate(1024);
