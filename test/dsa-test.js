@@ -114,27 +114,25 @@ describe('DSA', function() {
     assert.bufferEqual(aliceSecret, bobSecret);
   });
 
-  if (dsa.native < 2) {
-    it('should do HD derivation', () => {
-      // const params = createParams(P2048_256);
-      const params = dsa.paramsGenerate(1024);
-      const priv = dsa.privateKeyCreate(params);
-      const pub = dsa.publicKeyCreate(priv);
-      const tweak = random.randomBytes(priv.size());
+  it('should do HD derivation', () => {
+    // const params = createParams(P2048_256);
+    const params = dsa.paramsGenerate(1024);
+    const priv = dsa.privateKeyCreate(params);
+    const pub = dsa.publicKeyCreate(priv);
+    const tweak = random.randomBytes(priv.size());
 
-      const newPriv = dsa.privateKeyTweakAdd(priv, tweak);
-      const newPub = dsa.publicKeyTweakAdd(pub, tweak);
+    const newPriv = dsa.privateKeyTweakAdd(priv, tweak);
+    const newPub = dsa.publicKeyTweakAdd(pub, tweak);
 
-      assert.bufferEqual(newPriv.y, newPub.y);
+    assert.bufferEqual(newPriv.y, newPub.y);
 
-      const msg = Buffer.alloc(newPriv.size(), 0x01);
-      const sig = dsa.sign(msg, newPriv);
-      assert(sig);
+    const msg = Buffer.alloc(newPriv.size(), 0x01);
+    const sig = dsa.sign(msg, newPriv);
+    assert(sig);
 
-      const result = dsa.verify(msg, sig, newPub);
-      assert(result);
-    });
-  }
+    const result = dsa.verify(msg, sig, newPub);
+    assert(result);
+  });
 
   it('should parse SPKI', () => {
     const info = x509.SubjectPublicKeyInfo.fromPEM(dsaPubPem);

@@ -23,9 +23,11 @@ BDSA::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "privateKeyVerify", BDSA::PrivateKeyVerify);
   Nan::Export(obj, "privateKeyExport", BDSA::PrivateKeyExport);
   Nan::Export(obj, "privateKeyImport", BDSA::PrivateKeyImport);
+  Nan::Export(obj, "privateKeyTweakAdd", BDSA::PrivateKeyTweakAdd);
   Nan::Export(obj, "publicKeyVerify", BDSA::PublicKeyVerify);
   Nan::Export(obj, "publicKeyExport", BDSA::PublicKeyExport);
   Nan::Export(obj, "publicKeyImport", BDSA::PublicKeyImport);
+  Nan::Export(obj, "publicKeyTweakAdd", BDSA::PublicKeyTweakAdd);
   Nan::Export(obj, "sign", BDSA::Sign);
   Nan::Export(obj, "verify", BDSA::Verify);
   Nan::Export(obj, "dh", BDSA::DH);
@@ -318,6 +320,62 @@ NAN_METHOD(BDSA::PrivateKeyImport) {
   return info.GetReturnValue().Set(ret);
 }
 
+NAN_METHOD(BDSA::PrivateKeyTweakAdd) {
+  if (info.Length() < 6)
+    return Nan::ThrowError("dsa.privateKeyTweakAdd() requires arguments.");
+
+  v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
+  v8::Local<v8::Object> qbuf = info[1].As<v8::Object>();
+  v8::Local<v8::Object> gbuf = info[2].As<v8::Object>();
+  v8::Local<v8::Object> ybuf = info[3].As<v8::Object>();
+  v8::Local<v8::Object> xbuf = info[4].As<v8::Object>();
+  v8::Local<v8::Object> tbuf = info[5].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(pbuf)
+      || !node::Buffer::HasInstance(qbuf)
+      || !node::Buffer::HasInstance(gbuf)
+      || !node::Buffer::HasInstance(ybuf)
+      || !node::Buffer::HasInstance(xbuf)
+      || !node::Buffer::HasInstance(tbuf)) {
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+  }
+
+  bcrypto_dsa_key_t priv;
+  bcrypto_dsa_key_init(&priv);
+
+  priv.pd = (uint8_t *)node::Buffer::Data(pbuf);
+  priv.pl = node::Buffer::Length(pbuf);
+
+  priv.qd = (uint8_t *)node::Buffer::Data(qbuf);
+  priv.ql = node::Buffer::Length(qbuf);
+
+  priv.gd = (uint8_t *)node::Buffer::Data(gbuf);
+  priv.gl = node::Buffer::Length(gbuf);
+
+  priv.yd = (uint8_t *)node::Buffer::Data(ybuf);
+  priv.yl = node::Buffer::Length(ybuf);
+
+  priv.xd = (uint8_t *)node::Buffer::Data(xbuf);
+  priv.xl = node::Buffer::Length(xbuf);
+
+  const uint8_t *td = (uint8_t *)node::Buffer::Data(tbuf);
+  size_t tl = node::Buffer::Length(tbuf);
+
+  uint8_t *y;
+  size_t yl;
+  uint8_t *x;
+  size_t xl;
+
+  if (!bcrypto_dsa_privkey_tweak_add(&priv, td, tl, &y, &yl, &x, &xl))
+    return Nan::ThrowError("Could not tweak.");
+
+  v8::Local<v8::Array> ret = Nan::New<v8::Array>();
+  ret->Set(0, Nan::NewBuffer((char *)y, yl).ToLocalChecked());
+  ret->Set(1, Nan::NewBuffer((char *)x, xl).ToLocalChecked());
+
+  info.GetReturnValue().Set(ret);
+}
+
 NAN_METHOD(BDSA::PublicKeyVerify) {
   if (info.Length() < 4)
     return Nan::ThrowError("dsa.publicKeyVerify() requires arguments.");
@@ -421,6 +479,52 @@ NAN_METHOD(BDSA::PublicKeyImport) {
   bcrypto_dsa_key_free(k);
 
   return info.GetReturnValue().Set(ret);
+}
+
+NAN_METHOD(BDSA::PublicKeyTweakAdd) {
+  if (info.Length() < 5)
+    return Nan::ThrowError("dsa.publicKeyTweakAdd() requires arguments.");
+
+  v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
+  v8::Local<v8::Object> qbuf = info[1].As<v8::Object>();
+  v8::Local<v8::Object> gbuf = info[2].As<v8::Object>();
+  v8::Local<v8::Object> ybuf = info[3].As<v8::Object>();
+  v8::Local<v8::Object> tbuf = info[4].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(pbuf)
+      || !node::Buffer::HasInstance(qbuf)
+      || !node::Buffer::HasInstance(gbuf)
+      || !node::Buffer::HasInstance(ybuf)
+      || !node::Buffer::HasInstance(tbuf)) {
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+  }
+
+  bcrypto_dsa_key_t pub;
+  bcrypto_dsa_key_init(&pub);
+
+  pub.pd = (uint8_t *)node::Buffer::Data(pbuf);
+  pub.pl = node::Buffer::Length(pbuf);
+
+  pub.qd = (uint8_t *)node::Buffer::Data(qbuf);
+  pub.ql = node::Buffer::Length(qbuf);
+
+  pub.gd = (uint8_t *)node::Buffer::Data(gbuf);
+  pub.gl = node::Buffer::Length(gbuf);
+
+  pub.yd = (uint8_t *)node::Buffer::Data(ybuf);
+  pub.yl = node::Buffer::Length(ybuf);
+
+  const uint8_t *td = (uint8_t *)node::Buffer::Data(tbuf);
+  size_t tl = node::Buffer::Length(tbuf);
+
+  uint8_t *out;
+  size_t out_len;
+
+  if (!bcrypto_dsa_pubkey_tweak_add(&pub, td, tl, &out, &out_len))
+    return Nan::ThrowError("Could not tweak.");
+
+  info.GetReturnValue().Set(
+    Nan::NewBuffer((char *)out, out_len).ToLocalChecked());
 }
 
 NAN_METHOD(BDSA::Sign) {
