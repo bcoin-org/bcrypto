@@ -9,6 +9,7 @@ public:
   static void Init(v8::Local<v8::Object> &target);
 
 private:
+  static NAN_METHOD(PrivateKeyConvert);
   static NAN_METHOD(PublicKeyCreate);
   static NAN_METHOD(PublicKeyConvert);
   static NAN_METHOD(PublicKeyVerify);

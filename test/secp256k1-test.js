@@ -55,14 +55,14 @@ describe('Secp256k1', function() {
       });
     }
 
-    for (const vector of vectors.ecdh) {
+    for (const vector of vectors.derive) {
       const pub = Buffer.from(vector.pub, 'hex');
       const priv = Buffer.from(vector.priv, 'hex');
       const compress = vector.compress;
       const result = Buffer.from(vector.result, 'hex');
 
       it(`should perform ECDH: ${vector.pub}`, () => {
-        assert.bufferEqual(secp256k1.ecdh(pub, priv, compress), result);
+        assert.bufferEqual(secp256k1.derive(pub, priv, compress), result);
       });
     }
 

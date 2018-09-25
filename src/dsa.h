@@ -24,7 +24,7 @@ private:
   static NAN_METHOD(PublicKeyTweakAdd);
   static NAN_METHOD(Sign);
   static NAN_METHOD(Verify);
-  static NAN_METHOD(DH);
+  static NAN_METHOD(Derive);
 };
 #endif
 

@@ -25,7 +25,7 @@ BECDSA::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "sign", BECDSA::Sign);
   Nan::Export(obj, "verify", BECDSA::Verify);
   Nan::Export(obj, "recover", BECDSA::Recover);
-  Nan::Export(obj, "ecdh", BECDSA::ECDH);
+  Nan::Export(obj, "derive", BECDSA::Derive);
 
   target->Set(Nan::New("ecdsa").ToLocalChecked(), obj);
 }
@@ -436,7 +436,7 @@ NAN_METHOD(BECDSA::Recover) {
     Nan::NewBuffer((char *)pub, pub_len).ToLocalChecked());
 }
 
-NAN_METHOD(BECDSA::ECDH) {
+NAN_METHOD(BECDSA::Derive) {
   if (info.Length() < 3)
     return Nan::ThrowError("ecdsa.publicKeyConvert() requires arguments.");
 
@@ -472,7 +472,7 @@ NAN_METHOD(BECDSA::ECDH) {
   uint8_t *secret;
   size_t secret_len;
 
-  bool result = bcrypto_ecdsa_ecdh(
+  bool result = bcrypto_ecdsa_derive(
     name, kd, kl, pd, pl, compress, &secret, &secret_len);
 
   if (!result)

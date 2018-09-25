@@ -3,7 +3,7 @@
   "public_key_convert": [],
   "public_key_tweak_add": [],
   "private_key_tweak_add": [],
-  "ecdh": [],
+  "derive": [],
   "public_key_verify": [],
   "private_key_verify": [],
   "verify": [

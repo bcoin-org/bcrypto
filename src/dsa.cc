@@ -30,7 +30,7 @@ BDSA::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "publicKeyTweakAdd", BDSA::PublicKeyTweakAdd);
   Nan::Export(obj, "sign", BDSA::Sign);
   Nan::Export(obj, "verify", BDSA::Verify);
-  Nan::Export(obj, "dh", BDSA::DH);
+  Nan::Export(obj, "derive", BDSA::Derive);
 
   target->Set(Nan::New("dsa").ToLocalChecked(), obj);
 }
@@ -634,9 +634,9 @@ NAN_METHOD(BDSA::Verify) {
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
 
-NAN_METHOD(BDSA::DH) {
+NAN_METHOD(BDSA::Derive) {
   if (info.Length() < 9)
-    return Nan::ThrowError("dsa.dh() requires arguments.");
+    return Nan::ThrowError("dsa.derive() requires arguments.");
 
   v8::Local<v8::Object> ppbuf = info[0].As<v8::Object>();
   v8::Local<v8::Object> pqbuf = info[1].As<v8::Object>();
@@ -697,7 +697,7 @@ NAN_METHOD(BDSA::DH) {
   uint8_t *out = NULL;
   size_t out_len = 0;
 
-  if (!bcrypto_dsa_dh(&pub, &priv, &out, &out_len))
+  if (!bcrypto_dsa_derive(&pub, &priv, &out, &out_len))
     return Nan::ThrowError("Could not derive key.");
 
   info.GetReturnValue().Set(

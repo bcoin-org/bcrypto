@@ -159,8 +159,8 @@ describe('ECDSA', function() {
       const bobPriv = ec.privateKeyGenerate();
       const bobPub = ec.publicKeyCreate(bobPriv);
 
-      const aliceSecret = ec.ecdh(bobPub, alicePriv);
-      const bobSecret = ec.ecdh(alicePub, bobPriv);
+      const aliceSecret = ec.derive(bobPub, alicePriv);
+      const bobSecret = ec.derive(alicePub, bobPriv);
 
       assert.bufferEqual(aliceSecret, bobSecret);
     });

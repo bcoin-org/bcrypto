@@ -108,8 +108,8 @@ describe('DSA', function() {
     const bob = dsa.privateKeyCreate(params);
     const bobPub = dsa.publicKeyCreate(bob);
 
-    const aliceSecret = dsa.dh(bobPub, alice);
-    const bobSecret = dsa.dh(alicePub, bob);
+    const aliceSecret = dsa.derive(bobPub, alice);
+    const bobSecret = dsa.derive(alicePub, bob);
 
     assert.bufferEqual(aliceSecret, bobSecret);
   });

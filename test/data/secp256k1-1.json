@@ -1606,7 +1606,7 @@
       "result": "c02247a6efa7cbb8f05b488b7fde8d0eecfe11754ebd9b34e943ebd8967c8b03"
     }
   ],
-  "ecdh": [],
+  "derive": [],
   "public_key_verify": [
     {
       "key": "032b0c129680a05b5fa6af406c856c9c846e0385cb0f634b110eaa732e958db58e",

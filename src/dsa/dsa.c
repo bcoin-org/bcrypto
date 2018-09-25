@@ -1219,7 +1219,7 @@ fail:
 }
 
 bool
-bcrypto_dsa_dh(
+bcrypto_dsa_derive(
   const bcrypto_dsa_key_t *pub,
   const bcrypto_dsa_key_t *priv,
   uint8_t **out,
@@ -1451,7 +1451,7 @@ bcrypto_dsa_verify(
 }
 
 bool
-bcrypto_dsa_dh(
+bcrypto_dsa_derive(
   const bcrypto_dsa_key_t *pub,
   const bcrypto_dsa_key_t *priv,
   uint8_t **out,

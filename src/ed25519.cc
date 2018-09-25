@@ -12,6 +12,7 @@ BED25519::Init(v8::Local<v8::Object> &target) {
   Nan::HandleScope scope;
   v8::Local<v8::Object> obj = Nan::New<v8::Object>();
 
+  Nan::Export(obj, "privateKeyConvert", BED25519::PrivateKeyConvert);
   Nan::Export(obj, "publicKeyCreate", BED25519::PublicKeyCreate);
   Nan::Export(obj, "publicKeyConvert", BED25519::PublicKeyConvert);
   Nan::Export(obj, "publicKeyVerify", BED25519::PublicKeyVerify);
@@ -19,6 +20,28 @@ BED25519::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "verify", BED25519::Verify);
 
   target->Set(Nan::New("ed25519").ToLocalChecked(), obj);
+}
+
+NAN_METHOD(BED25519::PrivateKeyConvert) {
+  if (info.Length() < 1)
+    return Nan::ThrowError("ed25519.privateKeyConvert() requires arguments.");
+
+  v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(pbuf))
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+
+  const uint8_t *secret = (uint8_t *)node::Buffer::Data(pbuf);
+  size_t secret_len = node::Buffer::Length(pbuf);
+
+  if (secret_len != 32)
+    return Nan::ThrowTypeError("Invalid parameters.");
+
+  bcrypto_ed25519_secret_key out;
+  bcrypto_ed25519_privkey_convert(out, secret);
+
+  return info.GetReturnValue().Set(
+    Nan::CopyBuffer((char *)&out[0], 32).ToLocalChecked());
 }
 
 NAN_METHOD(BED25519::PublicKeyCreate) {

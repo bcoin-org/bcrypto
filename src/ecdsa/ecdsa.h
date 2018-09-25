@@ -127,7 +127,7 @@ bcrypto_ecdsa_recover(
 );
 
 bool
-bcrypto_ecdsa_ecdh(
+bcrypto_ecdsa_derive(
   const char *name,
   const uint8_t *pub,
   size_t pub_len,

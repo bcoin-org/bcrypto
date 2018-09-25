@@ -20,7 +20,7 @@ describe('EdDSA', function() {
 
   it('should generate keypair and sign', () => {
     const msg = random.randomBytes(ed25519.size);
-    const secret = ed25519.secretGenerate();
+    const secret = ed25519.privateKeyGenerate();
     const pub = ed25519.publicKeyCreate(secret);
 
     assert(ed25519.publicKeyVerify(pub));
@@ -34,14 +34,14 @@ describe('EdDSA', function() {
   });
 
   it('should do ECDH', () => {
-    const alicePriv = ed25519.secretGenerate();
+    const alicePriv = ed25519.privateKeyGenerate();
     const alicePub = ed25519.publicKeyCreate(alicePriv);
 
-    const bobPriv = ed25519.secretGenerate();
+    const bobPriv = ed25519.privateKeyGenerate();
     const bobPub = ed25519.publicKeyCreate(bobPriv);
 
-    const aliceSecret = ed25519.ecdh(bobPub, alicePriv);
-    const bobSecret = ed25519.ecdh(alicePub, bobPriv);
+    const aliceSecret = ed25519.derive(bobPub, alicePriv);
+    const bobSecret = ed25519.derive(alicePub, bobPriv);
 
     assert.bufferEqual(aliceSecret, bobSecret);
   });
@@ -50,7 +50,7 @@ describe('EdDSA', function() {
     for (const [i, test] of derivations.entries()) {
       it(`should compute correct a and A for secret: ${i}`, () => {
         const secret = Buffer.from(test.secret_hex, 'hex');
-        const priv = ed25519.privateKeyCreate(secret);
+        const priv = ed25519.privateKeyConvert(secret);
         const pub = ed25519.publicKeyCreate(secret);
 
         assert(ed25519.publicKeyVerify(pub));

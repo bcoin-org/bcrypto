@@ -170,6 +170,16 @@ bcrypto_curved25519_scalarmult_basepoint(
   curve25519_contract(pk, yplusz);
 }
 
+void
+bcrypto_ed25519_privkey_convert(
+  bcrypto_ed25519_secret_key out,
+  const bcrypto_ed25519_secret_key sk
+) {
+  hash_512bits extsk;
+  bcrypto_ed25519_extsk(extsk, sk);
+  memcpy(out, extsk, 32);
+}
+
 int
 bcrypto_ed25519_pubkey_convert(
   bcrypto_curved25519_key out,

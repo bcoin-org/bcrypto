@@ -77,8 +77,8 @@ describe('ECIES', function() {
     }
 
     it('should encrypt and decrypt (ED25519)', () => {
-      const alicePriv = ed25519.secretGenerate();
-      const bobPriv = ed25519.secretGenerate();
+      const alicePriv = ed25519.privateKeyGenerate();
+      const bobPriv = ed25519.privateKeyGenerate();
       const bobPub = ed25519.publicKeyCreate(bobPriv);
 
       const msg = random.randomBytes(100);

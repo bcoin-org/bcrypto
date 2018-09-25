@@ -21,7 +21,7 @@ private:
   static NAN_METHOD(Sign);
   static NAN_METHOD(Verify);
   static NAN_METHOD(Recover);
-  static NAN_METHOD(ECDH);
+  static NAN_METHOD(Derive);
 };
 #endif
 
