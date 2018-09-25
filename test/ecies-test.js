@@ -25,7 +25,7 @@ const p521 = require('../lib/p521');
 const secp256k1 = new ECDSA('SECP256K1');
 const secp256k1n = require('../lib/secp256k1');
 const ed25519 = require('../lib/ed25519');
-const ECIES = require('../lib/ecies');
+const ecies = require('../lib/ecies');
 
 const curves = [
   p192,
@@ -43,29 +43,33 @@ describe('ECIES', function() {
   for (const withKey of [true, false]) {
     for (const curve of curves) {
       it(`should encrypt and decrypt (${curve.id})`, () => {
-        const ecies = new ECIES(curve, SHA256);
-
         const alicePriv = curve.privateKeyGenerate();
         const bobPriv = curve.privateKeyGenerate();
         const bobPub = curve.publicKeyCreate(bobPriv);
 
         const msg = random.randomBytes(100);
-        const ct = ecies.encrypt(msg, bobPub, withKey ? alicePriv : null);
+        const ct = ecies.encrypt(
+          curve,
+          SHA256,
+          msg,
+          bobPub,
+          withKey ? alicePriv : null
+        );
 
         assert.notBufferEqual(ct, msg);
         assert(ct.length > msg.length);
 
-        const pt = ecies.decrypt(ct, bobPriv);
+        const pt = ecies.decrypt(curve, SHA256, ct, bobPriv);
         assert.bufferEqual(pt, msg);
 
         assert.throws(() => {
-          ecies.decrypt(ct, alicePriv);
+          ecies.decrypt(curve, SHA256, ct, alicePriv);
         });
 
         for (let i = 0; i < ct.length; i++) {
           ct[i] ^= 1;
           assert.throws(() => {
-            ecies.decrypt(ct, bobPriv);
+            ecies.decrypt(curve, SHA256, ct, bobPriv);
           });
           ct[i] ^= 1;
         }
@@ -73,29 +77,33 @@ describe('ECIES', function() {
     }
 
     it('should encrypt and decrypt (ED25519)', () => {
-      const ecies = new ECIES(ed25519, SHA256);
-
       const alicePriv = ed25519.secretGenerate();
       const bobPriv = ed25519.secretGenerate();
       const bobPub = ed25519.publicKeyCreate(bobPriv);
 
       const msg = random.randomBytes(100);
-      const ct = ecies.encrypt(msg, bobPub, withKey ? alicePriv : null);
+      const ct = ecies.encrypt(
+        ed25519,
+        SHA256,
+        msg,
+        bobPub,
+        withKey ? alicePriv : null
+      );
 
       assert.notBufferEqual(ct, msg);
       assert(ct.length > msg.length);
 
-      const pt = ecies.decrypt(ct, bobPriv);
+      const pt = ecies.decrypt(ed25519, SHA256, ct, bobPriv);
       assert.bufferEqual(pt, msg);
 
       assert.throws(() => {
-        ecies.decrypt(ct, alicePriv);
+        ecies.decrypt(ed25519, SHA256, ct, alicePriv);
       });
 
       for (let i = 0; i < ct.length; i++) {
         ct[i] ^= 1;
         assert.throws(() => {
-          ecies.decrypt(ct, bobPriv);
+          ecies.decrypt(ed25519, ct, SHA256, bobPriv);
         });
         ct[i] ^= 1;
       }
