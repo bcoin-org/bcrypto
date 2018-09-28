@@ -1304,8 +1304,6 @@ bcrypto_ecdsa_derive(
   BN_CTX *ctx = NULL;
   EC_KEY *priv_ec = NULL;
   EC_KEY *pub_ec = NULL;
-  uint8_t *raw_secret = NULL;
-  BIGNUM *secret_bn = NULL;
   EC_POINT *secret_point = NULL;
   uint8_t *secret_buf = NULL;
   size_t secret_buf_len = 0;
@@ -1342,42 +1340,21 @@ bcrypto_ecdsa_derive(
   if (!EC_KEY_oct2key(pub_ec, pub, pub_len, ctx))
     goto fail;
 
+  const BIGNUM *priv_bn = EC_KEY_get0_private_key(priv_ec);
+  assert(priv_bn);
+
   const EC_POINT *pub_point = EC_KEY_get0_public_key(pub_ec);
   assert(pub_point);
 
   const EC_GROUP *group = EC_KEY_get0_group(priv_ec);
   assert(group);
 
-  int field_size = EC_GROUP_get_degree(group);
-  size_t raw_secret_len = (field_size + 7) / 8;
-
-  raw_secret = malloc(raw_secret_len);
-
-  if (!raw_secret)
-    goto fail;
-
-  raw_secret_len = ECDH_compute_key(
-    raw_secret,
-    raw_secret_len,
-    pub_point,
-    priv_ec,
-    NULL
-  );
-
-  if ((int)raw_secret_len <= 0)
-    goto fail;
-
-  secret_bn = BN_bin2bn(raw_secret, raw_secret_len, NULL);
-
-  if (!secret_bn)
-    goto fail;
-
   secret_point = EC_POINT_new(group);
 
   if (!secret_point)
     goto fail;
 
-  if (!EC_POINT_mul(group, secret_point, secret_bn, NULL, NULL, ctx))
+  if (!EC_POINT_mul(group, secret_point, NULL, pub_point, priv_bn, ctx))
     goto fail;
 
   point_conversion_form_t form = compress
@@ -1397,8 +1374,6 @@ bcrypto_ecdsa_derive(
 
   EC_KEY_free(priv_ec);
   EC_KEY_free(pub_ec);
-  free(raw_secret);
-  BN_clear_free(secret_bn);
   EC_POINT_free(secret_point);
   BN_CTX_free(ctx);
 
@@ -1413,12 +1388,6 @@ fail:
 
   if (pub_ec)
     EC_KEY_free(pub_ec);
-
-  if (raw_secret)
-    free(raw_secret);
-
-  if (secret_bn)
-    BN_clear_free(secret_bn);
 
   if (secret_point)
     EC_POINT_free(secret_point);
