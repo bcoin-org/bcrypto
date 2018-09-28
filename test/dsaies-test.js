@@ -8,39 +8,50 @@ const random = require('../lib/random');
 const SHA256 = require('../lib/sha256');
 const dsa = require('../lib/dsa');
 const dsaies = require('../lib/dsaies');
+const keys = require('./data/dsaies-keys.json');
+const vectors = require('./data/dsaies.json');
 
 describe('DSAIES', function() {
   this.timeout(30000);
 
-  for (const withKey of [true, false]) {
-    for (const size of [1024, 2048, 3072]) {
-      it(`should encrypt and decrypt (${size})`, () => {
-        const bobPriv = dsa.privateKeyGenerate(1024);
-        const bobPub = dsa.publicKeyCreate(bobPriv);
-        const alicePriv = dsa.privateKeyCreate(bobPub);
+  for (const key of keys) {
+    const priv = dsa.privateKeyImport(Buffer.from(key, 'hex'));
 
-        const msg = random.randomBytes(100);
-        const ct = dsaies.encrypt(
-          SHA256, msg, bobPub, withKey ? alicePriv : null);
+    it(`should encrypt and decrypt (${priv.bits()})`, () => {
+      const bobPriv = priv;
+      const bobPub = dsa.publicKeyCreate(bobPriv);
+      const alicePriv = dsa.privateKeyCreate(bobPub);
 
-        assert.notBufferEqual(ct, msg);
-        assert(ct.length > msg.length);
+      const msg = random.randomBytes(100);
+      const ct = dsaies.encrypt(SHA256, msg, bobPub, alicePriv);
 
-        const pt = dsaies.decrypt(SHA256, ct, bobPriv);
-        assert.bufferEqual(pt, msg);
+      assert.notBufferEqual(ct, msg);
+      assert(ct.length > msg.length);
 
-        assert.throws(() => {
-          dsaies.decrypt(SHA256, ct, alicePriv);
-        });
+      const pt = dsaies.decrypt(SHA256, ct, bobPriv);
+      assert.bufferEqual(pt, msg);
 
-        for (let i = 0; i < ct.length; i++) {
-          ct[i] ^= 1;
-          assert.throws(() => {
-            dsaies.decrypt(SHA256, ct, bobPriv);
-          });
-          ct[i] ^= 1;
-        }
+      assert.throws(() => {
+        dsaies.decrypt(SHA256, ct, alicePriv);
       });
-    }
+
+      ct[1] ^= 1;
+      assert.throws(() => {
+        dsaies.decrypt(SHA256, ct, bobPriv);
+      });
+      ct[1] ^= 1;
+    });
+  }
+
+  for (const vector of vectors) {
+    const hash = SHA256;
+    const ct = Buffer.from(vector.msg, 'hex');
+    const priv = dsa.privateKeyImport(Buffer.from(vector.priv, 'hex'));
+    const expect = Buffer.from(vector.expect, 'hex');
+
+    it(`should decrypt (${priv.bits()})`, () => {
+      const pt = dsaies.decrypt(hash, ct, priv);
+      assert.bufferEqual(pt, expect);
+    });
   }
 });

@@ -46,6 +46,29 @@ describe('EdDSA', function() {
     assert.bufferEqual(aliceSecret, bobSecret);
   });
 
+  it('should do ECDH (vector)', () => {
+    const alicePriv = Buffer.from(
+      '50ec6e55b18b882e06bdc12ff2f80f8f8fa68b04370b45439cf80b4e02610e1e',
+      'hex');
+
+    const bobPriv = Buffer.from(
+      'c3fb48a8c4e961ab3edb799eea22ff1d07b803140734266748ea4c753dd3655d',
+      'hex');
+
+    const alicePub = ed25519.publicKeyCreate(alicePriv);
+    const bobPub = ed25519.publicKeyCreate(bobPriv);
+
+    const secret = Buffer.from(
+      '4084c076e4ff79e8af71425c0c0b573057e9ebf36185ec8572ec161ddf6f2731',
+      'hex');
+
+    const aliceSecret = ed25519.derive(bobPub, alicePriv);
+    const bobSecret = ed25519.derive(alicePub, bobPriv);
+
+    assert.bufferEqual(aliceSecret, secret);
+    assert.bufferEqual(bobSecret, secret);
+  });
+
   describe('ed25519 derivations', () => {
     for (const [i, test] of derivations.entries()) {
       it(`should compute correct a and A for secret: ${i}`, () => {
