@@ -58,6 +58,42 @@ const algs = [
     ]
   },
   {
+    name: 'CAMELLIA-128',
+    keyLen: 16,
+    ivLen: 16,
+    ids: [
+      'CAMELLIA-128-ECB',
+      'CAMELLIA-128-CBC',
+      'CAMELLIA-128-CTR',
+      'CAMELLIA-128-CFB',
+      'CAMELLIA-128-OFB'
+    ]
+  },
+  {
+    name: 'CAMELLIA-192',
+    keyLen: 24,
+    ivLen: 16,
+    ids: [
+      'CAMELLIA-192-ECB',
+      'CAMELLIA-192-CBC',
+      'CAMELLIA-192-CTR',
+      'CAMELLIA-192-CFB',
+      'CAMELLIA-192-OFB'
+    ]
+  },
+  {
+    name: 'CAMELLIA-256',
+    keyLen: 32,
+    ivLen: 16,
+    ids: [
+      'CAMELLIA-256-ECB',
+      'CAMELLIA-256-CBC',
+      'CAMELLIA-256-CTR',
+      'CAMELLIA-256-CFB',
+      'CAMELLIA-256-OFB'
+    ]
+  },
+  {
     name: 'CAST5',
     keyLen: 16,
     ivLen: 8,
@@ -77,6 +113,17 @@ const algs = [
       'DES-CBC',
       'DES-CFB',
       'DES-OFB'
+    ]
+  },
+  {
+    name: 'IDEA',
+    keyLen: 16,
+    ivLen: 8,
+    ids: [
+      'IDEA-ECB',
+      'IDEA-CBC',
+      'IDEA-CFB',
+      'IDEA-OFB'
     ]
   },
   {
