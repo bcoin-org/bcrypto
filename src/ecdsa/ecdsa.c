@@ -236,7 +236,7 @@ bcrypto_ecdsa_sig2rs(
   if (!BN_rshift1(half_bn, order_bn))
     goto fail;
 
-  if (BN_cmp(s_bn, half_bn) > 0) {
+  if (BN_ucmp(s_bn, half_bn) > 0) {
     if (!BN_sub(order_bn, order_bn, s_bn))
       goto fail;
     s_bn = (const BIGNUM *)order_bn;
@@ -514,10 +514,7 @@ bcrypto_ecdsa_privkey_tweak_add(
   if (!priv_bn)
     goto fail;
 
-  if (BN_is_zero(priv_bn))
-    goto fail;
-
-  if (BN_cmp(priv_bn, order_bn) >= 0)
+  if (BN_ucmp(priv_bn, order_bn) >= 0)
     goto fail;
 
   tweak_bn = BN_bin2bn(tweak, tweak_len, NULL);
@@ -792,6 +789,7 @@ bcrypto_ecdsa_pubkey_tweak_add(
   BN_CTX *ctx = NULL;
   EC_KEY *pub_ec = NULL;
   BIGNUM *tweak_bn = NULL;
+  BIGNUM *order_bn = NULL;
   EC_POINT *tweak_point = NULL;
   uint8_t *npub_buf = NULL;
   size_t npub_buf_len = 0;
@@ -831,6 +829,17 @@ bcrypto_ecdsa_pubkey_tweak_add(
   const EC_GROUP *group = EC_KEY_get0_group(pub_ec);
   assert(group);
 
+  order_bn = BN_new();
+
+  if (!order_bn)
+    goto fail;
+
+  if (!EC_GROUP_get_order(group, order_bn, ctx))
+    goto fail;
+
+  if (BN_ucmp(tweak_bn, order_bn) >= 0)
+    goto fail;
+
   tweak_point = EC_POINT_new(group);
 
   if (!tweak_point)
@@ -842,7 +851,8 @@ bcrypto_ecdsa_pubkey_tweak_add(
   if (!EC_POINT_add(group, tweak_point, key_point, tweak_point, ctx))
     goto fail;
 
-  // EC_POINT_mod??
+  if (EC_POINT_is_at_infinity(group, tweak_point))
+    goto fail;
 
   point_conversion_form_t form = compress
     ? POINT_CONVERSION_COMPRESSED
@@ -855,6 +865,7 @@ bcrypto_ecdsa_pubkey_tweak_add(
 
   EC_KEY_free(pub_ec);
   BN_clear_free(tweak_bn);
+  BN_free(order_bn);
   EC_POINT_free(tweak_point);
   BN_CTX_free(ctx);
 
@@ -869,6 +880,9 @@ fail:
 
   if (tweak_bn)
     BN_clear_free(tweak_bn);
+
+  if (order_bn)
+    BN_free(order_bn);
 
   if (tweak_point)
     EC_POINT_free(tweak_point);
@@ -1108,11 +1122,17 @@ bcrypto_ecdsa_recover(
   if (!EC_GROUP_get_order(group, N_bn, ctx))
     goto fail;
 
+  if (BN_is_zero(sig_r) || BN_ucmp(sig_r, N_bn) >= 0)
+    goto fail;
+
+  if (BN_is_zero(sig_s) || BN_ucmp(sig_s, N_bn) >= 0)
+    goto fail;
+
   if (!EC_GROUP_get_curve_GFp(group, P_bn, A_bn, B_bn, ctx))
     goto fail;
 
-  // if (r.cmp(this.curve.p.umod(this.curve.n)) >= 0 && isSecondKey)
-  //   throw new Error('Unable to find sencond key candinate');
+  // if (r >= P % N && second_key)
+  //   fail;
   if (second_key) {
     BIGNUM *res = BN_new();
 
@@ -1143,10 +1163,10 @@ bcrypto_ecdsa_recover(
   if (!r_p)
     goto fail;
 
-  // if (isSecondKey)
-  //   r = this.curve.pointFromX(r.add(this.curve.n), isYOdd);
+  // if (second_key)
+  //   r = point_from_x(r + N, y_odd)
   // else
-  //   r = this.curve.pointFromX(r, isYOdd);
+  //   r = point_from_x(r, y_odd)
   {
     if (second_key) {
       if (!BN_add(x_bn, sig_r, N_bn))
@@ -1160,7 +1180,7 @@ bcrypto_ecdsa_recover(
       goto fail;
   }
 
-  // var rInv = signature.r.invm(n);
+  // rinv = r^-1 % N
   {
     rinv = BN_new();
 
@@ -1171,7 +1191,7 @@ bcrypto_ecdsa_recover(
       goto fail;
   }
 
-  // var s1 = n.sub(e).mul(rInv).umod(n);
+  // s1 = ((N - e) * rinv) % N
   {
     e_bn = BN_bin2bn(msg, msg_len, NULL);
 
@@ -1193,7 +1213,7 @@ bcrypto_ecdsa_recover(
       goto fail;
   }
 
-  // var s2 = s.mul(rInv).umod(n);
+  // s2 = (s * rinv) % N
   {
     s2 = BN_new();
 
@@ -1212,7 +1232,7 @@ bcrypto_ecdsa_recover(
   if (!Q_p)
     goto fail;
 
-  // this.g.mulAdd(s1, r, s2);
+  // q = G * (s1, r, s2)
   if (!EC_POINT_mul(group, Q_p, s1, r_p, s2, ctx))
     goto fail;
 
@@ -1355,6 +1375,9 @@ bcrypto_ecdsa_derive(
     goto fail;
 
   if (!EC_POINT_mul(group, secret_point, NULL, pub_point, priv_bn, ctx))
+    goto fail;
+
+  if (EC_POINT_is_at_infinity(group, secret_point))
     goto fail;
 
   point_conversion_form_t form = compress

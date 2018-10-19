@@ -140,6 +140,7 @@ describe('ECDSA', function() {
       const priv = ec.privateKeyGenerate();
       const pub = ec.publicKeyCreate(priv);
       const tweak = random.randomBytes(ec.size);
+      tweak[0] = 0x00;
 
       const tpriv = ec.privateKeyTweakAdd(priv, tweak);
       const tpub = ec.publicKeyTweakAdd(pub, tweak);
