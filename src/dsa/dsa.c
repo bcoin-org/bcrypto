@@ -945,7 +945,6 @@ bcrypto_dsa_privkey_import_pkcs8(
   size_t raw_len
 ) {
   // https://github.com/openssl/openssl/blob/32f803d/crypto/dsa/dsa_ameth.c#L137
-  PKCS8_PRIV_KEY_INFO *p8 = NULL;
   const unsigned char *p, *pm;
   int pklen, pmlen;
   int ptype;
@@ -953,12 +952,12 @@ bcrypto_dsa_privkey_import_pkcs8(
   const ASN1_STRING *pstr;
   const X509_ALGOR *palg;
   const ASN1_OBJECT *palgoid;
+  PKCS8_PRIV_KEY_INFO *p8 = NULL;
   ASN1_INTEGER *privkey = NULL;
+  DSA *dsa = NULL;
   BIGNUM *dsa_x = NULL;
   BIGNUM *dsa_y = NULL;
   BN_CTX *ctx = NULL;
-
-  DSA *dsa = NULL;
 
   const uint8_t *pp = raw;
 

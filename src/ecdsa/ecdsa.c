@@ -335,12 +335,13 @@ fail:
   return false;
 }
 
-bool
-bcrypto_ecdsa_privkey_export(
+static bool
+bcrypto_ecdsa_privkey_export2(
   const char *name,
   const uint8_t *priv,
   size_t priv_len,
   bool compress,
+  bool no_params,
   uint8_t **out,
   size_t *out_len
 ) {
@@ -393,7 +394,12 @@ bcrypto_ecdsa_privkey_export(
     : POINT_CONVERSION_UNCOMPRESSED;
 
   EC_KEY_set_conv_form(priv_ec, form);
-  // EC_KEY_set_asn1_flag(priv_ec, EC_PKEY_NO_PARAMETERS);
+
+  if (no_params) {
+    EC_KEY_set_enc_flags(priv_ec,
+      EC_KEY_get_enc_flags(priv_ec) | EC_PKEY_NO_PARAMETERS);
+  }
+
   EC_KEY_set_asn1_flag(priv_ec, OPENSSL_EC_NAMED_CURVE);
 
   uint8_t *buf = NULL;
@@ -422,6 +428,26 @@ fail:
     BN_CTX_free(ctx);
 
   return false;
+}
+
+bool
+bcrypto_ecdsa_privkey_export(
+  const char *name,
+  const uint8_t *priv,
+  size_t priv_len,
+  bool compress,
+  uint8_t **out,
+  size_t *out_len
+) {
+  return bcrypto_ecdsa_privkey_export2(
+    name,
+    priv,
+    priv_len,
+    compress,
+    false,
+    out,
+    out_len
+  );
 }
 
 bool
@@ -491,8 +517,8 @@ bcrypto_ecdsa_privkey_export_pkcs8(
   size_t eplen = 0;
   PKCS8_PRIV_KEY_INFO *p8 = NULL;
 
-  if (!bcrypto_ecdsa_privkey_export(name, priv, priv_len,
-                                    compress, &ep, &eplen)) {
+  if (!bcrypto_ecdsa_privkey_export2(name, priv, priv_len,
+                                    compress, true, &ep, &eplen)) {
     goto fail;
   }
 
