@@ -1051,6 +1051,63 @@ bcrypto_rsa_privkey_export_pkcs8(
   uint8_t **out,
   size_t *out_len
 ) {
+  assert(out && out_len);
+
+  // https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ameth.c#L142
+  RSA *rsa = NULL;
+  PKCS8_PRIV_KEY_INFO *p8 = NULL;
+  unsigned char *rk = NULL;
+  int rklen;
+
+  if (!bcrypto_rsa_sane_privkey(priv))
+    goto fail;
+
+  rsa = bcrypto_rsa_key2priv(priv);
+
+  if (!rsa)
+    goto fail;
+
+  p8 = PKCS8_PRIV_KEY_INFO_new();
+
+  if (!p8)
+    goto fail;
+
+  rklen = i2d_RSAPrivateKey(rsa, &rk);
+
+  if (rklen <= 0)
+    goto fail;
+
+  if (!PKCS8_pkey_set0(p8, OBJ_nid2obj(NID_rsaEncryption), 0,
+                       V_ASN1_NULL, NULL, rk, rklen)) {
+    goto fail;
+  }
+
+  rk = NULL;
+
+  uint8_t *buf = NULL;
+  int len = i2d_PKCS8_PRIV_KEY_INFO(p8, &buf);
+
+  if (len <= 0)
+    goto fail;
+
+  *out = buf;
+  *out_len = (size_t)len;
+
+  RSA_free(rsa);
+  PKCS8_PRIV_KEY_INFO_free(p8);
+
+  return true;
+
+fail:
+  if (rsa)
+    RSA_free(rsa);
+
+  if (p8)
+    PKCS8_PRIV_KEY_INFO_free(p8);
+
+  if (rk)
+    free(rk);
+
   return false;
 }
 
@@ -1059,6 +1116,52 @@ bcrypto_rsa_privkey_import_pkcs8(
   const uint8_t *raw,
   size_t raw_len
 ) {
+  // https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ameth.c#L169
+  PKCS8_PRIV_KEY_INFO *p8 = NULL;
+  const unsigned char *p;
+  RSA *rsa = NULL;
+  int pklen;
+  const X509_ALGOR *alg;
+  const ASN1_OBJECT *algoid;
+  const void *algp;
+  int algptype;
+
+  const uint8_t *pp = raw;
+
+  if (!d2i_PKCS8_PRIV_KEY_INFO(&p8, &pp, raw_len))
+    goto fail;
+
+  if (!PKCS8_pkey_get0(NULL, &p, &pklen, &alg, p8))
+    goto fail;
+
+  // https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ameth.c#L54
+  X509_ALGOR_get0(&algoid, &algptype, &algp, alg);
+
+  if (OBJ_obj2nid(algoid) != NID_rsaEncryption)
+    goto fail;
+
+  if (algptype != V_ASN1_UNDEF && algptype != V_ASN1_NULL)
+    goto fail;
+
+  rsa = d2i_RSAPrivateKey(NULL, &p, pklen);
+
+  if (!rsa)
+    goto fail;
+
+  bcrypto_rsa_key_t *k = bcrypto_rsa_priv2key(rsa);
+
+  PKCS8_PRIV_KEY_INFO_free(p8);
+  RSA_free(rsa);
+
+  return k;
+
+fail:
+  if (p8)
+    PKCS8_PRIV_KEY_INFO_free(p8);
+
+  if (rsa)
+    RSA_free(rsa);
+
   return NULL;
 }
 

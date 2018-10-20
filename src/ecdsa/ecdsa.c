@@ -393,6 +393,7 @@ bcrypto_ecdsa_privkey_export(
     : POINT_CONVERSION_UNCOMPRESSED;
 
   EC_KEY_set_conv_form(priv_ec, form);
+  // EC_KEY_set_asn1_flag(priv_ec, EC_PKEY_NO_PARAMETERS);
   EC_KEY_set_asn1_flag(priv_ec, OPENSSL_EC_NAMED_CURVE);
 
   uint8_t *buf = NULL;
@@ -480,6 +481,53 @@ bcrypto_ecdsa_privkey_export_pkcs8(
   uint8_t **out,
   size_t *out_len
 ) {
+  int type = bcrypto_ecdsa_curve(name);
+
+  if (type == -1)
+    goto fail;
+
+  // https://github.com/openssl/openssl/blob/32f803d/crypto/ec/ec_ameth.c#L217
+  uint8_t *ep = NULL;
+  size_t eplen = 0;
+  PKCS8_PRIV_KEY_INFO *p8 = NULL;
+
+  if (!bcrypto_ecdsa_privkey_export(name, priv, priv_len,
+                                    compress, &ep, &eplen)) {
+    goto fail;
+  }
+
+  p8 = PKCS8_PRIV_KEY_INFO_new();
+
+  if (!p8)
+    goto fail;
+
+  if (!PKCS8_pkey_set0(p8, OBJ_nid2obj(NID_X9_62_id_ecPublicKey), 0,
+                       V_ASN1_OBJECT, OBJ_nid2obj(type), ep, (int)eplen)) {
+    goto fail;
+  }
+
+  ep = NULL;
+
+  uint8_t *buf = NULL;
+  int len = i2d_PKCS8_PRIV_KEY_INFO(p8, &buf);
+
+  if (len <= 0)
+    goto fail;
+
+  *out = buf;
+  *out_len = (size_t)len;
+
+  PKCS8_PRIV_KEY_INFO_free(p8);
+
+  return true;
+
+fail:
+  if (ep)
+    free(ep);
+
+  if (p8)
+    PKCS8_PRIV_KEY_INFO_free(p8);
+
   return false;
 }
 
@@ -491,6 +539,52 @@ bcrypto_ecdsa_privkey_import_pkcs8(
   uint8_t **out,
   size_t *out_len
 ) {
+  assert(out && out_len);
+
+  // https://github.com/openssl/openssl/blob/32f803d/crypto/ec/ec_ameth.c#L184
+  PKCS8_PRIV_KEY_INFO *p8 = NULL;
+  const unsigned char *p = NULL;
+  const void *pval;
+  int ptype, pklen;
+  const X509_ALGOR *palg;
+  const ASN1_OBJECT *palgoid;
+
+  int type = bcrypto_ecdsa_curve(name);
+
+  if (type == -1)
+    goto fail;
+
+  const uint8_t *pp = raw;
+
+  if (!d2i_PKCS8_PRIV_KEY_INFO(&p8, &pp, raw_len))
+    goto fail;
+
+  if (!PKCS8_pkey_get0(NULL, &p, &pklen, &palg, p8))
+    goto fail;
+
+  X509_ALGOR_get0(&palgoid, &ptype, &pval, palg);
+
+  if (OBJ_obj2nid(palgoid) != NID_X9_62_id_ecPublicKey)
+    goto fail;
+
+  if (ptype == V_ASN1_OBJECT) {
+    if (OBJ_obj2nid(pval) != type)
+      goto fail;
+  } else if (ptype != V_ASN1_UNDEF && ptype != V_ASN1_NULL) {
+    goto fail;
+  }
+
+  if (!bcrypto_ecdsa_privkey_import(name, p, pklen, out, out_len))
+    goto fail;
+
+  PKCS8_PRIV_KEY_INFO_free(p8);
+
+  return true;
+
+fail:
+  if (p8)
+    PKCS8_PRIV_KEY_INFO_free(p8);
+
   return false;
 }
 

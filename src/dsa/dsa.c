@@ -849,6 +849,93 @@ bcrypto_dsa_privkey_export_pkcs8(
   uint8_t **out,
   size_t *out_len
 ) {
+  assert(out && out_len);
+
+  // https://github.com/openssl/openssl/blob/32f803d/crypto/dsa/dsa_ameth.c#L203
+  DSA *priv_d = NULL;
+  ASN1_STRING *params = NULL;
+  ASN1_INTEGER *prkey = NULL;
+  unsigned char *dp = NULL;
+  int dplen;
+  PKCS8_PRIV_KEY_INFO *p8 = NULL;
+
+  if (!bcrypto_dsa_sane_privkey(priv))
+    goto fail;
+
+  priv_d = bcrypto_dsa_key2priv(priv);
+
+  if (!priv_d)
+    goto fail;
+
+  params = ASN1_STRING_new();
+
+  if (!params)
+    goto fail;
+
+  params->length = i2d_DSAparams(priv_d, &params->data);
+
+  if (params->length <= 0)
+    goto fail;
+
+  params->type = V_ASN1_SEQUENCE;
+
+  const BIGNUM *priv_key = NULL;
+  DSA_get0_key(priv_d, NULL, &priv_key);
+  assert(priv_key);
+
+  prkey = BN_to_ASN1_INTEGER(priv_key, NULL);
+
+  if (!prkey)
+    goto fail;
+
+  dplen = i2d_ASN1_INTEGER(prkey, &dp);
+
+  ASN1_STRING_clear_free(prkey);
+  prkey = NULL;
+
+  p8 = PKCS8_PRIV_KEY_INFO_new();
+
+  if (!p8)
+    goto fail;
+
+  if (!PKCS8_pkey_set0(p8, OBJ_nid2obj(NID_dsa), 0,
+                       V_ASN1_SEQUENCE, params, dp, dplen)) {
+    goto fail;
+  }
+
+  dp = NULL;
+  params = NULL;
+
+  uint8_t *buf = NULL;
+  int len = i2d_PKCS8_PRIV_KEY_INFO(p8, &buf);
+
+  if (len <= 0)
+    goto fail;
+
+  *out = buf;
+  *out_len = (size_t)len;
+
+  DSA_free(priv_d);
+  PKCS8_PRIV_KEY_INFO_free(p8);
+
+  return true;
+
+fail:
+  if (priv_d)
+    DSA_free(priv_d);
+
+  if (dp)
+    OPENSSL_free(dp);
+
+  if (params)
+    ASN1_STRING_free(params);
+
+  if (prkey)
+    ASN1_STRING_clear_free(prkey);
+
+  if (p8)
+    PKCS8_PRIV_KEY_INFO_free(p8);
+
   return false;
 }
 
@@ -857,6 +944,101 @@ bcrypto_dsa_privkey_import_pkcs8(
   const uint8_t *raw,
   size_t raw_len
 ) {
+  // https://github.com/openssl/openssl/blob/32f803d/crypto/dsa/dsa_ameth.c#L137
+  PKCS8_PRIV_KEY_INFO *p8 = NULL;
+  const unsigned char *p, *pm;
+  int pklen, pmlen;
+  int ptype;
+  const void *pval;
+  const ASN1_STRING *pstr;
+  const X509_ALGOR *palg;
+  const ASN1_OBJECT *palgoid;
+  ASN1_INTEGER *privkey = NULL;
+  BIGNUM *dsa_x = NULL;
+  BIGNUM *dsa_y = NULL;
+  BN_CTX *ctx = NULL;
+
+  DSA *dsa = NULL;
+
+  const uint8_t *pp = raw;
+
+  if (!d2i_PKCS8_PRIV_KEY_INFO(&p8, &pp, raw_len))
+    goto fail;
+
+  if (!PKCS8_pkey_get0(NULL, &p, &pklen, &palg, p8))
+    goto fail;
+
+  X509_ALGOR_get0(&palgoid, &ptype, &pval, palg);
+
+  if (OBJ_obj2nid(palgoid) != NID_dsa)
+    goto fail;
+
+  if (!(privkey = d2i_ASN1_INTEGER(NULL, &p, pklen)))
+    goto fail;
+
+  if (privkey->type == V_ASN1_NEG_INTEGER || ptype != V_ASN1_SEQUENCE)
+    goto fail;
+
+  pstr = pval;
+  pm = pstr->data;
+  pmlen = pstr->length;
+
+  if (!(dsa = d2i_DSAparams(NULL, &pm, pmlen)))
+    goto fail;
+
+  if (!(dsa_x = BN_secure_new())
+      || !ASN1_INTEGER_to_BN(privkey, dsa_x)) {
+    goto fail;
+  }
+
+  if (!(dsa_y = BN_new()))
+    goto fail;
+
+  if (!(ctx = BN_CTX_new()))
+    goto fail;
+
+  BN_set_flags(dsa_x, BN_FLG_CONSTTIME);
+
+  const BIGNUM *dsa_p = NULL;
+  const BIGNUM *dsa_g = NULL;
+  DSA_get0_pqg(dsa, &dsa_p, NULL, &dsa_g);
+  assert(dsa_p && dsa_g);
+
+  if (!BN_mod_exp(dsa_y, dsa_g, dsa_x, dsa_p, ctx))
+    goto fail;
+
+  assert(DSA_set0_key(dsa, dsa_y, dsa_x));
+  dsa_y = NULL;
+  dsa_x = NULL;
+
+  bcrypto_dsa_key_t *k = bcrypto_dsa_priv2key(dsa);
+
+  PKCS8_PRIV_KEY_INFO_free(p8);
+  DSA_free(dsa);
+  ASN1_STRING_clear_free(privkey);
+  BN_CTX_free(ctx);
+
+  return k;
+
+fail:
+  if (p8)
+    PKCS8_PRIV_KEY_INFO_free(p8);
+
+  if (dsa)
+    DSA_free(dsa);
+
+  if (privkey)
+    ASN1_STRING_clear_free(privkey);
+
+  if (dsa_y)
+    BN_free(dsa_y);
+
+  if (dsa_x)
+    BN_free(dsa_x);
+
+  if (ctx)
+    BN_CTX_free(ctx);
+
   return NULL;
 }
 
