@@ -21,9 +21,13 @@ BRSA::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "privateKeyVerify", BRSA::PrivateKeyVerify);
   Nan::Export(obj, "privateKeyExport", BRSA::PrivateKeyExport);
   Nan::Export(obj, "privateKeyImport", BRSA::PrivateKeyImport);
+  Nan::Export(obj, "privateKeyExportPKCS8", BRSA::PrivateKeyExportPKCS8);
+  Nan::Export(obj, "privateKeyImportPKCS8", BRSA::PrivateKeyImportPKCS8);
   Nan::Export(obj, "publicKeyVerify", BRSA::PublicKeyVerify);
   Nan::Export(obj, "publicKeyExport", BRSA::PublicKeyExport);
   Nan::Export(obj, "publicKeyImport", BRSA::PublicKeyImport);
+  Nan::Export(obj, "publicKeyExportSPKI", BRSA::PublicKeyExportSPKI);
+  Nan::Export(obj, "publicKeyImportSPKI", BRSA::PublicKeyImportSPKI);
   Nan::Export(obj, "sign", BRSA::Sign);
   Nan::Export(obj, "verify", BRSA::Verify);
   Nan::Export(obj, "encrypt", BRSA::Encrypt);
@@ -318,6 +322,99 @@ NAN_METHOD(BRSA::PrivateKeyImport) {
   return info.GetReturnValue().Set(ret);
 }
 
+NAN_METHOD(BRSA::PrivateKeyExportPKCS8) {
+  if (info.Length() < 8)
+    return Nan::ThrowError("rsa.privateKeyExportPKCS8() requires arguments.");
+
+  v8::Local<v8::Object> nbuf = info[0].As<v8::Object>();
+  v8::Local<v8::Object> ebuf = info[1].As<v8::Object>();
+  v8::Local<v8::Object> dbuf = info[2].As<v8::Object>();
+  v8::Local<v8::Object> pbuf = info[3].As<v8::Object>();
+  v8::Local<v8::Object> qbuf = info[4].As<v8::Object>();
+  v8::Local<v8::Object> dpbuf = info[5].As<v8::Object>();
+  v8::Local<v8::Object> dqbuf = info[6].As<v8::Object>();
+  v8::Local<v8::Object> qibuf = info[7].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(nbuf)
+      || !node::Buffer::HasInstance(ebuf)
+      || !node::Buffer::HasInstance(dbuf)
+      || !node::Buffer::HasInstance(pbuf)
+      || !node::Buffer::HasInstance(qbuf)
+      || !node::Buffer::HasInstance(dpbuf)
+      || !node::Buffer::HasInstance(dqbuf)
+      || !node::Buffer::HasInstance(qibuf)) {
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+  }
+
+  bcrypto_rsa_key_t priv;
+  bcrypto_rsa_key_init(&priv);
+
+  priv.nd = (uint8_t *)node::Buffer::Data(nbuf);
+  priv.nl = node::Buffer::Length(nbuf);
+
+  priv.ed = (uint8_t *)node::Buffer::Data(ebuf);
+  priv.el = node::Buffer::Length(ebuf);
+
+  priv.dd = (uint8_t *)node::Buffer::Data(dbuf);
+  priv.dl = node::Buffer::Length(dbuf);
+
+  priv.pd = (uint8_t *)node::Buffer::Data(pbuf);
+  priv.pl = node::Buffer::Length(pbuf);
+
+  priv.qd = (uint8_t *)node::Buffer::Data(qbuf);
+  priv.ql = node::Buffer::Length(qbuf);
+
+  priv.dpd = (uint8_t *)node::Buffer::Data(dpbuf);
+  priv.dpl = node::Buffer::Length(dpbuf);
+
+  priv.dqd = (uint8_t *)node::Buffer::Data(dqbuf);
+  priv.dql = node::Buffer::Length(dqbuf);
+
+  priv.qid = (uint8_t *)node::Buffer::Data(qibuf);
+  priv.qil = node::Buffer::Length(qibuf);
+
+  uint8_t *out;
+  size_t out_len;
+
+  if (!bcrypto_rsa_privkey_export_pkcs8(&priv, &out, &out_len))
+    return Nan::ThrowError("Could not export.");
+
+  info.GetReturnValue().Set(
+    Nan::NewBuffer((char *)out, out_len).ToLocalChecked());
+}
+
+NAN_METHOD(BRSA::PrivateKeyImportPKCS8) {
+  if (info.Length() < 1)
+    return Nan::ThrowError("rsa.privateKeyImportPKCS8() requires arguments.");
+
+  v8::Local<v8::Object> rbuf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(rbuf))
+    return Nan::ThrowTypeError("Argument must be a buffer.");
+
+  const uint8_t *rd = (uint8_t *)node::Buffer::Data(rbuf);
+  size_t rl = node::Buffer::Length(rbuf);
+
+  bcrypto_rsa_key_t *k = bcrypto_rsa_privkey_import_pkcs8(rd, rl);
+
+  if (!k)
+    return Nan::ThrowTypeError("Could not import.");
+
+  v8::Local<v8::Array> ret = Nan::New<v8::Array>();
+  ret->Set(0, Nan::CopyBuffer((char *)k->nd, k->nl).ToLocalChecked());
+  ret->Set(1, Nan::CopyBuffer((char *)k->ed, k->el).ToLocalChecked());
+  ret->Set(2, Nan::CopyBuffer((char *)k->dd, k->dl).ToLocalChecked());
+  ret->Set(3, Nan::CopyBuffer((char *)k->pd, k->pl).ToLocalChecked());
+  ret->Set(4, Nan::CopyBuffer((char *)k->qd, k->ql).ToLocalChecked());
+  ret->Set(5, Nan::CopyBuffer((char *)k->dpd, k->dpl).ToLocalChecked());
+  ret->Set(6, Nan::CopyBuffer((char *)k->dqd, k->dql).ToLocalChecked());
+  ret->Set(7, Nan::CopyBuffer((char *)k->qid, k->qil).ToLocalChecked());
+
+  bcrypto_rsa_key_free(k);
+
+  return info.GetReturnValue().Set(ret);
+}
+
 NAN_METHOD(BRSA::PublicKeyVerify) {
   if (info.Length() < 2)
     return Nan::ThrowError("rsa.publicKeyVerify() requires arguments.");
@@ -388,6 +485,63 @@ NAN_METHOD(BRSA::PublicKeyImport) {
   size_t rl = node::Buffer::Length(rbuf);
 
   bcrypto_rsa_key_t *k = bcrypto_rsa_pubkey_import(rd, rl);
+
+  if (!k)
+    return Nan::ThrowTypeError("Could not import.");
+
+  v8::Local<v8::Array> ret = Nan::New<v8::Array>();
+  ret->Set(0, Nan::CopyBuffer((char *)k->nd, k->nl).ToLocalChecked());
+  ret->Set(1, Nan::CopyBuffer((char *)k->ed, k->el).ToLocalChecked());
+
+  bcrypto_rsa_key_free(k);
+
+  return info.GetReturnValue().Set(ret);
+}
+
+NAN_METHOD(BRSA::PublicKeyExportSPKI) {
+  if (info.Length() < 2)
+    return Nan::ThrowError("rsa.publicKeyExportSPKI() requires arguments.");
+
+  v8::Local<v8::Object> nbuf = info[0].As<v8::Object>();
+  v8::Local<v8::Object> ebuf = info[1].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(nbuf)
+      || !node::Buffer::HasInstance(ebuf)) {
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+  }
+
+  bcrypto_rsa_key_t pub;
+  bcrypto_rsa_key_init(&pub);
+
+  pub.nd = (uint8_t *)node::Buffer::Data(nbuf);
+  pub.nl = node::Buffer::Length(nbuf);
+
+  pub.ed = (uint8_t *)node::Buffer::Data(ebuf);
+  pub.el = node::Buffer::Length(ebuf);
+
+  uint8_t *out;
+  size_t out_len;
+
+  if (!bcrypto_rsa_pubkey_export_spki(&pub, &out, &out_len))
+    return Nan::ThrowError("Could not export.");
+
+  info.GetReturnValue().Set(
+    Nan::NewBuffer((char *)out, out_len).ToLocalChecked());
+}
+
+NAN_METHOD(BRSA::PublicKeyImportSPKI) {
+  if (info.Length() < 1)
+    return Nan::ThrowError("rsa.publicKeyImportSPKI() requires arguments.");
+
+  v8::Local<v8::Object> rbuf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(rbuf))
+    return Nan::ThrowTypeError("Argument must be a buffer.");
+
+  const uint8_t *rd = (uint8_t *)node::Buffer::Data(rbuf);
+  size_t rl = node::Buffer::Length(rbuf);
+
+  bcrypto_rsa_key_t *k = bcrypto_rsa_pubkey_import_spki(rd, rl);
 
   if (!k)
     return Nan::ThrowTypeError("Could not import.");

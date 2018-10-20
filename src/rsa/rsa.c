@@ -13,6 +13,7 @@
 #include "openssl/evp.h"
 #include "openssl/objects.h"
 #include "openssl/rsa.h"
+#include "openssl/x509.h"
 #include "../random/random.h"
 
 #define BCRYPTO_RSA_DEFAULT_BITS 2048
@@ -1045,6 +1046,23 @@ bcrypto_rsa_privkey_import(
 }
 
 bool
+bcrypto_rsa_privkey_export_pkcs8(
+  const bcrypto_rsa_key_t *priv,
+  uint8_t **out,
+  size_t *out_len
+) {
+  return false;
+}
+
+bcrypto_rsa_key_t *
+bcrypto_rsa_privkey_import_pkcs8(
+  const uint8_t *raw,
+  size_t raw_len
+) {
+  return NULL;
+}
+
+bool
 bcrypto_rsa_pubkey_verify(const bcrypto_rsa_key_t *pub) {
   return bcrypto_rsa_sane_pubkey(pub);
 }
@@ -1088,6 +1106,54 @@ bcrypto_rsa_pubkey_import(
   const uint8_t *p = raw;
 
   if (!d2i_RSAPublicKey(&pub_r, &p, raw_len))
+    return false;
+
+  bcrypto_rsa_key_t *k = bcrypto_rsa_pub2key(pub_r);
+
+  RSA_free(pub_r);
+
+  return k;
+}
+
+bool
+bcrypto_rsa_pubkey_export_spki(
+  const bcrypto_rsa_key_t *pub,
+  uint8_t **out,
+  size_t *out_len
+) {
+  assert(out && out_len);
+
+  if (!bcrypto_rsa_sane_pubkey(pub))
+    return false;
+
+  RSA *pub_r = bcrypto_rsa_key2pub(pub);
+
+  if (!pub_r)
+    return false;
+
+  uint8_t *buf = NULL;
+  int len = i2d_RSA_PUBKEY(pub_r, &buf);
+
+  RSA_free(pub_r);
+
+  if (len <= 0)
+    return false;
+
+  *out = buf;
+  *out_len = (size_t)len;
+
+  return true;
+}
+
+bcrypto_rsa_key_t *
+bcrypto_rsa_pubkey_import_spki(
+  const uint8_t *raw,
+  size_t raw_len
+) {
+  RSA *pub_r = NULL;
+  const uint8_t *p = raw;
+
+  if (!d2i_RSA_PUBKEY(&pub_r, &p, raw_len))
     return false;
 
   bcrypto_rsa_key_t *k = bcrypto_rsa_pub2key(pub_r);
@@ -1840,6 +1906,23 @@ bcrypto_rsa_privkey_import(
 }
 
 bool
+bcrypto_rsa_privkey_export_pkcs8(
+  const bcrypto_rsa_key_t *priv,
+  uint8_t **out,
+  size_t *out_len
+) {
+  return false;
+}
+
+bcrypto_rsa_key_t *
+bcrypto_rsa_privkey_import_pkcs8(
+  const uint8_t *raw,
+  size_t raw_len
+) {
+  return NULL;
+}
+
+bool
 bcrypto_rsa_pubkey_verify(const bcrypto_rsa_key_t *pub) {
   return false;
 }
@@ -1855,6 +1938,23 @@ bcrypto_rsa_pubkey_export(
 
 bcrypto_rsa_key_t *
 bcrypto_rsa_pubkey_import(
+  const uint8_t *raw,
+  size_t raw_len
+) {
+  return NULL;
+}
+
+bool
+bcrypto_rsa_pubkey_export_spki(
+  const bcrypto_rsa_key_t *pub,
+  uint8_t **out,
+  size_t *out_len
+) {
+  return false;
+}
+
+bcrypto_rsa_key_t *
+bcrypto_rsa_pubkey_import_spki(
   const uint8_t *raw,
   size_t raw_len
 ) {

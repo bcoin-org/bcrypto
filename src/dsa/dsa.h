@@ -34,6 +34,19 @@ bcrypto_dsa_params_generate(int bits);
 bool
 bcrypto_dsa_params_verify(bcrypto_dsa_key_t *params);
 
+bool
+bcrypto_dsa_params_export(
+  const bcrypto_dsa_key_t *params,
+  uint8_t **out,
+  size_t *out_len
+);
+
+bcrypto_dsa_key_t *
+bcrypto_dsa_params_import(
+  const uint8_t *raw,
+  size_t raw_len
+);
+
 bcrypto_dsa_key_t *
 bcrypto_dsa_privkey_create(bcrypto_dsa_key_t *params);
 
@@ -61,6 +74,19 @@ bcrypto_dsa_privkey_import(
 );
 
 bool
+bcrypto_dsa_privkey_export_pkcs8(
+  const bcrypto_dsa_key_t *priv,
+  uint8_t **out,
+  size_t *out_len
+);
+
+bcrypto_dsa_key_t *
+bcrypto_dsa_privkey_import_pkcs8(
+  const uint8_t *raw,
+  size_t raw_len
+);
+
+bool
 bcrypto_dsa_privkey_tweak_add(
   const bcrypto_dsa_key_t *priv,
   const uint8_t *tweak,
@@ -83,6 +109,19 @@ bcrypto_dsa_pubkey_export(
 
 bcrypto_dsa_key_t *
 bcrypto_dsa_pubkey_import(
+  const uint8_t *raw,
+  size_t raw_len
+);
+
+bool
+bcrypto_dsa_pubkey_export_spki(
+  const bcrypto_dsa_key_t *pub,
+  uint8_t **out,
+  size_t *out_len
+);
+
+bcrypto_dsa_key_t *
+bcrypto_dsa_pubkey_import_spki(
   const uint8_t *raw,
   size_t raw_len
 );

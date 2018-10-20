@@ -36,6 +36,25 @@ bcrypto_ecdsa_privkey_import(
 );
 
 bool
+bcrypto_ecdsa_privkey_export_pkcs8(
+  const char *name,
+  const uint8_t *priv,
+  size_t priv_len,
+  bool compress,
+  uint8_t **out,
+  size_t *out_len
+);
+
+bool
+bcrypto_ecdsa_privkey_import_pkcs8(
+  const char *name,
+  const uint8_t *raw,
+  size_t raw_len,
+  uint8_t **out,
+  size_t *out_len
+);
+
+bool
 bcrypto_ecdsa_privkey_tweak_add(
   const char *name,
   const uint8_t *priv,
@@ -71,6 +90,26 @@ bcrypto_ecdsa_pubkey_verify(
   const char *name,
   const uint8_t *pub,
   size_t pub_len
+);
+
+bool
+bcrypto_ecdsa_pubkey_export_spki(
+  const char *name,
+  const uint8_t *pub,
+  size_t pub_len,
+  bool compress,
+  uint8_t **out,
+  size_t *out_len
+);
+
+bool
+bcrypto_ecdsa_pubkey_import_spki(
+  const char *name,
+  const uint8_t *raw,
+  size_t raw_len,
+  bool compress,
+  uint8_t **out,
+  size_t *out_len
 );
 
 bool

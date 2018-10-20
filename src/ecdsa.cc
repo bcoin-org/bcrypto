@@ -17,10 +17,14 @@ BECDSA::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "privateKeyGenerate", BECDSA::PrivateKeyGenerate);
   Nan::Export(obj, "privateKeyExport", BECDSA::PrivateKeyExport);
   Nan::Export(obj, "privateKeyImport", BECDSA::PrivateKeyImport);
+  Nan::Export(obj, "privateKeyExportPKCS8", BECDSA::PrivateKeyExportPKCS8);
+  Nan::Export(obj, "privateKeyImportPKCS8", BECDSA::PrivateKeyImportPKCS8);
   Nan::Export(obj, "privateKeyTweakAdd", BECDSA::PrivateKeyTweakAdd);
   Nan::Export(obj, "publicKeyCreate", BECDSA::PublicKeyCreate);
   Nan::Export(obj, "publicKeyConvert", BECDSA::PublicKeyConvert);
   Nan::Export(obj, "publicKeyVerify", BECDSA::PublicKeyVerify);
+  Nan::Export(obj, "publicKeyExportSPKI", BECDSA::PublicKeyExportSPKI);
+  Nan::Export(obj, "publicKeyImportSPKI", BECDSA::PublicKeyImportSPKI);
   Nan::Export(obj, "publicKeyTweakAdd", BECDSA::PublicKeyTweakAdd);
   Nan::Export(obj, "sign", BECDSA::Sign);
   Nan::Export(obj, "verify", BECDSA::Verify);
@@ -109,6 +113,74 @@ NAN_METHOD(BECDSA::PrivateKeyImport) {
   size_t out_len;
 
   if (!bcrypto_ecdsa_privkey_import(name, rd, rl, &out, &out_len))
+    return Nan::ThrowError("Could not import key.");
+
+  return info.GetReturnValue().Set(
+    Nan::NewBuffer((char *)out, out_len).ToLocalChecked());
+}
+
+NAN_METHOD(BECDSA::PrivateKeyExportPKCS8) {
+  if (info.Length() < 2)
+    return Nan::ThrowError("ecdsa.privateKeyExportPKCS8() requires arguments.");
+
+  if (!info[0]->IsString())
+    return Nan::ThrowTypeError("First argument must be a string.");
+
+  Nan::Utf8String name_(info[0]);
+  const char *name = (const char *)*name_;
+
+  v8::Local<v8::Object> pbuf = info[1].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(pbuf))
+    return Nan::ThrowTypeError("Second argument must be a buffer.");
+
+  bool compress = true;
+
+  if (info.Length() > 2 && !IsNull(info[2])) {
+    if (!info[2]->IsBoolean())
+      return Nan::ThrowTypeError("Third argument must be a boolean.");
+
+    compress = info[2]->BooleanValue();
+  }
+
+  const uint8_t *pd = (uint8_t *)node::Buffer::Data(pbuf);
+  size_t pl = node::Buffer::Length(pbuf);
+
+  uint8_t *out;
+  size_t out_len;
+
+  bool result = bcrypto_ecdsa_privkey_export_pkcs8(
+    name, pd, pl, compress, &out, &out_len);
+
+  if (!result)
+    return Nan::ThrowError("Could not export key.");
+
+  return info.GetReturnValue().Set(
+    Nan::NewBuffer((char *)out, out_len).ToLocalChecked());
+}
+
+NAN_METHOD(BECDSA::PrivateKeyImportPKCS8) {
+  if (info.Length() < 2)
+    return Nan::ThrowError("ecdsa.privateKeyImportPKCS8() requires arguments.");
+
+  if (!info[0]->IsString())
+    return Nan::ThrowTypeError("First argument must be a string.");
+
+  Nan::Utf8String name_(info[0]);
+  const char *name = (const char *)*name_;
+
+  v8::Local<v8::Object> rbuf = info[1].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(rbuf))
+    return Nan::ThrowTypeError("Argument must be a buffer.");
+
+  const uint8_t *rd = (uint8_t *)node::Buffer::Data(rbuf);
+  size_t rl = node::Buffer::Length(rbuf);
+
+  uint8_t *out;
+  size_t out_len;
+
+  if (!bcrypto_ecdsa_privkey_import_pkcs8(name, rd, rl, &out, &out_len))
     return Nan::ThrowError("Could not import key.");
 
   return info.GetReturnValue().Set(
@@ -253,6 +325,83 @@ NAN_METHOD(BECDSA::PublicKeyVerify) {
   bool result = bcrypto_ecdsa_pubkey_verify(name, pd, pl);
 
   return info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
+}
+
+NAN_METHOD(BECDSA::PublicKeyExportSPKI) {
+  if (info.Length() < 2)
+    return Nan::ThrowError("ecdsa.privateKeyExportPKCS8() requires arguments.");
+
+  if (!info[0]->IsString())
+    return Nan::ThrowTypeError("First argument must be a string.");
+
+  Nan::Utf8String name_(info[0]);
+  const char *name = (const char *)*name_;
+
+  v8::Local<v8::Object> pbuf = info[1].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(pbuf))
+    return Nan::ThrowTypeError("Second argument must be a buffer.");
+
+  bool compress = true;
+
+  if (info.Length() > 2 && !IsNull(info[2])) {
+    if (!info[2]->IsBoolean())
+      return Nan::ThrowTypeError("Third argument must be a boolean.");
+
+    compress = info[2]->BooleanValue();
+  }
+
+  const uint8_t *pd = (uint8_t *)node::Buffer::Data(pbuf);
+  size_t pl = node::Buffer::Length(pbuf);
+
+  uint8_t *out;
+  size_t out_len;
+
+  bool result = bcrypto_ecdsa_pubkey_export_spki(
+    name, pd, pl, compress, &out, &out_len);
+
+  if (!result)
+    return Nan::ThrowError("Could not export key.");
+
+  return info.GetReturnValue().Set(
+    Nan::NewBuffer((char *)out, out_len).ToLocalChecked());
+}
+
+NAN_METHOD(BECDSA::PublicKeyImportSPKI) {
+  if (info.Length() < 2)
+    return Nan::ThrowError("ecdsa.privateKeyImportPKCS8() requires arguments.");
+
+  if (!info[0]->IsString())
+    return Nan::ThrowTypeError("First argument must be a string.");
+
+  Nan::Utf8String name_(info[0]);
+  const char *name = (const char *)*name_;
+
+  v8::Local<v8::Object> rbuf = info[1].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(rbuf))
+    return Nan::ThrowTypeError("Argument must be a buffer.");
+
+  bool compress = true;
+
+  if (info.Length() > 2 && !IsNull(info[2])) {
+    if (!info[2]->IsBoolean())
+      return Nan::ThrowTypeError("Third argument must be a boolean.");
+
+    compress = info[2]->BooleanValue();
+  }
+
+  const uint8_t *rd = (uint8_t *)node::Buffer::Data(rbuf);
+  size_t rl = node::Buffer::Length(rbuf);
+
+  uint8_t *out;
+  size_t out_len;
+
+  if (!bcrypto_ecdsa_pubkey_import_spki(name, rd, rl, compress, &out, &out_len))
+    return Nan::ThrowError("Could not import key.");
+
+  return info.GetReturnValue().Set(
+    Nan::NewBuffer((char *)out, out_len).ToLocalChecked());
 }
 
 NAN_METHOD(BECDSA::PublicKeyTweakAdd) {

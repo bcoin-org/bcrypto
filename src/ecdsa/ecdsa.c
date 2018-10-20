@@ -10,6 +10,7 @@
 
 #include "openssl/ecdsa.h"
 #include "openssl/objects.h"
+#include "openssl/x509.h"
 #include "../random/random.h"
 
 // https://github.com/openssl/openssl/blob/master/include/openssl/obj_mac.h
@@ -471,6 +472,29 @@ fail:
 }
 
 bool
+bcrypto_ecdsa_privkey_export_pkcs8(
+  const char *name,
+  const uint8_t *priv,
+  size_t priv_len,
+  bool compress,
+  uint8_t **out,
+  size_t *out_len
+) {
+  return false;
+}
+
+bool
+bcrypto_ecdsa_privkey_import_pkcs8(
+  const char *name,
+  const uint8_t *raw,
+  size_t raw_len,
+  uint8_t **out,
+  size_t *out_len
+) {
+  return false;
+}
+
+bool
 bcrypto_ecdsa_privkey_tweak_add(
   const char *name,
   const uint8_t *priv,
@@ -756,6 +780,135 @@ bcrypto_ecdsa_pubkey_verify(
     goto fail;
 
   if (!EC_KEY_check_key(pub_ec))
+    goto fail;
+
+  EC_KEY_free(pub_ec);
+  BN_CTX_free(ctx);
+
+  return true;
+
+fail:
+  if (pub_ec)
+    EC_KEY_free(pub_ec);
+
+  if (ctx)
+    BN_CTX_free(ctx);
+
+  return false;
+}
+
+bool
+bcrypto_ecdsa_pubkey_export_spki(
+  const char *name,
+  const uint8_t *pub,
+  size_t pub_len,
+  bool compress,
+  uint8_t **out,
+  size_t *out_len
+) {
+  assert(out && out_len);
+
+  BN_CTX *ctx = NULL;
+  EC_KEY *pub_ec = NULL;
+
+  int type = bcrypto_ecdsa_curve(name);
+
+  if (type == -1)
+    goto fail;
+
+  if (!bcrypto_ecdsa_valid_point(type, pub, pub_len))
+    goto fail;
+
+  ctx = BN_CTX_new();
+
+  if (!ctx)
+    goto fail;
+
+  pub_ec = EC_KEY_new_by_curve_name(type);
+
+  if (!pub_ec)
+    goto fail;
+
+  if (!EC_KEY_oct2key(pub_ec, pub, pub_len, ctx))
+    goto fail;
+
+  point_conversion_form_t form = compress
+    ? POINT_CONVERSION_COMPRESSED
+    : POINT_CONVERSION_UNCOMPRESSED;
+
+  EC_KEY_set_conv_form(pub_ec, form);
+  EC_KEY_set_asn1_flag(pub_ec, OPENSSL_EC_NAMED_CURVE);
+
+  uint8_t *buf = NULL;
+  int len = i2d_EC_PUBKEY(pub_ec, &buf);
+
+  if (len <= 0)
+    goto fail;
+
+  *out = buf;
+  *out_len = (size_t)len;
+
+  EC_KEY_free(pub_ec);
+  BN_CTX_free(ctx);
+
+  return true;
+
+fail:
+  if (pub_ec)
+    EC_KEY_free(pub_ec);
+
+  if (ctx)
+    BN_CTX_free(ctx);
+
+  return false;
+}
+
+bool
+bcrypto_ecdsa_pubkey_import_spki(
+  const char *name,
+  const uint8_t *raw,
+  size_t raw_len,
+  bool compress,
+  uint8_t **out,
+  size_t *out_len
+) {
+  assert(out && out_len);
+
+  BN_CTX *ctx = NULL;
+  EC_KEY *pub_ec = NULL;
+
+  int type = bcrypto_ecdsa_curve(name);
+
+  if (type == -1)
+    goto fail;
+
+  pub_ec = EC_KEY_new_by_curve_name(type);
+
+  if (!pub_ec)
+    goto fail;
+
+  ctx = BN_CTX_new();
+
+  if (!ctx)
+    goto fail;
+
+  EC_KEY_set_asn1_flag(pub_ec, OPENSSL_EC_NAMED_CURVE);
+
+  const uint8_t *p = raw;
+
+  if (!d2i_EC_PUBKEY(&pub_ec, &p, raw_len))
+    goto fail;
+
+  point_conversion_form_t form = compress
+    ? POINT_CONVERSION_COMPRESSED
+    : POINT_CONVERSION_UNCOMPRESSED;
+
+  *out_len = EC_KEY_key2buf(pub_ec, form, out, ctx);
+
+  if ((int)*out_len <= 0)
+    goto fail;
+
+  if (!bcrypto_ecdsa_valid_point(type, *out, *out_len))
     goto fail;
 
   EC_KEY_free(pub_ec);
@@ -1459,6 +1612,29 @@ bcrypto_ecdsa_privkey_import(
 }
 
 bool
+bcrypto_ecdsa_privkey_export_pkcs8(
+  const char *name,
+  const uint8_t *priv,
+  size_t priv_len,
+  bool compress,
+  uint8_t **out,
+  size_t *out_len
+) {
+  return false;
+}
+
+bool
+bcrypto_ecdsa_privkey_import_pkcs8(
+  const char *name,
+  const uint8_t *raw,
+  size_t raw_len,
+  uint8_t **out,
+  size_t *out_len
+) {
+  return false;
+}
+
+bool
 bcrypto_ecdsa_privkey_tweak_add(
   const char *name,
   const uint8_t *priv,
@@ -1500,6 +1676,30 @@ bcrypto_ecdsa_pubkey_verify(
   const char *name,
   const uint8_t *pub,
   size_t pub_len
+) {
+  return false;
+}
+
+bool
+bcrypto_ecdsa_pubkey_export_spki(
+  const char *name,
+  const uint8_t *pub,
+  size_t pub_len,
+  bool compress,
+  uint8_t **out,
+  size_t *out_len
+) {
+  return false;
+}
+
+bool
+bcrypto_ecdsa_pubkey_import_spki(
+  const char *name,
+  const uint8_t *raw,
+  size_t raw_len,
+  bool compress,
+  uint8_t **out,
+  size_t *out_len
 ) {
   return false;
 }

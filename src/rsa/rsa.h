@@ -60,6 +60,19 @@ bcrypto_rsa_privkey_import(
 );
 
 bool
+bcrypto_rsa_privkey_export_pkcs8(
+  const bcrypto_rsa_key_t *priv,
+  uint8_t **out,
+  size_t *out_len
+);
+
+bcrypto_rsa_key_t *
+bcrypto_rsa_privkey_import_pkcs8(
+  const uint8_t *raw,
+  size_t raw_len
+);
+
+bool
 bcrypto_rsa_pubkey_verify(const bcrypto_rsa_key_t *pub);
 
 bool
@@ -71,6 +84,19 @@ bcrypto_rsa_pubkey_export(
 
 bcrypto_rsa_key_t *
 bcrypto_rsa_pubkey_import(
+  const uint8_t *raw,
+  size_t raw_len
+);
+
+bool
+bcrypto_rsa_pubkey_export_spki(
+  const bcrypto_rsa_key_t *pub,
+  uint8_t **out,
+  size_t *out_len
+);
+
+bcrypto_rsa_key_t *
+bcrypto_rsa_pubkey_import_spki(
   const uint8_t *raw,
   size_t raw_len
 );

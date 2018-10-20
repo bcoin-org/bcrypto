@@ -4,8 +4,20 @@
 'use strict';
 
 const assert = require('./util/assert');
+
+const NODE_MAJOR = parseInt(process.version.substring(1).split('.')[0], 10);
+
+const ECDSA = (() => {
+  if (!process.env.NODE_BACKEND || process.env.NODE_BACKEND === 'native') {
+    if (NODE_MAJOR >= 10)
+      return require('../lib/native/ecdsa');
+  }
+  return require('../lib/js/ecdsa');
+})();
+
 const p256 = require('../lib/p256');
 const secp256k1 = require('../lib/secp256k1');
+const secp256k1e = new ECDSA('SECP256K1');
 const pem = require('../lib/encoding/pem');
 const sec1 = require('../lib/encoding/sec1');
 
@@ -70,8 +82,7 @@ describe('SEC1', function() {
   });
 
   it('should parse secp256k1 key (backend)', () => {
-    // secp256k1-node idiosyncracy -- it provides a null oid
-    const str = secp256k1.native < 2 ? secpPem : secpPem2;
+    const str = secpPem;
     const data = pem.fromPEM(str, 'EC PRIVATE KEY');
     const key = secp256k1.privateKeyImport(data);
 
@@ -82,6 +93,26 @@ describe('SEC1', function() {
     const pem2 = pem.toPEM(data2, 'EC PRIVATE KEY');
 
     assert.strictEqual(pem2.trim(), str.trim());
+  });
+
+  it('should parse secp256k1 key (backend, secp256k1-node)', () => {
+    const str = secpPem2;
+    const data = pem.fromPEM(str, 'EC PRIVATE KEY');
+    const key = secp256k1.privateKeyImport(data);
+
+    assert.strictEqual(key.toString('hex'), secpPriv);
+    assert.strictEqual(secp256k1.publicKeyCreate(key).toString('hex'), secpPub);
+  });
+
+  it('should parse secp256k1 key (backend-ossl, secp256k1-node)', () => {
+    const str = secpPem2;
+    const data = pem.fromPEM(str, 'EC PRIVATE KEY');
+    const key = secp256k1e.privateKeyImport(data);
+
+    assert.strictEqual(key.toString('hex'), secpPriv);
+    assert.strictEqual(
+      secp256k1e.publicKeyCreate(key).toString('hex'),
+      secpPub);
   });
 
   it('should parse p256 key', () => {

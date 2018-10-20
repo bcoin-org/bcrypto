@@ -8,13 +8,31 @@ const assert = require('./util/assert');
 const fs = require('fs');
 const Path = require('path');
 const bio = require('bufio');
+const pem = require('../lib/encoding/pem');
 const dsa = require('../lib/dsa');
+const rsa = require('../lib/rsa');
+const p256 = require('../lib/p256');
+const secp256k1 = require('../lib/secp256k1');
+const ed25519 = require('../lib/ed25519');
 const asn1 = require('../lib/encoding/asn1');
 const pkcs8 = require('../lib/encoding/pkcs8');
 
 const DSA_PUB_PATH = Path.resolve(__dirname, 'data', 'testdsapub.pem');
 
 const dsaPubPem = fs.readFileSync(DSA_PUB_PATH, 'utf8');
+
+function readPEM(name) {
+  const path = Path.resolve(__dirname, 'data', `${name}.pem`);
+  return fs.readFileSync(path, 'utf8');
+}
+
+const keys = [
+  ['DSA', dsa, readPEM('dsa-pkcs8')],
+  ['RSA', rsa, readPEM('rsa-pkcs8')],
+  ['P256', p256, readPEM('p256-pkcs8')],
+  ['SECP256K1', secp256k1, readPEM('secp256k1-pkcs8')],
+  ['ED25519', ed25519, readPEM('ed25519-pkcs8')]
+];
 
 describe('PKCS8', function() {
   it('should parse PKCS8', () => {
@@ -41,4 +59,19 @@ describe('PKCS8', function() {
 
     assert.strictEqual(pki.toPEM(), dsaPubPem);
   });
+
+  for (const [name, alg, str1] of keys) {
+    it(`should parse and reserialize ${name} key`, () => {
+      const raw1 = pem.fromPEM(str1, 'PRIVATE KEY');
+      const key1 = alg.privateKeyImportPKCS8(raw1);
+      const raw2 = alg.privateKeyExportPKCS8(key1);
+      const str2 = pem.toPEM(raw2, 'PRIVATE KEY');
+      const raw3 = pem.fromPEM(str2, 'PRIVATE KEY');
+      const key2 = alg.privateKeyImportPKCS8(raw3);
+
+      assert(alg.privateKeyVerify(key1));
+      assert.bufferEqual(raw2, raw3);
+      assert.deepStrictEqual(key1, key2);
+    });
+  }
 });
