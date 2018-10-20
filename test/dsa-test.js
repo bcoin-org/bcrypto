@@ -138,13 +138,13 @@ describe('DSA', function() {
     const info = x509.SubjectPublicKeyInfo.fromPEM(dsaPubPem);
     assert(info.algorithm.algorithm.getKeyAlgorithmName() === 'DSA');
     assert(info.algorithm.parameters.node.type === 16); // SEQ
-    assert(info.subjectPublicKey.type === 3); // BITSTRING
+    assert(info.publicKey.type === 3); // BITSTRING
 
     const br = bio.read(info.algorithm.parameters.node.value);
     const p = asn1.Integer.read(br);
     const q = asn1.Integer.read(br);
     const g = asn1.Integer.read(br);
-    const y = asn1.Integer.decode(info.subjectPublicKey.rightAlign());
+    const y = asn1.Integer.decode(info.publicKey.rightAlign());
     const key = new DSAPublicKey();
 
     key.setP(p.value);
