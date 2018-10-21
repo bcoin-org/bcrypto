@@ -62,17 +62,33 @@ describe('ECDSA', function() {
       assert(ec.verifyDER(msg, sig, pubu));
       pub[2] ^= 1;
 
-      assert.bufferEqual(
-        ec.privateKeyImport(ec.privateKeyExport(priv)),
-        priv);
+      for (const c of [false, true]) {
+        assert.bufferEqual(
+          ec.privateKeyImport(ec.privateKeyExport(priv, c)),
+          priv);
 
-      assert.bufferEqual(
-        ec.publicKeyImport(ec.publicKeyExport(pub), true),
-        pub);
+        assert.bufferEqual(
+          ec.privateKeyImportPKCS8(ec.privateKeyExportPKCS8(priv, c)),
+          priv);
 
-      assert.bufferEqual(
-        ec.publicKeyImport(ec.publicKeyExport(pubu), false),
-        pubu);
+        assert.bufferEqual(
+          ec.privateKeyImportJWK(ec.privateKeyExportJWK(priv, c)),
+          priv);
+
+        for (const p of [pub, pubu]) {
+          assert.bufferEqual(
+            ec.publicKeyImport(ec.publicKeyExport(p, c), c),
+            c ? pub : pubu);
+
+          assert.bufferEqual(
+            ec.publicKeyImportSPKI(ec.publicKeyExportSPKI(p, c), c),
+            c ? pub : pubu);
+
+          assert.bufferEqual(
+            ec.publicKeyImportJWK(ec.publicKeyExportJWK(p, c), c),
+            c ? pub : pubu);
+        }
+      }
     });
 
     it(`should generate keypair and sign RS (${ec.id})`, () => {

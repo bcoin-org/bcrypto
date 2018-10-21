@@ -74,7 +74,23 @@ describe('DSA', function() {
       priv);
 
     assert.deepStrictEqual(
+      dsa.privateKeyImportPKCS8(dsa.privateKeyExportPKCS8(priv)),
+      priv);
+
+    assert.deepStrictEqual(
+      dsa.privateKeyImportJWK(dsa.privateKeyExportJWK(priv)),
+      priv);
+
+    assert.deepStrictEqual(
       dsa.publicKeyImport(dsa.publicKeyExport(pub)),
+      pub);
+
+    assert.deepStrictEqual(
+      dsa.publicKeyImportSPKI(dsa.publicKeyExportSPKI(pub)),
+      pub);
+
+    assert.deepStrictEqual(
+      dsa.publicKeyImportJWK(dsa.publicKeyExportJWK(pub)),
       pub);
   });
 

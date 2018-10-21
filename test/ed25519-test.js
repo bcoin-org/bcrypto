@@ -31,6 +31,22 @@ describe('EdDSA', function() {
     sig[(Math.random() * sig.length) | 0] ^= 1;
 
     assert(!ed25519.verify(msg, sig, pub));
+
+    assert.bufferEqual(
+      ed25519.privateKeyImport(ed25519.privateKeyExport(secret)),
+      secret);
+
+    assert.bufferEqual(
+      ed25519.privateKeyImportPKCS8(ed25519.privateKeyExportPKCS8(secret)),
+      secret);
+
+    assert.bufferEqual(
+      ed25519.publicKeyImport(ed25519.publicKeyExport(pub)),
+      pub);
+
+    assert.bufferEqual(
+      ed25519.publicKeyImportSPKI(ed25519.publicKeyExportSPKI(pub)),
+      pub);
   });
 
   it('should do ECDH', () => {

@@ -50,10 +50,26 @@ describe('RSA', function() {
       rsa.privateKeyImport(rsa.privateKeyExport(priv)),
       priv);
 
+    assert.deepStrictEqual(
+      rsa.privateKeyImportPKCS8(rsa.privateKeyExportPKCS8(priv)),
+      priv);
+
+    assert.deepStrictEqual(
+      rsa.privateKeyImportJWK(rsa.privateKeyExportJWK(priv)),
+      priv);
+
     const pub = rsa.publicKeyCreate(priv);
 
     assert.deepStrictEqual(
       rsa.publicKeyImport(rsa.publicKeyExport(pub)),
+      pub);
+
+    assert.deepStrictEqual(
+      rsa.publicKeyImportSPKI(rsa.publicKeyExportSPKI(pub)),
+      pub);
+
+    assert.deepStrictEqual(
+      rsa.publicKeyImportJWK(rsa.publicKeyExportJWK(pub)),
       pub);
   });
 
