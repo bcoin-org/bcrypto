@@ -34,6 +34,7 @@ BCipherBase::Init(v8::Local<v8::Object> &target) {
   Nan::SetPrototypeMethod(tpl, "init", BCipherBase::Init);
   Nan::SetPrototypeMethod(tpl, "update", BCipherBase::Update);
   Nan::SetPrototypeMethod(tpl, "final", BCipherBase::Final);
+  Nan::SetMethod(tpl, "hasCipher", BCipherBase::HasCipher);
 
   v8::Local<v8::FunctionTemplate> ctor =
     Nan::New<v8::FunctionTemplate>(cipher_constructor);
@@ -214,4 +215,18 @@ NAN_METHOD(BCipherBase::Final) {
 
   return info.GetReturnValue().Set(
     Nan::NewBuffer((char *)out, (size_t)out_len).ToLocalChecked());
+}
+
+NAN_METHOD(BCipherBase::HasCipher) {
+  if (info.Length() < 1)
+    return Nan::ThrowError("cipher.hasCipher() requires arguments.");
+
+  if (!info[0]->IsString())
+    return Nan::ThrowTypeError("Argument must be a string.");
+
+  Nan::Utf8String name_(info[0]);
+  const char *name = (const char *)*name_;
+  bool result = EVP_get_cipherbyname(name) != NULL;
+
+  return info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }

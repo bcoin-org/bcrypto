@@ -22,5 +22,6 @@ private:
   static NAN_METHOD(Init);
   static NAN_METHOD(Update);
   static NAN_METHOD(Final);
+  static NAN_METHOD(HasCipher);
 };
 #endif
