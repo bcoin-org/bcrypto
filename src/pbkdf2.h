@@ -10,6 +10,7 @@ public:
 private:
   static NAN_METHOD(Derive);
   static NAN_METHOD(DeriveAsync);
+  static NAN_METHOD(HasHash);
 };
 
 #endif

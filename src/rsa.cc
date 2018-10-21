@@ -36,6 +36,9 @@ BRSA::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "decryptOAEP", BRSA::DecryptOAEP);
   Nan::Export(obj, "signPSS", BRSA::SignPSS);
   Nan::Export(obj, "verifyPSS", BRSA::VerifyPSS);
+  Nan::Export(obj, "encryptRaw", BRSA::EncryptRaw);
+  Nan::Export(obj, "decryptRaw", BRSA::DecryptRaw);
+  Nan::Export(obj, "hasHash", BRSA::HasHash);
 
   target->Set(Nan::New("rsa").ToLocalChecked(), obj);
 }
@@ -700,7 +703,7 @@ NAN_METHOD(BRSA::Encrypt) {
   size_t ct_len;
 
   if (!bcrypto_rsa_encrypt(md, ml, &pub, &ct, &ct_len))
-    return Nan::ThrowTypeError("Could not sign message.");
+    return Nan::ThrowTypeError("Could not encrypt message.");
 
   info.GetReturnValue().Set(
     Nan::NewBuffer((char *)ct, ct_len).ToLocalChecked());
@@ -766,7 +769,7 @@ NAN_METHOD(BRSA::Decrypt) {
   size_t pt_len;
 
   if (!bcrypto_rsa_decrypt(md, ml, &priv, &pt, &pt_len))
-    return Nan::ThrowTypeError("Could not sign message.");
+    return Nan::ThrowTypeError("Could not decrypt message.");
 
   info.GetReturnValue().Set(
     Nan::NewBuffer((char *)pt, pt_len).ToLocalChecked());
@@ -821,7 +824,7 @@ NAN_METHOD(BRSA::EncryptOAEP) {
   size_t ct_len;
 
   if (!bcrypto_rsa_encrypt_oaep(alg, md, ml, &pub, ld, ll, &ct, &ct_len))
-    return Nan::ThrowTypeError("Could not sign message.");
+    return Nan::ThrowTypeError("Could not encrypt message.");
 
   info.GetReturnValue().Set(
     Nan::NewBuffer((char *)ct, ct_len).ToLocalChecked());
@@ -906,7 +909,7 @@ NAN_METHOD(BRSA::DecryptOAEP) {
   size_t pt_len;
 
   if (!bcrypto_rsa_decrypt_oaep(alg, md, ml, &priv, ld, ll, &pt, &pt_len))
-    return Nan::ThrowTypeError("Could not sign message.");
+    return Nan::ThrowTypeError("Could not decrypt message.");
 
   info.GetReturnValue().Set(
     Nan::NewBuffer((char *)pt, pt_len).ToLocalChecked());
@@ -1042,6 +1045,122 @@ NAN_METHOD(BRSA::VerifyPSS) {
   bool result = bcrypto_rsa_verify_pss(alg, md, ml, sd, sl, &pub, salt_len);
 
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
+}
+
+NAN_METHOD(BRSA::EncryptRaw) {
+  if (info.Length() < 3)
+    return Nan::ThrowError("rsa.encryptRaw() requires arguments.");
+
+  v8::Local<v8::Object> mbuf = info[0].As<v8::Object>();
+  v8::Local<v8::Object> nbuf = info[1].As<v8::Object>();
+  v8::Local<v8::Object> ebuf = info[2].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(mbuf)
+      || !node::Buffer::HasInstance(nbuf)
+      || !node::Buffer::HasInstance(ebuf)) {
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+  }
+
+  const uint8_t *md = (uint8_t *)node::Buffer::Data(mbuf);
+  size_t ml = node::Buffer::Length(mbuf);
+
+  bcrypto_rsa_key_t pub;
+  bcrypto_rsa_key_init(&pub);
+
+  pub.nd = (uint8_t *)node::Buffer::Data(nbuf);
+  pub.nl = node::Buffer::Length(nbuf);
+
+  pub.ed = (uint8_t *)node::Buffer::Data(ebuf);
+  pub.el = node::Buffer::Length(ebuf);
+
+  uint8_t *ct;
+  size_t ct_len;
+
+  if (!bcrypto_rsa_encrypt_raw(md, ml, &pub, &ct, &ct_len))
+    return Nan::ThrowTypeError("Could not encrypt message.");
+
+  info.GetReturnValue().Set(
+    Nan::NewBuffer((char *)ct, ct_len).ToLocalChecked());
+}
+
+NAN_METHOD(BRSA::DecryptRaw) {
+  if (info.Length() < 9)
+    return Nan::ThrowError("rsa.decryptRaw() requires arguments.");
+
+  v8::Local<v8::Object> mbuf = info[0].As<v8::Object>();
+  v8::Local<v8::Object> nbuf = info[1].As<v8::Object>();
+  v8::Local<v8::Object> ebuf = info[2].As<v8::Object>();
+  v8::Local<v8::Object> dbuf = info[3].As<v8::Object>();
+  v8::Local<v8::Object> pbuf = info[4].As<v8::Object>();
+  v8::Local<v8::Object> qbuf = info[5].As<v8::Object>();
+  v8::Local<v8::Object> dpbuf = info[6].As<v8::Object>();
+  v8::Local<v8::Object> dqbuf = info[7].As<v8::Object>();
+  v8::Local<v8::Object> qibuf = info[8].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(mbuf)
+      || !node::Buffer::HasInstance(nbuf)
+      || !node::Buffer::HasInstance(ebuf)
+      || !node::Buffer::HasInstance(dbuf)
+      || !node::Buffer::HasInstance(pbuf)
+      || !node::Buffer::HasInstance(qbuf)
+      || !node::Buffer::HasInstance(dpbuf)
+      || !node::Buffer::HasInstance(dqbuf)
+      || !node::Buffer::HasInstance(qibuf)) {
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+  }
+
+  bcrypto_rsa_key_t priv;
+  bcrypto_rsa_key_init(&priv);
+
+  const uint8_t *md = (uint8_t *)node::Buffer::Data(mbuf);
+  size_t ml = node::Buffer::Length(mbuf);
+
+  priv.nd = (uint8_t *)node::Buffer::Data(nbuf);
+  priv.nl = node::Buffer::Length(nbuf);
+
+  priv.ed = (uint8_t *)node::Buffer::Data(ebuf);
+  priv.el = node::Buffer::Length(ebuf);
+
+  priv.dd = (uint8_t *)node::Buffer::Data(dbuf);
+  priv.dl = node::Buffer::Length(dbuf);
+
+  priv.pd = (uint8_t *)node::Buffer::Data(pbuf);
+  priv.pl = node::Buffer::Length(pbuf);
+
+  priv.qd = (uint8_t *)node::Buffer::Data(qbuf);
+  priv.ql = node::Buffer::Length(qbuf);
+
+  priv.dpd = (uint8_t *)node::Buffer::Data(dpbuf);
+  priv.dpl = node::Buffer::Length(dpbuf);
+
+  priv.dqd = (uint8_t *)node::Buffer::Data(dqbuf);
+  priv.dql = node::Buffer::Length(dqbuf);
+
+  priv.qid = (uint8_t *)node::Buffer::Data(qibuf);
+  priv.qil = node::Buffer::Length(qibuf);
+
+  uint8_t *pt;
+  size_t pt_len;
+
+  if (!bcrypto_rsa_decrypt_raw(md, ml, &priv, &pt, &pt_len))
+    return Nan::ThrowTypeError("Could not decrypt message.");
+
+  info.GetReturnValue().Set(
+    Nan::NewBuffer((char *)pt, pt_len).ToLocalChecked());
+}
+
+NAN_METHOD(BRSA::HasHash) {
+  if (info.Length() < 1)
+    return Nan::ThrowError("rsa.hasHash() requires arguments.");
+
+  if (!info[0]->IsString())
+    return Nan::ThrowTypeError("First argument must be a string.");
+
+  Nan::Utf8String alg_(info[0]);
+  const char *alg = (const char *)*alg_;
+  bool result = bcrypto_rsa_has_hash(alg);
+
+  return info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
 
 #endif

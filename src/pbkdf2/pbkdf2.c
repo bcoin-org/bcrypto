@@ -123,3 +123,8 @@ bcrypto_pbkdf2(
 
   return true;
 }
+
+bool
+bcrypto_pbkdf2_has_hash(const char *name) {
+  return bcrypto_pbkdf2_hash_type(name) != -1;
+}

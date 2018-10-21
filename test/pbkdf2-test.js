@@ -6,6 +6,7 @@
 const assert = require('./util/assert');
 const crypto = require('crypto');
 const SHA256 = require('../lib/sha256');
+const BLAKE2b256 = require('../lib/blake2b256');
 const random = require('../lib/random');
 const pbkdf2 = require('../lib/pbkdf2');
 
@@ -45,4 +46,24 @@ describe('PBKDF2', function() {
       assert.bufferEqual(key, expect);
     });
   }
+
+  it('should compute pbkdf2 for blake2b256', () => {
+    const passwd = Buffer.from('foo');
+    const salt = Buffer.from('foo');
+    const iter = 2000;
+    const len = 16;
+    const expect = Buffer.from('fa7fcd855a5d342bfedeb14153334534', 'hex');
+    const key = pbkdf2.derive(BLAKE2b256, passwd, salt, iter, len);
+    assert.bufferEqual(key, expect);
+  });
+
+  it('should compute pbkdf2 for blake2b256 (async)', async () => {
+    const passwd = Buffer.from('foo');
+    const salt = Buffer.from('foo');
+    const iter = 2000;
+    const len = 16;
+    const expect = Buffer.from('fa7fcd855a5d342bfedeb14153334534', 'hex');
+    const key = await pbkdf2.deriveAsync(BLAKE2b256, passwd, salt, iter, len);
+    assert.bufferEqual(key, expect);
+  });
 });

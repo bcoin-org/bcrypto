@@ -69,7 +69,8 @@
       "-Wno-maybe-uninitialized",
       "-Wno-cast-function-type",
       "-Wno-unused-parameter",
-      "-Wno-unknown-warning-option"
+      "-Wno-unknown-warning-option",
+      "-Wno-deprecated-declarations"
     ],
     "include_dirs": [
       "<!(node -e \"require('nan')\")"
@@ -182,7 +183,8 @@
       "-std=c++0x",
       "-Wno-unused-parameter",
       "-Wno-unused-const-variable",
-      "-Wno-unknown-warning-option"
+      "-Wno-unknown-warning-option",
+      "-Wno-deprecated-declarations"
     ],
     "conditions": [
       [

@@ -1965,6 +1965,137 @@ fail:
   return false;
 }
 
+bool
+bcrypto_rsa_encrypt_raw(
+  const uint8_t *msg,
+  size_t msg_len,
+  const bcrypto_rsa_key_t *pub,
+  uint8_t **out,
+  size_t *out_len
+) {
+  assert(out && out_len);
+
+  RSA *pub_r = NULL;
+  uint8_t *c = NULL;
+  int c_len = 0;
+
+  if (!bcrypto_rsa_sane_pubkey(pub))
+    goto fail;
+
+  pub_r = bcrypto_rsa_key2pub(pub);
+
+  if (!pub_r)
+    goto fail;
+
+  c = malloc(RSA_size(pub_r));
+
+  if (!c)
+    goto fail;
+
+  memset(c, 0x00, RSA_size(pub_r));
+
+  // $ man RSA_public_decrypt
+  // `to` must point to `RSA_size(rsa) - 11` bytes of memory.
+  c_len = RSA_public_decrypt(
+    msg_len,       // int flen
+    msg,           // const uint8_t *from
+    c,             // uint8_t *to
+    pub_r,         // RSA *rsa
+    RSA_NO_PADDING // int padding
+  );
+
+  if (c_len <= 0)
+    goto fail;
+
+  assert(c_len == RSA_size(pub_r));
+
+  RSA_free(pub_r);
+
+  *out = c;
+  *out_len = (size_t)c_len;
+
+  return true;
+
+fail:
+  if (pub_r)
+    RSA_free(pub_r);
+
+  if (c)
+    free(c);
+
+  return false;
+}
+
+bool
+bcrypto_rsa_decrypt_raw(
+  const uint8_t *msg,
+  size_t msg_len,
+  const bcrypto_rsa_key_t *priv,
+  uint8_t **out,
+  size_t *out_len
+) {
+  assert(out && out_len);
+
+  RSA *priv_r = NULL;
+  uint8_t *em = NULL;
+  int em_len = 0;
+
+  if (!bcrypto_rsa_sane_privkey(priv))
+    goto fail;
+
+  priv_r = bcrypto_rsa_key2priv(priv);
+
+  if (!priv_r)
+    goto fail;
+
+  em = malloc(RSA_size(priv_r));
+
+  if (!em)
+    goto fail;
+
+  bcrypto_poll();
+
+  // Protect against side-channel attacks.
+  if (!RSA_blinding_on(priv_r, NULL))
+    goto fail;
+
+  // $ man RSA_private_encrypt
+  // `to` must point to `RSA_size(rsa)` bytes of memory.
+  em_len = RSA_private_encrypt(
+    msg_len,          // int flen
+    msg,              // const uint8_t *from
+    em,               // uint8_t *to
+    priv_r,           // RSA *rsa
+    RSA_NO_PADDING    // int padding
+  );
+
+  RSA_blinding_off(priv_r);
+
+  if (em_len <= 0)
+    goto fail;
+
+  RSA_free(priv_r);
+
+  *out = em;
+  *out_len = (size_t)em_len;
+
+  return true;
+
+fail:
+  if (priv_r)
+    RSA_free(priv_r);
+
+  if (em)
+    free(em);
+
+  return false;
+}
+
+bool
+bcrypto_rsa_has_hash(const char *alg) {
+  return bcrypto_rsa_hash_type(alg) != -1;
+}
+
 #else
 
 void
@@ -2161,6 +2292,33 @@ bcrypto_rsa_verify_pss(
   const bcrypto_rsa_key_t *pub,
   int salt_len
 ) {
+  return false;
+}
+
+bool
+bcrypto_rsa_encrypt_raw(
+  const uint8_t *msg,
+  size_t msg_len,
+  const bcrypto_rsa_key_t *pub,
+  uint8_t **out,
+  size_t *out_len
+) {
+  return false;
+}
+
+bool
+bcrypto_rsa_decrypt_raw(
+  const uint8_t *msg,
+  size_t msg_len,
+  const bcrypto_rsa_key_t *priv,
+  uint8_t **out,
+  size_t *out_len
+) {
+  return false;
+}
+
+bool
+bcrypto_rsa_has_hash(const char *alg) {
   return false;
 }
 

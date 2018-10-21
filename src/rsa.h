@@ -30,6 +30,9 @@ private:
   static NAN_METHOD(DecryptOAEP);
   static NAN_METHOD(SignPSS);
   static NAN_METHOD(VerifyPSS);
+  static NAN_METHOD(EncryptRaw);
+  static NAN_METHOD(DecryptRaw);
+  static NAN_METHOD(HasHash);
 };
 #endif
 

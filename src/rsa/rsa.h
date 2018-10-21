@@ -185,6 +185,27 @@ bcrypto_rsa_verify_pss(
   int salt_len
 );
 
+bool
+bcrypto_rsa_encrypt_raw(
+  const uint8_t *msg,
+  size_t msg_len,
+  const bcrypto_rsa_key_t *pub,
+  uint8_t **out,
+  size_t *out_len
+);
+
+bool
+bcrypto_rsa_decrypt_raw(
+  const uint8_t *msg,
+  size_t msg_len,
+  const bcrypto_rsa_key_t *priv,
+  uint8_t **out,
+  size_t *out_len
+);
+
+bool
+bcrypto_rsa_has_hash(const char *alg);
+
 #if defined(__cplusplus)
 }
 #endif

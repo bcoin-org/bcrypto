@@ -21,6 +21,9 @@ bcrypto_pbkdf2(
   size_t keylen
 );
 
+bool
+bcrypto_pbkdf2_has_hash(const char *name);
+
 #if defined(__cplusplus)
 }
 #endif

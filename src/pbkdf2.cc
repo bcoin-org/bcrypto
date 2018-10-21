@@ -16,6 +16,7 @@ BPBKDF2::Init(v8::Local<v8::Object> &target) {
 
   Nan::Export(obj, "derive", BPBKDF2::Derive);
   Nan::Export(obj, "deriveAsync", BPBKDF2::DeriveAsync);
+  Nan::Export(obj, "hasHash", BPBKDF2::HasHash);
 
   target->Set(Nan::New("pbkdf2").ToLocalChecked(), obj);
 }
@@ -124,4 +125,18 @@ NAN_METHOD(BPBKDF2::DeriveAsync) {
   );
 
   Nan::AsyncQueueWorker(worker);
+}
+
+NAN_METHOD(BPBKDF2::HasHash) {
+  if (info.Length() < 1)
+    return Nan::ThrowError("pbkdf2.hasHash() requires arguments.");
+
+  if (!info[0]->IsString())
+    return Nan::ThrowTypeError("First argument must be a string.");
+
+  Nan::Utf8String alg_(info[0]);
+  const char *alg = (const char *)*alg_;
+  bool result = bcrypto_pbkdf2_has_hash(alg);
+
+  return info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }

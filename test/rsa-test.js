@@ -7,6 +7,7 @@ const assert = require('./util/assert');
 const MD5 = require('../lib/md5');
 const SHA1 = require('../lib/sha1');
 const SHA256 = require('../lib/sha256');
+const BLAKE2b256 = require('../lib/blake2b256');
 const random = require('../lib/random');
 const rsa = require('../lib/rsa');
 const base64 = require('../lib/internal/base64');
@@ -122,6 +123,46 @@ describe('RSA', function() {
     assert(valid);
   });
 
+  it('should sign and verify (blake2b)', () => {
+    const bits = rsa.native < 2 ? 1024 : 4096;
+    const priv = rsa.privateKeyGenerate(bits);
+    const pub = rsa.publicKeyCreate(priv);
+
+    assert(rsa.privateKeyVerify(priv));
+    assert(rsa.publicKeyVerify(pub));
+
+    const sig = rsa.sign(BLAKE2b256, msg, priv);
+    assert(rsa.verify(BLAKE2b256, msg, sig, pub));
+
+    assert(!rsa.verify(BLAKE2b256, zero, sig, pub));
+    assert(!rsa.verify(BLAKE2b256, msg, zero, pub));
+
+    sig[(Math.random() * sig.length) | 0] ^= 1;
+    assert(!rsa.verify(BLAKE2b256, msg, sig, pub));
+  });
+
+  it('should sign and verify (PSS) (blake2b)', () => {
+    const priv = rsa.privateKeyGenerate(1024);
+    const pub = rsa.publicKeyCreate(priv);
+
+    assert(rsa.privateKeyVerify(priv));
+    assert(rsa.publicKeyVerify(pub));
+
+    const sig1 = rsa.signPSS(BLAKE2b256, msg, priv, -1);
+    assert(rsa.verifyPSS(BLAKE2b256, msg, sig1, pub));
+
+    assert(!rsa.verifyPSS(BLAKE2b256, zero, sig1, pub));
+    assert(!rsa.verifyPSS(BLAKE2b256, msg, zero, pub));
+
+    sig1[(Math.random() * sig1.length) | 0] ^= 1;
+    assert(!rsa.verifyPSS(BLAKE2b256, msg, sig1, pub));
+
+    const sig2 = rsa.signPSS(BLAKE2b256, msg, priv, 0);
+    assert(rsa.verifyPSS(BLAKE2b256, msg, sig2, pub, 0));
+    sig2[(Math.random() * sig1.length) | 0] ^= 1;
+    assert(!rsa.verifyPSS(BLAKE2b256, msg, sig2, pub, 0));
+  });
+
   it('should test signature padding (PKCS1v1.5)', () => {
     const priv = rsa.privateKeyGenerate(512);
     const pub = rsa.publicKeyCreate(priv);
@@ -180,6 +221,20 @@ describe('RSA', function() {
     assert.notBufferEqual(ct, msg);
 
     const pt = rsa.decryptOAEP(SHA1, ct, priv);
+
+    assert.bufferEqual(pt, msg);
+  });
+
+  it('should encrypt and decrypt (OAEP, blake2b)', () => {
+    const priv = rsa.privateKeyGenerate(1024);
+    const pub = rsa.publicKeyCreate(priv);
+    const msg = Buffer.from('hello world');
+
+    const ct = rsa.encryptOAEP(BLAKE2b256, msg, pub);
+
+    assert.notBufferEqual(ct, msg);
+
+    const pt = rsa.decryptOAEP(BLAKE2b256, ct, priv);
 
     assert.bufferEqual(pt, msg);
   });
