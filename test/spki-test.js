@@ -46,10 +46,10 @@ describe('SPKI', function() {
     assert.strictEqual(spki.publicKey.bits, 1056);
 
     const br = bio.read(spki.algorithm.parameters.node.value);
-    const p = asn1.Integer.read(br);
-    const q = asn1.Integer.read(br);
-    const g = asn1.Integer.read(br);
-    const y = asn1.Integer.decode(spki.publicKey.rightAlign());
+    const p = asn1.Unsigned.read(br);
+    const q = asn1.Unsigned.read(br);
+    const g = asn1.Unsigned.read(br);
+    const y = asn1.Unsigned.decode(spki.publicKey.rightAlign());
     const key = new dsa.DSAPublicKey();
 
     key.setP(p.value);

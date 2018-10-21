@@ -157,10 +157,10 @@ describe('DSA', function() {
     assert(info.publicKey.type === 3); // BITSTRING
 
     const br = bio.read(info.algorithm.parameters.node.value);
-    const p = asn1.Integer.read(br);
-    const q = asn1.Integer.read(br);
-    const g = asn1.Integer.read(br);
-    const y = asn1.Integer.decode(info.publicKey.rightAlign());
+    const p = asn1.Unsigned.read(br);
+    const q = asn1.Unsigned.read(br);
+    const g = asn1.Unsigned.read(br);
+    const y = asn1.Unsigned.decode(info.publicKey.rightAlign());
     const key = new DSAPublicKey();
 
     key.setP(p.value);
