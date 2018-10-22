@@ -72,7 +72,7 @@ describe('ECDSA', function() {
           priv);
 
         assert.bufferEqual(
-          ec.privateKeyImportJWK(ec.privateKeyExportJWK(priv, c)),
+          ec.privateKeyImportJWK(ec.privateKeyExportJWK(priv)),
           priv);
 
         for (const p of [pub, pubu]) {
@@ -85,7 +85,7 @@ describe('ECDSA', function() {
             c ? pub : pubu);
 
           assert.bufferEqual(
-            ec.publicKeyImportJWK(ec.publicKeyExportJWK(p, c), c),
+            ec.publicKeyImportJWK(ec.publicKeyExportJWK(p), c),
             c ? pub : pubu);
         }
       }
