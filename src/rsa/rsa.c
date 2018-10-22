@@ -1300,7 +1300,7 @@ bcrypto_rsa_sign(
     goto fail;
 
   sig_buf_len = RSA_size(priv_r);
-  sig_buf = (uint8_t *)malloc(sig_buf_len * sizeof(uint8_t));
+  sig_buf = malloc(sig_buf_len);
 
   if (!sig_buf)
     goto fail;
@@ -1311,6 +1311,10 @@ bcrypto_rsa_sign(
   if (!RSA_blinding_on(priv_r, NULL))
     goto fail;
 
+  // $ man RSA_sign
+  // tlen is always modulus size.
+  // https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_sign.c#L69
+  // https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ossl.c#L238
   result = RSA_sign(
     type,
     msg,
@@ -1324,6 +1328,8 @@ bcrypto_rsa_sign(
 
   if (!result)
     goto fail;
+
+  assert((int)sig_buf_len == RSA_size(priv_r));
 
   RSA_free(priv_r);
 
@@ -1373,6 +1379,8 @@ bcrypto_rsa_verify(
   if (!pub_r)
     goto fail;
 
+  // flen _must_ be modulus length.
+  // https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_sign.c#L124
   if (RSA_verify(type, msg, msg_len, sig, sig_len, pub_r) <= 0)
     goto fail;
 
@@ -1416,7 +1424,10 @@ bcrypto_rsa_encrypt(
   bcrypto_poll();
 
   // $ man RSA_public_encrypt
-  // `to` must point to `RSA_size(rsa)` bytes of memory.
+  // flen must be size of modulus.
+  // tlen is always modulus size.
+  // https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ossl.c#L67
+  // https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_none.c#L14
   c_len = RSA_public_encrypt(
     msg_len,          // int flen
     msg,              // const uint8_t *from
@@ -1427,6 +1438,8 @@ bcrypto_rsa_encrypt(
 
   if (c_len <= 0)
     goto fail;
+
+  assert(c_len == RSA_size(pub_r));
 
   RSA_free(pub_r);
 
@@ -1482,7 +1495,9 @@ bcrypto_rsa_decrypt(
     goto fail;
 
   // $ man RSA_private_decrypt
-  // `to` must point to `RSA_size(rsa) - 11` bytes of memory.
+  // flen can be smaller than modulus.
+  // tlen is less than modulus size for pkcs1.
+  // https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ossl.c#L374
   out_len = RSA_private_decrypt(
     msg_len,          // int flen
     msg,              // const uint8_t *from
@@ -1588,7 +1603,9 @@ bcrypto_rsa_encrypt_oaep(
     goto fail;
 
   // $ man RSA_public_encrypt
-  // `to` must point to `RSA_size(rsa)` bytes of memory.
+  // flen must be size of modulus.
+  // tlen is always modulus size.
+  // https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ossl.c#L67
   c_len = RSA_public_encrypt(
     RSA_size(pub_r), // int flen
     em,              // const uint8_t *from
@@ -1601,6 +1618,8 @@ bcrypto_rsa_encrypt_oaep(
 
   if (c_len <= 0)
     goto fail;
+
+  assert(c_len == RSA_size(pub_r));
 
   RSA_free(pub_r);
   free(em);
@@ -1679,7 +1698,9 @@ bcrypto_rsa_decrypt_oaep(
   memset(em, 0x00, RSA_size(priv_r));
 
   // $ man RSA_private_decrypt
-  // `to` must point to `RSA_size(rsa) - 11` bytes of memory.
+  // flen can be smaller than modulus.
+  // tlen is always modulus size.
+  // https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ossl.c#L374
   em_len = RSA_private_decrypt(
     msg_len,       // int flen
     msg,           // const uint8_t *from
@@ -1692,6 +1713,8 @@ bcrypto_rsa_decrypt_oaep(
 
   if (em_len <= 0)
     goto fail;
+
+  assert(em_len == RSA_size(priv_r));
 
   out = malloc(RSA_size(priv_r));
 
@@ -1802,6 +1825,7 @@ bcrypto_rsa_sign_pss(
 
   bcrypto_poll();
 
+  // tlen is always modulus size.
   // https://github.com/openssl/openssl/blob/82eba37/crypto/rsa/rsa_pss.c#L145
   // https://github.com/openssl/openssl/blob/82eba37/crypto/rsa/rsa_pmeth.c#L122
   result = RSA_padding_add_PKCS1_PSS_mgf1(
@@ -1830,7 +1854,9 @@ bcrypto_rsa_sign_pss(
   }
 
   // $ man RSA_private_encrypt
-  // `to` must point to `RSA_size(rsa)` bytes of memory.
+  // flen must be modulus size.
+  // tlen is always modulus size.
+  // https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ossl.c#L238
   c_len = RSA_private_encrypt(
     RSA_size(priv_r), // int flen
     em,               // const uint8_t *from
@@ -1845,6 +1871,8 @@ bcrypto_rsa_sign_pss(
 
   if (c_len <= 0)
     goto fail;
+
+  assert(c_len == RSA_size(priv_r));
 
   RSA_free(priv_r);
   free(em);
@@ -1916,7 +1944,9 @@ bcrypto_rsa_verify_pss(
   memset(em, 0x00, RSA_size(pub_r));
 
   // $ man RSA_public_decrypt
-  // `to` must point to `RSA_size(rsa) - 11` bytes of memory.
+  // flen can be smaller than modulus size.
+  // tlen is always modulus size.
+  // https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ossl.c#L507
   em_len = RSA_public_decrypt(
     sig_len,       // int flen
     sig,           // const uint8_t *from
@@ -1992,11 +2022,11 @@ bcrypto_rsa_encrypt_raw(
   if (!c)
     goto fail;
 
-  memset(c, 0x00, RSA_size(pub_r));
-
-  // $ man RSA_public_decrypt
-  // `to` must point to `RSA_size(rsa) - 11` bytes of memory.
-  c_len = RSA_public_decrypt(
+  // $ man RSA_public_encrypt
+  // flen must be size of modulus.
+  // tlen is always modulus size.
+  // https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ossl.c#L67
+  c_len = RSA_public_encrypt(
     msg_len,       // int flen
     msg,           // const uint8_t *from
     c,             // uint8_t *to
@@ -2059,9 +2089,11 @@ bcrypto_rsa_decrypt_raw(
   if (!RSA_blinding_on(priv_r, NULL))
     goto fail;
 
-  // $ man RSA_private_encrypt
-  // `to` must point to `RSA_size(rsa)` bytes of memory.
-  em_len = RSA_private_encrypt(
+  // $ man RSA_private_decrypt
+  // flen can be smaller than modulus.
+  // tlen is always modulus size.
+  // https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ossl.c#L374
+  em_len = RSA_private_decrypt(
     msg_len,          // int flen
     msg,              // const uint8_t *from
     em,               // uint8_t *to
@@ -2073,6 +2105,8 @@ bcrypto_rsa_decrypt_raw(
 
   if (em_len <= 0)
     goto fail;
+
+  assert(em_len == RSA_size(priv_r));
 
   RSA_free(priv_r);
 
