@@ -512,6 +512,16 @@ bcrypto_rsa_hash_type(const char *alg) {
     type = NID_sha3_512;
 #endif
 
+#ifdef NID_shake128
+  else if (strcmp(alg, "SHAKE128") == 0)
+    type = NID_shake128;
+#endif
+
+#ifdef NID_shake256
+  else if (strcmp(alg, "SHAKE256") == 0)
+    type = NID_shake256;
+#endif
+
 #ifdef NID_blake2b160
   else if (strcmp(alg, "BLAKE2B160") == 0)
     type = NID_blake2b160;
