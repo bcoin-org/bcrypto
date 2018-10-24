@@ -50,6 +50,7 @@
     "./lib/hash160": "./lib/hash160-browser.js",
     "./lib/hash256": "./lib/hash256-browser.js",
     "./lib/keccak": "./lib/keccak-browser.js",
+    "./lib/md4": "./lib/md4-browser.js",
     "./lib/md5": "./lib/md5-browser.js",
     "./lib/p192": "./lib/p192-browser.js",
     "./lib/p224": "./lib/p224-browser.js",
@@ -68,6 +69,7 @@
     "./lib/sha256": "./lib/sha256-browser.js",
     "./lib/sha384": "./lib/sha384-browser.js",
     "./lib/sha512": "./lib/sha512-browser.js",
-    "./lib/sha3": "./lib/sha3-browser.js"
+    "./lib/sha3": "./lib/sha3-browser.js",
+    "./lib/whirlpool": "./lib/whirlpool-browser.js"
   }
 }
