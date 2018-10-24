@@ -106,6 +106,15 @@ function hash(alg, msg) {
   return ctx.digest();
 }
 
+function multi(alg, x, y, z) {
+  const ctx = createHash(alg);
+  ctx.update(x);
+  ctx.update(y);
+  if (z)
+    ctx.update(z);
+  return ctx.digest();
+}
+
 function hmac(alg, msg, key) {
   if (typeof msg === 'string')
     msg = Buffer.from(msg, 'utf8');
@@ -146,6 +155,9 @@ function testHash(alg, msg) {
   }
 
   assert.bufferEqual(ctx3.final(), expect);
+  assert.bufferEqual(hashes[alg].digest(msg), expect);
+  assert.bufferEqual(multi(alg, hash, msg), hashes[alg].multi(hash, msg));
+  assert.bufferEqual(multi(alg, hash, hash), hashes[alg].root(hash, hash));
 }
 
 function testHmac(alg, msg, key) {
@@ -179,6 +191,7 @@ function testHmac(alg, msg, key) {
   }
 
   assert.bufferEqual(ctx3.final(), expect);
+  assert.bufferEqual(hashes[alg].mac(msg, key), expect);
 }
 
 describe('Hash', function() {

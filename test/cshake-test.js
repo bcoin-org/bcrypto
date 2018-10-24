@@ -90,7 +90,7 @@ describe('CSHAKE', function() {
       ctx.init(N, S);
       ctx.update(X);
 
-      const mac = ctx.final(len);
+      const h = ctx.final(len);
 
       assert.bufferEqual(mac, O);
       assert.bufferEqual(CSHAKE.digest(X, N, S, len), O);
