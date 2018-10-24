@@ -26,6 +26,7 @@ BChaCha20::Init(v8::Local<v8::Object> &target) {
   Nan::SetPrototypeMethod(tpl, "initIV", BChaCha20::InitIV);
   Nan::SetPrototypeMethod(tpl, "initKey", BChaCha20::InitKey);
   Nan::SetPrototypeMethod(tpl, "encrypt", BChaCha20::Encrypt);
+  Nan::SetPrototypeMethod(tpl, "crypt", BChaCha20::Crypt);
   Nan::SetPrototypeMethod(tpl, "setCounter", BChaCha20::SetCounter);
   Nan::SetPrototypeMethod(tpl, "getCounter", BChaCha20::GetCounter);
 
@@ -161,6 +162,35 @@ NAN_METHOD(BChaCha20::Encrypt) {
   info.GetReturnValue().Set(data_buf);
 }
 
+NAN_METHOD(BChaCha20::Crypt) {
+  BChaCha20 *chacha = ObjectWrap::Unwrap<BChaCha20>(info.Holder());
+
+  if (info.Length() < 2)
+    return Nan::ThrowError("chacha20.crypt() requires arguments.");
+
+  v8::Local<v8::Object> input_buf = info[0].As<v8::Object>();
+  v8::Local<v8::Object> output_buf = info[1].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(input_buf))
+    return Nan::ThrowTypeError("First argument must be a buffer.");
+
+  if (!node::Buffer::HasInstance(output_buf))
+    return Nan::ThrowTypeError("Second argument must be a buffer.");
+
+  const uint8_t *input = (uint8_t *)node::Buffer::Data(input_buf);
+  size_t input_len = node::Buffer::Length(input_buf);
+
+  const uint8_t *output = (uint8_t *)node::Buffer::Data(output_buf);
+  size_t output_len = node::Buffer::Length(output_buf);
+
+  if (output_len < input_len)
+    return Nan::ThrowError("Invalid output size.");
+
+  bcrypto_chacha20_encrypt(&chacha->ctx, input, (uint8_t *)output, input_len);
+
+  info.GetReturnValue().Set(output_buf);
+}
+
 NAN_METHOD(BChaCha20::SetCounter) {
   BChaCha20 *chacha = ObjectWrap::Unwrap<BChaCha20>(info.Holder());
 
@@ -171,10 +201,21 @@ NAN_METHOD(BChaCha20::SetCounter) {
     return Nan::ThrowError("First argument must be a number.");
 
   bcrypto_chacha20_counter_set(&chacha->ctx, (uint64_t)info[0]->IntegerValue());
+
+  info.GetReturnValue().Set(info.This());
 }
 
 NAN_METHOD(BChaCha20::GetCounter) {
   BChaCha20 *chacha = ObjectWrap::Unwrap<BChaCha20>(info.Holder());
   info.GetReturnValue().Set(
     Nan::New<v8::Number>((double)bcrypto_chacha20_counter_get(&chacha->ctx)));
+}
+
+NAN_METHOD(BChaCha20::Destroy) {
+  BChaCha20 *chacha = ObjectWrap::Unwrap<BChaCha20>(info.Holder());
+
+  memset(&chacha->ctx, 0, sizeof(bcrypto_chacha20_ctx));
+  chacha->ctx.nonce_size = 8;
+
+  info.GetReturnValue().Set(info.This());
 }
