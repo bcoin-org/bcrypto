@@ -72,7 +72,7 @@ NAN_METHOD(BKeccak::Update) {
   if (!node::Buffer::HasInstance(buf))
     return Nan::ThrowTypeError("First argument must be a buffer.");
 
-  const uint8_t *in = (uint8_t *)node::Buffer::Data(buf);
+  const uint8_t *in = (const uint8_t *)node::Buffer::Data(buf);
   size_t inlen = node::Buffer::Length(buf);
 
   bcrypto_keccak_update(&keccak->ctx, in, inlen);
@@ -119,7 +119,7 @@ NAN_METHOD(BKeccak::Digest) {
   if (!node::Buffer::HasInstance(buf))
     return Nan::ThrowTypeError("First argument must be a buffer.");
 
-  const uint8_t *in = (uint8_t *)node::Buffer::Data(buf);
+  const uint8_t *in = (const uint8_t *)node::Buffer::Data(buf);
   size_t inlen = node::Buffer::Length(buf);
 
   uint32_t bits = 256;
@@ -173,7 +173,7 @@ NAN_METHOD(BKeccak::Root) {
   if (!node::Buffer::HasInstance(lbuf))
     return Nan::ThrowTypeError("First argument must be a buffer.");
 
-  const uint8_t *left = (uint8_t *)node::Buffer::Data(lbuf);
+  const uint8_t *left = (const uint8_t *)node::Buffer::Data(lbuf);
   size_t leftlen = node::Buffer::Length(lbuf);
 
   v8::Local<v8::Object> rbuf = info[1].As<v8::Object>();
@@ -181,7 +181,7 @@ NAN_METHOD(BKeccak::Root) {
   if (!node::Buffer::HasInstance(rbuf))
     return Nan::ThrowTypeError("Second argument must be a buffer.");
 
-  const uint8_t *right = (uint8_t *)node::Buffer::Data(rbuf);
+  const uint8_t *right = (const uint8_t *)node::Buffer::Data(rbuf);
   size_t rightlen = node::Buffer::Length(rbuf);
 
   uint32_t bits = 256;
@@ -213,10 +213,10 @@ NAN_METHOD(BKeccak::Root) {
 
   if (outlen != 0) {
     if (leftlen != outlen || rightlen != outlen)
-      return Nan::ThrowError("Bad node sizes.");
+      return Nan::ThrowRangeError("Invalid node sizes.");
   } else {
     if (leftlen != bits / 8 || rightlen != bits / 8)
-      return Nan::ThrowError("Bad node sizes.");
+      return Nan::ThrowRangeError("Invalid node sizes.");
   }
 
   bcrypto_keccak_ctx ctx;
@@ -244,7 +244,7 @@ NAN_METHOD(BKeccak::Multi) {
   if (!node::Buffer::HasInstance(xbuf))
     return Nan::ThrowTypeError("First argument must be a buffer.");
 
-  const uint8_t *x = (uint8_t *)node::Buffer::Data(xbuf);
+  const uint8_t *x = (const uint8_t *)node::Buffer::Data(xbuf);
   size_t xlen = node::Buffer::Length(xbuf);
 
   v8::Local<v8::Object> ybuf = info[1].As<v8::Object>();
@@ -252,7 +252,7 @@ NAN_METHOD(BKeccak::Multi) {
   if (!node::Buffer::HasInstance(ybuf))
     return Nan::ThrowTypeError("Second argument must be a buffer.");
 
-  const uint8_t *y = (uint8_t *)node::Buffer::Data(ybuf);
+  const uint8_t *y = (const uint8_t *)node::Buffer::Data(ybuf);
   size_t ylen = node::Buffer::Length(ybuf);
 
   const uint8_t *z = NULL;

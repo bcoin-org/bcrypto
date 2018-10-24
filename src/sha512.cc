@@ -1,9 +1,6 @@
 #include "common.h"
 #include "sha512.h"
 
-static SHA512_CTX global_ctx;
-static uint8_t global_out[64];
-
 static Nan::Persistent<v8::FunctionTemplate> sha512_constructor;
 
 BSHA512::BSHA512() {
@@ -65,7 +62,7 @@ NAN_METHOD(BSHA512::Update) {
   if (!node::Buffer::HasInstance(buf))
     return Nan::ThrowTypeError("First argument must be a buffer.");
 
-  const uint8_t *in = (uint8_t *)node::Buffer::Data(buf);
+  const uint8_t *in = (const uint8_t *)node::Buffer::Data(buf);
   size_t inlen = node::Buffer::Length(buf);
 
   SHA512_Update(&sha->ctx, in, inlen);
@@ -76,10 +73,12 @@ NAN_METHOD(BSHA512::Update) {
 NAN_METHOD(BSHA512::Final) {
   BSHA512 *sha = ObjectWrap::Unwrap<BSHA512>(info.Holder());
 
-  SHA512_Final(global_out, &sha->ctx);
+  uint8_t out[64];
+
+  SHA512_Final(&out[0], &sha->ctx);
 
   info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)&global_out[0], 64).ToLocalChecked());
+    Nan::CopyBuffer((char *)&out[0], 64).ToLocalChecked());
 }
 
 NAN_METHOD(BSHA512::Digest) {
@@ -91,15 +90,18 @@ NAN_METHOD(BSHA512::Digest) {
   if (!node::Buffer::HasInstance(buf))
     return Nan::ThrowTypeError("First argument must be a buffer.");
 
-  const uint8_t *in = (uint8_t *)node::Buffer::Data(buf);
+  const uint8_t *in = (const uint8_t *)node::Buffer::Data(buf);
   size_t inlen = node::Buffer::Length(buf);
 
-  SHA512_Init(&global_ctx);
-  SHA512_Update(&global_ctx, in, inlen);
-  SHA512_Final(global_out, &global_ctx);
+  SHA512_CTX ctx;
+  uint8_t out[64];
+
+  SHA512_Init(&ctx);
+  SHA512_Update(&ctx, in, inlen);
+  SHA512_Final(&out[0], &ctx);
 
   info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)&global_out[0], 64).ToLocalChecked());
+    Nan::CopyBuffer((char *)&out[0], 64).ToLocalChecked());
 }
 
 NAN_METHOD(BSHA512::Root) {
@@ -115,22 +117,25 @@ NAN_METHOD(BSHA512::Root) {
   if (!node::Buffer::HasInstance(rbuf))
     return Nan::ThrowTypeError("Second argument must be a buffer.");
 
-  const uint8_t *left = (uint8_t *)node::Buffer::Data(lbuf);
-  const uint8_t *right = (uint8_t *)node::Buffer::Data(rbuf);
+  const uint8_t *left = (const uint8_t *)node::Buffer::Data(lbuf);
+  const uint8_t *right = (const uint8_t *)node::Buffer::Data(rbuf);
 
   size_t leftlen = node::Buffer::Length(lbuf);
   size_t rightlen = node::Buffer::Length(rbuf);
 
   if (leftlen != 64 || rightlen != 64)
-    return Nan::ThrowTypeError("Bad node sizes.");
+    return Nan::ThrowRangeError("Invalid node sizes.");
 
-  SHA512_Init(&global_ctx);
-  SHA512_Update(&global_ctx, left, leftlen);
-  SHA512_Update(&global_ctx, right, rightlen);
-  SHA512_Final(global_out, &global_ctx);
+  SHA512_CTX ctx;
+  uint8_t out[64];
+
+  SHA512_Init(&ctx);
+  SHA512_Update(&ctx, left, leftlen);
+  SHA512_Update(&ctx, right, rightlen);
+  SHA512_Final(&out[0], &ctx);
 
   info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)&global_out[0], 64).ToLocalChecked());
+    Nan::CopyBuffer((char *)&out[0], 64).ToLocalChecked());
 }
 
 NAN_METHOD(BSHA512::Multi) {
@@ -146,8 +151,8 @@ NAN_METHOD(BSHA512::Multi) {
   if (!node::Buffer::HasInstance(ybuf))
     return Nan::ThrowTypeError("Second argument must be a buffer.");
 
-  const uint8_t *x = (uint8_t *)node::Buffer::Data(xbuf);
-  const uint8_t *y = (uint8_t *)node::Buffer::Data(ybuf);
+  const uint8_t *x = (const uint8_t *)node::Buffer::Data(xbuf);
+  const uint8_t *y = (const uint8_t *)node::Buffer::Data(ybuf);
 
   size_t xlen = node::Buffer::Length(xbuf);
   size_t ylen = node::Buffer::Length(ybuf);
@@ -165,13 +170,15 @@ NAN_METHOD(BSHA512::Multi) {
     zlen = node::Buffer::Length(zbuf);
   }
 
-  SHA512_Init(&global_ctx);
-  SHA512_Update(&global_ctx, x, xlen);
-  SHA512_Update(&global_ctx, y, ylen);
-  if (z)
-    SHA512_Update(&global_ctx, z, zlen);
-  SHA512_Final(global_out, &global_ctx);
+  SHA512_CTX ctx;
+  uint8_t out[64];
+
+  SHA512_Init(&ctx);
+  SHA512_Update(&ctx, x, xlen);
+  SHA512_Update(&ctx, y, ylen);
+  SHA512_Update(&ctx, z, zlen);
+  SHA512_Final(&out[0], &ctx);
 
   info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)&global_out[0], 64).ToLocalChecked());
+    Nan::CopyBuffer((char *)&out[0], 64).ToLocalChecked());
 }

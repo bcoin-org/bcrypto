@@ -1,9 +1,6 @@
 #include "common.h"
 #include "sha1.h"
 
-static SHA_CTX global_ctx;
-static uint8_t global_out[20];
-
 static Nan::Persistent<v8::FunctionTemplate> sha1_constructor;
 
 BSHA1::BSHA1() {
@@ -39,7 +36,7 @@ BSHA1::Init(v8::Local<v8::Object> &target) {
 
 NAN_METHOD(BSHA1::New) {
   if (!info.IsConstructCall())
-    return Nan::ThrowError("Could not create BSHA1 instance.");
+    return Nan::ThrowError("Could not create SHA1 instance.");
 
   BSHA1 *sha = new BSHA1();
   sha->Wrap(info.This());
@@ -65,7 +62,7 @@ NAN_METHOD(BSHA1::Update) {
   if (!node::Buffer::HasInstance(buf))
     return Nan::ThrowTypeError("First argument must be a buffer.");
 
-  const uint8_t *in = (uint8_t *)node::Buffer::Data(buf);
+  const uint8_t *in = (const uint8_t *)node::Buffer::Data(buf);
   size_t inlen = node::Buffer::Length(buf);
 
   SHA1_Update(&sha->ctx, in, inlen);
@@ -76,10 +73,12 @@ NAN_METHOD(BSHA1::Update) {
 NAN_METHOD(BSHA1::Final) {
   BSHA1 *sha = ObjectWrap::Unwrap<BSHA1>(info.Holder());
 
-  SHA1_Final(global_out, &sha->ctx);
+  uint8_t out[20];
+
+  SHA1_Final(&out[0], &sha->ctx);
 
   info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)&global_out[0], 20).ToLocalChecked());
+    Nan::CopyBuffer((char *)&out[0], 20).ToLocalChecked());
 }
 
 NAN_METHOD(BSHA1::Digest) {
@@ -91,15 +90,18 @@ NAN_METHOD(BSHA1::Digest) {
   if (!node::Buffer::HasInstance(buf))
     return Nan::ThrowTypeError("First argument must be a buffer.");
 
-  const uint8_t *in = (uint8_t *)node::Buffer::Data(buf);
+  const uint8_t *in = (const uint8_t *)node::Buffer::Data(buf);
   size_t inlen = node::Buffer::Length(buf);
 
-  SHA1_Init(&global_ctx);
-  SHA1_Update(&global_ctx, in, inlen);
-  SHA1_Final(global_out, &global_ctx);
+  SHA_CTX ctx;
+  uint8_t out[20];
+
+  SHA1_Init(&ctx);
+  SHA1_Update(&ctx, in, inlen);
+  SHA1_Final(&out[0], &ctx);
 
   info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)&global_out[0], 20).ToLocalChecked());
+    Nan::CopyBuffer((char *)&out[0], 20).ToLocalChecked());
 }
 
 NAN_METHOD(BSHA1::Root) {
@@ -115,22 +117,25 @@ NAN_METHOD(BSHA1::Root) {
   if (!node::Buffer::HasInstance(rbuf))
     return Nan::ThrowTypeError("Second argument must be a buffer.");
 
-  const uint8_t *left = (uint8_t *)node::Buffer::Data(lbuf);
-  const uint8_t *right = (uint8_t *)node::Buffer::Data(rbuf);
+  const uint8_t *left = (const uint8_t *)node::Buffer::Data(lbuf);
+  const uint8_t *right = (const uint8_t *)node::Buffer::Data(rbuf);
 
   size_t leftlen = node::Buffer::Length(lbuf);
   size_t rightlen = node::Buffer::Length(rbuf);
 
   if (leftlen != 20 || rightlen != 20)
-    return Nan::ThrowTypeError("Bad node sizes.");
+    return Nan::ThrowRangeError("Invalid node sizes.");
 
-  SHA1_Init(&global_ctx);
-  SHA1_Update(&global_ctx, left, leftlen);
-  SHA1_Update(&global_ctx, right, rightlen);
-  SHA1_Final(global_out, &global_ctx);
+  SHA_CTX ctx;
+  uint8_t out[20];
+
+  SHA1_Init(&ctx);
+  SHA1_Update(&ctx, left, leftlen);
+  SHA1_Update(&ctx, right, rightlen);
+  SHA1_Final(&out[0], &ctx);
 
   info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)&global_out[0], 20).ToLocalChecked());
+    Nan::CopyBuffer((char *)&out[0], 20).ToLocalChecked());
 }
 
 NAN_METHOD(BSHA1::Multi) {
@@ -146,8 +151,8 @@ NAN_METHOD(BSHA1::Multi) {
   if (!node::Buffer::HasInstance(ybuf))
     return Nan::ThrowTypeError("Second argument must be a buffer.");
 
-  const uint8_t *x = (uint8_t *)node::Buffer::Data(xbuf);
-  const uint8_t *y = (uint8_t *)node::Buffer::Data(ybuf);
+  const uint8_t *x = (const uint8_t *)node::Buffer::Data(xbuf);
+  const uint8_t *y = (const uint8_t *)node::Buffer::Data(ybuf);
 
   size_t xlen = node::Buffer::Length(xbuf);
   size_t ylen = node::Buffer::Length(ybuf);
@@ -165,13 +170,15 @@ NAN_METHOD(BSHA1::Multi) {
     zlen = node::Buffer::Length(zbuf);
   }
 
-  SHA1_Init(&global_ctx);
-  SHA1_Update(&global_ctx, x, xlen);
-  SHA1_Update(&global_ctx, y, ylen);
-  if (z)
-    SHA1_Update(&global_ctx, z, zlen);
-  SHA1_Final(global_out, &global_ctx);
+  SHA_CTX ctx;
+  uint8_t out[20];
+
+  SHA1_Init(&ctx);
+  SHA1_Update(&ctx, x, xlen);
+  SHA1_Update(&ctx, y, ylen);
+  SHA1_Update(&ctx, z, zlen);
+  SHA1_Final(&out[0], &ctx);
 
   info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)&global_out[0], 20).ToLocalChecked());
+    Nan::CopyBuffer((char *)&out[0], 20).ToLocalChecked());
 }

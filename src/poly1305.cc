@@ -35,7 +35,7 @@ BPoly1305::Init(v8::Local<v8::Object> &target) {
 
 NAN_METHOD(BPoly1305::New) {
   if (!info.IsConstructCall())
-    return Nan::ThrowError("Could not create BPoly1305 instance.");
+    return Nan::ThrowError("Could not create Poly1305 instance.");
 
   BPoly1305 *poly = new BPoly1305();
   poly->Wrap(info.This());
@@ -53,11 +53,11 @@ NAN_METHOD(BPoly1305::Init) {
   if (!node::Buffer::HasInstance(buf))
     return Nan::ThrowTypeError("First argument must be a buffer.");
 
-  const uint8_t *data = (uint8_t *)node::Buffer::Data(buf);
+  const uint8_t *data = (const uint8_t *)node::Buffer::Data(buf);
   size_t len = node::Buffer::Length(buf);
 
   if (len != 32)
-    return Nan::ThrowError("Invalid key size.");
+    return Nan::ThrowRangeError("Invalid key size.");
 
   bcrypto_poly1305_init(&poly->ctx, data);
 
@@ -75,7 +75,7 @@ NAN_METHOD(BPoly1305::Update) {
   if (!node::Buffer::HasInstance(buf))
     return Nan::ThrowTypeError("First argument must be a buffer.");
 
-  const uint8_t *data = (uint8_t *)node::Buffer::Data(buf);
+  const uint8_t *data = (const uint8_t *)node::Buffer::Data(buf);
   size_t len = node::Buffer::Length(buf);
 
   bcrypto_poly1305_update(&poly->ctx, data, len);
@@ -88,7 +88,7 @@ NAN_METHOD(BPoly1305::Final) {
 
   uint8_t mac[16];
 
-  bcrypto_poly1305_finish(&poly->ctx, mac);
+  bcrypto_poly1305_finish(&poly->ctx, &mac[0]);
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&mac[0], 16).ToLocalChecked());
@@ -108,18 +108,18 @@ NAN_METHOD(BPoly1305::Auth) {
   if (!node::Buffer::HasInstance(kbuf))
     return Nan::ThrowTypeError("Second argument must be a buffer.");
 
-  const uint8_t *data = (uint8_t *)node::Buffer::Data(buf);
+  const uint8_t *data = (const uint8_t *)node::Buffer::Data(buf);
   size_t len = node::Buffer::Length(buf);
 
-  const uint8_t *kdata = (uint8_t *)node::Buffer::Data(kbuf);
+  const uint8_t *kdata = (const uint8_t *)node::Buffer::Data(kbuf);
   size_t klen = node::Buffer::Length(kbuf);
 
   if (klen != 32)
-    return Nan::ThrowError("Invalid key size.");
+    return Nan::ThrowRangeError("Invalid key size.");
 
   uint8_t mac[16];
 
-  bcrypto_poly1305_auth(mac, data, len, kdata);
+  bcrypto_poly1305_auth(&mac[0], data, len, kdata);
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&mac[0], 16).ToLocalChecked());
@@ -139,17 +139,14 @@ NAN_METHOD(BPoly1305::Verify) {
   if (!node::Buffer::HasInstance(bbuf))
     return Nan::ThrowTypeError("Second argument must be a buffer.");
 
-  const uint8_t *adata = (uint8_t *)node::Buffer::Data(abuf);
+  const uint8_t *adata = (const uint8_t *)node::Buffer::Data(abuf);
   size_t alen = node::Buffer::Length(abuf);
 
-  const uint8_t *bdata = (uint8_t *)node::Buffer::Data(bbuf);
+  const uint8_t *bdata = (const uint8_t *)node::Buffer::Data(bbuf);
   size_t blen = node::Buffer::Length(bbuf);
 
-  if (alen != 16)
-    return Nan::ThrowError("Invalid mac size.");
-
-  if (blen != 16)
-    return Nan::ThrowError("Invalid mac size.");
+  if (alen != 16 || blen != 16)
+    return Nan::ThrowRangeError("Invalid mac size.");
 
   int32_t result = bcrypto_poly1305_verify(adata, bdata);
 

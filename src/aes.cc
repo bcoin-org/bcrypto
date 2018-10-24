@@ -35,20 +35,20 @@ NAN_METHOD(BAES::Encipher) {
   v8::Local<v8::Object> bkey = info[1].As<v8::Object>();
   v8::Local<v8::Object> biv = info[2].As<v8::Object>();
 
-  uint8_t *data = (uint8_t *)node::Buffer::Data(bdata);
+  const uint8_t *data = (const uint8_t *)node::Buffer::Data(bdata);
   size_t dlen = node::Buffer::Length(bdata);
 
-  const uint8_t *key = (uint8_t *)node::Buffer::Data(bkey);
+  const uint8_t *key = (const uint8_t *)node::Buffer::Data(bkey);
   size_t klen = node::Buffer::Length(bkey);
 
-  const uint8_t *iv = (uint8_t *)node::Buffer::Data(biv);
+  const uint8_t *iv = (const uint8_t *)node::Buffer::Data(biv);
   size_t ilen = node::Buffer::Length(biv);
 
   if (klen != 32)
-    return Nan::ThrowError("Bad key size.");
+    return Nan::ThrowRangeError("Invalid key size.");
 
   if (ilen != 16)
-    return Nan::ThrowError("Bad IV size.");
+    return Nan::ThrowRangeError("Invalid IV size.");
 
   uint32_t olen = BCRYPTO_AES_ENCIPHER_SIZE(dlen);
   uint8_t *out = (uint8_t *)malloc(olen);
@@ -82,20 +82,20 @@ NAN_METHOD(BAES::Decipher) {
   v8::Local<v8::Object> bkey = info[1].As<v8::Object>();
   v8::Local<v8::Object> biv = info[2].As<v8::Object>();
 
-  uint8_t *data = (uint8_t *)node::Buffer::Data(bdata);
+  const uint8_t *data = (const uint8_t *)node::Buffer::Data(bdata);
   size_t dlen = node::Buffer::Length(bdata);
 
-  const uint8_t *key = (uint8_t *)node::Buffer::Data(bkey);
+  const uint8_t *key = (const uint8_t *)node::Buffer::Data(bkey);
   size_t klen = node::Buffer::Length(bkey);
 
-  const uint8_t *iv = (uint8_t *)node::Buffer::Data(biv);
+  const uint8_t *iv = (const uint8_t *)node::Buffer::Data(biv);
   size_t ilen = node::Buffer::Length(biv);
 
   if (klen != 32)
-    return Nan::ThrowError("Bad key size.");
+    return Nan::ThrowRangeError("Invalid key size.");
 
   if (ilen != 16)
-    return Nan::ThrowError("Bad IV size.");
+    return Nan::ThrowRangeError("Invalid IV size.");
 
   uint32_t olen = BCRYPTO_AES_DECIPHER_SIZE(dlen);
   uint8_t *out = (uint8_t *)malloc(olen);

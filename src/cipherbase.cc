@@ -50,10 +50,10 @@ NAN_METHOD(BCipherBase::New) {
     return Nan::ThrowError("cipher requires arguments.");
 
   if (!info[0]->IsString())
-    return Nan::ThrowTypeError("Argument must be a string.");
+    return Nan::ThrowTypeError("First argument must be a string.");
 
   if (!info[1]->IsBoolean())
-    return Nan::ThrowTypeError("Argument must be a boolean.");
+    return Nan::ThrowTypeError("Second argument must be a boolean.");
 
   Nan::Utf8String name_(info[0]);
   const char *name = (const char *)*name_;
@@ -90,9 +90,9 @@ NAN_METHOD(BCipherBase::Init) {
   v8::Local<v8::Object> key_buf = info[0].As<v8::Object>();
 
   if (!node::Buffer::HasInstance(key_buf))
-    return Nan::ThrowTypeError("Argument must be a buffer.");
+    return Nan::ThrowTypeError("First argument must be a buffer.");
 
-  const uint8_t *key = (uint8_t *)node::Buffer::Data(key_buf);
+  const uint8_t *key = (const uint8_t *)node::Buffer::Data(key_buf);
   size_t key_len = node::Buffer::Length(key_buf);
 
   const uint8_t *iv = NULL;
@@ -102,9 +102,9 @@ NAN_METHOD(BCipherBase::Init) {
     v8::Local<v8::Value> iv_buf = info[1].As<v8::Object>();
 
     if (!node::Buffer::HasInstance(iv_buf))
-      return Nan::ThrowTypeError("Argument must be a buffer.");
+      return Nan::ThrowTypeError("Second argument must be a buffer.");
 
-    iv = (uint8_t *)node::Buffer::Data(iv_buf);
+    iv = (const uint8_t *)node::Buffer::Data(iv_buf);
     iv_len = node::Buffer::Length(iv_buf);
   }
 
@@ -113,7 +113,7 @@ NAN_METHOD(BCipherBase::Init) {
 
   if ((!has_iv && expected_iv_len != 0)
       || (has_iv && iv_len != expected_iv_len)) {
-    return Nan::ThrowError("Invalid IV length.");
+    return Nan::ThrowRangeError("Invalid IV length.");
   }
 
   if (cipher->ctx) {
@@ -133,7 +133,7 @@ NAN_METHOD(BCipherBase::Init) {
     return Nan::ThrowError("Failed to initialize cipher.");
 
   if (!EVP_CIPHER_CTX_set_key_length(cipher->ctx, key_len))
-    return Nan::ThrowError("Invalid key length.");
+    return Nan::ThrowRangeError("Invalid key length.");
 
   r = EVP_CipherInit_ex(cipher->ctx, NULL, NULL, key, iv, cipher->encrypt);
 
@@ -155,9 +155,9 @@ NAN_METHOD(BCipherBase::Update) {
   v8::Local<v8::Object> data_buf = info[0].As<v8::Object>();
 
   if (!node::Buffer::HasInstance(data_buf))
-    return Nan::ThrowTypeError("Argument must be a buffer.");
+    return Nan::ThrowTypeError("First argument must be a buffer.");
 
-  const uint8_t *data = (uint8_t *)node::Buffer::Data(data_buf);
+  const uint8_t *data = (const uint8_t *)node::Buffer::Data(data_buf);
   size_t data_len = node::Buffer::Length(data_buf);
 
   int buff_len = data_len + EVP_CIPHER_CTX_block_size(cipher->ctx);
@@ -222,7 +222,7 @@ NAN_METHOD(BCipherBase::HasCipher) {
     return Nan::ThrowError("cipher.hasCipher() requires arguments.");
 
   if (!info[0]->IsString())
-    return Nan::ThrowTypeError("Argument must be a string.");
+    return Nan::ThrowTypeError("First argument must be a string.");
 
   Nan::Utf8String name_(info[0]);
   const char *name = (const char *)*name_;

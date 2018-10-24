@@ -2,10 +2,6 @@
 #include "hash160.h"
 #include "openssl/ripemd.h"
 
-static SHA256_CTX global_sctx;
-static RIPEMD160_CTX global_rctx;
-static uint8_t global_out[32];
-
 static Nan::Persistent<v8::FunctionTemplate> hash160_constructor;
 
 BHash160::BHash160() {
@@ -41,7 +37,7 @@ BHash160::Init(v8::Local<v8::Object> &target) {
 
 NAN_METHOD(BHash160::New) {
   if (!info.IsConstructCall())
-    return Nan::ThrowError("Could not create BHash160 instance.");
+    return Nan::ThrowError("Could not create Hash160 instance.");
 
   BHash160 *hash = new BHash160();
   hash->Wrap(info.This());
@@ -67,7 +63,7 @@ NAN_METHOD(BHash160::Update) {
   if (!node::Buffer::HasInstance(buf))
     return Nan::ThrowTypeError("First argument must be a buffer.");
 
-  const uint8_t *in = (uint8_t *)node::Buffer::Data(buf);
+  const uint8_t *in = (const uint8_t *)node::Buffer::Data(buf);
   size_t inlen = node::Buffer::Length(buf);
 
   SHA256_Update(&hash->ctx, in, inlen);
@@ -78,14 +74,17 @@ NAN_METHOD(BHash160::Update) {
 NAN_METHOD(BHash160::Final) {
   BHash160 *hash = ObjectWrap::Unwrap<BHash160>(info.Holder());
 
-  SHA256_Final(global_out, &hash->ctx);
+  RIPEMD160_CTX rctx;
+  uint8_t out[32];
 
-  RIPEMD160_Init(&global_rctx);
-  RIPEMD160_Update(&global_rctx, global_out, 32);
-  RIPEMD160_Final(global_out, &global_rctx);
+  SHA256_Final(&out[0], &hash->ctx);
+
+  RIPEMD160_Init(&rctx);
+  RIPEMD160_Update(&rctx, &out[0], 32);
+  RIPEMD160_Final(&out[0], &rctx);
 
   info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)&global_out[0], 20).ToLocalChecked());
+    Nan::CopyBuffer((char *)&out[0], 20).ToLocalChecked());
 }
 
 NAN_METHOD(BHash160::Digest) {
@@ -97,19 +96,23 @@ NAN_METHOD(BHash160::Digest) {
   if (!node::Buffer::HasInstance(buf))
     return Nan::ThrowTypeError("First argument must be a buffer.");
 
-  const uint8_t *in = (uint8_t *)node::Buffer::Data(buf);
+  const uint8_t *in = (const uint8_t *)node::Buffer::Data(buf);
   size_t inlen = node::Buffer::Length(buf);
 
-  SHA256_Init(&global_sctx);
-  SHA256_Update(&global_sctx, in, inlen);
-  SHA256_Final(global_out, &global_sctx);
+  SHA256_CTX sctx;
+  RIPEMD160_CTX rctx;
+  uint8_t out[32];
 
-  RIPEMD160_Init(&global_rctx);
-  RIPEMD160_Update(&global_rctx, global_out, 32);
-  RIPEMD160_Final(global_out, &global_rctx);
+  SHA256_Init(&sctx);
+  SHA256_Update(&sctx, in, inlen);
+  SHA256_Final(&out[0], &sctx);
+
+  RIPEMD160_Init(&rctx);
+  RIPEMD160_Update(&rctx, &out[0], 32);
+  RIPEMD160_Final(&out[0], &rctx);
 
   info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)&global_out[0], 20).ToLocalChecked());
+    Nan::CopyBuffer((char *)&out[0], 20).ToLocalChecked());
 }
 
 NAN_METHOD(BHash160::Root) {
@@ -125,26 +128,30 @@ NAN_METHOD(BHash160::Root) {
   if (!node::Buffer::HasInstance(rbuf))
     return Nan::ThrowTypeError("Second argument must be a buffer.");
 
-  const uint8_t *left = (uint8_t *)node::Buffer::Data(lbuf);
-  const uint8_t *right = (uint8_t *)node::Buffer::Data(rbuf);
+  const uint8_t *left = (const uint8_t *)node::Buffer::Data(lbuf);
+  const uint8_t *right = (const uint8_t *)node::Buffer::Data(rbuf);
 
   size_t leftlen = node::Buffer::Length(lbuf);
   size_t rightlen = node::Buffer::Length(rbuf);
 
   if (leftlen != 20 || rightlen != 20)
-    return Nan::ThrowTypeError("Bad node sizes.");
+    return Nan::ThrowRangeError("Invalid node sizes.");
 
-  SHA256_Init(&global_sctx);
-  SHA256_Update(&global_sctx, left, leftlen);
-  SHA256_Update(&global_sctx, right, rightlen);
-  SHA256_Final(global_out, &global_sctx);
+  SHA256_CTX sctx;
+  RIPEMD160_CTX rctx;
+  uint8_t out[32];
 
-  RIPEMD160_Init(&global_rctx);
-  RIPEMD160_Update(&global_rctx, global_out, 32);
-  RIPEMD160_Final(global_out, &global_rctx);
+  SHA256_Init(&sctx);
+  SHA256_Update(&sctx, left, leftlen);
+  SHA256_Update(&sctx, right, rightlen);
+  SHA256_Final(&out[0], &sctx);
+
+  RIPEMD160_Init(&rctx);
+  RIPEMD160_Update(&rctx, &out[0], 32);
+  RIPEMD160_Final(&out[0], &rctx);
 
   info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)&global_out[0], 20).ToLocalChecked());
+    Nan::CopyBuffer((char *)&out[0], 20).ToLocalChecked());
 }
 
 NAN_METHOD(BHash160::Multi) {
@@ -160,8 +167,8 @@ NAN_METHOD(BHash160::Multi) {
   if (!node::Buffer::HasInstance(ybuf))
     return Nan::ThrowTypeError("Second argument must be a buffer.");
 
-  const uint8_t *x = (uint8_t *)node::Buffer::Data(xbuf);
-  const uint8_t *y = (uint8_t *)node::Buffer::Data(ybuf);
+  const uint8_t *x = (const uint8_t *)node::Buffer::Data(xbuf);
+  const uint8_t *y = (const uint8_t *)node::Buffer::Data(ybuf);
 
   size_t xlen = node::Buffer::Length(xbuf);
   size_t ylen = node::Buffer::Length(ybuf);
@@ -179,17 +186,20 @@ NAN_METHOD(BHash160::Multi) {
     zlen = node::Buffer::Length(zbuf);
   }
 
-  SHA256_Init(&global_sctx);
-  SHA256_Update(&global_sctx, x, xlen);
-  SHA256_Update(&global_sctx, y, ylen);
-  if (z)
-    SHA256_Update(&global_sctx, z, zlen);
-  SHA256_Final(global_out, &global_sctx);
+  SHA256_CTX sctx;
+  RIPEMD160_CTX rctx;
+  uint8_t out[32];
 
-  RIPEMD160_Init(&global_rctx);
-  RIPEMD160_Update(&global_rctx, global_out, 32);
-  RIPEMD160_Final(global_out, &global_rctx);
+  SHA256_Init(&sctx);
+  SHA256_Update(&sctx, x, xlen);
+  SHA256_Update(&sctx, y, ylen);
+  SHA256_Update(&sctx, z, zlen);
+  SHA256_Final(&out[0], &sctx);
+
+  RIPEMD160_Init(&rctx);
+  RIPEMD160_Update(&rctx, &out[0], 32);
+  RIPEMD160_Final(&out[0], &rctx);
 
   info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)&global_out[0], 20).ToLocalChecked());
+    Nan::CopyBuffer((char *)&out[0], 20).ToLocalChecked());
 }

@@ -78,7 +78,7 @@ NAN_METHOD(BECDSA::PrivateKeyExport) {
     compress = info[2]->BooleanValue();
   }
 
-  const uint8_t *pd = (uint8_t *)node::Buffer::Data(pbuf);
+  const uint8_t *pd = (const uint8_t *)node::Buffer::Data(pbuf);
   size_t pl = node::Buffer::Length(pbuf);
 
   uint8_t *out;
@@ -104,9 +104,9 @@ NAN_METHOD(BECDSA::PrivateKeyImport) {
   v8::Local<v8::Object> rbuf = info[1].As<v8::Object>();
 
   if (!node::Buffer::HasInstance(rbuf))
-    return Nan::ThrowTypeError("Argument must be a buffer.");
+    return Nan::ThrowTypeError("Second argument must be a buffer.");
 
-  const uint8_t *rd = (uint8_t *)node::Buffer::Data(rbuf);
+  const uint8_t *rd = (const uint8_t *)node::Buffer::Data(rbuf);
   size_t rl = node::Buffer::Length(rbuf);
 
   uint8_t *out;
@@ -143,7 +143,7 @@ NAN_METHOD(BECDSA::PrivateKeyExportPKCS8) {
     compress = info[2]->BooleanValue();
   }
 
-  const uint8_t *pd = (uint8_t *)node::Buffer::Data(pbuf);
+  const uint8_t *pd = (const uint8_t *)node::Buffer::Data(pbuf);
   size_t pl = node::Buffer::Length(pbuf);
 
   uint8_t *out;
@@ -172,9 +172,9 @@ NAN_METHOD(BECDSA::PrivateKeyImportPKCS8) {
   v8::Local<v8::Object> rbuf = info[1].As<v8::Object>();
 
   if (!node::Buffer::HasInstance(rbuf))
-    return Nan::ThrowTypeError("Argument must be a buffer.");
+    return Nan::ThrowTypeError("Second argument must be a buffer.");
 
-  const uint8_t *rd = (uint8_t *)node::Buffer::Data(rbuf);
+  const uint8_t *rd = (const uint8_t *)node::Buffer::Data(rbuf);
   size_t rl = node::Buffer::Length(rbuf);
 
   uint8_t *out;
@@ -205,10 +205,10 @@ NAN_METHOD(BECDSA::PrivateKeyTweakAdd) {
     return Nan::ThrowTypeError("Arguments must be buffers.");
   }
 
-  const uint8_t *pd = (uint8_t *)node::Buffer::Data(pbuf);
+  const uint8_t *pd = (const uint8_t *)node::Buffer::Data(pbuf);
   size_t pl = node::Buffer::Length(pbuf);
 
-  const uint8_t *td = (uint8_t *)node::Buffer::Data(tbuf);
+  const uint8_t *td = (const uint8_t *)node::Buffer::Data(tbuf);
   size_t tl = node::Buffer::Length(tbuf);
 
   uint8_t *priv;
@@ -248,7 +248,7 @@ NAN_METHOD(BECDSA::PublicKeyCreate) {
     compress = info[2]->BooleanValue();
   }
 
-  const uint8_t *pd = (uint8_t *)node::Buffer::Data(pbuf);
+  const uint8_t *pd = (const uint8_t *)node::Buffer::Data(pbuf);
   size_t pl = node::Buffer::Length(pbuf);
 
   uint8_t *pub;
@@ -288,7 +288,7 @@ NAN_METHOD(BECDSA::PublicKeyConvert) {
     compress = info[2]->BooleanValue();
   }
 
-  const uint8_t *pd = (uint8_t *)node::Buffer::Data(pbuf);
+  const uint8_t *pd = (const uint8_t *)node::Buffer::Data(pbuf);
   size_t pl = node::Buffer::Length(pbuf);
 
   uint8_t *pub;
@@ -319,7 +319,7 @@ NAN_METHOD(BECDSA::PublicKeyVerify) {
   if (!node::Buffer::HasInstance(pbuf))
     return Nan::ThrowTypeError("Second argument must be a buffer.");
 
-  const uint8_t *pd = (uint8_t *)node::Buffer::Data(pbuf);
+  const uint8_t *pd = (const uint8_t *)node::Buffer::Data(pbuf);
   size_t pl = node::Buffer::Length(pbuf);
 
   bool result = bcrypto_ecdsa_pubkey_verify(name, pd, pl);
@@ -351,7 +351,7 @@ NAN_METHOD(BECDSA::PublicKeyExportSPKI) {
     compress = info[2]->BooleanValue();
   }
 
-  const uint8_t *pd = (uint8_t *)node::Buffer::Data(pbuf);
+  const uint8_t *pd = (const uint8_t *)node::Buffer::Data(pbuf);
   size_t pl = node::Buffer::Length(pbuf);
 
   uint8_t *out;
@@ -380,7 +380,7 @@ NAN_METHOD(BECDSA::PublicKeyImportSPKI) {
   v8::Local<v8::Object> rbuf = info[1].As<v8::Object>();
 
   if (!node::Buffer::HasInstance(rbuf))
-    return Nan::ThrowTypeError("Argument must be a buffer.");
+    return Nan::ThrowTypeError("Second argument must be a buffer.");
 
   bool compress = true;
 
@@ -391,7 +391,7 @@ NAN_METHOD(BECDSA::PublicKeyImportSPKI) {
     compress = info[2]->BooleanValue();
   }
 
-  const uint8_t *rd = (uint8_t *)node::Buffer::Data(rbuf);
+  const uint8_t *rd = (const uint8_t *)node::Buffer::Data(rbuf);
   size_t rl = node::Buffer::Length(rbuf);
 
   uint8_t *out;
@@ -431,10 +431,10 @@ NAN_METHOD(BECDSA::PublicKeyTweakAdd) {
     compress = info[3]->BooleanValue();
   }
 
-  const uint8_t *pd = (uint8_t *)node::Buffer::Data(pbuf);
+  const uint8_t *pd = (const uint8_t *)node::Buffer::Data(pbuf);
   size_t pl = node::Buffer::Length(pbuf);
 
-  const uint8_t *td = (uint8_t *)node::Buffer::Data(tbuf);
+  const uint8_t *td = (const uint8_t *)node::Buffer::Data(tbuf);
   size_t tl = node::Buffer::Length(tbuf);
 
   uint8_t *pub;
@@ -468,10 +468,10 @@ NAN_METHOD(BECDSA::Sign) {
     return Nan::ThrowTypeError("Arguments must be buffers.");
   }
 
-  const uint8_t *md = (uint8_t *)node::Buffer::Data(mbuf);
+  const uint8_t *md = (const uint8_t *)node::Buffer::Data(mbuf);
   size_t ml = node::Buffer::Length(mbuf);
 
-  const uint8_t *pd = (uint8_t *)node::Buffer::Data(pbuf);
+  const uint8_t *pd = (const uint8_t *)node::Buffer::Data(pbuf);
   size_t pl = node::Buffer::Length(pbuf);
 
   uint8_t *r;
@@ -513,16 +513,16 @@ NAN_METHOD(BECDSA::Verify) {
     return Nan::ThrowTypeError("Arguments must be buffers.");
   }
 
-  const uint8_t *md = (uint8_t *)node::Buffer::Data(mbuf);
+  const uint8_t *md = (const uint8_t *)node::Buffer::Data(mbuf);
   size_t ml = node::Buffer::Length(mbuf);
 
-  const uint8_t *rd = (uint8_t *)node::Buffer::Data(rbuf);
+  const uint8_t *rd = (const uint8_t *)node::Buffer::Data(rbuf);
   size_t rl = node::Buffer::Length(rbuf);
 
-  const uint8_t *sd = (uint8_t *)node::Buffer::Data(sbuf);
+  const uint8_t *sd = (const uint8_t *)node::Buffer::Data(sbuf);
   size_t sl = node::Buffer::Length(sbuf);
 
-  const uint8_t *pd = (uint8_t *)node::Buffer::Data(pbuf);
+  const uint8_t *pd = (const uint8_t *)node::Buffer::Data(pbuf);
   size_t pl = node::Buffer::Length(pbuf);
 
   bool result = bcrypto_ecdsa_verify(name, md, ml, rd, rl, sd, sl, pd, pl);
@@ -551,25 +551,25 @@ NAN_METHOD(BECDSA::Recover) {
   }
 
   if (!info[4]->IsNumber())
-    return Nan::ThrowTypeError("Argument must be a number.");
+    return Nan::ThrowTypeError("Fifth argument must be a number.");
 
   int param = (int)info[4]->Uint32Value();
   bool compress = true;
 
   if (info.Length() > 5 && !IsNull(info[5])) {
     if (!info[5]->IsBoolean())
-      return Nan::ThrowTypeError("Argument must be a boolean.");
+      return Nan::ThrowTypeError("Sixth argument must be a boolean.");
 
     compress = info[5]->BooleanValue();
   }
 
-  const uint8_t *md = (uint8_t *)node::Buffer::Data(mbuf);
+  const uint8_t *md = (const uint8_t *)node::Buffer::Data(mbuf);
   size_t ml = node::Buffer::Length(mbuf);
 
-  const uint8_t *rd = (uint8_t *)node::Buffer::Data(rbuf);
+  const uint8_t *rd = (const uint8_t *)node::Buffer::Data(rbuf);
   size_t rl = node::Buffer::Length(rbuf);
 
-  const uint8_t *sd = (uint8_t *)node::Buffer::Data(sbuf);
+  const uint8_t *sd = (const uint8_t *)node::Buffer::Data(sbuf);
   size_t sl = node::Buffer::Length(sbuf);
 
   uint8_t *pub;
@@ -612,10 +612,10 @@ NAN_METHOD(BECDSA::Derive) {
     compress = info[3]->BooleanValue();
   }
 
-  const uint8_t *kd = (uint8_t *)node::Buffer::Data(kbuf);
+  const uint8_t *kd = (const uint8_t *)node::Buffer::Data(kbuf);
   size_t kl = node::Buffer::Length(kbuf);
 
-  const uint8_t *pd = (uint8_t *)node::Buffer::Data(pbuf);
+  const uint8_t *pd = (const uint8_t *)node::Buffer::Data(pbuf);
   size_t pl = node::Buffer::Length(pbuf);
 
   uint8_t *secret;

@@ -129,9 +129,10 @@ bcrypto_pbkdf2(
   if (md == NULL)
     return false;
 
-  int ret = PKCS5_PBKDF2_HMAC(
-    (const char *)data, datalen, salt,
-    saltlen, iter, md, keylen, key);
+  int ret = PKCS5_PBKDF2_HMAC((const char *)data,
+                              datalen, salt,
+                              saltlen, iter,
+                              md, keylen, key);
 
   if (ret <= 0)
     return false;

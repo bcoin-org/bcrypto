@@ -1,9 +1,6 @@
 #include "common.h"
 #include "ripemd160.h"
 
-static RIPEMD160_CTX global_ctx;
-static uint8_t global_out[20];
-
 static Nan::Persistent<v8::FunctionTemplate> ripemd160_constructor;
 
 BRIPEMD160::BRIPEMD160() {
@@ -65,7 +62,7 @@ NAN_METHOD(BRIPEMD160::Update) {
   if (!node::Buffer::HasInstance(buf))
     return Nan::ThrowTypeError("First argument must be a buffer.");
 
-  const uint8_t *in = (uint8_t *)node::Buffer::Data(buf);
+  const uint8_t *in = (const uint8_t *)node::Buffer::Data(buf);
   size_t inlen = node::Buffer::Length(buf);
 
   RIPEMD160_Update(&rmd->ctx, in, inlen);
@@ -76,10 +73,12 @@ NAN_METHOD(BRIPEMD160::Update) {
 NAN_METHOD(BRIPEMD160::Final) {
   BRIPEMD160 *rmd = ObjectWrap::Unwrap<BRIPEMD160>(info.Holder());
 
-  RIPEMD160_Final(global_out, &rmd->ctx);
+  uint8_t out[20];
+
+  RIPEMD160_Final(&out[0], &rmd->ctx);
 
   info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)&global_out[0], 20).ToLocalChecked());
+    Nan::CopyBuffer((char *)&out[0], 20).ToLocalChecked());
 }
 
 NAN_METHOD(BRIPEMD160::Digest) {
@@ -91,15 +90,18 @@ NAN_METHOD(BRIPEMD160::Digest) {
   if (!node::Buffer::HasInstance(buf))
     return Nan::ThrowTypeError("First argument must be a buffer.");
 
-  const uint8_t *in = (uint8_t *)node::Buffer::Data(buf);
+  const uint8_t *in = (const uint8_t *)node::Buffer::Data(buf);
   size_t inlen = node::Buffer::Length(buf);
 
-  RIPEMD160_Init(&global_ctx);
-  RIPEMD160_Update(&global_ctx, in, inlen);
-  RIPEMD160_Final(global_out, &global_ctx);
+  RIPEMD160_CTX ctx;
+  uint8_t out[20];
+
+  RIPEMD160_Init(&ctx);
+  RIPEMD160_Update(&ctx, in, inlen);
+  RIPEMD160_Final(&out[0], &ctx);
 
   info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)&global_out[0], 20).ToLocalChecked());
+    Nan::CopyBuffer((char *)&out[0], 20).ToLocalChecked());
 }
 
 NAN_METHOD(BRIPEMD160::Root) {
@@ -115,22 +117,25 @@ NAN_METHOD(BRIPEMD160::Root) {
   if (!node::Buffer::HasInstance(rbuf))
     return Nan::ThrowTypeError("Second argument must be a buffer.");
 
-  const uint8_t *left = (uint8_t *)node::Buffer::Data(lbuf);
-  const uint8_t *right = (uint8_t *)node::Buffer::Data(rbuf);
+  const uint8_t *left = (const uint8_t *)node::Buffer::Data(lbuf);
+  const uint8_t *right = (const uint8_t *)node::Buffer::Data(rbuf);
 
   size_t leftlen = node::Buffer::Length(lbuf);
   size_t rightlen = node::Buffer::Length(rbuf);
 
   if (leftlen != 20 || rightlen != 20)
-    return Nan::ThrowTypeError("Bad node sizes.");
+    return Nan::ThrowRangeError("Invalid node sizes.");
 
-  RIPEMD160_Init(&global_ctx);
-  RIPEMD160_Update(&global_ctx, left, leftlen);
-  RIPEMD160_Update(&global_ctx, right, rightlen);
-  RIPEMD160_Final(global_out, &global_ctx);
+  RIPEMD160_CTX ctx;
+  uint8_t out[20];
+
+  RIPEMD160_Init(&ctx);
+  RIPEMD160_Update(&ctx, left, leftlen);
+  RIPEMD160_Update(&ctx, right, rightlen);
+  RIPEMD160_Final(&out[0], &ctx);
 
   info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)&global_out[0], 20).ToLocalChecked());
+    Nan::CopyBuffer((char *)&out[0], 20).ToLocalChecked());
 }
 
 NAN_METHOD(BRIPEMD160::Multi) {
@@ -146,8 +151,8 @@ NAN_METHOD(BRIPEMD160::Multi) {
   if (!node::Buffer::HasInstance(ybuf))
     return Nan::ThrowTypeError("Second argument must be a buffer.");
 
-  const uint8_t *x = (uint8_t *)node::Buffer::Data(xbuf);
-  const uint8_t *y = (uint8_t *)node::Buffer::Data(ybuf);
+  const uint8_t *x = (const uint8_t *)node::Buffer::Data(xbuf);
+  const uint8_t *y = (const uint8_t *)node::Buffer::Data(ybuf);
 
   size_t xlen = node::Buffer::Length(xbuf);
   size_t ylen = node::Buffer::Length(ybuf);
@@ -165,13 +170,15 @@ NAN_METHOD(BRIPEMD160::Multi) {
     zlen = node::Buffer::Length(zbuf);
   }
 
-  RIPEMD160_Init(&global_ctx);
-  RIPEMD160_Update(&global_ctx, x, xlen);
-  RIPEMD160_Update(&global_ctx, y, ylen);
-  if (z)
-    RIPEMD160_Update(&global_ctx, z, zlen);
-  RIPEMD160_Final(global_out, &global_ctx);
+  RIPEMD160_CTX ctx;
+  uint8_t out[20];
+
+  RIPEMD160_Init(&ctx);
+  RIPEMD160_Update(&ctx, x, xlen);
+  RIPEMD160_Update(&ctx, y, ylen);
+  RIPEMD160_Update(&ctx, z, zlen);
+  RIPEMD160_Final(&out[0], &ctx);
 
   info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)&global_out[0], 20).ToLocalChecked());
+    Nan::CopyBuffer((char *)&out[0], 20).ToLocalChecked());
 }

@@ -33,7 +33,7 @@ typedef struct {
   uint32_t state[16];
   uint32_t stream[16];
   size_t available;
-  uint8_t nonce_size;
+  size_t nonce_size;
 } bcrypto_chacha20_ctx;
 
 void
@@ -42,7 +42,7 @@ bcrypto_chacha20_setup(
   const uint8_t *key,
   size_t length,
   const uint8_t *nonce,
-  uint8_t nonce_size
+  size_t nonce_size
 );
 
 void
@@ -56,7 +56,7 @@ void
 bcrypto_chacha20_ivsetup(
   bcrypto_chacha20_ctx *ctx,
   const uint8_t *nonce,
-  uint8_t nonce_size
+  size_t nonce_size
 );
 
 void

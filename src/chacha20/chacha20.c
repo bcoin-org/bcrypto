@@ -55,7 +55,7 @@ bcrypto_chacha20_setup(
   const uint8_t *key,
   size_t length,
   const uint8_t *nonce,
-  uint8_t nonce_size
+  size_t nonce_size
 ) {
   bcrypto_chacha20_keysetup(ctx, key, length);
   bcrypto_chacha20_ivsetup(ctx, nonce, nonce_size);
@@ -93,7 +93,7 @@ void
 bcrypto_chacha20_ivsetup(
   bcrypto_chacha20_ctx *ctx,
   const uint8_t *nonce,
-  uint8_t nonce_size
+  size_t nonce_size
 ) {
   if (nonce_size == 16) {
     ctx->state[12] = READLE(nonce + 0);

@@ -35,14 +35,11 @@ NAN_METHOD(BRandom::RandomFill) {
   uint8_t *data = (uint8_t *)node::Buffer::Data(bdata);
   size_t len = node::Buffer::Length(bdata);
 
-  uint32_t pos = info[1]->Uint32Value();
-  uint32_t size = info[2]->Uint32Value();
+  size_t pos = (size_t)info[1]->IntegerValue();
+  size_t size = (size_t)info[2]->IntegerValue();
 
-  if ((len & 0x80000000) != 0
-      || (pos & 0x80000000) != 0
-      || (size & 0x80000000) != 0) {
-    return Nan::ThrowError("Invalid range.");
-  }
+  if (((int32_t)len) < 0 || ((int32_t)pos) < 0 || ((int32_t)size) < 0)
+    return Nan::ThrowRangeError("Invalid range.");
 
   if (pos + size > len)
     return Nan::ThrowError("Size exceeds length.");

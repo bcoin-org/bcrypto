@@ -29,13 +29,13 @@ NAN_METHOD(BED25519::PrivateKeyConvert) {
   v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
 
   if (!node::Buffer::HasInstance(pbuf))
-    return Nan::ThrowTypeError("Arguments must be buffers.");
+    return Nan::ThrowTypeError("First argument must be a buffer.");
 
-  const uint8_t *secret = (uint8_t *)node::Buffer::Data(pbuf);
+  const uint8_t *secret = (const uint8_t *)node::Buffer::Data(pbuf);
   size_t secret_len = node::Buffer::Length(pbuf);
 
   if (secret_len != 32)
-    return Nan::ThrowTypeError("Invalid parameters.");
+    return Nan::ThrowRangeError("Invalid secret size.");
 
   bcrypto_ed25519_secret_key out;
   bcrypto_ed25519_privkey_convert(out, secret);
@@ -51,13 +51,13 @@ NAN_METHOD(BED25519::PublicKeyCreate) {
   v8::Local<v8::Object> sbuf = info[0].As<v8::Object>();
 
   if (!node::Buffer::HasInstance(sbuf))
-    return Nan::ThrowTypeError("Argument must be a buffer.");
+    return Nan::ThrowTypeError("First argument must be a buffer.");
 
-  const uint8_t *secret = (uint8_t *)node::Buffer::Data(sbuf);
+  const uint8_t *secret = (const uint8_t *)node::Buffer::Data(sbuf);
   size_t secret_len = node::Buffer::Length(sbuf);
 
   if (secret_len != 32)
-    return Nan::ThrowError("Invalid private key.");
+    return Nan::ThrowRangeError("Invalid secret size.");
 
   bcrypto_ed25519_public_key pub;
   bcrypto_ed25519_publickey(secret, pub);
@@ -73,18 +73,18 @@ NAN_METHOD(BED25519::PublicKeyConvert) {
   v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
 
   if (!node::Buffer::HasInstance(pbuf))
-    return Nan::ThrowTypeError("Arguments must be buffers.");
+    return Nan::ThrowTypeError("First argument must be a buffer.");
 
-  const uint8_t *pub = (uint8_t *)node::Buffer::Data(pbuf);
+  const uint8_t *pub = (const uint8_t *)node::Buffer::Data(pbuf);
   size_t pub_len = node::Buffer::Length(pbuf);
 
   if (pub_len != 32)
-    return Nan::ThrowTypeError("Invalid parameters.");
+    return Nan::ThrowRangeError("Invalid public key size.");
 
   bcrypto_curved25519_key out;
 
   if (bcrypto_ed25519_pubkey_convert(out, pub) != 0)
-    return Nan::ThrowError("Invalid public key key.");
+    return Nan::ThrowError("Invalid public key.");
 
   return info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&out[0], 32).ToLocalChecked());
@@ -97,9 +97,9 @@ NAN_METHOD(BED25519::PublicKeyVerify) {
   v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
 
   if (!node::Buffer::HasInstance(pbuf))
-    return Nan::ThrowTypeError("Argument must be a buffer.");
+    return Nan::ThrowTypeError("First argument must be a buffer.");
 
-  const uint8_t *pub = (uint8_t *)node::Buffer::Data(pbuf);
+  const uint8_t *pub = (const uint8_t *)node::Buffer::Data(pbuf);
   size_t pub_len = node::Buffer::Length(pbuf);
 
   if (pub_len != 32)
@@ -122,14 +122,14 @@ NAN_METHOD(BED25519::Sign) {
     return Nan::ThrowTypeError("Arguments must be buffers.");
   }
 
-  const uint8_t *msg = (uint8_t *)node::Buffer::Data(mbuf);
+  const uint8_t *msg = (const uint8_t *)node::Buffer::Data(mbuf);
   size_t msg_len = node::Buffer::Length(mbuf);
 
-  const uint8_t *secret = (uint8_t *)node::Buffer::Data(sbuf);
+  const uint8_t *secret = (const uint8_t *)node::Buffer::Data(sbuf);
   size_t secret_len = node::Buffer::Length(sbuf);
 
   if (secret_len != 32)
-    return Nan::ThrowTypeError("Invalid parameters.");
+    return Nan::ThrowRangeError("Invalid secret size.");
 
   bcrypto_ed25519_public_key pub;
   bcrypto_ed25519_publickey(secret, pub);
@@ -155,13 +155,13 @@ NAN_METHOD(BED25519::Verify) {
     return Nan::ThrowTypeError("Arguments must be buffers.");
   }
 
-  const uint8_t *msg = (uint8_t *)node::Buffer::Data(mbuf);
+  const uint8_t *msg = (const uint8_t *)node::Buffer::Data(mbuf);
   size_t msg_len = node::Buffer::Length(mbuf);
 
-  const uint8_t *sig = (uint8_t *)node::Buffer::Data(sbuf);
+  const uint8_t *sig = (const uint8_t *)node::Buffer::Data(sbuf);
   size_t sig_len = node::Buffer::Length(sbuf);
 
-  const uint8_t *pub = (uint8_t *)node::Buffer::Data(pbuf);
+  const uint8_t *pub = (const uint8_t *)node::Buffer::Data(pbuf);
   size_t pub_len = node::Buffer::Length(pbuf);
 
   if (sig_len != 64 || pub_len != 32)
