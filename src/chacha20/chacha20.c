@@ -254,11 +254,7 @@ bcrypto_chacha20_block(bcrypto_chacha20_ctx *ctx, uint32_t output[16]) {
     "movups %%xmm2,32(%%rdi)\n"
     "movups %%xmm3,48(%%rdi)\n"
 
-    "incl 48(%%rsi)\n"
-    "cmpl $0, 48(%%rsi)\n"
-    "jnz 2f\n"
-    "incl 52(%%rsi)\n"
-    "2:\n"
+    "incq 48(%%rsi)\n"
     :
     : [src] "r" (ctx->state),
       [dst] "r" (output)
