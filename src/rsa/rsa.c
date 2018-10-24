@@ -613,6 +613,16 @@ bcrypto_rsa_hash_size(int type) {
       return 64;
 #endif
 
+#ifdef NID_shake128
+    case NID_shake128:
+      return 16;
+#endif
+
+#ifdef NID_shake256
+    case NID_shake256:
+      return 32;
+#endif
+
 #ifdef NID_blake2b160
     case NID_blake2b160:
       return 20;
@@ -651,6 +661,11 @@ bcrypto_rsa_hash_size(int type) {
 #ifdef NID_blake2s256
     case NID_blake2s256:
       return 32;
+#endif
+
+#ifdef NID_md4
+    case NID_md4:
+      return 16;
 #endif
 
     default:
