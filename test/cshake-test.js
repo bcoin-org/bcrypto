@@ -92,7 +92,7 @@ describe('CSHAKE', function() {
 
       const h = ctx.final(len);
 
-      assert.bufferEqual(mac, O);
+      assert.bufferEqual(h, O);
       assert.bufferEqual(CSHAKE.digest(X, N, S, len), O);
     });
   }
