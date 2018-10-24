@@ -131,10 +131,7 @@ const algs = [
     keyLen: 8,
     ivLen: 8,
     ids: [
-      'RC2-ECB',
-      'RC2-CBC',
-      'RC2-CFB',
-      'RC2-OFB'
+      'RC2-64-CBC'
     ]
   },
   {
