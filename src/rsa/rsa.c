@@ -562,6 +562,11 @@ bcrypto_rsa_hash_type(const char *alg) {
     type = NID_blake2s256;
 #endif
 
+#ifdef NID_md4
+  else if (strcmp(alg, "MD4") == 0)
+    type = NID_md4;
+#endif
+
   return type;
 }
 

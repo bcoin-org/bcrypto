@@ -5,6 +5,7 @@
 
 const assert = require('./util/assert');
 const crypto = require('crypto');
+const MD4 = require('../lib/md4');
 const MD5 = require('../lib/md5');
 const RIPEMD160 = require('../lib/ripemd160');
 const SHA1 = require('../lib/sha1');
@@ -22,6 +23,7 @@ const createHash = require('./util/create-hash');
 const NODE_MAJOR = parseInt(process.version.substring(1).split('.')[0], 10);
 
 const algs = [
+  ['md4', true],
   ['md5', true],
   ['ripemd160', true],
   ['sha1', true],
@@ -43,6 +45,7 @@ if (NODE_MAJOR < 10) {
 }
 
 const hashes = {
+  md4: MD4,
   md5: MD5,
   ripemd160: RIPEMD160,
   sha1: SHA1,
