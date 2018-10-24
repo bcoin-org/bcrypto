@@ -127,6 +127,17 @@ const algs = [
     ]
   },
   {
+    name: 'RC2',
+    keyLen: 8,
+    ivLen: 8,
+    ids: [
+      'RC2-ECB',
+      'RC2-CBC',
+      'RC2-CFB',
+      'RC2-OFB'
+    ]
+  },
+  {
     name: 'Triple-DES (EDE)',
     keyLen: 16,
     ivLen: 8,
