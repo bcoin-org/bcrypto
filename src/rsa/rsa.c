@@ -472,55 +472,8 @@ bcrypto_rsa_hash_type(const char *alg) {
 
   int type = -1;
 
-  if (strcmp(alg, "MD5") == 0)
-    type = NID_md5;
-  else if (strcmp(alg, "RIPEMD160") == 0)
-    type = NID_ripemd160;
-  else if (strcmp(alg, "SHA1") == 0)
-    type = NID_sha1;
-  else if (strcmp(alg, "SHA224") == 0)
-    type = NID_sha224;
-  else if (strcmp(alg, "SHA256") == 0)
-    type = NID_sha256;
-  else if (strcmp(alg, "SHA384") == 0)
-    type = NID_sha384;
-  else if (strcmp(alg, "SHA512") == 0)
-    type = NID_sha512;
-
-#ifdef NID_md5_sha1
-  else if (strcmp(alg, "MD5SHA1") == 0)
-    type = NID_md5_sha1;
-#endif
-
-#ifdef NID_sha3_224
-  else if (strcmp(alg, "SHA3_224") == 0)
-    type = NID_sha3_224;
-#endif
-
-#ifdef NID_sha3_256
-  else if (strcmp(alg, "SHA3_256") == 0)
-    type = NID_sha3_256;
-#endif
-
-#ifdef NID_sha3_384
-  else if (strcmp(alg, "SHA3_384") == 0)
-    type = NID_sha3_384;
-#endif
-
-#ifdef NID_sha3_512
-  else if (strcmp(alg, "SHA3_512") == 0)
-    type = NID_sha3_512;
-#endif
-
-#ifdef NID_shake128
-  else if (strcmp(alg, "SHAKE128") == 0)
-    type = NID_shake128;
-#endif
-
-#ifdef NID_shake256
-  else if (strcmp(alg, "SHAKE256") == 0)
-    type = NID_shake256;
-#endif
+  if (0)
+    type = -1;
 
 #ifdef NID_blake2b160
   else if (strcmp(alg, "BLAKE2B160") == 0)
@@ -567,9 +520,57 @@ bcrypto_rsa_hash_type(const char *alg) {
     type = NID_md2;
 #endif
 
-#ifdef NID_md4
   else if (strcmp(alg, "MD4") == 0)
     type = NID_md4;
+  else if (strcmp(alg, "MD5") == 0)
+    type = NID_md5;
+
+#ifdef NID_md5_sha1
+  else if (strcmp(alg, "MD5SHA1") == 0)
+    type = NID_md5_sha1;
+#endif
+
+  else if (strcmp(alg, "RIPEMD160") == 0)
+    type = NID_ripemd160;
+  else if (strcmp(alg, "SHA1") == 0)
+    type = NID_sha1;
+  else if (strcmp(alg, "SHA224") == 0)
+    type = NID_sha224;
+  else if (strcmp(alg, "SHA256") == 0)
+    type = NID_sha256;
+  else if (strcmp(alg, "SHA384") == 0)
+    type = NID_sha384;
+  else if (strcmp(alg, "SHA512") == 0)
+    type = NID_sha512;
+
+#ifdef NID_sha3_224
+  else if (strcmp(alg, "SHA3_224") == 0)
+    type = NID_sha3_224;
+#endif
+
+#ifdef NID_sha3_256
+  else if (strcmp(alg, "SHA3_256") == 0)
+    type = NID_sha3_256;
+#endif
+
+#ifdef NID_sha3_384
+  else if (strcmp(alg, "SHA3_384") == 0)
+    type = NID_sha3_384;
+#endif
+
+#ifdef NID_sha3_512
+  else if (strcmp(alg, "SHA3_512") == 0)
+    type = NID_sha3_512;
+#endif
+
+#ifdef NID_shake128
+  else if (strcmp(alg, "SHAKE128") == 0)
+    type = NID_shake128;
+#endif
+
+#ifdef NID_shake256
+  else if (strcmp(alg, "SHAKE256") == 0)
+    type = NID_shake256;
 #endif
 
 #ifdef NID_whirlpool
@@ -583,56 +584,6 @@ bcrypto_rsa_hash_type(const char *alg) {
 static size_t
 bcrypto_rsa_hash_size(int type) {
   switch (type) {
-    case NID_md5:
-      return 16;
-    case NID_ripemd160:
-      return 20;
-    case NID_sha1:
-      return 20;
-    case NID_sha224:
-      return 28;
-    case NID_sha256:
-      return 32;
-    case NID_sha384:
-      return 48;
-    case NID_sha512:
-      return 64;
-
-#ifdef NID_md5_sha1
-    case NID_md5_sha1:
-      return 36;
-#endif
-
-#ifdef NID_sha3_224
-    case NID_sha3_224:
-      return 28;
-#endif
-
-#ifdef NID_sha3_256
-    case NID_sha3_256:
-      return 32;
-#endif
-
-#ifdef NID_sha3_384
-    case NID_sha3_384:
-      return 48;
-#endif
-
-#ifdef NID_sha3_512
-    case NID_sha3_512:
-      return 64;
-#endif
-
-#ifdef NID_shake128
-    case NID_shake128:
-      return 16;
-#endif
-
-#ifdef NID_shake256
-    case NID_shake256:
-      return 32;
-#endif
-
 #ifdef NID_blake2b160
     case NID_blake2b160:
       return 20;
@@ -678,9 +629,57 @@ bcrypto_rsa_hash_size(int type) {
       return 16;
 #endif
 
-#ifdef NID_md4
     case NID_md4:
       return 16;
+    case NID_md5:
+      return 16;
+
+#ifdef NID_md5_sha1
+    case NID_md5_sha1:
+      return 36;
+#endif
+
+    case NID_ripemd160:
+      return 20;
+    case NID_sha1:
+      return 20;
+    case NID_sha224:
+      return 28;
+    case NID_sha256:
+      return 32;
+    case NID_sha384:
+      return 48;
+    case NID_sha512:
+      return 64;
+
+#ifdef NID_sha3_224
+    case NID_sha3_224:
+      return 28;
+#endif
+
+#ifdef NID_sha3_256
+    case NID_sha3_256:
+      return 32;
+#endif
+
+#ifdef NID_sha3_384
+    case NID_sha3_384:
+      return 48;
+#endif
+
+#ifdef NID_sha3_512
+    case NID_sha3_512:
+      return 64;
+#endif
+
+#ifdef NID_shake128
+    case NID_shake128:
+      return 16;
+#endif
+
+#ifdef NID_shake256
+    case NID_shake256:
+      return 32;
 #endif
 
 #ifdef NID_whirlpool
@@ -2177,7 +2176,12 @@ fail:
 
 bool
 bcrypto_rsa_has_hash(const char *alg) {
-  return bcrypto_rsa_hash_type(alg) != -1;
+  int type = bcrypto_rsa_hash_type(alg);
+
+  if (type == -1)
+    return false;
+
+  return EVP_get_digestbynid(type) != NULL;
 }
 
 #else

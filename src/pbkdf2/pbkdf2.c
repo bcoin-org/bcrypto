@@ -10,45 +10,8 @@ bcrypto_pbkdf2_hash_type(const char *alg) {
 
   int type = -1;
 
-  if (strcmp(alg, "MD5") == 0)
-    type = NID_md5;
-  else if (strcmp(alg, "RIPEMD160") == 0)
-    type = NID_ripemd160;
-  else if (strcmp(alg, "SHA1") == 0)
-    type = NID_sha1;
-  else if (strcmp(alg, "SHA224") == 0)
-    type = NID_sha224;
-  else if (strcmp(alg, "SHA256") == 0)
-    type = NID_sha256;
-  else if (strcmp(alg, "SHA384") == 0)
-    type = NID_sha384;
-  else if (strcmp(alg, "SHA512") == 0)
-    type = NID_sha512;
-
-#ifdef NID_md5_sha1
-  else if (strcmp(alg, "MD5SHA1") == 0)
-    type = NID_md5_sha1;
-#endif
-
-#ifdef NID_sha3_224
-  else if (strcmp(alg, "SHA3_224") == 0)
-    type = NID_sha3_224;
-#endif
-
-#ifdef NID_sha3_256
-  else if (strcmp(alg, "SHA3_256") == 0)
-    type = NID_sha3_256;
-#endif
-
-#ifdef NID_sha3_384
-  else if (strcmp(alg, "SHA3_384") == 0)
-    type = NID_sha3_384;
-#endif
-
-#ifdef NID_sha3_512
-  else if (strcmp(alg, "SHA3_512") == 0)
-    type = NID_sha3_512;
-#endif
+  if (0)
+    type = -1;
 
 #ifdef NID_blake2b160
   else if (strcmp(alg, "BLAKE2B160") == 0)
@@ -95,9 +58,47 @@ bcrypto_pbkdf2_hash_type(const char *alg) {
     type = NID_md2;
 #endif
 
-#ifdef NID_md4
   else if (strcmp(alg, "MD4") == 0)
     type = NID_md4;
+  else if (strcmp(alg, "MD5") == 0)
+    type = NID_md5;
+
+#ifdef NID_md5_sha1
+  else if (strcmp(alg, "MD5SHA1") == 0)
+    type = NID_md5_sha1;
+#endif
+
+  else if (strcmp(alg, "RIPEMD160") == 0)
+    type = NID_ripemd160;
+  else if (strcmp(alg, "SHA1") == 0)
+    type = NID_sha1;
+  else if (strcmp(alg, "SHA224") == 0)
+    type = NID_sha224;
+  else if (strcmp(alg, "SHA256") == 0)
+    type = NID_sha256;
+  else if (strcmp(alg, "SHA384") == 0)
+    type = NID_sha384;
+  else if (strcmp(alg, "SHA512") == 0)
+    type = NID_sha512;
+
+#ifdef NID_sha3_224
+  else if (strcmp(alg, "SHA3_224") == 0)
+    type = NID_sha3_224;
+#endif
+
+#ifdef NID_sha3_256
+  else if (strcmp(alg, "SHA3_256") == 0)
+    type = NID_sha3_256;
+#endif
+
+#ifdef NID_sha3_384
+  else if (strcmp(alg, "SHA3_384") == 0)
+    type = NID_sha3_384;
+#endif
+
+#ifdef NID_sha3_512
+  else if (strcmp(alg, "SHA3_512") == 0)
+    type = NID_sha3_512;
 #endif
 
 #ifdef NID_whirlpool
@@ -142,5 +143,10 @@ bcrypto_pbkdf2(
 
 bool
 bcrypto_pbkdf2_has_hash(const char *name) {
-  return bcrypto_pbkdf2_hash_type(name) != -1;
+  int type = bcrypto_pbkdf2_hash_type(name);
+
+  if (type == -1)
+    return false;
+
+  return EVP_get_digestbynid(type) != NULL;
 }
