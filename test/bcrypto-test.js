@@ -12,6 +12,7 @@ describe('Bcrypto', function() {
   it('should have correct environment', () => {
     switch (process.env.NODE_BACKEND) {
       case 'js':
+        assert.strictEqual(bcrypto.native, 0);
         assert.strictEqual(bcrypto.AEAD.native, 0);
         assert.strictEqual(bcrypto.aes.native, 0);
         assert.strictEqual(bcrypto.BLAKE2b.native, 0);
@@ -30,6 +31,9 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.cipher.native, 0);
         assert.strictEqual(bcrypto.cleanse.native, 0);
         assert.strictEqual(bcrypto.ccmp.native, undefined);
+        assert.strictEqual(bcrypto.CSHAKE.native, 0);
+        assert.strictEqual(bcrypto.CSHAKE128.native, 0);
+        assert.strictEqual(bcrypto.CSHAKE256.native, 0);
         assert.strictEqual(bcrypto.DRBG.native, 0);
         assert.strictEqual(bcrypto.dsa.native, 0);
         assert.strictEqual(bcrypto.dsaies.native, undefined);
@@ -47,6 +51,8 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.Keccak384.native, 0);
         assert.strictEqual(bcrypto.Keccak512.native, 0);
         assert.strictEqual(bcrypto.KMAC.native, 0);
+        assert.strictEqual(bcrypto.KMAC128.native, 0);
+        assert.strictEqual(bcrypto.KMAC256.native, 0);
         assert.strictEqual(bcrypto.MD2.native, 0);
         assert.strictEqual(bcrypto.MD4.native, 0);
         assert.strictEqual(bcrypto.MD5.native, 0);
@@ -81,9 +87,13 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.SHA3_256.native, 0);
         assert.strictEqual(bcrypto.SHA3_384.native, 0);
         assert.strictEqual(bcrypto.SHA3_512.native, 0);
+        assert.strictEqual(bcrypto.SHAKE.native, 0);
+        assert.strictEqual(bcrypto.SHAKE128.native, 0);
+        assert.strictEqual(bcrypto.SHAKE256.native, 0);
         assert.strictEqual(bcrypto.Whirlpool.native, 0);
         break;
       case 'node':
+        assert.strictEqual(bcrypto.native, 1);
         assert.strictEqual(bcrypto.AEAD.native, 0);
         assert.strictEqual(bcrypto.aes.native, 1);
         if (NODE_MAJOR < 10) {
@@ -104,6 +114,9 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.cipher.native, 1);
         assert.strictEqual(bcrypto.cleanse.native, 1);
         assert.strictEqual(bcrypto.ccmp.native, undefined);
+        assert.strictEqual(bcrypto.CSHAKE.native, 0);
+        assert.strictEqual(bcrypto.CSHAKE128.native, 0);
+        assert.strictEqual(bcrypto.CSHAKE256.native, 0);
         assert.strictEqual(bcrypto.DRBG.native, 0);
         assert.strictEqual(bcrypto.dsa.native, 1);
         assert.strictEqual(bcrypto.dsaies.native, undefined);
@@ -121,6 +134,8 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.Keccak384.native, 0);
         assert.strictEqual(bcrypto.Keccak512.native, 0);
         assert.strictEqual(bcrypto.KMAC.native, 0);
+        assert.strictEqual(bcrypto.KMAC128.native, 0);
+        assert.strictEqual(bcrypto.KMAC256.native, 0);
         assert.strictEqual(bcrypto.MD2.native, 0);
         assert.strictEqual(bcrypto.MD4.native, 1);
         assert.strictEqual(bcrypto.MD5.native, 1);
@@ -158,10 +173,14 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.SHA3_256.native, 1);
         assert.strictEqual(bcrypto.SHA3_384.native, 1);
         assert.strictEqual(bcrypto.SHA3_512.native, 1);
+        assert.strictEqual(bcrypto.SHAKE.native, 0);
+        assert.strictEqual(bcrypto.SHAKE128.native, 0);
+        assert.strictEqual(bcrypto.SHAKE256.native, 0);
         assert.strictEqual(bcrypto.Whirlpool.native, 1);
         break;
       case 'native':
       default:
+        assert.strictEqual(bcrypto.native, 3);
         assert.strictEqual(bcrypto.AEAD.native, 2);
         assert.strictEqual(bcrypto.aes.native, 2);
         assert.strictEqual(bcrypto.BLAKE2b.native, 2);
@@ -180,6 +199,9 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.cipher.native, 2);
         assert.strictEqual(bcrypto.cleanse.native, 2);
         assert.strictEqual(bcrypto.ccmp.native, undefined);
+        assert.strictEqual(bcrypto.CSHAKE.native, 2);
+        assert.strictEqual(bcrypto.CSHAKE128.native, 2);
+        assert.strictEqual(bcrypto.CSHAKE256.native, 2);
         assert.strictEqual(bcrypto.DRBG.native, 0);
         assert.strictEqual(bcrypto.dsa.native, NODE_MAJOR >= 10 ? 2 : 1);
         assert.strictEqual(bcrypto.dsaies.native, undefined);
@@ -197,6 +219,8 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.Keccak384.native, 2);
         assert.strictEqual(bcrypto.Keccak512.native, 2);
         assert.strictEqual(bcrypto.KMAC.native, 2);
+        assert.strictEqual(bcrypto.KMAC128.native, 2);
+        assert.strictEqual(bcrypto.KMAC256.native, 2);
         assert.strictEqual(bcrypto.MD2.native, 0);
         assert.strictEqual(bcrypto.MD4.native, 0);
         assert.strictEqual(bcrypto.MD5.native, 2);
@@ -231,6 +255,9 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.SHA3_256.native, 2);
         assert.strictEqual(bcrypto.SHA3_384.native, 2);
         assert.strictEqual(bcrypto.SHA3_512.native, 2);
+        assert.strictEqual(bcrypto.SHAKE.native, 2);
+        assert.strictEqual(bcrypto.SHAKE128.native, 2);
+        assert.strictEqual(bcrypto.SHAKE256.native, 2);
         assert.strictEqual(bcrypto.Whirlpool.native, 0);
         break;
     }

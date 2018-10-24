@@ -19,9 +19,16 @@ const MD5SHA1 = require('../lib/md5sha1');
 const BLAKE2s256 = require('../lib/blake2s256');
 const BLAKE2b512 = require('../lib/blake2b512');
 const Whirlpool = require('../lib/whirlpool');
+const SHA3_224 = require('../lib/sha3-224');
+const SHA3_256 = require('../lib/sha3-256');
+const SHA3_384 = require('../lib/sha3-384');
+const SHA3_512 = require('../lib/sha3-512');
+const SHAKE128 = require('../lib/shake128');
+const SHAKE256 = require('../lib/shake256');
 const random = require('../lib/random');
 const createHash = require('./util/create-hash');
 const NODE_MAJOR = parseInt(process.version.substring(1).split('.')[0], 10);
+const NODE_MINOR = parseInt(process.version.substring(1).split('.')[1], 10);
 
 const algs = [
   ['md4', true],
@@ -34,16 +41,26 @@ const algs = [
   ['sha512', true],
   ['hash160', false],
   ['hash256', false],
-  ['whirlpool', true],
-  ['md5-sha1', true],
-  ['blake2s256', true],
-  ['blake2b512', true]
+  ['whirlpool', true]
 ];
 
-if (NODE_MAJOR < 10) {
-  algs.pop();
-  algs.pop();
-  algs.pop();
+if (NODE_MAJOR >= 10) {
+  algs.push(
+    ['md5-sha1', true],
+    ['blake2s256', true],
+    ['blake2b512', true]
+  );
+}
+
+if (NODE_MAJOR > 10 || (NODE_MAJOR === 10 && NODE_MINOR >= 12)) {
+  algs.push(
+    ['sha3-224', true],
+    ['sha3-256', true],
+    ['sha3-384', true],
+    ['sha3-512', true],
+    ['shake128', false],
+    ['shake256', false]
+  );
 }
 
 const hashes = {
@@ -60,7 +77,13 @@ const hashes = {
   whirlpool: Whirlpool,
   'md5-sha1': MD5SHA1,
   blake2s256: BLAKE2s256,
-  blake2b512: BLAKE2b512
+  blake2b512: BLAKE2b512,
+  'sha3-224': SHA3_224,
+  'sha3-256': SHA3_256,
+  'sha3-384': SHA3_384,
+  'sha3-512': SHA3_512,
+  shake128: SHAKE128,
+  shake256: SHAKE256
 };
 
 const vectors = [

@@ -1,9 +1,6 @@
 #include "common.h"
 #include "keccak.h"
 
-static bcrypto_keccak_ctx global_ctx;
-static uint8_t global_out[64];
-
 static Nan::Persistent<v8::FunctionTemplate> keccak_constructor;
 
 BKeccak::BKeccak() {
@@ -90,7 +87,7 @@ NAN_METHOD(BKeccak::Final) {
 
   if (info.Length() > 0 && !IsNull(info[0])) {
     if (!info[0]->IsNumber())
-      return Nan::ThrowTypeError("First argument must be a boolean.");
+      return Nan::ThrowTypeError("First argument must be a number.");
 
     pad = (int)info[0]->Uint32Value();
   }
@@ -104,11 +101,13 @@ NAN_METHOD(BKeccak::Final) {
     outlen = (size_t)info[1]->Uint32Value();
   }
 
-  if (!bcrypto_keccak_final(&keccak->ctx, pad, &outlen, global_out))
+  uint8_t out[64];
+
+  if (!bcrypto_keccak_final(&keccak->ctx, pad, &outlen, out))
     return Nan::ThrowError("Could not finalize context.");
 
   info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)&global_out[0], outlen).ToLocalChecked());
+    Nan::CopyBuffer((char *)&out[0], outlen).ToLocalChecked());
 }
 
 NAN_METHOD(BKeccak::Digest) {
@@ -141,17 +140,28 @@ NAN_METHOD(BKeccak::Digest) {
     pad = (int)info[2]->Uint32Value();
   }
 
-  if (!bcrypto_keccak_init(&global_ctx, bits))
-    return Nan::ThrowError("Could not allocate context.");
-
-  bcrypto_keccak_update(&global_ctx, in, inlen);
-
   size_t outlen = 0;
 
-  assert(bcrypto_keccak_final(&global_ctx, pad, &outlen, global_out));
+  if (info.Length() > 3 && !IsNull(info[3])) {
+    if (!info[3]->IsNumber())
+      return Nan::ThrowTypeError("Fourth argument must be a number.");
+
+    outlen = (size_t)info[3]->Uint32Value();
+  }
+
+  bcrypto_keccak_ctx ctx;
+  uint8_t out[64];
+
+  if (!bcrypto_keccak_init(&ctx, bits))
+    return Nan::ThrowError("Could not initialize context.");
+
+  bcrypto_keccak_update(&ctx, in, inlen);
+
+  if (!bcrypto_keccak_final(&ctx, pad, &outlen, out))
+    return Nan::ThrowError("Could not finalize context.");
 
   info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)&global_out[0], outlen).ToLocalChecked());
+    Nan::CopyBuffer((char *)&out[0], outlen).ToLocalChecked());
 }
 
 NAN_METHOD(BKeccak::Root) {
@@ -183,30 +193,46 @@ NAN_METHOD(BKeccak::Root) {
     bits = info[2]->Uint32Value();
   }
 
-  if (leftlen != bits / 8 || rightlen != bits / 8)
-    return Nan::ThrowError("Bad node sizes.");
-
   int pad = 0x01;
 
   if (info.Length() > 3 && !IsNull(info[3])) {
     if (!info[3]->IsNumber())
-      return Nan::ThrowTypeError("Fourth argument must be a boolean.");
+      return Nan::ThrowTypeError("Fourth argument must be a number.");
 
     pad = (int)info[3]->Uint32Value();
   }
 
-  if (!bcrypto_keccak_init(&global_ctx, bits))
-    return Nan::ThrowError("Could not initialize context.");
-
-  bcrypto_keccak_update(&global_ctx, left, leftlen);
-  bcrypto_keccak_update(&global_ctx, right, rightlen);
-
   size_t outlen = 0;
 
-  assert(bcrypto_keccak_final(&global_ctx, pad, &outlen, global_out));
+  if (info.Length() > 4 && !IsNull(info[4])) {
+    if (!info[4]->IsNumber())
+      return Nan::ThrowTypeError("Fifth argument must be a number.");
+
+    outlen = (size_t)info[4]->Uint32Value();
+  }
+
+  if (outlen != 0) {
+    if (leftlen != outlen || rightlen != outlen)
+      return Nan::ThrowError("Bad node sizes.");
+  } else {
+    if (leftlen != bits / 8 || rightlen != bits / 8)
+      return Nan::ThrowError("Bad node sizes.");
+  }
+
+  bcrypto_keccak_ctx ctx;
+  uint8_t out[64];
+
+  if (!bcrypto_keccak_init(&ctx, bits))
+    return Nan::ThrowError("Could not initialize context.");
+
+  bcrypto_keccak_update(&ctx, left, leftlen);
+  bcrypto_keccak_update(&ctx, right, rightlen);
+
+  if (!bcrypto_keccak_final(&ctx, pad, &outlen, out))
+    return Nan::ThrowError("Could not finalize context.");
 
   info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)&global_out[0], outlen).ToLocalChecked());
+    Nan::CopyBuffer((char *)&out[0], outlen).ToLocalChecked());
 }
 
 NAN_METHOD(BKeccak::Multi) {
@@ -255,23 +281,33 @@ NAN_METHOD(BKeccak::Multi) {
 
   if (info.Length() > 4 && !IsNull(info[4])) {
     if (!info[4]->IsNumber())
-      return Nan::ThrowTypeError("Fifth argument must be a boolean.");
+      return Nan::ThrowTypeError("Fifth argument must be a number.");
 
     pad = (int)info[4]->Uint32Value();
   }
 
-  if (!bcrypto_keccak_init(&global_ctx, bits))
-    return Nan::ThrowError("Could not initialize context.");
-
-  bcrypto_keccak_update(&global_ctx, x, xlen);
-  bcrypto_keccak_update(&global_ctx, y, ylen);
-  if (z)
-    bcrypto_keccak_update(&global_ctx, z, zlen);
-
   size_t outlen = 0;
 
-  assert(bcrypto_keccak_final(&global_ctx, pad, &outlen, global_out));
+  if (info.Length() > 5 && !IsNull(info[5])) {
+    if (!info[5]->IsNumber())
+      return Nan::ThrowTypeError("Fifth argument must be a number.");
+
+    outlen = (size_t)info[5]->Uint32Value();
+  }
+
+  bcrypto_keccak_ctx ctx;
+  uint8_t out[64];
+
+  if (!bcrypto_keccak_init(&ctx, bits))
+    return Nan::ThrowError("Could not initialize context.");
+
+  bcrypto_keccak_update(&ctx, x, xlen);
+  bcrypto_keccak_update(&ctx, y, ylen);
+  bcrypto_keccak_update(&ctx, z, zlen);
+
+  if (!bcrypto_keccak_final(&ctx, pad, &outlen, out))
+    return Nan::ThrowError("Could not finalize context.");
 
   info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)&global_out[0], outlen).ToLocalChecked());
+    Nan::CopyBuffer((char *)&out[0], outlen).ToLocalChecked());
 }
