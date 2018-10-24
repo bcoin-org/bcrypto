@@ -100,6 +100,11 @@ bcrypto_pbkdf2_hash_type(const char *alg) {
     type = NID_blake2s256;
 #endif
 
+#ifdef NID_md2
+  else if (strcmp(alg, "MD2") == 0)
+    type = NID_md2;
+#endif
+
 #ifdef NID_md4
   else if (strcmp(alg, "MD4") == 0)
     type = NID_md4;
