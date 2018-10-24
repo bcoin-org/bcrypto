@@ -1401,6 +1401,9 @@ bcrypto_ecdsa_recover(
   if (BN_is_zero(sig_s) || BN_ucmp(sig_s, N_bn) >= 0)
     goto fail;
 
+  // TODO:
+  // #if OPENSSL_VERSION_NUMBER >= 0x10200000L
+  // if (!EC_GROUP_get_curve(group, P_bn, A_bn, B_bn, ctx))
   if (!EC_GROUP_get_curve_GFp(group, P_bn, A_bn, B_bn, ctx))
     goto fail;
 
@@ -1449,6 +1452,9 @@ bcrypto_ecdsa_recover(
         goto fail;
     }
 
+    // TODO:
+    // #if OPENSSL_VERSION_NUMBER >= 0x10200000L
+    // if (!EC_POINT_set_compressed_coordinates(group, r_p, x_bn, y_odd, ctx))
     if (!EC_POINT_set_compressed_coordinates_GFp(group, r_p, x_bn, y_odd, ctx))
       goto fail;
   }
