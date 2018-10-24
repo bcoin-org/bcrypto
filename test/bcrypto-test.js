@@ -62,6 +62,7 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.pgp.native, undefined);
         assert.strictEqual(bcrypto.Poly1305.native, 0);
         assert.strictEqual(bcrypto.random.native, 0);
+        assert.strictEqual(bcrypto.RC4.native, 0);
         assert.strictEqual(bcrypto.RIPEMD160.native, 0);
         assert.strictEqual(bcrypto.rsa.native, 0);
         assert.strictEqual(bcrypto.safe.native, undefined);
@@ -135,6 +136,7 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.pgp.native, undefined);
         assert.strictEqual(bcrypto.Poly1305.native, 0);
         assert.strictEqual(bcrypto.random.native, 1);
+        assert.strictEqual(bcrypto.RC4.native, 0);
         assert.strictEqual(bcrypto.RIPEMD160.native, 1);
         assert.strictEqual(bcrypto.rsa.native, 1);
         assert.strictEqual(bcrypto.safe.native, undefined);
@@ -210,6 +212,7 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.pgp.native, undefined);
         assert.strictEqual(bcrypto.Poly1305.native, 2);
         assert.strictEqual(bcrypto.random.native, 2);
+        assert.strictEqual(bcrypto.RC4.native, 0);
         assert.strictEqual(bcrypto.RIPEMD160.native, 2);
         assert.strictEqual(bcrypto.rsa.native, NODE_MAJOR >= 10 ? 2 : 1);
         assert.strictEqual(bcrypto.safe.native, undefined);
