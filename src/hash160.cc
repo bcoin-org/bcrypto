@@ -131,7 +131,7 @@ NAN_METHOD(BHash160::Root) {
   size_t leftlen = node::Buffer::Length(lbuf);
   size_t rightlen = node::Buffer::Length(rbuf);
 
-  if (leftlen != 32 || rightlen != 32)
+  if (leftlen != 20 || rightlen != 20)
     return Nan::ThrowTypeError("Bad node sizes.");
 
   SHA256_Init(&global_sctx);
