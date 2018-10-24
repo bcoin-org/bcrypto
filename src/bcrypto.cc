@@ -25,6 +25,7 @@
 #include "hash160.h"
 #include "hash256.h"
 #include "keccak.h"
+#include "md4.h"
 #include "md5.h"
 #include "poly1305.h"
 #include "pbkdf2.h"
@@ -39,6 +40,7 @@
 #include "sha256.h"
 #include "sha384.h"
 #include "sha512.h"
+#include "whirlpool.h"
 
 #include "bcrypto.h"
 
@@ -76,6 +78,7 @@ NAN_MODULE_INIT(init) {
   BHash160::Init(target);
   BHash256::Init(target);
   BKeccak::Init(target);
+  BMD4::Init(target);
   BMD5::Init(target);
   BPoly1305::Init(target);
   BPBKDF2::Init(target);
@@ -90,6 +93,7 @@ NAN_MODULE_INIT(init) {
   BSHA256::Init(target);
   BSHA384::Init(target);
   BSHA512::Init(target);
+  BWhirlpool::Init(target);
 }
 
 NODE_MODULE(bcrypto, init)

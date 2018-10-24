@@ -36,6 +36,7 @@
       "./src/hash160.cc",
       "./src/hash256.cc",
       "./src/keccak.cc",
+      "./src/md4.cc",
       "./src/md5.cc",
       "./src/pbkdf2.cc",
       "./src/pbkdf2_async.cc",
@@ -50,7 +51,8 @@
       "./src/sha224.cc",
       "./src/sha256.cc",
       "./src/sha384.cc",
-      "./src/sha512.cc"
+      "./src/sha512.cc",
+      "./src/whirlpool.cc"
     ],
     "cflags": [
       "-Wall",
