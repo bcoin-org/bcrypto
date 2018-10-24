@@ -78,6 +78,7 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.SHA3_256.native, 0);
         assert.strictEqual(bcrypto.SHA3_384.native, 0);
         assert.strictEqual(bcrypto.SHA3_512.native, 0);
+        assert.strictEqual(bcrypto.Whirlpool.native, 0);
         break;
       case 'node':
         assert.strictEqual(bcrypto.AEAD.native, 0);
@@ -151,6 +152,7 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.SHA3_256.native, 1);
         assert.strictEqual(bcrypto.SHA3_384.native, 1);
         assert.strictEqual(bcrypto.SHA3_512.native, 1);
+        assert.strictEqual(bcrypto.Whirlpool.native, 1);
         break;
       case 'native':
       default:
@@ -220,6 +222,7 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.SHA3_256.native, 2);
         assert.strictEqual(bcrypto.SHA3_384.native, 2);
         assert.strictEqual(bcrypto.SHA3_512.native, 2);
+        assert.strictEqual(bcrypto.Whirlpool.native, 0);
         break;
     }
   });

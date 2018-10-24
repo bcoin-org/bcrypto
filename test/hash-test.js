@@ -18,6 +18,7 @@ const Hash256 = require('../lib/hash256');
 const MD5SHA1 = require('../lib/md5sha1');
 const BLAKE2s256 = require('../lib/blake2s256');
 const BLAKE2b512 = require('../lib/blake2b512');
+const Whirlpool = require('../lib/whirlpool');
 const random = require('../lib/random');
 const createHash = require('./util/create-hash');
 const NODE_MAJOR = parseInt(process.version.substring(1).split('.')[0], 10);
@@ -33,6 +34,7 @@ const algs = [
   ['sha512', true],
   ['hash160', false],
   ['hash256', false],
+  ['whirlpool', true],
   ['md5-sha1', true],
   ['blake2s256', true],
   ['blake2b512', true]
@@ -55,6 +57,7 @@ const hashes = {
   sha512: SHA512,
   hash160: Hash160,
   hash256: Hash256,
+  whirlpool: Whirlpool,
   'md5-sha1': MD5SHA1,
   blake2s256: BLAKE2s256,
   blake2b512: BLAKE2b512

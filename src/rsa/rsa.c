@@ -567,6 +567,11 @@ bcrypto_rsa_hash_type(const char *alg) {
     type = NID_md4;
 #endif
 
+#ifdef NID_whirlpool
+  else if (strcmp(alg, "WHIRLPOOL") == 0)
+    type = NID_whirlpool;
+#endif
+
   return type;
 }
 
@@ -666,6 +671,11 @@ bcrypto_rsa_hash_size(int type) {
 #ifdef NID_md4
     case NID_md4:
       return 16;
+#endif
+
+#ifdef NID_whirlpool
+    case NID_whirlpool:
+      return 64;
 #endif
 
     default:

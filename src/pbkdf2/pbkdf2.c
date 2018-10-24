@@ -105,6 +105,11 @@ bcrypto_pbkdf2_hash_type(const char *alg) {
     type = NID_md4;
 #endif
 
+#ifdef NID_whirlpool
+  else if (strcmp(alg, "WHIRLPOOL") == 0)
+    type = NID_whirlpool;
+#endif
+
   return type;
 }
 
