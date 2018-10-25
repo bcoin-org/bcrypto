@@ -4,6 +4,10 @@
 
 static Nan::Persistent<v8::FunctionTemplate> cipher_constructor;
 
+static bool IsValidGCMTagLength(unsigned int tag_len) {
+  return tag_len == 4 || tag_len == 8 || (tag_len >= 12 && tag_len <= 16);
+}
+
 BCipherBase::BCipherBase() {
   type = NULL;
   encrypt = false;
@@ -34,6 +38,9 @@ BCipherBase::Init(v8::Local<v8::Object> &target) {
   Nan::SetPrototypeMethod(tpl, "init", BCipherBase::Init);
   Nan::SetPrototypeMethod(tpl, "update", BCipherBase::Update);
   Nan::SetPrototypeMethod(tpl, "final", BCipherBase::Final);
+  Nan::SetPrototypeMethod(tpl, "setAAD", BCipherBase::SetAAD);
+  Nan::SetPrototypeMethod(tpl, "getAuthTag", BCipherBase::GetAuthTag);
+  Nan::SetPrototypeMethod(tpl, "setAuthTag", BCipherBase::SetAuthTag);
   Nan::SetMethod(tpl, "hasCipher", BCipherBase::HasCipher);
 
   v8::Local<v8::FunctionTemplate> ctor =
@@ -70,7 +77,8 @@ NAN_METHOD(BCipherBase::New) {
       && mode != EVP_CIPH_CBC_MODE
       && mode != EVP_CIPH_CTR_MODE
       && mode != EVP_CIPH_CFB_MODE
-      && mode != EVP_CIPH_OFB_MODE) {
+      && mode != EVP_CIPH_OFB_MODE
+      && mode != EVP_CIPH_GCM_MODE) {
     return Nan::ThrowError("Invalid cipher mode.");
   }
 
@@ -108,12 +116,16 @@ NAN_METHOD(BCipherBase::Init) {
     iv_len = node::Buffer::Length(iv_buf);
   }
 
-  int expected_iv_len = EVP_CIPHER_iv_length(cipher->type);
-  bool has_iv = iv_len >= 0;
+  int mode = EVP_CIPHER_mode(cipher->type);
 
-  if ((!has_iv && expected_iv_len != 0)
-      || (has_iv && iv_len != expected_iv_len)) {
-    return Nan::ThrowRangeError("Invalid IV length.");
+  if (mode != EVP_CIPH_GCM_MODE) {
+    int expected_iv_len = EVP_CIPHER_iv_length(cipher->type);
+    bool has_iv = iv_len >= 0;
+
+    if ((!has_iv && expected_iv_len != 0)
+        || (has_iv && iv_len != expected_iv_len)) {
+      return Nan::ThrowRangeError("Invalid IV length.");
+    }
   }
 
   if (cipher->ctx) {
@@ -127,10 +139,19 @@ NAN_METHOD(BCipherBase::Init) {
     return Nan::ThrowError("Failed to initialize cipher.");
 
   int r = EVP_CipherInit_ex(cipher->ctx, cipher->type, NULL,
-                             NULL, NULL, cipher->encrypt);
+                            NULL, NULL, cipher->encrypt);
 
   if (r != 1)
     return Nan::ThrowError("Failed to initialize cipher.");
+
+  if (mode == EVP_CIPH_GCM_MODE) {
+    if (!EVP_CIPHER_CTX_ctrl(cipher->ctx,
+                             EVP_CTRL_AEAD_SET_IVLEN,
+                             iv_len,
+                             NULL)) {
+      return Nan::ThrowError("Failed to initialize cipher.");
+    }
+  }
 
   if (!EVP_CIPHER_CTX_set_key_length(cipher->ctx, key_len))
     return Nan::ThrowRangeError("Invalid key length.");
@@ -205,9 +226,6 @@ NAN_METHOD(BCipherBase::Final) {
     return Nan::ThrowError("Failed to finalize cipher.");
   }
 
-  EVP_CIPHER_CTX_free(cipher->ctx);
-  cipher->ctx = NULL;
-
   if (out_len == 0) {
     free(out);
     out = NULL;
@@ -215,6 +233,106 @@ NAN_METHOD(BCipherBase::Final) {
 
   return info.GetReturnValue().Set(
     Nan::NewBuffer((char *)out, (size_t)out_len).ToLocalChecked());
+}
+
+NAN_METHOD(BCipherBase::SetAAD) {
+  BCipherBase *cipher = ObjectWrap::Unwrap<BCipherBase>(info.Holder());
+
+  if (info.Length() < 1)
+    return Nan::ThrowError("cipher.setAAD() requires arguments.");
+
+  if (!cipher->ctx)
+    return Nan::ThrowError("Cipher is not initialized.");
+
+  v8::Local<v8::Object> buf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(buf))
+    return Nan::ThrowTypeError("First argument must be a buffer.");
+
+  const uint8_t *data = (const uint8_t *)node::Buffer::Data(buf);
+  size_t len = node::Buffer::Length(buf);
+
+  int outlen;
+  const int mode = EVP_CIPHER_CTX_mode(cipher->ctx);
+
+  if (mode != EVP_CIPH_GCM_MODE)
+    return Nan::ThrowError("Cipher is not authenticated.");
+
+  int r = EVP_CipherUpdate(cipher->ctx,
+                           nullptr,
+                           &outlen,
+                           (const unsigned char *)data,
+                           len);
+
+  if (r != 1)
+    return Nan::ThrowError("Could not set AAD.");
+
+  info.GetReturnValue().Set(info.This());
+}
+
+NAN_METHOD(BCipherBase::GetAuthTag) {
+  BCipherBase *cipher = ObjectWrap::Unwrap<BCipherBase>(info.Holder());
+
+  if (!cipher->ctx)
+    return Nan::ThrowError("Cipher is not initialized.");
+
+  const int mode = EVP_CIPHER_CTX_mode(cipher->ctx);
+
+  if (mode != EVP_CIPH_GCM_MODE)
+    return Nan::ThrowError("Cipher is not authenticated.");
+
+  if (!cipher->encrypt)
+    return Nan::ThrowError("Cannot get auth tag when decrypting.");
+
+  uint8_t tag[16];
+
+  int r = EVP_CIPHER_CTX_ctrl(cipher->ctx, EVP_CTRL_AEAD_GET_TAG,
+                              16, (unsigned char *)tag);
+
+  if (r != 1)
+    return Nan::ThrowError("Could not set auth tag.");
+
+  return info.GetReturnValue().Set(
+    Nan::CopyBuffer((char *)&tag[0], 16).ToLocalChecked());
+}
+
+NAN_METHOD(BCipherBase::SetAuthTag) {
+  BCipherBase *cipher = ObjectWrap::Unwrap<BCipherBase>(info.Holder());
+
+  if (info.Length() < 1)
+    return Nan::ThrowError("cipher.setAuthTag() requires arguments.");
+
+  if (!cipher->ctx)
+    return Nan::ThrowError("Cipher is not initialized.");
+
+  v8::Local<v8::Object> buf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(buf))
+    return Nan::ThrowTypeError("First argument must be a buffer.");
+
+  const uint8_t *data = (const uint8_t *)node::Buffer::Data(buf);
+  size_t len = node::Buffer::Length(buf);
+
+  if (!IsValidGCMTagLength(len))
+    return Nan::ThrowRangeError("Invalid tag length.");
+
+  const int mode = EVP_CIPHER_CTX_mode(cipher->ctx);
+
+  if (mode != EVP_CIPH_GCM_MODE)
+    return Nan::ThrowError("Cipher is not authenticated.");
+
+  if (cipher->encrypt)
+    return Nan::ThrowError("Cannot set auth tag when encrypting.");
+
+  int r = EVP_CIPHER_CTX_ctrl(cipher->ctx,
+                              EVP_CTRL_AEAD_SET_TAG,
+                              len,
+                              (unsigned char *)data);
+
+  if (r != 1)
+    return Nan::ThrowTypeError("Could not get auth tag.");
+
+  info.GetReturnValue().Set(info.This());
 }
 
 NAN_METHOD(BCipherBase::HasCipher) {

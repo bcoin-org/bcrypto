@@ -19,7 +19,8 @@ const algs = [
       'AES-128-CBC',
       'AES-128-CTR',
       'AES-128-CFB',
-      'AES-128-OFB'
+      'AES-128-OFB',
+      'AES-128-GCM'
     ]
   },
   {
@@ -31,7 +32,8 @@ const algs = [
       'AES-192-CBC',
       'AES-192-CTR',
       'AES-192-CFB',
-      'AES-192-OFB'
+      'AES-192-OFB',
+      'AES-192-GCM'
     ]
   },
   {
@@ -43,7 +45,8 @@ const algs = [
       'AES-256-CBC',
       'AES-256-CTR',
       'AES-256-CFB',
-      'AES-256-OFB'
+      'AES-256-OFB',
+      'AES-256-GCM'
     ]
   },
   {
@@ -172,6 +175,7 @@ const iv = Buffer.from('6dd26d9045b73c377a9ed2ffeca72ffd', 'hex');
 
 function testVector(name, keyLen, ivLen) {
   const key = random.randomBytes(keyLen);
+  const gcm = name.endsWith('-GCM');
 
   let iv = Buffer.alloc(0);
 
@@ -180,7 +184,11 @@ function testVector(name, keyLen, ivLen) {
 
   const data = random.randomBytes((Math.random() * 256) >>> 0);
   const cipher = crypto.createCipheriv(name, key, iv);
-  const expect = Buffer.concat([cipher.update(data), cipher.final()]);
+  const expect = Buffer.concat([
+    cipher.update(data),
+    cipher.final(),
+    gcm ? cipher.getAuthTag() : Buffer.alloc(0)
+  ]);
 
   return {
     key,
@@ -191,17 +199,27 @@ function testVector(name, keyLen, ivLen) {
 }
 
 function encipher(name, data, key, iv) {
+  const gcm = name.endsWith('-GCM');
   const c = new Cipher(name);
   c.init(key, iv);
   return Buffer.concat([
     c.update(data),
-    c.final()
+    c.final(),
+    gcm ? c.getAuthTag() : Buffer.alloc(0)
   ]);
 }
 
 function decipher(name, data, key, iv) {
+  const gcm = name.endsWith('-GCM');
   const c = new Decipher(name);
   c.init(key, iv);
+
+  if (gcm) {
+    const tag = data.slice(-16);
+    data = data.slice(0, -16);
+    c.setAuthTag(tag);
+  }
+
   return Buffer.concat([
     c.update(data),
     c.final()

@@ -22,6 +22,9 @@ private:
   static NAN_METHOD(Init);
   static NAN_METHOD(Update);
   static NAN_METHOD(Final);
+  static NAN_METHOD(SetAAD);
+  static NAN_METHOD(GetAuthTag);
+  static NAN_METHOD(SetAuthTag);
   static NAN_METHOD(HasCipher);
 };
 #endif
