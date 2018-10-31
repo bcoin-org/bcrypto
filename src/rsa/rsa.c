@@ -101,7 +101,7 @@ bcrypto_rsa_sane_privkey(const bcrypto_rsa_key_t *key) {
   size_t pb = bcrypto_count_bits(key->pd, key->pl);
   size_t qb = bcrypto_count_bits(key->qd, key->ql);
 
-  if (pb + qb != nb)
+  if (nb > pb + qb)
     return false;
 
   size_t dpb = bcrypto_count_bits(key->dpd, key->dpl);
@@ -146,7 +146,7 @@ bcrypto_rsa_sane_compute(const bcrypto_rsa_key_t *key) {
     if (nb < BCRYPTO_RSA_MIN_BITS || nb > BCRYPTO_RSA_MAX_BITS)
       return false;
 
-    if (pb + qb != nb)
+    if (nb > pb + qb)
       return false;
   }
 
