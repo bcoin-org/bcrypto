@@ -96,6 +96,12 @@ describe('RSA', function() {
     const sig = rsa.sign(SHA256, msg, priv);
     assert(rsa.verify(SHA256, msg, sig, pub));
 
+    // Should veil/unveil.
+    const sig2 = rsa.veil(sig, 4096, pub);
+    assert(sig2.length === 512);
+    const sig3 = rsa.unveil(sig2, 4096, pub);
+    assert(rsa.verify(SHA256, msg, sig3, pub));
+
     assert(!rsa.verify(SHA256, zero, sig, pub));
     assert(!rsa.verify(SHA256, msg, zero, pub));
 
@@ -113,16 +119,22 @@ describe('RSA', function() {
     const sig1 = rsa.signPSS(SHA256, msg, priv, -1);
     assert(rsa.verifyPSS(SHA256, msg, sig1, pub));
 
+    // Should veil/unveil.
+    const sig2 = rsa.veil(sig1, 4096, pub);
+    assert(sig2.length === 512);
+    const sig3 = rsa.unveil(sig2, 4096, pub);
+    assert(rsa.verifyPSS(SHA256, msg, sig3, pub));
+
     assert(!rsa.verifyPSS(SHA256, zero, sig1, pub));
     assert(!rsa.verifyPSS(SHA256, msg, zero, pub));
 
     sig1[(Math.random() * sig1.length) | 0] ^= 1;
     assert(!rsa.verifyPSS(SHA256, msg, sig1, pub));
 
-    const sig2 = rsa.signPSS(SHA256, msg, priv, 0);
-    assert(rsa.verifyPSS(SHA256, msg, sig2, pub, 0));
-    sig2[(Math.random() * sig1.length) | 0] ^= 1;
-    assert(!rsa.verifyPSS(SHA256, msg, sig2, pub, 0));
+    const sig4 = rsa.signPSS(SHA256, msg, priv, 0);
+    assert(rsa.verifyPSS(SHA256, msg, sig4, pub, 0));
+    sig4[(Math.random() * sig1.length) | 0] ^= 1;
+    assert(!rsa.verifyPSS(SHA256, msg, sig4, pub, 0));
   });
 
   it('should sign and verify (async)', async () => {

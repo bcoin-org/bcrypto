@@ -32,6 +32,8 @@ private:
   static NAN_METHOD(VerifyPSS);
   static NAN_METHOD(EncryptRaw);
   static NAN_METHOD(DecryptRaw);
+  static NAN_METHOD(Veil);
+  static NAN_METHOD(Unveil);
   static NAN_METHOD(HasHash);
 };
 #endif

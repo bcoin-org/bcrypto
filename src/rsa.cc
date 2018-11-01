@@ -38,6 +38,8 @@ BRSA::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "verifyPSS", BRSA::VerifyPSS);
   Nan::Export(obj, "encryptRaw", BRSA::EncryptRaw);
   Nan::Export(obj, "decryptRaw", BRSA::DecryptRaw);
+  Nan::Export(obj, "veil", BRSA::Veil);
+  Nan::Export(obj, "unveil", BRSA::Unveil);
   Nan::Export(obj, "hasHash", BRSA::HasHash);
 
   target->Set(Nan::New("rsa").ToLocalChecked(), obj);
@@ -1146,6 +1148,94 @@ NAN_METHOD(BRSA::DecryptRaw) {
 
   info.GetReturnValue().Set(
     Nan::NewBuffer((char *)pt, pt_len).ToLocalChecked());
+}
+
+NAN_METHOD(BRSA::Veil) {
+  if (info.Length() < 4)
+    return Nan::ThrowError("rsa.veil() requires arguments.");
+
+  v8::Local<v8::Object> mbuf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(mbuf))
+    return Nan::ThrowTypeError("First argument must be a buffer.");
+
+  if (!info[1]->IsNumber())
+    return Nan::ThrowTypeError("Second argument must be a number.");
+
+  v8::Local<v8::Object> nbuf = info[2].As<v8::Object>();
+  v8::Local<v8::Object> ebuf = info[3].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(nbuf)
+      || !node::Buffer::HasInstance(ebuf)) {
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+  }
+
+  const uint8_t *md = (const uint8_t *)node::Buffer::Data(mbuf);
+  size_t ml = node::Buffer::Length(mbuf);
+
+  size_t bits = (size_t)info[1]->Uint32Value();
+
+  bcrypto_rsa_key_t pub;
+  bcrypto_rsa_key_init(&pub);
+
+  pub.nd = (uint8_t *)node::Buffer::Data(nbuf);
+  pub.nl = node::Buffer::Length(nbuf);
+
+  pub.ed = (uint8_t *)node::Buffer::Data(ebuf);
+  pub.el = node::Buffer::Length(ebuf);
+
+  uint8_t *ct;
+  size_t ct_len;
+
+  if (!bcrypto_rsa_veil(md, ml, bits, &pub, &ct, &ct_len))
+    return Nan::ThrowError("Could not veil message.");
+
+  info.GetReturnValue().Set(
+    Nan::NewBuffer((char *)ct, ct_len).ToLocalChecked());
+}
+
+NAN_METHOD(BRSA::Unveil) {
+  if (info.Length() < 4)
+    return Nan::ThrowError("rsa.unveil() requires arguments.");
+
+  v8::Local<v8::Object> mbuf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(mbuf))
+    return Nan::ThrowTypeError("First argument must be a buffer.");
+
+  if (!info[1]->IsNumber())
+    return Nan::ThrowTypeError("Second argument must be a number.");
+
+  v8::Local<v8::Object> nbuf = info[2].As<v8::Object>();
+  v8::Local<v8::Object> ebuf = info[3].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(nbuf)
+      || !node::Buffer::HasInstance(ebuf)) {
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+  }
+
+  const uint8_t *md = (const uint8_t *)node::Buffer::Data(mbuf);
+  size_t ml = node::Buffer::Length(mbuf);
+
+  size_t bits = (size_t)info[1]->Uint32Value();
+
+  bcrypto_rsa_key_t pub;
+  bcrypto_rsa_key_init(&pub);
+
+  pub.nd = (uint8_t *)node::Buffer::Data(nbuf);
+  pub.nl = node::Buffer::Length(nbuf);
+
+  pub.ed = (uint8_t *)node::Buffer::Data(ebuf);
+  pub.el = node::Buffer::Length(ebuf);
+
+  uint8_t *ct;
+  size_t ct_len;
+
+  if (!bcrypto_rsa_unveil(md, ml, bits, &pub, &ct, &ct_len))
+    return Nan::ThrowError("Could not unveil message.");
+
+  info.GetReturnValue().Set(
+    Nan::NewBuffer((char *)ct, ct_len).ToLocalChecked());
 }
 
 NAN_METHOD(BRSA::HasHash) {

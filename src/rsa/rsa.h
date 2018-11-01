@@ -204,6 +204,26 @@ bcrypto_rsa_decrypt_raw(
 );
 
 bool
+bcrypto_rsa_veil(
+  const uint8_t *msg,
+  size_t msg_len,
+  size_t bits,
+  const bcrypto_rsa_key_t *pub,
+  uint8_t **out,
+  size_t *out_len
+);
+
+bool
+bcrypto_rsa_unveil(
+  const uint8_t *msg,
+  size_t msg_len,
+  size_t bits,
+  const bcrypto_rsa_key_t *pub,
+  uint8_t **out,
+  size_t *out_len
+);
+
+bool
 bcrypto_rsa_has_hash(const char *alg);
 
 #if defined(__cplusplus)

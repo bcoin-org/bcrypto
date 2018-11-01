@@ -2175,6 +2175,197 @@ fail:
 }
 
 bool
+bcrypto_rsa_veil(
+  const uint8_t *msg,
+  size_t msg_len,
+  size_t bits,
+  const bcrypto_rsa_key_t *pub,
+  uint8_t **out,
+  size_t *out_len
+) {
+  assert(out && out_len);
+
+  bool ret = false;
+  BN_CTX *ctx = NULL;
+  BIGNUM *c0 = NULL;
+  BIGNUM *n = NULL;
+  BIGNUM *ctlim = NULL;
+  BIGNUM *rlim = NULL;
+  BIGNUM *c1 = NULL;
+  BIGNUM *cr = NULL;
+  uint8_t *c = NULL;
+  int c_len = 0;
+
+  if (msg == NULL || msg_len != bcrypto_rsa_mod_size(pub))
+    goto fail;
+
+  if (!bcrypto_rsa_sane_pubkey(pub))
+    goto fail;
+
+  // Can't make ciphertext smaller.
+  if (bits < bcrypto_rsa_mod_bits(pub))
+    goto fail;
+
+  ctx = BN_CTX_new();
+  c0 = BN_bin2bn(msg, msg_len, NULL);
+  n = BN_bin2bn(pub->nd, pub->nl, NULL);
+  ctlim = BN_new();
+  rlim = BN_new();
+  c1 = BN_new();
+  cr = BN_new();
+
+  if (!ctx || !c0 || !n || !ctlim || !rlim || !c1 || !cr)
+    goto fail;
+
+  // Invalid ciphertext.
+  if (BN_ucmp(c0, n) >= 0)
+    goto fail;
+
+  // ctlim = 1 << (bits + 0)
+  if (!BN_set_word(ctlim, 1)
+      || !BN_lshift(ctlim, ctlim, bits)) {
+    goto fail;
+  }
+
+  // rlim = (ctlim - c0 + n - 1) / n
+  if (!BN_copy(rlim, ctlim)
+      || !BN_sub(rlim, rlim, c0)
+      || !BN_add(rlim, rlim, n)
+      || !BN_sub(rlim, rlim, BN_value_one())
+      || !BN_div(rlim, NULL, rlim, n, ctx)) {
+    goto fail;
+  }
+
+  // c1 = ctlim
+  if (!BN_copy(c1, ctlim))
+    goto fail;
+
+  bcrypto_poll();
+
+  // while c1 >= ctlim
+  while (BN_ucmp(c1, ctlim) >= 0) {
+    // cr = random_int(rlim)
+    if (!BN_rand_range(cr, rlim))
+      goto fail;
+
+    if (BN_ucmp(rlim, BN_value_one()) > 0 && BN_is_zero(cr))
+      continue;
+
+    // c1 = c0 + cr * n
+    if (!BN_mul(cr, cr, n, ctx))
+      goto fail;
+
+    if (!BN_add(c1, c0, cr))
+      goto fail;
+  }
+
+  if (!BN_mod(cr, c1, n, ctx))
+    goto fail;
+
+  assert(BN_ucmp(cr, c0) == 0);
+  assert((size_t)BN_num_bits(c1) <= bits);
+
+  c_len = (bits + 7) / 8;
+  c = malloc(c_len);
+
+  if (!c)
+    goto fail;
+
+  assert(BN_bn2binpad(c1, c, c_len) != -1);
+
+  *out = c;
+  *out_len = c_len;
+  c = NULL;
+
+  ret = true;
+fail:
+  if (ctx)
+    BN_CTX_free(ctx);
+  if (c0)
+    BN_free(c0);
+  if (n)
+    BN_free(n);
+  if (ctlim)
+    BN_free(ctlim);
+  if (rlim)
+    BN_free(rlim);
+  if (c1)
+    BN_free(c1);
+  if (cr)
+    BN_free(cr);
+  if (c)
+    free(c);
+  return ret;
+}
+
+bool
+bcrypto_rsa_unveil(
+  const uint8_t *msg,
+  size_t msg_len,
+  size_t bits,
+  const bcrypto_rsa_key_t *pub,
+  uint8_t **out,
+  size_t *out_len
+) {
+  assert(out && out_len);
+
+  bool ret = false;
+  BN_CTX *ctx = NULL;
+  BIGNUM *c1 = NULL;
+  BIGNUM *n = NULL;
+  uint8_t *c = NULL;
+  int c_len = 0;
+
+  size_t klen = bcrypto_rsa_mod_size(pub);
+
+  if (msg == NULL || msg_len < klen)
+    goto fail;
+
+  if (!bcrypto_rsa_sane_pubkey(pub))
+    goto fail;
+
+  if (bcrypto_count_bits(msg, msg_len) > bits)
+    goto fail;
+
+  ctx = BN_CTX_new();
+  c1 = BN_bin2bn(msg, msg_len, NULL);
+  n = BN_bin2bn(pub->nd, pub->nl, NULL);
+
+  if (!ctx || !c1 || !n)
+    goto fail;
+
+  // c0 = c1 % n
+  if (!BN_mod(c1, c1, n, ctx))
+    goto fail;
+
+  assert((size_t)BN_num_bytes(c1) <= klen);
+
+  c_len = klen;
+  c = malloc(c_len);
+
+  if (!c)
+    goto fail;
+
+  assert(BN_bn2binpad(c1, c, c_len) != -1);
+
+  *out = c;
+  *out_len = c_len;
+  c = NULL;
+
+  ret = true;
+fail:
+  if (ctx)
+    BN_CTX_free(ctx);
+  if (c1)
+    BN_free(c1);
+  if (n)
+    BN_free(n);
+  if (c)
+    free(c);
+  return ret;
+}
+
+bool
 bcrypto_rsa_has_hash(const char *alg) {
   int type = bcrypto_rsa_hash_type(alg);
 
