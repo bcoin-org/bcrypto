@@ -74,6 +74,12 @@
       "-Wno-unknown-warning-option",
       "-Wno-deprecated-declarations"
     ],
+    "xcode_settings": {
+      "OTHER_CFLAGS": [
+        "-Wno-deprecated-declarations"
+      ]
+    },
+    "msvs_disabled_warnings": [4996],
     "include_dirs": [
       "<!(node -e \"require('nan')\")"
     ],
@@ -186,6 +192,7 @@
       "-Wno-unknown-warning-option",
       "-Wno-deprecated-declarations"
     ],
+    "msvs_disabled_warnings": [4996],
     "conditions": [
       ["with_gmp=='true'", {
         "defines": [
@@ -226,6 +233,7 @@
         "xcode_settings": {
           "MACOSX_DEPLOYMENT_TARGET": "10.7",
           "OTHER_CPLUSPLUSFLAGS": [
+            "-Wno-deprecated-declarations",
             "-stdlib=libc++"
           ]
         }
