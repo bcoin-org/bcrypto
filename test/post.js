@@ -30,6 +30,20 @@ function assert(ok) {
     throw new Error('Assertion error.');
 }
 
+// Make sure the RNG works before loading.
+{
+  const bytes1 = random.randomBytes(32);
+  const zero = Buffer.alloc(32, 0x00);
+  zero.fill(0x00);
+
+  assert(!bytes1.equals(zero));
+
+  const bytes2 = random.randomBytes(32);
+
+  assert(!bytes2.equals(zero));
+  assert(!bytes2.equals(bytes1));
+}
+
 binding.load();
 
 assert(cipher._hasCipher('AES-256-CBC'));
@@ -40,14 +54,3 @@ if (rsa) {
   assert(rsa._hasHash('SHA256'));
   assert(rsa._hasHash('SHA512'));
 }
-
-const bytes1 = random.randomBytes(32);
-const zero = Buffer.alloc(32, 0x00);
-zero.fill(0x00);
-
-assert(!bytes1.equals(zero));
-
-const bytes2 = random.randomBytes(32);
-
-assert(!bytes2.equals(zero));
-assert(!bytes2.equals(bytes1));
