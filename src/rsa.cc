@@ -55,8 +55,8 @@ NAN_METHOD(BRSA::PrivateKeyGenerate) {
   if (!info[1]->IsNumber())
     return Nan::ThrowTypeError("Second argument must be a number.");
 
-  uint32_t bits = info[0]->Uint32Value();
-  uint64_t exp = info[1]->IntegerValue();
+  uint32_t bits = Nan::To<uint32_t>(info[0]).FromJust();
+  uint64_t exp = Nan::To<int64_t>(info[1]).FromJust();
 
   bcrypto_rsa_key_t *k = bcrypto_rsa_privkey_generate(
     (int)bits, (unsigned long long)exp);
@@ -92,8 +92,8 @@ NAN_METHOD(BRSA::PrivateKeyGenerateAsync) {
   if (!info[2]->IsFunction())
     return Nan::ThrowTypeError("Third argument must be a function.");
 
-  uint32_t bits = info[0]->Uint32Value();
-  uint64_t exp = info[1]->IntegerValue();
+  uint32_t bits = Nan::To<uint32_t>(info[0]).FromJust();
+  uint64_t exp = Nan::To<int64_t>(info[1]).FromJust();
 
   v8::Local<v8::Function> callback = info[2].As<v8::Function>();
 
@@ -984,7 +984,7 @@ NAN_METHOD(BRSA::SignPSS) {
     if (!info[10]->IsNumber())
       return Nan::ThrowTypeError("Eleventh argument must be a number.");
 
-    salt_len = (int)info[10]->Uint32Value();
+    salt_len = (int)Nan::To<uint32_t>(info[10]).FromJust();
   }
 
   uint8_t *sig;
@@ -1040,7 +1040,7 @@ NAN_METHOD(BRSA::VerifyPSS) {
     if (!info[5]->IsNumber())
       return Nan::ThrowTypeError("Sixth argument must be a number.");
 
-    salt_len = (int)info[5]->Uint32Value();
+    salt_len = (int)Nan::To<uint32_t>(info[5]).FromJust();
   }
 
   bool result = bcrypto_rsa_verify_pss(alg, md, ml, sd, sl, &pub, salt_len);
@@ -1173,7 +1173,7 @@ NAN_METHOD(BRSA::Veil) {
   const uint8_t *md = (const uint8_t *)node::Buffer::Data(mbuf);
   size_t ml = node::Buffer::Length(mbuf);
 
-  size_t bits = (size_t)info[1]->Uint32Value();
+  size_t bits = (size_t)Nan::To<uint32_t>(info[1]).FromJust();
 
   bcrypto_rsa_key_t pub;
   bcrypto_rsa_key_init(&pub);
@@ -1217,7 +1217,7 @@ NAN_METHOD(BRSA::Unveil) {
   const uint8_t *md = (const uint8_t *)node::Buffer::Data(mbuf);
   size_t ml = node::Buffer::Length(mbuf);
 
-  size_t bits = (size_t)info[1]->Uint32Value();
+  size_t bits = (size_t)Nan::To<uint32_t>(info[1]).FromJust();
 
   bcrypto_rsa_key_t pub;
   bcrypto_rsa_key_init(&pub);

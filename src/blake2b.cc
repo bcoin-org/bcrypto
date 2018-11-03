@@ -52,7 +52,7 @@ NAN_METHOD(BBLAKE2b::Init) {
     if (!info[0]->IsNumber())
       return Nan::ThrowTypeError("First argument must be a number.");
 
-    outlen = info[0]->Uint32Value();
+    outlen = Nan::To<uint32_t>(info[0]).FromJust();
 
     if (outlen == 0 || outlen > BCRYPTO_BLAKE2B_OUTBYTES)
       return Nan::ThrowRangeError("Invalid output length.");
@@ -136,7 +136,7 @@ NAN_METHOD(BBLAKE2b::Digest) {
     if (!info[1]->IsNumber())
       return Nan::ThrowTypeError("Second argument must be a number.");
 
-    outlen = info[1]->Uint32Value();
+    outlen = Nan::To<uint32_t>(info[1]).FromJust();
 
     if (outlen == 0 || outlen > BCRYPTO_BLAKE2B_OUTBYTES)
       return Nan::ThrowRangeError("Invalid output length.");
@@ -199,7 +199,7 @@ NAN_METHOD(BBLAKE2b::Root) {
     if (!info[2]->IsNumber())
       return Nan::ThrowTypeError("Third argument must be a number.");
 
-    outlen = info[2]->Uint32Value();
+    outlen = Nan::To<uint32_t>(info[2]).FromJust();
   }
 
   if (leftlen != outlen || rightlen != outlen)
@@ -258,7 +258,7 @@ NAN_METHOD(BBLAKE2b::Multi) {
     if (!info[3]->IsNumber())
       return Nan::ThrowTypeError("Fourth argument must be a number.");
 
-    outlen = info[3]->Uint32Value();
+    outlen = Nan::To<uint32_t>(info[3]).FromJust();
   }
 
   bcrypto_blake2b_ctx ctx;

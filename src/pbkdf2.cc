@@ -51,8 +51,8 @@ NAN_METHOD(BPBKDF2::Derive) {
   size_t datalen = (size_t)node::Buffer::Length(kbuf);
   const uint8_t *salt = (const uint8_t *)node::Buffer::Data(sbuf);
   size_t saltlen = (size_t)node::Buffer::Length(sbuf);
-  uint32_t iter = info[3]->Uint32Value();
-  size_t keylen = (size_t)info[4]->Uint32Value();
+  uint32_t iter = Nan::To<uint32_t>(info[3]).FromJust();
+  size_t keylen = (size_t)Nan::To<uint32_t>(info[4]).FromJust();
 
   uint8_t *key = (uint8_t *)malloc(keylen);
 
@@ -108,8 +108,8 @@ NAN_METHOD(BPBKDF2::DeriveAsync) {
   size_t datalen = (size_t)node::Buffer::Length(dbuf);
   const uint8_t *salt = (const uint8_t *)node::Buffer::Data(sbuf);
   size_t saltlen = (size_t)node::Buffer::Length(sbuf);
-  uint32_t iter = info[3]->Uint32Value();
-  size_t keylen = (size_t)info[4]->Uint32Value();
+  uint32_t iter = Nan::To<uint32_t>(info[3]).FromJust();
+  size_t keylen = (size_t)Nan::To<uint32_t>(info[4]).FromJust();
 
   BPBKDF2Worker *worker = new BPBKDF2Worker(
     dbuf,

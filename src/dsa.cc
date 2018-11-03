@@ -48,7 +48,7 @@ NAN_METHOD(BDSA::ParamsGenerate) {
   if (!info[0]->IsNumber())
     return Nan::ThrowTypeError("First argument must be a number.");
 
-  uint32_t bits = info[0]->Uint32Value();
+  uint32_t bits = Nan::To<uint32_t>(info[0]).FromJust();
 
   bcrypto_dsa_key_t *k = bcrypto_dsa_params_generate((int)bits);
 
@@ -75,7 +75,7 @@ NAN_METHOD(BDSA::ParamsGenerateAsync) {
   if (!info[1]->IsFunction())
     return Nan::ThrowTypeError("Second argument must be a function.");
 
-  uint32_t bits = info[0]->Uint32Value();
+  uint32_t bits = Nan::To<uint32_t>(info[0]).FromJust();
 
   v8::Local<v8::Function> callback = info[1].As<v8::Function>();
 

@@ -52,7 +52,7 @@ NAN_METHOD(BKeccak::Init) {
     if (!info[0]->IsNumber())
       return Nan::ThrowTypeError("First argument must be a number.");
 
-    bits = info[0]->Uint32Value();
+    bits = Nan::To<uint32_t>(info[0]).FromJust();
   }
 
   if (!bcrypto_keccak_init(&keccak->ctx, bits))
@@ -89,7 +89,7 @@ NAN_METHOD(BKeccak::Final) {
     if (!info[0]->IsNumber())
       return Nan::ThrowTypeError("First argument must be a number.");
 
-    pad = (int)info[0]->Uint32Value();
+    pad = (int)Nan::To<uint32_t>(info[0]).FromJust();
   }
 
   size_t outlen = 0;
@@ -98,7 +98,7 @@ NAN_METHOD(BKeccak::Final) {
     if (!info[1]->IsNumber())
       return Nan::ThrowTypeError("Second argument must be a number.");
 
-    outlen = (size_t)info[1]->Uint32Value();
+    outlen = (size_t)Nan::To<uint32_t>(info[1]).FromJust();
   }
 
   uint8_t out[64];
@@ -128,7 +128,7 @@ NAN_METHOD(BKeccak::Digest) {
     if (!info[1]->IsNumber())
       return Nan::ThrowTypeError("Second argument must be a number.");
 
-    bits = info[1]->Uint32Value();
+    bits = Nan::To<uint32_t>(info[1]).FromJust();
   }
 
   int pad = 0x01;
@@ -137,7 +137,7 @@ NAN_METHOD(BKeccak::Digest) {
     if (!info[2]->IsNumber())
       return Nan::ThrowTypeError("Third argument must be a number.");
 
-    pad = (int)info[2]->Uint32Value();
+    pad = (int)Nan::To<uint32_t>(info[2]).FromJust();
   }
 
   size_t outlen = 0;
@@ -146,7 +146,7 @@ NAN_METHOD(BKeccak::Digest) {
     if (!info[3]->IsNumber())
       return Nan::ThrowTypeError("Fourth argument must be a number.");
 
-    outlen = (size_t)info[3]->Uint32Value();
+    outlen = (size_t)Nan::To<uint32_t>(info[3]).FromJust();
   }
 
   bcrypto_keccak_ctx ctx;
@@ -190,7 +190,7 @@ NAN_METHOD(BKeccak::Root) {
     if (!info[2]->IsNumber())
       return Nan::ThrowTypeError("Third argument must be a number.");
 
-    bits = info[2]->Uint32Value();
+    bits = Nan::To<uint32_t>(info[2]).FromJust();
   }
 
   int pad = 0x01;
@@ -199,7 +199,7 @@ NAN_METHOD(BKeccak::Root) {
     if (!info[3]->IsNumber())
       return Nan::ThrowTypeError("Fourth argument must be a number.");
 
-    pad = (int)info[3]->Uint32Value();
+    pad = (int)Nan::To<uint32_t>(info[3]).FromJust();
   }
 
   size_t outlen = 0;
@@ -208,7 +208,7 @@ NAN_METHOD(BKeccak::Root) {
     if (!info[4]->IsNumber())
       return Nan::ThrowTypeError("Fifth argument must be a number.");
 
-    outlen = (size_t)info[4]->Uint32Value();
+    outlen = (size_t)Nan::To<uint32_t>(info[4]).FromJust();
   }
 
   if (outlen != 0) {
@@ -274,7 +274,7 @@ NAN_METHOD(BKeccak::Multi) {
     if (!info[3]->IsNumber())
       return Nan::ThrowTypeError("Fourth argument must be a number.");
 
-    bits = info[3]->Uint32Value();
+    bits = Nan::To<uint32_t>(info[3]).FromJust();
   }
 
   int pad = 0x01;
@@ -283,7 +283,7 @@ NAN_METHOD(BKeccak::Multi) {
     if (!info[4]->IsNumber())
       return Nan::ThrowTypeError("Fifth argument must be a number.");
 
-    pad = (int)info[4]->Uint32Value();
+    pad = (int)Nan::To<uint32_t>(info[4]).FromJust();
   }
 
   size_t outlen = 0;
@@ -292,7 +292,7 @@ NAN_METHOD(BKeccak::Multi) {
     if (!info[5]->IsNumber())
       return Nan::ThrowTypeError("Fifth argument must be a number.");
 
-    outlen = (size_t)info[5]->Uint32Value();
+    outlen = (size_t)Nan::To<uint32_t>(info[5]).FromJust();
   }
 
   bcrypto_keccak_ctx ctx;

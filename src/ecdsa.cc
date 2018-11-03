@@ -75,7 +75,7 @@ NAN_METHOD(BECDSA::PrivateKeyExport) {
     if (!info[2]->IsBoolean())
       return Nan::ThrowTypeError("Third argument must be a boolean.");
 
-    compress = info[2]->BooleanValue();
+    compress = Nan::To<bool>(info[2]).FromJust();
   }
 
   const uint8_t *pd = (const uint8_t *)node::Buffer::Data(pbuf);
@@ -140,7 +140,7 @@ NAN_METHOD(BECDSA::PrivateKeyExportPKCS8) {
     if (!info[2]->IsBoolean())
       return Nan::ThrowTypeError("Third argument must be a boolean.");
 
-    compress = info[2]->BooleanValue();
+    compress = Nan::To<bool>(info[2]).FromJust();
   }
 
   const uint8_t *pd = (const uint8_t *)node::Buffer::Data(pbuf);
@@ -245,7 +245,7 @@ NAN_METHOD(BECDSA::PublicKeyCreate) {
     if (!info[2]->IsBoolean())
       return Nan::ThrowTypeError("Third argument must be a boolean.");
 
-    compress = info[2]->BooleanValue();
+    compress = Nan::To<bool>(info[2]).FromJust();
   }
 
   const uint8_t *pd = (const uint8_t *)node::Buffer::Data(pbuf);
@@ -285,7 +285,7 @@ NAN_METHOD(BECDSA::PublicKeyConvert) {
     if (!info[2]->IsBoolean())
       return Nan::ThrowTypeError("Third argument must be a boolean.");
 
-    compress = info[2]->BooleanValue();
+    compress = Nan::To<bool>(info[2]).FromJust();
   }
 
   const uint8_t *pd = (const uint8_t *)node::Buffer::Data(pbuf);
@@ -348,7 +348,7 @@ NAN_METHOD(BECDSA::PublicKeyExportSPKI) {
     if (!info[2]->IsBoolean())
       return Nan::ThrowTypeError("Third argument must be a boolean.");
 
-    compress = info[2]->BooleanValue();
+    compress = Nan::To<bool>(info[2]).FromJust();
   }
 
   const uint8_t *pd = (const uint8_t *)node::Buffer::Data(pbuf);
@@ -388,7 +388,7 @@ NAN_METHOD(BECDSA::PublicKeyImportSPKI) {
     if (!info[2]->IsBoolean())
       return Nan::ThrowTypeError("Third argument must be a boolean.");
 
-    compress = info[2]->BooleanValue();
+    compress = Nan::To<bool>(info[2]).FromJust();
   }
 
   const uint8_t *rd = (const uint8_t *)node::Buffer::Data(rbuf);
@@ -428,7 +428,7 @@ NAN_METHOD(BECDSA::PublicKeyTweakAdd) {
     if (!info[3]->IsBoolean())
       return Nan::ThrowTypeError("Fourth argument must be a boolean.");
 
-    compress = info[3]->BooleanValue();
+    compress = Nan::To<bool>(info[3]).FromJust();
   }
 
   const uint8_t *pd = (const uint8_t *)node::Buffer::Data(pbuf);
@@ -553,14 +553,14 @@ NAN_METHOD(BECDSA::Recover) {
   if (!info[4]->IsNumber())
     return Nan::ThrowTypeError("Fifth argument must be a number.");
 
-  int param = (int)info[4]->Uint32Value();
+  int param = (int)Nan::To<uint32_t>(info[4]).FromJust();
   bool compress = true;
 
   if (info.Length() > 5 && !IsNull(info[5])) {
     if (!info[5]->IsBoolean())
       return Nan::ThrowTypeError("Sixth argument must be a boolean.");
 
-    compress = info[5]->BooleanValue();
+    compress = Nan::To<bool>(info[5]).FromJust();
   }
 
   const uint8_t *md = (const uint8_t *)node::Buffer::Data(mbuf);
@@ -609,7 +609,7 @@ NAN_METHOD(BECDSA::Derive) {
     if (!info[3]->IsBoolean())
       return Nan::ThrowTypeError("Fourth argument must be a boolean.");
 
-    compress = info[3]->BooleanValue();
+    compress = Nan::To<bool>(info[3]).FromJust();
   }
 
   const uint8_t *kd = (const uint8_t *)node::Buffer::Data(kbuf);

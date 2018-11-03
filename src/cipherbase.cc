@@ -74,7 +74,7 @@ NAN_METHOD(BCipherBase::New) {
 
   Nan::Utf8String name_(info[0]);
   const char *name = (const char *)*name_;
-  bool encrypt = info[1]->BooleanValue();
+  bool encrypt = Nan::To<bool>(info[1]).FromJust();
 
   const EVP_CIPHER *type = EVP_get_cipherbyname(name);
 

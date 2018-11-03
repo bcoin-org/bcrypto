@@ -79,7 +79,7 @@ NAN_METHOD(BChaCha20::Init) {
     if (!info[2]->IsNumber())
       return Nan::ThrowTypeError("Third argument must be a number.");
 
-    ctr = (uint64_t)info[2]->IntegerValue();
+    ctr = (uint64_t)Nan::To<int64_t>(info[2]).FromJust();
   }
 
   bcrypto_chacha20_keysetup(&chacha->ctx, key, 32);
@@ -134,7 +134,7 @@ NAN_METHOD(BChaCha20::InitIV) {
     if (!info[1]->IsNumber())
       return Nan::ThrowTypeError("Second argument must be a number.");
 
-    ctr = (uint64_t)info[1]->IntegerValue();
+    ctr = (uint64_t)Nan::To<int64_t>(info[1]).FromJust();
   }
 
   bcrypto_chacha20_ivsetup(&chacha->ctx, iv, iv_len);
@@ -200,7 +200,7 @@ NAN_METHOD(BChaCha20::SetCounter) {
   if (!info[0]->IsNumber())
     return Nan::ThrowError("First argument must be a number.");
 
-  bcrypto_chacha20_counter_set(&chacha->ctx, (uint64_t)info[0]->IntegerValue());
+  bcrypto_chacha20_counter_set(&chacha->ctx, (uint64_t)Nan::To<int64_t>(info[0]).FromJust());
 
   info.GetReturnValue().Set(info.This());
 }

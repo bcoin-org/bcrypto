@@ -49,10 +49,10 @@ NAN_METHOD(BScrypt::Derive) {
   uint32_t passlen = (uint32_t)node::Buffer::Length(pbuf);
   const uint8_t *salt = (const uint8_t *)node::Buffer::Data(sbuf);
   size_t saltlen = (size_t)node::Buffer::Length(sbuf);
-  uint64_t N = (uint64_t)info[2]->IntegerValue();
-  uint64_t r = (uint64_t)info[3]->IntegerValue();
-  uint64_t p = (uint64_t)info[4]->IntegerValue();
-  size_t keylen = (size_t)info[5]->IntegerValue();
+  uint64_t N = (uint64_t)Nan::To<int64_t>(info[2]).FromJust();
+  uint64_t r = (uint64_t)Nan::To<int64_t>(info[3]).FromJust();
+  uint64_t p = (uint64_t)Nan::To<int64_t>(info[4]).FromJust();
+  size_t keylen = (size_t)Nan::To<int64_t>(info[5]).FromJust();
 
   uint8_t *key = (uint8_t *)malloc(keylen);
 
@@ -103,10 +103,10 @@ NAN_METHOD(BScrypt::DeriveAsync) {
   uint32_t passlen = (uint32_t)node::Buffer::Length(pbuf);
   const uint8_t *salt = (const uint8_t *)node::Buffer::Data(sbuf);
   size_t saltlen = (size_t)node::Buffer::Length(sbuf);
-  uint64_t N = (uint64_t)info[2]->IntegerValue();
-  uint64_t r = (uint64_t)info[3]->IntegerValue();
-  uint64_t p = (uint64_t)info[4]->IntegerValue();
-  size_t keylen = (size_t)info[5]->IntegerValue();
+  uint64_t N = (uint64_t)Nan::To<int64_t>(info[2]).FromJust();
+  uint64_t r = (uint64_t)Nan::To<int64_t>(info[3]).FromJust();
+  uint64_t p = (uint64_t)Nan::To<int64_t>(info[4]).FromJust();
+  size_t keylen = (size_t)Nan::To<int64_t>(info[5]).FromJust();
 
   BScryptWorker *worker = new BScryptWorker(
     pbuf,
