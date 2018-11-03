@@ -143,7 +143,7 @@
           "OS=='win'", {
             "with_gmp%": "false"
           }, {
-            "with_gmp%": "<!(vendor/secp256k1/utils/has_lib.sh gmpxx && vendor/secp256k1/utils/has_lib.sh gmp)"
+            "with_gmp%": "<!(vendor/secp256k1/utils/has_lib.sh gmpxx gmp)"
           }
         ]
       ]
