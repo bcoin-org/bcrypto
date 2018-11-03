@@ -138,5 +138,10 @@ NAN_METHOD(BPBKDF2::HasHash) {
   const char *alg = (const char *)*alg_;
   bool result = bcrypto_pbkdf2_has_hash(alg);
 
+  if (!result) {
+    if (strcmp(alg, "SHA256") == 0 || strcmp(alg, "SHA512") == 0)
+      return Nan::ThrowError("Algorithms not loaded for PBKDF2.");
+  }
+
   return info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }

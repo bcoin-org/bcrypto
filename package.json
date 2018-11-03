@@ -20,7 +20,7 @@
   "scripts": {
     "install": "node-gyp rebuild || echo 'Build failed.'",
     "lint": "eslint bench/ lib/ test/ || exit 0",
-    "test": "BCRYPTO_TEST=1 mocha --reporter spec test/*-test.js",
+    "test": "node ./test/post.js && BCRYPTO_TEST=1 mocha --reporter spec test/*-test.js",
     "test-file": "BCRYPTO_TEST=1 mocha --reporter spec"
   },
   "dependencies": {

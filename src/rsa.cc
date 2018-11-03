@@ -1249,6 +1249,9 @@ NAN_METHOD(BRSA::HasHash) {
   const char *alg = (const char *)*alg_;
   bool result = bcrypto_rsa_has_hash(alg);
 
+  if (!result && strcmp(alg, "SHA256") == 0)
+    return Nan::ThrowError("Algorithms not loaded for RSA.");
+
   return info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
 #endif

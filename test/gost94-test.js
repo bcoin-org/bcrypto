@@ -128,6 +128,8 @@ function testHash(msg, expect, enc, box) {
 }
 
 describe('GOST94', function() {
+  this.timeout(10000);
+
   for (const [msg, expect, enc] of vectors_cryptopro) {
     it(`should get GOST94 hash of ${expect}`, () => {
       testHash(msg, expect, enc, GOST94.CRYPTOPRO);

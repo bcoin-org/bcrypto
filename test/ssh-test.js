@@ -28,6 +28,8 @@ const privs = [
 const PASSPHRASE = '1234567890';
 
 describe('SSH', function() {
+  this.timeout(60000);
+
   for (const file of pubs) {
     const str = fs.readFileSync(file, 'utf8');
 

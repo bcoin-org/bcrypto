@@ -12,11 +12,14 @@ const rsaies = require('../lib/rsaies');
 // const vectors = require('./data/rsaies.json');
 
 describe('RSAIES', function() {
-  this.timeout(30000);
+  this.timeout(120000);
 
   const badPriv = rsa.privateKeyGenerate(1024);
 
   for (const size of [1024, 2048, 4096]) {
+    if (size > 1024 && rsa.native < 2)
+      continue;
+
     it(`should encrypt and decrypt (${size})`, () => {
       const priv = rsa.privateKeyGenerate(size);
       const pub = rsa.publicKeyCreate(priv);
@@ -45,7 +48,7 @@ describe('RSAIES', function() {
 
       ct[1] ^= 1;
       assert.throws(() => {
-        dsaies.decrypt(SHA256, ct, priv, 4096);
+        rsaies.decrypt(SHA256, ct, priv, 4096);
       });
       ct[1] ^= 1;
     });

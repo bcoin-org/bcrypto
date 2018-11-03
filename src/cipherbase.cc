@@ -8,6 +8,16 @@ static bool IsValidGCMTagLength(unsigned int tag_len) {
   return tag_len == 4 || tag_len == 8 || (tag_len >= 12 && tag_len <= 16);
 }
 
+#if NODE_MAJOR_VERSION < 10
+#define BCRYPTO_AEAD_SET_IVLEN EVP_CTRL_GCM_SET_IVLEN
+#define BCRYPTO_AEAD_SET_TAG EVP_CTRL_GCM_SET_TAG
+#define BCRYPTO_AEAD_GET_TAG EVP_CTRL_GCM_GET_TAG
+#else
+#define BCRYPTO_AEAD_SET_IVLEN EVP_CTRL_AEAD_SET_IVLEN
+#define BCRYPTO_AEAD_SET_TAG EVP_CTRL_AEAD_SET_TAG
+#define BCRYPTO_AEAD_GET_TAG EVP_CTRL_AEAD_GET_TAG
+#endif
+
 BCipherBase::BCipherBase() {
   type = NULL;
   encrypt = false;
@@ -146,7 +156,7 @@ NAN_METHOD(BCipherBase::Init) {
 
   if (mode == EVP_CIPH_GCM_MODE) {
     if (!EVP_CIPHER_CTX_ctrl(cipher->ctx,
-                             EVP_CTRL_AEAD_SET_IVLEN,
+                             BCRYPTO_AEAD_SET_IVLEN,
                              iv_len,
                              NULL)) {
       return Nan::ThrowError("Failed to initialize cipher.");
@@ -286,7 +296,7 @@ NAN_METHOD(BCipherBase::GetAuthTag) {
 
   uint8_t tag[16];
 
-  int r = EVP_CIPHER_CTX_ctrl(cipher->ctx, EVP_CTRL_AEAD_GET_TAG,
+  int r = EVP_CIPHER_CTX_ctrl(cipher->ctx, BCRYPTO_AEAD_GET_TAG,
                               16, (unsigned char *)tag);
 
   if (r != 1)
@@ -325,7 +335,7 @@ NAN_METHOD(BCipherBase::SetAuthTag) {
     return Nan::ThrowError("Cannot set auth tag when encrypting.");
 
   int r = EVP_CIPHER_CTX_ctrl(cipher->ctx,
-                              EVP_CTRL_AEAD_SET_TAG,
+                              BCRYPTO_AEAD_SET_TAG,
                               len,
                               (unsigned char *)data);
 
@@ -345,6 +355,9 @@ NAN_METHOD(BCipherBase::HasCipher) {
   Nan::Utf8String name_(info[0]);
   const char *name = (const char *)*name_;
   bool result = EVP_get_cipherbyname(name) != NULL;
+
+  if (!result && strcasecmp(name, "AES-256-CBC") == 0)
+    return Nan::ThrowError("Algorithms not loaded for Cipher.");
 
   return info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }

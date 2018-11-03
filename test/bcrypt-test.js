@@ -16,6 +16,8 @@ const test = {
 };
 
 describe('Bcrypt', function() {
+  this.timeout(10000);
+
   it('should derive key', () => {
     const key = bcrypt.pbkdf(
       Buffer.from(test.pass, 'binary'),

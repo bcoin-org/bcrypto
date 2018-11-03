@@ -63,6 +63,13 @@ NAN_METHOD(cleanse) {
 }
 
 NAN_MODULE_INIT(init) {
+  target->Set(Nan::New("major").ToLocalChecked(),
+              Nan::New<v8::Uint32>(NODE_MAJOR_VERSION));
+  target->Set(Nan::New("minor").ToLocalChecked(),
+              Nan::New<v8::Uint32>(NODE_MINOR_VERSION));
+  target->Set(Nan::New("patch").ToLocalChecked(),
+              Nan::New<v8::Uint32>(NODE_PATCH_VERSION));
+
   BAEAD::Init(target);
   BAES::Init(target);
   BBLAKE2b::Init(target);

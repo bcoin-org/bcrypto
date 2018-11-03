@@ -7,7 +7,11 @@ const assert = require('./util/assert');
 const crypto = require('crypto');
 const {Cipher, Decipher} = require('../lib/cipher');
 const random = require('../lib/random');
-const NODE_MAJOR = parseInt(process.version.substring(1).split('.')[0], 10);
+
+const parts = process.version.split(/[^\d]/);
+const major = parts[1] >>> 0;
+const minor = parts[2] >>> 0;
+const NODE_TEN = major >= 10 && minor >= 12;
 
 const algs = [
   {
@@ -20,7 +24,7 @@ const algs = [
       'AES-128-CTR',
       'AES-128-CFB',
       'AES-128-OFB',
-      'AES-128-GCM'
+      NODE_TEN && 'AES-128-GCM'
     ]
   },
   {
@@ -33,7 +37,7 @@ const algs = [
       'AES-192-CTR',
       'AES-192-CFB',
       'AES-192-OFB',
-      'AES-192-GCM'
+      NODE_TEN && 'AES-192-GCM'
     ]
   },
   {
@@ -46,7 +50,7 @@ const algs = [
       'AES-256-CTR',
       'AES-256-CFB',
       'AES-256-OFB',
-      'AES-256-GCM'
+      NODE_TEN && 'AES-256-GCM'
     ]
   },
   {
@@ -67,9 +71,9 @@ const algs = [
     ids: [
       'CAMELLIA-128-ECB',
       'CAMELLIA-128-CBC',
-      'CAMELLIA-128-CTR',
-      'CAMELLIA-128-CFB',
-      'CAMELLIA-128-OFB'
+      NODE_TEN && 'CAMELLIA-128-CTR',
+      NODE_TEN && 'CAMELLIA-128-CFB',
+      NODE_TEN && 'CAMELLIA-128-OFB'
     ]
   },
   {
@@ -79,9 +83,9 @@ const algs = [
     ids: [
       'CAMELLIA-192-ECB',
       'CAMELLIA-192-CBC',
-      'CAMELLIA-192-CTR',
-      'CAMELLIA-192-CFB',
-      'CAMELLIA-192-OFB'
+      NODE_TEN && 'CAMELLIA-192-CTR',
+      NODE_TEN && 'CAMELLIA-192-CFB',
+      NODE_TEN && 'CAMELLIA-192-OFB'
     ]
   },
   {
@@ -91,9 +95,9 @@ const algs = [
     ids: [
       'CAMELLIA-256-ECB',
       'CAMELLIA-256-CBC',
-      'CAMELLIA-256-CTR',
-      'CAMELLIA-256-CFB',
-      'CAMELLIA-256-OFB'
+      NODE_TEN && 'CAMELLIA-256-CTR',
+      NODE_TEN && 'CAMELLIA-256-CFB',
+      NODE_TEN && 'CAMELLIA-256-OFB'
     ]
   },
   {
@@ -142,7 +146,7 @@ const algs = [
     keyLen: 16,
     ivLen: 8,
     ids: [
-      'DES-EDE-ECB',
+      NODE_TEN && 'DES-EDE-ECB',
       'DES-EDE-CBC',
       'DES-EDE-CFB',
       'DES-EDE-OFB'
@@ -153,19 +157,13 @@ const algs = [
     keyLen: 24,
     ivLen: 8,
     ids: [
-      'DES-EDE3-ECB',
+      NODE_TEN && 'DES-EDE3-ECB',
       'DES-EDE3-CBC',
       'DES-EDE3-CFB',
       'DES-EDE3-OFB'
     ]
   }
 ];
-
-// node<10 has no support for triple-des ecb.
-if (NODE_MAJOR < 10) {
-  algs[algs.length - 2].ids.shift();
-  algs[algs.length - 1].ids.shift();
-}
 
 const key = Buffer.from(
   '3a0c0bf669694ac7685e6806eeadee8e56c9b9bd22c3caa81c718ed4bbf809a1',
@@ -264,6 +262,9 @@ describe('Cipher', function() {
   for (const alg of algs) {
     describe(alg.name, function() {
       for (const id of alg.ids) {
+        if (!id)
+          continue;
+
         for (let i = 0; i < 50; i++) {
           const {key, iv, data, expect} = testVector(id, alg.keyLen, alg.ivLen);
           const hex = data.toString('hex', 0, 32);

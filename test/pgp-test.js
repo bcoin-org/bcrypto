@@ -281,7 +281,7 @@ const secring = read('secring.gpg');
 const secringArmor = read('secring.asc', 'utf8');
 
 describe('PGP', function() {
-  this.timeout(10000);
+  this.timeout(30000);
 
   for (const key of keys) {
     it('should deserialize and reserialize keyrings', () => {
