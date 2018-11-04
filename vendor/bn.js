@@ -20,6 +20,8 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 // IN THE SOFTWARE.
 
+const {custom} = require('../lib/internal/custom');
+
 (function (module, exports) {
   'use strict';
 
@@ -69,12 +71,6 @@
 
   BN.BN = BN;
   BN.wordSize = 26;
-
-  var Buffer;
-  try {
-    Buffer = require('buffer').Buffer;
-  } catch (e) {
-  }
 
   BN.isBN = function isBN (num) {
     if (num instanceof BN) {
@@ -385,7 +381,7 @@
     return this;
   };
 
-  BN.prototype.inspect = function inspect () {
+  BN.prototype[custom] = function () {
     return (this.red ? '<BN-R: ' : '<BN: ') + this.toString(16) + '>';
   };
 
@@ -552,11 +548,9 @@
     return this.toString(16, 2);
   };
 
-  if (Buffer) {
-    BN.prototype.toBuffer = function toBuffer (endian, length) {
-      return this.toArrayLike(Buffer, endian, length);
-    };
-  }
+  BN.prototype.toBuffer = function toBuffer (endian, length) {
+    return this.toArrayLike(Buffer, endian, length);
+  };
 
   BN.prototype.toArray = function toArray (endian, length) {
     return this.toArrayLike(Array, endian, length);
