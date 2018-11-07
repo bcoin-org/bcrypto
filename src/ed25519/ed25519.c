@@ -203,3 +203,85 @@ bcrypto_ed25519_pubkey_convert(
 
   return 0;
 }
+
+// For when openssl supports:
+//   EVP_PKEY_new_raw_private_key
+//   EVP_PKEY_new_raw_public_key
+#if 0
+#include <assert.h>
+#include <openssl/evp.h>
+#include <openssl/objects.h>
+
+static int
+bcrypto_x25519(unsigned char *shared_key,
+               const unsigned char *private_key,
+               const unsigned char *public_key) {
+  int r = 0;
+  ENGINE *eng = NULL;
+  EVP_PKEY *pkey = NULL;
+  EVP_PKEY *peerkey = NULL;
+  EVP_PKEY_CTX *ctx = NULL;
+  unsigned char *skey = NULL;
+  size_t skeylen = 0;
+
+  pkey = EVP_PKEY_new_raw_private_key(NID_X25519, eng, private_key, 32);
+
+  if (!pkey)
+    goto fail;
+
+  peerkey = EVP_PKEY_new_raw_public_key(NID_X25519, eng, public_key, 32);
+
+  if (!peerkey)
+    goto fail;
+
+  ctx = EVP_PKEY_CTX_new(pkey, eng);
+
+  if (!ctx)
+    goto fail;
+
+  if (EVP_PKEY_derive_init(ctx) <= 0)
+    goto fail;
+
+  if (EVP_PKEY_derive_set_peer(ctx, peerkey) <= 0)
+    goto fail;
+
+  if (EVP_PKEY_derive(ctx, NULL, &skeylen) <= 0)
+    goto fail;
+
+  if (skeylen != 32)
+    goto fail;
+
+  if (EVP_PKEY_derive(ctx, shared_key, &skeylen) <= 0)
+    goto fail;
+
+  assert(skeylen == 32);
+
+  r = 1;
+fail:
+  if (ctx)
+    EVP_PKEY_CTX_free(ctx);
+
+  if (peerkey)
+    EVP_PKEY_free(peerkey);
+
+  if (pkey)
+    EVP_PKEY_free(pkey);
+
+  return r;
+}
+
+int
+bcrypto_ed25519_exchange(
+  bcrypto_curved25519_key out,
+  const bcrypto_curved25519_key xpub,
+  const bcrypto_ed25519_secret_key sk
+) {
+  hash_512bits extsk;
+  bcrypto_ed25519_extsk(extsk, sk);
+
+  if (!bcrypto_x25519(out, extsk, xpub))
+    return -1;
+
+  return 0;
+}
+#endif
