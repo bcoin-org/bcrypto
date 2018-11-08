@@ -85,6 +85,27 @@ describe('EdDSA', function() {
     assert.bufferEqual(bobSecret, secret);
   });
 
+  it('should generate keypair and sign with tweak', () => {
+    const key = ed25519.privateKeyGenerate();
+    const pub = ed25519.publicKeyCreate(key);
+    const tweak = random.randomBytes(32);
+    const child = ed25519.publicKeyTweakAdd(pub, tweak);
+    const msg = random.randomBytes(32);
+    const sig = ed25519.signTweak(msg, key, tweak);
+
+    assert(ed25519.verify(msg, sig, child));
+  });
+
+  it('should convert to montgomery and back', () => {
+    const secret = ed25519.privateKeyGenerate();
+    const pub = ed25519.publicKeyCreate(secret);
+    const sign = (pub[31] & 0x80) !== 0;
+    const xpub = ed25519.publicKeyConvert(pub);
+    const pub2 = ed25519.publicKeyDeconvert(xpub, sign);
+
+    assert.bufferEqual(pub2, pub);
+  });
+
   describe('ed25519 derivations', () => {
     for (const [i, test] of derivations.entries()) {
       it(`should compute correct a and A for secret: ${i}`, () => {
