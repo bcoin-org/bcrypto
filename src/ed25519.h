@@ -10,11 +10,17 @@ public:
 
 private:
   static NAN_METHOD(PrivateKeyConvert);
+  static NAN_METHOD(PrivateKeyTweakAdd);
   static NAN_METHOD(PublicKeyCreate);
   static NAN_METHOD(PublicKeyConvert);
+  static NAN_METHOD(PublicKeyDeconvert);
   static NAN_METHOD(PublicKeyVerify);
+  static NAN_METHOD(PublicKeyTweakAdd);
   static NAN_METHOD(Sign);
+  static NAN_METHOD(SignTweak);
   static NAN_METHOD(Verify);
+  static NAN_METHOD(Derive);
+  static NAN_METHOD(Exchange);
 };
 
 #endif

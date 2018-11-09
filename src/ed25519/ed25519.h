@@ -69,6 +69,51 @@ bcrypto_ed25519_pubkey_convert(
   const bcrypto_ed25519_public_key pk
 );
 
+int
+bcrypto_ed25519_pubkey_deconvert(
+  bcrypto_ed25519_public_key out,
+  const bcrypto_curved25519_key pk,
+  int sign
+);
+
+int
+bcrypto_ed25519_derive(
+  bcrypto_curved25519_key out,
+  const bcrypto_ed25519_public_key pk,
+  const bcrypto_ed25519_secret_key sk
+);
+
+int
+bcrypto_ed25519_exchange(
+  bcrypto_curved25519_key out,
+  const bcrypto_curved25519_key xpk,
+  const bcrypto_ed25519_secret_key sk
+);
+
+int
+bcrypto_ed25519_privkey_tweak_add(
+  bcrypto_ed25519_secret_key out,
+  const bcrypto_ed25519_secret_key sk,
+  const bcrypto_ed25519_secret_key tweak
+);
+
+int
+bcrypto_ed25519_pubkey_tweak_add(
+  bcrypto_ed25519_public_key out,
+  const bcrypto_ed25519_public_key pk,
+  const bcrypto_ed25519_secret_key tweak
+);
+
+int
+bcrypto_ed25519_sign_tweak(
+  const unsigned char *m,
+  size_t mlen,
+  const bcrypto_ed25519_secret_key sk,
+  const bcrypto_ed25519_public_key pk,
+  const bcrypto_ed25519_secret_key tweak,
+  bcrypto_ed25519_signature RS
+);
+
 #if defined(__cplusplus)
 }
 #endif

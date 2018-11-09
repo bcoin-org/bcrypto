@@ -85,12 +85,47 @@ describe('EdDSA', function() {
     assert.bufferEqual(bobSecret, secret);
   });
 
+  it('should generate keypair and sign with tweak (vector)', () => {
+    const key = Buffer.from(
+      'd0e9d24169a720d5e3d07f71bf68802ba365be3e85c3c20f974a8dd3e0c97f79',
+      'hex');
+
+    const pub = Buffer.from(
+      'b85ea579c036d355451fc523b9e760a9a0bc21bbeda4fb86df90acdbcd39b410',
+      'hex');
+
+    const tweak = Buffer.from(
+      'fff3c02b12bf6670ada449160e3e586043766dcc7beb12e804cc375a4cd319ff',
+      'hex');
+
+    const msg = Buffer.from(
+      '03d95e0b801ab94cfe723bc5243284a32b19a629b9cb36a8a46fcc000b6e7191',
+      'hex');
+
+    const childExpect = Buffer.from(
+      '1098877517226435d2ac8021b47fc87b4b8a9d15f6a19431eae10a6576c21837',
+      'hex');
+
+    const sigExpect = Buffer.from(''
+      + '4d9c33b04ad54338658171f97d6136f3a4bbf67e13533bdd3f5d96606aef8f'
+      + 'e02adbff5b3115372beded4a725f177c5c7fa94cb91c3166084b9a5833954a'
+      + 'd20d', 'hex');
+
+    const child = ed25519.publicKeyTweakAdd(pub, tweak);
+    const sig = ed25519.signTweak(msg, key, tweak);
+
+    assert.bufferEqual(child, childExpect);
+    assert.bufferEqual(sig, sigExpect);
+
+    assert(ed25519.verify(msg, sig, child));
+  });
+
   it('should generate keypair and sign with tweak', () => {
     const key = ed25519.privateKeyGenerate();
     const pub = ed25519.publicKeyCreate(key);
     const tweak = random.randomBytes(32);
-    const child = ed25519.publicKeyTweakAdd(pub, tweak);
     const msg = random.randomBytes(32);
+    const child = ed25519.publicKeyTweakAdd(pub, tweak);
     const sig = ed25519.signTweak(msg, key, tweak);
 
     assert(ed25519.verify(msg, sig, child));
