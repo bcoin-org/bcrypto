@@ -312,9 +312,9 @@ bcrypto_ed25519_pubkey_tweak_add(
 
   ge25519_scalarmult_base_niels(&T, ge25519_niels_base_multiples, t);
 
-  // We need to negate the point here!
-  // Why? Who the hell knows?
-  // 7 hours wasted on this.
+  /* We need to negate the point here! */
+  /* Why? Who the hell knows? */
+  /* 7 hours wasted on this. */
   curve25519_neg(k.x, k.x);
   curve25519_neg(k.t, k.t);
 
