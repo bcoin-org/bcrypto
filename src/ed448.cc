@@ -259,7 +259,7 @@ NAN_METHOD(BED448::Verify) {
     ctx_len = node::Buffer::Length(cbuf);
 
     if (ctx_len > 255)
-      return Nan::ThrowRangeError("Invalid context length.");
+      return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
   }
 
   if (sig_len != EDDSA_448_SIGNATURE_BYTES || pub_len != EDDSA_448_PUBLIC_BYTES)
