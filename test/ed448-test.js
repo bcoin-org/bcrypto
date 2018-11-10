@@ -54,14 +54,55 @@ describe('Ed448', function() {
     assert.bufferEqual(aliceSecret, bobSecret);
   });
 
-  it('should convert to montgomery and back', () => {
-    const secret = ed448.privateKeyGenerate();
-    const pub = ed448.publicKeyCreate(secret);
-    const sign = (pub[56] & 0x80) !== 0;
-    const xpub = ed448.publicKeyConvert(pub);
-    const pub2 = ed448.publicKeyDeconvert(xpub, sign);
+  it('should do ECDH (vector)', () => {
+    const pub = Buffer.from(''
+      + '93890d139f2e5fedfdaa552aae92'
+      + 'e5cc5c716719c28a2e2273962d10'
+      + 'a83fc02f0205b1e2478239e4a267'
+      + 'f5edd9489a3556f48df899424b4b'
+      + '00', 'hex');
 
-    assert.bufferEqual(pub2, pub);
+    const priv = Buffer.from(''
+      + 'a18d4e50f52e78a24e68288b3496'
+      + 'd8881066a65b970ded82aac98b59'
+      + '8d062648daf289640c830e9098af'
+      + '286e8d1a19c7a1623c05d817d78c'
+      + '3d', 'hex');
+
+    const secret = Buffer.from(''
+      + '5b205505fece8945fe02482d2e89'
+      + 'e585244b3aec6af8db4e1f570d3c'
+      + '2a9f48ada996cb293e457867c9e3'
+      + 'fecdec40fe7a8d922bbdac406d0e', 'hex');
+
+    const secret2 = ed448.derive(pub, priv);
+
+    assert.bufferEqual(secret2, secret);
+
+    const xpub = ed448.publicKeyConvert(pub);
+    const secret3 = ed448.exchange(xpub, priv);
+
+    assert.bufferEqual(secret3, secret);
+  });
+
+  it('should convert to montgomery (vector)', () => {
+    const pub = Buffer.from(''
+      + '3167a5f7ce692bcf3af9094f792c'
+      + 'b3618ea034371703a3ffd222254e'
+      + '6edba0156aa236c2b3ef406e700c'
+      + '55a0beff8e141348cfd354682321'
+      + '00', 'hex');
+
+    const xpub = Buffer.from(''
+      + '439a943c1550ac472058a2083aed'
+      + '6d91f9e74a4d70807b726359d51a'
+      + '01d4fb9cb4871f3b2664f0f08e91'
+      + '9eb3afc9100de9e56a05828f1f15',
+      'hex');
+
+    const xpub2 = ed448.publicKeyConvert(pub);
+
+    assert.bufferEqual(xpub2, xpub);
   });
 
   it('should sign and verify (vector)', () => {
