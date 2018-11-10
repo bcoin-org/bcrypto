@@ -5,7 +5,7 @@
 
 const assert = require('./util/assert');
 const random = require('../lib/random');
-const ed448 = require('../lib/js/ed448');
+const ed448 = require('../lib/ed448');
 
 describe('Ed448', function() {
   this.timeout(15000);

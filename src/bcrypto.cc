@@ -22,6 +22,7 @@
 #include "ecdsa.h"
 #endif
 #include "ed25519.h"
+#include "ed448.h"
 #include "hash160.h"
 #include "hash256.h"
 #include "keccak.h"
@@ -82,6 +83,7 @@ NAN_MODULE_INIT(init) {
   BECDSA::Init(target);
 #endif
   BED25519::Init(target);
+  BED448::Init(target);
   BHash160::Init(target);
   BHash256::Init(target);
   BKeccak::Init(target);
