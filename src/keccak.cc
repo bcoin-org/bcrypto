@@ -101,7 +101,7 @@ NAN_METHOD(BKeccak::Final) {
     outlen = (size_t)Nan::To<uint32_t>(info[1]).FromJust();
   }
 
-  uint8_t out[64];
+  uint8_t out[200];
 
   if (!bcrypto_keccak_final(&keccak->ctx, pad, &outlen, out))
     return Nan::ThrowError("Could not finalize context.");
@@ -150,7 +150,7 @@ NAN_METHOD(BKeccak::Digest) {
   }
 
   bcrypto_keccak_ctx ctx;
-  uint8_t out[64];
+  uint8_t out[200];
 
   if (!bcrypto_keccak_init(&ctx, bits))
     return Nan::ThrowError("Could not initialize context.");
@@ -220,7 +220,7 @@ NAN_METHOD(BKeccak::Root) {
   }
 
   bcrypto_keccak_ctx ctx;
-  uint8_t out[64];
+  uint8_t out[200];
 
   if (!bcrypto_keccak_init(&ctx, bits))
     return Nan::ThrowError("Could not initialize context.");
@@ -296,7 +296,7 @@ NAN_METHOD(BKeccak::Multi) {
   }
 
   bcrypto_keccak_ctx ctx;
-  uint8_t out[64];
+  uint8_t out[200];
 
   if (!bcrypto_keccak_init(&ctx, bits))
     return Nan::ThrowError("Could not initialize context.");

@@ -819,7 +819,7 @@ bcrypto_keccak_final(
 
   const size_t block_size = ctx->block_size;
 
-  if (*digest_length > 64)
+  if (*digest_length > 200)
     return 0;
 
   if (*digest_length >= block_size)
