@@ -11,7 +11,6 @@
  */
 #include <string.h>
 #include "openssl/crypto.h"
-#include "openssl/evp.h"
 #include "curve448_lcl.h"
 #include "word.h"
 #include "ed448.h"

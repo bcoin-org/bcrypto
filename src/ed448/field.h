@@ -27,7 +27,7 @@
 #  define RESTRICT __restrict__
 #  define ALIGNED __attribute__((__aligned__(16)))
 # else
-#  define INLINE_UNUSED ossl_inline
+#  define INLINE_UNUSED inline
 #  define RESTRICT
 #  define ALIGNED
 # endif
@@ -74,7 +74,7 @@ mask_t gf_deserialize(gf x, const uint8_t serial[SER_BYTES], int with_hibit,
 static const gf ZERO = {{{0}}}, ONE = {{{1}}};
 
 /* Square x, n times. */
-static ossl_inline void gf_sqrn(gf_s * RESTRICT y, const gf x, int n)
+static inline void gf_sqrn(gf_s * RESTRICT y, const gf x, int n)
 {
     gf tmp;
 
@@ -96,7 +96,7 @@ static ossl_inline void gf_sqrn(gf_s * RESTRICT y, const gf x, int n)
 # define gf_add_nr gf_add_RAW
 
 /* Subtract mod p.  Bias by 2 and don't reduce  */
-static ossl_inline void gf_sub_nr(gf c, const gf a, const gf b)
+static inline void gf_sub_nr(gf c, const gf a, const gf b)
 {
     gf_sub_RAW(c, a, b);
     gf_bias(c, 2);
@@ -105,7 +105,7 @@ static ossl_inline void gf_sub_nr(gf c, const gf a, const gf b)
 }
 
 /* Subtract mod p. Bias by amt but don't reduce.  */
-static ossl_inline void gf_subx_nr(gf c, const gf a, const gf b, int amt)
+static inline void gf_subx_nr(gf c, const gf a, const gf b, int amt)
 {
     gf_sub_RAW(c, a, b);
     gf_bias(c, amt);
@@ -114,7 +114,7 @@ static ossl_inline void gf_subx_nr(gf c, const gf a, const gf b, int amt)
 }
 
 /* Mul by signed int.  Not constant-time WRT the sign of that int. */
-static ossl_inline void gf_mulw(gf c, const gf a, int32_t w)
+static inline void gf_mulw(gf c, const gf a, int32_t w)
 {
     if (w > 0) {
         gf_mulw_unsigned(c, a, w);
@@ -125,7 +125,7 @@ static ossl_inline void gf_mulw(gf c, const gf a, int32_t w)
 }
 
 /* Constant time, x = is_z ? z : y */
-static ossl_inline void gf_cond_sel(gf x, const gf y, const gf z, mask_t is_z)
+static inline void gf_cond_sel(gf x, const gf y, const gf z, mask_t is_z)
 {
     size_t i;
 
@@ -142,7 +142,7 @@ static ossl_inline void gf_cond_sel(gf x, const gf y, const gf z, mask_t is_z)
 }
 
 /* Constant time, if (neg) x=-x; */
-static ossl_inline void gf_cond_neg(gf x, mask_t neg)
+static inline void gf_cond_neg(gf x, mask_t neg)
 {
     gf y;
 
@@ -151,7 +151,7 @@ static ossl_inline void gf_cond_neg(gf x, mask_t neg)
 }
 
 /* Constant time, if (swap) (x,y) = (y,x); */
-static ossl_inline void gf_cond_swap(gf x, gf_s * RESTRICT y, mask_t swap)
+static inline void gf_cond_swap(gf x, gf_s * RESTRICT y, mask_t swap)
 {
     size_t i;
 

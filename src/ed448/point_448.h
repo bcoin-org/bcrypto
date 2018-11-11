@@ -116,7 +116,7 @@ void curve448_scalar_encode(unsigned char ser[C448_SCALAR_BYTES],
 
 /*
  * Add two scalars. |a|, |b| and |out| may alias each other.
- * 
+ *
  * a (in): One scalar.
  * b (in): Another scalar.
  * out (out): a+b.
@@ -135,7 +135,7 @@ void curve448_scalar_sub(curve448_scalar_t out,
 
 /*
  * Multiply two scalars. |a|, |b| and |out| may alias each other.
- * 
+ *
  * a (in): One scalar.
  * b (in): Another scalar.
  * out (out): a*b.
@@ -145,7 +145,7 @@ void curve448_scalar_mul(curve448_scalar_t out,
 
 /*
 * Halve a scalar.  |a| and |out| may alias each other.
-* 
+*
 * a (in): A scalar.
 * out (out): a/2.
 */
@@ -154,12 +154,12 @@ void curve448_scalar_halve(curve448_scalar_t out, const curve448_scalar_t a);
 /*
  * Copy a scalar.  The scalars may alias each other, in which case this
  * function does nothing.
- * 
+ *
  * a (in): A scalar.
  * out (out): Will become a copy of a.
  */
-static ossl_inline void curve448_scalar_copy(curve448_scalar_t out,
-                                             const curve448_scalar_t a)
+static inline void curve448_scalar_copy(curve448_scalar_t out,
+                                        const curve448_scalar_t a)
 {
     *out = *a;
 }
@@ -171,8 +171,8 @@ static ossl_inline void curve448_scalar_copy(curve448_scalar_t out,
  * a (out): A copy of the point.
  * b (in): Any point.
  */
-static ossl_inline void curve448_point_copy(curve448_point_t a,
-                                            const curve448_point_t b)
+static inline void curve448_point_copy(curve448_point_t a,
+                                       const curve448_point_t b)
 {
     *a = *b;
 }
@@ -183,13 +183,13 @@ static ossl_inline void curve448_point_copy(curve448_point_t a,
  *
  * a (in): A point.
  * b (in): Another point.
- * 
+ *
  * Returns:
  * C448_TRUE: The points are equal.
  * C448_FALSE: The points are not equal.
  */
-__owur c448_bool_t curve448_point_eq(const curve448_point_t a,
-                                     const curve448_point_t b);
+c448_bool_t curve448_point_eq(const curve448_point_t a,
+                              const curve448_point_t b);
 
 /*
  * Double a point. Equivalent to curve448_point_add(two_a,a,a), but potentially
@@ -213,9 +213,9 @@ void curve448_point_double(curve448_point_t two_a, const curve448_point_t a);
  * C448_FAILURE: The scalarmul didn't succeed, because the base point is in a
  * small subgroup.
  */
-__owur c448_error_t x448_int(uint8_t out[X448_PUBLIC_BYTES],
-                             const uint8_t base[X448_PUBLIC_BYTES],
-                             const uint8_t scalar[X448_PRIVATE_BYTES]);
+c448_error_t x448_int(uint8_t out[X448_PUBLIC_BYTES],
+                      const uint8_t base[X448_PUBLIC_BYTES],
+                      const uint8_t scalar[X448_PRIVATE_BYTES]);
 
 /*
  * Multiply a point by X448_ENCODE_RATIO, then encode it like RFC 7748.
@@ -243,7 +243,7 @@ void curve448_point_mul_by_ratio_and_encode_like_x448(
 /*
  * RFC 7748 Diffie-Hellman base point scalarmul.  This function uses a different
  * (non-Decaf) encoding.
- * 
+ *
  * out (out): The scaled point base*scalar
  * scalar (in): The scalar to multiply by.
  */
@@ -273,7 +273,7 @@ void curve448_precomputed_scalarmul(curve448_point_t scaled,
  * base2 (in): A second point to be scaled.
  * scalar2 (in) A second scalar to multiply by.
  *
- * Warning: This function takes variable time, and may leak the scalars used. 
+ * Warning: This function takes variable time, and may leak the scalars used.
  * It is designed for signature verification.
  */
 void curve448_base_double_scalarmul_non_secret(curve448_point_t combo,
@@ -290,7 +290,7 @@ void curve448_base_double_scalarmul_non_secret(curve448_point_t combo,
  * C448_TRUE The point is valid.
  * C448_FALSE The point is invalid.
  */
-__owur c448_bool_t curve448_point_valid(const curve448_point_t to_test);
+c448_bool_t curve448_point_valid(const curve448_point_t to_test);
 
 /* Overwrite scalar with zeros. */
 void curve448_scalar_destroy(curve448_scalar_t scalar);
