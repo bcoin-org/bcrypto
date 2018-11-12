@@ -17,11 +17,11 @@
 
 # define ARCH_WORD_BITS 32
 
-#define word_is_zero(a)     constant_time_is_zero_32(a)
+#define word_is_zero(a)   constant_time_is_zero_32(a)
 
 static inline uint64_t widemul(uint32_t a, uint32_t b)
 {
-    return ((uint64_t)a) * b;
+  return ((uint64_t)a) * b;
 }
 
-#endif                          /* HEADER_ARCH_32_ARCH_INTRINSICS_H */
+#endif              /* HEADER_ARCH_32_ARCH_INTRINSICS_H */

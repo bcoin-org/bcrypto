@@ -24,10 +24,10 @@
  */
 # ifndef C448_WORD_BITS
 #  if (defined(__SIZEOF_INT128__) && (__SIZEOF_INT128__ == 16)) \
-      && !defined(__sparc__)
-#   define C448_WORD_BITS 64      /* The number of bits in a word */
+    && !defined(__sparc__)
+#   define C448_WORD_BITS 64    /* The number of bits in a word */
 #  else
-#   define C448_WORD_BITS 32      /* The number of bits in a word */
+#   define C448_WORD_BITS 32    /* The number of bits in a word */
 #  endif
 # endif
 
@@ -58,21 +58,21 @@ typedef int64_t c448_dsword_t;
 # endif
 
 /* C448_TRUE = -1 so that C448_TRUE & x = x */
-# define C448_TRUE      (0 - (c448_bool_t)1)
+# define C448_TRUE    (0 - (c448_bool_t)1)
 
 /* C448_FALSE = 0 so that C448_FALSE & x = 0 */
-# define C448_FALSE     0
+# define C448_FALSE   0
 
 /* Another boolean type used to indicate success or failure. */
 typedef enum {
-    C448_SUCCESS = -1, /**< The operation succeeded. */
-    C448_FAILURE = 0   /**< The operation failed. */
+  C448_SUCCESS = -1, /**< The operation succeeded. */
+  C448_FAILURE = 0   /**< The operation failed. */
 } c448_error_t;
 
 /* Return success if x is true */
 static inline c448_error_t c448_succeed_if(c448_bool_t x)
 {
-    return (c448_error_t) x;
+  return (c448_error_t) x;
 }
 
-#endif                          /* __C448_COMMON_H__ */
+#endif              /* __C448_COMMON_H__ */

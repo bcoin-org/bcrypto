@@ -18,14 +18,14 @@
  * The boolean methods return a bitmask of all ones (0xff...f) for true
  * and 0 for false. This is useful for choosing a value based on the result
  * of a conditional in constant time. For example,
- *      if (a < b) {
- *        c = a;
- *      } else {
- *        c = b;
- *      }
+ *    if (a < b) {
+ *    c = a;
+ *    } else {
+ *    c = b;
+ *    }
  * can be written as
- *      unsigned int lt = constant_time_lt(a, b);
- *      c = constant_time_select(lt, a, b);
+ *    unsigned int lt = constant_time_lt(a, b);
+ *    c = constant_time_select(lt, a, b);
  */
 
 /* Returns the given value with the MSB copied to all the other bits. */
@@ -37,19 +37,19 @@ static inline uint64_t constant_time_msb_64(uint64_t a);
 
 /* Returns 0xff..f if a < b and 0 otherwise. */
 static inline unsigned int constant_time_lt(unsigned int a,
-                                                 unsigned int b);
+                         unsigned int b);
 /* Convenience method for getting an 8-bit mask. */
 static inline unsigned char constant_time_lt_8(unsigned int a,
-                                                    unsigned int b);
+                          unsigned int b);
 /* Convenience method for uint64_t. */
 static inline uint64_t constant_time_lt_64(uint64_t a, uint64_t b);
 
 /* Returns 0xff..f if a >= b and 0 otherwise. */
 static inline unsigned int constant_time_ge(unsigned int a,
-                                                 unsigned int b);
+                         unsigned int b);
 /* Convenience method for getting an 8-bit mask. */
 static inline unsigned char constant_time_ge_8(unsigned int a,
-                                                    unsigned int b);
+                          unsigned int b);
 
 /* Returns 0xff..f if a == 0 and 0 otherwise. */
 static inline unsigned int constant_time_is_zero(unsigned int a);
@@ -60,10 +60,10 @@ static inline uint32_t constant_time_is_zero_32(uint32_t a);
 
 /* Returns 0xff..f if a == b and 0 otherwise. */
 static inline unsigned int constant_time_eq(unsigned int a,
-                                                 unsigned int b);
+                         unsigned int b);
 /* Convenience method for getting an 8-bit mask. */
 static inline unsigned char constant_time_eq_8(unsigned int a,
-                                                    unsigned int b);
+                          unsigned int b);
 /* Signed integers. */
 static inline unsigned int constant_time_eq_int(int a, int b);
 /* Convenience method for getting an 8-bit mask. */
@@ -77,225 +77,225 @@ static inline unsigned char constant_time_eq_int_8(int a, int b);
  * (if |mask| is zero).
  */
 static inline unsigned int constant_time_select(unsigned int mask,
-                                                     unsigned int a,
-                                                     unsigned int b);
+                           unsigned int a,
+                           unsigned int b);
 /* Convenience method for unsigned chars. */
 static inline unsigned char constant_time_select_8(unsigned char mask,
-                                                        unsigned char a,
-                                                        unsigned char b);
+                            unsigned char a,
+                            unsigned char b);
 
 /* Convenience method for uint32_t. */
 static inline uint32_t constant_time_select_32(uint32_t mask, uint32_t a,
-                                                    uint32_t b);
+                          uint32_t b);
 
 /* Convenience method for uint64_t. */
 static inline uint64_t constant_time_select_64(uint64_t mask, uint64_t a,
-                                                    uint64_t b);
+                          uint64_t b);
 /* Convenience method for signed integers. */
 static inline int constant_time_select_int(unsigned int mask, int a,
-                                                int b);
+                        int b);
 
 
 static inline unsigned int constant_time_msb(unsigned int a)
 {
-    return 0 - (a >> (sizeof(a) * 8 - 1));
+  return 0 - (a >> (sizeof(a) * 8 - 1));
 }
 
 
 static inline uint32_t constant_time_msb_32(uint32_t a)
 {
-    return 0 - (a >> 31);
+  return 0 - (a >> 31);
 }
 
 static inline uint64_t constant_time_msb_64(uint64_t a)
 {
-    return 0 - (a >> 63);
+  return 0 - (a >> 63);
 }
 
 static inline size_t constant_time_msb_s(size_t a)
 {
-    return 0 - (a >> (sizeof(a) * 8 - 1));
+  return 0 - (a >> (sizeof(a) * 8 - 1));
 }
 
 static inline unsigned int constant_time_lt(unsigned int a,
-                                                 unsigned int b)
+                         unsigned int b)
 {
-    return constant_time_msb(a ^ ((a ^ b) | ((a - b) ^ b)));
+  return constant_time_msb(a ^ ((a ^ b) | ((a - b) ^ b)));
 }
 
 static inline size_t constant_time_lt_s(size_t a, size_t b)
 {
-    return constant_time_msb_s(a ^ ((a ^ b) | ((a - b) ^ b)));
+  return constant_time_msb_s(a ^ ((a ^ b) | ((a - b) ^ b)));
 }
 
 static inline unsigned char constant_time_lt_8(unsigned int a,
-                                                    unsigned int b)
+                          unsigned int b)
 {
-    return (unsigned char)constant_time_lt(a, b);
+  return (unsigned char)constant_time_lt(a, b);
 }
 
 static inline uint64_t constant_time_lt_64(uint64_t a, uint64_t b)
 {
-    return constant_time_msb_64(a ^ ((a ^ b) | ((a - b) ^ b)));
+  return constant_time_msb_64(a ^ ((a ^ b) | ((a - b) ^ b)));
 }
 
 static inline unsigned int constant_time_ge(unsigned int a,
-                                                 unsigned int b)
+                         unsigned int b)
 {
-    return ~constant_time_lt(a, b);
+  return ~constant_time_lt(a, b);
 }
 
 static inline size_t constant_time_ge_s(size_t a, size_t b)
 {
-    return ~constant_time_lt_s(a, b);
+  return ~constant_time_lt_s(a, b);
 }
 
 static inline unsigned char constant_time_ge_8(unsigned int a,
-                                                    unsigned int b)
+                          unsigned int b)
 {
-    return (unsigned char)constant_time_ge(a, b);
+  return (unsigned char)constant_time_ge(a, b);
 }
 
 static inline unsigned char constant_time_ge_8_s(size_t a, size_t b)
 {
-    return (unsigned char)constant_time_ge_s(a, b);
+  return (unsigned char)constant_time_ge_s(a, b);
 }
 
 static inline unsigned int constant_time_is_zero(unsigned int a)
 {
-    return constant_time_msb(~a & (a - 1));
+  return constant_time_msb(~a & (a - 1));
 }
 
 static inline size_t constant_time_is_zero_s(size_t a)
 {
-    return constant_time_msb_s(~a & (a - 1));
+  return constant_time_msb_s(~a & (a - 1));
 }
 
 static inline unsigned char constant_time_is_zero_8(unsigned int a)
 {
-    return (unsigned char)constant_time_is_zero(a);
+  return (unsigned char)constant_time_is_zero(a);
 }
 
 static inline uint32_t constant_time_is_zero_32(uint32_t a)
 {
-    return constant_time_msb_32(~a & (a - 1));
+  return constant_time_msb_32(~a & (a - 1));
 }
 
 static inline unsigned int constant_time_eq(unsigned int a,
-                                                 unsigned int b)
+                         unsigned int b)
 {
-    return constant_time_is_zero(a ^ b);
+  return constant_time_is_zero(a ^ b);
 }
 
 static inline size_t constant_time_eq_s(size_t a, size_t b)
 {
-    return constant_time_is_zero_s(a ^ b);
+  return constant_time_is_zero_s(a ^ b);
 }
 
 static inline unsigned char constant_time_eq_8(unsigned int a,
-                                                    unsigned int b)
+                          unsigned int b)
 {
-    return (unsigned char)constant_time_eq(a, b);
+  return (unsigned char)constant_time_eq(a, b);
 }
 
 static inline unsigned char constant_time_eq_8_s(size_t a, size_t b)
 {
-    return (unsigned char)constant_time_eq_s(a, b);
+  return (unsigned char)constant_time_eq_s(a, b);
 }
 
 static inline unsigned int constant_time_eq_int(int a, int b)
 {
-    return constant_time_eq((unsigned)(a), (unsigned)(b));
+  return constant_time_eq((unsigned)(a), (unsigned)(b));
 }
 
 static inline unsigned char constant_time_eq_int_8(int a, int b)
 {
-    return constant_time_eq_8((unsigned)(a), (unsigned)(b));
+  return constant_time_eq_8((unsigned)(a), (unsigned)(b));
 }
 
 static inline unsigned int constant_time_select(unsigned int mask,
-                                                     unsigned int a,
-                                                     unsigned int b)
+                           unsigned int a,
+                           unsigned int b)
 {
-    return (mask & a) | (~mask & b);
+  return (mask & a) | (~mask & b);
 }
 
 static inline size_t constant_time_select_s(size_t mask,
-                                                 size_t a,
-                                                 size_t b)
+                         size_t a,
+                         size_t b)
 {
-    return (mask & a) | (~mask & b);
+  return (mask & a) | (~mask & b);
 }
 
 static inline unsigned char constant_time_select_8(unsigned char mask,
-                                                        unsigned char a,
-                                                        unsigned char b)
+                            unsigned char a,
+                            unsigned char b)
 {
-    return (unsigned char)constant_time_select(mask, a, b);
+  return (unsigned char)constant_time_select(mask, a, b);
 }
 
 static inline int constant_time_select_int(unsigned int mask, int a,
-                                                int b)
+                        int b)
 {
-    return (int)constant_time_select(mask, (unsigned)(a), (unsigned)(b));
+  return (int)constant_time_select(mask, (unsigned)(a), (unsigned)(b));
 }
 
 static inline int constant_time_select_int_s(size_t mask, int a, int b)
 {
-    return (int)constant_time_select((unsigned)mask, (unsigned)(a),
-                                      (unsigned)(b));
+  return (int)constant_time_select((unsigned)mask, (unsigned)(a),
+                    (unsigned)(b));
 }
 
 static inline uint32_t constant_time_select_32(uint32_t mask, uint32_t a,
-                                                    uint32_t b)
+                          uint32_t b)
 {
-    return (mask & a) | (~mask & b);
+  return (mask & a) | (~mask & b);
 }
 
 static inline uint64_t constant_time_select_64(uint64_t mask, uint64_t a,
-                                                    uint64_t b)
+                          uint64_t b)
 {
-    return (mask & a) | (~mask & b);
+  return (mask & a) | (~mask & b);
 }
 
 /*
  * mask must be 0xFFFFFFFF or 0x00000000.
  *
  * if (mask) {
- *     uint32_t tmp = *a;
+ *   uint32_t tmp = *a;
  *
- *     *a = *b;
- *     *b = tmp;
+ *   *a = *b;
+ *   *b = tmp;
  * }
  */
 static inline void constant_time_cond_swap_32(uint32_t mask, uint32_t *a,
-                                                   uint32_t *b)
+                           uint32_t *b)
 {
-    uint32_t x = *a ^ *b;
+  uint32_t x = *a ^ *b;
 
-    x &= mask;
-    *a ^= x;
-    *b ^= x;
+  x &= mask;
+  *a ^= x;
+  *b ^= x;
 }
 
 /*
  * mask must be 0xFFFFFFFF or 0x00000000.
  *
  * if (mask) {
- *     uint64_t tmp = *a;
+ *   uint64_t tmp = *a;
  *
- *     *a = *b;
- *     *b = tmp;
+ *   *a = *b;
+ *   *b = tmp;
  * }
  */
 static inline void constant_time_cond_swap_64(uint64_t mask, uint64_t *a,
-                                                   uint64_t *b)
+                           uint64_t *b)
 {
-    uint64_t x = *a ^ *b;
+  uint64_t x = *a ^ *b;
 
-    x &= mask;
-    *a ^= x;
-    *b ^= x;
+  x &= mask;
+  *a ^= x;
+  *b ^= x;
 }
 
 /*
@@ -304,24 +304,24 @@ static inline void constant_time_cond_swap_64(uint64_t mask, uint64_t *a,
  * private.
  */
 static inline void constant_time_lookup(void *out,
-                                             const void *table,
-                                             size_t rowsize,
-                                             size_t numrows,
-                                             size_t idx)
+                       const void *table,
+                       size_t rowsize,
+                       size_t numrows,
+                       size_t idx)
 {
-    size_t i, j;
-    const unsigned char *tablec = (const unsigned char *)table;
-    unsigned char *outc = (unsigned char *)out;
-    unsigned char mask;
+  size_t i, j;
+  const unsigned char *tablec = (const unsigned char *)table;
+  unsigned char *outc = (unsigned char *)out;
+  unsigned char mask;
 
-    memset(out, 0, rowsize);
+  memset(out, 0, rowsize);
 
-    /* Note idx may underflow - but that is well defined */
-    for (i = 0; i < numrows; i++, idx--) {
-        mask = (unsigned char)constant_time_is_zero_s(idx);
-        for (j = 0; j < rowsize; j++)
-            *(outc + j) |= constant_time_select_8(mask, *(tablec++), 0);
-    }
+  /* Note idx may underflow - but that is well defined */
+  for (i = 0; i < numrows; i++, idx--) {
+    mask = (unsigned char)constant_time_is_zero_s(idx);
+    for (j = 0; j < rowsize; j++)
+      *(outc + j) |= constant_time_select_8(mask, *(tablec++), 0);
+  }
 }
 
-#endif                          /* HEADER_CONSTANT_TIME_LOCL_H */
+#endif              /* HEADER_CONSTANT_TIME_LOCL_H */

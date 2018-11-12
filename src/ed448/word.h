@@ -60,22 +60,22 @@ typedef int64_t dsword_t;
  */
 static inline c448_bool_t mask_to_bool(mask_t m)
 {
-    return (c448_sword_t)(sword_t)m;
+  return (c448_sword_t)(sword_t)m;
 }
 
 static inline mask_t bool_to_mask(c448_bool_t m)
 {
-    /* On most arches this will be optimized to a simple cast. */
-    mask_t ret = 0;
-    unsigned int i;
-    unsigned int limit = sizeof(c448_bool_t) / sizeof(mask_t);
+  /* On most arches this will be optimized to a simple cast. */
+  mask_t ret = 0;
+  unsigned int i;
+  unsigned int limit = sizeof(c448_bool_t) / sizeof(mask_t);
 
-    if (limit < 1)
-        limit = 1;
-    for (i = 0; i < limit; i++)
-        ret |= ~word_is_zero(m >> (i * 8 * sizeof(word_t)));
+  if (limit < 1)
+    limit = 1;
+  for (i = 0; i < limit; i++)
+    ret |= ~word_is_zero(m >> (i * 8 * sizeof(word_t)));
 
-    return ret;
+  return ret;
 }
 
-#endif                          /* HEADER_WORD_H */
+#endif              /* HEADER_WORD_H */

@@ -27,7 +27,7 @@ extern "C" {
 
 /* Number of bytes in an EdDSA private key. */
 # define EDDSA_448_SIGNATURE_BYTES (EDDSA_448_PUBLIC_BYTES + \
-                                    EDDSA_448_PRIVATE_BYTES)
+                  EDDSA_448_PRIVATE_BYTES)
 
 /* EdDSA encoding ratio. */
 # define C448_EDDSA_ENCODE_RATIO 4
@@ -42,8 +42,8 @@ extern "C" {
  * privkey (in): The private key.
  */
 c448_error_t c448_ed448_derive_public_key(
-                        uint8_t pubkey [EDDSA_448_PUBLIC_BYTES],
-                        const uint8_t privkey [EDDSA_448_PRIVATE_BYTES]);
+            uint8_t pubkey [EDDSA_448_PUBLIC_BYTES],
+            const uint8_t privkey [EDDSA_448_PRIVATE_BYTES]);
 
 /*
  * EdDSA signing.
@@ -54,7 +54,7 @@ c448_error_t c448_ed448_derive_public_key(
  * message (in):  The message to sign.
  * message_len (in):  The length of the message.
  * prehashed (in):  Nonzero if the message is actually the hash of something
- *                  you want to sign.
+ *          you want to sign.
  * context (in):  A "context" for this signature of up to 255 bytes.
  * context_len (in):  Length of the context.
  *
@@ -63,12 +63,12 @@ c448_error_t c448_ed448_derive_public_key(
  * disambiguation.  For Ed448 it is safe.
  */
 c448_error_t c448_ed448_sign(
-                        uint8_t signature[EDDSA_448_SIGNATURE_BYTES],
-                        const uint8_t privkey[EDDSA_448_PRIVATE_BYTES],
-                        const uint8_t pubkey[EDDSA_448_PUBLIC_BYTES],
-                        const uint8_t *message, size_t message_len,
-                        uint8_t prehashed, const uint8_t *context,
-                        size_t context_len);
+            uint8_t signature[EDDSA_448_SIGNATURE_BYTES],
+            const uint8_t privkey[EDDSA_448_PRIVATE_BYTES],
+            const uint8_t pubkey[EDDSA_448_PUBLIC_BYTES],
+            const uint8_t *message, size_t message_len,
+            uint8_t prehashed, const uint8_t *context,
+            size_t context_len);
 
 /*
  * EdDSA signing with prehash.
@@ -77,9 +77,9 @@ c448_error_t c448_ed448_sign(
  * privkey (in): The private key.
  * pubkey (in): The public key.
  * hash (in): The hash of the message.  This object will not be modified by the
- *            call.
+ *      call.
  * context (in): A "context" for this signature of up to 255 bytes.  Must be the
- *               same as what was used for the prehash.
+ *         same as what was used for the prehash.
  * context_len (in): Length of the context.
  *
  * For Ed25519, it is unsafe to use the same key for both prehashed and
@@ -87,12 +87,12 @@ c448_error_t c448_ed448_sign(
  * disambiguation.  For Ed448 it is safe.
  */
 c448_error_t c448_ed448_sign_prehash(
-                        uint8_t signature[EDDSA_448_SIGNATURE_BYTES],
-                        const uint8_t privkey[EDDSA_448_PRIVATE_BYTES],
-                        const uint8_t pubkey[EDDSA_448_PUBLIC_BYTES],
-                        const uint8_t hash[64],
-                        const uint8_t *context,
-                        size_t context_len);
+            uint8_t signature[EDDSA_448_SIGNATURE_BYTES],
+            const uint8_t privkey[EDDSA_448_PRIVATE_BYTES],
+            const uint8_t pubkey[EDDSA_448_PUBLIC_BYTES],
+            const uint8_t hash[64],
+            const uint8_t *context,
+            size_t context_len);
 
 /*
  * EdDSA signature verification.
@@ -104,7 +104,7 @@ c448_error_t c448_ed448_sign_prehash(
  * message (in): The message to verify.
  * message_len (in): The length of the message.
  * prehashed (in): Nonzero if the message is actually the hash of something you
- *                 want to verify.
+ *         want to verify.
  * context (in): A "context" for this signature of up to 255 bytes.
  * context_len (in): Length of the context.
  *
@@ -113,12 +113,12 @@ c448_error_t c448_ed448_sign_prehash(
  * disambiguation.  For Ed448 it is safe.
  */
 c448_error_t c448_ed448_verify(const uint8_t
-                                 signature[EDDSA_448_SIGNATURE_BYTES],
-                                 const uint8_t
-                                 pubkey[EDDSA_448_PUBLIC_BYTES],
-                                 const uint8_t *message, size_t message_len,
-                                 uint8_t prehashed, const uint8_t *context,
-                                 uint8_t context_len);
+                 signature[EDDSA_448_SIGNATURE_BYTES],
+                 const uint8_t
+                 pubkey[EDDSA_448_PUBLIC_BYTES],
+                 const uint8_t *message, size_t message_len,
+                 uint8_t prehashed, const uint8_t *context,
+                 uint8_t context_len);
 
 /*
  * EdDSA signature verification.
@@ -128,9 +128,9 @@ c448_error_t c448_ed448_verify(const uint8_t
  * signature (in): The signature.
  * pubkey (in): The public key.
  * hash (in): The hash of the message.  This object will not be modified by the
- *            call.
+ *      call.
  * context (in): A "context" for this signature of up to 255 bytes.  Must be the
- *               same as what was used for the prehash.
+ *         same as what was used for the prehash.
  * context_len (in): Length of the context.
  *
  * For Ed25519, it is unsafe to use the same key for both prehashed and
@@ -138,11 +138,11 @@ c448_error_t c448_ed448_verify(const uint8_t
  * disambiguation.  For Ed448 it is safe.
  */
 c448_error_t c448_ed448_verify_prehash(
-                    const uint8_t signature[EDDSA_448_SIGNATURE_BYTES],
-                    const uint8_t pubkey[EDDSA_448_PUBLIC_BYTES],
-                    const uint8_t hash[64],
-                    const uint8_t *context,
-                    uint8_t context_len);
+          const uint8_t signature[EDDSA_448_SIGNATURE_BYTES],
+          const uint8_t pubkey[EDDSA_448_PUBLIC_BYTES],
+          const uint8_t hash[64],
+          const uint8_t *context,
+          uint8_t context_len);
 
 /*
  * EdDSA point encoding.  Used internally, exposed externally.
@@ -168,8 +168,8 @@ c448_error_t c448_ed448_verify_prehash(
  * p (in): The point.
  */
 void curve448_point_mul_by_ratio_and_encode_like_eddsa(
-                                    uint8_t enc [EDDSA_448_PUBLIC_BYTES],
-                                    const curve448_point_t p);
+                  uint8_t enc [EDDSA_448_PUBLIC_BYTES],
+                  const curve448_point_t p);
 
 /*
  * EdDSA point decoding.  Multiplies by C448_EDDSA_DECODE_RATIO, and
@@ -181,8 +181,8 @@ void curve448_point_mul_by_ratio_and_encode_like_eddsa(
  * p (in): The point.
  */
 c448_error_t curve448_point_decode_like_eddsa_and_mul_by_ratio(
-                            curve448_point_t p,
-                            const uint8_t enc[EDDSA_448_PUBLIC_BYTES]);
+              curve448_point_t p,
+              const uint8_t enc[EDDSA_448_PUBLIC_BYTES]);
 
 /*
  * EdDSA to ECDH private key conversion
@@ -193,11 +193,11 @@ c448_error_t curve448_point_decode_like_eddsa_and_mul_by_ratio(
  * ed (in): The EdDSA private key
  */
 c448_error_t c448_ed448_convert_private_key_to_x448(
-                            uint8_t x[X448_PRIVATE_BYTES],
-                            const uint8_t ed[EDDSA_448_PRIVATE_BYTES]);
+              uint8_t x[X448_PRIVATE_BYTES],
+              const uint8_t ed[EDDSA_448_PRIVATE_BYTES]);
 
 #if defined(__cplusplus)
 }
 #endif
 
-#endif                          /* HEADER_ED448_H */
+#endif              /* HEADER_ED448_H */
