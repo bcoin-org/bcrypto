@@ -15,7 +15,7 @@ extern "C" {
 
 # include "curve448utils.h"
 
-int X448(uint8_t out_shared_key[56], const uint8_t private_key[56],
+int bcrypto_x448(uint8_t out_shared_key[56], const uint8_t private_key[56],
      const uint8_t peer_public_value[56]);
 
 void bcrypto_x448_public_from_private(uint8_t out_public_value[56],
@@ -29,11 +29,11 @@ int bcrypto_ed448_verify(const uint8_t *message, size_t message_len,
          const uint8_t signature[114], const uint8_t public_key[57],
          const uint8_t *context, size_t context_len);
 
-int ED448ph_sign(uint8_t *out_sig, const uint8_t hash[64],
+int bcrypto_ed448ph_sign(uint8_t *out_sig, const uint8_t hash[64],
          const uint8_t public_key[57], const uint8_t private_key[57],
          const uint8_t *context, size_t context_len);
 
-int ED448ph_verify(const uint8_t hash[64], const uint8_t signature[114],
+int bcrypto_ed448ph_verify(const uint8_t hash[64], const uint8_t signature[114],
            const uint8_t public_key[57], const uint8_t *context,
            size_t context_len);
 

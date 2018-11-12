@@ -713,7 +713,7 @@ void bcrypto_curve448_point_destroy(bcrypto_curve448_point_t point)
   OPENSSL_cleanse(point, sizeof(bcrypto_curve448_point_t));
 }
 
-int X448(uint8_t out_shared_key[56], const uint8_t private_key[56],
+int bcrypto_x448(uint8_t out_shared_key[56], const uint8_t private_key[56],
      const uint8_t peer_public_value[56])
 {
   return bcrypto_x448_int(out_shared_key, peer_public_value, private_key)
