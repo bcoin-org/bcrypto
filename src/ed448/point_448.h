@@ -17,9 +17,9 @@
 # include "field.h"
 
 /* Comb config: number of combs, n, t, s. */
-#define COMBS_N 5
-#define COMBS_T 5
-#define COMBS_S 18
+#define BCRYPTO_COMBS_N 5
+#define BCRYPTO_COMBS_T 5
+#define BCRYPTO_COMBS_S 18
 
 /* Projective Niels coordinates */
 typedef struct {
@@ -32,7 +32,7 @@ typedef struct {
 
 /* Precomputed base */
 struct bcrypto_curve448_precomputed_s {
-  bcrypto_niels_t table[COMBS_N << (COMBS_T - 1)];
+  bcrypto_niels_t table[BCRYPTO_COMBS_N << (BCRYPTO_COMBS_T - 1)];
 };
 
 # define BCRYPTO_C448_SCALAR_LIMBS ((446-1)/BCRYPTO_C448_WORD_BITS+1)

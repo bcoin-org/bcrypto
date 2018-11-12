@@ -107,7 +107,7 @@ bcrypto_c448_error_t bcrypto_c448_ed448_derive_public_key(
    * converted it effectively picks up a factor of 2 from the isogenies.  So
    * we might start at 2 instead of 1.
    */
-  for (c = 1; c < BCRYPTO_C448_BCRYPTO_EDDSA_ENCODE_RATIO; c <<= 1)
+  for (c = 1; c < BCRYPTO_C448_EDDSA_ENCODE_RATIO; c <<= 1)
     bcrypto_curve448_scalar_halve(secret_scalar, secret_scalar);
 
   bcrypto_curve448_precomputed_scalarmul(p, bcrypto_curve448_precomputed_base, secret_scalar);
@@ -183,7 +183,7 @@ bcrypto_c448_error_t bcrypto_c448_ed448_sign(
     bcrypto_curve448_point_t p;
 
     bcrypto_curve448_scalar_halve(nonce_scalar_2, nonce_scalar);
-    for (c = 2; c < BCRYPTO_C448_BCRYPTO_EDDSA_ENCODE_RATIO; c <<= 1)
+    for (c = 2; c < BCRYPTO_C448_EDDSA_ENCODE_RATIO; c <<= 1)
       bcrypto_curve448_scalar_halve(nonce_scalar_2, nonce_scalar_2);
 
     bcrypto_curve448_precomputed_scalarmul(p, bcrypto_curve448_precomputed_base,

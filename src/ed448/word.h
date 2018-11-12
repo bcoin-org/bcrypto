@@ -20,13 +20,13 @@
 # include "arch_32/arch_intrinsics.h"
 # include "curve448utils.h"
 
-# if (ARCH_WORD_BITS == 64)
+# if (BCRYPTO_ARCH_WORD_BITS == 64)
 typedef uint64_t bcrypto_word_t, bcrypto_mask_t;
 typedef __uint128_t bcrypto_dword_t;
 typedef int32_t bcrypto_hsword_t;
 typedef int64_t bcrypto_sword_t;
 typedef __int128_t bcrypto_dsword_t;
-# elif (ARCH_WORD_BITS == 32)
+# elif (BCRYPTO_ARCH_WORD_BITS == 32)
 typedef uint32_t bcrypto_word_t, bcrypto_mask_t;
 typedef uint64_t bcrypto_dword_t;
 typedef int16_t bcrypto_hsword_t;

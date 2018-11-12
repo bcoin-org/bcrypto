@@ -130,7 +130,7 @@ static inline void bcrypto_gf_cond_sel(bcrypto_gf x, const bcrypto_gf y, const b
   size_t i;
 
   for (i = 0; i < BCRYPTO_NLIMBS; i++) {
-#if ARCH_WORD_BITS == 32
+#if BCRYPTO_ARCH_WORD_BITS == 32
     x[0].limb[i] = constant_time_select_32(is_z, z[0].limb[i],
                          y[0].limb[i]);
 #else
@@ -156,7 +156,7 @@ static inline void bcrypto_gf_cond_swap(bcrypto_gf x, bcrypto_gf_s * BCRYPTO_RES
   size_t i;
 
   for (i = 0; i < BCRYPTO_NLIMBS; i++) {
-#if ARCH_WORD_BITS == 32
+#if BCRYPTO_ARCH_WORD_BITS == 32
     constant_time_cond_swap_32(swap, &(x[0].limb[i]), &(y->limb[i]));
 #else
     /* Must be 64 bit */

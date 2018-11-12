@@ -15,7 +15,7 @@
 
 #include "../internal/constant_time_locl.h"
 
-# define ARCH_WORD_BITS 32
+# define BCRYPTO_ARCH_WORD_BITS 32
 
 #define word_is_zero(a)   constant_time_is_zero_32(a)
 

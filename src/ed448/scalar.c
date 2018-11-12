@@ -36,7 +36,7 @@ static const bcrypto_curve448_scalar_t sc_p = {
   }
 };
 
-#define BCRYPTO_WBITS BCRYPTO_C448_WORD_BITS   /* NB this may be different from ARCH_WORD_BITS */
+#define BCRYPTO_WBITS BCRYPTO_C448_WORD_BITS   /* NB this may be different from BCRYPTO_ARCH_WORD_BITS */
 
 const bcrypto_curve448_scalar_t bcrypto_curve448_scalar_one = {{{1}}};
 const bcrypto_curve448_scalar_t bcrypto_curve448_scalar_zero = {{{0}}};

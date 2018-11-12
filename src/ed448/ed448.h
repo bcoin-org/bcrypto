@@ -30,10 +30,10 @@ extern "C" {
                   BCRYPTO_EDDSA_448_PRIVATE_BYTES)
 
 /* EdDSA encoding ratio. */
-# define BCRYPTO_C448_BCRYPTO_EDDSA_ENCODE_RATIO 4
+# define BCRYPTO_C448_EDDSA_ENCODE_RATIO 4
 
 /* EdDSA decoding ratio. */
-# define BCRYPTO_C448_BCRYPTO_EDDSA_DECODE_RATIO (4 / 4)
+# define BCRYPTO_C448_EDDSA_DECODE_RATIO (4 / 4)
 
 /*
  * EdDSA key generation.  This function uses a different (non-Decaf) encoding.
@@ -146,7 +146,7 @@ bcrypto_c448_error_t bcrypto_c448_ed448_verify_prehash(
 
 /*
  * EdDSA point encoding.  Used internally, exposed externally.
- * Multiplies by BCRYPTO_C448_BCRYPTO_EDDSA_ENCODE_RATIO first.
+ * Multiplies by BCRYPTO_C448_EDDSA_ENCODE_RATIO first.
  *
  * The multiplication is required because the EdDSA encoding represents
  * the cofactor information, but the Decaf encoding ignores it (which
@@ -154,14 +154,14 @@ bcrypto_c448_error_t bcrypto_c448_ed448_verify_prehash(
  * EdDSA, the cofactor info must get cleared, because the intermediate
  * representation doesn't track it.
  *
- * The way we handle this is to multiply by BCRYPTO_C448_BCRYPTO_EDDSA_DECODE_RATIO when
- * decoding, and by BCRYPTO_C448_BCRYPTO_EDDSA_ENCODE_RATIO when encoding.  The product of
+ * The way we handle this is to multiply by BCRYPTO_C448_EDDSA_DECODE_RATIO when
+ * decoding, and by BCRYPTO_C448_EDDSA_ENCODE_RATIO when encoding.  The product of
  * these ratios is always exactly the cofactor 4, so the cofactor ends up
  * cleared one way or another.  But exactly how that shakes out depends on the
  * base points specified in RFC 8032.
  *
  * The upshot is that if you pass the Decaf/Ristretto base point to
- * this function, you will get BCRYPTO_C448_BCRYPTO_EDDSA_ENCODE_RATIO times the
+ * this function, you will get BCRYPTO_C448_EDDSA_ENCODE_RATIO times the
  * EdDSA base point.
  *
  * enc (out): The encoded point.
@@ -172,7 +172,7 @@ void bcrypto_curve448_point_mul_by_ratio_and_encode_like_eddsa(
                   const bcrypto_curve448_point_t p);
 
 /*
- * EdDSA point decoding.  Multiplies by BCRYPTO_C448_BCRYPTO_EDDSA_DECODE_RATIO, and
+ * EdDSA point decoding.  Multiplies by BCRYPTO_C448_EDDSA_DECODE_RATIO, and
  * ignores cofactor information.
  *
  * See notes on bcrypto_curve448_point_mul_by_ratio_and_encode_like_eddsa

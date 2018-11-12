@@ -35,7 +35,7 @@ static const bcrypto_curve448_scalar_t precomputed_scalarmul_adjustment = {
 
 #define BCRYPTO_TWISTED_D (BCRYPTO_EDWARDS_D - 1)
 
-#define BCRYPTO_WBITS BCRYPTO_C448_WORD_BITS   /* NB this may be different from ARCH_WORD_BITS */
+#define BCRYPTO_WBITS BCRYPTO_C448_WORD_BITS   /* NB this may be different from BCRYPTO_ARCH_WORD_BITS */
 
 /* Inverse. */
 static void bcrypto_gf_invert(bcrypto_gf y, const bcrypto_gf x, int assert_nonzero)
@@ -113,7 +113,7 @@ static void bcrypto_pniels_to_pt(bcrypto_curve448_point_t e, const bcrypto_pniel
   bcrypto_gf_sqr(e->z, d->z);
 }
 
-static void bcrypto_niels_to_pt(bcrypto_curve448_point_t e, const bcrypto_niels_t n)
+static void niels_to_pt(bcrypto_curve448_point_t e, const bcrypto_niels_t n)
 {
   bcrypto_gf_add(e->y, n->b, n->a);
   bcrypto_gf_sub(e->x, n->b, n->a);
@@ -121,7 +121,7 @@ static void bcrypto_niels_to_pt(bcrypto_curve448_point_t e, const bcrypto_niels_
   bcrypto_gf_copy(e->z, ONE);
 }
 
-static void add_bcrypto_niels_to_pt(bcrypto_curve448_point_t d, const bcrypto_niels_t e,
+static void add_niels_to_pt(bcrypto_curve448_point_t d, const bcrypto_niels_t e,
               int before_double)
 {
   bcrypto_gf a, b, c;
@@ -170,7 +170,7 @@ static void add_pniels_to_pt(bcrypto_curve448_point_t p, const bcrypto_pniels_t 
 
   bcrypto_gf_mul(L0, p->z, pn->z);
   bcrypto_gf_copy(p->z, L0);
-  add_bcrypto_niels_to_pt(p, pn->n, before_double);
+  add_niels_to_pt(p, pn->n, before_double);
 }
 
 static void sub_pniels_from_pt(bcrypto_curve448_point_t p, const bcrypto_pniels_t pn,
@@ -229,7 +229,7 @@ void bcrypto_curve448_precomputed_scalarmul(bcrypto_curve448_point_t out,
                   const bcrypto_curve448_scalar_t scalar)
 {
   unsigned int i, j, k;
-  const unsigned int n = COMBS_N, t = COMBS_T, s = COMBS_S;
+  const unsigned int n = BCRYPTO_COMBS_N, t = BCRYPTO_COMBS_T, s = BCRYPTO_COMBS_S;
   bcrypto_niels_t ni;
   bcrypto_curve448_scalar_t scalar1x;
 
@@ -261,9 +261,9 @@ void bcrypto_curve448_precomputed_scalarmul(bcrypto_curve448_point_t out,
 
       cond_neg_niels(ni, invert);
       if ((i != s) || j != 0)
-        add_bcrypto_niels_to_pt(out, ni, j == n - 1 && i != 1);
+        add_niels_to_pt(out, ni, j == n - 1 && i != 1);
       else
-        bcrypto_niels_to_pt(out, ni);
+        niels_to_pt(out, ni);
     }
   }
 
@@ -496,7 +496,7 @@ void bcrypto_x448_derive_public_key(uint8_t out[BCRYPTO_X_PUBLIC_BYTES],
 }
 
 /* Control for variable-time scalar multiply algorithms. */
-struct smvt_control {
+struct bcrypto_smvt_control {
   int power, addend;
 };
 
@@ -540,7 +540,7 @@ static uint32_t numtrailingzeros(uint32_t i)
 }
 #endif
 
-static int recode_wnaf(struct smvt_control *control,
+static int recode_wnaf(struct bcrypto_smvt_control *control,
              /* [nbits/(table_bits + 1) + 3] */
              const bcrypto_curve448_scalar_t scalar,
              unsigned int table_bits)
@@ -631,9 +631,9 @@ void bcrypto_curve448_base_double_scalarmul_non_secret(bcrypto_curve448_point_t 
 {
   const int table_bits_var = BCRYPTO_C448_WNAF_VAR_TABLE_BITS;
   const int table_bits_pre = BCRYPTO_C448_WNAF_FIXED_TABLE_BITS;
-  struct smvt_control control_var[BCRYPTO_C448_SCALAR_BITS /
+  struct bcrypto_smvt_control control_var[BCRYPTO_C448_SCALAR_BITS /
                   (BCRYPTO_C448_WNAF_VAR_TABLE_BITS + 1) + 3];
-  struct smvt_control control_pre[BCRYPTO_C448_SCALAR_BITS /
+  struct bcrypto_smvt_control control_pre[BCRYPTO_C448_SCALAR_BITS /
                   (BCRYPTO_C448_WNAF_FIXED_TABLE_BITS + 1) + 3];
   int ncb_pre = recode_wnaf(control_pre, scalar1, table_bits_pre);
   int ncb_var = recode_wnaf(control_var, scalar2, table_bits_var);
@@ -652,13 +652,13 @@ void bcrypto_curve448_base_double_scalarmul_non_secret(bcrypto_curve448_point_t 
     contv++;
   } else if (i == control_pre[0].power && i >= 0) {
     bcrypto_pniels_to_pt(combo, precmp_var[control_var[0].addend >> 1]);
-    add_bcrypto_niels_to_pt(combo, bcrypto_curve448_wnaf_base[control_pre[0].addend >> 1],
+    add_niels_to_pt(combo, bcrypto_curve448_wnaf_base[control_pre[0].addend >> 1],
             i);
     contv++;
     contp++;
   } else {
     i = control_pre[0].power;
-    bcrypto_niels_to_pt(combo, bcrypto_curve448_wnaf_base[control_pre[0].addend >> 1]);
+    niels_to_pt(combo, bcrypto_curve448_wnaf_base[control_pre[0].addend >> 1]);
     contp++;
   }
 
@@ -686,7 +686,7 @@ void bcrypto_curve448_base_double_scalarmul_non_secret(bcrypto_curve448_point_t 
       assert(control_pre[contp].addend);
 
       if (control_pre[contp].addend > 0)
-        add_bcrypto_niels_to_pt(combo,
+        add_niels_to_pt(combo,
                 bcrypto_curve448_wnaf_base[control_pre[contp].addend
                            >> 1], i);
       else
