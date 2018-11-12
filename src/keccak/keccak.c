@@ -809,20 +809,19 @@ int
 bcrypto_keccak_final(
   bcrypto_keccak_ctx *ctx,
   int pad,
-  size_t *digest_length,
-  unsigned char *result
+  unsigned char *result,
+  size_t digest_length,
+  size_t *result_length
 ) {
-  assert(digest_length);
-
-  if (*digest_length == 0)
-    *digest_length = 100 - ctx->block_size / 2;
-
   const size_t block_size = ctx->block_size;
 
-  if (*digest_length > 200)
+  if (digest_length == 0)
+    digest_length = 100 - block_size / 2;
+
+  if (digest_length > 200)
     return 0;
 
-  if (*digest_length >= block_size)
+  if (digest_length >= block_size)
     return 0;
 
   if (!(ctx->rest & BCRYPTO_KECCAK_FINALIZED)) {
@@ -834,10 +833,13 @@ bcrypto_keccak_final(
     ctx->rest = BCRYPTO_KECCAK_FINALIZED;
   }
 
-  assert(block_size > *digest_length);
+  assert(block_size > digest_length);
 
   if (result)
-    me64_to_le_str(result, ctx->hash, *digest_length);
+    me64_to_le_str(result, ctx->hash, digest_length);
+
+  if (result_length)
+    *result_length = digest_length;
 
   return 1;
 }

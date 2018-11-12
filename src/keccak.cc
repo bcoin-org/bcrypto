@@ -103,7 +103,7 @@ NAN_METHOD(BKeccak::Final) {
 
   uint8_t out[200];
 
-  if (!bcrypto_keccak_final(&keccak->ctx, pad, &outlen, out))
+  if (!bcrypto_keccak_final(&keccak->ctx, pad, out, outlen, &outlen))
     return Nan::ThrowError("Could not finalize context.");
 
   info.GetReturnValue().Set(
@@ -157,7 +157,7 @@ NAN_METHOD(BKeccak::Digest) {
 
   bcrypto_keccak_update(&ctx, in, inlen);
 
-  if (!bcrypto_keccak_final(&ctx, pad, &outlen, out))
+  if (!bcrypto_keccak_final(&ctx, pad, out, outlen, &outlen))
     return Nan::ThrowError("Could not finalize context.");
 
   info.GetReturnValue().Set(
@@ -228,7 +228,7 @@ NAN_METHOD(BKeccak::Root) {
   bcrypto_keccak_update(&ctx, left, leftlen);
   bcrypto_keccak_update(&ctx, right, rightlen);
 
-  if (!bcrypto_keccak_final(&ctx, pad, &outlen, out))
+  if (!bcrypto_keccak_final(&ctx, pad, out, outlen, &outlen))
     return Nan::ThrowError("Could not finalize context.");
 
   info.GetReturnValue().Set(
@@ -305,7 +305,7 @@ NAN_METHOD(BKeccak::Multi) {
   bcrypto_keccak_update(&ctx, y, ylen);
   bcrypto_keccak_update(&ctx, z, zlen);
 
-  if (!bcrypto_keccak_final(&ctx, pad, &outlen, out))
+  if (!bcrypto_keccak_final(&ctx, pad, out, outlen, &outlen))
     return Nan::ThrowError("Could not finalize context.");
 
   info.GetReturnValue().Set(

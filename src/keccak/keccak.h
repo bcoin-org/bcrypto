@@ -64,8 +64,9 @@ int
 bcrypto_keccak_final(
   bcrypto_keccak_ctx *ctx,
   int pad,
-  size_t *digest_length,
-  unsigned char *result
+  unsigned char *result,
+  size_t digest_length,
+  size_t *result_length
 );
 
 #ifdef __cplusplus

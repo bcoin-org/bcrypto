@@ -29,7 +29,7 @@ static c448_error_t oneshot_hash(uint8_t *out, size_t outlen,
 
     bcrypto_keccak_update(&ctx, in, inlen);
 
-    if (!bcrypto_keccak_final(&ctx, 0x1f, &outlen, out))
+    if (!bcrypto_keccak_final(&ctx, 0x1f, out, outlen, NULL))
         return C448_FAILURE;
 
     return C448_SUCCESS;
@@ -170,9 +170,8 @@ c448_error_t c448_ed448_sign(
     /* Decode the nonce */
     {
         uint8_t nonce[2 * EDDSA_448_PRIVATE_BYTES];
-        size_t noncelen = sizeof(nonce);
 
-        if (!bcrypto_keccak_final(hashctx, 0x1f, &noncelen, nonce))
+        if (!bcrypto_keccak_final(hashctx, 0x1f, nonce, sizeof(nonce), NULL))
             return C448_FAILURE;
         curve448_scalar_decode_long(nonce_scalar, nonce, sizeof(nonce));
         OPENSSL_cleanse(nonce, sizeof(nonce));
@@ -196,7 +195,6 @@ c448_error_t c448_ed448_sign(
 
     {
         uint8_t challenge[2 * EDDSA_448_PRIVATE_BYTES];
-        size_t challengelen = sizeof(challenge);
 
         /* Compute the challenge */
         if (!hash_init_with_dom(hashctx, prehashed, 0, context, context_len))
@@ -206,8 +204,10 @@ c448_error_t c448_ed448_sign(
         bcrypto_keccak_update(hashctx, pubkey, EDDSA_448_PUBLIC_BYTES);
         bcrypto_keccak_update(hashctx, message, message_len);
 
-        if (!bcrypto_keccak_final(hashctx, 0x1f, &challengelen, challenge))
+        if (!bcrypto_keccak_final(hashctx, 0x1f, challenge,
+                                  sizeof(challenge), NULL)) {
             goto err;
+        }
 
         curve448_scalar_decode_long(challenge_scalar, challenge,
                                     sizeof(challenge));
@@ -268,7 +268,6 @@ c448_error_t c448_ed448_verify(
         bcrypto_keccak_ctx hashctx_;
         bcrypto_keccak_ctx *hashctx = &hashctx_;
         uint8_t challenge[2 * EDDSA_448_PRIVATE_BYTES];
-        size_t challengelen = sizeof(challenge);
 
         if (!hash_init_with_dom(hashctx, prehashed, 0, context, context_len))
             return C448_FAILURE;
@@ -277,8 +276,10 @@ c448_error_t c448_ed448_verify(
         bcrypto_keccak_update(hashctx, pubkey, EDDSA_448_PUBLIC_BYTES);
         bcrypto_keccak_update(hashctx, message, message_len);
 
-        if (!bcrypto_keccak_final(hashctx, 0x1f, &challengelen, challenge))
+        if (!bcrypto_keccak_final(hashctx, 0x1f, challenge,
+                                  sizeof(challenge), NULL)) {
             return C448_FAILURE;
+        }
 
         curve448_scalar_decode_long(challenge_scalar, challenge,
                                     sizeof(challenge));
