@@ -344,10 +344,14 @@ bcrypto_ed25519_sign_tweak(
 
   bcrypto_ed25519_extsk(extsk, sk);
 
-  /* r = H(aExt[32..64], m) */
   bcrypto_ed25519_hash_init(&ctx);
   bcrypto_ed25519_hash_update(&ctx, extsk + 32, 32);
   bcrypto_ed25519_hash_update(&ctx, tweak, 32);
+  bcrypto_ed25519_hash_final(&ctx, hashr);
+
+  /* r = H(aExt[32..64], m) */
+  bcrypto_ed25519_hash_init(&ctx);
+  bcrypto_ed25519_hash_update(&ctx, hashr, 32);
   bcrypto_ed25519_hash_update(&ctx, m, mlen);
   bcrypto_ed25519_hash_final(&ctx, hashr);
   expand256_modm(r, hashr, 64);

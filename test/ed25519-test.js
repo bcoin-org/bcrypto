@@ -107,9 +107,9 @@ describe('EdDSA', function() {
       'hex');
 
     const sigExpect = Buffer.from(''
-      + '4d9c33b04ad54338658171f97d6136f3a4bbf67e13533bdd3f5d96606aef8f'
-      + 'e02adbff5b3115372beded4a725f177c5c7fa94cb91c3166084b9a5833954a'
-      + 'd20d', 'hex');
+      + '493d2b108b8350405d08672e6b5c3c6f9a5501aa07d4a44d40ae7f4d781fb146'
+      + '941b4d9e7ac7a70e8fbf466ef806d791b431e6c832b4ad1d7310f45d5545200a'
+      , 'hex');
 
     const child = ed25519.publicKeyTweakAdd(pub, tweak);
     const sig = ed25519.signTweak(msg, key, tweak);
