@@ -290,7 +290,7 @@ NAN_METHOD(BKeccak::Multi) {
 
   if (info.Length() > 5 && !IsNull(info[5])) {
     if (!info[5]->IsNumber())
-      return Nan::ThrowTypeError("Fifth argument must be a number.");
+      return Nan::ThrowTypeError("Sixth argument must be a number.");
 
     outlen = (size_t)Nan::To<uint32_t>(info[5]).FromJust();
   }
