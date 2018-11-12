@@ -501,9 +501,9 @@ struct bcrypto_smvt_control {
 };
 
 #if defined(__GNUC__) && (__GNUC__ > 3 || (__GNUC__ == 3 && __GNUC_MINOR__ > 3))
-# define NUMTRAILINGZEROS	__builtin_ctz
+# define BCRYPTO_NUMTRAILINGZEROS	__builtin_ctz
 #else
-# define NUMTRAILINGZEROS	numtrailingzeros
+# define BCRYPTO_NUMTRAILINGZEROS	numtrailingzeros
 static uint32_t numtrailingzeros(uint32_t i)
 {
   uint32_t tmp;
@@ -572,7 +572,7 @@ static int recode_wnaf(struct bcrypto_smvt_control *control,
     }
 
     while (current & 0xFFFF) {
-      uint32_t pos = NUMTRAILINGZEROS((uint32_t)current);
+      uint32_t pos = BCRYPTO_NUMTRAILINGZEROS((uint32_t)current);
       uint32_t odd = (uint32_t)current >> pos;
       int32_t delta = odd & mask;
 
