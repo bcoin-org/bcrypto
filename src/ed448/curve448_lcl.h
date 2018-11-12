@@ -6,8 +6,8 @@
  * in the file LICENSE in the source distribution or at
  * https://www.openssl.org/source/license.html
  */
-#ifndef HEADER_CURVE448_LCL_H
-# define HEADER_CURVE448_LCL_H
+#ifndef _BCRYPTO_CURVE448_LCL_H
+# define _BCRYPTO_CURVE448_LCL_H
 
 #if defined(__cplusplus)
 extern "C" {
@@ -18,14 +18,14 @@ extern "C" {
 int X448(uint8_t out_shared_key[56], const uint8_t private_key[56],
      const uint8_t peer_public_value[56]);
 
-void X448_public_from_private(uint8_t out_public_value[56],
+void bcrypto_x448_public_from_private(uint8_t out_public_value[56],
                 const uint8_t private_key[56]);
 
-int ED448_sign(uint8_t *out_sig, const uint8_t *message, size_t message_len,
+int bcrypto_ed448_sign(uint8_t *out_sig, const uint8_t *message, size_t message_len,
          const uint8_t public_key[57], const uint8_t private_key[57],
          const uint8_t *context, size_t context_len);
 
-int ED448_verify(const uint8_t *message, size_t message_len,
+int bcrypto_ed448_verify(const uint8_t *message, size_t message_len,
          const uint8_t signature[114], const uint8_t public_key[57],
          const uint8_t *context, size_t context_len);
 
@@ -37,11 +37,11 @@ int ED448ph_verify(const uint8_t hash[64], const uint8_t signature[114],
            const uint8_t public_key[57], const uint8_t *context,
            size_t context_len);
 
-int ED448_public_from_private(uint8_t out_public_key[57],
+int bcrypto_ed448_public_from_private(uint8_t out_public_key[57],
                 const uint8_t private_key[57]);
 
 #if defined(__cplusplus)
 }
 #endif
 
-#endif        /* HEADER_CURVE448_LCL_H */
+#endif        /* _BCRYPTO_CURVE448_LCL_H */

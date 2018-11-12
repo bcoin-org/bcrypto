@@ -12,7 +12,7 @@
 
 #include "../field.h"
 
-void gf_mul(gf_s * RESTRICT cs, const gf as, const gf bs)
+void bcrypto_gf_mul(bcrypto_gf_s * BCRYPTO_RESTRICT cs, const bcrypto_gf as, const bcrypto_gf bs)
 {
   const uint32_t *a = as->limb, *b = bs->limb;
   uint32_t *c = cs->limb;
@@ -61,7 +61,7 @@ void gf_mul(gf_s * RESTRICT cs, const gf as, const gf bs)
   c[1] += ((uint32_t)(accum1));
 }
 
-void gf_mulw_unsigned(gf_s * RESTRICT cs, const gf as, uint32_t b)
+void bcrypto_gf_mulw_unsigned(bcrypto_gf_s * BCRYPTO_RESTRICT cs, const bcrypto_gf as, uint32_t b)
 {
   const uint32_t *a = as->limb;
   uint32_t *c = cs->limb;
@@ -89,7 +89,7 @@ void gf_mulw_unsigned(gf_s * RESTRICT cs, const gf as, uint32_t b)
   c[1] += (uint32_t)(accum8 >> 28);
 }
 
-void gf_sqr(gf_s * RESTRICT cs, const gf as)
+void bcrypto_gf_sqr(bcrypto_gf_s * BCRYPTO_RESTRICT cs, const bcrypto_gf as)
 {
-  gf_mul(cs, as, as);     /* Performs better with a dedicated square */
+  bcrypto_gf_mul(cs, as, as);     /* Performs better with a dedicated square */
 }

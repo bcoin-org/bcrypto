@@ -10,126 +10,126 @@
  * Originally written by Mike Hamburg
  */
 
-#ifndef HEADER_FIELD_H
-# define HEADER_FIELD_H
+#ifndef _BCRYPTO_FIELD_H
+# define _BCRYPTO_FIELD_H
 
 # include "internal/constant_time_locl.h"
 # include <string.h>
 # include <assert.h>
 # include "word.h"
 
-# define NLIMBS (64/sizeof(word_t))
-# define X_SER_BYTES 56
-# define SER_BYTES 56
+# define BCRYPTO_NLIMBS (64/sizeof(bcrypto_word_t))
+# define BCRYPTO_X_SER_BYTES 56
+# define BCRYPTO_SER_BYTES 56
 
 # if defined(__GNUC__) || defined(__clang__)
-#  define INLINE_UNUSED __inline__ __attribute__((__unused__,__always_inline__))
-#  define RESTRICT __restrict__
-#  define ALIGNED __attribute__((__aligned__(16)))
+#  define BCRYPTO_INLINE_UNUSED __inline__ __attribute__((__unused__,__always_inline__))
+#  define BCRYPTO_RESTRICT __restrict__
+#  define BCRYPTO_ALIGNED __attribute__((__aligned__(16)))
 # else
-#  define INLINE_UNUSED inline
-#  define RESTRICT
-#  define ALIGNED
+#  define BCRYPTO_INLINE_UNUSED inline
+#  define BCRYPTO_RESTRICT
+#  define BCRYPTO_ALIGNED
 # endif
 
-typedef struct gf_s {
-  word_t limb[NLIMBS];
-} ALIGNED gf_s, gf[1];
+typedef struct bcrypto_gf_s {
+  bcrypto_word_t limb[BCRYPTO_NLIMBS];
+} BCRYPTO_ALIGNED bcrypto_gf_s, bcrypto_gf[1];
 
 /* RFC 7748 support */
-# define X_PUBLIC_BYTES  X_SER_BYTES
-# define X_PRIVATE_BYTES X_PUBLIC_BYTES
-# define X_PRIVATE_BITS  448
+# define BCRYPTO_X_PUBLIC_BYTES  BCRYPTO_X_SER_BYTES
+# define BCRYPTO_X_PRIVATE_BYTES BCRYPTO_X_PUBLIC_BYTES
+# define BCRYPTO_X_PRIVATE_BITS  448
 
-static INLINE_UNUSED void gf_copy(gf out, const gf a)
+static BCRYPTO_INLINE_UNUSED void bcrypto_gf_copy(bcrypto_gf out, const bcrypto_gf a)
 {
   *out = *a;
 }
 
-static INLINE_UNUSED void gf_add_RAW(gf out, const gf a, const gf b);
-static INLINE_UNUSED void gf_sub_RAW(gf out, const gf a, const gf b);
-static INLINE_UNUSED void gf_bias(gf inout, int amount);
-static INLINE_UNUSED void gf_weak_reduce(gf inout);
+static BCRYPTO_INLINE_UNUSED void bcrypto_gf_add_RAW(bcrypto_gf out, const bcrypto_gf a, const bcrypto_gf b);
+static BCRYPTO_INLINE_UNUSED void bcrypto_gf_sub_RAW(bcrypto_gf out, const bcrypto_gf a, const bcrypto_gf b);
+static BCRYPTO_INLINE_UNUSED void bcrypto_gf_bias(bcrypto_gf inout, int amount);
+static BCRYPTO_INLINE_UNUSED void bcrypto_gf_weak_reduce(bcrypto_gf inout);
 
-void gf_strong_reduce(gf inout);
-void gf_add(gf out, const gf a, const gf b);
-void gf_sub(gf out, const gf a, const gf b);
-void gf_mul(gf_s * RESTRICT out, const gf a, const gf b);
-void gf_mulw_unsigned(gf_s * RESTRICT out, const gf a, uint32_t b);
-void gf_sqr(gf_s * RESTRICT out, const gf a);
-mask_t gf_isr(gf a, const gf x); /** a^2 x = 1, QNR, or 0 if x=0.  Return true if successful */
-mask_t gf_eq(const gf x, const gf y);
-mask_t gf_lobit(const gf x);
-mask_t gf_hibit(const gf x);
+void bcrypto_gf_strong_reduce(bcrypto_gf inout);
+void bcrypto_gf_add(bcrypto_gf out, const bcrypto_gf a, const bcrypto_gf b);
+void bcrypto_gf_sub(bcrypto_gf out, const bcrypto_gf a, const bcrypto_gf b);
+void bcrypto_gf_mul(bcrypto_gf_s * BCRYPTO_RESTRICT out, const bcrypto_gf a, const bcrypto_gf b);
+void bcrypto_gf_mulw_unsigned(bcrypto_gf_s * BCRYPTO_RESTRICT out, const bcrypto_gf a, uint32_t b);
+void bcrypto_gf_sqr(bcrypto_gf_s * BCRYPTO_RESTRICT out, const bcrypto_gf a);
+bcrypto_mask_t bcrypto_gf_isr(bcrypto_gf a, const bcrypto_gf x); /** a^2 x = 1, QNR, or 0 if x=0.  Return true if successful */
+bcrypto_mask_t bcrypto_gf_eq(const bcrypto_gf x, const bcrypto_gf y);
+bcrypto_mask_t bcrypto_gf_lobit(const bcrypto_gf x);
+bcrypto_mask_t bcrypto_gf_hibit(const bcrypto_gf x);
 
-void gf_serialize(uint8_t *serial, const gf x, int with_highbit);
-mask_t gf_deserialize(gf x, const uint8_t serial[SER_BYTES], int with_hibit,
+void bcrypto_gf_serialize(uint8_t *serial, const bcrypto_gf x, int with_highbit);
+bcrypto_mask_t bcrypto_gf_deserialize(bcrypto_gf x, const uint8_t serial[BCRYPTO_SER_BYTES], int with_hibit,
             uint8_t hi_nmask);
 
 # include "arch_32/f_impl.h"      /* Bring in the inline implementations */
 
-# define LIMBPERM(i) (i)
-# define LIMB_MASK(i) (((1)<<LIMB_PLACE_VALUE(i))-1)
+# define BCRYPTO_LIMBPERM(i) (i)
+# define BCRYPTO_LIMB_MASK(i) (((1)<<BCRYPTO_LIMB_PLACE_VALUE(i))-1)
 
-static const gf ZERO = {{{0}}}, ONE = {{{1}}};
+static const bcrypto_gf ZERO = {{{0}}}, ONE = {{{1}}};
 
 /* Square x, n times. */
-static inline void gf_sqrn(gf_s * RESTRICT y, const gf x, int n)
+static inline void bcrypto_gf_sqrn(bcrypto_gf_s * BCRYPTO_RESTRICT y, const bcrypto_gf x, int n)
 {
-  gf tmp;
+  bcrypto_gf tmp;
 
   assert(n > 0);
   if (n & 1) {
-    gf_sqr(y, x);
+    bcrypto_gf_sqr(y, x);
     n--;
   } else {
-    gf_sqr(tmp, x);
-    gf_sqr(y, tmp);
+    bcrypto_gf_sqr(tmp, x);
+    bcrypto_gf_sqr(y, tmp);
     n -= 2;
   }
   for (; n; n -= 2) {
-    gf_sqr(tmp, y);
-    gf_sqr(y, tmp);
+    bcrypto_gf_sqr(tmp, y);
+    bcrypto_gf_sqr(y, tmp);
   }
 }
 
-# define gf_add_nr gf_add_RAW
+# define bcrypto_gf_add_nr bcrypto_gf_add_RAW
 
 /* Subtract mod p.  Bias by 2 and don't reduce  */
-static inline void gf_sub_nr(gf c, const gf a, const gf b)
+static inline void bcrypto_gf_sub_nr(bcrypto_gf c, const bcrypto_gf a, const bcrypto_gf b)
 {
-  gf_sub_RAW(c, a, b);
-  gf_bias(c, 2);
-  if (GF_HEADROOM < 3)
-    gf_weak_reduce(c);
+  bcrypto_gf_sub_RAW(c, a, b);
+  bcrypto_gf_bias(c, 2);
+  if (BCRYPTO_GF_HEADROOM < 3)
+    bcrypto_gf_weak_reduce(c);
 }
 
 /* Subtract mod p. Bias by amt but don't reduce.  */
-static inline void gf_subx_nr(gf c, const gf a, const gf b, int amt)
+static inline void bcrypto_gf_subx_nr(bcrypto_gf c, const bcrypto_gf a, const bcrypto_gf b, int amt)
 {
-  gf_sub_RAW(c, a, b);
-  gf_bias(c, amt);
-  if (GF_HEADROOM < amt + 1)
-    gf_weak_reduce(c);
+  bcrypto_gf_sub_RAW(c, a, b);
+  bcrypto_gf_bias(c, amt);
+  if (BCRYPTO_GF_HEADROOM < amt + 1)
+    bcrypto_gf_weak_reduce(c);
 }
 
 /* Mul by signed int.  Not constant-time WRT the sign of that int. */
-static inline void gf_mulw(gf c, const gf a, int32_t w)
+static inline void bcrypto_gf_mulw(bcrypto_gf c, const bcrypto_gf a, int32_t w)
 {
   if (w > 0) {
-    gf_mulw_unsigned(c, a, w);
+    bcrypto_gf_mulw_unsigned(c, a, w);
   } else {
-    gf_mulw_unsigned(c, a, -w);
-    gf_sub(c, ZERO, c);
+    bcrypto_gf_mulw_unsigned(c, a, -w);
+    bcrypto_gf_sub(c, ZERO, c);
   }
 }
 
 /* Constant time, x = is_z ? z : y */
-static inline void gf_cond_sel(gf x, const gf y, const gf z, mask_t is_z)
+static inline void bcrypto_gf_cond_sel(bcrypto_gf x, const bcrypto_gf y, const bcrypto_gf z, bcrypto_mask_t is_z)
 {
   size_t i;
 
-  for (i = 0; i < NLIMBS; i++) {
+  for (i = 0; i < BCRYPTO_NLIMBS; i++) {
 #if ARCH_WORD_BITS == 32
     x[0].limb[i] = constant_time_select_32(is_z, z[0].limb[i],
                          y[0].limb[i]);
@@ -142,20 +142,20 @@ static inline void gf_cond_sel(gf x, const gf y, const gf z, mask_t is_z)
 }
 
 /* Constant time, if (neg) x=-x; */
-static inline void gf_cond_neg(gf x, mask_t neg)
+static inline void bcrypto_gf_cond_neg(bcrypto_gf x, bcrypto_mask_t neg)
 {
-  gf y;
+  bcrypto_gf y;
 
-  gf_sub(y, ZERO, x);
-  gf_cond_sel(x, x, y, neg);
+  bcrypto_gf_sub(y, ZERO, x);
+  bcrypto_gf_cond_sel(x, x, y, neg);
 }
 
 /* Constant time, if (swap) (x,y) = (y,x); */
-static inline void gf_cond_swap(gf x, gf_s * RESTRICT y, mask_t swap)
+static inline void bcrypto_gf_cond_swap(bcrypto_gf x, bcrypto_gf_s * BCRYPTO_RESTRICT y, bcrypto_mask_t swap)
 {
   size_t i;
 
-  for (i = 0; i < NLIMBS; i++) {
+  for (i = 0; i < BCRYPTO_NLIMBS; i++) {
 #if ARCH_WORD_BITS == 32
     constant_time_cond_swap_32(swap, &(x[0].limb[i]), &(y->limb[i]));
 #else
@@ -165,4 +165,4 @@ static inline void gf_cond_swap(gf x, gf_s * RESTRICT y, mask_t swap)
   }
 }
 
-#endif              /* HEADER_FIELD_H */
+#endif              /* _BCRYPTO_FIELD_H */

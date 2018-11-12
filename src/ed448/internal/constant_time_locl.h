@@ -7,8 +7,8 @@
  * https://www.openssl.org/source/license.html
  */
 
-#ifndef HEADER_CONSTANT_TIME_LOCL_H
-# define HEADER_CONSTANT_TIME_LOCL_H
+#ifndef _BCRYPTO_CONSTANT_TIME_LOCL_H
+# define _BCRYPTO_CONSTANT_TIME_LOCL_H
 
 # include <stdlib.h>
 # include <string.h>
@@ -324,4 +324,4 @@ static inline void constant_time_lookup(void *out,
   }
 }
 
-#endif              /* HEADER_CONSTANT_TIME_LOCL_H */
+#endif              /* _BCRYPTO_CONSTANT_TIME_LOCL_H */

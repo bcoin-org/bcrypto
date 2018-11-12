@@ -10,8 +10,8 @@
  * Originally written by Mike Hamburg
  */
 
-#ifndef HEADER_CURVE448UTILS_H
-# define HEADER_CURVE448UTILS_H
+#ifndef _BCRYPTO_CURVE448UTILS_H
+# define _BCRYPTO_CURVE448UTILS_H
 
 #include <stdint.h>
 
@@ -22,57 +22,57 @@
  * header was built with eg arch_neon, you might end up linking a library built
  * with arch_arm32.
  */
-# ifndef C448_WORD_BITS
+# ifndef BCRYPTO_C448_WORD_BITS
 #  if (defined(__SIZEOF_INT128__) && (__SIZEOF_INT128__ == 16)) \
     && !defined(__sparc__)
-#   define C448_WORD_BITS 64    /* The number of bits in a word */
+#   define BCRYPTO_C448_WORD_BITS 64    /* The number of bits in a word */
 #  else
-#   define C448_WORD_BITS 32    /* The number of bits in a word */
+#   define BCRYPTO_C448_WORD_BITS 32    /* The number of bits in a word */
 #  endif
 # endif
 
-# if C448_WORD_BITS == 64
+# if BCRYPTO_C448_WORD_BITS == 64
 /* Word size for internal computations */
-typedef uint64_t c448_word_t;
+typedef uint64_t bcrypto_c448_word_t;
 /* Signed word size for internal computations */
-typedef int64_t c448_sword_t;
+typedef int64_t bcrypto_c448_bcrypto_sword_t;
 /* "Boolean" type, will be set to all-zero or all-one (i.e. -1u) */
-typedef uint64_t c448_bool_t;
+typedef uint64_t bcrypto_c448_bool_t;
 /* Double-word size for internal computations */
-typedef __uint128_t c448_dword_t;
+typedef __uint128_t bcrypto_c448_bcrypto_dword_t;
 /* Signed double-word size for internal computations */
-typedef __int128_t c448_dsword_t;
-# elif C448_WORD_BITS == 32
+typedef __int128_t bcrypto_c448_bcrypto_dsword_t;
+# elif BCRYPTO_C448_WORD_BITS == 32
 /* Word size for internal computations */
-typedef uint32_t c448_word_t;
+typedef uint32_t bcrypto_c448_word_t;
 /* Signed word size for internal computations */
-typedef int32_t c448_sword_t;
+typedef int32_t bcrypto_c448_bcrypto_sword_t;
 /* "Boolean" type, will be set to all-zero or all-one (i.e. -1u) */
-typedef uint32_t c448_bool_t;
+typedef uint32_t bcrypto_c448_bool_t;
 /* Double-word size for internal computations */
-typedef uint64_t c448_dword_t;
+typedef uint64_t bcrypto_c448_bcrypto_dword_t;
 /* Signed double-word size for internal computations */
-typedef int64_t c448_dsword_t;
+typedef int64_t bcrypto_c448_bcrypto_dsword_t;
 # else
-#  error "Only supporting C448_WORD_BITS = 32 or 64 for now"
+#  error "Only supporting BCRYPTO_C448_WORD_BITS = 32 or 64 for now"
 # endif
 
-/* C448_TRUE = -1 so that C448_TRUE & x = x */
-# define C448_TRUE    (0 - (c448_bool_t)1)
+/* BCRYPTO_C448_TRUE = -1 so that BCRYPTO_C448_TRUE & x = x */
+# define BCRYPTO_C448_TRUE    (0 - (bcrypto_c448_bool_t)1)
 
-/* C448_FALSE = 0 so that C448_FALSE & x = 0 */
-# define C448_FALSE   0
+/* BCRYPTO_C448_FALSE = 0 so that BCRYPTO_C448_FALSE & x = 0 */
+# define BCRYPTO_C448_FALSE   0
 
 /* Another boolean type used to indicate success or failure. */
 typedef enum {
-  C448_SUCCESS = -1, /**< The operation succeeded. */
-  C448_FAILURE = 0   /**< The operation failed. */
-} c448_error_t;
+  BCRYPTO_C448_SUCCESS = -1, /**< The operation succeeded. */
+  BCRYPTO_C448_FAILURE = 0   /**< The operation failed. */
+} bcrypto_c448_error_t;
 
 /* Return success if x is true */
-static inline c448_error_t c448_succeed_if(c448_bool_t x)
+static inline bcrypto_c448_error_t bcrypto_c448_succeed_if(bcrypto_c448_bool_t x)
 {
-  return (c448_error_t) x;
+  return (bcrypto_c448_error_t) x;
 }
 
-#endif              /* __C448_COMMON_H__ */
+#endif              /* __BCRYPTO_C448_COMMON_H__ */
