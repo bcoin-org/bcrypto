@@ -101,7 +101,7 @@ static void pt_to_pniels(bcrypto_pniels_t b, const bcrypto_curve448_point_t a)
   bcrypto_gf_add(b->z, a->z, a->z);
 }
 
-static void bcrypto_pniels_to_pt(bcrypto_curve448_point_t e, const bcrypto_pniels_t d)
+static void pniels_to_pt(bcrypto_curve448_point_t e, const bcrypto_pniels_t d)
 {
   bcrypto_gf eu;
 
@@ -648,10 +648,10 @@ void bcrypto_curve448_base_double_scalarmul_non_secret(bcrypto_curve448_point_t 
     return;
   }
   if (i > control_pre[0].power) {
-    bcrypto_pniels_to_pt(combo, precmp_var[control_var[0].addend >> 1]);
+    pniels_to_pt(combo, precmp_var[control_var[0].addend >> 1]);
     contv++;
   } else if (i == control_pre[0].power && i >= 0) {
-    bcrypto_pniels_to_pt(combo, precmp_var[control_var[0].addend >> 1]);
+    pniels_to_pt(combo, precmp_var[control_var[0].addend >> 1]);
     add_niels_to_pt(combo, bcrypto_curve448_wnaf_base[control_pre[0].addend >> 1],
             i);
     contv++;
