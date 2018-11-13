@@ -194,7 +194,7 @@ bcrypto_c448_bool_t bcrypto_curve448_point_eq(const bcrypto_curve448_point_t p,
   bcrypto_gf_mul(b, q->y, p->x);
   succ = bcrypto_gf_eq(a, b);
 
-  return bcrypto_mask_to_bool(succ);
+  return mask_to_bool(succ);
 }
 
 bcrypto_c448_bool_t bcrypto_curve448_point_valid(const bcrypto_curve448_point_t p)
@@ -214,7 +214,7 @@ bcrypto_c448_bool_t bcrypto_curve448_point_valid(const bcrypto_curve448_point_t 
   bcrypto_gf_add(b, b, c);
   out &= bcrypto_gf_eq(a, b);
   out &= ~bcrypto_gf_eq(p->z, ZERO);
-  return bcrypto_mask_to_bool(out);
+  return mask_to_bool(out);
 }
 
 static inline void constant_time_lookup_niels(bcrypto_niels_s * BCRYPTO_RESTRICT ni,
@@ -373,7 +373,7 @@ bcrypto_c448_error_t bcrypto_curve448_point_decode_like_eddsa_and_mul_by_ratio(
   OPENSSL_cleanse(enc2, sizeof(enc2));
   assert(bcrypto_curve448_point_valid(p) || ~succ);
 
-  return bcrypto_c448_succeed_if(bcrypto_mask_to_bool(succ));
+  return bcrypto_c448_succeed_if(mask_to_bool(succ));
 }
 
 bcrypto_c448_error_t bcrypto_x448_int(uint8_t out[BCRYPTO_X_PUBLIC_BYTES],
@@ -452,7 +452,7 @@ bcrypto_c448_error_t bcrypto_x448_int(uint8_t out[BCRYPTO_X_PUBLIC_BYTES],
   OPENSSL_cleanse(t1, sizeof(t1));
   OPENSSL_cleanse(t2, sizeof(t2));
 
-  return bcrypto_c448_succeed_if(bcrypto_mask_to_bool(nz));
+  return bcrypto_c448_succeed_if(mask_to_bool(nz));
 }
 
 void bcrypto_curve448_point_mul_by_ratio_and_encode_like_x448(uint8_t

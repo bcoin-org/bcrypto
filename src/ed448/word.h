@@ -58,7 +58,7 @@ typedef int64_t bcrypto_dsword_t;
  * that's handled in common.h: it converts between bcrypto_c448_bool_t and
  * bcrypto_c448_error_t.
  */
-static inline bcrypto_c448_bool_t bcrypto_mask_to_bool(bcrypto_mask_t m)
+static inline bcrypto_c448_bool_t mask_to_bool(bcrypto_mask_t m)
 {
   return (bcrypto_c448_bcrypto_sword_t)(bcrypto_sword_t)m;
 }
