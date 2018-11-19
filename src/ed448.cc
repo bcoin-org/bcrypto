@@ -46,7 +46,8 @@ NAN_METHOD(BED448::PrivateKeyConvert) {
     return Nan::ThrowError("Could not convert.");
 
   return info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)&out[0], BCRYPTO_X448_PRIVATE_BYTES).ToLocalChecked());
+    Nan::CopyBuffer((char *)&out[0],
+                    BCRYPTO_X448_PRIVATE_BYTES).ToLocalChecked());
 }
 
 NAN_METHOD(BED448::PublicKeyCreate) {
@@ -70,7 +71,8 @@ NAN_METHOD(BED448::PublicKeyCreate) {
     return Nan::ThrowError("Could not create public key.");
 
   return info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)&out[0], BCRYPTO_EDDSA_448_PRIVATE_BYTES).ToLocalChecked());
+    Nan::CopyBuffer((char *)&out[0],
+                    BCRYPTO_EDDSA_448_PRIVATE_BYTES).ToLocalChecked());
 }
 
 NAN_METHOD(BED448::PublicKeyConvert) {
@@ -98,7 +100,8 @@ NAN_METHOD(BED448::PublicKeyConvert) {
   bcrypto_curve448_point_mul_by_ratio_and_encode_like_x448(out, p);
 
   return info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)&out[0], BCRYPTO_X448_PUBLIC_BYTES).ToLocalChecked());
+    Nan::CopyBuffer((char *)&out[0],
+                    BCRYPTO_X448_PUBLIC_BYTES).ToLocalChecked());
 }
 
 NAN_METHOD(BED448::PublicKeyDeconvert) {
@@ -199,15 +202,18 @@ NAN_METHOD(BED448::Sign) {
   if (secret_len != BCRYPTO_EDDSA_448_PRIVATE_BYTES)
     return Nan::ThrowRangeError("Invalid secret size.");
 
-  uint8_t pubkey[BCRYPTO_EDDSA_448_PUBLIC_BYTES];
+  uint8_t pub[BCRYPTO_EDDSA_448_PUBLIC_BYTES];
 
-  if (!bcrypto_c448_ed448_derive_public_key(pubkey, secret))
+  if (!bcrypto_c448_ed448_derive_public_key(pub, secret))
     return Nan::ThrowError("Could not create public key.");
 
   uint8_t sig[BCRYPTO_EDDSA_448_SIGNATURE_BYTES];
 
-  if (!bcrypto_c448_ed448_sign(sig, secret, pubkey, msg, msg_len, ph, ctx, ctx_len))
+  if (!bcrypto_c448_ed448_sign(sig, secret, pub,
+                               msg, msg_len,
+                               ph, ctx, ctx_len)) {
     return Nan::ThrowError("Could not sign.");
+  }
 
   return info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&sig[0],
@@ -262,11 +268,14 @@ NAN_METHOD(BED448::Verify) {
       return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
   }
 
-  if (sig_len != BCRYPTO_EDDSA_448_SIGNATURE_BYTES || pub_len != BCRYPTO_EDDSA_448_PUBLIC_BYTES)
+  if (sig_len != BCRYPTO_EDDSA_448_SIGNATURE_BYTES
+      || pub_len != BCRYPTO_EDDSA_448_PUBLIC_BYTES) {
     return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
+  }
 
-  bool result = (bool)bcrypto_c448_ed448_verify(sig, pub, msg, msg_len,
-                                        ph, ctx, ctx_len);
+  bool result = (bool)bcrypto_c448_ed448_verify(sig, pub,
+                                                msg, msg_len,
+                                                ph, ctx, ctx_len);
 
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
@@ -312,7 +321,8 @@ NAN_METHOD(BED448::Derive) {
     return Nan::ThrowError("Could not derive secret.");
 
   return info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)&out[0], BCRYPTO_X448_PUBLIC_BYTES).ToLocalChecked());
+    Nan::CopyBuffer((char *)&out[0],
+                    BCRYPTO_X448_PUBLIC_BYTES).ToLocalChecked());
 }
 
 NAN_METHOD(BED448::Exchange) {
@@ -349,5 +359,6 @@ NAN_METHOD(BED448::Exchange) {
     return Nan::ThrowError("Could not derive secret.");
 
   return info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)&out[0], BCRYPTO_X448_PUBLIC_BYTES).ToLocalChecked());
+    Nan::CopyBuffer((char *)&out[0],
+                    BCRYPTO_X448_PUBLIC_BYTES).ToLocalChecked());
 }
