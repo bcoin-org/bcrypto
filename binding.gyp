@@ -74,6 +74,7 @@
       "-Wno-implicit-fallthrough",
       "-Wno-uninitialized",
       "-Wno-unused-function",
+      "-Wno-unknown-warning-option",
       "-Wno-maybe-uninitialized",
       "-Wno-cast-function-type",
       "-Wno-unused-result",
@@ -92,6 +93,7 @@
       "-Wno-unused-parameter",
       "-Wno-unknown-warning-option",
       "-Wno-unused-const-variable",
+      "-Wno-undefined-internal",
       "-Wno-deprecated-declarations"
     ],
     "xcode_settings": {
