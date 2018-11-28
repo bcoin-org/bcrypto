@@ -28,6 +28,7 @@
 #include "keccak.h"
 #include "md4.h"
 #include "md5.h"
+#include "murmur3.h"
 #include "poly1305.h"
 #include "pbkdf2.h"
 #include "random.h"
@@ -90,6 +91,7 @@ NAN_MODULE_INIT(init) {
   BKeccak::Init(target);
   BMD4::Init(target);
   BMD5::Init(target);
+  BMurmur3::Init(target);
   BPoly1305::Init(target);
   BPBKDF2::Init(target);
   BRandom::Init(target);

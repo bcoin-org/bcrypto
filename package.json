@@ -53,6 +53,7 @@
     "./lib/keccak": "./lib/keccak-browser.js",
     "./lib/md4": "./lib/md4-browser.js",
     "./lib/md5": "./lib/md5-browser.js",
+    "./lib/murmur3": "./lib/murmur3-browser.js",
     "./lib/p192": "./lib/p192-browser.js",
     "./lib/p224": "./lib/p224-browser.js",
     "./lib/p256": "./lib/p256-browser.js",

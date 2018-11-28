@@ -60,6 +60,7 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.MD5SHA1.native, 0);
         assert.strictEqual(bcrypto.merkle.native, undefined);
         assert.strictEqual(bcrypto.mrkl.native, undefined);
+        assert.strictEqual(bcrypto.murmur3.native, 0);
         assert.strictEqual(bcrypto.p192.native, 0);
         assert.strictEqual(bcrypto.p224.native, 0);
         assert.strictEqual(bcrypto.p256.native, 0);
@@ -146,6 +147,7 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.MD5SHA1.native, 1);
         assert.strictEqual(bcrypto.merkle.native, undefined);
         assert.strictEqual(bcrypto.mrkl.native, undefined);
+        assert.strictEqual(bcrypto.murmur3.native, 0);
         assert.strictEqual(bcrypto.p192.native, 0);
         assert.strictEqual(bcrypto.p224.native, 0);
         assert.strictEqual(bcrypto.p256.native, 0);
@@ -234,6 +236,7 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.MD5SHA1.native, 2);
         assert.strictEqual(bcrypto.merkle.native, undefined);
         assert.strictEqual(bcrypto.mrkl.native, undefined);
+        assert.strictEqual(bcrypto.murmur3.native, 2);
         assert.strictEqual(bcrypto.p192.native, NODE_MAJOR >= 10 ? 2 : 0);
         assert.strictEqual(bcrypto.p224.native, NODE_MAJOR >= 10 ? 2 : 0);
         assert.strictEqual(bcrypto.p256.native, NODE_MAJOR >= 10 ? 2 : 0);
