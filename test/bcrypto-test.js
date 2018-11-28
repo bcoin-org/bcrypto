@@ -188,7 +188,7 @@ describe('Bcrypto', function() {
         break;
       case 'native':
       default:
-        assert.strictEqual(bcrypto.native, 3);
+        assert.strictEqual(bcrypto.native, 2);
         assert.strictEqual(bcrypto.AEAD.native, 2);
         assert.strictEqual(bcrypto.aes.native, 2);
         assert.strictEqual(bcrypto.BLAKE2b.native, 2);
