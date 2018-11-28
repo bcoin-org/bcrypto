@@ -37,6 +37,7 @@
 #include "rsa.h"
 #endif
 #include "scrypt.h"
+#include "secp256k1.h"
 #include "sha1.h"
 #include "sha224.h"
 #include "sha256.h"
@@ -100,6 +101,7 @@ NAN_MODULE_INIT(init) {
   BRSA::Init(target);
 #endif
   BScrypt::Init(target);
+  BSecp256k1::Init(target);
   BSHA1::Init(target);
   BSHA224::Init(target);
   BSHA256::Init(target);

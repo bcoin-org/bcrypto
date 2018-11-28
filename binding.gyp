@@ -28,6 +28,9 @@
       "./src/scrypt/insecure_memzero.c",
       "./src/scrypt/sha256.c",
       "./src/scrypt/scrypt.c",
+      "./src/secp256k1/src/secp256k1.c",
+      "./src/secp256k1/contrib/lax_der_parsing.c",
+      "./src/secp256k1/contrib/lax_der_privatekey_parsing.c",
       "./src/siphash/siphash.c",
       "./src/keccak/keccak.c",
       "./src/aead.cc",
@@ -57,6 +60,7 @@
       "./src/rsa_async.cc",
       "./src/scrypt.cc",
       "./src/scrypt_async.cc",
+      "./src/secp256k1.cc",
       "./src/sha1.cc",
       "./src/sha224.cc",
       "./src/sha256.cc",
@@ -70,6 +74,10 @@
       "-Wno-implicit-fallthrough",
       "-Wno-uninitialized",
       "-Wno-unused-function",
+      "-Wno-maybe-uninitialized",
+      "-Wno-cast-function-type",
+      "-Wno-unused-result",
+      "-Wno-nonnull-compare",
       "-Wextra",
       "-O3"
     ],
@@ -83,6 +91,7 @@
       "-Wno-cast-function-type",
       "-Wno-unused-parameter",
       "-Wno-unknown-warning-option",
+      "-Wno-unused-const-variable",
       "-Wno-deprecated-declarations"
     ],
     "xcode_settings": {
@@ -92,7 +101,11 @@
     },
     "msvs_disabled_warnings": [4996],
     "include_dirs": [
+      "/usr/local/include",
       "<!(node -e \"require('nan')\")"
+    ],
+    "defines": [
+      "ENABLE_MODULE_RECOVERY=1"
     ],
     "variables": {
       "conditions": [
@@ -107,6 +120,11 @@
               "openssl_root%": "C:/OpenSSL-Win64"
             }]
           ]
+        }],
+        ["OS=='win'", {
+          "with_gmp%": "false"
+        }, {
+          "with_gmp%": "<!(utils/has_lib.sh gmpxx gmp)"
         }]
       ]
     },
@@ -130,12 +148,19 @@
           "BCRYPTO_POLY1305_64BIT",
           "BCRYPTO_USE_ASM",
           "BCRYPTO_USE_SSE",
-          "BCRYPTO_USE_SSE41"
+          "BCRYPTO_USE_SSE41",
+          "HAVE___INT128=1",
+          "USE_ASM_X86_64=1",
+          "USE_FIELD_5X52=1",
+          "USE_FIELD_5X52_INT128=1",
+          "USE_SCALAR_4X64=1"
         ]
       }, {
         "defines": [
           "BCRYPTO_POLY1305_32BIT",
-          "BCRYPTO_ED25519_NO_INLINE_ASM"
+          "BCRYPTO_ED25519_NO_INLINE_ASM",
+          "USE_FIELD_10X26=1",
+          "USE_SCALAR_8X32=1"
         ]
       }],
       ["OS=='win'", {
@@ -149,62 +174,7 @@
         "include_dirs": [
           "<(node_root_dir)/deps/openssl/openssl/include"
         ]
-      }]
-    ]
-  },
-  {
-    "target_name": "secp256k1",
-    "variables": {
-      "conditions": [
-        ["OS=='win'", {
-          "with_gmp%": "false"
-        }, {
-          "with_gmp%": "<!(vendor/secp256k1/utils/has_lib.sh gmpxx gmp)"
-        }]
-      ]
-    },
-    "sources": [
-      "./vendor/secp256k1/src/addon.cc",
-      "./vendor/secp256k1/src/privatekey.cc",
-      "./vendor/secp256k1/src/publickey.cc",
-      "./vendor/secp256k1/src/signature.cc",
-      "./vendor/secp256k1/src/ecdsa.cc",
-      "./vendor/secp256k1/src/ecdh.cc",
-      "./vendor/secp256k1/src/secp256k1-src/src/secp256k1.c",
-      "./vendor/secp256k1/src/secp256k1-src/contrib/lax_der_parsing.c",
-      "./vendor/secp256k1/src/secp256k1-src/contrib/lax_der_privatekey_parsing.c"
-    ],
-    "include_dirs": [
-      "/usr/local/include",
-      "./vendor/secp256k1/src/secp256k1-src",
-      "./vendor/secp256k1/src/secp256k1-src/contrib",
-      "./vendor/secp256k1/src/secp256k1-src/include",
-      "./vendor/secp256k1/src/secp256k1-src/src",
-      "<!(node -e \"require('nan')\")"
-    ],
-    "defines": [
-      "ENABLE_MODULE_RECOVERY=1"
-    ],
-    "cflags": [
-      "-Wall",
-      "-Wno-maybe-uninitialized",
-      "-Wno-uninitialized",
-      "-Wno-unused-function",
-      "-Wno-cast-function-type",
-      "-Wno-unused-result",
-      "-Wno-nonnull-compare",
-      "-Wno-unknown-warning-option",
-      "-Wextra"
-    ],
-    "cflags_cc+": [
-      "-std=c++0x",
-      "-Wno-unused-parameter",
-      "-Wno-unused-const-variable",
-      "-Wno-unknown-warning-option",
-      "-Wno-deprecated-declarations"
-    ],
-    "msvs_disabled_warnings": [4996],
-    "conditions": [
+      }],
       ["with_gmp=='true'", {
         "defines": [
           "HAVE_LIBGMP=1",
@@ -223,20 +193,6 @@
           "USE_SCALAR_INV_BUILTIN=1"
         ]
       }],
-      ["target_arch=='x64' and OS!='win'", {
-        "defines": [
-          "HAVE___INT128=1",
-          "USE_ASM_X86_64=1",
-          "USE_FIELD_5X52=1",
-          "USE_FIELD_5X52_INT128=1",
-          "USE_SCALAR_4X64=1"
-        ]
-      }, {
-        "defines": [
-          "USE_FIELD_10X26=1",
-          "USE_SCALAR_8X32=1"
-        ]
-      }],
       ["OS=='mac'", {
         "libraries": [
           "-L/usr/local/lib"
@@ -244,7 +200,6 @@
         "xcode_settings": {
           "MACOSX_DEPLOYMENT_TARGET": "10.7",
           "OTHER_CPLUSPLUSFLAGS": [
-            "-Wno-deprecated-declarations",
             "-stdlib=libc++"
           ]
         }
