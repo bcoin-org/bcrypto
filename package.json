@@ -71,6 +71,7 @@
     "./lib/sha384": "./lib/sha384-browser.js",
     "./lib/sha512": "./lib/sha512-browser.js",
     "./lib/sha3": "./lib/sha3-browser.js",
+    "./lib/siphash": "./lib/siphash-browser.js",
     "./lib/whirlpool": "./lib/whirlpool-browser.js"
   }
 }

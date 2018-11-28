@@ -92,6 +92,7 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.SHAKE.native, 0);
         assert.strictEqual(bcrypto.SHAKE128.native, 0);
         assert.strictEqual(bcrypto.SHAKE256.native, 0);
+        assert.strictEqual(bcrypto.siphash.native, 0);
         assert.strictEqual(bcrypto.Whirlpool.native, 0);
         break;
       case 'node':
@@ -180,6 +181,7 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.SHAKE.native, 0);
         assert.strictEqual(bcrypto.SHAKE128.native, 0);
         assert.strictEqual(bcrypto.SHAKE256.native, 0);
+        assert.strictEqual(bcrypto.siphash.native, 0);
         assert.strictEqual(bcrypto.Whirlpool.native, 1);
         break;
       case 'native':
@@ -264,6 +266,7 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.SHAKE.native, 2);
         assert.strictEqual(bcrypto.SHAKE128.native, 2);
         assert.strictEqual(bcrypto.SHAKE256.native, 2);
+        assert.strictEqual(bcrypto.siphash.native, 2);
         assert.strictEqual(bcrypto.Whirlpool.native, 2);
         break;
     }

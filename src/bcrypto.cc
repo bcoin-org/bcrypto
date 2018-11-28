@@ -41,6 +41,7 @@
 #include "sha256.h"
 #include "sha384.h"
 #include "sha512.h"
+#include "siphash.h"
 #include "whirlpool.h"
 
 #include "bcrypto.h"
@@ -102,6 +103,7 @@ NAN_MODULE_INIT(init) {
   BSHA256::Init(target);
   BSHA384::Init(target);
   BSHA512::Init(target);
+  BSiphash::Init(target);
   BWhirlpool::Init(target);
 }
 

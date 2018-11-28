@@ -27,6 +27,7 @@
       "./src/scrypt/insecure_memzero.c",
       "./src/scrypt/sha256.c",
       "./src/scrypt/scrypt.c",
+      "./src/siphash/siphash.c",
       "./src/keccak/keccak.c",
       "./src/aead.cc",
       "./src/aes.cc",
@@ -59,6 +60,7 @@
       "./src/sha256.cc",
       "./src/sha384.cc",
       "./src/sha512.cc",
+      "./src/siphash.cc",
       "./src/whirlpool.cc"
     ],
     "cflags": [
