@@ -507,15 +507,15 @@ bcrypto_ecdsa_privkey_export_pkcs8(
   uint8_t **out,
   size_t *out_len
 ) {
-  int type = bcrypto_ecdsa_curve(name);
-
-  if (type == -1)
-    goto fail;
-
   // https://github.com/openssl/openssl/blob/32f803d/crypto/ec/ec_ameth.c#L217
   uint8_t *ep = NULL;
   size_t eplen = 0;
   PKCS8_PRIV_KEY_INFO *p8 = NULL;
+
+  int type = bcrypto_ecdsa_curve(name);
+
+  if (type == -1)
+    goto fail;
 
   if (!bcrypto_ecdsa_privkey_export2(name, priv, priv_len,
                                     compress, true, &ep, &eplen)) {
