@@ -165,6 +165,9 @@ const algs = [
   }
 ];
 
+if (process.browser)
+  algs.length = 3;
+
 const key = Buffer.from(
   '3a0c0bf669694ac7685e6806eeadee8e56c9b9bd22c3caa81c718ed4bbf809a1',
   'hex');

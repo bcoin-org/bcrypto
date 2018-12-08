@@ -9,6 +9,8 @@ const minor = parts[2] >>> 0;
 const patch = parts[3] >>> 0;
 
 const binding = require('../lib/native/binding');
+const random = require('../lib/native/random');
+const {CipherBase, pbkdf2, rsa} = binding;
 
 if (binding.major !== major
     || binding.minor !== minor
@@ -16,21 +18,12 @@ if (binding.major !== major
   throw new Error('Incorrect node.js version for bcrypto.');
 }
 
-const cipher = require('../lib/native/cipher');
-const pbkdf2 = require('../lib/native/pbkdf2');
-const random = require('../lib/native/random');
-
-let rsa = null;
-
-if (binding.major >= 10)
-  rsa = require('../lib/native/rsa');
-
 function assert(ok) {
   if (!ok)
     throw new Error('Assertion error.');
 }
 
-// Make sure the RNG works before loading.
+// Make sure the RNG works.
 {
   const bytes1 = random.randomBytes(32);
   const zero = Buffer.alloc(32, 0x00);
@@ -46,11 +39,11 @@ function assert(ok) {
 
 binding.load();
 
-assert(cipher._hasCipher('AES-256-CBC'));
-assert(pbkdf2._hasHash('SHA256'));
-assert(pbkdf2._hasHash('SHA512'));
+assert(CipherBase.hasCipher('AES-256-CBC'));
+assert(pbkdf2.hasHash('SHA256'));
+assert(pbkdf2.hasHash('SHA512'));
 
 if (rsa) {
-  assert(rsa._hasHash('SHA256'));
-  assert(rsa._hasHash('SHA512'));
+  assert(rsa.hasHash('SHA256'));
+  assert(rsa.hasHash('SHA512'));
 }

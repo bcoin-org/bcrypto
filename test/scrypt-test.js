@@ -60,25 +60,27 @@ describe('Scrypt', function() {
       + 'cf35e20c38d18906');
   });
 
-  it('should perform scrypt with N=1024 (async)', async () => {
-    const pass = Buffer.from('password');
-    const salt = Buffer.from('NaCl');
-    const result = await scrypt.deriveAsync(pass, salt, 1024, 8, 16, 64);
-    assert.strictEqual(result.toString('hex'), ''
-      + 'fdbabe1c9d3472007856e7190d01e9fe7c6ad7cbc8237830e773'
-      + '76634b3731622eaf30d92e22a3886ff109279d9830dac727afb9'
-      + '4a83ee6d8360cbdfa2cc0640');
-  });
+  if (!process.browser) {
+    it('should perform scrypt with N=1024 (async)', async () => {
+      const pass = Buffer.from('password');
+      const salt = Buffer.from('NaCl');
+      const result = await scrypt.deriveAsync(pass, salt, 1024, 8, 16, 64);
+      assert.strictEqual(result.toString('hex'), ''
+        + 'fdbabe1c9d3472007856e7190d01e9fe7c6ad7cbc8237830e773'
+        + '76634b3731622eaf30d92e22a3886ff109279d9830dac727afb9'
+        + '4a83ee6d8360cbdfa2cc0640');
+    });
 
-  it('should perform scrypt with N=16384 (async)', async () => {
-    const pass = Buffer.from('pleaseletmein');
-    const salt = Buffer.from('SodiumChloride');
-    const result = await scrypt.deriveAsync(pass, salt, 16384, 8, 1, 64);
-    assert.strictEqual(result.toString('hex'), ''
-      + '7023bdcb3afd7348461c06cd81fd38ebfda8fbba904f8e3ea9b54'
-      + '3f6545da1f2d5432955613f0fcf62d49705242a9af9e61e85dc0d'
-      + '651e40dfcf017b45575887');
-  });
+    it('should perform scrypt with N=16384 (async)', async () => {
+      const pass = Buffer.from('pleaseletmein');
+      const salt = Buffer.from('SodiumChloride');
+      const result = await scrypt.deriveAsync(pass, salt, 16384, 8, 1, 64);
+      assert.strictEqual(result.toString('hex'), ''
+        + '7023bdcb3afd7348461c06cd81fd38ebfda8fbba904f8e3ea9b54'
+        + '3f6545da1f2d5432955613f0fcf62d49705242a9af9e61e85dc0d'
+        + '651e40dfcf017b45575887');
+    });
+  }
 
   // Only enable if you want to wait a while.
   // it('should perform scrypt with N=1048576 (async)', async () => {

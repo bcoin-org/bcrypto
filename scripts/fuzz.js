@@ -3,7 +3,7 @@
 
 'use strict';
 
-const assert = require('./util/assert');
+const assert = require('../test/util/assert');
 const crypto = require('crypto');
 
 const bhash = {

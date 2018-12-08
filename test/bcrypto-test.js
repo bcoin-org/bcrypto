@@ -5,8 +5,9 @@
 
 const assert = require('./util/assert');
 const bcrypto = require('../');
-const NODE_MAJOR = parseInt(process.version.substring(1).split('.')[0], 10);
-const NODE_MINOR = parseInt(process.version.substring(1).split('.')[1], 10);
+const parts = process.version.split(/[^\d]/);
+const NODE_MAJOR = parts[1] >>> 0;
+const NODE_MINOR = parts[2] >>> 0;
 
 describe('Bcrypto', function() {
   it('should have correct environment', () => {

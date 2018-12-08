@@ -27,11 +27,11 @@ const SHAKE128 = require('../lib/shake128');
 const SHAKE256 = require('../lib/shake256');
 const random = require('../lib/random');
 const createHash = require('./util/create-hash');
-const NODE_MAJOR = parseInt(process.version.substring(1).split('.')[0], 10);
-const NODE_MINOR = parseInt(process.version.substring(1).split('.')[1], 10);
+const parts = process.version.split(/[^\d]/);
+const NODE_MAJOR = parts[1] >>> 0;
+const NODE_MINOR = parts[2] >>> 0;
 
 const algs = [
-  ['md4', true],
   ['md5', true],
   ['ripemd160', true],
   ['sha1', true],
@@ -40,9 +40,15 @@ const algs = [
   ['sha384', true],
   ['sha512', true],
   ['hash160', false],
-  ['hash256', false],
-  ['whirlpool', true]
+  ['hash256', false]
 ];
+
+if (!process.browser) {
+  algs.push(
+    ['md4', true],
+    ['whirlpool', true]
+  );
+}
 
 if (NODE_MAJOR >= 10) {
   algs.push(
