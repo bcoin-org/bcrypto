@@ -10,7 +10,8 @@ const assert = function assert(value, message) {
       actual: value,
       expected: true,
       operator: '==',
-      stackStartFunction: assert
+      stackStartFunction: assert,
+      stackStartFn: assert
     });
   }
 };
@@ -28,7 +29,8 @@ assert.typeOf = function typeOf(value, expected, message) {
       actual,
       expected,
       operator: 'typeof ==',
-      stackStartFunction: typeOf
+      stackStartFunction: typeOf,
+      stackStartFn: typeOf
     });
   }
 };
@@ -44,7 +46,8 @@ assert.notTypeOf = function notTypeOf(value, expected, message) {
       actual,
       expected,
       operator: 'typeof !=',
-      stackStartFunction: notTypeOf
+      stackStartFunction: notTypeOf,
+      stackStartFn: notTypeOf
     });
   }
 };
@@ -58,7 +61,8 @@ assert.instanceOf = function instanceOf(object, parent, message) {
       actual: _getConstructorName(object),
       expected: _getFunctionName(parent),
       operator: 'instanceof',
-      stackStartFunction: instanceOf
+      stackStartFunction: instanceOf,
+      stackStartFn: instanceOf
     });
   }
 };
@@ -72,7 +76,8 @@ assert.notInstanceOf = function notInstanceOf(object, parent, message) {
       actual: _getConstructorName(object),
       expected: _getFunctionName(parent),
       operator: 'not instanceof',
-      stackStartFunction: notInstanceOf
+      stackStartFunction: notInstanceOf,
+      stackStartFn: notInstanceOf
     });
   }
 };
@@ -87,7 +92,8 @@ assert.bufferEqual = function bufferEqual(actual, expected, message) {
       actual: actual.toString('hex'),
       expected: expected.toString('hex'),
       operator: '===',
-      stackStartFunction: bufferEqual
+      stackStartFunction: bufferEqual,
+      stackStartFn: bufferEqual
     });
   }
 };
@@ -102,7 +108,8 @@ assert.notBufferEqual = function notBufferEqual(actual, expected, message) {
       actual: actual.toString('hex'),
       expected: expected.toString('hex'),
       operator: '!==',
-      stackStartFunction: notBufferEqual
+      stackStartFunction: notBufferEqual,
+      stackStartFn: notBufferEqual
     });
   }
 };
@@ -114,7 +121,8 @@ function _isString(value, message, stackStartFunction) {
       actual: _typeOf(value),
       expected: 'string',
       operator: 'typeof ==',
-      stackStartFunction
+      stackStartFunction,
+      stackStartFn: stackStartFunction
     });
   }
 }
@@ -126,7 +134,8 @@ function _isFunction(value, message, stackStartFunction) {
       actual: _typeOf(value),
       expected: 'function',
       operator: 'typeof ==',
-      stackStartFunction
+      stackStartFunction,
+      stackStartFn: stackStartFunction
     });
   }
 }
@@ -138,7 +147,8 @@ function _isBuffer(value, message, stackStartFunction) {
       actual: _typeOf(value),
       expected: 'buffer',
       operator: 'typeof ==',
-      stackStartFunction
+      stackStartFunction,
+      stackStartFn: stackStartFunction
     });
   }
 }
