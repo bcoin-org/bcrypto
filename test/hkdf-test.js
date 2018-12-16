@@ -3,7 +3,7 @@
 
 'use strict';
 
-const assert = require('./util/assert');
+const assert = require('bsert');
 const {hkdf, SHA256} = require('../');
 
 describe('HKDF', function() {

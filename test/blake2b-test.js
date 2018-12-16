@@ -3,7 +3,7 @@
 
 'use strict';
 
-const assert = require('./util/assert');
+const assert = require('bsert');
 const {BLAKE2b} = require('../');
 const vectors = require('./data/blake2b.json');
 

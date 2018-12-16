@@ -4,7 +4,7 @@
 
 'use strict';
 
-const assert = require('./util/assert');
+const assert = require('bsert');
 const Twofish = require('../lib/js/ciphers/twofish');
 const cipher = require('../lib/cipher');
 

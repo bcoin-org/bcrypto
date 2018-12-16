@@ -3,7 +3,7 @@
 
 'use strict';
 
-const assert = require('./util/assert');
+const assert = require('bsert');
 const eb2k = require('../lib/eb2k');
 
 const vectors = [

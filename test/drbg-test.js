@@ -6,7 +6,7 @@
 
 'use strict';
 
-const assert = require('./util/assert');
+const assert = require('bsert');
 const DRBG = require('../lib/drbg');
 const SHA256 = require('../lib/sha256');
 const vectors = require('./data/drbg-nist.json');

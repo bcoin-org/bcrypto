@@ -3,7 +3,7 @@
 
 'use strict';
 
-const assert = require('./util/assert');
+const assert = require('bsert');
 const fs = require('fs');
 const Path = require('path');
 const x509 = require('../lib/encoding/x509');

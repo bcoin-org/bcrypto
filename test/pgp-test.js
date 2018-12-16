@@ -14,7 +14,7 @@
 
 'use strict';
 
-const assert = require('./util/assert');
+const assert = require('bsert');
 const fs = require('fs');
 const Path = require('path');
 const pgp = require('../lib/pgp');

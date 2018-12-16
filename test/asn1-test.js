@@ -3,7 +3,7 @@
 
 'use strict';
 
-const assert = require('./util/assert');
+const assert = require('bsert');
 const asn1 = require('../lib/encoding/asn1');
 
 const oids = [

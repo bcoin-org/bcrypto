@@ -3,7 +3,7 @@
 
 'use strict';
 
-const assert = require('./util/assert');
+const assert = require('bsert');
 const cleanse = require('../lib/cleanse');
 const bytes = Buffer.allocUnsafe(32);
 

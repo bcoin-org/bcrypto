@@ -4,7 +4,7 @@
 
 'use strict';
 
-const assert = require('./util/assert');
+const assert = require('bsert');
 const GOST94 = require('../lib/gost94');
 
 // https://en.wikipedia.org/wiki/GOST_(hash_function)#GOST_hash_test_vectors

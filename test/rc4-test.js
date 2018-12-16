@@ -4,7 +4,7 @@
 
 'use strict';
 
-const assert = require('./util/assert');
+const assert = require('bsert');
 const RC4 = require('../lib/rc4');
 
 // https://github.com/golang/go/blob/master/src/crypto/rc4/rc4_test.go

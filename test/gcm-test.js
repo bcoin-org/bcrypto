@@ -4,7 +4,7 @@
 
 'use strict';
 
-const assert = require('./util/assert');
+const assert = require('bsert');
 const {GCM, GHASH} = require('../lib/js/ciphers/gcm');
 const AES = require('../lib/js/ciphers/aes');
 

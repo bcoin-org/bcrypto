@@ -3,7 +3,7 @@
 
 'use strict';
 
-const assert = require('./util/assert');
+const assert = require('bsert');
 const random = require('../lib/random');
 const ed448 = require('../lib/ed448');
 

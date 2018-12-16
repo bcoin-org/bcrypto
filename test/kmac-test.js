@@ -3,7 +3,7 @@
 
 'use strict';
 
-const assert = require('./util/assert');
+const assert = require('bsert');
 const KMAC = require('../lib/kmac');
 const KMAC128 = require('../lib/kmac128');
 const KMAC256 = require('../lib/kmac256');

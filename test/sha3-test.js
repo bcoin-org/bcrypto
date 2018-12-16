@@ -3,7 +3,7 @@
 
 'use strict';
 
-const assert = require('./util/assert');
+const assert = require('bsert');
 const {SHA3} = require('../');
 const vectors = require('./data/sha3.json');
 

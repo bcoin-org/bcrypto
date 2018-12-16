@@ -3,7 +3,7 @@
 
 'use strict';
 
-const assert = require('./util/assert');
+const assert = require('bsert');
 const random = require('../lib/random');
 const zero = Buffer.alloc(32, 0x00);
 const bytes = Buffer.allocUnsafe(32);

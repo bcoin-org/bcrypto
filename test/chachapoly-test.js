@@ -3,7 +3,7 @@
 
 'use strict';
 
-const assert = require('./util/assert');
+const assert = require('bsert');
 const {ChaCha20, Poly1305, AEAD} = require('../');
 
 function testChaCha(options) {

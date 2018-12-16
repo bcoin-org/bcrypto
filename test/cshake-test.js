@@ -3,7 +3,7 @@
 
 'use strict';
 
-const assert = require('./util/assert');
+const assert = require('bsert');
 const CSHAKE = require('../lib/cshake');
 const CSHAKE128 = require('../lib/cshake128');
 const CSHAKE256 = require('../lib/cshake256');

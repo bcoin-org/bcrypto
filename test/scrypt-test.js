@@ -3,7 +3,7 @@
 
 'use strict';
 
-const assert = require('./util/assert');
+const assert = require('bsert');
 const {scrypt} = require('../');
 
 describe('Scrypt', function() {

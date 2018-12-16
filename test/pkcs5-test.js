@@ -3,7 +3,7 @@
 
 'use strict';
 
-const assert = require('./util/assert');
+const assert = require('bsert');
 const pkcs5 = require('../lib/encoding/pkcs5');
 
 describe('PKCS5', function() {

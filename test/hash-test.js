@@ -3,7 +3,7 @@
 
 'use strict';
 
-const assert = require('./util/assert');
+const assert = require('bsert');
 const crypto = require('crypto');
 const MD4 = require('../lib/md4');
 const MD5 = require('../lib/md5');

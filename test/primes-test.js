@@ -4,7 +4,7 @@
 
 'use strict';
 
-const assert = require('./util/assert');
+const assert = require('bsert');
 const BN = require('../lib/bn.js');
 const primes = require('../lib/internal/primes');
 

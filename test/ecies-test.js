@@ -3,7 +3,7 @@
 
 'use strict';
 
-const assert = require('./util/assert');
+const assert = require('bsert');
 
 const parts = process.version.split(/[^\d]/);
 const NODE_MAJOR = parts[1] >>> 0;

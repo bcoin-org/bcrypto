@@ -4,7 +4,7 @@
 
 'use strict';
 
-const assert = require('./util/assert');
+const assert = require('bsert');
 const MD2 = require('../lib/md2');
 
 const vectors = [
