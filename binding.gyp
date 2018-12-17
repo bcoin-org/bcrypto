@@ -93,15 +93,8 @@
       "-Wno-unused-parameter",
       "-Wno-unknown-warning-option",
       "-Wno-unused-const-variable",
-      "-Wno-undefined-internal",
-      "-Wno-deprecated-declarations"
+      "-Wno-undefined-internal"
     ],
-    "xcode_settings": {
-      "OTHER_CFLAGS": [
-        "-Wno-deprecated-declarations"
-      ]
-    },
-    "msvs_disabled_warnings": [4996],
     "include_dirs": [
       "/usr/local/include",
       "<!(node -e \"require('nan')\")"

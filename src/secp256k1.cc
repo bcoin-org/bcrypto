@@ -64,7 +64,7 @@
 #define UPDATE_COMPRESSED_VALUE(compressed, value, v_true, v_false) {          \
   if (!value->IsUndefined()) {                                                 \
     CHECK_TYPE_BOOLEAN(value, COMPRESSED_TYPE_INVALID);                        \
-    compressed = value->BooleanValue() ? v_true : v_false;                     \
+    compressed = Nan::To<bool>(value).FromJust() ? v_true : v_false;           \
   }                                                                            \
 }
 
@@ -132,7 +132,8 @@
 }
 
 #define CHECK_NUMBER_IN_INTERVAL(number, x, y, message) {                      \
-  if (number->IntegerValue() <= x || number->IntegerValue() >= y) {            \
+  if (Nan::To<int64_t>(number).FromJust() <= x ||                              \
+      Nan::To<int64_t>(number).FromJust() >= y) {                              \
     return Nan::ThrowRangeError(message);                                      \
   }                                                                            \
 }
@@ -677,7 +678,7 @@ NAN_METHOD(BSecp256k1::recover) {
   v8::Local<v8::Object> recid_object = info[2].As<v8::Object>();
   CHECK_TYPE_NUMBER(recid_object, RECOVERY_ID_TYPE_INVALID);
   CHECK_NUMBER_IN_INTERVAL(recid_object, -1, 4, RECOVERY_ID_VALUE_INVALID);
-  int recid = (int) recid_object->IntegerValue();
+  int recid = (int) Nan::To<int64_t>(recid_object).FromJust();
 
   unsigned int flags = SECP256K1_EC_COMPRESSED;
   UPDATE_COMPRESSED_VALUE(flags, info[3], SECP256K1_EC_COMPRESSED, SECP256K1_EC_UNCOMPRESSED);
