@@ -30,7 +30,7 @@
     "nan": "~2.12.0"
   },
   "devDependencies": {
-    "bmocha": "^0.1.6"
+    "bmocha": "^0.1.8"
   },
   "engines": {
     "node": ">=8.0.0"
