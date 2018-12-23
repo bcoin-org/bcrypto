@@ -18,11 +18,7 @@ Low-level APIs for popular public key algorithms:
 - DSA
 - RSA (PKCS1v1.5, OAEP, PSS)
 - ECDSA (p192, p224, p256, p384, p512, secp256k1)
-- EdDSA (ed25519)
-
-Todo:
-
-- ed448
+- EdDSA (ed25519, ed448)
 
 Bcrypto includes specialized and optimized support specifically for [secp256k1]
 and [ed25519]. Note that these crypto systems are preferred over the NIST
