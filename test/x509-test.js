@@ -19,8 +19,9 @@ function clear(crt) {
 }
 
 describe('X509', function() {
+  let i = 0;
   for (const block of pem.decode(data)) {
-    it('should deserialize and reserialize certificate', () => {
+    it(`should deserialize and reserialize certificate (${i++})`, () => {
       const crt1 = x509.Certificate.decode(block.data);
       const raw1 = crt1.encode();
       const crt2 = x509.Certificate.decode(raw1);
