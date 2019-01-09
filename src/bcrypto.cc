@@ -111,4 +111,4 @@ NAN_MODULE_INIT(init) {
   BWhirlpool::Init(target);
 }
 
-NODE_MODULE(bcrypto, init)
+NAN_MODULE_WORKER_ENABLED(bcrypto, init)
