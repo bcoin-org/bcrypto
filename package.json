@@ -1,6 +1,6 @@
 {
   "name": "bcrypto",
-  "version": "3.0.1",
+  "version": "3.0.2",
   "description": "Bcoin crypto module",
   "keywords": [
     "cipher",
@@ -25,12 +25,12 @@
   },
   "dependencies": {
     "bindings": "~1.3.1",
-    "bsert": "~0.0.7",
-    "bufio": "~1.0.3",
-    "nan": "~2.12.0"
+    "bsert": "~0.0.8",
+    "bufio": "~1.0.4",
+    "nan": "~2.12.1"
   },
   "devDependencies": {
-    "bmocha": "^0.1.8"
+    "bmocha": "^1.0.0"
   },
   "engines": {
     "node": ">=8.0.0"
