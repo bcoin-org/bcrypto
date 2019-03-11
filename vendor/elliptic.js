@@ -169,6 +169,8 @@ utils.intFromLE = intFromLE;
 [/* 3 */ 'elliptic', '/node_modules/bn.js', function(exports, require, module, __filename, __dirname, __meta) {
 'use strict';
 
+/* global require */
+
 module.exports = require('./bn.js');
 }],
 [/* 4 */ 'minimalistic-assert', '/index.js', function(exports, require, module, __filename, __dirname, __meta) {
@@ -246,6 +248,8 @@ utils.encode = function encode(arr, enc) {
 }],
 [/* 6 */ 'elliptic', '/node_modules/brorand.js', function(exports, require, module, __filename, __dirname, __meta) {
 'use strict';
+
+/* global require */
 
 module.exports = require('../lib/random').randomBytes;
 }],
@@ -1597,7 +1601,7 @@ JPoint.prototype.isInfinity = function isInfinity() {
 if (typeof Object.create === 'function') {
   // implementation from standard node.js 'util' module
   module.exports = function inherits(ctor, superCtor) {
-    ctor.super_ = superCtor
+    ctor.super_ = superCtor;
     ctor.prototype = Object.create(superCtor.prototype, {
       constructor: {
         value: ctor,
@@ -1610,12 +1614,12 @@ if (typeof Object.create === 'function') {
 } else {
   // old school shim for old browsers
   module.exports = function inherits(ctor, superCtor) {
-    ctor.super_ = superCtor
-    var TempCtor = function () {}
-    TempCtor.prototype = superCtor.prototype
-    ctor.prototype = new TempCtor()
-    ctor.prototype.constructor = ctor
-  }
+    ctor.super_ = superCtor;
+    const TempCtor = function () {};
+    TempCtor.prototype = superCtor.prototype;
+    ctor.prototype = new TempCtor();
+    ctor.prototype.constructor = ctor;
+  };
 }
 }],
 [/* 11 */ 'elliptic', '/lib/elliptic/curve/mont.js', function(exports, require, module, __filename, __dirname, __meta) {
@@ -2444,6 +2448,8 @@ defineCurve('secp256k1', {
 }],
 [/* 14 */ 'elliptic', '/node_modules/hash.js', function(exports, require, module, __filename, __dirname, __meta) {
 'use strict';
+
+/* global require */
 
 const SHA224 = require('../lib/sha224');
 const SHA256 = require('../lib/sha256');
@@ -3522,6 +3528,8 @@ EC.prototype.getKeyRecoveryParam = function(e, signature, Q, enc) {
 }],
 [/* 17 */ 'elliptic', '/node_modules/hmac-drbg.js', function(exports, require, module, __filename, __dirname, __meta) {
 'use strict';
+
+/* global require */
 
 const DRBG = require('../lib/drbg');
 
