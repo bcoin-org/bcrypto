@@ -4,7 +4,8 @@
 
 #include "siphash.h"
 
-#if defined(__GNUC__) && defined(BCRYPTO_SIPHASH_64BIT)
+#if defined(BCRYPTO_SIPHASH_64BIT)
+#if defined(__GNUC__)
 #if defined(__SIZEOF_INT128__)
 typedef unsigned __int128 uint128_t;
 #else
@@ -12,6 +13,7 @@ typedef unsigned uint128_t __attribute__((mode(TI)));
 #endif
 #elif defined(_MSC_VER)
 #include <intrin.h>
+#endif
 #endif
 
 #define ROTL(x, b) (uint64_t)(((x) << (b)) | ((x) >> (64 - (b))))
@@ -48,7 +50,7 @@ static inline uint64_t
 reduce64(uint64_t a, uint64_t b) {
 #if defined(__GNUC__) && defined(BCRYPTO_SIPHASH_64BIT)
   return ((uint128_t)a * b) >> 64;
-#elif defined(_MSC_VER)
+#elif defined(_MSC_VER) && defined(BCRYPTO_SIPHASH_64BIT)
   return __umulh(a, b);
 #else
   uint64_t ahi = a >> 32;
