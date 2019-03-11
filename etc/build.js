@@ -57,7 +57,11 @@ const deps = [
 
   let code = await fs.readFile(JS, 'utf8');
 
+  code = code.replace(/, require,/g, ', _,');
+  code = code.replace(/var _require = require;/g, 'var _require = null;');
+  code = code.replace(/\n\/\* global __require__ \*\/\n/g, '');
   code = code.replace(/__require__/g, 'require');
+  code = code.replace(/(message = parseBytes\(message\);)/g, '// $1');
 
   await fs.writeFile(OUT, code);
   await fs.remove(PKG);

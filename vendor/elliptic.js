@@ -20,7 +20,7 @@
  */
 
 var __node_modules__ = [
-[/* 0 */ 'elliptic', '/lib/elliptic.js', function(exports, require, module, __filename, __dirname, __meta) {
+[/* 0 */ 'elliptic', '/lib/elliptic.js', function(exports, _, module, __filename, __dirname, __meta) {
 'use strict';
 
 var elliptic = exports;
@@ -35,7 +35,7 @@ elliptic.curves = __node_require__(13 /* './elliptic/curves' */);
 elliptic.ec = __node_require__(16 /* './elliptic/ec' */);
 elliptic.eddsa = __node_require__(20 /* './elliptic/eddsa' */);
 }],
-[/* 1 */ 'elliptic', '/package.json', function(exports, require, module, __filename, __dirname, __meta) {
+[/* 1 */ 'elliptic', '/package.json', function(exports, _, module, __filename, __dirname, __meta) {
 module.exports = {
   "name": "elliptic",
   "version": "6.4.1",
@@ -45,7 +45,7 @@ module.exports = {
   "main": "lib/elliptic.js"
 };
 }],
-[/* 2 */ 'elliptic', '/lib/elliptic/utils.js', function(exports, require, module, __filename, __dirname, __meta) {
+[/* 2 */ 'elliptic', '/lib/elliptic/utils.js', function(exports, _, module, __filename, __dirname, __meta) {
 'use strict';
 
 var utils = exports;
@@ -166,14 +166,12 @@ function intFromLE(bytes) {
 }
 utils.intFromLE = intFromLE;
 }],
-[/* 3 */ 'elliptic', '/node_modules/bn.js', function(exports, require, module, __filename, __dirname, __meta) {
+[/* 3 */ 'elliptic', '/node_modules/bn.js', function(exports, _, module, __filename, __dirname, __meta) {
 'use strict';
-
-/* global require */
 
 module.exports = require('./bn.js');
 }],
-[/* 4 */ 'minimalistic-assert', '/index.js', function(exports, require, module, __filename, __dirname, __meta) {
+[/* 4 */ 'minimalistic-assert', '/index.js', function(exports, _, module, __filename, __dirname, __meta) {
 module.exports = assert;
 
 function assert(val, msg) {
@@ -186,7 +184,7 @@ assert.equal = function assertEqual(l, r, msg) {
     throw new Error(msg || ('Assertion failed: ' + l + ' != ' + r));
 };
 }],
-[/* 5 */ 'minimalistic-crypto-utils', '/lib/utils.js', function(exports, require, module, __filename, __dirname, __meta) {
+[/* 5 */ 'minimalistic-crypto-utils', '/lib/utils.js', function(exports, _, module, __filename, __dirname, __meta) {
 'use strict';
 
 var utils = exports;
@@ -246,14 +244,12 @@ utils.encode = function encode(arr, enc) {
     return arr;
 };
 }],
-[/* 6 */ 'elliptic', '/node_modules/brorand.js', function(exports, require, module, __filename, __dirname, __meta) {
+[/* 6 */ 'elliptic', '/node_modules/brorand.js', function(exports, _, module, __filename, __dirname, __meta) {
 'use strict';
-
-/* global require */
 
 module.exports = require('../lib/random').randomBytes;
 }],
-[/* 7 */ 'elliptic', '/lib/elliptic/curve/index.js', function(exports, require, module, __filename, __dirname, __meta) {
+[/* 7 */ 'elliptic', '/lib/elliptic/curve/index.js', function(exports, _, module, __filename, __dirname, __meta) {
 'use strict';
 
 var curve = exports;
@@ -263,7 +259,7 @@ curve.short = __node_require__(9 /* './short' */);
 curve.mont = __node_require__(11 /* './mont' */);
 curve.edwards = __node_require__(12 /* './edwards' */);
 }],
-[/* 8 */ 'elliptic', '/lib/elliptic/curve/base.js', function(exports, require, module, __filename, __dirname, __meta) {
+[/* 8 */ 'elliptic', '/lib/elliptic/curve/base.js', function(exports, _, module, __filename, __dirname, __meta) {
 'use strict';
 
 var BN = __node_require__(3 /* 'bn.js' */);
@@ -640,7 +636,7 @@ BasePoint.prototype.dblp = function dblp(k) {
   return r;
 };
 }],
-[/* 9 */ 'elliptic', '/lib/elliptic/curve/short.js', function(exports, require, module, __filename, __dirname, __meta) {
+[/* 9 */ 'elliptic', '/lib/elliptic/curve/short.js', function(exports, _, module, __filename, __dirname, __meta) {
 'use strict';
 
 var curve = __node_require__(7 /* '../curve' */);
@@ -1579,7 +1575,7 @@ JPoint.prototype.isInfinity = function isInfinity() {
   return this.z.cmpn(0) === 0;
 };
 }],
-[/* 10 */ 'elliptic', '/node_modules/inherits.js', function(exports, require, module, __filename, __dirname, __meta) {
+[/* 10 */ 'elliptic', '/node_modules/inherits.js', function(exports, _, module, __filename, __dirname, __meta) {
 'use strict';
 
 // The ISC License
@@ -1622,7 +1618,7 @@ if (typeof Object.create === 'function') {
   };
 }
 }],
-[/* 11 */ 'elliptic', '/lib/elliptic/curve/mont.js', function(exports, require, module, __filename, __dirname, __meta) {
+[/* 11 */ 'elliptic', '/lib/elliptic/curve/mont.js', function(exports, _, module, __filename, __dirname, __meta) {
 'use strict';
 
 var curve = __node_require__(7 /* '../curve' */);
@@ -1804,7 +1800,7 @@ Point.prototype.getX = function getX() {
   return this.x.fromRed();
 };
 }],
-[/* 12 */ 'elliptic', '/lib/elliptic/curve/edwards.js', function(exports, require, module, __filename, __dirname, __meta) {
+[/* 12 */ 'elliptic', '/lib/elliptic/curve/edwards.js', function(exports, _, module, __filename, __dirname, __meta) {
 'use strict';
 
 var curve = __node_require__(7 /* '../curve' */);
@@ -2239,7 +2235,7 @@ Point.prototype.eqXToP = function eqXToP(x) {
 Point.prototype.toP = Point.prototype.normalize;
 Point.prototype.mixedAdd = Point.prototype.add;
 }],
-[/* 13 */ 'elliptic', '/lib/elliptic/curves.js', function(exports, require, module, __filename, __dirname, __meta) {
+[/* 13 */ 'elliptic', '/lib/elliptic/curves.js', function(exports, _, module, __filename, __dirname, __meta) {
 'use strict';
 
 var curves = exports;
@@ -2446,10 +2442,8 @@ defineCurve('secp256k1', {
   ]
 });
 }],
-[/* 14 */ 'elliptic', '/node_modules/hash.js', function(exports, require, module, __filename, __dirname, __meta) {
+[/* 14 */ 'elliptic', '/node_modules/hash.js', function(exports, _, module, __filename, __dirname, __meta) {
 'use strict';
-
-/* global require */
 
 const SHA224 = require('../lib/sha224');
 const SHA256 = require('../lib/sha256');
@@ -2502,7 +2496,7 @@ exports.sha256 = toHash(SHA256, 192, 64);
 exports.sha384 = toHash(SHA384, 192, 128);
 exports.sha512 = toHash(SHA512, 192, 128);
 }],
-[/* 15 */ 'elliptic', '/lib/elliptic/precomputed/secp256k1.js', function(exports, require, module, __filename, __dirname, __meta) {
+[/* 15 */ 'elliptic', '/lib/elliptic/precomputed/secp256k1.js', function(exports, _, module, __filename, __dirname, __meta) {
 module.exports = {
   doubles: {
     step: 4,
@@ -3284,7 +3278,7 @@ module.exports = {
   }
 };
 }],
-[/* 16 */ 'elliptic', '/lib/elliptic/ec/index.js', function(exports, require, module, __filename, __dirname, __meta) {
+[/* 16 */ 'elliptic', '/lib/elliptic/ec/index.js', function(exports, _, module, __filename, __dirname, __meta) {
 'use strict';
 
 var BN = __node_require__(3 /* 'bn.js' */);
@@ -3526,10 +3520,8 @@ EC.prototype.getKeyRecoveryParam = function(e, signature, Q, enc) {
   throw new Error('Unable to find valid recovery factor');
 };
 }],
-[/* 17 */ 'elliptic', '/node_modules/hmac-drbg.js', function(exports, require, module, __filename, __dirname, __meta) {
+[/* 17 */ 'elliptic', '/node_modules/hmac-drbg.js', function(exports, _, module, __filename, __dirname, __meta) {
 'use strict';
-
-/* global require */
 
 const DRBG = require('../lib/drbg');
 
@@ -3599,7 +3591,7 @@ function toBuffer(buf, enc) {
 
 module.exports = HmacDRBG;
 }],
-[/* 18 */ 'elliptic', '/lib/elliptic/ec/key.js', function(exports, require, module, __filename, __dirname, __meta) {
+[/* 18 */ 'elliptic', '/lib/elliptic/ec/key.js', function(exports, _, module, __filename, __dirname, __meta) {
 'use strict';
 
 var BN = __node_require__(3 /* 'bn.js' */);
@@ -3720,7 +3712,7 @@ KeyPair.prototype.inspect = function inspect() {
          ' pub: ' + (this.pub && this.pub.inspect()) + ' >';
 };
 }],
-[/* 19 */ 'elliptic', '/lib/elliptic/ec/signature.js', function(exports, require, module, __filename, __dirname, __meta) {
+[/* 19 */ 'elliptic', '/lib/elliptic/ec/signature.js', function(exports, _, module, __filename, __dirname, __meta) {
 'use strict';
 
 var BN = __node_require__(3 /* 'bn.js' */);
@@ -3857,7 +3849,7 @@ Signature.prototype.toDER = function toDER(enc) {
   return utils.encode(res, enc);
 };
 }],
-[/* 20 */ 'elliptic', '/lib/elliptic/eddsa/index.js', function(exports, require, module, __filename, __dirname, __meta) {
+[/* 20 */ 'elliptic', '/lib/elliptic/eddsa/index.js', function(exports, _, module, __filename, __dirname, __meta) {
 'use strict';
 
 var hash = __node_require__(14 /* 'hash.js' */);
@@ -3977,7 +3969,7 @@ EDDSA.prototype.isPoint = function isPoint(val) {
   return val instanceof this.pointClass;
 };
 }],
-[/* 21 */ 'elliptic', '/lib/elliptic/eddsa/key.js', function(exports, require, module, __filename, __dirname, __meta) {
+[/* 21 */ 'elliptic', '/lib/elliptic/eddsa/key.js', function(exports, _, module, __filename, __dirname, __meta) {
 'use strict';
 
 var elliptic = __node_require__(0 /* '../../elliptic' */);
@@ -4075,7 +4067,7 @@ KeyPair.prototype.getPublic = function getPublic(enc) {
 
 module.exports = KeyPair;
 }],
-[/* 22 */ 'elliptic', '/lib/elliptic/eddsa/signature.js', function(exports, require, module, __filename, __dirname, __meta) {
+[/* 22 */ 'elliptic', '/lib/elliptic/eddsa/signature.js', function(exports, _, module, __filename, __dirname, __meta) {
 'use strict';
 
 var BN = __node_require__(3 /* 'bn.js' */);
@@ -4174,7 +4166,7 @@ function __node_require__(id) {
   var dirname = __dirname;
   var meta;
 
-  var _require = require;
+  var _require = null;
   var _exports = exports;
   var _module = module;
 
