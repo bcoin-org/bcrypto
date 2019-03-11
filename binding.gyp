@@ -141,6 +141,7 @@
       ["target_arch=='x64' and OS!='win'", {
         "defines": [
           "BCRYPTO_POLY1305_64BIT",
+          "BCRYPTO_SIPHASH_64BIT",
           "BCRYPTO_USE_ASM",
           "BCRYPTO_USE_SSE",
           "BCRYPTO_USE_SSE41",
