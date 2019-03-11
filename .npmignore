@@ -2,6 +2,7 @@
 bench/
 docs/
 build/
+etc/
 test/
 scripts/
 node_modules/
