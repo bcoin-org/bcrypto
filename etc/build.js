@@ -28,11 +28,7 @@ const deps = [
 (async () => {
   await fs.remove([PKG, JS]);
 
-  await bpkg({
-    input: INPUT,
-    output: PKG,
-    multi: true
-  });
+  await bpkg.release(INPUT, PKG);
 
   const json = await fs.readJSON(PKG_JSON);
 
