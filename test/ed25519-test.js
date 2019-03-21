@@ -112,7 +112,7 @@ describe('EdDSA', function() {
       , 'hex');
 
     const child = ed25519.publicKeyTweakAdd(pub, tweak);
-    const sig = ed25519.signTweak(msg, key, tweak);
+    const sig = ed25519.signTweakAdd(msg, key, tweak);
 
     assert.bufferEqual(child, childExpect);
     assert.bufferEqual(sig, sigExpect);
@@ -126,7 +126,7 @@ describe('EdDSA', function() {
     const tweak = random.randomBytes(32);
     const msg = random.randomBytes(32);
     const child = ed25519.publicKeyTweakAdd(pub, tweak);
-    const sig = ed25519.signTweak(msg, key, tweak);
+    const sig = ed25519.signTweakAdd(msg, key, tweak);
 
     assert(ed25519.verify(msg, sig, child));
   });

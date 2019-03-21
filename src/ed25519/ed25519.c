@@ -297,6 +297,27 @@ bcrypto_ed25519_privkey_tweak_add(
 }
 
 int
+bcrypto_ed25519_privkey_tweak_mul(
+  bcrypto_ed25519_secret_key out,
+  const bcrypto_ed25519_secret_key sk,
+  const bcrypto_ed25519_secret_key tweak
+) {
+  bignum256modm k, t;
+
+  expand256_modm(k, sk, 32);
+  expand256_modm(t, tweak, 32);
+
+  mul256_modm(k, k, t);
+
+  if (iszero256_modm_batch(k))
+    return -1;
+
+  contract256_modm(out, k);
+
+  return 0;
+}
+
+int
 bcrypto_ed25519_pubkey_tweak_add(
   bcrypto_ed25519_public_key out,
   const bcrypto_ed25519_public_key pk,
@@ -329,7 +350,37 @@ bcrypto_ed25519_pubkey_tweak_add(
 }
 
 int
-bcrypto_ed25519_sign_tweak(
+bcrypto_ed25519_pubkey_tweak_mul(
+  bcrypto_ed25519_public_key out,
+  const bcrypto_ed25519_public_key pk,
+  const bcrypto_ed25519_secret_key tweak
+) {
+  ge25519 ALIGN(16) T, k;
+  bignum256modm t;
+
+  if (!ge25519_unpack_negative_vartime(&k, pk))
+    return -1;
+
+  expand256_modm(t, tweak, 32);
+
+  /* We need to negate the point here! */
+  /* Why? Who the hell knows? */
+  /* 7 hours wasted on this. */
+  curve25519_neg(k.x, k.x);
+  curve25519_neg(k.t, k.t);
+
+  ge25519_scalarmult_vartime(&T, &k, t);
+
+  if (ge25519_is_neutral_vartime(&T))
+    return -1;
+
+  ge25519_pack(out, &T);
+
+  return 0;
+}
+
+int
+bcrypto_ed25519_sign_tweak_add(
   const unsigned char *m,
   size_t mlen,
   const bcrypto_ed25519_secret_key sk,
@@ -371,6 +422,62 @@ bcrypto_ed25519_sign_tweak(
   expand256_modm(a, extsk, 32);
   expand256_modm(t, tweak, 32);
   add256_modm(a, a, t);
+  if (iszero256_modm_batch(a))
+    return -1;
+  mul256_modm(S, S, a);
+
+  /* S = (r + H(R,A,m)a) */
+  add256_modm(S, S, r);
+
+  /* S = (r + H(R,A,m)a) mod L */
+  contract256_modm(RS + 32, S);
+
+  return 0;
+}
+
+int
+bcrypto_ed25519_sign_tweak_mul(
+  const unsigned char *m,
+  size_t mlen,
+  const bcrypto_ed25519_secret_key sk,
+  const bcrypto_ed25519_public_key pk,
+  const bcrypto_ed25519_secret_key tweak,
+  bcrypto_ed25519_signature RS
+) {
+  bcrypto_ed25519_hash_context ctx;
+  bignum256modm r, S, a, t;
+  ge25519 ALIGN(16) R;
+  hash_512bits extsk, hashr, hram;
+
+  bcrypto_ed25519_extsk(extsk, sk);
+
+  bcrypto_ed25519_hash_init(&ctx);
+  bcrypto_ed25519_hash_update(&ctx, extsk + 32, 32);
+  bcrypto_ed25519_hash_update(&ctx, tweak, 32);
+  bcrypto_ed25519_hash_final(&ctx, hashr);
+
+  /* r = H(aExt[32..64], m) */
+  bcrypto_ed25519_hash_init(&ctx);
+  bcrypto_ed25519_hash_update(&ctx, hashr, 32);
+  bcrypto_ed25519_hash_update(&ctx, m, mlen);
+  bcrypto_ed25519_hash_final(&ctx, hashr);
+  expand256_modm(r, hashr, 64);
+
+  /* R = rB */
+  ge25519_scalarmult_base_niels(&R, ge25519_niels_base_multiples, r);
+  ge25519_pack(RS, &R);
+
+  /* S = H(R,A,m).. */
+  bcrypto_ed25519_public_key ck;
+  if (bcrypto_ed25519_pubkey_tweak_mul(ck, pk, tweak) != 0)
+    return -1;
+  bcrypto_ed25519_hram(hram, RS, ck, m, mlen);
+  expand256_modm(S, hram, 64);
+
+  /* S = H(R,A,m)a */
+  expand256_modm(a, extsk, 32);
+  expand256_modm(t, tweak, 32);
+  mul256_modm(a, a, t);
   if (iszero256_modm_batch(a))
     return -1;
   mul256_modm(S, S, a);

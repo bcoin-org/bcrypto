@@ -658,7 +658,103 @@ bcrypto_ecdsa_privkey_tweak_add(
   if (!priv_bn)
     goto fail;
 
-  if (BN_ucmp(priv_bn, order_bn) >= 0)
+  tweak_bn = BN_bin2bn(tweak, tweak_len, NULL);
+
+  if (!tweak_bn)
+    goto fail;
+
+  if (BN_ucmp(tweak_bn, order_bn) >= 0)
+    goto fail;
+
+  if (!BN_mod_add(priv_bn, priv_bn, tweak_bn, order_bn, ctx))
+    goto fail;
+
+  if (BN_is_zero(priv_bn))
+    goto fail;
+
+  size_t size = bcrypto_ecdsa_size(type);
+
+  assert(size != 0);
+  assert((size_t)BN_num_bytes(priv_bn) <= size);
+
+  npriv_buf = malloc(size);
+
+  if (!npriv_buf)
+    goto fail;
+
+  assert(BN_bn2binpad(priv_bn, npriv_buf, size) > 0);
+
+  BN_free(order_bn);
+  BN_clear_free(priv_bn);
+  BN_clear_free(tweak_bn);
+  BN_CTX_free(ctx);
+
+  *npriv = npriv_buf;
+  *npriv_len = size;
+
+  return true;
+
+fail:
+  if (order_bn)
+    BN_free(order_bn);
+
+  if (priv_bn)
+    BN_clear_free(priv_bn);
+
+  if (tweak_bn)
+    BN_clear_free(tweak_bn);
+
+  if (ctx)
+    BN_CTX_free(ctx);
+
+  if (npriv_buf)
+    free(npriv_buf);
+
+  return false;
+}
+
+bool
+bcrypto_ecdsa_privkey_tweak_mul(
+  const char *name,
+  const uint8_t *priv,
+  size_t priv_len,
+  const uint8_t *tweak,
+  size_t tweak_len,
+  uint8_t **npriv,
+  size_t *npriv_len
+) {
+  assert(npriv && npriv_len);
+
+  BN_CTX *ctx = NULL;
+  BIGNUM *order_bn = NULL;
+  BIGNUM *priv_bn = NULL;
+  BIGNUM *tweak_bn = NULL;
+  uint8_t *npriv_buf = NULL;
+
+  int type = bcrypto_ecdsa_curve(name);
+
+  if (type == -1)
+    goto fail;
+
+  if (!bcrypto_ecdsa_valid_scalar(type, priv, priv_len))
+    goto fail;
+
+  if (!bcrypto_ecdsa_valid_scalar(type, tweak, tweak_len))
+    goto fail;
+
+  ctx = BN_CTX_new();
+
+  if (!ctx)
+    goto fail;
+
+  order_bn = bcrypto_ecdsa_order(type);
+
+  if (!order_bn)
+    goto fail;
+
+  priv_bn = BN_bin2bn(priv, priv_len, NULL);
+
+  if (!priv_bn)
     goto fail;
 
   tweak_bn = BN_bin2bn(tweak, tweak_len, NULL);
@@ -666,10 +762,13 @@ bcrypto_ecdsa_privkey_tweak_add(
   if (!tweak_bn)
     goto fail;
 
-  if (!BN_mod_add(priv_bn, priv_bn, tweak_bn, order_bn, ctx))
+  if (BN_ucmp(tweak_bn, order_bn) >= 0)
     goto fail;
 
-  if (BN_is_zero(priv_bn))
+  if (BN_is_zero(tweak_bn))
+    goto fail;
+
+  if (!BN_mod_mul(priv_bn, priv_bn, tweak_bn, order_bn, ctx))
     goto fail;
 
   size_t size = bcrypto_ecdsa_size(type);
@@ -1167,6 +1266,23 @@ fail:
     free(npub_buf);
 
   return false;
+}
+
+bool
+bcrypto_ecdsa_pubkey_tweak_mul(
+  const char *name,
+  const uint8_t *pub,
+  size_t pub_len,
+  const uint8_t *tweak,
+  size_t tweak_len,
+  bool compress,
+  uint8_t **npub,
+  size_t *npub_len
+) {
+  return bcrypto_ecdsa_derive(name, pub, pub_len,
+                              tweak, tweak_len,
+                              compress, npub,
+                              npub_len);
 }
 
 bool
@@ -1774,6 +1890,19 @@ bcrypto_ecdsa_privkey_tweak_add(
 }
 
 bool
+bcrypto_ecdsa_privkey_tweak_mul(
+  const char *name,
+  const uint8_t *priv,
+  size_t priv_len,
+  const uint8_t *tweak,
+  size_t tweak_len,
+  uint8_t **npriv,
+  size_t *npriv_len
+) {
+  return false;
+}
+
+bool
 bcrypto_ecdsa_pubkey_create(
   const char *name,
   const uint8_t *priv,
@@ -1832,6 +1961,20 @@ bcrypto_ecdsa_pubkey_import_spki(
 
 bool
 bcrypto_ecdsa_pubkey_tweak_add(
+  const char *name,
+  const uint8_t *pub,
+  size_t pub_len,
+  const uint8_t *tweak,
+  size_t tweak_len,
+  bool compress,
+  uint8_t **npub,
+  size_t *npub_len
+) {
+  return false;
+}
+
+bool
+bcrypto_ecdsa_pubkey_tweak_mul(
   const char *name,
   const uint8_t *pub,
   size_t pub_len,

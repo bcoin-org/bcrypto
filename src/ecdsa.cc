@@ -20,12 +20,14 @@ BECDSA::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "privateKeyExportPKCS8", BECDSA::PrivateKeyExportPKCS8);
   Nan::Export(obj, "privateKeyImportPKCS8", BECDSA::PrivateKeyImportPKCS8);
   Nan::Export(obj, "privateKeyTweakAdd", BECDSA::PrivateKeyTweakAdd);
+  Nan::Export(obj, "privateKeyTweakMul", BECDSA::PrivateKeyTweakMul);
   Nan::Export(obj, "publicKeyCreate", BECDSA::PublicKeyCreate);
   Nan::Export(obj, "publicKeyConvert", BECDSA::PublicKeyConvert);
   Nan::Export(obj, "publicKeyVerify", BECDSA::PublicKeyVerify);
   Nan::Export(obj, "publicKeyExportSPKI", BECDSA::PublicKeyExportSPKI);
   Nan::Export(obj, "publicKeyImportSPKI", BECDSA::PublicKeyImportSPKI);
   Nan::Export(obj, "publicKeyTweakAdd", BECDSA::PublicKeyTweakAdd);
+  Nan::Export(obj, "publicKeyTweakMul", BECDSA::PublicKeyTweakMul);
   Nan::Export(obj, "sign", BECDSA::Sign);
   Nan::Export(obj, "verify", BECDSA::Verify);
   Nan::Export(obj, "recover", BECDSA::Recover);
@@ -215,6 +217,43 @@ NAN_METHOD(BECDSA::PrivateKeyTweakAdd) {
   size_t priv_len;
 
   bool result = bcrypto_ecdsa_privkey_tweak_add(
+    name, pd, pl, td, tl, &priv, &priv_len);
+
+  if (!result)
+    return Nan::ThrowError("Could not tweak private key.");
+
+  return info.GetReturnValue().Set(
+    Nan::NewBuffer((char *)priv, priv_len).ToLocalChecked());
+}
+
+NAN_METHOD(BECDSA::PrivateKeyTweakMul) {
+  if (info.Length() < 3)
+    return Nan::ThrowError("ecdsa.privateKeyTweakMul() requires arguments.");
+
+  if (!info[0]->IsString())
+    return Nan::ThrowTypeError("First argument must be a string.");
+
+  Nan::Utf8String name_(info[0]);
+  const char *name = (const char *)*name_;
+
+  v8::Local<v8::Object> pbuf = info[1].As<v8::Object>();
+  v8::Local<v8::Object> tbuf = info[2].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(pbuf)
+      || !node::Buffer::HasInstance(tbuf)) {
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+  }
+
+  const uint8_t *pd = (const uint8_t *)node::Buffer::Data(pbuf);
+  size_t pl = node::Buffer::Length(pbuf);
+
+  const uint8_t *td = (const uint8_t *)node::Buffer::Data(tbuf);
+  size_t tl = node::Buffer::Length(tbuf);
+
+  uint8_t *priv;
+  size_t priv_len;
+
+  bool result = bcrypto_ecdsa_privkey_tweak_mul(
     name, pd, pl, td, tl, &priv, &priv_len);
 
   if (!result)
@@ -441,6 +480,52 @@ NAN_METHOD(BECDSA::PublicKeyTweakAdd) {
   size_t pub_len;
 
   bool result = bcrypto_ecdsa_pubkey_tweak_add(
+    name, pd, pl, td, tl, compress, &pub, &pub_len);
+
+  if (!result)
+    return Nan::ThrowError("Could not tweak public key.");
+
+  return info.GetReturnValue().Set(
+    Nan::NewBuffer((char *)pub, pub_len).ToLocalChecked());
+}
+
+NAN_METHOD(BECDSA::PublicKeyTweakMul) {
+  if (info.Length() < 3)
+    return Nan::ThrowError("ecdsa.publicKeyTweakMul() requires arguments.");
+
+  if (!info[0]->IsString())
+    return Nan::ThrowTypeError("First argument must be a string.");
+
+  Nan::Utf8String name_(info[0]);
+  const char *name = (const char *)*name_;
+
+  v8::Local<v8::Object> pbuf = info[1].As<v8::Object>();
+  v8::Local<v8::Object> tbuf = info[2].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(pbuf)
+      || !node::Buffer::HasInstance(tbuf)) {
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+  }
+
+  bool compress = true;
+
+  if (info.Length() > 3 && !IsNull(info[3])) {
+    if (!info[3]->IsBoolean())
+      return Nan::ThrowTypeError("Fourth argument must be a boolean.");
+
+    compress = Nan::To<bool>(info[3]).FromJust();
+  }
+
+  const uint8_t *pd = (const uint8_t *)node::Buffer::Data(pbuf);
+  size_t pl = node::Buffer::Length(pbuf);
+
+  const uint8_t *td = (const uint8_t *)node::Buffer::Data(tbuf);
+  size_t tl = node::Buffer::Length(tbuf);
+
+  uint8_t *pub;
+  size_t pub_len;
+
+  bool result = bcrypto_ecdsa_pubkey_tweak_mul(
     name, pd, pl, td, tl, compress, &pub, &pub_len);
 
   if (!result)

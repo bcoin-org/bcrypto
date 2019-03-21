@@ -66,6 +66,17 @@ bcrypto_ecdsa_privkey_tweak_add(
 );
 
 bool
+bcrypto_ecdsa_privkey_tweak_mul(
+  const char *name,
+  const uint8_t *priv,
+  size_t priv_len,
+  const uint8_t *tweak,
+  size_t tweak_len,
+  uint8_t **npriv,
+  size_t *npriv_len
+);
+
+bool
 bcrypto_ecdsa_pubkey_create(
   const char *name,
   const uint8_t *priv,
@@ -114,6 +125,18 @@ bcrypto_ecdsa_pubkey_import_spki(
 
 bool
 bcrypto_ecdsa_pubkey_tweak_add(
+  const char *name,
+  const uint8_t *pub,
+  size_t pub_len,
+  const uint8_t *tweak,
+  size_t tweak_len,
+  bool compress,
+  uint8_t **npub,
+  size_t *npub_len
+);
+
+bool
+bcrypto_ecdsa_pubkey_tweak_mul(
   const char *name,
   const uint8_t *pub,
   size_t pub_len,

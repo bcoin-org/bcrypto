@@ -14,13 +14,16 @@ BED25519::Init(v8::Local<v8::Object> &target) {
 
   Nan::Export(obj, "privateKeyConvert", BED25519::PrivateKeyConvert);
   Nan::Export(obj, "_privateKeyTweakAdd", BED25519::PrivateKeyTweakAdd);
+  Nan::Export(obj, "_privateKeyTweakMul", BED25519::PrivateKeyTweakMul);
   Nan::Export(obj, "publicKeyCreate", BED25519::PublicKeyCreate);
   Nan::Export(obj, "publicKeyConvert", BED25519::PublicKeyConvert);
   Nan::Export(obj, "publicKeyDeconvert", BED25519::PublicKeyDeconvert);
   Nan::Export(obj, "publicKeyVerify", BED25519::PublicKeyVerify);
   Nan::Export(obj, "publicKeyTweakAdd", BED25519::PublicKeyTweakAdd);
+  Nan::Export(obj, "publicKeyTweakMul", BED25519::PublicKeyTweakMul);
   Nan::Export(obj, "sign", BED25519::Sign);
-  Nan::Export(obj, "signTweak", BED25519::SignTweak);
+  Nan::Export(obj, "signTweakAdd", BED25519::SignTweakAdd);
+  Nan::Export(obj, "signTweakMul", BED25519::SignTweakMul);
   Nan::Export(obj, "verify", BED25519::Verify);
   Nan::Export(obj, "derive", BED25519::Derive);
   Nan::Export(obj, "exchange", BED25519::Exchange);
@@ -77,6 +80,39 @@ NAN_METHOD(BED25519::PrivateKeyTweakAdd) {
   bcrypto_ed25519_secret_key out;
 
   if (bcrypto_ed25519_privkey_tweak_add(out, key, tweak) != 0)
+    return Nan::ThrowError("Invalid public key.");
+
+  return info.GetReturnValue().Set(
+    Nan::CopyBuffer((char *)&out[0], 32).ToLocalChecked());
+}
+
+NAN_METHOD(BED25519::PrivateKeyTweakMul) {
+  if (info.Length() < 2)
+    return Nan::ThrowError("ed25519.privateKeyTweakMul() requires arguments.");
+
+  v8::Local<v8::Object> kbuf = info[0].As<v8::Object>();
+  v8::Local<v8::Object> tbuf = info[1].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(kbuf)
+      || !node::Buffer::HasInstance(tbuf)) {
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+  }
+
+  const uint8_t *key = (const uint8_t *)node::Buffer::Data(kbuf);
+  size_t key_len = node::Buffer::Length(kbuf);
+
+  const uint8_t *tweak = (const uint8_t *)node::Buffer::Data(tbuf);
+  size_t tweak_len = node::Buffer::Length(tbuf);
+
+  if (key_len != 32)
+    return Nan::ThrowRangeError("Invalid public key size.");
+
+  if (tweak_len != 32)
+    return Nan::ThrowRangeError("Invalid tweak size.");
+
+  bcrypto_ed25519_secret_key out;
+
+  if (bcrypto_ed25519_privkey_tweak_mul(out, key, tweak) != 0)
     return Nan::ThrowError("Invalid public key.");
 
   return info.GetReturnValue().Set(
@@ -211,6 +247,39 @@ NAN_METHOD(BED25519::PublicKeyTweakAdd) {
     Nan::CopyBuffer((char *)&out[0], 32).ToLocalChecked());
 }
 
+NAN_METHOD(BED25519::PublicKeyTweakMul) {
+  if (info.Length() < 2)
+    return Nan::ThrowError("ed25519.publicKeyTweakMul() requires arguments.");
+
+  v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
+  v8::Local<v8::Object> tbuf = info[1].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(pbuf)
+      || !node::Buffer::HasInstance(tbuf)) {
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+  }
+
+  const uint8_t *pub = (const uint8_t *)node::Buffer::Data(pbuf);
+  size_t pub_len = node::Buffer::Length(pbuf);
+
+  const uint8_t *tweak = (const uint8_t *)node::Buffer::Data(tbuf);
+  size_t tweak_len = node::Buffer::Length(tbuf);
+
+  if (pub_len != 32)
+    return Nan::ThrowRangeError("Invalid public key size.");
+
+  if (tweak_len != 32)
+    return Nan::ThrowRangeError("Invalid tweak size.");
+
+  bcrypto_ed25519_public_key out;
+
+  if (bcrypto_ed25519_pubkey_tweak_mul(out, pub, tweak) != 0)
+    return Nan::ThrowError("Invalid public key.");
+
+  return info.GetReturnValue().Set(
+    Nan::CopyBuffer((char *)&out[0], 32).ToLocalChecked());
+}
+
 NAN_METHOD(BED25519::Sign) {
   if (info.Length() < 2)
     return Nan::ThrowError("ed25519.sign() requires arguments.");
@@ -242,9 +311,9 @@ NAN_METHOD(BED25519::Sign) {
     Nan::CopyBuffer((char *)&sig[0], 64).ToLocalChecked());
 }
 
-NAN_METHOD(BED25519::SignTweak) {
+NAN_METHOD(BED25519::SignTweakAdd) {
   if (info.Length() < 2)
-    return Nan::ThrowError("ed25519.signTweak() requires arguments.");
+    return Nan::ThrowError("ed25519.signTweakAdd() requires arguments.");
 
   v8::Local<v8::Object> mbuf = info[0].As<v8::Object>();
   v8::Local<v8::Object> sbuf = info[1].As<v8::Object>();
@@ -276,8 +345,53 @@ NAN_METHOD(BED25519::SignTweak) {
 
   bcrypto_ed25519_signature sig;
 
-  if (bcrypto_ed25519_sign_tweak(msg, msg_len, secret, pub, tweak, sig) != 0)
+  if (bcrypto_ed25519_sign_tweak_add(msg, msg_len, secret,
+                                     pub, tweak, sig) != 0) {
     return Nan::ThrowError("Could not sign.");
+  }
+
+  return info.GetReturnValue().Set(
+    Nan::CopyBuffer((char *)&sig[0], 64).ToLocalChecked());
+}
+
+NAN_METHOD(BED25519::SignTweakMul) {
+  if (info.Length() < 2)
+    return Nan::ThrowError("ed25519.signTweakMul() requires arguments.");
+
+  v8::Local<v8::Object> mbuf = info[0].As<v8::Object>();
+  v8::Local<v8::Object> sbuf = info[1].As<v8::Object>();
+  v8::Local<v8::Object> tbuf = info[2].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(mbuf)
+      || !node::Buffer::HasInstance(sbuf)
+      || !node::Buffer::HasInstance(tbuf)) {
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+  }
+
+  const uint8_t *msg = (const uint8_t *)node::Buffer::Data(mbuf);
+  size_t msg_len = node::Buffer::Length(mbuf);
+
+  const uint8_t *secret = (const uint8_t *)node::Buffer::Data(sbuf);
+  size_t secret_len = node::Buffer::Length(sbuf);
+
+  const uint8_t *tweak = (const uint8_t *)node::Buffer::Data(tbuf);
+  size_t tweak_len = node::Buffer::Length(tbuf);
+
+  if (secret_len != 32)
+    return Nan::ThrowRangeError("Invalid secret size.");
+
+  if (tweak_len != 32)
+    return Nan::ThrowRangeError("Invalid tweak size.");
+
+  bcrypto_ed25519_public_key pub;
+  bcrypto_ed25519_publickey(secret, pub);
+
+  bcrypto_ed25519_signature sig;
+
+  if (bcrypto_ed25519_sign_tweak_mul(msg, msg_len, secret,
+                                     pub, tweak, sig) != 0) {
+    return Nan::ThrowError("Could not sign.");
+  }
 
   return info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&sig[0], 64).ToLocalChecked());

@@ -98,6 +98,13 @@ bcrypto_ed25519_privkey_tweak_add(
 );
 
 int
+bcrypto_ed25519_privkey_tweak_mul(
+  bcrypto_ed25519_secret_key out,
+  const bcrypto_ed25519_secret_key sk,
+  const bcrypto_ed25519_secret_key tweak
+);
+
+int
 bcrypto_ed25519_pubkey_tweak_add(
   bcrypto_ed25519_public_key out,
   const bcrypto_ed25519_public_key pk,
@@ -105,7 +112,24 @@ bcrypto_ed25519_pubkey_tweak_add(
 );
 
 int
-bcrypto_ed25519_sign_tweak(
+bcrypto_ed25519_pubkey_tweak_mul(
+  bcrypto_ed25519_public_key out,
+  const bcrypto_ed25519_public_key pk,
+  const bcrypto_ed25519_secret_key tweak
+);
+
+int
+bcrypto_ed25519_sign_tweak_add(
+  const unsigned char *m,
+  size_t mlen,
+  const bcrypto_ed25519_secret_key sk,
+  const bcrypto_ed25519_public_key pk,
+  const bcrypto_ed25519_secret_key tweak,
+  bcrypto_ed25519_signature RS
+);
+
+int
+bcrypto_ed25519_sign_tweak_mul(
   const unsigned char *m,
   size_t mlen,
   const bcrypto_ed25519_secret_key sk,
