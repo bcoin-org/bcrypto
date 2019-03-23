@@ -122,6 +122,53 @@ bcrypto_c448_error_t bcrypto_c448_ed448_derive_public_key(
   return BCRYPTO_C448_SUCCESS;
 }
 
+bcrypto_c448_error_t bcrypto_c448_ed448_derive(
+            uint8_t out[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
+            const uint8_t pubkey[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
+            const uint8_t privkey[BCRYPTO_EDDSA_448_PRIVATE_BYTES])
+{
+  /* only this much used for keygen */
+  uint8_t secret_scalar_ser[BCRYPTO_EDDSA_448_PRIVATE_BYTES];
+  bcrypto_curve448_scalar_t secret_scalar;
+  unsigned int c;
+  bcrypto_curve448_point_t p;
+
+  if (!oneshot_hash(secret_scalar_ser, sizeof(secret_scalar_ser), privkey,
+            BCRYPTO_EDDSA_448_PRIVATE_BYTES))
+    return BCRYPTO_C448_FAILURE;
+
+  clamp(secret_scalar_ser);
+
+  bcrypto_curve448_scalar_decode_long(secret_scalar, secret_scalar_ser,
+                sizeof(secret_scalar_ser));
+
+  /*
+   * Since we are going to mul_by_cofactor during encoding, divide by it
+   * here. However, the EdDSA base point is not the same as the decaf base
+   * point if the sigma isogeny is in use: the EdDSA base point is on
+   * Etwist_d/(1-d) and the decaf base point is on Etwist_d, and when
+   * converted it effectively picks up a factor of 2 from the isogenies.  So
+   * we might start at 2 instead of 1.
+   */
+  for (c = 1; c < BCRYPTO_C448_EDDSA_ENCODE_RATIO; c <<= 1)
+    bcrypto_curve448_scalar_halve(secret_scalar, secret_scalar);
+
+  if (bcrypto_curve448_point_decode_like_eddsa_and_mul_by_ratio(p, pubkey)
+      != BCRYPTO_C448_SUCCESS) {
+    return BCRYPTO_C448_FAILURE;
+  }
+
+  bcrypto_curve448_point_scalarmul(p, p, secret_scalar);
+  bcrypto_curve448_point_mul_by_ratio_and_encode_like_eddsa(out, p);
+
+  /* Cleanup */
+  bcrypto_curve448_scalar_destroy(secret_scalar);
+  bcrypto_curve448_point_destroy(p);
+  OPENSSL_cleanse(secret_scalar_ser, sizeof(secret_scalar_ser));
+
+  return BCRYPTO_C448_SUCCESS;
+}
+
 bcrypto_c448_error_t bcrypto_c448_ed448_sign(
             uint8_t signature[BCRYPTO_EDDSA_448_SIGNATURE_BYTES],
             const uint8_t privkey[BCRYPTO_EDDSA_448_PRIVATE_BYTES],

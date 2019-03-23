@@ -46,6 +46,18 @@ bcrypto_c448_error_t bcrypto_c448_ed448_derive_public_key(
             const uint8_t privkey [BCRYPTO_EDDSA_448_PRIVATE_BYTES]);
 
 /*
+ * EdDSA diffie-hellman.  Returns an edwards point (_not_ an x448 point).
+ *
+ * out (out): The shared secret.
+ * pubkey (in): The public key.
+ * privkey (in): The private key.
+ */
+bcrypto_c448_error_t bcrypto_c448_ed448_derive(
+            uint8_t out[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
+            const uint8_t pubkey[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
+            const uint8_t privkey[BCRYPTO_EDDSA_448_PRIVATE_BYTES]);
+
+/*
  * EdDSA signing.
  *
  * signature (out): The signature.
