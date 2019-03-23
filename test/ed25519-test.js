@@ -110,7 +110,18 @@ describe('EdDSA', function() {
     assert.bufferEqual(xbobSecret2, xsecret);
   });
 
-  it('should generate keypair and sign with tweak (vector)', () => {
+  it('should generate keypair and sign with additive tweak', () => {
+    const key = ed25519.privateKeyGenerate();
+    const pub = ed25519.publicKeyCreate(key);
+    const tweak = random.randomBytes(32);
+    const msg = random.randomBytes(32);
+    const child = ed25519.publicKeyTweakAdd(pub, tweak);
+    const sig = ed25519.signTweakAdd(msg, key, tweak);
+
+    assert(ed25519.verify(msg, sig, child));
+  });
+
+  it('should generate keypair and sign with additive tweak (vector)', () => {
     const key = Buffer.from(
       'd0e9d24169a720d5e3d07f71bf68802ba365be3e85c3c20f974a8dd3e0c97f79',
       'hex');
@@ -145,13 +156,51 @@ describe('EdDSA', function() {
     assert(ed25519.verify(msg, sig, child));
   });
 
-  it('should generate keypair and sign with tweak', () => {
+  it('should generate keypair and sign with multiplicative tweak', () => {
     const key = ed25519.privateKeyGenerate();
     const pub = ed25519.publicKeyCreate(key);
     const tweak = random.randomBytes(32);
     const msg = random.randomBytes(32);
-    const child = ed25519.publicKeyTweakAdd(pub, tweak);
-    const sig = ed25519.signTweakAdd(msg, key, tweak);
+    const child = ed25519.publicKeyTweakMul(pub, tweak);
+
+    assert.notBufferEqual(child, pub);
+
+    const sig = ed25519.signTweakMul(msg, key, tweak);
+
+    assert(ed25519.verify(msg, sig, child));
+  });
+
+  it('should generate keypair and sign with multiplicative tweak (vector)', () => {
+    const key = Buffer.from(
+      '5bc1d80b378c350663a6862f21599ee3b09fb4255a0dfad3d907d5ca7ab2b223',
+      'hex');
+
+    const pub = Buffer.from(
+      'f921f787e3e4e829a4be69a499f06e69d7bddbb7f6a90ccfba785faebd8d7a02',
+      'hex');
+
+    const tweak = Buffer.from(
+      '7623971ec36c8557a8b1debe80f5f305989d0e51b62805c88590ee5b586a648a',
+      'hex');
+
+    const msg = Buffer.from(
+      'e4a733e761eb1d0263fd713e7f815c947b29ed5a9140fa893bf59b11e1c32b80',
+      'hex');
+
+    const childExpect = Buffer.from(
+      '78103d0a0342dca9a5044834f6dcf9472b8c1c3308fc4b49b13d451ddb7792f0',
+      'hex');
+
+    const sigExpect = Buffer.from(''
+      + '4d1fa52a9dada415d4fff323257cfbdbaa571164873bcbd3e88acbe0a12d7e46'
+      + 'e8b45144ed4ef9db77ac7e453e78aa4cd038f189bcff20d62de3339f80e51c01'
+      , 'hex');
+
+    const child = ed25519.publicKeyTweakMul(pub, tweak);
+    const sig = ed25519.signTweakMul(msg, key, tweak);
+
+    assert.bufferEqual(child, childExpect);
+    assert.bufferEqual(sig, sigExpect);
 
     assert(ed25519.verify(msg, sig, child));
   });

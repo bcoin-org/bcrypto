@@ -153,14 +153,40 @@ describe('ECDSA', function() {
       assert(!ec.verify(msg, sig, zero));
     });
 
-    it(`should tweak keys (${ec.id})`, () => {
+    it(`should do additive tweak (${ec.id})`, () => {
       const priv = ec.privateKeyGenerate();
       const pub = ec.publicKeyCreate(priv);
       const tweak = random.randomBytes(ec.size);
+
       tweak[0] = 0x00;
 
       const tpriv = ec.privateKeyTweakAdd(priv, tweak);
       const tpub = ec.publicKeyTweakAdd(pub, tweak);
+      const zpub = ec.publicKeyCreate(tpriv);
+
+      assert.bufferEqual(tpub, zpub);
+
+      const msg = random.randomBytes(ec.size);
+
+      const sig = ec.sign(msg, tpriv);
+      assert(ec.verify(msg, sig, tpub));
+
+      const der = ec.signDER(msg, tpriv);
+      assert(ec.verifyDER(msg, der, tpub));
+    });
+
+    it(`should do multiplicative tweak (${ec.id}`, () => {
+      const priv = ec.privateKeyGenerate();
+      const pub = ec.publicKeyCreate(priv);
+      const tweak = random.randomBytes(ec.size);
+
+      tweak[0] = 0x00;
+
+      const tpriv = ec.privateKeyTweakMul(priv, tweak);
+      const tpub = ec.publicKeyTweakMul(pub, tweak);
+      const zpub = ec.publicKeyCreate(tpriv);
+
+      assert.bufferEqual(tpub, zpub);
 
       const msg = random.randomBytes(ec.size);
 
