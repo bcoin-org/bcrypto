@@ -13,8 +13,8 @@ BED25519::Init(v8::Local<v8::Object> &target) {
   v8::Local<v8::Object> obj = Nan::New<v8::Object>();
 
   Nan::Export(obj, "privateKeyConvert", BED25519::PrivateKeyConvert);
-  Nan::Export(obj, "_privateKeyTweakAdd", BED25519::PrivateKeyTweakAdd);
-  Nan::Export(obj, "_privateKeyTweakMul", BED25519::PrivateKeyTweakMul);
+  Nan::Export(obj, "scalarTweakAdd", BED25519::ScalarTweakAdd);
+  Nan::Export(obj, "scalarTweakMul", BED25519::ScalarTweakMul);
   Nan::Export(obj, "publicKeyCreate", BED25519::PublicKeyCreate);
   Nan::Export(obj, "publicKeyConvert", BED25519::PublicKeyConvert);
   Nan::Export(obj, "publicKeyDeconvert", BED25519::PublicKeyDeconvert);
@@ -53,9 +53,9 @@ NAN_METHOD(BED25519::PrivateKeyConvert) {
     Nan::CopyBuffer((char *)&out[0], 32).ToLocalChecked());
 }
 
-NAN_METHOD(BED25519::PrivateKeyTweakAdd) {
+NAN_METHOD(BED25519::ScalarTweakAdd) {
   if (info.Length() < 2)
-    return Nan::ThrowError("ed25519.privateKeyTweakAdd() requires arguments.");
+    return Nan::ThrowError("ed25519.scalarTweakAdd() requires arguments.");
 
   v8::Local<v8::Object> kbuf = info[0].As<v8::Object>();
   v8::Local<v8::Object> tbuf = info[1].As<v8::Object>();
@@ -79,16 +79,16 @@ NAN_METHOD(BED25519::PrivateKeyTweakAdd) {
 
   bcrypto_ed25519_secret_key out;
 
-  if (bcrypto_ed25519_privkey_tweak_add(out, key, tweak) != 0)
+  if (bcrypto_ed25519_scalar_tweak_add(out, key, tweak) != 0)
     return Nan::ThrowError("Invalid public key.");
 
   return info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&out[0], 32).ToLocalChecked());
 }
 
-NAN_METHOD(BED25519::PrivateKeyTweakMul) {
+NAN_METHOD(BED25519::ScalarTweakMul) {
   if (info.Length() < 2)
-    return Nan::ThrowError("ed25519.privateKeyTweakMul() requires arguments.");
+    return Nan::ThrowError("ed25519.scalarTweakMul() requires arguments.");
 
   v8::Local<v8::Object> kbuf = info[0].As<v8::Object>();
   v8::Local<v8::Object> tbuf = info[1].As<v8::Object>();
@@ -112,7 +112,7 @@ NAN_METHOD(BED25519::PrivateKeyTweakMul) {
 
   bcrypto_ed25519_secret_key out;
 
-  if (bcrypto_ed25519_privkey_tweak_mul(out, key, tweak) != 0)
+  if (bcrypto_ed25519_scalar_tweak_mul(out, key, tweak) != 0)
     return Nan::ThrowError("Invalid public key.");
 
   return info.GetReturnValue().Set(

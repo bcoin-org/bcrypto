@@ -10,8 +10,8 @@ public:
 
 private:
   static NAN_METHOD(PrivateKeyConvert);
-  static NAN_METHOD(PrivateKeyTweakAdd);
-  static NAN_METHOD(PrivateKeyTweakMul);
+  static NAN_METHOD(ScalarTweakAdd);
+  static NAN_METHOD(ScalarTweakMul);
   static NAN_METHOD(PublicKeyCreate);
   static NAN_METHOD(PublicKeyConvert);
   static NAN_METHOD(PublicKeyDeconvert);

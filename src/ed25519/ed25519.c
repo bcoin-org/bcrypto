@@ -53,47 +53,6 @@ bcrypto_ed25519_publickey(
   ge25519_pack(pk, &A);
 }
 
-void
-bcrypto_ed25519_sign(
-  const unsigned char *m,
-  size_t mlen,
-  const bcrypto_ed25519_secret_key sk,
-  const bcrypto_ed25519_public_key pk,
-  bcrypto_ed25519_signature RS
-) {
-  bcrypto_ed25519_hash_context ctx;
-  bignum256modm r, S, a;
-  ge25519 ALIGN(16) R;
-  hash_512bits extsk, hashr, hram;
-
-  bcrypto_ed25519_extsk(extsk, sk);
-
-  /* r = H(aExt[32..64], m) */
-  bcrypto_ed25519_hash_init(&ctx);
-  bcrypto_ed25519_hash_update(&ctx, extsk + 32, 32);
-  bcrypto_ed25519_hash_update(&ctx, m, mlen);
-  bcrypto_ed25519_hash_final(&ctx, hashr);
-  expand256_modm(r, hashr, 64);
-
-  /* R = rB */
-  ge25519_scalarmult_base_niels(&R, ge25519_niels_base_multiples, r);
-  ge25519_pack(RS, &R);
-
-  /* S = H(R,A,m).. */
-  bcrypto_ed25519_hram(hram, RS, pk, m, mlen);
-  expand256_modm(S, hram, 64);
-
-  /* S = H(R,A,m)a */
-  expand256_modm(a, extsk, 32);
-  mul256_modm(S, S, a);
-
-  /* S = (r + H(R,A,m)a) */
-  add256_modm(S, S, r);
-
-  /* S = (r + H(R,A,m)a) mod L */
-  contract256_modm(RS + 32, S);
-}
-
 int
 bcrypto_ed25519_sign_open(
   const unsigned char *m,
@@ -263,7 +222,6 @@ bcrypto_ed25519_exchange(
 ) {
   bcrypto_ed25519_public_key pk;
 
-  // XXX This is probably the _wrong_ way to do this!
   if (bcrypto_ed25519_pubkey_deconvert(pk, xpk, 0) != 0)
     return -1;
 
@@ -277,7 +235,7 @@ bcrypto_ed25519_exchange(
 }
 
 int
-bcrypto_ed25519_privkey_tweak_add(
+bcrypto_ed25519_scalar_tweak_add(
   bcrypto_ed25519_secret_key out,
   const bcrypto_ed25519_secret_key sk,
   const bcrypto_ed25519_secret_key tweak
@@ -298,7 +256,7 @@ bcrypto_ed25519_privkey_tweak_add(
 }
 
 int
-bcrypto_ed25519_privkey_tweak_mul(
+bcrypto_ed25519_scalar_tweak_mul(
   bcrypto_ed25519_secret_key out,
   const bcrypto_ed25519_secret_key sk,
   const bcrypto_ed25519_secret_key tweak
@@ -380,30 +338,22 @@ bcrypto_ed25519_pubkey_tweak_mul(
   return 0;
 }
 
-int
-bcrypto_ed25519_sign_tweak_add(
+static void
+bcrypto_ed25519_sign_with_scalar(
   const unsigned char *m,
   size_t mlen,
-  const bcrypto_ed25519_secret_key sk,
+  const hash_512bits extsk,
   const bcrypto_ed25519_public_key pk,
-  const bcrypto_ed25519_secret_key tweak,
   bcrypto_ed25519_signature RS
 ) {
   bcrypto_ed25519_hash_context ctx;
-  bignum256modm r, S, a, t;
+  bignum256modm r, S, a;
   ge25519 ALIGN(16) R;
-  hash_512bits extsk, hashr, hram;
-
-  bcrypto_ed25519_extsk(extsk, sk);
-
-  bcrypto_ed25519_hash_init(&ctx);
-  bcrypto_ed25519_hash_update(&ctx, extsk + 32, 32);
-  bcrypto_ed25519_hash_update(&ctx, tweak, 32);
-  bcrypto_ed25519_hash_final(&ctx, hashr);
+  hash_512bits hashr, hram;
 
   /* r = H(aExt[32..64], m) */
   bcrypto_ed25519_hash_init(&ctx);
-  bcrypto_ed25519_hash_update(&ctx, hashr, 32);
+  bcrypto_ed25519_hash_update(&ctx, extsk + 32, 32);
   bcrypto_ed25519_hash_update(&ctx, m, mlen);
   bcrypto_ed25519_hash_final(&ctx, hashr);
   expand256_modm(r, hashr, 64);
@@ -413,18 +363,11 @@ bcrypto_ed25519_sign_tweak_add(
   ge25519_pack(RS, &R);
 
   /* S = H(R,A,m).. */
-  bcrypto_ed25519_public_key ck;
-  if (bcrypto_ed25519_pubkey_tweak_add(ck, pk, tweak) != 0)
-    return -1;
-  bcrypto_ed25519_hram(hram, RS, ck, m, mlen);
+  bcrypto_ed25519_hram(hram, RS, pk, m, mlen);
   expand256_modm(S, hram, 64);
 
   /* S = H(R,A,m)a */
   expand256_modm(a, extsk, 32);
-  expand256_modm(t, tweak, 32);
-  add256_modm(a, a, t);
-  if (iszero256_modm_batch(a))
-    return -1;
   mul256_modm(S, S, a);
 
   /* S = (r + H(R,A,m)a) */
@@ -432,6 +375,49 @@ bcrypto_ed25519_sign_tweak_add(
 
   /* S = (r + H(R,A,m)a) mod L */
   contract256_modm(RS + 32, S);
+}
+
+void
+bcrypto_ed25519_sign(
+  const unsigned char *m,
+  size_t mlen,
+  const bcrypto_ed25519_secret_key sk,
+  const bcrypto_ed25519_public_key pk,
+  bcrypto_ed25519_signature RS
+) {
+  hash_512bits extsk;
+  bcrypto_ed25519_extsk(extsk, sk);
+  bcrypto_ed25519_sign_with_scalar(m, mlen, extsk, pk, RS);
+}
+
+int
+bcrypto_ed25519_sign_tweak_add(
+  const unsigned char *m,
+  size_t mlen,
+  const bcrypto_ed25519_secret_key sk,
+  const bcrypto_ed25519_public_key pk,
+  const bcrypto_ed25519_secret_key tweak,
+  bcrypto_ed25519_signature RS
+) {
+  hash_512bits extsk, prefix;
+  bcrypto_ed25519_public_key tk;
+  bcrypto_ed25519_hash_context ctx;
+
+  bcrypto_ed25519_extsk(extsk, sk);
+
+  if (bcrypto_ed25519_scalar_tweak_add(extsk, extsk, tweak) != 0)
+    return -1;
+
+  bcrypto_ed25519_hash_init(&ctx);
+  bcrypto_ed25519_hash_update(&ctx, extsk + 32, 32);
+  bcrypto_ed25519_hash_update(&ctx, tweak, 32);
+  bcrypto_ed25519_hash_final(&ctx, prefix);
+  memcpy(extsk + 32, prefix, 32);
+
+  if (bcrypto_ed25519_pubkey_tweak_add(tk, pk, tweak) != 0)
+    return -1;
+
+  bcrypto_ed25519_sign_with_scalar(m, mlen, extsk, tk, RS);
 
   return 0;
 }
@@ -445,49 +431,25 @@ bcrypto_ed25519_sign_tweak_mul(
   const bcrypto_ed25519_secret_key tweak,
   bcrypto_ed25519_signature RS
 ) {
+  hash_512bits extsk, prefix;
+  bcrypto_ed25519_public_key tk;
   bcrypto_ed25519_hash_context ctx;
-  bignum256modm r, S, a, t;
-  ge25519 ALIGN(16) R;
-  hash_512bits extsk, hashr, hram;
 
   bcrypto_ed25519_extsk(extsk, sk);
+
+  if (bcrypto_ed25519_scalar_tweak_mul(extsk, extsk, tweak) != 0)
+    return -1;
 
   bcrypto_ed25519_hash_init(&ctx);
   bcrypto_ed25519_hash_update(&ctx, extsk + 32, 32);
   bcrypto_ed25519_hash_update(&ctx, tweak, 32);
-  bcrypto_ed25519_hash_final(&ctx, hashr);
+  bcrypto_ed25519_hash_final(&ctx, prefix);
+  memcpy(extsk + 32, prefix, 32);
 
-  /* r = H(aExt[32..64], m) */
-  bcrypto_ed25519_hash_init(&ctx);
-  bcrypto_ed25519_hash_update(&ctx, hashr, 32);
-  bcrypto_ed25519_hash_update(&ctx, m, mlen);
-  bcrypto_ed25519_hash_final(&ctx, hashr);
-  expand256_modm(r, hashr, 64);
-
-  /* R = rB */
-  ge25519_scalarmult_base_niels(&R, ge25519_niels_base_multiples, r);
-  ge25519_pack(RS, &R);
-
-  /* S = H(R,A,m).. */
-  bcrypto_ed25519_public_key ck;
-  if (bcrypto_ed25519_pubkey_tweak_mul(ck, pk, tweak) != 0)
+  if (bcrypto_ed25519_pubkey_tweak_mul(tk, pk, tweak) != 0)
     return -1;
-  bcrypto_ed25519_hram(hram, RS, ck, m, mlen);
-  expand256_modm(S, hram, 64);
 
-  /* S = H(R,A,m)a */
-  expand256_modm(a, extsk, 32);
-  expand256_modm(t, tweak, 32);
-  mul256_modm(a, a, t);
-  if (iszero256_modm_batch(a))
-    return -1;
-  mul256_modm(S, S, a);
-
-  /* S = (r + H(R,A,m)a) */
-  add256_modm(S, S, r);
-
-  /* S = (r + H(R,A,m)a) mod L */
-  contract256_modm(RS + 32, S);
+  bcrypto_ed25519_sign_with_scalar(m, mlen, extsk, tk, RS);
 
   return 0;
 }

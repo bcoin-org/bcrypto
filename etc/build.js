@@ -55,7 +55,6 @@ const deps = [
 
   code = code.replace(/\n\/\* global __require__ \*\/\n/g, '');
   code = code.replace(/__require__/g, 'require');
-  code = code.replace(/(message = parseBytes\(message\);)/g, '// $1');
 
   await fs.writeFile(OUT, code);
   await fs.remove(PKG);

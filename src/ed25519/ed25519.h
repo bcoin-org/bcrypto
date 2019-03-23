@@ -29,15 +29,6 @@ bcrypto_ed25519_sign_open(
 int
 bcrypto_ed25519_verify_key(const bcrypto_ed25519_public_key pk);
 
-void
-bcrypto_ed25519_sign(
-  const unsigned char *m,
-  size_t mlen,
-  const bcrypto_ed25519_secret_key sk,
-  const bcrypto_ed25519_public_key pk,
-  bcrypto_ed25519_signature RS
-);
-
 int
 bcrypto_ed25519_sign_open_batch(
   const unsigned char **m,
@@ -91,14 +82,14 @@ bcrypto_ed25519_exchange(
 );
 
 int
-bcrypto_ed25519_privkey_tweak_add(
+bcrypto_ed25519_scalar_tweak_add(
   bcrypto_ed25519_secret_key out,
   const bcrypto_ed25519_secret_key sk,
   const bcrypto_ed25519_secret_key tweak
 );
 
 int
-bcrypto_ed25519_privkey_tweak_mul(
+bcrypto_ed25519_scalar_tweak_mul(
   bcrypto_ed25519_secret_key out,
   const bcrypto_ed25519_secret_key sk,
   const bcrypto_ed25519_secret_key tweak
@@ -116,6 +107,15 @@ bcrypto_ed25519_pubkey_tweak_mul(
   bcrypto_ed25519_public_key out,
   const bcrypto_ed25519_public_key pk,
   const bcrypto_ed25519_secret_key tweak
+);
+
+void
+bcrypto_ed25519_sign(
+  const unsigned char *m,
+  size_t mlen,
+  const bcrypto_ed25519_secret_key sk,
+  const bcrypto_ed25519_public_key pk,
+  bcrypto_ed25519_signature RS
 );
 
 int
