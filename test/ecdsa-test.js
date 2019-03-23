@@ -208,6 +208,30 @@ describe('ECDSA', function() {
 
       assert.bufferEqual(aliceSecret, bobSecret);
     });
+
+    it('should generate keypair, sign DER and recover', () => {
+      if (ec.id === 'P521')
+        this.skip();
+
+      const msg = random.randomBytes(ec.size);
+      const priv = ec.privateKeyGenerate();
+      const pub = ec.publicKeyCreate(priv);
+      const pubu = ec.publicKeyConvert(pub, false);
+
+      const {
+        signature,
+        recovery
+      } = ec.signRecoverableDER(msg, priv);
+
+      assert(ec.verifyDER(msg, signature, pub));
+      assert(ec.verifyDER(msg, signature, pubu));
+
+      const rpub = ec.recoverDER(msg, signature, recovery, true);
+      const rpubu = ec.recoverDER(msg, signature, recovery, false);
+
+      assert.bufferEqual(rpub, pub);
+      assert.bufferEqual(rpubu, pubu);
+    });
   }
 
   describe('RFC6979 vector', function() {
@@ -627,27 +651,6 @@ describe('ECDSA', function() {
 
     const rpub = secp256k1n.recover(msg, signature, recovery, true);
     const rpubu = secp256k1n.recover(msg, signature, recovery, false);
-
-    assert.bufferEqual(rpub, pub);
-    assert.bufferEqual(rpubu, pubu);
-  });
-
-  it('should generate keypair, sign DER and recover', () => {
-    const msg = random.randomBytes(secp256k1n.size);
-    const priv = secp256k1n.privateKeyGenerate();
-    const pub = secp256k1n.publicKeyCreate(priv);
-    const pubu = secp256k1n.publicKeyConvert(pub, false);
-
-    const {
-      signature,
-      recovery
-    } = secp256k1n.signRecoverableDER(msg, priv);
-
-    assert(secp256k1n.verifyDER(msg, signature, pub));
-    assert(secp256k1n.verifyDER(msg, signature, pubu));
-
-    const rpub = secp256k1n.recoverDER(msg, signature, recovery, true);
-    const rpubu = secp256k1n.recoverDER(msg, signature, recovery, false);
 
     assert.bufferEqual(rpub, pub);
     assert.bufferEqual(rpubu, pubu);
