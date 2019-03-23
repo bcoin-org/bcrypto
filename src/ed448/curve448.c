@@ -19,10 +19,20 @@
 
 #define BCRYPTO_COFACTOR 4
 
+#define BCRYPTO_C448_WINDOW_BITS 5
 #define BCRYPTO_C448_WNAF_FIXED_TABLE_BITS 5
 #define BCRYPTO_C448_WNAF_VAR_TABLE_BITS 3
 
 #define BCRYPTO_EDWARDS_D     (-39081)
+
+static const bcrypto_curve448_scalar_t point_scalarmul_adjustment = {
+  {
+    {
+      BCRYPTO_SC_BCRYPTO_LIMB(0xc873d6d54a7bb0cf), BCRYPTO_SC_BCRYPTO_LIMB(0xe933d8d723a70aad),
+      BCRYPTO_SC_BCRYPTO_LIMB(0xbb124b65129c96fd), BCRYPTO_SC_BCRYPTO_LIMB(0x00000008335dc163)
+    }
+  }
+};
 
 static const bcrypto_curve448_scalar_t precomputed_scalarmul_adjustment = {
   {
@@ -269,6 +279,94 @@ void bcrypto_curve448_precomputed_scalarmul(bcrypto_curve448_point_t out,
 
   OPENSSL_cleanse(ni, sizeof(ni));
   OPENSSL_cleanse(scalar1x, sizeof(scalar1x));
+}
+
+static void
+prepare_fixed_window(
+  bcrypto_pniels_t *multiples,
+  const bcrypto_curve448_point_t b,
+  int ntable
+) {
+  bcrypto_curve448_point_t tmp;
+  bcrypto_pniels_t pn;
+  int i;
+
+  point_double_internal(tmp, b, 0);
+  pt_to_pniels(pn, tmp);
+  pt_to_pniels(multiples[0], b);
+  bcrypto_curve448_point_copy(tmp, b);
+
+  for (i = 1; i < ntable; i++) {
+    add_pniels_to_pt(tmp, pn, 0);
+    pt_to_pniels(multiples[i], tmp);
+  }
+
+  OPENSSL_cleanse(pn, sizeof(pn));
+  OPENSSL_cleanse(tmp, sizeof(tmp));
+}
+
+void bcrypto_curve448_point_scalarmul(
+  bcrypto_curve448_point_t a,
+  const bcrypto_curve448_point_t b,
+  const bcrypto_curve448_scalar_t scalar
+) {
+  const int WINDOW = BCRYPTO_C448_WINDOW_BITS,
+            WINDOW_MASK = (1 << WINDOW) - 1,
+            WINDOW_T_MASK = WINDOW_MASK >> 1,
+            NTABLE = 1 << (WINDOW - 1);
+
+  bcrypto_curve448_scalar_t scalar1x;
+  bcrypto_curve448_scalar_add(scalar1x, scalar, point_scalarmul_adjustment);
+  bcrypto_curve448_scalar_halve(scalar1x, scalar1x);
+
+  /* Set up a precomputed table with odd multiples of b. */
+  bcrypto_pniels_t pn, multiples[1 << ((int)(BCRYPTO_C448_WINDOW_BITS) - 1)];
+  bcrypto_curve448_point_t tmp;
+  prepare_fixed_window(multiples, b, NTABLE);
+
+  /* Initialize. */
+  int i, j, first = 1;
+  i = BCRYPTO_C448_SCALAR_BITS - ((BCRYPTO_C448_SCALAR_BITS - 1) % WINDOW) - 1;
+
+  for (; i >= 0; i -= WINDOW) {
+    /* Fetch another block of bits */
+    bcrypto_word_t bits = scalar1x->limb[i / BCRYPTO_WBITS] >> (i % BCRYPTO_WBITS);
+
+    if (i % BCRYPTO_WBITS >= BCRYPTO_WBITS - WINDOW
+        && i / BCRYPTO_WBITS < BCRYPTO_C448_SCALAR_LIMBS - 1) {
+      bits ^= scalar1x->limb[i / BCRYPTO_WBITS + 1]
+           << (BCRYPTO_WBITS - (i % BCRYPTO_WBITS));
+    }
+
+    bits &= WINDOW_MASK;
+    bcrypto_mask_t inv = (bits>>(WINDOW-1))-1;
+    bits ^= inv;
+
+    /* Add in from table.  Compute t only on last iteration. */
+    constant_time_lookup(pn, multiples, sizeof(pn), NTABLE, bits & WINDOW_T_MASK);
+    cond_neg_niels(pn->n, inv);
+    if (first) {
+      pniels_to_pt(tmp, pn);
+      first = 0;
+    } else {
+     /* Using Hisil et al's lookahead method instead of extensible here
+      * for no particular reason.  Double WINDOW times, but only compute t on
+      * the last one.
+      */
+      for (j = 0; j < WINDOW - 1; j++)
+        point_double_internal(tmp, tmp, -1);
+      point_double_internal(tmp, tmp, 0);
+      add_pniels_to_pt(tmp, pn, i ? -1 : 0);
+    }
+  }
+
+  /* Write out the answer */
+  bcrypto_curve448_point_copy(a, tmp);
+
+  OPENSSL_cleanse(scalar1x, sizeof(scalar1x));
+  OPENSSL_cleanse(pn, sizeof(pn));
+  OPENSSL_cleanse(multiples, sizeof(multiples));
+  OPENSSL_cleanse(tmp, sizeof(tmp));
 }
 
 void bcrypto_curve448_point_mul_by_ratio_and_encode_like_eddsa(

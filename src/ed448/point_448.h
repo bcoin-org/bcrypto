@@ -262,6 +262,17 @@ void bcrypto_curve448_precomputed_scalarmul(bcrypto_curve448_point_t scaled,
                   const bcrypto_curve448_scalar_t scalar);
 
 /*
+ * Multiply a base point by a scalar: out = scalar*base.
+ *
+ * scaled (out): The scaled point base*scalar
+ * base (in): The point to be scaled.
+ * scalar (in): The scalar to multiply by.
+ */
+void bcrypto_curve448_point_scalarmul(bcrypto_curve448_point_t a,
+                  const bcrypto_curve448_point_t b,
+                  const bcrypto_curve448_scalar_t scalar);
+
+/*
  * Multiply two base points by two scalars:
  * combo = scalar1*bcrypto_curve448_point_base + scalar2*base2.
  *
