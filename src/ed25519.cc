@@ -320,6 +320,9 @@ NAN_METHOD(BED25519::Sign) {
 
     ctx = (const uint8_t *)node::Buffer::Data(cbuf);
     ctx_len = node::Buffer::Length(cbuf);
+
+    if (ctx_len > 255)
+      return Nan::ThrowRangeError("Invalid context length.");
   }
 
   if (secret_len != 32)
@@ -380,6 +383,9 @@ NAN_METHOD(BED25519::SignTweakAdd) {
 
     ctx = (const uint8_t *)node::Buffer::Data(cbuf);
     ctx_len = node::Buffer::Length(cbuf);
+
+    if (ctx_len > 255)
+      return Nan::ThrowRangeError("Invalid context length.");
   }
 
   if (secret_len != 32)
@@ -447,6 +453,9 @@ NAN_METHOD(BED25519::SignTweakMul) {
 
     ctx = (const uint8_t *)node::Buffer::Data(cbuf);
     ctx_len = node::Buffer::Length(cbuf);
+
+    if (ctx_len > 255)
+      return Nan::ThrowRangeError("Invalid context length.");
   }
 
   if (secret_len != 32)
@@ -514,6 +523,9 @@ NAN_METHOD(BED25519::Verify) {
 
     ctx = (const uint8_t *)node::Buffer::Data(cbuf);
     ctx_len = node::Buffer::Length(cbuf);
+
+    if (ctx_len > 255)
+      return Nan::ThrowRangeError("Invalid context length.");
   }
 
   if (sig_len != 64 || pub_len != 32)
