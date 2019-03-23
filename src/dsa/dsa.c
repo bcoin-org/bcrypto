@@ -1118,9 +1118,144 @@ bcrypto_dsa_privkey_tweak_add(
   if (BN_is_zero(tweak_bn))
     goto fail;
 
-  // priv = (x + (t % q)) % q
-  // where `t` is the tweak integer
+  // xx = (x + (t % q)) % q
   if (!BN_mod_add(x_bn, x, tweak_bn, q, ctx))
+    goto fail;
+
+  if (BN_is_zero(x_bn))
+    goto fail;
+
+  if (!BN_mod_exp(y_bn, g, x_bn, p, ctx))
+    goto fail;
+
+  y_buf_len = BN_num_bytes(y_bn);
+  y_buf = malloc(y_buf_len);
+  x_buf_len = BN_num_bytes(x_bn);
+  x_buf = malloc(x_buf_len);
+
+  if (!y_buf || !x_buf)
+    goto fail;
+
+  assert(BN_bn2bin(x_bn, x_buf) != -1);
+  assert(BN_bn2bin(y_bn, y_buf) != -1);
+
+  DSA_free(priv_d);
+  BN_free(x_bn);
+  BN_free(y_bn);
+  BN_free(tweak_bn);
+  BN_CTX_free(ctx);
+
+  *y_out = y_buf;
+  *y_out_len = y_buf_len;
+  *x_out = x_buf;
+  *x_out_len = x_buf_len;
+
+  return true;
+
+fail:
+  if (priv_d)
+    DSA_free(priv_d);
+
+  if (x_bn)
+    BN_free(x_bn);
+
+  if (y_bn)
+    BN_free(y_bn);
+
+  if (tweak_bn)
+    BN_free(tweak_bn);
+
+  if (ctx)
+    BN_CTX_free(ctx);
+
+  if (y_buf)
+    free(y_buf);
+
+  if (x_buf)
+    free(x_buf);
+
+  return false;
+}
+
+bool
+bcrypto_dsa_privkey_tweak_mul(
+  const bcrypto_dsa_key_t *priv,
+  const uint8_t *tweak,
+  size_t tweak_len,
+  uint8_t **y_out,
+  size_t *y_out_len,
+  uint8_t **x_out,
+  size_t *x_out_len
+) {
+  assert(y_out && y_out_len);
+  assert(x_out && x_out_len);
+
+  size_t klen = 0;
+  DSA *priv_d = NULL;
+  BIGNUM *x_bn = NULL;
+  BIGNUM *y_bn = NULL;
+  BIGNUM *tweak_bn = NULL;
+  BN_CTX *ctx = NULL;
+  uint8_t *y_buf = NULL;
+  size_t y_buf_len = 0;
+  uint8_t *x_buf = NULL;
+  size_t x_buf_len = 0;
+
+  if (tweak == NULL
+      || tweak_len < BCRYPTO_DSA_MIN_HASH_SIZE
+      || tweak_len > BCRYPTO_DSA_MAX_HASH_SIZE) {
+    goto fail;
+  }
+
+  if (!bcrypto_dsa_sane_privkey(priv))
+    goto fail;
+
+  priv_d = bcrypto_dsa_key2priv(priv);
+
+  if (!priv_d)
+    goto fail;
+
+  const BIGNUM *p = NULL;
+  const BIGNUM *q = NULL;
+  const BIGNUM *g = NULL;
+  const BIGNUM *x = NULL;
+
+  DSA_get0_pqg(priv_d, &p, &q, &g);
+  assert(p && q && g);
+
+  DSA_get0_key(priv_d, NULL, &x);
+  assert(x);
+
+  x_bn = BN_new();
+  y_bn = BN_new();
+
+  if (!x_bn || !y_bn)
+    goto fail;
+
+  klen = (bcrypto_count_bits(priv->qd, priv->ql) + 7) / 8;
+
+  if (tweak_len > klen)
+    tweak_len = klen;
+
+  tweak_bn = BN_bin2bn(tweak, tweak_len, NULL);
+
+  if (!tweak_bn)
+    goto fail;
+
+  ctx = BN_CTX_new();
+
+  if (!ctx)
+    goto fail;
+
+  // t = (t % q)
+  if (!BN_mod(tweak_bn, tweak_bn, q, ctx))
+    goto fail;
+
+  if (BN_is_zero(tweak_bn))
+    goto fail;
+
+  // xx = (x * (t % q)) % q
+  if (!BN_mod_mul(x_bn, x, tweak_bn, q, ctx))
     goto fail;
 
   if (BN_is_zero(x_bn))
@@ -1350,12 +1485,113 @@ bcrypto_dsa_pubkey_tweak_add(
   if (BN_is_zero(tweak_bn))
     goto fail;
 
-  // pub = ((g^(t % q) % p) * y) % p
-  // where `t` is the tweak integer
+  // yy = (g^(t % q) * y) % p
   if (!BN_mod_exp(y_bn, g, tweak_bn, p, ctx))
     goto fail;
 
   if (!BN_mod_mul(y_bn, y_bn, y, p, ctx))
+    goto fail;
+
+  *out_len = BN_num_bytes(y_bn);
+  *out = malloc(*out_len);
+
+  if (!*out)
+    goto fail;
+
+  assert(BN_bn2bin(y_bn, *out) != -1);
+
+  DSA_free(pub_d);
+  BN_free(y_bn);
+  BN_free(tweak_bn);
+  BN_CTX_free(ctx);
+
+  return true;
+
+fail:
+  if (pub_d)
+    DSA_free(pub_d);
+
+  if (y_bn)
+    BN_free(y_bn);
+
+  if (tweak_bn)
+    BN_free(tweak_bn);
+
+  if (ctx)
+    BN_CTX_free(ctx);
+
+  return false;
+}
+
+bool
+bcrypto_dsa_pubkey_tweak_mul(
+  const bcrypto_dsa_key_t *pub,
+  const uint8_t *tweak,
+  size_t tweak_len,
+  uint8_t **out,
+  size_t *out_len
+) {
+  assert(out && out_len);
+
+  size_t klen = 0;
+  DSA *pub_d = NULL;
+  BIGNUM *y_bn = NULL;
+  BIGNUM *tweak_bn = NULL;
+  BN_CTX *ctx = NULL;
+
+  if (tweak == NULL
+      || tweak_len < BCRYPTO_DSA_MIN_HASH_SIZE
+      || tweak_len > BCRYPTO_DSA_MAX_HASH_SIZE) {
+    goto fail;
+  }
+
+  if (!bcrypto_dsa_sane_pubkey(pub))
+    goto fail;
+
+  pub_d = bcrypto_dsa_key2pub(pub);
+
+  if (!pub_d)
+    goto fail;
+
+  const BIGNUM *p = NULL;
+  const BIGNUM *q = NULL;
+  const BIGNUM *y = NULL;
+
+  DSA_get0_pqg(pub_d, &p, &q, NULL);
+  assert(p && q);
+
+  DSA_get0_key(pub_d, &y, NULL);
+  assert(y);
+
+  y_bn = BN_new();
+
+  if (!y_bn)
+    goto fail;
+
+  klen = (bcrypto_count_bits(pub->qd, pub->ql) + 7) / 8;
+
+  if (tweak_len > klen)
+    tweak_len = klen;
+
+  tweak_bn = BN_bin2bn(tweak, tweak_len, NULL);
+
+  if (!tweak_bn)
+    goto fail;
+
+  ctx = BN_CTX_new();
+
+  if (!ctx)
+    goto fail;
+
+  // t = (t % q)
+  if (!BN_mod(tweak_bn, tweak_bn, q, ctx))
+    goto fail;
+
+  if (BN_is_zero(tweak_bn))
+    goto fail;
+
+  // yy = (y^(t % q) % p)
+  if (!BN_mod_exp(y_bn, y, tweak_bn, p, ctx))
     goto fail;
 
   *out_len = BN_num_bytes(y_bn);
@@ -1721,6 +1957,19 @@ bcrypto_dsa_privkey_tweak_add(
 }
 
 bool
+bcrypto_dsa_privkey_tweak_mul(
+  const bcrypto_dsa_key_t *priv,
+  const uint8_t *tweak,
+  size_t tweak_len,
+  uint8_t **y_out,
+  size_t *y_out_len,
+  uint8_t **x_out,
+  size_t *x_out_len
+) {
+  return false;
+}
+
+bool
 bcrypto_dsa_pubkey_verify(bcrypto_dsa_key_t *key) {
   return false;
 }
@@ -1761,6 +2010,17 @@ bcrypto_dsa_pubkey_import_spki(
 
 bool
 bcrypto_dsa_pubkey_tweak_add(
+  const bcrypto_dsa_key_t *pub,
+  const uint8_t *tweak,
+  size_t tweak_len,
+  uint8_t **out,
+  size_t *out_len
+) {
+  return false;
+}
+
+bool
+bcrypto_dsa_pubkey_tweak_mul(
   const bcrypto_dsa_key_t *pub,
   const uint8_t *tweak,
   size_t tweak_len,

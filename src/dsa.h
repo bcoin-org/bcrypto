@@ -22,12 +22,14 @@ private:
   static NAN_METHOD(PrivateKeyExportPKCS8);
   static NAN_METHOD(PrivateKeyImportPKCS8);
   static NAN_METHOD(PrivateKeyTweakAdd);
+  static NAN_METHOD(PrivateKeyTweakMul);
   static NAN_METHOD(PublicKeyVerify);
   static NAN_METHOD(PublicKeyExport);
   static NAN_METHOD(PublicKeyImport);
   static NAN_METHOD(PublicKeyExportSPKI);
   static NAN_METHOD(PublicKeyImportSPKI);
   static NAN_METHOD(PublicKeyTweakAdd);
+  static NAN_METHOD(PublicKeyTweakMul);
   static NAN_METHOD(Sign);
   static NAN_METHOD(Verify);
   static NAN_METHOD(Derive);

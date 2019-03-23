@@ -130,7 +130,7 @@ describe('DSA', function() {
     assert.bufferEqual(aliceSecret, bobSecret);
   });
 
-  it('should do HD derivation', () => {
+  it('should do additive HD derivation', () => {
     // const params = createParams(P2048_256);
     const params = dsa.paramsGenerate(1024);
     const priv = dsa.privateKeyCreate(params);
@@ -139,6 +139,26 @@ describe('DSA', function() {
 
     const newPriv = dsa.privateKeyTweakAdd(priv, tweak);
     const newPub = dsa.publicKeyTweakAdd(pub, tweak);
+
+    assert.bufferEqual(newPriv.y, newPub.y);
+
+    const msg = Buffer.alloc(newPriv.size(), 0x01);
+    const sig = dsa.sign(msg, newPriv);
+    assert(sig);
+
+    const result = dsa.verify(msg, sig, newPub);
+    assert(result);
+  });
+
+  it('should do multiplicative HD derivation', () => {
+    // const params = createParams(P2048_256);
+    const params = dsa.paramsGenerate(1024);
+    const priv = dsa.privateKeyCreate(params);
+    const pub = dsa.publicKeyCreate(priv);
+    const tweak = random.randomBytes(priv.size());
+
+    const newPriv = dsa.privateKeyTweakMul(priv, tweak);
+    const newPub = dsa.publicKeyTweakMul(pub, tweak);
 
     assert.bufferEqual(newPriv.y, newPub.y);
 
