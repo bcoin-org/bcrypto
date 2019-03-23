@@ -9,6 +9,9 @@
 #include "ed25519-randombytes.h"
 #include "ed25519-hash.h"
 
+static const unsigned char ED25519_PREFIX[] =
+  "SigEd25519 no Ed25519 collisions";
+
 /*
   Generates a (extsk[0..31]) and aExt (extsk[32..63])
 */
@@ -22,19 +25,44 @@ bcrypto_ed25519_extsk(hash_512bits extsk, const bcrypto_ed25519_secret_key sk) {
 }
 
 static void
+bcrypto_ed25519_hprefix(
+  bcrypto_ed25519_hash_context *hctx,
+  int ph,
+  const unsigned char *ctx,
+  size_t ctx_len
+) {
+  if (ph != -1) {
+    bcrypto_ed25519_hash_update(hctx, ED25519_PREFIX,
+                                sizeof(ED25519_PREFIX) - 1);
+
+    unsigned char slab[2] = {
+      (unsigned char)ph,
+      (unsigned char)ctx_len
+    };
+
+    bcrypto_ed25519_hash_update(hctx, &slab[0], 2);
+    bcrypto_ed25519_hash_update(hctx, ctx, ctx_len);
+  }
+}
+
+static void
 bcrypto_ed25519_hram(
   hash_512bits hram,
+  int ph,
+  const unsigned char *ctx,
+  size_t ctx_len,
   const bcrypto_ed25519_signature RS,
   const bcrypto_ed25519_public_key pk,
   const unsigned char *m,
   size_t mlen
 ) {
-  bcrypto_ed25519_hash_context ctx;
-  bcrypto_ed25519_hash_init(&ctx);
-  bcrypto_ed25519_hash_update(&ctx, RS, 32);
-  bcrypto_ed25519_hash_update(&ctx, pk, 32);
-  bcrypto_ed25519_hash_update(&ctx, m, mlen);
-  bcrypto_ed25519_hash_final(&ctx, hram);
+  bcrypto_ed25519_hash_context hctx;
+  bcrypto_ed25519_hash_init(&hctx);
+  bcrypto_ed25519_hprefix(&hctx, ph, ctx, ctx_len);
+  bcrypto_ed25519_hash_update(&hctx, RS, 32);
+  bcrypto_ed25519_hash_update(&hctx, pk, 32);
+  bcrypto_ed25519_hash_update(&hctx, m, mlen);
+  bcrypto_ed25519_hash_final(&hctx, hram);
 }
 
 void
@@ -58,6 +86,9 @@ bcrypto_ed25519_sign_open(
   const unsigned char *m,
   size_t mlen,
   const bcrypto_ed25519_public_key pk,
+  int ph,
+  const unsigned char *ctx,
+  size_t ctx_len,
   const bcrypto_ed25519_signature RS
 ) {
   ge25519 ALIGN(16) R, A;
@@ -69,7 +100,7 @@ bcrypto_ed25519_sign_open(
     return -1;
 
   /* hram = H(R,A,m) */
-  bcrypto_ed25519_hram(hash, RS, pk, m, mlen);
+  bcrypto_ed25519_hram(hash, ph, ctx, ctx_len, RS, pk, m, mlen);
   expand256_modm(hram, hash, 64);
 
   /* S */
@@ -344,18 +375,22 @@ bcrypto_ed25519_sign_with_scalar(
   size_t mlen,
   const hash_512bits extsk,
   const bcrypto_ed25519_public_key pk,
+  int ph,
+  const unsigned char *ctx,
+  size_t ctx_len,
   bcrypto_ed25519_signature RS
 ) {
-  bcrypto_ed25519_hash_context ctx;
+  bcrypto_ed25519_hash_context hctx;
   bignum256modm r, S, a;
   ge25519 ALIGN(16) R;
   hash_512bits hashr, hram;
 
   /* r = H(aExt[32..64], m) */
-  bcrypto_ed25519_hash_init(&ctx);
-  bcrypto_ed25519_hash_update(&ctx, extsk + 32, 32);
-  bcrypto_ed25519_hash_update(&ctx, m, mlen);
-  bcrypto_ed25519_hash_final(&ctx, hashr);
+  bcrypto_ed25519_hash_init(&hctx);
+  bcrypto_ed25519_hprefix(&hctx, ph, ctx, ctx_len);
+  bcrypto_ed25519_hash_update(&hctx, extsk + 32, 32);
+  bcrypto_ed25519_hash_update(&hctx, m, mlen);
+  bcrypto_ed25519_hash_final(&hctx, hashr);
   expand256_modm(r, hashr, 64);
 
   /* R = rB */
@@ -363,7 +398,7 @@ bcrypto_ed25519_sign_with_scalar(
   ge25519_pack(RS, &R);
 
   /* S = H(R,A,m).. */
-  bcrypto_ed25519_hram(hram, RS, pk, m, mlen);
+  bcrypto_ed25519_hram(hram, ph, ctx, ctx_len, RS, pk, m, mlen);
   expand256_modm(S, hram, 64);
 
   /* S = H(R,A,m)a */
@@ -383,11 +418,14 @@ bcrypto_ed25519_sign(
   size_t mlen,
   const bcrypto_ed25519_secret_key sk,
   const bcrypto_ed25519_public_key pk,
+  int ph,
+  const unsigned char *ctx,
+  size_t ctx_len,
   bcrypto_ed25519_signature RS
 ) {
   hash_512bits extsk;
   bcrypto_ed25519_extsk(extsk, sk);
-  bcrypto_ed25519_sign_with_scalar(m, mlen, extsk, pk, RS);
+  bcrypto_ed25519_sign_with_scalar(m, mlen, extsk, pk, ph, ctx, ctx_len, RS);
 }
 
 int
@@ -397,27 +435,30 @@ bcrypto_ed25519_sign_tweak_add(
   const bcrypto_ed25519_secret_key sk,
   const bcrypto_ed25519_public_key pk,
   const bcrypto_ed25519_secret_key tweak,
+  int ph,
+  const unsigned char *ctx,
+  size_t ctx_len,
   bcrypto_ed25519_signature RS
 ) {
   hash_512bits extsk, prefix;
   bcrypto_ed25519_public_key tk;
-  bcrypto_ed25519_hash_context ctx;
+  bcrypto_ed25519_hash_context hctx;
 
   bcrypto_ed25519_extsk(extsk, sk);
 
   if (bcrypto_ed25519_scalar_tweak_add(extsk, extsk, tweak) != 0)
     return -1;
 
-  bcrypto_ed25519_hash_init(&ctx);
-  bcrypto_ed25519_hash_update(&ctx, extsk + 32, 32);
-  bcrypto_ed25519_hash_update(&ctx, tweak, 32);
-  bcrypto_ed25519_hash_final(&ctx, prefix);
+  bcrypto_ed25519_hash_init(&hctx);
+  bcrypto_ed25519_hash_update(&hctx, extsk + 32, 32);
+  bcrypto_ed25519_hash_update(&hctx, tweak, 32);
+  bcrypto_ed25519_hash_final(&hctx, prefix);
   memcpy(extsk + 32, prefix, 32);
 
   if (bcrypto_ed25519_pubkey_tweak_add(tk, pk, tweak) != 0)
     return -1;
 
-  bcrypto_ed25519_sign_with_scalar(m, mlen, extsk, tk, RS);
+  bcrypto_ed25519_sign_with_scalar(m, mlen, extsk, tk, ph, ctx, ctx_len, RS);
 
   return 0;
 }
@@ -429,27 +470,30 @@ bcrypto_ed25519_sign_tweak_mul(
   const bcrypto_ed25519_secret_key sk,
   const bcrypto_ed25519_public_key pk,
   const bcrypto_ed25519_secret_key tweak,
+  int ph,
+  const unsigned char *ctx,
+  size_t ctx_len,
   bcrypto_ed25519_signature RS
 ) {
   hash_512bits extsk, prefix;
   bcrypto_ed25519_public_key tk;
-  bcrypto_ed25519_hash_context ctx;
+  bcrypto_ed25519_hash_context hctx;
 
   bcrypto_ed25519_extsk(extsk, sk);
 
   if (bcrypto_ed25519_scalar_tweak_mul(extsk, extsk, tweak) != 0)
     return -1;
 
-  bcrypto_ed25519_hash_init(&ctx);
-  bcrypto_ed25519_hash_update(&ctx, extsk + 32, 32);
-  bcrypto_ed25519_hash_update(&ctx, tweak, 32);
-  bcrypto_ed25519_hash_final(&ctx, prefix);
+  bcrypto_ed25519_hash_init(&hctx);
+  bcrypto_ed25519_hash_update(&hctx, extsk + 32, 32);
+  bcrypto_ed25519_hash_update(&hctx, tweak, 32);
+  bcrypto_ed25519_hash_final(&hctx, prefix);
   memcpy(extsk + 32, prefix, 32);
 
   if (bcrypto_ed25519_pubkey_tweak_mul(tk, pk, tweak) != 0)
     return -1;
 
-  bcrypto_ed25519_sign_with_scalar(m, mlen, extsk, tk, RS);
+  bcrypto_ed25519_sign_with_scalar(m, mlen, extsk, tk, ph, ctx, ctx_len, RS);
 
   return 0;
 }

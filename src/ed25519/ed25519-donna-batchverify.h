@@ -208,6 +208,9 @@ bcrypto_ed25519_sign_open_batch(
   const unsigned char **pk,
   const unsigned char **RS,
   size_t num,
+  int ph,
+  const unsigned char *ctx,
+  size_t ctx_len,
   int *valid
 ) {
   batch_heap ALIGN(16) batch;
@@ -239,7 +242,7 @@ bcrypto_ed25519_sign_open_batch(
 
     /* compute scalars[1]..scalars[batchsize] as r[i]*H(R[i],A[i],m[i]) */
     for (i = 0; i < batchsize; i++) {
-      bcrypto_ed25519_hram(hram, RS[i], pk[i], m[i], mlen[i]);
+      bcrypto_ed25519_hram(hram, ph, ctx, ctx_len, RS[i], pk[i], m[i], mlen[i]);
       expand256_modm(batch.scalars[i+1], hram, 64);
       mul256_modm(batch.scalars[i+1], batch.scalars[i+1], r_scalars[i]);
     }
@@ -259,7 +262,8 @@ bcrypto_ed25519_sign_open_batch(
 
       fallback:
       for (i = 0; i < batchsize; i++) {
-        valid[i] = bcrypto_ed25519_sign_open(m[i], mlen[i], pk[i], RS[i]) ? 0 : 1;
+        valid[i] = bcrypto_ed25519_sign_open(m[i], mlen[i], pk[i],
+                                             ph, ctx, ctx_len, RS[i]) ? 0 : 1;
         ret |= (valid[i] ^ 1);
       }
     }
@@ -273,7 +277,8 @@ bcrypto_ed25519_sign_open_batch(
   }
 
   for (i = 0; i < num; i++) {
-    valid[i] = bcrypto_ed25519_sign_open(m[i], mlen[i], pk[i], RS[i]) ? 0 : 1;
+    valid[i] = bcrypto_ed25519_sign_open(m[i], mlen[i], pk[i],
+                                         ph, ctx, ctx_len, RS[i]) ? 0 : 1;
     ret |= (valid[i] ^ 1);
   }
 
