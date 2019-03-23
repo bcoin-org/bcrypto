@@ -52,6 +52,19 @@ describe('Ed448', function() {
     const bobSecret = ed448.derive(alicePub, bobPriv);
 
     assert.bufferEqual(aliceSecret, bobSecret);
+
+    const secret = aliceSecret;
+    const xsecret = ed448.publicKeyConvert(secret);
+    const xalicePub = ed448.publicKeyConvert(alicePub);
+    const xbobPub = ed448.publicKeyConvert(bobPub);
+
+    assert.notBufferEqual(xsecret, secret);
+
+    const xaliceSecret = ed448.exchange(xbobPub, alicePriv);
+    const xbobSecret = ed448.exchange(xalicePub, bobPriv);
+
+    assert.bufferEqual(xaliceSecret, xsecret);
+    assert.bufferEqual(xbobSecret, xsecret);
   });
 
   it('should do ECDH (vector)', () => {
@@ -69,20 +82,22 @@ describe('Ed448', function() {
       + '286e8d1a19c7a1623c05d817d78c'
       + '3d', 'hex');
 
-    const secret = Buffer.from(''
+    const xsecret = Buffer.from(''
       + '5b205505fece8945fe02482d2e89'
       + 'e585244b3aec6af8db4e1f570d3c'
       + '2a9f48ada996cb293e457867c9e3'
       + 'fecdec40fe7a8d922bbdac406d0e', 'hex');
 
     const secret2 = ed448.derive(pub, priv);
+    const xsecret2 = ed448.publicKeyConvert(secret2);
 
-    assert.bufferEqual(secret2, secret);
+    assert.notBufferEqual(secret2, xsecret);
+    assert.bufferEqual(xsecret2, xsecret);
 
     const xpub = ed448.publicKeyConvert(pub);
-    const secret3 = ed448.exchange(xpub, priv);
+    const xsecret3 = ed448.exchange(xpub, priv);
 
-    assert.bufferEqual(secret3, secret);
+    assert.bufferEqual(xsecret3, xsecret);
   });
 
   it('should convert to montgomery (vector)', () => {

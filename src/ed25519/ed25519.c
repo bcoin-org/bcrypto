@@ -231,7 +231,7 @@ bcrypto_ed25519_pubkey_deconvert(
 
 int
 bcrypto_ed25519_derive(
-  bcrypto_curved25519_key out,
+  bcrypto_ed25519_public_key out,
   const bcrypto_ed25519_public_key pk,
   const bcrypto_ed25519_secret_key sk
 ) {
@@ -252,9 +252,6 @@ bcrypto_ed25519_derive(
 
   ge25519_pack(out, &s);
 
-  if (bcrypto_ed25519_pubkey_convert(out, out) != 0)
-    return -1;
-
   return 0;
 }
 
@@ -266,10 +263,14 @@ bcrypto_ed25519_exchange(
 ) {
   bcrypto_ed25519_public_key pk;
 
+  // XXX This is probably the _wrong_ way to do this!
   if (bcrypto_ed25519_pubkey_deconvert(pk, xpk, 0) != 0)
     return -1;
 
   if (bcrypto_ed25519_derive(out, pk, sk) != 0)
+    return -1;
+
+  if (bcrypto_ed25519_pubkey_convert(out, out) != 0)
     return -1;
 
   return 0;

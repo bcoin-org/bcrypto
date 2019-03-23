@@ -304,25 +304,14 @@ NAN_METHOD(BED448::Derive) {
   if (secret_len != BCRYPTO_EDDSA_448_PRIVATE_BYTES)
     return Nan::ThrowRangeError("Invalid secret size.");
 
-  bcrypto_curve448_point_t p;
-  uint8_t xpub[BCRYPTO_X448_PUBLIC_BYTES];
-  uint8_t xpriv[BCRYPTO_X448_PRIVATE_BYTES];
-  uint8_t out[BCRYPTO_X448_PUBLIC_BYTES];
+  uint8_t out[BCRYPTO_EDDSA_448_PUBLIC_BYTES];
 
-  if (!bcrypto_curve448_point_decode_like_eddsa_and_mul_by_ratio(p, pub))
-    return Nan::ThrowError("Could not decode public key.");
-
-  bcrypto_curve448_point_mul_by_ratio_and_encode_like_x448(xpub, p);
-
-  if (!bcrypto_c448_ed448_convert_private_key_to_x448(xpriv, secret))
-    return Nan::ThrowError("Could not convert.");
-
-  if (!bcrypto_x448_int(out, xpub, xpriv))
+  if (!bcrypto_c448_ed448_derive(out, pub, secret))
     return Nan::ThrowError("Could not derive secret.");
 
   return info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&out[0],
-                    BCRYPTO_X448_PUBLIC_BYTES).ToLocalChecked());
+                    BCRYPTO_EDDSA_448_PUBLIC_BYTES).ToLocalChecked());
 }
 
 NAN_METHOD(BED448::Exchange) {

@@ -78,7 +78,7 @@ bcrypto_ed25519_pubkey_deconvert(
 
 int
 bcrypto_ed25519_derive(
-  bcrypto_curved25519_key out,
+  bcrypto_ed25519_public_key out,
   const bcrypto_ed25519_public_key pk,
   const bcrypto_ed25519_secret_key sk
 );

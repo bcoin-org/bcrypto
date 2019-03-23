@@ -60,6 +60,19 @@ describe('EdDSA', function() {
     const bobSecret = ed25519.derive(alicePub, bobPriv);
 
     assert.bufferEqual(aliceSecret, bobSecret);
+
+    const secret = aliceSecret;
+    const xsecret = ed25519.publicKeyConvert(secret);
+    const xalicePub = ed25519.publicKeyConvert(alicePub);
+    const xbobPub = ed25519.publicKeyConvert(bobPub);
+
+    assert.notBufferEqual(xsecret, secret);
+
+    const xaliceSecret = ed25519.exchange(xbobPub, alicePriv);
+    const xbobSecret = ed25519.exchange(xalicePub, bobPriv);
+
+    assert.bufferEqual(xaliceSecret, xsecret);
+    assert.bufferEqual(xbobSecret, xsecret);
   });
 
   it('should do ECDH (vector)', () => {
@@ -74,15 +87,27 @@ describe('EdDSA', function() {
     const alicePub = ed25519.publicKeyCreate(alicePriv);
     const bobPub = ed25519.publicKeyCreate(bobPriv);
 
-    const secret = Buffer.from(
+    const xsecret = Buffer.from(
       '4084c076e4ff79e8af71425c0c0b573057e9ebf36185ec8572ec161ddf6f2731',
       'hex');
 
     const aliceSecret = ed25519.derive(bobPub, alicePriv);
+    const xaliceSecret = ed25519.publicKeyConvert(aliceSecret);
     const bobSecret = ed25519.derive(alicePub, bobPriv);
+    const xbobSecret = ed25519.publicKeyConvert(bobSecret);
 
-    assert.bufferEqual(aliceSecret, secret);
-    assert.bufferEqual(bobSecret, secret);
+    assert.notBufferEqual(aliceSecret, xsecret);
+    assert.bufferEqual(xaliceSecret, xsecret);
+    assert.bufferEqual(xbobSecret, xsecret);
+
+    const xalicePub = ed25519.publicKeyConvert(alicePub);
+    const xbobPub = ed25519.publicKeyConvert(bobPub);
+
+    const xaliceSecret2 = ed25519.exchange(xbobPub, alicePriv);
+    const xbobSecret2 = ed25519.exchange(xalicePub, bobPriv);
+
+    assert.bufferEqual(xaliceSecret2, xsecret);
+    assert.bufferEqual(xbobSecret2, xsecret);
   });
 
   it('should generate keypair and sign with tweak (vector)', () => {

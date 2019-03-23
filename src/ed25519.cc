@@ -452,7 +452,7 @@ NAN_METHOD(BED25519::Derive) {
   if (secret_len != 32)
     return Nan::ThrowRangeError("Invalid secret size.");
 
-  bcrypto_curved25519_key out;
+  bcrypto_ed25519_public_key out;
 
   if (bcrypto_ed25519_derive(out, pub, secret) != 0)
     return Nan::ThrowError("Invalid public key.");

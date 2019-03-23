@@ -26,6 +26,7 @@ const p521 = require('../lib/p521');
 const secp256k1 = new ECDSA('SECP256K1');
 const secp256k1n = require('../lib/secp256k1');
 const ed25519 = require('../lib/ed25519');
+const ed448 = require('../lib/ed448');
 const ecies = require('../lib/ecies');
 const vectors = require('./data/ecies.json');
 
@@ -37,7 +38,8 @@ const curves = [
   p521,
   secp256k1,
   secp256k1n,
-  ed25519
+  ed25519,
+  ed448
 ];
 
 const curveMap = {
@@ -47,7 +49,8 @@ const curveMap = {
   P384: p384,
   P521: p521,
   SECP256K1: secp256k1n,
-  ED25519: ed25519
+  ED25519: ed25519,
+  ED448: ed448
 };
 
 describe('ECIES', function() {
