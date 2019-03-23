@@ -610,4 +610,46 @@ describe('ECDSA', function() {
       assert.strictEqual(curve.recover(msg, sig, 0), null);
     });
   }
+
+  it('should generate keypair, sign RS and recover', () => {
+    const msg = random.randomBytes(secp256k1n.size);
+    const priv = secp256k1n.privateKeyGenerate();
+    const pub = secp256k1n.publicKeyCreate(priv);
+    const pubu = secp256k1n.publicKeyConvert(pub, false);
+
+    const {
+      signature,
+      recovery
+    } = secp256k1n.signRecoverable(msg, priv);
+
+    assert(secp256k1n.verify(msg, signature, pub));
+    assert(secp256k1n.verify(msg, signature, pubu));
+
+    const rpub = secp256k1n.recover(msg, signature, recovery, true);
+    const rpubu = secp256k1n.recover(msg, signature, recovery, false);
+
+    assert.bufferEqual(rpub, pub);
+    assert.bufferEqual(rpubu, pubu);
+  });
+
+  it('should generate keypair, sign DER and recover', () => {
+    const msg = random.randomBytes(secp256k1n.size);
+    const priv = secp256k1n.privateKeyGenerate();
+    const pub = secp256k1n.publicKeyCreate(priv);
+    const pubu = secp256k1n.publicKeyConvert(pub, false);
+
+    const {
+      signature,
+      recovery
+    } = secp256k1n.signRecoverableDER(msg, priv);
+
+    assert(secp256k1n.verifyDER(msg, signature, pub));
+    assert(secp256k1n.verifyDER(msg, signature, pubu));
+
+    const rpub = secp256k1n.recoverDER(msg, signature, recovery, true);
+    const rpubu = secp256k1n.recoverDER(msg, signature, recovery, false);
+
+    assert.bufferEqual(rpub, pub);
+    assert.bufferEqual(rpubu, pubu);
+  });
 });
