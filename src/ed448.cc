@@ -740,7 +740,7 @@ NAN_METHOD(BED448::DeriveWithScalar) {
 
   uint8_t out[BCRYPTO_EDDSA_448_PUBLIC_BYTES];
 
-  if (!bcrypto_c448_ed448_derive(out, pub, scalar))
+  if (!bcrypto_c448_ed448_derive_with_scalar(out, pub, scalar))
     return Nan::ThrowError("Could not derive secret.");
 
   return info.GetReturnValue().Set(
