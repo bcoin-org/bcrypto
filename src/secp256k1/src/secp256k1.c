@@ -307,6 +307,27 @@ int secp256k1_ecdsa_verify(const secp256k1_context* ctx, const secp256k1_ecdsa_s
             secp256k1_ecdsa_sig_verify(&ctx->ecmult_ctx, &r, &s, &q, &m));
 }
 
+/* This nonce function is described in BIP-schnorr
+ * (https://github.com/sipa/bips/blob/bip-schnorr/bip-schnorr.mediawiki) */
+static int secp256k1_nonce_function_bipschnorr(unsigned char *nonce32, const unsigned char *msg32, const unsigned char *key32, const unsigned char *algo16, void *data, unsigned int counter) {
+    secp256k1_sha256_t sha;
+    (void) data;
+    (void) counter;
+    VERIFY_CHECK(counter == 0);
+
+    /* Hash x||msg as per the spec */
+    secp256k1_sha256_initialize(&sha);
+    secp256k1_sha256_write(&sha, key32, 32);
+    secp256k1_sha256_write(&sha, msg32, 32);
+    /* Hash in algorithm, which is not in the spec, but may be critical to
+     * users depending on it to avoid nonce reuse across algorithms. */
+    if (algo16 != NULL) {
+        secp256k1_sha256_write(&sha, algo16, 16);
+    }
+    secp256k1_sha256_finalize(&sha, nonce32);
+    return 1;
+}
+
 static int nonce_function_rfc6979(unsigned char *nonce32, const unsigned char *msg32, const unsigned char *key32, const unsigned char *algo16, void *data, unsigned int counter) {
    unsigned char keydata[112];
    int keylen = 64;
@@ -577,6 +598,10 @@ int secp256k1_ec_pubkey_combine(const secp256k1_context* ctx, secp256k1_pubkey *
 
 #ifdef ENABLE_MODULE_ECDH
 # include "modules/ecdh/main_impl.h"
+#endif
+
+#ifdef ENABLE_MODULE_SCHNORRSIG
+# include "modules/schnorrsig/main_impl.h"
 #endif
 
 #ifdef ENABLE_MODULE_RECOVERY

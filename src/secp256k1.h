@@ -35,6 +35,9 @@ private:
 
   static NAN_METHOD(ecdh);
   static NAN_METHOD(ecdhUnsafe);
+
+  static NAN_METHOD(schnorrSign);
+  static NAN_METHOD(schnorrVerify);
 };
 
 #endif

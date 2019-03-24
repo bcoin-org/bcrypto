@@ -100,7 +100,8 @@
       "<!(node -e \"require('nan')\")"
     ],
     "defines": [
-      "ENABLE_MODULE_RECOVERY=1"
+      "ENABLE_MODULE_RECOVERY=1",
+      "ENABLE_MODULE_SCHNORRSIG=1"
     ],
     "variables": {
       "conditions": [

@@ -1,7 +1,7 @@
 'use strict';
 
 const assert = require('bsert');
-const secp256k1 = require('../lib/js/secp256k1').ec;
+const secp256k1 = require('../lib/secp256k1');
 const csv = require('./util/csv');
 
 describe('Secp256k1+Schnorr', function() {
