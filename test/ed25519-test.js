@@ -75,6 +75,33 @@ describe('EdDSA', function() {
     assert.bufferEqual(xbobSecret, xsecret);
   });
 
+  it('should do ECDH (with scalar)', () => {
+    const aliceSeed = ed25519.privateKeyGenerate();
+    const alicePriv = ed25519.privateKeyConvert(aliceSeed);
+    const alicePub = ed25519.publicKeyFromScalar(alicePriv);
+
+    assert.bufferEqual(alicePub, ed25519.publicKeyCreate(aliceSeed));
+
+    const bobSeed = ed25519.privateKeyGenerate();
+    const bobPriv = ed25519.privateKeyConvert(bobSeed);
+    const bobPub = ed25519.publicKeyFromScalar(bobPriv);
+
+    assert.bufferEqual(bobPub, ed25519.publicKeyCreate(bobSeed));
+
+    const aliceSecret = ed25519.deriveWithScalar(bobPub, alicePriv);
+    const bobSecret = ed25519.deriveWithScalar(alicePub, bobPriv);
+
+    assert.bufferEqual(aliceSecret, bobSecret);
+
+    const xalicePub = ed25519.publicKeyConvert(alicePub);
+    const xbobPub = ed25519.publicKeyConvert(bobPub);
+
+    const xaliceSecret = ed25519.exchangeWithScalar(xbobPub, alicePriv);
+    const xbobSecret = ed25519.exchangeWithScalar(xalicePub, bobPriv);
+
+    assert.bufferEqual(xaliceSecret, xbobSecret);
+  });
+
   it('should do ECDH (vector)', () => {
     const alicePriv = Buffer.from(
       '50ec6e55b18b882e06bdc12ff2f80f8f8fa68b04370b45439cf80b4e02610e1e',
@@ -113,12 +140,22 @@ describe('EdDSA', function() {
   it('should generate keypair and sign with additive tweak', () => {
     const key = ed25519.privateKeyGenerate();
     const pub = ed25519.publicKeyCreate(key);
-    const tweak = random.randomBytes(32);
+    const tweak = ed25519.scalarGenerate();
     const msg = random.randomBytes(32);
     const child = ed25519.publicKeyTweakAdd(pub, tweak);
     const sig = ed25519.signTweakAdd(msg, key, tweak);
 
+    assert(ed25519.scalarVerify(tweak));
+    assert.notBufferEqual(child, pub);
+
+    const childPriv = ed25519.scalarTweakAdd(ed25519.privateKeyConvert(key), tweak);
+    const childPub = ed25519.publicKeyFromScalar(childPriv);
+    assert.bufferEqual(childPub, child);
+
     assert(ed25519.verify(msg, sig, child));
+
+    const sig2 = ed25519.signWithScalar(msg, childPriv, msg);
+    assert(ed25519.verify(msg, sig2, child));
   });
 
   it('should generate keypair and sign with additive tweak (vector)', () => {
@@ -159,15 +196,23 @@ describe('EdDSA', function() {
   it('should generate keypair and sign with multiplicative tweak', () => {
     const key = ed25519.privateKeyGenerate();
     const pub = ed25519.publicKeyCreate(key);
-    const tweak = random.randomBytes(32);
+    const tweak = ed25519.scalarGenerate();
     const msg = random.randomBytes(32);
     const child = ed25519.publicKeyTweakMul(pub, tweak);
 
+    assert(ed25519.scalarVerify(tweak));
     assert.notBufferEqual(child, pub);
 
     const sig = ed25519.signTweakMul(msg, key, tweak);
 
+    const childPriv = ed25519.scalarTweakMul(ed25519.privateKeyConvert(key), tweak);
+    const childPub = ed25519.publicKeyFromScalar(childPriv);
+    assert.bufferEqual(childPub, child);
+
     assert(ed25519.verify(msg, sig, child));
+
+    const sig2 = ed25519.signWithScalar(msg, childPriv, msg);
+    assert(ed25519.verify(msg, sig2, child));
   });
 
   it('should generate keypair and sign with multiplicative tweak (vector)', () => {

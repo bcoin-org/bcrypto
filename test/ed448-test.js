@@ -67,6 +67,33 @@ describe('Ed448', function() {
     assert.bufferEqual(xbobSecret, xsecret);
   });
 
+  it('should do ECDH (with scalar)', () => {
+    const aliceSeed = ed448.privateKeyGenerate();
+    const alicePriv = ed448.privateKeyConvert(aliceSeed);
+    const alicePub = ed448.publicKeyFromScalar(alicePriv);
+
+    assert.bufferEqual(alicePub, ed448.publicKeyCreate(aliceSeed));
+
+    const bobSeed = ed448.privateKeyGenerate();
+    const bobPriv = ed448.privateKeyConvert(bobSeed);
+    const bobPub = ed448.publicKeyFromScalar(bobPriv);
+
+    assert.bufferEqual(bobPub, ed448.publicKeyCreate(bobSeed));
+
+    const aliceSecret = ed448.deriveWithScalar(bobPub, alicePriv);
+    const bobSecret = ed448.deriveWithScalar(alicePub, bobPriv);
+
+    assert.bufferEqual(aliceSecret, bobSecret);
+
+    const xalicePub = ed448.publicKeyConvert(alicePub);
+    const xbobPub = ed448.publicKeyConvert(bobPub);
+
+    const xaliceSecret = ed448.exchangeWithScalar(xbobPub, alicePriv);
+    const xbobSecret = ed448.exchangeWithScalar(xalicePub, bobPriv);
+
+    assert.bufferEqual(xaliceSecret, xbobSecret);
+  });
+
   it('should do ECDH (vector)', () => {
     const pub = Buffer.from(''
       + '93890d139f2e5fedfdaa552aae92'
@@ -98,6 +125,49 @@ describe('Ed448', function() {
     const xsecret3 = ed448.exchange(xpub, priv);
 
     assert.bufferEqual(xsecret3, xsecret);
+  });
+
+  it('should generate keypair and sign with additive tweak', () => {
+    const key = ed448.privateKeyGenerate();
+    const pub = ed448.publicKeyCreate(key);
+    const tweak = ed448.scalarGenerate();
+    const msg = random.randomBytes(57);
+    const child = ed448.publicKeyTweakAdd(pub, tweak);
+    const sig = ed448.signTweakAdd(msg, key, tweak);
+
+    assert(ed448.scalarVerify(tweak));
+    assert.notBufferEqual(child, pub);
+
+    const childPriv = ed448.scalarTweakAdd(ed448.privateKeyConvert(key), tweak);
+    const childPub = ed448.publicKeyFromScalar(childPriv);
+    assert.bufferEqual(childPub, child);
+
+    assert(ed448.verify(msg, sig, child));
+
+    const sig2 = ed448.signWithScalar(msg, childPriv, msg);
+    assert(ed448.verify(msg, sig2, child));
+  });
+
+  it('should generate keypair and sign with multiplicative tweak', () => {
+    const key = ed448.privateKeyGenerate();
+    const pub = ed448.publicKeyCreate(key);
+    const tweak = ed448.scalarGenerate();
+    const msg = random.randomBytes(57);
+    const child = ed448.publicKeyTweakMul(pub, tweak);
+
+    assert(ed448.scalarVerify(tweak));
+    assert.notBufferEqual(child, pub);
+
+    const sig = ed448.signTweakMul(msg, key, tweak);
+
+    const childPriv = ed448.scalarTweakMul(ed448.privateKeyConvert(key), tweak);
+    const childPub = ed448.publicKeyFromScalar(childPriv);
+    assert.bufferEqual(childPub, child);
+
+    assert(ed448.verify(msg, sig, child));
+
+    const sig2 = ed448.signWithScalar(msg, childPriv, msg);
+    assert(ed448.verify(msg, sig2, child));
   });
 
   it('should convert to montgomery (vector)', () => {
