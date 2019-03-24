@@ -13,17 +13,21 @@ private:
   static NAN_METHOD(ScalarTweakAdd);
   static NAN_METHOD(ScalarTweakMul);
   static NAN_METHOD(PublicKeyCreate);
+  static NAN_METHOD(PublicKeyFromScalar);
   static NAN_METHOD(PublicKeyConvert);
   static NAN_METHOD(PublicKeyDeconvert);
   static NAN_METHOD(PublicKeyVerify);
   static NAN_METHOD(PublicKeyTweakAdd);
   static NAN_METHOD(PublicKeyTweakMul);
   static NAN_METHOD(Sign);
+  static NAN_METHOD(SignWithScalar);
   static NAN_METHOD(SignTweakAdd);
   static NAN_METHOD(SignTweakMul);
   static NAN_METHOD(Verify);
   static NAN_METHOD(Derive);
+  static NAN_METHOD(DeriveWithScalar);
   static NAN_METHOD(Exchange);
+  static NAN_METHOD(ExchangeWithScalar);
 };
 
 #endif

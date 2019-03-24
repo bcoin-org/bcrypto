@@ -113,6 +113,83 @@ void bcrypto_curve448_scalar_mul(bcrypto_curve448_scalar_t out, const bcrypto_cu
   sc_montmul(out, out, sc_r2);
 }
 
+static void sc_montsqr (bcrypto_curve448_scalar_t out, const bcrypto_curve448_scalar_t a) {
+    sc_montmul(out,a,a);
+}
+
+bcrypto_c448_bool_t
+bcrypto_curve448_scalar_eq (
+    const bcrypto_curve448_scalar_t a,
+    const bcrypto_curve448_scalar_t b
+) {
+  bcrypto_c448_word_t diff = 0;
+  unsigned int i;
+  for (i=0; i<BCRYPTO_C448_SCALAR_LIMBS; i++) {
+      diff |= a->limb[i] ^ b->limb[i];
+  }
+  return mask_to_bool(word_is_zero(diff));
+}
+
+bcrypto_c448_error_t bcrypto_curve448_scalar_invert(
+    bcrypto_curve448_scalar_t out,
+    const bcrypto_curve448_scalar_t a
+) {
+    /* Fermat's little theorem, sliding window.
+     * Sliding window is fine here because the modulus isn't secret.
+     */
+    const int SCALAR_WINDOW_BITS = 3;
+    bcrypto_curve448_scalar_t precmp[1<<3];  // Rewritten from SCALAR_WINDOW_BITS for windows compatibility
+    const int LAST = (1<<SCALAR_WINDOW_BITS)-1;
+
+    /* Precompute precmp = [a^1,a^3,...] */
+    sc_montmul(precmp[0],a,sc_r2);
+    if (LAST > 0) sc_montmul(precmp[LAST],precmp[0],precmp[0]);
+
+    int i;
+    for (i=1; i<=LAST; i++) {
+        sc_montmul(precmp[i],precmp[i-1],precmp[LAST]);
+    }
+
+    /* Sliding window */
+    unsigned residue = 0, trailing = 0, started = 0;
+    for (i=BCRYPTO_C448_SCALAR_BITS-1; i>=-SCALAR_WINDOW_BITS; i--) {
+
+        if (started) sc_montsqr(out,out);
+
+        bcrypto_c448_word_t w = (i>=0) ? sc_p->limb[i/BCRYPTO_WBITS] : 0;
+        if (i >= 0 && i<BCRYPTO_WBITS) {
+            assert(w >= 2);
+            w-=2;
+        }
+
+        residue = (residue<<1) | ((w>>(i%BCRYPTO_WBITS))&1);
+        if (residue>>SCALAR_WINDOW_BITS != 0) {
+            assert(trailing == 0);
+            trailing = residue;
+            residue = 0;
+        }
+
+        if (trailing > 0 && (trailing & ((1<<SCALAR_WINDOW_BITS)-1)) == 0) {
+            if (started) {
+                sc_montmul(out,out,precmp[trailing>>(SCALAR_WINDOW_BITS+1)]);
+            } else {
+                bcrypto_curve448_scalar_copy(out,precmp[trailing>>(SCALAR_WINDOW_BITS+1)]);
+                started = 1;
+            }
+            trailing = 0;
+        }
+        trailing <<= 1;
+
+    }
+    assert(residue==0);
+    assert(trailing==0);
+
+    /* Demontgomerize */
+    sc_montmul(out,out,bcrypto_curve448_scalar_one);
+    OPENSSL_cleanse(precmp, sizeof(precmp));
+    return bcrypto_c448_succeed_if(~bcrypto_curve448_scalar_eq(out,bcrypto_curve448_scalar_zero));
+}
+
 void bcrypto_curve448_scalar_sub(bcrypto_curve448_scalar_t out, const bcrypto_curve448_scalar_t a,
              const bcrypto_curve448_scalar_t b)
 {

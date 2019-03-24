@@ -208,6 +208,61 @@ bcrypto_c448_error_t bcrypto_c448_ed448_convert_private_key_to_x448(
               uint8_t x[BCRYPTO_X448_PRIVATE_BYTES],
               const uint8_t ed[BCRYPTO_EDDSA_448_PRIVATE_BYTES]);
 
+bcrypto_c448_error_t bcrypto_c448_ed448_scalar_tweak_add(
+            uint8_t out[BCRYPTO_C448_SCALAR_BYTES],
+            const uint8_t scalar[BCRYPTO_C448_SCALAR_BYTES],
+            const uint8_t tweak[BCRYPTO_C448_SCALAR_BYTES]);
+
+bcrypto_c448_error_t bcrypto_c448_ed448_scalar_tweak_mul(
+            uint8_t out[BCRYPTO_C448_SCALAR_BYTES],
+            const uint8_t scalar[BCRYPTO_C448_SCALAR_BYTES],
+            const uint8_t tweak[BCRYPTO_C448_SCALAR_BYTES]);
+
+bcrypto_c448_error_t bcrypto_c448_ed448_public_key_tweak_add(
+            uint8_t out[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
+            const uint8_t pubkey[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
+            const uint8_t tweak[BCRYPTO_C448_SCALAR_BYTES]);
+
+bcrypto_c448_error_t bcrypto_c448_ed448_public_key_tweak_mul(
+            uint8_t out[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
+            const uint8_t pubkey[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
+            const uint8_t tweak[BCRYPTO_C448_SCALAR_BYTES]);
+
+bcrypto_c448_error_t bcrypto_c448_ed448_derive_public_key_with_scalar(
+            uint8_t pubkey[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
+            const uint8_t scalar[BCRYPTO_C448_SCALAR_BYTES]);
+
+bcrypto_c448_error_t bcrypto_c448_ed448_derive_with_scalar(
+            uint8_t out[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
+            const uint8_t pubkey[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
+            const uint8_t scalar[BCRYPTO_C448_SCALAR_BYTES]);
+
+bcrypto_c448_error_t bcrypto_c448_ed448_sign_with_scalar(
+            uint8_t signature[BCRYPTO_EDDSA_448_SIGNATURE_BYTES],
+            const uint8_t raw[BCRYPTO_EDDSA_448_PRIVATE_BYTES * 2],
+            const uint8_t pubkey[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
+            const uint8_t *message, size_t message_len,
+            uint8_t prehashed, const uint8_t *context,
+            size_t context_len);
+
+bcrypto_c448_error_t bcrypto_c448_ed448_sign_tweak_add(
+            uint8_t signature[BCRYPTO_EDDSA_448_SIGNATURE_BYTES],
+            const uint8_t privkey[BCRYPTO_EDDSA_448_PRIVATE_BYTES],
+            const uint8_t pubkey[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
+            const uint8_t tweak[BCRYPTO_C448_SCALAR_BYTES],
+            const uint8_t *message, size_t message_len,
+            uint8_t prehashed, const uint8_t *context,
+            size_t context_len);
+
+bcrypto_c448_error_t bcrypto_c448_ed448_sign_tweak_mul(
+            uint8_t signature[BCRYPTO_EDDSA_448_SIGNATURE_BYTES],
+            const uint8_t privkey[BCRYPTO_EDDSA_448_PRIVATE_BYTES],
+            const uint8_t pubkey[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
+            const uint8_t tweak[BCRYPTO_C448_SCALAR_BYTES],
+            const uint8_t *message, size_t message_len,
+            uint8_t prehashed, const uint8_t *context,
+            size_t context_len);
+
 #if defined(__cplusplus)
 }
 #endif

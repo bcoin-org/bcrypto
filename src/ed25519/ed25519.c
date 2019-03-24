@@ -66,19 +66,27 @@ bcrypto_ed25519_hram(
 }
 
 void
-bcrypto_ed25519_publickey(
-  const bcrypto_ed25519_secret_key sk,
-  bcrypto_ed25519_public_key pk
+bcrypto_ed25519_publickey_from_scalar(
+  bcrypto_ed25519_public_key pk,
+  const bcrypto_ed25519_secret_key sk
 ) {
   bignum256modm a;
   ge25519 ALIGN(16) A;
-  hash_512bits extsk;
 
   /* A = aB */
-  bcrypto_ed25519_extsk(extsk, sk);
-  expand256_modm(a, extsk, 32);
+  expand256_modm(a, sk, 32);
   ge25519_scalarmult_base_niels(&A, ge25519_niels_base_multiples, a);
   ge25519_pack(pk, &A);
+}
+
+void
+bcrypto_ed25519_publickey(
+  bcrypto_ed25519_public_key pk,
+  const bcrypto_ed25519_secret_key sk
+) {
+  hash_512bits extsk;
+  bcrypto_ed25519_extsk(extsk, sk);
+  bcrypto_ed25519_publickey_from_scalar(pk, extsk);
 }
 
 int
@@ -220,17 +228,15 @@ bcrypto_ed25519_pubkey_deconvert(
 }
 
 int
-bcrypto_ed25519_derive(
+bcrypto_ed25519_derive_with_scalar(
   bcrypto_ed25519_public_key out,
   const bcrypto_ed25519_public_key pk,
   const bcrypto_ed25519_secret_key sk
 ) {
-  hash_512bits extsk;
   bignum256modm k;
   ge25519 ALIGN(16) s, p;
 
-  bcrypto_ed25519_extsk(extsk, sk);
-  expand_raw256_modm(k, extsk);
+  expand_raw256_modm(k, sk);
 
   if (!ge25519_unpack_negative_vartime(&p, pk))
     return -1;
@@ -241,6 +247,37 @@ bcrypto_ed25519_derive(
     return -1;
 
   ge25519_pack(out, &s);
+
+  return 0;
+}
+
+int
+bcrypto_ed25519_derive(
+  bcrypto_ed25519_public_key out,
+  const bcrypto_ed25519_public_key pk,
+  const bcrypto_ed25519_secret_key sk
+) {
+  hash_512bits extsk;
+  bcrypto_ed25519_extsk(extsk, sk);
+  return bcrypto_ed25519_derive_with_scalar(out, pk, extsk);
+}
+
+int
+bcrypto_ed25519_exchange_with_scalar(
+  bcrypto_curved25519_key out,
+  const bcrypto_curved25519_key xpk,
+  const bcrypto_ed25519_secret_key sk
+) {
+  bcrypto_ed25519_public_key pk;
+
+  if (bcrypto_ed25519_pubkey_deconvert(pk, xpk, 0) != 0)
+    return -1;
+
+  if (bcrypto_ed25519_derive_with_scalar(out, pk, sk) != 0)
+    return -1;
+
+  if (bcrypto_ed25519_pubkey_convert(out, out) != 0)
+    return -1;
 
   return 0;
 }
@@ -369,11 +406,11 @@ bcrypto_ed25519_pubkey_tweak_mul(
   return 0;
 }
 
-static void
+void
 bcrypto_ed25519_sign_with_scalar(
   const unsigned char *m,
   size_t mlen,
-  const hash_512bits extsk,
+  const uint8_t extsk[64],
   const bcrypto_ed25519_public_key pk,
   int ph,
   const unsigned char *ctx,

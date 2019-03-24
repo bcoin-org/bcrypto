@@ -309,4 +309,31 @@ void bcrypto_curve448_scalar_destroy(bcrypto_curve448_scalar_t scalar);
 /* Overwrite point with zeros. */
 void bcrypto_curve448_point_destroy(bcrypto_curve448_point_t point);
 
+void bcrypto_curve448_point_sub(
+    bcrypto_curve448_point_t p,
+    const bcrypto_curve448_point_t q,
+    const bcrypto_curve448_point_t r
+);
+
+void bcrypto_curve448_point_add(
+    bcrypto_curve448_point_t p,
+    const bcrypto_curve448_point_t q,
+    const bcrypto_curve448_point_t r
+);
+
+void bcrypto_curve448_point_negate(
+  bcrypto_curve448_point_t nega,
+  const bcrypto_curve448_point_t a
+);
+
+bcrypto_c448_bool_t
+bcrypto_curve448_scalar_eq (
+    const bcrypto_curve448_scalar_t a,
+    const bcrypto_curve448_scalar_t b
+);
+
+bcrypto_c448_error_t bcrypto_curve448_scalar_invert(
+    bcrypto_curve448_scalar_t out,
+    const bcrypto_curve448_scalar_t a);
+
 #endif              /* _BCRYPTO_POINT_448_H */

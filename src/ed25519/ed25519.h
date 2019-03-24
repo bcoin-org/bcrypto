@@ -13,9 +13,15 @@ typedef unsigned char bcrypto_ed25519_secret_key[32];
 typedef unsigned char bcrypto_curved25519_key[32];
 
 void
+bcrypto_ed25519_publickey_from_scalar(
+  bcrypto_ed25519_public_key pk,
+  const bcrypto_ed25519_secret_key sk
+);
+
+void
 bcrypto_ed25519_publickey(
-  const bcrypto_ed25519_secret_key sk,
-  bcrypto_ed25519_public_key pk
+  bcrypto_ed25519_public_key pk,
+  const bcrypto_ed25519_secret_key sk
 );
 
 int
@@ -74,9 +80,23 @@ bcrypto_ed25519_pubkey_deconvert(
 );
 
 int
+bcrypto_ed25519_derive_with_scalar(
+  bcrypto_ed25519_public_key out,
+  const bcrypto_ed25519_public_key pk,
+  const bcrypto_ed25519_secret_key sk
+);
+
+int
 bcrypto_ed25519_derive(
   bcrypto_ed25519_public_key out,
   const bcrypto_ed25519_public_key pk,
+  const bcrypto_ed25519_secret_key sk
+);
+
+int
+bcrypto_ed25519_exchange_with_scalar(
+  bcrypto_curved25519_key out,
+  const bcrypto_curved25519_key xpk,
   const bcrypto_ed25519_secret_key sk
 );
 
@@ -113,6 +133,18 @@ bcrypto_ed25519_pubkey_tweak_mul(
   bcrypto_ed25519_public_key out,
   const bcrypto_ed25519_public_key pk,
   const bcrypto_ed25519_secret_key tweak
+);
+
+void
+bcrypto_ed25519_sign_with_scalar(
+  const unsigned char *m,
+  size_t mlen,
+  const uint8_t extsk[64],
+  const bcrypto_ed25519_public_key pk,
+  int ph,
+  const unsigned char *ctx,
+  size_t ctx_len,
+  bcrypto_ed25519_signature RS
 );
 
 void

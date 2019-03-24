@@ -35,11 +35,16 @@ static bcrypto_c448_error_t oneshot_hash(uint8_t *out, size_t outlen,
   return BCRYPTO_C448_SUCCESS;
 }
 
-
 static void clamp(uint8_t secret_scalar_ser[BCRYPTO_EDDSA_448_PRIVATE_BYTES])
 {
   secret_scalar_ser[0] &= -BCRYPTO_COFACTOR;
   secret_scalar_ser[BCRYPTO_EDDSA_448_PRIVATE_BYTES - 1] = 0;
+  secret_scalar_ser[BCRYPTO_EDDSA_448_PRIVATE_BYTES - 2] |= 0x80;
+}
+
+static void half_clamp(uint8_t secret_scalar_ser[BCRYPTO_C448_SCALAR_BYTES])
+{
+  secret_scalar_ser[0] &= -BCRYPTO_COFACTOR;
   secret_scalar_ser[BCRYPTO_EDDSA_448_PRIVATE_BYTES - 2] |= 0x80;
 }
 
@@ -76,28 +81,127 @@ bcrypto_c448_error_t bcrypto_c448_ed448_convert_private_key_to_x448(
 {
   /* pass the private key through oneshot_hash function */
   /* and keep the first BCRYPTO_X448_PRIVATE_BYTES bytes */
-  return oneshot_hash(x, BCRYPTO_X448_PRIVATE_BYTES, ed,
-            BCRYPTO_EDDSA_448_PRIVATE_BYTES);
+  bcrypto_c448_error_t ret = oneshot_hash(x, BCRYPTO_X448_PRIVATE_BYTES, ed,
+                                          BCRYPTO_EDDSA_448_PRIVATE_BYTES);
+
+  if (ret != BCRYPTO_C448_SUCCESS)
+    return ret;
+
+  half_clamp(x);
+
+  return ret;
 }
 
-bcrypto_c448_error_t bcrypto_c448_ed448_derive_public_key(
+bcrypto_c448_error_t bcrypto_c448_ed448_scalar_tweak_add(
+            uint8_t out[BCRYPTO_C448_SCALAR_BYTES],
+            const uint8_t scalar[BCRYPTO_C448_SCALAR_BYTES],
+            const uint8_t tweak[BCRYPTO_C448_SCALAR_BYTES]) {
+  bcrypto_curve448_scalar_t scalar_scalar;
+  bcrypto_curve448_scalar_t tweak_scalar;
+
+  bcrypto_curve448_scalar_decode(scalar_scalar, &scalar[0]);
+  bcrypto_curve448_scalar_decode(tweak_scalar, &tweak[0]);
+
+  bcrypto_curve448_scalar_add(scalar_scalar, scalar_scalar, tweak_scalar);
+  bcrypto_curve448_scalar_encode(out, scalar_scalar);
+
+  bcrypto_curve448_scalar_destroy(scalar_scalar);
+  bcrypto_curve448_scalar_destroy(tweak_scalar);
+
+  return BCRYPTO_C448_SUCCESS;
+}
+
+bcrypto_c448_error_t bcrypto_c448_ed448_scalar_tweak_mul(
+            uint8_t out[BCRYPTO_C448_SCALAR_BYTES],
+            const uint8_t scalar[BCRYPTO_C448_SCALAR_BYTES],
+            const uint8_t tweak[BCRYPTO_C448_SCALAR_BYTES]) {
+  bcrypto_curve448_scalar_t scalar_scalar;
+  bcrypto_curve448_scalar_t tweak_scalar;
+
+  bcrypto_curve448_scalar_decode(scalar_scalar, &scalar[0]);
+  bcrypto_curve448_scalar_decode(tweak_scalar, &tweak[0]);
+
+  bcrypto_curve448_scalar_mul(scalar_scalar, scalar_scalar, tweak_scalar);
+  bcrypto_curve448_scalar_encode(out, scalar_scalar);
+
+  bcrypto_curve448_scalar_destroy(scalar_scalar);
+  bcrypto_curve448_scalar_destroy(tweak_scalar);
+
+  return BCRYPTO_C448_SUCCESS;
+}
+
+bcrypto_c448_error_t bcrypto_c448_ed448_public_key_tweak_add(
+            uint8_t out[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
+            const uint8_t pubkey[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
+            const uint8_t tweak[BCRYPTO_C448_SCALAR_BYTES]) {
+  bcrypto_curve448_scalar_t tweak_scalar;
+  bcrypto_curve448_point_t pk_point, tweak_point;
+
+  bcrypto_c448_error_t error =
+    bcrypto_curve448_point_decode_like_eddsa_and_mul_by_ratio(pk_point, pubkey);
+
+  if (error != BCRYPTO_C448_SUCCESS)
+    return error;
+
+  bcrypto_curve448_scalar_decode(tweak_scalar, &tweak[0]);
+
+  bcrypto_curve448_precomputed_scalarmul(tweak_point, bcrypto_curve448_precomputed_base, tweak_scalar);
+  bcrypto_curve448_point_add(pk_point, pk_point, tweak_point);
+
+  // We have to divide the new point by the ratio due to decaf's encoding.
+  bcrypto_curve448_scalar_t ratio_scalar = {{{BCRYPTO_C448_EDDSA_ENCODE_RATIO}}};
+  bcrypto_curve448_scalar_invert(ratio_scalar, ratio_scalar);
+  bcrypto_curve448_point_t ratio_point;
+  bcrypto_curve448_precomputed_scalarmul(ratio_point, bcrypto_curve448_precomputed_base, ratio_scalar);
+  bcrypto_curve448_point_scalarmul(pk_point, pk_point, ratio_scalar);
+
+  bcrypto_curve448_point_mul_by_ratio_and_encode_like_eddsa(out, pk_point);
+
+  bcrypto_curve448_scalar_destroy(tweak_scalar);
+  bcrypto_curve448_point_destroy(tweak_point);
+  bcrypto_curve448_point_destroy(pk_point);
+
+  return BCRYPTO_C448_SUCCESS;
+}
+
+bcrypto_c448_error_t bcrypto_c448_ed448_public_key_tweak_mul(
+            uint8_t out[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
+            const uint8_t pubkey[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
+            const uint8_t tweak[BCRYPTO_C448_SCALAR_BYTES]) {
+  bcrypto_curve448_scalar_t tweak_scalar;
+  bcrypto_curve448_point_t pk_point;
+  unsigned int c;
+
+  bcrypto_c448_error_t error =
+    bcrypto_curve448_point_decode_like_eddsa_and_mul_by_ratio(pk_point, pubkey);
+
+  if (error != BCRYPTO_C448_SUCCESS)
+    return error;
+
+  bcrypto_curve448_scalar_decode(tweak_scalar, &tweak[0]);
+
+  for (c = 1; c < BCRYPTO_C448_EDDSA_ENCODE_RATIO; c <<= 1)
+    bcrypto_curve448_scalar_halve(tweak_scalar, tweak_scalar);
+
+  bcrypto_curve448_point_scalarmul(pk_point, pk_point, tweak_scalar);
+  bcrypto_curve448_point_mul_by_ratio_and_encode_like_eddsa(out, pk_point);
+
+  bcrypto_curve448_scalar_destroy(tweak_scalar);
+  bcrypto_curve448_point_destroy(pk_point);
+
+  return BCRYPTO_C448_SUCCESS;
+}
+
+bcrypto_c448_error_t bcrypto_c448_ed448_derive_public_key_with_scalar(
             uint8_t pubkey[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
-            const uint8_t privkey[BCRYPTO_EDDSA_448_PRIVATE_BYTES])
+            const uint8_t scalar[BCRYPTO_C448_SCALAR_BYTES])
 {
   /* only this much used for keygen */
-  uint8_t secret_scalar_ser[BCRYPTO_EDDSA_448_PRIVATE_BYTES];
   bcrypto_curve448_scalar_t secret_scalar;
-  unsigned int c;
   bcrypto_curve448_point_t p;
+  unsigned int c;
 
-  if (!oneshot_hash(secret_scalar_ser, sizeof(secret_scalar_ser), privkey,
-            BCRYPTO_EDDSA_448_PRIVATE_BYTES))
-    return BCRYPTO_C448_FAILURE;
-
-  clamp(secret_scalar_ser);
-
-  bcrypto_curve448_scalar_decode_long(secret_scalar, secret_scalar_ser,
-                sizeof(secret_scalar_ser));
+  bcrypto_curve448_scalar_decode(secret_scalar, &scalar[0]);
 
   /*
    * Since we are going to mul_by_cofactor during encoding, divide by it
@@ -110,14 +214,64 @@ bcrypto_c448_error_t bcrypto_c448_ed448_derive_public_key(
   for (c = 1; c < BCRYPTO_C448_EDDSA_ENCODE_RATIO; c <<= 1)
     bcrypto_curve448_scalar_halve(secret_scalar, secret_scalar);
 
-  bcrypto_curve448_precomputed_scalarmul(p, bcrypto_curve448_precomputed_base, secret_scalar);
+  bcrypto_curve448_precomputed_scalarmul(p,
+    bcrypto_curve448_precomputed_base, secret_scalar);
 
   bcrypto_curve448_point_mul_by_ratio_and_encode_like_eddsa(pubkey, p);
 
   /* Cleanup */
   bcrypto_curve448_scalar_destroy(secret_scalar);
   bcrypto_curve448_point_destroy(p);
+
+  return BCRYPTO_C448_SUCCESS;
+}
+
+bcrypto_c448_error_t bcrypto_c448_ed448_derive_public_key(
+            uint8_t pubkey[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
+            const uint8_t privkey[BCRYPTO_EDDSA_448_PRIVATE_BYTES])
+{
+  /* only this much used for keygen */
+  uint8_t secret_scalar_ser[BCRYPTO_EDDSA_448_PRIVATE_BYTES];
+
+  if (!oneshot_hash(secret_scalar_ser, sizeof(secret_scalar_ser), privkey,
+                    BCRYPTO_EDDSA_448_PRIVATE_BYTES)) {
+    return BCRYPTO_C448_FAILURE;
+  }
+
+  clamp(secret_scalar_ser);
+
+  bcrypto_c448_error_t ret =
+    bcrypto_c448_ed448_derive_public_key_with_scalar(pubkey, secret_scalar_ser);
+
   OPENSSL_cleanse(secret_scalar_ser, sizeof(secret_scalar_ser));
+
+  return ret;
+}
+
+bcrypto_c448_error_t bcrypto_c448_ed448_derive_with_scalar(
+            uint8_t out[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
+            const uint8_t pubkey[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
+            const uint8_t scalar[BCRYPTO_C448_SCALAR_BYTES])
+{
+  bcrypto_curve448_scalar_t secret_scalar;
+  bcrypto_curve448_point_t p;
+  unsigned int c;
+
+  if (bcrypto_curve448_point_decode_like_eddsa_and_mul_by_ratio(p, pubkey)
+      != BCRYPTO_C448_SUCCESS) {
+    return BCRYPTO_C448_FAILURE;
+  }
+
+  bcrypto_curve448_scalar_decode(secret_scalar, &scalar[0]);
+
+  for (c = 1; c < BCRYPTO_C448_EDDSA_ENCODE_RATIO; c <<= 1)
+    bcrypto_curve448_scalar_halve(secret_scalar, secret_scalar);
+
+  bcrypto_curve448_point_scalarmul(p, p, secret_scalar);
+  bcrypto_curve448_point_mul_by_ratio_and_encode_like_eddsa(out, p);
+
+  bcrypto_curve448_scalar_destroy(secret_scalar);
+  bcrypto_curve448_point_destroy(p);
 
   return BCRYPTO_C448_SUCCESS;
 }
@@ -127,51 +281,26 @@ bcrypto_c448_error_t bcrypto_c448_ed448_derive(
             const uint8_t pubkey[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
             const uint8_t privkey[BCRYPTO_EDDSA_448_PRIVATE_BYTES])
 {
-  /* only this much used for keygen */
   uint8_t secret_scalar_ser[BCRYPTO_EDDSA_448_PRIVATE_BYTES];
-  bcrypto_curve448_scalar_t secret_scalar;
-  unsigned int c;
-  bcrypto_curve448_point_t p;
 
   if (!oneshot_hash(secret_scalar_ser, sizeof(secret_scalar_ser), privkey,
-            BCRYPTO_EDDSA_448_PRIVATE_BYTES))
-    return BCRYPTO_C448_FAILURE;
-
-  clamp(secret_scalar_ser);
-
-  bcrypto_curve448_scalar_decode_long(secret_scalar, secret_scalar_ser,
-                sizeof(secret_scalar_ser));
-
-  /*
-   * Since we are going to mul_by_cofactor during encoding, divide by it
-   * here. However, the EdDSA base point is not the same as the decaf base
-   * point if the sigma isogeny is in use: the EdDSA base point is on
-   * Etwist_d/(1-d) and the decaf base point is on Etwist_d, and when
-   * converted it effectively picks up a factor of 2 from the isogenies.  So
-   * we might start at 2 instead of 1.
-   */
-  for (c = 1; c < BCRYPTO_C448_EDDSA_ENCODE_RATIO; c <<= 1)
-    bcrypto_curve448_scalar_halve(secret_scalar, secret_scalar);
-
-  if (bcrypto_curve448_point_decode_like_eddsa_and_mul_by_ratio(p, pubkey)
-      != BCRYPTO_C448_SUCCESS) {
+                    BCRYPTO_EDDSA_448_PRIVATE_BYTES)) {
     return BCRYPTO_C448_FAILURE;
   }
 
-  bcrypto_curve448_point_scalarmul(p, p, secret_scalar);
-  bcrypto_curve448_point_mul_by_ratio_and_encode_like_eddsa(out, p);
+  clamp(secret_scalar_ser);
 
-  /* Cleanup */
-  bcrypto_curve448_scalar_destroy(secret_scalar);
-  bcrypto_curve448_point_destroy(p);
+  bcrypto_c448_error_t ret =
+    bcrypto_c448_ed448_derive_with_scalar(out, pubkey, secret_scalar_ser);
+
   OPENSSL_cleanse(secret_scalar_ser, sizeof(secret_scalar_ser));
 
-  return BCRYPTO_C448_SUCCESS;
+  return ret;
 }
 
-bcrypto_c448_error_t bcrypto_c448_ed448_sign(
+bcrypto_c448_error_t bcrypto_c448_ed448_sign_with_scalar(
             uint8_t signature[BCRYPTO_EDDSA_448_SIGNATURE_BYTES],
-            const uint8_t privkey[BCRYPTO_EDDSA_448_PRIVATE_BYTES],
+            const uint8_t raw[BCRYPTO_EDDSA_448_PRIVATE_BYTES * 2],
             const uint8_t pubkey[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
             const uint8_t *message, size_t message_len,
             uint8_t prehashed, const uint8_t *context,
@@ -192,10 +321,8 @@ bcrypto_c448_error_t bcrypto_c448_ed448_sign(
      */
     uint8_t expanded[BCRYPTO_EDDSA_448_PRIVATE_BYTES * 2];
 
-    if (!oneshot_hash(expanded, sizeof(expanded), privkey,
-              BCRYPTO_EDDSA_448_PRIVATE_BYTES))
-      goto err;
-    clamp(expanded);
+    memcpy(&expanded[0], &raw[0], sizeof(expanded));
+
     bcrypto_curve448_scalar_decode_long(secret_scalar, expanded,
                   BCRYPTO_EDDSA_448_PRIVATE_BYTES);
 
@@ -271,6 +398,156 @@ bcrypto_c448_error_t bcrypto_c448_ed448_sign(
 
   ret = BCRYPTO_C448_SUCCESS;
  err:
+  return ret;
+}
+
+bcrypto_c448_error_t bcrypto_c448_ed448_sign(
+            uint8_t signature[BCRYPTO_EDDSA_448_SIGNATURE_BYTES],
+            const uint8_t privkey[BCRYPTO_EDDSA_448_PRIVATE_BYTES],
+            const uint8_t pubkey[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
+            const uint8_t *message, size_t message_len,
+            uint8_t prehashed, const uint8_t *context,
+            size_t context_len)
+{
+  /*
+   * Schedule the secret key, First BCRYPTO_EDDSA_448_PRIVATE_BYTES is serialised
+   * secret scalar,next BCRYPTO_EDDSA_448_PRIVATE_BYTES bytes is the seed.
+   */
+  uint8_t expanded[BCRYPTO_EDDSA_448_PRIVATE_BYTES * 2];
+
+  if (!oneshot_hash(expanded, sizeof(expanded), privkey,
+                    BCRYPTO_EDDSA_448_PRIVATE_BYTES)) {
+    return BCRYPTO_C448_FAILURE;
+  }
+
+  clamp(expanded);
+
+  bcrypto_c448_error_t ret = bcrypto_c448_ed448_sign_with_scalar(signature,
+    expanded, pubkey, message, message_len,
+    prehashed, context, context_len);
+
+  OPENSSL_cleanse(expanded, sizeof(expanded));
+
+  return ret;
+}
+
+bcrypto_c448_error_t bcrypto_c448_ed448_sign_tweak_add(
+            uint8_t signature[BCRYPTO_EDDSA_448_SIGNATURE_BYTES],
+            const uint8_t privkey[BCRYPTO_EDDSA_448_PRIVATE_BYTES],
+            const uint8_t pubkey[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
+            const uint8_t tweak[BCRYPTO_C448_SCALAR_BYTES],
+            const uint8_t *message, size_t message_len,
+            uint8_t prehashed, const uint8_t *context,
+            size_t context_len)
+{
+  /*
+   * Schedule the secret key, First BCRYPTO_EDDSA_448_PRIVATE_BYTES is serialised
+   * secret scalar,next BCRYPTO_EDDSA_448_PRIVATE_BYTES bytes is the seed.
+   */
+  uint8_t expanded[BCRYPTO_EDDSA_448_PRIVATE_BYTES * 2];
+  uint8_t expanded2[BCRYPTO_EDDSA_448_PRIVATE_BYTES * 2];
+  uint8_t pubkey2[BCRYPTO_EDDSA_448_PUBLIC_BYTES];
+  bcrypto_c448_error_t ret = BCRYPTO_C448_SUCCESS;
+
+  if (!oneshot_hash(expanded, sizeof(expanded), privkey,
+                    BCRYPTO_EDDSA_448_PRIVATE_BYTES)) {
+    ret = BCRYPTO_C448_FAILURE;
+    goto fail;
+  }
+
+  clamp(expanded);
+
+  ret = bcrypto_c448_ed448_scalar_tweak_add(expanded, expanded, tweak);
+
+  if (ret != BCRYPTO_C448_SUCCESS)
+    goto fail;
+
+  ret = bcrypto_c448_ed448_public_key_tweak_add(pubkey2, pubkey, tweak);
+
+  if (ret != BCRYPTO_C448_SUCCESS)
+    goto fail;
+
+  // Preimage:
+  memcpy(&expanded2[0], &expanded[BCRYPTO_EDDSA_448_PRIVATE_BYTES], BCRYPTO_EDDSA_448_PRIVATE_BYTES);
+  memcpy(&expanded2[BCRYPTO_EDDSA_448_PRIVATE_BYTES], &tweak[0], BCRYPTO_C448_SCALAR_BYTES);
+  expanded2[sizeof(expanded2) - 1] = 0;
+
+  if (!oneshot_hash(expanded2, BCRYPTO_EDDSA_448_PRIVATE_BYTES,
+                    expanded2, sizeof(expanded2) - 1)) {
+    ret = BCRYPTO_C448_FAILURE;
+    goto fail;
+  }
+
+  memcpy(&expanded[BCRYPTO_EDDSA_448_PRIVATE_BYTES], &expanded2[0], BCRYPTO_EDDSA_448_PRIVATE_BYTES);
+
+  ret = bcrypto_c448_ed448_sign_with_scalar(signature,
+    expanded, pubkey2, message, message_len,
+    prehashed, context, context_len);
+
+fail:
+  OPENSSL_cleanse(expanded, sizeof(expanded));
+  OPENSSL_cleanse(expanded2, sizeof(expanded2));
+  OPENSSL_cleanse(pubkey2, sizeof(pubkey2));
+  return ret;
+}
+
+bcrypto_c448_error_t bcrypto_c448_ed448_sign_tweak_mul(
+            uint8_t signature[BCRYPTO_EDDSA_448_SIGNATURE_BYTES],
+            const uint8_t privkey[BCRYPTO_EDDSA_448_PRIVATE_BYTES],
+            const uint8_t pubkey[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
+            const uint8_t tweak[BCRYPTO_C448_SCALAR_BYTES],
+            const uint8_t *message, size_t message_len,
+            uint8_t prehashed, const uint8_t *context,
+            size_t context_len)
+{
+  /*
+   * Schedule the secret key, First BCRYPTO_EDDSA_448_PRIVATE_BYTES is serialised
+   * secret scalar,next BCRYPTO_EDDSA_448_PRIVATE_BYTES bytes is the seed.
+   */
+  uint8_t expanded[BCRYPTO_EDDSA_448_PRIVATE_BYTES * 2];
+  uint8_t expanded2[BCRYPTO_EDDSA_448_PRIVATE_BYTES * 2];
+  uint8_t pubkey2[BCRYPTO_EDDSA_448_PUBLIC_BYTES];
+  bcrypto_c448_error_t ret = BCRYPTO_C448_SUCCESS;
+
+  if (!oneshot_hash(expanded, sizeof(expanded), privkey,
+                    BCRYPTO_EDDSA_448_PRIVATE_BYTES)) {
+    ret = BCRYPTO_C448_FAILURE;
+    goto fail;
+  }
+
+  clamp(expanded);
+
+  ret = bcrypto_c448_ed448_scalar_tweak_mul(expanded, expanded, tweak);
+
+  if (ret != BCRYPTO_C448_SUCCESS)
+    goto fail;
+
+  ret = bcrypto_c448_ed448_public_key_tweak_mul(pubkey2, pubkey, tweak);
+
+  if (ret != BCRYPTO_C448_SUCCESS)
+    goto fail;
+
+  // Preimage:
+  memcpy(&expanded2[0], &expanded[BCRYPTO_EDDSA_448_PRIVATE_BYTES], BCRYPTO_EDDSA_448_PRIVATE_BYTES);
+  memcpy(&expanded2[BCRYPTO_EDDSA_448_PRIVATE_BYTES], &tweak[0], BCRYPTO_C448_SCALAR_BYTES);
+  expanded2[sizeof(expanded2) - 1] = 0;
+
+  if (!oneshot_hash(expanded2, BCRYPTO_EDDSA_448_PRIVATE_BYTES,
+                    expanded2, sizeof(expanded2) - 1)) {
+    ret = BCRYPTO_C448_FAILURE;
+    goto fail;
+  }
+
+  memcpy(&expanded[BCRYPTO_EDDSA_448_PRIVATE_BYTES], &expanded2[0], BCRYPTO_EDDSA_448_PRIVATE_BYTES);
+
+  ret = bcrypto_c448_ed448_sign_with_scalar(signature,
+    expanded, pubkey2, message, message_len,
+    prehashed, context, context_len);
+
+fail:
+  OPENSSL_cleanse(expanded, sizeof(expanded));
+  OPENSSL_cleanse(expanded2, sizeof(expanded2));
+  OPENSSL_cleanse(pubkey2, sizeof(pubkey2));
   return ret;
 }
 

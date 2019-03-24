@@ -45,6 +45,14 @@ static const bcrypto_curve448_scalar_t precomputed_scalarmul_adjustment = {
 
 #define BCRYPTO_TWISTED_D (BCRYPTO_EDWARDS_D - 1)
 
+#if BCRYPTO_TWISTED_D < 0
+#define BCRYPTO_EFF_D (-(BCRYPTO_TWISTED_D))
+#define BCRYPTO_NEG_D 1
+#else
+#define BCRYPTO_EFF_D BCRYPTO_TWISTED_D
+#define BCRYPTO_NEG_D 0
+#endif
+
 #define BCRYPTO_WBITS BCRYPTO_C448_WORD_BITS   /* NB this may be different from BCRYPTO_ARCH_WORD_BITS */
 
 /* Inverse. */
@@ -66,6 +74,88 @@ static void bcrypto_gf_invert(bcrypto_gf y, const bcrypto_gf x, int assert_nonze
 /** identity = (0,1) */
 const bcrypto_curve448_point_t bcrypto_curve448_point_identity =
   { {{{{0}}}, {{{1}}}, {{{1}}}, {{{0}}}} };
+
+void bcrypto_curve448_point_sub(
+  bcrypto_curve448_point_t p,
+  const bcrypto_curve448_point_t q,
+  const bcrypto_curve448_point_t r
+) {
+  bcrypto_gf a, b, c, d;
+  bcrypto_gf_sub_nr(b, q->y, q->x); /* 3+e */
+  bcrypto_gf_sub_nr(d, r->y, r->x); /* 3+e */
+  bcrypto_gf_add_nr(c, r->y, r->x); /* 2+e */
+  bcrypto_gf_mul(a, c, b);
+  bcrypto_gf_add_nr(b, q->y, q->x); /* 2+e */
+  bcrypto_gf_mul(p->y, d, b);
+  bcrypto_gf_mul(b, r->t, q->t);
+  bcrypto_gf_mulw(p->x, b, 2 * BCRYPTO_EFF_D);
+  bcrypto_gf_add_nr(b, a, p->y);    /* 2+e */
+  bcrypto_gf_sub_nr(c, p->y, a);    /* 3+e */
+  bcrypto_gf_mul(a, q->z, r->z);
+  bcrypto_gf_add_nr(a, a, a);       /* 2+e */
+
+  if (BCRYPTO_GF_HEADROOM <= 3)
+    bcrypto_gf_weak_reduce(a); /* or 1+e */
+
+#if BCRYPTO_NEG_D
+  bcrypto_gf_sub_nr(p->y, a, p->x); /* 4+e or 3+e */
+  bcrypto_gf_add_nr(a, a, p->x);    /* 3+e or 2+e */
+#else
+  bcrypto_gf_add_nr(p->y, a, p->x); /* 3+e or 2+e */
+  bcrypto_gf_sub_nr(a, a, p->x);    /* 4+e or 3+e */
+#endif
+
+  bcrypto_gf_mul(p->z, a, p->y);
+  bcrypto_gf_mul(p->x, p->y, c);
+  bcrypto_gf_mul(p->y, a, b);
+  bcrypto_gf_mul(p->t, b, c);
+}
+
+void bcrypto_curve448_point_add(
+  bcrypto_curve448_point_t p,
+  const bcrypto_curve448_point_t q,
+  const bcrypto_curve448_point_t r
+) {
+  bcrypto_gf a, b, c, d;
+  bcrypto_gf_sub_nr(b, q->y, q->x); /* 3+e */
+  bcrypto_gf_sub_nr(c, r->y, r->x); /* 3+e */
+  bcrypto_gf_add_nr(d, r->y, r->x); /* 2+e */
+  bcrypto_gf_mul(a, c, b);
+  bcrypto_gf_add_nr(b, q->y, q->x); /* 2+e */
+  bcrypto_gf_mul(p->y, d, b);
+  bcrypto_gf_mul(b, r->t, q->t);
+  bcrypto_gf_mulw(p->x, b, 2 * BCRYPTO_EFF_D);
+  bcrypto_gf_add_nr(b, a, p->y);    /* 2+e */
+  bcrypto_gf_sub_nr(c, p->y, a);    /* 3+e */
+  bcrypto_gf_mul(a, q->z, r->z);
+  bcrypto_gf_add_nr(a, a, a);       /* 2+e */
+
+  if (BCRYPTO_GF_HEADROOM <= 3)
+    bcrypto_gf_weak_reduce(a); /* or 1+e */
+
+#if BCRYPTO_NEG_D
+  bcrypto_gf_add_nr(p->y, a, p->x); /* 3+e or 2+e */
+  bcrypto_gf_sub_nr(a, a, p->x);    /* 4+e or 3+e */
+#else
+  bcrypto_gf_sub_nr(p->y, a, p->x); /* 4+e or 3+e */
+  bcrypto_gf_add_nr(a, a, p->x);    /* 3+e or 2+e */
+#endif
+
+  bcrypto_gf_mul(p->z, a, p->y);
+  bcrypto_gf_mul(p->x, p->y, c);
+  bcrypto_gf_mul(p->y, a, b);
+  bcrypto_gf_mul(p->t, b, c);
+}
+
+void bcrypto_curve448_point_negate(
+  bcrypto_curve448_point_t nega,
+  const bcrypto_curve448_point_t a
+) {
+  bcrypto_gf_sub(nega->x, ZERO, a->x);
+  bcrypto_gf_copy(nega->y, a->y);
+  bcrypto_gf_copy(nega->z, a->z);
+  bcrypto_gf_sub(nega->t, ZERO, a->t);
+}
 
 static void point_double_internal(bcrypto_curve448_point_t p, const bcrypto_curve448_point_t q,
                   int before_double)
