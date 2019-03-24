@@ -98,6 +98,7 @@ NAN_METHOD(BED448::PublicKeyConvert) {
   uint8_t out[BCRYPTO_X448_PUBLIC_BYTES];
 
   bcrypto_curve448_point_mul_by_ratio_and_encode_like_x448(out, p);
+  bcrypto_curve448_point_destroy(p);
 
   return info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&out[0],
@@ -152,6 +153,8 @@ NAN_METHOD(BED448::PublicKeyVerify) {
     return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
 
   bool result = (bool)bcrypto_curve448_point_valid(p);
+
+  bcrypto_curve448_point_destroy(p);
 
   return info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
