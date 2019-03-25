@@ -1,8 +1,10 @@
 'use strict';
 
 const assert = require('bsert');
+const pem = require('../lib/encoding/pem');
 const random = require('../lib/random');
 const ed25519 = require('../lib/ed25519');
+const x25519 = require('../lib/x25519');
 
 const vectors = [
   // From: https://github.com/golang/crypto/blob/master/curve25519/testvectors_test.go
@@ -106,6 +108,18 @@ const intervals = [
   Buffer.from('7c3911e0ab2586fd864497297e575e6f3bc601c0883c30df5f4dd2d24f665424', 'hex')
 ];
 
+const privPem = `
+-----BEGIN PRIVATE KEY-----
+MC4CAQAwBQYDK2VuBCIEIDB2uHPBie1qBDNVnbKUsLimC0bDITuFcV6ytky2z3Vb
+-----END PRIVATE KEY-----
+`;
+
+const pubPem = `
+-----BEGIN PUBLIC KEY-----
+MCowBQYDK2VuAyEAakLDF/7jDdqLlRRYPmC4h3hS1kph8OuJ+PrjQ2NlhUk=
+-----END PUBLIC KEY-----
+`;
+
 describe('X25519', function() {
   for (const [pub, key, expect] of vectors) {
     it(`should compute secret: ${expect.toString('hex')}`, () => {
@@ -185,5 +199,51 @@ describe('X25519', function() {
     const hi1 = ed25519.exchangeWithScalar(u, s);
 
     assert.bufferEqual(hi0, hi1);
+  });
+
+  it('should test x25519 api', () => {
+    const alicePriv = x25519.privateKeyGenerate();
+    const alicePub = x25519.publicKeyCreate(alicePriv);
+    const bobPriv = x25519.privateKeyGenerate();
+    const bobPub = x25519.publicKeyCreate(bobPriv);
+
+    assert(x25519.privateKeyVerify(alicePriv));
+    assert(x25519.privateKeyVerify(bobPriv));
+    assert(x25519.publicKeyVerify(alicePub));
+    assert(x25519.publicKeyVerify(bobPub));
+
+    assert(alicePriv.length === 32);
+    assert(alicePub.length === 32);
+
+    const aliceSecret = x25519.derive(bobPub, alicePriv);
+    const bobSecret = x25519.derive(alicePub, bobPriv);
+
+    assert(aliceSecret.length === 32);
+
+    assert.bufferEqual(aliceSecret, bobSecret);
+
+    const rawPriv = x25519.privateKeyExport(alicePriv);
+    const rawPub = x25519.publicKeyExport(alicePub);
+
+    assert.bufferEqual(x25519.privateKeyImport(rawPriv), alicePriv);
+    assert.bufferEqual(x25519.publicKeyImport(rawPub), alicePub);
+
+    const jsonPriv = x25519.privateKeyExportJWK(alicePriv);
+    const jsonPub = x25519.publicKeyExportJWK(alicePub);
+
+    assert.bufferEqual(x25519.privateKeyImportJWK(jsonPriv), alicePriv);
+    assert.bufferEqual(x25519.publicKeyImportJWK(jsonPub), alicePub);
+
+    const asnPriv = x25519.privateKeyExportPKCS8(alicePriv);
+    const asnPub = x25519.publicKeyExportSPKI(alicePub);
+
+    assert.bufferEqual(x25519.privateKeyImportPKCS8(asnPriv), alicePriv);
+    assert.bufferEqual(x25519.publicKeyImportSPKI(asnPub), alicePub);
+
+    const asnPriv2 = pem.fromPEM(privPem, 'PRIVATE KEY');
+    const asnPub2 = pem.fromPEM(pubPem, 'PUBLIC KEY');
+
+    assert.bufferEqual(x25519.publicKeyImportSPKI(asnPub2),
+      x25519.publicKeyCreate(x25519.privateKeyImportPKCS8(asnPriv2)));
   });
 });

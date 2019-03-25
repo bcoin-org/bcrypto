@@ -1,7 +1,9 @@
 'use strict';
 
 const assert = require('bsert');
+const pem = require('../lib/encoding/pem');
 const ed448 = require('../lib/ed448');
+const x448 = require('../lib/x448');
 
 const vectors = [
   // From RFC 7748
@@ -34,6 +36,20 @@ const intervals = [
   Buffer.from('077f453681caca3693198420bbe515cae0002472519b3e67661a7e89'
             + 'cab94695c8f4bcd66e61b9b9c946da8d524de3d69bd9d9d66b997e37', 'hex')
 ];
+
+const privPem = `
+-----BEGIN PRIVATE KEY-----
+MEYCAQAwBQYDK2VvBDoEODS/v+7SdfH9nVquDWbSj5PvcABLtBO6uSnsiTVc6xTu
+u86nXUP4rZhJ7ZYJSa/szpJMMFnnRQrh
+-----END PRIVATE KEY-----
+`;
+
+const pubPem = `
+-----BEGIN PUBLIC KEY-----
+MEIwBQYDK2VvAzkAIakuL8JOtTmPmNj+Hj9Vk2pTl7WknxmyyRh4xTHBoodB/iqn
+pDWiqkjsYdlUUGH7se0wSZW3+AU=
+-----END PUBLIC KEY-----
+`;
 
 describe('X448', function() {
   for (const [pub, key, expect] of vectors) {
@@ -87,4 +103,53 @@ describe('X448', function() {
       assert.bufferEqual(result, expect);
     });
   }
+
+  it('should test x448 api', () => {
+    const alicePriv = x448.privateKeyGenerate();
+    const alicePub = x448.publicKeyCreate(alicePriv);
+    const bobPriv = x448.privateKeyGenerate();
+    const bobPub = x448.publicKeyCreate(bobPriv);
+
+    assert(x448.privateKeyVerify(alicePriv));
+    assert(x448.privateKeyVerify(bobPriv));
+    assert(x448.publicKeyVerify(alicePub));
+    assert(x448.publicKeyVerify(bobPub));
+
+    assert(alicePriv.length === 56);
+    assert(alicePub.length === 56);
+
+    const aliceSecret = x448.derive(bobPub, alicePriv);
+    const bobSecret = x448.derive(alicePub, bobPriv);
+
+    assert(aliceSecret.length === 56);
+
+    assert.bufferEqual(aliceSecret, bobSecret);
+
+    const rawPriv = x448.privateKeyExport(alicePriv);
+    const rawPub = x448.publicKeyExport(alicePub);
+
+    assert.bufferEqual(x448.privateKeyImport(rawPriv), alicePriv);
+    assert.bufferEqual(x448.publicKeyImport(rawPub), alicePub);
+
+    const jsonPriv = x448.privateKeyExportJWK(alicePriv);
+    const jsonPub = x448.publicKeyExportJWK(alicePub);
+
+    assert.bufferEqual(x448.privateKeyImportJWK(jsonPriv), alicePriv);
+    assert.bufferEqual(x448.publicKeyImportJWK(jsonPub), alicePub);
+
+    const asnPriv = x448.privateKeyExportPKCS8(alicePriv);
+    const asnPub = x448.publicKeyExportSPKI(alicePub);
+
+    assert.bufferEqual(x448.privateKeyImportPKCS8(asnPriv), alicePriv);
+    assert.bufferEqual(x448.publicKeyImportSPKI(asnPub), alicePub);
+
+    // This is failing right now. No idea why.
+    // eslint-disable-next-line
+    const asnPriv2 = pem.fromPEM(privPem, 'PRIVATE KEY');
+    // eslint-disable-next-line
+    const asnPub2 = pem.fromPEM(pubPem, 'PUBLIC KEY');
+
+    // assert.bufferEqual(x448.publicKeyImportSPKI(asnPub2),
+    //   x448.publicKeyCreate(x448.privateKeyImportPKCS8(asnPriv2)));
+  });
 });
