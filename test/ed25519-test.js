@@ -379,4 +379,26 @@ describe('EdDSA', function() {
       });
     }
   });
+
+  it('should test serialization formats', () => {
+    const priv = ed25519.privateKeyGenerate();
+    const pub = ed25519.publicKeyCreate(priv);
+    const rawPriv = ed25519.privateKeyExport(priv);
+    const rawPub = ed25519.publicKeyExport(pub);
+
+    assert.bufferEqual(ed25519.privateKeyImport(rawPriv), priv);
+    assert.bufferEqual(ed25519.publicKeyImport(rawPub), pub);
+
+    const jsonPriv = ed25519.privateKeyExportJWK(priv);
+    const jsonPub = ed25519.publicKeyExportJWK(pub);
+
+    assert.bufferEqual(ed25519.privateKeyImportJWK(jsonPriv), priv);
+    assert.bufferEqual(ed25519.publicKeyImportJWK(jsonPub), pub);
+
+    const asnPriv = ed25519.privateKeyExportPKCS8(priv);
+    const asnPub = ed25519.publicKeyExportSPKI(pub);
+
+    assert.bufferEqual(ed25519.privateKeyImportPKCS8(asnPriv), priv);
+    assert.bufferEqual(ed25519.publicKeyImportSPKI(asnPub), pub);
+  });
 });

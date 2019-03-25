@@ -299,4 +299,26 @@ describe('Ed448', function() {
       });
     }
   });
+
+  it('should test serialization formats', () => {
+    const priv = ed448.privateKeyGenerate();
+    const pub = ed448.publicKeyCreate(priv);
+    const rawPriv = ed448.privateKeyExport(priv);
+    const rawPub = ed448.publicKeyExport(pub);
+
+    assert.bufferEqual(ed448.privateKeyImport(rawPriv), priv);
+    assert.bufferEqual(ed448.publicKeyImport(rawPub), pub);
+
+    const jsonPriv = ed448.privateKeyExportJWK(priv);
+    const jsonPub = ed448.publicKeyExportJWK(pub);
+
+    assert.bufferEqual(ed448.privateKeyImportJWK(jsonPriv), priv);
+    assert.bufferEqual(ed448.publicKeyImportJWK(jsonPub), pub);
+
+    const asnPriv = ed448.privateKeyExportPKCS8(priv);
+    const asnPub = ed448.publicKeyExportSPKI(pub);
+
+    assert.bufferEqual(ed448.privateKeyImportPKCS8(asnPriv), priv);
+    assert.bufferEqual(ed448.publicKeyImportSPKI(asnPub), pub);
+  });
 });

@@ -232,6 +232,28 @@ describe('ECDSA', function() {
       assert.bufferEqual(rpub, pub);
       assert.bufferEqual(rpubu, pubu);
     });
+
+    it('should test serialization formats', () => {
+      const priv = ec.privateKeyGenerate();
+      const pub = ec.publicKeyCreate(priv);
+      const rawPriv = ec.privateKeyExport(priv);
+      const rawPub = ec.publicKeyExport(pub);
+
+      assert.bufferEqual(ec.privateKeyImport(rawPriv), priv);
+      assert.bufferEqual(ec.publicKeyImport(rawPub), pub);
+
+      const jsonPriv = ec.privateKeyExportJWK(priv);
+      const jsonPub = ec.publicKeyExportJWK(pub);
+
+      assert.bufferEqual(ec.privateKeyImportJWK(jsonPriv), priv);
+      assert.bufferEqual(ec.publicKeyImportJWK(jsonPub), pub);
+
+      const asnPriv = ec.privateKeyExportPKCS8(priv);
+      const asnPub = ec.publicKeyExportSPKI(pub);
+
+      assert.bufferEqual(ec.privateKeyImportPKCS8(asnPriv), priv);
+      assert.bufferEqual(ec.publicKeyImportSPKI(asnPub), pub);
+    });
   }
 
   describe('RFC6979 vector', function() {
