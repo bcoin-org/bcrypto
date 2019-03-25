@@ -191,6 +191,16 @@ describe('Ed448', function() {
     assert.bufferEqual(xpub2, xpub);
   });
 
+  it.skip('should convert to montgomery and back', () => {
+    const secret = ed448.privateKeyGenerate();
+    const pub = ed448.publicKeyCreate(secret);
+    const sign = (pub[56] & 0x80) !== 0;
+    const xpub = ed448.publicKeyConvert(pub);
+    const pub2 = ed448.publicKeyDeconvert(xpub, sign);
+
+    assert.bufferEqual(pub2, pub);
+  });
+
   it('should sign and verify (vector)', () => {
     const priv = Buffer.from(''
       + 'd65df341ad13e008567688baedda8e9d'
