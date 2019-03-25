@@ -143,7 +143,6 @@ describe('X448', function() {
     assert.bufferEqual(x448.privateKeyImportPKCS8(asnPriv), alicePriv);
     assert.bufferEqual(x448.publicKeyImportSPKI(asnPub), alicePub);
 
-    // This is failing right now. No idea why.
     const asnPriv2 = pem.fromPEM(privPem, 'PRIVATE KEY');
     const asnPub2 = pem.fromPEM(pubPem, 'PUBLIC KEY');
 
