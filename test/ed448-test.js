@@ -112,10 +112,10 @@ describe('Ed448', function() {
       + '3d', 'hex');
 
     const xsecret = Buffer.from(''
-      + '5b205505fece8945fe02482d2e89'
-      + 'e585244b3aec6af8db4e1f570d3c'
-      + '2a9f48ada996cb293e457867c9e3'
-      + 'fecdec40fe7a8d922bbdac406d0e', 'hex');
+      + 'e198182f06c67c8fe5e080088d5c'
+      + '5b23be7c46782ed24774feeba6fb'
+      + '37536ada82b71564818fa3df6af8'
+      + '22af3dd09dd0529518b42a3d9655', 'hex');
 
     const secret2 = ed448.derive(pub, priv);
     const xsecret2 = ed448.publicKeyConvert(secret2);
@@ -181,11 +181,10 @@ describe('Ed448', function() {
       + '00', 'hex');
 
     const xpub = Buffer.from(''
-      + '439a943c1550ac472058a2083aed'
-      + '6d91f9e74a4d70807b726359d51a'
-      + '01d4fb9cb4871f3b2664f0f08e91'
-      + '9eb3afc9100de9e56a05828f1f15',
-      'hex');
+      + '5c8ae0100ddb3f5320924bef698c'
+      + 'd78fa7456b6d9b5af66a9a99b5d2'
+      + 'a7f7e789a81e2f539b24c69bdf4f'
+      + '4f1cfcb881a5e9205e21ca27ff25', 'hex');
 
     const xpub2 = ed448.publicKeyConvert(pub);
 
