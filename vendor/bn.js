@@ -3152,15 +3152,6 @@ const {custom} = require('../lib/internal/custom');
     return num;
   };
 
-  function P448 () {
-    // 2 ** 448 - 2 ** 224 - 1
-    MPrime.call(this, '448', 'ffffffffffffffffffffffffffff'
-                           + 'fffffffffffffffffffffffffffe'
-                           + 'ffffffffffffffffffffffffffff'
-                           + 'ffffffffffffffffffffffffffff');
-  }
-  inherits(P448, MPrime);
-
   // Exported mostly for testing purposes, use plain name instead
   BN._prime = function prime (name) {
     // Cached version of prime
@@ -3175,8 +3166,6 @@ const {custom} = require('../lib/internal/custom');
       prime = new P192();
     } else if (name === 'p25519') {
       prime = new P25519();
-    } else if (name === 'p448') {
-      prime = new P448();
     } else {
       throw new Error('Unknown prime ' + name);
     }
