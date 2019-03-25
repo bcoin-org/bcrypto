@@ -683,6 +683,34 @@ void bcrypto_x448_derive_public_key(uint8_t out[BCRYPTO_X_PUBLIC_BYTES],
   bcrypto_curve448_point_destroy(p);
 }
 
+/* Thanks Johan Pascal */
+void bcrypto_curve448_convert_public_key_to_x448(
+  uint8_t x[BCRYPTO_X_PUBLIC_BYTES],
+  const uint8_t ed[BCRYPTO_EDDSA_448_PUBLIC_BYTES]
+) {
+  bcrypto_gf y;
+  const uint8_t mask = (uint8_t)(0xFE << (7));
+  bcrypto_gf_deserialize(y, ed, 1, mask);
+
+  {
+    bcrypto_gf n, d;
+
+    /* u = y^2 * (1-dy^2) / (1-y^2) */
+    bcrypto_gf_sqr(n, y); /* y^2*/
+    bcrypto_gf_sub(d, ONE, n); /* 1-y^2*/
+    bcrypto_gf_invert(d, d, 0); /* 1/(1-y^2)*/
+    bcrypto_gf_mul(y, n, d); /* y^2 / (1-y^2) */
+    bcrypto_gf_mulw(d, n, BCRYPTO_EDWARDS_D); /* dy^2*/
+    bcrypto_gf_sub(d, ONE, d); /* 1-dy^2*/
+    bcrypto_gf_mul(n, y, d); /* y^2 * (1-dy^2) / (1-y^2) */
+    bcrypto_gf_serialize(x, n, 1);
+
+    OPENSSL_cleanse(y, sizeof(y));
+    OPENSSL_cleanse(n, sizeof(n));
+    OPENSSL_cleanse(d, sizeof(d));
+  }
+}
+
 /* Control for variable-time scalar multiply algorithms. */
 struct bcrypto_smvt_control {
   int power, addend;

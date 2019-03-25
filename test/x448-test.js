@@ -144,12 +144,10 @@ describe('X448', function() {
     assert.bufferEqual(x448.publicKeyImportSPKI(asnPub), alicePub);
 
     // This is failing right now. No idea why.
-    // eslint-disable-next-line
     const asnPriv2 = pem.fromPEM(privPem, 'PRIVATE KEY');
-    // eslint-disable-next-line
     const asnPub2 = pem.fromPEM(pubPem, 'PUBLIC KEY');
 
-    // assert.bufferEqual(x448.publicKeyImportSPKI(asnPub2),
-    //   x448.publicKeyCreate(x448.privateKeyImportPKCS8(asnPriv2)));
+    assert.bufferEqual(x448.publicKeyImportSPKI(asnPub2),
+      x448.publicKeyCreate(x448.privateKeyImportPKCS8(asnPriv2)));
   });
 });

@@ -194,15 +194,9 @@ NAN_METHOD(BED448::PublicKeyConvert) {
   if (pub_len != BCRYPTO_EDDSA_448_PUBLIC_BYTES)
     return Nan::ThrowRangeError("Invalid public key size.");
 
-  bcrypto_curve448_point_t p;
-
-  if (!bcrypto_curve448_point_decode_like_eddsa_and_mul_by_ratio(p, pub))
-    return Nan::ThrowError("Could not decode public key.");
-
   uint8_t out[BCRYPTO_X448_PUBLIC_BYTES];
 
-  bcrypto_curve448_point_mul_by_ratio_and_encode_like_x448(out, p);
-  bcrypto_curve448_point_destroy(p);
+  bcrypto_curve448_convert_public_key_to_x448(out, pub);
 
   return info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&out[0],
