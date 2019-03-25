@@ -6,6 +6,8 @@
 const assert = require('bsert');
 const random = require('../lib/random');
 const ed448 = require('../lib/ed448');
+const SHAKE256 = require('../lib/shake256');
+const rfc8032 = require('./data/rfc8032-vectors.json');
 
 describe('Ed448', function() {
   this.timeout(15000);
@@ -234,5 +236,67 @@ describe('Ed448', function() {
     const result = ed448.verify(msg, sig, pub);
 
     assert.strictEqual(result, true);
+  });
+
+  describe('RFC 8032 vectors', () => {
+    for (const [i, vector] of rfc8032.entries()) {
+      if (!vector.algorithm.startsWith('Ed448'))
+        continue;
+
+      const ph = vector.algorithm === 'Ed448ph';
+      const ctx = vector.ctx != null
+                ? Buffer.from(vector.ctx, 'hex')
+                : null;
+
+      let msg = Buffer.from(vector.msg, 'hex');
+
+      if (ph)
+        msg = SHAKE256.digest(msg, 64);
+
+      const sig = Buffer.from(vector.sig, 'hex');
+      const pub = Buffer.from(vector.pub, 'hex');
+      const priv = Buffer.from(vector.priv, 'hex');
+
+      it(`should pass RFC 8032 vector (${vector.algorithm} #${i})`, () => {
+        assert(ed448.privateKeyVerify(priv));
+        assert(ed448.publicKeyVerify(pub));
+
+        const sig_ = ed448.sign(msg, priv, ph, ctx);
+
+        assert.bufferEqual(sig_, sig);
+
+        assert(ed448.verify(msg, sig, pub, ph, ctx));
+        assert(!ed448.verify(msg, sig, pub, !ph, ctx));
+
+        if (msg.length > 0) {
+          const msg_ = Buffer.from(msg);
+          msg_[Math.random() * msg_.length | 0] ^= 1;
+          assert(!ed448.verify(msg_, sig, pub, ph, ctx));
+        }
+
+        {
+          const sig_ = Buffer.from(sig);
+          sig_[Math.random() * sig_.length | 0] ^= 1;
+          assert(!ed448.verify(msg, sig_, pub, ph, ctx));
+        }
+
+        {
+          const pub_ = Buffer.from(pub);
+          pub_[Math.random() * pub_.length | 0] ^= 1;
+          assert(!ed448.verify(msg, sig, pub_, ph, ctx));
+        }
+
+        if (ctx && ctx.length > 0) {
+          const ctx_ = Buffer.from(ctx);
+          ctx_[Math.random() * ctx_.length | 0] ^= 1;
+          assert(!ed448.verify(msg, sig, pub, ph, ctx_));
+          assert(!ed448.verify(msg, sig, pub, ph, null));
+        } else {
+          const ctx_ = Buffer.alloc(1);
+          assert(!ed448.verify(msg, sig, pub, true, ctx_));
+          assert(!ed448.verify(msg, sig, pub, false, ctx_));
+        }
+      });
+    }
   });
 });

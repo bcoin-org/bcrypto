@@ -8,7 +8,9 @@ const fs = require('fs');
 const Path = require('path');
 const random = require('../lib/random');
 const ed25519 = require('../lib/ed25519');
+const SHA512 = require('../lib/sha512');
 const derivations = require('./data/ed25519.json');
+const rfc8032 = require('./data/rfc8032-vectors.json');
 
 const filename = Path.resolve(__dirname, 'data', 'ed25519.input');
 const lines = fs.readFileSync(filename, 'binary').trim().split('\n');
@@ -277,25 +279,24 @@ describe('EdDSA', function() {
 
   describe('sign.input ed25519 test vectors', () => {
     for (const [i, line] of lines.entries()) {
+      const parts = line.toUpperCase().split(':');
+      const secret = Buffer.from(parts[0].slice(0, 64), 'hex');
+      const pub = Buffer.from(parts[0].slice(64), 'hex');
+      const msg = Buffer.from(parts[2], 'hex');
+      const sig = Buffer.from(parts[3].slice(0, 128), 'hex');
+
       it(`should pass ed25519 vector #${i}`, () => {
-        const split = line.toUpperCase().split(':');
-        const secret = Buffer.from(split[0].slice(0, 64), 'hex');
-        const pub = ed25519.publicKeyCreate(secret);
+        const pub_ = ed25519.publicKeyCreate(secret);
 
-        assert(ed25519.publicKeyVerify(pub));
+        assert(ed25519.publicKeyVerify(pub_));
 
-        const expectedPk = Buffer.from(split[0].slice(64), 'hex');
+        assert.bufferEqual(pub_, pub);
 
-        assert.bufferEqual(pub, expectedPk);
+        const sig_ = ed25519.sign(msg, secret);
 
-        const msg = Buffer.from(split[2], 'hex');
-        const sig = ed25519.sign(msg, secret);
-        const sigR = sig.slice(0, 32);
-        const sigS = sig.slice(32);
+        assert.bufferEqual(sig_, sig);
 
-        assert.bufferEqual(sigR, Buffer.from(split[3].slice(0, 64), 'hex'));
-        assert.bufferEqual(sigS, Buffer.from(split[3].slice(64, 128), 'hex'));
-        assert(ed25519.verify(msg, sig, pub));
+        assert(ed25519.verify(msg, sig_, pub_));
 
         let forged = Buffer.from([0x78]); // ord('x')
 
@@ -308,6 +309,73 @@ describe('EdDSA', function() {
 
         assert.strictEqual(msg.length || 1, forged.length);
         assert(!ed25519.verify(forged, sig, pub));
+      });
+    }
+  });
+
+  describe('RFC 8032 vectors', () => {
+    for (const [i, vector] of rfc8032.entries()) {
+      if (!vector.algorithm.startsWith('Ed25519'))
+        continue;
+
+      let ph = null;
+      let ctx = null;
+
+      if (vector.algorithm === 'Ed25519ph') {
+        ph = true;
+      } else if (vector.algorithm === 'Ed25519ctx') {
+        ctx = Buffer.from(vector.ctx, 'hex');
+        ph = false;
+      }
+
+      let msg = Buffer.from(vector.msg, 'hex');
+
+      if (ph)
+        msg = SHA512.digest(msg);
+
+      const sig = Buffer.from(vector.sig, 'hex');
+      const pub = Buffer.from(vector.pub, 'hex');
+      const priv = Buffer.from(vector.priv, 'hex');
+
+      it(`should pass RFC 8032 vector (${vector.algorithm} #${i})`, () => {
+        assert(ed25519.privateKeyVerify(priv));
+        assert(ed25519.publicKeyVerify(pub));
+
+        const sig_ = ed25519.sign(msg, priv, ph, ctx);
+
+        assert.bufferEqual(sig_, sig);
+
+        assert(ed25519.verify(msg, sig, pub, ph, ctx));
+        assert(!ed25519.verify(msg, sig, pub, !ph, ctx));
+
+        if (msg.length > 0) {
+          const msg_ = Buffer.from(msg);
+          msg_[Math.random() * msg_.length | 0] ^= 1;
+          assert(!ed25519.verify(msg_, sig, pub, ph, ctx));
+        }
+
+        {
+          const sig_ = Buffer.from(sig);
+          sig_[Math.random() * sig_.length | 0] ^= 1;
+          assert(!ed25519.verify(msg, sig_, pub, ph, ctx));
+        }
+
+        {
+          const pub_ = Buffer.from(pub);
+          pub_[Math.random() * pub_.length | 0] ^= 1;
+          assert(!ed25519.verify(msg, sig, pub_, ph, ctx));
+        }
+
+        if (ctx && ctx.length > 0) {
+          const ctx_ = Buffer.from(ctx);
+          ctx_[Math.random() * ctx_.length | 0] ^= 1;
+          assert(!ed25519.verify(msg, sig, pub, ph, ctx_));
+          assert(!ed25519.verify(msg, sig, pub, ph, null));
+        } else {
+          const ctx_ = Buffer.alloc(1);
+          assert(!ed25519.verify(msg, sig, pub, true, ctx_));
+          assert(!ed25519.verify(msg, sig, pub, false, ctx_));
+        }
       });
     }
   });
