@@ -43,6 +43,16 @@ describe('Ed448', function() {
       pub);
   });
 
+  it.skip('should convert to montgomery and back', () => {
+    const secret = ed448.privateKeyGenerate();
+    const pub = ed448.publicKeyCreate(secret);
+    const sign = (pub[56] & 0x80) !== 0;
+    const xpub = ed448.publicKeyConvert(pub);
+    const pub2 = ed448.publicKeyDeconvert(xpub, sign);
+
+    assert.bufferEqual(pub2, pub);
+  });
+
   it('should do ECDH', () => {
     const alicePriv = ed448.privateKeyGenerate();
     const alicePub = ed448.publicKeyCreate(alicePriv);
