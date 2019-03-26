@@ -17,7 +17,7 @@ const ECDSA = (() => {
 })();
 
 const secp256k1l = require('../lib/secp256k1');
-const secp256k1e = new ECDSA('SECP256K1');
+const secp256k1e = new ECDSA('SECP256K1', require('../lib/sha256'));
 const vectors1 = require('./data/secp256k1-1.json'); // bcoin
 const vectors2 = require('./data/secp256k1-2.json'); // hsd
 const vectors3 = require('./data/secp256k1-3.json'); // script

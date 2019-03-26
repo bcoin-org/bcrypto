@@ -18,7 +18,7 @@ const ECDSA = (() => {
 
 const p256 = require('../lib/p256');
 const secp256k1 = require('../lib/secp256k1');
-const secp256k1e = new ECDSA('SECP256K1');
+const secp256k1e = new ECDSA('SECP256K1', require('../lib/sha256'));
 const pem = require('../lib/encoding/pem');
 const sec1 = require('../lib/encoding/sec1');
 
