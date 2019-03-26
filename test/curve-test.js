@@ -359,9 +359,9 @@ describe('Point codec', function() {
 
   it('should throw when trying to decode random bytes', () => {
     assert.throws(() => {
-      secp256k1.decodePoint(
-        '05' +
-        '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798');
+      secp256k1.decodePoint(Buffer.from(
+        '0579be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
+        'hex'));
     });
   });
 
