@@ -2,4 +2,4 @@
 
 /* global __require__ */
 
-module.exports = __require__('./bn.js');
+module.exports = __require__('../lib/bn.js');

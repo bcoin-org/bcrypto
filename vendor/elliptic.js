@@ -169,7 +169,7 @@ utils.intFromLE = intFromLE;
 [/* 3 */ 'elliptic', '/node_modules/bn.js', function(exports, module, __filename, __dirname, __meta) {
 'use strict';
 
-module.exports = require('./bn.js');
+module.exports = require('../lib/bn.js');
 }],
 [/* 4 */ 'minimalistic-assert', '/index.js', function(exports, module, __filename, __dirname, __meta) {
 module.exports = assert;
