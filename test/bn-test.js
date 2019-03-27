@@ -1517,11 +1517,11 @@ describe('BN.js', function() {
         it('should not allow modulus <= 1', () => {
           assert.throws(() => {
             BN.red(new BN(0));
-          }, /^Error: modulus must be greater than 1$/);
+          });
 
           assert.throws(() => {
             BN.red(new BN(1));
-          }, /^Error: modulus must be greater than 1$/);
+          });
 
           assert.doesNotThrow(() => {
             BN.red(new BN(2));
@@ -1794,7 +1794,7 @@ describe('BN.js', function() {
         const n = new BN(0x123456);
         assert.throws(() => {
           n.toArray('be', 2);
-        }, /^Error: byte array longer than desired length$/);
+        });
       });
     });
 
@@ -1824,7 +1824,7 @@ describe('BN.js', function() {
         const n = new BN(1).iushln(54);
         assert.throws(() => {
           n.toNumber();
-        }, /^Error: Number can only safely store up to 53 bits$/);
+        });
       });
     });
 
@@ -1863,7 +1863,7 @@ describe('BN.js', function() {
         assert.equal(new BN(0x3fffffe).cmpn(0x3fffffd), 1);
         assert.throws(() => {
           new BN(0x3fffffe).cmpn(0x4000000);
-        }, /^Error: Number is too big$/);
+        });
         assert.equal(new BN(42).cmpn(-42), 1);
         assert.equal(new BN(-42).cmpn(42), -1);
         assert.equal(new BN(-42).cmpn(-42), 0);
