@@ -95,7 +95,7 @@ describe('Curve', function() {
     );
 
     const point = curve.pointFromY('02' +
-      'f8ca771306cd23e929775177f2c213843a017a6487b2ec5f9b2a3808108ef2');
+      'f8ca771306cd23e929775177f2c213843a017a6487b2ec5f9b2a3808108ef2', true);
 
     assert(point.eq(target));
   });
