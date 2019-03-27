@@ -866,7 +866,7 @@ describe('BN.js', function() {
     describe('.modrn()', () => {
       it('should act like .mod() on small numbers', () => {
         assert.equal(new BN('10', 16).modrn(256).toString(16), '10');
-        assert.equal(new BN('10', 16).modrn(-256).toString(16), '-10');
+        assert.equal(new BN('10', 16).modrn(-256).toString(16), '10');
         assert.equal(new BN('100', 16).modrn(256).toString(16), '0');
         assert.equal(new BN('1001', 16).modrn(256).toString(16), '1');
         assert.equal(new BN('100000000001', 16).modrn(256).toString(16), '1');
@@ -2034,6 +2034,222 @@ describe('BN.js', function() {
     });
   });
 
+  describe('BN-NG', () => {
+    const MAX_SAFE_INTEGER = Number.MAX_SAFE_INTEGER;
+
+    for (const [x, y, z] of symbols) {
+      it(`should compute jacobi symbol for: ${x}, ${y}`, () => {
+        const xx = new BN(x);
+        const yy = new BN(y);
+
+        assert.strictEqual(xx.jacobi(yy), z);
+      });
+    }
+
+    it('should toNumber and fromNumber', () => {
+      assert.strictEqual(BN.fromNumber(1234567890).toNumber(), 1234567890);
+      assert.strictEqual(BN.fromNumber(-1234567890).toNumber(), -1234567890);
+      assert.strictEqual(BN.fromNumber(0x1234567890).toNumber(), 0x1234567890);
+      assert.strictEqual(BN.fromNumber(-0x1234567890).toNumber(), -0x1234567890);
+
+      assert.throws(() => BN.fromNumber(-MAX_SAFE_INTEGER - 1).toNumber());
+      assert.throws(() => BN.fromNumber(MAX_SAFE_INTEGER + 1).toNumber());
+      assert.doesNotThrow(() => BN.fromNumber(-MAX_SAFE_INTEGER).toNumber());
+      assert.doesNotThrow(() => BN.fromNumber(MAX_SAFE_INTEGER).toNumber());
+    });
+
+    it('should toDouble and toDouble', () => {
+      assert.strictEqual(BN.fromDouble(1234567890).toDouble(), 1234567890);
+      assert.strictEqual(BN.fromDouble(-1234567890).toDouble(), -1234567890);
+      assert.strictEqual(BN.fromDouble(0x1234567890).toDouble(), 0x1234567890);
+      assert.strictEqual(BN.fromDouble(-0x1234567890).toDouble(), -0x1234567890);
+
+      assert.doesNotThrow(() => BN.fromDouble(-MAX_SAFE_INTEGER - 1).toDouble());
+      assert.doesNotThrow(() => BN.fromDouble(MAX_SAFE_INTEGER + 1).toDouble());
+    });
+
+    it('should toString and fromString', () => {
+      assert.strictEqual(BN.fromString('1234567890', 10).toString(), '1234567890');
+      assert.strictEqual(BN.fromString('-1234567890', 10).toString(), '-1234567890');
+      assert.strictEqual(BN.fromString('1234567890', 16).toString(16), '1234567890');
+      assert.strictEqual(BN.fromString('-1234567890', 16).toString(16), '-1234567890');
+
+      assert.strictEqual(BN.fromString('abcdef1234', 16).toString(16), 'abcdef1234');
+      assert.strictEqual(BN.fromString('-abcdef1234', 16).toString(16), '-abcdef1234');
+
+      assert.strictEqual(BN.fromString('123456789', 10).toString(10, 2), '0123456789');
+      assert.strictEqual(BN.fromString('-123456789', 10).toString(10, 2), '-0123456789');
+      assert.strictEqual(BN.fromString('123456789', 16).toString(16, 2), '0123456789');
+      assert.strictEqual(BN.fromString('-123456789', 16).toString(16, 2), '-0123456789');
+    });
+
+    it('should toJSON and fromJSON', () => {
+      assert.strictEqual(BN.fromJSON('1234567890').toJSON(), '1234567890');
+      assert.strictEqual(BN.fromJSON('-1234567890').toJSON(), '-1234567890');
+      assert.strictEqual(BN.fromJSON('0123456789').toJSON(), '0123456789');
+      assert.strictEqual(BN.fromJSON('-0123456789').toJSON(), '-0123456789');
+    });
+
+    it('should toBuffer and fromBuffer', () => {
+      assert.strictEqual(BN.fromBuffer(new BN(0x1234567890).toBuffer()).toNumber(), 0x1234567890);
+    });
+
+    if (typeof BigInt === 'function') {
+      it('should toBigInt and fromBigInt', () => {
+        assert.strictEqual(new BN(0x1234567890).toBigInt(), BigInt(0x1234567890));
+        assert.strictEqual(new BN(-0x1234567890).toBigInt(), BigInt(-0x1234567890));
+        assert(BN.fromBigInt(BigInt(0x1234567890)).eq(new BN(0x1234567890)));
+        assert(BN.fromBigInt(-BigInt(0x1234567890)).eq(new BN(-0x1234567890)));
+      });
+    }
+
+    it('should count bits and zero bits', () => {
+      assert.strictEqual(new BN(0x010001).zeroBits(), 0);
+      assert.strictEqual(new BN(0x010001).bitLength(), 17);
+      assert.strictEqual(new BN(-0x010001).zeroBits(), 0);
+      assert.strictEqual(new BN(-0x010001).bitLength(), 17);
+      assert.strictEqual(new BN(0x20000n).zeroBits(), 17);
+      assert.strictEqual(new BN(0x20000).bitLength(), 18);
+      assert.strictEqual(new BN(-0x20000).zeroBits(), 17);
+      assert.strictEqual(new BN(-0x20000).bitLength(), 18);
+    });
+
+    it('should compute sqrt', () => {
+      assert.strictEqual(new BN(1024).sqrt().toNumber(), 32);
+      assert.strictEqual(new BN(1025).sqrt().toNumber(), 32);
+    });
+
+    it('should compute division', () => {
+      // Note: rounds towards zero, not negative infinity.
+      assert.strictEqual(new BN(3).div(new BN(-2)).toNumber(), -1);
+      assert.strictEqual(new BN(-3).div(new BN(2)).toNumber(), -1);
+      assert.strictEqual(new BN(-3).div(new BN(-2)).toNumber(), 1);
+      assert.strictEqual(new BN(4).div(new BN(-2)).toNumber(), -2);
+      assert.strictEqual(new BN(-4).div(new BN(2)).toNumber(), -2);
+      assert.strictEqual(new BN(-4).div(new BN(-2)).toNumber(), 2);
+    });
+
+    it('should compute division n', () => {
+      // Note: rounds towards zero, not negative infinity.
+      assert.strictEqual(new BN(3).divn(-2).toNumber(), -1);
+      assert.strictEqual(new BN(-3).divn(2).toNumber(), -1);
+      assert.strictEqual(new BN(-3).divn(-2).toNumber(), 1);
+      assert.strictEqual(new BN(4).divn(-2).toNumber(), -2);
+      assert.strictEqual(new BN(-4).divn(2).toNumber(), -2);
+      assert.strictEqual(new BN(-4).divn(-2).toNumber(), 2);
+    });
+
+    it('should compute modulo', () => {
+      assert.strictEqual(new BN(3).mod(new BN(-2)).toNumber(), 1);
+      assert.strictEqual(new BN(-3).mod(new BN(2)).toNumber(), -1);
+      assert.strictEqual(new BN(-3).mod(new BN(-2)).toNumber(), -1);
+      assert.strictEqual(new BN(4).mod(new BN(-2)).toNumber(), 0);
+      assert.strictEqual(new BN(-4).mod(new BN(2)).toNumber(), 0);
+      assert.strictEqual(new BN(-4).mod(new BN(-2)).toNumber(), 0);
+    });
+
+    it('should compute modulo n', () => {
+      assert.strictEqual(new BN(3).modrn(-2), 1);
+      assert.strictEqual(new BN(-3).modrn(2), -1);
+      assert.strictEqual(new BN(-3).modrn(-2), -1);
+      assert.strictEqual(new BN(4).modrn(-2), 0);
+      assert.strictEqual(new BN(-4).modrn(2), 0);
+      assert.strictEqual(new BN(-4).modrn(-2), 0);
+    });
+
+    it('should compute unsigned modulo', () => {
+      assert.strictEqual(new BN(3).umod(new BN(-2)).toNumber(), 1);
+      assert.strictEqual(new BN(-3).umod(new BN(2)).toNumber(), 1);
+      assert.strictEqual(new BN(-3).umod(new BN(-2)).toNumber(), 1);
+      assert.strictEqual(new BN(4).umod(new BN(-2)).toNumber(), 0);
+      assert.strictEqual(new BN(-4).umod(new BN(2)).toNumber(), 0);
+      assert.strictEqual(new BN(-4).umod(new BN(-2)).toNumber(), 0);
+    });
+
+    it('should compute unsigned modulo n', () => {
+      assert.strictEqual(new BN(3).umodrn(-2), 1);
+      assert.strictEqual(new BN(-3).umodrn(2), 1);
+      assert.strictEqual(new BN(-3).umodrn(-2), 1);
+      assert.strictEqual(new BN(4).umodrn(-2), 0);
+      assert.strictEqual(new BN(-4).umodrn(2), 0);
+      assert.strictEqual(new BN(-4).umodrn(-2), 0);
+    });
+
+    it.skip('should compute powm', () => {
+      const x = BN.randomBits(768);
+      const y = BN.randomBits(33);
+      const m = BN.randomBits(1024);
+
+      assert.strictEqual(x.powm(y, m).toString(),
+        x.toRed(BN.red(m)).redPow(y).fromRed().toString());
+
+      assert.strictEqual(x.powmn(y.toNumber(), m).toString(),
+        x.toRed(BN.red(m)).redPow(y).fromRed().toString());
+    });
+
+    it.skip('should compute invmp', () => {
+      const p = BN._prime('p192').p;
+      const r = BN.randomInt(p);
+      const rInv = r.invmp(p);
+
+      assert.strictEqual(r.mul(rInv).subn(1).umod(p).toString(), '0');
+      assert.strictEqual(rInv.toString(), r.invmp(p).toString());
+    });
+
+    it.skip('should compute gcd and egcd', () => {
+      const r1 = BN.randomBits(256);
+      const r2 = BN.randomBits(256);
+      const gcd_ = r1.gcd(r2);
+      const {gcd} = r1.egcd(r2);
+
+      assert.strictEqual(gcd_, gcd);
+    });
+
+    it.skip('should compute egcd', () => {
+      const r1 = BN.randomBits(256);
+      const r2 = BN.randomBits(256);
+      const gcd = r1.gcd(r2);
+      const e1 = r1.egcd(r2);
+
+      const r1d = r1.div(e1.gcd);
+      const r2d = r2.div(e1.gcd);
+      const e2 = r1d.egcd(r2d);
+
+      assert.strictEqual(gcd.toString(), e1.gcd.toString());
+      assert.strictEqual(e1.gcd.toString(), r1.mul(e1.a).add(r2.mul(e1.b)).toString());
+      assert.strictEqual(e2.gcd.toString(), '1');
+      assert.strictEqual(r1d.mul(e2.a).add(r2d.mul(e2.b)).subn(1).toString(), '0');
+    });
+
+    it.skip('should compute isqrt', () => {
+      const r = BN.randomBits(256);
+      const R = r.sqrt();
+
+      assert(R.sqr().lte(r));
+      assert(r.lt(R.addn(1).sqr()));
+    });
+
+    it.skip('should compute sqrtp', () => {
+      const p = BN._prime('p192').p;
+      const r = BN.randomInt(p);
+      const R = r.sqr().umod(p);
+      const s = R.sqrtp(p); // do modp?
+
+      assert.strictEqual(s.sqr().umod(p), R);
+    });
+
+    it.skip('should compute sqrtn', () => {
+      const p = BN._prime('p192').p;
+      const q = BN._prime('p224').p;
+      const n = p.mul(q);
+      const r = BN.randomInt(n);
+      const R = r.sqr().umod(n);
+      const s = R.sqrtn(p, q);
+
+      assert.strictEqual(s.sqr().umod(n), R);
+    });
+  });
+
   describe('BN.js/Slow DH test', () => {
     for (const name of Object.keys(dhGroups)) {
       it('should match public key for ' + name + ' group', () => {
@@ -2048,17 +2264,6 @@ describe('BN.js', function() {
         const actual = Buffer.from(multed.toArray());
 
         assert.equal(actual.toString('hex'), group.pub);
-      });
-    }
-  });
-
-  describe('BN-NG', () => {
-    for (const [x, y, z] of symbols) {
-      it(`should compute jacobi symbol for: ${x}, ${y}`, () => {
-        const xx = new BN(x);
-        const yy = new BN(y);
-
-        assert.strictEqual(xx.jacobi(yy), z);
       });
     }
   });
