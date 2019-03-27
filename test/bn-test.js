@@ -276,6 +276,26 @@ const dhGroups = {
   }
 };
 
+const symbols = [
+  [0, 1, 1],
+  [0, -1, 1],
+  [1, 1, 1],
+  [1, -1, 1],
+  [0, 5, 0],
+  [1, 5, 1],
+  [2, 5, -1],
+  [-2, 5, -1],
+  [2, -5, -1],
+  [-2, -5, 1],
+  [3, 5, -1],
+  [5, 5, 0],
+  [-5, 5, 0],
+  [6, 5, 1],
+  [6, -5, 1],
+  [-6, 5, 1],
+  [-6, -5, -1]
+];
+
 describe('BN.js', function() {
   describe('BN.js/Arithmetic', () => {
     describe('.add()', () => {
@@ -2026,7 +2046,19 @@ describe('BN.js', function() {
         const priv = new BN(group.priv, 16);
         const multed = base.toRed(mont).redPow(priv).fromRed();
         const actual = Buffer.from(multed.toArray());
+
         assert.equal(actual.toString('hex'), group.pub);
+      });
+    }
+  });
+
+  describe('BN-NG', () => {
+    for (const [x, y, z] of symbols) {
+      it(`should compute jacobi symbol for: ${x}, ${y}`, () => {
+        const xx = new BN(x);
+        const yy = new BN(y);
+
+        assert.strictEqual(xx.jacobi(yy), z);
       });
     }
   });

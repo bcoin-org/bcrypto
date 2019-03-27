@@ -184,26 +184,6 @@ const composites = [
   '105919633'
 ];
 
-const symbols = [
-  [0, 1, 1],
-  [0, -1, 1],
-  [1, 1, 1],
-  [1, -1, 1],
-  [0, 5, 0],
-  [1, 5, 1],
-  [2, 5, -1],
-  [-2, 5, -1],
-  [2, -5, -1],
-  [-2, -5, 1],
-  [3, 5, -1],
-  [5, 5, 0],
-  [-5, 5, 0],
-  [6, 5, 1],
-  [6, -5, 1],
-  [-6, 5, 1],
-  [-6, -5, -1]
-];
-
 describe('Primes', function() {
   this.timeout(30000);
 
@@ -248,16 +228,6 @@ describe('Primes', function() {
       // No composite should ever pass Baillie-PSW.
       assert(!primes.probablyPrime(p, 15));
       assert(!primes.probablyPrime(p, 1));
-    });
-  }
-
-  for (const [x, y, z] of symbols) {
-    it(`should compute jacobi symbol for: ${x}, ${y}`, () => {
-      const xx = new BN(x);
-      const yy = new BN(y);
-      const zz = new BN(z);
-
-      assert.strictEqual(primes.jacobi(xx, yy).toString(), zz.toString());
     });
   }
 });
