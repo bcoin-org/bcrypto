@@ -357,7 +357,7 @@ describe('BN.js', function() {
       it('should throw error with num eq 0x4000000', () => {
         assert.throws(() => {
           new BN(0).iaddn(0x4000000);
-        }, /^Error: Assertion failed$/);
+        });
       });
     });
 
@@ -448,7 +448,7 @@ describe('BN.js', function() {
       it('should throw error with num eq 0x4000000', () => {
         assert.throws(() => {
           new BN(0).isubn(0x4000000);
-        }, /^Error: Assertion failed$/);
+        });
       });
     });
 
@@ -576,7 +576,7 @@ describe('BN.js', function() {
       it('should throw error with num eq 0x4000000', () => {
         assert.throws(() => {
           new BN(0).imuln(0x4000000);
-        }, /^Error: Assertion failed$/);
+        });
       });
 
       it('should negate number if number is negative', () => {
@@ -924,12 +924,12 @@ describe('BN.js', function() {
       it('should not allow 0 input', () => {
         assert.throws(() => {
           new BN(1).egcd(0);
-        }, /^Error: Assertion failed$/);
+        });
       });
       it('should not allow negative input', () => {
         assert.throws(() => {
           new BN(1).egcd(-1);
-        }, /^Error: Assertion failed$/);
+        });
       });
     });
 
@@ -1212,7 +1212,7 @@ describe('BN.js', function() {
 
         assert.throws(() => {
           return new BN(num, 10);
-        }, /^Error: Assertion failed$/);
+        });
       });
 
       it('should accept two-limb LE number', () => {
@@ -1279,19 +1279,19 @@ describe('BN.js', function() {
       it('should not accept wrong characters for base', () => {
         assert.throws(() => {
           return new BN('01FF');
-        }, /^Error: Invalid character$/);
+        });
       });
 
       it('should not accept decimal', () => {
         assert.throws(() => {
           const res = new BN('10.00', 10);
           res;
-        }, /Invalid character/);
+        });
 
         assert.throws(() => {
           const res = new BN('16.00', 16);
           res;
-        }, /Invalid character/);
+        });
       });
 
       it('should not accept non-hex characters', () => {
@@ -1308,7 +1308,7 @@ describe('BN.js', function() {
           assert.throws(() => {
             const res = new BN(str, 16);
             res;
-          }, /Invalid character/);
+          });
         });
       });
     });
