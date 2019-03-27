@@ -2,6 +2,7 @@
 
 const assert = require('bsert');
 const BN = require('../lib/bn.js');
+const random = require('../lib/random');
 
 const dhGroups = {
   p16: {
@@ -295,6 +296,36 @@ const symbols = [
   [-6, 5, 1],
   [-6, -5, -1]
 ];
+
+function randomBits(bits) {
+  assert((bits >>> 0) === bits);
+
+  let ret = new BN(0);
+  let b = 0;
+
+  while (b < bits) {
+    ret.iushln(256);
+    ret.ior(new BN(random.randomBytes(32)));
+    b += 256;
+  }
+
+  ret.iushrn(b - bits);
+
+  return ret;
+}
+
+function randomInt(max) {
+  assert(BN.isBN(max));
+
+  const bits = max.bitLength() - 1;
+
+  let ret = max;
+
+  while (ret.cmp(max) >= 0)
+    ret = randomBits(bits);
+
+  return ret;
+}
 
 describe('BN.js', function() {
   describe('BN.js/Arithmetic', () => {
@@ -936,10 +967,10 @@ describe('BN.js', function() {
 
     describe('.egcd()', () => {
       it('should return EGCD', () => {
-        assert.equal(new BN(3).egcd(new BN(2)).gcd.toString(10), '1');
-        assert.equal(new BN(18).egcd(new BN(12)).gcd.toString(10), '6');
-        assert.equal(new BN(-18).egcd(new BN(12)).gcd.toString(10), '6');
-        assert.equal(new BN(0).egcd(new BN(12)).gcd.toString(10), '12');
+        assert.equal(new BN(3).egcd(new BN(2))[2].toString(10), '1');
+        assert.equal(new BN(18).egcd(new BN(12))[2].toString(10), '6');
+        assert.equal(new BN(-18).egcd(new BN(12))[2].toString(10), '6');
+        assert.equal(new BN(0).egcd(new BN(12))[2].toString(10), '12');
       });
       it('should not allow 0 input', () => {
         assert.throws(() => {
@@ -2175,10 +2206,10 @@ describe('BN.js', function() {
       assert.strictEqual(new BN(-4).umodrn(-2), 0);
     });
 
-    it.skip('should compute powm', () => {
-      const x = BN.randomBits(768);
-      const y = BN.randomBits(33);
-      const m = BN.randomBits(1024);
+    it('should compute powm', () => {
+      const x = randomBits(768);
+      const y = randomBits(25);
+      const m = randomBits(1024);
 
       assert.strictEqual(x.powm(y, m).toString(),
         x.toRed(BN.red(m)).redPow(y).fromRed().toString());
@@ -2187,66 +2218,71 @@ describe('BN.js', function() {
         x.toRed(BN.red(m)).redPow(y).fromRed().toString());
     });
 
-    it.skip('should compute invmp', () => {
+    it('should compute invp', () => {
       const p = BN._prime('p192').p;
-      const r = BN.randomInt(p);
-      const rInv = r.invmp(p);
+      const r = randomInt(p);
+      const rInv = r.invp(p);
 
       assert.strictEqual(r.mul(rInv).subn(1).umod(p).toString(), '0');
-      assert.strictEqual(rInv.toString(), r.invmp(p).toString());
+      assert.strictEqual(rInv.toString(), r.invp(p).toString());
     });
 
-    it.skip('should compute gcd and egcd', () => {
-      const r1 = BN.randomBits(256);
-      const r2 = BN.randomBits(256);
+    it('should compute gcd and egcd', () => {
+      const r1 = randomBits(256);
+      const r2 = randomBits(256);
       const gcd_ = r1.gcd(r2);
-      const {gcd} = r1.egcd(r2);
+      const [,, gcd] = r1.egcd(r2);
 
-      assert.strictEqual(gcd_, gcd);
+      assert.strictEqual(gcd_.toString(), gcd.toString());
     });
 
-    it.skip('should compute egcd', () => {
-      const r1 = BN.randomBits(256);
-      const r2 = BN.randomBits(256);
-      const gcd = r1.gcd(r2);
-      const e1 = r1.egcd(r2);
+    it('should compute egcd', () => {
+      const r1 = randomBits(256);
+      const r2 = randomBits(256);
+      const g = r1.gcd(r2);
+      const [a1, b1, g1] = r1.egcd(r2);
 
-      const r1d = r1.div(e1.gcd);
-      const r2d = r2.div(e1.gcd);
-      const e2 = r1d.egcd(r2d);
+      const r1d = r1.div(g1);
+      const r2d = r2.div(g1);
+      const [a2, b2, g2] = r1d.egcd(r2d);
 
-      assert.strictEqual(gcd.toString(), e1.gcd.toString());
-      assert.strictEqual(e1.gcd.toString(), r1.mul(e1.a).add(r2.mul(e1.b)).toString());
-      assert.strictEqual(e2.gcd.toString(), '1');
-      assert.strictEqual(r1d.mul(e2.a).add(r2d.mul(e2.b)).subn(1).toString(), '0');
+      assert.strictEqual(g.toString(), g1.toString());
+      assert.strictEqual(g1.toString(), r1.mul(a1).add(r2.mul(b1)).toString());
+      assert.strictEqual(g2.toString(), '1');
+      assert.strictEqual(r1d.mul(a2).add(r2d.mul(b2)).subn(1).toString(), '0');
     });
 
-    it.skip('should compute isqrt', () => {
-      const r = BN.randomBits(256);
+    it('should compute sqrt', () => {
+      const r = randomBits(256);
       const R = r.sqrt();
 
       assert(R.sqr().lte(r));
       assert(r.lt(R.addn(1).sqr()));
+
+      const r2 = r.sqr();
+      const R2 = r2.sqrt();
+
+      assert(R2.eq(r));
     });
 
-    it.skip('should compute sqrtp', () => {
+    it('should compute sqrtp', () => {
       const p = BN._prime('p192').p;
-      const r = BN.randomInt(p);
+      const r = randomInt(p);
       const R = r.sqr().umod(p);
-      const s = R.sqrtp(p); // do modp?
+      const s = R.sqrtp(p);
 
-      assert.strictEqual(s.sqr().umod(p), R);
+      assert.strictEqual(s.sqr().umod(p).toString(), R.toString());
     });
 
-    it.skip('should compute sqrtn', () => {
+    it('should compute sqrtpq', () => {
       const p = BN._prime('p192').p;
       const q = BN._prime('p224').p;
       const n = p.mul(q);
-      const r = BN.randomInt(n);
+      const r = randomInt(n);
       const R = r.sqr().umod(n);
-      const s = R.sqrtn(p, q);
+      const s = R.sqrtpq(p, q);
 
-      assert.strictEqual(s.sqr().umod(n), R);
+      assert.strictEqual(s.sqr().umod(n).toString(), R.toString());
     });
   });
 
