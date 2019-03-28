@@ -2433,6 +2433,38 @@ describe('BN.js', function() {
       assert(new BN(bea.slice(-7), 'be').eq(p7));
       assert(new BN(lea.slice(0, 7), 'le').eq(p7));
     });
+
+    describe.skip('Benchmarks', () => {
+      it('should bench serialize le', () => {
+        const p = BN._prime('p192').p;
+
+        for (let i = 0; i < 10000000; i++)
+          p.toBuffer('le');
+      });
+
+      it('should bench serialize be', () => {
+        const p = BN._prime('p192').p;
+
+        for (let i = 0; i < 10000000; i++)
+          p.toBuffer('be');
+      });
+
+      it('should bench deserialize le', () => {
+        const p = BN._prime('p192').p;
+        const b = p.toBuffer('le');
+
+        for (let i = 0; i < 10000000; i++)
+          BN.fromBuffer(b, 'le');
+      });
+
+      it('should bench deserialize be', () => {
+        const p = BN._prime('p192').p;
+        const b = p.toBuffer('be');
+
+        for (let i = 0; i < 10000000; i++)
+          BN.fromBuffer(b, 'be');
+      });
+    });
   });
 
   describe('BN.js/Slow DH test', () => {
