@@ -2075,6 +2075,11 @@ describe('BN.js', function() {
         const yy = new BN(y);
 
         assert.strictEqual(xx.jacobi(yy), z);
+
+        if (!xx.isNeg() && yy.abs().gtn(1)) {
+          const xxx = xx.toRed(BN.red(yy.abs()));
+          assert.strictEqual(xxx.redJacobi(), z);
+        }
       });
     }
 
