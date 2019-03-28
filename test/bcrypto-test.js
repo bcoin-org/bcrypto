@@ -8,6 +8,7 @@ const bcrypto = require('../');
 const parts = process.version.split(/[^\d]/);
 const NODE_MAJOR = parts[1] >>> 0;
 const NODE_MINOR = parts[2] >>> 0;
+const HAS_BIGINT = typeof BigInt === 'function';
 
 describe('Bcrypto', function() {
   it('should have correct environment', () => {
@@ -115,7 +116,7 @@ describe('Bcrypto', function() {
           assert.strictEqual(bcrypto.BLAKE2s224.native, 1);
           assert.strictEqual(bcrypto.BLAKE2s256.native, 1);
         }
-        assert.strictEqual(bcrypto.BN.native, NODE_MAJOR >= 10 ? 1 : 0);
+        assert.strictEqual(bcrypto.BN.native, HAS_BIGINT ? 1 : 0);
         assert.strictEqual(bcrypto.bcrypt.native, 0);
         assert.strictEqual(bcrypto.ChaCha20.native, 0);
         assert.strictEqual(bcrypto.cipher.native, 1);
@@ -206,7 +207,7 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.BLAKE2s160.native, 2);
         assert.strictEqual(bcrypto.BLAKE2s224.native, 2);
         assert.strictEqual(bcrypto.BLAKE2s256.native, 2);
-        assert.strictEqual(bcrypto.BN.native, NODE_MAJOR >= 10 ? 1 : 0);
+        assert.strictEqual(bcrypto.BN.native, HAS_BIGINT ? 1 : 0);
         assert.strictEqual(bcrypto.bcrypt.native, 0);
         assert.strictEqual(bcrypto.ChaCha20.native, 2);
         assert.strictEqual(bcrypto.cipher.native, 2);

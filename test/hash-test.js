@@ -58,7 +58,7 @@ if (NODE_MAJOR >= 10) {
   );
 }
 
-if (NODE_MAJOR > 10 || (NODE_MAJOR === 10 && NODE_MINOR >= 12)) {
+if (NODE_MAJOR >= 11 && NODE_MINOR >= 12) {
   algs.push(
     ['sha3-224', true],
     ['sha3-256', true],

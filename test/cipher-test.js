@@ -11,7 +11,7 @@ const random = require('../lib/random');
 const parts = process.version.split(/[^\d]/);
 const major = parts[1] >>> 0;
 const minor = parts[2] >>> 0;
-const NODE_TEN = major >= 10 && minor >= 12;
+const NODE_ELEVEN = major >= 11 && minor >= 12;
 
 const algs = [
   {
@@ -24,7 +24,7 @@ const algs = [
       'AES-128-CTR',
       'AES-128-CFB',
       'AES-128-OFB',
-      NODE_TEN && 'AES-128-GCM'
+      NODE_ELEVEN && 'AES-128-GCM'
     ]
   },
   {
@@ -37,7 +37,7 @@ const algs = [
       'AES-192-CTR',
       'AES-192-CFB',
       'AES-192-OFB',
-      NODE_TEN && 'AES-192-GCM'
+      NODE_ELEVEN && 'AES-192-GCM'
     ]
   },
   {
@@ -50,7 +50,7 @@ const algs = [
       'AES-256-CTR',
       'AES-256-CFB',
       'AES-256-OFB',
-      NODE_TEN && 'AES-256-GCM'
+      NODE_ELEVEN && 'AES-256-GCM'
     ]
   },
   {
@@ -71,9 +71,9 @@ const algs = [
     ids: [
       'CAMELLIA-128-ECB',
       'CAMELLIA-128-CBC',
-      NODE_TEN && 'CAMELLIA-128-CTR',
-      NODE_TEN && 'CAMELLIA-128-CFB',
-      NODE_TEN && 'CAMELLIA-128-OFB'
+      NODE_ELEVEN && 'CAMELLIA-128-CTR',
+      NODE_ELEVEN && 'CAMELLIA-128-CFB',
+      NODE_ELEVEN && 'CAMELLIA-128-OFB'
     ]
   },
   {
@@ -83,9 +83,9 @@ const algs = [
     ids: [
       'CAMELLIA-192-ECB',
       'CAMELLIA-192-CBC',
-      NODE_TEN && 'CAMELLIA-192-CTR',
-      NODE_TEN && 'CAMELLIA-192-CFB',
-      NODE_TEN && 'CAMELLIA-192-OFB'
+      NODE_ELEVEN && 'CAMELLIA-192-CTR',
+      NODE_ELEVEN && 'CAMELLIA-192-CFB',
+      NODE_ELEVEN && 'CAMELLIA-192-OFB'
     ]
   },
   {
@@ -95,9 +95,9 @@ const algs = [
     ids: [
       'CAMELLIA-256-ECB',
       'CAMELLIA-256-CBC',
-      NODE_TEN && 'CAMELLIA-256-CTR',
-      NODE_TEN && 'CAMELLIA-256-CFB',
-      NODE_TEN && 'CAMELLIA-256-OFB'
+      NODE_ELEVEN && 'CAMELLIA-256-CTR',
+      NODE_ELEVEN && 'CAMELLIA-256-CFB',
+      NODE_ELEVEN && 'CAMELLIA-256-OFB'
     ]
   },
   {
@@ -146,7 +146,7 @@ const algs = [
     keyLen: 16,
     ivLen: 8,
     ids: [
-      NODE_TEN && 'DES-EDE-ECB',
+      NODE_ELEVEN && 'DES-EDE-ECB',
       'DES-EDE-CBC',
       'DES-EDE-CFB',
       'DES-EDE-OFB'
@@ -157,7 +157,7 @@ const algs = [
     keyLen: 24,
     ivLen: 8,
     ids: [
-      NODE_TEN && 'DES-EDE3-ECB',
+      NODE_ELEVEN && 'DES-EDE3-ECB',
       'DES-EDE3-CBC',
       'DES-EDE3-CFB',
       'DES-EDE3-OFB'
