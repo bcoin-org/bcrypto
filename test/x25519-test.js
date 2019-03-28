@@ -166,26 +166,22 @@ describe('X25519', function() {
     });
   }
 
-  it.skip('should do scalar base multiplication', () => {
+  it('should do scalar base multiplication', () => {
     const expect =
       '89161fde887b2b53de549af483940106ecc114d6982daa98256de23bdf77661a';
 
-    const a = Buffer.alloc(32, 0x00);
-    const b = Buffer.alloc(32, 0x00);
+    let key = Buffer.alloc(32, 0x00);
 
-    let in_ = a;
-    let out = b;
-
-    a[0] = 1;
+    key[0] = 1;
 
     for (let i = 0; i < 200; i++) {
-      out = ed25519.publicKeyFromScalar(in_);
-      [in_, out] = [out, in_];
+      key[0] &= 248;
+      key[32 - 1] &= 127;
+      key[32 - 1] |= 64;
+      key = x25519.publicKeyCreate(key);
     }
 
-    const result = ed25519.publicKeyConvert(in_);
-
-    assert.bufferEqual(result, expect, 'hex');
+    assert.bufferEqual(key, expect, 'hex');
   });
 
   it('should ignore high bit', () => {
