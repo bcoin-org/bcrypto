@@ -196,9 +196,6 @@ describe('Primes', function() {
       assert(primes.millerRabinPrime(p, 16 + 1, true));
       assert(primes.millerRabinPrime(p, 1, true));
       assert(primes.millerRabinPrime(p, 1, false));
-      assert(primes.millerRabinPrime2(p, 16 + 1, true));
-      assert(primes.millerRabinPrime2(p, 1, true));
-      assert(primes.millerRabinPrime2(p, 1, false));
       assert(primes.lucasPrime(p));
       assert(primes.probablyPrime(p, 15));
       assert(primes.probablyPrime(p, 1));
@@ -214,9 +211,6 @@ describe('Primes', function() {
       assert(!primes.millerRabinPrime(p, 16 + 1, true));
       assert(!primes.millerRabinPrime(p, 6, true));
       assert(!primes.millerRabinPrime(p, 6, false));
-      assert(!primes.millerRabinPrime2(p, 16 + 1, true));
-      assert(!primes.millerRabinPrime2(p, 6, true));
-      assert(!primes.millerRabinPrime2(p, 6, false));
 
       if (i >= 8 && i <= 42) {
         // Lucas pseudoprime.
