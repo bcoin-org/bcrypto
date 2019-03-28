@@ -626,9 +626,11 @@ describe('BN.js', function() {
       it('should raise number to the power', () => {
         const a = new BN('ab', 16);
         const b = new BN('13', 10);
-        const c = a.pow(b);
 
-        assert.equal(c.toString(16), '15963da06977df51909c9ba5b');
+        assert.equal(a.pow(b).toString(16), '15963da06977df51909c9ba5b');
+        assert.equal(a.clone().ipow(b).toString(16), '15963da06977df51909c9ba5b');
+        assert.equal(a.pown(13).toString(16), '15963da06977df51909c9ba5b');
+        assert.equal(a.clone().ipown(13).toString(16), '15963da06977df51909c9ba5b');
       });
     });
 
