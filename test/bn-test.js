@@ -300,7 +300,8 @@ const symbols = [
 function randomBits(bits) {
   assert((bits >>> 0) === bits);
 
-  let ret = new BN(0);
+  const ret = new BN(0);
+
   let b = 0;
 
   while (b < bits) {
@@ -2283,6 +2284,154 @@ describe('BN.js', function() {
       const s = R.sqrtpq(p, q);
 
       assert.strictEqual(s.sqr().umod(n).toString(), R.toString());
+    });
+
+    it('should read and serialize aligned data', () => {
+      const p = BN._prime('p192').p;
+      const p1 = p.ushrn(8);
+      const p7 = p.maskn(7 * 8);
+      const be = Buffer.alloc(p.byteLength(), 0x00);
+      const le = Buffer.alloc(p.byteLength(), 0x00);
+
+      assert((be.byteOffset & 7) === 0);
+      assert((be.byteLength & 7) === 0);
+      assert((le.byteOffset & 7) === 0);
+      assert((le.byteLength & 7) === 0);
+
+      p.toBuffer('be').copy(be);
+      p.toBuffer('le').copy(le);
+
+      assert(BN.fromBuffer(be, 'be').eq(p));
+      assert(BN.fromBuffer(le, 'le').eq(p));
+      assert(BN.fromArrayLike(be, 'be').eq(p));
+      assert(BN.fromArrayLike(le, 'le').eq(p));
+      assert(new BN(be, 'be').eq(p));
+      assert(new BN(le, 'le').eq(p));
+
+      assert(BN.fromBuffer(be.slice(0, -1), 'be').eq(p1));
+      assert(BN.fromBuffer(le.slice(1), 'le').eq(p1));
+      assert(BN.fromArrayLike(be.slice(0, -1), 'be').eq(p1));
+      assert(BN.fromArrayLike(le.slice(1), 'le').eq(p1));
+      assert(new BN(be.slice(0, -1), 'be').eq(p1));
+      assert(new BN(le.slice(1), 'le').eq(p1));
+
+      assert(BN.fromBuffer(be.slice(-7), 'be').eq(p7));
+      assert(BN.fromBuffer(le.slice(0, 7), 'le').eq(p7));
+      assert(BN.fromArrayLike(be.slice(-7), 'be').eq(p7));
+      assert(BN.fromArrayLike(le.slice(0, 7), 'le').eq(p7));
+      assert(new BN(be.slice(-7), 'be').eq(p7));
+      assert(new BN(le.slice(0, 7), 'le').eq(p7));
+
+      const beu = new Uint8Array(be.buffer, be.byteOffset, be.length);
+      const leu = new Uint8Array(le.buffer, le.byteOffset, le.length);
+      const l = be.length;
+
+      assert(BN.fromArrayLike(beu, 'be').eq(p));
+      assert(BN.fromArrayLike(leu, 'le').eq(p));
+      assert(new BN(beu, 'be').eq(p));
+      assert(new BN(leu, 'le').eq(p));
+
+      assert(BN.fromArrayLike(beu.subarray(0, l - 1), 'be').eq(p1));
+      assert(BN.fromArrayLike(leu.subarray(1), 'le').eq(p1));
+      assert(new BN(beu.subarray(0, l - 1), 'be').eq(p1));
+      assert(new BN(leu.subarray(1), 'le').eq(p1));
+
+      assert(BN.fromArrayLike(beu.subarray(l - 7), 'be').eq(p7));
+      assert(BN.fromArrayLike(leu.subarray(0, 7), 'le').eq(p7));
+      assert(new BN(beu.subarray(l - 7), 'be').eq(p7));
+      assert(new BN(leu.subarray(0, 7), 'le').eq(p7));
+
+      const bea = Array.from(be);
+      const lea = Array.from(le);
+
+      assert(BN.fromArrayLike(bea, 'be').eq(p));
+      assert(BN.fromArrayLike(lea, 'le').eq(p));
+      assert(new BN(bea, 'be').eq(p));
+      assert(new BN(lea, 'le').eq(p));
+
+      assert(BN.fromArrayLike(bea.slice(0, -1), 'be').eq(p1));
+      assert(BN.fromArrayLike(lea.slice(1), 'le').eq(p1));
+      assert(new BN(bea.slice(0, -1), 'be').eq(p1));
+      assert(new BN(lea.slice(1), 'le').eq(p1));
+
+      assert(BN.fromArrayLike(bea.slice(-7), 'be').eq(p7));
+      assert(BN.fromArrayLike(lea.slice(0, 7), 'le').eq(p7));
+      assert(new BN(bea.slice(-7), 'be').eq(p7));
+      assert(new BN(lea.slice(0, 7), 'le').eq(p7));
+    });
+
+    it('should read and serialize unaligned data', () => {
+      const p = BN._prime('p192').p;
+      const p1 = p.ushrn(8);
+      const p7 = p.maskn(7 * 8);
+      const be = Buffer.alloc(1 + p.byteLength(), 0x00).slice(1);
+      const le = Buffer.alloc(1 + p.byteLength(), 0x00).slice(1);
+
+      assert((be.byteOffset & 7) !== 0);
+      assert((be.byteLength & 7) === 0);
+      assert((le.byteOffset & 7) !== 0);
+      assert((le.byteLength & 7) === 0);
+
+      p.toBuffer('be').copy(be);
+      p.toBuffer('le').copy(le);
+
+      assert(BN.fromBuffer(be, 'be').eq(p));
+      assert(BN.fromBuffer(le, 'le').eq(p));
+      assert(BN.fromArrayLike(be, 'be').eq(p));
+      assert(BN.fromArrayLike(le, 'le').eq(p));
+      assert(new BN(be, 'be').eq(p));
+      assert(new BN(le, 'le').eq(p));
+
+      assert(BN.fromBuffer(be.slice(0, -1), 'be').eq(p1));
+      assert(BN.fromBuffer(le.slice(1), 'le').eq(p1));
+      assert(BN.fromArrayLike(be.slice(0, -1), 'be').eq(p1));
+      assert(BN.fromArrayLike(le.slice(1), 'le').eq(p1));
+      assert(new BN(be.slice(0, -1), 'be').eq(p1));
+      assert(new BN(le.slice(1), 'le').eq(p1));
+
+      assert(BN.fromBuffer(be.slice(-7), 'be').eq(p7));
+      assert(BN.fromBuffer(le.slice(0, 7), 'le').eq(p7));
+      assert(BN.fromArrayLike(be.slice(-7), 'be').eq(p7));
+      assert(BN.fromArrayLike(le.slice(0, 7), 'le').eq(p7));
+      assert(new BN(be.slice(-7), 'be').eq(p7));
+      assert(new BN(le.slice(0, 7), 'le').eq(p7));
+
+      const beu = new Uint8Array(be.buffer, be.byteOffset, be.length);
+      const leu = new Uint8Array(le.buffer, le.byteOffset, le.length);
+      const l = be.length;
+
+      assert(BN.fromArrayLike(beu, 'be').eq(p));
+      assert(BN.fromArrayLike(leu, 'le').eq(p));
+      assert(new BN(beu, 'be').eq(p));
+      assert(new BN(leu, 'le').eq(p));
+
+      assert(BN.fromArrayLike(beu.subarray(0, l - 1), 'be').eq(p1));
+      assert(BN.fromArrayLike(leu.subarray(1), 'le').eq(p1));
+      assert(new BN(beu.subarray(0, l - 1), 'be').eq(p1));
+      assert(new BN(leu.subarray(1), 'le').eq(p1));
+
+      assert(BN.fromArrayLike(beu.subarray(l - 7), 'be').eq(p7));
+      assert(BN.fromArrayLike(leu.subarray(0, 7), 'le').eq(p7));
+      assert(new BN(beu.subarray(l - 7), 'be').eq(p7));
+      assert(new BN(leu.subarray(0, 7), 'le').eq(p7));
+
+      const bea = Array.from(be);
+      const lea = Array.from(le);
+
+      assert(BN.fromArrayLike(bea, 'be').eq(p));
+      assert(BN.fromArrayLike(lea, 'le').eq(p));
+      assert(new BN(bea, 'be').eq(p));
+      assert(new BN(lea, 'le').eq(p));
+
+      assert(BN.fromArrayLike(bea.slice(0, -1), 'be').eq(p1));
+      assert(BN.fromArrayLike(lea.slice(1), 'le').eq(p1));
+      assert(new BN(bea.slice(0, -1), 'be').eq(p1));
+      assert(new BN(lea.slice(1), 'le').eq(p1));
+
+      assert(BN.fromArrayLike(bea.slice(-7), 'be').eq(p7));
+      assert(BN.fromArrayLike(lea.slice(0, 7), 'le').eq(p7));
+      assert(new BN(bea.slice(-7), 'be').eq(p7));
+      assert(new BN(lea.slice(0, 7), 'le').eq(p7));
     });
   });
 
