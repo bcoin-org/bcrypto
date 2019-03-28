@@ -1368,6 +1368,10 @@ describe('BN.js', function() {
           });
         });
       });
+
+      it.skip('should not ignore zeroes on LE string', () => {
+        assert.strictEqual(new BN('0010', 'hex', 'le').toNumber(), 256);
+      });
     });
 
     describe('with Array input', () => {
