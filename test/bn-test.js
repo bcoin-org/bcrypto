@@ -1524,7 +1524,7 @@ describe('BN.js', function() {
 
         it('should shl numbers', () => {
           const base = new BN(256).toRed(BN.red('k256'));
-          const result = base.redShl(1);
+          const result = base.redShln(1);
           assert.equal(result.toString(), '512');
         });
 
