@@ -11,12 +11,19 @@ const {
   X25519
 } = curves;
 
-const secp256k1 = new SECP256K1();
-const x25519 = new X25519();
-
-assert(secp256k1.g.precomputed);
+let secp256k1 = null;
+let x25519 = null;
 
 describe('Curves', function() {
+  describe('Precomputation', () => {
+    it('should have precomputed curves', () => {
+      secp256k1 = new SECP256K1();
+      x25519 = new X25519();
+
+      assert(secp256k1.g.precomputed);
+    });
+  });
+
   describe('Curve', () => {
     it('should work with example curve', () => {
       const curve = new ShortCurve({
@@ -291,9 +298,8 @@ describe('Curves', function() {
 
   describe('Point codec', () => {
     function makeShortTest(definition) {
-      const curve = secp256k1;
-
       return () => {
+        const curve = secp256k1;
         const co = definition.coordinates;
         const p = curve.point(co.x, co.y);
 
@@ -309,9 +315,8 @@ describe('Curves', function() {
     }
 
     function makeMontTest(definition) {
-      const curve = x25519;
-
       return () => {
+        const curve = x25519;
         const co = definition.coordinates;
         const p = curve.point(co.x, co.z);
         const encoded = p.encode();

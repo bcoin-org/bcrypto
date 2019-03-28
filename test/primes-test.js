@@ -212,11 +212,11 @@ describe('Primes', function() {
       const p = new BN(str, 10);
 
       assert(!primes.millerRabinPrime(p, 16 + 1, true));
-      assert(!primes.millerRabinPrime(p, 4, true));
-      assert(!primes.millerRabinPrime(p, 4, false));
+      assert(!primes.millerRabinPrime(p, 6, true));
+      assert(!primes.millerRabinPrime(p, 6, false));
       assert(!primes.millerRabinPrime2(p, 16 + 1, true));
-      assert(!primes.millerRabinPrime2(p, 4, true));
-      assert(!primes.millerRabinPrime2(p, 4, false));
+      assert(!primes.millerRabinPrime2(p, 6, true));
+      assert(!primes.millerRabinPrime2(p, 6, false));
 
       if (i >= 8 && i <= 42) {
         // Lucas pseudoprime.

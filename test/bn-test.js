@@ -2154,7 +2154,7 @@ describe('BN.js', function() {
       assert.strictEqual(new BN(0x010001).bitLength(), 17);
       assert.strictEqual(new BN(-0x010001).zeroBits(), 0);
       assert.strictEqual(new BN(-0x010001).bitLength(), 17);
-      assert.strictEqual(new BN(0x20000n).zeroBits(), 17);
+      assert.strictEqual(new BN(0x20000).zeroBits(), 17);
       assert.strictEqual(new BN(0x20000).bitLength(), 18);
       assert.strictEqual(new BN(-0x20000).zeroBits(), 17);
       assert.strictEqual(new BN(-0x20000).bitLength(), 18);
@@ -2484,7 +2484,7 @@ describe('BN.js', function() {
   describe.skip('Bugs', () => {
     it('jumbo multo bug', () => {
       const fs = require('fs');
-      const bug = fs.readFileSync(`${__dirname}/data/jumbo-bug.base36`);
+      const bug = fs.readFileSync(`${__dirname}/data/jumbo-bug.base36`, 'utf8');
       const n1 = BigInt(1);
       const n8 = BigInt(8);
       const n256 = BigInt(256);
