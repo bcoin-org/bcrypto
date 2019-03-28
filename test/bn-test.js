@@ -2477,6 +2477,22 @@ describe('BN.js', function() {
     });
   });
 
+  describe.skip('Bugs', () => {
+    it('jumbo multo bug', () => {
+      const fs = require('fs');
+      const bug = fs.readFileSync(`${__dirname}/data/jumbo-bug.base36`);
+      const n1 = BigInt(1);
+      const n8 = BigInt(8);
+      const n256 = BigInt(256);
+      const b = new BN(bug, 36);
+      const n = b.toBigInt();
+
+      assert.strictEqual(
+        b.pow(new BN(8)).maskn(256).toString(),
+        ((n ** n8) & ((n1 << n256) - n1)).toString());
+    });
+  });
+
   describe('BN.js/Slow DH test', () => {
     for (const name of Object.keys(dhGroups)) {
       it('should match public key for ' + name + ' group', () => {
