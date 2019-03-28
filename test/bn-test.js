@@ -2306,6 +2306,19 @@ describe('BN.js', function() {
       assert.strictEqual(s.sqr().umod(n).toString(), R.toString());
     });
 
+    it('should test perfect squares', () => {
+      assert(new BN(0).isSquare());
+      assert(new BN(1).isSquare());
+      assert(!new BN(2).isSquare());
+      assert(!new BN(3).isSquare());
+      assert(new BN(4).isSquare());
+      assert(!new BN(5).isSquare());
+      assert(!new BN(6).isSquare());
+      assert(!new BN(7).isSquare());
+      assert(new BN(1024).isSquare());
+      assert(!new BN(1025).isSquare());
+    });
+
     it('should read and serialize aligned data', () => {
       const p = BN._prime('p192').p;
       const p1 = p.ushrn(8);
