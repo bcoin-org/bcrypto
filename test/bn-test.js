@@ -2,7 +2,7 @@
 
 const assert = require('bsert');
 const BN = require('../lib/bn.js');
-const random = require('../lib/random');
+const rng = require('../lib/random');
 
 const dhGroups = {
   p16: {
@@ -296,37 +296,6 @@ const symbols = [
   [-6, 5, 1],
   [-6, -5, -1]
 ];
-
-function randomBits(bits) {
-  assert((bits >>> 0) === bits);
-
-  const ret = new BN(0);
-
-  let b = 0;
-
-  while (b < bits) {
-    ret.iushln(256);
-    ret.ior(new BN(random.randomBytes(32)));
-    b += 256;
-  }
-
-  ret.iushrn(b - bits);
-
-  return ret;
-}
-
-function randomInt(max) {
-  assert(BN.isBN(max));
-
-  const bits = max.bitLength() - 1;
-
-  let ret = max;
-
-  while (ret.cmp(max) >= 0)
-    ret = randomBits(bits);
-
-  return ret;
-}
 
 describe('BN.js', function() {
   describe('BN.js/Arithmetic', () => {
@@ -2092,6 +2061,43 @@ describe('BN.js', function() {
       });
     }
 
+    it('should get random int', () => {
+      const p = BN._prime('p192').p;
+
+      let saw = false;
+
+      for (let i = 0; i < 100; i++) {
+        const r = p.randomInt(rng);
+
+        assert(r.cmp(p) < 0);
+
+        if (r.bitLength() > (p.bitLength() >>> 1))
+          saw = true;
+      }
+
+      assert(saw);
+    });
+
+    it('should get negative random int', () => {
+      const p = BN._prime('p192').p.neg();
+      assert(p.randomInt(rng).isNeg());
+    });
+
+    it('should get random bits', () => {
+      let saw = false;
+
+      for (let i = 0; i < 100; i++) {
+        const r = BN.randomBits(256, rng);
+
+        assert(r.bitLength() <= 256);
+
+        if (r.bitLength() > (256 >>> 1))
+          saw = true;
+      }
+
+      assert(saw);
+    });
+
     it('should toNumber and fromNumber', () => {
       assert.strictEqual(BN.fromNumber(1234567890).toNumber(), 1234567890);
       assert.strictEqual(BN.fromNumber(-1234567890).toNumber(), -1234567890);
@@ -2222,9 +2228,9 @@ describe('BN.js', function() {
     });
 
     it('should compute powm', () => {
-      const x = randomBits(768);
-      const y = randomBits(25);
-      const m = randomBits(1024);
+      const x = BN.randomBits(768, rng);
+      const y = BN.randomBits(25, rng);
+      const m = BN.randomBits(1024, rng);
 
       assert.strictEqual(x.powm(y, m).toString(),
         x.toRed(BN.red(m)).redPow(y).fromRed().toString());
@@ -2235,7 +2241,7 @@ describe('BN.js', function() {
 
     it('should compute invp', () => {
       const p = BN._prime('p192').p;
-      const r = randomInt(p);
+      const r = p.randomInt(rng);
       const rInv = r.invp(p);
 
       assert.strictEqual(r.mul(rInv).subn(1).umod(p).toString(), '0');
@@ -2243,8 +2249,8 @@ describe('BN.js', function() {
     });
 
     it('should compute gcd and egcd', () => {
-      const r1 = randomBits(256);
-      const r2 = randomBits(256);
+      const r1 = BN.randomBits(256, rng);
+      const r2 = BN.randomBits(256, rng);
       const gcd_ = r1.gcd(r2);
       const [,, gcd] = r1.egcd(r2);
 
@@ -2252,8 +2258,8 @@ describe('BN.js', function() {
     });
 
     it('should compute egcd', () => {
-      const r1 = randomBits(256);
-      const r2 = randomBits(256);
+      const r1 = BN.randomBits(256, rng);
+      const r2 = BN.randomBits(256, rng);
       const g = r1.gcd(r2);
       const [a1, b1, g1] = r1.egcd(r2);
 
@@ -2268,7 +2274,7 @@ describe('BN.js', function() {
     });
 
     it('should compute sqrt', () => {
-      const r = randomBits(256);
+      const r = BN.randomBits(256, rng);
       const R = r.sqrt();
 
       assert(R.sqr().lte(r));
@@ -2282,7 +2288,7 @@ describe('BN.js', function() {
 
     it('should compute sqrtp', () => {
       const p = BN._prime('p192').p;
-      const r = randomInt(p);
+      const r = p.randomInt(rng);
       const R = r.sqr().umod(p);
       const s = R.sqrtp(p);
 
@@ -2293,7 +2299,7 @@ describe('BN.js', function() {
       const p = BN._prime('p192').p;
       const q = BN._prime('p224').p;
       const n = p.mul(q);
-      const r = randomInt(n);
+      const r = n.randomInt(rng);
       const R = r.sqr().umod(n);
       const s = R.sqrtpq(p, q);
 
