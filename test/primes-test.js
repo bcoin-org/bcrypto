@@ -5,8 +5,10 @@
 'use strict';
 
 const assert = require('bsert');
+const crypto = require('crypto');
 const BN = require('../lib/bn.js');
 const primes = require('../lib/internal/primes');
+const {constants} = crypto;
 
 // https://github.com/golang/go/blob/aadaec5/src/math/big/prime_test.go
 const primes_ = [
@@ -184,6 +186,41 @@ const composites = [
   '105919633'
 ];
 
+// eslint-disable-next-line
+function randomPrime(bits) {
+  assert((bits >>> 0) === bits);
+  assert(bits >= 2);
+
+  const dh = crypto.createDiffieHellman(bits);
+
+  return new BN(dh.getPrime());
+}
+
+function probablyPrime(x) {
+  assert(x instanceof BN);
+
+  const dh = crypto.createDiffieHellman(x.toBuffer(), null, 2, null);
+
+  if (dh.verifyError & constants.DH_CHECK_P_NOT_PRIME)
+    return false;
+
+  return true;
+}
+
+function strongPrime(x) {
+  assert(x instanceof BN);
+
+  const dh = crypto.createDiffieHellman(x.toBuffer(), null, 2, null);
+
+  if (dh.verifyError & constants.DH_CHECK_P_NOT_PRIME)
+    return false;
+
+  if (dh.verifyError & constants.DH_CHECK_P_NOT_SAFE_PRIME)
+    return false;
+
+  return true;
+}
+
 describe('Primes', function() {
   this.timeout(30000);
 
@@ -199,6 +236,9 @@ describe('Primes', function() {
       assert(primes.lucasPrime(p));
       assert(primes.probablyPrime(p, 15));
       assert(primes.probablyPrime(p, 1));
+
+      if (!process.browser)
+        assert(probablyPrime(p));
     });
   }
 
@@ -222,6 +262,45 @@ describe('Primes', function() {
       // No composite should ever pass Baillie-PSW.
       assert(!primes.probablyPrime(p, 15));
       assert(!primes.probablyPrime(p, 1));
+
+      if (!process.browser)
+        assert(!probablyPrime(p));
     });
   }
+
+  it('should test prime against openssl', () => {
+    if (process.browser)
+      this.skip();
+
+    const p = primes.randomPrime(768, 63);
+
+    assert(primes.millerRabinPrime(p, 63 + 1, true));
+    assert(primes.lucasPrime(p));
+    assert(probablyPrime(p));
+  });
+
+  // OpenSSL does 64 rounds of miller rabin,
+  // then shifts right and does another 64
+  // rounds before it considers a prime "safe".
+  // In my opinion, this is stupid and slow,
+  // and they should just use Baillie-PSW instead.
+  it.skip('should test "safe" prime against openssl', () => {
+    let p = null;
+
+    for (;;) {
+      const prime = primes.randomPrime(768, 63);
+
+      if (!primes.millerRabinPrime(prime.ushrn(1), 63 + 1, false))
+        continue;
+
+      p = prime;
+
+      break;
+    }
+
+    assert(primes.millerRabinPrime(p, 64, true));
+    assert(primes.lucasPrime(p));
+    assert(probablyPrime(p));
+    assert(strongPrime(p));
+  });
 });
