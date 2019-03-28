@@ -411,6 +411,11 @@ describe('BN.js', function() {
           new BN(0).iaddn(0x4000000);
         });
       });
+
+      it('should reset sign if value equal to value in instance', function () {
+        const a = new BN(-1);
+        assert.equal(a.addn(1).toString(), '0');
+      });
     });
 
     describe('.sub()', () => {
