@@ -111,4 +111,8 @@ NAN_MODULE_INIT(init) {
   BWhirlpool::Init(target);
 }
 
+#if NODE_MAJOR_VERSION >= 10
 NAN_MODULE_WORKER_ENABLED(bcrypto, init)
+#else
+NODE_MODULE(bcrypto, init)
+#endif
