@@ -1673,11 +1673,12 @@ describe('BN.js', function() {
     });
 
     it('K256.split for 512 bits number should return equal numbers', () => {
+      const prime = BN._prime('k256');
       const red = BN.red('k256');
       const input = new BN(1).iushln(512).subn(1);
       assert.equal(input.bitLength(), 512);
       const output = new BN(0);
-      red.prime.split(input, output);
+      prime.split(input, output);
       assert.equal(input.cmp(output), 0);
     });
 
