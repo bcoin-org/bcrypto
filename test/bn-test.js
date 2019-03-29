@@ -1674,7 +1674,6 @@ describe('BN.js', function() {
 
     it('K256.split for 512 bits number should return equal numbers', () => {
       const prime = BN._prime('k256');
-      const red = BN.red('k256');
       const input = new BN(1).iushln(512).subn(1);
       assert.equal(input.bitLength(), 512);
       const output = new BN(0);
@@ -2070,8 +2069,9 @@ describe('BN.js', function() {
       let saw = false;
 
       for (let i = 0; i < 100; i++) {
-        const r = p.randomInt(rng);
+        const r = BN.random(0, p, rng);
 
+        assert(!r.isNeg());
         assert(r.cmp(p) < 0);
 
         if (r.bitLength() > (p.bitLength() >>> 1))
@@ -2081,17 +2081,13 @@ describe('BN.js', function() {
       assert(saw);
     });
 
-    it('should get negative random int', () => {
-      const p = BN._prime('p192').p.neg();
-      assert(p.randomInt(rng).isNeg());
-    });
-
     it('should get random bits', () => {
       let saw = false;
 
       for (let i = 0; i < 100; i++) {
         const r = BN.randomBits(256, rng);
 
+        assert(!r.isNeg());
         assert(r.bitLength() <= 256);
 
         if (r.bitLength() > (256 >>> 1))
@@ -2244,7 +2240,7 @@ describe('BN.js', function() {
 
     it('should compute inverse', () => {
       const p = BN._prime('p192').p;
-      const r = p.randomInt(rng);
+      const r = BN.random(0, p, rng);
       const rInv = r.invm(p);
 
       assert.strictEqual(r.mul(rInv).subn(1).umod(p).toString(), '0');
@@ -2256,7 +2252,7 @@ describe('BN.js', function() {
         this.skip();
 
       const p = BN._prime('p192').p;
-      const r = p.randomInt(rng);
+      const r = BN.random(0, p, rng);
       const rInv = r._invmp(p);
 
       assert.strictEqual(r.mul(rInv).subn(1).umod(p).toString(), '0');
@@ -2303,7 +2299,7 @@ describe('BN.js', function() {
 
     it('should compute sqrtp', () => {
       const p = BN._prime('p192').p;
-      const r = p.randomInt(rng);
+      const r = BN.random(0, p, rng);
       const R = r.sqr().umod(p);
       const s = R.sqrtp(p);
 
@@ -2314,7 +2310,7 @@ describe('BN.js', function() {
       const p = BN._prime('p192').p;
       const q = BN._prime('p224').p;
       const n = p.mul(q);
-      const r = n.randomInt(rng);
+      const r = BN.random(0, n, rng);
       const R = r.sqr().umod(n);
       const s = R.sqrtpq(p, q);
 
