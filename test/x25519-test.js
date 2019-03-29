@@ -174,12 +174,8 @@ describe('X25519', function() {
 
     key[0] = 1;
 
-    for (let i = 0; i < 200; i++) {
-      key[0] &= 248;
-      key[32 - 1] &= 127;
-      key[32 - 1] |= 64;
+    for (let i = 0; i < 200; i++)
       key = x25519.publicKeyCreate(key);
-    }
 
     assert.bufferEqual(key, expect, 'hex');
   });
