@@ -2241,13 +2241,25 @@ describe('BN.js', function() {
         x.toRed(BN.red(m)).redPow(y).fromRed().toString());
     });
 
-    it('should compute invp', () => {
+    it('should compute inverse', () => {
       const p = BN._prime('p192').p;
       const r = p.randomInt(rng);
-      const rInv = r.invp(p);
+      const rInv = r.invm(p);
 
       assert.strictEqual(r.mul(rInv).subn(1).umod(p).toString(), '0');
-      assert.strictEqual(rInv.toString(), r.invp(p).toString());
+      assert.strictEqual(rInv.toString(), r.invm(p).toString());
+    });
+
+    it('should compute invmp', () => {
+      if (!BN.prototype._invmp)
+        this.skip();
+
+      const p = BN._prime('p192').p;
+      const r = p.randomInt(rng);
+      const rInv = r._invmp(p);
+
+      assert.strictEqual(r.mul(rInv).subn(1).umod(p).toString(), '0');
+      assert.strictEqual(rInv.toString(), r._invmp(p).toString());
     });
 
     it('should compute gcd and egcd', () => {
