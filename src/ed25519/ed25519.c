@@ -236,16 +236,8 @@ bcrypto_ed25519_derive_with_scalar(
 ) {
   bignum256modm k;
   ge25519 ALIGN(16) s, p;
-  bcrypto_ed25519_secret_key scalar;
 
-  /* clamp */
-  memcpy(scalar, sk, 32);
-
-  scalar[0] &= 248;
-  scalar[31] &= 127;
-  scalar[31] |= 64;
-
-  expand_raw256_modm(k, scalar);
+  expand_raw256_modm(k, sk);
 
   if (!ge25519_unpack_negative_vartime(&p, pk))
     return -1;
@@ -281,10 +273,12 @@ bcrypto_ed25519_exchange_with_scalar(
   bignum25519 ALIGN(16) nd, x1, x2, z2, x3, z3, t1, t2;
 
   int swap = 0;
+  size_t i;
   int t, b;
 
   /* clamp */
-  memcpy(k, sk, 32);
+  for (i = 0; i < 32; i++)
+    k[i] = sk[i];
 
   k[0] &= 248;
   k[31] &= 127;

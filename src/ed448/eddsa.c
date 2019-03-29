@@ -255,7 +255,6 @@ bcrypto_c448_error_t bcrypto_c448_ed448_derive_with_scalar(
 {
   bcrypto_curve448_scalar_t secret_scalar;
   bcrypto_curve448_point_t p;
-  uint8_t scalar_[BCRYPTO_C448_SCALAR_BYTES];
   unsigned int c;
 
   if (bcrypto_curve448_point_decode_like_eddsa_and_mul_by_ratio(p, pubkey)
@@ -263,11 +262,7 @@ bcrypto_c448_error_t bcrypto_c448_ed448_derive_with_scalar(
     return BCRYPTO_C448_FAILURE;
   }
 
-  /* clamp */
-  memcpy(scalar_, scalar, BCRYPTO_C448_SCALAR_BYTES);
-  half_clamp(scalar_);
-
-  bcrypto_curve448_scalar_decode(secret_scalar, &scalar_[0]);
+  bcrypto_curve448_scalar_decode(secret_scalar, &scalar[0]);
 
   for (c = 1; c < BCRYPTO_C448_EDDSA_ENCODE_RATIO; c <<= 1)
     bcrypto_curve448_scalar_halve(secret_scalar, secret_scalar);
@@ -277,8 +272,6 @@ bcrypto_c448_error_t bcrypto_c448_ed448_derive_with_scalar(
 
   bcrypto_curve448_scalar_destroy(secret_scalar);
   bcrypto_curve448_point_destroy(p);
-
-  OPENSSL_cleanse(scalar_, sizeof(scalar_));
 
   return BCRYPTO_C448_SUCCESS;
 }
