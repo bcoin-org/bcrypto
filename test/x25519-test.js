@@ -123,7 +123,7 @@ MCowBQYDK2VuAyEAakLDF/7jDdqLlRRYPmC4h3hS1kph8OuJ+PrjQ2NlhUk=
 describe('X25519', function() {
   for (const [pub, key, expect] of vectors) {
     it(`should compute secret: ${expect.toString('hex')}`, () => {
-      const result = ed25519.exchangeWithScalar(pub, key);
+      const result = x25519.derive(pub, key);
       assert.bufferEqual(result, expect);
     });
   }
@@ -137,17 +137,17 @@ describe('X25519', function() {
     u[0] = 9;
 
     for (; i < 1; i++)
-      [u, k] = [k, ed25519.exchangeWithScalar(u, k)];
+      [u, k] = [k, x25519.derive(u, k)];
 
     assert.bufferEqual(k, intervals[0]);
 
     for (; i < 1000; i++)
-      [u, k] = [k, ed25519.exchangeWithScalar(u, k)];
+      [u, k] = [k, x25519.derive(u, k)];
 
     assert.bufferEqual(k, intervals[1]);
 
     // for (; i < 1000000; i++)
-    //   [u, k] = [k, ed25519.exchangeWithScalar(u, k)];
+    //   [u, k] = [k, x25519.derive(u, k)];
     //
     // assert.bufferEqual(k, intervals[2]);
   });
@@ -160,7 +160,7 @@ describe('X25519', function() {
       const edPoint = ed25519.deriveWithScalar(edPub, tweak);
       const pub = ed25519.publicKeyConvert(edPub);
       const expect = ed25519.publicKeyConvert(edPoint);
-      const result = ed25519.exchangeWithScalar(pub, tweak);
+      const result = x25519.derive(pub, tweak);
 
       assert.bufferEqual(result, expect);
     });
@@ -185,10 +185,10 @@ describe('X25519', function() {
     const u = random.randomBytes(32);
 
     u[31] &= 0x7f;
-    const hi0 = ed25519.exchangeWithScalar(u, s);
+    const hi0 = x25519.derive(u, s);
 
     u[31] |= 0x80;
-    const hi1 = ed25519.exchangeWithScalar(u, s);
+    const hi1 = x25519.derive(u, s);
 
     assert.bufferEqual(hi0, hi1);
   });

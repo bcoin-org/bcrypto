@@ -54,7 +54,7 @@ pDWiqkjsYdlUUGH7se0wSZW3+AU=
 describe('X448', function() {
   for (const [pub, key, expect] of vectors) {
     it(`should compute secret: ${expect.toString('hex')}`, () => {
-      const result = ed448.exchangeWithScalar(pub, key);
+      const result = x448.derive(pub, key);
       assert.bufferEqual(result, expect);
     });
   }
@@ -68,24 +68,24 @@ describe('X448', function() {
     u[0] = 5;
 
     for (; i < 1; i++)
-      [u, k] = [k, ed448.exchangeWithScalar(u, k)];
+      [u, k] = [k, x448.derive(u, k)];
 
     assert.bufferEqual(k, intervals[0]);
 
     for (; i < 100; i++)
-      [u, k] = [k, ed448.exchangeWithScalar(u, k)];
+      [u, k] = [k, x448.derive(u, k)];
 
     assert.bufferEqual(k, intervals[1]);
 
     if (ed448.native) {
       for (; i < 1000; i++)
-        [u, k] = [k, ed448.exchangeWithScalar(u, k)];
+        [u, k] = [k, x448.derive(u, k)];
 
       assert.bufferEqual(k, intervals[2]);
     }
 
     // for (; i < 1000000; i++)
-    //   [u, k] = [k, ed448.exchangeWithScalar(u, k)];
+    //   [u, k] = [k, x448.derive(u, k)];
     //
     // assert.bufferEqual(k, intervals[3]);
   });
@@ -98,7 +98,7 @@ describe('X448', function() {
       const edPoint = ed448.deriveWithScalar(edPub, tweak);
       const pub = ed448.publicKeyConvert(edPub);
       const expect = ed448.publicKeyConvert(edPoint);
-      const result = ed448.exchangeWithScalar(pub, tweak);
+      const result = x448.derive(pub, tweak);
 
       assert.bufferEqual(result, expect);
     });
