@@ -2227,15 +2227,15 @@ describe('BN.js', function() {
     });
 
     it('should compute powm', () => {
-      const x = BN.randomBits(rng, 768);
-      const y = BN.randomBits(rng, 25);
-      const m = BN.randomBits(rng, 1024);
+      const x = new BN('49d695e8e09850acf3ced130d55cf4cc', 16);
+      const y = new BN('1abc952', 16);
+      const m = new BN('b06577896432d8cf7af1c491cad11be9b584316d0045187f40c8ae8d57724725', 16);
+      const r = new BN('3f4cbb5b31c94b98dc5234de233af07319e93088192a9c87e3f0da9b213c779b', 16);
 
-      assert.strictEqual(x.powm(y, m).toString(),
-        x.toRed(BN.red(m)).redPow(y).fromRed().toString());
-
-      assert.strictEqual(x.powmn(y.toNumber(), m).toString(),
-        x.toRed(BN.red(m)).redPow(y).fromRed().toString());
+      assert.strictEqual(x.powm(y, m).toString(), r.toString());
+      assert.strictEqual(
+        x.toRed(BN.red(m)).redPow(y).fromRed().toString(),
+        r.toString());
     });
 
     it('should compute inverse', () => {
