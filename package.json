@@ -20,7 +20,7 @@
   "scripts": {
     "install": "node-gyp rebuild || echo 'Build failed.'",
     "lint": "eslint bench/ lib/ test/ || exit 0",
-    "test": "bmocha --file ./scripts/post.js test/*-test.js"
+    "test": "bmocha -S --file ./scripts/post.js 'test/*-test.js'"
   },
   "dependencies": {
     "bsert": "~0.0.10",
