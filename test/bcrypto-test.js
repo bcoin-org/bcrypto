@@ -27,7 +27,8 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.BLAKE2s160.native, 0);
         assert.strictEqual(bcrypto.BLAKE2s224.native, 0);
         assert.strictEqual(bcrypto.BLAKE2s256.native, 0);
-        assert.strictEqual(bcrypto.BN.native, 0);
+        assert.strictEqual(bcrypto.BN.native,
+          HAS_BIGINT && process.env.BCRYPTO_FORCE_BIGINT ? 1 : 0);
         assert.strictEqual(bcrypto.bcrypt.native, 0);
         assert.strictEqual(bcrypto.ChaCha20.native, 0);
         assert.strictEqual(bcrypto.cipher.native, 0);
