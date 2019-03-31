@@ -285,9 +285,9 @@ describe('Curves', function() {
 
     it('should store precomputed values correctly on negation', () => {
       const curve = secp256k1;
-      const p = curve.g.mul('2');
+      const p = curve.g.mul(new BN(2));
 
-      p.precompute();
+      p.precompute(0);
 
       const neg = p.neg(true);
       const neg2 = neg.neg(true);
