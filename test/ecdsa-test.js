@@ -269,11 +269,9 @@ describe('ECDSA', function() {
       for (const c of opt.cases) {
         const hash = c.hash;
         const msg = Buffer.from(c.message, 'binary');
-
-        const sig = Buffer.concat([
-          Buffer.from(c.r, 'hex'),
-          Buffer.from(c.s, 'hex')
-        ]);
+        const cr = Buffer.from(c.r, 'hex');
+        const cs = Buffer.from(c.s, 'hex');
+        const sig = Buffer.concat([cr, cs]);
 
         const desc = ''
           + `should not fail on "${opt.name}"`
@@ -282,6 +280,11 @@ describe('ECDSA', function() {
         it(desc, () => {
           const dgst = hash.digest(msg);
           const sign = curve.sign(dgst, key);
+          const r = sign.slice(0, curve.size);
+          const s = sign.slice(curve.size);
+
+          if (!c.custom && curve.native === 0)
+            assert.bufferEqual(r, cr);
 
           assert(curve.publicKeyVerify(pub), 'Invalid public key');
           assert(curve.verify(dgst, sign, pub), 'Invalid signature (1)');
@@ -302,24 +305,28 @@ describe('ECDSA', function() {
         {
           message: 'sample',
           hash: SHA224,
+          custom: true,
           r: 'a1f00dad97aeec91c95585f36200c65f3c01812aa60378f5',
           s: 'e07ec1304c7c6c9debbe980b9692668f81d4de7922a0f97a'
         },
         {
           message: 'sample',
           hash: SHA256,
+          custom: false,
           r: '4b0b8ce98a92866a2820e20aa6b75b56382e0f9bfd5ecb55',
           s: 'ccdb006926ea9565cbadc840829d8c384e06de1f1e381b85'
         },
         {
           message: 'test',
           hash: SHA224,
+          custom: true,
           r: '6945a1c1d1b2206b8145548f633bb61cef04891baf26ed34',
           s: 'b7fb7fdfc339c0b9bd61a9f5a8eaf9be58fc5cba2cb15293'
         },
         {
           message: 'test',
           hash: SHA256,
+          custom: false,
           r: '3a718bd8b4926c3b52ee6bbe67ef79b18cb6eb62b1ad97ae',
           s: '5662e6848a4a19b1f1ae2f72acd4b8bbe50f1eac65d9124f'
         }
@@ -338,24 +345,28 @@ describe('ECDSA', function() {
         {
           message: 'sample',
           hash: SHA224,
+          custom: true,
           r: '1cdfe6662dde1e4a1ec4cdedf6a1f5a2fb7fbd9145c12113e6abfd3e',
           s: 'a6694fd7718a21053f225d3f46197ca699d45006c06f871808f43ebc'
         },
         {
           message: 'sample',
           hash: SHA256,
+          custom: false,
           r: '61aa3da010e8e8406c656bc477a7a7189895e7e840cdfe8ff42307ba',
           s: 'bc814050dab5d23770879494f9e0a680dc1af7161991bde692b10101'
         },
         {
           message: 'test',
           hash: SHA224,
+          custom: true,
           r: 'c441ce8e261ded634e4cf84910e4c5d1d22c5cf3b732bb204dbef019',
           s: '902f42847a63bdc5f6046ada114953120f99442d76510150f372a3f4'
         },
         {
           message: 'test',
           hash: SHA256,
+          custom: false,
           r: 'ad04dde87b84747a243a631ea47a1ba6d1faa059149ad2440de6fba6',
           s: '178d49b1ae90e3d8b629be3db5683915f4e8c99fdf6e666cf37adcfd'
         }
@@ -374,24 +385,28 @@ describe('ECDSA', function() {
         {
           message: 'sample',
           hash: SHA224,
+          custom: true,
           r: '53b2fff5d1752b2c689df257c04c40a587fababb3f6fc2702f1343af7ca9aa3f',
           s: 'b9afb64fdc03dc1a131c7d2386d11e349f070aa432a4acc918bea988bf75c74c'
         },
         {
           message: 'sample',
           hash: SHA256,
+          custom: false,
           r: 'efd48b2aacb6a8fd1140dd9cd45e81d69d2c877b56aaf991c34d0ea84eaf3716',
           s: 'f7cb1c942d657c41d436c7a1b6e29f65f3e900dbb9aff4064dc4ab2f843acda8'
         },
         {
           message: 'test',
           hash: SHA224,
+          custom: true,
           r: 'c37edb6f0ae79d47c3c27e962fa269bb4f441770357e114ee511f662ec34a692',
           s: 'c820053a05791e521fcaad6042d40aea1d6b1a540138558f47d0719800e18f2d'
         },
         {
           message: 'test',
           hash: SHA256,
+          custom: false,
           r: 'f1abb023518351cd71d881567b1ea663ed3efcf6c5132b354f28d3b0b7d38367',
           s: '019f4113742a2b14bd25926b49c649155f267e60d3814b4c0cc84250e46f0083'
         }
@@ -413,6 +428,7 @@ describe('ECDSA', function() {
         {
           message: 'sample',
           hash: SHA224,
+          custom: true,
           r: '42356e76b55a6d9b4631c865445dbe54e056d3b3431766d05092447' +
              '93c3f9366450f76ee3de43f5a125333a6be060122',
           s: '9da0c81787064021e78df658f2fbb0b042bf304665db721f077a429' +
@@ -421,6 +437,7 @@ describe('ECDSA', function() {
         {
           message: 'sample',
           hash: SHA384,
+          custom: false,
           r: '94edbb92a5ecb8aad4736e56c691916b3f88140666ce9fa73d6' +
              '4c4ea95ad133c81a648152e44acf96e36dd1e80fabe46',
           s: '99ef4aeb15f178cea1fe40db2603138f130e740a19624526203b' +
@@ -429,6 +446,7 @@ describe('ECDSA', function() {
         {
           message: 'test',
           hash: SHA384,
+          custom: false,
           r: '8203b63d3c853e8d77227fb377bcf7b7b772e97892a80f36a' +
              'b775d509d7a5feb0542a7f0812998da8f1dd3ca3cf023db',
           s: 'ddd0760448d42d8a43af45af836fce4de8be06b485e9b61b827c2f13' +
@@ -457,6 +475,7 @@ describe('ECDSA', function() {
         {
           message: 'sample',
           hash: SHA384,
+          custom: true,
           r: '0' +
              '1ea842a0e17d2de4f92c15315c63ddf72685c18195c2bb95e572b9c5136ca4' +
              'b4b576ad712a52be9730627d16054ba40cc0b8d3ff035b12ae75168397f5' +
@@ -469,6 +488,7 @@ describe('ECDSA', function() {
         {
           message: 'sample',
           hash: SHA512,
+          custom: false,
           r: '00' +
              'c328fafcbd79dd77850370c46325d987cb525569fb63c5d3bc53950e6d4c5f1' +
              '74e25a1ee9017b5d450606add152b534931d7d4e8455cc91f9b15bf05ec36e3' +
@@ -481,6 +501,7 @@ describe('ECDSA', function() {
         {
           message: 'test',
           hash: SHA512,
+          custom: false,
           r: '0' +
              '13e99020abf5cee7525d16b69b229652ab6bdf2affcaef38773b4b7d087' +
              '25f10cdb93482fdcc54edcee91eca4166b2a7c6265ef0ce2bd7051b7cef945' +
