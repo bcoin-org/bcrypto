@@ -2069,7 +2069,7 @@ describe('BN.js', function() {
       let saw = false;
 
       for (let i = 0; i < 100; i++) {
-        const r = BN.random(0, p, rng);
+        const r = BN.random(rng, 0, p);
 
         assert(!r.isNeg());
         assert(r.cmp(p) < 0);
@@ -2085,7 +2085,7 @@ describe('BN.js', function() {
       let saw = false;
 
       for (let i = 0; i < 100; i++) {
-        const r = BN.randomBits(256, rng);
+        const r = BN.randomBits(rng, 256);
 
         assert(!r.isNeg());
         assert(r.bitLength() <= 256);
@@ -2227,9 +2227,9 @@ describe('BN.js', function() {
     });
 
     it('should compute powm', () => {
-      const x = BN.randomBits(768, rng);
-      const y = BN.randomBits(25, rng);
-      const m = BN.randomBits(1024, rng);
+      const x = BN.randomBits(rng, 768);
+      const y = BN.randomBits(rng, 25);
+      const m = BN.randomBits(rng, 1024);
 
       assert.strictEqual(x.powm(y, m).toString(),
         x.toRed(BN.red(m)).redPow(y).fromRed().toString());
@@ -2240,7 +2240,7 @@ describe('BN.js', function() {
 
     it('should compute inverse', () => {
       const p = BN._prime('p192').p;
-      const r = BN.random(0, p, rng);
+      const r = BN.random(rng, 0, p);
       const rInv = r.invm(p);
 
       assert.strictEqual(r.mul(rInv).subn(1).umod(p).toString(), '0');
@@ -2252,7 +2252,7 @@ describe('BN.js', function() {
         this.skip();
 
       const p = BN._prime('p192').p;
-      const r = BN.random(0, p, rng);
+      const r = BN.random(rng, 0, p);
       const rInv = r._invmp(p);
 
       assert.strictEqual(r.mul(rInv).subn(1).umod(p).toString(), '0');
@@ -2260,8 +2260,8 @@ describe('BN.js', function() {
     });
 
     it('should compute gcd and egcd', () => {
-      const r1 = BN.randomBits(256, rng);
-      const r2 = BN.randomBits(256, rng);
+      const r1 = BN.randomBits(rng, 256);
+      const r2 = BN.randomBits(rng, 256);
       const gcd_ = r1.gcd(r2);
       const [,, gcd] = r1.egcd(r2);
 
@@ -2269,8 +2269,8 @@ describe('BN.js', function() {
     });
 
     it('should compute egcd', () => {
-      const r1 = BN.randomBits(256, rng);
-      const r2 = BN.randomBits(256, rng);
+      const r1 = BN.randomBits(rng, 256);
+      const r2 = BN.randomBits(rng, 256);
       const g = r1.gcd(r2);
       const [a1, b1, g1] = r1.egcd(r2);
 
@@ -2285,7 +2285,7 @@ describe('BN.js', function() {
     });
 
     it('should compute sqrt', () => {
-      const r = BN.randomBits(256, rng);
+      const r = BN.randomBits(rng, 256);
       const R = r.sqrt();
 
       assert(R.sqr().lte(r));
@@ -2299,7 +2299,7 @@ describe('BN.js', function() {
 
     it('should compute sqrtp', () => {
       const p = BN._prime('p192').p;
-      const r = BN.random(0, p, rng);
+      const r = BN.random(rng, 0, p);
       const R = r.sqr().umod(p);
       const s = R.sqrtp(p);
 
@@ -2310,7 +2310,7 @@ describe('BN.js', function() {
       const p = BN._prime('p192').p;
       const q = BN._prime('p224').p;
       const n = p.mul(q);
-      const r = BN.random(0, n, rng);
+      const r = BN.random(rng, 0, n);
       const R = r.sqr().umod(n);
       const s = R.sqrtpq(p, q);
 
