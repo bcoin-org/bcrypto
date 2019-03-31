@@ -281,7 +281,6 @@ describe('ECDSA', function() {
           const dgst = hash.digest(msg);
           const sign = curve.sign(dgst, key);
           const r = sign.slice(0, curve.size);
-          const s = sign.slice(curve.size);
 
           if (!c.custom && curve.native === 0)
             assert.bufferEqual(r, cr);
