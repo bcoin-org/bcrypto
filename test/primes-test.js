@@ -8,6 +8,7 @@ const assert = require('bsert');
 const crypto = require('crypto');
 const BN = require('../lib/bn.js');
 const primes = require('../lib/internal/primes');
+const rng = require('../lib/random');
 const {constants} = crypto;
 
 // https://github.com/golang/go/blob/aadaec5/src/math/big/prime_test.go
@@ -230,10 +231,10 @@ describe('Primes', function() {
     it(`should test prime (${i})`, () => {
       const p = new BN(str, 10);
 
-      assert(primes.millerRabinPrime(p, 16 + 1, true));
-      assert(primes.millerRabinPrime(p, 1, true));
-      assert(primes.millerRabinPrime(p, 1, false));
-      assert(primes.lucasPrime(p));
+      assert(p.isPrimeMR(rng, 16 + 1, true));
+      assert(p.isPrimeMR(rng, 1, true));
+      assert(p.isPrimeMR(rng, 1, false));
+      assert(p.isPrimeLucas());
       assert(primes.probablyPrime(p, 15));
       assert(primes.probablyPrime(p, 1));
 
@@ -248,15 +249,15 @@ describe('Primes', function() {
     it(`should test composite (${i})`, () => {
       const p = new BN(str, 10);
 
-      assert(!primes.millerRabinPrime(p, 16 + 1, true));
-      assert(!primes.millerRabinPrime(p, 6, true));
-      assert(!primes.millerRabinPrime(p, 6, false));
+      assert(!p.isPrimeMR(rng, 16 + 1, true));
+      assert(!p.isPrimeMR(rng, 6, true));
+      assert(!p.isPrimeMR(rng, 6, false));
 
       if (i >= 8 && i <= 42) {
         // Lucas pseudoprime.
-        assert(primes.lucasPrime(p));
+        assert(p.isPrimeLucas());
       } else {
-        assert(!primes.lucasPrime(p));
+        assert(!p.isPrimeLucas());
       }
 
       // No composite should ever pass Baillie-PSW.
@@ -274,8 +275,8 @@ describe('Primes', function() {
 
     const p = primes.randomPrime(768, 63);
 
-    assert(primes.millerRabinPrime(p, 63 + 1, true));
-    assert(primes.lucasPrime(p));
+    assert(p.isPrimeMR(rng, 63 + 1, true));
+    assert(p.isPrimeLucas());
     assert(probablyPrime(p));
   });
 
@@ -289,8 +290,9 @@ describe('Primes', function() {
 
     for (;;) {
       const prime = primes.randomPrime(768, 63);
+      const half = prime.ushrn(1);
 
-      if (!primes.millerRabinPrime(prime.ushrn(1), 63 + 1, false))
+      if (!half.isPrimeMR(rng, 63 + 1, false))
         continue;
 
       p = prime;
@@ -298,8 +300,8 @@ describe('Primes', function() {
       break;
     }
 
-    assert(primes.millerRabinPrime(p, 64, true));
-    assert(primes.lucasPrime(p));
+    assert(p.isPrimeMR(rng, 64, true));
+    assert(p.isPrimeLucas());
     assert(probablyPrime(p));
     assert(strongPrime(p));
   });
