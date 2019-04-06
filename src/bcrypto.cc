@@ -15,6 +15,9 @@
 #include "aes.h"
 #include "blake2b.h"
 #include "blake2s.h"
+#ifdef BCRYPTO_HAS_GMP
+#include "bn.h"
+#endif
 #include "chacha20.h"
 #include "cipherbase.h"
 #if NODE_MAJOR_VERSION >= 10
@@ -78,6 +81,9 @@ NAN_MODULE_INIT(init) {
   BAES::Init(target);
   BBLAKE2b::Init(target);
   BBLAKE2s::Init(target);
+#ifdef BCRYPTO_HAS_GMP
+  BBN::Init(target);
+#endif
   BChaCha20::Init(target);
   BCipherBase::Init(target);
   Nan::Export(target, "cleanse", cleanse);
