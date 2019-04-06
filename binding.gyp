@@ -35,6 +35,7 @@
       "./src/keccak/keccak.c",
       "./src/aead.cc",
       "./src/aes.cc",
+      "./src/bn.cc",
       "./src/bcrypto.cc",
       "./src/blake2b.cc",
       "./src/blake2s.cc",
@@ -177,7 +178,8 @@
           "HAVE_LIBGMP=1",
           "USE_NUM_GMP=1",
           "USE_FIELD_INV_NUM=1",
-          "USE_SCALAR_INV_NUM=1"
+          "USE_SCALAR_INV_NUM=1",
+          "BCRYPTO_HAS_GMP"
         ],
         "libraries": [
           "-lgmpxx",
