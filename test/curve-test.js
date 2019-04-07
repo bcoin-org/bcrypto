@@ -331,7 +331,6 @@ describe('Curves', function() {
         assert.equal(encoded.toString('hex'), definition.encoded);
 
         assert.bufferEqual(curve.g.mul(scalar).encode(), encoded);
-        assert.bufferEqual(curve.g.mulBlind(scalar).encode(), encoded);
       };
     }
 
