@@ -3,6 +3,7 @@
 const assert = require('bsert');
 const BN = require('../lib/bn.js');
 const curves = require('../lib/js/curves');
+const rng = require('../lib/random');
 
 const {
   ShortCurve,
@@ -18,10 +19,10 @@ describe('Curves', function() {
   describe('Precomputation', () => {
     it('should have precomputed curves', () => {
       secp256k1 = new SECP256K1();
-      secp256k1.precompute();
+      secp256k1.precompute(rng);
 
       x25519 = new X25519();
-      x25519.precompute();
+      x25519.precompute(rng);
 
       assert(secp256k1.g.precomputed);
       assert(!x25519.g.precomputed);
