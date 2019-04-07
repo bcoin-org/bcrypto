@@ -18,9 +18,13 @@ describe('Curves', function() {
   describe('Precomputation', () => {
     it('should have precomputed curves', () => {
       secp256k1 = new SECP256K1();
+      secp256k1.precompute();
+
       x25519 = new X25519();
+      x25519.precompute();
 
       assert(secp256k1.g.precomputed);
+      assert(!x25519.g.precomputed);
     });
   });
 
@@ -319,11 +323,15 @@ describe('Curves', function() {
         const curve = x25519;
         const co = definition.coordinates;
         const p = curve.point(co.x, co.z);
+        const scalar = new BN(definition.scalar, 16);
         const encoded = p.encode();
         const decoded = curve.decodePoint(encoded);
 
         assert(decoded.eq(p));
         assert.equal(encoded.toString('hex'), definition.encoded);
+
+        assert.bufferEqual(curve.g.mul(scalar).encode(), encoded);
+        assert.bufferEqual(curve.g.mulBlind(scalar).encode(), encoded);
       };
     }
 
@@ -378,8 +386,8 @@ describe('Curves', function() {
         makeShortTest(shortPointOddY));
 
     it('should be able to encode/decode a mont curve point', makeMontTest({
+      scalar: '6',
       coordinates: {
-        // curve25519.curve.g.mul(new BN('6')).getX().toString(16, 2)
         x: '26954ccdc99ebf34f8f1dde5e6bb080685fec73640494c28f9fe0bfa8c794531',
         z: '1'
       },
