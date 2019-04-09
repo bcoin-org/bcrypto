@@ -252,6 +252,69 @@ describe('EdDSA', function() {
     assert(ed25519.verify(msg, sig, child));
   });
 
+  it('should generate keypair and sign with multiplicative tweak * cofactor', () => {
+    const key = ed25519.privateKeyGenerate();
+    const pub = ed25519.publicKeyCreate(key);
+    const tweak_ = ed25519.scalarGenerate();
+    const msg = random.randomBytes(32);
+    const tweak = ed25519.scalarTweakMul(tweak_, ed25519.cofactor);
+    const child = ed25519.publicKeyTweakMul(pub, tweak);
+    const child_ = ed25519.publicKeyTweakMul(
+      ed25519.publicKeyTweakMul(pub, tweak_),
+      ed25519.cofactor);
+
+    assert.bufferEqual(child, child_);
+    assert(ed25519.scalarVerify(tweak_));
+    assert.notBufferEqual(child, pub);
+
+    const sig = ed25519.signTweakMul(msg, key, tweak);
+
+    const childPriv = ed25519.scalarTweakMul(ed25519.privateKeyConvert(key), tweak);
+    const childPub = ed25519.publicKeyFromScalar(childPriv);
+    assert.bufferEqual(childPub, child);
+
+    assert(ed25519.verify(msg, sig, child));
+
+    const sig2 = ed25519.signWithScalar(msg, childPriv, msg);
+    assert(ed25519.verify(msg, sig2, child));
+  });
+
+  it('should generate keypair and sign with multiplicative tweak * cofactor (vector)', () => {
+    const key = Buffer.from(
+      '5bc1d80b378c350663a6862f21599ee3b09fb4255a0dfad3d907d5ca7ab2b223',
+      'hex');
+
+    const pub = Buffer.from(
+      'f921f787e3e4e829a4be69a499f06e69d7bddbb7f6a90ccfba785faebd8d7a02',
+      'hex');
+
+    const tweak_ = Buffer.from(
+      '7623971ec36c8557a8b1debe80f5f305989d0e51b62805c88590ee5b586a648a',
+      'hex');
+
+    const msg = Buffer.from(
+      'e4a733e761eb1d0263fd713e7f815c947b29ed5a9140fa893bf59b11e1c32b80',
+      'hex');
+
+    const childExpect = Buffer.from(
+      'c616988e326d0b8be64e028942c68db3bc2f0808d5ca7c2e8b041e12b7b133fa',
+      'hex');
+
+    const sigExpect = Buffer.from(''
+      + 'b958f47421ddb4fa1d012ab40a9b0c6d3850c85acf5ba313ffe77dd9b212f8a9'
+      + '84ae985e13f77a441c012c5f3b16735de3a94bd2e3e72c80be6b41bbe2338305'
+      , 'hex');
+
+    const tweak = ed25519.scalarTweakMul(tweak_, ed25519.cofactor);
+    const child = ed25519.publicKeyTweakMul(pub, tweak);
+    const sig = ed25519.signTweakMul(msg, key, tweak);
+
+    assert.bufferEqual(child, childExpect);
+    assert.bufferEqual(sig, sigExpect);
+
+    assert(ed25519.verify(msg, sig, child));
+  });
+
   it('should convert to montgomery and back', () => {
     const secret = ed25519.privateKeyGenerate();
     const pub = ed25519.publicKeyCreate(secret);

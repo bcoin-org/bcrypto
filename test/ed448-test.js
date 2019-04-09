@@ -172,6 +172,33 @@ describe('Ed448', function() {
     assert(ed448.verify(msg, sig2, child));
   });
 
+  it('should generate keypair and sign with multiplicative tweak * cofactor', () => {
+    const key = ed448.privateKeyGenerate();
+    const pub = ed448.publicKeyCreate(key);
+    const tweak_ = ed448.scalarGenerate();
+    const msg = random.randomBytes(57);
+    const tweak = ed448.scalarTweakMul(tweak_, ed448.cofactor);
+    const child = ed448.publicKeyTweakMul(pub, tweak);
+    const child_ = ed448.publicKeyTweakMul(
+      ed448.publicKeyTweakMul(pub, tweak_),
+      ed448.cofactor);
+
+    assert.bufferEqual(child, child_);
+    assert(ed448.scalarVerify(tweak_));
+    assert.notBufferEqual(child, pub);
+
+    const sig = ed448.signTweakMul(msg, key, tweak);
+
+    const childPriv = ed448.scalarTweakMul(ed448.privateKeyConvert(key), tweak);
+    const childPub = ed448.publicKeyFromScalar(childPriv);
+    assert.bufferEqual(childPub, child);
+
+    assert(ed448.verify(msg, sig, child));
+
+    const sig2 = ed448.signWithScalar(msg, childPriv, msg);
+    assert(ed448.verify(msg, sig2, child));
+  });
+
   it('should convert to montgomery (vector)', () => {
     const pub = Buffer.from(''
       + '3167a5f7ce692bcf3af9094f792c'
