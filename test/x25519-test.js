@@ -166,7 +166,7 @@ describe('X25519', function() {
     });
   }
 
-  it('should do scalar base multiplication', () => {
+  it('should do scalar base multiplication (edwards)', () => {
     const expect =
       '89161fde887b2b53de549af483940106ecc114d6982daa98256de23bdf77661a';
 
@@ -176,6 +176,20 @@ describe('X25519', function() {
 
     for (let i = 0; i < 200; i++)
       key = x25519.publicKeyCreate(key);
+
+    assert.bufferEqual(key, expect, 'hex');
+  });
+
+  it('should do scalar base multiplication (mont)', () => {
+    const expect =
+      '89161fde887b2b53de549af483940106ecc114d6982daa98256de23bdf77661a';
+
+    let key = Buffer.alloc(32, 0x00);
+
+    key[0] = 1;
+
+    for (let i = 0; i < 200; i++)
+      key = x25519._scalarBaseMul(key);
 
     assert.bufferEqual(key, expect, 'hex');
   });

@@ -104,6 +104,34 @@ describe('X448', function() {
     });
   }
 
+  it('should do scalar base multiplication (edwards)', () => {
+    const expect = '61a50c522f8c9e75eb88cc09a28b23954a63e6409d6d517ffcacf70d'
+                 + '1e10d87cd107cbf6f4375307d10bc2ca7a116733e50d3c4191be7ab1';
+
+    let key = Buffer.alloc(56, 0x00);
+
+    key[0] = 1;
+
+    for (let i = 0; i < 20; i++)
+      key = x448.publicKeyCreate(key);
+
+    assert.bufferEqual(key, expect, 'hex');
+  });
+
+  it('should do scalar base multiplication (mont)', () => {
+    const expect = '61a50c522f8c9e75eb88cc09a28b23954a63e6409d6d517ffcacf70d'
+                 + '1e10d87cd107cbf6f4375307d10bc2ca7a116733e50d3c4191be7ab1';
+
+    let key = Buffer.alloc(56, 0x00);
+
+    key[0] = 1;
+
+    for (let i = 0; i < 20; i++)
+      key = x448._scalarBaseMul(key);
+
+    assert.bufferEqual(key, expect, 'hex');
+  });
+
   it('should test x448 api', () => {
     const alicePriv = x448.privateKeyGenerate();
     const alicePub = x448.publicKeyCreate(alicePriv);
