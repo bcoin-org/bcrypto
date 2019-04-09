@@ -388,11 +388,13 @@ describe('Curves', function() {
     it('should be able to encode/decode a mont curve point', makeMontTest({
       scalar: '6',
       coordinates: {
-        x: '26954ccdc99ebf34f8f1dde5e6bb080685fec73640494c28f9fe0bfa8c794531',
+        // x: '26954ccdc99ebf34f8f1dde5e6bb080685fec73640494c28f9fe0bfa8c794531',
+        x: '6492d9a718abe7bd59cf252f5a04f9c0c5bc9346ddfe8aa8a47b7ae41f712fc1',
         z: '1'
       },
       encoded:
-        '3145798cfa0bfef9284c494036c7fe850608bbe6e5ddf1f834bf9ec9cd4c9526'
+        // '3145798cfa0bfef9284c494036c7fe850608bbe6e5ddf1f834bf9ec9cd4c9526'
+        'c12f711fe47a7ba4a88afedd4693bcc5c0f9045a2f25cf59bde7ab18a7d99264'
     }));
   });
 });
