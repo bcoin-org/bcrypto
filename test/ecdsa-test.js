@@ -175,7 +175,7 @@ describe('ECDSA', function() {
       assert(ec.verifyDER(msg, der, tpub));
     });
 
-    it(`should do multiplicative tweak (${ec.id}`, () => {
+    it(`should do multiplicative tweak (${ec.id})`, () => {
       const priv = ec.privateKeyGenerate();
       const pub = ec.publicKeyCreate(priv);
       const tweak = random.randomBytes(ec.size);
@@ -273,9 +273,8 @@ describe('ECDSA', function() {
         const cs = Buffer.from(c.s, 'hex');
         const sig = Buffer.concat([cr, cs]);
 
-        const desc = ''
-          + `should not fail on "${opt.name}"`
-          + ` and hash ${hash.id} on "${c.message}"`;
+        const desc = `should not fail on "${opt.name}" `
+                   + `and hash ${hash.id} on "${c.message}"`;
 
         it(desc, () => {
           const dgst = hash.digest(msg);
@@ -612,17 +611,14 @@ describe('ECDSA', function() {
 
   // https://github.com/indutny/elliptic/issues/78
   const lax = {
-    msg: ''
-      + 'de17556d2111ef6a964c9c136054870495b005b3942ad7b626'
-      + '28af00293b9aa8',
-    sig: ''
-      + '3045022100a9379b66c22432585cb2f5e1e85736c69cf5fdc9'
-      + 'e1033ad583fc27f0b7c561d802202c7b5d9d92ceca742829ff'
-      + 'be28ba6565faa8f94556cb091cbc39d2f11d45946700',
-    pub: ''
-      + '04650a9a1deb523f636379ec70c29b3e1e832e314dea0f7911'
-      + '60f3dba628f4f509360e525318bf7892af9ffe2f585bf7b264'
-      + 'aa31792744ec1885ce17f3b1ef50f3'
+    msg: 'de17556d2111ef6a964c9c136054870495b005b3942ad7b626'
+       + '28af00293b9aa8',
+    sig: '3045022100a9379b66c22432585cb2f5e1e85736c69cf5fdc9'
+       + 'e1033ad583fc27f0b7c561d802202c7b5d9d92ceca742829ff'
+       + 'be28ba6565faa8f94556cb091cbc39d2f11d45946700',
+    pub: '04650a9a1deb523f636379ec70c29b3e1e832e314dea0f7911'
+       + '60f3dba628f4f509360e525318bf7892af9ffe2f585bf7b264'
+       + 'aa31792744ec1885ce17f3b1ef50f3'
   };
 
   for (const curve of [secp256k1, secp256k1n]) {
@@ -664,14 +660,15 @@ describe('ECDSA', function() {
         'f75c6b18a72fabc0f0b888c3da58e004f0af1fe14f7ca5d8c897fe164925d5e9',
         'hex');
 
-      const sig = Buffer.concat([
-        Buffer.from(
-          'fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364140',
-          'hex'),
-        Buffer.from(
-          '8887321be575c8095f789dd4c743dfe42c1820f9231f98a962b210e3ac2452a3',
-          'hex')
-      ]);
+      const r = Buffer.from(
+        'fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364140',
+        'hex');
+
+      const s = Buffer.from(
+        '8887321be575c8095f789dd4c743dfe42c1820f9231f98a962b210e3ac2452a3',
+        'hex');
+
+      const sig = Buffer.concat([r, s]);
 
       assert.strictEqual(curve.recover(msg, sig, 0), null);
     });
