@@ -1565,6 +1565,9 @@ describe('BN.js', function() {
       it('should reduce numbers mod k256', () => {
         const p = BN._prime('k256');
 
+        if (!p.ireduce)
+          this.skip();
+
         assert.equal(p.ireduce(new BN(0xdead)).toString(16), 'dead');
         assert.equal(p.ireduce(new BN('deadbeef', 16)).toString(16), 'deadbeef');
 
@@ -1670,10 +1673,16 @@ describe('BN.js', function() {
 
     it('K256.split for 512 bits number should return equal numbers', () => {
       const prime = BN._prime('k256');
+
+      if (!prime.split)
+        this.skip();
+
       const input = new BN(1).iushln(512).subn(1);
       assert.equal(input.bitLength(), 512);
+
       const output = new BN(0);
       prime.split(input, output);
+
       assert.equal(input.cmp(output), 0);
     });
 
