@@ -2473,54 +2473,6 @@ describe('BN.js', function() {
       assert(new BN(bea.slice(-7), 'be').eq(p7));
       assert(new BN(lea.slice(0, 7), 'le').eq(p7));
     });
-
-    describe.skip('Benchmarks', () => {
-      it('should bench serialize le', () => {
-        const p = BN._prime('p192').p;
-
-        for (let i = 0; i < 10000000; i++)
-          p.toBuffer('le');
-      });
-
-      it('should bench serialize be', () => {
-        const p = BN._prime('p192').p;
-
-        for (let i = 0; i < 10000000; i++)
-          p.toBuffer('be');
-      });
-
-      it('should bench deserialize le', () => {
-        const p = BN._prime('p192').p;
-        const b = p.toBuffer('le');
-
-        for (let i = 0; i < 10000000; i++)
-          BN.fromBuffer(b, 'le');
-      });
-
-      it('should bench deserialize be', () => {
-        const p = BN._prime('p192').p;
-        const b = p.toBuffer('be');
-
-        for (let i = 0; i < 10000000; i++)
-          BN.fromBuffer(b, 'be');
-      });
-    });
-  });
-
-  describe.skip('Bugs', () => {
-    it('jumbo multo bug', () => {
-      const fs = require('fs');
-      const bug = fs.readFileSync(`${__dirname}/data/jumbo-bug.base36`, 'utf8');
-      const n1 = BigInt(1);
-      const n8 = BigInt(8);
-      const n256 = BigInt(256);
-      const b = new BN(bug, 36);
-      const n = b.toBigInt();
-
-      assert.strictEqual(
-        b.pow(new BN(8)).maskn(256).toString(),
-        ((n ** n8) & ((n1 << n256) - n1)).toString());
-    });
   });
 
   describe('BN.js/Slow DH test', () => {
@@ -2534,7 +2486,7 @@ describe('BN.js', function() {
         const mont = BN.red(new BN(group.prime, 16));
         const priv = new BN(group.priv, 16);
         const multed = base.toRed(mont).redPow(priv).fromRed();
-        const actual = Buffer.from(multed.toArray());
+        const actual = multed.toBuffer();
 
         assert.equal(actual.toString('hex'), group.pub);
       });
