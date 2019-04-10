@@ -552,10 +552,6 @@ describe('BN.js', function() {
       return BN.prototype.mul.apply(x, [y]);
     });
 
-    testMethod('.mulf()', (x, y) => {
-      return BN.prototype.mulf.apply(x, [y]);
-    });
-
     describe('.imul()', () => {
       it('should multiply numbers in-place', () => {
         let a = new BN('abcdef01234567890abcd', 16);
