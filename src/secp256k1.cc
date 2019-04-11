@@ -69,6 +69,7 @@
 #include "secp256k1/src/group_impl.h"
 #include "secp256k1/src/ecmult_const_impl.h"
 #include "secp256k1/src/ecmult_gen_impl.h"
+#include "random/random.h"
 
 #define COMPRESSED_TYPE_INVALID "compressed should be a boolean"
 
@@ -194,15 +195,28 @@
   }                                                                            \
 }
 
-static secp256k1_context* secp256k1ctx;
+static secp256k1_context* secp256k1ctx = NULL;
 
 void
 BSecp256k1::Init(v8::Local<v8::Object> &target) {
   Nan::HandleScope scope;
   v8::Local<v8::Object> obj = Nan::New<v8::Object>();
+  uint8_t seed[32];
 
-  secp256k1ctx = secp256k1_context_create(
-    SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY);
+  // Note: this may not be thread safe.
+  // Probably better to instantiate a new
+  // object with a wrapped context each time.
+  if (secp256k1ctx == NULL) {
+    secp256k1ctx = secp256k1_context_create(
+      SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY);
+
+    assert(secp256k1ctx != NULL);
+
+    // Use blinded multiplication as a final
+    // defense against side-channel attacks.
+    if (bcrypto_random(&seed[0], 32))
+      assert(secp256k1_context_randomize(secp256k1ctx, seed) != 0);
+  }
 
   // secret key
   Nan::Export(obj, "privateKeyVerify", BSecp256k1::privateKeyVerify);
