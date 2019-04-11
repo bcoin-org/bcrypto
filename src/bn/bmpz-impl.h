@@ -207,7 +207,7 @@ bmpz_from_twos(mpz_t ret, const mpz_t a, unsigned long width) {
 
 static int
 bmpz_random_bits(mpz_t ret, unsigned long bits) {
-  unsigned long b = 0;
+  unsigned long total = 0;
   uint8_t out[32];
   int r = 0;
   mpz_t tmp;
@@ -216,18 +216,18 @@ bmpz_random_bits(mpz_t ret, unsigned long bits) {
 
   mpz_set_ui(ret, 0);
 
-  while (b < bits) {
+  while (total < bits) {
     if (!bcrypto_random(&out[0], 32))
       goto fail;
 
     mpz_import(tmp, 32, 1, 1, 0, 0, &out[0]);
     mpz_mul_2exp(ret, ret, 256);
     mpz_ior(ret, ret, tmp);
-    b += 256;
+    total += 256;
   }
 
-  if (b > bits)
-    mpz_fdiv_q_2exp(ret, ret, b - bits);
+  if (total > bits)
+    mpz_fdiv_q_2exp(ret, ret, total - bits);
 
   r = 1;
 fail:
