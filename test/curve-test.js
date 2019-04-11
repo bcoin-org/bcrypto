@@ -48,20 +48,16 @@ describe('Curves', function() {
 
     it('should dbl points on edwards curve using proj coordinates', () => {
       const curve = new EdwardsCurve({
-        p: new BN('97ffffffffffffffffffffffffffffffffffffffffffffffffffffffffff' +
-          'ffffffffffffffffffffffffffffffffff3f', 16, 'le'),
-        q: new BN('19973cfd137ee273272d101b28695e7ce1ee951ef221fbd5ffffffffff' +
-          'ffffffffffffffffffffffffffffffffffff0f', 16, 'le'),
-        r: '8',
+        p: '3fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff97',
+        n: '0fffffffffffffffffffffffffffffffffffffffffffffffd5fb21f21e95eee17c5e69281b102d2773e27e13fd3c9719',
+        h: '8',
         a: '1',
         c: '1',
         // -67254 mod p
-        d: new BN('e1f8feffffffffffffffffffffffffffffffffffffffffffffffffff' +
-          'ffffffffffffffffffffffffffffffffffffff3f', 16, 'le'),
+        d: '3ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffef8e1',
         g: [
-          new BN('0396f77094ccc0eb985310e8bc7d519311846453b8ba232935640b2b0' +
-            '340f868ae208d6ee95bf0e59103b2ead08d6f19', 16, 'le'),
-          new BN('11', 16, 'le')
+          '196f8dd0eab20391e5f05be96e8d20ae68f840032b0b64352923bab85364841193517dbce8105398ebc0cc9470f79603',
+          '11'
         ]
       });
 
@@ -87,18 +83,12 @@ describe('Curves', function() {
 
     it('should be able to find a point given y coordinate for all edwards curves', () => {
       const curve = new EdwardsCurve({
-        p: new BN('f7' +
-          'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff07',
-          16, 'le'),
-        q: new BN('71' +
-          'c966d15fd444893407d3dfc46579f7ffffffffffffffffffffffffffffff01',
-          16, 'le'),
-        r: '4',
+        p: '07fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7',
+        n: '01fffffffffffffffffffffffffffffff77965c4dfd307348944d45fd166c971',
+        h: '4',
         a: '1',
         // -1174 mod p
-        d: new BN('61' +
-          'fbffffffffffffffffffffffffffffffffffffffffffffffffffffffffff07',
-          16, 'le'),
+        d: '07fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffb61',
         c: '1'
       });
 
@@ -130,9 +120,12 @@ describe('Curves', function() {
         ]
       });
 
-      const bytes = new Uint8Array([5, 69, 248, 173, 171, 254, 19, 253, 143, 140, 146, 174, 26, 128, 3, 52, 106, 55, 112, 245, 62, 127, 42, 93, 0, 81, 47, 177, 30, 25, 39, 70]);
+      const bytes = new Uint8Array([
+        5, 69, 248, 173, 171, 254, 19, 253, 143, 140, 146, 174, 26, 128, 3, 52,
+        106, 55, 112, 245, 62, 127, 42, 93, 0, 81, 47, 177, 30, 25, 39, 70
+      ]);
 
-      const y = new BN(bytes, 16, 'le');
+      const y = new BN(bytes, 'le');
       const point = curve.pointFromY(y, true);
       const target = '2cd591ae3789fd62dc420a152002f79973a387eacecadc6a9a00c1a89488c15d';
 
@@ -207,8 +200,7 @@ describe('Curves', function() {
       const g2 = curve.point(g1.getX(), g1.getY()); // not precomputed g
       assert(!g2.precomputed);
 
-      const a = new BN(
-          '6d1229a6b24c2e775c062870ad26bc261051e0198c67203167273c7c62538846', 16);
+      const a = new BN('6d1229a6b24c2e775c062870ad26bc261051e0198c67203167273c7c62538846', 16);
       const p1 = g1.mul(a);
       const p2 = g2.mul(a);
 
@@ -224,10 +216,7 @@ describe('Curves', function() {
       const g2 = curve.point(g1.getX(), g1.getY()); // not precomputed g
       assert(!g2.precomputed);
 
-      const a = new BN(
-          '6d1229a6b24c2e775c062870ad26bc26' +
-              '1051e0198c67203167273c7c6253884612345678',
-          16);
+      const a = new BN('6d1229a6b24c2e775c062870ad26bc261051e0198c67203167273c7c6253884612345678', 16);
 
       const p1 = g1.mul(a);
       const p2 = g2.mul(a);
@@ -238,11 +227,8 @@ describe('Curves', function() {
     it('should not fail on secp256k1 regression', () => {
       const curve = secp256k1;
 
-      const k1 = new BN(
-          '32efeba414cd0c830aed727749e816a01c471831536fd2fce28c56b54f5a3bb1', 16);
-
-      const k2 = new BN(
-          '5f2e49b5d64e53f9811545434706cde4de528af97bfd49fde1f6cf792ee37a8c', 16);
+      const k1 = new BN('32efeba414cd0c830aed727749e816a01c471831536fd2fce28c56b54f5a3bb1', 16);
+      const k2 = new BN('5f2e49b5d64e53f9811545434706cde4de528af97bfd49fde1f6cf792ee37a8c', 16);
 
       let p1 = curve.g.mul(k1);
       let p2 = curve.g.mul(k2);
