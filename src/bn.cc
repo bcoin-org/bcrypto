@@ -1543,7 +1543,7 @@ NAN_METHOD(BBN::ToNumber) {
   if (mpz_sizeinbase(a->n, 2) > 53)
     return Nan::ThrowRangeError("Number can only safely store up to 53 bits.");
 
-  double r = (double)mpz_get_si(a->n);
+  double r = mpz_get_d(a->n);
 
   info.GetReturnValue().Set(Nan::New<v8::Number>(r));
 }
