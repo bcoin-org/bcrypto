@@ -1,3 +1,58 @@
+/*!
+ * Parts of this software are based on cryptocoinjs/secp256k1-node:
+ *
+ * https://github.com/cryptocoinjs/secp256k1-node
+ *
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2014-2016 secp256k1-node contributors
+ *
+ * Parts of this software are based on bn.js, elliptic, hash.js
+ * Copyright (c) 2014-2016 Fedor Indutny
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to
+ * deal in the Software without restriction, including without limitation the
+ * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+ * sell copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ *
+ * Parts of this software are based on bitcoin-core/secp256k1:
+ *
+ * https://github.com/bitcoin-core/secp256k1
+ *
+ * Copyright (c) 2013 Pieter Wuille
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to
+ * deal in the Software without restriction, including without limitation the
+ * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+ * sell copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ */
+
 #include <node.h>
 #include <nan.h>
 #include <memory>
@@ -178,8 +233,7 @@ BSecp256k1::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "recover", BSecp256k1::recover);
 
   // ecdh
-  Nan::Export(obj, "ecdh", BSecp256k1::ecdh);
-  Nan::Export(obj, "ecdhUnsafe", BSecp256k1::ecdhUnsafe);
+  Nan::Export(obj, "derive", BSecp256k1::derive);
 
   // schnorr
   Nan::Export(obj, "schnorrSign", BSecp256k1::schnorrSign);
@@ -561,31 +615,6 @@ NAN_METHOD(BSecp256k1::signatureImportLax) {
   info.GetReturnValue().Set(COPY_BUFFER(&output[0], 64));
 }
 
-v8::Local<v8::Function> noncefn_callback;
-int nonce_function_custom(unsigned char *nonce32, const unsigned char *msg32, const unsigned char *key32, const unsigned char *algo16, void *data, unsigned int counter) {
-  v8::Local<v8::Value> argv[] = {
-    COPY_BUFFER(msg32, 32),
-    COPY_BUFFER(key32, 32),
-    algo16 == NULL ? v8::Local<v8::Value>(Nan::Null()) : v8::Local<v8::Value>(COPY_BUFFER(algo16, 16)),
-    data == NULL ? v8::Local<v8::Value>(Nan::Null()) : v8::Local<v8::Value>(COPY_BUFFER(data, 32)),
-    Nan::New(counter)
-  };
-
-#if (NODE_MODULE_VERSION > NODE_0_10_MODULE_VERSION)
-  v8::Isolate *isolate = v8::Isolate::GetCurrent();
-  v8::Local<v8::Value> result = noncefn_callback->Call(isolate->GetCurrentContext()->Global(), 5, argv);
-#else
-  v8::Local<v8::Value> result = noncefn_callback->Call(v8::Context::GetCurrent()->Global(), 5, argv);
-#endif
-
-  if (!node::Buffer::HasInstance(result) || node::Buffer::Length(result) != 32) {
-    return 0;
-  }
-
-  memcpy(nonce32, node::Buffer::Data(result), 32);
-  return 1;
-}
-
 NAN_METHOD(BSecp256k1::sign) {
   Nan::HandleScope scope;
 
@@ -601,23 +630,6 @@ NAN_METHOD(BSecp256k1::sign) {
 
   secp256k1_nonce_function noncefn = secp256k1_nonce_function_rfc6979;
   void* data = NULL;
-  v8::Local<v8::Object> options = info[2].As<v8::Object>();
-  if (!options->IsUndefined()) {
-    CHECK_TYPE_OBJECT(options, OPTIONS_TYPE_INVALID);
-
-    v8::Local<v8::Value> data_value = options->Get(Nan::New<v8::String>("data").ToLocalChecked());
-    if (!data_value->IsUndefined()) {
-      CHECK_TYPE_BUFFER(data_value, OPTIONS_DATA_TYPE_INVALID);
-      CHECK_BUFFER_LENGTH(data_value, 32, OPTIONS_DATA_LENGTH_INVALID);
-      data = (void*) node::Buffer::Data(data_value);
-    }
-
-    noncefn_callback = v8::Local<v8::Function>::Cast(options->Get(Nan::New<v8::String>("noncefn").ToLocalChecked()));
-    if (!noncefn_callback->IsUndefined()) {
-      CHECK_TYPE_FUNCTION(noncefn_callback, OPTIONS_NONCEFN_TYPE_INVALID);
-      noncefn = nonce_function_custom;
-    }
-  }
 
   secp256k1_ecdsa_recoverable_signature sig;
   if (secp256k1_ecdsa_sign_recoverable(secp256k1ctx, &sig, msg32, private_key, noncefn, data) == 0) {
@@ -775,60 +787,7 @@ void secp256k1_pubkey_save(secp256k1_pubkey* pubkey, secp256k1_ge* ge) {
 }
 
 // bindings
-NAN_METHOD(BSecp256k1::ecdh) {
-  Nan::HandleScope scope;
-
-  v8::Local<v8::Object> pubkey_buffer = info[0].As<v8::Object>();
-  CHECK_TYPE_BUFFER(pubkey_buffer, EC_PUBLIC_KEY_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH2(pubkey_buffer, 33, 65, EC_PUBLIC_KEY_LENGTH_INVALID);
-  const unsigned char* public_key_input = (unsigned char*) node::Buffer::Data(pubkey_buffer);
-  size_t public_key_input_length = node::Buffer::Length(pubkey_buffer);
-
-  v8::Local<v8::Object> private_key_buffer = info[1].As<v8::Object>();
-  CHECK_TYPE_BUFFER(private_key_buffer, EC_PRIVATE_KEY_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH(private_key_buffer, 32, EC_PRIVATE_KEY_LENGTH_INVALID);
-  const unsigned char* private_key = (const unsigned char*) node::Buffer::Data(private_key_buffer);
-
-  secp256k1_pubkey public_key;
-  if (secp256k1_ec_pubkey_parse(secp256k1ctx, &public_key, public_key_input, public_key_input_length) == 0) {
-    return Nan::ThrowError(EC_PUBLIC_KEY_PARSE_FAIL);
-  }
-
-  secp256k1_scalar s;
-  int overflow = 0;
-  secp256k1_scalar_set_b32(&s, private_key, &overflow);
-  if (overflow || secp256k1_scalar_is_zero(&s)) {
-    secp256k1_scalar_clear(&s);
-    return Nan::ThrowError(ECDH_FAIL);
-  }
-
-  secp256k1_ge pt;
-  secp256k1_gej res;
-  unsigned char y[1];
-  unsigned char x[32];
-  secp256k1_sha256_t sha;
-  unsigned char output[32];
-
-  secp256k1_pubkey_load(secp256k1ctx, &pt, &public_key);
-  secp256k1_ecmult_const(&res, &pt, &s);
-  secp256k1_scalar_clear(&s);
-
-  secp256k1_ge_set_gej(&pt, &res);
-  secp256k1_fe_normalize(&pt.y);
-  secp256k1_fe_normalize(&pt.x);
-
-  y[0] = 0x02 | secp256k1_fe_is_odd(&pt.y);
-  secp256k1_fe_get_b32(&x[0], &pt.x);
-
-  secp256k1_sha256_initialize(&sha);
-  secp256k1_sha256_write(&sha, y, sizeof(y));
-  secp256k1_sha256_write(&sha, x, sizeof(x));
-  secp256k1_sha256_finalize(&sha, &output[0]);
-
-  info.GetReturnValue().Set(COPY_BUFFER(&output[0], 32));
-}
-
-NAN_METHOD(BSecp256k1::ecdhUnsafe) {
+NAN_METHOD(BSecp256k1::derive) {
   Nan::HandleScope scope;
 
   v8::Local<v8::Object> pubkey_buffer = info[0].As<v8::Object>();
@@ -889,23 +848,6 @@ NAN_METHOD(BSecp256k1::schnorrSign) {
 
   secp256k1_nonce_function noncefn = NULL;
   void* data = NULL;
-  v8::Local<v8::Object> options = info[2].As<v8::Object>();
-  if (!options->IsUndefined()) {
-    CHECK_TYPE_OBJECT(options, OPTIONS_TYPE_INVALID);
-
-    v8::Local<v8::Value> data_value = options->Get(Nan::New<v8::String>("data").ToLocalChecked());
-    if (!data_value->IsUndefined()) {
-      CHECK_TYPE_BUFFER(data_value, OPTIONS_DATA_TYPE_INVALID);
-      CHECK_BUFFER_LENGTH(data_value, 32, OPTIONS_DATA_LENGTH_INVALID);
-      data = (void*) node::Buffer::Data(data_value);
-    }
-
-    noncefn_callback = v8::Local<v8::Function>::Cast(options->Get(Nan::New<v8::String>("noncefn").ToLocalChecked()));
-    if (!noncefn_callback->IsUndefined()) {
-      CHECK_TYPE_FUNCTION(noncefn_callback, OPTIONS_NONCEFN_TYPE_INVALID);
-      noncefn = nonce_function_custom;
-    }
-  }
 
   secp256k1_schnorrsig sig;
   if (secp256k1_schnorrsig_sign(secp256k1ctx, &sig, NULL, msg32, private_key, noncefn, data) == 0) {

@@ -33,8 +33,7 @@ private:
   static NAN_METHOD(verify);
   static NAN_METHOD(recover);
 
-  static NAN_METHOD(ecdh);
-  static NAN_METHOD(ecdhUnsafe);
+  static NAN_METHOD(derive);
 
   static NAN_METHOD(schnorrSign);
   static NAN_METHOD(schnorrVerify);
