@@ -120,7 +120,7 @@
         ["OS=='win'", {
           "with_gmp%": "false"
         }, {
-          "with_gmp%": "<!(utils/has_lib.sh gmpxx gmp)"
+          "with_gmp%": "<!(utils/has_lib.sh gmp)"
         }]
       ]
     },
@@ -180,7 +180,6 @@
           "USE_SCALAR_INV_NUM=1"
         ],
         "libraries": [
-          "-lgmpxx",
           "-lgmp"
         ]
       }, {
