@@ -924,6 +924,26 @@ describe('BN.js', function() {
       });
     });
 
+    describe('.finvm()', () => {
+      it('should invert relatively-prime numbers', () => {
+        const p = new BN(257);
+
+        let a = new BN(3);
+        let b = a.finvm(p);
+
+        assert.equal(a.mul(b).mod(p).toString(16), '1');
+
+        const p192 = new BN(
+          'fffffffffffffffffffffffffffffffeffffffffffffffff',
+          16);
+
+        a = new BN('deadbeef', 16);
+        b = a.finvm(p192);
+
+        assert.equal(a.mul(b).mod(p192).toString(16), '1');
+      });
+    });
+
     describe('.gcd()', () => {
       it('should return GCD', () => {
         assert.equal(new BN(3).gcd(new BN(2)).toString(10), '1');

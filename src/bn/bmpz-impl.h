@@ -122,6 +122,24 @@ bmpz_powm_si(mpz_t ret, const mpz_t a, long b, const mpz_t c) {
   return r;
 }
 
+static int
+bmpz_finvm(mpz_t ret, const mpz_t a, const mpz_t b) {
+  int r = 0;
+  mpz_t e;
+
+  mpz_init(e);
+  mpz_sub_ui(e, b, 2);
+
+  // Invert using fermat's little theorem.
+  if (!bmpz_powm(ret, a, e, b))
+    goto fail;
+
+  r = 1;
+fail:
+  mpz_clear(e);
+  return r;
+}
+
 static void
 bmpz_and_si(mpz_t ret, const mpz_t a, long b) {
   mpz_t x;

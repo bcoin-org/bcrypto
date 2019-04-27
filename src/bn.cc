@@ -199,6 +199,7 @@ BBN::Init(v8::Local<v8::Object> &target) {
   Nan::SetPrototypeMethod(tpl, "igcd", BBN::Igcd);
   Nan::SetPrototypeMethod(tpl, "egcd", BBN::Egcd);
   Nan::SetPrototypeMethod(tpl, "iinvm", BBN::Iinvm);
+  Nan::SetPrototypeMethod(tpl, "ifinvm", BBN::Ifinvm);
   Nan::SetPrototypeMethod(tpl, "ipowm", BBN::Ipowm);
   Nan::SetPrototypeMethod(tpl, "ipowmn", BBN::Ipowmn);
   Nan::SetPrototypeMethod(tpl, "isqrtp", BBN::Isqrtp);
@@ -1260,6 +1261,26 @@ NAN_METHOD(BBN::Iinvm) {
     return Nan::ThrowRangeError(RANGE_ERROR(iinvm));
 
   if (mpz_invert(a->n, a->n, b->n) == 0)
+    return Nan::ThrowError("Not invertible.");
+
+  info.GetReturnValue().Set(info.Holder());
+}
+
+NAN_METHOD(BBN::Ifinvm) {
+  BBN *a = ObjectWrap::Unwrap<BBN>(info.Holder());
+
+  if (info.Length() < 1)
+    return Nan::ThrowError(ARG_ERROR(ifinvm, 1));
+
+  if (!BBN::HasInstance(info[0]))
+    return Nan::ThrowTypeError(TYPE_ERROR(num, bignum));
+
+  BBN *b = ObjectWrap::Unwrap<BBN>(info[0].As<v8::Object>());
+
+  if (mpz_sgn(b->n) <= 0)
+    return Nan::ThrowRangeError(RANGE_ERROR(ifinvm));
+
+  if (!bmpz_finvm(a->n, a->n, b->n))
     return Nan::ThrowError("Not invertible.");
 
   info.GetReturnValue().Set(info.Holder());
