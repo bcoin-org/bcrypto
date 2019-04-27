@@ -184,9 +184,9 @@ describe('Curves', function() {
         '5363ad4cc05c30e0a5261c028812645a122e22ea20816678df02967c1b23bd72');
 
       const k = new BN('1234567890123456789012345678901234', 16);
-      const split = curve._endoSplit(k);
+      const [k1, k2] = curve._endoSplit(k);
 
-      const testK = split.k1.add(split.k2.mul(curve.endo.lambda)).umod(curve.n);
+      const testK = k1.add(k2.mul(curve.endo.lambda)).umod(curve.n);
 
       assert.equal(testK.toString(16), k.toString(16));
     });
