@@ -45,6 +45,31 @@ describe('EdDSA', function() {
       pub);
   });
 
+  it('should allow points at infinity', () => {
+    // Fun fact about edwards curves: points
+    // at infinity can actually be serialized.
+    const msg = Buffer.from(
+      '03d95e0b801ab94cfe723bc5243284a32b19a629b9cb36a8a46fcc000b6e7191',
+      'hex');
+
+    const sig = Buffer.from(''
+      + '0100000000000000000000000000000000000000000000000000000000000000'
+      + '0000000000000000000000000000000000000000000000000000000000000000'
+      , 'hex');
+
+    const pub = Buffer.from(
+      'b85ea579c036d355451fc523b9e760a9a0bc21bbeda4fb86df90acdbcd39b410',
+      'hex');
+
+    assert(!ed25519.verify(msg, sig, pub));
+
+    const inf = Buffer.from(
+      '0100000000000000000000000000000000000000000000000000000000000000',
+      'hex');
+
+    assert(ed25519.verify(msg, sig, inf));
+  });
+
   it('should do ECDH', () => {
     const alicePriv = ed25519.privateKeyGenerate();
     const alicePub = ed25519.publicKeyCreate(alicePriv);
