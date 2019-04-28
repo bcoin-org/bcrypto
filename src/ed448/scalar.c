@@ -196,6 +196,12 @@ void bcrypto_curve448_scalar_sub(bcrypto_curve448_scalar_t out, const bcrypto_cu
   sc_subx(out, a->limb, b, sc_p, 0);
 }
 
+void bcrypto_curve448_scalar_negate(bcrypto_curve448_scalar_t out, const bcrypto_curve448_scalar_t a)
+{
+  if (!bcrypto_curve448_scalar_eq(a, bcrypto_curve448_scalar_zero))
+    bcrypto_curve448_scalar_sub(out, sc_p, a);
+}
+
 void bcrypto_curve448_scalar_add(bcrypto_curve448_scalar_t out, const bcrypto_curve448_scalar_t a,
              const bcrypto_curve448_scalar_t b)
 {

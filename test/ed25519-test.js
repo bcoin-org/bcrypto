@@ -178,6 +178,14 @@ describe('EdDSA', function() {
 
     const sig2 = ed25519.signWithScalar(msg, childPriv, msg);
     assert(ed25519.verify(msg, sig2, child));
+
+    const real = ed25519.scalarTweakAdd(ed25519.privateKeyConvert(key), Buffer.alloc(32, 0x00));
+    const parent = ed25519.scalarTweakAdd(childPriv, ed25519.scalarNegate(tweak));
+    assert.bufferEqual(parent, real);
+
+    const tweakPub = ed25519.publicKeyFromScalar(tweak);
+    const parentPub = ed25519.publicKeyAdd(childPub, ed25519.publicKeyNegate(tweakPub));
+    assert.bufferEqual(parentPub, pub);
   });
 
   it('should generate keypair and sign with additive tweak (vector)', () => {
@@ -235,6 +243,10 @@ describe('EdDSA', function() {
 
     const sig2 = ed25519.signWithScalar(msg, childPriv, msg);
     assert(ed25519.verify(msg, sig2, child));
+
+    const real = ed25519.scalarTweakAdd(ed25519.privateKeyConvert(key), Buffer.alloc(32, 0x00));
+    const parent = ed25519.scalarTweakMul(childPriv, ed25519.scalarInverse(tweak));
+    assert.bufferEqual(parent, real);
   });
 
   it('should generate keypair and sign with multiplicative tweak (vector)', () => {

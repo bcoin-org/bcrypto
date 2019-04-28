@@ -90,6 +90,7 @@
 #define EC_PUBLIC_KEY_TWEAK_ADD_FAIL "tweak out of range or resulting public key is invalid"
 #define EC_PUBLIC_KEY_TWEAK_MUL_FAIL "tweak out of range"
 #define EC_PUBLIC_KEY_COMBINE_FAIL "the sum of the public keys is not valid"
+#define EC_PUBLIC_KEY_NEGATE_FAIL "public key negation failed"
 
 #define ECDH_FAIL "scalar was invalid (zero or overflow)"
 
@@ -223,7 +224,7 @@ BSecp256k1::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "privateKeyExport", BSecp256k1::privateKeyExport);
   Nan::Export(obj, "privateKeyImport", BSecp256k1::privateKeyImport);
   Nan::Export(obj, "privateKeyNegate", BSecp256k1::privateKeyNegate);
-  Nan::Export(obj, "privateKeyModInverse", BSecp256k1::privateKeyModInverse);
+  Nan::Export(obj, "privateKeyInverse", BSecp256k1::privateKeyInverse);
   Nan::Export(obj, "privateKeyTweakAdd", BSecp256k1::privateKeyTweakAdd);
   Nan::Export(obj, "privateKeyTweakMul", BSecp256k1::privateKeyTweakMul);
 
@@ -234,6 +235,7 @@ BSecp256k1::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "publicKeyTweakAdd", BSecp256k1::publicKeyTweakAdd);
   Nan::Export(obj, "publicKeyTweakMul", BSecp256k1::publicKeyTweakMul);
   Nan::Export(obj, "publicKeyCombine", BSecp256k1::publicKeyCombine);
+  Nan::Export(obj, "publicKeyNegate", BSecp256k1::publicKeyNegate);
 
   // signature
   Nan::Export(obj, "signatureNormalize", BSecp256k1::signatureNormalize);
@@ -322,7 +324,7 @@ NAN_METHOD(BSecp256k1::privateKeyNegate) {
   info.GetReturnValue().Set(COPY_BUFFER(&private_key[0], 32));
 }
 
-NAN_METHOD(BSecp256k1::privateKeyModInverse) {
+NAN_METHOD(BSecp256k1::privateKeyInverse) {
   Nan::HandleScope scope;
 
   v8::Local<v8::Object> private_key_buffer = info[0].As<v8::Object>();
@@ -540,6 +542,33 @@ NAN_METHOD(BSecp256k1::publicKeyCombine) {
   secp256k1_pubkey public_key;
   if (secp256k1_ec_pubkey_combine(secp256k1ctx, &public_key, ins.get(), input_buffers->Length()) == 0) {
     return Nan::ThrowError(EC_PUBLIC_KEY_COMBINE_FAIL);
+  }
+
+  unsigned char output[65];
+  size_t output_length = 65;
+  secp256k1_ec_pubkey_serialize(secp256k1ctx, &output[0], &output_length, &public_key, flags);
+  info.GetReturnValue().Set(COPY_BUFFER(&output[0], output_length));
+}
+
+NAN_METHOD(BSecp256k1::publicKeyNegate) {
+  Nan::HandleScope scope;
+
+  v8::Local<v8::Object> input_buffer = info[0].As<v8::Object>();
+  CHECK_TYPE_BUFFER(input_buffer, EC_PUBLIC_KEY_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH2(input_buffer, 33, 65, EC_PUBLIC_KEY_LENGTH_INVALID);
+  const unsigned char* input = (unsigned char*) node::Buffer::Data(input_buffer);
+  size_t input_length = node::Buffer::Length(input_buffer);
+
+  unsigned int flags = SECP256K1_EC_COMPRESSED;
+  UPDATE_COMPRESSED_VALUE(flags, info[1], SECP256K1_EC_COMPRESSED, SECP256K1_EC_UNCOMPRESSED);
+
+  secp256k1_pubkey public_key;
+  if (secp256k1_ec_pubkey_parse(secp256k1ctx, &public_key, input, input_length) == 0) {
+    return Nan::ThrowError(EC_PUBLIC_KEY_PARSE_FAIL);
+  }
+
+  if (secp256k1_ec_pubkey_negate(secp256k1ctx, &public_key) == 0) {
+    return Nan::ThrowError(EC_PUBLIC_KEY_NEGATE_FAIL);
   }
 
   unsigned char output[65];

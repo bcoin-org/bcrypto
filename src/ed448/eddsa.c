@@ -130,6 +130,39 @@ bcrypto_c448_error_t bcrypto_c448_ed448_scalar_tweak_mul(
   return BCRYPTO_C448_SUCCESS;
 }
 
+bcrypto_c448_error_t bcrypto_c448_ed448_scalar_negate(
+            uint8_t out[BCRYPTO_C448_SCALAR_BYTES],
+            const uint8_t scalar[BCRYPTO_C448_SCALAR_BYTES]) {
+  bcrypto_curve448_scalar_t scalar_scalar;
+
+  bcrypto_curve448_scalar_decode(scalar_scalar, &scalar[0]);
+
+  bcrypto_curve448_scalar_negate(scalar_scalar, scalar_scalar);
+  bcrypto_curve448_scalar_encode(out, scalar_scalar);
+
+  bcrypto_curve448_scalar_destroy(scalar_scalar);
+
+  return BCRYPTO_C448_SUCCESS;
+}
+
+bcrypto_c448_error_t bcrypto_c448_ed448_scalar_inverse(
+            uint8_t out[BCRYPTO_C448_SCALAR_BYTES],
+            const uint8_t scalar[BCRYPTO_C448_SCALAR_BYTES]) {
+  bcrypto_curve448_scalar_t scalar_scalar;
+
+  bcrypto_curve448_scalar_decode(scalar_scalar, &scalar[0]);
+
+  bcrypto_c448_error_t error =
+    bcrypto_curve448_scalar_invert(scalar_scalar, scalar_scalar);
+
+  if (error == BCRYPTO_C448_SUCCESS)
+    bcrypto_curve448_scalar_encode(out, scalar_scalar);
+
+  bcrypto_curve448_scalar_destroy(scalar_scalar);
+
+  return error;
+}
+
 bcrypto_c448_error_t bcrypto_c448_ed448_public_key_tweak_add(
             uint8_t out[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
             const uint8_t pubkey[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
@@ -187,6 +220,70 @@ bcrypto_c448_error_t bcrypto_c448_ed448_public_key_tweak_mul(
   bcrypto_curve448_point_mul_by_ratio_and_encode_like_eddsa(out, pk_point);
 
   bcrypto_curve448_scalar_destroy(tweak_scalar);
+  bcrypto_curve448_point_destroy(pk_point);
+
+  return BCRYPTO_C448_SUCCESS;
+}
+
+bcrypto_c448_error_t bcrypto_c448_ed448_public_key_add(
+            uint8_t out[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
+            const uint8_t pubkey1[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
+            const uint8_t pubkey2[BCRYPTO_EDDSA_448_PUBLIC_BYTES]) {
+  bcrypto_curve448_point_t pk1_point, pk2_point;
+
+  bcrypto_c448_error_t error1 =
+    bcrypto_curve448_point_decode_like_eddsa_and_mul_by_ratio(pk1_point, pubkey1);
+
+  if (error1 != BCRYPTO_C448_SUCCESS)
+    return error1;
+
+  bcrypto_c448_error_t error2 =
+    bcrypto_curve448_point_decode_like_eddsa_and_mul_by_ratio(pk2_point, pubkey2);
+
+  if (error2 != BCRYPTO_C448_SUCCESS) {
+    bcrypto_curve448_point_destroy(pk1_point);
+    return error2;
+  }
+
+  bcrypto_curve448_point_add(pk1_point, pk1_point, pk2_point);
+
+  // We have to divide the new point by the ratio due to decaf's encoding.
+  bcrypto_curve448_scalar_t ratio_scalar = {{{BCRYPTO_C448_EDDSA_ENCODE_RATIO}}};
+  bcrypto_curve448_scalar_invert(ratio_scalar, ratio_scalar);
+  bcrypto_curve448_point_t ratio_point;
+  bcrypto_curve448_precomputed_scalarmul(ratio_point, bcrypto_curve448_precomputed_base, ratio_scalar);
+  bcrypto_curve448_point_scalarmul(pk1_point, pk1_point, ratio_scalar);
+
+  bcrypto_curve448_point_mul_by_ratio_and_encode_like_eddsa(out, pk1_point);
+
+  bcrypto_curve448_point_destroy(pk1_point);
+  bcrypto_curve448_point_destroy(pk2_point);
+
+  return BCRYPTO_C448_SUCCESS;
+}
+
+bcrypto_c448_error_t bcrypto_c448_ed448_public_key_negate(
+            uint8_t out[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
+            const uint8_t pubkey[BCRYPTO_EDDSA_448_PUBLIC_BYTES]) {
+  bcrypto_curve448_point_t pk_point;
+
+  bcrypto_c448_error_t error =
+    bcrypto_curve448_point_decode_like_eddsa_and_mul_by_ratio(pk_point, pubkey);
+
+  if (error != BCRYPTO_C448_SUCCESS)
+    return error;
+
+  bcrypto_curve448_point_negate(pk_point, pk_point);
+
+  // We have to divide the new point by the ratio due to decaf's encoding.
+  bcrypto_curve448_scalar_t ratio_scalar = {{{BCRYPTO_C448_EDDSA_ENCODE_RATIO}}};
+  bcrypto_curve448_scalar_invert(ratio_scalar, ratio_scalar);
+  bcrypto_curve448_point_t ratio_point;
+  bcrypto_curve448_precomputed_scalarmul(ratio_point, bcrypto_curve448_precomputed_base, ratio_scalar);
+  bcrypto_curve448_point_scalarmul(pk_point, pk_point, ratio_scalar);
+
+  bcrypto_curve448_point_mul_by_ratio_and_encode_like_eddsa(out, pk_point);
+
   bcrypto_curve448_point_destroy(pk_point);
 
   return BCRYPTO_C448_SUCCESS;

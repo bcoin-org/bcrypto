@@ -173,6 +173,13 @@ describe('ECDSA', function() {
 
       const der = ec.signDER(msg, tpriv);
       assert(ec.verifyDER(msg, der, tpub));
+
+      const parent = ec.privateKeyTweakAdd(tpriv, ec.privateKeyNegate(tweak));
+      assert.bufferEqual(parent, priv);
+
+      const tweakPub = ec.publicKeyCreate(tweak);
+      const parentPub = ec.publicKeyAdd(tpub, ec.publicKeyNegate(tweakPub));
+      assert.bufferEqual(parentPub, pub);
     });
 
     it(`should do multiplicative tweak (${ec.id})`, () => {
@@ -195,6 +202,9 @@ describe('ECDSA', function() {
 
       const der = ec.signDER(msg, tpriv);
       assert(ec.verifyDER(msg, der, tpub));
+
+      const parent = ec.privateKeyTweakMul(tpriv, ec.privateKeyInverse(tweak));
+      assert.bufferEqual(parent, priv);
     });
 
     it(`should do ECDH (${ec.id})`, () => {

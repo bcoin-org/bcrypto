@@ -658,6 +658,9 @@ bcrypto_ecdsa_privkey_tweak_add(
   if (!priv_bn)
     goto fail;
 
+  if (BN_is_zero(priv_bn) || BN_ucmp(priv_bn, order_bn) >= 0)
+    goto fail;
+
   tweak_bn = BN_bin2bn(tweak, tweak_len, NULL);
 
   if (!tweak_bn)
@@ -757,18 +760,21 @@ bcrypto_ecdsa_privkey_tweak_mul(
   if (!priv_bn)
     goto fail;
 
+  if (BN_is_zero(priv_bn) || BN_ucmp(priv_bn, order_bn) >= 0)
+    goto fail;
+
   tweak_bn = BN_bin2bn(tweak, tweak_len, NULL);
 
   if (!tweak_bn)
     goto fail;
 
-  if (BN_ucmp(tweak_bn, order_bn) >= 0)
-    goto fail;
-
-  if (BN_is_zero(tweak_bn))
+  if (BN_is_zero(tweak_bn) || BN_ucmp(tweak_bn, order_bn) >= 0)
     goto fail;
 
   if (!BN_mod_mul(priv_bn, priv_bn, tweak_bn, order_bn, ctx))
+    goto fail;
+
+  if (BN_is_zero(priv_bn))
     goto fail;
 
   size_t size = bcrypto_ecdsa_size(type);
@@ -802,6 +808,163 @@ fail:
 
   if (tweak_bn)
     BN_clear_free(tweak_bn);
+
+  if (ctx)
+    BN_CTX_free(ctx);
+
+  if (npriv_buf)
+    free(npriv_buf);
+
+  return false;
+}
+
+bool
+bcrypto_ecdsa_privkey_negate(
+  const char *name,
+  const uint8_t *priv,
+  size_t priv_len,
+  uint8_t **npriv,
+  size_t *npriv_len
+) {
+  assert(npriv && npriv_len);
+
+  BIGNUM *order_bn = NULL;
+  BIGNUM *priv_bn = NULL;
+  uint8_t *npriv_buf = NULL;
+
+  int type = bcrypto_ecdsa_curve(name);
+
+  if (type == -1)
+    goto fail;
+
+  if (!bcrypto_ecdsa_valid_scalar(type, priv, priv_len))
+    goto fail;
+
+  order_bn = bcrypto_ecdsa_order(type);
+
+  if (!order_bn)
+    goto fail;
+
+  priv_bn = BN_bin2bn(priv, priv_len, NULL);
+
+  if (!priv_bn)
+    goto fail;
+
+  if (BN_ucmp(priv_bn, order_bn) >= 0)
+    goto fail;
+
+  if (!BN_is_zero(priv_bn)) {
+    if (!BN_sub(priv_bn, order_bn, priv_bn))
+      goto fail;
+  }
+
+  size_t size = bcrypto_ecdsa_size(type);
+
+  assert(size != 0);
+  assert((size_t)BN_num_bytes(priv_bn) <= size);
+
+  npriv_buf = malloc(size);
+
+  if (!npriv_buf)
+    goto fail;
+
+  assert(BN_bn2binpad(priv_bn, npriv_buf, size) > 0);
+
+  BN_free(order_bn);
+  BN_clear_free(priv_bn);
+
+  *npriv = npriv_buf;
+  *npriv_len = size;
+
+  return true;
+
+fail:
+  if (order_bn)
+    BN_free(order_bn);
+
+  if (priv_bn)
+    BN_clear_free(priv_bn);
+
+  if (npriv_buf)
+    free(npriv_buf);
+
+  return false;
+}
+
+bool
+bcrypto_ecdsa_privkey_inverse(
+  const char *name,
+  const uint8_t *priv,
+  size_t priv_len,
+  uint8_t **npriv,
+  size_t *npriv_len
+) {
+  assert(npriv && npriv_len);
+
+  BN_CTX *ctx = NULL;
+  BIGNUM *order_bn = NULL;
+  BIGNUM *priv_bn = NULL;
+  uint8_t *npriv_buf = NULL;
+
+  int type = bcrypto_ecdsa_curve(name);
+
+  if (type == -1)
+    goto fail;
+
+  if (!bcrypto_ecdsa_valid_scalar(type, priv, priv_len))
+    goto fail;
+
+  ctx = BN_CTX_new();
+
+  if (!ctx)
+    goto fail;
+
+  order_bn = bcrypto_ecdsa_order(type);
+
+  if (!order_bn)
+    goto fail;
+
+  priv_bn = BN_bin2bn(priv, priv_len, NULL);
+
+  if (!priv_bn)
+    goto fail;
+
+  if (BN_is_zero(priv_bn) || BN_ucmp(priv_bn, order_bn) >= 0)
+    goto fail;
+
+  if (!BN_mod_inverse(priv_bn, priv_bn, order_bn, ctx))
+    goto fail;
+
+  if (BN_is_zero(priv_bn))
+    goto fail;
+
+  size_t size = bcrypto_ecdsa_size(type);
+
+  assert(size != 0);
+  assert((size_t)BN_num_bytes(priv_bn) <= size);
+
+  npriv_buf = malloc(size);
+
+  if (!npriv_buf)
+    goto fail;
+
+  assert(BN_bn2binpad(priv_bn, npriv_buf, size) > 0);
+
+  BN_free(order_bn);
+  BN_clear_free(priv_bn);
+  BN_CTX_free(ctx);
+
+  *npriv = npriv_buf;
+  *npriv_len = size;
+
+  return true;
+
+fail:
+  if (order_bn)
+    BN_free(order_bn);
+
+  if (priv_bn)
+    BN_clear_free(priv_bn);
 
   if (ctx)
     BN_CTX_free(ctx);
@@ -1283,6 +1446,185 @@ bcrypto_ecdsa_pubkey_tweak_mul(
                               tweak, tweak_len,
                               compress, npub,
                               npub_len);
+}
+
+bool
+bcrypto_ecdsa_pubkey_add(
+  const char *name,
+  const uint8_t *pub1,
+  size_t pub1_len,
+  const uint8_t *pub2,
+  size_t pub2_len,
+  bool compress,
+  uint8_t **npub,
+  size_t *npub_len
+) {
+  assert(npub && npub_len);
+
+  BN_CTX *ctx = NULL;
+  EC_KEY *pub1_ec = NULL;
+  EC_KEY *pub2_ec = NULL;
+  uint8_t *npub_buf = NULL;
+  size_t npub_buf_len = 0;
+
+  ctx = BN_CTX_new();
+
+  if (!ctx)
+    goto fail;
+
+  int type = bcrypto_ecdsa_curve(name);
+
+  if (type == -1)
+    goto fail;
+
+  if (!bcrypto_ecdsa_valid_point(type, pub1, pub1_len))
+    goto fail;
+
+  if (!bcrypto_ecdsa_valid_point(type, pub2, pub2_len))
+    goto fail;
+
+  pub1_ec = EC_KEY_new_by_curve_name(type);
+
+  if (!pub1_ec)
+    goto fail;
+
+  pub2_ec = EC_KEY_new_by_curve_name(type);
+
+  if (!pub2_ec)
+    goto fail;
+
+  if (!EC_KEY_oct2key(pub1_ec, pub1, pub1_len, ctx))
+    goto fail;
+
+  if (!EC_KEY_oct2key(pub2_ec, pub2, pub2_len, ctx))
+    goto fail;
+
+  const EC_POINT *key1_point = EC_KEY_get0_public_key(pub1_ec);
+  assert(key1_point);
+
+  const EC_POINT *key2_point = EC_KEY_get0_public_key(pub2_ec);
+  assert(key2_point);
+
+  const EC_GROUP *group = EC_KEY_get0_group(pub1_ec);
+  assert(group);
+
+  if (!EC_POINT_add(group, (EC_POINT *)key1_point, key1_point, key2_point, ctx))
+    goto fail;
+
+  if (EC_POINT_is_at_infinity(group, key1_point))
+    goto fail;
+
+  point_conversion_form_t form = compress
+    ? POINT_CONVERSION_COMPRESSED
+    : POINT_CONVERSION_UNCOMPRESSED;
+
+  npub_buf_len = EC_POINT_point2buf(group, key1_point, form, &npub_buf, ctx);
+
+  if ((int)npub_buf_len <= 0)
+    goto fail;
+
+  EC_KEY_free(pub1_ec);
+  EC_KEY_free(pub2_ec);
+  BN_CTX_free(ctx);
+
+  *npub = npub_buf;
+  *npub_len = npub_buf_len;
+
+  return true;
+
+fail:
+  if (pub1_ec)
+    EC_KEY_free(pub1_ec);
+
+  if (pub2_ec)
+    EC_KEY_free(pub2_ec);
+
+  if (ctx)
+    BN_CTX_free(ctx);
+
+  if (npub_buf)
+    free(npub_buf);
+
+  return false;
+}
+
+bool
+bcrypto_ecdsa_pubkey_negate(
+  const char *name,
+  const uint8_t *pub,
+  size_t pub_len,
+  bool compress,
+  uint8_t **npub,
+  size_t *npub_len
+) {
+  assert(npub && npub_len);
+
+  BN_CTX *ctx = NULL;
+  EC_KEY *pub_ec = NULL;
+  uint8_t *npub_buf = NULL;
+  size_t npub_buf_len = 0;
+
+  ctx = BN_CTX_new();
+
+  if (!ctx)
+    goto fail;
+
+  int type = bcrypto_ecdsa_curve(name);
+
+  if (type == -1)
+    goto fail;
+
+  if (!bcrypto_ecdsa_valid_point(type, pub, pub_len))
+    goto fail;
+
+  pub_ec = EC_KEY_new_by_curve_name(type);
+
+  if (!pub_ec)
+    goto fail;
+
+  if (!EC_KEY_oct2key(pub_ec, pub, pub_len, ctx))
+    goto fail;
+
+  const EC_POINT *key_point = EC_KEY_get0_public_key(pub_ec);
+  assert(key_point);
+
+  const EC_GROUP *group = EC_KEY_get0_group(pub_ec);
+  assert(group);
+
+  if (!EC_POINT_invert(group, (EC_POINT *)key_point, ctx))
+    goto fail;
+
+  if (EC_POINT_is_at_infinity(group, key_point))
+    goto fail;
+
+  point_conversion_form_t form = compress
+    ? POINT_CONVERSION_COMPRESSED
+    : POINT_CONVERSION_UNCOMPRESSED;
+
+  npub_buf_len = EC_POINT_point2buf(group, key_point, form, &npub_buf, ctx);
+
+  if ((int)npub_buf_len <= 0)
+    goto fail;
+
+  EC_KEY_free(pub_ec);
+  BN_CTX_free(ctx);
+
+  *npub = npub_buf;
+  *npub_len = npub_buf_len;
+
+  return true;
+
+fail:
+  if (pub_ec)
+    EC_KEY_free(pub_ec);
+
+  if (ctx)
+    BN_CTX_free(ctx);
+
+  if (npub_buf)
+    free(npub_buf);
+
+  return false;
 }
 
 bool
@@ -1903,6 +2245,28 @@ bcrypto_ecdsa_privkey_tweak_mul(
 }
 
 bool
+bcrypto_ecdsa_privkey_negate(
+  const char *name,
+  const uint8_t *priv,
+  size_t priv_len,
+  uint8_t **npriv,
+  size_t *npriv_len
+) {
+  return false;
+}
+
+bool
+bcrypto_ecdsa_privkey_inverse(
+  const char *name,
+  const uint8_t *priv,
+  size_t priv_len,
+  uint8_t **npriv,
+  size_t *npriv_len
+) {
+  return false;
+}
+
+bool
 bcrypto_ecdsa_pubkey_create(
   const char *name,
   const uint8_t *priv,
@@ -1980,6 +2344,32 @@ bcrypto_ecdsa_pubkey_tweak_mul(
   size_t pub_len,
   const uint8_t *tweak,
   size_t tweak_len,
+  bool compress,
+  uint8_t **npub,
+  size_t *npub_len
+) {
+  return false;
+}
+
+bool
+bcrypto_ecdsa_pubkey_add(
+  const char *name,
+  const uint8_t *pub1,
+  size_t pub1_len,
+  const uint8_t *pub2,
+  size_t pub2_len,
+  bool compress,
+  uint8_t **npub,
+  size_t *npub_len
+) {
+  return false;
+}
+
+bool
+bcrypto_ecdsa_pubkey_negate(
+  const char *name,
+  const uint8_t *pub,
+  size_t pub_len,
   bool compress,
   uint8_t **npub,
   size_t *npub_len

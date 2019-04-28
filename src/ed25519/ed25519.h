@@ -122,6 +122,18 @@ bcrypto_ed25519_scalar_tweak_mul(
 );
 
 int
+bcrypto_ed25519_scalar_negate(
+  bcrypto_ed25519_secret_key out,
+  const bcrypto_ed25519_secret_key sk
+);
+
+int
+bcrypto_ed25519_scalar_inverse(
+  bcrypto_ed25519_secret_key out,
+  const bcrypto_ed25519_secret_key sk
+);
+
+int
 bcrypto_ed25519_pubkey_tweak_add(
   bcrypto_ed25519_public_key out,
   const bcrypto_ed25519_public_key pk,
@@ -133,6 +145,19 @@ bcrypto_ed25519_pubkey_tweak_mul(
   bcrypto_ed25519_public_key out,
   const bcrypto_ed25519_public_key pk,
   const bcrypto_ed25519_secret_key tweak
+);
+
+int
+bcrypto_ed25519_pubkey_add(
+  bcrypto_ed25519_public_key out,
+  const bcrypto_ed25519_public_key pk1,
+  const bcrypto_ed25519_public_key pk2
+);
+
+int
+bcrypto_ed25519_pubkey_negate(
+  bcrypto_ed25519_public_key out,
+  const bcrypto_ed25519_public_key pk
 );
 
 int

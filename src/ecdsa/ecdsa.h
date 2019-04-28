@@ -77,6 +77,24 @@ bcrypto_ecdsa_privkey_tweak_mul(
 );
 
 bool
+bcrypto_ecdsa_privkey_negate(
+  const char *name,
+  const uint8_t *priv,
+  size_t priv_len,
+  uint8_t **npriv,
+  size_t *npriv_len
+);
+
+bool
+bcrypto_ecdsa_privkey_inverse(
+  const char *name,
+  const uint8_t *priv,
+  size_t priv_len,
+  uint8_t **npriv,
+  size_t *npriv_len
+);
+
+bool
 bcrypto_ecdsa_pubkey_create(
   const char *name,
   const uint8_t *priv,
@@ -142,6 +160,28 @@ bcrypto_ecdsa_pubkey_tweak_mul(
   size_t pub_len,
   const uint8_t *tweak,
   size_t tweak_len,
+  bool compress,
+  uint8_t **npub,
+  size_t *npub_len
+);
+
+bool
+bcrypto_ecdsa_pubkey_add(
+  const char *name,
+  const uint8_t *pub1,
+  size_t pub1_len,
+  const uint8_t *pub2,
+  size_t pub2_len,
+  bool compress,
+  uint8_t **npub,
+  size_t *npub_len
+);
+
+bool
+bcrypto_ecdsa_pubkey_negate(
+  const char *name,
+  const uint8_t *pub,
+  size_t pub_len,
   bool compress,
   uint8_t **npub,
   size_t *npub_len

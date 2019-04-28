@@ -359,3 +359,39 @@ isatmost128bits256_modm_batch(const bignum256modm a) {
 
   return (mask == 0);
 }
+
+static void
+sub256_modm(bignum256modm r, const bignum256modm x, const bignum256modm y) {
+  sub256_modm_batch(r, x, y, bignum256modm_limb_size - 1);
+  reduce256_modm(r);
+}
+
+static void
+negate256_modm(bignum256modm r, const bignum256modm x) {
+  if (!iszero256_modm_batch(x))
+    sub256_modm(r, modm_m, x);
+}
+
+static void
+recip256_modm(bignum256modm r, const bignum256modm x) {
+  bignum256modm ret, exp, xx;
+  bignum256modm_element_t i, b;
+
+  memset(&ret[0], 0x00, sizeof(bignum256modm));
+  memcpy(&exp[0], &modm_m[0], sizeof(bignum256modm));
+  memcpy(&xx[0], &x[0], sizeof(bignum256modm));
+
+  exp[0] -= 2;
+  ret[0] = 1;
+
+  for (i = 0; i < 253; i++) {
+    b = exp[i / bignum256modm_bits_per_limb] >> (i % bignum256modm_bits_per_limb);
+
+    if (b & 1)
+      mul256_modm(ret, ret, xx);
+
+    mul256_modm(xx, xx, xx);
+  }
+
+  memcpy(&r[0], &ret[0], sizeof(bignum256modm));
+}

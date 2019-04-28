@@ -189,6 +189,14 @@ describe('Ed448', function() {
 
     const sig2 = ed448.signWithScalar(msg, childPriv, msg);
     assert(ed448.verify(msg, sig2, child));
+
+    const real = ed448.scalarTweakAdd(ed448.privateKeyConvert(key), Buffer.alloc(56, 0x00));
+    const parent = ed448.scalarTweakAdd(childPriv, ed448.scalarNegate(tweak));
+    assert.bufferEqual(parent, real);
+
+    const tweakPub = ed448.publicKeyFromScalar(tweak);
+    const parentPub = ed448.publicKeyAdd(childPub, ed448.publicKeyNegate(tweakPub));
+    assert.bufferEqual(parentPub, pub);
   });
 
   it('should generate keypair and sign with multiplicative tweak', () => {
@@ -211,6 +219,10 @@ describe('Ed448', function() {
 
     const sig2 = ed448.signWithScalar(msg, childPriv, msg);
     assert(ed448.verify(msg, sig2, child));
+
+    const real = ed448.scalarTweakAdd(ed448.privateKeyConvert(key), Buffer.alloc(56, 0x00));
+    const parent = ed448.scalarTweakMul(childPriv, ed448.scalarInverse(tweak));
+    assert.bufferEqual(parent, real);
   });
 
   it('should generate keypair and sign with multiplicative tweak * cofactor', () => {

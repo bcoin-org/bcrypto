@@ -12,6 +12,8 @@ private:
   static NAN_METHOD(PrivateKeyConvert);
   static NAN_METHOD(ScalarTweakAdd);
   static NAN_METHOD(ScalarTweakMul);
+  static NAN_METHOD(ScalarNegate);
+  static NAN_METHOD(ScalarInverse);
   static NAN_METHOD(PublicKeyCreate);
   static NAN_METHOD(PublicKeyFromScalar);
   static NAN_METHOD(PublicKeyConvert);
@@ -19,6 +21,8 @@ private:
   static NAN_METHOD(PublicKeyVerify);
   static NAN_METHOD(PublicKeyTweakAdd);
   static NAN_METHOD(PublicKeyTweakMul);
+  static NAN_METHOD(PublicKeyAdd);
+  static NAN_METHOD(PublicKeyNegate);
   static NAN_METHOD(Sign);
   static NAN_METHOD(SignWithScalar);
   static NAN_METHOD(SignTweakAdd);

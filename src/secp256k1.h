@@ -13,7 +13,7 @@ private:
   static NAN_METHOD(privateKeyExport);
   static NAN_METHOD(privateKeyImport);
   static NAN_METHOD(privateKeyNegate);
-  static NAN_METHOD(privateKeyModInverse);
+  static NAN_METHOD(privateKeyInverse);
   static NAN_METHOD(privateKeyTweakAdd);
   static NAN_METHOD(privateKeyTweakMul);
 
@@ -23,6 +23,7 @@ private:
   static NAN_METHOD(publicKeyTweakAdd);
   static NAN_METHOD(publicKeyTweakMul);
   static NAN_METHOD(publicKeyCombine);
+  static NAN_METHOD(publicKeyNegate);
 
   static NAN_METHOD(signatureNormalize);
   static NAN_METHOD(signatureExport);

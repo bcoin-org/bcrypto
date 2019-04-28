@@ -413,6 +413,43 @@ bcrypto_ed25519_scalar_tweak_mul(
 }
 
 int
+bcrypto_ed25519_scalar_negate(
+  bcrypto_ed25519_secret_key out,
+  const bcrypto_ed25519_secret_key sk
+) {
+  bignum256modm k;
+
+  expand256_modm(k, sk, 32);
+  negate256_modm(k, k);
+
+  contract256_modm(out, k);
+
+  return 0;
+}
+
+int
+bcrypto_ed25519_scalar_inverse(
+  bcrypto_ed25519_secret_key out,
+  const bcrypto_ed25519_secret_key sk
+) {
+  bignum256modm k;
+
+  expand256_modm(k, sk, 32);
+
+  if (iszero256_modm_batch(k))
+    return -1;
+
+  recip256_modm(k, k);
+
+  if (iszero256_modm_batch(k))
+    return -1;
+
+  contract256_modm(out, k);
+
+  return 0;
+}
+
+int
 bcrypto_ed25519_pubkey_tweak_add(
   bcrypto_ed25519_public_key out,
   const bcrypto_ed25519_public_key pk,
@@ -476,6 +513,63 @@ bcrypto_ed25519_pubkey_tweak_mul(
     return -1;
 
   ge25519_pack(out, &T);
+
+  return 0;
+}
+
+int
+bcrypto_ed25519_pubkey_add(
+  bcrypto_ed25519_public_key out,
+  const bcrypto_ed25519_public_key pk1,
+  const bcrypto_ed25519_public_key pk2
+) {
+  ge25519 ALIGN(16) k1, k2;
+
+  if (!ge25519_unpack_negative_vartime(&k1, pk1))
+    return -1;
+
+  if (ge25519_is_neutral_vartime(&k1))
+    return -1;
+
+  if (!ge25519_unpack_negative_vartime(&k2, pk2))
+    return -1;
+
+  if (ge25519_is_neutral_vartime(&k2))
+    return -1;
+
+  curve25519_neg(k1.x, k1.x);
+  curve25519_neg(k1.t, k1.t);
+
+  ge25519_add(&k1, &k1, &k2);
+
+  if (ge25519_is_neutral_vartime(&k1))
+    return -1;
+
+  ge25519_pack(out, &k1);
+
+  return 0;
+}
+
+int
+bcrypto_ed25519_pubkey_negate(
+  bcrypto_ed25519_public_key out,
+  const bcrypto_ed25519_public_key pk
+) {
+  ge25519 ALIGN(16) k;
+
+  if (!ge25519_unpack_negative_vartime(&k, pk))
+    return -1;
+
+  if (ge25519_is_neutral_vartime(&k))
+    return -1;
+
+  curve25519_neg(k.x, k.x);
+  curve25519_neg(k.t, k.t);
+
+  if (ge25519_is_neutral_vartime(&k))
+    return -1;
+
+  ge25519_pack(out, &k);
 
   return 0;
 }

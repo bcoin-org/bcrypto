@@ -218,6 +218,14 @@ bcrypto_c448_error_t bcrypto_c448_ed448_scalar_tweak_mul(
             const uint8_t scalar[BCRYPTO_C448_SCALAR_BYTES],
             const uint8_t tweak[BCRYPTO_C448_SCALAR_BYTES]);
 
+bcrypto_c448_error_t bcrypto_c448_ed448_scalar_negate(
+            uint8_t out[BCRYPTO_C448_SCALAR_BYTES],
+            const uint8_t scalar[BCRYPTO_C448_SCALAR_BYTES]);
+
+bcrypto_c448_error_t bcrypto_c448_ed448_scalar_inverse(
+            uint8_t out[BCRYPTO_C448_SCALAR_BYTES],
+            const uint8_t scalar[BCRYPTO_C448_SCALAR_BYTES]);
+
 bcrypto_c448_error_t bcrypto_c448_ed448_public_key_tweak_add(
             uint8_t out[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
             const uint8_t pubkey[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
@@ -227,6 +235,15 @@ bcrypto_c448_error_t bcrypto_c448_ed448_public_key_tweak_mul(
             uint8_t out[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
             const uint8_t pubkey[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
             const uint8_t tweak[BCRYPTO_C448_SCALAR_BYTES]);
+
+bcrypto_c448_error_t bcrypto_c448_ed448_public_key_add(
+            uint8_t out[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
+            const uint8_t pubkey1[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
+            const uint8_t pubkey2[BCRYPTO_EDDSA_448_PUBLIC_BYTES]);
+
+bcrypto_c448_error_t bcrypto_c448_ed448_public_key_negate(
+            uint8_t out[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
+            const uint8_t pubkey[BCRYPTO_EDDSA_448_PUBLIC_BYTES]);
 
 bcrypto_c448_error_t bcrypto_c448_ed448_derive_public_key_with_scalar(
             uint8_t pubkey[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
