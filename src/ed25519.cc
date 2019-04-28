@@ -140,7 +140,9 @@ NAN_METHOD(BED25519::PublicKeyCreate) {
     return Nan::ThrowRangeError("Invalid secret size.");
 
   bcrypto_ed25519_public_key pub;
-  bcrypto_ed25519_publickey(pub, secret);
+
+  if (bcrypto_ed25519_publickey(pub, secret) != 0)
+    return Nan::ThrowError("Invalid public key.");
 
   return info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&pub[0], 32).ToLocalChecked());
@@ -162,7 +164,9 @@ NAN_METHOD(BED25519::PublicKeyFromScalar) {
     return Nan::ThrowRangeError("Invalid scalar size.");
 
   bcrypto_ed25519_public_key pub;
-  bcrypto_ed25519_publickey_from_scalar(pub, scalar);
+
+  if (bcrypto_ed25519_publickey_from_scalar(pub, scalar) != 0)
+    return Nan::ThrowError("Invalid public key.");
 
   return info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&pub[0], 32).ToLocalChecked());
@@ -356,10 +360,16 @@ NAN_METHOD(BED25519::Sign) {
     return Nan::ThrowRangeError("Invalid secret size.");
 
   bcrypto_ed25519_public_key pub;
-  bcrypto_ed25519_publickey(pub, secret);
+
+  if (bcrypto_ed25519_publickey(pub, secret) != 0)
+    return Nan::ThrowError("Invalid public key.");
 
   bcrypto_ed25519_signature sig;
-  bcrypto_ed25519_sign(msg, msg_len, secret, pub, ph, ctx, ctx_len, sig);
+
+  if (bcrypto_ed25519_sign(msg, msg_len, secret,
+                           pub, ph, ctx, ctx_len, sig) != 0) {
+    return Nan::ThrowError("Could not sign.");
+  }
 
   return info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&sig[0], 64).ToLocalChecked());
@@ -427,11 +437,16 @@ NAN_METHOD(BED25519::SignWithScalar) {
   memcpy(&expanded[32], &prefix[0], 32);
 
   bcrypto_ed25519_public_key pub;
-  bcrypto_ed25519_publickey_from_scalar(pub, scalar);
+
+  if (bcrypto_ed25519_publickey_from_scalar(pub, scalar) != 0)
+    return Nan::ThrowError("Invalid public key.");
 
   bcrypto_ed25519_signature sig;
-  bcrypto_ed25519_sign_with_scalar(msg, msg_len, expanded,
-                                   pub, ph, ctx, ctx_len, sig);
+
+  if (bcrypto_ed25519_sign_with_scalar(msg, msg_len, expanded,
+                                       pub, ph, ctx, ctx_len, sig) != 0) {
+    return Nan::ThrowError("Could not sign.");
+  }
 
   OPENSSL_cleanse(&expanded[0], sizeof(expanded));
 
@@ -496,7 +511,9 @@ NAN_METHOD(BED25519::SignTweakAdd) {
     return Nan::ThrowRangeError("Invalid tweak size.");
 
   bcrypto_ed25519_public_key pub;
-  bcrypto_ed25519_publickey(pub, secret);
+
+  if (bcrypto_ed25519_publickey(pub, secret) != 0)
+    return Nan::ThrowError("Invalid public key.");
 
   bcrypto_ed25519_signature sig;
 
@@ -566,7 +583,9 @@ NAN_METHOD(BED25519::SignTweakMul) {
     return Nan::ThrowRangeError("Invalid tweak size.");
 
   bcrypto_ed25519_public_key pub;
-  bcrypto_ed25519_publickey(pub, secret);
+
+  if (bcrypto_ed25519_publickey(pub, secret) != 0)
+    return Nan::ThrowError("Invalid public key.");
 
   bcrypto_ed25519_signature sig;
 

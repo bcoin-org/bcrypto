@@ -12,13 +12,13 @@ typedef unsigned char bcrypto_ed25519_public_key[32];
 typedef unsigned char bcrypto_ed25519_secret_key[32];
 typedef unsigned char bcrypto_curved25519_key[32];
 
-void
+int
 bcrypto_ed25519_publickey_from_scalar(
   bcrypto_ed25519_public_key pk,
   const bcrypto_ed25519_secret_key sk
 );
 
-void
+int
 bcrypto_ed25519_publickey(
   bcrypto_ed25519_public_key pk,
   const bcrypto_ed25519_secret_key sk
@@ -135,7 +135,7 @@ bcrypto_ed25519_pubkey_tweak_mul(
   const bcrypto_ed25519_secret_key tweak
 );
 
-void
+int
 bcrypto_ed25519_sign_with_scalar(
   const unsigned char *m,
   size_t mlen,
@@ -147,7 +147,7 @@ bcrypto_ed25519_sign_with_scalar(
   bcrypto_ed25519_signature RS
 );
 
-void
+int
 bcrypto_ed25519_sign(
   const unsigned char *m,
   size_t mlen,

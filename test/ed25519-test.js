@@ -45,7 +45,7 @@ describe('EdDSA', function() {
       pub);
   });
 
-  it('should allow points at infinity', () => {
+  it('should disallow points at infinity', () => {
     // Fun fact about edwards curves: points
     // at infinity can actually be serialized.
     const msg = Buffer.from(
@@ -67,7 +67,8 @@ describe('EdDSA', function() {
       '0100000000000000000000000000000000000000000000000000000000000000',
       'hex');
 
-    assert(ed25519.verify(msg, sig, inf));
+    assert(!ed25519.publicKeyVerify(inf));
+    assert(!ed25519.verify(msg, sig, inf));
   });
 
   it('should do ECDH', () => {

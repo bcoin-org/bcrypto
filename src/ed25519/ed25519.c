@@ -68,7 +68,9 @@ bcrypto_ed25519_hram(
   bcrypto_ed25519_hash_final(&hctx, hram);
 }
 
-void
+#include "ed25519-donna-batchverify.h"
+
+int
 bcrypto_ed25519_publickey_from_scalar(
   bcrypto_ed25519_public_key pk,
   const bcrypto_ed25519_secret_key sk
@@ -79,17 +81,23 @@ bcrypto_ed25519_publickey_from_scalar(
   /* A = aB */
   expand256_modm(a, sk, 32);
   ge25519_scalarmult_base_niels(&A, ge25519_niels_base_multiples, a);
+
   ge25519_pack(pk, &A);
+
+  if (ge25519_is_neutral_vartime(&A))
+    return -1;
+
+  return 0;
 }
 
-void
+int
 bcrypto_ed25519_publickey(
   bcrypto_ed25519_public_key pk,
   const bcrypto_ed25519_secret_key sk
 ) {
   hash_512bits extsk;
   bcrypto_ed25519_extsk(extsk, sk);
-  bcrypto_ed25519_publickey_from_scalar(pk, extsk);
+  return bcrypto_ed25519_publickey_from_scalar(pk, extsk);
 }
 
 int
@@ -121,6 +129,9 @@ bcrypto_ed25519_sign_open(
   ge25519_double_scalarmult_vartime(&R, &A, hram, S);
   ge25519_pack(checkR, &R);
 
+  if (ge25519_is_neutral_vartime(&R))
+    return -1;
+
   /* check that R = SB - H(R,A,m)A */
   return bcrypto_ed25519_verify(RS, checkR, 32) ? 0 : -1;
 }
@@ -132,10 +143,11 @@ bcrypto_ed25519_verify_key(const bcrypto_ed25519_public_key pk) {
   if (!ge25519_unpack_negative_vartime(&A, pk))
     return -1;
 
+  if (ge25519_is_neutral_vartime(&A))
+    return -1;
+
   return 0;
 }
-
-#include "ed25519-donna-batchverify.h"
 
 /*
   Fast Curve25519 basepoint scalar multiplication
@@ -453,7 +465,7 @@ bcrypto_ed25519_pubkey_tweak_mul(
   return 0;
 }
 
-void
+int
 bcrypto_ed25519_sign_with_scalar(
   const unsigned char *m,
   size_t mlen,
@@ -494,9 +506,14 @@ bcrypto_ed25519_sign_with_scalar(
 
   /* S = (r + H(R,A,m)a) mod L */
   contract256_modm(RS + 32, S);
+
+  if (ge25519_is_neutral_vartime(&R))
+    return -1;
+
+  return 0;
 }
 
-void
+int
 bcrypto_ed25519_sign(
   const unsigned char *m,
   size_t mlen,
@@ -509,7 +526,7 @@ bcrypto_ed25519_sign(
 ) {
   hash_512bits extsk;
   bcrypto_ed25519_extsk(extsk, sk);
-  bcrypto_ed25519_sign_with_scalar(m, mlen, extsk, pk, ph, ctx, ctx_len, RS);
+  return bcrypto_ed25519_sign_with_scalar(m, mlen, extsk, pk, ph, ctx, ctx_len, RS);
 }
 
 int
@@ -542,9 +559,7 @@ bcrypto_ed25519_sign_tweak_add(
   if (bcrypto_ed25519_pubkey_tweak_add(tk, pk, tweak) != 0)
     return -1;
 
-  bcrypto_ed25519_sign_with_scalar(m, mlen, extsk, tk, ph, ctx, ctx_len, RS);
-
-  return 0;
+  return bcrypto_ed25519_sign_with_scalar(m, mlen, extsk, tk, ph, ctx, ctx_len, RS);
 }
 
 int
@@ -577,9 +592,7 @@ bcrypto_ed25519_sign_tweak_mul(
   if (bcrypto_ed25519_pubkey_tweak_mul(tk, pk, tweak) != 0)
     return -1;
 
-  bcrypto_ed25519_sign_with_scalar(m, mlen, extsk, tk, ph, ctx, ctx_len, RS);
-
-  return 0;
+  return bcrypto_ed25519_sign_with_scalar(m, mlen, extsk, tk, ph, ctx, ctx_len, RS);
 }
 
 static void

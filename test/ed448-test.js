@@ -43,6 +43,47 @@ describe('Ed448', function() {
       pub);
   });
 
+  it('should disallow points at infinity', () => {
+    // Fun fact about edwards curves: points
+    // at infinity can actually be serialized.
+    const msg = Buffer.from(''
+      + 'bd0f6a3747cd561bdddf4640a332461a'
+      + '4a30a12a434cd0bf40d766d9c6d458e5'
+      + '512204a30c17d1f50b5079631f64eb31'
+      + '12182da3005835461113718d1a5ef944',
+      'hex');
+
+    const sig = Buffer.from(''
+      + '01000000000000000000000000000000'
+      + '00000000000000000000000000000000'
+      + '00000000000000000000000000000000'
+      + '00000000000000000000000000000000'
+      + '00000000000000000000000000000000'
+      + '00000000000000000000000000000000'
+      + '00000000000000000000000000000000'
+      + '0000',
+      'hex');
+
+    const pub = Buffer.from(''
+      + 'df9705f58edbab802c7f8363cfe5560a'
+      + 'b1c6132c20a9f1dd163483a26f8ac53a'
+      + '39d6808bf4a1dfbd261b099bb03b3fb5'
+      + '0906cb28bd8a081f00',
+      'hex');
+
+    assert(!ed448.verify(msg, sig, pub));
+
+    const inf = Buffer.from(''
+      + '01000000000000000000000000000000'
+      + '00000000000000000000000000000000'
+      + '00000000000000000000000000000000'
+      + '000000000000000000',
+      'hex');
+
+    assert(!ed448.publicKeyVerify(inf));
+    assert(!ed448.verify(msg, sig, inf));
+  });
+
   it('should do ECDH', () => {
     const alicePriv = ed448.privateKeyGenerate();
     const alicePub = ed448.publicKeyCreate(alicePriv);
