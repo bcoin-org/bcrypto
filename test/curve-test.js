@@ -62,17 +62,17 @@ describe('Curves', function() {
       });
 
       const point = [
-        '21fd21b36cbdbe0d77ad8692c25d918774f5d3bc179c4cb0ae3c364bf1bea981d0' +
-        '2e9f97cc62f20acacf0c553887e5fb',
-        '29f994329799dba72aa12ceb06312300167b6e18fbed607c63709826c57292cf29' +
-        'f5bab4f5c99c739cf107a3833bb553'
+        '21fd21b36cbdbe0d77ad8692c25d918774f5d3bc179c4cb0ae3c364bf1bea981d0'
+        + '2e9f97cc62f20acacf0c553887e5fb',
+        '29f994329799dba72aa12ceb06312300167b6e18fbed607c63709826c57292cf29'
+        + 'f5bab4f5c99c739cf107a3833bb553'
       ];
 
       const double = [
-        '0561c8722cf82b2f0d7c36bc72e34539dcbf181e8d98f5244480e79f5b51a4a541' +
-        '457016c9c0509d49078eb5909a1121',
-        '05b7812fae9d164ee9249c56a16e29a1ad2cdc6353227074dd96d59df363a0bcb5' +
-        'bc67d50b44843ea833156bdc0ac6a2'
+        '0561c8722cf82b2f0d7c36bc72e34539dcbf181e8d98f5244480e79f5b51a4a541'
+        + '457016c9c0509d49078eb5909a1121',
+        '05b7812fae9d164ee9249c56a16e29a1ad2cdc6353227074dd96d59df363a0bcb5'
+        + 'bc67d50b44843ea833156bdc0ac6a2'
       ];
 
       const p = curve.pointFromJSON(point);
@@ -111,10 +111,8 @@ describe('Curves', function() {
         // -121665 * (121666^(-1)) (mod P)
         d: '52036cee2b6ffe73 8cc740797779e898 00700a4d4141d8ab 75eb4dca135978a3',
         n: '1000000000000000 0000000000000000 14def9dea2f79cd6 5812631a5cf5d3ed',
-        gRed: false,
         g: [
           '216936d3cd6e53fec0a4e231fdd6dc5c692cc7609525a7b2c9562d608f25d51a',
-
           // 4/5
           '6666666666666666666666666666666666666666666666666666666666666658'
         ]
@@ -147,8 +145,7 @@ describe('Curves', function() {
         p: 'ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff fffffffe fffffc2f',
         a: '0',
         b: '7',
-        n: 'ffffffff ffffffff ffffffff fffffffe ' +
-               'baaedce6 af48a03b bfd25e8c d0364141',
+        n: 'ffffffff ffffffff ffffffff fffffffe baaedce6 af48a03b bfd25e8c d0364141',
         g: [
           '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
           '483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8'
@@ -320,17 +317,14 @@ describe('Curves', function() {
         x: '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
         y: '483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8'
       },
-      compactEncoded:
-        '02' +
-        '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
-      encoded:
-        '04' +
-        '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798' +
-        '483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8',
-      hybrid:
-        '06' +
-        '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798' +
-        '483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8'
+      compactEncoded: '02'
+        + '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
+      encoded: '04'
+        + '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798'
+        + '483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8',
+      hybrid: '06'
+        + '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798'
+        + '483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8'
     };
 
     const shortPointOddY = {
@@ -338,17 +332,14 @@ describe('Curves', function() {
         x: 'fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556',
         y: 'ae12777aacfbb620f3be96017f45c560de80f0f6518fe4a03c870c36b075f297'
       },
-      compactEncoded:
-        '03' +
-        'fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556',
-      encoded:
-        '04' +
-        'fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556' +
-        'ae12777aacfbb620f3be96017f45c560de80f0f6518fe4a03c870c36b075f297',
-      hybrid:
-        '07' +
-        'fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556' +
-        'ae12777aacfbb620f3be96017f45c560de80f0f6518fe4a03c870c36b075f297'
+      compactEncoded: '03'
+        + 'fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556',
+      encoded: '04'
+        + 'fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556'
+        + 'ae12777aacfbb620f3be96017f45c560de80f0f6518fe4a03c870c36b075f297',
+      hybrid: '07'
+        + 'fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556'
+        + 'ae12777aacfbb620f3be96017f45c560de80f0f6518fe4a03c870c36b075f297'
     };
 
     it('should throw when trying to decode random bytes', () => {
