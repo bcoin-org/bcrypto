@@ -118,6 +118,9 @@ bcrypto_ed25519_sign_open(
   if ((RS[63] & 224) || !ge25519_unpack_negative_vartime(&A, pk))
     return -1;
 
+  if (ge25519_is_neutral_vartime(&A))
+    return -1;
+
   /* hram = H(R,A,m) */
   bcrypto_ed25519_hram(hash, ph, ctx, ctx_len, RS, pk, m, mlen);
   expand256_modm(hram, hash, 64);
@@ -205,6 +208,9 @@ bcrypto_ed25519_pubkey_convert(
   if (!ge25519_unpack_negative_vartime(&p, pk))
     return -1;
 
+  if (ge25519_is_neutral_vartime(&p))
+    return -1;
+
   /* ed25519 point -> x25519 point */
   curve25519_add(yplusz, p.y, p.z);
   curve25519_sub(zminusy, p.z, p.y);
@@ -252,6 +258,9 @@ bcrypto_ed25519_derive_with_scalar(
   expand_raw256_modm(k, sk);
 
   if (!ge25519_unpack_negative_vartime(&p, pk))
+    return -1;
+
+  if (ge25519_is_neutral_vartime(&p))
     return -1;
 
   ge25519_scalarmult_vartime(&s, &p, k);
@@ -415,6 +424,9 @@ bcrypto_ed25519_pubkey_tweak_add(
   if (!ge25519_unpack_negative_vartime(&k, pk))
     return -1;
 
+  if (ge25519_is_neutral_vartime(&k))
+    return -1;
+
   expand256_modm(t, tweak, 32);
 
   ge25519_scalarmult_base_niels(&T, ge25519_niels_base_multiples, t);
@@ -445,6 +457,9 @@ bcrypto_ed25519_pubkey_tweak_mul(
   bignum256modm t;
 
   if (!ge25519_unpack_negative_vartime(&k, pk))
+    return -1;
+
+  if (ge25519_is_neutral_vartime(&k))
     return -1;
 
   expand256_modm(t, tweak, 32);
