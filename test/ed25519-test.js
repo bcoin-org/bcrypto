@@ -10,12 +10,8 @@ const random = require('../lib/random');
 const ed25519 = require('../lib/ed25519');
 const SHA512 = require('../lib/sha512');
 const derivations = require('./data/ed25519.json');
+const vectors = require('./data/ed25519-input.json');
 const rfc8032 = require('./data/rfc8032-vectors.json');
-
-const filename = Path.resolve(__dirname, 'data', 'ed25519.input');
-const lines = fs.readFileSync(filename, 'binary').trim().split('\n');
-
-assert.strictEqual(lines.length, 1024);
 
 describe('EdDSA', function() {
   this.timeout(15000);
@@ -341,12 +337,12 @@ describe('EdDSA', function() {
   });
 
   describe('sign.input ed25519 test vectors', () => {
-    for (const [i, line] of lines.entries()) {
-      const parts = line.toUpperCase().split(':');
-      const secret = Buffer.from(parts[0].slice(0, 64), 'hex');
-      const pub = Buffer.from(parts[0].slice(64), 'hex');
-      const msg = Buffer.from(parts[2], 'hex');
-      const sig = Buffer.from(parts[3].slice(0, 128), 'hex');
+    // https://ed25519.cr.yp.to/software.html
+    for (const [i, [secret_, pub_, msg_, sig_]] of vectors.entries()) {
+      const secret = Buffer.from(secret_, 'hex');
+      const pub = Buffer.from(pub_, 'hex');
+      const msg = Buffer.from(msg_, 'hex');
+      const sig = Buffer.from(sig_, 'hex');
 
       it(`should pass ed25519 vector #${i}`, () => {
         const pub_ = ed25519.publicKeyCreate(secret);
@@ -365,8 +361,8 @@ describe('EdDSA', function() {
 
         if (msg.length > 0) {
           forged = Buffer.concat([
-             msg.slice(0, msg.length - 1),
-             Buffer.from([(msg[(msg.length - 1)] + 1) % 256])
+            msg.slice(0, msg.length - 1),
+            Buffer.from([(msg[(msg.length - 1)] + 1) % 256])
           ]);
         }
 
