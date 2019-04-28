@@ -2,7 +2,6 @@
 
 // https://github.com/sipa/bips/blob/bip-schnorr/bip-schnorr/test-vectors.csv
 
-const assert = require('bsert');
 const csv = require('./csv');
 
 const iter = csv.asArray(process.argv[2]);

@@ -4,8 +4,6 @@
 'use strict';
 
 const assert = require('bsert');
-const fs = require('fs');
-const Path = require('path');
 const random = require('../lib/random');
 const ed25519 = require('../lib/ed25519');
 const SHA512 = require('../lib/sha512');

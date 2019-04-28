@@ -3,14 +3,12 @@
 // https://ed25519.cr.yp.to/software.html
 // https://ed25519.cr.yp.to/python/sign.input
 
-const assert = require('bsert');
 const fs = require('fs');
-const Path = require('path');
 const text = fs.readFileSync(process.argv[2], 'binary');
 const lines = text.trim().split('\n');
 const json = [];
 
-for (const [i, line] of lines.entries()) {
+for (const line of lines) {
   const parts = line.toUpperCase().split(':');
   const secret = Buffer.from(parts[0].slice(0, 64), 'hex');
   const pub = Buffer.from(parts[0].slice(64), 'hex');
