@@ -37,7 +37,7 @@ describe('Curves', function() {
         b: '14'
       });
 
-      const p = curve.point('18', '16');
+      const p = curve.point(new BN('18', 16), new BN('16', 16));
 
       assert(p.validate());
       assert(p.dbl().validate());
@@ -93,12 +93,12 @@ describe('Curves', function() {
       });
 
       const target = curve.point(
-        '05d040ddaa645bf27d2d2f302c5697231425185fd9a410f220ac5c5c7fbeb8a1',
-        '02f8ca771306cd23e929775177f2c213843a017a6487b2ec5f9b2a3808108ef2'
+        new BN('05d040ddaa645bf27d2d2f302c5697231425185fd9a410f220ac5c5c7fbeb8a1', 16),
+        new BN('02f8ca771306cd23e929775177f2c213843a017a6487b2ec5f9b2a3808108ef2', 16)
       );
 
-      const point = curve.pointFromY('02' +
-        'f8ca771306cd23e929775177f2c213843a017a6487b2ec5f9b2a3808108ef2', true);
+      const point = curve.pointFromY(
+        new BN('02f8ca771306cd23e929775177f2c213843a017a6487b2ec5f9b2a3808108ef2', 16), true);
 
       assert(point.eq(target));
     });
@@ -120,12 +120,7 @@ describe('Curves', function() {
         ]
       });
 
-      const bytes = new Uint8Array([
-        5, 69, 248, 173, 171, 254, 19, 253, 143, 140, 146, 174, 26, 128, 3, 52,
-        106, 55, 112, 245, 62, 127, 42, 93, 0, 81, 47, 177, 30, 25, 39, 70
-      ]);
-
-      const y = new BN(bytes, 'le');
+      const y = new BN('4627191eb12f51005d2a7f3ef570376a3403801aae928c8ffd13feabadf84505', 16);
       const point = curve.pointFromY(y, true);
       const target = '2cd591ae3789fd62dc420a152002f79973a387eacecadc6a9a00c1a89488c15d';
 
@@ -140,8 +135,8 @@ describe('Curves', function() {
       });
 
       const p = curve.point(
-        '0948 7239995a 5ee76b55 f9c2f098',
-        'a89c e5af8724 c0a23e0e 0ff77500');
+        new BN('0948 7239995a 5ee76b55 f9c2f098', 16),
+        new BN('a89c e5af8724 c0a23e0e 0ff77500', 16));
 
       assert(p.validate());
       assert(p.dbl().validate());
@@ -149,8 +144,7 @@ describe('Curves', function() {
 
     it('should work with secp256k1', () => {
       const curve = new ShortCurve({
-        p: 'ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff fffffffe ' +
-               'fffffc2f',
+        p: 'ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff fffffffe fffffc2f',
         a: '0',
         b: '7',
         n: 'ffffffff ffffffff ffffffff fffffffe ' +
@@ -162,8 +156,8 @@ describe('Curves', function() {
       });
 
       const p = curve.point(
-        '79be667e f9dcbbac 55a06295 ce870b07 029bfcdb 2dce28d9 59f2815b 16f81798',
-        '483ada77 26a3c465 5da4fbfc 0e1108a8 fd17b448 a6855419 9c47d08f fb10d4b8'
+        new BN('79be667e f9dcbbac 55a06295 ce870b07 029bfcdb 2dce28d9 59f2815b 16f81798', 16),
+        new BN('483ada77 26a3c465 5da4fbfc 0e1108a8 fd17b448 a6855419 9c47d08f fb10d4b8', 16)
       );
 
       assert(p.validate());
@@ -251,15 +245,15 @@ describe('Curves', function() {
 
     it('should correctly double the affine point on secp256k1', () => {
       let bad = {
-        x: '026a2073b1ef6fab47ace18e60e728a05180a82755bbcec9a0abc08ad9f7a3d4',
-        y: '9cd8cb48c3281596139f147c1364a3ede88d3f310fdb0eb98c924e599ca1b3c9',
-        z: 'd78587ad45e4102f48b54b5d85598296e069ce6085002e169c6bad78ddc6d9bd'
+        x: new BN('026a2073b1ef6fab47ace18e60e728a05180a82755bbcec9a0abc08ad9f7a3d4', 16),
+        y: new BN('9cd8cb48c3281596139f147c1364a3ede88d3f310fdb0eb98c924e599ca1b3c9', 16),
+        z: new BN('d78587ad45e4102f48b54b5d85598296e069ce6085002e169c6bad78ddc6d9bd', 16)
       };
 
       let good = {
-        x: 'e7789226739ac2eb3c7ccb2a9a910066beeed86cdb4e0f8a7fee8eeb29dc7016',
-        y: '4b76b191fd6d47d07828ea965e275b76d0e3e0196cd5056d38384fbb819f9fcb',
-        z: 'cbf8d99056618ba132d6145b904eee1ce566e0feedb9595139c45f84e90cfa7d'
+        x: new BN('e7789226739ac2eb3c7ccb2a9a910066beeed86cdb4e0f8a7fee8eeb29dc7016', 16),
+        y: new BN('4b76b191fd6d47d07828ea965e275b76d0e3e0196cd5056d38384fbb819f9fcb', 16),
+        z: new BN('cbf8d99056618ba132d6145b904eee1ce566e0feedb9595139c45f84e90cfa7d', 16)
       };
 
       const curve = secp256k1;
@@ -292,7 +286,7 @@ describe('Curves', function() {
       return () => {
         const curve = secp256k1;
         const co = definition.coordinates;
-        const p = curve.point(co.x, co.y);
+        const p = curve.point(new BN(co.x, 16), new BN(co.y, 16));
 
         // Encodes as expected
         assert.equal(p.encode(false).toString('hex'), definition.encoded);
@@ -309,7 +303,7 @@ describe('Curves', function() {
       return () => {
         const curve = x25519;
         const co = definition.coordinates;
-        const p = curve.point(co.x, co.z);
+        const p = curve.point(new BN(co.x, 16), new BN(co.z, 16));
         const scalar = new BN(definition.scalar, 16);
         const encoded = p.encode();
         const decoded = curve.decodePoint(encoded);
