@@ -12,9 +12,6 @@
 static const unsigned char ED25519_PREFIX[] =
   "SigEd25519 no Ed25519 collisions";
 
-static void
-curve25519_set_word(bignum25519 n, unsigned long word);
-
 /*
   Generates a (extsk[0..31]) and aExt (extsk[32..63])
 */
@@ -25,6 +22,44 @@ bcrypto_ed25519_extsk(hash_512bits extsk, const bcrypto_ed25519_secret_key sk) {
   extsk[0] &= 248;
   extsk[31] &= 127;
   extsk[31] |= 64;
+}
+
+DONNA_INLINE static void
+curve25519_set_word(bignum25519 n, unsigned long word) {
+  memset((void *)n, 0x00, sizeof(bignum25519));
+  n[0] = word;
+}
+
+DONNA_INLINE static void
+ge25519_neg(ge25519 *r, const ge25519 *p) {
+  curve25519_neg(r->x, p->x);
+  curve25519_neg(r->t, p->t);
+}
+
+static int
+ge25519_is_neutral_vartime(const ge25519 *p);
+
+DONNA_INLINE static int
+ge25519_unpack_vartime(ge25519 *r, const unsigned char p[32]) {
+  if (!ge25519_unpack_negative_vartime(r, p))
+    return 0;
+
+  ge25519_neg(r, r);
+
+  if (ge25519_is_neutral_vartime(r))
+    return 0;
+
+  return 1;
+}
+
+DONNA_INLINE static int
+ge25519_pack_safe(unsigned char r[32], const ge25519 *p) {
+  if (ge25519_is_neutral_vartime(p))
+    return 0;
+
+  ge25519_pack(r, p);
+
+  return 1;
 }
 
 static void
@@ -82,9 +117,7 @@ bcrypto_ed25519_publickey_from_scalar(
   expand256_modm(a, sk, 32);
   ge25519_scalarmult_base_niels(&A, ge25519_niels_base_multiples, a);
 
-  ge25519_pack(pk, &A);
-
-  if (ge25519_is_neutral_vartime(&A))
+  if (!ge25519_pack_safe(pk, &A))
     return -1;
 
   return 0;
@@ -118,9 +151,6 @@ bcrypto_ed25519_sign_open(
   if ((RS[63] & 224) || !ge25519_unpack_negative_vartime(&A, pk))
     return -1;
 
-  if (ge25519_is_neutral_vartime(&A))
-    return -1;
-
   /* hram = H(R,A,m) */
   bcrypto_ed25519_hram(hash, ph, ctx, ctx_len, RS, pk, m, mlen);
   expand256_modm(hram, hash, 64);
@@ -130,9 +160,8 @@ bcrypto_ed25519_sign_open(
 
   /* SB - H(R,A,m)A */
   ge25519_double_scalarmult_vartime(&R, &A, hram, S);
-  ge25519_pack(checkR, &R);
 
-  if (ge25519_is_neutral_vartime(&R))
+  if (!ge25519_pack_safe(checkR, &R))
     return -1;
 
   /* check that R = SB - H(R,A,m)A */
@@ -143,10 +172,7 @@ int
 bcrypto_ed25519_verify_key(const bcrypto_ed25519_public_key pk) {
   ge25519 ALIGN(16) A;
 
-  if (!ge25519_unpack_negative_vartime(&A, pk))
-    return -1;
-
-  if (ge25519_is_neutral_vartime(&A))
+  if (!ge25519_unpack_vartime(&A, pk))
     return -1;
 
   return 0;
@@ -205,10 +231,7 @@ bcrypto_ed25519_pubkey_convert(
   ge25519 ALIGN(16) p;
 
   /* ed25519 pubkey -> ed25519 point */
-  if (!ge25519_unpack_negative_vartime(&p, pk))
-    return -1;
-
-  if (ge25519_is_neutral_vartime(&p))
+  if (!ge25519_unpack_vartime(&p, pk))
     return -1;
 
   /* ed25519 point -> x25519 point */
@@ -217,7 +240,7 @@ bcrypto_ed25519_pubkey_convert(
   curve25519_recip(zminusy, zminusy);
   curve25519_mul(yplusz, yplusz, zminusy);
 
-  /* output secret (little-endian x coord) */
+  /* output point (little-endian u coord) */
   curve25519_contract(out, yplusz);
 
   return 0;
@@ -257,18 +280,13 @@ bcrypto_ed25519_derive_with_scalar(
 
   expand_raw256_modm(k, sk);
 
-  if (!ge25519_unpack_negative_vartime(&p, pk))
-    return -1;
-
-  if (ge25519_is_neutral_vartime(&p))
+  if (!ge25519_unpack_vartime(&p, pk))
     return -1;
 
   ge25519_scalarmult_vartime(&s, &p, k);
 
-  if (ge25519_is_neutral_vartime(&s))
+  if (!ge25519_pack_safe(out, &s))
     return -1;
-
-  ge25519_pack(out, &s);
 
   return 0;
 }
@@ -343,7 +361,7 @@ bcrypto_ed25519_exchange_with_scalar(
     curve25519_mul(z2, t2, t1);
   }
 
-  // Finish.
+  /* Finish. */
   curve25519_swap_conditional(x2, x3, swap);
   curve25519_swap_conditional(z2, z3, swap);
 
@@ -458,28 +476,17 @@ bcrypto_ed25519_pubkey_tweak_add(
   ge25519 ALIGN(16) T, k;
   bignum256modm t;
 
-  if (!ge25519_unpack_negative_vartime(&k, pk))
-    return -1;
-
-  if (ge25519_is_neutral_vartime(&k))
+  if (!ge25519_unpack_vartime(&k, pk))
     return -1;
 
   expand256_modm(t, tweak, 32);
 
   ge25519_scalarmult_base_niels(&T, ge25519_niels_base_multiples, t);
 
-  /* We need to negate the point here! */
-  /* Why? Who the hell knows? */
-  /* 7 hours wasted on this. */
-  curve25519_neg(k.x, k.x);
-  curve25519_neg(k.t, k.t);
-
   ge25519_add(&k, &k, &T);
 
-  if (ge25519_is_neutral_vartime(&k))
+  if (!ge25519_pack_safe(out, &k))
     return -1;
-
-  ge25519_pack(out, &k);
 
   return 0;
 }
@@ -493,26 +500,15 @@ bcrypto_ed25519_pubkey_tweak_mul(
   ge25519 ALIGN(16) T, k;
   bignum256modm t;
 
-  if (!ge25519_unpack_negative_vartime(&k, pk))
-    return -1;
-
-  if (ge25519_is_neutral_vartime(&k))
+  if (!ge25519_unpack_vartime(&k, pk))
     return -1;
 
   expand256_modm(t, tweak, 32);
 
-  /* We need to negate the point here! */
-  /* Why? Who the hell knows? */
-  /* 7 hours wasted on this. */
-  curve25519_neg(k.x, k.x);
-  curve25519_neg(k.t, k.t);
-
   ge25519_scalarmult_vartime(&T, &k, t);
 
-  if (ge25519_is_neutral_vartime(&T))
+  if (!ge25519_pack_safe(out, &T))
     return -1;
-
-  ge25519_pack(out, &T);
 
   return 0;
 }
@@ -525,27 +521,16 @@ bcrypto_ed25519_pubkey_add(
 ) {
   ge25519 ALIGN(16) k1, k2;
 
-  if (!ge25519_unpack_negative_vartime(&k1, pk1))
+  if (!ge25519_unpack_vartime(&k1, pk1))
     return -1;
 
-  if (ge25519_is_neutral_vartime(&k1))
+  if (!ge25519_unpack_vartime(&k2, pk2))
     return -1;
-
-  if (!ge25519_unpack_negative_vartime(&k2, pk2))
-    return -1;
-
-  if (ge25519_is_neutral_vartime(&k2))
-    return -1;
-
-  curve25519_neg(k1.x, k1.x);
-  curve25519_neg(k1.t, k1.t);
 
   ge25519_add(&k1, &k1, &k2);
 
-  if (ge25519_is_neutral_vartime(&k1))
+  if (!ge25519_pack_safe(out, &k1))
     return -1;
-
-  ge25519_pack(out, &k1);
 
   return 0;
 }
@@ -557,19 +542,13 @@ bcrypto_ed25519_pubkey_negate(
 ) {
   ge25519 ALIGN(16) k;
 
-  if (!ge25519_unpack_negative_vartime(&k, pk))
+  if (!ge25519_unpack_vartime(&k, pk))
     return -1;
 
-  if (ge25519_is_neutral_vartime(&k))
+  ge25519_neg(&k, &k);
+
+  if (!ge25519_pack_safe(out, &k))
     return -1;
-
-  curve25519_neg(k.x, k.x);
-  curve25519_neg(k.t, k.t);
-
-  if (ge25519_is_neutral_vartime(&k))
-    return -1;
-
-  ge25519_pack(out, &k);
 
   return 0;
 }
@@ -600,7 +579,9 @@ bcrypto_ed25519_sign_with_scalar(
 
   /* R = rB */
   ge25519_scalarmult_base_niels(&R, ge25519_niels_base_multiples, r);
-  ge25519_pack(RS, &R);
+
+  if (!ge25519_pack_safe(RS, &R))
+    return -1;
 
   /* S = H(R,A,m).. */
   bcrypto_ed25519_hram(hram, ph, ctx, ctx_len, RS, pk, m, mlen);
@@ -615,9 +596,6 @@ bcrypto_ed25519_sign_with_scalar(
 
   /* S = (r + H(R,A,m)a) mod L */
   contract256_modm(RS + 32, S);
-
-  if (ge25519_is_neutral_vartime(&R))
-    return -1;
 
   return 0;
 }
@@ -702,10 +680,4 @@ bcrypto_ed25519_sign_tweak_mul(
     return -1;
 
   return bcrypto_ed25519_sign_with_scalar(m, mlen, extsk, tk, ph, ctx, ctx_len, RS);
-}
-
-static void
-curve25519_set_word(bignum25519 n, unsigned long word) {
-  memset((void *)n, 0x00, sizeof(bignum25519));
-  n[0] = word;
 }
