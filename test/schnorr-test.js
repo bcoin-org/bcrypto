@@ -1,6 +1,7 @@
 'use strict';
 
 const assert = require('bsert');
+const p256 = require('../lib/js/p256');
 const secp256k1 = require('../lib/secp256k1');
 const vectors = require('./data/schnorr.json');
 
@@ -63,5 +64,35 @@ describe('Secp256k1+Schnorr', function() {
 
     assert.strictEqual(secp256k1.schnorrVerify(msg, sig, key), true);
     assert.strictEqual(secp256k1.schnorrBatchVerify([[msg, sig, key]]), true);
+  });
+
+  it('should be generalized for other curves', () => {
+    if (!p256.schnorr)
+      this.skip();
+
+    const msg1 = Buffer.from(
+      '3b3c4a629b78ca392e689526c445119ac9f27d7986e177764a1db2d9935f2832',
+      'hex');
+
+    const key1 = Buffer.from(
+      '1bc2f148de5c165eb8b85d045e8dbe06ef576b38c656155259d4589dc5d87fd0',
+      'hex');
+
+    const pub1 = p256.publicKeyCreate(key1);
+    const sig1 = p256.schnorr.sign(msg1, key1);
+
+    const msg2 = p256.hash.digest(msg1);
+    const key2 = p256.hash.digest(key1);
+    const pub2 = p256.publicKeyCreate(key2);
+    const sig2 = p256.schnorr.sign(msg2, key2);
+
+    const batch = [
+      [msg1, sig1, pub1],
+      [msg2, sig2, pub2]
+    ];
+
+    assert.strictEqual(p256.schnorr.verify(...batch[0]), true);
+    assert.strictEqual(p256.schnorr.verify(...batch[1]), true);
+    assert.strictEqual(p256.schnorr.batchVerify(batch), true);
   });
 });
