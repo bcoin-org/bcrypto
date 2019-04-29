@@ -1085,7 +1085,7 @@ bcrypto_rsa_privkey_import(
   const uint8_t *p = raw;
 
   if (!d2i_RSAPrivateKey(&priv_r, &p, raw_len))
-    return false;
+    return NULL;
 
   bcrypto_rsa_key_t *k = bcrypto_rsa_priv2key(priv_r);
 
@@ -1258,7 +1258,7 @@ bcrypto_rsa_pubkey_import(
   const uint8_t *p = raw;
 
   if (!d2i_RSAPublicKey(&pub_r, &p, raw_len))
-    return false;
+    return NULL;
 
   bcrypto_rsa_key_t *k = bcrypto_rsa_pub2key(pub_r);
 
@@ -1306,7 +1306,7 @@ bcrypto_rsa_pubkey_import_spki(
   const uint8_t *p = raw;
 
   if (!d2i_RSA_PUBKEY(&pub_r, &p, raw_len))
-    return false;
+    return NULL;
 
   bcrypto_rsa_key_t *k = bcrypto_rsa_pub2key(pub_r);
 

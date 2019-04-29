@@ -1364,6 +1364,9 @@ bcrypto_ecdsa_pubkey_tweak_add(
   const EC_GROUP *group = EC_KEY_get0_group(pub_ec);
   assert(group);
 
+  if (!EC_POINT_is_on_curve(group, key_point, ctx))
+    goto fail;
+
   order_bn = BN_new();
 
   if (!order_bn)
@@ -1508,6 +1511,12 @@ bcrypto_ecdsa_pubkey_add(
   const EC_GROUP *group = EC_KEY_get0_group(pub1_ec);
   assert(group);
 
+  if (!EC_POINT_is_on_curve(group, key1_point, ctx))
+    goto fail;
+
+  if (!EC_POINT_is_on_curve(group, key2_point, ctx))
+    goto fail;
+
   if (!EC_POINT_add(group, (EC_POINT *)key1_point, key1_point, key2_point, ctx))
     goto fail;
 
@@ -1590,6 +1599,9 @@ bcrypto_ecdsa_pubkey_negate(
 
   const EC_GROUP *group = EC_KEY_get0_group(pub_ec);
   assert(group);
+
+  if (!EC_POINT_is_on_curve(group, key_point, ctx))
+    goto fail;
 
   if (!EC_POINT_invert(group, (EC_POINT *)key_point, ctx))
     goto fail;
@@ -1831,7 +1843,8 @@ bcrypto_ecdsa_recover(
   int y_odd = param & 1;
   int second_key = param >> 1;
 
-  const BIGNUM *sig_r, *sig_s;
+  const BIGNUM *sig_r = NULL;
+  const BIGNUM *sig_s = NULL;
 
   ECDSA_SIG_get0(sig_ec, &sig_r, &sig_s);
   assert(sig_r);
@@ -1847,6 +1860,7 @@ bcrypto_ecdsa_recover(
 
   const EC_GROUP *group = EC_KEY_get0_group(pub_ec);
   assert(group);
+
   const EC_POINT *G_p = EC_GROUP_get0_generator(group);
   assert(G_p);
 
@@ -1865,8 +1879,8 @@ bcrypto_ecdsa_recover(
   if (!EC_GROUP_get_curve_GFp(group, P_bn, A_bn, B_bn, ctx))
     goto fail;
 
-  // if (r >= P % N && second_key)
-  //   fail;
+  // if r >= p mod n and second_key
+  //   fail
   if (second_key) {
     BIGNUM *res = BN_new();
 
@@ -1878,7 +1892,7 @@ bcrypto_ecdsa_recover(
       goto fail;
     }
 
-    // if r >= P % N
+    // if r >= p mod n
     if (BN_ucmp(sig_r, res) >= 0) {
       BN_free(res);
       goto fail;
@@ -1898,7 +1912,7 @@ bcrypto_ecdsa_recover(
     goto fail;
 
   // if (second_key)
-  //   r = point_from_x(r + N, y_odd)
+  //   r = point_from_x(r + n, y_odd)
   // else
   //   r = point_from_x(r, y_odd)
   {
@@ -1917,7 +1931,7 @@ bcrypto_ecdsa_recover(
       goto fail;
   }
 
-  // rinv = r^-1 % N
+  // rinv = r^-1 mod n
   {
     rinv = BN_new();
 
@@ -1928,7 +1942,7 @@ bcrypto_ecdsa_recover(
       goto fail;
   }
 
-  // s1 = ((N - e) * rinv) % N
+  // s1 = (-e * r^-1) mod n
   {
     e_bn = BN_bin2bn(msg, msg_len, NULL);
 
@@ -1950,7 +1964,7 @@ bcrypto_ecdsa_recover(
       goto fail;
   }
 
-  // s2 = (s * rinv) % N
+  // s2 = (s * r^-1) mod n
   {
     s2 = BN_new();
 
@@ -1969,8 +1983,11 @@ bcrypto_ecdsa_recover(
   if (!Q_p)
     goto fail;
 
-  // q = G * (s1, r, s2)
+  // q = g * s1 + r * s2
   if (!EC_POINT_mul(group, Q_p, s1, r_p, s2, ctx))
+    goto fail;
+
+  if (EC_POINT_is_at_infinity(group, Q_p))
     goto fail;
 
   point_conversion_form_t form = compress
@@ -2105,6 +2122,9 @@ bcrypto_ecdsa_derive(
 
   const EC_GROUP *group = EC_KEY_get0_group(priv_ec);
   assert(group);
+
+  if (!EC_POINT_is_on_curve(group, pub_point, ctx))
+    goto fail;
 
   secret_point = EC_POINT_new(group);
 

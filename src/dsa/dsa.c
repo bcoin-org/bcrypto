@@ -604,7 +604,7 @@ bcrypto_dsa_params_import(
   const uint8_t *p = raw;
 
   if (!d2i_DSAparams(&params_d, &p, raw_len))
-    return false;
+    return NULL;
 
   bcrypto_dsa_key_t *k = bcrypto_dsa_params2key(params_d);
 
@@ -1408,7 +1408,7 @@ bcrypto_dsa_pubkey_import_spki(
   const uint8_t *p = raw;
 
   if (!d2i_DSA_PUBKEY(&pub_d, &p, raw_len))
-    return false;
+    return NULL;
 
   bcrypto_dsa_key_t *k = bcrypto_dsa_pub2key(pub_d);
 
