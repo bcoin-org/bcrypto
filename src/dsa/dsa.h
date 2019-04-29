@@ -87,28 +87,6 @@ bcrypto_dsa_privkey_import_pkcs8(
 );
 
 bool
-bcrypto_dsa_privkey_tweak_add(
-  const bcrypto_dsa_key_t *priv,
-  const uint8_t *tweak,
-  size_t tweak_len,
-  uint8_t **y_out,
-  size_t *y_out_len,
-  uint8_t **x_out,
-  size_t *x_out_len
-);
-
-bool
-bcrypto_dsa_privkey_tweak_mul(
-  const bcrypto_dsa_key_t *priv,
-  const uint8_t *tweak,
-  size_t tweak_len,
-  uint8_t **y_out,
-  size_t *y_out_len,
-  uint8_t **x_out,
-  size_t *x_out_len
-);
-
-bool
 bcrypto_dsa_pubkey_verify(bcrypto_dsa_key_t *key);
 
 bool
@@ -135,24 +113,6 @@ bcrypto_dsa_key_t *
 bcrypto_dsa_pubkey_import_spki(
   const uint8_t *raw,
   size_t raw_len
-);
-
-bool
-bcrypto_dsa_pubkey_tweak_add(
-  const bcrypto_dsa_key_t *pub,
-  const uint8_t *tweak,
-  size_t tweak_len,
-  uint8_t **out,
-  size_t *out_len
-);
-
-bool
-bcrypto_dsa_pubkey_tweak_mul(
-  const bcrypto_dsa_key_t *pub,
-  const uint8_t *tweak,
-  size_t tweak_len,
-  uint8_t **out,
-  size_t *out_len
 );
 
 bool
