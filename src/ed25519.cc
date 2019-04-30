@@ -32,6 +32,7 @@ BED25519::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "signTweakAdd", BED25519::SignTweakAdd);
   Nan::Export(obj, "signTweakMul", BED25519::SignTweakMul);
   Nan::Export(obj, "verify", BED25519::Verify);
+  Nan::Export(obj, "batchVerify", BED25519::BatchVerify);
   Nan::Export(obj, "derive", BED25519::Derive);
   Nan::Export(obj, "deriveWithScalar", BED25519::DeriveWithScalar);
   Nan::Export(obj, "exchange", BED25519::Exchange);
@@ -762,6 +763,123 @@ NAN_METHOD(BED25519::Verify) {
 
   bool result = bcrypto_ed25519_sign_open(msg, msg_len, pub,
                                           ph, ctx, ctx_len, sig) == 0;
+
+  info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
+}
+
+NAN_METHOD(BED25519::BatchVerify) {
+  if (info.Length() < 1)
+    return Nan::ThrowError("ed25519.batchVerify() requires arguments.");
+
+  if (!info[0]->IsArray())
+    return Nan::ThrowTypeError("First argument must be an array.");
+
+  v8::Local<v8::Array> batch = info[0].As<v8::Array>();
+
+  int ph = -1;
+  const uint8_t *ctx = NULL;
+  size_t ctx_len = 0;
+
+  if (info.Length() > 1 && !IsNull(info[1])) {
+    if (!info[1]->IsBoolean())
+      return Nan::ThrowTypeError("Second argument must be a boolean or null.");
+
+    ph = (int)Nan::To<bool>(info[1]).FromJust();
+  }
+
+  if (info.Length() > 2 && !IsNull(info[2])) {
+    v8::Local<v8::Object> cbuf = info[2].As<v8::Object>();
+
+    if (!node::Buffer::HasInstance(cbuf))
+      return Nan::ThrowTypeError("Third argument must be a buffer or null.");
+
+    if (ph == -1)
+      return Nan::ThrowError("Must pass pre-hash flag with context.");
+
+    ctx = (const uint8_t *)node::Buffer::Data(cbuf);
+    ctx_len = node::Buffer::Length(cbuf);
+
+    if (ctx_len > 255)
+      return Nan::ThrowRangeError("Invalid context length.");
+  }
+
+  size_t len = (size_t)batch->Length();
+
+  if (len == 0)
+    return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
+
+  const uint8_t **slab1 =
+    (const uint8_t **)malloc(len * 3 * sizeof(const uint8_t **));
+
+  if (slab1 == NULL)
+    return Nan::ThrowError("Allocation failed.");
+
+  size_t *slab2 = (size_t *)malloc(len * sizeof(size_t *));
+
+  if (slab2 == NULL) {
+    free(slab1);
+    return Nan::ThrowError("Allocation failed.");
+  }
+
+  const uint8_t **msgs = &slab1[0];
+  size_t *msg_lens = &slab2[0];
+  const uint8_t **pubs = &slab1[len * 1];
+  const uint8_t **sigs = &slab1[len * 2];
+
+  for (size_t i = 0; i < len; i++) {
+    if (!batch->Get(i)->IsArray()) {
+      free(slab1);
+      free(slab2);
+      return Nan::ThrowTypeError("Batch item must be an array.");
+    }
+
+    v8::Local<v8::Array> item = batch->Get(i).As<v8::Array>();
+
+    if (item->Length() != 3) {
+      free(slab1);
+      free(slab2);
+      return Nan::ThrowError("Invalid input.");
+    }
+
+    v8::Local<v8::Object> mbuf = item->Get(0).As<v8::Object>();
+    v8::Local<v8::Object> sbuf = item->Get(1).As<v8::Object>();
+    v8::Local<v8::Object> pbuf = item->Get(2).As<v8::Object>();
+
+    if (!node::Buffer::HasInstance(mbuf)
+        || !node::Buffer::HasInstance(sbuf)
+        || !node::Buffer::HasInstance(pbuf)) {
+      free(slab1);
+      free(slab2);
+      return Nan::ThrowTypeError("Batch values must be buffers.");
+    }
+
+    const uint8_t *msg = (const uint8_t *)node::Buffer::Data(mbuf);
+    size_t msg_len = node::Buffer::Length(mbuf);
+
+    const uint8_t *sig = (const uint8_t *)node::Buffer::Data(sbuf);
+    size_t sig_len = node::Buffer::Length(sbuf);
+
+    const uint8_t *pub = (const uint8_t *)node::Buffer::Data(pbuf);
+    size_t pub_len = node::Buffer::Length(pbuf);
+
+    if (sig_len != 64 || pub_len != 32) {
+      free(slab1);
+      free(slab2);
+      return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
+    }
+
+    msgs[i] = msg;
+    msg_lens[i] = msg_len;
+    sigs[i] = sig;
+    pubs[i] = pub;
+  }
+
+  bool result = bcrypto_ed25519_sign_open_batch(msgs, msg_lens, pubs,
+                                                sigs, len, ph, ctx,
+                                                ctx_len, NULL) >= 0;
+
+  free(slab1);
+  free(slab2);
 
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }

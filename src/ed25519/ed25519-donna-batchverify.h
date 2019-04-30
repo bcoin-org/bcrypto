@@ -220,8 +220,10 @@ bcrypto_ed25519_sign_open_batch(
   unsigned char hram[64];
   int ret = 0;
 
-  for (i = 0; i < num; i++)
-    valid[i] = 1;
+  if (valid != NULL) {
+    for (i = 0; i < num; i++)
+      valid[i] = 1;
+  }
 
   while (num > 3) {
     batchsize = (num > max_batch_size) ? max_batch_size : num;
@@ -262,9 +264,13 @@ bcrypto_ed25519_sign_open_batch(
 
       fallback:
       for (i = 0; i < batchsize; i++) {
-        valid[i] = bcrypto_ed25519_sign_open(m[i], mlen[i], pk[i],
-                                             ph, ctx, ctx_len, RS[i]) ? 0 : 1;
-        ret |= (valid[i] ^ 1);
+        int r = bcrypto_ed25519_sign_open(m[i], mlen[i], pk[i],
+                                          ph, ctx, ctx_len, RS[i]) ? 0 : 1;
+
+        if (valid != NULL)
+          valid[i] = r;
+
+        ret |= (r ^ 1);
       }
     }
 
@@ -273,13 +279,19 @@ bcrypto_ed25519_sign_open_batch(
     pk += batchsize;
     RS += batchsize;
     num -= batchsize;
-    valid += batchsize;
+
+    if (valid != NULL)
+      valid += batchsize;
   }
 
   for (i = 0; i < num; i++) {
-    valid[i] = bcrypto_ed25519_sign_open(m[i], mlen[i], pk[i],
-                                         ph, ctx, ctx_len, RS[i]) ? 0 : 1;
-    ret |= (valid[i] ^ 1);
+    int r = bcrypto_ed25519_sign_open(m[i], mlen[i], pk[i],
+                                      ph, ctx, ctx_len, RS[i]) ? 0 : 1;
+
+    if (valid != NULL)
+      valid[i] = r;
+
+    ret |= (r ^ 1);
   }
 
   return ret;
