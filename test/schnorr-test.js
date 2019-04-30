@@ -1,7 +1,7 @@
 'use strict';
 
 const assert = require('bsert');
-const p256 = require('../lib/js/p256');
+const p256 = require('../lib/p256');
 const secp256k1 = require('../lib/secp256k1');
 const vectors = require('./data/schnorr.json');
 
@@ -36,6 +36,7 @@ describe('Secp256k1+Schnorr', function() {
   }
 
   it('should do batch verification', () => {
+    assert.strictEqual(secp256k1.schnorrBatchVerify([]), true);
     assert.strictEqual(secp256k1.schnorrBatchVerify(valid), true);
   });
 
