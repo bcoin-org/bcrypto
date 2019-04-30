@@ -8,8 +8,9 @@ const random = require('../lib/random');
 const ed25519 = require('../lib/ed25519');
 const SHA512 = require('../lib/sha512');
 const derivations = require('./data/ed25519.json');
-const vectors = require('./data/ed25519-input.json');
+const json = require('./data/ed25519-input.json');
 const rfc8032 = require('./data/rfc8032-vectors.json');
+const vectors = process.env.CI || ed25519.native ? json : json.slice(0, 128);
 
 describe('EdDSA', function() {
   this.timeout(15000);
@@ -359,7 +360,7 @@ describe('EdDSA', function() {
 
   describe('ed25519 derivations', () => {
     for (const [i, test] of derivations.entries()) {
-      it(`should compute correct a and A for secret: ${i}`, () => {
+      it(`should compute correct a and A for secret #${i}`, () => {
         const secret = Buffer.from(test.secret_hex, 'hex');
         const priv = ed25519.privateKeyConvert(secret);
         const pub = ed25519.publicKeyCreate(secret);
@@ -373,12 +374,16 @@ describe('EdDSA', function() {
   });
 
   describe('sign.input ed25519 test vectors', () => {
+    const batch = [];
+
     // https://ed25519.cr.yp.to/software.html
     for (const [i, [secret_, pub_, msg_, sig_]] of vectors.entries()) {
       const secret = Buffer.from(secret_, 'hex');
       const pub = Buffer.from(pub_, 'hex');
       const msg = Buffer.from(msg_, 'hex');
       const sig = Buffer.from(sig_, 'hex');
+
+      batch.push([msg, sig, pub]);
 
       it(`should pass ed25519 vector #${i}`, () => {
         const pub_ = ed25519.publicKeyCreate(secret);
@@ -406,6 +411,10 @@ describe('EdDSA', function() {
         assert(!ed25519.verify(forged, sig, pub));
       });
     }
+
+    it('should do batch verification', () => {
+      assert.strictEqual(ed25519.batchVerify(batch), true);
+    });
   });
 
   describe('RFC 8032 vectors', () => {

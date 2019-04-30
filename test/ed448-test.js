@@ -328,6 +328,8 @@ describe('Ed448', function() {
   });
 
   describe('RFC 8032 vectors', () => {
+    const batch = [];
+
     for (const [i, vector] of rfc8032.entries()) {
       if (!vector.algorithm.startsWith('Ed448'))
         continue;
@@ -345,6 +347,9 @@ describe('Ed448', function() {
       const sig = Buffer.from(vector.sig, 'hex');
       const pub = Buffer.from(vector.pub, 'hex');
       const priv = Buffer.from(vector.priv, 'hex');
+
+      if (ph === false && ctx === null)
+        batch.push([msg, sig, pub]);
 
       it(`should pass RFC 8032 vector (${vector.algorithm} #${i})`, () => {
         assert(ed448.privateKeyVerify(priv));
@@ -387,6 +392,10 @@ describe('Ed448', function() {
         }
       });
     }
+
+    it('should do batch verification', () => {
+      assert.strictEqual(ed448.batchVerify(batch), true);
+    });
   });
 
   it('should test serialization formats', () => {
