@@ -396,18 +396,15 @@ describe('EdDSA', function() {
 
         assert.bufferEqual(sig_, sig);
 
-        assert(ed25519.verify(msg, sig_, pub_));
+        assert(ed25519.verify(msg, sig, pub));
 
         let forged = Buffer.from([0x78]); // ord('x')
 
         if (msg.length > 0) {
-          forged = Buffer.concat([
-            msg.slice(0, msg.length - 1),
-            Buffer.from([(msg[(msg.length - 1)] + 1) % 256])
-          ]);
+          forged = Buffer.from(msg);
+          forged[forged.length - 1] += 1;
         }
 
-        assert.strictEqual(msg.length || 1, forged.length);
         assert(!ed25519.verify(forged, sig, pub));
       });
     }
