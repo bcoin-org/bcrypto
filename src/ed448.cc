@@ -37,7 +37,7 @@ BED448::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "exchange", BED448::Exchange);
   Nan::Export(obj, "exchangeWithScalar", BED448::ExchangeWithScalar);
 
-  target->Set(Nan::New("ed448").ToLocalChecked(), obj);
+  Nan::Set(target, Nan::New("ed448").ToLocalChecked(), obj);
 }
 
 NAN_METHOD(BED448::PrivateKeyConvert) {

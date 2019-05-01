@@ -56,7 +56,7 @@ BCipherBase::Init(v8::Local<v8::Object> &target) {
   v8::Local<v8::FunctionTemplate> ctor =
     Nan::New<v8::FunctionTemplate>(cipher_constructor);
 
-  target->Set(Nan::New("CipherBase").ToLocalChecked(),
+  Nan::Set(target, Nan::New("CipherBase").ToLocalChecked(),
     Nan::GetFunction(ctor).ToLocalChecked());
 }
 

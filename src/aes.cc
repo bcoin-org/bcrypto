@@ -15,7 +15,7 @@ BAES::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "encipher", BAES::Encipher);
   Nan::Export(obj, "decipher", BAES::Decipher);
 
-  target->Set(Nan::New("aes").ToLocalChecked(), obj);
+  Nan::Set(target, Nan::New("aes").ToLocalChecked(), obj);
 }
 
 NAN_METHOD(BAES::Encipher) {

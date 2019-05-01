@@ -31,7 +31,7 @@ BBLAKE2b::Init(v8::Local<v8::Object> &target) {
   v8::Local<v8::FunctionTemplate> ctor =
     Nan::New<v8::FunctionTemplate>(blake2b_constructor);
 
-  target->Set(Nan::New("BLAKE2b").ToLocalChecked(),
+  Nan::Set(target, Nan::New("BLAKE2b").ToLocalChecked(),
     Nan::GetFunction(ctor).ToLocalChecked());
 }
 

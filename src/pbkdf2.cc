@@ -18,7 +18,7 @@ BPBKDF2::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "deriveAsync", BPBKDF2::DeriveAsync);
   Nan::Export(obj, "hasHash", BPBKDF2::HasHash);
 
-  target->Set(Nan::New("pbkdf2").ToLocalChecked(), obj);
+  Nan::Set(target, Nan::New("pbkdf2").ToLocalChecked(), obj);
 }
 
 NAN_METHOD(BPBKDF2::Derive) {

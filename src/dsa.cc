@@ -36,7 +36,7 @@ BDSA::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "verify", BDSA::Verify);
   Nan::Export(obj, "derive", BDSA::Derive);
 
-  target->Set(Nan::New("dsa").ToLocalChecked(), obj);
+  Nan::Set(target, Nan::New("dsa").ToLocalChecked(), obj);
 }
 
 NAN_METHOD(BDSA::ParamsGenerate) {
@@ -54,9 +54,9 @@ NAN_METHOD(BDSA::ParamsGenerate) {
     return Nan::ThrowTypeError("Could not generate key.");
 
   v8::Local<v8::Array> ret = Nan::New<v8::Array>();
-  ret->Set(0, Nan::CopyBuffer((char *)k->pd, k->pl).ToLocalChecked());
-  ret->Set(1, Nan::CopyBuffer((char *)k->qd, k->ql).ToLocalChecked());
-  ret->Set(2, Nan::CopyBuffer((char *)k->gd, k->gl).ToLocalChecked());
+  Nan::Set(ret, 0, Nan::CopyBuffer((char *)k->pd, k->pl).ToLocalChecked());
+  Nan::Set(ret, 1, Nan::CopyBuffer((char *)k->qd, k->ql).ToLocalChecked());
+  Nan::Set(ret, 2, Nan::CopyBuffer((char *)k->gd, k->gl).ToLocalChecked());
 
   bcrypto_dsa_key_free(k);
 
@@ -170,9 +170,9 @@ NAN_METHOD(BDSA::ParamsImport) {
     return Nan::ThrowError("Could not import params.");
 
   v8::Local<v8::Array> ret = Nan::New<v8::Array>();
-  ret->Set(0, Nan::CopyBuffer((char *)k->pd, k->pl).ToLocalChecked());
-  ret->Set(1, Nan::CopyBuffer((char *)k->qd, k->ql).ToLocalChecked());
-  ret->Set(2, Nan::CopyBuffer((char *)k->gd, k->gl).ToLocalChecked());
+  Nan::Set(ret, 0, Nan::CopyBuffer((char *)k->pd, k->pl).ToLocalChecked());
+  Nan::Set(ret, 1, Nan::CopyBuffer((char *)k->qd, k->ql).ToLocalChecked());
+  Nan::Set(ret, 2, Nan::CopyBuffer((char *)k->gd, k->gl).ToLocalChecked());
 
   bcrypto_dsa_key_free(k);
 
@@ -211,11 +211,11 @@ NAN_METHOD(BDSA::PrivateKeyCreate) {
     return Nan::ThrowError("Could not generate key.");
 
   v8::Local<v8::Array> ret = Nan::New<v8::Array>();
-  ret->Set(0, Nan::CopyBuffer((char *)k->pd, k->pl).ToLocalChecked());
-  ret->Set(1, Nan::CopyBuffer((char *)k->qd, k->ql).ToLocalChecked());
-  ret->Set(2, Nan::CopyBuffer((char *)k->gd, k->gl).ToLocalChecked());
-  ret->Set(3, Nan::CopyBuffer((char *)k->yd, k->yl).ToLocalChecked());
-  ret->Set(4, Nan::CopyBuffer((char *)k->xd, k->xl).ToLocalChecked());
+  Nan::Set(ret, 0, Nan::CopyBuffer((char *)k->pd, k->pl).ToLocalChecked());
+  Nan::Set(ret, 1, Nan::CopyBuffer((char *)k->qd, k->ql).ToLocalChecked());
+  Nan::Set(ret, 2, Nan::CopyBuffer((char *)k->gd, k->gl).ToLocalChecked());
+  Nan::Set(ret, 3, Nan::CopyBuffer((char *)k->yd, k->yl).ToLocalChecked());
+  Nan::Set(ret, 4, Nan::CopyBuffer((char *)k->xd, k->xl).ToLocalChecked());
 
   bcrypto_dsa_key_free(k);
 
@@ -376,11 +376,11 @@ NAN_METHOD(BDSA::PrivateKeyImport) {
     return Nan::ThrowError("Could not import private key.");
 
   v8::Local<v8::Array> ret = Nan::New<v8::Array>();
-  ret->Set(0, Nan::CopyBuffer((char *)k->pd, k->pl).ToLocalChecked());
-  ret->Set(1, Nan::CopyBuffer((char *)k->qd, k->ql).ToLocalChecked());
-  ret->Set(2, Nan::CopyBuffer((char *)k->gd, k->gl).ToLocalChecked());
-  ret->Set(3, Nan::CopyBuffer((char *)k->yd, k->yl).ToLocalChecked());
-  ret->Set(4, Nan::CopyBuffer((char *)k->xd, k->xl).ToLocalChecked());
+  Nan::Set(ret, 0, Nan::CopyBuffer((char *)k->pd, k->pl).ToLocalChecked());
+  Nan::Set(ret, 1, Nan::CopyBuffer((char *)k->qd, k->ql).ToLocalChecked());
+  Nan::Set(ret, 2, Nan::CopyBuffer((char *)k->gd, k->gl).ToLocalChecked());
+  Nan::Set(ret, 3, Nan::CopyBuffer((char *)k->yd, k->yl).ToLocalChecked());
+  Nan::Set(ret, 4, Nan::CopyBuffer((char *)k->xd, k->xl).ToLocalChecked());
 
   bcrypto_dsa_key_free(k);
 
@@ -451,11 +451,11 @@ NAN_METHOD(BDSA::PrivateKeyImportPKCS8) {
     return Nan::ThrowError("Could not import private key.");
 
   v8::Local<v8::Array> ret = Nan::New<v8::Array>();
-  ret->Set(0, Nan::CopyBuffer((char *)k->pd, k->pl).ToLocalChecked());
-  ret->Set(1, Nan::CopyBuffer((char *)k->qd, k->ql).ToLocalChecked());
-  ret->Set(2, Nan::CopyBuffer((char *)k->gd, k->gl).ToLocalChecked());
-  ret->Set(3, Nan::CopyBuffer((char *)k->yd, k->yl).ToLocalChecked());
-  ret->Set(4, Nan::CopyBuffer((char *)k->xd, k->xl).ToLocalChecked());
+  Nan::Set(ret, 0, Nan::CopyBuffer((char *)k->pd, k->pl).ToLocalChecked());
+  Nan::Set(ret, 1, Nan::CopyBuffer((char *)k->qd, k->ql).ToLocalChecked());
+  Nan::Set(ret, 2, Nan::CopyBuffer((char *)k->gd, k->gl).ToLocalChecked());
+  Nan::Set(ret, 3, Nan::CopyBuffer((char *)k->yd, k->yl).ToLocalChecked());
+  Nan::Set(ret, 4, Nan::CopyBuffer((char *)k->xd, k->xl).ToLocalChecked());
 
   bcrypto_dsa_key_free(k);
 
@@ -557,10 +557,10 @@ NAN_METHOD(BDSA::PublicKeyImport) {
     return Nan::ThrowError("Could not import public key.");
 
   v8::Local<v8::Array> ret = Nan::New<v8::Array>();
-  ret->Set(0, Nan::CopyBuffer((char *)k->pd, k->pl).ToLocalChecked());
-  ret->Set(1, Nan::CopyBuffer((char *)k->qd, k->ql).ToLocalChecked());
-  ret->Set(2, Nan::CopyBuffer((char *)k->gd, k->gl).ToLocalChecked());
-  ret->Set(3, Nan::CopyBuffer((char *)k->yd, k->yl).ToLocalChecked());
+  Nan::Set(ret, 0, Nan::CopyBuffer((char *)k->pd, k->pl).ToLocalChecked());
+  Nan::Set(ret, 1, Nan::CopyBuffer((char *)k->qd, k->ql).ToLocalChecked());
+  Nan::Set(ret, 2, Nan::CopyBuffer((char *)k->gd, k->gl).ToLocalChecked());
+  Nan::Set(ret, 3, Nan::CopyBuffer((char *)k->yd, k->yl).ToLocalChecked());
 
   bcrypto_dsa_key_free(k);
 
@@ -626,10 +626,10 @@ NAN_METHOD(BDSA::PublicKeyImportSPKI) {
     return Nan::ThrowError("Could not import public key.");
 
   v8::Local<v8::Array> ret = Nan::New<v8::Array>();
-  ret->Set(0, Nan::CopyBuffer((char *)k->pd, k->pl).ToLocalChecked());
-  ret->Set(1, Nan::CopyBuffer((char *)k->qd, k->ql).ToLocalChecked());
-  ret->Set(2, Nan::CopyBuffer((char *)k->gd, k->gl).ToLocalChecked());
-  ret->Set(3, Nan::CopyBuffer((char *)k->yd, k->yl).ToLocalChecked());
+  Nan::Set(ret, 0, Nan::CopyBuffer((char *)k->pd, k->pl).ToLocalChecked());
+  Nan::Set(ret, 1, Nan::CopyBuffer((char *)k->qd, k->ql).ToLocalChecked());
+  Nan::Set(ret, 2, Nan::CopyBuffer((char *)k->gd, k->gl).ToLocalChecked());
+  Nan::Set(ret, 3, Nan::CopyBuffer((char *)k->yd, k->yl).ToLocalChecked());
 
   bcrypto_dsa_key_free(k);
 
@@ -686,8 +686,8 @@ NAN_METHOD(BDSA::Sign) {
     return Nan::ThrowError("Could not sign message.");
 
   v8::Local<v8::Array> ret = Nan::New<v8::Array>();
-  ret->Set(0, Nan::NewBuffer((char *)r, rl).ToLocalChecked());
-  ret->Set(1, Nan::NewBuffer((char *)s, sl).ToLocalChecked());
+  Nan::Set(ret, 0, Nan::NewBuffer((char *)r, rl).ToLocalChecked());
+  Nan::Set(ret, 1, Nan::NewBuffer((char *)s, sl).ToLocalChecked());
 
   info.GetReturnValue().Set(ret);
 }

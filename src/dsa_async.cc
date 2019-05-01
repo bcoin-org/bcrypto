@@ -35,9 +35,9 @@ BDSAWorker::HandleOKCallback() {
   assert(k);
 
   v8::Local<v8::Array> ret = Nan::New<v8::Array>();
-  ret->Set(0, Nan::CopyBuffer((char *)k->pd, k->pl).ToLocalChecked());
-  ret->Set(1, Nan::CopyBuffer((char *)k->qd, k->ql).ToLocalChecked());
-  ret->Set(2, Nan::CopyBuffer((char *)k->gd, k->gl).ToLocalChecked());
+  Nan::Set(ret, 0, Nan::CopyBuffer((char *)k->pd, k->pl).ToLocalChecked());
+  Nan::Set(ret, 1, Nan::CopyBuffer((char *)k->qd, k->ql).ToLocalChecked());
+  Nan::Set(ret, 2, Nan::CopyBuffer((char *)k->gd, k->gl).ToLocalChecked());
 
   bcrypto_dsa_key_free(k);
 

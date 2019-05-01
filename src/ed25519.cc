@@ -38,7 +38,7 @@ BED25519::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "exchange", BED25519::Exchange);
   Nan::Export(obj, "exchangeWithScalar", BED25519::ExchangeWithScalar);
 
-  target->Set(Nan::New("ed25519").ToLocalChecked(), obj);
+  Nan::Set(target, Nan::New("ed25519").ToLocalChecked(), obj);
 }
 
 NAN_METHOD(BED25519::PrivateKeyConvert) {
@@ -827,13 +827,13 @@ NAN_METHOD(BED25519::BatchVerify) {
   const uint8_t **sigs = &slab1[len * 2];
 
   for (size_t i = 0; i < len; i++) {
-    if (!batch->Get(i)->IsArray()) {
+    if (!Nan::Get(batch, i).ToLocalChecked()->IsArray()) {
       free(slab1);
       free(slab2);
       return Nan::ThrowTypeError("Batch item must be an array.");
     }
 
-    v8::Local<v8::Array> item = batch->Get(i).As<v8::Array>();
+    v8::Local<v8::Array> item = Nan::Get(batch, i).ToLocalChecked().As<v8::Array>();
 
     if (item->Length() != 3) {
       free(slab1);
@@ -841,9 +841,9 @@ NAN_METHOD(BED25519::BatchVerify) {
       return Nan::ThrowError("Invalid input.");
     }
 
-    v8::Local<v8::Object> mbuf = item->Get(0).As<v8::Object>();
-    v8::Local<v8::Object> sbuf = item->Get(1).As<v8::Object>();
-    v8::Local<v8::Object> pbuf = item->Get(2).As<v8::Object>();
+    v8::Local<v8::Object> mbuf = Nan::Get(item, 0).ToLocalChecked().As<v8::Object>();
+    v8::Local<v8::Object> sbuf = Nan::Get(item, 1).ToLocalChecked().As<v8::Object>();
+    v8::Local<v8::Object> pbuf = Nan::Get(item, 2).ToLocalChecked().As<v8::Object>();
 
     if (!node::Buffer::HasInstance(mbuf)
         || !node::Buffer::HasInstance(sbuf)

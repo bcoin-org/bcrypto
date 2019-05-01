@@ -14,7 +14,7 @@ BRandom::Init(v8::Local<v8::Object> &target) {
 
   Nan::Export(obj, "randomFill", BRandom::RandomFill);
 
-  target->Set(Nan::New("random").ToLocalChecked(), obj);
+  Nan::Set(target, Nan::New("random").ToLocalChecked(), obj);
 }
 
 NAN_METHOD(BRandom::RandomFill) {
