@@ -30,7 +30,8 @@ BPoly1305::Init(v8::Local<v8::Object> &target) {
   v8::Local<v8::FunctionTemplate> ctor =
     Nan::New<v8::FunctionTemplate>(poly1305_constructor);
 
-  target->Set(Nan::New("Poly1305").ToLocalChecked(), ctor->GetFunction());
+  target->Set(Nan::New("Poly1305").ToLocalChecked(),
+    Nan::GetFunction(ctor).ToLocalChecked());
 }
 
 NAN_METHOD(BPoly1305::New) {

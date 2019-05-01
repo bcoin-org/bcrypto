@@ -31,7 +31,8 @@ BSHA256::Init(v8::Local<v8::Object> &target) {
   v8::Local<v8::FunctionTemplate> ctor =
     Nan::New<v8::FunctionTemplate>(sha256_constructor);
 
-  target->Set(Nan::New("SHA256").ToLocalChecked(), ctor->GetFunction());
+  target->Set(Nan::New("SHA256").ToLocalChecked(),
+    Nan::GetFunction(ctor).ToLocalChecked());
 }
 
 NAN_METHOD(BSHA256::New) {

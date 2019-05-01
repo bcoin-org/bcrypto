@@ -31,7 +31,8 @@ BSHA224::Init(v8::Local<v8::Object> &target) {
   v8::Local<v8::FunctionTemplate> ctor =
     Nan::New<v8::FunctionTemplate>(sha224_constructor);
 
-  target->Set(Nan::New("SHA224").ToLocalChecked(), ctor->GetFunction());
+  target->Set(Nan::New("SHA224").ToLocalChecked(),
+    Nan::GetFunction(ctor).ToLocalChecked());
 }
 
 NAN_METHOD(BSHA224::New) {

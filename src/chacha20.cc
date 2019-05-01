@@ -33,7 +33,8 @@ BChaCha20::Init(v8::Local<v8::Object> &target) {
   v8::Local<v8::FunctionTemplate> ctor =
     Nan::New<v8::FunctionTemplate>(chacha20_constructor);
 
-  target->Set(Nan::New("ChaCha20").ToLocalChecked(), ctor->GetFunction());
+  target->Set(Nan::New("ChaCha20").ToLocalChecked(),
+    Nan::GetFunction(ctor).ToLocalChecked());
 }
 
 NAN_METHOD(BChaCha20::New) {
