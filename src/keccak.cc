@@ -31,7 +31,7 @@ BKeccak::Init(v8::Local<v8::Object> &target) {
   v8::Local<v8::FunctionTemplate> ctor =
     Nan::New<v8::FunctionTemplate>(keccak_constructor);
 
-  target->Set(Nan::New("Keccak").ToLocalChecked(),
+  Nan::Set(target, Nan::New("Keccak").ToLocalChecked(),
     Nan::GetFunction(ctor).ToLocalChecked());
 }
 

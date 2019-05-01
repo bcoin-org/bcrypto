@@ -36,7 +36,7 @@ BAEAD::Init(v8::Local<v8::Object> &target) {
   v8::Local<v8::FunctionTemplate> ctor =
     Nan::New<v8::FunctionTemplate>(aead_constructor);
 
-  target->Set(Nan::New("AEAD").ToLocalChecked(),
+  Nan::Set(target, Nan::New("AEAD").ToLocalChecked(),
     Nan::GetFunction(ctor).ToLocalChecked());
 }
 

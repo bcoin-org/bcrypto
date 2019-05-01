@@ -37,7 +37,7 @@ BECDSA::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "recover", BECDSA::Recover);
   Nan::Export(obj, "derive", BECDSA::Derive);
 
-  target->Set(Nan::New("ecdsa").ToLocalChecked(), obj);
+  Nan::Set(target, Nan::New("ecdsa").ToLocalChecked(), obj);
 }
 
 NAN_METHOD(BECDSA::PrivateKeyGenerate) {
@@ -722,8 +722,8 @@ NAN_METHOD(BECDSA::Sign) {
     return Nan::ThrowError("Could not sign.");
 
   v8::Local<v8::Array> ret = Nan::New<v8::Array>();
-  ret->Set(0, Nan::NewBuffer((char *)r, rl).ToLocalChecked());
-  ret->Set(1, Nan::NewBuffer((char *)s, sl).ToLocalChecked());
+  Nan::Set(ret, 0, Nan::NewBuffer((char *)r, rl).ToLocalChecked());
+  Nan::Set(ret, 1, Nan::NewBuffer((char *)s, sl).ToLocalChecked());
 
   info.GetReturnValue().Set(ret);
 }

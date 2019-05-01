@@ -15,7 +15,7 @@ BMurmur3::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "sum", BMurmur3::Sum);
   Nan::Export(obj, "tweak", BMurmur3::Tweak);
 
-  target->Set(Nan::New("murmur3").ToLocalChecked(), obj);
+  Nan::Set(target, Nan::New("murmur3").ToLocalChecked(), obj);
 }
 
 NAN_METHOD(BMurmur3::Sum) {

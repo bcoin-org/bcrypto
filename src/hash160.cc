@@ -32,7 +32,7 @@ BHash160::Init(v8::Local<v8::Object> &target) {
   v8::Local<v8::FunctionTemplate> ctor =
     Nan::New<v8::FunctionTemplate>(hash160_constructor);
 
-  target->Set(Nan::New("Hash160").ToLocalChecked(),
+  Nan::Set(target, Nan::New("Hash160").ToLocalChecked(),
     Nan::GetFunction(ctor).ToLocalChecked());
 }
 

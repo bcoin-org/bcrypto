@@ -16,7 +16,7 @@ BScrypt::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "derive", BScrypt::Derive);
   Nan::Export(obj, "deriveAsync", BScrypt::DeriveAsync);
 
-  target->Set(Nan::New("scrypt").ToLocalChecked(), obj);
+  Nan::Set(target, Nan::New("scrypt").ToLocalChecked(), obj);
 }
 
 NAN_METHOD(BScrypt::Derive) {

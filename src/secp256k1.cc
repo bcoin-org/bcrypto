@@ -255,7 +255,7 @@ BSecp256k1::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "schnorrSign", BSecp256k1::schnorrSign);
   Nan::Export(obj, "schnorrVerify", BSecp256k1::schnorrVerify);
 
-  target->Set(Nan::New("secp256k1").ToLocalChecked(), obj);
+  Nan::Set(target, Nan::New("secp256k1").ToLocalChecked(), obj);
 }
 
 NAN_METHOD(BSecp256k1::privateKeyVerify) {
@@ -526,7 +526,7 @@ NAN_METHOD(BSecp256k1::publicKeyCombine) {
   std::unique_ptr<secp256k1_pubkey[]> public_keys(new secp256k1_pubkey[input_buffers->Length()]);
   std::unique_ptr<secp256k1_pubkey*[]> ins(new secp256k1_pubkey*[input_buffers->Length()]);
   for (unsigned int i = 0; i < input_buffers->Length(); ++i) {
-    v8::Local<v8::Object> public_key_buffer = v8::Local<v8::Object>::Cast(input_buffers->Get(i));
+    v8::Local<v8::Object> public_key_buffer = Nan::Get(input_buffers, i).ToLocalChecked().As<v8::Object>();
     CHECK_TYPE_BUFFER(public_key_buffer, EC_PUBLIC_KEY_TYPE_INVALID);
     CHECK_BUFFER_LENGTH2(public_key_buffer, 33, 65, EC_PUBLIC_KEY_LENGTH_INVALID);
 
@@ -684,8 +684,8 @@ NAN_METHOD(BSecp256k1::sign) {
   secp256k1_ecdsa_recoverable_signature_serialize_compact(secp256k1ctx, &output[0], &recid, &sig);
 
   v8::Local<v8::Object> obj = Nan::New<v8::Object>();
-  obj->Set(Nan::New<v8::String>("signature").ToLocalChecked(), COPY_BUFFER(&output[0], 64));
-  obj->Set(Nan::New<v8::String>("recovery").ToLocalChecked(), Nan::New<v8::Number>(recid));
+  Nan::Set(obj, Nan::New<v8::String>("signature").ToLocalChecked(), COPY_BUFFER(&output[0], 64));
+  Nan::Set(obj, Nan::New<v8::String>("recovery").ToLocalChecked(), Nan::New<v8::Number>(recid));
   info.GetReturnValue().Set(obj);
 }
 

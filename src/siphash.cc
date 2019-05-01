@@ -22,7 +22,7 @@ BSiphash::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "siphash64k256", BSiphash::Siphash64k256);
   Nan::Export(obj, "sipmod", BSiphash::Sipmod);
 
-  target->Set(Nan::New("siphash").ToLocalChecked(), obj);
+  Nan::Set(target, Nan::New("siphash").ToLocalChecked(), obj);
 }
 
 NAN_METHOD(BSiphash::Siphash) {
@@ -51,8 +51,8 @@ NAN_METHOD(BSiphash::Siphash) {
   uint64_t result = bcrypto_siphash(data, len, kdata);
 
   v8::Local<v8::Array> ret = Nan::New<v8::Array>();
-  ret->Set(0, Nan::New<v8::Int32>((int32_t)(result >> 32)));
-  ret->Set(1, Nan::New<v8::Int32>((int32_t)(result & 0xffffffff)));
+  Nan::Set(ret, 0, Nan::New<v8::Int32>((int32_t)(result >> 32)));
+  Nan::Set(ret, 1, Nan::New<v8::Int32>((int32_t)(result & 0xffffffff)));
 
   info.GetReturnValue().Set(ret);
 }
@@ -110,8 +110,8 @@ NAN_METHOD(BSiphash::Siphash64) {
   uint64_t result = bcrypto_siphash64(num, kdata);
 
   v8::Local<v8::Array> ret = Nan::New<v8::Array>();
-  ret->Set(0, Nan::New<v8::Int32>((int32_t)(result >> 32)));
-  ret->Set(1, Nan::New<v8::Int32>((int32_t)(result & 0xffffffff)));
+  Nan::Set(ret, 0, Nan::New<v8::Int32>((int32_t)(result >> 32)));
+  Nan::Set(ret, 1, Nan::New<v8::Int32>((int32_t)(result & 0xffffffff)));
 
   info.GetReturnValue().Set(ret);
 }
@@ -169,8 +169,8 @@ NAN_METHOD(BSiphash::Siphash64k256) {
   uint64_t result = bcrypto_siphash64k256(num, kdata);
 
   v8::Local<v8::Array> ret = Nan::New<v8::Array>();
-  ret->Set(0, Nan::New<v8::Int32>((int32_t)(result >> 32)));
-  ret->Set(1, Nan::New<v8::Int32>((int32_t)(result & 0xffffffff)));
+  Nan::Set(ret, 0, Nan::New<v8::Int32>((int32_t)(result >> 32)));
+  Nan::Set(ret, 1, Nan::New<v8::Int32>((int32_t)(result & 0xffffffff)));
 
   info.GetReturnValue().Set(ret);
 }
@@ -211,8 +211,8 @@ NAN_METHOD(BSiphash::Sipmod) {
   uint64_t result = bcrypto_sipmod(data, len, kdata, m);
 
   v8::Local<v8::Array> ret = Nan::New<v8::Array>();
-  ret->Set(0, Nan::New<v8::Int32>((int32_t)(result >> 32)));
-  ret->Set(1, Nan::New<v8::Int32>((int32_t)(result & 0xffffffff)));
+  Nan::Set(ret, 0, Nan::New<v8::Int32>((int32_t)(result >> 32)));
+  Nan::Set(ret, 1, Nan::New<v8::Int32>((int32_t)(result & 0xffffffff)));
 
   info.GetReturnValue().Set(ret);
 }

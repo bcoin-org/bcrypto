@@ -31,7 +31,7 @@ BSHA512::Init(v8::Local<v8::Object> &target) {
   v8::Local<v8::FunctionTemplate> ctor =
     Nan::New<v8::FunctionTemplate>(sha512_constructor);
 
-  target->Set(Nan::New("SHA512").ToLocalChecked(),
+  Nan::Set(target, Nan::New("SHA512").ToLocalChecked(),
     Nan::GetFunction(ctor).ToLocalChecked());
 }
 

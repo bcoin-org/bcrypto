@@ -234,7 +234,7 @@ BBN::Init(v8::Local<v8::Object> &target) {
   v8::Local<v8::FunctionTemplate> ctor =
     Nan::New<v8::FunctionTemplate>(bn_constructor);
 
-  target->Set(Nan::New("BN").ToLocalChecked(),
+  Nan::Set(target, Nan::New("BN").ToLocalChecked(),
     Nan::GetFunction(ctor).ToLocalChecked());
 }
 
