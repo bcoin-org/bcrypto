@@ -1,5 +1,7 @@
 # bcrypto
 
+[![Build Status][circleci-status-img]][circleci-status-url]
+
 The missing crypto module for node.js. bcrypto provides you with a consistent
 interface accross node.js and the browser.
 
@@ -71,3 +73,6 @@ See LICENSE for more info.
 [secp256k1]: https://github.com/bitcoin-core/secp256k1
 [ed25519]: https://github.com/floodyberry/ed25519-donna
 [safecurves]: https://safecurves.cr.yp.to/rigid.html
+
+[circleci-status-img]: https://circleci.com/gh/bcoin-org/bcrypto/tree/master.svg?style=shield
+[circleci-status-url]: https://circleci.com/gh/bcoin-org/bcrypto/tree/master
