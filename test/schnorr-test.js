@@ -3,6 +3,7 @@
 const assert = require('bsert');
 const p256 = require('../lib/p256');
 const secp256k1 = require('../lib/secp256k1');
+const random = require('../lib/random');
 const vectors = require('./data/schnorr.json');
 
 describe('Secp256k1+Schnorr', function() {
@@ -95,5 +96,16 @@ describe('Secp256k1+Schnorr', function() {
     assert.strictEqual(p256.schnorr.verify(...batch[0]), true);
     assert.strictEqual(p256.schnorr.verify(...batch[1]), true);
     assert.strictEqual(p256.schnorr.batchVerify(batch), true);
+  });
+
+  it('should verify some random signatures', () => {
+    for (let i = 0; i < 10; i++) {
+      const key = secp256k1.privateKeyGenerate();
+      const pub = secp256k1.publicKeyCreate(key);
+      const msg = random.randomBytes(32);
+      const sig = secp256k1.schnorrSign(msg, key);
+
+      assert(secp256k1.schnorrVerify(msg, sig, pub));
+    }
   });
 });
