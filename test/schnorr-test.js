@@ -99,6 +99,8 @@ describe('Secp256k1+Schnorr', function() {
   });
 
   it('should verify some random signatures', () => {
+    const batch = [];
+
     for (let i = 0; i < 10; i++) {
       const key = secp256k1.privateKeyGenerate();
       const pub = secp256k1.publicKeyCreate(key);
@@ -106,6 +108,10 @@ describe('Secp256k1+Schnorr', function() {
       const sig = secp256k1.schnorrSign(msg, key);
 
       assert(secp256k1.schnorrVerify(msg, sig, pub));
+
+      batch.push([msg, sig, pub]);
     }
+
+    assert(secp256k1.schnorrBatchVerify(batch));
   });
 });
