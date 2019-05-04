@@ -704,4 +704,12 @@ describe('ECDSA', function() {
     assert.bufferEqual(rpub, pub);
     assert.bufferEqual(rpubu, pubu);
   });
+
+  it('should sign zero-length message', () => {
+    const msg = Buffer.alloc(0);
+    const key = p256.privateKeyGenerate();
+    const pub = p256.publicKeyCreate(key);
+    const sig = p256.sign(msg, key);
+    assert(p256.verify(msg, sig, pub));
+  });
 });

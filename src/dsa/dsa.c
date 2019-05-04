@@ -17,8 +17,6 @@
 #define BCRYPTO_DSA_DEFAULT_BITS 2048
 #define BCRYPTO_DSA_MIN_BITS 512
 #define BCRYPTO_DSA_MAX_BITS 10000
-#define BCRYPTO_DSA_MIN_HASH_SIZE 20
-#define BCRYPTO_DSA_MAX_HASH_SIZE 128
 
 void
 bcrypto_dsa_key_init(bcrypto_dsa_key_t *key) {
@@ -1160,12 +1158,6 @@ bcrypto_dsa_sign(
   DSA *priv_d = NULL;
   DSA_SIG *sig_d = NULL;
 
-  if (msg == NULL
-      || msg_len < BCRYPTO_DSA_MIN_HASH_SIZE
-      || msg_len > BCRYPTO_DSA_MAX_HASH_SIZE) {
-    goto fail;
-  }
-
   if (!bcrypto_dsa_sane_privkey(priv))
     goto fail;
 
@@ -1223,12 +1215,6 @@ bcrypto_dsa_verify(
   size_t qsize = 0;
   DSA *pub_d = NULL;
   DSA_SIG *sig_d = NULL;
-
-  if (msg == NULL
-      || msg_len < BCRYPTO_DSA_MIN_HASH_SIZE
-      || msg_len > BCRYPTO_DSA_MAX_HASH_SIZE) {
-    goto fail;
-  }
 
   qsize = bcrypto_dsa_subprime_size(pub);
 

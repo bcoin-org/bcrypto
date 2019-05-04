@@ -67,14 +67,6 @@ bcrypto_ecdsa_size(int type) {
 }
 
 static bool
-bcrypto_ecdsa_valid_message(int type, const uint8_t *msg, size_t len) {
-  if (msg == NULL)
-    return false;
-
-  return len >= 20 && len <= 128;
-}
-
-static bool
 bcrypto_ecdsa_valid_scalar(int type, const uint8_t *scalar, size_t len) {
   if (scalar == NULL)
     return false;
@@ -1661,9 +1653,6 @@ bcrypto_ecdsa_sign(
   if (type == -1)
     goto fail;
 
-  if (!bcrypto_ecdsa_valid_message(type, msg, msg_len))
-    goto fail;
-
   if (!bcrypto_ecdsa_valid_scalar(type, priv, priv_len))
     goto fail;
 
@@ -1726,9 +1715,6 @@ bcrypto_ecdsa_verify(
   int type = bcrypto_ecdsa_curve(name);
 
   if (type == -1)
-    goto fail;
-
-  if (!bcrypto_ecdsa_valid_message(type, msg, msg_len))
     goto fail;
 
   if (!bcrypto_ecdsa_valid_scalar(type, r, r_len))
@@ -1814,9 +1800,6 @@ bcrypto_ecdsa_recover(
   int type = bcrypto_ecdsa_curve(name);
 
   if (type == -1)
-    goto fail;
-
-  if (!bcrypto_ecdsa_valid_message(type, msg, msg_len))
     goto fail;
 
   if (!bcrypto_ecdsa_valid_scalar(type, r, r_len))

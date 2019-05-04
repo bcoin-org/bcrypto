@@ -171,4 +171,12 @@ describe('DSA', function() {
       assert.strictEqual(result2, false);
     });
   }
+
+  it('should sign zero-length message', () => {
+    const msg = Buffer.alloc(0);
+    const key = dsa.privateKeyGenerate(1024);
+    const pub = dsa.publicKeyCreate(key);
+    const sig = dsa.sign(msg, key);
+    assert(dsa.verify(msg, sig, pub));
+  });
 });
