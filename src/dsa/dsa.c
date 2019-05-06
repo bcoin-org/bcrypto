@@ -512,6 +512,9 @@ bcrypto_dsa_params_verify(bcrypto_dsa_key_t *params) {
     goto fail;
   }
 
+  if (BN_cmp(g, p) >= 0)
+    goto fail;
+
   // pm1 = p - 1
   if (!BN_sub(pm1_bn, p, BN_value_one()))
     goto fail;
@@ -1041,10 +1044,34 @@ fail:
 
 bool
 bcrypto_dsa_pubkey_verify(bcrypto_dsa_key_t *key) {
-  if (!bcrypto_dsa_params_verify(key))
-    return false;
+  BIGNUM *p = NULL;
+  BIGNUM *y = NULL;
+  bool r = false;
 
-  return bcrypto_dsa_sane_pubkey(key);
+  if (!bcrypto_dsa_params_verify(key))
+    goto fail;
+
+  if (!bcrypto_dsa_sane_pubkey(key))
+    goto fail;
+
+  p = BN_bin2bn(key->pd, key->pl, NULL);
+  y = BN_bin2bn(key->yd, key->yl, NULL);
+
+  if (!p || !y)
+    goto fail;
+
+  if (BN_cmp(y, p) >= 0)
+    goto fail;
+
+  r = true;
+fail:
+  if (p)
+    BN_free(p);
+
+  if (y)
+    BN_free(y);
+
+  return r;
 }
 
 bool
@@ -1307,6 +1334,12 @@ bcrypto_dsa_derive(
   if (BN_cmp(p_pub, p_priv) != 0
       || BN_cmp(q_pub, q_priv) != 0
       || BN_cmp(g_pub, g_priv) != 0) {
+    goto fail;
+  }
+
+  if (BN_cmp(g_priv, p_priv) >= 0
+      || BN_cmp(y_pub, p_priv) >= 0
+      || BN_cmp(x_priv, q_priv) >= 0) {
     goto fail;
   }
 
