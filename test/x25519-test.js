@@ -5,6 +5,7 @@ const pem = require('../lib/encoding/pem');
 const random = require('../lib/random');
 const ed25519 = require('../lib/ed25519');
 const x25519 = require('../lib/x25519');
+const curve25519 = require('../lib/js/curve25519');
 
 const vectors = [
   // From: https://github.com/golang/crypto/blob/master/curve25519/testvectors_test.go
@@ -190,6 +191,23 @@ describe('X25519', function() {
 
     for (let i = 0; i < 200; i++)
       key = x25519._scalarBaseMul(key);
+
+    assert.bufferEqual(key, expect, 'hex');
+  });
+
+  it('should do scalar base multiplication (curve25519)', () => {
+    if (random.native)
+      this.skip();
+
+    const expect =
+      '89161fde887b2b53de549af483940106ecc114d6982daa98256de23bdf77661a';
+
+    let key = Buffer.alloc(32, 0x00);
+
+    key[0] = 1;
+
+    for (let i = 0; i < 200; i++)
+      key = curve25519.publicKeyCreate(key);
 
     assert.bufferEqual(key, expect, 'hex');
   });
