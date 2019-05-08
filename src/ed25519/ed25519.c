@@ -213,6 +213,14 @@ bcrypto_curved25519_scalarmult_basepoint(
 }
 
 void
+bcrypto_ed25519_privkey_expand(
+  unsigned char out[64],
+  const bcrypto_ed25519_secret_key sk
+) {
+  bcrypto_ed25519_extsk(out, sk);
+}
+
+void
 bcrypto_ed25519_privkey_convert(
   bcrypto_ed25519_secret_key out,
   const bcrypto_ed25519_secret_key sk
@@ -428,6 +436,16 @@ bcrypto_ed25519_scalar_tweak_mul(
   contract256_modm(out, k);
 
   return 0;
+}
+
+void
+bcrypto_ed25519_scalar_mod(
+  bcrypto_ed25519_secret_key out,
+  const bcrypto_ed25519_secret_key sk
+) {
+  bignum256modm k;
+  expand256_modm(k, sk, 32);
+  contract256_modm(out, k);
 }
 
 int

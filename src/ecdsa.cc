@@ -21,6 +21,7 @@ BECDSA::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "privateKeyImportPKCS8", BECDSA::PrivateKeyImportPKCS8);
   Nan::Export(obj, "privateKeyTweakAdd", BECDSA::PrivateKeyTweakAdd);
   Nan::Export(obj, "privateKeyTweakMul", BECDSA::PrivateKeyTweakMul);
+  Nan::Export(obj, "privateKeyMod", BECDSA::PrivateKeyMod);
   Nan::Export(obj, "privateKeyNegate", BECDSA::PrivateKeyNegate);
   Nan::Export(obj, "privateKeyInverse", BECDSA::PrivateKeyInverse);
   Nan::Export(obj, "publicKeyCreate", BECDSA::PublicKeyCreate);
@@ -259,6 +260,37 @@ NAN_METHOD(BECDSA::PrivateKeyTweakMul) {
 
   bool result = bcrypto_ecdsa_privkey_tweak_mul(
     name, pd, pl, td, tl, &priv, &priv_len);
+
+  if (!result)
+    return Nan::ThrowError("Could not tweak private key.");
+
+  return info.GetReturnValue().Set(
+    Nan::NewBuffer((char *)priv, priv_len).ToLocalChecked());
+}
+
+NAN_METHOD(BECDSA::PrivateKeyMod) {
+  if (info.Length() < 2)
+    return Nan::ThrowError("ecdsa.privateKeyMod() requires arguments.");
+
+  if (!info[0]->IsString())
+    return Nan::ThrowTypeError("First argument must be a string.");
+
+  Nan::Utf8String name_(info[0]);
+  const char *name = (const char *)*name_;
+
+  v8::Local<v8::Object> pbuf = info[1].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(pbuf))
+    return Nan::ThrowTypeError("First argument must be a buffer.");
+
+  const uint8_t *pd = (const uint8_t *)node::Buffer::Data(pbuf);
+  size_t pl = node::Buffer::Length(pbuf);
+
+  uint8_t *priv;
+  size_t priv_len;
+
+  bool result = bcrypto_ecdsa_privkey_mod(
+    name, pd, pl, &priv, &priv_len);
 
   if (!result)
     return Nan::ThrowError("Could not tweak private key.");

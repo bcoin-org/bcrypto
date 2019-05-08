@@ -17,6 +17,7 @@ private:
   static NAN_METHOD(PrivateKeyImportPKCS8);
   static NAN_METHOD(PrivateKeyTweakAdd);
   static NAN_METHOD(PrivateKeyTweakMul);
+  static NAN_METHOD(PrivateKeyMod);
   static NAN_METHOD(PrivateKeyNegate);
   static NAN_METHOD(PrivateKeyInverse);
   static NAN_METHOD(PublicKeyCreate);

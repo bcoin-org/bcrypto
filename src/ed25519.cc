@@ -13,9 +13,11 @@ BED25519::Init(v8::Local<v8::Object> &target) {
   Nan::HandleScope scope;
   v8::Local<v8::Object> obj = Nan::New<v8::Object>();
 
+  Nan::Export(obj, "privateKeyExpand", BED25519::PrivateKeyExpand);
   Nan::Export(obj, "privateKeyConvert", BED25519::PrivateKeyConvert);
   Nan::Export(obj, "scalarTweakAdd", BED25519::ScalarTweakAdd);
   Nan::Export(obj, "scalarTweakMul", BED25519::ScalarTweakMul);
+  Nan::Export(obj, "scalarMod", BED25519::ScalarMod);
   Nan::Export(obj, "scalarNegate", BED25519::ScalarNegate);
   Nan::Export(obj, "scalarInverse", BED25519::ScalarInverse);
   Nan::Export(obj, "publicKeyCreate", BED25519::PublicKeyCreate);
@@ -39,6 +41,35 @@ BED25519::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "exchangeWithScalar", BED25519::ExchangeWithScalar);
 
   Nan::Set(target, Nan::New("ed25519").ToLocalChecked(), obj);
+}
+
+NAN_METHOD(BED25519::PrivateKeyExpand) {
+  if (info.Length() < 1)
+    return Nan::ThrowError("ed25519.privateKeyExpand() requires arguments.");
+
+  v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(pbuf))
+    return Nan::ThrowTypeError("First argument must be a buffer.");
+
+  const uint8_t *secret = (const uint8_t *)node::Buffer::Data(pbuf);
+  size_t secret_len = node::Buffer::Length(pbuf);
+
+  if (secret_len != 32)
+    return Nan::ThrowRangeError("Invalid secret size.");
+
+  uint8_t out[64];
+
+  bcrypto_ed25519_privkey_expand(out, secret);
+
+  uint8_t *key = &out[0];
+  uint8_t *pre = &out[32];
+
+  v8::Local<v8::Array> ret = Nan::New<v8::Array>();
+  Nan::Set(ret, 0, Nan::CopyBuffer((char *)key, 32).ToLocalChecked());
+  Nan::Set(ret, 1, Nan::CopyBuffer((char *)pre, 32).ToLocalChecked());
+
+  return info.GetReturnValue().Set(ret);
 }
 
 NAN_METHOD(BED25519::PrivateKeyConvert) {
@@ -124,6 +155,34 @@ NAN_METHOD(BED25519::ScalarTweakMul) {
 
   if (bcrypto_ed25519_scalar_tweak_mul(out, key, tweak) != 0)
     return Nan::ThrowError("Invalid scalar.");
+
+  return info.GetReturnValue().Set(
+    Nan::CopyBuffer((char *)&out[0], 32).ToLocalChecked());
+}
+
+NAN_METHOD(BED25519::ScalarMod) {
+  if (info.Length() < 1)
+    return Nan::ThrowError("ed25519.scalarMod() requires arguments.");
+
+  v8::Local<v8::Object> kbuf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(kbuf))
+    return Nan::ThrowTypeError("First argument must be a buffer.");
+
+  const uint8_t *key = (const uint8_t *)node::Buffer::Data(kbuf);
+  size_t key_len = node::Buffer::Length(kbuf);
+
+  if (key_len > 32)
+    key_len = 32;
+
+  uint8_t in[32];
+
+  memset(&in[0], 0x00, 32);
+  memcpy(&in[0], key, key_len);
+
+  uint8_t out[32];
+
+  bcrypto_ed25519_scalar_mod(out, in);
 
   return info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&out[0], 32).ToLocalChecked());

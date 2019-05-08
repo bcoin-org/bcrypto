@@ -207,6 +207,34 @@ describe('ECDSA', function() {
       assert.bufferEqual(parent, priv);
     });
 
+    it(`should modulo key (${ec.id})`, () => {
+      const key0 = Buffer.alloc(0);
+      const mod0 = ec.privateKeyMod(key0);
+      const exp0 = Buffer.alloc(ec.size, 0x00);
+
+      assert.bufferEqual(mod0, exp0);
+
+      const key1 = Buffer.alloc(1, 0x0a);
+      const mod1 = ec.privateKeyMod(key1);
+      const exp1 = Buffer.alloc(ec.size, 0x00);
+
+      exp1[ec.size - 1] = 0x0a;
+      assert.bufferEqual(mod1, exp1);
+
+      const key2 = Buffer.alloc(ec.size, 0xff);
+      const mod2 = ec.privateKeyMod(key2);
+
+      assert(ec.privateKeyVerify(mod2));
+
+      const key3 = Buffer.alloc(ec.size + 1, 0xff);
+
+      key3[0] = 0x0a;
+
+      const mod3 = ec.privateKeyMod(key3);
+
+      assert.bufferEqual(mod3, mod2);
+    });
+
     it(`should do ECDH (${ec.id})`, () => {
       const alicePriv = ec.privateKeyGenerate();
       const alicePub = ec.publicKeyCreate(alicePriv);

@@ -61,6 +61,12 @@ bcrypto_curved25519_scalarmult_basepoint(
 );
 
 void
+bcrypto_ed25519_privkey_expand(
+  unsigned char out[64],
+  const bcrypto_ed25519_secret_key sk
+);
+
+void
 bcrypto_ed25519_privkey_convert(
   bcrypto_ed25519_secret_key out,
   const bcrypto_ed25519_secret_key sk
@@ -119,6 +125,12 @@ bcrypto_ed25519_scalar_tweak_mul(
   bcrypto_ed25519_secret_key out,
   const bcrypto_ed25519_secret_key sk,
   const bcrypto_ed25519_secret_key tweak
+);
+
+void
+bcrypto_ed25519_scalar_mod(
+  bcrypto_ed25519_secret_key out,
+  const bcrypto_ed25519_secret_key sk
 );
 
 int

@@ -13,9 +13,11 @@ BED448::Init(v8::Local<v8::Object> &target) {
   Nan::HandleScope scope;
   v8::Local<v8::Object> obj = Nan::New<v8::Object>();
 
+  Nan::Export(obj, "privateKeyExpand", BED448::PrivateKeyExpand);
   Nan::Export(obj, "privateKeyConvert", BED448::PrivateKeyConvert);
   Nan::Export(obj, "scalarTweakAdd", BED448::ScalarTweakAdd);
   Nan::Export(obj, "scalarTweakMul", BED448::ScalarTweakMul);
+  Nan::Export(obj, "scalarMod", BED448::ScalarMod);
   Nan::Export(obj, "scalarNegate", BED448::ScalarNegate);
   Nan::Export(obj, "scalarInverse", BED448::ScalarInverse);
   Nan::Export(obj, "publicKeyCreate", BED448::PublicKeyCreate);
@@ -38,6 +40,39 @@ BED448::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "exchangeWithScalar", BED448::ExchangeWithScalar);
 
   Nan::Set(target, Nan::New("ed448").ToLocalChecked(), obj);
+}
+
+NAN_METHOD(BED448::PrivateKeyExpand) {
+  if (info.Length() < 1)
+    return Nan::ThrowError("ed448.privateKeyExpand() requires arguments.");
+
+  v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(pbuf))
+    return Nan::ThrowTypeError("First argument must be a buffer.");
+
+  const uint8_t *secret = (const uint8_t *)node::Buffer::Data(pbuf);
+  size_t secret_len = node::Buffer::Length(pbuf);
+
+  if (secret_len != BCRYPTO_EDDSA_448_PRIVATE_BYTES)
+    return Nan::ThrowRangeError("Invalid secret size.");
+
+  uint8_t out[BCRYPTO_EDDSA_448_PRIVATE_BYTES * 2];
+
+  if (!bcrypto_c448_ed448_expand_private_key(out, secret))
+    return Nan::ThrowError("Could not expand.");
+
+  uint8_t *key = &out[0];
+  size_t key_len = BCRYPTO_X448_PRIVATE_BYTES;
+
+  uint8_t *pre = &out[BCRYPTO_EDDSA_448_PRIVATE_BYTES];
+  size_t pre_len = BCRYPTO_EDDSA_448_PRIVATE_BYTES;
+
+  v8::Local<v8::Array> ret = Nan::New<v8::Array>();
+  Nan::Set(ret, 0, Nan::CopyBuffer((char *)key, key_len).ToLocalChecked());
+  Nan::Set(ret, 1, Nan::CopyBuffer((char *)pre, pre_len).ToLocalChecked());
+
+  return info.GetReturnValue().Set(ret);
 }
 
 NAN_METHOD(BED448::PrivateKeyConvert) {
@@ -126,6 +161,36 @@ NAN_METHOD(BED448::ScalarTweakMul) {
   uint8_t out[BCRYPTO_C448_SCALAR_BYTES];
 
   if (!bcrypto_c448_ed448_scalar_tweak_mul(out, key, tweak))
+    return Nan::ThrowError("Invalid scalar.");
+
+  return info.GetReturnValue().Set(
+    Nan::CopyBuffer((char *)&out[0],
+      BCRYPTO_C448_SCALAR_BYTES).ToLocalChecked());
+}
+
+NAN_METHOD(BED448::ScalarMod) {
+  if (info.Length() < 1)
+    return Nan::ThrowError("ed448.scalarMod() requires arguments.");
+
+  v8::Local<v8::Object> kbuf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(kbuf))
+    return Nan::ThrowTypeError("First argument must be a buffer.");
+
+  const uint8_t *key = (const uint8_t *)node::Buffer::Data(kbuf);
+  size_t key_len = node::Buffer::Length(kbuf);
+
+  if (key_len > BCRYPTO_C448_SCALAR_BYTES)
+    key_len = BCRYPTO_C448_SCALAR_BYTES;
+
+  uint8_t in[BCRYPTO_C448_SCALAR_BYTES];
+
+  memset(&in[0], 0x00, BCRYPTO_C448_SCALAR_BYTES);
+  memcpy(&in[0], key, key_len);
+
+  uint8_t out[BCRYPTO_C448_SCALAR_BYTES];
+
+  if (!bcrypto_c448_ed448_scalar_mod(out, in))
     return Nan::ThrowError("Invalid scalar.");
 
   return info.GetReturnValue().Set(

@@ -72,6 +72,24 @@ describe('EdDSA', function() {
     assert(!ed25519.verify(msg, sig, inf));
   });
 
+  it('should expand key', () => {
+    const secret = Buffer.from(
+      '5bc1d80b378c350663a6862f21599ee3b09fb4255a0dfad3d907d5ca7ab2b223',
+      'hex');
+
+    const [key, prefix] = ed25519.privateKeyExpand(secret);
+
+    assert.bufferEqual(key,
+      '00f8b1bd40cbf4c9642270f5b4eb4645514097f8ebe31c9f08be5e4fee6f9d5b',
+      'hex');
+
+    assert.bufferEqual(prefix,
+      '93e1f48384097145d1981875ef22a4e64dc47e43e997beb9894a4603e09cc290',
+      'hex');
+
+    assert.bufferEqual(ed25519.privateKeyConvert(secret), key);
+  });
+
   it('should do ECDH', () => {
     const alicePriv = ed25519.privateKeyGenerate();
     const alicePub = ed25519.publicKeyCreate(alicePriv);
@@ -180,7 +198,7 @@ describe('EdDSA', function() {
     const sig2 = ed25519.signWithScalar(msg, childPriv, msg);
     assert(ed25519.verify(msg, sig2, child));
 
-    const real = ed25519.scalarTweakAdd(ed25519.privateKeyConvert(key), Buffer.alloc(32, 0x00));
+    const real = ed25519.scalarMod(ed25519.privateKeyConvert(key));
     const parent = ed25519.scalarTweakAdd(childPriv, ed25519.scalarNegate(tweak));
     assert.bufferEqual(parent, real);
 
@@ -245,7 +263,7 @@ describe('EdDSA', function() {
     const sig2 = ed25519.signWithScalar(msg, childPriv, msg);
     assert(ed25519.verify(msg, sig2, child));
 
-    const real = ed25519.scalarTweakAdd(ed25519.privateKeyConvert(key), Buffer.alloc(32, 0x00));
+    const real = ed25519.scalarMod(ed25519.privateKeyConvert(key));
     const parent = ed25519.scalarTweakMul(childPriv, ed25519.scalarInverse(tweak));
     assert.bufferEqual(parent, real);
   });
@@ -346,6 +364,37 @@ describe('EdDSA', function() {
     assert.bufferEqual(sig, sigExpect);
 
     assert(ed25519.verify(msg, sig, child));
+  });
+
+  it('should modulo scalar', () => {
+    const scalar0 = Buffer.alloc(0);
+    const mod0 = ed25519.scalarMod(scalar0);
+
+    assert.bufferEqual(mod0,
+      '0000000000000000000000000000000000000000000000000000000000000000',
+      'hex');
+
+    const scalar1 = Buffer.alloc(1, 0x0a);
+    const mod1 = ed25519.scalarMod(scalar1);
+
+    assert.bufferEqual(mod1,
+      '0a00000000000000000000000000000000000000000000000000000000000000',
+      'hex');
+
+    const scalar2 = Buffer.alloc(32, 0xff);
+    const mod2 = ed25519.scalarMod(scalar2);
+
+    assert.bufferEqual(mod2,
+      '1c95988d7431ecd670cf7d73f45befc6feffffffffffffffffffffffffffff0f',
+      'hex');
+
+    const scalar3 = Buffer.alloc(33, 0xff);
+
+    scalar3[32] = 0x0a;
+
+    const mod3 = ed25519.scalarMod(scalar3);
+
+    assert.bufferEqual(mod3, mod2);
   });
 
   it('should convert to montgomery and back', () => {

@@ -74,6 +74,21 @@ static bcrypto_c448_error_t hash_init_with_dom(bcrypto_keccak_ctx *hashctx,
   return BCRYPTO_C448_SUCCESS;
 }
 
+bcrypto_c448_error_t bcrypto_c448_ed448_expand_private_key(
+              uint8_t x[BCRYPTO_EDDSA_448_PRIVATE_BYTES * 2],
+              const uint8_t ed[BCRYPTO_EDDSA_448_PRIVATE_BYTES])
+{
+  bcrypto_c448_error_t ret = oneshot_hash(x, BCRYPTO_EDDSA_448_PRIVATE_BYTES * 2, ed,
+                                          BCRYPTO_EDDSA_448_PRIVATE_BYTES);
+
+  if (ret != BCRYPTO_C448_SUCCESS)
+    return ret;
+
+  clamp(x);
+
+  return ret;
+}
+
 /* In this file because it uses the hash */
 bcrypto_c448_error_t bcrypto_c448_ed448_convert_private_key_to_x448(
               uint8_t x[BCRYPTO_X448_PRIVATE_BYTES],
@@ -126,6 +141,19 @@ bcrypto_c448_error_t bcrypto_c448_ed448_scalar_tweak_mul(
 
   bcrypto_curve448_scalar_destroy(scalar_scalar);
   bcrypto_curve448_scalar_destroy(tweak_scalar);
+
+  return BCRYPTO_C448_SUCCESS;
+}
+
+bcrypto_c448_error_t bcrypto_c448_ed448_scalar_mod(
+            uint8_t out[BCRYPTO_C448_SCALAR_BYTES],
+            const uint8_t scalar[BCRYPTO_C448_SCALAR_BYTES]) {
+  bcrypto_curve448_scalar_t scalar_scalar;
+
+  bcrypto_curve448_scalar_decode(scalar_scalar, &scalar[0]);
+  bcrypto_curve448_scalar_encode(out, scalar_scalar);
+
+  bcrypto_curve448_scalar_destroy(scalar_scalar);
 
   return BCRYPTO_C448_SUCCESS;
 }

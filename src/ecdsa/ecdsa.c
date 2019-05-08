@@ -811,6 +811,86 @@ fail:
 }
 
 bool
+bcrypto_ecdsa_privkey_mod(
+  const char *name,
+  const uint8_t *priv,
+  size_t priv_len,
+  uint8_t **npriv,
+  size_t *npriv_len
+) {
+  assert(npriv && npriv_len);
+
+  BN_CTX *ctx = NULL;
+  BIGNUM *order_bn = NULL;
+  BIGNUM *priv_bn = NULL;
+  uint8_t *npriv_buf = NULL;
+
+  int type = bcrypto_ecdsa_curve(name);
+
+  if (type == -1)
+    goto fail;
+
+  ctx = BN_CTX_new();
+
+  if (!ctx)
+    goto fail;
+
+  order_bn = bcrypto_ecdsa_order(type);
+
+  if (!order_bn)
+    goto fail;
+
+  size_t size = bcrypto_ecdsa_size(type);
+  assert(size != 0);
+
+  if (priv_len > size) {
+    priv = &priv[priv_len - size];
+    priv_len = size;
+  }
+
+  priv_bn = BN_bin2bn(priv, priv_len, NULL);
+
+  if (!priv_bn)
+    goto fail;
+
+  if (!BN_mod(priv_bn, priv_bn, order_bn, ctx))
+    goto fail;
+
+  assert((size_t)BN_num_bytes(priv_bn) <= size);
+
+  npriv_buf = malloc(size);
+
+  if (!npriv_buf)
+    goto fail;
+
+  assert(BN_bn2binpad(priv_bn, npriv_buf, size) > 0);
+
+  BN_CTX_free(ctx);
+  BN_free(order_bn);
+  BN_clear_free(priv_bn);
+
+  *npriv = npriv_buf;
+  *npriv_len = size;
+
+  return true;
+
+fail:
+  if (ctx)
+    BN_CTX_free(ctx);
+
+  if (order_bn)
+    BN_free(order_bn);
+
+  if (priv_bn)
+    BN_clear_free(priv_bn);
+
+  if (npriv_buf)
+    free(npriv_buf);
+
+  return false;
+}
+
+bool
 bcrypto_ecdsa_privkey_negate(
   const char *name,
   const uint8_t *priv,
@@ -2241,6 +2321,17 @@ bcrypto_ecdsa_privkey_tweak_mul(
   size_t priv_len,
   const uint8_t *tweak,
   size_t tweak_len,
+  uint8_t **npriv,
+  size_t *npriv_len
+) {
+  return false;
+}
+
+bool
+bcrypto_ecdsa_privkey_mod(
+  const char *name,
+  const uint8_t *priv,
+  size_t priv_len,
   uint8_t **npriv,
   size_t *npriv_len
 ) {

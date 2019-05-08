@@ -9,9 +9,11 @@ public:
   static void Init(v8::Local<v8::Object> &target);
 
 private:
+  static NAN_METHOD(PrivateKeyExpand);
   static NAN_METHOD(PrivateKeyConvert);
   static NAN_METHOD(ScalarTweakAdd);
   static NAN_METHOD(ScalarTweakMul);
+  static NAN_METHOD(ScalarMod);
   static NAN_METHOD(ScalarNegate);
   static NAN_METHOD(ScalarInverse);
   static NAN_METHOD(PublicKeyCreate);

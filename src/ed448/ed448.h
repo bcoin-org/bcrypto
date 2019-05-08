@@ -208,6 +208,10 @@ bcrypto_c448_error_t bcrypto_c448_ed448_convert_private_key_to_x448(
               uint8_t x[BCRYPTO_X448_PRIVATE_BYTES],
               const uint8_t ed[BCRYPTO_EDDSA_448_PRIVATE_BYTES]);
 
+bcrypto_c448_error_t bcrypto_c448_ed448_expand_private_key(
+              uint8_t x[BCRYPTO_EDDSA_448_PRIVATE_BYTES * 2],
+              const uint8_t ed[BCRYPTO_EDDSA_448_PRIVATE_BYTES]);
+
 bcrypto_c448_error_t bcrypto_c448_ed448_scalar_tweak_add(
             uint8_t out[BCRYPTO_C448_SCALAR_BYTES],
             const uint8_t scalar[BCRYPTO_C448_SCALAR_BYTES],
@@ -217,6 +221,10 @@ bcrypto_c448_error_t bcrypto_c448_ed448_scalar_tweak_mul(
             uint8_t out[BCRYPTO_C448_SCALAR_BYTES],
             const uint8_t scalar[BCRYPTO_C448_SCALAR_BYTES],
             const uint8_t tweak[BCRYPTO_C448_SCALAR_BYTES]);
+
+bcrypto_c448_error_t bcrypto_c448_ed448_scalar_mod(
+            uint8_t out[BCRYPTO_C448_SCALAR_BYTES],
+            const uint8_t scalar[BCRYPTO_C448_SCALAR_BYTES]);
 
 bcrypto_c448_error_t bcrypto_c448_ed448_scalar_negate(
             uint8_t out[BCRYPTO_C448_SCALAR_BYTES],
