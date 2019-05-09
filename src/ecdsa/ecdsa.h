@@ -1,7 +1,6 @@
 #ifndef _BCRYPTO_ECDSA_H
 #define _BCRYPTO_ECDSA_H
 
-#include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -9,245 +8,251 @@
 extern "C" {
 #endif
 
-bool
-bcrypto_ecdsa_privkey_generate(
-  const char *name,
-  uint8_t **priv,
-  size_t *priv_len
-);
+#include "openssl/opensslv.h"
 
-bool
-bcrypto_ecdsa_privkey_export(
-  const char *name,
-  const uint8_t *priv,
-  size_t priv_len,
-  bool compress,
-  uint8_t **out,
-  size_t *out_len
-);
+#if OPENSSL_VERSION_NUMBER >= 0x1010008fL
 
-bool
-bcrypto_ecdsa_privkey_import(
-  const char *name,
-  const uint8_t *raw,
-  size_t raw_len,
-  uint8_t **out,
-  size_t *out_len
-);
+#include "openssl/ecdsa.h"
 
-bool
-bcrypto_ecdsa_privkey_export_pkcs8(
-  const char *name,
-  const uint8_t *priv,
-  size_t priv_len,
-  bool compress,
-  uint8_t **out,
-  size_t *out_len
-);
+#define BCRYPTO_HAS_ECDSA
+#define BCRYPTO_ECDSA_MAX_FIELD_SIZE 66
+#define BCRYPTO_ECDSA_MAX_SCALAR_SIZE 66
+#define BCRYPTO_ECDSA_MAX_PUB_SIZE (1 + BCRYPTO_ECDSA_MAX_FIELD_SIZE * 2)
+#define BCRYPTO_ECDSA_MAX_SIG_SIZE (BCRYPTO_ECDSA_MAX_SCALAR_SIZE * 2)
+#define BCRYPTO_ECDSA_MAX_DER_SIZE (9 + BCRYPTO_ECDSA_MAX_SIG_SIZE)
 
-bool
-bcrypto_ecdsa_privkey_import_pkcs8(
-  const char *name,
-  const uint8_t *raw,
-  size_t raw_len,
-  uint8_t **out,
-  size_t *out_len
-);
+typedef struct bcrypto_ecdsa_pubkey_s {
+  uint8_t x[BCRYPTO_ECDSA_MAX_FIELD_SIZE];
+  uint8_t y[BCRYPTO_ECDSA_MAX_FIELD_SIZE];
+} bcrypto_ecdsa_pubkey_t;
 
-bool
-bcrypto_ecdsa_privkey_tweak_add(
-  const char *name,
-  const uint8_t *priv,
-  size_t priv_len,
-  const uint8_t *tweak,
-  size_t tweak_len,
-  uint8_t **npriv,
-  size_t *npriv_len
-);
+typedef struct bcrypto_ecdsa_sig_s {
+  uint8_t r[BCRYPTO_ECDSA_MAX_SCALAR_SIZE];
+  uint8_t s[BCRYPTO_ECDSA_MAX_SCALAR_SIZE];
+  int param;
+} bcrypto_ecdsa_sig_t;
 
-bool
-bcrypto_ecdsa_privkey_tweak_mul(
-  const char *name,
-  const uint8_t *priv,
-  size_t priv_len,
-  const uint8_t *tweak,
-  size_t tweak_len,
-  uint8_t **npriv,
-  size_t *npriv_len
-);
+typedef struct bcrypto_ecdsa_s {
+  int initialized;
+  int type;
+  BN_CTX *ctx;
+  EC_KEY *key;
+  const EC_GROUP *group;
+  size_t bits;
+  size_t size;
+  BIGNUM *n;
+  BIGNUM *nh;
+  BIGNUM *p;
+  BIGNUM *a;
+  BIGNUM *b;
+  const EC_POINT *g;
+  size_t scalar_bits;
+  size_t scalar_size;
+  size_t sig_size;
+  uint8_t zero[BCRYPTO_ECDSA_MAX_SCALAR_SIZE];
+  uint8_t order[BCRYPTO_ECDSA_MAX_SCALAR_SIZE];
+  uint8_t half[BCRYPTO_ECDSA_MAX_SCALAR_SIZE];
+} bcrypto_ecdsa_t;
 
-bool
-bcrypto_ecdsa_privkey_mod(
-  const char *name,
-  const uint8_t *priv,
-  size_t priv_len,
-  uint8_t **npriv,
-  size_t *npriv_len
-);
+/*
+ * Public Key
+ */
 
-bool
-bcrypto_ecdsa_privkey_negate(
-  const char *name,
-  const uint8_t *priv,
-  size_t priv_len,
-  uint8_t **npriv,
-  size_t *npriv_len
-);
+void
+bcrypto_ecdsa_pubkey_encode(bcrypto_ecdsa_t *ec,
+                            uint8_t *out,
+                            size_t *out_len,
+                            const bcrypto_ecdsa_pubkey_t *pub,
+                            int compress);
 
-bool
-bcrypto_ecdsa_privkey_inverse(
-  const char *name,
-  const uint8_t *priv,
-  size_t priv_len,
-  uint8_t **npriv,
-  size_t *npriv_len
-);
+int
+bcrypto_ecdsa_pubkey_decode(bcrypto_ecdsa_t *ec,
+                            bcrypto_ecdsa_pubkey_t *pub,
+                            const uint8_t *raw,
+                            size_t raw_len);
 
-bool
-bcrypto_ecdsa_pubkey_create(
-  const char *name,
-  const uint8_t *priv,
-  size_t priv_len,
-  bool compress,
-  uint8_t **pub,
-  size_t *pub_len
-);
+/*
+ * Signature
+ */
 
-bool
-bcrypto_ecdsa_pubkey_convert(
-  const char *name,
-  const uint8_t *pub,
-  size_t pub_len,
-  bool compress,
-  uint8_t **npub,
-  size_t *npub_len
-);
+void
+bcrypto_ecdsa_sig_encode(bcrypto_ecdsa_t *ec,
+                         uint8_t *out,
+                         const bcrypto_ecdsa_sig_t *sig);
 
-bool
-bcrypto_ecdsa_pubkey_verify(
-  const char *name,
-  const uint8_t *pub,
-  size_t pub_len
-);
+int
+bcrypto_ecdsa_sig_decode(bcrypto_ecdsa_t *ec,
+                         bcrypto_ecdsa_sig_t *sig,
+                         const uint8_t *raw);
 
-bool
-bcrypto_ecdsa_pubkey_export_spki(
-  const char *name,
-  const uint8_t *pub,
-  size_t pub_len,
-  bool compress,
-  uint8_t **out,
-  size_t *out_len
-);
+int
+bcrypto_ecdsa_sig_encode_der(bcrypto_ecdsa_t *ec,
+                             uint8_t *out,
+                             size_t *out_len,
+                             const bcrypto_ecdsa_sig_t *sig);
 
-bool
-bcrypto_ecdsa_pubkey_import_spki(
-  const char *name,
-  const uint8_t *raw,
-  size_t raw_len,
-  bool compress,
-  uint8_t **out,
-  size_t *out_len
-);
+int
+bcrypto_ecdsa_sig_decode_der(bcrypto_ecdsa_t *ec,
+                             bcrypto_ecdsa_sig_t *sig,
+                             const uint8_t *raw,
+                             size_t raw_len);
 
-bool
-bcrypto_ecdsa_pubkey_tweak_add(
-  const char *name,
-  const uint8_t *pub,
-  size_t pub_len,
-  const uint8_t *tweak,
-  size_t tweak_len,
-  bool compress,
-  uint8_t **npub,
-  size_t *npub_len
-);
+void
+bcrypto_ecdsa_sig_normalize(bcrypto_ecdsa_t *ec,
+                            bcrypto_ecdsa_sig_t *out,
+                            const bcrypto_ecdsa_sig_t *sig);
 
-bool
-bcrypto_ecdsa_pubkey_tweak_mul(
-  const char *name,
-  const uint8_t *pub,
-  size_t pub_len,
-  const uint8_t *tweak,
-  size_t tweak_len,
-  bool compress,
-  uint8_t **npub,
-  size_t *npub_len
-);
+int
+bcrypto_ecdsa_sig_is_low_s(bcrypto_ecdsa_t *ec,
+                           const bcrypto_ecdsa_sig_t *sig);
 
-bool
-bcrypto_ecdsa_pubkey_add(
-  const char *name,
-  const uint8_t *pub1,
-  size_t pub1_len,
-  const uint8_t *pub2,
-  size_t pub2_len,
-  bool compress,
-  uint8_t **npub,
-  size_t *npub_len
-);
+/*
+ * ECDSA
+ */
 
-bool
-bcrypto_ecdsa_pubkey_negate(
-  const char *name,
-  const uint8_t *pub,
-  size_t pub_len,
-  bool compress,
-  uint8_t **npub,
-  size_t *npub_len
-);
+int
+bcrypto_ecdsa_init(bcrypto_ecdsa_t *ec, const char *name);
 
-bool
-bcrypto_ecdsa_sign(
-  const char *name,
-  const uint8_t *msg,
-  size_t msg_len,
-  const uint8_t *priv,
-  size_t priv_len,
-  uint8_t **r,
-  size_t *r_len,
-  uint8_t **s,
-  size_t *s_len
-);
+void
+bcrypto_ecdsa_uninit(bcrypto_ecdsa_t *ec);
 
-bool
-bcrypto_ecdsa_verify(
-  const char *name,
-  const uint8_t *msg,
-  size_t msg_len,
-  const uint8_t *r,
-  size_t r_len,
-  const uint8_t *s,
-  size_t s_len,
-  const uint8_t *pub,
-  size_t pub_len
-);
+int
+bcrypto_ecdsa_privkey_generate(bcrypto_ecdsa_t *ec, uint8_t *priv);
 
-bool
-bcrypto_ecdsa_recover(
-  const char *name,
-  const uint8_t *msg,
-  size_t msg_len,
-  const uint8_t *r,
-  size_t r_len,
-  const uint8_t *s,
-  size_t s_len,
-  int param,
-  bool compress,
-  uint8_t **pub,
-  size_t *pub_len
-);
+int
+bcrypto_ecdsa_privkey_verify(bcrypto_ecdsa_t *ec, const uint8_t *priv);
 
-bool
-bcrypto_ecdsa_derive(
-  const char *name,
-  const uint8_t *pub,
-  size_t pub_len,
-  const uint8_t *priv,
-  size_t priv_len,
-  bool compress,
-  uint8_t **secret,
-  size_t *secret_len
-);
+int
+bcrypto_ecdsa_privkey_export(bcrypto_ecdsa_t *ec,
+                             uint8_t **out,
+                             size_t *out_len,
+                             const uint8_t *priv,
+                             int compress);
+
+int
+bcrypto_ecdsa_privkey_import(bcrypto_ecdsa_t *ec,
+                             uint8_t *out,
+                             const uint8_t *raw,
+                             size_t raw_len);
+
+int
+bcrypto_ecdsa_privkey_export_pkcs8(bcrypto_ecdsa_t *ec,
+                                   uint8_t **out,
+                                   size_t *out_len,
+                                   const uint8_t *priv,
+                                   int compress);
+
+int
+bcrypto_ecdsa_privkey_import_pkcs8(bcrypto_ecdsa_t *ec,
+                                   uint8_t *out,
+                                   const uint8_t *raw,
+                                   size_t raw_len);
+
+int
+bcrypto_ecdsa_privkey_tweak_add(bcrypto_ecdsa_t *ec,
+                                uint8_t *out,
+                                const uint8_t *priv,
+                                const uint8_t *tweak);
+
+int
+bcrypto_ecdsa_privkey_tweak_mul(bcrypto_ecdsa_t *ec,
+                                uint8_t *out,
+                                const uint8_t *priv,
+                                const uint8_t *tweak);
+
+int
+bcrypto_ecdsa_privkey_mod(bcrypto_ecdsa_t *ec,
+                          uint8_t *out,
+                          const uint8_t *priv,
+                          size_t priv_len);
+
+int
+bcrypto_ecdsa_privkey_negate(bcrypto_ecdsa_t *ec,
+                             uint8_t *out,
+                             const uint8_t *priv);
+
+int
+bcrypto_ecdsa_privkey_inverse(bcrypto_ecdsa_t *ec,
+                              uint8_t *out,
+                              const uint8_t *priv);
+
+int
+bcrypto_ecdsa_pubkey_create(bcrypto_ecdsa_t *ec,
+                            bcrypto_ecdsa_pubkey_t *pub,
+                            const uint8_t *priv);
+
+int
+bcrypto_ecdsa_pubkey_export_spki(bcrypto_ecdsa_t *ec,
+                                 uint8_t **out,
+                                 size_t *out_len,
+                                 const bcrypto_ecdsa_pubkey_t *pub,
+                                 int compress);
+
+int
+bcrypto_ecdsa_pubkey_import_spki(bcrypto_ecdsa_t *ec,
+                                 bcrypto_ecdsa_pubkey_t *out,
+                                 const uint8_t *raw,
+                                 size_t raw_len);
+
+int
+bcrypto_ecdsa_pubkey_tweak_add(bcrypto_ecdsa_t *ec,
+                               bcrypto_ecdsa_pubkey_t *out,
+                               const bcrypto_ecdsa_pubkey_t *pub,
+                               const uint8_t *tweak);
+
+int
+bcrypto_ecdsa_pubkey_tweak_mul(bcrypto_ecdsa_t *ec,
+                               bcrypto_ecdsa_pubkey_t *out,
+                               const bcrypto_ecdsa_pubkey_t *pub,
+                               const uint8_t *tweak);
+
+int
+bcrypto_ecdsa_pubkey_add(bcrypto_ecdsa_t *ec,
+                         bcrypto_ecdsa_pubkey_t *out,
+                         const bcrypto_ecdsa_pubkey_t *pub1,
+                         const bcrypto_ecdsa_pubkey_t *pub2);
+
+int
+bcrypto_ecdsa_pubkey_negate(bcrypto_ecdsa_t *ec,
+                            bcrypto_ecdsa_pubkey_t *out,
+                            const bcrypto_ecdsa_pubkey_t *pub);
+
+int
+bcrypto_ecdsa_sign(bcrypto_ecdsa_t *ec,
+                   bcrypto_ecdsa_sig_t *sig,
+                   const uint8_t *msg,
+                   size_t msg_len,
+                   const uint8_t *priv);
+
+int
+bcrypto_ecdsa_sign_recoverable(bcrypto_ecdsa_t *ec,
+                               bcrypto_ecdsa_sig_t *sig,
+                               const uint8_t *msg,
+                               size_t msg_len,
+                               const uint8_t *priv);
+
+int
+bcrypto_ecdsa_verify(bcrypto_ecdsa_t *ec,
+                     const uint8_t *msg,
+                     size_t msg_len,
+                     const bcrypto_ecdsa_sig_t *sig,
+                     const bcrypto_ecdsa_pubkey_t *pub);
+
+int
+bcrypto_ecdsa_recover(bcrypto_ecdsa_t *ec,
+                      bcrypto_ecdsa_pubkey_t *pub,
+                      const uint8_t *msg,
+                      size_t msg_len,
+                      const bcrypto_ecdsa_sig_t *sig,
+                      int param);
+
+int
+bcrypto_ecdsa_derive(bcrypto_ecdsa_t *ec,
+                     bcrypto_ecdsa_pubkey_t *out,
+                     const bcrypto_ecdsa_pubkey_t *pub,
+                     const uint8_t *priv);
+
+#endif
 
 #if defined(__cplusplus)
 }

@@ -3,14 +3,24 @@
 
 #include <node.h>
 #include <nan.h>
+#include "ecdsa/ecdsa.h"
 
-#if NODE_MAJOR_VERSION >= 10
-class BECDSA {
+#ifdef BCRYPTO_HAS_ECDSA
+class BECDSA : public Nan::ObjectWrap {
 public:
+  static NAN_METHOD(New);
   static void Init(v8::Local<v8::Object> &target);
 
+  BECDSA();
+  ~BECDSA();
+
+  bcrypto_ecdsa_t ctx;
+
 private:
+  static NAN_METHOD(Size);
+  static NAN_METHOD(Bits);
   static NAN_METHOD(PrivateKeyGenerate);
+  static NAN_METHOD(PrivateKeyVerify);
   static NAN_METHOD(PrivateKeyExport);
   static NAN_METHOD(PrivateKeyImport);
   static NAN_METHOD(PrivateKeyExportPKCS8);
@@ -29,9 +39,19 @@ private:
   static NAN_METHOD(PublicKeyTweakMul);
   static NAN_METHOD(PublicKeyAdd);
   static NAN_METHOD(PublicKeyNegate);
+  static NAN_METHOD(SignatureNormalize);
+  static NAN_METHOD(SignatureExport);
+  static NAN_METHOD(SignatureImport);
+  static NAN_METHOD(IsLowS);
+  static NAN_METHOD(IsLowDER);
   static NAN_METHOD(Sign);
+  static NAN_METHOD(SignDER);
+  static NAN_METHOD(SignRecoverable);
+  static NAN_METHOD(SignRecoverableDER);
   static NAN_METHOD(Verify);
+  static NAN_METHOD(VerifyDER);
   static NAN_METHOD(Recover);
+  static NAN_METHOD(RecoverDER);
   static NAN_METHOD(Derive);
 };
 #endif

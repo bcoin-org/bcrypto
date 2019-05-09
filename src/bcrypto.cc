@@ -22,8 +22,8 @@
 #include "cipherbase.h"
 #if NODE_MAJOR_VERSION >= 10
 #include "dsa.h"
-#include "ecdsa.h"
 #endif
+#include "ecdsa.h"
 #include "ed25519.h"
 #include "ed448.h"
 #include "hash160.h"
@@ -89,6 +89,8 @@ NAN_MODULE_INIT(init) {
   Nan::Export(target, "cleanse", cleanse);
 #if NODE_MAJOR_VERSION >= 10
   BDSA::Init(target);
+#endif
+#ifdef BCRYPTO_HAS_ECDSA
   BECDSA::Init(target);
 #endif
   BED25519::Init(target);
