@@ -50,6 +50,7 @@ describe('ECDSA', function() {
       const pubu = ec.publicKeyConvert(pub, false);
 
       const sig = ec.signDER(msg, priv);
+      assert(ec.isLowDER(sig));
       assert(ec.verifyDER(msg, sig, pub));
       assert(ec.verifyDER(msg, sig, pubu));
       msg[0] ^= 1;
@@ -99,6 +100,7 @@ describe('ECDSA', function() {
       const pubu = ec.publicKeyConvert(pub, false);
 
       const sig = ec.sign(msg, priv);
+      assert(ec.isLowS(sig));
       assert(ec.verify(msg, sig, pub));
       assert(ec.verify(msg, sig, pubu));
       sig[0] ^= 1;
@@ -119,7 +121,7 @@ describe('ECDSA', function() {
       const pubu = ec.publicKeyConvert(pub, false);
 
       const sig = ec.sign(msg, priv);
-
+      assert(ec.isLowS(sig));
       assert(ec.verify(msg, sig, pub));
       assert(ec.verify(msg, sig, pubu));
 
@@ -169,9 +171,11 @@ describe('ECDSA', function() {
       const msg = random.randomBytes(ec.size);
 
       const sig = ec.sign(msg, tpriv);
+      assert(ec.isLowS(sig));
       assert(ec.verify(msg, sig, tpub));
 
       const der = ec.signDER(msg, tpriv);
+      assert(ec.isLowDER(der));
       assert(ec.verifyDER(msg, der, tpub));
 
       const parent = ec.privateKeyTweakAdd(tpriv, ec.privateKeyNegate(tweak));
@@ -198,9 +202,11 @@ describe('ECDSA', function() {
       const msg = random.randomBytes(ec.size);
 
       const sig = ec.sign(msg, tpriv);
+      assert(ec.isLowS(sig));
       assert(ec.verify(msg, sig, tpub));
 
       const der = ec.signDER(msg, tpriv);
+      assert(ec.isLowDER(der));
       assert(ec.verifyDER(msg, der, tpub));
 
       const parent = ec.privateKeyTweakMul(tpriv, ec.privateKeyInverse(tweak));
@@ -317,10 +323,13 @@ describe('ECDSA', function() {
         it(desc, () => {
           const dgst = hash.digest(msg);
           const sign = curve.sign(dgst, key);
-          const r = sign.slice(0, curve.size);
 
-          if (!c.custom && curve.native === 0)
+          assert(curve.isLowS(sign));
+
+          if (!c.custom && curve.native === 0) {
+            const r = sign.slice(0, curve.size);
             assert.bufferEqual(r, cr);
+          }
 
           assert(curve.publicKeyVerify(pub), 'Invalid public key');
           assert(curve.verify(dgst, sign, pub), 'Invalid signature (1)');
@@ -709,6 +718,9 @@ describe('ECDSA', function() {
       const sig = Buffer.concat([r, s]);
 
       assert.strictEqual(curve.recover(msg, sig, 0), null);
+      assert.strictEqual(curve.recover(msg, sig, 1), null);
+      assert.strictEqual(curve.recover(msg, sig, 2), null);
+      assert.strictEqual(curve.recover(msg, sig, 3), null);
     });
   }
 
@@ -723,6 +735,7 @@ describe('ECDSA', function() {
       recovery
     } = secp256k1n.signRecoverable(msg, priv);
 
+    assert(secp256k1n.isLowS(signature));
     assert(secp256k1n.verify(msg, signature, pub));
     assert(secp256k1n.verify(msg, signature, pubu));
 
@@ -738,6 +751,8 @@ describe('ECDSA', function() {
     const key = p256.privateKeyGenerate();
     const pub = p256.publicKeyCreate(key);
     const sig = p256.sign(msg, key);
+
+    assert(p256.isLowS(sig));
     assert(p256.verify(msg, sig, pub));
   });
 

@@ -37,9 +37,12 @@ private:
   static NAN_METHOD(signatureExport);
   static NAN_METHOD(signatureImport);
   static NAN_METHOD(signatureImportLax);
+  static NAN_METHOD(isLowS);
+  static NAN_METHOD(isLowDER);
 
   static NAN_METHOD(sign);
   static NAN_METHOD(verify);
+  static NAN_METHOD(verifyDER);
   static NAN_METHOD(recover);
 
   static NAN_METHOD(derive);
