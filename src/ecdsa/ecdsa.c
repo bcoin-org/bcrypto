@@ -2007,9 +2007,25 @@ bcrypto_ecdsa_recover(
 
   // s1 = (-e * r^-1) mod n
   {
+    int bits = BN_num_bits(N_bn);
+    int bytes = (bits + 7) >> 3;
+
+    if (msg_len > (size_t)bytes)
+      msg_len = (size_t)bytes;
+
     e_bn = BN_bin2bn(msg, msg_len, NULL);
 
     if (!e_bn)
+      goto fail;
+
+    int d = (int)msg_len * 8 - bits;
+
+    if (d > 0) {
+      if (!BN_rshift(e_bn, e_bn, d))
+        goto fail;
+    }
+
+    if (!BN_mod(e_bn, e_bn, N_bn, ctx))
       goto fail;
 
     s1 = BN_new();
@@ -2017,8 +2033,10 @@ bcrypto_ecdsa_recover(
     if (!s1)
       goto fail;
 
-    if (!BN_sub(s1, N_bn, e_bn))
-      goto fail;
+    if (!BN_is_zero(e_bn)) {
+      if (!BN_sub(s1, N_bn, e_bn))
+        goto fail;
+    }
 
     if (!BN_mul(s1, s1, rinv, ctx))
       goto fail;

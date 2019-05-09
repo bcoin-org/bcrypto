@@ -253,10 +253,7 @@ describe('ECDSA', function() {
       assert.bufferEqual(aliceSecret, bobSecret);
     });
 
-    it('should generate keypair, sign DER and recover', () => {
-      if (ec.id === 'P521')
-        this.skip();
-
+    it(`should generate keypair, sign DER and recover (${ec.id})`, () => {
       const msg = random.randomBytes(ec.size);
       const priv = ec.privateKeyGenerate();
       const pub = ec.publicKeyCreate(priv);
@@ -277,7 +274,7 @@ describe('ECDSA', function() {
       assert.bufferEqual(rpubu, pubu);
     });
 
-    it('should test serialization formats', () => {
+    it(`should test serialization formats (${ec.id})`, () => {
       const priv = ec.privateKeyGenerate();
       const pub = ec.publicKeyCreate(priv);
       const rawPriv = ec.privateKeyExport(priv);
