@@ -120,7 +120,7 @@
 #define COPY_BUFFER(data, datalen) Nan::CopyBuffer((const char*) data, (uint32_t) datalen).ToLocalChecked()
 
 #define UPDATE_COMPRESSED_VALUE(compressed, value, v_true, v_false) {          \
-  if (!value->IsUndefined()) {                                                 \
+  if (!value->IsUndefined() && !value->IsNull()) {                             \
     CHECK_TYPE_BOOLEAN(value, COMPRESSED_TYPE_INVALID);                        \
     compressed = Nan::To<bool>(value).FromJust() ? v_true : v_false;           \
   }                                                                            \
