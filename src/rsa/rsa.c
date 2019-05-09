@@ -1071,7 +1071,7 @@ bcrypto_rsa_privkey_export(
   if (len <= 0)
     return false;
 
-  UNFUCK_BORINGSSL(buf, len);
+  FIX_BORINGSSL(buf, len);
 
   *out = buf;
   *out_len = (size_t)len;
@@ -1142,7 +1142,7 @@ bcrypto_rsa_privkey_export_pkcs8(
   if (len <= 0)
     goto fail;
 
-  UNFUCK_BORINGSSL(buf, len);
+  FIX_BORINGSSL(buf, len);
 
   *out = buf;
   *out_len = (size_t)len;
@@ -1248,7 +1248,7 @@ bcrypto_rsa_pubkey_export(
   if (len <= 0)
     return false;
 
-  UNFUCK_BORINGSSL(buf, len);
+  FIX_BORINGSSL(buf, len);
 
   *out = buf;
   *out_len = (size_t)len;
@@ -1298,7 +1298,7 @@ bcrypto_rsa_pubkey_export_spki(
   if (len <= 0)
     return false;
 
-  UNFUCK_BORINGSSL(buf, len);
+  FIX_BORINGSSL(buf, len);
 
   *out = buf;
   *out_len = (size_t)len;

@@ -12,7 +12,7 @@
 #ifdef OPENSSL_IS_BORINGSSL
 // BoringSSL uses a custom allocator.
 // Switch to the regular libc allocator.
-#define UNFUCK_BORINGSSL(data, len) do { \
+#define FIX_BORINGSSL(data, len) do { \
   if ((data) != NULL && (len) != 0) {    \
     void *__boring_ptr = malloc(len);    \
                                          \
@@ -25,7 +25,7 @@
   }                                      \
 } while (0)
 #else
-#define UNFUCK_BORINGSSL(data, len) do { } while (0)
+#define FIX_BORINGSSL(data, len) do { } while (0)
 #endif
 
 #endif

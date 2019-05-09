@@ -716,7 +716,7 @@ bcrypto_ecdsa_privkey_export_inner(bcrypto_ecdsa_t *ec,
   if (len <= 0)
     goto fail;
 
-  UNFUCK_BORINGSSL(buf, len);
+  FIX_BORINGSSL(buf, len);
 
   *out = buf;
   *out_len = (size_t)len;
@@ -820,7 +820,7 @@ bcrypto_ecdsa_privkey_export_pkcs8(bcrypto_ecdsa_t *ec,
   if (len <= 0)
     goto fail;
 
-  UNFUCK_BORINGSSL(buf, len);
+  FIX_BORINGSSL(buf, len);
 
   *out = buf;
   *out_len = (size_t)len;
@@ -1154,7 +1154,7 @@ bcrypto_ecdsa_pubkey_export_spki(bcrypto_ecdsa_t *ec,
   if (len <= 0)
     goto fail;
 
-  UNFUCK_BORINGSSL(buf, len);
+  FIX_BORINGSSL(buf, len);
 
   *out = buf;
   *out_len = (size_t)len;
