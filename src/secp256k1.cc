@@ -1219,7 +1219,7 @@ NAN_METHOD(BED25519::schnorrBatchVerify) {
   // Todo: investigate scratch API:
   // size_t size1 = secp256k1_strauss_scratch_size(n_points);
   // size_t size2 = secp256k1_pippenger_scratch_size(n_points,
-                      secp256k1_pippenger_bucket_window(n_points));
+  //                  secp256k1_pippenger_bucket_window(n_points));
   // size_t max_size = size1 > size2 ? size1 : size2;
   // secp256k1_scratch_space *scratch =
   //   secp256k1_scratch_space_create(secp->ctx, max_size);
