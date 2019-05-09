@@ -3,10 +3,17 @@
 
 #include <node.h>
 #include <nan.h>
+#include "secp256k1/include/secp256k1.h"
 
-class BSecp256k1 {
+class BSecp256k1 : public Nan::ObjectWrap {
 public:
+  static NAN_METHOD(New);
   static void Init(v8::Local<v8::Object> &target);
+
+  BSecp256k1();
+  ~BSecp256k1();
+
+  secp256k1_context *ctx;
 
 private:
   static NAN_METHOD(privateKeyVerify);
