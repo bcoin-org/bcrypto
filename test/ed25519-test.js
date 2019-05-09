@@ -304,15 +304,18 @@ describe('EdDSA', function() {
   });
 
   it('should generate keypair and sign with multiplicative tweak * cofactor', () => {
+    const cofactor = Buffer.alloc(32, 0x00);
+    cofactor[0] = 8;
+
     const key = ed25519.privateKeyGenerate();
     const pub = ed25519.publicKeyCreate(key);
     const tweak_ = ed25519.scalarGenerate();
     const msg = random.randomBytes(32);
-    const tweak = ed25519.scalarTweakMul(tweak_, ed25519.cofactor);
+    const tweak = ed25519.scalarTweakMul(tweak_, cofactor);
     const child = ed25519.publicKeyTweakMul(pub, tweak);
     const child_ = ed25519.publicKeyTweakMul(
       ed25519.publicKeyTweakMul(pub, tweak_),
-      ed25519.cofactor);
+      cofactor);
 
     assert.bufferEqual(child, child_);
     assert(ed25519.scalarVerify(tweak_));
@@ -331,6 +334,9 @@ describe('EdDSA', function() {
   });
 
   it('should generate keypair and sign with multiplicative tweak * cofactor (vector)', () => {
+    const cofactor = Buffer.alloc(32, 0x00);
+    cofactor[0] = 8;
+
     const key = Buffer.from(
       '5bc1d80b378c350663a6862f21599ee3b09fb4255a0dfad3d907d5ca7ab2b223',
       'hex');
@@ -356,7 +362,7 @@ describe('EdDSA', function() {
       + '84ae985e13f77a441c012c5f3b16735de3a94bd2e3e72c80be6b41bbe2338305'
       , 'hex');
 
-    const tweak = ed25519.scalarTweakMul(tweak_, ed25519.cofactor);
+    const tweak = ed25519.scalarTweakMul(tweak_, cofactor);
     const child = ed25519.publicKeyTweakMul(pub, tweak);
     const sig = ed25519.signTweakMul(msg, key, tweak);
 

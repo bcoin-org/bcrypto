@@ -249,15 +249,18 @@ describe('Ed448', function() {
   });
 
   it('should generate keypair and sign with multiplicative tweak * cofactor', () => {
+    const cofactor = Buffer.alloc(32, 0x00);
+    cofactor[0] = 4;
+
     const key = ed448.privateKeyGenerate();
     const pub = ed448.publicKeyCreate(key);
     const tweak_ = ed448.scalarGenerate();
     const msg = random.randomBytes(57);
-    const tweak = ed448.scalarTweakMul(tweak_, ed448.cofactor);
+    const tweak = ed448.scalarTweakMul(tweak_, cofactor);
     const child = ed448.publicKeyTweakMul(pub, tweak);
     const child_ = ed448.publicKeyTweakMul(
       ed448.publicKeyTweakMul(pub, tweak_),
-      ed448.cofactor);
+      cofactor);
 
     assert.bufferEqual(child, child_);
     assert(ed448.scalarVerify(tweak_));
