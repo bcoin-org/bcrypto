@@ -1071,6 +1071,8 @@ bcrypto_rsa_privkey_export(
   if (len <= 0)
     return false;
 
+  UNFUCK_BORINGSSL(buf, len);
+
   *out = buf;
   *out_len = (size_t)len;
 
@@ -1140,6 +1142,8 @@ bcrypto_rsa_privkey_export_pkcs8(
   if (len <= 0)
     goto fail;
 
+  UNFUCK_BORINGSSL(buf, len);
+
   *out = buf;
   *out_len = (size_t)len;
 
@@ -1156,7 +1160,7 @@ fail:
     PKCS8_PRIV_KEY_INFO_free(p8);
 
   if (rk)
-    free(rk);
+    OPENSSL_free(rk);
 
   return false;
 }
@@ -1244,6 +1248,8 @@ bcrypto_rsa_pubkey_export(
   if (len <= 0)
     return false;
 
+  UNFUCK_BORINGSSL(buf, len);
+
   *out = buf;
   *out_len = (size_t)len;
 
@@ -1291,6 +1297,8 @@ bcrypto_rsa_pubkey_export_spki(
 
   if (len <= 0)
     return false;
+
+  UNFUCK_BORINGSSL(buf, len);
 
   *out = buf;
   *out_len = (size_t)len;
@@ -2282,20 +2290,28 @@ bcrypto_rsa_veil(
 fail:
   if (ctx)
     BN_CTX_free(ctx);
+
   if (c0)
     BN_free(c0);
+
   if (n)
     BN_free(n);
+
   if (ctlim)
     BN_free(ctlim);
+
   if (rlim)
     BN_free(rlim);
+
   if (c1)
     BN_free(c1);
+
   if (cr)
     BN_free(cr);
+
   if (c)
     free(c);
+
   return ret;
 }
 
@@ -2357,12 +2373,16 @@ bcrypto_rsa_unveil(
 fail:
   if (ctx)
     BN_CTX_free(ctx);
+
   if (c1)
     BN_free(c1);
+
   if (n)
     BN_free(n);
+
   if (c)
     free(c);
+
   return ret;
 }
 
