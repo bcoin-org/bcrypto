@@ -986,7 +986,6 @@ bcrypto_ecdsa_privkey_mod(bcrypto_ecdsa_t *ec,
                           const uint8_t *priv,
                           size_t priv_len) {
   BIGNUM *priv_bn = NULL;
-  uint8_t *npriv_buf = NULL;
 
   if (priv_len > ec->scalar_size) {
     priv = &priv[priv_len - ec->scalar_size];
@@ -1010,11 +1009,8 @@ bcrypto_ecdsa_privkey_mod(bcrypto_ecdsa_t *ec,
   return 1;
 
 fail:
-  if (priv_bn)
+  if (priv_bn != NULL)
     BN_clear_free(priv_bn);
-
-  if (npriv_buf)
-    free(npriv_buf);
 
   return 0;
 }
