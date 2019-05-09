@@ -250,7 +250,7 @@ describe('Primes', function() {
       const p = new BN(str, 10);
 
       assert(!p.isPrimeMR(rng, 16 + 1, true));
-      assert(!p.isPrimeMR(rng, 6, true));
+      assert(!p.isPrimeMR(rng, 7, true));
       assert(!p.isPrimeMR(rng, 6, false));
 
       if (i >= 8 && i <= 42) {
