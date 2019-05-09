@@ -865,7 +865,7 @@ NAN_METHOD(BED25519::BatchVerify) {
   size_t len = (size_t)batch->Length();
 
   if (len == 0)
-    return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
+    return info.GetReturnValue().Set(Nan::New<v8::Boolean>(true));
 
   const uint8_t **slab1 =
     (const uint8_t **)malloc(len * 3 * sizeof(const uint8_t **));
