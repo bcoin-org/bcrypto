@@ -808,18 +808,6 @@ NAN_METHOD(BSecp256k1::sign) {
   unsigned char output[64];
   secp256k1_ecdsa_recoverable_signature_serialize_compact(secp->ctx, &output[0], &recid, &sig);
 
-  // Normalize signature (ensure low S value).
-#if 0
-  secp256k1_ecdsa_signature sigout;
-
-  if (secp256k1_ecdsa_signature_parse_compact(secp->ctx, &sigout, &output[0]) == 0) {
-    return Nan::ThrowError(ECDSA_SIGNATURE_PARSE_FAIL);
-  }
-
-  secp256k1_ecdsa_signature_normalize(secp->ctx, &sigout, &sigout);
-  secp256k1_ecdsa_signature_serialize_compact(secp->ctx, &output[0], &sigout);
-#endif
-
   v8::Local<v8::Object> obj = Nan::New<v8::Object>();
 
   Nan::Set(obj, Nan::New<v8::String>("signature").ToLocalChecked(), COPY_BUFFER(&output[0], 64));
