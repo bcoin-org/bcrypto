@@ -1102,3 +1102,136 @@ NAN_METHOD(BSecp256k1::schnorrVerify) {
   int result = secp256k1_schnorrsig_verify(secp->ctx, &sig, msg32, &public_key);
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
+
+#if 0
+NAN_METHOD(BED25519::schnorrBatchVerify) {
+  BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
+
+  if (!info[0]->IsArray())
+    return Nan::ThrowTypeError("batch should be an Array");
+
+  v8::Local<v8::Array> batch = info[0].As<v8::Array>();
+
+  size_t len = (size_t)batch->Length();
+
+  if (len == 0) {
+    return info.GetReturnValue().Set(Nan::New<v8::Boolean>(true));
+  }
+
+  const uint8_t **msgs =
+    (const uint8_t **)malloc(len * sizeof(const uint8_t **));
+
+  if (msgs == NULL) {
+    return Nan::ThrowError("allocation failed");
+  }
+
+  secp256k1_schnorrsig *sigs =
+    (secp256k1_schnorrsig *)malloc(len * sizeof(secp256k1_schnorrsig));
+
+  if (sigs == NULL) {
+    free(msgs);
+    return Nan::ThrowError("allocation failed");
+  }
+
+  secp256k1_pubkey *pubs =
+    (secp256k1_pubkey *)malloc(len * sizeof(secp256k1_pubkey));
+
+  if (pubs == NULL) {
+    free(sigs), free(msgs);
+    return Nan::ThrowError("allocation failed");
+  }
+
+#define FREE_BATCH (free(msgs), free(sigs), free(pubs))
+
+  for (size_t i = 0; i < len; i++) {
+    if (!Nan::Get(batch, i).ToLocalChecked()->IsArray()) {
+      FREE_BATCH;
+      return Nan::ThrowTypeError("batch item should be an Array");
+    }
+
+    v8::Local<v8::Array> item = Nan::Get(batch, i).ToLocalChecked()
+                                                  .As<v8::Array>();
+
+    if (item->Length() != 3) {
+      FREE_BATCH;
+      return Nan::ThrowError("batch item must consist of 3 members");
+    }
+
+    v8::Local<v8::Object> mbuf = Nan::Get(item, 0).ToLocalChecked()
+                                                  .As<v8::Object>();
+    v8::Local<v8::Object> sbuf = Nan::Get(item, 1).ToLocalChecked()
+                                                  .As<v8::Object>();
+    v8::Local<v8::Object> pbuf = Nan::Get(item, 2).ToLocalChecked()
+                                                  .As<v8::Object>();
+
+    if (!node::Buffer::HasInstance(mbuf)) {
+      FREE_BATCH;
+      return Nan::ThrowTypeError(MSG32_TYPE_INVALID);
+    }
+
+    if (!node::Buffer::HasInstance(sbuf)) {
+      FREE_BATCH;
+      return Nan::ThrowTypeError(ECDSA_SIGNATURE_TYPE_INVALID);
+    }
+
+    if (!node::Buffer::HasInstance(pbuf)) {
+      FREE_BATCH;
+      return Nan::ThrowTypeError(EC_PUBLIC_KEY_TYPE_INVALID);
+    }
+
+    const uint8_t *msg = (const uint8_t *)node::Buffer::Data(mbuf);
+    size_t msg_len = node::Buffer::Length(mbuf);
+
+    const uint8_t *sig = (const uint8_t *)node::Buffer::Data(sbuf);
+    size_t sig_len = node::Buffer::Length(sbuf);
+
+    const uint8_t *pub = (const uint8_t *)node::Buffer::Data(pbuf);
+    size_t pub_len = node::Buffer::Length(pbuf);
+
+    if (msg_len != 32) {
+      FREE_BATCH;
+      return Nan::ThrowRangeError(MSG32_LENGTH_INVALID);
+    }
+
+    if (sig_len != 64) {
+      FREE_BATCH;
+      return Nan::ThrowRangeError(ECDSA_SIGNATURE_LENGTH_INVALID);
+    }
+
+    if (pub_len != 33 && pub_len != 65) {
+      FREE_BATCH;
+      return Nan::ThrowRangeError(EC_PUBLIC_KEY_LENGTH_INVALID);
+    }
+
+    msgs[i] = msg;
+
+    if (secp256k1_schnorrsig_parse(secp->ctx, &sigs[i], sig) == 0) {
+      FREE_BATCH;
+      return Nan::ThrowError(ECDSA_SIGNATURE_PARSE_FAIL);
+    }
+
+    if (secp256k1_ec_pubkey_parse(secp->ctx, &pubs[i], pub, pub_len) == 0) {
+      FREE_BATCH;
+      return Nan::ThrowError(EC_PUBLIC_KEY_PARSE_FAIL);
+    }
+  }
+
+  // Todo: investigate scratch API:
+  // size_t size1 = secp256k1_strauss_scratch_size(n_points);
+  // size_t size2 = secp256k1_pippenger_scratch_size(n_points,
+                      secp256k1_pippenger_bucket_window(n_points));
+  // size_t max_size = size1 > size2 ? size1 : size2;
+  // secp256k1_scratch_space *scratch =
+  //   secp256k1_scratch_space_create(secp->ctx, max_size);
+  // secp256k1_scratch_space_destroy(scratch);
+
+  int result = secp256k1_schnorrsig_verify_batch(secp->ctx, NULL,
+                                                 sigs, msgs, pubs, len);
+
+  FREE_BATCH;
+
+#undef FREE_BATCH
+
+  info.GetReturnValue().Set(Nan::New<v8::Boolean>(result == 1));
+}
+#endif
