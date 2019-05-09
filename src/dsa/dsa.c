@@ -1,12 +1,13 @@
+#include "../compat.h"
+
+#ifdef BCRYPTO_HAS_DSA
+
 #include <assert.h>
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdlib.h>
-#include "openssl/opensslv.h"
 #include "dsa.h"
-
-#if OPENSSL_VERSION_NUMBER >= 0x1010008fL
 
 #include "openssl/bn.h"
 #include "openssl/dsa.h"
@@ -1391,169 +1392,6 @@ fail:
   if (secret)
     free(secret);
 
-  return false;
-}
-
-#else
-
-void
-bcrypto_dsa_key_init(bcrypto_dsa_key_t *key) {}
-
-void
-bcrypto_dsa_key_free(bcrypto_dsa_key_t *key) {}
-
-bcrypto_dsa_key_t *
-bcrypto_dsa_params_generate(int bits) {
-  return NULL;
-}
-
-bool
-bcrypto_dsa_params_verify(bcrypto_dsa_key_t *params) {
-  return false;
-}
-
-bool
-bcrypto_dsa_params_export(
-  const bcrypto_dsa_key_t *params,
-  uint8_t **out,
-  size_t *out_len
-) {
-  return false;
-}
-
-bcrypto_dsa_key_t *
-bcrypto_dsa_params_import(
-  const uint8_t *raw,
-  size_t raw_len
-) {
-  return NULL;
-}
-
-bcrypto_dsa_key_t *
-bcrypto_dsa_privkey_create(bcrypto_dsa_key_t *params) {
-  return NULL;
-}
-
-bool
-bcrypto_dsa_privkey_compute(
-  bcrypto_dsa_key_t *priv,
-  uint8_t **out,
-  size_t *out_len
-) {
-  return false;
-}
-
-bool
-bcrypto_dsa_privkey_verify(bcrypto_dsa_key_t *key) {
-  return false;
-}
-
-bool
-bcrypto_dsa_privkey_export(
-  const bcrypto_dsa_key_t *priv,
-  uint8_t **out,
-  size_t *out_len
-) {
-  return false;
-}
-
-bcrypto_dsa_key_t *
-bcrypto_dsa_privkey_import(
-  const uint8_t *raw,
-  size_t raw_len
-) {
-  return NULL;
-}
-
-bool
-bcrypto_dsa_privkey_export_pkcs8(
-  const bcrypto_dsa_key_t *priv,
-  uint8_t **out,
-  size_t *out_len
-) {
-  return false;
-}
-
-bcrypto_dsa_key_t *
-bcrypto_dsa_privkey_import_pkcs8(
-  const uint8_t *raw,
-  size_t raw_len
-) {
-  return NULL;
-}
-
-bool
-bcrypto_dsa_pubkey_verify(bcrypto_dsa_key_t *key) {
-  return false;
-}
-
-bool
-bcrypto_dsa_pubkey_export(
-  const bcrypto_dsa_key_t *pub,
-  uint8_t **out,
-  size_t *out_len
-) {
-  return false;
-}
-
-bcrypto_dsa_key_t *
-bcrypto_dsa_pubkey_import(
-  const uint8_t *raw,
-  size_t raw_len
-) {
-  return NULL;
-}
-
-bool
-bcrypto_dsa_pubkey_export_spki(
-  const bcrypto_dsa_key_t *pub,
-  uint8_t **out,
-  size_t *out_len
-) {
-  return false;
-}
-
-bcrypto_dsa_key_t *
-bcrypto_dsa_pubkey_import_spki(
-  const uint8_t *raw,
-  size_t raw_len
-) {
-  return NULL;
-}
-
-bool
-bcrypto_dsa_sign(
-  const uint8_t *msg,
-  size_t msg_len,
-  const bcrypto_dsa_key_t *priv,
-  uint8_t **r,
-  size_t *r_len,
-  uint8_t **s,
-  size_t *s_len
-) {
-  return false;
-}
-
-bool
-bcrypto_dsa_verify(
-  const uint8_t *msg,
-  size_t msg_len,
-  const uint8_t *r,
-  size_t r_len,
-  const uint8_t *s,
-  size_t s_len,
-  const bcrypto_dsa_key_t *pub
-) {
-  return false;
-}
-
-bool
-bcrypto_dsa_derive(
-  const bcrypto_dsa_key_t *pub,
-  const bcrypto_dsa_key_t *priv,
-  uint8_t **out,
-  size_t *out_len
-) {
   return false;
 }
 

@@ -1,10 +1,12 @@
+#include "../compat.h"
+
+#ifdef BCRYPTO_HAS_ECDSA
+
 #include <assert.h>
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
 #include "ecdsa.h"
-
-#ifdef BCRYPTO_HAS_ECDSA
 
 #include "openssl/ecdsa.h"
 #include "openssl/objects.h"

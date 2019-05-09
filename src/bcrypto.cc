@@ -11,6 +11,7 @@
 #include <nan.h>
 
 #include "common.h"
+#include "compat.h"
 #include "aead.h"
 #include "aes.h"
 #include "blake2b.h"
@@ -20,9 +21,7 @@
 #endif
 #include "chacha20.h"
 #include "cipherbase.h"
-#if NODE_MAJOR_VERSION >= 10
 #include "dsa.h"
-#endif
 #include "ecdsa.h"
 #include "ed25519.h"
 #include "ed448.h"
@@ -36,9 +35,7 @@
 #include "pbkdf2.h"
 #include "random.h"
 #include "ripemd160.h"
-#if NODE_MAJOR_VERSION >= 10
 #include "rsa.h"
-#endif
 #include "scrypt.h"
 #include "secp256k1.h"
 #include "sha1.h"
@@ -87,7 +84,7 @@ NAN_MODULE_INIT(init) {
   BChaCha20::Init(target);
   BCipherBase::Init(target);
   Nan::Export(target, "cleanse", cleanse);
-#if NODE_MAJOR_VERSION >= 10
+#ifdef BCRYPTO_HAS_DSA
   BDSA::Init(target);
 #endif
 #ifdef BCRYPTO_HAS_ECDSA
@@ -105,7 +102,7 @@ NAN_MODULE_INIT(init) {
   BPBKDF2::Init(target);
   BRandom::Init(target);
   BRIPEMD160::Init(target);
-#if NODE_MAJOR_VERSION >= 10
+#ifdef BCRYPTO_HAS_RSA
   BRSA::Init(target);
 #endif
   BScrypt::Init(target);

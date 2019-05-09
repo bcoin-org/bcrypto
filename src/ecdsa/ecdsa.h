@@ -1,18 +1,17 @@
 #ifndef _BCRYPTO_ECDSA_H
 #define _BCRYPTO_ECDSA_H
 
+#include "../compat.h"
+
+#ifdef BCRYPTO_HAS_ECDSA
+
 #include <stdint.h>
 #include <stdlib.h>
+#include "openssl/ecdsa.h"
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
-
-#include "openssl/opensslv.h"
-
-#if OPENSSL_VERSION_NUMBER >= 0x1010008fL
-
-#include "openssl/ecdsa.h"
 
 #define BCRYPTO_HAS_ECDSA
 #define BCRYPTO_ECDSA_MAX_FIELD_SIZE 66
@@ -252,10 +251,10 @@ bcrypto_ecdsa_derive(bcrypto_ecdsa_t *ec,
                      const bcrypto_ecdsa_pubkey_t *pub,
                      const uint8_t *priv);
 
-#endif
-
 #if defined(__cplusplus)
 }
+#endif
+
 #endif
 
 #endif

@@ -1,9 +1,11 @@
+#include "compat.h"
+
+#ifdef BCRYPTO_HAS_DSA
+
 #include <assert.h>
 #include <string.h>
 #include <node.h>
 #include <nan.h>
-
-#if NODE_MAJOR_VERSION >= 10
 
 #include "common.h"
 #include "dsa/dsa.h"

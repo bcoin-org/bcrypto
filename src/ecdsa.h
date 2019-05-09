@@ -1,11 +1,14 @@
 #ifndef _BCRYPTO_ECDSA_HH
 #define _BCRYPTO_ECDSA_HH
 
+#include "compat.h"
+
+#ifdef BCRYPTO_HAS_ECDSA
+
 #include <node.h>
 #include <nan.h>
 #include "ecdsa/ecdsa.h"
 
-#ifdef BCRYPTO_HAS_ECDSA
 class BECDSA : public Nan::ObjectWrap {
 public:
   static NAN_METHOD(New);

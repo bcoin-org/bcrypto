@@ -1,3 +1,7 @@
+#include "compat.h"
+
+#ifdef BCRYPTO_HAS_ECDSA
+
 #include <assert.h>
 #include <string.h>
 #include <node.h>
@@ -6,8 +10,6 @@
 #include "common.h"
 #include "ecdsa/ecdsa.h"
 #include "ecdsa.h"
-
-#ifdef BCRYPTO_HAS_ECDSA
 
 static Nan::Persistent<v8::FunctionTemplate> ecdsa_constructor;
 

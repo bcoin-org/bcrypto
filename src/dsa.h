@@ -1,9 +1,13 @@
 #ifndef _BCRYPTO_DSA_HH
 #define _BCRYPTO_DSA_HH
+
+#include "compat.h"
+
+#ifdef BCRYPTO_HAS_DSA
+
 #include <node.h>
 #include <nan.h>
 
-#if NODE_MAJOR_VERSION >= 10
 class BDSA {
 public:
   static void Init(v8::Local<v8::Object> &target);

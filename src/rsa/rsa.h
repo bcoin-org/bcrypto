@@ -1,6 +1,10 @@
 #ifndef _BCRYPTO_RSA_H
 #define _BCRYPTO_RSA_H
 
+#include "../compat.h"
+
+#ifdef BCRYPTO_HAS_RSA
+
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -228,6 +232,8 @@ bcrypto_rsa_has_hash(const char *alg);
 
 #if defined(__cplusplus)
 }
+#endif
+
 #endif
 
 #endif
