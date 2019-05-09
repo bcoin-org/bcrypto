@@ -249,7 +249,7 @@ describe('Ed448', function() {
   });
 
   it('should generate keypair and sign with multiplicative tweak * cofactor', () => {
-    const cofactor = Buffer.alloc(32, 0x00);
+    const cofactor = Buffer.alloc(56, 0x00);
     cofactor[0] = 4;
 
     const key = ed448.privateKeyGenerate();
