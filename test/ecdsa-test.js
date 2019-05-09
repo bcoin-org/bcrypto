@@ -722,6 +722,30 @@ describe('ECDSA', function() {
       assert.strictEqual(curve.recover(msg, sig, 2), null);
       assert.strictEqual(curve.recover(msg, sig, 3), null);
     });
+
+    it('should normalize high S signature', () => {
+      const der = Buffer.from(''
+        + '304502203e4516da7253cf068effec6b95c41221c0cf3a8e6ccb8cbf1725b562'
+        + 'e9afde2c022100ab1e3da73d67e32045a20e0b999e049978ea8d6ee5480d485f'
+        + 'cf2ce0d03b2ef0',
+        'hex');
+
+      const hi = Buffer.from(''
+        + '3e4516da7253cf068effec6b95c41221c0cf3a8e6ccb8cbf1725b562e9afde2c'
+        + 'ab1e3da73d67e32045a20e0b999e049978ea8d6ee5480d485fcf2ce0d03b2ef0',
+        'hex');
+
+      const lo = Buffer.from(''
+        + '3e4516da7253cf068effec6b95c41221c0cf3a8e6ccb8cbf1725b562e9afde2c'
+        + '54e1c258c2981cdfba5df1f46661fb6541c44f77ca0092f3600331abfffb1251',
+        'hex');
+
+      assert(!curve.isLowDER(der));
+      assert(!curve.isLowS(hi));
+      assert.bufferEqual(curve.signatureExport(hi), der);
+      assert.bufferEqual(curve.signatureImport(der), hi);
+      assert.bufferEqual(curve.signatureNormalize(hi), lo);
+    });
   }
 
   it('should generate keypair, sign RS and recover', () => {
