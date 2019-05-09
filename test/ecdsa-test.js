@@ -740,4 +740,40 @@ describe('ECDSA', function() {
     const sig = p256.sign(msg, key);
     assert(p256.verify(msg, sig, pub));
   });
+
+  it('should import standard JWK (1)', () => {
+    // https://tools.ietf.org/html/rfc7518#appendix-C
+    const json = {
+      'kty': 'EC',
+      'crv': 'P-256',
+      'x': 'gI0GAILBdu7T53akrFmMyGcsF3n5dO7MmwNBHKW5SV0',
+      'y': 'SLW_xSffzlPWrHEVI30DHM_4egVwt3NQqeUD7nMFpps',
+      'd': '0_NxaRPUMQoAJt50Gz8YiTr8gRTwyEaCumd-MToTmIo',
+      'ext': true
+    };
+
+    const priv = p256.privateKeyImportJWK(json);
+    const pub = p256.publicKeyImportJWK(json);
+
+    assert.bufferEqual(p256.publicKeyCreate(priv), pub);
+    assert.deepStrictEqual(p256.privateKeyExportJWK(priv), json);
+  });
+
+  it('should import standard JWK (2)', () => {
+    // https://tools.ietf.org/html/rfc7517#appendix-A.2
+    const json = {
+      'kty': 'EC',
+      'crv': 'P-256',
+      'x': 'MKBCTNIcKUSDii11ySs3526iDZ8AiTo7Tu6KPAqv7D4',
+      'y': '4Etl6SRW2YiLUrN5vfvVHuhp7x8PxltmWWlbbM4IFyM',
+      'd': '870MB6gfuTJ4HtUnUvYMyJpr5eUZNP4Bk43bVdj3eAE',
+      'ext': true
+    };
+
+    const priv = p256.privateKeyImportJWK(json);
+    const pub = p256.publicKeyImportJWK(json);
+
+    assert.bufferEqual(p256.publicKeyCreate(priv), pub);
+    assert.deepStrictEqual(p256.privateKeyExportJWK(priv), json);
+  });
 });

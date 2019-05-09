@@ -270,4 +270,28 @@ describe('X25519', function() {
     assert.bufferEqual(x25519.publicKeyImportSPKI(asnPub2),
       x25519.publicKeyCreate(x25519.privateKeyImportPKCS8(asnPriv2)));
   });
+
+  it('should import standard JWK', () => {
+    // https://tools.ietf.org/html/draft-ietf-jose-cfrg-curves-06#appendix-A.6
+    const json = {
+      'kty': 'OKP',
+      'crv': 'X25519',
+      'x': 'hSDwCYkwp1R0i33ctD73Wg2_Og0mOBr066SpjqqbTmo'
+    };
+
+    const priv = Buffer.from(
+      '77076d0a7318a57d3c16c17251b26645df4c2f87ebc0992ab177fba51db92c2a',
+      'hex');
+
+    const pub = x25519.publicKeyImportJWK(json);
+
+    assert.bufferEqual(x25519.publicKeyCreate(priv), pub);
+
+    const json2 = x25519.privateKeyExportJWK(priv);
+
+    delete json2.d;
+    delete json2.ext;
+
+    assert.deepStrictEqual(json2, json);
+  });
 });

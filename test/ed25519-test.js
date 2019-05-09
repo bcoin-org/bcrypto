@@ -551,4 +551,21 @@ describe('EdDSA', function() {
     assert.bufferEqual(ed25519.privateKeyImportPKCS8(asnPriv), priv);
     assert.bufferEqual(ed25519.publicKeyImportSPKI(asnPub), pub);
   });
+
+  it('should import standard JWK', () => {
+    // https://tools.ietf.org/html/draft-ietf-jose-cfrg-curves-06#appendix-A.1
+    const json = {
+      'kty': 'OKP',
+      'crv': 'Ed25519',
+      'd': 'nWGxne_9WmC6hEr0kuwsxERJxWl7MmkZcDusAxyuf2A',
+      'x': '11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo',
+      'ext': true
+    };
+
+    const priv = ed25519.privateKeyImportJWK(json);
+    const pub = ed25519.publicKeyImportJWK(json);
+
+    assert.bufferEqual(ed25519.publicKeyCreate(priv), pub);
+    assert.deepStrictEqual(ed25519.privateKeyExportJWK(priv), json);
+  });
 });

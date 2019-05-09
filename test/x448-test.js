@@ -177,4 +177,29 @@ describe('X448', function() {
     assert.bufferEqual(x448.publicKeyImportSPKI(asnPub2),
       x448.publicKeyCreate(x448.privateKeyImportPKCS8(asnPriv2)));
   });
+
+  it('should import standard JWK', () => {
+    // https://tools.ietf.org/html/draft-ietf-jose-cfrg-curves-06#appendix-A.7
+    const json = {
+      'kty': 'OKP',
+      'crv': 'X448',
+      'x': 'mwj3zDG34-Z9ItWuoSEHSic70rg94Jxj-qc9LCLF2bvINmRyQdlT1AxbEtqIEg1TF3-A5TLEH6A'
+    };
+
+    const priv = Buffer.from(''
+      + '9a8f4925d1519f5775cf46b04b5800d4ee9ee8bae8bc5565d498c28d'
+      + 'd9c9baf574a9419744897391006382a6f127ab1d9ac2d8c0a598726b',
+      'hex');
+
+    const pub = x448.publicKeyImportJWK(json);
+
+    assert.bufferEqual(x448.publicKeyCreate(priv), pub);
+
+    const json2 = x448.privateKeyExportJWK(priv);
+
+    delete json2.d;
+    delete json2.ext;
+
+    assert.deepStrictEqual(json2, json);
+  });
 });
