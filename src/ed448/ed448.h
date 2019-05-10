@@ -222,7 +222,7 @@ bcrypto_c448_error_t bcrypto_c448_ed448_scalar_tweak_mul(
             const uint8_t scalar[BCRYPTO_C448_SCALAR_BYTES],
             const uint8_t tweak[BCRYPTO_C448_SCALAR_BYTES]);
 
-bcrypto_c448_error_t bcrypto_c448_ed448_scalar_mod(
+bcrypto_c448_error_t bcrypto_c448_ed448_scalar_reduce(
             uint8_t out[BCRYPTO_C448_SCALAR_BYTES],
             const uint8_t scalar[BCRYPTO_C448_SCALAR_BYTES]);
 

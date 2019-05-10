@@ -43,7 +43,7 @@ BECDSA::Init(v8::Local<v8::Object> &target) {
   Nan::SetPrototypeMethod(tpl, "privateKeyImportPKCS8", BECDSA::PrivateKeyImportPKCS8);
   Nan::SetPrototypeMethod(tpl, "privateKeyTweakAdd", BECDSA::PrivateKeyTweakAdd);
   Nan::SetPrototypeMethod(tpl, "privateKeyTweakMul", BECDSA::PrivateKeyTweakMul);
-  Nan::SetPrototypeMethod(tpl, "privateKeyMod", BECDSA::PrivateKeyMod);
+  Nan::SetPrototypeMethod(tpl, "privateKeyReduce", BECDSA::PrivateKeyReduce);
   Nan::SetPrototypeMethod(tpl, "privateKeyNegate", BECDSA::PrivateKeyNegate);
   Nan::SetPrototypeMethod(tpl, "privateKeyInverse", BECDSA::PrivateKeyInverse);
   Nan::SetPrototypeMethod(tpl, "publicKeyCreate", BECDSA::PublicKeyCreate);
@@ -330,11 +330,11 @@ NAN_METHOD(BECDSA::PrivateKeyTweakMul) {
     Nan::CopyBuffer((char *)out, ec->ctx.scalar_size).ToLocalChecked());
 }
 
-NAN_METHOD(BECDSA::PrivateKeyMod) {
+NAN_METHOD(BECDSA::PrivateKeyReduce) {
   BECDSA *ec = ObjectWrap::Unwrap<BECDSA>(info.Holder());
 
   if (info.Length() < 1)
-    return Nan::ThrowError("ecdsa.privateKeyMod() requires arguments.");
+    return Nan::ThrowError("ecdsa.privateKeyReduce() requires arguments.");
 
   v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
 
@@ -346,7 +346,7 @@ NAN_METHOD(BECDSA::PrivateKeyMod) {
 
   uint8_t out[BCRYPTO_ECDSA_MAX_SCALAR_SIZE];
 
-  if (!bcrypto_ecdsa_privkey_mod(&ec->ctx, out, priv, priv_len))
+  if (!bcrypto_ecdsa_privkey_reduce(&ec->ctx, out, priv, priv_len))
     return Nan::ThrowError("Could not tweak private key.");
 
   return info.GetReturnValue().Set(

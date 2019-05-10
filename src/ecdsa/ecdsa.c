@@ -985,16 +985,14 @@ fail:
 }
 
 int
-bcrypto_ecdsa_privkey_mod(bcrypto_ecdsa_t *ec,
-                          uint8_t *out,
-                          const uint8_t *priv,
-                          size_t priv_len) {
+bcrypto_ecdsa_privkey_reduce(bcrypto_ecdsa_t *ec,
+                             uint8_t *out,
+                             const uint8_t *priv,
+                             size_t priv_len) {
   BIGNUM *priv_bn = NULL;
 
-  if (priv_len > ec->scalar_size) {
-    priv = &priv[priv_len - ec->scalar_size];
+  if (priv_len > ec->scalar_size)
     priv_len = ec->scalar_size;
-  }
 
   priv_bn = BN_bin2bn(priv, priv_len, NULL);
 

@@ -439,7 +439,7 @@ bcrypto_ed25519_scalar_tweak_mul(
 }
 
 void
-bcrypto_ed25519_scalar_mod(
+bcrypto_ed25519_scalar_reduce(
   bcrypto_ed25519_secret_key out,
   const bcrypto_ed25519_secret_key sk
 ) {

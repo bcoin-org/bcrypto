@@ -160,10 +160,10 @@ bcrypto_ecdsa_privkey_tweak_mul(bcrypto_ecdsa_t *ec,
                                 const uint8_t *tweak);
 
 int
-bcrypto_ecdsa_privkey_mod(bcrypto_ecdsa_t *ec,
-                          uint8_t *out,
-                          const uint8_t *priv,
-                          size_t priv_len);
+bcrypto_ecdsa_privkey_reduce(bcrypto_ecdsa_t *ec,
+                             uint8_t *out,
+                             const uint8_t *priv,
+                             size_t priv_len);
 
 int
 bcrypto_ecdsa_privkey_negate(bcrypto_ecdsa_t *ec,

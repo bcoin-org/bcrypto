@@ -225,7 +225,7 @@ BSecp256k1::Init(v8::Local<v8::Object> &target) {
   Nan::SetPrototypeMethod(tpl, "privateKeyVerify", BSecp256k1::PrivateKeyVerify);
   Nan::SetPrototypeMethod(tpl, "privateKeyExport", BSecp256k1::PrivateKeyExport);
   Nan::SetPrototypeMethod(tpl, "privateKeyImport", BSecp256k1::PrivateKeyImport);
-  Nan::SetPrototypeMethod(tpl, "privateKeyMod", BSecp256k1::PrivateKeyMod);
+  Nan::SetPrototypeMethod(tpl, "privateKeyReduce", BSecp256k1::PrivateKeyReduce);
   Nan::SetPrototypeMethod(tpl, "privateKeyNegate", BSecp256k1::PrivateKeyNegate);
   Nan::SetPrototypeMethod(tpl, "privateKeyInverse", BSecp256k1::PrivateKeyInverse);
   Nan::SetPrototypeMethod(tpl, "privateKeyTweakAdd", BSecp256k1::PrivateKeyTweakAdd);
@@ -348,7 +348,7 @@ NAN_METHOD(BSecp256k1::PrivateKeyImport) {
   info.GetReturnValue().Set(COPY_BUFFER(private_key, 32));
 }
 
-NAN_METHOD(BSecp256k1::PrivateKeyMod) {
+NAN_METHOD(BSecp256k1::PrivateKeyReduce) {
   v8::Local<v8::Object> private_key_buffer = info[0].As<v8::Object>();
   CHECK_TYPE_BUFFER(private_key_buffer, EC_PRIVATE_KEY_TYPE_INVALID);
 
@@ -361,10 +361,8 @@ NAN_METHOD(BSecp256k1::PrivateKeyMod) {
 
   memset(&private_key[0], 0x00, 32);
 
-  if (len > 32) {
-    data = &data[len - 32];
+  if (len > 32)
     len = 32;
-  }
 
   memcpy(&private_key[32 - len], data, len);
 

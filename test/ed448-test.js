@@ -213,7 +213,7 @@ describe('Ed448', function() {
     const sig2 = ed448.signWithScalar(msg, childPriv, msg);
     assert(ed448.verify(msg, sig2, child));
 
-    const real = ed448.scalarMod(ed448.privateKeyConvert(key));
+    const real = ed448.scalarReduce(ed448.privateKeyConvert(key));
     const parent = ed448.scalarTweakAdd(childPriv, ed448.scalarNegate(tweak));
     assert.bufferEqual(parent, real);
 
@@ -243,7 +243,7 @@ describe('Ed448', function() {
     const sig2 = ed448.signWithScalar(msg, childPriv, msg);
     assert(ed448.verify(msg, sig2, child));
 
-    const real = ed448.scalarMod(ed448.privateKeyConvert(key));
+    const real = ed448.scalarReduce(ed448.privateKeyConvert(key));
     const parent = ed448.scalarTweakMul(childPriv, ed448.scalarInverse(tweak));
     assert.bufferEqual(parent, real);
   });
@@ -280,7 +280,7 @@ describe('Ed448', function() {
 
   it('should modulo scalar', () => {
     const scalar0 = Buffer.alloc(0);
-    const mod0 = ed448.scalarMod(scalar0);
+    const mod0 = ed448.scalarReduce(scalar0);
 
     assert.bufferEqual(mod0, ''
       + '00000000000000000000000000000000000000000000000000000000'
@@ -288,7 +288,7 @@ describe('Ed448', function() {
       'hex');
 
     const scalar1 = Buffer.alloc(1, 0x0a);
-    const mod1 = ed448.scalarMod(scalar1);
+    const mod1 = ed448.scalarReduce(scalar1);
 
     assert.bufferEqual(mod1, ''
       + '0a000000000000000000000000000000000000000000000000000000'
@@ -296,7 +296,7 @@ describe('Ed448', function() {
       'hex');
 
     const scalar2 = Buffer.alloc(56, 0xff);
-    const mod2 = ed448.scalarMod(scalar2);
+    const mod2 = ed448.scalarReduce(scalar2);
 
     assert.bufferEqual(mod2, ''
       + '33ec9e52b5f51c72abc2e9c835f64c7abf25a744d992c4ee5870d70c'
@@ -307,7 +307,7 @@ describe('Ed448', function() {
 
     scalar3[56] = 0x0a;
 
-    const mod3 = ed448.scalarMod(scalar3);
+    const mod3 = ed448.scalarReduce(scalar3);
 
     assert.bufferEqual(mod3, mod2);
   });
