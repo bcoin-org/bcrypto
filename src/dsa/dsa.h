@@ -96,26 +96,20 @@ bcrypto_dsa_pubkey_import_spki(const uint8_t *raw, size_t raw_len);
 int
 bcrypto_dsa_sig_export(uint8_t **out,
                        size_t *out_len,
-                       const uint8_t *r,
-                       size_t r_len,
-                       const uint8_t *s,
-                       size_t s_len,
+                       const uint8_t *sig,
+                       size_t sig_len,
                        size_t size);
 
 int
-bcrypto_dsa_sig_import(uint8_t **r,
-                       size_t *r_len,
-                       uint8_t **s,
-                       size_t *s_len,
-                       const uint8_t *raw,
-                       size_t raw_len,
+bcrypto_dsa_sig_import(uint8_t **out,
+                       size_t *out_len,
+                       const uint8_t *sig,
+                       size_t sig_len,
                        size_t size);
 
 int
-bcrypto_dsa_sign(uint8_t **r,
-                 size_t *r_len,
-                 uint8_t **s,
-                 size_t *s_len,
+bcrypto_dsa_sign(uint8_t **out,
+                 size_t *out_len,
                  const uint8_t *msg,
                  size_t msg_len,
                  const bcrypto_dsa_key_t *priv);
@@ -130,10 +124,8 @@ bcrypto_dsa_sign_der(uint8_t **out,
 int
 bcrypto_dsa_verify(const uint8_t *msg,
                    size_t msg_len,
-                   const uint8_t *r,
-                   size_t r_len,
-                   const uint8_t *s,
-                   size_t s_len,
+                   const uint8_t *sig,
+                   size_t sig_len,
                    const bcrypto_dsa_key_t *pub);
 
 int

@@ -365,23 +365,27 @@ bcrypto_dsa_priv2key(const DSA *priv_d) {
 }
 
 static DSA_SIG *
-bcrypto_dsa_rs2sig(const uint8_t *r, size_t r_len,
-                   const uint8_t *s, size_t s_len) {
+bcrypto_dsa_rs2sig(const uint8_t *sig, size_t sig_len) {
   DSA_SIG *sig_d = NULL;
+  size_t size = 0;
   BIGNUM *r_bn = NULL;
   BIGNUM *s_bn = NULL;
+
+  if (sig == NULL || sig_len == 0)
+    goto fail;
 
   sig_d = DSA_SIG_new();
 
   if (sig_d == NULL)
     goto fail;
 
-  r_bn = BN_bin2bn(r, r_len, NULL);
+  size = sig_len >> 1;
+  r_bn = BN_bin2bn(&sig[0], size, NULL);
 
   if (r_bn == NULL)
     goto fail;
 
-  s_bn = BN_bin2bn(s, s_len, NULL);
+  s_bn = BN_bin2bn(&sig[size], size, NULL);
 
   if (s_bn == NULL)
     goto fail;
@@ -405,14 +409,13 @@ fail:
 }
 
 static int
-bcrypto_dsa_sig2rs(uint8_t **r,
-                   uint8_t **s,
+bcrypto_dsa_sig2rs(uint8_t **out,
+                   size_t *out_len,
                    const DSA *priv_d,
                    const DSA_SIG *sig_d) {
-  assert(r != NULL && s != NULL);
+  assert(out != NULL && out_len != NULL);
 
-  uint8_t *r_buf = NULL;
-  uint8_t *s_buf = NULL;
+  uint8_t *sig_buf = NULL;
   const BIGNUM *r_bn = NULL;
   const BIGNUM *s_bn = NULL;
   const BIGNUM *q_bn = NULL;
@@ -431,26 +434,22 @@ bcrypto_dsa_sig2rs(uint8_t **r,
   assert((size_t)BN_num_bytes(r_bn) <= size);
   assert((size_t)BN_num_bytes(s_bn) <= size);
 
-  r_buf = (uint8_t *)malloc(size);
-  s_buf = (uint8_t *)malloc(size);
+  sig_buf = (uint8_t *)malloc(size * 2);
 
-  if (r_buf == NULL || s_buf == NULL)
+  if (sig_buf == NULL)
     goto fail;
 
-  assert(BN_bn2binpad(r_bn, r_buf, size) > 0);
-  assert(BN_bn2binpad(s_bn, s_buf, size) > 0);
+  assert(BN_bn2binpad(r_bn, &sig_buf[0], size) > 0);
+  assert(BN_bn2binpad(s_bn, &sig_buf[size], size) > 0);
 
-  *r = r_buf;
-  *s = s_buf;
+  *out = sig_buf;
+  *out_len = size * 2;
 
   return 1;
 
 fail:
-  if (r_buf != NULL)
-    free(r_buf);
-
-  if (s_buf != NULL)
-    free(s_buf);
+  if (sig_buf != NULL)
+    free(sig_buf);
 
   return 0;
 }
@@ -1183,25 +1182,20 @@ bcrypto_dsa_pubkey_import_spki(const uint8_t *raw, size_t raw_len) {
 int
 bcrypto_dsa_sig_export(uint8_t **out,
                        size_t *out_len,
-                       const uint8_t *r,
-                       size_t r_len,
-                       const uint8_t *s,
-                       size_t s_len,
+                       const uint8_t *sig,
+                       size_t sig_len,
                        size_t size) {
   assert(out != NULL && out_len != NULL);
 
   DSA_SIG *sig_d = NULL;
 
   if (size == 0)
-    size = r_len;
+    size = sig_len >> 1;
 
-  if (r == NULL || r_len != size)
+  if (sig == NULL || sig_len != size * 2)
     goto fail;
 
-  if (s == NULL || s_len != size)
-    goto fail;
-
-  sig_d = bcrypto_dsa_rs2sig(r, r_len, s, s_len);
+  sig_d = bcrypto_dsa_rs2sig(sig, sig_len);
 
   if (sig_d == NULL)
     goto fail;
@@ -1229,24 +1223,23 @@ fail:
 }
 
 int
-bcrypto_dsa_sig_import(uint8_t **r,
-                       size_t *r_len,
-                       uint8_t **s,
-                       size_t *s_len,
-                       const uint8_t *raw,
-                       size_t raw_len,
+bcrypto_dsa_sig_import(uint8_t **out,
+                       size_t *out_len,
+                       const uint8_t *sig,
+                       size_t sig_len,
                        size_t size) {
+  assert(out != NULL && out_len != NULL);
+
   DSA_SIG *sig_d = NULL;
-  const uint8_t *p = raw;
-  uint8_t *r_buf = NULL;
-  uint8_t *s_buf = NULL;
+  const uint8_t *p = sig;
+  uint8_t *sig_buf = NULL;
   const BIGNUM *r_bn = NULL;
   const BIGNUM *s_bn = NULL;
 
-  if (raw == NULL || raw_len == 0)
+  if (sig == NULL || sig_len == 0)
     goto fail;
 
-  if (d2i_DSA_SIG(&sig_d, &p, raw_len) == NULL)
+  if (d2i_DSA_SIG(&sig_d, &p, sig_len) == NULL)
     goto fail;
 
   DSA_SIG_get0(sig_d, &r_bn, &s_bn);
@@ -1259,17 +1252,16 @@ bcrypto_dsa_sig_import(uint8_t **r,
   if ((size_t)BN_num_bytes(s_bn) > size)
     goto fail;
 
-  r_buf = (uint8_t *)malloc(size);
-  s_buf = (uint8_t *)malloc(size);
+  sig_buf = (uint8_t *)malloc(size * 2);
 
-  if (r_buf == NULL || s_buf == NULL)
+  if (sig_buf == NULL)
     goto fail;
 
-  assert(BN_bn2binpad(r_bn, r_buf, size) > 0);
-  assert(BN_bn2binpad(s_bn, s_buf, size) > 0);
+  assert(BN_bn2binpad(r_bn, &sig_buf[0], size) > 0);
+  assert(BN_bn2binpad(s_bn, &sig_buf[size], size) > 0);
 
-  *r = r_buf;
-  *s = s_buf;
+  *out = sig_buf;
+  *out_len = size * 2;
 
   DSA_SIG_free(sig_d);
 
@@ -1283,19 +1275,15 @@ fail:
 }
 
 int
-bcrypto_dsa_sign(uint8_t **r,
-                 size_t *r_len,
-                 uint8_t **s,
-                 size_t *s_len,
+bcrypto_dsa_sign(uint8_t **out,
+                 size_t *out_len,
                  const uint8_t *msg,
                  size_t msg_len,
                  const bcrypto_dsa_key_t *priv) {
-  assert(r != NULL && r_len != NULL
-      && s != NULL && s_len != NULL);
+  assert(out != NULL && out_len != NULL);
 
   DSA *priv_d = NULL;
   DSA_SIG *sig_d = NULL;
-  const BIGNUM *q_bn = NULL;
 
   if (!bcrypto_dsa_sane_privkey(priv))
     goto fail;
@@ -1312,16 +1300,8 @@ bcrypto_dsa_sign(uint8_t **r,
   if (sig_d == NULL)
     goto fail;
 
-  if (!bcrypto_dsa_sig2rs(r, s, priv_d, sig_d))
+  if (!bcrypto_dsa_sig2rs(out, out_len, priv_d, sig_d))
     goto fail;
-
-  DSA_get0_pqg(priv_d, NULL, &q_bn, NULL);
-  assert(q_bn != NULL);
-
-  size_t size = (size_t)BN_num_bytes(q_bn);
-
-  *r_len = size;
-  *s_len = size;
 
   DSA_free(priv_d);
   DSA_SIG_free(sig_d);
@@ -1393,10 +1373,8 @@ fail:
 int
 bcrypto_dsa_verify(const uint8_t *msg,
                    size_t msg_len,
-                   const uint8_t *r,
-                   size_t r_len,
-                   const uint8_t *s,
-                   size_t s_len,
+                   const uint8_t *sig,
+                   size_t sig_len,
                    const bcrypto_dsa_key_t *pub) {
   size_t qsize = 0;
   DSA *pub_d = NULL;
@@ -1404,10 +1382,7 @@ bcrypto_dsa_verify(const uint8_t *msg,
 
   qsize = bcrypto_dsa_subprime_size(pub);
 
-  if (r == NULL || r_len != qsize)
-    goto fail;
-
-  if (s == NULL || s_len != qsize)
+  if (sig == NULL || sig_len != qsize * 2)
     goto fail;
 
   if (!bcrypto_dsa_sane_pubkey(pub))
@@ -1418,7 +1393,7 @@ bcrypto_dsa_verify(const uint8_t *msg,
   if (pub_d == NULL)
     goto fail;
 
-  sig_d = bcrypto_dsa_rs2sig(r, r_len, s, s_len);
+  sig_d = bcrypto_dsa_rs2sig(sig, sig_len);
 
   if (sig_d == NULL)
     goto fail;

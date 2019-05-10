@@ -643,35 +643,30 @@ NAN_METHOD(BDSA::PublicKeyImportSPKI) {
 }
 
 NAN_METHOD(BDSA::SignatureExport) {
-  if (info.Length() < 2)
+  if (info.Length() < 1)
     return Nan::ThrowError("dsa.signatureExport() requires arguments.");
 
-  v8::Local<v8::Object> rbuf = info[0].As<v8::Object>();
-  v8::Local<v8::Object> sbuf = info[1].As<v8::Object>();
+  v8::Local<v8::Object> sbuf = info[0].As<v8::Object>();
 
-  if (!node::Buffer::HasInstance(rbuf)
-      || !node::Buffer::HasInstance(sbuf)) {
-    return Nan::ThrowTypeError("Arguments must be buffers.");
-  }
+  if (!node::Buffer::HasInstance(sbuf))
+    return Nan::ThrowTypeError("First argument must be a buffer.");
 
-  const uint8_t *rd = (const uint8_t *)node::Buffer::Data(rbuf);
-  size_t rl = node::Buffer::Length(rbuf);
-  const uint8_t *sd = (const uint8_t *)node::Buffer::Data(sbuf);
-  size_t sl = node::Buffer::Length(sbuf);
+  const uint8_t *sig = (const uint8_t *)node::Buffer::Data(sbuf);
+  size_t sig_len = node::Buffer::Length(sbuf);
 
   size_t size = 0;
 
-  if (info.Length() > 2 && !IsNull(info[2])) {
-    if (!info[0]->IsNumber())
+  if (info.Length() > 1 && !IsNull(info[1])) {
+    if (!info[1]->IsNumber())
       return Nan::ThrowTypeError("Second argument must be a number.");
 
-    size = Nan::To<uint32_t>(info[2]).FromJust();
+    size = Nan::To<uint32_t>(info[1]).FromJust();
   }
 
   uint8_t *out;
   size_t out_len;
 
-  if (!bcrypto_dsa_sig_export(&out, &out_len, rd, rl, sd, sl, size))
+  if (!bcrypto_dsa_sig_export(&out, &out_len, sig, sig_len, size))
     return Nan::ThrowError("Could not export signature.");
 
   info.GetReturnValue().Set(
@@ -687,7 +682,7 @@ NAN_METHOD(BDSA::SignatureImport) {
   if (!node::Buffer::HasInstance(sbuf))
     return Nan::ThrowTypeError("First argument must be a buffer.");
 
-  if (!info[0]->IsNumber())
+  if (!info[1]->IsNumber())
     return Nan::ThrowTypeError("Second argument must be a number.");
 
   const uint8_t *sig = (const uint8_t *)node::Buffer::Data(sbuf);
@@ -695,19 +690,14 @@ NAN_METHOD(BDSA::SignatureImport) {
 
   uint32_t size = Nan::To<uint32_t>(info[1]).FromJust();
 
-  uint8_t *rd;
-  size_t rl;
-  uint8_t *sd;
-  size_t sl;
+  uint8_t *out;
+  size_t out_len;
 
-  if (!bcrypto_dsa_sig_import(&rd, &rl, &sd, &sl, sig, sig_len, size))
+  if (!bcrypto_dsa_sig_import(&out, &out_len, sig, sig_len, size))
     return Nan::ThrowError("Could not import signature.");
 
-  v8::Local<v8::Array> ret = Nan::New<v8::Array>();
-  Nan::Set(ret, 0, Nan::NewBuffer((char *)rd, rl).ToLocalChecked());
-  Nan::Set(ret, 1, Nan::NewBuffer((char *)sd, sl).ToLocalChecked());
-
-  return info.GetReturnValue().Set(ret);
+  return info.GetReturnValue().Set(
+    Nan::NewBuffer((char *)out, out_len).ToLocalChecked());
 }
 
 NAN_METHOD(BDSA::Sign) {
@@ -751,19 +741,14 @@ NAN_METHOD(BDSA::Sign) {
   priv.xd = (uint8_t *)node::Buffer::Data(xbuf);
   priv.xl = node::Buffer::Length(xbuf);
 
-  uint8_t *r;
-  size_t rl;
-  uint8_t *s;
-  size_t sl;
+  uint8_t *out;
+  size_t out_len;
 
-  if (!bcrypto_dsa_sign(&r, &rl, &s, &sl, md, ml, &priv))
+  if (!bcrypto_dsa_sign(&out, &out_len, md, ml, &priv))
     return Nan::ThrowError("Could not sign message.");
 
-  v8::Local<v8::Array> ret = Nan::New<v8::Array>();
-  Nan::Set(ret, 0, Nan::NewBuffer((char *)r, rl).ToLocalChecked());
-  Nan::Set(ret, 1, Nan::NewBuffer((char *)s, sl).ToLocalChecked());
-
-  info.GetReturnValue().Set(ret);
+  return info.GetReturnValue().Set(
+    Nan::NewBuffer((char *)out, out_len).ToLocalChecked());
 }
 
 NAN_METHOD(BDSA::SignDER) {
@@ -818,19 +803,17 @@ NAN_METHOD(BDSA::SignDER) {
 }
 
 NAN_METHOD(BDSA::Verify) {
-  if (info.Length() < 7)
+  if (info.Length() < 6)
     return Nan::ThrowError("dsa.verify() requires arguments.");
 
   v8::Local<v8::Object> mbuf = info[0].As<v8::Object>();
-  v8::Local<v8::Object> rbuf = info[1].As<v8::Object>();
-  v8::Local<v8::Object> sbuf = info[2].As<v8::Object>();
-  v8::Local<v8::Object> pbuf = info[3].As<v8::Object>();
-  v8::Local<v8::Object> qbuf = info[4].As<v8::Object>();
-  v8::Local<v8::Object> gbuf = info[5].As<v8::Object>();
-  v8::Local<v8::Object> ybuf = info[6].As<v8::Object>();
+  v8::Local<v8::Object> sbuf = info[1].As<v8::Object>();
+  v8::Local<v8::Object> pbuf = info[2].As<v8::Object>();
+  v8::Local<v8::Object> qbuf = info[3].As<v8::Object>();
+  v8::Local<v8::Object> gbuf = info[4].As<v8::Object>();
+  v8::Local<v8::Object> ybuf = info[5].As<v8::Object>();
 
   if (!node::Buffer::HasInstance(mbuf)
-      || !node::Buffer::HasInstance(rbuf)
       || !node::Buffer::HasInstance(sbuf)
       || !node::Buffer::HasInstance(pbuf)
       || !node::Buffer::HasInstance(qbuf)
@@ -841,9 +824,6 @@ NAN_METHOD(BDSA::Verify) {
 
   const uint8_t *md = (const uint8_t *)node::Buffer::Data(mbuf);
   size_t ml = node::Buffer::Length(mbuf);
-
-  const uint8_t *rd = (const uint8_t *)node::Buffer::Data(rbuf);
-  size_t rl = node::Buffer::Length(rbuf);
 
   const uint8_t *sd = (const uint8_t *)node::Buffer::Data(sbuf);
   size_t sl = node::Buffer::Length(sbuf);
@@ -863,7 +843,7 @@ NAN_METHOD(BDSA::Verify) {
   pub.yd = (uint8_t *)node::Buffer::Data(ybuf);
   pub.yl = node::Buffer::Length(ybuf);
 
-  int result = bcrypto_dsa_verify(md, ml, rd, rl, sd, sl, &pub);
+  int result = bcrypto_dsa_verify(md, ml, sd, sl, &pub);
 
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }

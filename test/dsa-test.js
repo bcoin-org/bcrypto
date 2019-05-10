@@ -94,6 +94,32 @@ describe('DSA', function() {
       pub);
   });
 
+  it('should sign and verify (DER)', () => {
+    // const priv = dsa.privateKeyGenerate(1024);
+    const params = createParams(P2048_256);
+    const priv = dsa.privateKeyCreate(params);
+    const pub = dsa.publicKeyCreate(priv);
+
+    const msg = Buffer.alloc(priv.size(), 0x01);
+    const sig = dsa.signDER(msg, priv);
+    assert(sig);
+
+    assert(dsa.verifyDER(msg, sig, pub));
+    assert(!dsa.verify(msg, sig, pub));
+
+    const sig2 = dsa.signatureImport(sig, priv.size());
+
+    assert(dsa.verify(msg, sig2, pub));
+
+    const sig3 = dsa.signatureExport(sig2);
+
+    assert.bufferEqual(sig3, sig);
+
+    sig[(Math.random() * sig.length) | 0] ^= 1;
+
+    assert(!dsa.verifyDER(msg, sig, pub));
+  });
+
   it('should sign and verify (async)', async () => {
     const size = dsa.native < 2 ? 1024 : 2048;
     const params = await dsa.paramsGenerateAsync(size);
@@ -161,14 +187,20 @@ describe('DSA', function() {
       const pub = dsa.publicKeyCreate(priv);
 
       assert.bufferEqual(dsa.publicKeyExport(pub), pubRaw);
+      assert.strictEqual(dsa.verify(msg, sig, pub), true);
 
-      const result = dsa.verify(msg, sig, pub);
-      assert.strictEqual(result, true);
+      const sig2 = dsa.signatureExport(sig);
+      const sig3 = dsa.signatureExport(sig, sig.length >>> 1);
+      const sig4 = dsa.signatureImport(sig2, sig.length >>> 1);
+
+      assert.bufferEqual(sig2, sig3);
+      assert.bufferEqual(sig4, sig);
+
+      assert.strictEqual(dsa.verifyDER(msg, sig2, pub), true);
 
       sig[(Math.random() * sig.length) | 0] ^= 1;
 
-      const result2 = dsa.verify(msg, sig, pub);
-      assert.strictEqual(result2, false);
+      assert.strictEqual(dsa.verify(msg, sig, pub), false);
     });
   }
 
