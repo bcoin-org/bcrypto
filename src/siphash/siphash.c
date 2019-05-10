@@ -70,11 +70,9 @@ reduce64(uint64_t a, uint64_t b) {
 }
 
 static uint64_t
-_siphash(
-  const uint8_t *data,
-  size_t len,
-  const uint8_t *key
-) {
+_siphash(const uint8_t *data,
+         size_t len,
+         const uint8_t *key) {
   uint32_t blocks = len >> 3;
   uint64_t c0 = 0x736f6d6570736575ull;
   uint64_t c1 = 0x646f72616e646f6dull;
@@ -223,12 +221,10 @@ bcrypto_siphash64k256(uint64_t num, const uint8_t *key) {
 }
 
 uint64_t
-bcrypto_sipmod(
-  const uint8_t *data,
-  size_t len,
-  const uint8_t *key,
-  uint64_t m
-) {
+bcrypto_sipmod(const uint8_t *data,
+               size_t len,
+               const uint8_t *key,
+               uint64_t m) {
   uint64_t v = _siphash(data, len, key);
   return reduce64(v, m);
 }
