@@ -28,15 +28,17 @@
 
 void
 bcrypto_rsa_key_init(bcrypto_rsa_key_t *key) {
-  assert(key);
+  assert(key != NULL);
   memset((void *)key, 0x00, sizeof(bcrypto_rsa_key_t));
 }
 
 void
 bcrypto_rsa_key_free(bcrypto_rsa_key_t *key) {
-  assert(key);
-  if (key->slab)
+  assert(key != NULL);
+
+  if (key->slab != NULL)
     free(key->slab);
+
   free(key);
 }
 

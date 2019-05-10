@@ -21,7 +21,7 @@
 
 void
 bcrypto_dsa_key_init(bcrypto_dsa_key_t *key) {
-  assert(key);
+  assert(key != NULL);
   memset((void *)key, 0x00, sizeof(bcrypto_dsa_key_t));
 }
 
