@@ -5,36 +5,37 @@
 
 const assert = require('bsert');
 const fs = require('fs');
-const Path = require('path');
+const path = require('path');
 const ssh = require('../lib/ssh');
+const {resolve, basename} = path;
 const {SSHPublicKey, SSHPrivateKey} = ssh;
 
 const pubs = [
-  Path.resolve(__dirname, 'data', 'id_dsa.pub'),
-  Path.resolve(__dirname, 'data', 'id_rsa.pub'),
-  Path.resolve(__dirname, 'data', 'id_ecdsa.pub'),
-  Path.resolve(__dirname, 'data', 'id_dsa_modern.pub'),
-  Path.resolve(__dirname, 'data', 'id_dsa_modern_unenc.pub'),
-  Path.resolve(__dirname, 'data', 'id_rsa_modern.pub'),
-  Path.resolve(__dirname, 'data', 'id_rsa_modern_unenc.pub'),
-  Path.resolve(__dirname, 'data', 'id_ecdsa_modern.pub'),
-  Path.resolve(__dirname, 'data', 'id_ecdsa_modern_unenc.pub'),
-  Path.resolve(__dirname, 'data', 'id_ed25519.pub'),
-  Path.resolve(__dirname, 'data', 'id_ed25519_unenc.pub')
+  resolve(__dirname, 'data', 'id_dsa.pub'),
+  resolve(__dirname, 'data', 'id_rsa.pub'),
+  resolve(__dirname, 'data', 'id_ecdsa.pub'),
+  resolve(__dirname, 'data', 'id_dsa_modern.pub'),
+  resolve(__dirname, 'data', 'id_dsa_modern_unenc.pub'),
+  resolve(__dirname, 'data', 'id_rsa_modern.pub'),
+  resolve(__dirname, 'data', 'id_rsa_modern_unenc.pub'),
+  resolve(__dirname, 'data', 'id_ecdsa_modern.pub'),
+  resolve(__dirname, 'data', 'id_ecdsa_modern_unenc.pub'),
+  resolve(__dirname, 'data', 'id_ed25519.pub'),
+  resolve(__dirname, 'data', 'id_ed25519_unenc.pub')
 ];
 
 const privs = [
-  Path.resolve(__dirname, 'data', 'id_dsa'),
-  Path.resolve(__dirname, 'data', 'id_rsa'),
-  Path.resolve(__dirname, 'data', 'id_ecdsa'),
-  Path.resolve(__dirname, 'data', 'id_dsa_modern'),
-  Path.resolve(__dirname, 'data', 'id_dsa_modern_unenc'),
-  Path.resolve(__dirname, 'data', 'id_rsa_modern'),
-  Path.resolve(__dirname, 'data', 'id_rsa_modern_unenc'),
-  Path.resolve(__dirname, 'data', 'id_ecdsa_modern'),
-  Path.resolve(__dirname, 'data', 'id_ecdsa_modern_unenc'),
-  Path.resolve(__dirname, 'data', 'id_ed25519'),
-  Path.resolve(__dirname, 'data', 'id_ed25519_unenc')
+  resolve(__dirname, 'data', 'id_dsa'),
+  resolve(__dirname, 'data', 'id_rsa'),
+  resolve(__dirname, 'data', 'id_ecdsa'),
+  resolve(__dirname, 'data', 'id_dsa_modern'),
+  resolve(__dirname, 'data', 'id_dsa_modern_unenc'),
+  resolve(__dirname, 'data', 'id_rsa_modern'),
+  resolve(__dirname, 'data', 'id_rsa_modern_unenc'),
+  resolve(__dirname, 'data', 'id_ecdsa_modern'),
+  resolve(__dirname, 'data', 'id_ecdsa_modern_unenc'),
+  resolve(__dirname, 'data', 'id_ed25519'),
+  resolve(__dirname, 'data', 'id_ed25519_unenc')
 ];
 
 const PASSPHRASE = '1234567890';
@@ -45,7 +46,7 @@ describe('SSH', function() {
   for (const file of pubs) {
     const str = fs.readFileSync(file, 'utf8');
 
-    it('should deserialize and reserialize public keys', () => {
+    it(`should reserialize public keys (${basename(file)})`, () => {
       const key1 = SSHPublicKey.fromString(str);
       const str1 = key1.toString();
       const key2 = SSHPublicKey.fromString(str1);
@@ -65,7 +66,7 @@ describe('SSH', function() {
     if (file.includes('modern'))
       passphrase = 'foo';
 
-    it('should deserialize and reserialize private keys', () => {
+    it(`should reserialize private keys (${basename(file)})`, () => {
       const key1 = SSHPrivateKey.fromString(str, passphrase);
       const str1 = key1.toString();
       const key2 = SSHPrivateKey.fromString(str1);
