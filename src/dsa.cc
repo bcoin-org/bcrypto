@@ -113,7 +113,7 @@ NAN_METHOD(BDSA::ParamsVerify) {
   params.gd = (uint8_t *)node::Buffer::Data(gbuf);
   params.gl = node::Buffer::Length(gbuf);
 
-  bool result = bcrypto_dsa_params_verify(&params);
+  int result = bcrypto_dsa_params_verify(&params);
 
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
@@ -147,7 +147,7 @@ NAN_METHOD(BDSA::ParamsExport) {
   uint8_t *out;
   size_t out_len;
 
-  if (!bcrypto_dsa_params_export(&params, &out, &out_len))
+  if (!bcrypto_dsa_params_export(&out, &out_len, &params))
     return Nan::ThrowError("Could not export params.");
 
   info.GetReturnValue().Set(
@@ -263,7 +263,7 @@ NAN_METHOD(BDSA::PrivateKeyCompute) {
   uint8_t *y;
   size_t y_len;
 
-  if (!bcrypto_dsa_privkey_compute(&priv, &y, &y_len))
+  if (!bcrypto_dsa_privkey_compute(&y, &y_len, &priv))
     return Nan::ThrowError("Could not compute private key.");
 
   if (!y)
@@ -309,7 +309,7 @@ NAN_METHOD(BDSA::PrivateKeyVerify) {
   priv.xd = (uint8_t *)node::Buffer::Data(xbuf);
   priv.xl = node::Buffer::Length(xbuf);
 
-  bool result = bcrypto_dsa_privkey_verify(&priv);
+  int result = bcrypto_dsa_privkey_verify(&priv);
 
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
@@ -353,7 +353,7 @@ NAN_METHOD(BDSA::PrivateKeyExport) {
   uint8_t *out;
   size_t out_len;
 
-  if (!bcrypto_dsa_privkey_export(&priv, &out, &out_len))
+  if (!bcrypto_dsa_privkey_export(&out, &out_len, &priv))
     return Nan::ThrowError("Could not export private key.");
 
   info.GetReturnValue().Set(
@@ -428,7 +428,7 @@ NAN_METHOD(BDSA::PrivateKeyExportPKCS8) {
   uint8_t *out;
   size_t out_len;
 
-  if (!bcrypto_dsa_privkey_export_pkcs8(&priv, &out, &out_len))
+  if (!bcrypto_dsa_privkey_export_pkcs8(&out, &out_len, &priv))
     return Nan::ThrowError("Could not export private key.");
 
   info.GetReturnValue().Set(
@@ -495,7 +495,7 @@ NAN_METHOD(BDSA::PublicKeyVerify) {
   pub.yd = (uint8_t *)node::Buffer::Data(ybuf);
   pub.yl = node::Buffer::Length(ybuf);
 
-  bool result = bcrypto_dsa_pubkey_verify(&pub);
+  int result = bcrypto_dsa_pubkey_verify(&pub);
 
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
@@ -534,7 +534,7 @@ NAN_METHOD(BDSA::PublicKeyExport) {
   uint8_t *out;
   size_t out_len;
 
-  if (!bcrypto_dsa_pubkey_export(&pub, &out, &out_len))
+  if (!bcrypto_dsa_pubkey_export(&out, &out_len, &pub))
     return Nan::ThrowError("Could not export public key.");
 
   info.GetReturnValue().Set(
@@ -603,7 +603,7 @@ NAN_METHOD(BDSA::PublicKeyExportSPKI) {
   uint8_t *out;
   size_t out_len;
 
-  if (!bcrypto_dsa_pubkey_export_spki(&pub, &out, &out_len))
+  if (!bcrypto_dsa_pubkey_export_spki(&out, &out_len, &pub))
     return Nan::ThrowError("Could not export public key.");
 
   info.GetReturnValue().Set(
@@ -684,7 +684,7 @@ NAN_METHOD(BDSA::Sign) {
   uint8_t *s;
   size_t sl;
 
-  if (!bcrypto_dsa_sign(md, ml, &priv, &r, &rl, &s, &sl))
+  if (!bcrypto_dsa_sign(&r, &rl, &s, &sl, md, ml, &priv))
     return Nan::ThrowError("Could not sign message.");
 
   v8::Local<v8::Array> ret = Nan::New<v8::Array>();
@@ -740,7 +740,7 @@ NAN_METHOD(BDSA::Verify) {
   pub.yd = (uint8_t *)node::Buffer::Data(ybuf);
   pub.yl = node::Buffer::Length(ybuf);
 
-  bool result = bcrypto_dsa_verify(md, ml, rd, rl, sd, sl, &pub);
+  int result = bcrypto_dsa_verify(md, ml, rd, rl, sd, sl, &pub);
 
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
@@ -808,7 +808,7 @@ NAN_METHOD(BDSA::Derive) {
   uint8_t *out = NULL;
   size_t out_len = 0;
 
-  if (!bcrypto_dsa_derive(&pub, &priv, &out, &out_len))
+  if (!bcrypto_dsa_derive(&out, &out_len, &pub, &priv))
     return Nan::ThrowError("Could not derive key.");
 
   info.GetReturnValue().Set(

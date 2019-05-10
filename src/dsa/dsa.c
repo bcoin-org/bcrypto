@@ -5,7 +5,7 @@
 #include <assert.h>
 #include <string.h>
 #include <stdint.h>
-#include <stdbool.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include "dsa.h"
 
@@ -64,59 +64,59 @@ bcrypto_count_bits(const uint8_t *in, size_t in_len) {
   return bits;
 }
 
-static bool
+static int
 bcrypto_dsa_sane_params(const bcrypto_dsa_key_t *params) {
   if (params == NULL)
-    return false;
+    return 0;
 
   size_t pb = bcrypto_count_bits(params->pd, params->pl);
   size_t qb = bcrypto_count_bits(params->qd, params->ql);
   size_t gb = bcrypto_count_bits(params->gd, params->gl);
 
   if (pb < BCRYPTO_DSA_MIN_BITS || pb > BCRYPTO_DSA_MAX_BITS)
-    return false;
+    return 0;
 
   if (qb != 160 && qb != 224 && qb != 256)
-    return false;
+    return 0;
 
   if (gb == 0 || gb > pb)
-    return false;
+    return 0;
 
-  return true;
+  return 1;
 }
 
-static bool
+static int
 bcrypto_dsa_sane_pubkey(const bcrypto_dsa_key_t *key) {
   if (!bcrypto_dsa_sane_params(key))
-    return false;
+    return 0;
 
   size_t pb = bcrypto_count_bits(key->pd, key->pl);
   size_t yb = bcrypto_count_bits(key->yd, key->yl);
 
   if (yb == 0 || yb > pb)
-    return false;
+    return 0;
 
-  return true;
+  return 1;
 }
 
-static bool
+static int
 bcrypto_dsa_sane_privkey(const bcrypto_dsa_key_t *key) {
   if (!bcrypto_dsa_sane_pubkey(key))
-    return false;
+    return 0;
 
   size_t qb = bcrypto_count_bits(key->qd, key->ql);
   size_t xb = bcrypto_count_bits(key->xd, key->xl);
 
   if (xb == 0 || xb > qb)
-    return false;
+    return 0;
 
-  return true;
+  return 1;
 }
 
-static bool
+static int
 bcrypto_dsa_sane_compute(const bcrypto_dsa_key_t *key) {
   if (key == NULL)
-    return false;
+    return 0;
 
   size_t pb = bcrypto_count_bits(key->pd, key->pl);
   size_t qb = bcrypto_count_bits(key->qd, key->ql);
@@ -125,27 +125,27 @@ bcrypto_dsa_sane_compute(const bcrypto_dsa_key_t *key) {
   size_t xb = bcrypto_count_bits(key->xd, key->xl);
 
   if (pb < BCRYPTO_DSA_MIN_BITS || pb > BCRYPTO_DSA_MAX_BITS)
-    return false;
+    return 0;
 
   if (qb != 160 && qb != 224 && qb != 256)
-    return false;
+    return 0;
 
   if (gb == 0 || gb > pb)
-    return false;
+    return 0;
 
   if (yb > pb)
-    return false;
+    return 0;
 
   if (xb == 0 || xb > qb)
-    return false;
+    return 0;
 
-  return true;
+  return 1;
 }
 
-static bool
+static int
 bcrypto_dsa_needs_compute(const bcrypto_dsa_key_t *key) {
   if (key == NULL)
-    return false;
+    return 0;
 
   return bcrypto_count_bits(key->yd, key->yl) == 0;
 }
@@ -353,12 +353,8 @@ bcrypto_dsa_priv2key(const DSA *priv_d) {
 }
 
 static DSA_SIG *
-bcrypto_dsa_rs2sig(
-  const uint8_t *r,
-  size_t r_len,
-  const uint8_t *s,
-  size_t s_len
-) {
+bcrypto_dsa_rs2sig(const uint8_t *r, size_t r_len,
+                   const uint8_t *s, size_t s_len) {
   DSA_SIG *sig_d = NULL;
   BIGNUM *r_bn = NULL;
   BIGNUM *s_bn = NULL;
@@ -396,13 +392,11 @@ fail:
   return NULL;
 }
 
-static bool
-bcrypto_dsa_sig2rs(
-  const DSA *priv_d,
-  const DSA_SIG *sig_d,
-  uint8_t **r,
-  uint8_t **s
-) {
+static int
+bcrypto_dsa_sig2rs(uint8_t **r,
+                   uint8_t **s,
+                   const DSA *priv_d,
+                   const DSA_SIG *sig_d) {
   assert(r && s);
 
   uint8_t *r_buf = NULL;
@@ -437,7 +431,7 @@ bcrypto_dsa_sig2rs(
   *r = r_buf;
   *s = s_buf;
 
-  return true;
+  return 1;
 
 fail:
   if (r_buf)
@@ -446,7 +440,7 @@ fail:
   if (s_buf)
     free(s_buf);
 
-  return false;
+  return 0;
 }
 
 bcrypto_dsa_key_t *
@@ -482,8 +476,8 @@ fail:
   return NULL;
 }
 
-bool
-bcrypto_dsa_params_verify(bcrypto_dsa_key_t *params) {
+int
+bcrypto_dsa_params_verify(const bcrypto_dsa_key_t *params) {
   DSA *params_d = NULL;
   BN_CTX *ctx = NULL;
   BIGNUM *pm1_bn = NULL;
@@ -550,7 +544,7 @@ bcrypto_dsa_params_verify(bcrypto_dsa_key_t *params) {
   BN_free(mod_bn);
   BN_free(x_bn);
 
-  return true;
+  return 1;
 
 fail:
   if (params_d)
@@ -571,24 +565,22 @@ fail:
   if (x_bn)
     BN_free(x_bn);
 
-  return false;
+  return 0;
 }
 
-bool
-bcrypto_dsa_params_export(
-  const bcrypto_dsa_key_t *params,
-  uint8_t **out,
-  size_t *out_len
-) {
+int
+bcrypto_dsa_params_export(uint8_t **out,
+                          size_t *out_len,
+                          const bcrypto_dsa_key_t *params) {
   assert(out && out_len);
 
   if (!bcrypto_dsa_sane_params(params))
-    return false;
+    return 0;
 
   DSA *params_d = bcrypto_dsa_key2params(params);
 
   if (!params_d)
-    return false;
+    return 0;
 
   uint8_t *buf = NULL;
   int len = i2d_DSAparams(params_d, &buf);
@@ -596,21 +588,18 @@ bcrypto_dsa_params_export(
   DSA_free(params_d);
 
   if (len <= 0)
-    return false;
+    return 0;
 
   FIX_BORINGSSL(buf, len);
 
   *out = buf;
   *out_len = (size_t)len;
 
-  return true;
+  return 1;
 }
 
 bcrypto_dsa_key_t *
-bcrypto_dsa_params_import(
-  const uint8_t *raw,
-  size_t raw_len
-) {
+bcrypto_dsa_params_import(const uint8_t *raw, size_t raw_len) {
   DSA *params_d = NULL;
   const uint8_t *p = raw;
 
@@ -625,7 +614,7 @@ bcrypto_dsa_params_import(
 }
 
 bcrypto_dsa_key_t *
-bcrypto_dsa_privkey_create(bcrypto_dsa_key_t *params) {
+bcrypto_dsa_privkey_create(const bcrypto_dsa_key_t *params) {
   DSA *priv_d = NULL;
 
   if (!bcrypto_dsa_sane_params(params))
@@ -657,12 +646,10 @@ fail:
   return NULL;
 }
 
-bool
-bcrypto_dsa_privkey_compute(
-  bcrypto_dsa_key_t *priv,
-  uint8_t **out,
-  size_t *out_len
-) {
+int
+bcrypto_dsa_privkey_compute(uint8_t **out,
+                            size_t *out_len,
+                            const bcrypto_dsa_key_t *priv) {
   assert(out && out_len);
 
   BN_CTX *ctx = NULL;
@@ -680,7 +667,7 @@ bcrypto_dsa_privkey_compute(
   if (!bcrypto_dsa_needs_compute(priv)) {
     *out = NULL;
     out_len = 0;
-    return true;
+    return 1;
   }
 
   ctx = BN_CTX_new();
@@ -716,7 +703,7 @@ bcrypto_dsa_privkey_compute(
   *out = y_buf;
   *out_len = y_len;
 
-  return true;
+  return 1;
 
 fail:
   if (ctx)
@@ -737,11 +724,11 @@ fail:
   if (prk_bn)
     BN_free(prk_bn);
 
-  return false;
+  return 0;
 }
 
-bool
-bcrypto_dsa_privkey_verify(bcrypto_dsa_key_t *key) {
+int
+bcrypto_dsa_privkey_verify(const bcrypto_dsa_key_t *key) {
   DSA *priv_d = NULL;
   BN_CTX *ctx = NULL;
   BIGNUM *y_bn = NULL;
@@ -791,7 +778,7 @@ bcrypto_dsa_privkey_verify(bcrypto_dsa_key_t *key) {
   BN_CTX_free(ctx);
   BN_free(y_bn);
 
-  return true;
+  return 1;
 
 fail:
   if (priv_d)
@@ -803,24 +790,22 @@ fail:
   if (y_bn)
     BN_free(y_bn);
 
-  return false;
+  return 0;
 }
 
-bool
-bcrypto_dsa_privkey_export(
-  const bcrypto_dsa_key_t *priv,
-  uint8_t **out,
-  size_t *out_len
-) {
+int
+bcrypto_dsa_privkey_export(uint8_t **out,
+                           size_t *out_len,
+                           const bcrypto_dsa_key_t *priv) {
   assert(out && out_len);
 
   if (!bcrypto_dsa_sane_privkey(priv))
-    return false;
+    return 0;
 
   DSA *priv_d = bcrypto_dsa_key2priv(priv);
 
   if (!priv_d)
-    return false;
+    return 0;
 
   uint8_t *buf = NULL;
   int len = i2d_DSAPrivateKey(priv_d, &buf);
@@ -828,26 +813,23 @@ bcrypto_dsa_privkey_export(
   DSA_free(priv_d);
 
   if (len <= 0)
-    return false;
+    return 0;
 
   FIX_BORINGSSL(buf, len);
 
   *out = buf;
   *out_len = (size_t)len;
 
-  return true;
+  return 1;
 }
 
 bcrypto_dsa_key_t *
-bcrypto_dsa_privkey_import(
-  const uint8_t *raw,
-  size_t raw_len
-) {
+bcrypto_dsa_privkey_import(const uint8_t *raw, size_t raw_len) {
   DSA *priv_d = NULL;
   const uint8_t *p = raw;
 
   if (!d2i_DSAPrivateKey(&priv_d, &p, raw_len))
-    return false;
+    return 0;
 
   bcrypto_dsa_key_t *k = bcrypto_dsa_priv2key(priv_d);
 
@@ -856,12 +838,10 @@ bcrypto_dsa_privkey_import(
   return k;
 }
 
-bool
-bcrypto_dsa_privkey_export_pkcs8(
-  const bcrypto_dsa_key_t *priv,
-  uint8_t **out,
-  size_t *out_len
-) {
+int
+bcrypto_dsa_privkey_export_pkcs8(uint8_t **out,
+                                 size_t *out_len,
+                                 const bcrypto_dsa_key_t *priv) {
   assert(out && out_len);
 
   // https://github.com/openssl/openssl/blob/32f803d/crypto/dsa/dsa_ameth.c#L203
@@ -933,7 +913,7 @@ bcrypto_dsa_privkey_export_pkcs8(
   DSA_free(priv_d);
   PKCS8_PRIV_KEY_INFO_free(p8);
 
-  return true;
+  return 1;
 
 fail:
   if (priv_d)
@@ -951,14 +931,11 @@ fail:
   if (p8)
     PKCS8_PRIV_KEY_INFO_free(p8);
 
-  return false;
+  return 0;
 }
 
 bcrypto_dsa_key_t *
-bcrypto_dsa_privkey_import_pkcs8(
-  const uint8_t *raw,
-  size_t raw_len
-) {
+bcrypto_dsa_privkey_import_pkcs8(const uint8_t *raw, size_t raw_len) {
   // https://github.com/openssl/openssl/blob/32f803d/crypto/dsa/dsa_ameth.c#L137
   const unsigned char *p, *pm;
   int pklen, pmlen;
@@ -1056,11 +1033,11 @@ fail:
   return NULL;
 }
 
-bool
-bcrypto_dsa_pubkey_verify(bcrypto_dsa_key_t *key) {
+int
+bcrypto_dsa_pubkey_verify(const bcrypto_dsa_key_t *key) {
   BIGNUM *p = NULL;
   BIGNUM *y = NULL;
-  bool r = false;
+  int r = 0;
 
   if (!bcrypto_dsa_params_verify(key))
     goto fail;
@@ -1077,7 +1054,7 @@ bcrypto_dsa_pubkey_verify(bcrypto_dsa_key_t *key) {
   if (BN_cmp(y, p) >= 0)
     goto fail;
 
-  r = true;
+  r = 1;
 fail:
   if (p)
     BN_free(p);
@@ -1088,21 +1065,19 @@ fail:
   return r;
 }
 
-bool
-bcrypto_dsa_pubkey_export(
-  const bcrypto_dsa_key_t *pub,
-  uint8_t **out,
-  size_t *out_len
-) {
+int
+bcrypto_dsa_pubkey_export(uint8_t **out,
+                          size_t *out_len,
+                          const bcrypto_dsa_key_t *pub) {
   assert(out && out_len);
 
   if (!bcrypto_dsa_sane_pubkey(pub))
-    return false;
+    return 0;
 
   DSA *pub_d = bcrypto_dsa_key2pub(pub);
 
   if (!pub_d)
-    return false;
+    return 0;
 
   uint8_t *buf = NULL;
   int len = i2d_DSAPublicKey(pub_d, &buf);
@@ -1110,26 +1085,23 @@ bcrypto_dsa_pubkey_export(
   DSA_free(pub_d);
 
   if (len <= 0)
-    return false;
+    return 0;
 
   FIX_BORINGSSL(buf, len);
 
   *out = buf;
   *out_len = (size_t)len;
 
-  return true;
+  return 1;
 }
 
 bcrypto_dsa_key_t *
-bcrypto_dsa_pubkey_import(
-  const uint8_t *raw,
-  size_t raw_len
-) {
+bcrypto_dsa_pubkey_import(const uint8_t *raw, size_t raw_len) {
   DSA *pub_d = NULL;
   const uint8_t *p = raw;
 
   if (!d2i_DSAPublicKey(&pub_d, &p, raw_len))
-    return false;
+    return 0;
 
   bcrypto_dsa_key_t *k = bcrypto_dsa_pub2key(pub_d);
 
@@ -1138,21 +1110,19 @@ bcrypto_dsa_pubkey_import(
   return k;
 }
 
-bool
-bcrypto_dsa_pubkey_export_spki(
-  const bcrypto_dsa_key_t *pub,
-  uint8_t **out,
-  size_t *out_len
-) {
+int
+bcrypto_dsa_pubkey_export_spki(uint8_t **out,
+                               size_t *out_len,
+                               const bcrypto_dsa_key_t *pub) {
   assert(out && out_len);
 
   if (!bcrypto_dsa_sane_pubkey(pub))
-    return false;
+    return 0;
 
   DSA *pub_d = bcrypto_dsa_key2pub(pub);
 
   if (!pub_d)
-    return false;
+    return 0;
 
   uint8_t *buf = NULL;
   int len = i2d_DSA_PUBKEY(pub_d, &buf);
@@ -1160,21 +1130,18 @@ bcrypto_dsa_pubkey_export_spki(
   DSA_free(pub_d);
 
   if (len <= 0)
-    return false;
+    return 0;
 
   FIX_BORINGSSL(buf, len);
 
   *out = buf;
   *out_len = (size_t)len;
 
-  return true;
+  return 1;
 }
 
 bcrypto_dsa_key_t *
-bcrypto_dsa_pubkey_import_spki(
-  const uint8_t *raw,
-  size_t raw_len
-) {
+bcrypto_dsa_pubkey_import_spki(const uint8_t *raw, size_t raw_len) {
   DSA *pub_d = NULL;
   const uint8_t *p = raw;
 
@@ -1188,16 +1155,14 @@ bcrypto_dsa_pubkey_import_spki(
   return k;
 }
 
-bool
-bcrypto_dsa_sign(
-  const uint8_t *msg,
-  size_t msg_len,
-  const bcrypto_dsa_key_t *priv,
-  uint8_t **r,
-  size_t *r_len,
-  uint8_t **s,
-  size_t *s_len
-) {
+int
+bcrypto_dsa_sign(uint8_t **r,
+                 size_t *r_len,
+                 uint8_t **s,
+                 size_t *s_len,
+                 const uint8_t *msg,
+                 size_t msg_len,
+                 const bcrypto_dsa_key_t *priv) {
   assert(r && r_len && s && s_len);
 
   DSA *priv_d = NULL;
@@ -1218,7 +1183,7 @@ bcrypto_dsa_sign(
   if (!sig_d)
     goto fail;
 
-  if (!bcrypto_dsa_sig2rs(priv_d, sig_d, r, s))
+  if (!bcrypto_dsa_sig2rs(r, s, priv_d, sig_d))
     goto fail;
 
   const BIGNUM *q_bn = NULL;
@@ -1235,7 +1200,7 @@ bcrypto_dsa_sign(
   DSA_free(priv_d);
   DSA_SIG_free(sig_d);
 
-  return true;
+  return 1;
 
 fail:
   if (priv_d)
@@ -1244,19 +1209,17 @@ fail:
   if (sig_d)
     DSA_SIG_free(sig_d);
 
-  return false;
+  return 0;
 }
 
-bool
-bcrypto_dsa_verify(
-  const uint8_t *msg,
-  size_t msg_len,
-  const uint8_t *r,
-  size_t r_len,
-  const uint8_t *s,
-  size_t s_len,
-  const bcrypto_dsa_key_t *pub
-) {
+int
+bcrypto_dsa_verify(const uint8_t *msg,
+                   size_t msg_len,
+                   const uint8_t *r,
+                   size_t r_len,
+                   const uint8_t *s,
+                   size_t s_len,
+                   const bcrypto_dsa_key_t *pub) {
   size_t qsize = 0;
   DSA *pub_d = NULL;
   DSA_SIG *sig_d = NULL;
@@ -1288,7 +1251,7 @@ bcrypto_dsa_verify(
   DSA_free(pub_d);
   DSA_SIG_free(sig_d);
 
-  return true;
+  return 1;
 
 fail:
   if (pub_d)
@@ -1297,16 +1260,14 @@ fail:
   if (sig_d)
     DSA_SIG_free(sig_d);
 
-  return false;
+  return 0;
 }
 
-bool
-bcrypto_dsa_derive(
-  const bcrypto_dsa_key_t *pub,
-  const bcrypto_dsa_key_t *priv,
-  uint8_t **out,
-  size_t *out_len
-) {
+int
+bcrypto_dsa_derive(uint8_t **out,
+                   size_t *out_len,
+                   const bcrypto_dsa_key_t *pub,
+                   const bcrypto_dsa_key_t *priv) {
   assert(out && out_len);
 
   DSA *pub_d = NULL;
@@ -1391,7 +1352,7 @@ bcrypto_dsa_derive(
   *out = secret;
   *out_len = secret_len;
 
-  return true;
+  return 1;
 
 fail:
   if (pub_d)
@@ -1409,7 +1370,7 @@ fail:
   if (secret)
     free(secret);
 
-  return false;
+  return 0;
 }
 
 #endif

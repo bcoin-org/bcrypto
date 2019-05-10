@@ -6,7 +6,7 @@
 #ifdef BCRYPTO_HAS_DSA
 
 #include <stdlib.h>
-#include <stdbool.h>
+#include <stdint.h>
 #include <stdint.h>
 
 #if defined(__cplusplus)
@@ -36,119 +36,86 @@ bcrypto_dsa_key_free(bcrypto_dsa_key_t *key);
 bcrypto_dsa_key_t *
 bcrypto_dsa_params_generate(int bits);
 
-bool
-bcrypto_dsa_params_verify(bcrypto_dsa_key_t *params);
+int
+bcrypto_dsa_params_verify(const bcrypto_dsa_key_t *params);
 
-bool
-bcrypto_dsa_params_export(
-  const bcrypto_dsa_key_t *params,
-  uint8_t **out,
-  size_t *out_len
-);
+int
+bcrypto_dsa_params_export(uint8_t **out,
+                          size_t *out_len,
+                          const bcrypto_dsa_key_t *params);
 
 bcrypto_dsa_key_t *
-bcrypto_dsa_params_import(
-  const uint8_t *raw,
-  size_t raw_len
-);
+bcrypto_dsa_params_import(const uint8_t *raw, size_t raw_len);
 
 bcrypto_dsa_key_t *
-bcrypto_dsa_privkey_create(bcrypto_dsa_key_t *params);
+bcrypto_dsa_privkey_create(const bcrypto_dsa_key_t *params);
 
-bool
-bcrypto_dsa_privkey_compute(
-  bcrypto_dsa_key_t *priv,
-  uint8_t **out,
-  size_t *out_len
-);
+int
+bcrypto_dsa_privkey_compute(uint8_t **out,
+                            size_t *out_len,
+                            const bcrypto_dsa_key_t *priv);
 
-bool
-bcrypto_dsa_privkey_verify(bcrypto_dsa_key_t *key);
+int
+bcrypto_dsa_privkey_verify(const bcrypto_dsa_key_t *key);
 
-bool
-bcrypto_dsa_privkey_export(
-  const bcrypto_dsa_key_t *priv,
-  uint8_t **out,
-  size_t *out_len
-);
+int
+bcrypto_dsa_privkey_export(uint8_t **out,
+                           size_t *out_len,
+                           const bcrypto_dsa_key_t *priv);
 
 bcrypto_dsa_key_t *
-bcrypto_dsa_privkey_import(
-  const uint8_t *raw,
-  size_t raw_len
-);
+bcrypto_dsa_privkey_import(const uint8_t *raw, size_t raw_len);
 
-bool
-bcrypto_dsa_privkey_export_pkcs8(
-  const bcrypto_dsa_key_t *priv,
-  uint8_t **out,
-  size_t *out_len
-);
+int
+bcrypto_dsa_privkey_export_pkcs8(uint8_t **out,
+                                 size_t *out_len,
+                                 const bcrypto_dsa_key_t *priv);
 
 bcrypto_dsa_key_t *
-bcrypto_dsa_privkey_import_pkcs8(
-  const uint8_t *raw,
-  size_t raw_len
-);
+bcrypto_dsa_privkey_import_pkcs8(const uint8_t *raw, size_t raw_len);
 
-bool
-bcrypto_dsa_pubkey_verify(bcrypto_dsa_key_t *key);
+int
+bcrypto_dsa_pubkey_verify(const bcrypto_dsa_key_t *key);
 
-bool
-bcrypto_dsa_pubkey_export(
-  const bcrypto_dsa_key_t *pub,
-  uint8_t **out,
-  size_t *out_len
-);
+int
+bcrypto_dsa_pubkey_export(uint8_t **out,
+                          size_t *out_len,
+                          const bcrypto_dsa_key_t *pub);
 
 bcrypto_dsa_key_t *
-bcrypto_dsa_pubkey_import(
-  const uint8_t *raw,
-  size_t raw_len
-);
+bcrypto_dsa_pubkey_import(const uint8_t *raw, size_t raw_len);
 
-bool
-bcrypto_dsa_pubkey_export_spki(
-  const bcrypto_dsa_key_t *pub,
-  uint8_t **out,
-  size_t *out_len
-);
+int
+bcrypto_dsa_pubkey_export_spki(uint8_t **out,
+                               size_t *out_len,
+                               const bcrypto_dsa_key_t *pub);
 
 bcrypto_dsa_key_t *
-bcrypto_dsa_pubkey_import_spki(
-  const uint8_t *raw,
-  size_t raw_len
-);
+bcrypto_dsa_pubkey_import_spki(const uint8_t *raw, size_t raw_len);
 
-bool
-bcrypto_dsa_sign(
-  const uint8_t *msg,
-  size_t msg_len,
-  const bcrypto_dsa_key_t *priv,
-  uint8_t **r,
-  size_t *r_len,
-  uint8_t **s,
-  size_t *s_len
-);
+int
+bcrypto_dsa_sign(uint8_t **r,
+                 size_t *r_len,
+                 uint8_t **s,
+                 size_t *s_len,
+                 const uint8_t *msg,
+                 size_t msg_len,
+                 const bcrypto_dsa_key_t *priv);
 
-bool
-bcrypto_dsa_verify(
-  const uint8_t *msg,
-  size_t msg_len,
-  const uint8_t *r,
-  size_t r_len,
-  const uint8_t *s,
-  size_t s_len,
-  const bcrypto_dsa_key_t *pub
-);
+int
+bcrypto_dsa_verify(const uint8_t *msg,
+                   size_t msg_len,
+                   const uint8_t *r,
+                   size_t r_len,
+                   const uint8_t *s,
+                   size_t s_len,
+                   const bcrypto_dsa_key_t *pub);
 
-bool
-bcrypto_dsa_derive(
-  const bcrypto_dsa_key_t *pub,
-  const bcrypto_dsa_key_t *priv,
-  uint8_t **out,
-  size_t *out_len
-);
+int
+bcrypto_dsa_derive(uint8_t **out,
+                   size_t *out_len,
+                   const bcrypto_dsa_key_t *pub,
+                   const bcrypto_dsa_key_t *priv);
 
 #if defined(__cplusplus)
 }
