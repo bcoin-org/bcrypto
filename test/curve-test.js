@@ -48,31 +48,35 @@ describe('Curves', function() {
 
     it('should dbl points on edwards curve using proj coordinates', () => {
       const curve = new EdwardsCurve({
-        p: '3fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff97',
-        n: '0fffffffffffffffffffffffffffffffffffffffffffffffd5fb21f21e95eee17c5e69281b102d2773e27e13fd3c9719',
+        p: '3fffffffffffffffffffffffffffffffffffffffffffffff'
+         + 'ffffffffffffffffffffffffffffffffffffffffffffff97',
+        n: '0fffffffffffffffffffffffffffffffffffffffffffffff'
+         + 'd5fb21f21e95eee17c5e69281b102d2773e27e13fd3c9719',
         h: '8',
         a: '1',
         c: '1',
         // -67254 mod p
-        d: '3ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffef8e1',
+        d: '3fffffffffffffffffffffffffffffffffffffffffffffff'
+         + 'fffffffffffffffffffffffffffffffffffffffffffef8e1',
         g: [
-          '196f8dd0eab20391e5f05be96e8d20ae68f840032b0b64352923bab85364841193517dbce8105398ebc0cc9470f79603',
+          ['196f8dd0eab20391e5f05be96e8d20ae68f840032b0b6435',
+           '2923bab85364841193517dbce8105398ebc0cc9470f79603'].join(''),
           '11'
         ]
       });
 
       const point = [
-        '21fd21b36cbdbe0d77ad8692c25d918774f5d3bc179c4cb0ae3c364bf1bea981d0'
-        + '2e9f97cc62f20acacf0c553887e5fb',
-        '29f994329799dba72aa12ceb06312300167b6e18fbed607c63709826c57292cf29'
-        + 'f5bab4f5c99c739cf107a3833bb553'
+        ['21fd21b36cbdbe0d77ad8692c25d918774f5d3bc179c4cb0',
+         'ae3c364bf1bea981d02e9f97cc62f20acacf0c553887e5fb'].join(''),
+        ['29f994329799dba72aa12ceb06312300167b6e18fbed607c',
+         '63709826c57292cf29f5bab4f5c99c739cf107a3833bb553'].join('')
       ];
 
       const double = [
-        '0561c8722cf82b2f0d7c36bc72e34539dcbf181e8d98f5244480e79f5b51a4a541'
-        + '457016c9c0509d49078eb5909a1121',
-        '05b7812fae9d164ee9249c56a16e29a1ad2cdc6353227074dd96d59df363a0bcb5'
-        + 'bc67d50b44843ea833156bdc0ac6a2'
+        ['0561c8722cf82b2f0d7c36bc72e34539dcbf181e8d98f524',
+         '4480e79f5b51a4a541457016c9c0509d49078eb5909a1121'].join(''),
+        ['05b7812fae9d164ee9249c56a16e29a1ad2cdc6353227074',
+         'dd96d59df363a0bcb5bc67d50b44843ea833156bdc0ac6a2'].join('')
       ];
 
       const p = curve.pointFromJSON(point);
@@ -81,7 +85,7 @@ describe('Curves', function() {
       assert(p.dbl().eq(d));
     });
 
-    it('should be able to find a point given y coordinate for all edwards curves', () => {
+    it('should be able to find a point given y coordinate (edwards)', () => {
       const curve = new EdwardsCurve({
         p: '07fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7',
         n: '01fffffffffffffffffffffffffffffff77965c4dfd307348944d45fd166c971',
@@ -93,24 +97,32 @@ describe('Curves', function() {
       });
 
       const target = curve.point(
-        new BN('05d040ddaa645bf27d2d2f302c5697231425185fd9a410f220ac5c5c7fbeb8a1', 16),
-        new BN('02f8ca771306cd23e929775177f2c213843a017a6487b2ec5f9b2a3808108ef2', 16)
+        new BN('05d040ddaa645bf27d2d2f302c569723'
+             + '1425185fd9a410f220ac5c5c7fbeb8a1', 16),
+        new BN('02f8ca771306cd23e929775177f2c213'
+             + '843a017a6487b2ec5f9b2a3808108ef2', 16)
       );
 
       const point = curve.pointFromY(
-        new BN('02f8ca771306cd23e929775177f2c213843a017a6487b2ec5f9b2a3808108ef2', 16), true);
+        new BN('02f8ca771306cd23e929775177f2c213'
+             + '843a017a6487b2ec5f9b2a3808108ef2', 16),
+        true
+      );
 
       assert(point.eq(target));
     });
 
     it('should find an odd point given a y coordinate', () => {
       const curve = new EdwardsCurve({
-        p: '7fffffffffffffff ffffffffffffffff ffffffffffffffff ffffffffffffffed',
+        p: '7fffffffffffffff ffffffffffffffff'
+         + 'ffffffffffffffff ffffffffffffffed',
         a: '-1',
         c: '1',
         // -121665 * (121666^(-1)) (mod P)
-        d: '52036cee2b6ffe73 8cc740797779e898 00700a4d4141d8ab 75eb4dca135978a3',
-        n: '1000000000000000 0000000000000000 14def9dea2f79cd6 5812631a5cf5d3ed',
+        d: '52036cee2b6ffe73 8cc740797779e898'
+         + '00700a4d4141d8ab 75eb4dca135978a3',
+        n: '1000000000000000 0000000000000000'
+         + '14def9dea2f79cd6 5812631a5cf5d3ed',
         g: [
           '216936d3cd6e53fec0a4e231fdd6dc5c692cc7609525a7b2c9562d608f25d51a',
           // 4/5
@@ -118,9 +130,14 @@ describe('Curves', function() {
         ]
       });
 
-      const y = new BN('4627191eb12f51005d2a7f3ef570376a3403801aae928c8ffd13feabadf84505', 16);
+      const y = new BN(
+        '4627191eb12f51005d2a7f3ef570376a3403801aae928c8ffd13feabadf84505',
+        16);
+
       const point = curve.pointFromY(y, true);
-      const target = '2cd591ae3789fd62dc420a152002f79973a387eacecadc6a9a00c1a89488c15d';
+
+      const target =
+        '2cd591ae3789fd62dc420a152002f79973a387eacecadc6a9a00c1a89488c15d';
 
       assert.deepStrictEqual(point.getX().toString(16), target);
     });
@@ -142,10 +159,12 @@ describe('Curves', function() {
 
     it('should work with secp256k1', () => {
       const curve = new ShortCurve({
-        p: 'ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff fffffffe fffffc2f',
+        p: 'ffffffff ffffffff ffffffff ffffffff'
+         + 'ffffffff ffffffff fffffffe fffffc2f',
         a: '0',
         b: '7',
-        n: 'ffffffff ffffffff ffffffff fffffffe baaedce6 af48a03b bfd25e8c d0364141',
+        n: 'ffffffff ffffffff ffffffff fffffffe'
+         + 'baaedce6 af48a03b bfd25e8c d0364141',
         g: [
           '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
           '483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8'
@@ -153,14 +172,18 @@ describe('Curves', function() {
       });
 
       const p = curve.point(
-        new BN('79be667e f9dcbbac 55a06295 ce870b07 029bfcdb 2dce28d9 59f2815b 16f81798', 16),
-        new BN('483ada77 26a3c465 5da4fbfc 0e1108a8 fd17b448 a6855419 9c47d08f fb10d4b8', 16)
+        new BN('79be667e f9dcbbac 55a06295 ce870b07'
+             + '029bfcdb 2dce28d9 59f2815b 16f81798', 16),
+        new BN('483ada77 26a3c465 5da4fbfc 0e1108a8'
+             + 'fd17b448 a6855419 9c47d08f fb10d4b8', 16)
       );
+
+      const s = new BN('79be667e f9dcbbac 55a06295 ce870b07', 16);
 
       assert(p.validate());
       assert(p.dbl().validate());
       assert(p.toJ().dbl().toP().validate());
-      assert(p.mul(new BN('79be667e f9dcbbac 55a06295 ce870b07', 16)).validate());
+      assert(p.mul(s).validate());
 
       const j = p.toJ();
       assert(j.trpl().eq(j.dbl().add(j)));
@@ -191,7 +214,10 @@ describe('Curves', function() {
       const g2 = curve.point(g1.getX(), g1.getY()); // not precomputed g
       assert(!g2.precomputed);
 
-      const a = new BN('6d1229a6b24c2e775c062870ad26bc261051e0198c67203167273c7c62538846', 16);
+      const a = new BN(
+        '6d1229a6b24c2e775c062870ad26bc261051e0198c67203167273c7c62538846',
+        16);
+
       const p1 = g1.mul(a);
       const p2 = g2.mul(a);
 
@@ -207,7 +233,8 @@ describe('Curves', function() {
       const g2 = curve.point(g1.getX(), g1.getY()); // not precomputed g
       assert(!g2.precomputed);
 
-      const a = new BN('6d1229a6b24c2e775c062870ad26bc261051e0198c67203167273c7c6253884612345678', 16);
+      const a = new BN('6d1229a6b24c2e775c062870ad26bc26105'
+                     + '1e0198c67203167273c7c6253884612345678', 16);
 
       const p1 = g1.mul(a);
       const p2 = g2.mul(a);
@@ -218,8 +245,13 @@ describe('Curves', function() {
     it('should not fail on secp256k1 regression', () => {
       const curve = secp256k1;
 
-      const k1 = new BN('32efeba414cd0c830aed727749e816a01c471831536fd2fce28c56b54f5a3bb1', 16);
-      const k2 = new BN('5f2e49b5d64e53f9811545434706cde4de528af97bfd49fde1f6cf792ee37a8c', 16);
+      const k1 = new BN(
+        '32efeba414cd0c830aed727749e816a01c471831536fd2fce28c56b54f5a3bb1',
+        16);
+
+      const k2 = new BN(
+        '5f2e49b5d64e53f9811545434706cde4de528af97bfd49fde1f6cf792ee37a8c',
+        16);
 
       let p1 = curve.g.mul(k1);
       let p2 = curve.g.mul(k2);
@@ -241,28 +273,39 @@ describe('Curves', function() {
     });
 
     it('should correctly double the affine point on secp256k1', () => {
-      let bad = {
-        x: new BN('026a2073b1ef6fab47ace18e60e728a05180a82755bbcec9a0abc08ad9f7a3d4', 16),
-        y: new BN('9cd8cb48c3281596139f147c1364a3ede88d3f310fdb0eb98c924e599ca1b3c9', 16),
-        z: new BN('d78587ad45e4102f48b54b5d85598296e069ce6085002e169c6bad78ddc6d9bd', 16)
+      const bad = {
+        x: new BN(
+          '026a2073b1ef6fab47ace18e60e728a05180a82755bbcec9a0abc08ad9f7a3d4',
+          16),
+        y: new BN(
+          '9cd8cb48c3281596139f147c1364a3ede88d3f310fdb0eb98c924e599ca1b3c9',
+          16),
+        z: new BN(
+          'd78587ad45e4102f48b54b5d85598296e069ce6085002e169c6bad78ddc6d9bd',
+          16)
       };
 
-      let good = {
-        x: new BN('e7789226739ac2eb3c7ccb2a9a910066beeed86cdb4e0f8a7fee8eeb29dc7016', 16),
-        y: new BN('4b76b191fd6d47d07828ea965e275b76d0e3e0196cd5056d38384fbb819f9fcb', 16),
-        z: new BN('cbf8d99056618ba132d6145b904eee1ce566e0feedb9595139c45f84e90cfa7d', 16)
+      const good = {
+        x: new BN(
+          'e7789226739ac2eb3c7ccb2a9a910066beeed86cdb4e0f8a7fee8eeb29dc7016',
+          16),
+        y: new BN(
+          '4b76b191fd6d47d07828ea965e275b76d0e3e0196cd5056d38384fbb819f9fcb',
+          16),
+        z: new BN(
+          'cbf8d99056618ba132d6145b904eee1ce566e0feedb9595139c45f84e90cfa7d',
+          16)
       };
 
       const curve = secp256k1;
-
-      bad = curve.jpoint(bad.x, bad.y, bad.z);
-      good = curve.jpoint(good.x, good.y, good.z);
+      const pbad = curve.jpoint(bad.x, bad.y, bad.z);
+      const pgood = curve.jpoint(good.x, good.y, good.z);
 
       // They are the same points
-      assert(bad.add(good.neg()).isInfinity());
+      assert(pbad.add(pgood.neg()).isInfinity());
 
       // But doubling borks them out
-      assert(bad.dbl().add(good.dbl().neg()).isInfinity());
+      assert(pbad.dbl().add(pgood.dbl().neg()).isInfinity());
     });
 
     it('should store precomputed values correctly on negation', () => {
@@ -305,7 +348,8 @@ describe('Curves', function() {
 
         // Decodes as expected
         assert(curve.decodePoint(Buffer.from(definition.encoded, 'hex')).eq(p));
-        assert(curve.decodePoint(Buffer.from(definition.compactEncoded, 'hex')).eq(p));
+        assert(curve.decodePoint(
+          Buffer.from(definition.compactEncoded, 'hex')).eq(p));
         assert(curve.decodePoint(Buffer.from(definition.hybrid, 'hex')).eq(p));
       };
     }
