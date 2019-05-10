@@ -9,9 +9,6 @@
  *   https://github.com/golang/crypto/blob/master/openpgp/keys_test.go
  */
 
-/* eslint-env mocha */
-/* eslint prefer-arrow-callback: "off" */
-
 'use strict';
 
 const assert = require('bsert');
