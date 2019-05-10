@@ -59,7 +59,7 @@ NAN_METHOD(BScrypt::Derive) {
   if (key == NULL)
     return Nan::ThrowError("Could not allocate key.");
 
-  if (!bcrypto_scrypt(pass, passlen, salt, saltlen, N, r, p, key, keylen)) {
+  if (!bcrypto_scrypt(key, pass, passlen, salt, saltlen, N, r, p, keylen)) {
     free(key);
     return Nan::ThrowError("Scrypt failed.");
   }

@@ -41,7 +41,7 @@ BScryptWorker::Execute() {
     return;
   }
 
-  if (!bcrypto_scrypt(pass, passlen, salt, saltlen, N, r, p, key, keylen)) {
+  if (!bcrypto_scrypt(key, pass, passlen, salt, saltlen, N, r, p, keylen)) {
     free(key);
     key = NULL;
     SetErrorMessage("Scrypt failed.");
