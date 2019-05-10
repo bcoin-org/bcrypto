@@ -244,15 +244,18 @@ BSecp256k1::Init(v8::Local<v8::Object> &target) {
   Nan::SetPrototypeMethod(tpl, "signatureNormalize", BSecp256k1::SignatureNormalize);
   Nan::SetPrototypeMethod(tpl, "signatureExport", BSecp256k1::SignatureExport);
   Nan::SetPrototypeMethod(tpl, "signatureImport", BSecp256k1::SignatureImport);
-  Nan::SetPrototypeMethod(tpl, "signatureImportStrict", BSecp256k1::SignatureImportStrict);
   Nan::SetPrototypeMethod(tpl, "isLowS", BSecp256k1::IsLowS);
   Nan::SetPrototypeMethod(tpl, "isLowDER", BSecp256k1::IsLowDER);
 
   // ecdsa
   Nan::SetPrototypeMethod(tpl, "sign", BSecp256k1::Sign);
+  Nan::SetPrototypeMethod(tpl, "signRecoverable", BSecp256k1::SignRecoverable);
+  Nan::SetPrototypeMethod(tpl, "signDER", BSecp256k1::SignDER);
+  Nan::SetPrototypeMethod(tpl, "signRecoverableDER", BSecp256k1::SignRecoverableDER);
   Nan::SetPrototypeMethod(tpl, "verify", BSecp256k1::Verify);
   Nan::SetPrototypeMethod(tpl, "verifyDER", BSecp256k1::VerifyDER);
   Nan::SetPrototypeMethod(tpl, "recover", BSecp256k1::Recover);
+  Nan::SetPrototypeMethod(tpl, "recoverDER", BSecp256k1::RecoverDER);
 
   // ecdh
   Nan::SetPrototypeMethod(tpl, "derive", BSecp256k1::Derive);
@@ -269,21 +272,23 @@ BSecp256k1::Init(v8::Local<v8::Object> &target) {
 }
 
 NAN_METHOD(BSecp256k1::New) {
-  if (!info.IsConstructCall())
+  if (!info.IsConstructCall()) {
     return Nan::ThrowError("Could not create Secp256k1 instance.");
+  }
 
   secp256k1_context *ctx = secp256k1_context_create(
     SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY);
 
-  if (ctx == NULL)
+  if (ctx == NULL) {
     return Nan::ThrowError("Could not create Secp256k1 instance.");
+  }
 
   // Use blinded multiplication as a final
   // defense against side-channel attacks.
   uint8_t seed[32];
 
   if (bcrypto_random(&seed[0], 32)) {
-    if (!secp256k1_context_randomize(ctx, seed)) {
+    if (secp256k1_context_randomize(ctx, seed) == 0) {
       secp256k1_context_destroy(ctx);
       return Nan::ThrowError("Could not randomize Secp256k1 instance.");
     }
@@ -702,25 +707,6 @@ NAN_METHOD(BSecp256k1::SignatureImport) {
   info.GetReturnValue().Set(COPY_BUFFER(&output[0], 64));
 }
 
-NAN_METHOD(BSecp256k1::SignatureImportStrict) {
-  BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
-
-  v8::Local<v8::Object> input_buffer = info[0].As<v8::Object>();
-  CHECK_TYPE_BUFFER(input_buffer, ECDSA_SIGNATURE_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH_GT_ZERO(input_buffer, ECDSA_SIGNATURE_LENGTH_INVALID);
-  const unsigned char* input = (const unsigned char*) node::Buffer::Data(input_buffer);
-  size_t input_length = node::Buffer::Length(input_buffer);
-
-  secp256k1_ecdsa_signature sig;
-  if (secp256k1_ecdsa_signature_parse_der(secp->ctx, &sig, input, input_length) == 0) {
-    return Nan::ThrowError(ECDSA_SIGNATURE_PARSE_DER_FAIL);
-  }
-
-  unsigned char output[64];
-  secp256k1_ecdsa_signature_serialize_compact(secp->ctx, &output[0], &sig);
-  info.GetReturnValue().Set(COPY_BUFFER(&output[0], 64));
-}
-
 NAN_METHOD(BSecp256k1::IsLowS) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
@@ -797,6 +783,33 @@ NAN_METHOD(BSecp256k1::Sign) {
   secp256k1_nonce_function noncefn = secp256k1_nonce_function_rfc6979;
   void* data = NULL;
 
+  secp256k1_ecdsa_signature sig;
+  if (secp256k1_ecdsa_sign(secp->ctx, &sig, msg32, private_key, noncefn, data) == 0) {
+    return Nan::ThrowError(ECDSA_SIGN_FAIL);
+  }
+
+  unsigned char output[64];
+  secp256k1_ecdsa_signature_serialize_compact(secp->ctx, &output[0], &sig);
+
+  info.GetReturnValue().Set(COPY_BUFFER(&output[0], 64));
+}
+
+NAN_METHOD(BSecp256k1::SignRecoverable) {
+  BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
+
+  v8::Local<v8::Object> msg32_buffer = info[0].As<v8::Object>();
+  CHECK_TYPE_BUFFER(msg32_buffer, MSG32_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH(msg32_buffer, 32, MSG32_LENGTH_INVALID);
+  const unsigned char* msg32 = (const unsigned char*) node::Buffer::Data(msg32_buffer);
+
+  v8::Local<v8::Object> private_buffer = info[1].As<v8::Object>();
+  CHECK_TYPE_BUFFER(private_buffer, EC_PRIVATE_KEY_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH(private_buffer, 32, EC_PRIVATE_KEY_LENGTH_INVALID);
+  const unsigned char* private_key = (const unsigned char*) node::Buffer::Data(private_buffer);
+
+  secp256k1_nonce_function noncefn = secp256k1_nonce_function_rfc6979;
+  void* data = NULL;
+
   secp256k1_ecdsa_recoverable_signature sig;
   if (secp256k1_ecdsa_sign_recoverable(secp->ctx, &sig, msg32, private_key, noncefn, data) == 0) {
     return Nan::ThrowError(ECDSA_SIGN_FAIL);
@@ -809,6 +822,77 @@ NAN_METHOD(BSecp256k1::Sign) {
   v8::Local<v8::Object> obj = Nan::New<v8::Object>();
 
   Nan::Set(obj, Nan::New<v8::String>("signature").ToLocalChecked(), COPY_BUFFER(&output[0], 64));
+  Nan::Set(obj, Nan::New<v8::String>("recovery").ToLocalChecked(), Nan::New<v8::Number>(recid));
+
+  info.GetReturnValue().Set(obj);
+}
+
+NAN_METHOD(BSecp256k1::SignDER) {
+  BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
+
+  v8::Local<v8::Object> msg32_buffer = info[0].As<v8::Object>();
+  CHECK_TYPE_BUFFER(msg32_buffer, MSG32_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH(msg32_buffer, 32, MSG32_LENGTH_INVALID);
+  const unsigned char* msg32 = (const unsigned char*) node::Buffer::Data(msg32_buffer);
+
+  v8::Local<v8::Object> private_buffer = info[1].As<v8::Object>();
+  CHECK_TYPE_BUFFER(private_buffer, EC_PRIVATE_KEY_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH(private_buffer, 32, EC_PRIVATE_KEY_LENGTH_INVALID);
+  const unsigned char* private_key = (const unsigned char*) node::Buffer::Data(private_buffer);
+
+  secp256k1_nonce_function noncefn = secp256k1_nonce_function_rfc6979;
+  void* data = NULL;
+
+  secp256k1_ecdsa_signature sig;
+  if (secp256k1_ecdsa_sign(secp->ctx, &sig, msg32, private_key, noncefn, data) == 0) {
+    return Nan::ThrowError(ECDSA_SIGN_FAIL);
+  }
+
+  unsigned char output[72];
+  size_t output_length = 72;
+  if (secp256k1_ecdsa_signature_serialize_der(secp->ctx, &output[0], &output_length, &sig) == 0) {
+    return Nan::ThrowError(ECDSA_SIGNATURE_SERIALIZE_DER_FAIL);
+  }
+
+  info.GetReturnValue().Set(COPY_BUFFER(&output[0], output_length));
+}
+
+NAN_METHOD(BSecp256k1::SignRecoverableDER) {
+  BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
+
+  v8::Local<v8::Object> msg32_buffer = info[0].As<v8::Object>();
+  CHECK_TYPE_BUFFER(msg32_buffer, MSG32_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH(msg32_buffer, 32, MSG32_LENGTH_INVALID);
+  const unsigned char* msg32 = (const unsigned char*) node::Buffer::Data(msg32_buffer);
+
+  v8::Local<v8::Object> private_buffer = info[1].As<v8::Object>();
+  CHECK_TYPE_BUFFER(private_buffer, EC_PRIVATE_KEY_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH(private_buffer, 32, EC_PRIVATE_KEY_LENGTH_INVALID);
+  const unsigned char* private_key = (const unsigned char*) node::Buffer::Data(private_buffer);
+
+  secp256k1_nonce_function noncefn = secp256k1_nonce_function_rfc6979;
+  void* data = NULL;
+
+  secp256k1_ecdsa_recoverable_signature sig;
+  if (secp256k1_ecdsa_sign_recoverable(secp->ctx, &sig, msg32, private_key, noncefn, data) == 0) {
+    return Nan::ThrowError(ECDSA_SIGN_FAIL);
+  }
+
+  int recid;
+  unsigned char output[72];
+  size_t output_length = 72;
+  secp256k1_ecdsa_recoverable_signature_serialize_compact(secp->ctx, &output[0], &recid, &sig);
+
+  secp256k1_ecdsa_signature sig_;
+  assert(secp256k1_ecdsa_signature_parse_compact(secp->ctx, &sig_, &output[0]) != 0);
+
+  if (secp256k1_ecdsa_signature_serialize_der(secp->ctx, &output[0], &output_length, &sig_) == 0) {
+    return Nan::ThrowError(ECDSA_SIGNATURE_SERIALIZE_DER_FAIL);
+  }
+
+  v8::Local<v8::Object> obj = Nan::New<v8::Object>();
+
+  Nan::Set(obj, Nan::New<v8::String>("signature").ToLocalChecked(), COPY_BUFFER(&output[0], output_length));
   Nan::Set(obj, Nan::New<v8::String>("recovery").ToLocalChecked(), Nan::New<v8::Number>(recid));
 
   info.GetReturnValue().Set(obj);
@@ -910,6 +994,52 @@ NAN_METHOD(BSecp256k1::Recover) {
 
   secp256k1_ecdsa_recoverable_signature sig;
   if (secp256k1_ecdsa_recoverable_signature_parse_compact(secp->ctx, &sig, sig_input, recid) == 0) {
+    return Nan::ThrowError(ECDSA_SIGNATURE_PARSE_FAIL);
+  }
+
+  secp256k1_pubkey public_key;
+  if (secp256k1_ecdsa_recover(secp->ctx, &public_key, &sig, msg32) == 0) {
+    return Nan::ThrowError(ECDSA_RECOVER_FAIL);
+  }
+
+  unsigned char output[65];
+  size_t output_length = 65;
+  secp256k1_ec_pubkey_serialize(secp->ctx, &output[0], &output_length, &public_key, flags);
+  info.GetReturnValue().Set(COPY_BUFFER(&output[0], output_length));
+}
+
+NAN_METHOD(BSecp256k1::RecoverDER) {
+  BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
+
+  v8::Local<v8::Object> msg32_buffer = info[0].As<v8::Object>();
+  CHECK_TYPE_BUFFER(msg32_buffer, MSG32_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH(msg32_buffer, 32, MSG32_LENGTH_INVALID);
+  const unsigned char* msg32 = (const unsigned char*) node::Buffer::Data(msg32_buffer);
+
+  v8::Local<v8::Object> sig_input_buffer = info[1].As<v8::Object>();
+  CHECK_TYPE_BUFFER(sig_input_buffer, ECDSA_SIGNATURE_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH_GT_ZERO(sig_input_buffer, ECDSA_SIGNATURE_LENGTH_INVALID);
+  const unsigned char* sig_input = (unsigned char*) node::Buffer::Data(sig_input_buffer);
+  size_t sig_input_length = node::Buffer::Length(sig_input_buffer);
+
+  v8::Local<v8::Object> recid_object = info[2].As<v8::Object>();
+  CHECK_TYPE_NUMBER(recid_object, RECOVERY_ID_TYPE_INVALID);
+  CHECK_NUMBER_IN_INTERVAL(recid_object, -1, 4, RECOVERY_ID_VALUE_INVALID);
+  int recid = (int) Nan::To<int64_t>(recid_object).FromJust();
+
+  unsigned int flags = SECP256K1_EC_COMPRESSED;
+  UPDATE_COMPRESSED_VALUE(flags, info[3], SECP256K1_EC_COMPRESSED, SECP256K1_EC_UNCOMPRESSED);
+
+  secp256k1_ecdsa_signature sig_;
+  if (ecdsa_signature_parse_der_lax(secp->ctx, &sig_, sig_input, sig_input_length) == 0) {
+    return Nan::ThrowError(ECDSA_SIGNATURE_PARSE_DER_FAIL);
+  }
+
+  unsigned char sig_input_[64];
+  secp256k1_ecdsa_signature_serialize_compact(secp->ctx, &sig_input_[0], &sig_);
+
+  secp256k1_ecdsa_recoverable_signature sig;
+  if (secp256k1_ecdsa_recoverable_signature_parse_compact(secp->ctx, &sig, sig_input_, recid) == 0) {
     return Nan::ThrowError(ECDSA_SIGNATURE_PARSE_FAIL);
   }
 

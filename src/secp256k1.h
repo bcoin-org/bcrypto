@@ -36,14 +36,17 @@ private:
   static NAN_METHOD(SignatureNormalize);
   static NAN_METHOD(SignatureExport);
   static NAN_METHOD(SignatureImport);
-  static NAN_METHOD(SignatureImportStrict);
   static NAN_METHOD(IsLowS);
   static NAN_METHOD(IsLowDER);
 
   static NAN_METHOD(Sign);
+  static NAN_METHOD(SignRecoverable);
+  static NAN_METHOD(SignDER);
+  static NAN_METHOD(SignRecoverableDER);
   static NAN_METHOD(Verify);
   static NAN_METHOD(VerifyDER);
   static NAN_METHOD(Recover);
+  static NAN_METHOD(RecoverDER);
 
   static NAN_METHOD(Derive);
 
