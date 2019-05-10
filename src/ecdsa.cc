@@ -35,27 +35,35 @@ BECDSA::Init(v8::Local<v8::Object> &target) {
 
   Nan::SetPrototypeMethod(tpl, "_size", BECDSA::Size);
   Nan::SetPrototypeMethod(tpl, "_bits", BECDSA::Bits);
-  Nan::SetPrototypeMethod(tpl, "privateKeyGenerate", BECDSA::PrivateKeyGenerate);
+  Nan::SetPrototypeMethod(tpl, "privateKeyGenerate",
+                          BECDSA::PrivateKeyGenerate);
   Nan::SetPrototypeMethod(tpl, "privateKeyVerify", BECDSA::PrivateKeyVerify);
   Nan::SetPrototypeMethod(tpl, "privateKeyExport", BECDSA::PrivateKeyExport);
   Nan::SetPrototypeMethod(tpl, "privateKeyImport", BECDSA::PrivateKeyImport);
-  Nan::SetPrototypeMethod(tpl, "privateKeyExportPKCS8", BECDSA::PrivateKeyExportPKCS8);
-  Nan::SetPrototypeMethod(tpl, "privateKeyImportPKCS8", BECDSA::PrivateKeyImportPKCS8);
-  Nan::SetPrototypeMethod(tpl, "privateKeyTweakAdd", BECDSA::PrivateKeyTweakAdd);
-  Nan::SetPrototypeMethod(tpl, "privateKeyTweakMul", BECDSA::PrivateKeyTweakMul);
+  Nan::SetPrototypeMethod(tpl, "privateKeyExportPKCS8",
+                          BECDSA::PrivateKeyExportPKCS8);
+  Nan::SetPrototypeMethod(tpl, "privateKeyImportPKCS8",
+                          BECDSA::PrivateKeyImportPKCS8);
+  Nan::SetPrototypeMethod(tpl, "privateKeyTweakAdd",
+                          BECDSA::PrivateKeyTweakAdd);
+  Nan::SetPrototypeMethod(tpl, "privateKeyTweakMul",
+                          BECDSA::PrivateKeyTweakMul);
   Nan::SetPrototypeMethod(tpl, "privateKeyReduce", BECDSA::PrivateKeyReduce);
   Nan::SetPrototypeMethod(tpl, "privateKeyNegate", BECDSA::PrivateKeyNegate);
   Nan::SetPrototypeMethod(tpl, "privateKeyInverse", BECDSA::PrivateKeyInverse);
   Nan::SetPrototypeMethod(tpl, "publicKeyCreate", BECDSA::PublicKeyCreate);
   Nan::SetPrototypeMethod(tpl, "publicKeyConvert", BECDSA::PublicKeyConvert);
   Nan::SetPrototypeMethod(tpl, "publicKeyVerify", BECDSA::PublicKeyVerify);
-  Nan::SetPrototypeMethod(tpl, "publicKeyExportSPKI", BECDSA::PublicKeyExportSPKI);
-  Nan::SetPrototypeMethod(tpl, "publicKeyImportSPKI", BECDSA::PublicKeyImportSPKI);
+  Nan::SetPrototypeMethod(tpl, "publicKeyExportSPKI",
+                          BECDSA::PublicKeyExportSPKI);
+  Nan::SetPrototypeMethod(tpl, "publicKeyImportSPKI",
+                          BECDSA::PublicKeyImportSPKI);
   Nan::SetPrototypeMethod(tpl, "publicKeyTweakAdd", BECDSA::PublicKeyTweakAdd);
   Nan::SetPrototypeMethod(tpl, "publicKeyTweakMul", BECDSA::PublicKeyTweakMul);
   Nan::SetPrototypeMethod(tpl, "publicKeyAdd", BECDSA::PublicKeyAdd);
   Nan::SetPrototypeMethod(tpl, "publicKeyNegate", BECDSA::PublicKeyNegate);
-  Nan::SetPrototypeMethod(tpl, "signatureNormalize", BECDSA::SignatureNormalize);
+  Nan::SetPrototypeMethod(tpl, "signatureNormalize",
+                          BECDSA::SignatureNormalize);
   Nan::SetPrototypeMethod(tpl, "signatureExport", BECDSA::SignatureExport);
   Nan::SetPrototypeMethod(tpl, "signatureImport", BECDSA::SignatureImport);
   Nan::SetPrototypeMethod(tpl, "isLowS", BECDSA::IsLowS);
@@ -63,7 +71,8 @@ BECDSA::Init(v8::Local<v8::Object> &target) {
   Nan::SetPrototypeMethod(tpl, "sign", BECDSA::Sign);
   Nan::SetPrototypeMethod(tpl, "signRecoverable", BECDSA::SignRecoverable);
   Nan::SetPrototypeMethod(tpl, "signDER", BECDSA::SignDER);
-  Nan::SetPrototypeMethod(tpl, "signRecoverableDER", BECDSA::SignRecoverableDER);
+  Nan::SetPrototypeMethod(tpl, "signRecoverableDER",
+                          BECDSA::SignRecoverableDER);
   Nan::SetPrototypeMethod(tpl, "verify", BECDSA::Verify);
   Nan::SetPrototypeMethod(tpl, "verifyDER", BECDSA::VerifyDER);
   Nan::SetPrototypeMethod(tpl, "recover", BECDSA::Recover);
@@ -933,6 +942,7 @@ NAN_METHOD(BECDSA::Sign) {
 
   bcrypto_ecdsa_sig_t sign;
   uint8_t out[BCRYPTO_ECDSA_MAX_SIG_SIZE];
+  size_t out_len = ec->ctx.sig_size;
 
   if (!bcrypto_ecdsa_sign(&ec->ctx, &sign, msg, msg_len, priv))
     return Nan::ThrowError("Could not sign.");
@@ -940,7 +950,7 @@ NAN_METHOD(BECDSA::Sign) {
   bcrypto_ecdsa_sig_encode(&ec->ctx, out, &sign);
 
   return info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)out, ec->ctx.sig_size).ToLocalChecked());
+    Nan::CopyBuffer((char *)out, out_len).ToLocalChecked());
 }
 
 NAN_METHOD(BECDSA::SignRecoverable) {
@@ -968,6 +978,7 @@ NAN_METHOD(BECDSA::SignRecoverable) {
 
   bcrypto_ecdsa_sig_t sign;
   uint8_t out[BCRYPTO_ECDSA_MAX_SIG_SIZE];
+  size_t out_len = ec->ctx.sig_size;
 
   if (!bcrypto_ecdsa_sign_recoverable(&ec->ctx, &sign, msg, msg_len, priv))
     return Nan::ThrowError("Could not sign.");
@@ -977,9 +988,10 @@ NAN_METHOD(BECDSA::SignRecoverable) {
   v8::Local<v8::Object> obj = Nan::New<v8::Object>();
 
   Nan::Set(obj, Nan::New<v8::String>("signature").ToLocalChecked(),
-    Nan::CopyBuffer((char *)out, ec->ctx.sig_size).ToLocalChecked());
+                Nan::CopyBuffer((char *)out, out_len).ToLocalChecked());
+
   Nan::Set(obj, Nan::New<v8::String>("recovery").ToLocalChecked(),
-    Nan::New<v8::Number>(sign.param));
+                Nan::New<v8::Number>(sign.param));
 
   return info.GetReturnValue().Set(obj);
 }
@@ -1057,9 +1069,10 @@ NAN_METHOD(BECDSA::SignRecoverableDER) {
   v8::Local<v8::Object> obj = Nan::New<v8::Object>();
 
   Nan::Set(obj, Nan::New<v8::String>("signature").ToLocalChecked(),
-    Nan::CopyBuffer((char *)out, out_len).ToLocalChecked());
+                Nan::CopyBuffer((char *)out, out_len).ToLocalChecked());
+
   Nan::Set(obj, Nan::New<v8::String>("recovery").ToLocalChecked(),
-    Nan::New<v8::Number>(sign.param));
+                Nan::New<v8::Number>(sign.param));
 
   return info.GetReturnValue().Set(obj);
 }
