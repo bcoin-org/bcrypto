@@ -284,7 +284,7 @@ bcrypto_dsa_dsa2key(const DSA *key_d, int mode) {
   size_t size = pl + ql + gl + yl + xl;
   size_t pos = 0;
 
-  // Align.
+  /* Align. */
   size += 8 - (size & 7);
 
   slab = (uint8_t *)malloc(size);
@@ -517,23 +517,23 @@ bcrypto_dsa_params_verify(const bcrypto_dsa_key_t *params) {
   if (BN_cmp(g, p) >= 0)
     goto fail;
 
-  // pm1 = p - 1
+  /* pm1 = p - 1 */
   if (!BN_sub(pm1_bn, p, BN_value_one()))
     goto fail;
 
-  // [div, mod] = divmod(pm1, q)
+  /* [div, mod] = divmod(pm1, q) */
   if (!BN_div(div_bn, mod_bn, pm1_bn, q, ctx))
     goto fail;
 
-  // mod != 0
+  /* mod != 0 */
   if (!BN_is_zero(mod_bn))
     goto fail;
 
-  // x = modpow(g, div, p)
+  /* x = modpow(g, div, p) */
   if (!BN_mod_exp(x_bn, g, div_bn, p, ctx))
     goto fail;
 
-  // x == 1
+  /* x == 1 */
   if (BN_is_one(x_bn))
     goto fail;
 
@@ -756,7 +756,7 @@ bcrypto_dsa_privkey_verify(const bcrypto_dsa_key_t *key) {
   DSA_get0_key(priv_d, &y, &x);
   assert(y && x);
 
-  // x >= y
+  /* x >= y */
   if (BN_ucmp(x, y) >= 0)
     goto fail;
 
@@ -766,11 +766,11 @@ bcrypto_dsa_privkey_verify(const bcrypto_dsa_key_t *key) {
   if (!ctx || !y_bn)
     goto fail;
 
-  // y = modpow(g, x, p)
+  /* y = modpow(g, x, p) */
   if (!BN_mod_exp(y_bn, g, x, p, ctx))
     goto fail;
 
-  // y2 == y1
+  /* y2 == y1 */
   if (BN_ucmp(y_bn, y) != 0)
     goto fail;
 
@@ -844,7 +844,7 @@ bcrypto_dsa_privkey_export_pkcs8(uint8_t **out,
                                  const bcrypto_dsa_key_t *priv) {
   assert(out && out_len);
 
-  // https://github.com/openssl/openssl/blob/32f803d/crypto/dsa/dsa_ameth.c#L203
+  /* https://github.com/openssl/openssl/blob/32f803d/crypto/dsa/dsa_ameth.c#L203 */
   DSA *priv_d = NULL;
   ASN1_STRING *params = NULL;
   ASN1_INTEGER *prkey = NULL;
@@ -936,7 +936,7 @@ fail:
 
 bcrypto_dsa_key_t *
 bcrypto_dsa_privkey_import_pkcs8(const uint8_t *raw, size_t raw_len) {
-  // https://github.com/openssl/openssl/blob/32f803d/crypto/dsa/dsa_ameth.c#L137
+  /* https://github.com/openssl/openssl/blob/32f803d/crypto/dsa/dsa_ameth.c#L137 */
   const unsigned char *p, *pm;
   int pklen, pmlen;
   int ptype;
@@ -1332,7 +1332,7 @@ bcrypto_dsa_derive(uint8_t **out,
   if (!secret_bn)
     goto fail;
 
-  // secret = (theirY^ourX) % p
+  /* secret = (theirY^ourX) % p */
   if (!BN_mod_exp(secret_bn, y_pub, x_priv, p_pub, ctx))
     goto fail;
 

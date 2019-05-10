@@ -357,7 +357,7 @@ bcrypto_rsa_priv2key(const RSA *priv_r) {
   size_t size = nl + el + dl + pl + ql + dpl + dql + qil;
   size_t pos = 0;
 
-  // Align.
+  /* Align. */
   size += 8 - (size & 7);
 
   slab = (uint8_t *)malloc(size);
@@ -444,7 +444,7 @@ bcrypto_rsa_pub2key(const RSA *pub_r) {
   size_t size = nl + el;
   size_t pos = 0;
 
-  // Align.
+  /* Align. */
   size += 8 - (size & 7);
 
   slab = (uint8_t *)malloc(size);
@@ -856,23 +856,23 @@ bcrypto_rsa_privkey_compute(bcrypto_rsa_key_t **key,
   if (!ctx || !r0 || !r1 || !r2)
     goto fail;
 
-  // See: https://github.com/openssl/openssl/blob/82eba37/crypto/rsa/rsa_gen.c
+  /* See: https://github.com/openssl/openssl/blob/82eba37/crypto/rsa/rsa_gen.c */
 
   if (BN_is_zero(rsa_n)) {
-    // modulus n = p * q * r_3 * r_4
+    /* modulus n = p * q * r_3 * r_4 */
     if (!BN_mul(rsa_n, rsa_p, rsa_q, ctx))
       goto fail;
   }
 
-  // p - 1
+  /* p - 1 */
   if (!BN_sub(r1, rsa_p, BN_value_one()))
     goto fail;
 
-  // q - 1
+  /* q - 1 */
   if (!BN_sub(r2, rsa_q, BN_value_one()))
     goto fail;
 
-  // (p - 1)(q - 1)
+  /* (p - 1)(q - 1) */
   if (!BN_mul(r0, r1, r2, ctx))
     goto fail;
 
@@ -916,7 +916,7 @@ bcrypto_rsa_privkey_compute(bcrypto_rsa_key_t **key,
 
     BN_with_flags(d, rsa_d, BN_FLG_CONSTTIME);
 
-    // calculate d mod (p-1) and d mod (q - 1)
+    /* calculate d mod (p-1) and d mod (q - 1) */
     if (!BN_mod(rsa_dmp1, d, r1, ctx)
         || !BN_mod(rsa_dmq1, d, r2, ctx)) {
       BN_free(d);
@@ -934,7 +934,7 @@ bcrypto_rsa_privkey_compute(bcrypto_rsa_key_t **key,
 
     BN_with_flags(p, rsa_p, BN_FLG_CONSTTIME);
 
-    // calculate inverse of q mod p
+    /* calculate inverse of q mod p */
     if (!BN_mod_inverse(rsa_iqmp, rsa_q, p, ctx)) {
       BN_free(p);
       goto fail;
@@ -1104,7 +1104,7 @@ bcrypto_rsa_privkey_export_pkcs8(uint8_t **out,
                                  const bcrypto_rsa_key_t *priv) {
   assert(out && out_len);
 
-  // https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ameth.c#L142
+  /* https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ameth.c#L142 */
   RSA *rsa = NULL;
   PKCS8_PRIV_KEY_INFO *p8 = NULL;
   unsigned char *rk = NULL;
@@ -1166,7 +1166,7 @@ fail:
 
 bcrypto_rsa_key_t *
 bcrypto_rsa_privkey_import_pkcs8(const uint8_t *raw, size_t raw_len) {
-  // https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ameth.c#L169
+  /* https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ameth.c#L169 */
   PKCS8_PRIV_KEY_INFO *p8 = NULL;
   const unsigned char *p;
   RSA *rsa = NULL;
@@ -1184,7 +1184,7 @@ bcrypto_rsa_privkey_import_pkcs8(const uint8_t *raw, size_t raw_len) {
   if (!PKCS8_pkey_get0(NULL, &p, &pklen, &alg, p8))
     goto fail;
 
-  // https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ameth.c#L54
+  /* https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ameth.c#L54 */
   X509_ALGOR_get0(&algoid, &algptype, &algp, alg);
 
   if (OBJ_obj2nid(algoid) != NID_rsaEncryption)
@@ -1349,14 +1349,14 @@ bcrypto_rsa_sign(uint8_t **sig,
 
   bcrypto_poll();
 
-  // Protect against side-channel attacks.
+  /* Protect against side-channel attacks. */
   if (!RSA_blinding_on(priv_r, NULL))
     goto fail;
 
-  // $ man RSA_sign
-  // tlen is always modulus size.
-  // https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_sign.c#L69
-  // https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ossl.c#L238
+  /* $ man RSA_sign */
+  /* tlen is always modulus size. */
+  /* https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_sign.c#L69 */
+  /* https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ossl.c#L238 */
   result = RSA_sign(
     type,
     msg,
@@ -1419,8 +1419,8 @@ bcrypto_rsa_verify(const char *alg,
   if (!pub_r)
     goto fail;
 
-  // flen _must_ be modulus length.
-  // https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_sign.c#L124
+  /* flen _must_ be modulus length. */
+  /* https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_sign.c#L124 */
   if (RSA_verify(type, msg, msg_len, sig, sig_len, pub_r) <= 0)
     goto fail;
 
@@ -1461,17 +1461,17 @@ bcrypto_rsa_encrypt(uint8_t **ct,
 
   bcrypto_poll();
 
-  // $ man RSA_public_encrypt
-  // flen must be size of modulus.
-  // tlen is always modulus size.
-  // https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ossl.c#L67
-  // https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_none.c#L14
+  /* $ man RSA_public_encrypt */
+  /* flen must be size of modulus. */
+  /* tlen is always modulus size. */
+  /* https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ossl.c#L67 */
+  /* https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_none.c#L14 */
   c_len = RSA_public_encrypt(
-    msg_len,          // int flen
-    msg,              // const uint8_t *from
-    c,                // uint8_t *to
-    pub_r,            // RSA *rsa
-    RSA_PKCS1_PADDING // int padding
+    msg_len,          /* int flen */
+    msg,              /* const uint8_t *from */
+    c,                /* uint8_t *to */
+    pub_r,            /* RSA *rsa */
+    RSA_PKCS1_PADDING /* int padding */
   );
 
   if (c_len <= 0)
@@ -1526,20 +1526,20 @@ bcrypto_rsa_decrypt(uint8_t **pt,
 
   bcrypto_poll();
 
-  // Protect against side-channel attacks.
+  /* Protect against side-channel attacks. */
   if (!RSA_blinding_on(priv_r, NULL))
     goto fail;
 
-  // $ man RSA_private_decrypt
-  // flen can be smaller than modulus.
-  // tlen is less than modulus size for pkcs1.
-  // https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ossl.c#L374
+  /* $ man RSA_private_decrypt */
+  /* flen can be smaller than modulus. */
+  /* tlen is less than modulus size for pkcs1. */
+  /* https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ossl.c#L374 */
   out_len = RSA_private_decrypt(
-    msg_len,          // int flen
-    msg,              // const uint8_t *from
-    out,              // uint8_t *to
-    priv_r,           // RSA *rsa
-    RSA_PKCS1_PADDING // int padding
+    msg_len,          /* int flen */
+    msg,              /* const uint8_t *from */
+    out,              /* uint8_t *to */
+    priv_r,           /* RSA *rsa */
+    RSA_PKCS1_PADDING /* int padding */
   );
 
   RSA_blinding_off(priv_r);
@@ -1620,32 +1620,32 @@ bcrypto_rsa_encrypt_oaep(uint8_t **ct,
 
   bcrypto_poll();
 
-  // $ man RSA_padding_add_PKCS1_OAEP
-  // https://github.com/openssl/openssl/blob/82eba37/crypto/rsa/rsa_oaep.c#L41
+  /* $ man RSA_padding_add_PKCS1_OAEP */
+  /* https://github.com/openssl/openssl/blob/82eba37/crypto/rsa/rsa_oaep.c#L41 */
   result = RSA_padding_add_PKCS1_OAEP_mgf1(
-    em,              // uint8_t *to
-    RSA_size(pub_r), // int tlen
-    msg,             // const uint8_t *from
-    msg_len,         // int flen
-    label,           // const uint8_t *param
-    label_len,       // int plen
-    md,              // const EVP_MD *md
-    md               // const EVP_MD *mgf1md
+    em,              /* uint8_t *to */
+    RSA_size(pub_r), /* int tlen */
+    msg,             /* const uint8_t *from */
+    msg_len,         /* int flen */
+    label,           /* const uint8_t *param */
+    label_len,       /* int plen */
+    md,              /* const EVP_MD *md */
+    md               /* const EVP_MD *mgf1md */
   );
 
   if (!result)
     goto fail;
 
-  // $ man RSA_public_encrypt
-  // flen must be size of modulus.
-  // tlen is always modulus size.
-  // https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ossl.c#L67
+  /* $ man RSA_public_encrypt */
+  /* flen must be size of modulus. */
+  /* tlen is always modulus size. */
+  /* https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ossl.c#L67 */
   c_len = RSA_public_encrypt(
-    RSA_size(pub_r), // int flen
-    em,              // const uint8_t *from
-    c,               // uint8_t *to
-    pub_r,           // RSA *rsa
-    RSA_NO_PADDING   // int padding
+    RSA_size(pub_r), /* int flen */
+    em,              /* const uint8_t *from */
+    c,               /* uint8_t *to */
+    pub_r,           /* RSA *rsa */
+    RSA_NO_PADDING   /* int padding */
   );
 
   OPENSSL_cleanse(em, RSA_size(pub_r));
@@ -1723,22 +1723,22 @@ bcrypto_rsa_decrypt_oaep(uint8_t **pt,
 
   bcrypto_poll();
 
-  // Protect against side-channel attacks.
+  /* Protect against side-channel attacks. */
   if (!RSA_blinding_on(priv_r, NULL))
     goto fail;
 
   memset(em, 0x00, RSA_size(priv_r));
 
-  // $ man RSA_private_decrypt
-  // flen can be smaller than modulus.
-  // tlen is always modulus size.
-  // https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ossl.c#L374
+  /* $ man RSA_private_decrypt */
+  /* flen can be smaller than modulus. */
+  /* tlen is always modulus size. */
+  /* https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ossl.c#L374 */
   em_len = RSA_private_decrypt(
-    msg_len,       // int flen
-    msg,           // const uint8_t *from
-    em,            // uint8_t *to
-    priv_r,        // RSA *rsa
-    RSA_NO_PADDING // int padding
+    msg_len,       /* int flen */
+    msg,           /* const uint8_t *from */
+    em,            /* uint8_t *to */
+    priv_r,        /* RSA *rsa */
+    RSA_NO_PADDING /* int padding */
   );
 
   RSA_blinding_off(priv_r);
@@ -1755,17 +1755,17 @@ bcrypto_rsa_decrypt_oaep(uint8_t **pt,
     goto fail;
   }
 
-  // https://github.com/openssl/openssl/blob/82eba37/crypto/rsa/rsa_oaep.c#L116
+  /* https://github.com/openssl/openssl/blob/82eba37/crypto/rsa/rsa_oaep.c#L116 */
   out_len = RSA_padding_check_PKCS1_OAEP_mgf1(
-    out,              // uint8_t *to
-    RSA_size(priv_r), // int tlen
-    em,               // const uint8_t *from
-    em_len,           // int flen
-    RSA_size(priv_r), // int num (modulus size)
-    label,            // const uint8_t *param
-    label_len,        // int plen
-    md,               // const EVP_MD *md
-    md                // const EVP_MD *mgf1md
+    out,              /* uint8_t *to */
+    RSA_size(priv_r), /* int tlen */
+    em,               /* const uint8_t *from */
+    em_len,           /* int flen */
+    RSA_size(priv_r), /* int num (modulus size) */
+    label,            /* const uint8_t *param */
+    label_len,        /* int plen */
+    md,               /* const EVP_MD *md */
+    md                /* const EVP_MD *mgf1md */
   );
 
   OPENSSL_cleanse(em, RSA_size(priv_r));
@@ -1847,24 +1847,24 @@ bcrypto_rsa_sign_pss(uint8_t **sig,
     goto fail;
 
   if (salt_len == 0)
-    salt_len = -2; // RSA_PSS_SALTLEN_MAX_SIGN
+    salt_len = -2; /* RSA_PSS_SALTLEN_MAX_SIGN */
   else if (salt_len == -1)
-    salt_len = -1; // RSA_PSS_SALTLEN_DIGEST
+    salt_len = -1; /* RSA_PSS_SALTLEN_DIGEST */
 
   memset(em, 0x00, RSA_size(priv_r));
 
   bcrypto_poll();
 
-  // tlen is always modulus size.
-  // https://github.com/openssl/openssl/blob/82eba37/crypto/rsa/rsa_pss.c#L145
-  // https://github.com/openssl/openssl/blob/82eba37/crypto/rsa/rsa_pmeth.c#L122
+  /* tlen is always modulus size. */
+  /* https://github.com/openssl/openssl/blob/82eba37/crypto/rsa/rsa_pss.c#L145 */
+  /* https://github.com/openssl/openssl/blob/82eba37/crypto/rsa/rsa_pmeth.c#L122 */
   result = RSA_padding_add_PKCS1_PSS_mgf1(
-    priv_r,  // RSA *rsa
-    em,      // uint8_t *EM
-    msg,     // const uint8_t *mHash
-    md,      // const EVP_MD *Hash
-    md,      // const EVP_MD *mgf1Hash
-    salt_len // int sLen
+    priv_r,  /* RSA *rsa */
+    em,      /* uint8_t *EM */
+    msg,     /* const uint8_t *mHash */
+    md,      /* const EVP_MD *Hash */
+    md,      /* const EVP_MD *mgf1Hash */
+    salt_len /* int sLen */
   );
 
   if (!result)
@@ -1877,22 +1877,22 @@ bcrypto_rsa_sign_pss(uint8_t **sig,
     goto fail;
   }
 
-  // Protect against side-channel attacks.
+  /* Protect against side-channel attacks. */
   if (!RSA_blinding_on(priv_r, NULL)) {
     OPENSSL_cleanse(em, RSA_size(priv_r));
     goto fail;
   }
 
-  // $ man RSA_private_encrypt
-  // flen must be modulus size.
-  // tlen is always modulus size.
-  // https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ossl.c#L238
+  /* $ man RSA_private_encrypt */
+  /* flen must be modulus size. */
+  /* tlen is always modulus size. */
+  /* https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ossl.c#L238 */
   c_len = RSA_private_encrypt(
-    RSA_size(priv_r), // int flen
-    em,               // const uint8_t *from
-    c,                // uint8_t *to
-    priv_r,           // RSA *rsa
-    RSA_NO_PADDING    // int padding
+    RSA_size(priv_r), /* int flen */
+    em,               /* const uint8_t *from */
+    c,                /* uint8_t *to */
+    priv_r,           /* RSA *rsa */
+    RSA_NO_PADDING    /* int padding */
   );
 
   OPENSSL_cleanse(em, RSA_size(priv_r));
@@ -1971,16 +1971,16 @@ bcrypto_rsa_verify_pss(const char *alg,
 
   memset(em, 0x00, RSA_size(pub_r));
 
-  // $ man RSA_public_decrypt
-  // flen can be smaller than modulus size.
-  // tlen is always modulus size.
-  // https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ossl.c#L507
+  /* $ man RSA_public_decrypt */
+  /* flen can be smaller than modulus size. */
+  /* tlen is always modulus size. */
+  /* https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ossl.c#L507 */
   em_len = RSA_public_decrypt(
-    sig_len,       // int flen
-    sig,           // const uint8_t *from
-    em,            // uint8_t *to
-    pub_r,         // RSA *rsa
-    RSA_NO_PADDING // int padding
+    sig_len,       /* int flen */
+    sig,           /* const uint8_t *from */
+    em,            /* uint8_t *to */
+    pub_r,         /* RSA *rsa */
+    RSA_NO_PADDING /* int padding */
   );
 
   if (em_len <= 0)
@@ -1989,18 +1989,18 @@ bcrypto_rsa_verify_pss(const char *alg,
   assert(em_len == RSA_size(pub_r));
 
   if (salt_len == 0)
-    salt_len = -2; // RSA_PSS_SALTLEN_AUTO
+    salt_len = -2; /* RSA_PSS_SALTLEN_AUTO */
   else if (salt_len == -1)
-    salt_len = -1; // RSA_PSS_SALTLEN_DIGEST
+    salt_len = -1; /* RSA_PSS_SALTLEN_DIGEST */
 
-  // https://github.com/openssl/openssl/blob/82eba37/crypto/rsa/rsa_pss.c#L32
+  /* https://github.com/openssl/openssl/blob/82eba37/crypto/rsa/rsa_pss.c#L32 */
   result = RSA_verify_PKCS1_PSS_mgf1(
-    pub_r,   // RSA *rsa
-    msg,     // const uint8_t *mHash
-    md,      // const EVP_MD *Hash
-    md,      // const EVP_MD *mgf1Hash
-    em,      // const uint8_t *EM
-    salt_len // int sLen
+    pub_r,   /* RSA *rsa */
+    msg,     /* const uint8_t *mHash */
+    md,      /* const EVP_MD *Hash */
+    md,      /* const EVP_MD *mgf1Hash */
+    em,      /* const uint8_t *EM */
+    salt_len /* int sLen */
   );
 
   OPENSSL_cleanse(em, RSA_size(pub_r));
@@ -2048,16 +2048,16 @@ bcrypto_rsa_encrypt_raw(uint8_t **out,
   if (!c)
     goto fail;
 
-  // $ man RSA_public_encrypt
-  // flen must be size of modulus.
-  // tlen is always modulus size.
-  // https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ossl.c#L67
+  /* $ man RSA_public_encrypt */
+  /* flen must be size of modulus. */
+  /* tlen is always modulus size. */
+  /* https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ossl.c#L67 */
   c_len = RSA_public_encrypt(
-    msg_len,       // int flen
-    msg,           // const uint8_t *from
-    c,             // uint8_t *to
-    pub_r,         // RSA *rsa
-    RSA_NO_PADDING // int padding
+    msg_len,       /* int flen */
+    msg,           /* const uint8_t *from */
+    c,             /* uint8_t *to */
+    pub_r,         /* RSA *rsa */
+    RSA_NO_PADDING /* int padding */
   );
 
   if (c_len <= 0)
@@ -2109,20 +2109,20 @@ bcrypto_rsa_decrypt_raw(uint8_t **out,
 
   bcrypto_poll();
 
-  // Protect against side-channel attacks.
+  /* Protect against side-channel attacks. */
   if (!RSA_blinding_on(priv_r, NULL))
     goto fail;
 
-  // $ man RSA_private_decrypt
-  // flen can be smaller than modulus.
-  // tlen is always modulus size.
-  // https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ossl.c#L374
+  /* $ man RSA_private_decrypt */
+  /* flen can be smaller than modulus. */
+  /* tlen is always modulus size. */
+  /* https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ossl.c#L374 */
   em_len = RSA_private_decrypt(
-    msg_len,          // int flen
-    msg,              // const uint8_t *from
-    em,               // uint8_t *to
-    priv_r,           // RSA *rsa
-    RSA_NO_PADDING    // int padding
+    msg_len,          /* int flen */
+    msg,              /* const uint8_t *from */
+    em,               /* uint8_t *to */
+    priv_r,           /* RSA *rsa */
+    RSA_NO_PADDING    /* int padding */
   );
 
   RSA_blinding_off(priv_r);
@@ -2175,7 +2175,7 @@ bcrypto_rsa_veil(uint8_t **out,
   if (!bcrypto_rsa_sane_pubkey(pub))
     goto fail;
 
-  // Can't make ciphertext smaller.
+  /* Can't make ciphertext smaller. */
   if (bits < bcrypto_rsa_mod_bits(pub))
     goto fail;
 
@@ -2190,17 +2190,17 @@ bcrypto_rsa_veil(uint8_t **out,
   if (!ctx || !c0 || !n || !ctlim || !rlim || !c1 || !cr)
     goto fail;
 
-  // Invalid ciphertext.
+  /* Invalid ciphertext. */
   if (BN_ucmp(c0, n) >= 0)
     goto fail;
 
-  // ctlim = 1 << (bits + 0)
+  /* ctlim = 1 << (bits + 0) */
   if (!BN_set_word(ctlim, 1)
       || !BN_lshift(ctlim, ctlim, bits)) {
     goto fail;
   }
 
-  // rlim = (ctlim - c0 + n - 1) / n
+  /* rlim = (ctlim - c0 + n - 1) / n */
   if (!BN_copy(rlim, ctlim)
       || !BN_sub(rlim, rlim, c0)
       || !BN_add(rlim, rlim, n)
@@ -2209,22 +2209,22 @@ bcrypto_rsa_veil(uint8_t **out,
     goto fail;
   }
 
-  // c1 = ctlim
+  /* c1 = ctlim */
   if (!BN_copy(c1, ctlim))
     goto fail;
 
   bcrypto_poll();
 
-  // while c1 >= ctlim
+  /* while c1 >= ctlim */
   while (BN_ucmp(c1, ctlim) >= 0) {
-    // cr = random_int(rlim)
+    /* cr = random_int(rlim) */
     if (!BN_rand_range(cr, rlim))
       goto fail;
 
     if (BN_ucmp(rlim, BN_value_one()) > 0 && BN_is_zero(cr))
       continue;
 
-    // c1 = c0 + cr * n
+    /* c1 = c0 + cr * n */
     if (!BN_mul(cr, cr, n, ctx))
       goto fail;
 
@@ -2313,7 +2313,7 @@ bcrypto_rsa_unveil(uint8_t **out,
   if (!ctx || !c1 || !n)
     goto fail;
 
-  // c0 = c1 % n
+  /* c0 = c1 % n */
   if (!BN_mod(c1, c1, n, ctx))
     goto fail;
 
