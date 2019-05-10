@@ -36,7 +36,7 @@ private:
   static NAN_METHOD(signatureNormalize);
   static NAN_METHOD(signatureExport);
   static NAN_METHOD(signatureImport);
-  static NAN_METHOD(signatureImportLax);
+  static NAN_METHOD(signatureImportStrict);
   static NAN_METHOD(isLowS);
   static NAN_METHOD(isLowDER);
 

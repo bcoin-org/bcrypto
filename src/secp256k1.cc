@@ -244,7 +244,7 @@ BSecp256k1::Init(v8::Local<v8::Object> &target) {
   Nan::SetPrototypeMethod(tpl, "signatureNormalize", BSecp256k1::signatureNormalize);
   Nan::SetPrototypeMethod(tpl, "signatureExport", BSecp256k1::signatureExport);
   Nan::SetPrototypeMethod(tpl, "signatureImport", BSecp256k1::signatureImport);
-  Nan::SetPrototypeMethod(tpl, "signatureImportLax", BSecp256k1::signatureImportLax);
+  Nan::SetPrototypeMethod(tpl, "signatureImportStrict", BSecp256k1::signatureImportStrict);
   Nan::SetPrototypeMethod(tpl, "isLowS", BSecp256k1::isLowS);
   Nan::SetPrototypeMethod(tpl, "isLowDER", BSecp256k1::isLowDER);
 
@@ -695,7 +695,7 @@ NAN_METHOD(BSecp256k1::signatureImport) {
   size_t input_length = node::Buffer::Length(input_buffer);
 
   secp256k1_ecdsa_signature sig;
-  if (secp256k1_ecdsa_signature_parse_der(secp->ctx, &sig, input, input_length) == 0) {
+  if (ecdsa_signature_parse_der_lax(secp->ctx, &sig, input, input_length) == 0) {
     return Nan::ThrowError(ECDSA_SIGNATURE_PARSE_DER_FAIL);
   }
 
@@ -704,7 +704,7 @@ NAN_METHOD(BSecp256k1::signatureImport) {
   info.GetReturnValue().Set(COPY_BUFFER(&output[0], 64));
 }
 
-NAN_METHOD(BSecp256k1::signatureImportLax) {
+NAN_METHOD(BSecp256k1::signatureImportStrict) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
   v8::Local<v8::Object> input_buffer = info[0].As<v8::Object>();
@@ -714,7 +714,7 @@ NAN_METHOD(BSecp256k1::signatureImportLax) {
   size_t input_length = node::Buffer::Length(input_buffer);
 
   secp256k1_ecdsa_signature sig;
-  if (ecdsa_signature_parse_der_lax(secp->ctx, &sig, input, input_length) == 0) {
+  if (secp256k1_ecdsa_signature_parse_der(secp->ctx, &sig, input, input_length) == 0) {
     return Nan::ThrowError(ECDSA_SIGNATURE_PARSE_DER_FAIL);
   }
 
