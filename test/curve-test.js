@@ -276,6 +276,20 @@ describe('Curves', function() {
 
       assert(p.eq(neg2));
     });
+
+    it('should multiply with blinding', () => {
+      const curve = secp256k1;
+      const {blind} = curve.g.precomputed.blinding;
+      const neg = blind.neg().iumod(curve.n);
+      const point1 = curve.g.mulBlind(neg);
+      const point2 = curve.g.mul(neg);
+      const point3 = curve.g.mulBlind(blind);
+      const point4 = curve.g.mul(blind);
+
+      assert(point1.eq(point2));
+      assert(point3.eq(point4));
+      assert(point3.neg().eq(point1));
+    });
   });
 
   describe('Point codec', () => {
