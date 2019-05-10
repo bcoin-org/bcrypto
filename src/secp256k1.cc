@@ -222,44 +222,44 @@ BSecp256k1::Init(v8::Local<v8::Object> &target) {
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
 
   // secret key
-  Nan::SetPrototypeMethod(tpl, "privateKeyVerify", BSecp256k1::privateKeyVerify);
-  Nan::SetPrototypeMethod(tpl, "privateKeyExport", BSecp256k1::privateKeyExport);
-  Nan::SetPrototypeMethod(tpl, "privateKeyImport", BSecp256k1::privateKeyImport);
-  Nan::SetPrototypeMethod(tpl, "privateKeyMod", BSecp256k1::privateKeyMod);
-  Nan::SetPrototypeMethod(tpl, "privateKeyNegate", BSecp256k1::privateKeyNegate);
-  Nan::SetPrototypeMethod(tpl, "privateKeyInverse", BSecp256k1::privateKeyInverse);
-  Nan::SetPrototypeMethod(tpl, "privateKeyTweakAdd", BSecp256k1::privateKeyTweakAdd);
-  Nan::SetPrototypeMethod(tpl, "privateKeyTweakMul", BSecp256k1::privateKeyTweakMul);
+  Nan::SetPrototypeMethod(tpl, "privateKeyVerify", BSecp256k1::PrivateKeyVerify);
+  Nan::SetPrototypeMethod(tpl, "privateKeyExport", BSecp256k1::PrivateKeyExport);
+  Nan::SetPrototypeMethod(tpl, "privateKeyImport", BSecp256k1::PrivateKeyImport);
+  Nan::SetPrototypeMethod(tpl, "privateKeyMod", BSecp256k1::PrivateKeyMod);
+  Nan::SetPrototypeMethod(tpl, "privateKeyNegate", BSecp256k1::PrivateKeyNegate);
+  Nan::SetPrototypeMethod(tpl, "privateKeyInverse", BSecp256k1::PrivateKeyInverse);
+  Nan::SetPrototypeMethod(tpl, "privateKeyTweakAdd", BSecp256k1::PrivateKeyTweakAdd);
+  Nan::SetPrototypeMethod(tpl, "privateKeyTweakMul", BSecp256k1::PrivateKeyTweakMul);
 
   // public key
-  Nan::SetPrototypeMethod(tpl, "publicKeyCreate", BSecp256k1::publicKeyCreate);
-  Nan::SetPrototypeMethod(tpl, "publicKeyConvert", BSecp256k1::publicKeyConvert);
-  Nan::SetPrototypeMethod(tpl, "publicKeyVerify", BSecp256k1::publicKeyVerify);
-  Nan::SetPrototypeMethod(tpl, "publicKeyTweakAdd", BSecp256k1::publicKeyTweakAdd);
-  Nan::SetPrototypeMethod(tpl, "publicKeyTweakMul", BSecp256k1::publicKeyTweakMul);
-  Nan::SetPrototypeMethod(tpl, "publicKeyCombine", BSecp256k1::publicKeyCombine);
-  Nan::SetPrototypeMethod(tpl, "publicKeyNegate", BSecp256k1::publicKeyNegate);
+  Nan::SetPrototypeMethod(tpl, "publicKeyCreate", BSecp256k1::PublicKeyCreate);
+  Nan::SetPrototypeMethod(tpl, "publicKeyConvert", BSecp256k1::PublicKeyConvert);
+  Nan::SetPrototypeMethod(tpl, "publicKeyVerify", BSecp256k1::PublicKeyVerify);
+  Nan::SetPrototypeMethod(tpl, "publicKeyTweakAdd", BSecp256k1::PublicKeyTweakAdd);
+  Nan::SetPrototypeMethod(tpl, "publicKeyTweakMul", BSecp256k1::PublicKeyTweakMul);
+  Nan::SetPrototypeMethod(tpl, "publicKeyCombine", BSecp256k1::PublicKeyCombine);
+  Nan::SetPrototypeMethod(tpl, "publicKeyNegate", BSecp256k1::PublicKeyNegate);
 
   // signature
-  Nan::SetPrototypeMethod(tpl, "signatureNormalize", BSecp256k1::signatureNormalize);
-  Nan::SetPrototypeMethod(tpl, "signatureExport", BSecp256k1::signatureExport);
-  Nan::SetPrototypeMethod(tpl, "signatureImport", BSecp256k1::signatureImport);
-  Nan::SetPrototypeMethod(tpl, "signatureImportStrict", BSecp256k1::signatureImportStrict);
-  Nan::SetPrototypeMethod(tpl, "isLowS", BSecp256k1::isLowS);
-  Nan::SetPrototypeMethod(tpl, "isLowDER", BSecp256k1::isLowDER);
+  Nan::SetPrototypeMethod(tpl, "signatureNormalize", BSecp256k1::SignatureNormalize);
+  Nan::SetPrototypeMethod(tpl, "signatureExport", BSecp256k1::SignatureExport);
+  Nan::SetPrototypeMethod(tpl, "signatureImport", BSecp256k1::SignatureImport);
+  Nan::SetPrototypeMethod(tpl, "signatureImportStrict", BSecp256k1::SignatureImportStrict);
+  Nan::SetPrototypeMethod(tpl, "isLowS", BSecp256k1::IsLowS);
+  Nan::SetPrototypeMethod(tpl, "isLowDER", BSecp256k1::IsLowDER);
 
   // ecdsa
-  Nan::SetPrototypeMethod(tpl, "sign", BSecp256k1::sign);
-  Nan::SetPrototypeMethod(tpl, "verify", BSecp256k1::verify);
-  Nan::SetPrototypeMethod(tpl, "verifyDER", BSecp256k1::verifyDER);
-  Nan::SetPrototypeMethod(tpl, "recover", BSecp256k1::recover);
+  Nan::SetPrototypeMethod(tpl, "sign", BSecp256k1::Sign);
+  Nan::SetPrototypeMethod(tpl, "verify", BSecp256k1::Verify);
+  Nan::SetPrototypeMethod(tpl, "verifyDER", BSecp256k1::VerifyDER);
+  Nan::SetPrototypeMethod(tpl, "recover", BSecp256k1::Recover);
 
   // ecdh
-  Nan::SetPrototypeMethod(tpl, "derive", BSecp256k1::derive);
+  Nan::SetPrototypeMethod(tpl, "derive", BSecp256k1::Derive);
 
   // schnorr
-  Nan::SetPrototypeMethod(tpl, "schnorrSign", BSecp256k1::schnorrSign);
-  Nan::SetPrototypeMethod(tpl, "schnorrVerify", BSecp256k1::schnorrVerify);
+  Nan::SetPrototypeMethod(tpl, "schnorrSign", BSecp256k1::SchnorrSign);
+  Nan::SetPrototypeMethod(tpl, "schnorrVerify", BSecp256k1::SchnorrVerify);
 
   v8::Local<v8::FunctionTemplate> ctor =
     Nan::New<v8::FunctionTemplate>(secp256k1_constructor);
@@ -296,7 +296,7 @@ NAN_METHOD(BSecp256k1::New) {
   info.GetReturnValue().Set(info.This());
 }
 
-NAN_METHOD(BSecp256k1::privateKeyVerify) {
+NAN_METHOD(BSecp256k1::PrivateKeyVerify) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
   v8::Local<v8::Object> private_key_buffer = info[0].As<v8::Object>();
@@ -311,7 +311,7 @@ NAN_METHOD(BSecp256k1::privateKeyVerify) {
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
 
-NAN_METHOD(BSecp256k1::privateKeyExport) {
+NAN_METHOD(BSecp256k1::PrivateKeyExport) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
   v8::Local<v8::Object> private_key_buffer = info[0].As<v8::Object>();
@@ -331,7 +331,7 @@ NAN_METHOD(BSecp256k1::privateKeyExport) {
   info.GetReturnValue().Set(COPY_BUFFER(output, output_length));
 }
 
-NAN_METHOD(BSecp256k1::privateKeyImport) {
+NAN_METHOD(BSecp256k1::PrivateKeyImport) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
   v8::Local<v8::Object> input_buffer = info[0].As<v8::Object>();
@@ -348,7 +348,7 @@ NAN_METHOD(BSecp256k1::privateKeyImport) {
   info.GetReturnValue().Set(COPY_BUFFER(private_key, 32));
 }
 
-NAN_METHOD(BSecp256k1::privateKeyMod) {
+NAN_METHOD(BSecp256k1::PrivateKeyMod) {
   v8::Local<v8::Object> private_key_buffer = info[0].As<v8::Object>();
   CHECK_TYPE_BUFFER(private_key_buffer, EC_PRIVATE_KEY_TYPE_INVALID);
 
@@ -377,7 +377,7 @@ NAN_METHOD(BSecp256k1::privateKeyMod) {
   info.GetReturnValue().Set(COPY_BUFFER(&private_key[0], 32));
 }
 
-NAN_METHOD(BSecp256k1::privateKeyNegate) {
+NAN_METHOD(BSecp256k1::PrivateKeyNegate) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
   v8::Local<v8::Object> private_key_buffer = info[0].As<v8::Object>();
@@ -391,7 +391,7 @@ NAN_METHOD(BSecp256k1::privateKeyNegate) {
   info.GetReturnValue().Set(COPY_BUFFER(&private_key[0], 32));
 }
 
-NAN_METHOD(BSecp256k1::privateKeyInverse) {
+NAN_METHOD(BSecp256k1::PrivateKeyInverse) {
   v8::Local<v8::Object> private_key_buffer = info[0].As<v8::Object>();
   CHECK_TYPE_BUFFER(private_key_buffer, EC_PRIVATE_KEY_TYPE_INVALID);
   CHECK_BUFFER_LENGTH(private_key_buffer, 32, EC_PRIVATE_KEY_LENGTH_INVALID);
@@ -414,7 +414,7 @@ NAN_METHOD(BSecp256k1::privateKeyInverse) {
   info.GetReturnValue().Set(COPY_BUFFER(&private_key[0], 32));
 }
 
-NAN_METHOD(BSecp256k1::privateKeyTweakAdd) {
+NAN_METHOD(BSecp256k1::PrivateKeyTweakAdd) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
   v8::Local<v8::Object> private_key_buffer = info[0].As<v8::Object>();
@@ -435,7 +435,7 @@ NAN_METHOD(BSecp256k1::privateKeyTweakAdd) {
   info.GetReturnValue().Set(COPY_BUFFER(&private_key[0], 32));
 }
 
-NAN_METHOD(BSecp256k1::privateKeyTweakMul) {
+NAN_METHOD(BSecp256k1::PrivateKeyTweakMul) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
   v8::Local<v8::Object> private_key_buffer = info[0].As<v8::Object>();
@@ -456,7 +456,7 @@ NAN_METHOD(BSecp256k1::privateKeyTweakMul) {
   info.GetReturnValue().Set(COPY_BUFFER(&private_key[0], 32));
 }
 
-NAN_METHOD(BSecp256k1::publicKeyCreate) {
+NAN_METHOD(BSecp256k1::PublicKeyCreate) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
   v8::Local<v8::Object> private_key_buffer = info[0].As<v8::Object>();
@@ -478,7 +478,7 @@ NAN_METHOD(BSecp256k1::publicKeyCreate) {
   info.GetReturnValue().Set(COPY_BUFFER(&output[0], output_length));
 }
 
-NAN_METHOD(BSecp256k1::publicKeyConvert) {
+NAN_METHOD(BSecp256k1::PublicKeyConvert) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
   v8::Local<v8::Object> input_buffer = info[0].As<v8::Object>();
@@ -501,7 +501,7 @@ NAN_METHOD(BSecp256k1::publicKeyConvert) {
   info.GetReturnValue().Set(COPY_BUFFER(&output[0], output_length));
 }
 
-NAN_METHOD(BSecp256k1::publicKeyVerify) {
+NAN_METHOD(BSecp256k1::PublicKeyVerify) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
   v8::Local<v8::Object> input_buffer = info[0].As<v8::Object>();
@@ -514,7 +514,7 @@ NAN_METHOD(BSecp256k1::publicKeyVerify) {
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
 
-NAN_METHOD(BSecp256k1::publicKeyTweakAdd) {
+NAN_METHOD(BSecp256k1::PublicKeyTweakAdd) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
   v8::Local<v8::Object> input_buffer = info[0].As<v8::Object>();
@@ -546,7 +546,7 @@ NAN_METHOD(BSecp256k1::publicKeyTweakAdd) {
   info.GetReturnValue().Set(COPY_BUFFER(&output[0], output_length));
 }
 
-NAN_METHOD(BSecp256k1::publicKeyTweakMul) {
+NAN_METHOD(BSecp256k1::PublicKeyTweakMul) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
   v8::Local<v8::Object> input_buffer = info[0].As<v8::Object>();
@@ -578,7 +578,7 @@ NAN_METHOD(BSecp256k1::publicKeyTweakMul) {
   info.GetReturnValue().Set(COPY_BUFFER(&output[0], output_length));
 }
 
-NAN_METHOD(BSecp256k1::publicKeyCombine) {
+NAN_METHOD(BSecp256k1::PublicKeyCombine) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
   v8::Local<v8::Array> input_buffers = info[0].As<v8::Array>();
@@ -615,7 +615,7 @@ NAN_METHOD(BSecp256k1::publicKeyCombine) {
   info.GetReturnValue().Set(COPY_BUFFER(&output[0], output_length));
 }
 
-NAN_METHOD(BSecp256k1::publicKeyNegate) {
+NAN_METHOD(BSecp256k1::PublicKeyNegate) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
   v8::Local<v8::Object> input_buffer = info[0].As<v8::Object>();
@@ -642,7 +642,7 @@ NAN_METHOD(BSecp256k1::publicKeyNegate) {
   info.GetReturnValue().Set(COPY_BUFFER(&output[0], output_length));
 }
 
-NAN_METHOD(BSecp256k1::signatureNormalize) {
+NAN_METHOD(BSecp256k1::SignatureNormalize) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
   v8::Local<v8::Object> input_buffer = info[0].As<v8::Object>();
@@ -663,7 +663,7 @@ NAN_METHOD(BSecp256k1::signatureNormalize) {
   info.GetReturnValue().Set(COPY_BUFFER(&output[0], 64));
 }
 
-NAN_METHOD(BSecp256k1::signatureExport) {
+NAN_METHOD(BSecp256k1::SignatureExport) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
   v8::Local<v8::Object> input_buffer = info[0].As<v8::Object>();
@@ -685,7 +685,7 @@ NAN_METHOD(BSecp256k1::signatureExport) {
   info.GetReturnValue().Set(COPY_BUFFER(&output[0], output_length));
 }
 
-NAN_METHOD(BSecp256k1::signatureImport) {
+NAN_METHOD(BSecp256k1::SignatureImport) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
   v8::Local<v8::Object> input_buffer = info[0].As<v8::Object>();
@@ -704,7 +704,7 @@ NAN_METHOD(BSecp256k1::signatureImport) {
   info.GetReturnValue().Set(COPY_BUFFER(&output[0], 64));
 }
 
-NAN_METHOD(BSecp256k1::signatureImportStrict) {
+NAN_METHOD(BSecp256k1::SignatureImportStrict) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
   v8::Local<v8::Object> input_buffer = info[0].As<v8::Object>();
@@ -723,7 +723,7 @@ NAN_METHOD(BSecp256k1::signatureImportStrict) {
   info.GetReturnValue().Set(COPY_BUFFER(&output[0], 64));
 }
 
-NAN_METHOD(BSecp256k1::isLowS) {
+NAN_METHOD(BSecp256k1::IsLowS) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
   v8::Local<v8::Object> input_buffer = info[0].As<v8::Object>();
@@ -752,7 +752,7 @@ NAN_METHOD(BSecp256k1::isLowS) {
   return info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
 
-NAN_METHOD(BSecp256k1::isLowDER) {
+NAN_METHOD(BSecp256k1::IsLowDER) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
   v8::Local<v8::Object> input_buffer = info[0].As<v8::Object>();
@@ -783,7 +783,7 @@ NAN_METHOD(BSecp256k1::isLowDER) {
   return info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
 
-NAN_METHOD(BSecp256k1::sign) {
+NAN_METHOD(BSecp256k1::Sign) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
   v8::Local<v8::Object> msg32_buffer = info[0].As<v8::Object>();
@@ -816,7 +816,7 @@ NAN_METHOD(BSecp256k1::sign) {
   info.GetReturnValue().Set(obj);
 }
 
-NAN_METHOD(BSecp256k1::verify) {
+NAN_METHOD(BSecp256k1::Verify) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
   v8::Local<v8::Object> msg32_buffer = info[0].As<v8::Object>();
@@ -852,7 +852,7 @@ NAN_METHOD(BSecp256k1::verify) {
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
 
-NAN_METHOD(BSecp256k1::verifyDER) {
+NAN_METHOD(BSecp256k1::VerifyDER) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
   v8::Local<v8::Object> msg32_buffer = info[0].As<v8::Object>();
@@ -889,7 +889,7 @@ NAN_METHOD(BSecp256k1::verifyDER) {
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
 
-NAN_METHOD(BSecp256k1::recover) {
+NAN_METHOD(BSecp256k1::Recover) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
   v8::Local<v8::Object> msg32_buffer = info[0].As<v8::Object>();
@@ -997,7 +997,7 @@ void secp256k1_pubkey_save(secp256k1_pubkey* pubkey, secp256k1_ge* ge) {
 }
 
 // bindings
-NAN_METHOD(BSecp256k1::derive) {
+NAN_METHOD(BSecp256k1::Derive) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
   v8::Local<v8::Object> pubkey_buffer = info[0].As<v8::Object>();
@@ -1043,7 +1043,7 @@ NAN_METHOD(BSecp256k1::derive) {
   info.GetReturnValue().Set(COPY_BUFFER(&output[0], output_length));
 }
 
-NAN_METHOD(BSecp256k1::schnorrSign) {
+NAN_METHOD(BSecp256k1::SchnorrSign) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
   v8::Local<v8::Object> msg32_buffer = info[0].As<v8::Object>();
@@ -1070,7 +1070,7 @@ NAN_METHOD(BSecp256k1::schnorrSign) {
   info.GetReturnValue().Set(COPY_BUFFER(&output[0], 64));
 }
 
-NAN_METHOD(BSecp256k1::schnorrVerify) {
+NAN_METHOD(BSecp256k1::SchnorrVerify) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
   v8::Local<v8::Object> msg32_buffer = info[0].As<v8::Object>();
@@ -1104,7 +1104,7 @@ NAN_METHOD(BSecp256k1::schnorrVerify) {
 }
 
 #if 0
-NAN_METHOD(BED25519::schnorrBatchVerify) {
+NAN_METHOD(BED25519::SchnorrBatchVerify) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
   if (!info[0]->IsArray())

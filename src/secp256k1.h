@@ -16,39 +16,39 @@ public:
   secp256k1_context *ctx;
 
 private:
-  static NAN_METHOD(privateKeyVerify);
-  static NAN_METHOD(privateKeyExport);
-  static NAN_METHOD(privateKeyImport);
-  static NAN_METHOD(privateKeyMod);
-  static NAN_METHOD(privateKeyNegate);
-  static NAN_METHOD(privateKeyInverse);
-  static NAN_METHOD(privateKeyTweakAdd);
-  static NAN_METHOD(privateKeyTweakMul);
+  static NAN_METHOD(PrivateKeyVerify);
+  static NAN_METHOD(PrivateKeyExport);
+  static NAN_METHOD(PrivateKeyImport);
+  static NAN_METHOD(PrivateKeyMod);
+  static NAN_METHOD(PrivateKeyNegate);
+  static NAN_METHOD(PrivateKeyInverse);
+  static NAN_METHOD(PrivateKeyTweakAdd);
+  static NAN_METHOD(PrivateKeyTweakMul);
 
-  static NAN_METHOD(publicKeyCreate);
-  static NAN_METHOD(publicKeyConvert);
-  static NAN_METHOD(publicKeyVerify);
-  static NAN_METHOD(publicKeyTweakAdd);
-  static NAN_METHOD(publicKeyTweakMul);
-  static NAN_METHOD(publicKeyCombine);
-  static NAN_METHOD(publicKeyNegate);
+  static NAN_METHOD(PublicKeyCreate);
+  static NAN_METHOD(PublicKeyConvert);
+  static NAN_METHOD(PublicKeyVerify);
+  static NAN_METHOD(PublicKeyTweakAdd);
+  static NAN_METHOD(PublicKeyTweakMul);
+  static NAN_METHOD(PublicKeyCombine);
+  static NAN_METHOD(PublicKeyNegate);
 
-  static NAN_METHOD(signatureNormalize);
-  static NAN_METHOD(signatureExport);
-  static NAN_METHOD(signatureImport);
-  static NAN_METHOD(signatureImportStrict);
-  static NAN_METHOD(isLowS);
-  static NAN_METHOD(isLowDER);
+  static NAN_METHOD(SignatureNormalize);
+  static NAN_METHOD(SignatureExport);
+  static NAN_METHOD(SignatureImport);
+  static NAN_METHOD(SignatureImportStrict);
+  static NAN_METHOD(IsLowS);
+  static NAN_METHOD(IsLowDER);
 
-  static NAN_METHOD(sign);
-  static NAN_METHOD(verify);
-  static NAN_METHOD(verifyDER);
-  static NAN_METHOD(recover);
+  static NAN_METHOD(Sign);
+  static NAN_METHOD(Verify);
+  static NAN_METHOD(VerifyDER);
+  static NAN_METHOD(Recover);
 
-  static NAN_METHOD(derive);
+  static NAN_METHOD(Derive);
 
-  static NAN_METHOD(schnorrSign);
-  static NAN_METHOD(schnorrVerify);
+  static NAN_METHOD(SchnorrSign);
+  static NAN_METHOD(SchnorrVerify);
 };
 
 #endif
