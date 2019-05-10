@@ -804,7 +804,7 @@ bcrypto_ecdsa_privkey_export_pkcs8(bcrypto_ecdsa_t *ec,
 
   p8 = PKCS8_PRIV_KEY_INFO_new();
 
-  if (!p8)
+  if (p8 == NULL)
     goto fail;
 
   if (!PKCS8_pkey_set0(p8, OBJ_nid2obj(NID_X9_62_id_ecPublicKey), 0,
