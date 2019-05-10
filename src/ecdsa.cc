@@ -61,8 +61,8 @@ BECDSA::Init(v8::Local<v8::Object> &target) {
   Nan::SetPrototypeMethod(tpl, "isLowS", BECDSA::IsLowS);
   Nan::SetPrototypeMethod(tpl, "isLowDER", BECDSA::IsLowDER);
   Nan::SetPrototypeMethod(tpl, "sign", BECDSA::Sign);
-  Nan::SetPrototypeMethod(tpl, "signDER", BECDSA::SignDER);
   Nan::SetPrototypeMethod(tpl, "signRecoverable", BECDSA::SignRecoverable);
+  Nan::SetPrototypeMethod(tpl, "signDER", BECDSA::SignDER);
   Nan::SetPrototypeMethod(tpl, "signRecoverableDER", BECDSA::SignRecoverableDER);
   Nan::SetPrototypeMethod(tpl, "verify", BECDSA::Verify);
   Nan::SetPrototypeMethod(tpl, "verifyDER", BECDSA::VerifyDER);
@@ -943,43 +943,6 @@ NAN_METHOD(BECDSA::Sign) {
     Nan::CopyBuffer((char *)out, ec->ctx.sig_size).ToLocalChecked());
 }
 
-NAN_METHOD(BECDSA::SignDER) {
-  BECDSA *ec = ObjectWrap::Unwrap<BECDSA>(info.Holder());
-
-  if (info.Length() < 2)
-    return Nan::ThrowError("ecdsa.signDER() requires arguments.");
-
-  v8::Local<v8::Object> mbuf = info[0].As<v8::Object>();
-  v8::Local<v8::Object> pbuf = info[1].As<v8::Object>();
-
-  if (!node::Buffer::HasInstance(mbuf)
-      || !node::Buffer::HasInstance(pbuf)) {
-    return Nan::ThrowTypeError("Arguments must be buffers.");
-  }
-
-  const uint8_t *msg = (const uint8_t *)node::Buffer::Data(mbuf);
-  size_t msg_len = node::Buffer::Length(mbuf);
-
-  const uint8_t *priv = (const uint8_t *)node::Buffer::Data(pbuf);
-  size_t priv_len = node::Buffer::Length(pbuf);
-
-  if (priv_len != ec->ctx.scalar_size)
-    return Nan::ThrowRangeError("Invalid length.");
-
-  bcrypto_ecdsa_sig_t sign;
-  uint8_t out[BCRYPTO_ECDSA_MAX_DER_SIZE];
-  size_t out_len = BCRYPTO_ECDSA_MAX_DER_SIZE;
-
-  if (!bcrypto_ecdsa_sign(&ec->ctx, &sign, msg, msg_len, priv))
-    return Nan::ThrowError("Could not sign.");
-
-  if (!bcrypto_ecdsa_sig_encode_der(&ec->ctx, out, &out_len, &sign))
-    return Nan::ThrowError("Could not sign.");
-
-  return info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)out, out_len).ToLocalChecked());
-}
-
 NAN_METHOD(BECDSA::SignRecoverable) {
   BECDSA *ec = ObjectWrap::Unwrap<BECDSA>(info.Holder());
 
@@ -1019,6 +982,43 @@ NAN_METHOD(BECDSA::SignRecoverable) {
     Nan::New<v8::Number>(sign.param));
 
   return info.GetReturnValue().Set(obj);
+}
+
+NAN_METHOD(BECDSA::SignDER) {
+  BECDSA *ec = ObjectWrap::Unwrap<BECDSA>(info.Holder());
+
+  if (info.Length() < 2)
+    return Nan::ThrowError("ecdsa.signDER() requires arguments.");
+
+  v8::Local<v8::Object> mbuf = info[0].As<v8::Object>();
+  v8::Local<v8::Object> pbuf = info[1].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(mbuf)
+      || !node::Buffer::HasInstance(pbuf)) {
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+  }
+
+  const uint8_t *msg = (const uint8_t *)node::Buffer::Data(mbuf);
+  size_t msg_len = node::Buffer::Length(mbuf);
+
+  const uint8_t *priv = (const uint8_t *)node::Buffer::Data(pbuf);
+  size_t priv_len = node::Buffer::Length(pbuf);
+
+  if (priv_len != ec->ctx.scalar_size)
+    return Nan::ThrowRangeError("Invalid length.");
+
+  bcrypto_ecdsa_sig_t sign;
+  uint8_t out[BCRYPTO_ECDSA_MAX_DER_SIZE];
+  size_t out_len = BCRYPTO_ECDSA_MAX_DER_SIZE;
+
+  if (!bcrypto_ecdsa_sign(&ec->ctx, &sign, msg, msg_len, priv))
+    return Nan::ThrowError("Could not sign.");
+
+  if (!bcrypto_ecdsa_sig_encode_der(&ec->ctx, out, &out_len, &sign))
+    return Nan::ThrowError("Could not sign.");
+
+  return info.GetReturnValue().Set(
+    Nan::CopyBuffer((char *)out, out_len).ToLocalChecked());
 }
 
 NAN_METHOD(BECDSA::SignRecoverableDER) {
