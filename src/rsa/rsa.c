@@ -5,7 +5,7 @@
 #include <assert.h>
 #include <string.h>
 #include <stdint.h>
-#include <stdbool.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include "rsa.h"
 
@@ -69,66 +69,66 @@ bcrypto_count_bits(const uint8_t *in, size_t in_len) {
   return bits;
 }
 
-static bool
+static int
 bcrypto_rsa_sane_pubkey(const bcrypto_rsa_key_t *key) {
   if (key == NULL)
-    return false;
+    return 0;
 
   size_t nb = bcrypto_count_bits(key->nd, key->nl);
 
   if (nb < BCRYPTO_RSA_MIN_BITS || nb > BCRYPTO_RSA_MAX_BITS)
-    return false;
+    return 0;
 
   size_t eb = bcrypto_count_bits(key->ed, key->el);
 
   if (eb < BCRYPTO_RSA_MIN_EXP_BITS || eb > BCRYPTO_RSA_MAX_EXP_BITS)
-    return false;
+    return 0;
 
   if ((key->ed[key->el - 1] & 1) == 0)
-    return false;
+    return 0;
 
-  return true;
+  return 1;
 }
 
-static bool
+static int
 bcrypto_rsa_sane_privkey(const bcrypto_rsa_key_t *key) {
   if (!bcrypto_rsa_sane_pubkey(key))
-    return false;
+    return 0;
 
   size_t nb = bcrypto_count_bits(key->nd, key->nl);
   size_t db = bcrypto_count_bits(key->dd, key->dl);
 
   if (db == 0 || db > nb)
-    return false;
+    return 0;
 
   size_t pb = bcrypto_count_bits(key->pd, key->pl);
   size_t qb = bcrypto_count_bits(key->qd, key->ql);
 
   if (nb > pb + qb)
-    return false;
+    return 0;
 
   size_t dpb = bcrypto_count_bits(key->dpd, key->dpl);
 
   if (dpb == 0 || dpb > pb)
-    return false;
+    return 0;
 
   size_t dqb = bcrypto_count_bits(key->dqd, key->dql);
 
   if (dqb == 0 || dqb > qb)
-    return false;
+    return 0;
 
   size_t qib = bcrypto_count_bits(key->qid, key->qil);
 
   if (qib == 0 || qib > pb)
-    return false;
+    return 0;
 
-  return true;
+  return 1;
 }
 
-static bool
+static int
 bcrypto_rsa_sane_compute(const bcrypto_rsa_key_t *key) {
   if (key == NULL)
-    return false;
+    return 0;
 
   size_t nb = bcrypto_count_bits(key->nd, key->nl);
   size_t eb = bcrypto_count_bits(key->ed, key->el);
@@ -140,54 +140,54 @@ bcrypto_rsa_sane_compute(const bcrypto_rsa_key_t *key) {
   size_t qib = bcrypto_count_bits(key->qid, key->qil);
 
   if (pb == 0 || qb == 0)
-    return false;
+    return 0;
 
   if (eb == 0 && db == 0)
-    return false;
+    return 0;
 
   if (nb != 0) {
     if (nb < BCRYPTO_RSA_MIN_BITS || nb > BCRYPTO_RSA_MAX_BITS)
-      return false;
+      return 0;
 
     if (nb > pb + qb)
-      return false;
+      return 0;
   }
 
   if (eb != 0) {
     if (eb < BCRYPTO_RSA_MIN_EXP_BITS || eb > BCRYPTO_RSA_MAX_EXP_BITS)
-      return false;
+      return 0;
 
     if ((key->ed[key->el - 1] & 1) == 0)
-      return false;
+      return 0;
   }
 
   if (db != 0) {
     if (db > pb + qb)
-      return false;
+      return 0;
   }
 
   if (dpb != 0) {
     if (dpb > pb)
-      return false;
+      return 0;
   }
 
   if (dqb != 0) {
     if (dqb > qb)
-      return false;
+      return 0;
   }
 
   if (qib != 0) {
     if (qib > pb)
-      return false;
+      return 0;
   }
 
-  return true;
+  return 1;
 }
 
-static bool
+static int
 bcrypto_rsa_needs_compute(const bcrypto_rsa_key_t *key) {
   if (key == NULL)
-    return false;
+    return 0;
 
   return bcrypto_count_bits(key->nd, key->nl) == 0
       || bcrypto_count_bits(key->ed, key->el) == 0
@@ -769,11 +769,9 @@ fail:
   return NULL;
 }
 
-bool
-bcrypto_rsa_privkey_compute(
-  const bcrypto_rsa_key_t *priv,
-  bcrypto_rsa_key_t **key
-) {
+int
+bcrypto_rsa_privkey_compute(bcrypto_rsa_key_t **key,
+                            const bcrypto_rsa_key_t *priv) {
   assert(key);
 
   RSA *priv_r = NULL;
@@ -797,7 +795,7 @@ bcrypto_rsa_privkey_compute(
 
   if (!bcrypto_rsa_needs_compute(priv)) {
     *key = NULL;
-    return true;
+    return 1;
   }
 
   priv_r = bcrypto_rsa_key2priv(priv);
@@ -981,7 +979,7 @@ bcrypto_rsa_privkey_compute(
 
   *key = out;
 
-  return true;
+  return 1;
 
 fail:
   if (priv_r)
@@ -1026,10 +1024,10 @@ fail:
   if (out_r)
     RSA_free(out_r);
 
-  return false;
+  return 0;
 }
 
-bool
+int
 bcrypto_rsa_privkey_verify(const bcrypto_rsa_key_t *priv) {
   RSA *priv_r = NULL;
 
@@ -1046,30 +1044,28 @@ bcrypto_rsa_privkey_verify(const bcrypto_rsa_key_t *priv) {
 
   RSA_free(priv_r);
 
-  return true;
+  return 1;
 
 fail:
   if (priv_r)
     RSA_free(priv_r);
 
-  return false;
+  return 0;
 }
 
-bool
-bcrypto_rsa_privkey_export(
-  const bcrypto_rsa_key_t *priv,
-  uint8_t **out,
-  size_t *out_len
-) {
+int
+bcrypto_rsa_privkey_export(uint8_t **out,
+                           size_t *out_len,
+                           const bcrypto_rsa_key_t *priv) {
   assert(out && out_len);
 
   if (!bcrypto_rsa_sane_privkey(priv))
-    return false;
+    return 0;
 
   RSA *priv_r = bcrypto_rsa_key2priv(priv);
 
   if (!priv_r)
-    return false;
+    return 0;
 
   uint8_t *buf = NULL;
   int len = i2d_RSAPrivateKey(priv_r, &buf);
@@ -1077,21 +1073,18 @@ bcrypto_rsa_privkey_export(
   RSA_free(priv_r);
 
   if (len <= 0)
-    return false;
+    return 0;
 
   FIX_BORINGSSL(buf, len);
 
   *out = buf;
   *out_len = (size_t)len;
 
-  return true;
+  return 1;
 }
 
 bcrypto_rsa_key_t *
-bcrypto_rsa_privkey_import(
-  const uint8_t *raw,
-  size_t raw_len
-) {
+bcrypto_rsa_privkey_import(const uint8_t *raw, size_t raw_len) {
   RSA *priv_r = NULL;
   const uint8_t *p = raw;
 
@@ -1105,12 +1098,10 @@ bcrypto_rsa_privkey_import(
   return k;
 }
 
-bool
-bcrypto_rsa_privkey_export_pkcs8(
-  const bcrypto_rsa_key_t *priv,
-  uint8_t **out,
-  size_t *out_len
-) {
+int
+bcrypto_rsa_privkey_export_pkcs8(uint8_t **out,
+                                 size_t *out_len,
+                                 const bcrypto_rsa_key_t *priv) {
   assert(out && out_len);
 
   // https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ameth.c#L142
@@ -1158,7 +1149,7 @@ bcrypto_rsa_privkey_export_pkcs8(
   RSA_free(rsa);
   PKCS8_PRIV_KEY_INFO_free(p8);
 
-  return true;
+  return 1;
 
 fail:
   if (rsa)
@@ -1170,14 +1161,11 @@ fail:
   if (rk)
     OPENSSL_free(rk);
 
-  return false;
+  return 0;
 }
 
 bcrypto_rsa_key_t *
-bcrypto_rsa_privkey_import_pkcs8(
-  const uint8_t *raw,
-  size_t raw_len
-) {
+bcrypto_rsa_privkey_import_pkcs8(const uint8_t *raw, size_t raw_len) {
   // https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ameth.c#L169
   PKCS8_PRIV_KEY_INFO *p8 = NULL;
   const unsigned char *p;
@@ -1227,26 +1215,24 @@ fail:
   return NULL;
 }
 
-bool
+int
 bcrypto_rsa_pubkey_verify(const bcrypto_rsa_key_t *pub) {
   return bcrypto_rsa_sane_pubkey(pub);
 }
 
-bool
-bcrypto_rsa_pubkey_export(
-  const bcrypto_rsa_key_t *pub,
-  uint8_t **out,
-  size_t *out_len
-) {
+int
+bcrypto_rsa_pubkey_export(uint8_t **out,
+                          size_t *out_len,
+                          const bcrypto_rsa_key_t *pub) {
   assert(out && out_len);
 
   if (!bcrypto_rsa_sane_pubkey(pub))
-    return false;
+    return 0;
 
   RSA *pub_r = bcrypto_rsa_key2pub(pub);
 
   if (!pub_r)
-    return false;
+    return 0;
 
   uint8_t *buf = NULL;
   int len = i2d_RSAPublicKey(pub_r, &buf);
@@ -1254,21 +1240,18 @@ bcrypto_rsa_pubkey_export(
   RSA_free(pub_r);
 
   if (len <= 0)
-    return false;
+    return 0;
 
   FIX_BORINGSSL(buf, len);
 
   *out = buf;
   *out_len = (size_t)len;
 
-  return true;
+  return 1;
 }
 
 bcrypto_rsa_key_t *
-bcrypto_rsa_pubkey_import(
-  const uint8_t *raw,
-  size_t raw_len
-) {
+bcrypto_rsa_pubkey_import(const uint8_t *raw, size_t raw_len) {
   RSA *pub_r = NULL;
   const uint8_t *p = raw;
 
@@ -1282,21 +1265,19 @@ bcrypto_rsa_pubkey_import(
   return k;
 }
 
-bool
-bcrypto_rsa_pubkey_export_spki(
-  const bcrypto_rsa_key_t *pub,
-  uint8_t **out,
-  size_t *out_len
-) {
+int
+bcrypto_rsa_pubkey_export_spki(uint8_t **out,
+                               size_t *out_len,
+                               const bcrypto_rsa_key_t *pub) {
   assert(out && out_len);
 
   if (!bcrypto_rsa_sane_pubkey(pub))
-    return false;
+    return 0;
 
   RSA *pub_r = bcrypto_rsa_key2pub(pub);
 
   if (!pub_r)
-    return false;
+    return 0;
 
   uint8_t *buf = NULL;
   int len = i2d_RSA_PUBKEY(pub_r, &buf);
@@ -1304,21 +1285,18 @@ bcrypto_rsa_pubkey_export_spki(
   RSA_free(pub_r);
 
   if (len <= 0)
-    return false;
+    return 0;
 
   FIX_BORINGSSL(buf, len);
 
   *out = buf;
   *out_len = (size_t)len;
 
-  return true;
+  return 1;
 }
 
 bcrypto_rsa_key_t *
-bcrypto_rsa_pubkey_import_spki(
-  const uint8_t *raw,
-  size_t raw_len
-) {
+bcrypto_rsa_pubkey_import_spki(const uint8_t *raw, size_t raw_len) {
   RSA *pub_r = NULL;
   const uint8_t *p = raw;
 
@@ -1332,15 +1310,13 @@ bcrypto_rsa_pubkey_import_spki(
   return k;
 }
 
-bool
-bcrypto_rsa_sign(
-  const char *alg,
-  const uint8_t *msg,
-  size_t msg_len,
-  const bcrypto_rsa_key_t *priv,
-  uint8_t **sig,
-  size_t *sig_len
-) {
+int
+bcrypto_rsa_sign(uint8_t **sig,
+                 size_t *sig_len,
+                 const char *alg,
+                 const uint8_t *msg,
+                 size_t msg_len,
+                 const bcrypto_rsa_key_t *priv) {
   assert(sig && sig_len);
 
   int type = -1;
@@ -1402,7 +1378,7 @@ bcrypto_rsa_sign(
   *sig = sig_buf;
   *sig_len = (size_t)sig_buf_len;
 
-  return true;
+  return 1;
 
 fail:
   if (priv_r)
@@ -1411,18 +1387,16 @@ fail:
   if (sig_buf)
     free(sig_buf);
 
-  return false;
+  return 0;
 }
 
-bool
-bcrypto_rsa_verify(
-  const char *alg,
-  const uint8_t *msg,
-  size_t msg_len,
-  const uint8_t *sig,
-  size_t sig_len,
-  const bcrypto_rsa_key_t *pub
-) {
+int
+bcrypto_rsa_verify(const char *alg,
+                   const uint8_t *msg,
+                   size_t msg_len,
+                   const uint8_t *sig,
+                   size_t sig_len,
+                   const bcrypto_rsa_key_t *pub) {
   int type = -1;
   RSA *pub_r = NULL;
 
@@ -1452,22 +1426,20 @@ bcrypto_rsa_verify(
 
   RSA_free(pub_r);
 
-  return true;
+  return 1;
 fail:
   if (pub_r)
     RSA_free(pub_r);
 
-  return false;
+  return 0;
 }
 
-bool
-bcrypto_rsa_encrypt(
-  const uint8_t *msg,
-  size_t msg_len,
-  const bcrypto_rsa_key_t *pub,
-  uint8_t **ct,
-  size_t *ct_len
-) {
+int
+bcrypto_rsa_encrypt(uint8_t **ct,
+                    size_t *ct_len,
+                    const uint8_t *msg,
+                    size_t msg_len,
+                    const bcrypto_rsa_key_t *pub) {
   assert(ct && ct_len);
 
   RSA *pub_r = NULL;
@@ -1512,7 +1484,7 @@ bcrypto_rsa_encrypt(
   *ct = c;
   *ct_len = (size_t)c_len;
 
-  return true;
+  return 1;
 
 fail:
   if (pub_r)
@@ -1521,17 +1493,15 @@ fail:
   if (c)
     free(c);
 
-  return false;
+  return 0;
 }
 
-bool
-bcrypto_rsa_decrypt(
-  const uint8_t *msg,
-  size_t msg_len,
-  const bcrypto_rsa_key_t *priv,
-  uint8_t **pt,
-  size_t *pt_len
-) {
+int
+bcrypto_rsa_decrypt(uint8_t **pt,
+                    size_t *pt_len,
+                    const uint8_t *msg,
+                    size_t msg_len,
+                    const bcrypto_rsa_key_t *priv) {
   assert(pt && pt_len);
 
   RSA *priv_r = NULL;
@@ -1587,7 +1557,7 @@ bcrypto_rsa_decrypt(
   *pt = out;
   *pt_len = (size_t)out_len;
 
-  return true;
+  return 1;
 
 fail:
   if (priv_r)
@@ -1596,20 +1566,18 @@ fail:
   if (out)
     free(out);
 
-  return false;
+  return 0;
 }
 
-bool
-bcrypto_rsa_encrypt_oaep(
-  const char *alg,
-  const uint8_t *msg,
-  size_t msg_len,
-  const bcrypto_rsa_key_t *pub,
-  const uint8_t *label,
-  size_t label_len,
-  uint8_t **ct,
-  size_t *ct_len
-) {
+int
+bcrypto_rsa_encrypt_oaep(uint8_t **ct,
+                         size_t *ct_len,
+                         const char *alg,
+                         const uint8_t *msg,
+                         size_t msg_len,
+                         const bcrypto_rsa_key_t *pub,
+                         const uint8_t *label,
+                         size_t label_len) {
   assert(ct && ct_len);
 
   int type = -1;
@@ -1693,7 +1661,7 @@ bcrypto_rsa_encrypt_oaep(
   *ct = c;
   *ct_len = (size_t)c_len;
 
-  return true;
+  return 1;
 
 fail:
   if (pub_r)
@@ -1705,20 +1673,18 @@ fail:
   if (c)
     free(c);
 
-  return false;
+  return 0;
 }
 
-bool
-bcrypto_rsa_decrypt_oaep(
-  const char *alg,
-  const uint8_t *msg,
-  size_t msg_len,
-  const bcrypto_rsa_key_t *priv,
-  const uint8_t *label,
-  size_t label_len,
-  uint8_t **pt,
-  size_t *pt_len
-) {
+int
+bcrypto_rsa_decrypt_oaep(uint8_t **pt,
+                         size_t *pt_len,
+                         const char *alg,
+                         const uint8_t *msg,
+                         size_t msg_len,
+                         const bcrypto_rsa_key_t *priv,
+                         const uint8_t *label,
+                         size_t label_len) {
   assert(pt && pt_len);
 
   int type = -1;
@@ -1818,7 +1784,7 @@ bcrypto_rsa_decrypt_oaep(
   *pt = out;
   *pt_len = (size_t)out_len;
 
-  return true;
+  return 1;
 
 fail:
   if (priv_r)
@@ -1830,19 +1796,17 @@ fail:
   if (out)
     free(out);
 
-  return false;
+  return 0;
 }
 
-bool
-bcrypto_rsa_sign_pss(
-  const char *alg,
-  const uint8_t *msg,
-  size_t msg_len,
-  const bcrypto_rsa_key_t *priv,
-  int salt_len,
-  uint8_t **sig,
-  size_t *sig_len
-) {
+int
+bcrypto_rsa_sign_pss(uint8_t **sig,
+                     size_t *sig_len,
+                     const char *alg,
+                     const uint8_t *msg,
+                     size_t msg_len,
+                     const bcrypto_rsa_key_t *priv,
+                     int salt_len) {
   assert(sig && sig_len);
 
   int type = -1;
@@ -1946,7 +1910,7 @@ bcrypto_rsa_sign_pss(
   *sig = c;
   *sig_len = (size_t)c_len;
 
-  return true;
+  return 1;
 
 fail:
   if (priv_r)
@@ -1958,19 +1922,17 @@ fail:
   if (c)
     free(c);
 
-  return false;
+  return 0;
 }
 
-bool
-bcrypto_rsa_verify_pss(
-  const char *alg,
-  const uint8_t *msg,
-  size_t msg_len,
-  const uint8_t *sig,
-  size_t sig_len,
-  const bcrypto_rsa_key_t *pub,
-  int salt_len
-) {
+int
+bcrypto_rsa_verify_pss(const char *alg,
+                       const uint8_t *msg,
+                       size_t msg_len,
+                       const uint8_t *sig,
+                       size_t sig_len,
+                       const bcrypto_rsa_key_t *pub,
+                       int salt_len) {
   int type = 0;
   const EVP_MD *md = NULL;
   RSA *pub_r = NULL;
@@ -2049,7 +2011,7 @@ bcrypto_rsa_verify_pss(
   RSA_free(pub_r);
   free(em);
 
-  return true;
+  return 1;
 
 fail:
   if (pub_r)
@@ -2058,17 +2020,15 @@ fail:
   if (em)
     free(em);
 
-  return false;
+  return 0;
 }
 
-bool
-bcrypto_rsa_encrypt_raw(
-  const uint8_t *msg,
-  size_t msg_len,
-  const bcrypto_rsa_key_t *pub,
-  uint8_t **out,
-  size_t *out_len
-) {
+int
+bcrypto_rsa_encrypt_raw(uint8_t **out,
+                        size_t *out_len,
+                        const uint8_t *msg,
+                        size_t msg_len,
+                        const bcrypto_rsa_key_t *pub) {
   assert(out && out_len);
 
   RSA *pub_r = NULL;
@@ -2110,7 +2070,7 @@ bcrypto_rsa_encrypt_raw(
   *out = c;
   *out_len = (size_t)c_len;
 
-  return true;
+  return 1;
 
 fail:
   if (pub_r)
@@ -2119,17 +2079,15 @@ fail:
   if (c)
     free(c);
 
-  return false;
+  return 0;
 }
 
-bool
-bcrypto_rsa_decrypt_raw(
-  const uint8_t *msg,
-  size_t msg_len,
-  const bcrypto_rsa_key_t *priv,
-  uint8_t **out,
-  size_t *out_len
-) {
+int
+bcrypto_rsa_decrypt_raw(uint8_t **out,
+                        size_t *out_len,
+                        const uint8_t *msg,
+                        size_t msg_len,
+                        const bcrypto_rsa_key_t *priv) {
   assert(out && out_len);
 
   RSA *priv_r = NULL;
@@ -2179,7 +2137,7 @@ bcrypto_rsa_decrypt_raw(
   *out = em;
   *out_len = (size_t)em_len;
 
-  return true;
+  return 1;
 
 fail:
   if (priv_r)
@@ -2188,21 +2146,19 @@ fail:
   if (em)
     free(em);
 
-  return false;
+  return 0;
 }
 
-bool
-bcrypto_rsa_veil(
-  const uint8_t *msg,
-  size_t msg_len,
-  size_t bits,
-  const bcrypto_rsa_key_t *pub,
-  uint8_t **out,
-  size_t *out_len
-) {
+int
+bcrypto_rsa_veil(uint8_t **out,
+                 size_t *out_len,
+                 const uint8_t *msg,
+                 size_t msg_len,
+                 size_t bits,
+                 const bcrypto_rsa_key_t *pub) {
   assert(out && out_len);
 
-  bool ret = false;
+  int ret = 0;
   BN_CTX *ctx = NULL;
   BIGNUM *c0 = NULL;
   BIGNUM *n = NULL;
@@ -2294,7 +2250,7 @@ bcrypto_rsa_veil(
   *out_len = c_len;
   c = NULL;
 
-  ret = true;
+  ret = 1;
 fail:
   if (ctx)
     BN_CTX_free(ctx);
@@ -2323,18 +2279,16 @@ fail:
   return ret;
 }
 
-bool
-bcrypto_rsa_unveil(
-  const uint8_t *msg,
-  size_t msg_len,
-  size_t bits,
-  const bcrypto_rsa_key_t *pub,
-  uint8_t **out,
-  size_t *out_len
-) {
+int
+bcrypto_rsa_unveil(uint8_t **out,
+                   size_t *out_len,
+                   const uint8_t *msg,
+                   size_t msg_len,
+                   size_t bits,
+                   const bcrypto_rsa_key_t *pub) {
   assert(out && out_len);
 
-  bool ret = false;
+  int ret = 0;
   BN_CTX *ctx = NULL;
   BIGNUM *c1 = NULL;
   BIGNUM *n = NULL;
@@ -2377,7 +2331,7 @@ bcrypto_rsa_unveil(
   *out_len = c_len;
   c = NULL;
 
-  ret = true;
+  ret = 1;
 fail:
   if (ctx)
     BN_CTX_free(ctx);
@@ -2394,12 +2348,12 @@ fail:
   return ret;
 }
 
-bool
+int
 bcrypto_rsa_has_hash(const char *alg) {
   int type = bcrypto_rsa_hash_type(alg);
 
   if (type == -1)
-    return false;
+    return 0;
 
   return EVP_get_digestbynid(type) != NULL;
 }
