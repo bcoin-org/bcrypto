@@ -312,8 +312,8 @@ bcrypto_ecdsa_sig_decode_der(bcrypto_ecdsa_t *ec,
   size_t lenbyte;
   int overflow = 0;
 
-  memset(sig->r, 0x00, BCRYPTO_ECDSA_MAX_SCALAR_SIZE);
-  memset(sig->s, 0x00, BCRYPTO_ECDSA_MAX_SCALAR_SIZE);
+  memset(sig->r, 0x00, ec->scalar_size);
+  memset(sig->s, 0x00, ec->scalar_size);
 
   /* Sequence tag byte */
   if (pos == raw_len || raw[pos] != 0x30)
@@ -452,8 +452,8 @@ bcrypto_ecdsa_sig_decode_der(bcrypto_ecdsa_t *ec,
   }
 
   if (overflow) {
-    memset(sig->r, 0x00, BCRYPTO_ECDSA_MAX_SCALAR_SIZE);
-    memset(sig->s, 0x00, BCRYPTO_ECDSA_MAX_SCALAR_SIZE);
+    memset(sig->r, 0x00, ec->scalar_size);
+    memset(sig->s, 0x00, ec->scalar_size);
   }
 
   return 1;
