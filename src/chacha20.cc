@@ -155,10 +155,10 @@ NAN_METHOD(BChaCha20::Encrypt) {
   if (!node::Buffer::HasInstance(data_buf))
     return Nan::ThrowTypeError("First argument must be a buffer.");
 
-  const uint8_t *data = (const uint8_t *)node::Buffer::Data(data_buf);
+  uint8_t *data = (uint8_t *)node::Buffer::Data(data_buf);
   size_t data_len = node::Buffer::Length(data_buf);
 
-  bcrypto_chacha20_encrypt(&chacha->ctx, data, (uint8_t *)data, data_len);
+  bcrypto_chacha20_encrypt(&chacha->ctx, data, data, data_len);
 
   info.GetReturnValue().Set(data_buf);
 }
@@ -181,13 +181,13 @@ NAN_METHOD(BChaCha20::Crypt) {
   const uint8_t *input = (const uint8_t *)node::Buffer::Data(input_buf);
   size_t input_len = node::Buffer::Length(input_buf);
 
-  const uint8_t *output = (const uint8_t *)node::Buffer::Data(output_buf);
+  uint8_t *output = (uint8_t *)node::Buffer::Data(output_buf);
   size_t output_len = node::Buffer::Length(output_buf);
 
   if (output_len < input_len)
     return Nan::ThrowRangeError("Invalid output size.");
 
-  bcrypto_chacha20_encrypt(&chacha->ctx, input, (uint8_t *)output, input_len);
+  bcrypto_chacha20_encrypt(&chacha->ctx, output, input, input_len);
 
   info.GetReturnValue().Set(output_buf);
 }

@@ -37,27 +37,21 @@ typedef struct {
 } bcrypto_chacha20_ctx;
 
 void
-bcrypto_chacha20_setup(
-  bcrypto_chacha20_ctx *ctx,
-  const uint8_t *key,
-  size_t length,
-  const uint8_t *nonce,
-  size_t nonce_size
-);
+bcrypto_chacha20_setup(bcrypto_chacha20_ctx *ctx,
+                       const uint8_t *key,
+                       size_t length,
+                       const uint8_t *nonce,
+                       size_t nonce_size);
 
 void
-bcrypto_chacha20_keysetup(
-  bcrypto_chacha20_ctx *ctx,
-  const uint8_t *key,
-  size_t length
-);
+bcrypto_chacha20_keysetup(bcrypto_chacha20_ctx *ctx,
+                          const uint8_t *key,
+                          size_t length);
 
 void
-bcrypto_chacha20_ivsetup(
-  bcrypto_chacha20_ctx *ctx,
-  const uint8_t *nonce,
-  size_t nonce_size
-);
+bcrypto_chacha20_ivsetup(bcrypto_chacha20_ctx *ctx,
+                         const uint8_t *nonce,
+                         size_t nonce_size);
 
 void
 bcrypto_chacha20_counter_set(bcrypto_chacha20_ctx *ctx, uint64_t counter);
@@ -68,12 +62,10 @@ void
 bcrypto_chacha20_block(bcrypto_chacha20_ctx *ctx, uint32_t output[16]);
 
 void
-bcrypto_chacha20_encrypt(
-  bcrypto_chacha20_ctx *ctx,
-  const uint8_t *in,
-  uint8_t *out,
-  size_t length
-);
+bcrypto_chacha20_encrypt(bcrypto_chacha20_ctx *ctx,
+                         uint8_t *out,
+                         const uint8_t *in,
+                         size_t length);
 
 #if defined(__cplusplus)
 }

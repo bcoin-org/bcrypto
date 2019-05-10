@@ -68,7 +68,7 @@ bcrypto_aead_encrypt(bcrypto_aead_ctx *aead,
   if (!aead->has_cipher)
     bcrypto_aead_pad16(aead, aead->aad_len);
 
-  bcrypto_chacha20_encrypt(&aead->chacha, in, out, len);
+  bcrypto_chacha20_encrypt(&aead->chacha, out, in, len);
   bcrypto_poly1305_update(&aead->poly, out, len);
 
   aead->cipher_len += len;
@@ -87,7 +87,7 @@ bcrypto_aead_decrypt(bcrypto_aead_ctx *aead,
   aead->has_cipher = 1;
 
   bcrypto_poly1305_update(&aead->poly, in, len);
-  bcrypto_chacha20_encrypt(&aead->chacha, in, out, len);
+  bcrypto_chacha20_encrypt(&aead->chacha, out, in, len);
 }
 
 void

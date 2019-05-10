@@ -50,23 +50,19 @@
   x[c] += x[d]; x[b] = ROTL32(x[b] ^ x[c], 7);
 
 void
-bcrypto_chacha20_setup(
-  bcrypto_chacha20_ctx *ctx,
-  const uint8_t *key,
-  size_t length,
-  const uint8_t *nonce,
-  size_t nonce_size
-) {
+bcrypto_chacha20_setup(bcrypto_chacha20_ctx *ctx,
+                       const uint8_t *key,
+                       size_t length,
+                       const uint8_t *nonce,
+                       size_t nonce_size) {
   bcrypto_chacha20_keysetup(ctx, key, length);
   bcrypto_chacha20_ivsetup(ctx, nonce, nonce_size);
 }
 
 void
-bcrypto_chacha20_keysetup(
-  bcrypto_chacha20_ctx *ctx,
-  const uint8_t *key,
-  size_t length
-) {
+bcrypto_chacha20_keysetup(bcrypto_chacha20_ctx *ctx,
+                          const uint8_t *key,
+                          size_t length) {
   const char *constants = (length == 32)
     ? "expand 32-byte k"
     : "expand 16-byte k";
@@ -90,11 +86,9 @@ bcrypto_chacha20_keysetup(
 }
 
 void
-bcrypto_chacha20_ivsetup(
-  bcrypto_chacha20_ctx *ctx,
-  const uint8_t *nonce,
-  size_t nonce_size
-) {
+bcrypto_chacha20_ivsetup(bcrypto_chacha20_ctx *ctx,
+                         const uint8_t *nonce,
+                         size_t nonce_size) {
   if (nonce_size == 16) {
     ctx->state[12] = READLE(nonce + 0);
     ctx->state[13] = READLE(nonce + 4);
@@ -288,12 +282,10 @@ bcrypto_chacha20_block(bcrypto_chacha20_ctx *ctx, uint32_t output[16]) {
 }
 
 static inline
-void bcrypto_chacha20_xor(
-  uint8_t *stream,
-  const uint8_t **in,
-  uint8_t **out,
-  size_t length
-) {
+void bcrypto_chacha20_xor(uint8_t *stream,
+                          uint8_t **out,
+                          const uint8_t **in,
+                          size_t length) {
   uint8_t *end_stream = stream + length;
   do {
     *(*out)++ = *(*in)++ ^ *stream++;
@@ -301,19 +293,17 @@ void bcrypto_chacha20_xor(
 }
 
 void
-bcrypto_chacha20_encrypt(
-  bcrypto_chacha20_ctx *ctx,
-  const uint8_t *in,
-  uint8_t *out,
-  size_t length
-) {
+bcrypto_chacha20_encrypt(bcrypto_chacha20_ctx *ctx,
+                         uint8_t *out,
+                         const uint8_t *in,
+                         size_t length) {
   if (length) {
     uint8_t *k = (uint8_t *)ctx->stream;
 
     if (ctx->available) {
       size_t amount = MIN(length, ctx->available);
       size_t size = sizeof(ctx->stream) - ctx->available;
-      bcrypto_chacha20_xor(k + size, &in, &out, amount);
+      bcrypto_chacha20_xor(k + size, &out, &in, amount);
       ctx->available -= amount;
       length -= amount;
     }
@@ -321,7 +311,7 @@ bcrypto_chacha20_encrypt(
     while (length) {
       size_t amount = MIN(length, sizeof(ctx->stream));
       bcrypto_chacha20_block(ctx, ctx->stream);
-      bcrypto_chacha20_xor(k, &in, &out, amount);
+      bcrypto_chacha20_xor(k, &out, &in, amount);
       length -= amount;
       ctx->available = sizeof(ctx->stream) - amount;
     }
