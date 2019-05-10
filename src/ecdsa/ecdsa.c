@@ -762,7 +762,7 @@ bcrypto_ecdsa_privkey_import(bcrypto_ecdsa_t *ec,
 
   const uint8_t *p = raw;
 
-  if (!d2i_ECPrivateKey(&priv_ec, &p, raw_len))
+  if (d2i_ECPrivateKey(&priv_ec, &p, raw_len) == NULL)
     goto fail;
 
   const BIGNUM *priv_bn = EC_KEY_get0_private_key(priv_ec);
@@ -854,7 +854,7 @@ bcrypto_ecdsa_privkey_import_pkcs8(bcrypto_ecdsa_t *ec,
 
   const uint8_t *pp = raw;
 
-  if (!d2i_PKCS8_PRIV_KEY_INFO(&p8, &pp, raw_len))
+  if (d2i_PKCS8_PRIV_KEY_INFO(&p8, &pp, raw_len) == NULL)
     goto fail;
 
   if (!PKCS8_pkey_get0(NULL, &p, &pklen, &palg, p8))
@@ -1186,7 +1186,7 @@ bcrypto_ecdsa_pubkey_import_spki(bcrypto_ecdsa_t *ec,
 
   const uint8_t *p = raw;
 
-  if (!d2i_EC_PUBKEY(&pub_ec, &p, raw_len))
+  if (d2i_EC_PUBKEY(&pub_ec, &p, raw_len) == NULL)
     goto fail;
 
   if (!bcrypto_ecdsa_pubkey_from_ec_key(ec, out, pub_ec))

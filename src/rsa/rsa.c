@@ -1113,7 +1113,7 @@ bcrypto_rsa_privkey_import(const uint8_t *raw, size_t raw_len) {
   RSA *priv_r = NULL;
   const uint8_t *p = raw;
 
-  if (!d2i_RSAPrivateKey(&priv_r, &p, raw_len))
+  if (d2i_RSAPrivateKey(&priv_r, &p, raw_len) == NULL)
     return NULL;
 
   bcrypto_rsa_key_t *k = bcrypto_rsa_priv2key(priv_r);
@@ -1203,7 +1203,7 @@ bcrypto_rsa_privkey_import_pkcs8(const uint8_t *raw, size_t raw_len) {
 
   const uint8_t *pp = raw;
 
-  if (!d2i_PKCS8_PRIV_KEY_INFO(&p8, &pp, raw_len))
+  if (d2i_PKCS8_PRIV_KEY_INFO(&p8, &pp, raw_len) == NULL)
     goto fail;
 
   if (!PKCS8_pkey_get0(NULL, &p, &pklen, &alg, p8))
@@ -1280,7 +1280,7 @@ bcrypto_rsa_pubkey_import(const uint8_t *raw, size_t raw_len) {
   RSA *pub_r = NULL;
   const uint8_t *p = raw;
 
-  if (!d2i_RSAPublicKey(&pub_r, &p, raw_len))
+  if (d2i_RSAPublicKey(&pub_r, &p, raw_len) == NULL)
     return NULL;
 
   bcrypto_rsa_key_t *k = bcrypto_rsa_pub2key(pub_r);
@@ -1325,7 +1325,7 @@ bcrypto_rsa_pubkey_import_spki(const uint8_t *raw, size_t raw_len) {
   RSA *pub_r = NULL;
   const uint8_t *p = raw;
 
-  if (!d2i_RSA_PUBKEY(&pub_r, &p, raw_len))
+  if (d2i_RSA_PUBKEY(&pub_r, &p, raw_len) == NULL)
     return NULL;
 
   bcrypto_rsa_key_t *k = bcrypto_rsa_pub2key(pub_r);
