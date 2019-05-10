@@ -1365,8 +1365,8 @@ bcrypto_dsa_derive(uint8_t **out,
   if (!BN_mod_exp(secret_bn, y_pub, x_priv, p_pub, ctx))
     goto fail;
 
-  secret_len = BN_num_bytes(secret_bn);
-  secret = malloc(secret_len);
+  secret_len = (size_t)BN_num_bytes(secret_bn);
+  secret = (uint8_t *)malloc(secret_len);
 
   if (secret == NULL)
     goto fail;
