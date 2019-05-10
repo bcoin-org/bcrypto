@@ -6,25 +6,23 @@
 #include "openssl/aes.h"
 
 static inline void
-XOR(uint8_t *out, uint8_t *a, uint8_t *b) {
+XOR(uint8_t *out, const uint8_t *a, const uint8_t *b) {
   uint32_t i;
   for (i = 0; i < 16; i++)
     out[i] = a[i] ^ b[i];
 }
 
-bool
-bcrypto_aes_encipher(
-  const uint8_t *data,
-  const uint32_t datalen,
-  const uint8_t *key,
-  const uint8_t *iv,
-  uint8_t *out,
-  uint32_t *outlen
-) {
-  uint8_t *pblock = (uint8_t *)data;
+int
+bcrypto_aes_encipher(uint8_t *out,
+                     uint32_t *outlen,
+                     const uint8_t *data,
+                     const uint32_t datalen,
+                     const uint8_t *key,
+                     const uint8_t *iv) {
+  const uint8_t *pblock = data;
+  const uint8_t *pprev = pblock;
+  const uint8_t *cprev = iv;
   uint8_t *cblock = out;
-  uint8_t *pprev = pblock;
-  uint8_t *cprev = (uint8_t *)iv;
   uint32_t blocks = datalen / 16;
   uint32_t trailing = datalen % 16;
   uint32_t i;
@@ -33,7 +31,7 @@ bcrypto_aes_encipher(
   AES_set_encrypt_key(key, 256, &enckey);
 
   if (*outlen != datalen + (16 - trailing))
-    return false;
+    return 0;
 
   // Encrypt all blocks except for the last.
   for (i = 0; i < blocks; i++) {
@@ -59,31 +57,29 @@ bcrypto_aes_encipher(
   XOR(cblock, last, cprev);
   AES_encrypt(cblock, cblock, &enckey);
 
-  return true;
+  return 1;
 }
 
-bool
-bcrypto_aes_decipher(
-  const uint8_t *data,
-  const uint32_t datalen,
-  const uint8_t *key,
-  const uint8_t *iv,
-  uint8_t *out,
-  uint32_t *outlen
-) {
+int
+bcrypto_aes_decipher(uint8_t *out,
+                     uint32_t *outlen,
+                     const uint8_t *data,
+                     const uint32_t datalen,
+                     const uint8_t *key,
+                     const uint8_t *iv) {
+  const uint8_t *cblock = data;
+  const uint8_t *cprev = iv;
   uint8_t *pblock = out;
-  uint8_t *cblock = (uint8_t *)data;
   uint8_t *pprev = pblock;
-  uint8_t *cprev = (uint8_t *)iv;
   uint32_t blocks = datalen / 16;
   uint32_t trailing = datalen % 16;
   uint32_t i;
 
   if (*outlen != datalen)
-    return false;
+    return 0;
 
   if (trailing != 0)
-    return false;
+    return 0;
 
   AES_KEY deckey;
   AES_set_decrypt_key(key, 256, &deckey);
@@ -104,14 +100,14 @@ bcrypto_aes_decipher(
   uint32_t n = last[b - 1];
 
   if (n == 0 || n > b)
-    return false;
+    return 0;
 
   for (i = 0; i < n; i++) {
     if (last[--b] != n)
-      return false;
+      return 0;
   }
 
   *outlen = datalen - n;
 
-  return true;
+  return 1;
 }

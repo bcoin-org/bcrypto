@@ -56,7 +56,7 @@ NAN_METHOD(BAES::Encipher) {
   if (out == NULL)
     return Nan::ThrowError("Could not allocate ciphertext.");
 
-  if (!bcrypto_aes_encipher(data, dlen, key, iv, out, &olen)) {
+  if (!bcrypto_aes_encipher(out, &olen, data, dlen, key, iv)) {
     free(out);
     return Nan::ThrowError("Encipher failed.");
   }
@@ -103,7 +103,7 @@ NAN_METHOD(BAES::Decipher) {
   if (out == NULL)
     return Nan::ThrowError("Could not allocate plaintext.");
 
-  if (!bcrypto_aes_decipher(data, dlen, key, iv, out, &olen)) {
+  if (!bcrypto_aes_decipher(out, &olen, data, dlen, key, iv)) {
     free(out);
     return Nan::ThrowError("Decipher failed.");
   }
