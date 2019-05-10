@@ -1166,6 +1166,10 @@ NAN_METHOD(BECDSA::Recover) {
     return Nan::ThrowTypeError("Third argument must be a number.");
 
   int param = (int)Nan::To<uint32_t>(info[2]).FromJust();
+
+  if (param < 0 || (param & 3) != param)
+    return Nan::ThrowTypeError("Invalid recovery parameter.");
+
   int compress = 1;
 
   if (info.Length() > 3 && !IsNull(info[3])) {
@@ -1221,6 +1225,10 @@ NAN_METHOD(BECDSA::RecoverDER) {
     return Nan::ThrowTypeError("Third argument must be a number.");
 
   int param = (int)Nan::To<uint32_t>(info[2]).FromJust();
+
+  if (param < 0 || (param & 3) != param)
+    return Nan::ThrowTypeError("Invalid recovery parameter.");
+
   int compress = 1;
 
   if (info.Length() > 3 && !IsNull(info[3])) {

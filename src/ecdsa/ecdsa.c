@@ -1502,6 +1502,9 @@ bcrypto_ecdsa_recover(bcrypto_ecdsa_t *ec,
   BIGNUM *e = NULL;
   EC_POINT *Q = NULL;
 
+  if (param < 0 || (param & 3) != param)
+    goto fail;
+
   pub_ec = EC_KEY_new_by_curve_name(ec->type);
 
   if (pub_ec == NULL)
