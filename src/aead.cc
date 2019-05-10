@@ -116,10 +116,10 @@ NAN_METHOD(BAEAD::Encrypt) {
   if (!node::Buffer::HasInstance(msg_buf))
     return Nan::ThrowTypeError("First argument must be a buffer.");
 
-  const uint8_t *msg = (const uint8_t *)node::Buffer::Data(msg_buf);
+  uint8_t *msg = (uint8_t *)node::Buffer::Data(msg_buf);
   size_t msg_len = node::Buffer::Length(msg_buf);
 
-  bcrypto_aead_encrypt(&aead->ctx, msg, (uint8_t *)msg, msg_len);
+  bcrypto_aead_encrypt(&aead->ctx, msg, msg, msg_len);
 
   info.GetReturnValue().Set(info.This());
 }
@@ -135,10 +135,10 @@ NAN_METHOD(BAEAD::Decrypt) {
   if (!node::Buffer::HasInstance(msg_buf))
     return Nan::ThrowTypeError("First argument must be a buffer.");
 
-  const uint8_t *msg = (const uint8_t *)node::Buffer::Data(msg_buf);
+  uint8_t *msg = (uint8_t *)node::Buffer::Data(msg_buf);
   size_t msg_len = node::Buffer::Length(msg_buf);
 
-  bcrypto_aead_decrypt(&aead->ctx, msg, (uint8_t *)msg, msg_len);
+  bcrypto_aead_decrypt(&aead->ctx, msg, msg, msg_len);
 
   info.GetReturnValue().Set(info.This());
 }
@@ -204,7 +204,7 @@ NAN_METHOD(BAEAD::EncryptStatic) {
   if (iv_len != 8 && iv_len != 12 && iv_len != 16)
     return Nan::ThrowRangeError("Invalid IV size.");
 
-  const uint8_t *msg = (const uint8_t *)node::Buffer::Data(msg_buf);
+  uint8_t *msg = (uint8_t *)node::Buffer::Data(msg_buf);
   size_t msg_len = node::Buffer::Length(msg_buf);
 
   const uint8_t *aad = NULL;
@@ -227,7 +227,7 @@ NAN_METHOD(BAEAD::EncryptStatic) {
   if (aad)
     bcrypto_aead_aad(&ctx, aad, aad_len);
 
-  bcrypto_aead_encrypt(&ctx, msg, (uint8_t *)msg, msg_len);
+  bcrypto_aead_encrypt(&ctx, msg, msg, msg_len);
 
   uint8_t out[16];
   bcrypto_aead_final(&ctx, &out[0]);
@@ -272,7 +272,7 @@ NAN_METHOD(BAEAD::DecryptStatic) {
   if (iv_len != 8 && iv_len != 12 && iv_len != 16)
     return Nan::ThrowRangeError("Invalid IV size.");
 
-  const uint8_t *msg = (const uint8_t *)node::Buffer::Data(msg_buf);
+  uint8_t *msg = (uint8_t *)node::Buffer::Data(msg_buf);
   size_t msg_len = node::Buffer::Length(msg_buf);
 
   const uint8_t *tag = (const uint8_t *)node::Buffer::Data(tag_buf);
@@ -301,12 +301,12 @@ NAN_METHOD(BAEAD::DecryptStatic) {
   if (aad)
     bcrypto_aead_aad(&ctx, aad, aad_len);
 
-  bcrypto_aead_decrypt(&ctx, msg, (uint8_t *)msg, msg_len);
+  bcrypto_aead_decrypt(&ctx, msg, msg, msg_len);
 
   uint8_t out[16];
   bcrypto_aead_final(&ctx, &out[0]);
 
-  bool result = bcrypto_aead_verify(&out[0], tag);
+  int result = bcrypto_aead_verify(&out[0], tag);
 
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
@@ -381,7 +381,7 @@ NAN_METHOD(BAEAD::AuthStatic) {
   uint8_t out[16];
   bcrypto_aead_final(&ctx, &out[0]);
 
-  bool result = bcrypto_aead_verify(&out[0], tag);
+  int result = bcrypto_aead_verify(&out[0], tag);
 
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
@@ -412,7 +412,7 @@ NAN_METHOD(BAEAD::Verify) {
   if (blen != 16)
     return Nan::ThrowRangeError("Invalid mac size.");
 
-  bool result = bcrypto_aead_verify(adata, bdata);
+  int result = bcrypto_aead_verify(adata, bdata);
 
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }

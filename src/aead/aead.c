@@ -18,17 +18,15 @@ bcrypto_aead_init(bcrypto_aead_ctx *aead) {
   memset(&aead->poly, 0, sizeof(bcrypto_poly1305_ctx));
   aead->aad_len = 0;
   aead->cipher_len = 0;
-  aead->has_cipher = false;
+  aead->has_cipher = 0;
   memset(&aead->poly_key[0], 0, 32);
 }
 
 void
-bcrypto_aead_setup(
-  bcrypto_aead_ctx *aead,
-  const uint8_t *key,
-  const uint8_t *iv,
-  size_t iv_len
-) {
+bcrypto_aead_setup(bcrypto_aead_ctx *aead,
+                   const uint8_t *key,
+                   const uint8_t *iv,
+                   size_t iv_len) {
   assert(key && iv);
 
   memset(&aead->poly_key[0], 0, 32);
@@ -53,7 +51,7 @@ bcrypto_aead_setup(
 
   aead->aad_len = 0;
   aead->cipher_len = 0;
-  aead->has_cipher = false;
+  aead->has_cipher = 0;
 }
 
 void
@@ -63,12 +61,10 @@ bcrypto_aead_aad(bcrypto_aead_ctx *aead, const uint8_t *aad, size_t len) {
 }
 
 void
-bcrypto_aead_encrypt(
-  bcrypto_aead_ctx *aead,
-  const uint8_t *in,
-  uint8_t *out,
-  size_t len
-) {
+bcrypto_aead_encrypt(bcrypto_aead_ctx *aead,
+                     uint8_t *out,
+                     const uint8_t *in,
+                     size_t len) {
   if (!aead->has_cipher)
     bcrypto_aead_pad16(aead, aead->aad_len);
 
@@ -76,21 +72,19 @@ bcrypto_aead_encrypt(
   bcrypto_poly1305_update(&aead->poly, out, len);
 
   aead->cipher_len += len;
-  aead->has_cipher = true;
+  aead->has_cipher = 1;
 }
 
 void
-bcrypto_aead_decrypt(
-  bcrypto_aead_ctx *aead,
-  const uint8_t *in,
-  uint8_t *out,
-  size_t len
-) {
+bcrypto_aead_decrypt(bcrypto_aead_ctx *aead,
+                     uint8_t *out,
+                     const uint8_t *in,
+                     size_t len) {
   if (!aead->has_cipher)
     bcrypto_aead_pad16(aead, aead->aad_len);
 
   aead->cipher_len += len;
-  aead->has_cipher = true;
+  aead->has_cipher = 1;
 
   bcrypto_poly1305_update(&aead->poly, in, len);
   bcrypto_chacha20_encrypt(&aead->chacha, in, out, len);
@@ -102,7 +96,7 @@ bcrypto_aead_auth(bcrypto_aead_ctx *aead, const uint8_t *in, size_t len) {
     bcrypto_aead_pad16(aead, aead->aad_len);
 
   aead->cipher_len += len;
-  aead->has_cipher = true;
+  aead->has_cipher = 1;
 
   bcrypto_poly1305_update(&aead->poly, in, len);
 }
@@ -156,7 +150,7 @@ bcrypto_aead_pad16(bcrypto_aead_ctx *aead, uint64_t size) {
   bcrypto_poly1305_update(&aead->poly, pad, 16 - size);
 }
 
-bool
+int
 bcrypto_aead_verify(const uint8_t *mac1, const uint8_t *mac2) {
   return bcrypto_poly1305_verify(mac1, mac2) != 0;
 }
