@@ -116,7 +116,7 @@ bcrypto_ecdsa_pubkey_decode(bcrypto_ecdsa_t *ec,
     const EC_POINT *point = EC_KEY_get0_public_key(ec->key);
     assert(point != NULL);
 
-    if (!EC_POINT_is_on_curve(ec->group, point, ec->ctx))
+    if (EC_POINT_is_on_curve(ec->group, point, ec->ctx) <= 0)
       return 0;
   }
 
