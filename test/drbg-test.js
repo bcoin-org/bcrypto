@@ -1,15 +1,28 @@
-/* eslint-env mocha */
-/* eslint prefer-arrow-callback: "off" */
-
-// See:
-// https://github.com/indutny/hmac-drbg/blob/master/test/drbg-test.js
-
 'use strict';
 
 const assert = require('bsert');
-const DRBG = require('../lib/drbg');
+const SHA1 = require('../lib/sha1');
+const SHA224 = require('../lib/sha224');
 const SHA256 = require('../lib/sha256');
+const SHA384 = require('../lib/sha384');
+const SHA512 = require('../lib/sha512');
+const HmacDRBG = require('../lib/drbg');
+const HashDRBG = require('../lib/hash-drbg');
 const vectors = require('./data/drbg-nist.json');
+const getNIST = require('./util/drbg-vectors');
+
+const engines = [
+  ['hash', HashDRBG],
+  ['hmac', HmacDRBG]
+];
+
+const hashes = [
+  ['SHA-1', SHA1],
+  ['SHA-224', SHA224],
+  ['SHA-256', SHA256],
+  ['SHA-384', SHA384],
+  ['SHA-512', SHA512]
+];
 
 describe('DRBG', function() {
   it('should support hmac-drbg-sha256', () => {
@@ -19,7 +32,7 @@ describe('DRBG', function() {
       const pers = Buffer.from(opt.pers || '', 'utf8');
       const size = opt.size;
       const expect = Buffer.from(opt.res, 'hex');
-      const drbg = new DRBG(SHA256, entropy, nonce, pers);
+      const drbg = new HmacDRBG(SHA256, entropy, nonce, pers);
 
       assert.bufferEqual(drbg.generate(size), expect);
     }
@@ -53,7 +66,7 @@ describe('DRBG', function() {
       const expected = Buffer.from(opt.expected, 'hex');
 
       it(`should not fail at ${opt.name}`, () => {
-        const drbg = new DRBG(SHA256, entropy, nonce, pers);
+        const drbg = new HmacDRBG(SHA256, entropy, nonce, pers);
 
         let last = null;
 
@@ -79,14 +92,14 @@ describe('DRBG', function() {
       const nonce = 'nonce';
       const pers = 'pers';
 
-      const original = new DRBG(
+      const original = new HmacDRBG(
         SHA256,
         Buffer.from(entropy, 'utf8'),
         Buffer.from(nonce, 'utf8'),
         Buffer.from(pers, 'utf8')
       );
 
-      const reseeded = new DRBG(
+      const reseeded = new HmacDRBG(
         SHA256,
         Buffer.from(entropy, 'utf8'),
         Buffer.from(nonce, 'utf8'),
@@ -100,4 +113,32 @@ describe('DRBG', function() {
       assert.notBufferEqual(original.generate(32), reseeded.generate(32));
     });
   });
+
+  for (const [type, DRBG] of engines) {
+    describe(DRBG.name, function() {
+      for (const [name, alg] of hashes) {
+        const vectors = getNIST(type, name);
+
+        for (const [i, vector] of vectors.entries()) {
+          it(`should pass ${name} NIST vector #${i + 1} (${type})`, () => {
+            const drbg = new DRBG(alg);
+
+            drbg.init(vector.EntropyInput, vector.Nonce,
+                      vector.PersonalizationString);
+
+            drbg.reseed(vector.EntropyInputReseed,
+                        vector.AdditionalInputReseed);
+
+            drbg.generate(vector.ReturnedBits.length,
+                          vector.AdditionalInput[0]);
+
+            const result = drbg.generate(vector.ReturnedBits.length,
+                                         vector.AdditionalInput[1]);
+
+            assert.bufferEqual(result, vector.ReturnedBits);
+          });
+        }
+      }
+    });
+  }
 });
