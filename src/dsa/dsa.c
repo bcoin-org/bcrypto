@@ -615,7 +615,7 @@ bcrypto_dsa_params_import(const uint8_t *raw, size_t raw_len) {
   DSA *params_d = NULL;
   const uint8_t *p = raw;
 
-  if (!d2i_DSAparams(&params_d, &p, raw_len))
+  if (d2i_DSAparams(&params_d, &p, raw_len) == NULL)
     return NULL;
 
   bcrypto_dsa_key_t *k = bcrypto_dsa_params2key(params_d);
@@ -846,7 +846,7 @@ bcrypto_dsa_privkey_import(const uint8_t *raw, size_t raw_len) {
   DSA *priv_d = NULL;
   const uint8_t *p = raw;
 
-  if (!d2i_DSAPrivateKey(&priv_d, &p, raw_len))
+  if (d2i_DSAPrivateKey(&priv_d, &p, raw_len) == NULL)
     return 0;
 
   bcrypto_dsa_key_t *k = bcrypto_dsa_priv2key(priv_d);
@@ -975,7 +975,7 @@ bcrypto_dsa_privkey_import_pkcs8(const uint8_t *raw, size_t raw_len) {
 
   const uint8_t *pp = raw;
 
-  if (!d2i_PKCS8_PRIV_KEY_INFO(&p8, &pp, raw_len))
+  if (d2i_PKCS8_PRIV_KEY_INFO(&p8, &pp, raw_len) == NULL)
     goto fail;
 
   if (!PKCS8_pkey_get0(NULL, &p, &pklen, &palg, p8))
@@ -1125,7 +1125,7 @@ bcrypto_dsa_pubkey_import(const uint8_t *raw, size_t raw_len) {
   DSA *pub_d = NULL;
   const uint8_t *p = raw;
 
-  if (!d2i_DSAPublicKey(&pub_d, &p, raw_len))
+  if (d2i_DSAPublicKey(&pub_d, &p, raw_len) == NULL)
     return 0;
 
   bcrypto_dsa_key_t *k = bcrypto_dsa_pub2key(pub_d);
@@ -1170,7 +1170,7 @@ bcrypto_dsa_pubkey_import_spki(const uint8_t *raw, size_t raw_len) {
   DSA *pub_d = NULL;
   const uint8_t *p = raw;
 
-  if (!d2i_DSA_PUBKEY(&pub_d, &p, raw_len))
+  if (d2i_DSA_PUBKEY(&pub_d, &p, raw_len) == NULL)
     return NULL;
 
   bcrypto_dsa_key_t *k = bcrypto_dsa_pub2key(pub_d);
@@ -1178,6 +1178,108 @@ bcrypto_dsa_pubkey_import_spki(const uint8_t *raw, size_t raw_len) {
   DSA_free(pub_d);
 
   return k;
+}
+
+int
+bcrypto_dsa_sig_export(uint8_t **out,
+                       size_t *out_len,
+                       const uint8_t *r,
+                       size_t r_len,
+                       const uint8_t *s,
+                       size_t s_len,
+                       size_t size) {
+  assert(out != NULL && out_len != NULL);
+
+  DSA_SIG *sig_d = NULL;
+
+  if (size == 0)
+    size = r_len;
+
+  if (r == NULL || r_len != size)
+    goto fail;
+
+  if (s == NULL || s_len != size)
+    goto fail;
+
+  sig_d = bcrypto_dsa_rs2sig(r, r_len, s, s_len);
+
+  if (sig_d == NULL)
+    goto fail;
+
+  uint8_t *buf = NULL;
+  int len = i2d_DSA_SIG(sig_d, &buf);
+
+  if (len <= 0)
+    return 0;
+
+  FIX_BORINGSSL(buf, len);
+
+  DSA_SIG_free(sig_d);
+
+  *out = buf;
+  *out_len = (size_t)len;
+
+  return 1;
+
+fail:
+  if (sig_d != NULL)
+    DSA_SIG_free(sig_d);
+
+  return 0;
+}
+
+int
+bcrypto_dsa_sig_import(uint8_t **r,
+                       size_t *r_len,
+                       uint8_t **s,
+                       size_t *s_len,
+                       const uint8_t *raw,
+                       size_t raw_len,
+                       size_t size) {
+  DSA_SIG *sig_d = NULL;
+  const uint8_t *p = raw;
+  uint8_t *r_buf = NULL;
+  uint8_t *s_buf = NULL;
+  const BIGNUM *r_bn = NULL;
+  const BIGNUM *s_bn = NULL;
+
+  if (raw == NULL || raw_len == 0)
+    goto fail;
+
+  if (d2i_DSA_SIG(&sig_d, &p, raw_len) == NULL)
+    goto fail;
+
+  DSA_SIG_get0(sig_d, &r_bn, &s_bn);
+
+  assert(r_bn != NULL && s_bn != NULL);
+
+  if ((size_t)BN_num_bytes(r_bn) > size)
+    goto fail;
+
+  if ((size_t)BN_num_bytes(s_bn) > size)
+    goto fail;
+
+  r_buf = (uint8_t *)malloc(size);
+  s_buf = (uint8_t *)malloc(size);
+
+  if (r_buf == NULL || s_buf == NULL)
+    goto fail;
+
+  assert(BN_bn2binpad(r_bn, r_buf, size) > 0);
+  assert(BN_bn2binpad(s_bn, s_buf, size) > 0);
+
+  *r = r_buf;
+  *s = s_buf;
+
+  DSA_SIG_free(sig_d);
+
+  return 1;
+
+fail:
+  if (sig_d != NULL)
+    DSA_SIG_free(sig_d);
+
+  return 0;
 }
 
 int
@@ -1216,11 +1318,62 @@ bcrypto_dsa_sign(uint8_t **r,
   DSA_get0_pqg(priv_d, NULL, &q_bn, NULL);
   assert(q_bn != NULL);
 
-  int bits = BN_num_bits(q_bn);
-  size_t size = (bits + 7) / 8;
+  size_t size = (size_t)BN_num_bytes(q_bn);
 
   *r_len = size;
   *s_len = size;
+
+  DSA_free(priv_d);
+  DSA_SIG_free(sig_d);
+
+  return 1;
+
+fail:
+  if (priv_d != NULL)
+    DSA_free(priv_d);
+
+  if (sig_d != NULL)
+    DSA_SIG_free(sig_d);
+
+  return 0;
+}
+
+int
+bcrypto_dsa_sign_der(uint8_t **out,
+                     size_t *out_len,
+                     const uint8_t *msg,
+                     size_t msg_len,
+                     const bcrypto_dsa_key_t *priv) {
+  assert(out != NULL && out_len != NULL);
+
+  DSA *priv_d = NULL;
+  DSA_SIG *sig_d = NULL;
+
+  if (!bcrypto_dsa_sane_privkey(priv))
+    goto fail;
+
+  priv_d = bcrypto_dsa_key2priv(priv);
+
+  if (priv_d == NULL)
+    goto fail;
+
+  bcrypto_poll();
+
+  sig_d = DSA_do_sign(msg, msg_len, priv_d);
+
+  if (sig_d == NULL)
+    goto fail;
+
+  uint8_t *buf = NULL;
+  int len = i2d_DSA_SIG(sig_d, &buf);
+
+  if (len <= 0)
+    goto fail;
+
+  FIX_BORINGSSL(buf, len);
+
+  *out = buf;
+  *out_len = len;
 
   DSA_free(priv_d);
   DSA_SIG_free(sig_d);
@@ -1268,6 +1421,51 @@ bcrypto_dsa_verify(const uint8_t *msg,
   sig_d = bcrypto_dsa_rs2sig(r, r_len, s, s_len);
 
   if (sig_d == NULL)
+    goto fail;
+
+  if (DSA_do_verify(msg, msg_len, sig_d, pub_d) <= 0)
+    goto fail;
+
+  DSA_free(pub_d);
+  DSA_SIG_free(sig_d);
+
+  return 1;
+
+fail:
+  if (pub_d != NULL)
+    DSA_free(pub_d);
+
+  if (sig_d != NULL)
+    DSA_SIG_free(sig_d);
+
+  return 0;
+}
+
+int
+bcrypto_dsa_verify_der(const uint8_t *msg,
+                       size_t msg_len,
+                       const uint8_t *sig,
+                       size_t sig_len,
+                       const bcrypto_dsa_key_t *pub) {
+  DSA *pub_d = NULL;
+  DSA_SIG *sig_d = NULL;
+  const unsigned char *p = sig;
+
+  if (sig == NULL || sig_len == 0)
+    goto fail;
+
+  if (!bcrypto_dsa_sane_pubkey(pub))
+    goto fail;
+
+  pub_d = bcrypto_dsa_key2pub(pub);
+
+  if (pub_d == NULL)
+    goto fail;
+
+  // Note that openssl's DSA_verify reserializes to
+  // check for minimal encoding. We don't want that
+  // (it should be done at a higher level).
+  if (d2i_DSA_SIG(&sig_d, &p, sig_len) == NULL)
     goto fail;
 
   if (DSA_do_verify(msg, msg_len, sig_d, pub_d) <= 0)

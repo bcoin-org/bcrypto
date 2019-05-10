@@ -30,8 +30,12 @@ private:
   static NAN_METHOD(PublicKeyImport);
   static NAN_METHOD(PublicKeyExportSPKI);
   static NAN_METHOD(PublicKeyImportSPKI);
+  static NAN_METHOD(SignatureExport);
+  static NAN_METHOD(SignatureImport);
   static NAN_METHOD(Sign);
+  static NAN_METHOD(SignDER);
   static NAN_METHOD(Verify);
+  static NAN_METHOD(VerifyDER);
   static NAN_METHOD(Derive);
 };
 #endif
