@@ -59,7 +59,7 @@ NAN_METHOD(BPBKDF2::Derive) {
   if (key == NULL)
     return Nan::ThrowError("Could not allocate key.");
 
-  if (!bcrypto_pbkdf2(name, data, datalen, salt, saltlen, iter, key, keylen)) {
+  if (!bcrypto_pbkdf2(key, name, data, datalen, salt, saltlen, iter, keylen)) {
     free(key);
     return Nan::ThrowError("PBKDF2 failed.");
   }
@@ -136,7 +136,7 @@ NAN_METHOD(BPBKDF2::HasHash) {
 
   Nan::Utf8String alg_(info[0]);
   const char *alg = (const char *)*alg_;
-  bool result = bcrypto_pbkdf2_has_hash(alg);
+  int result = bcrypto_pbkdf2_has_hash(alg);
 
   if (!result) {
     if (strcmp(alg, "SHA256") == 0 || strcmp(alg, "SHA512") == 0)

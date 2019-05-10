@@ -109,26 +109,24 @@ bcrypto_pbkdf2_hash_type(const char *alg) {
   return type;
 }
 
-bool
-bcrypto_pbkdf2(
-  const char *name,
-  const uint8_t *data,
-  size_t datalen,
-  const uint8_t *salt,
-  size_t saltlen,
-  uint32_t iter,
-  uint8_t *key,
-  size_t keylen
-) {
+int
+bcrypto_pbkdf2(uint8_t *key,
+               const char *name,
+               const uint8_t *data,
+               size_t datalen,
+               const uint8_t *salt,
+               size_t saltlen,
+               uint32_t iter,
+               size_t keylen) {
   int type = bcrypto_pbkdf2_hash_type(name);
 
   if (type == -1)
-    return false;
+    return 0;
 
   const EVP_MD *md = EVP_get_digestbynid(type);
 
   if (md == NULL)
-    return false;
+    return 0;
 
   int ret = PKCS5_PBKDF2_HMAC((const char *)data,
                               datalen, salt,
@@ -136,17 +134,17 @@ bcrypto_pbkdf2(
                               md, keylen, key);
 
   if (ret <= 0)
-    return false;
+    return 0;
 
-  return true;
+  return 1;
 }
 
-bool
+int
 bcrypto_pbkdf2_has_hash(const char *name) {
   int type = bcrypto_pbkdf2_hash_type(name);
 
   if (type == -1)
-    return false;
+    return 0;
 
   return EVP_get_digestbynid(type) != NULL;
 }

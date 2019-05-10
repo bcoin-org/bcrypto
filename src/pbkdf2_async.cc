@@ -44,7 +44,7 @@ BPBKDF2Worker::Execute() {
     return;
   }
 
-  if (!bcrypto_pbkdf2(name, data, datalen, salt, saltlen, iter, key, keylen)) {
+  if (!bcrypto_pbkdf2(key, name, data, datalen, salt, saltlen, iter, keylen)) {
     free(key);
     key = NULL;
     SetErrorMessage("PBKDF2 failed.");
