@@ -52,31 +52,27 @@ bmpz_zerobits(const mpz_t n) {
 
 static void
 bmpz_pow(mpz_t ret, const mpz_t a, mpz_t b) {
-  if (mpz_sgn(a) != 0) {
-    mpz_t x, y;
+  mpz_t x, y;
 
-    mpz_init(x);
-    mpz_init(y);
+  mpz_init(x);
+  mpz_init(y);
 
-    mpz_set(x, a);
-    mpz_set(y, b);
+  mpz_set(x, a);
+  mpz_set(y, b);
 
-    mpz_abs(y, y);
+  mpz_abs(y, y);
 
-    mpz_set_ui(ret, 1);
+  mpz_set_ui(ret, 1);
 
-    while (mpz_sgn(y) != 0) {
-      if (mpz_odd_p(y))
-        mpz_mul(ret, ret, x);
-      mpz_fdiv_q_2exp(y, y, 1);
-      mpz_mul(x, x, x);
-    }
-
-    mpz_clear(x);
-    mpz_clear(y);
-  } else {
-    mpz_set(ret, a);
+  while (mpz_sgn(y) != 0) {
+    if (mpz_odd_p(y))
+      mpz_mul(ret, ret, x);
+    mpz_fdiv_q_2exp(y, y, 1);
+    mpz_mul(x, x, x);
   }
+
+  mpz_clear(x);
+  mpz_clear(y);
 }
 
 static int
