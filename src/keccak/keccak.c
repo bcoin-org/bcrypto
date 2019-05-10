@@ -707,11 +707,9 @@ bcrypto_keccak_permutation(uint64_t *state) {
 }
 
 static void
-bcrypto_keccak_process_block(
-  uint64_t hash[25],
-  const uint64_t *block,
-  size_t block_size
-) {
+bcrypto_keccak_process_block(uint64_t hash[25],
+                             const uint64_t *block,
+                             size_t block_size) {
   switch (block_size) {
     case 144: { // SHA3-224
       hash[17] ^= le2me_64(block[17]);
@@ -761,11 +759,9 @@ bcrypto_keccak_process_block(
 }
 
 void
-bcrypto_keccak_update(
-  bcrypto_keccak_ctx *ctx,
-  const unsigned char *msg,
-  size_t size
-) {
+bcrypto_keccak_update(bcrypto_keccak_ctx *ctx,
+                      const unsigned char *msg,
+                      size_t size) {
   size_t index = (size_t)ctx->rest;
   size_t block_size = (size_t)ctx->block_size;
 
@@ -806,13 +802,11 @@ bcrypto_keccak_update(
 }
 
 int
-bcrypto_keccak_final(
-  bcrypto_keccak_ctx *ctx,
-  int pad,
-  unsigned char *result,
-  size_t digest_length,
-  size_t *result_length
-) {
+bcrypto_keccak_final(bcrypto_keccak_ctx *ctx,
+                     unsigned char *result,
+                     size_t *result_length,
+                     size_t digest_length,
+                     int pad) {
   const size_t block_size = ctx->block_size;
 
   if (digest_length == 0)

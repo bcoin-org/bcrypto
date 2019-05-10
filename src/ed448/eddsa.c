@@ -29,7 +29,7 @@ static bcrypto_c448_error_t oneshot_hash(uint8_t *out, size_t outlen,
 
   bcrypto_keccak_update(&ctx, in, inlen);
 
-  if (!bcrypto_keccak_final(&ctx, 0x1f, out, outlen, NULL))
+  if (!bcrypto_keccak_final(&ctx, out, NULL, outlen, 0x1f))
     return BCRYPTO_C448_FAILURE;
 
   return BCRYPTO_C448_SUCCESS;
@@ -466,7 +466,7 @@ bcrypto_c448_error_t bcrypto_c448_ed448_sign_with_scalar(
   {
     uint8_t nonce[2 * BCRYPTO_EDDSA_448_PRIVATE_BYTES];
 
-    if (!bcrypto_keccak_final(&hashctx, 0x1f, nonce, sizeof(nonce), NULL))
+    if (!bcrypto_keccak_final(&hashctx, nonce, NULL, sizeof(nonce), 0x1f))
       return BCRYPTO_C448_FAILURE;
     bcrypto_curve448_scalar_decode_long(nonce_scalar, nonce, sizeof(nonce));
     OPENSSL_cleanse(nonce, sizeof(nonce));
@@ -499,8 +499,8 @@ bcrypto_c448_error_t bcrypto_c448_ed448_sign_with_scalar(
     bcrypto_keccak_update(&hashctx, pubkey, BCRYPTO_EDDSA_448_PUBLIC_BYTES);
     bcrypto_keccak_update(&hashctx, message, message_len);
 
-    if (!bcrypto_keccak_final(&hashctx, 0x1f, challenge,
-                              sizeof(challenge), NULL)) {
+    if (!bcrypto_keccak_final(&hashctx, challenge, NULL,
+                              sizeof(challenge), 0x1f)) {
       goto err;
     }
 
@@ -720,8 +720,8 @@ bcrypto_c448_error_t bcrypto_c448_ed448_verify(
     bcrypto_keccak_update(&hashctx, pubkey, BCRYPTO_EDDSA_448_PUBLIC_BYTES);
     bcrypto_keccak_update(&hashctx, message, message_len);
 
-    if (!bcrypto_keccak_final(&hashctx, 0x1f, challenge,
-                              sizeof(challenge), NULL)) {
+    if (!bcrypto_keccak_final(&hashctx, challenge, NULL,
+                              sizeof(challenge), 0x1f)) {
       return BCRYPTO_C448_FAILURE;
     }
 
