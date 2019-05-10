@@ -833,7 +833,7 @@ fail:
   if (ep != NULL)
     OPENSSL_free(ep);
 
-  if (p8)
+  if (p8 != NULL)
     PKCS8_PRIV_KEY_INFO_free(p8);
 
   return 0;
@@ -1240,9 +1240,6 @@ bcrypto_ecdsa_pubkey_tweak_add(bcrypto_ecdsa_t *ec,
   if (!EC_POINT_add(ec->group, tweak_point, key_point, tweak_point, ec->ctx))
     goto fail;
 
-  if (EC_POINT_is_at_infinity(ec->group, tweak_point))
-    goto fail;
-
   if (!bcrypto_ecdsa_pubkey_from_ec_point(ec, out, tweak_point))
     goto fail;
 
@@ -1308,9 +1305,6 @@ bcrypto_ecdsa_pubkey_add(bcrypto_ecdsa_t *ec,
   if (!EC_POINT_add(ec->group, result, point1, point2, ec->ctx))
     goto fail;
 
-  if (EC_POINT_is_at_infinity(ec->group, result))
-    goto fail;
-
   if (!bcrypto_ecdsa_pubkey_from_ec_point(ec, out, result))
     goto fail;
 
@@ -1358,9 +1352,6 @@ bcrypto_ecdsa_pubkey_negate(bcrypto_ecdsa_t *ec,
     goto fail;
 
   if (!EC_POINT_invert(ec->group, neg_point, ec->ctx))
-    goto fail;
-
-  if (EC_POINT_is_at_infinity(ec->group, key_point))
     goto fail;
 
   if (!bcrypto_ecdsa_pubkey_from_ec_point(ec, out, neg_point))
