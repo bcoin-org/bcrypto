@@ -14,6 +14,7 @@ extern "C" {
 #endif
 
 typedef struct bcrypto_dsa_key_s {
+  uint8_t *slab;
   uint8_t *pd;
   size_t pl;
   uint8_t *qd;

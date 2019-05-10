@@ -28,7 +28,11 @@ bcrypto_dsa_key_init(bcrypto_dsa_key_t *key) {
 void
 bcrypto_dsa_key_free(bcrypto_dsa_key_t *key) {
   assert(key);
-  free((void *)key);
+
+  if (key->slab)
+    free(key->slab);
+
+  free(key);
 }
 
 static size_t
@@ -249,13 +253,20 @@ bcrypto_dsa_dsa2key(const DSA *key_d, int mode) {
   if (mode < 0 || mode > 2)
     return NULL;
 
-  uint8_t *arena = NULL;
-
+  bcrypto_dsa_key_t *key = NULL;
   const BIGNUM *p = NULL;
   const BIGNUM *q = NULL;
   const BIGNUM *g = NULL;
   const BIGNUM *y = NULL;
   const BIGNUM *x = NULL;
+  uint8_t *slab = NULL;
+
+  key = (bcrypto_dsa_key_t *)malloc(sizeof(bcrypto_dsa_key_t));
+
+  if (!key)
+    goto fail;
+
+  bcrypto_dsa_key_init(key);
 
   DSA_get0_pqg(key_d, &p, &q, &g);
 
@@ -270,43 +281,39 @@ bcrypto_dsa_dsa2key(const DSA *key_d, int mode) {
   size_t gl = BN_num_bytes(g);
   size_t yl = mode > 0 ? BN_num_bytes(y) : 0;
   size_t xl = mode == 2 ? BN_num_bytes(x) : 0;
-
-  size_t kl = sizeof(bcrypto_dsa_key_t);
-  size_t size = kl + pl + ql + gl + yl + xl;
-
-  arena = malloc(size);
-
-  if (!arena)
-    goto fail;
-
+  size_t size = pl + ql + gl + yl + xl;
   size_t pos = 0;
 
-  bcrypto_dsa_key_t *key;
+  // Align.
+  size += 8 - (size & 7);
 
-  key = (bcrypto_dsa_key_t *)&arena[pos];
-  bcrypto_dsa_key_init(key);
-  pos += kl;
+  slab = (uint8_t *)malloc(size);
 
-  key->pd = (uint8_t *)&arena[pos];
+  if (!slab)
+    goto fail;
+
+  key->slab = slab;
+
+  key->pd = (uint8_t *)&slab[pos];
   key->pl = pl;
   pos += pl;
 
-  key->qd = (uint8_t *)&arena[pos];
+  key->qd = (uint8_t *)&slab[pos];
   key->ql = ql;
   pos += ql;
 
-  key->gd = (uint8_t *)&arena[pos];
+  key->gd = (uint8_t *)&slab[pos];
   key->gl = gl;
   pos += gl;
 
   if (mode > 0) {
-    key->yd = (uint8_t *)&arena[pos];
+    key->yd = (uint8_t *)&slab[pos];
     key->yl = yl;
     pos += yl;
   }
 
   if (mode == 2) {
-    key->xd = (uint8_t *)&arena[pos];
+    key->xd = (uint8_t *)&slab[pos];
     key->xl = xl;
     pos += xl;
   }
@@ -324,8 +331,8 @@ bcrypto_dsa_dsa2key(const DSA *key_d, int mode) {
   return key;
 
 fail:
-  if (arena)
-    free(arena);
+  if (key)
+    bcrypto_dsa_key_free(key);
 
   return NULL;
 }

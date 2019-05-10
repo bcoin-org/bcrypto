@@ -35,7 +35,9 @@ bcrypto_rsa_key_init(bcrypto_rsa_key_t *key) {
 void
 bcrypto_rsa_key_free(bcrypto_rsa_key_t *key) {
   assert(key);
-  free((void *)key);
+  if (key->slab)
+    free(key->slab);
+  free(key);
 }
 
 static size_t
@@ -319,8 +321,7 @@ bcrypto_rsa_priv2key(const RSA *priv_r) {
   if (priv_r == NULL)
     return NULL;
 
-  uint8_t *arena = NULL;
-
+  bcrypto_rsa_key_t *priv = NULL;
   const BIGNUM *n = NULL;
   const BIGNUM *e = NULL;
   const BIGNUM *d = NULL;
@@ -329,6 +330,14 @@ bcrypto_rsa_priv2key(const RSA *priv_r) {
   const BIGNUM *dp = NULL;
   const BIGNUM *dq = NULL;
   const BIGNUM *qi = NULL;
+  uint8_t *slab = NULL;
+
+  priv = (bcrypto_rsa_key_t *)malloc(sizeof(bcrypto_rsa_key_t));
+
+  if (!priv)
+    goto fail;
+
+  bcrypto_rsa_key_init(priv);
 
   RSA_get0_key(priv_r, &n, &e, &d);
   RSA_get0_factors(priv_r, &p, &q);
@@ -345,52 +354,48 @@ bcrypto_rsa_priv2key(const RSA *priv_r) {
   size_t dpl = BN_num_bytes(dp);
   size_t dql = BN_num_bytes(dq);
   size_t qil = BN_num_bytes(qi);
-
-  size_t kl = sizeof(bcrypto_rsa_key_t);
-  size_t size = kl + nl + el + dl + pl + ql + dpl + dql + qil;
-
-  arena = malloc(size);
-
-  if (!arena)
-    goto fail;
-
+  size_t size = nl + el + dl + pl + ql + dpl + dql + qil;
   size_t pos = 0;
 
-  bcrypto_rsa_key_t *priv;
+  // Align.
+  size += 8 - (size & 7);
 
-  priv = (bcrypto_rsa_key_t *)&arena[pos];
-  bcrypto_rsa_key_init(priv);
-  pos += kl;
+  slab = (uint8_t *)malloc(size);
 
-  priv->nd = (uint8_t *)&arena[pos];
+  if (!slab)
+    goto fail;
+
+  priv->slab = slab;
+
+  priv->nd = (uint8_t *)&slab[pos];
   priv->nl = nl;
   pos += nl;
 
-  priv->ed = (uint8_t *)&arena[pos];
+  priv->ed = (uint8_t *)&slab[pos];
   priv->el = el;
   pos += el;
 
-  priv->dd = (uint8_t *)&arena[pos];
+  priv->dd = (uint8_t *)&slab[pos];
   priv->dl = dl;
   pos += dl;
 
-  priv->pd = (uint8_t *)&arena[pos];
+  priv->pd = (uint8_t *)&slab[pos];
   priv->pl = pl;
   pos += pl;
 
-  priv->qd = (uint8_t *)&arena[pos];
+  priv->qd = (uint8_t *)&slab[pos];
   priv->ql = ql;
   pos += ql;
 
-  priv->dpd = (uint8_t *)&arena[pos];
+  priv->dpd = (uint8_t *)&slab[pos];
   priv->dpl = dpl;
   pos += dpl;
 
-  priv->dqd = (uint8_t *)&arena[pos];
+  priv->dqd = (uint8_t *)&slab[pos];
   priv->dql = dql;
   pos += dql;
 
-  priv->qid = (uint8_t *)&arena[pos];
+  priv->qid = (uint8_t *)&slab[pos];
   priv->qil = qil;
   pos += qil;
 
@@ -406,8 +411,8 @@ bcrypto_rsa_priv2key(const RSA *priv_r) {
   return priv;
 
 fail:
-  if (arena)
-    free(arena);
+  if (priv)
+    bcrypto_rsa_key_free(priv);
 
   return NULL;
 }
@@ -417,10 +422,17 @@ bcrypto_rsa_pub2key(const RSA *pub_r) {
   if (pub_r == NULL)
     return NULL;
 
-  uint8_t *arena = NULL;
-
+  bcrypto_rsa_key_t *pub = NULL;
   const BIGNUM *n = NULL;
   const BIGNUM *e = NULL;
+  uint8_t *slab = NULL;
+
+  pub = (bcrypto_rsa_key_t *)malloc(sizeof(bcrypto_rsa_key_t));
+
+  if (!pub)
+    goto fail;
+
+  bcrypto_rsa_key_init(pub);
 
   RSA_get0_key(pub_r, &n, &e, NULL);
 
@@ -429,28 +441,24 @@ bcrypto_rsa_pub2key(const RSA *pub_r) {
 
   size_t nl = BN_num_bytes(n);
   size_t el = BN_num_bytes(e);
-
-  size_t kl = sizeof(bcrypto_rsa_key_t);
-  size_t size = kl + nl + el;
-
-  arena = malloc(size);
-
-  if (!arena)
-    goto fail;
-
+  size_t size = nl + el;
   size_t pos = 0;
 
-  bcrypto_rsa_key_t *pub;
+  // Align.
+  size += 8 - (size & 7);
 
-  pub = (bcrypto_rsa_key_t *)&arena[pos];
-  bcrypto_rsa_key_init(pub);
-  pos += kl;
+  slab = (uint8_t *)malloc(size);
 
-  pub->nd = (uint8_t *)&arena[pos];
+  if (!slab)
+    goto fail;
+
+  pub->slab = slab;
+
+  pub->nd = (uint8_t *)&slab[pos];
   pub->nl = nl;
   pos += nl;
 
-  pub->ed = (uint8_t *)&arena[pos];
+  pub->ed = (uint8_t *)&slab[pos];
   pub->el = el;
   pos += el;
 
@@ -460,8 +468,8 @@ bcrypto_rsa_pub2key(const RSA *pub_r) {
   return pub;
 
 fail:
-  if (arena)
-    free(arena);
+  if (pub)
+    bcrypto_rsa_key_free(pub);
 
   return NULL;
 }
