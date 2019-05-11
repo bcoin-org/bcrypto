@@ -243,7 +243,7 @@ bcrypto_dsa_key2dsa(const bcrypto_dsa_key_t *key, int mode) {
     y = BN_bin2bn(key->yd, key->yl, NULL);
 
   if (mode == 2)
-    x = BN_bin2bn(key->xd, key->xl, NULL);
+    x = BN_bin2bn(key->xd, key->xl, BN_secure_new());
 
   if (p == NULL || q == NULL || g == NULL)
     goto fail;
@@ -288,7 +288,7 @@ fail:
     BN_free(y);
 
   if (x != NULL)
-    BN_free(x);
+    BN_clear_free(x);
 
   return NULL;
 }
@@ -507,6 +507,31 @@ bcrypto_dsa_sig2rs(uint8_t **out,
 fail:
   if (sig_buf != NULL)
     free(sig_buf);
+
+  return 0;
+}
+
+static int
+mod_exp_const(BIGNUM *r,
+              const BIGNUM *a, const BIGNUM *p,
+              const BIGNUM *m, BN_CTX *ctx) {
+  BIGNUM *c = BN_secure_new();
+
+  if (c == NULL)
+    goto fail;
+
+  BN_with_flags(c, p, BN_FLG_CONSTTIME);
+
+  if (!BN_mod_exp(r, a, c, m, ctx))
+    goto fail;
+
+  BN_clear_free(c);
+
+  return 1;
+
+fail:
+  if (c != NULL)
+    BN_clear_free(c);
 
   return 0;
 }
@@ -742,7 +767,6 @@ bcrypto_dsa_privkey_compute(uint8_t **out,
   BIGNUM *g_bn = NULL;
   BIGNUM *y_bn = NULL;
   BIGNUM *x_bn = NULL;
-  BIGNUM *prk_bn = NULL;
   size_t y_len;
   uint8_t *y_buf = NULL;
 
@@ -759,21 +783,17 @@ bcrypto_dsa_privkey_compute(uint8_t **out,
   p_bn = BN_bin2bn(priv->pd, priv->pl, NULL);
   g_bn = BN_bin2bn(priv->gd, priv->gl, NULL);
   y_bn = BN_new();
-  x_bn = BN_bin2bn(priv->xd, priv->xl, NULL);
-  prk_bn = BN_new();
+  x_bn = BN_bin2bn(priv->xd, priv->xl, BN_secure_new());
 
   if (ctx == NULL
       || p_bn == NULL
       || g_bn == NULL
       || y_bn == NULL
-      || x_bn == NULL
-      || prk_bn == NULL) {
+      || x_bn == NULL) {
     goto fail;
   }
 
-  BN_with_flags(prk_bn, x_bn, BN_FLG_CONSTTIME);
-
-  if (!BN_mod_exp(y_bn, g_bn, prk_bn, p_bn, ctx))
+  if (!mod_exp_const(y_bn, g_bn, x_bn, p_bn, ctx))
     goto fail;
 
   y_len = (size_t)BN_num_bytes(y_bn);
@@ -788,8 +808,7 @@ bcrypto_dsa_privkey_compute(uint8_t **out,
   BN_free(p_bn);
   BN_free(g_bn);
   BN_free(y_bn);
-  BN_free(x_bn);
-  BN_free(prk_bn);
+  BN_clear_free(x_bn);
 
   *out = y_buf;
   *out_len = y_len;
@@ -810,10 +829,7 @@ fail:
     BN_free(y_bn);
 
   if (x_bn != NULL)
-    BN_free(x_bn);
-
-  if (prk_bn != NULL)
-    BN_free(prk_bn);
+    BN_clear_free(x_bn);
 
   return 0;
 }
@@ -853,7 +869,7 @@ bcrypto_dsa_privkey_verify(const bcrypto_dsa_key_t *key) {
     goto fail;
 
   /* y = g^x mod p */
-  if (!BN_mod_exp(y_bn, g, x, p, ctx))
+  if (!mod_exp_const(y_bn, g, x, p, ctx))
     goto fail;
 
   /* y2 == y1 */
@@ -1034,8 +1050,8 @@ bcrypto_dsa_privkey_import_pkcs8(const uint8_t *raw, size_t raw_len) {
   PKCS8_PRIV_KEY_INFO *p8 = NULL;
   ASN1_INTEGER *privkey = NULL;
   DSA *dsa = NULL;
-  BIGNUM *dsa_x = NULL;
   BIGNUM *dsa_y = NULL;
+  BIGNUM *dsa_x = NULL;
   BN_CTX *ctx = NULL;
   const BIGNUM *dsa_p = NULL;
   const BIGNUM *dsa_g = NULL;
@@ -1071,11 +1087,11 @@ bcrypto_dsa_privkey_import_pkcs8(const uint8_t *raw, size_t raw_len) {
   if (dsa == NULL)
     goto fail;
 
-  dsa_x = BN_secure_new();
   dsa_y = BN_new();
+  dsa_x = BN_secure_new();
   ctx = BN_CTX_new();
 
-  if (dsa_x == NULL || dsa_y == NULL || ctx == NULL)
+  if (dsa_y == NULL || dsa_x == NULL || ctx == NULL)
     goto fail;
 
   if (!ASN1_INTEGER_to_BN(privkey, dsa_x))
@@ -1087,7 +1103,7 @@ bcrypto_dsa_privkey_import_pkcs8(const uint8_t *raw, size_t raw_len) {
 
   assert(dsa_p != NULL && dsa_g != NULL);
 
-  if (!BN_mod_exp(dsa_y, dsa_g, dsa_x, dsa_p, ctx))
+  if (!mod_exp_const(dsa_y, dsa_g, dsa_x, dsa_p, ctx))
     goto fail;
 
   assert(DSA_set0_key(dsa, dsa_y, dsa_x));
@@ -1118,7 +1134,7 @@ fail:
     BN_free(dsa_y);
 
   if (dsa_x != NULL)
-    BN_free(dsa_x);
+    BN_clear_free(dsa_x);
 
   if (ctx != NULL)
     BN_CTX_free(ctx);
@@ -1571,13 +1587,13 @@ bcrypto_dsa_derive(uint8_t **out,
   if (ctx == NULL)
     goto fail;
 
-  secret_bn = BN_new();
+  secret_bn = BN_secure_new();
 
   if (secret_bn == NULL)
     goto fail;
 
   /* secret := y^x mod p */
-  if (!BN_mod_exp(secret_bn, y_pub, x_priv, p_pub, ctx))
+  if (!mod_exp_const(secret_bn, y_pub, x_priv, p_pub, ctx))
     goto fail;
 
   if (BN_is_zero(secret_bn))
@@ -1594,7 +1610,7 @@ bcrypto_dsa_derive(uint8_t **out,
   DSA_free(pub_d);
   DSA_free(priv_d);
   BN_CTX_free(ctx);
-  BN_free(secret_bn);
+  BN_clear_free(secret_bn);
 
   *out = secret;
   *out_len = secret_len;
@@ -1612,7 +1628,7 @@ fail:
     BN_CTX_free(ctx);
 
   if (secret_bn != NULL)
-    BN_free(secret_bn);
+    BN_clear_free(secret_bn);
 
   if (secret != NULL)
     free(secret);

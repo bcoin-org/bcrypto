@@ -894,7 +894,7 @@ bcrypto_ecdsa_privkey_tweak_add(bcrypto_ecdsa_t *ec,
   BIGNUM *priv_bn = NULL;
   BIGNUM *tweak_bn = NULL;
 
-  priv_bn = BN_bin2bn(priv, ec->scalar_size, NULL);
+  priv_bn = BN_bin2bn(priv, ec->scalar_size, BN_secure_new());
 
   if (priv_bn == NULL)
     goto fail;
@@ -902,7 +902,7 @@ bcrypto_ecdsa_privkey_tweak_add(bcrypto_ecdsa_t *ec,
   if (BN_is_zero(priv_bn) || BN_ucmp(priv_bn, ec->n) >= 0)
     goto fail;
 
-  tweak_bn = BN_bin2bn(tweak, ec->scalar_size, NULL);
+  tweak_bn = BN_bin2bn(tweak, ec->scalar_size, BN_secure_new());
 
   if (tweak_bn == NULL)
     goto fail;
@@ -943,7 +943,7 @@ bcrypto_ecdsa_privkey_tweak_mul(bcrypto_ecdsa_t *ec,
   BIGNUM *priv_bn = NULL;
   BIGNUM *tweak_bn = NULL;
 
-  priv_bn = BN_bin2bn(priv, ec->scalar_size, NULL);
+  priv_bn = BN_bin2bn(priv, ec->scalar_size, BN_secure_new());
 
   if (priv_bn == NULL)
     goto fail;
@@ -951,7 +951,7 @@ bcrypto_ecdsa_privkey_tweak_mul(bcrypto_ecdsa_t *ec,
   if (BN_is_zero(priv_bn) || BN_cmp(priv_bn, ec->n) >= 0)
     goto fail;
 
-  tweak_bn = BN_bin2bn(tweak, ec->scalar_size, NULL);
+  tweak_bn = BN_bin2bn(tweak, ec->scalar_size, BN_secure_new());
 
   if (tweak_bn == NULL)
     goto fail;
@@ -994,7 +994,7 @@ bcrypto_ecdsa_privkey_reduce(bcrypto_ecdsa_t *ec,
   if (priv_len > ec->scalar_size)
     priv_len = ec->scalar_size;
 
-  priv_bn = BN_bin2bn(priv, priv_len, NULL);
+  priv_bn = BN_bin2bn(priv, priv_len, BN_secure_new());
 
   if (priv_bn == NULL)
     goto fail;
@@ -1023,7 +1023,7 @@ bcrypto_ecdsa_privkey_negate(bcrypto_ecdsa_t *ec,
                              const uint8_t *priv) {
   BIGNUM *priv_bn = NULL;
 
-  priv_bn = BN_bin2bn(priv, ec->scalar_size, NULL);
+  priv_bn = BN_bin2bn(priv, ec->scalar_size, BN_secure_new());
 
   if (priv_bn == NULL)
     goto fail;
@@ -1055,7 +1055,7 @@ bcrypto_ecdsa_privkey_inverse(bcrypto_ecdsa_t *ec,
                               const uint8_t *priv) {
   BIGNUM *priv_bn = NULL;
 
-  priv_bn = BN_bin2bn(priv, ec->scalar_size, NULL);
+  priv_bn = BN_bin2bn(priv, ec->scalar_size, BN_secure_new());
 
   if (priv_bn == NULL)
     goto fail;
@@ -1091,7 +1091,7 @@ bcrypto_ecdsa_pubkey_create(bcrypto_ecdsa_t *ec,
   BIGNUM *priv_bn = NULL;
   EC_POINT *pub_point = NULL;
 
-  priv_bn = BN_bin2bn(priv, ec->scalar_size, NULL);
+  priv_bn = BN_bin2bn(priv, ec->scalar_size, BN_secure_new());
 
   if (priv_bn == NULL)
     goto fail;
@@ -1110,14 +1110,14 @@ bcrypto_ecdsa_pubkey_create(bcrypto_ecdsa_t *ec,
   if (!bcrypto_ecdsa_pubkey_from_ec_point(ec, pub, pub_point))
     goto fail;
 
-  BN_free(priv_bn);
+  BN_clear_free(priv_bn);
   EC_POINT_free(pub_point);
 
   return 1;
 
 fail:
   if (priv_bn != NULL)
-    BN_free(priv_bn);
+    BN_clear_free(priv_bn);
 
   if (pub_point != NULL)
     EC_POINT_free(pub_point);
@@ -1216,7 +1216,7 @@ bcrypto_ecdsa_pubkey_tweak_add(bcrypto_ecdsa_t *ec,
   if (pub_ec == NULL)
     goto fail;
 
-  tweak_bn = BN_bin2bn(tweak, ec->scalar_size, NULL);
+  tweak_bn = BN_bin2bn(tweak, ec->scalar_size, BN_secure_new());
 
   if (tweak_bn == NULL)
     goto fail;
@@ -1679,7 +1679,7 @@ bcrypto_ecdsa_derive(bcrypto_ecdsa_t *ec,
   EC_POINT *secret_point = NULL;
   const EC_POINT *pub_point = NULL;
 
-  priv_bn = BN_bin2bn(priv, ec->scalar_size, NULL);
+  priv_bn = BN_bin2bn(priv, ec->scalar_size, BN_secure_new());
 
   if (priv_bn == NULL)
     goto fail;
@@ -1706,7 +1706,7 @@ bcrypto_ecdsa_derive(bcrypto_ecdsa_t *ec,
   if (!bcrypto_ecdsa_pubkey_from_ec_point(ec, out, secret_point))
     goto fail;
 
-  BN_free(priv_bn);
+  BN_clear_free(priv_bn);
   EC_KEY_free(pub_ec);
   EC_POINT_free(secret_point);
 
@@ -1714,7 +1714,7 @@ bcrypto_ecdsa_derive(bcrypto_ecdsa_t *ec,
 
 fail:
   if (priv_bn != NULL)
-    BN_free(priv_bn);
+    BN_clear_free(priv_bn);
 
   if (pub_ec != NULL)
     EC_KEY_free(pub_ec);

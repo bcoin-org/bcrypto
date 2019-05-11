@@ -221,12 +221,12 @@ bcrypto_rsa_key2priv(const bcrypto_rsa_key_t *priv) {
 
   n = BN_bin2bn(priv->nd, priv->nl, NULL);
   e = BN_bin2bn(priv->ed, priv->el, NULL);
-  d = BN_bin2bn(priv->dd, priv->dl, NULL);
-  p = BN_bin2bn(priv->pd, priv->pl, NULL);
-  q = BN_bin2bn(priv->qd, priv->ql, NULL);
-  dp = BN_bin2bn(priv->dpd, priv->dpl, NULL);
-  dq = BN_bin2bn(priv->dqd, priv->dql, NULL);
-  qi = BN_bin2bn(priv->qid, priv->qil, NULL);
+  d = BN_bin2bn(priv->dd, priv->dl, BN_secure_new());
+  p = BN_bin2bn(priv->pd, priv->pl, BN_secure_new());
+  q = BN_bin2bn(priv->qd, priv->ql, BN_secure_new());
+  dp = BN_bin2bn(priv->dpd, priv->dpl, BN_secure_new());
+  dq = BN_bin2bn(priv->dqd, priv->dql, BN_secure_new());
+  qi = BN_bin2bn(priv->qid, priv->qil, BN_secure_new());
 
   if (n == NULL
       || e == NULL
@@ -268,22 +268,22 @@ fail:
     BN_free(e);
 
   if (d != NULL)
-    BN_free(d);
+    BN_clear_free(d);
 
   if (p != NULL)
-    BN_free(p);
+    BN_clear_free(p);
 
   if (q != NULL)
-    BN_free(q);
+    BN_clear_free(q);
 
   if (dp != NULL)
-    BN_free(dp);
+    BN_clear_free(dp);
 
   if (dq != NULL)
-    BN_free(dq);
+    BN_clear_free(dq);
 
   if (qi != NULL)
-    BN_free(qi);
+    BN_clear_free(qi);
 
   return NULL;
 }
@@ -840,12 +840,12 @@ bcrypto_rsa_privkey_compute(bcrypto_rsa_key_t **key,
 
   rsa_n = BN_new();
   rsa_e = BN_new();
-  rsa_d = BN_new();
-  rsa_p = BN_new();
-  rsa_q = BN_new();
-  rsa_dmp1 = BN_new();
-  rsa_dmq1 = BN_new();
-  rsa_iqmp = BN_new();
+  rsa_d = BN_secure_new();
+  rsa_p = BN_secure_new();
+  rsa_q = BN_secure_new();
+  rsa_dmp1 = BN_secure_new();
+  rsa_dmq1 = BN_secure_new();
+  rsa_iqmp = BN_secure_new();
 
   if (rsa_n == NULL
       || rsa_e == NULL
@@ -1017,22 +1017,22 @@ fail:
     BN_free(rsa_e);
 
   if (rsa_d != NULL)
-    BN_free(rsa_d);
+    BN_clear_free(rsa_d);
 
   if (rsa_p != NULL)
-    BN_free(rsa_p);
+    BN_clear_free(rsa_p);
 
   if (rsa_q != NULL)
-    BN_free(rsa_q);
+    BN_clear_free(rsa_q);
 
   if (rsa_dmp1 != NULL)
-    BN_free(rsa_dmp1);
+    BN_clear_free(rsa_dmp1);
 
   if (rsa_dmq1 != NULL)
-    BN_free(rsa_dmq1);
+    BN_clear_free(rsa_dmq1);
 
   if (rsa_iqmp != NULL)
-    BN_free(rsa_iqmp);
+    BN_clear_free(rsa_iqmp);
 
   if (ctx != NULL)
     BN_CTX_free(ctx);
