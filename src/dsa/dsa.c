@@ -539,13 +539,15 @@ mod_exp_const(BIGNUM *r,
   if (!BN_mod_exp(r, a, c, m, ctx))
     goto fail;
 
-  BN_clear_free(c);
+  /* Note: calling BN_clear_free in combination
+     with BN_with_flags seems to cause breakage. */
+  BN_free(c);
 
   return 1;
 
 fail:
   if (c != NULL)
-    BN_clear_free(c);
+    BN_free(c);
 
   return 0;
 }
