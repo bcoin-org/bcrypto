@@ -720,6 +720,7 @@ bcrypto_ecdsa_privkey_export_inner(bcrypto_ecdsa_t *ec,
 
   EC_KEY_set_asn1_flag(eckey, OPENSSL_EC_NAMED_CURVE);
 
+  buf = NULL;
   len = i2d_ECPrivateKey(eckey, &buf);
 
   if (len <= 0)
@@ -825,6 +826,7 @@ bcrypto_ecdsa_privkey_export_pkcs8(bcrypto_ecdsa_t *ec,
 
   ep = NULL;
 
+  buf = NULL;
   len = i2d_PKCS8_PRIV_KEY_INFO(p8, &buf);
 
   if (len <= 0)
@@ -1157,6 +1159,7 @@ bcrypto_ecdsa_pubkey_export_spki(bcrypto_ecdsa_t *ec,
   EC_KEY_set_conv_form(eckey, form);
   EC_KEY_set_asn1_flag(eckey, OPENSSL_EC_NAMED_CURVE);
 
+  buf = NULL;
   len = i2d_EC_PUBKEY(eckey, &buf);
 
   if (len <= 0)
