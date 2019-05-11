@@ -1152,8 +1152,6 @@ bcrypto_dsa_privkey_import_pkcs8(const uint8_t *raw, size_t raw_len) {
   if (!ASN1_INTEGER_to_BN(privkey, x))
     goto fail;
 
-  BN_set_flags(x, BN_FLG_CONSTTIME);
-
   DSA_get0_pqg(dsakey, &p, NULL, &g);
 
   assert(p != NULL && g != NULL);
