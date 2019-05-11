@@ -372,7 +372,7 @@ bcrypto_dsa_dsa2key(const DSA *dsakey, int mode) {
 
   slab = (uint8_t *)malloc(size);
 
-  if (!slab)
+  if (slab == NULL)
     goto fail;
 
   key->slab = slab;
