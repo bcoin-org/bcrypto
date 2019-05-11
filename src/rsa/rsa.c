@@ -305,7 +305,7 @@ bcrypto_rsa_key2pub(const bcrypto_rsa_key_t *pub) {
   n = BN_bin2bn(pub->nd, pub->nl, NULL);
   e = BN_bin2bn(pub->ed, pub->el, NULL);
 
-  if (!n || !e)
+  if (n == NULL || e == NULL)
     goto fail;
 
   if (!RSA_set0_key(rsakey, n, e, NULL))
@@ -736,18 +736,18 @@ bcrypto_rsa_mod_bits(const bcrypto_rsa_key_t *key) {
 }
 
 bcrypto_rsa_key_t *
-bcrypto_rsa_privkey_generate(int bits, unsigned long long exp) {
+bcrypto_rsa_privkey_generate(int bits, unsigned long long exponent) {
   RSA *rsakey = NULL;
-  BIGNUM *exp_bn = NULL;
+  BIGNUM *e = NULL;
   bcrypto_rsa_key_t *priv = NULL;
 
   if (bits < BCRYPTO_RSA_MIN_BITS || bits > BCRYPTO_RSA_MAX_BITS)
     goto fail;
 
-  if (exp < BCRYPTO_RSA_MIN_EXP || exp > BCRYPTO_RSA_MAX_EXP)
+  if (exponent < BCRYPTO_RSA_MIN_EXP || exponent > BCRYPTO_RSA_MAX_EXP)
     goto fail;
 
-  if ((exp & 1ull) == 0ull)
+  if ((exponent & 1ull) == 0ull)
     goto fail;
 
   rsakey = RSA_new();
@@ -755,17 +755,17 @@ bcrypto_rsa_privkey_generate(int bits, unsigned long long exp) {
   if (rsakey == NULL)
     goto fail;
 
-  exp_bn = BN_new();
+  e = BN_new();
 
-  if (exp_bn == NULL)
+  if (e == NULL)
     goto fail;
 
-  if (!BN_set_word(exp_bn, (BN_ULONG)exp))
+  if (!BN_set_word(e, (BN_ULONG)exponent))
     goto fail;
 
   bcrypto_poll();
 
-  if (!RSA_generate_key_ex(rsakey, bits, exp_bn, NULL))
+  if (!RSA_generate_key_ex(rsakey, bits, e, NULL))
     goto fail;
 
   priv = bcrypto_rsa_priv2key(rsakey);
@@ -774,7 +774,7 @@ bcrypto_rsa_privkey_generate(int bits, unsigned long long exp) {
     goto fail;
 
   RSA_free(rsakey);
-  BN_free(exp_bn);
+  BN_free(e);
 
   return priv;
 
@@ -782,8 +782,8 @@ fail:
   if (rsakey != NULL)
     RSA_free(rsakey);
 
-  if (exp_bn != NULL)
-    BN_free(exp_bn);
+  if (e != NULL)
+    BN_free(e);
 
   return NULL;
 }
@@ -1999,7 +1999,7 @@ bcrypto_rsa_verify_pss(const char *alg,
     sig_len,       /* int flen */
     sig,           /* const uint8_t *from */
     em,            /* uint8_t *to */
-    rsakey,         /* RSA *rsa */
+    rsakey,        /* RSA *rsa */
     RSA_NO_PADDING /* int padding */
   );
 
@@ -2015,7 +2015,7 @@ bcrypto_rsa_verify_pss(const char *alg,
 
   /* https://github.com/openssl/openssl/blob/82eba37/crypto/rsa/rsa_pss.c#L32 */
   result = RSA_verify_PKCS1_PSS_mgf1(
-    rsakey,   /* RSA *rsa */
+    rsakey,  /* RSA *rsa */
     msg,     /* const uint8_t *mHash */
     md,      /* const EVP_MD *Hash */
     md,      /* const EVP_MD *mgf1Hash */
@@ -2134,11 +2134,11 @@ bcrypto_rsa_decrypt_raw(uint8_t **out,
   /* tlen is always modulus size. */
   /* https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ossl.c#L374 */
   pt_len = RSA_private_decrypt(
-    ct_len,           /* int flen */
-    ct,               /* const uint8_t *from */
-    pt,               /* uint8_t *to */
-    rsakey,           /* RSA *rsa */
-    RSA_NO_PADDING    /* int padding */
+    ct_len,        /* int flen */
+    ct,            /* const uint8_t *from */
+    pt,            /* uint8_t *to */
+    rsakey,        /* RSA *rsa */
+    RSA_NO_PADDING /* int padding */
   );
 
   RSA_blinding_off(rsakey);
