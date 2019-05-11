@@ -262,7 +262,7 @@ BSecp256k1::Init(v8::Local<v8::Object> &target) {
   Nan::SetPrototypeMethod(tpl, "schnorrSign", BSecp256k1::SchnorrSign);
   Nan::SetPrototypeMethod(tpl, "schnorrVerify", BSecp256k1::SchnorrVerify);
 #ifdef BCRYPTO_SECP256K1_WITH_SCHNORR_BATCH
-  Nan::SetPrototypeMethod(tpl, "schnorrVerify", BSecp256k1::SchnorrBatchVerify);
+  Nan::SetPrototypeMethod(tpl, "schnorrBatchVerify", BSecp256k1::SchnorrBatchVerify);
 #endif
 
   v8::Local<v8::FunctionTemplate> ctor =
