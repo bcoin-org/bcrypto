@@ -201,10 +201,7 @@ bcrypto_rsa_needs_compute(const bcrypto_rsa_key_t *key) {
 
 static RSA *
 bcrypto_rsa_key2priv(const bcrypto_rsa_key_t *priv) {
-  if (priv == NULL)
-    return NULL;
-
-  RSA *priv_r = NULL;
+  RSA *rsakey = NULL;
   BIGNUM *n = NULL;
   BIGNUM *e = NULL;
   BIGNUM *d = NULL;
@@ -214,9 +211,12 @@ bcrypto_rsa_key2priv(const bcrypto_rsa_key_t *priv) {
   BIGNUM *dq = NULL;
   BIGNUM *qi = NULL;
 
-  priv_r = RSA_new();
+  if (priv == NULL)
+    return NULL;
 
-  if (priv_r == NULL)
+  rsakey = RSA_new();
+
+  if (rsakey == NULL)
     goto fail;
 
   n = BN_bin2bn(priv->nd, priv->nl, NULL);
@@ -239,27 +239,27 @@ bcrypto_rsa_key2priv(const bcrypto_rsa_key_t *priv) {
     goto fail;
   }
 
-  if (!RSA_set0_key(priv_r, n, e, d))
+  if (!RSA_set0_key(rsakey, n, e, d))
     goto fail;
 
   n = NULL;
   e = NULL;
   d = NULL;
 
-  if (!RSA_set0_factors(priv_r, p, q))
+  if (!RSA_set0_factors(rsakey, p, q))
     goto fail;
 
   p = NULL;
   q = NULL;
 
-  if (!RSA_set0_crt_params(priv_r, dp, dq, qi))
+  if (!RSA_set0_crt_params(rsakey, dp, dq, qi))
     goto fail;
 
-  return priv_r;
+  return rsakey;
 
 fail:
-  if (priv_r != NULL)
-    RSA_free(priv_r);
+  if (rsakey != NULL)
+    RSA_free(rsakey);
 
   if (n != NULL)
     BN_free(n);
@@ -290,16 +290,16 @@ fail:
 
 static RSA *
 bcrypto_rsa_key2pub(const bcrypto_rsa_key_t *pub) {
-  if (pub == NULL)
-    return NULL;
-
-  RSA *pub_r = NULL;
+  RSA *rsakey = NULL;
   BIGNUM *n = NULL;
   BIGNUM *e = NULL;
 
-  pub_r = RSA_new();
+  if (pub == NULL)
+    return NULL;
 
-  if (pub_r == NULL)
+  rsakey = RSA_new();
+
+  if (rsakey == NULL)
     goto fail;
 
   n = BN_bin2bn(pub->nd, pub->nl, NULL);
@@ -308,14 +308,14 @@ bcrypto_rsa_key2pub(const bcrypto_rsa_key_t *pub) {
   if (!n || !e)
     goto fail;
 
-  if (!RSA_set0_key(pub_r, n, e, NULL))
+  if (!RSA_set0_key(rsakey, n, e, NULL))
     goto fail;
 
-  return pub_r;
+  return rsakey;
 
 fail:
-  if (pub_r != NULL)
-    RSA_free(pub_r);
+  if (rsakey != NULL)
+    RSA_free(rsakey);
 
   if (n != NULL)
     BN_free(n);
@@ -327,10 +327,7 @@ fail:
 }
 
 static bcrypto_rsa_key_t *
-bcrypto_rsa_priv2key(const RSA *priv_r) {
-  if (priv_r == NULL)
-    return NULL;
-
+bcrypto_rsa_priv2key(const RSA *rsakey) {
   bcrypto_rsa_key_t *priv = NULL;
   const BIGNUM *n = NULL;
   const BIGNUM *e = NULL;
@@ -342,6 +339,9 @@ bcrypto_rsa_priv2key(const RSA *priv_r) {
   const BIGNUM *qi = NULL;
   uint8_t *slab = NULL;
 
+  if (rsakey == NULL)
+    return NULL;
+
   priv = (bcrypto_rsa_key_t *)malloc(sizeof(bcrypto_rsa_key_t));
 
   if (priv == NULL)
@@ -349,9 +349,9 @@ bcrypto_rsa_priv2key(const RSA *priv_r) {
 
   bcrypto_rsa_key_init(priv);
 
-  RSA_get0_key(priv_r, &n, &e, &d);
-  RSA_get0_factors(priv_r, &p, &q);
-  RSA_get0_crt_params(priv_r, &dp, &dq, &qi);
+  RSA_get0_key(rsakey, &n, &e, &d);
+  RSA_get0_factors(rsakey, &p, &q);
+  RSA_get0_crt_params(rsakey, &dp, &dq, &qi);
 
   if (n == NULL
       || e == NULL
@@ -436,14 +436,14 @@ fail:
 }
 
 static bcrypto_rsa_key_t *
-bcrypto_rsa_pub2key(const RSA *pub_r) {
-  if (pub_r == NULL)
-    return NULL;
-
+bcrypto_rsa_pub2key(const RSA *rsakey) {
   bcrypto_rsa_key_t *pub = NULL;
   const BIGNUM *n = NULL;
   const BIGNUM *e = NULL;
   uint8_t *slab = NULL;
+
+  if (rsakey == NULL)
+    return NULL;
 
   pub = (bcrypto_rsa_key_t *)malloc(sizeof(bcrypto_rsa_key_t));
 
@@ -452,7 +452,7 @@ bcrypto_rsa_pub2key(const RSA *pub_r) {
 
   bcrypto_rsa_key_init(pub);
 
-  RSA_get0_key(pub_r, &n, &e, NULL);
+  RSA_get0_key(rsakey, &n, &e, NULL);
 
   if (n == NULL || e == NULL)
     goto fail;
@@ -737,7 +737,7 @@ bcrypto_rsa_mod_bits(const bcrypto_rsa_key_t *key) {
 
 bcrypto_rsa_key_t *
 bcrypto_rsa_privkey_generate(int bits, unsigned long long exp) {
-  RSA *priv_r = NULL;
+  RSA *rsakey = NULL;
   BIGNUM *exp_bn = NULL;
   bcrypto_rsa_key_t *priv = NULL;
 
@@ -750,9 +750,9 @@ bcrypto_rsa_privkey_generate(int bits, unsigned long long exp) {
   if ((exp & 1ull) == 0ull)
     goto fail;
 
-  priv_r = RSA_new();
+  rsakey = RSA_new();
 
-  if (priv_r == NULL)
+  if (rsakey == NULL)
     goto fail;
 
   exp_bn = BN_new();
@@ -765,22 +765,22 @@ bcrypto_rsa_privkey_generate(int bits, unsigned long long exp) {
 
   bcrypto_poll();
 
-  if (!RSA_generate_key_ex(priv_r, bits, exp_bn, NULL))
+  if (!RSA_generate_key_ex(rsakey, bits, exp_bn, NULL))
     goto fail;
 
-  priv = bcrypto_rsa_priv2key(priv_r);
+  priv = bcrypto_rsa_priv2key(rsakey);
 
   if (priv == NULL)
     goto fail;
 
-  RSA_free(priv_r);
+  RSA_free(rsakey);
   BN_free(exp_bn);
 
   return priv;
 
 fail:
-  if (priv_r != NULL)
-    RSA_free(priv_r);
+  if (rsakey != NULL)
+    RSA_free(rsakey);
 
   if (exp_bn != NULL)
     BN_free(exp_bn);
@@ -789,11 +789,9 @@ fail:
 }
 
 int
-bcrypto_rsa_privkey_compute(bcrypto_rsa_key_t **key,
+bcrypto_rsa_privkey_compute(bcrypto_rsa_key_t **out,
                             const bcrypto_rsa_key_t *priv) {
-  assert(key != NULL);
-
-  RSA *priv_r = NULL;
+  RSA *rsakey = NULL;
   const BIGNUM *n = NULL;
   const BIGNUM *e = NULL;
   const BIGNUM *d = NULL;
@@ -814,25 +812,25 @@ bcrypto_rsa_privkey_compute(bcrypto_rsa_key_t **key,
   BIGNUM *r0 = NULL;
   BIGNUM *r1 = NULL;
   BIGNUM *r2 = NULL;
-  RSA *out_r = NULL;
-  bcrypto_rsa_key_t *out = NULL;
+  RSA *rsa_out = NULL;
+  bcrypto_rsa_key_t *key = NULL;
 
   if (!bcrypto_rsa_sane_compute(priv))
     goto fail;
 
   if (!bcrypto_rsa_needs_compute(priv)) {
-    *key = NULL;
+    *out = NULL;
     return 1;
   }
 
-  priv_r = bcrypto_rsa_key2priv(priv);
+  rsakey = bcrypto_rsa_key2priv(priv);
 
-  if (priv_r == NULL)
+  if (rsakey == NULL)
     goto fail;
 
-  RSA_get0_key(priv_r, &n, &e, &d);
-  RSA_get0_factors(priv_r, &p, &q);
-  RSA_get0_crt_params(priv_r, &dp, &dq, &qi);
+  RSA_get0_key(rsakey, &n, &e, &d);
+  RSA_get0_factors(rsakey, &p, &q);
+  RSA_get0_crt_params(rsakey, &dp, &dq, &qi);
 
   assert(n != NULL && e != NULL && d != NULL);
   assert(p != NULL && q != NULL);
@@ -968,47 +966,47 @@ bcrypto_rsa_privkey_compute(bcrypto_rsa_key_t **key,
     BN_free(p);
   }
 
-  out_r = RSA_new();
+  rsa_out = RSA_new();
 
-  if (out_r == NULL)
+  if (rsa_out == NULL)
     goto fail;
 
-  assert(RSA_set0_key(out_r, rsa_n, rsa_e, rsa_d));
+  assert(RSA_set0_key(rsa_out, rsa_n, rsa_e, rsa_d));
 
   rsa_n = NULL;
   rsa_e = NULL;
   rsa_d = NULL;
 
-  assert(RSA_set0_factors(out_r, rsa_p, rsa_q));
+  assert(RSA_set0_factors(rsa_out, rsa_p, rsa_q));
 
   rsa_p = NULL;
   rsa_q = NULL;
 
-  assert(RSA_set0_crt_params(out_r, rsa_dmp1, rsa_dmq1, rsa_iqmp));
+  assert(RSA_set0_crt_params(rsa_out, rsa_dmp1, rsa_dmq1, rsa_iqmp));
 
   rsa_dmp1 = NULL;
   rsa_dmq1 = NULL;
   rsa_iqmp = NULL;
 
-  out = bcrypto_rsa_priv2key(out_r);
+  key = bcrypto_rsa_priv2key(rsa_out);
 
-  if (out == NULL)
+  if (key == NULL)
     goto fail;
 
-  RSA_free(priv_r);
+  RSA_free(rsakey);
   BN_CTX_free(ctx);
   BN_free(r0);
   BN_free(r1);
   BN_free(r2);
-  RSA_free(out_r);
+  RSA_free(rsa_out);
 
-  *key = out;
+  *out = key;
 
   return 1;
 
 fail:
-  if (priv_r != NULL)
-    RSA_free(priv_r);
+  if (rsakey != NULL)
+    RSA_free(rsakey);
 
   if (rsa_n != NULL)
     BN_free(rsa_n);
@@ -1046,34 +1044,34 @@ fail:
   if (r2 != NULL)
     BN_free(r2);
 
-  if (out_r != NULL)
-    RSA_free(out_r);
+  if (rsa_out != NULL)
+    RSA_free(rsa_out);
 
   return 0;
 }
 
 int
 bcrypto_rsa_privkey_verify(const bcrypto_rsa_key_t *priv) {
-  RSA *priv_r = NULL;
+  RSA *rsakey = NULL;
 
   if (!bcrypto_rsa_sane_privkey(priv))
     goto fail;
 
-  priv_r = bcrypto_rsa_key2priv(priv);
+  rsakey = bcrypto_rsa_key2priv(priv);
 
-  if (priv_r == NULL)
+  if (rsakey == NULL)
     goto fail;
 
-  if (RSA_check_key(priv_r) <= 0)
+  if (RSA_check_key(rsakey) <= 0)
     goto fail;
 
-  RSA_free(priv_r);
+  RSA_free(rsakey);
 
   return 1;
 
 fail:
-  if (priv_r != NULL)
-    RSA_free(priv_r);
+  if (rsakey != NULL)
+    RSA_free(rsakey);
 
   return 0;
 }
@@ -1082,20 +1080,22 @@ int
 bcrypto_rsa_privkey_export(uint8_t **out,
                            size_t *out_len,
                            const bcrypto_rsa_key_t *priv) {
-  assert(out != NULL && out_len != NULL);
+  RSA *rsakey = NULL;
+  uint8_t *buf = NULL;
+  int len = 0;
 
   if (!bcrypto_rsa_sane_privkey(priv))
     return 0;
 
-  RSA *priv_r = bcrypto_rsa_key2priv(priv);
+  rsakey = bcrypto_rsa_key2priv(priv);
 
-  if (!priv_r)
+  if (!rsakey)
     return 0;
 
-  uint8_t *buf = NULL;
-  int len = i2d_RSAPrivateKey(priv_r, &buf);
+  buf = NULL;
+  len = i2d_RSAPrivateKey(rsakey, &buf);
 
-  RSA_free(priv_r);
+  RSA_free(rsakey);
 
   if (len <= 0)
     return 0;
@@ -1110,15 +1110,16 @@ bcrypto_rsa_privkey_export(uint8_t **out,
 
 bcrypto_rsa_key_t *
 bcrypto_rsa_privkey_import(const uint8_t *raw, size_t raw_len) {
-  RSA *priv_r = NULL;
+  RSA *rsakey = NULL;
   const uint8_t *p = raw;
+  bcrypto_rsa_key_t *k = NULL;
 
-  if (d2i_RSAPrivateKey(&priv_r, &p, raw_len) == NULL)
+  if (d2i_RSAPrivateKey(&rsakey, &p, raw_len) == NULL)
     return NULL;
 
-  bcrypto_rsa_key_t *k = bcrypto_rsa_priv2key(priv_r);
+  k = bcrypto_rsa_priv2key(rsakey);
 
-  RSA_free(priv_r);
+  RSA_free(rsakey);
 
   return k;
 }
@@ -1127,13 +1128,13 @@ int
 bcrypto_rsa_privkey_export_pkcs8(uint8_t **out,
                                  size_t *out_len,
                                  const bcrypto_rsa_key_t *priv) {
-  assert(out != NULL && out_len != NULL);
-
   /* https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ameth.c#L142 */
   RSA *rsa = NULL;
   PKCS8_PRIV_KEY_INFO *p8 = NULL;
   unsigned char *rk = NULL;
-  int rklen;
+  int rklen = 0;
+  uint8_t *buf = NULL;
+  int len = 0;
 
   if (!bcrypto_rsa_sane_privkey(priv))
     goto fail;
@@ -1160,8 +1161,8 @@ bcrypto_rsa_privkey_export_pkcs8(uint8_t **out,
 
   rk = NULL;
 
-  uint8_t *buf = NULL;
-  int len = i2d_PKCS8_PRIV_KEY_INFO(p8, &buf);
+  buf = NULL;
+  len = i2d_PKCS8_PRIV_KEY_INFO(p8, &buf);
 
   if (len <= 0)
     goto fail;
@@ -1193,15 +1194,15 @@ bcrypto_rsa_key_t *
 bcrypto_rsa_privkey_import_pkcs8(const uint8_t *raw, size_t raw_len) {
   /* https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ameth.c#L169 */
   PKCS8_PRIV_KEY_INFO *p8 = NULL;
-  const unsigned char *p;
-  RSA *rsa = NULL;
-  int pklen;
-  const X509_ALGOR *alg;
-  const ASN1_OBJECT *algoid;
-  const void *algp;
-  int algptype;
-
+  const unsigned char *p = NULL;
+  RSA *rsakey = NULL;
+  int pklen = 0;
+  const X509_ALGOR *alg = NULL;
+  const ASN1_OBJECT *algoid = NULL;
+  const void *algp = NULL;
+  int algptype = 0;
   const uint8_t *pp = raw;
+  bcrypto_rsa_key_t *k = NULL;
 
   if (d2i_PKCS8_PRIV_KEY_INFO(&p8, &pp, raw_len) == NULL)
     goto fail;
@@ -1218,15 +1219,15 @@ bcrypto_rsa_privkey_import_pkcs8(const uint8_t *raw, size_t raw_len) {
   if (algptype != V_ASN1_UNDEF && algptype != V_ASN1_NULL)
     goto fail;
 
-  rsa = d2i_RSAPrivateKey(NULL, &p, pklen);
+  rsakey = d2i_RSAPrivateKey(NULL, &p, pklen);
 
-  if (rsa == NULL)
+  if (rsakey == NULL)
     goto fail;
 
-  bcrypto_rsa_key_t *k = bcrypto_rsa_priv2key(rsa);
+  k = bcrypto_rsa_priv2key(rsakey);
 
   PKCS8_PRIV_KEY_INFO_free(p8);
-  RSA_free(rsa);
+  RSA_free(rsakey);
 
   return k;
 
@@ -1234,8 +1235,8 @@ fail:
   if (p8 != NULL)
     PKCS8_PRIV_KEY_INFO_free(p8);
 
-  if (rsa != NULL)
-    RSA_free(rsa);
+  if (rsakey != NULL)
+    RSA_free(rsakey);
 
   return NULL;
 }
@@ -1249,20 +1250,22 @@ int
 bcrypto_rsa_pubkey_export(uint8_t **out,
                           size_t *out_len,
                           const bcrypto_rsa_key_t *pub) {
-  assert(out != NULL && out_len != NULL);
+  RSA *rsakey = NULL;
+  uint8_t *buf = NULL;
+  int len = 0;
 
   if (!bcrypto_rsa_sane_pubkey(pub))
     return 0;
 
-  RSA *pub_r = bcrypto_rsa_key2pub(pub);
+  rsakey = bcrypto_rsa_key2pub(pub);
 
-  if (pub_r == NULL)
+  if (rsakey == NULL)
     return 0;
 
-  uint8_t *buf = NULL;
-  int len = i2d_RSAPublicKey(pub_r, &buf);
+  buf = NULL;
+  len = i2d_RSAPublicKey(rsakey, &buf);
 
-  RSA_free(pub_r);
+  RSA_free(rsakey);
 
   if (len <= 0)
     return 0;
@@ -1277,15 +1280,16 @@ bcrypto_rsa_pubkey_export(uint8_t **out,
 
 bcrypto_rsa_key_t *
 bcrypto_rsa_pubkey_import(const uint8_t *raw, size_t raw_len) {
-  RSA *pub_r = NULL;
+  RSA *rsakey = NULL;
   const uint8_t *p = raw;
+  bcrypto_rsa_key_t *k = NULL;
 
-  if (d2i_RSAPublicKey(&pub_r, &p, raw_len) == NULL)
+  if (d2i_RSAPublicKey(&rsakey, &p, raw_len) == NULL)
     return NULL;
 
-  bcrypto_rsa_key_t *k = bcrypto_rsa_pub2key(pub_r);
+  k = bcrypto_rsa_pub2key(rsakey);
 
-  RSA_free(pub_r);
+  RSA_free(rsakey);
 
   return k;
 }
@@ -1294,20 +1298,22 @@ int
 bcrypto_rsa_pubkey_export_spki(uint8_t **out,
                                size_t *out_len,
                                const bcrypto_rsa_key_t *pub) {
-  assert(out != NULL && out_len != NULL);
+  RSA *rsakey = NULL;
+  uint8_t *buf = NULL;
+  int len = 0;
 
   if (!bcrypto_rsa_sane_pubkey(pub))
     return 0;
 
-  RSA *pub_r = bcrypto_rsa_key2pub(pub);
+  rsakey = bcrypto_rsa_key2pub(pub);
 
-  if (pub_r == NULL)
+  if (rsakey == NULL)
     return 0;
 
-  uint8_t *buf = NULL;
-  int len = i2d_RSA_PUBKEY(pub_r, &buf);
+  buf = NULL;
+  len = i2d_RSA_PUBKEY(rsakey, &buf);
 
-  RSA_free(pub_r);
+  RSA_free(rsakey);
 
   if (len <= 0)
     return 0;
@@ -1322,32 +1328,31 @@ bcrypto_rsa_pubkey_export_spki(uint8_t **out,
 
 bcrypto_rsa_key_t *
 bcrypto_rsa_pubkey_import_spki(const uint8_t *raw, size_t raw_len) {
-  RSA *pub_r = NULL;
+  RSA *rsakey = NULL;
   const uint8_t *p = raw;
+  bcrypto_rsa_key_t *k = NULL;
 
-  if (d2i_RSA_PUBKEY(&pub_r, &p, raw_len) == NULL)
+  if (d2i_RSA_PUBKEY(&rsakey, &p, raw_len) == NULL)
     return NULL;
 
-  bcrypto_rsa_key_t *k = bcrypto_rsa_pub2key(pub_r);
+  k = bcrypto_rsa_pub2key(rsakey);
 
-  RSA_free(pub_r);
+  RSA_free(rsakey);
 
   return k;
 }
 
 int
-bcrypto_rsa_sign(uint8_t **sig,
-                 size_t *sig_len,
+bcrypto_rsa_sign(uint8_t **out,
+                 size_t *out_len,
                  const char *alg,
                  const uint8_t *msg,
                  size_t msg_len,
                  const bcrypto_rsa_key_t *priv) {
-  assert(sig != NULL && sig_len != NULL);
-
   int type = -1;
-  RSA *priv_r = NULL;
-  unsigned int sig_buf_len = 0;
-  uint8_t *sig_buf = NULL;
+  RSA *rsakey = NULL;
+  uint8_t *sig = NULL;
+  unsigned int sig_len = 0;
   int result = 0;
 
   type = bcrypto_rsa_hash_type(alg);
@@ -1361,21 +1366,21 @@ bcrypto_rsa_sign(uint8_t **sig,
   if (!bcrypto_rsa_sane_privkey(priv))
     goto fail;
 
-  priv_r = bcrypto_rsa_key2priv(priv);
+  rsakey = bcrypto_rsa_key2priv(priv);
 
-  if (priv_r == NULL)
+  if (rsakey == NULL)
     goto fail;
 
-  sig_buf_len = RSA_size(priv_r);
-  sig_buf = (uint8_t *)malloc(sig_buf_len);
+  sig_len = (unsigned int)RSA_size(rsakey);
+  sig = (uint8_t *)malloc(sig_len);
 
-  if (sig_buf == NULL)
+  if (sig == NULL)
     goto fail;
 
   bcrypto_poll();
 
   /* Protect against side-channel attacks. */
-  if (!RSA_blinding_on(priv_r, NULL))
+  if (!RSA_blinding_on(rsakey, NULL))
     goto fail;
 
   /* $ man RSA_sign */
@@ -1383,34 +1388,34 @@ bcrypto_rsa_sign(uint8_t **sig,
   /* https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_sign.c#L69 */
   /* https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ossl.c#L238 */
   result = RSA_sign(
-    type,
-    msg,
-    msg_len,
-    sig_buf,
-    &sig_buf_len,
-    priv_r
+    type,     /* int type */
+    msg,      /* const unsigned char *m */
+    msg_len,  /* unsigned int m_len */
+    sig,      /* unsigned char *sigret */
+    &sig_len, /* unsigned int *siglen */
+    rsakey    /* RSA *rsa */
   );
 
-  RSA_blinding_off(priv_r);
+  RSA_blinding_off(rsakey);
 
   if (!result)
     goto fail;
 
-  assert((int)sig_buf_len == RSA_size(priv_r));
+  assert(sig_len == (unsigned int)RSA_size(rsakey));
 
-  RSA_free(priv_r);
+  RSA_free(rsakey);
 
-  *sig = sig_buf;
-  *sig_len = (size_t)sig_buf_len;
+  *out = sig;
+  *out_len = (size_t)sig_len;
 
   return 1;
 
 fail:
-  if (priv_r != NULL)
-    RSA_free(priv_r);
+  if (rsakey != NULL)
+    RSA_free(rsakey);
 
-  if (sig_buf != NULL)
-    free(sig_buf);
+  if (sig != NULL)
+    free(sig);
 
   return 0;
 }
@@ -1423,7 +1428,7 @@ bcrypto_rsa_verify(const char *alg,
                    size_t sig_len,
                    const bcrypto_rsa_key_t *pub) {
   int type = -1;
-  RSA *pub_r = NULL;
+  RSA *rsakey = NULL;
 
   type = bcrypto_rsa_hash_type(alg);
 
@@ -1439,47 +1444,45 @@ bcrypto_rsa_verify(const char *alg,
   if (!bcrypto_rsa_sane_pubkey(pub))
     goto fail;
 
-  pub_r = bcrypto_rsa_key2pub(pub);
+  rsakey = bcrypto_rsa_key2pub(pub);
 
-  if (pub_r == NULL)
+  if (rsakey == NULL)
     goto fail;
 
   /* flen _must_ be modulus length. */
   /* https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_sign.c#L124 */
-  if (RSA_verify(type, msg, msg_len, sig, sig_len, pub_r) <= 0)
+  if (RSA_verify(type, msg, msg_len, sig, sig_len, rsakey) <= 0)
     goto fail;
 
-  RSA_free(pub_r);
+  RSA_free(rsakey);
 
   return 1;
 fail:
-  if (pub_r != NULL)
-    RSA_free(pub_r);
+  if (rsakey != NULL)
+    RSA_free(rsakey);
 
   return 0;
 }
 
 int
-bcrypto_rsa_encrypt(uint8_t **ct,
-                    size_t *ct_len,
-                    const uint8_t *msg,
-                    size_t msg_len,
+bcrypto_rsa_encrypt(uint8_t **out,
+                    size_t *out_len,
+                    const uint8_t *pt,
+                    size_t pt_len,
                     const bcrypto_rsa_key_t *pub) {
-  assert(ct != NULL && ct_len != NULL);
-
-  RSA *pub_r = NULL;
+  RSA *rsakey = NULL;
   uint8_t *c = NULL;
   int c_len = 0;
 
   if (!bcrypto_rsa_sane_pubkey(pub))
     goto fail;
 
-  pub_r = bcrypto_rsa_key2pub(pub);
+  rsakey = bcrypto_rsa_key2pub(pub);
 
-  if (pub_r == NULL)
+  if (rsakey == NULL)
     goto fail;
 
-  c = (uint8_t *)malloc(RSA_size(pub_r));
+  c = (uint8_t *)malloc(RSA_size(rsakey));
 
   if (c == NULL)
     goto fail;
@@ -1492,28 +1495,28 @@ bcrypto_rsa_encrypt(uint8_t **ct,
   /* https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ossl.c#L67 */
   /* https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_none.c#L14 */
   c_len = RSA_public_encrypt(
-    msg_len,          /* int flen */
-    msg,              /* const uint8_t *from */
+    pt_len,           /* int flen */
+    pt,               /* const uint8_t *from */
     c,                /* uint8_t *to */
-    pub_r,            /* RSA *rsa */
+    rsakey,           /* RSA *rsa */
     RSA_PKCS1_PADDING /* int padding */
   );
 
   if (c_len <= 0)
     goto fail;
 
-  assert(c_len == RSA_size(pub_r));
+  assert(c_len == RSA_size(rsakey));
 
-  RSA_free(pub_r);
+  RSA_free(rsakey);
 
-  *ct = c;
-  *ct_len = (size_t)c_len;
+  *out = c;
+  *out_len = (size_t)c_len;
 
   return 1;
 
 fail:
-  if (pub_r != NULL)
-    RSA_free(pub_r);
+  if (rsakey != NULL)
+    RSA_free(rsakey);
 
   if (c != NULL)
     free(c);
@@ -1522,96 +1525,92 @@ fail:
 }
 
 int
-bcrypto_rsa_decrypt(uint8_t **pt,
-                    size_t *pt_len,
-                    const uint8_t *msg,
-                    size_t msg_len,
+bcrypto_rsa_decrypt(uint8_t **out,
+                    size_t *out_len,
+                    const uint8_t *ct,
+                    size_t ct_len,
                     const bcrypto_rsa_key_t *priv) {
-  assert(pt != NULL && pt_len != NULL);
+  RSA *rsakey = NULL;
+  uint8_t *pt = NULL;
+  int pt_len = 0;
 
-  RSA *priv_r = NULL;
-  uint8_t *out = NULL;
-  int out_len = 0;
-
-  if (msg == NULL || msg_len != bcrypto_rsa_mod_size(priv))
+  if (ct == NULL || ct_len != bcrypto_rsa_mod_size(priv))
     goto fail;
 
   if (!bcrypto_rsa_sane_privkey(priv))
     goto fail;
 
-  priv_r = bcrypto_rsa_key2priv(priv);
+  rsakey = bcrypto_rsa_key2priv(priv);
 
-  if (priv_r == NULL)
+  if (rsakey == NULL)
     goto fail;
 
-  out = (uint8_t *)malloc(RSA_size(priv_r));
+  pt = (uint8_t *)malloc(RSA_size(rsakey));
 
-  if (out == NULL)
+  if (pt == NULL)
     goto fail;
 
   bcrypto_poll();
 
   /* Protect against side-channel attacks. */
-  if (!RSA_blinding_on(priv_r, NULL))
+  if (!RSA_blinding_on(rsakey, NULL))
     goto fail;
 
   /* $ man RSA_private_decrypt */
   /* flen can be smaller than modulus. */
   /* tlen is less than modulus size for pkcs1. */
   /* https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ossl.c#L374 */
-  out_len = RSA_private_decrypt(
-    msg_len,          /* int flen */
-    msg,              /* const uint8_t *from */
-    out,              /* uint8_t *to */
-    priv_r,           /* RSA *rsa */
+  pt_len = RSA_private_decrypt(
+    ct_len,           /* int flen */
+    ct,               /* const uint8_t *from */
+    pt,               /* uint8_t *to */
+    rsakey,           /* RSA *rsa */
     RSA_PKCS1_PADDING /* int padding */
   );
 
-  RSA_blinding_off(priv_r);
+  RSA_blinding_off(rsakey);
 
-  if (out_len < 0)
+  if (pt_len < 0)
     goto fail;
 
-  if (out_len == 0) {
-    free(out);
-    out = NULL;
+  if (pt_len == 0) {
+    free(pt);
+    pt = NULL;
   }
 
-  RSA_free(priv_r);
+  RSA_free(rsakey);
 
-  *pt = out;
-  *pt_len = (size_t)out_len;
+  *out = pt;
+  *out_len = (size_t)pt_len;
 
   return 1;
 
 fail:
-  if (priv_r != NULL)
-    RSA_free(priv_r);
+  if (rsakey != NULL)
+    RSA_free(rsakey);
 
-  if (out != NULL)
-    free(out);
+  if (pt != NULL)
+    free(pt);
 
   return 0;
 }
 
 int
-bcrypto_rsa_encrypt_oaep(uint8_t **ct,
-                         size_t *ct_len,
+bcrypto_rsa_encrypt_oaep(uint8_t **out,
+                         size_t *out_len,
                          const char *alg,
-                         const uint8_t *msg,
-                         size_t msg_len,
+                         const uint8_t *pt,
+                         size_t pt_len,
                          const bcrypto_rsa_key_t *pub,
                          const uint8_t *label,
                          size_t label_len) {
-  assert(ct != NULL && ct_len != NULL);
-
   int type = -1;
   const EVP_MD *md = NULL;
-  RSA *pub_r = NULL;
+  RSA *rsakey = NULL;
   uint8_t *em = NULL;
   uint8_t *c = NULL;
-  int result = 0;
   int c_len = 0;
+  int result = 0;
 
   type = bcrypto_rsa_hash_type(alg);
 
@@ -1626,36 +1625,36 @@ bcrypto_rsa_encrypt_oaep(uint8_t **ct,
   if (!bcrypto_rsa_sane_pubkey(pub))
     goto fail;
 
-  pub_r = bcrypto_rsa_key2pub(pub);
+  rsakey = bcrypto_rsa_key2pub(pub);
 
-  if (pub_r == NULL)
+  if (rsakey == NULL)
     goto fail;
 
-  em = (uint8_t *)malloc(RSA_size(pub_r));
+  em = (uint8_t *)malloc(RSA_size(rsakey));
 
   if (em == NULL)
     goto fail;
 
-  c = (uint8_t *)malloc(RSA_size(pub_r));
+  c = (uint8_t *)malloc(RSA_size(rsakey));
 
   if (c == NULL)
     goto fail;
 
-  memset(em, 0x00, RSA_size(pub_r));
+  memset(em, 0x00, RSA_size(rsakey));
 
   bcrypto_poll();
 
   /* $ man RSA_padding_add_PKCS1_OAEP */
   /* https://github.com/openssl/openssl/blob/82eba37/crypto/rsa/rsa_oaep.c#L41 */
   result = RSA_padding_add_PKCS1_OAEP_mgf1(
-    em,              /* uint8_t *to */
-    RSA_size(pub_r), /* int tlen */
-    msg,             /* const uint8_t *from */
-    msg_len,         /* int flen */
-    label,           /* const uint8_t *param */
-    label_len,       /* int plen */
-    md,              /* const EVP_MD *md */
-    md               /* const EVP_MD *mgf1md */
+    em,               /* uint8_t *to */
+    RSA_size(rsakey), /* int tlen */
+    pt,               /* const uint8_t *from */
+    pt_len,           /* int flen */
+    label,            /* const uint8_t *param */
+    label_len,        /* int plen */
+    md,               /* const EVP_MD *md */
+    md                /* const EVP_MD *mgf1md */
   );
 
   if (!result)
@@ -1666,31 +1665,31 @@ bcrypto_rsa_encrypt_oaep(uint8_t **ct,
   /* tlen is always modulus size. */
   /* https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ossl.c#L67 */
   c_len = RSA_public_encrypt(
-    RSA_size(pub_r), /* int flen */
-    em,              /* const uint8_t *from */
-    c,               /* uint8_t *to */
-    pub_r,           /* RSA *rsa */
-    RSA_NO_PADDING   /* int padding */
+    RSA_size(rsakey), /* int flen */
+    em,               /* const uint8_t *from */
+    c,                /* uint8_t *to */
+    rsakey,           /* RSA *rsa */
+    RSA_NO_PADDING    /* int padding */
   );
 
-  OPENSSL_cleanse(em, RSA_size(pub_r));
+  OPENSSL_cleanse(em, RSA_size(rsakey));
 
   if (c_len <= 0)
     goto fail;
 
-  assert(c_len == RSA_size(pub_r));
+  assert(c_len == RSA_size(rsakey));
 
-  RSA_free(pub_r);
+  RSA_free(rsakey);
   free(em);
 
-  *ct = c;
-  *ct_len = (size_t)c_len;
+  *out = c;
+  *out_len = (size_t)c_len;
 
   return 1;
 
 fail:
-  if (pub_r != NULL)
-    RSA_free(pub_r);
+  if (rsakey != NULL)
+    RSA_free(rsakey);
 
   if (em != NULL)
     free(em);
@@ -1702,23 +1701,21 @@ fail:
 }
 
 int
-bcrypto_rsa_decrypt_oaep(uint8_t **pt,
-                         size_t *pt_len,
+bcrypto_rsa_decrypt_oaep(uint8_t **out,
+                         size_t *out_len,
                          const char *alg,
-                         const uint8_t *msg,
-                         size_t msg_len,
+                         const uint8_t *ct,
+                         size_t ct_len,
                          const bcrypto_rsa_key_t *priv,
                          const uint8_t *label,
                          size_t label_len) {
-  assert(pt != NULL && pt_len != NULL);
-
   int type = -1;
   const EVP_MD *md = NULL;
-  RSA *priv_r = NULL;
+  RSA *rsakey = NULL;
   uint8_t *em = NULL;
   int em_len = 0;
-  uint8_t *out = NULL;
-  int out_len = 0;
+  uint8_t *pt = NULL;
+  int pt_len = 0;
 
   type = bcrypto_rsa_hash_type(alg);
 
@@ -1730,18 +1727,18 @@ bcrypto_rsa_decrypt_oaep(uint8_t **pt,
   if (md == NULL)
     goto fail;
 
-  if (msg == NULL || msg_len != bcrypto_rsa_mod_size(priv))
+  if (ct == NULL || ct_len != bcrypto_rsa_mod_size(priv))
     goto fail;
 
   if (!bcrypto_rsa_sane_privkey(priv))
     goto fail;
 
-  priv_r = bcrypto_rsa_key2priv(priv);
+  rsakey = bcrypto_rsa_key2priv(priv);
 
-  if (priv_r == NULL)
+  if (rsakey == NULL)
     goto fail;
 
-  em = (uint8_t *)malloc(RSA_size(priv_r));
+  em = (uint8_t *)malloc(RSA_size(rsakey));
 
   if (em == NULL)
     goto fail;
@@ -1749,98 +1746,96 @@ bcrypto_rsa_decrypt_oaep(uint8_t **pt,
   bcrypto_poll();
 
   /* Protect against side-channel attacks. */
-  if (!RSA_blinding_on(priv_r, NULL))
+  if (!RSA_blinding_on(rsakey, NULL))
     goto fail;
 
-  memset(em, 0x00, RSA_size(priv_r));
+  memset(em, 0x00, RSA_size(rsakey));
 
   /* $ man RSA_private_decrypt */
   /* flen can be smaller than modulus. */
   /* tlen is always modulus size. */
   /* https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ossl.c#L374 */
   em_len = RSA_private_decrypt(
-    msg_len,       /* int flen */
-    msg,           /* const uint8_t *from */
+    ct_len,        /* int flen */
+    ct,            /* const uint8_t *from */
     em,            /* uint8_t *to */
-    priv_r,        /* RSA *rsa */
+    rsakey,        /* RSA *rsa */
     RSA_NO_PADDING /* int padding */
   );
 
-  RSA_blinding_off(priv_r);
+  RSA_blinding_off(rsakey);
 
   if (em_len <= 0)
     goto fail;
 
-  assert(em_len == RSA_size(priv_r));
+  assert(em_len == RSA_size(rsakey));
 
-  out = (uint8_t *)malloc(RSA_size(priv_r));
+  pt = (uint8_t *)malloc(RSA_size(rsakey));
 
-  if (out == NULL) {
-    OPENSSL_cleanse(em, RSA_size(priv_r));
+  if (pt == NULL) {
+    OPENSSL_cleanse(em, RSA_size(rsakey));
     goto fail;
   }
 
   /* https://github.com/openssl/openssl/blob/82eba37/crypto/rsa/rsa_oaep.c#L116 */
-  out_len = RSA_padding_check_PKCS1_OAEP_mgf1(
-    out,              /* uint8_t *to */
-    RSA_size(priv_r), /* int tlen */
+  pt_len = RSA_padding_check_PKCS1_OAEP_mgf1(
+    pt,               /* uint8_t *to */
+    RSA_size(rsakey), /* int tlen */
     em,               /* const uint8_t *from */
     em_len,           /* int flen */
-    RSA_size(priv_r), /* int num (modulus size) */
+    RSA_size(rsakey), /* int num (modulus size) */
     label,            /* const uint8_t *param */
     label_len,        /* int plen */
     md,               /* const EVP_MD *md */
     md                /* const EVP_MD *mgf1md */
   );
 
-  OPENSSL_cleanse(em, RSA_size(priv_r));
+  OPENSSL_cleanse(em, RSA_size(rsakey));
 
-  if (out_len < 0)
+  if (pt_len < 0)
     goto fail;
 
-  if (out_len == 0) {
-    free(out);
-    out = NULL;
+  if (pt_len == 0) {
+    free(pt);
+    pt = NULL;
   }
 
-  RSA_free(priv_r);
+  RSA_free(rsakey);
   free(em);
 
-  *pt = out;
-  *pt_len = (size_t)out_len;
+  *out = pt;
+  *out_len = (size_t)pt_len;
 
   return 1;
 
 fail:
-  if (priv_r != NULL)
-    RSA_free(priv_r);
+  if (rsakey != NULL)
+    RSA_free(rsakey);
 
   if (em != NULL)
     free(em);
 
-  if (out != NULL)
-    free(out);
+  if (pt != NULL)
+    free(pt);
 
   return 0;
 }
 
 int
-bcrypto_rsa_sign_pss(uint8_t **sig,
-                     size_t *sig_len,
+bcrypto_rsa_sign_pss(uint8_t **out,
+                     size_t *out_len,
                      const char *alg,
                      const uint8_t *msg,
                      size_t msg_len,
                      const bcrypto_rsa_key_t *priv,
                      int salt_len) {
-  assert(sig && sig_len);
-
   int type = -1;
   const EVP_MD *md = NULL;
-  RSA *priv_r = NULL;
+  RSA *rsakey = NULL;
   uint8_t *em = NULL;
   int result = 0;
-  uint8_t *c = NULL;
-  int c_len = 0;
+  uint8_t *sig = NULL;
+  int sig_len = 0;
 
   type = bcrypto_rsa_hash_type(alg);
 
@@ -1861,12 +1856,12 @@ bcrypto_rsa_sign_pss(uint8_t **sig,
   if (salt_len < -1)
     goto fail;
 
-  priv_r = bcrypto_rsa_key2priv(priv);
+  rsakey = bcrypto_rsa_key2priv(priv);
 
-  if (priv_r == NULL)
+  if (rsakey == NULL)
     goto fail;
 
-  em = (uint8_t *)malloc(RSA_size(priv_r));
+  em = (uint8_t *)malloc(RSA_size(rsakey));
 
   if (em == NULL)
     goto fail;
@@ -1876,7 +1871,7 @@ bcrypto_rsa_sign_pss(uint8_t **sig,
   else if (salt_len == -1)
     salt_len = -1; /* RSA_PSS_SALTLEN_DIGEST */
 
-  memset(em, 0x00, RSA_size(priv_r));
+  memset(em, 0x00, RSA_size(rsakey));
 
   bcrypto_poll();
 
@@ -1884,7 +1879,7 @@ bcrypto_rsa_sign_pss(uint8_t **sig,
   /* https://github.com/openssl/openssl/blob/82eba37/crypto/rsa/rsa_pss.c#L145 */
   /* https://github.com/openssl/openssl/blob/82eba37/crypto/rsa/rsa_pmeth.c#L122 */
   result = RSA_padding_add_PKCS1_PSS_mgf1(
-    priv_r,  /* RSA *rsa */
+    rsakey,  /* RSA *rsa */
     em,      /* uint8_t *EM */
     msg,     /* const uint8_t *mHash */
     md,      /* const EVP_MD *Hash */
@@ -1895,16 +1890,16 @@ bcrypto_rsa_sign_pss(uint8_t **sig,
   if (!result)
     goto fail;
 
-  c = (uint8_t *)malloc(RSA_size(priv_r));
+  sig = (uint8_t *)malloc(RSA_size(rsakey));
 
-  if (c == NULL) {
-    OPENSSL_cleanse(em, RSA_size(priv_r));
+  if (sig == NULL) {
+    OPENSSL_cleanse(em, RSA_size(rsakey));
     goto fail;
   }
 
   /* Protect against side-channel attacks. */
-  if (!RSA_blinding_on(priv_r, NULL)) {
-    OPENSSL_cleanse(em, RSA_size(priv_r));
+  if (!RSA_blinding_on(rsakey, NULL)) {
+    OPENSSL_cleanse(em, RSA_size(rsakey));
     goto fail;
   }
 
@@ -1912,40 +1907,40 @@ bcrypto_rsa_sign_pss(uint8_t **sig,
   /* flen must be modulus size. */
   /* tlen is always modulus size. */
   /* https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ossl.c#L238 */
-  c_len = RSA_private_encrypt(
-    RSA_size(priv_r), /* int flen */
+  sig_len = RSA_private_encrypt(
+    RSA_size(rsakey), /* int flen */
     em,               /* const uint8_t *from */
-    c,                /* uint8_t *to */
-    priv_r,           /* RSA *rsa */
+    sig,              /* uint8_t *to */
+    rsakey,           /* RSA *rsa */
     RSA_NO_PADDING    /* int padding */
   );
 
-  OPENSSL_cleanse(em, RSA_size(priv_r));
+  OPENSSL_cleanse(em, RSA_size(rsakey));
 
-  RSA_blinding_off(priv_r);
+  RSA_blinding_off(rsakey);
 
-  if (c_len <= 0)
+  if (sig_len <= 0)
     goto fail;
 
-  assert(c_len == RSA_size(priv_r));
+  assert(sig_len == RSA_size(rsakey));
 
-  RSA_free(priv_r);
+  RSA_free(rsakey);
   free(em);
 
-  *sig = c;
-  *sig_len = (size_t)c_len;
+  *out = sig;
+  *out_len = (size_t)sig_len;
 
   return 1;
 
 fail:
-  if (priv_r != NULL)
-    RSA_free(priv_r);
+  if (rsakey != NULL)
+    RSA_free(rsakey);
 
   if (em != NULL)
     free(em);
 
-  if (c != NULL)
-    free(c);
+  if (sig != NULL)
+    free(sig);
 
   return 0;
 }
@@ -1960,7 +1955,7 @@ bcrypto_rsa_verify_pss(const char *alg,
                        int salt_len) {
   int type = 0;
   const EVP_MD *md = NULL;
-  RSA *pub_r = NULL;
+  RSA *rsakey = NULL;
   uint8_t *em = NULL;
   int em_len = 0;
   int result = 0;
@@ -1984,17 +1979,17 @@ bcrypto_rsa_verify_pss(const char *alg,
   if (!bcrypto_rsa_sane_pubkey(pub))
     goto fail;
 
-  pub_r = bcrypto_rsa_key2pub(pub);
+  rsakey = bcrypto_rsa_key2pub(pub);
 
-  if (pub_r == NULL)
+  if (rsakey == NULL)
     goto fail;
 
-  em = (uint8_t *)malloc(RSA_size(pub_r));
+  em = (uint8_t *)malloc(RSA_size(rsakey));
 
   if (em == NULL)
     goto fail;
 
-  memset(em, 0x00, RSA_size(pub_r));
+  memset(em, 0x00, RSA_size(rsakey));
 
   /* $ man RSA_public_decrypt */
   /* flen can be smaller than modulus size. */
@@ -2004,14 +1999,14 @@ bcrypto_rsa_verify_pss(const char *alg,
     sig_len,       /* int flen */
     sig,           /* const uint8_t *from */
     em,            /* uint8_t *to */
-    pub_r,         /* RSA *rsa */
+    rsakey,         /* RSA *rsa */
     RSA_NO_PADDING /* int padding */
   );
 
   if (em_len <= 0)
     goto fail;
 
-  assert(em_len == RSA_size(pub_r));
+  assert(em_len == RSA_size(rsakey));
 
   if (salt_len == 0)
     salt_len = -2; /* RSA_PSS_SALTLEN_AUTO */
@@ -2020,7 +2015,7 @@ bcrypto_rsa_verify_pss(const char *alg,
 
   /* https://github.com/openssl/openssl/blob/82eba37/crypto/rsa/rsa_pss.c#L32 */
   result = RSA_verify_PKCS1_PSS_mgf1(
-    pub_r,   /* RSA *rsa */
+    rsakey,   /* RSA *rsa */
     msg,     /* const uint8_t *mHash */
     md,      /* const EVP_MD *Hash */
     md,      /* const EVP_MD *mgf1Hash */
@@ -2028,19 +2023,19 @@ bcrypto_rsa_verify_pss(const char *alg,
     salt_len /* int sLen */
   );
 
-  OPENSSL_cleanse(em, RSA_size(pub_r));
+  OPENSSL_cleanse(em, RSA_size(rsakey));
 
   if (!result)
     goto fail;
 
-  RSA_free(pub_r);
+  RSA_free(rsakey);
   free(em);
 
   return 1;
 
 fail:
-  if (pub_r != NULL)
-    RSA_free(pub_r);
+  if (rsakey != NULL)
+    RSA_free(rsakey);
 
   if (em != NULL)
     free(em);
@@ -2051,58 +2046,56 @@ fail:
 int
 bcrypto_rsa_encrypt_raw(uint8_t **out,
                         size_t *out_len,
-                        const uint8_t *msg,
-                        size_t msg_len,
+                        const uint8_t *pt,
+                        size_t pt_len,
                         const bcrypto_rsa_key_t *pub) {
-  assert(out != NULL && out_len != NULL);
-
-  RSA *pub_r = NULL;
-  uint8_t *c = NULL;
-  int c_len = 0;
+  RSA *rsakey = NULL;
+  uint8_t *ct = NULL;
+  int ct_len = 0;
 
   if (!bcrypto_rsa_sane_pubkey(pub))
     goto fail;
 
-  pub_r = bcrypto_rsa_key2pub(pub);
+  rsakey = bcrypto_rsa_key2pub(pub);
 
-  if (pub_r == NULL)
+  if (rsakey == NULL)
     goto fail;
 
-  c = (uint8_t *)malloc(RSA_size(pub_r));
+  ct = (uint8_t *)malloc(RSA_size(rsakey));
 
-  if (c == NULL)
+  if (ct == NULL)
     goto fail;
 
   /* $ man RSA_public_encrypt */
   /* flen must be size of modulus. */
   /* tlen is always modulus size. */
   /* https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ossl.c#L67 */
-  c_len = RSA_public_encrypt(
-    msg_len,       /* int flen */
-    msg,           /* const uint8_t *from */
-    c,             /* uint8_t *to */
-    pub_r,         /* RSA *rsa */
+  ct_len = RSA_public_encrypt(
+    pt_len,        /* int flen */
+    pt,            /* const uint8_t *from */
+    ct,            /* uint8_t *to */
+    rsakey,        /* RSA *rsa */
     RSA_NO_PADDING /* int padding */
   );
 
-  if (c_len <= 0)
+  if (ct_len <= 0)
     goto fail;
 
-  assert(c_len == RSA_size(pub_r));
+  assert(ct_len == RSA_size(rsakey));
 
-  RSA_free(pub_r);
+  RSA_free(rsakey);
 
-  *out = c;
-  *out_len = (size_t)c_len;
+  *out = ct;
+  *out_len = (size_t)ct_len;
 
   return 1;
 
 fail:
-  if (pub_r != NULL)
-    RSA_free(pub_r);
+  if (rsakey != NULL)
+    RSA_free(rsakey);
 
-  if (c != NULL)
-    free(c);
+  if (ct != NULL)
+    free(ct);
 
   return 0;
 }
@@ -2110,66 +2103,64 @@ fail:
 int
 bcrypto_rsa_decrypt_raw(uint8_t **out,
                         size_t *out_len,
-                        const uint8_t *msg,
-                        size_t msg_len,
+                        const uint8_t *ct,
+                        size_t ct_len,
                         const bcrypto_rsa_key_t *priv) {
-  assert(out != NULL && out_len != NULL);
-
-  RSA *priv_r = NULL;
-  uint8_t *em = NULL;
-  int em_len = 0;
+  RSA *rsakey = NULL;
+  uint8_t *pt = NULL;
+  int pt_len = 0;
 
   if (!bcrypto_rsa_sane_privkey(priv))
     goto fail;
 
-  priv_r = bcrypto_rsa_key2priv(priv);
+  rsakey = bcrypto_rsa_key2priv(priv);
 
-  if (priv_r == NULL)
+  if (rsakey == NULL)
     goto fail;
 
-  em = (uint8_t *)malloc(RSA_size(priv_r));
+  pt = (uint8_t *)malloc(RSA_size(rsakey));
 
-  if (em == NULL)
+  if (pt == NULL)
     goto fail;
 
   bcrypto_poll();
 
   /* Protect against side-channel attacks. */
-  if (!RSA_blinding_on(priv_r, NULL))
+  if (!RSA_blinding_on(rsakey, NULL))
     goto fail;
 
   /* $ man RSA_private_decrypt */
   /* flen can be smaller than modulus. */
   /* tlen is always modulus size. */
   /* https://github.com/openssl/openssl/blob/32f803d/crypto/rsa/rsa_ossl.c#L374 */
-  em_len = RSA_private_decrypt(
-    msg_len,          /* int flen */
-    msg,              /* const uint8_t *from */
-    em,               /* uint8_t *to */
-    priv_r,           /* RSA *rsa */
+  pt_len = RSA_private_decrypt(
+    ct_len,           /* int flen */
+    ct,               /* const uint8_t *from */
+    pt,               /* uint8_t *to */
+    rsakey,           /* RSA *rsa */
     RSA_NO_PADDING    /* int padding */
   );
 
-  RSA_blinding_off(priv_r);
+  RSA_blinding_off(rsakey);
 
-  if (em_len <= 0)
+  if (pt_len <= 0)
     goto fail;
 
-  assert(em_len == RSA_size(priv_r));
+  assert(pt_len == RSA_size(rsakey));
 
-  RSA_free(priv_r);
+  RSA_free(rsakey);
 
-  *out = em;
-  *out_len = (size_t)em_len;
+  *out = pt;
+  *out_len = (size_t)pt_len;
 
   return 1;
 
 fail:
-  if (priv_r != NULL)
-    RSA_free(priv_r);
+  if (rsakey != NULL)
+    RSA_free(rsakey);
 
-  if (em != NULL)
-    free(em);
+  if (pt != NULL)
+    free(pt);
 
   return 0;
 }
@@ -2177,12 +2168,10 @@ fail:
 int
 bcrypto_rsa_veil(uint8_t **out,
                  size_t *out_len,
-                 const uint8_t *msg,
-                 size_t msg_len,
+                 const uint8_t *ct,
+                 size_t ct_len,
                  size_t bits,
                  const bcrypto_rsa_key_t *pub) {
-  assert(out != NULL && out_len != NULL);
-
   int ret = 0;
   BN_CTX *ctx = NULL;
   BIGNUM *c0 = NULL;
@@ -2191,10 +2180,10 @@ bcrypto_rsa_veil(uint8_t **out,
   BIGNUM *rlim = NULL;
   BIGNUM *c1 = NULL;
   BIGNUM *cr = NULL;
-  uint8_t *c = NULL;
-  int c_len = 0;
+  uint8_t *veiled = NULL;
+  int veiled_len = 0;
 
-  if (msg == NULL || msg_len != bcrypto_rsa_mod_size(pub))
+  if (ct == NULL || ct_len != bcrypto_rsa_mod_size(pub))
     goto fail;
 
   if (!bcrypto_rsa_sane_pubkey(pub))
@@ -2205,7 +2194,7 @@ bcrypto_rsa_veil(uint8_t **out,
     goto fail;
 
   ctx = BN_CTX_new();
-  c0 = BN_bin2bn(msg, msg_len, NULL);
+  c0 = BN_bin2bn(ct, ct_len, NULL);
   n = BN_bin2bn(pub->nd, pub->nl, NULL);
   ctlim = BN_new();
   rlim = BN_new();
@@ -2270,17 +2259,17 @@ bcrypto_rsa_veil(uint8_t **out,
   assert(BN_ucmp(cr, c0) == 0);
   assert((size_t)BN_num_bits(c1) <= bits);
 
-  c_len = (bits + 7) / 8;
-  c = (uint8_t *)malloc(c_len);
+  veiled_len = (bits + 7) / 8;
+  veiled = (uint8_t *)malloc(veiled_len);
 
-  if (c == NULL)
+  if (veiled == NULL)
     goto fail;
 
-  assert(BN_bn2binpad(c1, c, c_len) != -1);
+  assert(BN_bn2binpad(c1, veiled, veiled_len) != -1);
 
-  *out = c;
-  *out_len = c_len;
-  c = NULL;
+  *out = veiled;
+  *out_len = veiled_len;
+  veiled = NULL;
 
   ret = 1;
 fail:
@@ -2305,8 +2294,8 @@ fail:
   if (cr != NULL)
     BN_free(cr);
 
-  if (c != NULL)
-    free(c);
+  if (veiled != NULL)
+    free(veiled);
 
   return ret;
 }
@@ -2314,32 +2303,31 @@ fail:
 int
 bcrypto_rsa_unveil(uint8_t **out,
                    size_t *out_len,
-                   const uint8_t *msg,
-                   size_t msg_len,
+                   const uint8_t *veiled,
+                   size_t veiled_len,
                    size_t bits,
                    const bcrypto_rsa_key_t *pub) {
-  assert(out != NULL && out_len != NULL);
-
   int ret = 0;
+  size_t klen = 0;
   BN_CTX *ctx = NULL;
   BIGNUM *c1 = NULL;
   BIGNUM *n = NULL;
-  uint8_t *c = NULL;
-  int c_len = 0;
+  uint8_t *ct = NULL;
+  int ct_len = 0;
 
-  size_t klen = bcrypto_rsa_mod_size(pub);
+  klen = bcrypto_rsa_mod_size(pub);
 
-  if (msg == NULL || msg_len < klen)
+  if (veiled == NULL || veiled_len < klen)
     goto fail;
 
   if (!bcrypto_rsa_sane_pubkey(pub))
     goto fail;
 
-  if (bcrypto_count_bits(msg, msg_len) > bits)
+  if (bcrypto_count_bits(veiled, veiled_len) > bits)
     goto fail;
 
   ctx = BN_CTX_new();
-  c1 = BN_bin2bn(msg, msg_len, NULL);
+  c1 = BN_bin2bn(veiled, veiled_len, NULL);
   n = BN_bin2bn(pub->nd, pub->nl, NULL);
 
   if (ctx == NULL || c1 == NULL || n == NULL)
@@ -2351,17 +2339,17 @@ bcrypto_rsa_unveil(uint8_t **out,
 
   assert((size_t)BN_num_bytes(c1) <= klen);
 
-  c_len = klen;
-  c = (uint8_t *)malloc(c_len);
+  ct_len = klen;
+  ct = (uint8_t *)malloc(ct_len);
 
-  if (c == NULL)
+  if (ct == NULL)
     goto fail;
 
-  assert(BN_bn2binpad(c1, c, c_len) != -1);
+  assert(BN_bn2binpad(c1, ct, ct_len) != -1);
 
-  *out = c;
-  *out_len = c_len;
-  c = NULL;
+  *out = ct;
+  *out_len = ct_len;
+  ct = NULL;
 
   ret = 1;
 fail:
@@ -2374,8 +2362,8 @@ fail:
   if (n != NULL)
     BN_free(n);
 
-  if (c != NULL)
-    free(c);
+  if (ct != NULL)
+    free(ct);
 
   return ret;
 }

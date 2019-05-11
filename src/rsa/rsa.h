@@ -43,7 +43,7 @@ bcrypto_rsa_key_t *
 bcrypto_rsa_privkey_generate(int bits, unsigned long long exp);
 
 int
-bcrypto_rsa_privkey_compute(bcrypto_rsa_key_t **key,
+bcrypto_rsa_privkey_compute(bcrypto_rsa_key_t **out,
                             const bcrypto_rsa_key_t *priv);
 
 int
@@ -85,8 +85,8 @@ bcrypto_rsa_key_t *
 bcrypto_rsa_pubkey_import_spki(const uint8_t *raw, size_t raw_len);
 
 int
-bcrypto_rsa_sign(uint8_t **sig,
-                 size_t *sig_len,
+bcrypto_rsa_sign(uint8_t **out,
+                 size_t *out_len,
                  const char *alg,
                  const uint8_t *msg,
                  size_t msg_len,
@@ -101,42 +101,42 @@ bcrypto_rsa_verify(const char *alg,
                    const bcrypto_rsa_key_t *pub);
 
 int
-bcrypto_rsa_encrypt(uint8_t **ct,
-                    size_t *ct_len,
-                    const uint8_t *msg,
-                    size_t msg_len,
+bcrypto_rsa_encrypt(uint8_t **out,
+                    size_t *out_len,
+                    const uint8_t *pt,
+                    size_t pt_len,
                     const bcrypto_rsa_key_t *pub);
 
 int
-bcrypto_rsa_decrypt(uint8_t **pt,
-                    size_t *pt_len,
-                    const uint8_t *msg,
-                    size_t msg_len,
+bcrypto_rsa_decrypt(uint8_t **out,
+                    size_t *out_len,
+                    const uint8_t *ct,
+                    size_t ct_len,
                     const bcrypto_rsa_key_t *priv);
 
 int
-bcrypto_rsa_encrypt_oaep(uint8_t **ct,
-                         size_t *ct_len,
+bcrypto_rsa_encrypt_oaep(uint8_t **out,
+                         size_t *out_len,
                          const char *alg,
-                         const uint8_t *msg,
-                         size_t msg_len,
+                         const uint8_t *pt,
+                         size_t pt_len,
                          const bcrypto_rsa_key_t *pub,
                          const uint8_t *label,
                          size_t label_len);
 
 int
-bcrypto_rsa_decrypt_oaep(uint8_t **pt,
-                         size_t *pt_len,
+bcrypto_rsa_decrypt_oaep(uint8_t **out,
+                         size_t *out_len,
                          const char *alg,
-                         const uint8_t *msg,
-                         size_t msg_len,
+                         const uint8_t *ct,
+                         size_t ct_len,
                          const bcrypto_rsa_key_t *priv,
                          const uint8_t *label,
                          size_t label_len);
 
 int
-bcrypto_rsa_sign_pss(uint8_t **sig,
-                     size_t *sig_len,
+bcrypto_rsa_sign_pss(uint8_t **out,
+                     size_t *out_len,
                      const char *alg,
                      const uint8_t *msg,
                      size_t msg_len,
@@ -155,30 +155,30 @@ bcrypto_rsa_verify_pss(const char *alg,
 int
 bcrypto_rsa_encrypt_raw(uint8_t **out,
                         size_t *out_len,
-                        const uint8_t *msg,
-                        size_t msg_len,
+                        const uint8_t *pt,
+                        size_t pt_len,
                         const bcrypto_rsa_key_t *pub);
 
 int
 bcrypto_rsa_decrypt_raw(uint8_t **out,
                         size_t *out_len,
-                        const uint8_t *msg,
-                        size_t msg_len,
+                        const uint8_t *ct,
+                        size_t ct_len,
                         const bcrypto_rsa_key_t *priv);
 
 int
 bcrypto_rsa_veil(uint8_t **out,
                  size_t *out_len,
-                 const uint8_t *msg,
-                 size_t msg_len,
+                 const uint8_t *ct,
+                 size_t ct_len,
                  size_t bits,
                  const bcrypto_rsa_key_t *pub);
 
 int
 bcrypto_rsa_unveil(uint8_t **out,
                    size_t *out_len,
-                   const uint8_t *msg,
-                   size_t msg_len,
+                   const uint8_t *veiled,
+                   size_t veiled_len,
                    size_t bits,
                    const bcrypto_rsa_key_t *pub);
 
