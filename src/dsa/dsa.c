@@ -548,7 +548,7 @@ int
 bcrypto_dsa_params_verify(const bcrypto_dsa_key_t *params) {
   DSA *params_d = NULL;
   BN_CTX *ctx = NULL;
-#if BCRYPTO_DSA_STRICT
+#ifdef BCRYPTO_DSA_STRICT
   BIGNUM *pm1_bn = NULL;
   BIGNUM *div_bn = NULL;
   BIGNUM *mod_bn = NULL;
@@ -571,7 +571,7 @@ bcrypto_dsa_params_verify(const bcrypto_dsa_key_t *params) {
   assert(p != NULL && q != NULL && g != NULL);
 
   ctx = BN_CTX_new();
-#if BCRYPTO_DSA_STRICT
+#ifdef BCRYPTO_DSA_STRICT
   pm1_bn = BN_new();
   div_bn = BN_new();
   mod_bn = BN_new();
@@ -579,7 +579,7 @@ bcrypto_dsa_params_verify(const bcrypto_dsa_key_t *params) {
   x_bn = BN_new();
 
   if (ctx == NULL
-#if BCRYPTO_DSA_STRICT
+#ifdef BCRYPTO_DSA_STRICT
       || pm1_bn == NULL
       || div_bn == NULL
       || mod_bn == NULL
@@ -588,7 +588,7 @@ bcrypto_dsa_params_verify(const bcrypto_dsa_key_t *params) {
     goto fail;
   }
 
-#if BCRYPTO_DSA_STRICT
+#ifdef BCRYPTO_DSA_STRICT
   /* pm1 = p - 1 */
   if (!BN_sub(pm1_bn, p, BN_value_one()))
     goto fail;
@@ -620,7 +620,7 @@ bcrypto_dsa_params_verify(const bcrypto_dsa_key_t *params) {
 
   DSA_free(params_d);
   BN_CTX_free(ctx);
-#if BCRYPTO_DSA_STRICT
+#ifdef BCRYPTO_DSA_STRICT
   BN_free(pm1_bn);
   BN_free(div_bn);
   BN_free(mod_bn);
@@ -636,7 +636,7 @@ fail:
   if (ctx != NULL)
     BN_CTX_free(ctx);
 
-#if BCRYPTO_DSA_STRICT
+#ifdef BCRYPTO_DSA_STRICT
   if (pm1_bn != NULL)
     BN_free(pm1_bn);
 
