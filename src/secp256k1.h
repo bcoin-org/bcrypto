@@ -52,6 +52,9 @@ private:
 
   static NAN_METHOD(SchnorrSign);
   static NAN_METHOD(SchnorrVerify);
+#ifdef BCRYPTO_SECP256K1_WITH_SCHNORR_BATCH
+  static NAN_METHOD(SchnorrBatchVerify);
+#endif
 };
 
 #endif
