@@ -1708,7 +1708,7 @@ bcrypto_ecdsa_derive(bcrypto_ecdsa_t *ec,
 
   BN_clear_free(priv_bn);
   EC_KEY_free(pub_ec);
-  EC_POINT_free(secret_point);
+  EC_POINT_clear_free(secret_point);
 
   return 1;
 
@@ -1720,7 +1720,7 @@ fail:
     EC_KEY_free(pub_ec);
 
   if (secret_point != NULL)
-    EC_POINT_free(secret_point);
+    EC_POINT_clear_free(secret_point);
 
   return 0;
 }
