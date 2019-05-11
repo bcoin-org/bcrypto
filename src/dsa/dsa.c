@@ -589,12 +589,10 @@ fail:
 int
 bcrypto_dsa_params_verify(const bcrypto_dsa_key_t *params) {
   DSA *dsaparams = NULL;
+  const BIGNUM *p = NULL;
+  const BIGNUM *q = NULL;
+  const BIGNUM *g = NULL;
   BN_CTX *ctx = NULL;
-#ifdef BCRYPTO_DSA_STRICT
-  BIGNUM *pm1 = NULL;
-  BIGNUM *div = NULL;
-  BIGNUM *mod = NULL;
-#endif
   BIGNUM *x = NULL;
 
   if (!bcrypto_dsa_sane_params(params))
@@ -605,52 +603,14 @@ bcrypto_dsa_params_verify(const bcrypto_dsa_key_t *params) {
   if (dsaparams == NULL)
     goto fail;
 
-  const BIGNUM *p = NULL;
-  const BIGNUM *q = NULL;
-  const BIGNUM *g = NULL;
-
   DSA_get0_pqg(dsaparams, &p, &q, &g);
   assert(p != NULL && q != NULL && g != NULL);
 
   ctx = BN_CTX_new();
-#ifdef BCRYPTO_DSA_STRICT
-  pm1 = BN_new();
-  div = BN_new();
-  mod = BN_new();
-#endif
   x = BN_new();
 
-  if (ctx == NULL
-#ifdef BCRYPTO_DSA_STRICT
-      || pm1 == NULL
-      || div == NULL
-      || mod == NULL
-#endif
-      || x == NULL) {
+  if (ctx == NULL || x == NULL)
     goto fail;
-  }
-
-#ifdef BCRYPTO_DSA_STRICT
-  /* pm1 = p - 1 */
-  if (!BN_sub(pm1, p, BN_value_one()))
-    goto fail;
-
-  /* [div, mod] = divmod(pm1, q) */
-  if (!BN_div(div, mod, pm1, q, ctx))
-    goto fail;
-
-  /* mod != 0 */
-  if (!BN_is_zero(mod))
-    goto fail;
-
-  /* x = g^div mod p */
-  if (!BN_mod_exp(x, g, div, p, ctx))
-    goto fail;
-
-  /* x == 1 */
-  if (BN_is_one(x))
-    goto fail;
-#endif
 
   /* x = g^q mod p */
   if (!BN_mod_exp(x, g, q, p, ctx))
@@ -662,11 +622,6 @@ bcrypto_dsa_params_verify(const bcrypto_dsa_key_t *params) {
 
   DSA_free(dsaparams);
   BN_CTX_free(ctx);
-#ifdef BCRYPTO_DSA_STRICT
-  BN_free(pm1);
-  BN_free(div);
-  BN_free(mod);
-#endif
   BN_free(x);
 
   return 1;
@@ -677,17 +632,6 @@ fail:
 
   if (ctx != NULL)
     BN_CTX_free(ctx);
-
-#ifdef BCRYPTO_DSA_STRICT
-  if (pm1 != NULL)
-    BN_free(pm1);
-
-  if (div != NULL)
-    BN_free(div);
-
-  if (mod != NULL)
-    BN_free(mod);
-#endif
 
   if (x != NULL)
     BN_free(x);
