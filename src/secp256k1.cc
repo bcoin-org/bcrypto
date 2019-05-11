@@ -220,39 +220,26 @@ BSecp256k1::Init(v8::Local<v8::Object> &target) {
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
 
   // secret key
-  Nan::SetPrototypeMethod(tpl, "privateKeyVerify",
-                          BSecp256k1::PrivateKeyVerify);
-  Nan::SetPrototypeMethod(tpl, "privateKeyExport",
-                          BSecp256k1::PrivateKeyExport);
-  Nan::SetPrototypeMethod(tpl, "privateKeyImport",
-                          BSecp256k1::PrivateKeyImport);
-  Nan::SetPrototypeMethod(tpl, "privateKeyReduce",
-                          BSecp256k1::PrivateKeyReduce);
-  Nan::SetPrototypeMethod(tpl, "privateKeyNegate",
-                          BSecp256k1::PrivateKeyNegate);
-  Nan::SetPrototypeMethod(tpl, "privateKeyInverse",
-                          BSecp256k1::PrivateKeyInverse);
-  Nan::SetPrototypeMethod(tpl, "privateKeyTweakAdd",
-                          BSecp256k1::PrivateKeyTweakAdd);
-  Nan::SetPrototypeMethod(tpl, "privateKeyTweakMul",
-                          BSecp256k1::PrivateKeyTweakMul);
+  Nan::SetPrototypeMethod(tpl, "privateKeyVerify", BSecp256k1::PrivateKeyVerify);
+  Nan::SetPrototypeMethod(tpl, "privateKeyExport", BSecp256k1::PrivateKeyExport);
+  Nan::SetPrototypeMethod(tpl, "privateKeyImport", BSecp256k1::PrivateKeyImport);
+  Nan::SetPrototypeMethod(tpl, "privateKeyReduce", BSecp256k1::PrivateKeyReduce);
+  Nan::SetPrototypeMethod(tpl, "privateKeyNegate", BSecp256k1::PrivateKeyNegate);
+  Nan::SetPrototypeMethod(tpl, "privateKeyInverse", BSecp256k1::PrivateKeyInverse);
+  Nan::SetPrototypeMethod(tpl, "privateKeyTweakAdd", BSecp256k1::PrivateKeyTweakAdd);
+  Nan::SetPrototypeMethod(tpl, "privateKeyTweakMul", BSecp256k1::PrivateKeyTweakMul);
 
   // public key
   Nan::SetPrototypeMethod(tpl, "publicKeyCreate", BSecp256k1::PublicKeyCreate);
-  Nan::SetPrototypeMethod(tpl, "publicKeyConvert",
-                          BSecp256k1::PublicKeyConvert);
+  Nan::SetPrototypeMethod(tpl, "publicKeyConvert", BSecp256k1::PublicKeyConvert);
   Nan::SetPrototypeMethod(tpl, "publicKeyVerify", BSecp256k1::PublicKeyVerify);
-  Nan::SetPrototypeMethod(tpl, "publicKeyTweakAdd",
-                          BSecp256k1::PublicKeyTweakAdd);
-  Nan::SetPrototypeMethod(tpl, "publicKeyTweakMul",
-                          BSecp256k1::PublicKeyTweakMul);
-  Nan::SetPrototypeMethod(tpl, "publicKeyCombine",
-                          BSecp256k1::PublicKeyCombine);
+  Nan::SetPrototypeMethod(tpl, "publicKeyTweakAdd", BSecp256k1::PublicKeyTweakAdd);
+  Nan::SetPrototypeMethod(tpl, "publicKeyTweakMul", BSecp256k1::PublicKeyTweakMul);
+  Nan::SetPrototypeMethod(tpl, "publicKeyCombine", BSecp256k1::PublicKeyCombine);
   Nan::SetPrototypeMethod(tpl, "publicKeyNegate", BSecp256k1::PublicKeyNegate);
 
   // signature
-  Nan::SetPrototypeMethod(tpl, "signatureNormalize",
-                          BSecp256k1::SignatureNormalize);
+  Nan::SetPrototypeMethod(tpl, "signatureNormalize", BSecp256k1::SignatureNormalize);
   Nan::SetPrototypeMethod(tpl, "signatureExport", BSecp256k1::SignatureExport);
   Nan::SetPrototypeMethod(tpl, "signatureImport", BSecp256k1::SignatureImport);
   Nan::SetPrototypeMethod(tpl, "isLowS", BSecp256k1::IsLowS);
@@ -262,8 +249,7 @@ BSecp256k1::Init(v8::Local<v8::Object> &target) {
   Nan::SetPrototypeMethod(tpl, "sign", BSecp256k1::Sign);
   Nan::SetPrototypeMethod(tpl, "signRecoverable", BSecp256k1::SignRecoverable);
   Nan::SetPrototypeMethod(tpl, "signDER", BSecp256k1::SignDER);
-  Nan::SetPrototypeMethod(tpl, "signRecoverableDER",
-                          BSecp256k1::SignRecoverableDER);
+  Nan::SetPrototypeMethod(tpl, "signRecoverableDER", BSecp256k1::SignRecoverableDER);
   Nan::SetPrototypeMethod(tpl, "verify", BSecp256k1::Verify);
   Nan::SetPrototypeMethod(tpl, "verifyDER", BSecp256k1::VerifyDER);
   Nan::SetPrototypeMethod(tpl, "recover", BSecp256k1::Recover);
@@ -393,6 +379,7 @@ NAN_METHOD(BSecp256k1::PrivateKeyReduce) {
 
   secp256k1_scalar s;
   int overflow = 0;
+
   secp256k1_scalar_set_b32(&s, private_key, &overflow);
   secp256k1_scalar_get_b32(private_key, &s);
   secp256k1_scalar_clear(&s);

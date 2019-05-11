@@ -35,35 +35,27 @@ BECDSA::Init(v8::Local<v8::Object> &target) {
 
   Nan::SetPrototypeMethod(tpl, "_size", BECDSA::Size);
   Nan::SetPrototypeMethod(tpl, "_bits", BECDSA::Bits);
-  Nan::SetPrototypeMethod(tpl, "privateKeyGenerate",
-                          BECDSA::PrivateKeyGenerate);
+  Nan::SetPrototypeMethod(tpl, "privateKeyGenerate", BECDSA::PrivateKeyGenerate);
   Nan::SetPrototypeMethod(tpl, "privateKeyVerify", BECDSA::PrivateKeyVerify);
   Nan::SetPrototypeMethod(tpl, "privateKeyExport", BECDSA::PrivateKeyExport);
   Nan::SetPrototypeMethod(tpl, "privateKeyImport", BECDSA::PrivateKeyImport);
-  Nan::SetPrototypeMethod(tpl, "privateKeyExportPKCS8",
-                          BECDSA::PrivateKeyExportPKCS8);
-  Nan::SetPrototypeMethod(tpl, "privateKeyImportPKCS8",
-                          BECDSA::PrivateKeyImportPKCS8);
-  Nan::SetPrototypeMethod(tpl, "privateKeyTweakAdd",
-                          BECDSA::PrivateKeyTweakAdd);
-  Nan::SetPrototypeMethod(tpl, "privateKeyTweakMul",
-                          BECDSA::PrivateKeyTweakMul);
+  Nan::SetPrototypeMethod(tpl, "privateKeyExportPKCS8", BECDSA::PrivateKeyExportPKCS8);
+  Nan::SetPrototypeMethod(tpl, "privateKeyImportPKCS8", BECDSA::PrivateKeyImportPKCS8);
+  Nan::SetPrototypeMethod(tpl, "privateKeyTweakAdd", BECDSA::PrivateKeyTweakAdd);
+  Nan::SetPrototypeMethod(tpl, "privateKeyTweakMul", BECDSA::PrivateKeyTweakMul);
   Nan::SetPrototypeMethod(tpl, "privateKeyReduce", BECDSA::PrivateKeyReduce);
   Nan::SetPrototypeMethod(tpl, "privateKeyNegate", BECDSA::PrivateKeyNegate);
   Nan::SetPrototypeMethod(tpl, "privateKeyInverse", BECDSA::PrivateKeyInverse);
   Nan::SetPrototypeMethod(tpl, "publicKeyCreate", BECDSA::PublicKeyCreate);
   Nan::SetPrototypeMethod(tpl, "publicKeyConvert", BECDSA::PublicKeyConvert);
   Nan::SetPrototypeMethod(tpl, "publicKeyVerify", BECDSA::PublicKeyVerify);
-  Nan::SetPrototypeMethod(tpl, "publicKeyExportSPKI",
-                          BECDSA::PublicKeyExportSPKI);
-  Nan::SetPrototypeMethod(tpl, "publicKeyImportSPKI",
-                          BECDSA::PublicKeyImportSPKI);
+  Nan::SetPrototypeMethod(tpl, "publicKeyExportSPKI", BECDSA::PublicKeyExportSPKI);
+  Nan::SetPrototypeMethod(tpl, "publicKeyImportSPKI", BECDSA::PublicKeyImportSPKI);
   Nan::SetPrototypeMethod(tpl, "publicKeyTweakAdd", BECDSA::PublicKeyTweakAdd);
   Nan::SetPrototypeMethod(tpl, "publicKeyTweakMul", BECDSA::PublicKeyTweakMul);
   Nan::SetPrototypeMethod(tpl, "publicKeyAdd", BECDSA::PublicKeyAdd);
   Nan::SetPrototypeMethod(tpl, "publicKeyNegate", BECDSA::PublicKeyNegate);
-  Nan::SetPrototypeMethod(tpl, "signatureNormalize",
-                          BECDSA::SignatureNormalize);
+  Nan::SetPrototypeMethod(tpl, "signatureNormalize", BECDSA::SignatureNormalize);
   Nan::SetPrototypeMethod(tpl, "signatureExport", BECDSA::SignatureExport);
   Nan::SetPrototypeMethod(tpl, "signatureImport", BECDSA::SignatureImport);
   Nan::SetPrototypeMethod(tpl, "isLowS", BECDSA::IsLowS);
@@ -71,8 +63,7 @@ BECDSA::Init(v8::Local<v8::Object> &target) {
   Nan::SetPrototypeMethod(tpl, "sign", BECDSA::Sign);
   Nan::SetPrototypeMethod(tpl, "signRecoverable", BECDSA::SignRecoverable);
   Nan::SetPrototypeMethod(tpl, "signDER", BECDSA::SignDER);
-  Nan::SetPrototypeMethod(tpl, "signRecoverableDER",
-                          BECDSA::SignRecoverableDER);
+  Nan::SetPrototypeMethod(tpl, "signRecoverableDER", BECDSA::SignRecoverableDER);
   Nan::SetPrototypeMethod(tpl, "verify", BECDSA::Verify);
   Nan::SetPrototypeMethod(tpl, "verifyDER", BECDSA::VerifyDER);
   Nan::SetPrototypeMethod(tpl, "recover", BECDSA::Recover);
