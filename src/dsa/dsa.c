@@ -225,10 +225,10 @@ bcrypto_dsa_key2dsa(const bcrypto_dsa_key_t *key, int mode) {
   BIGNUM *x = NULL;
 
   if (key == NULL)
-    return NULL;
+    goto fail;
 
   if (mode < 0 || mode > 2)
-    return NULL;
+    goto fail;
 
   dsakey = DSA_new();
 
@@ -321,10 +321,10 @@ bcrypto_dsa_dsa2key(const DSA *dsakey, int mode) {
   uint8_t *slab = NULL;
 
   if (dsakey == NULL)
-    return NULL;
+    goto fail;
 
   if (mode < 0 || mode > 2)
-    return NULL;
+    goto fail;
 
   key = (bcrypto_dsa_key_t *)malloc(sizeof(bcrypto_dsa_key_t));
 
@@ -697,9 +697,9 @@ int
 bcrypto_dsa_params_export(uint8_t **out,
                           size_t *out_len,
                           const bcrypto_dsa_key_t *params) {
+  DSA *dsaparams = NULL;
   uint8_t *buf = NULL;
   int len = 0;
-  DSA *dsaparams = NULL;
 
   if (!bcrypto_dsa_sane_params(params))
     return 0;
@@ -729,24 +729,42 @@ bcrypto_dsa_key_t *
 bcrypto_dsa_params_import(const uint8_t *raw, size_t raw_len) {
   DSA *dsaparams = NULL;
   const uint8_t *p = raw;
-  bcrypto_dsa_key_t *k = NULL;
+  bcrypto_dsa_key_t *params = NULL;
 
   if (d2i_DSAparams(&dsaparams, &p, raw_len) == NULL)
-    return NULL;
+    goto fail;
 
-  k = bcrypto_dsa_params2key(dsaparams);
+  params = bcrypto_dsa_params2key(dsaparams);
+
+  if (params == NULL)
+    goto fail;
+
+#if 0
+  if (!bcrypto_dsa_sane_params(params))
+    goto fail;
+#endif
 
   DSA_free(dsaparams);
 
-  return k;
+  return params;
+
+fail:
+  if (dsaparams != NULL)
+    DSA_free(dsaparams);
+
+  if (params != NULL)
+    bcrypto_dsa_key_free(params);
+
+  return NULL;
 }
 
 bcrypto_dsa_key_t *
 bcrypto_dsa_privkey_create(const bcrypto_dsa_key_t *params) {
   DSA *dsakey = NULL;
+  bcrypto_dsa_key_t *priv = NULL;
 
   if (!bcrypto_dsa_sane_params(params))
-    return NULL;
+    goto fail;
 
   dsakey = bcrypto_dsa_key2params(params);
 
@@ -758,7 +776,7 @@ bcrypto_dsa_privkey_create(const bcrypto_dsa_key_t *params) {
   if (!DSA_generate_key(dsakey))
     goto fail;
 
-  bcrypto_dsa_key_t *priv = bcrypto_dsa_priv2key(dsakey);
+  priv = bcrypto_dsa_priv2key(dsakey);
 
   if (priv == NULL)
     goto fail;
@@ -946,16 +964,33 @@ bcrypto_dsa_key_t *
 bcrypto_dsa_privkey_import(const uint8_t *raw, size_t raw_len) {
   DSA *dsakey = NULL;
   const uint8_t *p = raw;
-  bcrypto_dsa_key_t *k = NULL;
+  bcrypto_dsa_key_t *key = NULL;
 
   if (d2i_DSAPrivateKey(&dsakey, &p, raw_len) == NULL)
-    return 0;
+    goto fail;
 
-  k = bcrypto_dsa_priv2key(dsakey);
+  key = bcrypto_dsa_priv2key(dsakey);
+
+  if (key == NULL)
+    goto fail;
+
+#if 0
+  if (!bcrypto_dsa_sane_privkey(key))
+    goto fail;
+#endif
 
   DSA_free(dsakey);
 
-  return k;
+  return key;
+
+fail:
+  if (dsakey != NULL)
+    DSA_free(dsakey);
+
+  if (key != NULL)
+    bcrypto_dsa_key_free(key);
+
+  return NULL;
 }
 
 int
@@ -1075,7 +1110,7 @@ bcrypto_dsa_privkey_import_pkcs8(const uint8_t *raw, size_t raw_len) {
   BIGNUM *x = NULL;
   const BIGNUM *p = NULL;
   const BIGNUM *g = NULL;
-  bcrypto_dsa_key_t *k = NULL;
+  bcrypto_dsa_key_t *key = NULL;
   const uint8_t *pp = raw;
 
   if (d2i_PKCS8_PRIV_KEY_INFO(&p8, &pp, raw_len) == NULL)
@@ -1130,20 +1165,22 @@ bcrypto_dsa_privkey_import_pkcs8(const uint8_t *raw, size_t raw_len) {
   y = NULL;
   x = NULL;
 
-  k = bcrypto_dsa_priv2key(dsakey);
+  key = bcrypto_dsa_priv2key(dsakey);
 
-  if (k == NULL)
+  if (key == NULL)
     goto fail;
 
-  if (!bcrypto_dsa_privkey_verify(k))
+#if 0
+  if (!bcrypto_dsa_sane_privkey(key))
     goto fail;
+#endif
 
   PKCS8_PRIV_KEY_INFO_free(p8);
   DSA_free(dsakey);
   ASN1_STRING_clear_free(privkey);
   BN_CTX_free(ctx);
 
-  return k;
+  return key;
 
 fail:
   if (p8 != NULL)
@@ -1164,8 +1201,8 @@ fail:
   if (x != NULL)
     BN_clear_free(x);
 
-  if (k != NULL)
-    bcrypto_dsa_key_free(k);
+  if (key != NULL)
+    bcrypto_dsa_key_free(key);
 
   return NULL;
 }
@@ -1216,15 +1253,33 @@ bcrypto_dsa_key_t *
 bcrypto_dsa_pubkey_import(const uint8_t *raw, size_t raw_len) {
   DSA *dsakey = NULL;
   const uint8_t *p = raw;
+  bcrypto_dsa_key_t *key = NULL;
 
   if (d2i_DSAPublicKey(&dsakey, &p, raw_len) == NULL)
-    return 0;
+    goto fail;
 
-  bcrypto_dsa_key_t *k = bcrypto_dsa_pub2key(dsakey);
+  key = bcrypto_dsa_pub2key(dsakey);
+
+  if (key == NULL)
+    goto fail;
+
+#if 0
+  if (!bcrypto_dsa_sane_pubkey(key))
+    goto fail;
+#endif
 
   DSA_free(dsakey);
 
-  return k;
+  return key;
+
+fail:
+  if (dsakey != NULL)
+    DSA_free(dsakey);
+
+  if (key != NULL)
+    bcrypto_dsa_key_free(key);
+
+  return NULL;
 }
 
 int
@@ -1262,16 +1317,33 @@ bcrypto_dsa_key_t *
 bcrypto_dsa_pubkey_import_spki(const uint8_t *raw, size_t raw_len) {
   DSA *dsakey = NULL;
   const uint8_t *p = raw;
-  bcrypto_dsa_key_t *k = NULL;
+  bcrypto_dsa_key_t *key = NULL;
 
   if (d2i_DSA_PUBKEY(&dsakey, &p, raw_len) == NULL)
-    return NULL;
+    goto fail;
 
-  k = bcrypto_dsa_pub2key(dsakey);
+  key = bcrypto_dsa_pub2key(dsakey);
+
+  if (key == NULL)
+    goto fail;
+
+#if 0
+  if (!bcrypto_dsa_sane_pubkey(key))
+    goto fail;
+#endif
 
   DSA_free(dsakey);
 
-  return k;
+  return key;
+
+fail:
+  if (dsakey != NULL)
+    DSA_free(dsakey);
+
+  if (key != NULL)
+    bcrypto_dsa_key_free(key);
+
+  return NULL;
 }
 
 int

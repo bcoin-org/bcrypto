@@ -1112,16 +1112,33 @@ bcrypto_rsa_key_t *
 bcrypto_rsa_privkey_import(const uint8_t *raw, size_t raw_len) {
   RSA *rsakey = NULL;
   const uint8_t *p = raw;
-  bcrypto_rsa_key_t *k = NULL;
+  bcrypto_rsa_key_t *key = NULL;
 
   if (d2i_RSAPrivateKey(&rsakey, &p, raw_len) == NULL)
-    return NULL;
+    goto fail;
 
-  k = bcrypto_rsa_priv2key(rsakey);
+  key = bcrypto_rsa_priv2key(rsakey);
+
+  if (key == NULL)
+    goto fail;
+
+#if 0
+  if (!bcrypto_rsa_sane_privkey(key))
+    goto fail;
+#endif
 
   RSA_free(rsakey);
 
-  return k;
+  return key;
+
+fail:
+  if (rsakey != NULL)
+    RSA_free(rsakey);
+
+  if (key != NULL)
+    bcrypto_rsa_key_free(key);
+
+  return NULL;
 }
 
 int
@@ -1202,7 +1219,7 @@ bcrypto_rsa_privkey_import_pkcs8(const uint8_t *raw, size_t raw_len) {
   const void *algp = NULL;
   int algptype = 0;
   const uint8_t *pp = raw;
-  bcrypto_rsa_key_t *k = NULL;
+  bcrypto_rsa_key_t *key = NULL;
 
   if (d2i_PKCS8_PRIV_KEY_INFO(&p8, &pp, raw_len) == NULL)
     goto fail;
@@ -1224,12 +1241,20 @@ bcrypto_rsa_privkey_import_pkcs8(const uint8_t *raw, size_t raw_len) {
   if (rsakey == NULL)
     goto fail;
 
-  k = bcrypto_rsa_priv2key(rsakey);
+  key = bcrypto_rsa_priv2key(rsakey);
+
+  if (key == NULL)
+    goto fail;
+
+#if 0
+  if (!bcrypto_rsa_sane_privkey(key))
+    goto fail;
+#endif
 
   PKCS8_PRIV_KEY_INFO_free(p8);
   RSA_free(rsakey);
 
-  return k;
+  return key;
 
 fail:
   if (p8 != NULL)
@@ -1237,6 +1262,9 @@ fail:
 
   if (rsakey != NULL)
     RSA_free(rsakey);
+
+  if (key != NULL)
+    bcrypto_rsa_key_free(key);
 
   return NULL;
 }
@@ -1282,16 +1310,33 @@ bcrypto_rsa_key_t *
 bcrypto_rsa_pubkey_import(const uint8_t *raw, size_t raw_len) {
   RSA *rsakey = NULL;
   const uint8_t *p = raw;
-  bcrypto_rsa_key_t *k = NULL;
+  bcrypto_rsa_key_t *key = NULL;
 
   if (d2i_RSAPublicKey(&rsakey, &p, raw_len) == NULL)
-    return NULL;
+    goto fail;
 
-  k = bcrypto_rsa_pub2key(rsakey);
+  key = bcrypto_rsa_pub2key(rsakey);
+
+  if (key == NULL)
+    goto fail;
+
+#if 0
+  if (!bcrypto_rsa_sane_pubkey(key))
+    goto fail;
+#endif
 
   RSA_free(rsakey);
 
-  return k;
+  return key;
+
+fail:
+  if (rsakey != NULL)
+    RSA_free(rsakey);
+
+  if (key != NULL)
+    bcrypto_rsa_key_free(key);
+
+  return NULL;
 }
 
 int
@@ -1330,16 +1375,33 @@ bcrypto_rsa_key_t *
 bcrypto_rsa_pubkey_import_spki(const uint8_t *raw, size_t raw_len) {
   RSA *rsakey = NULL;
   const uint8_t *p = raw;
-  bcrypto_rsa_key_t *k = NULL;
+  bcrypto_rsa_key_t *key = NULL;
 
   if (d2i_RSA_PUBKEY(&rsakey, &p, raw_len) == NULL)
-    return NULL;
+    goto fail;
 
-  k = bcrypto_rsa_pub2key(rsakey);
+  key = bcrypto_rsa_pub2key(rsakey);
+
+  if (key == NULL)
+    goto fail;
+
+#if 0
+  if (!bcrypto_rsa_sane_pubkey(key))
+    goto fail;
+#endif
 
   RSA_free(rsakey);
 
-  return k;
+  return key;
+
+fail:
+  if (rsakey != NULL)
+    RSA_free(rsakey);
+
+  if (key != NULL)
+    bcrypto_rsa_key_free(key);
+
+  return NULL;
 }
 
 int
