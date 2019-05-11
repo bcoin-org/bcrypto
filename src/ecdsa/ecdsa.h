@@ -32,11 +32,11 @@ typedef struct bcrypto_ecdsa_sig_s {
 } bcrypto_ecdsa_sig_t;
 
 typedef struct bcrypto_ecdsa_s {
-  int initialized;
   int type;
   BN_CTX *ctx;
   EC_KEY *key;
   const EC_GROUP *group;
+  EC_POINT *point;
   size_t bits;
   size_t size;
   BIGNUM *n;
@@ -51,6 +51,7 @@ typedef struct bcrypto_ecdsa_s {
   uint8_t zero[BCRYPTO_ECDSA_MAX_SCALAR_SIZE];
   uint8_t order[BCRYPTO_ECDSA_MAX_SCALAR_SIZE];
   uint8_t half[BCRYPTO_ECDSA_MAX_SCALAR_SIZE];
+  int initialized;
 } bcrypto_ecdsa_t;
 
 /*
