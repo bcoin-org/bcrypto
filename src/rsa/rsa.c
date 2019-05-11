@@ -1166,6 +1166,7 @@ bcrypto_rsa_privkey_export_pkcs8(uint8_t **out,
   if (p8 == NULL)
     goto fail;
 
+  rk = NULL;
   rklen = i2d_RSAPrivateKey(rsa, &rk);
 
   if (rklen <= 0)

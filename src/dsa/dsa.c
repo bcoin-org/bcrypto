@@ -1056,6 +1056,7 @@ bcrypto_dsa_privkey_export_pkcs8(uint8_t **out,
   dp = NULL;
   params = NULL;
 
+  buf = NULL;
   len = i2d_PKCS8_PRIV_KEY_INFO(p8, &buf);
 
   if (len <= 0)
