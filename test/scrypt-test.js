@@ -1,7 +1,7 @@
 'use strict';
 
 const assert = require('bsert');
-const scrypt = require('bcrypto/lib/scrypt');
+const scrypt = require('../lib/scrypt');
 
 describe('Scrypt', function() {
   this.timeout(20000);
