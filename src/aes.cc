@@ -50,7 +50,7 @@ NAN_METHOD(BAES::Encipher) {
   if (ilen != 16)
     return Nan::ThrowRangeError("Invalid IV size.");
 
-  uint32_t olen = BCRYPTO_AES_ENCIPHER_SIZE(dlen);
+  size_t olen = BCRYPTO_AES_ENCIPHER_SIZE(dlen);
   uint8_t *out = (uint8_t *)malloc(olen);
 
   if (out == NULL)
@@ -97,7 +97,7 @@ NAN_METHOD(BAES::Decipher) {
   if (ilen != 16)
     return Nan::ThrowRangeError("Invalid IV size.");
 
-  uint32_t olen = BCRYPTO_AES_DECIPHER_SIZE(dlen);
+  size_t olen = BCRYPTO_AES_DECIPHER_SIZE(dlen);
   uint8_t *out = (uint8_t *)malloc(olen);
 
   if (out == NULL)

@@ -51,12 +51,12 @@ extern "C" {
 int
 bcrypto_scrypt(uint8_t *key,
                const uint8_t *pass,
-               const uint32_t passlen,
+               const size_t passlen,
                const uint8_t *salt,
                size_t saltlen,
                uint64_t N,
-               uint64_t r,
-               uint64_t p,
+               uint32_t r,
+               uint32_t p,
                size_t keylen);
 
 #ifdef __cplusplus

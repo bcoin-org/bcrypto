@@ -12,17 +12,17 @@ extern "C" {
 
 int
 bcrypto_aes_encipher(uint8_t *out,
-                     uint32_t *outlen,
+                     size_t *outlen,
                      const uint8_t *data,
-                     const uint32_t datalen,
+                     const size_t datalen,
                      const uint8_t *key,
                      const uint8_t *iv);
 
 int
 bcrypto_aes_decipher(uint8_t *out,
-                     uint32_t *outlen,
+                     size_t *outlen,
                      const uint8_t *data,
-                     const uint32_t datalen,
+                     const size_t datalen,
                      const uint8_t *key,
                      const uint8_t *iv);
 

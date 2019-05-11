@@ -1,4 +1,5 @@
 #include <string.h>
+#include <limits.h>
 #include "pbkdf2.h"
 #include "openssl/evp.h"
 #include "openssl/objects.h"
@@ -128,10 +129,17 @@ bcrypto_pbkdf2(uint8_t *key,
   if (md == NULL)
     return 0;
 
+  if (datalen > (size_t)INT_MAX
+      || saltlen > (size_t)INT_MAX
+      || (size_t)iter > (size_t)INT_MAX
+      || keylen > (size_t)INT_MAX) {
+    return 0;
+  }
+
   int ret = PKCS5_PBKDF2_HMAC((const char *)data,
-                              datalen, salt,
-                              saltlen, iter,
-                              md, keylen, key);
+                              (int)datalen, salt,
+                              (int)saltlen, iter,
+                              md, (int)keylen, key);
 
   if (ret <= 0)
     return 0;

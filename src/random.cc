@@ -2,6 +2,7 @@
 #include <string.h>
 #include <node.h>
 #include <nan.h>
+#include <limits>
 
 #include "common.h"
 #include "random/random.h"
@@ -37,12 +38,13 @@ NAN_METHOD(BRandom::RandomFill) {
 
   size_t pos = (size_t)Nan::To<int64_t>(info[1]).FromJust();
   size_t size = (size_t)Nan::To<int64_t>(info[2]).FromJust();
+  size_t max = (size_t)std::numeric_limits<int32_t>::max();
 
-  if (((int32_t)len) < 0 || ((int32_t)pos) < 0 || ((int32_t)size) < 0)
+  if (len > max || pos > max || size > max)
     return Nan::ThrowRangeError("Invalid range.");
 
   if (pos + size > len)
-    return Nan::ThrowError("Size exceeds length.");
+    return Nan::ThrowRangeError("Size exceeds length.");
 
   if (!bcrypto_random(&data[pos], size))
     return Nan::ThrowError("Could not get random bytes.");

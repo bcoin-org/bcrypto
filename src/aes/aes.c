@@ -7,25 +7,25 @@
 
 static inline void
 XOR(uint8_t *out, const uint8_t *a, const uint8_t *b) {
-  uint32_t i;
+  int i;
   for (i = 0; i < 16; i++)
     out[i] = a[i] ^ b[i];
 }
 
 int
 bcrypto_aes_encipher(uint8_t *out,
-                     uint32_t *outlen,
+                     size_t *outlen,
                      const uint8_t *data,
-                     const uint32_t datalen,
+                     size_t datalen,
                      const uint8_t *key,
                      const uint8_t *iv) {
   const uint8_t *pblock = data;
   const uint8_t *pprev = pblock;
   const uint8_t *cprev = iv;
   uint8_t *cblock = out;
-  uint32_t blocks = datalen / 16;
-  uint32_t trailing = datalen % 16;
-  uint32_t i;
+  size_t blocks = datalen / 16;
+  size_t trailing = datalen % 16;
+  size_t i;
 
   AES_KEY enckey;
   AES_set_encrypt_key(key, 256, &enckey);
@@ -45,7 +45,7 @@ bcrypto_aes_encipher(uint8_t *out,
 
   // Handle padding on the last block.
   uint8_t *last = cblock;
-  uint32_t left = 16 - trailing;
+  size_t left = 16 - trailing;
 
   memcpy(last, pprev, trailing);
 
@@ -62,18 +62,18 @@ bcrypto_aes_encipher(uint8_t *out,
 
 int
 bcrypto_aes_decipher(uint8_t *out,
-                     uint32_t *outlen,
+                     size_t *outlen,
                      const uint8_t *data,
-                     const uint32_t datalen,
+                     const size_t datalen,
                      const uint8_t *key,
                      const uint8_t *iv) {
   const uint8_t *cblock = data;
   const uint8_t *cprev = iv;
   uint8_t *pblock = out;
   uint8_t *pprev = pblock;
-  uint32_t blocks = datalen / 16;
-  uint32_t trailing = datalen % 16;
-  uint32_t i;
+  size_t blocks = datalen / 16;
+  size_t trailing = datalen % 16;
+  size_t i;
 
   if (*outlen != datalen)
     return 0;
@@ -96,8 +96,8 @@ bcrypto_aes_decipher(uint8_t *out,
 
   // Check padding on the last block.
   uint8_t *last = pprev;
-  uint32_t b = 16;
-  uint32_t n = last[b - 1];
+  size_t b = 16;
+  size_t n = last[b - 1];
 
   if (n == 0 || n > b)
     return 0;
