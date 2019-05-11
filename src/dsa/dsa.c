@@ -65,6 +65,33 @@ bcrypto_count_bits(const uint8_t *in, size_t in_len) {
 }
 
 static int
+bcrypto_cmp(const uint8_t *x, size_t xl, const uint8_t *y, size_t yl) {
+  while (xl > 0 && *x == 0)
+    x++, xl--;
+
+  while (yl > 0 && *y == 0)
+    y++, yl--;
+
+  if (xl < yl)
+    return -1;
+
+  if (xl > yl)
+    return 1;
+
+  size_t i = 0;
+
+  for (; i < xl; i++) {
+    if (x[i] < y[i])
+      return -1;
+
+    if (x[i] > y[i])
+      return 1;
+  }
+
+  return 0;
+}
+
+static int
 bcrypto_dsa_sane_params(const bcrypto_dsa_key_t *params) {
   if (params == NULL)
     return 0;
@@ -79,7 +106,16 @@ bcrypto_dsa_sane_params(const bcrypto_dsa_key_t *params) {
   if (qb != 160 && qb != 224 && qb != 256)
     return 0;
 
-  if (gb == 0 || gb > pb)
+  if (gb < 2 || gb > pb)
+    return 0;
+
+  if ((params->pd[params->pl - 1] & 1) == 0)
+    return 0;
+
+  if ((params->qd[params->ql - 1] & 1) == 0)
+    return 0;
+
+  if (bcrypto_cmp(params->gd, params->gl, params->pd, params->pl) >= 0)
     return 0;
 
   return 1;
@@ -96,6 +132,9 @@ bcrypto_dsa_sane_pubkey(const bcrypto_dsa_key_t *key) {
   if (yb == 0 || yb > pb)
     return 0;
 
+  if (bcrypto_cmp(key->yd, key->yl, key->pd, key->pl) >= 0)
+    return 0;
+
   return 1;
 }
 
@@ -108,6 +147,9 @@ bcrypto_dsa_sane_privkey(const bcrypto_dsa_key_t *key) {
   size_t xb = bcrypto_count_bits(key->xd, key->xl);
 
   if (xb == 0 || xb > qb)
+    return 0;
+
+  if (bcrypto_cmp(key->xd, key->xl, key->qd, key->ql) >= 0)
     return 0;
 
   return 1;
@@ -130,13 +172,28 @@ bcrypto_dsa_sane_compute(const bcrypto_dsa_key_t *key) {
   if (qb != 160 && qb != 224 && qb != 256)
     return 0;
 
-  if (gb == 0 || gb > pb)
+  if (gb < 2 || gb > pb)
+    return 0;
+
+  if ((key->pd[key->pl - 1] & 1) == 0)
+    return 0;
+
+  if ((key->qd[key->ql - 1] & 1) == 0)
     return 0;
 
   if (yb > pb)
     return 0;
 
   if (xb == 0 || xb > qb)
+    return 0;
+
+  if (bcrypto_cmp(key->gd, key->gl, key->pd, key->pl) >= 0)
+    return 0;
+
+  if (bcrypto_cmp(key->yd, key->yl, key->pd, key->pl) >= 0)
+    return 0;
+
+  if (bcrypto_cmp(key->xd, key->xl, key->qd, key->ql) >= 0)
     return 0;
 
   return 1;
@@ -491,9 +548,11 @@ int
 bcrypto_dsa_params_verify(const bcrypto_dsa_key_t *params) {
   DSA *params_d = NULL;
   BN_CTX *ctx = NULL;
+#if BCRYPTO_DSA_STRICT
   BIGNUM *pm1_bn = NULL;
   BIGNUM *div_bn = NULL;
   BIGNUM *mod_bn = NULL;
+#endif
   BIGNUM *x_bn = NULL;
 
   if (!bcrypto_dsa_sane_params(params))
@@ -512,22 +571,24 @@ bcrypto_dsa_params_verify(const bcrypto_dsa_key_t *params) {
   assert(p != NULL && q != NULL && g != NULL);
 
   ctx = BN_CTX_new();
+#if BCRYPTO_DSA_STRICT
   pm1_bn = BN_new();
   div_bn = BN_new();
   mod_bn = BN_new();
+#endif
   x_bn = BN_new();
 
   if (ctx == NULL
+#if BCRYPTO_DSA_STRICT
       || pm1_bn == NULL
       || div_bn == NULL
       || mod_bn == NULL
+#endif
       || x_bn == NULL) {
     goto fail;
   }
 
-  if (BN_cmp(g, p) >= 0)
-    goto fail;
-
+#if BCRYPTO_DSA_STRICT
   /* pm1 = p - 1 */
   if (!BN_sub(pm1_bn, p, BN_value_one()))
     goto fail;
@@ -540,19 +601,30 @@ bcrypto_dsa_params_verify(const bcrypto_dsa_key_t *params) {
   if (!BN_is_zero(mod_bn))
     goto fail;
 
-  /* x = modpow(g, div, p) */
+  /* x = g^div mod p */
   if (!BN_mod_exp(x_bn, g, div_bn, p, ctx))
     goto fail;
 
   /* x == 1 */
   if (BN_is_one(x_bn))
     goto fail;
+#endif
+
+  /* x = g^q mod p */
+  if (!BN_mod_exp(x_bn, g, q, p, ctx))
+    goto fail;
+
+  /* x != 1 */
+  if (!BN_is_one(x_bn))
+    goto fail;
 
   DSA_free(params_d);
   BN_CTX_free(ctx);
+#if BCRYPTO_DSA_STRICT
   BN_free(pm1_bn);
   BN_free(div_bn);
   BN_free(mod_bn);
+#endif
   BN_free(x_bn);
 
   return 1;
@@ -564,6 +636,7 @@ fail:
   if (ctx != NULL)
     BN_CTX_free(ctx);
 
+#if BCRYPTO_DSA_STRICT
   if (pm1_bn != NULL)
     BN_free(pm1_bn);
 
@@ -572,6 +645,7 @@ fail:
 
   if (mod_bn != NULL)
     BN_free(mod_bn);
+#endif
 
   if (x_bn != NULL)
     BN_free(x_bn);
@@ -762,20 +836,15 @@ bcrypto_dsa_privkey_verify(const bcrypto_dsa_key_t *key) {
     goto fail;
 
   const BIGNUM *p = NULL;
-  const BIGNUM *q = NULL;
   const BIGNUM *g = NULL;
   const BIGNUM *x = NULL;
   const BIGNUM *y = NULL;
 
-  DSA_get0_pqg(priv_d, &p, &q, &g);
+  DSA_get0_pqg(priv_d, &p, NULL, &g);
   DSA_get0_key(priv_d, &y, &x);
 
   assert(p != NULL && g != NULL);
   assert(y != NULL && x != NULL);
-
-  /* x >= y */
-  if (BN_ucmp(x, y) >= 0)
-    goto fail;
 
   ctx = BN_CTX_new();
   y_bn = BN_new();
@@ -783,12 +852,12 @@ bcrypto_dsa_privkey_verify(const bcrypto_dsa_key_t *key) {
   if (ctx == NULL || y_bn == NULL)
     goto fail;
 
-  /* y = modpow(g, x, p) */
+  /* y = g^x mod p */
   if (!BN_mod_exp(y_bn, g, x, p, ctx))
     goto fail;
 
   /* y2 == y1 */
-  if (BN_ucmp(y_bn, y) != 0)
+  if (BN_cmp(y_bn, y) != 0)
     goto fail;
 
   DSA_free(priv_d);
@@ -1059,34 +1128,13 @@ fail:
 
 int
 bcrypto_dsa_pubkey_verify(const bcrypto_dsa_key_t *key) {
-  BIGNUM *p = NULL;
-  BIGNUM *y = NULL;
-  int r = 0;
-
   if (!bcrypto_dsa_params_verify(key))
-    goto fail;
+    return 0;
 
   if (!bcrypto_dsa_sane_pubkey(key))
-    goto fail;
+    return 0;
 
-  p = BN_bin2bn(key->pd, key->pl, NULL);
-  y = BN_bin2bn(key->yd, key->yl, NULL);
-
-  if (p == NULL || y == NULL)
-    goto fail;
-
-  if (BN_cmp(y, p) >= 0)
-    goto fail;
-
-  r = 1;
-fail:
-  if (p != NULL)
-    BN_free(p);
-
-  if (y != NULL)
-    BN_free(y);
-
-  return r;
+  return 1;
 }
 
 int
@@ -1437,9 +1485,9 @@ bcrypto_dsa_verify_der(const uint8_t *msg,
   if (pub_d == NULL)
     goto fail;
 
-  // Note that openssl's DSA_verify reserializes to
-  // check for minimal encoding. We don't want that
-  // (it should be done at a higher level).
+  /* Note that openssl's DSA_verify reserializes to
+     check for minimal encoding. We don't want that
+     (it should be done at a higher level). */
   if (d2i_DSA_SIG(&sig_d, &p, sig_len) == NULL)
     goto fail;
 
@@ -1518,12 +1566,6 @@ bcrypto_dsa_derive(uint8_t **out,
     goto fail;
   }
 
-  if (BN_cmp(g_priv, p_priv) >= 0
-      || BN_cmp(y_pub, p_priv) >= 0
-      || BN_cmp(x_priv, q_priv) >= 0) {
-    goto fail;
-  }
-
   ctx = BN_CTX_new();
 
   if (ctx == NULL)
@@ -1534,8 +1576,11 @@ bcrypto_dsa_derive(uint8_t **out,
   if (secret_bn == NULL)
     goto fail;
 
-  /* secret = (theirY^ourX) % p */
+  /* secret := y^x mod p */
   if (!BN_mod_exp(secret_bn, y_pub, x_priv, p_pub, ctx))
+    goto fail;
+
+  if (BN_is_zero(secret_bn))
     goto fail;
 
   secret_len = (size_t)BN_num_bytes(secret_bn);

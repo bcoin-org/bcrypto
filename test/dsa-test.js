@@ -184,6 +184,9 @@ describe('DSA', function() {
       const priv = dsa.privateKeyImport(privRaw);
       const pub = dsa.publicKeyCreate(priv);
 
+      assert(dsa.privateKeyVerify(priv));
+      assert(dsa.publicKeyVerify(pub));
+
       assert.bufferEqual(dsa.publicKeyExport(pub), pubRaw);
       assert.strictEqual(dsa.verify(msg, sig, pub), true);
 
