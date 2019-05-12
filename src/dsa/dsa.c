@@ -534,6 +534,9 @@ mod_exp_const(BIGNUM *r,
   if (c == NULL)
     goto fail;
 
+  /* We shouldn't modify the constant time BN. */
+  assert(r != p);
+
   BN_with_flags(c, p, BN_FLG_CONSTTIME);
 
   if (!BN_mod_exp(r, a, c, m, ctx))
