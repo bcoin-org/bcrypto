@@ -3,8 +3,7 @@
 const assert = require('bsert');
 const BN = require('../lib/bn.js');
 const primes = require('../lib/internal/primes');
-const HmacDRBG = require('../lib/hmac-drbg');
-const SHA256 = require('../lib/sha256');
+const RNG = require('./util/rng');
 
 // https://github.com/golang/go/blob/aadaec5/src/math/big/prime_test.go
 const primes_ = [
@@ -183,19 +182,13 @@ const composites = [
 ];
 
 describe('Primes', function() {
-  this.timeout(30000);
-
-  // Deterministic RNG.
-  const seed = SHA256.digest(Buffer.alloc(0));
-  const rng = new HmacDRBG(SHA256);
+  const rng = new RNG();
 
   for (let i = 0; i < primes_.length; i++) {
     const str = primes_[i];
 
     it(`should test prime (${i})`, () => {
       const p = new BN(str, 10);
-
-      rng.init(seed);
 
       assert(p.isPrimeMR(rng, 16 + 1, true));
       assert(p.isPrimeMR(rng, 1, true));
@@ -212,11 +205,9 @@ describe('Primes', function() {
     it(`should test composite (${i})`, () => {
       const p = new BN(str, 10);
 
-      rng.init(seed);
-
       assert(!p.isPrimeMR(rng, 16 + 1, true));
-      assert(!p.isPrimeMR(rng, 3, true));
-      assert(!p.isPrimeMR(rng, 2, false));
+      assert(!p.isPrimeMR(rng, 4, true));
+      assert(!p.isPrimeMR(rng, 3, false));
 
       if (i >= 8 && i <= 42) {
         // Lucas pseudoprime.
@@ -232,8 +223,6 @@ describe('Primes', function() {
   }
 
   it('should generate random prime', () => {
-    rng.init(seed);
-
     const p = primes.randomPrime(768, 63, rng);
 
     assert(p.isPrimeMR(rng, 63 + 1, true));
