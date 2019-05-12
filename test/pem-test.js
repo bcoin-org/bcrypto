@@ -1,7 +1,6 @@
 'use strict';
 
 const assert = require('bsert');
-const random = require('../lib/random');
 const pem = require('../lib/encoding/pem');
 const pemcrypt = require('../lib/encoding/pemcrypt');
 
@@ -31,7 +30,7 @@ soWLOTC9I8bbnYcwAaLa1sMwEvWrzt1iXkV8F/r8v1M=
 
 describe('PEM', function() {
   it('should serialize PEM', () => {
-    const data = random.randomBytes(32);
+    const data = Buffer.alloc(32, 0xaa);
     const block1 = new pem.PEMBlock();
     block1.type = 'BCRYPTO MESSAGE';
     block1.headers.set('Bcrypto-Header', 'foo');
@@ -47,7 +46,7 @@ describe('PEM', function() {
   });
 
   it('should serialize and encrypt PEM', () => {
-    const data = random.randomBytes(32);
+    const data = Buffer.alloc(32, 0xaa);
     const block1 = new pem.PEMBlock();
     block1.type = 'BCRYPTO MESSAGE';
     block1.headers.set('Bcrypto-Header', 'foo');
