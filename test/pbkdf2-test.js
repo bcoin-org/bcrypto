@@ -1,15 +1,12 @@
 'use strict';
 
 const assert = require('bsert');
-const fs = require('fs');
 const SHA256 = require('../lib/sha256');
 const BLAKE2b256 = require('../lib/blake2b256');
 const pbkdf2 = require('../lib/pbkdf2');
+const vectors = require('./data/pbkdf2.json');
 
 describe('PBKDF2', function() {
-  const text = fs.readFileSync(`${__dirname}/data/pbkdf2.json`, 'utf8');
-  const vectors = JSON.parse(text);
-
   for (const [passwd_, salt_, iter, len, expect_] of vectors) {
     const passwd = Buffer.from(passwd_, 'hex');
     const salt = Buffer.from(salt_, 'hex');
