@@ -5,11 +5,10 @@ const ccmp = require('../lib/ccmp');
 const safeEqual = require('../lib/safe-equal');
 const safe = require('../lib/safe');
 const bytes = Buffer.allocUnsafe(32);
+const rbytes = Buffer.allocUnsafe(32);
 
 for (let i = 0; i < 32; i++)
   bytes[i] = i;
-
-const rbytes = Buffer.allocUnsafe(32);
 
 for (let i = 0; i < 32; i++)
   rbytes[i] = 32 - i;
