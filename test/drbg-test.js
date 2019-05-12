@@ -6,8 +6,9 @@ const SHA224 = require('../lib/sha224');
 const SHA256 = require('../lib/sha256');
 const SHA384 = require('../lib/sha384');
 const SHA512 = require('../lib/sha512');
-const HmacDRBG = require('../lib/drbg');
+const HmacDRBG = require('../lib/hmac-drbg');
 const HashDRBG = require('../lib/hash-drbg');
+const CtrDRBG = require('../lib/ctr-drbg');
 const vectors = require('./data/drbg-nist.json');
 const getNIST = require('./util/drbg-vectors');
 
@@ -141,4 +142,33 @@ describe('DRBG', function() {
       }
     });
   }
+
+  describe('CtrDRBG', function() {
+    for (const df of [false, true]) {
+      for (const id of ['AES-128', 'AES-192', 'AES-256']) {
+        const name = id + (df ? ' use df' : ' no df');
+        const vectors = getNIST('ctr', name);
+
+        for (const [i, vector] of vectors.entries()) {
+          it(`should pass ${name} NIST vector #${i + 1} (ctr,df=${df})`, () => {
+            const drbg = new CtrDRBG(id, null, null, null, df);
+
+            drbg.init(vector.EntropyInput, vector.Nonce,
+                      vector.PersonalizationString);
+
+            drbg.reseed(vector.EntropyInputReseed,
+                        vector.AdditionalInputReseed);
+
+            drbg.generate(vector.ReturnedBits.length,
+                          vector.AdditionalInput[0]);
+
+            const result = drbg.generate(vector.ReturnedBits.length,
+                                         vector.AdditionalInput[1]);
+
+            assert.bufferEqual(result, vector.ReturnedBits);
+          });
+        }
+      }
+    }
+  });
 });
