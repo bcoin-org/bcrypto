@@ -2,7 +2,8 @@
 
 const assert = require('bsert');
 const fs = require('fs');
-const {Cipher, Decipher} = require('../lib/cipher');
+const cipher = require('../lib/cipher');
+const {Cipher, Decipher, encrypt, decrypt} = cipher;
 
 const algs = [
   {
@@ -156,13 +157,7 @@ const algs = [
   }
 ];
 
-const key = Buffer.from(
-  '3a0c0bf669694ac7685e6806eeadee8e56c9b9bd22c3caa81c718ed4bbf809a1',
-  'hex');
-
-const iv = Buffer.from('6dd26d9045b73c377a9ed2ffeca72ffd', 'hex');
-
-function encipher(name, data, key, iv) {
+function encipher(name, key, iv, data) {
   const gcm = name.endsWith('-GCM');
   const ctx = new Cipher(name);
 
@@ -175,7 +170,7 @@ function encipher(name, data, key, iv) {
   ]);
 }
 
-function decipher(name, data, key, iv) {
+function decipher(name, key, iv, data) {
   const gcm = name.endsWith('-GCM');
   const ctx = new Decipher(name);
 
@@ -194,43 +189,10 @@ function decipher(name, data, key, iv) {
 }
 
 describe('Cipher', function() {
-  it('should encrypt and decrypt with 2 blocks (AES-256-CBC)', () => {
-    const data = Buffer.from(
-      'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
-      'hex');
-
-    const expected = Buffer.from(''
-      + '83de502a9c83112ca6383f2214a892a0cdad5ab2b3e192e'
-      + '9921ddb126b25262c41f1dcff4d67ccfb40e4116e5a4569c1',
-      'hex');
-
-    const ciphertext = encipher('AES-256-CBC', data, key, iv);
-    assert.bufferEqual(ciphertext, expected);
-
-    const plaintext = decipher('AES-256-CBC', ciphertext, key, iv);
-    assert.bufferEqual(plaintext, data);
-  });
-
-  it('should encrypt and decrypt with uneven blocks (AES-256-CBC)', () => {
-    const data = Buffer.from(
-      'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855010203',
-      'hex');
-
-    const expected = Buffer.from(''
-      + '83de502a9c83112ca6383f2214a892a0cdad5ab2b3e192e9'
-      + '921ddb126b25262c5211801019a30c0c6f795296923e0af8',
-      'hex');
-
-    const ciphertext = encipher('AES-256-CBC', data, key, iv);
-    assert.bufferEqual(ciphertext, expected);
-
-    const plaintext = decipher('AES-256-CBC', ciphertext, key, iv);
-    assert.bufferEqual(plaintext, data);
-  });
-
   for (const alg of algs) {
     describe(alg.name, function() {
       for (const id of alg.ids) {
+        const gcm = id.endsWith('-GCM');
         const file = `${__dirname}/data/ciphers/${id.toLowerCase()}.json`;
         const text = fs.readFileSync(file, 'utf8');
         const vectors = JSON.parse(text);
@@ -243,8 +205,13 @@ describe('Cipher', function() {
           const hex = data_.slice(0, 32);
 
           it(`should encrypt and decrypt ${hex} with ${id}`, () => {
-            assert.bufferEqual(encipher(id, data, key, iv), expect);
-            assert.bufferEqual(decipher(id, expect, key, iv), data);
+            assert.bufferEqual(encipher(id, key, iv, data), expect);
+            assert.bufferEqual(decipher(id, key, iv, expect), data);
+
+            if (!gcm) {
+              assert.bufferEqual(encrypt(id, key, iv, data), expect);
+              assert.bufferEqual(decrypt(id, key, iv, expect), data);
+            }
           });
         }
       }
