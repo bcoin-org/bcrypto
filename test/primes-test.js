@@ -1,11 +1,10 @@
 'use strict';
 
 const assert = require('bsert');
-const crypto = require('crypto');
 const BN = require('../lib/bn.js');
 const primes = require('../lib/internal/primes');
-const rng = require('../lib/random');
-const {constants} = crypto;
+const HmacDRBG = require('../lib/hmac-drbg');
+const SHA256 = require('../lib/sha256');
 
 // https://github.com/golang/go/blob/aadaec5/src/math/big/prime_test.go
 const primes_ = [
@@ -183,43 +182,12 @@ const composites = [
   '105919633'
 ];
 
-// eslint-disable-next-line
-function randomPrime(bits) {
-  assert((bits >>> 0) === bits);
-  assert(bits >= 2);
-
-  const dh = crypto.createDiffieHellman(bits);
-
-  return new BN(dh.getPrime());
-}
-
-function probablyPrime(x) {
-  assert(x instanceof BN);
-
-  const dh = crypto.createDiffieHellman(x.toBuffer(), null, 2, null);
-
-  if (dh.verifyError & constants.DH_CHECK_P_NOT_PRIME)
-    return false;
-
-  return true;
-}
-
-function strongPrime(x) {
-  assert(x instanceof BN);
-
-  const dh = crypto.createDiffieHellman(x.toBuffer(), null, 2, null);
-
-  if (dh.verifyError & constants.DH_CHECK_P_NOT_PRIME)
-    return false;
-
-  if (dh.verifyError & constants.DH_CHECK_P_NOT_SAFE_PRIME)
-    return false;
-
-  return true;
-}
-
 describe('Primes', function() {
   this.timeout(30000);
+
+  // Deterministic RNG.
+  const seed = SHA256.digest(Buffer.alloc(0));
+  const rng = new HmacDRBG(SHA256);
 
   for (let i = 0; i < primes_.length; i++) {
     const str = primes_[i];
@@ -227,15 +195,14 @@ describe('Primes', function() {
     it(`should test prime (${i})`, () => {
       const p = new BN(str, 10);
 
+      rng.init(seed);
+
       assert(p.isPrimeMR(rng, 16 + 1, true));
       assert(p.isPrimeMR(rng, 1, true));
       assert(p.isPrimeMR(rng, 1, false));
       assert(p.isPrimeLucas());
-      assert(primes.probablyPrime(p, 15));
-      assert(primes.probablyPrime(p, 1));
-
-      if (!process.browser)
-        assert(probablyPrime(p));
+      assert(primes.probablyPrime(p, 15, rng));
+      assert(primes.probablyPrime(p, 1, rng));
     });
   }
 
@@ -245,9 +212,11 @@ describe('Primes', function() {
     it(`should test composite (${i})`, () => {
       const p = new BN(str, 10);
 
+      rng.init(seed);
+
       assert(!p.isPrimeMR(rng, 16 + 1, true));
-      assert(!p.isPrimeMR(rng, 7, true));
-      assert(!p.isPrimeMR(rng, 6, false));
+      assert(!p.isPrimeMR(rng, 3, true));
+      assert(!p.isPrimeMR(rng, 2, false));
 
       if (i >= 8 && i <= 42) {
         // Lucas pseudoprime.
@@ -257,48 +226,17 @@ describe('Primes', function() {
       }
 
       // No composite should ever pass Baillie-PSW.
-      assert(!primes.probablyPrime(p, 15));
-      assert(!primes.probablyPrime(p, 1));
-
-      if (!process.browser)
-        assert(!probablyPrime(p));
+      assert(!primes.probablyPrime(p, 15, rng));
+      assert(!primes.probablyPrime(p, 1, rng));
     });
   }
 
-  it('should test prime against openssl', () => {
-    if (process.browser)
-      this.skip();
+  it('should generate random prime', () => {
+    rng.init(seed);
 
-    const p = primes.randomPrime(768, 63);
+    const p = primes.randomPrime(768, 63, rng);
 
     assert(p.isPrimeMR(rng, 63 + 1, true));
     assert(p.isPrimeLucas());
-    assert(probablyPrime(p));
-  });
-
-  // OpenSSL does 64 rounds of miller rabin,
-  // then shifts right and does another 64
-  // rounds before it considers a prime "safe".
-  // In my opinion, this is stupid and slow,
-  // and they should just use Baillie-PSW instead.
-  it.skip('should test "safe" prime against openssl', () => {
-    let p = null;
-
-    for (;;) {
-      const prime = primes.randomPrime(768, 63);
-      const half = prime.ushrn(1);
-
-      if (!half.isPrimeMR(rng, 63 + 1, false))
-        continue;
-
-      p = prime;
-
-      break;
-    }
-
-    assert(p.isPrimeMR(rng, 64, true));
-    assert(p.isPrimeLucas());
-    assert(probablyPrime(p));
-    assert(strongPrime(p));
   });
 });
