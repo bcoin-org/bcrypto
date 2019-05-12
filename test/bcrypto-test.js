@@ -46,6 +46,7 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.Hash160.native, 0);
         assert.strictEqual(bcrypto.Hash256.native, 0);
         assert.strictEqual(bcrypto.HashDRBG.native, 0);
+        assert.strictEqual(bcrypto.HKDF.native, 0);
         assert.strictEqual(bcrypto.hkdf.native, 0);
         assert.strictEqual(bcrypto.HmacDRBG.native, 0);
         assert.strictEqual(bcrypto.Keccak.native, 0);
@@ -137,6 +138,7 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.Hash160.native, 1);
         assert.strictEqual(bcrypto.Hash256.native, 1);
         assert.strictEqual(bcrypto.HashDRBG.native, 0);
+        assert.strictEqual(bcrypto.HKDF.native, 0);
         assert.strictEqual(bcrypto.hkdf.native, 0);
         assert.strictEqual(bcrypto.HmacDRBG.native, 0);
         assert.strictEqual(bcrypto.Keccak.native, 0);
@@ -230,6 +232,7 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.Hash160.native, 2);
         assert.strictEqual(bcrypto.Hash256.native, 2);
         assert.strictEqual(bcrypto.HashDRBG.native, 0);
+        assert.strictEqual(bcrypto.HKDF.native, 0);
         assert.strictEqual(bcrypto.hkdf.native, 0);
         assert.strictEqual(bcrypto.HmacDRBG.native, 0);
         assert.strictEqual(bcrypto.Keccak.native, 2);
