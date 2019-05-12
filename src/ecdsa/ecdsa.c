@@ -911,7 +911,7 @@ bcrypto_ecdsa_privkey_tweak_add(bcrypto_ecdsa_t *ec,
   if (scalar == NULL)
     goto fail;
 
-  if (BN_is_zero(scalar) || BN_ucmp(scalar, ec->n) >= 0)
+  if (BN_is_zero(scalar) || BN_cmp(scalar, ec->n) >= 0)
     goto fail;
 
   tweak_bn = BN_bin2bn(tweak, ec->scalar_size, BN_secure_new());
@@ -919,7 +919,7 @@ bcrypto_ecdsa_privkey_tweak_add(bcrypto_ecdsa_t *ec,
   if (tweak_bn == NULL)
     goto fail;
 
-  if (BN_ucmp(tweak_bn, ec->n) >= 0)
+  if (BN_cmp(tweak_bn, ec->n) >= 0)
     goto fail;
 
   if (!BN_mod_add(scalar, scalar, tweak_bn, ec->n, ec->ctx))
@@ -1232,7 +1232,7 @@ bcrypto_ecdsa_pubkey_tweak_add(bcrypto_ecdsa_t *ec,
   if (tweak_bn == NULL)
     goto fail;
 
-  if (BN_ucmp(tweak_bn, ec->n) >= 0)
+  if (BN_cmp(tweak_bn, ec->n) >= 0)
     goto fail;
 
   tweak_point = EC_POINT_new(ec->group);

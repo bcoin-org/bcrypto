@@ -2275,7 +2275,7 @@ bcrypto_rsa_veil(uint8_t **out,
   }
 
   /* Invalid ciphertext. */
-  if (BN_ucmp(c0, n) >= 0)
+  if (BN_cmp(c0, n) >= 0)
     goto fail;
 
   /* ctlim = 1 << (bits + 0) */
@@ -2300,12 +2300,12 @@ bcrypto_rsa_veil(uint8_t **out,
   bcrypto_poll();
 
   /* while c1 >= ctlim */
-  while (BN_ucmp(c1, ctlim) >= 0) {
+  while (BN_cmp(c1, ctlim) >= 0) {
     /* cr = random_int(rlim) */
     if (!BN_rand_range(cr, rlim))
       goto fail;
 
-    if (BN_ucmp(rlim, BN_value_one()) > 0 && BN_is_zero(cr))
+    if (BN_cmp(rlim, BN_value_one()) > 0 && BN_is_zero(cr))
       continue;
 
     /* c1 = c0 + cr * n */
@@ -2319,7 +2319,7 @@ bcrypto_rsa_veil(uint8_t **out,
   if (!BN_mod(cr, c1, n, ctx))
     goto fail;
 
-  assert(BN_ucmp(cr, c0) == 0);
+  assert(BN_cmp(cr, c0) == 0);
   assert((size_t)BN_num_bits(c1) <= bits);
 
   veiled_len = (bits + 7) / 8;
