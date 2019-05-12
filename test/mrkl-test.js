@@ -3,14 +3,13 @@
 const assert = require('bsert');
 const SHA256 = require('../lib/sha256');
 const merkle = require('../lib/mrkl');
-const random = require('../lib/random');
 
 describe('Mrkl', function() {
   it('should create perfect tree', () => {
     const leaves = [];
 
     for (let i = 0; i < 32; i++)
-      leaves.push(random.randomBytes(32));
+      leaves.push(Buffer.alloc(32, i));
 
     const root1 = merkle.createRoot(SHA256, leaves);
 
@@ -24,7 +23,7 @@ describe('Mrkl', function() {
     const leaves = [];
 
     for (let i = 0; i < 11; i++)
-      leaves.push(random.randomBytes(32));
+      leaves.push(Buffer.alloc(32, i));
 
     const root1 = merkle.createRoot(SHA256, leaves);
 
@@ -43,7 +42,7 @@ describe('Mrkl', function() {
     const leaves = [];
 
     for (let i = 0; i < 11; i++)
-      leaves.push(random.randomBytes(32));
+      leaves.push(Buffer.alloc(32, i));
 
     const root1 = merkle.createRoot(SHA256, leaves);
 
