@@ -263,7 +263,7 @@ bcrypto_dsa_key2dsa(const bcrypto_dsa_key_t *key, int mode) {
   q = NULL;
   g = NULL;
 
-  if (mode > 0) {
+  if (mode == 1 || mode == 2) {
     if (!DSA_set0_key(dsakey, y, x))
       goto fail;
   }
