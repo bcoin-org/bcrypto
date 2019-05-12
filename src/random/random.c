@@ -24,7 +24,7 @@ bcrypto_poll(void) {
 }
 
 int
-bcrypto_random(uint8_t *dst, size_t len) {
+bcrypto_random(void *dst, size_t len) {
   bcrypto_poll();
 
   int r = RAND_bytes(dst, len);
