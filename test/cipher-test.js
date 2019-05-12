@@ -1,14 +1,8 @@
 'use strict';
 
 const assert = require('bsert');
-const crypto = require('crypto');
+const fs = require('fs');
 const {Cipher, Decipher} = require('../lib/cipher');
-const random = require('../lib/random');
-
-const parts = process.version.split(/[^\d]/);
-const major = parts[1] >>> 0;
-const minor = parts[2] >>> 0;
-const NODE_ELEVEN = major >= 11 && minor >= 12;
 
 const algs = [
   {
@@ -21,7 +15,7 @@ const algs = [
       'AES-128-CTR',
       'AES-128-CFB',
       'AES-128-OFB',
-      NODE_ELEVEN && 'AES-128-GCM'
+      'AES-128-GCM'
     ]
   },
   {
@@ -34,7 +28,7 @@ const algs = [
       'AES-192-CTR',
       'AES-192-CFB',
       'AES-192-OFB',
-      NODE_ELEVEN && 'AES-192-GCM'
+      'AES-192-GCM'
     ]
   },
   {
@@ -47,7 +41,7 @@ const algs = [
       'AES-256-CTR',
       'AES-256-CFB',
       'AES-256-OFB',
-      NODE_ELEVEN && 'AES-256-GCM'
+      'AES-256-GCM'
     ]
   },
   {
@@ -68,9 +62,9 @@ const algs = [
     ids: [
       'CAMELLIA-128-ECB',
       'CAMELLIA-128-CBC',
-      NODE_ELEVEN && 'CAMELLIA-128-CTR',
-      NODE_ELEVEN && 'CAMELLIA-128-CFB',
-      NODE_ELEVEN && 'CAMELLIA-128-OFB'
+      'CAMELLIA-128-CTR',
+      'CAMELLIA-128-CFB',
+      'CAMELLIA-128-OFB'
     ]
   },
   {
@@ -80,9 +74,9 @@ const algs = [
     ids: [
       'CAMELLIA-192-ECB',
       'CAMELLIA-192-CBC',
-      NODE_ELEVEN && 'CAMELLIA-192-CTR',
-      NODE_ELEVEN && 'CAMELLIA-192-CFB',
-      NODE_ELEVEN && 'CAMELLIA-192-OFB'
+      'CAMELLIA-192-CTR',
+      'CAMELLIA-192-CFB',
+      'CAMELLIA-192-OFB'
     ]
   },
   {
@@ -92,9 +86,9 @@ const algs = [
     ids: [
       'CAMELLIA-256-ECB',
       'CAMELLIA-256-CBC',
-      NODE_ELEVEN && 'CAMELLIA-256-CTR',
-      NODE_ELEVEN && 'CAMELLIA-256-CFB',
-      NODE_ELEVEN && 'CAMELLIA-256-OFB'
+      'CAMELLIA-256-CTR',
+      'CAMELLIA-256-CFB',
+      'CAMELLIA-256-OFB'
     ]
   },
   {
@@ -143,7 +137,7 @@ const algs = [
     keyLen: 16,
     ivLen: 8,
     ids: [
-      NODE_ELEVEN && 'DES-EDE-ECB',
+      'DES-EDE-ECB',
       'DES-EDE-CBC',
       'DES-EDE-CFB',
       'DES-EDE-OFB'
@@ -154,7 +148,7 @@ const algs = [
     keyLen: 24,
     ivLen: 8,
     ids: [
-      NODE_ELEVEN && 'DES-EDE3-ECB',
+      'DES-EDE3-ECB',
       'DES-EDE3-CBC',
       'DES-EDE3-CFB',
       'DES-EDE3-OFB'
@@ -162,70 +156,45 @@ const algs = [
   }
 ];
 
-if (process.browser)
-  algs.length = 3;
-
 const key = Buffer.from(
   '3a0c0bf669694ac7685e6806eeadee8e56c9b9bd22c3caa81c718ed4bbf809a1',
   'hex');
 
 const iv = Buffer.from('6dd26d9045b73c377a9ed2ffeca72ffd', 'hex');
 
-function testVector(name, keyLen, ivLen) {
-  const key = random.randomBytes(keyLen);
-  const gcm = name.endsWith('-GCM');
-
-  let iv = Buffer.alloc(0);
-
-  if (!name.endsWith('-ECB'))
-    iv = random.randomBytes(ivLen);
-
-  const data = random.randomBytes((Math.random() * 256) >>> 0);
-  const cipher = crypto.createCipheriv(name, key, iv);
-  const expect = Buffer.concat([
-    cipher.update(data),
-    cipher.final(),
-    gcm ? cipher.getAuthTag() : Buffer.alloc(0)
-  ]);
-
-  return {
-    key,
-    iv,
-    data,
-    expect
-  };
-}
-
 function encipher(name, data, key, iv) {
   const gcm = name.endsWith('-GCM');
-  const c = new Cipher(name);
-  c.init(key, iv);
+  const ctx = new Cipher(name);
+
+  ctx.init(key, iv);
+
   return Buffer.concat([
-    c.update(data),
-    c.final(),
-    gcm ? c.getAuthTag() : Buffer.alloc(0)
+    ctx.update(data),
+    ctx.final(),
+    gcm ? ctx.getAuthTag() : Buffer.alloc(0)
   ]);
 }
 
 function decipher(name, data, key, iv) {
   const gcm = name.endsWith('-GCM');
-  const c = new Decipher(name);
-  c.init(key, iv);
+  const ctx = new Decipher(name);
+
+  ctx.init(key, iv);
 
   if (gcm) {
     const tag = data.slice(-16);
     data = data.slice(0, -16);
-    c.setAuthTag(tag);
+    ctx.setAuthTag(tag);
   }
 
   return Buffer.concat([
-    c.update(data),
-    c.final()
+    ctx.update(data),
+    ctx.final()
   ]);
 }
 
 describe('Cipher', function() {
-  it('should encrypt and decrypt with 2 blocks', () => {
+  it('should encrypt and decrypt with 2 blocks (AES-256-CBC)', () => {
     const data = Buffer.from(
       'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
       'hex');
@@ -242,7 +211,7 @@ describe('Cipher', function() {
     assert.bufferEqual(plaintext, data);
   });
 
-  it('should encrypt and decrypt with uneven blocks', () => {
+  it('should encrypt and decrypt with uneven blocks (AES-256-CBC)', () => {
     const data = Buffer.from(
       'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855010203',
       'hex');
@@ -262,19 +231,20 @@ describe('Cipher', function() {
   for (const alg of algs) {
     describe(alg.name, function() {
       for (const id of alg.ids) {
-        if (!id)
-          continue;
+        const file = `${__dirname}/data/ciphers/${id.toLowerCase()}.json`;
+        const text = fs.readFileSync(file, 'utf8');
+        const vectors = JSON.parse(text);
 
-        for (let i = 0; i < 50; i++) {
-          const {key, iv, data, expect} = testVector(id, alg.keyLen, alg.ivLen);
-          const hex = data.toString('hex', 0, 32);
+        for (const [key_, iv_, data_, expect_] of vectors) {
+          const key = Buffer.from(key_, 'hex');
+          const iv = Buffer.from(iv_, 'hex');
+          const data = Buffer.from(data_, 'hex');
+          const expect = Buffer.from(expect_, 'hex');
+          const hex = data_.slice(0, 32);
 
           it(`should encrypt and decrypt ${hex} with ${id}`, () => {
-            const ciphertext = encipher(id, data, key, iv);
-            assert.bufferEqual(ciphertext, expect);
-
-            const plaintext = decipher(id, ciphertext, key, iv);
-            assert.bufferEqual(plaintext, data);
+            assert.bufferEqual(encipher(id, data, key, iv), expect);
+            assert.bufferEqual(decipher(id, expect, key, iv), data);
           });
         }
       }

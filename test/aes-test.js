@@ -1,29 +1,14 @@
 'use strict';
 
 const assert = require('bsert');
-const crypto = require('crypto');
+const fs = require('fs');
 const aes = require('../lib/aes');
-const random = require('../lib/random');
 
 const key = Buffer.from(
   '3a0c0bf669694ac7685e6806eeadee8e56c9b9bd22c3caa81c718ed4bbf809a1',
   'hex');
 
 const iv = Buffer.from('6dd26d9045b73c377a9ed2ffeca72ffd', 'hex');
-
-function testVector() {
-  const key = random.randomBytes(32);
-  const iv = random.randomBytes(16);
-  const data = random.randomBytes((Math.random() * 0x10000) >>> 0);
-  const cipher = crypto.createCipheriv('AES-256-CBC', key, iv);
-  const expect = Buffer.concat([cipher.update(data), cipher.final()]);
-  return {
-    key,
-    iv,
-    data,
-    expect
-  };
-}
 
 describe('AES', function() {
   it('should encrypt and decrypt with 2 blocks', () => {
@@ -60,9 +45,16 @@ describe('AES', function() {
     assert.bufferEqual(plaintext, data);
   });
 
-  for (let i = 0; i < 50; i++) {
-    const {key, iv, data, expect} = testVector();
-    const hex = data.toString('hex', 0, 32);
+  const file = `${__dirname}/data/ciphers/aes-256-cbc.json`;
+  const text = fs.readFileSync(file, 'utf8');
+  const vectors = JSON.parse(text);
+
+  for (const [key_, iv_, data_, expect_] of vectors) {
+    const key = Buffer.from(key_, 'hex');
+    const iv = Buffer.from(iv_, 'hex');
+    const data = Buffer.from(data_, 'hex');
+    const expect = Buffer.from(expect_, 'hex');
+    const hex = data_.slice(0, 32);
 
     it(`should encrypt and decrypt ${hex}`, () => {
       const ciphertext = aes.encipher(data, key, iv);
