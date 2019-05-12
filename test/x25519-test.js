@@ -1,6 +1,7 @@
 'use strict';
 
 const assert = require('bsert');
+const RNG = require('./util/rng');
 const pem = require('../lib/encoding/pem');
 const ed25519 = require('../lib/ed25519');
 const x25519 = require('../lib/x25519');
@@ -121,6 +122,8 @@ MCowBQYDK2VuAyEAakLDF/7jDdqLlRRYPmC4h3hS1kph8OuJ+PrjQ2NlhUk=
 `;
 
 describe('X25519', function() {
+  const rng = new RNG();
+
   for (const [pub, key, expect] of vectors) {
     it(`should compute secret: ${expect.toString('hex')}`, () => {
       const result = x25519.derive(pub, key);
@@ -154,9 +157,9 @@ describe('X25519', function() {
 
   for (let i = 0; i < 20; i++) {
     it(`should exchange keys after point conversion (${i})`, () => {
-      const scalar = ed25519.scalarGenerate();
+      const scalar = rng.scalarGenerate(ed25519);
       const edPub = ed25519.publicKeyFromScalar(scalar);
-      const tweak = ed25519.scalarGenerate();
+      const tweak = rng.scalarGenerate(ed25519);
       const edPoint = ed25519.deriveWithScalar(edPub, tweak);
       const pub = ed25519.publicKeyConvert(edPub);
       const expect = ed25519.publicKeyConvert(edPoint);
@@ -209,13 +212,8 @@ describe('X25519', function() {
   });
 
   it('should ignore high bit', () => {
-    const s = Buffer.from(
-      'fb2dfff876311b33cf2750d86f606a3e4db4dd953e095b6edd25d15fb16551d0',
-      'hex');
-
-    const u = Buffer.from(
-      '360bda4af66c977bec99aed8fbb52edddb610d94a69dbad5ba2b79b5c8d14bd6',
-      'hex');
+    const s = rng.randomBytes(32);
+    const u = rng.randomBytes(32);
 
     u[31] &= 0x7f;
     const hi0 = x25519.derive(u, s);

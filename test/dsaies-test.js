@@ -1,7 +1,7 @@
 'use strict';
 
 const assert = require('bsert');
-const random = require('../lib/random');
+const RNG = require('./util/rng');
 const SHA256 = require('../lib/sha256');
 const dsa = require('../lib/dsa');
 const dsaies = require('../lib/dsaies');
@@ -9,7 +9,7 @@ const keys = require('./data/dsaies-keys.json');
 const vectors = require('./data/dsaies.json');
 
 describe('DSAIES', function() {
-  this.timeout(30000);
+  const rng = new RNG();
 
   for (const key of keys) {
     const priv = dsa.privateKeyImport(Buffer.from(key, 'hex'));
@@ -19,7 +19,7 @@ describe('DSAIES', function() {
       const bobPub = dsa.publicKeyCreate(bobPriv);
       const alicePriv = dsa.privateKeyCreate(bobPub);
 
-      const msg = random.randomBytes(100);
+      const msg = rng.randomBytes(rng.randomRange(0, 100));
       const ct = dsaies.encrypt(SHA256, msg, bobPub, alicePriv);
 
       assert.notBufferEqual(ct, msg);

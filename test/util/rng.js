@@ -23,6 +23,46 @@ class RNG {
 
     return out;
   }
+
+  randomInt() {
+    return this.randomBytes(4).readUInt32LE(0);
+  }
+
+  randomRange(min, max) {
+    assert((min >>> 0) === min);
+    assert((max >>> 0) === max);
+    assert(max >= min);
+
+    const space = max - min;
+
+    if (space === 0)
+      return min;
+
+    return (this.randomInt() % space) + min;
+  }
+
+  privateKeyGenerate(curve) {
+    assert(curve && typeof curve.id === 'string');
+    assert((curve.size >>> 0) === curve.size);
+    assert(typeof curve.privateKeyGenerate === 'function');
+
+    const key = this.randomBytes(curve.size);
+
+    if (curve.type === 'short')
+      return curve.privateKeyReduce(key);
+
+    return key;
+  }
+
+  scalarGenerate(curve) {
+    assert(curve && typeof curve.id === 'string');
+    assert((curve.bits >>> 0) === curve.bits);
+    assert(typeof curve.scalarGenerate === 'function');
+
+    const key = this.randomBytes((curve.bits + 7) >>> 3);
+
+    return curve.scalarClamp(key);
+  }
 }
 
 module.exports = RNG;

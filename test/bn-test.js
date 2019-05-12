@@ -2,7 +2,7 @@
 
 const assert = require('bsert');
 const BN = require('../lib/bn.js');
-const rng = require('../lib/random');
+const RNG = require('./util/rng');
 
 const dhGroups = {
   p16: {
@@ -298,6 +298,8 @@ const symbols = [
 ];
 
 describe('BN.js', function() {
+  const rng = new RNG();
+
   describe('BN.js/Arithmetic', () => {
     describe('.add()', () => {
       it('should add numbers', () => {

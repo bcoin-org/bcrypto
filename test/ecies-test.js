@@ -13,7 +13,7 @@ const ECDSA = (() => {
   return require('../lib/js/ecdsa');
 })();
 
-const random = require('../lib/random');
+const RNG = require('./util/rng');
 const SHA256 = require('../lib/sha256');
 const p192 = require('../lib/p192');
 const p224 = require('../lib/p224');
@@ -57,41 +57,33 @@ const curveMap = {
 };
 
 describe('ECIES', function() {
-  this.timeout(15000);
+  const rng = new RNG();
 
-  for (const withKey of [true, false]) {
-    for (const curve of curves) {
-      it(`should encrypt and decrypt (${curve.id})`, () => {
-        const alicePriv = curve.privateKeyGenerate();
-        const bobPriv = curve.privateKeyGenerate();
-        const bobPub = curve.publicKeyCreate(bobPriv);
+  for (const curve of curves) {
+    it(`should encrypt and decrypt (${curve.id})`, () => {
+      const alicePriv = rng.privateKeyGenerate(curve);
+      const bobPriv = rng.privateKeyGenerate(curve);
+      const bobPub = curve.publicKeyCreate(bobPriv);
 
-        const msg = random.randomBytes(Math.random() * 100 | 0);
-        const ct = ecies.encrypt(
-          curve,
-          SHA256,
-          msg,
-          bobPub,
-          withKey ? alicePriv : null
-        );
+      const msg = rng.randomBytes(rng.randomRange(0, 100));
+      const ct = ecies.encrypt(curve, SHA256, msg, bobPub, alicePriv);
 
-        assert.notBufferEqual(ct, msg);
-        assert(ct.length > msg.length);
+      assert.notBufferEqual(ct, msg);
+      assert(ct.length > msg.length);
 
-        const pt = ecies.decrypt(curve, SHA256, ct, bobPriv);
-        assert.bufferEqual(pt, msg);
+      const pt = ecies.decrypt(curve, SHA256, ct, bobPriv);
+      assert.bufferEqual(pt, msg);
 
-        assert.throws(() => {
-          ecies.decrypt(curve, SHA256, ct, alicePriv);
-        });
-
-        ct[1] ^= 1;
-        assert.throws(() => {
-          ecies.decrypt(curve, SHA256, ct, bobPriv);
-        });
-        ct[1] ^= 1;
+      assert.throws(() => {
+        ecies.decrypt(curve, SHA256, ct, alicePriv);
       });
-    }
+
+      ct[1] ^= 1;
+      assert.throws(() => {
+        ecies.decrypt(curve, SHA256, ct, bobPriv);
+      });
+      ct[1] ^= 1;
+    });
   }
 
   for (const vector of vectors) {
