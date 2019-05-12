@@ -39,21 +39,12 @@ const defaults = [
 ];
 
 function hash(alg, msg) {
-  if (typeof msg === 'string')
-    msg = Buffer.from(msg, 'utf8');
-
   const ctx = createHash(alg);
   ctx.update(msg);
   return ctx.digest();
 }
 
 function hmac(alg, msg, key) {
-  if (typeof msg === 'string')
-    msg = Buffer.from(msg, 'utf8');
-
-  if (typeof key === 'string')
-    key = Buffer.from(key, 'utf8');
-
   const ctx = crypto.createHmac(alg, key);
   ctx.update(msg);
   return ctx.digest();
@@ -62,7 +53,8 @@ function hmac(alg, msg, key) {
 for (const [alg, hasMAC] of algs) {
   const vectors = [];
 
-  for (const [msg] of defaults) {
+  for (const [m] of defaults) {
+    const msg = Buffer.from(m);
     const digest = hash(alg, msg).toString('hex');
 
     vectors.push([msg.toString('hex'), null, digest]);
@@ -76,7 +68,9 @@ for (const [alg, hasMAC] of algs) {
   }
 
   if (hasMAC) {
-    for (const [msg, key] of defaults) {
+    for (const [m, k] of defaults) {
+      const msg = Buffer.from(m);
+      const key = Buffer.from(k);
       const digest = hmac(alg, msg, key).toString('hex');
 
       vectors.push([msg.toString('hex'), key.toString('hex'), digest]);
