@@ -1,6 +1,7 @@
 'use strict';
 
 const assert = require('bsert');
+const zlib = require('zlib');
 const random = require('../lib/random');
 const zero = Buffer.alloc(32, 0x00);
 const bytes = Buffer.allocUnsafe(32);
@@ -39,7 +40,7 @@ describe('Random', function() {
   });
 
   it('should get random bytes (async)', async () => {
-    const rand = await random.randomBytes(32);
+    const rand = await random.randomBytesAsync(32);
     assert.notBufferEqual(rand, zero);
   });
 
@@ -52,5 +53,24 @@ describe('Random', function() {
     const rand = random.randomRange(1, 100);
     assert((rand >>> 0) === rand);
     assert(rand >= 1 && rand < 100);
+  });
+
+  it('should get a large number of bytes', () => {
+    // The browser limits us at 65,536 bytes per call.
+    // Make sure our RNG wrapper can exceed that.
+    assert.strictEqual(random.randomBytes(1 << 17).length, 1 << 17);
+  });
+
+  it('should not be able to compress random bytes', () => {
+    // Idea taken from golang:
+    //   https://github.com/golang/go/blob/master/src/crypto/rand/rand_test.go
+    //
+    // Compression involves reducing redundancy. Random
+    // data shouldn't have any significant redundancy.
+    const rand = random.randomBytes(4e6);
+    const defl = zlib.deflateRawSync(rand, { level: 5 });
+    const perc = defl.length / rand.length;
+
+    assert(perc >= 0.99, `Deflated data was %${perc.toFixed(2)} of original.`);
   });
 });
