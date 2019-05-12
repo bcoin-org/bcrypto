@@ -1,7 +1,6 @@
 'use strict';
 
 const assert = require('bsert');
-const random = require('../lib/random');
 const ccmp = require('../lib/ccmp');
 const safeEqual = require('../lib/safe-equal');
 const safe = require('../lib/safe');
@@ -9,6 +8,11 @@ const bytes = Buffer.allocUnsafe(32);
 
 for (let i = 0; i < 32; i++)
   bytes[i] = i;
+
+const rbytes = Buffer.allocUnsafe(32);
+
+for (let i = 0; i < 32; i++)
+  rbytes[i] = 32 - i;
 
 describe('Safe', function() {
   for (const equal of [ccmp, safeEqual]) {
@@ -24,8 +28,8 @@ describe('Safe', function() {
     });
 
     it('should fail comparing bytes', () => {
-      assert.strictEqual(equal(bytes, random.randomBytes(32)), false);
-      assert.strictEqual(equal(random.randomBytes(32), bytes), false);
+      assert.strictEqual(equal(bytes, rbytes), false);
+      assert.strictEqual(equal(rbytes, bytes), false);
       assert.strictEqual(equal(bytes, bytes.slice(31)), false);
       assert.strictEqual(equal(bytes.slice(31), bytes), false);
 
@@ -51,8 +55,8 @@ describe('Safe', function() {
     });
 
     it('should fail comparing bytes', () => {
-      assert.strictEqual(safeEqual(bytes, random.randomBytes(32)), 0);
-      assert.strictEqual(safeEqual(random.randomBytes(32), bytes), 0);
+      assert.strictEqual(safeEqual(bytes, rbytes), 0);
+      assert.strictEqual(safeEqual(rbytes, bytes), 0);
       assert.strictEqual(safeEqual(bytes, bytes.slice(31)), 0);
       assert.strictEqual(safeEqual(bytes.slice(31), bytes), 0);
 
