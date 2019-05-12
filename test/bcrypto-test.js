@@ -9,7 +9,12 @@ const HAS_BIGINT = typeof BigInt === 'function';
 
 describe('Bcrypto', function() {
   it('should have correct environment', () => {
-    switch (process.env.NODE_BACKEND) {
+    let backend = process.env.NODE_BACKEND;
+
+    if (process.browser && !backend)
+      backend = 'js';
+
+    switch (backend) {
       case 'js':
         assert.strictEqual(bcrypto.native, 0);
         assert.strictEqual(bcrypto.AEAD.native, 0);
