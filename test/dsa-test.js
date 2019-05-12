@@ -49,7 +49,7 @@ describe('DSA', function() {
     assert(!dsa.verify(zero, sig, pub));
     assert(!dsa.verify(msg, zero, pub));
 
-    sig[(Math.random() * sig.length) | 0] ^= 1;
+    sig[0] ^= 1;
 
     const result2 = dsa.verify(msg, sig, pub);
     assert(!result2);
@@ -99,7 +99,7 @@ describe('DSA', function() {
 
     assert.bufferEqual(sig3, sig);
 
-    sig[(Math.random() * sig.length) | 0] ^= 1;
+    sig[5] ^= 1;
 
     assert(!dsa.verifyDER(msg, sig, pub));
   });
@@ -120,7 +120,7 @@ describe('DSA', function() {
     const result = dsa.verify(msg, sig, pub);
     assert(result);
 
-    sig[(Math.random() * sig.length) | 0] ^= 1;
+    sig[0] ^= 1;
 
     const result2 = dsa.verify(msg, sig, pub);
     assert(!result2);
@@ -160,8 +160,8 @@ describe('DSA', function() {
     assert(dsa.publicKeyVerify(key));
   });
 
-  for (const vector of vectors) {
-    it(`should verify signature: ${vector.sig}`, () => {
+  for (const [i, vector] of vectors.entries()) {
+    it(`should verify signature: ${vector.sig} (${i})`, () => {
       const msg = Buffer.from(vector.msg, 'hex');
       const sig = Buffer.from(vector.sig, 'hex');
       const pubRaw = Buffer.from(vector.pub, 'hex');
@@ -184,7 +184,7 @@ describe('DSA', function() {
 
       assert.strictEqual(dsa.verifyDER(msg, sig2, pub), true);
 
-      sig[(Math.random() * sig.length) | 0] ^= 1;
+      sig[i % sig.length] ^= 1;
 
       assert.strictEqual(dsa.verify(msg, sig, pub), false);
     });

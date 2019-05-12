@@ -102,7 +102,7 @@ describe('RSA', function() {
     assert(!rsa.verify(SHA256, zero, sig, pub));
     assert(!rsa.verify(SHA256, msg, zero, pub));
 
-    sig[(Math.random() * sig.length) | 0] ^= 1;
+    sig[0] ^= 1;
     assert(!rsa.verify(SHA256, msg, sig, pub));
   });
 
@@ -125,12 +125,12 @@ describe('RSA', function() {
     assert(!rsa.verifyPSS(SHA256, zero, sig1, pub));
     assert(!rsa.verifyPSS(SHA256, msg, zero, pub));
 
-    sig1[(Math.random() * sig1.length) | 0] ^= 1;
+    sig1[0] ^= 1;
     assert(!rsa.verifyPSS(SHA256, msg, sig1, pub));
 
     const sig4 = rsa.signPSS(SHA256, msg, priv, 0);
     assert(rsa.verifyPSS(SHA256, msg, sig4, pub, 0));
-    sig4[(Math.random() * sig1.length) | 0] ^= 1;
+    sig4[0] ^= 1;
     assert(!rsa.verifyPSS(SHA256, msg, sig4, pub, 0));
   });
 
@@ -162,7 +162,7 @@ describe('RSA', function() {
     assert(!rsa.verify(BLAKE2b256, zero, sig, pub));
     assert(!rsa.verify(BLAKE2b256, msg, zero, pub));
 
-    sig[(Math.random() * sig.length) | 0] ^= 1;
+    sig[0] ^= 1;
     assert(!rsa.verify(BLAKE2b256, msg, sig, pub));
   });
 
@@ -179,12 +179,12 @@ describe('RSA', function() {
     assert(!rsa.verifyPSS(BLAKE2b256, zero, sig1, pub));
     assert(!rsa.verifyPSS(BLAKE2b256, msg, zero, pub));
 
-    sig1[(Math.random() * sig1.length) | 0] ^= 1;
+    sig1[0] ^= 1;
     assert(!rsa.verifyPSS(BLAKE2b256, msg, sig1, pub));
 
     const sig2 = rsa.signPSS(BLAKE2b256, msg, priv, 0);
     assert(rsa.verifyPSS(BLAKE2b256, msg, sig2, pub, 0));
-    sig2[(Math.random() * sig1.length) | 0] ^= 1;
+    sig2[0] ^= 1;
     assert(!rsa.verifyPSS(BLAKE2b256, msg, sig2, pub, 0));
   });
 
@@ -277,29 +277,24 @@ describe('RSA', function() {
 
       assert(rsa.verify(hash, m, sig, key));
 
-      m[0] ^= 1;
+      m[i % m.length] ^= 1;
       assert(!rsa.verify(hash, m, sig, key));
-      m[0] ^= 1;
+      m[i % m.length] ^= 1;
       assert(rsa.verify(hash, m, sig, key));
 
-      sig[0] ^= 1;
+      sig[i % sig.length] ^= 1;
       assert(!rsa.verify(hash, m, sig, key));
-      sig[0] ^= 1;
+      sig[i % sig.length] ^= 1;
       assert(rsa.verify(hash, m, sig, key));
 
-      sig[40] ^= 1;
+      key.n[i % key.n.length] ^= 1;
       assert(!rsa.verify(hash, m, sig, key));
-      sig[40] ^= 1;
+      key.n[i % key.n.length] ^= 1;
       assert(rsa.verify(hash, m, sig, key));
 
-      key.n[0] ^= 1;
+      key.e[i % key.e.length] ^= 1;
       assert(!rsa.verify(hash, m, sig, key));
-      key.n[0] ^= 1;
-      assert(rsa.verify(hash, m, sig, key));
-
-      key.e[0] ^= 1;
-      assert(!rsa.verify(hash, m, sig, key));
-      key.e[0] ^= 1;
+      key.e[i % key.e.length] ^= 1;
       assert(rsa.verify(hash, m, sig, key));
     });
   }

@@ -19,7 +19,7 @@ describe('Ed448', function() {
     const sig = ed448.sign(msg, secret);
     assert(ed448.verify(msg, sig, pub));
 
-    sig[(Math.random() * sig.length) | 0] ^= 1;
+    sig[0] ^= 1;
 
     assert(!ed448.verify(msg, sig, pub));
 
@@ -421,25 +421,25 @@ describe('Ed448', function() {
 
         if (msg.length > 0) {
           const msg_ = Buffer.from(msg);
-          msg_[Math.random() * msg_.length | 0] ^= 1;
+          msg_[i % msg_.length] ^= 1;
           assert(!ed448.verify(msg_, sig, pub, ph, ctx));
         }
 
         {
           const sig_ = Buffer.from(sig);
-          sig_[Math.random() * sig_.length | 0] ^= 1;
+          sig_[i % sig_.length] ^= 1;
           assert(!ed448.verify(msg, sig_, pub, ph, ctx));
         }
 
         {
           const pub_ = Buffer.from(pub);
-          pub_[Math.random() * pub_.length | 0] ^= 1;
+          pub_[i % pub_.length] ^= 1;
           assert(!ed448.verify(msg, sig, pub_, ph, ctx));
         }
 
         if (ctx && ctx.length > 0) {
           const ctx_ = Buffer.from(ctx);
-          ctx_[Math.random() * ctx_.length | 0] ^= 1;
+          ctx_[i % ctx_.length] ^= 1;
           assert(!ed448.verify(msg, sig, pub, ph, ctx_));
           assert(!ed448.verify(msg, sig, pub, ph, null));
         } else {
