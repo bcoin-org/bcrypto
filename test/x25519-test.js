@@ -2,7 +2,6 @@
 
 const assert = require('bsert');
 const pem = require('../lib/encoding/pem');
-const random = require('../lib/random');
 const ed25519 = require('../lib/ed25519');
 const x25519 = require('../lib/x25519');
 const curve25519 = require('../lib/js/curve25519');
@@ -196,9 +195,6 @@ describe('X25519', function() {
   });
 
   it('should do scalar base multiplication (curve25519)', () => {
-    if (random.native)
-      this.skip();
-
     const expect =
       '89161fde887b2b53de549af483940106ecc114d6982daa98256de23bdf77661a';
 
@@ -213,8 +209,13 @@ describe('X25519', function() {
   });
 
   it('should ignore high bit', () => {
-    const s = random.randomBytes(32);
-    const u = random.randomBytes(32);
+    const s = Buffer.from(
+      'fb2dfff876311b33cf2750d86f606a3e4db4dd953e095b6edd25d15fb16551d0',
+      'hex');
+
+    const u = Buffer.from(
+      '360bda4af66c977bec99aed8fbb52edddb610d94a69dbad5ba2b79b5c8d14bd6',
+      'hex');
 
     u[31] &= 0x7f;
     const hi0 = x25519.derive(u, s);
