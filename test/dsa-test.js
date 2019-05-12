@@ -1,5 +1,3 @@
-/* eslint no-unused-vars: "off" */
-
 'use strict';
 
 const assert = require('bsert');
@@ -7,27 +5,17 @@ const fs = require('fs');
 const Path = require('path');
 const bio = require('bufio');
 const dsa = require('../lib/dsa');
-const random = require('../lib/random');
 const asn1 = require('../lib/encoding/asn1');
 const x509 = require('../lib/encoding/x509');
 const params = require('./data/dsa-params.json');
 const vectors = require('./data/dsa.json');
+const {DSAPublicKey} = dsa;
 
-const {
-  DSAParams,
-  DSAPublicKey,
-  DSAPrivateKey
-} = dsa;
-
-const DSA_PATH = Path.resolve(__dirname, 'data', 'testdsa.pem');
-const DSA_PUB_PATH = Path.resolve(__dirname, 'data', 'testdsapub.pem');
-
-const dsaPem = fs.readFileSync(DSA_PATH, 'utf8');
-const dsaPubPem = fs.readFileSync(DSA_PUB_PATH, 'utf8');
+const PEM_PATH = Path.resolve(__dirname, 'data', 'testdsapub.pem');
+const PEM_TXT = fs.readFileSync(PEM_PATH, 'utf8');
 
 const {
   P1024_160,
-  P2048_244,
   P2048_256,
   P3072_256
 } = params;
@@ -43,7 +31,6 @@ describe('DSA', function() {
   this.timeout(30000);
 
   it('should sign and verify', () => {
-    // const priv = dsa.privateKeyGenerate(1024);
     const params = createParams(P2048_256);
     const priv = dsa.privateKeyCreate(params);
     const pub = dsa.publicKeyCreate(priv);
@@ -51,7 +38,7 @@ describe('DSA', function() {
     assert(dsa.privateKeyVerify(priv));
     assert(dsa.publicKeyVerify(pub));
 
-    const msg = Buffer.alloc(priv.size(), 0x01);
+    const msg = Buffer.alloc(priv.size(), 0xaa);
     const sig = dsa.sign(msg, priv);
     assert(sig);
 
@@ -93,12 +80,11 @@ describe('DSA', function() {
   });
 
   it('should sign and verify (DER)', () => {
-    // const priv = dsa.privateKeyGenerate(1024);
-    const params = createParams(P2048_256);
+    const params = createParams(P3072_256);
     const priv = dsa.privateKeyCreate(params);
     const pub = dsa.publicKeyCreate(priv);
 
-    const msg = Buffer.alloc(priv.size(), 0x01);
+    const msg = Buffer.alloc(priv.size(), 0xaa);
     const sig = dsa.signDER(msg, priv);
     assert(sig);
 
@@ -127,7 +113,7 @@ describe('DSA', function() {
     assert(dsa.privateKeyVerify(priv));
     assert(dsa.publicKeyVerify(pub));
 
-    const msg = Buffer.alloc(priv.size(), 0x01);
+    const msg = Buffer.alloc(priv.size(), 0xaa);
     const sig = dsa.sign(msg, priv);
     assert(sig);
 
@@ -141,8 +127,7 @@ describe('DSA', function() {
   });
 
   it('should do diffie hellman', () => {
-    // const params = createParams(P2048_256);
-    const params = dsa.paramsGenerate(1024);
+    const params = createParams(P1024_160);
     const alice = dsa.privateKeyCreate(params);
     const alicePub = dsa.publicKeyCreate(alice);
     const bob = dsa.privateKeyCreate(params);
@@ -155,7 +140,7 @@ describe('DSA', function() {
   });
 
   it('should parse SPKI', () => {
-    const info = x509.SubjectPublicKeyInfo.fromPEM(dsaPubPem);
+    const info = x509.SubjectPublicKeyInfo.fromPEM(PEM_TXT);
     assert(info.algorithm.algorithm.getKeyAlgorithmName() === 'DSA');
     assert(info.algorithm.parameters.node.type === 16); // SEQ
     assert(info.publicKey.type === 3); // BITSTRING
@@ -211,6 +196,7 @@ describe('DSA', function() {
     const key = dsa.privateKeyCreate(params);
     const pub = dsa.publicKeyCreate(key);
     const sig = dsa.sign(msg, key);
+
     assert(dsa.verify(msg, sig, pub));
   });
 });
