@@ -1154,13 +1154,60 @@ fail:
 
 int
 bcrypto_dsa_pubkey_verify(const bcrypto_dsa_key_t *key) {
+  int ret = 0;
+  DSA *dsakey = NULL;
+  const BIGNUM *p = NULL;
+  const BIGNUM *q = NULL;
+  const BIGNUM *y = NULL;
+  BN_CTX *ctx = NULL;
+  BIGNUM *x = NULL;
+
   if (!bcrypto_dsa_params_verify(key))
-    return 0;
+    goto fail;
 
   if (!bcrypto_dsa_sane_pubkey(key))
-    return 0;
+    goto fail;
 
-  return 1;
+  dsakey = bcrypto_dsa_key2pub(key);
+
+  if (dsakey == NULL)
+    goto fail;
+
+  DSA_get0_pqg(dsakey, &p, &q, NULL);
+  DSA_get0_key(dsakey, &y, NULL);
+
+  assert(p != NULL && q != NULL);
+  assert(y != NULL);
+
+  ctx = BN_CTX_new();
+
+  if (ctx == NULL)
+    goto fail;
+
+  x = BN_new();
+
+  if (x == NULL)
+    goto fail;
+
+  /* x := y^q mod p */
+  if (!BN_mod_exp(x, y, q, p, ctx))
+    goto fail;
+
+  if (!BN_is_one(x))
+    goto fail;
+
+  ret = 1;
+fail:
+  if (dsakey != NULL)
+    DSA_free(dsakey);
+
+  if (ctx != NULL)
+    BN_CTX_free(ctx);
+
+  if (x != NULL)
+    BN_free(x);
+
+  return ret;
 }
 
 int
