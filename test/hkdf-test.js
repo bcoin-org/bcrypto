@@ -72,6 +72,12 @@ describe('HKDF', function() {
       assert.bufferEqual(okm1, okmE);
     });
 
+    it(`should do one-shot hkdf (${i + 1})`, () => {
+      const okm = HKDF.derive(alg, ikm, salt, info, len);
+
+      assert.bufferEqual(okm, okmE);
+    });
+
     it(`should do object-oriented hkdf (${i + 1})`, () => {
       const hkdf = new HKDF(alg, ikm, salt, info);
       const okm = hkdf.generate(len);
