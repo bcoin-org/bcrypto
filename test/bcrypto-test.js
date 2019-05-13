@@ -138,8 +138,8 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.dsaies.native, undefined);
         assert.strictEqual(bcrypto.eb2k.native, 0);
         assert.strictEqual(bcrypto.ecies.native, undefined);
-        assert.strictEqual(bcrypto.ed25519.native, 0);
-        assert.strictEqual(bcrypto.ed448.native, 0);
+        assert.strictEqual(bcrypto.ed25519.native, NODE_MAJOR >= 12 ? 1 : 0);
+        assert.strictEqual(bcrypto.ed448.native, NODE_MAJOR >= 12 ? 1 : 0);
         assert.strictEqual(bcrypto.encoding.native, undefined);
         assert.strictEqual(bcrypto.GOST94.native, 0);
         assert.strictEqual(bcrypto.Hash160.native, 1);
