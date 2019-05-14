@@ -14,13 +14,7 @@ describe('Box', function() {
     const sealed = box.seal(msg, pub1, priv2);
     const opened = box.open(sealed, priv1);
 
-    const expect = 'b0bdeb693eef197be42a41ee20039e052e87e5b2'
-                 + 'dc8d44d77d9d26f075571684deb8521accd1ae72'
-                 + '6edab1127f1c4588ea4658f81c12af1873af2a39'
-                 + 'c626f128fa64c3d59008bfa7f8ef57a7b3bac09a';
-
     assert.bufferEqual(sealed.slice(0, 32), pub2);
-    assert.bufferEqual(sealed.slice(32 + 24), expect, 'hex');
     assert.bufferEqual(opened, msg);
   });
 });
