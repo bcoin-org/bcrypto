@@ -52,9 +52,9 @@ NAN_METHOD(BChaCha20::Init) {
   if (!node::Buffer::HasInstance(key_buf))
     return Nan::ThrowTypeError("First argument must be a buffer.");
 
-  v8::Local<v8::Value> iv_buf = info[1].As<v8::Object>();
+  v8::Local<v8::Value> nonce_buf = info[1].As<v8::Object>();
 
-  if (!node::Buffer::HasInstance(iv_buf))
+  if (!node::Buffer::HasInstance(nonce_buf))
     return Nan::ThrowTypeError("Second argument must be a buffer.");
 
   const uint8_t *key = (const uint8_t *)node::Buffer::Data(key_buf);
@@ -63,11 +63,11 @@ NAN_METHOD(BChaCha20::Init) {
   if (key_len < 32)
     return Nan::ThrowRangeError("Invalid key size.");
 
-  const uint8_t *iv = (const uint8_t *)node::Buffer::Data(iv_buf);
-  size_t iv_len = node::Buffer::Length(iv_buf);
+  const uint8_t *nonce = (const uint8_t *)node::Buffer::Data(nonce_buf);
+  size_t nonce_len = node::Buffer::Length(nonce_buf);
 
-  if (iv_len != 8 && iv_len != 12 && iv_len != 16)
-    return Nan::ThrowRangeError("Invalid IV size.");
+  if (nonce_len != 8 && nonce_len != 12 && nonce_len != 16)
+    return Nan::ThrowRangeError("Invalid nonce size.");
 
   uint64_t ctr = 0;
 
@@ -78,7 +78,7 @@ NAN_METHOD(BChaCha20::Init) {
     ctr = (uint64_t)Nan::To<int64_t>(info[2]).FromJust();
   }
 
-  bcrypto_chacha20_init(&chacha->ctx, key, 32, iv, iv_len, ctr);
+  bcrypto_chacha20_init(&chacha->ctx, key, 32, nonce, nonce_len, ctr);
 
   info.GetReturnValue().Set(info.This());
 }

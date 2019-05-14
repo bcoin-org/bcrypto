@@ -59,6 +59,9 @@ bcrypto_chacha20_init(bcrypto_chacha20_ctx *ctx,
                       uint64_t counter) {
   assert(key_len >= 16);
 
+  if (key_len > 32)
+    key_len = 32;
+
   const char *constants = (key_len == 32)
     ? "expand 32-byte k"
     : "expand 16-byte k";
@@ -220,7 +223,7 @@ bcrypto_chacha20_block(bcrypto_chacha20_ctx *ctx, uint32_t output[16]) {
     : "rsi", "rdi", "edx", "cc", "memory"
   );
 #else
-  uint32_t *nonce = ctx->state + 12;
+  uint32_t *ctr = ctx->state + 12;
   int i = 10;
 
   memcpy(output, ctx->state, sizeof(ctx->state));
@@ -241,8 +244,8 @@ bcrypto_chacha20_block(bcrypto_chacha20_ctx *ctx, uint32_t output[16]) {
     WRITELE((uint8_t *)(output + i), result);
   }
 
-  if (++nonce[0] == 0)
-    nonce[1] += 1;
+  if (++ctr[0] == 0)
+    ctr[1] += 1;
 #endif
 }
 

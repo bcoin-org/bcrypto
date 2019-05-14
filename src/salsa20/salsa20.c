@@ -66,10 +66,13 @@ bcrypto_salsa20_init(bcrypto_salsa20_ctx *ctx,
                      uint64_t counter) {
   assert(key_len >= 16);
 
+  if (key_len > 32)
+    key_len = 32;
+
   uint8_t key_[32];
   uint8_t nonce_[16];
 
-  memcpy(&key_[0], key, MIN(32, key_len));
+  memcpy(&key_[0], key, key_len);
   memcpy(&nonce_[0], nonce, MIN(16, nonce_len));
 
   // XSalsa20
@@ -122,7 +125,7 @@ bcrypto_salsa20_init(bcrypto_salsa20_ctx *ctx,
 
 void
 bcrypto_salsa20_block(bcrypto_salsa20_ctx *ctx, uint32_t output[16]) {
-  uint32_t *nonce = ctx->state + 8;
+  uint32_t *ctr = ctx->state + 8;
   int i = 10;
 
   memcpy(output, ctx->state, sizeof(ctx->state));
@@ -143,8 +146,8 @@ bcrypto_salsa20_block(bcrypto_salsa20_ctx *ctx, uint32_t output[16]) {
     WRITELE((uint8_t *)(output + i), result);
   }
 
-  if (++nonce[0] == 0)
-    nonce[1] += 1;
+  if (++ctr[0] == 0)
+    ctr[1] += 1;
 }
 
 static inline
