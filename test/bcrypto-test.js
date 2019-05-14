@@ -19,6 +19,7 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.native, 0);
         assert.strictEqual(bcrypto.AEAD.native, 0);
         assert.strictEqual(bcrypto.aes.native, 0);
+        assert.strictEqual(bcrypto.bcrypt.native, 0);
         assert.strictEqual(bcrypto.BLAKE2b.native, 0);
         assert.strictEqual(bcrypto.BLAKE2b160.native, 0);
         assert.strictEqual(bcrypto.BLAKE2b256.native, 0);
@@ -31,7 +32,7 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.BLAKE2s256.native, 0);
         assert.strictEqual(bcrypto.BN.native,
           HAS_BIGINT && process.env.BCRYPTO_FORCE_BIGINT ? 1 : 0);
-        assert.strictEqual(bcrypto.bcrypt.native, 0);
+        assert.strictEqual(bcrypto.box.native, 0);
         assert.strictEqual(bcrypto.ChaCha20.native, 0);
         assert.strictEqual(bcrypto.cipher.native, 0);
         assert.strictEqual(bcrypto.cleanse.native, 0);
@@ -88,6 +89,7 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.Salsa20.native, 0);
         assert.strictEqual(bcrypto.scrypt.native, 0);
         assert.strictEqual(bcrypto.secp256k1.native, 0);
+        assert.strictEqual(bcrypto.secretbox.native, 0);
         assert.strictEqual(bcrypto.ssh.native, undefined);
         assert.strictEqual(bcrypto.SHA1.native, 0);
         assert.strictEqual(bcrypto.SHA224.native, 0);
@@ -112,6 +114,7 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.native, 1);
         assert.strictEqual(bcrypto.AEAD.native, 0);
         assert.strictEqual(bcrypto.aes.native, 1);
+        assert.strictEqual(bcrypto.bcrypt.native, 0);
         if (NODE_MAJOR < 10) {
           assert.strictEqual(bcrypto.BLAKE2b.native, 1);
           assert.strictEqual(bcrypto.BLAKE2b160.native, 1);
@@ -125,7 +128,7 @@ describe('Bcrypto', function() {
           assert.strictEqual(bcrypto.BLAKE2s256.native, 1);
         }
         assert.strictEqual(bcrypto.BN.native, HAS_BIGINT ? 1 : 0);
-        assert.strictEqual(bcrypto.bcrypt.native, 0);
+        assert.strictEqual(bcrypto.box.native, 0);
         assert.strictEqual(bcrypto.ChaCha20.native, 0);
         assert.strictEqual(bcrypto.cipher.native, 1);
         assert.strictEqual(bcrypto.cleanse.native, 1);
@@ -185,6 +188,7 @@ describe('Bcrypto', function() {
         else
           assert.strictEqual(bcrypto.scrypt.native, 0);
         assert.strictEqual(bcrypto.secp256k1.native, 0);
+        assert.strictEqual(bcrypto.secretbox.native, 0);
         assert.strictEqual(bcrypto.ssh.native, undefined);
         assert.strictEqual(bcrypto.SHA1.native, 1);
         assert.strictEqual(bcrypto.SHA224.native, 1);
@@ -210,6 +214,7 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.native, 2);
         assert.strictEqual(bcrypto.AEAD.native, 2);
         assert.strictEqual(bcrypto.aes.native, 2);
+        assert.strictEqual(bcrypto.bcrypt.native, 0);
         assert.strictEqual(bcrypto.BLAKE2b.native, 2);
         assert.strictEqual(bcrypto.BLAKE2b160.native, 2);
         assert.strictEqual(bcrypto.BLAKE2b256.native, 2);
@@ -221,7 +226,7 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.BLAKE2s224.native, 2);
         assert.strictEqual(bcrypto.BLAKE2s256.native, 2);
         assert.strictEqual(bcrypto.BN.native, HAS_BIGINT ? 1 : 0);
-        assert.strictEqual(bcrypto.bcrypt.native, 0);
+        assert.strictEqual(bcrypto.box.native, 0);
         assert.strictEqual(bcrypto.ChaCha20.native, 2);
         assert.strictEqual(bcrypto.cipher.native, 2);
         assert.strictEqual(bcrypto.cleanse.native, 2);
@@ -278,6 +283,7 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.Salsa20.native, 2);
         assert.strictEqual(bcrypto.scrypt.native, 2);
         assert.strictEqual(bcrypto.secp256k1.native, 2);
+        assert.strictEqual(bcrypto.secretbox.native, 0);
         assert.strictEqual(bcrypto.ssh.native, undefined);
         assert.strictEqual(bcrypto.SHA1.native, 2);
         assert.strictEqual(bcrypto.SHA224.native, 2);
