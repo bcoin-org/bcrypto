@@ -24,6 +24,7 @@ BSalsa20::Init(v8::Local<v8::Object> &target) {
   Nan::SetPrototypeMethod(tpl, "init", BSalsa20::Init);
   Nan::SetPrototypeMethod(tpl, "encrypt", BSalsa20::Encrypt);
   Nan::SetPrototypeMethod(tpl, "crypt", BSalsa20::Crypt);
+  Nan::SetMethod(tpl, "derive", BSalsa20::Derive);
 
   v8::Local<v8::FunctionTemplate> ctor =
     Nan::New<v8::FunctionTemplate>(salsa20_constructor);
@@ -137,4 +138,36 @@ NAN_METHOD(BSalsa20::Destroy) {
   memset(&salsa->ctx, 0, sizeof(bcrypto_salsa20_ctx));
 
   info.GetReturnValue().Set(info.This());
+}
+
+NAN_METHOD(BSalsa20::Derive) {
+  if (info.Length() < 2)
+    return Nan::ThrowError("Salsa20.derive() requires arguments.");
+
+  v8::Local<v8::Object> key_buf = info[0].As<v8::Object>();
+  v8::Local<v8::Object> nonce_buf = info[1].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(key_buf))
+    return Nan::ThrowTypeError("First argument must be a buffer.");
+
+  if (!node::Buffer::HasInstance(nonce_buf))
+    return Nan::ThrowTypeError("Second argument must be a buffer.");
+
+  const uint8_t *key = (const uint8_t *)node::Buffer::Data(key_buf);
+  size_t key_len = node::Buffer::Length(key_buf);
+
+  uint8_t *nonce = (uint8_t *)node::Buffer::Data(nonce_buf);
+  size_t nonce_len = node::Buffer::Length(nonce_buf);
+
+  if (key_len != 16 && key_len != 32)
+    return Nan::ThrowRangeError("Invalid key size.");
+
+  if (nonce_len != 16)
+    return Nan::ThrowRangeError("Invalid nonce size.");
+
+  uint8_t out[32];
+  bcrypto_salsa20_derive(&out[0], key, key_len, nonce, nonce_len);
+
+  info.GetReturnValue().Set(
+    Nan::CopyBuffer((char *)&out[0], 32).ToLocalChecked());
 }

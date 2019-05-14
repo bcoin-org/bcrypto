@@ -52,6 +52,13 @@ bcrypto_salsa20_encrypt(bcrypto_salsa20_ctx *ctx,
                         const uint8_t *in,
                         size_t length);
 
+void
+bcrypto_salsa20_derive(uint8_t *out,
+                       const uint8_t *key,
+                       size_t key_len,
+                       const uint8_t *nonce,
+                       size_t nonce_len);
+
 #if defined(__cplusplus)
 }
 #endif

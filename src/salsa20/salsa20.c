@@ -50,13 +50,6 @@
   x[d] ^= ROTL32(x[c] + x[b], 13);  \
   x[a] ^= ROTL32(x[d] + x[c], 18)
 
-static void
-bcrypto_hsalsa20(uint8_t *out,
-                 const uint8_t *key,
-                 size_t key_len,
-                 const uint8_t *nonce,
-                 size_t nonce_len);
-
 void
 bcrypto_salsa20_init(bcrypto_salsa20_ctx *ctx,
                      const uint8_t *key,
@@ -74,7 +67,7 @@ bcrypto_salsa20_init(bcrypto_salsa20_ctx *ctx,
 
   // XSalsa20
   if (nonce_len == 24) {
-    bcrypto_hsalsa20(&key_[0], key, key_len, nonce, 16);
+    bcrypto_salsa20_derive(&key_[0], key, key_len, nonce, 16);
     memcpy(&nonce_[0], &nonce[16], 8);
     key_len = 32;
     nonce_len = 8;
@@ -184,12 +177,12 @@ bcrypto_salsa20_encrypt(bcrypto_salsa20_ctx *ctx,
   }
 }
 
-static void
-bcrypto_hsalsa20(uint8_t *out,
-                 const uint8_t *key,
-                 size_t key_len,
-                 const uint8_t *nonce,
-                 size_t nonce_len) {
+void
+bcrypto_salsa20_derive(uint8_t *out,
+                       const uint8_t *key,
+                       size_t key_len,
+                       const uint8_t *nonce,
+                       size_t nonce_len) {
   assert(key_len == 16 || key_len == 32);
   assert(nonce_len == 16);
 

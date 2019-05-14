@@ -21,5 +21,6 @@ private:
   static NAN_METHOD(Encrypt);
   static NAN_METHOD(Crypt);
   static NAN_METHOD(Destroy);
+  static NAN_METHOD(Derive);
 };
 #endif
