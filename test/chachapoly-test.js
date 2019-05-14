@@ -1,7 +1,9 @@
 'use strict';
 
 const assert = require('bsert');
-const {ChaCha20, Poly1305, AEAD} = require('../');
+const ChaCha20 = require('../lib/chacha20');
+const Poly1305 = require('../lib/poly1305');
+const AEAD = require('../lib/aead');
 
 function testChaCha(options) {
   const key = Buffer.from(options.key, 'hex');
@@ -34,7 +36,6 @@ function testAEAD(options) {
   const ctx1 = new AEAD();
   ctx1.init(key, nonce);
   if (ctx1.chacha20) {
-    assert.strictEqual(ctx1.chacha20.getCounter(), 1);
     assert.bufferEqual(ctx1.polyKey, pk);
   }
   ctx1.aad(aad);
@@ -46,7 +47,6 @@ function testAEAD(options) {
   const ctx2 = new AEAD();
   ctx2.init(key, nonce);
   if (ctx2.chacha20) {
-    assert.strictEqual(ctx2.chacha20.getCounter(), 1);
     assert.bufferEqual(ctx2.polyKey, pk);
   }
   ctx2.aad(aad);

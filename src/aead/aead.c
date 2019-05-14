@@ -14,7 +14,6 @@ bcrypto_aead_pad16(bcrypto_aead_ctx *aead, uint64_t size);
 void
 bcrypto_aead_init(bcrypto_aead_ctx *aead) {
   memset(&aead->chacha, 0, sizeof(bcrypto_chacha20_ctx));
-  aead->chacha.nonce_size = 8;
   memset(&aead->poly, 0, sizeof(bcrypto_poly1305_ctx));
   aead->aad_len = 0;
   aead->cipher_len = 0;
@@ -31,23 +30,14 @@ bcrypto_aead_setup(bcrypto_aead_ctx *aead,
 
   memset(&aead->poly_key[0], 0, 32);
 
-  bcrypto_chacha20_keysetup(&aead->chacha, key, 32);
-  bcrypto_chacha20_ivsetup(&aead->chacha, iv, iv_len);
-
-  if (iv_len != 16)
-    bcrypto_chacha20_counter_set(&aead->chacha, 0);
-
+  bcrypto_chacha20_init(&aead->chacha, key, 32, iv, iv_len, 0);
   bcrypto_chacha20_encrypt(&aead->chacha, aead->poly_key, aead->poly_key, 32);
-
   bcrypto_poly1305_init(&aead->poly, aead->poly_key);
 
   uint8_t half_block[32];
   memset(&half_block[0], 0, 32);
 
   bcrypto_chacha20_encrypt(&aead->chacha, half_block, half_block, 32);
-
-  if (iv_len != 16)
-    assert(bcrypto_chacha20_counter_get(&aead->chacha) == 1);
 
   aead->aad_len = 0;
   aead->cipher_len = 0;

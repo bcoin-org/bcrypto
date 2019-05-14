@@ -20,6 +20,7 @@
  *   performed.
  */
 
+#include <assert.h>
 #include <string.h>
 #include <stdint.h>
 
@@ -50,20 +51,15 @@
   x[c] += x[d]; x[b] = ROTL32(x[b] ^ x[c], 7);
 
 void
-bcrypto_chacha20_setup(bcrypto_chacha20_ctx *ctx,
-                       const uint8_t *key,
-                       size_t length,
-                       const uint8_t *nonce,
-                       size_t nonce_size) {
-  bcrypto_chacha20_keysetup(ctx, key, length);
-  bcrypto_chacha20_ivsetup(ctx, nonce, nonce_size);
-}
+bcrypto_chacha20_init(bcrypto_chacha20_ctx *ctx,
+                      const uint8_t *key,
+                      size_t key_len,
+                      const uint8_t *nonce,
+                      size_t nonce_len,
+                      uint64_t counter) {
+  assert(key_len >= 16);
 
-void
-bcrypto_chacha20_keysetup(bcrypto_chacha20_ctx *ctx,
-                          const uint8_t *key,
-                          size_t length) {
-  const char *constants = (length == 32)
+  const char *constants = (key_len == 32)
     ? "expand 32-byte k"
     : "expand 16-byte k";
 
@@ -75,62 +71,31 @@ bcrypto_chacha20_keysetup(bcrypto_chacha20_ctx *ctx,
   ctx->state[5] = READLE(key + 4);
   ctx->state[6] = READLE(key + 8);
   ctx->state[7] = READLE(key + 12);
-  ctx->state[8] = READLE(key + 16 % length);
-  ctx->state[9] = READLE(key + 20 % length);
-  ctx->state[10] = READLE(key + 24 % length);
-  ctx->state[11] = READLE(key + 28 % length);
-  ctx->state[12] = 0;
+  ctx->state[8] = READLE(key + 16 % key_len);
+  ctx->state[9] = READLE(key + 20 % key_len);
+  ctx->state[10] = READLE(key + 24 % key_len);
+  ctx->state[11] = READLE(key + 28 % key_len);
 
-  ctx->available = 0;
-  ctx->nonce_size = 8;
-}
-
-void
-bcrypto_chacha20_ivsetup(bcrypto_chacha20_ctx *ctx,
-                         const uint8_t *nonce,
-                         size_t nonce_size) {
-  if (nonce_size == 16) {
+  if (nonce_len == 8) {
+    ctx->state[12] = counter & 0xffffffffu;
+    ctx->state[13] = counter >> 32;
+    ctx->state[14] = READLE(nonce + 0);
+    ctx->state[15] = READLE(nonce + 4);
+  } else if (nonce_len == 12) {
+    ctx->state[12] = counter & 0xffffffffu;
+    ctx->state[13] = READLE(nonce + 0);
+    ctx->state[14] = READLE(nonce + 4);
+    ctx->state[15] = READLE(nonce + 8);
+  } else if (nonce_len == 16) {
     ctx->state[12] = READLE(nonce + 0);
     ctx->state[13] = READLE(nonce + 4);
     ctx->state[14] = READLE(nonce + 8);
     ctx->state[15] = READLE(nonce + 12);
-    ctx->available = 0;
-    ctx->nonce_size = 12;
-    return;
-  }
-
-  ctx->state[12] = 0;
-
-  if (nonce_size == 8) {
-    ctx->state[13] = 0;
-    ctx->state[14] = READLE(nonce + 0);
-    ctx->state[15] = READLE(nonce + 4);
   } else {
-    ctx->state[13] = READLE(nonce + 0);
-    ctx->state[14] = READLE(nonce + 4);
-    ctx->state[15] = READLE(nonce + 8);
+    assert(0 && "invalid nonce size for chacha20");
   }
 
-  ctx->nonce_size = nonce_size;
-}
-
-void
-bcrypto_chacha20_counter_set(bcrypto_chacha20_ctx *ctx, uint64_t counter) {
-  if (ctx->nonce_size == 8) {
-    ctx->state[12] = counter & 0xffffffffu;
-    ctx->state[13] = counter >> 32;
-  } else {
-    ctx->state[12] = (uint32_t)counter;
-  }
   ctx->available = 0;
-}
-
-uint64_t
-bcrypto_chacha20_counter_get(bcrypto_chacha20_ctx *ctx) {
-  if (ctx->nonce_size == 8)
-    return ((uint64_t)ctx->state[13] << 32) | ctx->state[12];
-
-  return (uint64_t)ctx->state[12];
 }
 
 void

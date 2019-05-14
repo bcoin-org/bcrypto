@@ -18,12 +18,8 @@ public:
 
 private:
   static NAN_METHOD(Init);
-  static NAN_METHOD(InitIV);
-  static NAN_METHOD(InitKey);
   static NAN_METHOD(Encrypt);
   static NAN_METHOD(Crypt);
-  static NAN_METHOD(SetCounter);
-  static NAN_METHOD(GetCounter);
   static NAN_METHOD(Destroy);
 };
 #endif
