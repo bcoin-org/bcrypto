@@ -64,15 +64,12 @@ bcrypto_salsa20_init(bcrypto_salsa20_ctx *ctx,
                      const uint8_t *nonce,
                      size_t nonce_len,
                      uint64_t counter) {
-  assert(key_len >= 16);
-
-  if (key_len > 32)
-    key_len = 32;
+  assert(key_len == 16 || key_len == 32);
 
   uint8_t key_[32];
   uint8_t nonce_[16];
 
-  memcpy(&key_[0], key, key_len);
+  memcpy(&key_[0], key, MIN(32, key_len));
   memcpy(&nonce_[0], nonce, MIN(16, nonce_len));
 
   // XSalsa20
@@ -193,7 +190,7 @@ bcrypto_hsalsa20(uint8_t *out,
                  size_t key_len,
                  const uint8_t *nonce,
                  size_t nonce_len) {
-  assert(key_len >= 16);
+  assert(key_len == 16 || key_len == 32);
   assert(nonce_len == 16);
 
   const char *constants = (key_len == 32)

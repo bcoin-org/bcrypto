@@ -60,7 +60,7 @@ NAN_METHOD(BSalsa20::Init) {
   const uint8_t *key = (const uint8_t *)node::Buffer::Data(key_buf);
   size_t key_len = node::Buffer::Length(key_buf);
 
-  if (key_len < 32)
+  if (key_len != 16 && key_len != 32)
     return Nan::ThrowRangeError("Invalid key size.");
 
   const uint8_t *nonce = (const uint8_t *)node::Buffer::Data(nonce_buf);
@@ -78,7 +78,7 @@ NAN_METHOD(BSalsa20::Init) {
     ctr = (uint64_t)Nan::To<int64_t>(info[2]).FromJust();
   }
 
-  bcrypto_salsa20_init(&salsa->ctx, key, 32, nonce, nonce_len, ctr);
+  bcrypto_salsa20_init(&salsa->ctx, key, key_len, nonce, nonce_len, ctr);
 
   info.GetReturnValue().Set(info.This());
 }

@@ -50,6 +50,13 @@
   x[a] += x[b]; x[d] = ROTL32(x[d] ^ x[a], 8);  \
   x[c] += x[d]; x[b] = ROTL32(x[b] ^ x[c], 7);
 
+static void
+bcrypto_hchacha20(uint8_t *out,
+                 const uint8_t *key,
+                 size_t key_len,
+                 const uint8_t *nonce,
+                 size_t nonce_len);
+
 void
 bcrypto_chacha20_init(bcrypto_chacha20_ctx *ctx,
                       const uint8_t *key,
@@ -57,10 +64,21 @@ bcrypto_chacha20_init(bcrypto_chacha20_ctx *ctx,
                       const uint8_t *nonce,
                       size_t nonce_len,
                       uint64_t counter) {
-  assert(key_len >= 16);
+  assert(key_len == 16 || key_len == 32);
 
-  if (key_len > 32)
+  uint8_t key_[32];
+  uint8_t nonce_[16];
+
+  memcpy(&key_[0], key, MIN(32, key_len));
+  memcpy(&nonce_[0], nonce, MIN(16, nonce_len));
+
+  // XChaCha20
+  if (nonce_len == 24) {
+    bcrypto_hchacha20(&key_[0], key, key_len, nonce, 16);
+    memcpy(&nonce_[0], &nonce[16], 8);
     key_len = 32;
+    nonce_len = 8;
+  }
 
   const char *constants = (key_len == 32)
     ? "expand 32-byte k"
@@ -70,30 +88,30 @@ bcrypto_chacha20_init(bcrypto_chacha20_ctx *ctx,
   ctx->state[1] = READLE(constants + 4);
   ctx->state[2] = READLE(constants + 8);
   ctx->state[3] = READLE(constants + 12);
-  ctx->state[4] = READLE(key + 0);
-  ctx->state[5] = READLE(key + 4);
-  ctx->state[6] = READLE(key + 8);
-  ctx->state[7] = READLE(key + 12);
-  ctx->state[8] = READLE(key + 16 % key_len);
-  ctx->state[9] = READLE(key + 20 % key_len);
-  ctx->state[10] = READLE(key + 24 % key_len);
-  ctx->state[11] = READLE(key + 28 % key_len);
+  ctx->state[4] = READLE(key_ + 0);
+  ctx->state[5] = READLE(key_ + 4);
+  ctx->state[6] = READLE(key_ + 8);
+  ctx->state[7] = READLE(key_ + 12);
+  ctx->state[8] = READLE(key_ + 16 % key_len);
+  ctx->state[9] = READLE(key_ + 20 % key_len);
+  ctx->state[10] = READLE(key_ + 24 % key_len);
+  ctx->state[11] = READLE(key_ + 28 % key_len);
 
   if (nonce_len == 8) {
     ctx->state[12] = counter & 0xffffffffu;
     ctx->state[13] = counter >> 32;
-    ctx->state[14] = READLE(nonce + 0);
-    ctx->state[15] = READLE(nonce + 4);
+    ctx->state[14] = READLE(nonce_ + 0);
+    ctx->state[15] = READLE(nonce_ + 4);
   } else if (nonce_len == 12) {
     ctx->state[12] = counter & 0xffffffffu;
-    ctx->state[13] = READLE(nonce + 0);
-    ctx->state[14] = READLE(nonce + 4);
-    ctx->state[15] = READLE(nonce + 8);
+    ctx->state[13] = READLE(nonce_ + 0);
+    ctx->state[14] = READLE(nonce_ + 4);
+    ctx->state[15] = READLE(nonce_ + 8);
   } else if (nonce_len == 16) {
-    ctx->state[12] = READLE(nonce + 0);
-    ctx->state[13] = READLE(nonce + 4);
-    ctx->state[14] = READLE(nonce + 8);
-    ctx->state[15] = READLE(nonce + 12);
+    ctx->state[12] = READLE(nonce_ + 0);
+    ctx->state[13] = READLE(nonce_ + 4);
+    ctx->state[14] = READLE(nonce_ + 8);
+    ctx->state[15] = READLE(nonce_ + 12);
   } else {
     assert(0 && "invalid nonce size for chacha20");
   }
@@ -284,4 +302,59 @@ bcrypto_chacha20_encrypt(bcrypto_chacha20_ctx *ctx,
       ctx->available = sizeof(ctx->stream) - amount;
     }
   }
+}
+
+static void
+bcrypto_hchacha20(uint8_t *out,
+                 const uint8_t *key,
+                 size_t key_len,
+                 const uint8_t *nonce,
+                 size_t nonce_len) {
+  assert(key_len == 16 || key_len == 32);
+  assert(nonce_len == 16);
+
+  const char *constants = (key_len == 32)
+    ? "expand 32-byte k"
+    : "expand 16-byte k";
+
+  uint32_t state[16];
+
+  state[0] = READLE(constants + 0);
+  state[1] = READLE(constants + 4);
+  state[2] = READLE(constants + 8);
+  state[3] = READLE(constants + 12);
+  state[4] = READLE(key + 0);
+  state[5] = READLE(key + 4);
+  state[6] = READLE(key + 8);
+  state[7] = READLE(key + 12);
+  state[8] = READLE(key + 16 % key_len);
+  state[9] = READLE(key + 20 % key_len);
+  state[10] = READLE(key + 24 % key_len);
+  state[11] = READLE(key + 28 % key_len);
+  state[12] = READLE(nonce + 0);
+  state[13] = READLE(nonce + 4);
+  state[14] = READLE(nonce + 8);
+  state[15] = READLE(nonce + 12);
+
+  int i = 10;
+
+  while (i--) {
+    QUARTERROUND(state, 0, 4, 8, 12)
+    QUARTERROUND(state, 1, 5, 9, 13)
+    QUARTERROUND(state, 2, 6, 10, 14)
+    QUARTERROUND(state, 3, 7, 11, 15)
+    QUARTERROUND(state, 0, 5, 10, 15)
+    QUARTERROUND(state, 1, 6, 11, 12)
+    QUARTERROUND(state, 2, 7, 8, 13)
+    QUARTERROUND(state, 3, 4, 9, 14)
+  }
+
+  WRITELE(out + 0, state[0]);
+  WRITELE(out + 4, state[1]);
+  WRITELE(out + 8, state[2]);
+  WRITELE(out + 12, state[3]);
+  WRITELE(out + 16, state[12]);
+  WRITELE(out + 20, state[13]);
+  WRITELE(out + 24, state[14]);
+  WRITELE(out + 28, state[15]);
 }
