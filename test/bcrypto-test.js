@@ -85,6 +85,7 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.rsaies.native, undefined);
         assert.strictEqual(bcrypto.safe.native, undefined);
         assert.strictEqual(bcrypto.safeEqual.native, undefined);
+        assert.strictEqual(bcrypto.Salsa20.native, 0);
         assert.strictEqual(bcrypto.scrypt.native, 0);
         assert.strictEqual(bcrypto.secp256k1.native, 0);
         assert.strictEqual(bcrypto.ssh.native, undefined);
@@ -178,6 +179,7 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.rsaies.native, undefined);
         assert.strictEqual(bcrypto.safe.native, undefined);
         assert.strictEqual(bcrypto.safeEqual.native, undefined);
+        assert.strictEqual(bcrypto.Salsa20.native, 0);
         if (NODE_MAJOR > 10 || (NODE_MAJOR === 10 && NODE_MINOR >= 5))
           assert.strictEqual(bcrypto.scrypt.native, 1);
         else
@@ -273,6 +275,7 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.rsaies.native, undefined);
         assert.strictEqual(bcrypto.safe.native, undefined);
         assert.strictEqual(bcrypto.safeEqual.native, undefined);
+        assert.strictEqual(bcrypto.Salsa20.native, 2);
         assert.strictEqual(bcrypto.scrypt.native, 2);
         assert.strictEqual(bcrypto.secp256k1.native, 2);
         assert.strictEqual(bcrypto.ssh.native, undefined);

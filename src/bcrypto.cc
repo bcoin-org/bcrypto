@@ -36,6 +36,7 @@
 #include "random.h"
 #include "ripemd160.h"
 #include "rsa.h"
+#include "salsa20.h"
 #include "scrypt.h"
 #include "secp256k1.h"
 #include "sha1.h"
@@ -105,6 +106,7 @@ NAN_MODULE_INIT(init) {
 #ifdef BCRYPTO_HAS_RSA
   BRSA::Init(target);
 #endif
+  BSalsa20::Init(target);
   BScrypt::Init(target);
   BSecp256k1::Init(target);
   BSHA1::Init(target);
