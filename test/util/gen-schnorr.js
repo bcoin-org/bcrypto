@@ -15,17 +15,18 @@ for (let i = 0; i < 256; i++) {
   let result = true;
   let comment = null;
 
-  if (Math.random() > 0.5) {
-    if (Math.random() > 0.5) {
-      sig[Math.random() * sig.length | 0] ^= 1;
-      comment = 'mutated signature';
-    } else if (Math.random() > 0.5) {
-      pub[Math.random() * pub.length | 0] ^= 1;
-      comment = 'mutated key';
-    } else {
-      msg[Math.random() * msg.length | 0] ^= 1;
-      comment = 'mutated message';
-    }
+  if ((i % 4) === 1) {
+    sig[i % sig.length] ^= 1;
+    comment = 'mutated signature';
+  } else if ((i % 4) === 2) {
+    pub[i % pub.length] ^= 1;
+    comment = 'mutated key';
+  } else if ((i % 4) === 3) {
+    msg[i % msg.length] ^= 1;
+    comment = 'mutated message';
+  }
+
+  if ((i % 4) !== 0) {
     priv = Buffer.alloc(0);
     result = false;
   }
