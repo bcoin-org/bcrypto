@@ -5,11 +5,20 @@ const MD5 = require('../lib/md5');
 const SHA1 = require('../lib/sha1');
 const SHA256 = require('../lib/sha256');
 const BLAKE2b256 = require('../lib/blake2b256');
+const BLAKE2s256 = require('../lib/blake2s256');
 const random = require('../lib/random');
 const rsa = require('../lib/rsa');
 const base64 = require('../lib/internal/base64');
 const vectors = require('./data/rsa.json');
+const custom = require('./data/sign/rsa.json');
 const {RSAPublicKey} = rsa;
+
+const hashes = {
+  SHA1,
+  SHA256,
+  BLAKE2B256: BLAKE2b256,
+  BLAKE2S256: BLAKE2s256
+};
 
 const msg = SHA256.digest(Buffer.from('foobar'));
 const zero = Buffer.alloc(0);
@@ -23,6 +32,18 @@ function fromJSON(json) {
   key.e = base64.decodeURL(json.e);
 
   return key;
+}
+
+function parseVector(json) {
+  return json.map((item) => {
+    if (typeof item !== 'string')
+      return item;
+
+    if (hashes[item])
+      return hashes[item];
+
+    return Buffer.from(item, 'hex');
+  });
 }
 
 describe('RSA', function() {
@@ -398,4 +419,192 @@ describe('RSA', function() {
     assert.deepStrictEqual(rsa.publicKeyCreate(priv), pub);
     assert.deepStrictEqual(rsa.privateKeyExportJWK(priv), json);
   });
+
+  for (const [i, json] of custom.entries()) {
+    const vector = parseVector(json);
+
+    const [
+      privRaw,
+      pubRaw,
+      hash,
+      saltLen,
+      msg,
+      sig1,
+      sig2,
+      ct1,
+      ct2,
+      ct3,
+      pkcs8,
+      spki
+    ] = vector;
+
+    const label = Buffer.from('bcrypto');
+    const priv = rsa.privateKeyImport(privRaw);
+    const pub = rsa.publicKeyImport(pubRaw);
+
+    it(`should parse and serialize key (${i})`, () => {
+      assert(rsa.privateKeyVerify(priv));
+      assert(rsa.publicKeyVerify(priv));
+
+      rsa.privateKeyCompute(priv);
+
+      assert(rsa.publicKeyVerify(priv));
+      assert.deepStrictEqual(rsa.publicKeyCreate(priv), pub);
+      assert.bufferEqual(rsa.privateKeyExport(priv), privRaw);
+      assert.bufferEqual(rsa.publicKeyExport(pub), pubRaw);
+      assert.deepStrictEqual(rsa.privateKeyImport(privRaw), priv);
+      assert.deepStrictEqual(rsa.publicKeyImport(pubRaw), pub);
+
+      if (rsa.native === 2) {
+        assert.bufferEqual(rsa.privateKeyExportPKCS8(priv), pkcs8);
+        assert.bufferEqual(rsa.publicKeyExportSPKI(pub), spki);
+      }
+
+      assert.deepStrictEqual(rsa.privateKeyImportPKCS8(pkcs8), priv);
+      assert.deepStrictEqual(rsa.publicKeyImportSPKI(spki), pub);
+    });
+
+    it(`should recompute key (${i})`, () => {
+      const empty = Buffer.alloc(0);
+
+      priv.n = empty;
+
+      assert(!rsa.privateKeyVerify(priv));
+      rsa.privateKeyCompute(priv);
+      assert(rsa.privateKeyVerify(priv));
+
+      priv.e = empty;
+
+      assert(!rsa.privateKeyVerify(priv));
+      rsa.privateKeyCompute(priv);
+      assert(rsa.privateKeyVerify(priv));
+
+      priv.d = empty;
+
+      assert(!rsa.privateKeyVerify(priv));
+      rsa.privateKeyCompute(priv);
+      assert(rsa.privateKeyVerify(priv));
+
+      priv.dp = empty;
+
+      assert(!rsa.privateKeyVerify(priv));
+      rsa.privateKeyCompute(priv);
+      assert(rsa.privateKeyVerify(priv));
+
+      priv.dq = empty;
+
+      assert(!rsa.privateKeyVerify(priv));
+      rsa.privateKeyCompute(priv);
+      assert(rsa.privateKeyVerify(priv));
+
+      priv.dq = empty;
+
+      assert(!rsa.privateKeyVerify(priv));
+      rsa.privateKeyCompute(priv);
+      assert(rsa.privateKeyVerify(priv));
+
+      priv.qi = empty;
+
+      assert(!rsa.privateKeyVerify(priv));
+      rsa.privateKeyCompute(priv);
+      assert(rsa.privateKeyVerify(priv));
+
+      priv.n = empty;
+      priv.d = empty;
+      priv.dp = empty;
+      priv.dq = empty;
+      priv.qi = empty;
+
+      assert(!rsa.privateKeyVerify(priv));
+      rsa.privateKeyCompute(priv);
+      assert(rsa.privateKeyVerify(priv));
+
+      priv.n = empty;
+      priv.e = empty;
+      priv.dp = empty;
+      priv.dq = empty;
+      priv.qi = empty;
+
+      assert(!rsa.privateKeyVerify(priv));
+      rsa.privateKeyCompute(priv);
+      assert(rsa.privateKeyVerify(priv));
+
+      assert.bufferEqual(rsa.privateKeyExport(priv), privRaw);
+    });
+
+    it(`should sign and verify PKCS1v1.5 signature (${i})`, () => {
+      const sig = rsa.sign(hash, msg, priv);
+
+      assert.bufferEqual(sig, sig1);
+
+      assert(rsa.verify(hash, msg, sig, pub));
+
+      msg[0] ^= 1;
+
+      assert(!rsa.verify(hash, msg, sig, pub));
+
+      msg[0] ^= 1;
+      sig[0] ^= 1;
+
+      assert(!rsa.verify(hash, msg, sig, pub));
+
+      sig[0] ^= 1;
+      pub.n[0] ^= 1;
+
+      assert(!rsa.verify(hash, msg, sig, pub));
+
+      pub.n[0] ^= 1;
+
+      assert(rsa.verify(hash, msg, sig, pub));
+    });
+
+    it(`should sign and verify PSS signature (${i})`, () => {
+      const sig = sig2;
+      const sig_ = rsa.signPSS(hash, msg, priv, saltLen);
+
+      assert(rsa.verifyPSS(hash, msg, sig_, pub, saltLen));
+
+      assert(rsa.verifyPSS(hash, msg, sig, pub, saltLen));
+
+      msg[0] ^= 1;
+
+      assert(!rsa.verifyPSS(hash, msg, sig, pub, saltLen));
+
+      msg[0] ^= 1;
+      sig[0] ^= 1;
+
+      assert(!rsa.verifyPSS(hash, msg, sig, pub, saltLen));
+
+      sig[0] ^= 1;
+      pub.n[0] ^= 1;
+
+      assert(!rsa.verifyPSS(hash, msg, sig, pub, saltLen));
+
+      pub.n[0] ^= 1;
+
+      assert(rsa.verifyPSS(hash, msg, sig, pub, saltLen));
+    });
+
+    it(`should encrypt and decrypt PKCS1v1.5 type 2 ciphertext (${i})`, () => {
+      assert.bufferEqual(rsa.decrypt(ct1, priv), msg);
+      assert.bufferEqual(rsa.decrypt(rsa.encrypt(msg, pub), priv), msg);
+    });
+
+    it(`should encrypt and decrypt OAEP ciphertext (${i})`, () => {
+      assert.bufferEqual(rsa.decryptOAEP(hash, ct2, priv, label), msg);
+      assert.bufferEqual(rsa.decryptOAEP(hash,
+        rsa.encryptOAEP(hash, msg, pub, label), priv, label), msg);
+    });
+
+    it(`should encrypt and decrypt raw ciphertext (${i})`, () => {
+      const pad = Buffer.alloc(priv.size(), 0x00);
+      msg.copy(pad, pad.length - hash.size);
+
+      assert.bufferEqual(rsa.decryptRaw(ct3, priv).slice(-msg.length), msg);
+
+      const ct4 = rsa.encryptRaw(pad, pub);
+
+      assert.bufferEqual(rsa.decryptRaw(ct4, priv).slice(-msg.length), msg);
+    });
+  }
 });

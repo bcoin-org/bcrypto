@@ -1,6 +1,7 @@
 'use strict';
 
 const assert = require('bsert');
+const fs = require('fs');
 
 const parts = process.version.split(/[^\d]/);
 const NODE_MAJOR = parts[1] >>> 0;
@@ -294,7 +295,7 @@ describe('ECDSA', function() {
     });
   }
 
-  describe('RFC6979 vector', function() {
+  describe('RFC6979 vector', () => {
     function test(opt) {
       const curve = opt.curve;
       const key = Buffer.from(opt.key, 'hex');
@@ -306,7 +307,7 @@ describe('ECDSA', function() {
 
       for (const c of opt.cases) {
         const hash = c.hash;
-        const msg = Buffer.from(c.message, 'binary');
+        const preimage = Buffer.from(c.message, 'binary');
         const cr = Buffer.from(c.r, 'hex');
         const cs = Buffer.from(c.s, 'hex');
         const sig = Buffer.concat([cr, cs]);
@@ -315,19 +316,13 @@ describe('ECDSA', function() {
                    + `and hash ${hash.id} on "${c.message}"`;
 
         it(desc, () => {
-          const dgst = hash.digest(msg);
-          const sign = curve.sign(dgst, key);
+          const msg = hash.digest(preimage);
+          const sig2 = curve.sign(msg, key);
 
-          assert(curve.isLowS(sign));
-
-          if (!c.custom && curve.native === 0) {
-            const r = sign.slice(0, curve.size);
-            assert.bufferEqual(r, cr);
-          }
-
+          assert(curve.isLowS(sig2));
           assert(curve.publicKeyVerify(pub), 'Invalid public key');
-          assert(curve.verify(dgst, sign, pub), 'Invalid signature (1)');
-          assert(curve.verify(dgst, sig, pub), 'Invalid signature (2)');
+          assert(curve.verify(msg, sig2, pub), 'Invalid signature (1)');
+          assert(curve.verify(msg, sig, pub), 'Invalid signature (2)');
         });
       }
     }
@@ -554,7 +549,172 @@ describe('ECDSA', function() {
     });
   });
 
-  describe('Maxwell\'s trick', function() {
+  describe('Custom Vectors', () => {
+    const getVectors = (curve) => {
+      const id = curve.id.toLowerCase();
+      const file = `${__dirname}/data/sign/${id}.json`;
+      const text = fs.readFileSync(file, 'utf8');
+      const vectors = JSON.parse(text);
+
+      return vectors.map((vector) => {
+        return vector.map((item) => {
+          if (typeof item !== 'string')
+            return item;
+          return Buffer.from(item, 'hex');
+        });
+      });
+    };
+
+    for (const curve of curves) {
+      for (const [i, vector] of getVectors(curve).entries()) {
+        const [
+          priv,
+          pub,
+          tweak,
+          privAdd,
+          privMul,
+          privNeg,
+          privInv,
+          pubAdd,
+          pubMul,
+          pubNeg,
+          pubDbl,
+          pubConv,
+          pubHybrid,
+          sec1,
+          xy,
+          pkcs8,
+          spki,
+          msg,
+          sig,
+          der,
+          param,
+          other,
+          secret
+        ] = vector;
+
+        it(`should create and tweak key (${i}) (${curve.id})`, () => {
+          assert(curve.privateKeyVerify(priv));
+          assert(curve.publicKeyVerify(pub));
+          assert(curve.publicKeyVerify(pubConv));
+          assert(curve.publicKeyVerify(pubHybrid));
+
+          const tweakNeg = curve.privateKeyNegate(tweak);
+          const tweakInv = curve.privateKeyInverse(tweak);
+
+          assert.bufferEqual(curve.publicKeyCreate(priv), pub);
+          assert.bufferEqual(curve.privateKeyReduce(priv), priv);
+          assert.bufferEqual(curve.privateKeyTweakAdd(priv, tweak), privAdd);
+          assert.bufferEqual(curve.privateKeyTweakAdd(privAdd, tweakNeg), priv);
+          assert.bufferEqual(curve.privateKeyTweakMul(priv, tweak), privMul);
+          assert.bufferEqual(curve.privateKeyTweakMul(privMul, tweakInv), priv);
+          assert.bufferEqual(curve.privateKeyNegate(priv), privNeg);
+          assert.bufferEqual(curve.privateKeyInverse(priv), privInv);
+          assert.bufferEqual(curve.publicKeyTweakAdd(pub, tweak), pubAdd);
+          assert.bufferEqual(curve.publicKeyTweakAdd(pubAdd, tweakNeg), pub);
+          assert.bufferEqual(curve.publicKeyTweakMul(pub, tweak), pubMul);
+          assert.bufferEqual(curve.publicKeyTweakMul(pubMul, tweakInv), pub);
+          assert.bufferEqual(curve.publicKeyNegate(pub), pubNeg);
+          assert.bufferEqual(curve.publicKeyAdd(pub, pub), pubDbl);
+          assert.bufferEqual(curve.publicKeyAdd(pubDbl, pubNeg), pub);
+          assert.bufferEqual(curve.publicKeyCreate(priv, false), pubConv);
+          assert.bufferEqual(curve.publicKeyConvert(pub, false), pubConv);
+          assert.bufferEqual(curve.publicKeyConvert(pubConv, true), pub);
+        });
+
+        it(`should reserialize key (${i}) (${curve.id})`, () => {
+          assert.bufferEqual(curve.privateKeyExport(priv), sec1);
+          assert.bufferEqual(curve.privateKeyExportPKCS8(priv), pkcs8);
+          assert.bufferEqual(curve.publicKeyExport(pub), xy);
+          assert.bufferEqual(curve.publicKeyExportSPKI(pub), spki);
+          assert.bufferEqual(curve.privateKeyImport(sec1), priv);
+          assert.bufferEqual(curve.privateKeyImportPKCS8(pkcs8), priv);
+          assert.bufferEqual(curve.publicKeyImport(xy), pub);
+          assert.bufferEqual(curve.publicKeyImportSPKI(spki), pub);
+          assert.bufferEqual(curve.publicKeyImport(xy, false), pubConv);
+          assert.bufferEqual(curve.publicKeyImportSPKI(spki, false), pubConv);
+        });
+
+        it(`should check signature (${i}) (${curve.id})`, () => {
+          assert(curve.isLowS(sig));
+          assert(curve.isLowDER(der));
+          assert(curve.signatureExport(sig), der);
+          assert(curve.signatureImport(der), sig);
+        });
+
+        it(`should recover public key (${i}) (${curve.id})`, () => {
+          assert.bufferEqual(curve.recover(msg, sig, param), pub);
+          assert.bufferEqual(curve.recoverDER(msg, der, param), pub);
+          assert.bufferEqual(curve.recover(msg, sig, param, false), pubConv);
+          assert.bufferEqual(curve.recoverDER(msg, der, param, false), pubConv);
+        });
+
+        it(`should derive shared secret (${i}) (${curve.id})`, () => {
+          assert.bufferEqual(curve.derive(pub, other), secret);
+          assert.bufferEqual(curve.derive(pubConv, other), secret);
+          assert.bufferEqual(curve.derive(pubHybrid, other), secret);
+        });
+
+        it(`should sign and verify (${i}) (${curve.id})`, () => {
+          const sig2 = curve.sign(msg, priv);
+          const desc = curve.signRecoverable(msg, priv);
+          const der2 = curve.signDER(msg, priv);
+          const desc2 = curve.signRecoverableDER(msg, priv);
+
+          if (curve.native === 0 || curve === secp256k1n) {
+            assert.bufferEqual(sig2, sig);
+            assert.bufferEqual(desc.signature, sig);
+            assert.strictEqual(desc.recovery, param);
+            assert.bufferEqual(der2, der);
+            assert.bufferEqual(desc2.signature, der);
+            assert.strictEqual(desc2.recovery, param);
+          } else {
+            assert(curve.isLowS(sig2));
+            assert(curve.isLowS(desc.signature));
+            assert(curve.isLowDER(der2));
+            assert(curve.isLowDER(desc2.signature));
+            assert(curve.verify(msg, sig2, pub));
+            assert(curve.verify(msg, desc.signature, pub));
+            assert(curve.verifyDER(msg, der2, pub));
+            assert(curve.verifyDER(msg, desc2.signature, pub));
+          }
+
+          assert(curve.verify(msg, sig, pub));
+          assert(curve.verifyDER(msg, der, pub));
+          assert(curve.verify(msg, sig, pubConv));
+          assert(curve.verifyDER(msg, der, pubConv));
+          assert(curve.verify(msg, sig, pubHybrid));
+          assert(curve.verifyDER(msg, der, pubHybrid));
+
+          msg[0] ^= 1;
+
+          assert(!curve.verify(msg, sig, pub));
+          assert(!curve.verifyDER(msg, der, pub));
+
+          msg[0] ^= 1;
+          sig[0] ^= 1;
+          der[0] ^= 1;
+
+          assert(!curve.verify(msg, sig, pub));
+          assert(!curve.verifyDER(msg, der, pub));
+
+          sig[0] ^= 1;
+          der[0] ^= 1;
+          pub[0] ^= 1;
+
+          assert(!curve.verify(msg, sig, pub));
+          assert(!curve.verifyDER(msg, der, pub));
+
+          pub[0] ^= 1;
+
+          assert(curve.verify(msg, sig, pub));
+          assert(curve.verifyDER(msg, der, pub));
+        });
+      }
+    }
+  });
+
+  describe('Maxwell\'s trick', () => {
     const msg =
       'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
 
@@ -650,163 +810,165 @@ describe('ECDSA', function() {
     }
   });
 
-  // https://github.com/indutny/elliptic/issues/78
-  const lax = {
-    msg: 'de17556d2111ef6a964c9c136054870495b005b3942ad7b626'
-       + '28af00293b9aa8',
-    sig: '3045022100a9379b66c22432585cb2f5e1e85736c69cf5fdc9'
-       + 'e1033ad583fc27f0b7c561d802202c7b5d9d92ceca742829ff'
-       + 'be28ba6565faa8f94556cb091cbc39d2f11d45946700',
-    pub: '04650a9a1deb523f636379ec70c29b3e1e832e314dea0f7911'
-       + '60f3dba628f4f509360e525318bf7892af9ffe2f585bf7b264'
-       + 'aa31792744ec1885ce17f3b1ef50f3'
-  };
+  describe('Specific Cases', () => {
+    // https://github.com/indutny/elliptic/issues/78
+    const lax = {
+      msg: 'de17556d2111ef6a964c9c136054870495b005b3942ad7b626'
+         + '28af00293b9aa8',
+      sig: '3045022100a9379b66c22432585cb2f5e1e85736c69cf5fdc9'
+         + 'e1033ad583fc27f0b7c561d802202c7b5d9d92ceca742829ff'
+         + 'be28ba6565faa8f94556cb091cbc39d2f11d45946700',
+      pub: '04650a9a1deb523f636379ec70c29b3e1e832e314dea0f7911'
+         + '60f3dba628f4f509360e525318bf7892af9ffe2f585bf7b264'
+         + 'aa31792744ec1885ce17f3b1ef50f3'
+    };
 
-  for (const curve of [secp256k1, secp256k1n]) {
-    const msg = Buffer.from(lax.msg, 'hex');
-    const sig = Buffer.from(lax.sig, 'hex');
-    const pub = Buffer.from(lax.pub, 'hex');
+    for (const curve of [secp256k1, secp256k1n]) {
+      const msg = Buffer.from(lax.msg, 'hex');
+      const sig = Buffer.from(lax.sig, 'hex');
+      const pub = Buffer.from(lax.pub, 'hex');
 
-    it('should verify lax signature', () => {
-      assert.strictEqual(curve.verifyDER(msg, sig, pub), true);
-    });
-  }
+      it('should verify lax signature', () => {
+        assert.strictEqual(curve.verifyDER(msg, sig, pub), true);
+      });
+    }
 
-  for (const curve of [secp256k1, secp256k1n]) {
-    it('should recover the public key from a signature', () => {
-      const priv = curve.privateKeyGenerate();
-      const pub = curve.publicKeyCreate(priv, true);
-      const msg = Buffer.alloc(32, 0x01);
-      const sig = curve.sign(msg, priv);
+    for (const curve of [secp256k1, secp256k1n]) {
+      it('should recover the public key from a signature', () => {
+        const priv = curve.privateKeyGenerate();
+        const pub = curve.publicKeyCreate(priv, true);
+        const msg = Buffer.alloc(32, 0x01);
+        const sig = curve.sign(msg, priv);
 
-      let found = false;
+        let found = false;
 
-      for (let i = 0; i < 4; i++) {
-        const r = curve.recover(msg, sig, i, true);
+        for (let i = 0; i < 4; i++) {
+          const r = curve.recover(msg, sig, i, true);
 
-        if (!r)
-          continue;
+          if (!r)
+            continue;
 
-        if (r.equals(pub)) {
-          found = true;
-          break;
+          if (r.equals(pub)) {
+            found = true;
+            break;
+          }
         }
-      }
 
-      assert(found, 'the keys should match');
+        assert(found, 'the keys should match');
+      });
+
+      it('should fail to recover key when no quadratic residue available', () => {
+        const msg = Buffer.from(
+          'f75c6b18a72fabc0f0b888c3da58e004f0af1fe14f7ca5d8c897fe164925d5e9',
+          'hex');
+
+        const r = Buffer.from(
+          'fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364140',
+          'hex');
+
+        const s = Buffer.from(
+          '8887321be575c8095f789dd4c743dfe42c1820f9231f98a962b210e3ac2452a3',
+          'hex');
+
+        const sig = Buffer.concat([r, s]);
+
+        assert.strictEqual(curve.recover(msg, sig, 0), null);
+        assert.strictEqual(curve.recover(msg, sig, 1), null);
+        assert.strictEqual(curve.recover(msg, sig, 2), null);
+        assert.strictEqual(curve.recover(msg, sig, 3), null);
+      });
+
+      it('should normalize high S signature', () => {
+        const der = Buffer.from(''
+          + '304502203e4516da7253cf068effec6b95c41221c0cf3a8e6ccb8cbf1725b562'
+          + 'e9afde2c022100ab1e3da73d67e32045a20e0b999e049978ea8d6ee5480d485f'
+          + 'cf2ce0d03b2ef0',
+          'hex');
+
+        const hi = Buffer.from(''
+          + '3e4516da7253cf068effec6b95c41221c0cf3a8e6ccb8cbf1725b562e9afde2c'
+          + 'ab1e3da73d67e32045a20e0b999e049978ea8d6ee5480d485fcf2ce0d03b2ef0',
+          'hex');
+
+        const lo = Buffer.from(''
+          + '3e4516da7253cf068effec6b95c41221c0cf3a8e6ccb8cbf1725b562e9afde2c'
+          + '54e1c258c2981cdfba5df1f46661fb6541c44f77ca0092f3600331abfffb1251',
+          'hex');
+
+        assert(!curve.isLowDER(der));
+        assert(!curve.isLowS(hi));
+        assert.bufferEqual(curve.signatureExport(hi), der);
+        assert.bufferEqual(curve.signatureImport(der), hi);
+        assert.bufferEqual(curve.signatureNormalize(hi), lo);
+      });
+    }
+
+    it('should generate keypair, sign RS and recover', () => {
+      const msg = random.randomBytes(secp256k1n.size);
+      const priv = secp256k1n.privateKeyGenerate();
+      const pub = secp256k1n.publicKeyCreate(priv);
+      const pubu = secp256k1n.publicKeyConvert(pub, false);
+
+      const {
+        signature,
+        recovery
+      } = secp256k1n.signRecoverable(msg, priv);
+
+      assert(secp256k1n.isLowS(signature));
+      assert(secp256k1n.verify(msg, signature, pub));
+      assert(secp256k1n.verify(msg, signature, pubu));
+
+      const rpub = secp256k1n.recover(msg, signature, recovery, true);
+      const rpubu = secp256k1n.recover(msg, signature, recovery, false);
+
+      assert.bufferEqual(rpub, pub);
+      assert.bufferEqual(rpubu, pubu);
     });
 
-    it('should fail to recover key when no quadratic residue available', () => {
-      const msg = Buffer.from(
-        'f75c6b18a72fabc0f0b888c3da58e004f0af1fe14f7ca5d8c897fe164925d5e9',
-        'hex');
+    it('should sign zero-length message', () => {
+      const msg = Buffer.alloc(0);
+      const key = p256.privateKeyGenerate();
+      const pub = p256.publicKeyCreate(key);
+      const sig = p256.sign(msg, key);
 
-      const r = Buffer.from(
-        'fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364140',
-        'hex');
-
-      const s = Buffer.from(
-        '8887321be575c8095f789dd4c743dfe42c1820f9231f98a962b210e3ac2452a3',
-        'hex');
-
-      const sig = Buffer.concat([r, s]);
-
-      assert.strictEqual(curve.recover(msg, sig, 0), null);
-      assert.strictEqual(curve.recover(msg, sig, 1), null);
-      assert.strictEqual(curve.recover(msg, sig, 2), null);
-      assert.strictEqual(curve.recover(msg, sig, 3), null);
+      assert(p256.isLowS(sig));
+      assert(p256.verify(msg, sig, pub));
     });
 
-    it('should normalize high S signature', () => {
-      const der = Buffer.from(''
-        + '304502203e4516da7253cf068effec6b95c41221c0cf3a8e6ccb8cbf1725b562'
-        + 'e9afde2c022100ab1e3da73d67e32045a20e0b999e049978ea8d6ee5480d485f'
-        + 'cf2ce0d03b2ef0',
-        'hex');
+    it('should import standard JWK (1)', () => {
+      // https://tools.ietf.org/html/rfc7518#appendix-C
+      const json = {
+        'kty': 'EC',
+        'crv': 'P-256',
+        'x': 'gI0GAILBdu7T53akrFmMyGcsF3n5dO7MmwNBHKW5SV0',
+        'y': 'SLW_xSffzlPWrHEVI30DHM_4egVwt3NQqeUD7nMFpps',
+        'd': '0_NxaRPUMQoAJt50Gz8YiTr8gRTwyEaCumd-MToTmIo',
+        'ext': true
+      };
 
-      const hi = Buffer.from(''
-        + '3e4516da7253cf068effec6b95c41221c0cf3a8e6ccb8cbf1725b562e9afde2c'
-        + 'ab1e3da73d67e32045a20e0b999e049978ea8d6ee5480d485fcf2ce0d03b2ef0',
-        'hex');
+      const priv = p256.privateKeyImportJWK(json);
+      const pub = p256.publicKeyImportJWK(json);
 
-      const lo = Buffer.from(''
-        + '3e4516da7253cf068effec6b95c41221c0cf3a8e6ccb8cbf1725b562e9afde2c'
-        + '54e1c258c2981cdfba5df1f46661fb6541c44f77ca0092f3600331abfffb1251',
-        'hex');
-
-      assert(!curve.isLowDER(der));
-      assert(!curve.isLowS(hi));
-      assert.bufferEqual(curve.signatureExport(hi), der);
-      assert.bufferEqual(curve.signatureImport(der), hi);
-      assert.bufferEqual(curve.signatureNormalize(hi), lo);
+      assert.bufferEqual(p256.publicKeyCreate(priv), pub);
+      assert.deepStrictEqual(p256.privateKeyExportJWK(priv), json);
     });
-  }
 
-  it('should generate keypair, sign RS and recover', () => {
-    const msg = random.randomBytes(secp256k1n.size);
-    const priv = secp256k1n.privateKeyGenerate();
-    const pub = secp256k1n.publicKeyCreate(priv);
-    const pubu = secp256k1n.publicKeyConvert(pub, false);
+    it('should import standard JWK (2)', () => {
+      // https://tools.ietf.org/html/rfc7517#appendix-A.2
+      const json = {
+        'kty': 'EC',
+        'crv': 'P-256',
+        'x': 'MKBCTNIcKUSDii11ySs3526iDZ8AiTo7Tu6KPAqv7D4',
+        'y': '4Etl6SRW2YiLUrN5vfvVHuhp7x8PxltmWWlbbM4IFyM',
+        'd': '870MB6gfuTJ4HtUnUvYMyJpr5eUZNP4Bk43bVdj3eAE',
+        'ext': true
+      };
 
-    const {
-      signature,
-      recovery
-    } = secp256k1n.signRecoverable(msg, priv);
+      const priv = p256.privateKeyImportJWK(json);
+      const pub = p256.publicKeyImportJWK(json);
 
-    assert(secp256k1n.isLowS(signature));
-    assert(secp256k1n.verify(msg, signature, pub));
-    assert(secp256k1n.verify(msg, signature, pubu));
-
-    const rpub = secp256k1n.recover(msg, signature, recovery, true);
-    const rpubu = secp256k1n.recover(msg, signature, recovery, false);
-
-    assert.bufferEqual(rpub, pub);
-    assert.bufferEqual(rpubu, pubu);
-  });
-
-  it('should sign zero-length message', () => {
-    const msg = Buffer.alloc(0);
-    const key = p256.privateKeyGenerate();
-    const pub = p256.publicKeyCreate(key);
-    const sig = p256.sign(msg, key);
-
-    assert(p256.isLowS(sig));
-    assert(p256.verify(msg, sig, pub));
-  });
-
-  it('should import standard JWK (1)', () => {
-    // https://tools.ietf.org/html/rfc7518#appendix-C
-    const json = {
-      'kty': 'EC',
-      'crv': 'P-256',
-      'x': 'gI0GAILBdu7T53akrFmMyGcsF3n5dO7MmwNBHKW5SV0',
-      'y': 'SLW_xSffzlPWrHEVI30DHM_4egVwt3NQqeUD7nMFpps',
-      'd': '0_NxaRPUMQoAJt50Gz8YiTr8gRTwyEaCumd-MToTmIo',
-      'ext': true
-    };
-
-    const priv = p256.privateKeyImportJWK(json);
-    const pub = p256.publicKeyImportJWK(json);
-
-    assert.bufferEqual(p256.publicKeyCreate(priv), pub);
-    assert.deepStrictEqual(p256.privateKeyExportJWK(priv), json);
-  });
-
-  it('should import standard JWK (2)', () => {
-    // https://tools.ietf.org/html/rfc7517#appendix-A.2
-    const json = {
-      'kty': 'EC',
-      'crv': 'P-256',
-      'x': 'MKBCTNIcKUSDii11ySs3526iDZ8AiTo7Tu6KPAqv7D4',
-      'y': '4Etl6SRW2YiLUrN5vfvVHuhp7x8PxltmWWlbbM4IFyM',
-      'd': '870MB6gfuTJ4HtUnUvYMyJpr5eUZNP4Bk43bVdj3eAE',
-      'ext': true
-    };
-
-    const priv = p256.privateKeyImportJWK(json);
-    const pub = p256.publicKeyImportJWK(json);
-
-    assert.bufferEqual(p256.publicKeyCreate(priv), pub);
-    assert.deepStrictEqual(p256.privateKeyExportJWK(priv), json);
+      assert.bufferEqual(p256.publicKeyCreate(priv), pub);
+      assert.deepStrictEqual(p256.privateKeyExportJWK(priv), json);
+    });
   });
 });

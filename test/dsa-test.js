@@ -9,6 +9,7 @@ const asn1 = require('../lib/encoding/asn1');
 const x509 = require('../lib/encoding/x509');
 const params = require('./data/dsa-params.json');
 const vectors = require('./data/dsa.json');
+const custom = require('./data/sign/dsa.json');
 const {DSAPublicKey} = dsa;
 
 const PEM_PATH = Path.resolve(__dirname, 'data', 'testdsapub.pem');
@@ -199,4 +200,114 @@ describe('DSA', function() {
 
     assert(dsa.verify(msg, sig, pub));
   });
+
+  for (const [i, json] of custom.entries()) {
+    const vector = json.map(s => Buffer.from(s, 'hex'));
+
+    const [
+      paramsRaw,
+      privRaw,
+      pubRaw,
+      msg,
+      sig,
+      der,
+      pkcs8,
+      spki
+    ] = vector;
+
+    const params = dsa.paramsImport(paramsRaw);
+    const priv = dsa.privateKeyImport(privRaw);
+    const pub = dsa.publicKeyImport(pubRaw);
+
+    it(`should parse and serialize key (${i})`, () => {
+      assert(dsa.privateKeyVerify(priv));
+      assert(dsa.publicKeyVerify(priv));
+
+      dsa.privateKeyCompute(priv);
+
+      assert(dsa.publicKeyVerify(priv));
+      assert.deepStrictEqual(dsa.publicKeyCreate(priv), pub);
+      assert.bufferEqual(dsa.paramsExport(params), paramsRaw);
+      assert.deepStrictEqual(dsa.paramsImport(paramsRaw), params);
+      assert.bufferEqual(dsa.privateKeyExport(priv), privRaw);
+      assert.bufferEqual(dsa.publicKeyExport(pub), pubRaw);
+      assert.deepStrictEqual(dsa.privateKeyImport(privRaw), priv);
+      assert.deepStrictEqual(dsa.publicKeyImport(pubRaw), pub);
+      assert.bufferEqual(dsa.privateKeyExportPKCS8(priv), pkcs8);
+      assert.bufferEqual(dsa.publicKeyExportSPKI(pub), spki);
+      assert.deepStrictEqual(dsa.privateKeyImportPKCS8(pkcs8), priv);
+      assert.deepStrictEqual(dsa.publicKeyImportSPKI(spki), pub);
+    });
+
+    it(`should recompute key (${i})`, () => {
+      const empty = Buffer.alloc(0);
+
+      assert(dsa.privateKeyVerify(priv));
+
+      priv.y = empty;
+
+      assert(!dsa.privateKeyVerify(priv));
+      dsa.privateKeyCompute(priv);
+      assert(dsa.privateKeyVerify(priv));
+
+      assert.bufferEqual(dsa.privateKeyExport(priv), privRaw);
+    });
+
+    it(`should check signature (${i})`, () => {
+      assert(dsa.signatureExport(sig), der);
+      assert(dsa.signatureImport(der, sig.length >>> 1), sig);
+    });
+
+    it(`should sign and verify signature (${i})`, () => {
+      const sig_ = dsa.sign(msg, priv);
+
+      assert(dsa.verify(msg, sig_, pub));
+
+      assert(dsa.verify(msg, sig, pub));
+
+      msg[0] ^= 1;
+
+      assert(!dsa.verify(msg, sig, pub));
+
+      msg[0] ^= 1;
+      sig[0] ^= 1;
+
+      assert(!dsa.verify(msg, sig, pub));
+
+      sig[0] ^= 1;
+      pub.y[3] ^= 1;
+
+      assert(!dsa.verify(msg, sig, pub));
+
+      pub.y[3] ^= 1;
+
+      assert(dsa.verify(msg, sig, pub));
+    });
+
+    it(`should sign and verify DER signature (${i})`, () => {
+      const der_ = dsa.signDER(msg, priv);
+
+      assert(dsa.verifyDER(msg, der_, pub));
+
+      assert(dsa.verifyDER(msg, der, pub));
+
+      msg[0] ^= 1;
+
+      assert(!dsa.verifyDER(msg, der, pub));
+
+      msg[0] ^= 1;
+      der[3] ^= 1;
+
+      assert(!dsa.verifyDER(msg, der, pub));
+
+      der[3] ^= 1;
+      pub.y[3] ^= 1;
+
+      assert(!dsa.verifyDER(msg, der, pub));
+
+      pub.y[3] ^= 1;
+
+      assert(dsa.verifyDER(msg, der, pub));
+    });
+  }
 });
