@@ -10,7 +10,6 @@
  * Originally written by Mike Hamburg
  */
 #include <string.h>
-#include "openssl/crypto.h"
 #include "curve448_lcl.h"
 #include "word.h"
 #include "ed448.h"
@@ -502,7 +501,7 @@ bcrypto_c448_error_t bcrypto_c448_ed448_derive_public_key(
   bcrypto_c448_error_t ret =
     bcrypto_c448_ed448_derive_public_key_with_scalar(pubkey, secret_scalar_ser);
 
-  OPENSSL_cleanse(secret_scalar_ser, sizeof(secret_scalar_ser));
+  memset(secret_scalar_ser, 0x00, sizeof(secret_scalar_ser));
 
   return ret;
 }
@@ -570,7 +569,7 @@ bcrypto_c448_error_t bcrypto_c448_ed448_derive(
   bcrypto_c448_error_t ret =
     bcrypto_c448_ed448_derive_with_scalar(out, pubkey, secret_scalar_ser);
 
-  OPENSSL_cleanse(secret_scalar_ser, sizeof(secret_scalar_ser));
+  memset(secret_scalar_ser, 0x00, sizeof(secret_scalar_ser));
 
   return ret;
 }
@@ -605,13 +604,13 @@ bcrypto_c448_error_t bcrypto_c448_ed448_sign_with_scalar(
 
     /* Hash to create the nonce */
     if (!hash_init_with_dom(&hashctx, prehashed, 0, context, context_len)) {
-      OPENSSL_cleanse(expanded, sizeof(expanded));
+      memset(expanded, 0x00, sizeof(expanded));
       goto err;
     }
     bcrypto_keccak_update(&hashctx, expanded + BCRYPTO_EDDSA_448_PRIVATE_BYTES,
                      BCRYPTO_EDDSA_448_PRIVATE_BYTES);
     bcrypto_keccak_update(&hashctx, message, message_len);
-    OPENSSL_cleanse(expanded, sizeof(expanded));
+    memset(expanded, 0x00, sizeof(expanded));
   }
 
   /* Decode the nonce */
@@ -621,7 +620,7 @@ bcrypto_c448_error_t bcrypto_c448_ed448_sign_with_scalar(
     if (!bcrypto_keccak_final(&hashctx, nonce, NULL, sizeof(nonce), 0x1f))
       return BCRYPTO_C448_FAILURE;
     bcrypto_curve448_scalar_decode_long(nonce_scalar, nonce, sizeof(nonce));
-    OPENSSL_cleanse(nonce, sizeof(nonce));
+    memset(nonce, 0x00, sizeof(nonce));
   }
 
   {
@@ -658,13 +657,13 @@ bcrypto_c448_error_t bcrypto_c448_ed448_sign_with_scalar(
 
     bcrypto_curve448_scalar_decode_long(challenge_scalar, challenge,
                   sizeof(challenge));
-    OPENSSL_cleanse(challenge, sizeof(challenge));
+    memset(challenge, 0x00, sizeof(challenge));
   }
 
   bcrypto_curve448_scalar_mul(challenge_scalar, challenge_scalar, secret_scalar);
   bcrypto_curve448_scalar_add(challenge_scalar, challenge_scalar, nonce_scalar);
 
-  OPENSSL_cleanse(signature, BCRYPTO_EDDSA_448_SIGNATURE_BYTES);
+  memset(signature, 0x00, BCRYPTO_EDDSA_448_SIGNATURE_BYTES);
   memcpy(signature, nonce_point, sizeof(nonce_point));
   bcrypto_curve448_scalar_encode(&signature[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
                challenge_scalar);
@@ -703,7 +702,7 @@ bcrypto_c448_error_t bcrypto_c448_ed448_sign(
     expanded, pubkey, message, message_len,
     prehashed, context, context_len);
 
-  OPENSSL_cleanse(expanded, sizeof(expanded));
+  memset(expanded, 0x00, sizeof(expanded));
 
   return ret;
 }
@@ -762,9 +761,9 @@ bcrypto_c448_error_t bcrypto_c448_ed448_sign_tweak_add(
     prehashed, context, context_len);
 
 fail:
-  OPENSSL_cleanse(expanded, sizeof(expanded));
-  OPENSSL_cleanse(expanded2, sizeof(expanded2));
-  OPENSSL_cleanse(pubkey2, sizeof(pubkey2));
+  memset(expanded, 0x00, sizeof(expanded));
+  memset(expanded2, 0x00, sizeof(expanded2));
+  memset(pubkey2, 0x00, sizeof(pubkey2));
   return ret;
 }
 
@@ -822,9 +821,9 @@ bcrypto_c448_error_t bcrypto_c448_ed448_sign_tweak_mul(
     prehashed, context, context_len);
 
 fail:
-  OPENSSL_cleanse(expanded, sizeof(expanded));
-  OPENSSL_cleanse(expanded2, sizeof(expanded2));
-  OPENSSL_cleanse(pubkey2, sizeof(pubkey2));
+  memset(expanded, 0x00, sizeof(expanded));
+  memset(expanded2, 0x00, sizeof(expanded2));
+  memset(pubkey2, 0x00, sizeof(pubkey2));
   return ret;
 }
 
@@ -879,7 +878,7 @@ bcrypto_c448_error_t bcrypto_c448_ed448_verify(
 
     bcrypto_curve448_scalar_decode_long(challenge_scalar, challenge,
                   sizeof(challenge));
-    OPENSSL_cleanse(challenge, sizeof(challenge));
+    memset(challenge, 0x00, sizeof(challenge));
   }
 
   bcrypto_curve448_scalar_sub(challenge_scalar, bcrypto_curve448_scalar_zero,

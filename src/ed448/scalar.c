@@ -9,7 +9,6 @@
  *
  * Originally written by Mike Hamburg
  */
-#include "openssl/crypto.h"
 
 #include "word.h"
 #include "point_448.h"
@@ -186,7 +185,7 @@ bcrypto_c448_error_t bcrypto_curve448_scalar_invert(
 
     /* Demontgomerize */
     sc_montmul(out,out,bcrypto_curve448_scalar_one);
-    OPENSSL_cleanse(precmp, sizeof(precmp));
+    memset(precmp, 0x00, sizeof(precmp));
     return bcrypto_c448_succeed_if(~bcrypto_curve448_scalar_eq(out,bcrypto_curve448_scalar_zero));
 }
 
@@ -250,7 +249,7 @@ bcrypto_c448_error_t bcrypto_curve448_scalar_decode(
 
 void bcrypto_curve448_scalar_destroy(bcrypto_curve448_scalar_t scalar)
 {
-  OPENSSL_cleanse(scalar, sizeof(bcrypto_curve448_scalar_t));
+  memset(scalar, 0x00, sizeof(bcrypto_curve448_scalar_t));
 }
 
 void bcrypto_curve448_scalar_decode_long(bcrypto_curve448_scalar_t s,

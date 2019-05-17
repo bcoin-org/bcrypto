@@ -9,7 +9,6 @@
  *
  * Originally written by Mike Hamburg
  */
-#include "openssl/crypto.h"
 #include "word.h"
 #include "field.h"
 
@@ -375,8 +374,8 @@ void bcrypto_curve448_precomputed_scalarmul(bcrypto_curve448_point_t out,
     }
   }
 
-  OPENSSL_cleanse(ni, sizeof(ni));
-  OPENSSL_cleanse(scalar1x, sizeof(scalar1x));
+  memset(ni, 0x00, sizeof(ni));
+  memset(scalar1x, 0x00, sizeof(scalar1x));
 }
 
 static void
@@ -399,8 +398,8 @@ prepare_fixed_window(
     pt_to_pniels(multiples[i], tmp);
   }
 
-  OPENSSL_cleanse(pn, sizeof(pn));
-  OPENSSL_cleanse(tmp, sizeof(tmp));
+  memset(pn, 0x00, sizeof(pn));
+  memset(tmp, 0x00, sizeof(tmp));
 }
 
 void bcrypto_curve448_point_scalarmul(
@@ -461,10 +460,10 @@ void bcrypto_curve448_point_scalarmul(
   /* Write out the answer */
   bcrypto_curve448_point_copy(a, tmp);
 
-  OPENSSL_cleanse(scalar1x, sizeof(scalar1x));
-  OPENSSL_cleanse(pn, sizeof(pn));
-  OPENSSL_cleanse(multiples, sizeof(multiples));
-  OPENSSL_cleanse(tmp, sizeof(tmp));
+  memset(scalar1x, 0x00, sizeof(scalar1x));
+  memset(pn, 0x00, sizeof(pn));
+  memset(multiples, 0x00, sizeof(multiples));
+  memset(tmp, 0x00, sizeof(tmp));
 }
 
 void bcrypto_curve448_point_mul_by_ratio_and_encode_like_eddsa(
@@ -494,7 +493,7 @@ void bcrypto_curve448_point_mul_by_ratio_and_encode_like_eddsa(
     bcrypto_gf_mul(x, t, y);
     bcrypto_gf_mul(y, z, u);
     bcrypto_gf_mul(z, u, t);
-    OPENSSL_cleanse(u, sizeof(u));
+    memset(u, 0x00, sizeof(u));
   }
 
   /* Affinize */
@@ -507,10 +506,10 @@ void bcrypto_curve448_point_mul_by_ratio_and_encode_like_eddsa(
   bcrypto_gf_serialize(enc, x, 1);
   enc[BCRYPTO_EDDSA_448_PRIVATE_BYTES - 1] |= 0x80 & bcrypto_gf_lobit(t);
 
-  OPENSSL_cleanse(x, sizeof(x));
-  OPENSSL_cleanse(y, sizeof(y));
-  OPENSSL_cleanse(z, sizeof(z));
-  OPENSSL_cleanse(t, sizeof(t));
+  memset(x, 0x00, sizeof(x));
+  memset(y, 0x00, sizeof(y));
+  memset(z, 0x00, sizeof(z));
+  memset(t, 0x00, sizeof(t));
   bcrypto_curve448_point_destroy(q);
 }
 
@@ -560,13 +559,13 @@ bcrypto_c448_error_t bcrypto_curve448_point_decode_like_eddsa_and_mul_by_ratio(
     bcrypto_gf_mul(p->z, p->t, a);
     bcrypto_gf_mul(p->y, p->t, d);
     bcrypto_gf_mul(p->t, b, d);
-    OPENSSL_cleanse(a, sizeof(a));
-    OPENSSL_cleanse(b, sizeof(b));
-    OPENSSL_cleanse(c, sizeof(c));
-    OPENSSL_cleanse(d, sizeof(d));
+    memset(a, 0x00, sizeof(a));
+    memset(b, 0x00, sizeof(b));
+    memset(c, 0x00, sizeof(c));
+    memset(d, 0x00, sizeof(d));
   }
 
-  OPENSSL_cleanse(enc2, sizeof(enc2));
+  memset(enc2, 0x00, sizeof(enc2));
   assert(bcrypto_curve448_point_valid(p) || ~succ);
 
   return bcrypto_c448_succeed_if(mask_to_bool(succ));
@@ -640,13 +639,13 @@ bcrypto_c448_error_t bcrypto_x448_int(uint8_t out[BCRYPTO_X_PUBLIC_BYTES],
   bcrypto_gf_serialize(out, x1, 1);
   nz = ~bcrypto_gf_eq(x1, ZERO);
 
-  OPENSSL_cleanse(x1, sizeof(x1));
-  OPENSSL_cleanse(x2, sizeof(x2));
-  OPENSSL_cleanse(z2, sizeof(z2));
-  OPENSSL_cleanse(x3, sizeof(x3));
-  OPENSSL_cleanse(z3, sizeof(z3));
-  OPENSSL_cleanse(t1, sizeof(t1));
-  OPENSSL_cleanse(t2, sizeof(t2));
+  memset(x1, 0x00, sizeof(x1));
+  memset(x2, 0x00, sizeof(x2));
+  memset(z2, 0x00, sizeof(z2));
+  memset(x3, 0x00, sizeof(x3));
+  memset(z3, 0x00, sizeof(z3));
+  memset(t1, 0x00, sizeof(t1));
+  memset(t2, 0x00, sizeof(t2));
 
   return bcrypto_c448_succeed_if(mask_to_bool(nz));
 }
@@ -713,9 +712,9 @@ void bcrypto_curve448_convert_public_key_to_x448(
     bcrypto_gf_mul(n, y, d); /* y^2 * (1-dy^2) / (1-y^2) */
     bcrypto_gf_serialize(x, n, 1);
 
-    OPENSSL_cleanse(y, sizeof(y));
-    OPENSSL_cleanse(n, sizeof(n));
-    OPENSSL_cleanse(d, sizeof(d));
+    memset(y, 0x00, sizeof(y));
+    memset(n, 0x00, sizeof(n));
+    memset(d, 0x00, sizeof(d));
   }
 }
 
@@ -845,7 +844,7 @@ static void prepare_wnaf_table(bcrypto_pniels_t * output,
   }
 
   bcrypto_curve448_point_destroy(tmp);
-  OPENSSL_cleanse(twop, sizeof(twop));
+  memset(twop, 0x00, sizeof(twop));
 }
 
 void bcrypto_curve448_base_double_scalarmul_non_secret(bcrypto_curve448_point_t combo,
@@ -922,9 +921,9 @@ void bcrypto_curve448_base_double_scalarmul_non_secret(bcrypto_curve448_point_t 
   }
 
   /* This function is non-secret, but whatever this is cheap. */
-  OPENSSL_cleanse(control_var, sizeof(control_var));
-  OPENSSL_cleanse(control_pre, sizeof(control_pre));
-  OPENSSL_cleanse(precmp_var, sizeof(precmp_var));
+  memset(control_var, 0x00, sizeof(control_var));
+  memset(control_pre, 0x00, sizeof(control_pre));
+  memset(precmp_var, 0x00, sizeof(precmp_var));
 
   assert(contv == ncb_var);
   (void)ncb_var;
@@ -934,7 +933,7 @@ void bcrypto_curve448_base_double_scalarmul_non_secret(bcrypto_curve448_point_t 
 
 void bcrypto_curve448_point_destroy(bcrypto_curve448_point_t point)
 {
-  OPENSSL_cleanse(point, sizeof(bcrypto_curve448_point_t));
+  memset(point, 0x00, sizeof(bcrypto_curve448_point_t));
 }
 
 int bcrypto_x448(uint8_t out_shared_key[56], const uint8_t private_key[56],
