@@ -3,7 +3,7 @@
 #include <string.h>
 
 #include "aes.h"
-#include "openssl/aes.h"
+#include "nettle/aes.h"
 
 static inline void
 XOR(uint8_t *out, const uint8_t *a, const uint8_t *b) {
@@ -27,8 +27,8 @@ bcrypto_aes_encipher(uint8_t *out,
   size_t trailing = datalen % 16;
   size_t i;
 
-  AES_KEY enckey;
-  AES_set_encrypt_key(key, 256, &enckey);
+  struct aes256_ctx ctx;
+  aes256_set_encrypt_key(&ctx, key);
 
   if (*outlen != datalen + (16 - trailing))
     return 0;
@@ -36,7 +36,7 @@ bcrypto_aes_encipher(uint8_t *out,
   // Encrypt all blocks except for the last.
   for (i = 0; i < blocks; i++) {
     XOR(cblock, pblock, cprev);
-    AES_encrypt(cblock, cblock, &enckey);
+    aes256_encrypt(&ctx, 16, cblock, cblock);
     cprev = cblock;
     cblock += 16;
     pblock += 16;
@@ -55,7 +55,7 @@ bcrypto_aes_encipher(uint8_t *out,
   // Encrypt the last block,
   // as well as the padding.
   XOR(cblock, last, cprev);
-  AES_encrypt(cblock, cblock, &enckey);
+  aes256_encrypt(&ctx, 16, cblock, cblock);
 
   return 1;
 }
@@ -81,12 +81,12 @@ bcrypto_aes_decipher(uint8_t *out,
   if (trailing != 0)
     return 0;
 
-  AES_KEY deckey;
-  AES_set_decrypt_key(key, 256, &deckey);
+  struct aes256_ctx ctx;
+  aes256_set_decrypt_key(&ctx, key);
 
   // Decrypt all blocks.
   for (i = 0; i < blocks; i++) {
-    AES_decrypt(cblock, pblock, &deckey);
+    aes256_decrypt(&ctx, 16, pblock, cblock);
     XOR(pblock, pblock, cprev);
     cprev = cblock;
     pprev = pblock;
