@@ -43,7 +43,7 @@
  * effort (for example the reengineering of a great many Capstone chips).
  */
 
-#if HAVE_CONFIG_H
+#if NETTLE_HAVE_CONFIG_H
 # include "config.h"
 #endif
 

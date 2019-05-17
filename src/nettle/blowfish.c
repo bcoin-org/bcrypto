@@ -47,7 +47,7 @@
    (there are no test vectors), adding FOR_BLOCK iterations, and
    running indent on the code. */
 
-#if HAVE_CONFIG_H
+#if NETTLE_HAVE_CONFIG_H
 #include "config.h"
 #endif
 

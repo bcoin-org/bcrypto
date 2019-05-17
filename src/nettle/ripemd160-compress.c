@@ -33,7 +33,7 @@
 
 /* Ported from libgcrypt by Andres Mejia <mcitadel@gmail.com> */
 
-#if HAVE_CONFIG_H
+#if NETTLE_HAVE_CONFIG_H
 # include "config.h"
 #endif
 

@@ -30,7 +30,7 @@
    not, see http://www.gnu.org/licenses/.
 */
 
-#if HAVE_CONFIG_H
+#if NETTLE_HAVE_CONFIG_H
 #include "config.h"
 #endif
 

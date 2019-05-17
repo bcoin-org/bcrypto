@@ -25,7 +25,7 @@
 # define _NO_PROTO
 #endif
 
-#ifdef HAVE_CONFIG_H
+#ifdef NETTLE_HAVE_CONFIG_H
 # include <config.h>
 #endif
 

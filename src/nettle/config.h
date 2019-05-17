@@ -13,32 +13,32 @@
 /* #undef C_ALLOCA */
 
 /* Define to 1 if you have `alloca', as a function or macro. */
-#define HAVE_ALLOCA 1
+#define HAVE_ALLOCA 0
 
 /* Define to 1 if you have <alloca.h> and it should be used (not on Ultrix).
    */
-#define HAVE_ALLOCA_H 1
+#define HAVE_ALLOCA_H 0
 
 /* Define if clock_gettime is available */
-#define HAVE_CLOCK_GETTIME 1
+#define HAVE_CLOCK_GETTIME 0
 
 /* Define to 1 if you have the <dlfcn.h> header file. */
-#define HAVE_DLFCN_H 1
+#define HAVE_DLFCN_H 0
 
 /* Define if fcntl file locking is available */
-#define HAVE_FCNTL_LOCKING 1
+#define HAVE_FCNTL_LOCKING 0
 
 /* Define if the compiler understands __attribute__ */
 #define HAVE_GCC_ATTRIBUTE 1
 
 /* Define to 1 if you have the `getline' function. */
-#define HAVE_GETLINE 1
+#define HAVE_GETLINE 0
 
 /* Define to 1 if you have the <inttypes.h> header file. */
 #define HAVE_INTTYPES_H 1
 
 /* Define to 1 if you have dlopen (with -ldl). */
-#define HAVE_LIBDL 1
+#define HAVE_LIBDL 0
 
 /* Define to 1 if you have the `gmp' library (-lgmp). */
 /* #undef HAVE_LIBGMP */
@@ -50,8 +50,9 @@
 #define HAVE_MALLOC_H 1
 
 /* Define to 1 if you have the <memory.h> header file. */
-#define HAVE_MEMORY_H 1
+#define HAVE_MEMORY_H 0
 
+#ifdef BCRYPTO_USE_ASM
 /* Define to 1 each of the following for which a native (ie. CPU specific)
     implementation of the corresponding routine exists.  */
 #define HAVE_NATIVE_ecc_192_modp 1
@@ -73,15 +74,16 @@
 /* #undef HAVE_NATIVE_sha3_permute */
 /* #undef HAVE_NATIVE_umac_nh */
 /* #undef HAVE_NATIVE_umac_nh_n */
+#endif
 
 /* Define to 1 if you have the <openssl/ecdsa.h> header file. */
-#define HAVE_OPENSSL_ECDSA_H 1
+#define HAVE_OPENSSL_ECDSA_H 0
 
 /* Define to 1 if you have the <openssl/evp.h> header file. */
-#define HAVE_OPENSSL_EVP_H 1
+#define HAVE_OPENSSL_EVP_H 0
 
 /* Define to 1 if you have the `secure_getenv' function. */
-#define HAVE_SECURE_GETENV 1
+#define HAVE_SECURE_GETENV 0
 
 /* Define to 1 if you have the <stdint.h> header file. */
 #define HAVE_STDINT_H 1
@@ -90,7 +92,7 @@
 #define HAVE_STDLIB_H 1
 
 /* Define to 1 if you have the `strerror' function. */
-#define HAVE_STRERROR 1
+#define HAVE_STRERROR 0
 
 /* Define to 1 if you have the <strings.h> header file. */
 #define HAVE_STRINGS_H 1
@@ -99,13 +101,13 @@
 #define HAVE_STRING_H 1
 
 /* Define to 1 if you have the <sys/stat.h> header file. */
-#define HAVE_SYS_STAT_H 1
+#define HAVE_SYS_STAT_H 0
 
 /* Define to 1 if you have the <sys/types.h> header file. */
-#define HAVE_SYS_TYPES_H 1
+#define HAVE_SYS_TYPES_H 0
 
 /* Define to 1 if you have the <unistd.h> header file. */
-#define HAVE_UNISTD_H 1
+#define HAVE_UNISTD_H 0
 
 /* Define to 1 if you have the <valgrind/memcheck.h> header file. */
 /* #undef HAVE_VALGRIND_MEMCHECK_H */
@@ -135,13 +137,21 @@
 /* #undef SIZEOF_INT */
 
 /* The size of `long', as computed by sizeof. */
+#ifdef BCRYPTO_32BIT_ARCH
+#define SIZEOF_LONG 4
+#else
 #define SIZEOF_LONG 8
+#endif
 
 /* The size of `short', as computed by sizeof. */
 /* #undef SIZEOF_SHORT */
 
 /* The size of `size_t', as computed by sizeof. */
+#ifdef BCRYPTO_32BIT_ARCH
+#define SIZEOF_SIZE_T 4
+#else
 #define SIZEOF_SIZE_T 8
+#endif
 
 /* The size of `void*', as computed by sizeof. */
 /* #undef SIZEOF_VOIDP */
@@ -158,7 +168,7 @@
 #define STDC_HEADERS 1
 
 /* Define to 1 if you can safely include both <sys/time.h> and <time.h>. */
-#define TIME_WITH_SYS_TIME 1
+#define TIME_WITH_SYS_TIME 0
 
 /* Defined if public key features are enabled */
 #define WITH_HOGWEED 1
@@ -169,7 +179,7 @@
 /* Define WORDS_BIGENDIAN to 1 if your processor stores words with the most
    significant byte first (like Motorola and SPARC, unlike Intel). */
 #if defined AC_APPLE_UNIVERSAL_BUILD
-# if defined __BIG_ENDIAN__
+# if defined BCRYPTO_BIG_ENDIAN
 #  define WORDS_BIGENDIAN 1
 # endif
 #else

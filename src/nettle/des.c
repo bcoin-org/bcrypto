@@ -37,7 +37,7 @@
  *	Please see the file `descore.README' for the complete copyright notice.
  */
 
-#if HAVE_CONFIG_H
+#if NETTLE_HAVE_CONFIG_H
 # include "config.h"
 #endif
 

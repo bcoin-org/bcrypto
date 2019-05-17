@@ -43,7 +43,7 @@
    http://info.isl.ntt.co.jp/crypt/eng/camellia/dl/camellia-LGPL-1.2.0.tar.gz.
  */
 
-#if HAVE_CONFIG_H
+#if NETTLE_HAVE_CONFIG_H
 # include "config.h"
 #endif
 

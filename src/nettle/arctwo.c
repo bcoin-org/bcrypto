@@ -43,7 +43,7 @@
  * RFC 2268.
  */
 
-#if HAVE_CONFIG_H
+#if NETTLE_HAVE_CONFIG_H
 # include "config.h"
 #endif
 

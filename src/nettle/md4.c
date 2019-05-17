@@ -34,7 +34,7 @@
 /* Based on the public domain md5 code, and modified by Marcus
    Comstedt */
 
-#if HAVE_CONFIG_H
+#if NETTLE_HAVE_CONFIG_H
 # include "config.h"
 #endif
 

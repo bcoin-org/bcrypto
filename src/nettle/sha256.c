@@ -34,7 +34,7 @@
 
 /* Modelled after the sha1.c code by Peter Gutmann. */
 
-#if HAVE_CONFIG_H
+#if NETTLE_HAVE_CONFIG_H
 # include "config.h"
 #endif
 

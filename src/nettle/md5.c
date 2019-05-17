@@ -34,7 +34,7 @@
 /* Based on public domain code hacked by Colin Plumb, Andrew Kuchling, and
  * Niels Möller. */
 
-#if HAVE_CONFIG_H
+#if NETTLE_HAVE_CONFIG_H
 # include "config.h"
 #endif
 

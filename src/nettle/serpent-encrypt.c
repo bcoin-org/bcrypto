@@ -46,7 +46,7 @@
    LE_READ_UINT32 and LE_WRITE_UINT32 to access data in
    encrypt/decrypt, and running indent on the code. */
 
-#if HAVE_CONFIG_H
+#if NETTLE_HAVE_CONFIG_H
 #include "config.h"
 #endif
 

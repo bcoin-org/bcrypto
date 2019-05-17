@@ -43,12 +43,18 @@ extern "C" {
 #define NETTLE_VERSION_MAJOR 3
 #define NETTLE_VERSION_MINOR 4
 
+#ifndef BCRYPTO_HAS_GMP
 #define NETTLE_USE_MINI_GMP 1
+#endif
 
 /* We need a preprocessor constant for GMP_NUMB_BITS, simply using
    sizeof(mp_limb_t) * CHAR_BIT is not good enough. */
 #if NETTLE_USE_MINI_GMP
+#ifdef BCRYPTO_32BIT_ARCH
+# define GMP_NUMB_BITS 32
+#else
 # define GMP_NUMB_BITS 64
+#endif
 #endif
 
 int

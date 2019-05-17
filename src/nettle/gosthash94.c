@@ -28,7 +28,7 @@
  * Ported to nettle by Nikos Mavrogiannopoulos.
  */
 
-#if HAVE_CONFIG_H
+#if NETTLE_HAVE_CONFIG_H
 #include "config.h"
 #endif
 

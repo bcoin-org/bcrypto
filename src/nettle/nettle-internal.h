@@ -36,6 +36,7 @@
 #define NETTLE_INTERNAL_H_INCLUDED
 
 #include "nettle-meta.h"
+#include <stdlib.h> /* for abort() */
 
 /* Temporary allocation, for systems that don't support alloca. Note
  * that the allocation requests should always be reasonably small, so
@@ -49,12 +50,13 @@
 # define TMP_DECL(name, type, max) type name[max]
 # define TMP_ALLOC(name, size) \
   do { if ((size) > (sizeof(name) / sizeof(name[0]))) abort(); } while (0)
-#endif 
+#endif
 
 /* Arbitrary limits which apply to systems that don't have alloca */
 #define NETTLE_MAX_HASH_BLOCK_SIZE 128
 #define NETTLE_MAX_HASH_DIGEST_SIZE 64
-#define NETTLE_MAX_HASH_CONTEXT_SIZE (sizeof(struct sha3_224_ctx))
+// #define NETTLE_MAX_HASH_CONTEXT_SIZE (sizeof(struct sha3_224_ctx))
+#define NETTLE_MAX_HASH_CONTEXT_SIZE 512
 #define NETTLE_MAX_SEXP_ASSOC 17
 #define NETTLE_MAX_CIPHER_BLOCK_SIZE 32
 
