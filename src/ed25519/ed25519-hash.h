@@ -1,10 +1,10 @@
-#include "openssl/sha.h"
+#include "nettle/sha2.h"
 
-typedef SHA512_CTX bcrypto_ed25519_hash_t;
+typedef struct sha512_ctx bcrypto_ed25519_hash_t;
 
 static void
 bcrypto_ed25519_hash_init(bcrypto_ed25519_hash_t *ctx) {
-  SHA512_Init(ctx);
+  sha512_init(ctx);
 }
 
 static void
@@ -13,15 +13,18 @@ bcrypto_ed25519_hash_update(
   const uint8_t *in,
   size_t inlen
 ) {
-  SHA512_Update(ctx, in, inlen);
+  sha512_update(ctx, inlen, in);
 }
 
 static void
 bcrypto_ed25519_hash_final(bcrypto_ed25519_hash_t *ctx, uint8_t *hash) {
-  SHA512_Final(hash, ctx);
+  sha512_digest(ctx, 64, hash);
 }
 
 static void
 bcrypto_ed25519_hash(uint8_t *hash, const uint8_t *in, size_t inlen) {
-  SHA512(in, inlen, hash);
+  struct sha512_ctx ctx;
+  sha512_init(&ctx);
+  sha512_update(&ctx, inlen, in);
+  sha512_digest(&ctx, 64, hash);
 }
