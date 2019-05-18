@@ -10,7 +10,7 @@ extern "C" {
 
 int
 bcrypto_pbkdf2(uint8_t *key,
-               const char *name,
+               int type,
                const uint8_t *pass,
                size_t passlen,
                const uint8_t *salt,
@@ -19,7 +19,7 @@ bcrypto_pbkdf2(uint8_t *key,
                size_t keylen);
 
 int
-bcrypto_pbkdf2_has_hash(const char *name);
+bcrypto_pbkdf2_has_hash(int type);
 
 #if defined(__cplusplus)
 }

@@ -25,8 +25,8 @@ NAN_METHOD(BPBKDF2::Derive) {
   if (info.Length() < 5)
     return Nan::ThrowError("pbkdf2.derive() requires arguments.");
 
-  if (!info[0]->IsString())
-    return Nan::ThrowTypeError("First argument must be a string.");
+  if (!info[0]->IsNumber())
+    return Nan::ThrowTypeError("First argument must be a number.");
 
   v8::Local<v8::Object> pbuf = info[1].As<v8::Object>();
 
@@ -44,11 +44,9 @@ NAN_METHOD(BPBKDF2::Derive) {
   if (!info[4]->IsNumber())
     return Nan::ThrowTypeError("Fifth argument must be a number.");
 
-  Nan::Utf8String name_(info[0]);
-  const char *name = (const char *)*name_;
-
-  const uint8_t *pass = (const uint8_t *)node::Buffer::Data(pbuf);
-  size_t passlen = (size_t)node::Buffer::Length(pbuf);
+  int type = (int)Nan::To<uint32_t>(info[0]).FromJust();
+  const uint8_t *pass = (const uint8_t *)node::Buffer::Data(kbuf);
+  size_t passlen = (size_t)node::Buffer::Length(kbuf);
   const uint8_t *salt = (const uint8_t *)node::Buffer::Data(sbuf);
   size_t saltlen = (size_t)node::Buffer::Length(sbuf);
   uint32_t iter = Nan::To<uint32_t>(info[3]).FromJust();
@@ -59,7 +57,7 @@ NAN_METHOD(BPBKDF2::Derive) {
   if (key == NULL)
     return Nan::ThrowError("Could not allocate key.");
 
-  if (!bcrypto_pbkdf2(key, name, pass, passlen, salt, saltlen, iter, keylen)) {
+  if (!bcrypto_pbkdf2(key, type, pass, passlen, salt, saltlen, iter, keylen)) {
     free(key);
     return Nan::ThrowError("PBKDF2 failed.");
   }
@@ -72,8 +70,8 @@ NAN_METHOD(BPBKDF2::DeriveAsync) {
   if (info.Length() < 6)
     return Nan::ThrowError("pbkdf2.deriveAsync() requires arguments.");
 
-  if (!info[0]->IsString())
-    return Nan::ThrowTypeError("First argument must be a string.");
+  if (!info[0]->IsNumber())
+    return Nan::ThrowTypeError("First argument must be a number.");
 
   v8::Local<v8::Object> pbuf = info[1].As<v8::Object>();
 
@@ -96,16 +94,9 @@ NAN_METHOD(BPBKDF2::DeriveAsync) {
 
   v8::Local<v8::Function> callback = info[5].As<v8::Function>();
 
-  Nan::Utf8String name_(info[0]);
-  const char *name = (const char *)*name_;
-
-  char *alg = strdup(name);
-
-  if (alg == NULL)
-    return Nan::ThrowError("Could not allocate algorithm.");
-
-  const uint8_t *pass = (const uint8_t *)node::Buffer::Data(pbuf);
-  size_t passlen = (size_t)node::Buffer::Length(pbuf);
+  int type = (int)Nan::To<uint32_t>(info[0]).FromJust();
+  const uint8_t *pass = (const uint8_t *)node::Buffer::Data(dbuf);
+  size_t passlen = (size_t)node::Buffer::Length(dbuf);
   const uint8_t *salt = (const uint8_t *)node::Buffer::Data(sbuf);
   size_t saltlen = (size_t)node::Buffer::Length(sbuf);
   uint32_t iter = Nan::To<uint32_t>(info[3]).FromJust();
@@ -114,7 +105,7 @@ NAN_METHOD(BPBKDF2::DeriveAsync) {
   BPBKDF2Worker *worker = new BPBKDF2Worker(
     pbuf,
     sbuf,
-    alg,
+    type,
     pass,
     passlen,
     salt,
@@ -131,17 +122,11 @@ NAN_METHOD(BPBKDF2::HasHash) {
   if (info.Length() < 1)
     return Nan::ThrowError("pbkdf2.hasHash() requires arguments.");
 
-  if (!info[0]->IsString())
-    return Nan::ThrowTypeError("First argument must be a string.");
+  if (!info[0]->IsNumber())
+    return Nan::ThrowTypeError("First argument must be a number.");
 
-  Nan::Utf8String alg_(info[0]);
-  const char *alg = (const char *)*alg_;
-  int result = bcrypto_pbkdf2_has_hash(alg);
-
-  if (!result) {
-    if (strcmp(alg, "SHA256") == 0 || strcmp(alg, "SHA512") == 0)
-      return Nan::ThrowError("Algorithms not loaded for PBKDF2.");
-  }
+  int type = (int)Nan::To<uint32_t>(info[0]).FromJust();
+  int result = bcrypto_pbkdf2_has_hash(type);
 
   return info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }

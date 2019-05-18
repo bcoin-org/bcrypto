@@ -5,7 +5,7 @@
 BPBKDF2Worker::BPBKDF2Worker (
   v8::Local<v8::Object> &passHandle,
   v8::Local<v8::Object> &saltHandle,
-  char *name,
+  int type,
   const uint8_t *pass,
   size_t passlen,
   const uint8_t *salt,
@@ -14,7 +14,7 @@ BPBKDF2Worker::BPBKDF2Worker (
   size_t keylen,
   Nan::Callback *callback
 ) : Nan::AsyncWorker(callback)
-  , name(name)
+  , type(type)
   , pass(pass)
   , passlen(passlen)
   , salt(salt)
@@ -28,12 +28,7 @@ BPBKDF2Worker::BPBKDF2Worker (
   SaveToPersistent("salt", saltHandle);
 }
 
-BPBKDF2Worker::~BPBKDF2Worker() {
-  if (name) {
-    free(name);
-    name = NULL;
-  }
-}
+BPBKDF2Worker::~BPBKDF2Worker() {}
 
 void
 BPBKDF2Worker::Execute() {
@@ -44,7 +39,7 @@ BPBKDF2Worker::Execute() {
     return;
   }
 
-  if (!bcrypto_pbkdf2(key, name, pass, passlen, salt, saltlen, iter, keylen)) {
+  if (!bcrypto_pbkdf2(key, type, pass, passlen, salt, saltlen, iter, keylen)) {
     free(key);
     key = NULL;
     SetErrorMessage("PBKDF2 failed.");

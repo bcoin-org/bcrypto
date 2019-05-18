@@ -8,9 +8,9 @@
 class BPBKDF2Worker : public Nan::AsyncWorker {
 public:
   BPBKDF2Worker (
-    v8::Local<v8::Object> &dataHandle,
+    v8::Local<v8::Object> &passHandle,
     v8::Local<v8::Object> &saltHandle,
-    char *name,
+    int type,
     const uint8_t *pass,
     size_t passlen,
     const uint8_t *salt,
@@ -25,7 +25,7 @@ public:
   void HandleOKCallback();
 
 private:
-  char *name;
+  int type;
   const uint8_t *pass;
   size_t passlen;
   const uint8_t *salt;
