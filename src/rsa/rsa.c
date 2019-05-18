@@ -237,6 +237,8 @@ bcrypto_rsa_key2pub(struct rsa_public_key *out, const bcrypto_rsa_key_t *pub) {
   out->size = rsa_mpz_bytelen(out->n);
 }
 
+#undef READINT
+
 static void
 bcrypto_rsa_priv2key(bcrypto_rsa_key_t *out,
                      const struct rsa_private_key *priv,

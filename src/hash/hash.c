@@ -6,7 +6,7 @@
 // https://github.com/gnutls/nettle/blob/master/nettle-meta-hashes.c
 // https://github.com/gnutls/nettle/blob/master/sha256-meta.c
 
-#define MAKE_HASH(HASH, NAME, TITLE, SIZE, BLOCK_SIZE)               \
+#define MAKE_BLAKE(HASH, NAME, TITLE, SIZE, BLOCK_SIZE)              \
 static void                                                          \
 NAME##_init(HASH##_ctx *ctx) {                                       \
   (void)HASH##_init(ctx, SIZE);                                      \
@@ -34,15 +34,55 @@ const struct nettle_hash nettle_##NAME = {                           \
   (nettle_hash_digest_func *)NAME##_digest                           \
 };
 
-MAKE_HASH(bcrypto_blake2b, blake2b160, "blake2b160", 20, 128)
-MAKE_HASH(bcrypto_blake2b, blake2b256, "blake2b256", 32, 128)
-MAKE_HASH(bcrypto_blake2b, blake2b384, "blake2b384", 48, 128)
-MAKE_HASH(bcrypto_blake2b, blake2b512, "blake2b512", 64, 128)
+MAKE_BLAKE(bcrypto_blake2b, blake2b160, "blake2b160", 20, 128)
+MAKE_BLAKE(bcrypto_blake2b, blake2b256, "blake2b256", 32, 128)
+MAKE_BLAKE(bcrypto_blake2b, blake2b384, "blake2b384", 48, 128)
+MAKE_BLAKE(bcrypto_blake2b, blake2b512, "blake2b512", 64, 128)
 
-MAKE_HASH(bcrypto_blake2s, blake2s128, "blake2s128", 16, 64)
-MAKE_HASH(bcrypto_blake2s, blake2s160, "blake2s160", 20, 64)
-MAKE_HASH(bcrypto_blake2s, blake2s224, "blake2s224", 28, 64)
-MAKE_HASH(bcrypto_blake2s, blake2s256, "blake2s256", 32, 64)
+MAKE_BLAKE(bcrypto_blake2s, blake2s128, "blake2s128", 16, 64)
+MAKE_BLAKE(bcrypto_blake2s, blake2s160, "blake2s160", 20, 64)
+MAKE_BLAKE(bcrypto_blake2s, blake2s224, "blake2s224", 28, 64)
+MAKE_BLAKE(bcrypto_blake2s, blake2s256, "blake2s256", 32, 64)
+
+#undef MAKE_BLAKE
+
+#define MAKE_KECCAK(NAME, TITLE, BITS, SIZE, BLOCK_SIZE, PAD)        \
+static void                                                          \
+NAME##_init(bcrypto_keccak_ctx *ctx) {                               \
+  assert(bcrypto_keccak_init(ctx, BITS) == 1);                       \
+}                                                                    \
+                                                                     \
+static void                                                          \
+NAME##_update(bcrypto_keccak_ctx *ctx,                               \
+              size_t length, const uint8_t *data) {                  \
+  bcrypto_keccak_update(ctx, data, length);                          \
+}                                                                    \
+                                                                     \
+static void                                                          \
+NAME##_digest(bcrypto_keccak_ctx *ctx,                               \
+              size_t length, uint8_t *data) {                        \
+  assert(bcrypto_keccak_final(ctx, data, NULL, length, PAD) == 1);   \
+}                                                                    \
+                                                                     \
+const struct nettle_hash nettle_##NAME = {                           \
+  TITLE,                                                             \
+  sizeof(bcrypto_keccak_ctx),                                        \
+  SIZE,                                                              \
+  BLOCK_SIZE,                                                        \
+  (nettle_hash_init_func *)NAME##_init,                              \
+  (nettle_hash_update_func *)NAME##_update,                          \
+  (nettle_hash_digest_func *)NAME##_digest                           \
+};
+
+MAKE_KECCAK(keccak224, "keccak224", 224, 28, 144, 0x01)
+MAKE_KECCAK(keccak256, "keccak256", 256, 32, 136, 0x01)
+MAKE_KECCAK(keccak384, "keccak384", 384, 48, 104, 0x01)
+MAKE_KECCAK(keccak512, "keccak512", 512, 64, 72, 0x01)
+
+MAKE_KECCAK(shake128, "shake128", 128, 16, 168, 0x1f)
+MAKE_KECCAK(shake256, "shake256", 256, 32, 72, 0x1f)
+
+#undef MAKE_KECCAK
 
 void
 bcrypto_hmac_set_key(bcrypto_hmac_t *hmac,
@@ -278,13 +318,13 @@ bcrypto_hash_get(int type) {
     case BCRYPTO_HASH_GOST94:
       return &nettle_gosthash94;
     case BCRYPTO_HASH_KECCAK224:
-      return NULL;
+      return &nettle_keccak224;
     case BCRYPTO_HASH_KECCAK256:
-      return NULL;
+      return &nettle_keccak256;
     case BCRYPTO_HASH_KECCAK384:
-      return NULL;
+      return &nettle_keccak384;
     case BCRYPTO_HASH_KECCAK512:
-      return NULL;
+      return &nettle_keccak512;
     case BCRYPTO_HASH_MD2:
       return &nettle_md2;
     case BCRYPTO_HASH_MD4:
@@ -314,9 +354,9 @@ bcrypto_hash_get(int type) {
     case BCRYPTO_HASH_SHA3_512:
       return &nettle_sha3_512;
     case BCRYPTO_HASH_SHAKE128:
-      return NULL;
+      return &nettle_shake128;
     case BCRYPTO_HASH_SHAKE256:
-      return NULL;
+      return &nettle_shake256;
     case BCRYPTO_HASH_WHIRLPOOL:
       return NULL;
     default:

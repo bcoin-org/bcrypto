@@ -8,6 +8,7 @@
 
 #include "../blake2b/blake2b.h"
 #include "../blake2s/blake2s.h"
+#include "../keccak/keccak.h"
 #include "../nettle/md2.h"
 #include "../nettle/md4.h"
 #include "../nettle/md5.h"
