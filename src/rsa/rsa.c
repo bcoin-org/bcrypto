@@ -1032,8 +1032,6 @@ bcrypto_rsa_veil(uint8_t *out,
   int result = 0;
   struct rsa_public_key pub;
   mpz_t c0, ctlim, rlim, c1, cr, tmp;
-  size_t i;
-  uint8_t slab[32];
 
   rsa_public_key_init(&pub);
 
@@ -1084,16 +1082,7 @@ bcrypto_rsa_veil(uint8_t *out,
   /* while c1 >= ctlim */
   while (mpz_cmp(c1, ctlim) >= 0) {
     /* cr = random_int(rlim) */
-    mpz_set_ui(cr, 0);
-
-    for (i = 0; i < pub.size; i += 32) {
-      bcrypto_random(&slab[0], 32);
-      rsa_mpz_import(tmp, &slab[0], 32);
-      mpz_mul_2exp(cr, cr, 256);
-      mpz_ior(cr, cr, tmp);
-    }
-
-    mpz_mod(cr, cr, rlim);
+    nettle_mpz_random(cr, NULL, bcrypto_rng, rlim);
 
     if (mpz_cmp_ui(rlim, 1) > 0 && mpz_sgn(cr) == 0)
       continue;
