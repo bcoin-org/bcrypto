@@ -780,6 +780,57 @@ fail:
   return result;
 }
 
+static void
+mgf1xor(const struct nettle_hash *hash, void *state,
+        const uint8_t *seed, size_t seed_len,
+        uint8_t *out, size_t out_len) {
+  uint8_t counter[4];
+  uint8_t digest[BCRYPTO_HASH_MAX_SIZE];
+
+  memset(&counter[0], 0x00, 4);
+
+  size_t done = 0;
+
+  while (done < out_len) {
+    hash->init(state);
+    hash->update(state, seed_len, seed);
+    hash->update(state, 4, counter);
+    hash->digest(state, hash->digest_size, digest);
+
+    for (size_t i = 0; i < hash->digest_size && done < out_len; i++) {
+      out[done] ^= digest[i];
+      done += 1;
+    }
+
+    for (int i = 3; i >= 0; i--) {
+      counter[i] += 1;
+
+      if (counter[i] != 0x00)
+        break;
+    }
+  }
+}
+
+static inline unsigned int
+safe_equal_int(unsigned int x, unsigned int y) {
+  return ((x ^ y) - 1) >> 31;
+}
+
+static inline unsigned int
+safe_select(unsigned int v, unsigned int x, unsigned int y) {
+  return (~(v - 1) & x) | ((v - 1) & y);
+}
+
+static inline unsigned int
+safe_equal(const uint8_t *x, const uint8_t *y, size_t len) {
+  unsigned int v = 0;
+
+  for (size_t i = 0; i < len; i++)
+    v |= x[i] ^ y[i];
+
+  return safe_equal_int(v, 0);
+}
+
 int
 bcrypto_rsa_encrypt_oaep(uint8_t *out,
                          int type,
@@ -788,7 +839,60 @@ bcrypto_rsa_encrypt_oaep(uint8_t *out,
                          const bcrypto_rsa_key_t *key,
                          const uint8_t *label,
                          size_t label_len) {
-  return 0;
+  int result = 0;
+  struct rsa_public_key pub;
+
+  rsa_public_key_init(&pub);
+
+  const struct nettle_hash *hash = bcrypto_hash_get(type);
+
+  if (hash == NULL)
+    goto fail;
+
+  bcrypto_rsa_key2pub(&pub, key);
+
+  if (!bcrypto_rsa_sane_pubkey(&pub))
+    goto fail;
+
+  const uint8_t *msg = pt;
+  size_t klen = pub.size;
+  size_t mlen = pt_len;
+  size_t hlen = hash->digest_size;
+
+  if (mlen > klen - 2 * hlen - 2)
+    goto fail;
+
+  // EM = 0x00 || mgf1(SEED) || mgf1(DB)
+  uint8_t *em = out;
+  uint8_t *seed = &em[1];
+  size_t slen = hlen;
+  uint8_t *db = &em[1 + hlen];
+  size_t dlen = klen - (1 + hlen);
+
+  em[0] = 0x00;
+
+  // SEED = Random Bytes
+  if (!bcrypto_random(&seed[0], slen))
+    goto fail;
+
+  uint8_t state[BCRYPTO_HASH_MAX_CONTEXT_SIZE];
+
+  // DB = HASH(LABEL) || PS || 0x01 || M
+  hash->init(state);
+  hash->update(state, label_len, label);
+  hash->digest(state, hlen, &db[0]);
+
+  memset(&db[hlen], 0x00, dlen - hlen);
+  db[dlen - mlen - 1] = 0x01;
+  memcpy(&db[dlen - mlen], msg, mlen);
+
+  mgf1xor(hash, state, seed, slen, db, dlen);
+  mgf1xor(hash, state, db, dlen, seed, slen);
+
+  result = bcrypto_rsa_encrypt_raw(out, em, klen, key);
+fail:
+  rsa_public_key_clear(&pub);
+  return result;
 }
 
 int
@@ -800,7 +904,79 @@ bcrypto_rsa_decrypt_oaep(uint8_t *out,
                          const bcrypto_rsa_key_t *key,
                          const uint8_t *label,
                          size_t label_len) {
-  return 0;
+  int result = 0;
+  struct rsa_public_key pub;
+  struct rsa_private_key priv;
+
+  rsa_public_key_init(&pub);
+  rsa_private_key_init(&priv);
+
+  const struct nettle_hash *hash = bcrypto_hash_get(type);
+
+  if (hash == NULL)
+    goto fail;
+
+  bcrypto_rsa_key2priv(&priv, &pub, key);
+
+  if (!bcrypto_rsa_sane_privkey(&priv, &pub))
+    goto fail;
+
+  if (ct == NULL || ct_len != pub.size)
+    goto fail;
+
+  size_t klen = pub.size;
+  size_t hlen = hash->digest_size;
+
+  uint8_t *em = out;
+
+  if (!bcrypto_rsa_decrypt_raw(em, ct, ct_len, key))
+    goto fail;
+
+  uint8_t expect[BCRYPTO_HASH_MAX_SIZE];
+  uint8_t state[BCRYPTO_HASH_MAX_CONTEXT_SIZE];
+
+  hash->init(state);
+  hash->update(state, label_len, label);
+  hash->digest(state, hlen, expect);
+
+  unsigned int fbiz = safe_equal_int(em[0], 0x00);
+  uint8_t *seed = &em[1];
+  size_t slen = hlen;
+  uint8_t *db = &em[hlen + 1];
+  size_t dlen = klen - (1 + hlen);
+
+  mgf1xor(hash, state, db, dlen, seed, slen);
+  mgf1xor(hash, state, seed, slen, db, dlen);
+
+  uint8_t *lhash = &db[0];
+  unsigned int lvalid = safe_equal(lhash, expect, hlen);
+
+  unsigned int looking = 1;
+  unsigned int index = 0;
+  unsigned int invalid = 0;
+
+  uint8_t *rest = &db[hlen];
+  size_t rlen = dlen - hlen;
+
+  for (size_t i = 0; i < rlen; i++) {
+    unsigned int equals0 = safe_equal_int(rest[i], 0x00);
+    unsigned int equals1 = safe_equal_int(rest[i], 0x01);
+
+    index = safe_select(looking & equals1, i, index);
+    looking = safe_select(equals1, 0, looking);
+    invalid = safe_select(looking & ~equals0, 1, invalid);
+  }
+
+  if ((fbiz & lvalid & ~invalid & ~looking) != 1)
+    goto fail;
+
+  *out_len = rlen - (index + 1);
+  memmove(&out[0], &rest[index + 1], *out_len);
+  result = 1;
+fail:
+  rsa_public_key_clear(&pub);
+  rsa_private_key_clear(&priv);
+  return result;
 }
 
 static int
