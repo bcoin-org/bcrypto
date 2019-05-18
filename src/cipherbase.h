@@ -4,7 +4,7 @@
 #include <node.h>
 #include <nan.h>
 
-#include "openssl/evp.h"
+#include "hash/cipher.h"
 
 #if defined(_WIN32) || defined(_WIN64)
 #define snprintf _snprintf
@@ -21,9 +21,14 @@ public:
   BCipherBase();
   ~BCipherBase();
 
-  const EVP_CIPHER *type;
-  bool encrypt;
-  EVP_CIPHER_CTX *ctx;
+  int type;
+  int mode;
+  int encrypt;
+  int first;
+  int done;
+  uint8_t tag[16];
+  size_t tag_len;
+  bcrypto_cipher_t ctx;
 
 private:
   static NAN_METHOD(Init);
