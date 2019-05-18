@@ -14,6 +14,9 @@ bcrypto_poll(void);
 int
 bcrypto_random(void *dst, size_t len);
 
+void
+bcrypto_rng(void *ctx, size_t length, uint8_t *dst);
+
 #if defined(__cplusplus)
 }
 #endif

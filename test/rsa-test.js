@@ -455,11 +455,6 @@ describe('RSA', function() {
       assert.deepStrictEqual(rsa.privateKeyImport(privRaw), priv);
       assert.deepStrictEqual(rsa.publicKeyImport(pubRaw), pub);
 
-      if (rsa.native === 2) {
-        assert.bufferEqual(rsa.privateKeyExportPKCS8(priv), pkcs8);
-        assert.bufferEqual(rsa.publicKeyExportSPKI(pub), spki);
-      }
-
       assert.deepStrictEqual(rsa.privateKeyImportPKCS8(pkcs8), priv);
       assert.deepStrictEqual(rsa.publicKeyImportSPKI(spki), pub);
     });

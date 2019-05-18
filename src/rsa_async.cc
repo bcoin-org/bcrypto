@@ -1,7 +1,3 @@
-#include "compat.h"
-
-#ifdef BCRYPTO_HAS_RSA
-
 #include <assert.h>
 #include <node.h>
 #include <nan.h>
@@ -12,23 +8,23 @@
 
 BRSAWorker::BRSAWorker (
   int bits,
-  unsigned long long exp,
+  uint64_t exponent,
   Nan::Callback *callback
 ) : Nan::AsyncWorker(callback)
   , bits(bits)
-  , exp(exp)
-  , key(NULL)
+  , exponent(exponent)
 {
   Nan::HandleScope scope;
+  bcrypto_rsa_key_init(&key);
 }
 
-BRSAWorker::~BRSAWorker() {}
+BRSAWorker::~BRSAWorker() {
+  bcrypto_rsa_key_uninit(&key);
+}
 
 void
 BRSAWorker::Execute() {
-  key = bcrypto_rsa_privkey_generate(bits, exp);
-
-  if (key == NULL)
+  if (!bcrypto_rsa_privkey_generate(&key, bits, exponent))
     SetErrorMessage("Could not generate key.");
 }
 
@@ -36,8 +32,7 @@ void
 BRSAWorker::HandleOKCallback() {
   Nan::HandleScope scope;
 
-  bcrypto_rsa_key_t *k = key;
-  assert(k);
+  bcrypto_rsa_key_t *k = &key;
 
   v8::Local<v8::Array> ret = Nan::New<v8::Array>();
   Nan::Set(ret, 0, Nan::CopyBuffer((char *)k->nd, k->nl).ToLocalChecked());
@@ -49,10 +44,7 @@ BRSAWorker::HandleOKCallback() {
   Nan::Set(ret, 6, Nan::CopyBuffer((char *)k->dqd, k->dql).ToLocalChecked());
   Nan::Set(ret, 7, Nan::CopyBuffer((char *)k->qid, k->qil).ToLocalChecked());
 
-  bcrypto_rsa_key_free(k);
-
   v8::Local<v8::Value> argv[] = { Nan::Null(), ret };
 
   callback->Call(2, argv, async_resource);
 }
-#endif

@@ -318,6 +318,7 @@
       "./src/ed448/eddsa.c",
       "./src/ed448/f_generic.c",
       "./src/ed448/scalar.c",
+      "./src/hash/hash.c",
       "./src/murmur3/murmur3.c",
       "./src/pbkdf2/pbkdf2.c",
       "./src/poly1305/poly1305.c",

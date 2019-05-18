@@ -1,10 +1,6 @@
 #ifndef _BCRYPTO_RSA_ASYNC_HH
 #define _BCRYPTO_RSA_ASYNC_HH
 
-#include "compat.h"
-
-#ifdef BCRYPTO_HAS_RSA
-
 #include <node.h>
 #include <nan.h>
 #include "rsa/rsa.h"
@@ -13,7 +9,7 @@ class BRSAWorker : public Nan::AsyncWorker {
 public:
   BRSAWorker (
     int bits,
-    unsigned long long exp,
+    uint64_t exponent,
     Nan::Callback *callback
   );
 
@@ -23,9 +19,8 @@ public:
 
 private:
   int bits;
-  unsigned long long exp;
-  bcrypto_rsa_key_t *key;
+  uint64_t exponent;
+  bcrypto_rsa_key_t key;
 };
-#endif
 
 #endif

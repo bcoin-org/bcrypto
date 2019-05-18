@@ -34,3 +34,8 @@ bcrypto_random(void *dst, size_t len) {
 
   return 1;
 }
+
+void
+bcrypto_rng(void *ctx, size_t length, uint8_t *dst) {
+  bcrypto_random((void *)dst, length);
+}
