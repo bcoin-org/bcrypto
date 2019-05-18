@@ -19,6 +19,7 @@
 #include "../nettle/hmac.h"
 #include "../nettle/nettle-meta.h"
 #include "../nettle/nettle-types.h"
+#include "../nettle/nettle-internal.h"
 
 #define BCRYPTO_HASH_BLAKE2B160 1
 #define BCRYPTO_HASH_BLAKE2B256 2
@@ -53,8 +54,8 @@
 
 #define BCRYPTO_HASH_MIN 1
 #define BCRYPTO_HASH_MAX 30
-#define BCRYPTO_HASH_MAX_SIZE 64
-#define BCRYPTO_HASH_MAX_CONTEXT_SIZE 512
+#define BCRYPTO_HASH_MAX_SIZE NETTLE_MAX_HASH_DIGEST_SIZE
+#define BCRYPTO_HASH_MAX_CONTEXT_SIZE NETTLE_MAX_HASH_CONTEXT_SIZE
 
 #if defined(__cplusplus)
 extern "C" {
