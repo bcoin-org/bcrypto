@@ -1,10 +1,6 @@
 #ifndef _BCRYPTO_DSA_HH
 #define _BCRYPTO_DSA_HH
 
-#include "compat.h"
-
-#ifdef BCRYPTO_HAS_DSA
-
 #include <node.h>
 #include <nan.h>
 
@@ -38,6 +34,4 @@ private:
   static NAN_METHOD(VerifyDER);
   static NAN_METHOD(Derive);
 };
-#endif
-
 #endif

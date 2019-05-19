@@ -1,7 +1,3 @@
-#include "../compat.h"
-
-#ifdef BCRYPTO_HAS_DSA
-
 #include <assert.h>
 #include <string.h>
 #include <stdint.h>
@@ -9,96 +5,44 @@
 #include <stdlib.h>
 #include "dsa.h"
 
-#include "openssl/bn.h"
-#include "openssl/dsa.h"
-#include "openssl/objects.h"
-#include "openssl/x509.h"
+#include "../nettle/dsa.h"
 #include "../random/random.h"
 
-#define BCRYPTO_DSA_DEFAULT_BITS 2048
-#define BCRYPTO_DSA_MIN_BITS 512
-#define BCRYPTO_DSA_MAX_BITS 10000
-
-void
-bcrypto_dsa_key_init(bcrypto_dsa_key_t *key) {
-  assert(key != NULL);
-  memset((void *)key, 0x00, sizeof(bcrypto_dsa_key_t));
-}
-
-void
-bcrypto_dsa_key_free(bcrypto_dsa_key_t *key) {
-  assert(key != NULL);
-
-  if (key->slab != NULL)
-    free(key->slab);
-
-  free(key);
-}
-
-static size_t
-bcrypto_count_bits(const uint8_t *in, size_t in_len) {
-  if (in == NULL)
+static inline size_t
+dsa_mpz_bitlen(const mpz_t n) {
+  if (mpz_sgn(n) == 0)
     return 0;
 
-  size_t i = 0;
+  return mpz_sizeinbase(n, 2);
+}
 
-  for (; i < in_len; i++) {
-    if (in[i] != 0)
-      break;
-  }
+#define dsa_mpz_bytelen(n) \
+  (dsa_mpz_bitlen((n)) + 7) / 8
 
-  size_t bits = (in_len - i) * 8;
+#define dsa_mpz_import(ret, data, len) \
+  mpz_import((ret), (len), 1, sizeof((data)[0]), 0, 0, (data))
 
-  if (bits == 0)
-    return 0;
+#define dsa_mpz_export(data, size, n) \
+  mpz_export((data), (size), 1, sizeof((data)[0]), 0, 0, (n));
 
-  bits -= 8;
+static inline void
+dsa_mpz_pad(void *out, size_t size, const mpz_t n) {
+  size_t len = dsa_mpz_bytelen(n);
 
-  uint32_t oct = in[i];
+  assert(len <= size);
 
-  while (oct) {
-    bits += 1;
-    oct >>= 1;
-  }
+  size_t pos = size - len;
 
-  return bits;
+  memset(out, 0x00, pos);
+
+  dsa_mpz_export(out + pos, NULL, n);
 }
 
 static int
-bcrypto_cmp(const uint8_t *x, size_t xl, const uint8_t *y, size_t yl) {
-  while (xl > 0 && *x == 0)
-    x++, xl--;
-
-  while (yl > 0 && *y == 0)
-    y++, yl--;
-
-  if (xl < yl)
-    return -1;
-
-  if (xl > yl)
-    return 1;
-
-  size_t i = 0;
-
-  for (; i < xl; i++) {
-    if (x[i] < y[i])
-      return -1;
-
-    if (x[i] > y[i])
-      return 1;
-  }
-
-  return 0;
-}
-
-static int
-bcrypto_dsa_sane_params(const bcrypto_dsa_key_t *params) {
-  if (params == NULL)
-    return 0;
-
-  size_t pb = bcrypto_count_bits(params->pd, params->pl);
-  size_t qb = bcrypto_count_bits(params->qd, params->ql);
-  size_t gb = bcrypto_count_bits(params->gd, params->gl);
+bcrypto_dsa_sane_params(const struct dsa_params *params) {
+  size_t pb = dsa_mpz_bitlen(params->p);
+  size_t qb = dsa_mpz_bitlen(params->q);
+  size_t gb = dsa_mpz_bitlen(params->g);
 
   if (pb < BCRYPTO_DSA_MIN_BITS || pb > BCRYPTO_DSA_MAX_BITS)
     return 0;
@@ -109,62 +53,61 @@ bcrypto_dsa_sane_params(const bcrypto_dsa_key_t *params) {
   if (gb < 2 || gb > pb)
     return 0;
 
-  if ((params->pd[params->pl - 1] & 1) == 0)
+  if (mpz_even_p(params->p))
     return 0;
 
-  if ((params->qd[params->ql - 1] & 1) == 0)
+  if (mpz_even_p(params->q))
     return 0;
 
-  if (bcrypto_cmp(params->gd, params->gl, params->pd, params->pl) >= 0)
+  if (mpz_cmp(params->g, params->p) >= 0)
     return 0;
 
   return 1;
 }
 
 static int
-bcrypto_dsa_sane_pubkey(const bcrypto_dsa_key_t *key) {
-  if (!bcrypto_dsa_sane_params(key))
+bcrypto_dsa_sane_pubkey(const struct dsa_params *params, const mpz_t y) {
+  if (!bcrypto_dsa_sane_params(params))
     return 0;
 
-  size_t pb = bcrypto_count_bits(key->pd, key->pl);
-  size_t yb = bcrypto_count_bits(key->yd, key->yl);
+  size_t pb = dsa_mpz_bitlen(params->p);
+  size_t yb = dsa_mpz_bitlen(y);
 
   if (yb == 0 || yb > pb)
     return 0;
 
-  if (bcrypto_cmp(key->yd, key->yl, key->pd, key->pl) >= 0)
+  if (mpz_cmp(y, params->p) >= 0)
     return 0;
 
   return 1;
 }
 
 static int
-bcrypto_dsa_sane_privkey(const bcrypto_dsa_key_t *key) {
-  if (!bcrypto_dsa_sane_pubkey(key))
+bcrypto_dsa_sane_privkey(const struct dsa_params *params,
+                         const mpz_t y, const mpz_t x) {
+  if (!bcrypto_dsa_sane_pubkey(params, y))
     return 0;
 
-  size_t qb = bcrypto_count_bits(key->qd, key->ql);
-  size_t xb = bcrypto_count_bits(key->xd, key->xl);
+  size_t qb = dsa_mpz_bitlen(params->q);
+  size_t xb = dsa_mpz_bitlen(x);
 
   if (xb == 0 || xb > qb)
     return 0;
 
-  if (bcrypto_cmp(key->xd, key->xl, key->qd, key->ql) >= 0)
+  if (mpz_cmp(x, params->q) >= 0)
     return 0;
 
   return 1;
 }
 
 static int
-bcrypto_dsa_sane_compute(const bcrypto_dsa_key_t *key) {
-  if (key == NULL)
-    return 0;
-
-  size_t pb = bcrypto_count_bits(key->pd, key->pl);
-  size_t qb = bcrypto_count_bits(key->qd, key->ql);
-  size_t gb = bcrypto_count_bits(key->gd, key->gl);
-  size_t yb = bcrypto_count_bits(key->yd, key->yl);
-  size_t xb = bcrypto_count_bits(key->xd, key->xl);
+bcrypto_dsa_sane_compute(const struct dsa_params *params,
+                         const mpz_t y, const mpz_t x) {
+  size_t pb = dsa_mpz_bitlen(params->p);
+  size_t qb = dsa_mpz_bitlen(params->q);
+  size_t gb = dsa_mpz_bitlen(params->g);
+  size_t yb = dsa_mpz_bitlen(y);
+  size_t xb = dsa_mpz_bitlen(x);
 
   if (pb < BCRYPTO_DSA_MIN_BITS || pb > BCRYPTO_DSA_MAX_BITS)
     return 0;
@@ -175,10 +118,10 @@ bcrypto_dsa_sane_compute(const bcrypto_dsa_key_t *key) {
   if (gb < 2 || gb > pb)
     return 0;
 
-  if ((key->pd[key->pl - 1] & 1) == 0)
+  if (mpz_even_p(params->p))
     return 0;
 
-  if ((key->qd[key->ql - 1] & 1) == 0)
+  if (mpz_even_p(params->q))
     return 0;
 
   if (yb > pb)
@@ -187,1345 +130,920 @@ bcrypto_dsa_sane_compute(const bcrypto_dsa_key_t *key) {
   if (xb == 0 || xb > qb)
     return 0;
 
-  if (bcrypto_cmp(key->gd, key->gl, key->pd, key->pl) >= 0)
+  if (mpz_cmp(params->g, params->p) >= 0)
     return 0;
 
-  if (bcrypto_cmp(key->yd, key->yl, key->pd, key->pl) >= 0)
+  if (mpz_cmp(y, params->p) >= 0)
     return 0;
 
-  if (bcrypto_cmp(key->xd, key->xl, key->qd, key->ql) >= 0)
+  if (mpz_cmp(x, params->q) >= 0)
     return 0;
 
   return 1;
 }
 
 static int
-bcrypto_dsa_needs_compute(const bcrypto_dsa_key_t *key) {
-  if (key == NULL)
-    return 0;
-
-  return bcrypto_count_bits(key->yd, key->yl) == 0;
+bcrypto_dsa_needs_compute(const struct dsa_params *params, const mpz_t y) {
+  return dsa_mpz_bitlen(y) == 0;
 }
 
-static size_t
-bcrypto_dsa_subprime_size(const bcrypto_dsa_key_t *key) {
-  if (key == NULL)
-    return 0;
+#ifdef BCRYPTO_WASM
 
-  return (bcrypto_count_bits(key->qd, key->ql) + 7) / 8;
+#define READINT(n, p) do {                \
+  size = ((size_t)(p)[1] << 16) | (p)[0]; \
+  dsa_mpz_import((n), (p) + 2, size);     \
+  (p) += 2 + size;                        \
+} while (0)                               \
+
+static void
+bcrypto_dsa_key2dsa(struct dsa_params *out,
+                    mpz_t y, mpz_t x,
+                    const bcrypto_dsa_key_t *key,
+                    int mode) {
+  size_t size = 0;
+  uint8_t *p = key;
+
+  READINT(out->p, p);
+  READINT(out->q, p);
+  READINT(out->g, p);
+
+  if (mode == 1 || mode == 2)
+    READINT(y, p);
+
+  if (mode == 2)
+    READINT(x, p);
 }
 
-static DSA *
-bcrypto_dsa_key2dsa(const bcrypto_dsa_key_t *key, int mode) {
-  DSA *dsakey = NULL;
-  BIGNUM *p = NULL;
-  BIGNUM *q = NULL;
-  BIGNUM *g = NULL;
-  BIGNUM *y = NULL;
-  BIGNUM *x = NULL;
-
-  if (key == NULL)
-    goto fail;
-
-  if (mode < 0 || mode > 2)
-    goto fail;
-
-  dsakey = DSA_new();
-
-  if (dsakey == NULL)
-    goto fail;
-
-  p = BN_bin2bn(key->pd, key->pl, NULL);
-  q = BN_bin2bn(key->qd, key->ql, NULL);
-  g = BN_bin2bn(key->gd, key->gl, NULL);
-
-  if (p == NULL || q == NULL || g == NULL)
-    goto fail;
-
-  if (mode == 1 || mode == 2) {
-    y = BN_bin2bn(key->yd, key->yl, NULL);
-
-    if (y == NULL)
-      goto fail;
-  }
-
-  if (mode == 2) {
-    x = BN_bin2bn(key->xd, key->xl, BN_secure_new());
-
-    if (x == NULL)
-      goto fail;
-  }
-
-  if (!DSA_set0_pqg(dsakey, p, q, g))
-    goto fail;
-
-  p = NULL;
-  q = NULL;
-  g = NULL;
-
-  if (mode == 1 || mode == 2) {
-    if (!DSA_set0_key(dsakey, y, x))
-      goto fail;
-  }
-
-  y = NULL;
-  x = NULL;
-
-  return dsakey;
-
-fail:
-  if (dsakey != NULL)
-    DSA_free(dsakey);
-
-  if (p != NULL)
-    BN_free(p);
-
-  if (q != NULL)
-    BN_free(q);
-
-  if (g != NULL)
-    BN_free(g);
-
-  if (y != NULL)
-    BN_free(y);
-
-  if (x != NULL)
-    BN_clear_free(x);
-
-  return NULL;
-}
-
-static DSA *
-bcrypto_dsa_key2params(const bcrypto_dsa_key_t *params) {
-  return bcrypto_dsa_key2dsa(params, 0);
-}
-
-static DSA *
-bcrypto_dsa_key2pub(const bcrypto_dsa_key_t *pub) {
-  return bcrypto_dsa_key2dsa(pub, 1);
-}
-
-static DSA *
-bcrypto_dsa_key2priv(const bcrypto_dsa_key_t *priv) {
-  return bcrypto_dsa_key2dsa(priv, 2);
-}
-
-static bcrypto_dsa_key_t *
-bcrypto_dsa_dsa2key(const DSA *dsakey, int mode) {
-  bcrypto_dsa_key_t *key = NULL;
-  const BIGNUM *p = NULL;
-  const BIGNUM *q = NULL;
-  const BIGNUM *g = NULL;
-  const BIGNUM *y = NULL;
-  const BIGNUM *x = NULL;
-  uint8_t *slab = NULL;
-
-  if (dsakey == NULL)
-    goto fail;
-
-  if (mode < 0 || mode > 2)
-    goto fail;
-
-  key = (bcrypto_dsa_key_t *)malloc(sizeof(bcrypto_dsa_key_t));
-
-  if (key == NULL)
-    goto fail;
-
-  bcrypto_dsa_key_init(key);
-
-  DSA_get0_pqg(dsakey, &p, &q, &g);
-
-  if (p == NULL || q == NULL || g == NULL)
-    goto fail;
-
-  if (mode == 1 || mode == 2) {
-    DSA_get0_key(dsakey, &y, NULL);
-
-    if (y == NULL)
-      goto fail;
-  }
-
-  if (mode == 2) {
-    DSA_get0_key(dsakey, NULL, &x);
-
-    if (x == NULL)
-      goto fail;
-  }
-
-  size_t pl = (size_t)BN_num_bytes(p);
-  size_t ql = (size_t)BN_num_bytes(q);
-  size_t gl = (size_t)BN_num_bytes(g);
+static void
+bcrypto_dsa_dsa2key(bcrypto_dsa_key *out,
+                    const struct dsa_params *params,
+                    const mpz_t y, const mpz_t x,
+                    int mode) {
+  size_t pl = dsa_mpz_bytelen(params->p);
+  size_t ql = dsa_mpz_bytelen(params->q);
+  size_t gl = dsa_mpz_bytelen(params->g);
   size_t yl = 0;
   size_t xl = 0;
 
   if (mode == 1 || mode == 2)
-    yl = (size_t)BN_num_bytes(y);
+    yl = dsa_mpz_bytelen(y);
 
   if (mode == 2)
-    xl = (size_t)BN_num_bytes(x);
+    xl = dsa_mpz_bytelen(x);
+
+  *(out++) = pl & 0xff;
+  *(out++) = pl >> 8;
+  dsa_mpz_export(out, NULL, params->p);
+  out += dsa_mpz_bytelen(params->p);
+
+  *(out++) = ql & 0xff;
+  *(out++) = ql >> 8;
+  dsa_mpz_export(out, NULL, params->q);
+  out += dsa_mpz_bytelen(params->q);
+
+  *(out++) = gl & 0xff;
+  *(out++) = gl >> 8;
+  dsa_mpz_export(out, NULL, params->g);
+  out += dsa_mpz_bytelen(params->g);
+
+  if (mode == 1 || mode == 2) {
+    *(out++) = yl & 0xff;
+    *(out++) = yl >> 8;
+    dsa_mpz_export(out, NULL, y);
+    out += dsa_mpz_bytelen(y);
+  }
+
+  if (mode == 2) {
+    *(out++) = xl & 0xff;
+    *(out++) = xl >> 8;
+    dsa_mpz_export(out, NULL, x);
+    out += dsa_mpz_bytelen(x);
+  }
+}
+
+#else
+
+static void
+bcrypto_dsa_key2dsa(struct dsa_params *out,
+                    mpz_t y, mpz_t x,
+                    const bcrypto_dsa_key_t *key,
+                    int mode) {
+  dsa_mpz_import(out->p, key->pd, key->pl);
+  dsa_mpz_import(out->q, key->qd, key->ql);
+  dsa_mpz_import(out->g, key->gd, key->gl);
+
+  if (mode == 1 || mode == 2)
+    dsa_mpz_import(y, key->yd, key->yl);
+
+  if (mode == 2)
+    dsa_mpz_import(x, key->xd, key->xl);
+}
+
+static void
+bcrypto_dsa_dsa2key(bcrypto_dsa_key_t *out,
+                    const struct dsa_params *params,
+                    const mpz_t y, const mpz_t x,
+                    int mode) {
+  uint8_t *slab = NULL;
+  size_t pl = dsa_mpz_bytelen(params->p);
+  size_t ql = dsa_mpz_bytelen(params->q);
+  size_t gl = dsa_mpz_bytelen(params->g);
+  size_t yl = 0;
+  size_t xl = 0;
+
+  if (mode == 1 || mode == 2)
+    yl = dsa_mpz_bytelen(y);
+
+  if (mode == 2)
+    xl = dsa_mpz_bytelen(x);
 
   size_t size = pl + ql + gl + yl + xl;
   size_t pos = 0;
 
   /* Align. */
-  size += 8 - (size & 7);
+  if (size & 7)
+    size += 8 - (size & 7);
 
   slab = (uint8_t *)malloc(size);
+  assert(slab != NULL);
 
-  if (slab == NULL)
-    goto fail;
+  out->slab = slab;
 
-  key->slab = slab;
-
-  key->pd = (uint8_t *)&slab[pos];
-  key->pl = pl;
+  out->pd = (uint8_t *)&slab[pos];
+  out->pl = pl;
   pos += pl;
 
-  key->qd = (uint8_t *)&slab[pos];
-  key->ql = ql;
+  out->qd = (uint8_t *)&slab[pos];
+  out->ql = ql;
   pos += ql;
 
-  key->gd = (uint8_t *)&slab[pos];
-  key->gl = gl;
+  out->gd = (uint8_t *)&slab[pos];
+  out->gl = gl;
   pos += gl;
 
   if (mode == 1 || mode == 2) {
-    key->yd = (uint8_t *)&slab[pos];
-    key->yl = yl;
+    out->yd = (uint8_t *)&slab[pos];
+    out->yl = yl;
     pos += yl;
   }
 
   if (mode == 2) {
-    key->xd = (uint8_t *)&slab[pos];
-    key->xl = xl;
+    out->xd = (uint8_t *)&slab[pos];
+    out->xl = xl;
     pos += xl;
   }
 
-  assert(BN_bn2bin(p, key->pd) != -1);
-  assert(BN_bn2bin(q, key->qd) != -1);
-  assert(BN_bn2bin(g, key->gd) != -1);
+  dsa_mpz_export(out->pd, NULL, params->p);
+  dsa_mpz_export(out->qd, NULL, params->q);
+  dsa_mpz_export(out->gd, NULL, params->g);
 
   if (mode == 1 || mode == 2)
-    assert(BN_bn2bin(y, key->yd) != -1);
+    dsa_mpz_export(out->yd, NULL, y);
 
   if (mode == 2)
-    assert(BN_bn2bin(x, key->xd) != -1);
-
-  return key;
-
-fail:
-  if (key != NULL)
-    bcrypto_dsa_key_free(key);
-
-  return NULL;
+    dsa_mpz_export(out->xd, NULL, x);
 }
 
-static bcrypto_dsa_key_t *
-bcrypto_dsa_params2key(const DSA *dsaparams) {
-  return bcrypto_dsa_dsa2key(dsaparams, 0);
+static size_t
+bcrypto_count_bytes(const uint8_t *data, size_t len) {
+  size_t i = 0;
+
+  for (; i < len; i++) {
+    if (data[i] != 0)
+      break;
+  }
+
+  return len - i;
 }
 
-static bcrypto_dsa_key_t *
-bcrypto_dsa_pub2key(const DSA *dsakey) {
-  return bcrypto_dsa_dsa2key(dsakey, 1);
+void
+bcrypto_dsa_key_init(bcrypto_dsa_key_t *key) {
+  memset((void *)key, 0x00, sizeof(bcrypto_dsa_key_t));
+  key->slab = NULL;
 }
 
-static bcrypto_dsa_key_t *
-bcrypto_dsa_priv2key(const DSA *dsakey) {
-  return bcrypto_dsa_dsa2key(dsakey, 2);
+void
+bcrypto_dsa_key_uninit(bcrypto_dsa_key_t *key) {
+  if (key->slab != NULL) {
+    free(key->slab);
+    key->slab = NULL;
+  }
 }
 
-static DSA_SIG *
-bcrypto_dsa_rs2sig(const uint8_t *sig, size_t sig_len) {
-  DSA_SIG *dsasig = NULL;
-  size_t size = 0;
-  BIGNUM *r = NULL;
-  BIGNUM *s = NULL;
+size_t
+bcrypto_dsa_key_psize(const bcrypto_dsa_key_t *key) {
+  size_t size = bcrypto_count_bytes(key->pd, key->pl);
 
-  if (sig == NULL || sig_len == 0)
-    goto fail;
+  if (size < BCRYPTO_DSA_MIN_FIELD_SIZE || size > BCRYPTO_DSA_MAX_FIELD_SIZE)
+    return 0;
 
-  dsasig = DSA_SIG_new();
+  return size;
+}
 
-  if (dsasig == NULL)
-    goto fail;
+size_t
+bcrypto_dsa_key_qsize(const bcrypto_dsa_key_t *key) {
+  size_t size = bcrypto_count_bytes(key->qd, key->ql);
 
-  size = sig_len >> 1;
-  r = BN_bin2bn(&sig[0], size, NULL);
+  if (size < BCRYPTO_DSA_MIN_SCALAR_SIZE || size > BCRYPTO_DSA_MAX_SCALAR_SIZE)
+    return 0;
 
-  if (r == NULL)
-    goto fail;
+  return size;
+}
 
-  s = BN_bin2bn(&sig[size], size, NULL);
+size_t
+bcrypto_dsa_sig_size(const bcrypto_dsa_key_t *key) {
+  return bcrypto_dsa_key_qsize(key) * 2;
+}
 
-  if (s == NULL)
-    goto fail;
+size_t
+bcrypto_dsa_der_size(const bcrypto_dsa_key_t *key) {
+  return 9 + bcrypto_dsa_key_qsize(key) * 2;
+}
 
-  if (!DSA_SIG_set0(dsasig, r, s))
-    goto fail;
+#endif
 
-  return dsasig;
+static void
+bcrypto_dsa_key2params(struct dsa_params *out, const bcrypto_dsa_key_t *key) {
+  mpz_t y, x; /* unused */
+  return bcrypto_dsa_key2dsa(out, y, x, key, 0);
+}
 
-fail:
-  if (dsasig != NULL)
-    DSA_SIG_free(dsasig);
+static void
+bcrypto_dsa_key2pub(struct dsa_params *out, mpz_t y,
+                    const bcrypto_dsa_key_t *key) {
+  mpz_t x; /* unused */
+  return bcrypto_dsa_key2dsa(out, y, x, key, 1);
+}
 
-  if (r != NULL)
-    BN_free(r);
+static void
+bcrypto_dsa_key2priv(struct dsa_params *out,
+                     mpz_t y, mpz_t x,
+                     const bcrypto_dsa_key_t *key) {
+  return bcrypto_dsa_key2dsa(out, y, x, key, 2);
+}
 
-  if (s != NULL)
-    BN_free(s);
+static void
+bcrypto_dsa_params2key(bcrypto_dsa_key_t *out,
+                       const struct dsa_params *params) {
+  mpz_t y, x; /* unused */
+  return bcrypto_dsa_dsa2key(out, params, y, x, 0);
+}
 
-  return NULL;
+static void
+bcrypto_dsa_pub2key(bcrypto_dsa_key_t *out,
+                    const struct dsa_params *params,
+                    const mpz_t y) {
+  mpz_t x; /* unused */
+  return bcrypto_dsa_dsa2key(out, params, y, x, 1);
+}
+
+static void
+bcrypto_dsa_priv2key(bcrypto_dsa_key_t *out,
+                     const struct dsa_params *params,
+                     const mpz_t y, const mpz_t x) {
+  return bcrypto_dsa_dsa2key(out, params, y, x, 2);
+}
+
+static void
+bcrypto_dsa_rs2sig(struct dsa_signature *out,
+                   const uint8_t *sig, size_t sig_len) {
+  dsa_mpz_import(out->r, &sig[0], sig_len >> 1);
+  dsa_mpz_import(out->s, &sig[sig_len >> 1], sig_len >> 1);
+}
+
+static void
+bcrypto_dsa_sig2rs(uint8_t *out,
+                   const struct dsa_signature *sig,
+                   size_t qsize) {
+  dsa_mpz_pad(&out[0], qsize, sig->r);
+  dsa_mpz_pad(&out[qsize], qsize, sig->s);
 }
 
 static int
-bcrypto_dsa_sig2rs(uint8_t **out,
-                   size_t *out_len,
-                   const DSA *dsakey,
-                   const DSA_SIG *dsasig) {
-  uint8_t *raw = NULL;
-  const BIGNUM *r = NULL;
-  const BIGNUM *s = NULL;
-  const BIGNUM *q = NULL;
-  int bits = 0;
-  size_t size = 0;
+bcrypto_dsa_der2sig(struct dsa_signature *out,
+                    const uint8_t *raw, size_t raw_len,
+                    size_t qsize) {
+  size_t rpos, rlen, spos, slen;
+  size_t pos = 0;
+  size_t lenbyte;
+  int overflow = 0;
 
-  DSA_SIG_get0(dsasig, &r, &s);
+  mpz_set_ui(out->r, 0);
+  mpz_set_ui(out->s, 0);
 
-  assert(r != NULL && s != NULL);
+  /* Sequence tag byte */
+  if (pos == raw_len || raw[pos] != 0x30)
+    return 0;
 
-  DSA_get0_pqg(dsakey, NULL, &q, NULL);
+  pos++;
 
-  assert(q != NULL);
+  /* Sequence length bytes */
+  if (pos == raw_len)
+    return 0;
 
-  bits = BN_num_bits(q);
-  size = ((size_t)bits + 7) / 8;
+  lenbyte = raw[pos++];
 
-  assert((size_t)BN_num_bytes(r) <= size);
-  assert((size_t)BN_num_bytes(s) <= size);
+  if (lenbyte & 0x80) {
+    lenbyte -= 0x80;
 
-  raw = (uint8_t *)malloc(size * 2);
+    if (pos + lenbyte > raw_len)
+      return 0;
 
-  if (raw == NULL)
-    goto fail;
+    pos += lenbyte;
+  }
 
-  assert(BN_bn2binpad(r, &raw[0], size) > 0);
-  assert(BN_bn2binpad(s, &raw[size], size) > 0);
+  /* Integer tag byte for R */
+  if (pos == raw_len || raw[pos] != 0x02)
+    return 0;
 
-  *out = raw;
-  *out_len = size * 2;
+  pos++;
+
+  /* Integer length for R */
+  if (pos == raw_len)
+    return 0;
+
+  lenbyte = raw[pos++];
+
+  if (lenbyte & 0x80) {
+    lenbyte -= 0x80;
+
+    if (pos + lenbyte > raw_len)
+      return 0;
+
+    while (lenbyte > 0 && raw[pos] == 0) {
+      pos++;
+      lenbyte--;
+    }
+
+    if (lenbyte >= sizeof(size_t))
+      return 0;
+
+    rlen = 0;
+
+    while (lenbyte > 0) {
+      rlen = (rlen << 8) + raw[pos];
+      pos++;
+      lenbyte--;
+    }
+  } else {
+    rlen = lenbyte;
+  }
+
+  if (rlen > raw_len - pos)
+    return 0;
+
+  rpos = pos;
+  pos += rlen;
+
+  /* Integer tag byte for S */
+  if (pos == raw_len || raw[pos] != 0x02)
+    return 0;
+
+  pos++;
+
+  /* Integer length for S */
+  if (pos == raw_len)
+    return 0;
+
+  lenbyte = raw[pos++];
+
+  if (lenbyte & 0x80) {
+    lenbyte -= 0x80;
+
+    if (pos + lenbyte > raw_len)
+      return 0;
+
+    while (lenbyte > 0 && raw[pos] == 0) {
+      pos++;
+      lenbyte--;
+    }
+
+    if (lenbyte >= sizeof(size_t))
+      return 0;
+
+    slen = 0;
+
+    while (lenbyte > 0) {
+      slen = (slen << 8) + raw[pos];
+      pos++;
+      lenbyte--;
+    }
+  } else {
+    slen = lenbyte;
+  }
+
+  if (slen > raw_len - pos)
+    return 0;
+
+  spos = pos;
+  pos += slen;
+
+  /* Ignore leading zeroes in R */
+  while (rlen > 0 && raw[rpos] == 0) {
+    rlen--;
+    rpos++;
+  }
+
+  /* Copy R value */
+  if (rlen > qsize)
+    overflow = 1;
+  else
+    dsa_mpz_import(out->r, raw + rpos, rlen);
+
+  /* Ignore leading zeroes in S */
+  while (slen > 0 && raw[spos] == 0) {
+    slen--;
+    spos++;
+  }
+
+  /* Copy S value */
+  if (slen > qsize)
+    overflow = 1;
+  else
+    dsa_mpz_import(out->s, raw + spos, slen);
+
+  if (overflow) {
+    mpz_set_ui(out->r, 0);
+    mpz_set_ui(out->s, 0);
+  }
 
   return 1;
-
-fail:
-  if (raw != NULL)
-    free(raw);
-
-  return 0;
 }
 
 static int
-mod_exp_const(BIGNUM *r,
-              const BIGNUM *a, const BIGNUM *p,
-              const BIGNUM *m, BN_CTX *ctx) {
-  BIGNUM *c = BN_secure_new();
+bcrypto_dsa_sig2der(uint8_t *out,
+                    size_t *out_len,
+                    const struct dsa_signature *sig,
+                    size_t qsize) {
+  size_t rlen = dsa_mpz_bytelen(sig->r);
+  size_t slen = dsa_mpz_bytelen(sig->s);
 
-  if (c == NULL)
-    goto fail;
+  if (qsize >= 0x7d)
+    return 0;
 
-  /* We shouldn't modify the constant time BN. */
-  assert(r != p);
+  if (rlen > qsize || slen > qsize)
+    return 0;
 
-  BN_with_flags(c, p, BN_FLG_CONSTTIME);
+  rlen += mpz_tstbit(sig->r, rlen * 8 - 1);
+  slen += mpz_tstbit(sig->s, slen * 8 - 1);
 
-  if (!BN_mod_exp(r, a, c, m, ctx))
-    goto fail;
+  size_t seq = 2 + rlen + 2 + slen;
+  size_t wide = seq >= 0x80 ? 1 : 0;
+  size_t len = 2 + wide + seq;
 
-  /* Note: calling BN_clear_free in combination
-     with BN_with_flags seems to cause breakage. */
-  BN_free(c);
+  // if (len > *out_len)
+  //   return 0;
+
+  *(out++) = 0x30;
+
+  if (wide)
+    *(out++) = 0x81;
+
+  *(out++) = seq;
+  *(out++) = 0x02;
+  *(out++) = rlen;
+
+  dsa_mpz_pad(out, rlen, sig->r);
+  out += rlen;
+
+  *(out++) = 0x02;
+  *(out++) = slen;
+
+  dsa_mpz_pad(out, slen, sig->s);
+  out += slen;
+
+  *out_len = len;
 
   return 1;
-
-fail:
-  if (c != NULL)
-    BN_free(c);
-
-  return 0;
 }
 
-bcrypto_dsa_key_t *
-bcrypto_dsa_params_generate(int bits) {
-  DSA *dsaparams = NULL;
-  bcrypto_dsa_key_t *params = NULL;
+int
+bcrypto_dsa_params_generate(bcrypto_dsa_key_t *out, int bits) {
+  int result = 0;
+  struct dsa_params params;
+  unsigned int qbits = bits < 2048 ? 160 : 256; /* OpenSSL behavior. */
+
+  dsa_params_init(&params);
 
   if (bits < BCRYPTO_DSA_MIN_BITS || bits > BCRYPTO_DSA_MAX_BITS)
     goto fail;
 
-  dsaparams = DSA_new();
-
-  if (dsaparams == NULL)
+  if (!dsa_generate_params(&params, NULL,
+                           (nettle_random_func *)bcrypto_rng,
+                           NULL, NULL, bits, qbits)) {
     goto fail;
+  }
 
-  bcrypto_poll();
-
-  if (!DSA_generate_parameters_ex(dsaparams, bits, NULL, 0, NULL, NULL, NULL))
-    goto fail;
-
-  params = bcrypto_dsa_params2key(dsaparams);
-
-  if (params == NULL)
-    goto fail;
-
-  DSA_free(dsaparams);
-
-  return params;
-
+  bcrypto_dsa_params2key(out, &params);
+  result = 1;
 fail:
-  if (dsaparams != NULL)
-    DSA_free(dsaparams);
-
-  return NULL;
+  dsa_params_clear(&params);
+  return result;
 }
 
 int
-bcrypto_dsa_params_verify(const bcrypto_dsa_key_t *params) {
-  DSA *dsaparams = NULL;
-  const BIGNUM *p = NULL;
-  const BIGNUM *q = NULL;
-  const BIGNUM *g = NULL;
-  BN_CTX *ctx = NULL;
-  BIGNUM *x = NULL;
+bcrypto_dsa_params_verify(const bcrypto_dsa_key_t *key) {
+  int result = 0;
+  struct dsa_params params;
+  mpz_t x;
 
-  if (!bcrypto_dsa_sane_params(params))
-    goto fail;
+  dsa_params_init(&params);
+  mpz_init(x);
 
-  dsaparams = bcrypto_dsa_key2params(params);
+  bcrypto_dsa_key2params(&params, key);
 
-  if (dsaparams == NULL)
-    goto fail;
-
-  DSA_get0_pqg(dsaparams, &p, &q, &g);
-  assert(p != NULL && q != NULL && g != NULL);
-
-  ctx = BN_CTX_new();
-  x = BN_new();
-
-  if (ctx == NULL || x == NULL)
+  if (!bcrypto_dsa_sane_params(&params))
     goto fail;
 
   /* x = g^q mod p */
-  if (!BN_mod_exp(x, g, q, p, ctx))
-    goto fail;
+  mpz_powm(x, params.g, params.q, params.p);
 
   /* x != 1 */
-  if (!BN_is_one(x))
+  if (mpz_cmp_ui(x, 1) != 0)
     goto fail;
 
-  DSA_free(dsaparams);
-  BN_CTX_free(ctx);
-  BN_free(x);
-
-  return 1;
-
+  result = 1;
 fail:
-  if (dsaparams != NULL)
-    DSA_free(dsaparams);
-
-  if (ctx != NULL)
-    BN_CTX_free(ctx);
-
-  if (x != NULL)
-    BN_free(x);
-
-  return 0;
+  dsa_params_clear(&params);
+  mpz_clear(x);
+  return result;
 }
 
 int
-bcrypto_dsa_params_export(uint8_t **out,
+bcrypto_dsa_params_export(uint8_t *out,
                           size_t *out_len,
-                          const bcrypto_dsa_key_t *params) {
-  DSA *dsaparams = NULL;
-  uint8_t *buf = NULL;
-  int len = 0;
-
-  if (!bcrypto_dsa_sane_params(params))
-    return 0;
-
-  dsaparams = bcrypto_dsa_key2params(params);
-
-  if (dsaparams == NULL)
-    return 0;
-
-  buf = NULL;
-  len = i2d_DSAparams(dsaparams, &buf);
-
-  DSA_free(dsaparams);
-
-  if (len <= 0)
-    return 0;
-
-  FIX_BORINGSSL(buf, len);
-
-  *out = buf;
-  *out_len = (size_t)len;
-
-  return 1;
-}
-
-bcrypto_dsa_key_t *
-bcrypto_dsa_params_import(const uint8_t *raw, size_t raw_len) {
-  DSA *dsaparams = NULL;
-  const uint8_t *p = raw;
-  bcrypto_dsa_key_t *params = NULL;
-
-  if (d2i_DSAparams(&dsaparams, &p, raw_len) == NULL)
-    goto fail;
-
-  params = bcrypto_dsa_params2key(dsaparams);
-
-  if (params == NULL)
-    goto fail;
-
-#if 0
-  if (!bcrypto_dsa_sane_params(params))
-    goto fail;
-#endif
-
-  DSA_free(dsaparams);
-
-  return params;
-
-fail:
-  if (dsaparams != NULL)
-    DSA_free(dsaparams);
-
-  if (params != NULL)
-    bcrypto_dsa_key_free(params);
-
-  return NULL;
-}
-
-bcrypto_dsa_key_t *
-bcrypto_dsa_privkey_create(const bcrypto_dsa_key_t *params) {
-  DSA *dsakey = NULL;
-  bcrypto_dsa_key_t *priv = NULL;
-
-  if (!bcrypto_dsa_sane_params(params))
-    goto fail;
-
-  dsakey = bcrypto_dsa_key2params(params);
-
-  if (dsakey == NULL)
-    goto fail;
-
-  bcrypto_poll();
-
-  if (!DSA_generate_key(dsakey))
-    goto fail;
-
-  priv = bcrypto_dsa_priv2key(dsakey);
-
-  if (priv == NULL)
-    goto fail;
-
-  DSA_free(dsakey);
-
-  return priv;
-
-fail:
-  if (dsakey != NULL)
-    DSA_free(dsakey);
-
-  return NULL;
+                          const bcrypto_dsa_key_t *key) {
+  return 0;
 }
 
 int
-bcrypto_dsa_privkey_compute(uint8_t **out,
-                            size_t *out_len,
-                            const bcrypto_dsa_key_t *priv) {
-  BN_CTX *ctx = NULL;
-  BIGNUM *p = NULL;
-  BIGNUM *g = NULL;
-  BIGNUM *y = NULL;
-  BIGNUM *x = NULL;
-  size_t size = 0;
-  uint8_t *raw = NULL;
-
-  if (!bcrypto_dsa_sane_compute(priv))
-    goto fail;
-
-  if (!bcrypto_dsa_needs_compute(priv)) {
-    *out = NULL;
-    out_len = 0;
-    return 1;
-  }
-
-  ctx = BN_CTX_new();
-  p = BN_bin2bn(priv->pd, priv->pl, NULL);
-  g = BN_bin2bn(priv->gd, priv->gl, NULL);
-  y = BN_new();
-  x = BN_bin2bn(priv->xd, priv->xl, BN_secure_new());
-
-  if (ctx == NULL
-      || p == NULL
-      || g == NULL
-      || y == NULL
-      || x == NULL) {
-    goto fail;
-  }
-
-  if (!mod_exp_const(y, g, x, p, ctx))
-    goto fail;
-
-  size = (size_t)BN_num_bytes(y);
-  raw = (uint8_t *)malloc(size);
-
-  if (raw == NULL)
-    goto fail;
-
-  assert(BN_bn2bin(y, raw) != -1);
-
-  BN_CTX_free(ctx);
-  BN_free(p);
-  BN_free(g);
-  BN_free(y);
-  BN_clear_free(x);
-
-  *out = raw;
-  *out_len = size;
-
-  return 1;
-
-fail:
-  if (ctx != NULL)
-    BN_CTX_free(ctx);
-
-  if (p != NULL)
-    BN_free(p);
-
-  if (g != NULL)
-    BN_free(g);
-
-  if (y != NULL)
-    BN_free(y);
-
-  if (x != NULL)
-    BN_clear_free(x);
-
+bcrypto_dsa_params_import(bcrypto_dsa_key_t *out,
+                          const uint8_t *raw, size_t raw_len) {
   return 0;
+}
+
+int
+bcrypto_dsa_privkey_create(bcrypto_dsa_key_t *out,
+                           const bcrypto_dsa_key_t *key) {
+  int result = 0;
+  struct dsa_params params;
+  mpz_t y, x;
+
+  dsa_params_init(&params);
+  mpz_init(y);
+  mpz_init(x);
+
+  bcrypto_dsa_key2params(&params, key);
+
+  if (!bcrypto_dsa_sane_params(&params))
+    goto fail;
+
+  dsa_generate_keypair(&params, y, x, NULL, (nettle_random_func *)bcrypto_rng);
+
+  bcrypto_dsa_priv2key(out, &params, y, x);
+  result = 1;
+fail:
+  dsa_params_clear(&params);
+  mpz_clear(y);
+  mpz_clear(x);
+  return result;
+}
+
+static void
+dsa_pow_blind(mpz_t out,
+              const mpz_t y, const mpz_t x,
+              const mpz_t p, const mpz_t q) {
+  /* Idea: exponentiate by scalar with a
+     blinding factor, similar to how we
+     blind multiplications in EC. */
+  /* TODO: Optimize. */
+  mpz_t tmp, blind, unblind, scalar, blinded;
+  mpz_init(tmp);
+  mpz_init(blind);
+  mpz_init(unblind);
+  mpz_init(scalar);
+  mpz_init(blinded);
+
+  /* blind := rand(1..q-1) */
+  mpz_sub_ui(tmp, q, 1);
+  nettle_mpz_random(blind, NULL, bcrypto_rng, tmp);
+  mpz_add_ui(blind, blind, 1);
+  mpz_add_ui(tmp, tmp, 1);
+
+  /* unblind := y^(-blind mod q) mod p */
+  mpz_sub(tmp, tmp, blind);
+  mpz_powm(unblind, y, tmp, p);
+
+  /* scalar := (x + blind) mod q */
+  mpz_add(scalar, x, blind);
+  mpz_mod(scalar, scalar, q);
+
+  /* blinded := y^scalar mod p */
+  mpz_powm(blinded, y, scalar, p);
+
+  /* secret := (blinded * unblind) mod p */
+  mpz_mul(out, blinded, unblind);
+  mpz_mod(out, out, p);
+
+  mpz_clear(tmp);
+  mpz_clear(blind);
+  mpz_clear(unblind);
+  mpz_clear(scalar);
+  mpz_clear(blinded);
+}
+
+int
+bcrypto_dsa_privkey_compute(uint8_t *out,
+                            size_t *out_len,
+                            const bcrypto_dsa_key_t *key) {
+  int result = 0;
+  struct dsa_params params;
+  mpz_t y, x;
+
+  dsa_params_init(&params);
+  mpz_init(y);
+  mpz_init(x);
+
+  bcrypto_dsa_key2priv(&params, y, x, key);
+
+  if (!bcrypto_dsa_sane_compute(&params, y, x))
+    goto fail;
+
+  if (!bcrypto_dsa_needs_compute(&params, y)) {
+    result = 2;
+    goto fail;
+  }
+
+  /* y = g^x mod p */
+  dsa_pow_blind(y, params.g, x, params.p, params.q);
+
+  *out_len = dsa_mpz_bytelen(y);
+  dsa_mpz_export(out, NULL, y);
+
+  result = 1;
+fail:
+  dsa_params_clear(&params);
+  mpz_clear(y);
+  mpz_clear(x);
+  return result;
 }
 
 int
 bcrypto_dsa_privkey_verify(const bcrypto_dsa_key_t *key) {
-  DSA *dsakey = NULL;
-  const BIGNUM *p = NULL;
-  const BIGNUM *g = NULL;
-  const BIGNUM *x = NULL;
-  const BIGNUM *y = NULL;
-  BN_CTX *ctx = NULL;
-  BIGNUM *y2 = NULL;
+  int result = 0;
+  struct dsa_params params;
+  mpz_t y, x, t;
 
-  if (!bcrypto_dsa_sane_privkey(key))
+  dsa_params_init(&params);
+  mpz_init(y);
+  mpz_init(x);
+  mpz_init(t);
+
+  bcrypto_dsa_key2priv(&params, y, x, key);
+
+  if (!bcrypto_dsa_sane_privkey(&params, y, x))
     goto fail;
 
-  if (!bcrypto_dsa_pubkey_verify(key))
+  /* t = g^q mod p */
+  mpz_powm(t, params.g, params.q, params.p);
+
+  /* t != 1 */
+  if (mpz_cmp_ui(t, 1) != 0)
     goto fail;
 
-  dsakey = bcrypto_dsa_key2priv(key);
+  /* t = g^x mod p */
+  dsa_pow_blind(t, params.g, x, params.p, params.q);
 
-  if (dsakey == NULL)
+  /* y != t */
+  if (mpz_cmp(t, y) != 0)
     goto fail;
 
-  DSA_get0_pqg(dsakey, &p, NULL, &g);
-  DSA_get0_key(dsakey, &y, &x);
-
-  assert(p != NULL && g != NULL);
-  assert(y != NULL && x != NULL);
-
-  ctx = BN_CTX_new();
-  y2 = BN_new();
-
-  if (ctx == NULL || y2 == NULL)
-    goto fail;
-
-  /* y = g^x mod p */
-  if (!mod_exp_const(y2, g, x, p, ctx))
-    goto fail;
-
-  /* y2 == y1 */
-  if (BN_cmp(y2, y) != 0)
-    goto fail;
-
-  DSA_free(dsakey);
-  BN_CTX_free(ctx);
-  BN_free(y2);
-
-  return 1;
-
+  result = 1;
 fail:
-  if (dsakey != NULL)
-    DSA_free(dsakey);
-
-  if (ctx != NULL)
-    BN_CTX_free(ctx);
-
-  if (y2 != NULL)
-    BN_free(y2);
-
-  return 0;
+  dsa_params_clear(&params);
+  mpz_clear(y);
+  mpz_clear(x);
+  mpz_clear(t);
+  return result;
 }
 
 int
-bcrypto_dsa_privkey_export(uint8_t **out,
+bcrypto_dsa_privkey_export(uint8_t *out,
                            size_t *out_len,
-                           const bcrypto_dsa_key_t *priv) {
-  DSA *dsakey = NULL;
-  uint8_t *buf = NULL;
-  int len = 0;
-
-  if (!bcrypto_dsa_sane_privkey(priv))
-    return 0;
-
-  dsakey = bcrypto_dsa_key2priv(priv);
-
-  if (dsakey == NULL)
-    return 0;
-
-  buf = NULL;
-  len = i2d_DSAPrivateKey(dsakey, &buf);
-
-  DSA_free(dsakey);
-
-  if (len <= 0)
-    return 0;
-
-  FIX_BORINGSSL(buf, len);
-
-  *out = buf;
-  *out_len = (size_t)len;
-
-  return 1;
-}
-
-bcrypto_dsa_key_t *
-bcrypto_dsa_privkey_import(const uint8_t *raw, size_t raw_len) {
-  DSA *dsakey = NULL;
-  const uint8_t *p = raw;
-  bcrypto_dsa_key_t *key = NULL;
-
-  if (d2i_DSAPrivateKey(&dsakey, &p, raw_len) == NULL)
-    goto fail;
-
-  key = bcrypto_dsa_priv2key(dsakey);
-
-  if (key == NULL)
-    goto fail;
-
-#if 0
-  if (!bcrypto_dsa_sane_privkey(key))
-    goto fail;
-#endif
-
-  DSA_free(dsakey);
-
-  return key;
-
-fail:
-  if (dsakey != NULL)
-    DSA_free(dsakey);
-
-  if (key != NULL)
-    bcrypto_dsa_key_free(key);
-
-  return NULL;
-}
-
-int
-bcrypto_dsa_privkey_export_pkcs8(uint8_t **out,
-                                 size_t *out_len,
-                                 const bcrypto_dsa_key_t *priv) {
-  /* https://github.com/openssl/openssl/blob/32f803d/crypto/dsa/dsa_ameth.c#L203 */
-  DSA *dsakey = NULL;
-  ASN1_STRING *params = NULL;
-  ASN1_INTEGER *prkey = NULL;
-  unsigned char *dp = NULL;
-  int dplen = 0;
-  const BIGNUM *priv_key = NULL;
-  PKCS8_PRIV_KEY_INFO *p8 = NULL;
-  uint8_t *buf = NULL;
-  int len = 0;
-
-  if (!bcrypto_dsa_sane_privkey(priv))
-    goto fail;
-
-  dsakey = bcrypto_dsa_key2priv(priv);
-
-  if (dsakey == NULL)
-    goto fail;
-
-  params = ASN1_STRING_new();
-
-  if (params == NULL)
-    goto fail;
-
-  params->length = i2d_DSAparams(dsakey, &params->data);
-
-  if (params->length <= 0)
-    goto fail;
-
-  params->type = V_ASN1_SEQUENCE;
-
-  DSA_get0_key(dsakey, NULL, &priv_key);
-
-  assert(priv_key != NULL);
-
-  prkey = BN_to_ASN1_INTEGER(priv_key, NULL);
-
-  if (prkey == NULL)
-    goto fail;
-
-  dp = NULL;
-  dplen = i2d_ASN1_INTEGER(prkey, &dp);
-
-  ASN1_STRING_clear_free(prkey);
-  prkey = NULL;
-
-  p8 = PKCS8_PRIV_KEY_INFO_new();
-
-  if (p8 == NULL)
-    goto fail;
-
-  if (!PKCS8_pkey_set0(p8, OBJ_nid2obj(NID_dsa), 0,
-                       V_ASN1_SEQUENCE, params, dp, dplen)) {
-    goto fail;
-  }
-
-  dp = NULL;
-  params = NULL;
-
-  buf = NULL;
-  len = i2d_PKCS8_PRIV_KEY_INFO(p8, &buf);
-
-  if (len <= 0)
-    goto fail;
-
-  FIX_BORINGSSL(buf, len);
-
-  *out = buf;
-  *out_len = (size_t)len;
-
-  DSA_free(dsakey);
-  PKCS8_PRIV_KEY_INFO_free(p8);
-
-  return 1;
-
-fail:
-  if (dsakey != NULL)
-    DSA_free(dsakey);
-
-  if (dp != NULL)
-    OPENSSL_free(dp);
-
-  if (params != NULL)
-    ASN1_STRING_free(params);
-
-  if (prkey != NULL)
-    ASN1_STRING_clear_free(prkey);
-
-  if (p8 != NULL)
-    PKCS8_PRIV_KEY_INFO_free(p8);
-
+                           const bcrypto_dsa_key_t *key) {
   return 0;
 }
 
-bcrypto_dsa_key_t *
-bcrypto_dsa_privkey_import_pkcs8(const uint8_t *raw, size_t raw_len) {
-  /* https://github.com/openssl/openssl/blob/32f803d/crypto/dsa/dsa_ameth.c#L137 */
-  const unsigned char *pt = NULL;
-  const unsigned char *pm = NULL;
-  int pklen = 0;
-  int pmlen = 0;
-  int ptype = 0;
-  const void *pval = NULL;
-  const ASN1_STRING *pstr = NULL;
-  const X509_ALGOR *palg = NULL;
-  const ASN1_OBJECT *palgoid = NULL;
-  PKCS8_PRIV_KEY_INFO *p8 = NULL;
-  ASN1_INTEGER *privkey = NULL;
-  DSA *dsakey = NULL;
-  BN_CTX *ctx = NULL;
-  BIGNUM *y = NULL;
-  BIGNUM *x = NULL;
-  const BIGNUM *p = NULL;
-  const BIGNUM *g = NULL;
-  bcrypto_dsa_key_t *key = NULL;
-  const uint8_t *pp = raw;
+int
+bcrypto_dsa_privkey_import(bcrypto_dsa_key_t *out,
+                           const uint8_t *raw, size_t raw_len) {
+  return 0;
+}
 
-  if (d2i_PKCS8_PRIV_KEY_INFO(&p8, &pp, raw_len) == NULL)
-    goto fail;
+int
+bcrypto_dsa_privkey_export_pkcs8(uint8_t *out,
+                                 size_t *out_len,
+                                 const bcrypto_dsa_key_t *key) {
+  return 0;
+}
 
-  if (!PKCS8_pkey_get0(NULL, &pt, &pklen, &palg, p8))
-    goto fail;
-
-  X509_ALGOR_get0(&palgoid, &ptype, &pval, palg);
-
-  if (OBJ_obj2nid(palgoid) != NID_dsa)
-    goto fail;
-
-  privkey = d2i_ASN1_INTEGER(NULL, &pt, pklen);
-
-  if (privkey == NULL)
-    goto fail;
-
-  if (privkey->type == V_ASN1_NEG_INTEGER || ptype != V_ASN1_SEQUENCE)
-    goto fail;
-
-  pstr = pval;
-  pm = pstr->data;
-  pmlen = pstr->length;
-
-  dsakey = d2i_DSAparams(NULL, &pm, pmlen);
-
-  if (dsakey == NULL)
-    goto fail;
-
-  ctx = BN_CTX_new();
-  y = BN_new();
-  x = BN_secure_new();
-
-  if (ctx == NULL || y == NULL || x == NULL)
-    goto fail;
-
-  if (!ASN1_INTEGER_to_BN(privkey, x))
-    goto fail;
-
-  DSA_get0_pqg(dsakey, &p, NULL, &g);
-
-  assert(p != NULL && g != NULL);
-
-  if (!mod_exp_const(y, g, x, p, ctx))
-    goto fail;
-
-  assert(DSA_set0_key(dsakey, y, x));
-
-  y = NULL;
-  x = NULL;
-
-  key = bcrypto_dsa_priv2key(dsakey);
-
-  if (key == NULL)
-    goto fail;
-
-#if 0
-  if (!bcrypto_dsa_sane_privkey(key))
-    goto fail;
-#endif
-
-  PKCS8_PRIV_KEY_INFO_free(p8);
-  DSA_free(dsakey);
-  ASN1_STRING_clear_free(privkey);
-  BN_CTX_free(ctx);
-
-  return key;
-
-fail:
-  if (p8 != NULL)
-    PKCS8_PRIV_KEY_INFO_free(p8);
-
-  if (dsakey != NULL)
-    DSA_free(dsakey);
-
-  if (privkey != NULL)
-    ASN1_STRING_clear_free(privkey);
-
-  if (ctx != NULL)
-    BN_CTX_free(ctx);
-
-  if (y != NULL)
-    BN_free(y);
-
-  if (x != NULL)
-    BN_clear_free(x);
-
-  if (key != NULL)
-    bcrypto_dsa_key_free(key);
-
-  return NULL;
+int
+bcrypto_dsa_privkey_import_pkcs8(bcrypto_dsa_key_t *key,
+                                 const uint8_t *raw, size_t raw_len) {
+  return 0;
 }
 
 int
 bcrypto_dsa_pubkey_verify(const bcrypto_dsa_key_t *key) {
-  int ret = 0;
-  DSA *dsakey = NULL;
-  const BIGNUM *p = NULL;
-  const BIGNUM *q = NULL;
-  const BIGNUM *y = NULL;
-  BN_CTX *ctx = NULL;
-  BIGNUM *x = NULL;
+  int result = 0;
+  struct dsa_params params;
+  mpz_t y, x;
 
-  if (!bcrypto_dsa_params_verify(key))
-    goto fail;
+  dsa_params_init(&params);
+  mpz_init(y);
+  mpz_init(x);
 
-  if (!bcrypto_dsa_sane_pubkey(key))
-    goto fail;
+  bcrypto_dsa_key2pub(&params, y, key);
 
-  dsakey = bcrypto_dsa_key2pub(key);
-
-  if (dsakey == NULL)
-    goto fail;
-
-  DSA_get0_pqg(dsakey, &p, &q, NULL);
-  DSA_get0_key(dsakey, &y, NULL);
-
-  assert(p != NULL && q != NULL);
-  assert(y != NULL);
-
-  ctx = BN_CTX_new();
-
-  if (ctx == NULL)
-    goto fail;
-
-  x = BN_new();
-
-  if (x == NULL)
+  if (!bcrypto_dsa_sane_pubkey(&params, y))
     goto fail;
 
   /* x := y^q mod p */
-  if (!BN_mod_exp(x, y, q, p, ctx))
+  mpz_powm(x, y, params.q, params.p);
+
+  if (mpz_cmp_ui(x, 1) != 0)
     goto fail;
 
-  if (!BN_is_one(x))
-    goto fail;
-
-  ret = 1;
+  result = 1;
 fail:
-  if (dsakey != NULL)
-    DSA_free(dsakey);
-
-  if (ctx != NULL)
-    BN_CTX_free(ctx);
-
-  if (x != NULL)
-    BN_free(x);
-
-  return ret;
+  dsa_params_clear(&params);
+  mpz_clear(y);
+  mpz_clear(x);
+  return result;
 }
 
 int
-bcrypto_dsa_pubkey_export(uint8_t **out,
+bcrypto_dsa_pubkey_export(uint8_t *out,
                           size_t *out_len,
-                          const bcrypto_dsa_key_t *pub) {
-  uint8_t *buf = NULL;
-  int len = 0;
-
-  if (!bcrypto_dsa_sane_pubkey(pub))
-    return 0;
-
-  DSA *dsakey = bcrypto_dsa_key2pub(pub);
-
-  if (dsakey == NULL)
-    return 0;
-
-  buf = NULL;
-  len = i2d_DSAPublicKey(dsakey, &buf);
-
-  DSA_free(dsakey);
-
-  if (len <= 0)
-    return 0;
-
-  FIX_BORINGSSL(buf, len);
-
-  *out = buf;
-  *out_len = (size_t)len;
-
-  return 1;
-}
-
-bcrypto_dsa_key_t *
-bcrypto_dsa_pubkey_import(const uint8_t *raw, size_t raw_len) {
-  DSA *dsakey = NULL;
-  const uint8_t *p = raw;
-  bcrypto_dsa_key_t *key = NULL;
-
-  if (d2i_DSAPublicKey(&dsakey, &p, raw_len) == NULL)
-    goto fail;
-
-  key = bcrypto_dsa_pub2key(dsakey);
-
-  if (key == NULL)
-    goto fail;
-
-#if 0
-  if (!bcrypto_dsa_sane_pubkey(key))
-    goto fail;
-#endif
-
-  DSA_free(dsakey);
-
-  return key;
-
-fail:
-  if (dsakey != NULL)
-    DSA_free(dsakey);
-
-  if (key != NULL)
-    bcrypto_dsa_key_free(key);
-
-  return NULL;
+                          const bcrypto_dsa_key_t *key) {
+  return 0;
 }
 
 int
-bcrypto_dsa_pubkey_export_spki(uint8_t **out,
+bcrypto_dsa_pubkey_import(bcrypto_dsa_key_t *out,
+                          const uint8_t *raw, size_t raw_len) {
+  return 0;
+}
+
+int
+bcrypto_dsa_pubkey_export_spki(uint8_t *out,
                                size_t *out_len,
-                               const bcrypto_dsa_key_t *pub) {
-  uint8_t *buf = NULL;
-  int len = 0;
-
-  if (!bcrypto_dsa_sane_pubkey(pub))
-    return 0;
-
-  DSA *dsakey = bcrypto_dsa_key2pub(pub);
-
-  if (dsakey == NULL)
-    return 0;
-
-  buf = NULL;
-  len = i2d_DSA_PUBKEY(dsakey, &buf);
-
-  DSA_free(dsakey);
-
-  if (len <= 0)
-    return 0;
-
-  FIX_BORINGSSL(buf, len);
-
-  *out = buf;
-  *out_len = (size_t)len;
-
-  return 1;
-}
-
-bcrypto_dsa_key_t *
-bcrypto_dsa_pubkey_import_spki(const uint8_t *raw, size_t raw_len) {
-  DSA *dsakey = NULL;
-  const uint8_t *p = raw;
-  bcrypto_dsa_key_t *key = NULL;
-
-  if (d2i_DSA_PUBKEY(&dsakey, &p, raw_len) == NULL)
-    goto fail;
-
-  key = bcrypto_dsa_pub2key(dsakey);
-
-  if (key == NULL)
-    goto fail;
-
-#if 0
-  if (!bcrypto_dsa_sane_pubkey(key))
-    goto fail;
-#endif
-
-  DSA_free(dsakey);
-
-  return key;
-
-fail:
-  if (dsakey != NULL)
-    DSA_free(dsakey);
-
-  if (key != NULL)
-    bcrypto_dsa_key_free(key);
-
-  return NULL;
+                               const bcrypto_dsa_key_t *key) {
+  return 0;
 }
 
 int
-bcrypto_dsa_sig_export(uint8_t **out,
+bcrypto_dsa_pubkey_import_spki(bcrypto_dsa_key_t *out,
+                               const uint8_t *raw, size_t raw_len) {
+  return 0;
+}
+
+int
+bcrypto_dsa_sig_export(uint8_t *out,
                        size_t *out_len,
                        const uint8_t *sig,
                        size_t sig_len,
                        size_t size) {
-  DSA_SIG *dsasig = NULL;
-  uint8_t *buf = NULL;
-  int len = 0;
+  int result = 0;
+  struct dsa_signature signature;
 
   if (size == 0)
     size = sig_len >> 1;
 
-  if (sig == NULL || sig_len != size * 2)
+  dsa_signature_init(&signature);
+
+  if (sig_len == 0 || (sig_len & 1))
     goto fail;
 
-  dsasig = bcrypto_dsa_rs2sig(sig, sig_len);
-
-  if (dsasig == NULL)
+  if (size != (sig_len >> 1))
     goto fail;
 
-  buf = NULL;
-  len = i2d_DSA_SIG(dsasig, &buf);
+  if (size > 66)
+    goto fail;
 
-  if (len <= 0)
-    return 0;
+  bcrypto_dsa_rs2sig(&signature, sig, sig_len);
 
-  FIX_BORINGSSL(buf, len);
+  if (!bcrypto_dsa_sig2der(out, out_len, &signature, size))
+    goto fail;
 
-  DSA_SIG_free(dsasig);
-
-  *out = buf;
-  *out_len = (size_t)len;
-
-  return 1;
-
+  result = 1;
 fail:
-  if (dsasig != NULL)
-    DSA_SIG_free(dsasig);
-
-  return 0;
+  dsa_signature_clear(&signature);
+  return result;
 }
 
 int
-bcrypto_dsa_sig_import(uint8_t **out,
-                       size_t *out_len,
+bcrypto_dsa_sig_import(uint8_t *out,
                        const uint8_t *sig,
                        size_t sig_len,
                        size_t size) {
-  DSA_SIG *dsasig = NULL;
-  const uint8_t *p = sig;
-  uint8_t *raw = NULL;
-  const BIGNUM *r = NULL;
-  const BIGNUM *s = NULL;
+  int result = 0;
+  struct dsa_signature signature;
 
-  if (sig == NULL || sig_len == 0)
+  dsa_signature_init(&signature);
+
+  if (sig_len == 0)
     goto fail;
 
-  if (d2i_DSA_SIG(&dsasig, &p, sig_len) == NULL)
+  if (size == 0 || size > 66)
     goto fail;
 
-  DSA_SIG_get0(dsasig, &r, &s);
-
-  assert(r != NULL && s != NULL);
-
-  if ((size_t)BN_num_bytes(r) > size)
+  if (!bcrypto_dsa_der2sig(&signature, sig, sig_len, size))
     goto fail;
 
-  if ((size_t)BN_num_bytes(s) > size)
-    goto fail;
-
-  raw = (uint8_t *)malloc(size * 2);
-
-  if (raw == NULL)
-    goto fail;
-
-  assert(BN_bn2binpad(r, &raw[0], size) > 0);
-  assert(BN_bn2binpad(s, &raw[size], size) > 0);
-
-  *out = raw;
-  *out_len = size * 2;
-
-  DSA_SIG_free(dsasig);
-
-  return 1;
-
+  bcrypto_dsa_sig2rs(out, &signature, size);
+  result = 1;
 fail:
-  if (dsasig != NULL)
-    DSA_SIG_free(dsasig);
-
-  return 0;
+  dsa_signature_clear(&signature);
+  return result;
 }
 
 int
-bcrypto_dsa_sign(uint8_t **out,
-                 size_t *out_len,
+bcrypto_dsa_sign(uint8_t *out,
                  const uint8_t *msg,
                  size_t msg_len,
-                 const bcrypto_dsa_key_t *priv) {
-  DSA *dsakey = NULL;
-  DSA_SIG *dsasig = NULL;
+                 const bcrypto_dsa_key_t *key) {
+  int result = 0;
+  struct dsa_params params;
+  struct dsa_signature signature;
+  mpz_t y, x;
 
-  if (!bcrypto_dsa_sane_privkey(priv))
+  dsa_params_init(&params);
+  dsa_signature_init(&signature);
+  mpz_init(y);
+  mpz_init(x);
+
+  bcrypto_dsa_key2priv(&params, y, x, key);
+
+  if (!bcrypto_dsa_sane_privkey(&params, y, x))
     goto fail;
 
-  dsakey = bcrypto_dsa_key2priv(priv);
-
-  if (dsakey == NULL)
+  if (!dsa_sign(&params, x, NULL,
+                (nettle_random_func *)bcrypto_rng,
+                msg_len, msg, &signature)) {
     goto fail;
+  }
 
-  bcrypto_poll();
+  bcrypto_dsa_sig2rs(out, &signature, dsa_mpz_bytelen(params.q));
 
-  dsasig = DSA_do_sign(msg, msg_len, dsakey);
-
-  if (dsasig == NULL)
-    goto fail;
-
-  if (!bcrypto_dsa_sig2rs(out, out_len, dsakey, dsasig))
-    goto fail;
-
-  DSA_free(dsakey);
-  DSA_SIG_free(dsasig);
-
-  return 1;
-
+  result = 1;
 fail:
-  if (dsakey != NULL)
-    DSA_free(dsakey);
-
-  if (dsasig != NULL)
-    DSA_SIG_free(dsasig);
-
-  return 0;
+  dsa_params_clear(&params);
+  dsa_signature_clear(&signature);
+  mpz_clear(y);
+  mpz_clear(x);
+  return result;
 }
 
 int
-bcrypto_dsa_sign_der(uint8_t **out,
+bcrypto_dsa_sign_der(uint8_t *out,
                      size_t *out_len,
                      const uint8_t *msg,
                      size_t msg_len,
-                     const bcrypto_dsa_key_t *priv) {
-  DSA *dsakey = NULL;
-  DSA_SIG *dsasig = NULL;
-  uint8_t *buf = NULL;
-  int len = 0;
+                     const bcrypto_dsa_key_t *key) {
+  int result = 0;
+  struct dsa_params params;
+  struct dsa_signature signature;
+  mpz_t y, x;
 
-  if (!bcrypto_dsa_sane_privkey(priv))
+  dsa_params_init(&params);
+  dsa_signature_init(&signature);
+  mpz_init(y);
+  mpz_init(x);
+
+  bcrypto_dsa_key2priv(&params, y, x, key);
+
+  if (!bcrypto_dsa_sane_privkey(&params, y, x))
     goto fail;
 
-  dsakey = bcrypto_dsa_key2priv(priv);
-
-  if (dsakey == NULL)
+  if (!dsa_sign(&params, x, NULL,
+                (nettle_random_func *)bcrypto_rng,
+                msg_len, msg, &signature)) {
     goto fail;
+  }
 
-  bcrypto_poll();
-
-  dsasig = DSA_do_sign(msg, msg_len, dsakey);
-
-  if (dsasig == NULL)
+  if (!bcrypto_dsa_sig2der(out, out_len, &signature,
+                           dsa_mpz_bytelen(params.q))) {
     goto fail;
+  }
 
-  buf = NULL;
-  len = i2d_DSA_SIG(dsasig, &buf);
-
-  if (len <= 0)
-    goto fail;
-
-  FIX_BORINGSSL(buf, len);
-
-  *out = buf;
-  *out_len = len;
-
-  DSA_free(dsakey);
-  DSA_SIG_free(dsasig);
-
-  return 1;
-
+  result = 1;
 fail:
-  if (dsakey != NULL)
-    DSA_free(dsakey);
-
-  if (dsasig != NULL)
-    DSA_SIG_free(dsasig);
-
-  return 0;
+  dsa_params_clear(&params);
+  dsa_signature_clear(&signature);
+  mpz_clear(y);
+  mpz_clear(x);
+  return result;
 }
 
 int
@@ -1533,45 +1051,45 @@ bcrypto_dsa_verify(const uint8_t *msg,
                    size_t msg_len,
                    const uint8_t *sig,
                    size_t sig_len,
-                   const bcrypto_dsa_key_t *pub) {
-  size_t qsize = 0;
-  DSA *dsakey = NULL;
-  DSA_SIG *dsasig = NULL;
+                   const bcrypto_dsa_key_t *key) {
+  int result = 0;
+  struct dsa_params params;
+  struct dsa_signature signature;
+  mpz_t y;
 
-  qsize = bcrypto_dsa_subprime_size(pub);
+  dsa_params_init(&params);
+  dsa_signature_init(&signature);
+  mpz_init(y);
 
-  if (sig == NULL || sig_len != qsize * 2)
+  bcrypto_dsa_key2pub(&params, y, key);
+
+  if (!bcrypto_dsa_sane_pubkey(&params, y))
     goto fail;
 
-  if (!bcrypto_dsa_sane_pubkey(pub))
+  if (sig_len != dsa_mpz_bytelen(params.q) * 2)
     goto fail;
 
-  dsakey = bcrypto_dsa_key2pub(pub);
+  bcrypto_dsa_rs2sig(&signature, sig, sig_len);
 
-  if (dsakey == NULL)
+  if (mpz_cmp_ui(signature.r, 0) == 0
+      || mpz_cmp(signature.r, params.q) >= 0) {
+    goto fail;
+  }
+
+  if (mpz_cmp_ui(signature.s, 0) == 0
+      || mpz_cmp(signature.s, params.q) >= 0) {
+    goto fail;
+  }
+
+  if (!dsa_verify(&params, y, msg_len, msg, &signature))
     goto fail;
 
-  dsasig = bcrypto_dsa_rs2sig(sig, sig_len);
-
-  if (dsasig == NULL)
-    goto fail;
-
-  if (DSA_do_verify(msg, msg_len, dsasig, dsakey) <= 0)
-    goto fail;
-
-  DSA_free(dsakey);
-  DSA_SIG_free(dsasig);
-
-  return 1;
-
+  result = 1;
 fail:
-  if (dsakey != NULL)
-    DSA_free(dsakey);
-
-  if (dsasig != NULL)
-    DSA_SIG_free(dsasig);
-
-  return 0;
+  dsa_params_clear(&params);
+  dsa_signature_clear(&signature);
+  mpz_clear(y);
+  return result;
 }
 
 int
@@ -1579,158 +1097,96 @@ bcrypto_dsa_verify_der(const uint8_t *msg,
                        size_t msg_len,
                        const uint8_t *sig,
                        size_t sig_len,
-                       const bcrypto_dsa_key_t *pub) {
-  DSA *dsakey = NULL;
-  DSA_SIG *dsasig = NULL;
-  const unsigned char *p = sig;
+                       const bcrypto_dsa_key_t *key) {
+  int result = 0;
+  struct dsa_params params;
+  struct dsa_signature signature;
+  mpz_t y;
 
-  if (sig == NULL || sig_len == 0)
+  dsa_params_init(&params);
+  dsa_signature_init(&signature);
+  mpz_init(y);
+
+  bcrypto_dsa_key2pub(&params, y, key);
+
+  if (!bcrypto_dsa_sane_pubkey(&params, y))
     goto fail;
 
-  if (!bcrypto_dsa_sane_pubkey(pub))
+  if (sig_len == 0)
     goto fail;
 
-  dsakey = bcrypto_dsa_key2pub(pub);
-
-  if (dsakey == NULL)
-    goto fail;
-
-  /* Note that openssl's DSA_verify reserializes to
-     check for minimal encoding. We don't want that
-     (it should be done at a higher level). */
-  if (d2i_DSA_SIG(&dsasig, &p, sig_len) == NULL)
-    goto fail;
-
-  if (DSA_do_verify(msg, msg_len, dsasig, dsakey) <= 0)
-    goto fail;
-
-  DSA_free(dsakey);
-  DSA_SIG_free(dsasig);
-
-  return 1;
-
-fail:
-  if (dsakey != NULL)
-    DSA_free(dsakey);
-
-  if (dsasig != NULL)
-    DSA_SIG_free(dsasig);
-
-  return 0;
-}
-
-int
-bcrypto_dsa_derive(uint8_t **out,
-                   size_t *out_len,
-                   const bcrypto_dsa_key_t *pub,
-                   const bcrypto_dsa_key_t *priv) {
-  DSA *dsapub = NULL;
-  DSA *dsaprv = NULL;
-  const BIGNUM *pp = NULL;
-  const BIGNUM *qp = NULL;
-  const BIGNUM *gp = NULL;
-  const BIGNUM *yp = NULL;
-  const BIGNUM *p = NULL;
-  const BIGNUM *q = NULL;
-  const BIGNUM *g = NULL;
-  const BIGNUM *x = NULL;
-  BN_CTX *ctx = NULL;
-  BIGNUM *secret = NULL;
-  uint8_t *raw = NULL;
-  size_t size = 0;
-
-  if (!bcrypto_dsa_sane_pubkey(pub))
-    goto fail;
-
-  if (!bcrypto_dsa_sane_privkey(priv))
-    goto fail;
-
-  dsapub = bcrypto_dsa_key2pub(pub);
-
-  if (dsapub == NULL)
-    goto fail;
-
-  dsaprv = bcrypto_dsa_key2priv(priv);
-
-  if (dsaprv == NULL)
-    goto fail;
-
-  DSA_get0_pqg(dsapub, &pp, &qp, &gp);
-  DSA_get0_key(dsapub, &yp, NULL);
-
-  assert(pp != NULL && qp != NULL
-      && gp != NULL && yp != NULL);
-
-  DSA_get0_pqg(dsaprv, &p, &q, &g);
-  DSA_get0_key(dsaprv, NULL, &x);
-
-  assert(p != NULL && q != NULL
-      && g != NULL && x != NULL);
-
-  if (BN_cmp(pp, p) != 0
-      || BN_cmp(qp, q) != 0
-      || BN_cmp(gp, g) != 0) {
+  if (!bcrypto_dsa_der2sig(&signature, sig, sig_len,
+                           dsa_mpz_bytelen(params.q))) {
     goto fail;
   }
 
-  ctx = BN_CTX_new();
+  if (mpz_cmp_ui(signature.r, 0) == 0
+      || mpz_cmp(signature.r, params.q) >= 0) {
+    goto fail;
+  }
 
-  if (ctx == NULL)
+  if (mpz_cmp_ui(signature.s, 0) == 0
+      || mpz_cmp(signature.s, params.q) >= 0) {
+    goto fail;
+  }
+
+  if (!dsa_verify(&params, y, msg_len, msg, &signature))
     goto fail;
 
-  secret = BN_secure_new();
-
-  if (secret == NULL)
-    goto fail;
-
-  if (!BN_mod_exp(secret, yp, q, p, ctx))
-    goto fail;
-
-  if (!BN_is_one(secret))
-    goto fail;
-
-  /* secret := y^x mod p */
-  if (!mod_exp_const(secret, yp, x, p, ctx))
-    goto fail;
-
-  if (BN_is_zero(secret))
-    goto fail;
-
-  size = (size_t)BN_num_bytes(p);
-  raw = (uint8_t *)malloc(size);
-
-  if (raw == NULL)
-    goto fail;
-
-  assert(BN_bn2binpad(secret, raw, size) != -1);
-
-  DSA_free(dsapub);
-  DSA_free(dsaprv);
-  BN_CTX_free(ctx);
-  BN_clear_free(secret);
-
-  *out = raw;
-  *out_len = size;
-
-  return 1;
-
+  result = 1;
 fail:
-  if (dsapub != NULL)
-    DSA_free(dsapub);
-
-  if (dsaprv != NULL)
-    DSA_free(dsaprv);
-
-  if (ctx != NULL)
-    BN_CTX_free(ctx);
-
-  if (secret != NULL)
-    BN_clear_free(secret);
-
-  if (raw != NULL)
-    free(raw);
-
-  return 0;
+  dsa_params_clear(&params);
+  dsa_signature_clear(&signature);
+  mpz_clear(y);
+  return result;
 }
 
-#endif
+int
+bcrypto_dsa_derive(uint8_t *out,
+                   size_t *out_len,
+                   const bcrypto_dsa_key_t *key_pub,
+                   const bcrypto_dsa_key_t *key_prv) {
+  int result = 0;
+  struct dsa_params pub;
+  struct dsa_params prv;
+  mpz_t yp, y, x;
+
+  dsa_params_init(&pub);
+  dsa_params_init(&prv);
+  mpz_init(yp);
+  mpz_init(y);
+  mpz_init(x);
+
+  bcrypto_dsa_key2pub(&pub, yp, key_pub);
+  bcrypto_dsa_key2priv(&prv, y, x, key_prv);
+
+  if (!bcrypto_dsa_sane_pubkey(&pub, yp))
+    goto fail;
+
+  if (!bcrypto_dsa_sane_privkey(&prv, y, x))
+    goto fail;
+
+  if (mpz_cmp(pub.p, prv.p) != 0
+      || mpz_cmp(pub.q, prv.q) != 0
+      || mpz_cmp(pub.g, prv.g) != 0) {
+    goto fail;
+  }
+
+  /* secret := y^x mod p */
+  dsa_pow_blind(y, yp, x, prv.p, prv.q);
+
+  if (mpz_sgn(y) == 0)
+    goto fail;
+
+  *out_len = dsa_mpz_bytelen(pub.p);
+  dsa_mpz_pad(out, *out_len, y);
+
+  result = 1;
+fail:
+  dsa_params_clear(&pub);
+  dsa_params_clear(&prv);
+  mpz_clear(yp);
+  mpz_clear(y);
+  mpz_clear(x);
+  return result;
+}
