@@ -4,7 +4,7 @@
       "<!(python -c \"from __future__ import print_function; import sys; print(sys.byteorder)\")",
     "bcrypto_bits%":
       "<!(python -c \"from __future__ import print_function; import struct; print(8 * struct.calcsize('P'))\")",
-    "with_openssl%": "true"
+    "with_openssl%": "false"
   },
   "targets": [{
     "target_name": "bcrypto",
