@@ -285,49 +285,6 @@ fail:
   return result;
 }
 
-#if 0
-static int
-ecc_point_add(struct ecc_point *r,
-              const struct ecc_point *a,
-              const struct ecc_point *b) {
-  int result = 0;
-  const struct ecc_curve *ecc = r->ecc;
-  mp_size_t size = ecc->p.size;
-  mp_limb_t *limbs, *j1, *j2, *scratch;
-
-  /* Space for 2 jacobian points and an addition. */
-  limbs = gmp_alloc_limbs(6 * size + ECC_ADD_JJA_ITCH(size));
-  assert(limbs != NULL);
-
-  /* Setup points and scratch. */
-  j1 = &limbs[0];
-  j2 = &limbs[3 * size];
-  scratch = &limbs[6 * size];
-
-  ecc_a_to_j(ecc, j1, a->p);
-
-  if (mpn_cmp(a->p, b->p, size * 2) == 0) {
-    assert(ECC_ADD_JJA_ITCH(size) >= ECC_DUP_JJ_ITCH(size));
-    ecc_dup_jj(ecc, j2, j1, scratch);
-  } else {
-    ecc_add_jja(ecc, j2, j1, b->p, scratch);
-  }
-
-  /* Check for infinity. */
-  if (mpn_zero_p(j2 + 2 * size, size))
-    goto fail;
-
-  /* Reuse scratch. */
-  assert(ECC_ADD_JJA_ITCH(size) >= ECC_J_TO_A_ITCH(size));
-  ecc_j_to_a(ecc, 0, r->p, j2, scratch);
-
-  result = 1;
-fail:
-  gmp_free_limbs(limbs, 6 * size + ECC_ADD_JJA_ITCH(size));
-  return result;
-}
-#endif
-
 static int
 ecc_point_add(struct ecc_point *r,
               const struct ecc_point *a,
@@ -386,50 +343,6 @@ fail:
   gmp_free_limbs(limbs, 6 * size + ECC_ADD_JJJ_ITCH(size));
   return result;
 }
-
-#if 0
-static int
-ecc_point_add(struct ecc_point *r,
-              const struct ecc_point *a,
-              const struct ecc_point *b) {
-  int result = 0;
-  const struct ecc_curve *ecc = r->ecc;
-  mp_size_t size = ecc->p.size;
-  mp_limb_t *limbs, *j1, *j2, *scratch;
-
-  /* Space for 2 jacobian points and an addition. */
-  limbs = gmp_alloc_limbs(6 * size + ecc->add_hhh_itch);
-  assert(limbs != NULL);
-
-  /* Setup points and scratch. */
-  j1 = &limbs[0];
-  j2 = &limbs[3 * size];
-  scratch = &limbs[6 * size];
-
-  ecc_a_to_j(ecc, j1, a->p);
-  ecc_a_to_j(ecc, j2, b->p);
-
-  if (mpn_cmp(j1, j2, size * 3) == 0) {
-    assert(ecc->add_hhh_itch >= ECC_DUP_JJ_ITCH(size));
-    ecc_dup_jj(ecc, j1, j1, scratch);
-  } else {
-    ecc->add_hhh(ecc, j1, j1, j2, scratch);
-  }
-
-  /* Check for infinity. */
-  if (mpn_zero_p(j1 + 2 * size, size))
-    goto fail;
-
-  /* Reuse scratch. */
-  assert(ecc->add_hhh_itch >= ecc->h_to_a_itch);
-  ecc->h_to_a(ecc, 0, r->p, j1, scratch);
-
-  result = 1;
-fail:
-  gmp_free_limbs(limbs, 6 * size + ecc->add_hhh_itch);
-  return result;
-}
-#endif
 
 static void
 ecc_scalar_encode(uint8_t *raw, const struct ecc_scalar *s) {
@@ -570,55 +483,6 @@ bcrypto_ecdsa_privkey_import_pkcs8(int type,
                                    size_t raw_len) {
   return 0;
 }
-
-#if 0
-int
-bcrypto_ecdsa_privkey_tweak_add(int type,
-                                uint8_t *out,
-                                const uint8_t *key,
-                                const uint8_t *tweak) {
-  int result = 0;
-  const struct ecc_curve *ecc = ecc_get_curve(type);
-  mp_size_t size = ecc != NULL ? ecc->p.size : 0;
-  struct ecc_scalar s, t, r;
-
-  if (ecc == NULL)
-    return 0;
-
-  ecc_scalar_init(&s, ecc);
-  ecc_scalar_init(&t, ecc);
-
-  r.ecc = ecc;
-  r.p = gmp_alloc_limbs(2 * ecc->p.size);
-  assert(r.p != NULL);
-
-  if (!ecc_scalar_decode(&s, key))
-    goto fail;
-
-  if (!ecc_scalar_decode_lax(&t, tweak))
-    goto fail;
-
-  if (mpn_zero_p(t.p, size))
-    goto success;
-
-  ecc_mod_add(&ecc->q, r.p, s.p, t.p);
-  ecc_mod(&ecc->q, r.p);
-  // ecc->q.reduce(&ecc->q, r.p);
-  // ecc->q.mod(&ecc->q, r.p);
-
-  if (mpn_zero_p(r.p, size))
-    goto fail;
-
-success:
-  ecc_scalar_encode(out, &r);
-  result = 1;
-fail:
-  ecc_scalar_clear(&s);
-  ecc_scalar_clear(&t);
-  gmp_free_limbs(r.p, 2 * ecc->p.size);
-  return result;
-}
-#endif
 
 int
 bcrypto_ecdsa_privkey_tweak_add(int type,
@@ -881,7 +745,6 @@ bcrypto_ecdsa_pubkey_import_spki(int type,
   return 0;
 }
 
-#if 0
 int
 bcrypto_ecdsa_pubkey_tweak_add(int type,
                                uint8_t *out,
@@ -893,83 +756,14 @@ bcrypto_ecdsa_pubkey_tweak_add(int type,
   int result = 0;
   const struct ecc_curve *ecc = ecc_get_curve(type);
   mp_size_t size = ecc != NULL ? ecc->p.size : 0;
-  struct ecc_point p;
-  struct ecc_scalar t;
-  mp_limb_t *limbs, *j1, *j2, *scratch;
-
-  if (ecc == NULL)
-    return 0;
-
-  ecc_point_init(&p, ecc);
-  ecc_scalar_init(&t, ecc);
-
-  /* Space for 2 jacobian points and a mul_g. */
-  limbs = gmp_alloc_limbs(6 * size + ecc->mul_g_itch);
-  assert(limbs != NULL);
-
-  /* Setup points and scratch. */
-  j1 = &limbs[0];
-  j2 = &limbs[3 * size];
-  scratch = &limbs[6 * size];
-
-  /* Decode point and scalar. */
-  if (!ecc_point_decode(&p, key, key_len))
-    goto fail;
-
-  if (!ecc_scalar_decode_lax(&t, tweak))
-    goto fail;
-
-  if (mpn_zero_p(t.p, size))
-    goto success;
-
-  /* We want a jacobian result. */
-  ecc_mul_g(ecc, j1, t.p, scratch);
-
-  /* Check for infinity. */
-  if (mpn_zero_p(j1 + 2 * size, size))
-    goto fail;
-
-  /* We should be able to re-use the scratch. */
-  assert(ecc->mul_g_itch >= ECC_ADD_JJA_ITCH(size));
-  ecc_add_jja(ecc, j2, j1, p.p, scratch);
-
-  /* Check for infinity. */
-  if (mpn_zero_p(j2 + 2 * size, size))
-    goto fail;
-
-  assert(ecc->mul_g_itch >= ECC_J_TO_A_ITCH(size));
-  ecc_j_to_a(ecc, 0, p.p, j2, scratch);
-
-success:
-  ecc_point_encode(out, out_len, &p, compress);
-  result = 1;
-fail:
-  ecc_point_clear(&p);
-  ecc_scalar_clear(&t);
-  gmp_free_limbs(limbs, 6 * size + ecc->mul_g_itch);
-  return result;
-}
-#endif
-
-int
-bcrypto_ecdsa_pubkey_tweak_add(int type,
-                               uint8_t *out,
-                               size_t *out_len,
-                               const uint8_t *key,
-                               size_t key_len,
-                               const uint8_t *tweak,
-                               int compress) {
-  int result = 0;
-  const struct ecc_curve *ecc = ecc_get_curve(type);
-  mp_size_t size = ecc != NULL ? ecc->p.size : 0;
-  struct ecc_point p, j;
+  struct ecc_point p, q;
   struct ecc_scalar t;
 
   if (ecc == NULL)
     return 0;
 
   ecc_point_init(&p, ecc);
-  ecc_point_init(&j, ecc);
+  ecc_point_init(&q, ecc);
   ecc_scalar_init(&t, ecc);
 
   /* Decode point and scalar. */
@@ -982,14 +776,14 @@ bcrypto_ecdsa_pubkey_tweak_add(int type,
   if (mpn_zero_p(t.p, size))
     goto success;
 
-  ecc_point_mul_g(&j, &t);
+  ecc_point_mul_g(&q, &t);
 
   /* Check for infinity. */
   /* See: https://github.com/gnutls/nettle/blob/master/ecc.h#L120 */
-  if (mpn_zero_p(j.p, 2 * size))
+  if (mpn_zero_p(q.p, 2 * size))
     goto fail;
 
-  if (!ecc_point_add(&p, &p, &j))
+  if (!ecc_point_add(&p, &p, &q))
     goto fail;
 
 success:
@@ -997,7 +791,7 @@ success:
   result = 1;
 fail:
   ecc_point_clear(&p);
-  ecc_point_clear(&j);
+  ecc_point_clear(&q);
   ecc_scalar_clear(&t);
   return result;
 }
@@ -1045,65 +839,6 @@ fail:
   ecc_scalar_clear(&t);
   return result;
 }
-
-#if 0
-int
-bcrypto_ecdsa_pubkey_add(int type,
-                         uint8_t *out,
-                         size_t *out_len,
-                         const uint8_t *key1,
-                         size_t key1_len,
-                         const uint8_t *key2,
-                         size_t key2_len,
-                         int compress) {
-  int result = 0;
-  const struct ecc_curve *ecc = ecc_get_curve(type);
-  mp_size_t size = ecc != NULL ? ecc->p.size : 0;
-  struct ecc_point p1, p2;
-  mp_limb_t *limbs, *j1, *j2, *scratch;
-
-  if (ecc == NULL)
-    return 0;
-
-  ecc_point_init(&p1, ecc);
-  ecc_point_init(&p2, ecc);
-
-  if (!ecc_point_decode(&p1, key1, key1_len))
-    goto fail;
-
-  if (!ecc_point_decode(&p2, key2, key2_len))
-    goto fail;
-
-  /* Space for 2 jacobian points and an addition. */
-  limbs = gmp_alloc_limbs(6 * size + ECC_ADD_JJA_ITCH(size));
-  assert(limbs != NULL);
-
-  /* Setup points and scratch. */
-  j1 = &limbs[0];
-  j2 = &limbs[3 * size];
-  scratch = &limbs[6 * size];
-
-  ecc_a_to_j(ecc, j1, p1.p);
-  ecc_add_jja(ecc, j2, j1, p2.p, scratch);
-
-  /* Check for infinity. */
-  if (mpn_zero_p(j2 + 2 * size, size))
-    goto fail;
-
-  /* Reuse scratch. */
-  assert(ECC_ADD_JJA_ITCH(size) >= ECC_J_TO_A_ITCH(size));
-  ecc_j_to_a(ecc, 0, p1.p, j2, scratch);
-
-  ecc_point_encode(out, out_len, &p1, compress);
-
-  result = 1;
-fail:
-  ecc_point_clear(&p1);
-  ecc_point_clear(&p2);
-  gmp_free_limbs(limbs, 6 * size + ECC_ADD_JJA_ITCH(size));
-  return result;
-}
-#endif
 
 int
 bcrypto_ecdsa_pubkey_add(int type,
