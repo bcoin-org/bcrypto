@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include "random.h"
 
+/* Our RNG passed in from javascript. */
 extern int
 _bcrypto_random(void *dst, size_t len);
 
