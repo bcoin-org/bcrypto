@@ -301,7 +301,7 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.SHAKE128.native, 2);
         assert.strictEqual(bcrypto.SHAKE256.native, 2);
         assert.strictEqual(bcrypto.siphash.native, 2);
-        assert.strictEqual(bcrypto.Whirlpool.native, 2);
+        assert.strictEqual(bcrypto.Whirlpool.native, 0);
         assert.strictEqual(bcrypto.x25519.native, 2);
         assert.strictEqual(bcrypto.x448.native, 2);
         break;
