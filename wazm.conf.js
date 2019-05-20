@@ -596,7 +596,6 @@ module.exports = {
 
     'bcrypto_random_seed',
     'bcrypto_random_calls',
-    'bcrypto_random_poll',
     'bcrypto_random',
     'bcrypto_rng',
 

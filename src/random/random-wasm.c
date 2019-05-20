@@ -15,9 +15,6 @@ bcrypto_random_calls(void) {
   return 0;
 }
 
-void
-bcrypto_random_poll(void) {}
-
 int
 bcrypto_random(void *dst, size_t len) {
   return _bcrypto_random(dst, len);

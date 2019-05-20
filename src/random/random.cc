@@ -14,8 +14,8 @@ bcrypto_random_calls(void) {
   return 0;
 }
 
-void
-bcrypto_random_poll(void) {
+int
+bcrypto_random(void *dst, size_t len) {
   for (;;) {
     // https://github.com/openssl/openssl/blob/bc420eb/crypto/rand/rand_lib.c#L792
     // https://github.com/openssl/openssl/blob/bc420eb/crypto/rand/drbg_lib.c#L988
@@ -31,17 +31,12 @@ bcrypto_random_poll(void) {
     if (RAND_poll() == 0)
       break;
   }
-}
-
-int
-bcrypto_random(void *dst, size_t len) {
-  bcrypto_random_poll();
 
   return RAND_bytes((unsigned char *)dst, (int)len) == 1;
 }
 #else
-#include "../nettle/yarrow.h"
 #include <mutex>
+#include "../nettle/yarrow.h"
 
 static std::mutex m;
 static struct yarrow256_ctx rng;
@@ -72,9 +67,6 @@ bcrypto_random_calls(void) {
   m.unlock();
   return r;
 }
-
-void
-bcrypto_random_poll(void) {}
 
 int
 bcrypto_random(void *dst, size_t len) {

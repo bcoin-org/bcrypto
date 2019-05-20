@@ -14,9 +14,6 @@ bcrypto_random_seed(const void *data, size_t len);
 uint32_t
 bcrypto_random_calls(void);
 
-void
-bcrypto_random_poll(void);
-
 int
 bcrypto_random(void *dst, size_t len);
 
