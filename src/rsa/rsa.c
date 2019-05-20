@@ -208,10 +208,10 @@ bcrypto_rsa_needs_compute(const struct rsa_private_key *priv,
 
 static void
 bcrypto_rsa_key2priv(struct rsa_private_key *out_priv,
-                     struct rsa_private_key *out_pub,
+                     struct rsa_public_key *out_pub,
                      const bcrypto_rsa_key_t *priv) {
   size_t size = 0;
-  uint8_t *p = priv;
+  const uint8_t *p = priv;
 
   READINT(out_pub->n, p);
   READINT(out_pub->e, p);
@@ -229,7 +229,7 @@ bcrypto_rsa_key2priv(struct rsa_private_key *out_priv,
 static void
 bcrypto_rsa_key2pub(struct rsa_public_key *out, const bcrypto_rsa_key_t *pub) {
   size_t size = 0;
-  uint8_t *p = priv;
+  const uint8_t *p = pub;
 
   READINT(out->n, p);
   READINT(out->e, p);

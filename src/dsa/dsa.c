@@ -160,7 +160,7 @@ bcrypto_dsa_key2dsa(struct dsa_params *out,
                     const bcrypto_dsa_key_t *key,
                     int mode) {
   size_t size = 0;
-  uint8_t *p = key;
+  const uint8_t *p = key;
 
   READINT(out->p, p);
   READINT(out->q, p);
@@ -174,7 +174,7 @@ bcrypto_dsa_key2dsa(struct dsa_params *out,
 }
 
 static void
-bcrypto_dsa_dsa2key(bcrypto_dsa_key *out,
+bcrypto_dsa_dsa2key(bcrypto_dsa_key_t *out,
                     const struct dsa_params *params,
                     const mpz_t y, const mpz_t x,
                     int mode) {

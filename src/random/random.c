@@ -5,6 +5,9 @@
 #include "random.h"
 
 void
+bcrypto_seed(const void *data, size_t len) {}
+
+void
 bcrypto_poll(void) {
   for (;;) {
     // https://github.com/openssl/openssl/blob/bc420eb/crypto/rand/rand_lib.c#L792
@@ -37,5 +40,5 @@ bcrypto_random(void *dst, size_t len) {
 
 void
 bcrypto_rng(void *ctx, size_t length, uint8_t *dst) {
-  bcrypto_random((void *)dst, length);
+  assert(bcrypto_random((void *)dst, length) != 0);
 }

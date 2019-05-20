@@ -9,6 +9,9 @@ extern "C" {
 #endif
 
 void
+bcrypto_seed(const void *data, size_t len);
+
+void
 bcrypto_poll(void);
 
 int

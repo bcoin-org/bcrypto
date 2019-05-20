@@ -1,4 +1,4 @@
-#include "nettle/sha2.h"
+#include "../nettle/sha2.h"
 
 typedef struct sha512_ctx bcrypto_ed25519_hash_t;
 

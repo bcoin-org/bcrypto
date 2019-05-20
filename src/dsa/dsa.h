@@ -35,7 +35,6 @@ typedef struct bcrypto_dsa_key_s {
   uint8_t *xd;
   size_t xl;
 } bcrypto_dsa_key_t;
-#endif
 
 void
 bcrypto_dsa_key_init(bcrypto_dsa_key_t *key);
@@ -54,6 +53,7 @@ bcrypto_dsa_sig_size(const bcrypto_dsa_key_t *key);
 
 size_t
 bcrypto_dsa_der_size(const bcrypto_dsa_key_t *key);
+#endif
 
 void
 bcrypto_dsa_rs2sig(struct dsa_signature *out,
