@@ -677,7 +677,8 @@ module.exports = {
   flags: [
     'MALLOC=dlmalloc',
     // 'MALLOC=emmalloc',
-    'ASSERTIONS=0'
+    'ASSERTIONS=0',
+    'ERROR_ON_UNDEFINED_SYMBOLS=0'
   ],
   base64: true,
   wat: true,
