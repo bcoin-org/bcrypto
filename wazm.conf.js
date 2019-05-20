@@ -2,7 +2,7 @@
 
 module.exports = {
   root: __dirname,
-  output: 'bcrypto',
+  output: './lib/wasm/bcrypto',
   input: [
     './src/nettle/aes128-meta.c',
     './src/nettle/aes128-set-decrypt-key.c',
