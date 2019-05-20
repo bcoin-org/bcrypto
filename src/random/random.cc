@@ -39,11 +39,6 @@ bcrypto_random(void *dst, size_t len) {
 
   return RAND_bytes((unsigned char *)dst, (int)len) == 1;
 }
-
-void
-bcrypto_rng(void *ctx, size_t length, uint8_t *dst) {
-  assert(bcrypto_random((void *)dst, length) != 0);
-}
 #else
 #include "../nettle/yarrow.h"
 #include <mutex>
@@ -98,9 +93,9 @@ fail:
   m.unlock();
   return result;
 }
+#endif
 
 void
 bcrypto_rng(void *ctx, size_t length, uint8_t *dst) {
   assert(bcrypto_random((void *)dst, length) != 0);
 }
-#endif
