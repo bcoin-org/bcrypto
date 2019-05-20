@@ -13,6 +13,10 @@ BRandom::Init(v8::Local<v8::Object> &target) {
   Nan::HandleScope scope;
   v8::Local<v8::Object> obj = Nan::New<v8::Object>();
 
+#ifndef BCRYPTO_WITH_OPENSSL
+  Nan::Export(obj, "seed", BRandom::Seed);
+  Nan::Export(obj, "calls", BRandom::Calls);
+#endif
   Nan::Export(obj, "randomBytes", BRandom::RandomBytes);
   Nan::Export(obj, "randomFill", BRandom::RandomFill);
   Nan::Export(obj, "randomInt", BRandom::RandomInt);
@@ -20,6 +24,29 @@ BRandom::Init(v8::Local<v8::Object> &target) {
 
   Nan::Set(target, Nan::New("random").ToLocalChecked(), obj);
 }
+
+#ifndef BCRYPTO_WITH_OPENSSL
+NAN_METHOD(BRandom::Seed) {
+  if (info.Length() < 1)
+    return Nan::ThrowError("random.seed() requires arguments.");
+
+  if (!node::Buffer::HasInstance(info[0]))
+    return Nan::ThrowTypeError("First argument must be a buffer.");
+
+  v8::Local<v8::Object> bdata = info[0].As<v8::Object>();
+
+  uint8_t *data = (uint8_t *)node::Buffer::Data(bdata);
+  size_t len = node::Buffer::Length(bdata);
+
+  bcrypto_random_seed((void *)data, len);
+
+  info.GetReturnValue().Set(bdata);
+}
+
+NAN_METHOD(BRandom::Calls) {
+  info.GetReturnValue().Set(Nan::New<v8::Uint32>(bcrypto_random_calls()));
+}
+#endif
 
 NAN_METHOD(BRandom::RandomBytes) {
   if (info.Length() < 1)

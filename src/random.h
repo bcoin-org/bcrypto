@@ -8,6 +8,10 @@ public:
   static void Init(v8::Local<v8::Object> &target);
 
 private:
+#ifndef BCRYPTO_WITH_OPENSSL
+  static NAN_METHOD(Seed);
+  static NAN_METHOD(Calls);
+#endif
   static NAN_METHOD(RandomBytes);
   static NAN_METHOD(RandomFill);
   static NAN_METHOD(RandomInt);

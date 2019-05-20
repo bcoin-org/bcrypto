@@ -1,14 +1,15 @@
-#include <assert.h>
-#include <stdlib.h>
-#include <stdint.h>
 #include "openssl/rand.h"
-#include "random.h"
 
 void
-bcrypto_seed(const void *data, size_t len) {}
+bcrypto_random_seed(const void *data, size_t len) {}
+
+uint32_t
+bcrypto_random_calls(void) {
+  return 0;
+}
 
 void
-bcrypto_poll(void) {
+bcrypto_random_poll(void) {
   for (;;) {
     // https://github.com/openssl/openssl/blob/bc420eb/crypto/rand/rand_lib.c#L792
     // https://github.com/openssl/openssl/blob/bc420eb/crypto/rand/drbg_lib.c#L988
@@ -28,14 +29,9 @@ bcrypto_poll(void) {
 
 int
 bcrypto_random(void *dst, size_t len) {
-  bcrypto_poll();
+  bcrypto_random_poll();
 
-  int r = RAND_bytes(dst, len);
-
-  if (r != 1)
-    return 0;
-
-  return 1;
+  return RAND_bytes((unsigned char *)dst, (int)len) == 1;
 }
 
 void

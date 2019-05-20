@@ -315,7 +315,7 @@ module.exports = {
     './src/murmur3/murmur3.c',
     './src/pbkdf2/pbkdf2.c',
     './src/poly1305/poly1305.c',
-    './src/random/random_wasm.c',
+    './src/random/random-wasm.c',
     './src/rsa/rsa.c',
     './src/salsa20/salsa20.c',
     './src/scrypt/insecure_memzero.c',
@@ -594,8 +594,9 @@ module.exports = {
     'bcrypto_poly1305_verify',
     'bcrypto_poly1305_power_on_self_test',
 
-    'bcrypto_seed',
-    'bcrypto_poll',
+    'bcrypto_random_seed',
+    'bcrypto_random_calls',
+    'bcrypto_random_poll',
     'bcrypto_random',
     'bcrypto_rng',
 

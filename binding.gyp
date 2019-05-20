@@ -3,7 +3,8 @@
     "bcrypto_byteorder%":
       "<!(python -c \"from __future__ import print_function; import sys; print(sys.byteorder)\")",
     "bcrypto_bits%":
-      "<!(python -c \"from __future__ import print_function; import struct; print(8 * struct.calcsize('P'))\")"
+      "<!(python -c \"from __future__ import print_function; import struct; print(8 * struct.calcsize('P'))\")",
+    "with_openssl%": "true"
   },
   "targets": [{
     "target_name": "bcrypto",
@@ -323,7 +324,7 @@
       "./src/murmur3/murmur3.c",
       "./src/pbkdf2/pbkdf2.c",
       "./src/poly1305/poly1305.c",
-      "./src/random/random.c",
+      "./src/random/random.cc",
       "./src/rsa/rsa.c",
       "./src/salsa20/salsa20.c",
       "./src/scrypt/insecure_memzero.c",
@@ -371,8 +372,7 @@
       "./src/sha256.cc",
       "./src/sha384.cc",
       "./src/sha512.cc",
-      "./src/siphash.cc",
-      "./src/whirlpool.cc"
+      "./src/siphash.cc"
     ],
     "cflags": [
       "-Wall",
@@ -414,7 +414,7 @@
         ["OS!='win'", {
           "cc": "<!(echo $CC)"
         }],
-        ["OS=='win'", {
+        ["with_openssl=='true' and OS=='win'", {
           "conditions": [
             ["target_arch=='ia32'", {
               "openssl_root%": "C:/OpenSSL-Win32"
@@ -502,24 +502,31 @@
           "USE_SCALAR_8X32=1"
         ]
       }],
-      ["OS=='win'", {
-        "libraries": [
-          "-l<(openssl_root)/lib/libeay32.lib"
+      ["with_openssl=='true'", {
+        "conditions": [
+          ["OS=='win'", {
+            "libraries": [
+              "-l<(openssl_root)/lib/libeay32.lib"
+            ],
+            "include_dirs": [
+              "<(openssl_root)/include"
+            ],
+            "msbuild_settings": {
+              "ClCompile": {
+                "ObjectFileName": "$(IntDir)/%(Directory)/%(Filename)",
+              },
+              "Link": {
+                "ImageHasSafeExceptionHandlers": "false"
+              }
+            }
+          }, {
+            "include_dirs": [
+              "<(node_root_dir)/deps/openssl/openssl/include"
+            ]
+          }]
         ],
-        "include_dirs": [
-          "<(openssl_root)/include"
-        ],
-        "msbuild_settings": {
-          "ClCompile": {
-            "ObjectFileName": "$(IntDir)/%(Directory)/%(Filename)"
-          },
-          "Link": {
-            "ImageHasSafeExceptionHandlers": "false"
-          }
-        }
-      }, {
-        "include_dirs": [
-          "<(node_root_dir)/deps/openssl/openssl/include"
+        "defines": [
+          "BCRYPTO_WITH_OPENSSL"
         ]
       }],
       ["with_gmp=='true'", {
