@@ -50,18 +50,20 @@ bcrypto_rng(void *ctx, size_t length, uint8_t *dst) {
 
 static std::mutex m;
 static struct yarrow256_ctx rng;
-static uint32_t calls = 0;
+static uint32_t calls = 0; /* okay to overflow */
 
 void
 bcrypto_random_seed(const void *data, size_t len) {
   m.lock();
 
-  if (calls == 0) {
-    yarrow256_init(&rng, 0, NULL);
-    calls = 1;
-  }
+  if (len > 0) {
+    if (calls == 0) {
+      yarrow256_init(&rng, 0, NULL);
+      calls = 1;
+    }
 
-  yarrow256_seed(&rng, len, (const uint8_t *)data);
+    yarrow256_seed(&rng, len, (const uint8_t *)data);
+  }
 
   m.unlock();
 }
@@ -73,7 +75,6 @@ bcrypto_random_calls(void) {
   uint32_t r = calls;
 
   m.unlock();
-
   return r;
 }
 
@@ -82,17 +83,20 @@ bcrypto_random_poll(void) {}
 
 int
 bcrypto_random(void *dst, size_t len) {
+  int result = 0;
+
   m.lock();
 
   if (calls == 0)
-    return 0;
+    goto fail;
 
   yarrow256_random(&rng, len, (uint8_t *)dst);
   calls += 1;
 
+  result = 1;
+fail:
   m.unlock();
-
-  return 1;
+  return result;
 }
 
 void
