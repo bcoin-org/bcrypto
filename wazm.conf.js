@@ -674,7 +674,9 @@ module.exports = {
     grow: true
   },
   flags: [
-    'MALLOC=emmalloc'
+    'MALLOC=dlmalloc',
+    // 'MALLOC=emmalloc',
+    'ASSERTIONS=0'
   ],
   base64: true,
   wat: true,
