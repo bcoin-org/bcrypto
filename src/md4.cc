@@ -4,7 +4,7 @@
 static Nan::Persistent<v8::FunctionTemplate> md4_constructor;
 
 BMD4::BMD4() {
-  memset(&ctx, 0, sizeof(MD4_CTX));
+  memset(&ctx, 0, sizeof(struct md4_ctx));
 }
 
 BMD4::~BMD4() {}
@@ -47,7 +47,7 @@ NAN_METHOD(BMD4::New) {
 NAN_METHOD(BMD4::Init) {
   BMD4 *md4 = ObjectWrap::Unwrap<BMD4>(info.Holder());
 
-  MD4_Init(&md4->ctx);
+  md4_init(&md4->ctx);
 
   info.GetReturnValue().Set(info.This());
 }
@@ -66,7 +66,7 @@ NAN_METHOD(BMD4::Update) {
   const uint8_t *in = (const uint8_t *)node::Buffer::Data(buf);
   size_t inlen = node::Buffer::Length(buf);
 
-  MD4_Update(&md4->ctx, in, inlen);
+  md4_update(&md4->ctx, inlen, in);
 
   info.GetReturnValue().Set(info.This());
 }
@@ -76,7 +76,7 @@ NAN_METHOD(BMD4::Final) {
 
   uint8_t out[16];
 
-  MD4_Final(&out[0], &md4->ctx);
+  md4_digest(&md4->ctx, 16, &out[0]);
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&out[0], 16).ToLocalChecked());
@@ -94,12 +94,12 @@ NAN_METHOD(BMD4::Digest) {
   const uint8_t *in = (const uint8_t *)node::Buffer::Data(buf);
   size_t inlen = node::Buffer::Length(buf);
 
-  MD4_CTX ctx;
+  struct md4_ctx ctx;
   uint8_t out[16];
 
-  MD4_Init(&ctx);
-  MD4_Update(&ctx, in, inlen);
-  MD4_Final(&out[0], &ctx);
+  md4_init(&ctx);
+  md4_update(&ctx, inlen, in);
+  md4_digest(&ctx, 16, &out[0]);
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&out[0], 16).ToLocalChecked());
@@ -127,13 +127,13 @@ NAN_METHOD(BMD4::Root) {
   if (leftlen != 16 || rightlen != 16)
     return Nan::ThrowRangeError("Invalid node sizes.");
 
-  MD4_CTX ctx;
+  struct md4_ctx ctx;
   uint8_t out[16];
 
-  MD4_Init(&ctx);
-  MD4_Update(&ctx, left, leftlen);
-  MD4_Update(&ctx, right, rightlen);
-  MD4_Final(&out[0], &ctx);
+  md4_init(&ctx);
+  md4_update(&ctx, leftlen, left);
+  md4_update(&ctx, rightlen, right);
+  md4_digest(&ctx, 16, &out[0]);
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&out[0], 16).ToLocalChecked());
@@ -171,14 +171,14 @@ NAN_METHOD(BMD4::Multi) {
     zlen = node::Buffer::Length(zbuf);
   }
 
-  MD4_CTX ctx;
+  struct md4_ctx ctx;
   uint8_t out[16];
 
-  MD4_Init(&ctx);
-  MD4_Update(&ctx, x, xlen);
-  MD4_Update(&ctx, y, ylen);
-  MD4_Update(&ctx, z, zlen);
-  MD4_Final(&out[0], &ctx);
+  md4_init(&ctx);
+  md4_update(&ctx, xlen, x);
+  md4_update(&ctx, ylen, y);
+  md4_update(&ctx, zlen, z);
+  md4_digest(&ctx, 16, &out[0]);
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&out[0], 16).ToLocalChecked());

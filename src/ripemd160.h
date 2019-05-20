@@ -2,7 +2,7 @@
 #define _BCRYPTO_RIPEMD160_HH
 #include <node.h>
 #include <nan.h>
-#include "openssl/ripemd.h"
+#include "nettle/ripemd160.h"
 
 class BRIPEMD160 : public Nan::ObjectWrap {
 public:
@@ -12,7 +12,7 @@ public:
   BRIPEMD160();
   ~BRIPEMD160();
 
-  RIPEMD160_CTX ctx;
+  struct ripemd160_ctx ctx;
 
 private:
   static NAN_METHOD(Init);

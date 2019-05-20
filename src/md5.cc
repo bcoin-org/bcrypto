@@ -4,7 +4,7 @@
 static Nan::Persistent<v8::FunctionTemplate> md5_constructor;
 
 BMD5::BMD5() {
-  memset(&ctx, 0, sizeof(MD5_CTX));
+  memset(&ctx, 0, sizeof(struct md5_ctx));
 }
 
 BMD5::~BMD5() {}
@@ -47,7 +47,7 @@ NAN_METHOD(BMD5::New) {
 NAN_METHOD(BMD5::Init) {
   BMD5 *md5 = ObjectWrap::Unwrap<BMD5>(info.Holder());
 
-  MD5_Init(&md5->ctx);
+  md5_init(&md5->ctx);
 
   info.GetReturnValue().Set(info.This());
 }
@@ -66,7 +66,7 @@ NAN_METHOD(BMD5::Update) {
   const uint8_t *in = (const uint8_t *)node::Buffer::Data(buf);
   size_t inlen = node::Buffer::Length(buf);
 
-  MD5_Update(&md5->ctx, in, inlen);
+  md5_update(&md5->ctx, inlen, in);
 
   info.GetReturnValue().Set(info.This());
 }
@@ -76,7 +76,7 @@ NAN_METHOD(BMD5::Final) {
 
   uint8_t out[16];
 
-  MD5_Final(&out[0], &md5->ctx);
+  md5_digest(&md5->ctx, 16, &out[0]);
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&out[0], 16).ToLocalChecked());
@@ -94,12 +94,12 @@ NAN_METHOD(BMD5::Digest) {
   const uint8_t *in = (const uint8_t *)node::Buffer::Data(buf);
   size_t inlen = node::Buffer::Length(buf);
 
-  MD5_CTX ctx;
+  struct md5_ctx ctx;
   uint8_t out[16];
 
-  MD5_Init(&ctx);
-  MD5_Update(&ctx, in, inlen);
-  MD5_Final(&out[0], &ctx);
+  md5_init(&ctx);
+  md5_update(&ctx, inlen, in);
+  md5_digest(&ctx, 16, &out[0]);
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&out[0], 16).ToLocalChecked());
@@ -127,13 +127,13 @@ NAN_METHOD(BMD5::Root) {
   if (leftlen != 16 || rightlen != 16)
     return Nan::ThrowRangeError("Invalid node sizes.");
 
-  MD5_CTX ctx;
+  struct md5_ctx ctx;
   uint8_t out[16];
 
-  MD5_Init(&ctx);
-  MD5_Update(&ctx, left, leftlen);
-  MD5_Update(&ctx, right, rightlen);
-  MD5_Final(&out[0], &ctx);
+  md5_init(&ctx);
+  md5_update(&ctx, leftlen, left);
+  md5_update(&ctx, rightlen, right);
+  md5_digest(&ctx, 16, &out[0]);
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&out[0], 16).ToLocalChecked());
@@ -171,14 +171,14 @@ NAN_METHOD(BMD5::Multi) {
     zlen = node::Buffer::Length(zbuf);
   }
 
-  MD5_CTX ctx;
+  struct md5_ctx ctx;
   uint8_t out[16];
 
-  MD5_Init(&ctx);
-  MD5_Update(&ctx, x, xlen);
-  MD5_Update(&ctx, y, ylen);
-  MD5_Update(&ctx, z, zlen);
-  MD5_Final(&out[0], &ctx);
+  md5_init(&ctx);
+  md5_update(&ctx, xlen, x);
+  md5_update(&ctx, ylen, y);
+  md5_update(&ctx, zlen, z);
+  md5_digest(&ctx, 16, &out[0]);
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&out[0], 16).ToLocalChecked());

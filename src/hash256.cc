@@ -4,7 +4,7 @@
 static Nan::Persistent<v8::FunctionTemplate> hash256_constructor;
 
 BHash256::BHash256() {
-  memset(&ctx, 0, sizeof(SHA256_CTX));
+  memset(&ctx, 0, sizeof(struct sha256_ctx));
 }
 
 BHash256::~BHash256() {}
@@ -47,7 +47,7 @@ NAN_METHOD(BHash256::New) {
 NAN_METHOD(BHash256::Init) {
   BHash256 *hash = ObjectWrap::Unwrap<BHash256>(info.Holder());
 
-  SHA256_Init(&hash->ctx);
+  sha256_init(&hash->ctx);
 
   info.GetReturnValue().Set(info.This());
 }
@@ -66,7 +66,7 @@ NAN_METHOD(BHash256::Update) {
   const uint8_t *in = (const uint8_t *)node::Buffer::Data(buf);
   size_t inlen = node::Buffer::Length(buf);
 
-  SHA256_Update(&hash->ctx, in, inlen);
+  sha256_update(&hash->ctx, inlen, in);
 
   info.GetReturnValue().Set(info.This());
 }
@@ -76,11 +76,11 @@ NAN_METHOD(BHash256::Final) {
 
   uint8_t out[32];
 
-  SHA256_Final(&out[0], &hash->ctx);
+  sha256_digest(&hash->ctx, 32, &out[0]);
 
-  SHA256_Init(&hash->ctx);
-  SHA256_Update(&hash->ctx, &out[0], 32);
-  SHA256_Final(&out[0], &hash->ctx);
+  sha256_init(&hash->ctx);
+  sha256_update(&hash->ctx, 32, &out[0]);
+  sha256_digest(&hash->ctx, 32, &out[0]);
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&out[0], 32).ToLocalChecked());
@@ -98,16 +98,16 @@ NAN_METHOD(BHash256::Digest) {
   const uint8_t *in = (const uint8_t *)node::Buffer::Data(buf);
   size_t inlen = node::Buffer::Length(buf);
 
-  SHA256_CTX ctx;
+  struct sha256_ctx ctx;
   uint8_t out[32];
 
-  SHA256_Init(&ctx);
-  SHA256_Update(&ctx, in, inlen);
-  SHA256_Final(&out[0], &ctx);
+  sha256_init(&ctx);
+  sha256_update(&ctx, inlen, in);
+  sha256_digest(&ctx, 32, &out[0]);
 
-  SHA256_Init(&ctx);
-  SHA256_Update(&ctx, &out[0], 32);
-  SHA256_Final(&out[0], &ctx);
+  sha256_init(&ctx);
+  sha256_update(&ctx, 32, &out[0]);
+  sha256_digest(&ctx, 32, &out[0]);
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&out[0], 32).ToLocalChecked());
@@ -135,17 +135,17 @@ NAN_METHOD(BHash256::Root) {
   if (leftlen != 32 || rightlen != 32)
     return Nan::ThrowRangeError("Invalid node sizes.");
 
-  SHA256_CTX ctx;
+  struct sha256_ctx ctx;
   uint8_t out[32];
 
-  SHA256_Init(&ctx);
-  SHA256_Update(&ctx, left, leftlen);
-  SHA256_Update(&ctx, right, rightlen);
-  SHA256_Final(&out[0], &ctx);
+  sha256_init(&ctx);
+  sha256_update(&ctx, leftlen, left);
+  sha256_update(&ctx, rightlen, right);
+  sha256_digest(&ctx, 32, &out[0]);
 
-  SHA256_Init(&ctx);
-  SHA256_Update(&ctx, &out[0], 32);
-  SHA256_Final(&out[0], &ctx);
+  sha256_init(&ctx);
+  sha256_update(&ctx, 32, &out[0]);
+  sha256_digest(&ctx, 32, &out[0]);
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&out[0], 32).ToLocalChecked());
@@ -183,18 +183,18 @@ NAN_METHOD(BHash256::Multi) {
     zlen = node::Buffer::Length(zbuf);
   }
 
-  SHA256_CTX ctx;
+  struct sha256_ctx ctx;
   uint8_t out[32];
 
-  SHA256_Init(&ctx);
-  SHA256_Update(&ctx, x, xlen);
-  SHA256_Update(&ctx, y, ylen);
-  SHA256_Update(&ctx, z, zlen);
-  SHA256_Final(&out[0], &ctx);
+  sha256_init(&ctx);
+  sha256_update(&ctx, xlen, x);
+  sha256_update(&ctx, ylen, y);
+  sha256_update(&ctx, zlen, z);
+  sha256_digest(&ctx, 32, &out[0]);
 
-  SHA256_Init(&ctx);
-  SHA256_Update(&ctx, &out[0], 32);
-  SHA256_Final(&out[0], &ctx);
+  sha256_init(&ctx);
+  sha256_update(&ctx, 32, &out[0]);
+  sha256_digest(&ctx, 32, &out[0]);
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&out[0], 32).ToLocalChecked());

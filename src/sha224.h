@@ -2,7 +2,7 @@
 #define _BCRYPTO_SHA224_HH
 #include <node.h>
 #include <nan.h>
-#include "openssl/sha.h"
+#include "nettle/sha2.h"
 
 class BSHA224 : public Nan::ObjectWrap {
 public:
@@ -12,7 +12,7 @@ public:
   BSHA224();
   ~BSHA224();
 
-  SHA256_CTX ctx;
+  struct sha256_ctx ctx;
 
 private:
   static NAN_METHOD(Init);

@@ -2,7 +2,7 @@
 #define _BCRYPTO_MD5_HH
 #include <node.h>
 #include <nan.h>
-#include "openssl/md5.h"
+#include "nettle/md5.h"
 
 class BMD5 : public Nan::ObjectWrap {
 public:
@@ -12,7 +12,7 @@ public:
   BMD5();
   ~BMD5();
 
-  MD5_CTX ctx;
+  struct md5_ctx ctx;
 
 private:
   static NAN_METHOD(Init);

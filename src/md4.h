@@ -2,7 +2,7 @@
 #define _BCRYPTO_MD4_HH
 #include <node.h>
 #include <nan.h>
-#include "openssl/md4.h"
+#include "nettle/md4.h"
 
 class BMD4 : public Nan::ObjectWrap {
 public:
@@ -12,7 +12,7 @@ public:
   BMD4();
   ~BMD4();
 
-  MD4_CTX ctx;
+  struct md4_ctx ctx;
 
 private:
   static NAN_METHOD(Init);

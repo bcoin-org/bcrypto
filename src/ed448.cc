@@ -6,7 +6,6 @@
 #include "common.h"
 #include "ed448/ed448.h"
 #include "ed448.h"
-#include "openssl/crypto.h"
 
 void
 BED448::Init(v8::Local<v8::Object> &target) {
@@ -693,11 +692,11 @@ NAN_METHOD(BED448::SignWithScalar) {
   if (!bcrypto_c448_ed448_sign_with_scalar(sig, expanded, pub,
                                            msg, msg_len,
                                            ph, ctx, ctx_len)) {
-    OPENSSL_cleanse(expanded, sizeof(expanded));
+    memset(expanded, 0x00, sizeof(expanded));
     return Nan::ThrowError("Could not sign.");
   }
 
-  OPENSSL_cleanse(expanded, sizeof(expanded));
+  memset(expanded, 0x00, sizeof(expanded));
 
   return info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&sig[0],

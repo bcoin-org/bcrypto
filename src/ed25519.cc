@@ -6,7 +6,6 @@
 #include "common.h"
 #include "ed25519/ed25519.h"
 #include "ed25519.h"
-#include "openssl/crypto.h"
 
 void
 BED25519::Init(v8::Local<v8::Object> &target) {
@@ -672,7 +671,7 @@ NAN_METHOD(BED25519::SignWithScalar) {
     return Nan::ThrowError("Could not sign.");
   }
 
-  OPENSSL_cleanse(&expanded[0], sizeof(expanded));
+  memset(&expanded[0], 0x00, sizeof(expanded));
 
   return info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&sig[0], 64).ToLocalChecked());

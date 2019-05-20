@@ -1,10 +1,6 @@
 #ifndef _BCRYPTO_RSA_HH
 #define _BCRYPTO_RSA_HH
 
-#include "compat.h"
-
-#ifdef BCRYPTO_HAS_RSA
-
 #include <node.h>
 #include <nan.h>
 
@@ -40,6 +36,4 @@ private:
   static NAN_METHOD(Unveil);
   static NAN_METHOD(HasHash);
 };
-#endif
-
 #endif

@@ -4,7 +4,7 @@
 static Nan::Persistent<v8::FunctionTemplate> sha224_constructor;
 
 BSHA224::BSHA224() {
-  memset(&ctx, 0, sizeof(SHA256_CTX));
+  memset(&ctx, 0, sizeof(struct sha256_ctx));
 }
 
 BSHA224::~BSHA224() {}
@@ -47,7 +47,7 @@ NAN_METHOD(BSHA224::New) {
 NAN_METHOD(BSHA224::Init) {
   BSHA224 *sha = ObjectWrap::Unwrap<BSHA224>(info.Holder());
 
-  SHA224_Init(&sha->ctx);
+  sha224_init(&sha->ctx);
 
   info.GetReturnValue().Set(info.This());
 }
@@ -66,7 +66,7 @@ NAN_METHOD(BSHA224::Update) {
   const uint8_t *in = (const uint8_t *)node::Buffer::Data(buf);
   size_t inlen = node::Buffer::Length(buf);
 
-  SHA224_Update(&sha->ctx, in, inlen);
+  sha224_update(&sha->ctx, inlen, in);
 
   info.GetReturnValue().Set(info.This());
 }
@@ -76,7 +76,7 @@ NAN_METHOD(BSHA224::Final) {
 
   uint8_t out[32];
 
-  SHA224_Final(&out[0], &sha->ctx);
+  sha224_digest(&sha->ctx, 28, &out[0]);
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&out[0], 28).ToLocalChecked());
@@ -94,12 +94,12 @@ NAN_METHOD(BSHA224::Digest) {
   const uint8_t *in = (const uint8_t *)node::Buffer::Data(buf);
   size_t inlen = node::Buffer::Length(buf);
 
-  SHA256_CTX ctx;
+  struct sha256_ctx ctx;
   uint8_t out[32];
 
-  SHA224_Init(&ctx);
-  SHA224_Update(&ctx, in, inlen);
-  SHA224_Final(&out[0], &ctx);
+  sha224_init(&ctx);
+  sha224_update(&ctx, inlen, in);
+  sha224_digest(&ctx, 28, &out[0]);
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&out[0], 28).ToLocalChecked());
@@ -127,13 +127,13 @@ NAN_METHOD(BSHA224::Root) {
   if (leftlen != 28 || rightlen != 28)
     return Nan::ThrowRangeError("Invalid node sizes.");
 
-  SHA256_CTX ctx;
+  struct sha256_ctx ctx;
   uint8_t out[32];
 
-  SHA224_Init(&ctx);
-  SHA224_Update(&ctx, left, leftlen);
-  SHA224_Update(&ctx, right, rightlen);
-  SHA224_Final(&out[0], &ctx);
+  sha224_init(&ctx);
+  sha224_update(&ctx, leftlen, left);
+  sha224_update(&ctx, rightlen, right);
+  sha224_digest(&ctx, 28, &out[0]);
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&out[0], 28).ToLocalChecked());
@@ -171,14 +171,14 @@ NAN_METHOD(BSHA224::Multi) {
     zlen = node::Buffer::Length(zbuf);
   }
 
-  SHA256_CTX ctx;
+  struct sha256_ctx ctx;
   uint8_t out[32];
 
-  SHA224_Init(&ctx);
-  SHA224_Update(&ctx, x, xlen);
-  SHA224_Update(&ctx, y, ylen);
-  SHA224_Update(&ctx, z, zlen);
-  SHA224_Final(&out[0], &ctx);
+  sha224_init(&ctx);
+  sha224_update(&ctx, xlen, x);
+  sha224_update(&ctx, ylen, y);
+  sha224_update(&ctx, zlen, z);
+  sha224_digest(&ctx, 28, &out[0]);
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&out[0], 28).ToLocalChecked());

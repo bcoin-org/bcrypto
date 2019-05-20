@@ -11,7 +11,6 @@
 #include <nan.h>
 
 #include "common.h"
-#include "compat.h"
 #include "aead.h"
 #include "aes.h"
 #include "base58.h"
@@ -53,7 +52,7 @@
 #include "bcrypto.h"
 
 // For "cleanse"
-#include "openssl/crypto.h"
+#include "nettle/memxor.h"
 
 NAN_METHOD(cleanse) {
   if (info.Length() < 1)
@@ -67,7 +66,7 @@ NAN_METHOD(cleanse) {
   const uint8_t *data = (const uint8_t *)node::Buffer::Data(buf);
   size_t len = node::Buffer::Length(buf);
 
-  OPENSSL_cleanse((void *)data, len);
+  memxor((void *)data, (void *)data, len);
 }
 
 NAN_MODULE_INIT(init) {
@@ -91,12 +90,8 @@ NAN_MODULE_INIT(init) {
   BChaCha20::Init(target);
   BCipherBase::Init(target);
   Nan::Export(target, "cleanse", cleanse);
-#ifdef BCRYPTO_HAS_DSA
   BDSA::Init(target);
-#endif
-#ifdef BCRYPTO_HAS_ECDSA
   BECDSA::Init(target);
-#endif
   BED25519::Init(target);
   BED448::Init(target);
   BHash160::Init(target);
@@ -109,9 +104,7 @@ NAN_MODULE_INIT(init) {
   BPBKDF2::Init(target);
   BRandom::Init(target);
   BRIPEMD160::Init(target);
-#ifdef BCRYPTO_HAS_RSA
   BRSA::Init(target);
-#endif
   BSalsa20::Init(target);
   BScrypt::Init(target);
   BSecp256k1::Init(target);

@@ -4,7 +4,7 @@
 static Nan::Persistent<v8::FunctionTemplate> sha512_constructor;
 
 BSHA512::BSHA512() {
-  memset(&ctx, 0, sizeof(SHA512_CTX));
+  memset(&ctx, 0, sizeof(struct sha512_ctx));
 }
 
 BSHA512::~BSHA512() {}
@@ -47,7 +47,7 @@ NAN_METHOD(BSHA512::New) {
 NAN_METHOD(BSHA512::Init) {
   BSHA512 *sha = ObjectWrap::Unwrap<BSHA512>(info.Holder());
 
-  SHA512_Init(&sha->ctx);
+  sha512_init(&sha->ctx);
 
   info.GetReturnValue().Set(info.This());
 }
@@ -66,7 +66,7 @@ NAN_METHOD(BSHA512::Update) {
   const uint8_t *in = (const uint8_t *)node::Buffer::Data(buf);
   size_t inlen = node::Buffer::Length(buf);
 
-  SHA512_Update(&sha->ctx, in, inlen);
+  sha512_update(&sha->ctx, inlen, in);
 
   info.GetReturnValue().Set(info.This());
 }
@@ -76,7 +76,7 @@ NAN_METHOD(BSHA512::Final) {
 
   uint8_t out[64];
 
-  SHA512_Final(&out[0], &sha->ctx);
+  sha512_digest(&sha->ctx, 64, &out[0]);
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&out[0], 64).ToLocalChecked());
@@ -94,12 +94,12 @@ NAN_METHOD(BSHA512::Digest) {
   const uint8_t *in = (const uint8_t *)node::Buffer::Data(buf);
   size_t inlen = node::Buffer::Length(buf);
 
-  SHA512_CTX ctx;
+  struct sha512_ctx ctx;
   uint8_t out[64];
 
-  SHA512_Init(&ctx);
-  SHA512_Update(&ctx, in, inlen);
-  SHA512_Final(&out[0], &ctx);
+  sha512_init(&ctx);
+  sha512_update(&ctx, inlen, in);
+  sha512_digest(&ctx, 64, &out[0]);
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&out[0], 64).ToLocalChecked());
@@ -127,13 +127,13 @@ NAN_METHOD(BSHA512::Root) {
   if (leftlen != 64 || rightlen != 64)
     return Nan::ThrowRangeError("Invalid node sizes.");
 
-  SHA512_CTX ctx;
+  struct sha512_ctx ctx;
   uint8_t out[64];
 
-  SHA512_Init(&ctx);
-  SHA512_Update(&ctx, left, leftlen);
-  SHA512_Update(&ctx, right, rightlen);
-  SHA512_Final(&out[0], &ctx);
+  sha512_init(&ctx);
+  sha512_update(&ctx, leftlen, left);
+  sha512_update(&ctx, rightlen, right);
+  sha512_digest(&ctx, 64, &out[0]);
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&out[0], 64).ToLocalChecked());
@@ -171,14 +171,14 @@ NAN_METHOD(BSHA512::Multi) {
     zlen = node::Buffer::Length(zbuf);
   }
 
-  SHA512_CTX ctx;
+  struct sha512_ctx ctx;
   uint8_t out[64];
 
-  SHA512_Init(&ctx);
-  SHA512_Update(&ctx, x, xlen);
-  SHA512_Update(&ctx, y, ylen);
-  SHA512_Update(&ctx, z, zlen);
-  SHA512_Final(&out[0], &ctx);
+  sha512_init(&ctx);
+  sha512_update(&ctx, xlen, x);
+  sha512_update(&ctx, ylen, y);
+  sha512_update(&ctx, zlen, z);
+  sha512_digest(&ctx, 64, &out[0]);
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&out[0], 64).ToLocalChecked());

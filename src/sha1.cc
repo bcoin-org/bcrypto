@@ -4,7 +4,7 @@
 static Nan::Persistent<v8::FunctionTemplate> sha1_constructor;
 
 BSHA1::BSHA1() {
-  memset(&ctx, 0, sizeof(SHA_CTX));
+  memset(&ctx, 0, sizeof(struct sha1_ctx));
 }
 
 BSHA1::~BSHA1() {}
@@ -47,7 +47,7 @@ NAN_METHOD(BSHA1::New) {
 NAN_METHOD(BSHA1::Init) {
   BSHA1 *sha = ObjectWrap::Unwrap<BSHA1>(info.Holder());
 
-  SHA1_Init(&sha->ctx);
+  sha1_init(&sha->ctx);
 
   info.GetReturnValue().Set(info.This());
 }
@@ -66,7 +66,7 @@ NAN_METHOD(BSHA1::Update) {
   const uint8_t *in = (const uint8_t *)node::Buffer::Data(buf);
   size_t inlen = node::Buffer::Length(buf);
 
-  SHA1_Update(&sha->ctx, in, inlen);
+  sha1_update(&sha->ctx, inlen, in);
 
   info.GetReturnValue().Set(info.This());
 }
@@ -76,7 +76,7 @@ NAN_METHOD(BSHA1::Final) {
 
   uint8_t out[20];
 
-  SHA1_Final(&out[0], &sha->ctx);
+  sha1_digest(&sha->ctx, 20, &out[0]);
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&out[0], 20).ToLocalChecked());
@@ -94,12 +94,12 @@ NAN_METHOD(BSHA1::Digest) {
   const uint8_t *in = (const uint8_t *)node::Buffer::Data(buf);
   size_t inlen = node::Buffer::Length(buf);
 
-  SHA_CTX ctx;
+  struct sha1_ctx ctx;
   uint8_t out[20];
 
-  SHA1_Init(&ctx);
-  SHA1_Update(&ctx, in, inlen);
-  SHA1_Final(&out[0], &ctx);
+  sha1_init(&ctx);
+  sha1_update(&ctx, inlen, in);
+  sha1_digest(&ctx, 20, &out[0]);
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&out[0], 20).ToLocalChecked());
@@ -127,13 +127,13 @@ NAN_METHOD(BSHA1::Root) {
   if (leftlen != 20 || rightlen != 20)
     return Nan::ThrowRangeError("Invalid node sizes.");
 
-  SHA_CTX ctx;
+  struct sha1_ctx ctx;
   uint8_t out[20];
 
-  SHA1_Init(&ctx);
-  SHA1_Update(&ctx, left, leftlen);
-  SHA1_Update(&ctx, right, rightlen);
-  SHA1_Final(&out[0], &ctx);
+  sha1_init(&ctx);
+  sha1_update(&ctx, leftlen, left);
+  sha1_update(&ctx, rightlen, right);
+  sha1_digest(&ctx, 20, &out[0]);
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&out[0], 20).ToLocalChecked());
@@ -171,14 +171,14 @@ NAN_METHOD(BSHA1::Multi) {
     zlen = node::Buffer::Length(zbuf);
   }
 
-  SHA_CTX ctx;
+  struct sha1_ctx ctx;
   uint8_t out[20];
 
-  SHA1_Init(&ctx);
-  SHA1_Update(&ctx, x, xlen);
-  SHA1_Update(&ctx, y, ylen);
-  SHA1_Update(&ctx, z, zlen);
-  SHA1_Final(&out[0], &ctx);
+  sha1_init(&ctx);
+  sha1_update(&ctx, xlen, x);
+  sha1_update(&ctx, ylen, y);
+  sha1_update(&ctx, zlen, z);
+  sha1_digest(&ctx, 20, &out[0]);
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&out[0], 20).ToLocalChecked());
