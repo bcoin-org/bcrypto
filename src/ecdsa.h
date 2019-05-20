@@ -1,23 +1,13 @@
 #ifndef _BCRYPTO_ECDSA_HH
 #define _BCRYPTO_ECDSA_HH
 
-#include "compat.h"
-
-#ifdef BCRYPTO_HAS_ECDSA
-
 #include <node.h>
 #include <nan.h>
 #include "ecdsa/ecdsa.h"
 
-class BECDSA : public Nan::ObjectWrap {
+class BECDSA {
 public:
-  static NAN_METHOD(New);
   static void Init(v8::Local<v8::Object> &target);
-
-  BECDSA();
-  ~BECDSA();
-
-  bcrypto_ecdsa_t ctx;
 
 private:
   static NAN_METHOD(Size);
@@ -62,6 +52,5 @@ private:
   static NAN_METHOD(SchnorrVerify);
   static NAN_METHOD(SchnorrVerifyBatch);
 };
-#endif
 
 #endif

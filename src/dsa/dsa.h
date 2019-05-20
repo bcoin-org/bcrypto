@@ -3,6 +3,7 @@
 
 #include <stdlib.h>
 #include <stdint.h>
+#include "../nettle/dsa.h"
 
 #if defined(__cplusplus)
 extern "C" {
@@ -53,6 +54,26 @@ bcrypto_dsa_sig_size(const bcrypto_dsa_key_t *key);
 
 size_t
 bcrypto_dsa_der_size(const bcrypto_dsa_key_t *key);
+
+void
+bcrypto_dsa_rs2sig(struct dsa_signature *out,
+                   const uint8_t *sig, size_t qsize);
+
+void
+bcrypto_dsa_sig2rs(uint8_t *out,
+                   const struct dsa_signature *sig,
+                   size_t qsize);
+
+int
+bcrypto_dsa_der2sig(struct dsa_signature *out,
+                    const uint8_t *raw, size_t raw_len,
+                    size_t qsize);
+
+int
+bcrypto_dsa_sig2der(uint8_t *out,
+                    size_t *out_len,
+                    const struct dsa_signature *sig,
+                    size_t qsize);
 
 int
 bcrypto_dsa_params_generate(bcrypto_dsa_key_t *out, int bits);

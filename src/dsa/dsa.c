@@ -5,7 +5,6 @@
 #include <stdlib.h>
 #include "dsa.h"
 
-#include "../nettle/dsa.h"
 #include "../random/random.h"
 
 static inline size_t
@@ -404,14 +403,14 @@ bcrypto_dsa_priv2key(bcrypto_dsa_key_t *out,
   return bcrypto_dsa_dsa2key(out, params, y, x, 2);
 }
 
-static void
+void
 bcrypto_dsa_rs2sig(struct dsa_signature *out,
-                   const uint8_t *sig, size_t sig_len) {
-  dsa_mpz_import(out->r, &sig[0], sig_len >> 1);
-  dsa_mpz_import(out->s, &sig[sig_len >> 1], sig_len >> 1);
+                   const uint8_t *sig, size_t qsize) {
+  dsa_mpz_import(out->r, &sig[0], qsize);
+  dsa_mpz_import(out->s, &sig[qsize], qsize);
 }
 
-static void
+void
 bcrypto_dsa_sig2rs(uint8_t *out,
                    const struct dsa_signature *sig,
                    size_t qsize) {
@@ -419,7 +418,7 @@ bcrypto_dsa_sig2rs(uint8_t *out,
   dsa_mpz_pad(&out[qsize], qsize, sig->s);
 }
 
-static int
+int
 bcrypto_dsa_der2sig(struct dsa_signature *out,
                     const uint8_t *raw, size_t raw_len,
                     size_t qsize) {
@@ -570,7 +569,7 @@ bcrypto_dsa_der2sig(struct dsa_signature *out,
   return 1;
 }
 
-static int
+int
 bcrypto_dsa_sig2der(uint8_t *out,
                     size_t *out_len,
                     const struct dsa_signature *sig,
@@ -925,13 +924,13 @@ bcrypto_dsa_sig_export(uint8_t *out,
   if (sig_len == 0 || (sig_len & 1))
     goto fail;
 
-  if (size != (sig_len >> 1))
+  if (sig_len != size * 2)
     goto fail;
 
   if (size > 66)
     goto fail;
 
-  bcrypto_dsa_rs2sig(&signature, sig, sig_len);
+  bcrypto_dsa_rs2sig(&signature, sig, size);
 
   if (!bcrypto_dsa_sig2der(out, out_len, &signature, size))
     goto fail;
@@ -1056,6 +1055,7 @@ bcrypto_dsa_verify(const uint8_t *msg,
   struct dsa_params params;
   struct dsa_signature signature;
   mpz_t y;
+  size_t qsize;
 
   dsa_params_init(&params);
   dsa_signature_init(&signature);
@@ -1066,10 +1066,12 @@ bcrypto_dsa_verify(const uint8_t *msg,
   if (!bcrypto_dsa_sane_pubkey(&params, y))
     goto fail;
 
-  if (sig_len != dsa_mpz_bytelen(params.q) * 2)
+  qsize = dsa_mpz_bytelen(params.q);
+
+  if (sig_len != qsize * 2)
     goto fail;
 
-  bcrypto_dsa_rs2sig(&signature, sig, sig_len);
+  bcrypto_dsa_rs2sig(&signature, sig, qsize);
 
   if (mpz_cmp_ui(signature.r, 0) == 0
       || mpz_cmp(signature.r, params.q) >= 0) {
