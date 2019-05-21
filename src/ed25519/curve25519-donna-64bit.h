@@ -409,5 +409,10 @@ curve25519_swap_conditional(bignum25519 a, bignum25519 b, uint64_t iswap) {
 
 #endif /* BCRYPTO_ED25519_GCC_64BIT_CHOOSE */
 
+DONNA_INLINE static int
+curve25519_is_zero(const bignum25519 a) {
+  return (a[0] | a[1] | a[2] | a[3] | a[4]) == 0;
+}
+
 #define BCRYPTO_ED25519_64BIT_TABLES
 

@@ -375,9 +375,8 @@ bcrypto_ed25519_exchange_with_scalar(
 
   curve25519_recip(z2, z2);
   curve25519_mul(x1, x2, z2);
-  curve25519_set_word(x2, 0);
 
-  if (memcmp(x1, x2, sizeof(bignum25519)) == 0)
+  if (curve25519_is_zero(x1))
     return -1;
 
   curve25519_contract(out, x1);
