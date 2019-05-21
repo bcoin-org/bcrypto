@@ -42,9 +42,8 @@ describe('DSAIES', function() {
 
   for (const [i, json] of vectors.entries()) {
     const vector = json.map(item => Buffer.from(item, 'hex'));
-    const [, bob_, pub_, msg, ct] = vector;
+    const [, bob_,, msg, ct] = vector;
     const bob = dsa.privateKeyImport(bob_);
-    const pub = dsa.publicKeyImport(pub_);
 
     it(`should decrypt ciphertext #${i + 1}`, () => {
       const pt = dsaies.decrypt(SHA256, ct, bob);

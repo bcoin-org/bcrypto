@@ -68,7 +68,7 @@ describe('ECIES', function() {
 
     for (const [i, json] of vectors.entries()) {
       const vector = json.map(item => Buffer.from(item, 'hex'));
-      const [, bob, pub, msg, ct] = vector;
+      const [, bob,, msg, ct] = vector;
 
       it(`should decrypt ciphertext #${i + 1} (${curve.id})`, () => {
         const pt = ecies.decrypt(curve, SHA256, ct, bob);
