@@ -1,18 +1,6 @@
 'use strict';
 
 const assert = require('bsert');
-
-const parts = process.version.split(/[^\d]/);
-const NODE_MAJOR = parts[1] >>> 0;
-
-const ECDSA = (() => {
-  if (!process.env.NODE_BACKEND || process.env.NODE_BACKEND === 'native') {
-    if (NODE_MAJOR >= 10)
-      return require('../lib/native/ecdsa');
-  }
-  return require('../lib/js/ecdsa');
-})();
-
 const RNG = require('./util/rng');
 const SHA256 = require('../lib/sha256');
 const p192 = require('../lib/p192');
@@ -20,8 +8,7 @@ const p224 = require('../lib/p224');
 const p256 = require('../lib/p256');
 const p384 = require('../lib/p384');
 const p521 = require('../lib/p521');
-const secp256k1 = new ECDSA('SECP256K1', require('../lib/sha256'));
-const secp256k1n = require('../lib/secp256k1');
+const secp256k1 = require('../lib/secp256k1');
 const ed25519 = require('../lib/ed25519');
 const ed448 = require('../lib/ed448');
 const x25519 = require('../lib/x25519');
@@ -36,7 +23,6 @@ const curves = [
   p384,
   p521,
   secp256k1,
-  secp256k1n,
   ed25519,
   ed448,
   x25519,
@@ -49,7 +35,7 @@ const curveMap = {
   P256: p256,
   P384: p384,
   P521: p521,
-  SECP256K1: secp256k1n,
+  SECP256K1: secp256k1,
   ED25519: ed25519,
   ED448: ed448,
   X25519: x25519,
