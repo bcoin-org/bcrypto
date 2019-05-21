@@ -3,6 +3,7 @@
 const assert = require('bsert');
 const box = require('../lib/secretbox');
 const x25519 = require('../lib/x25519');
+const random = require('../lib/random');
 
 describe('Secret Box', function() {
   it('should seal and open box', () => {
@@ -39,5 +40,38 @@ describe('Secret Box', function() {
 
     assert.bufferEqual(sealed, expect, 'hex');
     assert.bufferEqual(opened, msg);
+  });
+
+  it('should encrypt random boxes', () => {
+    const key = random.randomBytes(32);
+    const nonce = random.randomBytes(24);
+
+    let last = null;
+
+    for (let len = 0; len < 128; len += 17) {
+      const msg = random.randomBytes(len);
+      const sealed = box.seal(msg, key, nonce);
+
+      assert.notBufferEqual(sealed, msg);
+
+      if (len > 0) {
+        assert.notBufferEqual(sealed.slice(0, msg.length), msg);
+        assert.notBufferEqual(sealed.slice(16, 16 + msg.length), msg);
+      }
+
+      const opened = box.open(sealed, key, nonce);
+
+      assert.bufferEqual(opened, msg);
+
+      last = sealed;
+    }
+
+    for (let i = 0; i < last.length; i++) {
+      last[i] ^= 0x20;
+      assert.throws(() => box.open(last, key, nonce));
+      last[i] ^= 0x20;
+    }
+
+    box.open(last, key, nonce);
   });
 });
