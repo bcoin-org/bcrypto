@@ -302,6 +302,7 @@ void bcrypto_curve448_base_double_scalarmul_non_secret(bcrypto_curve448_point_t 
  * BCRYPTO_C448_FALSE The point is invalid.
  */
 bcrypto_c448_bool_t bcrypto_curve448_point_valid(const bcrypto_curve448_point_t to_test);
+bcrypto_c448_bool_t bcrypto_curve448_point_infinity(const bcrypto_curve448_point_t p);
 
 /* Overwrite scalar with zeros. */
 void bcrypto_curve448_scalar_destroy(bcrypto_curve448_scalar_t scalar);

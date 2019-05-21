@@ -87,6 +87,8 @@ describe('EdDSA', function() {
           assert.bufferEqual(curve.publicKeyAdd(pubDbl, pubNeg), pub);
           assert.bufferEqual(curve.privateKeyConvert(priv), scalar);
           assert.bufferEqual(curve.publicKeyConvert(pub), pubConv);
+
+          assert.throws(() => curve.publicKeyAdd(pub, pubNeg));
         });
 
         it(`should reserialize key (${i}) (${curve.id})`, () => {

@@ -317,6 +317,14 @@ bcrypto_c448_bool_t bcrypto_curve448_point_valid(const bcrypto_curve448_point_t 
   return mask_to_bool(out);
 }
 
+bcrypto_c448_bool_t bcrypto_curve448_point_infinity(const bcrypto_curve448_point_t p)
+{
+  bcrypto_mask_t out;
+  out = bcrypto_gf_eq(p->x, ZERO);
+  out &= bcrypto_gf_eq(p->y, p->z);
+  return mask_to_bool(out);
+}
+
 static inline void constant_time_lookup_niels(bcrypto_niels_s * BCRYPTO_RESTRICT ni,
                            const bcrypto_niels_t * table,
                            int nelts, int idx)
