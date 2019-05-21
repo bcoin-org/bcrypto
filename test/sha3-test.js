@@ -33,7 +33,9 @@ function testHash(msg, bits = 256, expect) {
 
 describe('SHA3', function() {
   for (const [msg, bits, expect] of vectors) {
-    it(`should get SHA3 hash of ${expect}`, () => {
+    const text = expect.slice(0, 32) + '...';
+
+    it(`should get SHA3 hash of ${text}`, () => {
       testHash(msg, bits, expect);
     });
   }

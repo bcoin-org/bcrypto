@@ -28,7 +28,9 @@ function testHash(msg, size = 64, key = '', expect) {
 
 describe('BLAKE2b', function() {
   for (const [msg, size, key, expect] of vectors) {
-    it(`should get BLAKE2b hash of ${expect}`, () => {
+    const text = expect.slice(0, 32) + '...';
+
+    it(`should get BLAKE2b hash of ${text}`, () => {
       testHash(msg, size, key, expect);
     });
   }

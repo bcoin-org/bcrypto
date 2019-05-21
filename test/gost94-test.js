@@ -129,13 +129,17 @@ describe('GOST94', function() {
   this.timeout(10000);
 
   for (const [msg, expect, enc] of vectors_cryptopro) {
-    it(`should get GOST94 hash of ${expect}`, () => {
+    const text = expect.slice(0, 32) + '...';
+
+    it(`should get GOST94 hash of ${text}`, () => {
       testHash(msg, expect, enc, GOST94.CRYPTOPRO);
     });
   }
 
   for (const [msg, expect, enc] of vectors_test) {
-    it(`should get GOST94 hash of ${expect}`, () => {
+    const text = expect.slice(0, 32) + '...';
+
+    it(`should get GOST94 hash of ${text}`, () => {
       testHash(msg, expect, enc, GOST94.TEST);
     });
   }

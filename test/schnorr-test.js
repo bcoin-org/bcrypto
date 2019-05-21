@@ -16,7 +16,8 @@ describe('Secp256k1+Schnorr', function() {
     const pub = Buffer.from(pub_, 'hex');
     const msg = Buffer.from(msg_, 'hex');
     const sig = Buffer.from(sig_, 'hex');
-    const comment = comment_ || `should verify ${sig_.toLowerCase()}`;
+    const text = sig_.slice(0, 32).toLowerCase() + '...';
+    const comment = comment_ || `should verify ${text}`;
     const batch = result ? valid : invalid;
 
     batch.push([msg, sig, pub]);

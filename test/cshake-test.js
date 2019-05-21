@@ -67,8 +67,9 @@ describe('CSHAKE', function() {
     const S = Buffer.from(vector.S, 'hex');
     const X = Buffer.from(vector.X, 'hex');
     const O = Buffer.from(vector.O, 'hex');
+    const text = vector.O.slice(0, 32) + '...';
 
-    it(`should compute cSHAKE of ${vector.O}`, () => {
+    it(`should compute cSHAKE of ${text}`, () => {
       const ctx = new CSHAKE();
 
       ctx.init(bits, N, S);
@@ -80,7 +81,7 @@ describe('CSHAKE', function() {
       assert.bufferEqual(CSHAKE.digest(X, bits, N, S, len), O);
     });
 
-    it(`should compute cSHAKE of ${vector.O}`, () => {
+    it(`should compute cSHAKE of ${text}`, () => {
       const CSHAKE = bits === 128 ? CSHAKE128 : CSHAKE256;
       const ctx = new CSHAKE();
 

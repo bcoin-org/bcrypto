@@ -162,7 +162,9 @@ describe('DSA', function() {
   });
 
   for (const [i, vector] of vectors.entries()) {
-    it(`should verify signature: ${vector.sig} (${i})`, () => {
+    const text = vector.sig.slice(0, 32) + '...';
+
+    it(`should verify signature: ${text} (${i})`, () => {
       const msg = Buffer.from(vector.msg, 'hex');
       const sig = Buffer.from(vector.sig, 'hex');
       const pubRaw = Buffer.from(vector.pub, 'hex');

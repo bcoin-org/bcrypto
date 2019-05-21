@@ -75,8 +75,9 @@ describe('KMAC', function() {
     const S = Buffer.from(vector.S, 'hex');
     const X = Buffer.from(vector.X, 'hex');
     const O = Buffer.from(vector.O, 'hex');
+    const text = vector.O.slice(0, 32) + '...';
 
-    it(`should compute KMAC of ${vector.O}`, () => {
+    it(`should compute KMAC of ${text}`, () => {
       const ctx = new KMAC();
 
       ctx.init(bits, K, S);
@@ -88,7 +89,7 @@ describe('KMAC', function() {
       assert.bufferEqual(KMAC.digest(X, bits, K, S, len), O);
     });
 
-    it(`should compute KMAC of ${vector.O}`, () => {
+    it(`should compute KMAC of ${text}`, () => {
       const KMAC = bits === 128 ? KMAC128 : KMAC256;
       const ctx = new KMAC();
 

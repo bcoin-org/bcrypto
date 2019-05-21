@@ -11,7 +11,7 @@ describe('PBKDF2', function() {
     const passwd = Buffer.from(passwd_, 'hex');
     const salt = Buffer.from(salt_, 'hex');
     const expect = Buffer.from(expect_, 'hex');
-    const pwd = passwd.toString('hex');
+    const pwd = passwd.toString('hex', 0, 16) + '...';
 
     it(`should compute pbkdf2 for ${pwd}`, () => {
       const key = pbkdf2.derive(SHA256, passwd, salt, iter, len);

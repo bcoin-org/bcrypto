@@ -241,7 +241,7 @@ describe('GCM', function() {
     const ad = Buffer.from(vector[3], 'hex');
     const expect = Buffer.from(vector[4], 'hex');
 
-    it(`should compute GCM for ${vector[0]}`, () => {
+    it(`should compute GCM for ${vector[0].slice(0, 32)}...`, () => {
       const gcm = new GCM(new AES(key.length * 8));
 
       gcm.init(key, nonce);

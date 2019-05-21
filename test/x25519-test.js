@@ -125,7 +125,7 @@ describe('X25519', function() {
   const rng = new RNG();
 
   for (const [pub, key, expect] of vectors) {
-    it(`should compute secret: ${expect.toString('hex')}`, () => {
+    it(`should compute secret: ${expect.toString('hex', 0, 16)}...`, () => {
       const result = x25519.derive(pub, key);
       assert.bufferEqual(result, expect);
     });
