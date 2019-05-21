@@ -1,8 +1,6 @@
 'use strict';
 
 const assert = require('bsert');
-const fs = require('fs');
-const path = require('path');
 const RNG = require('./util/rng');
 const SHA256 = require('../lib/sha256');
 const p192 = require('../lib/p192');
@@ -15,8 +13,8 @@ const ed25519 = require('../lib/ed25519');
 const ed448 = require('../lib/ed448');
 const x25519 = require('../lib/x25519');
 const x448 = require('../lib/x448');
-const ecies = require('../lib/ecies-secretbox');
-const PATH = path.join(__dirname, 'data', 'ies');
+const ecies = require('../lib/ecies');
+const vectors = require('./data/ecies-legacy.json');
 
 const curves = [
   p192,
@@ -31,7 +29,20 @@ const curves = [
   x448
 ];
 
-describe('ECIES', function() {
+const curveMap = {
+  P192: p192,
+  P224: p224,
+  P256: p256,
+  P384: p384,
+  P521: p521,
+  SECP256K1: secp256k1,
+  ED25519: ed25519,
+  ED448: ed448,
+  X25519: x25519,
+  X448: x448
+};
+
+describe('ECIES (Legacy)', function() {
   const rng = new RNG();
 
   for (const curve of curves) {
@@ -61,19 +72,16 @@ describe('ECIES', function() {
     });
   }
 
-  for (const curve of curves) {
-    const file = path.join(PATH, `${curve.id.toLowerCase()}.json`);
-    const text = fs.readFileSync(file, 'utf8');
-    const vectors = JSON.parse(text);
+  for (const vector of vectors) {
+    const curve = curveMap[vector.curve];
+    const hash = SHA256;
+    const ct = Buffer.from(vector.msg, 'hex');
+    const priv = Buffer.from(vector.priv, 'hex');
+    const expect = Buffer.from(vector.expect, 'hex');
 
-    for (const [i, json] of vectors.entries()) {
-      const vector = json.map(item => Buffer.from(item, 'hex'));
-      const [, bob, pub, msg, ct] = vector;
-
-      it(`should decrypt ciphertext #${i + 1} (${curve.id})`, () => {
-        const pt = ecies.decrypt(curve, SHA256, ct, bob);
-        assert.bufferEqual(pt, msg);
-      });
-    }
+    it(`should decrypt (${curve.id})`, () => {
+      const pt = ecies.decrypt(curve, hash, ct, priv);
+      assert.bufferEqual(pt, expect);
+    });
   }
 });

@@ -4,8 +4,7 @@ const assert = require('bsert');
 const random = require('../lib/random');
 const SHA256 = require('../lib/sha256');
 const rsa = require('../lib/rsa');
-const rsaies = require('../lib/rsaies-secretbox');
-const vectors = require('./data/ies/rsa.json');
+const rsaies = require('../lib/rsaies');
 
 describe('RSAIES', function() {
   this.timeout(120000);
@@ -47,18 +46,6 @@ describe('RSAIES', function() {
         rsaies.decrypt(SHA256, ct, priv, 4096);
       });
       ct[1] ^= 1;
-    });
-  }
-
-  for (const [i, json] of vectors.entries()) {
-    const vector = json.map(item => Buffer.from(item, 'hex'));
-    const [priv_,, msg, ct] = vector;
-    const priv = rsa.privateKeyImport(priv_);
-    const label = Buffer.from('bcrypto');
-
-    it(`should decrypt ciphertext #${i + 1}`, () => {
-      const pt = rsaies.decrypt(SHA256, ct, priv, 4096, label);
-      assert.bufferEqual(pt, msg);
     });
   }
 });

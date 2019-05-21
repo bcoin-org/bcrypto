@@ -4,11 +4,11 @@ const assert = require('bsert');
 const RNG = require('./util/rng');
 const SHA256 = require('../lib/sha256');
 const dsa = require('../lib/dsa');
-const dsaies = require('../lib/dsaies-secretbox');
+const dsaies = require('../lib/dsaies');
 const keys = require('./data/dsaies-keys.json');
-const vectors = require('./data/ies/dsa.json');
+const vectors = require('./data/dsaies-legacy.json');
 
-describe('DSAIES', function() {
+describe('DSAIES (Legacy)', function() {
   const rng = new RNG();
 
   for (const key of keys) {
@@ -40,15 +40,15 @@ describe('DSAIES', function() {
     });
   }
 
-  for (const [i, json] of vectors.entries()) {
-    const vector = json.map(item => Buffer.from(item, 'hex'));
-    const [, bob_, pub_, msg, ct] = vector;
-    const bob = dsa.privateKeyImport(bob_);
-    const pub = dsa.publicKeyImport(pub_);
+  for (const vector of vectors) {
+    const hash = SHA256;
+    const ct = Buffer.from(vector.msg, 'hex');
+    const priv = dsa.privateKeyImport(Buffer.from(vector.priv, 'hex'));
+    const expect = Buffer.from(vector.expect, 'hex');
 
-    it(`should decrypt ciphertext #${i + 1}`, () => {
-      const pt = dsaies.decrypt(SHA256, ct, bob);
-      assert.bufferEqual(pt, msg);
+    it(`should decrypt (${priv.bits()})`, () => {
+      const pt = dsaies.decrypt(hash, ct, priv);
+      assert.bufferEqual(pt, expect);
     });
   }
 });
