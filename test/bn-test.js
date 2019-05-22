@@ -2207,6 +2207,16 @@ describe('BN.js', function() {
       assert.strictEqual(new BN(-4).div(new BN(-2)).toNumber(), 2);
     });
 
+    it('should compute division', () => {
+      // Note: rounds towards zero, not negative infinity.
+      assert.strictEqual(new BN(3e8).div(new BN(-2e8)).toNumber(), -1);
+      assert.strictEqual(new BN(-3e8).div(new BN(2e8)).toNumber(), -1);
+      assert.strictEqual(new BN(-3e8).div(new BN(-2e8)).toNumber(), 1);
+      assert.strictEqual(new BN(4e8).div(new BN(-2e8)).toNumber(), -2);
+      assert.strictEqual(new BN(-4e8).div(new BN(2e8)).toNumber(), -2);
+      assert.strictEqual(new BN(-4e8).div(new BN(-2e8)).toNumber(), 2);
+    });
+
     it('should compute division n', () => {
       // Note: rounds towards zero, not negative infinity.
       assert.strictEqual(new BN(3).divn(-2).toNumber(), -1);
@@ -2226,6 +2236,15 @@ describe('BN.js', function() {
       assert.strictEqual(new BN(-4).mod(new BN(-2)).toNumber(), 0);
     });
 
+    it('should compute modulo', () => {
+      assert.strictEqual(new BN(3e8).mod(new BN(-2e8)).toNumber(), 1e8);
+      assert.strictEqual(new BN(-3e8).mod(new BN(2e8)).toNumber(), -1e8);
+      assert.strictEqual(new BN(-3e8).mod(new BN(-2e8)).toNumber(), -1e8);
+      assert.strictEqual(new BN(4e8).mod(new BN(-2e8)).toNumber(), 0);
+      assert.strictEqual(new BN(-4e8).mod(new BN(2e8)).toNumber(), 0);
+      assert.strictEqual(new BN(-4e8).mod(new BN(-2e8)).toNumber(), 0);
+    });
+
     it('should compute modulo n', () => {
       assert.strictEqual(new BN(3).modrn(-2), 1);
       assert.strictEqual(new BN(-3).modrn(2), -1);
@@ -2242,6 +2261,15 @@ describe('BN.js', function() {
       assert.strictEqual(new BN(4).umod(new BN(-2)).toNumber(), 0);
       assert.strictEqual(new BN(-4).umod(new BN(2)).toNumber(), 0);
       assert.strictEqual(new BN(-4).umod(new BN(-2)).toNumber(), 0);
+    });
+
+    it('should compute unsigned modulo', () => {
+      assert.strictEqual(new BN(3e8).umod(new BN(-2e8)).toNumber(), 1e8);
+      assert.strictEqual(new BN(-3e8).umod(new BN(2e8)).toNumber(), 1e8);
+      assert.strictEqual(new BN(-3e8).umod(new BN(-2e8)).toNumber(), 1e8);
+      assert.strictEqual(new BN(4e8).umod(new BN(-2e8)).toNumber(), 0);
+      assert.strictEqual(new BN(-4e8).umod(new BN(2e8)).toNumber(), 0);
+      assert.strictEqual(new BN(-4e8).umod(new BN(-2e8)).toNumber(), 0);
     });
 
     it('should compute unsigned modulo n', () => {
