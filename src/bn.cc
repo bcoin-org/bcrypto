@@ -1302,7 +1302,7 @@ NAN_METHOD(BBN::Ipowm) {
   BBN *b = ObjectWrap::Unwrap<BBN>(info[0].As<v8::Object>());
   BBN *c = ObjectWrap::Unwrap<BBN>(info[1].As<v8::Object>());
 
-  if (mpz_sgn(a->n) < 0 || mpz_sgn(c->n) <= 0)
+  if (mpz_sgn(c->n) <= 0)
     return Nan::ThrowRangeError(RANGE_ERROR(ipowm));
 
   if (!bmpz_powm(a->n, a->n, b->n, c->n))
@@ -1326,7 +1326,7 @@ NAN_METHOD(BBN::Ipowmn) {
   int64_t b = Nan::To<int64_t>(info[0]).FromJust();
   BBN *c = ObjectWrap::Unwrap<BBN>(info[1].As<v8::Object>());
 
-  if (mpz_sgn(a->n) < 0 || mpz_sgn(c->n) <= 0)
+  if (mpz_sgn(c->n) <= 0)
     return Nan::ThrowRangeError(RANGE_ERROR(ipowmn));
 
   if (!bmpz_powm_si(a->n, a->n, b, c->n))
@@ -1346,7 +1346,7 @@ NAN_METHOD(BBN::Isqrtp) {
 
   BBN *b = ObjectWrap::Unwrap<BBN>(info[0].As<v8::Object>());
 
-  if (mpz_sgn(a->n) < 0 || mpz_sgn(b->n) <= 0)
+  if (mpz_sgn(b->n) <= 0)
     return Nan::ThrowRangeError(RANGE_ERROR(isqrtp));
 
   if (!bmpz_sqrtp(a->n, a->n, b->n))
@@ -1370,11 +1370,8 @@ NAN_METHOD(BBN::Isqrtpq) {
   BBN *b = ObjectWrap::Unwrap<BBN>(info[0].As<v8::Object>());
   BBN *c = ObjectWrap::Unwrap<BBN>(info[1].As<v8::Object>());
 
-  if (mpz_sgn(a->n) < 0
-      || mpz_sgn(b->n) <= 0
-      || mpz_sgn(c->n) <= 0) {
+  if (mpz_sgn(b->n) <= 0 || mpz_sgn(c->n) <= 0)
     return Nan::ThrowRangeError(RANGE_ERROR(isqrtpq));
-  }
 
   if (!bmpz_sqrtpq(a->n, a->n, b->n, c->n))
     return Nan::ThrowError("X is not a square mod P.");

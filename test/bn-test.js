@@ -1569,7 +1569,7 @@ describe('BN.js', function() {
             BN.red(new BN(0));
           });
 
-          assert.throws(() => {
+          assert.doesNotThrow(() => {
             BN.red(new BN(1));
           });
 
@@ -2265,6 +2265,36 @@ describe('BN.js', function() {
         r.toString());
     });
 
+    it.skip('should throw on powm with negative exponent', () => {
+      const x = new BN('49d695e8e09850acf3ced130d55cf4cc', 16);
+      const y = new BN('-1abc952', 16);
+      const m = new BN('b06577896432d8cf7af1c491cad11be9b584316d0045187f40c8ae8d57724725', 16);
+
+      assert.throws(() => x.powm(y, m).toString());
+      assert.throws(() => x.toRed(BN.red(m)).redPow(y).fromRed());
+    });
+
+    it('should compute powm with negative exponent', () => {
+      const x = new BN('49d695e8e09850acf3ced130d55cf4cc', 16);
+      const y = new BN('-1abc952', 16);
+      const m = BN._prime('p192').p;
+      const r = new BN('c512e27cb7074356c472e2be772566a307bd2a8fd9469886', 16);
+
+      assert.strictEqual(x.powm(y, m).toString(), r.toString());
+      assert.strictEqual(
+        x.toRed(BN.red(m)).redPow(y).fromRed().toString(),
+        r.toString());
+    });
+
+    it('should compute large powm', () => {
+      const x = BN._prime('p224').p;
+      const y = new BN('1abc952', 16);
+      const m = BN._prime('p192').p;
+      const r = new BN('65ddeefb718fff7600b3200f3e73f94434d2f5838a7b83ab', 16);
+
+      assert.strictEqual(x.powm(y, m).toString(), r.toString());
+    });
+
     it('should compute inverse', () => {
       const p = BN._prime('p192').p;
       const r = BN.random(rng, 0, p);
@@ -2272,6 +2302,33 @@ describe('BN.js', function() {
 
       assert.strictEqual(r.mul(rInv).subn(1).umod(p).toString(), '0');
       assert.strictEqual(rInv.toString(), r.invm(p).toString());
+    });
+
+    it('should compute large inverse', () => {
+      const p = BN._prime('p192').p;
+      const r = BN._prime('p224').p;
+      const e = new BN('ffffffff00000000ffffffff0000000000000000', 16);
+      const rInv = r.invm(p);
+
+      assert.strictEqual(rInv.toString(), e.toString());
+    });
+
+    it('should compute fermat inverse', () => {
+      const p = BN._prime('p192').p;
+      const r = BN.random(rng, 0, p);
+      const rInv = r.finvm(p);
+
+      assert.strictEqual(r.mul(rInv).subn(1).umod(p).toString(), '0');
+      assert.strictEqual(rInv.toString(), r.invm(p).toString());
+    });
+
+    it('should compute large fermat inverse', () => {
+      const p = BN._prime('p192').p;
+      const r = BN._prime('p224').p;
+      const e = new BN('ffffffff00000000ffffffff0000000000000000', 16);
+      const rInv = r.finvm(p);
+
+      assert.strictEqual(rInv.toString(), e.toString());
     });
 
     it('should compute invmp', () => {
@@ -2344,6 +2401,104 @@ describe('BN.js', function() {
       assert.strictEqual(s.sqr().umod(n).toString(), R.toString());
     });
 
+    it('should compute negative gcd', () => {
+      const p = BN._prime('p192').p;
+      const r = BN.random(rng, 0, p);
+      const g1 = r.neg().gcd(p);
+      const g2 = r.gcd(p);
+
+      assert.strictEqual(g1.toString(), g2.toString());
+    });
+
+    it('should compute negative egcd', () => {
+      const p = BN._prime('p192').p;
+      const r = BN.random(rng, 0, p);
+      const [a1, b1, g1] = r.neg().egcd(p);
+      const [a2, b2, g2] = r.neg().umod(p).egcd(p);
+
+      assert.strictEqual(a1.toString(), a2.toString());
+      assert.strictEqual(b1.toString(), b2.toString());
+      assert.strictEqual(g1.toString(), g2.toString());
+    });
+
+    it('should compute powm (negative)', () => {
+      const x = new BN('-49d695e8e09850acf3ced130d55cf4cc', 16);
+      const y = new BN('1abc952', 16);
+      const m = new BN('b06577896432d8cf7af1c491cad11be9b584316d0045187f40c8ae8d57724725', 16);
+      const r = new BN('3f4cbb5b31c94b98dc5234de233af07319e93088192a9c87e3f0da9b213c779b', 16);
+
+      assert.strictEqual(x.powm(y, m).toString(), r.toString());
+      assert.strictEqual(
+        x.toRed(BN.red(m)).redPow(y).fromRed().toString(),
+        r.toString());
+    });
+
+    it.skip('should throw on powm with negative exponent (negative)', () => {
+      const x = new BN('-49d695e8e09850acf3ced130d55cf4cc', 16);
+      const y = new BN('-1abc952', 16);
+      const m = new BN('b06577896432d8cf7af1c491cad11be9b584316d0045187f40c8ae8d57724725', 16);
+
+      assert.throws(() => x.powm(y, m));
+      assert.throws(() => x.toRed(BN.red(m)).redPow(y).fromRed());
+    });
+
+    it('should compute powm with negative exponent (negative)', () => {
+      const x = new BN('-49d695e8e09850acf3ced130d55cf4cc', 16);
+      const y = new BN('-1abc952', 16);
+      const m = BN._prime('p192').p;
+      const r = new BN('c512e27cb7074356c472e2be772566a307bd2a8fd9469886', 16);
+
+      assert.strictEqual(x.powm(y, m).toString(), r.toString());
+      assert.strictEqual(
+        x.toRed(BN.red(m)).redPow(y).fromRed().toString(),
+        r.toString());
+    });
+
+    it('should compute inverse (negative)', () => {
+      const p = BN._prime('p192').p;
+      const r = BN.random(rng, 0, p);
+      const i1 = r.neg().invm(p);
+      const i2 = r.neg().umod(p).invm(p);
+
+      assert.strictEqual(i1.toString(), i2.toString());
+    });
+
+    it('should compute fermat inverse (negative)', () => {
+      const p = BN._prime('p192').p;
+      const r = BN.random(rng, 0, p);
+      const i1 = r.neg().finvm(p);
+      const i2 = r.neg().umod(p).finvm(p);
+
+      assert.strictEqual(i1.toString(), i2.toString());
+    });
+
+    it('should compute sqrtp (negative)', () => {
+      const p = BN._prime('p192').p;
+      const r = BN.random(rng, 0, p).ineg();
+      const R = r.sqr().umod(p);
+      const s = R.sqrtp(p);
+
+      assert.strictEqual(s.sqr().umod(p).toString(), R.toString());
+    });
+
+    it('should compute sqrtpq (negative)', () => {
+      const p = BN._prime('p192').p;
+      const q = BN._prime('p224').p;
+      const n = p.mul(q);
+      const r = BN.random(rng, 0, n).ineg();
+      const R = r.sqr().umod(n);
+      const s = R.sqrtpq(p, q);
+
+      assert.strictEqual(s.sqr().umod(n).toString(), R.toString());
+    });
+
+    it('should negate', () => {
+      const p = BN._prime('p192').p;
+      const r = BN.random(rng, 1, p);
+
+      assert.strictEqual(r.neg().iumod(p).toString(), p.sub(r).toString());
+    });
+
     it('should test perfect squares', () => {
       assert(new BN(0).isSquare());
       assert(new BN(1).isSquare());
@@ -2355,6 +2510,34 @@ describe('BN.js', function() {
       assert(!new BN(7).isSquare());
       assert(new BN(1024).isSquare());
       assert(!new BN(1025).isSquare());
+    });
+
+    it('should allow negative numbers for reduction context', () => {
+      const p = BN._prime('p192').p;
+      const red = BN.red(p);
+      const n = BN.random(rng, p.neg(), 0);
+
+      assert(n.isNeg());
+
+      const r = n.toRed(red);
+
+      assert(!r.isNeg());
+
+      assert(r.fromRed().eq(n.umod(p)));
+    });
+
+    it('should allow negative numbers for montgomery context', () => {
+      const p = BN._prime('p192').p;
+      const red = BN.mont(p);
+      const n = BN.random(rng, p.neg(), 0);
+
+      assert(n.isNeg());
+
+      const r = n.toRed(red);
+
+      assert(!r.isNeg());
+
+      assert(r.fromRed().eq(n.umod(p)));
     });
 
     it('should read and serialize aligned data', () => {
