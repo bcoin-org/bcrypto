@@ -2324,39 +2324,39 @@ describe('BN.js', function() {
     });
 
     it('should compute inverse', () => {
-      const p = BN._prime('p192').p;
-      const r = BN.random(rng, 0, p);
-      const rInv = r.invm(p);
+      const y = BN._prime('p192').p;
+      const x = BN.random(rng, 0, y);
+      const inv = x.invm(y);
 
-      assert.strictEqual(r.mul(rInv).subn(1).umod(p).toString(), '0');
-      assert.strictEqual(rInv.toString(), r.invm(p).toString());
+      assert.strictEqual(x.mul(inv).subn(1).umod(y).toString(), '0');
+      assert.strictEqual(inv.toString(), x.invm(y).toString());
     });
 
     it('should compute large inverse', () => {
-      const p = BN._prime('p192').p;
-      const r = BN._prime('p224').p;
-      const e = new BN('ffffffff00000000ffffffff0000000000000000', 16);
-      const rInv = r.invm(p);
+      const x = BN._prime('p224').p;
+      const y = BN._prime('p192').p;
+      const r = new BN('ffffffff00000000ffffffff0000000000000000', 16);
+      const inv = x.invm(y);
 
-      assert.strictEqual(rInv.toString(), e.toString());
+      assert.strictEqual(inv.toString(), r.toString());
     });
 
     it('should compute fermat inverse', () => {
-      const p = BN._prime('p192').p;
-      const r = BN.random(rng, 0, p);
-      const rInv = r.finvm(p);
+      const y = BN._prime('p192').p;
+      const x = BN.random(rng, 0, y);
+      const inv = x.finvm(y);
 
-      assert.strictEqual(r.mul(rInv).subn(1).umod(p).toString(), '0');
-      assert.strictEqual(rInv.toString(), r.invm(p).toString());
+      assert.strictEqual(x.mul(inv).subn(1).umod(y).toString(), '0');
+      assert.strictEqual(inv.toString(), x.invm(y).toString());
     });
 
     it('should compute large fermat inverse', () => {
-      const p = BN._prime('p192').p;
-      const r = BN._prime('p224').p;
-      const e = new BN('ffffffff00000000ffffffff0000000000000000', 16);
-      const rInv = r.finvm(p);
+      const x = BN._prime('p224').p;
+      const y = BN._prime('p192').p;
+      const r = new BN('ffffffff00000000ffffffff0000000000000000', 16);
+      const inv = x.finvm(y);
 
-      assert.strictEqual(rInv.toString(), e.toString());
+      assert.strictEqual(inv.toString(), r.toString());
     });
 
     it('should compute invmp', () => {
@@ -2394,6 +2394,19 @@ describe('BN.js', function() {
       assert.strictEqual(g1.toString(), r1.mul(a1).add(r2.mul(b1)).toString());
       assert.strictEqual(g2.toString(), '1');
       assert.strictEqual(r1d.mul(a2).add(r2d.mul(b2)).subn(1).toString(), '0');
+    });
+
+    it('should compute large egcd', () => {
+      const x = BN._prime('p224').p;
+      const y = BN._prime('p192').p;
+      const [s, t, g] = x.egcd(y);
+      const rs = new BN('ffffffff00000000ffffffff0000000000000000', 16);
+      const rt = new BN('-ffffffff00000000ffffffff000000000000000000000001', 16);
+      const rg = new BN('01', 16);
+
+      assert.strictEqual(s.toString(16), rs.toString(16));
+      assert.strictEqual(t.toString(16), rt.toString(16));
+      assert.strictEqual(g.toString(16), rg.toString(16));
     });
 
     it('should compute sqrt', () => {
