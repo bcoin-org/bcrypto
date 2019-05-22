@@ -14,9 +14,9 @@ const x25519 = require('../../lib/x25519');
 const x448 = require('../../lib/x448');
 const rsa = require('../../lib/rsa');
 const dsa = require('../../lib/dsa');
-const ecies = require('../../lib/ecies-secretbox');
-const dsaies = require('../../lib/dsaies-secretbox');
-const rsaies = require('../../lib/rsaies-secretbox');
+const ecies = require('../../lib/ecies');
+const dsaies = require('../../lib/dsaies');
+const rsaies = require('../../lib/rsaies');
 const SHA256 = require('../../lib/sha256');
 const random = require('../../lib/random');
 

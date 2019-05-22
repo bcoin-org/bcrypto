@@ -15,7 +15,7 @@ const ed25519 = require('../lib/ed25519');
 const ed448 = require('../lib/ed448');
 const x25519 = require('../lib/x25519');
 const x448 = require('../lib/x448');
-const ecies = require('../lib/ecies-secretbox');
+const ecies = require('../lib/ecies');
 const PATH = path.join(__dirname, 'data', 'ies');
 
 const curves = [

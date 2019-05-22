@@ -4,7 +4,7 @@ const assert = require('bsert');
 const RNG = require('./util/rng');
 const SHA256 = require('../lib/sha256');
 const dsa = require('../lib/dsa');
-const dsaies = require('../lib/dsaies-secretbox');
+const dsaies = require('../lib/dsaies');
 const keys = require('./data/dsaies-keys.json');
 const vectors = require('./data/ies/dsa.json');
 

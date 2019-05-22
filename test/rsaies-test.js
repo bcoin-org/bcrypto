@@ -4,7 +4,7 @@ const assert = require('bsert');
 const random = require('../lib/random');
 const SHA256 = require('../lib/sha256');
 const rsa = require('../lib/rsa');
-const rsaies = require('../lib/rsaies-secretbox');
+const rsaies = require('../lib/rsaies');
 const vectors = require('./data/ies/rsa.json');
 
 describe('RSAIES', function() {
