@@ -2083,9 +2083,10 @@ describe('BN.js', function() {
 
         assert.strictEqual(xx.jacobi(yy), z);
 
-        if (!xx.isNeg() && yy.abs().gtn(1)) {
-          const xxx = xx.toRed(BN.red(yy.abs()));
-          assert.strictEqual(xxx.redJacobi(), z);
+        if (!yy.isNeg()) {
+          const red = BN.red(yy);
+          const xr = xx.toRed(red);
+          assert.strictEqual(xr.redJacobi(), z);
         }
       });
     }
