@@ -1465,6 +1465,9 @@ NAN_METHOD(BBN::FromTwos) {
 
   uint32_t width = Nan::To<uint32_t>(info[0]).FromJust();
 
+  if (width == 0)
+    return Nan::ThrowRangeError(RANGE_ERROR(fromTwos));
+
   bmpz_from_twos(a->n, a->n, width);
 
   info.GetReturnValue().Set(info.Holder());
