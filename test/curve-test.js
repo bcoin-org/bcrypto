@@ -145,6 +145,7 @@ describe('Curves', function() {
     it('should work with secp112k1', () => {
       const curve = new ShortCurve({
         p: 'db7c 2abf62e3 5e668076 bead208b',
+        n: 'db7c 2abf62e3 5e7628df ac6561c5',
         a: 'db7c 2abf62e3 5e668076 bead2088',
         b: '659e f8ba0439 16eede89 11702b22'
       });
@@ -190,10 +191,10 @@ describe('Curves', function() {
 
       // Endomorphism test
       assert(curve.endo);
-      assert.equal(
+      assert.strictEqual(
         curve.endo.beta.fromRed().toString(16),
         '7ae96a2b657c07106e64479eac3434e99cf0497512f58995c1396c28719501ee');
-      assert.equal(
+      assert.strictEqual(
         curve.endo.lambda.toString(16),
         '5363ad4cc05c30e0a5261c028812645a122e22ea20816678df02967c1b23bd72');
 
@@ -202,7 +203,7 @@ describe('Curves', function() {
 
       const testK = k1.add(k2.mul(curve.endo.lambda)).umod(curve.n);
 
-      assert.equal(testK.toString(16), k.toString(16));
+      assert.strictEqual(testK.toString(16), k.toString(16));
     });
 
     it('should compute this problematic secp256k1 multiplication', () => {
@@ -253,8 +254,8 @@ describe('Curves', function() {
         '5f2e49b5d64e53f9811545434706cde4de528af97bfd49fde1f6cf792ee37a8c',
         16);
 
-      let p1 = curve.g.mul(k1);
-      let p2 = curve.g.mul(k2);
+      const p1 = curve.g.mul(k1);
+      const p2 = curve.g.mul(k2);
 
       // 2 + 2 + 1 = 2 + 1 + 2
       const two = p2.dbl();
@@ -264,12 +265,12 @@ describe('Curves', function() {
 
       assert(maybeFive.eq(five));
 
-      p1 = p1.mul(k2);
-      p2 = p2.mul(k1);
+      const p3 = p1.mul(k2);
+      const p4 = p2.mul(k1);
 
-      assert(p1.validate());
-      assert(p2.validate());
-      assert(p1.eq(p2));
+      assert(p3.validate());
+      assert(p4.validate());
+      assert(p3.eq(p4));
     });
 
     it('should correctly double the affine point on secp256k1', () => {
@@ -343,8 +344,8 @@ describe('Curves', function() {
         const p = curve.point(new BN(co.x, 16), new BN(co.y, 16));
 
         // Encodes as expected
-        assert.equal(p.encode(false).toString('hex'), definition.encoded);
-        assert.equal(p.encode(true).toString('hex'), definition.compactEncoded);
+        assert.strictEqual(p.encode(false).toString('hex'), definition.encoded);
+        assert.strictEqual(p.encode(true).toString('hex'), definition.compactEncoded);
 
         // Decodes as expected
         assert(curve.decodePoint(Buffer.from(definition.encoded, 'hex')).eq(p));
@@ -364,7 +365,7 @@ describe('Curves', function() {
         const decoded = curve.decodePoint(encoded);
 
         assert(decoded.eq(p));
-        assert.equal(encoded.toString('hex'), definition.encoded);
+        assert.strictEqual(encoded.toString('hex'), definition.encoded);
 
         assert.bufferEqual(curve.g.mul(scalar).encode(), encoded);
       };
