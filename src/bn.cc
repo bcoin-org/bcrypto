@@ -195,7 +195,9 @@ BBN::Init(v8::Local<v8::Object> &target) {
   Nan::SetPrototypeMethod(tpl, "eqn", BBN::Eqn);
   Nan::SetPrototypeMethod(tpl, "ucmp", BBN::Ucmp);
   Nan::SetPrototypeMethod(tpl, "ucmpn", BBN::Ucmpn);
+  Nan::SetPrototypeMethod(tpl, "legendre", BBN::Legendre);
   Nan::SetPrototypeMethod(tpl, "jacobi", BBN::Jacobi);
+  Nan::SetPrototypeMethod(tpl, "kronecker", BBN::Kronecker);
   Nan::SetPrototypeMethod(tpl, "igcd", BBN::Igcd);
   Nan::SetPrototypeMethod(tpl, "egcd", BBN::Egcd);
   Nan::SetPrototypeMethod(tpl, "iinvm", BBN::Iinvm);
@@ -649,6 +651,9 @@ NAN_METHOD(BBN::Iand) {
 
   BBN *b = ObjectWrap::Unwrap<BBN>(info[0].As<v8::Object>());
 
+  if (mpz_sgn(a->n) < 0 || mpz_sgn(b->n) < 0)
+    return Nan::ThrowRangeError(RANGE_ERROR(iand));
+
   mpz_and(a->n, a->n, b->n);
 
   info.GetReturnValue().Set(info.Holder());
@@ -665,6 +670,9 @@ NAN_METHOD(BBN::Iandn) {
 
   int64_t num = Nan::To<int64_t>(info[0]).FromJust();
 
+  if (mpz_sgn(a->n) < 0 || num < 0)
+    return Nan::ThrowRangeError(RANGE_ERROR(iandn));
+
   bmpz_and_si(a->n, a->n, num);
 
   info.GetReturnValue().Set(info.Holder());
@@ -680,7 +688,11 @@ NAN_METHOD(BBN::Andrn) {
     return Nan::ThrowTypeError(TYPE_ERROR(num, smi));
 
   int64_t num = Nan::To<int64_t>(info[0]).FromJust();
-  int64_t r = mpz_get_si(a->n) & num;
+
+  if (mpz_sgn(a->n) < 0 || num < 0)
+    return Nan::ThrowRangeError(RANGE_ERROR(andrn));
+
+  int64_t r = (int64_t)mpz_getlimbn(a->n, 0) & num;
 
   info.GetReturnValue().Set(Nan::New<v8::Number>(r));
 }
@@ -742,7 +754,10 @@ NAN_METHOD(BBN::Uandrn) {
   if (num < 0)
     num = -num;
 
-  int64_t r = mpz_get_si(a->n) & num;
+  int64_t r = (int64_t)mpz_getlimbn(a->n, 0) & num;
+
+  if (mpz_sgn(a->n) < 0)
+    r = -r;
 
   info.GetReturnValue().Set(Nan::New<v8::Number>(r));
 }
@@ -757,6 +772,9 @@ NAN_METHOD(BBN::Ior) {
     return Nan::ThrowTypeError(TYPE_ERROR(num, bignum));
 
   BBN *b = ObjectWrap::Unwrap<BBN>(info[0].As<v8::Object>());
+
+  if (mpz_sgn(a->n) < 0 || mpz_sgn(b->n) < 0)
+    return Nan::ThrowRangeError(RANGE_ERROR(ior));
 
   mpz_ior(a->n, a->n, b->n);
 
@@ -773,6 +791,9 @@ NAN_METHOD(BBN::Iorn) {
     return Nan::ThrowTypeError(TYPE_ERROR(num, smi));
 
   int64_t num = Nan::To<int64_t>(info[0]).FromJust();
+
+  if (mpz_sgn(a->n) < 0 || num < 0)
+    return Nan::ThrowRangeError(RANGE_ERROR(iorn));
 
   bmpz_ior_si(a->n, a->n, num);
 
@@ -822,6 +843,9 @@ NAN_METHOD(BBN::Ixor) {
 
   BBN *b = ObjectWrap::Unwrap<BBN>(info[0].As<v8::Object>());
 
+  if (mpz_sgn(a->n) < 0 || mpz_sgn(b->n) < 0)
+    return Nan::ThrowRangeError(RANGE_ERROR(ixor));
+
   mpz_xor(a->n, a->n, b->n);
 
   info.GetReturnValue().Set(info.Holder());
@@ -837,6 +861,9 @@ NAN_METHOD(BBN::Ixorn) {
     return Nan::ThrowTypeError(TYPE_ERROR(num, smi));
 
   int64_t num = Nan::To<int64_t>(info[0]).FromJust();
+
+  if (mpz_sgn(a->n) < 0 || num < 0)
+    return Nan::ThrowRangeError(RANGE_ERROR(ixorn));
 
   bmpz_xor_si(a->n, a->n, num);
 
@@ -900,6 +927,9 @@ NAN_METHOD(BBN::Ishln) {
   if (!IsUint32(info[0]))
     return Nan::ThrowTypeError(TYPE_ERROR(bits, integer));
 
+  if (mpz_sgn(a->n) < 0)
+    return Nan::ThrowRangeError(RANGE_ERROR(ishln));
+
   uint32_t bits = Nan::To<uint32_t>(info[0]).FromJust();
 
   mpz_mul_2exp(a->n, a->n, bits);
@@ -931,6 +961,9 @@ NAN_METHOD(BBN::Ishrn) {
 
   if (!IsUint32(info[0]))
     return Nan::ThrowTypeError(TYPE_ERROR(bits, integer));
+
+  if (mpz_sgn(a->n) < 0)
+    return Nan::ThrowRangeError(RANGE_ERROR(ishrn));
 
   uint32_t bits = Nan::To<uint32_t>(info[0]).FromJust();
 
@@ -1019,7 +1052,7 @@ NAN_METHOD(BBN::Andln) {
     return Nan::ThrowTypeError(TYPE_ERROR(num, smi));
 
   int64_t num = Nan::To<int64_t>(info[0]).FromJust();
-  int64_t r = mpz_get_ui(a->n) & num;
+  int64_t r = (int64_t)mpz_getlimbn(a->n, 0) & num;
 
   info.GetReturnValue().Set(Nan::New<v8::Number>(r));
 }
@@ -1170,6 +1203,31 @@ NAN_METHOD(BBN::Ucmpn) {
   info.GetReturnValue().Set(Nan::New<v8::Int32>(r));
 }
 
+NAN_METHOD(BBN::Legendre) {
+  BBN *a = ObjectWrap::Unwrap<BBN>(info.Holder());
+
+  if (info.Length() < 1)
+    return Nan::ThrowError(ARG_ERROR(legendre, 1));
+
+  if (!BBN::HasInstance(info[0]))
+    return Nan::ThrowTypeError(TYPE_ERROR(num, bignum));
+
+  BBN *b = ObjectWrap::Unwrap<BBN>(info[0].As<v8::Object>());
+
+  if (mpz_sgn(b->n) <= 0)
+    return Nan::ThrowRangeError(RANGE_ERROR(legendre));
+
+  if (mpz_even_p(b->n))
+    return Nan::ThrowError("legendre: `num` must be odd.");
+
+  int32_t r = bmpz_legendre(a->n, b->n);
+
+  if (r == -2)
+    return Nan::ThrowError("Invalid prime.");
+
+  info.GetReturnValue().Set(Nan::New<v8::Int32>(r));
+}
+
 NAN_METHOD(BBN::Jacobi) {
   BBN *a = ObjectWrap::Unwrap<BBN>(info.Holder());
 
@@ -1182,9 +1240,25 @@ NAN_METHOD(BBN::Jacobi) {
   BBN *b = ObjectWrap::Unwrap<BBN>(info[0].As<v8::Object>());
 
   if (mpz_sgn(b->n) == 0 || mpz_even_p(b->n))
-    return Nan::ThrowError("jacobi: `y` must be odd.");
+    return Nan::ThrowError("jacobi: `num` must be odd.");
 
   int32_t r = bmpz_jacobi(a->n, b->n);
+
+  info.GetReturnValue().Set(Nan::New<v8::Int32>(r));
+}
+
+NAN_METHOD(BBN::Kronecker) {
+  BBN *a = ObjectWrap::Unwrap<BBN>(info.Holder());
+
+  if (info.Length() < 1)
+    return Nan::ThrowError(ARG_ERROR(kronecker, 1));
+
+  if (!BBN::HasInstance(info[0]))
+    return Nan::ThrowTypeError(TYPE_ERROR(num, bignum));
+
+  BBN *b = ObjectWrap::Unwrap<BBN>(info[0].As<v8::Object>());
+
+  int32_t r = bmpz_kronecker(a->n, b->n);
 
   info.GetReturnValue().Set(Nan::New<v8::Int32>(r));
 }

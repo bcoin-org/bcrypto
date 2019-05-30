@@ -2105,7 +2105,6 @@ const jacobi = [
 ];
 
 // https://en.wikipedia.org/wiki/Kronecker_symbol#Table_of_values
-// eslint-disable-next-line
 const kronecker = [
   [1, 1, 1],
   [1, 2, 1],
@@ -4788,17 +4787,55 @@ describe('BN.js', function() {
   describe('BN-NG', () => {
     const MAX_SAFE_INTEGER = Number.MAX_SAFE_INTEGER;
 
+    it('should compute legendre symbols', () => {
+      for (const [x, y, z] of legendre) {
+        const xx = new BN(x);
+        const yy = new BN(y);
+
+        assert.strictEqual(xx.legendre(yy), z, `(${x}, ${y}, ${z})`);
+
+        {
+          const red = BN.red(yy);
+          const xr = xx.toRed(red);
+
+          assert.strictEqual(xr.redLegendre(), z, `(${x}, ${y}, ${z})`);
+        }
+
+        {
+          const red = BN.mont(yy);
+          const xr = xx.toRed(red);
+
+          assert.strictEqual(xr.redLegendre(), z, `(${x}, ${y}, ${z})`);
+        }
+      }
+    });
+
     it('should compute jacobi symbols', () => {
       for (const [x, y, z] of [...legendre, ...jacobi]) {
         const xx = new BN(x);
         const yy = new BN(y);
 
-        assert.strictEqual(xx.jacobi(yy), z);
+        assert.strictEqual(xx.jacobi(yy), z, `(${x}, ${y}, ${z})`);
 
         if (!yy.isNeg()) {
           const red = BN.red(yy);
           const xr = xx.toRed(red);
-          assert.strictEqual(xr.redJacobi(), z);
+          assert.strictEqual(xr.redJacobi(), z, `(${x}, ${y}, ${z})`);
+        }
+      }
+    });
+
+    it('should compute kronecker symbols', () => {
+      for (const [x, y, z] of [...legendre, ...jacobi, ...kronecker]) {
+        const xx = new BN(x);
+        const yy = new BN(y);
+
+        assert.strictEqual(xx.kronecker(yy), z, `(${x}, ${y}, ${z})`);
+
+        if (!yy.isNeg() && xx.cmp(yy) < 0) {
+          const red = BN.red(yy);
+          const xr = xx.toRed(red);
+          assert.strictEqual(xr.redKronecker(), z, `(${x}, ${y}, ${z})`);
         }
       }
     });

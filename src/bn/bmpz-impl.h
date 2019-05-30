@@ -351,6 +351,41 @@ done:
 }
 
 #if !defined(BCRYPTO_HAS_GMP)
+static int
+bmpz_legendre(const mpz_t x, const mpz_t y) {
+  mpz_t e, s;
+  int r = -2;
+
+  mpz_init(e);
+  mpz_init(s);
+
+  if (mpz_sgn(y) <= 0 || mpz_even_p(y))
+    goto done;
+
+  // e = (y - 1) >> 1
+  mpz_sub_ui(e, y, 1);
+  mpz_fdiv_q_2exp(e, e, 1);
+
+  // Euler's criterion.
+  // s = x^e mod y
+  mpz_powm(s, x, e, y);
+
+  if (mpz_cmp_ui(s, 1) == 0) {
+    r = 1;
+  } else if (mpz_sgn(s) == 0) {
+    r = 0;
+  } else {
+    mpz_add_ui(s, s, 1);
+    if (mpz_cmp(s, y) == 0)
+      r = -1;
+  }
+
+done:
+  mpz_clear(e);
+  mpz_clear(s);
+  return r;
+}
+
 // https://github.com/golang/go/blob/aadaec5/src/math/big/int.go#L754
 static int
 bmpz_jacobi(const mpz_t x, const mpz_t y) {
@@ -434,8 +469,103 @@ bmpz_jacobi(const mpz_t x, const mpz_t y) {
 
   return j;
 }
+
+// https://github.com/openssl/openssl/blob/master/crypto/bn/bn_kron.c
+static int
+bmpz_kronecker(const mpz_t x, const mpz_t y) {
+  static const int table[8] = {
+    0,  1, 0, -1,
+    0, -1, 0,  1
+  };
+
+  mpz_t a;
+  mpz_t b;
+  int s;
+  unsigned long z, w;
+
+  mpz_init(a);
+  mpz_init(b);
+  s = 0;
+
+  // a = x
+  mpz_set(a, x);
+  // b = y
+  mpz_set(b, y);
+
+  // if b == 0
+  if (mpz_sgn(b) == 0) {
+    // if a != 1 and a != -1
+    if (mpz_cmpabs_ui(a, 1) != 0)
+      s = 0;
+    goto done;
+  }
+
+  // if a & 1 == 0 and b & 1 == 0
+  if (!mpz_odd_p(a) && !mpz_odd_p(b))
+    goto done;
+
+  z = bmpz_zerobits(b);
+
+  // b >>= z
+  mpz_fdiv_q_2exp(b, b, z);
+
+  if (z & 1)
+    s = table[mpz_getlimbn(a, 0) & 7];
+
+  // if b < 0
+  if (mpz_sgn(b) < 0) {
+    // if a < 0
+    if (mpz_sgn(a) < 0)
+      s = -s;
+    // b = -b
+    mpz_neg(b, b);
+  }
+
+  for (;;) {
+    // if a == 0
+    if (mpz_sgn(a) == 0) {
+      // if b != 1
+      if (mpz_cmp_ui(b, 1) != 0)
+        s = 0;
+      goto done;
+    }
+
+    z = bmpz_zerobits(a);
+
+    // a >>= z
+    mpz_fdiv_q_2exp(a, a, z);
+
+    if (z & 1)
+      s *= table[mpz_getlimbn(b, 0) & 7];
+
+    w = mpz_getlimbn(a, 0);
+
+    if (mpz_sgn(a) < 0)
+      w = ~w;
+
+    if (w & mpz_getlimbn(b, 0) & 2)
+      s = -s;
+
+    // b = b mod a
+    mpz_mod(b, b, a);
+
+    // a, b = b, a
+    mpz_swap(a, b);
+
+    // if b < 0
+    //   b = -b
+    mpz_abs(b, b);
+  }
+
+done:
+  mpz_clear(a);
+  mpz_clear(b);
+  return s;
+}
 #else
+#define bmpz_legendre mpz_legendre
 #define bmpz_jacobi mpz_jacobi
+#define bmpz_kronecker mpz_kronecker
 #endif
 
 // https://github.com/golang/go/blob/aadaec5/src/math/big/prime.go#L81

@@ -75,7 +75,9 @@ private:
   static NAN_METHOD(Eqn);
   static NAN_METHOD(Ucmp);
   static NAN_METHOD(Ucmpn);
+  static NAN_METHOD(Legendre);
   static NAN_METHOD(Jacobi);
+  static NAN_METHOD(Kronecker);
   static NAN_METHOD(Igcd);
   static NAN_METHOD(Egcd);
   static NAN_METHOD(Iinvm);
