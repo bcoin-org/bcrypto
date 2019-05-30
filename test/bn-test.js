@@ -2441,6 +2441,24 @@ describe('BN.js', function() {
       assert.strictEqual(s2.toString(), '0');
     });
 
+    it('should compute sqrtp (224)', () => {
+      const p = BN._prime('p224').p;
+      const r = BN.random(rng, 0, p);
+      const R = r.sqr().umod(p);
+      const s = R.sqrtp(p);
+
+      assert.strictEqual(s.sqr().umod(p).toString(), R.toString());
+    });
+
+    it('should compute sqrtp (224, zero)', () => {
+      const p = BN._prime('p224').p;
+      const s1 = p.sqrtp(p);
+      const s2 = p.muln(2).sqrtp(p);
+
+      assert.strictEqual(s1.toString(), '0');
+      assert.strictEqual(s2.toString(), '0');
+    });
+
     it('should compute sqrtpq', () => {
       const p = BN._prime('p192').p;
       const q = BN._prime('p224').p;
