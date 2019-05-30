@@ -1,8 +1,11 @@
 'use strict';
 
 const assert = require('bsert');
+const p192 = require('../lib/p192');
 const p224 = require('../lib/p224');
 const p256 = require('../lib/p256');
+const p384 = require('../lib/p384');
+const p521 = require('../lib/p521');
 const secp256k1 = require('../lib/secp256k1');
 const vectors = require('./data/schnorr.json');
 const custom = require('./data/schnorr-custom.json');
@@ -66,7 +69,7 @@ describe('Secp256k1+Schnorr', function() {
     assert.strictEqual(secp256k1.schnorrBatchVerify([[msg, sig, key]]), true);
   });
 
-  it('should be generalized for other curves (p256)', () => {
+  it('should be generalized for other curves', () => {
     if (!p256.schnorr)
       this.skip();
 
@@ -112,7 +115,25 @@ describe('Secp256k1+Schnorr', function() {
     assert.strictEqual(p256.schnorr.batchVerify(batch), true);
   });
 
-  it('should be generalized for other curves (p224)', () => {
+  it('should check schnorr support for various curves', () => {
+    if (!p192.schnorr)
+      this.skip();
+
+    // Out of all of the NIST curves, P224 is the only
+    // curve where `-1 mod p` is a quadratic residue.
+    // Fun fact: P224 is also the only NIST curve whose
+    // prime doesn't satisfy either `p mod 4 == 3` or
+    // `p mod 8 == 5`, lending itself to much slower
+    // square roots.
+    assert(p192.schnorr.supported);
+    assert(!p224.schnorr.supported);
+    assert(p256.schnorr.supported);
+    assert(p384.schnorr.supported);
+    assert(p521.schnorr.supported);
+    assert(secp256k1.schnorr.supported);
+  });
+
+  it('should throw on curves which fail to satisfy jacobi(-1, p) == -1', () => {
     if (!p224.schnorr)
       this.skip();
 
@@ -124,34 +145,19 @@ describe('Secp256k1+Schnorr', function() {
       '1a8e7926ac39de66fe1f86838e1915a2ae40d8e9adf4636b7d5dc698',
       'hex');
 
-    const pub = p224.publicKeyCreate(key);
-    const sig = p224.schnorr.sign(msg, key);
-
-    assert.strictEqual(p224.schnorr.verify(msg, sig, pub), true);
-    assert.strictEqual(p224.schnorr.batchVerify([[msg, sig, pub]]), true);
-  });
-
-  it('should fail on curves which fail to satisfy p mod 4 == 3 (p224)', () => {
-    if (!p224.schnorr)
-      this.skip();
-
-    const msg = Buffer.from(
-      '3b3c4a629b78ca392e689526c445119ac9f27d7986e177764a1db2d9935f2832',
+    const sig = Buffer.from(''
+      + '2a28df7533ab3e0fd255d1dd657d721c6d7f6ec7c6ef8b44e32601a8'
+      + 'bc440697e01348ddd45f392e420090856aed78f557e6440d1c3d4226',
       'hex');
 
-    const key = Buffer.from(
-      '1a8e7926ac39de66fe8f86838e1915a2ae40d8e9adf4636b7d5dc698',
-      'hex');
-
-    // This will create a signature without a quadratic
-    // residue y coordinate. Negating a scalar doesn't
-    // guarantee that the resulting point will have a
-    // quadratic residue y.
     const pub = p224.publicKeyCreate(key);
-    const sig = p224.schnorr.sign(msg, key);
 
-    assert.strictEqual(p224.schnorr.verify(msg, sig, pub), false);
-    assert.strictEqual(p224.schnorr.batchVerify([[msg, sig, pub]]), true);
+    assert(!p224.schnorr.supported);
+    assert(!p224.schnorr.support());
+
+    assert.throws(() => p224.schnorr.sign(msg, key), /not supported/);
+    assert.throws(() => p224.schnorr.verify(msg, sig, pub), /not supported/);
+    assert.throws(() => p224.schnorr.batchVerify([[msg, sig, pub]]), /not supported/);
   });
 
   for (const [key_, pub_, msg_, sig_, result, comment_] of custom) {
