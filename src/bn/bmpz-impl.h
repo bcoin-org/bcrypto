@@ -130,6 +130,9 @@ bmpz_finvm(mpz_t ret, const mpz_t a, const mpz_t b) {
   if (!bmpz_powm(ret, a, e, b))
     goto fail;
 
+  if (mpz_sgn(ret) == 0)
+    goto fail;
+
   r = 1;
 fail:
   mpz_clear(e);

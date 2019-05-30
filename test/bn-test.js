@@ -4195,10 +4195,10 @@ describe('BN.js', function() {
           m = fn(p);
 
           q = new BN(13).toRed(m);
-          qr = q.redSqrt(true, p);
+          qr = q.redSqrt();
           assert.equal(qr.redSqr().cmp(q), 0);
 
-          qr = q.redSqrt(false, p);
+          qr = q.redSqrt();
           assert.equal(qr.redSqr().cmp(q), 0);
 
           // Tonelli-shanks
@@ -5043,7 +5043,7 @@ describe('BN.js', function() {
         r.toString());
     });
 
-    it.skip('should throw on powm with negative exponent', () => {
+    it('should throw on powm with negative exponent', () => {
       const x = new BN('49d695e8e09850acf3ced130d55cf4cc', 16);
       const y = new BN('-1abc952', 16);
       const m = new BN('b06577896432d8cf7af1c491cad11be9b584316d0045187f40c8ae8d57724725', 16);
@@ -5077,9 +5077,13 @@ describe('BN.js', function() {
       const y = BN._prime('p192').p;
       const x = BN.random(rng, 0, y);
       const inv = x.invm(y);
+      const inv2 = x.toRed(BN.red(y)).redInvm().fromRed();
+      const inv3 = x.toRed(BN.mont(y)).redInvm().fromRed();
 
       assert.strictEqual(x.mul(inv).subn(1).umod(y).toString(), '0');
       assert.strictEqual(inv.toString(), x.invm(y).toString());
+      assert.strictEqual(inv2.toString(), inv.toString());
+      assert.strictEqual(inv3.toString(), inv.toString());
     });
 
     it('should compute large inverse', () => {
@@ -5087,17 +5091,25 @@ describe('BN.js', function() {
       const y = BN._prime('p192').p;
       const r = new BN('ffffffff00000000ffffffff0000000000000000', 16);
       const inv = x.invm(y);
+      const inv2 = x.toRed(BN.red(y)).redInvm().fromRed();
+      const inv3 = x.toRed(BN.mont(y)).redInvm().fromRed();
 
       assert.strictEqual(inv.toString(), r.toString());
+      assert.strictEqual(inv2.toString(), inv.toString());
+      assert.strictEqual(inv3.toString(), inv.toString());
     });
 
     it('should compute fermat inverse', () => {
       const y = BN._prime('p192').p;
       const x = BN.random(rng, 0, y);
       const inv = x.finvm(y);
+      const inv2 = x.toRed(BN.red(y)).redFinvm().fromRed();
+      const inv3 = x.toRed(BN.mont(y)).redFinvm().fromRed();
 
       assert.strictEqual(x.mul(inv).subn(1).umod(y).toString(), '0');
       assert.strictEqual(inv.toString(), x.invm(y).toString());
+      assert.strictEqual(inv2.toString(), inv.toString());
+      assert.strictEqual(inv3.toString(), inv.toString());
     });
 
     it('should compute large fermat inverse', () => {
@@ -5105,8 +5117,12 @@ describe('BN.js', function() {
       const y = BN._prime('p192').p;
       const r = new BN('ffffffff00000000ffffffff0000000000000000', 16);
       const inv = x.finvm(y);
+      const inv2 = x.toRed(BN.red(y)).redFinvm().fromRed();
+      const inv3 = x.toRed(BN.mont(y)).redFinvm().fromRed();
 
       assert.strictEqual(inv.toString(), r.toString());
+      assert.strictEqual(inv2.toString(), inv.toString());
+      assert.strictEqual(inv3.toString(), inv.toString());
     });
 
     it('should compute invmp', () => {
@@ -5159,6 +5175,30 @@ describe('BN.js', function() {
       assert.strictEqual(g.toString(16), rg.toString(16));
     });
 
+    it('should throw on invm with no inverse', () => {
+      const z = new BN(0);
+      const x = new BN('49d695e8e09850acf3ced130d55cf4cc', 16);
+      const m = new BN('b06577896432d8cf7af1c491cad11be9b584316d0045187f40c8ae8d57724725', 16);
+      const red = BN.red(m);
+
+      assert.throws(() => x.invm(m));
+      assert.throws(() => x.neg().invm(m));
+      assert.throws(() => x.toRed(red).redInvm());
+      assert.throws(() => x.neg().toRed(red).redInvm());
+
+      assert.throws(() => z.invm(m));
+      assert.throws(() => z.toRed(red).redInvm());
+    });
+
+    it('should throw on finvm with no inverse', () => {
+      const z = new BN(0);
+      const m = new BN('b06577896432d8cf7af1c491cad11be9b584316d0045187f40c8ae8d57724725', 16);
+      const red = BN.red(m);
+
+      assert.throws(() => z.finvm(m));
+      assert.throws(() => z.toRed(red).redFinvm());
+    });
+
     it('should compute sqrt', () => {
       const r = BN.randomBits(rng, 256);
       const R = r.sqrt();
@@ -5172,29 +5212,57 @@ describe('BN.js', function() {
       assert(R2.eq(r));
     });
 
-    it('should compute sqrtp', () => {
+    it('should compute sqrtp (p192, p mod 4 == 3)', () => {
       const p = BN._prime('p192').p;
       const r = BN.random(rng, 0, p);
       const R = r.sqr().umod(p);
       const s = R.sqrtp(p);
 
+      assert(p.andln(3) === 3);
+
       assert.strictEqual(s.sqr().umod(p).toString(), R.toString());
     });
 
-    it('should compute sqrtp (zero)', () => {
+    it('should compute sqrtp (p192, zero)', () => {
       const p = BN._prime('p192').p;
       const s1 = p.sqrtp(p);
       const s2 = p.muln(2).sqrtp(p);
+
+      assert(p.andln(3) === 3);
 
       assert.strictEqual(s1.toString(), '0');
       assert.strictEqual(s2.toString(), '0');
     });
 
-    it('should compute sqrtp (224)', () => {
+    it('should compute sqrtp (p25519, p mod 8 == 5)', () => {
+      const p = BN._prime('p25519').p;
+      const r = BN.random(rng, 0, p);
+      const R = r.sqr().umod(p);
+      const s = R.sqrtp(p);
+
+      assert(p.andln(7) === 5);
+
+      assert.strictEqual(s.sqr().umod(p).toString(), R.toString());
+    });
+
+    it('should compute sqrtp (p25519, zero)', () => {
+      const p = BN._prime('p25519').p;
+      const s1 = p.sqrtp(p);
+      const s2 = p.muln(2).sqrtp(p);
+
+      assert(p.andln(7) === 5);
+
+      assert.strictEqual(s1.toString(), '0');
+      assert.strictEqual(s2.toString(), '0');
+    });
+
+    it('should compute sqrtp (p224, tonelli-shanks)', () => {
       const p = BN._prime('p224').p;
       const r = BN.random(rng, 0, p);
       const R = r.sqr().umod(p);
       const s = R.sqrtp(p);
+
+      assert(p.andln(3) !== 3 && p.andln(7) !== 5);
 
       assert.strictEqual(s.sqr().umod(p).toString(), R.toString());
     });
@@ -5203,6 +5271,8 @@ describe('BN.js', function() {
       const p = BN._prime('p224').p;
       const s1 = p.sqrtp(p);
       const s2 = p.muln(2).sqrtp(p);
+
+      assert(p.andln(3) !== 3 && p.andln(7) !== 5);
 
       assert.strictEqual(s1.toString(), '0');
       assert.strictEqual(s2.toString(), '0');
@@ -5251,7 +5321,7 @@ describe('BN.js', function() {
         r.toString());
     });
 
-    it.skip('should throw on powm with negative exponent (negative)', () => {
+    it('should throw on powm with negative exponent (negative)', () => {
       const x = new BN('-49d695e8e09850acf3ced130d55cf4cc', 16);
       const y = new BN('-1abc952', 16);
       const m = new BN('b06577896432d8cf7af1c491cad11be9b584316d0045187f40c8ae8d57724725', 16);
