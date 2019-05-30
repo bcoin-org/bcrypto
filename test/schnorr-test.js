@@ -1,6 +1,7 @@
 'use strict';
 
 const assert = require('bsert');
+const p224 = require('../lib/p224');
 const p256 = require('../lib/p256');
 const secp256k1 = require('../lib/secp256k1');
 const vectors = require('./data/schnorr.json');
@@ -65,7 +66,7 @@ describe('Secp256k1+Schnorr', function() {
     assert.strictEqual(secp256k1.schnorrBatchVerify([[msg, sig, key]]), true);
   });
 
-  it('should be generalized for other curves', () => {
+  it('should be generalized for other curves (p256)', () => {
     if (!p256.schnorr)
       this.skip();
 
@@ -80,10 +81,26 @@ describe('Secp256k1+Schnorr', function() {
     const pub1 = p256.publicKeyCreate(key1);
     const sig1 = p256.schnorr.sign(msg1, key1);
 
-    const msg2 = p256.hash.digest(msg1);
-    const key2 = p256.hash.digest(key1);
+    assert.bufferEqual(sig1, 'a000291e6966f7cf5ae83d0fb146758f'
+                           + '2fe688e495c3faf85cea3f2dfdd9a855'
+                           + '91f7d19d9be8143638c50f3f277d50ad'
+                           + 'e2a569c9d2cf40659e26341783efd4f5');
+
+    const msg2 = Buffer.from(
+      '80b5231719a45f4728ed50d7761062aaf3800b4e96b9c884c9103280872efe6a',
+      'hex');
+
+    const key2 = Buffer.from(
+      'b5eadc0a15a535c185ff3e0740d8013b247f8e233789f16f1dc2dd13cd186f1f',
+      'hex');
+
     const pub2 = p256.publicKeyCreate(key2);
     const sig2 = p256.schnorr.sign(msg2, key2);
+
+    assert.bufferEqual(sig2, 'c1da5cfe84a36ca590353ad2da330fba'
+                           + 'b231558dcd614be855a5f070d7823c47'
+                           + '710fb13b12c609099e4bd45afe5f6524'
+                           + '2f7a2afa0e84dcf9864d2567686198e2');
 
     const batch = [
       [msg1, sig1, pub1],
@@ -93,6 +110,48 @@ describe('Secp256k1+Schnorr', function() {
     assert.strictEqual(p256.schnorr.verify(...batch[0]), true);
     assert.strictEqual(p256.schnorr.verify(...batch[1]), true);
     assert.strictEqual(p256.schnorr.batchVerify(batch), true);
+  });
+
+  it('should be generalized for other curves (p224)', () => {
+    if (!p224.schnorr)
+      this.skip();
+
+    const msg = Buffer.from(
+      '3b3c4a629b78ca392e689526c445119ac9f27d7986e177764a1db2d9935f2832',
+      'hex');
+
+    const key = Buffer.from(
+      '1a8e7926ac39de66fe1f86838e1915a2ae40d8e9adf4636b7d5dc698',
+      'hex');
+
+    const pub = p224.publicKeyCreate(key);
+    const sig = p224.schnorr.sign(msg, key);
+
+    assert.strictEqual(p224.schnorr.verify(msg, sig, pub), true);
+    assert.strictEqual(p224.schnorr.batchVerify([[msg, sig, pub]]), true);
+  });
+
+  it('should fail on curves which fail to satisfy p mod 4 == 3 (p224)', () => {
+    if (!p224.schnorr)
+      this.skip();
+
+    const msg = Buffer.from(
+      '3b3c4a629b78ca392e689526c445119ac9f27d7986e177764a1db2d9935f2832',
+      'hex');
+
+    const key = Buffer.from(
+      '1a8e7926ac39de66fe8f86838e1915a2ae40d8e9adf4636b7d5dc698',
+      'hex');
+
+    // This will create a signature without a quadratic
+    // residue y coordinate. Negating a scalar doesn't
+    // guarantee that the resulting point will have a
+    // quadratic residue y.
+    const pub = p224.publicKeyCreate(key);
+    const sig = p224.schnorr.sign(msg, key);
+
+    assert.strictEqual(p224.schnorr.verify(msg, sig, pub), false);
+    assert.strictEqual(p224.schnorr.batchVerify([[msg, sig, pub]]), true);
   });
 
   for (const [key_, pub_, msg_, sig_, result, comment_] of custom) {
