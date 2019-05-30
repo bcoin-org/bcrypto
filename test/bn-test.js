@@ -4860,6 +4860,30 @@ describe('BN.js', function() {
       }
     });
 
+    it('should compute legendre symbol', () => {
+      const p = BN._prime('p25519').p;
+      const n = BN._prime('p192').p;
+      assert.strictEqual(n.legendre(p), -1);
+      assert.strictEqual(n.addn(1).legendre(p), 1);
+      assert.strictEqual(p.legendre(p), 0);
+    });
+
+    it('should compute jacobi symbol', () => {
+      const p = BN._prime('p25519').p;
+      const n = BN._prime('p192').p;
+      assert.strictEqual(n.jacobi(p), -1);
+      assert.strictEqual(n.addn(1).jacobi(p), 1);
+      assert.strictEqual(p.jacobi(p), 0);
+    });
+
+    it('should compute kronecker symbol', () => {
+      const p = BN._prime('p25519').p;
+      const n = BN._prime('p192').p;
+      assert.strictEqual(n.kronecker(p), -1);
+      assert.strictEqual(n.addn(1).kronecker(p), 1);
+      assert.strictEqual(p.kronecker(p), 0);
+    });
+
     it('should get random int', () => {
       const p = BN._prime('p192').p;
 

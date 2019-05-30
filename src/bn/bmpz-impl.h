@@ -373,10 +373,10 @@ bmpz_legendre(const mpz_t x, const mpz_t y) {
   // s = x^e mod y
   mpz_powm(s, x, e, y);
 
-  if (mpz_cmp_ui(s, 1) == 0) {
-    r = 1;
-  } else if (mpz_sgn(s) == 0) {
+  if (mpz_sgn(s) == 0) {
     r = 0;
+  } else if (mpz_cmp_ui(s, 1) == 0) {
+    r = 1;
   } else {
     mpz_add_ui(s, s, 1);
     if (mpz_cmp(s, y) == 0)
