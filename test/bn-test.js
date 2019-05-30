@@ -3014,7 +3014,7 @@ describe('BN.js', function() {
   describe('BN.js/Arithmetic', () => {
     describe('.add()', () => {
       it('should add numbers', () => {
-        assert.equal(new BN(14).add(new BN(26)).toString(16), '28');
+        assert.strictEqual(new BN(14).add(new BN(26)).toString(16), '28');
 
         const k = new BN(0x1234);
 
@@ -3023,7 +3023,7 @@ describe('BN.js', function() {
         for (let i = 0; i < 257; i++)
           r = r.add(k);
 
-        assert.equal(r.toString(16), '125868');
+        assert.strictEqual(r.toString(16), '125868');
       });
 
       it('should handle carry properly (in-place)', () => {
@@ -3033,20 +3033,24 @@ describe('BN.js', function() {
         for (let i = 0; i < 257; i++)
           r.iadd(k);
 
-        assert.equal(r.toString(16), 'ac79bd9b79be7a277bde');
+        assert.strictEqual(r.toString(16), 'ac79bd9b79be7a277bde');
       });
 
       it('should properly do positive + negative', () => {
-        let a = new BN('abcd', 16);
-        let b = new BN('-abce', 16);
+        {
+          const a = new BN('abcd', 16);
+          const b = new BN('-abce', 16);
 
-        assert.equal(a.iadd(b).toString(16), '-1');
+          assert.strictEqual(a.iadd(b).toString(16), '-1');
+        }
 
-        a = new BN('abcd', 16);
-        b = new BN('-abce', 16);
+        {
+          const a = new BN('abcd', 16);
+          const b = new BN('-abce', 16);
 
-        assert.equal(a.add(b).toString(16), '-1');
-        assert.equal(b.add(a).toString(16), '-1');
+          assert.strictEqual(a.add(b).toString(16), '-1');
+          assert.strictEqual(b.add(a).toString(16), '-1');
+        }
       });
     });
 
@@ -3054,38 +3058,38 @@ describe('BN.js', function() {
       it('should allow a sign change', () => {
         const a = new BN(-100);
 
-        assert.equal(a.negative, 1);
+        assert.strictEqual(a.negative, 1);
 
         a.iaddn(200);
 
-        assert.equal(a.negative, 0);
-        assert.equal(a.toString(), '100');
+        assert.strictEqual(a.negative, 0);
+        assert.strictEqual(a.toString(), '100');
       });
 
       it('should add negative number', () => {
         const a = new BN(-100);
 
-        assert.equal(a.negative, 1);
+        assert.strictEqual(a.negative, 1);
 
         a.iaddn(-200);
 
-        assert.equal(a.toString(), '-300');
+        assert.strictEqual(a.toString(), '-300');
       });
 
       it('should allow neg + pos with big number', () => {
         const a = new BN('-1000000000', 10);
 
-        assert.equal(a.negative, 1);
+        assert.strictEqual(a.negative, 1);
 
         a.iaddn(200);
 
-        assert.equal(a.toString(), '-999999800');
+        assert.strictEqual(a.toString(), '-999999800');
       });
 
       it('should carry limb', () => {
         const a = new BN('3ffffff', 16);
 
-        assert.equal(a.iaddn(1).toString(16), '4000000');
+        assert.strictEqual(a.iaddn(1).toString(16), '4000000');
       });
 
       it('should throw error with num eq 0x4000000', () => {
@@ -3096,16 +3100,16 @@ describe('BN.js', function() {
 
       it('should reset sign if value equal to value in instance', function () {
         const a = new BN(-1);
-        assert.equal(a.addn(1).toString(), '0');
+        assert.strictEqual(a.addn(1).toString(), '0');
       });
     });
 
     describe('.sub()', () => {
       it('should subtract small numbers', () => {
-        assert.equal(new BN(26).sub(new BN(14)).toString(16), 'c');
-        assert.equal(new BN(14).sub(new BN(26)).toString(16), '-c');
-        assert.equal(new BN(26).sub(new BN(26)).toString(16), '0');
-        assert.equal(new BN(-26).sub(new BN(26)).toString(16), '-34');
+        assert.strictEqual(new BN(26).sub(new BN(14)).toString(16), 'c');
+        assert.strictEqual(new BN(14).sub(new BN(26)).toString(16), '-c');
+        assert.strictEqual(new BN(26).sub(new BN(26)).toString(16), '0');
+        assert.strictEqual(new BN(-26).sub(new BN(26)).toString(16), '-34');
       });
 
       const a = new BN(
@@ -3123,24 +3127,28 @@ describe('BN.js', function() {
         16);
 
       it('should subtract big numbers', () => {
-        assert.equal(a.sub(b).cmp(r), 0);
+        assert.strictEqual(a.sub(b).cmp(r), 0);
       });
 
       it('should subtract numbers in place', () => {
-        assert.equal(b.clone().isub(a).neg().cmp(r), 0);
+        assert.strictEqual(b.clone().isub(a).neg().cmp(r), 0);
       });
 
       it('should subtract with carry', () => {
         // Carry and copy
-        let a = new BN('12345', 16);
-        let b = new BN('1000000000000', 16);
+        {
+          const a = new BN('12345', 16);
+          const b = new BN('1000000000000', 16);
 
-        assert.equal(a.isub(b).toString(16), '-fffffffedcbb');
+          assert.strictEqual(a.isub(b).toString(16), '-fffffffedcbb');
+        }
 
-        a = new BN('12345', 16);
-        b = new BN('1000000000000', 16);
+        {
+          const a = new BN('12345', 16);
+          const b = new BN('1000000000000', 16);
 
-        assert.equal(b.isub(a).toString(16), 'fffffffedcbb');
+          assert.strictEqual(b.isub(a).toString(16), 'fffffffedcbb');
+        }
       });
     });
 
@@ -3148,40 +3156,40 @@ describe('BN.js', function() {
       it('should subtract negative number', () => {
         const r = new BN(
           '7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b', 16);
-        assert.equal(r.isubn(-1).toString(16),
+        assert.strictEqual(r.isubn(-1).toString(16),
           '7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681c');
       });
 
       it('should work for positive numbers', () => {
         const a = new BN(-100);
 
-        assert.equal(a.negative, 1);
+        assert.strictEqual(a.negative, 1);
 
         a.isubn(200);
 
-        assert.equal(a.negative, 1);
-        assert.equal(a.toString(), '-300');
+        assert.strictEqual(a.negative, 1);
+        assert.strictEqual(a.toString(), '-300');
       });
 
       it('should not allow a sign change', () => {
         const a = new BN(-100);
 
-        assert.equal(a.negative, 1);
+        assert.strictEqual(a.negative, 1);
 
         a.isubn(-200);
 
-        assert.equal(a.negative, 0);
-        assert.equal(a.toString(), '100');
+        assert.strictEqual(a.negative, 0);
+        assert.strictEqual(a.toString(), '100');
       });
 
       it('should change sign on small numbers at 0', () => {
         const a = new BN(0).subn(2);
-        assert.equal(a.toString(), '-2');
+        assert.strictEqual(a.toString(), '-2');
       });
 
       it('should change sign on small numbers at 1', () => {
         const a = new BN(1).subn(2);
-        assert.equal(a.toString(), '-1');
+        assert.strictEqual(a.toString(), '-1');
       });
 
       it('should throw error with num eq 0x4000000', () => {
@@ -3201,13 +3209,13 @@ describe('BN.js', function() {
             15000 // jumboMulTo
           ];
 
-          for (let i = 0; i < offsets.length; ++i) {
+          for (let i = 0; i < offsets.length; i++) {
             const x = new BN(1).ishln(offsets[i]);
 
-            assert.equal(mul(x, x).isNeg(), false);
-            assert.equal(mul(x, x.neg()).isNeg(), true);
-            assert.equal(mul(x.neg(), x).isNeg(), true);
-            assert.equal(mul(x.neg(), x.neg()).isNeg(), false);
+            assert.strictEqual(mul(x, x).isNeg(), false);
+            assert.strictEqual(mul(x, x.neg()).isNeg(), true);
+            assert.strictEqual(mul(x.neg(), x).isNeg(), true);
+            assert.strictEqual(mul(x.neg(), x.neg()).isNeg(), false);
           }
         });
 
@@ -3219,7 +3227,7 @@ describe('BN.js', function() {
           for (let i = 0; i < 4; i++)
             r = mul(r, n);
 
-          assert.equal(r.toString(16), '100500a00a005001');
+          assert.strictEqual(r.toString(16), '100500a00a005001');
         });
 
         it('should correctly multiply big numbers', () => {
@@ -3228,13 +3236,13 @@ describe('BN.js', function() {
             16
           );
 
-          assert.equal(
+          assert.strictEqual(
             mul(n, n).toString(16),
             '39e58a8055b6fb264b75ec8c646509784204ac15a8c24e05babc9729ab9' +
             'b055c3a9458e4ce3289560a38e08ba8175a9446ce14e608245ab3a9' +
             '978a8bd8acaa40');
 
-          assert.equal(
+          assert.strictEqual(
             mul(mul(n, n), n).toString(16),
             '1b888e01a06e974017a28a5b4da436169761c9730b7aeedf75fc60f687b' +
             '46e0cf2cb11667f795d5569482640fe5f628939467a01a612b02350' +
@@ -3243,7 +3251,7 @@ describe('BN.js', function() {
         });
 
         it('should multiply neg number on 0', () => {
-          assert.equal(
+          assert.strictEqual(
             mul(new BN('-100000000000'), new BN('3').div(new BN('4')))
               .toString(16),
             '0'
@@ -3251,12 +3259,10 @@ describe('BN.js', function() {
         });
 
         it('should regress mul big numbers', () => {
-          let q = dhGroups.p17.q;
+          const q = new BN(dhGroups.p17.q, 16);
+          const qs = new BN(dhGroups.p17.qs, 16);
 
-          const qs = dhGroups.p17.qs;
-
-          q = new BN(q, 16);
-          assert.equal(mul(q, q).toString(16), qs);
+          assert.strictEqual(mul(q, q).toString(16), qs.toString(16));
         });
       });
     }
@@ -3267,17 +3273,21 @@ describe('BN.js', function() {
 
     describe('.imul()', () => {
       it('should multiply numbers in-place', () => {
-        let a = new BN('abcdef01234567890abcd', 16);
-        let b = new BN('deadbeefa551edebabba8', 16);
-        let c = a.mul(b);
+        {
+          const a = new BN('abcdef01234567890abcd', 16);
+          const b = new BN('deadbeefa551edebabba8', 16);
+          const c = a.mul(b);
 
-        assert.equal(a.imul(b).toString(16), c.toString(16));
+          assert.strictEqual(a.imul(b).toString(16), c.toString(16));
+        }
 
-        a = new BN('abcdef01234567890abcd214a25123f512361e6d236', 16);
-        b = new BN('deadbeefa551edebabba8121234fd21bac0341324dd', 16);
-        c = a.mul(b);
+        {
+          const a = new BN('abcdef01234567890abcd214a25123f512361e6d236', 16);
+          const b = new BN('deadbeefa551edebabba8121234fd21bac0341324dd', 16);
+          const c = a.mul(b);
 
-        assert.equal(a.imul(b).toString(16), c.toString(16));
+          assert.strictEqual(a.imul(b).toString(16), c.toString(16));
+        }
       });
 
       it('should multiply by 0', () => {
@@ -3285,17 +3295,14 @@ describe('BN.js', function() {
         const b = new BN('0', 16);
         const c = a.mul(b);
 
-        assert.equal(a.imul(b).toString(16), c.toString(16));
+        assert.strictEqual(a.imul(b).toString(16), c.toString(16));
       });
 
       it('should regress mul big numbers in-place', () => {
-        let q = dhGroups.p17.q;
+        const q = new BN(dhGroups.p17.q, 16);
+        const qs = new BN(dhGroups.p17.qs, 16);
 
-        const qs = dhGroups.p17.qs;
-
-        q = new BN(q, 16);
-
-        assert.equal(q.isqr().toString(16), qs);
+        assert.strictEqual(q.isqr().toString(16), qs.toString(16));
       });
     });
 
@@ -3305,7 +3312,7 @@ describe('BN.js', function() {
         const b = new BN('dead', 16);
         const c = a.mul(b);
 
-        assert.equal(a.muln(0xdead).toString(16), c.toString(16));
+        assert.strictEqual(a.muln(0xdead).toString(16), c.toString(16));
       });
 
       it('should throw error with num eq 0x4000000', () => {
@@ -3317,16 +3324,16 @@ describe('BN.js', function() {
       it('should negate number if number is negative', () => {
         const a = new BN('dead', 16);
 
-        assert.equal(a.clone().imuln(-1).toString(16),
+        assert.strictEqual(a.clone().imuln(-1).toString(16),
                      a.clone().neg().toString(16));
-        assert.equal(a.clone().muln(-1).toString(16),
+        assert.strictEqual(a.clone().muln(-1).toString(16),
                      a.clone().neg().toString(16));
 
         const b = new BN('dead', 16);
 
-        assert.equal(b.clone().imuln(-42).toString(16),
+        assert.strictEqual(b.clone().imuln(-42).toString(16),
                      b.clone().neg().muln(42).toString(16));
-        assert.equal(b.clone().muln(-42).toString(16),
+        assert.strictEqual(b.clone().muln(-42).toString(16),
                      b.clone().neg().muln(42).toString(16));
       });
     });
@@ -3336,58 +3343,58 @@ describe('BN.js', function() {
         const a = new BN('ab', 16);
         const b = new BN('13', 10);
 
-        assert.equal(a.pow(b).toString(16), '15963da06977df51909c9ba5b');
-        assert.equal(a.clone().ipow(b).toString(16), '15963da06977df51909c9ba5b');
-        assert.equal(a.pown(13).toString(16), '15963da06977df51909c9ba5b');
-        assert.equal(a.clone().ipown(13).toString(16), '15963da06977df51909c9ba5b');
+        assert.strictEqual(a.pow(b).toString(16), '15963da06977df51909c9ba5b');
+        assert.strictEqual(a.clone().ipow(b).toString(16), '15963da06977df51909c9ba5b');
+        assert.strictEqual(a.pown(13).toString(16), '15963da06977df51909c9ba5b');
+        assert.strictEqual(a.clone().ipown(13).toString(16), '15963da06977df51909c9ba5b');
       });
     });
 
     describe('.div()', () => {
       it('should divide small numbers (<=26 bits)', () => {
-        assert.equal(new BN('256').div(new BN(10)).toString(10),
+        assert.strictEqual(new BN('256').div(new BN(10)).toString(10),
           '25');
-        assert.equal(new BN('-256').div(new BN(10)).toString(10),
+        assert.strictEqual(new BN('-256').div(new BN(10)).toString(10),
           '-25');
-        assert.equal(new BN('256').div(new BN(-10)).toString(10),
+        assert.strictEqual(new BN('256').div(new BN(-10)).toString(10),
           '-25');
-        assert.equal(new BN('-256').div(new BN(-10)).toString(10),
+        assert.strictEqual(new BN('-256').div(new BN(-10)).toString(10),
           '25');
 
-        assert.equal(new BN('10').div(new BN(256)).toString(10),
+        assert.strictEqual(new BN('10').div(new BN(256)).toString(10),
           '0');
-        assert.equal(new BN('-10').div(new BN(256)).toString(10),
+        assert.strictEqual(new BN('-10').div(new BN(256)).toString(10),
           '0');
-        assert.equal(new BN('10').div(new BN(-256)).toString(10),
+        assert.strictEqual(new BN('10').div(new BN(-256)).toString(10),
           '0');
-        assert.equal(new BN('-10').div(new BN(-256)).toString(10),
+        assert.strictEqual(new BN('-10').div(new BN(-256)).toString(10),
           '0');
       });
 
       it('should divide large numbers (>53 bits)', () => {
-        assert.equal(new BN('1222222225255589').div(new BN('611111124969028'))
+        assert.strictEqual(new BN('1222222225255589').div(new BN('611111124969028'))
           .toString(10), '1');
-        assert.equal(new BN('-1222222225255589').div(new BN('611111124969028'))
+        assert.strictEqual(new BN('-1222222225255589').div(new BN('611111124969028'))
           .toString(10), '-1');
-        assert.equal(new BN('1222222225255589').div(new BN('-611111124969028'))
+        assert.strictEqual(new BN('1222222225255589').div(new BN('-611111124969028'))
           .toString(10), '-1');
-        assert.equal(new BN('-1222222225255589').div(new BN('-611111124969028'))
+        assert.strictEqual(new BN('-1222222225255589').div(new BN('-611111124969028'))
           .toString(10), '1');
 
-        assert.equal(new BN('611111124969028').div(new BN('1222222225255589'))
+        assert.strictEqual(new BN('611111124969028').div(new BN('1222222225255589'))
           .toString(10), '0');
-        assert.equal(new BN('-611111124969028').div(new BN('1222222225255589'))
+        assert.strictEqual(new BN('-611111124969028').div(new BN('1222222225255589'))
           .toString(10), '0');
-        assert.equal(new BN('611111124969028').div(new BN('-1222222225255589'))
+        assert.strictEqual(new BN('611111124969028').div(new BN('-1222222225255589'))
           .toString(10), '0');
-        assert.equal(new BN('-611111124969028').div(new BN('-1222222225255589'))
+        assert.strictEqual(new BN('-611111124969028').div(new BN('-1222222225255589'))
           .toString(10), '0');
       });
 
       it('should divide numbers', () => {
-        assert.equal(new BN('69527932928').div(new BN('16974594')).toString(16),
+        assert.strictEqual(new BN('69527932928').div(new BN('16974594')).toString(16),
           'fff');
-        assert.equal(new BN('-69527932928').div(new BN('16974594')).toString(16),
+        assert.strictEqual(new BN('-69527932928').div(new BN('16974594')).toString(16),
           '-fff');
 
         const b = new BN(''
@@ -3401,37 +3408,39 @@ describe('BN.js', function() {
           16
         );
 
-        assert.equal(b.div(n).toString(16), n.toString(16));
+        assert.strictEqual(b.div(n).toString(16), n.toString(16));
 
-        assert.equal(new BN('1').div(new BN('-5')).toString(10), '0');
+        assert.strictEqual(new BN('1').div(new BN('-5')).toString(10), '0');
       });
 
-      it('should not fail on regression after moving to _wordDiv', () => {
+      it('should not fail on regression after moving to _wordDiv (1)', () => {
         // Regression after moving to word div
-        let p = new BN(
+        const p = new BN(
           'fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f',
           16);
 
-        let a = new BN(
+        const a = new BN(
           '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
           16);
 
         const as = a.sqr();
 
-        assert.equal(
+        assert.strictEqual(
           as.div(p).toString(16),
           '39e58a8055b6fb264b75ec8c646509784204ac15a8c24e05babc9729e58090b9');
+      });
 
-        p = new BN(
+      it('should not fail on regression after moving to _wordDiv (2)', () => {
+        const p = new BN(
           'ffffffff00000001000000000000000000000000ffffffffffffffffffffffff',
           16);
 
-        a = new BN(''
+        const a = new BN(''
           + 'fffffffe00000003fffffffd0000000200000001fffffffe00000002ffffffff'
           + 'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
           16);
 
-        assert.equal(
+        assert.strictEqual(
           a.div(p).toString(16),
           'ffffffff00000002000000000000000000000001000000000000000000000001');
       });
@@ -3439,19 +3448,19 @@ describe('BN.js', function() {
 
     describe('.idivn()', () => {
       it('should divide numbers in-place', () => {
-        assert.equal(new BN('10', 16).idivn(3).toString(16), '5');
-        assert.equal(new BN('10', 16).idivn(-3).toString(16), '-5');
-        assert.equal(new BN('12', 16).idivn(3).toString(16), '6');
-        assert.equal(new BN('10000000000000000').idivn(3).toString(10),
+        assert.strictEqual(new BN('10', 16).idivn(3).toString(16), '5');
+        assert.strictEqual(new BN('10', 16).idivn(-3).toString(16), '-5');
+        assert.strictEqual(new BN('12', 16).idivn(3).toString(16), '6');
+        assert.strictEqual(new BN('10000000000000000').idivn(3).toString(10),
           '3333333333333333');
 
-        assert.equal(
+        assert.strictEqual(
           new BN('100000000000000000000000000000').idivn(3).toString(10),
           '33333333333333333333333333333');
 
         const t = new BN(3);
 
-        assert.equal(
+        assert.strictEqual(
           new BN('12345678901234567890123456', 16).idivn(3).toString(16),
           new BN('12345678901234567890123456', 16).div(t).toString(16));
       });
@@ -3459,102 +3468,102 @@ describe('BN.js', function() {
 
     describe('.divRound()', () => {
       it('should divide numbers with rounding', () => {
-        assert.equal(new BN(9).divRound(new BN(20)).toString(10),
+        assert.strictEqual(new BN(9).divRound(new BN(20)).toString(10),
           '0');
-        assert.equal(new BN(10).divRound(new BN(20)).toString(10),
+        assert.strictEqual(new BN(10).divRound(new BN(20)).toString(10),
           '1');
-        assert.equal(new BN(150).divRound(new BN(20)).toString(10),
+        assert.strictEqual(new BN(150).divRound(new BN(20)).toString(10),
           '8');
-        assert.equal(new BN(149).divRound(new BN(20)).toString(10),
+        assert.strictEqual(new BN(149).divRound(new BN(20)).toString(10),
           '7');
-        assert.equal(new BN(149).divRound(new BN(17)).toString(10),
+        assert.strictEqual(new BN(149).divRound(new BN(17)).toString(10),
           '9');
-        assert.equal(new BN(144).divRound(new BN(17)).toString(10),
+        assert.strictEqual(new BN(144).divRound(new BN(17)).toString(10),
           '8');
-        assert.equal(new BN(-144).divRound(new BN(17)).toString(10),
+        assert.strictEqual(new BN(-144).divRound(new BN(17)).toString(10),
           '-8');
       });
 
       it('should return 1 on exact division', () => {
-        assert.equal(new BN(144).divRound(new BN(144)).toString(10), '1');
+        assert.strictEqual(new BN(144).divRound(new BN(144)).toString(10), '1');
       });
     });
 
     describe('.mod()', () => {
       it('should modulo small numbers (<=26 bits)', () => {
-        assert.equal(new BN('256').mod(new BN(10)).toString(10),
+        assert.strictEqual(new BN('256').mod(new BN(10)).toString(10),
           '6');
-        assert.equal(new BN('-256').mod(new BN(10)).toString(10),
+        assert.strictEqual(new BN('-256').mod(new BN(10)).toString(10),
           '-6');
-        assert.equal(new BN('256').mod(new BN(-10)).toString(10),
+        assert.strictEqual(new BN('256').mod(new BN(-10)).toString(10),
           '6');
-        assert.equal(new BN('-256').mod(new BN(-10)).toString(10),
+        assert.strictEqual(new BN('-256').mod(new BN(-10)).toString(10),
           '-6');
 
-        assert.equal(new BN('10').mod(new BN(256)).toString(10),
+        assert.strictEqual(new BN('10').mod(new BN(256)).toString(10),
           '10');
-        assert.equal(new BN('-10').mod(new BN(256)).toString(10),
+        assert.strictEqual(new BN('-10').mod(new BN(256)).toString(10),
           '-10');
-        assert.equal(new BN('10').mod(new BN(-256)).toString(10),
+        assert.strictEqual(new BN('10').mod(new BN(-256)).toString(10),
           '10');
-        assert.equal(new BN('-10').mod(new BN(-256)).toString(10),
+        assert.strictEqual(new BN('-10').mod(new BN(-256)).toString(10),
           '-10');
       });
 
       it('should modulo large numbers (>53 bits)', () => {
-        assert.equal(new BN('1222222225255589').mod(new BN('611111124969028'))
+        assert.strictEqual(new BN('1222222225255589').mod(new BN('611111124969028'))
           .toString(10), '611111100286561');
-        assert.equal(new BN('-1222222225255589').mod(new BN('611111124969028'))
+        assert.strictEqual(new BN('-1222222225255589').mod(new BN('611111124969028'))
           .toString(10), '-611111100286561');
-        assert.equal(new BN('1222222225255589').mod(new BN('-611111124969028'))
+        assert.strictEqual(new BN('1222222225255589').mod(new BN('-611111124969028'))
           .toString(10), '611111100286561');
-        assert.equal(new BN('-1222222225255589').mod(new BN('-611111124969028'))
+        assert.strictEqual(new BN('-1222222225255589').mod(new BN('-611111124969028'))
           .toString(10), '-611111100286561');
 
-        assert.equal(new BN('611111124969028').mod(new BN('1222222225255589'))
+        assert.strictEqual(new BN('611111124969028').mod(new BN('1222222225255589'))
           .toString(10), '611111124969028');
-        assert.equal(new BN('-611111124969028').mod(new BN('1222222225255589'))
+        assert.strictEqual(new BN('-611111124969028').mod(new BN('1222222225255589'))
           .toString(10), '-611111124969028');
-        assert.equal(new BN('611111124969028').mod(new BN('-1222222225255589'))
+        assert.strictEqual(new BN('611111124969028').mod(new BN('-1222222225255589'))
           .toString(10), '611111124969028');
-        assert.equal(new BN('-611111124969028').mod(new BN('-1222222225255589'))
+        assert.strictEqual(new BN('-611111124969028').mod(new BN('-1222222225255589'))
           .toString(10), '-611111124969028');
       });
 
       it('should mod numbers', () => {
-        assert.equal(new BN('10').mod(new BN(256)).toString(16),
+        assert.strictEqual(new BN('10').mod(new BN(256)).toString(16),
           'a');
-        assert.equal(new BN('69527932928').mod(new BN('16974594')).toString(16),
+        assert.strictEqual(new BN('69527932928').mod(new BN('16974594')).toString(16),
           '102f302');
 
         // 178 = 10 * 17 + 8
-        assert.equal(new BN(178).div(new BN(10)).toNumber(), 17);
-        assert.equal(new BN(178).mod(new BN(10)).toNumber(), 8);
-        assert.equal(new BN(178).umod(new BN(10)).toNumber(), 8);
+        assert.strictEqual(new BN(178).div(new BN(10)).toNumber(), 17);
+        assert.strictEqual(new BN(178).mod(new BN(10)).toNumber(), 8);
+        assert.strictEqual(new BN(178).umod(new BN(10)).toNumber(), 8);
 
         // -178 = 10 * (-17) + (-8)
-        assert.equal(new BN(-178).div(new BN(10)).toNumber(), -17);
-        assert.equal(new BN(-178).mod(new BN(10)).toNumber(), -8);
-        assert.equal(new BN(-178).umod(new BN(10)).toNumber(), 2);
+        assert.strictEqual(new BN(-178).div(new BN(10)).toNumber(), -17);
+        assert.strictEqual(new BN(-178).mod(new BN(10)).toNumber(), -8);
+        assert.strictEqual(new BN(-178).umod(new BN(10)).toNumber(), 2);
 
         // 178 = -10 * (-17) + 8
-        assert.equal(new BN(178).div(new BN(-10)).toNumber(), -17);
-        assert.equal(new BN(178).mod(new BN(-10)).toNumber(), 8);
-        assert.equal(new BN(178).umod(new BN(-10)).toNumber(), 8);
+        assert.strictEqual(new BN(178).div(new BN(-10)).toNumber(), -17);
+        assert.strictEqual(new BN(178).mod(new BN(-10)).toNumber(), 8);
+        assert.strictEqual(new BN(178).umod(new BN(-10)).toNumber(), 8);
 
         // -178 = -10 * (17) + (-8)
-        assert.equal(new BN(-178).div(new BN(-10)).toNumber(), 17);
-        assert.equal(new BN(-178).mod(new BN(-10)).toNumber(), -8);
-        assert.equal(new BN(-178).umod(new BN(-10)).toNumber(), 2);
+        assert.strictEqual(new BN(-178).div(new BN(-10)).toNumber(), 17);
+        assert.strictEqual(new BN(-178).mod(new BN(-10)).toNumber(), -8);
+        assert.strictEqual(new BN(-178).umod(new BN(-10)).toNumber(), 2);
 
         // -4 = 1 * (-3) + -1
-        assert.equal(new BN(-4).div(new BN(-3)).toNumber(), 1);
-        assert.equal(new BN(-4).mod(new BN(-3)).toNumber(), -1);
+        assert.strictEqual(new BN(-4).div(new BN(-3)).toNumber(), 1);
+        assert.strictEqual(new BN(-4).mod(new BN(-3)).toNumber(), -1);
 
         // -4 = -1 * (3) + -1
-        assert.equal(new BN(-4).mod(new BN(3)).toNumber(), -1);
+        assert.strictEqual(new BN(-4).mod(new BN(3)).toNumber(), -1);
         // -4 = 1 * (-3) + (-1 + 3)
-        assert.equal(new BN(-4).umod(new BN(-3)).toNumber(), 2);
+        assert.strictEqual(new BN(-4).umod(new BN(-3)).toNumber(), 2);
 
         const p = new BN(
           'ffffffff00000001000000000000000000000000ffffffffffffffffffffffff',
@@ -3565,7 +3574,7 @@ describe('BN.js', function() {
           'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
           16);
 
-        assert.equal(
+        assert.strictEqual(
           a.mod(p).toString(16),
           '0');
       });
@@ -3576,113 +3585,124 @@ describe('BN.js', function() {
           'fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe',
           'hex');
 
-        assert.equal(a.mul(b).mod(a).cmpn(0), 0);
+        assert.strictEqual(a.mul(b).mod(a).cmpn(0), 0);
       });
     });
 
     describe('.modrn()', () => {
       it('should act like .mod() on small numbers', () => {
-        assert.equal(new BN('10', 16).modrn(256).toString(16), '10');
-        assert.equal(new BN('10', 16).modrn(-256).toString(16), '10');
-        assert.equal(new BN('100', 16).modrn(256).toString(16), '0');
-        assert.equal(new BN('1001', 16).modrn(256).toString(16), '1');
-        assert.equal(new BN('100000000001', 16).modrn(256).toString(16), '1');
-        assert.equal(new BN('100000000001', 16).modrn(257).toString(16),
+        assert.strictEqual(new BN('10', 16).modrn(256).toString(16), '10');
+        assert.strictEqual(new BN('10', 16).modrn(-256).toString(16), '10');
+        assert.strictEqual(new BN('100', 16).modrn(256).toString(16), '0');
+        assert.strictEqual(new BN('1001', 16).modrn(256).toString(16), '1');
+        assert.strictEqual(new BN('100000000001', 16).modrn(256).toString(16), '1');
+        assert.strictEqual(new BN('100000000001', 16).modrn(257).toString(16),
           new BN('100000000001', 16).mod(new BN(257)).toString(16));
-        assert.equal(new BN('123456789012', 16).modrn(3).toString(16),
+        assert.strictEqual(new BN('123456789012', 16).modrn(3).toString(16),
           new BN('123456789012', 16).mod(new BN(3)).toString(16));
       });
     });
 
     describe('.abs()', () => {
       it('should return absolute value', () => {
-        assert.equal(new BN(0x1001).abs().toString(), '4097');
-        assert.equal(new BN(-0x1001).abs().toString(), '4097');
-        assert.equal(new BN('ffffffff', 16).abs().toString(), '4294967295');
+        assert.strictEqual(new BN(0x1001).abs().toString(), '4097');
+        assert.strictEqual(new BN(-0x1001).abs().toString(), '4097');
+        assert.strictEqual(new BN('ffffffff', 16).abs().toString(), '4294967295');
       });
     });
 
     describe('.invm()', () => {
       it('should invert relatively-prime numbers', () => {
-        const p = new BN(257);
+        {
+          const p = new BN(257);
+          const a = new BN(3);
+          const b = a.invm(p);
 
-        let a = new BN(3);
-        let b = a.invm(p);
+          assert.strictEqual(a.mul(b).mod(p).toString(16), '1');
+        }
 
-        assert.equal(a.mul(b).mod(p).toString(16), '1');
+        {
+          const p192 = new BN(
+            'fffffffffffffffffffffffffffffffeffffffffffffffff',
+            16);
 
-        const p192 = new BN(
-          'fffffffffffffffffffffffffffffffeffffffffffffffff',
-          16);
+          const a = new BN('deadbeef', 16);
+          const b = a.invm(p192);
 
-        a = new BN('deadbeef', 16);
-        b = a.invm(p192);
-
-        assert.equal(a.mul(b).mod(p192).toString(16), '1');
+          assert.strictEqual(a.mul(b).mod(p192).toString(16), '1');
+        }
 
         // Even base
-        const phi = new BN('872d9b030ba368706b68932cf07a0e0c', 16);
-        const e = new BN(65537);
-        const d = e.invm(phi);
+        {
+          const phi = new BN('872d9b030ba368706b68932cf07a0e0c', 16);
+          const e = new BN(65537);
+          const d = e.invm(phi);
 
-        assert.equal(e.mul(d).mod(phi).toString(16), '1');
+          assert.strictEqual(e.mul(d).mod(phi).toString(16), '1');
+        }
 
         // Even base (take #2)
-        a = new BN('5');
-        b = new BN('6');
+        {
+          const a = new BN('5');
+          const b = new BN('6');
+          const r = a.invm(b);
 
-        const r = a.invm(b);
-
-        assert.equal(r.mul(a).mod(b).toString(16), '1');
+          assert.strictEqual(r.mul(a).mod(b).toString(16), '1');
+        }
       });
     });
 
     describe('.finvm()', () => {
       it('should invert relatively-prime numbers', () => {
-        const p = new BN(257);
+        {
+          const p = new BN(257);
+          const a = new BN(3);
+          const b = a.finvm(p);
 
-        let a = new BN(3);
-        let b = a.finvm(p);
+          assert.strictEqual(a.mul(b).mod(p).toString(16), '1');
+        }
 
-        assert.equal(a.mul(b).mod(p).toString(16), '1');
+        {
+          const p192 = new BN(
+            'fffffffffffffffffffffffffffffffeffffffffffffffff',
+            16);
 
-        const p192 = new BN(
-          'fffffffffffffffffffffffffffffffeffffffffffffffff',
-          16);
+          const a = new BN('deadbeef', 16);
+          const b = a.finvm(p192);
 
-        a = new BN('deadbeef', 16);
-        b = a.finvm(p192);
-
-        assert.equal(a.mul(b).mod(p192).toString(16), '1');
+          assert.strictEqual(a.mul(b).mod(p192).toString(16), '1');
+        }
       });
     });
 
     describe('.gcd()', () => {
       it('should return GCD', () => {
-        assert.equal(new BN(3).gcd(new BN(2)).toString(10), '1');
-        assert.equal(new BN(18).gcd(new BN(12)).toString(10), '6');
-        assert.equal(new BN(-18).gcd(new BN(12)).toString(10), '6');
-        assert.equal(new BN(-18).gcd(new BN(-12)).toString(10), '6');
-        assert.equal(new BN(-18).gcd(new BN(0)).toString(10), '18');
-        assert.equal(new BN(0).gcd(new BN(-18)).toString(10), '18');
-        assert.equal(new BN(2).gcd(new BN(0)).toString(10), '2');
-        assert.equal(new BN(0).gcd(new BN(3)).toString(10), '3');
-        assert.equal(new BN(0).gcd(new BN(0)).toString(10), '0');
+        assert.strictEqual(new BN(3).gcd(new BN(2)).toString(10), '1');
+        assert.strictEqual(new BN(18).gcd(new BN(12)).toString(10), '6');
+        assert.strictEqual(new BN(-18).gcd(new BN(12)).toString(10), '6');
+        assert.strictEqual(new BN(-18).gcd(new BN(-12)).toString(10), '6');
+        assert.strictEqual(new BN(-18).gcd(new BN(0)).toString(10), '18');
+        assert.strictEqual(new BN(0).gcd(new BN(-18)).toString(10), '18');
+        assert.strictEqual(new BN(2).gcd(new BN(0)).toString(10), '2');
+        assert.strictEqual(new BN(0).gcd(new BN(3)).toString(10), '3');
+        assert.strictEqual(new BN(0).gcd(new BN(0)).toString(10), '0');
       });
     });
 
     describe('.egcd()', () => {
       it('should return EGCD', () => {
-        assert.equal(new BN(3).egcd(new BN(2))[2].toString(10), '1');
-        assert.equal(new BN(18).egcd(new BN(12))[2].toString(10), '6');
-        assert.equal(new BN(-18).egcd(new BN(12))[2].toString(10), '6');
-        assert.equal(new BN(0).egcd(new BN(12))[2].toString(10), '12');
+        assert.strictEqual(new BN(3).egcd(new BN(2))[2].toString(10), '1');
+        assert.strictEqual(new BN(18).egcd(new BN(12))[2].toString(10), '6');
+        assert.strictEqual(new BN(-18).egcd(new BN(12))[2].toString(10), '6');
+        assert.strictEqual(new BN(0).egcd(new BN(12))[2].toString(10), '12');
       });
+
       it('should not allow 0 input', () => {
         assert.throws(() => {
           new BN(1).egcd(0);
         });
       });
+
       it('should not allow negative input', () => {
         assert.throws(() => {
           new BN(1).egcd(-1);
@@ -3692,25 +3712,25 @@ describe('BN.js', function() {
 
     describe('BN.max(a, b)', () => {
       it('should return maximum', () => {
-        assert.equal(BN.max(new BN(3), new BN(2)).toString(16), '3');
-        assert.equal(BN.max(new BN(2), new BN(3)).toString(16), '3');
-        assert.equal(BN.max(new BN(2), new BN(2)).toString(16), '2');
-        assert.equal(BN.max(new BN(2), new BN(-2)).toString(16), '2');
+        assert.strictEqual(BN.max(new BN(3), new BN(2)).toString(16), '3');
+        assert.strictEqual(BN.max(new BN(2), new BN(3)).toString(16), '3');
+        assert.strictEqual(BN.max(new BN(2), new BN(2)).toString(16), '2');
+        assert.strictEqual(BN.max(new BN(2), new BN(-2)).toString(16), '2');
       });
     });
 
     describe('BN.min(a, b)', () => {
       it('should return minimum', () => {
-        assert.equal(BN.min(new BN(3), new BN(2)).toString(16), '2');
-        assert.equal(BN.min(new BN(2), new BN(3)).toString(16), '2');
-        assert.equal(BN.min(new BN(2), new BN(2)).toString(16), '2');
-        assert.equal(BN.min(new BN(2), new BN(-2)).toString(16), '-2');
+        assert.strictEqual(BN.min(new BN(3), new BN(2)).toString(16), '2');
+        assert.strictEqual(BN.min(new BN(2), new BN(3)).toString(16), '2');
+        assert.strictEqual(BN.min(new BN(2), new BN(2)).toString(16), '2');
+        assert.strictEqual(BN.min(new BN(2), new BN(-2)).toString(16), '-2');
       });
     });
 
     describe('BN.ineg', () => {
       it('shouldn\'t change sign for zero', () => {
-        assert.equal(new BN(0).ineg().toString(10), '0');
+        assert.strictEqual(new BN(0).ineg().toString(10), '0');
       });
     });
   });
@@ -3719,16 +3739,16 @@ describe('BN.js', function() {
     describe('.shl()', () => {
       it('should shl numbers', () => {
         // TODO(indutny): add negative numbers when the time will come
-        assert.equal(new BN('69527932928').shln(13).toString(16),
+        assert.strictEqual(new BN('69527932928').shln(13).toString(16),
           '2060602000000');
-        assert.equal(new BN('69527932928').shln(45).toString(16),
+        assert.strictEqual(new BN('69527932928').shln(45).toString(16),
           '206060200000000000000');
       });
 
       it('should ushl numbers', () => {
-        assert.equal(new BN('69527932928').ushln(13).toString(16),
+        assert.strictEqual(new BN('69527932928').ushln(13).toString(16),
           '2060602000000');
-        assert.equal(new BN('69527932928').ushln(45).toString(16),
+        assert.strictEqual(new BN('69527932928').ushln(45).toString(16),
           '206060200000000000000');
       });
     });
@@ -3736,48 +3756,48 @@ describe('BN.js', function() {
     describe('.shr()', () => {
       it('should shr numbers', () => {
         // TODO(indutny): add negative numbers when the time will come
-        assert.equal(new BN('69527932928').shrn(13).toString(16),
+        assert.strictEqual(new BN('69527932928').shrn(13).toString(16),
           '818180');
-        assert.equal(new BN('69527932928').shrn(17).toString(16),
+        assert.strictEqual(new BN('69527932928').shrn(17).toString(16),
           '81818');
-        assert.equal(new BN('69527932928').shrn(256).toString(16),
+        assert.strictEqual(new BN('69527932928').shrn(256).toString(16),
           '0');
       });
 
       it('should ushr numbers', () => {
-        assert.equal(new BN('69527932928').ushrn(13).toString(16),
+        assert.strictEqual(new BN('69527932928').ushrn(13).toString(16),
           '818180');
-        assert.equal(new BN('69527932928').ushrn(17).toString(16),
+        assert.strictEqual(new BN('69527932928').ushrn(17).toString(16),
           '81818');
-        assert.equal(new BN('69527932928').ushrn(256).toString(16),
+        assert.strictEqual(new BN('69527932928').ushrn(256).toString(16),
           '0');
       });
     });
 
     describe('.bincn()', () => {
       it('should increment bit', () => {
-        assert.equal(new BN(0).bincn(1).toString(16), '2');
-        assert.equal(new BN(2).bincn(1).toString(16), '4');
-        assert.equal(new BN(2).bincn(1).bincn(1).toString(16),
+        assert.strictEqual(new BN(0).bincn(1).toString(16), '2');
+        assert.strictEqual(new BN(2).bincn(1).toString(16), '4');
+        assert.strictEqual(new BN(2).bincn(1).bincn(1).toString(16),
           new BN(2).bincn(2).toString(16));
-        assert.equal(new BN(0xffffff).bincn(1).toString(16), '1000001');
-        assert.equal(new BN(2).bincn(63).toString(16),
+        assert.strictEqual(new BN(0xffffff).bincn(1).toString(16), '1000001');
+        assert.strictEqual(new BN(2).bincn(63).toString(16),
           '8000000000000002');
       });
     });
 
     describe('.imaskn()', () => {
       it('should mask bits in-place', () => {
-        assert.equal(new BN(0).imaskn(1).toString(16), '0');
-        assert.equal(new BN(3).imaskn(1).toString(16), '1');
-        assert.equal(new BN('123456789', 16).imaskn(4).toString(16), '9');
-        assert.equal(new BN('123456789', 16).imaskn(16).toString(16), '6789');
-        assert.equal(new BN('123456789', 16).imaskn(28).toString(16), '3456789');
+        assert.strictEqual(new BN(0).imaskn(1).toString(16), '0');
+        assert.strictEqual(new BN(3).imaskn(1).toString(16), '1');
+        assert.strictEqual(new BN('123456789', 16).imaskn(4).toString(16), '9');
+        assert.strictEqual(new BN('123456789', 16).imaskn(16).toString(16), '6789');
+        assert.strictEqual(new BN('123456789', 16).imaskn(28).toString(16), '3456789');
       });
 
       it('should not mask when number is bigger than length', () => {
-        assert.equal(new BN(0xe3).imaskn(56).toString(16), 'e3');
-        assert.equal(new BN(0xe3).imaskn(26).toString(16), 'e3');
+        assert.strictEqual(new BN(0xe3).imaskn(56).toString(16), 'e3');
+        assert.strictEqual(new BN(0xe3).imaskn(26).toString(16), 'e3');
       });
     });
 
@@ -3790,28 +3810,26 @@ describe('BN.js', function() {
           const bn = new BN(hex, 16);
           const bl = bn.bitLength();
 
-          for (let i = 0; i < bl; ++i) {
-            assert.equal(bn.testn(i), true);
-          }
+          for (let i = 0; i < bl; i++)
+            assert.strictEqual(bn.testn(i), true);
 
           // test off the end
-          assert.equal(bn.testn(bl), false);
+          assert.strictEqual(bn.testn(bl), false);
         });
 
-        const xbits = '01111001010111001001000100011101' +
-          '11010011101100011000111001011101' +
-          '10010100111000000001011000111101' +
-          '01011111001111100100011110000010' +
-          '01011010100111010001010011000100' +
-          '01101001011110100001001111100110' +
-          '001110010111';
+        const xbits = '01111001010111001001000100011101'
+                    + '11010011101100011000111001011101'
+                    + '10010100111000000001011000111101'
+                    + '01011111001111100100011110000010'
+                    + '01011010100111010001010011000100'
+                    + '01101001011110100001001111100110'
+                    + '001110010111';
 
         const x = new BN(
-          '23478905234580795234378912401239784125643978256123048348957342'
-        );
-        for (let i = 0; i < x.bitLength(); ++i) {
-          assert.equal(x.testn(i), (xbits.charAt(i) === '1'), 'Failed @ bit ' + i);
-        }
+          '23478905234580795234378912401239784125643978256123048348957342');
+
+        for (let i = 0; i < x.bitLength(); i++)
+          assert.strictEqual(x.testn(i), (xbits.charAt(i) === '1'), 'Failed @ bit ' + i);
       });
 
       it('should have short-cuts', () => {
@@ -3822,13 +3840,13 @@ describe('BN.js', function() {
 
     describe('.and()', () => {
       it('should and numbers', () => {
-        assert.equal(new BN('1010101010101010101010101010101010101010', 2)
+        assert.strictEqual(new BN('1010101010101010101010101010101010101010', 2)
           .and(new BN('101010101010101010101010101010101010101', 2))
           .toString(2), '0');
       });
 
       it('should and numbers of different limb-length', () => {
-        assert.equal(
+        assert.strictEqual(
           new BN('abcd0000ffff', 16)
             .and(new BN('abcd', 16)).toString(16),
           'abcd');
@@ -3837,13 +3855,13 @@ describe('BN.js', function() {
 
     describe('.iand()', () => {
       it('should iand numbers', () => {
-        assert.equal(new BN('1010101010101010101010101010101010101010', 2)
+        assert.strictEqual(new BN('1010101010101010101010101010101010101010', 2)
           .iand(new BN('101010101010101010101010101010101010101', 2))
           .toString(2), '0');
-        assert.equal(new BN('1000000000000000000000000000000000000001', 2)
+        assert.strictEqual(new BN('1000000000000000000000000000000000000001', 2)
           .iand(new BN('1', 2))
           .toString(2), '1');
-        assert.equal(new BN('1', 2)
+        assert.strictEqual(new BN('1', 2)
           .iand(new BN('1000000000000000000000000000000000000001', 2))
           .toString(2), '1');
       });
@@ -3851,28 +3869,27 @@ describe('BN.js', function() {
 
     describe('.or()', () => {
       it('should or numbers', () => {
-        assert.equal(new BN('1010101010101010101010101010101010101010', 2)
+        assert.strictEqual(new BN('1010101010101010101010101010101010101010', 2)
           .or(new BN('101010101010101010101010101010101010101', 2))
           .toString(2), '1111111111111111111111111111111111111111');
       });
 
       it('should or numbers of different limb-length', () => {
-        assert.equal(
-          new BN('abcd00000000', 16)
-            .or(new BN('abcd', 16)).toString(16),
-          'abcd0000abcd');
+        assert.strictEqual(new BN('abcd00000000', 16)
+          .or(new BN('abcd', 16))
+          .toString(16), 'abcd0000abcd');
       });
     });
 
     describe('.ior()', () => {
       it('should ior numbers', () => {
-        assert.equal(new BN('1010101010101010101010101010101010101010', 2)
+        assert.strictEqual(new BN('1010101010101010101010101010101010101010', 2)
           .ior(new BN('101010101010101010101010101010101010101', 2))
           .toString(2), '1111111111111111111111111111111111111111');
-        assert.equal(new BN('1000000000000000000000000000000000000000', 2)
+        assert.strictEqual(new BN('1000000000000000000000000000000000000000', 2)
           .ior(new BN('1', 2))
           .toString(2), '1000000000000000000000000000000000000001');
-        assert.equal(new BN('1', 2)
+        assert.strictEqual(new BN('1', 2)
           .ior(new BN('1000000000000000000000000000000000000000', 2))
           .toString(2), '1000000000000000000000000000000000000001');
       });
@@ -3880,7 +3897,7 @@ describe('BN.js', function() {
 
     describe('.xor()', () => {
       it('should xor numbers', () => {
-        assert.equal(new BN('11001100110011001100110011001100', 2)
+        assert.strictEqual(new BN('11001100110011001100110011001100', 2)
           .xor(new BN('1100110011001100110011001100110', 2))
           .toString(2), '10101010101010101010101010101010');
       });
@@ -3888,19 +3905,19 @@ describe('BN.js', function() {
 
     describe('.ixor()', () => {
       it('should ixor numbers', () => {
-        assert.equal(new BN('11001100110011001100110011001100', 2)
+        assert.strictEqual(new BN('11001100110011001100110011001100', 2)
           .ixor(new BN('1100110011001100110011001100110', 2))
           .toString(2), '10101010101010101010101010101010');
-        assert.equal(new BN('11001100110011001100110011001100', 2)
+        assert.strictEqual(new BN('11001100110011001100110011001100', 2)
           .ixor(new BN('1', 2))
           .toString(2), '11001100110011001100110011001101');
-        assert.equal(new BN('1', 2)
+        assert.strictEqual(new BN('1', 2)
           .ixor(new BN('11001100110011001100110011001100', 2))
           .toString(2), '11001100110011001100110011001101');
       });
 
       it('should and numbers of different limb-length', () => {
-        assert.equal(
+        assert.strictEqual(
           new BN('abcd0000ffff', 16)
             .xor(new BN('abcd', 16)).toString(16),
           'abcd00005432');
@@ -3909,35 +3926,35 @@ describe('BN.js', function() {
 
     describe('.setn()', () => {
       it('should allow single bits to be set', () => {
-        assert.equal(new BN(0).setn(2, true).toString(2), '100');
-        assert.equal(new BN(0).setn(27, true).toString(2),
+        assert.strictEqual(new BN(0).setn(2, true).toString(2), '100');
+        assert.strictEqual(new BN(0).setn(27, true).toString(2),
           '1000000000000000000000000000');
-        assert.equal(new BN(0).setn(63, true).toString(16),
+        assert.strictEqual(new BN(0).setn(63, true).toString(16),
           new BN(1).iushln(63).toString(16));
-        assert.equal(new BN('1000000000000000000000000001', 2).setn(27, false)
+        assert.strictEqual(new BN('1000000000000000000000000001', 2).setn(27, false)
           .toString(2), '1');
-        assert.equal(new BN('101', 2).setn(2, false).toString(2), '1');
+        assert.strictEqual(new BN('101', 2).setn(2, false).toString(2), '1');
       });
     });
 
     describe('.notn()', () => {
       it('should allow bitwise negation', () => {
-        assert.equal(new BN('111000111', 2).notn(9).toString(2),
+        assert.strictEqual(new BN('111000111', 2).notn(9).toString(2),
           '111000');
-        assert.equal(new BN('000111000', 2).notn(9).toString(2),
+        assert.strictEqual(new BN('000111000', 2).notn(9).toString(2),
           '111000111');
-        assert.equal(new BN('111000111', 2).notn(9).toString(2),
+        assert.strictEqual(new BN('111000111', 2).notn(9).toString(2),
           '111000');
-        assert.equal(new BN('000111000', 2).notn(9).toString(2),
+        assert.strictEqual(new BN('000111000', 2).notn(9).toString(2),
           '111000111');
-        assert.equal(new BN('111000111', 2).notn(32).toString(2),
+        assert.strictEqual(new BN('111000111', 2).notn(32).toString(2),
           '11111111111111111111111000111000');
-        assert.equal(new BN('000111000', 2).notn(32).toString(2),
+        assert.strictEqual(new BN('000111000', 2).notn(32).toString(2),
           '11111111111111111111111111000111');
-        assert.equal(new BN('111000111', 2).notn(68).toString(2),
+        assert.strictEqual(new BN('111000111', 2).notn(68).toString(2),
           '11111111111111111111111111111111' +
           '111111111111111111111111111000111000');
-        assert.equal(new BN('000111000', 2).notn(68).toString(2),
+        assert.strictEqual(new BN('000111000', 2).notn(68).toString(2),
           '11111111111111111111111111111111' +
           '111111111111111111111111111111000111');
       });
@@ -3947,21 +3964,21 @@ describe('BN.js', function() {
   describe('BN.js/Constructor', () => {
     describe('with Smi input', () => {
       it('should accept one limb number', () => {
-        assert.equal(new BN(12345).toString(16), '3039');
+        assert.strictEqual(new BN(12345).toString(16), '3039');
       });
 
       it('should accept two-limb number', () => {
-        assert.equal(new BN(0x4123456).toString(16), '4123456');
+        assert.strictEqual(new BN(0x4123456).toString(16), '4123456');
       });
 
       it('should accept 52 bits of precision', () => {
         const num = Math.pow(2, 52);
-        assert.equal(new BN(num, 10).toString(10), num.toString(10));
+        assert.strictEqual(new BN(num, 10).toString(10), num.toString(10));
       });
 
       it('should accept max safe integer', () => {
         const num = Math.pow(2, 53) - 1;
-        assert.equal(new BN(num, 10).toString(10), num.toString(10));
+        assert.strictEqual(new BN(num, 10).toString(10), num.toString(10));
       });
 
       it('should not accept an unsafe integer', () => {
@@ -3973,52 +3990,52 @@ describe('BN.js', function() {
       });
 
       it('should accept two-limb LE number', () => {
-        assert.equal(new BN(0x4123456, null, 'le').toString(16), '56341204');
+        assert.strictEqual(new BN(0x4123456, null, 'le').toString(16), '56341204');
       });
     });
 
     describe('with String input', () => {
       it('should accept base-16', () => {
-        assert.equal(new BN('1A6B765D8CDF', 16).toString(16), '1a6b765d8cdf');
-        assert.equal(new BN('1A6B765D8CDF', 16).toString(), '29048849665247');
+        assert.strictEqual(new BN('1A6B765D8CDF', 16).toString(16), '1a6b765d8cdf');
+        assert.strictEqual(new BN('1A6B765D8CDF', 16).toString(), '29048849665247');
       });
 
       it('should accept base-hex', () => {
-        assert.equal(new BN('FF', 'hex').toString(), '255');
+        assert.strictEqual(new BN('FF', 'hex').toString(), '255');
       });
 
       it('should accept base-16 with spaces', () => {
         const num = 'a89c e5af8724 c0a23e0e 0ff77500';
-        assert.equal(new BN(num, 16).toString(16), num.replace(/ /g, ''));
+        assert.strictEqual(new BN(num, 16).toString(16), num.replace(/ /g, ''));
       });
 
       it('should accept long base-16', () => {
         const num = '123456789abcdef123456789abcdef123456789abcdef';
-        assert.equal(new BN(num, 16).toString(16), num);
+        assert.strictEqual(new BN(num, 16).toString(16), num);
       });
 
       it('should accept positive base-10', () => {
-        assert.equal(new BN('10654321').toString(), '10654321');
-        assert.equal(new BN('29048849665247').toString(16), '1a6b765d8cdf');
+        assert.strictEqual(new BN('10654321').toString(), '10654321');
+        assert.strictEqual(new BN('29048849665247').toString(16), '1a6b765d8cdf');
       });
 
       it('should accept negative base-10', () => {
-        assert.equal(new BN('-29048849665247').toString(16), '-1a6b765d8cdf');
+        assert.strictEqual(new BN('-29048849665247').toString(16), '-1a6b765d8cdf');
       });
 
       it('should accept long base-10', () => {
         const num = '10000000000000000';
-        assert.equal(new BN(num).toString(10), num);
+        assert.strictEqual(new BN(num).toString(10), num);
       });
 
       it('should accept base-2', () => {
         const base2 = '11111111111111111111111111111111111111111111111111111';
-        assert.equal(new BN(base2, 2).toString(2), base2);
+        assert.strictEqual(new BN(base2, 2).toString(2), base2);
       });
 
       it('should accept base-36', () => {
         const base36 = 'zzZzzzZzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz';
-        assert.equal(new BN(base36, 36).toString(36), base36.toLowerCase());
+        assert.strictEqual(new BN(base36, 36).toString(36), base36.toLowerCase());
       });
 
       it('should not overflow limbs during base-10', () => {
@@ -4029,7 +4046,7 @@ describe('BN.js', function() {
       });
 
       it('should accept base-16 LE integer', () => {
-        assert.equal(new BN('1A6B765D8CDF', 16, 'le').toString(16),
+        assert.strictEqual(new BN('1A6B765D8CDF', 16, 'le').toString(16),
           'df8c5d766b1a');
       });
 
@@ -4076,56 +4093,56 @@ describe('BN.js', function() {
 
     describe('with Array input', () => {
       it('should not fail on empty array', () => {
-        assert.equal(new BN([]).toString(16), '0');
+        assert.strictEqual(new BN([]).toString(16), '0');
       });
 
       it('should import/export big endian', () => {
-        assert.equal(new BN([1, 2, 3]).toString(16), '10203');
-        assert.equal(new BN([1, 2, 3, 4]).toString(16), '1020304');
-        assert.equal(new BN([1, 2, 3, 4, 5]).toString(16), '102030405');
-        assert.equal(new BN([1, 2, 3, 4, 5, 6, 7, 8]).toString(16),
+        assert.strictEqual(new BN([1, 2, 3]).toString(16), '10203');
+        assert.strictEqual(new BN([1, 2, 3, 4]).toString(16), '1020304');
+        assert.strictEqual(new BN([1, 2, 3, 4, 5]).toString(16), '102030405');
+        assert.strictEqual(new BN([1, 2, 3, 4, 5, 6, 7, 8]).toString(16),
           '102030405060708');
-        assert.equal(new BN([1, 2, 3, 4]).toArray().join(','), '1,2,3,4');
-        assert.equal(new BN([1, 2, 3, 4, 5, 6, 7, 8]).toArray().join(','),
+        assert.strictEqual(new BN([1, 2, 3, 4]).toArray().join(','), '1,2,3,4');
+        assert.strictEqual(new BN([1, 2, 3, 4, 5, 6, 7, 8]).toArray().join(','),
           '1,2,3,4,5,6,7,8');
       });
 
       it('should import little endian', () => {
-        assert.equal(new BN([1, 2, 3], 10, 'le').toString(16), '30201');
-        assert.equal(new BN([1, 2, 3, 4], 10, 'le').toString(16), '4030201');
-        assert.equal(new BN([1, 2, 3, 4, 5], 10, 'le').toString(16),
+        assert.strictEqual(new BN([1, 2, 3], 10, 'le').toString(16), '30201');
+        assert.strictEqual(new BN([1, 2, 3, 4], 10, 'le').toString(16), '4030201');
+        assert.strictEqual(new BN([1, 2, 3, 4, 5], 10, 'le').toString(16),
           '504030201');
-        assert.equal(new BN([1, 2, 3, 4, 5, 6, 7, 8], 'le').toString(16),
+        assert.strictEqual(new BN([1, 2, 3, 4, 5, 6, 7, 8], 'le').toString(16),
           '807060504030201');
-        assert.equal(new BN([1, 2, 3, 4]).toArray('le').join(','), '4,3,2,1');
-        assert.equal(new BN([1, 2, 3, 4, 5, 6, 7, 8]).toArray('le').join(','),
+        assert.strictEqual(new BN([1, 2, 3, 4]).toArray('le').join(','), '4,3,2,1');
+        assert.strictEqual(new BN([1, 2, 3, 4, 5, 6, 7, 8]).toArray('le').join(','),
           '8,7,6,5,4,3,2,1');
       });
 
       it('should import big endian with implicit base', () => {
-        assert.equal(new BN([1, 2, 3, 4, 5], 'le').toString(16), '504030201');
+        assert.strictEqual(new BN([1, 2, 3, 4, 5], 'le').toString(16), '504030201');
       });
     });
 
     // the Array code is able to handle Buffer
     describe('with Buffer input', () => {
       it('should not fail on empty Buffer', () => {
-        assert.equal(new BN(Buffer.alloc(0)).toString(16), '0');
+        assert.strictEqual(new BN(Buffer.alloc(0)).toString(16), '0');
       });
 
       it('should import/export big endian', () => {
-        assert.equal(new BN(Buffer.from('010203', 'hex')).toString(16), '10203');
+        assert.strictEqual(new BN(Buffer.from('010203', 'hex')).toString(16), '10203');
       });
 
       it('should import little endian', () => {
-        assert.equal(new BN(Buffer.from('010203', 'hex'), 'le').toString(16), '30201');
+        assert.strictEqual(new BN(Buffer.from('010203', 'hex'), 'le').toString(16), '30201');
       });
     });
 
     describe('with BN input', () => {
       it('should clone BN', () => {
         const num = new BN(12345);
-        assert.equal(new BN(num).toString(10), '12345');
+        assert.strictEqual(new BN(num).toString(10), '12345');
       });
     });
   });
@@ -4139,13 +4156,13 @@ describe('BN.js', function() {
           const a = new BN(123).toRed(m);
           const b = new BN(231).toRed(m);
 
-          assert.equal(a.redAdd(b).fromRed().toString(10), '97');
-          assert.equal(a.redSub(b).fromRed().toString(10), '149');
-          assert.equal(b.redSub(a).fromRed().toString(10), '108');
+          assert.strictEqual(a.redAdd(b).fromRed().toString(10), '97');
+          assert.strictEqual(a.redSub(b).fromRed().toString(10), '149');
+          assert.strictEqual(b.redSub(a).fromRed().toString(10), '108');
 
-          assert.equal(a.clone().redIAdd(b).fromRed().toString(10), '97');
-          assert.equal(a.clone().redISub(b).fromRed().toString(10), '149');
-          assert.equal(b.clone().redISub(a).fromRed().toString(10), '108');
+          assert.strictEqual(a.clone().redIAdd(b).fromRed().toString(10), '97');
+          assert.strictEqual(a.clone().redISub(b).fromRed().toString(10), '149');
+          assert.strictEqual(b.clone().redISub(a).fromRed().toString(10), '108');
         });
 
         it('should support pow and mul operations', () => {
@@ -4160,52 +4177,51 @@ describe('BN.js', function() {
 
           assert(c.cmp(a.mul(b).mod(p192)) === 0);
 
-          assert.equal(a.toRed(m).redPow(new BN(0)).fromRed()
+          assert.strictEqual(a.toRed(m).redPow(new BN(0)).fromRed()
             .cmp(new BN(1)), 0);
-          assert.equal(a.toRed(m).redPow(new BN(3)).fromRed()
+          assert.strictEqual(a.toRed(m).redPow(new BN(3)).fromRed()
             .cmp(a.sqr().mul(a)), 0);
-          assert.equal(a.toRed(m).redPow(new BN(4)).fromRed()
+          assert.strictEqual(a.toRed(m).redPow(new BN(4)).fromRed()
             .cmp(a.sqr().sqr()), 0);
-          assert.equal(a.toRed(m).redPow(new BN(8)).fromRed()
+          assert.strictEqual(a.toRed(m).redPow(new BN(8)).fromRed()
             .cmp(a.sqr().sqr().sqr()), 0);
-          assert.equal(a.toRed(m).redPow(new BN(9)).fromRed()
+          assert.strictEqual(a.toRed(m).redPow(new BN(9)).fromRed()
             .cmp(a.sqr().sqr().sqr().mul(a)), 0);
-          assert.equal(a.toRed(m).redPow(new BN(17)).fromRed()
+          assert.strictEqual(a.toRed(m).redPow(new BN(17)).fromRed()
             .cmp(a.sqr().sqr().sqr().sqr().mul(a)), 0);
-          assert.equal(
+          assert.strictEqual(
             a.toRed(m).redPow(new BN('deadbeefabbadead', 16)).fromRed()
               .toString(16),
             '3aa0e7e304e320b68ef61592bcb00341866d6fa66e11a4d6');
         });
 
         it('should sqrtm numbers', () => {
-          let p = new BN(263);
-          let m = fn(p);
-          let q = new BN(11).toRed(m);
-          let qr = q.redSqrt();
+          {
+            const p = new BN(263);
+            const m = fn(p);
+            const q = new BN(11).toRed(m);
 
-          assert.equal(qr.redSqr().cmp(q), 0);
+            assert.strictEqual(q.redSqrt().redSqr().cmp(q), 0);
+            assert.strictEqual(q.redSqrt().redSqr().cmp(q), 0);
+          }
 
-          qr = q.redSqrt();
-          assert.equal(qr.redSqr().cmp(q), 0);
+          {
+            const p = new BN('fffffffffffffffffffffffffffffffeffffffffffffffff', 16);
+            const m = fn(p);
+            const q = new BN(13).toRed(m);
 
-          p = new BN(
-            'fffffffffffffffffffffffffffffffeffffffffffffffff',
-            16);
-          m = fn(p);
-
-          q = new BN(13).toRed(m);
-          qr = q.redSqrt();
-          assert.equal(qr.redSqr().cmp(q), 0);
-
-          qr = q.redSqrt();
-          assert.equal(qr.redSqr().cmp(q), 0);
+            assert.strictEqual(q.redSqrt().redSqr().cmp(q), 0);
+            assert.strictEqual(q.redSqrt().redSqr().cmp(q), 0);
+          }
 
           // Tonelli-shanks
-          p = new BN(13);
-          m = fn(p);
-          q = new BN(10).toRed(m);
-          assert.equal(q.redSqrt().fromRed().toString(10), '7');
+          {
+            const p = new BN(13);
+            const m = fn(p);
+            const q = new BN(10).toRed(m);
+
+            assert.strictEqual(q.redSqrt().fromRed().toString(10), '7');
+          }
         });
 
         it('should invm numbers', () => {
@@ -4214,21 +4230,21 @@ describe('BN.js', function() {
           const a = new BN(3).toRed(m);
           const b = a.redInvm();
 
-          assert.equal(a.redMul(b).fromRed().toString(16), '1');
+          assert.strictEqual(a.redMul(b).fromRed().toString(16), '1');
         });
 
         it('should invm numbers (regression)', () => {
           const p = new BN(
             'ffffffff00000001000000000000000000000000ffffffffffffffffffffffff',
             16);
-          let a = new BN(
+
+          const a = new BN(
             'e1d969b8192fbac73ea5b7921896d6a2263d4d4077bb8e5055361d1f7f8163f3',
             16);
 
           const m = fn(p);
-          a = a.toRed(m);
 
-          assert.equal(a.redInvm().fromRed().negative, 0);
+          assert.strictEqual(a.toRed(m).redInvm().fromRed().negative, 0);
         });
 
         it('should imul numbers', () => {
@@ -4237,12 +4253,11 @@ describe('BN.js', function() {
             16);
 
           const m = fn(p);
-
           const a = new BN('deadbeefabbadead', 16);
           const b = new BN('abbadeadbeefdead', 16);
           const c = a.mul(b).mod(p);
 
-          assert.equal(a.toRed(m).redIMul(b.toRed(m)).fromRed().toString(16),
+          assert.strictEqual(a.toRed(m).redIMul(b.toRed(m)).fromRed().toString(16),
             c.toString(16));
         });
 
@@ -4250,13 +4265,15 @@ describe('BN.js', function() {
           const base = new BN(256).toRed(BN.red('k256'));
           const exponent = new BN(0);
           const result = base.redPow(exponent);
-          assert.equal(result.toString(), '1');
+
+          assert.strictEqual(result.toString(), '1');
         });
 
         it('should shl numbers', () => {
           const base = new BN(256).toRed(BN.red('k256'));
           const result = base.redShln(1);
-          assert.equal(result.toString(), '512');
+
+          assert.strictEqual(result.toString(), '512');
         });
 
         it('should reduce when converting to red', () => {
@@ -4272,7 +4289,7 @@ describe('BN.js', function() {
 
         it('redNeg and zero value', () => {
           const a = new BN(0).toRed(BN.red('k256')).redNeg();
-          assert.equal(a.isZero(), true);
+          assert.strictEqual(a.isZero(), true);
         });
 
         it('should not allow modulus <= 1', () => {
@@ -4301,52 +4318,54 @@ describe('BN.js', function() {
         if (!p.ireduce)
           this.skip();
 
-        assert.equal(p.ireduce(new BN(0xdead)).toString(16), 'dead');
-        assert.equal(p.ireduce(new BN('deadbeef', 16)).toString(16), 'deadbeef');
+        assert.strictEqual(p.ireduce(new BN(0xdead)).toString(16), 'dead');
+        assert.strictEqual(p.ireduce(new BN('deadbeef', 16)).toString(16), 'deadbeef');
 
-        const num = new BN('fedcba9876543210fedcba9876543210dead' +
-        'fedcba9876543210fedcba9876543210dead',
-          16);
+        {
+          const num = new BN('fedcba9876543210fedcba9876543210dead' +
+          'fedcba9876543210fedcba9876543210dead',
+            16);
 
-        let exp = num.mod(p.p).toString(16);
+          const exp = num.mod(p.p);
 
-        assert.equal(p.ireduce(num).toString(16), exp);
+          assert.strictEqual(p.ireduce(num).toString(16), exp.toString(16));
+        }
 
-        const regr = new BN('f7e46df64c1815962bf7bc9c56128798' +
-        '3f4fcef9cb1979573163b477eab93959' +
-        '335dfb29ef07a4d835d22aa3b6797760' +
-        '70a8b8f59ba73d56d01a79af9',
-          16);
+        {
+          const regr = new BN('f7e46df64c1815962bf7bc9c56128798'
+                            + '3f4fcef9cb1979573163b477eab93959'
+                            + '335dfb29ef07a4d835d22aa3b6797760'
+                            + '70a8b8f59ba73d56d01a79af9', 16);
 
-        exp = regr.mod(p.p).toString(16);
+          const exp = regr.mod(p.p);
 
-        assert.equal(p.ireduce(regr).toString(16), exp);
+          assert.strictEqual(p.ireduce(regr).toString(16), exp.toString(16));
+        }
       });
 
       it('should not fail to invm number mod k256', () => {
-        let regr2 = new BN(
-          '6c150c4aa9a8cf1934485d40674d4a7cd494675537bda36d49405c5d2c6f496f', 16);
-        regr2 = regr2.toRed(BN.red('k256'));
-        assert.equal(regr2.redInvm().redMul(regr2).fromRed().cmpn(1), 0);
+        const num = new BN('6c150c4aa9a8cf1934485d40674d4a7cd494675537bda36d49405c5d2c6f496f', 16);
+        const regr2 = num.toRed(BN.red('k256'));
+
+        assert.strictEqual(regr2.redInvm().redMul(regr2).fromRed().cmpn(1), 0);
       });
 
       it('should correctly square the number', () => {
         const p = BN._prime('k256').p;
         const red = BN.red('k256');
 
-        const n = new BN('9cd8cb48c3281596139f147c1364a3ed' +
-        'e88d3f310fdb0eb98c924e599ca1b3c9',
-          16);
+        const n = new BN('9cd8cb48c3281596139f147c1364a3ed'
+                       + 'e88d3f310fdb0eb98c924e599ca1b3c9', 16);
         const expected = n.sqr().mod(p);
         const actual = n.toRed(red).redSqr().fromRed();
 
-        assert.equal(actual.toString(16), expected.toString(16));
+        assert.strictEqual(actual.toString(16), expected.toString(16));
       });
 
       it('redISqr should return right result', () => {
         const n = new BN('30f28939', 16);
         const actual = n.toRed(BN.red('k256')).redISqr().fromRed();
-        assert.equal(actual.toString(16), '95bd93d19520eb1');
+        assert.strictEqual(actual.toString(16), '95bd93d19520eb1');
       });
     });
 
@@ -4354,9 +4373,10 @@ describe('BN.js', function() {
       function bits2int(obits, q) {
         const bits = new BN(obits);
         const shift = (obits.length << 3) - q.bitLength();
-        if (shift > 0) {
+
+        if (shift > 0)
           bits.ishrn(shift);
-        }
+
         return bits;
       }
 
@@ -4401,7 +4421,7 @@ describe('BN.js', function() {
 
       const r = g.toRed(BN.mont(p)).redPow(k).fromRed().mod(q);
 
-      assert.equal(r.toString(16), expectedR);
+      assert.strictEqual(r.toString(16), expectedR);
     });
 
     it('K256.split for 512 bits number should return equal numbers', () => {
@@ -4411,12 +4431,12 @@ describe('BN.js', function() {
         this.skip();
 
       const input = new BN(1).iushln(512).subn(1);
-      assert.equal(input.bitLength(), 512);
+      assert.strictEqual(input.bitLength(), 512);
 
       const output = new BN(0);
       prime.split(input, output);
 
-      assert.equal(input.cmp(output), 0);
+      assert.strictEqual(input.cmp(output), 0);
     });
 
     it('imod should change host object', () => {
@@ -4424,8 +4444,8 @@ describe('BN.js', function() {
       const a = new BN(2).toRed(red);
       const b = new BN(7).toRed(red);
       const c = a.redIMul(b);
-      assert.equal(a.toNumber(), 1);
-      assert.equal(c.toNumber(), 1);
+      assert.strictEqual(a.toNumber(), 1);
+      assert.strictEqual(c.toNumber(), 1);
     });
   });
 
@@ -4435,7 +4455,7 @@ describe('BN.js', function() {
         it('should have a length of 256', () => {
           const a = new BN(0);
 
-          assert.equal(a.toString(2, 256).length, 256);
+          assert.strictEqual(a.toString(2, 256).length, 256);
         });
       });
 
@@ -4443,19 +4463,19 @@ describe('BN.js', function() {
         it('should have length of 8 from leading 15', () => {
           const a = new BN('ffb9602', 16);
 
-          assert.equal(a.toString('hex', 2).length, 8);
+          assert.strictEqual(a.toString('hex', 2).length, 8);
         });
 
         it('should have length of 8 from leading zero', () => {
           const a = new BN('fb9604', 16);
 
-          assert.equal(a.toString('hex', 8).length, 8);
+          assert.strictEqual(a.toString('hex', 8).length, 8);
         });
 
         it('should have length of 8 from leading zeros', () => {
           const a = new BN(0);
 
-          assert.equal(a.toString('hex', 8).length, 8);
+          assert.strictEqual(a.toString('hex', 8).length, 8);
         });
 
         it('should have length of 64 from leading 15', () => {
@@ -4463,7 +4483,7 @@ describe('BN.js', function() {
             'ffb96ff654e61130ba8422f0debca77a0ea74ae5ea8bca9b54ab64aabf01003',
             16);
 
-          assert.equal(a.toString('hex', 2).length, 64);
+          assert.strictEqual(a.toString('hex', 2).length, 64);
         });
 
         it('should have length of 64 from leading zero', () => {
@@ -4471,79 +4491,79 @@ describe('BN.js', function() {
             'fb96ff654e61130ba8422f0debca77a0ea74ae5ea8bca9b54ab64aabf01003',
             16);
 
-          assert.equal(a.toString('hex', 64).length, 64);
+          assert.strictEqual(a.toString('hex', 64).length, 64);
         });
       });
     });
 
     describe('.isNeg()', () => {
       it('should return true for negative numbers', () => {
-        assert.equal(new BN(-1).isNeg(), true);
-        assert.equal(new BN(1).isNeg(), false);
-        assert.equal(new BN(0).isNeg(), false);
-        assert.equal(new BN('-0', 10).isNeg(), false);
+        assert.strictEqual(new BN(-1).isNeg(), true);
+        assert.strictEqual(new BN(1).isNeg(), false);
+        assert.strictEqual(new BN(0).isNeg(), false);
+        assert.strictEqual(new BN('-0', 10).isNeg(), false);
       });
     });
 
     describe('.isOdd()', () => {
       it('should return true for odd numbers', () => {
-        assert.equal(new BN(0).isOdd(), false);
-        assert.equal(new BN(1).isOdd(), true);
-        assert.equal(new BN(2).isOdd(), false);
-        assert.equal(new BN('-0', 10).isOdd(), false);
-        assert.equal(new BN('-1', 10).isOdd(), true);
-        assert.equal(new BN('-2', 10).isOdd(), false);
+        assert.strictEqual(new BN(0).isOdd(), false);
+        assert.strictEqual(new BN(1).isOdd(), true);
+        assert.strictEqual(new BN(2).isOdd(), false);
+        assert.strictEqual(new BN('-0', 10).isOdd(), false);
+        assert.strictEqual(new BN('-1', 10).isOdd(), true);
+        assert.strictEqual(new BN('-2', 10).isOdd(), false);
       });
     });
 
     describe('.isEven()', () => {
       it('should return true for even numbers', () => {
-        assert.equal(new BN(0).isEven(), true);
-        assert.equal(new BN(1).isEven(), false);
-        assert.equal(new BN(2).isEven(), true);
-        assert.equal(new BN('-0', 10).isEven(), true);
-        assert.equal(new BN('-1', 10).isEven(), false);
-        assert.equal(new BN('-2', 10).isEven(), true);
+        assert.strictEqual(new BN(0).isEven(), true);
+        assert.strictEqual(new BN(1).isEven(), false);
+        assert.strictEqual(new BN(2).isEven(), true);
+        assert.strictEqual(new BN('-0', 10).isEven(), true);
+        assert.strictEqual(new BN('-1', 10).isEven(), false);
+        assert.strictEqual(new BN('-2', 10).isEven(), true);
       });
     });
 
     describe('.isZero()', () => {
       it('should return true for zero', () => {
-        assert.equal(new BN(0).isZero(), true);
-        assert.equal(new BN(1).isZero(), false);
-        assert.equal(new BN(0xffffffff).isZero(), false);
+        assert.strictEqual(new BN(0).isZero(), true);
+        assert.strictEqual(new BN(1).isZero(), false);
+        assert.strictEqual(new BN(0xffffffff).isZero(), false);
       });
     });
 
     describe('.bitLength()', () => {
       it('should return proper bitLength', () => {
-        assert.equal(new BN(0).bitLength(), 0);
-        assert.equal(new BN(0x1).bitLength(), 1);
-        assert.equal(new BN(0x2).bitLength(), 2);
-        assert.equal(new BN(0x3).bitLength(), 2);
-        assert.equal(new BN(0x4).bitLength(), 3);
-        assert.equal(new BN(0x8).bitLength(), 4);
-        assert.equal(new BN(0x10).bitLength(), 5);
-        assert.equal(new BN(0x100).bitLength(), 9);
-        assert.equal(new BN(0x123456).bitLength(), 21);
-        assert.equal(new BN('123456789', 16).bitLength(), 33);
-        assert.equal(new BN('8023456789', 16).bitLength(), 40);
+        assert.strictEqual(new BN(0).bitLength(), 0);
+        assert.strictEqual(new BN(0x1).bitLength(), 1);
+        assert.strictEqual(new BN(0x2).bitLength(), 2);
+        assert.strictEqual(new BN(0x3).bitLength(), 2);
+        assert.strictEqual(new BN(0x4).bitLength(), 3);
+        assert.strictEqual(new BN(0x8).bitLength(), 4);
+        assert.strictEqual(new BN(0x10).bitLength(), 5);
+        assert.strictEqual(new BN(0x100).bitLength(), 9);
+        assert.strictEqual(new BN(0x123456).bitLength(), 21);
+        assert.strictEqual(new BN('123456789', 16).bitLength(), 33);
+        assert.strictEqual(new BN('8023456789', 16).bitLength(), 40);
       });
     });
 
     describe('.byteLength()', () => {
       it('should return proper byteLength', () => {
-        assert.equal(new BN(0).byteLength(), 0);
-        assert.equal(new BN(0x1).byteLength(), 1);
-        assert.equal(new BN(0x2).byteLength(), 1);
-        assert.equal(new BN(0x3).byteLength(), 1);
-        assert.equal(new BN(0x4).byteLength(), 1);
-        assert.equal(new BN(0x8).byteLength(), 1);
-        assert.equal(new BN(0x10).byteLength(), 1);
-        assert.equal(new BN(0x100).byteLength(), 2);
-        assert.equal(new BN(0x123456).byteLength(), 3);
-        assert.equal(new BN('123456789', 16).byteLength(), 5);
-        assert.equal(new BN('8023456789', 16).byteLength(), 5);
+        assert.strictEqual(new BN(0).byteLength(), 0);
+        assert.strictEqual(new BN(0x1).byteLength(), 1);
+        assert.strictEqual(new BN(0x2).byteLength(), 1);
+        assert.strictEqual(new BN(0x3).byteLength(), 1);
+        assert.strictEqual(new BN(0x4).byteLength(), 1);
+        assert.strictEqual(new BN(0x8).byteLength(), 1);
+        assert.strictEqual(new BN(0x10).byteLength(), 1);
+        assert.strictEqual(new BN(0x100).byteLength(), 2);
+        assert.strictEqual(new BN(0x123456).byteLength(), 3);
+        assert.strictEqual(new BN('123456789', 16).byteLength(), 5);
+        assert.strictEqual(new BN('8023456789', 16).byteLength(), 5);
       });
     });
 
@@ -4600,146 +4620,146 @@ describe('BN.js', function() {
 
     describe('.zeroBits()', () => {
       it('should return proper zeroBits', () => {
-        assert.equal(new BN(0).zeroBits(), 0);
-        assert.equal(new BN(0x1).zeroBits(), 0);
-        assert.equal(new BN(0x2).zeroBits(), 1);
-        assert.equal(new BN(0x3).zeroBits(), 0);
-        assert.equal(new BN(0x4).zeroBits(), 2);
-        assert.equal(new BN(0x8).zeroBits(), 3);
-        assert.equal(new BN(0x10).zeroBits(), 4);
-        assert.equal(new BN(0x100).zeroBits(), 8);
-        assert.equal(new BN(0x1000000).zeroBits(), 24);
-        assert.equal(new BN(0x123456).zeroBits(), 1);
+        assert.strictEqual(new BN(0).zeroBits(), 0);
+        assert.strictEqual(new BN(0x1).zeroBits(), 0);
+        assert.strictEqual(new BN(0x2).zeroBits(), 1);
+        assert.strictEqual(new BN(0x3).zeroBits(), 0);
+        assert.strictEqual(new BN(0x4).zeroBits(), 2);
+        assert.strictEqual(new BN(0x8).zeroBits(), 3);
+        assert.strictEqual(new BN(0x10).zeroBits(), 4);
+        assert.strictEqual(new BN(0x100).zeroBits(), 8);
+        assert.strictEqual(new BN(0x1000000).zeroBits(), 24);
+        assert.strictEqual(new BN(0x123456).zeroBits(), 1);
       });
     });
 
     describe('.toJSON', () => {
       it('should return hex string', () => {
-        assert.equal(new BN(0x123).toJSON(), '0123');
+        assert.strictEqual(new BN(0x123).toJSON(), '0123');
       });
 
       it('should be padded to multiple of 2 bytes for interop', () => {
-        assert.equal(new BN(0x1).toJSON(), '01');
+        assert.strictEqual(new BN(0x1).toJSON(), '01');
       });
     });
 
     describe('.cmpn', () => {
       it('should return -1, 0, 1 correctly', () => {
-        assert.equal(new BN(42).cmpn(42), 0);
-        assert.equal(new BN(42).cmpn(43), -1);
-        assert.equal(new BN(42).cmpn(41), 1);
-        assert.equal(new BN(0x3fffffe).cmpn(0x3fffffe), 0);
-        assert.equal(new BN(0x3fffffe).cmpn(0x3ffffff), -1);
-        assert.equal(new BN(0x3fffffe).cmpn(0x3fffffd), 1);
+        assert.strictEqual(new BN(42).cmpn(42), 0);
+        assert.strictEqual(new BN(42).cmpn(43), -1);
+        assert.strictEqual(new BN(42).cmpn(41), 1);
+        assert.strictEqual(new BN(0x3fffffe).cmpn(0x3fffffe), 0);
+        assert.strictEqual(new BN(0x3fffffe).cmpn(0x3ffffff), -1);
+        assert.strictEqual(new BN(0x3fffffe).cmpn(0x3fffffd), 1);
         assert.throws(() => {
           new BN(0x3fffffe).cmpn(0x4000000);
         });
-        assert.equal(new BN(42).cmpn(-42), 1);
-        assert.equal(new BN(-42).cmpn(42), -1);
-        assert.equal(new BN(-42).cmpn(-42), 0);
-        assert.equal(1 / new BN(-42).cmpn(-42), Infinity);
+        assert.strictEqual(new BN(42).cmpn(-42), 1);
+        assert.strictEqual(new BN(-42).cmpn(42), -1);
+        assert.strictEqual(new BN(-42).cmpn(-42), 0);
+        assert.strictEqual(1 / new BN(-42).cmpn(-42), Infinity);
       });
     });
 
     describe('.cmp', () => {
       it('should return -1, 0, 1 correctly', () => {
-        assert.equal(new BN(42).cmp(new BN(42)), 0);
-        assert.equal(new BN(42).cmp(new BN(43)), -1);
-        assert.equal(new BN(42).cmp(new BN(41)), 1);
-        assert.equal(new BN(0x3fffffe).cmp(new BN(0x3fffffe)), 0);
-        assert.equal(new BN(0x3fffffe).cmp(new BN(0x3ffffff)), -1);
-        assert.equal(new BN(0x3fffffe).cmp(new BN(0x3fffffd)), 1);
-        assert.equal(new BN(0x3fffffe).cmp(new BN(0x4000000)), -1);
-        assert.equal(new BN(42).cmp(new BN(-42)), 1);
-        assert.equal(new BN(-42).cmp(new BN(42)), -1);
-        assert.equal(new BN(-42).cmp(new BN(-42)), 0);
-        assert.equal(1 / new BN(-42).cmp(new BN(-42)), Infinity);
+        assert.strictEqual(new BN(42).cmp(new BN(42)), 0);
+        assert.strictEqual(new BN(42).cmp(new BN(43)), -1);
+        assert.strictEqual(new BN(42).cmp(new BN(41)), 1);
+        assert.strictEqual(new BN(0x3fffffe).cmp(new BN(0x3fffffe)), 0);
+        assert.strictEqual(new BN(0x3fffffe).cmp(new BN(0x3ffffff)), -1);
+        assert.strictEqual(new BN(0x3fffffe).cmp(new BN(0x3fffffd)), 1);
+        assert.strictEqual(new BN(0x3fffffe).cmp(new BN(0x4000000)), -1);
+        assert.strictEqual(new BN(42).cmp(new BN(-42)), 1);
+        assert.strictEqual(new BN(-42).cmp(new BN(42)), -1);
+        assert.strictEqual(new BN(-42).cmp(new BN(-42)), 0);
+        assert.strictEqual(1 / new BN(-42).cmp(new BN(-42)), Infinity);
       });
     });
 
     describe('comparison shorthands', () => {
       it('.gtn greater than', () => {
-        assert.equal(new BN(3).gtn(2), true);
-        assert.equal(new BN(3).gtn(3), false);
-        assert.equal(new BN(3).gtn(4), false);
+        assert.strictEqual(new BN(3).gtn(2), true);
+        assert.strictEqual(new BN(3).gtn(3), false);
+        assert.strictEqual(new BN(3).gtn(4), false);
       });
 
       it('.gt greater than', () => {
-        assert.equal(new BN(3).gt(new BN(2)), true);
-        assert.equal(new BN(3).gt(new BN(3)), false);
-        assert.equal(new BN(3).gt(new BN(4)), false);
+        assert.strictEqual(new BN(3).gt(new BN(2)), true);
+        assert.strictEqual(new BN(3).gt(new BN(3)), false);
+        assert.strictEqual(new BN(3).gt(new BN(4)), false);
       });
 
       it('.gten greater than or equal', () => {
-        assert.equal(new BN(3).gten(3), true);
-        assert.equal(new BN(3).gten(2), true);
-        assert.equal(new BN(3).gten(4), false);
+        assert.strictEqual(new BN(3).gten(3), true);
+        assert.strictEqual(new BN(3).gten(2), true);
+        assert.strictEqual(new BN(3).gten(4), false);
       });
 
       it('.gte greater than or equal', () => {
-        assert.equal(new BN(3).gte(new BN(3)), true);
-        assert.equal(new BN(3).gte(new BN(2)), true);
-        assert.equal(new BN(3).gte(new BN(4)), false);
+        assert.strictEqual(new BN(3).gte(new BN(3)), true);
+        assert.strictEqual(new BN(3).gte(new BN(2)), true);
+        assert.strictEqual(new BN(3).gte(new BN(4)), false);
       });
 
       it('.ltn less than', () => {
-        assert.equal(new BN(2).ltn(3), true);
-        assert.equal(new BN(2).ltn(2), false);
-        assert.equal(new BN(2).ltn(1), false);
+        assert.strictEqual(new BN(2).ltn(3), true);
+        assert.strictEqual(new BN(2).ltn(2), false);
+        assert.strictEqual(new BN(2).ltn(1), false);
       });
 
       it('.lt less than', () => {
-        assert.equal(new BN(2).lt(new BN(3)), true);
-        assert.equal(new BN(2).lt(new BN(2)), false);
-        assert.equal(new BN(2).lt(new BN(1)), false);
+        assert.strictEqual(new BN(2).lt(new BN(3)), true);
+        assert.strictEqual(new BN(2).lt(new BN(2)), false);
+        assert.strictEqual(new BN(2).lt(new BN(1)), false);
       });
 
       it('.lten less than or equal', () => {
-        assert.equal(new BN(3).lten(3), true);
-        assert.equal(new BN(3).lten(2), false);
-        assert.equal(new BN(3).lten(4), true);
+        assert.strictEqual(new BN(3).lten(3), true);
+        assert.strictEqual(new BN(3).lten(2), false);
+        assert.strictEqual(new BN(3).lten(4), true);
       });
 
       it('.lte less than or equal', () => {
-        assert.equal(new BN(3).lte(new BN(3)), true);
-        assert.equal(new BN(3).lte(new BN(2)), false);
-        assert.equal(new BN(3).lte(new BN(4)), true);
+        assert.strictEqual(new BN(3).lte(new BN(3)), true);
+        assert.strictEqual(new BN(3).lte(new BN(2)), false);
+        assert.strictEqual(new BN(3).lte(new BN(4)), true);
       });
 
       it('.eqn equal', () => {
-        assert.equal(new BN(3).eqn(3), true);
-        assert.equal(new BN(3).eqn(2), false);
-        assert.equal(new BN(3).eqn(4), false);
+        assert.strictEqual(new BN(3).eqn(3), true);
+        assert.strictEqual(new BN(3).eqn(2), false);
+        assert.strictEqual(new BN(3).eqn(4), false);
       });
 
       it('.eq equal', () => {
-        assert.equal(new BN(3).eq(new BN(3)), true);
-        assert.equal(new BN(3).eq(new BN(2)), false);
-        assert.equal(new BN(3).eq(new BN(4)), false);
+        assert.strictEqual(new BN(3).eq(new BN(3)), true);
+        assert.strictEqual(new BN(3).eq(new BN(2)), false);
+        assert.strictEqual(new BN(3).eq(new BN(4)), false);
       });
     });
 
     describe('.fromTwos', () => {
       it('should convert from two\'s complement to negative number', () => {
-        assert.equal(new BN('00000000', 16).fromTwos(32).toNumber(), 0);
-        assert.equal(new BN('00000001', 16).fromTwos(32).toNumber(), 1);
-        assert.equal(new BN('7fffffff', 16).fromTwos(32).toNumber(), 2147483647);
-        assert.equal(new BN('80000000', 16).fromTwos(32).toNumber(), -2147483648);
-        assert.equal(new BN('f0000000', 16).fromTwos(32).toNumber(), -268435456);
-        assert.equal(new BN('f1234567', 16).fromTwos(32).toNumber(), -249346713);
-        assert.equal(new BN('ffffffff', 16).fromTwos(32).toNumber(), -1);
-        assert.equal(new BN('fffffffe', 16).fromTwos(32).toNumber(), -2);
-        assert.equal(new BN('fffffffffffffffffffffffffffffffe', 16)
+        assert.strictEqual(new BN('00000000', 16).fromTwos(32).toNumber(), 0);
+        assert.strictEqual(new BN('00000001', 16).fromTwos(32).toNumber(), 1);
+        assert.strictEqual(new BN('7fffffff', 16).fromTwos(32).toNumber(), 2147483647);
+        assert.strictEqual(new BN('80000000', 16).fromTwos(32).toNumber(), -2147483648);
+        assert.strictEqual(new BN('f0000000', 16).fromTwos(32).toNumber(), -268435456);
+        assert.strictEqual(new BN('f1234567', 16).fromTwos(32).toNumber(), -249346713);
+        assert.strictEqual(new BN('ffffffff', 16).fromTwos(32).toNumber(), -1);
+        assert.strictEqual(new BN('fffffffe', 16).fromTwos(32).toNumber(), -2);
+        assert.strictEqual(new BN('fffffffffffffffffffffffffffffffe', 16)
           .fromTwos(128).toNumber(), -2);
-        assert.equal(new BN('ffffffffffffffffffffffffffffffff' +
+        assert.strictEqual(new BN('ffffffffffffffffffffffffffffffff' +
           'fffffffffffffffffffffffffffffffe', 16).fromTwos(256).toNumber(), -2);
-        assert.equal(new BN('ffffffffffffffffffffffffffffffff' +
+        assert.strictEqual(new BN('ffffffffffffffffffffffffffffffff' +
           'ffffffffffffffffffffffffffffffff', 16).fromTwos(256).toNumber(), -1);
-        assert.equal(new BN('7fffffffffffffffffffffffffffffff' +
+        assert.strictEqual(new BN('7fffffffffffffffffffffffffffffff' +
           'ffffffffffffffffffffffffffffffff', 16).fromTwos(256).toString(10),
           new BN('5789604461865809771178549250434395392663499' +
             '2332820282019728792003956564819967', 10).toString(10));
-        assert.equal(new BN('80000000000000000000000000000000' +
+        assert.strictEqual(new BN('80000000000000000000000000000000' +
           '00000000000000000000000000000000', 16).fromTwos(256).toString(10),
           new BN('-578960446186580977117854925043439539266349' +
             '92332820282019728792003956564819968', 10).toString(10));
@@ -4748,24 +4768,24 @@ describe('BN.js', function() {
 
     describe('.toTwos', () => {
       it('should convert from negative number to two\'s complement', () => {
-        assert.equal(new BN(0).toTwos(32).toString(16), '0');
-        assert.equal(new BN(1).toTwos(32).toString(16), '1');
-        assert.equal(new BN(2147483647).toTwos(32).toString(16), '7fffffff');
-        assert.equal(new BN('-2147483648', 10).toTwos(32).toString(16), '80000000');
-        assert.equal(new BN('-268435456', 10).toTwos(32).toString(16), 'f0000000');
-        assert.equal(new BN('-249346713', 10).toTwos(32).toString(16), 'f1234567');
-        assert.equal(new BN('-1', 10).toTwos(32).toString(16), 'ffffffff');
-        assert.equal(new BN('-2', 10).toTwos(32).toString(16), 'fffffffe');
-        assert.equal(new BN('-2', 10).toTwos(128).toString(16),
+        assert.strictEqual(new BN(0).toTwos(32).toString(16), '0');
+        assert.strictEqual(new BN(1).toTwos(32).toString(16), '1');
+        assert.strictEqual(new BN(2147483647).toTwos(32).toString(16), '7fffffff');
+        assert.strictEqual(new BN('-2147483648', 10).toTwos(32).toString(16), '80000000');
+        assert.strictEqual(new BN('-268435456', 10).toTwos(32).toString(16), 'f0000000');
+        assert.strictEqual(new BN('-249346713', 10).toTwos(32).toString(16), 'f1234567');
+        assert.strictEqual(new BN('-1', 10).toTwos(32).toString(16), 'ffffffff');
+        assert.strictEqual(new BN('-2', 10).toTwos(32).toString(16), 'fffffffe');
+        assert.strictEqual(new BN('-2', 10).toTwos(128).toString(16),
           'fffffffffffffffffffffffffffffffe');
-        assert.equal(new BN('-2', 10).toTwos(256).toString(16),
+        assert.strictEqual(new BN('-2', 10).toTwos(256).toString(16),
           'fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe');
-        assert.equal(new BN('-1', 10).toTwos(256).toString(16),
+        assert.strictEqual(new BN('-1', 10).toTwos(256).toString(16),
           'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff');
-        assert.equal(new BN('5789604461865809771178549250434395392663' +
+        assert.strictEqual(new BN('5789604461865809771178549250434395392663' +
           '4992332820282019728792003956564819967', 10).toTwos(256).toString(16),
           '7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff');
-        assert.equal(new BN('-578960446186580977117854925043439539266' +
+        assert.strictEqual(new BN('-578960446186580977117854925043439539266' +
           '34992332820282019728792003956564819968', 10).toTwos(256).toString(16),
           '8000000000000000000000000000000000000000000000000000000000000000');
       });
@@ -4773,13 +4793,13 @@ describe('BN.js', function() {
 
     describe('.isBN', () => {
       it('should return true for BN', () => {
-        assert.equal(BN.isBN(new BN()), true);
+        assert.strictEqual(BN.isBN(new BN()), true);
       });
 
       it('should return false for everything else', () => {
-        assert.equal(BN.isBN(1), false);
-        assert.equal(BN.isBN([]), false);
-        assert.equal(BN.isBN({}), false);
+        assert.strictEqual(BN.isBN(1), false);
+        assert.strictEqual(BN.isBN([]), false);
+        assert.strictEqual(BN.isBN({}), false);
       });
     });
   });
@@ -5590,7 +5610,7 @@ describe('BN.js', function() {
         const multed = base.toRed(mont).redPow(priv).fromRed();
         const actual = multed.toBuffer();
 
-        assert.equal(actual.toString('hex'), group.pub);
+        assert.strictEqual(actual.toString('hex'), group.pub);
       });
     }
   });
