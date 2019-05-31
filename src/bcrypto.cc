@@ -14,11 +14,14 @@
 #include "compat.h"
 #include "aead.h"
 #include "aes.h"
+#include "base58.h"
+#include "bech32.h"
 #include "blake2b.h"
 #include "blake2s.h"
 #ifdef BCRYPTO_HAS_GMP
 #include "bn.h"
 #endif
+#include "cashaddr.h"
 #include "chacha20.h"
 #include "cipherbase.h"
 #include "dsa.h"
@@ -77,11 +80,14 @@ NAN_MODULE_INIT(init) {
 
   BAEAD::Init(target);
   BAES::Init(target);
+  BBase58::Init(target);
+  BBech32::Init(target);
   BBLAKE2b::Init(target);
   BBLAKE2s::Init(target);
 #ifdef BCRYPTO_HAS_GMP
   BBN::Init(target);
 #endif
+  BCashAddr::Init(target);
   BChaCha20::Init(target);
   BCipherBase::Init(target);
   Nan::Export(target, "cleanse", cleanse);

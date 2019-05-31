@@ -44,6 +44,9 @@
   "gypfile": true,
   "browser": {
     "./lib/internal/custom": "./lib/internal/custom-browser.js",
+    "./lib/encoding/base58": "./lib/internal/base58-browser.js",
+    "./lib/encoding/bech32": "./lib/internal/bech32-browser.js",
+    "./lib/encoding/cashaddr": "./lib/internal/cashaddr-browser.js",
     "./lib/aead": "./lib/aead-browser.js",
     "./lib/aes": "./lib/aes-browser.js",
     "./lib/blake2b": "./lib/blake2b-browser.js",

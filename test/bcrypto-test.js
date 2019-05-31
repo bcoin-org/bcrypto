@@ -48,6 +48,9 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.ed25519.native, 0);
         assert.strictEqual(bcrypto.ed448.native, 0);
         assert.strictEqual(bcrypto.encoding.native, undefined);
+        assert.strictEqual(bcrypto.encoding.base58.native, 0);
+        assert.strictEqual(bcrypto.encoding.bech32.native, 0);
+        assert.strictEqual(bcrypto.encoding.cashaddr.native, 0);
         assert.strictEqual(bcrypto.GOST94.native, 0);
         assert.strictEqual(bcrypto.Hash160.native, 0);
         assert.strictEqual(bcrypto.Hash256.native, 0);
@@ -141,6 +144,9 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.ed25519.native, NODE_MAJOR >= 12 ? 1 : 0);
         assert.strictEqual(bcrypto.ed448.native, NODE_MAJOR >= 12 ? 1 : 0);
         assert.strictEqual(bcrypto.encoding.native, undefined);
+        assert.strictEqual(bcrypto.encoding.base58.native, 0);
+        assert.strictEqual(bcrypto.encoding.bech32.native, 0);
+        assert.strictEqual(bcrypto.encoding.cashaddr.native, 0);
         assert.strictEqual(bcrypto.GOST94.native, 0);
         assert.strictEqual(bcrypto.Hash160.native, 1);
         assert.strictEqual(bcrypto.Hash256.native, 1);
@@ -236,6 +242,9 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.ed25519.native, 2);
         assert.strictEqual(bcrypto.ed448.native, 2);
         assert.strictEqual(bcrypto.encoding.native, undefined);
+        assert.strictEqual(bcrypto.encoding.base58.native, 2);
+        assert.strictEqual(bcrypto.encoding.bech32.native, 2);
+        assert.strictEqual(bcrypto.encoding.cashaddr.native, 2);
         assert.strictEqual(bcrypto.GOST94.native, 0);
         assert.strictEqual(bcrypto.Hash160.native, 2);
         assert.strictEqual(bcrypto.Hash256.native, 2);
