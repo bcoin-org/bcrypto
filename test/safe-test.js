@@ -1,8 +1,6 @@
 'use strict';
 
 const assert = require('bsert');
-const ccmp = require('../lib/ccmp');
-const safeEqual = require('../lib/safe-equal');
 const safe = require('../lib/safe');
 const bytes = Buffer.allocUnsafe(32);
 const rbytes = Buffer.allocUnsafe(32);
@@ -14,33 +12,6 @@ for (let i = 0; i < 32; i++)
   rbytes[i] = 32 - i;
 
 describe('Safe', function() {
-  for (const equal of [ccmp, safeEqual]) {
-    it('should compare bytes', () => {
-      const bytes2 = Buffer.allocUnsafe(32);
-
-      for (let i = 0; i < 32; i++)
-        bytes2[i] = i;
-
-      assert.strictEqual(equal(bytes, bytes), true);
-      assert.strictEqual(equal(bytes, bytes2), true);
-      assert.strictEqual(equal(Buffer.alloc(0), Buffer.alloc(0)), true);
-    });
-
-    it('should fail comparing bytes', () => {
-      assert.strictEqual(equal(bytes, rbytes), false);
-      assert.strictEqual(equal(rbytes, bytes), false);
-      assert.strictEqual(equal(bytes, bytes.slice(31)), false);
-      assert.strictEqual(equal(bytes.slice(31), bytes), false);
-
-      const buf = Buffer.concat([bytes, Buffer.from([0x00])]);
-
-      assert.strictEqual(equal(bytes, buf), false);
-      assert.strictEqual(equal(buf, bytes), false);
-      assert.strictEqual(equal(bytes, Buffer.alloc(0)), false);
-      assert.strictEqual(equal(Buffer.alloc(0), bytes), false);
-    });
-  }
-
   for (const safeEqual of [safe.safeEqual, safe.safeCompare]) {
     it('should compare bytes', () => {
       const bytes2 = Buffer.allocUnsafe(32);

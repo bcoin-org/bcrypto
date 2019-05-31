@@ -36,7 +36,6 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.ChaCha20.native, 0);
         assert.strictEqual(bcrypto.cipher.native, 0);
         assert.strictEqual(bcrypto.cleanse.native, 0);
-        assert.strictEqual(bcrypto.ccmp.native, undefined);
         assert.strictEqual(bcrypto.CSHAKE.native, 0);
         assert.strictEqual(bcrypto.CSHAKE128.native, 0);
         assert.strictEqual(bcrypto.CSHAKE256.native, 0);
@@ -54,7 +53,6 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.Hash256.native, 0);
         assert.strictEqual(bcrypto.HashDRBG.native, 0);
         assert.strictEqual(bcrypto.HKDF.native, 0);
-        assert.strictEqual(bcrypto.hkdf.native, 0);
         assert.strictEqual(bcrypto.HmacDRBG.native, 0);
         assert.strictEqual(bcrypto.Keccak.native, 0);
         assert.strictEqual(bcrypto.Keccak224.native, 0);
@@ -85,7 +83,6 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.rsa.native, 0);
         assert.strictEqual(bcrypto.rsaies.native, undefined);
         assert.strictEqual(bcrypto.safe.native, undefined);
-        assert.strictEqual(bcrypto.safeEqual.native, undefined);
         assert.strictEqual(bcrypto.Salsa20.native, 0);
         assert.strictEqual(bcrypto.scrypt.native, 0);
         assert.strictEqual(bcrypto.secp256k1.native, 0);
@@ -132,7 +129,6 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.ChaCha20.native, 0);
         assert.strictEqual(bcrypto.cipher.native, 1);
         assert.strictEqual(bcrypto.cleanse.native, 1);
-        assert.strictEqual(bcrypto.ccmp.native, undefined);
         assert.strictEqual(bcrypto.CSHAKE.native, 0);
         assert.strictEqual(bcrypto.CSHAKE128.native, 0);
         assert.strictEqual(bcrypto.CSHAKE256.native, 0);
@@ -150,7 +146,6 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.Hash256.native, 1);
         assert.strictEqual(bcrypto.HashDRBG.native, 0);
         assert.strictEqual(bcrypto.HKDF.native, 0);
-        assert.strictEqual(bcrypto.hkdf.native, 0);
         assert.strictEqual(bcrypto.HmacDRBG.native, 0);
         assert.strictEqual(bcrypto.Keccak.native, 0);
         assert.strictEqual(bcrypto.Keccak224.native, 0);
@@ -181,7 +176,6 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.rsa.native, 1);
         assert.strictEqual(bcrypto.rsaies.native, undefined);
         assert.strictEqual(bcrypto.safe.native, undefined);
-        assert.strictEqual(bcrypto.safeEqual.native, undefined);
         assert.strictEqual(bcrypto.Salsa20.native, 0);
         if (NODE_MAJOR > 10 || (NODE_MAJOR === 10 && NODE_MINOR >= 5))
           assert.strictEqual(bcrypto.scrypt.native, 1);
@@ -230,7 +224,6 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.ChaCha20.native, 2);
         assert.strictEqual(bcrypto.cipher.native, 2);
         assert.strictEqual(bcrypto.cleanse.native, 2);
-        assert.strictEqual(bcrypto.ccmp.native, undefined);
         assert.strictEqual(bcrypto.CSHAKE.native, 2);
         assert.strictEqual(bcrypto.CSHAKE128.native, 2);
         assert.strictEqual(bcrypto.CSHAKE256.native, 2);
@@ -248,7 +241,6 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.Hash256.native, 2);
         assert.strictEqual(bcrypto.HashDRBG.native, 0);
         assert.strictEqual(bcrypto.HKDF.native, 0);
-        assert.strictEqual(bcrypto.hkdf.native, 0);
         assert.strictEqual(bcrypto.HmacDRBG.native, 0);
         assert.strictEqual(bcrypto.Keccak.native, 2);
         assert.strictEqual(bcrypto.Keccak224.native, 2);
@@ -279,7 +271,6 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.rsa.native, NODE_MAJOR >= 10 ? 2 : 1);
         assert.strictEqual(bcrypto.rsaies.native, undefined);
         assert.strictEqual(bcrypto.safe.native, undefined);
-        assert.strictEqual(bcrypto.safeEqual.native, undefined);
         assert.strictEqual(bcrypto.Salsa20.native, 2);
         assert.strictEqual(bcrypto.scrypt.native, 2);
         assert.strictEqual(bcrypto.secp256k1.native, 2);
