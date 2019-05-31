@@ -74,8 +74,12 @@ NAN_METHOD(BBech32::Deserialize) {
   hlen = strlen((char *)&hrp[0]);
 
   v8::Local<v8::Array> ret = Nan::New<v8::Array>();
-  Nan::Set(ret, 0, Nan::New<v8::String>((char *)&hrp[0], hlen).ToLocalChecked());
-  Nan::Set(ret, 1, Nan::CopyBuffer((char *)&data[0], data_len).ToLocalChecked());
+
+  Nan::Set(ret, 0,
+    Nan::New<v8::String>((char *)&hrp[0], hlen).ToLocalChecked());
+
+  Nan::Set(ret, 1,
+    Nan::CopyBuffer((char *)&data[0], data_len).ToLocalChecked());
 
   info.GetReturnValue().Set(ret);
 }
@@ -131,23 +135,14 @@ NAN_METHOD(BBech32::ConvertBits) {
 
   uint8_t *out = (uint8_t *)malloc(size);
   size_t out_len = 0;
-  bool ret;
 
   if (!out)
     return Nan::ThrowError("Could not allocate.");
 
-  ret = bcrypto_bech32_convert_bits(
-    out,
-    &out_len,
-    tobits,
-    data,
-    data_len,
-    frombits,
-    pad
-  );
-
-  if (!ret)
+  if (!bcrypto_bech32_convert_bits(out, &out_len, tobits,
+                                   data, data_len, frombits, pad)) {
     return Nan::ThrowError("Invalid bits.");
+  }
 
   info.GetReturnValue().Set(
     Nan::NewBuffer((char *)out, out_len).ToLocalChecked());
@@ -182,7 +177,7 @@ NAN_METHOD(BBech32::Encode) {
   if (!bcrypto_bech32_encode(output, hrp, witver, witprog, witprog_len))
     return Nan::ThrowError("Bech32 encoding failed.");
 
-  olen = strlen((char *)output);
+  olen = strlen(&output[0]);
 
   info.GetReturnValue().Set(
     Nan::New<v8::String>((char *)output, olen).ToLocalChecked());
@@ -209,18 +204,14 @@ NAN_METHOD(BBech32::Decode) {
 
   hlen = strlen((char *)&hrp[0]);
 
-  v8::Local<v8::Object> ret = Nan::New<v8::Object>();
+  v8::Local<v8::Array> ret = Nan::New<v8::Array>();
 
-  Nan::Set(ret,
-    Nan::New<v8::String>("hrp").ToLocalChecked(),
+  Nan::Set(ret, 0,
     Nan::New<v8::String>((char *)&hrp[0], hlen).ToLocalChecked());
 
-  Nan::Set(ret,
-    Nan::New<v8::String>("version").ToLocalChecked(),
-    Nan::New<v8::Number>(witver));
+  Nan::Set(ret, 1, Nan::New<v8::Number>(witver));
 
-  Nan::Set(ret,
-    Nan::New<v8::String>("hash").ToLocalChecked(),
+  Nan::Set(ret, 2,
     Nan::CopyBuffer((char *)&witprog[0], witprog_len).ToLocalChecked());
 
   info.GetReturnValue().Set(ret);

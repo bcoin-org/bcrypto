@@ -2,6 +2,7 @@
 //
 // Parts of this software are based on "CashAddr".
 // https://github.com/Bitcoin-ABC/bitcoin-abc
+//
 // Parts of this software are based on "bech32".
 // https://github.com/sipa/bech32
 //
@@ -25,151 +26,177 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-/* eslint-env mocha */
-/* eslint prefer-arrow-callback: "off" */
-
 'use strict';
 
 const assert = require('bsert');
 const base58 = require('../lib/encoding/base58');
+const cashaddr = require('../lib/encoding/cashaddr');
+const js = require('../lib/js/cashaddr');
+const translationVectors = require('./data/cashaddrlegacy.json');
+const sizeVectors = require('./data/cashaddrsizes.json');
+const encodeVectors = require('./data/cashaddrinvalidencode.json');
+const decodeVectors = require('./data/cashaddrinvaliddecode.json');
+const edgeVectors = require('./data/cashaddredge.json');
 
-const cashaddrc = require('../lib/encoding/cashaddr');
-const cashaddrjs = require('../lib/js/cashaddr');
+function test(cashaddr) {
+  describe('Encoding', () => {
+    for (const test of sizeVectors) {
+      const text = test.addr.slice(0, 32) + '...';
 
-const {
-  p2pkh: addressTranslationP2PKH,
-  p2sh: addressTranslationP2SH
-} = require('./data/cashaddrlegacy.json');
-const testSizeVectors = require('./data/cashaddrsizes.json');
-const invalidDecodeVectors = require('./data/cashaddrinvaliddecode.json');
-const invalidEncodeVectors = require('./data/cashaddrinvalidencode.json');
-const validEdgeVectors = require('./data/cashaddredge.json');
+      it(`should encode address ${text} (${test.bytes} bytes)`, () => {
+        const addr = cashaddr.encode(test.prefix, test.type,
+                                     Buffer.from(test.hash, 'hex'));
 
-function testCashAddr(cashaddr) {
-  describe('encoding', function() {
-    for (const test of testSizeVectors) {
-      it(`should encode address ${test.addr} (${test.bytes} bytes)`, () => {
-        const addr = cashaddr.encode(
-          test.prefix, test.type, Buffer.from(test.hash, 'hex'));
         assert.strictEqual(addr, test.addr);
       });
 
-      it(`should decode address ${test.addr} (${test.bytes} bytes)`, () => {
-        const { type, prefix, hash } = cashaddr.decode(test.addr, test.prefix);
-        assert.strictEqual(type, test.type);
+      it(`should decode address ${text} (${test.bytes} bytes)`, () => {
+        const [prefix, type, hash] = cashaddr.decode(test.addr, test.prefix);
+
         assert.strictEqual(prefix, test.prefix);
+        assert.strictEqual(type, test.type);
         assert.bufferEqual(hash, Buffer.from(test.hash, 'hex'));
       });
     }
   });
 
-  describe('translation', function() {
-    for (const translation of addressTranslationP2PKH) {
-      it(`should translate base58 P2PKH for ${translation.legacy}`, () => {
-        const hash = base58.decode(translation.legacy).slice(1, -4);
+  describe('Translation', () => {
+    for (const translation of translationVectors.p2pkh) {
+      const text = translation.legacy.slice(0, 32) + '...';
 
+      it(`should translate base58 P2PKH for ${text}`, () => {
         const prefix = 'bitcoincash';
         const type = 0;
+        const hash = base58.decode(translation.legacy).slice(1, -4);
         const addr = cashaddr.encode(prefix, type, hash);
 
         assert.strictEqual(addr, translation.cashaddr);
       });
     }
 
-    for (const translation of addressTranslationP2SH) {
-      it(`should translate base58 P2SH for ${translation.legacy}`, () => {
-        const hash = base58.decode(translation.legacy).slice(1, -4);
+    for (const translation of translationVectors.p2sh) {
+      const text = translation.legacy.slice(0, 32) + '...';
 
+      it(`should translate base58 P2SH for ${text}`, () => {
         const prefix = 'bitcoincash';
         const type = 1;
+        const hash = base58.decode(translation.legacy).slice(1, -4);
         const addr = cashaddr.encode(prefix, type, hash);
 
         assert.strictEqual(addr, translation.cashaddr);
       });
     }
 
-    for (const addrinfo of addressTranslationP2PKH) {
-      it(`should decode P2PKH for ${addrinfo.cashaddr}`, () => {
-        const addr = addrinfo.cashaddr;
-        const results = cashaddr.decode(addr);
+    for (const addrinfo of translationVectors.p2pkh) {
+      const text = addrinfo.cashaddr.slice(0, 32) + '...';
 
-        assert.strictEqual(results.prefix, 'bitcoincash');
-        assert.strictEqual(results.type, 0);
-        assert.bufferEqual(results.hash, Buffer.from(addrinfo.hash, 'hex'));
+      it(`should decode P2PKH for ${text}`, () => {
+        const addr = addrinfo.cashaddr;
+        const [prefix, type, hash] = cashaddr.decode(addr);
+
+        assert.strictEqual(prefix, 'bitcoincash');
+        assert.strictEqual(type, 0);
+        assert.bufferEqual(hash, Buffer.from(addrinfo.hash, 'hex'));
       });
 
-      it(`should encode P2PKH for ${addrinfo.cashaddr}`, () => {
-        const addr = cashaddr.encode(
-          'bitcoincash', 0, Buffer.from(addrinfo.hash, 'hex'));
+      it(`should encode P2PKH for ${text}`, () => {
+        const addr = cashaddr.encode('bitcoincash', 0,
+                                     Buffer.from(addrinfo.hash, 'hex'));
 
         assert.strictEqual(addr, addrinfo.cashaddr);
       });
     }
 
-    for (const addrinfo of addressTranslationP2SH) {
-      it(`should decode P2SH for ${addrinfo.cashaddr}`, () => {
-        const addr = addrinfo.cashaddr;
-        const results = cashaddr.decode(addr);
+    for (const addrinfo of translationVectors.p2sh) {
+      const text = addrinfo.cashaddr.slice(0, 32) + '...';
 
-        assert.strictEqual(results.prefix, 'bitcoincash');
-        assert.strictEqual(results.type, 1);
-        assert.bufferEqual(results.hash, Buffer.from(addrinfo.hash, 'hex'));
+      it(`should decode P2SH for ${text}`, () => {
+        const addr = addrinfo.cashaddr;
+        const [prefix, type, hash] = cashaddr.decode(addr);
+
+        assert.strictEqual(prefix, 'bitcoincash');
+        assert.strictEqual(type, 1);
+        assert.bufferEqual(hash, Buffer.from(addrinfo.hash, 'hex'));
       });
 
-      it(`should encode P2SH for ${addrinfo.cashaddr}`, () => {
-        const addr = cashaddr.encode(
-          'bitcoincash', 1, Buffer.from(addrinfo.hash, 'hex'));
+      it(`should encode P2SH for ${text}`, () => {
+        const addr = cashaddr.encode('bitcoincash', 1,
+                                     Buffer.from(addrinfo.hash, 'hex'));
 
         assert.strictEqual(addr, addrinfo.cashaddr);
       });
     }
 
-    for (const addrinfo of addressTranslationP2PKH) {
-      it(`should decode P2PKH with prefix ${addrinfo.cashaddr}`, () => {
-        const defaultPrefix = 'bitcoincash';
-        const addr = addrinfo.cashaddr.split(':')[1];
-        const results = cashaddr.decode(addr, defaultPrefix);
+    for (const addrinfo of translationVectors.p2pkh) {
+      const text = addrinfo.cashaddr.slice(0, 32) + '...';
 
-        assert.strictEqual(results.prefix, 'bitcoincash');
-        assert.strictEqual(results.type, 0);
-        assert.bufferEqual(results.hash, Buffer.from(addrinfo.hash, 'hex'));
+      it(`should decode P2PKH with prefix ${text}`, () => {
+        const addr = addrinfo.cashaddr.split(':')[1];
+        const defaultPrefix = 'bitcoincash';
+        const [prefix, type, hash] = cashaddr.decode(addr, defaultPrefix);
+
+        assert.strictEqual(prefix, 'bitcoincash');
+        assert.strictEqual(type, 0);
+        assert.bufferEqual(hash, Buffer.from(addrinfo.hash, 'hex'));
       });
 
-      it(`should decode P2PKH with default prefix ${addrinfo.cashaddr}`, () => {
+      it(`should decode P2PKH with default prefix ${text}`, () => {
         const addr = addrinfo.cashaddr.split(':')[1];
-        const results = cashaddr.decode(addr);
+        const [prefix, type, hash] = cashaddr.decode(addr);
 
-        assert.strictEqual(results.prefix, 'bitcoincash');
-        assert.strictEqual(results.type, 0);
-        assert.bufferEqual(results.hash, Buffer.from(addrinfo.hash, 'hex'));
+        assert.strictEqual(prefix, 'bitcoincash');
+        assert.strictEqual(type, 0);
+        assert.bufferEqual(hash, Buffer.from(addrinfo.hash, 'hex'));
       });
     }
 
-    for (const addrinfo of addressTranslationP2SH) {
-      it(`should decode P2Sh with prefix ${addrinfo.cashaddr}`, () => {
-        const defaultPrefix = 'bitcoincash';
-        const addr = addrinfo.cashaddr.split(':')[1];
-        const results = cashaddr.decode(addr, defaultPrefix);
+    for (const addrinfo of translationVectors.p2sh) {
+      const text = addrinfo.cashaddr.slice(0, 32) + '...';
 
-        assert.strictEqual(results.prefix, 'bitcoincash');
-        assert.strictEqual(results.type, 1);
-        assert.bufferEqual(results.hash, Buffer.from(addrinfo.hash, 'hex'));
+      it(`should decode P2Sh with prefix ${text}`, () => {
+        const addr = addrinfo.cashaddr.split(':')[1];
+        const defaultPrefix = 'bitcoincash';
+        const [prefix, type, hash] = cashaddr.decode(addr, defaultPrefix);
+
+        assert.strictEqual(prefix, 'bitcoincash');
+        assert.strictEqual(type, 1);
+        assert.bufferEqual(hash, Buffer.from(addrinfo.hash, 'hex'));
       });
 
-      it(`should decode P2Sh with default prefix ${addrinfo.cashaddr}`, () => {
+      it(`should decode P2Sh with default prefix ${text}`, () => {
         const addr = addrinfo.cashaddr.split(':')[1];
-        const results = cashaddr.decode(addr);
+        const [prefix, type, hash] = cashaddr.decode(addr);
 
-        assert.strictEqual(results.prefix, 'bitcoincash');
-        assert.strictEqual(results.type, 1);
-        assert.bufferEqual(results.hash, Buffer.from(addrinfo.hash, 'hex'));
+        assert.strictEqual(prefix, 'bitcoincash');
+        assert.strictEqual(type, 1);
+        assert.bufferEqual(hash, Buffer.from(addrinfo.hash, 'hex'));
       });
     }
   });
 
-  describe('invalid decoding', function() {
-    for (const addrinfo of invalidDecodeVectors) {
-      it(`"${addrinfo.reason}" w/ invalid address ${addrinfo.addr}`, () => {
+  describe('Invalid Encoding', () => {
+    for (const test of encodeVectors) {
+      it(`"${test.reason}" (${test.note})`, () => {
+        let err;
+
+        try {
+          cashaddr.encode(test.prefix, test.type,
+                          Buffer.from(test.hash, 'hex'));
+        } catch(e) {
+          err = e;
+        }
+
+        assert(err, 'Exception error missing.');
+        assert.strictEqual(err.message, test.reason);
+      });
+    }
+  });
+
+  describe('Invalid Decoding', () => {
+    for (const addrinfo of decodeVectors) {
+      const text = addrinfo.addr.slice(0, 32) + '...';
+
+      it(`"${addrinfo.reason}" w/ invalid address ${text}`, () => {
         let err;
 
         try {
@@ -177,64 +204,53 @@ function testCashAddr(cashaddr) {
         } catch(e) {
           err = e;
         }
+
         assert(err, 'Exception error missing.');
         assert.strictEqual(err.message, addrinfo.reason);
       });
     }
   });
 
-  describe('invalid encoding', function() {
-    for (const test of invalidEncodeVectors) {
-      it(`"${test.reason}" (${test.note})`, () => {
-        let err;
-        try {
-          cashaddr.encode(
-            test.prefix, test.type, Buffer.from(test.hash, 'hex'));
-        } catch(e) {
-          err = e;
-        }
-        assert(err, 'Exception error missing.');
-        assert.strictEqual(err.message, test.reason);
-      });
-    }
-  });
+  describe('Edge Cases', () => {
+    for (const test of edgeVectors) {
+      const text = test.addr.slice(0, 32) + '...';
 
-  describe('valid edge cases', function() {
-    for (const test of validEdgeVectors) {
-      it(`encode ${test.note} with address: ${test.addr}`, () => {
-        const addr = cashaddr.encode(
-          test.prefix, test.type, Buffer.from(test.hash, 'hex'));
+      it(`encode ${test.note} with address: ${text}`, () => {
+        const addr = cashaddr.encode(test.prefix, test.type,
+                                     Buffer.from(test.hash, 'hex'));
         assert.strictEqual(addr, test.addr.toLowerCase());
       });
 
-      it(`decode ${test.note} with address: ${test.addr}`, () => {
-        const { type, prefix, hash } = cashaddr.decode(
+      it(`decode ${test.note} with address: ${text}`, () => {
+        const [prefix, type, hash] = cashaddr.decode(
           test.addr, test.prefix.toLowerCase());
-        assert.strictEqual(type, test.type);
+
         assert.strictEqual(prefix.toLowerCase(), test.prefix.toLowerCase());
+        assert.strictEqual(type, test.type);
         assert.bufferEqual(hash, Buffer.from(test.hash, 'hex'));
       });
 
-      it(`roundtrip ${test.note} with address: ${test.addr}`, () => {
-        const addr = cashaddr.encode(
-          test.prefix, test.type, Buffer.from(test.hash, 'hex'));
+      it(`round trip ${test.note} with address: ${text}`, () => {
+        const addr = cashaddr.encode(test.prefix, test.type,
+                                     Buffer.from(test.hash, 'hex'));
+
         assert.strictEqual(addr, test.addr.toLowerCase());
-        const { type, prefix, hash } = cashaddr.decode(
+
+        const [prefix, type, hash] = cashaddr.decode(
           test.addr, test.prefix.toLowerCase());
-        assert.strictEqual(type, test.type);
+
         assert.strictEqual(prefix.toLowerCase(), test.prefix.toLowerCase());
+        assert.strictEqual(type, test.type);
         assert.bufferEqual(hash, Buffer.from(test.hash, 'hex'));
       });
     }
   });
 }
 
-describe('cashaddr', function() {
-  describe('native', function() {
-    testCashAddr(cashaddrc);
-  });
+describe('Cash Address', function() {
+  test.call(this, cashaddr);
+});
 
-  describe('browser', function() {
-    testCashAddr(cashaddrjs);
-  });
+describe('Cash Address (JS)', function() {
+  test.call(this, js);
 });

@@ -21,9 +21,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-/* eslint-env mocha */
-/* eslint prefer-arrow-callback: "off" */
-
 'use strict';
 
 const assert = require('bsert');
@@ -100,34 +97,56 @@ const invalidAddresses = [
     + 'ppgghm0aec23ttfstphjegfx08hwk5uhmusa7j28yrk8cx4qj'
 ];
 
-function fromAddress(hrp, addr) {
-  const dec = bech32.decode(addr);
+const invalidIs = [
+  'bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t5',
+  'bca0w508d6qejxtdg4y5r3zarvary0c5xw7kw508d6qejxtdg4y5r3zarvary0c5xw7kw5rljs90234567789035',
+  'tb1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3q0sL5k7',
+  'wtfbbqhelpnoshitwe2z5nuhllhu6z8pptu8m36clzge37dnfsdquht73wsx4cmwcwql322x3gmmwq2gjuxp6eaaus',
+  'bcfbbqhelpnoshitwe2z7anje5j3wvz8hw3rxadzcppgghm0aec23ttfstphjegfx08hwk5uhmusa7j28yrk8cx4qj'
+];
 
-  if (dec.hrp !== hrp)
+const invalidTest = [
+  'bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t5',
+  'bc10w508d6qejxtdg4y5r3zarvary0c5xw7kw508d6qejxtdg4y5r3zarvary0c5xw7kw5rljs90',
+  'bca0w508d6qejxtdg4y5r3zarvary0c5xw7kw508d6qejxtdg4y5r3zarvary0c5xw7kw5rljs90234567789035',
+  'tb1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3q0sL5k7',
+  'wtfbbqhelpnoshitwe2z5nuhllhu6z8pptu8m36clzge37dnfsdquht73wsx4cmwcwql322x3gmmwq2gjuxp6eaaus',
+  'bcfbbqhelpnoshitwe2z7anje5j3wvz8hw3rxadzcppgghm0aec23ttfstphjegfx08hwk5uhmusa7j28yrk8cx4qj'
+];
+
+function encode(hrp, version, hash) {
+  const addr = bech32.encode(hrp, version, hash);
+
+  decode(hrp, addr);
+
+  return addr;
+}
+
+function decode(expect, addr) {
+  const [hrp, version, hash] = bech32.decode(addr);
+
+  if (hrp !== expect)
     throw new Error('Invalid bech32 prefix or data length.');
 
-  if (dec.version === 0 && dec.hash.length !== 20 && dec.hash.length !== 32)
+  if (version === 0 && hash.length !== 20 && hash.length !== 32)
     throw new Error('Malformed witness program.');
 
-  if (dec.version > 16)
+  if (version > 16)
     throw new Error('Malformed witness program.');
 
-  return {
-    hrp: dec.hrp,
-    version: dec.version,
-    program: dec.hash
-  };
+  return [hrp, version, hash];
 }
 
-function toAddress(hrp, version, program) {
-  const ret = bech32.encode(hrp, version, program);
+function encode2(hrp, version, hash, lax) {
+  const data = bech32.convertBits(hash, 8, 5, true);
+  const addr = bech32.serialize(hrp, concat(version, data));
 
-  fromAddress(hrp, ret);
+  decode2(hrp, addr, lax);
 
-  return ret;
+  return addr;
 }
 
-function fromAddress2(expect, addr, lax) {
+function decode2(expect, addr, lax) {
   const [hrp, data] = bech32.deserialize(addr);
 
   if (!lax) {
@@ -147,27 +166,14 @@ function fromAddress2(expect, addr, lax) {
       throw new Error('Malformed witness program.');
   }
 
-  return {
-    hrp: hrp,
-    version: data[0],
-    program: hash
-  };
+  return [hrp, data[0], hash];
 }
 
-function toAddress2(hrp, version, program, lax) {
-  const data = bech32.convertBits(program, 8, 5, true);
-  const ret = bech32.serialize(hrp, concat(version, data));
-
-  fromAddress2(hrp, ret, lax);
-
-  return ret;
-}
-
-function createProgram(version, program) {
-  const data = Buffer.allocUnsafe(2 + program.length);
+function program(version, hash) {
+  const data = Buffer.allocUnsafe(2 + hash.length);
   data[0] = version ? version + 0x80 : 0;
-  data[1] = program.length;
-  program.copy(data, 2);
+  data[1] = hash.length;
+  hash.copy(data, 2);
   return data;
 }
 
@@ -178,106 +184,126 @@ function concat(version, hash) {
   return buf;
 }
 
-describe('bech32', function() {
+describe('Bech32', function() {
   for (const [addr, script] of validAddresses) {
-    it(`should have valid address for ${addr}`, () => {
-      let hrp = 'bc';
-      let ret = null;
+    const text = addr.slice(0, 32) + '...';
+
+    it(`should have valid address for ${text}`, () => {
+      let expect = 'bc';
+      let hrp, version, hash;
 
       try {
-        ret = fromAddress(hrp, addr);
+        [hrp, version, hash] = decode(expect, addr);
       } catch (e) {
-        ret = null;
+        hrp = null;
       }
 
-      if (ret === null) {
-        hrp = 'tb';
+      if (hrp === null) {
+        expect = 'tb';
         try {
-          ret = fromAddress(hrp, addr);
+          [hrp, version, hash] = decode(expect, addr);
         } catch (e) {
-          ret = null;
+          hrp = null;
         }
       }
 
-      assert(ret !== null);
-
-      const output = createProgram(ret.version, ret.program);
-      assert.bufferEqual(output, script);
-
-      const recreate = toAddress(hrp, ret.version, ret.program);
-      assert.strictEqual(recreate, addr.toLowerCase());
+      assert(hrp !== null);
+      assert.bufferEqual(program(version, hash), script);
+      assert.strictEqual(encode(expect, version, hash), addr.toLowerCase());
       assert.strictEqual(bech32.test(addr), true);
     });
   }
 
   for (const addr of invalidAddresses) {
-    it(`should have invalid address for ${addr}`, () => {
-      assert.throws(() => fromAddress('bc', addr));
-      assert.throws(() => fromAddress('tb', addr));
+    const text = addr.slice(0, 32) + '...';
+
+    it(`should have invalid address for ${text}`, () => {
+      assert.throws(() => decode('bc', addr));
+      assert.throws(() => decode('tb', addr));
     });
   }
 
   for (const [addr, script] of validAddresses) {
-    it(`should have valid address for ${addr}`, () => {
-      let hrp = 'bc';
-      let ret = null;
+    const text = addr.slice(0, 32) + '...';
+
+    it(`should have valid address for ${text}`, () => {
+      let expect = 'bc';
+      let hrp, version, hash;
 
       try {
-        ret = fromAddress2(hrp, addr);
+        [hrp, version, hash] = decode2(expect, addr);
       } catch (e) {
-        ret = null;
+        hrp = null;
       }
 
-      if (ret === null) {
-        hrp = 'tb';
+      if (hrp === null) {
+        expect = 'tb';
         try {
-          ret = fromAddress2(hrp, addr);
+          [hrp, version, hash] = decode2(expect, addr);
         } catch (e) {
-          ret = null;
+          hrp = null;
         }
       }
 
-      assert(ret !== null);
-
-      const output = createProgram(ret.version, ret.program);
-      assert.bufferEqual(output, script);
-
-      const recreate = toAddress2(hrp, ret.version, ret.program);
-      assert.strictEqual(recreate, addr.toLowerCase());
+      assert(hrp !== null);
+      assert.bufferEqual(program(version, hash), script);
+      assert.strictEqual(encode2(expect, version, hash), addr.toLowerCase());
       assert.strictEqual(bech32.test(addr), true);
+      assert.strictEqual(bech32.is(addr), true);
     });
   }
 
   for (const addr of invalidAddresses) {
-    it(`should have invalid address for ${addr}`, () => {
-      assert.throws(() => fromAddress2('bc', addr));
-      assert.throws(() => fromAddress2('tb', addr));
+    const text = addr.slice(0, 32) + '...';
+
+    it(`should have invalid address for ${text}`, () => {
+      assert.throws(() => decode2('bc', addr));
+      assert.throws(() => decode2('tb', addr));
+    });
+  }
+
+  for (const addr of invalidIs) {
+    const text = addr.slice(0, 32) + '...';
+
+    it(`should have invalid address for ${text}`, () => {
+      assert.throws(() => bech32.deserialize(addr));
+      assert.strictEqual(bech32.is(addr), false);
+    });
+  }
+
+  for (const addr of invalidTest) {
+    const text = addr.slice(0, 32) + '...';
+
+    it(`should have invalid address for ${text}`, () => {
+      assert.throws(() => bech32.decode(addr));
+      assert.strictEqual(bech32.test(addr), false);
     });
   }
 
   for (const [hrp, version, hex, addr1] of vectors) {
+    const text = addr1.slice(0, 32) + '...';
     const hash = Buffer.from(hex, 'hex');
 
-    it(`should decode and reserialize ${addr1}`, () => {
-      const data = bech32.decode(addr1);
+    it(`should decode and reserialize ${text}`, () => {
+      const [hrp_, version_, hash_] = bech32.decode(addr1);
 
-      assert.strictEqual(data.hrp, hrp);
-      assert.strictEqual(data.version, version);
-      assert.bufferEqual(data.hash, hash);
+      assert.strictEqual(hrp_, hrp);
+      assert.strictEqual(version_, version);
+      assert.bufferEqual(hash_, hash);
 
       const addr2 = bech32.encode(hrp, version, hash);
 
       assert.strictEqual(addr2, addr1.toLowerCase());
     });
 
-    it(`should decode and reserialize ${addr1}`, () => {
-      const data = fromAddress2(hrp, addr1, true);
+    it(`should decode and reserialize ${text}`, () => {
+      const [hrp_, version_, hash_] = decode2(hrp, addr1, true);
 
-      assert.strictEqual(data.hrp, hrp);
-      assert.strictEqual(data.version, version);
-      assert.bufferEqual(data.program, hash);
+      assert.strictEqual(hrp_, hrp);
+      assert.strictEqual(version_, version);
+      assert.bufferEqual(hash_, hash);
 
-      const addr2 = toAddress2(hrp, version, hash, true);
+      const addr2 = encode2(hrp, version, hash, true);
 
       assert.strictEqual(addr2, addr1.toLowerCase());
     });

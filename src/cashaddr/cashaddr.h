@@ -30,18 +30,56 @@ extern "C" {
 #endif
 
 typedef enum bcrypto_cashaddr_error_t {
-  bcrypto_cashaddr_ERR_NULL = 0,
-  bcrypto_cashaddr_ERR_CHECKSUM,
-  bcrypto_cashaddr_ERR_LENGTH,
-  bcrypto_cashaddr_ERR_CASING,
-  bcrypto_cashaddr_ERR_PADDING,
-  bcrypto_cashaddr_ERR_NONZERO_PADDING,
-  bcrypto_cashaddr_ERR_CHARACTER,
-  bcrypto_cashaddr_ERR_PREFIX,
-  bcrypto_cashaddr_ERR_TYPE,
-  bcrypto_cashaddr_ERR_SIZE,
-  bcrypto_cashaddr_ERR_SEPARATOR
+  BCRYPTO_CASHADDR_ERR_NULL = 0,
+  BCRYPTO_CASHADDR_ERR_CHECKSUM,
+  BCRYPTO_CASHADDR_ERR_LENGTH,
+  BCRYPTO_CASHADDR_ERR_CASING,
+  BCRYPTO_CASHADDR_ERR_PADDING,
+  BCRYPTO_CASHADDR_ERR_NONZERO_PADDING,
+  BCRYPTO_CASHADDR_ERR_CHARACTER,
+  BCRYPTO_CASHADDR_ERR_PREFIX,
+  BCRYPTO_CASHADDR_ERR_TYPE,
+  BCRYPTO_CASHADDR_ERR_SIZE,
+  BCRYPTO_CASHADDR_ERR_SEPARATOR
 } bcrypto_cashaddr_error;
+
+int
+bcrypto_cashaddr_serialize(
+  bcrypto_cashaddr_error *err,
+  char *output,
+  const char *prefix,
+  const uint8_t *data,
+  size_t data_len
+);
+
+int
+bcrypto_cashaddr_deserialize(
+  bcrypto_cashaddr_error *err,
+  char *prefix,
+  uint8_t *data,
+  size_t *data_len,
+  const char *default_prefix,
+  const char *input
+);
+
+int
+bcrypto_cashaddr_is(
+  bcrypto_cashaddr_error *err,
+  const char *default_prefix,
+  const char *addr
+);
+
+int
+bcrypto_cashaddr_convert_bits(
+  bcrypto_cashaddr_error *err,
+  uint8_t *out,
+  size_t *outlen,
+  int outbits,
+  const uint8_t *in,
+  size_t inlen,
+  int inbits,
+  int pad
+);
 
 int
 bcrypto_cashaddr_encode(
