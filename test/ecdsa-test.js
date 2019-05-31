@@ -243,10 +243,10 @@ describe('ECDSA', function() {
       const pub = ec.publicKeyCreate(priv);
       const pubu = ec.publicKeyConvert(pub, false);
 
-      const {
+      const [
         signature,
         recovery
-      } = ec.signRecoverableDER(msg, priv);
+      ] = ec.signRecoverableDER(msg, priv);
 
       assert(ec.verifyDER(msg, signature, pub));
       assert(ec.verifyDER(msg, signature, pubu));
@@ -645,26 +645,26 @@ describe('ECDSA', function() {
 
         it(`should sign and verify (${i}) (${curve.id})`, () => {
           const sig2 = curve.sign(msg, priv);
-          const desc = curve.signRecoverable(msg, priv);
+          const [sig3, param2] = curve.signRecoverable(msg, priv);
           const der2 = curve.signDER(msg, priv);
-          const desc2 = curve.signRecoverableDER(msg, priv);
+          const [der3, param3] = curve.signRecoverableDER(msg, priv);
 
           if (curve.native === 0 || curve === secp256k1) {
             assert.bufferEqual(sig2, sig);
-            assert.bufferEqual(desc.signature, sig);
-            assert.strictEqual(desc.recovery, param);
+            assert.bufferEqual(sig3, sig);
+            assert.strictEqual(param2, param);
             assert.bufferEqual(der2, der);
-            assert.bufferEqual(desc2.signature, der);
-            assert.strictEqual(desc2.recovery, param);
+            assert.bufferEqual(der3, der);
+            assert.strictEqual(param3, param);
           } else {
             assert(curve.isLowS(sig2));
-            assert(curve.isLowS(desc.signature));
+            assert(curve.isLowS(sig3));
             assert(curve.isLowDER(der2));
-            assert(curve.isLowDER(desc2.signature));
+            assert(curve.isLowDER(der3));
             assert(curve.verify(msg, sig2, pub));
-            assert(curve.verify(msg, desc.signature, pub));
+            assert(curve.verify(msg, sig3, pub));
             assert(curve.verifyDER(msg, der2, pub));
-            assert(curve.verifyDER(msg, desc2.signature, pub));
+            assert(curve.verifyDER(msg, der3, pub));
           }
 
           assert(curve.verify(msg, sig, pub));
@@ -893,10 +893,10 @@ describe('ECDSA', function() {
       const pub = secp256k1.publicKeyCreate(priv);
       const pubu = secp256k1.publicKeyConvert(pub, false);
 
-      const {
+      const [
         signature,
         recovery
-      } = secp256k1.signRecoverable(msg, priv);
+      ] = secp256k1.signRecoverable(msg, priv);
 
       assert(secp256k1.isLowS(signature));
       assert(secp256k1.verify(msg, signature, pub));

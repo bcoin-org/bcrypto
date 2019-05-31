@@ -921,15 +921,12 @@ NAN_METHOD(BSecp256k1::SignRecoverable) {
   secp256k1_ecdsa_recoverable_signature_serialize_compact(secp->ctx, &output[0],
                                                           &recid, &sig);
 
-  v8::Local<v8::Object> obj = Nan::New<v8::Object>();
+  v8::Local<v8::Array> ret = Nan::New<v8::Array>();
 
-  Nan::Set(obj, Nan::New<v8::String>("signature").ToLocalChecked(),
-                COPY_BUFFER(&output[0], 64));
+  Nan::Set(ret, 0, COPY_BUFFER(&output[0], 64));
+  Nan::Set(ret, 1, Nan::New<v8::Number>(recid));
 
-  Nan::Set(obj, Nan::New<v8::String>("recovery").ToLocalChecked(),
-                Nan::New<v8::Number>(recid));
-
-  info.GetReturnValue().Set(obj);
+  info.GetReturnValue().Set(ret);
 }
 
 NAN_METHOD(BSecp256k1::SignDER) {
@@ -1012,15 +1009,12 @@ NAN_METHOD(BSecp256k1::SignRecoverableDER) {
     return Nan::ThrowError(ECDSA_SIGNATURE_SERIALIZE_DER_FAIL);
   }
 
-  v8::Local<v8::Object> obj = Nan::New<v8::Object>();
+  v8::Local<v8::Array> ret = Nan::New<v8::Array>();
 
-  Nan::Set(obj, Nan::New<v8::String>("signature").ToLocalChecked(),
-                COPY_BUFFER(&output[0], output_length));
+  Nan::Set(ret, 0, COPY_BUFFER(&output[0], output_length));
+  Nan::Set(ret, 1, Nan::New<v8::Number>(recid));
 
-  Nan::Set(obj, Nan::New<v8::String>("recovery").ToLocalChecked(),
-                Nan::New<v8::Number>(recid));
-
-  info.GetReturnValue().Set(obj);
+  info.GetReturnValue().Set(ret);
 }
 
 NAN_METHOD(BSecp256k1::Verify) {

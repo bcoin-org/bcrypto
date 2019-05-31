@@ -62,7 +62,7 @@ for (const curve of ecdsa) {
     const pkcs8 = curve.privateKeyExportPKCS8(priv);
     const spki = curve.publicKeyExportSPKI(pub);
     const msg = random.randomBytes(curve.hash.size);
-    const {signature, recovery} = curve.signRecoverable(msg, priv);
+    const [signature, recovery] = curve.signRecoverable(msg, priv);
     const other = curve.privateKeyGenerate();
     const secret = curve.derive(pub, other);
 

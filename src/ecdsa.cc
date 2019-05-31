@@ -976,15 +976,12 @@ NAN_METHOD(BECDSA::SignRecoverable) {
 
   bcrypto_ecdsa_sig_encode(&ec->ctx, out, &sign);
 
-  v8::Local<v8::Object> obj = Nan::New<v8::Object>();
+  v8::Local<v8::Array> ret = Nan::New<v8::Array>();
 
-  Nan::Set(obj, Nan::New<v8::String>("signature").ToLocalChecked(),
-                Nan::CopyBuffer((char *)out, out_len).ToLocalChecked());
+  Nan::Set(ret, 0, Nan::CopyBuffer((char *)out, out_len).ToLocalChecked());
+  Nan::Set(ret, 1, Nan::New<v8::Number>(sign.param));
 
-  Nan::Set(obj, Nan::New<v8::String>("recovery").ToLocalChecked(),
-                Nan::New<v8::Number>(sign.param));
-
-  return info.GetReturnValue().Set(obj);
+  return info.GetReturnValue().Set(ret);
 }
 
 NAN_METHOD(BECDSA::SignDER) {
@@ -1057,15 +1054,12 @@ NAN_METHOD(BECDSA::SignRecoverableDER) {
   if (!bcrypto_ecdsa_sig_encode_der(&ec->ctx, out, &out_len, &sign))
     return Nan::ThrowError("Could not sign.");
 
-  v8::Local<v8::Object> obj = Nan::New<v8::Object>();
+  v8::Local<v8::Array> ret = Nan::New<v8::Array>();
 
-  Nan::Set(obj, Nan::New<v8::String>("signature").ToLocalChecked(),
-                Nan::CopyBuffer((char *)out, out_len).ToLocalChecked());
+  Nan::Set(ret, 0, Nan::CopyBuffer((char *)out, out_len).ToLocalChecked());
+  Nan::Set(ret, 1, Nan::New<v8::Number>(sign.param));
 
-  Nan::Set(obj, Nan::New<v8::String>("recovery").ToLocalChecked(),
-                Nan::New<v8::Number>(sign.param));
-
-  return info.GetReturnValue().Set(obj);
+  return info.GetReturnValue().Set(ret);
 }
 
 NAN_METHOD(BECDSA::Verify) {
