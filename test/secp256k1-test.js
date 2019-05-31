@@ -148,7 +148,7 @@ describe('Secp256k1', function() {
       const text = vector.sig.slice(0, 32) + '...';
 
       it(`should convert DER to R/S: ${text}`, () => {
-        assert.bufferEqual(secp256k1.fromDER(sig), result);
+        assert.bufferEqual(secp256k1.signatureImport(sig), result);
       });
     }
 
@@ -158,7 +158,7 @@ describe('Secp256k1', function() {
       const text = vector.sig.slice(0, 32) + '...';
 
       it(`should convert R/S to DER: ${text}`, () => {
-        assert.bufferEqual(secp256k1.toDER(sig), result);
+        assert.bufferEqual(secp256k1.signatureExport(sig), result);
       });
     }
 
