@@ -30,27 +30,27 @@ NAN_METHOD(BBech32::Serialize) {
   if (!info[0]->IsString())
     return Nan::ThrowTypeError("First argument must be a string.");
 
-  Nan::Utf8String hstr(info[0]);
+  Nan::Utf8String hrp_str(info[0]);
 
-  v8::Local<v8::Object> dbuf = info[1].As<v8::Object>();
+  v8::Local<v8::Object> data_buf = info[1].As<v8::Object>();
 
-  if (!node::Buffer::HasInstance(dbuf))
+  if (!node::Buffer::HasInstance(data_buf))
     return Nan::ThrowTypeError("Second argument must be a buffer.");
 
-  const char *hrp = (const char *)*hstr;
-  const uint8_t *data = (uint8_t *)node::Buffer::Data(dbuf);
-  size_t data_len = node::Buffer::Length(dbuf);
+  const char *hrp = (const char *)*hrp_str;
+  const uint8_t *data = (uint8_t *)node::Buffer::Data(data_buf);
+  size_t data_len = node::Buffer::Length(data_buf);
 
   char output[93];
-  size_t olen;
+  size_t output_len;
 
   if (!bcrypto_bech32_serialize(output, hrp, data, data_len))
     return Nan::ThrowError("Bech32 encoding failed.");
 
-  olen = strlen((char *)output);
+  output_len = strlen(&output[0]);
 
   info.GetReturnValue().Set(
-    Nan::New<v8::String>((char *)output, olen).ToLocalChecked());
+    Nan::New<v8::String>(output, output_len).ToLocalChecked());
 }
 
 NAN_METHOD(BBech32::Deserialize) {
@@ -66,17 +66,17 @@ NAN_METHOD(BBech32::Deserialize) {
   uint8_t data[84];
   size_t data_len;
   char hrp[84];
-  size_t hlen;
+  size_t hrp_len;
 
   if (!bcrypto_bech32_deserialize(hrp, data, &data_len, input))
     return Nan::ThrowError("Invalid bech32 string.");
 
-  hlen = strlen((char *)&hrp[0]);
+  hrp_len = strlen(&hrp[0]);
 
   v8::Local<v8::Array> ret = Nan::New<v8::Array>();
 
   Nan::Set(ret, 0,
-    Nan::New<v8::String>((char *)&hrp[0], hlen).ToLocalChecked());
+    Nan::New<v8::String>(&hrp[0], hrp_len).ToLocalChecked());
 
   Nan::Set(ret, 1,
     Nan::CopyBuffer((char *)&data[0], data_len).ToLocalChecked());
@@ -91,8 +91,8 @@ NAN_METHOD(BBech32::Is) {
   if (!info[0]->IsString())
     return Nan::ThrowTypeError("First argument must be a string.");
 
-  Nan::Utf8String addr_(info[0]);
-  const char *addr = (const char *)*addr_;
+  Nan::Utf8String addr_str(info[0]);
+  const char *addr = (const char *)*addr_str;
 
   bool result = bcrypto_bech32_is(addr);
 
@@ -103,9 +103,9 @@ NAN_METHOD(BBech32::ConvertBits) {
   if (info.Length() < 4)
     return Nan::ThrowError("bech32.convertBits() requires arguments.");
 
-  v8::Local<v8::Object> dbuf = info[0].As<v8::Object>();
+  v8::Local<v8::Object> data_buf = info[0].As<v8::Object>();
 
-  if (!node::Buffer::HasInstance(dbuf))
+  if (!node::Buffer::HasInstance(data_buf))
     return Nan::ThrowTypeError("First argument must be a buffer.");
 
   if (!info[1]->IsNumber())
@@ -117,8 +117,8 @@ NAN_METHOD(BBech32::ConvertBits) {
   if (!info[3]->IsBoolean())
     return Nan::ThrowTypeError("Fourth argument must be a boolean.");
 
-  const uint8_t *data = (uint8_t *)node::Buffer::Data(dbuf);
-  size_t data_len = node::Buffer::Length(dbuf);
+  const uint8_t *data = (uint8_t *)node::Buffer::Data(data_buf);
+  size_t data_len = node::Buffer::Length(data_buf);
   int frombits = (int)Nan::To<int32_t>(info[1]).FromJust();
   int tobits = (int)Nan::To<int32_t>(info[2]).FromJust();
   int pad = (int)Nan::To<bool>(info[3]).FromJust();
@@ -133,19 +133,19 @@ NAN_METHOD(BBech32::ConvertBits) {
   if (pad)
     size += 1;
 
-  uint8_t *out = (uint8_t *)malloc(size);
-  size_t out_len = 0;
+  uint8_t *output = (uint8_t *)malloc(size);
+  size_t output_len = 0;
 
-  if (!out)
+  if (output == NULL)
     return Nan::ThrowError("Could not allocate.");
 
-  if (!bcrypto_bech32_convert_bits(out, &out_len, tobits,
+  if (!bcrypto_bech32_convert_bits(output, &output_len, tobits,
                                    data, data_len, frombits, pad)) {
     return Nan::ThrowError("Invalid bits.");
   }
 
   info.GetReturnValue().Set(
-    Nan::NewBuffer((char *)out, out_len).ToLocalChecked());
+    Nan::NewBuffer((char *)output, output_len).ToLocalChecked());
 }
 
 NAN_METHOD(BBech32::Encode) {
@@ -155,32 +155,32 @@ NAN_METHOD(BBech32::Encode) {
   if (!info[0]->IsString())
     return Nan::ThrowTypeError("First argument must be a string.");
 
-  Nan::Utf8String hstr(info[0]);
+  Nan::Utf8String hrp_str(info[0]);
 
   if (!info[1]->IsNumber())
     return Nan::ThrowTypeError("Second argument must be a number.");
 
-  v8::Local<v8::Object> wbuf = info[2].As<v8::Object>();
+  v8::Local<v8::Object> witprog_buf = info[2].As<v8::Object>();
 
-  if (!node::Buffer::HasInstance(wbuf))
+  if (!node::Buffer::HasInstance(witprog_buf))
     return Nan::ThrowTypeError("Third argument must be a buffer.");
 
-  const char *hrp = (const char *)*hstr;
+  const char *hrp = (const char *)*hrp_str;
   int witver = (int)Nan::To<int32_t>(info[1]).FromJust();
 
-  const uint8_t *witprog = (uint8_t *)node::Buffer::Data(wbuf);
-  size_t witprog_len = node::Buffer::Length(wbuf);
+  const uint8_t *witprog = (uint8_t *)node::Buffer::Data(witprog_buf);
+  size_t witprog_len = node::Buffer::Length(witprog_buf);
 
   char output[93];
-  size_t olen;
+  size_t output_len;
 
   if (!bcrypto_bech32_encode(output, hrp, witver, witprog, witprog_len))
     return Nan::ThrowError("Bech32 encoding failed.");
 
-  olen = strlen(&output[0]);
+  output_len = strlen(&output[0]);
 
   info.GetReturnValue().Set(
-    Nan::New<v8::String>((char *)output, olen).ToLocalChecked());
+    Nan::New<v8::String>(output, output_len).ToLocalChecked());
 }
 
 NAN_METHOD(BBech32::Decode) {
@@ -190,24 +190,24 @@ NAN_METHOD(BBech32::Decode) {
   if (!info[0]->IsString())
     return Nan::ThrowTypeError("First argument must be a string.");
 
-  Nan::Utf8String addr_(info[0]);
-  const char *addr = (const char *)*addr_;
+  Nan::Utf8String addr_str(info[0]);
+  const char *addr = (const char *)*addr_str;
 
   uint8_t witprog[40];
   size_t witprog_len;
   int witver;
   char hrp[84];
-  size_t hlen;
+  size_t hrp_len;
 
   if (!bcrypto_bech32_decode(&witver, witprog, &witprog_len, hrp, addr))
     return Nan::ThrowError("Invalid bech32 string.");
 
-  hlen = strlen((char *)&hrp[0]);
+  hrp_len = strlen(&hrp[0]);
 
   v8::Local<v8::Array> ret = Nan::New<v8::Array>();
 
   Nan::Set(ret, 0,
-    Nan::New<v8::String>((char *)&hrp[0], hlen).ToLocalChecked());
+    Nan::New<v8::String>(&hrp[0], hrp_len).ToLocalChecked());
 
   Nan::Set(ret, 1, Nan::New<v8::Number>(witver));
 
@@ -224,8 +224,8 @@ NAN_METHOD(BBech32::Test) {
   if (!info[0]->IsString())
     return Nan::ThrowTypeError("First argument must be a string.");
 
-  Nan::Utf8String addr_(info[0]);
-  const char *addr = (const char *)*addr_;
+  Nan::Utf8String addr_str(info[0]);
+  const char *addr = (const char *)*addr_str;
 
   bool result = bcrypto_bech32_test(addr);
 

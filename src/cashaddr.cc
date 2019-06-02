@@ -32,29 +32,29 @@ NAN_METHOD(BCashAddr::Serialize) {
 
   Nan::Utf8String prefix_str(info[0]);
 
-  v8::Local<v8::Object> dbuf = info[1].As<v8::Object>();
+  v8::Local<v8::Object> data_buf = info[1].As<v8::Object>();
 
-  if (!node::Buffer::HasInstance(dbuf))
+  if (!node::Buffer::HasInstance(data_buf))
     return Nan::ThrowTypeError("Second argument must be a buffer.");
 
   const char *prefix = (const char *)*prefix_str;
-  const uint8_t *data = (uint8_t *)node::Buffer::Data(dbuf);
-  size_t data_len = node::Buffer::Length(dbuf);
+  const uint8_t *data = (uint8_t *)node::Buffer::Data(data_buf);
+  size_t data_len = node::Buffer::Length(data_buf);
 
   bcrypto_cashaddr_error err = BCRYPTO_CASHADDR_ERR_NULL;
 
   char output[197];
-  size_t olen = 0;
+  size_t output_len = 0;
 
   memset(&output[0], 0, sizeof(output));
 
   if (!bcrypto_cashaddr_serialize(&err, output, prefix, data, data_len))
     return Nan::ThrowError(bcrypto_cashaddr_strerror(err));
 
-  olen = strlen(&output[0]);
+  output_len = strlen(&output[0]);
 
   info.GetReturnValue().Set(
-    Nan::New<v8::String>((char *)output, olen).ToLocalChecked());
+    Nan::New<v8::String>(&output[0], output_len).ToLocalChecked());
 }
 
 NAN_METHOD(BCashAddr::Deserialize) {
@@ -67,11 +67,11 @@ NAN_METHOD(BCashAddr::Deserialize) {
   if (!info[1]->IsString())
     return Nan::ThrowTypeError("Second argument must be a string.");
 
-  Nan::Utf8String addr_(info[0]);
-  const char *addr = (const char *)*addr_;
+  Nan::Utf8String addr_str(info[0]);
+  const char *addr = (const char *)*addr_str;
 
-  Nan::Utf8String default_prefix_(info[1]);
-  const char *default_prefix = (const char *)*default_prefix_;
+  Nan::Utf8String default_prefix_str(info[1]);
+  const char *default_prefix = (const char *)*default_prefix_str;
 
   bcrypto_cashaddr_error err = BCRYPTO_CASHADDR_ERR_NULL;
 
@@ -112,11 +112,11 @@ NAN_METHOD(BCashAddr::Is) {
   if (!info[1]->IsString())
     return Nan::ThrowTypeError("Second argument must be a string.");
 
-  Nan::Utf8String addr_(info[0]);
-  const char *addr = (const char *)*addr_;
+  Nan::Utf8String addr_str(info[0]);
+  const char *addr = (const char *)*addr_str;
 
-  Nan::Utf8String default_prefix_(info[1]);
-  const char *default_prefix = (const char *)*default_prefix_;
+  Nan::Utf8String default_prefix_str(info[1]);
+  const char *default_prefix = (const char *)*default_prefix_str;
 
   bcrypto_cashaddr_error err = BCRYPTO_CASHADDR_ERR_NULL;
 
@@ -129,9 +129,9 @@ NAN_METHOD(BCashAddr::ConvertBits) {
   if (info.Length() < 4)
     return Nan::ThrowError("cashaddr.convertBits() requires arguments.");
 
-  v8::Local<v8::Object> dbuf = info[0].As<v8::Object>();
+  v8::Local<v8::Object> data_buf = info[0].As<v8::Object>();
 
-  if (!node::Buffer::HasInstance(dbuf))
+  if (!node::Buffer::HasInstance(data_buf))
     return Nan::ThrowTypeError("First argument must be a buffer.");
 
   if (!info[1]->IsNumber())
@@ -143,8 +143,8 @@ NAN_METHOD(BCashAddr::ConvertBits) {
   if (!info[3]->IsBoolean())
     return Nan::ThrowTypeError("Fourth argument must be a boolean.");
 
-  const uint8_t *data = (uint8_t *)node::Buffer::Data(dbuf);
-  size_t data_len = node::Buffer::Length(dbuf);
+  const uint8_t *data = (uint8_t *)node::Buffer::Data(data_buf);
+  size_t data_len = node::Buffer::Length(data_buf);
   int frombits = (int)Nan::To<int32_t>(info[1]).FromJust();
   int tobits = (int)Nan::To<int32_t>(info[2]).FromJust();
   int pad = (int)Nan::To<bool>(info[3]).FromJust();
@@ -159,21 +159,21 @@ NAN_METHOD(BCashAddr::ConvertBits) {
   if (pad)
     size += 1;
 
-  uint8_t *out = (uint8_t *)malloc(size);
-  size_t out_len = 0;
+  uint8_t *output = (uint8_t *)malloc(size);
+  size_t output_len = 0;
 
-  if (!out)
+  if (output == NULL)
     return Nan::ThrowError("Could not allocate.");
 
   bcrypto_cashaddr_error err = BCRYPTO_CASHADDR_ERR_NULL;
 
-  if (!bcrypto_cashaddr_convert_bits(&err, out, &out_len, tobits,
+  if (!bcrypto_cashaddr_convert_bits(&err, output, &output_len, tobits,
                                      data, data_len, frombits, pad)) {
     return Nan::ThrowError(bcrypto_cashaddr_strerror(err));
   }
 
   info.GetReturnValue().Set(
-    Nan::NewBuffer((char *)out, out_len).ToLocalChecked());
+    Nan::NewBuffer((char *)output, output_len).ToLocalChecked());
 }
 
 NAN_METHOD(BCashAddr::Encode) {
@@ -204,7 +204,7 @@ NAN_METHOD(BCashAddr::Encode) {
   size_t hash_len = node::Buffer::Length(hashbuf);
 
   char output[197];
-  size_t olen = 0;
+  size_t output_len = 0;
 
   memset(&output[0], 0, sizeof(output));
 
@@ -213,10 +213,10 @@ NAN_METHOD(BCashAddr::Encode) {
   if (!bcrypto_cashaddr_encode(&err, output, prefix, type, hash, hash_len))
     return Nan::ThrowError(bcrypto_cashaddr_strerror(err));
 
-  olen = strlen(&output[0]);
+  output_len = strlen(&output[0]);
 
   info.GetReturnValue().Set(
-    Nan::New<v8::String>((char *)output, olen).ToLocalChecked());
+    Nan::New<v8::String>(&output[0], output_len).ToLocalChecked());
 }
 
 NAN_METHOD(BCashAddr::Decode) {
@@ -229,11 +229,11 @@ NAN_METHOD(BCashAddr::Decode) {
   if (!info[1]->IsString())
     return Nan::ThrowTypeError("Second argument must be a string.");
 
-  Nan::Utf8String addr_(info[0]);
-  const char *addr = (const char *)*addr_;
+  Nan::Utf8String addr_str(info[0]);
+  const char *addr = (const char *)*addr_str;
 
-  Nan::Utf8String default_prefix_(info[1]);
-  const char *default_prefix = (const char *)*default_prefix_;
+  Nan::Utf8String default_prefix_str(info[1]);
+  const char *default_prefix = (const char *)*default_prefix_str;
 
   uint8_t hash[64];
   size_t hash_len;
@@ -276,11 +276,11 @@ NAN_METHOD(BCashAddr::Test) {
   if (!info[1]->IsString())
     return Nan::ThrowTypeError("Second argument must be a string.");
 
-  Nan::Utf8String addr_(info[0]);
-  const char *addr = (const char *)*addr_;
+  Nan::Utf8String addr_str(info[0]);
+  const char *addr = (const char *)*addr_str;
 
-  Nan::Utf8String default_prefix_(info[1]);
-  const char *default_prefix = (const char *)*default_prefix_;
+  Nan::Utf8String default_prefix_str(info[1]);
+  const char *default_prefix = (const char *)*default_prefix_str;
 
   bcrypto_cashaddr_error err = BCRYPTO_CASHADDR_ERR_NULL;
 
