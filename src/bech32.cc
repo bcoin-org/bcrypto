@@ -123,8 +123,8 @@ NAN_METHOD(BBech32::ConvertBits) {
   int tobits = (int)Nan::To<int32_t>(info[2]).FromJust();
   int pad = (int)Nan::To<bool>(info[3]).FromJust();
 
-  if (!(frombits == 8 && tobits == 5 && pad == 1)
-      && !(frombits == 5 && tobits == 8 && pad == 0)) {
+  if (frombits < 0 || frombits > 0xff || frombits == 0
+      || tobits < 0 || tobits > 0xff || tobits == 0) {
     return Nan::ThrowRangeError("Parameters out of range.");
   }
 
