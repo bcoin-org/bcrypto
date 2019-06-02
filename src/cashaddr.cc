@@ -44,13 +44,14 @@ NAN_METHOD(BCashAddr::Serialize) {
   bcrypto_cashaddr_error err = BCRYPTO_CASHADDR_ERR_NULL;
 
   char output[197];
-  memset(output, 0, 197);
   size_t olen = 0;
+
+  memset(&output[0], 0, sizeof(output));
 
   if (!bcrypto_cashaddr_serialize(&err, output, prefix, data, data_len))
     return Nan::ThrowError(bcrypto_cashaddr_strerror(err));
 
-  olen = strlen((char *)output);
+  olen = strlen(&output[0]);
 
   info.GetReturnValue().Set(
     Nan::New<v8::String>((char *)output, olen).ToLocalChecked());
@@ -75,24 +76,25 @@ NAN_METHOD(BCashAddr::Deserialize) {
   bcrypto_cashaddr_error err = BCRYPTO_CASHADDR_ERR_NULL;
 
   char prefix[84];
-  memset(prefix, 0, 84);
   size_t prefix_len;
 
-  uint8_t data[112 + 1];
-  memset(data, 0, 112 + 1);
+  uint8_t data[188];
   size_t data_len = 0;
+
+  memset(&prefix[0], 0, sizeof(prefix));
+  memset(&data[0], 0, sizeof(data));
 
   if (!bcrypto_cashaddr_deserialize(&err, prefix, data,
                                     &data_len, default_prefix, addr)) {
     return Nan::ThrowError(bcrypto_cashaddr_strerror(err));
   }
 
-  prefix_len = strlen((char *)&prefix[0]);
+  prefix_len = strlen(&prefix[0]);
 
   v8::Local<v8::Array> ret = Nan::New<v8::Array>();
 
   Nan::Set(ret, 0,
-    Nan::New<v8::String>((char *)&prefix[0], prefix_len).ToLocalChecked());
+    Nan::New<v8::String>(&prefix[0], prefix_len).ToLocalChecked());
 
   Nan::Set(ret, 1,
     Nan::CopyBuffer((char *)&data[0], data_len).ToLocalChecked());
@@ -193,24 +195,25 @@ NAN_METHOD(BCashAddr::Encode) {
 
   const char *prefix = (const char *)*prefix_str;
   int type = (int)Nan::To<int32_t>(info[1]).FromJust();
-  double dtype = (double)Nan::To<double>(info[1]).FromJust();
+  double dbl = (double)Nan::To<double>(info[1]).FromJust();
 
-  if (type < 0 || (type & 0x0f) != type || (double)type != dtype)
+  if (type < 0 || type > 15 || (double)type != dbl)
     return Nan::ThrowError("Invalid cashaddr type.");
 
   const uint8_t *hash = (uint8_t *)node::Buffer::Data(hashbuf);
   size_t hash_len = node::Buffer::Length(hashbuf);
 
   char output[197];
-  memset(output, 0, 197);
   size_t olen = 0;
+
+  memset(&output[0], 0, sizeof(output));
 
   bcrypto_cashaddr_error err = BCRYPTO_CASHADDR_ERR_NULL;
 
   if (!bcrypto_cashaddr_encode(&err, output, prefix, type, hash, hash_len))
     return Nan::ThrowError(bcrypto_cashaddr_strerror(err));
 
-  olen = strlen((char *)&output[0]);
+  olen = strlen(&output[0]);
 
   info.GetReturnValue().Set(
     Nan::New<v8::String>((char *)output, olen).ToLocalChecked());
@@ -232,13 +235,14 @@ NAN_METHOD(BCashAddr::Decode) {
   Nan::Utf8String default_prefix_(info[1]);
   const char *default_prefix = (const char *)*default_prefix_;
 
-  uint8_t hash[65];
-  memset(hash, 0, 65);
+  uint8_t hash[64];
   size_t hash_len;
   int type;
   char prefix[84];
-  memset(prefix, 0, 84);
   size_t prefix_len;
+
+  memset(&hash[0], 0, sizeof(hash));
+  memset(&prefix[0], 0, sizeof(prefix));
 
   bcrypto_cashaddr_error err = BCRYPTO_CASHADDR_ERR_NULL;
 
@@ -247,12 +251,12 @@ NAN_METHOD(BCashAddr::Decode) {
     return Nan::ThrowError(bcrypto_cashaddr_strerror(err));
   }
 
-  prefix_len = strlen((char *)&prefix[0]);
+  prefix_len = strlen(&prefix[0]);
 
   v8::Local<v8::Array> ret = Nan::New<v8::Array>();
 
   Nan::Set(ret, 0,
-    Nan::New<v8::String>((char *)&prefix[0], prefix_len).ToLocalChecked());
+    Nan::New<v8::String>(&prefix[0], prefix_len).ToLocalChecked());
 
   Nan::Set(ret, 1, Nan::New<v8::Number>(type));
 

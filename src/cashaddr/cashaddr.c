@@ -296,9 +296,11 @@ bcrypto_cashaddr_is(
   const char *addr
 ) {
   char prefix[84];
-  uint8_t data[112 + 1];
-  memset(data, 0, 112 + 1);
+  uint8_t data[188];
   size_t data_len = 0;
+
+  memset(&prefix[0], 0, sizeof(prefix));
+  memset(&data[0], 0, sizeof(data));
 
   if (!bcrypto_cashaddr_deserialize(err, prefix, data,
                                     &data_len, default_prefix, addr)) {
@@ -374,16 +376,17 @@ bcrypto_cashaddr_encode(
 
   uint8_t version_byte = type << 3 | (uint8_t)encoded_size;
 
-  size_t data_len = hash_len + 1;
-  uint8_t data[data_len];
+  uint8_t data[65];
   data[0] = version_byte;
-  memcpy(data + 1, hash, hash_len);
+  memcpy(&data[1], hash, hash_len);
 
+  uint8_t converted[(65 * 8 + 4) / 5 + 1]; // 105
   size_t converted_len = 0;
-  uint8_t converted[(data_len * 8 / 5) + 1];
+
+  memset(&converted[0], 0, sizeof(converted));
 
   if (!bcrypto_cashaddr_convert_bits(err, converted, &converted_len,
-                                     5, data, data_len, 8, 1)) {
+                                     5, data, hash_len + 1, 8, 1)) {
     return 0;
   }
 
@@ -401,16 +404,17 @@ bcrypto_cashaddr_decode(
   const char *default_prefix,
   const char *addr
 ) {
-  uint8_t data[112 + 1];
-  memset(data, 0, 112 + 1);
+  uint8_t data[188];
   size_t data_len = 0;
+
+  memset(&data[0], 0, sizeof(data));
 
   if (!bcrypto_cashaddr_deserialize(err, prefix, data,
                                     &data_len, default_prefix, addr)) {
     return 0;
   }
 
-  size_t extrabits = (data_len * 5) % 8;
+  size_t extrabits = (data_len * 5) & 7;
 
   if (extrabits >= 5) {
     *err = BCRYPTO_CASHADDR_ERR_PADDING;
@@ -425,19 +429,24 @@ bcrypto_cashaddr_decode(
     return 0;
   }
 
-  size_t _converted_len = (data_len * 5 / 8) + 1;
-  uint8_t converted[_converted_len + 1];
-  memset(converted, 0, _converted_len + 1);
+  uint8_t converted[(188 * 5 + 7) / 8]; // 118
   size_t converted_len = 0;
+
+  memset(&converted[0], 0, sizeof(converted));
 
   if (!bcrypto_cashaddr_convert_bits(err, converted, &converted_len,
                                      8, data, data_len, 5, 0)) {
     return 0;
   }
 
+  if (converted_len > 1 + 64) {
+    *err = BCRYPTO_CASHADDR_ERR_LENGTH;
+    return 0;
+  }
+
   *type = (converted[0] >> 3) & 0x1f;
   *hash_len = converted_len - 1;
-  memcpy(hash, converted + 1, *hash_len);
+  memcpy(hash, &converted[1], *hash_len);
 
   size_t size = 20 + 4 * (converted[0] & 0x03);
 
@@ -459,10 +468,12 @@ bcrypto_cashaddr_test(
   const char *addr
 ) {
   char prefix[84];
-  uint8_t hash[65];
-  memset(hash, 0, 65);
+  uint8_t hash[64];
   size_t hash_len;
   int type = 0;
+
+  memset(&prefix[0], 0, sizeof(prefix));
+  memset(&hash[0], 0, sizeof(hash));
 
   if (!bcrypto_cashaddr_decode(err, &type, hash, &hash_len,
                                prefix, default_prefix, addr)) {
