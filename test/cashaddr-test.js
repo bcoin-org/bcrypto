@@ -32,15 +32,18 @@ const assert = require('bsert');
 const base58 = require('../lib/encoding/base58');
 const cashaddr = require('../lib/encoding/cashaddr');
 const js = require('../lib/js/cashaddr');
-const translationVectors = require('./data/cashaddrlegacy.json');
-const sizeVectors = require('./data/cashaddrsizes.json');
-const encodeVectors = require('./data/cashaddrinvalidencode.json');
-const decodeVectors = require('./data/cashaddrinvaliddecode.json');
-const edgeVectors = require('./data/cashaddredge.json');
+
+const vectors = {
+  translation: require('./data/cashaddr/translation.json'),
+  size: require('./data/cashaddr/size.json'),
+  encode: require('./data/cashaddr/encode.json'),
+  decode: require('./data/cashaddr/decode.json'),
+  edge: require('./data/cashaddr/edge.json')
+};
 
 function test(cashaddr) {
   describe('Encoding', () => {
-    for (const test of sizeVectors) {
+    for (const test of vectors.size) {
       const text = test.addr.slice(0, 32) + '...';
 
       it(`should encode address ${text} (${test.bytes} bytes)`, () => {
@@ -61,7 +64,7 @@ function test(cashaddr) {
   });
 
   describe('Translation', () => {
-    for (const translation of translationVectors.p2pkh) {
+    for (const translation of vectors.translation.p2pkh) {
       const text = translation.legacy.slice(0, 32) + '...';
 
       it(`should translate base58 P2PKH for ${text}`, () => {
@@ -74,7 +77,7 @@ function test(cashaddr) {
       });
     }
 
-    for (const translation of translationVectors.p2sh) {
+    for (const translation of vectors.translation.p2sh) {
       const text = translation.legacy.slice(0, 32) + '...';
 
       it(`should translate base58 P2SH for ${text}`, () => {
@@ -87,7 +90,7 @@ function test(cashaddr) {
       });
     }
 
-    for (const addrinfo of translationVectors.p2pkh) {
+    for (const addrinfo of vectors.translation.p2pkh) {
       const text = addrinfo.cashaddr.slice(0, 32) + '...';
 
       it(`should decode P2PKH for ${text}`, () => {
@@ -107,7 +110,7 @@ function test(cashaddr) {
       });
     }
 
-    for (const addrinfo of translationVectors.p2sh) {
+    for (const addrinfo of vectors.translation.p2sh) {
       const text = addrinfo.cashaddr.slice(0, 32) + '...';
 
       it(`should decode P2SH for ${text}`, () => {
@@ -127,7 +130,7 @@ function test(cashaddr) {
       });
     }
 
-    for (const addrinfo of translationVectors.p2pkh) {
+    for (const addrinfo of vectors.translation.p2pkh) {
       const text = addrinfo.cashaddr.slice(0, 32) + '...';
 
       it(`should decode P2PKH with prefix ${text}`, () => {
@@ -150,7 +153,7 @@ function test(cashaddr) {
       });
     }
 
-    for (const addrinfo of translationVectors.p2sh) {
+    for (const addrinfo of vectors.translation.p2sh) {
       const text = addrinfo.cashaddr.slice(0, 32) + '...';
 
       it(`should decode P2Sh with prefix ${text}`, () => {
@@ -175,7 +178,7 @@ function test(cashaddr) {
   });
 
   describe('Invalid Encoding', () => {
-    for (const test of encodeVectors) {
+    for (const test of vectors.encode) {
       it(`"${test.reason}" (${test.note})`, () => {
         let err;
 
@@ -193,7 +196,7 @@ function test(cashaddr) {
   });
 
   describe('Invalid Decoding', () => {
-    for (const addrinfo of decodeVectors) {
+    for (const addrinfo of vectors.decode) {
       const text = addrinfo.addr.slice(0, 32) + '...';
 
       it(`"${addrinfo.reason}" w/ invalid address ${text}`, () => {
@@ -212,7 +215,7 @@ function test(cashaddr) {
   });
 
   describe('Edge Cases', () => {
-    for (const test of edgeVectors) {
+    for (const test of vectors.edge) {
       const text = test.addr.slice(0, 32) + '...';
 
       it(`encode ${test.note} with address: ${text}`, () => {

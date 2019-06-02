@@ -22,31 +22,17 @@ const vectors = [
   ['572e4794', '3EFU7m'],
   ['ecac89cad93923c02321', 'EJDM8drfXA6uyA'],
   ['10c8511e', 'Rt5zm'],
-  ['00000000000000000000', '1111111111']
+  ['00000000000000000000', '1111111111'],
+  ['000000deadbeef', '1116h8cQN'],
+  ...json
 ];
 
-describe('base58', function() {
-  it('should encode/decode base58', () => {
-    const buf = Buffer.from('000000deadbeef', 'hex');
-    const str = base58.encode(buf);
+describe('Base58', function() {
+  for (const [hex, b58] of vectors) {
+    const text = b58.slice(0, 32) + '...';
+    const data = Buffer.from(hex, 'hex');
 
-    assert.strictEqual(str, '1116h8cQN');
-    assert.bufferEqual(base58.decode(str), buf);
-
-    for (const [hex, b58] of vectors) {
-      const data = Buffer.from(hex, 'hex');
-      assert.strictEqual(base58.test(b58), true);
-      assert.strictEqual(base58.encode(data), b58);
-      assert.bufferEqual(base58.decode(b58), data);
-    }
-  });
-
-  for (let i = 0; i < json.length; i++) {
-    const vector = json[i];
-    const [hex, b58] = vector;
-
-    it(`should encode/decode base58 (${i})`, () => {
-      const data = Buffer.from(hex, 'hex');
+    it(`should encode/decode base58: ${text}`, () => {
       assert.strictEqual(base58.test(b58), true);
       assert.strictEqual(base58.encode(data), b58);
       assert.bufferEqual(base58.decode(b58), data);

@@ -30,51 +30,27 @@ const vectors = require('./data/bech32.json');
 const validAddresses = [
   [
     'BC1QW508D6QEJXTDG4Y5R3ZARVARY0C5XW7KV8F3T4',
-    Buffer.from([
-      0x00, 0x14, 0x75, 0x1e, 0x76, 0xe8, 0x19, 0x91, 0x96, 0xd4, 0x54,
-      0x94, 0x1c, 0x45, 0xd1, 0xb3, 0xa3, 0x23, 0xf1, 0x43, 0x3b, 0xd6
-    ])
+    '0014751e76e8199196d454941c45d1b3a323f1433bd6'
   ],
   [
     'tb1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3q0sl5k7',
-    Buffer.from([
-      0x00, 0x20, 0x18, 0x63, 0x14, 0x3c, 0x14, 0xc5, 0x16, 0x68, 0x04,
-      0xbd, 0x19, 0x20, 0x33, 0x56, 0xda, 0x13, 0x6c, 0x98, 0x56, 0x78,
-      0xcd, 0x4d, 0x27, 0xa1, 0xb8, 0xc6, 0x32, 0x96, 0x04, 0x90, 0x32,
-      0x62
-    ])
+    '00201863143c14c5166804bd19203356da136c985678cd4d27a1b8c6329604903262'
   ],
   [
-    'bc1pw508d6qejxtdg4y5r3zarvary0c5xw7kw50'
-    + '8d6qejxtdg4y5r3zarvary0c5xw7k7grplx',
-    Buffer.from([
-      0x81, 0x28, 0x75, 0x1e, 0x76, 0xe8, 0x19, 0x91, 0x96, 0xd4, 0x54,
-      0x94, 0x1c, 0x45, 0xd1, 0xb3, 0xa3, 0x23, 0xf1, 0x43, 0x3b, 0xd6,
-      0x75, 0x1e, 0x76, 0xe8, 0x19, 0x91, 0x96, 0xd4, 0x54, 0x94, 0x1c,
-      0x45, 0xd1, 0xb3, 0xa3, 0x23, 0xf1, 0x43, 0x3b, 0xd6
-    ])
+    'bc1pw508d6qejxtdg4y5r3zarvary0c5xw7kw508d6qejxtdg4y5r3zarvary0c5xw7k7grplx',
+    '8128751e76e8199196d454941c45d1b3a323f1433bd6751e76e8199196d454941c45d1b3a323f1433bd6'
   ],
   [
     'BC1SW50QA3JX3S',
-    Buffer.from([
-      0x90, 0x02, 0x75, 0x1e
-    ])
+    '9002751e'
   ],
   [
     'bc1zw508d6qejxtdg4y5r3zarvaryvg6kdaj',
-    Buffer.from([
-      0x82, 0x10, 0x75, 0x1e, 0x76, 0xe8, 0x19, 0x91, 0x96, 0xd4, 0x54,
-      0x94, 0x1c, 0x45, 0xd1, 0xb3, 0xa3, 0x23
-    ])
+    '8210751e76e8199196d454941c45d1b3a323'
   ],
   [
     'tb1qqqqqp399et2xygdj5xreqhjjvcmzhxw4aywxecjdzew6hylgvsesrxh6hy',
-    Buffer.from([
-      0x00, 0x20, 0x00, 0x00, 0x00, 0xc4, 0xa5, 0xca, 0xd4, 0x62, 0x21,
-      0xb2, 0xa1, 0x87, 0x90, 0x5e, 0x52, 0x66, 0x36, 0x2b, 0x99, 0xd5,
-      0xe9, 0x1c, 0x6c, 0xe2, 0x4d, 0x16, 0x5d, 0xab, 0x93, 0xe8, 0x64,
-      0x33
-    ])
+    '0020000000c4a5cad46221b2a187905e5266362b99d5e91c6ce24d165dab93e86433'
   ]
 ];
 
@@ -83,18 +59,14 @@ const invalidAddresses = [
   'bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t5',
   'BC13W508D6QEJXTDG4Y5R3ZARVARY0C5XW7KN40WF2',
   'bc1rw5uspcuh',
-  'bc10w508d6qejxtdg4y5r3zarvary0c5xw7kw508d'
-    + '6qejxtdg4y5r3zarvary0c5xw7kw5rljs90',
-  'bca0w508d6qejxtdg4y5r3zarvary0c5xw7kw508d'
-    + '6qejxtdg4y5r3zarvary0c5xw7kw5rljs90234567789035',
+  'bc10w508d6qejxtdg4y5r3zarvary0c5xw7kw508d6qejxtdg4y5r3zarvary0c5xw7kw5rljs90',
+  'bca0w508d6qejxtdg4y5r3zarvary0c5xw7kw508d6qejxtdg4y5r3zarvary0c5xw7kw5rljs90234567789035',
   'BC1QR508D6QEJXTDG4Y5R3ZARVARYV98GJ9P',
   'tb1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3q0sL5k7',
   'tb1pw508d6qejxtdg4y5r3zarqfsj6c3',
   'tb1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3pjxtptv',
-  'wtfbbqhelpnoshitwe2z5nuhllhu6z8pptu8m36cl'
-    + 'zge37dnfsdquht73wsx4cmwcwql322x3gmmwq2gjuxp6eaaus',
-  'bcfbbqhelpnoshitwe2z7anje5j3wvz8hw3rxadzc'
-    + 'ppgghm0aec23ttfstphjegfx08hwk5uhmusa7j28yrk8cx4qj'
+  'wtfbbqhelpnoshitwe2z5nuhllhu6z8pptu8m36clzge37dnfsdquht73wsx4cmwcwql322x3gmmwq2gjuxp6eaaus',
+  'bcfbbqhelpnoshitwe2z7anje5j3wvz8hw3rxadzcppgghm0aec23ttfstphjegfx08hwk5uhmusa7j28yrk8cx4qj'
 ];
 
 const invalidIs = [
@@ -137,16 +109,16 @@ function decode(expect, addr) {
   return [hrp, version, hash];
 }
 
-function encode2(hrp, version, hash, lax) {
+function encodeManual(hrp, version, hash, lax) {
   const data = bech32.convertBits(hash, 8, 5, true);
   const addr = bech32.serialize(hrp, concat(version, data));
 
-  decode2(hrp, addr, lax);
+  decodeManual(hrp, addr, lax);
 
   return addr;
 }
 
-function decode2(expect, addr, lax) {
+function decodeManual(expect, addr, lax = false) {
   const [hrp, data] = bech32.deserialize(addr);
 
   if (!lax) {
@@ -185,7 +157,8 @@ function concat(version, hash) {
 }
 
 describe('Bech32', function() {
-  for (const [addr, script] of validAddresses) {
+  for (const [addr, script_] of validAddresses) {
+    const script = Buffer.from(script_, 'hex');
     const text = addr.slice(0, 32) + '...';
 
     it(`should have valid address for ${text}`, () => {
@@ -209,7 +182,7 @@ describe('Bech32', function() {
 
       assert(hrp !== null);
       assert.bufferEqual(program(version, hash), script);
-      assert.strictEqual(encode(expect, version, hash), addr.toLowerCase());
+      assert.strictEqual(encode(hrp, version, hash), addr.toLowerCase());
       assert.strictEqual(bech32.test(addr), true);
     });
   }
@@ -223,7 +196,8 @@ describe('Bech32', function() {
     });
   }
 
-  for (const [addr, script] of validAddresses) {
+  for (const [addr, script_] of validAddresses) {
+    const script = Buffer.from(script_, 'hex');
     const text = addr.slice(0, 32) + '...';
 
     it(`should have valid address for ${text}`, () => {
@@ -231,7 +205,7 @@ describe('Bech32', function() {
       let hrp, version, hash;
 
       try {
-        [hrp, version, hash] = decode2(expect, addr);
+        [hrp, version, hash] = decodeManual(expect, addr);
       } catch (e) {
         hrp = null;
       }
@@ -239,7 +213,7 @@ describe('Bech32', function() {
       if (hrp === null) {
         expect = 'tb';
         try {
-          [hrp, version, hash] = decode2(expect, addr);
+          [hrp, version, hash] = decodeManual(expect, addr);
         } catch (e) {
           hrp = null;
         }
@@ -247,7 +221,7 @@ describe('Bech32', function() {
 
       assert(hrp !== null);
       assert.bufferEqual(program(version, hash), script);
-      assert.strictEqual(encode2(expect, version, hash), addr.toLowerCase());
+      assert.strictEqual(encodeManual(hrp, version, hash), addr.toLowerCase());
       assert.strictEqual(bech32.test(addr), true);
       assert.strictEqual(bech32.is(addr), true);
     });
@@ -257,8 +231,8 @@ describe('Bech32', function() {
     const text = addr.slice(0, 32) + '...';
 
     it(`should have invalid address for ${text}`, () => {
-      assert.throws(() => decode2('bc', addr));
-      assert.throws(() => decode2('tb', addr));
+      assert.throws(() => decodeManual('bc', addr));
+      assert.throws(() => decodeManual('tb', addr));
     });
   }
 
@@ -297,13 +271,13 @@ describe('Bech32', function() {
     });
 
     it(`should decode and reserialize ${text}`, () => {
-      const [hrp_, version_, hash_] = decode2(hrp, addr1, true);
+      const [hrp_, version_, hash_] = decodeManual(hrp, addr1, true);
 
       assert.strictEqual(hrp_, hrp);
       assert.strictEqual(version_, version);
       assert.bufferEqual(hash_, hash);
 
-      const addr2 = encode2(hrp, version, hash, true);
+      const addr2 = encodeManual(hrp, version, hash, true);
 
       assert.strictEqual(addr2, addr1.toLowerCase());
     });
