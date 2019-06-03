@@ -80,15 +80,18 @@ bmpz_powm(mpz_t ret, const mpz_t a, const mpz_t b, const mpz_t c) {
   int r = 1;
 
   if (mpz_sgn(b) < 0) {
-    mpz_t i;
-    mpz_init(i);
+    mpz_t inv;
+    mpz_init(inv);
 
-    r = mpz_invert(i, b, c);
+    r = mpz_invert(inv, a, c);
 
-    if (r != 0)
-      mpz_powm(ret, a, i, c);
+    if (r != 0) {
+      mpz_neg((mpz_ptr)b, b);
+      mpz_powm(ret, inv, b, c);
+      mpz_neg((mpz_ptr)b, b);
+    }
 
-    mpz_clear(i);
+    mpz_clear(inv);
   } else {
     mpz_powm(ret, a, b, c);
   }
@@ -101,16 +104,15 @@ bmpz_powm_si(mpz_t ret, const mpz_t a, long b, const mpz_t c) {
   int r = 1;
 
   if (b < 0) {
-    mpz_t i;
-    mpz_init(i);
-    mpz_set_si(i, b);
+    mpz_t inv;
+    mpz_init(inv);
 
-    r = mpz_invert(i, i, c);
+    r = mpz_invert(inv, a, c);
 
     if (r != 0)
-      mpz_powm(ret, a, i, c);
+      mpz_powm_ui(ret, inv, (unsigned long)-b, c);
 
-    mpz_clear(i);
+    mpz_clear(inv);
   } else {
     mpz_powm_ui(ret, a, b, c);
   }
@@ -186,18 +188,6 @@ bmpz_mask(mpz_t ret, const mpz_t a, unsigned long bit) {
   mpz_sub_ui(mask, mask, 1);
   mpz_and(ret, a, mask);
   mpz_clear(mask);
-}
-
-static void
-bmpz_binc(mpz_t ret, const mpz_t a, unsigned long bit) {
-  mpz_t saved;
-  mpz_init(saved);
-  bmpz_mask(saved, a, bit);
-  mpz_fdiv_q_2exp(ret, a, bit);
-  mpz_add_ui(ret, ret, 1);
-  mpz_mul_2exp(ret, ret, bit);
-  mpz_ior(ret, ret, saved);
-  mpz_clear(saved);
 }
 
 static void

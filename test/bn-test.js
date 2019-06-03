@@ -3774,18 +3774,6 @@ describe('BN.js', function() {
       });
     });
 
-    describe('.bincn()', () => {
-      it('should increment bit', () => {
-        assert.strictEqual(new BN(0).bincn(1).toString(16), '2');
-        assert.strictEqual(new BN(2).bincn(1).toString(16), '4');
-        assert.strictEqual(new BN(2).bincn(1).bincn(1).toString(16),
-          new BN(2).bincn(2).toString(16));
-        assert.strictEqual(new BN(0xffffff).bincn(1).toString(16), '1000001');
-        assert.strictEqual(new BN(2).bincn(63).toString(16),
-          '8000000000000002');
-      });
-    });
-
     describe('.imaskn()', () => {
       it('should mask bits in-place', () => {
         assert.strictEqual(new BN(0).imaskn(1).toString(16), '0');
@@ -5073,6 +5061,42 @@ describe('BN.js', function() {
       assert.strictEqual(new BN(4).umodrn(-2), 0);
       assert.strictEqual(new BN(-4).umodrn(2), 0);
       assert.strictEqual(new BN(-4).umodrn(-2), 0);
+    });
+
+    it('should compute uand', () => {
+      assert.strictEqual(new BN(3).uand(new BN(-1)).toNumber(), 1);
+      assert.strictEqual(new BN(-3).uand(new BN(1)).toNumber(), -1);
+      assert.strictEqual(new BN(-3).uand(new BN(-1)).toNumber(), -1);
+      assert.strictEqual(new BN(4).uand(new BN(-1)).toNumber(), 0);
+      assert.strictEqual(new BN(-4).uand(new BN(1)).toNumber(), 0);
+      assert.strictEqual(new BN(-4).uand(new BN(-1)).toNumber(), 0);
+    });
+
+    it('should compute uandn', () => {
+      assert.strictEqual(new BN(3).uandn(-1).toNumber(), 1);
+      assert.strictEqual(new BN(-3).uandn(1).toNumber(), -1);
+      assert.strictEqual(new BN(-3).uandn(-1).toNumber(), -1);
+      assert.strictEqual(new BN(4).uandn(-1).toNumber(), 0);
+      assert.strictEqual(new BN(-4).uandn(1).toNumber(), 0);
+      assert.strictEqual(new BN(-4).uandn(-1).toNumber(), 0);
+    });
+
+    it('should compute uandrn', () => {
+      assert.strictEqual(new BN(3).uandrn(-1), 1);
+      assert.strictEqual(new BN(-3).uandrn(1), -1);
+      assert.strictEqual(new BN(-3).uandrn(-1), -1);
+      assert.strictEqual(new BN(4).uandrn(-1), 0);
+      assert.strictEqual(new BN(-4).uandrn(1), 0);
+      assert.strictEqual(new BN(-4).uandrn(-1), 0);
+    });
+
+    it('should compute andln', () => {
+      assert.strictEqual(new BN(3).andln(-1), 3);
+      assert.strictEqual(new BN(-3).andln(1), 1);
+      assert.strictEqual(new BN(-3).andln(-1), 3);
+      assert.strictEqual(new BN(4).andln(-1), 4);
+      assert.strictEqual(new BN(-4).andln(1), 0);
+      assert.strictEqual(new BN(-4).andln(-1), 4);
     });
 
     it('should compute powm', () => {

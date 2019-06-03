@@ -23,6 +23,7 @@ static int64_t MAX_SAFE_INTEGER = 0x1fffffffffffff;
 
 typedef struct bmpz_rng_data_s {
   v8::Local<v8::Function> callback;
+  v8::Local<v8::Object> context;
   int is_bytes;
 } bmpz_rng_data_t;
 
@@ -186,7 +187,6 @@ BBN::Init(v8::Local<v8::Object> &target) {
   Nan::SetPrototypeMethod(tpl, "testn", BBN::Testn);
   Nan::SetPrototypeMethod(tpl, "imaskn", BBN::Imaskn);
   Nan::SetPrototypeMethod(tpl, "andln", BBN::Andln);
-  Nan::SetPrototypeMethod(tpl, "bincn", BBN::Bincn);
   Nan::SetPrototypeMethod(tpl, "ineg", BBN::Ineg);
   Nan::SetPrototypeMethod(tpl, "iabs", BBN::Iabs);
   Nan::SetPrototypeMethod(tpl, "cmp", BBN::Cmp);
@@ -410,19 +410,15 @@ NAN_METHOD(BBN::Idivn) {
   if (num == 0)
     return Nan::ThrowRangeError(NONZERO_ERROR);
 
-  int pos = (mpz_sgn(a->n) == -1) == (num < 0);
+  int sign = (mpz_sgn(a->n) < 0) ^ (num < 0);
 
   if (num < 0)
     num = -num;
 
   mpz_tdiv_q_ui(a->n, a->n, num);
 
-  int sgn = mpz_sgn(a->n);
-
-  if ((pos && sgn == -1)
-      || (!pos && sgn == 1)) {
+  if ((mpz_sgn(a->n) < 0) != sign)
     mpz_neg(a->n, a->n);
-  }
 
   info.GetReturnValue().Set(info.Holder());
 }
@@ -479,16 +475,15 @@ NAN_METHOD(BBN::Imodn) {
   if (num == 0)
     return Nan::ThrowRangeError(NONZERO_ERROR);
 
-  int pos = mpz_sgn(a->n) == 1;
+  int sign = mpz_sgn(a->n) < 0;
+
+  if (num < 0)
+    num = -num;
 
   mpz_tdiv_r_ui(a->n, a->n, num);
 
-  int sgn = mpz_sgn(a->n);
-
-  if ((pos && sgn == -1)
-      || (!pos && sgn == 1)) {
+  if ((mpz_sgn(a->n) < 0) != sign)
     mpz_neg(a->n, a->n);
-  }
 
   info.GetReturnValue().Set(info.Holder());
 }
@@ -708,14 +703,21 @@ NAN_METHOD(BBN::Iuand) {
 
   BBN *b = ObjectWrap::Unwrap<BBN>(info[0].As<v8::Object>());
 
-  int neg = mpz_sgn(b->n) < 0;
+  int aneg = mpz_sgn(a->n) < 0;
+  int bneg = mpz_sgn(b->n) < 0;
 
-  if (neg)
+  if (aneg)
+    mpz_neg(a->n, a->n);
+
+  if (bneg)
     mpz_neg(b->n, b->n);
 
   mpz_and(a->n, a->n, b->n);
 
-  if (neg)
+  if (aneg)
+    mpz_neg(a->n, a->n);
+
+  if (bneg)
     mpz_neg(b->n, b->n);
 
   info.GetReturnValue().Set(info.Holder());
@@ -732,10 +734,15 @@ NAN_METHOD(BBN::Iuandn) {
 
   int64_t num = Nan::To<int64_t>(info[0]).FromJust();
 
+  int neg = mpz_sgn(a->n) < 0;
+
   if (num < 0)
     num = -num;
 
   bmpz_and_si(a->n, a->n, num);
+
+  if (neg)
+    mpz_neg(a->n, a->n);
 
   info.GetReturnValue().Set(info.Holder());
 }
@@ -811,7 +818,22 @@ NAN_METHOD(BBN::Iuor) {
 
   BBN *b = ObjectWrap::Unwrap<BBN>(info[0].As<v8::Object>());
 
+  int aneg = mpz_sgn(a->n) < 0;
+  int bneg = mpz_sgn(b->n) < 0;
+
+  if (aneg)
+    mpz_neg(a->n, a->n);
+
+  if (bneg)
+    mpz_neg(b->n, b->n);
+
   mpz_ior(a->n, a->n, b->n);
+
+  if (aneg)
+    mpz_neg(a->n, a->n);
+
+  if (bneg)
+    mpz_neg(b->n, b->n);
 
   info.GetReturnValue().Set(info.Holder());
 }
@@ -827,7 +849,18 @@ NAN_METHOD(BBN::Iuorn) {
 
   int64_t num = Nan::To<int64_t>(info[0]).FromJust();
 
+  int neg = mpz_sgn(a->n) < 0;
+
+  if (neg)
+    mpz_neg(a->n, a->n);
+
+  if (num < 0)
+    num = -num;
+
   bmpz_ior_si(a->n, a->n, num);
+
+  if (neg)
+    mpz_neg(a->n, a->n);
 
   info.GetReturnValue().Set(info.Holder());
 }
@@ -881,7 +914,22 @@ NAN_METHOD(BBN::Iuxor) {
 
   BBN *b = ObjectWrap::Unwrap<BBN>(info[0].As<v8::Object>());
 
+  int aneg = mpz_sgn(a->n) < 0;
+  int bneg = mpz_sgn(b->n) < 0;
+
+  if (aneg)
+    mpz_neg(a->n, a->n);
+
+  if (bneg)
+    mpz_neg(b->n, b->n);
+
   mpz_xor(a->n, a->n, b->n);
+
+  if (aneg)
+    mpz_neg(a->n, a->n);
+
+  if (bneg)
+    mpz_neg(b->n, b->n);
 
   info.GetReturnValue().Set(info.Holder());
 }
@@ -897,7 +945,18 @@ NAN_METHOD(BBN::Iuxorn) {
 
   int64_t num = Nan::To<int64_t>(info[0]).FromJust();
 
+  int neg = mpz_sgn(a->n) < 0;
+
+  if (neg)
+    mpz_neg(a->n, a->n);
+
+  if (num < 0)
+    num = -num;
+
   bmpz_xor_si(a->n, a->n, num);
+
+  if (neg)
+    mpz_neg(a->n, a->n);
 
   info.GetReturnValue().Set(info.Holder());
 }
@@ -983,7 +1042,15 @@ NAN_METHOD(BBN::Iushrn) {
 
   uint32_t bits = Nan::To<uint32_t>(info[0]).FromJust();
 
+  int neg = mpz_sgn(a->n) < 0;
+
+  if (neg)
+    mpz_neg(a->n, a->n);
+
   mpz_fdiv_q_2exp(a->n, a->n, bits);
+
+  if (neg)
+    mpz_neg(a->n, a->n);
 
   info.GetReturnValue().Set(info.Holder());
 }
@@ -1035,6 +1102,9 @@ NAN_METHOD(BBN::Imaskn) {
   if (!IsUint32(info[0]))
     return Nan::ThrowTypeError(TYPE_ERROR(bit, integer));
 
+  if (mpz_sgn(a->n) < 0)
+    return Nan::ThrowRangeError(RANGE_ERROR(imaskn));
+
   uint32_t bit = Nan::To<uint32_t>(info[0]).FromJust();
 
   bmpz_mask(a->n, a->n, bit);
@@ -1055,22 +1125,6 @@ NAN_METHOD(BBN::Andln) {
   int64_t r = (int64_t)mpz_getlimbn(a->n, 0) & num;
 
   info.GetReturnValue().Set(Nan::New<v8::Number>(r));
-}
-
-NAN_METHOD(BBN::Bincn) {
-  BBN *a = ObjectWrap::Unwrap<BBN>(info.Holder());
-
-  if (info.Length() < 1)
-    return Nan::ThrowError(ARG_ERROR(bincn, 1));
-
-  if (!IsUint32(info[0]))
-    return Nan::ThrowTypeError(TYPE_ERROR(num, integer));
-
-  uint32_t bit = Nan::To<uint32_t>(info[0]).FromJust();
-
-  bmpz_binc(a->n, a->n, bit);
-
-  info.GetReturnValue().Set(info.Holder());
 }
 
 NAN_METHOD(BBN::Ineg) {
@@ -1316,7 +1370,16 @@ NAN_METHOD(BBN::Egcd) {
   if (mpz_sgn(b->n) <= 0)
     return Nan::ThrowRangeError(RANGE_ERROR(egcd));
 
-  mpz_gcdext(g->n, s->n, t->n, a->n, b->n);
+  if (mpz_sgn(a->n) < 0) {
+    mpz_t x;
+    mpz_init(x);
+    mpz_set(x, a->n);
+    mpz_mod(x, x, b->n);
+    mpz_gcdext(g->n, s->n, t->n, x, b->n);
+    mpz_clear(x);
+  } else {
+    mpz_gcdext(g->n, s->n, t->n, a->n, b->n);
+  }
 
   info.GetReturnValue().Set(info.Holder());
 }
@@ -1480,9 +1543,11 @@ NAN_METHOD(BBN::IsPrimeMR) {
       return Nan::ThrowTypeError(TYPE_ERROR(rng, rng));
 
     data.callback = val.As<v8::Function>();
+    data.context = obj;
     data.is_bytes = 1;
   } else {
     data.callback = info[0].As<v8::Function>();
+    data.context = info[0].As<v8::Object>();
     data.is_bytes = 0;
   }
 
@@ -1874,9 +1939,11 @@ NAN_METHOD(BBN::RandomBits) {
       return Nan::ThrowTypeError(TYPE_ERROR(rng, rng));
 
     data.callback = val.As<v8::Function>();
+    data.context = obj;
     data.is_bytes = 1;
   } else {
     data.callback = info[0].As<v8::Function>();
+    data.context = info[0].As<v8::Object>();
     data.is_bytes = 0;
   }
 
@@ -1918,9 +1985,11 @@ NAN_METHOD(BBN::Random) {
       return Nan::ThrowTypeError(TYPE_ERROR(rng, rng));
 
     data.callback = val.As<v8::Function>();
+    data.context = obj;
     data.is_bytes = 1;
   } else {
     data.callback = info[0].As<v8::Function>();
+    data.context = info[0].As<v8::Object>();
     data.is_bytes = 0;
   }
 
@@ -1949,7 +2018,7 @@ bmpz_rng_custom(mpz_t ret, unsigned long bits, void *data) {
 
   Nan::TryCatch try_catch;
   v8::MaybeLocal<v8::Value> result_ =
-    Nan::Call(rng_data->callback, rng_data->callback, 1, argv);
+    Nan::Call(rng_data->callback, rng_data->context, 1, argv);
 
   if (result_.IsEmpty())
     return 0;
