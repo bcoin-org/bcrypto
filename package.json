@@ -28,7 +28,7 @@
     "test-browser": "bmocha -B js -H -S 'test/*-test.js'",
     "test-bigint": "bmocha -B js -e BCRYPTO_FORCE_BIGINT=1 -S 'test/*-test.js'",
     "test-gmp": "bmocha -B js -e BCRYPTO_FORCE_GMP=1 -S 'test/*-test.js'",
-    "test-all": "npm run test-browser && npm run test-native && npm run test-node && npm run test-js && npm run test-bigint && npm run test-gmp"
+    "test-all": "npm run test-browser && npm run test-native && npm run test-node && npm run test-js && npm run test-bigint"
   },
   "dependencies": {
     "bsert": "~0.0.10",
