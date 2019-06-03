@@ -2,7 +2,7 @@
 
 const assert = require('bsert');
 const fs = require('fs');
-const {lines} = require('../../lib/internal/util');
+const lines = require('../../lib/encoding/lines');
 
 function parse(text) {
   assert(typeof text === 'string');
@@ -58,7 +58,7 @@ function *read(file) {
 
   let schema = null;
 
-  for (const line of lines(csv)) {
+  for (const [, line] of lines(csv)) {
     if (!schema) {
       schema = parse(line);
       continue;
