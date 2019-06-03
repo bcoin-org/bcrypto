@@ -4,28 +4,28 @@
 #include <nan.h>
 
 #include "common.h"
-#include "cashaddr/cashaddr.h"
-#include "cashaddr.h"
+#include "cash32/cash32.h"
+#include "cash32.h"
 
 void
-BCashAddr::Init(v8::Local<v8::Object> &target) {
+BCash32::Init(v8::Local<v8::Object> &target) {
   Nan::HandleScope scope;
   v8::Local<v8::Object> obj = Nan::New<v8::Object>();
 
-  Nan::Export(obj, "serialize", BCashAddr::Serialize);
-  Nan::Export(obj, "deserialize", BCashAddr::Deserialize);
-  Nan::Export(obj, "is", BCashAddr::Is);
-  Nan::Export(obj, "convertBits", BCashAddr::ConvertBits);
-  Nan::Export(obj, "encode", BCashAddr::Encode);
-  Nan::Export(obj, "decode", BCashAddr::Decode);
-  Nan::Export(obj, "test", BCashAddr::Test);
+  Nan::Export(obj, "serialize", BCash32::Serialize);
+  Nan::Export(obj, "deserialize", BCash32::Deserialize);
+  Nan::Export(obj, "is", BCash32::Is);
+  Nan::Export(obj, "convertBits", BCash32::ConvertBits);
+  Nan::Export(obj, "encode", BCash32::Encode);
+  Nan::Export(obj, "decode", BCash32::Decode);
+  Nan::Export(obj, "test", BCash32::Test);
 
-  Nan::Set(target, Nan::New("cashaddr").ToLocalChecked(), obj);
+  Nan::Set(target, Nan::New("cash32").ToLocalChecked(), obj);
 }
 
-NAN_METHOD(BCashAddr::Serialize) {
+NAN_METHOD(BCash32::Serialize) {
   if (info.Length() < 2)
-    return Nan::ThrowError("cashaddr.serialize() requires arguments.");
+    return Nan::ThrowError("cash32.serialize() requires arguments.");
 
   if (!info[0]->IsString())
     return Nan::ThrowTypeError("First argument must be a string.");
@@ -41,15 +41,15 @@ NAN_METHOD(BCashAddr::Serialize) {
   const uint8_t *data = (uint8_t *)node::Buffer::Data(data_buf);
   size_t data_len = node::Buffer::Length(data_buf);
 
-  bcrypto_cashaddr_error err = BCRYPTO_CASHADDR_ERR_NULL;
+  bcrypto_cash32_error err = BCRYPTO_CASH32_ERR_NULL;
 
   char output[197];
   size_t output_len = 0;
 
   memset(&output[0], 0, sizeof(output));
 
-  if (!bcrypto_cashaddr_serialize(&err, output, prefix, data, data_len))
-    return Nan::ThrowError(bcrypto_cashaddr_strerror(err));
+  if (!bcrypto_cash32_serialize(&err, output, prefix, data, data_len))
+    return Nan::ThrowError(bcrypto_cash32_strerror(err));
 
   output_len = strlen(&output[0]);
 
@@ -57,9 +57,9 @@ NAN_METHOD(BCashAddr::Serialize) {
     Nan::New<v8::String>(&output[0], output_len).ToLocalChecked());
 }
 
-NAN_METHOD(BCashAddr::Deserialize) {
+NAN_METHOD(BCash32::Deserialize) {
   if (info.Length() < 2)
-    return Nan::ThrowError("cashaddr.deserialize() requires arguments.");
+    return Nan::ThrowError("cash32.deserialize() requires arguments.");
 
   if (!info[0]->IsString())
     return Nan::ThrowTypeError("First argument must be a string.");
@@ -73,7 +73,7 @@ NAN_METHOD(BCashAddr::Deserialize) {
   Nan::Utf8String default_prefix_str(info[1]);
   const char *default_prefix = (const char *)*default_prefix_str;
 
-  bcrypto_cashaddr_error err = BCRYPTO_CASHADDR_ERR_NULL;
+  bcrypto_cash32_error err = BCRYPTO_CASH32_ERR_NULL;
 
   char prefix[84];
   size_t prefix_len;
@@ -84,9 +84,9 @@ NAN_METHOD(BCashAddr::Deserialize) {
   memset(&prefix[0], 0, sizeof(prefix));
   memset(&data[0], 0, sizeof(data));
 
-  if (!bcrypto_cashaddr_deserialize(&err, prefix, data,
+  if (!bcrypto_cash32_deserialize(&err, prefix, data,
                                     &data_len, default_prefix, addr)) {
-    return Nan::ThrowError(bcrypto_cashaddr_strerror(err));
+    return Nan::ThrowError(bcrypto_cash32_strerror(err));
   }
 
   prefix_len = strlen(&prefix[0]);
@@ -102,9 +102,9 @@ NAN_METHOD(BCashAddr::Deserialize) {
   info.GetReturnValue().Set(ret);
 }
 
-NAN_METHOD(BCashAddr::Is) {
+NAN_METHOD(BCash32::Is) {
   if (info.Length() < 2)
-    return Nan::ThrowError("cashaddr.is() requires arguments.");
+    return Nan::ThrowError("cash32.is() requires arguments.");
 
   if (!info[0]->IsString())
     return Nan::ThrowTypeError("First argument must be a string.");
@@ -118,16 +118,16 @@ NAN_METHOD(BCashAddr::Is) {
   Nan::Utf8String default_prefix_str(info[1]);
   const char *default_prefix = (const char *)*default_prefix_str;
 
-  bcrypto_cashaddr_error err = BCRYPTO_CASHADDR_ERR_NULL;
+  bcrypto_cash32_error err = BCRYPTO_CASH32_ERR_NULL;
 
-  bool result = bcrypto_cashaddr_is(&err, default_prefix, addr);
+  bool result = bcrypto_cash32_is(&err, default_prefix, addr);
 
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
 
-NAN_METHOD(BCashAddr::ConvertBits) {
+NAN_METHOD(BCash32::ConvertBits) {
   if (info.Length() < 4)
-    return Nan::ThrowError("cashaddr.convertBits() requires arguments.");
+    return Nan::ThrowError("cash32.convertBits() requires arguments.");
 
   v8::Local<v8::Object> data_buf = info[0].As<v8::Object>();
 
@@ -165,20 +165,20 @@ NAN_METHOD(BCashAddr::ConvertBits) {
   if (output == NULL)
     return Nan::ThrowError("Could not allocate.");
 
-  bcrypto_cashaddr_error err = BCRYPTO_CASHADDR_ERR_NULL;
+  bcrypto_cash32_error err = BCRYPTO_CASH32_ERR_NULL;
 
-  if (!bcrypto_cashaddr_convert_bits(&err, output, &output_len, tobits,
+  if (!bcrypto_cash32_convert_bits(&err, output, &output_len, tobits,
                                      data, data_len, frombits, pad)) {
-    return Nan::ThrowError(bcrypto_cashaddr_strerror(err));
+    return Nan::ThrowError(bcrypto_cash32_strerror(err));
   }
 
   info.GetReturnValue().Set(
     Nan::NewBuffer((char *)output, output_len).ToLocalChecked());
 }
 
-NAN_METHOD(BCashAddr::Encode) {
+NAN_METHOD(BCash32::Encode) {
   if (info.Length() < 3)
-    return Nan::ThrowError("cashaddr.encode() requires arguments.");
+    return Nan::ThrowError("cash32.encode() requires arguments.");
 
   if (!info[0]->IsString())
     return Nan::ThrowTypeError("First argument must be a string.");
@@ -186,7 +186,7 @@ NAN_METHOD(BCashAddr::Encode) {
   Nan::Utf8String prefix_str(info[0]);
 
   if (!info[1]->IsNumber())
-    return Nan::ThrowTypeError("Invalid cashaddr type.");
+    return Nan::ThrowTypeError("Invalid cash32 type.");
 
   v8::Local<v8::Object> hashbuf = info[2].As<v8::Object>();
 
@@ -198,7 +198,7 @@ NAN_METHOD(BCashAddr::Encode) {
   double dbl = (double)Nan::To<double>(info[1]).FromJust();
 
   if (type < 0 || type > 15 || (double)type != dbl)
-    return Nan::ThrowError("Invalid cashaddr type.");
+    return Nan::ThrowError("Invalid cash32 type.");
 
   const uint8_t *hash = (uint8_t *)node::Buffer::Data(hashbuf);
   size_t hash_len = node::Buffer::Length(hashbuf);
@@ -208,10 +208,10 @@ NAN_METHOD(BCashAddr::Encode) {
 
   memset(&output[0], 0, sizeof(output));
 
-  bcrypto_cashaddr_error err = BCRYPTO_CASHADDR_ERR_NULL;
+  bcrypto_cash32_error err = BCRYPTO_CASH32_ERR_NULL;
 
-  if (!bcrypto_cashaddr_encode(&err, output, prefix, type, hash, hash_len))
-    return Nan::ThrowError(bcrypto_cashaddr_strerror(err));
+  if (!bcrypto_cash32_encode(&err, output, prefix, type, hash, hash_len))
+    return Nan::ThrowError(bcrypto_cash32_strerror(err));
 
   output_len = strlen(&output[0]);
 
@@ -219,9 +219,9 @@ NAN_METHOD(BCashAddr::Encode) {
     Nan::New<v8::String>(&output[0], output_len).ToLocalChecked());
 }
 
-NAN_METHOD(BCashAddr::Decode) {
+NAN_METHOD(BCash32::Decode) {
   if (info.Length() < 2)
-    return Nan::ThrowError("cashaddr.decode() requires arguments.");
+    return Nan::ThrowError("cash32.decode() requires arguments.");
 
   if (!info[0]->IsString())
     return Nan::ThrowTypeError("First argument must be a string.");
@@ -244,11 +244,11 @@ NAN_METHOD(BCashAddr::Decode) {
   memset(&hash[0], 0, sizeof(hash));
   memset(&prefix[0], 0, sizeof(prefix));
 
-  bcrypto_cashaddr_error err = BCRYPTO_CASHADDR_ERR_NULL;
+  bcrypto_cash32_error err = BCRYPTO_CASH32_ERR_NULL;
 
-  if (!bcrypto_cashaddr_decode(&err, &type, hash, &hash_len,
+  if (!bcrypto_cash32_decode(&err, &type, hash, &hash_len,
                                prefix, default_prefix, addr)) {
-    return Nan::ThrowError(bcrypto_cashaddr_strerror(err));
+    return Nan::ThrowError(bcrypto_cash32_strerror(err));
   }
 
   prefix_len = strlen(&prefix[0]);
@@ -266,9 +266,9 @@ NAN_METHOD(BCashAddr::Decode) {
   info.GetReturnValue().Set(ret);
 }
 
-NAN_METHOD(BCashAddr::Test) {
+NAN_METHOD(BCash32::Test) {
   if (info.Length() < 2)
-    return Nan::ThrowError("cashaddr.test() requires arguments.");
+    return Nan::ThrowError("cash32.test() requires arguments.");
 
   if (!info[0]->IsString())
     return Nan::ThrowTypeError("First argument must be a string.");
@@ -282,9 +282,9 @@ NAN_METHOD(BCashAddr::Test) {
   Nan::Utf8String default_prefix_str(info[1]);
   const char *default_prefix = (const char *)*default_prefix_str;
 
-  bcrypto_cashaddr_error err = BCRYPTO_CASHADDR_ERR_NULL;
+  bcrypto_cash32_error err = BCRYPTO_CASH32_ERR_NULL;
 
-  bool result = bcrypto_cashaddr_test(&err, default_prefix, addr);
+  bool result = bcrypto_cash32_test(&err, default_prefix, addr);
 
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }

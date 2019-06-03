@@ -1,9 +1,9 @@
-#ifndef _BCRYPTO_CASHADDR_HH
-#define _BCRYPTO_CASHADDR_HH
+#ifndef _BCRYPTO_CASH32_HH
+#define _BCRYPTO_CASH32_HH
 #include <node.h>
 #include <nan.h>
 
-class BCashAddr {
+class BCash32 {
 public:
   static void Init(v8::Local<v8::Object> &target);
 

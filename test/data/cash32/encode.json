@@ -3,70 +3,70 @@
     "prefix": "",
     "type": 0,
     "hash": "d1263579c204e17e054fb85963df503311c164da",
-    "reason": "Invalid cashaddr prefix.",
+    "reason": "Invalid cash32 prefix.",
     "note": "Prefix is necessary"
   },
   {
     "prefix": "pReFiX",
     "type": 1,
     "hash": "d007bc6531c7103cbd93d1ea3b7290fcbb3079e4",
-    "reason": "Invalid cashaddr prefix.",
+    "reason": "Invalid cash32 prefix.",
     "note": "Mixed case prefix should be rejected"
   },
   {
     "prefix": "pr3f1x",
     "type": 1,
     "hash": "d007bc6531c7103cbd93d1ea3b7290fcbb3079e4",
-    "reason": "Invalid cashaddr prefix.",
+    "reason": "Invalid cash32 prefix.",
     "note": "Prefix with numbers. Not described in spec, and w/o clear rationale."
   },
   {
     "prefix": "prefixprefixprefixprefixprefixprefixprefixprefixprefixprefixprefixprefixprefixprefix",
     "type": 1,
     "hash": "d007bc6531c7103cbd93d1ea3b7290fcbb3079e4",
-    "reason": "Invalid cashaddr prefix.",
+    "reason": "Invalid cash32 prefix.",
     "note": "84 characters US-ASCII, too long. Not described in spec."
   },
   {
     "prefix": "p",
     "type": 16,
     "hash": "d007bc6531c7103cbd93d1ea3b7290fcbb3079e4",
-    "reason": "Invalid cashaddr type.",
+    "reason": "Invalid cash32 type.",
     "note": "0 to 15 are valid types"
   },
   {
     "prefix": "p",
     "type": 0.5,
     "hash": "d007bc6531c7103cbd93d1ea3b7290fcbb3079e4",
-    "reason": "Invalid cashaddr type.",
+    "reason": "Invalid cash32 type.",
     "note": "Floating point numbers not valid types"
   },
   {
     "prefix": "bitcoincash",
     "type": 9007199254740991,
     "hash": "d007bc6531c7103cbd93d1ea3b7290fcbb3079e4",
-    "reason": "Invalid cashaddr type.",
+    "reason": "Invalid cash32 type.",
     "note": "Large numbers, such as the max safe integer"
   },
   {
     "prefix": "bitcoincash",
     "type": "Infinity",
     "hash": "d007bc6531c7103cbd93d1ea3b7290fcbb3079e4",
-    "reason": "Invalid cashaddr type.",
+    "reason": "Invalid cash32 type.",
     "note": "Infinity not valid"
   },
   {
     "prefix": "bitcoincash",
     "type": -1,
     "hash": "d007bc6531c7103cbd93d1ea3b7290fcbb3079e4",
-    "reason": "Invalid cashaddr type.",
+    "reason": "Invalid cash32 type.",
     "note": "Negative not valid"
   },
   {
     "prefix": "bitcoincash",
     "type": -9007199254740991,
     "hash": "d007bc6531c7103cbd93d1ea3b7290fcbb3079e4",
-    "reason": "Invalid cashaddr type.",
+    "reason": "Invalid cash32 type.",
     "note": "Large negative number not valid"
   },
   {

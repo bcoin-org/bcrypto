@@ -21,7 +21,7 @@
 #ifdef BCRYPTO_HAS_GMP
 #include "bn.h"
 #endif
-#include "cashaddr.h"
+#include "cash32.h"
 #include "chacha20.h"
 #include "cipherbase.h"
 #include "dsa.h"
@@ -87,7 +87,7 @@ NAN_MODULE_INIT(init) {
 #ifdef BCRYPTO_HAS_GMP
   BBN::Init(target);
 #endif
-  BCashAddr::Init(target);
+  BCash32::Init(target);
   BChaCha20::Init(target);
   BCipherBase::Init(target);
   Nan::Export(target, "cleanse", cleanse);

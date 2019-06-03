@@ -24,7 +24,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "cashaddr.h"
+#include "cash32.h"
 
 static uint64_t
 polymod_step(uint64_t pre) {
@@ -51,7 +51,7 @@ static const int TABLE[128] = {
 };
 
 static int
-cashaddr_encoded_size(size_t bytes, size_t *encoded_size) {
+cash32_encoded_size(size_t bytes, size_t *encoded_size) {
   switch (bytes * 8) {
     case 160:
       *encoded_size = 0;
@@ -84,8 +84,8 @@ cashaddr_encoded_size(size_t bytes, size_t *encoded_size) {
 }
 
 int
-bcrypto_cashaddr_serialize(
-  bcrypto_cashaddr_error *err,
+bcrypto_cash32_serialize(
+  bcrypto_cash32_error *err,
   char *output,
   const char *prefix,
   const uint8_t *data,
@@ -108,7 +108,7 @@ bcrypto_cashaddr_serialize(
     } else if (pch >= 'A' && pch <= 'Z') {
       have_upper = 1;
     } else if (pch >= '0' && pch <= '9') {
-      *err = BCRYPTO_CASHADDR_ERR_PREFIX;
+      *err = BCRYPTO_CASH32_ERR_PREFIX;
       return 0;
     }
 
@@ -124,13 +124,13 @@ bcrypto_cashaddr_serialize(
     i += 1;
 
     if (i > 83) {
-      *err = BCRYPTO_CASHADDR_ERR_PREFIX;
+      *err = BCRYPTO_CASH32_ERR_PREFIX;
       return 0;
     }
   }
 
   if ((have_upper && have_lower) || i == 0) {
-    *err = BCRYPTO_CASHADDR_ERR_PREFIX;
+    *err = BCRYPTO_CASH32_ERR_PREFIX;
     return 0;
   }
 
@@ -161,8 +161,8 @@ bcrypto_cashaddr_serialize(
 }
 
 int
-bcrypto_cashaddr_deserialize(
-  bcrypto_cashaddr_error *err,
+bcrypto_cash32_deserialize(
+  bcrypto_cash32_error *err,
   char *prefix,
   uint8_t *data,
   size_t *data_len,
@@ -177,14 +177,14 @@ bcrypto_cashaddr_deserialize(
   int have_upper = 0;
 
   if (input_len < 8 || input_len > 196) { // 83 + 1 + 112
-    *err = BCRYPTO_CASHADDR_ERR_LENGTH;
+    *err = BCRYPTO_CASH32_ERR_LENGTH;
     return 0;
   }
 
   while (prefix_len < input_len && input[prefix_len] != ':') {
     prefix_len++;
     if (prefix_len > 83) {
-      *err = BCRYPTO_CASHADDR_ERR_PREFIX;
+      *err = BCRYPTO_CASH32_ERR_PREFIX;
       return 0;
     }
   }
@@ -197,12 +197,12 @@ bcrypto_cashaddr_deserialize(
   *data_len = has_prefix ? input_len - (1 + prefix_len) : input_len;
 
   if (prefix_input_len < 1) {
-    *err = BCRYPTO_CASHADDR_ERR_PREFIX;
+    *err = BCRYPTO_CASH32_ERR_PREFIX;
     return 0;
   }
 
   if (*data_len < 8) {
-    *err = BCRYPTO_CASHADDR_ERR_LENGTH;
+    *err = BCRYPTO_CASH32_ERR_LENGTH;
     return 0;
   }
 
@@ -212,7 +212,7 @@ bcrypto_cashaddr_deserialize(
     int ch = prefix_input[i];
 
     if (ch < 33 || ch > 126) {
-      *err = BCRYPTO_CASHADDR_ERR_CHARACTER;
+      *err = BCRYPTO_CASH32_ERR_CHARACTER;
       return 0;
     }
 
@@ -222,7 +222,7 @@ bcrypto_cashaddr_deserialize(
       have_upper = 1;
       ch = (ch - 'A') + 'a';
     } else if (ch >= '0' && ch <= '9') {
-      *err = BCRYPTO_CASHADDR_ERR_PREFIX;
+      *err = BCRYPTO_CASH32_ERR_PREFIX;
       return 0;
     }
 
@@ -246,12 +246,12 @@ bcrypto_cashaddr_deserialize(
       have_upper = 1;
 
     if (input[j] == ':') {
-      *err = BCRYPTO_CASHADDR_ERR_SEPARATOR;
+      *err = BCRYPTO_CASH32_ERR_SEPARATOR;
       return 0;
     }
 
     if (v == -1) {
-      *err = BCRYPTO_CASHADDR_ERR_CHARACTER;
+      *err = BCRYPTO_CASH32_ERR_CHARACTER;
       return 0;
     }
 
@@ -266,32 +266,32 @@ bcrypto_cashaddr_deserialize(
     payload_len += 1;
 
     if (payload_len > 112) {
-      *err = BCRYPTO_CASHADDR_ERR_LENGTH;
+      *err = BCRYPTO_CASH32_ERR_LENGTH;
       return 0;
     }
   }
 
   if (payload_len <= 8) {
-    *err = BCRYPTO_CASHADDR_ERR_LENGTH;
+    *err = BCRYPTO_CASH32_ERR_LENGTH;
     return 0;
   }
 
   if (have_lower && have_upper) {
-    *err = BCRYPTO_CASHADDR_ERR_CASING;
+    *err = BCRYPTO_CASH32_ERR_CASING;
     return 0;
   }
 
   int valid_checksum = (chk == 1) && (strcmp(prefix, default_prefix) == 0);
 
   if (!valid_checksum)
-    *err = BCRYPTO_CASHADDR_ERR_CHECKSUM;
+    *err = BCRYPTO_CASH32_ERR_CHECKSUM;
 
   return valid_checksum;
 }
 
 int
-bcrypto_cashaddr_is(
-  bcrypto_cashaddr_error *err,
+bcrypto_cash32_is(
+  bcrypto_cash32_error *err,
   const char *default_prefix,
   const char *addr
 ) {
@@ -302,8 +302,8 @@ bcrypto_cashaddr_is(
   memset(&prefix[0], 0, sizeof(prefix));
   memset(&data[0], 0, sizeof(data));
 
-  if (!bcrypto_cashaddr_deserialize(err, prefix, data,
-                                    &data_len, default_prefix, addr)) {
+  if (!bcrypto_cash32_deserialize(err, prefix, data,
+                                  &data_len, default_prefix, addr)) {
     return 0;
   }
 
@@ -311,8 +311,8 @@ bcrypto_cashaddr_is(
 }
 
 int
-bcrypto_cashaddr_convert_bits(
-  bcrypto_cashaddr_error *err,
+bcrypto_cash32_convert_bits(
+  bcrypto_cash32_error *err,
   uint8_t *out,
   size_t *outlen,
   int outbits,
@@ -329,7 +329,7 @@ bcrypto_cashaddr_convert_bits(
     uint8_t value = *(in++);
 
     if ((value >> inbits) != 0) {
-      *err = BCRYPTO_CASHADDR_ERR_CHARACTER;
+      *err = BCRYPTO_CASH32_ERR_CHARACTER;
       return 0;
     }
 
@@ -345,7 +345,7 @@ bcrypto_cashaddr_convert_bits(
   if (pad && bits) {
     out[(*outlen)++] = (val << (outbits - bits)) & maxv;
   } else if (bits >= inbits || ((val << (outbits - bits)) & maxv)) {
-    *err = BCRYPTO_CASHADDR_ERR_CHARACTER;
+    *err = BCRYPTO_CASH32_ERR_CHARACTER;
     return 0;
   }
 
@@ -353,8 +353,8 @@ bcrypto_cashaddr_convert_bits(
 }
 
 int
-bcrypto_cashaddr_encode(
-  bcrypto_cashaddr_error *err,
+bcrypto_cash32_encode(
+  bcrypto_cash32_error *err,
   char *output,
   const char *prefix,
   int type,
@@ -365,12 +365,12 @@ bcrypto_cashaddr_encode(
 
   // There are 4 bits available for the version (2 ^ 4 = 16)
   if (type < 0 || type > 15) {
-    *err = BCRYPTO_CASHADDR_ERR_TYPE;
+    *err = BCRYPTO_CASH32_ERR_TYPE;
     return 0;
   }
 
-  if (!cashaddr_encoded_size(hash_len, &encoded_size)) {
-    *err = BCRYPTO_CASHADDR_ERR_SIZE;
+  if (!cash32_encoded_size(hash_len, &encoded_size)) {
+    *err = BCRYPTO_CASH32_ERR_SIZE;
     return 0;
   }
 
@@ -385,18 +385,18 @@ bcrypto_cashaddr_encode(
 
   memset(&converted[0], 0, sizeof(converted));
 
-  if (!bcrypto_cashaddr_convert_bits(err, converted, &converted_len,
-                                     5, data, hash_len + 1, 8, 1)) {
+  if (!bcrypto_cash32_convert_bits(err, converted, &converted_len,
+                                   5, data, hash_len + 1, 8, 1)) {
     return 0;
   }
 
-  return bcrypto_cashaddr_serialize(err, output, prefix,
-                                    converted, converted_len);
+  return bcrypto_cash32_serialize(err, output, prefix,
+                                  converted, converted_len);
 }
 
 int
-bcrypto_cashaddr_decode(
-  bcrypto_cashaddr_error *err,
+bcrypto_cash32_decode(
+  bcrypto_cash32_error *err,
   int *type,
   uint8_t *hash,
   size_t *hash_len,
@@ -409,15 +409,15 @@ bcrypto_cashaddr_decode(
 
   memset(&data[0], 0, sizeof(data));
 
-  if (!bcrypto_cashaddr_deserialize(err, prefix, data,
-                                    &data_len, default_prefix, addr)) {
+  if (!bcrypto_cash32_deserialize(err, prefix, data,
+                                  &data_len, default_prefix, addr)) {
     return 0;
   }
 
   size_t extrabits = (data_len * 5) & 7;
 
   if (extrabits >= 5) {
-    *err = BCRYPTO_CASHADDR_ERR_PADDING;
+    *err = BCRYPTO_CASH32_ERR_PADDING;
     return 0;
   }
 
@@ -425,7 +425,7 @@ bcrypto_cashaddr_decode(
   size_t mask = (1 << extrabits) - 1;
 
   if (last & mask) {
-    *err = BCRYPTO_CASHADDR_ERR_NONZERO_PADDING;
+    *err = BCRYPTO_CASH32_ERR_NONZERO_PADDING;
     return 0;
   }
 
@@ -434,13 +434,13 @@ bcrypto_cashaddr_decode(
 
   memset(&converted[0], 0, sizeof(converted));
 
-  if (!bcrypto_cashaddr_convert_bits(err, converted, &converted_len,
-                                     8, data, data_len, 5, 0)) {
+  if (!bcrypto_cash32_convert_bits(err, converted, &converted_len,
+                                   8, data, data_len, 5, 0)) {
     return 0;
   }
 
   if (converted_len > 1 + 64) {
-    *err = BCRYPTO_CASHADDR_ERR_LENGTH;
+    *err = BCRYPTO_CASH32_ERR_LENGTH;
     return 0;
   }
 
@@ -454,7 +454,7 @@ bcrypto_cashaddr_decode(
     size *= 2;
 
   if (size != *hash_len) {
-    *err = BCRYPTO_CASHADDR_ERR_LENGTH;
+    *err = BCRYPTO_CASH32_ERR_LENGTH;
     return 0;
   }
 
@@ -462,8 +462,8 @@ bcrypto_cashaddr_decode(
 }
 
 int
-bcrypto_cashaddr_test(
-  bcrypto_cashaddr_error *err,
+bcrypto_cash32_test(
+  bcrypto_cash32_error *err,
   const char *default_prefix,
   const char *addr
 ) {
@@ -475,8 +475,8 @@ bcrypto_cashaddr_test(
   memset(&prefix[0], 0, sizeof(prefix));
   memset(&hash[0], 0, sizeof(hash));
 
-  if (!bcrypto_cashaddr_decode(err, &type, hash, &hash_len,
-                               prefix, default_prefix, addr)) {
+  if (!bcrypto_cash32_decode(err, &type, hash, &hash_len,
+                             prefix, default_prefix, addr)) {
     return 0;
   }
 
@@ -484,29 +484,29 @@ bcrypto_cashaddr_test(
 }
 
 const char *
-bcrypto_cashaddr_strerror(bcrypto_cashaddr_error err) {
+bcrypto_cash32_strerror(bcrypto_cash32_error err) {
   switch (err) {
-  case BCRYPTO_CASHADDR_ERR_CHECKSUM:
-    return "Invalid cashaddr checksum.";
-  case BCRYPTO_CASHADDR_ERR_LENGTH:
-    return "Invalid cashaddr data length.";
-  case BCRYPTO_CASHADDR_ERR_CASING:
-    return "Invalid cashaddr casing.";
-  case BCRYPTO_CASHADDR_ERR_PADDING:
+  case BCRYPTO_CASH32_ERR_CHECKSUM:
+    return "Invalid cash32 checksum.";
+  case BCRYPTO_CASH32_ERR_LENGTH:
+    return "Invalid cash32 data length.";
+  case BCRYPTO_CASH32_ERR_CASING:
+    return "Invalid cash32 casing.";
+  case BCRYPTO_CASH32_ERR_PADDING:
     return "Invalid padding in data.";
-  case BCRYPTO_CASHADDR_ERR_NONZERO_PADDING:
+  case BCRYPTO_CASH32_ERR_NONZERO_PADDING:
     return "Non zero padding.";
-  case BCRYPTO_CASHADDR_ERR_CHARACTER:
-    return "Invalid cashaddr character.";
-  case BCRYPTO_CASHADDR_ERR_PREFIX:
-    return "Invalid cashaddr prefix.";
-  case BCRYPTO_CASHADDR_ERR_TYPE:
-    return "Invalid cashaddr type.";
-  case BCRYPTO_CASHADDR_ERR_SIZE:
+  case BCRYPTO_CASH32_ERR_CHARACTER:
+    return "Invalid cash32 character.";
+  case BCRYPTO_CASH32_ERR_PREFIX:
+    return "Invalid cash32 prefix.";
+  case BCRYPTO_CASH32_ERR_TYPE:
+    return "Invalid cash32 type.";
+  case BCRYPTO_CASH32_ERR_SIZE:
     return "Non standard length.";
-  case BCRYPTO_CASHADDR_ERR_SEPARATOR:
-    return "Invalid cashaddr separators.";
+  case BCRYPTO_CASH32_ERR_SEPARATOR:
+    return "Invalid cash32 separators.";
   default:
-    return "Invalid cashaddr string.";
+    return "Invalid cash32 string.";
   }
 }

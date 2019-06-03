@@ -20,8 +20,8 @@
  * THE SOFTWARE.
  */
 
-#ifndef _BCRYPTO_CASHADDR_H
-#define _BCRYPTO_CASHADDR_H 1
+#ifndef _BCRYPTO_CASH32_H
+#define _BCRYPTO_CASH32_H 1
 
 #include <stdint.h>
 
@@ -29,23 +29,23 @@
 extern "C" {
 #endif
 
-typedef enum bcrypto_cashaddr_error_t {
-  BCRYPTO_CASHADDR_ERR_NULL = 0,
-  BCRYPTO_CASHADDR_ERR_CHECKSUM,
-  BCRYPTO_CASHADDR_ERR_LENGTH,
-  BCRYPTO_CASHADDR_ERR_CASING,
-  BCRYPTO_CASHADDR_ERR_PADDING,
-  BCRYPTO_CASHADDR_ERR_NONZERO_PADDING,
-  BCRYPTO_CASHADDR_ERR_CHARACTER,
-  BCRYPTO_CASHADDR_ERR_PREFIX,
-  BCRYPTO_CASHADDR_ERR_TYPE,
-  BCRYPTO_CASHADDR_ERR_SIZE,
-  BCRYPTO_CASHADDR_ERR_SEPARATOR
-} bcrypto_cashaddr_error;
+typedef enum bcrypto_cash32_error_t {
+  BCRYPTO_CASH32_ERR_NULL = 0,
+  BCRYPTO_CASH32_ERR_CHECKSUM,
+  BCRYPTO_CASH32_ERR_LENGTH,
+  BCRYPTO_CASH32_ERR_CASING,
+  BCRYPTO_CASH32_ERR_PADDING,
+  BCRYPTO_CASH32_ERR_NONZERO_PADDING,
+  BCRYPTO_CASH32_ERR_CHARACTER,
+  BCRYPTO_CASH32_ERR_PREFIX,
+  BCRYPTO_CASH32_ERR_TYPE,
+  BCRYPTO_CASH32_ERR_SIZE,
+  BCRYPTO_CASH32_ERR_SEPARATOR
+} bcrypto_cash32_error;
 
 int
-bcrypto_cashaddr_serialize(
-  bcrypto_cashaddr_error *err,
+bcrypto_cash32_serialize(
+  bcrypto_cash32_error *err,
   char *output,
   const char *prefix,
   const uint8_t *data,
@@ -53,8 +53,8 @@ bcrypto_cashaddr_serialize(
 );
 
 int
-bcrypto_cashaddr_deserialize(
-  bcrypto_cashaddr_error *err,
+bcrypto_cash32_deserialize(
+  bcrypto_cash32_error *err,
   char *prefix,
   uint8_t *data,
   size_t *data_len,
@@ -63,15 +63,15 @@ bcrypto_cashaddr_deserialize(
 );
 
 int
-bcrypto_cashaddr_is(
-  bcrypto_cashaddr_error *err,
+bcrypto_cash32_is(
+  bcrypto_cash32_error *err,
   const char *default_prefix,
   const char *addr
 );
 
 int
-bcrypto_cashaddr_convert_bits(
-  bcrypto_cashaddr_error *err,
+bcrypto_cash32_convert_bits(
+  bcrypto_cash32_error *err,
   uint8_t *out,
   size_t *outlen,
   int outbits,
@@ -82,8 +82,8 @@ bcrypto_cashaddr_convert_bits(
 );
 
 int
-bcrypto_cashaddr_encode(
-  bcrypto_cashaddr_error *err,
+bcrypto_cash32_encode(
+  bcrypto_cash32_error *err,
   char *output,
   const char *prefix,
   int type,
@@ -92,8 +92,8 @@ bcrypto_cashaddr_encode(
 );
 
 int
-bcrypto_cashaddr_decode(
-  bcrypto_cashaddr_error *err,
+bcrypto_cash32_decode(
+  bcrypto_cash32_error *err,
   int* type,
   uint8_t* hash,
   size_t* hash_len,
@@ -103,14 +103,14 @@ bcrypto_cashaddr_decode(
 );
 
 int
-bcrypto_cashaddr_test(
-  bcrypto_cashaddr_error *err,
+bcrypto_cash32_test(
+  bcrypto_cash32_error *err,
   const char *default_prefix,
   const char *addr
 );
 
 const char *
-bcrypto_cashaddr_strerror(bcrypto_cashaddr_error err);
+bcrypto_cash32_strerror(bcrypto_cash32_error err);
 
 #if defined(__cplusplus)
 }
