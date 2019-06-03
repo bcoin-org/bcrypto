@@ -63,8 +63,11 @@ private:
   static NAN_METHOD(Ishrn);
   static NAN_METHOD(Iushrn);
   static NAN_METHOD(Setn);
+  static NAN_METHOD(Usetn);
   static NAN_METHOD(Testn);
+  static NAN_METHOD(Utestn);
   static NAN_METHOD(Imaskn);
+  static NAN_METHOD(Iumaskn);
   static NAN_METHOD(Andln);
   static NAN_METHOD(Ineg);
   static NAN_METHOD(Iabs);

@@ -184,8 +184,11 @@ BBN::Init(v8::Local<v8::Object> &target) {
   Nan::SetPrototypeMethod(tpl, "ishrn", BBN::Ishrn);
   Nan::SetPrototypeMethod(tpl, "iushrn", BBN::Iushrn);
   Nan::SetPrototypeMethod(tpl, "setn", BBN::Setn);
+  Nan::SetPrototypeMethod(tpl, "usetn", BBN::Usetn);
   Nan::SetPrototypeMethod(tpl, "testn", BBN::Testn);
+  Nan::SetPrototypeMethod(tpl, "utestn", BBN::Utestn);
   Nan::SetPrototypeMethod(tpl, "imaskn", BBN::Imaskn);
+  Nan::SetPrototypeMethod(tpl, "iumaskn", BBN::Iumaskn);
   Nan::SetPrototypeMethod(tpl, "andln", BBN::Andln);
   Nan::SetPrototypeMethod(tpl, "ineg", BBN::Ineg);
   Nan::SetPrototypeMethod(tpl, "iabs", BBN::Iabs);
@@ -1060,6 +1063,29 @@ NAN_METHOD(BBN::Setn) {
 
   uint32_t bit = Nan::To<uint32_t>(info[0]).FromJust();
   bool val = Nan::To<bool>(info[1]).FromJust();
+
+  if (val)
+    mpz_setbit(a->n, bit);
+  else
+    mpz_clrbit(a->n, bit);
+
+  info.GetReturnValue().Set(info.Holder());
+}
+
+NAN_METHOD(BBN::Usetn) {
+  BBN *a = ObjectWrap::Unwrap<BBN>(info.Holder());
+
+  if (info.Length() < 2)
+    return Nan::ThrowError(ARG_ERROR(usetn, 2));
+
+  if (!IsUint32(info[0]))
+    return Nan::ThrowTypeError(TYPE_ERROR(bit, integer));
+
+  if (!info[1]->IsNumber() && !info[1]->IsBoolean())
+    return Nan::ThrowTypeError(TYPE_ERROR(val, number));
+
+  uint32_t bit = Nan::To<uint32_t>(info[0]).FromJust();
+  bool val = Nan::To<bool>(info[1]).FromJust();
   int neg = mpz_sgn(a->n) < 0;
 
   if (neg)
@@ -1081,6 +1107,21 @@ NAN_METHOD(BBN::Testn) {
 
   if (info.Length() < 1)
     return Nan::ThrowError(ARG_ERROR(testn, 1));
+
+  if (!IsUint32(info[0]))
+    return Nan::ThrowTypeError(TYPE_ERROR(bit, integer));
+
+  uint32_t bit = Nan::To<uint32_t>(info[0]).FromJust();
+  bool ret = (bool)mpz_tstbit(a->n, bit);
+
+  info.GetReturnValue().Set(Nan::New<v8::Boolean>(ret));
+}
+
+NAN_METHOD(BBN::Utestn) {
+  BBN *a = ObjectWrap::Unwrap<BBN>(info.Holder());
+
+  if (info.Length() < 1)
+    return Nan::ThrowError(ARG_ERROR(utestn, 1));
 
   if (!IsUint32(info[0]))
     return Nan::ThrowTypeError(TYPE_ERROR(bit, integer));
@@ -1108,12 +1149,32 @@ NAN_METHOD(BBN::Imaskn) {
   if (!IsUint32(info[0]))
     return Nan::ThrowTypeError(TYPE_ERROR(bit, integer));
 
-  if (mpz_sgn(a->n) < 0)
-    return Nan::ThrowRangeError(RANGE_ERROR(imaskn));
-
   uint32_t bit = Nan::To<uint32_t>(info[0]).FromJust();
 
   bmpz_mask(a->n, a->n, bit);
+
+  info.GetReturnValue().Set(info.Holder());
+}
+
+NAN_METHOD(BBN::Iumaskn) {
+  BBN *a = ObjectWrap::Unwrap<BBN>(info.Holder());
+
+  if (info.Length() < 1)
+    return Nan::ThrowError(ARG_ERROR(iumaskn, 1));
+
+  if (!IsUint32(info[0]))
+    return Nan::ThrowTypeError(TYPE_ERROR(bit, integer));
+
+  uint32_t bit = Nan::To<uint32_t>(info[0]).FromJust();
+  int neg = mpz_sgn(a->n) < 0;
+
+  if (neg)
+    mpz_neg(a->n, a->n);
+
+  bmpz_mask(a->n, a->n, bit);
+
+  if (neg)
+    mpz_neg(a->n, a->n);
 
   info.GetReturnValue().Set(info.Holder());
 }

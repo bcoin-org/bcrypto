@@ -3789,11 +3789,40 @@ describe('BN.js', function() {
         assert.strictEqual(new BN('123456789', 16).imaskn(4).toString(16), '9');
         assert.strictEqual(new BN('123456789', 16).imaskn(16).toString(16), '6789');
         assert.strictEqual(new BN('123456789', 16).imaskn(28).toString(16), '3456789');
+
+        assert.strictEqual(new BN(-3).imaskn(1).toString(16), '1');
+        assert.strictEqual(new BN('-123456789', 16).imaskn(4).toString(16), '7');
+        assert.strictEqual(new BN('-123456789', 16).imaskn(16).toString(16), '9877');
+        assert.strictEqual(new BN('-123456789', 16).imaskn(28).toString(16), 'cba9877');
       });
 
       it('should not mask when number is bigger than length', () => {
         assert.strictEqual(new BN(0xe3).imaskn(56).toString(16), 'e3');
         assert.strictEqual(new BN(0xe3).imaskn(26).toString(16), 'e3');
+        assert.strictEqual(new BN(-0xe3).imaskn(56).toString(16), 'ffffffffffff1d');
+        assert.strictEqual(new BN(-0xe3).imaskn(26).toString(16), '3ffff1d');
+      });
+    });
+
+    describe('.iumaskn()', () => {
+      it('should mask bits in-place', () => {
+        assert.strictEqual(new BN(0).iumaskn(1).toString(16), '0');
+        assert.strictEqual(new BN(3).iumaskn(1).toString(16), '1');
+        assert.strictEqual(new BN('123456789', 16).iumaskn(4).toString(16), '9');
+        assert.strictEqual(new BN('123456789', 16).iumaskn(16).toString(16), '6789');
+        assert.strictEqual(new BN('123456789', 16).iumaskn(28).toString(16), '3456789');
+
+        assert.strictEqual(new BN(-3).iumaskn(1).toString(16), '-1');
+        assert.strictEqual(new BN('-123456789', 16).iumaskn(4).toString(16), '-9');
+        assert.strictEqual(new BN('-123456789', 16).iumaskn(16).toString(16), '-6789');
+        assert.strictEqual(new BN('-123456789', 16).iumaskn(28).toString(16), '-3456789');
+      });
+
+      it('should not mask when number is bigger than length', () => {
+        assert.strictEqual(new BN(0xe3).iumaskn(56).toString(16), 'e3');
+        assert.strictEqual(new BN(0xe3).iumaskn(26).toString(16), 'e3');
+        assert.strictEqual(new BN(-0xe3).iumaskn(56).toString(16), '-e3');
+        assert.strictEqual(new BN(-0xe3).iumaskn(26).toString(16), '-e3');
       });
     });
 
@@ -3806,11 +3835,14 @@ describe('BN.js', function() {
           const bn = new BN(hex, 16);
           const bl = bn.bitLength();
 
-          for (let i = 0; i < bl; i++)
+          for (let i = 0; i < bl; i++) {
             assert.strictEqual(bn.testn(i), true);
+            assert.strictEqual(bn.utestn(i), true);
+          }
 
           // test off the end
           assert.strictEqual(bn.testn(bl), false);
+          assert.strictEqual(bn.utestn(bl), false);
         });
 
         const xbits = '01111001010111001001000100011101'
@@ -3824,13 +3856,39 @@ describe('BN.js', function() {
         const x = new BN(
           '23478905234580795234378912401239784125643978256123048348957342');
 
+        for (let i = 0; i < x.bitLength(); i++) {
+          assert.strictEqual(x.testn(i), (xbits.charAt(i) === '1'), 'Failed @ bit ' + i);
+          assert.strictEqual(x.utestn(i), (xbits.charAt(i) === '1'), 'Failed @ bit ' + i);
+        }
+      });
+
+      it('should support test specific bit (negative)', () => {
+        const xbits = '01000110101000110110111011100010'
+                    + '00101100010011100111000110100010'
+                    + '01101011000111111110100111000010'
+                    + '10100000110000011011100001111101'
+                    + '10100101011000101110101100111011'
+                    + '10010110100001011110110000011001'
+                    + '110001101000';
+
+        const x = new BN(
+          '-23478905234580795234378912401239784125643978256123048348957342');
+
         for (let i = 0; i < x.bitLength(); i++)
           assert.strictEqual(x.testn(i), (xbits.charAt(i) === '1'), 'Failed @ bit ' + i);
+
+        const y = new BN(-2);
+
+        for (let i = 2; i < x.bitLength(); i++)
+          y.setn(i, xbits.charCodeAt(i) - 0x30);
+
+        assert.strictEqual(y.toString(2), x.toString(2));
       });
 
       it('should have short-cuts', () => {
         const x = new BN('abcd', 16);
         assert(!x.testn(128));
+        assert(!x.utestn(128));
       });
     });
 
@@ -4027,6 +4085,40 @@ describe('BN.js', function() {
         assert.strictEqual(new BN('1000000000000000000000000001', 2).setn(27, false)
           .toString(2), '1');
         assert.strictEqual(new BN('101', 2).setn(2, false).toString(2), '1');
+
+        assert.strictEqual(new BN('-1000000000000000000000000001', 2).setn(27, false)
+          .toString(2), '-1000000000000000000000000001');
+        assert.strictEqual(new BN('-101', 2).setn(2, false).toString(2), '-101');
+      });
+    });
+
+    describe('.usetn()', () => {
+      it('should allow single bits to be set', () => {
+        assert.strictEqual(new BN(0).usetn(2, true).toString(2), '100');
+        assert.strictEqual(new BN(0).usetn(27, true).toString(2),
+          '1000000000000000000000000000');
+        assert.strictEqual(new BN(0).usetn(63, true).toString(16),
+          new BN(1).iushln(63).toString(16));
+        assert.strictEqual(new BN('1000000000000000000000000001', 2).usetn(27, false)
+          .toString(2), '1');
+        assert.strictEqual(new BN('101', 2).usetn(2, false).toString(2), '1');
+
+        assert.strictEqual(new BN('-1000000000000000000000000001', 2).usetn(27, false)
+          .toString(2), '-1');
+        assert.strictEqual(new BN('-101', 2).usetn(2, false).toString(2), '-1');
+      });
+    });
+
+    describe('.not()', () => {
+      it('should allow bitwise negation', () => {
+        assert.strictEqual(new BN('111000111', 2).not().toString(2),
+          '-111001000');
+        assert.strictEqual(new BN('-000111000', 2).not().toString(2),
+          '110111');
+        assert.strictEqual(new BN('111000111', 2).inot().toString(2),
+          '-111001000');
+        assert.strictEqual(new BN('-000111000', 2).inot().toString(2),
+          '110111');
       });
     });
 
@@ -4723,6 +4815,16 @@ describe('BN.js', function() {
         assert.strictEqual(new BN(0x100).zeroBits(), 8);
         assert.strictEqual(new BN(0x1000000).zeroBits(), 24);
         assert.strictEqual(new BN(0x123456).zeroBits(), 1);
+
+        assert.strictEqual(new BN(-0x1).zeroBits(), 0);
+        assert.strictEqual(new BN(-0x2).zeroBits(), 1);
+        assert.strictEqual(new BN(-0x3).zeroBits(), 0);
+        assert.strictEqual(new BN(-0x4).zeroBits(), 2);
+        assert.strictEqual(new BN(-0x8).zeroBits(), 3);
+        assert.strictEqual(new BN(-0x10).zeroBits(), 4);
+        assert.strictEqual(new BN(-0x100).zeroBits(), 8);
+        assert.strictEqual(new BN(-0x1000000).zeroBits(), 24);
+        assert.strictEqual(new BN(-0x123456).zeroBits(), 1);
       });
     });
 
