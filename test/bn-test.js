@@ -3738,11 +3738,14 @@ describe('BN.js', function() {
   describe('BN.js/Binary', () => {
     describe('.shl()', () => {
       it('should shl numbers', () => {
-        // TODO(indutny): add negative numbers when the time will come
         assert.strictEqual(new BN('69527932928').shln(13).toString(16),
           '2060602000000');
         assert.strictEqual(new BN('69527932928').shln(45).toString(16),
           '206060200000000000000');
+        assert.strictEqual(new BN('-69527932928').shln(13).toString(16),
+          '-2060602000000');
+        assert.strictEqual(new BN('-69527932928').shln(45).toString(16),
+          '-206060200000000000000');
       });
 
       it('should ushl numbers', () => {
@@ -3755,13 +3758,18 @@ describe('BN.js', function() {
 
     describe('.shr()', () => {
       it('should shr numbers', () => {
-        // TODO(indutny): add negative numbers when the time will come
         assert.strictEqual(new BN('69527932928').shrn(13).toString(16),
           '818180');
         assert.strictEqual(new BN('69527932928').shrn(17).toString(16),
           '81818');
         assert.strictEqual(new BN('69527932928').shrn(256).toString(16),
           '0');
+        assert.strictEqual(new BN('-69527932928').shrn(13).toString(16),
+          '-818181');
+        assert.strictEqual(new BN('-69527932928').shrn(17).toString(16),
+          '-81819');
+        assert.strictEqual(new BN('-69527932928').shrn(256).toString(16),
+          '-1');
       });
 
       it('should ushr numbers', () => {
@@ -3838,6 +3846,52 @@ describe('BN.js', function() {
           new BN('abcd0000ffff', 16)
             .and(new BN('abcd', 16)).toString(16),
           'abcd');
+        assert.strictEqual(
+          new BN('-abcd0000ffff', 16)
+            .and(new BN('abcd', 16)).toString(16),
+          '1');
+        assert.strictEqual(
+          new BN('abcd0000ffff', 16)
+            .and(new BN('-abcd', 16)).toString(16),
+          'abcd00005433');
+        assert.strictEqual(
+          new BN('-abcd0000ffff', 16)
+            .and(new BN('-abcd', 16)).toString(16),
+          '-abcd0000ffff');
+
+        assert.strictEqual(
+          new BN('abcd0000ffff', 16)
+            .andn(0xabcd).toString(16),
+          'abcd');
+        assert.strictEqual(
+          new BN('-abcd0000ffff', 16)
+            .andn(0xabcd).toString(16),
+          '1');
+        assert.strictEqual(
+          new BN('abcd0000ffff', 16)
+            .andn(-0xabcd).toString(16),
+          'abcd00005433');
+        assert.strictEqual(
+          new BN('-abcd0000ffff', 16)
+            .andn(-0xabcd).toString(16),
+          '-abcd0000ffff');
+
+        assert.strictEqual(
+          new BN('abcd0000ffff', 16)
+            .andrn(0xabcd).toString(16),
+          'abcd');
+        assert.strictEqual(
+          new BN('-abcd0000ffff', 16)
+            .andrn(0xabcd).toString(16),
+          '1');
+        assert.strictEqual(
+          new BN('abcd0000ffff', 16)
+            .andrn(-0xabcd).toString(16),
+          'abcd00005433');
+        assert.strictEqual(
+          new BN('-abcd0000ffff', 16)
+            .andrn(-0xabcd).toString(16),
+          '-abcd0000ffff');
       });
     });
 
@@ -3866,6 +3920,28 @@ describe('BN.js', function() {
         assert.strictEqual(new BN('abcd00000000', 16)
           .or(new BN('abcd', 16))
           .toString(16), 'abcd0000abcd');
+        assert.strictEqual(new BN('-abcd00000000', 16)
+          .or(new BN('abcd', 16))
+          .toString(16), '-abccffff5433');
+        assert.strictEqual(new BN('abcd00000000', 16)
+          .or(new BN('-abcd', 16))
+          .toString(16), '-abcd');
+        assert.strictEqual(new BN('-abcd00000000', 16)
+          .or(new BN('-abcd', 16))
+          .toString(16), '-abcd');
+
+        assert.strictEqual(new BN('abcd00000000', 16)
+          .orn(0xabcd)
+          .toString(16), 'abcd0000abcd');
+        assert.strictEqual(new BN('-abcd00000000', 16)
+          .orn(0xabcd)
+          .toString(16), '-abccffff5433');
+        assert.strictEqual(new BN('abcd00000000', 16)
+          .orn(-0xabcd)
+          .toString(16), '-abcd');
+        assert.strictEqual(new BN('-abcd00000000', 16)
+          .orn(-0xabcd)
+          .toString(16), '-abcd');
       });
     });
 
@@ -3908,6 +3984,35 @@ describe('BN.js', function() {
         assert.strictEqual(
           new BN('abcd0000ffff', 16)
             .xor(new BN('abcd', 16)).toString(16),
+          'abcd00005432');
+        assert.strictEqual(
+          new BN('-abcd0000ffff', 16)
+            .xor(new BN('abcd', 16)).toString(16),
+          '-abcd00005434');
+        assert.strictEqual(
+          new BN('abcd0000ffff', 16)
+            .xor(new BN('-abcd', 16)).toString(16),
+          '-abcd00005434');
+        assert.strictEqual(
+          new BN('-abcd0000ffff', 16)
+            .xor(new BN('-abcd', 16)).toString(16),
+          'abcd00005432');
+
+        assert.strictEqual(
+          new BN('abcd0000ffff', 16)
+            .xorn(0xabcd).toString(16),
+          'abcd00005432');
+        assert.strictEqual(
+          new BN('-abcd0000ffff', 16)
+            .xorn(0xabcd).toString(16),
+          '-abcd00005434');
+        assert.strictEqual(
+          new BN('abcd0000ffff', 16)
+            .xorn(-0xabcd).toString(16),
+          '-abcd00005434');
+        assert.strictEqual(
+          new BN('-abcd0000ffff', 16)
+            .xorn(-0xabcd).toString(16),
           'abcd00005432');
       });
     });

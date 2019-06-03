@@ -646,9 +646,6 @@ NAN_METHOD(BBN::Iand) {
 
   BBN *b = ObjectWrap::Unwrap<BBN>(info[0].As<v8::Object>());
 
-  if (mpz_sgn(a->n) < 0 || mpz_sgn(b->n) < 0)
-    return Nan::ThrowRangeError(RANGE_ERROR(iand));
-
   mpz_and(a->n, a->n, b->n);
 
   info.GetReturnValue().Set(info.Holder());
@@ -665,9 +662,6 @@ NAN_METHOD(BBN::Iandn) {
 
   int64_t num = Nan::To<int64_t>(info[0]).FromJust();
 
-  if (mpz_sgn(a->n) < 0 || num < 0)
-    return Nan::ThrowRangeError(RANGE_ERROR(iandn));
-
   bmpz_and_si(a->n, a->n, num);
 
   info.GetReturnValue().Set(info.Holder());
@@ -683,11 +677,18 @@ NAN_METHOD(BBN::Andrn) {
     return Nan::ThrowTypeError(TYPE_ERROR(num, smi));
 
   int64_t num = Nan::To<int64_t>(info[0]).FromJust();
+  int64_t r;
 
-  if (mpz_sgn(a->n) < 0 || num < 0)
-    return Nan::ThrowRangeError(RANGE_ERROR(andrn));
-
-  int64_t r = (int64_t)mpz_getlimbn(a->n, 0) & num;
+  if (mpz_sgn(a->n) < 0 || num < 0) {
+    mpz_t x;
+    mpz_init(x);
+    mpz_set(x, a->n);
+    bmpz_and_si(x, x, num);
+    r = mpz_get_si(x);
+    mpz_clear(x);
+  } else {
+    r = (int64_t)mpz_getlimbn(a->n, 0) & num;
+  }
 
   info.GetReturnValue().Set(Nan::New<v8::Number>(r));
 }
@@ -780,9 +781,6 @@ NAN_METHOD(BBN::Ior) {
 
   BBN *b = ObjectWrap::Unwrap<BBN>(info[0].As<v8::Object>());
 
-  if (mpz_sgn(a->n) < 0 || mpz_sgn(b->n) < 0)
-    return Nan::ThrowRangeError(RANGE_ERROR(ior));
-
   mpz_ior(a->n, a->n, b->n);
 
   info.GetReturnValue().Set(info.Holder());
@@ -798,9 +796,6 @@ NAN_METHOD(BBN::Iorn) {
     return Nan::ThrowTypeError(TYPE_ERROR(num, smi));
 
   int64_t num = Nan::To<int64_t>(info[0]).FromJust();
-
-  if (mpz_sgn(a->n) < 0 || num < 0)
-    return Nan::ThrowRangeError(RANGE_ERROR(iorn));
 
   bmpz_ior_si(a->n, a->n, num);
 
@@ -876,9 +871,6 @@ NAN_METHOD(BBN::Ixor) {
 
   BBN *b = ObjectWrap::Unwrap<BBN>(info[0].As<v8::Object>());
 
-  if (mpz_sgn(a->n) < 0 || mpz_sgn(b->n) < 0)
-    return Nan::ThrowRangeError(RANGE_ERROR(ixor));
-
   mpz_xor(a->n, a->n, b->n);
 
   info.GetReturnValue().Set(info.Holder());
@@ -894,9 +886,6 @@ NAN_METHOD(BBN::Ixorn) {
     return Nan::ThrowTypeError(TYPE_ERROR(num, smi));
 
   int64_t num = Nan::To<int64_t>(info[0]).FromJust();
-
-  if (mpz_sgn(a->n) < 0 || num < 0)
-    return Nan::ThrowRangeError(RANGE_ERROR(ixorn));
 
   bmpz_xor_si(a->n, a->n, num);
 
@@ -986,9 +975,6 @@ NAN_METHOD(BBN::Ishln) {
   if (!IsUint32(info[0]))
     return Nan::ThrowTypeError(TYPE_ERROR(bits, integer));
 
-  if (mpz_sgn(a->n) < 0)
-    return Nan::ThrowRangeError(RANGE_ERROR(ishln));
-
   uint32_t bits = Nan::To<uint32_t>(info[0]).FromJust();
 
   mpz_mul_2exp(a->n, a->n, bits);
@@ -1020,9 +1006,6 @@ NAN_METHOD(BBN::Ishrn) {
 
   if (!IsUint32(info[0]))
     return Nan::ThrowTypeError(TYPE_ERROR(bits, integer));
-
-  if (mpz_sgn(a->n) < 0)
-    return Nan::ThrowRangeError(RANGE_ERROR(ishrn));
 
   uint32_t bits = Nan::To<uint32_t>(info[0]).FromJust();
 
