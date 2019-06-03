@@ -231,6 +231,7 @@ bcrypto_ed25519_sign_open_batch(
     /* generate r (scalars[batchsize+1]..scalars[2*batchsize] */
     bcrypto_ed25519_randombytes_unsafe(batch.r, batchsize * 16);
     r_scalars = &batch.scalars[batchsize + 1];
+
     for (i = 0; i < batchsize; i++)
       expand256_modm(r_scalars[i], batch.r[i], 16);
 
@@ -239,6 +240,7 @@ bcrypto_ed25519_sign_open_batch(
       expand256_modm(batch.scalars[i], RS[i] + 32, 32);
       mul256_modm(batch.scalars[i], batch.scalars[i], r_scalars[i]);
     }
+
     for (i = 1; i < batchsize; i++)
       add256_modm(batch.scalars[0], batch.scalars[0], batch.scalars[i]);
 
@@ -251,26 +253,27 @@ bcrypto_ed25519_sign_open_batch(
 
     /* compute points */
     batch.points[0] = ge25519_basepoint;
+
     for (i = 0; i < batchsize; i++)
       if (!ge25519_unpack_negative_vartime(&batch.points[i+1], pk[i]))
         goto fallback;
+
     for (i = 0; i < batchsize; i++)
       if (!ge25519_unpack_negative_vartime(&batch.points[batchsize+i+1], RS[i]))
         goto fallback;
 
     ge25519_multi_scalarmult_vartime(&p, &batch, (batchsize * 2) + 1);
-    if (!ge25519_is_neutral_vartime(&p)) {
-      ret |= 2;
 
+    if (!ge25519_is_neutral_vartime(&p)) {
       fallback:
       for (i = 0; i < batchsize; i++) {
         int r = bcrypto_ed25519_sign_open(m[i], mlen[i], pk[i],
-                                          ph, ctx, ctx_len, RS[i]) ? 0 : 1;
+                                          ph, ctx, ctx_len, RS[i]);
 
         if (valid != NULL)
-          valid[i] = r;
+          valid[i] = r != -1;
 
-        ret |= (r ^ 1);
+        ret |= r;
       }
     }
 
@@ -286,12 +289,12 @@ bcrypto_ed25519_sign_open_batch(
 
   for (i = 0; i < num; i++) {
     int r = bcrypto_ed25519_sign_open(m[i], mlen[i], pk[i],
-                                      ph, ctx, ctx_len, RS[i]) ? 0 : 1;
+                                      ph, ctx, ctx_len, RS[i]);
 
     if (valid != NULL)
-      valid[i] = r;
+      valid[i] = r != -1;
 
-    ret |= (r ^ 1);
+    ret |= r;
   }
 
   return ret;

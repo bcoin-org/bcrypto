@@ -40,12 +40,16 @@ describe('Secp256k1+Schnorr', function() {
   it('should do batch verification', () => {
     assert.strictEqual(secp256k1.schnorrBatchVerify([]), true);
     assert.strictEqual(secp256k1.schnorrBatchVerify(valid), true);
+
+    for (const item of valid)
+      assert.strictEqual(secp256k1.schnorrBatchVerify([item]), true);
   });
 
   it('should do fail batch verification', () => {
     for (const item of invalid) {
       assert.strictEqual(secp256k1.schnorrBatchVerify([item, ...valid]), false);
       assert.strictEqual(secp256k1.schnorrBatchVerify([...valid, item]), false);
+      assert.strictEqual(secp256k1.schnorrBatchVerify([item]), false);
     }
   });
 
@@ -112,7 +116,10 @@ describe('Secp256k1+Schnorr', function() {
 
     assert.strictEqual(p256.schnorr.verify(...batch[0]), true);
     assert.strictEqual(p256.schnorr.verify(...batch[1]), true);
+    assert.strictEqual(p256.schnorr.batchVerify([batch[0]]), true);
+    assert.strictEqual(p256.schnorr.batchVerify([batch[1]]), true);
     assert.strictEqual(p256.schnorr.batchVerify(batch), true);
+    assert.strictEqual(p256.schnorr.batchVerify([]), true);
   });
 
   it('should check schnorr support for various curves', () => {
@@ -183,10 +190,20 @@ describe('Secp256k1+Schnorr', function() {
       }
 
       assert.strictEqual(secp256k1.schnorrVerify(msg, sig, pub), result);
+      assert.strictEqual(secp256k1.schnorrBatchVerify([[msg, sig, pub]]), result);
     });
   }
 
   it('should do batch verification for custom sigs', () => {
+    const [msg] = batch[0];
+
+    assert.strictEqual(secp256k1.schnorrBatchVerify([]), true);
     assert.strictEqual(secp256k1.schnorrBatchVerify(batch), true);
+
+    if (msg.length > 0) {
+      msg[0] ^= 1;
+      assert.strictEqual(secp256k1.schnorrBatchVerify(batch), false);
+      msg[0] ^= 1;
+    }
   });
 });

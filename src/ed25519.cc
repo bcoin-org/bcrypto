@@ -939,7 +939,7 @@ NAN_METHOD(BED25519::BatchVerify) {
 
   bool result = bcrypto_ed25519_sign_open_batch(msgs, msg_lens, pubs,
                                                 sigs, len, ph, ctx,
-                                                ctx_len, NULL) >= 0;
+                                                ctx_len, NULL) != -1;
 
   free(slab1);
   free(slab2);

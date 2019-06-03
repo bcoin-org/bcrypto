@@ -28,6 +28,8 @@ describe('EdDSA', function() {
 
   for (const curve of curves) {
     describe(curve.id, () => {
+      const batch = [];
+
       for (const [i, vector] of getVectors(curve).entries()) {
         const [
           priv,
@@ -58,6 +60,9 @@ describe('EdDSA', function() {
           edSecret,
           montSecret
         ] = vector;
+
+        if (!ph)
+          batch.push([msg, sig, pub]);
 
         it(`should create and tweak key (${i}) (${curve.id})`, () => {
           assert(curve.privateKeyVerify(priv));
@@ -140,6 +145,17 @@ describe('EdDSA', function() {
           assert(curve.verify(msg, sig, pub, ph));
         });
 
+        it(`should batch verify (${i}) (${curve.id})`, () => {
+          assert(curve.batchVerify([], ph), true);
+          assert(curve.batchVerify([[msg, sig, pub]], ph));
+
+          msg[0] ^= 1;
+
+          assert(!curve.batchVerify([[msg, sig, pub]], ph));
+
+          msg[0] ^= 1;
+        });
+
         it(`should sign and verify with tweak add (${i}) (${curve.id})`, () => {
           const sig = curve.signTweakAdd(msg, priv, tweak, ph);
 
@@ -192,6 +208,18 @@ describe('EdDSA', function() {
           assert(curve.verify(msg, sig, pubMul, ph));
         });
       }
+
+      it(`should batch verify (${curve.id})`, () => {
+        const [msg] = batch[0];
+
+        assert(curve.batchVerify(batch));
+
+        if (msg.length > 0) {
+          msg[0] ^= 1;
+          assert(!curve.batchVerify(batch));
+          msg[0] ^= 1;
+        }
+      });
     });
   }
 });

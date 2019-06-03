@@ -458,11 +458,21 @@ describe('EdDSA', function() {
         }
 
         assert(!ed25519.verify(forged, sig, pub));
+        assert(!ed25519.batchVerify([[forged, sig, pub]]));
       });
     }
 
     it('should do batch verification', () => {
+      const [msg] = batch[0];
+
+      assert.strictEqual(ed25519.batchVerify([]), true);
       assert.strictEqual(ed25519.batchVerify(batch), true);
+
+      if (msg.length > 0) {
+        msg[0] ^= 1;
+        assert.strictEqual(ed25519.batchVerify(batch), false);
+        msg[0] ^= 1;
+      }
     });
   });
 
@@ -505,6 +515,7 @@ describe('EdDSA', function() {
           const msg_ = Buffer.from(msg);
           msg_[i % msg_.length] ^= 1;
           assert(!ed25519.verify(msg_, sig, pub, ph, ctx));
+          assert(!ed25519.batchVerify([[msg_, sig, pub]], ph, ctx));
         }
 
         {
