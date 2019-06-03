@@ -961,7 +961,15 @@ NAN_METHOD(BBN::Inotn) {
 
   uint32_t width = Nan::To<uint32_t>(info[0]).FromJust();
 
+  int neg = mpz_sgn(a->n) < 0;
+
+  if (neg)
+    mpz_neg(a->n, a->n);
+
   bmpz_not(a->n, a->n, width);
+
+  if (neg)
+    mpz_neg(a->n, a->n);
 
   info.GetReturnValue().Set(info.Holder());
 }
@@ -1052,11 +1060,18 @@ NAN_METHOD(BBN::Setn) {
 
   uint32_t bit = Nan::To<uint32_t>(info[0]).FromJust();
   bool val = Nan::To<bool>(info[1]).FromJust();
+  int neg = mpz_sgn(a->n) < 0;
+
+  if (neg)
+    mpz_neg(a->n, a->n);
 
   if (val)
     mpz_setbit(a->n, bit);
   else
     mpz_clrbit(a->n, bit);
+
+  if (neg)
+    mpz_neg(a->n, a->n);
 
   info.GetReturnValue().Set(info.Holder());
 }
@@ -1071,7 +1086,15 @@ NAN_METHOD(BBN::Testn) {
     return Nan::ThrowTypeError(TYPE_ERROR(bit, integer));
 
   uint32_t bit = Nan::To<uint32_t>(info[0]).FromJust();
+  int neg = mpz_sgn(a->n) < 0;
+
+  if (neg)
+    mpz_neg(a->n, a->n);
+
   bool ret = (bool)mpz_tstbit(a->n, bit);
+
+  if (neg)
+    mpz_neg(a->n, a->n);
 
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(ret));
 }
@@ -1101,8 +1124,8 @@ NAN_METHOD(BBN::Andln) {
   if (info.Length() < 1)
     return Nan::ThrowError(ARG_ERROR(andln, 1));
 
-  if (!IsSMI(info[0]))
-    return Nan::ThrowTypeError(TYPE_ERROR(num, smi));
+  if (!IsInt(info[0]))
+    return Nan::ThrowTypeError(TYPE_ERROR(num, integer));
 
   int64_t num = Nan::To<int64_t>(info[0]).FromJust();
   int64_t r = (int64_t)mpz_getlimbn(a->n, 0) & num;
