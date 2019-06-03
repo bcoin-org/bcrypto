@@ -98,6 +98,7 @@ private:
   static NAN_METHOD(IsEven);
   static NAN_METHOD(Inject);
   static NAN_METHOD(Set);
+  static NAN_METHOD(Swap);
   static NAN_METHOD(ByteLength);
   static NAN_METHOD(BitLength);
   static NAN_METHOD(ZeroBits);

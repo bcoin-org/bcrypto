@@ -4997,6 +4997,18 @@ describe('BN.js', function() {
         assert.strictEqual(BN.isBN({}), false);
       });
     });
+
+    describe('.swap()', () => {
+      it('should swap two bignums in-place', () => {
+        const a = new BN(100);
+        const b = new BN(-200);
+
+        a.swap(b);
+
+        assert.strictEqual(a.toString(10), '-200');
+        assert.strictEqual(b.toString(10), '100');
+      });
+    });
   });
 
   describe('BN-NG', () => {

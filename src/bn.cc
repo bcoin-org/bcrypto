@@ -219,6 +219,7 @@ BBN::Init(v8::Local<v8::Object> &target) {
   Nan::SetPrototypeMethod(tpl, "isEven", BBN::IsEven);
   Nan::SetPrototypeMethod(tpl, "inject", BBN::Inject);
   Nan::SetPrototypeMethod(tpl, "set", BBN::Set);
+  Nan::SetPrototypeMethod(tpl, "swap", BBN::Swap);
   Nan::SetPrototypeMethod(tpl, "byteLength", BBN::ByteLength);
   Nan::SetPrototypeMethod(tpl, "bitLength", BBN::BitLength);
   Nan::SetPrototypeMethod(tpl, "zeroBits", BBN::ZeroBits);
@@ -1735,6 +1736,20 @@ NAN_METHOD(BBN::Set) {
   mpz_set_si(a->n, num);
 
   info.GetReturnValue().Set(info.Holder());
+}
+
+NAN_METHOD(BBN::Swap) {
+  BBN *a = ObjectWrap::Unwrap<BBN>(info.Holder());
+
+  if (info.Length() < 1)
+    return Nan::ThrowError(ARG_ERROR(swap, 1));
+
+  if (!BBN::HasInstance(info[0]))
+    return Nan::ThrowTypeError(TYPE_ERROR(num, bignum));
+
+  BBN *b = ObjectWrap::Unwrap<BBN>(info[0].As<v8::Object>());
+
+  mpz_swap(a->n, b->n);
 }
 
 NAN_METHOD(BBN::ByteLength) {
