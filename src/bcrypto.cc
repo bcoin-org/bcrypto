@@ -1,6 +1,6 @@
 /**
  * bcrypto.cc - fast native bindings to crypto functions.
- * Copyright (c) 2016-2017, Christopher Jeffrey (MIT License)
+ * Copyright (c) 2016-2019, Christopher Jeffrey (MIT License)
  */
 
 #include <stdint.h>
