@@ -74,7 +74,7 @@ NAN_METHOD(BAEAD::Init) {
   const uint8_t *iv = (const uint8_t *)node::Buffer::Data(iv_buf);
   size_t iv_len = node::Buffer::Length(iv_buf);
 
-  if (iv_len != 8 && iv_len != 12 && iv_len != 16)
+  if (iv_len != 8 && iv_len != 12 && iv_len != 16 && iv_len != 24)
     return Nan::ThrowRangeError("Invalid IV size.");
 
   bcrypto_aead_init(&aead->ctx);
@@ -201,7 +201,7 @@ NAN_METHOD(BAEAD::EncryptStatic) {
   const uint8_t *iv = (const uint8_t *)node::Buffer::Data(iv_buf);
   size_t iv_len = node::Buffer::Length(iv_buf);
 
-  if (iv_len != 8 && iv_len != 12 && iv_len != 16)
+  if (iv_len != 8 && iv_len != 12 && iv_len != 16 && iv_len != 24)
     return Nan::ThrowRangeError("Invalid IV size.");
 
   uint8_t *msg = (uint8_t *)node::Buffer::Data(msg_buf);
@@ -269,7 +269,7 @@ NAN_METHOD(BAEAD::DecryptStatic) {
   const uint8_t *iv = (const uint8_t *)node::Buffer::Data(iv_buf);
   size_t iv_len = node::Buffer::Length(iv_buf);
 
-  if (iv_len != 8 && iv_len != 12 && iv_len != 16)
+  if (iv_len != 8 && iv_len != 12 && iv_len != 16 && iv_len != 24)
     return Nan::ThrowRangeError("Invalid IV size.");
 
   uint8_t *msg = (uint8_t *)node::Buffer::Data(msg_buf);
@@ -344,7 +344,7 @@ NAN_METHOD(BAEAD::AuthStatic) {
   const uint8_t *iv = (const uint8_t *)node::Buffer::Data(iv_buf);
   size_t iv_len = node::Buffer::Length(iv_buf);
 
-  if (iv_len != 8 && iv_len != 12 && iv_len != 16)
+  if (iv_len != 8 && iv_len != 12 && iv_len != 16 && iv_len != 24)
     return Nan::ThrowRangeError("Invalid IV size.");
 
   const uint8_t *msg = (const uint8_t *)node::Buffer::Data(msg_buf);
