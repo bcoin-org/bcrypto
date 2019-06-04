@@ -687,11 +687,19 @@ NAN_METHOD(BBN::Andrn) {
     mpz_t x;
     mpz_init(x);
     mpz_set(x, a->n);
+
     bmpz_and_si(x, x, num);
+
+    if (bmpz_bitlen(x) > 53) {
+      mpz_clear(x);
+      return Nan::ThrowRangeError("Number can only safely store up to 53 bits.");
+    }
+
     r = mpz_get_si(x);
+
     mpz_clear(x);
   } else {
-    r = (int64_t)mpz_getlimbn(a->n, 0) & num;
+    r = (uint32_t)mpz_getlimbn(a->n, 0) & (uint32_t)num;
   }
 
   info.GetReturnValue().Set(Nan::New<v8::Number>(r));
@@ -766,7 +774,7 @@ NAN_METHOD(BBN::Uandrn) {
   if (num < 0)
     num = -num;
 
-  int64_t r = (int64_t)mpz_getlimbn(a->n, 0) & num;
+  int64_t r = (uint32_t)mpz_getlimbn(a->n, 0) & (uint32_t)num;
 
   if (mpz_sgn(a->n) < 0)
     r = -r;
@@ -1186,13 +1194,13 @@ NAN_METHOD(BBN::Andln) {
   if (info.Length() < 1)
     return Nan::ThrowError(ARG_ERROR(andln, 1));
 
-  if (!IsInt(info[0]))
+  if (!info[0]->IsNumber())
     return Nan::ThrowTypeError(TYPE_ERROR(num, integer));
 
-  int64_t num = Nan::To<int64_t>(info[0]).FromJust();
-  int64_t r = (int64_t)mpz_getlimbn(a->n, 0) & num;
+  uint32_t num = Nan::To<uint32_t>(info[0]).FromJust();
+  uint32_t r = (uint32_t)mpz_getlimbn(a->n, 0) & num;
 
-  info.GetReturnValue().Set(Nan::New<v8::Number>(r));
+  info.GetReturnValue().Set(Nan::New<v8::Uint32>(r));
 }
 
 NAN_METHOD(BBN::Ineg) {
@@ -1775,7 +1783,7 @@ NAN_METHOD(BBN::ZeroBits) {
 
 NAN_METHOD(BBN::IsSafe) {
   BBN *a = ObjectWrap::Unwrap<BBN>(info.Holder());
-  bool r = mpz_sizeinbase(a->n, 2) <= 53;
+  bool r = bmpz_bitlen(a->n) <= 53;
 
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(r));
 }
@@ -1783,7 +1791,7 @@ NAN_METHOD(BBN::IsSafe) {
 NAN_METHOD(BBN::ToNumber) {
   BBN *a = ObjectWrap::Unwrap<BBN>(info.Holder());
 
-  if (mpz_sizeinbase(a->n, 2) > 53)
+  if (bmpz_bitlen(a->n) > 53)
     return Nan::ThrowRangeError("Number can only safely store up to 53 bits.");
 
   double r = mpz_get_d(a->n);

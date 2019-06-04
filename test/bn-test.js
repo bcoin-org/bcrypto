@@ -3950,6 +3950,10 @@ describe('BN.js', function() {
           new BN('-abcd0000ffff', 16)
             .andrn(-0xabcd).toString(16),
           '-abcd0000ffff');
+
+        assert.throws(() => {
+          BN.shift(1, 53).andrn(-1);
+        }, RangeError);
       });
     });
 
@@ -5316,6 +5320,7 @@ describe('BN.js', function() {
       assert.strictEqual(new BN(4).andln(-1), 4);
       assert.strictEqual(new BN(-4).andln(1), 0);
       assert.strictEqual(new BN(-4).andln(-1), 4);
+      assert.strictEqual(new BN(0x7fffffff).andln(-1), 0x3ffffff);
     });
 
     it('should compute powm', () => {
