@@ -129,8 +129,15 @@ bmpz_finvm(mpz_t ret, const mpz_t a, const mpz_t b) {
   mpz_sub_ui(e, b, 2);
 
   // Invert using fermat's little theorem.
+#ifdef BCRYPTO_HAS_GMP
+  if (mpz_sgn(e) <= 0 || mpz_even_p(b))
+    goto fail;
+
+  mpz_powm_sec(ret, a, e, b);
+#else
   if (!bmpz_powm(ret, a, e, b))
     goto fail;
+#endif
 
   if (mpz_sgn(ret) == 0)
     goto fail;
@@ -343,7 +350,7 @@ done:
   mpz_clear(h);
 }
 
-#if !defined(BCRYPTO_HAS_GMP)
+#ifndef BCRYPTO_HAS_GMP
 static int
 bmpz_legendre(const mpz_t x, const mpz_t y) {
   mpz_t e, s;

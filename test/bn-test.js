@@ -5202,6 +5202,12 @@ describe('BN.js', function() {
       assert.strictEqual(new BN(1025).sqrt().toNumber(), 32);
     });
 
+    it('should compute divmod', () => {
+      const [q, r] = new BN(-3).divmod(new BN(2));
+      assert.strictEqual(q.toNumber(), -1);
+      assert.strictEqual(r.toNumber(), -1);
+    });
+
     it('should compute division', () => {
       // Note: rounds towards zero, not negative infinity.
       assert.strictEqual(new BN(3).div(new BN(-2)).toNumber(), -1);
@@ -5212,7 +5218,7 @@ describe('BN.js', function() {
       assert.strictEqual(new BN(-4).div(new BN(-2)).toNumber(), 2);
     });
 
-    it('should compute division', () => {
+    it('should compute larger division', () => {
       // Note: rounds towards zero, not negative infinity.
       assert.strictEqual(new BN(3e8).div(new BN(-2e8)).toNumber(), -1);
       assert.strictEqual(new BN(-3e8).div(new BN(2e8)).toNumber(), -1);
@@ -5251,6 +5257,15 @@ describe('BN.js', function() {
     });
 
     it('should compute modulo n', () => {
+      assert.strictEqual(new BN(3).modn(-2).toNumber(), 1);
+      assert.strictEqual(new BN(-3).modn(2).toNumber(), -1);
+      assert.strictEqual(new BN(-3).modn(-2).toNumber(), -1);
+      assert.strictEqual(new BN(4).modn(-2).toNumber(), 0);
+      assert.strictEqual(new BN(-4).modn(2).toNumber(), 0);
+      assert.strictEqual(new BN(-4).modn(-2).toNumber(), 0);
+    });
+
+    it('should compute modulo rn', () => {
       assert.strictEqual(new BN(3).modrn(-2), 1);
       assert.strictEqual(new BN(-3).modrn(2), -1);
       assert.strictEqual(new BN(-3).modrn(-2), -1);
@@ -5259,7 +5274,43 @@ describe('BN.js', function() {
       assert.strictEqual(new BN(-4).modrn(-2), 0);
     });
 
-    it('should compute unsigned modulo', () => {
+    it('should compute euclidian divmod', () => {
+      const [q, r] = new BN(-3).udivmod(new BN(2));
+      assert.strictEqual(q.toNumber(), -2);
+      assert.strictEqual(r.toNumber(), 1);
+    });
+
+    it('should compute euclidian division', () => {
+      // Note: rounds towards infinity, not negative zero.
+      assert.strictEqual(new BN(3).udiv(new BN(-2)).toNumber(), -1);
+      assert.strictEqual(new BN(-3).udiv(new BN(2)).toNumber(), -2);
+      assert.strictEqual(new BN(-3).udiv(new BN(-2)).toNumber(), 2);
+      assert.strictEqual(new BN(4).udiv(new BN(-2)).toNumber(), -2);
+      assert.strictEqual(new BN(-4).udiv(new BN(2)).toNumber(), -2);
+      assert.strictEqual(new BN(-4).udiv(new BN(-2)).toNumber(), 2);
+    });
+
+    it('should compute larger euclidian division', () => {
+      // Note: rounds towards infinity, not negative zero.
+      assert.strictEqual(new BN(3e8).udiv(new BN(-2e8)).toNumber(), -1);
+      assert.strictEqual(new BN(-3e8).udiv(new BN(2e8)).toNumber(), -2);
+      assert.strictEqual(new BN(-3e8).udiv(new BN(-2e8)).toNumber(), 2);
+      assert.strictEqual(new BN(4e8).udiv(new BN(-2e8)).toNumber(), -2);
+      assert.strictEqual(new BN(-4e8).udiv(new BN(2e8)).toNumber(), -2);
+      assert.strictEqual(new BN(-4e8).udiv(new BN(-2e8)).toNumber(), 2);
+    });
+
+    it('should compute euclidian division n', () => {
+      // Note: rounds towards infinity, not negative zero.
+      assert.strictEqual(new BN(3).udivn(-2).toNumber(), -1);
+      assert.strictEqual(new BN(-3).udivn(2).toNumber(), -2);
+      assert.strictEqual(new BN(-3).udivn(-2).toNumber(), 2);
+      assert.strictEqual(new BN(4).udivn(-2).toNumber(), -2);
+      assert.strictEqual(new BN(-4).udivn(2).toNumber(), -2);
+      assert.strictEqual(new BN(-4).udivn(-2).toNumber(), 2);
+    });
+
+    it('should compute euclidian modulo', () => {
       assert.strictEqual(new BN(3).umod(new BN(-2)).toNumber(), 1);
       assert.strictEqual(new BN(-3).umod(new BN(2)).toNumber(), 1);
       assert.strictEqual(new BN(-3).umod(new BN(-2)).toNumber(), 1);
@@ -5268,7 +5319,7 @@ describe('BN.js', function() {
       assert.strictEqual(new BN(-4).umod(new BN(-2)).toNumber(), 0);
     });
 
-    it('should compute unsigned modulo', () => {
+    it('should compute euclidian modulo', () => {
       assert.strictEqual(new BN(3e8).umod(new BN(-2e8)).toNumber(), 1e8);
       assert.strictEqual(new BN(-3e8).umod(new BN(2e8)).toNumber(), 1e8);
       assert.strictEqual(new BN(-3e8).umod(new BN(-2e8)).toNumber(), 1e8);
@@ -5277,7 +5328,16 @@ describe('BN.js', function() {
       assert.strictEqual(new BN(-4e8).umod(new BN(-2e8)).toNumber(), 0);
     });
 
-    it('should compute unsigned modulo n', () => {
+    it('should compute euclidian modulo n', () => {
+      assert.strictEqual(new BN(3).umodn(-2).toNumber(), 1);
+      assert.strictEqual(new BN(-3).umodn(2).toNumber(), 1);
+      assert.strictEqual(new BN(-3).umodn(-2).toNumber(), 1);
+      assert.strictEqual(new BN(4).umodn(-2).toNumber(), 0);
+      assert.strictEqual(new BN(-4).umodn(2).toNumber(), 0);
+      assert.strictEqual(new BN(-4).umodn(-2).toNumber(), 0);
+    });
+
+    it('should compute euclidian modulo rn', () => {
       assert.strictEqual(new BN(3).umodrn(-2), 1);
       assert.strictEqual(new BN(-3).umodrn(2), 1);
       assert.strictEqual(new BN(-3).umodrn(-2), 1);
