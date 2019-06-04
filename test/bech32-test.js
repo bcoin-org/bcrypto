@@ -26,6 +26,7 @@
 const assert = require('bsert');
 const bech32 = require('../lib/encoding/bech32');
 const vectors = require('./data/bech32.json');
+const random = require('../lib/random');
 
 const validAddresses = [
   [
@@ -282,4 +283,18 @@ describe('Bech32', function() {
       assert.strictEqual(addr2, addr1.toLowerCase());
     });
   }
+
+  it('should encode/decode random data', () => {
+    for (let i = 20; i <= 50; i++) {
+      const data = random.randomBytes(i);
+      const data_ = bech32.convertBits(data, 8, 5, true);
+      const str = bech32.serialize('bc', data_);
+      const [, dec_] = bech32.deserialize(str);
+      const dec = bech32.convertBits(dec_, 5, 8, false);
+
+      assert(bech32.is(str));
+
+      assert.bufferEqual(dec, data);
+    }
+  });
 });

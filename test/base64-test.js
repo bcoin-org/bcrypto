@@ -2,6 +2,7 @@
 
 const assert = require('bsert');
 const base64 = require('../lib/encoding/base64');
+const random = require('../lib/random');
 
 // https://tools.ietf.org/html/rfc4648#section-10
 const vectors = [
@@ -80,4 +81,20 @@ describe('Base64', function() {
       assert.throws(() => base64.decodeURL(b64));
     });
   }
+
+  it('should encode/decode random data', () => {
+    for (let i = 0; i < 128; i++) {
+      const data = random.randomBytes(i);
+      const str1 = base64.encode(data);
+      const dec1 = base64.decode(str1);
+      const str2 = base64.encodeURL(data);
+      const dec2 = base64.decodeURL(str2);
+
+      assert(base64.test(str1));
+      assert(base64.testURL(str2));
+
+      assert.bufferEqual(dec1, data);
+      assert.bufferEqual(dec2, data);
+    }
+  });
 });

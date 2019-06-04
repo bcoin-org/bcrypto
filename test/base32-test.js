@@ -60,6 +60,9 @@ describe('Base32', function() {
       const str2 = base32.encode(data, true);
       const dec2 = base32.decode(str2, true);
 
+      assert(base32.test(str1, false));
+      assert(base32.test(str2, true));
+
       assert.bufferEqual(dec1, data);
       assert.bufferEqual(dec2, data);
     }

@@ -2,6 +2,7 @@
 
 const assert = require('bsert');
 const base16 = require('../lib/encoding/base16');
+const random = require('../lib/random');
 
 // https://tools.ietf.org/html/rfc4648#section-10
 const vectors = [
@@ -66,4 +67,16 @@ describe('Base16', function() {
       assert.throws(() => base16.decodeLE(hex.toUpperCase()));
     });
   }
+
+  it('should encode/decode random data', () => {
+    for (let i = 0; i < 128; i++) {
+      const data = random.randomBytes(i);
+      const str = base16.encode(data);
+      const dec = base16.decode(str);
+
+      assert(base16.test(str));
+
+      assert.bufferEqual(dec, data);
+    }
+  });
 });

@@ -31,6 +31,7 @@
 const assert = require('bsert');
 const base58 = require('../lib/encoding/base58');
 const cash32 = require('../lib/encoding/cash32');
+const random = require('../lib/random');
 
 const vectors = {
   translation: require('./data/cash32/translation.json'),
@@ -333,5 +334,21 @@ describe('Cash32', function() {
         assert.bufferEqual(hash, Buffer.from(vector.hash, 'hex'));
       });
     }
+  });
+
+  describe('Random', () => {
+    it('should encode/decode random data', () => {
+      for (let i = 20; i <= 64; i++) {
+        const data = random.randomBytes(i);
+        const data_ = cash32.convertBits(data, 8, 5, true);
+        const str = cash32.serialize('prefix', data_);
+        const [, dec_] = cash32.deserialize(str, 'prefix');
+        const dec = cash32.convertBits(dec_, 5, 8, false);
+
+        assert(cash32.is(str, 'prefix'));
+
+        assert.bufferEqual(dec, data);
+      }
+    });
   });
 });
