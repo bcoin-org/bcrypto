@@ -32,31 +32,20 @@ describe('Random', function() {
     assert.notBufferEqual(rand, bytes);
   });
 
-  it('should generate random bytes without args', () => {
+  it('should fill random bytes', () => {
+    const rand = Buffer.from(bytes);
+    random.randomFill(rand, 0, 32);
+    assert.notBufferEqual(rand, bytes);
+  });
+
+  it('should fill random bytes without args', () => {
     const rand = Buffer.from(bytes);
     random.randomFill(rand);
     assert.notBufferEqual(rand, bytes);
   });
 
-  it('should generate random bytes (async)', async () => {
-    const rand = Buffer.from(bytes);
-    await random.randomFillAsync(rand, 0, 32);
-    assert.notBufferEqual(rand, bytes);
-  });
-
-  it('should generate random bytes without args (async)', async () => {
-    const rand = Buffer.from(bytes);
-    await random.randomFillAsync(rand);
-    assert.notBufferEqual(rand, bytes);
-  });
-
   it('should get random bytes', () => {
     const rand = random.randomBytes(32);
-    assert.notBufferEqual(rand, zero);
-  });
-
-  it('should get random bytes (async)', async () => {
-    const rand = await random.randomBytesAsync(32);
     assert.notBufferEqual(rand, zero);
   });
 
@@ -66,9 +55,12 @@ describe('Random', function() {
   });
 
   it('should get random range', () => {
-    const rand = random.randomRange(1, 100);
-    assert((rand >>> 0) === rand);
-    assert(rand >= 1 && rand < 100);
+    for (let i = 0; i < 100; i++) {
+      const rand = random.randomRange(1, 100);
+
+      assert((rand >>> 0) === rand);
+      assert(rand >= 1 && rand < 100);
+    }
   });
 
   it('should get a large number of bytes', () => {
