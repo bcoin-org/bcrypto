@@ -1,6 +1,8 @@
 'use strict';
 
 const assert = require('bsert');
+const BN = require('../lib/bn.js');
+const random = require('../lib/random');
 const util = require('../lib/encoding/util');
 
 const {
@@ -159,5 +161,53 @@ describe('Util', function() {
     assert.bufferEqual(padRight(b, a.length), a);
     assert.bufferEqual(padRight(a, b.length), b);
     assert.throws(() => padRight(a, b.length - 1));
+  });
+
+  it('should do randomized tests (BE)', () => {
+    for (let i = 0; i < 128; i++) {
+      const off = i > 0 && (i & 3) === 0 ? 1 : 0;
+      const a = random.randomBytes(i);
+      const b = random.randomBytes(i - off);
+      const x = BN.decode(a, 'be');
+      const y = BN.decode(b, 'be');
+
+      assert.strictEqual(countLeft(a), x.bitLength());
+      assert.strictEqual(countLeft(b), y.bitLength());
+
+      assert.strictEqual(compareLeft(a, b), x.cmp(y));
+      assert.strictEqual(compareLeft(b, a), y.cmp(x));
+      assert.strictEqual(compareLeft(a, a), x.cmp(x));
+      assert.strictEqual(compareLeft(b, b), y.cmp(y));
+
+      assert.bufferEqual(trimLeft(a), x.encode('be'));
+      assert.bufferEqual(trimLeft(b), y.encode('be'));
+
+      assert.bufferEqual(padLeft(a, i + 1), x.encode('be', i + 1));
+      assert.bufferEqual(padLeft(b, i + 1), y.encode('be', i + 1));
+    }
+  });
+
+  it('should do randomized tests (LE)', () => {
+    for (let i = 0; i < 128; i++) {
+      const off = i > 0 && (i & 3) === 0 ? 1 : 0;
+      const a = random.randomBytes(i);
+      const b = random.randomBytes(i - off);
+      const x = BN.decode(a, 'le');
+      const y = BN.decode(b, 'le');
+
+      assert.strictEqual(countRight(a), x.bitLength());
+      assert.strictEqual(countRight(b), y.bitLength());
+
+      assert.strictEqual(compareRight(a, b), x.cmp(y));
+      assert.strictEqual(compareRight(b, a), y.cmp(x));
+      assert.strictEqual(compareRight(a, a), x.cmp(x));
+      assert.strictEqual(compareRight(b, b), y.cmp(y));
+
+      assert.bufferEqual(trimRight(a), x.encode('le'));
+      assert.bufferEqual(trimRight(b), y.encode('le'));
+
+      assert.bufferEqual(padRight(a, i + 1), x.encode('le', i + 1));
+      assert.bufferEqual(padRight(b, i + 1), y.encode('le', i + 1));
+    }
   });
 });
