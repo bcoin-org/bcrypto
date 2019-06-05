@@ -97,33 +97,29 @@ const vectors = [
   ]
 ];
 
-function testTwofish(i, key, dec, enc) {
-  const bits = key.length * 8;
-  const c = new Twofish(bits).init(key);
-  const buf = Buffer.alloc(16, 0x00);
-
-  c.encrypt(dec, 0, buf, 0);
-  assert.bufferEqual(buf, enc);
-
-  c.decrypt(enc, 0, buf, 0);
-  assert.bufferEqual(buf, dec);
-
-  const zero = Buffer.alloc(16, 0x00);
-  const data = Buffer.alloc(16, 0x00);
-
-  for (let i = 0; i < 1000; i++)
-    c.encrypt(data, 0, data, 0);
-
-  for (let i = 0; i < 1000; i++)
-    c.decrypt(data, 0, data, 0);
-
-  assert.bufferEqual(data, zero);
-}
-
 describe('Twofish', function() {
   for (const [i, [key, dec, enc]] of vectors.entries()) {
     it(`should pass twofish vector #${i}`, () => {
-      testTwofish(i, key, dec, enc);
+      const bits = key.length * 8;
+      const c = new Twofish(bits).init(key);
+      const buf = Buffer.alloc(16, 0x00);
+
+      c.encrypt(dec, 0, buf, 0);
+      assert.bufferEqual(buf, enc);
+
+      c.decrypt(enc, 0, buf, 0);
+      assert.bufferEqual(buf, dec);
+
+      const zero = Buffer.alloc(16, 0x00);
+      const data = Buffer.alloc(16, 0x00);
+
+      for (let i = 0; i < 1000; i++)
+        c.encrypt(data, 0, data, 0);
+
+      for (let i = 0; i < 1000; i++)
+        c.decrypt(data, 0, data, 0);
+
+      assert.bufferEqual(data, zero);
     });
   }
 
