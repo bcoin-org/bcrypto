@@ -38,6 +38,49 @@ const intervals = [
             + 'cab94695c8f4bcd66e61b9b9c946da8d524de3d69bd9d9d66b997e37', 'hex')
 ];
 
+const scalarVectors = [
+  [
+    Buffer.from('98843ebbc7f4015310b67915a46f301b790584263d6b07e160e59b54'
+              + 'e6b44d8b4237fcde0e639b6f201a06395b1dedbce4ccc3bcf60755fd', 'hex'),
+    Buffer.from('689b6ede1cba22e902745a576122e68138cbec6e30724b0e23e96613'
+              + '0f4997cb49d90efaf9aa1924b79b722e8a02034cf47d99589ff85ea4', 'hex'),
+    Buffer.from('3a8d488589e4fd619d7792bf156241792aeeed476f61d18264fae7b1'
+              + '69b7a26a33315565988aae139abb02953c7d06b0e7ee837087e75280', 'hex')
+  ],
+  [
+    Buffer.from('b81f7738b6dd3700b0e8390bd312b85fa5b0c9e458454380afbe3c6a'
+              + '15208f9454a67c6220d54a66d88e7f7402f5c837f27af301548f568b', 'hex'),
+    Buffer.from('6819c4ec65ed839b7bee92f429f066708f385becac88fb26bc279261'
+              + '155f18cf8cddb3c7ee5082ee71fb9bd77a7fe3d5a85f6b823a2b9397', 'hex'),
+    Buffer.from('5df6135e61e0f93ff856b67f52936f3e486ca3540062edc7d455a79a'
+              + 'e9e71bf4eccf515f583cc4f6871be28c1f23a8548814ff8fd24ab2fc', 'hex')
+  ],
+  [
+    Buffer.from('c81e6f898e13881954cf72d5e3271b2e67b0638248b4146dedd5d7ea'
+              + 'b127d52248d8019590962fd63f2dee3c31b5360c83ea881d31502c94', 'hex'),
+    Buffer.from('0c38db0afc0aebc1509119879e42e3352620ba3c1add4a4a42ae4eda'
+              + 'db207936d7a5978e567dbd6d05669820448bc0017923deb37bf283cf', 'hex'),
+    Buffer.from('06dd50fe0d7196d0d7f7c6c24b6040bdc0c8c2b8ef3c3c751d25d5bd'
+              + 'e4f13ccdcd526b7f307d8e127b7b33b4fe750d19085fe07d2acb837d', 'hex')
+  ],
+  [
+    Buffer.from('28095e2a964e1327ee2b7da011328be7a09478a84ff2d55a0cfe0c35'
+              + '153661286691e6d9d4f65a41ef5f1bb6f8e7e22db9a7f8827c03b2d6', 'hex'),
+    Buffer.from('f8cf547af2439a9b0a871ec28235d1c6eaace7d69665be9fe51a07eb'
+              + 'e6a9c9978dd7c3970d53c3c31097437dbbbe9c3e4838c2640917e487', 'hex'),
+    Buffer.from('41850d53f50aa5e298a40586b251aee90f1fbe20bb85ce04c5bd57dc'
+              + 'b2a6b70a62324e1e183f3e2aa92687faf0e4268265e015653ba1da96', 'hex')
+  ],
+  [
+    Buffer.from('c872419cfb4325e23d48568f23105fce20458561c0f6b011ce99d3a0'
+              + 'e74bbccecfb3f5836677d4fcf5f4f113e76cc0eae97f53f02e726d98', 'hex'),
+    Buffer.from('98f75191ac8ea880ae516b6a5a7760f652cc7c98c9db037a8e19de23'
+              + 'ff2baf1bb4c1a979422965311ca7ee4b0f36b6dfa66df575aa6ea7c6', 'hex'),
+    Buffer.from('bdfea1b2feeb9ac78981cec17d046bc2a5113899dd422e5e32ab4b3e'
+              + 'e9618e91839d1e9351e350fd855de230c6138e70a3d7cdb2fbb91356', 'hex')
+  ]
+];
+
 const privPem = `
 -----BEGIN PRIVATE KEY-----
 MEYCAQAwBQYDK2VvBDoEODS/v+7SdfH9nVquDWbSj5PvcABLtBO6uSnsiTVc6xTu
@@ -59,6 +102,18 @@ describe('X448', function() {
     it(`should compute secret: ${expect.toString('hex', 0, 16)}...`, () => {
       const result = x448.derive(pub, key);
       assert.bufferEqual(result, expect);
+    });
+  }
+
+  for (const [scalar, tweak, expect] of scalarVectors) {
+    it(`should convert secret: ${expect.toString('hex', 0, 16)}...`, () => {
+      const edPub = ed448.publicKeyFromScalar(scalar);
+      const edPoint = ed448.deriveWithScalar(edPub, tweak);
+      const pub = ed448.publicKeyConvert(edPub);
+      const result = ed448.publicKeyConvert(edPoint);
+
+      assert.bufferEqual(result, expect);
+      assert.bufferEqual(x448.derive(pub, tweak), expect);
     });
   }
 

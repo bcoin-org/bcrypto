@@ -108,6 +108,34 @@ const intervals = [
   Buffer.from('7c3911e0ab2586fd864497297e575e6f3bc601c0883c30df5f4dd2d24f665424', 'hex')
 ];
 
+const scalarVectors = [
+  [
+    Buffer.from('60687aadf862bd776c8fc18b8e9f8e20089714856ee233b3902a591d0d5f2965', 'hex'),
+    Buffer.from('2832db6c2c0a6235fb1397e8225ea85e0f0e6e8c7b126d0016ccbde0e667155e', 'hex'),
+    Buffer.from('b278f833def9281b8147b16b91d3234a97edd5ebdab92037b5bb74daa6428862', 'hex')
+  ],
+  [
+    Buffer.from('10771355e46cd47c71ed1721fd5319b383cca3a1f9fce3aa1c8cd3bd37af2057', 'hex'),
+    Buffer.from('f815c0d3ebe314fad720a08b839a004c2e6386f5aecc19ec74807d1920cb6a6b', 'hex'),
+    Buffer.from('2affba2f5b84ebbd4e027557332d86fac418154a12dd87f79a3543f957e28362', 'hex')
+  ],
+  [
+    Buffer.from('306da11fe3ab3d0eaaddb418ccb49b5426d5c2504f526f7766580f6e45984e7b', 'hex'),
+    Buffer.from('4091a5c79ffdc79883036503ca551673c09deec28df432a8d88debc7fa2ec95e', 'hex'),
+    Buffer.from('631e3c086374f3b59280d855fbb073161c69cfa9da1806f2259df078aaaa247a', 'hex')
+  ],
+  [
+    Buffer.from('581adcb5797c2eff1ba0460af9324ac6df5b6ffb66be6df2547872c2f29ba442', 'hex'),
+    Buffer.from('689b711ce5d3749ece29463110b6164dbb28dda28902586bf66e865e8c29c350', 'hex'),
+    Buffer.from('fed8c10094ac77b1f3c9a3e85d425d78cc4ade141e09e3018abe96b4cc433670', 'hex')
+  ],
+  [
+    Buffer.from('486e6acef5953a6a2087d8dd7d38a49b3ca0627d8ab339872ce56c5bd3b5a152', 'hex'),
+    Buffer.from('f03587bc89fe4882c7c889302511ffd738d136129b9f5be4c492cb4948a93a49', 'hex'),
+    Buffer.from('08a6638d9e1a1af96286ae6ff43d7b691ad39cc0a132c68507e10bbb232c666d', 'hex')
+  ]
+];
+
 const privPem = `
 -----BEGIN PRIVATE KEY-----
 MC4CAQAwBQYDK2VuBCIEIDB2uHPBie1qBDNVnbKUsLimC0bDITuFcV6ytky2z3Vb
@@ -127,6 +155,18 @@ describe('X25519', function() {
     it(`should compute secret: ${expect.toString('hex', 0, 16)}...`, () => {
       const result = x25519.derive(pub, key);
       assert.bufferEqual(result, expect);
+    });
+  }
+
+  for (const [scalar, tweak, expect] of scalarVectors) {
+    it(`should convert secret: ${expect.toString('hex', 0, 16)}...`, () => {
+      const edPub = ed25519.publicKeyFromScalar(scalar);
+      const edPoint = ed25519.deriveWithScalar(edPub, tweak);
+      const pub = ed25519.publicKeyConvert(edPub);
+      const result = ed25519.publicKeyConvert(edPoint);
+
+      assert.bufferEqual(result, expect);
+      assert.bufferEqual(x25519.derive(pub, tweak), expect);
     });
   }
 
