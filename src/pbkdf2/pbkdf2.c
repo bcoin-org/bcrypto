@@ -113,8 +113,8 @@ bcrypto_pbkdf2_hash_type(const char *alg) {
 int
 bcrypto_pbkdf2(uint8_t *key,
                const char *name,
-               const uint8_t *data,
-               size_t datalen,
+               const uint8_t *pass,
+               size_t passlen,
                const uint8_t *salt,
                size_t saltlen,
                uint32_t iter,
@@ -129,15 +129,15 @@ bcrypto_pbkdf2(uint8_t *key,
   if (md == NULL)
     return 0;
 
-  if (datalen > (size_t)INT_MAX
+  if (passlen > (size_t)INT_MAX
       || saltlen > (size_t)INT_MAX
       || (size_t)iter > (size_t)INT_MAX
       || keylen > (size_t)INT_MAX) {
     return 0;
   }
 
-  int ret = PKCS5_PBKDF2_HMAC((const char *)data,
-                              (int)datalen, salt,
+  int ret = PKCS5_PBKDF2_HMAC((const char *)pass,
+                              (int)passlen, salt,
                               (int)saltlen, iter,
                               md, (int)keylen, key);
 

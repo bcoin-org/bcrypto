@@ -3,11 +3,11 @@
 #include "pbkdf2_async.h"
 
 BPBKDF2Worker::BPBKDF2Worker (
-  v8::Local<v8::Object> &dataHandle,
+  v8::Local<v8::Object> &passHandle,
   v8::Local<v8::Object> &saltHandle,
   char *name,
-  const uint8_t *data,
-  size_t datalen,
+  const uint8_t *pass,
+  size_t passlen,
   const uint8_t *salt,
   size_t saltlen,
   uint32_t iter,
@@ -15,8 +15,8 @@ BPBKDF2Worker::BPBKDF2Worker (
   Nan::Callback *callback
 ) : Nan::AsyncWorker(callback)
   , name(name)
-  , data(data)
-  , datalen(datalen)
+  , pass(pass)
+  , passlen(passlen)
   , salt(salt)
   , saltlen(saltlen)
   , iter(iter)
@@ -24,7 +24,7 @@ BPBKDF2Worker::BPBKDF2Worker (
   , keylen(keylen)
 {
   Nan::HandleScope scope;
-  SaveToPersistent("data", dataHandle);
+  SaveToPersistent("pass", passHandle);
   SaveToPersistent("salt", saltHandle);
 }
 
@@ -44,7 +44,7 @@ BPBKDF2Worker::Execute() {
     return;
   }
 
-  if (!bcrypto_pbkdf2(key, name, data, datalen, salt, saltlen, iter, keylen)) {
+  if (!bcrypto_pbkdf2(key, name, pass, passlen, salt, saltlen, iter, keylen)) {
     free(key);
     key = NULL;
     SetErrorMessage("PBKDF2 failed.");

@@ -11,8 +11,8 @@ extern "C" {
 int
 bcrypto_pbkdf2(uint8_t *key,
                const char *name,
-               const uint8_t *data,
-               size_t datalen,
+               const uint8_t *pass,
+               size_t passlen,
                const uint8_t *salt,
                size_t saltlen,
                uint32_t iter,
