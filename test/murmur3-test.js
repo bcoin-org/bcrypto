@@ -2,6 +2,8 @@
 
 const assert = require('assert');
 const murmur3 = require('../lib/murmur3');
+const js = require('../lib/js/murmur3');
+const random = require('../lib/random');
 
 function testMurmur(str, seed, expect, enc) {
   if (!enc)
@@ -36,5 +38,18 @@ describe('Murmur3', function() {
     testMurmur('00112233445566', 0x00000000, 0xb074502c, 'hex');
     testMurmur('0011223344556677', 0x00000000, 0x8034d2a0, 'hex');
     testMurmur('001122334455667788', 0x00000000, 0xb4698def, 'hex');
+  });
+
+  it('should do random tests', () => {
+    for (let i = 0; i < 128; i++) {
+      const data = random.randomBytes(i);
+      const n = random.randomInt();
+      const seed = random.randomInt();
+      const sum = murmur3.sum(data, seed);
+      const tweak = murmur3.tweak(data, n, seed);
+
+      assert.strictEqual(js.sum(data, seed), sum);
+      assert.strictEqual(js.tweak(data, n, seed), tweak);
+    }
   });
 });
