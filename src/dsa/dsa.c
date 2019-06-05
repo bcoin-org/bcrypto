@@ -1690,7 +1690,7 @@ bcrypto_dsa_derive(uint8_t **out,
   if (BN_is_zero(secret))
     goto fail;
 
-  size = (size_t)BN_num_bytes(secret);
+  size = (size_t)BN_num_bytes(p);
   raw = (uint8_t *)malloc(size);
 
   if (raw == NULL)
