@@ -64,7 +64,7 @@ const vectors = [
   ]
 ];
 
-function testEncrypt(desc, c, src, expect) {
+function encrypt(desc, c, src, expect) {
   const dst = Buffer.from(src);
 
   c.encrypt(dst);
@@ -80,43 +80,39 @@ function testEncrypt(desc, c, src, expect) {
   }
 }
 
-function testRC4(gi, key, keystream) {
-  const data = Buffer.alloc(key.length);
-
-  for (let i = 0; i < data.length; i++)
-    data[i] = i;
-
-  const expect = Buffer.alloc(keystream.length);
-
-  for (let i = 0; i < keystream.length; i++)
-    expect[i] = i ^ keystream[i];
-
-  for (let size = 1; size <= keystream.length; size++) {
-    const c = new RC4().init(key);
-
-    let off = 0;
-
-    while (off < keystream.length) {
-      let n = keystream.length - off;
-
-      if (n > size)
-        n = size;
-
-      const desc = `#${gi}@[${off}:${off + n}]`;
-
-      testEncrypt(desc, c,
-                  data.slice(off, off + n),
-                  expect.slice(off, off + n));
-
-      off += n;
-    }
-  }
-}
-
 describe('RC4', function() {
   for (const [i, [key, keystream]] of vectors.entries()) {
     it(`should pass RC4 vector #${i}`, () => {
-      testRC4(i, key, keystream);
+      const data = Buffer.alloc(keystream.length);
+
+      for (let i = 0; i < data.length; i++)
+        data[i] = i;
+
+      const expect = Buffer.alloc(keystream.length);
+
+      for (let i = 0; i < keystream.length; i++)
+        expect[i] = i ^ keystream[i];
+
+      for (let size = 1; size <= keystream.length; size++) {
+        const c = new RC4().init(key);
+
+        let off = 0;
+
+        while (off < keystream.length) {
+          let n = keystream.length - off;
+
+          if (n > size)
+            n = size;
+
+          const desc = `#${i}@[${off}:${off + n}]`;
+
+          encrypt(desc, c,
+                  data.slice(off, off + n),
+                  expect.slice(off, off + n));
+
+          off += n;
+        }
+      }
     });
   }
 });

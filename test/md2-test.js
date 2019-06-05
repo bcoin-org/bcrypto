@@ -18,31 +18,27 @@ const vectors = [
   ]
 ];
 
-function testHash(msg, expect) {
-  const m = Buffer.from(msg, 'binary');
-  const e = Buffer.from(expect, 'hex');
-
-  const hash = MD2.digest(m);
-
-  assert.bufferEqual(hash, e);
-
-  const ctx = new MD2();
-  ctx.init();
-
-  const ch = Buffer.allocUnsafe(1);
-
-  for (let i = 0; i < m.length; i++) {
-    ch[0] = m[i];
-    ctx.update(ch);
-  }
-
-  assert.bufferEqual(ctx.final(), e);
-}
-
 describe('MD2', function() {
   for (const [msg, expect] of vectors) {
     it(`should get MD2 hash of ${expect}`, () => {
-      testHash(msg, expect);
+      const m = Buffer.from(msg, 'binary');
+      const e = Buffer.from(expect, 'hex');
+
+      const hash = MD2.digest(m);
+
+      assert.bufferEqual(hash, e);
+
+      const ctx = new MD2();
+      ctx.init();
+
+      const ch = Buffer.allocUnsafe(1);
+
+      for (let i = 0; i < m.length; i++) {
+        ch[0] = m[i];
+        ctx.update(ch);
+      }
+
+      assert.bufferEqual(ctx.final(), e);
     });
   }
 });
