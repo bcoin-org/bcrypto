@@ -7,7 +7,6 @@ const vectors = require('./data/aead.json');
 describe('AEAD (ChaCha20+Poly1305)', function() {
   for (const [plain_, aad_, key_, nonce_, raw_, pk_] of vectors) {
     const input = Buffer.from(plain_, 'hex');
-    const text = plain_.slice(0, 32) + '...';
     const aad = Buffer.from(aad_, 'hex');
     const key = Buffer.from(key_, 'hex');
     const nonce = Buffer.from(nonce_, 'hex');
@@ -15,6 +14,7 @@ describe('AEAD (ChaCha20+Poly1305)', function() {
     const output = raw.slice(0, -16);
     const tag = raw.slice(-16);
     const pk = Buffer.from(pk_ || '', 'hex');
+    const text = key_.slice(0, 32) + '...';
 
     it(`should do encrypt and decrypt (${text})`, () => {
       const data = Buffer.from(input);

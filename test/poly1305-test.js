@@ -2,6 +2,7 @@
 
 const assert = require('bsert');
 const Poly1305 = require('../lib/poly1305');
+const vectors = require('./data/poly1305.json');
 
 describe('Poly1305', function() {
   it('should perform poly1305 (1)', () => {
@@ -38,4 +39,22 @@ describe('Poly1305', function() {
 
     assert(!Poly1305.verify(mac, tag));
   });
+
+  for (const [key_, msg_, tag_] of vectors) {
+    const msg = Buffer.from(msg_, 'hex');
+    const key = Buffer.from(key_, 'hex');
+    const tag = Buffer.from(tag_, 'hex');
+    const text = key_.slice(0, 32) + '...';
+
+    it(`should perform poly1305 (${text})`, () => {
+      const mac = Poly1305.auth(msg, key);
+
+      assert(Poly1305.verify(mac, tag));
+      assert.bufferEqual(mac, tag);
+
+      mac[0] ^= 1;
+
+      assert(!Poly1305.verify(mac, tag));
+    });
+  }
 });
