@@ -13,7 +13,7 @@ const hashes = [
 ];
 
 function testVector(name) {
-  const passwd = crypto.randomBytes(Math.random() * 64 | 0);
+  const passwd = crypto.randomBytes(Math.random() * 256 | 0);
   const salt = crypto.randomBytes(Math.random() * 32 | 0);
   const iter = 1 + (Math.random() * 5000 | 0);
   const len = 1 + (Math.random() * 64 | 0);
