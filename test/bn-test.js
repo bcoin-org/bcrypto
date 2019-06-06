@@ -5402,6 +5402,21 @@ describe('BN.js', function() {
       assert.strictEqual(
         x.toRed(BN.red(m)).redPow(y).fromRed().toString(),
         r.toString());
+
+      assert.strictEqual(x.clone().ipowm(y, m).toString(), r.toString());
+      assert.strictEqual(
+        x.toRed(BN.red(m)).redIPow(y).fromRed().toString(),
+        r.toString());
+
+      assert.strictEqual(x.powmn(y.toNumber(), m).toString(), r.toString());
+      assert.strictEqual(
+        x.toRed(BN.red(m)).redPown(y.toNumber()).fromRed().toString(),
+        r.toString());
+
+      assert.strictEqual(x.clone().ipowmn(y.toNumber(), m).toString(), r.toString());
+      assert.strictEqual(
+        x.toRed(BN.red(m)).redIPown(y.toNumber()).fromRed().toString(),
+        r.toString());
     });
 
     it('should throw on powm with negative exponent', () => {
