@@ -85,6 +85,7 @@ private:
   static NAN_METHOD(Jacobi);
   static NAN_METHOD(Kronecker);
   static NAN_METHOD(Igcd);
+  static NAN_METHOD(Ilcm);
   static NAN_METHOD(Egcd);
   static NAN_METHOD(Iinvm);
   static NAN_METHOD(Ifinvm);
@@ -96,6 +97,7 @@ private:
   static NAN_METHOD(IsPrimeLucas);
   static NAN_METHOD(ToTwos);
   static NAN_METHOD(FromTwos);
+  static NAN_METHOD(Sign);
   static NAN_METHOD(IsZero);
   static NAN_METHOD(IsNeg);
   static NAN_METHOD(IsOdd);

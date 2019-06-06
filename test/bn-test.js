@@ -3943,16 +3943,16 @@ describe('BN.js', function() {
             .andrn(0xabcd).toString(16),
           '1');
         assert.strictEqual(
-          new BN('abcd0000ffff', 16)
+          new BN('0bcdfff', 16)
             .andrn(-0xabcd).toString(16),
-          'abcd00005433');
+          'bc5433');
         assert.strictEqual(
-          new BN('-abcd0000ffff', 16)
+          new BN('-0bcdfff', 16)
             .andrn(-0xabcd).toString(16),
-          '-abcd0000ffff');
+          '-bcffff');
 
         assert.throws(() => {
-          BN.shift(1, 53).andrn(-1);
+          BN.shift(1, 26).andrn(-1);
         }, RangeError);
       });
     });
@@ -4876,6 +4876,21 @@ describe('BN.js', function() {
       });
     });
 
+    describe('.sign', () => {
+      it('should return -1, 0, 1 correctly', () => {
+        assert.strictEqual(new BN(0).sign(), 0);
+        assert.strictEqual(new BN(-1).sign(), -1);
+        assert.strictEqual(new BN(1).sign(), 1);
+        assert.strictEqual(new BN(-0x3fffffe).sign(), -1);
+        assert.strictEqual(new BN(0x3fffffe).sign(), 1);
+        assert.strictEqual(new BN(-0x43fffffe).sign(), -1);
+        assert.strictEqual(new BN(0x43fffffe).sign(), 1);
+        assert.strictEqual(new BN(-42).sign(), -1);
+        assert.strictEqual(new BN(42).sign(), 1);
+        assert.strictEqual(1 / new BN(0).sign(), Infinity);
+      });
+    });
+
     describe('comparison shorthands', () => {
       it('.gtn greater than', () => {
         assert.strictEqual(new BN(3).gtn(2), true);
@@ -5650,15 +5665,103 @@ describe('BN.js', function() {
       assert.strictEqual(g1.toString(), g2.toString());
     });
 
+    it('should compute lcm', () => {
+      const n = new BN('e99696a9507ceafdb46582adc8d66b4106bbd7f7856c3b0d', 16);
+      const k = new BN('3b0f7fcc204c2790a9d11d8b19e2a8125b7ab803ac4bdedb', 16);
+      const m = new BN('35e3d927cfaedef82e7f5b0c5bf04a3d7110e8dc28b656e79b9ccbcbd460d6ca2a8be2efabaa7fe2590b3dfc079aca1f', 16);
+      const l = n.lcm(k);
+
+      assert.strictEqual(l.toString(), m.toString());
+    });
+
+    it('should compute egcd', () => {
+      const p = BN._prime('p192').p;
+      const n = new BN('e99696a9507ceafdb46582adc8d66b4106bbd7f7856c3b0d', 16);
+      const a1 = new BN('-3b0f7fcc204c2790a9d11d8b19e2a8125b7ab803ac4bdedb', 16);
+      const b1 = new BN('35e3d927cfaedef82e7f5b0c5bf04a3da6f4c203f86535e0', 16);
+      const g1 = new BN(1);
+      const [a, b, g] = n.egcd(p);
+
+      assert.strictEqual(a.toString(), a1.toString());
+      assert.strictEqual(b.toString(), b1.toString());
+      assert.strictEqual(g.toString(), g1.toString());
+      assert.strictEqual(a.umod(p).toString(), n.invm(p).toString());
+    });
+
+    it('should compute large egcd', () => {
+      const p = BN._prime('p192').p;
+      const n = new BN('fffffffffe99696a9507ceafdb46582adc8d66b4106bbd7f7856c3b0d', 16);
+      const a1 = new BN('-2845995b1f610cf0bfd19fca0159c7a065b50cb81d122812', 16);
+      const b1 = new BN('2845995b1f28a3ec01323af78e75fed7749bbda8419c7721b153fd115', 16);
+      const g1 = new BN(1);
+      const [a, b, g] = n.egcd(p);
+
+      assert(n.bitLength() > p.bitLength());
+
+      assert.strictEqual(a.toString(), a1.toString());
+      assert.strictEqual(b.toString(), b1.toString());
+      assert.strictEqual(g.toString(), g1.toString());
+      assert.strictEqual(a.umod(p).toString(), n.invm(p).toString());
+    });
+
     it('should compute negative egcd', () => {
       const p = BN._prime('p192').p;
-      const r = BN.random(rng, 0, p);
-      const [a1, b1, g1] = r.neg().egcd(p);
-      const [a2, b2, g2] = r.neg().umod(p).egcd(p);
+      const n = new BN('-e99696a9507ceafdb46582adc8d66b4106bbd7f7856c3b0d', 16);
+      const a1 = new BN('3b0f7fcc204c2790a9d11d8b19e2a8125b7ab803ac4bdedb', 16);
+      const b1 = new BN('35e3d927cfaedef82e7f5b0c5bf04a3da6f4c203f86535e0', 16);
+      const g1 = new BN(1);
+      const [a, b, g] = n.egcd(p);
 
-      assert.strictEqual(a1.toString(), a2.toString());
-      assert.strictEqual(b1.toString(), b2.toString());
-      assert.strictEqual(g1.toString(), g2.toString());
+      assert.strictEqual(a.toString(), a1.toString());
+      assert.strictEqual(b.toString(), b1.toString());
+      assert.strictEqual(g.toString(), g1.toString());
+      assert.strictEqual(a.umod(p).toString(), n.invm(p).toString());
+    });
+
+    it('should compute negative egcd', () => {
+      const p = BN._prime('p192').p;
+      const n = new BN('e99696a9507ceafdb46582adc8d66b4106bbd7f7856c3b0d', 16);
+      const a1 = new BN('-3b0f7fcc204c2790a9d11d8b19e2a8125b7ab803ac4bdedb', 16);
+      const b1 = new BN('-35e3d927cfaedef82e7f5b0c5bf04a3da6f4c203f86535e0', 16);
+      const g1 = new BN(1);
+      const [a, b, g] = n.egcd(p.neg());
+
+      assert.strictEqual(a.toString(), a1.toString());
+      assert.strictEqual(b.toString(), b1.toString());
+      assert.strictEqual(g.toString(), g1.toString());
+    });
+
+    it('should compute invm', () => {
+      const p = BN._prime('p192').p;
+      const n = new BN('e99696a9507ceafdb46582adc8d66b4106bbd7f7856c3b0d', 16);
+      const a1 = new BN('c4f08033dfb3d86f562ee274e61d57eca48547fc53b42124', 16);
+      const a = n.invm(p);
+
+      assert.strictEqual(a.toString(), a1.toString());
+    });
+
+    it('should compute large invm', () => {
+      const p = BN._prime('p192').p;
+      const n = new BN('fffffffffe99696a9507ceafdb46582adc8d66b4106bbd7f7856c3b0d', 16);
+      const a1 = new BN('d7ba66a4e09ef30f402e6035fea6385e9a4af347e2edd7ed', 16);
+      const a = n.invm(p);
+      const b = n.umod(p).invm(p);
+
+      assert(n.bitLength() > p.bitLength());
+
+      assert.strictEqual(a.toString(), a1.toString());
+      assert.strictEqual(b.toString(), a1.toString());
+    });
+
+    it('should compute negative invm', () => {
+      const p = BN._prime('p192').p;
+      const n = new BN('-e99696a9507ceafdb46582adc8d66b4106bbd7f7856c3b0d', 16);
+      const a1 = new BN('3b0f7fcc204c2790a9d11d8b19e2a8125b7ab803ac4bdedb', 16);
+      const a = n.invm(p);
+      const b = n.umod(p).invm(p);
+
+      assert.strictEqual(a.toString(), a1.toString());
+      assert.strictEqual(b.toString(), a1.toString());
     });
 
     it('should compute powm (negative)', () => {

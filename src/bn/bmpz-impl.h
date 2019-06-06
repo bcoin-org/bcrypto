@@ -126,7 +126,14 @@ bmpz_finvm(mpz_t ret, const mpz_t a, const mpz_t b) {
   mpz_t e;
 
   mpz_init(e);
+
+  if (mpz_sgn(b) <= 0)
+    goto fail;
+
   mpz_sub_ui(e, b, 2);
+
+  if (mpz_sgn(e) < 0)
+    goto fail;
 
   // Invert using fermat's little theorem.
 #ifdef BCRYPTO_HAS_GMP
