@@ -3252,7 +3252,7 @@ describe('BN.js', function() {
 
         it('should multiply neg number on 0', () => {
           assert.strictEqual(
-            mul(new BN('-100000000000'), new BN('3').div(new BN('4')))
+            mul(new BN('-100000000000'), new BN('3').quo(new BN('4')))
               .toString(16),
             '0'
           );
@@ -3350,51 +3350,51 @@ describe('BN.js', function() {
       });
     });
 
-    describe('.div()', () => {
+    describe('.quo()', () => {
       it('should divide small numbers (<=26 bits)', () => {
-        assert.strictEqual(new BN('256').div(new BN(10)).toString(10),
+        assert.strictEqual(new BN('256').quo(new BN(10)).toString(10),
           '25');
-        assert.strictEqual(new BN('-256').div(new BN(10)).toString(10),
+        assert.strictEqual(new BN('-256').quo(new BN(10)).toString(10),
           '-25');
-        assert.strictEqual(new BN('256').div(new BN(-10)).toString(10),
+        assert.strictEqual(new BN('256').quo(new BN(-10)).toString(10),
           '-25');
-        assert.strictEqual(new BN('-256').div(new BN(-10)).toString(10),
+        assert.strictEqual(new BN('-256').quo(new BN(-10)).toString(10),
           '25');
 
-        assert.strictEqual(new BN('10').div(new BN(256)).toString(10),
+        assert.strictEqual(new BN('10').quo(new BN(256)).toString(10),
           '0');
-        assert.strictEqual(new BN('-10').div(new BN(256)).toString(10),
+        assert.strictEqual(new BN('-10').quo(new BN(256)).toString(10),
           '0');
-        assert.strictEqual(new BN('10').div(new BN(-256)).toString(10),
+        assert.strictEqual(new BN('10').quo(new BN(-256)).toString(10),
           '0');
-        assert.strictEqual(new BN('-10').div(new BN(-256)).toString(10),
+        assert.strictEqual(new BN('-10').quo(new BN(-256)).toString(10),
           '0');
       });
 
       it('should divide large numbers (>53 bits)', () => {
-        assert.strictEqual(new BN('1222222225255589').div(new BN('611111124969028'))
+        assert.strictEqual(new BN('1222222225255589').quo(new BN('611111124969028'))
           .toString(10), '1');
-        assert.strictEqual(new BN('-1222222225255589').div(new BN('611111124969028'))
+        assert.strictEqual(new BN('-1222222225255589').quo(new BN('611111124969028'))
           .toString(10), '-1');
-        assert.strictEqual(new BN('1222222225255589').div(new BN('-611111124969028'))
+        assert.strictEqual(new BN('1222222225255589').quo(new BN('-611111124969028'))
           .toString(10), '-1');
-        assert.strictEqual(new BN('-1222222225255589').div(new BN('-611111124969028'))
+        assert.strictEqual(new BN('-1222222225255589').quo(new BN('-611111124969028'))
           .toString(10), '1');
 
-        assert.strictEqual(new BN('611111124969028').div(new BN('1222222225255589'))
+        assert.strictEqual(new BN('611111124969028').quo(new BN('1222222225255589'))
           .toString(10), '0');
-        assert.strictEqual(new BN('-611111124969028').div(new BN('1222222225255589'))
+        assert.strictEqual(new BN('-611111124969028').quo(new BN('1222222225255589'))
           .toString(10), '0');
-        assert.strictEqual(new BN('611111124969028').div(new BN('-1222222225255589'))
+        assert.strictEqual(new BN('611111124969028').quo(new BN('-1222222225255589'))
           .toString(10), '0');
-        assert.strictEqual(new BN('-611111124969028').div(new BN('-1222222225255589'))
+        assert.strictEqual(new BN('-611111124969028').quo(new BN('-1222222225255589'))
           .toString(10), '0');
       });
 
       it('should divide numbers', () => {
-        assert.strictEqual(new BN('69527932928').div(new BN('16974594')).toString(16),
+        assert.strictEqual(new BN('69527932928').quo(new BN('16974594')).toString(16),
           'fff');
-        assert.strictEqual(new BN('-69527932928').div(new BN('16974594')).toString(16),
+        assert.strictEqual(new BN('-69527932928').quo(new BN('16974594')).toString(16),
           '-fff');
 
         const b = new BN(''
@@ -3408,9 +3408,9 @@ describe('BN.js', function() {
           16
         );
 
-        assert.strictEqual(b.div(n).toString(16), n.toString(16));
+        assert.strictEqual(b.quo(n).toString(16), n.toString(16));
 
-        assert.strictEqual(new BN('1').div(new BN('-5')).toString(10), '0');
+        assert.strictEqual(new BN('1').quo(new BN('-5')).toString(10), '0');
       });
 
       it('should not fail on regression after moving to _wordDiv (1)', () => {
@@ -3426,7 +3426,7 @@ describe('BN.js', function() {
         const as = a.sqr();
 
         assert.strictEqual(
-          as.div(p).toString(16),
+          as.quo(p).toString(16),
           '39e58a8055b6fb264b75ec8c646509784204ac15a8c24e05babc9729e58090b9');
       });
 
@@ -3441,28 +3441,28 @@ describe('BN.js', function() {
           16);
 
         assert.strictEqual(
-          a.div(p).toString(16),
+          a.quo(p).toString(16),
           'ffffffff00000002000000000000000000000001000000000000000000000001');
       });
     });
 
-    describe('.idivn()', () => {
+    describe('.iquon()', () => {
       it('should divide numbers in-place', () => {
-        assert.strictEqual(new BN('10', 16).idivn(3).toString(16), '5');
-        assert.strictEqual(new BN('10', 16).idivn(-3).toString(16), '-5');
-        assert.strictEqual(new BN('12', 16).idivn(3).toString(16), '6');
-        assert.strictEqual(new BN('10000000000000000').idivn(3).toString(10),
+        assert.strictEqual(new BN('10', 16).iquon(3).toString(16), '5');
+        assert.strictEqual(new BN('10', 16).iquon(-3).toString(16), '-5');
+        assert.strictEqual(new BN('12', 16).iquon(3).toString(16), '6');
+        assert.strictEqual(new BN('10000000000000000').iquon(3).toString(10),
           '3333333333333333');
 
         assert.strictEqual(
-          new BN('100000000000000000000000000000').idivn(3).toString(10),
+          new BN('100000000000000000000000000000').iquon(3).toString(10),
           '33333333333333333333333333333');
 
         const t = new BN(3);
 
         assert.strictEqual(
-          new BN('12345678901234567890123456', 16).idivn(3).toString(16),
-          new BN('12345678901234567890123456', 16).div(t).toString(16));
+          new BN('12345678901234567890123456', 16).iquon(3).toString(16),
+          new BN('12345678901234567890123456', 16).quo(t).toString(16));
       });
     });
 
@@ -3489,81 +3489,81 @@ describe('BN.js', function() {
       });
     });
 
-    describe('.mod()', () => {
+    describe('.rem()', () => {
       it('should modulo small numbers (<=26 bits)', () => {
-        assert.strictEqual(new BN('256').mod(new BN(10)).toString(10),
+        assert.strictEqual(new BN('256').rem(new BN(10)).toString(10),
           '6');
-        assert.strictEqual(new BN('-256').mod(new BN(10)).toString(10),
+        assert.strictEqual(new BN('-256').rem(new BN(10)).toString(10),
           '-6');
-        assert.strictEqual(new BN('256').mod(new BN(-10)).toString(10),
+        assert.strictEqual(new BN('256').rem(new BN(-10)).toString(10),
           '6');
-        assert.strictEqual(new BN('-256').mod(new BN(-10)).toString(10),
+        assert.strictEqual(new BN('-256').rem(new BN(-10)).toString(10),
           '-6');
 
-        assert.strictEqual(new BN('10').mod(new BN(256)).toString(10),
+        assert.strictEqual(new BN('10').rem(new BN(256)).toString(10),
           '10');
-        assert.strictEqual(new BN('-10').mod(new BN(256)).toString(10),
+        assert.strictEqual(new BN('-10').rem(new BN(256)).toString(10),
           '-10');
-        assert.strictEqual(new BN('10').mod(new BN(-256)).toString(10),
+        assert.strictEqual(new BN('10').rem(new BN(-256)).toString(10),
           '10');
-        assert.strictEqual(new BN('-10').mod(new BN(-256)).toString(10),
+        assert.strictEqual(new BN('-10').rem(new BN(-256)).toString(10),
           '-10');
       });
 
       it('should modulo large numbers (>53 bits)', () => {
-        assert.strictEqual(new BN('1222222225255589').mod(new BN('611111124969028'))
+        assert.strictEqual(new BN('1222222225255589').rem(new BN('611111124969028'))
           .toString(10), '611111100286561');
-        assert.strictEqual(new BN('-1222222225255589').mod(new BN('611111124969028'))
+        assert.strictEqual(new BN('-1222222225255589').rem(new BN('611111124969028'))
           .toString(10), '-611111100286561');
-        assert.strictEqual(new BN('1222222225255589').mod(new BN('-611111124969028'))
+        assert.strictEqual(new BN('1222222225255589').rem(new BN('-611111124969028'))
           .toString(10), '611111100286561');
-        assert.strictEqual(new BN('-1222222225255589').mod(new BN('-611111124969028'))
+        assert.strictEqual(new BN('-1222222225255589').rem(new BN('-611111124969028'))
           .toString(10), '-611111100286561');
 
-        assert.strictEqual(new BN('611111124969028').mod(new BN('1222222225255589'))
+        assert.strictEqual(new BN('611111124969028').rem(new BN('1222222225255589'))
           .toString(10), '611111124969028');
-        assert.strictEqual(new BN('-611111124969028').mod(new BN('1222222225255589'))
+        assert.strictEqual(new BN('-611111124969028').rem(new BN('1222222225255589'))
           .toString(10), '-611111124969028');
-        assert.strictEqual(new BN('611111124969028').mod(new BN('-1222222225255589'))
+        assert.strictEqual(new BN('611111124969028').rem(new BN('-1222222225255589'))
           .toString(10), '611111124969028');
-        assert.strictEqual(new BN('-611111124969028').mod(new BN('-1222222225255589'))
+        assert.strictEqual(new BN('-611111124969028').rem(new BN('-1222222225255589'))
           .toString(10), '-611111124969028');
       });
 
       it('should mod numbers', () => {
-        assert.strictEqual(new BN('10').mod(new BN(256)).toString(16),
+        assert.strictEqual(new BN('10').rem(new BN(256)).toString(16),
           'a');
-        assert.strictEqual(new BN('69527932928').mod(new BN('16974594')).toString(16),
+        assert.strictEqual(new BN('69527932928').rem(new BN('16974594')).toString(16),
           '102f302');
 
         // 178 = 10 * 17 + 8
-        assert.strictEqual(new BN(178).div(new BN(10)).toNumber(), 17);
+        assert.strictEqual(new BN(178).quo(new BN(10)).toNumber(), 17);
+        assert.strictEqual(new BN(178).rem(new BN(10)).toNumber(), 8);
         assert.strictEqual(new BN(178).mod(new BN(10)).toNumber(), 8);
-        assert.strictEqual(new BN(178).umod(new BN(10)).toNumber(), 8);
 
         // -178 = 10 * (-17) + (-8)
-        assert.strictEqual(new BN(-178).div(new BN(10)).toNumber(), -17);
-        assert.strictEqual(new BN(-178).mod(new BN(10)).toNumber(), -8);
-        assert.strictEqual(new BN(-178).umod(new BN(10)).toNumber(), 2);
+        assert.strictEqual(new BN(-178).quo(new BN(10)).toNumber(), -17);
+        assert.strictEqual(new BN(-178).rem(new BN(10)).toNumber(), -8);
+        assert.strictEqual(new BN(-178).mod(new BN(10)).toNumber(), 2);
 
         // 178 = -10 * (-17) + 8
-        assert.strictEqual(new BN(178).div(new BN(-10)).toNumber(), -17);
+        assert.strictEqual(new BN(178).quo(new BN(-10)).toNumber(), -17);
+        assert.strictEqual(new BN(178).rem(new BN(-10)).toNumber(), 8);
         assert.strictEqual(new BN(178).mod(new BN(-10)).toNumber(), 8);
-        assert.strictEqual(new BN(178).umod(new BN(-10)).toNumber(), 8);
 
         // -178 = -10 * (17) + (-8)
-        assert.strictEqual(new BN(-178).div(new BN(-10)).toNumber(), 17);
-        assert.strictEqual(new BN(-178).mod(new BN(-10)).toNumber(), -8);
-        assert.strictEqual(new BN(-178).umod(new BN(-10)).toNumber(), 2);
+        assert.strictEqual(new BN(-178).quo(new BN(-10)).toNumber(), 17);
+        assert.strictEqual(new BN(-178).rem(new BN(-10)).toNumber(), -8);
+        assert.strictEqual(new BN(-178).mod(new BN(-10)).toNumber(), 2);
 
         // -4 = 1 * (-3) + -1
-        assert.strictEqual(new BN(-4).div(new BN(-3)).toNumber(), 1);
-        assert.strictEqual(new BN(-4).mod(new BN(-3)).toNumber(), -1);
+        assert.strictEqual(new BN(-4).quo(new BN(-3)).toNumber(), 1);
+        assert.strictEqual(new BN(-4).rem(new BN(-3)).toNumber(), -1);
 
         // -4 = -1 * (3) + -1
-        assert.strictEqual(new BN(-4).mod(new BN(3)).toNumber(), -1);
+        assert.strictEqual(new BN(-4).rem(new BN(3)).toNumber(), -1);
         // -4 = 1 * (-3) + (-1 + 3)
-        assert.strictEqual(new BN(-4).umod(new BN(-3)).toNumber(), 2);
+        assert.strictEqual(new BN(-4).mod(new BN(-3)).toNumber(), 2);
 
         const p = new BN(
           'ffffffff00000001000000000000000000000000ffffffffffffffffffffffff',
@@ -3575,7 +3575,7 @@ describe('BN.js', function() {
           16);
 
         assert.strictEqual(
-          a.mod(p).toString(16),
+          a.rem(p).toString(16),
           '0');
       });
 
@@ -3585,21 +3585,21 @@ describe('BN.js', function() {
           'fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe',
           'hex');
 
-        assert.strictEqual(a.mul(b).mod(a).cmpn(0), 0);
+        assert.strictEqual(a.mul(b).rem(a).cmpn(0), 0);
       });
     });
 
-    describe('.modrn()', () => {
-      it('should act like .mod() on small numbers', () => {
-        assert.strictEqual(new BN('10', 16).modrn(256).toString(16), '10');
-        assert.strictEqual(new BN('10', 16).modrn(-256).toString(16), '10');
-        assert.strictEqual(new BN('100', 16).modrn(256).toString(16), '0');
-        assert.strictEqual(new BN('1001', 16).modrn(256).toString(16), '1');
-        assert.strictEqual(new BN('100000000001', 16).modrn(256).toString(16), '1');
-        assert.strictEqual(new BN('100000000001', 16).modrn(257).toString(16),
-          new BN('100000000001', 16).mod(new BN(257)).toString(16));
-        assert.strictEqual(new BN('123456789012', 16).modrn(3).toString(16),
-          new BN('123456789012', 16).mod(new BN(3)).toString(16));
+    describe('.remrn()', () => {
+      it('should act like .rem() on small numbers', () => {
+        assert.strictEqual(new BN('10', 16).remrn(256).toString(16), '10');
+        assert.strictEqual(new BN('10', 16).remrn(-256).toString(16), '10');
+        assert.strictEqual(new BN('100', 16).remrn(256).toString(16), '0');
+        assert.strictEqual(new BN('1001', 16).remrn(256).toString(16), '1');
+        assert.strictEqual(new BN('100000000001', 16).remrn(256).toString(16), '1');
+        assert.strictEqual(new BN('100000000001', 16).remrn(257).toString(16),
+          new BN('100000000001', 16).rem(new BN(257)).toString(16));
+        assert.strictEqual(new BN('123456789012', 16).remrn(3).toString(16),
+          new BN('123456789012', 16).rem(new BN(3)).toString(16));
       });
     });
 
@@ -3618,7 +3618,7 @@ describe('BN.js', function() {
           const a = new BN(3);
           const b = a.invm(p);
 
-          assert.strictEqual(a.mul(b).mod(p).toString(16), '1');
+          assert.strictEqual(a.mul(b).rem(p).toString(16), '1');
         }
 
         {
@@ -3629,7 +3629,7 @@ describe('BN.js', function() {
           const a = new BN('deadbeef', 16);
           const b = a.invm(p192);
 
-          assert.strictEqual(a.mul(b).mod(p192).toString(16), '1');
+          assert.strictEqual(a.mul(b).rem(p192).toString(16), '1');
         }
 
         // Even base
@@ -3638,7 +3638,7 @@ describe('BN.js', function() {
           const e = new BN(65537);
           const d = e.invm(phi);
 
-          assert.strictEqual(e.mul(d).mod(phi).toString(16), '1');
+          assert.strictEqual(e.mul(d).rem(phi).toString(16), '1');
         }
 
         // Even base (take #2)
@@ -3647,7 +3647,7 @@ describe('BN.js', function() {
           const b = new BN('6');
           const r = a.invm(b);
 
-          assert.strictEqual(r.mul(a).mod(b).toString(16), '1');
+          assert.strictEqual(r.mul(a).rem(b).toString(16), '1');
         }
       });
     });
@@ -3659,7 +3659,7 @@ describe('BN.js', function() {
           const a = new BN(3);
           const b = a.finvm(p);
 
-          assert.strictEqual(a.mul(b).mod(p).toString(16), '1');
+          assert.strictEqual(a.mul(b).rem(p).toString(16), '1');
         }
 
         {
@@ -3670,7 +3670,7 @@ describe('BN.js', function() {
           const a = new BN('deadbeef', 16);
           const b = a.finvm(p192);
 
-          assert.strictEqual(a.mul(b).mod(p192).toString(16), '1');
+          assert.strictEqual(a.mul(b).rem(p192).toString(16), '1');
         }
       });
     });
@@ -4364,7 +4364,7 @@ describe('BN.js', function() {
           const b = new BN(231);
           const c = a.toRed(m).redMul(b.toRed(m)).fromRed();
 
-          assert(c.cmp(a.mul(b).mod(p192)) === 0);
+          assert(c.cmp(a.mul(b).rem(p192)) === 0);
 
           assert.strictEqual(a.toRed(m).redPow(new BN(0)).fromRed()
             .cmp(new BN(1)), 0);
@@ -4444,7 +4444,7 @@ describe('BN.js', function() {
           const m = fn(p);
           const a = new BN('deadbeefabbadead', 16);
           const b = new BN('abbadeadbeefdead', 16);
-          const c = a.mul(b).mod(p);
+          const c = a.mul(b).rem(p);
 
           assert.strictEqual(a.toRed(m).redIMul(b.toRed(m)).fromRed().toString(16),
             c.toString(16));
@@ -4515,7 +4515,7 @@ describe('BN.js', function() {
           'fedcba9876543210fedcba9876543210dead',
             16);
 
-          const exp = num.mod(p.p);
+          const exp = num.rem(p.p);
 
           assert.strictEqual(p.ireduce(num).toString(16), exp.toString(16));
         }
@@ -4526,7 +4526,7 @@ describe('BN.js', function() {
                             + '335dfb29ef07a4d835d22aa3b6797760'
                             + '70a8b8f59ba73d56d01a79af9', 16);
 
-          const exp = regr.mod(p.p);
+          const exp = regr.rem(p.p);
 
           assert.strictEqual(p.ireduce(regr).toString(16), exp.toString(16));
         }
@@ -4545,7 +4545,7 @@ describe('BN.js', function() {
 
         const n = new BN('9cd8cb48c3281596139f147c1364a3ed'
                        + 'e88d3f310fdb0eb98c924e599ca1b3c9', 16);
-        const expected = n.sqr().mod(p);
+        const expected = n.sqr().rem(p);
         const actual = n.toRed(red).redSqr().fromRed();
 
         assert.strictEqual(actual.toString(16), expected.toString(16));
@@ -4608,7 +4608,7 @@ describe('BN.js', function() {
         + '89ec4bb1400eccff8e7d9aa515cd1de7803f2daff09693ee7fd1353e'
         + '90a68307';
 
-      const r = g.toRed(BN.mont(p)).redPow(k).fromRed().mod(q);
+      const r = g.toRed(BN.mont(p)).redPow(k).fromRed().rem(q);
 
       assert.strictEqual(r.toString(16), expectedR);
     });
@@ -5218,147 +5218,141 @@ describe('BN.js', function() {
     });
 
     it('should compute divmod', () => {
-      const [q, r] = new BN(-3).divmod(new BN(2));
+      const [q, r] = new BN(-3).quorem(new BN(2));
       assert.strictEqual(q.toNumber(), -1);
       assert.strictEqual(r.toNumber(), -1);
     });
 
-    it('should compute division', () => {
-      // Note: rounds towards zero, not negative infinity.
+    it('should compute quotient', () => {
+      assert.strictEqual(new BN(3).quo(new BN(-2)).toNumber(), -1);
+      assert.strictEqual(new BN(-3).quo(new BN(2)).toNumber(), -1);
+      assert.strictEqual(new BN(-3).quo(new BN(-2)).toNumber(), 1);
+      assert.strictEqual(new BN(4).quo(new BN(-2)).toNumber(), -2);
+      assert.strictEqual(new BN(-4).quo(new BN(2)).toNumber(), -2);
+      assert.strictEqual(new BN(-4).quo(new BN(-2)).toNumber(), 2);
+    });
+
+    it('should compute larger quotient', () => {
+      assert.strictEqual(new BN(3e8).quo(new BN(-2e8)).toNumber(), -1);
+      assert.strictEqual(new BN(-3e8).quo(new BN(2e8)).toNumber(), -1);
+      assert.strictEqual(new BN(-3e8).quo(new BN(-2e8)).toNumber(), 1);
+      assert.strictEqual(new BN(4e8).quo(new BN(-2e8)).toNumber(), -2);
+      assert.strictEqual(new BN(-4e8).quo(new BN(2e8)).toNumber(), -2);
+      assert.strictEqual(new BN(-4e8).quo(new BN(-2e8)).toNumber(), 2);
+    });
+
+    it('should compute quotient n', () => {
+      assert.strictEqual(new BN(3).quon(-2).toNumber(), -1);
+      assert.strictEqual(new BN(-3).quon(2).toNumber(), -1);
+      assert.strictEqual(new BN(-3).quon(-2).toNumber(), 1);
+      assert.strictEqual(new BN(4).quon(-2).toNumber(), -2);
+      assert.strictEqual(new BN(-4).quon(2).toNumber(), -2);
+      assert.strictEqual(new BN(-4).quon(-2).toNumber(), 2);
+    });
+
+    it('should compute remainder', () => {
+      assert.strictEqual(new BN(3).rem(new BN(-2)).toNumber(), 1);
+      assert.strictEqual(new BN(-3).rem(new BN(2)).toNumber(), -1);
+      assert.strictEqual(new BN(-3).rem(new BN(-2)).toNumber(), -1);
+      assert.strictEqual(new BN(4).rem(new BN(-2)).toNumber(), 0);
+      assert.strictEqual(new BN(-4).rem(new BN(2)).toNumber(), 0);
+      assert.strictEqual(new BN(-4).rem(new BN(-2)).toNumber(), 0);
+    });
+
+    it('should compute remainder', () => {
+      assert.strictEqual(new BN(3e8).rem(new BN(-2e8)).toNumber(), 1e8);
+      assert.strictEqual(new BN(-3e8).rem(new BN(2e8)).toNumber(), -1e8);
+      assert.strictEqual(new BN(-3e8).rem(new BN(-2e8)).toNumber(), -1e8);
+      assert.strictEqual(new BN(4e8).rem(new BN(-2e8)).toNumber(), 0);
+      assert.strictEqual(new BN(-4e8).rem(new BN(2e8)).toNumber(), 0);
+      assert.strictEqual(new BN(-4e8).rem(new BN(-2e8)).toNumber(), 0);
+    });
+
+    it('should compute remainder n', () => {
+      assert.strictEqual(new BN(3).remn(-2).toNumber(), 1);
+      assert.strictEqual(new BN(-3).remn(2).toNumber(), -1);
+      assert.strictEqual(new BN(-3).remn(-2).toNumber(), -1);
+      assert.strictEqual(new BN(4).remn(-2).toNumber(), 0);
+      assert.strictEqual(new BN(-4).remn(2).toNumber(), 0);
+      assert.strictEqual(new BN(-4).remn(-2).toNumber(), 0);
+    });
+
+    it('should compute remainder rn', () => {
+      assert.strictEqual(new BN(3).remrn(-2), 1);
+      assert.strictEqual(new BN(-3).remrn(2), -1);
+      assert.strictEqual(new BN(-3).remrn(-2), -1);
+      assert.strictEqual(new BN(4).remrn(-2), 0);
+      assert.strictEqual(new BN(-4).remrn(2), 0);
+      assert.strictEqual(new BN(-4).remrn(-2), 0);
+    });
+
+    it('should compute euclidean divmod', () => {
+      const [q, r] = new BN(-3).divmod(new BN(2));
+      assert.strictEqual(q.toNumber(), -2);
+      assert.strictEqual(r.toNumber(), 1);
+    });
+
+    it('should compute euclidean division', () => {
       assert.strictEqual(new BN(3).div(new BN(-2)).toNumber(), -1);
-      assert.strictEqual(new BN(-3).div(new BN(2)).toNumber(), -1);
-      assert.strictEqual(new BN(-3).div(new BN(-2)).toNumber(), 1);
+      assert.strictEqual(new BN(-3).div(new BN(2)).toNumber(), -2);
+      assert.strictEqual(new BN(-3).div(new BN(-2)).toNumber(), 2);
       assert.strictEqual(new BN(4).div(new BN(-2)).toNumber(), -2);
       assert.strictEqual(new BN(-4).div(new BN(2)).toNumber(), -2);
       assert.strictEqual(new BN(-4).div(new BN(-2)).toNumber(), 2);
     });
 
-    it('should compute larger division', () => {
-      // Note: rounds towards zero, not negative infinity.
+    it('should compute larger euclidean division', () => {
       assert.strictEqual(new BN(3e8).div(new BN(-2e8)).toNumber(), -1);
-      assert.strictEqual(new BN(-3e8).div(new BN(2e8)).toNumber(), -1);
-      assert.strictEqual(new BN(-3e8).div(new BN(-2e8)).toNumber(), 1);
+      assert.strictEqual(new BN(-3e8).div(new BN(2e8)).toNumber(), -2);
+      assert.strictEqual(new BN(-3e8).div(new BN(-2e8)).toNumber(), 2);
       assert.strictEqual(new BN(4e8).div(new BN(-2e8)).toNumber(), -2);
       assert.strictEqual(new BN(-4e8).div(new BN(2e8)).toNumber(), -2);
       assert.strictEqual(new BN(-4e8).div(new BN(-2e8)).toNumber(), 2);
     });
 
-    it('should compute division n', () => {
-      // Note: rounds towards zero, not negative infinity.
+    it('should compute euclidean division n', () => {
       assert.strictEqual(new BN(3).divn(-2).toNumber(), -1);
-      assert.strictEqual(new BN(-3).divn(2).toNumber(), -1);
-      assert.strictEqual(new BN(-3).divn(-2).toNumber(), 1);
+      assert.strictEqual(new BN(-3).divn(2).toNumber(), -2);
+      assert.strictEqual(new BN(-3).divn(-2).toNumber(), 2);
       assert.strictEqual(new BN(4).divn(-2).toNumber(), -2);
       assert.strictEqual(new BN(-4).divn(2).toNumber(), -2);
       assert.strictEqual(new BN(-4).divn(-2).toNumber(), 2);
     });
 
-    it('should compute modulo', () => {
+    it('should compute euclidean modulo', () => {
       assert.strictEqual(new BN(3).mod(new BN(-2)).toNumber(), 1);
-      assert.strictEqual(new BN(-3).mod(new BN(2)).toNumber(), -1);
-      assert.strictEqual(new BN(-3).mod(new BN(-2)).toNumber(), -1);
+      assert.strictEqual(new BN(-3).mod(new BN(2)).toNumber(), 1);
+      assert.strictEqual(new BN(-3).mod(new BN(-2)).toNumber(), 1);
       assert.strictEqual(new BN(4).mod(new BN(-2)).toNumber(), 0);
       assert.strictEqual(new BN(-4).mod(new BN(2)).toNumber(), 0);
       assert.strictEqual(new BN(-4).mod(new BN(-2)).toNumber(), 0);
     });
 
-    it('should compute modulo', () => {
+    it('should compute euclidean modulo', () => {
       assert.strictEqual(new BN(3e8).mod(new BN(-2e8)).toNumber(), 1e8);
-      assert.strictEqual(new BN(-3e8).mod(new BN(2e8)).toNumber(), -1e8);
-      assert.strictEqual(new BN(-3e8).mod(new BN(-2e8)).toNumber(), -1e8);
+      assert.strictEqual(new BN(-3e8).mod(new BN(2e8)).toNumber(), 1e8);
+      assert.strictEqual(new BN(-3e8).mod(new BN(-2e8)).toNumber(), 1e8);
       assert.strictEqual(new BN(4e8).mod(new BN(-2e8)).toNumber(), 0);
       assert.strictEqual(new BN(-4e8).mod(new BN(2e8)).toNumber(), 0);
       assert.strictEqual(new BN(-4e8).mod(new BN(-2e8)).toNumber(), 0);
     });
 
-    it('should compute modulo n', () => {
+    it('should compute euclidean modulo n', () => {
       assert.strictEqual(new BN(3).modn(-2).toNumber(), 1);
-      assert.strictEqual(new BN(-3).modn(2).toNumber(), -1);
-      assert.strictEqual(new BN(-3).modn(-2).toNumber(), -1);
+      assert.strictEqual(new BN(-3).modn(2).toNumber(), 1);
+      assert.strictEqual(new BN(-3).modn(-2).toNumber(), 1);
       assert.strictEqual(new BN(4).modn(-2).toNumber(), 0);
       assert.strictEqual(new BN(-4).modn(2).toNumber(), 0);
       assert.strictEqual(new BN(-4).modn(-2).toNumber(), 0);
     });
 
-    it('should compute modulo rn', () => {
+    it('should compute euclidean modulo rn', () => {
       assert.strictEqual(new BN(3).modrn(-2), 1);
-      assert.strictEqual(new BN(-3).modrn(2), -1);
-      assert.strictEqual(new BN(-3).modrn(-2), -1);
+      assert.strictEqual(new BN(-3).modrn(2), 1);
+      assert.strictEqual(new BN(-3).modrn(-2), 1);
       assert.strictEqual(new BN(4).modrn(-2), 0);
       assert.strictEqual(new BN(-4).modrn(2), 0);
       assert.strictEqual(new BN(-4).modrn(-2), 0);
-    });
-
-    it('should compute euclidian divmod', () => {
-      const [q, r] = new BN(-3).udivmod(new BN(2));
-      assert.strictEqual(q.toNumber(), -2);
-      assert.strictEqual(r.toNumber(), 1);
-    });
-
-    it('should compute euclidian division', () => {
-      // Note: rounds towards infinity, not negative zero.
-      assert.strictEqual(new BN(3).udiv(new BN(-2)).toNumber(), -1);
-      assert.strictEqual(new BN(-3).udiv(new BN(2)).toNumber(), -2);
-      assert.strictEqual(new BN(-3).udiv(new BN(-2)).toNumber(), 2);
-      assert.strictEqual(new BN(4).udiv(new BN(-2)).toNumber(), -2);
-      assert.strictEqual(new BN(-4).udiv(new BN(2)).toNumber(), -2);
-      assert.strictEqual(new BN(-4).udiv(new BN(-2)).toNumber(), 2);
-    });
-
-    it('should compute larger euclidian division', () => {
-      // Note: rounds towards infinity, not negative zero.
-      assert.strictEqual(new BN(3e8).udiv(new BN(-2e8)).toNumber(), -1);
-      assert.strictEqual(new BN(-3e8).udiv(new BN(2e8)).toNumber(), -2);
-      assert.strictEqual(new BN(-3e8).udiv(new BN(-2e8)).toNumber(), 2);
-      assert.strictEqual(new BN(4e8).udiv(new BN(-2e8)).toNumber(), -2);
-      assert.strictEqual(new BN(-4e8).udiv(new BN(2e8)).toNumber(), -2);
-      assert.strictEqual(new BN(-4e8).udiv(new BN(-2e8)).toNumber(), 2);
-    });
-
-    it('should compute euclidian division n', () => {
-      // Note: rounds towards infinity, not negative zero.
-      assert.strictEqual(new BN(3).udivn(-2).toNumber(), -1);
-      assert.strictEqual(new BN(-3).udivn(2).toNumber(), -2);
-      assert.strictEqual(new BN(-3).udivn(-2).toNumber(), 2);
-      assert.strictEqual(new BN(4).udivn(-2).toNumber(), -2);
-      assert.strictEqual(new BN(-4).udivn(2).toNumber(), -2);
-      assert.strictEqual(new BN(-4).udivn(-2).toNumber(), 2);
-    });
-
-    it('should compute euclidian modulo', () => {
-      assert.strictEqual(new BN(3).umod(new BN(-2)).toNumber(), 1);
-      assert.strictEqual(new BN(-3).umod(new BN(2)).toNumber(), 1);
-      assert.strictEqual(new BN(-3).umod(new BN(-2)).toNumber(), 1);
-      assert.strictEqual(new BN(4).umod(new BN(-2)).toNumber(), 0);
-      assert.strictEqual(new BN(-4).umod(new BN(2)).toNumber(), 0);
-      assert.strictEqual(new BN(-4).umod(new BN(-2)).toNumber(), 0);
-    });
-
-    it('should compute euclidian modulo', () => {
-      assert.strictEqual(new BN(3e8).umod(new BN(-2e8)).toNumber(), 1e8);
-      assert.strictEqual(new BN(-3e8).umod(new BN(2e8)).toNumber(), 1e8);
-      assert.strictEqual(new BN(-3e8).umod(new BN(-2e8)).toNumber(), 1e8);
-      assert.strictEqual(new BN(4e8).umod(new BN(-2e8)).toNumber(), 0);
-      assert.strictEqual(new BN(-4e8).umod(new BN(2e8)).toNumber(), 0);
-      assert.strictEqual(new BN(-4e8).umod(new BN(-2e8)).toNumber(), 0);
-    });
-
-    it('should compute euclidian modulo n', () => {
-      assert.strictEqual(new BN(3).umodn(-2).toNumber(), 1);
-      assert.strictEqual(new BN(-3).umodn(2).toNumber(), 1);
-      assert.strictEqual(new BN(-3).umodn(-2).toNumber(), 1);
-      assert.strictEqual(new BN(4).umodn(-2).toNumber(), 0);
-      assert.strictEqual(new BN(-4).umodn(2).toNumber(), 0);
-      assert.strictEqual(new BN(-4).umodn(-2).toNumber(), 0);
-    });
-
-    it('should compute euclidian modulo rn', () => {
-      assert.strictEqual(new BN(3).umodrn(-2), 1);
-      assert.strictEqual(new BN(-3).umodrn(2), 1);
-      assert.strictEqual(new BN(-3).umodrn(-2), 1);
-      assert.strictEqual(new BN(4).umodrn(-2), 0);
-      assert.strictEqual(new BN(-4).umodrn(2), 0);
-      assert.strictEqual(new BN(-4).umodrn(-2), 0);
     });
 
     it('should compute uand', () => {
@@ -5447,7 +5441,7 @@ describe('BN.js', function() {
       const inv2 = x.toRed(BN.red(y)).redInvm().fromRed();
       const inv3 = x.toRed(BN.mont(y)).redInvm().fromRed();
 
-      assert.strictEqual(x.mul(inv).subn(1).umod(y).toString(), '0');
+      assert.strictEqual(x.mul(inv).subn(1).mod(y).toString(), '0');
       assert.strictEqual(inv.toString(), x.invm(y).toString());
       assert.strictEqual(inv2.toString(), inv.toString());
       assert.strictEqual(inv3.toString(), inv.toString());
@@ -5473,7 +5467,7 @@ describe('BN.js', function() {
       const inv2 = x.toRed(BN.red(y)).redFinvm().fromRed();
       const inv3 = x.toRed(BN.mont(y)).redFinvm().fromRed();
 
-      assert.strictEqual(x.mul(inv).subn(1).umod(y).toString(), '0');
+      assert.strictEqual(x.mul(inv).subn(1).mod(y).toString(), '0');
       assert.strictEqual(inv.toString(), x.invm(y).toString());
       assert.strictEqual(inv2.toString(), inv.toString());
       assert.strictEqual(inv3.toString(), inv.toString());
@@ -5500,7 +5494,7 @@ describe('BN.js', function() {
       const r = BN.random(rng, 0, p);
       const rInv = r._invmp(p);
 
-      assert.strictEqual(r.mul(rInv).subn(1).umod(p).toString(), '0');
+      assert.strictEqual(r.mul(rInv).subn(1).mod(p).toString(), '0');
       assert.strictEqual(rInv.toString(), r._invmp(p).toString());
     });
 
@@ -5519,8 +5513,8 @@ describe('BN.js', function() {
       const g = r1.gcd(r2);
       const [a1, b1, g1] = r1.egcd(r2);
 
-      const r1d = r1.div(g1);
-      const r2d = r2.div(g1);
+      const r1d = r1.quo(g1);
+      const r2d = r2.quo(g1);
       const [a2, b2, g2] = r1d.egcd(r2d);
 
       assert.strictEqual(g.toString(), g1.toString());
@@ -5582,12 +5576,12 @@ describe('BN.js', function() {
     it('should compute sqrtp (p192, p mod 4 == 3)', () => {
       const p = BN._prime('p192').p;
       const r = BN.random(rng, 0, p);
-      const R = r.sqr().umod(p);
+      const R = r.sqr().mod(p);
       const s = R.sqrtp(p);
 
       assert(p.andln(3) === 3);
 
-      assert.strictEqual(s.sqr().umod(p).toString(), R.toString());
+      assert.strictEqual(s.sqr().mod(p).toString(), R.toString());
     });
 
     it('should compute sqrtp (p192, zero)', () => {
@@ -5604,12 +5598,12 @@ describe('BN.js', function() {
     it('should compute sqrtp (p25519, p mod 8 == 5)', () => {
       const p = BN._prime('p25519').p;
       const r = BN.random(rng, 0, p);
-      const R = r.sqr().umod(p);
+      const R = r.sqr().mod(p);
       const s = R.sqrtp(p);
 
       assert(p.andln(7) === 5);
 
-      assert.strictEqual(s.sqr().umod(p).toString(), R.toString());
+      assert.strictEqual(s.sqr().mod(p).toString(), R.toString());
     });
 
     it('should compute sqrtp (p25519, zero)', () => {
@@ -5626,12 +5620,12 @@ describe('BN.js', function() {
     it('should compute sqrtp (p224, tonelli-shanks)', () => {
       const p = BN._prime('p224').p;
       const r = BN.random(rng, 0, p);
-      const R = r.sqr().umod(p);
+      const R = r.sqr().mod(p);
       const s = R.sqrtp(p);
 
       assert(p.andln(3) !== 3 && p.andln(7) !== 5);
 
-      assert.strictEqual(s.sqr().umod(p).toString(), R.toString());
+      assert.strictEqual(s.sqr().mod(p).toString(), R.toString());
     });
 
     it('should compute sqrtp (224, zero)', () => {
@@ -5650,10 +5644,10 @@ describe('BN.js', function() {
       const q = BN._prime('p224').p;
       const n = p.mul(q);
       const r = BN.random(rng, 0, n);
-      const R = r.sqr().umod(n);
+      const R = r.sqr().mod(n);
       const s = R.sqrtpq(p, q);
 
-      assert.strictEqual(s.sqr().umod(n).toString(), R.toString());
+      assert.strictEqual(s.sqr().mod(n).toString(), R.toString());
     });
 
     it('should compute negative gcd', () => {
@@ -5685,7 +5679,7 @@ describe('BN.js', function() {
       assert.strictEqual(a.toString(), a1.toString());
       assert.strictEqual(b.toString(), b1.toString());
       assert.strictEqual(g.toString(), g1.toString());
-      assert.strictEqual(a.umod(p).toString(), n.invm(p).toString());
+      assert.strictEqual(a.mod(p).toString(), n.invm(p).toString());
     });
 
     it('should compute large egcd', () => {
@@ -5701,7 +5695,7 @@ describe('BN.js', function() {
       assert.strictEqual(a.toString(), a1.toString());
       assert.strictEqual(b.toString(), b1.toString());
       assert.strictEqual(g.toString(), g1.toString());
-      assert.strictEqual(a.umod(p).toString(), n.invm(p).toString());
+      assert.strictEqual(a.mod(p).toString(), n.invm(p).toString());
     });
 
     it('should compute negative egcd', () => {
@@ -5715,7 +5709,7 @@ describe('BN.js', function() {
       assert.strictEqual(a.toString(), a1.toString());
       assert.strictEqual(b.toString(), b1.toString());
       assert.strictEqual(g.toString(), g1.toString());
-      assert.strictEqual(a.umod(p).toString(), n.invm(p).toString());
+      assert.strictEqual(a.mod(p).toString(), n.invm(p).toString());
     });
 
     it('should compute negative egcd', () => {
@@ -5745,7 +5739,7 @@ describe('BN.js', function() {
       const n = new BN('fffffffffe99696a9507ceafdb46582adc8d66b4106bbd7f7856c3b0d', 16);
       const a1 = new BN('d7ba66a4e09ef30f402e6035fea6385e9a4af347e2edd7ed', 16);
       const a = n.invm(p);
-      const b = n.umod(p).invm(p);
+      const b = n.mod(p).invm(p);
 
       assert(n.bitLength() > p.bitLength());
 
@@ -5758,7 +5752,7 @@ describe('BN.js', function() {
       const n = new BN('-e99696a9507ceafdb46582adc8d66b4106bbd7f7856c3b0d', 16);
       const a1 = new BN('3b0f7fcc204c2790a9d11d8b19e2a8125b7ab803ac4bdedb', 16);
       const a = n.invm(p);
-      const b = n.umod(p).invm(p);
+      const b = n.mod(p).invm(p);
 
       assert.strictEqual(a.toString(), a1.toString());
       assert.strictEqual(b.toString(), a1.toString());
@@ -5801,7 +5795,7 @@ describe('BN.js', function() {
       const p = BN._prime('p192').p;
       const r = BN.random(rng, 0, p);
       const i1 = r.neg().invm(p);
-      const i2 = r.neg().umod(p).invm(p);
+      const i2 = r.neg().mod(p).invm(p);
 
       assert.strictEqual(i1.toString(), i2.toString());
     });
@@ -5810,7 +5804,7 @@ describe('BN.js', function() {
       const p = BN._prime('p192').p;
       const r = BN.random(rng, 0, p);
       const i1 = r.neg().finvm(p);
-      const i2 = r.neg().umod(p).finvm(p);
+      const i2 = r.neg().mod(p).finvm(p);
 
       assert.strictEqual(i1.toString(), i2.toString());
     });
@@ -5818,10 +5812,10 @@ describe('BN.js', function() {
     it('should compute sqrtp (negative)', () => {
       const p = BN._prime('p192').p;
       const r = BN.random(rng, 0, p).ineg();
-      const R = r.sqr().umod(p);
+      const R = r.sqr().mod(p);
       const s = R.sqrtp(p);
 
-      assert.strictEqual(s.sqr().umod(p).toString(), R.toString());
+      assert.strictEqual(s.sqr().mod(p).toString(), R.toString());
     });
 
     it('should compute sqrtpq (negative)', () => {
@@ -5829,17 +5823,17 @@ describe('BN.js', function() {
       const q = BN._prime('p224').p;
       const n = p.mul(q);
       const r = BN.random(rng, 0, n).ineg();
-      const R = r.sqr().umod(n);
+      const R = r.sqr().mod(n);
       const s = R.sqrtpq(p, q);
 
-      assert.strictEqual(s.sqr().umod(n).toString(), R.toString());
+      assert.strictEqual(s.sqr().mod(n).toString(), R.toString());
     });
 
     it('should negate', () => {
       const p = BN._prime('p192').p;
       const r = BN.random(rng, 1, p);
 
-      assert.strictEqual(r.neg().iumod(p).toString(), p.sub(r).toString());
+      assert.strictEqual(r.neg().imod(p).toString(), p.sub(r).toString());
     });
 
     it('should test perfect squares', () => {
@@ -5866,7 +5860,7 @@ describe('BN.js', function() {
 
       assert(!r.isNeg());
 
-      assert(r.fromRed().eq(n.umod(p)));
+      assert(r.fromRed().eq(n.mod(p)));
     });
 
     it('should allow negative numbers for montgomery context', () => {
@@ -5880,7 +5874,7 @@ describe('BN.js', function() {
 
       assert(!r.isNeg());
 
-      assert(r.fromRed().eq(n.umod(p)));
+      assert(r.fromRed().eq(n.mod(p)));
     });
 
     it('should read and serialize aligned data', () => {

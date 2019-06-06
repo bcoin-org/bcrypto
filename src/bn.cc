@@ -149,18 +149,18 @@ BBN::Init(v8::Local<v8::Object> &target) {
   Nan::SetPrototypeMethod(tpl, "isubn", BBN::Isubn);
   Nan::SetPrototypeMethod(tpl, "imul", BBN::Imul);
   Nan::SetPrototypeMethod(tpl, "imuln", BBN::Imuln);
+  Nan::SetPrototypeMethod(tpl, "quorem", BBN::Quorem);
+  Nan::SetPrototypeMethod(tpl, "iquo", BBN::Iquo);
+  Nan::SetPrototypeMethod(tpl, "iquon", BBN::Iquon);
+  Nan::SetPrototypeMethod(tpl, "irem", BBN::Irem);
+  Nan::SetPrototypeMethod(tpl, "iremn", BBN::Iremn);
+  Nan::SetPrototypeMethod(tpl, "remrn", BBN::Remrn);
   Nan::SetPrototypeMethod(tpl, "divmod", BBN::Divmod);
   Nan::SetPrototypeMethod(tpl, "idiv", BBN::Idiv);
   Nan::SetPrototypeMethod(tpl, "idivn", BBN::Idivn);
   Nan::SetPrototypeMethod(tpl, "imod", BBN::Imod);
   Nan::SetPrototypeMethod(tpl, "imodn", BBN::Imodn);
   Nan::SetPrototypeMethod(tpl, "modrn", BBN::Modrn);
-  Nan::SetPrototypeMethod(tpl, "udivmod", BBN::Udivmod);
-  Nan::SetPrototypeMethod(tpl, "iudiv", BBN::Iudiv);
-  Nan::SetPrototypeMethod(tpl, "iudivn", BBN::Iudivn);
-  Nan::SetPrototypeMethod(tpl, "iumod", BBN::Iumod);
-  Nan::SetPrototypeMethod(tpl, "iumodn", BBN::Iumodn);
-  Nan::SetPrototypeMethod(tpl, "umodrn", BBN::Umodrn);
   Nan::SetPrototypeMethod(tpl, "idivRound", BBN::IdivRound);
   Nan::SetPrototypeMethod(tpl, "ipow", BBN::Ipow);
   Nan::SetPrototypeMethod(tpl, "ipown", BBN::Ipown);
@@ -367,11 +367,11 @@ NAN_METHOD(BBN::Imuln) {
   info.GetReturnValue().Set(info.Holder());
 }
 
-NAN_METHOD(BBN::Divmod) {
+NAN_METHOD(BBN::Quorem) {
   BBN *a = ObjectWrap::Unwrap<BBN>(info.Holder());
 
   if (info.Length() < 3)
-    return Nan::ThrowError(ARG_ERROR(divmod, 1));
+    return Nan::ThrowError(ARG_ERROR(quorem, 1));
 
   if (!BBN::HasInstance(info[0]))
     return Nan::ThrowTypeError(TYPE_ERROR(num, bignum));
@@ -394,11 +394,11 @@ NAN_METHOD(BBN::Divmod) {
   info.GetReturnValue().Set(info.Holder());
 }
 
-NAN_METHOD(BBN::Idiv) {
+NAN_METHOD(BBN::Iquo) {
   BBN *a = ObjectWrap::Unwrap<BBN>(info.Holder());
 
   if (info.Length() < 1)
-    return Nan::ThrowError(ARG_ERROR(idiv, 1));
+    return Nan::ThrowError(ARG_ERROR(iquo, 1));
 
   if (!BBN::HasInstance(info[0]))
     return Nan::ThrowTypeError(TYPE_ERROR(num, bignum));
@@ -413,11 +413,11 @@ NAN_METHOD(BBN::Idiv) {
   info.GetReturnValue().Set(info.Holder());
 }
 
-NAN_METHOD(BBN::Idivn) {
+NAN_METHOD(BBN::Iquon) {
   BBN *a = ObjectWrap::Unwrap<BBN>(info.Holder());
 
   if (info.Length() < 1)
-    return Nan::ThrowError(ARG_ERROR(idivn, 1));
+    return Nan::ThrowError(ARG_ERROR(iquon, 1));
 
   if (!IsSMI(info[0]))
     return Nan::ThrowTypeError(TYPE_ERROR(num, smi));
@@ -442,11 +442,11 @@ NAN_METHOD(BBN::Idivn) {
   info.GetReturnValue().Set(info.Holder());
 }
 
-NAN_METHOD(BBN::Imod) {
+NAN_METHOD(BBN::Irem) {
   BBN *a = ObjectWrap::Unwrap<BBN>(info.Holder());
 
   if (info.Length() < 1)
-    return Nan::ThrowError(ARG_ERROR(imod, 1));
+    return Nan::ThrowError(ARG_ERROR(irem, 1));
 
   if (!BBN::HasInstance(info[0]))
     return Nan::ThrowTypeError(TYPE_ERROR(num, bignum));
@@ -461,11 +461,11 @@ NAN_METHOD(BBN::Imod) {
   info.GetReturnValue().Set(info.Holder());
 }
 
-NAN_METHOD(BBN::Imodn) {
+NAN_METHOD(BBN::Iremn) {
   BBN *a = ObjectWrap::Unwrap<BBN>(info.Holder());
 
   if (info.Length() < 1)
-    return Nan::ThrowError(ARG_ERROR(imodn, 1));
+    return Nan::ThrowError(ARG_ERROR(iremn, 1));
 
   if (!IsSMI(info[0]))
     return Nan::ThrowTypeError(TYPE_ERROR(num, smi));
@@ -483,11 +483,11 @@ NAN_METHOD(BBN::Imodn) {
   info.GetReturnValue().Set(info.Holder());
 }
 
-NAN_METHOD(BBN::Modrn) {
+NAN_METHOD(BBN::Remrn) {
   BBN *a = ObjectWrap::Unwrap<BBN>(info.Holder());
 
   if (info.Length() < 1)
-    return Nan::ThrowError(ARG_ERROR(modrn, 1));
+    return Nan::ThrowError(ARG_ERROR(remrn, 1));
 
   if (!IsSMI(info[0]))
     return Nan::ThrowTypeError(TYPE_ERROR(num, smi));
@@ -509,11 +509,11 @@ NAN_METHOD(BBN::Modrn) {
   info.GetReturnValue().Set(Nan::New<v8::Number>(r));
 }
 
-NAN_METHOD(BBN::Udivmod) {
+NAN_METHOD(BBN::Divmod) {
   BBN *a = ObjectWrap::Unwrap<BBN>(info.Holder());
 
   if (info.Length() < 3)
-    return Nan::ThrowError(ARG_ERROR(udivmod, 1));
+    return Nan::ThrowError(ARG_ERROR(divmod, 1));
 
   if (!BBN::HasInstance(info[0]))
     return Nan::ThrowTypeError(TYPE_ERROR(num, bignum));
@@ -539,11 +539,11 @@ NAN_METHOD(BBN::Udivmod) {
   info.GetReturnValue().Set(info.Holder());
 }
 
-NAN_METHOD(BBN::Iudiv) {
+NAN_METHOD(BBN::Idiv) {
   BBN *a = ObjectWrap::Unwrap<BBN>(info.Holder());
 
   if (info.Length() < 1)
-    return Nan::ThrowError(ARG_ERROR(iudiv, 1));
+    return Nan::ThrowError(ARG_ERROR(idiv, 1));
 
   if (!BBN::HasInstance(info[0]))
     return Nan::ThrowTypeError(TYPE_ERROR(num, bignum));
@@ -561,11 +561,11 @@ NAN_METHOD(BBN::Iudiv) {
   info.GetReturnValue().Set(info.Holder());
 }
 
-NAN_METHOD(BBN::Iudivn) {
+NAN_METHOD(BBN::Idivn) {
   BBN *a = ObjectWrap::Unwrap<BBN>(info.Holder());
 
   if (info.Length() < 1)
-    return Nan::ThrowError(ARG_ERROR(iudivn, 1));
+    return Nan::ThrowError(ARG_ERROR(idivn, 1));
 
   if (!IsSMI(info[0]))
     return Nan::ThrowTypeError(TYPE_ERROR(num, smi));
@@ -601,11 +601,11 @@ NAN_METHOD(BBN::Iudivn) {
   info.GetReturnValue().Set(info.Holder());
 }
 
-NAN_METHOD(BBN::Iumod) {
+NAN_METHOD(BBN::Imod) {
   BBN *a = ObjectWrap::Unwrap<BBN>(info.Holder());
 
   if (info.Length() < 1)
-    return Nan::ThrowError(ARG_ERROR(iumod, 1));
+    return Nan::ThrowError(ARG_ERROR(imod, 1));
 
   if (!BBN::HasInstance(info[0]))
     return Nan::ThrowTypeError(TYPE_ERROR(num, bignum));
@@ -623,11 +623,11 @@ NAN_METHOD(BBN::Iumod) {
   info.GetReturnValue().Set(info.Holder());
 }
 
-NAN_METHOD(BBN::Iumodn) {
+NAN_METHOD(BBN::Imodn) {
   BBN *a = ObjectWrap::Unwrap<BBN>(info.Holder());
 
   if (info.Length() < 1)
-    return Nan::ThrowError(ARG_ERROR(iumodn, 1));
+    return Nan::ThrowError(ARG_ERROR(imodn, 1));
 
   if (!IsSMI(info[0]))
     return Nan::ThrowTypeError(TYPE_ERROR(num, smi));
@@ -652,11 +652,11 @@ NAN_METHOD(BBN::Iumodn) {
   info.GetReturnValue().Set(info.Holder());
 }
 
-NAN_METHOD(BBN::Umodrn) {
+NAN_METHOD(BBN::Modrn) {
   BBN *a = ObjectWrap::Unwrap<BBN>(info.Holder());
 
   if (info.Length() < 1)
-    return Nan::ThrowError(ARG_ERROR(umodrn, 1));
+    return Nan::ThrowError(ARG_ERROR(modrn, 1));
 
   if (!IsSMI(info[0]))
     return Nan::ThrowTypeError(TYPE_ERROR(num, smi));

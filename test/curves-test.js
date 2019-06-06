@@ -201,7 +201,7 @@ describe('Curves', function() {
       const k = new BN('1234567890123456789012345678901234', 16);
       const [k1, k2] = curve._endoSplit(k);
 
-      const testK = k1.add(k2.mul(curve.endo.lambda)).umod(curve.n);
+      const testK = k1.add(k2.mul(curve.endo.lambda)).mod(curve.n);
 
       assert.strictEqual(testK.toString(16), k.toString(16));
     });
@@ -324,7 +324,7 @@ describe('Curves', function() {
     it('should multiply with blinding', () => {
       const curve = secp256k1;
       const {blind} = curve.g.precomputed.blinding;
-      const neg = blind.neg().iumod(curve.n);
+      const neg = blind.neg().imod(curve.n);
       const point1 = curve.g.mulBlind(neg);
       const point2 = curve.g.mul(neg);
       const point3 = curve.g.mulBlind(blind);
