@@ -15,7 +15,7 @@ private:
   static NAN_METHOD(ScalarTweakMul);
   static NAN_METHOD(ScalarReduce);
   static NAN_METHOD(ScalarNegate);
-  static NAN_METHOD(ScalarInverse);
+  static NAN_METHOD(ScalarInvert);
   static NAN_METHOD(PublicKeyCreate);
   static NAN_METHOD(PublicKeyFromScalar);
   static NAN_METHOD(PublicKeyConvert);

@@ -121,7 +121,7 @@ bmpz_powm_si(mpz_t ret, const mpz_t a, long b, const mpz_t c) {
 }
 
 static int
-bmpz_finvm(mpz_t ret, const mpz_t a, const mpz_t b) {
+bmpz_fermat(mpz_t ret, const mpz_t a, const mpz_t b) {
   int r = 0;
   mpz_t e;
 

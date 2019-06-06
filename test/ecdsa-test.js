@@ -193,7 +193,7 @@ describe('ECDSA', function() {
       assert(ec.isLowDER(der));
       assert(ec.verifyDER(msg, der, tpub));
 
-      const parent = ec.privateKeyTweakMul(tpriv, ec.privateKeyInverse(tweak));
+      const parent = ec.privateKeyTweakMul(tpriv, ec.privateKeyInvert(tweak));
       assert.bufferEqual(parent, priv);
     });
 
@@ -586,7 +586,7 @@ describe('ECDSA', function() {
           assert(curve.publicKeyVerify(pubHybrid));
 
           const tweakNeg = curve.privateKeyNegate(tweak);
-          const tweakInv = curve.privateKeyInverse(tweak);
+          const tweakInv = curve.privateKeyInvert(tweak);
 
           assert.bufferEqual(curve.publicKeyCreate(priv), pub);
           assert.bufferEqual(curve.privateKeyReduce(priv), priv);
@@ -595,7 +595,7 @@ describe('ECDSA', function() {
           assert.bufferEqual(curve.privateKeyTweakMul(priv, tweak), privMul);
           assert.bufferEqual(curve.privateKeyTweakMul(privMul, tweakInv), priv);
           assert.bufferEqual(curve.privateKeyNegate(priv), privNeg);
-          assert.bufferEqual(curve.privateKeyInverse(priv), privInv);
+          assert.bufferEqual(curve.privateKeyInvert(priv), privInv);
           assert.bufferEqual(curve.publicKeyTweakAdd(pub, tweak), pubAdd);
           assert.bufferEqual(curve.publicKeyTweakAdd(pubAdd, tweakNeg), pub);
           assert.bufferEqual(curve.publicKeyTweakMul(pub, tweak), pubMul);

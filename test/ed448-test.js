@@ -241,7 +241,7 @@ describe('Ed448', function() {
     assert(ed448.verify(msg, sig2, child));
 
     const real = ed448.scalarReduce(ed448.privateKeyConvert(key));
-    const parent = ed448.scalarTweakMul(childPriv, ed448.scalarInverse(tweak));
+    const parent = ed448.scalarTweakMul(childPriv, ed448.scalarInvert(tweak));
     assert.bufferEqual(parent, real);
   });
 

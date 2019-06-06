@@ -19,7 +19,7 @@ BED25519::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "scalarTweakMul", BED25519::ScalarTweakMul);
   Nan::Export(obj, "scalarReduce", BED25519::ScalarReduce);
   Nan::Export(obj, "scalarNegate", BED25519::ScalarNegate);
-  Nan::Export(obj, "scalarInverse", BED25519::ScalarInverse);
+  Nan::Export(obj, "scalarInvert", BED25519::ScalarInvert);
   Nan::Export(obj, "publicKeyCreate", BED25519::PublicKeyCreate);
   Nan::Export(obj, "publicKeyFromScalar", BED25519::PublicKeyFromScalar);
   Nan::Export(obj, "publicKeyConvert", BED25519::PublicKeyConvert);
@@ -212,9 +212,9 @@ NAN_METHOD(BED25519::ScalarNegate) {
     Nan::CopyBuffer((char *)&out[0], 32).ToLocalChecked());
 }
 
-NAN_METHOD(BED25519::ScalarInverse) {
+NAN_METHOD(BED25519::ScalarInvert) {
   if (info.Length() < 1)
-    return Nan::ThrowError("ed25519.scalarInverse() requires arguments.");
+    return Nan::ThrowError("ed25519.scalarInvert() requires arguments.");
 
   v8::Local<v8::Object> kbuf = info[0].As<v8::Object>();
 

@@ -261,7 +261,7 @@ describe('EdDSA', function() {
     assert(ed25519.verify(msg, sig2, child));
 
     const real = ed25519.scalarReduce(ed25519.privateKeyConvert(key));
-    const parent = ed25519.scalarTweakMul(childPriv, ed25519.scalarInverse(tweak));
+    const parent = ed25519.scalarTweakMul(childPriv, ed25519.scalarInvert(tweak));
     assert.bufferEqual(parent, real);
   });
 

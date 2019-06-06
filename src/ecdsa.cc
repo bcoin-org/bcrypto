@@ -45,7 +45,7 @@ BECDSA::Init(v8::Local<v8::Object> &target) {
   Nan::SetPrototypeMethod(tpl, "privateKeyTweakMul", BECDSA::PrivateKeyTweakMul);
   Nan::SetPrototypeMethod(tpl, "privateKeyReduce", BECDSA::PrivateKeyReduce);
   Nan::SetPrototypeMethod(tpl, "privateKeyNegate", BECDSA::PrivateKeyNegate);
-  Nan::SetPrototypeMethod(tpl, "privateKeyInverse", BECDSA::PrivateKeyInverse);
+  Nan::SetPrototypeMethod(tpl, "privateKeyInvert", BECDSA::PrivateKeyInvert);
   Nan::SetPrototypeMethod(tpl, "publicKeyCreate", BECDSA::PublicKeyCreate);
   Nan::SetPrototypeMethod(tpl, "publicKeyConvert", BECDSA::PublicKeyConvert);
   Nan::SetPrototypeMethod(tpl, "publicKeyVerify", BECDSA::PublicKeyVerify);
@@ -379,11 +379,11 @@ NAN_METHOD(BECDSA::PrivateKeyNegate) {
     Nan::CopyBuffer((char *)out, ec->ctx.scalar_size).ToLocalChecked());
 }
 
-NAN_METHOD(BECDSA::PrivateKeyInverse) {
+NAN_METHOD(BECDSA::PrivateKeyInvert) {
   BECDSA *ec = ObjectWrap::Unwrap<BECDSA>(info.Holder());
 
   if (info.Length() < 1)
-    return Nan::ThrowError("ecdsa.privateKeyInverse() requires arguments.");
+    return Nan::ThrowError("ecdsa.privateKeyInvert() requires arguments.");
 
   v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
 

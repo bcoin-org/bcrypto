@@ -70,7 +70,7 @@ describe('EdDSA', function() {
 
           const [scalar_, prefix_] = curve.privateKeyExpand(priv);
           const tweakNeg = curve.scalarNegate(tweak);
-          const tweakInv = curve.scalarInverse(tweak);
+          const tweakInv = curve.scalarInvert(tweak);
 
           assert.bufferEqual(curve.publicKeyCreate(priv), pub);
           assert.bufferEqual(curve.publicKeyFromScalar(scalar), pub);
@@ -82,7 +82,7 @@ describe('EdDSA', function() {
           assert.bufferEqual(curve.scalarTweakMul(scalar, tweak), privMul);
           assert.bufferEqual(curve.scalarTweakMul(privMul, tweakInv), reduced);
           assert.bufferEqual(curve.scalarNegate(scalar), privNeg);
-          assert.bufferEqual(curve.scalarInverse(scalar), privInv);
+          assert.bufferEqual(curve.scalarInvert(scalar), privInv);
           assert.bufferEqual(curve.publicKeyTweakAdd(pub, tweak), pubAdd);
           assert.bufferEqual(curve.publicKeyTweakAdd(pubAdd, tweakNeg), pub);
           assert.bufferEqual(curve.publicKeyTweakMul(pub, tweak), pubMul);

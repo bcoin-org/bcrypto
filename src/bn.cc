@@ -208,8 +208,8 @@ BBN::Init(v8::Local<v8::Object> &target) {
   Nan::SetPrototypeMethod(tpl, "igcd", BBN::Igcd);
   Nan::SetPrototypeMethod(tpl, "ilcm", BBN::Ilcm);
   Nan::SetPrototypeMethod(tpl, "egcd", BBN::Egcd);
-  Nan::SetPrototypeMethod(tpl, "iinvm", BBN::Iinvm);
-  Nan::SetPrototypeMethod(tpl, "ifinvm", BBN::Ifinvm);
+  Nan::SetPrototypeMethod(tpl, "iinvert", BBN::Iinvert);
+  Nan::SetPrototypeMethod(tpl, "ifermat", BBN::Ifermat);
   Nan::SetPrototypeMethod(tpl, "ipowm", BBN::Ipowm);
   Nan::SetPrototypeMethod(tpl, "ipowmn", BBN::Ipowmn);
   Nan::SetPrototypeMethod(tpl, "isqrtp", BBN::Isqrtp);
@@ -1580,11 +1580,11 @@ NAN_METHOD(BBN::Egcd) {
   info.GetReturnValue().Set(info.Holder());
 }
 
-NAN_METHOD(BBN::Iinvm) {
+NAN_METHOD(BBN::Iinvert) {
   BBN *a = ObjectWrap::Unwrap<BBN>(info.Holder());
 
   if (info.Length() < 1)
-    return Nan::ThrowError(ARG_ERROR(iinvm, 1));
+    return Nan::ThrowError(ARG_ERROR(iinvert, 1));
 
   if (!BBN::HasInstance(info[0]))
     return Nan::ThrowTypeError(TYPE_ERROR(num, bignum));
@@ -1592,7 +1592,7 @@ NAN_METHOD(BBN::Iinvm) {
   BBN *b = ObjectWrap::Unwrap<BBN>(info[0].As<v8::Object>());
 
   if (mpz_sgn(b->n) <= 0)
-    return Nan::ThrowRangeError(RANGE_ERROR(iinvm));
+    return Nan::ThrowRangeError(RANGE_ERROR(iinvert));
 
   if (mpz_invert(a->n, a->n, b->n) == 0)
     return Nan::ThrowRangeError("Not invertible.");
@@ -1600,11 +1600,11 @@ NAN_METHOD(BBN::Iinvm) {
   info.GetReturnValue().Set(info.Holder());
 }
 
-NAN_METHOD(BBN::Ifinvm) {
+NAN_METHOD(BBN::Ifermat) {
   BBN *a = ObjectWrap::Unwrap<BBN>(info.Holder());
 
   if (info.Length() < 1)
-    return Nan::ThrowError(ARG_ERROR(ifinvm, 1));
+    return Nan::ThrowError(ARG_ERROR(ifermat, 1));
 
   if (!BBN::HasInstance(info[0]))
     return Nan::ThrowTypeError(TYPE_ERROR(num, bignum));
@@ -1612,9 +1612,9 @@ NAN_METHOD(BBN::Ifinvm) {
   BBN *b = ObjectWrap::Unwrap<BBN>(info[0].As<v8::Object>());
 
   if (mpz_sgn(b->n) <= 0)
-    return Nan::ThrowRangeError(RANGE_ERROR(ifinvm));
+    return Nan::ThrowRangeError(RANGE_ERROR(ifermat));
 
-  if (!bmpz_finvm(a->n, a->n, b->n))
+  if (!bmpz_fermat(a->n, a->n, b->n))
     return Nan::ThrowRangeError("Not invertible.");
 
   info.GetReturnValue().Set(info.Holder());

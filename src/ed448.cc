@@ -19,7 +19,7 @@ BED448::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "scalarTweakMul", BED448::ScalarTweakMul);
   Nan::Export(obj, "scalarReduce", BED448::ScalarReduce);
   Nan::Export(obj, "scalarNegate", BED448::ScalarNegate);
-  Nan::Export(obj, "scalarInverse", BED448::ScalarInverse);
+  Nan::Export(obj, "scalarInvert", BED448::ScalarInvert);
   Nan::Export(obj, "publicKeyCreate", BED448::PublicKeyCreate);
   Nan::Export(obj, "publicKeyFromScalar", BED448::PublicKeyFromScalar);
   Nan::Export(obj, "publicKeyConvert", BED448::PublicKeyConvert);
@@ -223,9 +223,9 @@ NAN_METHOD(BED448::ScalarNegate) {
       BCRYPTO_C448_SCALAR_BYTES).ToLocalChecked());
 }
 
-NAN_METHOD(BED448::ScalarInverse) {
+NAN_METHOD(BED448::ScalarInvert) {
   if (info.Length() < 1)
-    return Nan::ThrowError("ed448.scalarInverse() requires arguments.");
+    return Nan::ThrowError("ed448.scalarInvert() requires arguments.");
 
   v8::Local<v8::Object> kbuf = info[0].As<v8::Object>();
 

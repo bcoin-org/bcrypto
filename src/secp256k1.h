@@ -21,7 +21,7 @@ private:
   static NAN_METHOD(PrivateKeyImport);
   static NAN_METHOD(PrivateKeyReduce);
   static NAN_METHOD(PrivateKeyNegate);
-  static NAN_METHOD(PrivateKeyInverse);
+  static NAN_METHOD(PrivateKeyInvert);
   static NAN_METHOD(PrivateKeyTweakAdd);
   static NAN_METHOD(PrivateKeyTweakMul);
 

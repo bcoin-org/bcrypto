@@ -32,7 +32,7 @@ private:
   static NAN_METHOD(PrivateKeyTweakMul);
   static NAN_METHOD(PrivateKeyReduce);
   static NAN_METHOD(PrivateKeyNegate);
-  static NAN_METHOD(PrivateKeyInverse);
+  static NAN_METHOD(PrivateKeyInvert);
   static NAN_METHOD(PublicKeyCreate);
   static NAN_METHOD(PublicKeyConvert);
   static NAN_METHOD(PublicKeyVerify);

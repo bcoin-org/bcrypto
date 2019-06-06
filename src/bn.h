@@ -87,8 +87,8 @@ private:
   static NAN_METHOD(Igcd);
   static NAN_METHOD(Ilcm);
   static NAN_METHOD(Egcd);
-  static NAN_METHOD(Iinvm);
-  static NAN_METHOD(Ifinvm);
+  static NAN_METHOD(Iinvert);
+  static NAN_METHOD(Ifermat);
   static NAN_METHOD(Ipowm);
   static NAN_METHOD(Ipowmn);
   static NAN_METHOD(Isqrtp);
