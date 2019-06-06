@@ -67,7 +67,7 @@ bmpz_pow(mpz_t ret, const mpz_t a, mpz_t b) {
   while (mpz_sgn(y) != 0) {
     if (mpz_odd_p(y))
       mpz_mul(ret, ret, x);
-    mpz_fdiv_q_2exp(y, y, 1);
+    mpz_tdiv_q_2exp(y, y, 1);
     mpz_mul(x, x, x);
   }
 
@@ -248,7 +248,7 @@ bmpz_random_bits(mpz_t ret, unsigned long bits) {
   }
 
   if (total > bits)
-    mpz_fdiv_q_2exp(ret, ret, total - bits);
+    mpz_tdiv_q_2exp(ret, ret, total - bits);
 
   r = 1;
 fail:
@@ -322,7 +322,7 @@ bmpz_div_round(mpz_t ret, const mpz_t x, const mpz_t y) {
   }
 
   // h = y >> 1
-  mpz_fdiv_q_2exp(h, y, 1);
+  mpz_tdiv_q_2exp(h, y, 1);
 
   // Round down.
   // if r < h
@@ -371,7 +371,7 @@ bmpz_legendre(const mpz_t x, const mpz_t y) {
 
   // e = (y - 1) >> 1
   mpz_sub_ui(e, y, 1);
-  mpz_fdiv_q_2exp(e, e, 1);
+  mpz_tdiv_q_2exp(e, e, 1);
 
   // Euler's criterion.
   // s = x^e mod y
@@ -458,7 +458,7 @@ bmpz_jacobi(const mpz_t x, const mpz_t y) {
     }
 
     // c = a >> s
-    mpz_fdiv_q_2exp(c, a, s);
+    mpz_tdiv_q_2exp(c, a, s);
 
     // if b & 3 == 3 and c & 3 == 3
     if (mpz_tdiv_ui(b, 4) == 3 && mpz_tdiv_ui(c, 4) == 3)
@@ -514,7 +514,7 @@ bmpz_kronecker(const mpz_t x, const mpz_t y) {
   z = bmpz_zerobits(b);
 
   // b >>= z
-  mpz_fdiv_q_2exp(b, b, z);
+  mpz_tdiv_q_2exp(b, b, z);
 
   if (z & 1)
     s = table[mpz_getlimbn(a, 0) & 7];
@@ -540,7 +540,7 @@ bmpz_kronecker(const mpz_t x, const mpz_t y) {
     z = bmpz_zerobits(a);
 
     // a >>= z
-    mpz_fdiv_q_2exp(a, a, z);
+    mpz_tdiv_q_2exp(a, a, z);
 
     if (z & 1)
       s *= table[mpz_getlimbn(b, 0) & 7];
@@ -622,7 +622,7 @@ bmpz_prime_mr(
   // k = zero_bits(nm1)
   k = bmpz_zerobits(nm1);
   // q = nm1 >> k
-  mpz_fdiv_q_2exp(q, nm1, k);
+  mpz_tdiv_q_2exp(q, nm1, k);
 
   for (unsigned long i = 0; i < reps; i++) {
     if (i == reps - 1 && force2) {
@@ -766,7 +766,7 @@ bmpz_prime_lucas(const mpz_t n, unsigned long limit) {
   mpz_sub_ui(nm2, n, 2);
 
   // s >>= zb
-  mpz_fdiv_q_2exp(s, s, zb);
+  mpz_tdiv_q_2exp(s, s, zb);
 
   // vk = 2
   mpz_set_ui(vk, 2);
@@ -907,7 +907,7 @@ bmpz_sqrtp(mpz_t ret, const mpz_t num, const mpz_t p) {
   if (mpz_tdiv_ui(p, 4) == 3) {
     // e = (p + 1) >> 2
     mpz_add_ui(e, p, 1);
-    mpz_fdiv_q_2exp(e, e, 2);
+    mpz_tdiv_q_2exp(e, e, 2);
     // ret = x^e mod p
     mpz_powm(ret, x, e, p);
     goto success;
@@ -916,7 +916,7 @@ bmpz_sqrtp(mpz_t ret, const mpz_t num, const mpz_t p) {
   // if p mod 8 == 5
   if (mpz_tdiv_ui(p, 8) == 5) {
     // e = p >> 3
-    mpz_fdiv_q_2exp(e, p, 3);
+    mpz_tdiv_q_2exp(e, p, 3);
     // t = x << 1
     mpz_mul_2exp(t, x, 1);
     // a = t^e mod p
@@ -947,7 +947,7 @@ bmpz_sqrtp(mpz_t ret, const mpz_t num, const mpz_t p) {
   z = bmpz_zerobits(s);
 
   // s = s >> z
-  mpz_fdiv_q_2exp(s, s, z);
+  mpz_tdiv_q_2exp(s, s, z);
 
   // n = 2
   mpz_set_ui(n, 2);
@@ -961,7 +961,7 @@ bmpz_sqrtp(mpz_t ret, const mpz_t num, const mpz_t p) {
   // y = s + 1
   mpz_add_ui(y, s, 1);
   // y = y >> 1
-  mpz_fdiv_q_2exp(y, y, 1);
+  mpz_tdiv_q_2exp(y, y, 1);
   // y = x^y mod p
   mpz_powm(y, x, y, p);
   // b = x^s mod p
