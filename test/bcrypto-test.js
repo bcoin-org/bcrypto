@@ -1,3 +1,5 @@
+/* eslint no-nested-ternary: "off" */
+
 'use strict';
 
 const assert = require('bsert');
@@ -6,6 +8,9 @@ const parts = process.version.split(/[^\d]/);
 const NODE_MAJOR = parts[1] >>> 0;
 const NODE_MINOR = parts[2] >>> 0;
 const HAS_BIGINT = typeof BigInt === 'function';
+const FORCE_BIGINT = HAS_BIGINT && process.env.BCRYPTO_FORCE_BIGINT != null;
+const FORCE_GMP = process.env.BCRYPTO_FORCE_GMP != null;
+const BN_MODIFIED_VERSION = FORCE_GMP ? 2 : (FORCE_BIGINT ? 1 : 0);
 
 describe('Bcrypto', function() {
   it('should have correct environment', () => {
@@ -30,8 +35,7 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.BLAKE2s160.native, 0);
         assert.strictEqual(bcrypto.BLAKE2s224.native, 0);
         assert.strictEqual(bcrypto.BLAKE2s256.native, 0);
-        assert.strictEqual(bcrypto.BN.native,
-          HAS_BIGINT && process.env.BCRYPTO_FORCE_BIGINT ? 1 : 0);
+        assert.strictEqual(bcrypto.BN.native, BN_MODIFIED_VERSION || 0);
         assert.strictEqual(bcrypto.box.native, 0);
         assert.strictEqual(bcrypto.ChaCha20.native, 0);
         assert.strictEqual(bcrypto.cipher.native, 0);
@@ -127,7 +131,7 @@ describe('Bcrypto', function() {
           assert.strictEqual(bcrypto.BLAKE2s224.native, 1);
           assert.strictEqual(bcrypto.BLAKE2s256.native, 1);
         }
-        assert.strictEqual(bcrypto.BN.native, HAS_BIGINT ? 1 : 0);
+        assert.strictEqual(bcrypto.BN.native, BN_MODIFIED_VERSION || 1);
         assert.strictEqual(bcrypto.box.native, 0);
         assert.strictEqual(bcrypto.ChaCha20.native, 0);
         assert.strictEqual(bcrypto.cipher.native, 1);
@@ -225,7 +229,7 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.BLAKE2s160.native, 2);
         assert.strictEqual(bcrypto.BLAKE2s224.native, 2);
         assert.strictEqual(bcrypto.BLAKE2s256.native, 2);
-        assert.strictEqual(bcrypto.BN.native, HAS_BIGINT ? 1 : 0);
+        assert.strictEqual(bcrypto.BN.native, BN_MODIFIED_VERSION || 2);
         assert.strictEqual(bcrypto.box.native, 0);
         assert.strictEqual(bcrypto.ChaCha20.native, 2);
         assert.strictEqual(bcrypto.cipher.native, 2);
