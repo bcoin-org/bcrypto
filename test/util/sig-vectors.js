@@ -50,7 +50,7 @@ for (const curve of ecdsa) {
     const privAdd = curve.privateKeyTweakAdd(priv, tweak);
     const privMul = curve.privateKeyTweakMul(priv, tweak);
     const privNeg = curve.privateKeyNegate(priv);
-    const privInv = curve.privateKeyInverse(priv);
+    const privInv = curve.privateKeyInvert(priv);
     const pubAdd = curve.publicKeyTweakAdd(pub, tweak);
     const pubMul = curve.publicKeyTweakMul(pub, tweak);
     const pubNeg = curve.publicKeyNegate(pub);
@@ -111,7 +111,7 @@ for (const curve of eddsa) {
     const privAdd = curve.scalarTweakAdd(scalar, tweak);
     const privMul = curve.scalarTweakMul(scalar, tweak);
     const privNeg = curve.scalarNegate(scalar);
-    const privInv = curve.scalarInverse(scalar);
+    const privInv = curve.scalarInvert(scalar);
     const pubAdd = curve.publicKeyTweakAdd(pub, tweak);
     const pubMul = curve.publicKeyTweakMul(pub, tweak);
     const pubNeg = curve.publicKeyNegate(pub);
