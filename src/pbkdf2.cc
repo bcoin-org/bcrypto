@@ -44,8 +44,8 @@ NAN_METHOD(BPBKDF2::Derive) {
     return Nan::ThrowTypeError("Fifth argument must be a number.");
 
   int type = (int)Nan::To<uint32_t>(info[0]).FromJust();
-  const uint8_t *pass = (const uint8_t *)node::Buffer::Data(kbuf);
-  size_t passlen = (size_t)node::Buffer::Length(kbuf);
+  const uint8_t *pass = (const uint8_t *)node::Buffer::Data(pbuf);
+  size_t passlen = (size_t)node::Buffer::Length(pbuf);
   const uint8_t *salt = (const uint8_t *)node::Buffer::Data(sbuf);
   size_t saltlen = (size_t)node::Buffer::Length(sbuf);
   uint32_t iter = Nan::To<uint32_t>(info[3]).FromJust();
@@ -94,8 +94,8 @@ NAN_METHOD(BPBKDF2::DeriveAsync) {
   v8::Local<v8::Function> callback = info[5].As<v8::Function>();
 
   int type = (int)Nan::To<uint32_t>(info[0]).FromJust();
-  const uint8_t *pass = (const uint8_t *)node::Buffer::Data(dbuf);
-  size_t passlen = (size_t)node::Buffer::Length(dbuf);
+  const uint8_t *pass = (const uint8_t *)node::Buffer::Data(pbuf);
+  size_t passlen = (size_t)node::Buffer::Length(pbuf);
   const uint8_t *salt = (const uint8_t *)node::Buffer::Data(sbuf);
   size_t saltlen = (size_t)node::Buffer::Length(sbuf);
   uint32_t iter = Nan::To<uint32_t>(info[3]).FromJust();
