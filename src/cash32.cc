@@ -17,8 +17,8 @@ BCash32::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "is", BCash32::Is);
   Nan::Export(obj, "convertBits", BCash32::ConvertBits);
   Nan::Export(obj, "encode", BCash32::Encode);
-  Nan::Export(obj, "decode", BCash32::Decode);
-  Nan::Export(obj, "test", BCash32::Test);
+  Nan::Export(obj, "_decode", BCash32::Decode);
+  Nan::Export(obj, "_test", BCash32::Test);
 
   Nan::Set(target, Nan::New("cash32").ToLocalChecked(), obj);
 }
