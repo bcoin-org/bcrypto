@@ -235,6 +235,7 @@ BSecp256k1::Init(v8::Local<v8::Object> &target) {
   Nan::SetPrototypeMethod(tpl, "publicKeyVerify", BSecp256k1::PublicKeyVerify);
   Nan::SetPrototypeMethod(tpl, "publicKeyTweakAdd", BSecp256k1::PublicKeyTweakAdd);
   Nan::SetPrototypeMethod(tpl, "publicKeyTweakMul", BSecp256k1::PublicKeyTweakMul);
+  Nan::SetPrototypeMethod(tpl, "publicKeyAdd", BSecp256k1::PublicKeyAdd);
   Nan::SetPrototypeMethod(tpl, "publicKeyCombine", BSecp256k1::PublicKeyCombine);
   Nan::SetPrototypeMethod(tpl, "publicKeyNegate", BSecp256k1::PublicKeyNegate);
 
@@ -625,6 +626,61 @@ NAN_METHOD(BSecp256k1::PublicKeyTweakMul) {
 
   if (secp256k1_ec_pubkey_tweak_mul(secp->ctx, &public_key, tweak) == 0)
     return Nan::ThrowError(EC_PUBLIC_KEY_TWEAK_MUL_FAIL);
+
+  unsigned char output[65];
+  size_t output_length = 65;
+
+  secp256k1_ec_pubkey_serialize(secp->ctx, &output[0], &output_length,
+                                &public_key, flags);
+
+  info.GetReturnValue().Set(COPY_BUFFER(&output[0], output_length));
+}
+
+NAN_METHOD(BSecp256k1::PublicKeyAdd) {
+  BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
+
+  v8::Local<v8::Object> input1_buffer = info[0].As<v8::Object>();
+  CHECK_TYPE_BUFFER(input1_buffer, EC_PUBLIC_KEY_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH2(input1_buffer, 33, 65, EC_PUBLIC_KEY_LENGTH_INVALID);
+
+  const unsigned char *input1 =
+    (unsigned char *)node::Buffer::Data(input1_buffer);
+  size_t input1_length = node::Buffer::Length(input1_buffer);
+
+  v8::Local<v8::Object> input2_buffer = info[1].As<v8::Object>();
+  CHECK_TYPE_BUFFER(input2_buffer, EC_PUBLIC_KEY_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH2(input2_buffer, 33, 65, EC_PUBLIC_KEY_LENGTH_INVALID);
+
+  const unsigned char *input2 =
+    (unsigned char *)node::Buffer::Data(input2_buffer);
+  size_t input2_length = node::Buffer::Length(input2_buffer);
+
+  unsigned int flags = SECP256K1_EC_COMPRESSED;
+  UPDATE_COMPRESSED_VALUE(flags, info[2], SECP256K1_EC_COMPRESSED,
+                                          SECP256K1_EC_UNCOMPRESSED);
+
+  secp256k1_pubkey public_key1;
+
+  if (secp256k1_ec_pubkey_parse(secp->ctx, &public_key1,
+                                input1, input1_length) == 0) {
+    return Nan::ThrowError(EC_PUBLIC_KEY_PARSE_FAIL);
+  }
+
+  secp256k1_pubkey public_key2;
+
+  if (secp256k1_ec_pubkey_parse(secp->ctx, &public_key2,
+                                input2, input2_length) == 0) {
+    return Nan::ThrowError(EC_PUBLIC_KEY_PARSE_FAIL);
+  }
+
+  secp256k1_pubkey *ins[2];
+  ins[0] = &public_key1;
+  ins[1] = &public_key2;
+
+  secp256k1_pubkey public_key;
+
+  if (secp256k1_ec_pubkey_combine(secp->ctx, &public_key, ins, 2) == 0)
+    return Nan::ThrowError(EC_PUBLIC_KEY_COMBINE_FAIL);
 
   unsigned char output[65];
   size_t output_length = 65;

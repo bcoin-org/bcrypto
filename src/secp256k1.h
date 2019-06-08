@@ -30,6 +30,7 @@ private:
   static NAN_METHOD(PublicKeyVerify);
   static NAN_METHOD(PublicKeyTweakAdd);
   static NAN_METHOD(PublicKeyTweakMul);
+  static NAN_METHOD(PublicKeyAdd);
   static NAN_METHOD(PublicKeyCombine);
   static NAN_METHOD(PublicKeyNegate);
 
