@@ -10,6 +10,10 @@ const secp256k1 = require('../lib/secp256k1');
 const vectors = require('./data/schnorr.json');
 const custom = require('./data/schnorr-custom.json');
 
+// To test openssl schnorr:
+// const ECDSA = require('../lib/native/ecdsa');
+// const secp256k1 = new ECDSA('SECP256K1');
+
 describe('Secp256k1+Schnorr', function() {
   const valid = [];
   const invalid = [];
@@ -74,9 +78,6 @@ describe('Secp256k1+Schnorr', function() {
   });
 
   it('should be generalized for other curves', () => {
-    if (!p256.schnorr)
-      this.skip();
-
     const msg1 = Buffer.from(
       '3b3c4a629b78ca392e689526c445119ac9f27d7986e177764a1db2d9935f2832',
       'hex');
@@ -86,7 +87,7 @@ describe('Secp256k1+Schnorr', function() {
       'hex');
 
     const pub1 = p256.publicKeyCreate(key1);
-    const sig1 = p256.schnorr.sign(msg1, key1);
+    const sig1 = p256.schnorrSign(msg1, key1);
 
     assert.bufferEqual(sig1, 'a000291e6966f7cf5ae83d0fb146758f'
                            + '2fe688e495c3faf85cea3f2dfdd9a855'
@@ -102,7 +103,7 @@ describe('Secp256k1+Schnorr', function() {
       'hex');
 
     const pub2 = p256.publicKeyCreate(key2);
-    const sig2 = p256.schnorr.sign(msg2, key2);
+    const sig2 = p256.schnorrSign(msg2, key2);
 
     assert.bufferEqual(sig2, 'c1da5cfe84a36ca590353ad2da330fba'
                            + 'b231558dcd614be855a5f070d7823c47'
@@ -114,16 +115,16 @@ describe('Secp256k1+Schnorr', function() {
       [msg2, sig2, pub2]
     ];
 
-    assert.strictEqual(p256.schnorr.verify(...batch[0]), true);
-    assert.strictEqual(p256.schnorr.verify(...batch[1]), true);
-    assert.strictEqual(p256.schnorr.batchVerify([batch[0]]), true);
-    assert.strictEqual(p256.schnorr.batchVerify([batch[1]]), true);
-    assert.strictEqual(p256.schnorr.batchVerify(batch), true);
-    assert.strictEqual(p256.schnorr.batchVerify([]), true);
+    assert.strictEqual(p256.schnorrVerify(...batch[0]), true);
+    assert.strictEqual(p256.schnorrVerify(...batch[1]), true);
+    assert.strictEqual(p256.schnorrBatchVerify([batch[0]]), true);
+    assert.strictEqual(p256.schnorrBatchVerify([batch[1]]), true);
+    assert.strictEqual(p256.schnorrBatchVerify(batch), true);
+    assert.strictEqual(p256.schnorrBatchVerify([]), true);
   });
 
   it('should check schnorr support for various curves', () => {
-    if (!p192.schnorr)
+    if (p192.native !== 0)
       this.skip();
 
     // Out of all of the NIST curves, P224 is the only
@@ -141,9 +142,6 @@ describe('Secp256k1+Schnorr', function() {
   });
 
   it('should throw on curves which fail to satisfy jacobi(-1, p) == -1', () => {
-    if (!p224.schnorr)
-      this.skip();
-
     const msg = Buffer.from(
       '3b3c4a629b78ca392e689526c445119ac9f27d7986e177764a1db2d9935f2832',
       'hex');
@@ -159,12 +157,14 @@ describe('Secp256k1+Schnorr', function() {
 
     const pub = p224.publicKeyCreate(key);
 
-    assert(!p224.schnorr.supported);
-    assert(!p224.schnorr.support());
+    if (p224.native === 0) {
+      assert(!p224.schnorr.supported);
+      assert(!p224.schnorr.support());
+    }
 
-    assert.throws(() => p224.schnorr.sign(msg, key), /not supported/);
-    assert.throws(() => p224.schnorr.verify(msg, sig, pub), /not supported/);
-    assert.throws(() => p224.schnorr.batchVerify([[msg, sig, pub]]), /not supported/);
+    assert.throws(() => p224.schnorrSign(msg, key), /not supported/);
+    assert.throws(() => p224.schnorrVerify(msg, sig, pub), /not supported/);
+    assert.throws(() => p224.schnorrBatchVerify([[msg, sig, pub]]), /not supported/);
   });
 
   for (const [key_, pub_, msg_, sig_, result, comment_] of custom) {

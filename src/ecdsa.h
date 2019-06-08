@@ -56,6 +56,9 @@ private:
   static NAN_METHOD(Recover);
   static NAN_METHOD(RecoverDER);
   static NAN_METHOD(Derive);
+  static NAN_METHOD(SchnorrSign);
+  static NAN_METHOD(SchnorrVerify);
+  static NAN_METHOD(SchnorrBatchVerify);
 };
 #endif
 

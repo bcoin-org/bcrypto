@@ -69,6 +69,9 @@ BECDSA::Init(v8::Local<v8::Object> &target) {
   Nan::SetPrototypeMethod(tpl, "recover", BECDSA::Recover);
   Nan::SetPrototypeMethod(tpl, "recoverDER", BECDSA::RecoverDER);
   Nan::SetPrototypeMethod(tpl, "derive", BECDSA::Derive);
+  Nan::SetPrototypeMethod(tpl, "schnorrSign", BECDSA::SchnorrSign);
+  Nan::SetPrototypeMethod(tpl, "schnorrVerify", BECDSA::SchnorrVerify);
+  Nan::SetPrototypeMethod(tpl, "schnorrBatchVerify", BECDSA::SchnorrBatchVerify);
 
   v8::Local<v8::FunctionTemplate> ctor =
     Nan::New<v8::FunctionTemplate>(ecdsa_constructor);
@@ -1310,6 +1313,99 @@ NAN_METHOD(BECDSA::Derive) {
 
   return info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)out, out_len).ToLocalChecked());
+}
+
+NAN_METHOD(BECDSA::SchnorrSign) {
+  BECDSA *ec = ObjectWrap::Unwrap<BECDSA>(info.Holder());
+
+  if (info.Length() < 2)
+    return Nan::ThrowError("ecdsa.schnorrSign() requires arguments.");
+
+  v8::Local<v8::Object> mbuf = info[0].As<v8::Object>();
+  v8::Local<v8::Object> pbuf = info[1].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(mbuf)
+      || !node::Buffer::HasInstance(pbuf)) {
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+  }
+
+  const uint8_t *msg = (const uint8_t *)node::Buffer::Data(mbuf);
+  size_t msg_len = node::Buffer::Length(mbuf);
+
+  const uint8_t *priv = (const uint8_t *)node::Buffer::Data(pbuf);
+  size_t priv_len = node::Buffer::Length(pbuf);
+
+  if (!ec->ctx.has_schnorr)
+    return Nan::ThrowError("Schnorr is not supported for curve.");
+
+  if (msg_len != 32 || priv_len != ec->ctx.scalar_size)
+    return Nan::ThrowRangeError("Invalid length.");
+
+  bcrypto_ecdsa_sig_t sign;
+  uint8_t out[BCRYPTO_ECDSA_MAX_SIG_SIZE];
+  size_t out_len = ec->ctx.schnorr_size;
+
+  if (!bcrypto_schnorr_sign(&ec->ctx, &sign, msg, priv))
+    return Nan::ThrowError("Could not sign.");
+
+  bcrypto_schnorr_sig_encode(&ec->ctx, out, &sign);
+
+  return info.GetReturnValue().Set(
+    Nan::CopyBuffer((char *)out, out_len).ToLocalChecked());
+}
+
+NAN_METHOD(BECDSA::SchnorrVerify) {
+  BECDSA *ec = ObjectWrap::Unwrap<BECDSA>(info.Holder());
+
+  if (info.Length() < 3)
+    return Nan::ThrowError("ecdsa.schnorrVerify() requires arguments.");
+
+  v8::Local<v8::Object> mbuf = info[0].As<v8::Object>();
+  v8::Local<v8::Object> sbuf = info[1].As<v8::Object>();
+  v8::Local<v8::Object> pbuf = info[2].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(mbuf)
+      || !node::Buffer::HasInstance(sbuf)
+      || !node::Buffer::HasInstance(pbuf)) {
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+  }
+
+  const uint8_t *msg = (const uint8_t *)node::Buffer::Data(mbuf);
+  size_t msg_len = node::Buffer::Length(mbuf);
+
+  const uint8_t *sig = (const uint8_t *)node::Buffer::Data(sbuf);
+  size_t sig_len = node::Buffer::Length(sbuf);
+
+  const uint8_t *pub = (const uint8_t *)node::Buffer::Data(pbuf);
+  size_t pub_len = node::Buffer::Length(pbuf);
+
+  if (!ec->ctx.has_schnorr)
+    return Nan::ThrowError("Schnorr is not supported for curve.");
+
+  if (msg_len != 32 || sig_len != ec->ctx.schnorr_size)
+    return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
+
+  bcrypto_ecdsa_sig_t sign;
+  bcrypto_ecdsa_pubkey_t pubkey;
+
+  if (!bcrypto_schnorr_sig_decode(&ec->ctx, &sign, sig))
+    return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
+
+  if (!bcrypto_ecdsa_pubkey_decode(&ec->ctx, &pubkey, pub, pub_len))
+    return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
+
+  int result = bcrypto_schnorr_verify(&ec->ctx, msg, &sign, &pubkey);
+
+  info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
+}
+
+NAN_METHOD(BECDSA::SchnorrBatchVerify) {
+  BECDSA *ec = ObjectWrap::Unwrap<BECDSA>(info.Holder());
+
+  if (!ec->ctx.has_schnorr)
+    return Nan::ThrowError("Schnorr is not supported for curve.");
+
+  return Nan::ThrowError("Not implemented.");
 }
 
 #endif

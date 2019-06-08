@@ -41,6 +41,35 @@ bcrypto_ecdsa_curve(const char *name) {
 }
 
 static int
+bcrypto_ecdsa_hash_type(int type) {
+  switch (type) {
+    case NID_X9_62_prime192v1:
+    case NID_secp224r1:
+    case NID_X9_62_prime256v1:
+    case NID_secp256k1:
+      return NID_sha256;
+    case NID_secp384r1:
+      return NID_sha384;
+    case NID_secp521r1:
+      return NID_sha512;
+  }
+  return -1;
+}
+
+static int
+bcrypto_ecdsa_has_schnorr(int type) {
+  switch (type) {
+    case NID_X9_62_prime192v1:
+    case NID_X9_62_prime256v1:
+    case NID_secp384r1:
+    case NID_secp521r1:
+    case NID_secp256k1:
+      return 1;
+  }
+  return 0;
+}
+
+static int
 bcrypto_ecdsa_valid_scalar(bcrypto_ecdsa_t *ec, const uint8_t *scalar) {
   if (scalar == NULL)
     return 0;
@@ -572,6 +601,16 @@ bcrypto_ecdsa_init(bcrypto_ecdsa_t *ec, const char *name) {
 
   ec->type = type;
 
+  ec->hash_type = bcrypto_ecdsa_hash_type(type);
+  assert(ec->hash_type != -1);
+
+  ec->hash = EVP_get_digestbynid(ec->hash_type);
+  assert(ec->hash != NULL);
+
+  ec->hash_size = EVP_MD_size(ec->hash);
+
+  ec->has_schnorr = bcrypto_ecdsa_has_schnorr(ec->type);
+
   ec->ctx = BN_CTX_new();
   assert(ec->ctx != NULL);
 
@@ -614,8 +653,11 @@ bcrypto_ecdsa_init(bcrypto_ecdsa_t *ec, const char *name) {
   ec->scalar_bits = (size_t)BN_num_bits(ec->n);
   ec->scalar_size = (ec->scalar_bits + 7) >> 3;
   ec->sig_size = ec->scalar_size * 2;
+  ec->schnorr_size = ec->size + ec->scalar_size;
+
   assert(ec->scalar_size <= BCRYPTO_ECDSA_MAX_SCALAR_SIZE);
 
+  assert(BN_bn2binpad(ec->p, &ec->prime[0], ec->size) > 0);
   memset(&ec->zero[0], 0x00, ec->scalar_size);
   assert(BN_bn2binpad(ec->n, &ec->order[0], ec->scalar_size) > 0);
   assert(BN_bn2binpad(ec->nh, &ec->half[0], ec->scalar_size) > 0);
@@ -1683,6 +1725,324 @@ fail:
     EC_POINT_clear_free(secret);
 
   return 0;
+}
+
+/*
+ * Schnorr
+ */
+
+void
+bcrypto_schnorr_sig_encode(bcrypto_ecdsa_t *ec,
+                         uint8_t *out,
+                         const bcrypto_ecdsa_sig_t *sig) {
+  memcpy(&out[0], &sig->r[0], ec->size);
+  memcpy(&out[ec->size], &sig->s[0], ec->scalar_size);
+}
+
+int
+bcrypto_schnorr_sig_decode(bcrypto_ecdsa_t *ec,
+                         bcrypto_ecdsa_sig_t *sig,
+                         const uint8_t *raw) {
+  memcpy(&sig->r[0], &raw[0], ec->size);
+  memcpy(&sig->s[0], &raw[ec->size], ec->scalar_size);
+
+  return memcmp(sig->r, ec->prime, ec->size) < 0
+      && memcmp(sig->s, ec->order, ec->scalar_size) < 0;
+}
+
+static BIGNUM *
+schnorr_hash_am(bcrypto_ecdsa_t *ec,
+                const uint8_t *key,
+                const uint8_t *msg) {
+  uint8_t out[EVP_MAX_MD_SIZE];
+  EVP_MD_CTX *ctx = NULL;
+  BIGNUM *k = NULL;
+  unsigned int hash_size;
+
+  ctx = EVP_MD_CTX_new();
+
+  if (ctx == NULL)
+    goto fail;
+
+  if (!EVP_DigestInit(ctx, ec->hash))
+    goto fail;
+
+  if (!EVP_DigestUpdate(ctx, key, ec->scalar_size))
+    goto fail;
+
+  if (!EVP_DigestUpdate(ctx, msg, 32))
+    goto fail;
+
+  if (!EVP_DigestFinal(ctx, out, &hash_size))
+    goto fail;
+
+  k = BN_bin2bn(out, hash_size, BN_secure_new());
+
+  if (!BN_mod(k, k, ec->n, ec->ctx)) {
+    BN_clear_free(k);
+    k = NULL;
+    goto fail;
+  }
+
+fail:
+  EVP_MD_CTX_free(ctx);
+  return k;
+}
+
+static BIGNUM *
+schnorr_hash_ram(bcrypto_ecdsa_t *ec,
+                 const uint8_t *r,
+                 const bcrypto_ecdsa_pubkey_t *pub,
+                 const uint8_t *msg) {
+  uint8_t out[EVP_MAX_MD_SIZE + 3];
+  EVP_MD_CTX *ctx = NULL;
+  BIGNUM *e = NULL;
+  size_t pub_size;
+  unsigned int hash_size;
+
+  ctx = EVP_MD_CTX_new();
+
+  if (ctx == NULL)
+    goto fail;
+
+  if (!EVP_DigestInit(ctx, ec->hash))
+    goto fail;
+
+  if (!EVP_DigestUpdate(ctx, r, ec->size))
+    goto fail;
+
+  bcrypto_ecdsa_pubkey_encode(ec, out, &pub_size, pub, 1);
+
+  if (!EVP_DigestUpdate(ctx, out, pub_size))
+    goto fail;
+
+  if (!EVP_DigestUpdate(ctx, msg, 32))
+    goto fail;
+
+  if (!EVP_DigestFinal(ctx, out, &hash_size))
+    goto fail;
+
+  e = BN_bin2bn(out, hash_size, NULL);
+
+  if (!BN_mod(e, e, ec->n, ec->ctx)) {
+    BN_clear_free(e);
+    e = NULL;
+    goto fail;
+  }
+
+fail:
+  EVP_MD_CTX_free(ctx);
+  return e;
+}
+
+int
+bcrypto_schnorr_sign(bcrypto_ecdsa_t *ec,
+                     bcrypto_ecdsa_sig_t *sig,
+                     const uint8_t *msg,
+                     const uint8_t *priv) {
+  BIGNUM *a = NULL;
+  BIGNUM *k = NULL;
+  EC_POINT *R = NULL;
+  BIGNUM *x = NULL;
+  BIGNUM *y = NULL;
+  EC_POINT *A = NULL;
+  bcrypto_ecdsa_pubkey_t pub;
+  BIGNUM *e = NULL;
+  int r = 0;
+  int j;
+
+  if (!bcrypto_ecdsa_valid_scalar(ec, priv))
+    goto fail;
+
+  // The secret key d: an integer in the range 1..n-1.
+  a = BN_bin2bn(priv, ec->scalar_size, BN_secure_new());
+
+  // Let k' = int(hash(bytes(d) || m)) mod n
+  k = schnorr_hash_am(ec, priv, msg);
+
+  if (a == NULL || k == NULL)
+    goto fail;
+
+  // Fail if k' = 0.
+  if (BN_is_zero(k))
+    goto fail;
+
+  // Let R = k'*G.
+  R = EC_POINT_new(ec->group);
+
+  if (R == NULL)
+    goto fail;
+
+  if (!EC_POINT_mul(ec->group, R, k, NULL, NULL, ec->ctx))
+    goto fail;
+
+  x = BN_new();
+  y = BN_new();
+
+  if (x == NULL || y == NULL)
+    goto fail;
+
+  // Encode x(R).
+  if (!EC_POINT_get_affine_coordinates(ec->group, R, x, y, ec->ctx))
+    goto fail;
+
+  assert(BN_bn2binpad(x, sig->r, ec->size) != -1);
+
+  // Encode d*G.
+  A = EC_POINT_new(ec->group);
+
+  if (A == NULL)
+    goto fail;
+
+  if (!EC_POINT_mul(ec->group, A, a, NULL, NULL, ec->ctx))
+    goto fail;
+
+  if (!bcrypto_ecdsa_pubkey_from_ec_point(ec, &pub, A))
+    goto fail;
+
+  // Let e = int(hash(bytes(x(R)) || bytes(d*G) || m)) mod n.
+  e = schnorr_hash_ram(ec, sig->r, &pub, msg);
+
+  if (e == NULL)
+    goto fail;
+
+  j = BN_kronecker(y, ec->p, ec->ctx);
+
+  if (j < -1)
+    goto fail;
+
+  // Let k = k' if jacobi(y(R)) = 1, otherwise let k = n - k'.
+  if (j != 1)
+    BN_sub(k, ec->n, k);
+
+  // Let S = k + e*d mod n.
+  if (!BN_mod_mul(e, e, a, ec->n, ec->ctx))
+    goto fail;
+
+  if (!BN_mod_add(e, k, e, ec->n, ec->ctx))
+    goto fail;
+
+  assert(BN_bn2binpad(e, sig->s, ec->scalar_size) != -1);
+
+  r = 1;
+fail:
+  if (a != NULL)
+    BN_clear_free(a);
+
+  if (k != NULL)
+    BN_clear_free(k);
+
+  if (R != NULL)
+    EC_POINT_free(R);
+
+  if (x != NULL)
+    BN_free(x);
+
+  if (y != NULL)
+    BN_free(y);
+
+  if (A != NULL)
+    EC_POINT_free(A);
+
+  if (e != NULL)
+    BN_free(e);
+
+  return r;
+}
+
+int
+bcrypto_schnorr_verify(bcrypto_ecdsa_t *ec,
+                       const uint8_t *msg,
+                       const bcrypto_ecdsa_sig_t *sig,
+                       const bcrypto_ecdsa_pubkey_t *pub) {
+  BIGNUM *Rx = NULL;
+  BIGNUM *S = NULL;
+  EC_POINT *A = NULL;
+  BIGNUM *e = NULL;
+  EC_POINT *R = NULL;
+  BIGNUM *x = NULL;
+  BIGNUM *y = NULL;
+  BIGNUM *z = NULL;
+  int r = 0;
+
+  Rx = BN_bin2bn(sig->r, ec->size, NULL);
+  S = BN_bin2bn(sig->s, ec->scalar_size, NULL);
+  A = bcrypto_ecdsa_pubkey_to_ec_point(ec, pub);
+  e = schnorr_hash_ram(ec, sig->r, pub, msg);
+  R = EC_POINT_new(ec->group);
+
+  if (Rx == NULL || S == NULL || A == NULL || e == NULL || R == NULL)
+    goto fail;
+
+  // Let R = s*G - e*P.
+  if (!BN_is_zero(e)) {
+    if (!BN_sub(e, ec->n, e))
+      goto fail;
+  }
+
+  if (!EC_POINT_mul(ec->group, R, S, A, e, ec->ctx))
+    goto fail;
+
+  x = BN_new();
+  y = BN_new();
+  z = BN_new();
+
+  if (x == NULL || y == NULL || z == NULL)
+    goto fail;
+
+  if (!EC_POINT_get_Jprojective_coordinates_GFp(ec->group, R, x, y, z, ec->ctx))
+    goto fail;
+
+  // Check for point at infinity.
+  if (BN_is_zero(z))
+    goto fail;
+
+  // Check for quadratic residue in the jacobian space.
+  // Optimized as `jacobi(y(R) * z(R)) == 1`.
+  if (!BN_mod_mul(e, y, z, ec->p, ec->ctx))
+    goto fail;
+
+  if (BN_kronecker(e, ec->p, ec->ctx) != 1)
+    goto fail;
+
+  // Check `x(R) == r` in the jacobian space.
+  // Optimized as `x(R) == r * z(R)^2 mod p`.
+  if (!BN_mod_sqr(e, z, ec->p, ec->ctx))
+    goto fail;
+
+  if (!BN_mod_mul(e, Rx, e, ec->p, ec->ctx))
+    goto fail;
+
+  if (BN_ucmp(x, e) != 0)
+    goto fail;
+
+  r = 1;
+fail:
+  if (Rx != NULL)
+    BN_free(Rx);
+
+  if (S != NULL)
+    BN_free(S);
+
+  if (A != NULL)
+    EC_POINT_free(A);
+
+  if (e != NULL)
+    BN_free(e);
+
+  if (R != NULL)
+    EC_POINT_free(R);
+
+  if (x != NULL)
+    BN_free(x);
+
+  if (y != NULL)
+    BN_free(y);
+
+  if (z != NULL)
+    BN_free(z);
+
+  return r;
 }
 
 #endif

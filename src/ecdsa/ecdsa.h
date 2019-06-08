@@ -17,7 +17,8 @@ extern "C" {
 #define BCRYPTO_ECDSA_MAX_FIELD_SIZE 66
 #define BCRYPTO_ECDSA_MAX_SCALAR_SIZE 66
 #define BCRYPTO_ECDSA_MAX_PUB_SIZE (1 + BCRYPTO_ECDSA_MAX_FIELD_SIZE * 2)
-#define BCRYPTO_ECDSA_MAX_SIG_SIZE (BCRYPTO_ECDSA_MAX_SCALAR_SIZE * 2)
+#define BCRYPTO_ECDSA_MAX_SIG_SIZE \
+  (BCRYPTO_ECDSA_MAX_FIELD_SIZE + BCRYPTO_ECDSA_MAX_SCALAR_SIZE)
 #define BCRYPTO_ECDSA_MAX_DER_SIZE (9 + BCRYPTO_ECDSA_MAX_SIG_SIZE)
 
 typedef struct bcrypto_ecdsa_pubkey_s {
@@ -26,13 +27,17 @@ typedef struct bcrypto_ecdsa_pubkey_s {
 } bcrypto_ecdsa_pubkey_t;
 
 typedef struct bcrypto_ecdsa_sig_s {
-  uint8_t r[BCRYPTO_ECDSA_MAX_SCALAR_SIZE];
+  uint8_t r[BCRYPTO_ECDSA_MAX_FIELD_SIZE];
   uint8_t s[BCRYPTO_ECDSA_MAX_SCALAR_SIZE];
   int param;
 } bcrypto_ecdsa_sig_t;
 
 typedef struct bcrypto_ecdsa_s {
   int type;
+  int hash_type;
+  const EVP_MD *hash;
+  size_t hash_size;
+  int has_schnorr;
   BN_CTX *ctx;
   EC_KEY *key;
   const EC_GROUP *group;
@@ -48,6 +53,8 @@ typedef struct bcrypto_ecdsa_s {
   size_t scalar_bits;
   size_t scalar_size;
   size_t sig_size;
+  size_t schnorr_size;
+  uint8_t prime[BCRYPTO_ECDSA_MAX_FIELD_SIZE];
   uint8_t zero[BCRYPTO_ECDSA_MAX_SCALAR_SIZE];
   uint8_t order[BCRYPTO_ECDSA_MAX_SCALAR_SIZE];
   uint8_t half[BCRYPTO_ECDSA_MAX_SCALAR_SIZE];
@@ -251,6 +258,36 @@ bcrypto_ecdsa_derive(bcrypto_ecdsa_t *ec,
                      bcrypto_ecdsa_pubkey_t *out,
                      const bcrypto_ecdsa_pubkey_t *pub,
                      const uint8_t *priv);
+
+/*
+ * Signature
+ */
+
+void
+bcrypto_schnorr_sig_encode(bcrypto_ecdsa_t *ec,
+                           uint8_t *out,
+                           const bcrypto_ecdsa_sig_t *sig);
+
+int
+bcrypto_schnorr_sig_decode(bcrypto_ecdsa_t *ec,
+                           bcrypto_ecdsa_sig_t *sig,
+                           const uint8_t *raw);
+
+/*
+ * Schnorr
+ */
+
+int
+bcrypto_schnorr_sign(bcrypto_ecdsa_t *ec,
+                     bcrypto_ecdsa_sig_t *sig,
+                     const uint8_t *msg,
+                     const uint8_t *priv);
+
+int
+bcrypto_schnorr_verify(bcrypto_ecdsa_t *ec,
+                       const uint8_t *msg,
+                       const bcrypto_ecdsa_sig_t *sig,
+                       const bcrypto_ecdsa_pubkey_t *pub);
 
 #if defined(__cplusplus)
 }
