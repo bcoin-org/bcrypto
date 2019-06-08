@@ -109,11 +109,16 @@ NAN_METHOD(BRandom::RandomRange) {
   uint32_t num = min;
 
   if (space > 0) {
-    if (!bcrypto_random((void *)&num, sizeof(uint32_t)))
-      return Nan::ThrowError("Could not get random bytes.");
+    uint32_t x, r;
 
-    num %= space;
-    num += min;
+    do {
+      if (!bcrypto_random((void *)&x, sizeof(uint32_t)))
+        return Nan::ThrowError("Could not get random bytes.");
+
+      r = x % space;
+    } while (x - r > (-space));
+
+    num += r;
   }
 
   info.GetReturnValue().Set(Nan::New<v8::Uint32>(num));

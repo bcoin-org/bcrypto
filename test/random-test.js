@@ -90,4 +90,18 @@ describe('Random', function() {
     //   https://csrc.nist.gov/projects/random-bit-generation/
     assert(isRandom(rand, 0.02));
   });
+
+  it('should test distribution of randomRange()', () => {
+    const array = new Uint16Array(4e6 / 2);
+    const rand = Buffer.from(array.buffer, array.byteOffset, array.byteLength);
+
+    for (let i = 0; i < array.length; i++)
+      array[i] = random.randomRange(0, 0x10000);
+
+    const defl = zlib.deflateRawSync(rand, { level: 5 });
+    const perc = defl.length / rand.length;
+
+    assert(perc >= 0.99, `Deflated data was %${perc.toFixed(2)} of original.`);
+    assert(isRandom(rand, 0.02));
+  });
 });
