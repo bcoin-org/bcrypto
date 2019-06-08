@@ -35,6 +35,7 @@ private:
   static NAN_METHOD(PublicKeyNegate);
 
   static NAN_METHOD(SignatureNormalize);
+  static NAN_METHOD(SignatureNormalizeDER);
   static NAN_METHOD(SignatureExport);
   static NAN_METHOD(SignatureImport);
   static NAN_METHOD(IsLowS);

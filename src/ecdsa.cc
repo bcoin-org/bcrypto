@@ -54,8 +54,10 @@ BECDSA::Init(v8::Local<v8::Object> &target) {
   Nan::SetPrototypeMethod(tpl, "publicKeyTweakAdd", BECDSA::PublicKeyTweakAdd);
   Nan::SetPrototypeMethod(tpl, "publicKeyTweakMul", BECDSA::PublicKeyTweakMul);
   Nan::SetPrototypeMethod(tpl, "publicKeyAdd", BECDSA::PublicKeyAdd);
+  Nan::SetPrototypeMethod(tpl, "publicKeyCombine", BECDSA::PublicKeyCombine);
   Nan::SetPrototypeMethod(tpl, "publicKeyNegate", BECDSA::PublicKeyNegate);
   Nan::SetPrototypeMethod(tpl, "signatureNormalize", BECDSA::SignatureNormalize);
+  Nan::SetPrototypeMethod(tpl, "signatureNormalizeDER", BECDSA::SignatureNormalizeDER);
   Nan::SetPrototypeMethod(tpl, "signatureExport", BECDSA::SignatureExport);
   Nan::SetPrototypeMethod(tpl, "signatureImport", BECDSA::SignatureImport);
   Nan::SetPrototypeMethod(tpl, "isLowS", BECDSA::IsLowS);
@@ -728,6 +730,10 @@ NAN_METHOD(BECDSA::PublicKeyAdd) {
     Nan::CopyBuffer((char *)out, out_len).ToLocalChecked());
 }
 
+NAN_METHOD(BECDSA::PublicKeyCombine) {
+  return Nan::ThrowError("Not implemented.");
+}
+
 NAN_METHOD(BECDSA::PublicKeyNegate) {
   BECDSA *ec = ObjectWrap::Unwrap<BECDSA>(info.Holder());
 
@@ -795,6 +801,39 @@ NAN_METHOD(BECDSA::SignatureNormalize) {
 
   return info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)out, ec->ctx.sig_size).ToLocalChecked());
+}
+
+NAN_METHOD(BECDSA::SignatureNormalizeDER) {
+  BECDSA *ec = ObjectWrap::Unwrap<BECDSA>(info.Holder());
+
+  if (info.Length() < 1)
+    return Nan::ThrowError("ecdsa.signatureNormalizeDER() requires arguments.");
+
+  v8::Local<v8::Object> sbuf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(sbuf))
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+
+  const uint8_t *sig = (const uint8_t *)node::Buffer::Data(sbuf);
+  size_t sig_len = node::Buffer::Length(sbuf);
+
+  if (sig_len == 0)
+    return Nan::ThrowRangeError("Invalid length.");
+
+  bcrypto_ecdsa_sig_t sign;
+  uint8_t out[BCRYPTO_ECDSA_MAX_DER_SIZE];
+  size_t out_len = BCRYPTO_ECDSA_MAX_DER_SIZE;
+
+  if (!bcrypto_ecdsa_sig_decode_der(&ec->ctx, &sign, sig, sig_len))
+    return Nan::ThrowError("Invalid signature.");
+
+  bcrypto_ecdsa_sig_normalize(&ec->ctx, &sign, &sign);
+
+  if (!bcrypto_ecdsa_sig_encode_der(&ec->ctx, out, &out_len, &sign))
+    return Nan::ThrowError("Serialization failed.");
+
+  return info.GetReturnValue().Set(
+    Nan::CopyBuffer((char *)out, out_len).ToLocalChecked());
 }
 
 NAN_METHOD(BECDSA::SignatureExport) {

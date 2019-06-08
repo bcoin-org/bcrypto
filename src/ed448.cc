@@ -28,6 +28,7 @@ BED448::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "publicKeyTweakAdd", BED448::PublicKeyTweakAdd);
   Nan::Export(obj, "publicKeyTweakMul", BED448::PublicKeyTweakMul);
   Nan::Export(obj, "publicKeyAdd", BED448::PublicKeyAdd);
+  Nan::Export(obj, "publicKeyCombine", BED448::PublicKeyCombine);
   Nan::Export(obj, "publicKeyNegate", BED448::PublicKeyNegate);
   Nan::Export(obj, "sign", BED448::Sign);
   Nan::Export(obj, "signWithScalar", BED448::SignWithScalar);
@@ -476,6 +477,10 @@ NAN_METHOD(BED448::PublicKeyAdd) {
   return info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&out[0],
                     BCRYPTO_EDDSA_448_PUBLIC_BYTES).ToLocalChecked());
+}
+
+NAN_METHOD(BED448::PublicKeyCombine) {
+  return Nan::ThrowError("Not implemented.");
 }
 
 NAN_METHOD(BED448::PublicKeyNegate) {

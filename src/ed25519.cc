@@ -28,6 +28,7 @@ BED25519::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "publicKeyTweakAdd", BED25519::PublicKeyTweakAdd);
   Nan::Export(obj, "publicKeyTweakMul", BED25519::PublicKeyTweakMul);
   Nan::Export(obj, "publicKeyAdd", BED25519::PublicKeyAdd);
+  Nan::Export(obj, "publicKeyCombine", BED25519::PublicKeyCombine);
   Nan::Export(obj, "publicKeyNegate", BED25519::PublicKeyNegate);
   Nan::Export(obj, "sign", BED25519::Sign);
   Nan::Export(obj, "signWithScalar", BED25519::SignWithScalar);
@@ -454,6 +455,10 @@ NAN_METHOD(BED25519::PublicKeyAdd) {
 
   return info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&out[0], 32).ToLocalChecked());
+}
+
+NAN_METHOD(BED25519::PublicKeyCombine) {
+  return Nan::ThrowError("Not implemented.");
 }
 
 NAN_METHOD(BED25519::PublicKeyNegate) {

@@ -241,6 +241,7 @@ BSecp256k1::Init(v8::Local<v8::Object> &target) {
 
   // signature
   Nan::SetPrototypeMethod(tpl, "signatureNormalize", BSecp256k1::SignatureNormalize);
+  Nan::SetPrototypeMethod(tpl, "signatureNormalizeDER", BSecp256k1::SignatureNormalizeDER);
   Nan::SetPrototypeMethod(tpl, "signatureExport", BSecp256k1::SignatureExport);
   Nan::SetPrototypeMethod(tpl, "signatureImport", BSecp256k1::SignatureImport);
   Nan::SetPrototypeMethod(tpl, "isLowS", BSecp256k1::IsLowS);
@@ -801,6 +802,38 @@ NAN_METHOD(BSecp256k1::SignatureNormalize) {
   secp256k1_ecdsa_signature_serialize_compact(secp->ctx, &output[0], &sigout);
 
   info.GetReturnValue().Set(COPY_BUFFER(&output[0], 64));
+}
+
+NAN_METHOD(BSecp256k1::SignatureNormalizeDER) {
+  BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
+
+  v8::Local<v8::Object> input_buffer = info[0].As<v8::Object>();
+  CHECK_TYPE_BUFFER(input_buffer, ECDSA_SIGNATURE_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH_GT_ZERO(input_buffer, ECDSA_SIGNATURE_LENGTH_INVALID);
+
+  const unsigned char *input =
+    (const unsigned char *)node::Buffer::Data(input_buffer);
+  size_t input_length = node::Buffer::Length(input_buffer);
+
+  secp256k1_ecdsa_signature sigin;
+
+  if (ecdsa_signature_parse_der_lax(secp->ctx, &sigin,
+                                    input, input_length) == 0) {
+    return Nan::ThrowError(ECDSA_SIGNATURE_PARSE_DER_FAIL);
+  }
+
+  secp256k1_ecdsa_signature sigout;
+  secp256k1_ecdsa_signature_normalize(secp->ctx, &sigout, &sigin);
+
+  unsigned char output[72];
+  size_t output_length = 72;
+
+  if (secp256k1_ecdsa_signature_serialize_der(secp->ctx, &output[0],
+                                              &output_length, &sigout) == 0) {
+    return Nan::ThrowError(ECDSA_SIGNATURE_SERIALIZE_DER_FAIL);
+  }
+
+  info.GetReturnValue().Set(COPY_BUFFER(&output[0], output_length));
 }
 
 NAN_METHOD(BSecp256k1::SignatureExport) {
