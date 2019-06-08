@@ -91,6 +91,18 @@ describe('Random', function() {
     assert(isRandom(rand, 0.02));
   });
 
+  it('should not be able to compress random fill', () => {
+    const rand = Buffer.alloc(4e6);
+
+    random.randomFill(rand, 0, 4e6);
+
+    const defl = zlib.deflateRawSync(rand, { level: 5 });
+    const perc = defl.length / rand.length;
+
+    assert(perc >= 0.99, `Deflated data was %${perc.toFixed(2)} of original.`);
+    assert(isRandom(rand, 0.02));
+  });
+
   it('should test distribution of randomRange()', () => {
     const array = new Uint16Array(4e6 / 2);
     const rand = Buffer.from(array.buffer, array.byteOffset, array.byteLength);
