@@ -628,18 +628,21 @@ bcrypto_ecdsa_init(bcrypto_ecdsa_t *ec, const char *name) {
 
   ec->n = BN_new();
   ec->nh = BN_new();
+  ec->ns1 = BN_new();
   ec->p = BN_new();
   ec->a = BN_new();
   ec->b = BN_new();
 
   assert(ec->n != NULL);
   assert(ec->nh != NULL);
+  assert(ec->ns1 != NULL);
   assert(ec->p != NULL);
   assert(ec->a != NULL);
   assert(ec->b != NULL);
 
   assert(EC_GROUP_get_order(ec->group, ec->n, ec->ctx) != 0);
   assert(BN_rshift1(ec->nh, ec->n) != 0);
+  assert(BN_sub(ec->ns1, ec->n, BN_value_one()) != 0);
 
 #if OPENSSL_VERSION_NUMBER >= 0x10200000L
   assert(EC_GROUP_get_curve(ec->group, ec->p, ec->a, ec->b, ec->ctx) != 0);
@@ -679,6 +682,7 @@ bcrypto_ecdsa_uninit(bcrypto_ecdsa_t *ec) {
   EC_POINT_free(ec->point);
   BN_free(ec->n);
   BN_free(ec->nh);
+  BN_free(ec->ns1);
   BN_free(ec->p);
   BN_free(ec->a);
   BN_free(ec->b);
@@ -689,6 +693,7 @@ bcrypto_ecdsa_uninit(bcrypto_ecdsa_t *ec) {
   ec->point = NULL;
   ec->n = NULL;
   ec->nh = NULL;
+  ec->ns1 = NULL;
   ec->p = NULL;
   ec->a = NULL;
   ec->b = NULL;
@@ -1794,7 +1799,8 @@ schnorr_hash_ram(bcrypto_ecdsa_t *ec,
                  const uint8_t *r,
                  const bcrypto_ecdsa_pubkey_t *pub,
                  const uint8_t *msg) {
-  uint8_t out[EVP_MAX_MD_SIZE + 3];
+  uint8_t raw[BCRYPTO_ECDSA_MAX_PUB_SIZE];
+  uint8_t out[EVP_MAX_MD_SIZE];
   EVP_MD_CTX *ctx = NULL;
   BIGNUM *e = NULL;
   size_t pub_size;
@@ -1811,9 +1817,9 @@ schnorr_hash_ram(bcrypto_ecdsa_t *ec,
   if (!EVP_DigestUpdate(ctx, r, ec->size))
     goto fail;
 
-  bcrypto_ecdsa_pubkey_encode(ec, out, &pub_size, pub, 1);
+  bcrypto_ecdsa_pubkey_encode(ec, raw, &pub_size, pub, 1);
 
-  if (!EVP_DigestUpdate(ctx, out, pub_size))
+  if (!EVP_DigestUpdate(ctx, raw, pub_size))
     goto fail;
 
   if (!EVP_DigestUpdate(ctx, msg, 32))
@@ -1825,7 +1831,7 @@ schnorr_hash_ram(bcrypto_ecdsa_t *ec,
   e = BN_bin2bn(out, hash_size, NULL);
 
   if (!BN_mod(e, e, ec->n, ec->ctx)) {
-    BN_clear_free(e);
+    BN_free(e);
     e = NULL;
     goto fail;
   }
@@ -1833,6 +1839,36 @@ schnorr_hash_ram(bcrypto_ecdsa_t *ec,
 fail:
   EVP_MD_CTX_free(ctx);
   return e;
+}
+
+static int
+schnorr_lift_x(bcrypto_ecdsa_t *ec,
+               EC_POINT *R,
+               const BIGNUM *x,
+               BIGNUM *ax,
+               BIGNUM *y) {
+  if (!BN_mod_mul(ax, ec->a, x, ec->p, ec->ctx))
+    return 0;
+
+  if (!BN_mod_sqr(y, x, ec->p, ec->ctx))
+    return 0;
+
+  if (!BN_mod_mul(y, y, x, ec->p, ec->ctx))
+    return 0;
+
+  if (!BN_mod_add(y, y, ax, ec->p, ec->ctx))
+    return 0;
+
+  if (!BN_mod_add(y, y, ec->b, ec->p, ec->ctx))
+    return 0;
+
+  if (!BN_mod_sqrt(y, y, ec->p, ec->ctx))
+    return 0;
+
+  if (!EC_POINT_set_affine_coordinates(ec->group, R, x, y, ec->ctx))
+    return 0;
+
+  return 1;
 }
 
 int
@@ -2041,6 +2077,167 @@ fail:
 
   if (z != NULL)
     BN_free(z);
+
+  return r;
+}
+
+int
+bcrypto_schnorr_batch_verify(bcrypto_ecdsa_t *ec,
+                             const uint8_t **msgs,
+                             const bcrypto_ecdsa_sig_t *sigs,
+                             const bcrypto_ecdsa_pubkey_t *pubs,
+                             size_t length) {
+  EC_POINT **points = NULL;
+  BIGNUM **coeffs = NULL;
+  BIGNUM *sum = NULL;
+  BIGNUM *Rx_tmp = NULL;
+  BIGNUM *S_tmp = NULL;
+  BIGNUM *Rx = NULL;
+  BIGNUM *S = NULL;
+  EC_POINT *A = NULL;
+  BIGNUM *e = NULL;
+  EC_POINT *R = NULL;
+  BIGNUM *a = NULL;
+  BIGNUM *ax = NULL;
+  BIGNUM *y = NULL;
+  EC_POINT *res = NULL;
+  int r = 0;
+  size_t i = 0;
+
+  if (length == 0)
+    return 1;
+
+  points = (EC_POINT **)OPENSSL_malloc(2 * length * sizeof(EC_POINT *));
+  coeffs = (BIGNUM **)OPENSSL_malloc(2 * length * sizeof(BIGNUM *));
+  sum = BN_new();
+  Rx_tmp = BN_new();
+  S_tmp = BN_new();
+  ax = BN_new();
+  y = BN_new();
+  res = EC_POINT_new(ec->group);
+
+  if (points == NULL || coeffs == NULL
+      || sum == NULL || Rx_tmp == NULL
+      || S_tmp == NULL || ax == NULL
+      || y == NULL || res == NULL) {
+    goto fail;
+  }
+
+  BN_zero(sum);
+
+  bcrypto_poll();
+
+  for (; i < length; i++) {
+    const uint8_t *msg = msgs[i];
+    const bcrypto_ecdsa_sig_t *sig = &sigs[i];
+    const bcrypto_ecdsa_pubkey_t *pub = &pubs[i];
+
+    Rx = BN_bin2bn(sig->r, ec->size, Rx_tmp);
+    S = BN_bin2bn(sig->s, ec->scalar_size, S_tmp);
+    A = bcrypto_ecdsa_pubkey_to_ec_point(ec, pub);
+    e = schnorr_hash_ram(ec, sig->r, pub, msg);
+    R = EC_POINT_new(ec->group);
+    a = BN_new();
+
+    if (Rx == NULL || S == NULL || A == NULL
+        || e == NULL || R == NULL || a == NULL) {
+      goto fail;
+    }
+
+    if (!schnorr_lift_x(ec, R, Rx, ax, y))
+      goto fail;
+
+    if (i == 0) {
+      if (!BN_set_word(a, 1))
+        goto fail;
+    } else {
+      if (!BN_rand_range(a, ec->ns1))
+        goto fail;
+
+      if (!BN_add_word(a, 1))
+        goto fail;
+
+      if (!BN_mod_mul(e, e, a, ec->n, ec->ctx))
+        goto fail;
+
+      if (!BN_mod_mul(S, S, a, ec->n, ec->ctx))
+        goto fail;
+    }
+
+    if (!BN_mod_add(sum, sum, S, ec->n, ec->ctx))
+      goto fail;
+
+    points[i * 2 + 0] = R;
+    points[i * 2 + 1] = A;
+    coeffs[i * 2 + 0] = a;
+    coeffs[i * 2 + 1] = e;
+
+    R = NULL;
+    A = NULL;
+    a = NULL;
+    e = NULL;
+  }
+
+  if (!BN_is_zero(sum)) {
+    if (!BN_sub(sum, ec->n, sum))
+      goto fail;
+  }
+
+  if (!EC_POINTs_mul(ec->group, res, sum, length * 2,
+                     (const EC_POINT **)points,
+                     (const BIGNUM **)coeffs,
+                     ec->ctx)) {
+    goto fail;
+  }
+
+  if (!EC_POINT_is_at_infinity(ec->group, res))
+    goto fail;
+
+  r = 1;
+fail:
+  if (sum != NULL)
+    BN_free(sum);
+
+  if (Rx_tmp != NULL)
+    BN_free(Rx_tmp);
+
+  if (S_tmp != NULL)
+    BN_free(S_tmp);
+
+  if (A != NULL)
+    EC_POINT_free(A);
+
+  if (e != NULL)
+    BN_free(e);
+
+  if (R != NULL)
+    EC_POINT_free(R);
+
+  if (a != NULL)
+    BN_free(a);
+
+  if (ax != NULL)
+    BN_free(ax);
+
+  if (y != NULL)
+    BN_free(y);
+
+  if (res != NULL)
+    EC_POINT_free(res);
+
+  while (i > 0) {
+    EC_POINT_free(points[(i - 1) * 2 + 0]);
+    EC_POINT_free(points[(i - 1) * 2 + 1]);
+    BN_free(coeffs[(i - 1) * 2 + 0]);
+    BN_free(coeffs[(i - 1) * 2 + 1]);
+    i -= 1;
+  }
+
+  if (points != NULL)
+    OPENSSL_free(points);
+
+  if (coeffs != NULL)
+    OPENSSL_free(coeffs);
 
   return r;
 }

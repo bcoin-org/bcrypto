@@ -46,6 +46,7 @@ typedef struct bcrypto_ecdsa_s {
   size_t size;
   BIGNUM *n;
   BIGNUM *nh;
+  BIGNUM *ns1;
   BIGNUM *p;
   BIGNUM *a;
   BIGNUM *b;
@@ -288,6 +289,13 @@ bcrypto_schnorr_verify(bcrypto_ecdsa_t *ec,
                        const uint8_t *msg,
                        const bcrypto_ecdsa_sig_t *sig,
                        const bcrypto_ecdsa_pubkey_t *pub);
+
+int
+bcrypto_schnorr_batch_verify(bcrypto_ecdsa_t *ec,
+                             const uint8_t **msgs,
+                             const bcrypto_ecdsa_sig_t *sigs,
+                             const bcrypto_ecdsa_pubkey_t *pubs,
+                             size_t length);
 
 #if defined(__cplusplus)
 }

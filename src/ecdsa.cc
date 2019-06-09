@@ -1444,7 +1444,99 @@ NAN_METHOD(BECDSA::SchnorrBatchVerify) {
   if (!ec->ctx.has_schnorr)
     return Nan::ThrowError("Schnorr is not supported for curve.");
 
-  return Nan::ThrowError("Not implemented.");
+  if (!info[0]->IsArray())
+    return Nan::ThrowTypeError("First argument must be an array.");
+
+  v8::Local<v8::Array> batch = info[0].As<v8::Array>();
+
+  size_t len = (size_t)batch->Length();
+
+  if (len == 0)
+    return info.GetReturnValue().Set(Nan::New<v8::Boolean>(true));
+
+  const uint8_t **msgs =
+    (const uint8_t **)malloc(len * sizeof(const uint8_t **));
+
+  if (msgs == NULL)
+    return Nan::ThrowError("Allocation failed.");
+
+  bcrypto_ecdsa_sig_t *sigs =
+    (bcrypto_ecdsa_sig_t *)malloc(len * sizeof(bcrypto_ecdsa_sig_t));
+
+  if (sigs == NULL) {
+    free(msgs);
+    return Nan::ThrowError("Allocation failed.");
+  }
+
+  bcrypto_ecdsa_pubkey_t *pubs =
+    (bcrypto_ecdsa_pubkey_t *)malloc(len * sizeof(bcrypto_ecdsa_pubkey_t));
+
+  if (pubs == NULL) {
+    free(msgs);
+    free(sigs);
+    return Nan::ThrowError("Allocation failed.");
+  }
+
+#define FREE_BATCH (free(msgs), free(sigs), free(pubs))
+
+  for (size_t i = 0; i < len; i++) {
+    if (!Nan::Get(batch, i).ToLocalChecked()->IsArray()) {
+      FREE_BATCH;
+      return Nan::ThrowTypeError("Item must be an array.");
+    }
+
+    v8::Local<v8::Array> item = Nan::Get(batch, i).ToLocalChecked()
+                                                  .As<v8::Array>();
+
+    if (item->Length() != 3) {
+      FREE_BATCH;
+      return Nan::ThrowError("Item must consist of 3 members.");
+    }
+
+    v8::Local<v8::Object> mbuf = Nan::Get(item, 0).ToLocalChecked()
+                                                  .As<v8::Object>();
+    v8::Local<v8::Object> sbuf = Nan::Get(item, 1).ToLocalChecked()
+                                                  .As<v8::Object>();
+    v8::Local<v8::Object> pbuf = Nan::Get(item, 2).ToLocalChecked()
+                                                  .As<v8::Object>();
+
+    if (!node::Buffer::HasInstance(mbuf)
+        || !node::Buffer::HasInstance(sbuf)
+        || !node::Buffer::HasInstance(pbuf)) {
+      FREE_BATCH;
+      return Nan::ThrowTypeError("Values must be buffers.");
+    }
+
+    const uint8_t *msg = (const uint8_t *)node::Buffer::Data(mbuf);
+    size_t msg_len = node::Buffer::Length(mbuf);
+
+    const uint8_t *sig = (const uint8_t *)node::Buffer::Data(sbuf);
+    size_t sig_len = node::Buffer::Length(sbuf);
+
+    const uint8_t *pub = (const uint8_t *)node::Buffer::Data(pbuf);
+    size_t pub_len = node::Buffer::Length(pbuf);
+
+    if (msg_len != 32 || sig_len != ec->ctx.schnorr_size) {
+      FREE_BATCH;
+      return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
+    }
+
+    msgs[i] = msg;
+
+    if (!bcrypto_schnorr_sig_decode(&ec->ctx, &sigs[i], sig)
+        || !bcrypto_ecdsa_pubkey_decode(&ec->ctx, &pubs[i], pub, pub_len)) {
+      FREE_BATCH;
+      return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
+    }
+  }
+
+  int result = bcrypto_schnorr_batch_verify(&ec->ctx, msgs, sigs, pubs, len);
+
+  FREE_BATCH;
+
+#undef FREE_BATCH
+
+  info.GetReturnValue().Set(Nan::New<v8::Boolean>(result == 1));
 }
 
 #endif
