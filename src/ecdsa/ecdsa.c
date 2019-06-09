@@ -1909,7 +1909,12 @@ schnorr_lift_x(bcrypto_ecdsa_t *ec,
   if (!BN_mod_sqrt(y, y, ec->p, ec->ctx))
     return 0;
 
+#if OPENSSL_VERSION_NUMBER >= 0x10200000L
+  // Note: should be present with 1.1.1b
   if (!EC_POINT_set_affine_coordinates(ec->group, R, x, y, ec->ctx))
+#else
+  if (!EC_POINT_set_affine_coordinates_GFp(ec->group, R, x, y, ec->ctx))
+#endif
     return 0;
 
   return 1;
@@ -1963,7 +1968,12 @@ bcrypto_schnorr_sign(bcrypto_ecdsa_t *ec,
     goto fail;
 
   // Encode x(R).
+#if OPENSSL_VERSION_NUMBER >= 0x10200000L
+  // Note: should be present with 1.1.1b
   if (!EC_POINT_get_affine_coordinates(ec->group, R, x, y, ec->ctx))
+#else
+  if (!EC_POINT_get_affine_coordinates_GFp(ec->group, R, x, y, ec->ctx))
+#endif
     goto fail;
 
   assert(BN_bn2binpad(x, sig->r, ec->size) != -1);
