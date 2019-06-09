@@ -783,8 +783,10 @@ NAN_METHOD(BECDSA::PublicKeyCombine) {
   uint8_t out[BCRYPTO_ECDSA_MAX_PUB_SIZE];
   size_t out_len;
 
-  if (!bcrypto_ecdsa_pubkey_combine(&ec->ctx, &pubkey, pubs, len))
+  if (!bcrypto_ecdsa_pubkey_combine(&ec->ctx, &pubkey, pubs, len)) {
+    free(pubs);
     return Nan::ThrowError("Invalid point.");
+  }
 
   bcrypto_ecdsa_pubkey_encode(&ec->ctx, out, &out_len, &pubkey, compress);
 

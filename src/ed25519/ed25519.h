@@ -167,6 +167,13 @@ bcrypto_ed25519_pubkey_add(
 );
 
 int
+bcrypto_ed25519_pubkey_combine(
+  bcrypto_ed25519_public_key out,
+  const bcrypto_ed25519_public_key *pks,
+  size_t length
+);
+
+int
 bcrypto_ed25519_pubkey_negate(
   bcrypto_ed25519_public_key out,
   const bcrypto_ed25519_public_key pk

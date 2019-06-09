@@ -553,6 +553,34 @@ bcrypto_ed25519_pubkey_add(
 }
 
 int
+bcrypto_ed25519_pubkey_combine(
+  bcrypto_ed25519_public_key out,
+  const bcrypto_ed25519_public_key *pks,
+  size_t length
+) {
+  ge25519 ALIGN(16) k1, k2;
+  size_t i = 1;
+
+  if (length == 0)
+    return -1;
+
+  if (!ge25519_unpack_vartime(&k1, pks[0]))
+    return -1;
+
+  for (; i < length; i++) {
+    if (!ge25519_unpack_vartime(&k2, pks[i]))
+      return -1;
+
+    ge25519_add(&k1, &k1, &k2);
+  }
+
+  if (!ge25519_pack_safe(out, &k1))
+    return -1;
+
+  return 0;
+}
+
+int
 bcrypto_ed25519_pubkey_negate(
   bcrypto_ed25519_public_key out,
   const bcrypto_ed25519_public_key pk

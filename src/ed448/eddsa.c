@@ -349,6 +349,65 @@ bcrypto_c448_error_t bcrypto_c448_ed448_public_key_add(
   return BCRYPTO_C448_SUCCESS;
 }
 
+bcrypto_c448_error_t bcrypto_c448_ed448_public_key_combine(
+            uint8_t out[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
+            const bcrypto_c448_ed448_public_key *pubkeys,
+            size_t length) {
+  bcrypto_curve448_point_t pk1_point, pk2_point;
+  size_t i = 1;
+
+  if (length == 0)
+    return BCRYPTO_C448_FAILURE;
+
+  bcrypto_c448_error_t error1 =
+    bcrypto_curve448_point_decode_like_eddsa_and_mul_by_ratio(pk1_point, pubkeys[0]);
+
+  if (error1 != BCRYPTO_C448_SUCCESS)
+    return error1;
+
+  if (bcrypto_curve448_point_infinity(pk1_point)) {
+    bcrypto_curve448_point_destroy(pk1_point);
+    return BCRYPTO_C448_FAILURE;
+  }
+
+  for (; i < length; i++) {
+    bcrypto_c448_error_t error2 =
+      bcrypto_curve448_point_decode_like_eddsa_and_mul_by_ratio(pk2_point, pubkeys[i]);
+
+    if (error2 != BCRYPTO_C448_SUCCESS) {
+      bcrypto_curve448_point_destroy(pk1_point);
+      return error2;
+    }
+
+    if (bcrypto_curve448_point_infinity(pk2_point)) {
+      bcrypto_curve448_point_destroy(pk1_point);
+      bcrypto_curve448_point_destroy(pk2_point);
+      return BCRYPTO_C448_FAILURE;
+    }
+
+    bcrypto_curve448_point_add(pk1_point, pk1_point, pk2_point);
+    bcrypto_curve448_point_destroy(pk2_point);
+  }
+
+  // We have to divide the new point by the ratio due to decaf's encoding.
+  bcrypto_curve448_scalar_t ratio_scalar = {{{BCRYPTO_C448_EDDSA_ENCODE_RATIO}}};
+  bcrypto_curve448_scalar_invert(ratio_scalar, ratio_scalar);
+  bcrypto_curve448_point_t ratio_point;
+  bcrypto_curve448_precomputed_scalarmul(ratio_point, bcrypto_curve448_precomputed_base, ratio_scalar);
+  bcrypto_curve448_point_scalarmul(pk1_point, pk1_point, ratio_scalar);
+
+  if (bcrypto_curve448_point_infinity(pk1_point)) {
+    bcrypto_curve448_point_destroy(pk1_point);
+    return BCRYPTO_C448_FAILURE;
+  }
+
+  bcrypto_curve448_point_mul_by_ratio_and_encode_like_eddsa(out, pk1_point);
+
+  bcrypto_curve448_point_destroy(pk1_point);
+
+  return BCRYPTO_C448_SUCCESS;
+}
+
 bcrypto_c448_error_t bcrypto_c448_ed448_public_key_negate(
             uint8_t out[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
             const uint8_t pubkey[BCRYPTO_EDDSA_448_PUBLIC_BYTES]) {

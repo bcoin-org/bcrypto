@@ -480,7 +480,57 @@ NAN_METHOD(BED448::PublicKeyAdd) {
 }
 
 NAN_METHOD(BED448::PublicKeyCombine) {
-  return Nan::ThrowError("Not implemented.");
+  if (info.Length() < 1)
+    return Nan::ThrowError("ed448.publicKeyCombine() requires arguments.");
+
+  if (!info[0]->IsArray())
+    return Nan::ThrowTypeError("First argument must be an array.");
+
+  v8::Local<v8::Array> batch = info[0].As<v8::Array>();
+
+  size_t len = (size_t)batch->Length();
+
+  if (len == 0)
+    return Nan::ThrowError("Invalid point.");
+
+  bcrypto_c448_ed448_public_key *pubs =
+    (bcrypto_c448_ed448_public_key *)malloc(len * sizeof(bcrypto_c448_ed448_public_key));
+
+  if (pubs == NULL)
+    return Nan::ThrowError("Allocation failed.");
+
+  for (size_t i = 0; i < len; i++) {
+    v8::Local<v8::Object> pbuf = Nan::Get(batch, i).ToLocalChecked()
+                                                   .As<v8::Object>();
+
+    if (!node::Buffer::HasInstance(pbuf)) {
+      free(pubs);
+      return Nan::ThrowTypeError("Public key must be a buffer.");
+    }
+
+    const uint8_t *pub = (const uint8_t *)node::Buffer::Data(pbuf);
+    size_t pub_len = node::Buffer::Length(pbuf);
+
+    if (pub_len != BCRYPTO_EDDSA_448_PUBLIC_BYTES) {
+      free(pubs);
+      return Nan::ThrowError("Invalid point.");
+    }
+
+    memcpy(pubs[i], pub, pub_len);
+  }
+
+  uint8_t out[BCRYPTO_EDDSA_448_PUBLIC_BYTES];
+
+  if (!bcrypto_c448_ed448_public_key_combine(out, pubs, len)) {
+    free(pubs);
+    return Nan::ThrowError("Invalid point.");
+  }
+
+  free(pubs);
+
+  return info.GetReturnValue().Set(
+    Nan::CopyBuffer((char *)&out[0],
+                    BCRYPTO_EDDSA_448_PUBLIC_BYTES).ToLocalChecked());
 }
 
 NAN_METHOD(BED448::PublicKeyNegate) {

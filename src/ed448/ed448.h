@@ -35,6 +35,8 @@ extern "C" {
 /* EdDSA decoding ratio. */
 # define BCRYPTO_C448_EDDSA_DECODE_RATIO (4 / 4)
 
+typedef uint8_t bcrypto_c448_ed448_public_key[BCRYPTO_EDDSA_448_PUBLIC_BYTES];
+
 /*
  * EdDSA key generation.  This function uses a different (non-Decaf) encoding.
  *
@@ -248,6 +250,11 @@ bcrypto_c448_error_t bcrypto_c448_ed448_public_key_add(
             uint8_t out[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
             const uint8_t pubkey1[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
             const uint8_t pubkey2[BCRYPTO_EDDSA_448_PUBLIC_BYTES]);
+
+bcrypto_c448_error_t bcrypto_c448_ed448_public_key_combine(
+            uint8_t out[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
+            const bcrypto_c448_ed448_public_key *pubkeys,
+            size_t length);
 
 bcrypto_c448_error_t bcrypto_c448_ed448_public_key_negate(
             uint8_t out[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
