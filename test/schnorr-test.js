@@ -78,6 +78,9 @@ describe('Secp256k1+Schnorr', function() {
   });
 
   it('should be generalized for other curves', () => {
+    if (p256.native !== 0) // Nettle backend doesn't have schnorr support.
+      this.skip();
+
     const msg1 = Buffer.from(
       '3b3c4a629b78ca392e689526c445119ac9f27d7986e177764a1db2d9935f2832',
       'hex');
@@ -142,6 +145,9 @@ describe('Secp256k1+Schnorr', function() {
   });
 
   it('should throw on curves which fail to satisfy jacobi(-1, p) == -1', () => {
+    if (p224.native !== 0) // Nettle backend doesn't have schnorr support.
+      this.skip();
+
     const msg = Buffer.from(
       '3b3c4a629b78ca392e689526c445119ac9f27d7986e177764a1db2d9935f2832',
       'hex');

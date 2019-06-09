@@ -33,10 +33,10 @@ BECDSA::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "publicKeyTweakAdd", BECDSA::PublicKeyTweakAdd);
   Nan::Export(obj, "publicKeyTweakMul", BECDSA::PublicKeyTweakMul);
   Nan::Export(obj, "publicKeyAdd", BECDSA::PublicKeyAdd);
-  Nan::Export(tpl, "publicKeyCombine", BECDSA::PublicKeyCombine);
+  Nan::Export(obj, "publicKeyCombine", BECDSA::PublicKeyCombine);
   Nan::Export(obj, "publicKeyNegate", BECDSA::PublicKeyNegate);
   Nan::Export(obj, "signatureNormalize", BECDSA::SignatureNormalize);
-  Nan::Export(tpl, "signatureNormalizeDER", BECDSA::SignatureNormalizeDER);
+  Nan::Export(obj, "signatureNormalizeDER", BECDSA::SignatureNormalizeDER);
   Nan::Export(obj, "signatureExport", BECDSA::SignatureExport);
   Nan::Export(obj, "signatureImport", BECDSA::SignatureImport);
   Nan::Export(obj, "isLowS", BECDSA::IsLowS);
@@ -629,7 +629,6 @@ NAN_METHOD(BECDSA::SignatureNormalizeDER) {
     return Nan::ThrowTypeError("First argument must be a number.");
 
   int type = (int)Nan::To<uint32_t>(info[0]).FromJust();
-  size_t size = bcrypto_ecdsa_sig_length(type);
 
   v8::Local<v8::Object> sbuf = info[1].As<v8::Object>();
 
