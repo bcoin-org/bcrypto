@@ -722,7 +722,7 @@ NAN_METHOD(BECDSA::PublicKeyAdd) {
     return Nan::ThrowError("Invalid public key.");
 
   if (!bcrypto_ecdsa_pubkey_add(&ec->ctx, &pubkey1, &pubkey1, &pubkey2))
-    return Nan::ThrowError("Could not tweak public key.");
+    return Nan::ThrowError("Invalid point.");
 
   bcrypto_ecdsa_pubkey_encode(&ec->ctx, out, &out_len, &pubkey1, compress);
 
@@ -731,7 +731,67 @@ NAN_METHOD(BECDSA::PublicKeyAdd) {
 }
 
 NAN_METHOD(BECDSA::PublicKeyCombine) {
-  return Nan::ThrowError("Not implemented.");
+  BECDSA *ec = ObjectWrap::Unwrap<BECDSA>(info.Holder());
+
+  if (info.Length() < 1)
+    return Nan::ThrowError("ecdsa.publicKeyCombine() requires arguments.");
+
+  if (!info[0]->IsArray())
+    return Nan::ThrowTypeError("First argument must be an array.");
+
+  v8::Local<v8::Array> batch = info[0].As<v8::Array>();
+
+  size_t len = (size_t)batch->Length();
+
+  if (len == 0)
+    return Nan::ThrowError("Invalid point.");
+
+  int compress = 1;
+
+  if (info.Length() > 1 && !IsNull(info[1])) {
+    if (!info[1]->IsBoolean())
+      return Nan::ThrowTypeError("Second argument must be a boolean.");
+
+    compress = (int)Nan::To<bool>(info[1]).FromJust();
+  }
+
+  bcrypto_ecdsa_pubkey_t *pubs =
+    (bcrypto_ecdsa_pubkey_t *)malloc(len * sizeof(bcrypto_ecdsa_pubkey_t));
+
+  if (pubs == NULL)
+    return Nan::ThrowError("Allocation failed.");
+
+  for (size_t i = 0; i < len; i++) {
+    v8::Local<v8::Object> pbuf = Nan::Get(batch, i).ToLocalChecked()
+                                                   .As<v8::Object>();
+
+    if (!node::Buffer::HasInstance(pbuf)) {
+      free(pubs);
+      return Nan::ThrowTypeError("Public key must be a buffer.");
+    }
+
+    const uint8_t *pub = (const uint8_t *)node::Buffer::Data(pbuf);
+    size_t pub_len = node::Buffer::Length(pbuf);
+
+    if (!bcrypto_ecdsa_pubkey_decode(&ec->ctx, &pubs[i], pub, pub_len)) {
+      free(pubs);
+      return Nan::ThrowError("Invalid point.");
+    }
+  }
+
+  bcrypto_ecdsa_pubkey_t pubkey;
+  uint8_t out[BCRYPTO_ECDSA_MAX_PUB_SIZE];
+  size_t out_len;
+
+  if (!bcrypto_ecdsa_pubkey_combine(&ec->ctx, &pubkey, pubs, len))
+    return Nan::ThrowError("Invalid point.");
+
+  bcrypto_ecdsa_pubkey_encode(&ec->ctx, out, &out_len, &pubkey, compress);
+
+  free(pubs);
+
+  return info.GetReturnValue().Set(
+    Nan::CopyBuffer((char *)out, out_len).ToLocalChecked());
 }
 
 NAN_METHOD(BECDSA::PublicKeyNegate) {
@@ -1441,11 +1501,14 @@ NAN_METHOD(BECDSA::SchnorrVerify) {
 NAN_METHOD(BECDSA::SchnorrBatchVerify) {
   BECDSA *ec = ObjectWrap::Unwrap<BECDSA>(info.Holder());
 
-  if (!ec->ctx.has_schnorr)
-    return Nan::ThrowError("Schnorr is not supported for curve.");
+  if (info.Length() < 1)
+    return Nan::ThrowError("ecdsa.schnorrBatchVerify() requires arguments.");
 
   if (!info[0]->IsArray())
     return Nan::ThrowTypeError("First argument must be an array.");
+
+  if (!ec->ctx.has_schnorr)
+    return Nan::ThrowError("Schnorr is not supported for curve.");
 
   v8::Local<v8::Array> batch = info[0].As<v8::Array>();
 

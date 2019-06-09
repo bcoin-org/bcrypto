@@ -221,6 +221,12 @@ bcrypto_ecdsa_pubkey_add(bcrypto_ecdsa_t *ec,
                          const bcrypto_ecdsa_pubkey_t *pub2);
 
 int
+bcrypto_ecdsa_pubkey_combine(bcrypto_ecdsa_t *ec,
+                             bcrypto_ecdsa_pubkey_t *out,
+                             const bcrypto_ecdsa_pubkey_t *pubs,
+                             size_t length);
+
+int
 bcrypto_ecdsa_pubkey_negate(bcrypto_ecdsa_t *ec,
                             bcrypto_ecdsa_pubkey_t *out,
                             const bcrypto_ecdsa_pubkey_t *pub);

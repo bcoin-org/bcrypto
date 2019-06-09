@@ -1363,6 +1363,50 @@ fail:
 }
 
 int
+bcrypto_ecdsa_pubkey_combine(bcrypto_ecdsa_t *ec,
+                             bcrypto_ecdsa_pubkey_t *out,
+                             const bcrypto_ecdsa_pubkey_t *pubs,
+                             size_t length) {
+  EC_POINT *result = NULL;
+  EC_POINT *point = NULL;
+  size_t i = 0;
+  int r = 0;
+
+  result = EC_POINT_new(ec->group);
+
+  if (result == NULL)
+    goto fail;
+
+  for (; i < length; i++) {
+    const bcrypto_ecdsa_pubkey_t *pub = &pubs[i];
+
+    point = bcrypto_ecdsa_pubkey_to_ec_point(ec, pub);
+
+    if (point == NULL)
+      goto fail;
+
+    if (!EC_POINT_add(ec->group, result, result, point, ec->ctx))
+      goto fail;
+
+    EC_POINT_free(point);
+    point = NULL;
+  }
+
+  if (!bcrypto_ecdsa_pubkey_from_ec_point(ec, out, result))
+    goto fail;
+
+  r = 1;
+fail:
+  if (result != NULL)
+    EC_POINT_free(result);
+
+  if (point != NULL)
+    EC_POINT_free(point);
+
+  return r;
+}
+
+int
 bcrypto_ecdsa_pubkey_negate(bcrypto_ecdsa_t *ec,
                             bcrypto_ecdsa_pubkey_t *out,
                             const bcrypto_ecdsa_pubkey_t *pub) {
