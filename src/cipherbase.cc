@@ -149,7 +149,7 @@ NAN_METHOD(BCipherBase::Update) {
   const uint8_t *data = (const uint8_t *)node::Buffer::Data(data_buf);
   size_t data_len = node::Buffer::Length(data_buf);
 
-  size_t out_len = data_len + cipher->ctx.desc->block_size;
+  size_t out_len = data_len + cipher->ctx.desc->block_size * 2;
   uint8_t *out = (uint8_t *)malloc(out_len);
 
   if (out == NULL)

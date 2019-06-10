@@ -101,6 +101,7 @@ typedef struct bcrypto_cipher_s {
   uint8_t state[BCRYPTO_CIPHER_MAX_BLOCK_SIZE];
   uint8_t block[BCRYPTO_CIPHER_MAX_BLOCK_SIZE];
   uint8_t last[BCRYPTO_CIPHER_MAX_BLOCK_SIZE];
+  size_t last_size;
   int mode;
   int encrypt;
   size_t block_pos;

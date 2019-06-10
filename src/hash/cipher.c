@@ -191,6 +191,7 @@ bcrypto_cipher_clear(bcrypto_cipher_t *cipher) {
   memset(&cipher->block[0], 0x00, BCRYPTO_CIPHER_MAX_BLOCK_SIZE);
   memset(&cipher->last[0], 0x00, BCRYPTO_CIPHER_MAX_BLOCK_SIZE);
 
+  cipher->last_size = 0;
   cipher->mode = 0;
   cipher->encrypt = 0;
   cipher->block_pos = 0;
@@ -320,8 +321,12 @@ bcrypto_cipher_update(bcrypto_cipher_t *cipher, uint8_t *dst,
     olen += block_size;
   }
 
+  olen += cipher->last_size;
+  memcpy(&dst[opos], &cipher->last[0], cipher->last_size);
+  opos += cipher->last_size;
+
   if (ipos) {
-    bcrypto_cipher_crypt(cipher, &dst[0], &cipher->block[0], block_size);
+    bcrypto_cipher_crypt(cipher, &dst[opos], &cipher->block[0], block_size);
     opos += block_size;
   }
 
@@ -336,8 +341,14 @@ bcrypto_cipher_update(bcrypto_cipher_t *cipher, uint8_t *dst,
     memcpy(&cipher->block[0], &src[ipos], ilen);
 
   if (!cipher->encrypt && cipher->mode <= BCRYPTO_MODE_CBC) {
-    memcpy(&cipher->last[0], &dst[olen - block_size], block_size);
-    return olen - block_size;
+    if (olen > 0) {
+      cipher->last_size = block_size;
+      memcpy(&cipher->last[0], &dst[olen - block_size], block_size);
+      return olen - block_size;
+    }
+
+    cipher->last_size = 0;
+    memset(&cipher->last[0], 0x00, block_size);
   }
 
   return olen;
