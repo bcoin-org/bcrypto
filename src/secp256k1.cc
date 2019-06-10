@@ -263,9 +263,7 @@ BSecp256k1::Init(v8::Local<v8::Object> &target) {
   // schnorr
   Nan::SetPrototypeMethod(tpl, "schnorrSign", BSecp256k1::SchnorrSign);
   Nan::SetPrototypeMethod(tpl, "schnorrVerify", BSecp256k1::SchnorrVerify);
-#ifdef BCRYPTO_SECP256K1_WITH_SCHNORR_BATCH
   Nan::SetPrototypeMethod(tpl, "schnorrBatchVerify", BSecp256k1::SchnorrBatchVerify);
-#endif
 
   v8::Local<v8::FunctionTemplate> ctor =
     Nan::New<v8::FunctionTemplate>(secp256k1_constructor);
@@ -1515,8 +1513,7 @@ NAN_METHOD(BSecp256k1::SchnorrVerify) {
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
 
-#ifdef BCRYPTO_SECP256K1_WITH_SCHNORR_BATCH
-NAN_METHOD(BED25519::SchnorrBatchVerify) {
+NAN_METHOD(BSecp256k1::SchnorrBatchVerify) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
   if (!info[0]->IsArray())
@@ -1547,7 +1544,8 @@ NAN_METHOD(BED25519::SchnorrBatchVerify) {
     (secp256k1_pubkey *)malloc(len * sizeof(secp256k1_pubkey));
 
   if (pubs == NULL) {
-    free(sigs), free(msgs);
+    free(sigs);
+    free(msgs);
     return Nan::ThrowError("allocation failed");
   }
 
@@ -1564,7 +1562,7 @@ NAN_METHOD(BED25519::SchnorrBatchVerify) {
 
     if (item->Length() != 3) {
       FREE_BATCH;
-      return Nan::ThrowError("batch item must consist of 3 members");
+      return Nan::ThrowTypeError("batch item must consist of 3 members");
     }
 
     v8::Local<v8::Object> mbuf = Nan::Get(item, 0).ToLocalChecked()
@@ -1634,9 +1632,20 @@ NAN_METHOD(BED25519::SchnorrBatchVerify) {
   // secp256k1_scratch_space *scratch =
   //   secp256k1_scratch_space_create(secp->ctx, max_size);
   // secp256k1_scratch_space_destroy(scratch);
+  //
+  // int result = secp256k1_schnorrsig_verify_batch(secp->ctx, NULL,
+  //                                                sigs, msgs, pubs, len);
 
-  int result = secp256k1_schnorrsig_verify_batch(secp->ctx, NULL,
-                                                 sigs, msgs, pubs, len);
+  int result = 1;
+  size_t i = 0;
+
+  for (; i < len; i++) {
+    if (secp256k1_schnorrsig_verify(secp->ctx, &sigs[i],
+                                    msgs[i], &pubs[i]) == 0) {
+      result = 0;
+      break;
+    }
+  }
 
   FREE_BATCH;
 
@@ -1644,4 +1653,3 @@ NAN_METHOD(BED25519::SchnorrBatchVerify) {
 
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result == 1));
 }
-#endif
