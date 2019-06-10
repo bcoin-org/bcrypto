@@ -399,7 +399,7 @@ bcrypto_cipher_crypt(bcrypto_cipher_t *cipher, uint8_t *dst,
 
       for (size_t i = 0; i < length; i += block_size) {
         fn(cipher->ctx, block_size, state, state);
-        memxor3(&dst[i * block_size], &src[i * block_size], state, block_size);
+        memxor3(&dst[i], &src[i], state, block_size);
       }
 
       break;
