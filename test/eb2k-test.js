@@ -1,7 +1,9 @@
 'use strict';
 
 const assert = require('bsert');
+const ChaCha20 = require('../lib/chacha20');
 const eb2k = require('../lib/eb2k');
+const json = require('./data/eb2k.json');
 
 const vectors = [
   [
@@ -78,6 +80,14 @@ const vectors = [
   ]
 ];
 
+function deriveChacha(pass) {
+  const [key, iv] = eb2k.derive(pass, null, 32, 16);
+  const chacha = new ChaCha20().init(key, iv);
+  const state = Buffer.alloc(64, 0x00);
+
+  return chacha.encrypt(state);
+}
+
 describe('EB2K', function() {
   for (const [pass_, salt_, keyLen, ivLen, key_, iv_] of vectors) {
     const pass = Buffer.from(pass_, 'binary');
@@ -90,6 +100,16 @@ describe('EB2K', function() {
 
       assert.bufferEqual(key, keyOut);
       assert.bufferEqual(iv, ivOut);
+    });
+  }
+
+  for (const [pass_, state_] of json) {
+    const pass = Buffer.from(pass_, 'hex');
+    const state = Buffer.from(state_, 'hex');
+    const text = state_.slice(0, 32) + '...';
+
+    it(`should derive chacha state ${text}`, () => {
+      assert.bufferEqual(deriveChacha(pass), state);
     });
   }
 });
