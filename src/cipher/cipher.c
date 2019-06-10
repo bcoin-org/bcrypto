@@ -500,10 +500,5 @@ bcrypto_cipher_verify(bcrypto_cipher_t *cipher,
   if (!bcrypto_cipher_digest(cipher, tag, len))
     return 0;
 
-  unsigned int v = 0;
-
-  for (size_t i = 0; i < len; i++)
-    v |= tag[i] ^ expect[i];
-
-  return (v - 1) >> 31;
+  return memeql_sec((void *)&tag[0], (void *)expect, len) != 0;
 }
