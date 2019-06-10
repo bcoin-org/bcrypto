@@ -712,6 +712,9 @@ static void
 dsa_pow_blind(mpz_t out,
               const mpz_t y, const mpz_t x,
               const mpz_t p, const mpz_t q) {
+#ifdef BCRYPTO_HAS_GMP
+  mpz_powm_sec(out, y, x, p);
+#else
   /* Idea: exponentiate by scalar with a
      blinding factor, similar to how we
      blind multiplications in EC. */
@@ -749,6 +752,7 @@ dsa_pow_blind(mpz_t out,
   mpz_clear(unblind);
   mpz_clear(scalar);
   mpz_clear(blinded);
+#endif
 }
 
 int

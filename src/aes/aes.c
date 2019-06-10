@@ -4,13 +4,7 @@
 
 #include "aes.h"
 #include "../nettle/aes.h"
-
-static inline void
-XOR(uint8_t *out, const uint8_t *a, const uint8_t *b) {
-  int i;
-  for (i = 0; i < 16; i++)
-    out[i] = a[i] ^ b[i];
-}
+#include "../nettle/memops.h"
 
 int
 bcrypto_aes_encipher(uint8_t *out,
@@ -35,7 +29,7 @@ bcrypto_aes_encipher(uint8_t *out,
 
   // Encrypt all blocks except for the last.
   for (i = 0; i < blocks; i++) {
-    XOR(cblock, pblock, cprev);
+    memxor3(cblock, pblock, cprev, 16);
     aes256_encrypt(&ctx, 16, cblock, cblock);
     cprev = cblock;
     cblock += 16;
@@ -54,7 +48,7 @@ bcrypto_aes_encipher(uint8_t *out,
 
   // Encrypt the last block,
   // as well as the padding.
-  XOR(cblock, last, cprev);
+  memxor3(cblock, last, cprev, 16);
   aes256_encrypt(&ctx, 16, cblock, cblock);
 
   return 1;
@@ -87,7 +81,7 @@ bcrypto_aes_decipher(uint8_t *out,
   // Decrypt all blocks.
   for (i = 0; i < blocks; i++) {
     aes256_decrypt(&ctx, 16, pblock, cblock);
-    XOR(pblock, pblock, cprev);
+    memxor3(pblock, pblock, cprev, 16);
     cprev = cblock;
     pprev = pblock;
     cblock += 16;

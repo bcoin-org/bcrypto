@@ -12,6 +12,7 @@
 #include "../nettle/pss-mgf1.h"
 #include "../nettle/bignum.h"
 #include "../random/random.h"
+#include "../nettle/memops.h"
 
 static const char *PKCS1_PREFIXES[] = {
   /* NONE */ "",
@@ -814,23 +815,18 @@ mgf1xor(const struct nettle_hash *hash, void *state,
 }
 
 static inline unsigned int
+safe_equal(const uint8_t *x, const uint8_t *y, size_t len) {
+  return memeql_sec((void *)x, (void *)y, len) != 0;
+}
+
+static inline unsigned int
 safe_equal_int(unsigned int x, unsigned int y) {
-  return ((x ^ y) - 1) >> 31;
+  return memeql_sec((void *)&x, (void *)&y, sizeof(unsigned int)) != 0;
 }
 
 static inline unsigned int
 safe_select(unsigned int v, unsigned int x, unsigned int y) {
   return (~(v - 1) & x) | ((v - 1) & y);
-}
-
-static inline unsigned int
-safe_equal(const uint8_t *x, const uint8_t *y, size_t len) {
-  unsigned int v = 0;
-
-  for (size_t i = 0; i < len; i++)
-    v |= x[i] ^ y[i];
-
-  return safe_equal_int(v, 0);
 }
 
 int

@@ -17,7 +17,7 @@
 #include "../nettle/ctr.h"
 #include "../nettle/gcm.h"
 #include "../nettle/nettle-internal.h"
-#include "../nettle/memxor.h"
+#include "../nettle/memops.h"
 
 #define BCRYPTO_CIPHER_AES128 1
 #define BCRYPTO_CIPHER_AES192 2

@@ -322,8 +322,11 @@ bcrypto_cipher_update(bcrypto_cipher_t *cipher, uint8_t *dst,
   }
 
   olen += cipher->last_size;
-  memcpy(&dst[opos], &cipher->last[0], cipher->last_size);
-  opos += cipher->last_size;
+
+  if (cipher->last_size > 0) {
+    memcpy(&dst[opos], &cipher->last[0], cipher->last_size);
+    opos += cipher->last_size;
+  }
 
   if (ipos) {
     bcrypto_cipher_crypt(cipher, &dst[opos], &cipher->block[0], block_size);
@@ -396,7 +399,7 @@ bcrypto_cipher_crypt(bcrypto_cipher_t *cipher, uint8_t *dst,
 
       for (size_t i = 0; i < length; i += block_size) {
         fn(cipher->ctx, block_size, state, state);
-        memxor3(dst, src, state, block_size);
+        memxor3(&dst[i * block_size], &src[i * block_size], state, block_size);
       }
 
       break;

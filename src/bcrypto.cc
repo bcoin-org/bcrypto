@@ -51,7 +51,7 @@
 #include "bcrypto.h"
 
 // For "cleanse"
-#include "nettle/memxor.h"
+#include "nettle/memops.h"
 
 NAN_METHOD(cleanse) {
   if (info.Length() < 1)
