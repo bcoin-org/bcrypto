@@ -62,7 +62,7 @@ describe('Bcrypt', function() {
       const text = expect.slice(0, 32) + '...';
 
       it(`should derive hash (bsd): ${text}`, () => {
-        assert.strictEqual(bcrypt.generate(pass, salt, rounds), expect);
+        assert.strictEqual(bcrypt.generate(pass, salt, rounds, 'a'), expect);
       });
     }
   });
