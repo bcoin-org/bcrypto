@@ -1,10 +1,15 @@
+/* eslint quotes: "off" */
+
 'use strict';
 
 const assert = require('bsert');
 const bcrypt = require('../lib/bcrypt');
-const hash256vectors = require('./data/bcrypt-hash256.json');
+const hash192 = require('./data/bcrypt-hash192.json');
+const hash256 = require('./data/bcrypt-hash256.json');
+// https://github.com/patrickfav/bcrypt/wiki/Published-Test-Vectors
+const bsd = require('./data/bcrypt-bsd.json');
 
-const vectors = [
+const pbkdf = [
   [
     'foo',
     'd8d5105271003f18afb751584ac9df4d',
@@ -39,11 +44,41 @@ describe('Bcrypt', function() {
   this.timeout(10000);
 
   describe('Hash192', () => {
-    it('should derive key (hash192)');
+    for (const [pass_, salt_, rounds, expect_] of hash192) {
+      const pass = Buffer.from(pass_, 'hex');
+      const salt = Buffer.from(salt_, 'hex');
+      const expect = Buffer.from(expect_, 'hex');
+      const text = expect_.slice(0, 32) + '...';
+
+      it(`should derive key (hash192): ${text}`, () => {
+        const key = bcrypt.hash192(pass, salt, rounds);
+        assert.bufferEqual(key, expect);
+      });
+    }
+  });
+
+  describe('Generate', () => {
+    for (const [pass, rounds, salt, expect] of bsd) {
+      const text = expect.slice(0, 32) + '...';
+
+      it(`should derive hash (bsd): ${text}`, () => {
+        assert.strictEqual(bcrypt.generate(pass, salt, rounds), expect);
+      });
+    }
+  });
+
+  describe('Verify', () => {
+    for (const [pass,,, expect] of bsd) {
+      const text = expect.slice(0, 32) + '...';
+
+      it(`should verify hash (bsd): ${text}`, () => {
+        assert.strictEqual(bcrypt.verify(pass, expect), true);
+      });
+    }
   });
 
   describe('Hash256', () => {
-    for (const [pass_, salt_, rounds, expect_] of hash256vectors) {
+    for (const [pass_, salt_, rounds, expect_] of hash256) {
       const pass = Buffer.from(pass_, 'hex');
       const salt = Buffer.from(salt_, 'hex');
       const expect = Buffer.from(expect_, 'hex');
@@ -57,7 +92,7 @@ describe('Bcrypt', function() {
   });
 
   describe('PBKDF', () => {
-    for (const [pass_, salt_, rounds, size, expect_] of vectors) {
+    for (const [pass_, salt_, rounds, size, expect_] of pbkdf) {
       const pass = Buffer.from(pass_, 'binary');
       const salt = Buffer.from(salt_, 'hex');
       const expect = Buffer.from(expect_, 'hex');
