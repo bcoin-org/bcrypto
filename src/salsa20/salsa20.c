@@ -66,11 +66,13 @@ bcrypto_salsa20_init(bcrypto_salsa20_ctx *ctx,
   memcpy(&nonce_[0], nonce, MIN(16, nonce_len));
 
   // XSalsa20
-  if (nonce_len == 24) {
+  if (nonce_len >= 24) {
     bcrypto_salsa20_derive(&key_[0], key, key_len, nonce, 16);
-    memcpy(&nonce_[0], &nonce[16], 8);
+
     key_len = 32;
-    nonce_len = 8;
+    nonce_len -= 16;
+
+    memcpy(&nonce_[0], &nonce[16], MIN(16, nonce_len));
   }
 
   const char *constants = (key_len == 32)

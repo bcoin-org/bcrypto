@@ -67,8 +67,10 @@ NAN_METHOD(BChaCha20::Init) {
   const uint8_t *nonce = (const uint8_t *)node::Buffer::Data(nonce_buf);
   size_t nonce_len = node::Buffer::Length(nonce_buf);
 
-  if (nonce_len != 8 && nonce_len != 12 && nonce_len != 16 && nonce_len != 24)
+  if (nonce_len != 8 && nonce_len != 12 && nonce_len != 16
+      && nonce_len != 24 && nonce_len != 28 && nonce_len != 32) {
     return Nan::ThrowRangeError("Invalid nonce size.");
+  }
 
   uint64_t ctr = 0;
 
