@@ -652,7 +652,9 @@ bcrypto_ecdsa_privkey_tweak_mul(int type,
 
   r.ecc = ecc;
   r.p = gmp_alloc_limbs(2 * ecc->p.size);
-  assert(r.p != NULL);
+
+  if (r.p == NULL)
+    goto fail;
 
   if (!ecc_scalar_decode(&s, key))
     goto fail;
@@ -671,7 +673,10 @@ bcrypto_ecdsa_privkey_tweak_mul(int type,
 fail:
   ecc_scalar_clear(&s);
   ecc_scalar_clear(&t);
-  gmp_free_limbs(r.p, 2 * ecc->p.size);
+
+  if (r.p != NULL)
+    gmp_free_limbs(r.p, 2 * ecc->p.size);
+
   return result;
 }
 
@@ -735,10 +740,12 @@ bcrypto_ecdsa_privkey_invert(int type, uint8_t *out, const uint8_t *key) {
   if (ecc == NULL)
     return 0;
 
-  scratch = gmp_alloc_limbs(2 * ecc->p.size + ecc->q.invert_itch);
-  assert(scratch != NULL);
-
   ecc_scalar_init(&s, ecc);
+
+  scratch = gmp_alloc_limbs(2 * ecc->p.size + ecc->q.invert_itch);
+
+  if (scratch == NULL)
+    goto fail;
 
   r.ecc = ecc;
   r.p = scratch;
@@ -756,7 +763,10 @@ bcrypto_ecdsa_privkey_invert(int type, uint8_t *out, const uint8_t *key) {
   result = 1;
 fail:
   ecc_scalar_clear(&s);
-  gmp_free_limbs(scratch, 2 * ecc->p.size + ecc->q.invert_itch);
+
+  if (scratch != NULL)
+    gmp_free_limbs(scratch, 2 * ecc->p.size + ecc->q.invert_itch);
+
   return result;
 }
 
