@@ -552,7 +552,79 @@ NAN_METHOD(BECDSA::PublicKeyAdd) {
 }
 
 NAN_METHOD(BECDSA::PublicKeyCombine) {
-  return Nan::ThrowError("Could not tweak public key.");
+  if (!info[0]->IsNumber())
+    return Nan::ThrowTypeError("First argument must be a number.");
+
+  int type = (int)Nan::To<uint32_t>(info[0]).FromJust();
+
+  if (info.Length() < 2)
+    return Nan::ThrowError("ecdsa.publicKeyCombine() requires arguments.");
+
+  if (!info[1]->IsArray())
+    return Nan::ThrowTypeError("First argument must be an array.");
+
+  v8::Local<v8::Array> batch = info[1].As<v8::Array>();
+
+  size_t len = (size_t)batch->Length();
+
+  if (len == 0)
+    return Nan::ThrowError("Invalid point.");
+
+  int compress = 1;
+
+  if (info.Length() > 2 && !IsNull(info[2])) {
+    if (!info[2]->IsBoolean())
+      return Nan::ThrowTypeError("Second argument must be a boolean.");
+
+    compress = (int)Nan::To<bool>(info[2]).FromJust();
+  }
+
+  const uint8_t **pubs =
+    (const uint8_t **)malloc(len * sizeof(uint8_t *));
+
+  if (pubs == NULL)
+    return Nan::ThrowError("Allocation failed.");
+
+  size_t *pub_lens = (size_t *)malloc(len * sizeof(size_t));
+
+  if (pubs == NULL) {
+    free(pubs);
+    return Nan::ThrowError("Allocation failed.");
+  }
+
+  for (size_t i = 0; i < len; i++) {
+    v8::Local<v8::Object> pbuf = Nan::Get(batch, i).ToLocalChecked()
+                                                   .As<v8::Object>();
+
+    if (!node::Buffer::HasInstance(pbuf)) {
+      free(pubs);
+      free(pub_lens);
+      return Nan::ThrowTypeError("Public key must be a buffer.");
+    }
+
+    const uint8_t *pub = (const uint8_t *)node::Buffer::Data(pbuf);
+    size_t pub_len = node::Buffer::Length(pbuf);
+
+    pubs[i] = pub;
+    pub_lens[i] = pub_len;
+  }
+
+  uint8_t out[BCRYPTO_ECDSA_MAX_PUB_SIZE];
+  size_t out_len;
+
+  if (!bcrypto_ecdsa_pubkey_combine(type, out, &out_len,
+                                    pubs, pub_lens, len,
+                                    compress)) {
+    free(pubs);
+    free(pub_lens);
+    return Nan::ThrowError("Could not tweak public key.");
+  }
+
+  free(pubs);
+  free(pub_lens);
+
+  return info.GetReturnValue().Set(
+    Nan::CopyBuffer((char *)out, out_len).ToLocalChecked());
 }
 
 NAN_METHOD(BECDSA::PublicKeyNegate) {
@@ -1148,13 +1220,196 @@ NAN_METHOD(BECDSA::Derive) {
 }
 
 NAN_METHOD(BECDSA::SchnorrSign) {
-  return Nan::ThrowError("Not implemented.");
+  if (info.Length() < 3)
+    return Nan::ThrowError("ecdsa.schnorrSign() requires arguments.");
+
+  if (!info[0]->IsNumber())
+    return Nan::ThrowTypeError("First argument must be a number.");
+
+  int type = (int)Nan::To<uint32_t>(info[0]).FromJust();
+  size_t scalar_size = bcrypto_ecdsa_scalar_length(type);
+  size_t sig_size = bcrypto_ecdsa_sig_length(type);
+
+  v8::Local<v8::Object> mbuf = info[1].As<v8::Object>();
+  v8::Local<v8::Object> pbuf = info[2].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(mbuf)
+      || !node::Buffer::HasInstance(pbuf)) {
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+  }
+
+  if (type == BCRYPTO_CURVE_P224)
+    return Nan::ThrowError("Schnorr is not supported for curve.");
+
+  const uint8_t *msg = (const uint8_t *)node::Buffer::Data(mbuf);
+  size_t msg_len = node::Buffer::Length(mbuf);
+
+  const uint8_t *priv = (const uint8_t *)node::Buffer::Data(pbuf);
+  size_t priv_len = node::Buffer::Length(pbuf);
+
+  if (msg_len != 32 || priv_len != scalar_size)
+    return Nan::ThrowRangeError("Invalid length.");
+
+  uint8_t out[BCRYPTO_ECDSA_MAX_SIG_SIZE];
+
+  if (!bcrypto_schnorr_sign(type, out, msg, priv))
+    return Nan::ThrowError("Could not sign.");
+
+  return info.GetReturnValue().Set(
+    Nan::CopyBuffer((char *)out, sig_size).ToLocalChecked());
 }
 
 NAN_METHOD(BECDSA::SchnorrVerify) {
-  return Nan::ThrowError("Not implemented.");
+  if (info.Length() < 4)
+    return Nan::ThrowError("ecdsa.schnorrVerify() requires arguments.");
+
+  if (!info[0]->IsNumber())
+    return Nan::ThrowTypeError("First argument must be a number.");
+
+  int type = (int)Nan::To<uint32_t>(info[0]).FromJust();
+  size_t sig_size = bcrypto_ecdsa_sig_length(type);
+
+  v8::Local<v8::Object> mbuf = info[1].As<v8::Object>();
+  v8::Local<v8::Object> sbuf = info[2].As<v8::Object>();
+  v8::Local<v8::Object> pbuf = info[3].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(mbuf)
+      || !node::Buffer::HasInstance(sbuf)
+      || !node::Buffer::HasInstance(pbuf)) {
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+  }
+
+  if (type == BCRYPTO_CURVE_P224)
+    return Nan::ThrowError("Schnorr is not supported for curve.");
+
+  const uint8_t *msg = (const uint8_t *)node::Buffer::Data(mbuf);
+  size_t msg_len = node::Buffer::Length(mbuf);
+
+  const uint8_t *sig = (const uint8_t *)node::Buffer::Data(sbuf);
+  size_t sig_len = node::Buffer::Length(sbuf);
+
+  const uint8_t *pub = (const uint8_t *)node::Buffer::Data(pbuf);
+  size_t pub_len = node::Buffer::Length(pbuf);
+
+  if (msg_len != 32 || sig_len != sig_size)
+    return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
+
+  int result = bcrypto_schnorr_verify(type, msg, sig, pub, pub_len);
+
+  info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
 
 NAN_METHOD(BECDSA::SchnorrVerifyBatch) {
-  return Nan::ThrowError("Not implemented.");
+  if (info.Length() < 1)
+    return Nan::ThrowError("ecdsa.schnorrVerifyBatch() requires arguments.");
+
+  if (!info[0]->IsNumber())
+    return Nan::ThrowTypeError("First argument must be a number.");
+
+  if (!info[1]->IsArray())
+    return Nan::ThrowTypeError("First argument must be an array.");
+
+  int type = (int)Nan::To<uint32_t>(info[0]).FromJust();
+  size_t sig_size = bcrypto_ecdsa_sig_length(type);
+
+  if (type == BCRYPTO_CURVE_P224)
+    return Nan::ThrowError("Schnorr is not supported for curve.");
+
+  v8::Local<v8::Array> batch = info[1].As<v8::Array>();
+
+  size_t len = (size_t)batch->Length();
+
+  if (len == 0)
+    return info.GetReturnValue().Set(Nan::New<v8::Boolean>(true));
+
+  const uint8_t **msgs =
+    (const uint8_t **)malloc(len * sizeof(const uint8_t *));
+
+  if (msgs == NULL)
+    return Nan::ThrowError("Allocation failed.");
+
+  const uint8_t **sigs =
+    (const uint8_t **)malloc(len * sizeof(const uint8_t *));
+
+  if (sigs == NULL) {
+    free(msgs);
+    return Nan::ThrowError("Allocation failed.");
+  }
+
+  const uint8_t **pubs =
+    (const uint8_t **)malloc(len * sizeof(const uint8_t *));
+
+  if (pubs == NULL) {
+    free(msgs);
+    free(sigs);
+    return Nan::ThrowError("Allocation failed.");
+  }
+
+  size_t *pub_lens = (size_t *)malloc(len * sizeof(size_t));
+
+  if (pubs == NULL) {
+    free(msgs);
+    free(sigs);
+    free(pubs);
+    return Nan::ThrowError("Allocation failed.");
+  }
+
+#define FREE_BATCH (free(msgs), free(sigs), free(pubs), free(pub_lens))
+
+  for (size_t i = 0; i < len; i++) {
+    if (!Nan::Get(batch, i).ToLocalChecked()->IsArray()) {
+      FREE_BATCH;
+      return Nan::ThrowTypeError("Item must be an array.");
+    }
+
+    v8::Local<v8::Array> item = Nan::Get(batch, i).ToLocalChecked()
+                                                  .As<v8::Array>();
+
+    if (item->Length() != 3) {
+      FREE_BATCH;
+      return Nan::ThrowError("Item must consist of 3 members.");
+    }
+
+    v8::Local<v8::Object> mbuf = Nan::Get(item, 0).ToLocalChecked()
+                                                  .As<v8::Object>();
+    v8::Local<v8::Object> sbuf = Nan::Get(item, 1).ToLocalChecked()
+                                                  .As<v8::Object>();
+    v8::Local<v8::Object> pbuf = Nan::Get(item, 2).ToLocalChecked()
+                                                  .As<v8::Object>();
+
+    if (!node::Buffer::HasInstance(mbuf)
+        || !node::Buffer::HasInstance(sbuf)
+        || !node::Buffer::HasInstance(pbuf)) {
+      FREE_BATCH;
+      return Nan::ThrowTypeError("Values must be buffers.");
+    }
+
+    const uint8_t *msg = (const uint8_t *)node::Buffer::Data(mbuf);
+    size_t msg_len = node::Buffer::Length(mbuf);
+
+    const uint8_t *sig = (const uint8_t *)node::Buffer::Data(sbuf);
+    size_t sig_len = node::Buffer::Length(sbuf);
+
+    const uint8_t *pub = (const uint8_t *)node::Buffer::Data(pbuf);
+    size_t pub_len = node::Buffer::Length(pbuf);
+
+    if (msg_len != 32 || sig_len != sig_size) {
+      FREE_BATCH;
+      return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
+    }
+
+    msgs[i] = msg;
+    sigs[i] = sig;
+    pubs[i] = pub;
+    pub_lens[i] = pub_len;
+  }
+
+  int result = bcrypto_schnorr_batch_verify(type, msgs, sigs,
+                                            pubs, pub_lens, len);
+
+  FREE_BATCH;
+
+#undef FREE_BATCH
+
+  info.GetReturnValue().Set(Nan::New<v8::Boolean>(result == 1));
 }

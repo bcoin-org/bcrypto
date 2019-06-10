@@ -10,6 +10,7 @@
 #include "../nettle/ecdsa.h"
 #include "../bn/bmpz-impl.h"
 #include "../dsa/dsa.h"
+#include "../hash/hash.h"
 
 /*
  * Helpers
@@ -139,7 +140,7 @@ ecc_point_set_x(struct ecc_point *p, const mpz_t x, int sign) {
 
   /*
    * Nettle doesn't provide the `a`
-   * coeffiecient of the curve, but
+   * coefficient of the curve, but
    * luckily all our curves have a
    * value of `-3 mod p`.
    */
@@ -285,6 +286,136 @@ fail:
   return result;
 }
 
+#define ECC_REAL_ADD_JJJ_ITCH(size) (ECC_ADD_JJJ_ITCH(size))
+
+static void
+ecc_real_add_jjj(const struct ecc_curve *ecc,
+                 mp_limb_t *out,
+                 const mp_limb_t *p,
+                 const mp_limb_t *q,
+                 mp_limb_t *scratch) {
+  mp_size_t size = ecc->p.size;
+
+  assert(ECC_ADD_JJJ_ITCH(size) >= ECC_DUP_JJ_ITCH(size));
+
+  /* O + P = P */
+  if (mpn_zero_p(p + size * 2, size)) {
+    if (out != q)
+      mpn_copyi(out, q, size * 3);
+    return;
+  }
+
+  /* P + O = P */
+  if (mpn_zero_p(q + size * 2, size)) {
+    if (out != p)
+      mpn_copyi(out, p, size * 3);
+    return;
+  }
+
+  /* P + P = 2P */
+  if (mpn_cmp(p, q, size * 3) == 0)
+    ecc_dup_jj(ecc, out, p, scratch);
+  else
+    ecc_add_jjj(ecc, out, p, q, scratch);
+}
+
+#define ECC_REAL_ADD_JJA_ITCH(size) (ECC_MAX_SIZE * 3 + ECC_ADD_JJJ_ITCH(size))
+
+static void
+ecc_real_add_jja(const struct ecc_curve *ecc,
+                 mp_limb_t *out,
+                 const mp_limb_t *p,
+                 const mp_limb_t *q,
+                 mp_limb_t *scratch) {
+  mp_limb_t *r = &scratch[0 * ECC_MAX_SIZE];
+  mp_limb_t *scr = &scratch[3 * ECC_MAX_SIZE];
+  mp_size_t size = ecc->p.size;
+
+  assert(ECC_ADD_JJA_ITCH(size) >= ECC_DUP_JJ_ITCH(size)); /* normal */
+  assert(ECC_ADD_JJA_ITCH(size) < ECC_ADD_JJJ_ITCH(size)); /* redc, i.e. p256 */
+  assert(ECC_ADD_JJA_ITCH(size) >= ECC_J_TO_A_ITCH(size));
+
+  /* redc curves do not return zero for P + P */
+  /* redc curves do not return correct result for for 2P + -P */
+  if (ecc->use_redc) {
+    ecc_a_to_j(ecc, r, q);
+    ecc_real_add_jjj(ecc, out, p, r, scr);
+    return;
+  }
+
+  /*
+   * NOTE: Behaviour for corner cases:
+   *   + p = 0   ==>  r = 0 (invalid except if also q = 0)
+   *   + q = 0   ==>  r = invalid
+   *   + p = -q  ==>  r = 0, correct!
+   *   + p = q   ==>  r = 0, invalid
+   */
+
+  /* O + P = P */
+  if (mpn_zero_p(p + size * 2, size)) {
+    ecc_a_to_j(ecc, out, q);
+    return;
+  }
+
+  /* P + O = P */
+  if (mpn_zero_p(q, size * 2)) {
+    if (out != p)
+      mpn_copyi(out, p, size * 3);
+    return;
+  }
+
+  ecc_add_jja(ecc, r, p, q, scr);
+
+  /* P + P = 2P */
+  if (mpn_zero_p(r, size * 3))
+    ecc_dup_jj(ecc, out, p, scr);
+  else
+    mpn_copyi(out, r, size * 3);
+}
+
+#define ECC_REAL_ADD_JAA_ITCH(size) \
+  (ECC_MAX_SIZE * 3 + ECC_REAL_ADD_JJA_ITCH(size))
+
+static void
+ecc_real_add_jaa(const struct ecc_curve *ecc,
+                 mp_limb_t *out,
+                 const mp_limb_t *p,
+                 const mp_limb_t *q,
+                 mp_limb_t *scratch) {
+  mp_limb_t *r = &scratch[0 * ECC_MAX_SIZE];
+  mp_limb_t *scr = &scratch[3 * ECC_MAX_SIZE];
+
+  ecc_a_to_j(ecc, r, p);
+  ecc_real_add_jja(ecc, out, r, q, scr);
+}
+
+#define ECC_MUL_ADD_ITCH(size) (ECC_MAX_SIZE * 6 + ECC_MUL_A_ITCH(size))
+
+static void
+ecc_mul_add(const struct ecc_curve *ecc,
+            mp_limb_t *out,
+            const mp_limb_t *p1,
+            const mp_limb_t *c1,
+            const mp_limb_t *p2,
+            const mp_limb_t *c2,
+            mp_limb_t *scratch) {
+  mp_size_t size = ecc->p.size;
+  mp_limb_t *r1 = &scratch[0 * ECC_MAX_SIZE];
+  mp_limb_t *r2 = &scratch[3 * ECC_MAX_SIZE];
+  mp_limb_t *scr = &scratch[6 * ECC_MAX_SIZE];
+
+  assert(ECC_MUL_A_ITCH(size) >= ECC_MUL_G_ITCH(size));
+  assert(ECC_MUL_A_ITCH(size) >= ECC_ADD_JJJ_ITCH(size));
+
+  if (p1 == NULL)
+    ecc_mul_g(ecc, r1, c1, scr);
+  else
+    ecc_mul_a(ecc, r1, c1, p1, scr);
+
+  ecc_mul_a(ecc, r2, c2, p2, scr);
+  ecc_real_add_jjj(ecc, out, r1, r2, scr);
+}
+
 static int
 ecc_point_add(struct ecc_point *r,
               const struct ecc_point *a,
@@ -292,55 +423,34 @@ ecc_point_add(struct ecc_point *r,
   int result = 0;
   const struct ecc_curve *ecc = r->ecc;
   mp_size_t size = ecc->p.size;
-  mp_limb_t *limbs, *j1, *j2, *scratch;
+  mp_limb_t *limbs = NULL;
+  mp_limb_t *j, *s;
 
-  /* Space for 2 jacobian points and an addition. */
-  limbs = gmp_alloc_limbs(6 * size + ECC_ADD_JJJ_ITCH(size));
-  assert(limbs != NULL);
+  assert(ECC_REAL_ADD_JAA_ITCH(size) >= ECC_J_TO_A_ITCH(size));
+
+  limbs = gmp_alloc_limbs(3 * size + ECC_REAL_ADD_JAA_ITCH(size));
+
+  if (limbs == NULL)
+    goto fail;
 
   /* Setup points and scratch. */
-  j1 = &limbs[0];
-  j2 = &limbs[3 * size];
-  scratch = &limbs[6 * size];
+  j = &limbs[0];
+  s = &limbs[3 * size];
 
-  /* O + P = P */
-  if (mpn_zero_p(a->p, size * 2)) {
-    result = 1;
-    if (r != b)
-      mpn_copyi(r->p, b->p, size * 2);
-    goto fail;
-  }
-
-  /* P + O = P */
-  if (mpn_zero_p(b->p, size * 2)) {
-    result = 1;
-    if (r != a)
-      mpn_copyi(r->p, a->p, size * 2);
-    goto fail;
-  }
-
-  ecc_a_to_j(ecc, j1, a->p);
-  ecc_a_to_j(ecc, j2, b->p);
-
-  if (mpn_cmp(j1, j2, size * 3) == 0) {
-    /* P + P = 2P */
-    assert(ECC_ADD_JJJ_ITCH(size) >= ECC_DUP_JJ_ITCH(size));
-    ecc_dup_jj(ecc, j1, j1, scratch);
-  } else {
-    ecc_add_jjj(ecc, j1, j1, j2, scratch);
-  }
+  ecc_real_add_jaa(ecc, j, a->p, b->p, s);
 
   /* Check for infinity. */
-  if (mpn_zero_p(j1 + 2 * size, size))
+  if (mpn_zero_p(j + 2 * size, size))
     goto fail;
 
   /* Reuse scratch. */
-  assert(ECC_ADD_JJJ_ITCH(size) >= ECC_J_TO_A_ITCH(size));
-  ecc_j_to_a(ecc, 0, r->p, j1, scratch);
+  ecc_j_to_a(ecc, 0, r->p, j, s);
 
   result = 1;
 fail:
-  gmp_free_limbs(limbs, 6 * size + ECC_ADD_JJJ_ITCH(size));
+  if (limbs != NULL)
+    gmp_free_limbs(limbs, 3 * size + ECC_REAL_ADD_JAA_ITCH(size));
+
   return result;
 }
 
@@ -874,6 +984,69 @@ bcrypto_ecdsa_pubkey_add(int type,
 fail:
   ecc_point_clear(&p1);
   ecc_point_clear(&p2);
+  return result;
+}
+
+int
+bcrypto_ecdsa_pubkey_combine(int type,
+                             uint8_t *out,
+                             size_t *out_len,
+                             const uint8_t **keys,
+                             size_t *key_lens,
+                             size_t length,
+                             int compress) {
+  int result = 0;
+  const struct ecc_curve *ecc = ecc_get_curve(type);
+  struct ecc_point point;
+  size_t i = 0;
+  mp_size_t size = 0;
+  mp_limb_t *limbs = NULL;
+  mp_limb_t *acc = NULL;
+  mp_limb_t *scratch = NULL;
+
+  if (ecc == NULL)
+    return 0;
+
+  if (length == 0)
+    return 0;
+
+  size = ecc->p.size;
+
+  ecc_point_init(&point, ecc);
+
+  limbs = gmp_alloc_limbs(3 * size + ECC_REAL_ADD_JJA_ITCH(size));
+
+  if (limbs == NULL)
+    goto fail;
+
+  acc = &limbs[0];
+  scratch = &limbs[3 * size];
+
+  if (!ecc_point_decode(&point, keys[0], key_lens[0]))
+    goto fail;
+
+  ecc_a_to_j(ecc, acc, point.p);
+
+  for (i = 1; i < length; i++) {
+    if (!ecc_point_decode(&point, keys[i], key_lens[i]))
+      goto fail;
+
+    ecc_real_add_jja(ecc, acc, acc, point.p, scratch);
+  }
+
+  if (mpn_zero_p(acc + size * 2, size))
+    goto fail;
+
+  ecc_j_to_a(ecc, 0, point.p, acc, scratch);
+  ecc_point_encode(out, out_len, &point, compress);
+
+  result = 1;
+fail:
+  ecc_point_clear(&point);
+
+  if (limbs != NULL)
+    gmp_free_limbs(limbs, 3 * size + ECC_REAL_ADD_JJA_ITCH(size));
+
   return result;
 }
 
@@ -1496,4 +1669,333 @@ bcrypto_ecdsa_derive(int type,
   return bcrypto_ecdsa_pubkey_tweak_mul(type, out, out_len,
                                         pub, pub_len, key,
                                         compress);
+}
+
+static int
+schnorr_hash_type(int type) {
+  switch (type) {
+    case BCRYPTO_CURVE_P192:
+    case BCRYPTO_CURVE_P224:
+    case BCRYPTO_CURVE_P256:
+      return BCRYPTO_HASH_SHA256;
+    case BCRYPTO_CURVE_P384:
+      return BCRYPTO_HASH_SHA384;
+    case BCRYPTO_CURVE_P521:
+      return BCRYPTO_HASH_SHA512;
+  }
+  return -1;
+}
+
+static const struct nettle_hash *
+schnorr_hash_get(int type) {
+  return bcrypto_hash_get(schnorr_hash_type(type));
+}
+
+static void
+schnorr_hash_am(int type,
+                const struct ecc_curve *ecc,
+                mp_limb_t *out,
+                const struct ecc_scalar *a,
+                const uint8_t *msg) {
+  const struct nettle_hash *hash = schnorr_hash_get(type);
+  size_t bytes = ((size_t)ecc->p.bit_size + 7) / 8;
+  mp_size_t size = ecc->p.size;
+  uint8_t hraw[BCRYPTO_HASH_MAX_SIZE];
+  uint8_t araw[BCRYPTO_ECDSA_MAX_SCALAR_SIZE];
+  uint8_t state[BCRYPTO_HASH_MAX_CONTEXT_SIZE];
+  mpz_t n, d, k;
+
+  mpz_roinit_n(n, ecc->q.m, size);
+  mpz_roinit_n(d, &a->p[0], size);
+  mpz_init(k);
+
+  ecc_mpz_pad(&araw[0], bytes, d);
+
+  assert(hash != NULL);
+
+  hash->init(state);
+  hash->update(state, bytes, araw);
+  hash->update(state, 32, msg);
+  hash->digest(state, hash->digest_size, &hraw[0]);
+
+  ecc_mpz_import(k, &hraw[0], hash->digest_size);
+  mpz_mod(k, k, n);
+  mpz_limbs_copy(out, k, size);
+  mpz_clear(k);
+}
+
+static void
+schnorr_hash_ram(int type,
+                 const struct ecc_curve *ecc,
+                 mp_limb_t *out,
+                 const mpz_t r,
+                 const struct ecc_point *A,
+                 const uint8_t *msg) {
+  const struct nettle_hash *hash = schnorr_hash_get(type);
+  size_t bytes = ((size_t)ecc->p.bit_size + 7) / 8;
+  mp_size_t size = ecc->p.size;
+  uint8_t hraw[BCRYPTO_HASH_MAX_SIZE];
+  uint8_t rraw[BCRYPTO_ECDSA_MAX_FIELD_SIZE];
+  uint8_t araw[BCRYPTO_ECDSA_MAX_PUB_SIZE];
+  uint8_t state[BCRYPTO_HASH_MAX_CONTEXT_SIZE];
+  mpz_t n, x, y, e;
+
+  mpz_roinit_n(n, ecc->q.m, size);
+  mpz_roinit_n(x, &A->p[0], size);
+  mpz_roinit_n(y, &A->p[size], size);
+  mpz_init(e);
+
+  ecc_mpz_pad(&rraw[0], bytes, r);
+
+  araw[0] = 0x02 | (mpz_odd_p(y) != 0);
+  ecc_mpz_pad(&araw[1], bytes, x);
+
+  assert(hash != NULL);
+
+  hash->init(state);
+  hash->update(state, bytes, rraw);
+  hash->update(state, 1 + bytes, araw);
+  hash->update(state, 32, msg);
+  hash->digest(state, hash->digest_size, &hraw[0]);
+
+  ecc_mpz_import(e, &hraw[0], hash->digest_size);
+  mpz_mod(e, e, n);
+  mpz_limbs_copy(out, e, size);
+  mpz_clear(e);
+}
+
+static int
+schnorr_sign(int type,
+             const struct ecc_scalar *key,
+             const uint8_t *msg,
+             struct dsa_signature *signature) {
+  const struct ecc_curve *ecc = key->ecc;
+  mp_size_t size = ecc->p.size;
+  mpz_t p, n, x, y, s;
+  struct ecc_point R, A;
+  struct ecc_scalar k, e;
+  mp_limb_t S[ECC_MAX_SIZE * 2];
+  int result = 0;
+
+  mpz_roinit_n(p, ecc->p.m, size);
+  mpz_roinit_n(n, ecc->q.m, size);
+
+  ecc_point_init(&R, ecc);
+  ecc_point_init(&A, ecc);
+  ecc_scalar_init(&k, ecc);
+  ecc_scalar_init(&e, ecc);
+
+  // Let k' = int(hash(bytes(d) || m)) mod n
+  schnorr_hash_am(type, ecc, k.p, key, msg);
+
+  // Fail if k' = 0.
+  if (mpn_zero_p(&k.p[0], size))
+    goto fail;
+
+  // Let R = k'*G.
+  ecc_point_mul_g(&R, &k);
+
+  // Encode d*G.
+  ecc_point_mul_g(&A, key);
+
+  // Let e = int(hash(bytes(x(R)) || bytes(d*G) || m)) mod n.
+  mpz_roinit_n(x, R.p, size);
+  schnorr_hash_ram(type, ecc, e.p, x, &A, msg);
+
+  // Let k = k' if jacobi(y(R)) = 1, otherwise let k = n - k'.
+  mpz_roinit_n(y, &R.p[size], size);
+
+  if (bmpz_jacobi(y, p) != 1)
+    ecc_mod_sub(&ecc->q, k.p, ecc->q.m, k.p);
+
+  // Let S = k + e*d mod n.
+  ecc_mod_mul(&ecc->q, S, e.p, key->p);
+  ecc_mod_add(&ecc->q, S, k.p, S);
+
+  mpz_roinit_n(s, S, size);
+
+  mpz_set(signature->r, x);
+  mpz_set(signature->s, s);
+
+  result = 1;
+fail:
+  ecc_point_clear(&R);
+  ecc_point_clear(&A);
+  ecc_scalar_clear(&k);
+  ecc_scalar_clear(&e);
+  return result;
+}
+
+static int
+schnorr_verify(int type,
+               const struct ecc_point *pub,
+               const uint8_t *msg,
+               const struct dsa_signature *signature) {
+  const struct ecc_curve *ecc = pub->ecc;
+  mp_size_t size = ecc->p.size;
+  mpz_t p, n, yz;
+  mp_limb_t *limbs = NULL;
+  mp_limb_t *Rx, *S, *A, *e, *R, *scratch;
+  int result = 0;
+
+  mpz_roinit_n(p, ecc->p.m, size);
+  mpz_roinit_n(n, ecc->q.m, size);
+
+  assert(ECC_MUL_ADD_ITCH(size) >= ECC_J_TO_A_ITCH(size));
+
+  limbs = gmp_alloc_limbs(size * 6 + ECC_MUL_ADD_ITCH(size));
+
+  if (limbs == NULL)
+    goto fail;
+
+  Rx = &limbs[0 * size];
+  S = &limbs[1 * size];
+  A = pub->p;
+  e = &limbs[2 * size];
+  R = &limbs[3 * size];
+  scratch = &limbs[size * 6];
+
+  // Let r = int(sig[0:32]); fail if r >= p.
+  if (mpz_cmp(signature->r, p) >= 0)
+    goto fail;
+
+  // Let s = int(sig[32:64]); fail if s >= n.
+  if (mpz_cmp(signature->s, n) >= 0)
+    goto fail;
+
+  mpz_limbs_copy(Rx, signature->r, size);
+  mpz_limbs_copy(S, signature->s, size);
+
+  // Let e = int(hash(bytes(r) || bytes(P) || m)) mod n.
+  schnorr_hash_ram(type, ecc, e, signature->r, pub, msg);
+
+  /* Let R = s*G - e*P. */
+  ecc_mod_sub(&ecc->q, e, ecc->q.m, e);
+  ecc_mul_add(ecc, R, NULL, S, A, e, scratch);
+
+  /* Check for point at infinity. */
+  if (mpn_zero_p(&R[2 * size], size))
+    goto fail;
+
+  /* Not sure how to get field elements out of redc yet. */
+  if (ecc->use_redc) {
+    /* Affinize. */
+    ecc_j_to_a(ecc, 0, R, R, scratch);
+
+    /* Check for quadratic residue. */
+    mpz_roinit_n(yz, &R[size], size);
+
+    if (bmpz_jacobi(yz, p) != 1)
+      goto fail;
+
+    /* Check `x(R) == r`. */
+    if (mpn_cmp(&R[0], Rx, size) != 0)
+      goto fail;
+  } else {
+    /* Check for quadratic residue in the jacobian space. */
+    /* Optimized as `jacobi(y(R) * z(R)) == 1`. */
+    ecc_mod_mul(&ecc->p, scratch, &R[size], &R[size * 2]);
+
+    mpz_roinit_n(yz, scratch, size);
+
+    if (bmpz_jacobi(yz, p) != 1)
+      goto fail;
+
+    /* Check `x(R) == r` in the jacobian space. */
+    /* Optimized as `x(R) == r * z(R)^2 mod p`. */
+    ecc_mod_sqr(&ecc->p, scratch, &R[size * 2]);
+    ecc_mod_mul(&ecc->p, scratch + size, Rx, scratch); /* Can be the same? */
+
+    if (mpn_cmp(&R[0], scratch + size, size) != 0)
+      goto fail;
+  }
+
+  result = 1;
+fail:
+  if (limbs != NULL)
+    gmp_free_limbs(limbs, size * 6 * ECC_MUL_ADD_ITCH(size));
+
+  return result;
+}
+
+int
+bcrypto_schnorr_sign(int type,
+                     uint8_t *out,
+                     const uint8_t *msg,
+                     const uint8_t *key) {
+  int result = 0;
+  const struct ecc_curve *ecc = ecc_get_curve(type);
+  size_t size = ecc_scalar_length(type);
+  struct ecc_scalar s;
+  struct dsa_signature signature;
+
+  if (ecc == NULL)
+    return 0;
+
+  ecc_scalar_init(&s, ecc);
+  dsa_signature_init(&signature);
+
+  if (!ecc_scalar_decode(&s, key))
+    goto fail;
+
+  schnorr_sign(type, &s, msg, &signature);
+
+  bcrypto_dsa_sig2rs(out, &signature, size);
+
+  result = 1;
+fail:
+  ecc_scalar_clear(&s);
+  dsa_signature_clear(&signature);
+  return result;
+}
+
+int
+bcrypto_schnorr_verify(int type,
+                       const uint8_t *msg,
+                       const uint8_t *sig,
+                       const uint8_t *key,
+                       size_t key_len) {
+  int result = 0;
+  const struct ecc_curve *ecc = ecc_get_curve(type);
+  size_t size = ecc_scalar_length(type);
+  struct ecc_point p;
+  struct dsa_signature signature;
+
+  if (ecc == NULL)
+    return 0;
+
+  ecc_point_init(&p, ecc);
+  dsa_signature_init(&signature);
+
+  if (!ecc_point_decode(&p, key, key_len))
+    goto fail;
+
+  bcrypto_dsa_rs2sig(&signature, sig, size);
+
+  if (!schnorr_verify(type, &p, msg, &signature))
+    goto fail;
+
+  result = 1;
+fail:
+  ecc_point_clear(&p);
+  dsa_signature_clear(&signature);
+  return result;
+}
+
+int
+bcrypto_schnorr_batch_verify(int type,
+                             const uint8_t **msgs,
+                             const uint8_t **sigs,
+                             const uint8_t **keys,
+                             size_t *key_lens,
+                             size_t length) {
+  size_t i = 0;
+
+  // Todo: real batch verification.
+  for (; i < length; i++) {
+    if (!bcrypto_schnorr_verify(type, msgs[i], sigs[i], keys[i], key_lens[i]))
+      return 0;
+  }
+
+  return 1;
 }

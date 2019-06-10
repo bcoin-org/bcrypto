@@ -153,6 +153,15 @@ bcrypto_ecdsa_pubkey_add(int type,
                          int compress);
 
 int
+bcrypto_ecdsa_pubkey_combine(int type,
+                             uint8_t *out,
+                             size_t *out_len,
+                             const uint8_t **keys,
+                             size_t *key_lens,
+                             size_t length,
+                             int compress);
+
+int
 bcrypto_ecdsa_pubkey_negate(int type,
                             uint8_t *out,
                             size_t *out_len,
@@ -268,6 +277,27 @@ bcrypto_ecdsa_derive(int type,
                      size_t pub_len,
                      const uint8_t *key,
                      int compress);
+
+int
+bcrypto_schnorr_sign(int type,
+                     uint8_t *out,
+                     const uint8_t *msg,
+                     const uint8_t *key);
+
+int
+bcrypto_schnorr_verify(int type,
+                       const uint8_t *msg,
+                       const uint8_t *sig,
+                       const uint8_t *key,
+                       size_t key_len);
+
+int
+bcrypto_schnorr_batch_verify(int type,
+                             const uint8_t **msgs,
+                             const uint8_t **sigs,
+                             const uint8_t **keys,
+                             size_t *key_lens,
+                             size_t length);
 
 #if defined(__cplusplus)
 }
