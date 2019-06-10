@@ -299,7 +299,7 @@
       "./src/blake2s/blake2s.c",
       "./src/cash32/cash32.c",
       "./src/chacha20/chacha20.c",
-      "./src/hash/cipher.c",
+      "./src/cipher/cipher.c",
       "./src/dsa/dsa.c",
       "./src/ecdsa/ecdsa.c",
       "./src/ed25519/ed25519.c",
