@@ -188,6 +188,51 @@ function decipher(name, key, iv, data) {
   ]);
 }
 
+function encipherInc(name, key, iv, data) {
+  const gcm = name.endsWith('-GCM');
+  const ctx = new Cipher(name);
+
+  ctx.init(key, iv);
+
+  const out = [];
+  const buf = Buffer.alloc(1);
+
+  for (let i = 0; i < data.length; i++) {
+    buf[0] = data[i];
+    out.push(ctx.update(buf));
+  }
+
+  out.push(ctx.final());
+  out.push(gcm ? ctx.getAuthTag() : Buffer.alloc(0));
+
+  return Buffer.concat(out);
+}
+
+function decipherInc(name, key, iv, data) {
+  const gcm = name.endsWith('-GCM');
+  const ctx = new Decipher(name);
+
+  ctx.init(key, iv);
+
+  if (gcm) {
+    const tag = data.slice(-16);
+    data = data.slice(0, -16);
+    ctx.setAuthTag(tag);
+  }
+
+  const out = [];
+  const buf = Buffer.alloc(1);
+
+  for (let i = 0; i < data.length; i++) {
+    buf[0] = data[i];
+    out.push(ctx.update(buf));
+  }
+
+  out.push(ctx.final());
+
+  return Buffer.concat(out);
+}
+
 describe('Cipher', function() {
   for (const alg of algs) {
     describe(alg.name, function() {
@@ -207,6 +252,8 @@ describe('Cipher', function() {
           it(`should encrypt and decrypt ${hex} with ${id}`, () => {
             assert.bufferEqual(encipher(id, key, iv, data), expect);
             assert.bufferEqual(decipher(id, key, iv, expect), data);
+            assert.bufferEqual(encipherInc(id, key, iv, data), expect);
+            assert.bufferEqual(decipherInc(id, key, iv, expect), data);
 
             if (!gcm) {
               assert.bufferEqual(encrypt(id, key, iv, data), expect);
