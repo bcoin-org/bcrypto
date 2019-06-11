@@ -1775,6 +1775,50 @@ schnorr_hash_ram(int type,
 }
 
 static int
+schnorr_lift_x(const struct ecc_curve *ecc,
+               mp_limb_t *out, const mp_limb_t *Rx) {
+  int result = 0;
+  mp_size_t size = ecc->p.size;
+  mpz_t x, m, a, b, ax, y2, y;
+
+  mpz_roinit_n(x, Rx, size);
+  mpz_roinit_n(m, ecc->p.m, size);
+  mpz_init(a);
+  mpz_roinit_n(b, ecc->b, size);
+  mpz_init(ax);
+  mpz_init(y2);
+  mpz_init(y);
+
+  /* a = -3 mod p */
+  mpz_set(a, m);
+  mpz_sub_ui(a, a, 3);
+
+  /* ax = (a * x) mod p */
+  mpz_mul(ax, a, x);
+  mpz_mod(ax, ax, m);
+
+  /* y2 = (x^3 + ax + b) mod p */
+  mpz_powm_ui(y2, x, 3, m);
+  mpz_add(y2, y2, ax);
+  mpz_add(y2, y2, b);
+  mpz_mod(y2, y2, m);
+
+  /* y = sqrt(y2) mod p */
+  if (!bmpz_sqrtp(y, y2, m))
+    goto fail;
+
+  mpn_copyi(out, Rx, size);
+  mpz_limbs_copy(out + size, y, size);
+  result = 1;
+fail:
+  mpz_clear(a);
+  mpz_clear(ax);
+  mpz_clear(y2);
+  mpz_clear(y);
+  return result;
+}
+
+static int
 schnorr_sign(int type,
              const struct ecc_scalar *key,
              const uint8_t *msg,
@@ -1914,9 +1958,9 @@ schnorr_verify(int type,
     /* Check `x(R) == r` in the jacobian space. */
     /* Optimized as `x(R) == r * z(R)^2 mod p`. */
     ecc_mod_sqr(&ecc->p, scratch, &R[size * 2]);
-    ecc_mod_mul(&ecc->p, scratch + size, Rx, scratch); /* Can be the same? */
+    ecc_mod_mul(&ecc->p, &scratch[size], Rx, scratch);
 
-    if (mpn_cmp(&R[0], scratch + size, size) != 0)
+    if (mpn_cmp(&R[0], &scratch[size], size) != 0)
       goto fail;
   }
 
@@ -1999,13 +2043,133 @@ bcrypto_schnorr_batch_verify(int type,
                              const uint8_t **keys,
                              size_t *key_lens,
                              size_t length) {
-  size_t i = 0;
+  const struct ecc_curve *ecc = ecc_get_curve(type);
 
-  // Todo: real batch verification.
+  if (ecc == NULL)
+    return 0;
+
+  mp_size_t size = ecc->p.size;
+  size_t bytes = ((size_t)ecc->p.bit_size + 7) / 8;
+  mpz_t p, n, rnd, max;
+  struct ecc_point pub;
+  struct dsa_signature sig;
+  mp_limb_t *limbs = NULL;
+  mp_limb_t *Rx, *S, *A, *a, *e, *R, *lhs, *rhs, *Sa, *ea, *scratch;
+  size_t i = 0;
+  int result = 0;
+
+  mpz_roinit_n(p, ecc->p.m, size);
+  mpz_roinit_n(n, ecc->q.m, size);
+
+  mpz_init(rnd);
+  mpz_init(max);
+  ecc_point_init(&pub, ecc);
+  dsa_signature_init(&sig);
+
+  limbs = gmp_alloc_limbs(size * 13 + ECC_MUL_ADD_ITCH(size));
+
+  if (limbs == NULL)
+    goto fail;
+
+  Rx = &limbs[0 * size];
+  S = &limbs[1 * size];
+  A = pub.p;
+  a = &limbs[2 * size];
+  e = &limbs[3 * size];
+  R = &limbs[4 * size];
+  lhs = &limbs[7 * size];
+  rhs = &limbs[8 * size];
+  Sa = &limbs[11 * size];
+  ea = &limbs[11 * size];
+  scratch = &limbs[13 * size];
+
+  mpn_zero(lhs, size);
+  mpz_sub_ui(max, n, 1);
+
   for (; i < length; i++) {
-    if (!bcrypto_schnorr_verify(type, msgs[i], sigs[i], keys[i], key_lens[i]))
-      return 0;
+    /* Let Pi = point(pki); fail if point(pki) fails. */
+    if (!ecc_point_decode(&pub, keys[i], key_lens[i]))
+      goto fail;
+
+    bcrypto_dsa_rs2sig(&sig, sigs[i], bytes);
+
+    /* Let r = int(sig[0:32]); fail if r >= p. */
+    if (mpz_cmp(sig.r, p) >= 0)
+      goto fail;
+
+    /* Let s = int(sig[32:64]); fail if s >= n. */
+    if (mpz_cmp(sig.s, n) >= 0)
+      goto fail;
+
+    mpz_limbs_copy(Rx, sig.r, size);
+    mpz_limbs_copy(S, sig.s, size);
+
+    /* Let e = int(hash(bytes(r) || bytes(P) || m)) mod n. */
+    schnorr_hash_ram(type, ecc, e, sig.r, &pub, msgs[i]);
+
+    /* Let c = (r^3 + 7) mod p. */
+    /* Let y = c^((p+1)/4) mod p. */
+    /* Fail if c != y^2 mod p. */
+    /* Let Ri = (r, y). */
+    if (!schnorr_lift_x(ecc, R, Rx))
+      goto fail;
+
+    if (i == 0) {
+      /* a=1 */
+      mpn_zero(a, size);
+      a[0] = 1;
+    } else {
+      /* Generate u-1 random integers a2...u in the range 1...n-1. */
+      nettle_mpz_random(rnd, NULL, bcrypto_rng, max);
+      mpz_add_ui(rnd, rnd, 1);
+      mpz_limbs_copy(a, rnd, size);
+    }
+
+    /* Let lhs = s1 + a2*s2 + ... + au*su. */
+    ecc_mod_mul(&ecc->q, Sa, S, a);
+    ecc_mod_add(&ecc->q, lhs, lhs, Sa);
+
+    /* Let rhs = R1 + a2*R2 + ... + au*Ru */
+    /*         + e1*P1 + (a2*e2)P2 + ... + (au*eu)Pu. */
+    ecc_mod_mul(&ecc->q, ea, e, a);
+    ecc_mul_add(ecc, R, R, a, A, ea, scratch); /* Overlap? */
+
+    if (i == 0) {
+      mpn_copyi(rhs, R, size * 3);
+      continue;
+    }
+
+    ecc_real_add_jjj(ecc, rhs, rhs, R, scratch);
   }
 
-  return 1;
+  /*
+   * We could do:
+   *
+   *   ecc_mul_g(ecc, R, lhs, scratch);
+   *   ecc_j_to_a(ecc, 0, R, R, scratch);
+   *   ecc_j_to_a(ecc, 0, rhs, rhs, scratch);
+   *   result = mpn_cmp(R, rhs, size * 2) == 0;
+   *
+   * But it's fast to avoid affinization.
+   *
+   * We optimize the final check as:
+   *
+   *   rhs + (G * -lhs) == infinity
+   */
+
+  ecc_mod_sub(&ecc->q, lhs, ecc->q.m, lhs);
+  ecc_mul_g(ecc, R, lhs, scratch);
+  ecc_real_add_jjj(ecc, rhs, rhs, R, scratch);
+
+  result = mpn_zero_p(&rhs[2 * size], size) != 0;
+fail:
+  mpz_clear(rnd);
+  mpz_clear(max);
+  ecc_point_clear(&pub);
+  dsa_signature_clear(&sig);
+
+  if (limbs != NULL)
+    gmp_free_limbs(limbs, size * 13 + ECC_MUL_ADD_ITCH(size));
+
+  return result;
 }
