@@ -117,6 +117,182 @@ bcrypto_salsa20_init(bcrypto_salsa20_ctx *ctx,
 
 void
 bcrypto_salsa20_block(bcrypto_salsa20_ctx *ctx, uint32_t output[16]) {
+#ifdef BCRYPTO_USE_ASM
+  // Borrowed from:
+  // https://github.com/gnutls/nettle/blob/master/x86_64/salsa20-core-internal.asm
+  //
+  // Layout:
+  //   %rsi = src pointer (&ctx->state[0])
+  //   %rdi = dst pointer (&output[0])
+  //   %edx = rounds integer (nettle does `20 >> 1`)
+  //
+  // For reference, our full range of clobbered registers:
+  // rsi, rdi, edx
+  __asm__ __volatile__(
+    "movq %[src], %%rsi\n"
+    "movq %[dst], %%rdi\n"
+
+    "mov $-1, %%edx\n"
+    "movd %%edx, %%xmm6\n"
+
+    "movl $20, %%edx\n"
+
+    "pshufd $0x09, %%xmm6, %%xmm8\n"
+    "pshufd $0x41, %%xmm6, %%xmm7\n"
+    "pshufd $0x22, %%xmm6, %%xmm6\n"
+
+    "movups (%%rsi), %%xmm0\n"
+    "movups 16(%%rsi), %%xmm1\n"
+    "movups 32(%%rsi), %%xmm2\n"
+    "movups 48(%%rsi), %%xmm3\n"
+
+    "movaps %%xmm0, %%xmm4\n"
+    "pxor %%xmm1, %%xmm0\n"
+    "pand %%xmm6, %%xmm0\n"
+    "pxor %%xmm0, %%xmm1\n"
+    "pxor %%xmm4, %%xmm0\n"
+
+    "movaps %%xmm2, %%xmm4\n"
+    "pxor %%xmm3, %%xmm2\n"
+    "pand %%xmm6, %%xmm2\n"
+    "pxor %%xmm2, %%xmm3\n"
+    "pxor %%xmm4, %%xmm2\n"
+
+    "movaps %%xmm1, %%xmm4\n"
+    "pxor %%xmm3, %%xmm1\n"
+    "pand %%xmm7, %%xmm1\n"
+    "pxor %%xmm1, %%xmm3\n"
+    "pxor %%xmm4, %%xmm1\n"
+
+    "movaps %%xmm0, %%xmm4\n"
+    "pxor %%xmm2, %%xmm0\n"
+    "pand %%xmm8, %%xmm0\n"
+    "pxor %%xmm0, %%xmm2\n"
+    "pxor %%xmm4, %%xmm0\n"
+
+    "shrl $1, %%edx\n"
+
+    "1:\n"
+
+    "movaps %%xmm3, %%xmm4\n"
+    "paddd %%xmm0, %%xmm4\n"
+    "movaps %%xmm4, %%xmm5\n"
+    "pslld $7, %%xmm4\n"
+    "psrld $25, %%xmm5\n"
+    "pxor %%xmm4, %%xmm1\n"
+    "pxor %%xmm5, %%xmm1\n"
+
+    "movaps %%xmm0, %%xmm4\n"
+    "paddd %%xmm1, %%xmm4\n"
+    "movaps %%xmm4, %%xmm5\n"
+    "pslld $9, %%xmm4\n"
+    "psrld $23, %%xmm5\n"
+    "pxor %%xmm4, %%xmm2\n"
+    "pxor %%xmm5, %%xmm2\n"
+
+    "movaps %%xmm1, %%xmm4\n"
+    "paddd %%xmm2, %%xmm4\n"
+    "movaps %%xmm4, %%xmm5\n"
+    "pslld $13, %%xmm4\n"
+    "psrld $19, %%xmm5\n"
+    "pxor %%xmm4, %%xmm3\n"
+    "pxor %%xmm5, %%xmm3\n"
+
+    "movaps %%xmm2, %%xmm4\n"
+    "paddd %%xmm3, %%xmm4\n"
+    "movaps %%xmm4, %%xmm5\n"
+    "pslld $18, %%xmm4\n"
+    "psrld $14, %%xmm5\n"
+    "pxor %%xmm4, %%xmm0\n"
+    "pxor %%xmm5, %%xmm0\n"
+
+    "pshufd $0x93, %%xmm1, %%xmm1\n"
+    "pshufd $0x4e, %%xmm2, %%xmm2\n"
+    "pshufd $0x39, %%xmm3, %%xmm3\n"
+
+    "movaps %%xmm1, %%xmm4\n"
+    "paddd %%xmm0, %%xmm4\n"
+    "movaps %%xmm4, %%xmm5\n"
+    "pslld $7, %%xmm4\n"
+    "psrld $25, %%xmm5\n"
+    "pxor %%xmm4, %%xmm3\n"
+    "pxor %%xmm5, %%xmm3\n"
+
+    "movaps %%xmm0, %%xmm4\n"
+    "paddd %%xmm3, %%xmm4\n"
+    "movaps %%xmm4, %%xmm5\n"
+    "pslld $9, %%xmm4\n"
+    "psrld $23, %%xmm5\n"
+    "pxor %%xmm4, %%xmm2\n"
+    "pxor %%xmm5, %%xmm2\n"
+
+    "movaps %%xmm3, %%xmm4\n"
+    "paddd %%xmm2, %%xmm4\n"
+    "movaps %%xmm4, %%xmm5\n"
+    "pslld $13, %%xmm4\n"
+    "psrld $19, %%xmm5\n"
+    "pxor %%xmm4, %%xmm1\n"
+    "pxor %%xmm5, %%xmm1\n"
+
+    "movaps %%xmm2, %%xmm4\n"
+    "paddd %%xmm1, %%xmm4\n"
+    "movaps %%xmm4, %%xmm5\n"
+    "pslld $18, %%xmm4\n"
+    "psrld $14, %%xmm5\n"
+    "pxor %%xmm4, %%xmm0\n"
+    "pxor %%xmm5, %%xmm0\n"
+
+    "pshufd $0x39, %%xmm1, %%xmm1\n"
+    "pshufd $0x4e, %%xmm2, %%xmm2\n"
+    "pshufd $0x93, %%xmm3, %%xmm3\n"
+
+    "decl %%edx\n"
+    "jnz 1b\n"
+
+    "movaps %%xmm0, %%xmm4\n"
+    "pxor %%xmm2, %%xmm0\n"
+    "pand %%xmm8, %%xmm0\n"
+    "pxor %%xmm0, %%xmm2\n"
+    "pxor %%xmm4, %%xmm0\n"
+
+    "movaps %%xmm1, %%xmm4\n"
+    "pxor %%xmm3, %%xmm1\n"
+    "pand %%xmm7, %%xmm1\n"
+    "pxor %%xmm1, %%xmm3\n"
+    "pxor %%xmm4, %%xmm1\n"
+
+    "movaps %%xmm0, %%xmm4\n"
+    "pxor %%xmm1, %%xmm0\n"
+    "pand %%xmm6, %%xmm0\n"
+    "pxor %%xmm0, %%xmm1\n"
+    "pxor %%xmm4, %%xmm0\n"
+
+    "movaps %%xmm2, %%xmm4\n"
+    "pxor %%xmm3, %%xmm2\n"
+    "pand %%xmm6, %%xmm2\n"
+    "pxor %%xmm2, %%xmm3\n"
+    "pxor %%xmm4, %%xmm2\n"
+
+    "movups (%%rsi), %%xmm4\n"
+    "movups 16(%%rsi), %%xmm5\n"
+    "paddd %%xmm4, %%xmm0\n"
+    "paddd %%xmm5, %%xmm1\n"
+    "movups %%xmm0,(%%rdi)\n"
+    "movups %%xmm1,16(%%rdi)\n"
+    "movups 32(%%rsi), %%xmm4\n"
+    "movups 48(%%rsi), %%xmm5\n"
+    "paddd %%xmm4, %%xmm2\n"
+    "paddd %%xmm5, %%xmm3\n"
+    "movups %%xmm2,32(%%rdi)\n"
+    "movups %%xmm3,48(%%rdi)\n"
+
+    "incq 32(%%rsi)\n"
+    :
+    : [src] "r" (ctx->state),
+      [dst] "r" (output)
+    : "rsi", "rdi", "edx", "cc", "memory"
+  );
+#else
   uint32_t *ctr = ctx->state + 8;
   int i = 10;
 
@@ -140,6 +316,7 @@ bcrypto_salsa20_block(bcrypto_salsa20_ctx *ctx, uint32_t output[16]) {
 
   if (++ctr[0] == 0)
     ctr[1] += 1;
+#endif
 }
 
 static inline
