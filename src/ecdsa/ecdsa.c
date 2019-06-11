@@ -2084,6 +2084,7 @@ bcrypto_schnorr_batch_verify(int type,
   scratch = &limbs[13 * size];
 
   mpn_zero(lhs, size);
+  mpn_zero(rhs, size * 3);
   mpz_sub_ui(max, n, 1);
 
   for (; i < length; i++) {
@@ -2133,12 +2134,6 @@ bcrypto_schnorr_batch_verify(int type,
     /*         + e1*P1 + (a2*e2)P2 + ... + (au*eu)Pu. */
     ecc_mod_mul(&ecc->q, ea, e, a);
     ecc_mul_add(ecc, R, R, a, A, ea, scratch); /* Overlap? */
-
-    if (i == 0) {
-      mpn_copyi(rhs, R, size * 3);
-      continue;
-    }
-
     ecc_real_add_jjj(ecc, rhs, rhs, R, scratch);
   }
 
@@ -2150,7 +2145,7 @@ bcrypto_schnorr_batch_verify(int type,
    *   ecc_j_to_a(ecc, 0, rhs, rhs, scratch);
    *   result = mpn_cmp(R, rhs, size * 2) == 0;
    *
-   * But it's fast to avoid affinization.
+   * But it's faster to avoid affinization.
    *
    * We optimize the final check as:
    *
