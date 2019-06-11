@@ -3,6 +3,10 @@
 const assert = require('bsert');
 const fs = require('fs');
 const path = require('path');
+const dsa = require('../lib/dsa');
+const rsa = require('../lib/rsa');
+const p256 = require('../lib/p256');
+const ed25519 = require('../lib/ed25519');
 const ssh = require('../lib/ssh');
 const {resolve, basename} = path;
 const {SSHPublicKey, SSHPrivateKey} = ssh;
@@ -49,6 +53,37 @@ describe('SSH', function() {
       const key2 = SSHPublicKey.fromString(str1);
       const str2 = key2.toString();
 
+      switch (key1.type) {
+        case 'ssh-dss': {
+          const {p, q, g, y} = key1;
+          const key = new dsa.DSAPublicKey(p, q, g, y);
+          assert(dsa.publicKeyVerify(key));
+          break;
+        }
+
+        case 'ssh-rsa': {
+          const {n, e} = key1;
+          const key = new rsa.RSAPublicKey(n, e);
+          assert(rsa.publicKeyVerify(key));
+          break;
+        }
+
+        case 'ecdsa-sha2-nistp256': {
+          assert(p256.publicKeyVerify(key1.point));
+          break;
+        }
+
+        case 'ssh-ed25519': {
+          assert(ed25519.publicKeyVerify(key1.point));
+          break;
+        }
+
+        default: {
+          assert(false);
+          break;
+        }
+      }
+
       assert.deepStrictEqual(key1, key2);
       assert.strictEqual(str1, str2);
       assert.strictEqual(key2.toString(), str.trim());
@@ -71,6 +106,37 @@ describe('SSH', function() {
 
       assert.deepStrictEqual(key1, key2);
       assert.strictEqual(str1, str2);
+
+      switch (key1.type) {
+        case 'ssh-dss': {
+          const {p, q, g, y, x} = key1;
+          const key = new dsa.DSAPrivateKey(p, q, g, y, x);
+          assert(dsa.privateKeyVerify(key));
+          break;
+        }
+
+        case 'ssh-rsa': {
+          const {n, e, d, p, q, dp, dq, qi} = key1;
+          const key = new rsa.RSAPrivateKey(n, e, d, p, q, dp, dq, qi);
+          assert(rsa.privateKeyVerify(key));
+          break;
+        }
+
+        case 'ecdsa-sha2-nistp256': {
+          assert(p256.privateKeyVerify(key1.key));
+          break;
+        }
+
+        case 'ssh-ed25519': {
+          assert(ed25519.privateKeyVerify(key1.key));
+          break;
+        }
+
+        default: {
+          assert(false);
+          break;
+        }
+      }
 
       const str3 = key2.toString(passphrase);
       const key3 = SSHPrivateKey.fromString(str3, passphrase);
