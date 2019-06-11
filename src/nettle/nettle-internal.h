@@ -53,10 +53,10 @@
 #endif
 
 /* Arbitrary limits which apply to systems that don't have alloca */
-#define NETTLE_MAX_HASH_BLOCK_SIZE 128
+#define NETTLE_MAX_HASH_BLOCK_SIZE 168 /* keccak224=144, keccak128=168 */
 #define NETTLE_MAX_HASH_DIGEST_SIZE 64
 // #define NETTLE_MAX_HASH_CONTEXT_SIZE (sizeof(struct sha3_224_ctx))
-#define NETTLE_MAX_HASH_CONTEXT_SIZE 512
+#define NETTLE_MAX_HASH_CONTEXT_SIZE 512 /* sha3_224 = 352 on 64 bit */
 #define NETTLE_MAX_SEXP_ASSOC 17
 #define NETTLE_MAX_CIPHER_BLOCK_SIZE 32
 
