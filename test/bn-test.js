@@ -4366,20 +4366,20 @@ describe('BN.js', function() {
 
           assert(c.cmp(a.mul(b).rem(p192)) === 0);
 
-          assert.strictEqual(a.toRed(m).redPowm(new BN(0)).fromRed()
+          assert.strictEqual(a.toRed(m).redPow(new BN(0)).fromRed()
             .cmp(new BN(1)), 0);
-          assert.strictEqual(a.toRed(m).redPowm(new BN(3)).fromRed()
+          assert.strictEqual(a.toRed(m).redPow(new BN(3)).fromRed()
             .cmp(a.sqr().mul(a)), 0);
-          assert.strictEqual(a.toRed(m).redPowm(new BN(4)).fromRed()
+          assert.strictEqual(a.toRed(m).redPow(new BN(4)).fromRed()
             .cmp(a.sqr().sqr()), 0);
-          assert.strictEqual(a.toRed(m).redPowm(new BN(8)).fromRed()
+          assert.strictEqual(a.toRed(m).redPow(new BN(8)).fromRed()
             .cmp(a.sqr().sqr().sqr()), 0);
-          assert.strictEqual(a.toRed(m).redPowm(new BN(9)).fromRed()
+          assert.strictEqual(a.toRed(m).redPow(new BN(9)).fromRed()
             .cmp(a.sqr().sqr().sqr().mul(a)), 0);
-          assert.strictEqual(a.toRed(m).redPowm(new BN(17)).fromRed()
+          assert.strictEqual(a.toRed(m).redPow(new BN(17)).fromRed()
             .cmp(a.sqr().sqr().sqr().sqr().mul(a)), 0);
           assert.strictEqual(
-            a.toRed(m).redPowm(new BN('deadbeefabbadead', 16)).fromRed()
+            a.toRed(m).redPow(new BN('deadbeefabbadead', 16)).fromRed()
               .toString(16),
             '3aa0e7e304e320b68ef61592bcb00341866d6fa66e11a4d6');
         });
@@ -4390,8 +4390,8 @@ describe('BN.js', function() {
             const m = fn(p);
             const q = new BN(11).toRed(m);
 
-            assert.strictEqual(q.redSqrtp().redSqr().cmp(q), 0);
-            assert.strictEqual(q.redSqrtp().redSqr().cmp(q), 0);
+            assert.strictEqual(q.redSqrt().redSqr().cmp(q), 0);
+            assert.strictEqual(q.redSqrt().redSqr().cmp(q), 0);
           }
 
           {
@@ -4399,8 +4399,8 @@ describe('BN.js', function() {
             const m = fn(p);
             const q = new BN(13).toRed(m);
 
-            assert.strictEqual(q.redSqrtp().redSqr().cmp(q), 0);
-            assert.strictEqual(q.redSqrtp().redSqr().cmp(q), 0);
+            assert.strictEqual(q.redSqrt().redSqr().cmp(q), 0);
+            assert.strictEqual(q.redSqrt().redSqr().cmp(q), 0);
           }
 
           // Tonelli-shanks
@@ -4409,7 +4409,7 @@ describe('BN.js', function() {
             const m = fn(p);
             const q = new BN(10).toRed(m);
 
-            assert.strictEqual(q.redSqrtp().fromRed().toString(10), '7');
+            assert.strictEqual(q.redSqrt().fromRed().toString(10), '7');
           }
         });
 
@@ -4453,7 +4453,7 @@ describe('BN.js', function() {
         it('should pow(base, 0) == 1', () => {
           const base = new BN(256).toRed(BN.red('k256'));
           const exponent = new BN(0);
-          const result = base.redPowm(exponent);
+          const result = base.redPow(exponent);
 
           assert.strictEqual(result.toString(), '1');
         });
@@ -4608,7 +4608,7 @@ describe('BN.js', function() {
         + '89ec4bb1400eccff8e7d9aa515cd1de7803f2daff09693ee7fd1353e'
         + '90a68307';
 
-      const r = g.toRed(BN.mont(p)).redPowm(k).fromRed().rem(q);
+      const r = g.toRed(BN.mont(p)).redPow(k).fromRed().rem(q);
 
       assert.strictEqual(r.toString(16), expectedR);
     });
@@ -5400,22 +5400,22 @@ describe('BN.js', function() {
 
       assert.strictEqual(x.powm(y, m).toString(), r.toString());
       assert.strictEqual(
-        x.toRed(BN.red(m)).redPowm(y).fromRed().toString(),
+        x.toRed(BN.red(m)).redPow(y).fromRed().toString(),
         r.toString());
 
       assert.strictEqual(x.clone().ipowm(y, m).toString(), r.toString());
       assert.strictEqual(
-        x.toRed(BN.red(m)).redIPowm(y).fromRed().toString(),
+        x.toRed(BN.red(m)).redIPow(y).fromRed().toString(),
         r.toString());
 
       assert.strictEqual(x.powmn(y.toNumber(), m).toString(), r.toString());
       assert.strictEqual(
-        x.toRed(BN.red(m)).redPowmn(y.toNumber()).fromRed().toString(),
+        x.toRed(BN.red(m)).redPown(y.toNumber()).fromRed().toString(),
         r.toString());
 
       assert.strictEqual(x.clone().ipowmn(y.toNumber(), m).toString(), r.toString());
       assert.strictEqual(
-        x.toRed(BN.red(m)).redIPowmn(y.toNumber()).fromRed().toString(),
+        x.toRed(BN.red(m)).redIPown(y.toNumber()).fromRed().toString(),
         r.toString());
     });
 
@@ -5425,7 +5425,7 @@ describe('BN.js', function() {
       const m = new BN('b06577896432d8cf7af1c491cad11be9b584316d0045187f40c8ae8d57724725', 16);
 
       assert.throws(() => x.powm(y, m).toString());
-      assert.throws(() => x.toRed(BN.red(m)).redPowm(y).fromRed());
+      assert.throws(() => x.toRed(BN.red(m)).redPow(y).fromRed());
     });
 
     it('should compute powm with negative exponent', () => {
@@ -5436,7 +5436,7 @@ describe('BN.js', function() {
 
       assert.strictEqual(x.powm(y, m).toString(), r.toString());
       assert.strictEqual(
-        x.toRed(BN.red(m)).redPowm(y).fromRed().toString(),
+        x.toRed(BN.red(m)).redPow(y).fromRed().toString(),
         r.toString());
     });
 
@@ -5781,7 +5781,7 @@ describe('BN.js', function() {
 
       assert.strictEqual(x.powm(y, m).toString(), r.toString());
       assert.strictEqual(
-        x.toRed(BN.red(m)).redPowm(y).fromRed().toString(),
+        x.toRed(BN.red(m)).redPow(y).fromRed().toString(),
         r.toString());
     });
 
@@ -5791,7 +5791,7 @@ describe('BN.js', function() {
       const m = new BN('b06577896432d8cf7af1c491cad11be9b584316d0045187f40c8ae8d57724725', 16);
 
       assert.throws(() => x.powm(y, m));
-      assert.throws(() => x.toRed(BN.red(m)).redPowm(y).fromRed());
+      assert.throws(() => x.toRed(BN.red(m)).redPow(y).fromRed());
     });
 
     it('should compute powm with negative exponent (negative)', () => {
@@ -5802,7 +5802,7 @@ describe('BN.js', function() {
 
       assert.strictEqual(x.powm(y, m).toString(), r.toString());
       assert.strictEqual(
-        x.toRed(BN.red(m)).redPowm(y).fromRed().toString(),
+        x.toRed(BN.red(m)).redPow(y).fromRed().toString(),
         r.toString());
     });
 
@@ -6051,7 +6051,7 @@ describe('BN.js', function() {
         const base = new BN(2);
         const mont = BN.red(new BN(group.prime, 16));
         const priv = new BN(group.priv, 16);
-        const multed = base.toRed(mont).redPowm(priv).fromRed();
+        const multed = base.toRed(mont).redPow(priv).fromRed();
         const actual = multed.toBuffer();
 
         assert.strictEqual(actual.toString('hex'), group.pub);
