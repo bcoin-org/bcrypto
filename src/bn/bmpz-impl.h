@@ -301,6 +301,8 @@ fail:
 static void
 bmpz_div_round(mpz_t ret, const mpz_t x, const mpz_t y) {
   mpz_t q, r, h;
+  int cmp;
+
   mpz_init(q);
   mpz_init(r);
   mpz_init(h);
@@ -315,25 +317,15 @@ bmpz_div_round(mpz_t ret, const mpz_t x, const mpz_t y) {
     goto done;
   }
 
-  // if q < 0
-  if (mpz_sgn(q) < 0) {
-    // r = r - y
-    mpz_sub(r, r, y);
-  }
-
   // h = y >> 1
   mpz_tdiv_q_2exp(h, y, 1);
 
-  // Round down.
-  // if r < h
-  if (mpz_cmp(r, h) < 0) {
-    // ret = q
-    mpz_set(ret, q);
-    goto done;
-  }
+  cmp = mpz_cmpabs(r, h);
 
-  // if (y & 1) && r == h
-  if (mpz_odd_p(y) && mpz_cmp(r, h) == 0) {
+  // Round down.
+  // if r < h or (y & 1) && r == h
+  if (cmp < 0 || (mpz_odd_p(y) && cmp == 0)) {
+    // ret = q
     mpz_set(ret, q);
     goto done;
   }
