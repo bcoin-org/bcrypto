@@ -91,7 +91,7 @@ private:
   static NAN_METHOD(Ifermat);
   static NAN_METHOD(Ipowm);
   static NAN_METHOD(Ipowmn);
-  static NAN_METHOD(Isqrtp);
+  static NAN_METHOD(Isqrtm);
   static NAN_METHOD(Isqrtpq);
   static NAN_METHOD(IsPrimeMR);
   static NAN_METHOD(IsPrimeLucas);

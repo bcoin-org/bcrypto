@@ -5588,21 +5588,21 @@ describe('BN.js', function() {
       assert(R2.eq(r));
     });
 
-    it('should compute sqrtp (p192, p mod 4 == 3)', () => {
+    it('should compute sqrtm (p192, p mod 4 == 3)', () => {
       const p = BN._prime('p192').p;
       const r = BN.random(rng, 0, p);
       const R = r.sqr().mod(p);
-      const s = R.sqrtp(p);
+      const s = R.sqrtm(p);
 
       assert(p.andln(3) === 3);
 
       assert.strictEqual(s.sqr().mod(p).toString(), R.toString());
     });
 
-    it('should compute sqrtp (p192, zero)', () => {
+    it('should compute sqrtm (p192, zero)', () => {
       const p = BN._prime('p192').p;
-      const s1 = p.sqrtp(p);
-      const s2 = p.muln(2).sqrtp(p);
+      const s1 = p.sqrtm(p);
+      const s2 = p.muln(2).sqrtm(p);
 
       assert(p.andln(3) === 3);
 
@@ -5610,21 +5610,21 @@ describe('BN.js', function() {
       assert.strictEqual(s2.toString(), '0');
     });
 
-    it('should compute sqrtp (p25519, p mod 8 == 5)', () => {
+    it('should compute sqrtm (p25519, p mod 8 == 5)', () => {
       const p = BN._prime('p25519').p;
       const r = BN.random(rng, 0, p);
       const R = r.sqr().mod(p);
-      const s = R.sqrtp(p);
+      const s = R.sqrtm(p);
 
       assert(p.andln(7) === 5);
 
       assert.strictEqual(s.sqr().mod(p).toString(), R.toString());
     });
 
-    it('should compute sqrtp (p25519, zero)', () => {
+    it('should compute sqrtm (p25519, zero)', () => {
       const p = BN._prime('p25519').p;
-      const s1 = p.sqrtp(p);
-      const s2 = p.muln(2).sqrtp(p);
+      const s1 = p.sqrtm(p);
+      const s2 = p.muln(2).sqrtm(p);
 
       assert(p.andln(7) === 5);
 
@@ -5632,21 +5632,21 @@ describe('BN.js', function() {
       assert.strictEqual(s2.toString(), '0');
     });
 
-    it('should compute sqrtp (p224, tonelli-shanks)', () => {
+    it('should compute sqrtm (p224, tonelli-shanks)', () => {
       const p = BN._prime('p224').p;
       const r = BN.random(rng, 0, p);
       const R = r.sqr().mod(p);
-      const s = R.sqrtp(p);
+      const s = R.sqrtm(p);
 
       assert(p.andln(3) !== 3 && p.andln(7) !== 5);
 
       assert.strictEqual(s.sqr().mod(p).toString(), R.toString());
     });
 
-    it('should compute sqrtp (224, zero)', () => {
+    it('should compute sqrtm (224, zero)', () => {
       const p = BN._prime('p224').p;
-      const s1 = p.sqrtp(p);
-      const s2 = p.muln(2).sqrtp(p);
+      const s1 = p.sqrtm(p);
+      const s2 = p.muln(2).sqrtm(p);
 
       assert(p.andln(3) !== 3 && p.andln(7) !== 5);
 
@@ -5824,11 +5824,11 @@ describe('BN.js', function() {
       assert.strictEqual(i1.toString(), i2.toString());
     });
 
-    it('should compute sqrtp (negative)', () => {
+    it('should compute sqrtm (negative)', () => {
       const p = BN._prime('p192').p;
       const r = BN.random(rng, 0, p).ineg();
       const R = r.sqr().mod(p);
-      const s = R.sqrtp(p);
+      const s = R.sqrtm(p);
 
       assert.strictEqual(s.sqr().mod(p).toString(), R.toString());
     });

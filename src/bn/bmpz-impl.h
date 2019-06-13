@@ -858,7 +858,7 @@ fail:
 
 // https://github.com/golang/go/blob/c86d464/src/math/big/int.go#L906
 static int
-bmpz_sqrtp(mpz_t ret, const mpz_t num, const mpz_t p) {
+bmpz_sqrtm(mpz_t ret, const mpz_t num, const mpz_t p) {
   int r = 0;
   unsigned long z, k;
   mpz_t x, e, t, a, s, n, y, b, g;
@@ -1033,10 +1033,10 @@ bmpz_sqrtpq(mpz_t ret, const mpz_t x, const mpz_t p, const mpz_t q) {
   mpz_init(xx);
   mpz_init(yy);
 
-  // sp = sqrtp(x, p)
-  // sq = sqrtp(x, q)
-  if (!bmpz_sqrtp(sp, x, p)
-      || !bmpz_sqrtp(sq, x, q)) {
+  // sp = sqrtm(x, p)
+  // sq = sqrtm(x, q)
+  if (!bmpz_sqrtm(sp, x, p)
+      || !bmpz_sqrtm(sq, x, q)) {
     goto fail;
   }
 

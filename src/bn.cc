@@ -212,7 +212,7 @@ BBN::Init(v8::Local<v8::Object> &target) {
   Nan::SetPrototypeMethod(tpl, "ifermat", BBN::Ifermat);
   Nan::SetPrototypeMethod(tpl, "ipowm", BBN::Ipowm);
   Nan::SetPrototypeMethod(tpl, "ipowmn", BBN::Ipowmn);
-  Nan::SetPrototypeMethod(tpl, "isqrtp", BBN::Isqrtp);
+  Nan::SetPrototypeMethod(tpl, "isqrtm", BBN::Isqrtm);
   Nan::SetPrototypeMethod(tpl, "isqrtpq", BBN::Isqrtpq);
   Nan::SetPrototypeMethod(tpl, "isPrimeMR", BBN::IsPrimeMR);
   Nan::SetPrototypeMethod(tpl, "isPrimeLucas", BBN::IsPrimeLucas);
@@ -1668,11 +1668,11 @@ NAN_METHOD(BBN::Ipowmn) {
   info.GetReturnValue().Set(info.Holder());
 }
 
-NAN_METHOD(BBN::Isqrtp) {
+NAN_METHOD(BBN::Isqrtm) {
   BBN *a = ObjectWrap::Unwrap<BBN>(info.Holder());
 
   if (info.Length() < 1)
-    return Nan::ThrowError(ARG_ERROR(isqrtp, 1));
+    return Nan::ThrowError(ARG_ERROR(isqrtm, 1));
 
   if (!BBN::HasInstance(info[0]))
     return Nan::ThrowTypeError(TYPE_ERROR(num, bignum));
@@ -1680,9 +1680,9 @@ NAN_METHOD(BBN::Isqrtp) {
   BBN *b = ObjectWrap::Unwrap<BBN>(info[0].As<v8::Object>());
 
   if (mpz_sgn(b->n) <= 0)
-    return Nan::ThrowRangeError(RANGE_ERROR(isqrtp));
+    return Nan::ThrowRangeError(RANGE_ERROR(isqrtm));
 
-  if (!bmpz_sqrtp(a->n, a->n, b->n))
+  if (!bmpz_sqrtm(a->n, a->n, b->n))
     return Nan::ThrowError("X is not a square mod P.");
 
   info.GetReturnValue().Set(info.Holder());
