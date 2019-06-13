@@ -3487,6 +3487,59 @@ describe('BN.js', function() {
       it('should return 1 on exact division', () => {
         assert.strictEqual(new BN(144).divRound(new BN(144)).toString(10), '1');
       });
+
+      it('should divide negative numbers with rounding', () => {
+        assert.strictEqual(new BN(-9).divRound(new BN(20)).toString(10),
+          '0');
+        assert.strictEqual(new BN(-10).divRound(new BN(20)).toString(10),
+          '-1');
+        assert.strictEqual(new BN(-150).divRound(new BN(20)).toString(10),
+          '-8');
+        assert.strictEqual(new BN(-149).divRound(new BN(20)).toString(10),
+          '-7');
+        assert.strictEqual(new BN(-149).divRound(new BN(17)).toString(10),
+          '-9');
+        assert.strictEqual(new BN(-144).divRound(new BN(17)).toString(10),
+          '-8');
+        assert.strictEqual(new BN(-144).divRound(new BN(17)).toString(10),
+          '-8');
+
+        assert.strictEqual(new BN(9).divRound(new BN(-20)).toString(10),
+          '0');
+        assert.strictEqual(new BN(10).divRound(new BN(-20)).toString(10),
+          '-1');
+        assert.strictEqual(new BN(150).divRound(new BN(-20)).toString(10),
+          '-8');
+        assert.strictEqual(new BN(149).divRound(new BN(-20)).toString(10),
+          '-7');
+        assert.strictEqual(new BN(149).divRound(new BN(-17)).toString(10),
+          '-9');
+        assert.strictEqual(new BN(144).divRound(new BN(-17)).toString(10),
+          '-8');
+        assert.strictEqual(new BN(144).divRound(new BN(-17)).toString(10),
+          '-8');
+
+        assert.strictEqual(new BN(-9).divRound(new BN(-20)).toString(10),
+          '0');
+        assert.strictEqual(new BN(-10).divRound(new BN(-20)).toString(10),
+          '1');
+        assert.strictEqual(new BN(-150).divRound(new BN(-20)).toString(10),
+          '8');
+        assert.strictEqual(new BN(-149).divRound(new BN(-20)).toString(10),
+          '7');
+        assert.strictEqual(new BN(-149).divRound(new BN(-17)).toString(10),
+          '9');
+        assert.strictEqual(new BN(-144).divRound(new BN(-17)).toString(10),
+          '8');
+        assert.strictEqual(new BN(-144).divRound(new BN(-17)).toString(10),
+          '8');
+      });
+
+      it('should return 1 on exact negative divisions', () => {
+        assert.strictEqual(new BN(-144).divRound(new BN(144)).toString(10), '-1');
+        assert.strictEqual(new BN(144).divRound(new BN(-144)).toString(10), '-1');
+        assert.strictEqual(new BN(-144).divRound(new BN(-144)).toString(10), '1');
+      });
     });
 
     describe('.rem()', () => {

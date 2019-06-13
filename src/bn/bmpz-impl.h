@@ -332,7 +332,7 @@ bmpz_div_round(mpz_t ret, const mpz_t x, const mpz_t y) {
 
   // Round up.
   // if q < 0
-  if (mpz_sgn(q) < 0) {
+  if ((mpz_sgn(x) < 0) ^ (mpz_sgn(y) < 0)) {
     // q = q - 1
     mpz_sub_ui(q, q, 1);
   } else {
