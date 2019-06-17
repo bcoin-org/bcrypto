@@ -1834,7 +1834,9 @@ schnorr_hash_am(bcrypto_ecdsa_t *ec,
   }
 
 fail:
-  EVP_MD_CTX_free(ctx);
+  if (ctx != NULL)
+    EVP_MD_CTX_free(ctx);
+
   return k;
 }
 
@@ -1881,7 +1883,9 @@ schnorr_hash_ram(bcrypto_ecdsa_t *ec,
   }
 
 fail:
-  EVP_MD_CTX_free(ctx);
+  if (ctx != NULL)
+    EVP_MD_CTX_free(ctx);
+
   return e;
 }
 
