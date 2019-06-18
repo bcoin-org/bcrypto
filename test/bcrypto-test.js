@@ -227,7 +227,7 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.BLAKE2s160.native, 2);
         assert.strictEqual(bcrypto.BLAKE2s224.native, 2);
         assert.strictEqual(bcrypto.BLAKE2s256.native, 2);
-        assert.strictEqual(bcrypto.BN.native, BN_MODIFIED_VERSION || 2);
+        assert.strictEqual(bcrypto.BN.native, BN_MODIFIED_VERSION || 1);
         assert.strictEqual(bcrypto.box.native, 0);
         assert.strictEqual(bcrypto.ChaCha20.native, 2);
         assert.strictEqual(bcrypto.cipher.native, 2);
