@@ -9,10 +9,12 @@ const {
   ShortCurve,
   EdwardsCurve,
   SECP256K1,
+  ED25519,
   X25519
 } = curves;
 
 let secp256k1 = null;
+let ed25519 = null;
 let x25519 = null;
 
 describe('Curves', function() {
@@ -21,10 +23,14 @@ describe('Curves', function() {
       secp256k1 = new SECP256K1();
       secp256k1.precompute(rng);
 
+      ed25519 = new ED25519();
+      ed25519.precompute(rng);
+
       x25519 = new X25519();
       x25519.precompute(rng);
 
       assert(secp256k1.g.precomputed);
+      assert(ed25519.g.precomputed);
       assert(!x25519.g.precomputed);
     });
   });
@@ -191,12 +197,23 @@ describe('Curves', function() {
 
       // Endomorphism test
       assert(curve.endo);
+
       assert.strictEqual(
         curve.endo.beta.fromRed().toString(16),
         '7ae96a2b657c07106e64479eac3434e99cf0497512f58995c1396c28719501ee');
+
       assert.strictEqual(
         curve.endo.lambda.toString(16),
         '5363ad4cc05c30e0a5261c028812645a122e22ea20816678df02967c1b23bd72');
+
+      assert.strictEqual(curve.endo.basis[0].a.toString(16),
+                         '3086d221a7d46bcde86c90e49284eb15');
+      assert.strictEqual(curve.endo.basis[0].b.toString(16),
+                         '-e4437ed6010e88286f547fa90abfe4c3');
+      assert.strictEqual(curve.endo.basis[1].a.toString(16),
+                         '114ca50f7a8e2f3f657c1108d9d44cfd8');
+      assert.strictEqual(curve.endo.basis[1].b.toString(16),
+                         '3086d221a7d46bcde86c90e49284eb15');
 
       const k = new BN('1234567890123456789012345678901234', 16);
       const [k1, k2] = curve._endoSplit(k);
@@ -333,6 +350,104 @@ describe('Curves', function() {
       assert(point1.eq(point2));
       assert(point3.eq(point4));
       assert(point3.neg().eq(point1));
+    });
+
+    it('should multiply negative scalar', () => {
+      for (const curve of [secp256k1, ed25519]) {
+        const s1 = new BN(
+          '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
+          16);
+
+        {
+          const p1 = curve.g.mul(s1);
+          const p2 = curve.g.mul(s1.neg());
+
+          assert(!p2.isInfinity());
+          assert(p2.eq(p1.neg()));
+
+          const s2 = s1.sqr();
+
+          const p3 = curve.g.mul(s2);
+          const p4 = curve.g.mul(s2.neg());
+
+          assert(!p4.isInfinity());
+          assert(p4.eq(p3.neg()));
+
+          const s3 = s2.divn(17);
+          const p5 = p1.mul(s3);
+          const p6 = p1.mul(s3.neg());
+
+          assert(!p6.isInfinity());
+          assert(p6.eq(p5.neg()));
+
+          const s4 = s3.mod(curve.n);
+          const p7 = p2.mul(s4);
+          const p8 = p2.mul(s4.neg());
+
+          assert(!p8.isInfinity());
+          assert(p8.eq(p7.neg()));
+        }
+
+        {
+          const p1 = curve.g.jmul(s1);
+          const p2 = curve.g.jmul(s1.neg());
+
+          assert(!p2.isInfinity());
+          assert(p2.eq(p1.neg()));
+
+          const s2 = s1.sqr();
+
+          const p3 = curve.g.jmul(s2);
+          const p4 = curve.g.jmul(s2.neg());
+
+          assert(!p4.isInfinity());
+          assert(p4.eq(p3.neg()));
+
+          const s3 = s2.divn(17);
+          const p5 = p1.jmul(s3);
+          const p6 = p1.jmul(s3.neg());
+
+          assert(!p6.isInfinity());
+          assert(p6.eq(p5.neg()));
+
+          const s4 = s3.mod(curve.n);
+          const p7 = p2.jmul(s4);
+          const p8 = p2.jmul(s4.neg());
+
+          assert(!p8.isInfinity());
+          assert(p8.eq(p7.neg()));
+        }
+
+        {
+          const p1 = curve.g.mulBlind(s1, rng);
+          const p2 = curve.g.mulBlind(s1.neg(), rng);
+
+          assert(!p2.isInfinity());
+          assert(p2.eq(p1.neg()));
+
+          const s2 = s1.sqr();
+
+          const p3 = curve.g.mulBlind(s2, rng);
+          const p4 = curve.g.mulBlind(s2.neg(), rng);
+
+          assert(!p4.isInfinity());
+          assert(p4.eq(p3.neg()));
+
+          const s3 = s2.divn(17);
+          const p5 = p1.mulBlind(s3, rng);
+          const p6 = p1.mulBlind(s3.neg(), rng);
+
+          assert(!p6.isInfinity());
+          assert(p6.eq(p5.neg()));
+
+          const s4 = s3.mod(curve.n);
+          const p7 = p2.mulBlind(s4, rng);
+          const p8 = p2.mulBlind(s4.neg(), rng);
+
+          assert(!p8.isInfinity());
+          assert(p8.eq(p7.neg()));
+        }
+      }
     });
   });
 
