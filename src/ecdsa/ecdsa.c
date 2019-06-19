@@ -1952,14 +1952,14 @@ bcrypto_schnorr_sign(bcrypto_ecdsa_t *ec,
   // The secret key d: an integer in the range 1..n-1.
   a = BN_bin2bn(priv, ec->scalar_size, BN_secure_new());
 
+  if (a == NULL || BN_is_zero(a) || BN_cmp(a, ec->n) >= 0)
+    goto fail;
+
   // Let k' = int(hash(bytes(d) || m)) mod n
   k = schnorr_hash_am(ec, priv, msg);
 
-  if (a == NULL || k == NULL)
-    goto fail;
-
   // Fail if k' = 0.
-  if (BN_is_zero(k))
+  if (k == NULL || BN_is_zero(k))
     goto fail;
 
   // Let R = k'*G.
