@@ -1827,6 +1827,9 @@ schnorr_hash_am(bcrypto_ecdsa_t *ec,
 
   k = BN_bin2bn(out, hash_size, BN_secure_new());
 
+  if (k == NULL)
+    goto fail;
+
   if (!BN_mod(k, k, ec->n, ec->ctx)) {
     BN_clear_free(k);
     k = NULL;
@@ -1875,6 +1878,9 @@ schnorr_hash_ram(bcrypto_ecdsa_t *ec,
     goto fail;
 
   e = BN_bin2bn(out, hash_size, NULL);
+
+  if (e == NULL)
+    goto fail;
 
   if (!BN_mod(e, e, ec->n, ec->ctx)) {
     BN_free(e);
@@ -2226,13 +2232,13 @@ bcrypto_schnorr_batch_verify(bcrypto_ecdsa_t *ec,
       goto fail;
 
     points[i * 2 + 0] = R;
-    points[i * 2 + 1] = A;
     coeffs[i * 2 + 0] = a;
+    points[i * 2 + 1] = A;
     coeffs[i * 2 + 1] = e;
 
     R = NULL;
-    A = NULL;
     a = NULL;
+    A = NULL;
     e = NULL;
   }
 
