@@ -174,7 +174,7 @@ ecc_point_set_x(struct ecc_point *p, const mpz_t x, int sign) {
    */
 
   /* y = sqrt(y2) mod p */
-  if (!bmpz_sqrtp(y, y2, m))
+  if (!bmpz_sqrtm(y, y2, m))
     goto fail;
 
   /* if y & 1 != sign */
@@ -1804,7 +1804,7 @@ schnorr_lift_x(const struct ecc_curve *ecc,
   mpz_mod(y2, y2, m);
 
   /* y = sqrt(y2) mod p */
-  if (!bmpz_sqrtp(y, y2, m))
+  if (!bmpz_sqrtm(y, y2, m))
     goto fail;
 
   mpn_copyi(out, Rx, size);

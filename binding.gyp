@@ -536,10 +536,14 @@
           "HAVE_LIBGMP=1",
           "USE_NUM_GMP=1",
           "USE_FIELD_INV_NUM=1",
-          "USE_SCALAR_INV_NUM=1"
+          "USE_SCALAR_INV_NUM=1",
+          "BCRYPTO_HAS_GMP=1"
         ],
         "libraries": [
           "-lgmp"
+        ],
+        "sources": [
+          "./src/bn.cc"
         ]
       }, {
         "defines": [
