@@ -352,6 +352,29 @@ describe('Curves', function() {
       assert(point3.neg().eq(point1));
     });
 
+    it('should match multiplications', () => {
+      for (const curve of [secp256k1, ed25519]) {
+        const s = new BN(
+          '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
+          16);
+
+        const p1 = curve.g.mul(s);
+        const p2 = curve.g.mulSlow(s);
+
+        assert(p1.eq(p2));
+
+        const j1 = curve.g.jmul(s);
+        const j2 = curve.g.jmulSlow(s);
+
+        assert(j1.eq(j2));
+
+        const j3 = curve.g.toJ().mul(s);
+        const j4 = curve.g.toJ().mulSlow(s);
+
+        assert(j3.eq(j4));
+      }
+    });
+
     it('should multiply negative scalar', () => {
       for (const curve of [secp256k1, ed25519]) {
         const s1 = new BN(
