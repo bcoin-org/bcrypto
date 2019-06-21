@@ -4564,9 +4564,8 @@ describe('BN.js', function() {
         assert.strictEqual(p.ireduce(new BN('deadbeef', 16)).toString(16), 'deadbeef');
 
         {
-          const num = new BN('fedcba9876543210fedcba9876543210dead' +
-          'fedcba9876543210fedcba9876543210dead',
-            16);
+          const num = new BN('fedcba9876543210fedcba9876543210dead'
+                           + 'fedcba9876543210fedcba9876543210dead', 16);
 
           const exp = num.rem(p.p);
 
@@ -4612,7 +4611,7 @@ describe('BN.js', function() {
     });
 
     it('should avoid 4.1.0 regresion', () => {
-      function bits2int(obits, q) {
+      const bits2int = (obits, q) => {
         const bits = new BN(obits);
         const shift = (obits.length << 3) - q.bitLength();
 
@@ -4620,7 +4619,7 @@ describe('BN.js', function() {
           bits.ishrn(shift);
 
         return bits;
-      }
+      };
 
       const t = Buffer.from(''
         + 'aff1651e4cd6036d57aa8b2a05ccf1a9d5a40166340ecbbdc55'
