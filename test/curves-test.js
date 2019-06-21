@@ -377,6 +377,11 @@ describe('Curves', function() {
         const p4 = curve.g.mulSlow(s.divn(3).mul(s));
 
         assert(p3.eq(p4));
+
+        const p5 = curve.g.mul(s.divn(3).mul(s).ineg().imod(curve.n));
+        const p6 = curve.g.mulSlow(s.divn(3).mul(s).ineg());
+
+        assert(p5.eq(p6));
       }
     });
 
