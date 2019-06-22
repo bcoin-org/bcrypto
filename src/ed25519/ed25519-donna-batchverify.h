@@ -202,7 +202,7 @@ ge25519_is_neutral_vartime(const ge25519 *p) {
 }
 
 int
-bcrypto_ed25519_sign_open_batch(
+bcrypto_ed25519_batch_verify(
   const unsigned char **m,
   size_t *mlen,
   const unsigned char **pk,
@@ -218,7 +218,7 @@ bcrypto_ed25519_sign_open_batch(
   bignum256modm *r_scalars;
   size_t i, batchsize;
   unsigned char hram[64];
-  int ret = 0;
+  int ret = 1;
 
   if (valid != NULL) {
     for (i = 0; i < num; i++)
@@ -229,7 +229,9 @@ bcrypto_ed25519_sign_open_batch(
     batchsize = (num > max_batch_size) ? max_batch_size : num;
 
     /* generate r (scalars[batchsize+1]..scalars[2*batchsize] */
-    bcrypto_ed25519_randombytes_unsafe(batch.r, batchsize * 16);
+    if (!bcrypto_ed25519_randombytes(batch.r, batchsize * 16))
+      goto fallback;
+
     r_scalars = &batch.scalars[batchsize + 1];
 
     for (i = 0; i < batchsize; i++)
@@ -254,26 +256,28 @@ bcrypto_ed25519_sign_open_batch(
     /* compute points */
     batch.points[0] = ge25519_basepoint;
 
-    for (i = 0; i < batchsize; i++)
+    for (i = 0; i < batchsize; i++) {
       if (!ge25519_unpack_negative_vartime(&batch.points[i+1], pk[i]))
         goto fallback;
+    }
 
-    for (i = 0; i < batchsize; i++)
+    for (i = 0; i < batchsize; i++) {
       if (!ge25519_unpack_negative_vartime(&batch.points[batchsize+i+1], RS[i]))
         goto fallback;
+    }
 
     ge25519_multi_scalarmult_vartime(&p, &batch, (batchsize * 2) + 1);
 
     if (!ge25519_is_neutral_vartime(&p)) {
       fallback:
       for (i = 0; i < batchsize; i++) {
-        int r = bcrypto_ed25519_sign_open(m[i], mlen[i], pk[i],
-                                          ph, ctx, ctx_len, RS[i]);
+        int r = bcrypto_ed25519_verify(m[i], mlen[i], pk[i],
+                                       ph, ctx, ctx_len, RS[i]);
 
         if (valid != NULL)
-          valid[i] = r != -1;
+          valid[i] = r;
 
-        ret |= r;
+        ret &= r;
       }
     }
 
@@ -288,15 +292,14 @@ bcrypto_ed25519_sign_open_batch(
   }
 
   for (i = 0; i < num; i++) {
-    int r = bcrypto_ed25519_sign_open(m[i], mlen[i], pk[i],
-                                      ph, ctx, ctx_len, RS[i]);
+    int r = bcrypto_ed25519_verify(m[i], mlen[i], pk[i],
+                                   ph, ctx, ctx_len, RS[i]);
 
     if (valid != NULL)
-      valid[i] = r != -1;
+      valid[i] = r;
 
-    ret |= r;
+    ret &= r;
   }
 
   return ret;
 }
-

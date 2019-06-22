@@ -252,10 +252,10 @@ ge25519_unpack_negative_vartime(ge25519 *r, const unsigned char p[32]) {
   curve25519_copy(root, t);
   curve25519_sub_reduce(root,  root, num);
   curve25519_contract(check, root);
-  if (!bcrypto_ed25519_verify(check, zero, 32)) {
+  if (!bcrypto_ed25519_equal(check, zero, 32)) {
     curve25519_add_reduce(t, t, num);
     curve25519_contract(check, t);
-    if (!bcrypto_ed25519_verify(check, zero, 32))
+    if (!bcrypto_ed25519_equal(check, zero, 32))
       return 0;
     curve25519_mul(r->x, r->x, ge25519_sqrtneg1);
   }

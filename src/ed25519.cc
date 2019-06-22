@@ -88,7 +88,7 @@ NAN_METHOD(BED25519::PrivateKeyConvert) {
   if (secret_len != 32)
     return Nan::ThrowRangeError("Invalid secret size.");
 
-  bcrypto_ed25519_secret_key out;
+  bcrypto_ed25519_scalar_t out;
   bcrypto_ed25519_privkey_convert(out, secret);
 
   return info.GetReturnValue().Set(
@@ -119,9 +119,9 @@ NAN_METHOD(BED25519::ScalarTweakAdd) {
   if (tweak_len != 32)
     return Nan::ThrowRangeError("Invalid tweak size.");
 
-  bcrypto_ed25519_secret_key out;
+  bcrypto_ed25519_scalar_t out;
 
-  if (bcrypto_ed25519_scalar_tweak_add(out, key, tweak) != 0)
+  if (!bcrypto_ed25519_scalar_tweak_add(out, key, tweak))
     return Nan::ThrowError("Invalid scalar.");
 
   return info.GetReturnValue().Set(
@@ -152,9 +152,9 @@ NAN_METHOD(BED25519::ScalarTweakMul) {
   if (tweak_len != 32)
     return Nan::ThrowRangeError("Invalid tweak size.");
 
-  bcrypto_ed25519_secret_key out;
+  bcrypto_ed25519_scalar_t out;
 
-  if (bcrypto_ed25519_scalar_tweak_mul(out, key, tweak) != 0)
+  if (!bcrypto_ed25519_scalar_tweak_mul(out, key, tweak))
     return Nan::ThrowError("Invalid scalar.");
 
   return info.GetReturnValue().Set(
@@ -204,9 +204,9 @@ NAN_METHOD(BED25519::ScalarNegate) {
   if (key_len != 32)
     return Nan::ThrowRangeError("Invalid scalar size.");
 
-  bcrypto_ed25519_secret_key out;
+  bcrypto_ed25519_scalar_t out;
 
-  if (bcrypto_ed25519_scalar_negate(out, key) != 0)
+  if (!bcrypto_ed25519_scalar_negate(out, key))
     return Nan::ThrowError("Invalid scalar.");
 
   return info.GetReturnValue().Set(
@@ -228,9 +228,9 @@ NAN_METHOD(BED25519::ScalarInvert) {
   if (key_len != 32)
     return Nan::ThrowRangeError("Invalid scalar size.");
 
-  bcrypto_ed25519_secret_key out;
+  bcrypto_ed25519_scalar_t out;
 
-  if (bcrypto_ed25519_scalar_inverse(out, key) != 0)
+  if (!bcrypto_ed25519_scalar_inverse(out, key))
     return Nan::ThrowError("Invalid scalar.");
 
   return info.GetReturnValue().Set(
@@ -252,9 +252,9 @@ NAN_METHOD(BED25519::PublicKeyCreate) {
   if (secret_len != 32)
     return Nan::ThrowRangeError("Invalid secret size.");
 
-  bcrypto_ed25519_public_key pub;
+  bcrypto_ed25519_pubkey_t pub;
 
-  if (bcrypto_ed25519_publickey(pub, secret) != 0)
+  if (!bcrypto_ed25519_pubkey_create(pub, secret))
     return Nan::ThrowError("Invalid public key.");
 
   return info.GetReturnValue().Set(
@@ -276,9 +276,9 @@ NAN_METHOD(BED25519::PublicKeyFromScalar) {
   if (scalar_len != 32)
     return Nan::ThrowRangeError("Invalid scalar size.");
 
-  bcrypto_ed25519_public_key pub;
+  bcrypto_ed25519_pubkey_t pub;
 
-  if (bcrypto_ed25519_publickey_from_scalar(pub, scalar) != 0)
+  if (!bcrypto_ed25519_pubkey_from_scalar(pub, scalar))
     return Nan::ThrowError("Invalid public key.");
 
   return info.GetReturnValue().Set(
@@ -300,9 +300,9 @@ NAN_METHOD(BED25519::PublicKeyConvert) {
   if (pub_len != 32)
     return Nan::ThrowRangeError("Invalid public key size.");
 
-  bcrypto_curved25519_key out;
+  bcrypto_x25519_pubkey_t out;
 
-  if (bcrypto_ed25519_pubkey_convert(out, pub) != 0)
+  if (!bcrypto_ed25519_pubkey_convert(out, pub))
     return Nan::ThrowError("Invalid public key.");
 
   return info.GetReturnValue().Set(
@@ -329,9 +329,9 @@ NAN_METHOD(BED25519::PublicKeyDeconvert) {
 
   int sign = (int)Nan::To<bool>(info[1]).FromJust();
 
-  bcrypto_ed25519_public_key out;
+  bcrypto_ed25519_pubkey_t out;
 
-  if (bcrypto_ed25519_pubkey_deconvert(out, pub, sign) != 0)
+  if (!bcrypto_ed25519_pubkey_deconvert(out, pub, sign))
     return Nan::ThrowError("Invalid public key.");
 
   return info.GetReturnValue().Set(
@@ -353,7 +353,7 @@ NAN_METHOD(BED25519::PublicKeyVerify) {
   if (pub_len != 32)
     return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
 
-  bool result = bcrypto_ed25519_verify_key(pub) == 0;
+  bool result = bcrypto_ed25519_pubkey_verify(pub) == 1;
 
   return info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
@@ -382,9 +382,9 @@ NAN_METHOD(BED25519::PublicKeyTweakAdd) {
   if (tweak_len != 32)
     return Nan::ThrowRangeError("Invalid tweak size.");
 
-  bcrypto_ed25519_public_key out;
+  bcrypto_ed25519_pubkey_t out;
 
-  if (bcrypto_ed25519_pubkey_tweak_add(out, pub, tweak) != 0)
+  if (!bcrypto_ed25519_pubkey_tweak_add(out, pub, tweak))
     return Nan::ThrowError("Invalid public key.");
 
   return info.GetReturnValue().Set(
@@ -415,9 +415,9 @@ NAN_METHOD(BED25519::PublicKeyTweakMul) {
   if (tweak_len != 32)
     return Nan::ThrowRangeError("Invalid tweak size.");
 
-  bcrypto_ed25519_public_key out;
+  bcrypto_ed25519_pubkey_t out;
 
-  if (bcrypto_ed25519_pubkey_tweak_mul(out, pub, tweak) != 0)
+  if (!bcrypto_ed25519_pubkey_tweak_mul(out, pub, tweak))
     return Nan::ThrowError("Invalid public key.");
 
   return info.GetReturnValue().Set(
@@ -448,9 +448,9 @@ NAN_METHOD(BED25519::PublicKeyAdd) {
   if (pub2_len != 32)
     return Nan::ThrowRangeError("Invalid public key size.");
 
-  bcrypto_ed25519_public_key out;
+  bcrypto_ed25519_pubkey_t out;
 
-  if (bcrypto_ed25519_pubkey_add(out, pub1, pub2) != 0)
+  if (!bcrypto_ed25519_pubkey_add(out, pub1, pub2))
     return Nan::ThrowError("Invalid public key.");
 
   return info.GetReturnValue().Set(
@@ -471,8 +471,8 @@ NAN_METHOD(BED25519::PublicKeyCombine) {
   if (len == 0)
     return Nan::ThrowError("Invalid point.");
 
-  bcrypto_ed25519_public_key *pubs =
-    (bcrypto_ed25519_public_key *)malloc(len * sizeof(bcrypto_ed25519_public_key));
+  bcrypto_ed25519_pubkey_t *pubs =
+    (bcrypto_ed25519_pubkey_t *)malloc(len * sizeof(bcrypto_ed25519_pubkey_t));
 
   if (pubs == NULL)
     return Nan::ThrowError("Allocation failed.");
@@ -497,9 +497,9 @@ NAN_METHOD(BED25519::PublicKeyCombine) {
     memcpy(pubs[i], pub, pub_len);
   }
 
-  bcrypto_ed25519_public_key out;
+  bcrypto_ed25519_pubkey_t out;
 
-  if (bcrypto_ed25519_pubkey_combine(out, pubs, len) != 0) {
+  if (!bcrypto_ed25519_pubkey_combine(out, pubs, len)) {
     free(pubs);
     return Nan::ThrowError("Invalid point.");
   }
@@ -525,9 +525,9 @@ NAN_METHOD(BED25519::PublicKeyNegate) {
   if (pub_len != 32)
     return Nan::ThrowRangeError("Invalid public key size.");
 
-  bcrypto_ed25519_public_key out;
+  bcrypto_ed25519_pubkey_t out;
 
-  if (bcrypto_ed25519_pubkey_negate(out, pub) != 0)
+  if (!bcrypto_ed25519_pubkey_negate(out, pub))
     return Nan::ThrowError("Invalid public key.");
 
   return info.GetReturnValue().Set(
@@ -582,15 +582,15 @@ NAN_METHOD(BED25519::Sign) {
   if (secret_len != 32)
     return Nan::ThrowRangeError("Invalid secret size.");
 
-  bcrypto_ed25519_public_key pub;
+  bcrypto_ed25519_pubkey_t pub;
 
-  if (bcrypto_ed25519_publickey(pub, secret) != 0)
+  if (!bcrypto_ed25519_pubkey_create(pub, secret))
     return Nan::ThrowError("Invalid public key.");
 
-  bcrypto_ed25519_signature sig;
+  bcrypto_ed25519_sig_t sig;
 
-  if (bcrypto_ed25519_sign(msg, msg_len, secret,
-                           pub, ph, ctx, ctx_len, sig) != 0) {
+  if (!bcrypto_ed25519_sign(msg, msg_len, secret,
+                            pub, ph, ctx, ctx_len, sig)) {
     return Nan::ThrowError("Could not sign.");
   }
 
@@ -659,15 +659,15 @@ NAN_METHOD(BED25519::SignWithScalar) {
   memcpy(&expanded[0], &scalar[0], 32);
   memcpy(&expanded[32], &prefix[0], 32);
 
-  bcrypto_ed25519_public_key pub;
+  bcrypto_ed25519_pubkey_t pub;
 
-  if (bcrypto_ed25519_publickey_from_scalar(pub, scalar) != 0)
+  if (!bcrypto_ed25519_pubkey_from_scalar(pub, scalar))
     return Nan::ThrowError("Invalid public key.");
 
-  bcrypto_ed25519_signature sig;
+  bcrypto_ed25519_sig_t sig;
 
-  if (bcrypto_ed25519_sign_with_scalar(msg, msg_len, expanded,
-                                       pub, ph, ctx, ctx_len, sig) != 0) {
+  if (!bcrypto_ed25519_sign_with_scalar(msg, msg_len, expanded,
+                                        pub, ph, ctx, ctx_len, sig)) {
     return Nan::ThrowError("Could not sign.");
   }
 
@@ -733,15 +733,15 @@ NAN_METHOD(BED25519::SignTweakAdd) {
   if (tweak_len != 32)
     return Nan::ThrowRangeError("Invalid tweak size.");
 
-  bcrypto_ed25519_public_key pub;
+  bcrypto_ed25519_pubkey_t pub;
 
-  if (bcrypto_ed25519_publickey(pub, secret) != 0)
+  if (!bcrypto_ed25519_pubkey_create(pub, secret))
     return Nan::ThrowError("Invalid public key.");
 
-  bcrypto_ed25519_signature sig;
+  bcrypto_ed25519_sig_t sig;
 
-  if (bcrypto_ed25519_sign_tweak_add(msg, msg_len, secret, pub,
-                                     tweak, ph, ctx, ctx_len, sig) != 0) {
+  if (!bcrypto_ed25519_sign_tweak_add(msg, msg_len, secret, pub,
+                                      tweak, ph, ctx, ctx_len, sig)) {
     return Nan::ThrowError("Could not sign.");
   }
 
@@ -805,15 +805,15 @@ NAN_METHOD(BED25519::SignTweakMul) {
   if (tweak_len != 32)
     return Nan::ThrowRangeError("Invalid tweak size.");
 
-  bcrypto_ed25519_public_key pub;
+  bcrypto_ed25519_pubkey_t pub;
 
-  if (bcrypto_ed25519_publickey(pub, secret) != 0)
+  if (!bcrypto_ed25519_pubkey_create(pub, secret))
     return Nan::ThrowError("Invalid public key.");
 
-  bcrypto_ed25519_signature sig;
+  bcrypto_ed25519_sig_t sig;
 
-  if (bcrypto_ed25519_sign_tweak_mul(msg, msg_len, secret, pub,
-                                     tweak, ph, ctx, ctx_len, sig) != 0) {
+  if (!bcrypto_ed25519_sign_tweak_mul(msg, msg_len, secret, pub,
+                                      tweak, ph, ctx, ctx_len, sig)) {
     return Nan::ThrowError("Could not sign.");
   }
 
@@ -874,8 +874,8 @@ NAN_METHOD(BED25519::Verify) {
   if (sig_len != 64 || pub_len != 32)
     return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
 
-  bool result = bcrypto_ed25519_sign_open(msg, msg_len, pub,
-                                          ph, ctx, ctx_len, sig) == 0;
+  bool result = bcrypto_ed25519_verify(msg, msg_len, pub,
+                                       ph, ctx, ctx_len, sig) == 1;
 
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
@@ -991,9 +991,9 @@ NAN_METHOD(BED25519::BatchVerify) {
     pubs[i] = pub;
   }
 
-  bool result = bcrypto_ed25519_sign_open_batch(msgs, msg_lens, pubs,
-                                                sigs, len, ph, ctx,
-                                                ctx_len, NULL) != -1;
+  bool result = bcrypto_ed25519_batch_verify(msgs, msg_lens, pubs,
+                                             sigs, len, ph, ctx,
+                                             ctx_len, NULL) == 1;
 
   free(slab1);
   free(slab2);
@@ -1025,9 +1025,9 @@ NAN_METHOD(BED25519::Derive) {
   if (secret_len != 32)
     return Nan::ThrowRangeError("Invalid secret size.");
 
-  bcrypto_ed25519_public_key out;
+  bcrypto_ed25519_pubkey_t out;
 
-  if (bcrypto_ed25519_derive(out, pub, secret) != 0)
+  if (!bcrypto_ed25519_derive(out, pub, secret))
     return Nan::ThrowError("Invalid public key.");
 
   return info.GetReturnValue().Set(
@@ -1058,9 +1058,9 @@ NAN_METHOD(BED25519::DeriveWithScalar) {
   if (scalar_len != 32)
     return Nan::ThrowRangeError("Invalid scalar size.");
 
-  bcrypto_ed25519_public_key out;
+  bcrypto_ed25519_pubkey_t out;
 
-  if (bcrypto_ed25519_derive_with_scalar(out, pub, scalar) != 0)
+  if (!bcrypto_ed25519_derive_with_scalar(out, pub, scalar))
     return Nan::ThrowError("Invalid public key.");
 
   return info.GetReturnValue().Set(
@@ -1091,9 +1091,9 @@ NAN_METHOD(BED25519::Exchange) {
   if (secret_len != 32)
     return Nan::ThrowRangeError("Invalid secret size.");
 
-  bcrypto_curved25519_key out;
+  bcrypto_x25519_pubkey_t out;
 
-  if (bcrypto_ed25519_exchange(out, xpub, secret) != 0)
+  if (!bcrypto_ed25519_exchange(out, xpub, secret))
     return Nan::ThrowError("Invalid public key.");
 
   return info.GetReturnValue().Set(
@@ -1124,9 +1124,9 @@ NAN_METHOD(BED25519::ExchangeWithScalar) {
   if (scalar_len != 32)
     return Nan::ThrowRangeError("Invalid scalar size.");
 
-  bcrypto_curved25519_key out;
+  bcrypto_x25519_pubkey_t out;
 
-  if (bcrypto_ed25519_exchange_with_scalar(out, xpub, scalar) != 0)
+  if (!bcrypto_ed25519_exchange_with_scalar(out, xpub, scalar))
     return Nan::ThrowError("Invalid public key.");
 
   return info.GetReturnValue().Set(
