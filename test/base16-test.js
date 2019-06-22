@@ -44,6 +44,16 @@ describe('Base16', function() {
       assert.strictEqual(base16.encode(data), hex);
       assert.bufferEqual(base16.decode(hex), data);
       assert.bufferEqual(base16.decode(hex.toUpperCase()), data);
+
+      // With sizes:
+      assert.strictEqual(base16.test(hex, data.length), true);
+      assert.strictEqual(base16.encode(data, data.length), hex);
+      assert.strictEqual(base16.encode(data, 1 + data.length), '00' + hex);
+      assert.bufferEqual(base16.decode(hex, data.length), data);
+
+      assert.strictEqual(base16.test(hex, data.length + 1), false);
+      assert.throws(() => base16.encode(data, data.length - 1));
+      assert.throws(() => base16.decode(hex, data.length + 1));
     });
   }
 
@@ -54,6 +64,14 @@ describe('Base16', function() {
       assert.strictEqual(base16.encodeLE(data), hex);
       assert.bufferEqual(base16.decodeLE(hex), data);
       assert.bufferEqual(base16.decodeLE(hex.toUpperCase()), data);
+
+      // With sizes:
+      assert.strictEqual(base16.encodeLE(data, data.length), hex);
+      assert.strictEqual(base16.encodeLE(data, data.length + 1), hex + '00');
+      assert.bufferEqual(base16.decodeLE(hex, data.length), data);
+
+      assert.throws(() => base16.encodeLE(data, data.length - 1));
+      assert.throws(() => base16.decodeLE(hex, data.length + 1));
     });
   }
 
