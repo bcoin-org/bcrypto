@@ -1,11 +1,5 @@
 #include "hash.h"
 
-// https://github.com/gnutls/nettle/blob/master/nettle-meta.h
-// https://github.com/gnutls/nettle/blob/master/nettle-internal.h
-// https://github.com/gnutls/nettle/blob/master/nettle-internal.c
-// https://github.com/gnutls/nettle/blob/master/nettle-meta-hashes.c
-// https://github.com/gnutls/nettle/blob/master/sha256-meta.c
-
 #define MAKE_BLAKE(HASH, NAME, TITLE, SIZE, BLOCK_SIZE)              \
 static void                                                          \
 NAME##_init(HASH##_ctx *ctx) {                                       \
@@ -105,30 +99,6 @@ bcrypto_hmac_digest(bcrypto_hmac_t *hmac,
               hmac->state, hmac->hash,
               length, digest);
 }
-
-/*
-#include "../nettle/hmac.h"
-https://github.com/gnutls/nettle/blob/master/pbkdf2-hmac-sha256.c
-https://github.com/gnutls/nettle/blob/master/hmac.c
-https://github.com/gnutls/nettle/blob/master/hmac.h
-
-#define HMAC_CTX(type) \
-{ type outer; type inner; type state; }
-
-struct hmac_md5_ctx HMAC_CTX(struct md5_ctx);
-
-void
-hmac_md5_set_key(struct hmac_md5_ctx *ctx,
-		 size_t key_length, const uint8_t *key);
-
-void
-hmac_md5_update(struct hmac_md5_ctx *ctx,
-		size_t length, const uint8_t *data);
-
-void
-hmac_md5_digest(struct hmac_md5_ctx *ctx,
-		size_t length, uint8_t *digest);
-*/
 
 int
 bcrypto_hash_type(const char *alg) {
