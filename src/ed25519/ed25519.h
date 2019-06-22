@@ -182,30 +182,31 @@ bcrypto_ed25519_pubkey_negate(
 
 int
 bcrypto_ed25519_sign_with_scalar(
+  bcrypto_ed25519_sig_t RS,
   const unsigned char *m,
   size_t mlen,
   const uint8_t extsk[64],
   const bcrypto_ed25519_pubkey_t pk,
   int ph,
   const unsigned char *ctx,
-  size_t ctx_len,
-  bcrypto_ed25519_sig_t RS
+  size_t ctx_len
 );
 
 int
 bcrypto_ed25519_sign(
+  bcrypto_ed25519_sig_t RS,
   const unsigned char *m,
   size_t mlen,
   const bcrypto_ed25519_privkey_t sk,
   const bcrypto_ed25519_pubkey_t pk,
   int ph,
   const unsigned char *ctx,
-  size_t ctx_len,
-  bcrypto_ed25519_sig_t RS
+  size_t ctx_len
 );
 
 int
 bcrypto_ed25519_sign_tweak_add(
+  bcrypto_ed25519_sig_t RS,
   const unsigned char *m,
   size_t mlen,
   const bcrypto_ed25519_privkey_t sk,
@@ -213,12 +214,12 @@ bcrypto_ed25519_sign_tweak_add(
   const bcrypto_ed25519_scalar_t tweak,
   int ph,
   const unsigned char *ctx,
-  size_t ctx_len,
-  bcrypto_ed25519_sig_t RS
+  size_t ctx_len
 );
 
 int
 bcrypto_ed25519_sign_tweak_mul(
+  bcrypto_ed25519_sig_t RS,
   const unsigned char *m,
   size_t mlen,
   const bcrypto_ed25519_privkey_t sk,
@@ -226,8 +227,7 @@ bcrypto_ed25519_sign_tweak_mul(
   const bcrypto_ed25519_scalar_t tweak,
   int ph,
   const unsigned char *ctx,
-  size_t ctx_len,
-  bcrypto_ed25519_sig_t RS
+  size_t ctx_len
 );
 
 #if defined(__cplusplus)

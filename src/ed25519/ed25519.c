@@ -602,14 +602,14 @@ bcrypto_ed25519_pubkey_negate(
 
 int
 bcrypto_ed25519_sign_with_scalar(
+  bcrypto_ed25519_sig_t RS,
   const unsigned char *m,
   size_t mlen,
   const uint8_t extsk[64],
   const bcrypto_ed25519_pubkey_t pk,
   int ph,
   const unsigned char *ctx,
-  size_t ctx_len,
-  bcrypto_ed25519_sig_t RS
+  size_t ctx_len
 ) {
   bcrypto_ed25519_hash_t hctx;
   bignum256modm r, S, a;
@@ -649,23 +649,23 @@ bcrypto_ed25519_sign_with_scalar(
 
 int
 bcrypto_ed25519_sign(
+  bcrypto_ed25519_sig_t RS,
   const unsigned char *m,
   size_t mlen,
   const bcrypto_ed25519_privkey_t sk,
   const bcrypto_ed25519_pubkey_t pk,
   int ph,
   const unsigned char *ctx,
-  size_t ctx_len,
-  bcrypto_ed25519_sig_t RS
+  size_t ctx_len
 ) {
   hash_512bits extsk;
   bcrypto_ed25519_extsk(extsk, sk);
-  return bcrypto_ed25519_sign_with_scalar(m, mlen, extsk, pk,
-                                          ph, ctx, ctx_len, RS);
+  return bcrypto_ed25519_sign_with_scalar(RS, m, mlen, extsk, pk, ph, ctx, ctx_len);
 }
 
 int
 bcrypto_ed25519_sign_tweak_add(
+  bcrypto_ed25519_sig_t RS,
   const unsigned char *m,
   size_t mlen,
   const bcrypto_ed25519_privkey_t sk,
@@ -673,8 +673,7 @@ bcrypto_ed25519_sign_tweak_add(
   const bcrypto_ed25519_scalar_t tweak,
   int ph,
   const unsigned char *ctx,
-  size_t ctx_len,
-  bcrypto_ed25519_sig_t RS
+  size_t ctx_len
 ) {
   hash_512bits extsk, prefix;
   bcrypto_ed25519_pubkey_t tk;
@@ -694,12 +693,12 @@ bcrypto_ed25519_sign_tweak_add(
   if (!bcrypto_ed25519_pubkey_tweak_add(tk, pk, tweak))
     return 0;
 
-  return bcrypto_ed25519_sign_with_scalar(m, mlen, extsk, tk,
-                                          ph, ctx, ctx_len, RS);
+  return bcrypto_ed25519_sign_with_scalar(RS, m, mlen, extsk, tk, ph, ctx, ctx_len);
 }
 
 int
 bcrypto_ed25519_sign_tweak_mul(
+  bcrypto_ed25519_sig_t RS,
   const unsigned char *m,
   size_t mlen,
   const bcrypto_ed25519_privkey_t sk,
@@ -707,8 +706,7 @@ bcrypto_ed25519_sign_tweak_mul(
   const bcrypto_ed25519_scalar_t tweak,
   int ph,
   const unsigned char *ctx,
-  size_t ctx_len,
-  bcrypto_ed25519_sig_t RS
+  size_t ctx_len
 ) {
   hash_512bits extsk, prefix;
   bcrypto_ed25519_pubkey_t tk;
@@ -728,6 +726,5 @@ bcrypto_ed25519_sign_tweak_mul(
   if (!bcrypto_ed25519_pubkey_tweak_mul(tk, pk, tweak))
     return 0;
 
-  return bcrypto_ed25519_sign_with_scalar(m, mlen, extsk, tk,
-                                          ph, ctx, ctx_len, RS);
+  return bcrypto_ed25519_sign_with_scalar(RS, m, mlen, extsk, tk, ph, ctx, ctx_len);
 }

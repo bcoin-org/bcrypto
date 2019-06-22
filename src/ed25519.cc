@@ -589,8 +589,8 @@ NAN_METHOD(BED25519::Sign) {
 
   bcrypto_ed25519_sig_t sig;
 
-  if (!bcrypto_ed25519_sign(msg, msg_len, secret,
-                            pub, ph, ctx, ctx_len, sig)) {
+  if (!bcrypto_ed25519_sign(sig, msg, msg_len, secret,
+                            pub, ph, ctx, ctx_len)) {
     return Nan::ThrowError("Could not sign.");
   }
 
@@ -666,8 +666,8 @@ NAN_METHOD(BED25519::SignWithScalar) {
 
   bcrypto_ed25519_sig_t sig;
 
-  if (!bcrypto_ed25519_sign_with_scalar(msg, msg_len, expanded,
-                                        pub, ph, ctx, ctx_len, sig)) {
+  if (!bcrypto_ed25519_sign_with_scalar(sig, msg, msg_len, expanded,
+                                        pub, ph, ctx, ctx_len)) {
     return Nan::ThrowError("Could not sign.");
   }
 
@@ -740,8 +740,8 @@ NAN_METHOD(BED25519::SignTweakAdd) {
 
   bcrypto_ed25519_sig_t sig;
 
-  if (!bcrypto_ed25519_sign_tweak_add(msg, msg_len, secret, pub,
-                                      tweak, ph, ctx, ctx_len, sig)) {
+  if (!bcrypto_ed25519_sign_tweak_add(sig, msg, msg_len, secret, pub,
+                                      tweak, ph, ctx, ctx_len)) {
     return Nan::ThrowError("Could not sign.");
   }
 
@@ -812,8 +812,8 @@ NAN_METHOD(BED25519::SignTweakMul) {
 
   bcrypto_ed25519_sig_t sig;
 
-  if (!bcrypto_ed25519_sign_tweak_mul(msg, msg_len, secret, pub,
-                                      tweak, ph, ctx, ctx_len, sig)) {
+  if (!bcrypto_ed25519_sign_tweak_mul(sig, msg, msg_len, secret, pub,
+                                      tweak, ph, ctx, ctx_len)) {
     return Nan::ThrowError("Could not sign.");
   }
 
