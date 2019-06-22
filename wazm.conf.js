@@ -488,7 +488,7 @@ module.exports = {
     'bcrypto_ed25519_scalar_tweak_mul',
     'bcrypto_ed25519_scalar_reduce',
     'bcrypto_ed25519_scalar_negate',
-    'bcrypto_ed25519_scalar_inverse',
+    'bcrypto_ed25519_scalar_invert',
     'bcrypto_ed25519_pubkey_tweak_add',
     'bcrypto_ed25519_pubkey_tweak_mul',
     'bcrypto_ed25519_pubkey_add',
