@@ -7,8 +7,8 @@
 #ifndef SECP256K1_MODULE_ECDH_MAIN_H
 #define SECP256K1_MODULE_ECDH_MAIN_H
 
-#include "include/secp256k1_ecdh.h"
-#include "ecmult_const_impl.h"
+#include "../../../include/secp256k1_ecdh.h"
+#include "../../ecmult_const_impl.h"
 
 static int ecdh_hash_function_sha256(unsigned char *output, const unsigned char *x, const unsigned char *y, void *data) {
     unsigned char version = (y[31] & 0x01) | 0x02;
