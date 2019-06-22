@@ -414,5 +414,11 @@ curve25519_is_zero(const bignum25519 a) {
   return (a[0] | a[1] | a[2] | a[3] | a[4]) == 0;
 }
 
+DONNA_INLINE static void
+curve25519_set_word(bignum25519 a, uint64_t word) {
+  memset((void *)a, 0x00, sizeof(bignum25519));
+  a[0] = word;
+}
+
 #define BCRYPTO_ED25519_64BIT_TABLES
 

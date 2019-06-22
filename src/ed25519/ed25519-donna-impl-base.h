@@ -171,6 +171,37 @@ ge25519_pnielsadd(ge25519_pniels *r, const ge25519 *p, const ge25519_pniels *q) 
   curve25519_mul(r->t2d, r->t2d, ge25519_ec2d);
 }
 
+/*
+  negation
+*/
+
+static void
+ge25519_neg(ge25519 *r, const ge25519 *p) {
+  curve25519_neg(r->x, p->x);
+  curve25519_neg(r->t, p->t);
+}
+
+/*
+  infinity
+*/
+
+/* not actually used for anything other than testing */
+unsigned char batch_point_buffer[3][32];
+
+static int
+ge25519_is_neutral_vartime(const ge25519 *p) {
+  static const unsigned char zero[32] = {0};
+  unsigned char point_buffer[3][32];
+
+  curve25519_contract(point_buffer[0], p->x);
+  curve25519_contract(point_buffer[1], p->y);
+  curve25519_contract(point_buffer[2], p->z);
+
+  memcpy(batch_point_buffer[1], point_buffer[1], 32);
+
+  return (memcmp(point_buffer[0], zero, 32) == 0)
+      && (memcmp(point_buffer[1], point_buffer[2], 32) == 0);
+}
 
 /*
   pack & unpack
@@ -186,6 +217,16 @@ ge25519_pack(unsigned char r[32], const ge25519 *p) {
   curve25519_contract(r, ty);
   curve25519_contract(parity, tx);
   r[31] ^= ((parity[0] & 1) << 7);
+}
+
+static int
+ge25519_pack_safe(unsigned char r[32], const ge25519 *p) {
+  if (ge25519_is_neutral_vartime(p))
+    return 0;
+
+  ge25519_pack(r, p);
+
+  return 1;
 }
 
 static int
@@ -238,6 +279,18 @@ ge25519_unpack_negative_vartime(ge25519 *r, const unsigned char p[32]) {
   return 1;
 }
 
+static int
+ge25519_unpack_vartime(ge25519 *r, const unsigned char p[32]) {
+  if (!ge25519_unpack_negative_vartime(r, p))
+    return 0;
+
+  ge25519_neg(r, r);
+
+  if (ge25519_is_neutral_vartime(r))
+    return 0;
+
+  return 1;
+}
 
 /*
   scalarmults

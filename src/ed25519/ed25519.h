@@ -141,7 +141,7 @@ bcrypto_ed25519_scalar_negate(
 );
 
 int
-bcrypto_ed25519_scalar_inverse(
+bcrypto_ed25519_scalar_invert(
   bcrypto_ed25519_scalar_t out,
   const bcrypto_ed25519_scalar_t sk
 );

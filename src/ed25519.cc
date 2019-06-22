@@ -230,7 +230,7 @@ NAN_METHOD(BED25519::ScalarInvert) {
 
   bcrypto_ed25519_scalar_t out;
 
-  if (!bcrypto_ed25519_scalar_inverse(out, key))
+  if (!bcrypto_ed25519_scalar_invert(out, key))
     return Nan::ThrowError("Invalid scalar.");
 
   return info.GetReturnValue().Set(

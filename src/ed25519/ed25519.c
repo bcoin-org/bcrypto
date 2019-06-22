@@ -24,44 +24,6 @@ bcrypto_ed25519_extsk(hash_512bits extsk, const bcrypto_ed25519_privkey_t sk) {
   extsk[31] |= 64;
 }
 
-DONNA_INLINE static void
-curve25519_set_word(bignum25519 n, unsigned long word) {
-  memset((void *)n, 0x00, sizeof(bignum25519));
-  n[0] = word;
-}
-
-DONNA_INLINE static void
-ge25519_neg(ge25519 *r, const ge25519 *p) {
-  curve25519_neg(r->x, p->x);
-  curve25519_neg(r->t, p->t);
-}
-
-static int
-ge25519_is_neutral_vartime(const ge25519 *p);
-
-DONNA_INLINE static int
-ge25519_unpack_vartime(ge25519 *r, const unsigned char p[32]) {
-  if (!ge25519_unpack_negative_vartime(r, p))
-    return 0;
-
-  ge25519_neg(r, r);
-
-  if (ge25519_is_neutral_vartime(r))
-    return 0;
-
-  return 1;
-}
-
-DONNA_INLINE static int
-ge25519_pack_safe(unsigned char r[32], const ge25519 *p) {
-  if (ge25519_is_neutral_vartime(p))
-    return 0;
-
-  ge25519_pack(r, p);
-
-  return 1;
-}
-
 static void
 bcrypto_ed25519_hprefix(
   bcrypto_ed25519_hash_t *hctx,
@@ -465,7 +427,7 @@ bcrypto_ed25519_scalar_negate(
 }
 
 int
-bcrypto_ed25519_scalar_inverse(
+bcrypto_ed25519_scalar_invert(
   bcrypto_ed25519_scalar_t out,
   const bcrypto_ed25519_scalar_t sk
 ) {

@@ -187,20 +187,6 @@ ge25519_multi_scalarmult_vartime(ge25519 *r, batch_heap *heap, size_t count) {
   ge25519_multi_scalarmult_vartime_final(r, &heap->points[max1], heap->scalars[max1]);
 }
 
-/* not actually used for anything other than testing */
-unsigned char batch_point_buffer[3][32];
-
-static int
-ge25519_is_neutral_vartime(const ge25519 *p) {
-  static const unsigned char zero[32] = {0};
-  unsigned char point_buffer[3][32];
-  curve25519_contract(point_buffer[0], p->x);
-  curve25519_contract(point_buffer[1], p->y);
-  curve25519_contract(point_buffer[2], p->z);
-  memcpy(batch_point_buffer[1], point_buffer[1], 32);
-  return (memcmp(point_buffer[0], zero, 32) == 0) && (memcmp(point_buffer[1], point_buffer[2], 32) == 0);
-}
-
 int
 bcrypto_ed25519_batch_verify(
   const unsigned char **m,
