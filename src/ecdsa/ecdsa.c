@@ -1109,9 +1109,9 @@ fail:
 }
 
 int
-bcrypto_ecdsa_privkey_inverse(bcrypto_ecdsa_t *ec,
-                              uint8_t *out,
-                              const uint8_t *priv) {
+bcrypto_ecdsa_privkey_invert(bcrypto_ecdsa_t *ec,
+                             uint8_t *out,
+                             const uint8_t *priv) {
   BIGNUM *scalar = NULL;
 
   scalar = BN_bin2bn(priv, ec->scalar_size, BN_secure_new());

@@ -180,9 +180,9 @@ bcrypto_ecdsa_privkey_negate(bcrypto_ecdsa_t *ec,
                              const uint8_t *priv);
 
 int
-bcrypto_ecdsa_privkey_inverse(bcrypto_ecdsa_t *ec,
-                              uint8_t *out,
-                              const uint8_t *priv);
+bcrypto_ecdsa_privkey_invert(bcrypto_ecdsa_t *ec,
+                             uint8_t *out,
+                             const uint8_t *priv);
 
 int
 bcrypto_ecdsa_pubkey_create(bcrypto_ecdsa_t *ec,

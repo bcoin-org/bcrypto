@@ -232,7 +232,7 @@ bcrypto_c448_error_t bcrypto_c448_ed448_scalar_negate(
             uint8_t out[BCRYPTO_C448_SCALAR_BYTES],
             const uint8_t scalar[BCRYPTO_C448_SCALAR_BYTES]);
 
-bcrypto_c448_error_t bcrypto_c448_ed448_scalar_inverse(
+bcrypto_c448_error_t bcrypto_c448_ed448_scalar_invert(
             uint8_t out[BCRYPTO_C448_SCALAR_BYTES],
             const uint8_t scalar[BCRYPTO_C448_SCALAR_BYTES]);
 

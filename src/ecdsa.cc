@@ -403,7 +403,7 @@ NAN_METHOD(BECDSA::PrivateKeyInvert) {
 
   uint8_t out[BCRYPTO_ECDSA_MAX_SCALAR_SIZE];
 
-  if (!bcrypto_ecdsa_privkey_inverse(&ec->ctx, out, priv))
+  if (!bcrypto_ecdsa_privkey_invert(&ec->ctx, out, priv))
     return Nan::ThrowError("Could not tweak private key.");
 
   return info.GetReturnValue().Set(

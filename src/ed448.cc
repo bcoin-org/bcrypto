@@ -241,7 +241,7 @@ NAN_METHOD(BED448::ScalarInvert) {
 
   uint8_t out[BCRYPTO_C448_SCALAR_BYTES];
 
-  if (!bcrypto_c448_ed448_scalar_inverse(out, key))
+  if (!bcrypto_c448_ed448_scalar_invert(out, key))
     return Nan::ThrowError("Invalid scalar.");
 
   return info.GetReturnValue().Set(

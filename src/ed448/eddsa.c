@@ -191,7 +191,7 @@ bcrypto_c448_error_t bcrypto_c448_ed448_scalar_negate(
   return BCRYPTO_C448_SUCCESS;
 }
 
-bcrypto_c448_error_t bcrypto_c448_ed448_scalar_inverse(
+bcrypto_c448_error_t bcrypto_c448_ed448_scalar_invert(
             uint8_t out[BCRYPTO_C448_SCALAR_BYTES],
             const uint8_t scalar[BCRYPTO_C448_SCALAR_BYTES]) {
   bcrypto_curve448_scalar_t scalar_scalar;
