@@ -110,8 +110,9 @@
       "<!(node -e \"require('nan')\")"
     ],
     "defines": [
+      "ENABLE_MODULE_ECDH=1",
       "ENABLE_MODULE_RECOVERY=1",
-      "ENABLE_MODULE_SCHNORRSIG=1"
+      "ENABLE_MODULE_SCHNORRLEG=1"
     ],
     "variables": {
       "conditions": [

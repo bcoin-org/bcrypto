@@ -59,8 +59,9 @@
 
 #include "secp256k1.h"
 #include "secp256k1/include/secp256k1.h"
+#include "secp256k1/include/secp256k1_ecdh.h"
 #include "secp256k1/include/secp256k1_recovery.h"
-#include "secp256k1/include/secp256k1_schnorrsig.h"
+#include "secp256k1/include/secp256k1_schnorrleg.h"
 #include "secp256k1/contrib/lax_der_privatekey_parsing.h"
 #include "secp256k1/contrib/lax_der_parsing.h"
 #include "secp256k1/src/util.h"
@@ -1432,79 +1433,25 @@ NAN_METHOD(BSecp256k1::RecoverDER) {
   info.GetReturnValue().Set(COPY_BUFFER(&output[0], output_length));
 }
 
-// from bitcoin/secp256k1
-#define ARG_CHECK(cond) do { \
-  if (EXPECT(!(cond), 0)) { \
-    secp256k1_callback_call(&ctx->illegal_callback, #cond); \
-    return 0; \
-  } \
-} while(0)
+static int
+ecdh_hash_function_raw(unsigned char *output,
+                       const unsigned char *x,
+                       const unsigned char *y,
+                       void *data) {
+  unsigned int flags = *((unsigned int *)data);
 
-static void default_illegal_callback_fn(const char* str, void* data) {
-  (void)data;
-  fprintf(stderr, "[libsecp256k1] illegal argument: %s\n", str);
-  abort();
-}
-
-static const secp256k1_callback default_illegal_callback = {
-  default_illegal_callback_fn,
-  NULL
-};
-
-static void default_error_callback_fn(const char* str, void* data) {
-  (void)data;
-  fprintf(stderr, "[libsecp256k1] internal consistency check failed: %s\n", str);
-  abort();
-}
-
-static const secp256k1_callback default_error_callback = {
-  default_error_callback_fn,
-  NULL
-};
-
-struct secp256k1_context_struct {
-  secp256k1_ecmult_context ecmult_ctx;
-  secp256k1_ecmult_gen_context ecmult_gen_ctx;
-  secp256k1_callback illegal_callback;
-  secp256k1_callback error_callback;
-};
-
-int secp256k1_pubkey_load(const secp256k1_context* ctx,
-                          secp256k1_ge* ge,
-                          const secp256k1_pubkey* pubkey) {
-  if (sizeof(secp256k1_ge_storage) == 64) {
-    /* When the secp256k1_ge_storage type is exactly 64 byte, use its
-     * representation inside secp256k1_pubkey, as conversion is very fast.
-     * Note that secp256k1_pubkey_save must use the same representation. */
-    secp256k1_ge_storage s;
-    memcpy(&s, &pubkey->data[0], 64);
-    secp256k1_ge_from_storage(ge, &s);
+  if (flags == SECP256K1_EC_COMPRESSED) {
+    output[0] = 0x02 | (y[31] & 1);
+    memcpy(&output[1], &x[0], 32);
   } else {
-    /* Otherwise, fall back to 32-byte big endian for X and Y. */
-    secp256k1_fe x, y;
-    secp256k1_fe_set_b32(&x, pubkey->data);
-    secp256k1_fe_set_b32(&y, pubkey->data + 32);
-    secp256k1_ge_set_xy(ge, &x, &y);
+    output[0] = 0x04;
+    memcpy(&output[1], &x[0], 32);
+    memcpy(&output[33], &y[0], 32);
   }
-  ARG_CHECK(!secp256k1_fe_is_zero(&ge->x));
+
   return 1;
 }
 
-void secp256k1_pubkey_save(secp256k1_pubkey* pubkey, secp256k1_ge* ge) {
-  if (sizeof(secp256k1_ge_storage) == 64) {
-    secp256k1_ge_storage s;
-    secp256k1_ge_to_storage(&s, ge);
-    memcpy(&pubkey->data[0], &s, 64);
-  } else {
-    VERIFY_CHECK(!secp256k1_ge_is_infinity(ge));
-    secp256k1_fe_normalize_var(&ge->x);
-    secp256k1_fe_normalize_var(&ge->y);
-    secp256k1_fe_get_b32(pubkey->data, &ge->x);
-    secp256k1_fe_get_b32(pubkey->data + 32, &ge->y);
-  }
-}
-
-// bindings
 NAN_METHOD(BSecp256k1::Derive) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
@@ -1534,30 +1481,18 @@ NAN_METHOD(BSecp256k1::Derive) {
   UPDATE_COMPRESSED_VALUE(flags, info[2], SECP256K1_EC_COMPRESSED,
                                           SECP256K1_EC_UNCOMPRESSED);
 
-  secp256k1_scalar s;
-  int overflow = 0;
-
-  secp256k1_scalar_set_b32(&s, private_key, &overflow);
-
-  if (overflow || secp256k1_scalar_is_zero(&s)) {
-    secp256k1_scalar_clear(&s);
-    return Nan::ThrowError(ECDH_FAIL);
-  }
-
-  secp256k1_ge pt;
-  secp256k1_gej res;
   unsigned char output[65];
   size_t output_length = 65;
 
-  secp256k1_pubkey_load(secp->ctx, &pt, &public_key);
-  secp256k1_ecmult_const(&res, &pt, &s);
-  secp256k1_scalar_clear(&s);
+  secp256k1_ecdh_hash_function hashfp = ecdh_hash_function_raw;
 
-  secp256k1_ge_set_gej(&pt, &res);
-  secp256k1_pubkey_save(&public_key, &pt);
+  if (!secp256k1_ecdh(secp->ctx, &output[0],
+                      &public_key, private_key, hashfp, &flags)) {
+    return Nan::ThrowError(ECDH_FAIL);
+  }
 
-  secp256k1_ec_pubkey_serialize(secp->ctx, &output[0], &output_length,
-                                &public_key, flags);
+  if (output[0] != 0x04)
+    output_length = 33;
 
   info.GetReturnValue().Set(COPY_BUFFER(&output[0], output_length));
 }
@@ -1580,17 +1515,17 @@ NAN_METHOD(BSecp256k1::SchnorrSign) {
     (const unsigned char *)node::Buffer::Data(private_buffer);
 
   secp256k1_nonce_function noncefn = NULL;
-  void* data = NULL;
-  secp256k1_schnorrsig sig;
+  void *data = NULL;
+  secp256k1_schnorrleg sig;
 
-  if (secp256k1_schnorrsig_sign(secp->ctx, &sig, NULL, msg32,
+  if (secp256k1_schnorrleg_sign(secp->ctx, &sig, NULL, msg32,
                                 private_key, noncefn, data) == 0) {
     return Nan::ThrowError(ECDSA_SIGN_FAIL);
   }
 
   unsigned char output[64];
 
-  secp256k1_schnorrsig_serialize(secp->ctx, &output[0], &sig);
+  secp256k1_schnorrleg_serialize(secp->ctx, &output[0], &sig);
 
   info.GetReturnValue().Set(COPY_BUFFER(&output[0], 64));
 }
@@ -1620,8 +1555,8 @@ NAN_METHOD(BSecp256k1::SchnorrVerify) {
     (unsigned char *)node::Buffer::Data(public_key_buffer);
   size_t public_key_input_length = node::Buffer::Length(public_key_buffer);
 
-  secp256k1_schnorrsig sig;
-  if (secp256k1_schnorrsig_parse(secp->ctx, &sig, sig_input) == 0) {
+  secp256k1_schnorrleg sig;
+  if (secp256k1_schnorrleg_parse(secp->ctx, &sig, sig_input) == 0) {
     return Nan::ThrowError(ECDSA_SIGNATURE_PARSE_FAIL);
   }
 
@@ -1631,7 +1566,7 @@ NAN_METHOD(BSecp256k1::SchnorrVerify) {
     return Nan::ThrowError(EC_PUBLIC_KEY_PARSE_FAIL);
   }
 
-  int result = secp256k1_schnorrsig_verify(secp->ctx, &sig, msg32, &public_key);
+  int result = secp256k1_schnorrleg_verify(secp->ctx, &sig, msg32, &public_key);
 
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
@@ -1655,8 +1590,8 @@ NAN_METHOD(BSecp256k1::SchnorrVerifyBatch) {
   if (msgs == NULL)
     return Nan::ThrowError("allocation failed");
 
-  secp256k1_schnorrsig *sigs =
-    (secp256k1_schnorrsig *)malloc(len * sizeof(secp256k1_schnorrsig));
+  secp256k1_schnorrleg *sigs =
+    (secp256k1_schnorrleg *)malloc(len * sizeof(secp256k1_schnorrleg));
 
   if (sigs == NULL) {
     free(msgs);
@@ -1736,7 +1671,7 @@ NAN_METHOD(BSecp256k1::SchnorrVerifyBatch) {
 
     msgs[i] = msg;
 
-    if (secp256k1_schnorrsig_parse(secp->ctx, &sigs[i], sig) == 0) {
+    if (secp256k1_schnorrleg_parse(secp->ctx, &sigs[i], sig) == 0) {
       FREE_BATCH;
       return Nan::ThrowError(ECDSA_SIGNATURE_PARSE_FAIL);
     }
@@ -1756,14 +1691,14 @@ NAN_METHOD(BSecp256k1::SchnorrVerifyBatch) {
   //   secp256k1_scratch_space_create(secp->ctx, max_size);
   // secp256k1_scratch_space_destroy(scratch);
   //
-  // int result = secp256k1_schnorrsig_verify_batch(secp->ctx, NULL,
+  // int result = secp256k1_schnorrleg_verify_batch(secp->ctx, NULL,
   //                                                sigs, msgs, pubs, len);
 
   int result = 1;
   size_t i = 0;
 
   for (; i < len; i++) {
-    if (secp256k1_schnorrsig_verify(secp->ctx, &sigs[i],
+    if (secp256k1_schnorrleg_verify(secp->ctx, &sigs[i],
                                     msgs[i], &pubs[i]) == 0) {
       result = 0;
       break;

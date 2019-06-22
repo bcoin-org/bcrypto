@@ -449,7 +449,7 @@ secp256k1_pubkey_from_hash(secp256k1_pubkey *pubkey,
 }
 
 static void
-secp256k1_fe_random(secp256k1_fe *fe, secp256k1_rfc6979_hmac_sha256_t *rng) {
+secp256k1_fe_random(secp256k1_fe *fe, secp256k1_rfc6979_hmac_sha256 *rng) {
   unsigned char raw[32];
 
   for (;;) {
@@ -461,7 +461,7 @@ secp256k1_fe_random(secp256k1_fe *fe, secp256k1_rfc6979_hmac_sha256_t *rng) {
 }
 
 static unsigned int
-secp256k1_random_int(secp256k1_rfc6979_hmac_sha256_t *rng) {
+secp256k1_random_int(secp256k1_rfc6979_hmac_sha256 *rng) {
   unsigned char raw[2];
   secp256k1_rfc6979_hmac_sha256_generate(rng, raw, 2);
   return ((unsigned int)raw[0] << 8) | (unsigned int)raw[1];
@@ -471,7 +471,7 @@ static int
 secp256k1_pubkey_to_hash(unsigned char *bytes64,
                          const secp256k1_pubkey *pubkey,
                          const unsigned char *seed64) {
-  secp256k1_rfc6979_hmac_sha256_t rng;
+  secp256k1_rfc6979_hmac_sha256 rng;
   secp256k1_ge p, p1, p2;
   secp256k1_gej j, r;
   secp256k1_fe u1, u2;
