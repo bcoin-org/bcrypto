@@ -185,9 +185,6 @@ ge25519_neg(ge25519 *r, const ge25519 *p) {
   infinity
 */
 
-/* not actually used for anything other than testing */
-unsigned char batch_point_buffer[3][32];
-
 static int
 ge25519_is_neutral_vartime(const ge25519 *p) {
   static const unsigned char zero[32] = {0};
@@ -196,8 +193,6 @@ ge25519_is_neutral_vartime(const ge25519 *p) {
   curve25519_contract(point_buffer[0], p->x);
   curve25519_contract(point_buffer[1], p->y);
   curve25519_contract(point_buffer[2], p->z);
-
-  memcpy(batch_point_buffer[1], point_buffer[1], 32);
 
   return (memcmp(point_buffer[0], zero, 32) == 0)
       && (memcmp(point_buffer[1], point_buffer[2], 32) == 0);
@@ -453,4 +448,3 @@ ge25519_scalarmult_base_niels(ge25519 *r, const uint8_t basepoint_table[256][96]
     ge25519_nielsadd2(r, &t);
   }
 }
-
