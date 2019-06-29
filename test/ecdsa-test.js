@@ -13,6 +13,7 @@ const SHA224 = require('../lib/sha224');
 const SHA256 = require('../lib/sha256');
 const SHA384 = require('../lib/sha384');
 const SHA512 = require('../lib/sha512');
+const {isStrictDER} = require('./util/bip66');
 
 const curves = [
   p192,
@@ -27,257 +28,284 @@ describe('ECDSA', function() {
   this.timeout(15000);
 
   for (const ec of curves) {
-    it(`should generate keypair and sign DER (${ec.id})`, () => {
-      const msg = random.randomBytes(ec.size);
-      const priv = ec.privateKeyGenerate();
-      const pub = ec.publicKeyCreate(priv);
-      const pubu = ec.publicKeyConvert(pub, false);
+    describe(ec.id, () => {
+      it(`should generate keypair and sign DER (${ec.id})`, () => {
+        const msg = random.randomBytes(ec.size);
+        const priv = ec.privateKeyGenerate();
+        const pub = ec.publicKeyCreate(priv);
+        const pubu = ec.publicKeyConvert(pub, false);
 
-      const sig = ec.signDER(msg, priv);
-      assert(ec.isLowDER(sig));
-      assert(ec.verifyDER(msg, sig, pub));
-      assert(ec.verifyDER(msg, sig, pubu));
-      msg[0] ^= 1;
-      assert(!ec.verifyDER(msg, sig, pub));
-      assert(!ec.verifyDER(msg, sig, pubu));
-      msg[0] ^= 1;
-      assert(ec.verifyDER(msg, sig, pub));
-      assert(ec.verifyDER(msg, sig, pubu));
-      pub[2] ^= 1;
-      assert(!ec.verifyDER(msg, sig, pub));
-      assert(ec.verifyDER(msg, sig, pubu));
-      pub[2] ^= 1;
+        const sig = ec.signDER(msg, priv);
 
-      for (const c of [false, true]) {
-        assert.bufferEqual(
-          ec.privateKeyImport(ec.privateKeyExport(priv, c)),
-          priv);
+        if (ec.size <= 32)
+          assert(isStrictDER(sig));
 
-        assert.bufferEqual(
-          ec.privateKeyImportPKCS8(ec.privateKeyExportPKCS8(priv, c)),
-          priv);
+        assert(ec.isLowDER(sig));
+        assert(ec.verifyDER(msg, sig, pub));
+        assert(ec.verifyDER(msg, sig, pubu));
 
-        assert.bufferEqual(
-          ec.privateKeyImportJWK(ec.privateKeyExportJWK(priv)),
-          priv);
+        msg[0] ^= 1;
 
-        for (const p of [pub, pubu]) {
+        assert(!ec.verifyDER(msg, sig, pub));
+        assert(!ec.verifyDER(msg, sig, pubu));
+
+        msg[0] ^= 1;
+
+        assert(ec.verifyDER(msg, sig, pub));
+        assert(ec.verifyDER(msg, sig, pubu));
+
+        pub[2] ^= 1;
+
+        assert(!ec.verifyDER(msg, sig, pub));
+        assert(ec.verifyDER(msg, sig, pubu));
+
+        pub[2] ^= 1;
+
+        for (const c of [false, true]) {
           assert.bufferEqual(
-            ec.publicKeyImport(ec.publicKeyExport(p, c), c),
-            c ? pub : pubu);
-
-          assert.bufferEqual(
-            ec.publicKeyImportSPKI(ec.publicKeyExportSPKI(p, c), c),
-            c ? pub : pubu);
+            ec.privateKeyImport(ec.privateKeyExport(priv, c)),
+            priv);
 
           assert.bufferEqual(
-            ec.publicKeyImportJWK(ec.publicKeyExportJWK(p), c),
-            c ? pub : pubu);
+            ec.privateKeyImportPKCS8(ec.privateKeyExportPKCS8(priv, c)),
+            priv);
+
+          assert.bufferEqual(
+            ec.privateKeyImportJWK(ec.privateKeyExportJWK(priv)),
+            priv);
+
+          for (const p of [pub, pubu]) {
+            assert.bufferEqual(
+              ec.publicKeyImport(ec.publicKeyExport(p, c), c),
+              c ? pub : pubu);
+
+            assert.bufferEqual(
+              ec.publicKeyImportSPKI(ec.publicKeyExportSPKI(p, c), c),
+              c ? pub : pubu);
+
+            assert.bufferEqual(
+              ec.publicKeyImportJWK(ec.publicKeyExportJWK(p), c),
+              c ? pub : pubu);
+          }
         }
-      }
-    });
+      });
 
-    it(`should generate keypair and sign RS (${ec.id})`, () => {
-      const msg = random.randomBytes(ec.size);
-      const priv = ec.privateKeyGenerate();
-      const pub = ec.publicKeyCreate(priv);
-      const pubu = ec.publicKeyConvert(pub, false);
+      it(`should generate keypair and sign RS (${ec.id})`, () => {
+        const msg = random.randomBytes(ec.size);
+        const priv = ec.privateKeyGenerate();
+        const pub = ec.publicKeyCreate(priv);
+        const pubu = ec.publicKeyConvert(pub, false);
 
-      const sig = ec.sign(msg, priv);
-      assert(ec.isLowS(sig));
-      assert(ec.verify(msg, sig, pub));
-      assert(ec.verify(msg, sig, pubu));
-      sig[0] ^= 1;
-      assert(!ec.verify(msg, sig, pub));
-      assert(!ec.verify(msg, sig, pubu));
-      sig[0] ^= 1;
-      assert(ec.verify(msg, sig, pub));
-      assert(ec.verify(msg, sig, pubu));
-      pub[2] ^= 1;
-      assert(!ec.verify(msg, sig, pub));
-      assert(ec.verify(msg, sig, pubu));
-    });
+        const sig = ec.sign(msg, priv);
 
-    it(`should fail with padded key (${ec.id})`, () => {
-      const msg = random.randomBytes(ec.size);
-      const priv = ec.privateKeyGenerate();
-      const pub = ec.publicKeyCreate(priv);
-      const pubu = ec.publicKeyConvert(pub, false);
+        assert(ec.isLowS(sig));
+        assert(ec.verify(msg, sig, pub));
+        assert(ec.verify(msg, sig, pubu));
 
-      const sig = ec.sign(msg, priv);
-      assert(ec.isLowS(sig));
-      assert(ec.verify(msg, sig, pub));
-      assert(ec.verify(msg, sig, pubu));
+        sig[0] ^= 1;
 
-      const pad = (a, b) => Buffer.concat([a, Buffer.from([b])]);
+        assert(!ec.verify(msg, sig, pub));
+        assert(!ec.verify(msg, sig, pubu));
 
-      assert(!ec.verify(msg, sig, pad(pub, 0x00)));
-      assert(!ec.verify(msg, sig, pad(pubu, 0x00)));
-      assert(!ec.verify(msg, sig, pad(pub, 0x01)));
-      assert(!ec.verify(msg, sig, pad(pubu, 0x01)));
-      assert(!ec.verify(msg, sig, pad(pub, 0xff)));
-      assert(!ec.verify(msg, sig, pad(pubu, 0xff)));
+        sig[0] ^= 1;
 
-      if (pub[0] === 0x02)
-        pubu[0] = 0x06;
-      else
-        pubu[0] = 0x07;
+        assert(ec.verify(msg, sig, pub));
+        assert(ec.verify(msg, sig, pubu));
 
-      assert(ec.verify(msg, sig, pubu));
+        pub[2] ^= 1;
 
-      if (pub[0] === 0x02)
-        pubu[0] = 0x07;
-      else
-        pubu[0] = 0x06;
+        assert(!ec.verify(msg, sig, pub));
+        assert(ec.verify(msg, sig, pubu));
+      });
 
-      assert(!ec.verify(msg, sig, pubu));
+      it(`should fail with padded key (${ec.id})`, () => {
+        const msg = random.randomBytes(ec.size);
+        const priv = ec.privateKeyGenerate();
+        const pub = ec.publicKeyCreate(priv);
+        const pubu = ec.publicKeyConvert(pub, false);
 
-      const zero = Buffer.alloc(0);
+        const sig = ec.sign(msg, priv);
+        assert(ec.isLowS(sig));
+        assert(ec.verify(msg, sig, pub));
+        assert(ec.verify(msg, sig, pubu));
 
-      assert(!ec.verify(zero, sig, pub));
-      assert(!ec.verify(msg, zero, pub));
-      assert(!ec.verify(msg, sig, zero));
-    });
+        const pad = (a, b) => Buffer.concat([a, Buffer.from([b])]);
 
-    it(`should do additive tweak (${ec.id})`, () => {
-      const priv = ec.privateKeyGenerate();
-      const pub = ec.publicKeyCreate(priv);
-      const tweak = random.randomBytes(ec.size);
+        assert(!ec.verify(msg, sig, pad(pub, 0x00)));
+        assert(!ec.verify(msg, sig, pad(pubu, 0x00)));
+        assert(!ec.verify(msg, sig, pad(pub, 0x01)));
+        assert(!ec.verify(msg, sig, pad(pubu, 0x01)));
+        assert(!ec.verify(msg, sig, pad(pub, 0xff)));
+        assert(!ec.verify(msg, sig, pad(pubu, 0xff)));
 
-      tweak[0] = 0x00;
+        pubu[0] = 0x06 | (pub[0] & 1);
 
-      const tpriv = ec.privateKeyTweakAdd(priv, tweak);
-      const tpub = ec.publicKeyTweakAdd(pub, tweak);
-      const zpub = ec.publicKeyCreate(tpriv);
+        assert(ec.verify(msg, sig, pubu));
 
-      assert.bufferEqual(tpub, zpub);
+        pubu[0] = 0x06 | (pub[0] ^ 1);
 
-      const msg = random.randomBytes(ec.size);
+        assert(!ec.verify(msg, sig, pubu));
 
-      const sig = ec.sign(msg, tpriv);
-      assert(ec.isLowS(sig));
-      assert(ec.verify(msg, sig, tpub));
+        const zero = Buffer.alloc(0);
 
-      const der = ec.signDER(msg, tpriv);
-      assert(ec.isLowDER(der));
-      assert(ec.verifyDER(msg, der, tpub));
+        assert(!ec.verify(zero, sig, pub));
+        assert(!ec.verify(msg, zero, pub));
+        assert(!ec.verify(msg, sig, zero));
+      });
 
-      const parent = ec.privateKeyTweakAdd(tpriv, ec.privateKeyNegate(tweak));
-      assert.bufferEqual(parent, priv);
+      it(`should do additive tweak (${ec.id})`, () => {
+        const priv = ec.privateKeyGenerate();
+        const pub = ec.publicKeyCreate(priv);
+        const tweak = random.randomBytes(ec.size);
 
-      const tweakPub = ec.publicKeyCreate(tweak);
-      const parentPub = ec.publicKeyAdd(tpub, ec.publicKeyNegate(tweakPub));
-      assert.bufferEqual(parentPub, pub);
-    });
+        tweak[0] = 0x00;
 
-    it(`should do multiplicative tweak (${ec.id})`, () => {
-      const priv = ec.privateKeyGenerate();
-      const pub = ec.publicKeyCreate(priv);
-      const tweak = random.randomBytes(ec.size);
+        const tpriv = ec.privateKeyTweakAdd(priv, tweak);
+        const tpub = ec.publicKeyTweakAdd(pub, tweak);
+        const zpub = ec.publicKeyCreate(tpriv);
 
-      tweak[0] = 0x00;
+        assert.bufferEqual(tpub, zpub);
 
-      const tpriv = ec.privateKeyTweakMul(priv, tweak);
-      const tpub = ec.publicKeyTweakMul(pub, tweak);
-      const zpub = ec.publicKeyCreate(tpriv);
+        const msg = random.randomBytes(ec.size);
 
-      assert.bufferEqual(tpub, zpub);
+        const sig = ec.sign(msg, tpriv);
 
-      const msg = random.randomBytes(ec.size);
+        assert(ec.isLowS(sig));
+        assert(ec.verify(msg, sig, tpub));
 
-      const sig = ec.sign(msg, tpriv);
-      assert(ec.isLowS(sig));
-      assert(ec.verify(msg, sig, tpub));
+        const der = ec.signDER(msg, tpriv);
 
-      const der = ec.signDER(msg, tpriv);
-      assert(ec.isLowDER(der));
-      assert(ec.verifyDER(msg, der, tpub));
+        if (ec.size <= 32)
+          assert(isStrictDER(der));
 
-      const parent = ec.privateKeyTweakMul(tpriv, ec.privateKeyInvert(tweak));
-      assert.bufferEqual(parent, priv);
-    });
+        assert(ec.isLowDER(der));
+        assert(ec.verifyDER(msg, der, tpub));
 
-    it(`should modulo key (${ec.id})`, () => {
-      const key0 = Buffer.alloc(0);
-      const mod0 = ec.privateKeyReduce(key0);
-      const exp0 = Buffer.alloc(ec.size, 0x00);
+        const parent = ec.privateKeyTweakAdd(tpriv, ec.privateKeyNegate(tweak));
+        assert.bufferEqual(parent, priv);
 
-      assert.bufferEqual(mod0, exp0);
+        const tweakPub = ec.publicKeyCreate(tweak);
+        const parentPub = ec.publicKeyAdd(tpub, ec.publicKeyNegate(tweakPub));
+        assert.bufferEqual(parentPub, pub);
+      });
 
-      const key1 = Buffer.alloc(1, 0x0a);
-      const mod1 = ec.privateKeyReduce(key1);
-      const exp1 = Buffer.alloc(ec.size, 0x00);
+      it(`should do multiplicative tweak (${ec.id})`, () => {
+        const priv = ec.privateKeyGenerate();
+        const pub = ec.publicKeyCreate(priv);
+        const tweak = random.randomBytes(ec.size);
 
-      exp1[ec.size - 1] = 0x0a;
-      assert.bufferEqual(mod1, exp1);
+        tweak[0] = 0x00;
 
-      const key2 = Buffer.alloc(ec.size, 0xff);
-      const mod2 = ec.privateKeyReduce(key2);
+        const tpriv = ec.privateKeyTweakMul(priv, tweak);
+        const tpub = ec.publicKeyTweakMul(pub, tweak);
+        const zpub = ec.publicKeyCreate(tpriv);
 
-      assert(ec.privateKeyVerify(mod2));
+        assert.bufferEqual(tpub, zpub);
 
-      const key3 = Buffer.alloc(ec.size + 1, 0xff);
+        const msg = random.randomBytes(ec.size);
 
-      key3[ec.size] = 0x0a;
+        const sig = ec.sign(msg, tpriv);
 
-      const mod3 = ec.privateKeyReduce(key3);
+        assert(ec.isLowS(sig));
+        assert(ec.verify(msg, sig, tpub));
 
-      assert.bufferEqual(mod3, mod2);
-    });
+        const der = ec.signDER(msg, tpriv);
 
-    it(`should do ECDH (${ec.id})`, () => {
-      const alicePriv = ec.privateKeyGenerate();
-      const alicePub = ec.publicKeyCreate(alicePriv);
-      const bobPriv = ec.privateKeyGenerate();
-      const bobPub = ec.publicKeyCreate(bobPriv);
+        if (ec.size <= 32)
+          assert(isStrictDER(der));
 
-      const aliceSecret = ec.derive(bobPub, alicePriv);
-      const bobSecret = ec.derive(alicePub, bobPriv);
+        assert(ec.isLowDER(der));
+        assert(ec.verifyDER(msg, der, tpub));
 
-      assert.bufferEqual(aliceSecret, bobSecret);
-    });
+        const parent = ec.privateKeyTweakMul(tpriv, ec.privateKeyInvert(tweak));
+        assert.bufferEqual(parent, priv);
+      });
 
-    it(`should generate keypair, sign DER and recover (${ec.id})`, () => {
-      const msg = random.randomBytes(ec.size);
-      const priv = ec.privateKeyGenerate();
-      const pub = ec.publicKeyCreate(priv);
-      const pubu = ec.publicKeyConvert(pub, false);
+      it(`should modulo key (${ec.id})`, () => {
+        const key0 = Buffer.alloc(0);
+        const mod0 = ec.privateKeyReduce(key0);
+        const exp0 = Buffer.alloc(ec.size, 0x00);
 
-      const [
-        signature,
-        recovery
-      ] = ec.signRecoverableDER(msg, priv);
+        assert.bufferEqual(mod0, exp0);
 
-      assert(ec.verifyDER(msg, signature, pub));
-      assert(ec.verifyDER(msg, signature, pubu));
+        const key1 = Buffer.alloc(1, 0x0a);
+        const mod1 = ec.privateKeyReduce(key1);
+        const exp1 = Buffer.alloc(ec.size, 0x00);
 
-      const rpub = ec.recoverDER(msg, signature, recovery, true);
-      const rpubu = ec.recoverDER(msg, signature, recovery, false);
+        exp1[ec.size - 1] = 0x0a;
+        assert.bufferEqual(mod1, exp1);
 
-      assert.bufferEqual(rpub, pub);
-      assert.bufferEqual(rpubu, pubu);
-    });
+        const key2 = Buffer.alloc(ec.size, 0xff);
+        const mod2 = ec.privateKeyReduce(key2);
 
-    it(`should test serialization formats (${ec.id})`, () => {
-      const priv = ec.privateKeyGenerate();
-      const pub = ec.publicKeyCreate(priv);
-      const rawPriv = ec.privateKeyExport(priv);
-      const rawPub = ec.publicKeyExport(pub);
+        assert(ec.privateKeyVerify(mod2));
 
-      assert.bufferEqual(ec.privateKeyImport(rawPriv), priv);
-      assert.bufferEqual(ec.publicKeyImport(rawPub), pub);
+        const key3 = Buffer.alloc(ec.size + 1, 0xff);
 
-      const jsonPriv = ec.privateKeyExportJWK(priv);
-      const jsonPub = ec.publicKeyExportJWK(pub);
+        key3[ec.size] = 0x0a;
 
-      assert.bufferEqual(ec.privateKeyImportJWK(jsonPriv), priv);
-      assert.bufferEqual(ec.publicKeyImportJWK(jsonPub), pub);
+        const mod3 = ec.privateKeyReduce(key3);
 
-      const asnPriv = ec.privateKeyExportPKCS8(priv);
-      const asnPub = ec.publicKeyExportSPKI(pub);
+        assert.bufferEqual(mod3, mod2);
+      });
 
-      assert.bufferEqual(ec.privateKeyImportPKCS8(asnPriv), priv);
-      assert.bufferEqual(ec.publicKeyImportSPKI(asnPub), pub);
+      it(`should do ECDH (${ec.id})`, () => {
+        const alicePriv = ec.privateKeyGenerate();
+        const alicePub = ec.publicKeyCreate(alicePriv);
+        const bobPriv = ec.privateKeyGenerate();
+        const bobPub = ec.publicKeyCreate(bobPriv);
+
+        const aliceSecret = ec.derive(bobPub, alicePriv);
+        const bobSecret = ec.derive(alicePub, bobPriv);
+
+        assert.bufferEqual(aliceSecret, bobSecret);
+      });
+
+      it(`should generate keypair, sign DER and recover (${ec.id})`, () => {
+        const msg = random.randomBytes(ec.size);
+        const priv = ec.privateKeyGenerate();
+        const pub = ec.publicKeyCreate(priv);
+        const pubu = ec.publicKeyConvert(pub, false);
+
+        const [
+          signature,
+          recovery
+        ] = ec.signRecoverableDER(msg, priv);
+
+        if (ec.size <= 32)
+          assert(isStrictDER(signature));
+
+        assert(ec.verifyDER(msg, signature, pub));
+        assert(ec.verifyDER(msg, signature, pubu));
+
+        const rpub = ec.recoverDER(msg, signature, recovery, true);
+        const rpubu = ec.recoverDER(msg, signature, recovery, false);
+
+        assert.bufferEqual(rpub, pub);
+        assert.bufferEqual(rpubu, pubu);
+      });
+
+      it(`should test serialization formats (${ec.id})`, () => {
+        const priv = ec.privateKeyGenerate();
+        const pub = ec.publicKeyCreate(priv);
+        const rawPriv = ec.privateKeyExport(priv);
+        const rawPub = ec.publicKeyExport(pub);
+
+        assert.bufferEqual(ec.privateKeyImport(rawPriv), priv);
+        assert.bufferEqual(ec.publicKeyImport(rawPub), pub);
+
+        const jsonPriv = ec.privateKeyExportJWK(priv);
+        const jsonPub = ec.publicKeyExportJWK(pub);
+
+        assert.bufferEqual(ec.privateKeyImportJWK(jsonPriv), priv);
+        assert.bufferEqual(ec.publicKeyImportJWK(jsonPub), pub);
+
+        const asnPriv = ec.privateKeyExportPKCS8(priv);
+        const asnPub = ec.publicKeyExportSPKI(pub);
+
+        assert.bufferEqual(ec.privateKeyImportPKCS8(asnPriv), priv);
+        assert.bufferEqual(ec.publicKeyImportSPKI(asnPub), pub);
+      });
     });
   }
 
@@ -294,9 +322,9 @@ describe('ECDSA', function() {
       for (const c of opt.cases) {
         const hash = c.hash;
         const preimage = Buffer.from(c.message, 'binary');
-        const cr = Buffer.from(c.r, 'hex');
-        const cs = Buffer.from(c.s, 'hex');
-        const sig = Buffer.concat([cr, cs]);
+        const r = Buffer.from(c.r, 'hex');
+        const s = Buffer.from(c.s, 'hex');
+        const sig = Buffer.concat([r, s]);
 
         const desc = `should not fail on "${opt.name}" `
                    + `and hash ${hash.id} on "${c.message}"`;
@@ -304,6 +332,11 @@ describe('ECDSA', function() {
         it(desc, () => {
           const msg = hash.digest(preimage);
           const sig2 = curve.sign(msg, key);
+
+          if (!c.custom) {
+            if (curve.native === 0 || curve === secp256k1)
+              assert.bufferEqual(sig2, curve.signatureNormalize(sig));
+          }
 
           assert(curve.isLowS(sig2));
           assert(curve.publicKeyVerify(pub), 'Invalid public key');
@@ -628,6 +661,9 @@ describe('ECDSA', function() {
         });
 
         it(`should check signature (${i}) (${curve.id})`, () => {
+          if (curve.size <= 32)
+            assert(isStrictDER(der));
+
           assert(curve.isLowS(sig));
           assert(curve.isLowDER(der));
           assert(curve.signatureExport(sig), der);
@@ -652,6 +688,11 @@ describe('ECDSA', function() {
           const [sig3, param2] = curve.signRecoverable(msg, priv);
           const der2 = curve.signDER(msg, priv);
           const [der3, param3] = curve.signRecoverableDER(msg, priv);
+
+          if (curve.size <= 32) {
+            assert(isStrictDER(der2));
+            assert(isStrictDER(der3));
+          }
 
           if (curve.native === 0 || curve === secp256k1) {
             assert.bufferEqual(sig2, sig);
@@ -701,6 +742,36 @@ describe('ECDSA', function() {
 
           assert(curve.verify(msg, sig, pub));
           assert(curve.verifyDER(msg, der, pub));
+        });
+
+        it(`should sign and verify schnorr (${i}) (${curve.id})`, () => {
+          if (curve.id === 'P224')
+            this.skip();
+
+          const pubu = curve.publicKeyConvert(pub, false);
+          const msg = Buffer.alloc(32, 0xaa);
+          const sig = curve.schnorrSign(msg, priv);
+
+          assert(curve.schnorrVerify(msg, sig, pub));
+          assert(curve.schnorrVerify(msg, sig, pubu));
+          assert(curve.schnorrVerifyBatch([]));
+          assert(curve.schnorrVerifyBatch([[msg, sig, pub]]));
+
+          msg[0] ^= 1;
+
+          assert(!curve.schnorrVerify(msg, sig, pub));
+          assert(!curve.schnorrVerifyBatch([[msg, sig, pub]]));
+
+          msg[0] ^= 1;
+          sig[0] ^= 1;
+
+          assert(!curve.schnorrVerify(msg, sig, pub));
+          assert(!curve.schnorrVerifyBatch([[msg, sig, pub]]));
+
+          sig[0] ^= 1;
+
+          assert(curve.schnorrVerify(msg, sig, pub));
+          assert(curve.schnorrVerifyBatch([[msg, sig, pub]]));
         });
       }
     }
@@ -797,6 +868,10 @@ describe('ECDSA', function() {
         const sig = Buffer.from(vector.sig, 'hex');
 
         const actual = curve.verifyDER(msg, sig, key);
+
+        if (curve.size <= 32)
+          assert(isStrictDER(sig));
+
         assert.strictEqual(actual, vector.result);
       });
     }
@@ -819,6 +894,9 @@ describe('ECDSA', function() {
       const msg = Buffer.from(lax.msg, 'hex');
       const sig = Buffer.from(lax.sig, 'hex');
       const pub = Buffer.from(lax.pub, 'hex');
+
+      assert(!isStrictDER(sig));
+      assert(secp256k1.isLowDER(sig));
 
       assert.strictEqual(secp256k1.verifyDER(msg, sig, pub), true);
     });
@@ -884,6 +962,7 @@ describe('ECDSA', function() {
         + '54e1c258c2981cdfba5df1f46661fb6541c44f77ca0092f3600331abfffb1251',
         'hex');
 
+      assert(isStrictDER(der));
       assert(!secp256k1.isLowDER(der));
       assert(!secp256k1.isLowS(hi));
       assert.bufferEqual(secp256k1.signatureExport(hi), der);
