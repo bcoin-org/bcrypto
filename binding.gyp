@@ -175,14 +175,14 @@
         "include_dirs": [
           "<(openssl_root)/include"
         ],
-	"msbuild_settings": {
-	  'ClCompile': {
-	    'ObjectFileName': '$(IntDir)/%(Directory)/%(Filename)',
-	  },
-	  "Link": {
-	    "ImageHasSafeExceptionHandlers": "false"
-	  }
-	},
+        "msbuild_settings": {
+          "ClCompile": {
+            "ObjectFileName": "$(IntDir)/%(Directory)/%(Filename)",
+          },
+          "Link": {
+            "ImageHasSafeExceptionHandlers": "false"
+          }
+        }
       }, {
         "include_dirs": [
           "<(node_root_dir)/deps/openssl/openssl/include"
