@@ -292,7 +292,7 @@ bcrypto_schnorr_verify(int type,
                        size_t key_len);
 
 int
-bcrypto_schnorr_batch_verify(int type,
+bcrypto_schnorr_verify_batch(int type,
                              const uint8_t **msgs,
                              const uint8_t **sigs,
                              const uint8_t **keys,

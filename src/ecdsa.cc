@@ -1404,7 +1404,7 @@ NAN_METHOD(BECDSA::SchnorrVerifyBatch) {
     pub_lens[i] = pub_len;
   }
 
-  int result = bcrypto_schnorr_batch_verify(type, msgs, sigs,
+  int result = bcrypto_schnorr_verify_batch(type, msgs, sigs,
                                             pubs, pub_lens, len);
 
   FREE_BATCH;
