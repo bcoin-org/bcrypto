@@ -2126,7 +2126,7 @@ NAN_METHOD(BBN::FromString) {
     return Nan::ThrowRangeError("Base ranges between 2 and 36.");
 
   if (mpz_set_str(a->n, str, base) != 0)
-    return Nan::ThrowError("Invalid string (parse error).");
+    return Nan::ThrowError("Invalid string.");
 
   info.GetReturnValue().Set(info.Holder());
 }
