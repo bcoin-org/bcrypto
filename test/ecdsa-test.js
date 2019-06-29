@@ -182,10 +182,12 @@ describe('ECDSA', function() {
         assert(ec.verifyDER(msg, der, tpub));
 
         const parent = ec.privateKeyTweakAdd(tpriv, ec.privateKeyNegate(tweak));
+
         assert.bufferEqual(parent, priv);
 
         const tweakPub = ec.publicKeyCreate(tweak);
         const parentPub = ec.publicKeyAdd(tpub, ec.publicKeyNegate(tweakPub));
+
         assert.bufferEqual(parentPub, pub);
       });
 
@@ -218,6 +220,7 @@ describe('ECDSA', function() {
         assert(ec.verifyDER(msg, der, tpub));
 
         const parent = ec.privateKeyTweakMul(tpriv, ec.privateKeyInvert(tweak));
+
         assert.bufferEqual(parent, priv);
       });
 
@@ -733,12 +736,12 @@ describe('ECDSA', function() {
 
           sig[0] ^= 1;
           der[0] ^= 1;
-          pub[0] ^= 1;
+          pub[2] ^= 1;
 
           assert(!curve.verify(msg, sig, pub));
           assert(!curve.verifyDER(msg, der, pub));
 
-          pub[0] ^= 1;
+          pub[2] ^= 1;
 
           assert(curve.verify(msg, sig, pub));
           assert(curve.verifyDER(msg, der, pub));
@@ -769,6 +772,12 @@ describe('ECDSA', function() {
           assert(!curve.schnorrVerifyBatch([[msg, sig, pub]]));
 
           sig[0] ^= 1;
+          pub[2] ^= 1;
+
+          assert(!curve.schnorrVerify(msg, sig, pub));
+          assert(!curve.schnorrVerifyBatch([[msg, sig, pub]]));
+
+          pub[2] ^= 1;
 
           assert(curve.schnorrVerify(msg, sig, pub));
           assert(curve.schnorrVerifyBatch([[msg, sig, pub]]));
