@@ -17,6 +17,7 @@ describe('Ed448', function() {
     assert(ed448.publicKeyVerify(pub));
 
     const sig = ed448.sign(msg, secret);
+
     assert(ed448.verify(msg, sig, pub));
 
     sig[0] ^= 1;
@@ -203,19 +204,23 @@ describe('Ed448', function() {
 
     const childPriv = ed448.scalarTweakAdd(ed448.privateKeyConvert(key), tweak);
     const childPub = ed448.publicKeyFromScalar(childPriv);
+
     assert.bufferEqual(childPub, child);
 
     assert(ed448.verify(msg, sig, child));
 
     const sig2 = ed448.signWithScalar(msg, childPriv, msg);
+
     assert(ed448.verify(msg, sig2, child));
 
     const real = ed448.scalarReduce(ed448.privateKeyConvert(key));
     const parent = ed448.scalarTweakAdd(childPriv, ed448.scalarNegate(tweak));
+
     assert.bufferEqual(parent, real);
 
     const tweakPub = ed448.publicKeyFromScalar(tweak);
     const parentPub = ed448.publicKeyAdd(childPub, ed448.publicKeyNegate(tweakPub));
+
     assert.bufferEqual(parentPub, pub);
   });
 
@@ -233,15 +238,18 @@ describe('Ed448', function() {
 
     const childPriv = ed448.scalarTweakMul(ed448.privateKeyConvert(key), tweak);
     const childPub = ed448.publicKeyFromScalar(childPriv);
+
     assert.bufferEqual(childPub, child);
 
     assert(ed448.verify(msg, sig, child));
 
     const sig2 = ed448.signWithScalar(msg, childPriv, msg);
+
     assert(ed448.verify(msg, sig2, child));
 
     const real = ed448.scalarReduce(ed448.privateKeyConvert(key));
     const parent = ed448.scalarTweakMul(childPriv, ed448.scalarInvert(tweak));
+
     assert.bufferEqual(parent, real);
   });
 
@@ -267,11 +275,13 @@ describe('Ed448', function() {
 
     const childPriv = ed448.scalarTweakMul(ed448.privateKeyConvert(key), tweak);
     const childPub = ed448.publicKeyFromScalar(childPriv);
+
     assert.bufferEqual(childPub, child);
 
     assert(ed448.verify(msg, sig, child));
 
     const sig2 = ed448.signWithScalar(msg, childPriv, msg);
+
     assert(ed448.verify(msg, sig2, child));
   });
 

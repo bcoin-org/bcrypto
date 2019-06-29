@@ -20,6 +20,7 @@ describe('EdDSA', function() {
     assert(ed25519.publicKeyVerify(pub));
 
     const sig = ed25519.sign(msg, secret);
+
     assert(ed25519.verify(msg, sig, pub));
 
     sig[0] ^= 1;
@@ -188,19 +189,23 @@ describe('EdDSA', function() {
 
     const childPriv = ed25519.scalarTweakAdd(ed25519.privateKeyConvert(key), tweak);
     const childPub = ed25519.publicKeyFromScalar(childPriv);
+
     assert.bufferEqual(childPub, child);
 
     assert(ed25519.verify(msg, sig, child));
 
     const sig2 = ed25519.signWithScalar(msg, childPriv, msg);
+
     assert(ed25519.verify(msg, sig2, child));
 
     const real = ed25519.scalarReduce(ed25519.privateKeyConvert(key));
     const parent = ed25519.scalarTweakAdd(childPriv, ed25519.scalarNegate(tweak));
+
     assert.bufferEqual(parent, real);
 
     const tweakPub = ed25519.publicKeyFromScalar(tweak);
     const parentPub = ed25519.publicKeyAdd(childPub, ed25519.publicKeyNegate(tweakPub));
+
     assert.bufferEqual(parentPub, pub);
   });
 
@@ -253,15 +258,18 @@ describe('EdDSA', function() {
 
     const childPriv = ed25519.scalarTweakMul(ed25519.privateKeyConvert(key), tweak);
     const childPub = ed25519.publicKeyFromScalar(childPriv);
+
     assert.bufferEqual(childPub, child);
 
     assert(ed25519.verify(msg, sig, child));
 
     const sig2 = ed25519.signWithScalar(msg, childPriv, msg);
+
     assert(ed25519.verify(msg, sig2, child));
 
     const real = ed25519.scalarReduce(ed25519.privateKeyConvert(key));
     const parent = ed25519.scalarTweakMul(childPriv, ed25519.scalarInvert(tweak));
+
     assert.bufferEqual(parent, real);
   });
 
@@ -322,11 +330,13 @@ describe('EdDSA', function() {
 
     const childPriv = ed25519.scalarTweakMul(ed25519.privateKeyConvert(key), tweak);
     const childPub = ed25519.publicKeyFromScalar(childPriv);
+
     assert.bufferEqual(childPub, child);
 
     assert(ed25519.verify(msg, sig, child));
 
     const sig2 = ed25519.signWithScalar(msg, childPriv, msg);
+
     assert(ed25519.verify(msg, sig2, child));
   });
 
