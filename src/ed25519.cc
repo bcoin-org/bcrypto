@@ -35,7 +35,7 @@ BED25519::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "signTweakAdd", BED25519::SignTweakAdd);
   Nan::Export(obj, "signTweakMul", BED25519::SignTweakMul);
   Nan::Export(obj, "verify", BED25519::Verify);
-  Nan::Export(obj, "batchVerify", BED25519::BatchVerify);
+  Nan::Export(obj, "verifyBatch", BED25519::VerifyBatch);
   Nan::Export(obj, "derive", BED25519::Derive);
   Nan::Export(obj, "deriveWithScalar", BED25519::DeriveWithScalar);
   Nan::Export(obj, "exchange", BED25519::Exchange);
@@ -880,9 +880,9 @@ NAN_METHOD(BED25519::Verify) {
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
 
-NAN_METHOD(BED25519::BatchVerify) {
+NAN_METHOD(BED25519::VerifyBatch) {
   if (info.Length() < 1)
-    return Nan::ThrowError("ed25519.batchVerify() requires arguments.");
+    return Nan::ThrowError("ed25519.verifyBatch() requires arguments.");
 
   if (!info[0]->IsArray())
     return Nan::ThrowTypeError("First argument must be an array.");
@@ -991,7 +991,7 @@ NAN_METHOD(BED25519::BatchVerify) {
     pubs[i] = pub;
   }
 
-  bool result = bcrypto_ed25519_batch_verify(msgs, msg_lens, pubs,
+  bool result = bcrypto_ed25519_verify_batch(msgs, msg_lens, pubs,
                                              sigs, len, ph, ctx,
                                              ctx_len, NULL) == 1;
 

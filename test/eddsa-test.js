@@ -156,12 +156,12 @@ describe('EdDSA', function() {
         });
 
         it(`should batch verify (${i}) (${curve.id})`, () => {
-          assert(curve.batchVerify([], ph), true);
-          assert(curve.batchVerify([[msg, sig, pub]], ph));
+          assert(curve.verifyBatch([], ph), true);
+          assert(curve.verifyBatch([[msg, sig, pub]], ph));
 
           msg[0] ^= 1;
 
-          assert(!curve.batchVerify([[msg, sig, pub]], ph));
+          assert(!curve.verifyBatch([[msg, sig, pub]], ph));
 
           msg[0] ^= 1;
         });
@@ -222,11 +222,11 @@ describe('EdDSA', function() {
       it(`should batch verify (${curve.id})`, () => {
         const [msg] = batch[0];
 
-        assert(curve.batchVerify(batch));
+        assert(curve.verifyBatch(batch));
 
         if (msg.length > 0) {
           msg[0] ^= 1;
-          assert(!curve.batchVerify(batch));
+          assert(!curve.verifyBatch(batch));
           msg[0] ^= 1;
         }
       });

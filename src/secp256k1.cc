@@ -263,7 +263,7 @@ BSecp256k1::Init(v8::Local<v8::Object> &target) {
   // schnorr
   Nan::SetPrototypeMethod(tpl, "schnorrSign", BSecp256k1::SchnorrSign);
   Nan::SetPrototypeMethod(tpl, "schnorrVerify", BSecp256k1::SchnorrVerify);
-  Nan::SetPrototypeMethod(tpl, "schnorrBatchVerify", BSecp256k1::SchnorrBatchVerify);
+  Nan::SetPrototypeMethod(tpl, "schnorrVerifyBatch", BSecp256k1::SchnorrVerifyBatch);
 
   v8::Local<v8::FunctionTemplate> ctor =
     Nan::New<v8::FunctionTemplate>(secp256k1_constructor);
@@ -1513,7 +1513,7 @@ NAN_METHOD(BSecp256k1::SchnorrVerify) {
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
 
-NAN_METHOD(BSecp256k1::SchnorrBatchVerify) {
+NAN_METHOD(BSecp256k1::SchnorrVerifyBatch) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
   if (!info[0]->IsArray())

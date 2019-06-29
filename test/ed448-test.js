@@ -423,7 +423,7 @@ describe('Ed448', function() {
           const msg_ = Buffer.from(msg);
           msg_[i % msg_.length] ^= 1;
           assert(!ed448.verify(msg_, sig, pub, ph, ctx));
-          assert(!ed448.batchVerify([[msg_, sig, pub]], ph, ctx));
+          assert(!ed448.verifyBatch([[msg_, sig, pub]], ph, ctx));
         }
 
         {
@@ -454,12 +454,12 @@ describe('Ed448', function() {
     it('should do batch verification', () => {
       const [msg] = batch[0];
 
-      assert.strictEqual(ed448.batchVerify([]), true);
-      assert.strictEqual(ed448.batchVerify(batch), true);
+      assert.strictEqual(ed448.verifyBatch([]), true);
+      assert.strictEqual(ed448.verifyBatch(batch), true);
 
       if (msg.length > 0) {
         msg[0] ^= 1;
-        assert.strictEqual(ed448.batchVerify(batch), false);
+        assert.strictEqual(ed448.verifyBatch(batch), false);
         msg[0] ^= 1;
       }
     });

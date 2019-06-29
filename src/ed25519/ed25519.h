@@ -40,7 +40,7 @@ int
 bcrypto_ed25519_pubkey_verify(const bcrypto_ed25519_pubkey_t pk);
 
 int
-bcrypto_ed25519_batch_verify(
+bcrypto_ed25519_verify_batch(
   const unsigned char **m,
   size_t *mlen,
   const unsigned char **pk,

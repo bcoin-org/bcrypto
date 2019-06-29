@@ -60,7 +60,7 @@ private:
   static NAN_METHOD(Derive);
   static NAN_METHOD(SchnorrSign);
   static NAN_METHOD(SchnorrVerify);
-  static NAN_METHOD(SchnorrBatchVerify);
+  static NAN_METHOD(SchnorrVerifyBatch);
 };
 #endif
 

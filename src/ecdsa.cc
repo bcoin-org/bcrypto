@@ -73,7 +73,7 @@ BECDSA::Init(v8::Local<v8::Object> &target) {
   Nan::SetPrototypeMethod(tpl, "derive", BECDSA::Derive);
   Nan::SetPrototypeMethod(tpl, "schnorrSign", BECDSA::SchnorrSign);
   Nan::SetPrototypeMethod(tpl, "schnorrVerify", BECDSA::SchnorrVerify);
-  Nan::SetPrototypeMethod(tpl, "schnorrBatchVerify", BECDSA::SchnorrBatchVerify);
+  Nan::SetPrototypeMethod(tpl, "schnorrVerifyBatch", BECDSA::SchnorrVerifyBatch);
 
   v8::Local<v8::FunctionTemplate> ctor =
     Nan::New<v8::FunctionTemplate>(ecdsa_constructor);
@@ -1500,11 +1500,11 @@ NAN_METHOD(BECDSA::SchnorrVerify) {
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
 
-NAN_METHOD(BECDSA::SchnorrBatchVerify) {
+NAN_METHOD(BECDSA::SchnorrVerifyBatch) {
   BECDSA *ec = ObjectWrap::Unwrap<BECDSA>(info.Holder());
 
   if (info.Length() < 1)
-    return Nan::ThrowError("ecdsa.schnorrBatchVerify() requires arguments.");
+    return Nan::ThrowError("ecdsa.schnorrVerifyBatch() requires arguments.");
 
   if (!info[0]->IsArray())
     return Nan::ThrowTypeError("First argument must be an array.");
@@ -1595,7 +1595,7 @@ NAN_METHOD(BECDSA::SchnorrBatchVerify) {
     }
   }
 
-  int result = bcrypto_schnorr_batch_verify(&ec->ctx, msgs, sigs, pubs, len);
+  int result = bcrypto_schnorr_verify_batch(&ec->ctx, msgs, sigs, pubs, len);
 
   FREE_BATCH;
 

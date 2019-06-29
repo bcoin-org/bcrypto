@@ -188,7 +188,7 @@ ge25519_multi_scalarmult_vartime(ge25519 *r, batch_heap *heap, size_t count) {
 }
 
 int
-bcrypto_ed25519_batch_verify(
+bcrypto_ed25519_verify_batch(
   const unsigned char **m,
   size_t *mlen,
   const unsigned char **pk,

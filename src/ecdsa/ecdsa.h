@@ -297,7 +297,7 @@ bcrypto_schnorr_verify(bcrypto_ecdsa_t *ec,
                        const bcrypto_ecdsa_pubkey_t *pub);
 
 int
-bcrypto_schnorr_batch_verify(bcrypto_ecdsa_t *ec,
+bcrypto_schnorr_verify_batch(bcrypto_ecdsa_t *ec,
                              const uint8_t **msgs,
                              const bcrypto_ecdsa_sig_t *sigs,
                              const bcrypto_ecdsa_pubkey_t *pubs,
