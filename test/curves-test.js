@@ -10,12 +10,16 @@ const {
   EdwardsCurve,
   SECP256K1,
   ED25519,
-  X25519
+  X25519,
+  ED448,
+  X448
 } = curves;
 
 let secp256k1 = null;
 let ed25519 = null;
 let x25519 = null;
+let ed448 = null;
+let x448 = null;
 
 describe('Curves', function() {
   describe('Precomputation', () => {
@@ -29,9 +33,17 @@ describe('Curves', function() {
       x25519 = new X25519();
       x25519.precompute(rng);
 
+      ed448 = new ED448();
+      ed448.precompute(rng);
+
+      x448 = new X448();
+      x448.precompute(rng);
+
       assert(secp256k1.g.precomputed);
       assert(ed25519.g.precomputed);
       assert(!x25519.g.precomputed);
+      assert(ed448.g.precomputed);
+      assert(!x448.g.precomputed);
     });
   });
 
@@ -482,10 +494,36 @@ describe('Curves', function() {
         }
       }
     });
+
+    it('should have basepoint for x25519', () => {
+      // https://tools.ietf.org/html/rfc7748#section-4.1
+      const v = x25519.p.sub(x25519.g.getY());
+
+      // Note: this is negated.
+      const e = new BN('147816194475895447910205935684099868872'
+                     + '64606134616475288964881837755586237401', 10);
+
+      assert(v.cmp(e) === 0);
+      assert(x25519.g.validate());
+    });
+
+    it('should have basepoint for x448', () => {
+      // https://tools.ietf.org/html/rfc7748#section-4.2
+      const v = x448.p.sub(x448.g.getY());
+
+      // Note: this is negated.
+      const e = new BN('355293926785568175264127502063783334808'
+                     + '976399387714271831880898435169088786967'
+                     + '410002932673765864550910142774147268105'
+                     + '838985595290606362', 10);
+
+      assert(v.cmp(e) === 0);
+      assert(x448.g.validate());
+    });
   });
 
   describe('Point codec', () => {
-    function makeShortTest(definition) {
+    const makeShortTest = (definition) => {
       return () => {
         const curve = secp256k1;
         const co = definition.coordinates;
@@ -501,9 +539,9 @@ describe('Curves', function() {
           Buffer.from(definition.compactEncoded, 'hex')).eq(p));
         assert(curve.decodePoint(Buffer.from(definition.hybrid, 'hex')).eq(p));
       };
-    }
+    };
 
-    function makeMontTest(definition) {
+    const makeMontTest = (definition) => {
       return () => {
         const curve = x25519;
         const co = definition.coordinates;
@@ -517,7 +555,7 @@ describe('Curves', function() {
 
         assert.bufferEqual(curve.g.mul(scalar).encode(), encoded);
       };
-    }
+    };
 
     const shortPointEvenY = {
       coordinates: {
