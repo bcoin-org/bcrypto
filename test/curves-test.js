@@ -520,6 +520,22 @@ describe('Curves', function() {
       assert(v.cmp(e) === 0);
       assert(x448.g.validate());
     });
+
+    it('should test birational equivalence', () => {
+      const edwardsG = ed25519.pointFromMont(x25519.g, false);
+      const montG = x25519.pointFromEdwards(ed25519.g);
+
+      assert(edwardsG.eq(ed25519.g));
+      assert(montG.eq(x25519.g));
+    });
+
+    it('should test 4-isogeny equivalence', () => {
+      const montG = x448.pointFromEdwards(ed25519.g);
+
+      assert(montG.eq(x25519.g));
+
+      assert.throws(() => ed448.pointFromMont(x25519.g, false));
+    });
   });
 
   describe('Point codec', () => {
