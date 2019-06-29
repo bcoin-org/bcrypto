@@ -51,6 +51,9 @@ describe('Bcrypt', function() {
       const text = expect_.slice(0, 32) + '...';
 
       it(`should derive key (hash192): ${text}`, () => {
+        if (rounds > 8 && !process.env.CI)
+          this.skip();
+
         const key = bcrypt.hash192(pass, salt, rounds);
         assert.bufferEqual(key, expect);
       });
@@ -62,16 +65,22 @@ describe('Bcrypt', function() {
       const text = expect.slice(0, 32) + '...';
 
       it(`should derive hash (bsd): ${text}`, () => {
+        if (rounds > 8 && !process.env.CI)
+          this.skip();
+
         assert.strictEqual(bcrypt.generate(pass, salt, rounds, 'a'), expect);
       });
     }
   });
 
   describe('Verify', () => {
-    for (const [pass,,, expect] of bsd) {
+    for (const [pass, rounds,, expect] of bsd) {
       const text = expect.slice(0, 32) + '...';
 
       it(`should verify hash (bsd): ${text}`, () => {
+        if (rounds > 8 && !process.env.CI)
+          this.skip();
+
         assert.strictEqual(bcrypt.verify(pass, expect), true);
       });
     }
