@@ -1,7 +1,6 @@
 'use strict';
 
 const assert = require('bsert');
-const RNG = require('./util/rng');
 const pem = require('../lib/encoding/pem');
 const ed448 = require('../lib/ed448');
 const x448 = require('../lib/x448');
@@ -96,8 +95,6 @@ pDWiqkjsYdlUUGH7se0wSZW3+AU=
 `;
 
 describe('X448', function() {
-  const rng = new RNG();
-
   for (const [pub, key, expect] of vectors) {
     it(`should compute secret: ${expect.toString('hex', 0, 16)}...`, () => {
       const result = x448.derive(pub, key);
@@ -150,9 +147,9 @@ describe('X448', function() {
 
   for (let i = 0; i < 20; i++) {
     it(`should exchange keys after point conversion (${i})`, () => {
-      const scalar = rng.scalarGenerate(ed448);
+      const scalar = ed448.scalarGenerate();
       const edPub = ed448.publicKeyFromScalar(scalar);
-      const tweak = rng.scalarGenerate(ed448);
+      const tweak = ed448.scalarGenerate();
       const edPoint = ed448.deriveWithScalar(edPub, tweak);
       const pub = ed448.publicKeyConvert(edPub);
       const expect = ed448.publicKeyConvert(edPoint);

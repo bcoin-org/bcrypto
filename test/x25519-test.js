@@ -196,9 +196,9 @@ describe('X25519', function() {
 
   for (let i = 0; i < 20; i++) {
     it(`should exchange keys after point conversion (${i})`, () => {
-      const scalar = rng.scalarGenerate(ed25519);
+      const scalar = ed25519.scalarGenerate();
       const edPub = ed25519.publicKeyFromScalar(scalar);
-      const tweak = rng.scalarGenerate(ed25519);
+      const tweak = ed25519.scalarGenerate();
       const edPoint = ed25519.deriveWithScalar(edPub, tweak);
       const pub = ed25519.publicKeyConvert(edPub);
       const expect = ed25519.publicKeyConvert(edPoint);
