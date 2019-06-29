@@ -504,6 +504,16 @@
           "./src/nettle/serpent-encrypt.c"
         ]
       }],
+      ["OS=='win'", {
+        "msbuild_settings": {
+          "ClCompile": {
+            "ObjectFileName": "$(IntDir)/%(Directory)/%(Filename)"
+          },
+          "Link": {
+            "ImageHasSafeExceptionHandlers": "false"
+          }
+        }
+      }],
       ["with_openssl=='true'", {
         "conditions": [
           ["OS=='win'", {
@@ -512,15 +522,7 @@
             ],
             "include_dirs": [
               "<(openssl_root)/include"
-            ],
-            "msbuild_settings": {
-              "ClCompile": {
-                "ObjectFileName": "$(IntDir)/%(Directory)/%(Filename)",
-              },
-              "Link": {
-                "ImageHasSafeExceptionHandlers": "false"
-              }
-            }
+            ]
           }, {
             "include_dirs": [
               "<(node_root_dir)/deps/openssl/openssl/include"
