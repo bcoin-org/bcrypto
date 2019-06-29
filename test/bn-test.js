@@ -5213,6 +5213,13 @@ describe('BN.js', function() {
       assert.strictEqual(BN.fromDouble(-1234567890).toDouble(), -1234567890);
       assert.strictEqual(BN.fromDouble(0x1234567890).toDouble(), 0x1234567890);
       assert.strictEqual(BN.fromDouble(-0x1234567890).toDouble(), -0x1234567890);
+      assert.strictEqual(BN.fromDouble(1e100).toString(), '10000000000000000159'
+                                                        + '02891109759918046836'
+                                                        + '08085639452813897813'
+                                                        + '27557747838772170381'
+                                                        + '06081346998585681510'
+                                                        + '4');
+      assert.strictEqual(BN.pow(10, 100).toDouble(), 1e100);
 
       assert.doesNotThrow(() => BN.fromDouble(-MAX_SAFE_INTEGER - 1).toDouble());
       assert.doesNotThrow(() => BN.fromDouble(MAX_SAFE_INTEGER + 1).toDouble());
