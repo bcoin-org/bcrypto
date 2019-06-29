@@ -1,7 +1,7 @@
 {
   "variables": {
     "bcrypto_byteorder%":
-      "<!(python -c 'from __future__ import print_function; import sys; print(sys.byteorder)')",
+      "<!(python -c \"from __future__ import print_function; import sys; print(sys.byteorder)\")",
   },
   "targets": [{
     "target_name": "bcrypto",
@@ -174,7 +174,15 @@
         ],
         "include_dirs": [
           "<(openssl_root)/include"
-        ]
+        ],
+	"msbuild_settings": {
+	  'ClCompile': {
+	    'ObjectFileName': '$(IntDir)/%(Directory)/%(Filename)',
+	  },
+	  "Link": {
+	    "ImageHasSafeExceptionHandlers": "false"
+	  }
+	},
       }, {
         "include_dirs": [
           "<(node_root_dir)/deps/openssl/openssl/include"
