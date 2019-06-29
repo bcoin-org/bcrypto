@@ -5221,7 +5221,8 @@ describe('BN.js', function() {
                                                         + '06081346998585681510'
                                                         + '4');
 
-      assert.strictEqual(BN.pow(10, 100).toDouble(), 1e100);
+      if (BN.native !== 2)
+        assert.strictEqual(BN.pow(10, 100).toDouble(), 1e100);
 
       assert.strictEqual(BN.fromDouble(1.1).toString(), '1');
       assert.strictEqual(BN.fromDouble(-1.1).toString(), '-1');
