@@ -361,10 +361,7 @@ describe('Curves', function() {
     it('should match multiplications', () => {
       for (const curve of [p256, secp256k1, ed25519]) {
         const N = curve.n;
-
-        const s = new BN(
-          '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
-          16).imod(N);
+        const s = BN.random(rng, 1, N);
 
         const p1 = curve.g.mul(s);
         const p2 = curve.g.mulSlow(s);
@@ -393,23 +390,251 @@ describe('Curves', function() {
       }
     });
 
+    it('should match multiplications (fixed)', () => {
+      const curve = secp256k1;
+      const N = curve.n;
+
+      const mul = (p, k) => curve._fixedNafMul(p, k, null, false);
+      const jmul = (p, k) => curve._fixedNafMul(p, k, null, true);
+
+      const s = BN.random(rng, 1, N);
+
+      const p1 = mul(curve.g, s);
+      const p2 = curve.g.mulSlow(s);
+
+      assert(p1.eq(p2));
+
+      const p3 = mul(curve.g, s.neg());
+      const p4 = curve.g.mulSlow(s.neg().imod(N));
+
+      assert(p3.eq(p4));
+
+      const j1 = jmul(curve.g, s);
+      const j2 = curve.g.jmulSlow(s);
+
+      assert(j1.eq(j2));
+
+      const j3 = jmul(curve.g, s.neg());
+      const j4 = curve.g.jmulSlow(s.neg().imod(N));
+
+      assert(j3.eq(j4));
+    });
+
+    it('should match multiplications (wnaf)', () => {
+      const curve = secp256k1;
+      const N = curve.n;
+
+      const mul = (p, k) => curve._wnafMul(p, k, null, false);
+      const jmul = (p, k) => curve._wnafMul(p, k, null, true);
+      const pre = curve.g.precomputed;
+
+      let g = curve.g;
+
+      for (let i = 0; i < 3; i++) {
+        const s = BN.random(rng, 1, N);
+
+        const p1 = mul(g, s);
+        const p2 = g.mulSlow(s);
+
+        assert(p1.eq(p2));
+
+        const j1 = jmul(g, s);
+        const j2 = g.jmulSlow(s);
+
+        assert(j1.eq(j2));
+
+        const p3 = mul(g, s.divn(3).mul(s));
+        const p4 = g.mulSlow(s.divn(3).mul(s).imod(N));
+
+        assert(p3.eq(p4));
+
+        const p5 = mul(g, s.divn(3).mul(s).ineg());
+        const p6 = g.mulSlow(s.divn(3).mul(s).ineg().imod(N));
+
+        assert(p5.eq(p6));
+
+        if (i === 0) {
+          g.precomputed = null;
+          continue;
+        }
+
+        if (i === 1) {
+          assert(g === curve.g);
+          g.precomputed = pre;
+        }
+
+        if (i === 2)
+          assert(g !== curve.g);
+
+        g = p6;
+      }
+
+      assert(curve.g.precomputed === pre);
+    });
+
+    it('should match multiplications (muladd)', () => {
+      const curve = secp256k1;
+      const N = curve.n;
+
+      const mul = (p, k) => curve._wnafMulAdd(1, [p], [k], null, false);
+      const jmul = (p, k) => curve._wnafMulAdd(1, [p], [k], null, true);
+      const pre = curve.g.precomputed;
+
+      let g = curve.g;
+
+      for (let i = 0; i < 3; i++) {
+        const s = BN.random(rng, 1, N);
+
+        const p1 = mul(g, s);
+        const p2 = g.mulSlow(s);
+
+        assert(p1.eq(p2));
+
+        const j1 = jmul(g, s);
+        const j2 = g.jmulSlow(s);
+
+        assert(j1.eq(j2));
+
+        const p3 = mul(g, s.divn(3).mul(s));
+        const p4 = g.mulSlow(s.divn(3).mul(s).imod(N));
+
+        assert(p3.eq(p4));
+
+        const p5 = mul(g, s.divn(3).mul(s).ineg());
+        const p6 = g.mulSlow(s.divn(3).mul(s).ineg().imod(N));
+
+        assert(p5.eq(p6));
+
+        if (i === 0) {
+          g.precomputed = null;
+          continue;
+        }
+
+        if (i === 1) {
+          assert(g === curve.g);
+          g.precomputed = pre;
+        }
+
+        if (i === 2)
+          assert(g !== curve.g);
+
+        g = p6;
+      }
+
+      assert(curve.g.precomputed === pre);
+    });
+
+    it('should match multiplications (endo)', () => {
+      const curve = secp256k1;
+      const N = curve.n;
+
+      const mul = (p, k) => curve._endoWnafMulAdd([p], [k], null, false);
+      const jmul = (p, k) => curve._endoWnafMulAdd([p], [k], null, true);
+      const pre = curve.g.precomputed;
+
+      let g = curve.g;
+
+      for (let i = 0; i < 3; i++) {
+        const s = BN.random(rng, 1, N);
+
+        const p1 = mul(g, s);
+        const p2 = g.mulSlow(s);
+
+        assert(p1.eq(p2));
+
+        const j1 = jmul(g, s);
+        const j2 = g.jmulSlow(s);
+
+        assert(j1.eq(j2));
+
+        const p3 = mul(g, s.divn(3).mul(s));
+        const p4 = g.mulSlow(s.divn(3).mul(s).imod(N));
+
+        assert(p3.eq(p4));
+
+        const p5 = mul(g, s.divn(3).mul(s).ineg());
+        const p6 = g.mulSlow(s.divn(3).mul(s).ineg().imod(N));
+
+        assert(p5.eq(p6));
+
+        if (i === 0) {
+          g.precomputed = null;
+          continue;
+        }
+
+        if (i === 1) {
+          assert(g === curve.g);
+          g.precomputed = pre;
+        }
+
+        if (i === 2)
+          assert(g !== curve.g);
+
+        g = p6;
+      }
+
+      assert(curve.g.precomputed === pre);
+    });
+
+    it('should match multiplications (blind)', () => {
+      const curve = secp256k1;
+      const N = curve.n;
+
+      const mul = (p, k) => p.mulBlind(k, rng);
+      const jmul = (p, k) => p.jmulBlind(k, rng);
+      const pre = curve.g.precomputed;
+
+      let g = curve.g;
+
+      for (let i = 0; i < 3; i++) {
+        const s = BN.random(rng, 1, N);
+
+        const p1 = mul(g, s);
+        const p2 = g.mulSlow(s);
+
+        assert(p1.eq(p2));
+
+        const j1 = jmul(g, s);
+        const j2 = g.jmulSlow(s);
+
+        assert(j1.eq(j2));
+
+        const p3 = mul(g, s.divn(3).mul(s));
+        const p4 = g.mulSlow(s.divn(3).mul(s).imod(N));
+
+        assert(p3.eq(p4));
+
+        const p5 = mul(g, s.divn(3).mul(s).ineg());
+        const p6 = g.mulSlow(s.divn(3).mul(s).ineg().imod(N));
+
+        assert(p5.eq(p6));
+
+        if (i === 0) {
+          g.precomputed = null;
+          continue;
+        }
+
+        if (i === 1) {
+          assert(g === curve.g);
+          g.precomputed = pre;
+        }
+
+        if (i === 2)
+          assert(g !== curve.g);
+
+        g = p6;
+      }
+
+      assert(curve.g.precomputed === pre);
+    });
+
     it('should match multiply+add', () => {
       for (const curve of [p256, secp256k1, ed25519]) {
         const N = curve.n;
-
-        const s = new BN(
-          '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
-          16).imod(N);
-
-        const A = curve.g.mul(new BN(
-          '0123456789abcdef0123456789abcdef0123456789abdef01234567890abcdef',
-          16).imod(N));
-
+        const s = BN.random(rng, 1, N);
+        const A = curve.g.mul(BN.random(rng, 1, N));
         const J = A.toJ();
-
-        const s0 = new BN(
-          '54c723c24a53cd0e439afe87a3834dfd906d1f5a36da9cca8e4229ba22a1eb90',
-          16).imod(N);
+        const s0 = BN.random(rng, 1, N);
 
         const p1 = curve.g.mulAdd(s, A, s0);
         const p2 = curve.g.mulAddSlow(s, A, s0);
@@ -441,10 +666,7 @@ describe('Curves', function() {
     it('should multiply negative scalar', () => {
       for (const curve of [p256, secp256k1, ed25519]) {
         const N = curve.n;
-
-        const s1 = new BN(
-          '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
-          16).imod(N);
+        const s1 = BN.random(rng, 1, N);
 
         {
           const p1 = curve.g.mul(s1);
@@ -541,23 +763,12 @@ describe('Curves', function() {
     it('should multiply+add negative scalar', () => {
       for (const curve of [p256, secp256k1, ed25519]) {
         const N = curve.n;
-
-        const A = curve.g.mul(new BN(
-          '0123456789abcdef0123456789abcdef0123456789abdef01234567890abcdef',
-          16).imod(N));
-
+        const A = curve.g.mul(BN.random(rng, 1, N));
         const J = A.toJ();
-
-        const s0 = new BN(
-          '54c723c24a53cd0e439afe87a3834dfd906d1f5a36da9cca8e4229ba22a1eb90',
-          16).imod(N);
-
+        const s0 = BN.random(rng, 1, N);
         const as0 = A.mul(s0);
         const js0 = as0.toJ();
-
-        const s1 = new BN(
-          '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
-          16).imod(N);
+        const s1 = BN.random(rng, 1, N);
 
         {
           const p1 = curve.g.mul(s1).neg().add(as0);
