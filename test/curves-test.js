@@ -8,6 +8,7 @@ const rng = require('../lib/random');
 const {
   ShortCurve,
   EdwardsCurve,
+  P256,
   SECP256K1,
   ED25519,
   X25519,
@@ -15,6 +16,7 @@ const {
   X448
 } = curves;
 
+let p256 = null;
 let secp256k1 = null;
 let ed25519 = null;
 let x25519 = null;
@@ -24,6 +26,9 @@ let x448 = null;
 describe('Curves', function() {
   describe('Precomputation', () => {
     it('should have precomputed curves', () => {
+      p256 = new P256();
+      p256.precompute(rng);
+
       secp256k1 = new SECP256K1();
       secp256k1.precompute(rng);
 
@@ -39,6 +44,7 @@ describe('Curves', function() {
       x448 = new X448();
       x448.precompute(rng);
 
+      assert(p256.g.precomputed);
       assert(secp256k1.g.precomputed);
       assert(ed25519.g.precomputed);
       assert(!x25519.g.precomputed);
@@ -338,18 +344,6 @@ describe('Curves', function() {
       assert(pbad.dbl().add(pgood.dbl().neg()).isInfinity());
     });
 
-    it('should store precomputed values correctly on negation', () => {
-      const curve = secp256k1;
-      const p = curve.g.mul(new BN(2));
-
-      p.precompute(0);
-
-      const neg = p.neg(true);
-      const neg2 = neg.neg(true);
-
-      assert(p.eq(neg2));
-    });
-
     it('should multiply with blinding', () => {
       const curve = secp256k1;
       const {blind} = curve.g.precomputed.blinding;
@@ -365,10 +359,12 @@ describe('Curves', function() {
     });
 
     it('should match multiplications', () => {
-      for (const curve of [secp256k1, ed25519]) {
+      for (const curve of [p256, secp256k1, ed25519]) {
+        const N = curve.n;
+
         const s = new BN(
           '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
-          16);
+          16).imod(N);
 
         const p1 = curve.g.mul(s);
         const p2 = curve.g.mulSlow(s);
@@ -385,23 +381,70 @@ describe('Curves', function() {
 
         assert(j3.eq(j4));
 
-        const p3 = curve.g.mul(s.divn(3).mul(s).imod(curve.n));
-        const p4 = curve.g.mulSlow(s.divn(3).mul(s));
+        const p3 = curve.g.mul(s.divn(3).mul(s));
+        const p4 = curve.g.mulSlow(s.divn(3).mul(s).imod(N));
 
         assert(p3.eq(p4));
 
-        const p5 = curve.g.mul(s.divn(3).mul(s).ineg().imod(curve.n));
-        const p6 = curve.g.mulSlow(s.divn(3).mul(s).ineg());
+        const p5 = curve.g.mul(s.divn(3).mul(s).ineg());
+        const p6 = curve.g.mulSlow(s.divn(3).mul(s).ineg().imod(N));
+
+        assert(p5.eq(p6));
+      }
+    });
+
+    it('should match multiply+add', () => {
+      for (const curve of [p256, secp256k1, ed25519]) {
+        const N = curve.n;
+
+        const s = new BN(
+          '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
+          16).imod(N);
+
+        const A = curve.g.mul(new BN(
+          '0123456789abcdef0123456789abcdef0123456789abdef01234567890abcdef',
+          16).imod(N));
+
+        const J = A.toJ();
+
+        const s0 = new BN(
+          '54c723c24a53cd0e439afe87a3834dfd906d1f5a36da9cca8e4229ba22a1eb90',
+          16).imod(N);
+
+        const p1 = curve.g.mulAdd(s, A, s0);
+        const p2 = curve.g.mulAddSlow(s, A, s0);
+
+        assert(p1.eq(p2));
+
+        const j1 = curve.g.jmulAdd(s, A, s0);
+        const j2 = curve.g.jmulAddSlow(s, A, s0);
+
+        assert(j1.eq(j2));
+
+        const j3 = curve.g.toJ().mulAdd(s, J, s0);
+        const j4 = curve.g.toJ().mulAddSlow(s, J, s0);
+
+        assert(j3.eq(j4));
+
+        const p3 = curve.g.mulAdd(s.divn(3).mul(s), A, s0);
+        const p4 = curve.g.mulAddSlow(s.divn(3).mul(s).imod(N), A, s0);
+
+        assert(p3.eq(p4));
+
+        const p5 = curve.g.mulAdd(s.divn(3).mul(s).ineg(), A, s0);
+        const p6 = curve.g.mulAddSlow(s.divn(3).mul(s).ineg().imod(N), A, s0);
 
         assert(p5.eq(p6));
       }
     });
 
     it('should multiply negative scalar', () => {
-      for (const curve of [secp256k1, ed25519]) {
+      for (const curve of [p256, secp256k1, ed25519]) {
+        const N = curve.n;
+
         const s1 = new BN(
           '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
-          16);
+          16).imod(N);
 
         {
           const p1 = curve.g.mul(s1);
@@ -425,7 +468,7 @@ describe('Curves', function() {
           assert(!p6.isInfinity());
           assert(p6.eq(p5.neg()));
 
-          const s4 = s3.mod(curve.n);
+          const s4 = s3.mod(N);
           const p7 = p2.mul(s4);
           const p8 = p2.mul(s4.neg());
 
@@ -455,7 +498,7 @@ describe('Curves', function() {
           assert(!p6.isInfinity());
           assert(p6.eq(p5.neg()));
 
-          const s4 = s3.mod(curve.n);
+          const s4 = s3.mod(N);
           const p7 = p2.jmul(s4);
           const p8 = p2.jmul(s4.neg());
 
@@ -485,12 +528,95 @@ describe('Curves', function() {
           assert(!p6.isInfinity());
           assert(p6.eq(p5.neg()));
 
-          const s4 = s3.mod(curve.n);
+          const s4 = s3.mod(N);
           const p7 = p2.mulBlind(s4, rng);
           const p8 = p2.mulBlind(s4.neg(), rng);
 
           assert(!p8.isInfinity());
           assert(p8.eq(p7.neg()));
+        }
+      }
+    });
+
+    it('should multiply+add negative scalar', () => {
+      for (const curve of [p256, secp256k1, ed25519]) {
+        const N = curve.n;
+
+        const A = curve.g.mul(new BN(
+          '0123456789abcdef0123456789abcdef0123456789abdef01234567890abcdef',
+          16).imod(N));
+
+        const J = A.toJ();
+
+        const s0 = new BN(
+          '54c723c24a53cd0e439afe87a3834dfd906d1f5a36da9cca8e4229ba22a1eb90',
+          16).imod(N);
+
+        const as0 = A.mul(s0);
+        const js0 = as0.toJ();
+
+        const s1 = new BN(
+          '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
+          16).imod(N);
+
+        {
+          const p1 = curve.g.mul(s1).neg().add(as0);
+          const p2 = curve.g.mulAdd(s1.neg(), A, s0);
+
+          assert(!p2.isInfinity());
+          assert(p2.eq(p1));
+
+          const s2 = s1.sqr();
+
+          const p3 = curve.g.mul(s2).neg().add(as0);
+          const p4 = curve.g.mulAdd(s2.neg(), A, s0);
+
+          assert(!p4.isInfinity());
+          assert(p4.eq(p3));
+
+          const s3 = s2.divn(17);
+          const p5 = p1.mul(s3).neg().add(as0);
+          const p6 = p1.mulAdd(s3.neg(), A, s0);
+
+          assert(!p6.isInfinity());
+          assert(p6.eq(p5));
+
+          const s4 = s3.mod(N);
+          const p7 = p2.mul(s4).neg().add(as0);
+          const p8 = p2.mulAdd(s4.neg(), A, s0);
+
+          assert(!p8.isInfinity());
+          assert(p8.eq(p7));
+        }
+
+        {
+          const p1 = curve.g.jmul(s1).neg().add(js0);
+          const p2 = curve.g.jmulAdd(s1.neg(), A, s0);
+
+          assert(!p2.isInfinity());
+          assert(p2.eq(p1));
+
+          const s2 = s1.sqr();
+
+          const p3 = curve.g.jmul(s2).neg().add(js0);
+          const p4 = curve.g.jmulAdd(s2.neg(), A, s0);
+
+          assert(!p4.isInfinity());
+          assert(p4.eq(p3));
+
+          const s3 = s2.divn(17);
+          const p5 = p1.jmul(s3).neg().add(js0);
+          const p6 = p1.jmulAdd(s3.neg(), J, s0);
+
+          assert(!p6.isInfinity());
+          assert(p6.eq(p5));
+
+          const s4 = s3.mod(N);
+          const p7 = p2.jmul(s4).neg().add(js0);
+          const p8 = p2.jmulAdd(s4.neg(), J, s0);
+
+          assert(!p8.isInfinity());
+          assert(p8.eq(p7));
         }
       }
     });
