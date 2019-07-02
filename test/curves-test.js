@@ -643,13 +643,17 @@ describe('Curves', function() {
 
         const p3 = curve.g.mul(s.divn(3).mul(s));
         const p4 = curve.g.mulSlow(s.divn(3).mul(s).imod(N));
+        const p4_ = curve.g.mulSlow(s.divn(3).mul(s));
 
         assert(p3.eq(p4));
+        assert(p4_.eq(p4));
 
         const p5 = curve.g.mul(s.divn(3).mul(s).ineg());
         const p6 = curve.g.mulSlow(s.divn(3).mul(s).ineg().imod(N));
+        const p6_ = curve.g.mulSlow(s.divn(3).mul(s).ineg());
 
         assert(p5.eq(p6));
+        assert(p6_.eq(p6));
       }
     });
 
@@ -916,13 +920,17 @@ describe('Curves', function() {
 
         const p3 = curve.g.mulAdd(s.divn(3).mul(s), A, s0);
         const p4 = curve.g.mulAddSlow(s.divn(3).mul(s).imod(N), A, s0);
+        const p4_ = curve.g.mulAddSlow(s.divn(3).mul(s), A, s0);
 
         assert(p3.eq(p4));
+        assert(p4_.eq(p4));
 
         const p5 = curve.g.mulAdd(s.divn(3).mul(s).ineg(), A, s0);
         const p6 = curve.g.mulAddSlow(s.divn(3).mul(s).ineg().imod(N), A, s0);
+        const p6_ = curve.g.mulAddSlow(s.divn(3).mul(s).ineg(), A, s0);
 
         assert(p5.eq(p6));
+        assert(p6_.eq(p6));
       }
     });
 
