@@ -1096,7 +1096,7 @@ NAN_METHOD(BBN::Inotn) {
     return Nan::ThrowError(ARG_ERROR(inotn, 1));
 
   if (!IsUint32(info[0]))
-    return Nan::ThrowTypeError(TYPE_ERROR(width, integer));
+    return Nan::ThrowTypeError(TYPE_ERROR(width, uint32));
 
   uint32_t width = Nan::To<uint32_t>(info[0]).FromJust();
 
@@ -1120,7 +1120,7 @@ NAN_METHOD(BBN::Ishln) {
     return Nan::ThrowError(ARG_ERROR(ishln, 1));
 
   if (!IsUint32(info[0]))
-    return Nan::ThrowTypeError(TYPE_ERROR(bits, integer));
+    return Nan::ThrowTypeError(TYPE_ERROR(bits, uint32));
 
   uint32_t bits = Nan::To<uint32_t>(info[0]).FromJust();
 
@@ -1136,7 +1136,7 @@ NAN_METHOD(BBN::Iushln) {
     return Nan::ThrowError(ARG_ERROR(iushln, 1));
 
   if (!IsUint32(info[0]))
-    return Nan::ThrowTypeError(TYPE_ERROR(bits, integer));
+    return Nan::ThrowTypeError(TYPE_ERROR(bits, uint32));
 
   uint32_t bits = Nan::To<uint32_t>(info[0]).FromJust();
 
@@ -1152,7 +1152,7 @@ NAN_METHOD(BBN::Ishrn) {
     return Nan::ThrowError(ARG_ERROR(ishrn, 1));
 
   if (!IsUint32(info[0]))
-    return Nan::ThrowTypeError(TYPE_ERROR(bits, integer));
+    return Nan::ThrowTypeError(TYPE_ERROR(bits, uint32));
 
   uint32_t bits = Nan::To<uint32_t>(info[0]).FromJust();
 
@@ -1168,7 +1168,7 @@ NAN_METHOD(BBN::Iushrn) {
     return Nan::ThrowError(ARG_ERROR(iushrn, 1));
 
   if (!IsUint32(info[0]))
-    return Nan::ThrowTypeError(TYPE_ERROR(bits, integer));
+    return Nan::ThrowTypeError(TYPE_ERROR(bits, uint32));
 
   uint32_t bits = Nan::To<uint32_t>(info[0]).FromJust();
 
@@ -1192,7 +1192,7 @@ NAN_METHOD(BBN::Setn) {
     return Nan::ThrowError(ARG_ERROR(setn, 2));
 
   if (!IsUint32(info[0]))
-    return Nan::ThrowTypeError(TYPE_ERROR(bit, integer));
+    return Nan::ThrowTypeError(TYPE_ERROR(bit, uint32));
 
   if (!info[1]->IsNumber() && !info[1]->IsBoolean())
     return Nan::ThrowTypeError(TYPE_ERROR(val, number));
@@ -1215,7 +1215,7 @@ NAN_METHOD(BBN::Usetn) {
     return Nan::ThrowError(ARG_ERROR(usetn, 2));
 
   if (!IsUint32(info[0]))
-    return Nan::ThrowTypeError(TYPE_ERROR(bit, integer));
+    return Nan::ThrowTypeError(TYPE_ERROR(bit, uint32));
 
   if (!info[1]->IsNumber() && !info[1]->IsBoolean())
     return Nan::ThrowTypeError(TYPE_ERROR(val, number));
@@ -1245,7 +1245,7 @@ NAN_METHOD(BBN::Testn) {
     return Nan::ThrowError(ARG_ERROR(testn, 1));
 
   if (!IsUint32(info[0]))
-    return Nan::ThrowTypeError(TYPE_ERROR(bit, integer));
+    return Nan::ThrowTypeError(TYPE_ERROR(bit, uint32));
 
   uint32_t bit = Nan::To<uint32_t>(info[0]).FromJust();
   bool ret = (bool)mpz_tstbit(a->n, bit);
@@ -1260,7 +1260,7 @@ NAN_METHOD(BBN::Utestn) {
     return Nan::ThrowError(ARG_ERROR(utestn, 1));
 
   if (!IsUint32(info[0]))
-    return Nan::ThrowTypeError(TYPE_ERROR(bit, integer));
+    return Nan::ThrowTypeError(TYPE_ERROR(bit, uint32));
 
   uint32_t bit = Nan::To<uint32_t>(info[0]).FromJust();
   int neg = mpz_sgn(a->n) < 0;
@@ -1283,7 +1283,7 @@ NAN_METHOD(BBN::Imaskn) {
     return Nan::ThrowError(ARG_ERROR(imaskn, 1));
 
   if (!IsUint32(info[0]))
-    return Nan::ThrowTypeError(TYPE_ERROR(bit, integer));
+    return Nan::ThrowTypeError(TYPE_ERROR(bit, uint32));
 
   uint32_t bit = Nan::To<uint32_t>(info[0]).FromJust();
 
@@ -1299,7 +1299,7 @@ NAN_METHOD(BBN::Iumaskn) {
     return Nan::ThrowError(ARG_ERROR(iumaskn, 1));
 
   if (!IsUint32(info[0]))
-    return Nan::ThrowTypeError(TYPE_ERROR(bit, integer));
+    return Nan::ThrowTypeError(TYPE_ERROR(bit, uint32));
 
   uint32_t bit = Nan::To<uint32_t>(info[0]).FromJust();
   int neg = mpz_sgn(a->n) < 0;
@@ -1722,7 +1722,7 @@ NAN_METHOD(BBN::IsPrimeMR) {
     return Nan::ThrowTypeError(TYPE_ERROR(rng, rng));
 
   if (!IsUint32(info[1]))
-    return Nan::ThrowTypeError(TYPE_ERROR(nreps, integer));
+    return Nan::ThrowTypeError(TYPE_ERROR(nreps, uint32));
 
   if (!info[2]->IsBoolean())
     return Nan::ThrowTypeError(TYPE_ERROR(force2, boolean));
@@ -1748,6 +1748,10 @@ NAN_METHOD(BBN::IsPrimeMR) {
   }
 
   uint32_t nreps = Nan::To<uint32_t>(info[1]).FromJust();
+
+  if (nreps == 0)
+    return Nan::ThrowTypeError(TYPE_ERROR(nreps, integer));
+
   bool force2 = Nan::To<bool>(info[2]).FromJust();
 
   int r = bmpz_prime_mr(a->n, nreps, force2, rng, (void *)&data);
@@ -1765,7 +1769,7 @@ NAN_METHOD(BBN::IsPrimeLucas) {
     return Nan::ThrowError(ARG_ERROR(isPrimeLucas, 1));
 
   if (!IsUint32(info[0]))
-    return Nan::ThrowTypeError(TYPE_ERROR(limit, integer));
+    return Nan::ThrowTypeError(TYPE_ERROR(limit, uint32));
 
   uint32_t limit = Nan::To<uint32_t>(info[0]).FromJust();
   bool r = bmpz_prime_lucas(a->n, limit);
@@ -1780,7 +1784,7 @@ NAN_METHOD(BBN::ToTwos) {
     return Nan::ThrowError(ARG_ERROR(toTwos, 1));
 
   if (!IsUint32(info[0]))
-    return Nan::ThrowTypeError(TYPE_ERROR(width, integer));
+    return Nan::ThrowTypeError(TYPE_ERROR(width, uint32));
 
   uint32_t width = Nan::To<uint32_t>(info[0]).FromJust();
 
@@ -1796,7 +1800,7 @@ NAN_METHOD(BBN::FromTwos) {
     return Nan::ThrowError(ARG_ERROR(fromTwos, 1));
 
   if (!IsUint32(info[0]))
-    return Nan::ThrowTypeError(TYPE_ERROR(width, integer));
+    return Nan::ThrowTypeError(TYPE_ERROR(width, uint32));
 
   uint32_t width = Nan::To<uint32_t>(info[0]).FromJust();
 
@@ -1950,7 +1954,7 @@ NAN_METHOD(BBN::ToBuffer) {
     return Nan::ThrowTypeError(TYPE_ERROR(endian, string));
 
   if (!IsUint32(info[1]))
-    return Nan::ThrowTypeError(TYPE_ERROR(length, integer));
+    return Nan::ThrowTypeError(TYPE_ERROR(length, uint32));
 
   Nan::Utf8String endian_(info[0]);
   const char *endian = *endian_;
@@ -2005,7 +2009,7 @@ NAN_METHOD(BBN::ToString) {
     return Nan::ThrowError(ARG_ERROR(toString, 1));
 
   if (!IsUint32(info[0]))
-    return Nan::ThrowTypeError(TYPE_ERROR(base, integer));
+    return Nan::ThrowTypeError(TYPE_ERROR(base, uint32));
 
   uint32_t base = Nan::To<uint32_t>(info[0]).FromJust();
 
@@ -2115,7 +2119,7 @@ NAN_METHOD(BBN::FromString) {
     return Nan::ThrowTypeError(TYPE_ERROR(str, string));
 
   if (!IsUint32(info[1]))
-    return Nan::ThrowTypeError(TYPE_ERROR(base, integer));
+    return Nan::ThrowTypeError(TYPE_ERROR(base, uint32));
 
   Nan::Utf8String nstr(info[0]);
   const char *str = *nstr;
@@ -2142,7 +2146,7 @@ NAN_METHOD(BBN::RandomBits) {
     return Nan::ThrowTypeError(TYPE_ERROR(num, bignum));
 
   if (!IsUint32(info[2]))
-    return Nan::ThrowTypeError(TYPE_ERROR(bits, integer));
+    return Nan::ThrowTypeError(TYPE_ERROR(bits, uint32));
 
   bmpz_rng_t rng = bmpz_rng_custom;
   bmpz_rng_data_t data;
