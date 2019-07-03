@@ -445,6 +445,71 @@ describe('Curves', function() {
       assert(p.dbl().validate());
     });
 
+    it('should get correct endomorphism', () => {
+      // See: Guide to Elliptic Curve Cryptography,
+      // Example 3.73, page 125, section 3.5.
+      const curve = new ShortCurve({
+        p: 'fffffffffffffffffffffffffffffffffffc808f',
+        a: '3',
+        b: '3',
+        h: '1',
+        n: '100000000000000000001cdc98ae0e2de574abf33'
+      });
+
+      const beta = new BN('771473166210819779552257112796337671037538143582', 10);
+      const lambda = new BN('903860042511079968555273866340564498116022318806', 10);
+
+      assert(curve._getEndoRoots(curve.p)[1].eq(beta));
+      assert(curve._getEndoRoots(curve.n)[0].eq(lambda));
+
+      // Example 3.75, page 127, section 3.5.
+      const rle = new BN('2180728751409538655993509', 10);
+      const tle = new BN('-186029539167685199353061', 10);
+      const rl1e = new BN('788919430192407951782190', 10);
+      const tl1e = new BN('602889891024722752429129', 10);
+      const rl2e = new BN('602889891024722752429129', 10);
+      const tl2e = new BN('-1391809321217130704211319', 10);
+      const a1e = new BN('788919430192407951782190', 10);
+      const b1e = new BN('-602889891024722752429129', 10);
+      const a2e = new BN('602889891024722752429129', 10);
+      const b2e = new BN('1391809321217130704211319', 10);
+
+      const [basis, info] = curve._getEndoBasis(lambda);
+      const [v1, v2] = basis;
+      const [rl, tl, rl1, tl1, rl2, tl2] = info;
+
+      assert(rl.eq(rle));
+      assert(tl.eq(tle));
+      assert(rl1.eq(rl1e));
+      assert(tl1.eq(tl1e));
+      assert(rl2.eq(rl2e));
+      assert(tl2.eq(tl2e));
+
+      assert(v1.a.eq(a1e));
+      assert(v1.b.eq(b1e));
+      assert(v2.a.eq(a2e));
+      assert(v2.b.eq(b2e));
+
+      const k = new BN('965486288327218559097909069724275579360008398257', 10);
+      const c1e = new BN('919446671339517233512759', 10);
+      const c2e = new BN('398276613783683332374156', 10);
+      const k1e = new BN('-98093723971803846754077', 10);
+      const k2e = new BN('381880690058693066485147', 10);
+
+      const c1 = v2.b.mul(k).divRound(curve.n);
+      const c2 = v1.b.neg().imul(k).divRound(curve.n);
+
+      assert(c1.eq(c1e));
+      assert(c2.eq(c2e));
+
+      curve.endo = { basis: [v1, v2] };
+
+      const [k1, k2] = curve._endoSplit(k);
+
+      assert(k1.eq(k1e));
+      assert(k2.eq(k2e));
+    });
+
     it('should work with secp256k1', () => {
       const curve = new ShortCurve({
         p: 'ffffffff ffffffff ffffffff ffffffff'
