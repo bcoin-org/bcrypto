@@ -474,9 +474,7 @@ describe('Curves', function() {
       const a2e = new BN('602889891024722752429129', 10);
       const b2e = new BN('1391809321217130704211319', 10);
 
-      const [basis, info] = curve._getEndoBasis(lambda);
-      const [v1, v2] = basis;
-      const [rl, tl, rl1, tl1, rl2, tl2] = info;
+      const [rl, tl, rl1, tl1, rl2, tl2] = curve._endoEGCD(lambda);
 
       assert(rl.eq(rle));
       assert(tl.eq(tle));
@@ -484,6 +482,8 @@ describe('Curves', function() {
       assert(tl1.eq(tl1e));
       assert(rl2.eq(rl2e));
       assert(tl2.eq(tl2e));
+
+      const [v1, v2] = curve._getEndoBasis(lambda);
 
       assert(v1.a.eq(a1e));
       assert(v1.b.eq(b1e));
