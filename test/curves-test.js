@@ -321,7 +321,13 @@ describe('Curves', function() {
       const curve = new ShortCurve({
         p: '1d',
         a: '4',
-        b: '14'
+        b: '14',
+        n: '24',
+        h: '1',
+        g: [
+          '18',
+          '16'
+        ]
       });
 
       const p = curve.point(new BN('18', 16), new BN('16', 16));
@@ -337,14 +343,14 @@ describe('Curves', function() {
       const curve = new EdwardsCurve({
         p: '3fffffffffffffffffffffffffffffffffffffffffffffff'
          + 'ffffffffffffffffffffffffffffffffffffffffffffff97',
-        n: '0fffffffffffffffffffffffffffffffffffffffffffffff'
-         + 'd5fb21f21e95eee17c5e69281b102d2773e27e13fd3c9719',
-        h: '8',
         a: '1',
         c: '1',
         // -67254 mod p
         d: '3fffffffffffffffffffffffffffffffffffffffffffffff'
          + 'fffffffffffffffffffffffffffffffffffffffffffef8e1',
+        n: '0fffffffffffffffffffffffffffffffffffffffffffffff'
+         + 'd5fb21f21e95eee17c5e69281b102d2773e27e13fd3c9719',
+        h: '8',
         g: [
           ['196f8dd0eab20391e5f05be96e8d20ae68f840032b0b6435',
            '2923bab85364841193517dbce8105398ebc0cc9470f79603'].join(''),
@@ -375,12 +381,12 @@ describe('Curves', function() {
     it('should be able to find a point given y coordinate (edwards)', () => {
       const curve = new EdwardsCurve({
         p: '07fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7',
-        n: '01fffffffffffffffffffffffffffffff77965c4dfd307348944d45fd166c971',
-        h: '4',
         a: '1',
         // -1174 mod p
         d: '07fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffb61',
-        c: '1'
+        c: '1',
+        n: '01fffffffffffffffffffffffffffffff77965c4dfd307348944d45fd166c971',
+        h: '4'
       });
 
       const target = curve.point(
@@ -402,15 +408,17 @@ describe('Curves', function() {
     it('should find an odd point given a y coordinate', () => {
       const curve = new EdwardsCurve({
         id: 'ED25519',
+        // 2^255 - 19
         p: '7fffffffffffffff ffffffffffffffff'
          + 'ffffffffffffffff ffffffffffffffed',
         a: '-1',
         c: '1',
-        // -121665 * (121666^(-1)) (mod P)
+        // (-121665 * 121666^-1) mod p
         d: '52036cee2b6ffe73 8cc740797779e898'
          + '00700a4d4141d8ab 75eb4dca135978a3',
         n: '1000000000000000 0000000000000000'
          + '14def9dea2f79cd6 5812631a5cf5d3ed',
+        h: '8',
         g: [
           '216936d3cd6e53fec0a4e231fdd6dc5c692cc7609525a7b2c9562d608f25d51a',
           // 4/5
@@ -430,14 +438,19 @@ describe('Curves', function() {
       assert.deepStrictEqual(point.getX().toString(16), target);
     });
 
-    it('should work with secp112k1', () => {
+    it('should work with secp112r1', () => {
       const curve = new ShortCurve({
-        id: 'SECP112K1',
+        id: 'SECP112R1',
+        // (2^128 - 3) / 76439
         p: 'db7c 2abf62e3 5e668076 bead208b',
         a: 'db7c 2abf62e3 5e668076 bead2088',
         b: '659e f8ba0439 16eede89 11702b22',
         n: 'db7c 2abf62e3 5e7628df ac6561c5',
-        h: '1'
+        h: '1',
+        g: [
+          '0948 7239995a 5ee76b55 f9c2f098',
+          'a89c e5af8724 c0a23e0e 0ff77500'
+        ]
       });
 
       const p = curve.point(
@@ -446,6 +459,11 @@ describe('Curves', function() {
 
       assert(p.validate());
       assert(p.dbl().validate());
+
+      const raw = Buffer.from('0209487239995a5ee76b55f9c2f098', 'hex');
+      const p2 = curve.decodePoint(raw);
+
+      assert(p2.eq(curve.g));
     });
 
     it('should work with secp192k1', () => {
@@ -502,19 +520,34 @@ describe('Curves', function() {
       // See: Guide to Elliptic Curve Cryptography,
       // Example 3.73, page 125, section 3.5.
       const curve = new ShortCurve({
-        id: 'P160',
+        id: 'P160', // NID_wap_wsg_idm_ecid_wtls9
         p: 'fffffffffffffffffffffffffffffffffffc808f',
-        a: '3',
+        a: '0', // Above docment says a=3 for some reason.
         b: '3',
         n: '100000000000000000001cdc98ae0e2de574abf33',
-        h: '1'
+        h: '1',
+        g: [
+          '1',
+          '2'
+        ],
+        // We pick index 0 when the example assumes 1.
+        // Note that secp256k1 picks 1 (if we ever
+        // want to switch to always choosing 1).
+        beta: '87220d9fbac0e3d616529a8566d6f00485560d5e'
       });
 
       const beta = new BN('771473166210819779552257112796337671037538143582', 10);
       const lambda = new BN('903860042511079968555273866340564498116022318806', 10);
 
+      assert(curve.endo.beta.fromRed().eq(beta));
+      assert(curve.endo.lambda.eq(lambda));
+
       assert(curve._getEndoRoots(curve.p)[1].eq(beta));
       assert(curve._getEndoRoots(curve.n)[0].eq(lambda));
+
+      // Should be cube roots.
+      assert(beta.powmn(3, curve.p).cmpn(1) === 0);
+      assert(lambda.powmn(3, curve.n).cmpn(1) === 0);
 
       // Example 3.75, page 127, section 3.5.
       const rle = new BN('2180728751409538655993509', 10);
@@ -556,7 +589,10 @@ describe('Curves', function() {
       assert(c1.eq(c1e));
       assert(c2.eq(c2e));
 
-      curve.endo = { basis: [v1, v2] };
+      assert(curve.endo.basis[0].a.eq(v1.a));
+      assert(curve.endo.basis[0].b.eq(v1.b));
+      assert(curve.endo.basis[1].a.eq(v2.a));
+      assert(curve.endo.basis[1].b.eq(v2.b));
 
       const [k1, k2] = curve._endoSplit(k);
 
