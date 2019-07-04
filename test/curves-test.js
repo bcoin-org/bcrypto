@@ -35,14 +35,14 @@ describe('Curves', function() {
     const test = (curve, vector) => {
       it(`should test curve ${curve.id}`, () => {
         for (let i = 0; i < 2; i++) {
-          const ak = new BN(vector.a.k, 16, curve.endian);
+          const ak = new BN(vector.a.k, 16);
           const ap = curve.g.mul(ak);
 
           assert.equal(ap.getX().toString(16), vector.a.x);
           assert.equal(ap.getY().toString(16), vector.a.y);
           assert(curve.type === 'mont' || curve.g.mulSlow(ak).eq(ap));
 
-          const bk = new BN(vector.b.k, 16, curve.endian);
+          const bk = new BN(vector.b.k, 16);
           const bp = curve.g.mul(bk);
 
           assert.equal(bp.getX().toString(16), vector.b.x);
@@ -167,12 +167,12 @@ describe('Curves', function() {
 
     test(new X25519(), {
       a: {
-        k: '0023598e8367f24bf223cd1829653714ab8df7156e63dc699843de240ef9c041',
+        k: '0041c0f90e24de439869dc636e15f78dab1437652918cd23f24bf267838e5923',
         x: '4e855a3acc67d76456afc5a2c854bb4ee83f0df16d3010e9cfeb02854b518370',
         y: '1f966b62a728f2649d31d61f644d70e827a967090880cb540924db14a71fe2d9'
       },
       b: {
-        k: '6894cb8966019cedbe56bc7fe70cef2fadfa399e3b1e348c54dc284c00d80d66',
+        k: '660dd8004c28dc548c341e3b9e39faad2fef0ce77fbc56beed9c016689cb9468',
         x: '2820cf502c9d9e227c785b4c58c0911cd3b6421c507f6a54dab413b0488ab82d',
         y: '243f45f6f3822a93121cd88e36c7ffbfdec7c706c5278e09cd5b189f60e191c4'
       },
@@ -184,12 +184,12 @@ describe('Curves', function() {
 
     test(new ED25519(), {
       a: {
-        k: '0023598e8367f24bf223cd1829653714ab8df7156e63dc699843de240ef9c041',
+        k: '0041c0f90e24de439869dc636e15f78dab1437652918cd23f24bf267838e5923',
         x: '7143fec2823a20e85bbfedff1a30468136983c8b32c09bba6991f4055b213613',
         y: '3b1dd63ace37221fd9bc0d11b2196938c32d92bf04aff3913bfb90b5489e19bf'
       },
       b: {
-        k: '6894cb8966019cedbe56bc7fe70cef2fadfa399e3b1e348c54dc284c00d80d66',
+        k: '660dd8004c28dc548c341e3b9e39faad2fef0ce77fbc56beed9c016689cb9468',
         x: 'dc96522329ccd49233ade48a29fdbfe8dd46f23974d9b5ee5ec41ddf9f9ab44',
         y: '7cb80d4fc3336a3e7e7e63b18616cef9d269c580059f1842bd814b06280740d'
       },
@@ -201,12 +201,12 @@ describe('Curves', function() {
 
     test(new X448(), {
       a: {
-        k: 'bc2f31e6e46f63537427138e0bb398241c0c33df1190e1ab54bfec56b97751a5693676345c535aa401f909c99ce83f2acdfa83ec35687dc1',
+        k: 'c17d6835ec83facd2a3fe89cc909f901a45a535c34763669a55177b956ecbf54abe19011df330c1c2498b30b8e13277453636fe4e6312fbc',
         x: 'a31700b63788e5b28616a3528c361f15abb59af9541bc66b74dd5dffaf9a0e31ccd32e032e843bd199870a255b22cdedce637b680ec68786',
         y: '2cdb7c77ee22cc2b25cf9a143d1efdc8326e3dbdfc2e1b95448dd0b7449dea313c82135b621db02d9edee8b1f7ecc55b5af77d3dfe200ad6'
       },
       b: {
-        k: 'c8634c85eb57eb4ef9d002fcdfc803cdf625ad0e1ab4f076b1d09c29c3f1be89638a60e716f502684bd9f773b324fe8e755f917be4d9e3a6',
+        k: 'a6e3d9e47b915f758efe24b373f7d94b6802f516e7608a6389bef1c3299cd0b176f0b41a0ead25f6cd03c8dffc02d0f94eeb57eb854c63c8',
         x: 'a9989ad97dc0c1a53cd6b25c3277f51aef5b285c4aa2d9def8db83021deea334878cd056eaecbf6bf1d1b8bb9748bd95f3199c707bd24874',
         y: '5929d6987b87ecc1d97a54bd9f9b22b697e502efffffc9fa6d8ac99f1eb377203d4618b980fa64ed4556290321355326bfad06c5ea49362d'
       },
@@ -218,12 +218,12 @@ describe('Curves', function() {
 
     test(new ED448(), {
       a: {
-        k: 'bc2f31e6e46f63537427138e0bb398241c0c33df1190e1ab54bfec56b97751a5693676345c535aa401f909c99ce83f2acdfa83ec35687dc1',
+        k: 'c17d6835ec83facd2a3fe89cc909f901a45a535c34763669a55177b956ecbf54abe19011df330c1c2498b30b8e13277453636fe4e6312fbc',
         x: '5a261d8379f0a2eba1f937c1be72cd54459c42f0510488f12828f2e455cd774d3ac17a7fa5a774403b9f3109c6035b9212e0923add16bcf4',
         y: '7765689f859de84d0feb418644db17e1ac2c3040a294d904a21930e23114d14db8c60f07e65ff133e56fd2295e5b215d4d4034a52ec6e1c6'
       },
       b: {
-        k: 'c8634c85eb57eb4ef9d002fcdfc803cdf625ad0e1ab4f076b1d09c29c3f1be89638a60e716f502684bd9f773b324fe8e755f917be4d9e3a6',
+        k: 'a6e3d9e47b915f758efe24b373f7d94b6802f516e7608a6389bef1c3299cd0b176f0b41a0ead25f6cd03c8dffc02d0f94eeb57eb854c63c8',
         x: 'f9034affb5ae198a8a50934f86dfdabe74ea4a0b9379c1d71d1539c99c60d353a3b85185f45e6a53106346a7b1e2f01099e39587a50e968',
         y: 'd17800e9860f2eeaa7d2f9955969b981304351841eff8390a398d0af9b0219b6accd974ef729c31cf88bb723cb9b218096a9632106a8c64d'
       },
