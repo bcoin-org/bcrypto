@@ -401,6 +401,7 @@ describe('Curves', function() {
 
     it('should find an odd point given a y coordinate', () => {
       const curve = new EdwardsCurve({
+        id: 'ED25519',
         p: '7fffffffffffffff ffffffffffffffff'
          + 'ffffffffffffffff ffffffffffffffed',
         a: '-1',
@@ -431,10 +432,12 @@ describe('Curves', function() {
 
     it('should work with secp112k1', () => {
       const curve = new ShortCurve({
+        id: 'SECP112K1',
         p: 'db7c 2abf62e3 5e668076 bead208b',
-        n: 'db7c 2abf62e3 5e7628df ac6561c5',
         a: 'db7c 2abf62e3 5e668076 bead2088',
-        b: '659e f8ba0439 16eede89 11702b22'
+        b: '659e f8ba0439 16eede89 11702b22',
+        n: 'db7c 2abf62e3 5e7628df ac6561c5',
+        h: '1'
       });
 
       const p = curve.point(
@@ -445,15 +448,66 @@ describe('Curves', function() {
       assert(p.dbl().validate());
     });
 
+    it('should work with secp192k1', () => {
+      const curve = new ShortCurve({
+        id: 'SECP192K1',
+        // 2^192 − 2^32 − 2^12 − 2^8 − 2^7 − 2^6 − 2^3 − 1
+        p: 'ffffffff ffffffff ffffffff ffffffff fffffffe ffffee37',
+        a: '0',
+        b: '3',
+        n: 'ffffffff ffffffff fffffffe 26f2fc17 0f69466a 74defd8d',
+        h: '1',
+        g: [
+          'db4ff10e c057e9ae 26b07d02 80b7f434 1da5d1b1 eae06c7d',
+          '9b2f2f6d 9c5628a7 844163d0 15be8634 4082aa88 d95e2f9d'
+        ]
+      });
+
+      assert(curve.endo);
+
+      const p = curve.point(
+        new BN('f091cf6331b1747684f5d2549cd1d4b3a8bed93b94f93cb6', 16),
+        new BN('fd7af42e1e7565a02e6268661c5e42e603da2d98a18f2ed5', 16));
+
+      assert(p.validate());
+      assert(p.dbl().validate());
+    });
+
+    it('should work with secp224k1', () => {
+      const curve = new ShortCurve({
+        id: 'SECP224K1',
+        // 2^224 − 2^32 − 2^12 − 2^11 − 2^9 − 2^7 − 2^4 − 2 − 1
+        p: 'ffffffff ffffffff ffffffff ffffffff ffffffff fffffffe ffffe56d',
+        a: '0',
+        b: '5',
+        n: '01 00000000 00000000 00000000 0001dce8 d2ec6184 caf0a971 769fb1f7',
+        h: '1',
+        g: [
+          'a1455b33 4df099df 30fc28a1 69a467e9 e47075a9 0f7e650e b6b7a45c',
+          '7e089fed 7fba3442 82cafbd6 f7e319f7 c0b0bd59 e2ca4bdb 556d61a5'
+        ]
+      });
+
+      assert(curve.endo);
+
+      const p = curve.point(
+        new BN('86c0deb56aeb9712390999a0232b9bf596b9639fa1ce8cf426749e60', 16),
+        new BN('8f598c954e1085555b474a79906b855c539ed633dbf4a9fa9f06b69a', 16));
+
+      assert(p.validate());
+      assert(p.dbl().validate());
+    });
+
     it('should get correct endomorphism', () => {
       // See: Guide to Elliptic Curve Cryptography,
       // Example 3.73, page 125, section 3.5.
       const curve = new ShortCurve({
+        id: 'P160',
         p: 'fffffffffffffffffffffffffffffffffffc808f',
         a: '3',
         b: '3',
-        h: '1',
-        n: '100000000000000000001cdc98ae0e2de574abf33'
+        n: '100000000000000000001cdc98ae0e2de574abf33',
+        h: '1'
       });
 
       const beta = new BN('771473166210819779552257112796337671037538143582', 10);
@@ -512,6 +566,7 @@ describe('Curves', function() {
 
     it('should work with secp256k1', () => {
       const curve = new ShortCurve({
+        id: 'SECP256K1',
         p: 'ffffffff ffffffff ffffffff ffffffff'
          + 'ffffffff ffffffff fffffffe fffffc2f',
         a: '0',
