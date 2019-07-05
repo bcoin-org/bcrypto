@@ -59,6 +59,17 @@ describe('Curves', function() {
           assert(curve.type === 'mont' || ap.mulSlow(bk).eq(p1));
 
           curve.precompute(rng);
+
+          if (curve.type !== 'mont') {
+            const p = curve.g;
+            const j = curve.g.toJ();
+
+            assert(p.add(p).eq(p.dbl()));
+            assert(j.add(p).eq(j.dbl()));
+
+            assert(p.trpl().eq(p.dbl().add(p)));
+            assert(j.trpl().eq(j.dbl().add(j)));
+          }
         }
       });
     };
