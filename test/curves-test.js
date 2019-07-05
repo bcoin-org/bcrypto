@@ -561,7 +561,7 @@ describe('Curves', function() {
       const a2e = new BN('602889891024722752429129', 10);
       const b2e = new BN('1391809321217130704211319', 10);
 
-      const [rl, tl, rl1, tl1, rl2, tl2] = curve._endoEGCD(lambda);
+      const [rl, tl, rl1, tl1, rl2, tl2] = curve._egcdSqrt(lambda);
 
       assert(rl.eq(rle));
       assert(tl.eq(tle));
