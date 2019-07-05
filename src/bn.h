@@ -44,6 +44,10 @@ private:
   static NAN_METHOD(Ipow);
   static NAN_METHOD(Ipown);
   static NAN_METHOD(Isqr);
+  static NAN_METHOD(Rootrem);
+  static NAN_METHOD(Iroot);
+  static NAN_METHOD(IsPower);
+  static NAN_METHOD(sqrtrem);
   static NAN_METHOD(Isqrt);
   static NAN_METHOD(IsSquare);
   static NAN_METHOD(Iand);

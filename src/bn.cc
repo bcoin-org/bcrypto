@@ -165,6 +165,10 @@ BBN::Init(v8::Local<v8::Object> &target) {
   Nan::SetPrototypeMethod(tpl, "ipow", BBN::Ipow);
   Nan::SetPrototypeMethod(tpl, "ipown", BBN::Ipown);
   Nan::SetPrototypeMethod(tpl, "isqr", BBN::Isqr);
+  Nan::SetPrototypeMethod(tpl, "rootrem", BBN::Rootrem);
+  Nan::SetPrototypeMethod(tpl, "iroot", BBN::Iroot);
+  Nan::SetPrototypeMethod(tpl, "isPower", BBN::IsPower);
+  Nan::SetPrototypeMethod(tpl, "sqrtrem", BBN::Sqrtrem);
   Nan::SetPrototypeMethod(tpl, "isqrt", BBN::Isqrt);
   Nan::SetPrototypeMethod(tpl, "isSquare", BBN::IsSquare);
   Nan::SetPrototypeMethod(tpl, "iand", BBN::Iand);
@@ -742,8 +746,106 @@ NAN_METHOD(BBN::Isqr) {
   info.GetReturnValue().Set(info.Holder());
 }
 
+NAN_METHOD(BBN::Rootrem) {
+  BBN *a = ObjectWrap::Unwrap<BBN>(info.Holder());
+
+  if (info.Length() < 3)
+    return Nan::ThrowError(ARG_ERROR(rootrem, 3));
+
+  if (!BBN::HasInstance(info[0]))
+    return Nan::ThrowTypeError(TYPE_ERROR(num, bignum));
+
+  if (!BBN::HasInstance(info[1]))
+    return Nan::ThrowTypeError(TYPE_ERROR(num, bignum));
+
+  if (!IsUint32(info[2]))
+    return Nan::ThrowTypeError(TYPE_ERROR(pow, uint32));
+
+  uint32_t pow = Nan::To<uint32_t>(info[2]).FromJust();
+
+  BBN *x = ObjectWrap::Unwrap<BBN>(info[0].As<v8::Object>());
+  BBN *r = ObjectWrap::Unwrap<BBN>(info[1].As<v8::Object>());
+
+  if (pow == 0)
+    return Nan::ThrowRangeError("Zeroth root.");
+
+  if (~pow & (mpz_sgn(a->n) < 0))
+    return Nan::ThrowRangeError("Negative with even root.");
+
+  mpz_rootrem(x->n, r->n, a->n, pow);
+
+  info.GetReturnValue().Set(info.Holder());
+}
+
+NAN_METHOD(BBN::Iroot) {
+  BBN *a = ObjectWrap::Unwrap<BBN>(info.Holder());
+
+  if (info.Length() < 1)
+    return Nan::ThrowError(ARG_ERROR(iroot, 1));
+
+  if (!IsUint32(info[0]))
+    return Nan::ThrowTypeError(TYPE_ERROR(pow, uint32));
+
+  uint32_t pow = Nan::To<uint32_t>(info[0]).FromJust();
+
+  if (pow == 0)
+    return Nan::ThrowRangeError("Zeroth root.");
+
+  if (~pow & (mpz_sgn(a->n) < 0))
+    return Nan::ThrowRangeError("Negative with even root.");
+
+  mpz_root(a->n, a->n, pow);
+
+  info.GetReturnValue().Set(info.Holder());
+}
+
+NAN_METHOD(BBN::IsPower) {
+  BBN *a = ObjectWrap::Unwrap<BBN>(info.Holder());
+
+  if (info.Length() < 1)
+    return Nan::ThrowError(ARG_ERROR(isPower, 1));
+
+  if (!IsUint32(info[0]))
+    return Nan::ThrowTypeError(TYPE_ERROR(pow, uint32));
+
+  uint32_t pow = Nan::To<uint32_t>(info[0]).FromJust();
+
+  if (pow == 0 || ~pow & (mpz_sgn(a->n) < 0))
+    return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
+
+  bool ret = (bool)mpz_root(NULL, a->n, pow);
+
+  info.GetReturnValue().Set(Nan::New<v8::Boolean>(ret));
+}
+
+NAN_METHOD(BBN::Sqrtrem) {
+  BBN *a = ObjectWrap::Unwrap<BBN>(info.Holder());
+
+  if (info.Length() < 2)
+    return Nan::ThrowError(ARG_ERROR(sqrtrem, 2));
+
+  if (!BBN::HasInstance(info[0]))
+    return Nan::ThrowTypeError(TYPE_ERROR(num, bignum));
+
+  if (!BBN::HasInstance(info[1]))
+    return Nan::ThrowTypeError(TYPE_ERROR(num, bignum));
+
+  BBN *x = ObjectWrap::Unwrap<BBN>(info[0].As<v8::Object>());
+  BBN *r = ObjectWrap::Unwrap<BBN>(info[1].As<v8::Object>());
+
+  if (mpz_sgn(a->n) < 0)
+    return Nan::ThrowRangeError("Negative with even root.");
+
+  mpz_sqrtrem(x->n, r->n, a->n);
+
+  info.GetReturnValue().Set(info.Holder());
+}
+
 NAN_METHOD(BBN::Isqrt) {
   BBN *a = ObjectWrap::Unwrap<BBN>(info.Holder());
+
+  if (mpz_sgn(a->n) < 0)
+    return Nan::ThrowRangeError("Negative with even root.");
 
   mpz_sqrt(a->n, a->n);
 

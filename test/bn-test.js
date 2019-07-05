@@ -5289,6 +5289,13 @@ describe('BN.js', function() {
       assert.strictEqual(new BN(1025).sqrt().toNumber(), 32);
     });
 
+    it('should compute root', () => {
+      assert.strictEqual(new BN(1860867).root(3).toNumber(), 123);
+      assert.strictEqual(new BN(1860868).root(3).toNumber(), 123);
+      assert.strictEqual(new BN(1879080904).root(3).toNumber(), 1234);
+      assert.strictEqual(new BN(1879080905).root(3).toNumber(), 1234);
+    });
+
     it('should compute divmod', () => {
       const [q, r] = new BN(-3).quorem(new BN(2));
       assert.strictEqual(q.toNumber(), -1);
@@ -5660,6 +5667,35 @@ describe('BN.js', function() {
       assert(R2.eq(r));
     });
 
+    it('should compute sqrtrem', () => {
+      const n = BN.randomBits(rng, 256);
+      const [x, r] = n.sqrtrem();
+      const v = x.sqr().add(r);
+
+      assert(v.eq(n));
+    });
+
+    it('should compute root', () => {
+      const r = BN.randomBits(rng, 256);
+      const R = r.root(3);
+
+      assert(R.pown(3).lte(r));
+      assert(r.lt(R.addn(1).pown(3)));
+
+      const r2 = r.pown(3);
+      const R2 = r2.root(3);
+
+      assert(R2.eq(r));
+    });
+
+    it('should compute rootrem', () => {
+      const n = BN.randomBits(rng, 256);
+      const [x, r] = n.rootrem(3);
+      const v = x.pown(3).add(r);
+
+      assert(v.eq(n));
+    });
+
     it('should compute sqrtm (p192, p mod 4 == 3)', () => {
       const p = P192;
       const r = BN.random(rng, 0, p);
@@ -5934,6 +5970,29 @@ describe('BN.js', function() {
       assert(!new BN(7).isSquare());
       assert(new BN(1024).isSquare());
       assert(!new BN(1025).isSquare());
+    });
+
+    it('should test perfect powers', () => {
+      assert(new BN(0).isPower(3));
+      assert(new BN(1).isPower(3));
+      assert(!new BN(2).isPower(3));
+      assert(!new BN(3).isPower(3));
+      assert(!new BN(26).isPower(3));
+      assert(new BN(27).isPower(3));
+      assert(new BN(-27).isPower(3));
+      assert(!new BN(28).isPower(3));
+      assert(!new BN(5).isPower(3));
+      assert(!new BN(6).isPower(3));
+      assert(!new BN(7).isPower(3));
+      assert(!new BN(63).isPower(3));
+      assert(new BN(64).isPower(3));
+      assert(!new BN(65).isPower(3));
+      assert(!new BN(124).isPower(3));
+      assert(new BN(125).isPower(3));
+      assert(!new BN(126).isPower(3));
+      assert(!new BN(215).isPower(3));
+      assert(new BN(216).isPower(3));
+      assert(!new BN(217).isPower(3));
     });
 
     it('should allow negative numbers for reduction context', () => {
