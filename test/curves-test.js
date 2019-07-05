@@ -34,6 +34,25 @@ describe('Curves', function() {
   describe('Vectors', () => {
     const test = (curve, vector) => {
       it(`should test curve ${curve.id}`, () => {
+        if (curve.type !== 'mont') {
+          const p = curve.g;
+          const j = curve.g.toJ();
+
+          // Quick sanity test.
+          assert(p.add(p).eq(p.dbl()));
+          assert(j.add(j).eq(j.dbl()));
+          assert(j.add(p).eq(j.dbl()));
+
+          assert(p.trpl().eq(p.dbl().add(p)));
+          assert(j.trpl().eq(j.dbl().add(j)));
+          assert(j.trpl().add(p).eq(j.dblp(2)));
+
+          assert(p.dbl().validate());
+          assert(j.dbl().validate());
+          assert(p.trpl().validate());
+          assert(j.trpl().validate());
+        }
+
         for (let i = 0; i < 2; i++) {
           const ak = new BN(vector.a.k, 16);
           const ap = curve.g.mul(ak);
@@ -58,18 +77,18 @@ describe('Curves', function() {
           assert(curve.type === 'mont' || bp.mulSlow(ak).eq(p1));
           assert(curve.type === 'mont' || ap.mulSlow(bk).eq(p1));
 
-          curve.precompute(rng);
-
           if (curve.type !== 'mont') {
-            const p = curve.g;
-            const j = curve.g.toJ();
+            const p3 = bp.mulBlind(ak);
+            const p4 = ap.mulBlind(bk);
 
-            assert(p.add(p).eq(p.dbl()));
-            assert(j.add(p).eq(j.dbl()));
-
-            assert(p.trpl().eq(p.dbl().add(p)));
-            assert(j.trpl().eq(j.dbl().add(j)));
+            assert(p3.eq(p4));
+            assert.equal(p3.getX().toString(16), vector.s.x);
+            assert.equal(p3.getY().toString(16), vector.s.y);
+            assert(bp.mulSlow(ak).eq(p3));
+            assert(ap.mulSlow(bk).eq(p3));
           }
+
+          curve.precompute(rng);
         }
       });
     };
@@ -533,7 +552,7 @@ describe('Curves', function() {
       const curve = new ShortCurve({
         id: 'P160', // NID_wap_wsg_idm_ecid_wtls9
         p: 'fffffffffffffffffffffffffffffffffffc808f',
-        a: '0', // Above docment says a=3 for some reason.
+        a: '0', // Above document incorrectly says a=3.
         b: '3',
         n: '100000000000000000001cdc98ae0e2de574abf33',
         h: '1',
@@ -641,6 +660,7 @@ describe('Curves', function() {
       assert(p.mul(s).validate());
 
       const j = p.toJ();
+
       assert(j.trpl().eq(j.dbl().add(j)));
 
       // Endomorphism test
@@ -663,21 +683,36 @@ describe('Curves', function() {
       assert.strictEqual(curve.endo.basis[1].b.toString(16),
                          '3086d221a7d46bcde86c90e49284eb15');
 
-      const k = new BN('1234567890123456789012345678901234', 16);
-      const [k1, k2] = curve._endoSplit(k);
+      const scalars = [
+        '1234567890123456789012345678901234',
+        '-1234567890123456789012345678901234',
+        '1234567890123456789012345678901233',
+        '-1234567890123456789012345678901233'
+      ];
 
-      const testK = k1.add(k2.mul(curve.endo.lambda)).mod(curve.n);
+      for (const hex of scalars) {
+        const k = new BN(hex, 16);
 
-      assert.strictEqual(testK.toString(16), k.toString(16));
+        assert(k.abs().cmp(curve.n) < 0);
+
+        const [k1, k2] = curve._endoSplit(k);
+
+        const testK = k1.add(k2.mul(curve.endo.lambda)).mod(curve.n);
+
+        const km = k.sign() < 0 ? k.mod(curve.n) : k;
+
+        assert.strictEqual(testK.toString(16), km.toString(16));
+      }
     });
 
     it('should compute this problematic secp256k1 multiplication', () => {
       const curve = secp256k1;
-
       const g1 = curve.g; // precomputed g
+
       assert(g1.precomputed);
 
       const g2 = curve.point(g1.getX(), g1.getY()); // not precomputed g
+
       assert(!g2.precomputed);
 
       const a = new BN(
@@ -1268,6 +1303,14 @@ describe('Curves', function() {
           assert(p8.eq(p7));
         }
       }
+    });
+
+    it('should correctly recover Y', () => {
+      const x = ed25519.g.getX();
+      const y = ed25519.g.y.redIsOdd();
+      const g = ed25519.pointFromX(x, y);
+
+      assert(ed25519.g.eq(g));
     });
 
     it('should have basepoint for x25519', () => {
