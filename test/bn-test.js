@@ -3894,13 +3894,13 @@ describe('BN.js', function() {
           const bl = bn.bitLength();
 
           for (let i = 0; i < bl; i++) {
-            assert.strictEqual(bn.testn(i), true);
-            assert.strictEqual(bn.utestn(i), true);
+            assert.strictEqual(bn.testn(i), 1);
+            assert.strictEqual(bn.utestn(i), 1);
           }
 
           // test off the end
-          assert.strictEqual(bn.testn(bl), false);
-          assert.strictEqual(bn.utestn(bl), false);
+          assert.strictEqual(bn.testn(bl), 0);
+          assert.strictEqual(bn.utestn(bl), 0);
         });
 
         const xbits = '01111001010111001001000100011101'
@@ -3915,8 +3915,8 @@ describe('BN.js', function() {
           '23478905234580795234378912401239784125643978256123048348957342');
 
         for (let i = 0; i < x.bitLength(); i++) {
-          assert.strictEqual(x.testn(i), (xbits.charAt(i) === '1'), 'Failed @ bit ' + i);
-          assert.strictEqual(x.utestn(i), (xbits.charAt(i) === '1'), 'Failed @ bit ' + i);
+          assert.strictEqual(x.testn(i), xbits.charCodeAt(i) & 1, 'Failed @ bit ' + i);
+          assert.strictEqual(x.utestn(i), xbits.charCodeAt(i) & 1, 'Failed @ bit ' + i);
         }
       });
 
@@ -3933,12 +3933,12 @@ describe('BN.js', function() {
           '-23478905234580795234378912401239784125643978256123048348957342');
 
         for (let i = 0; i < x.bitLength(); i++)
-          assert.strictEqual(x.testn(i), (xbits.charAt(i) === '1'), 'Failed @ bit ' + i);
+          assert.strictEqual(x.testn(i), xbits.charCodeAt(i) & 1, 'Failed @ bit ' + i);
 
         const y = new BN(-2);
 
         for (let i = 2; i < x.bitLength(); i++)
-          y.setn(i, xbits.charCodeAt(i) - 0x30);
+          y.setn(i, xbits.charCodeAt(i) & 1);
 
         assert.strictEqual(y.toString(2), x.toString(2));
       });

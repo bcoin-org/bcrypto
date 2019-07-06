@@ -1350,9 +1350,9 @@ NAN_METHOD(BBN::Testn) {
     return Nan::ThrowTypeError(TYPE_ERROR(bit, uint32));
 
   uint32_t bit = Nan::To<uint32_t>(info[0]).FromJust();
-  bool ret = (bool)mpz_tstbit(a->n, bit);
+  uint32_t ret = (uint32_t)mpz_tstbit(a->n, bit);
 
-  info.GetReturnValue().Set(Nan::New<v8::Boolean>(ret));
+  info.GetReturnValue().Set(Nan::New<v8::Uint32>(ret));
 }
 
 NAN_METHOD(BBN::Utestn) {
@@ -1370,12 +1370,12 @@ NAN_METHOD(BBN::Utestn) {
   if (neg)
     mpz_neg(a->n, a->n);
 
-  bool ret = (bool)mpz_tstbit(a->n, bit);
+  uint32_t ret = (uint32_t)mpz_tstbit(a->n, bit);
 
   if (neg)
     mpz_neg(a->n, a->n);
 
-  info.GetReturnValue().Set(Nan::New<v8::Boolean>(ret));
+  info.GetReturnValue().Set(Nan::New<v8::Uint32>(ret));
 }
 
 NAN_METHOD(BBN::Imaskn) {
