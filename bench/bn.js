@@ -1,5 +1,6 @@
 'use strict';
 
+const assert = require('assert');
 const bench = require('./bench');
 const BN = require('../lib/bn');
 const red = BN.red('p192');
@@ -11,3 +12,5 @@ const r = n.toRed(red);
 bench('mul', rounds, () => {
   r.redISqr();
 });
+
+assert(r.length === 8);
