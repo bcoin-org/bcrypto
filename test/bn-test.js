@@ -3744,6 +3744,7 @@ describe('BN.js', function() {
         assert.strictEqual(new BN(2).gcd(new BN(0)).toString(10), '2');
         assert.strictEqual(new BN(0).gcd(new BN(3)).toString(10), '3');
         assert.strictEqual(new BN(0).gcd(new BN(0)).toString(10), '0');
+        assert.strictEqual(new BN(32).gcd(new BN(16)).toString(10), '16');
       });
     });
 
@@ -3753,6 +3754,7 @@ describe('BN.js', function() {
         assert.strictEqual(new BN(18).egcd(new BN(12))[2].toString(10), '6');
         assert.strictEqual(new BN(-18).egcd(new BN(12))[2].toString(10), '6');
         assert.strictEqual(new BN(0).egcd(new BN(12))[2].toString(10), '12');
+        assert.strictEqual(new BN(32).egcd(new BN(16))[2].toString(10), '16');
       });
 
       it('should not allow 0 input', () => {
