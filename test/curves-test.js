@@ -35,8 +35,12 @@ describe('Curves', function() {
     const test = (curve, vector) => {
       it(`should test curve ${curve.id}`, () => {
         if (curve.type === 'mont') {
-          const p = curve.g;
-          assert(p.dbl().diffAdd(p, p).eq(p.trpl()));
+          const g = curve.g;
+          const p1 = g.mulSlow(new BN(2));
+          const p2 = g.mulSlow(new BN(3));
+
+          assert(g.dbl().eq(p1));
+          assert(g.diffTrpl(g).eq(p2));
         } else {
           const p = curve.g;
           const j = curve.g.toJ();
@@ -76,7 +80,7 @@ describe('Curves', function() {
 
           assert.equal(bp.getX().toString(16), vector.b.x);
           assert.equal(bp.getY().toString(16), vector.b.y);
-          assert(curve.type === 'mont' || curve.g.mulSlow(bk).eq(bp));
+          assert(curve.g.mulSlow(bk).eq(bp));
 
           const p1 = bp.mul(ak);
           const p2 = ap.mul(bk);
@@ -85,7 +89,7 @@ describe('Curves', function() {
           assert.equal(p1.getX().toString(16), vector.s.x);
           assert.equal(p1.getY().toString(16), vector.s.y);
           assert(curve.type === 'mont' || bp.mulSlow(ak).eq(p1));
-          assert(curve.type === 'mont' || ap.mulSlow(bk).eq(p1));
+          assert(ap.mulSlow(bk).eq(p1));
 
           if (curve.type !== 'mont') {
             const p3 = bp.mulBlind(ak);
