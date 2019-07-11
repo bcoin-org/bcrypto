@@ -34,9 +34,14 @@ describe('Curves', function() {
   describe('Vectors', () => {
     const test = (curve, vector) => {
       it(`should test curve ${curve.id}`, () => {
-        if (curve.type !== 'mont') {
+        if (curve.type === 'mont') {
+          const p = curve.g;
+          assert(p.dbl().diffAdd(p, p).eq(p.trpl()));
+        } else {
           const p = curve.g;
           const j = curve.g.toJ();
+          const tp = p.trpl();
+          const tj = j.trpl();
 
           // Quick sanity test.
           assert(p.add(p).eq(p.dbl()));
@@ -51,6 +56,11 @@ describe('Curves', function() {
           assert(j.dbl().validate());
           assert(p.trpl().validate());
           assert(j.trpl().validate());
+
+          assert(p.dbl().eq(p.uni(p)));
+          assert(j.dbl().eq(j.uni(j)));
+          assert(p.uni(p).uni(p).eq(tp));
+          assert(j.uni(j).uni(j).eq(tj));
         }
 
         for (let i = 0; i < 2; i++) {
@@ -1354,6 +1364,176 @@ describe('Curves', function() {
       assert(montG.eq(x25519.g));
 
       assert.throws(() => ed448.pointFromMont(x25519.g, false));
+    });
+
+    it('should test unified addition', () => {
+      const curve = new SECP256K1();
+
+      const vectors = [
+        // G + R
+        [
+          [
+            '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
+            '483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8'
+          ],
+          [
+            '9474d13ad9314a46210de4b7e846bc2324fc0638cc77f88a84ebf6c283c704f4 ',
+            '161e854a5015fd39b45c32c1897b1cd423ffdd4a4dbad2b09fb56351cf7e2c4e'
+          ]
+        ],
+        // R + R
+        [
+          [
+            'c7f5c3fe72dd8e0c7c71efc5ce1611115419e5a6cf5d645ee30f3603fca08a29',
+            '58fb0e0348a4bee8b4e8cd253f6429135fc7c556a0c5af87d6ca6194166a6790'
+          ],
+          [
+            'd63f7ed3c5ef0f3caeae2d2baf3d3636a12a993e0a72fe81d1beb0589dcc7687',
+            '383d0b172413048a5deff4ffca1b183645fc6f2c82e881c790fdb2fb178834d6'
+          ]
+        ],
+        // M = 0, R = 0
+        [
+          [
+            '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
+            '483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8'
+          ],
+          [
+            'bcace2e99da01887ab0102b696902325872844067f15e98da7bba04400b88fcb',
+            'b7c52588d95c3b9aa25b0403f1eef75702e84bb7597aabe663b82f6f04ef2777'
+          ]
+        ],
+        [
+          [
+            'f96e09c5f26fa15c38fd52282087c96a53411a75d4a65a9faed9c1113955b28f',
+            'cf867faf174f422673a146bec0fc41e0d1082e4a6e2711012c30ed49cfa7c360'
+          ],
+          [
+            '3ba398aa59edee676a580508b285c92cbad4d45f9bd24c9b0e635ac1b7ec5dbb',
+            '30798050e8b0bdd98c5eb9413f03be1f2ef7d1b591d8eefed3cf12b5305838cf'
+          ]
+        ],
+        [
+          [
+            'eef57567a6beda8b2307bdb2e2d64649ca3da5e99b0e6e600b258ed7fc5c6432',
+            '76cdd5f153bd292bc5c0aa451f70d4adc43f0fb6944cc75dea850bf87701061a'
+          ],
+          [
+            'ff429d7bb1932077e2f99ebfc8da744fcace96ed151e77f6935836a51584c204',
+            '89322a0eac42d6d43a3f55bae08f2b523bc0f0496bb338a2157af40688fef615'
+          ]
+        ],
+        // M = 0, R != 0
+        [
+          [
+            '89cef607c2cfe639107741129288f9508df3537abe429af16fc42a86b684b0d2',
+            'aa2ecd65992c94e9cc8e4013ac0f3d08b588d7a4b3b25e8612642c5498e9ab2b'
+          ],
+          [
+            '89cef607c2cfe639107741129288f9508df3537abe429af16fc42a86b684b0d2',
+            '55d1329a66d36b163371bfec53f0c2f74a77285b4c4da179ed9bd3aa67165104'
+          ]
+        ],
+        [
+          [
+            '2a6603cea614a0034057d7bfc56949743a2e3c15d1a4cfb7920cb9652d0bfbe8',
+            'cc36607d45f9aed4bbe93d212456ffdd481337da39c141c8d82a5db283679c40'
+          ],
+          [
+            '2a6603cea614a0034057d7bfc56949743a2e3c15d1a4cfb7920cb9652d0bfbe8',
+            '33c99f82ba06512b4416c2dedba90022b7ecc825c63ebe3727d5a24c7c985fef'
+          ]
+        ],
+        // M != 0, R = 0
+        [
+          [
+            'f96e09c5f26fa15c38fd52282087c96a53411a75d4a65a9faed9c1113955b28f',
+            'cf867faf174f422673a146bec0fc41e0d1082e4a6e2711012c30ed49cfa7c360'
+          ],
+          [
+            '3ba398aa59edee676a580508b285c92cbad4d45f9bd24c9b0e635ac1b7ec5dbb',
+            'cf867faf174f422673a146bec0fc41e0d1082e4a6e2711012c30ed49cfa7c360'
+          ]
+        ],
+        [
+          [
+            '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
+            '483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8'
+          ],
+          [
+            'bcace2e99da01887ab0102b696902325872844067f15e98da7bba04400b88fcb',
+            '483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8'
+          ]
+        ],
+        [
+          [
+            'eef57567a6beda8b2307bdb2e2d64649ca3da5e99b0e6e600b258ed7fc5c6432',
+            '76cdd5f153bd292bc5c0aa451f70d4adc43f0fb6944cc75dea850bf87701061a'
+          ],
+          [
+            'ff429d7bb1932077e2f99ebfc8da744fcace96ed151e77f6935836a51584c204',
+            '76cdd5f153bd292bc5c0aa451f70d4adc43f0fb6944cc75dea850bf87701061a'
+          ]
+        ]
+      ];
+
+      for (const [[x1, y1], [x2, y2]] of vectors) {
+        const o = curve.point();
+        const p = curve.point(x1, y1);
+        const q = curve.point(x2, y2);
+        const r = p.add(q);
+
+        const oj = curve.jpoint();
+        const pj = p.toJ();
+        const qj = q.toJ();
+        const rj = pj.add(qj);
+
+        // Sanity check for affine.
+        assert(r.toJ().eq(rj));
+
+        assert(p.add(o).eq(p));
+        assert(o.add(p).eq(p));
+        assert(o.add(o).eq(o));
+
+        // Sanity check for jacobian.
+        assert(rj.toP().eq(r));
+
+        assert(pj.add(oj).eq(pj));
+        assert(oj.add(pj).eq(pj));
+        assert(oj.add(oj).eq(oj));
+
+        // Sanity check for jacobian (mixed).
+        assert(pj.add(o).eq(pj));
+        assert(oj.add(p).eq(pj));
+        assert(oj.add(o).eq(oj));
+
+        // Affine unified.
+        assert(p.uni(q).eq(r));
+        assert(p.uni(p).eq(p.dbl()));
+        assert(q.uni(q).eq(q.dbl()));
+
+        assert(p.uni(o).eq(p));
+        assert(o.uni(p).eq(p));
+        assert(o.uni(o).eq(o));
+
+        // Jacobian unified.
+        assert(pj.uni(qj).eq(rj));
+        assert(pj.uni(pj).eq(pj.dbl()));
+        assert(qj.uni(qj).eq(qj.dbl()));
+
+        assert(pj.uni(oj).eq(pj));
+        assert(oj.uni(pj).eq(pj));
+        assert(oj.uni(oj).eq(oj));
+
+        // Jacobian unified (mixed).
+        assert(pj.uni(q).eq(rj));
+        assert(pj.uni(p).eq(pj.dbl()));
+        assert(qj.uni(q).eq(qj.dbl()));
+
+        assert(pj.uni(o).eq(pj));
+        assert(oj.uni(p).eq(pj));
+        assert(oj.uni(o).eq(oj));
+      }
     });
   });
 
