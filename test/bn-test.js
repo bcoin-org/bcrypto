@@ -6045,6 +6045,8 @@ describe('BN.js', function() {
         const r15 = new BN(15).toRed(red);
         const r16 = new BN(16).toRed(red);
         const r17 = new BN(17).toRed(red);
+        const r18 = new BN(18).toRed(red);
+        const raaaa = new BN(0xaaaa).toRed(red);
         const n = BN.random(rng, P192.ushrn(1), P192).toRed(red);
 
         assert.strictEqual(n.redAddn(0).toString(), n.redAdd(r0).toString());
@@ -6083,6 +6085,8 @@ describe('BN.js', function() {
         assert.strictEqual(n.redMuln(15).toString(), n.redMul(r15).toString());
         assert.strictEqual(n.redMuln(16).toString(), n.redMul(r16).toString());
         assert.strictEqual(n.redMuln(17).toString(), n.redMul(r17).toString());
+        assert.strictEqual(n.redMuln(18).toString(), n.redMul(r18).toString());
+        assert.strictEqual(n.redMuln(0xaaaa).toString(), n.redMul(raaaa).toString());
 
         assert.strictEqual(n.redMuln(-1).toString(), n.redMul(r1.redNeg()).toString());
         assert.strictEqual(n.redMuln(-2).toString(), n.redMul(r2.redNeg()).toString());
@@ -6101,6 +6105,8 @@ describe('BN.js', function() {
         assert.strictEqual(n.redMuln(-15).toString(), n.redMul(r15.redNeg()).toString());
         assert.strictEqual(n.redMuln(-16).toString(), n.redMul(r16.redNeg()).toString());
         assert.strictEqual(n.redMuln(-17).toString(), n.redMul(r17.redNeg()).toString());
+        assert.strictEqual(n.redMuln(-18).toString(), n.redMul(r18.redNeg()).toString());
+        assert.strictEqual(n.redMuln(-0xaaaa).toString(), n.redMul(raaaa.redNeg()).toString());
 
         assert.strictEqual(n.redShl(new BN(0)).toString(), n.redMuln(1).toString());
         assert.strictEqual(n.redShl(new BN(1)).toString(), n.redMuln(2).toString());
