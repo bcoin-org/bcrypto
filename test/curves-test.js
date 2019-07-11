@@ -471,6 +471,7 @@ describe('Curves', function() {
     it('should work with secp112r1', () => {
       const curve = new ShortCurve({
         id: 'SECP112R1',
+        s: '00f50b02 8e4d696e 67687561 51752904 72783fb1',
         // (2^128 - 3) / 76439
         p: 'db7c 2abf62e3 5e668076 bead208b',
         a: 'db7c 2abf62e3 5e668076 bead2088',
