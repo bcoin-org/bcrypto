@@ -36,8 +36,8 @@ describe('Curves', function() {
       it(`should test curve ${curve.id}`, () => {
         if (curve.type === 'mont') {
           const g = curve.g;
-          const p1 = g.mulSlow(new BN(2));
-          const p2 = g.mulSlow(new BN(3));
+          const p1 = g.mulSimple(new BN(2));
+          const p2 = g.mulSimple(new BN(3));
 
           assert(g.dbl().eq(p1));
           assert(g.diffTrpl(g).eq(p2));
@@ -73,14 +73,16 @@ describe('Curves', function() {
 
           assert.equal(ap.getX().toString(16), vector.a.x);
           assert.equal(ap.getY().toString(16), vector.a.y);
-          assert(curve.type === 'mont' || curve.g.mulSlow(ak).eq(ap));
+          assert(curve.type === 'mont' || curve.g.mulSimple(ak).eq(ap));
+          assert(curve.g.mulConst(ak).eq(ap));
 
           const bk = new BN(vector.b.k, 16);
           const bp = curve.g.mul(bk);
 
           assert.equal(bp.getX().toString(16), vector.b.x);
           assert.equal(bp.getY().toString(16), vector.b.y);
-          assert(curve.g.mulSlow(bk).eq(bp));
+          assert(curve.g.mulSimple(bk).eq(bp));
+          assert(curve.g.mulConst(bk).eq(bp));
 
           const p1 = bp.mul(ak);
           const p2 = ap.mul(bk);
@@ -88,8 +90,9 @@ describe('Curves', function() {
           assert(p1.eq(p2));
           assert.equal(p1.getX().toString(16), vector.s.x);
           assert.equal(p1.getY().toString(16), vector.s.y);
-          assert(curve.type === 'mont' || bp.mulSlow(ak).eq(p1));
-          assert(ap.mulSlow(bk).eq(p1));
+          assert(curve.type === 'mont' || bp.mulSimple(ak).eq(p1));
+          assert(ap.mulSimple(bk).eq(p1));
+          assert(ap.mulConst(bk).eq(p1));
 
           if (curve.type !== 'mont') {
             const p3 = bp.mulBlind(ak);
@@ -98,8 +101,10 @@ describe('Curves', function() {
             assert(p3.eq(p4));
             assert.equal(p3.getX().toString(16), vector.s.x);
             assert.equal(p3.getY().toString(16), vector.s.y);
-            assert(bp.mulSlow(ak).eq(p3));
-            assert(ap.mulSlow(bk).eq(p3));
+            assert(bp.mulSimple(ak).eq(p3));
+            assert(ap.mulSimple(bk).eq(p3));
+            assert(bp.mulConst(ak).eq(p3));
+            assert(ap.mulConst(bk).eq(p3));
           }
 
           curve.precompute(rng);
@@ -844,34 +849,61 @@ describe('Curves', function() {
         const s = BN.random(rng, 1, N);
 
         const p1 = curve.g.mul(s);
-        const p2 = curve.g.mulSlow(s);
+        const p2 = curve.g.mulSimple(s);
 
         assert(p1.eq(p2));
 
         const j1 = curve.g.jmul(s);
-        const j2 = curve.g.jmulSlow(s);
+        const j2 = curve.g.jmulSimple(s);
 
         assert(j1.eq(j2));
 
         const j3 = curve.g.toJ().mul(s);
-        const j4 = curve.g.toJ().mulSlow(s);
+        const j4 = curve.g.toJ().mulSimple(s);
 
         assert(j3.eq(j4));
 
         const p3 = curve.g.mul(s.divn(3).mul(s));
-        const p4 = curve.g.mulSlow(s.divn(3).mul(s).imod(N));
-        const p4_ = curve.g.mulSlow(s.divn(3).mul(s));
+        const p4 = curve.g.mulSimple(s.divn(3).mul(s).imod(N));
+        const p4_ = curve.g.mulSimple(s.divn(3).mul(s));
 
         assert(p3.eq(p4));
         assert(p4_.eq(p4));
 
         const p5 = curve.g.mul(s.divn(3).mul(s).ineg());
-        const p6 = curve.g.mulSlow(s.divn(3).mul(s).ineg().imod(N));
-        const p6_ = curve.g.mulSlow(s.divn(3).mul(s).ineg());
+        const p6 = curve.g.mulSimple(s.divn(3).mul(s).ineg().imod(N));
+        const p6_ = curve.g.mulSimple(s.divn(3).mul(s).ineg());
 
         assert(p5.eq(p6));
         assert(p6_.eq(p6));
       }
+    });
+
+    it('should match multiplications (ladder)', () => {
+      const curve = secp256k1;
+      const N = curve.n;
+
+      const s = BN.random(rng, 1, N);
+
+      const p1 = curve.g.mulConst(s);
+      const p2 = curve.g.mulSimple(s);
+
+      assert(p1.eq(p2));
+
+      const p3 = curve.g.mulConst(s.neg());
+      const p4 = curve.g.mulSimple(s.neg().imod(N));
+
+      assert(p3.eq(p4));
+
+      const j1 = curve.g.jmulConst(s);
+      const j2 = curve.g.jmulSimple(s);
+
+      assert(j1.eq(j2));
+
+      const j3 = curve.g.jmulConst(s.neg());
+      const j4 = curve.g.jmulSimple(s.neg().imod(N));
+
+      assert(j3.eq(j4));
     });
 
     it('should match multiplications (fixed)', () => {
@@ -884,22 +916,22 @@ describe('Curves', function() {
       const s = BN.random(rng, 1, N);
 
       const p1 = mul(curve.g, s);
-      const p2 = curve.g.mulSlow(s);
+      const p2 = curve.g.mulSimple(s);
 
       assert(p1.eq(p2));
 
       const p3 = mul(curve.g, s.neg());
-      const p4 = curve.g.mulSlow(s.neg().imod(N));
+      const p4 = curve.g.mulSimple(s.neg().imod(N));
 
       assert(p3.eq(p4));
 
       const j1 = jmul(curve.g, s);
-      const j2 = curve.g.jmulSlow(s);
+      const j2 = curve.g.jmulSimple(s);
 
       assert(j1.eq(j2));
 
       const j3 = jmul(curve.g, s.neg());
-      const j4 = curve.g.jmulSlow(s.neg().imod(N));
+      const j4 = curve.g.jmulSimple(s.neg().imod(N));
 
       assert(j3.eq(j4));
     });
@@ -918,22 +950,22 @@ describe('Curves', function() {
         const s = BN.random(rng, 1, N);
 
         const p1 = mul(g, s);
-        const p2 = g.mulSlow(s);
+        const p2 = g.mulSimple(s);
 
         assert(p1.eq(p2));
 
         const j1 = jmul(g, s);
-        const j2 = g.jmulSlow(s);
+        const j2 = g.jmulSimple(s);
 
         assert(j1.eq(j2));
 
         const p3 = mul(g, s.divn(3).mul(s));
-        const p4 = g.mulSlow(s.divn(3).mul(s).imod(N));
+        const p4 = g.mulSimple(s.divn(3).mul(s).imod(N));
 
         assert(p3.eq(p4));
 
         const p5 = mul(g, s.divn(3).mul(s).ineg());
-        const p6 = g.mulSlow(s.divn(3).mul(s).ineg().imod(N));
+        const p6 = g.mulSimple(s.divn(3).mul(s).ineg().imod(N));
 
         assert(p5.eq(p6));
 
@@ -970,22 +1002,22 @@ describe('Curves', function() {
         const s = BN.random(rng, 1, N);
 
         const p1 = mul(g, s);
-        const p2 = g.mulSlow(s);
+        const p2 = g.mulSimple(s);
 
         assert(p1.eq(p2));
 
         const j1 = jmul(g, s);
-        const j2 = g.jmulSlow(s);
+        const j2 = g.jmulSimple(s);
 
         assert(j1.eq(j2));
 
         const p3 = mul(g, s.divn(3).mul(s));
-        const p4 = g.mulSlow(s.divn(3).mul(s).imod(N));
+        const p4 = g.mulSimple(s.divn(3).mul(s).imod(N));
 
         assert(p3.eq(p4));
 
         const p5 = mul(g, s.divn(3).mul(s).ineg());
-        const p6 = g.mulSlow(s.divn(3).mul(s).ineg().imod(N));
+        const p6 = g.mulSimple(s.divn(3).mul(s).ineg().imod(N));
 
         assert(p5.eq(p6));
 
@@ -1022,22 +1054,22 @@ describe('Curves', function() {
         const s = BN.random(rng, 1, N);
 
         const p1 = mul(g, s);
-        const p2 = g.mulSlow(s);
+        const p2 = g.mulSimple(s);
 
         assert(p1.eq(p2));
 
         const j1 = jmul(g, s);
-        const j2 = g.jmulSlow(s);
+        const j2 = g.jmulSimple(s);
 
         assert(j1.eq(j2));
 
         const p3 = mul(g, s.divn(3).mul(s));
-        const p4 = g.mulSlow(s.divn(3).mul(s).imod(N));
+        const p4 = g.mulSimple(s.divn(3).mul(s).imod(N));
 
         assert(p3.eq(p4));
 
         const p5 = mul(g, s.divn(3).mul(s).ineg());
-        const p6 = g.mulSlow(s.divn(3).mul(s).ineg().imod(N));
+        const p6 = g.mulSimple(s.divn(3).mul(s).ineg().imod(N));
 
         assert(p5.eq(p6));
 
@@ -1074,22 +1106,22 @@ describe('Curves', function() {
         const s = BN.random(rng, 1, N);
 
         const p1 = mul(g, s);
-        const p2 = g.mulSlow(s);
+        const p2 = g.mulSimple(s);
 
         assert(p1.eq(p2));
 
         const j1 = jmul(g, s);
-        const j2 = g.jmulSlow(s);
+        const j2 = g.jmulSimple(s);
 
         assert(j1.eq(j2));
 
         const p3 = mul(g, s.divn(3).mul(s));
-        const p4 = g.mulSlow(s.divn(3).mul(s).imod(N));
+        const p4 = g.mulSimple(s.divn(3).mul(s).imod(N));
 
         assert(p3.eq(p4));
 
         const p5 = mul(g, s.divn(3).mul(s).ineg());
-        const p6 = g.mulSlow(s.divn(3).mul(s).ineg().imod(N));
+        const p6 = g.mulSimple(s.divn(3).mul(s).ineg().imod(N));
 
         assert(p5.eq(p6));
 
