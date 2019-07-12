@@ -5087,6 +5087,64 @@ describe('BN.js', function() {
         assert.strictEqual(b.toString(10), '100');
       });
     });
+
+    describe('.condSwap()', () => {
+      it('should swap two bignums in-place', () => {
+        const a = new BN(100);
+        const b = new BN(-200);
+
+        a.condSwap(b, 0);
+
+        assert.strictEqual(a.toString(10), '100');
+        assert.strictEqual(b.toString(10), '-200');
+
+        a.condSwap(b, 1);
+
+        assert.strictEqual(a.toString(10), '-200');
+        assert.strictEqual(b.toString(10), '100');
+
+        a.condSwap(b, 0);
+
+        assert.strictEqual(a.toString(10), '-200');
+        assert.strictEqual(b.toString(10), '100');
+
+        a.condSwap(b, 1);
+
+        assert.strictEqual(a.toString(10), '100');
+        assert.strictEqual(b.toString(10), '-200');
+      });
+    });
+
+    describe('.condInject()', () => {
+      it('should conditionally inject', () => {
+        const a = new BN(100);
+        const b = new BN(-200);
+
+        a.condInject(b, 0);
+
+        assert.strictEqual(a.toString(10), '100');
+        assert.strictEqual(b.toString(10), '-200');
+
+        a.condInject(b, 1);
+
+        assert.strictEqual(a.toString(10), '-200');
+        assert.strictEqual(b.toString(10), '-200');
+      });
+    });
+
+    describe('.condSet()', () => {
+      it('should conditionally set', () => {
+        const a = new BN(100);
+
+        a.condSet(-200, 0);
+
+        assert.strictEqual(a.toString(10), '100');
+
+        a.condSet(-200, 1);
+
+        assert.strictEqual(a.toString(10), '-200');
+      });
+    });
   });
 
   describe('BN-NG', () => {
