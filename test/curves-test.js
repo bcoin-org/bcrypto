@@ -61,10 +61,12 @@ describe('Curves', function() {
           assert(p.trpl().validate());
           assert(j.trpl().validate());
 
-          assert(p.dbl().eq(p.uni(p)));
-          assert(j.dbl().eq(j.uni(j)));
-          assert(p.uni(p).uni(p).eq(tp));
-          assert(j.uni(j).uni(j).eq(tj));
+          assert(p.dbl().eq(p.uadd(p)));
+          assert(j.dbl().eq(j.uadd(j)));
+          assert(p.dbl().eq(p.udbl()));
+          assert(j.dbl().eq(j.udbl()));
+          assert(p.uadd(p).uadd(p).eq(tp));
+          assert(j.uadd(j).uadd(j).eq(tj));
         }
 
         for (let i = 0; i < 2; i++) {
@@ -1544,31 +1546,35 @@ describe('Curves', function() {
         assert(oj.add(o).eq(oj));
 
         // Affine unified.
-        assert(p.uni(q).eq(r));
-        assert(p.uni(p).eq(p.dbl()));
-        assert(q.uni(q).eq(q.dbl()));
+        assert(p.uadd(q).eq(r));
+        assert(p.uadd(p).eq(p.dbl()));
+        assert(q.uadd(q).eq(q.dbl()));
+        assert(p.udbl().eq(p.dbl()));
+        assert(q.udbl().eq(q.dbl()));
 
-        assert(p.uni(o).eq(p));
-        assert(o.uni(p).eq(p));
-        assert(o.uni(o).eq(o));
+        assert(p.uadd(o).eq(p));
+        assert(o.uadd(p).eq(p));
+        assert(o.uadd(o).eq(o));
 
         // Jacobian unified.
-        assert(pj.uni(qj).eq(rj));
-        assert(pj.uni(pj).eq(pj.dbl()));
-        assert(qj.uni(qj).eq(qj.dbl()));
+        assert(pj.uadd(qj).eq(rj));
+        assert(pj.uadd(pj).eq(pj.dbl()));
+        assert(qj.uadd(qj).eq(qj.dbl()));
+        assert(pj.udbl().eq(pj.dbl()));
+        assert(qj.udbl().eq(qj.dbl()));
 
-        assert(pj.uni(oj).eq(pj));
-        assert(oj.uni(pj).eq(pj));
-        assert(oj.uni(oj).eq(oj));
+        assert(pj.uadd(oj).eq(pj));
+        assert(oj.uadd(pj).eq(pj));
+        assert(oj.uadd(oj).eq(oj));
 
         // Jacobian unified (mixed).
-        assert(pj.uni(q).eq(rj));
-        assert(pj.uni(p).eq(pj.dbl()));
-        assert(qj.uni(q).eq(qj.dbl()));
+        assert(pj.uadd(q).eq(rj));
+        assert(pj.uadd(p).eq(pj.dbl()));
+        assert(qj.uadd(q).eq(qj.dbl()));
 
-        assert(pj.uni(o).eq(pj));
-        assert(oj.uni(p).eq(pj));
-        assert(oj.uni(o).eq(oj));
+        assert(pj.uadd(o).eq(pj));
+        assert(oj.uadd(p).eq(pj));
+        assert(oj.uadd(o).eq(oj));
       }
     });
   });
