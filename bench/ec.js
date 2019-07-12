@@ -31,6 +31,10 @@ const mul = secp256k1.native ? 10 : 1;
   bench('secp256k1 verify (schnorr)', rounds, () => {
     secp256k1.schnorrVerify(msg, ssig, pub);
   });
+
+  bench('secp256k1 derive', rounds, () => {
+    secp256k1.derive(pub, msg);
+  });
 }
 
 {
