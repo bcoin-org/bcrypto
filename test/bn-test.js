@@ -5088,59 +5088,121 @@ describe('BN.js', function() {
       });
     });
 
-    describe('.condSwap()', () => {
+    describe('.csign()', () => {
+      it('should get sign in constant time', () => {
+        assert.strictEqual(new BN(0).csign(), 0);
+        assert.strictEqual(new BN(-1).csign(), -1);
+        assert.strictEqual(new BN(1).csign(), 1);
+        assert.strictEqual(new BN(-0x3fffffe).csign(), -1);
+        assert.strictEqual(new BN(0x3fffffe).csign(), 1);
+        assert.strictEqual(new BN(-0x43fffffe).csign(), -1);
+        assert.strictEqual(new BN(0x43fffffe).csign(), 1);
+        assert.strictEqual(new BN(-42).csign(), -1);
+        assert.strictEqual(new BN(42).csign(), 1);
+        assert.strictEqual(1 / new BN(0).csign(), Infinity);
+      });
+    });
+
+    describe('.czero()', () => {
+      it('should return true for zero', () => {
+        assert.strictEqual(new BN(0).czero(), 1);
+        assert.strictEqual(new BN(1).czero(), 0);
+        assert.strictEqual(new BN(0xffffffff).czero(), 0);
+        assert.strictEqual(new BN(-1).czero(), 0);
+        assert.strictEqual(new BN(-0xffffffff).czero(), 0);
+        assert.strictEqual(new BN(1e9).czero(), 0);
+        assert.strictEqual(new BN(-1e9).czero(), 0);
+      });
+    });
+
+    describe('.ceq()', () => {
+      it('should return 0, 1 correctly', () => {
+        assert.strictEqual(new BN(42).ceq(new BN(42)), 1);
+        assert.strictEqual(new BN(42).ceq(new BN(43)), 0);
+        assert.strictEqual(new BN(42).ceq(new BN(41)), 0);
+        assert.strictEqual(new BN(0x3fffffe).ceq(new BN(0x3fffffe)), 1);
+        assert.strictEqual(new BN(0x3fffffe).ceq(new BN(0x3ffffff)), 0);
+        assert.strictEqual(new BN(0x3fffffe).ceq(new BN(0x3fffffd)), 0);
+        assert.strictEqual(new BN(0x3fffffe).ceq(new BN(0x4000000)), 0);
+        assert.strictEqual(new BN(42).ceq(new BN(-42)), 0);
+        assert.strictEqual(new BN(-42).ceq(new BN(42)), 0);
+        assert.strictEqual(new BN(-42).ceq(new BN(-42)), 1);
+        assert.strictEqual(new BN(1e9).ceq(new BN(1e9 - 1)), 0);
+        assert.strictEqual(new BN(1e9).ceq(new BN(1e9)), 1);
+        assert.strictEqual(new BN(-1e9).ceq(new BN(1e9)), 0);
+        assert.strictEqual(new BN(1e9).ceq(new BN(-1e9)), 0);
+      });
+    });
+
+    describe('.ceqn()', () => {
+      it('should return 0, 1 correctly', () => {
+        assert.strictEqual(new BN(42).ceqn(42), 1);
+        assert.strictEqual(new BN(42).ceqn(43), 0);
+        assert.strictEqual(new BN(42).ceqn(41), 0);
+        assert.strictEqual(new BN(0x3fffffe).ceqn(0x3fffffe), 1);
+        assert.strictEqual(new BN(0x3fffffe).ceqn(0x3ffffff), 0);
+        assert.strictEqual(new BN(0x3fffffe).ceqn(0x3fffffd), 0);
+        assert.strictEqual(new BN(42).ceqn(-42), 0);
+        assert.strictEqual(new BN(-42).ceqn(42), 0);
+        assert.strictEqual(new BN(-42).ceqn(-42), 1);
+        assert.strictEqual(new BN(-1e9).ceqn(1e6), 0);
+        assert.strictEqual(new BN(1e9).ceqn(-1e6), 0);
+      });
+    });
+
+    describe('.cswap()', () => {
       it('should swap two bignums in-place', () => {
         const a = new BN(100);
         const b = new BN(-200);
 
-        a.condSwap(b, 0);
+        a.cswap(b, 0);
 
         assert.strictEqual(a.toString(10), '100');
         assert.strictEqual(b.toString(10), '-200');
 
-        a.condSwap(b, 1);
+        a.cswap(b, 1);
 
         assert.strictEqual(a.toString(10), '-200');
         assert.strictEqual(b.toString(10), '100');
 
-        a.condSwap(b, 0);
+        a.cswap(b, 0);
 
         assert.strictEqual(a.toString(10), '-200');
         assert.strictEqual(b.toString(10), '100');
 
-        a.condSwap(b, 1);
+        a.cswap(b, 1);
 
         assert.strictEqual(a.toString(10), '100');
         assert.strictEqual(b.toString(10), '-200');
       });
     });
 
-    describe('.condInject()', () => {
+    describe('.cinject()', () => {
       it('should conditionally inject', () => {
         const a = new BN(100);
         const b = new BN(-200);
 
-        a.condInject(b, 0);
+        a.cinject(b, 0);
 
         assert.strictEqual(a.toString(10), '100');
         assert.strictEqual(b.toString(10), '-200');
 
-        a.condInject(b, 1);
+        a.cinject(b, 1);
 
         assert.strictEqual(a.toString(10), '-200');
         assert.strictEqual(b.toString(10), '-200');
       });
     });
 
-    describe('.condSet()', () => {
+    describe('.cset()', () => {
       it('should conditionally set', () => {
         const a = new BN(100);
 
-        a.condSet(-200, 0);
+        a.cset(-200, 0);
 
         assert.strictEqual(a.toString(10), '100');
 
-        a.condSet(-200, 1);
+        a.cset(-200, 1);
 
         assert.strictEqual(a.toString(10), '-200');
       });
