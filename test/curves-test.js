@@ -906,6 +906,25 @@ describe('Curves', function() {
       const j4 = curve.g.jmulSimple(s.neg().imod(N));
 
       assert(j3.eq(j4));
+
+      const j5 = curve.g.jmulConst(s.muln(17));
+      const j6 = curve.g.jmulSimple(s.muln(17));
+
+      assert(j5.eq(j6));
+
+      const j7 = curve.g.jmulConst(s.muln(17).neg());
+      const j8 = curve.g.jmulSimple(s.muln(17).neg().imod(N));
+
+      assert(j7.eq(j8));
+
+      assert(curve.g.mulConst(new BN(0)).isInfinity());
+      assert(curve.g.mulConst(new BN(1)).eq(curve.g));
+      assert(curve.g.mulConst(new BN(2)).eq(curve.g.dbl()));
+      assert(curve.g.mulConst(new BN(3)).eq(curve.g.trpl()));
+      assert(curve.g.mulConst(curve.n).isInfinity());
+      assert(curve.g.mulConst(curve.n.muln(2)).isInfinity());
+      assert(curve.g.mulConst(curve.n.neg()).isInfinity());
+      assert(curve.g.mulConst(curve.n.muln(2).neg()).isInfinity());
     });
 
     it('should match multiplications (fixed)', () => {
