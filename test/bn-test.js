@@ -5650,6 +5650,50 @@ describe('BN.js', function() {
       assert.strictEqual(x.powm(y, m).toString(), r.toString());
     });
 
+    it('should compute powm (ladder)', () => {
+      const x = new BN('49d695e8e09850acf3ced130d55cf4cc', 16);
+      const y = new BN('1abc952', 16);
+      const m = new BN('b06577896432d8cf7af1c491cad11be9b584316d0045187f40c8ae8d57724725', 16);
+      const r = new BN('3f4cbb5b31c94b98dc5234de233af07319e93088192a9c87e3f0da9b213c779b', 16);
+
+      assert.strictEqual(x.powm(y, m, 0, 1).toString(), r.toString());
+      assert.strictEqual(
+        x.toRed(BN.red(m)).redPow(y, 1).fromRed().toString(),
+        r.toString());
+
+      assert.strictEqual(x.powm(y, m, 1, 1).toString(), r.toString());
+      assert.strictEqual(
+        x.toRed(BN.mont(m)).redPow(y, 1).fromRed().toString(),
+        r.toString());
+    });
+
+    it('should compute powm with negative exponent (ladder)', () => {
+      const x = new BN('49d695e8e09850acf3ced130d55cf4cc', 16);
+      const y = new BN('-1abc952', 16);
+      const m = P192;
+      const r = new BN('c512e27cb7074356c472e2be772566a307bd2a8fd9469886', 16);
+
+      assert.strictEqual(x.powm(y, m, 0, 1).toString(), r.toString());
+      assert.strictEqual(
+        x.toRed(BN.red(m)).redPow(y, 1).fromRed().toString(),
+        r.toString());
+
+      assert.strictEqual(x.powm(y, m, 1, 1).toString(), r.toString());
+      assert.strictEqual(
+        x.toRed(BN.mont(m)).redPow(y, 1).fromRed().toString(),
+        r.toString());
+    });
+
+    it('should compute large powm (ladder)', () => {
+      const x = P224;
+      const y = new BN('1abc952', 16);
+      const m = P192;
+      const r = new BN('65ddeefb718fff7600b3200f3e73f94434d2f5838a7b83ab', 16);
+
+      assert.strictEqual(x.powm(y, m, 0, 1).toString(), r.toString());
+      assert.strictEqual(x.powm(y, m, 1, 1).toString(), r.toString());
+    });
+
     it('should compute inverse', () => {
       const y = P192;
       const x = BN.random(rng, 0, y);
