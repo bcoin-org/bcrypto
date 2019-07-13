@@ -1155,30 +1155,30 @@ describe('Curves', function() {
         const s0 = BN.random(rng, 1, N);
 
         const p1 = curve.g.mulAdd(s, A, s0);
-        const p2 = curve.g.mulAddSlow(s, A, s0);
+        const p2 = curve.g.mulAddSimple(s, A, s0);
 
         assert(p1.eq(p2));
 
         const j1 = curve.g.jmulAdd(s, A, s0);
-        const j2 = curve.g.jmulAddSlow(s, A, s0);
+        const j2 = curve.g.jmulAddSimple(s, A, s0);
 
         assert(j1.eq(j2));
 
         const j3 = curve.g.toJ().mulAdd(s, J, s0);
-        const j4 = curve.g.toJ().mulAddSlow(s, J, s0);
+        const j4 = curve.g.toJ().mulAddSimple(s, J, s0);
 
         assert(j3.eq(j4));
 
         const p3 = curve.g.mulAdd(s.divn(3).mul(s), A, s0);
-        const p4 = curve.g.mulAddSlow(s.divn(3).mul(s).imod(N), A, s0);
-        const p4_ = curve.g.mulAddSlow(s.divn(3).mul(s), A, s0);
+        const p4 = curve.g.mulAddSimple(s.divn(3).mul(s).imod(N), A, s0);
+        const p4_ = curve.g.mulAddSimple(s.divn(3).mul(s), A, s0);
 
         assert(p3.eq(p4));
         assert(p4_.eq(p4));
 
         const p5 = curve.g.mulAdd(s.divn(3).mul(s).ineg(), A, s0);
-        const p6 = curve.g.mulAddSlow(s.divn(3).mul(s).ineg().imod(N), A, s0);
-        const p6_ = curve.g.mulAddSlow(s.divn(3).mul(s).ineg(), A, s0);
+        const p6 = curve.g.mulAddSimple(s.divn(3).mul(s).ineg().imod(N), A, s0);
+        const p6_ = curve.g.mulAddSimple(s.divn(3).mul(s).ineg(), A, s0);
 
         assert(p5.eq(p6));
         assert(p6_.eq(p6));
