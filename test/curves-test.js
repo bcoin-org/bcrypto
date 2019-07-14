@@ -75,7 +75,7 @@ describe('Curves', function() {
 
           assert.equal(ap.getX().toString(16), vector.a.x);
           assert.equal(ap.getY().toString(16), vector.a.y);
-          assert(curve.type === 'mont' || curve.g.mulSimple(ak).eq(ap));
+          assert(curve.g.mulSimple(ak).eq(ap));
           assert(curve.g.mulConst(ak).eq(ap));
 
           const bk = new BN(vector.b.k, 16);
@@ -92,7 +92,7 @@ describe('Curves', function() {
           assert(p1.eq(p2));
           assert.equal(p1.getX().toString(16), vector.s.x);
           assert.equal(p1.getY().toString(16), vector.s.y);
-          assert(curve.type === 'mont' || bp.mulSimple(ak).eq(p1));
+          assert(bp.mulSimple(ak).eq(p1));
           assert(ap.mulSimple(bk).eq(p1));
           assert(ap.mulConst(bk).eq(p1));
 
@@ -218,9 +218,9 @@ describe('Curves', function() {
 
     test(new X25519(), {
       a: {
-        k: '0041c0f90e24de439869dc636e15f78dab1437652918cd23f24bf267838e5923',
+        k: '4041c0f90e24de439869dc636e15f78dab1437652918cd23f24bf267838e5920',
         x: '4e855a3acc67d76456afc5a2c854bb4ee83f0df16d3010e9cfeb02854b518370',
-        y: '1f966b62a728f2649d31d61f644d70e827a967090880cb540924db14a71fe2d9'
+        y: '6069949d58d70d9b62ce29e09bb28f17d85698f6f77f34abf6db24eb58e01d14'
       },
       b: {
         k: '660dd8004c28dc548c341e3b9e39faad2fef0ce77fbc56beed9c016689cb9468',
@@ -229,7 +229,7 @@ describe('Curves', function() {
       },
       s: {
         x: '1af9818fd4ea2348a3695c730e647d4f0cbe9ad193e4d1d37b653afbc1ca27ed',
-        y: '176a274d4360fdc2567d1a4c251e28367fce8f9f451abdf8cdd4c898b7103d45'
+        y: '6895d8b2bc9f023da982e5b3dae1d7c980317060bae54207322b376748efc2a8'
       }
     });
 
@@ -259,11 +259,11 @@ describe('Curves', function() {
       b: {
         k: 'a6e3d9e47b915f758efe24b373f7d94b6802f516e7608a6389bef1c3299cd0b176f0b41a0ead25f6cd03c8dffc02d0f94eeb57eb854c63c8',
         x: 'a9989ad97dc0c1a53cd6b25c3277f51aef5b285c4aa2d9def8db83021deea334878cd056eaecbf6bf1d1b8bb9748bd95f3199c707bd24874',
-        y: '5929d6987b87ecc1d97a54bd9f9b22b697e502efffffc9fa6d8ac99f1eb377203d4618b980fa64ed4556290321355326bfad06c5ea49362d'
+        y: 'a6d629678478133e2685ab426064dd49681afd10000036059275365fe14c88dfc2b9e7467f059b12baa9d6fcdecaacd94052f93a15b6c9d2'
       },
       s: {
         x: 'd46033d9447dd8beb58504e511b007e09050e6009f605e55ee923ce61dca73a204d20cd0bb02209f9c67ba95dac759108d62299981d46e91',
-        y: '9383c4ef7666196fda743ebea49cbcfd4410e8f12bf66241f36ee1bd0f10ba1c34da4205755f03816cccda96e2fb84801ceb7c33c32dec53'
+        y: '6c7c3b108999e690258bc1415b634302bbef170ed4099dbe0c911e41f0ef45e3cb25bdfa8aa0fc7e933325691d047b7fe31483cc3cd213ac'
       }
     });
 
@@ -1385,7 +1385,7 @@ describe('Curves', function() {
 
     it('should have basepoint for x25519', () => {
       // https://tools.ietf.org/html/rfc7748#section-4.1
-      const v = x25519.p.sub(x25519.g.getY());
+      const v = x25519.g.getY(1);
 
       // Note: this is negated.
       const e = new BN('147816194475895447910205935684099868872'
@@ -1397,7 +1397,7 @@ describe('Curves', function() {
 
     it('should have basepoint for x448', () => {
       // https://tools.ietf.org/html/rfc7748#section-4.2
-      const v = x448.p.sub(x448.g.getY());
+      const v = x448.g.getY(0);
 
       // Note: this is negated.
       const e = new BN('355293926785568175264127502063783334808'
@@ -1596,6 +1596,16 @@ describe('Curves', function() {
         assert(pj.uadd(o).eq(pj));
         assert(oj.uadd(p).eq(pj));
         assert(oj.uadd(o).eq(oj));
+
+        // Jacobian Co-Z.
+        assert(pj.zaddu(qj)[0].eq(rj));
+        assert(pj.zaddc(qj)[0].eq(rj));
+        assert(pj.zaddu(pj)[0].eq(pj.dbl()));
+        assert(pj.zaddc(pj)[0].eq(pj.dbl()));
+        assert(pj.zdblu()[0].eq(pj.dbl()));
+        assert(qj.zdblu()[0].eq(qj.dbl()));
+        assert(pj.ztrplu()[0].eq(pj.trpl()));
+        assert(qj.ztrplu()[0].eq(qj.trpl()));
       }
     });
   });
