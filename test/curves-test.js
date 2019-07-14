@@ -931,8 +931,8 @@ describe('Curves', function() {
       const curve = secp256k1;
       const N = curve.n;
 
-      const mul = (p, k) => curve._fixedNafMul(p, k, null, false);
-      const jmul = (p, k) => curve._fixedNafMul(p, k, null, true);
+      const mul = (p, k) => curve._fixedNafMul(p, k).toP();
+      const jmul = (p, k) => curve._fixedNafMul(p, k);
 
       const s = BN.random(rng, 1, N);
 
@@ -961,8 +961,8 @@ describe('Curves', function() {
       const curve = secp256k1;
       const N = curve.n;
 
-      const mul = (p, k) => curve._wnafMul(p, k, null, false);
-      const jmul = (p, k) => curve._wnafMul(p, k, null, true);
+      const mul = (p, k) => curve._wnafMul(p, k).toP();
+      const jmul = (p, k) => curve._wnafMul(p, k);
       const pre = curve.g.precomputed;
 
       let g = curve.g;
@@ -1013,8 +1013,8 @@ describe('Curves', function() {
       const curve = secp256k1;
       const N = curve.n;
 
-      const mul = (p, k) => curve._wnafMulAdd(1, [p], [k], null, false);
-      const jmul = (p, k) => curve._wnafMulAdd(1, [p], [k], null, true);
+      const mul = (p, k) => curve._wnafMulAdd(1, [p], [k]).toP();
+      const jmul = (p, k) => curve._wnafMulAdd(1, [p], [k]);
       const pre = curve.g.precomputed;
 
       let g = curve.g;
@@ -1065,8 +1065,8 @@ describe('Curves', function() {
       const curve = secp256k1;
       const N = curve.n;
 
-      const mul = (p, k) => curve._endoWnafMulAdd([p], [k], null, false);
-      const jmul = (p, k) => curve._endoWnafMulAdd([p], [k], null, true);
+      const mul = (p, k) => curve._endoWnafMulAdd([p], [k]).toP();
+      const jmul = (p, k) => curve._endoWnafMulAdd([p], [k]);
       const pre = curve.g.precomputed;
 
       let g = curve.g;
