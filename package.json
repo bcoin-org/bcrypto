@@ -19,7 +19,7 @@
   "main": "./lib/bcrypto.js",
   "scripts": {
     "install": "node-gyp rebuild || echo 'Build failed.'",
-    "lint": "eslint bench/ lib/ test/ utils/*.js || exit 0",
+    "lint": "eslint bench/ lib/ scripts/ test/ || exit 0",
     "lint-ci": "eslint bench/ lib/ test/",
     "test": "bmocha -S --file ./scripts/post.js 'test/*-test.js'",
     "test-native": "bmocha -B native -S --file ./scripts/post.js 'test/*-test.js'",
