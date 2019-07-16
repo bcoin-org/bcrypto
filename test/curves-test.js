@@ -1012,11 +1012,9 @@ describe('Curves', function() {
     it('should match multiplications (muladd)', () => {
       const curve = secp256k1;
       const N = curve.n;
-      const i = curve.point();
-      const z = new BN(0);
 
-      const mul = (p, k) => curve._wnafMulAdd(1, [p, i], [k, z]).toP();
-      const jmul = (p, k) => curve._wnafMulAdd(1, [p, i], [k, z]);
+      const mul = (p, k) => curve._wnafMulAdd(1, [p], [k]).toP();
+      const jmul = (p, k) => curve._wnafMulAdd(1, [p], [k]);
       const pre = curve.g.precomputed;
 
       let g = curve.g;
