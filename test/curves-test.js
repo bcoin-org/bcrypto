@@ -935,6 +935,14 @@ describe('Curves', function() {
       const jmul = (p, k) => curve._fixedNafMul(p, k);
 
       const s = BN.random(rng, 1, N);
+      const s2 = BN.mask(256);
+
+      assert(curve.g._hasDoubles(s));
+      assert(curve.g._hasDoubles(s.neg()));
+
+      assert(s2.bitLength() === 256);
+      assert(curve.g._hasDoubles(s2));
+      assert(curve.g._hasDoubles(s2.neg()));
 
       const p1 = mul(curve.g, s);
       const p2 = curve.g.mulSimple(s);
