@@ -961,8 +961,8 @@ describe('Curves', function() {
       const curve = secp256k1;
       const N = curve.n;
 
-      const mul = (p, k) => curve._wnafMul(p, k).toP();
-      const jmul = (p, k) => curve._wnafMul(p, k);
+      const mul = (p, k) => curve._wnafMul(4, p, k).toP();
+      const jmul = (p, k) => curve._wnafMul(4, p, k);
       const pre = curve.g.precomputed;
 
       let g = curve.g;
