@@ -358,12 +358,12 @@ describe('Curves', function() {
       x448 = new X448();
       x448.precompute(rng);
 
-      assert(p256.g.precomputed);
-      assert(secp256k1.g.precomputed);
-      assert(ed25519.g.precomputed);
-      assert(!x25519.g.precomputed);
-      assert(ed448.g.precomputed);
-      assert(!x448.g.precomputed);
+      assert(p256.g.pre);
+      assert(secp256k1.g.pre);
+      assert(ed25519.g.pre);
+      assert(!x25519.g.pre);
+      assert(ed448.g.pre);
+      assert(!x448.g.pre);
     });
   });
 
@@ -581,15 +581,27 @@ describe('Curves', function() {
         g: [
           '1',
           '2'
-        ],
-        // We pick index 0 when the example assumes 1.
-        // Note that secp256k1 picks 1 (if we ever
-        // want to switch to always choosing 1).
-        beta: '87220d9fbac0e3d616529a8566d6f00485560d5e'
+        ]
       });
+
+      assert(curve.endo);
 
       const beta = new BN('771473166210819779552257112796337671037538143582', 10);
       const lambda = new BN('903860042511079968555273866340564498116022318806', 10);
+      const a1e = new BN('788919430192407951782190', 10);
+      const b1e = new BN('-602889891024722752429129', 10);
+      const a2e = new BN('602889891024722752429129', 10);
+      const b2e = new BN('1391809321217130704211319', 10);
+
+      // We pick index 0 when the example assumes 1.
+      // Note that secp256k1 picks 1 (if we ever
+      // want to switch to always choosing 1).
+      curve.endo.beta = beta.toRed(curve.red);
+      curve.endo.lambda = lambda.clone();
+      curve.endo.basis[0].a = a1e.clone();
+      curve.endo.basis[0].b = b1e.clone();
+      curve.endo.basis[1].a = a2e.clone();
+      curve.endo.basis[1].b = b2e.clone();
 
       assert(curve.endo.beta.fromRed().eq(beta));
       assert(curve.endo.lambda.eq(lambda));
@@ -608,10 +620,6 @@ describe('Curves', function() {
       const tl1e = new BN('602889891024722752429129', 10);
       const rl2e = new BN('602889891024722752429129', 10);
       const tl2e = new BN('-1391809321217130704211319', 10);
-      const a1e = new BN('788919430192407951782190', 10);
-      const b1e = new BN('-602889891024722752429129', 10);
-      const a2e = new BN('602889891024722752429129', 10);
-      const b2e = new BN('1391809321217130704211319', 10);
 
       const [rl, tl, rl1, tl1, rl2, tl2] = curve._egcdSqrt(lambda);
 
@@ -636,7 +644,7 @@ describe('Curves', function() {
       const k2e = new BN('381880690058693066485147', 10);
 
       const c1 = v2.b.mul(k).divRound(curve.n);
-      const c2 = v1.b.neg().imul(k).divRound(curve.n);
+      const c2 = v1.b.neg().mul(k).divRound(curve.n);
 
       assert(c1.eq(c1e));
       assert(c2.eq(c2e));
@@ -731,11 +739,11 @@ describe('Curves', function() {
       const curve = secp256k1;
       const g1 = curve.g; // precomputed g
 
-      assert(g1.precomputed);
+      assert(g1.pre);
 
       const g2 = curve.point(g1.getX(), g1.getY()); // not precomputed g
 
-      assert(!g2.precomputed);
+      assert(!g2.pre);
 
       const a = new BN(
         '6d1229a6b24c2e775c062870ad26bc261051e0198c67203167273c7c62538846',
@@ -751,10 +759,10 @@ describe('Curves', function() {
       const curve = secp256k1;
       const g1 = curve.g; // precomputed g
 
-      assert(g1.precomputed);
+      assert(g1.pre);
 
       const g2 = curve.point(g1.getX(), g1.getY()); // not precomputed g
-      assert(!g2.precomputed);
+      assert(!g2.pre);
 
       const a = new BN('6d1229a6b24c2e775c062870ad26bc26105'
                      + '1e0198c67203167273c7c6253884612345678', 16);
@@ -833,7 +841,7 @@ describe('Curves', function() {
 
     it('should multiply with blinding', () => {
       const curve = secp256k1;
-      const {blind} = curve.g.precomputed.blinding;
+      const {blind} = curve.g.pre.blinding;
       const neg = blind.neg().imod(curve.n);
       const point1 = curve.g.mulBlind(neg);
       const point2 = curve.g.mul(neg);
@@ -1031,7 +1039,7 @@ describe('Curves', function() {
 
       const mul = (p, k) => curve._wnafMul(4, p, k).toP();
       const jmul = (p, k) => curve._wnafMul(4, p, k);
-      const pre = curve.g.precomputed;
+      const pre = curve.g.pre;
 
       let g = curve.g;
 
@@ -1059,13 +1067,13 @@ describe('Curves', function() {
         assert(p5.eq(p6));
 
         if (i === 0) {
-          g.precomputed = null;
+          g.pre = null;
           continue;
         }
 
         if (i === 1) {
           assert(g === curve.g);
-          g.precomputed = pre;
+          g.pre = pre;
         }
 
         if (i === 2)
@@ -1074,7 +1082,7 @@ describe('Curves', function() {
         g = p6;
       }
 
-      assert(curve.g.precomputed === pre);
+      assert(curve.g.pre === pre);
     });
 
     it('should match multiplications (muladd)', () => {
@@ -1083,7 +1091,7 @@ describe('Curves', function() {
 
       const mul = (p, k) => curve._wnafMulAdd(1, [p], [k]).toP();
       const jmul = (p, k) => curve._wnafMulAdd(1, [p], [k]);
-      const pre = curve.g.precomputed;
+      const pre = curve.g.pre;
 
       let g = curve.g;
 
@@ -1111,13 +1119,13 @@ describe('Curves', function() {
         assert(p5.eq(p6));
 
         if (i === 0) {
-          g.precomputed = null;
+          g.pre = null;
           continue;
         }
 
         if (i === 1) {
           assert(g === curve.g);
-          g.precomputed = pre;
+          g.pre = pre;
         }
 
         if (i === 2)
@@ -1126,7 +1134,7 @@ describe('Curves', function() {
         g = p6;
       }
 
-      assert(curve.g.precomputed === pre);
+      assert(curve.g.pre === pre);
     });
 
     it('should match multiplications (endo)', () => {
@@ -1135,7 +1143,7 @@ describe('Curves', function() {
 
       const mul = (p, k) => curve._endoWnafMulAdd([p], [k]).toP();
       const jmul = (p, k) => curve._endoWnafMulAdd([p], [k]);
-      const pre = curve.g.precomputed;
+      const pre = curve.g.pre;
 
       let g = curve.g;
 
@@ -1163,13 +1171,13 @@ describe('Curves', function() {
         assert(p5.eq(p6));
 
         if (i === 0) {
-          g.precomputed = null;
+          g.pre = null;
           continue;
         }
 
         if (i === 1) {
           assert(g === curve.g);
-          g.precomputed = pre;
+          g.pre = pre;
         }
 
         if (i === 2)
@@ -1178,7 +1186,7 @@ describe('Curves', function() {
         g = p6;
       }
 
-      assert(curve.g.precomputed === pre);
+      assert(curve.g.pre === pre);
     });
 
     it('should match multiplications (blind)', () => {
@@ -1187,7 +1195,7 @@ describe('Curves', function() {
 
       const mul = (p, k) => p.mulBlind(k, rng);
       const jmul = (p, k) => p.jmulBlind(k, rng);
-      const pre = curve.g.precomputed;
+      const pre = curve.g.pre;
 
       let g = curve.g;
 
@@ -1215,13 +1223,13 @@ describe('Curves', function() {
         assert(p5.eq(p6));
 
         if (i === 0) {
-          g.precomputed = null;
+          g.pre = null;
           continue;
         }
 
         if (i === 1) {
           assert(g === curve.g);
-          g.precomputed = pre;
+          g.pre = pre;
         }
 
         if (i === 2)
@@ -1230,7 +1238,7 @@ describe('Curves', function() {
         g = p6;
       }
 
-      assert(curve.g.precomputed === pre);
+      assert(curve.g.pre === pre);
     });
 
     it('should match multiply+add', () => {
@@ -1604,8 +1612,8 @@ describe('Curves', function() {
 
       for (const [[x1, y1], [x2, y2]] of vectors) {
         const o = curve.point();
-        const p = curve.point(x1, y1);
-        const q = curve.point(x2, y2);
+        const p = curve.point(new BN(x1, 16), new BN(y1, 16));
+        const q = curve.point(new BN(x2, 16), new BN(y2, 16));
         const r = p.add(q);
 
         const oj = curve.jpoint();
