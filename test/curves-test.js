@@ -965,6 +965,66 @@ describe('Curves', function() {
       assert(j3.eq(j4));
     });
 
+    it('should match multiplications (ladder)', () => {
+      const curve = secp256k1;
+      const N = curve.n;
+
+      const mul = (p, k) => curve._ladderMul(p, k).toP();
+      const jmul = (p, k) => curve._ladderMul(p, k);
+
+      const s = BN.random(rng, 1, N);
+
+      const p1 = mul(curve.g, s);
+      const p2 = curve.g.mulSimple(s);
+
+      assert(p1.eq(p2));
+
+      const j1 = jmul(curve.g, s);
+      const j2 = curve.g.jmulSimple(s);
+
+      assert(j1.eq(j2));
+
+      const p3 = mul(curve.g, s.divn(3).mul(s));
+      const p4 = curve.g.mulSimple(s.divn(3).mul(s).imod(N));
+
+      assert(p3.eq(p4));
+
+      const p5 = mul(curve.g, s.divn(3).mul(s).ineg());
+      const p6 = curve.g.mulSimple(s.divn(3).mul(s).ineg().imod(N));
+
+      assert(p5.eq(p6));
+    });
+
+    it('should match multiplications (co-z)', () => {
+      const curve = secp256k1;
+      const N = curve.n;
+
+      const mul = (p, k) => curve._coZLadderMul(p, k).toP();
+      const jmul = (p, k) => curve._coZLadderMul(p, k);
+
+      const s = BN.random(rng, 1, N);
+
+      const p1 = mul(curve.g, s);
+      const p2 = curve.g.mulSimple(s);
+
+      assert(p1.eq(p2));
+
+      const j1 = jmul(curve.g, s);
+      const j2 = curve.g.jmulSimple(s);
+
+      assert(j1.eq(j2));
+
+      const p3 = mul(curve.g, s.divn(3).mul(s));
+      const p4 = curve.g.mulSimple(s.divn(3).mul(s).imod(N));
+
+      assert(p3.eq(p4));
+
+      const p5 = mul(curve.g, s.divn(3).mul(s).ineg());
+      const p6 = curve.g.mulSimple(s.divn(3).mul(s).ineg().imod(N));
+
+      assert(p5.eq(p6));
+    });
+
     it('should match multiplications (wnaf)', () => {
       const curve = secp256k1;
       const N = curve.n;
