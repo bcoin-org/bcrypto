@@ -77,6 +77,7 @@ describe('Curves', function() {
           assert.equal(ap.getY().toString(16), vector.a.y);
           assert(curve.g.mulSimple(ak).eq(ap));
           assert(curve.g.mulConst(ak).eq(ap));
+          assert(curve.g.mulConst(ak, rng).eq(ap));
 
           const bk = new BN(vector.b.k, 16);
           const bp = curve.g.mul(bk);
@@ -85,6 +86,7 @@ describe('Curves', function() {
           assert.equal(bp.getY().toString(16), vector.b.y);
           assert(curve.g.mulSimple(bk).eq(bp));
           assert(curve.g.mulConst(bk).eq(bp));
+          assert(curve.g.mulConst(bk, rng).eq(bp));
 
           const p1 = bp.mul(ak);
           const p2 = ap.mul(bk);
@@ -95,6 +97,7 @@ describe('Curves', function() {
           assert(bp.mulSimple(ak).eq(p1));
           assert(ap.mulSimple(bk).eq(p1));
           assert(ap.mulConst(bk).eq(p1));
+          assert(ap.mulConst(bk, rng).eq(p1));
 
           if (curve.type !== 'mont') {
             const p3 = bp.mulBlind(ak);
@@ -106,7 +109,9 @@ describe('Curves', function() {
             assert(bp.mulSimple(ak).eq(p3));
             assert(ap.mulSimple(bk).eq(p3));
             assert(bp.mulConst(ak).eq(p3));
+            assert(bp.mulConst(ak, rng).eq(p3));
             assert(ap.mulConst(bk).eq(p3));
+            assert(ap.mulConst(bk, rng).eq(p3));
           }
 
           curve.precompute(rng);
@@ -454,6 +459,7 @@ describe('Curves', function() {
       );
 
       assert(point.eq(target));
+      assert(point.randomize(rng).eq(target));
     });
 
     it('should find an odd point given a y coordinate', () => {
@@ -516,6 +522,7 @@ describe('Curves', function() {
       const p2 = curve.decodePoint(raw);
 
       assert(p2.eq(curve.g));
+      assert(p2.randomize(rng).eq(curve.g.toJ()));
     });
 
     it('should work with secp192k1', () => {
@@ -933,6 +940,52 @@ describe('Curves', function() {
       assert(curve.g.mulConst(curve.n.muln(2)).isInfinity());
       assert(curve.g.mulConst(curve.n.neg()).isInfinity());
       assert(curve.g.mulConst(curve.n.muln(2).neg()).isInfinity());
+    });
+
+    it('should match multiplications (ladder+rng)', () => {
+      const curve = secp256k1;
+      const N = curve.n;
+
+      const s = BN.random(rng, 1, N);
+
+      const p1 = curve.g.mulConst(s, rng);
+      const p2 = curve.g.mulSimple(s);
+
+      assert(p1.eq(p2));
+
+      const p3 = curve.g.mulConst(s.neg(), rng);
+      const p4 = curve.g.mulSimple(s.neg().imod(N));
+
+      assert(p3.eq(p4));
+
+      const j1 = curve.g.jmulConst(s, rng);
+      const j2 = curve.g.jmulSimple(s);
+
+      assert(j1.eq(j2));
+
+      const j3 = curve.g.jmulConst(s.neg(), rng);
+      const j4 = curve.g.jmulSimple(s.neg().imod(N));
+
+      assert(j3.eq(j4));
+
+      const j5 = curve.g.jmulConst(s.muln(17), rng);
+      const j6 = curve.g.jmulSimple(s.muln(17));
+
+      assert(j5.eq(j6));
+
+      const j7 = curve.g.jmulConst(s.muln(17).neg(), rng);
+      const j8 = curve.g.jmulSimple(s.muln(17).neg().imod(N));
+
+      assert(j7.eq(j8));
+
+      assert(curve.g.mulConst(new BN(0), rng).isInfinity());
+      assert(curve.g.mulConst(new BN(1), rng).eq(curve.g));
+      assert(curve.g.mulConst(new BN(2), rng).eq(curve.g.dbl()));
+      assert(curve.g.mulConst(new BN(3), rng).eq(curve.g.trpl()));
+      assert(curve.g.mulConst(curve.n, rng).isInfinity());
+      assert(curve.g.mulConst(curve.n.muln(2), rng).isInfinity());
+      assert(curve.g.mulConst(curve.n.neg(), rng).isInfinity());
+      assert(curve.g.mulConst(curve.n.muln(2).neg(), rng).isInfinity());
     });
 
     it('should match multiplications (fixed)', () => {
@@ -1617,8 +1670,8 @@ describe('Curves', function() {
         const r = p.add(q);
 
         const oj = curve.jpoint();
-        const pj = p.toJ();
-        const qj = q.toJ();
+        const pj = p.toJ().randomize(rng);
+        const qj = q.toJ().scale(pj.z);
         const rj = pj.add(qj);
 
         // Sanity check for affine.
@@ -1680,6 +1733,10 @@ describe('Curves', function() {
         assert(qj.zdblu()[0].eq(qj.dbl()));
         assert(pj.ztrplu()[0].eq(pj.trpl()));
         assert(qj.ztrplu()[0].eq(qj.trpl()));
+        assert(pj.zaddu(pj.neg())[0].eq(oj));
+        assert(pj.zaddc(pj.neg())[0].eq(oj));
+        assert(oj.zdblu()[0].eq(oj));
+        assert(oj.ztrplu()[0].eq(oj));
       }
     });
   });
