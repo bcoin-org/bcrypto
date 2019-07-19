@@ -1774,9 +1774,7 @@ describe('Curves', function() {
 
     it('should test arbitrary montgomery multiplication', () => {
       const g = x25519.randomPoint(rng);
-      const k = x25519.randomScalar(rng);
-
-      x25519.mask.reduce(k);
+      const k = x25519.reduce(x25519.randomScalar(rng));
 
       const p = g.mul(k);
 
