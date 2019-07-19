@@ -386,13 +386,17 @@ describe('Curves', function() {
         ]
       });
 
-      const p = curve.point(new BN('18', 16), new BN('16', 16));
+      const p = curve.pointFromJSON(['18', '16']);
 
       assert(p.validate());
       assert(p.dbl().validate());
       assert(p.dbl().add(p).validate());
       assert(p.dbl().add(p.dbl()).validate());
       assert(p.dbl().add(p.dbl()).eq(p.add(p).add(p).add(p)));
+
+      const q = curve.randomPoint(rng);
+
+      assert(q.validate());
     });
 
     it('should dbl points on edwards curve using proj coordinates', () => {
@@ -511,9 +515,8 @@ describe('Curves', function() {
         ]
       });
 
-      const p = curve.point(
-        new BN('0948 7239995a 5ee76b55 f9c2f098', 16),
-        new BN('a89c e5af8724 c0a23e0e 0ff77500', 16));
+      const p = curve.pointFromJSON(['0948 7239995a 5ee76b55 f9c2f098',
+                                     'a89c e5af8724 c0a23e0e 0ff77500']);
 
       assert(p.validate());
       assert(p.dbl().validate());
@@ -542,9 +545,10 @@ describe('Curves', function() {
 
       assert(curve.endo);
 
-      const p = curve.point(
-        new BN('f091cf6331b1747684f5d2549cd1d4b3a8bed93b94f93cb6', 16),
-        new BN('fd7af42e1e7565a02e6268661c5e42e603da2d98a18f2ed5', 16));
+      const p = curve.pointFromJSON([
+        'f091cf6331b1747684f5d2549cd1d4b3a8bed93b94f93cb6',
+        'fd7af42e1e7565a02e6268661c5e42e603da2d98a18f2ed5'
+      ]);
 
       assert(p.validate());
       assert(p.dbl().validate());
@@ -567,9 +571,10 @@ describe('Curves', function() {
 
       assert(curve.endo);
 
-      const p = curve.point(
-        new BN('86c0deb56aeb9712390999a0232b9bf596b9639fa1ce8cf426749e60', 16),
-        new BN('8f598c954e1085555b474a79906b855c539ed633dbf4a9fa9f06b69a', 16));
+      const p = curve.pointFromJSON([
+        '86c0deb56aeb9712390999a0232b9bf596b9639fa1ce8cf426749e60',
+        '8f598c954e1085555b474a79906b855c539ed633dbf4a9fa9f06b69a'
+      ]);
 
       assert(p.validate());
       assert(p.dbl().validate());
@@ -682,12 +687,12 @@ describe('Curves', function() {
         ]
       });
 
-      const p = curve.point(
-        new BN('79be667e f9dcbbac 55a06295 ce870b07'
-             + '029bfcdb 2dce28d9 59f2815b 16f81798', 16),
-        new BN('483ada77 26a3c465 5da4fbfc 0e1108a8'
-             + 'fd17b448 a6855419 9c47d08f fb10d4b8', 16)
-      );
+      const p = curve.pointFromJSON([
+        ['79be667e f9dcbbac 55a06295 ce870b07',
+         '029bfcdb 2dce28d9 59f2815b 16f81798'].join(''),
+        ['483ada77 26a3c465 5da4fbfc 0e1108a8',
+         'fd17b448 a6855419 9c47d08f fb10d4b8'].join('')
+      ]);
 
       const s = new BN('79be667e f9dcbbac 55a06295 ce870b07', 16);
 
@@ -863,7 +868,7 @@ describe('Curves', function() {
     it('should match multiplications', () => {
       for (const curve of [p256, secp256k1, ed25519]) {
         const N = curve.n;
-        const s = BN.random(rng, 1, N);
+        const s = curve.randomScalar(rng);
 
         const p1 = curve.g.mul(s);
         const p2 = curve.g.mulSimple(s);
@@ -900,7 +905,7 @@ describe('Curves', function() {
       const curve = secp256k1;
       const N = curve.n;
 
-      const s = BN.random(rng, 1, N);
+      const s = curve.randomScalar(rng);
 
       const p1 = curve.g.mulConst(s);
       const p2 = curve.g.mulSimple(s);
@@ -946,7 +951,7 @@ describe('Curves', function() {
       const curve = secp256k1;
       const N = curve.n;
 
-      const s = BN.random(rng, 1, N);
+      const s = curve.randomScalar(rng);
 
       const p1 = curve.g.mulConst(s, rng);
       const p2 = curve.g.mulSimple(s);
@@ -995,7 +1000,7 @@ describe('Curves', function() {
       const mul = (p, k) => curve._fixedNafMul(p, k).toP();
       const jmul = (p, k) => curve._fixedNafMul(p, k);
 
-      const s = BN.random(rng, 1, N);
+      const s = curve.randomScalar(rng);
       const s2 = BN.mask(256);
 
       assert(curve.g._hasDoubles(s));
@@ -1033,7 +1038,7 @@ describe('Curves', function() {
       const mul = (p, k) => curve._ladderMul(p, k).toP();
       const jmul = (p, k) => curve._ladderMul(p, k);
 
-      const s = BN.random(rng, 1, N);
+      const s = curve.randomScalar(rng);
 
       const p1 = mul(curve.g, s);
       const p2 = curve.g.mulSimple(s);
@@ -1063,7 +1068,7 @@ describe('Curves', function() {
       const mul = (p, k) => curve._coZLadderMul(p, k).toP();
       const jmul = (p, k) => curve._coZLadderMul(p, k);
 
-      const s = BN.random(rng, 1, N);
+      const s = curve.randomScalar(rng);
 
       const p1 = mul(curve.g, s);
       const p2 = curve.g.mulSimple(s);
@@ -1097,7 +1102,7 @@ describe('Curves', function() {
       let g = curve.g;
 
       for (let i = 0; i < 3; i++) {
-        const s = BN.random(rng, 1, N);
+        const s = curve.randomScalar(rng);
 
         const p1 = mul(g, s);
         const p2 = g.mulSimple(s);
@@ -1149,7 +1154,7 @@ describe('Curves', function() {
       let g = curve.g;
 
       for (let i = 0; i < 3; i++) {
-        const s = BN.random(rng, 1, N);
+        const s = curve.randomScalar(rng);
 
         const p1 = mul(g, s);
         const p2 = g.mulSimple(s);
@@ -1201,7 +1206,7 @@ describe('Curves', function() {
       let g = curve.g;
 
       for (let i = 0; i < 3; i++) {
-        const s = BN.random(rng, 1, N);
+        const s = curve.randomScalar(rng);
 
         const p1 = mul(g, s);
         const p2 = g.mulSimple(s);
@@ -1253,7 +1258,7 @@ describe('Curves', function() {
       let g = curve.g;
 
       for (let i = 0; i < 3; i++) {
-        const s = BN.random(rng, 1, N);
+        const s = curve.randomScalar(rng);
 
         const p1 = mul(g, s);
         const p2 = g.mulSimple(s);
@@ -1297,10 +1302,10 @@ describe('Curves', function() {
     it('should match multiply+add', () => {
       for (const curve of [p256, secp256k1, ed25519]) {
         const N = curve.n;
-        const s = BN.random(rng, 1, N);
-        const A = curve.g.mul(BN.random(rng, 1, N));
+        const s = curve.randomScalar(rng);
+        const A = curve.randomPoint(rng);
         const J = A.toJ();
-        const s0 = BN.random(rng, 1, N);
+        const s0 = curve.randomScalar(rng);
 
         const p1 = curve.g.mulAdd(s, A, s0);
         const p2 = curve.g.mulAddSimple(s, A, s0);
@@ -1336,7 +1341,7 @@ describe('Curves', function() {
     it('should multiply negative scalar', () => {
       for (const curve of [p256, secp256k1, ed25519]) {
         const N = curve.n;
-        const s1 = BN.random(rng, 1, N);
+        const s1 = curve.randomScalar(rng);
 
         {
           const p1 = curve.g.mul(s1);
@@ -1433,12 +1438,12 @@ describe('Curves', function() {
     it('should multiply+add negative scalar', () => {
       for (const curve of [p256, secp256k1, ed25519]) {
         const N = curve.n;
-        const A = curve.g.mul(BN.random(rng, 1, N));
+        const A = curve.randomPoint(rng);
         const J = A.toJ();
-        const s0 = BN.random(rng, 1, N);
+        const s0 = curve.randomScalar(rng);
         const as0 = A.mul(s0);
         const js0 = as0.toJ();
-        const s1 = BN.random(rng, 1, N);
+        const s1 = curve.randomScalar(rng);
 
         {
           const p1 = curve.g.mul(s1).neg().add(as0);
@@ -1663,10 +1668,10 @@ describe('Curves', function() {
         ]
       ];
 
-      for (const [[x1, y1], [x2, y2]] of vectors) {
+      for (const [json1, json2] of vectors) {
         const o = curve.point();
-        const p = curve.point(new BN(x1, 16), new BN(y1, 16));
-        const q = curve.point(new BN(x2, 16), new BN(y2, 16));
+        const p = curve.pointFromJSON(json1);
+        const q = curve.pointFromJSON(json2);
         const r = p.add(q);
 
         const oj = curve.jpoint();
@@ -1766,18 +1771,34 @@ describe('Curves', function() {
 
       assert(p.dbl().eq(q));
     });
+
+    it('should test arbitrary montgomery multiplication', () => {
+      const g = x25519.randomPoint(rng);
+      const k = x25519.randomScalar(rng);
+
+      x25519.mask.reduce(k);
+
+      const p = g.mul(k);
+
+      const eg = ed25519.pointFromMont(g, false);
+      const ep1 = ed25519.pointFromMont(p, false);
+      const ep2 = ed25519.pointFromMont(p, true);
+
+      const ep = eg.mul(k);
+
+      assert(ep.eq(ep1) || ep.eq(ep2));
+    });
   });
 
   describe('Point codec', () => {
     const makeShortTest = (definition) => {
       return () => {
         const curve = secp256k1;
-        const co = definition.coordinates;
-        const p = curve.point(new BN(co.x, 16), new BN(co.y, 16));
+        const p = curve.pointFromJSON(definition.coordinates);
 
         // Encodes as expected
-        assert.strictEqual(p.encode(false).toString('hex'), definition.encoded);
-        assert.strictEqual(p.encode(true).toString('hex'), definition.compactEncoded);
+        assert.bufferEqual(p.encode(false), definition.encoded);
+        assert.bufferEqual(p.encode(true), definition.compactEncoded);
 
         // Decodes as expected
         assert(curve.decodePoint(Buffer.from(definition.encoded, 'hex')).eq(p));
@@ -1790,24 +1811,23 @@ describe('Curves', function() {
     const makeMontTest = (definition) => {
       return () => {
         const curve = x25519;
-        const co = definition.coordinates;
-        const p = curve.point(new BN(co.x, 16), new BN(co.z, 16));
+        const p = curve.pointFromJSON(definition.coordinates);
         const scalar = new BN(definition.scalar, 16);
         const encoded = p.encode();
         const decoded = curve.decodePoint(encoded);
 
         assert(decoded.eq(p));
-        assert.strictEqual(encoded.toString('hex'), definition.encoded);
 
+        assert.bufferEqual(encoded, definition.encoded);
         assert.bufferEqual(curve.g.mul(scalar).encode(), encoded);
       };
     };
 
     const shortPointEvenY = {
-      coordinates: {
-        x: '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
-        y: '483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8'
-      },
+      coordinates: [
+        '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
+        '483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8'
+      ],
       compactEncoded: '02'
         + '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
       encoded: '04'
@@ -1819,10 +1839,10 @@ describe('Curves', function() {
     };
 
     const shortPointOddY = {
-      coordinates: {
-        x: 'fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556',
-        y: 'ae12777aacfbb620f3be96017f45c560de80f0f6518fe4a03c870c36b075f297'
-      },
+      coordinates: [
+        'fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556',
+        'ae12777aacfbb620f3be96017f45c560de80f0f6518fe4a03c870c36b075f297'
+      ],
       compactEncoded: '03'
         + 'fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556',
       encoded: '04'
@@ -1849,10 +1869,9 @@ describe('Curves', function() {
 
     it('should be able to encode/decode a mont curve point', makeMontTest({
       scalar: '6',
-      coordinates: {
-        x: '743bcb585f9990edc2cfc4af84f6ff300729bb5facda28154362cd47a37de52f',
-        z: '1'
-      },
+      coordinates: [
+        '743bcb585f9990edc2cfc4af84f6ff300729bb5facda28154362cd47a37de52f'
+      ],
       encoded:
         '2fe57da347cd62431528daac5fbb290730fff684afc4cfc2ed90995f58cb3b74'
     }));
