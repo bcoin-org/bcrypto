@@ -1739,6 +1739,33 @@ describe('Curves', function() {
         assert(oj.ztrplu()[0].eq(oj));
       }
     });
+
+    it('should test adding when lambda=0', () => {
+      const curve = new SECP256K1();
+
+      const p = curve.pointFromJSON([
+        'f96e09c5f26fa15c38fd52282087c96a53411a75d4a65a9faed9c1113955b28f',
+        'cf867faf174f422673a146bec0fc41e0d1082e4a6e2711012c30ed49cfa7c360'
+      ]);
+
+      const q = curve.pointFromJSON([
+        '3ba398aa59edee676a580508b285c92cbad4d45f9bd24c9b0e635ac1b7ec5dbb',
+        'cf867faf174f422673a146bec0fc41e0d1082e4a6e2711012c30ed49cfa7c360'
+      ]);
+
+      const r = p.toJ().add(q).toP();
+
+      assert(p.add(q).eq(r));
+      assert(p.uadd(q).eq(r));
+    });
+
+    it('should test doubling when lambda=0', () => {
+      const curve = new P521();
+      const p = curve.pointFromX(new BN(1), false);
+      const q = p.toJ().dbl().toP();
+
+      assert(p.dbl().eq(q));
+    });
   });
 
   describe('Point codec', () => {
