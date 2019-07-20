@@ -4,34 +4,14 @@ const assert = require('bsert');
 const BN = require('../lib/bn.js');
 const EDDSA = require('../lib/js/eddsa');
 const SHAKE256 = require('../lib/shake256');
-const curves = require('../lib/js/curves');
+const elliptic = require('../lib/js/curves');
 const rng = require('../lib/random');
 
 const {
   ShortCurve,
   EdwardsCurve,
-  P192,
-  P224,
-  P256,
-  P384,
-  P521,
-  SECP256K1,
-  ED25519,
-  X25519,
-  ED448,
-  X448,
-  BRAINPOOLP256,
-  BRAINPOOLP384,
-  BRAINPOOLP512,
-  E521
-} = curves;
-
-let p256 = null;
-let secp256k1 = null;
-let ed25519 = null;
-let x25519 = null;
-let ed448 = null;
-let x448 = null;
+  curves
+} = elliptic;
 
 describe('Curves', function() {
   describe('Vectors', () => {
@@ -122,7 +102,7 @@ describe('Curves', function() {
       });
     };
 
-    test(new P192(), {
+    test(new curves.P192(), {
       a: {
         k: 'e8c74e99092a9c2ef5c9d0826697ba7b0dfab11ab17c059d',
         x: 'c6e75a4b307136b15e6fcd818f7293172daed8a6ee60322c',
@@ -139,7 +119,7 @@ describe('Curves', function() {
       }
     });
 
-    test(new P224(), {
+    test(new curves.P224(), {
       a: {
         k: 'abb9950e547809ad079ba8fde54779758933b032ec672b295a9deaf6',
         x: '534394a69b2691518977f518e7beed689f6fd9c27d0dc1f6d32d2c3b',
@@ -156,7 +136,7 @@ describe('Curves', function() {
       }
     });
 
-    test(new P256(), {
+    test(new curves.P256(), {
       a: {
         k: '7d31b3980a670adb31fd5943b87453e7c19e30b90be2f6fe1698e0f5796df55e',
         x: '647293c0e08ae35140ba371f67883bfc848ead975e27dd7f8a6db2a259bc2e1b',
@@ -173,7 +153,7 @@ describe('Curves', function() {
       }
     });
 
-    test(new P384(), {
+    test(new curves.P384(), {
       a: {
         k: 'f1ac3d7aa847c2235e393fdbe353d4408bf603207da7918eda6c9c9d66db6e04f9d13bad8b554a04b690bcbfc125c540',
         x: 'eb4aec872170c5b79205de6ba8b0196cc3d8c75e4291eff800ba3dcf88a581a5281b3b860586147b6d926bf6829f4ac5',
@@ -190,7 +170,7 @@ describe('Curves', function() {
       }
     });
 
-    test(new P521(), {
+    test(new curves.P521(), {
       a: {
         k: '007783085a324b70832c4d6e5607d25fb291459bf9d7c620f658d8f01903861dcfba056756cad95a6628cf0084eb778baddbe71a47f177e3e09c0f278b8585dd7ea4',
         x: '3654feaa311aae18d74d021f3fb12c9ba193b1673a298aadce1214f17d41640f222650b66dec1fe98559a4e9b0a3f4523099f98371c808cf6360fae7258b166192',
@@ -207,7 +187,7 @@ describe('Curves', function() {
       }
     });
 
-    test(new SECP256K1(), {
+    test(new curves.SECP256K1(), {
       a: {
         k: 'f40749b74e7454a808fe318349129d7956bfe4df271d7ad31b3daf9866d538b6',
         x: 'eef57567a6beda8b2307bdb2e2d64649ca3da5e99b0e6e600b258ed7fc5c6432',
@@ -224,7 +204,7 @@ describe('Curves', function() {
       }
     });
 
-    test(new X25519(), {
+    test(new curves.X25519(), {
       a: {
         k: '4041c0f90e24de439869dc636e15f78dab1437652918cd23f24bf267838e5920',
         x: '4e855a3acc67d76456afc5a2c854bb4ee83f0df16d3010e9cfeb02854b518370',
@@ -241,7 +221,7 @@ describe('Curves', function() {
       }
     });
 
-    test(new ED25519(), {
+    test(new curves.ED25519(), {
       a: {
         k: '0041c0f90e24de439869dc636e15f78dab1437652918cd23f24bf267838e5923',
         x: '7143fec2823a20e85bbfedff1a30468136983c8b32c09bba6991f4055b213613',
@@ -258,7 +238,7 @@ describe('Curves', function() {
       }
     });
 
-    test(new X448(), {
+    test(new curves.X448(), {
       a: {
         k: 'c17d6835ec83facd2a3fe89cc909f901a45a535c34763669a55177b956ecbf54abe19011df330c1c2498b30b8e13277453636fe4e6312fbc',
         x: 'a31700b63788e5b28616a3528c361f15abb59af9541bc66b74dd5dffaf9a0e31ccd32e032e843bd199870a255b22cdedce637b680ec68786',
@@ -275,7 +255,7 @@ describe('Curves', function() {
       }
     });
 
-    test(new ED448(), {
+    test(new curves.ED448(), {
       a: {
         k: 'c17d6835ec83facd2a3fe89cc909f901a45a535c34763669a55177b956ecbf54abe19011df330c1c2498b30b8e13277453636fe4e6312fbc',
         x: '5a261d8379f0a2eba1f937c1be72cd54459c42f0510488f12828f2e455cd774d3ac17a7fa5a774403b9f3109c6035b9212e0923add16bcf4',
@@ -294,7 +274,7 @@ describe('Curves', function() {
 
     // https://github.com/indutny/elliptic/pull/144
     // https://tools.ietf.org/html/rfc7027
-    test(new BRAINPOOLP256(), {
+    test(new curves.BRAINPOOLP256(), {
       a: {
         k: '81db1ee100150ff2ea338d708271be38300cb54241d79950f77b063039804f1d',
         x: '44106e913f92bc02a1705d9953a8414db95e1aaa49e81d9e85f929a8e3100be5',
@@ -311,7 +291,7 @@ describe('Curves', function() {
       }
     });
 
-    test(new BRAINPOOLP384(), {
+    test(new curves.BRAINPOOLP384(), {
       a: {
         k: '1e20f5e048a5886f1f157c74e91bde2b98c8b52d58e5003d57053fc4b0bd65d6f15eb5d1ee1610df870795143627d042',
         x: '68b665dd91c195800650cdd363c625f4e742e8134667b767b1b476793588f885ab698c852d4a6e77a252d6380fcaf068',
@@ -328,7 +308,7 @@ describe('Curves', function() {
       }
     });
 
-    test(new BRAINPOOLP512(), {
+    test(new curves.BRAINPOOLP512(), {
       a: {
         k: '16302ff0dbbb5a8d733dab7141c1b45acbc8715939677f6a56850a38bd87bd59b09e80279609ff333eb9d4c061231fb26f92eeb04982a5f1d1764cad57665422',
         x: 'a420517e406aac0acdce90fcd71487718d3b953efd7fbec5f7f27e28c6149999397e91e029e06457db2d3e640668b392c2a7e737a7f0bf04436d11640fd09fd',
@@ -348,22 +328,22 @@ describe('Curves', function() {
 
   describe('Precomputation', () => {
     it('should have precomputed curves', () => {
-      p256 = new P256();
+      const p256 = new curves.P256();
       p256.precompute(rng);
 
-      secp256k1 = new SECP256K1();
+      const secp256k1 = new curves.SECP256K1();
       secp256k1.precompute(rng);
 
-      ed25519 = new ED25519();
+      const ed25519 = new curves.ED25519();
       ed25519.precompute(rng);
 
-      x25519 = new X25519();
+      const x25519 = new curves.X25519();
       x25519.precompute(rng);
 
-      ed448 = new ED448();
+      const ed448 = new curves.ED448();
       ed448.precompute(rng);
 
-      x448 = new X448();
+      const x448 = new curves.X448();
       x448.precompute(rng);
 
       assert(p256.g.pre);
@@ -548,6 +528,21 @@ describe('Curves', function() {
 
       assert(curve.endo);
 
+      assert.deepStrictEqual(curve.endo.toJSON(), {
+        beta: '447a96e6c647963e2f7809feaab46947f34b0aa3ca0bba74',
+        lambda: 'c27b0d93eddc7284b0c2ae9813318686dbb7a0ea73692cdb',
+        basis: [
+          {
+            a: 'b3fb3400dec5c4adceb8655c',
+            b: '-71169be7330b3038edb025f1'
+          },
+          {
+            a: '71169be7330b3038edb025f1',
+            b: '012511cfe811d0f4e6bc688b4d'
+          }
+        ]
+      });
+
       const p = curve.pointFromJSON([
         'f091cf6331b1747684f5d2549cd1d4b3a8bed93b94f93cb6',
         'fd7af42e1e7565a02e6268661c5e42e603da2d98a18f2ed5'
@@ -573,6 +568,21 @@ describe('Curves', function() {
       });
 
       assert(curve.endo);
+
+      assert.deepStrictEqual(curve.endo.toJSON(), {
+        beta: '01f178ffa4b17c89e6f73aece2aad57af4c0a748b63c830947b27e04',
+        lambda: '9f232defb3b343f41911103d422bcc75342913534b55766d0a016a6e',
+        basis: [
+          {
+            a: 'b8adf1378a6eb73409fa6c9c637d',
+            b: '-6b8cf07d4ca75c88957d9d670591'
+          },
+          {
+            a: '6b8cf07d4ca75c88957d9d670591',
+            b: '01243ae1b4d71613bc9f780a03690e'
+          }
+        ]
+      });
 
       const p = curve.pointFromJSON([
         '86c0deb56aeb9712390999a0232b9bf596b9639fa1ce8cf426749e60',
@@ -600,6 +610,16 @@ describe('Curves', function() {
       });
 
       assert(curve.endo);
+
+      // Our code picks different beta/lambda values.
+      assert.deepStrictEqual(curve.endo.toJSON(), {
+        beta: '78ddf260453f1c29e9ad657a99290ffb7aa67330',
+        lambda: '61ad83913c4f1cba4aa27087d04e9fa19257885c',
+        basis: [
+          { a: '7faab9faa7718443dc49', b: '-a70f68731db66985312e' },
+          { a: '0126ba226dc527edc90d77', b: '7faab9faa7718443dc49' }
+        ]
+      });
 
       const beta = new BN('771473166210819779552257112796337671037538143582', 10);
       const lambda = new BN('903860042511079968555273866340564498116022318806', 10);
@@ -751,7 +771,10 @@ describe('Curves', function() {
     });
 
     it('should compute this problematic secp256k1 multiplication', () => {
-      const curve = secp256k1;
+      const curve = new curves.SECP256K1();
+
+      curve.precompute(rng);
+
       const g1 = curve.g; // precomputed g
 
       assert(g1.pre);
@@ -771,7 +794,10 @@ describe('Curves', function() {
     });
 
     it('should not use fixed NAF when k is too large', () => {
-      const curve = secp256k1;
+      const curve = new curves.SECP256K1();
+
+      curve.precompute(rng);
+
       const g1 = curve.g; // precomputed g
 
       assert(g1.pre);
@@ -789,7 +815,9 @@ describe('Curves', function() {
     });
 
     it('should not fail on secp256k1 regression', () => {
-      const curve = secp256k1;
+      const curve = new curves.SECP256K1();
+
+      curve.precompute(rng);
 
       const k1 = new BN(
         '32efeba414cd0c830aed727749e816a01c471831536fd2fce28c56b54f5a3bb1',
@@ -843,7 +871,7 @@ describe('Curves', function() {
           16)
       };
 
-      const curve = secp256k1;
+      const curve = new curves.SECP256K1();
       const pbad = curve.jpoint(bad.x, bad.y, bad.z);
       const pgood = curve.jpoint(good.x, good.y, good.z);
 
@@ -855,7 +883,10 @@ describe('Curves', function() {
     });
 
     it('should multiply with blinding', () => {
-      const curve = secp256k1;
+      const curve = new curves.SECP256K1();
+
+      curve.precompute(rng);
+
       const {blind} = curve.g.pre.blinding;
       const neg = blind.neg().imod(curve.n);
       const point1 = curve.g.mulBlind(neg);
@@ -869,9 +900,15 @@ describe('Curves', function() {
     });
 
     it('should match multiplications', () => {
+      const p256 = new curves.P256();
+      const secp256k1 = new curves.SECP256K1();
+      const ed25519 = new curves.ED25519();
+
       for (const curve of [p256, secp256k1, ed25519]) {
         const N = curve.n;
         const s = curve.randomScalar(rng);
+
+        curve.precompute(rng);
 
         const p1 = curve.g.mul(s);
         const p2 = curve.g.mulSimple(s);
@@ -905,7 +942,7 @@ describe('Curves', function() {
     });
 
     it('should match multiplications (ladder)', () => {
-      const curve = secp256k1;
+      const curve = new curves.SECP256K1();
       const N = curve.n;
 
       const s = curve.randomScalar(rng);
@@ -941,17 +978,21 @@ describe('Curves', function() {
       assert(j7.eq(j8));
 
       assert(curve.g.mulConst(new BN(0)).isInfinity());
+      assert(curve.g.mulConst(new BN(-1)).eq(curve.g.neg()));
+      assert(curve.g.mulConst(new BN(-2)).eq(curve.g.dbl().neg()));
       assert(curve.g.mulConst(new BN(1)).eq(curve.g));
       assert(curve.g.mulConst(new BN(2)).eq(curve.g.dbl()));
       assert(curve.g.mulConst(new BN(3)).eq(curve.g.trpl()));
       assert(curve.g.mulConst(curve.n).isInfinity());
+      assert(curve.g.mulConst(curve.n.subn(1)).eq(curve.g.neg()));
+      assert(curve.g.mulConst(curve.n.subn(2)).eq(curve.g.dbl().neg()));
       assert(curve.g.mulConst(curve.n.muln(2)).isInfinity());
       assert(curve.g.mulConst(curve.n.neg()).isInfinity());
       assert(curve.g.mulConst(curve.n.muln(2).neg()).isInfinity());
     });
 
     it('should match multiplications (ladder+rng)', () => {
-      const curve = secp256k1;
+      const curve = new curves.SECP256K1();
       const N = curve.n;
 
       const s = curve.randomScalar(rng);
@@ -987,17 +1028,24 @@ describe('Curves', function() {
       assert(j7.eq(j8));
 
       assert(curve.g.mulConst(new BN(0), rng).isInfinity());
+      assert(curve.g.mulConst(new BN(-1), rng).eq(curve.g.neg()));
+      assert(curve.g.mulConst(new BN(-2)).eq(curve.g.dbl().neg()));
       assert(curve.g.mulConst(new BN(1), rng).eq(curve.g));
       assert(curve.g.mulConst(new BN(2), rng).eq(curve.g.dbl()));
       assert(curve.g.mulConst(new BN(3), rng).eq(curve.g.trpl()));
       assert(curve.g.mulConst(curve.n, rng).isInfinity());
+      assert(curve.g.mulConst(curve.n.subn(1), rng).eq(curve.g.neg()));
+      assert(curve.g.mulConst(curve.n.subn(2), rng).eq(curve.g.dbl().neg()));
       assert(curve.g.mulConst(curve.n.muln(2), rng).isInfinity());
       assert(curve.g.mulConst(curve.n.neg(), rng).isInfinity());
       assert(curve.g.mulConst(curve.n.muln(2).neg(), rng).isInfinity());
     });
 
     it('should match multiplications (fixed)', () => {
-      const curve = secp256k1;
+      const curve = new curves.SECP256K1();
+
+      curve.precompute(rng);
+
       const N = curve.n;
 
       const mul = (p, k) => curve._fixedNafMul(p, k).toP();
@@ -1035,7 +1083,7 @@ describe('Curves', function() {
     });
 
     it('should match multiplications (ladder)', () => {
-      const curve = secp256k1;
+      const curve = new curves.SECP256K1();
       const N = curve.n;
 
       const mul = (p, k) => curve._ladderMul(p, k).toP();
@@ -1065,7 +1113,7 @@ describe('Curves', function() {
     });
 
     it('should match multiplications (co-z)', () => {
-      const curve = secp256k1;
+      const curve = new curves.SECP256K1();
       const N = curve.n;
 
       const mul = (p, k) => curve._coZLadderMul(p, k).toP();
@@ -1095,7 +1143,10 @@ describe('Curves', function() {
     });
 
     it('should match multiplications (wnaf)', () => {
-      const curve = secp256k1;
+      const curve = new curves.SECP256K1();
+
+      curve.precompute(rng);
+
       const N = curve.n;
 
       const mul = (p, k) => curve._wnafMul(4, p, k).toP();
@@ -1147,7 +1198,10 @@ describe('Curves', function() {
     });
 
     it('should match multiplications (muladd)', () => {
-      const curve = secp256k1;
+      const curve = new curves.SECP256K1();
+
+      curve.precompute(rng);
+
       const N = curve.n;
 
       const mul = (p, k) => curve._wnafMulAdd(1, [p], [k]).toP();
@@ -1199,7 +1253,10 @@ describe('Curves', function() {
     });
 
     it('should match multiplications (endo)', () => {
-      const curve = secp256k1;
+      const curve = new curves.SECP256K1();
+
+      curve.precompute(rng);
+
       const N = curve.n;
 
       const mul = (p, k) => curve._endoWnafMulAdd([p], [k]).toP();
@@ -1251,7 +1308,10 @@ describe('Curves', function() {
     });
 
     it('should match multiplications (blind)', () => {
-      const curve = secp256k1;
+      const curve = new curves.SECP256K1();
+
+      curve.precompute(rng);
+
       const N = curve.n;
 
       const mul = (p, k) => p.mulBlind(k, rng);
@@ -1303,12 +1363,18 @@ describe('Curves', function() {
     });
 
     it('should match multiply+add', () => {
+      const p256 = new curves.P256();
+      const secp256k1 = new curves.SECP256K1();
+      const ed25519 = new curves.ED25519();
+
       for (const curve of [p256, secp256k1, ed25519]) {
         const N = curve.n;
         const s = curve.randomScalar(rng);
         const A = curve.randomPoint(rng);
         const J = A.toJ();
         const s0 = curve.randomScalar(rng);
+
+        curve.precompute(rng);
 
         const p1 = curve.g.mulAdd(s, A, s0);
         const p2 = curve.g.mulAddSimple(s, A, s0);
@@ -1342,9 +1408,15 @@ describe('Curves', function() {
     });
 
     it('should multiply negative scalar', () => {
+      const p256 = new curves.P256();
+      const secp256k1 = new curves.SECP256K1();
+      const ed25519 = new curves.ED25519();
+
       for (const curve of [p256, secp256k1, ed25519]) {
         const N = curve.n;
         const s1 = curve.randomScalar(rng);
+
+        curve.precompute(rng);
 
         {
           const p1 = curve.g.mul(s1);
@@ -1439,6 +1511,10 @@ describe('Curves', function() {
     });
 
     it('should multiply+add negative scalar', () => {
+      const p256 = new curves.P256();
+      const secp256k1 = new curves.SECP256K1();
+      const ed25519 = new curves.ED25519();
+
       for (const curve of [p256, secp256k1, ed25519]) {
         const N = curve.n;
         const A = curve.randomPoint(rng);
@@ -1447,6 +1523,8 @@ describe('Curves', function() {
         const as0 = A.mul(s0);
         const js0 = as0.toJ();
         const s1 = curve.randomScalar(rng);
+
+        curve.precompute(rng);
 
         {
           const p1 = curve.g.mul(s1).neg().add(as0);
@@ -1511,6 +1589,7 @@ describe('Curves', function() {
     });
 
     it('should correctly recover Y', () => {
+      const ed25519 = new curves.ED25519();
       const x = ed25519.g.getX();
       const y = ed25519.g.y.redIsOdd();
       const g = ed25519.pointFromX(x, y);
@@ -1520,6 +1599,7 @@ describe('Curves', function() {
 
     it('should have basepoint for x25519', () => {
       // https://tools.ietf.org/html/rfc7748#section-4.1
+      const x25519 = new curves.X25519();
       const v = x25519.g.getY(1);
 
       // Note: this is negated.
@@ -1532,6 +1612,7 @@ describe('Curves', function() {
 
     it('should have basepoint for x448', () => {
       // https://tools.ietf.org/html/rfc7748#section-4.2
+      const x448 = new curves.X448();
       const v = x448.g.getY(0);
 
       // Note: this is negated.
@@ -1545,6 +1626,8 @@ describe('Curves', function() {
     });
 
     it('should test birational equivalence', () => {
+      const ed25519 = new curves.ED25519();
+      const x25519 = new curves.X25519();
       const edwardsG = ed25519.pointFromMont(x25519.g, false);
       const montG = x25519.pointFromEdwards(ed25519.g);
 
@@ -1553,15 +1636,17 @@ describe('Curves', function() {
     });
 
     it('should test 4-isogeny equivalence', () => {
-      const montG = x448.pointFromEdwards(ed25519.g);
+      const ed448 = new curves.ED448();
+      const x448 = new curves.X448();
+      const montG = x448.pointFromEdwards(ed448.g);
 
-      assert(montG.eq(x25519.g));
+      assert(montG.eq(x448.g));
 
-      assert.throws(() => ed448.pointFromMont(x25519.g, false));
+      assert.throws(() => ed448.pointFromMont(x448.g, false));
     });
 
     it('should test unified addition', () => {
-      const curve = new SECP256K1();
+      const curve = new curves.SECP256K1();
 
       const vectors = [
         // G + R
@@ -1749,7 +1834,7 @@ describe('Curves', function() {
     });
 
     it('should test adding when lambda=0', () => {
-      const curve = new SECP256K1();
+      const curve = new curves.SECP256K1();
 
       const p = curve.pointFromJSON([
         'f96e09c5f26fa15c38fd52282087c96a53411a75d4a65a9faed9c1113955b28f',
@@ -1768,7 +1853,7 @@ describe('Curves', function() {
     });
 
     it('should test doubling when lambda=0', () => {
-      const curve = new P521();
+      const curve = new curves.P521();
       const p = curve.pointFromX(new BN(1), false);
       const q = p.toJ().dbl().toP();
 
@@ -1776,6 +1861,8 @@ describe('Curves', function() {
     });
 
     it('should test arbitrary montgomery multiplication', () => {
+      const ed25519 = new curves.ED25519();
+      const x25519 = new curves.X25519();
       const g = x25519.randomPoint(rng);
       const k = x25519.reduce(x25519.randomScalar(rng));
 
@@ -1794,25 +1881,24 @@ describe('Curves', function() {
   describe('Point codec', () => {
     const makeShortTest = (definition) => {
       return () => {
-        const curve = secp256k1;
-        const p = curve.pointFromJSON(definition.coordinates);
+        const curve = new curves.SECP256K1();
+        const p = curve.pointFromJSON(definition.coords);
 
         // Encodes as expected
         assert.bufferEqual(p.encode(false), definition.encoded);
-        assert.bufferEqual(p.encode(true), definition.compactEncoded);
+        assert.bufferEqual(p.encode(true), definition.compact);
 
         // Decodes as expected
         assert(curve.decodePoint(Buffer.from(definition.encoded, 'hex')).eq(p));
-        assert(curve.decodePoint(
-          Buffer.from(definition.compactEncoded, 'hex')).eq(p));
+        assert(curve.decodePoint(Buffer.from(definition.compact, 'hex')).eq(p));
         assert(curve.decodePoint(Buffer.from(definition.hybrid, 'hex')).eq(p));
       };
     };
 
     const makeMontTest = (definition) => {
       return () => {
-        const curve = x25519;
-        const p = curve.pointFromJSON(definition.coordinates);
+        const curve = new curves.X25519();
+        const p = curve.pointFromJSON(definition.coords);
         const scalar = new BN(definition.scalar, 16);
         const encoded = p.encode();
         const decoded = curve.decodePoint(encoded);
@@ -1825,11 +1911,11 @@ describe('Curves', function() {
     };
 
     const shortPointEvenY = {
-      coordinates: [
+      coords: [
         '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
         '483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8'
       ],
-      compactEncoded: '02'
+      compact: '02'
         + '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
       encoded: '04'
         + '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798'
@@ -1840,11 +1926,11 @@ describe('Curves', function() {
     };
 
     const shortPointOddY = {
-      coordinates: [
+      coords: [
         'fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556',
         'ae12777aacfbb620f3be96017f45c560de80f0f6518fe4a03c870c36b075f297'
       ],
-      compactEncoded: '03'
+      compact: '03'
         + 'fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556',
       encoded: '04'
         + 'fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556'
@@ -1870,7 +1956,7 @@ describe('Curves', function() {
 
     it('should be able to encode/decode a mont curve point', makeMontTest({
       scalar: '6',
-      coordinates: [
+      coords: [
         '743bcb585f9990edc2cfc4af84f6ff300729bb5facda28154362cd47a37de52f'
       ],
       encoded:
@@ -1880,7 +1966,7 @@ describe('Curves', function() {
 
   describe('E521', () => {
     it('should have E521', () => {
-      const e521 = new E521();
+      const e521 = new curves.E521();
       const inf = e521.point();
 
       assert(e521.g.validate());
@@ -1896,7 +1982,7 @@ describe('Curves', function() {
     });
 
     it('should clamp properly', () => {
-      const e521 = new E521();
+      const e521 = new curves.E521();
       const scalar = rng.randomBytes(e521.p.byteLength());
 
       e521.clamp(scalar);
