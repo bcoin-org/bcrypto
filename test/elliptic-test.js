@@ -1876,6 +1876,90 @@ describe('Elliptic', function() {
 
       assert(ep.eq(ep1) || ep.eq(ep2));
     });
+
+    it('should test x equality', () => {
+      const secp256k1 = new curves.SECP256K1();
+      const ed25519 = new curves.ED25519();
+
+      for (const curve of [secp256k1, ed25519]) {
+        const p = curve.randomPoint(rng);
+        const x = p.getX();
+        const r = p.randomize(rng);
+
+        assert(p.eqX(x));
+        assert(p.eqXToP(x));
+        assert(r.eqX(x));
+        assert(r.eqXToP(x));
+
+        x.iaddn(1);
+
+        assert(!p.eqX(x));
+        assert(!p.eqXToP(x));
+        assert(!r.eqX(x));
+        assert(!r.eqXToP(x));
+      }
+    });
+
+    it('should test quad y', () => {
+      const secp256k1 = new curves.SECP256K1();
+      const ed25519 = new curves.ED25519();
+
+      for (const curve of [secp256k1, ed25519]) {
+        for (let i = 0; i < 100; i++) {
+          const p = curve.randomPoint(rng);
+          const r = p.randomize(rng);
+
+          assert.strictEqual(p.hasQuadY(), r.hasQuadY());
+        }
+      }
+    });
+
+    it('should test brier-joye y recovery (affine)', () => {
+      const curve = new curves.SECP256K1();
+      const k = curve.randomScalar(rng);
+      const expect = curve.g.mul(k);
+
+      const x1 = curve.g.mul(k.addn(0)).getX();
+      const x2 = curve.g.mul(k.addn(1)).getX();
+
+      const p = curve.g.recover(x1, x2);
+
+      assert(p.eq(expect));
+    });
+
+    it('should test brier-joye y recovery (jacobian)', () => {
+      const curve = new curves.SECP256K1();
+      const k = curve.randomScalar(rng);
+      const expect = curve.g.jmul(k);
+
+      const x1 = curve.g.jmul(k.addn(0)).getX();
+      const x2 = curve.g.jmul(k.addn(1)).getX();
+
+      const p = curve.g.randomize(rng).recover(x1, x2);
+
+      assert(p.eq(expect));
+    });
+
+    it('should test okeya-sakurai y recovery (mont)', () => {
+      const ed25519 = new curves.ED25519();
+      const x25519 = new curves.X25519();
+      const am2 = new BN(-486664).toRed(ed25519.red);
+      const k = x25519.randomScalar(rng);
+      const p = ed25519.g.mul(k).normalize();
+
+      // u = (1 + y) / (1 - y)
+      const u = p.z.redAdd(p.y).redMul(p.z.redSub(p.y).redInvert());
+
+      // v = sqrt(-a - 2) * u / x
+      const v = am2.redSqrt().redMul(u.redMul(p.x.redInvert()));
+
+      const p1 = x25519.g.mulSimple(k.addn(0));
+      const p2 = x25519.g.mulSimple(k.addn(1));
+
+      const y = x25519.g.randomize(rng).recover(p1, p2, 1);
+
+      assert(y.eq(v));
+    });
   });
 
   describe('Point codec', () => {
