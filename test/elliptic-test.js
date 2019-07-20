@@ -1900,6 +1900,70 @@ describe('Elliptic', function() {
       }
     });
 
+    it('should test swapping (jacobi, edwards)', () => {
+      const secp256k1 = new curves.SECP256K1();
+      const ed25519 = new curves.ED25519();
+
+      for (const curve of [secp256k1, ed25519]) {
+        const p1 = curve.randomPoint(rng).toJ();
+        const p2 = curve.randomPoint(rng).randomize(rng);
+        const q1 = p1.clone();
+        const q2 = p2.clone();
+
+        q1.swap(q2, 0);
+
+        assert(q1.clone().eq(p1.clone()));
+        assert(q2.clone().eq(p2.clone()));
+        assert(q1.zOne);
+        assert(!q2.zOne);
+
+        q1.swap(q2, 1);
+
+        assert(q1.clone().eq(p2.clone()));
+        assert(q2.clone().eq(p1.clone()));
+        assert(!q1.zOne);
+        assert(q2.zOne);
+      }
+    });
+
+    it('should test mont swapping', () => {
+      const curve = new curves.X25519();
+      const p1 = curve.randomPoint(rng);
+      const p2 = curve.randomPoint(rng).randomize(rng);
+      const q1 = p1.clone();
+      const q2 = p2.clone();
+
+      q1.swap(q2, 0);
+
+      assert(q1.clone().eq(p1.clone()));
+      assert(q2.clone().eq(p2.clone()));
+
+      q1.swap(q2, 1);
+
+      assert(q1.clone().eq(p2.clone()));
+      assert(q2.clone().eq(p1.clone()));
+    });
+
+    it('should test jacobian equality', () => {
+      const curve = new curves.SECP256K1();
+      const p1 = curve.randomPoint(rng).randomize(rng);
+      const p2 = p1.clone();
+      const p3 = curve.randomPoint(rng).scale(p1.z);
+      const p4 = p1.clone().normalize().randomize(rng);
+
+      assert(p1 !== p2);
+      assert(p1.z.eq(p2.z));
+      assert(p1.eq(p2));
+
+      assert(p1 !== p3);
+      assert(p1.z.eq(p3.z));
+      assert(!p1.eq(p3));
+
+      assert(p1 !== p4);
+      assert(!p1.z.eq(p4.z));
+      assert(p1.eq(p4));
+    });
+
     it('should test quad y', () => {
       const secp256k1 = new curves.SECP256K1();
       const ed25519 = new curves.ED25519();
