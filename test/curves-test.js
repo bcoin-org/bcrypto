@@ -1941,6 +1941,8 @@ describe('Curves', function() {
     };
 
     it('should throw when trying to decode random bytes', () => {
+      const secp256k1 = new curves.SECP256K1();
+
       assert.throws(() => {
         secp256k1.decodePoint(Buffer.from(
           '0579be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
