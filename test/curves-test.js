@@ -2,6 +2,8 @@
 
 const assert = require('bsert');
 const BN = require('../lib/bn.js');
+const EDDSA = require('../lib/js/eddsa');
+const SHAKE256 = require('../lib/shake256');
 const curves = require('../lib/js/curves');
 const rng = require('../lib/random');
 
@@ -20,7 +22,8 @@ const {
   X448,
   BRAINPOOLP256,
   BRAINPOOLP384,
-  BRAINPOOLP512
+  BRAINPOOLP512,
+  E521
 } = curves;
 
 let p256 = null;
@@ -1873,5 +1876,67 @@ describe('Curves', function() {
       encoded:
         '2fe57da347cd62431528daac5fbb290730fff684afc4cfc2ed90995f58cb3b74'
     }));
+  });
+
+  describe('E521', () => {
+    it('should have E521', () => {
+      const e521 = new E521();
+      const inf = e521.point();
+
+      assert(e521.g.validate());
+      assert(e521.g.dbl().validate());
+      assert(e521.g.trpl().validate());
+      assert(e521.g.dbl().dbl().validate());
+      assert(e521.g.mul(e521.n).eq(inf));
+      assert(!e521.g.mul(e521.n.subn(1)).eq(inf));
+      assert(e521.g.mul(e521.n.addn(1)).eq(e521.g));
+      assert(e521.g.mul(new BN(1)).eq(e521.g));
+      assert(e521.g.mul(new BN(2)).eq(e521.g.dbl()));
+      assert(e521.g.mul(new BN(3)).eq(e521.g.trpl()));
+    });
+
+    it('should clamp properly', () => {
+      const e521 = new E521();
+      const scalar = rng.randomBytes(e521.p.byteLength());
+
+      e521.clamp(scalar);
+
+      assert(e521.isClamped(scalar));
+    });
+
+    it('should handle difference in scalar/field bytes', () => {
+      const e521 = new EDDSA('E521', null, SHAKE256);
+
+      const msg = rng.randomBytes(e521.size);
+      const secret = e521.privateKeyGenerate();
+      const pub = e521.publicKeyCreate(secret);
+
+      assert(e521.publicKeyVerify(pub));
+
+      const sig = e521.sign(msg, secret);
+
+      assert(e521.verify(msg, sig, pub));
+
+      sig[0] ^= 1;
+
+      assert(!e521.verify(msg, sig, pub));
+
+      e521.publicKeyExportSPKI(pub);
+    });
+
+    it('should do diffie hellman', () => {
+      const e521 = new EDDSA('E521', null, SHAKE256);
+
+      const alicePriv = e521.privateKeyGenerate();
+      const alicePub = e521.publicKeyCreate(alicePriv);
+
+      const bobPriv = e521.privateKeyGenerate();
+      const bobPub = e521.publicKeyCreate(bobPriv);
+
+      const aliceSecret = e521.derive(bobPub, alicePriv);
+      const bobSecret = e521.derive(alicePub, bobPriv);
+
+      assert.bufferEqual(aliceSecret, bobSecret);
+    });
   });
 });
