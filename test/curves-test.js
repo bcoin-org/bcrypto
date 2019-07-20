@@ -4,7 +4,7 @@ const assert = require('bsert');
 const BN = require('../lib/bn.js');
 const EDDSA = require('../lib/js/eddsa');
 const SHAKE256 = require('../lib/shake256');
-const elliptic = require('../lib/js/curves');
+const elliptic = require('../lib/js/elliptic');
 const rng = require('../lib/random');
 
 const {
