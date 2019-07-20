@@ -13,7 +13,7 @@ const {
   curves
 } = elliptic;
 
-describe('Curves', function() {
+describe('Elliptic', function() {
   describe('Vectors', () => {
     const test = (curve, vector) => {
       it(`should test curve ${curve.id}`, () => {
