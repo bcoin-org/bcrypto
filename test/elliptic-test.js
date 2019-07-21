@@ -2108,8 +2108,10 @@ describe('Elliptic', function() {
       const p1 = x25519.g.mulSimple(k.addn(0));
       const p2 = x25519.g.mulSimple(k.addn(1));
 
-      const y = x25519.g.randomize(rng).recover(p1, p2, 1);
+      // Returns an affinized X and Y.
+      const [x, y] = x25519.g.randomize(rng).recover(p1, p2, 1);
 
+      assert(x.eq(u));
       assert(y.eq(v));
     });
   });
