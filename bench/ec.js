@@ -53,6 +53,10 @@ const mul = secp256k1.native ? 10 : 1;
   bench('p256 verify', rounds, () => {
     p256.verify(msg, sig, pub);
   });
+
+  bench('p256 derive', rounds, () => {
+    p256.derive(pub, msg);
+  });
 }
 
 {
