@@ -2091,6 +2091,7 @@ describe('Elliptic', function() {
 
         assert.bufferEqual(encoded, definition.encoded);
         assert.bufferEqual(curve.g.mul(scalar).encode(), encoded);
+        assert.bufferEqual(curve.g.mulSimple(scalar).encode(), encoded);
       };
     };
 
@@ -2143,10 +2144,10 @@ describe('Elliptic', function() {
     it('should be able to encode/decode a mont curve point', makeMontTest({
       scalar: '6',
       coords: [
-        '743bcb585f9990edc2cfc4af84f6ff300729bb5facda28154362cd47a37de52f'
+        '26954ccdc99ebf34f8f1dde5e6bb080685fec73640494c28f9fe0bfa8c794531'
       ],
       encoded:
-        '2fe57da347cd62431528daac5fbb290730fff684afc4cfc2ed90995f58cb3b74'
+        '3145798cfa0bfef9284c494036c7fe850608bbe6e5ddf1f834bf9ec9cd4c9526'
     }));
   });
 
