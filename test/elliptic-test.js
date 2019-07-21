@@ -1952,6 +1952,21 @@ describe('Elliptic', function() {
       }
     });
 
+    it('should test x equality (mont)', () => {
+      const curve = new curves.X448();
+      const p = curve.randomPoint(rng);
+      const x = p.getX();
+      const r = p.randomize(rng);
+
+      assert(p.eqX(x));
+      assert(r.eqX(x));
+
+      x.iaddn(1);
+
+      assert(!p.eqX(x));
+      assert(!r.eqX(x));
+    });
+
     it('should test fuzzy x equality', () => {
       const secp256k1 = new curves.SECP256K1();
       const ed25519 = new curves.ED25519();
