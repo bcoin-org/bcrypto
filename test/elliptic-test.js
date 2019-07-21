@@ -1900,6 +1900,72 @@ describe('Elliptic', function() {
       }
     });
 
+    it('should test fuzzy x equality (short)', () => {
+      const curve = new curves.SECP256K1();
+
+      let p;
+
+      for (;;) {
+        const x = BN.random(rng, curve.n, curve.p);
+        const s = BN.random(rng, 0, 2);
+
+        try {
+          p = curve.pointFromX(x, s.isOdd());
+        } catch (e) {
+          continue;
+        }
+
+        break;
+      }
+
+      const x = p.getX().imod(curve.n);
+
+      assert(x.cmp(p.getX()) < 0);
+
+      assert(p.eqXToP(x));
+      assert(!p.eqXToP(x.subn(1)));
+      assert(!p.eqXToP(x.addn(1)));
+
+      const r = p.randomize(rng);
+
+      assert(r.eqXToP(x));
+      assert(!r.eqXToP(x.subn(1)));
+      assert(!r.eqXToP(x.addn(1)));
+    });
+
+    it('should test fuzzy x equality (edwards)', () => {
+      const curve = new curves.ED25519();
+
+      let p;
+
+      for (;;) {
+        const x = BN.random(rng, curve.n, curve.p);
+        const s = BN.random(rng, 0, 2);
+
+        try {
+          p = curve.pointFromY(x, s.isOdd());
+        } catch (e) {
+          continue;
+        }
+
+        break;
+      }
+
+      const x = p.getX().imod(curve.n);
+
+      assert(x.cmp(p.getX()) < 0);
+
+      assert(p.eqXToP(x));
+      assert(!p.eqXToP(x.subn(1)));
+      assert(!p.eqXToP(x.addn(1)));
+
+      const r = p.randomize(rng);
+
+      assert(r.eqXToP(x));
+      assert(!r.eqXToP(x.subn(1)));
+      assert(!r.eqXToP(x.addn(1)));
+    });
+
     it('should test swapping (jacobi, edwards)', () => {
       const secp256k1 = new curves.SECP256K1();
       const ed25519 = new curves.ED25519();
