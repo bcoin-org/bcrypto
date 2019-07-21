@@ -17,10 +17,11 @@ describe('Elliptic', function() {
   describe('Vectors', () => {
     const test = (curve, vector) => {
       it(`should test curve ${curve.id}`, () => {
+        // Quick sanity test.
         if (curve.type === 'mont') {
           const g = curve.g;
-          const p1 = g.mulSimple(new BN(2));
-          const p2 = g.mulSimple(new BN(3));
+          const p1 = g.mul(new BN(2));
+          const p2 = g.mul(new BN(3));
 
           assert(g.dbl().eq(p1));
           assert(g.diffTrpl(g).eq(p2));
@@ -30,7 +31,6 @@ describe('Elliptic', function() {
           const tp = p.trpl();
           const tj = j.trpl();
 
-          // Quick sanity test.
           assert(p.add(p).eq(p.dbl()));
           assert(j.add(j).eq(j.dbl()));
           assert(j.add(p).eq(j.dbl()));
@@ -82,20 +82,18 @@ describe('Elliptic', function() {
           assert(ap.mulConst(bk).eq(p1));
           assert(ap.mulConst(bk, rng).eq(p1));
 
-          if (curve.type !== 'mont') {
-            const p3 = bp.mulBlind(ak);
-            const p4 = ap.mulBlind(bk);
+          const p3 = bp.mulBlind(ak);
+          const p4 = ap.mulBlind(bk);
 
-            assert(p3.eq(p4));
-            assert.equal(p3.getX().toString(16), vector.s.x);
-            assert.equal(p3.getY().toString(16), vector.s.y);
-            assert(bp.mulSimple(ak).eq(p3));
-            assert(ap.mulSimple(bk).eq(p3));
-            assert(bp.mulConst(ak).eq(p3));
-            assert(bp.mulConst(ak, rng).eq(p3));
-            assert(ap.mulConst(bk).eq(p3));
-            assert(ap.mulConst(bk, rng).eq(p3));
-          }
+          assert(p3.eq(p4));
+          assert.equal(p3.getX().toString(16), vector.s.x);
+          assert.equal(p3.getY().toString(16), vector.s.y);
+          assert(bp.mulSimple(ak).eq(p3));
+          assert(ap.mulSimple(bk).eq(p3));
+          assert(bp.mulConst(ak).eq(p3));
+          assert(bp.mulConst(ak, rng).eq(p3));
+          assert(ap.mulConst(bk).eq(p3));
+          assert(ap.mulConst(bk, rng).eq(p3));
 
           curve.precompute(rng);
         }
@@ -1860,7 +1858,61 @@ describe('Elliptic', function() {
       assert(p.dbl().eq(q));
     });
 
-    it('should test arbitrary montgomery multiplication', () => {
+    it('should test montgomery multiplication', () => {
+      const curve = new curves.X25519();
+      const k = curve.randomScalar(rng);
+      const p = curve.g.mul(k);
+
+      assert(curve.g.mul(k).eq(p));
+      assert(curve.g.mulSimple(k).eq(p));
+      assert(curve.g.mulConst(k).eq(p));
+      assert(curve.g.mulBlind(k).eq(p));
+      assert(curve.g.mulBlind(k, rng).eq(p));
+      assert(curve.g.mulConst(k, rng).eq(p));
+
+      {
+        const m = curve.n.muln(17);
+        const p1 = curve.g.mul(k.mul(m));
+        const p2 = curve.g.mulSimple(k.mul(m));
+        const p3 = curve.g.mulConst(k.mul(m));
+        const p4 = curve.g.mul(k.mul(m).imod(curve.n));
+        const p5 = curve.g.mulSimple(k.mul(m).imod(curve.n));
+        const p6 = curve.g.mulBlind(k.mul(m).imod(curve.n));
+        const p7 = curve.g.mulBlind(k.mul(m).imod(curve.n), rng);
+        const p8 = curve.g.mulConst(k.mul(m).imod(curve.n));
+        const p9 = curve.g.mulConst(k.mul(m).imod(curve.n), rng);
+
+        assert(p1.eq(p2));
+        assert(p2.eq(p3));
+        assert(p3.eq(p4));
+        assert(p4.eq(p5));
+        assert(p5.eq(p6));
+        assert(p6.eq(p7));
+        assert(p8.eq(p9));
+      }
+
+      {
+        const p1 = curve.g.mul(k.neg());
+        const p2 = curve.g.mulSimple(k.neg());
+        const p3 = curve.g.mulConst(k.neg());
+        const p4 = curve.g.mul(k.neg().imod(curve.n));
+        const p5 = curve.g.mulSimple(k.neg().imod(curve.n));
+        const p6 = curve.g.mulBlind(k.neg().imod(curve.n));
+        const p7 = curve.g.mulBlind(k.neg().imod(curve.n), rng);
+        const p8 = curve.g.mulConst(k.neg().imod(curve.n));
+        const p9 = curve.g.mulConst(k.neg().imod(curve.n), rng);
+
+        assert(p1.eq(p2));
+        assert(p2.eq(p3));
+        assert(p3.eq(p4));
+        assert(p4.eq(p5));
+        assert(p5.eq(p6));
+        assert(p6.eq(p7));
+        assert(p8.eq(p9));
+      }
+    });
+
+    it('should test montgomery multiplication and conversion', () => {
       const ed25519 = new curves.ED25519();
       const x25519 = new curves.X25519();
       const g = x25519.randomPoint(rng);
@@ -2092,6 +2144,10 @@ describe('Elliptic', function() {
         assert.bufferEqual(encoded, definition.encoded);
         assert.bufferEqual(curve.g.mul(scalar).encode(), encoded);
         assert.bufferEqual(curve.g.mulSimple(scalar).encode(), encoded);
+        assert.bufferEqual(curve.g.mulConst(scalar).encode(), encoded);
+        assert.bufferEqual(curve.g.mulBlind(scalar).encode(), encoded);
+        assert.bufferEqual(curve.g.mulBlind(scalar, rng).encode(), encoded);
+        assert.bufferEqual(curve.g.mulConst(scalar, rng).encode(), encoded);
       };
     };
 
