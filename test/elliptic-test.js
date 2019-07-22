@@ -2156,16 +2156,17 @@ describe('Elliptic', function() {
       const curve = new curves.ED25519();
 
       const small = [
-        // 0 (order 4)
+        // 0 (order 2)
         [
           '0000000000000000000000000000000000000000000000000000000000000000',
           '7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffec'
         ],
+        // 0 (order 1)
         // [
         //   '0000000000000000000000000000000000000000000000000000000000000000',
         //   '0000000000000000000000000000000000000000000000000000000000000001'
         // ],
-        // 1 (order 1)
+        // 1 (order 4)
         [
           '2b8324804fc1df0b2b4d00993dfbd7a72f431806ad2fe478c4ee1b274a0ea0b0',
           '0000000000000000000000000000000000000000000000000000000000000000'
@@ -2195,14 +2196,35 @@ describe('Elliptic', function() {
       ];
 
       assert(!curve.g.isSmall());
+      assert(!curve.g.hasSmall());
 
+      // This is why edwards curves suck.
       for (const json of small) {
+        // P = point of small order
         const p = curve.pointFromJSON(json);
+
+        // Q = G + P
+        const q = curve.g.add(p);
 
         assert(p.validate());
         assert(!p.isInfinity());
+        assert(q.validate());
+        assert(!q.isInfinity());
+
+        // P * H == O
         assert(p.isSmall());
-        assert(!p.mul(curve.n).isInfinity())
+
+        // P * N != O
+        assert(p.hasSmall());
+
+        // Q * H != O
+        assert(!q.isSmall());
+
+        // Q * N != O
+        assert(q.hasSmall());
+
+        // Q * H == G * H
+        assert(q.mulH().eq(curve.g.mulH()));
       }
     });
 
@@ -2215,33 +2237,34 @@ describe('Elliptic', function() {
       // https://github.com/jedisct1/libsodium/blob/cec56d8/src/libsodium/crypto_scalarmult/curve25519/ref10/x25519_ref10.c#L17
       // https://eprint.iacr.org/2017/806.pdf
       const small = [
-        // 0 (order 4)
+        // 0 (order 1 & 2)
         ['0000000000000000000000000000000000000000000000000000000000000000'],
-        // 1 (order 1)
+        // 1 (order 4)
         ['0000000000000000000000000000000000000000000000000000000000000001'],
         // 325606250916557431795983626356110631294008115727848805560023387167927233504 (order 8)
         ['00b8495f16056286fdb1329ceb8d09da6ac49ff1fae35616aeb8413b7c7aebe0'],
         // 39382357235489614581723060781553021112529911719440698176882885853963445705823 (order 8)
         ['57119fd0dd4e22d8868e1c58c45c44045bef839c55b1d0b1248c50a3bc959c5f'],
-        // p - 1 (order 2, invalid)
+        // p - 1 (invalid)
         ['7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffec'],
-        // p (order 4)
+        // p (order 1 & 2)
         ['7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed'],
-        // p + 1 (order 1)
+        // p + 1 (order 4)
         ['7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffee'],
         // p + 325606250916557431795983626356110631294008115727848805560023387167927233504 (order 8)
         ['80b8495f16056286fdb1329ceb8d09da6ac49ff1fae35616aeb8413b7c7aebcd'],
         // p + 39382357235489614581723060781553021112529911719440698176882885853963445705823 (order 8)
         ['d7119fd0dd4e22d8868e1c58c45c44045bef839c55b1d0b1248c50a3bc959c4c'],
-        // 2 * p - 1 (order 2, invalid)
+        // 2 * p - 1 (invalid)
         ['ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffd9'],
-        // 2 * p (order 4)
+        // 2 * p (order 1 & 2)
         ['ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffda'],
-        // 2 * p + 1 (order 1)
+        // 2 * p + 1 (order 4)
         ['ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffdb']
       ];
 
       assert(!curve.g.isSmall());
+      assert(!curve.g.hasSmall());
 
       let total = 0;
 
@@ -2253,6 +2276,7 @@ describe('Elliptic', function() {
         } else {
           // Note that `p - 1`, and `2 * p - 1`
           // do not satisfy the curve equation.
+          // `a - 2` is not a quadratic residue.
           assert(p.x.cmp(curve.one.redNeg()) === 0);
         }
 
@@ -2260,7 +2284,7 @@ describe('Elliptic', function() {
         assert(p.isSmall());
 
         if (!p.x.isZero())
-          assert(!p.mul(curve.n).isInfinity())
+          assert(p.hasSmall());
       }
 
       assert.strictEqual(total, small.length - 2);
@@ -2294,14 +2318,35 @@ describe('Elliptic', function() {
       ];
 
       assert(!curve.g.isSmall());
+      assert(!curve.g.hasSmall());
 
+      // This is why edwards curves suck.
       for (const json of small) {
+        // P = point of small order
         const p = curve.pointFromJSON(json);
+
+        // Q = G + P
+        const q = curve.g.add(p);
 
         assert(p.validate());
         assert(!p.isInfinity());
+        assert(q.validate());
+        assert(!q.isInfinity());
+
+        // P * H == O
         assert(p.isSmall());
-        assert(!p.mul(curve.n).isInfinity())
+
+        // P * N != O
+        assert(p.hasSmall());
+
+        // Q * H != O
+        assert(!q.isSmall());
+
+        // Q * N != O
+        assert(q.hasSmall());
+
+        // Q * H == G * H
+        assert(q.mulH().eq(curve.g.mulH()));
       }
     });
 
@@ -2337,6 +2382,7 @@ describe('Elliptic', function() {
       ];
 
       assert(!curve.g.isSmall());
+      assert(!curve.g.hasSmall());
 
       let total = 0;
 
@@ -2348,6 +2394,7 @@ describe('Elliptic', function() {
         } else {
           // Note that `1`, and `p + 1`
           // do not satisfy the curve equation.
+          // `a + 2` is not a quadratic residue.
           assert(p.x.cmp(curve.one) === 0);
         }
 
@@ -2355,7 +2402,7 @@ describe('Elliptic', function() {
         assert(p.isSmall());
 
         if (!p.x.isZero())
-          assert(!p.mul(curve.n).isInfinity())
+          assert(p.hasSmall());
       }
 
       assert.strictEqual(total, small.length - 2);
