@@ -187,6 +187,25 @@ describe('X448', function() {
     assert.bufferEqual(key, expect, 'hex');
   });
 
+  it('should reject small order points', () => {
+    const small = [
+      ['00000000000000000000000000000000000000000000000000000000',
+       '00000000000000000000000000000000000000000000000000000000'].join(''),
+      ['00000000000000000000000000000000000000000000000000000000',
+       'ffffffffffffffffffffffffffffffffffffffffffffffffffffffff'].join('')
+    ];
+
+    const key = x448.privateKeyGenerate();
+
+    for (const str of small) {
+      const pub = Buffer.from(str, 'hex');
+
+      assert.throws(() => x448.derive(pub, key), {
+        message: /^Invalid point\.|Could not derive secret\.$/
+      });
+    }
+  });
+
   it('should test x448 api', () => {
     const alicePriv = x448.privateKeyGenerate();
     const alicePub = x448.publicKeyCreate(alicePriv);

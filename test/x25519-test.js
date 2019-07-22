@@ -250,11 +250,37 @@ describe('X25519', function() {
   });
 
   it('should reject small order points', () => {
+    // Full list from: https://cr.yp.to/ecdh.html
+    //
+    // See also:
+    // https://github.com/jedisct1/libsodium/blob/cec56d8/src/libsodium/crypto_scalarmult/curve25519/ref10/x25519_ref10.c#L17
+    // https://eprint.iacr.org/2017/806.pdf
     const small = [
+      // 0 (order 4)
       '0000000000000000000000000000000000000000000000000000000000000000',
+      // 1 (order 1)
       '0100000000000000000000000000000000000000000000000000000000000000',
+      // 325606250916557431795983626356110631294008115727848805560023387167927233504 (order 8)
       'e0eb7a7c3b41b8ae1656e3faf19fc46ada098deb9c32b1fd866205165f49b800',
-      '5f9c95bca3508c24b1d0b1559c83ef5b04445cc4581c8e86d8224eddd09f1157'
+      // 39382357235489614581723060781553021112529911719440698176882885853963445705823 (order 8)
+      '5f9c95bca3508c24b1d0b1559c83ef5b04445cc4581c8e86d8224eddd09f1157',
+      // p - 1 (order 2, invalid)
+      'ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f',
+      // p (order 4)
+      'edffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f',
+      // p + 1 (order 1)
+      'eeffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f'
+      // The hi bit is unset for these:
+      // p + 325606250916557431795983626356110631294008115727848805560023387167927233504 (order 8)
+      // 'cdeb7a7c3b41b8ae1656e3faf19fc46ada098deb9c32b1fd866205165f49b880',
+      // p + 39382357235489614581723060781553021112529911719440698176882885853963445705823 (order 8)
+      // '4c9c95bca3508c24b1d0b1559c83ef5b04445cc4581c8e86d8224eddd09f11d7',
+      // 2 * p - 1 (order 2, invalid)
+      // 'd9ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+      // 2 * p (order 4)
+      // 'daffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+      // 2 * p + 1 (order 1)
+      // 'dbffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
     ];
 
     const key = x25519.privateKeyGenerate();
