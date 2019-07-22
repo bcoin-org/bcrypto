@@ -2293,22 +2293,33 @@ describe('Elliptic', function() {
     it('should check for small order points (ed448)', () => {
       const curve = new curves.ED448();
 
+      // https://hyperelliptic.org/EFD/g1p/auto-edwards.html
+      // - The neutral element of the curve is the point (0, c).
+      // - The point (0, -c) has order 2.
+      // - The points (c, 0) and (-c, 0) have order 4.
       const small = [
-        // 0, p - 1
+        // 0, c (order 1)
+        // [
+        //   ['00000000000000000000000000000000000000000000000000000000',
+        //    '00000000000000000000000000000000000000000000000000000000'].join(''),
+        //   ['00000000000000000000000000000000000000000000000000000000',
+        //    '00000000000000000000000000000000000000000000000000000001'].join('')
+        // ],
+        // 0, -c (order 2, not 4-isogenous)
         [
           ['00000000000000000000000000000000000000000000000000000000',
            '00000000000000000000000000000000000000000000000000000000'].join(''),
           ['fffffffffffffffffffffffffffffffffffffffffffffffffffffffe',
            'fffffffffffffffffffffffffffffffffffffffffffffffffffffffe'].join('')
         ],
-        // 1, 0
+        // c, 0 (order 4)
         [
           ['00000000000000000000000000000000000000000000000000000000',
            '00000000000000000000000000000000000000000000000000000001'].join(''),
           ['00000000000000000000000000000000000000000000000000000000',
            '00000000000000000000000000000000000000000000000000000000'].join('')
         ],
-        // p - 1, 0
+        // -c, 0 (order 4)
         [
           ['fffffffffffffffffffffffffffffffffffffffffffffffffffffffe',
            'fffffffffffffffffffffffffffffffffffffffffffffffffffffffe'].join(''),
@@ -2354,27 +2365,27 @@ describe('Elliptic', function() {
       const curve = new curves.X448();
 
       const small = [
-        // 0
+        // 0 (order 1)
         [
           ['00000000000000000000000000000000000000000000000000000000',
            '00000000000000000000000000000000000000000000000000000000'].join('')
         ],
-        // 1 (invalid)
+        // 1 (order 2, invalid, not 4-isogenous)
         [
           ['00000000000000000000000000000000000000000000000000000000',
            '00000000000000000000000000000000000000000000000000000001'].join('')
         ],
-        // p - 1
+        // p - 1 (order 4)
         [
           ['fffffffffffffffffffffffffffffffffffffffffffffffffffffffe',
            'fffffffffffffffffffffffffffffffffffffffffffffffffffffffe'].join('')
         ],
-        // p
+        // p (order 1)
         [
           ['fffffffffffffffffffffffffffffffffffffffffffffffffffffffe',
            'ffffffffffffffffffffffffffffffffffffffffffffffffffffffff'].join('')
         ],
-        // p + 1 (invalid)
+        // p + 1 (order, invalid, not 4-isogenous)
         [
           ['ffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
            '00000000000000000000000000000000000000000000000000000000'].join('')

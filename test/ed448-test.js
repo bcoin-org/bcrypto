@@ -84,13 +84,19 @@ describe('Ed448', function() {
 
   it('should validate small order points', () => {
     const small = [
-      // 0, p - 1 (native backend doesn't like this guy)
+      // 0, c (order 1)
+      // ['01000000000000000000000000000000000000000000000000000000',
+      //  '0000000000000000000000000000000000000000000000000000000000'].join(''),
+      // 0, -c (order 2) (native backend doesn't like this guy,
+      //                  probably because it's the one small
+      //                  order point that is not 4-isogenous
+      //                  to curve448)
       // ['feffffffffffffffffffffffffffffffffffffffffffffffffffffff',
       //  'feffffffffffffffffffffffffffffffffffffffffffffffffffffff00'].join(''),
-      // 1, 0
+      // c, 0 (order 4)
       ['00000000000000000000000000000000000000000000000000000000',
        '0000000000000000000000000000000000000000000000000000000080'].join(''),
-      // p - 1, 0
+      // -c, 0 (order 4)
       ['00000000000000000000000000000000000000000000000000000000',
        '0000000000000000000000000000000000000000000000000000000000'].join('')
     ];
