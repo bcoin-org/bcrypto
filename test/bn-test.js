@@ -5620,6 +5620,52 @@ describe('BN.js', function() {
         r.toString());
     });
 
+    it('should compute pown/powm', () => {
+      const x = new BN('49d695e8e09850acf3ced130d55cf4cc', 16);
+      const red = BN.red('p192');
+      const r = x.toRed(red);
+
+      assert.strictEqual(x.pown(0).toString(), '1');
+      assert.strictEqual(x.pown(1).toString(), x.toString());
+      assert.strictEqual(x.pown(2).toString(), x.sqr().toString());
+      assert.strictEqual(x.pown(3).toString(),
+                         x.sqr().mul(x).toString());
+      assert.strictEqual(x.pown(4).toString(),
+                         x.sqr().sqr().toString());
+      assert.strictEqual(x.pown(5).toString(),
+                         x.sqr().sqr().mul(x).toString());
+
+      assert.strictEqual(x.pow(new BN(0)).toString(), '1');
+      assert.strictEqual(x.pow(new BN(1)).toString(), x.toString());
+      assert.strictEqual(x.pow(new BN(2)).toString(), x.sqr().toString());
+      assert.strictEqual(x.pow(new BN(3)).toString(),
+                         x.sqr().mul(x).toString());
+      assert.strictEqual(x.pow(new BN(4)).toString(),
+                         x.sqr().sqr().toString());
+      assert.strictEqual(x.pow(new BN(5)).toString(),
+                         x.sqr().sqr().mul(x).toString());
+
+      assert.strictEqual(r.redPown(0).toString(), '1');
+      assert.strictEqual(r.redPown(1).toString(), r.toString());
+      assert.strictEqual(r.redPown(2).toString(), r.redSqr().toString());
+      assert.strictEqual(r.redPown(3).toString(),
+                         r.redSqr().redMul(r).toString());
+      assert.strictEqual(r.redPown(4).toString(),
+                         r.redSqr().redSqr().toString());
+      assert.strictEqual(r.redPown(5).toString(),
+                         r.redSqr().redSqr().redMul(r).toString());
+
+      assert.strictEqual(r.redPow(new BN(0)).toString(), '1');
+      assert.strictEqual(r.redPow(new BN(1)).toString(), r.toString());
+      assert.strictEqual(r.redPow(new BN(2)).toString(), r.redSqr().toString());
+      assert.strictEqual(r.redPow(new BN(3)).toString(),
+                         r.redSqr().redMul(r).toString());
+      assert.strictEqual(r.redPow(new BN(4)).toString(),
+                         r.redSqr().redSqr().toString());
+      assert.strictEqual(r.redPow(new BN(5)).toString(),
+                         r.redSqr().redSqr().redMul(r).toString());
+    });
+
     it('should throw on powm with negative exponent', () => {
       const x = new BN('49d695e8e09850acf3ced130d55cf4cc', 16);
       const y = new BN('-1abc952', 16);
