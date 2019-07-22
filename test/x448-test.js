@@ -189,8 +189,19 @@ describe('X448', function() {
 
   it('should reject small order points', () => {
     const small = [
+      // 0
       ['00000000000000000000000000000000000000000000000000000000',
        '00000000000000000000000000000000000000000000000000000000'].join(''),
+      // 1 (invalid)
+      ['01000000000000000000000000000000000000000000000000000000',
+       '00000000000000000000000000000000000000000000000000000000'].join(''),
+      // p - 1
+      ['feffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+       'feffffffffffffffffffffffffffffffffffffffffffffffffffffff'].join(''),
+      // p
+      ['ffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+       'feffffffffffffffffffffffffffffffffffffffffffffffffffffff'].join(''),
+      // p + 1 (invalid)
       ['00000000000000000000000000000000000000000000000000000000',
        'ffffffffffffffffffffffffffffffffffffffffffffffffffffffff'].join('')
     ];

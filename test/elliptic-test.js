@@ -2158,17 +2158,17 @@ describe('Elliptic', function() {
       const small = [
         // 0 (order 4)
         [
-          '00',
+          '0000000000000000000000000000000000000000000000000000000000000000',
           '7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffec'
         ],
         // 1 (order 1)
         [
           '2b8324804fc1df0b2b4d00993dfbd7a72f431806ad2fe478c4ee1b274a0ea0b0',
-          '00'
+          '0000000000000000000000000000000000000000000000000000000000000000'
         ],
         [
           '547cdb7fb03e20f4d4b2ff66c2042858d0bce7f952d01b873b11e4d8b5f15f3d',
-          '00'
+          '0000000000000000000000000000000000000000000000000000000000000000'
         ],
         // 325606250916557431795983626356110631294008115727848805560023387167927233504 (order 8)
         [
@@ -2211,11 +2211,11 @@ describe('Elliptic', function() {
       // https://eprint.iacr.org/2017/806.pdf
       const small = [
         // 0 (order 4)
-        ['00'],
+        ['0000000000000000000000000000000000000000000000000000000000000000'],
         // 1 (order 1)
-        ['01'],
+        ['0000000000000000000000000000000000000000000000000000000000000001'],
         // 325606250916557431795983626356110631294008115727848805560023387167927233504 (order 8)
-        ['b8495f16056286fdb1329ceb8d09da6ac49ff1fae35616aeb8413b7c7aebe0'],
+        ['00b8495f16056286fdb1329ceb8d09da6ac49ff1fae35616aeb8413b7c7aebe0'],
         // 39382357235489614581723060781553021112529911719440698176882885853963445705823 (order 8)
         ['57119fd0dd4e22d8868e1c58c45c44045bef839c55b1d0b1248c50a3bc959c5f'],
         // p - 1 (order 2, invalid)
@@ -2262,19 +2262,26 @@ describe('Elliptic', function() {
       const curve = new curves.ED448();
 
       const small = [
+        // 0, p - 1
         [
-          '00',
+          ['00000000000000000000000000000000000000000000000000000000',
+           '00000000000000000000000000000000000000000000000000000000'].join(''),
           ['fffffffffffffffffffffffffffffffffffffffffffffffffffffffe',
            'fffffffffffffffffffffffffffffffffffffffffffffffffffffffe'].join('')
         ],
+        // 1, 0
         [
-          '01',
-          '00'
+          ['00000000000000000000000000000000000000000000000000000000',
+           '00000000000000000000000000000000000000000000000000000001'].join(''),
+          ['00000000000000000000000000000000000000000000000000000000',
+           '00000000000000000000000000000000000000000000000000000000'].join('')
         ],
+        // p - 1, 0
         [
           ['fffffffffffffffffffffffffffffffffffffffffffffffffffffffe',
            'fffffffffffffffffffffffffffffffffffffffffffffffffffffffe'].join(''),
-          '00'
+          ['00000000000000000000000000000000000000000000000000000000',
+           '00000000000000000000000000000000000000000000000000000000'].join('')
         ]
       ];
 
@@ -2293,18 +2300,53 @@ describe('Elliptic', function() {
       const curve = new curves.X448();
 
       const small = [
-        ['00']
+        // 0
+        [
+          ['00000000000000000000000000000000000000000000000000000000',
+           '00000000000000000000000000000000000000000000000000000000'].join('')
+        ],
+        // 1 (invalid)
+        [
+          ['00000000000000000000000000000000000000000000000000000000',
+           '00000000000000000000000000000000000000000000000000000001'].join('')
+        ],
+        // p - 1
+        [
+          ['fffffffffffffffffffffffffffffffffffffffffffffffffffffffe',
+           'fffffffffffffffffffffffffffffffffffffffffffffffffffffffe'].join('')
+        ],
+        // p
+        [
+          ['fffffffffffffffffffffffffffffffffffffffffffffffffffffffe',
+           'ffffffffffffffffffffffffffffffffffffffffffffffffffffffff'].join('')
+        ],
+        // p + 1 (invalid)
+        [
+          ['ffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+           '00000000000000000000000000000000000000000000000000000000'].join('')
+        ]
       ];
 
       assert(!curve.g.isSmall());
 
+      let total = 0;
+
       for (const json of small) {
         const p = curve.pointFromJSON(json);
 
-        assert(p.validate());
+        if (p.validate()) {
+          total += 1;
+        } else {
+          // Note that `1`, and `p + 1`
+          // do not satisfy the curve equation.
+          assert(p.x.cmp(curve.one) === 0);
+        }
+
         assert(!p.isInfinity());
         assert(p.isSmall());
       }
+
+      assert.strictEqual(total, small.length - 2);
     });
   });
 
