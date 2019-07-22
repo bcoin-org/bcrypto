@@ -185,7 +185,7 @@ bcrypto_ed25519_sign_with_scalar(
   bcrypto_ed25519_sig_t RS,
   const unsigned char *m,
   size_t mlen,
-  const uint8_t extsk[64],
+  const unsigned char extsk[64],
   const bcrypto_ed25519_pubkey_t pk,
   int ph,
   const unsigned char *ctx,

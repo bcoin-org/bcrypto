@@ -249,6 +249,25 @@ describe('X25519', function() {
     assert.bufferEqual(hi0, hi1);
   });
 
+  it('should reject small order points', () => {
+    const small = [
+      '0000000000000000000000000000000000000000000000000000000000000000',
+      '0100000000000000000000000000000000000000000000000000000000000000',
+      'e0eb7a7c3b41b8ae1656e3faf19fc46ada098deb9c32b1fd866205165f49b800',
+      '5f9c95bca3508c24b1d0b1559c83ef5b04445cc4581c8e86d8224eddd09f1157'
+    ];
+
+    const key = x25519.privateKeyGenerate();
+
+    for (const str of small) {
+      const pub = Buffer.from(str, 'hex');
+
+      assert.throws(() => x25519.derive(pub, key), {
+        message: /^Invalid (point|public key)\.$/
+      });
+    }
+  });
+
   it('should test x25519 api', () => {
     const alicePriv = x25519.privateKeyGenerate();
     const alicePub = x25519.publicKeyCreate(alicePriv);

@@ -127,7 +127,7 @@ bcrypto_ed25519_verify(
     return 0;
 
   /* check that R = SB - H(R,A,m)A */
-  return bcrypto_ed25519_equal(RS, checkR, 32) ? 1 : 0;
+  return bcrypto_ed25519_equal(RS, checkR, 32);
 }
 
 int
@@ -282,6 +282,7 @@ bcrypto_ed25519_exchange_with_scalar(
 ) {
   bcrypto_ed25519_scalar_t k;
   bignum25519 ALIGN(16) nd, x1, x2, z2, x3, z3, t1, t2;
+  unsigned char zero[32];
 
   int swap = 0;
   size_t i;
@@ -294,6 +295,8 @@ bcrypto_ed25519_exchange_with_scalar(
   k[0] &= 248;
   k[31] &= 127;
   k[31] |= 64;
+
+  memset(&zero[0], 0, 32);
 
   curve25519_set_word(nd, 121666);
 
@@ -340,12 +343,9 @@ bcrypto_ed25519_exchange_with_scalar(
   curve25519_recip(z2, z2);
   curve25519_mul(x1, x2, z2);
 
-  if (curve25519_is_zero(x1))
-    return 0;
-
   curve25519_contract(out, x1);
 
-  return 1;
+  return bcrypto_ed25519_equal(out, &zero[0], 32) ^ 1;
 }
 
 int
@@ -567,7 +567,7 @@ bcrypto_ed25519_sign_with_scalar(
   bcrypto_ed25519_sig_t RS,
   const unsigned char *m,
   size_t mlen,
-  const uint8_t extsk[64],
+  const unsigned char extsk[64],
   const bcrypto_ed25519_pubkey_t pk,
   int ph,
   const unsigned char *ctx,
