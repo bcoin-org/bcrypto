@@ -70,6 +70,29 @@ describe('EdDSA', function() {
     assert(!ed25519.verify(msg, sig, inf));
   });
 
+  it('should validate small order points', () => {
+    const small = [
+      // 0 (order 4)
+      'ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f',
+      // '0100000000000000000000000000000000000000000000000000000000000000',
+      // 1 (order 1)
+      '0000000000000000000000000000000000000000000000000000000000000000',
+      '0000000000000000000000000000000000000000000000000000000000000080',
+      // 325606250916557431795983626356110631294008115727848805560023387167927233504 (order 8)
+      'c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a',
+      'c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac03fa',
+      // 39382357235489614581723060781553021112529911719440698176882885853963445705823 (order 8)
+      '26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05',
+      '26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc85'
+    ];
+
+    for (const str of small) {
+      const pub = Buffer.from(str, 'hex');
+
+      assert(ed25519.publicKeyVerify(pub));
+    }
+  });
+
   it('should expand key', () => {
     const secret = Buffer.from(
       '5bc1d80b378c350663a6862f21599ee3b09fb4255a0dfad3d907d5ca7ab2b223',

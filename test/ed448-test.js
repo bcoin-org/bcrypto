@@ -82,6 +82,26 @@ describe('Ed448', function() {
     assert(!ed448.verify(msg, sig, inf));
   });
 
+  it('should validate small order points', () => {
+    const small = [
+      // 0, p - 1 (native backend doesn't like this guy)
+      // ['feffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+      //  'feffffffffffffffffffffffffffffffffffffffffffffffffffffff00'].join(''),
+      // 1, 0
+      ['00000000000000000000000000000000000000000000000000000000',
+       '0000000000000000000000000000000000000000000000000000000080'].join(''),
+      // p - 1, 0
+      ['00000000000000000000000000000000000000000000000000000000',
+       '0000000000000000000000000000000000000000000000000000000000'].join('')
+    ];
+
+    for (const str of small) {
+      const pub = Buffer.from(str, 'hex');
+
+      assert(ed448.publicKeyVerify(pub));
+    }
+  });
+
   it('should expand key', () => {
     const secret = Buffer.from(''
       + 'a18d4e50f52e78a24e68288b3496'
