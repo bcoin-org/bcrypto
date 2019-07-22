@@ -2083,9 +2083,11 @@ describe('Elliptic', function() {
       for (const curve of [secp256k1, ed25519]) {
         for (let i = 0; i < 100; i++) {
           const p = curve.randomPoint(rng);
+          const q = p.normalize().y.redJacobi() === 1;
           const r = p.randomize(rng);
 
-          assert.strictEqual(p.hasQuadY(), r.hasQuadY());
+          assert.strictEqual(p.hasQuadY(), q);
+          assert.strictEqual(r.hasQuadY(), q);
         }
       }
     });
