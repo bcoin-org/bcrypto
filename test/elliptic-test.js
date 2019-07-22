@@ -2092,8 +2092,43 @@ describe('Elliptic', function() {
       }
     });
 
+    it('should test validation', () => {
+      const p256 = new curves.P256();
+      const ed25519 = new curves.ED25519();
+      const x25519 = new curves.X25519();
+      const ed448 = new curves.ED448();
+
+      for (const curve of [p256, ed25519, x25519, ed448]) {
+        const p = curve.randomPoint(rng);
+
+        assert(p.validate());
+        assert(p.toJ().validate());
+        assert(p.randomize(rng).validate());
+      }
+    });
+
+    it('should test equality', () => {
+      const p256 = new curves.P256();
+      const ed25519 = new curves.ED25519();
+      const x25519 = new curves.X25519();
+      const ed448 = new curves.ED448();
+
+      for (const curve of [p256, ed25519, x25519, ed448]) {
+        const p = curve.randomPoint(rng).randomize(rng);
+        const q = p.randomize(rng);
+        const o = curve.jpoint();
+
+        assert(p.eq(q));
+        assert(!p.eq(o));
+
+        q.x.inject(curve.one);
+
+        assert(!p.eq(q));
+      }
+    });
+
     it('should test brier-joye y recovery (affine)', () => {
-      const curve = new curves.SECP256K1();
+      const curve = new curves.P256();
       const k = curve.randomScalar(rng);
       const expect = curve.g.mul(k);
 
@@ -2106,7 +2141,7 @@ describe('Elliptic', function() {
     });
 
     it('should test brier-joye y recovery (jacobian)', () => {
-      const curve = new curves.SECP256K1();
+      const curve = new curves.P256();
       const k = curve.randomScalar(rng);
       const expect = curve.g.jmul(k);
 
@@ -2114,8 +2149,10 @@ describe('Elliptic', function() {
       const x2 = curve.g.jmul(k.addn(1)).getX();
 
       const p = curve.g.randomize(rng).recover(x1, x2);
+      const q = curve.g.recover(x1, x2);
 
       assert(p.eq(expect));
+      assert(q.toJ().eq(expect));
     });
 
     it('should test okeya-sakurai y recovery (mont)', () => {
