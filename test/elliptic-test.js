@@ -95,6 +95,13 @@ describe('Elliptic', function() {
           assert(ap.mulConst(bk).eq(p3));
           assert(ap.mulConst(bk, rng).eq(p3));
 
+          assert(curve.decodePoint(ap.encode()).eq(ap));
+          assert(curve.decodePoint(bp.encode()).eq(bp));
+          assert(curve.decodePoint(p1.encode()).eq(p1));
+          assert(curve.decodePoint(p2.encode()).eq(p2));
+          assert(curve.decodePoint(p3.encode()).eq(p3));
+          assert(curve.decodePoint(p4.encode()).eq(p4));
+
           curve.precompute(rng);
         }
       });
@@ -1591,8 +1598,10 @@ describe('Elliptic', function() {
       const x = ed25519.g.getX();
       const y = ed25519.g.y.redIsOdd();
       const g = ed25519.pointFromX(x, y);
+      const r = ed25519.pointFromR(x);
 
       assert(ed25519.g.eq(g));
+      assert(ed25519.g.eq(r));
     });
 
     it('should have basepoint for x25519', () => {
@@ -2128,6 +2137,93 @@ describe('Elliptic', function() {
 
       assert(x.eq(u));
       assert(y.eq(v));
+    });
+
+    it('should mul by cofactor', () => {
+      const curve = new curves.ED25519();
+      const p1 = curve.randomPoint(rng);
+      const p2 = p1.mul(curve.h);
+      const p3 = p1.mulSimple(curve.h);
+      const p4 = p1.mulH();
+
+      assert(p2.eq(p3));
+      assert(p3.eq(p4));
+    });
+
+    it('should check for small order points (ed25519)', () => {
+      const curve = new curves.ED25519();
+
+      // https://github.com/jedisct1/libsodium/blob/cec56d8/src/libsodium/crypto_scalarmult/curve25519/ref10/x25519_ref10.c#L17
+      const small = [
+        // 0
+        [
+          '00',
+          '7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffec'
+        ],
+        // 1
+        [
+          '2b8324804fc1df0b2b4d00993dfbd7a72f431806ad2fe478c4ee1b274a0ea0b0',
+          '00'
+        ],
+        [
+          '547cdb7fb03e20f4d4b2ff66c2042858d0bce7f952d01b873b11e4d8b5f15f3d',
+          '00'
+        ],
+        // 325606250916557431795983626356110631294008115727848805560023387167927233504
+        [
+          '1fd5b9a006394a28e933993238de4abb5c193c7013e5e238dea14646c545d14a',
+          '7a03ac9277fdc74ec6cc392cfa53202a0f67100d760b3cba4fd84d3d706a17c7'
+        ],
+        [
+          '602a465ff9c6b5d716cc66cdc721b544a3e6c38fec1a1dc7215eb9b93aba2ea3',
+          '7a03ac9277fdc74ec6cc392cfa53202a0f67100d760b3cba4fd84d3d706a17c7'
+        ],
+        // 39382357235489614581723060781553021112529911719440698176882885853963445705823
+        [
+          '1fd5b9a006394a28e933993238de4abb5c193c7013e5e238dea14646c545d14a',
+          '05fc536d880238b13933c6d305acdfd5f098eff289f4c345b027b2c28f95e826'
+        ],
+        [
+          '602a465ff9c6b5d716cc66cdc721b544a3e6c38fec1a1dc7215eb9b93aba2ea3',
+          '05fc536d880238b13933c6d305acdfd5f098eff289f4c345b027b2c28f95e826'
+        ]
+      ];
+
+      assert(!curve.g.isSmall());
+
+      for (const json of small) {
+        const p = curve.pointFromJSON(json);
+
+        assert(p.validate());
+        assert(!p.isInfinity());
+        assert(p.isSmall());
+      }
+    });
+
+    it('should check for small order points (x25519)', () => {
+      const curve = new curves.X25519();
+
+      // https://github.com/jedisct1/libsodium/blob/cec56d8/src/libsodium/crypto_scalarmult/curve25519/ref10/x25519_ref10.c#L17
+      const small = [
+        // 0
+        ['00'],
+        // 1
+        ['01'],
+        // 325606250916557431795983626356110631294008115727848805560023387167927233504
+        ['b8495f16056286fdb1329ceb8d09da6ac49ff1fae35616aeb8413b7c7aebe0'],
+        // 39382357235489614581723060781553021112529911719440698176882885853963445705823
+        ['57119fd0dd4e22d8868e1c58c45c44045bef839c55b1d0b1248c50a3bc959c5f']
+      ];
+
+      assert(!curve.g.isSmall());
+
+      for (const json of small) {
+        const p = curve.pointFromJSON(json);
+
+        assert(p.validate());
+        assert(!p.isInfinity());
+        assert(p.isSmall());
+      }
     });
   });
 
