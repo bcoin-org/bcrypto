@@ -2202,6 +2202,7 @@ describe('Elliptic', function() {
         assert(p.validate());
         assert(!p.isInfinity());
         assert(p.isSmall());
+        assert(!p.mul(curve.n).isInfinity())
       }
     });
 
@@ -2257,6 +2258,9 @@ describe('Elliptic', function() {
 
         assert(!p.isInfinity());
         assert(p.isSmall());
+
+        if (!p.x.isZero())
+          assert(!p.mul(curve.n).isInfinity())
       }
 
       assert.strictEqual(total, small.length - 2);
@@ -2297,6 +2301,7 @@ describe('Elliptic', function() {
         assert(p.validate());
         assert(!p.isInfinity());
         assert(p.isSmall());
+        assert(!p.mul(curve.n).isInfinity())
       }
     });
 
@@ -2348,6 +2353,9 @@ describe('Elliptic', function() {
 
         assert(!p.isInfinity());
         assert(p.isSmall());
+
+        if (!p.x.isZero())
+          assert(!p.mul(curve.n).isInfinity())
       }
 
       assert.strictEqual(total, small.length - 2);
