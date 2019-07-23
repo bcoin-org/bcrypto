@@ -2147,10 +2147,10 @@ describe('Elliptic', function() {
       const x2 = curve.g.mul(k.addn(1)).x;
 
       const p = curve.g.randomize(rng).recover(x1, x2);
-      const q = curve.g.recover(x1, x2);
+      const q = curve.g.toJ().recover(x1, x2);
 
       assert(p.eq(expect));
-      assert(q.toJ().eq(expect));
+      assert(q.eq(expect));
     });
 
     it('should test okeya-sakurai y recovery (mont)', () => {
