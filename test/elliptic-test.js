@@ -1827,8 +1827,6 @@ describe('Elliptic', function() {
         // Jacobian Co-Z.
         assert(pj.zaddu(qj)[0].eq(rj));
         assert(pj.zaddc(qj)[0].eq(rj));
-        assert(pj.zaddu(pj)[0].eq(pj.dbl()));
-        assert(pj.zaddc(pj)[0].eq(pj.dbl()));
         assert(pj.zdblu()[0].eq(pj.dbl()));
         assert(qj.zdblu()[0].eq(qj.dbl()));
         assert(pj.ztrplu()[0].eq(pj.trpl()));
@@ -2132,8 +2130,8 @@ describe('Elliptic', function() {
       const k = curve.randomScalar(rng);
       const expect = curve.g.mul(k);
 
-      const x1 = curve.g.mul(k.addn(0)).getX();
-      const x2 = curve.g.mul(k.addn(1)).getX();
+      const x1 = curve.g.mul(k.addn(0)).x;
+      const x2 = curve.g.mul(k.addn(1)).x;
 
       const p = curve.g.recover(x1, x2);
 
@@ -2145,8 +2143,8 @@ describe('Elliptic', function() {
       const k = curve.randomScalar(rng);
       const expect = curve.g.jmul(k);
 
-      const x1 = curve.g.jmul(k.addn(0)).getX();
-      const x2 = curve.g.jmul(k.addn(1)).getX();
+      const x1 = curve.g.mul(k.addn(0)).x;
+      const x2 = curve.g.mul(k.addn(1)).x;
 
       const p = curve.g.randomize(rng).recover(x1, x2);
       const q = curve.g.recover(x1, x2);
