@@ -1635,8 +1635,8 @@ describe('Elliptic', function() {
     it('should test birational equivalence', () => {
       const ed25519 = new curves.ED25519();
       const x25519 = new curves.X25519();
-      const edwardsG = ed25519.pointFromMont(x25519.g, false);
-      const montG = x25519.pointFromEdwards(ed25519.g);
+      const edwardsG = ed25519.pointFromMont(x25519.g.randomize(rng), false);
+      const montG = x25519.pointFromEdwards(ed25519.g.randomize(rng));
 
       assert(edwardsG.eq(ed25519.g));
       assert(montG.eq(x25519.g));
@@ -1645,7 +1645,7 @@ describe('Elliptic', function() {
     it('should test 4-isogeny equivalence', () => {
       const ed448 = new curves.ED448();
       const x448 = new curves.X448();
-      const montG = x448.pointFromEdwards(ed448.g);
+      const montG = x448.pointFromEdwards(ed448.g.randomize(rng));
 
       assert(montG.eq(x448.g));
 
