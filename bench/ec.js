@@ -35,6 +35,20 @@ const mul = secp256k1.native ? 10 : 1;
   bench('secp256k1 derive', rounds, () => {
     secp256k1.derive(pub, msg);
   });
+
+  // Compare against elliptic.
+  if (secp256k1.native === 0) {
+    const secp256k1e = require('./deps/elliptic').ec('secp256k1');
+
+    const sigO = {
+      r: sig.slice(0, 32),
+      s: sig.slice(32, 64)
+    };
+
+    bench('secp256k1 verify (elliptic)', rounds, () => {
+      secp256k1e.verify(msg, sigO, pub);
+    });
+  }
 }
 
 {
@@ -57,6 +71,20 @@ const mul = secp256k1.native ? 10 : 1;
   bench('p256 derive', rounds, () => {
     p256.derive(pub, msg);
   });
+
+  // Compare against elliptic.
+  if (p256.native === 0) {
+    const p256e = require('./deps/elliptic').ec('p256');
+
+    const sigO = {
+      r: sig.slice(0, 32),
+      s: sig.slice(32, 64)
+    };
+
+    bench('p256 verify (elliptic)', rounds, () => {
+      p256e.verify(msg, sigO, pub);
+    });
+  }
 }
 
 {
@@ -98,6 +126,19 @@ const mul = secp256k1.native ? 10 : 1;
   bench('ed25519 verify', rounds, () => {
     ed25519.verify(msg, sig, pub);
   });
+
+  // Compare against elliptic.
+  if (ed25519.native === 0) {
+    const ed25519e = require('./deps/elliptic').eddsa('ed25519');
+
+    const msgA = Array.from(msg);
+    const sigA = Array.from(sig);
+    const pubA = Array.from(pub);
+
+    bench('ed25519 verify (elliptic)', rounds, () => {
+      ed25519e.verify(msgA, sigA, pubA);
+    });
+  }
 }
 
 {
