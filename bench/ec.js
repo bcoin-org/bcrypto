@@ -108,6 +108,20 @@ const mul = secp256k1.native ? 10 : 1;
   bench('p521 verify', rounds, () => {
     p521.verify(msg, sig, pub);
   });
+
+  // Compare against elliptic.
+  if (p521.native === 0) {
+    const p521e = require('./deps/elliptic').ec('p521');
+
+    const sigO = {
+      r: sig.slice(0, 66),
+      s: sig.slice(66, 132)
+    };
+
+    bench('p521 verify (elliptic)', rounds, () => {
+      p521e.verify(msg, sigO, pub);
+    });
+  }
 }
 
 {
