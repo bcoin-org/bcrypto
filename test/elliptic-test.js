@@ -1865,6 +1865,53 @@ describe('Elliptic', function() {
       assert(p.dbl().eq(q));
     });
 
+    it('should test edwards addition', () => {
+      const ed25519 = new curves.ED25519();
+      const ed448 = new curves.ED448();
+
+      for (const curve of [ed25519, ed448]) {
+        const p = curve.randomPoint(rng);
+        const q = curve.randomPoint(rng);
+
+        // Z1 != 1, Z2 != 1
+        const r = p.randomize(rng).add(q.randomize(rng)).normalize();
+
+        // Z1 = 1, Z2 != 1
+        assert(p.add(q.randomize(rng)).eq(r));
+
+        // Z1 != 1, Z2 = 1
+        assert(p.randomize(rng).add(q).eq(r));
+
+        // Z1 = 1, Z2 = 1
+        assert(p.add(q).eq(r));
+      }
+    });
+
+    it('should test edwards unified addition', () => {
+      const ed25519 = new curves.ED25519();
+      const ed448 = new curves.ED448();
+
+      for (const curve of [ed25519, ed448]) {
+        const p = curve.randomPoint(rng);
+        const q = curve.randomPoint(rng);
+        const o = curve.point();
+
+        // Test edge cases.
+        assert(p.uadd(q).eq(p.add(q)));
+        assert(q.uadd(p).eq(p.add(q)));
+        assert(p.uadd(p).eq(p.dbl()));
+        assert(q.uadd(q).eq(q.dbl()));
+        assert(p.udbl().eq(p.dbl()));
+        assert(q.udbl().eq(q.dbl()));
+        assert(p.uadd(p.neg()).eq(o));
+        assert(q.uadd(q.neg()).eq(o));
+        assert(p.uadd(o).eq(p));
+        assert(o.uadd(p).eq(p));
+        assert(q.uadd(o).eq(q));
+        assert(o.uadd(q).eq(q));
+      }
+    });
+
     it('should test montgomery multiplication', () => {
       const curve = new curves.X25519();
       const k = curve.randomScalar(rng);
