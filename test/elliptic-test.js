@@ -2172,6 +2172,22 @@ describe('Elliptic', function() {
       }
     });
 
+    it('should test repeated doubling', () => {
+      const curve = new curves.BRAINPOOLP256();
+      const p = curve.randomPoint(rng);
+      const j = p.randomize(rng);
+
+      assert(j.dblp(0).eq(j));
+      assert(j.dblp(1).eq(j.dbl()));
+      assert(j.dblp(2).eq(j.dbl().dbl()));
+      assert(j.dblp(3).eq(j.dbl().dbl().dbl()));
+
+      assert(j.dblp(0).toP().eq(p.dblp(0)));
+      assert(j.dblp(1).toP().eq(p.dblp(1)));
+      assert(j.dblp(2).toP().eq(p.dblp(2)));
+      assert(j.dblp(3).toP().eq(p.dblp(3)));
+    });
+
     it('should test brier-joye y recovery (affine)', () => {
       const curve = new curves.P256();
       const k = curve.randomScalar(rng);
