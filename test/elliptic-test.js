@@ -2294,7 +2294,7 @@ describe('Elliptic', function() {
       ];
 
       assert(!curve.g.isSmall());
-      assert(!curve.g.hasSmall());
+      assert(!curve.g.hasTorsion());
 
       // This is why edwards curves suck.
       for (const json of small) {
@@ -2313,13 +2313,13 @@ describe('Elliptic', function() {
         assert(p.isSmall());
 
         // P * N != O
-        assert(p.hasSmall());
+        assert(p.hasTorsion());
 
         // Q * H != O
         assert(!q.isSmall());
 
         // Q * N != O
-        assert(q.hasSmall());
+        assert(q.hasTorsion());
 
         // Q * H == G * H
         assert(q.mulH().eq(curve.g.mulH()));
@@ -2362,7 +2362,7 @@ describe('Elliptic', function() {
       ];
 
       assert(!curve.g.isSmall());
-      assert(!curve.g.hasSmall());
+      assert(!curve.g.hasTorsion());
 
       let total = 0;
 
@@ -2382,7 +2382,7 @@ describe('Elliptic', function() {
         assert(p.isSmall());
 
         if (!p.x.isZero())
-          assert(p.hasSmall());
+          assert(p.hasTorsion());
       }
 
       assert.strictEqual(total, small.length - 2);
@@ -2427,7 +2427,7 @@ describe('Elliptic', function() {
       ];
 
       assert(!curve.g.isSmall());
-      assert(!curve.g.hasSmall());
+      assert(!curve.g.hasTorsion());
 
       // This is why edwards curves suck.
       for (const json of small) {
@@ -2446,13 +2446,13 @@ describe('Elliptic', function() {
         assert(p.isSmall());
 
         // P * N != O
-        assert(p.hasSmall());
+        assert(p.hasTorsion());
 
         // Q * H != O
         assert(!q.isSmall());
 
         // Q * N != O
-        assert(q.hasSmall());
+        assert(q.hasTorsion());
 
         // Q * H == G * H
         assert(q.mulH().eq(curve.g.mulH()));
@@ -2491,7 +2491,7 @@ describe('Elliptic', function() {
       ];
 
       assert(!curve.g.isSmall());
-      assert(!curve.g.hasSmall());
+      assert(!curve.g.hasTorsion());
 
       let total = 0;
 
@@ -2511,7 +2511,7 @@ describe('Elliptic', function() {
         assert(p.isSmall());
 
         if (!p.x.isZero())
-          assert(p.hasSmall());
+          assert(p.hasTorsion());
       }
 
       assert.strictEqual(total, small.length - 2);
