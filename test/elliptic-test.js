@@ -2272,10 +2272,12 @@ describe('Elliptic', function() {
       const p1 = curve.randomPoint(rng);
       const p2 = p1.mul(curve.h);
       const p3 = p1.mulSimple(curve.h);
-      const p4 = p1.mulH();
+      const p4 = p1.mulConst(curve.h);
+      const p5 = p1.mulH();
 
       assert(p2.eq(p3));
       assert(p3.eq(p4));
+      assert(p4.eq(p5));
     });
 
     it('should check for small order points (ed25519)', () => {
@@ -2351,6 +2353,13 @@ describe('Elliptic', function() {
 
         // Q * H == G * H
         assert(q.mulH().eq(curve.g.mulH()));
+
+        // Test any order-related computations.
+        assert(p.mulConst(curve.h).isInfinity());
+        assert(!p.mulConst(curve.n).isInfinity());
+        assert(!q.mulConst(curve.h).isInfinity());
+        assert(!q.mulConst(curve.n).isInfinity());
+        assert(q.mulConst(curve.h).eq(curve.g.mulH()));
       }
     });
 
@@ -2484,6 +2493,13 @@ describe('Elliptic', function() {
 
         // Q * H == G * H
         assert(q.mulH().eq(curve.g.mulH()));
+
+        // Test any order-related computations.
+        assert(p.mulConst(curve.h).isInfinity());
+        assert(!p.mulConst(curve.n).isInfinity());
+        assert(!q.mulConst(curve.h).isInfinity());
+        assert(!q.mulConst(curve.n).isInfinity());
+        assert(q.mulConst(curve.h).eq(curve.g.mulH()));
       }
     });
 
