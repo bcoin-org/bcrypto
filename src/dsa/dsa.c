@@ -1683,6 +1683,12 @@ bcrypto_dsa_derive(uint8_t **out,
   if (secret == NULL)
     goto fail;
 
+  if (!BN_mod_exp(secret, yp, q, p, ctx))
+    goto fail;
+
+  if (!BN_is_one(secret))
+    goto fail;
+
   /* secret := y^x mod p */
   if (!mod_exp_const(secret, yp, x, p, ctx))
     goto fail;
