@@ -47,7 +47,7 @@ private:
   static NAN_METHOD(Rootrem);
   static NAN_METHOD(Iroot);
   static NAN_METHOD(IsPower);
-  static NAN_METHOD(sqrtrem);
+  static NAN_METHOD(Sqrtrem);
   static NAN_METHOD(Isqrt);
   static NAN_METHOD(IsSquare);
   static NAN_METHOD(Iand);
