@@ -212,10 +212,8 @@ describe('Ed448', function() {
 
     const batch = [];
 
-    for (const [msg, sig, pub, res1, res2] of vectors) {
-      if (ed448.native === 0)
-        assert.strictEqual(ed448.verify(msg, sig, pub), res1);
-
+    for (const [msg, sig, pub,, res2] of vectors) {
+      assert.strictEqual(ed448.verify(msg, sig, pub), res2);
       assert.strictEqual(ed448.verifySingle(msg, sig, pub), res2);
 
       batch.push([msg, sig, pub]);

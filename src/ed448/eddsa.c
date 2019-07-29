@@ -909,6 +909,7 @@ bcrypto_c448_error_t bcrypto_c448_ed448_verify(
           uint8_t prehashed, const uint8_t *context,
           uint8_t context_len)
 {
+  // We consider cofactor verification the default.
   return bcrypto_c448_ed448_verify_single(signature, pubkey, message,
                                           message_len, prehashed, context,
                                           context_len);
