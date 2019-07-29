@@ -537,7 +537,7 @@ bcrypto_c448_error_t bcrypto_c448_ed448_derive_with_scalar(
   bcrypto_curve448_point_scalarmul(p, p, secret_scalar);
 
   if (bcrypto_curve448_point_infinity(p)) {
-    OPENSSL_cleanse(clamped, sizeof(clamped));
+    memset(clamped, 0x00, sizeof(clamped));
     bcrypto_curve448_scalar_destroy(secret_scalar);
     bcrypto_curve448_point_destroy(p);
     return BCRYPTO_C448_FAILURE;
@@ -545,7 +545,7 @@ bcrypto_c448_error_t bcrypto_c448_ed448_derive_with_scalar(
 
   bcrypto_curve448_point_mul_by_ratio_and_encode_like_eddsa(out, p);
 
-  OPENSSL_cleanse(clamped, sizeof(clamped));
+  memset(clamped, 0x00, sizeof(clamped));
   bcrypto_curve448_scalar_destroy(secret_scalar);
   bcrypto_curve448_point_destroy(p);
 
@@ -941,7 +941,7 @@ bcrypto_c448_error_t bcrypto_c448_ed448_verify_single(
 
     bcrypto_curve448_scalar_decode_long(challenge_scalar, challenge,
                   sizeof(challenge));
-    OPENSSL_cleanse(challenge, sizeof(challenge));
+    memset(challenge, 0x00, sizeof(challenge));
   }
 
   bcrypto_curve448_scalar_sub(challenge_scalar, bcrypto_curve448_scalar_zero,

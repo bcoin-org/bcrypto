@@ -1178,6 +1178,11 @@ bcrypto_dsa_derive(uint8_t *out,
     goto fail;
   }
 
+  mpz_powm(y, yp, prv.q, prv.p);
+
+  if (mpz_cmp_ui(y, 1) != 0)
+    goto fail;
+
   /* secret := y^x mod p */
   dsa_pow_blind(y, yp, x, prv.p, prv.q);
 
