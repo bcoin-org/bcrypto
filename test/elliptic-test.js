@@ -2359,6 +2359,17 @@ describe('Elliptic', function() {
         assert(q.mul(new BN(2 * 8)).eq(curve.g.mul(new BN(2 * 8))));
         assert(q.mul(new BN(2 * 8)).eq(q.mul(new BN(2)).mul(new BN(8))));
 
+        // Test batching logic.
+        const e = curve.randomScalar(rng);
+        const a = curve.randomScalar(rng);
+        const ea = e.mul(a).imod(curve.n);
+        const eah = ea.mul(curve.h);
+
+        assert(q.mul(eah).eq(curve.g.mul(eah)));
+        assert(q.mul(eah).eq(curve.g.mul(ea).mulH()));
+        assert(q.mul(eah).eq(curve.g.mulH().mul(ea)));
+        assert(q.mul(eah).eq(q.mulH().mul(ea)));
+
         // Test any order-related computations.
         assert(p.mulConst(curve.h).isInfinity());
         assert(!p.mulConst(curve.n).isInfinity());
@@ -2503,6 +2514,17 @@ describe('Elliptic', function() {
         assert(p.mul(new BN(2 * 4)).eq(curve.point()));
         assert(q.mul(new BN(2 * 4)).eq(curve.g.mul(new BN(2 * 4))));
         assert(q.mul(new BN(2 * 4)).eq(q.mul(new BN(2)).mul(new BN(4))));
+
+        // Test batching logic.
+        const e = curve.randomScalar(rng);
+        const a = curve.randomScalar(rng);
+        const ea = e.mul(a).imod(curve.n);
+        const eah = ea.mul(curve.h);
+
+        assert(q.mul(eah).eq(curve.g.mul(eah)));
+        assert(q.mul(eah).eq(curve.g.mul(ea).mulH()));
+        assert(q.mul(eah).eq(curve.g.mulH().mul(ea)));
+        assert(q.mul(eah).eq(q.mulH().mul(ea)));
 
         // Test any order-related computations.
         assert(p.mulConst(curve.h).isInfinity());
