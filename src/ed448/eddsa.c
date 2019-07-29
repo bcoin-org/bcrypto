@@ -881,17 +881,24 @@ bcrypto_c448_error_t bcrypto_c448_ed448_verify(
                   sizeof(challenge));
     OPENSSL_cleanse(challenge, sizeof(challenge));
   }
+
   bcrypto_curve448_scalar_sub(challenge_scalar, bcrypto_curve448_scalar_zero,
             challenge_scalar);
 
-  bcrypto_curve448_scalar_decode_long(response_scalar,
-                &signature[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
-                BCRYPTO_EDDSA_448_PRIVATE_BYTES);
+  if (signature[BCRYPTO_EDDSA_448_SIGNATURE_BYTES - 1] != 0)
+    return BCRYPTO_C448_FAILURE;
+
+  error = bcrypto_curve448_scalar_decode(response_scalar,
+            &signature[BCRYPTO_EDDSA_448_PUBLIC_BYTES]);
+
+  if (BCRYPTO_C448_SUCCESS != error)
+    return error;
 
   /* pk_point = -c(x(P)) + (cx + k)G = kG */
   bcrypto_curve448_base_double_scalarmul_non_secret(pk_point,
                         response_scalar,
                         pk_point, challenge_scalar);
+
   return bcrypto_c448_succeed_if(bcrypto_curve448_point_eq(pk_point, r_point));
 }
 
@@ -937,12 +944,18 @@ bcrypto_c448_error_t bcrypto_c448_ed448_verify_single(
                   sizeof(challenge));
     OPENSSL_cleanse(challenge, sizeof(challenge));
   }
+
   bcrypto_curve448_scalar_sub(challenge_scalar, bcrypto_curve448_scalar_zero,
             challenge_scalar);
 
-  bcrypto_curve448_scalar_decode_long(response_scalar,
-                &signature[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
-                BCRYPTO_EDDSA_448_PRIVATE_BYTES);
+  if (signature[BCRYPTO_EDDSA_448_SIGNATURE_BYTES - 1] != 0)
+    return BCRYPTO_C448_FAILURE;
+
+  error = bcrypto_curve448_scalar_decode(response_scalar,
+            &signature[BCRYPTO_EDDSA_448_PUBLIC_BYTES]);
+
+  if (BCRYPTO_C448_SUCCESS != error)
+    return error;
 
   const bcrypto_curve448_scalar_t h = {{{4}}};
   bcrypto_curve448_scalar_mul(response_scalar, response_scalar, h);
