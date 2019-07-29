@@ -1,3 +1,6 @@
+static void
+ge25519_scalarmult_vartime(ge25519 *r, const ge25519 *p1, const bignum256modm s1);
+
 /*
   conversions
 */
@@ -199,6 +202,43 @@ ge25519_is_neutral_vartime(const ge25519 *p) {
 }
 
 /*
+  torsion
+*/
+
+static void
+ge25519_mulh(ge25519 *r, const ge25519 *e) {
+  ge25519_double(r, e);
+  ge25519_double(r, r);
+  ge25519_double(r, r);
+}
+
+static int
+ge25519_is_small_vartime(const ge25519 *e) {
+  if (ge25519_is_neutral_vartime(e))
+    return 0;
+
+  ge25519 ALIGN(16) p;
+  ge25519_mulh(&p, e);
+
+  return ge25519_is_neutral_vartime(&p);
+}
+
+static int
+ge25519_has_torsion_vartime(const ge25519 *e) {
+  if (ge25519_is_neutral_vartime(e))
+    return 0;
+
+  bignum256modm k;
+  ge25519 ALIGN(16) p;
+
+  set_order256_modm(k);
+
+  ge25519_scalarmult_vartime(&p, e, k);
+
+  return ge25519_is_neutral_vartime(&p) ^ 1;
+}
+
+/*
   pack & unpack
 */
 
@@ -225,12 +265,33 @@ ge25519_pack_safe(unsigned char r[32], const ge25519 *p) {
 }
 
 static int
+ge25519_is_canonical(const unsigned char *s) {
+  /* https://github.com/jedisct1/libsodium/blob/3d37974/src/libsodium/crypto_core/ed25519/ref10/ed25519_ref10.c */
+  unsigned char c;
+  unsigned char d;
+  unsigned int i;
+
+  c = (s[31] & 0x7f) ^ 0x7f;
+
+  for (i = 30; i > 0; i--)
+    c |= s[i] ^ 0xff;
+
+  c = (((unsigned int)c) - 1U) >> 8;
+  d = (0xed - 1U - (unsigned int)s[0]) >> 8;
+
+  return 1 - (c & d & 1);
+}
+
+static int
 ge25519_unpack_negative_vartime(ge25519 *r, const unsigned char p[32]) {
   static const unsigned char zero[32] = {0};
   static const bignum25519 one = {1};
   unsigned char parity = p[31] >> 7;
   unsigned char check[32];
   bignum25519 t, root, num, den, d3;
+
+  if (!ge25519_is_canonical(p))
+    return 0;
 
   curve25519_expand(r->y, p);
   curve25519_copy(r->z, one);

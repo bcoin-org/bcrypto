@@ -225,12 +225,16 @@ bcrypto_ed25519_verify_batch(
 
     /* compute scalars[0] = ((r1s1 + r2s2 + ...)) */
     for (i = 0; i < batchsize; i++) {
+      if (!is_canonical256_modm(RS[i] + 32))
+        goto fallback;
       expand256_modm(batch.scalars[i], RS[i] + 32, 32);
       mul256_modm(batch.scalars[i], batch.scalars[i], r_scalars[i]);
     }
 
     for (i = 1; i < batchsize; i++)
       add256_modm(batch.scalars[0], batch.scalars[0], batch.scalars[i]);
+
+    mulh256_modm(batch.scalars[0], batch.scalars[0]);
 
     /* compute scalars[1]..scalars[batchsize] as r[i]*H(R[i],A[i],m[i]) */
     for (i = 0; i < batchsize; i++) {
@@ -245,11 +249,16 @@ bcrypto_ed25519_verify_batch(
     for (i = 0; i < batchsize; i++) {
       if (!ge25519_unpack_negative_vartime(&batch.points[i+1], pk[i]))
         goto fallback;
+
+      ge25519_mulh(&batch.points[i + 1], &batch.points[i + 1]);
     }
 
     for (i = 0; i < batchsize; i++) {
       if (!ge25519_unpack_negative_vartime(&batch.points[batchsize+i+1], RS[i]))
         goto fallback;
+
+      ge25519_mulh(&batch.points[batchsize + i + 1],
+                   &batch.points[batchsize + i + 1]);
     }
 
     ge25519_multi_scalarmult_vartime(&p, &batch, (batchsize * 2) + 1);
@@ -257,8 +266,8 @@ bcrypto_ed25519_verify_batch(
     if (!ge25519_is_neutral_vartime(&p)) {
       fallback:
       for (i = 0; i < batchsize; i++) {
-        int r = bcrypto_ed25519_verify(m[i], mlen[i], pk[i],
-                                       ph, ctx, ctx_len, RS[i]);
+        int r = bcrypto_ed25519_verify_single(m[i], mlen[i], pk[i],
+                                              ph, ctx, ctx_len, RS[i]);
 
         if (valid != NULL)
           valid[i] = r;
@@ -278,8 +287,8 @@ bcrypto_ed25519_verify_batch(
   }
 
   for (i = 0; i < num; i++) {
-    int r = bcrypto_ed25519_verify(m[i], mlen[i], pk[i],
-                                   ph, ctx, ctx_len, RS[i]);
+    int r = bcrypto_ed25519_verify_single(m[i], mlen[i], pk[i],
+                                          ph, ctx, ctx_len, RS[i]);
 
     if (valid != NULL)
       valid[i] = r;

@@ -87,10 +87,14 @@ describe('EdDSA', function() {
       '26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05'
     ];
 
+    const key = ed25519.scalarGenerate();
+
     for (const str of small) {
       const pub = Buffer.from(str, 'hex');
 
       assert(ed25519.publicKeyVerify(pub));
+
+      assert.throws(() => ed25519.deriveWithScalar(pub, key));
     }
   });
 
@@ -483,6 +487,7 @@ describe('EdDSA', function() {
         assert.bufferEqual(sig_, sig);
 
         assert(ed25519.verify(msg, sig, pub));
+        assert(ed25519.verifySingle(msg, sig, pub));
 
         let forged = Buffer.from([0x78]); // ord('x')
 
@@ -492,6 +497,7 @@ describe('EdDSA', function() {
         }
 
         assert(!ed25519.verify(forged, sig, pub));
+        assert(!ed25519.verifySingle(forged, sig, pub));
         assert(!ed25519.verifyBatch([[forged, sig, pub]]));
       });
     }

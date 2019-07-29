@@ -395,3 +395,39 @@ recip256_modm(bignum256modm r, const bignum256modm x) {
 
   memcpy(&r[0], &ret[0], sizeof(bignum256modm));
 }
+
+static int
+is_canonical256_modm(const unsigned char s[32]) {
+  /* https://github.com/jedisct1/libsodium/blob/3d37974/src/libsodium/crypto_core/ed25519/ref10/ed25519_ref10.c */
+  /* 2^252+27742317777372353535851937790883648493 */
+  static const unsigned char L[32] = {
+    0xed, 0xd3, 0xf5, 0x5c, 0x1a, 0x63, 0x12, 0x58, 0xd6, 0x9c, 0xf7,
+    0xa2, 0xde, 0xf9, 0xde, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10
+  };
+
+  unsigned char c = 0;
+  unsigned char n = 1;
+  unsigned int i = 32;
+
+  do {
+    i--;
+    c |= ((s[i] - L[i]) >> 8) & n;
+    n &= ((s[i] ^ L[i]) - 1) >> 8;
+  } while (i != 0);
+
+  return (c != 0);
+}
+
+static void
+set_order256_modm(bignum256modm r) {
+  memcpy(r, modm_m, sizeof(bignum256modm));
+}
+
+static void
+mulh256_modm(bignum256modm r, const bignum256modm n) {
+  bignum256modm h;
+  memset(&h[0], 0x00, sizeof(bignum256modm));
+  h[0] = 8;
+  mul256_modm(r, n, h);
+}

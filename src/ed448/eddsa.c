@@ -512,6 +512,7 @@ bcrypto_c448_error_t bcrypto_c448_ed448_derive_with_scalar(
             const uint8_t pubkey[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
             const uint8_t scalar[BCRYPTO_C448_SCALAR_BYTES])
 {
+  uint8_t clamped[BCRYPTO_C448_SCALAR_BYTES];
   bcrypto_curve448_scalar_t secret_scalar;
   bcrypto_curve448_point_t p;
   unsigned int c;
@@ -526,7 +527,10 @@ bcrypto_c448_error_t bcrypto_c448_ed448_derive_with_scalar(
     return BCRYPTO_C448_FAILURE;
   }
 
-  bcrypto_curve448_scalar_decode(secret_scalar, &scalar[0]);
+  memcpy(&clamped[0], &scalar[0], sizeof(clamped));
+  half_clamp(clamped);
+
+  bcrypto_curve448_scalar_decode(secret_scalar, &clamped[0]);
 
   for (c = 1; c < BCRYPTO_C448_EDDSA_ENCODE_RATIO; c <<= 1)
     bcrypto_curve448_scalar_halve(secret_scalar, secret_scalar);
@@ -534,6 +538,7 @@ bcrypto_c448_error_t bcrypto_c448_ed448_derive_with_scalar(
   bcrypto_curve448_point_scalarmul(p, p, secret_scalar);
 
   if (bcrypto_curve448_point_infinity(p)) {
+    OPENSSL_cleanse(clamped, sizeof(clamped));
     bcrypto_curve448_scalar_destroy(secret_scalar);
     bcrypto_curve448_point_destroy(p);
     return BCRYPTO_C448_FAILURE;
@@ -541,6 +546,7 @@ bcrypto_c448_error_t bcrypto_c448_ed448_derive_with_scalar(
 
   bcrypto_curve448_point_mul_by_ratio_and_encode_like_eddsa(out, p);
 
+  OPENSSL_cleanse(clamped, sizeof(clamped));
   bcrypto_curve448_scalar_destroy(secret_scalar);
   bcrypto_curve448_point_destroy(p);
 
@@ -886,6 +892,72 @@ bcrypto_c448_error_t bcrypto_c448_ed448_verify(
   bcrypto_curve448_base_double_scalarmul_non_secret(pk_point,
                         response_scalar,
                         pk_point, challenge_scalar);
+  return bcrypto_c448_succeed_if(bcrypto_curve448_point_eq(pk_point, r_point));
+}
+
+bcrypto_c448_error_t bcrypto_c448_ed448_verify_single(
+          const uint8_t signature[BCRYPTO_EDDSA_448_SIGNATURE_BYTES],
+          const uint8_t pubkey[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
+          const uint8_t *message, size_t message_len,
+          uint8_t prehashed, const uint8_t *context,
+          uint8_t context_len)
+{
+  bcrypto_curve448_point_t pk_point, r_point;
+  bcrypto_c448_error_t error =
+    bcrypto_curve448_point_decode_like_eddsa_and_mul_by_ratio(pk_point, pubkey);
+  bcrypto_curve448_scalar_t challenge_scalar;
+  bcrypto_curve448_scalar_t response_scalar;
+
+  if (BCRYPTO_C448_SUCCESS != error)
+    return error;
+
+  error =
+    bcrypto_curve448_point_decode_like_eddsa_and_mul_by_ratio(r_point, signature);
+  if (BCRYPTO_C448_SUCCESS != error)
+    return error;
+
+  {
+    /* Compute the challenge */
+    bcrypto_keccak_ctx hashctx;
+    uint8_t challenge[2 * BCRYPTO_EDDSA_448_PRIVATE_BYTES];
+
+    if (!hash_init_with_dom(&hashctx, prehashed, 0, context, context_len))
+      return BCRYPTO_C448_FAILURE;
+
+    bcrypto_keccak_update(&hashctx, signature, BCRYPTO_EDDSA_448_PUBLIC_BYTES);
+    bcrypto_keccak_update(&hashctx, pubkey, BCRYPTO_EDDSA_448_PUBLIC_BYTES);
+    bcrypto_keccak_update(&hashctx, message, message_len);
+
+    if (!bcrypto_keccak_final(&hashctx, challenge, NULL,
+                              sizeof(challenge), 0x1f)) {
+      return BCRYPTO_C448_FAILURE;
+    }
+
+    bcrypto_curve448_scalar_decode_long(challenge_scalar, challenge,
+                  sizeof(challenge));
+    OPENSSL_cleanse(challenge, sizeof(challenge));
+  }
+  bcrypto_curve448_scalar_sub(challenge_scalar, bcrypto_curve448_scalar_zero,
+            challenge_scalar);
+
+  bcrypto_curve448_scalar_decode_long(response_scalar,
+                &signature[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
+                BCRYPTO_EDDSA_448_PRIVATE_BYTES);
+
+  const bcrypto_curve448_scalar_t h = {{{4}}};
+  bcrypto_curve448_scalar_mul(response_scalar, response_scalar, h);
+
+  bcrypto_curve448_point_double(pk_point, pk_point);
+  bcrypto_curve448_point_double(pk_point, pk_point);
+
+  /* pk_point = -c(x(P)) + (cx + k)G = kG */
+  bcrypto_curve448_base_double_scalarmul_non_secret(pk_point,
+                        response_scalar,
+                        pk_point, challenge_scalar);
+
+  bcrypto_curve448_point_double(r_point, r_point);
+  bcrypto_curve448_point_double(r_point, r_point);
+
   return bcrypto_c448_succeed_if(bcrypto_curve448_point_eq(pk_point, r_point));
 }
 

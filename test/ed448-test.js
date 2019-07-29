@@ -101,10 +101,14 @@ describe('Ed448', function() {
        '0000000000000000000000000000000000000000000000000000000000'].join('')
     ];
 
+    const key = ed448.scalarGenerate();
+
     for (const str of small) {
       const pub = Buffer.from(str, 'hex');
 
       assert(ed448.publicKeyVerify(pub));
+
+      assert.throws(() => ed448.deriveWithScalar(pub, key));
     }
   });
 

@@ -2354,6 +2354,11 @@ describe('Elliptic', function() {
         // Q * H == G * H
         assert(q.mulH().eq(curve.g.mulH()));
 
+        // Check multiples.
+        assert(p.mul(new BN(2 * 8)).eq(curve.point()));
+        assert(q.mul(new BN(2 * 8)).eq(curve.g.mul(new BN(2 * 8))));
+        assert(q.mul(new BN(2 * 8)).eq(q.mul(new BN(2)).mul(new BN(8))));
+
         // Test any order-related computations.
         assert(p.mulConst(curve.h).isInfinity());
         assert(!p.mulConst(curve.n).isInfinity());
@@ -2493,6 +2498,11 @@ describe('Elliptic', function() {
 
         // Q * H == G * H
         assert(q.mulH().eq(curve.g.mulH()));
+
+        // Check multiples.
+        assert(p.mul(new BN(2 * 4)).eq(curve.point()));
+        assert(q.mul(new BN(2 * 4)).eq(curve.g.mul(new BN(2 * 4))));
+        assert(q.mul(new BN(2 * 4)).eq(q.mul(new BN(2)).mul(new BN(4))));
 
         // Test any order-related computations.
         assert(p.mulConst(curve.h).isInfinity());

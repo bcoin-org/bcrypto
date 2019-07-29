@@ -37,6 +37,17 @@ bcrypto_ed25519_verify(
 );
 
 int
+bcrypto_ed25519_verify_single(
+  const unsigned char *m,
+  size_t mlen,
+  const bcrypto_ed25519_pubkey_t pk,
+  int ph,
+  const unsigned char *ctx,
+  size_t ctx_len,
+  const bcrypto_ed25519_sig_t RS
+);
+
+int
 bcrypto_ed25519_pubkey_verify(const bcrypto_ed25519_pubkey_t pk);
 
 int

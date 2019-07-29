@@ -31,6 +31,7 @@ private:
   static NAN_METHOD(SignTweakAdd);
   static NAN_METHOD(SignTweakMul);
   static NAN_METHOD(Verify);
+  static NAN_METHOD(VerifySingle);
   static NAN_METHOD(VerifyBatch);
   static NAN_METHOD(Derive);
   static NAN_METHOD(DeriveWithScalar);

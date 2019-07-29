@@ -110,8 +110,11 @@ bcrypto_ed25519_verify(
   bignum256modm hram, S;
   unsigned char checkR[32];
 
-  if ((RS[63] & 224) || !ge25519_unpack_negative_vartime(&A, pk))
+  if (!is_canonical256_modm(RS + 32)
+      || !ge25519_is_canonical(RS)
+      || !ge25519_unpack_negative_vartime(&A, pk)) {
     return 0;
+  }
 
   /* hram = H(R,A,m) */
   bcrypto_ed25519_hram(hash, ph, ctx, ctx_len, RS, pk, m, mlen);
@@ -128,6 +131,48 @@ bcrypto_ed25519_verify(
 
   /* check that R = SB - H(R,A,m)A */
   return bcrypto_ed25519_equal(RS, checkR, 32);
+}
+
+int
+bcrypto_ed25519_verify_single(
+  const unsigned char *m,
+  size_t mlen,
+  const bcrypto_ed25519_pubkey_t pk,
+  int ph,
+  const unsigned char *ctx,
+  size_t ctx_len,
+  const bcrypto_ed25519_sig_t RS
+) {
+  ge25519 ALIGN(16) R, A;
+  hash_512bits hash;
+  bignum256modm hram, S;
+  unsigned char expectR[32];
+  unsigned char checkR[32];
+
+  if (!is_canonical256_modm(RS + 32)
+      || !ge25519_unpack_vartime(&R, RS)
+      || !ge25519_unpack_negative_vartime(&A, pk)) {
+    return 0;
+  }
+
+  ge25519_mulh(&R, &R);
+  ge25519_pack(expectR, &R);
+
+  /* hram = H(R,A,m) */
+  bcrypto_ed25519_hram(hash, ph, ctx, ctx_len, RS, pk, m, mlen);
+  expand256_modm(hram, hash, 64);
+
+  /* Sh */
+  expand256_modm(S, RS + 32, 32);
+  mulh256_modm(S, S);
+
+  /* ShB - H(R,A,m)Ah */
+  ge25519_mulh(&A, &A);
+  ge25519_double_scalarmult_vartime(&R, &A, hram, S);
+  ge25519_pack(checkR, &R);
+
+  /* check that Rh = ShB - H(R,A,m)Ah */
+  return bcrypto_ed25519_equal(expectR, checkR, 32);
 }
 
 int
@@ -249,8 +294,18 @@ bcrypto_ed25519_derive_with_scalar(
 ) {
   bignum256modm k;
   ge25519 ALIGN(16) s, p;
+  bcrypto_ed25519_scalar_t ec;
+  size_t i;
 
-  expand_raw256_modm(k, sk);
+  /* clamp */
+  for (i = 0; i < 32; i++)
+    ec[i] = sk[i];
+
+  ec[0] &= 248;
+  ec[31] &= 127;
+  ec[31] |= 64;
+
+  expand_raw256_modm(k, ec);
 
   if (!ge25519_unpack_vartime(&p, pk))
     return 0;
@@ -484,7 +539,7 @@ bcrypto_ed25519_pubkey_tweak_mul(
   if (!ge25519_unpack_vartime(&k, pk))
     return 0;
 
-  expand256_modm(t, tweak, 32);
+  expand_raw256_modm(t, tweak);
 
   ge25519_scalarmult_vartime(&T, &k, t);
 

@@ -35,6 +35,7 @@ BED448::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "signTweakAdd", BED448::SignTweakAdd);
   Nan::Export(obj, "signTweakMul", BED448::SignTweakMul);
   Nan::Export(obj, "verify", BED448::Verify);
+  Nan::Export(obj, "verifySingle", BED448::VerifySingle);
   Nan::Export(obj, "derive", BED448::Derive);
   Nan::Export(obj, "deriveWithScalar", BED448::DeriveWithScalar);
   Nan::Export(obj, "exchange", BED448::Exchange);
@@ -903,6 +904,66 @@ NAN_METHOD(BED448::Verify) {
   bool result = (bool)bcrypto_c448_ed448_verify(sig, pub,
                                                 msg, msg_len,
                                                 ph, ctx, ctx_len);
+
+  info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
+}
+
+NAN_METHOD(BED448::VerifySingle) {
+  if (info.Length() < 3)
+    return Nan::ThrowError("ed448.verifySingle() requires arguments.");
+
+  v8::Local<v8::Object> mbuf = info[0].As<v8::Object>();
+  v8::Local<v8::Object> sbuf = info[1].As<v8::Object>();
+  v8::Local<v8::Object> pbuf = info[2].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(mbuf)
+      || !node::Buffer::HasInstance(sbuf)
+      || !node::Buffer::HasInstance(pbuf)) {
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+  }
+
+  const uint8_t *msg = (const uint8_t *)node::Buffer::Data(mbuf);
+  size_t msg_len = node::Buffer::Length(mbuf);
+
+  const uint8_t *sig = (const uint8_t *)node::Buffer::Data(sbuf);
+  size_t sig_len = node::Buffer::Length(sbuf);
+
+  const uint8_t *pub = (const uint8_t *)node::Buffer::Data(pbuf);
+  size_t pub_len = node::Buffer::Length(pbuf);
+
+  uint8_t ph = 0;
+
+  if (info.Length() > 3 && !IsNull(info[3])) {
+    if (!info[3]->IsBoolean())
+      return Nan::ThrowTypeError("Fourth argument must be a boolean.");
+
+    ph = (uint8_t)Nan::To<bool>(info[3]).FromJust();
+  }
+
+  const uint8_t *ctx = NULL;
+  size_t ctx_len = 0;
+
+  if (info.Length() > 4 && !IsNull(info[4])) {
+    v8::Local<v8::Object> cbuf = info[4].As<v8::Object>();
+
+    if (!node::Buffer::HasInstance(cbuf))
+      return Nan::ThrowTypeError("Fifth argument must be a buffer.");
+
+    ctx = (const uint8_t *)node::Buffer::Data(cbuf);
+    ctx_len = node::Buffer::Length(cbuf);
+
+    if (ctx_len > 255)
+      return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
+  }
+
+  if (sig_len != BCRYPTO_EDDSA_448_SIGNATURE_BYTES
+      || pub_len != BCRYPTO_EDDSA_448_PUBLIC_BYTES) {
+    return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
+  }
+
+  bool result = (bool)bcrypto_c448_ed448_verify_single(sig, pub,
+                                                       msg, msg_len,
+                                                       ph, ctx, ctx_len);
 
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }

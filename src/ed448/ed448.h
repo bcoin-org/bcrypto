@@ -295,6 +295,14 @@ bcrypto_c448_error_t bcrypto_c448_ed448_sign_tweak_mul(
             uint8_t prehashed, const uint8_t *context,
             size_t context_len);
 
+bcrypto_c448_error_t bcrypto_c448_ed448_verify_single(const uint8_t
+                 signature[BCRYPTO_EDDSA_448_SIGNATURE_BYTES],
+                 const uint8_t
+                 pubkey[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
+                 const uint8_t *message, size_t message_len,
+                 uint8_t prehashed, const uint8_t *context,
+                 uint8_t context_len);
+
 #if defined(__cplusplus)
 }
 #endif

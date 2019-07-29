@@ -135,24 +135,29 @@ describe('EdDSA', function() {
           assert.bufferEqual(sig3, sig);
 
           assert(curve.verify(msg, sig, pub, ph));
+          assert(curve.verifySingle(msg, sig, pub, ph));
 
           msg[0] ^= 1;
 
           assert(!curve.verify(msg, sig, pub, ph));
+          assert(!curve.verifySingle(msg, sig, pub, ph));
 
           msg[0] ^= 1;
           sig[0] ^= 1;
 
           assert(!curve.verify(msg, sig, pub, ph));
+          assert(!curve.verifySingle(msg, sig, pub, ph));
 
           sig[0] ^= 1;
           pub[0] ^= 1;
 
           assert(!curve.verify(msg, sig, pub, ph));
+          assert(!curve.verifySingle(msg, sig, pub, ph));
 
           pub[0] ^= 1;
 
           assert(curve.verify(msg, sig, pub, ph));
+          assert(curve.verifySingle(msg, sig, pub, ph));
         });
 
         it(`should batch verify (${i}) (${curve.id})`, () => {
@@ -172,24 +177,29 @@ describe('EdDSA', function() {
           assert.bufferEqual(sig, sigAdd);
 
           assert(curve.verify(msg, sig, pubAdd, ph));
+          assert(curve.verifySingle(msg, sig, pubAdd, ph));
 
           msg[0] ^= 1;
 
           assert(!curve.verify(msg, sig, pubAdd, ph));
+          assert(!curve.verifySingle(msg, sig, pubAdd, ph));
 
           msg[0] ^= 1;
           sig[0] ^= 1;
 
           assert(!curve.verify(msg, sig, pubAdd, ph));
+          assert(!curve.verifySingle(msg, sig, pubAdd, ph));
 
           sig[0] ^= 1;
           pubAdd[0] ^= 1;
 
           assert(!curve.verify(msg, sig, pubAdd, ph));
+          assert(!curve.verifySingle(msg, sig, pubAdd, ph));
 
           pubAdd[0] ^= 1;
 
           assert(curve.verify(msg, sig, pubAdd, ph));
+          assert(curve.verifySingle(msg, sig, pubAdd, ph));
         });
 
         it(`should sign and verify with tweak mul (${i}) (${curve.id})`, () => {
@@ -198,24 +208,29 @@ describe('EdDSA', function() {
           assert.bufferEqual(sig, sigMul);
 
           assert(curve.verify(msg, sig, pubMul, ph));
+          assert(curve.verifySingle(msg, sig, pubMul, ph));
 
           msg[0] ^= 1;
 
           assert(!curve.verify(msg, sig, pubMul, ph));
+          assert(!curve.verifySingle(msg, sig, pubMul, ph));
 
           msg[0] ^= 1;
           sig[0] ^= 1;
 
           assert(!curve.verify(msg, sig, pubMul, ph));
+          assert(!curve.verifySingle(msg, sig, pubMul, ph));
 
           sig[0] ^= 1;
           pubMul[0] ^= 1;
 
           assert(!curve.verify(msg, sig, pubMul, ph));
+          assert(!curve.verifySingle(msg, sig, pubMul, ph));
 
           pubMul[0] ^= 1;
 
           assert(curve.verify(msg, sig, pubMul, ph));
+          assert(curve.verifySingle(msg, sig, pubMul, ph));
         });
       }
 
