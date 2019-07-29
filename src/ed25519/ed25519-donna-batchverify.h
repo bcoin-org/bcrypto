@@ -196,27 +196,20 @@ bcrypto_ed25519_verify_batch(
   size_t num,
   int ph,
   const unsigned char *ctx,
-  size_t ctx_len,
-  int *valid
+  size_t ctx_len
 ) {
   batch_heap ALIGN(16) batch;
   ge25519 ALIGN(16) p;
   bignum256modm *r_scalars;
   size_t i, batchsize;
   unsigned char hram[64];
-  int ret = 1;
-
-  if (valid != NULL) {
-    for (i = 0; i < num; i++)
-      valid[i] = 1;
-  }
 
   while (num > 3) {
     batchsize = (num > max_batch_size) ? max_batch_size : num;
 
     /* generate r (scalars[batchsize+1]..scalars[2*batchsize] */
     if (!bcrypto_ed25519_randombytes(batch.r, batchsize * 16))
-      goto fallback;
+      return 0;
 
     r_scalars = &batch.scalars[batchsize + 1];
 
@@ -226,7 +219,8 @@ bcrypto_ed25519_verify_batch(
     /* compute scalars[0] = ((r1s1 + r2s2 + ...)) */
     for (i = 0; i < batchsize; i++) {
       if (!is_canonical256_modm(RS[i] + 32))
-        goto fallback;
+        return 0;
+
       expand256_modm(batch.scalars[i], RS[i] + 32, 32);
       mul256_modm(batch.scalars[i], batch.scalars[i], r_scalars[i]);
     }
@@ -239,23 +233,23 @@ bcrypto_ed25519_verify_batch(
     /* compute scalars[1]..scalars[batchsize] as r[i]*H(R[i],A[i],m[i]) */
     for (i = 0; i < batchsize; i++) {
       bcrypto_ed25519_hram(hram, ph, ctx, ctx_len, RS[i], pk[i], m[i], mlen[i]);
-      expand256_modm(batch.scalars[i+1], hram, 64);
-      mul256_modm(batch.scalars[i+1], batch.scalars[i+1], r_scalars[i]);
+      expand256_modm(batch.scalars[i + 1], hram, 64);
+      mul256_modm(batch.scalars[i + 1], batch.scalars[i + 1], r_scalars[i]);
     }
 
     /* compute points */
     batch.points[0] = ge25519_basepoint;
 
     for (i = 0; i < batchsize; i++) {
-      if (!ge25519_unpack_negative_vartime(&batch.points[i+1], pk[i]))
-        goto fallback;
+      if (!ge25519_unpack_negative_vartime(&batch.points[i + 1], pk[i]))
+        return 0;
 
       ge25519_mulh(&batch.points[i + 1], &batch.points[i + 1]);
     }
 
     for (i = 0; i < batchsize; i++) {
-      if (!ge25519_unpack_negative_vartime(&batch.points[batchsize+i+1], RS[i]))
-        goto fallback;
+      if (!ge25519_unpack_negative_vartime(&batch.points[batchsize + i + 1], RS[i]))
+        return 0;
 
       ge25519_mulh(&batch.points[batchsize + i + 1],
                    &batch.points[batchsize + i + 1]);
@@ -263,38 +257,22 @@ bcrypto_ed25519_verify_batch(
 
     ge25519_multi_scalarmult_vartime(&p, &batch, (batchsize * 2) + 1);
 
-    if (!ge25519_is_neutral_vartime(&p)) {
-      fallback:
-      for (i = 0; i < batchsize; i++) {
-        int r = bcrypto_ed25519_verify_single(m[i], mlen[i], pk[i],
-                                              ph, ctx, ctx_len, RS[i]);
-
-        if (valid != NULL)
-          valid[i] = r;
-
-        ret &= r;
-      }
-    }
+    if (!ge25519_is_neutral_vartime(&p))
+      return 0;
 
     m += batchsize;
     mlen += batchsize;
     pk += batchsize;
     RS += batchsize;
     num -= batchsize;
-
-    if (valid != NULL)
-      valid += batchsize;
   }
 
   for (i = 0; i < num; i++) {
-    int r = bcrypto_ed25519_verify_single(m[i], mlen[i], pk[i],
-                                          ph, ctx, ctx_len, RS[i]);
-
-    if (valid != NULL)
-      valid[i] = r;
-
-    ret &= r;
+    if (!bcrypto_ed25519_verify_single(m[i], mlen[i], pk[i],
+                                       ph, ctx, ctx_len, RS[i])) {
+      return 0;
+    }
   }
 
-  return ret;
+  return 1;
 }

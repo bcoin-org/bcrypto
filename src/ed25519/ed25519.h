@@ -59,8 +59,7 @@ bcrypto_ed25519_verify_batch(
   size_t num,
   int ph,
   const unsigned char *ctx,
-  size_t ctx_len,
-  int *valid
+  size_t ctx_len
 );
 
 int
