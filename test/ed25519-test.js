@@ -100,6 +100,134 @@ describe('EdDSA', function() {
     }
   });
 
+  it('should validate signatures with small order points', () => {
+    const json = [
+      // (-1, -1)
+      [
+        'afe9a024a60f51dadb0353824aba4ee1395a0eda2bb27348768472f948b6c0db',
+        '1000000000000000000000000000000000000000000000000000000000000000',
+        '0000000000000000000000000000000000000000000000000000000000000000',
+        '1000000000000000000000000000000000000000000000000000000000000000',
+        false,
+        false
+      ],
+
+      // (-1, -1)
+      [
+        'afe9a024a60f51dadb0353824aba4ee1395a0eda2bb27348768472f948b6c0db',
+        '1000000000000000000000000000000000000000000000000000000000000000',
+        '0000000000000000000000000000000000000000000000000000000000000000',
+        'b85ea579c036d355451fc523b9e760a9a0bc21bbeda4fb86df90acdbcd39b410',
+        false,
+        false
+      ],
+
+      // (0, 0)
+      [
+        'afe9a024a60f51dadb0353824aba4ee1395a0eda2bb27348768472f948b6c0db',
+        'ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f',
+        '0000000000000000000000000000000000000000000000000000000000000000',
+        'ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f',
+        false,
+        true
+      ],
+
+      // (0, 1)
+      [
+        'ccc1291d1c67dcbb960894b4b9d4a9e2240d15bcb4d9fbcfce72b214ea6fad88',
+        '0000000000000000000000000000000000000000000000000000000000000080',
+        '0000000000000000000000000000000000000000000000000000000000000000',
+        'ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f',
+        false,
+        true
+      ],
+
+      // (1, 1)
+      [
+        '111fe159fd919f9569a0732de49c0f03e75f93e221edaf1e9c3ead59fa742527',
+        '0000000000000000000000000000000000000000000000000000000000000080',
+        '0000000000000000000000000000000000000000000000000000000000000000',
+        '0000000000000000000000000000000000000000000000000000000000000080',
+        false,
+        true
+      ],
+
+      // (1, 2)
+      [
+        'cafea1043bb0f7c3600772f5e3e4710f2d9d2e8e2043496125975fb169c5a2e5',
+        '0000000000000000000000000000000000000000000000000000000000000000',
+        '0000000000000000000000000000000000000000000000000000000000000000',
+        '0000000000000000000000000000000000000000000000000000000000000080',
+        false,
+        true
+      ],
+
+      // (1, 3)
+      [
+        '70e7cfc26ae590053b2234614a1323fca01dd3f3965f58b4b40ae7ed4858f341',
+        'c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac03fa',
+        '0000000000000000000000000000000000000000000000000000000000000000',
+        '0000000000000000000000000000000000000000000000000000000000000080',
+        false,
+        true
+      ],
+
+      // (2, 2)
+      [
+        'd01dc52fbbf471b81bb8592d7461ad459f7cf74da0e8d027fcf2932aeb03a468',
+        '0000000000000000000000000000000000000000000000000000000000000000',
+        '0000000000000000000000000000000000000000000000000000000000000000',
+        '0000000000000000000000000000000000000000000000000000000000000000',
+        false,
+        true
+      ],
+
+      // (2, 5)
+      [
+        'ea6ca21cc5e5da0363ce87883412ed774a11eed97068920030e13b9c984f21e1',
+        '26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc85',
+        '0000000000000000000000000000000000000000000000000000000000000000',
+        '0000000000000000000000000000000000000000000000000000000000000000',
+        false,
+        true
+      ],
+
+      // (4, 6)
+      [
+        'f9ff9b3dbbf2b6dc3d5d49fbd6fe03ec0bc014abcee4a04134cd9043dbe33237',
+        '26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05',
+        '0000000000000000000000000000000000000000000000000000000000000000',
+        'c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a',
+        true,
+        true
+      ]
+    ];
+
+    const vectors = [];
+
+    for (const [m, r, s, p, r1, r2] of json) {
+      const msg = Buffer.from(m, 'hex');
+      const sig = Buffer.from(r + s, 'hex');
+      const pub = Buffer.from(p, 'hex');
+
+      vectors.push([msg, sig, pub, r1, r2]);
+    }
+
+    const batch = [];
+
+    for (const [msg, sig, pub, res1, res2] of vectors) {
+      assert.strictEqual(ed25519.verify(msg, sig, pub), res1);
+      assert.strictEqual(ed25519.verifySingle(msg, sig, pub), res2);
+
+      if (res2)
+        batch.push([msg, sig, pub]);
+    }
+
+    batch.sort(() => Math.random() > 0.5 ? 1 : -1);
+
+    assert.strictEqual(ed25519.verifyBatch(batch), true);
+  });
+
   it('should validate signatures with torsion components', () => {
     const json = [
       // (0, 0)
