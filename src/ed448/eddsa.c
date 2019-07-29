@@ -839,7 +839,7 @@ bcrypto_c448_error_t bcrypto_c448_ed448_sign_prehash(
                context_len);
 }
 
-bcrypto_c448_error_t bcrypto_c448_ed448_verify(
+bcrypto_c448_error_t bcrypto_c448_ed448_verify_single(
           const uint8_t signature[BCRYPTO_EDDSA_448_SIGNATURE_BYTES],
           const uint8_t pubkey[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
           const uint8_t *message, size_t message_len,
@@ -902,76 +902,16 @@ bcrypto_c448_error_t bcrypto_c448_ed448_verify(
   return bcrypto_c448_succeed_if(bcrypto_curve448_point_eq(pk_point, r_point));
 }
 
-bcrypto_c448_error_t bcrypto_c448_ed448_verify_single(
+bcrypto_c448_error_t bcrypto_c448_ed448_verify(
           const uint8_t signature[BCRYPTO_EDDSA_448_SIGNATURE_BYTES],
           const uint8_t pubkey[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
           const uint8_t *message, size_t message_len,
           uint8_t prehashed, const uint8_t *context,
           uint8_t context_len)
 {
-  bcrypto_curve448_point_t pk_point, r_point;
-  bcrypto_c448_error_t error =
-    bcrypto_curve448_point_decode_like_eddsa_and_mul_by_ratio(pk_point, pubkey);
-  bcrypto_curve448_scalar_t challenge_scalar;
-  bcrypto_curve448_scalar_t response_scalar;
-
-  if (BCRYPTO_C448_SUCCESS != error)
-    return error;
-
-  error =
-    bcrypto_curve448_point_decode_like_eddsa_and_mul_by_ratio(r_point, signature);
-  if (BCRYPTO_C448_SUCCESS != error)
-    return error;
-
-  {
-    /* Compute the challenge */
-    bcrypto_keccak_ctx hashctx;
-    uint8_t challenge[2 * BCRYPTO_EDDSA_448_PRIVATE_BYTES];
-
-    if (!hash_init_with_dom(&hashctx, prehashed, 0, context, context_len))
-      return BCRYPTO_C448_FAILURE;
-
-    bcrypto_keccak_update(&hashctx, signature, BCRYPTO_EDDSA_448_PUBLIC_BYTES);
-    bcrypto_keccak_update(&hashctx, pubkey, BCRYPTO_EDDSA_448_PUBLIC_BYTES);
-    bcrypto_keccak_update(&hashctx, message, message_len);
-
-    if (!bcrypto_keccak_final(&hashctx, challenge, NULL,
-                              sizeof(challenge), 0x1f)) {
-      return BCRYPTO_C448_FAILURE;
-    }
-
-    bcrypto_curve448_scalar_decode_long(challenge_scalar, challenge,
-                  sizeof(challenge));
-    OPENSSL_cleanse(challenge, sizeof(challenge));
-  }
-
-  bcrypto_curve448_scalar_sub(challenge_scalar, bcrypto_curve448_scalar_zero,
-            challenge_scalar);
-
-  if (signature[BCRYPTO_EDDSA_448_SIGNATURE_BYTES - 1] != 0)
-    return BCRYPTO_C448_FAILURE;
-
-  error = bcrypto_curve448_scalar_decode(response_scalar,
-            &signature[BCRYPTO_EDDSA_448_PUBLIC_BYTES]);
-
-  if (BCRYPTO_C448_SUCCESS != error)
-    return error;
-
-  const bcrypto_curve448_scalar_t h = {{{4}}};
-  bcrypto_curve448_scalar_mul(response_scalar, response_scalar, h);
-
-  bcrypto_curve448_point_double(pk_point, pk_point);
-  bcrypto_curve448_point_double(pk_point, pk_point);
-
-  /* pk_point = -c(x(P)) + (cx + k)G = kG */
-  bcrypto_curve448_base_double_scalarmul_non_secret(pk_point,
-                        response_scalar,
-                        pk_point, challenge_scalar);
-
-  bcrypto_curve448_point_double(r_point, r_point);
-  bcrypto_curve448_point_double(r_point, r_point);
-
-  return bcrypto_c448_succeed_if(bcrypto_curve448_point_eq(pk_point, r_point));
+  return bcrypto_c448_ed448_verify_single(signature, pubkey, message,
+                                          message_len, prehashed, context,
+                                          context_len);
 }
 
 bcrypto_c448_error_t bcrypto_c448_ed448_verify_prehash(

@@ -73,7 +73,7 @@ describe('EdDSA', function() {
   it('should validate small order points', () => {
     const small = [
       // 0 (order 1)
-      // '0100000000000000000000000000000000000000000000000000000000000000',
+      '0100000000000000000000000000000000000000000000000000000000000000',
       // 0 (order 2)
       'ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f',
       // 1 (order 4)
@@ -89,13 +89,213 @@ describe('EdDSA', function() {
 
     const key = ed25519.scalarGenerate();
 
-    for (const str of small) {
+    for (let i = 0; i < small.length; i++) {
+      const str = small[i];
       const pub = Buffer.from(str, 'hex');
 
-      assert(ed25519.publicKeyVerify(pub));
+      if (i > 0)
+        assert(ed25519.publicKeyVerify(pub));
 
       assert.throws(() => ed25519.deriveWithScalar(pub, key));
     }
+  });
+
+  it('should validate signatures with torsion components', () => {
+    const json = [
+      // (0, 0)
+      [
+        'ea3001a37ed97f712b5ccac99a46ee3c1bd55dfa4489c169b91a284c94cf6870',
+        '2974febee11b1373fbec0546ab43ec72f62777ff2d476f590fe98e2bb0adc4fd',
+        'ee089ecff4a991e098c51638ce220a146dbd29be75dddae996d746c44286440e',
+        '66c2d7d3b5a0264fb039b6d1d735192ff7157a664fe87ed15c254dc59fa14067',
+        true,
+        true
+      ],
+
+      // (0, 1)
+      [
+        '567c6518fa1cfac1f48878034b028e62325b80f8c556dfe1018dc2b9c3a96d0b',
+        'a3d0566b5714e5de2e46d928ff09d1a7b1bf7d539503f2bfb351771b6e643674',
+        '227319f7f4e72d996bcfe4461a66d71f70e2944e50dd1d86ebd7a065f2549f00',
+        '884e2fb0e43cfe5252ff71404fcb2985e0a428670a3d75c844b2cc54bf751c14',
+        false,
+        true
+      ],
+
+      // (0, 1)
+      [
+        '1984db29072800cb09ff16971af888746d8d94998175ce7c02ce020c0b2e3ecd',
+        '7467982669dee781d1a6e0c1df56f5a306256b153c1a44c2823f488b524979e5',
+        '333a6ef747af4b8f17855ffdd813e8ff55d4d76b71d059c8213b763bdd41fd0c',
+        'a7c4cb985dce43fa2ed7449bab14c646392c195d2e47808e586d1056659b9dd0',
+        false,
+        true
+      ],
+
+      // (1, 1)
+      [
+        '2a8c1b6cb31ef9f741ed13877bb59c1e17396b48519f5b0754635d8ec86c98ae',
+        '5bc95e8daaa4fad481188ee87a29119dc3fc68ad2a059332173cb313f1301eb5',
+        '89589b3efbcad293bd3ba337de613b779b70c2f2cc8656b538459988290fa208',
+        'a2148a3e153c374b623f3342c9e7c36c2edaae0b8e3fa84f0134510da82045b5',
+        true,
+        true
+      ],
+
+      // (1, 1)
+      [
+        'cd383acf53cbfe295aee065c26fca46ca9aa86029e3d3fc90fc7c5cc21d9ce93',
+        '92c316d4cbac2d9510dd1010f4a3837afec490038590d39ba1e391ce416a0008',
+        '210d0615fa72b60e6b8abada74f8270953cf4717cb74de9c97940fec8e911906',
+        'd6ffa0f51ffd05af7d45204f1d4056ba25ab995ca8eb01456a73ef26b5ec387d',
+        false,
+        true
+      ],
+
+      // (1, 2)
+      [
+        '48f2729c8a13616b8b0db7eacb553656ef5c39fb62dd6a05abffdfe53dfeec81',
+        'c453b2478fc5bdfe3c8fd7d69d49185aa692612cb40f435a9bf8d9d7a8325a74',
+        '08898cf81ff73ac863eed98800822cf27fcc9602218c2476114456ab5988b50d',
+        'e44163cfc9c9ea02e35ba0fc8954cfc507b870e065ae853237bc76f83d5f8462',
+        true,
+        true
+      ],
+
+      // (1, 2)
+      [
+        'cdfb29c9b5a7f7b340739b8f4baf39300bd3d312ef4ae2a0c63309b7b85ec1ab',
+        '26726e6488e2d1b99cd0fb568d6e50c1fe0e6d9f15104e7e59f8c3503468f7d4',
+        'f7a4c3e9b54e81fbe527adde9161f81533132835e69c97f2ade7cce88677ca06',
+        'cac20c3e0629d24031d4cb2cdb0e3730e5872aa4c4438e635713ad2e6917f35d',
+        false,
+        true
+      ],
+
+      // (1, 3)
+      [
+        '44975fe9ac5860e0adb44fd9da2601561ee9e2bd0d9330e8de6099218a44c4a1',
+        'ffa0aa4312edb6747cef1d9d741491e190b232d46b303faf13dfda4ce3ccc186',
+        '6dbdae5f7214efa4e0167eac864838b9ccb6a918e7879e3f8e92c3b3a1deee08',
+        '489f4c34ae338622ed3e6dd133562f883c6871736df1aa0fe896d5e1214763a9',
+        false,
+        true
+      ],
+
+      // (2, 2)
+      [
+        '1e8f7bf9b6bbc6f44f4d0dad6d4ac73dd22df672a80b3b43009be13fdb90e6e9',
+        '51c1dd5b9341dc93e9fb1d513f928d47a7fac5094316687ef569aeab728f0ad6',
+        '6d258d8bcc0c7be0687c6ee3572fdb3df4188893462052aabd6bd7750ed2c209',
+        '6a0c515aef13743ff0583cb4f7eace9bfce78d6a736a819b2c33f6f611aceffd',
+        true,
+        true
+      ],
+
+      // (2, 2)
+      [
+        '4892f822507861306a5eae42994ecd4ab67c0792f40595feb00a53345975269d',
+        '7326662b35af2dcb8bc2208c8d1c266dd649075a251c7d6a5cd122fe41e4a96c',
+        '8176e3769b3045e96f0379a78238b189984394fa91adf21046be3d29d317cb03',
+        'b666f127f6bb54322d0ab1f36325ae9aeb6d33bfb27dac09721d00a7013b715b',
+        false,
+        true
+      ],
+
+      // (2, 5)
+      [
+        'a3865d3ba7c56bc4a939ffc4073c7df6a3489646a0742532d27a75a369991b0d',
+        '0457d9578c8c349e5775667c48f6f295fee3d0dc9e9cac2c97a3829dda444c68',
+        'd15945e767da3d1d7c774a31e85657b466348fb964ef486d765b3673cfa4ab0e',
+        'f6d8e06fac3582ebcedbaa7c6092eae6bb876f157758a4a25017e44de5bc58d8',
+        false,
+        true
+      ],
+
+      // (4, 6)
+      [
+        '495f28fc18822be697001eab9ddd6deac91da5f4ba907be8f6cb71c3a330a08c',
+        '6937da177a34ec59d03aa4bb97f85029521d89dabdea024c2e2347aa5cd4cc16',
+        '93d0e2b229abc79ead84c4eadaab388cdcc99f4b9e912fd040190f2888f85d07',
+        'e984754a3e1d218a12aa4bd8497dc11fa7eb094dc5cc5962a775df2dc4a430d0',
+        false,
+        true
+      ]
+    ];
+
+    const vectors = [];
+
+    for (const [m, r, s, p, r1, r2] of json) {
+      const msg = Buffer.from(m, 'hex');
+      const sig = Buffer.from(r + s, 'hex');
+      const pub = Buffer.from(p, 'hex');
+
+      vectors.push([msg, sig, pub, r1, r2]);
+    }
+
+    const batch = [];
+
+    for (const [msg, sig, pub, res1, res2] of vectors) {
+      assert.strictEqual(ed25519.verify(msg, sig, pub), res1);
+      assert.strictEqual(ed25519.verifySingle(msg, sig, pub), res2);
+
+      batch.push([msg, sig, pub]);
+    }
+
+    batch.sort(() => Math.random() > 0.5 ? 1 : -1);
+
+    assert.strictEqual(ed25519.verifyBatch(batch), true);
+  });
+
+  it('should reject non-canonical R value', () => {
+    const json = [
+      '9323f5ce965d97fd569c9af87dfe70ae599f6e178e63f210f7d8a0e15d98b0ef',
+      'e9170093b59dff6472fc2705d576d1e0d51880c5ccc51ab2bf3531c0bf505ca5',
+      '4d993bd274ce76684af9a6fef3a899ac4f2568fd501f3e5685d57b8c6e993200',
+      'e3555db00fad12998e0d4d107e6b78d541f4f796bd747a25fc66e52ec68de8fe'
+    ];
+
+    const [m, r, s, p] = json;
+    const msg = Buffer.from(m, 'hex');
+    const sig = Buffer.from(r + s, 'hex');
+    const pub = Buffer.from(p, 'hex');
+
+    assert.strictEqual(ed25519.verify(msg, sig, pub), false);
+    assert.strictEqual(ed25519.verifySingle(msg, sig, pub), false);
+  });
+
+  it('should reject non-canonical S value', () => {
+    const json = [
+      'f36eb2b77b4a45381753b3911a1d209384b591a64172968dd2dd0983a82fb835',
+      'bf06a03fb431df03ddf943a0423ba3a96e1e08d3d8c35c40f31a19f476780e12',
+      '52d25d60730fc3752f2795721ac98dbc2c1df63f10b7f9a007552bbf8db69d15',
+      'd8c6f482b515dd8443d1835f6ed31bf3afe8a588d59617e26a18495d8824aa6d'
+    ];
+
+    const [m, r, s, p] = json;
+    const msg = Buffer.from(m, 'hex');
+    const sig = Buffer.from(r + s, 'hex');
+    const pub = Buffer.from(p, 'hex');
+
+    assert.strictEqual(ed25519.verify(msg, sig, pub), false);
+    assert.strictEqual(ed25519.verifySingle(msg, sig, pub), false);
+  });
+
+  it('should reject non-canonical key', () => {
+    const json = [
+      '380b028b7e0124a0add4ee2b579b36851e0d739089b275648ea289185fd8cdb0',
+      '6170b83c58abc3cd3e3d7c0df5a789d0d3b63b608c84f2cf8ebe3d0635422309',
+      'a78437dec59823120b16d782b1c787273f8aee12c70dc3f0cc7efd508684060e',
+      'c26ba75556c9a6124a9d1a5168ec71458009b8b5650593ea7264974511397c48'
+    ];
+
+    const [m, r, s, p] = json;
+    const msg = Buffer.from(m, 'hex');
+    const sig = Buffer.from(r + s, 'hex');
+    const pub = Buffer.from(p, 'hex');
+
+    assert.strictEqual(ed25519.verify(msg, sig, pub), false);
+    assert.strictEqual(ed25519.verifySingle(msg, sig, pub), false);
   });
 
   it('should expand key', () => {
