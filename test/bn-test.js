@@ -6529,6 +6529,25 @@ describe('BN.js', function() {
         assert.strictEqual(n.encode('le').toString('hex'), rev);
       }
     });
+
+    it('should test words', () => {
+      for (let i = 256; i <= 266; i++) {
+        const p = BN.randomBits(rng, i);
+        const q = new BN();
+        const len = p.length;
+        const words = [];
+
+        for (let j = 0; j < len; j++)
+          words.push(p.word(j));
+
+        for (let j = words.length - 1; j >= 0; j--) {
+          q.iushln(26);
+          q.iuorn(words[j]);
+        }
+
+        assert(p.eq(q));
+      }
+    });
   });
 
   describe('BN.js/Slow DH test', () => {
