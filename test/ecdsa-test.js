@@ -14,6 +14,7 @@ const SHA256 = require('../lib/sha256');
 const SHA384 = require('../lib/sha384');
 const SHA512 = require('../lib/sha512');
 const {isStrictDER} = require('./util/bip66');
+const Signature = require('../lib/internal/signature');
 
 const curves = [
   p192,
@@ -1031,6 +1032,152 @@ describe('ECDSA', function() {
 
       assert.bufferEqual(p256.publicKeyCreate(priv), pub);
       assert.deepStrictEqual(p256.privateKeyExportJWK(priv), json);
+    });
+  });
+
+  describe('Canonical', () => {
+    it('should reject non-canonical R value', () => {
+      const json = [
+        ['2987f61715244cfb7e613770ec59bbd4eeb48d9f3b4a',
+         '66cdb056acb82e75b1157b8538092ac43632541d8045',
+         'd5a334d9063ff2c27e26cac1673bab85e9d1a4990d2f'].join(''),
+        ['0372fb58279be153963a356a3c154e4aad826db0fb4f',
+         'd156cc1ebe1cb937fd499fca2a8bffd82f19b14ab6a9',
+         'b76d75ddf62cc06f7ef5d98158c96bad9c1b482656ca'].join(''),
+        ['006eb96e4a6f3674ed254b915ac3241472ee8085e822',
+         'e925e0d42711e5eed113ff44d27239388466595c5b71',
+         '9c3fa5f4ebdfd6a099f3db3bd244623c68b3feacb49a'].join(''),
+        ['02',
+         '01c0c2cbc731e95d2086a9208c93febcbb72d95c2a37',
+         'cde565df74d78b2dbfb90abe5540dbd5790c9a0683a8',
+         'a01a7f2b342df7d660513d6f6532f861bb8c2d205061'].join('')
+      ];
+
+      const [m, r, s, p] = json;
+      const msg = Buffer.from(m, 'hex');
+      const sig = Buffer.from(r + s, 'hex');
+      const der = Signature.toDER(sig, 66);
+      const pub = Buffer.from(p, 'hex');
+
+      assert(!p521.verify(msg, sig, pub));
+      assert(!p521.verifyDER(msg, der, pub));
+    });
+
+    it('should reject non-canonical S value', () => {
+      const json = [
+        ['2987f61715244cfb7e613770ec59bbd4eeb48d9f3b4a',
+         '66cdb056acb82e75b1157b8538092ac43632541d8045',
+         'd5a334d9063ff2c27e26cac1673bab85e9d1a4990d2f'].join(''),
+        ['0172fb58279be153963a356a3c154e4aad826db0fb4f',
+         'd156cc1ebe1cb937fd499fcfd90578546fea1adf36dd',
+         'b6247ed4505c84b9b53d4fe5111ab03de4fcb6edf2c1'].join(''),
+        ['026eb96e4a6f3674ed254b915ac3241472ee8085e822',
+         'e925e0d42711e5eed113ff3f23f8c0bc4395efc7db3d',
+         '9d889cfe91b0125663ac64d819f31dac1fd28fe518a3'].join(''),
+        ['02',
+         '01c0c2cbc731e95d2086a9208c93febcbb72d95c2a37',
+         'cde565df74d78b2dbfb90abe5540dbd5790c9a0683a8',
+         'a01a7f2b342df7d660513d6f6532f861bb8c2d205061'].join('')
+      ];
+
+      const [m, r, s, p] = json;
+      const msg = Buffer.from(m, 'hex');
+      const sig = Buffer.from(r + s, 'hex');
+      const der = Signature.toDER(sig, 66);
+      const pub = Buffer.from(p, 'hex');
+
+      assert(!p521.verify(msg, sig, pub));
+      assert(!p521.verifyDER(msg, der, pub));
+    });
+
+    it('should reject non-canonical X coordinate (compressed)', () => {
+      const json = [
+        ['2987f61715244cfb7e613770ec59bbd4eeb48d9f3b4a',
+         '66cdb056acb82e75b1157b8538092ac43632541d8045',
+         'd5a334d9063ff2c27e26cac1673bab85e9d1a4990d2f'].join(''),
+        ['0172fb58279be153963a356a3c154e4aad826db0fb4f',
+         'd156cc1ebe1cb937fd499fcfd90578546fea1adf36dd',
+         'b6247ed4505c84b9b53d4fe5111ab03de4fcb6edf2c1'].join(''),
+        ['006eb96e4a6f3674ed254b915ac3241472ee8085e822',
+         'e925e0d42711e5eed113ff44d27239388466595c5b71',
+         '9c3fa5f4ebdfd6a099f3db3bd244623c68b3feacb49a'].join(''),
+        ['02',
+         '03c0c2cbc731e95d2086a9208c93febcbb72d95c2a37',
+         'cde565df74d78b2dbfb90abe5540dbd5790c9a0683a8',
+         'a01a7f2b342df7d660513d6f6532f861bb8c2d205060'].join('')
+      ];
+
+      const [m, r, s, p] = json;
+      const msg = Buffer.from(m, 'hex');
+      const sig = Buffer.from(r + s, 'hex');
+      const der = Signature.toDER(sig, 66);
+      const pub = Buffer.from(p, 'hex');
+
+      assert(!p521.publicKeyVerify(pub));
+      assert(!p521.verify(msg, sig, pub));
+      assert(!p521.verifyDER(msg, der, pub));
+    });
+
+    it('should reject non-canonical X coordinate', () => {
+      const json = [
+        ['2987f61715244cfb7e613770ec59bbd4eeb48d9f3b4a',
+         '66cdb056acb82e75b1157b8538092ac43632541d8045',
+         'd5a334d9063ff2c27e26cac1673bab85e9d1a4990d2f'].join(''),
+        ['0172fb58279be153963a356a3c154e4aad826db0fb4f',
+         'd156cc1ebe1cb937fd499fcfd90578546fea1adf36dd',
+         'b6247ed4505c84b9b53d4fe5111ab03de4fcb6edf2c1'].join(''),
+        ['006eb96e4a6f3674ed254b915ac3241472ee8085e822',
+         'e925e0d42711e5eed113ff44d27239388466595c5b71',
+         '9c3fa5f4ebdfd6a099f3db3bd244623c68b3feacb49a'].join(''),
+        ['04',
+         '03c0c2cbc731e95d2086a9208c93febcbb72d95c2a37',
+         'cde565df74d78b2dbfb90abe5540dbd5790c9a0683a8',
+         'a01a7f2b342df7d660513d6f6532f861bb8c2d205060',
+         '010ca5c0e1e861801cdc800cb07584027b332ecfe4a6',
+         '152a9c0b7e09a18c14da428791ce6448743401b29724',
+         '39969786a068a30f6690dec00c9e1a9149cdd87dfda8'].join('')
+      ];
+
+      const [m, r, s, p] = json;
+      const msg = Buffer.from(m, 'hex');
+      const sig = Buffer.from(r + s, 'hex');
+      const der = Signature.toDER(sig, 66);
+      const pub = Buffer.from(p, 'hex');
+
+      assert(!p521.publicKeyVerify(pub));
+      assert(!p521.verify(msg, sig, pub));
+      assert(!p521.verifyDER(msg, der, pub));
+    });
+
+    it('should reject non-canonical Y coordinate', () => {
+      const json = [
+        ['2987f61715244cfb7e613770ec59bbd4eeb48d9f3b4a',
+         '66cdb056acb82e75b1157b8538092ac43632541d8045',
+         'd5a334d9063ff2c27e26cac1673bab85e9d1a4990d2f'].join(''),
+        ['0172fb58279be153963a356a3c154e4aad826db0fb4f',
+         'd156cc1ebe1cb937fd499fcfd90578546fea1adf36dd',
+         'b6247ed4505c84b9b53d4fe5111ab03de4fcb6edf2c1'].join(''),
+        ['006eb96e4a6f3674ed254b915ac3241472ee8085e822',
+         'e925e0d42711e5eed113ff44d27239388466595c5b71',
+         '9c3fa5f4ebdfd6a099f3db3bd244623c68b3feacb49a'].join(''),
+        ['04',
+         '01c0c2cbc731e95d2086a9208c93febcbb72d95c2a37',
+         'cde565df74d78b2dbfb90abe5540dbd5790c9a0683a8',
+         'a01a7f2b342df7d660513d6f6532f861bb8c2d205061',
+         '030ca5c0e1e861801cdc800cb07584027b332ecfe4a6',
+         '152a9c0b7e09a18c14da428791ce6448743401b29724',
+         '39969786a068a30f6690dec00c9e1a9149cdd87dfda7'].join('')
+      ];
+
+      const [m, r, s, p] = json;
+      const msg = Buffer.from(m, 'hex');
+      const sig = Buffer.from(r + s, 'hex');
+      const der = Signature.toDER(sig, 66);
+      const pub = Buffer.from(p, 'hex');
+
+      assert(!p521.publicKeyVerify(pub));
+      assert(!p521.verify(msg, sig, pub));
+      assert(!p521.verifyDER(msg, der, pub));
     });
   });
 });
