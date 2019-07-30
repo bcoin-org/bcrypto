@@ -578,12 +578,6 @@ curve25519_swap_conditional(bignum25519 a, bignum25519 b, uint32_t iswap) {
   x9 = swap & (a[9] ^ b[9]); a[9] ^= x9; b[9] ^= x9;
 }
 
-DONNA_INLINE static int
-curve25519_is_zero(const bignum25519 a) {
-  return (a[0] | a[1] | a[2] | a[3] | a[4]
-        | a[5] | a[6] | a[7] | a[8] | a[9]) == 0;
-}
-
 DONNA_INLINE static void
 curve25519_set_word(bignum25519 a, uint32_t word) {
   memset((void *)a, 0x00, sizeof(bignum25519));

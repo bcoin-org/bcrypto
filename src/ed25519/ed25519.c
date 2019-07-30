@@ -254,6 +254,17 @@ bcrypto_ed25519_pubkey_convert(
   /* ed25519 point -> x25519 point */
   curve25519_add(yplusz, p.y, p.z);
   curve25519_sub(zminusy, p.z, p.y);
+
+  // P = (x, 1) = O
+  if (curve25519_is_zero(zminusy))
+    return 0;
+
+  // P = (0, y) = (0, 0)
+  if (curve25519_is_zero(p.x)) {
+    memset(out, 0x00, 32);
+    return 1;
+  }
+
   curve25519_recip(zminusy, zminusy);
   curve25519_mul(yplusz, yplusz, zminusy);
 
@@ -275,6 +286,11 @@ bcrypto_ed25519_pubkey_deconvert(
   curve25519_set_word(z, 1);
   curve25519_sub(xminusz, x, z);
   curve25519_add(xplusz, x, z);
+
+  // P = (-1, v) = O
+  if (curve25519_is_zero(xplusz))
+    return 0;
+
   curve25519_recip(xplusz, xplusz);
   curve25519_mul(x, xminusz, xplusz);
 

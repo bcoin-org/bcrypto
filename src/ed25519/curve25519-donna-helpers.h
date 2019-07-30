@@ -65,3 +65,24 @@ curve25519_pow_two252m3(bignum25519 two252m3, const bignum25519 z) {
   /* 2^252 - 2^2 */ curve25519_square_times(b, b, 2);
   /* 2^252 - 3 */ curve25519_mul_noinline(two252m3, b, z);
 }
+
+static int
+curve25519_is_zero(const bignum25519 a) {
+  unsigned char out[32];
+  unsigned int c;
+  int i;
+
+  curve25519_contract(out, a);
+
+  for (i = 0; i < 32; i++)
+    c |= (unsigned int)out[i];
+
+  return (c - 1) >> (sizeof(unsigned int) * 8 - 1);
+}
+
+static int
+curve25519_is_equal(const bignum25519 a, const bignum25519 b) {
+  bignum25519 c;
+  curve25519_sub(c, a, b);
+  return curve25519_is_zero(c);
+}

@@ -409,11 +409,6 @@ curve25519_swap_conditional(bignum25519 a, bignum25519 b, uint64_t iswap) {
 
 #endif /* BCRYPTO_ED25519_GCC_64BIT_CHOOSE */
 
-DONNA_INLINE static int
-curve25519_is_zero(const bignum25519 a) {
-  return (a[0] | a[1] | a[2] | a[3] | a[4]) == 0;
-}
-
 DONNA_INLINE static void
 curve25519_set_word(bignum25519 a, uint64_t word) {
   memset((void *)a, 0x00, sizeof(bignum25519));
