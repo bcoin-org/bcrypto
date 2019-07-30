@@ -1179,5 +1179,31 @@ describe('ECDSA', function() {
       assert(!p521.verify(msg, sig, pub));
       assert(!p521.verifyDER(msg, der, pub));
     });
+
+    it('should reject non-canonical X coordinate (compressed)', () => {
+      const json = [
+        '02fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc30',
+        '03fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc30'
+      ];
+
+      for (const str of json) {
+        const pub = Buffer.from(str, 'hex');
+
+        assert(!secp256k1.publicKeyVerify(pub));
+      }
+    });
+
+    it('should reject non-canonical X coordinate (compressed)', () => {
+      const json = [
+        '02ffffffff00000001000000000000000000000001000000000000000000000004',
+        '03ffffffff00000001000000000000000000000001000000000000000000000004'
+      ];
+
+      for (const str of json) {
+        const pub = Buffer.from(str, 'hex');
+
+        assert(!p256.publicKeyVerify(pub));
+      }
+    });
   });
 });
