@@ -6512,6 +6512,21 @@ describe('BN.js', function() {
       assert(new BN(bea.slice(-7), 'be').eq(p7));
       assert(new BN(lea.slice(0, 7), 'le').eq(p7));
     });
+
+    it('should test encoding', () => {
+      for (let i = 1; i <= 2048; i++) {
+        const n = BN.randomBits(rng, i);
+        const hex = n.toString(16, 2);
+
+        let rev = '';
+
+        for (let i = hex.length - 2; i >= 0; i -= 2)
+          rev += hex[i] + hex[i + 1];
+
+        assert.strictEqual(n.encode('be').toString('hex'), hex);
+        assert.strictEqual(n.encode('le').toString('hex'), rev);
+      }
+    });
   });
 
   describe('BN.js/Slow DH test', () => {
