@@ -6523,6 +6523,8 @@ describe('BN.js', function() {
         for (let i = hex.length - 2; i >= 0; i -= 2)
           rev += hex[i] + hex[i + 1];
 
+        assert(BN.decode(n.encode('be'), 'be').eq(n));
+        assert(BN.decode(n.encode('le'), 'le').eq(n));
         assert.strictEqual(n.encode('be').toString('hex'), hex);
         assert.strictEqual(n.encode('le').toString('hex'), rev);
       }
