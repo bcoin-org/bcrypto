@@ -1680,6 +1680,15 @@ describe('Elliptic', function() {
       assert.throws(() => ed448.pointFromMont(x448.g, false));
     });
 
+    it.skip('should test 4-isogeny equivalence', () => {
+      const ed448 = new curves.ED448();
+      const x448 = new curves.X448();
+      const g = ed448.pointFromMont(x448.g.randomize(rng), false);
+
+      assert.strictEqual(g.getY().toString(16), ed448.g.getY().toString(16));
+      assert.strictEqual(g.getX().toString(16), ed448.g.getX().toString(16));
+    });
+
     it('should test unified addition', () => {
       const curve = new curves.SECP256K1();
 
