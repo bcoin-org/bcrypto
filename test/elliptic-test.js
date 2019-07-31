@@ -1621,25 +1621,54 @@ describe('Elliptic', function() {
       }
     });
 
-    it('should correctly recover Y', () => {
+    it('should correctly recover X (edwards)', () => {
       const ed25519 = new curves.ED25519();
-      const x = ed25519.g.getX();
-      const y = ed25519.g.y.redIsOdd();
-      const g = ed25519.pointFromX(x, y);
-      const r = ed25519.pointFromR(x);
+      const ed448 = new curves.ED448();
 
-      assert(ed25519.g.eq(g));
-      assert(ed25519.g.eq(r));
+      for (const curve of [ed25519, ed448]) {
+        const y = curve.g.getY();
+        const s = curve.g.x.redIsOdd();
+        const g = curve.pointFromY(y, s);
+
+        assert(curve.g.eq(g));
+      }
+    });
+
+    it('should correctly recover Y (edwards)', () => {
+      const ed25519 = new curves.ED25519();
+      const ed448 = new curves.ED448();
+
+      for (const curve of [ed25519, ed448]) {
+        const x = curve.g.getX();
+        const s = curve.g.y.redIsOdd();
+        const g = curve.pointFromX(x, s);
+        const r = curve.pointFromR(x);
+
+        assert(curve.g.eq(g));
+        assert(curve.g.eq(r));
+      }
+
+      for (const curve of [ed25519, ed448]) {
+        for (let i = 0; i < 4; i++) {
+          const p = curve.randomPoint(rng);
+          const x = p.getX();
+          const s = p.y.redIsOdd();
+          const q = curve.pointFromX(x, s);
+          const r = curve.pointFromR(x);
+
+          assert(p.eq(q));
+          assert(p.y.eq(r.y) || p.y.eq(r.y.redNeg()));
+        }
+      }
     });
 
     it('should have basepoint for x25519', () => {
       // https://tools.ietf.org/html/rfc7748#section-4.1
       const x25519 = new curves.X25519();
-      const v = x25519.g.getY(1);
+      const v = x25519.g.getY(true);
 
-      // Note: this is negated.
-      const e = new BN('147816194475895447910205935684099868872'
-                     + '64606134616475288964881837755586237401', 10);
+      const e = new BN('20ae19a1 b8a086b4 e01edd2c 7748d14c'
+                     + '923d4d7e 6d7c61b2 29e9c5a2 7eced3d9', 16);
 
       assert(v.cmp(e) === 0);
       assert(x25519.g.validate());
@@ -1648,13 +1677,12 @@ describe('Elliptic', function() {
     it('should have basepoint for x448', () => {
       // https://tools.ietf.org/html/rfc7748#section-4.2
       const x448 = new curves.X448();
-      const v = x448.g.getY(0);
+      const v = x448.g.getY(false);
 
-      // Note: this is negated.
-      const e = new BN('355293926785568175264127502063783334808'
-                     + '976399387714271831880898435169088786967'
-                     + '410002932673765864550910142774147268105'
-                     + '838985595290606362', 10);
+      const e = new BN('7d235d12 95f5b1f6 6c98ab6e 58326fce'
+                     + 'cbae5d34 f55545d0 60f75dc2 8df3f6ed'
+                     + 'b8027e23 46430d21 1312c4b1 50677af7'
+                     + '6fd7223d 457b5b1a', 16);
 
       assert(v.cmp(e) === 0);
       assert(x448.g.validate());
@@ -1670,17 +1698,15 @@ describe('Elliptic', function() {
       assert(montG.eq(x25519.g));
     });
 
-    it('should test 4-isogeny equivalence', () => {
+    it('should test edwards->mont 4-isogeny equivalence', () => {
       const ed448 = new curves.ED448();
       const x448 = new curves.X448();
       const montG = x448.pointFromEdwards(ed448.g.randomize(rng));
 
       assert(montG.eq(x448.g));
-
-      assert.throws(() => ed448.pointFromMont(x448.g, false));
     });
 
-    it.skip('should test 4-isogeny equivalence', () => {
+    it.skip('should test mont->edwards 4-isogeny equivalence', () => {
       const ed448 = new curves.ED448();
       const x448 = new curves.X448();
       const g = ed448.pointFromMont(x448.g.randomize(rng), false);
