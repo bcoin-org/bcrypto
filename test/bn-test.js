@@ -4753,6 +4753,15 @@ describe('BN.js', function() {
       });
     });
 
+    describe('.isPos()', () => {
+      it('should return true for positive numbers', () => {
+        assert.strictEqual(new BN(-1).isPos(), false);
+        assert.strictEqual(new BN(1).isPos(), true);
+        assert.strictEqual(new BN(0).isPos(), true);
+        assert.strictEqual(new BN('-0', 10).isPos(), true);
+      });
+    });
+
     describe('.isOdd()', () => {
       it('should return true for odd numbers', () => {
         assert.strictEqual(new BN(0).isOdd(), false);
@@ -5112,6 +5121,24 @@ describe('BN.js', function() {
         assert.strictEqual(new BN(-0xffffffff).czero(), 0);
         assert.strictEqual(new BN(1e9).czero(), 0);
         assert.strictEqual(new BN(-1e9).czero(), 0);
+      });
+    });
+
+    describe('.cneg()', () => {
+      it('should return true for negative numbers', () => {
+        assert.strictEqual(new BN(-1).cneg(), 1);
+        assert.strictEqual(new BN(1).cneg(), 0);
+        assert.strictEqual(new BN(0).cneg(), 0);
+        assert.strictEqual(new BN('-0', 10).cneg(), 0);
+      });
+    });
+
+    describe('.cpos()', () => {
+      it('should return true for positive numbers', () => {
+        assert.strictEqual(new BN(-1).cpos(), 0);
+        assert.strictEqual(new BN(1).cpos(), 1);
+        assert.strictEqual(new BN(0).cpos(), 1);
+        assert.strictEqual(new BN('-0', 10).cpos(), 1);
       });
     });
 

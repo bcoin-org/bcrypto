@@ -225,6 +225,7 @@ BBN::Init(v8::Local<v8::Object> &target) {
   Nan::SetPrototypeMethod(tpl, "sign", BBN::Sign);
   Nan::SetPrototypeMethod(tpl, "isZero", BBN::IsZero);
   Nan::SetPrototypeMethod(tpl, "isNeg", BBN::IsNeg);
+  Nan::SetPrototypeMethod(tpl, "isPos", BBN::IsPos);
   Nan::SetPrototypeMethod(tpl, "isOdd", BBN::IsOdd);
   Nan::SetPrototypeMethod(tpl, "isEven", BBN::IsEven);
   Nan::SetPrototypeMethod(tpl, "inject", BBN::Inject);
@@ -1931,6 +1932,13 @@ NAN_METHOD(BBN::IsZero) {
 NAN_METHOD(BBN::IsNeg) {
   BBN *a = ObjectWrap::Unwrap<BBN>(info.Holder());
   bool r = mpz_sgn(a->n) < 0;
+
+  info.GetReturnValue().Set(Nan::New<v8::Boolean>(r));
+}
+
+NAN_METHOD(BBN::IsPos) {
+  BBN *a = ObjectWrap::Unwrap<BBN>(info.Holder());
+  bool r = mpz_sgn(a->n) >= 0;
 
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(r));
 }

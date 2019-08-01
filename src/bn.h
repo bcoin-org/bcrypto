@@ -104,6 +104,7 @@ private:
   static NAN_METHOD(Sign);
   static NAN_METHOD(IsZero);
   static NAN_METHOD(IsNeg);
+  static NAN_METHOD(IsPos);
   static NAN_METHOD(IsOdd);
   static NAN_METHOD(IsEven);
   static NAN_METHOD(Inject);
