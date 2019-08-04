@@ -2627,6 +2627,60 @@ describe('Elliptic', function() {
 
       assert.strictEqual(total, small.length - 2);
     });
+
+    it('should compute inverse sqrt properly', () => {
+      const ed25519 = new curves.ED25519();
+      const ed448 = new curves.ED448();
+      const e521 = new curves.E521();
+
+      // Curve1174. See:
+      // http://elligator.cr.yp.to/elligator-20130828.pdf
+      const ed1174 = new elliptic.EdwardsCurve({
+        id: 'ED1174',
+        ossl: 'ED1174',
+        type: 'edwards',
+        endian: 'le',
+        hash: 'SHA512',
+        prefix: 'SigEd1174',
+        context: false,
+        prime: null,
+        // 2^251 - 9
+        p: '07ffffff ffffffff ffffffff ffffffff'
+         + 'ffffffff ffffffff ffffffff fffffff7',
+        a: '1',
+        c: '1',
+        // -1174 mod p
+        d: '07ffffff ffffffff ffffffff ffffffff'
+         + 'ffffffff ffffffff ffffffff fffffb61',
+        n: '01ffffff ffffffff ffffffff ffffffff'
+         + 'f77965c4 dfd30734 8944d45f d166c971',
+        h: '4',
+        g: [
+          ['037fbb0c ea308c47 9343aee 7c029a190',
+           'c021d96a 492ecd65 16123f2 7bce29eda'].join(''),
+          ['06b72f82 d47fb7cc 66568411 69840e0c',
+           '4fe2dee2 af3f976b a4ccb1bf 9b46360e'].join('')
+        ]
+      });
+
+      for (const curve of [ed25519, ed448, e521, ed1174]) {
+        for (let i = 0; i < 10; i++) {
+          const k = curve.randomScalar(rng);
+          const p = curve.g.mul(k).normalize();
+          const x1 = curve.solveX2(p.y).redSqrt();
+          const x2 = curve.solveX(p.y);
+
+          if (x1.redIsOdd() !== p.x.redIsOdd())
+            x1.redINeg();
+
+          if (x2.redIsOdd() !== p.x.redIsOdd())
+            x2.redINeg();
+
+          assert(x1.eq(p.x));
+          assert(x2.eq(p.x));
+        }
+      }
+    });
   });
 
   describe('Point codec', () => {
