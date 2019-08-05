@@ -65,10 +65,28 @@ describe('Safe', function() {
     assert.strictEqual(safe.safeSelect(1, 1, 2), 1);
   });
 
+  it('should compare int (LT)', () => {
+    assert.strictEqual(safe.safeLT(1, 2), 1);
+    assert.strictEqual(safe.safeLT(2, 2), 0);
+    assert.strictEqual(safe.safeLT(3, 2), 0);
+  });
+
   it('should compare int (LTE)', () => {
     assert.strictEqual(safe.safeLTE(1, 2), 1);
     assert.strictEqual(safe.safeLTE(2, 2), 1);
     assert.strictEqual(safe.safeLTE(3, 2), 0);
+  });
+
+  it('should compare int (GT)', () => {
+    assert.strictEqual(safe.safeGT(1, 2), 0);
+    assert.strictEqual(safe.safeGT(2, 2), 0);
+    assert.strictEqual(safe.safeGT(3, 2), 1);
+  });
+
+  it('should compare int (GTE)', () => {
+    assert.strictEqual(safe.safeGTE(1, 2), 0);
+    assert.strictEqual(safe.safeGTE(2, 2), 1);
+    assert.strictEqual(safe.safeGTE(3, 2), 1);
   });
 
   it('should copy', () => {
