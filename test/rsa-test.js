@@ -6,6 +6,7 @@ const SHA1 = require('../lib/sha1');
 const SHA256 = require('../lib/sha256');
 const BLAKE2b256 = require('../lib/blake2b256');
 const BLAKE2s256 = require('../lib/blake2s256');
+const BN = require('../lib/bn');
 const random = require('../lib/random');
 const rsa = require('../lib/rsa');
 const base64 = require('../lib/encoding/base64');
@@ -125,6 +126,22 @@ describe('RSA', function() {
 
     sig[0] ^= 1;
     assert(!rsa.verify(SHA256, msg, sig, pub));
+  });
+
+  it('should fail to verify non-canonical signature', () => {
+    const bits = 1020;
+    const priv = rsa.privateKeyGenerate(bits);
+    const pub = rsa.publicKeyCreate(priv);
+
+    assert(rsa.privateKeyVerify(priv));
+    assert(rsa.publicKeyVerify(pub));
+
+    const sig1 = rsa.sign(SHA256, msg, priv);
+    const n = BN.decode(priv.n);
+    const s = BN.decode(sig1);
+    const sig2 = s.add(n).encode('be', priv.size());
+
+    assert(!rsa.verify(SHA256, msg, sig2, pub));
   });
 
   it('should sign and verify (PSS)', () => {
