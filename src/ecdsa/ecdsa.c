@@ -34,8 +34,18 @@ bcrypto_ecdsa_curve(const char *name) {
     type = NID_secp384r1;
   else if (strcmp(name, "P521") == 0)
     type = NID_secp521r1;
+  else if (strcmp(name, "SECP192K1") == 0)
+    type = NID_secp192k1;
+  else if (strcmp(name, "SECP224K1") == 0)
+    type = NID_secp224k1;
   else if (strcmp(name, "SECP256K1") == 0)
     type = NID_secp256k1;
+  else if (strcmp(name, "BRAINPOOLP256") == 0)
+    type = NID_brainpoolP256r1;
+  else if (strcmp(name, "BRAINPOOLP384") == 0)
+    type = NID_brainpoolP384r1;
+  else if (strcmp(name, "BRAINPOOLP512") == 0)
+    type = NID_brainpoolP512r1;
 
   return type;
 }
@@ -46,11 +56,16 @@ bcrypto_ecdsa_hash_type(int type) {
     case NID_X9_62_prime192v1:
     case NID_secp224r1:
     case NID_X9_62_prime256v1:
+    case NID_secp192k1:
+    case NID_secp224k1:
     case NID_secp256k1:
+    case NID_brainpoolP256r1:
       return NID_sha256;
     case NID_secp384r1:
+    case NID_brainpoolP384r1:
       return NID_sha384;
     case NID_secp521r1:
+    case NID_brainpoolP512r1:
       return NID_sha512;
   }
   return -1;
@@ -63,7 +78,11 @@ bcrypto_ecdsa_has_schnorr(int type) {
     case NID_X9_62_prime256v1:
     case NID_secp384r1:
     case NID_secp521r1:
+    case NID_secp192k1:
     case NID_secp256k1:
+    case NID_brainpoolP256r1:
+    case NID_brainpoolP384r1:
+    case NID_brainpoolP512r1:
       return 1;
   }
   return 0;
