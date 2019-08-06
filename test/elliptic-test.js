@@ -1708,6 +1708,46 @@ describe('Elliptic', function() {
       assert(montG.eq(x448.g));
     });
 
+    it('should test elligator2 (mont)', () => {
+      const x25519 = new curves.X25519();
+      const x448 = new curves.X448();
+
+      for (const curve of [x25519, x448]) {
+        const u1 = curve.randomField(rng);
+        const [p1, sign1] = curve.elligator2(u1);
+        const u2 = curve.invert2(p1, sign1);
+        const [p2, sign2] = curve.elligator2(u2);
+        const u3 = curve.invert2(p2, sign2);
+        const [p3] = curve.elligator2(u3);
+
+        assert(p1.validate());
+        assert(p1.eq(p2));
+        assert(p2.eq(p3));
+      }
+    });
+
+    it('should test elligator2 (edwards)', () => {
+      const x25519 = new curves.X25519();
+      const ed25519 = new curves.ED25519();
+
+      // Placeholder.
+      const x448 = new curves.X25519();
+      const ed448 = new curves.ED25519();
+
+      for (const [x, curve] of [[x25519, ed25519], [x448, ed448]]) {
+        const u1 = curve.randomField(rng);
+        const p1 = curve.elligator2(x, u1);
+        const u2 = curve.invert2(x, p1);
+        const p2 = curve.elligator2(x, u2);
+        const u3 = curve.invert2(x, p2);
+        const p3 = curve.elligator2(x, u3);
+
+        assert(p1.validate());
+        assert(p1.eq(p2) || p1.neg().eq(p2));
+        assert(p2.eq(p3) || p2.neg().eq(p3));
+      }
+    });
+
     it('should test unified addition', () => {
       const curve = new curves.SECP256K1();
 
