@@ -344,11 +344,14 @@ NAN_METHOD(BED448::PublicKeyDeconvert) {
 
   int sign = (int)Nan::To<bool>(info[1]).FromJust();
 
-  (void)pub;
-  (void)pub_len;
-  (void)sign;
+  uint8_t out[BCRYPTO_EDDSA_448_PUBLIC_BYTES];
 
-  return Nan::ThrowError("Unimplemented.");
+  if (!bcrypto_curve448_convert_public_key_to_eddsa(out, pub, sign))
+    return Nan::ThrowError("Could not deconvert public key.");
+
+  return info.GetReturnValue().Set(
+    Nan::CopyBuffer((char *)&out[0],
+                    BCRYPTO_EDDSA_448_PUBLIC_BYTES).ToLocalChecked());
 }
 
 NAN_METHOD(BED448::PublicKeyVerify) {

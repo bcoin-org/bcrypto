@@ -303,6 +303,13 @@ bcrypto_c448_error_t bcrypto_c448_ed448_verify_single(const uint8_t
                  uint8_t prehashed, const uint8_t *context,
                  uint8_t context_len);
 
+bcrypto_c448_error_t
+bcrypto_curve448_convert_public_key_to_eddsa(
+  uint8_t ed[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
+  const uint8_t x[BCRYPTO_X_PUBLIC_BYTES],
+  int sign
+);
+
 #if defined(__cplusplus)
 }
 #endif
