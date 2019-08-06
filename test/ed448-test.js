@@ -626,7 +626,10 @@ describe('Ed448', function() {
     assert.bufferEqual(xpub2, xpub);
   });
 
-  it.skip('should convert to montgomery and back', () => {
+  it('should convert to montgomery and back', () => {
+    if (ed448.native !== 0)
+      this.skip();
+
     const secret = ed448.privateKeyGenerate();
     const pub = ed448.publicKeyCreate(secret);
     const sign = (pub[56] & 0x80) !== 0;
