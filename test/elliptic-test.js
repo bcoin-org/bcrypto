@@ -1708,17 +1708,17 @@ describe('Elliptic', function() {
       assert(montG.eq(x448.g));
     });
 
-    it('should test elligator2 (mont)', () => {
+    it('should test elligator (mont)', () => {
       const x25519 = new curves.X25519();
       const x448 = new curves.X448();
 
       for (const curve of [x25519, x448]) {
         const u1 = curve.randomField(rng);
-        const [p1, sign1] = curve.elligator2(u1);
-        const u2 = curve.invert2(p1, sign1);
-        const [p2, sign2] = curve.elligator2(u2);
-        const u3 = curve.invert2(p2, sign2);
-        const [p3] = curve.elligator2(u3);
+        const [p1, sign1] = curve.elligator(u1);
+        const u2 = curve.invert(p1, sign1);
+        const [p2, sign2] = curve.elligator(u2);
+        const u3 = curve.invert(p2, sign2);
+        const [p3] = curve.elligator(u3);
 
         assert(p1.validate());
         assert(p1.eq(p2));
@@ -1726,7 +1726,7 @@ describe('Elliptic', function() {
       }
     });
 
-    it('should test elligator2', () => {
+    it('should test elligator', () => {
       const x25519 = new curves.X25519();
       const ed25519 = new curves.ED25519();
       const x448 = new curves.X448();
@@ -1734,11 +1734,11 @@ describe('Elliptic', function() {
 
       for (const [x, curve] of [[x25519, ed25519], [x448, ed448]]) {
         const u1 = curve.randomField(rng);
-        const p1 = curve.elligator2(x, u1);
-        const u2 = curve.invert2(x, p1);
-        const p2 = curve.elligator2(x, u2);
-        const u3 = curve.invert2(x, p2);
-        const p3 = curve.elligator2(x, u3);
+        const p1 = curve.elligator(x, u1);
+        const u2 = curve.invert(x, p1);
+        const p2 = curve.elligator(x, u2);
+        const u3 = curve.invert(x, p2);
+        const p3 = curve.elligator(x, u3);
 
         assert(p1.validate());
         assert(p1.eq(p2));
@@ -1746,7 +1746,7 @@ describe('Elliptic', function() {
       }
     });
 
-    it('should test elligator2 (ed448)', () => {
+    it('should test elligator (ed448)', () => {
       const x = new curves.X448();
       const curve = new curves.ED448();
 
@@ -1756,42 +1756,47 @@ describe('Elliptic', function() {
       do {
         u1 = curve.randomField(rng);
         x1 = u1.fromRed().toRed(x.red);
-      } while (x.elligator2(x1)[0].hasTorsion());
+      } while (x.elligator(x1)[0].hasTorsion());
 
-      const p1 = curve.elligator2(x, u1);
-      const u2 = curve.invert2(x, p1);
-      const p2 = curve.elligator2(x, u2);
-      const u3 = curve.invert2(x, p2);
-      const p3 = curve.elligator2(x, u3);
+      const p1 = curve.elligator(x, u1);
+      const u2 = curve.invert(x, p1);
+      const p2 = curve.elligator(x, u2);
+      const u3 = curve.invert(x, p2);
+      const p3 = curve.elligator(x, u3);
 
       assert(p1.validate());
       assert(p1.eq(p2));
       assert(p2.eq(p3));
     });
 
-    it('should test elligator2 key generation', () => {
+    it('should test elligator key generation', () => {
       const x = new curves.X25519();
       const curve = new curves.ED25519();
 
       // Censorship-resistant key sharing.
-      let k, p, r;
+      let k, p, bytes;
 
       for (;;) {
         k = curve.randomScalar(rng);
         p = curve.g.mul(k);
 
         // Fails on about half the keys.
+        let r;
         try {
-          r = curve.invert2(x, p);
+          r = curve.invert(x, p);
         } catch (e) {
           continue;
         }
+
+        // Encode uniform bytes.
+        bytes = curve.encodeElligator(r, rng);
 
         break;
       }
 
       // Run elligator on the other side.
-      const q = curve.elligator2(x, r);
+      const r = curve.decodeElligator(bytes);
+      const q = curve.elligator(x, r);
 
       assert(p.eq(q));
     });
