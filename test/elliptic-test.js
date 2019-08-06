@@ -1726,26 +1726,69 @@ describe('Elliptic', function() {
       }
     });
 
-    it('should test elligator2 (edwards)', () => {
-      const x25519 = new curves.X25519();
-      const ed25519 = new curves.ED25519();
+    it('should test elligator2 (ed25519)', () => {
+      const x = new curves.X25519();
+      const curve = new curves.ED25519();
+      const u1 = curve.randomField(rng);
+      const p1 = curve.elligator2(x, u1);
+      const u2 = curve.invert2(x, p1);
+      const p2 = curve.elligator2(x, u2);
+      const u3 = curve.invert2(x, p2);
+      const p3 = curve.elligator2(x, u3);
 
-      // Placeholder.
-      const x448 = new curves.X25519();
-      const ed448 = new curves.ED25519();
+      assert(p1.validate());
+      assert(p1.eq(p2));
+      assert(p2.eq(p3));
+    });
 
-      for (const [x, curve] of [[x25519, ed25519], [x448, ed448]]) {
-        const u1 = curve.randomField(rng);
-        const p1 = curve.elligator2(x, u1);
-        const u2 = curve.invert2(x, p1);
-        const p2 = curve.elligator2(x, u2);
-        const u3 = curve.invert2(x, p2);
-        const p3 = curve.elligator2(x, u3);
+    it('should test elligator2 (ed448)', () => {
+      const x = new curves.X448();
+      const curve = new curves.ED448();
 
-        assert(p1.validate());
-        assert(p1.eq(p2) || p1.neg().eq(p2));
-        assert(p2.eq(p3) || p2.neg().eq(p3));
+      let u1, x1;
+
+      // 4-isogeny map can't handle torsion points.
+      do {
+        u1 = curve.randomField(rng);
+        x1 = u1.fromRed().toRed(x.red);
+      } while (x.elligator2(x1)[0].hasTorsion());
+
+      const p1 = curve.elligator2(x, u1);
+      const u2 = curve.invert2(x, p1);
+      const p2 = curve.elligator2(x, u2);
+      const u3 = curve.invert2(x, p2);
+      const p3 = curve.elligator2(x, u3);
+
+      assert(p1.validate());
+      assert(p1.eq(p2));
+      assert(p2.eq(p3));
+    });
+
+    it('should test elligator2 key generation', () => {
+      const x = new curves.X25519();
+      const curve = new curves.ED25519();
+
+      // Censorship-resistant key sharing.
+      let k, p, r;
+
+      for (;;) {
+        k = curve.randomScalar(rng);
+        p = curve.g.mul(k);
+
+        // Fails on about half the keys.
+        try {
+          r = curve.invert2(x, p);
+        } catch (e) {
+          continue;
+        }
+
+        break;
       }
+
+      // Run elligator on the other side.
+      const q = curve.elligator2(x, r);
+
+      assert(p.eq(q));
     });
 
     it('should test unified addition', () => {
