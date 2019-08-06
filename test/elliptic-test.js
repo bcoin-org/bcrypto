@@ -1726,19 +1726,24 @@ describe('Elliptic', function() {
       }
     });
 
-    it('should test elligator2 (ed25519)', () => {
-      const x = new curves.X25519();
-      const curve = new curves.ED25519();
-      const u1 = curve.randomField(rng);
-      const p1 = curve.elligator2(x, u1);
-      const u2 = curve.invert2(x, p1);
-      const p2 = curve.elligator2(x, u2);
-      const u3 = curve.invert2(x, p2);
-      const p3 = curve.elligator2(x, u3);
+    it('should test elligator2', () => {
+      const x25519 = new curves.X25519();
+      const ed25519 = new curves.ED25519();
+      const x448 = new curves.X448();
+      const ed448 = new curves.ISOED448();
 
-      assert(p1.validate());
-      assert(p1.eq(p2));
-      assert(p2.eq(p3));
+      for (const [x, curve] of [[x25519, ed25519], [x448, ed448]]) {
+        const u1 = curve.randomField(rng);
+        const p1 = curve.elligator2(x, u1);
+        const u2 = curve.invert2(x, p1);
+        const p2 = curve.elligator2(x, u2);
+        const u3 = curve.invert2(x, p2);
+        const p3 = curve.elligator2(x, u3);
+
+        assert(p1.validate());
+        assert(p1.eq(p2));
+        assert(p2.eq(p3));
+      }
     });
 
     it('should test elligator2 (ed448)', () => {
