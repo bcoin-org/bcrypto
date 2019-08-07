@@ -169,6 +169,10 @@ bcrypto_mask_t bcrypto_gf_eq(const bcrypto_gf a, const bcrypto_gf b)
   return word_is_zero(ret);
 }
 
+bcrypto_mask_t bcrypto_gf_neq(const bcrypto_gf a, const bcrypto_gf b) {
+  return mask_to_bool(bcrypto_gf_eq(a, b)) ? 0 : -1;
+}
+
 bcrypto_mask_t bcrypto_gf_isr(bcrypto_gf a, const bcrypto_gf x)
 {
   bcrypto_gf L0, L1, L2;
@@ -243,7 +247,7 @@ bcrypto_mask_t bcrypto_gf_recip(bcrypto_gf a, const bcrypto_gf x)
    * Note that we could do:
    *
    *   bcrypto_gf_invert(a, x, 0);
-   *   return !bcrypto_gf_eq(a, ZERO);
+   *   return bcrypto_gf_neq(a, ZERO);
    */
 
   bcrypto_gf r = {{{1}}};
@@ -266,7 +270,7 @@ bcrypto_mask_t bcrypto_gf_recip(bcrypto_gf a, const bcrypto_gf x)
   bcrypto_gf_sqrn(t, r, 2);
   bcrypto_gf_mul(r, t, x);
 
-  bcrypto_mask_t ret = !bcrypto_gf_eq(r, ZERO);
+  bcrypto_mask_t ret = bcrypto_gf_neq(r, ZERO);
 
   bcrypto_gf_copy(a, r);
 

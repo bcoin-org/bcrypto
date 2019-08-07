@@ -321,7 +321,8 @@ NAN_METHOD(BED448::PublicKeyConvert) {
 
   uint8_t out[BCRYPTO_X448_PUBLIC_BYTES];
 
-  bcrypto_curve448_convert_public_key_to_x448(out, pub);
+  if (!bcrypto_curve448_convert_public_key_to_x448(out, pub))
+    return Nan::ThrowError("Could not convert public key.");
 
   return info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&out[0],
@@ -1130,13 +1131,13 @@ NAN_METHOD(BED448::PublicKeyFromUniform) {
   if (data_len != 56)
     return Nan::ThrowRangeError("Invalid field element size.");
 
-  uint8_t out[57];
+  uint8_t out[BCRYPTO_EDDSA_448_PUBLIC_BYTES];
 
   if (!bcrypto_curve448_pubkey_from_uniform(out, data))
     return Nan::ThrowError("Invalid public key.");
 
   return info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)&out[0], 57).ToLocalChecked());
+    Nan::CopyBuffer((char *)&out[0], BCRYPTO_EDDSA_448_PUBLIC_BYTES).ToLocalChecked());
 }
 
 NAN_METHOD(BED448::PointFromUniform) {
@@ -1154,13 +1155,13 @@ NAN_METHOD(BED448::PointFromUniform) {
   if (data_len != 56)
     return Nan::ThrowRangeError("Invalid field element size.");
 
-  uint8_t out[56];
+  uint8_t out[BCRYPTO_X448_PUBLIC_BYTES];
 
   if (bcrypto_curve448_point_from_uniform(out, data) < 0)
     return Nan::ThrowError("Invalid public key.");
 
   return info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)&out[0], 56).ToLocalChecked());
+    Nan::CopyBuffer((char *)&out[0], BCRYPTO_X448_PUBLIC_BYTES).ToLocalChecked());
 }
 
 NAN_METHOD(BED448::PublicKeyToUniform) {
@@ -1175,7 +1176,7 @@ NAN_METHOD(BED448::PublicKeyToUniform) {
   const uint8_t *pub = (const uint8_t *)node::Buffer::Data(pbuf);
   size_t pub_len = node::Buffer::Length(pbuf);
 
-  if (pub_len != 57)
+  if (pub_len != BCRYPTO_EDDSA_448_PUBLIC_BYTES)
     return Nan::ThrowRangeError("Invalid public key size.");
 
   uint8_t out[56];
@@ -1202,7 +1203,7 @@ NAN_METHOD(BED448::PointToUniform) {
   const uint8_t *pub = (const uint8_t *)node::Buffer::Data(pbuf);
   size_t pub_len = node::Buffer::Length(pbuf);
 
-  if (pub_len != 56)
+  if (pub_len != BCRYPTO_X448_PUBLIC_BYTES)
     return Nan::ThrowRangeError("Invalid public key size.");
 
   int sign = (int)Nan::To<bool>(info[1]).FromJust();
