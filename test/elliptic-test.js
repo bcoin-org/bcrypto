@@ -6,6 +6,7 @@ const EDDSA = require('../lib/js/eddsa');
 const SHAKE256 = require('../lib/shake256');
 const elliptic = require('../lib/js/elliptic');
 const rng = require('../lib/random');
+const extra = require('./util/curves');
 
 const {
   ShortCurve,
@@ -1708,6 +1709,16 @@ describe('Elliptic', function() {
       assert(montG.eq(x448.g));
     });
 
+    it.skip('should test birational equivalence (iso-ed448)', () => {
+      const ed448 = new extra.ISOED448();
+      const x448 = new curves.X448();
+      const edwardsG = ed448.pointFromMont(x448.g.randomize(rng), false);
+      const montG = x448.pointFromEdwards(ed448.g.randomize(rng));
+
+      assert(edwardsG.eq(ed448.g));
+      assert(montG.eq(x448.g));
+    });
+
     it('should test elligator (mont)', () => {
       const x25519 = new curves.X25519();
       const x448 = new curves.X448();
@@ -1730,7 +1741,7 @@ describe('Elliptic', function() {
       const x25519 = new curves.X25519();
       const ed25519 = new curves.ED25519();
       const x448 = new curves.X448();
-      const ed448 = new curves.ISOED448();
+      const ed448 = new extra.ISOED448();
 
       for (const [x, curve] of [[x25519, ed25519], [x448, ed448]]) {
         const u1 = curve.randomField(rng);
@@ -2717,7 +2728,7 @@ describe('Elliptic', function() {
     it('should compute inverse sqrt properly', () => {
       const ed25519 = new curves.ED25519();
       const ed448 = new curves.ED448();
-      const e521 = new curves.E521();
+      const e521 = new extra.E521();
 
       // Curve1174. See:
       // http://elligator.cr.yp.to/elligator-20130828.pdf
@@ -2864,7 +2875,7 @@ describe('Elliptic', function() {
 
   describe('E521', () => {
     it('should have E521', () => {
-      const e521 = new curves.E521();
+      const e521 = new extra.E521();
       const inf = e521.point();
 
       assert(e521.g.validate());
@@ -2880,7 +2891,7 @@ describe('Elliptic', function() {
     });
 
     it('should clamp properly', () => {
-      const e521 = new curves.E521();
+      const e521 = new extra.E521();
       const scalar = rng.randomBytes(e521.p.byteLength());
 
       e521.clamp(scalar);
@@ -2889,7 +2900,11 @@ describe('Elliptic', function() {
     });
 
     it('should handle difference in scalar/field bytes', () => {
-      const e521 = new EDDSA('E521', null, SHAKE256);
+      const e521 = new EDDSA('ED25519', null, SHAKE256);
+
+      // Hack.
+      e521.id = 'E521';
+      e521._curve = new extra.E521();
 
       const msg = rng.randomBytes(e521.size);
       const secret = e521.privateKeyGenerate();
@@ -2907,7 +2922,11 @@ describe('Elliptic', function() {
     });
 
     it('should do diffie hellman', () => {
-      const e521 = new EDDSA('E521', null, SHAKE256);
+      const e521 = new EDDSA('ED25519', null, SHAKE256);
+
+      // Hack.
+      e521.id = 'E521';
+      e521._curve = new extra.E521();
 
       const alicePriv = e521.privateKeyGenerate();
       const alicePub = e521.publicKeyCreate(alicePriv);
