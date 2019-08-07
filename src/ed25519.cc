@@ -41,6 +41,10 @@ BED25519::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "deriveWithScalar", BED25519::DeriveWithScalar);
   Nan::Export(obj, "exchange", BED25519::Exchange);
   Nan::Export(obj, "exchangeWithScalar", BED25519::ExchangeWithScalar);
+  Nan::Export(obj, "publicKeyFromUniform", BED25519::PublicKeyFromUniform);
+  Nan::Export(obj, "pointFromUniform", BED25519::PointFromUniform);
+  Nan::Export(obj, "publicKeyToUniform", BED25519::PublicKeyToUniform);
+  Nan::Export(obj, "pointToUniform", BED25519::PointToUniform);
 
   Nan::Set(target, Nan::New("ed25519").ToLocalChecked(), obj);
 }
@@ -1187,6 +1191,107 @@ NAN_METHOD(BED25519::ExchangeWithScalar) {
   bcrypto_x25519_pubkey_t out;
 
   if (!bcrypto_ed25519_exchange_with_scalar(out, xpub, scalar))
+    return Nan::ThrowError("Invalid public key.");
+
+  return info.GetReturnValue().Set(
+    Nan::CopyBuffer((char *)&out[0], 32).ToLocalChecked());
+}
+
+NAN_METHOD(BED25519::PublicKeyFromUniform) {
+  if (info.Length() < 1)
+    return Nan::ThrowError("ed25519.publicKeyFromUniform() requires arguments.");
+
+  v8::Local<v8::Object> dbuf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(dbuf))
+    return Nan::ThrowTypeError("First argument must be a buffer.");
+
+  const uint8_t *data = (const uint8_t *)node::Buffer::Data(dbuf);
+  size_t data_len = node::Buffer::Length(dbuf);
+
+  if (data_len != 32)
+    return Nan::ThrowRangeError("Invalid field element size.");
+
+  bcrypto_ed25519_pubkey_t out;
+
+  if (!bcrypto_ed25519_pubkey_from_uniform(out, data))
+    return Nan::ThrowError("Invalid public key.");
+
+  return info.GetReturnValue().Set(
+    Nan::CopyBuffer((char *)&out[0], 32).ToLocalChecked());
+}
+
+NAN_METHOD(BED25519::PointFromUniform) {
+  if (info.Length() < 1)
+    return Nan::ThrowError("ed25519.pointFromUniform() requires arguments.");
+
+  v8::Local<v8::Object> dbuf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(dbuf))
+    return Nan::ThrowTypeError("First argument must be a buffer.");
+
+  const uint8_t *data = (const uint8_t *)node::Buffer::Data(dbuf);
+  size_t data_len = node::Buffer::Length(dbuf);
+
+  if (data_len != 32)
+    return Nan::ThrowRangeError("Invalid field element size.");
+
+  bcrypto_x25519_pubkey_t out;
+
+  if (bcrypto_ed25519_point_from_uniform(out, data) < 0)
+    return Nan::ThrowError("Invalid public key.");
+
+  return info.GetReturnValue().Set(
+    Nan::CopyBuffer((char *)&out[0], 32).ToLocalChecked());
+}
+
+NAN_METHOD(BED25519::PublicKeyToUniform) {
+  if (info.Length() < 1)
+    return Nan::ThrowError("ed25519.publicKeyToUniform() requires arguments.");
+
+  v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(pbuf))
+    return Nan::ThrowTypeError("First argument must be a buffer.");
+
+  const uint8_t *pub = (const uint8_t *)node::Buffer::Data(pbuf);
+  size_t pub_len = node::Buffer::Length(pbuf);
+
+  if (pub_len != 32)
+    return Nan::ThrowRangeError("Invalid public key size.");
+
+  uint8_t out[32];
+
+  if (!bcrypto_ed25519_pubkey_to_uniform(out, pub))
+    return Nan::ThrowError("Invalid public key.");
+
+  return info.GetReturnValue().Set(
+    Nan::CopyBuffer((char *)&out[0], 32).ToLocalChecked());
+}
+
+NAN_METHOD(BED25519::PointToUniform) {
+  if (info.Length() < 2)
+    return Nan::ThrowError("ed25519.pointToUniform() requires arguments.");
+
+  v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(pbuf))
+    return Nan::ThrowTypeError("First argument must be a buffer.");
+
+  if (!info[1]->IsBoolean())
+    return Nan::ThrowTypeError("Second argument must be a boolean.");
+
+  const uint8_t *pub = (const uint8_t *)node::Buffer::Data(pbuf);
+  size_t pub_len = node::Buffer::Length(pbuf);
+
+  if (pub_len != 32)
+    return Nan::ThrowRangeError("Invalid public key size.");
+
+  int sign = (int)Nan::To<bool>(info[1]).FromJust();
+
+  uint8_t out[32];
+
+  if (!bcrypto_ed25519_point_to_uniform(out, pub, sign))
     return Nan::ThrowError("Invalid public key.");
 
   return info.GetReturnValue().Set(

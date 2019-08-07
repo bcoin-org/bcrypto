@@ -294,6 +294,27 @@ describe('X25519', function() {
     }
   });
 
+  it('should do convert to edwards and back', () => {
+    const priv = x25519.privateKeyGenerate();
+    const pub = x25519.publicKeyCreate(priv);
+    const ed = x25519.publicKeyConvert(pub, false);
+    const mont = x25519.publicKeyDeconvert(ed);
+
+    assert.bufferEqual(mont, pub);
+  });
+
+  it('should do elligator2', () => {
+    const u1 = rng.randomBytes(32);
+    const p1 = x25519.publicKeyFromUniform(u1);
+    const u2 = x25519.publicKeyToUniform(p1, false);
+    const p2 = x25519.publicKeyFromUniform(u2);
+    const u3 = x25519.publicKeyToUniform(p2, false);
+    const p3 = x25519.publicKeyFromUniform(u3);
+
+    assert.bufferEqual(p1, p2);
+    assert.bufferEqual(p2, p3);
+  });
+
   it('should test x25519 api', () => {
     const alicePriv = x25519.privateKeyGenerate();
     const alicePub = x25519.publicKeyCreate(alicePriv);

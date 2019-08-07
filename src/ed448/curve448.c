@@ -840,6 +840,170 @@ bcrypto_curve448_convert_public_key_to_eddsa(
   return bcrypto_c448_succeed_if(mask_to_bool(ret));
 }
 
+bcrypto_c448_error_t
+bcrypto_curve448_pubkey_from_uniform(
+  uint8_t out[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
+  const unsigned char bytes[56]
+) {
+  int sign = bcrypto_curve448_point_from_uniform(out, bytes);
+
+  return bcrypto_curve448_convert_public_key_to_eddsa(out, out, sign);
+}
+
+int
+bcrypto_curve448_point_from_uniform(
+  uint8_t out[BCRYPTO_X_PUBLIC_BYTES],
+  const unsigned char bytes[56]
+) {
+  bcrypto_gf r, v, v2, v3, e, l, x, t;
+
+  /*
+   * f(a) = a^((q - 1) / 2)
+   * v = -A / (1 + u * r^2)
+   * e = f(v^3 + A * v^2 + B * v)
+   * x = e * v - (1 - e) * A / 2
+   * y = -e * sqrt(x^3 + A * x^2 + B * x)
+   */
+
+  bcrypto_gf u = {{{1}}};
+  bcrypto_gf a = {{{156326}}};
+  bcrypto_gf i2 = {{{2}}};
+
+  bcrypto_gf_sub(u, ZERO, u);
+  bcrypto_gf_invert(i2, i2, 0);
+
+  (void)bcrypto_gf_deserialize(r, bytes, 1, 0);
+
+  /* v = -a / (1 + u * r^2) */
+  bcrypto_gf_sqr(v, r);
+  bcrypto_gf_mul(t, v, u);
+  bcrypto_gf_add(v, t, ONE);
+  bcrypto_gf_invert(t, v, 0);
+  bcrypto_gf_sub(a, ZERO, a);
+  bcrypto_gf_mul(v, a, t);
+  bcrypto_gf_sub(a, ZERO, a);
+
+  bcrypto_gf_sqr(v2, v);
+  bcrypto_gf_mul(v3, v2, v);
+
+  /* e = (v^3 + a * v^2 + v)^((p - 1) / 2) */
+  bcrypto_gf_mul(e, a, v2);
+  bcrypto_gf_add(e, e, v3);
+  bcrypto_gf_add(e, e, v);
+  bcrypto_gf_legendre(e, e);
+
+  /* l = (1 - e) * a / 2 */
+  bcrypto_gf_sub(l, ONE, e);
+  bcrypto_gf_mul(t, l, a);
+  bcrypto_gf_mul(l, t, i2);
+
+  /* x = e * v - l */
+  bcrypto_gf_mul(x, e, v);
+  bcrypto_gf_sub(x, x, l);
+
+  bcrypto_gf_serialize(out, x, 1);
+
+  return bcrypto_gf_is_odd(r);
+}
+
+bcrypto_c448_error_t
+bcrypto_curve448_pubkey_to_uniform(
+  unsigned char out[56],
+  const uint8_t pub[BCRYPTO_EDDSA_448_PUBLIC_BYTES]
+) {
+  int sign = (pub[56] & 0x80) != 0;
+
+  bcrypto_curve448_convert_public_key_to_x448(out, pub);
+
+  return bcrypto_curve448_point_to_uniform(out, out, sign);
+}
+
+bcrypto_c448_error_t
+bcrypto_curve448_point_to_uniform(
+  unsigned char out[56],
+  const uint8_t pub[BCRYPTO_X_PUBLIC_BYTES],
+  int sign
+) {
+  bcrypto_gf x, y, n, d, r, t;
+  bcrypto_mask_t ret = 1;
+
+  static const unsigned char fq2[56] = {
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0x7f, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f
+  };
+
+  /*
+   * r = sqrt(-x / ((x + A) * u)) if y is in F(q / 2)
+   *   = sqrt(-(x + A) / (u * x)) otherwise
+   */
+
+  bcrypto_gf u = {{{1}}};
+  bcrypto_gf a = {{{156326}}};
+
+  bcrypto_gf_sub(u, ZERO, u);
+
+  (void)bcrypto_gf_deserialize(x, pub, 1, 0);
+
+  /* y^2 = x^3 + a * x^2 + x */
+  {
+    bcrypto_gf x2, x3, y2;
+
+    bcrypto_gf_sqr(x2, x);
+    bcrypto_gf_mul(x3, x2, x);
+    bcrypto_gf_add(y2, x3, x);
+    bcrypto_gf_mulw(x3, x2, 156326);
+
+    bcrypto_gf_add(y2, y2, x3);
+
+    ret &= bcrypto_gf_isr(y, y2);
+    bcrypto_gf_invert(y, y, 0);
+
+    if (bcrypto_gf_is_odd(y) != sign)
+      bcrypto_gf_sub(y, ZERO, y);
+
+    OPENSSL_cleanse(x2, sizeof(x2));
+    OPENSSL_cleanse(x3, sizeof(x3));
+    OPENSSL_cleanse(y2, sizeof(y2));
+  }
+
+  bcrypto_gf_serialize(out, y, 1);
+
+  if (bcrypto_gf_bytes_le(out, fq2)) {
+    bcrypto_gf_sub(n, ZERO, x);
+    bcrypto_gf_add(t, x, a);
+    bcrypto_gf_mul(d, t, u);
+  } else {
+    bcrypto_gf_add(n, x, a);
+    bcrypto_gf_sub(n, ZERO, n);
+    bcrypto_gf_mul(d, u, x);
+  }
+
+  bcrypto_gf_invert(d, d, 0);
+  bcrypto_gf_mul(r, n, d);
+
+  ret &= bcrypto_gf_isr(r, r);
+  bcrypto_gf_invert(r, r, 0);
+
+  if (bcrypto_gf_is_odd(r) != sign)
+    bcrypto_gf_sub(r, ZERO, r);
+
+  bcrypto_gf_serialize(out, r, 1);
+
+  OPENSSL_cleanse(x, sizeof(x));
+  OPENSSL_cleanse(y, sizeof(y));
+  OPENSSL_cleanse(n, sizeof(n));
+  OPENSSL_cleanse(d, sizeof(d));
+  OPENSSL_cleanse(r, sizeof(r));
+  OPENSSL_cleanse(t, sizeof(t));
+
+  return bcrypto_c448_succeed_if(mask_to_bool(ret));
+}
+
 /* Control for variable-time scalar multiply algorithms. */
 struct bcrypto_smvt_control {
   int power, addend;

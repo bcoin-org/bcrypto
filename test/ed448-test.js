@@ -682,6 +682,46 @@ describe('Ed448', function() {
     assert.strictEqual(result, true);
   });
 
+  it('should do elligator2 (edwards)', () => {
+    const u1 = Buffer.from(''
+      + '72ad074f3dbfbb3927125fab1f4023a408adc0ab1cbbbd6556615e3d'
+      + '67501a428120ac1556a467734b1ad6820734d2100f0ed88510bd3e14', 'hex');
+
+    const p1 = ed448.publicKeyFromUniform(u1);
+
+    assert.bufferEqual(p1, ''
+      + '133bf6517c0375c17d1e6d6bd715f6d58050bfe3dc571248628a0b19'
+      + '39ac87ac79524363b120b449aa107ab2159476946a584878247bb76c00', 'hex');
+
+    const u2 = ed448.publicKeyToUniform(p1);
+    const p2 = ed448.publicKeyFromUniform(u2);
+    const u3 = ed448.publicKeyToUniform(p2);
+    const p3 = ed448.publicKeyFromUniform(u3);
+
+    assert.bufferEqual(p1, p2);
+    assert.bufferEqual(p2, p3);
+  });
+
+  it('should do elligator2 (mont)', () => {
+    const u1 = Buffer.from(''
+      + '72ad074f3dbfbb3927125fab1f4023a408adc0ab1cbbbd6556615e3d'
+      + '67501a428120ac1556a467734b1ad6820734d2100f0ed88510bd3e14', 'hex');
+
+    const p1 = ed448.pointFromUniform(u1);
+
+    assert.bufferEqual(p1, ''
+      + '6bd0c1ee9599249bff3276e2a8279bea5e62e47f6507656826fe0182'
+      + '3a0580129b6df46dabe81c7559a7028344b50da7682423586d6e80dd');
+
+    const u2 = ed448.pointToUniform(p1, false);
+    const p2 = ed448.pointFromUniform(u2);
+    const u3 = ed448.pointToUniform(p2, false);
+    const p3 = ed448.pointFromUniform(u3);
+
+    assert.bufferEqual(p1, p2);
+    assert.bufferEqual(p2, p3);
+  });
+
   describe('RFC 8032 vectors', () => {
     const batch = [];
 

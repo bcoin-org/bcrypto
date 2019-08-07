@@ -1789,13 +1789,13 @@ describe('Elliptic', function() {
         }
 
         // Encode uniform bytes.
-        bytes = curve.encodeElligator(r, rng);
+        bytes = curve.encodeUniform(r, rng);
 
         break;
       }
 
       // Run elligator on the other side.
-      const r = curve.decodeElligator(bytes);
+      const r = curve.decodeUniform(bytes);
       const q = curve.elligator(x, r);
 
       assert(p.eq(q));

@@ -66,10 +66,68 @@ curve25519_pow_two252m3(bignum25519 two252m3, const bignum25519 z) {
   /* 2^252 - 3 */ curve25519_mul_noinline(two252m3, b, z);
 }
 
+/*
+ * z^((2^255 - 19 - 1) / 2)
+ * From: https://gist.github.com/Yawning/0181098c1119f49b3eb2
+ */
+static void
+curve25519_pow_two255m20d2(bignum25519 out, const bignum25519 z) {
+  bignum25519 ALIGN(16) t0, t1, t2, t3;
+  curve25519_square(t0, z);   /* 2^1 */
+  curve25519_mul(t1, t0, z);  /* 2^1 + 2^0 */
+  curve25519_square(t0, t1);  /* 2^2 + 2^1 */
+  curve25519_square(t2, t0);  /* 2^3 + 2^2 */
+  curve25519_square(t2, t2);  /* 4,3 */
+  curve25519_mul(t2, t2, t0); /* 4,3,2,1 */
+  curve25519_mul(t1, t2, z);  /* 4..0 */
+  curve25519_square(t2, t1);  /* 5..1 */
+  curve25519_square_times(t2, t2, 5 - 1);   /* 9,8,7,6,5 */
+  curve25519_mul(t1, t2, t1); /* 9,8,7,6,5,4,3,2,1,0 */
+  curve25519_square(t2, t1); /* 10..1 */
+  curve25519_square_times(t2, t2, 10 - 1);  /* 19..10 */
+  curve25519_mul(t2, t2, t1); /* 19..0 */
+  curve25519_square(t3, t2);  /* 20..1 */
+  curve25519_square_times(t3, t3, 20 - 1);  /* 39..20 */
+  curve25519_mul(t2, t3, t2); /* 39..0 */
+  curve25519_square(t2, t2);  /* 40..1 */
+  curve25519_square_times(t2, t2, 10 - 1);  /* 49..10 */
+  curve25519_mul(t1, t2, t1); /* 49..0 */
+  curve25519_square(t2, t1);  /* 50..1 */
+  curve25519_square_times(t2, t2, 50 - 1);  /* 99..50 */
+  curve25519_mul(t2, t2, t1); /* 99..0 */
+  curve25519_square(t3, t2);  /* 100..1 */
+  curve25519_square_times(t3, t3, 100 - 1); /* 199..100 */
+  curve25519_mul(t2, t3, t2); /* 199..0 */
+  curve25519_square(t2, t2);  /* 200..1 */
+  curve25519_square_times(t2, t2, 50 - 1);  /* 249..50 */
+  curve25519_mul(t1, t2, t1); /* 249..0 */
+  curve25519_square(t1, t1);  /* 250..1 */
+  curve25519_square_times(t1, t1, 4 - 1); /* 253..4 */
+  curve25519_mul(out, t1, t0); /* 253..4,2,1 */
+}
+
+/* From: https://gist.github.com/Yawning/0181098c1119f49b3eb2 */
+static unsigned int
+curve25519_bytes_le(const unsigned char a[32], const unsigned char b[32]) {
+  unsigned int eq = ~0;
+  unsigned int gt = 0;
+  size_t shift = sizeof(unsigned int) * 8 - 1;
+
+  for (int i = 31; i >= 0; i--) {
+    unsigned int x = (unsigned int)a[i];
+    unsigned int y = (unsigned int)b[i];
+
+    gt = (~eq & gt) | (eq & ((x - y) >> shift));
+    eq = eq & (((x ^ y) - 1) >> shift);
+  }
+
+  return (~eq & 1 & gt);
+}
+
 static int
 curve25519_is_zero(const bignum25519 a) {
   unsigned char out[32];
-  unsigned int c;
+  unsigned int c = 0;
   int i;
 
   curve25519_contract(out, a);
@@ -82,7 +140,54 @@ curve25519_is_zero(const bignum25519 a) {
 
 static int
 curve25519_is_equal(const bignum25519 a, const bignum25519 b) {
-  bignum25519 c;
-  curve25519_sub(c, a, b);
-  return curve25519_is_zero(c);
+  unsigned char x[32];
+  unsigned char y[32];
+  unsigned int c = 0;
+  int i;
+
+  curve25519_contract(x, a);
+  curve25519_contract(y, b);
+
+  for (i = 0; i < 32; i++)
+    c |= (unsigned int)x[i] ^ (unsigned int)y[i];
+
+  return (c - 1) >> (sizeof(unsigned int) * 8 - 1);
+}
+
+static int
+curve25519_sqrt(bignum25519 out, const bignum25519 x) {
+  bignum25519 ALIGN(16) one, t, a, b;
+  int r;
+
+  curve25519_set_word(one, 1);
+
+  curve25519_add(t, x, x);
+  curve25519_pow_two252m3(a, t);
+  curve25519_square(b, a);
+  curve25519_mul(b, b, t);
+  curve25519_sub(b, b, one);
+  curve25519_mul(b, b, x);
+  curve25519_mul(b, b, a);
+
+  curve25519_square(t, b);
+  r = curve25519_is_equal(t, x);
+
+  curve25519_copy(out, b);
+
+  return r;
+}
+
+static void
+curve25519_cond_neg(bignum25519 out, const bignum25519 x, int negate) {
+  bignum25519 z;
+  curve25519_copy(out, x);
+  curve25519_neg(z, x);
+  curve25519_swap_conditional(out, z, negate);
+}
+
+static int
+curve25519_is_odd(const bignum25519 a) {
+  unsigned char out[32];
+  curve25519_contract(out, a);
+  return out[0] & 1;
 }

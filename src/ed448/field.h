@@ -61,6 +61,11 @@ bcrypto_mask_t bcrypto_gf_isr(bcrypto_gf a, const bcrypto_gf x); /** a^2 x = 1, 
 bcrypto_mask_t bcrypto_gf_eq(const bcrypto_gf x, const bcrypto_gf y);
 bcrypto_mask_t bcrypto_gf_lobit(const bcrypto_gf x);
 bcrypto_mask_t bcrypto_gf_hibit(const bcrypto_gf x);
+bcrypto_mask_t bcrypto_gf_sqrt(bcrypto_gf a, const bcrypto_gf x);
+void bcrypto_gf_legendre(bcrypto_gf a, const bcrypto_gf x);
+int bcrypto_gf_is_odd(const bcrypto_gf a);
+unsigned int bcrypto_gf_bytes_le(const unsigned char a[56],
+                                 const unsigned char b[56]);
 
 void bcrypto_gf_serialize(uint8_t *serial, const bcrypto_gf x, int with_highbit);
 bcrypto_mask_t bcrypto_gf_deserialize(bcrypto_gf x, const uint8_t serial[BCRYPTO_SER_BYTES], int with_hibit,

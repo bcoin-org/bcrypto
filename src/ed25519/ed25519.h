@@ -240,6 +240,31 @@ bcrypto_ed25519_sign_tweak_mul(
   size_t ctx_len
 );
 
+int
+bcrypto_ed25519_pubkey_from_uniform(
+  bcrypto_ed25519_pubkey_t out,
+  const unsigned char bytes[32]
+);
+
+int
+bcrypto_ed25519_point_from_uniform(
+  bcrypto_x25519_pubkey_t out,
+  const unsigned char bytes[32]
+);
+
+int
+bcrypto_ed25519_pubkey_to_uniform(
+  unsigned char out[32],
+  const bcrypto_ed25519_pubkey_t pub
+);
+
+int
+bcrypto_ed25519_point_to_uniform(
+  unsigned char out[32],
+  const bcrypto_x25519_pubkey_t pub,
+  int sign
+);
+
 #if defined(__cplusplus)
 }
 #endif

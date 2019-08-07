@@ -202,3 +202,76 @@ bcrypto_mask_t bcrypto_gf_isr(bcrypto_gf a, const bcrypto_gf x)
   bcrypto_gf_copy(a, L1);
   return bcrypto_gf_eq(L0, ONE);
 }
+
+/* (p + 1) / 4 = [ [ 1, 224 ], [ 0, 222 ] ] */
+bcrypto_mask_t bcrypto_gf_sqrt(bcrypto_gf a, const bcrypto_gf x)
+{
+  bcrypto_gf r = {{{1}}};
+  bcrypto_gf t;
+  int i;
+
+  for (i = 0; i < 224; i++) {
+    bcrypto_gf_sqr(t, r);
+    bcrypto_gf_mul(r, t, x);
+  }
+
+  bcrypto_gf_sqrn(t, r, 222);
+  bcrypto_gf_copy(r, t);
+
+  bcrypto_gf_sqr(t, r);
+
+  bcrypto_mask_t ret = bcrypto_gf_eq(t, x);
+
+  bcrypto_gf_copy(a, r);
+
+  return ret;
+}
+
+/* (p - 1) / 2 = [ [ 1, 223 ], [ 0, 1 ], [ 1, 223 ] ] */
+void bcrypto_gf_legendre(bcrypto_gf a, const bcrypto_gf x)
+{
+  bcrypto_gf r = {{{1}}};
+  bcrypto_gf t;
+  int i;
+
+  for (i = 0; i < 223; i++) {
+    bcrypto_gf_sqr(t, r);
+    bcrypto_gf_mul(r, t, x);
+  }
+
+  bcrypto_gf_sqr(t, r);
+  bcrypto_gf_copy(r, t);
+
+  for (i = 0; i < 223; i++) {
+    bcrypto_gf_sqr(t, r);
+    bcrypto_gf_mul(r, t, x);
+  }
+
+  bcrypto_gf_copy(a, r);
+}
+
+int bcrypto_gf_is_odd(const bcrypto_gf a) {
+  bcrypto_gf c;
+  bcrypto_gf_copy(c, a);
+  bcrypto_gf_strong_reduce(c);
+  return c->limb[0] & 1;
+}
+
+/* From: https://gist.github.com/Yawning/0181098c1119f49b3eb2 */
+unsigned int bcrypto_gf_bytes_le(const unsigned char a[56],
+                                 const unsigned char b[56])
+{
+  unsigned int eq = ~0;
+  unsigned int gt = 0;
+  size_t shift = sizeof(unsigned int) * 8 - 1;
+
+  for (int i = 55; i >= 0; i--) {
+    unsigned int x = (unsigned int)a[i];
+    unsigned int y = (unsigned int)b[i];
+
+    gt = (~eq & gt) | (eq & ((x - y) >> shift));
+    eq = eq & (((x ^ y) - 1) >> shift);
+  }
+
+  return (~eq & 1 & gt);
+}

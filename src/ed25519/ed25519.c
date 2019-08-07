@@ -761,3 +761,156 @@ bcrypto_ed25519_sign_tweak_mul(
 
   return bcrypto_ed25519_sign_with_scalar(RS, m, mlen, extsk, tk, ph, ctx, ctx_len);
 }
+
+int
+bcrypto_ed25519_pubkey_from_uniform(
+  bcrypto_ed25519_pubkey_t out,
+  const unsigned char bytes[32]
+) {
+  int sign = bcrypto_ed25519_point_from_uniform(out, bytes);
+
+  return bcrypto_ed25519_pubkey_deconvert(out, out, sign);
+}
+
+int
+bcrypto_ed25519_point_from_uniform(
+  bcrypto_x25519_pubkey_t out,
+  const unsigned char bytes[32]
+) {
+  bignum25519 ALIGN(16) one, u, r, a, i2;
+  bignum25519 ALIGN(16) v, v2, v3, e, l, x;
+
+  /*
+   * f(a) = a^((q - 1) / 2)
+   * v = -A / (1 + u * r^2)
+   * e = f(v^3 + A * v^2 + B * v)
+   * x = e * v - (1 - e) * A / 2
+   * y = -e * sqrt(x^3 + A * x^2 + B * x)
+   */
+
+  curve25519_set_word(one, 1);
+  curve25519_set_word(u, 2);
+  curve25519_set_word(a, 486662);
+  curve25519_set_word(i2, 2);
+  curve25519_recip(i2, i2);
+
+  curve25519_expand(r, bytes);
+
+  /* v = -a / (1 + u * r^2) */
+  curve25519_square(v, r);
+  curve25519_mul(v, v, u);
+  curve25519_add(v, v, one);
+  curve25519_recip(v, v);
+  curve25519_neg(a, a);
+  curve25519_mul(v, a, v);
+  curve25519_neg(a, a);
+
+  curve25519_square(v2, v);
+  curve25519_mul(v3, v2, v);
+
+  /* e = (v^3 + a * v^2 + v)^((p - 1) / 2) */
+  curve25519_mul(e, a, v2);
+  curve25519_add(e, e, v3);
+  curve25519_add(e, e, v);
+  curve25519_pow_two255m20d2(e, e);
+
+  /* l = (1 - e) * a / 2 */
+  curve25519_sub(l, one, e);
+  curve25519_mul(l, l, a);
+  curve25519_mul(l, l, i2);
+
+  /* x = e * v - l */
+  curve25519_mul(x, e, v);
+  curve25519_sub(x, x, l);
+
+  curve25519_contract(out, x);
+
+  return curve25519_is_odd(r);
+}
+
+int
+bcrypto_ed25519_pubkey_to_uniform(
+  unsigned char out[32],
+  const bcrypto_ed25519_pubkey_t pub
+) {
+  int sign = (pub[31] & 0x80) != 0;
+  int i;
+
+  for (i = 0; i < 32; i++)
+    out[i] = 0;
+
+  return bcrypto_ed25519_pubkey_convert(out, pub)
+       & bcrypto_ed25519_point_to_uniform(out, out, sign);
+}
+
+int
+bcrypto_ed25519_point_to_uniform(
+  unsigned char out[32],
+  const bcrypto_x25519_pubkey_t pub,
+  int sign
+) {
+  bignum25519 ALIGN(16) u, a;
+  bignum25519 ALIGN(16) x, y, n, d, r;
+  int ret = 1;
+
+  static const unsigned char fq2[32] = {
+    0xf6, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x3f
+  };
+
+  /*
+   * r = sqrt(-x / ((x + A) * u)) if y is in F(q / 2)
+   *   = sqrt(-(x + A) / (u * x)) otherwise
+   */
+
+  curve25519_set_word(u, 2);
+  curve25519_set_word(a, 486662);
+
+  curve25519_expand(x, pub);
+
+  /* y^2 = x^3 + a * x^2 + x */
+  {
+    bignum25519 ALIGN(16) x2, x3, y2;
+
+    curve25519_square(x2, x);
+    curve25519_mul(x3, x2, x);
+    curve25519_add(y2, x3, x);
+    curve25519_mul(x3, x2, a);
+    curve25519_add(y2, y2, x3);
+
+    ret &= curve25519_sqrt(y, y2);
+
+    curve25519_cond_neg(y, y, curve25519_is_odd(y) != sign);
+  }
+
+  curve25519_contract(out, y);
+
+  /* Same amount of cycles in both branches. */
+  if (curve25519_bytes_le(out, fq2)) {
+    curve25519_neg(n, x);
+    curve25519_add(d, x, a);
+    curve25519_mul(d, d, u);
+  } else {
+    curve25519_add(n, x, a);
+    curve25519_neg(n, n);
+    curve25519_mul(d, u, x);
+  }
+
+  curve25519_recip(d, d);
+  curve25519_mul(r, n, d);
+
+  ret &= curve25519_sqrt(r, r);
+
+  curve25519_cond_neg(r, r, curve25519_is_odd(r) != sign);
+  curve25519_contract(out, r);
+
+  unsigned char bit = 0;
+
+  ret &= bcrypto_ed25519_randombytes(&bit, 1);
+
+  out[31] |= (bit & 1) << 7;
+
+  return ret;
+}

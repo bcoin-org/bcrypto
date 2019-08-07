@@ -776,6 +776,90 @@ describe('EdDSA', function() {
     assert.bufferEqual(pub2, pub);
   });
 
+  it('should do elligator2 (edwards)', () => {
+    const u1 = random.randomBytes(32);
+    const p1 = ed25519.publicKeyFromUniform(u1);
+    const u2 = ed25519.publicKeyToUniform(p1);
+    const p2 = ed25519.publicKeyFromUniform(u2);
+    const u3 = ed25519.publicKeyToUniform(p2);
+    const p3 = ed25519.publicKeyFromUniform(u3);
+
+    assert.bufferEqual(p1, p2);
+    assert.bufferEqual(p2, p3);
+  });
+
+  it('should do elligator2 (mont)', () => {
+    const u1 = random.randomBytes(32);
+    const p1 = ed25519.pointFromUniform(u1);
+    const u2 = ed25519.pointToUniform(p1, false);
+    const p2 = ed25519.pointFromUniform(u2);
+    const u3 = ed25519.pointToUniform(p2, false);
+    const p3 = ed25519.pointFromUniform(u3);
+
+    assert.bufferEqual(p1, p2);
+    assert.bufferEqual(p2, p3);
+  });
+
+  it('should do elligator2 on curve25519 basepoint', () => {
+    const p = Buffer.alloc(32, 0x00);
+    p[0] = 9;
+
+    const u = ed25519.pointToUniform(p, false);
+    const b = u[31] & 0x80;
+
+    u[31] &= ~0x80;
+
+    assert.bufferEqual(u,
+      '3489d2523e24d6bb0f7514be6289094e619902b813ef892018585e3b1f0f5654');
+
+    u[31] |= b;
+
+    const q = ed25519.pointFromUniform(u);
+
+    assert.bufferEqual(q, p);
+  });
+
+  it('should do elligator2 (vector)', () => {
+    const u1 = Buffer.from(
+      'be6d3d8d621562f8e1e9fdd93a760e7e7f27b93c0879a5414525b59bded49b61',
+      'hex');
+
+    const p1 = ed25519.publicKeyFromUniform(u1);
+
+    assert.bufferEqual(p1,
+      'cc2947ef03b978b3c7b418e2acdf52bc26f51457d7b21730c551bbcf4cb2e27d');
+
+    const u2 = ed25519.publicKeyToUniform(p1);
+
+    u2[31] &= ~0x80;
+    assert.bufferEqual(u2, u1);
+
+    const p2 = ed25519.publicKeyFromUniform(u2);
+
+    const u3 = ed25519.publicKeyToUniform(p2);
+
+    u3[31] &= ~0x80;
+    assert.bufferEqual(u3, u1);
+
+    const p3 = ed25519.publicKeyFromUniform(u3);
+
+    assert.bufferEqual(p1, p2);
+    assert.bufferEqual(p2, p3);
+  });
+
+  it('should invert elligator2 on troublesome point', () => {
+    const p = Buffer.from(
+      '6da9f400aefa72f6510793baaee019971b66114230d43802858f6e776fef7658',
+      'hex');
+
+    const u = ed25519.pointToUniform(p, false);
+
+    u[31] &= ~0x80;
+
+    assert.bufferEqual(u,
+      'be6d3d8d621562f8e1e9fdd93a760e7e7f27b93c0879a5414525b59bded49b61');
+  });
+
   describe('ed25519 derivations', () => {
     for (const [i, test] of derivations.entries()) {
       it(`should compute correct a and A for secret #${i}`, () => {

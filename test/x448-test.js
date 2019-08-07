@@ -217,6 +217,35 @@ describe('X448', function() {
     }
   });
 
+  it('should do convert to edwards and back', () => {
+    const priv = x448.privateKeyGenerate();
+    const pub = x448.publicKeyCreate(priv);
+    const ed = x448.publicKeyConvert(pub, false);
+    const mont = x448.publicKeyDeconvert(ed);
+
+    assert.bufferEqual(mont, pub);
+  });
+
+  it('should do elligator2', () => {
+    const u1 = Buffer.from(''
+      + '72ad074f3dbfbb3927125fab1f4023a408adc0ab1cbbbd6556615e3d'
+      + '67501a428120ac1556a467734b1ad6820734d2100f0ed88510bd3e14', 'hex');
+
+    const p1 = x448.publicKeyFromUniform(u1);
+
+    assert.bufferEqual(p1, ''
+      + '6bd0c1ee9599249bff3276e2a8279bea5e62e47f6507656826fe0182'
+      + '3a0580129b6df46dabe81c7559a7028344b50da7682423586d6e80dd');
+
+    const u2 = x448.publicKeyToUniform(p1, false);
+    const p2 = x448.publicKeyFromUniform(u2);
+    const u3 = x448.publicKeyToUniform(p2, false);
+    const p3 = x448.publicKeyFromUniform(u3);
+
+    assert.bufferEqual(p1, p2);
+    assert.bufferEqual(p2, p3);
+  });
+
   it('should test x448 api', () => {
     const alicePriv = x448.privateKeyGenerate();
     const alicePub = x448.publicKeyCreate(alicePriv);

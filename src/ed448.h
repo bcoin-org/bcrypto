@@ -36,6 +36,10 @@ private:
   static NAN_METHOD(DeriveWithScalar);
   static NAN_METHOD(Exchange);
   static NAN_METHOD(ExchangeWithScalar);
+  static NAN_METHOD(PublicKeyFromUniform);
+  static NAN_METHOD(PointFromUniform);
+  static NAN_METHOD(PublicKeyToUniform);
+  static NAN_METHOD(PointToUniform);
 };
 
 #endif
