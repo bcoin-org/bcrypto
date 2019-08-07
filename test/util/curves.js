@@ -140,7 +140,7 @@ class ED1174 extends EdwardsCurve {
   constructor(pre) {
     super({
       id: 'ED1174',
-      ossl: 'ED1174',
+      ossl: null,
       type: 'edwards',
       endian: 'le',
       hash: 'SHA512',
