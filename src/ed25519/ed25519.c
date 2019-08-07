@@ -892,17 +892,13 @@ bcrypto_ed25519_point_to_uniform(
 
   curve25519_contract(out, y);
 
-  /* Same amount of cycles in both branches. */
-  if (curve25519_bytes_le(out, fq2)) {
-    curve25519_neg(n, x);
-    curve25519_add(d, x, a);
-    curve25519_mul(d, d, u);
-  } else {
-    curve25519_add(n, x, a);
-    curve25519_neg(n, n);
-    curve25519_mul(d, u, x);
-  }
+  int gte = curve25519_bytes_le(out, fq2) ^ 1;
 
+  curve25519_copy(n, x);
+  curve25519_add(d, x, a);
+  curve25519_swap_conditional(n, d, gte);
+  curve25519_neg(n, n);
+  curve25519_mul(d, d, u);
   curve25519_recip(d, d);
 
   ret &= curve25519_is_zero(d) ^ 1;

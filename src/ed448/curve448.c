@@ -998,17 +998,14 @@ bcrypto_curve448_point_to_uniform(
 
   bcrypto_gf_serialize(out, y, 1);
 
-  if (bcrypto_gf_bytes_le(out, fq2)) {
-    bcrypto_gf_sub(n, ZERO, x);
-    bcrypto_gf_add(t, x, a);
-    bcrypto_gf_mul(d, t, u);
-  } else {
-    bcrypto_gf_add(n, x, a);
-    bcrypto_gf_sub(n, ZERO, n);
-    bcrypto_gf_mul(d, u, x);
-  }
+  bcrypto_mask_t gte = (bcrypto_gf_bytes_le(out, fq2) ^ 1) * -1;
 
-  bcrypto_gf_invert(d, d, 0);
+  bcrypto_gf_copy(n, x);
+  bcrypto_gf_add(d, x, a);
+  bcrypto_gf_cond_swap(n, d, gte);
+  bcrypto_gf_sub(n, ZERO, n);
+  bcrypto_gf_mul(t, d, u);
+  bcrypto_gf_invert(d, t, 0);
 
   ret &= bcrypto_gf_neq(d, ZERO);
 
@@ -1017,7 +1014,6 @@ bcrypto_curve448_point_to_uniform(
   ret &= bcrypto_gf_sqrt(r, r);
 
   bcrypto_gf_cond_neg(r, (bcrypto_gf_is_odd(r) ^ sign) * -1);
-
   bcrypto_gf_serialize(out, r, 1);
 
   OPENSSL_cleanse(x, sizeof(x));
