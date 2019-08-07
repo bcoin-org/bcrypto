@@ -741,8 +741,7 @@ bcrypto_curve448_convert_public_key_to_eddsa(
 
     bcrypto_gf_add(v2, v2, u3);
 
-    ret &= bcrypto_gf_isr(v, v2);
-    bcrypto_gf_invert(v, v, 0);
+    ret &= bcrypto_gf_sqrt(v, v2);
 
     OPENSSL_cleanse(u2, sizeof(u2));
     OPENSSL_cleanse(u3, sizeof(u3));
@@ -960,8 +959,7 @@ bcrypto_curve448_point_to_uniform(
 
     bcrypto_gf_add(y2, y2, x3);
 
-    ret &= bcrypto_gf_isr(y, y2);
-    bcrypto_gf_invert(y, y, 0);
+    ret &= bcrypto_gf_sqrt(y, y2);
 
     if (bcrypto_gf_is_odd(y) != sign)
       bcrypto_gf_sub(y, ZERO, y);
@@ -986,8 +984,7 @@ bcrypto_curve448_point_to_uniform(
   bcrypto_gf_invert(d, d, 0);
   bcrypto_gf_mul(r, n, d);
 
-  ret &= bcrypto_gf_isr(r, r);
-  bcrypto_gf_invert(r, r, 0);
+  ret &= bcrypto_gf_sqrt(r, r);
 
   if (bcrypto_gf_is_odd(r) != sign)
     bcrypto_gf_sub(r, ZERO, r);

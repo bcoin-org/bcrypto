@@ -62,6 +62,7 @@ bcrypto_mask_t bcrypto_gf_eq(const bcrypto_gf x, const bcrypto_gf y);
 bcrypto_mask_t bcrypto_gf_lobit(const bcrypto_gf x);
 bcrypto_mask_t bcrypto_gf_hibit(const bcrypto_gf x);
 bcrypto_mask_t bcrypto_gf_sqrt(bcrypto_gf a, const bcrypto_gf x);
+bcrypto_mask_t bcrypto_gf_recip(bcrypto_gf a, const bcrypto_gf x);
 void bcrypto_gf_legendre(bcrypto_gf a, const bcrypto_gf x);
 int bcrypto_gf_is_odd(const bcrypto_gf a);
 unsigned int bcrypto_gf_bytes_le(const unsigned char a[56],
