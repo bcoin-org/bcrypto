@@ -854,6 +854,9 @@ bcrypto_curve448_pubkey_from_uniform(
 ) {
   int sign = bcrypto_curve448_point_from_uniform(out, bytes);
 
+  if (sign < 0)
+    return BCRYPTO_C448_FAILURE;
+
   return bcrypto_curve448_convert_public_key_to_eddsa(out, out, sign);
 }
 
@@ -863,6 +866,7 @@ bcrypto_curve448_point_from_uniform(
   const unsigned char bytes[56]
 ) {
   bcrypto_gf r, v, v2, v3, e, l, x, t;
+  int zero, sign;
 
   /*
    * f(a) = a^((q - 1) / 2)
@@ -877,7 +881,7 @@ bcrypto_curve448_point_from_uniform(
   bcrypto_gf i2 = {{{2}}};
 
   bcrypto_gf_sub(u, ZERO, u);
-  bcrypto_gf_invert(i2, i2, 0);
+  bcrypto_gf_invert(i2, i2, 1);
 
   (void)bcrypto_gf_deserialize(r, bytes, 1, 0);
 
@@ -886,6 +890,7 @@ bcrypto_curve448_point_from_uniform(
   bcrypto_gf_mul(t, v, u);
   bcrypto_gf_add(v, t, ONE);
   bcrypto_gf_invert(t, v, 0);
+  zero = bcrypto_gf_eq(t, ZERO) != 0;
   bcrypto_gf_sub(a, ZERO, a);
   bcrypto_gf_mul(v, a, t);
   bcrypto_gf_sub(a, ZERO, a);
@@ -910,7 +915,7 @@ bcrypto_curve448_point_from_uniform(
 
   bcrypto_gf_serialize(out, x, 1);
 
-  int sign = bcrypto_gf_is_odd(r);
+  sign = bcrypto_gf_is_odd(r);
 
   OPENSSL_cleanse(r, sizeof(r));
   OPENSSL_cleanse(v, sizeof(v));
@@ -921,7 +926,7 @@ bcrypto_curve448_point_from_uniform(
   OPENSSL_cleanse(x, sizeof(x));
   OPENSSL_cleanse(t, sizeof(t));
 
-  return sign;
+  return sign + (zero * -(sign + 1));
 }
 
 bcrypto_c448_error_t
@@ -984,8 +989,7 @@ bcrypto_curve448_point_to_uniform(
 
     ret &= bcrypto_gf_sqrt(y, y2);
 
-    if (bcrypto_gf_is_odd(y) != sign)
-      bcrypto_gf_sub(y, ZERO, y);
+    bcrypto_gf_cond_neg(y, (bcrypto_gf_is_odd(y) ^ sign) * -1);
 
     OPENSSL_cleanse(x2, sizeof(x2));
     OPENSSL_cleanse(x3, sizeof(x3));
@@ -1005,12 +1009,14 @@ bcrypto_curve448_point_to_uniform(
   }
 
   bcrypto_gf_invert(d, d, 0);
+
+  ret &= bcrypto_gf_neq(d, ZERO);
+
   bcrypto_gf_mul(r, n, d);
 
   ret &= bcrypto_gf_sqrt(r, r);
 
-  if (bcrypto_gf_is_odd(r) != sign)
-    bcrypto_gf_sub(r, ZERO, r);
+  bcrypto_gf_cond_neg(r, (bcrypto_gf_is_odd(r) ^ sign) * -1);
 
   bcrypto_gf_serialize(out, r, 1);
 
