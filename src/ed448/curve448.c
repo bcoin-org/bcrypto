@@ -866,7 +866,6 @@ bcrypto_curve448_point_from_uniform(
   const unsigned char bytes[56]
 ) {
   bcrypto_gf r, v, v2, v3, e, l, x, t;
-  int zero, sign;
 
   /*
    * f(a) = a^((q - 1) / 2)
@@ -880,6 +879,7 @@ bcrypto_curve448_point_from_uniform(
   bcrypto_gf a = {{{156326}}};
   bcrypto_gf i2 = {{{2}}};
 
+  bcrypto_gf_copy(e, ONE);
   bcrypto_gf_sub(u, ZERO, u);
   bcrypto_gf_invert(i2, i2, 1);
 
@@ -889,8 +889,8 @@ bcrypto_curve448_point_from_uniform(
   bcrypto_gf_sqr(v, r);
   bcrypto_gf_mul(t, v, u);
   bcrypto_gf_add(v, t, ONE);
-  bcrypto_gf_invert(t, v, 0);
-  zero = bcrypto_gf_eq(t, ZERO) != 0;
+  bcrypto_gf_cond_swap(v, e, bcrypto_gf_eq(v, ZERO));
+  bcrypto_gf_invert(t, v, 1);
   bcrypto_gf_sub(a, ZERO, a);
   bcrypto_gf_mul(v, a, t);
   bcrypto_gf_sub(a, ZERO, a);
@@ -915,7 +915,7 @@ bcrypto_curve448_point_from_uniform(
 
   bcrypto_gf_serialize(out, x, 1);
 
-  sign = bcrypto_gf_is_odd(r);
+  int sign = bcrypto_gf_is_odd(r);
 
   OPENSSL_cleanse(r, sizeof(r));
   OPENSSL_cleanse(v, sizeof(v));
@@ -926,7 +926,7 @@ bcrypto_curve448_point_from_uniform(
   OPENSSL_cleanse(x, sizeof(x));
   OPENSSL_cleanse(t, sizeof(t));
 
-  return sign + (zero * -(sign + 1));
+  return sign;
 }
 
 bcrypto_c448_error_t

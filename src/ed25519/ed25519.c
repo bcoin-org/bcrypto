@@ -782,7 +782,6 @@ bcrypto_ed25519_point_from_uniform(
 ) {
   bignum25519 ALIGN(16) one, u, r, a, i2;
   bignum25519 ALIGN(16) v, v2, v3, e, l, x;
-  int zero, sign;
 
   /*
    * f(a) = a^((q - 1) / 2)
@@ -793,6 +792,7 @@ bcrypto_ed25519_point_from_uniform(
    */
 
   curve25519_set_word(one, 1);
+  curve25519_set_word(e, 1);
   curve25519_set_word(u, 2);
   curve25519_set_word(a, 486662);
   curve25519_set_word(i2, 2);
@@ -804,8 +804,8 @@ bcrypto_ed25519_point_from_uniform(
   curve25519_square(v, r);
   curve25519_mul(v, v, u);
   curve25519_add(v, v, one);
+  curve25519_swap_conditional(v, e, curve25519_is_zero(v));
   curve25519_recip(v, v);
-  zero = curve25519_is_zero(v);
   curve25519_neg(a, a);
   curve25519_mul(v, a, v);
   curve25519_neg(a, a);
@@ -830,9 +830,7 @@ bcrypto_ed25519_point_from_uniform(
 
   curve25519_contract(out, x);
 
-  sign = curve25519_is_odd(r);
-
-  return sign + (zero * -(sign + 1));
+  return curve25519_is_odd(r);
 }
 
 int

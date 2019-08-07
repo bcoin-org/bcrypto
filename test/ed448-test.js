@@ -722,6 +722,24 @@ describe('Ed448', function() {
     assert.bufferEqual(p2, p3);
   });
 
+  it('should test elligator2 exceptional case (r=1)', () => {
+    const u1 = Buffer.alloc(56, 0x00);
+
+    u1[0] = 1;
+
+    const p1 = ed448.pointFromUniform(u1);
+
+    assert.bufferEqual(p1, Buffer.alloc(56, 0x00));
+
+    const u2 = ed448.pointToUniform(p1, false);
+    const p2 = ed448.pointFromUniform(u2);
+    const u3 = ed448.pointToUniform(p2, false);
+    const p3 = ed448.pointFromUniform(u3);
+
+    assert.bufferEqual(p1, p2);
+    assert.bufferEqual(p2, p3);
+  });
+
   describe('RFC 8032 vectors', () => {
     const batch = [];
 

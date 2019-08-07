@@ -1719,6 +1719,36 @@ describe('Elliptic', function() {
       assert(montG.eq(x448.g));
     });
 
+    it('should test elligator (exceptional case, r=1)', () => {
+      const x448 = new curves.X448();
+      const [p, sign] = x448.elligator(x448.one);
+      const r = x448.invert(p, sign);
+      const [q] = x448.elligator(r);
+
+      assert(p.validate());
+      assert(p.eq(q));
+    });
+
+    it('should test elligator (exceptional case, denominator=0)', () => {
+      const curve = new curves.X25519();
+      const lhs = curve.a.redNeg();
+      const rhs = curve.one;
+      const v = lhs.redMul(rhs.redFermat());
+      const v2 = v.redSqr();
+      const v3 = v2.redMul(v);
+      const f = v3.redAdd(curve.a.redMul(v2)).redIAdd(curve.b.redMul(v));
+      const e = f.redPow(curve.p.subn(1).iushrn(1));
+      const l = curve.one.redSub(e).redMul(curve.a).redMul(curve.i2);
+      const x = e.redMul(v).redISub(l);
+
+      const [p, sign] = [curve.point(x), 0];
+      const r = curve.invert(p, sign);
+      const [q] = curve.elligator(r);
+
+      assert(p.validate());
+      assert(p.eq(q));
+    });
+
     it('should test elligator (mont)', () => {
       const x25519 = new curves.X25519();
       const x448 = new curves.X448();
