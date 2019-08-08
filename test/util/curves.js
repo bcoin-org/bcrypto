@@ -121,6 +121,7 @@ class ISOED448 extends EdwardsCurve {
          '1128751a c9296924 0c25a07d 728bdc93',
          'e21f7787 ed697224 9de732f3 8496cd11',
          '69871309 3e9c04fc'].join(''),
+        // Note: the RFC has this wrong.
         ['7fffffff ffffffff ffffffff ffffffff',
          'ffffffff ffffffff ffffffff 80000000',
          '00000000 00000000 00000000 00000000',

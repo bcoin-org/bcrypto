@@ -1689,7 +1689,7 @@ describe('Elliptic', function() {
       assert(x448.g.validate());
     });
 
-    it('should test birational equivalence', () => {
+    it('should test birational equivalence (curve25519)', () => {
       const ed25519 = new curves.ED25519();
       const x25519 = new curves.X25519();
       const edwardsG = ed25519.pointFromMont(x25519.g.randomize(rng), false);
@@ -1699,7 +1699,7 @@ describe('Elliptic', function() {
       assert(montG.eq(x25519.g));
     });
 
-    it('should test 4-isogeny equivalence', () => {
+    it('should test 4-isogeny equivalence (curve448)', () => {
       const ed448 = new curves.ED448();
       const x448 = new curves.X448();
       const edwardsG = ed448.pointFromMont(x448.g.randomize(rng), false);
@@ -1709,14 +1709,44 @@ describe('Elliptic', function() {
       assert(montG.eq(x448.g));
     });
 
-    it.skip('should test birational equivalence (iso-ed448)', () => {
+    it('should test birational equivalence (iso-ed448)', () => {
       const ed448 = new extra.ISOED448();
       const x448 = new curves.X448();
       const edwardsG = ed448.pointFromMont(x448.g.randomize(rng), false);
       const montG = x448.pointFromEdwards(ed448.g.randomize(rng));
 
+      assert(!ed448.g.hasTorsion());
       assert(edwardsG.eq(ed448.g));
       assert(montG.eq(x448.g));
+
+      const k = ed448.randomScalar(rng);
+      const p = ed448.g.mul(k);
+      const q = x448.g.mul(k);
+      const r1 = ed448.pointFromMont(q, p.getX().isOdd());
+      const r2 = x448.pointFromEdwards(p);
+
+      assert(r1.eq(p));
+      assert(r2.eq(q));
+    });
+
+    it('should hot potato a point across 3 curves', () => {
+      const iso448 = new extra.ISOED448();
+      const x448 = new curves.X448();
+      const ed448 = new curves.ED448();
+
+      // Start at iso-ed448.
+      const g0 = iso448.g.randomize(rng);
+
+      // Pass to curve448.
+      const g1 = x448.pointFromEdwards(g0);
+
+      // Pass to ed448.
+      const g2 = ed448.pointFromMont(g1, false);
+
+      // Should be the base point.
+      assert(g0.eq(iso448.g));
+      assert(g1.eq(x448.g));
+      assert(g2.eq(ed448.g));
     });
 
     it('should test elligator (exceptional case, r=1)', () => {
