@@ -26,7 +26,7 @@ class SECP192K1 extends ShortCurve {
       context: false,
       iso4: false,
       prime: null,
-      // 2^192 − 2^32 − 2^12 − 2^8 − 2^7 − 2^6 − 2^3 − 1
+      // 2^192 − 2^32 − 4553
       p: 'ffffffff ffffffff ffffffff ffffffff'
        + 'fffffffe ffffee37',
       a: '0',
@@ -62,7 +62,7 @@ class SECP224K1 extends ShortCurve {
       context: false,
       iso4: false,
       prime: null,
-      // 2^224 − 2^32 − 2^12 − 2^11 − 2^9 − 2^7 − 2^4 − 2 − 1
+      // 2^224 − 2^32 − 6803
       p: 'ffffffff ffffffff ffffffff ffffffff'
        + 'ffffffff fffffffe ffffe56d',
       a: '0',
