@@ -152,7 +152,7 @@ describe('Elliptic', function() {
           const ap = curve.g.mul(ak);
 
           assert.equal(ap.getX().toString(16), vector.a.x);
-          assert.equal(ap.getY().toString(16), vector.a.y);
+          assert.equal(ap.getY(false).toString(16), vector.a.y);
           assert(curve.g.mulSimple(ak).eq(ap));
           assert(curve.g.mulConst(ak).eq(ap));
           assert(curve.g.mulConst(ak, rng).eq(ap));
@@ -161,7 +161,7 @@ describe('Elliptic', function() {
           const bp = curve.g.mul(bk);
 
           assert.equal(bp.getX().toString(16), vector.b.x);
-          assert.equal(bp.getY().toString(16), vector.b.y);
+          assert.equal(bp.getY(false).toString(16), vector.b.y);
           assert(curve.g.mulSimple(bk).eq(bp));
           assert(curve.g.mulConst(bk).eq(bp));
           assert(curve.g.mulConst(bk, rng).eq(bp));
@@ -171,7 +171,7 @@ describe('Elliptic', function() {
 
           assert(p1.eq(p2));
           assert.equal(p1.getX().toString(16), vector.s.x);
-          assert.equal(p1.getY().toString(16), vector.s.y);
+          assert.equal(p1.getY(false).toString(16), vector.s.y);
           assert(bp.mulSimple(ak).eq(p1));
           assert(ap.mulSimple(bk).eq(p1));
           assert(ap.mulConst(bk).eq(p1));
@@ -182,7 +182,7 @@ describe('Elliptic', function() {
 
           assert(p3.eq(p4));
           assert.equal(p3.getX().toString(16), vector.s.x);
-          assert.equal(p3.getY().toString(16), vector.s.y);
+          assert.equal(p3.getY(false).toString(16), vector.s.y);
           assert(bp.mulSimple(ak).eq(p3));
           assert(ap.mulSimple(bk).eq(p3));
           assert(bp.mulConst(ak).eq(p3));
@@ -1865,7 +1865,7 @@ describe('Elliptic', function() {
       const l = curve.one.redSub(e).redMul(curve.a).redMul(curve.i2);
       const x = e.redMul(v).redISub(l);
 
-      const [p, sign] = [curve.point(x), 0];
+      const [p, sign] = [curve.point(x), false];
       const r = curve.invert(p, sign);
       const [q] = curve.elligator(r);
 
@@ -2547,7 +2547,7 @@ describe('Elliptic', function() {
       const p2 = x25519.g.mulSimple(k.addn(1));
 
       // Returns an affinized X and Y.
-      const [x, y] = x25519.g.randomize(rng).recover(p1, p2, 1);
+      const [x, y] = x25519.g.randomize(rng).recover(p1, p2, true);
 
       assert(x.eq(u));
       assert(y.eq(v));
