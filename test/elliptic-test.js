@@ -14,6 +14,97 @@ const {
   curves
 } = elliptic;
 
+function checkCurve(curve) {
+  // Verify basepoint order.
+  assert(!curve.g.isInfinity(), 'Must have base point.');
+  assert(!curve.n.isZero(), 'Must have order.');
+
+  // G * (N + 1) = G
+  const g = curve.g.toJ();
+  const a = g.toP();
+  const k = curve.n.addn(1);
+  const b = k.bitLength();
+
+  let p = g;
+  let q = curve.jpoint();
+
+  assert(p.validate());
+  assert(q.validate());
+
+  // Test right-to-left multiplication.
+  for (let i = 0; i < b; i++) {
+    if (k.utestn(i)) {
+      q = q.add(p);
+      assert(q.validate());
+    }
+
+    p = p.dbl();
+    assert(p.validate());
+  }
+
+  assert(!q.isInfinity());
+  assert(q.eq(g));
+  assert(q.encode().equals(g.encode()));
+
+  // Test multiplication (simple).
+  assert(curve._simpleMul(g, k).eq(g));
+
+  // Test Shamir's trick (simple).
+  assert(curve._simpleMulAdd([g, g], [k, k]).eq(g.dbl()));
+
+  // Test unified ladder.
+  assert(curve._ladderMul(g, k).eq(g));
+
+  // Test Co-Z ladder.
+  if (curve.type === 'short')
+    assert(curve._coZLadderMul(g, k.muln(2)).eq(g.dbl()));
+
+  // Test fixed NAF multiplication.
+  if (curve.g.pre && b === curve.scalarBits)
+    assert(curve._fixedNafMul(curve.g, k).eq(g));
+
+  // Test wNAF multiplication.
+  assert(curve._wnafMul(4, g, k).eq(g));
+
+  // Test wNAF multiplication (precomp).
+  assert(curve._wnafMul(4, curve.g, k).eq(g));
+
+  // Test Shamir's trick.
+  assert(curve._wnafMulAdd(4, [g, g], [k, k]).eq(g.dbl()));
+
+  // Test Shamir's trick (precomp).
+  assert(curve._wnafMulAdd(4, [curve.g, a], [k, k]).eq(g.dbl()));
+
+  // Test Shamir's trick (precomp + JSF).
+  assert(curve._wnafMulAdd(4, [curve.g, a, a], [k, k, k]).eq(g.trpl()));
+}
+
+function checkMont(curve) {
+  // Verify basepoint order.
+  assert(!curve.g.isInfinity(), 'Must have base point.');
+  assert(!curve.n.isZero(), 'Must have order.');
+
+  // G * (N + 1) = G
+  const k = curve.n.addn(1);
+  const g = curve.g;
+
+  // Test simple multiplication.
+  assert(g.mulSimple(k).eq(g));
+
+  // Test multiplication.
+  assert(g.mul(k).eq(g));
+
+  // Test montgomery ladder.
+  assert(g.mulConst(k).eq(g));
+}
+
+function sanityCheck(curve) {
+  if (curve.type === 'mont')
+    return checkMont(curve);
+
+  return checkCurve(curve);
+}
+
 describe('Elliptic', function() {
   describe('Vectors', () => {
     const test = (curve, vector) => {
@@ -54,7 +145,7 @@ describe('Elliptic', function() {
         }
 
         // Slow sanity test.
-        curve.sanity();
+        sanityCheck(curve);
 
         for (let i = 0; i < 2; i++) {
           const ak = new BN(vector.a.k, 16);
