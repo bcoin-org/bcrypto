@@ -3042,6 +3042,8 @@ describe('Elliptic', function() {
       assert(e521.g.mul(new BN(1)).eq(e521.g));
       assert(e521.g.mul(new BN(2)).eq(e521.g.dbl()));
       assert(e521.g.mul(new BN(3)).eq(e521.g.trpl()));
+
+      sanityCheck(e521);
     });
 
     it('should clamp properly', () => {
