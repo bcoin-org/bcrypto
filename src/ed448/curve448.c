@@ -759,14 +759,13 @@ bcrypto_curve448_convert_public_key_to_eddsa(
    */
 
   {
-    bcrypto_gf u2, u3, u4, u5, v2;
+    bcrypto_gf u2, u3, u5, v2;
     bcrypto_gf a, b, c, d;
     bcrypto_gf y, z;
 
     bcrypto_gf_sqr(u2, u);
     bcrypto_gf_mul(u3, u2, u);
-    bcrypto_gf_mul(u4, u3, u);
-    bcrypto_gf_mul(u5, u4, u);
+    bcrypto_gf_mul(u5, u3, u2);
     bcrypto_gf_sqr(v2, v);
 
     bcrypto_gf_mulw(a, u3, 2);
@@ -803,7 +802,6 @@ bcrypto_curve448_convert_public_key_to_eddsa(
     OPENSSL_cleanse(v, sizeof(v));
     OPENSSL_cleanse(u2, sizeof(u2));
     OPENSSL_cleanse(u3, sizeof(u3));
-    OPENSSL_cleanse(u4, sizeof(u4));
     OPENSSL_cleanse(u5, sizeof(u5));
     OPENSSL_cleanse(v2, sizeof(v2));
     OPENSSL_cleanse(a, sizeof(a));
