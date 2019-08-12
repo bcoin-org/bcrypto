@@ -53,6 +53,9 @@ describe('Elliptic', function() {
           assert(j.uadd(j).uadd(j).eq(tj));
         }
 
+        // Slow sanity test.
+        curve.sanity();
+
         for (let i = 0; i < 2; i++) {
           const ak = new BN(vector.a.k, 16);
           const ap = curve.g.mul(ak);
