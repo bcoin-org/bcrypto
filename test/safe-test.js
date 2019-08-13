@@ -89,6 +89,18 @@ describe('Safe', function() {
     assert.strictEqual(safe.safeGTE(3, 2), 1);
   });
 
+  it('should take min', () => {
+    assert.strictEqual(safe.safeMin(1, 2), 1);
+    assert.strictEqual(safe.safeMin(2, 1), 1);
+    assert.strictEqual(safe.safeMin(2, 2), 2);
+  });
+
+  it('should take max', () => {
+    assert.strictEqual(safe.safeMax(1, 2), 2);
+    assert.strictEqual(safe.safeMax(2, 1), 2);
+    assert.strictEqual(safe.safeMax(2, 2), 2);
+  });
+
   it('should copy', () => {
     const zero = Buffer.alloc(6, 0x00);
     const out = Buffer.alloc(6, 0x00);
