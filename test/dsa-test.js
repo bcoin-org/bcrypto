@@ -136,8 +136,10 @@ describe('DSA', function() {
 
     const aliceSecret = dsa.derive(bobPub, alice);
     const bobSecret = dsa.derive(alicePub, bob);
+    const x = dsa.exchange(alicePub.y, bob);
 
     assert.bufferEqual(aliceSecret, bobSecret);
+    assert.bufferEqual(x, bobSecret);
   });
 
   it('should parse SPKI', () => {
