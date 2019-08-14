@@ -1966,6 +1966,69 @@ describe('Elliptic', function() {
       assert(p.eq(q));
     });
 
+    it('should test simple shallue-woestijne-ulas algorithm', () => {
+      const curve = new curves.P256();
+      const u = curve.randomField(rng);
+      const p = curve.elligator(u);
+
+      assert(p.validate());
+    });
+
+    it('should test icart\'s method', () => {
+      const curve = new curves.P384();
+      const u = curve.randomField(rng);
+      const p = curve.elligator(u);
+
+      assert(p.validate());
+    });
+
+    it('should test shallue-van de woestijne encoding', () => {
+      const curve = new curves.SECP256K1();
+      const u = curve.randomField(rng);
+      const p = curve.elligator(u);
+
+      const mod = (x, y) => {
+        let r = x % y;
+
+        if (r < 0)
+          r += y;
+
+        return r;
+      };
+
+      const svdw = (t) => {
+        // f(a) = a^((q - 1) / 2)
+        // w = sqrt(-3) * t / (1 + b + t^2)
+        // x1 = (-1 + sqrt(-3)) / 2 - t * w
+        // x2 = -1 - x1
+        // x3 = 1 + 1 / w^2
+        // alpha = f(r1^2 * (x1^3 + b))
+        // beta = f(r2^2 * (x2^3 + b))
+        // i = [(alpha - 1) * beta mod 3] + 1
+        // P = (xi, f(r3^2 * t) * sqrt(xi^3 + b))
+        const e = curve.p.subn(2);
+        const u = curve.three.redNeg().redSqrt();
+        const v = curve.one.redAdd(curve.b).redIAdd(t.redSqr());
+        const w = u.redMul(t).redMul(v.redPow(e));
+        const tw = t.redMul(w);
+        const x1 = curve.one.redNeg().redIAdd(u).redMul(curve.i2).redISub(tw);
+        const x2 = curve.one.redNeg().redISub(x1);
+        const x3 = curve.one.redAdd(w.redSqr().redPow(e));
+        const alpha = curve.solveY2(x1).redLegendre();
+        const beta = curve.solveY2(x2).redLegendre();
+        const i = mod((alpha - 1) * beta, 3);
+        const x = [x1, x2, x3][i];
+
+        return curve.pointFromX(x, t.redIsOdd());
+      };
+
+      assert(p.validate());
+
+      const q = svdw(u);
+
+      assert(p.eq(q));
+    });
+
     it('should test unified addition', () => {
       const curve = new curves.SECP256K1();
 

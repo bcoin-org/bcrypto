@@ -34,6 +34,8 @@ class SECP192K1 extends ShortCurve {
       n: 'ffffffff ffffffff fffffffe 26f2fc17'
        + '0f69466a 74defd8d',
       h: '1',
+      // SVDW
+      z: '1',
       g: [
         ['db4ff10e c057e9ae 26b07d02 80b7f434',
          '1da5d1b1 eae06c7d'].join(''),
@@ -71,6 +73,8 @@ class SECP224K1 extends ShortCurve {
        + '00000000 00000000 00000000 0001dce8'
        + 'd2ec6184 caf0a971 769fb1f7',
       h: '1',
+      // SVDW
+      z: '1',
       g: [
         ['a1455b33 4df099df 30fc28a1 69a467e9',
          'e47075a9 0f7e650e b6b7a45c'].join(''),
@@ -116,6 +120,8 @@ class ISOED448 extends EdwardsCurve {
        + 'c44edb49 aed63690 216cc272 8dc58f55'
        + '2378c292 ab5844f3',
       h: '4',
+      // Elligator 2
+      z: '-1',
       g: [
         ['79a70b2b 70400553 ae7c9df4 16c792c6',
          '1128751a c9296924 0c25a07d 728bdc93',
@@ -159,6 +165,8 @@ class ED1174 extends EdwardsCurve {
       n: '01ffffff ffffffff ffffffff ffffffff'
        + 'f77965c4 dfd30734 8944d45f d166c971',
       h: '4',
+      // Elligator 2
+      z: '-1',
       g: [
         ['037fbb0c ea308c47 9343aee 7c029a190',
          'c021d96a 492ecd65 16123f2 7bce29eda'].join(''),
@@ -204,6 +212,8 @@ class ED41417 extends EdwardsCurve {
        + '706022b3 6f1c0338 ad63cf18 1b0e71a5'
        + 'e106af79',
       h: '8',
+      // Elligator 2
+      z: '-1',
       g: [
         ['1a334905 14144330 0218c063 1c326e5f',
          'cd46369f 44c03ec7 f57ff354 98a4ab4d',
@@ -245,7 +255,8 @@ class M221 extends MontCurve {
       n: '04000000 00000000 00000000 000015a0'
        + '8ed730e8 a2f77f00 5042605b',
       h: '8',
-      u: '2',
+      // Elligator 2
+      z: '2',
       g: [
         ['00000000 00000000 00000000 00000000',
          '00000000 00000000 00000004'].join(''),
@@ -283,6 +294,8 @@ class E222 extends EdwardsCurve {
       n: '0fffffff ffffffff ffffffff fffff70c'
        + 'bc95e932 f802f314 23598cbf',
       h: '4',
+      // Elligator 2
+      z: '-1', // Could also be 2.
       g: [
         ['19b12bb1 56a389e5 5c9768c3 03316d07',
          'c23adab3 736eb2bc 3eb54e51'].join(''),
@@ -323,7 +336,8 @@ class M383 extends MontCurve {
        + '00000000 00000000 06c79673 ac36ba6e'
        + '7a32576f 7b1b249e 46bbc225 be9071d7',
       h: '8',
-      u: '2',
+      // Elligator 2
+      z: '2',
       g: [
         ['00000000 00000000 00000000 00000000',
          '00000000 00000000 00000000 00000000',
@@ -368,6 +382,8 @@ class E382 extends EdwardsCurve {
        + 'ffffffff ffffffff d5fb21f2 1e95eee1'
        + '7c5e6928 1b102d27 73e27e13 fd3c9719',
       h: '4',
+      // Elligator 2
+      z: '-1',
       g: [
         ['196f8dd0 eab20391 e5f05be9 6e8d20ae',
          '68f84003 2b0b6435 2923bab8 53648411',
@@ -412,7 +428,8 @@ class M511 extends MontCurve {
        + '17b5feff 30c7f567 7ab2aeeb d13779a2'
        + 'ac125042 a6aa10bf a54c15ba b76baf1b',
       h: '8',
-      u: '2',
+      // Elligator 2
+      z: '2',
       g: [
         ['00000000 00000000 00000000 00000000',
          '00000000 00000000 00000000 00000000',
@@ -465,6 +482,8 @@ class E521 extends EdwardsCurve {
        + '7ec53f04 fbd8c456 9a8f1f45 40ea2435'
        + 'f5180d6b',
       h: '4',
+      // Elligator 2
+      z: '-1',
       g: [
         ['00000075 2cb45c48 648b189d f90cb229',
          '6b2878a3 bfd9f42f c6c818ec 8bf3c9c0',
