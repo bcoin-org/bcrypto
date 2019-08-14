@@ -52,6 +52,9 @@ private:
 
   static NAN_METHOD(Derive);
 
+  static NAN_METHOD(PublicKeyFromUniform);
+  static NAN_METHOD(PublicKeyFromHash);
+
   static NAN_METHOD(SchnorrSign);
   static NAN_METHOD(SchnorrVerify);
   static NAN_METHOD(SchnorrVerifyBatch);

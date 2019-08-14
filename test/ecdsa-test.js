@@ -1037,9 +1037,6 @@ describe('ECDSA', function() {
 
   describe('Maps', () => {
     it('should create point from uniform bytes', () => {
-      if (secp256k1.native !== 0)
-        this.skip();
-
       const u = Buffer.from(
         '60fed4ba255a9d31c961eb74c6356d68c049b8923b61fa6ce669622e60f29fb6',
         'hex');
@@ -1053,9 +1050,6 @@ describe('ECDSA', function() {
     });
 
     it('should do random oracle encoding', () => {
-      if (secp256k1.native !== 0)
-        this.skip();
-
       const bytes = SHA512.digest(Buffer.from('turn me into a point'));
       const pub = secp256k1.publicKeyFromHash(bytes);
 

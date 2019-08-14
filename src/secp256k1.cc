@@ -70,6 +70,7 @@
 #include "secp256k1/src/ecmult_const_impl.h"
 #include "secp256k1/src/ecmult_gen_impl.h"
 #include "random/random.h"
+#include "secp256k1-extra/extra.h"
 
 #define COMPRESSED_TYPE_INVALID "compressed should be a boolean"
 
@@ -259,6 +260,10 @@ BSecp256k1::Init(v8::Local<v8::Object> &target) {
 
   // ecdh
   Nan::SetPrototypeMethod(tpl, "derive", BSecp256k1::Derive);
+
+  // maps
+  Nan::SetPrototypeMethod(tpl, "publicKeyFromUniform", BSecp256k1::PublicKeyFromUniform);
+  Nan::SetPrototypeMethod(tpl, "publicKeyFromHash", BSecp256k1::PublicKeyFromHash);
 
   // schnorr
   Nan::SetPrototypeMethod(tpl, "schnorrSign", BSecp256k1::SchnorrSign);
@@ -1432,6 +1437,60 @@ NAN_METHOD(BSecp256k1::Derive) {
 
   secp256k1_ge_set_gej(&pt, &res);
   secp256k1_pubkey_save(&public_key, &pt);
+
+  secp256k1_ec_pubkey_serialize(secp->ctx, &output[0], &output_length,
+                                &public_key, flags);
+
+  info.GetReturnValue().Set(COPY_BUFFER(&output[0], output_length));
+}
+
+NAN_METHOD(BSecp256k1::PublicKeyFromUniform) {
+  BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
+
+  v8::Local<v8::Object> data_buffer = info[0].As<v8::Object>();
+  CHECK_TYPE_BUFFER(data_buffer, EC_PRIVATE_KEY_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH(data_buffer, 32, EC_PRIVATE_KEY_LENGTH_INVALID);
+
+  const unsigned char *data =
+    (const unsigned char *)node::Buffer::Data(data_buffer);
+
+  unsigned int flags = SECP256K1_EC_COMPRESSED;
+  UPDATE_COMPRESSED_VALUE(flags, info[1], SECP256K1_EC_COMPRESSED,
+                                          SECP256K1_EC_UNCOMPRESSED);
+
+  secp256k1_pubkey public_key;
+  secp256k1_pubkey_from_uniform(&public_key, data);
+
+  unsigned char output[65];
+  size_t output_length = 65;
+
+  secp256k1_ec_pubkey_serialize(secp->ctx, &output[0], &output_length,
+                                &public_key, flags);
+
+  info.GetReturnValue().Set(COPY_BUFFER(&output[0], output_length));
+}
+
+NAN_METHOD(BSecp256k1::PublicKeyFromHash) {
+  BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
+
+  v8::Local<v8::Object> data_buffer = info[0].As<v8::Object>();
+  CHECK_TYPE_BUFFER(data_buffer, EC_PRIVATE_KEY_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH(data_buffer, 64, EC_PRIVATE_KEY_LENGTH_INVALID);
+
+  const unsigned char *data =
+    (const unsigned char *)node::Buffer::Data(data_buffer);
+
+  unsigned int flags = SECP256K1_EC_COMPRESSED;
+  UPDATE_COMPRESSED_VALUE(flags, info[1], SECP256K1_EC_COMPRESSED,
+                                          SECP256K1_EC_UNCOMPRESSED);
+
+  secp256k1_pubkey public_key;
+
+  if (!secp256k1_pubkey_from_hash(&public_key, data))
+    return Nan::ThrowError(EC_PUBLIC_KEY_COMBINE_FAIL);
+
+  unsigned char output[65];
+  size_t output_length = 65;
 
   secp256k1_ec_pubkey_serialize(secp->ctx, &output[0], &output_length,
                                 &public_key, flags);
