@@ -257,7 +257,7 @@ describe('Ristretto', function() {
     for (let i = 0; i < 7; i++) {
       const label = Buffer.from(labels[i], 'binary');
       const point = Buffer.from(points[i], 'hex');
-      const out = ristretto.fromBytes(SHA512.digest(label));
+      const out = ristretto.pointFromHash(SHA512.digest(label));
 
       assert.bufferEqual(ristretto.encode(out), point);
     }
@@ -311,7 +311,7 @@ describe('Ristretto', function() {
       const raw = Buffer.from(bytes[i], 'hex');
       const image = Buffer.from(images[i], 'hex');
       const r0 = ristretto.decodeField(raw).setn(255, 0).toRed(red);
-      const out = ristretto.elligator(r0);
+      const out = ristretto.pointFromUniform(r0);
 
       assert.bufferEqual(ristretto.encode(out), image);
     }
@@ -369,7 +369,7 @@ describe('Ristretto', function() {
       const raw = Buffer.from(bytes[i] + bytes[i + 1], 'hex');
       const image = Buffer.from(images[i / 2], 'hex');
       const image2 = Buffer.from(images2[i / 2], 'hex');
-      const out = ristretto.fromBytes(raw);
+      const out = ristretto.pointFromHash(raw);
 
       assert.bufferEqual(ristretto.encode(out), image);
       assert.bufferEqual(out.encode(), image2);
@@ -456,7 +456,7 @@ describe('Ristretto', function() {
       const raw = Buffer.from(bytes[i] + bytes[i + 1], 'hex');
       const image = Buffer.from(images[i] + images[i + 1], 'hex');
       const r0 = ristretto.decodeField(raw).toRed(red);
-      const out = ristretto.elligator(r0);
+      const out = ristretto.pointFromUniform(r0);
 
       assert.bufferEqual(ristretto.encode(out), image);
     }

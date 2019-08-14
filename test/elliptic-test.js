@@ -1845,9 +1845,9 @@ describe('Elliptic', function() {
 
     it('should test elligator (exceptional case, r=1)', () => {
       const x448 = new curves.X448();
-      const [p, sign] = x448.elligator(x448.one);
-      const r = x448.invert(p, sign);
-      const [q] = x448.elligator(r);
+      const [p, sign] = x448.pointFromUniform(x448.one);
+      const r = x448.pointToUniform(p, sign);
+      const [q] = x448.pointFromUniform(r);
 
       assert(p.validate());
       assert(p.eq(q));
@@ -1866,8 +1866,8 @@ describe('Elliptic', function() {
       const x = e.redMul(v).redISub(l);
 
       const [p, sign] = [curve.point(x), false];
-      const r = curve.invert(p, sign);
-      const [q] = curve.elligator(r);
+      const r = curve.pointToUniform(p, sign);
+      const [q] = curve.pointFromUniform(r);
 
       assert(p.validate());
       assert(p.eq(q));
@@ -1879,11 +1879,11 @@ describe('Elliptic', function() {
 
       for (const curve of [x25519, x448]) {
         const u1 = curve.randomField(rng);
-        const [p1, sign1] = curve.elligator(u1);
-        const u2 = curve.invert(p1, sign1);
-        const [p2, sign2] = curve.elligator(u2);
-        const u3 = curve.invert(p2, sign2);
-        const [p3] = curve.elligator(u3);
+        const [p1, sign1] = curve.pointFromUniform(u1);
+        const u2 = curve.pointToUniform(p1, sign1);
+        const [p2, sign2] = curve.pointFromUniform(u2);
+        const u3 = curve.pointToUniform(p2, sign2);
+        const [p3] = curve.pointFromUniform(u3);
 
         assert(p1.validate());
         assert(p1.eq(p2));
@@ -1899,11 +1899,11 @@ describe('Elliptic', function() {
 
       for (const [x, curve] of [[x25519, ed25519], [x448, ed448]]) {
         const u1 = curve.randomField(rng);
-        const p1 = curve.elligator(x, u1);
-        const u2 = curve.invert(x, p1);
-        const p2 = curve.elligator(x, u2);
-        const u3 = curve.invert(x, p2);
-        const p3 = curve.elligator(x, u3);
+        const p1 = curve.pointFromUniform(x, u1);
+        const u2 = curve.pointToUniform(x, p1);
+        const p2 = curve.pointFromUniform(x, u2);
+        const u3 = curve.pointToUniform(x, p2);
+        const p3 = curve.pointFromUniform(x, u3);
 
         assert(p1.validate());
         assert(p1.eq(p2));
@@ -1921,13 +1921,13 @@ describe('Elliptic', function() {
       do {
         u1 = curve.randomField(rng);
         x1 = u1.fromRed().toRed(x.red);
-      } while (x.elligator(x1)[0].hasTorsion());
+      } while (x.pointFromUniform(x1)[0].hasTorsion());
 
-      const p1 = curve.elligator(x, u1);
-      const u2 = curve.invert(x, p1);
-      const p2 = curve.elligator(x, u2);
-      const u3 = curve.invert(x, p2);
-      const p3 = curve.elligator(x, u3);
+      const p1 = curve.pointFromUniform(x, u1);
+      const u2 = curve.pointToUniform(x, p1);
+      const p2 = curve.pointFromUniform(x, u2);
+      const u3 = curve.pointToUniform(x, p2);
+      const p3 = curve.pointFromUniform(x, u3);
 
       assert(p1.validate());
       assert(p1.eq(p2));
@@ -1948,7 +1948,7 @@ describe('Elliptic', function() {
         // Fails on about half the keys.
         let r;
         try {
-          r = curve.invert(x, p);
+          r = curve.pointToUniform(x, p);
         } catch (e) {
           continue;
         }
@@ -1961,7 +1961,7 @@ describe('Elliptic', function() {
 
       // Run elligator on the other side.
       const r = curve.decodeUniform(bytes);
-      const q = curve.elligator(x, r);
+      const q = curve.pointFromUniform(x, r);
 
       assert(p.eq(q));
     });
@@ -1969,7 +1969,7 @@ describe('Elliptic', function() {
     it('should test simple shallue-woestijne-ulas algorithm', () => {
       const curve = new curves.P256();
       const u = curve.randomField(rng);
-      const p = curve.elligator(u);
+      const p = curve.pointFromUniform(u);
 
       assert(p.validate());
     });
@@ -1977,7 +1977,7 @@ describe('Elliptic', function() {
     it('should test icart\'s method', () => {
       const curve = new curves.P384();
       const u = curve.randomField(rng);
-      const p = curve.elligator(u);
+      const p = curve.pointFromUniform(u);
 
       assert(p.validate());
     });
@@ -1985,7 +1985,7 @@ describe('Elliptic', function() {
     it('should test shallue-van de woestijne encoding', () => {
       const curve = new curves.SECP256K1();
       const u = curve.randomField(rng);
-      const p = curve.elligator(u);
+      const p = curve.pointFromUniform(u);
 
       const mod = (x, y) => {
         let r = x % y;
