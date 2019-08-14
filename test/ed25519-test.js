@@ -991,6 +991,7 @@ describe('Ed25519', function() {
     assert.bufferEqual(point,
       '88ddc62a46c484db54b6d6cb6badb173e0e7d9785385691443233983865acc4d');
 
+    assert.bufferEqual(ed25519.publicKeyVerify(pub));
     assert.bufferEqual(ed25519.publicKeyConvert(pub), point);
     assert.bufferEqual(ed25519.publicKeyDeconvert(point, sign), pub);
   });

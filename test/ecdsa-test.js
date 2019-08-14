@@ -1035,6 +1035,37 @@ describe('ECDSA', function() {
     });
   });
 
+  describe('Maps', () => {
+    it('should create point from uniform bytes', () => {
+      if (secp256k1.native !== 0)
+        this.skip();
+
+      const u = Buffer.from(
+        '60fed4ba255a9d31c961eb74c6356d68c049b8923b61fa6ce669622e60f29fb6',
+        'hex');
+
+      const pub = secp256k1.publicKeyFromUniform(u);
+
+      assert(secp256k1.publicKeyVerify(pub));
+
+      assert.bufferEqual(pub,
+        '0226243ea9a28d3790f58dc4f5d6f80d9be1171ba5ed54042735a0d8f07fb6f203');
+    });
+
+    it('should do random oracle encoding', () => {
+      if (secp256k1.native !== 0)
+        this.skip();
+
+      const bytes = SHA512.digest(Buffer.from('turn me into a point'));
+      const pub = secp256k1.publicKeyFromHash(bytes);
+
+      assert(secp256k1.publicKeyVerify(pub));
+
+      assert.bufferEqual(pub,
+        '032287235856654cff0bf82466518bb9e7eaef62632c4805b3c76f8a6675f2a1df');
+    });
+  });
+
   describe('Canonical', () => {
     it('should reject non-canonical R value', () => {
       const json = [
