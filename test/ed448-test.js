@@ -933,6 +933,25 @@ describe('Ed448', function() {
     }
   });
 
+  it('should test random oracle encoding', () => {
+    const bytes = SHAKE256.digest(Buffer.from('turn me into a point'), 112);
+    const pub = ed448.publicKeyFromHash(bytes);
+    const point = ed448.pointFromHash(bytes);
+    const sign = (pub[56] & 0x80) !== 0;
+
+    assert.bufferEqual(pub, ''
+      + 'a5f7d148e75933ec9c99348179d0f105a1bbffb84d2a03313e2724cf'
+      + '3647e1db13c2d6c41be53ffe9e8bf53c4c2e3242ef0066260ec04bf3'
+      + '80');
+
+    assert.bufferEqual(point, ''
+      + '9f3d68330e24951bdbc200ed6d25ef4e90bc678d68282af081e6204f'
+      + 'c2f36dcc5d6611b41042d708caebbe80724e48d09adb9782a9a2d9ea');
+
+    assert.bufferEqual(ed448.publicKeyConvert(pub), point);
+    assert.bufferEqual(ed448.publicKeyDeconvert(point, sign), pub);
+  });
+
   describe('RFC 8032 vectors', () => {
     const batch = [];
 

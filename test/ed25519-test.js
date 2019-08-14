@@ -979,6 +979,22 @@ describe('Ed25519', function() {
     }
   });
 
+  it('should test random oracle encoding', () => {
+    const bytes = SHA512.digest(Buffer.from('turn me into a point'));
+    const pub = ed25519.publicKeyFromHash(bytes);
+    const point = ed25519.pointFromHash(bytes);
+    const sign = (pub[31] & 0x80) !== 0;
+
+    assert.bufferEqual(pub,
+      '37e3fe7969358395d6de5062f5a2ae4d80f88331a844bcd2058a1f3e2652e0e6');
+
+    assert.bufferEqual(point,
+      '88ddc62a46c484db54b6d6cb6badb173e0e7d9785385691443233983865acc4d');
+
+    assert.bufferEqual(ed25519.publicKeyConvert(pub), point);
+    assert.bufferEqual(ed25519.publicKeyDeconvert(point, sign), pub);
+  });
+
   describe('ed25519 derivations', () => {
     for (const [i, test] of derivations.entries()) {
       it(`should compute correct a and A for secret #${i}`, () => {

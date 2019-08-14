@@ -265,6 +265,18 @@ bcrypto_ed25519_point_to_uniform(
   int sign
 );
 
+int
+bcrypto_ed25519_pubkey_from_hash(
+  bcrypto_ed25519_pubkey_t out,
+  const unsigned char bytes[64]
+);
+
+int
+bcrypto_ed25519_point_from_hash(
+  bcrypto_x25519_pubkey_t out,
+  const unsigned char bytes[64]
+);
+
 #if defined(__cplusplus)
 }
 #endif

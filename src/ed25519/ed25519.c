@@ -918,3 +918,43 @@ bcrypto_ed25519_point_to_uniform(
 
   return ret;
 }
+
+int
+bcrypto_ed25519_pubkey_from_hash(
+  bcrypto_ed25519_pubkey_t out,
+  const unsigned char bytes[64]
+) {
+  bcrypto_ed25519_pubkey_t k1, k2;
+
+  if (!bcrypto_ed25519_pubkey_from_uniform(k1, &bytes[0]))
+    return 0;
+
+  if (!bcrypto_ed25519_pubkey_from_uniform(k2, &bytes[32]))
+    return 0;
+
+  ge25519 ALIGN(16) p1, p2;
+
+  if (!ge25519_unpack_negative_vartime(&p1, k1))
+    return 0;
+
+  if (!ge25519_unpack_negative_vartime(&p2, k2))
+    return 0;
+
+  ge25519_neg(&p1, &p1);
+  ge25519_neg(&p2, &p2);
+  ge25519_add(&p1, &p1, &p2);
+  ge25519_mulh(&p1, &p1);
+
+  return ge25519_pack_safe(out, &p1);
+}
+
+int
+bcrypto_ed25519_point_from_hash(
+  bcrypto_x25519_pubkey_t out,
+  const unsigned char bytes[64]
+) {
+  if (!bcrypto_ed25519_pubkey_from_hash(out, bytes))
+    return 0;
+
+  return bcrypto_ed25519_pubkey_convert(out, out);
+}

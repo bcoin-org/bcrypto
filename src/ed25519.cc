@@ -45,6 +45,8 @@ BED25519::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "pointFromUniform", BED25519::PointFromUniform);
   Nan::Export(obj, "publicKeyToUniform", BED25519::PublicKeyToUniform);
   Nan::Export(obj, "pointToUniform", BED25519::PointToUniform);
+  Nan::Export(obj, "publicKeyFromHash", BED25519::PublicKeyFromHash);
+  Nan::Export(obj, "pointFromHash", BED25519::PointFromHash);
 
   Nan::Set(target, Nan::New("ed25519").ToLocalChecked(), obj);
 }
@@ -1292,6 +1294,54 @@ NAN_METHOD(BED25519::PointToUniform) {
   uint8_t out[32];
 
   if (!bcrypto_ed25519_point_to_uniform(out, pub, sign))
+    return Nan::ThrowError("Invalid public key.");
+
+  return info.GetReturnValue().Set(
+    Nan::CopyBuffer((char *)&out[0], 32).ToLocalChecked());
+}
+
+NAN_METHOD(BED25519::PublicKeyFromHash) {
+  if (info.Length() < 1)
+    return Nan::ThrowError("ed25519.publicKeyFromHash() requires arguments.");
+
+  v8::Local<v8::Object> dbuf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(dbuf))
+    return Nan::ThrowTypeError("First argument must be a buffer.");
+
+  const uint8_t *data = (const uint8_t *)node::Buffer::Data(dbuf);
+  size_t data_len = node::Buffer::Length(dbuf);
+
+  if (data_len != 64)
+    return Nan::ThrowRangeError("Invalid hash size.");
+
+  uint8_t out[32];
+
+  if (!bcrypto_ed25519_pubkey_from_hash(out, data))
+    return Nan::ThrowError("Invalid public key.");
+
+  return info.GetReturnValue().Set(
+    Nan::CopyBuffer((char *)&out[0], 32).ToLocalChecked());
+}
+
+NAN_METHOD(BED25519::PointFromHash) {
+  if (info.Length() < 1)
+    return Nan::ThrowError("ed25519.pointFromHash() requires arguments.");
+
+  v8::Local<v8::Object> dbuf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(dbuf))
+    return Nan::ThrowTypeError("First argument must be a buffer.");
+
+  const uint8_t *data = (const uint8_t *)node::Buffer::Data(dbuf);
+  size_t data_len = node::Buffer::Length(dbuf);
+
+  if (data_len != 64)
+    return Nan::ThrowRangeError("Invalid hash size.");
+
+  uint8_t out[32];
+
+  if (!bcrypto_ed25519_point_from_hash(out, data))
     return Nan::ThrowError("Invalid public key.");
 
   return info.GetReturnValue().Set(

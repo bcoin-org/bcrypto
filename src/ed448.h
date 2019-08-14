@@ -40,6 +40,8 @@ private:
   static NAN_METHOD(PointFromUniform);
   static NAN_METHOD(PublicKeyToUniform);
   static NAN_METHOD(PointToUniform);
+  static NAN_METHOD(PublicKeyFromHash);
+  static NAN_METHOD(PointFromHash);
 };
 
 #endif

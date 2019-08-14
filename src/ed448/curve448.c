@@ -1024,6 +1024,60 @@ bcrypto_curve448_point_to_uniform(
   return bcrypto_c448_succeed_if(mask_to_bool(ret));
 }
 
+bcrypto_c448_error_t
+bcrypto_curve448_pubkey_from_hash(
+  uint8_t out[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
+  const unsigned char bytes[112]
+) {
+  unsigned char k1[BCRYPTO_EDDSA_448_PUBLIC_BYTES];
+  unsigned char k2[BCRYPTO_EDDSA_448_PUBLIC_BYTES];
+  bcrypto_c448_error_t error;
+  bcrypto_curve448_point_t p1, p2;
+
+  error = bcrypto_curve448_pubkey_from_uniform(k1, &bytes[0]);
+
+  if (error != BCRYPTO_C448_SUCCESS)
+    return error;
+
+  error = bcrypto_curve448_pubkey_from_uniform(k2, &bytes[56]);
+
+  if (error != BCRYPTO_C448_SUCCESS)
+    return error;
+
+  error = bcrypto_curve448_point_decode_like_eddsa_and_mul_by_ratio(p1, k1);
+
+  if (error != BCRYPTO_C448_SUCCESS)
+    return error;
+
+  error = bcrypto_curve448_point_decode_like_eddsa_and_mul_by_ratio(p2, k2);
+
+  if (error != BCRYPTO_C448_SUCCESS) {
+    bcrypto_curve448_point_destroy(p1);
+    return error;
+  }
+
+  bcrypto_curve448_point_add(p1, p1, p2);
+  bcrypto_curve448_point_mul_by_ratio_and_encode_like_eddsa(out, p1);
+  bcrypto_curve448_point_destroy(p1);
+  bcrypto_curve448_point_destroy(p2);
+
+  return BCRYPTO_C448_SUCCESS;
+}
+
+bcrypto_c448_error_t
+bcrypto_curve448_point_from_hash(
+  uint8_t out[BCRYPTO_X_PUBLIC_BYTES],
+  const unsigned char bytes[112]
+) {
+  unsigned char raw[BCRYPTO_EDDSA_448_PUBLIC_BYTES];
+  bcrypto_c448_error_t error = bcrypto_curve448_pubkey_from_hash(raw, bytes);
+
+  if (error != BCRYPTO_C448_SUCCESS)
+    return error;
+
+  return bcrypto_curve448_convert_public_key_to_x448(out, raw);
+}
+
 /* Control for variable-time scalar multiply algorithms. */
 struct bcrypto_smvt_control {
   int power, addend;

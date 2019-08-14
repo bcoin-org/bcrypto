@@ -335,6 +335,18 @@ bcrypto_curve448_point_to_uniform(
   int sign
 );
 
+bcrypto_c448_error_t
+bcrypto_curve448_pubkey_from_hash(
+  uint8_t out[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
+  const unsigned char bytes[112]
+);
+
+bcrypto_c448_error_t
+bcrypto_curve448_point_from_hash(
+  uint8_t out[BCRYPTO_X_PUBLIC_BYTES],
+  const unsigned char bytes[112]
+);
+
 #if defined(__cplusplus)
 }
 #endif

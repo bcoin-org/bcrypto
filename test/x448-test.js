@@ -2,6 +2,7 @@
 
 const assert = require('bsert');
 const pem = require('../lib/encoding/pem');
+const SHAKE256 = require('../lib/shake256');
 const ed448 = require('../lib/ed448');
 const x448 = require('../lib/x448');
 
@@ -244,6 +245,15 @@ describe('X448', function() {
 
     assert.bufferEqual(p1, p2);
     assert.bufferEqual(p2, p3);
+  });
+
+  it('should test random oracle encoding', () => {
+    const bytes = SHAKE256.digest(Buffer.from('turn me into a point'), 112);
+    const pub = x448.publicKeyFromHash(bytes);
+
+    assert.bufferEqual(pub, ''
+      + '9f3d68330e24951bdbc200ed6d25ef4e90bc678d68282af081e6204f'
+      + 'c2f36dcc5d6611b41042d708caebbe80724e48d09adb9782a9a2d9ea');
   });
 
   it('should test x448 api', () => {

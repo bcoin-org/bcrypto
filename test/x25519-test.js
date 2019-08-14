@@ -3,6 +3,7 @@
 const assert = require('bsert');
 const RNG = require('./util/rng');
 const pem = require('../lib/encoding/pem');
+const SHA512 = require('../lib/sha512');
 const ed25519 = require('../lib/ed25519');
 const x25519 = require('../lib/x25519');
 
@@ -313,6 +314,14 @@ describe('X25519', function() {
 
     assert.bufferEqual(p1, p2);
     assert.bufferEqual(p2, p3);
+  });
+
+  it('should test random oracle encoding', () => {
+    const bytes = SHA512.digest(Buffer.from('turn me into a point'));
+    const pub = x25519.publicKeyFromHash(bytes);
+
+    assert.bufferEqual(pub,
+      '88ddc62a46c484db54b6d6cb6badb173e0e7d9785385691443233983865acc4d');
   });
 
   it('should test x25519 api', () => {
