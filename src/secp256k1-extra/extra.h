@@ -94,7 +94,7 @@ static void shallue_van_de_woestijne(secp256k1_ge* ge, const secp256k1_fe* t) {
      * as long as negation of t results in negation of the y coordinate. Here
      * we choose to use t's oddness, as it is faster to determine. */
     secp256k1_fe_negate(&tmp, &ge->y, 1);
-    secp256k1_fe_cmov(&ge->y, &tmp, secp256k1_fe_is_odd(t));
+    secp256k1_fe_cmov(&ge->y, &tmp, secp256k1_fe_is_odd(t) ^ secp256k1_fe_is_odd(&ge->y));
 }
 
 static void secp256k1_pubkey_store(secp256k1_pubkey* pubkey, secp256k1_ge* ge) {
