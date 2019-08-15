@@ -74,7 +74,7 @@ class SECP224K1 extends ShortCurve {
        + 'd2ec6184 caf0a971 769fb1f7',
       h: '1',
       // SVDW
-      z: '1',
+      z: '-1',
       g: [
         ['a1455b33 4df099df 30fc28a1 69a467e9',
          'e47075a9 0f7e650e b6b7a45c'].join(''),
@@ -295,7 +295,7 @@ class E222 extends EdwardsCurve {
        + 'bc95e932 f802f314 23598cbf',
       h: '4',
       // Elligator 2
-      z: '-1', // Could also be 2.
+      z: '-1',
       g: [
         ['19b12bb1 56a389e5 5c9768c3 03316d07',
          'c23adab3 736eb2bc 3eb54e51'].join(''),

@@ -463,6 +463,7 @@ describe('Elliptic', function() {
         b: '14',
         n: '24',
         h: '1',
+        z: '2', // Icart
         g: [
           '18',
           '16'
@@ -494,6 +495,7 @@ describe('Elliptic', function() {
         n: '0fffffffffffffffffffffffffffffffffffffffffffffff'
          + 'd5fb21f21e95eee17c5e69281b102d2773e27e13fd3c9719',
         h: '8',
+        z: '-1',
         g: [
           ['196f8dd0eab20391e5f05be96e8d20ae68f840032b0b6435',
            '2923bab85364841193517dbce8105398ebc0cc9470f79603'].join(''),
@@ -529,7 +531,8 @@ describe('Elliptic', function() {
         d: '07fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffb61',
         c: '1',
         n: '01fffffffffffffffffffffffffffffff77965c4dfd307348944d45fd166c971',
-        h: '4'
+        h: '4',
+        z: '-1'
       });
 
       const target = curve.point(
@@ -563,6 +566,7 @@ describe('Elliptic', function() {
         n: '1000000000000000 0000000000000000'
          + '14def9dea2f79cd6 5812631a5cf5d3ed',
         h: '8',
+        z: '2',
         g: [
           '216936d3cd6e53fec0a4e231fdd6dc5c692cc7609525a7b2c9562d608f25d51a',
           // 4/5
@@ -592,6 +596,7 @@ describe('Elliptic', function() {
         b: '659e f8ba0439 16eede89 11702b22',
         n: 'db7c 2abf62e3 5e7628df ac6561c5',
         h: '1',
+        z: '-a', // Icart
         g: [
           '0948 7239995a 5ee76b55 f9c2f098',
           'a89c e5af8724 c0a23e0e 0ff77500'
@@ -620,6 +625,7 @@ describe('Elliptic', function() {
         b: '3',
         n: 'ffffffff ffffffff fffffffe 26f2fc17 0f69466a 74defd8d',
         h: '1',
+        z: '1',
         g: [
           'db4ff10e c057e9ae 26b07d02 80b7f434 1da5d1b1 eae06c7d',
           '9b2f2f6d 9c5628a7 844163d0 15be8634 4082aa88 d95e2f9d'
@@ -661,6 +667,7 @@ describe('Elliptic', function() {
         b: '5',
         n: '01 00000000 00000000 00000000 0001dce8 d2ec6184 caf0a971 769fb1f7',
         h: '1',
+        z: '-1',
         g: [
           'a1455b33 4df099df 30fc28a1 69a467e9 e47075a9 0f7e650e b6b7a45c',
           '7e089fed 7fba3442 82cafbd6 f7e319f7 c0b0bd59 e2ca4bdb 556d61a5'
@@ -703,6 +710,7 @@ describe('Elliptic', function() {
         b: '3',
         n: '100000000000000000001cdc98ae0e2de574abf33',
         h: '1',
+        z: '1',
         g: [
           '1',
           '2'
@@ -804,6 +812,8 @@ describe('Elliptic', function() {
         b: '7',
         n: 'ffffffff ffffffff ffffffff fffffffe'
          + 'baaedce6 af48a03b bfd25e8c d0364141',
+        h: '1',
+        z: '1',
         g: [
           '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
           '483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8'
@@ -2946,36 +2956,7 @@ describe('Elliptic', function() {
       const ed25519 = new curves.ED25519();
       const ed448 = new curves.ED448();
       const e521 = new extra.E521();
-
-      // Curve1174. See:
-      // http://elligator.cr.yp.to/elligator-20130828.pdf
-      const ed1174 = new elliptic.EdwardsCurve({
-        id: 'ED1174',
-        ossl: 'ED1174',
-        type: 'edwards',
-        endian: 'le',
-        hash: 'SHA512',
-        prefix: 'SigEd1174',
-        context: false,
-        prime: null,
-        // 2^251 - 9
-        p: '07ffffff ffffffff ffffffff ffffffff'
-         + 'ffffffff ffffffff ffffffff fffffff7',
-        a: '1',
-        c: '1',
-        // -1174 mod p
-        d: '07ffffff ffffffff ffffffff ffffffff'
-         + 'ffffffff ffffffff ffffffff fffffb61',
-        n: '01ffffff ffffffff ffffffff ffffffff'
-         + 'f77965c4 dfd30734 8944d45f d166c971',
-        h: '4',
-        g: [
-          ['037fbb0c ea308c47 9343aee 7c029a190',
-           'c021d96a 492ecd65 16123f2 7bce29eda'].join(''),
-          ['06b72f82 d47fb7cc 66568411 69840e0c',
-           '4fe2dee2 af3f976b a4ccb1bf 9b46360e'].join('')
-        ]
-      });
+      const ed1174 = new extra.ED1174();
 
       for (const curve of [ed25519, ed448, e521, ed1174]) {
         for (let i = 0; i < 10; i++) {
