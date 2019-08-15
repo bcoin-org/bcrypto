@@ -1036,92 +1036,224 @@ describe('ECDSA', function() {
   });
 
   describe('Maps', () => {
-    let ECDSA;
-
-    if (secp256k1.native === 2)
-      ECDSA = require('../lib/native/ecdsa');
-
     it('should create point from uniform bytes (sswu)', () => {
-      const u = Buffer.from(
-        '60fed4ba255a9d31c961eb74c6356d68c049b8923b61fa6ce669622e60f29fb6',
-        'hex');
+      const preimages = [
+        '4f096bd02b4f50102e6a2f6e7570b7f6fe67425839e93b63b9c5fbe8af2646f9',
+        '29a0b90b85ddaf6ef1448eac0154d35fb58c7b70ade2b16440fe62cdcc2dfc05',
+        '30de2a8a3916714cbc68c8381b9111f034720072b7b3a98b094b3a739f2fba1c',
+        '4e9715efbd5d58d464797f3e9c5c395ca286e8e349556f3a9e310fea565a6615',
+        '635772ae4431f78cb6f14732845dcf4f353acac340f661a088561fcb345bfe7c',
+        'a9ad38b75fb400937928ab997ab56754ddd12295d16920ebf712d7226eabd824',
+        '34da14144f58a242b5cdfa55bf12f253dea65a22024c1366b36ceae1916b208b',
+        '2cc4450aa9e360b9cdc75905b9138c0e6c247b43d373e01f560f678b880f6618',
+        '8b2e2f6d2c4395978d6f5b08b91285de4a7a445af1743e0c893992c1f9f1dcd3',
+        '09fee2fbfe7046f2e271051ecb5a16a38c961027d8cbe1a430df727c05aa2199',
+        '52f77c1a84630541866c9c0efdb0e2a4d95d50e6f92c82109d6a7f287172a815',
+        '572b4a7561c423074a7a25e7e0d974adc4ee2fd3a0198b4ccc215a299556d9f6',
+        '3c1d2a468d12eb71defcc86d9518ccb62681d5b44a986920cb88b5845a6d082e',
+        'a22265f019e59cb7ca3b59e30f1a631b775f3796a9629b089e186686ede61ea3',
+        'de674a39d0a93baefffd71542dff6819daa63409d0b53b638c515907a04d8c82',
+        '1d21f3cec6ab1c3be4dcafc9425aa676a99e82f26b9a1af951bdf47d593e4ed2'
+      ];
 
-      const pub = p256.publicKeyFromUniform(u);
+      const keys = [
+        '03e10a7de7a518e9f700daaf6894a64e3bb4a357d014165425936ec6385700b327',
+        '03eee875a9852ebb5318e5543ac2dce56740f681d86295b922fb077bb02607078b',
+        '02880e9545057225ddd07512ae589d39f386c610d8d95b748ef30fd8b4674a3694',
+        '03bd52801b50a3d3d387667942cb72ee0f998298927e66dc900bc5bbed4597244e',
+        '020be99209809d2607df075ca04eb4f54ad33389fc53e300eb888ccc84e7d09474',
+        '0228cacc7c58555456339c43f7a44a1529ca01ef0f3de83434882427b6e7ae229b',
+        '03b46df2078391d0f6ecfd001b93caf05407922b81d58c85ee5c1176b82cc86e7e',
+        '02f9f81d8d3b4f8d9eae7526b049a6e53d722228073631595506fefcfc4373a78e',
+        '0378c6ee95a8522855504c83c2defe89124710085dd6cbfe69b7e3b5025530acfc',
+        '037d12b4cdfd05ca147b402c889713fcfb98792dbd8d971acfd81b0753079590ac',
+        '03eafbef9bfe3c1f88cd1b474cbba924067df7420381c665720cc707692ee01507',
+        '021659a3636e3bab565710394be50f128bff010f45e784b23df152bf08a2826e07',
+        '0230ee61fd7a6dcc839da07cf2b6e60b084d0e388c0cbafb81a5f0329dcaeb91eb',
+        '034f095ed21622d83af77c70414b2586a37aa0be0794e7cb6873c5b08b41207713',
+        '021cc4b3d377b618654eb190a68f743fadb63731480aeea9dd95bcdeb12e1a16dc',
+        '02e298c69ad63e9718740e1518f0cbe5840ed241a17974f0c611cb9f44b1e4f18e'
+      ];
 
-      assert(p256.publicKeyVerify(pub));
+      for (let i = 0; i < 16; i++) {
+        const preimage = Buffer.from(preimages[i], 'hex');
+        const key = Buffer.from(keys[i], 'hex');
 
-      assert.bufferEqual(pub,
-        '02292af0690c38c5d08fe4d3274a4ef9143bab0234701038e6ff64b1165092dcf2');
+        assert.strictEqual(p256.publicKeyVerify(key), true);
+        assert.bufferEqual(p256.publicKeyFromUniform(preimage), key);
+      }
     });
 
     it('should do random oracle encoding (sswu)', () => {
       const bytes = SHA512.digest(Buffer.from('turn me into a point'));
       const pub = p256.publicKeyFromHash(bytes);
 
-      assert(p256.publicKeyVerify(pub));
+      assert.strictEqual(p256.publicKeyVerify(pub), true);
 
       assert.bufferEqual(pub,
         '03e06cf5560f9159910f23247407c78c210880c92a3d103b0bf1aaa3461156d88b');
     });
 
     it('should create point from uniform bytes (icart)', () => {
-      const u = Buffer.from('dd881b46346fead3d9cd11425a3171af95dac40a8dd2dfc6'
-                          + '33973ea4c22aa6b2923684a8f0ee5afc2410dfc37de2c555', 'hex');
+      const preimages = [
+        '0a849dd060ea126f18177939d7f9aebca55546e02bc00975',
+        'a96784ba9a8c0958cbb126e4303692519da3f5b16cb97241',
+        'baad184b4b07f34e5b38fef8c8835c008d66ea8f3537844c',
+        '19307069e0157660d00f607c757dab0115914ea4970f2cf7',
+        '20b16e2692722651bc0b9476d1d53bc29d06bade5d1454f9',
+        '8b58d8dcd461cd83cee9d725707bfb3921734d4b88d7f576',
+        'd050ddd876e44d2dccabc7c5adb42b5a1b51ffb7eb4bbe38',
+        '3081a358780f80dd6f81cacdf7b9db88823417522d877b96',
+        'ea9f9e35207a1df18c1d606517ad96acaf601288e2147960',
+        '4cc118d9a6396c88a9083dbac778101b03b0db67fe337ad8',
+        'febdf25e83c998bc8e3175afea2116c5ce6b600eed2c5228',
+        'b87504c8c8ae47f2cba4ae194f190d1fe8a4ce6ce87338c1',
+        'be0ce11004e8607580db943f888470b60dd8c402017b2413',
+        '92f7aafa3539c43e1e52bfd65adfa9df64b52b2042d00ab2',
+        '409a543d5cc7050cbe655930db3ff01511bc9c04f1fab7da',
+        '7fb36dd051a9363f2a27b73678f04dabb29b5f1e7530ea36',
+        '977843995a89c72eff3f422b2af5e1137c09ece2fbca5a35',
+        '1ce3aeb4c1a2b623bc7598cc58fc4efd860f9be0e87a7e17',
+        '15dd2689ba2d8ea02c5695aada6f6f6a1ef845a41ee79073',
+        '7867d742635a37d06d3cc753eb290b46b4432d97e55948ed',
+        '3dd4942f6c227ffc97c8282ce228903efa67813bea46ccae',
+        'bd9204acf38d3e15220650c04e02e874af71f601517a7928',
+        'b40c257ca2bc50f358ab7c951b5a9fa0af1df8343d0b43ad',
+        'f1c08f6e5cc262ce2ce010b4a4c1b9246930f1d14e83b1d6',
+        '0576a6bb1d4660e18abc1ec6bb73825cca9d739a9c060b22',
+        '39813a827499a6e625b0c9ca38a12e8b92389e30e5bd9e54',
+        '4213561d5fc1889acb16484281f83c7c7f98c8acc26f1687',
+        '9d4723cf1a68c45996b591a05190feebe7c4d69b18556acb',
+        '97da0624c62cf986dd0b2e92371f9b3605d362b89ef8b9bd',
+        'da751103d9d1cb32184afa4b25f6653d7c103a63fc7e01f5',
+        '1347caf26edc748deabedee119b8fece54427c5829d68049',
+        'c14df3bea06edd316b6abd39efef848eb8ea4f2759daba4f'
+      ];
 
-      const pub = p384.publicKeyFromUniform(u);
+      const keys = [
+        '036d8ceb0949954e64f1bf4a9226e72ab97fa8a6be270b36',
+        '81d4a42133b4cb087be1e46377adf6895bd88ffc477a0a46b4',
+        '0323bd42330cc7ee988f8ac44e3e856485d2e815d6cb22d6',
+        '553acc4b157e4a53292c5162bb08d2c1e0a0dd7e4f5d507f9e',
+        '020f264782805645a2fa3602a92ebf0bc1c9b6b5684e0679',
+        'c13d6601b250cc3ea69620dd2f496cc14c84d162c89466f14d',
+        '02a057344bd54078b7163ba9975b8d64af9c8a66ef2c0c4a',
+        'a13da607f5f400d613cdd4edd7b5ea4d41a2cad78b6889898a',
+        '025b436579064bba0a0a90b9297794045a2254209febee9b',
+        'e3d615ae165075c4433a2c1c2f68f962a44a10e84daa26ff73',
+        '03f0bdc79103efcbbb0f80dd8270ef191d704f7a2c9394b9',
+        '683b8bb202bb757473b052dc44fc60b745a64d94c374f8798a',
+        '02acff064b5be030aadaee1ae8b35244fd23047fbd559595',
+        'c60de406e41264a779f23495520300d2569750fdfb49b24224',
+        '020d9270281777bdafff7051fbc5a6c552a5f4f1ff538267',
+        '6145e1a3fc89609af705e0291c027b75ffc449bf8a2a278c35',
+        '0348ae937e8e90e4236065db13a30abb11b1de951c9258ca',
+        '3b033f38eda40e7c4844cdaaa8c70db0dcb6a0a8cdc74991a2',
+        '034c3797708f012b42d3e354e4da48e124d7e09332c36bbe',
+        'f5332f5f40e5dfe8869b8c34f9a0fa1abd09b83717de455a89',
+        '02770e9241fd1efecec3eca8980097778e5941e34105d5e4',
+        'daab88523ebcf84f0f7cd7fac3cc9350cc88e01e4d10e3fa9d',
+        '02ac038e7be0673aa538ed9196d5b6b6c3b9dab044488cb1',
+        '9e7559826c460752e478eb6d244e7de0b3d0a258597c294273',
+        '0205b431661153a309feea8c2b32b4e9cea83ce730fe68cd',
+        '422c5d658bf1e89bd1441615eb20cf05bc78c6c1865d5f1838',
+        '03b092a746763be88894285a1b6cc95e466eb2b6543689b0',
+        '25ce545d2a6a95b583754a628b658fd8c672b8986630a025e4',
+        '0344a6bde53e66686167ab0f0533129b4485c0718b47b795',
+        '97a43a1cb5bfb3171bf89eabf4d6dcb16688ffaddd3424039a',
+        '036b8143149dcf82a175ccf659fb73824e9c927266b0951b',
+        '138c002af59f9f26da5431ceae4b78830ce22acd1dd9a8c10b'
+      ];
 
-      assert(p384.publicKeyVerify(pub));
+      for (let i = 0; i < 32; i += 2) {
+        const preimage = Buffer.from(preimages[i] + preimages[i + 1], 'hex');
+        const key = Buffer.from(keys[i] + keys[i + 1], 'hex');
 
-      assert.bufferEqual(pub, '03'
-        + '8bbaf8f073b3e7460b413fb1d128d863d879d1b59f3bc5af'
-        + '708a901fdc20f4f29fce4bae89bd3e9482fc39333932b9f6');
+        assert.strictEqual(p384.publicKeyVerify(key), true);
+        assert.bufferEqual(p384.publicKeyFromUniform(preimage), key);
+      }
     });
 
-    if (ECDSA) {
-      const secp256k1 = new ECDSA('SECP256K1');
+    it('should do random oracle encoding (icart)', () => {
+      const str1 = Buffer.from('turn me into a point.');
+      const str2 = Buffer.from('turn me into a point!');
+      const bytes1 = SHA512.digest(str1).slice(0, 48);
+      const bytes2 = SHA512.digest(str2).slice(0, 48);
+      const bytes = Buffer.concat([bytes1, bytes2]);
+      const pub = p384.publicKeyFromHash(bytes);
 
-      it('should create point from uniform bytes (svdw, openssl)', () => {
-        const u = Buffer.from(
-          '60fed4ba255a9d31c961eb74c6356d68c049b8923b61fa6ce669622e60f29fb6',
-          'hex');
+      assert.strictEqual(p384.publicKeyVerify(pub), true);
 
-        const pub = secp256k1.publicKeyFromUniform(u);
-
-        assert(secp256k1.publicKeyVerify(pub));
-
-        assert.bufferEqual(pub,
-          '0226243ea9a28d3790f58dc4f5d6f80d9be1171ba5ed54042735a0d8f07fb6f203');
-      });
-
-      it('should do random oracle encoding (svdw, openssl)', () => {
-        const bytes = SHA512.digest(Buffer.from('turn me into a point'));
-        const pub = secp256k1.publicKeyFromHash(bytes);
-
-        assert(secp256k1.publicKeyVerify(pub));
-
-        assert.bufferEqual(pub,
-          '032287235856654cff0bf82466518bb9e7eaef62632c4805b3c76f8a6675f2a1df');
-      });
-    }
+      assert.bufferEqual(pub, '03'
+        + '0f6166fe4a8cf0596008cb7f5964293c27182374b7ba7eae'
+        + '091ec7af56b85499268c4195d1e2f79481773fea42405d9f');
+    });
 
     it('should create point from uniform bytes (svdw)', () => {
-      const u = Buffer.from(
-        '60fed4ba255a9d31c961eb74c6356d68c049b8923b61fa6ce669622e60f29fb6',
-        'hex');
+      let curve = null;
 
-      const pub = secp256k1.publicKeyFromUniform(u);
+      if (secp256k1.native === 2) {
+        const ECDSA = require('../lib/native/ecdsa');
+        curve = new ECDSA('SECP256K1');
+      }
 
-      assert(secp256k1.publicKeyVerify(pub));
+      const preimages = [
+        '98ba02ac9490595c56f5b26535d54423cfb080e4a46405c19dcf3b54aeaab558',
+        '1c7c3badac99fed06d129f3dc15feabcd46c792976c67e1417f1a369f26e2e09',
+        'a130f72bab2dcb46ef9d94a786bb41b474048727a47c5bf9a673fbda9cdc01e8',
+        '590d074cc54ada1ef5c9afc6f8a0a17567cf23f49a43d37f9a5ffb7e8a338a2a',
+        '8a94d2b7df26b4e88b59215b2893a9919e0643ebacab4f046c6fb420c33f4163',
+        '2b356b20cde0351b369b15e29bb029266fae7c852f2e1de6e8722b4e3e57aa40',
+        'fccf102b9ad4ed1a3c03cce2c8a967594788ea16d9d97572fcf4056fe98742a6',
+        '41eb1aedb739a3f8da0dfc32cd181fb108280616bafaab7f0eac0c3f1fb2a8d9',
+        '4e956e149e4041d0e934c85379d83ddfc031445e024768305584732fd9ad59c9',
+        '3162126b8dd7f301a7853a06a68e92c314822a3afa6553dea98e41f0c290d1cf',
+        '11ce1c8ac299f7e50ee8fb156e4509deedf0b0c84f006522e6d7daf14bff2612',
+        '203e288aac39df62fc90b6e6097af8e71f48f54b4858de59f1a39162b5052d1e',
+        'a396553643d566c85be5a03ac919db3c337c0500b3bb510ead3f06db39a4a275',
+        'da6f211c5a90a7d778d0fb5dbdb701f95b59e35439e2d2ce02398d5b361c073d',
+        'c167f71ae957bd28813b1b21df6e621bda5a4ce4f18c75451a92643fc757a60d',
+        '32252987a98877d5adbba2aab3e410b8d650f56ab45f0d555f183632205fc6ec'
+      ];
 
-      assert.bufferEqual(pub,
-        '0226243ea9a28d3790f58dc4f5d6f80d9be1171ba5ed54042735a0d8f07fb6f203');
+      const keys = [
+        '0237041c8307506c6e430d65d6ce11ee2b2667e11df690c2de10c5689b888244f7',
+        '0343d85c8b8dbee240e0ad26d7f8ada59d25b6090e1efd1852ea8ea94e0bb818d7',
+        '02961a1f0f411501ab15207ce7c501ba5a466de78330722934bc2ff5f87f49c4b6',
+        '02a9f1af61c25fde6502596dce27753db079531600e3097ca8da8d9016ae321e74',
+        '030b9d913ec1bd65a4b92d0bee833e9636fb9e62e5e2668e024dde8fbb44732946',
+        '022e994b4c724413eea863198c1650fff40cda195dc8f2cb030cf49f3504d3d0da',
+        '02c061aa3bbaab5e61cd8bdc154273efc64ab9beb82a08850c41ac57f3de7d4b04',
+        '0373bb63a5a3c6672708bb52d1b216ac4540342f249fe5bfb6975fcb54eaea9fa6',
+        '03401579164f8e6c8eb33e9208355565489cb9dcb9271bde4fb0dc778b5491d73c',
+        '03b7a464f2a74cae6ae0a8654a860a359ef97d1d50b90e56f7398a9f58f4296938',
+        '02b779f1628bbc1cde9931fc267a45abbd707a97961d700a91b7af41c4b8b371ef',
+        '0208c4157fd70b1f1e4bdfc0e4f9f2da6a26b6d36f27bfcb636be0923169d3cfa5',
+        '0350c9caa36051845acae8eefc002186c4af012d27a73b952cc2d1326eeb0786e1',
+        '03a0b13d06514c0ab5f33b79fcc4f2efad3bce7cba84b52f3f3bda59de00120b33',
+        '033df848e48fdc0045151b81ce4c362b9749591caba5f15ced3d2dc0c2dbe676b6',
+        '02609602e75352034cc3b9cc148b93bc30e35fec9a65c39c100283d02975d9c209'
+      ];
+
+      for (let i = 0; i < 16; i++) {
+        const preimage = Buffer.from(preimages[i], 'hex');
+        const key = Buffer.from(keys[i], 'hex');
+
+        assert.strictEqual(secp256k1.publicKeyVerify(key), true);
+        assert.bufferEqual(secp256k1.publicKeyFromUniform(preimage), key);
+
+        if (curve) {
+          assert.strictEqual(curve.publicKeyVerify(key), true);
+          assert.bufferEqual(curve.publicKeyFromUniform(preimage), key);
+        }
+      }
     });
 
     it('should do random oracle encoding (svdw)', () => {
       const bytes = SHA512.digest(Buffer.from('turn me into a point'));
       const pub = secp256k1.publicKeyFromHash(bytes);
 
-      assert(secp256k1.publicKeyVerify(pub));
+      assert.strictEqual(secp256k1.publicKeyVerify(pub), true);
 
       assert.bufferEqual(pub,
         '032287235856654cff0bf82466518bb9e7eaef62632c4805b3c76f8a6675f2a1df');
