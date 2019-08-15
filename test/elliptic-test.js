@@ -2964,6 +2964,8 @@ describe('Elliptic', function() {
           const p = curve.g.mul(k).normalize();
           const x1 = curve.solveX2(p.y).redSqrt();
           const x2 = curve.solveX(p.y);
+          const y1 = curve.solveY2(p.x).redSqrt();
+          const y2 = curve.solveY(p.x);
 
           if (x1.redIsOdd() !== p.x.redIsOdd())
             x1.redINeg();
@@ -2971,8 +2973,16 @@ describe('Elliptic', function() {
           if (x2.redIsOdd() !== p.x.redIsOdd())
             x2.redINeg();
 
+          if (y1.redIsOdd() !== p.y.redIsOdd())
+            y1.redINeg();
+
+          if (y2.redIsOdd() !== p.y.redIsOdd())
+            y2.redINeg();
+
           assert(x1.eq(p.x));
           assert(x2.eq(p.x));
+          assert(y1.eq(p.y));
+          assert(y2.eq(p.y));
         }
       }
     });

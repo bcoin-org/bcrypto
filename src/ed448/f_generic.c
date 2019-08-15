@@ -308,20 +308,20 @@ int bcrypto_gf_is_odd(const bcrypto_gf a) {
 }
 
 /* From: https://gist.github.com/Yawning/0181098c1119f49b3eb2 */
-unsigned int bcrypto_gf_bytes_le(const unsigned char a[56],
-                                 const unsigned char b[56])
+bcrypto_mask_t bcrypto_gf_bytes_le(const unsigned char a[56],
+                                   const unsigned char b[56])
 {
-  unsigned int eq = ~0;
-  unsigned int gt = 0;
-  size_t shift = sizeof(unsigned int) * 8 - 1;
+  int eq = ~0;
+  int lt = 0;
+  size_t shift = sizeof(int) * 8 - 1;
 
   for (int i = 55; i >= 0; i--) {
-    unsigned int x = (unsigned int)a[i];
-    unsigned int y = (unsigned int)b[i];
+    int x = (int)a[i];
+    int y = (int)b[i];
 
-    gt = (~eq & gt) | (eq & ((x - y) >> shift));
+    lt = (~eq & lt) | (eq & ((x - y) >> shift));
     eq = eq & (((x ^ y) - 1) >> shift);
   }
 
-  return (~eq & 1 & gt);
+  return (bcrypto_mask_t)((~eq & lt) & 1) * -1;
 }

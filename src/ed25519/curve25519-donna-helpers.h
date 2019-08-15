@@ -109,19 +109,19 @@ curve25519_pow_two255m20d2(bignum25519 out, const bignum25519 z) {
 /* From: https://gist.github.com/Yawning/0181098c1119f49b3eb2 */
 static unsigned int
 curve25519_bytes_le(const unsigned char a[32], const unsigned char b[32]) {
-  unsigned int eq = ~0;
-  unsigned int gt = 0;
-  size_t shift = sizeof(unsigned int) * 8 - 1;
+  int eq = ~0;
+  int lt = 0;
+  size_t shift = sizeof(int) * 8 - 1;
 
   for (int i = 31; i >= 0; i--) {
-    unsigned int x = (unsigned int)a[i];
-    unsigned int y = (unsigned int)b[i];
+    int x = (int)a[i];
+    int y = (int)b[i];
 
-    gt = (~eq & gt) | (eq & ((x - y) >> shift));
+    lt = (~eq & lt) | (eq & ((x - y) >> shift));
     eq = eq & (((x ^ y) - 1) >> shift);
   }
 
-  return (~eq & 1 & gt);
+  return (~eq & lt) & 1;
 }
 
 static int

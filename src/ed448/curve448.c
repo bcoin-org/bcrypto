@@ -873,19 +873,19 @@ bcrypto_curve448_point_from_uniform(
    * y = -e * sqrt(x^3 + A * x^2 + B * x)
    */
 
-  bcrypto_gf u = {{{1}}};
+  bcrypto_gf z = {{{1}}};
   bcrypto_gf a = {{{156326}}};
   bcrypto_gf i2 = {{{2}}};
 
   bcrypto_gf_copy(e, ONE);
-  bcrypto_gf_sub(u, ZERO, u);
+  bcrypto_gf_sub(z, ZERO, z);
   bcrypto_gf_invert(i2, i2, 1);
 
   (void)bcrypto_gf_deserialize(r, bytes, 1, 0);
 
   /* v = -a / (1 + u * r^2) */
   bcrypto_gf_sqr(v, r);
-  bcrypto_gf_mul(t, v, u);
+  bcrypto_gf_mul(t, v, z);
   bcrypto_gf_add(v, t, ONE);
   bcrypto_gf_cond_swap(v, e, bcrypto_gf_eq(v, ZERO));
   bcrypto_gf_invert(t, v, 1);
@@ -964,13 +964,13 @@ bcrypto_curve448_point_to_uniform(
 
   /*
    * r = sqrt(-x / ((x + A) * u)) if y is in F(q / 2)
-   *   = sqrt(-(x + A) / (u * x)) otherwise
+   *   = sqrt(-(x + A) / (x * u)) otherwise
    */
 
-  bcrypto_gf u = {{{1}}};
+  bcrypto_gf z = {{{1}}};
   bcrypto_gf a = {{{156326}}};
 
-  bcrypto_gf_sub(u, ZERO, u);
+  bcrypto_gf_sub(z, ZERO, z);
 
   (void)bcrypto_gf_deserialize(x, pub, 1, 0);
 
@@ -996,13 +996,13 @@ bcrypto_curve448_point_to_uniform(
 
   bcrypto_gf_serialize(out, y, 1);
 
-  bcrypto_mask_t gte = (bcrypto_gf_bytes_le(out, fq2) ^ 1) * -1;
+  bcrypto_mask_t lt = bcrypto_gf_bytes_le(out, fq2);
 
   bcrypto_gf_copy(n, x);
   bcrypto_gf_add(d, x, a);
-  bcrypto_gf_cond_swap(n, d, gte);
+  bcrypto_gf_cond_swap(n, d, lt ^ -1);
   bcrypto_gf_sub(n, ZERO, n);
-  bcrypto_gf_mul(t, d, u);
+  bcrypto_gf_mul(t, d, z);
   bcrypto_gf_invert(d, t, 0);
 
   ret &= bcrypto_gf_neq(d, ZERO);

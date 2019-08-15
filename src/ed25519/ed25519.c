@@ -780,7 +780,7 @@ bcrypto_ed25519_point_from_uniform(
   bcrypto_x25519_pubkey_t out,
   const unsigned char bytes[32]
 ) {
-  bignum25519 ALIGN(16) one, u, r, a, i2;
+  bignum25519 ALIGN(16) one, z, r, a, i2;
   bignum25519 ALIGN(16) v, v2, v3, e, l, x;
 
   /*
@@ -793,7 +793,7 @@ bcrypto_ed25519_point_from_uniform(
 
   curve25519_set_word(one, 1);
   curve25519_set_word(e, 1);
-  curve25519_set_word(u, 2);
+  curve25519_set_word(z, 2);
   curve25519_set_word(a, 486662);
   curve25519_set_word(i2, 2);
   curve25519_recip(i2, i2);
@@ -802,7 +802,7 @@ bcrypto_ed25519_point_from_uniform(
 
   /* v = -a / (1 + u * r^2) */
   curve25519_square(v, r);
-  curve25519_mul(v, v, u);
+  curve25519_mul(v, v, z);
   curve25519_add(v, v, one);
   curve25519_swap_conditional(v, e, curve25519_is_zero(v));
   curve25519_recip(v, v);
@@ -854,7 +854,7 @@ bcrypto_ed25519_point_to_uniform(
   const bcrypto_x25519_pubkey_t pub,
   int sign
 ) {
-  bignum25519 ALIGN(16) u, a;
+  bignum25519 ALIGN(16) z, a;
   bignum25519 ALIGN(16) x, y, n, d, r;
   int ret = 1;
 
@@ -867,10 +867,10 @@ bcrypto_ed25519_point_to_uniform(
 
   /*
    * r = sqrt(-x / ((x + A) * u)) if y is in F(q / 2)
-   *   = sqrt(-(x + A) / (u * x)) otherwise
+   *   = sqrt(-(x + A) / (x * u)) otherwise
    */
 
-  curve25519_set_word(u, 2);
+  curve25519_set_word(z, 2);
   curve25519_set_word(a, 486662);
 
   curve25519_expand(x, pub);
@@ -892,13 +892,13 @@ bcrypto_ed25519_point_to_uniform(
 
   curve25519_contract(out, y);
 
-  int gte = curve25519_bytes_le(out, fq2) ^ 1;
+  int lt = curve25519_bytes_le(out, fq2);
 
   curve25519_copy(n, x);
   curve25519_add(d, x, a);
-  curve25519_swap_conditional(n, d, gte);
+  curve25519_swap_conditional(n, d, lt ^ 1);
   curve25519_neg(n, n);
-  curve25519_mul(d, d, u);
+  curve25519_mul(d, d, z);
   curve25519_recip(d, d);
 
   ret &= curve25519_is_zero(d) ^ 1;
