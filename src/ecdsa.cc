@@ -488,11 +488,81 @@ NAN_METHOD(BECDSA::PublicKeyConvert) {
 }
 
 NAN_METHOD(BECDSA::PublicKeyFromUniform) {
-  return Nan::ThrowError("Not implemented.");
+  BECDSA *ec = ObjectWrap::Unwrap<BECDSA>(info.Holder());
+
+  if (info.Length() < 1)
+    return Nan::ThrowError("ecdsa.publicKeyFromUniform() requires arguments.");
+
+  v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(pbuf))
+    return Nan::ThrowTypeError("First argument must be a buffer.");
+
+  int compress = 1;
+
+  if (info.Length() > 1 && !IsNull(info[1])) {
+    if (!info[1]->IsBoolean())
+      return Nan::ThrowTypeError("Second argument must be a boolean.");
+
+    compress = (int)Nan::To<bool>(info[1]).FromJust();
+  }
+
+  const uint8_t *data = (const uint8_t *)node::Buffer::Data(pbuf);
+  size_t data_len = node::Buffer::Length(pbuf);
+
+  if (data_len != ec->ctx.size)
+    return Nan::ThrowRangeError("Invalid length.");
+
+  bcrypto_ecdsa_pubkey_t pubkey;
+  uint8_t out[BCRYPTO_ECDSA_MAX_PUB_SIZE];
+  size_t out_len;
+
+  if (!bcrypto_ecdsa_pubkey_from_uniform(&ec->ctx, &pubkey, data))
+    return Nan::ThrowError("Could not create key.");
+
+  bcrypto_ecdsa_pubkey_encode(&ec->ctx, out, &out_len, &pubkey, compress);
+
+  return info.GetReturnValue().Set(
+    Nan::CopyBuffer((char *)out, out_len).ToLocalChecked());
 }
 
 NAN_METHOD(BECDSA::PublicKeyFromHash) {
-  return Nan::ThrowError("Not implemented.");
+  BECDSA *ec = ObjectWrap::Unwrap<BECDSA>(info.Holder());
+
+  if (info.Length() < 1)
+    return Nan::ThrowError("ecdsa.publicKeyFromHash() requires arguments.");
+
+  v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(pbuf))
+    return Nan::ThrowTypeError("First argument must be a buffer.");
+
+  int compress = 1;
+
+  if (info.Length() > 1 && !IsNull(info[1])) {
+    if (!info[1]->IsBoolean())
+      return Nan::ThrowTypeError("Second argument must be a boolean.");
+
+    compress = (int)Nan::To<bool>(info[1]).FromJust();
+  }
+
+  const uint8_t *data = (const uint8_t *)node::Buffer::Data(pbuf);
+  size_t data_len = node::Buffer::Length(pbuf);
+
+  if (data_len != ec->ctx.size * 2)
+    return Nan::ThrowRangeError("Invalid length.");
+
+  bcrypto_ecdsa_pubkey_t pubkey;
+  uint8_t out[BCRYPTO_ECDSA_MAX_PUB_SIZE];
+  size_t out_len;
+
+  if (!bcrypto_ecdsa_pubkey_from_hash(&ec->ctx, &pubkey, data))
+    return Nan::ThrowError("Could not create key.");
+
+  bcrypto_ecdsa_pubkey_encode(&ec->ctx, out, &out_len, &pubkey, compress);
+
+  return info.GetReturnValue().Set(
+    Nan::CopyBuffer((char *)out, out_len).ToLocalChecked());
 }
 
 NAN_METHOD(BECDSA::PublicKeyVerify) {

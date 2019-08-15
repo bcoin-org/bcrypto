@@ -21,6 +21,10 @@ extern "C" {
   (BCRYPTO_ECDSA_MAX_FIELD_SIZE + BCRYPTO_ECDSA_MAX_SCALAR_SIZE)
 #define BCRYPTO_ECDSA_MAX_DER_SIZE (9 + BCRYPTO_ECDSA_MAX_SIG_SIZE)
 
+#define BCRYPTO_ECDSA_ICART 0
+#define BCRYPTO_ECDSA_SSWU 1
+#define BCRYPTO_ECDSA_SVDW 2
+
 typedef struct bcrypto_ecdsa_pubkey_s {
   uint8_t x[BCRYPTO_ECDSA_MAX_FIELD_SIZE];
   uint8_t y[BCRYPTO_ECDSA_MAX_FIELD_SIZE];
@@ -50,6 +54,9 @@ typedef struct bcrypto_ecdsa_s {
   BIGNUM *p;
   BIGNUM *a;
   BIGNUM *b;
+  BIGNUM *one;
+  BIGNUM *two;
+  BIGNUM *three;
   const EC_POINT *g;
   size_t scalar_bits;
   size_t scalar_size;
@@ -188,6 +195,16 @@ int
 bcrypto_ecdsa_pubkey_create(bcrypto_ecdsa_t *ec,
                             bcrypto_ecdsa_pubkey_t *pub,
                             const uint8_t *priv);
+
+int
+bcrypto_ecdsa_pubkey_from_uniform(bcrypto_ecdsa_t *ec,
+                                  bcrypto_ecdsa_pubkey_t *out,
+                                  const uint8_t *bytes);
+
+int
+bcrypto_ecdsa_pubkey_from_hash(bcrypto_ecdsa_t *ec,
+                               bcrypto_ecdsa_pubkey_t *out,
+                               const uint8_t *bytes);
 
 int
 bcrypto_ecdsa_pubkey_export_spki(bcrypto_ecdsa_t *ec,

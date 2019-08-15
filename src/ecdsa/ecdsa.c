@@ -89,6 +89,64 @@ bcrypto_ecdsa_has_schnorr(int type) {
 }
 
 static int
+bcrypto_ecdsa_uniform_type(int type) {
+  switch (type) {
+    case NID_X9_62_prime192v1:
+      return BCRYPTO_ECDSA_ICART;
+    case NID_secp224r1:
+      return BCRYPTO_ECDSA_SSWU;
+    case NID_X9_62_prime256v1:
+      return BCRYPTO_ECDSA_SSWU;
+    case NID_secp384r1:
+      return BCRYPTO_ECDSA_ICART;
+    case NID_secp521r1:
+      return BCRYPTO_ECDSA_SSWU;
+    case NID_secp192k1:
+      return BCRYPTO_ECDSA_SVDW;
+    case NID_secp224k1:
+      return BCRYPTO_ECDSA_SVDW;
+    case NID_secp256k1:
+      return BCRYPTO_ECDSA_SVDW;
+    case NID_brainpoolP256r1:
+      return BCRYPTO_ECDSA_ICART;
+    case NID_brainpoolP384r1:
+      return BCRYPTO_ECDSA_SSWU;
+    case NID_brainpoolP512r1:
+      return BCRYPTO_ECDSA_ICART;
+  }
+  return -1;
+}
+
+static int
+bcrypto_ecdsa_uniform_z(int type) {
+  switch (type) {
+    case NID_X9_62_prime192v1:
+      return -1;
+    case NID_secp224r1:
+      return -11;
+    case NID_X9_62_prime256v1:
+      return -2;
+    case NID_secp384r1:
+      return -1;
+    case NID_secp521r1:
+      return -2;
+    case NID_secp192k1:
+      return 1;
+    case NID_secp224k1:
+      return -1;
+    case NID_secp256k1:
+      return 1;
+    case NID_brainpoolP256r1:
+      return -2;
+    case NID_brainpoolP384r1:
+      return -1;
+    case NID_brainpoolP512r1:
+      return 2;
+  }
+  return 0;
+}
+
+static int
 bcrypto_ecdsa_valid_scalar(bcrypto_ecdsa_t *ec, const uint8_t *scalar) {
   if (scalar == NULL)
     return 0;
@@ -651,6 +709,9 @@ bcrypto_ecdsa_init(bcrypto_ecdsa_t *ec, const char *name) {
   ec->p = BN_new();
   ec->a = BN_new();
   ec->b = BN_new();
+  ec->one = BN_new();
+  ec->two = BN_new();
+  ec->three = BN_new();
 
   assert(ec->n != NULL);
   assert(ec->nh != NULL);
@@ -658,6 +719,9 @@ bcrypto_ecdsa_init(bcrypto_ecdsa_t *ec, const char *name) {
   assert(ec->p != NULL);
   assert(ec->a != NULL);
   assert(ec->b != NULL);
+  assert(ec->one != NULL);
+  assert(ec->two != NULL);
+  assert(ec->three != NULL);
 
   assert(EC_GROUP_get_order(ec->group, ec->n, ec->ctx) != 0);
   assert(BN_rshift1(ec->nh, ec->n) != 0);
@@ -668,6 +732,10 @@ bcrypto_ecdsa_init(bcrypto_ecdsa_t *ec, const char *name) {
 #else
   assert(EC_GROUP_get_curve_GFp(ec->group, ec->p, ec->a, ec->b, ec->ctx) != 0);
 #endif
+
+  assert(BN_set_word(ec->one, 1) != 0);
+  assert(BN_set_word(ec->two, 2) != 0);
+  assert(BN_set_word(ec->three, 3) != 0);
 
   ec->g = EC_GROUP_get0_generator(ec->group);
   assert(ec->g != NULL);
@@ -705,6 +773,9 @@ bcrypto_ecdsa_uninit(bcrypto_ecdsa_t *ec) {
   BN_free(ec->p);
   BN_free(ec->a);
   BN_free(ec->b);
+  BN_free(ec->one);
+  BN_free(ec->two);
+  BN_free(ec->three);
 
   ec->ctx = NULL;
   ec->key = NULL;
@@ -716,6 +787,9 @@ bcrypto_ecdsa_uninit(bcrypto_ecdsa_t *ec) {
   ec->p = NULL;
   ec->a = NULL;
   ec->b = NULL;
+  ec->one = NULL;
+  ec->two = NULL;
+  ec->three = NULL;
   ec->g = NULL;
   ec->initialized = 0;
 }
@@ -1199,6 +1273,126 @@ fail:
 
   if (point != NULL)
     EC_POINT_free(point);
+
+  return 0;
+}
+
+static EC_POINT *
+bcrypto_ecdsa_uniform(bcrypto_ecdsa_t *ec, const BIGNUM *u);
+
+int
+bcrypto_ecdsa_pubkey_from_uniform(bcrypto_ecdsa_t *ec,
+                                  bcrypto_ecdsa_pubkey_t *out,
+                                  const uint8_t *bytes) {
+  BIGNUM *u = NULL;
+  EC_POINT *P = NULL;
+
+  u = BN_bin2bn(bytes, ec->size, BN_secure_new());
+
+  if (u == NULL)
+    goto fail;
+
+  if ((size_t)BN_num_bits(u) > ec->bits) {
+    if (!BN_mask_bits(u, ec->bits))
+      goto fail;
+  }
+
+  if (!BN_mod(u, u, ec->p, ec->ctx))
+    goto fail;
+
+  P = bcrypto_ecdsa_uniform(ec, u);
+
+  if (P == NULL)
+    goto fail;
+
+  if (!bcrypto_ecdsa_pubkey_from_ec_point(ec, out, P))
+    goto fail;
+
+  BN_clear_free(u);
+  EC_POINT_clear_free(P);
+
+  return 1;
+
+fail:
+  if (u != NULL)
+    BN_clear_free(u);
+
+  if (P != NULL)
+    EC_POINT_clear_free(P);
+
+  return 0;
+}
+
+int
+bcrypto_ecdsa_pubkey_from_hash(bcrypto_ecdsa_t *ec,
+                               bcrypto_ecdsa_pubkey_t *out,
+                               const uint8_t *bytes) {
+  BIGNUM *u1 = NULL;
+  BIGNUM *u2 = NULL;
+  EC_POINT *P1 = NULL;
+  EC_POINT *P2 = NULL;
+
+  u1 = BN_bin2bn(bytes, ec->size, BN_secure_new());
+
+  if (u1 == NULL)
+    goto fail;
+
+  if ((size_t)BN_num_bits(u1) > ec->bits) {
+    if (!BN_mask_bits(u1, ec->bits))
+      goto fail;
+  }
+
+  if (!BN_mod(u1, u1, ec->p, ec->ctx))
+    goto fail;
+
+  u2 = BN_bin2bn(bytes + ec->size, ec->size, BN_secure_new());
+
+  if (u2 == NULL)
+    goto fail;
+
+  if ((size_t)BN_num_bits(u2) > ec->bits) {
+    if (!BN_mask_bits(u2, ec->bits))
+      goto fail;
+  }
+
+  if (!BN_mod(u2, u2, ec->p, ec->ctx))
+    goto fail;
+
+  P1 = bcrypto_ecdsa_uniform(ec, u1);
+
+  if (P1 == NULL)
+    goto fail;
+
+  P2 = bcrypto_ecdsa_uniform(ec, u2);
+
+  if (P2 == NULL)
+    goto fail;
+
+  if (!EC_POINT_add(ec->group, P1, P1, P2, ec->ctx))
+    goto fail;
+
+  if (!bcrypto_ecdsa_pubkey_from_ec_point(ec, out, P1))
+    goto fail;
+
+  BN_clear_free(u1);
+  BN_clear_free(u2);
+  EC_POINT_clear_free(P1);
+  EC_POINT_clear_free(P2);
+
+  return 1;
+
+fail:
+  if (u1 != NULL)
+    BN_clear_free(u1);
+
+  if (u2 != NULL)
+    BN_clear_free(u2);
+
+  if (P1 != NULL)
+    EC_POINT_clear_free(P1);
+
+  if (P2 != NULL)
+    EC_POINT_clear_free(P2);
 
   return 0;
 }
@@ -2323,6 +2517,464 @@ fail:
     OPENSSL_free(coeffs);
 
   return r;
+}
+
+/*
+ * Curve Mappings
+ */
+
+static EC_POINT *
+bcrypto_ecdsa_icart(bcrypto_ecdsa_t *ec, const BIGNUM *r) {
+  BIGNUM *c1 = BN_new();
+  BIGNUM *c2 = BN_new();
+  BIGNUM *c3 = BN_new();
+  BIGNUM *c4 = BN_new();
+  BIGNUM *u = BN_new();
+  BIGNUM *u2 = BN_new();
+  BIGNUM *u4 = BN_new();
+  BIGNUM *u6 = BN_new();
+  BIGNUM *v = BN_new();
+  BIGNUM *t1 = BN_new();
+  BIGNUM *x = BN_new();
+  BIGNUM *y = BN_new();
+  EC_POINT *P = EC_POINT_new(ec->group);
+  int ret = 0;
+
+  if (c1 == NULL || c2 == NULL || c3 == NULL || c4 == NULL
+      || u == NULL || u2 == NULL || u4 == NULL || u6 == NULL
+      || t1 == NULL || x == NULL || y == NULL || P == NULL) {
+    goto fail;
+  }
+
+  /*
+   * Icart Method
+   * https://github.com/cfrg/draft-irtf-cfrg-hash-to-curve
+   *
+   * c1 = (2 * p - 1) / 3
+   * c2 = 1 / 3
+   * c3 = c2^3
+   * c4 = 3 * A
+   * e = u == 0
+   * u = CMOV(u, 1, e)
+   * u2 = u^2
+   * u4 = u2^2
+   * v = c4 - u4
+   * t1 = 6 * u
+   * t1 = inv0(t1)
+   * v = v * t1
+   * x = v^2
+   * x = x - B
+   * u6 = u4 * c3
+   * u6 = u6 * u2
+   * x = x - u6
+   * x = x^c1
+   * t1 = u2 * c2
+   * x = x + t1
+   * y = u * x
+   * y = y + v
+   * P = (x, y)
+   */
+
+  BN_copy(c1, ec->p);
+  BN_mul_word(c1, 2);
+  BN_sub_word(c1, 1);
+  BN_div_word(c1, 3);
+
+  BN_set_word(c2, 3);
+  BN_mod_inverse(c2, c2, ec->p, ec->ctx);
+
+  BN_mod_sqr(c3, c2, ec->p, ec->ctx);
+  BN_mod_mul(c3, c3, c2, ec->p, ec->ctx);
+
+  BN_set_word(c4, 3);
+  BN_mod_mul(c4, c4, ec->a, ec->p, ec->ctx);
+
+  BN_copy(u, r);
+
+  if (BN_is_zero(u))
+    BN_set_word(u, 1);
+
+  BN_mod_sqr(u2, u, ec->p, ec->ctx);
+  BN_mod_sqr(u4, u2, ec->p, ec->ctx);
+  BN_mod_sub(v, c4, u4, ec->p, ec->ctx);
+  BN_set_word(t1, 6);
+  BN_mod_mul(t1, u, t1, ec->p, ec->ctx);
+  BN_mod_inverse(t1, t1, ec->p, ec->ctx);
+  BN_mod_mul(v, v, t1, ec->p, ec->ctx);
+  BN_mod_sqr(x, v, ec->p, ec->ctx);
+  BN_mod_sub(x, x, ec->b, ec->p, ec->ctx);
+  BN_mod_mul(u6, u4, c3, ec->p, ec->ctx);
+  BN_mod_mul(u6, u6, u2, ec->p, ec->ctx);
+  BN_mod_sub(x, x, u6, ec->p, ec->ctx);
+  BN_mod_exp(x, x, c1, ec->p, ec->ctx);
+  BN_mod_mul(t1, u2, c2, ec->p, ec->ctx);
+  BN_mod_add(x, x, t1, ec->p, ec->ctx);
+  BN_mod_mul(y, u, x, ec->p, ec->ctx);
+  BN_mod_add(y, y, v, ec->p, ec->ctx);
+
+  if (BN_is_odd(y) != BN_is_odd(u))
+    BN_mod_sub(y, ec->p, y, ec->p, ec->ctx);
+
+#if OPENSSL_VERSION_NUMBER >= 0x10200000L
+  // Note: should be present with 1.1.1b
+  if (!EC_POINT_set_affine_coordinates(ec->group, P, x, y, ec->ctx))
+#else
+  if (!EC_POINT_set_affine_coordinates_GFp(ec->group, P, x, y, ec->ctx))
+#endif
+    goto fail;
+
+  ret = 1;
+fail:
+  if (c1 != NULL) BN_free(c1);
+  if (c2 != NULL) BN_free(c2);
+  if (c3 != NULL) BN_free(c3);
+  if (c4 != NULL) BN_free(c4);
+  if (u != NULL) BN_free(u);
+  if (u2 != NULL) BN_free(u2);
+  if (u4 != NULL) BN_free(u4);
+  if (u6 != NULL) BN_free(u6);
+  if (v != NULL) BN_free(v);
+  if (t1 != NULL) BN_free(t1);
+  if (x != NULL) BN_free(x);
+  if (y != NULL) BN_free(y);
+
+  if (!ret && P != NULL) {
+    EC_POINT_free(P);
+    P = NULL;
+  }
+
+  return P;
+}
+
+static EC_POINT *
+bcrypto_ecdsa_sswu(bcrypto_ecdsa_t *ec, const BIGNUM *r) {
+  BIGNUM *z = BN_new();
+  BIGNUM *c1 = BN_new();
+  BIGNUM *c2 = BN_new();
+  BIGNUM *u = BN_new();
+  BIGNUM *t1 = BN_new();
+  BIGNUM *t2 = BN_new();
+  BIGNUM *x1 = BN_new();
+  BIGNUM *x2 = BN_new();
+  BIGNUM *gx1 = BN_new();
+  BIGNUM *gx2 = BN_new();
+  BIGNUM *y2 = BN_new();
+  BIGNUM *x = BN_new();
+  BIGNUM *y = BN_new();
+  EC_POINT *P = EC_POINT_new(ec->group);
+  int ret = 0;
+  int Z, e1, e2, e3;
+
+  if (z == NULL || c1 == NULL || c2 == NULL || u == NULL
+      || t1 == NULL || t2 == NULL || x1 == NULL || x2 == NULL
+      || gx1 == NULL || gx2 == NULL || y2 == NULL || x == NULL
+      || y == NULL || P == NULL) {
+    goto fail;
+  }
+
+  Z = bcrypto_ecdsa_uniform_z(ec->type);
+
+  if (Z < 0) {
+    BN_copy(z, ec->p);
+    BN_sub_word(z, -Z);
+  } else {
+    BN_set_word(z, Z);
+  }
+
+  /*
+   * Simplified Shallue-van de Woestijne-Ulas Method
+   * https://github.com/cfrg/draft-irtf-cfrg-hash-to-curve
+   *
+   * c1 = -B / A
+   * c2 = -1 / Z
+   * t1 = Z * u^2
+   * t2 = t1^2
+   * x1 = t1 + t2
+   * x1 = inv0(x1)
+   * e1 = x1 == 0
+   * x1 = x1 + 1
+   * x1 = CMOV(x1, c2, e1)
+   * x1 = x1 * c1
+   * gx1 = x1^2
+   * gx1 = gx1 + A
+   * gx1 = gx1 * x1
+   * gx1 = gx1 + B
+   * x2 = t1 * x1
+   * t2 = t1 * t2
+   * gx2 = gx1 * t2
+   * e2 = is_square(gx1)
+   * x = CMOV(x2, x1, e2)
+   * y2 = CMOV(gx2, gx1, e2)
+   * y = sqrt(y2)
+   * e3 = sgn0(u) == sgn0(y)
+   * y = CMOV(-y, y, e3)
+   * P = (x, y)
+   */
+
+  BN_mod_inverse(c1, ec->a, ec->p, ec->ctx);
+  BN_mod_mul(c1, ec->b, c1, ec->p, ec->ctx);
+  BN_mod_sub(c1, ec->p, c1, ec->p, ec->ctx);
+
+  BN_mod_inverse(c2, z, ec->p, ec->ctx);
+  BN_mod_sub(c2, ec->p, c2, ec->p, ec->ctx);
+
+  BN_copy(u, r);
+
+  BN_mod_sqr(t1, u, ec->p, ec->ctx);
+  BN_mod_mul(t1, z, t1, ec->p, ec->ctx);
+  BN_mod_sqr(t2, t1, ec->p, ec->ctx);
+  BN_mod_add(x1, t1, t2, ec->p, ec->ctx);
+  BN_mod_inverse(x1, x1, ec->p, ec->ctx);
+  e1 = BN_is_zero(x1);
+  BN_mod_add(x1, x1, ec->one, ec->p, ec->ctx);
+  if (e1) BN_copy(x1, c2);
+  BN_mod_mul(x1, x1, c1, ec->p, ec->ctx);
+  BN_mod_sqr(gx1, x1, ec->p, ec->ctx);
+  BN_mod_add(gx1, gx1, ec->a, ec->p, ec->ctx);
+  BN_mod_mul(gx1, gx1, x1, ec->p, ec->ctx);
+  BN_mod_add(gx1, gx1, ec->b, ec->p, ec->ctx);
+  BN_mod_mul(x2, t1, x1, ec->p, ec->ctx);
+  BN_mod_mul(t2, t1, t2, ec->p, ec->ctx);
+  BN_mod_mul(gx2, gx1, t2, ec->p, ec->ctx);
+  e2 = BN_kronecker(gx1, ec->p, ec->ctx) == 1;
+  BN_copy(x, e2 ? x1 : x2);
+  BN_copy(y2, e2 ? gx1 : gx2);
+  BN_mod_sqrt(y, y2, ec->p, ec->ctx);
+  e3 = BN_is_odd(y) == BN_is_odd(u);
+  if (!e3) BN_mod_sub(y, ec->p, y, ec->p, ec->ctx);
+
+#if OPENSSL_VERSION_NUMBER >= 0x10200000L
+  // Note: should be present with 1.1.1b
+  if (!EC_POINT_set_affine_coordinates(ec->group, P, x, y, ec->ctx))
+#else
+  if (!EC_POINT_set_affine_coordinates_GFp(ec->group, P, x, y, ec->ctx))
+#endif
+    goto fail;
+
+  ret = 1;
+fail:
+  if (z != NULL) BN_free(z);
+  if (c1 != NULL) BN_free(c1);
+  if (c2 != NULL) BN_free(c2);
+  if (u != NULL) BN_free(u);
+  if (t1 != NULL) BN_free(t1);
+  if (t2 != NULL) BN_free(t2);
+  if (x1 != NULL) BN_free(x1);
+  if (x2 != NULL) BN_free(x2);
+  if (gx1 != NULL) BN_free(gx1);
+  if (gx2 != NULL) BN_free(gx2);
+  if (y2 != NULL) BN_free(y2);
+  if (x != NULL) BN_free(x);
+  if (y != NULL) BN_free(y);
+
+  if (!ret && P != NULL) {
+    EC_POINT_free(P);
+    P = NULL;
+  }
+
+  return P;
+}
+
+static EC_POINT *
+bcrypto_ecdsa_svdw(bcrypto_ecdsa_t *ec, const BIGNUM *r) {
+  BIGNUM *z = BN_new();
+  BIGNUM *c1 = BN_new();
+  BIGNUM *c2 = BN_new();
+  BIGNUM *c3 = BN_new();
+  BIGNUM *c4 = BN_new();
+  BIGNUM *c5 = BN_new();
+  BIGNUM *u = BN_new();
+  BIGNUM *t1 = BN_new();
+  BIGNUM *t2 = BN_new();
+  BIGNUM *t3 = BN_new();
+  BIGNUM *t4 = BN_new();
+  BIGNUM *x1 = BN_new();
+  BIGNUM *gx1 = BN_new();
+  BIGNUM *x2 = BN_new();
+  BIGNUM *gx2 = BN_new();
+  BIGNUM *x3 = BN_new();
+  BIGNUM *gx3 = BN_new();
+  BIGNUM *x = BN_new();
+  BIGNUM *gx = BN_new();
+  BIGNUM *y = BN_new();
+  BIGNUM *i2 = BN_new();
+  EC_POINT *P = EC_POINT_new(ec->group);
+  int ret = 0;
+  int Z, e1, e2, e3, e4;
+
+  if (z == NULL || c1 == NULL || c2 == NULL || c3 == NULL
+      || c4 == NULL || c5 == NULL || u == NULL || t1 == NULL
+      || t2 == NULL || t3 == NULL || t4 == NULL || x1 == NULL
+      || gx1 == NULL || x2 == NULL || gx2 == NULL || x3 == NULL
+      || gx3 == NULL || x == NULL || gx == NULL || y == NULL
+      || i2 == NULL || P == NULL) {
+    goto fail;
+  }
+
+  Z = bcrypto_ecdsa_uniform_z(ec->type);
+
+  if (Z < 0) {
+    BN_copy(z, ec->p);
+    BN_sub_word(z, -Z);
+  } else {
+    BN_set_word(z, Z);
+  }
+
+  /*
+   * Shallue-van de Woestijne Method
+   * https://github.com/cfrg/draft-irtf-cfrg-hash-to-curve
+   *
+   * c1 = g(Z)
+   * c2 = sqrt(-3 * Z^2)
+   * c3 = (sqrt(-3 * Z^2) - Z) / 2
+   * c4 = (sqrt(-3 * Z^2) + Z) / 2
+   * c5 = 1 / (3 * Z^2)
+   * t1 = u^2
+   * t2 = t1 + c1
+   * t3 = t1 * t2
+   * t4 = inv0(t3)
+   * t3 = t1^2
+   * t3 = t3 * t4
+   * t3 = t3 * c2
+   * x1 = c3 - t3
+   * gx1 = x1^2
+   * gx1 = gx1 * x1
+   * gx1 = gx1 + B
+   * e1 = is_square(gx1)
+   * x2 = t3 - c4
+   * gx2 = x2^2
+   * gx2 = gx2 * x2
+   * gx2 = gx2 + B
+   * e2 = is_square(gx2)
+   * e3 = e1 OR e2
+   * x3 = t2^2
+   * x3 = x3 * t2
+   * x3 = x3 * t4
+   * x3 = x3 * c5
+   * x3 = Z - x3
+   * gx3 = x3^2
+   * gx3 = gx3 * x3
+   * gx3 = gx3 + B
+   * x = CMOV(x2, x1, e1)
+   * gx = CMOV(gx2, gx1, e1)
+   * x = CMOV(x3, x, e3)
+   * gx = CMOV(gx3, gx, e3)
+   * y = sqrt(gx)
+   * e4 = sgn0(u) == sgn0(y)
+   * y = CMOV(-y, y, e4)
+   * P = (x, y)
+   */
+
+  BN_set_word(i2, 2);
+  BN_mod_inverse(i2, i2, ec->p, ec->ctx);
+
+  BN_mod_sqr(c1, z, ec->p, ec->ctx);
+  BN_mod_mul(c1, c1, z, ec->p, ec->ctx);
+  BN_mod_add(c1, c1, ec->b, ec->p, ec->ctx);
+
+  BN_mod_sqr(c2, z, ec->p, ec->ctx);
+  BN_mod_mul(c2, c2, ec->three, ec->p, ec->ctx);
+  BN_mod_sub(c2, ec->p, c2, ec->p, ec->ctx);
+  BN_mod_sqrt(c2, c2, ec->p, ec->ctx);
+
+  BN_mod_sub(c3, c2, z, ec->p, ec->ctx);
+  BN_mod_mul(c3, c3, i2, ec->p, ec->ctx);
+
+  BN_mod_add(c4, c2, z, ec->p, ec->ctx);
+  BN_mod_mul(c4, c4, i2, ec->p, ec->ctx);
+
+  BN_mod_sqr(c5, z, ec->p, ec->ctx);
+  BN_mod_mul(c5, c5, ec->three, ec->p, ec->ctx);
+  BN_mod_inverse(c5, c5, ec->p, ec->ctx);
+
+  BN_copy(u, r);
+
+  BN_mod_sqr(t1, u, ec->p, ec->ctx);
+  BN_mod_add(t2, t1, c1, ec->p, ec->ctx);
+  BN_mod_mul(t3, t1, t2, ec->p, ec->ctx);
+  BN_mod_inverse(t4, t3, ec->p, ec->ctx);
+  BN_mod_sqr(t3, t1, ec->p, ec->ctx);
+  BN_mod_mul(t3, t3, t4, ec->p, ec->ctx);
+  BN_mod_mul(t3, t3, c2, ec->p, ec->ctx);
+  BN_mod_sub(x1, c3, t3, ec->p, ec->ctx);
+  BN_mod_sqr(gx1, x1, ec->p, ec->ctx);
+  BN_mod_mul(gx1, gx1, x1, ec->p, ec->ctx);
+  BN_mod_add(gx1, gx1, ec->b, ec->p, ec->ctx);
+  e1 = BN_kronecker(gx1, ec->p, ec->ctx) == 1;
+  BN_mod_sub(x2, t3, c4, ec->p, ec->ctx);
+  BN_mod_sqr(gx2, x2, ec->p, ec->ctx);
+  BN_mod_mul(gx2, gx2, x2, ec->p, ec->ctx);
+  BN_mod_add(gx2, gx2, ec->b, ec->p, ec->ctx);
+  e2 = BN_kronecker(gx2, ec->p, ec->ctx) == 1;
+  e3 = e1 | e2;
+  BN_mod_sqr(x3, t2, ec->p, ec->ctx);
+  BN_mod_mul(x3, x3, t2, ec->p, ec->ctx);
+  BN_mod_mul(x3, x3, t4, ec->p, ec->ctx);
+  BN_mod_mul(x3, x3, c5, ec->p, ec->ctx);
+  BN_mod_sub(x3, z, x3, ec->p, ec->ctx);
+  BN_mod_sqr(gx3, x3, ec->p, ec->ctx);
+  BN_mod_mul(gx3, gx3, x3, ec->p, ec->ctx);
+  BN_mod_add(gx3, gx3, ec->b, ec->p, ec->ctx);
+  BN_copy(x, e1 ? x1 : x2);
+  BN_copy(gx, e1 ? gx1 : gx2);
+  BN_copy(x, e3 ? x : x3);
+  BN_copy(gx, e3 ? gx : gx3);
+  BN_mod_sqrt(y, gx, ec->p, ec->ctx);
+  e4 = BN_is_odd(y) == BN_is_odd(u);
+  if (!e4) BN_mod_sub(y, ec->p, y, ec->p, ec->ctx);
+
+#if OPENSSL_VERSION_NUMBER >= 0x10200000L
+  // Note: should be present with 1.1.1b
+  if (!EC_POINT_set_affine_coordinates(ec->group, P, x, y, ec->ctx))
+#else
+  if (!EC_POINT_set_affine_coordinates_GFp(ec->group, P, x, y, ec->ctx))
+#endif
+    goto fail;
+
+  ret = 1;
+fail:
+  if (z != NULL) BN_free(z);
+  if (c1 != NULL) BN_free(c1);
+  if (c2 != NULL) BN_free(c2);
+  if (c3 != NULL) BN_free(c3);
+  if (c4 != NULL) BN_free(c4);
+  if (c5 != NULL) BN_free(c5);
+  if (u != NULL) BN_free(u);
+  if (t1 != NULL) BN_free(t1);
+  if (t2 != NULL) BN_free(t2);
+  if (t3 != NULL) BN_free(t3);
+  if (t4 != NULL) BN_free(t4);
+  if (x1 != NULL) BN_free(x1);
+  if (gx1 != NULL) BN_free(gx1);
+  if (x2 != NULL) BN_free(x2);
+  if (gx2 != NULL) BN_free(gx2);
+  if (x3 != NULL) BN_free(x3);
+  if (gx3 != NULL) BN_free(gx3);
+  if (x != NULL) BN_free(x);
+  if (gx != NULL) BN_free(gx);
+  if (y != NULL) BN_free(y);
+  if (i2 != NULL) BN_free(i2);
+
+  if (!ret && P != NULL) {
+    EC_POINT_free(P);
+    P = NULL;
+  }
+
+  return P;
+}
+
+static EC_POINT *
+bcrypto_ecdsa_uniform(bcrypto_ecdsa_t *ec, const BIGNUM *u) {
+  switch (bcrypto_ecdsa_uniform_type(ec->type)) {
+    case BCRYPTO_ECDSA_ICART:
+      return bcrypto_ecdsa_icart(ec, u);
+    case BCRYPTO_ECDSA_SSWU:
+      return bcrypto_ecdsa_sswu(ec, u);
+    case BCRYPTO_ECDSA_SVDW:
+      return bcrypto_ecdsa_svdw(ec, u);
+    default:
+      return NULL;
+  }
 }
 
 #endif

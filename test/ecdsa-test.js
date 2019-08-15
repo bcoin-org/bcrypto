@@ -1036,7 +1036,75 @@ describe('ECDSA', function() {
   });
 
   describe('Maps', () => {
-    it('should create point from uniform bytes', () => {
+    let ECDSA;
+
+    if (secp256k1.native === 2)
+      ECDSA = require('../lib/native/ecdsa');
+
+    it('should create point from uniform bytes (sswu)', () => {
+      const u = Buffer.from(
+        '60fed4ba255a9d31c961eb74c6356d68c049b8923b61fa6ce669622e60f29fb6',
+        'hex');
+
+      const pub = p256.publicKeyFromUniform(u);
+
+      assert(p256.publicKeyVerify(pub));
+
+      assert.bufferEqual(pub,
+        '02292af0690c38c5d08fe4d3274a4ef9143bab0234701038e6ff64b1165092dcf2');
+    });
+
+    it('should do random oracle encoding (sswu)', () => {
+      const bytes = SHA512.digest(Buffer.from('turn me into a point'));
+      const pub = p256.publicKeyFromHash(bytes);
+
+      assert(p256.publicKeyVerify(pub));
+
+      assert.bufferEqual(pub,
+        '03e06cf5560f9159910f23247407c78c210880c92a3d103b0bf1aaa3461156d88b');
+    });
+
+    it('should create point from uniform bytes (icart)', () => {
+      const u = Buffer.from('dd881b46346fead3d9cd11425a3171af95dac40a8dd2dfc6'
+                          + '33973ea4c22aa6b2923684a8f0ee5afc2410dfc37de2c555', 'hex');
+
+      const pub = p384.publicKeyFromUniform(u);
+
+      assert(p384.publicKeyVerify(pub));
+
+      assert.bufferEqual(pub, '03'
+        + '8bbaf8f073b3e7460b413fb1d128d863d879d1b59f3bc5af'
+        + '708a901fdc20f4f29fce4bae89bd3e9482fc39333932b9f6');
+    });
+
+    if (ECDSA) {
+      const secp256k1 = new ECDSA('SECP256K1');
+
+      it('should create point from uniform bytes (svdw, openssl)', () => {
+        const u = Buffer.from(
+          '60fed4ba255a9d31c961eb74c6356d68c049b8923b61fa6ce669622e60f29fb6',
+          'hex');
+
+        const pub = secp256k1.publicKeyFromUniform(u);
+
+        assert(secp256k1.publicKeyVerify(pub));
+
+        assert.bufferEqual(pub,
+          '0226243ea9a28d3790f58dc4f5d6f80d9be1171ba5ed54042735a0d8f07fb6f203');
+      });
+
+      it('should do random oracle encoding (svdw, openssl)', () => {
+        const bytes = SHA512.digest(Buffer.from('turn me into a point'));
+        const pub = secp256k1.publicKeyFromHash(bytes);
+
+        assert(secp256k1.publicKeyVerify(pub));
+
+        assert.bufferEqual(pub,
+          '032287235856654cff0bf82466518bb9e7eaef62632c4805b3c76f8a6675f2a1df');
+      });
+    }
+
+    it('should create point from uniform bytes (svdw)', () => {
       const u = Buffer.from(
         '60fed4ba255a9d31c961eb74c6356d68c049b8923b61fa6ce669622e60f29fb6',
         'hex');
@@ -1049,7 +1117,7 @@ describe('ECDSA', function() {
         '0226243ea9a28d3790f58dc4f5d6f80d9be1171ba5ed54042735a0d8f07fb6f203');
     });
 
-    it('should do random oracle encoding', () => {
+    it('should do random oracle encoding (svdw)', () => {
       const bytes = SHA512.digest(Buffer.from('turn me into a point'));
       const pub = secp256k1.publicKeyFromHash(bytes);
 
