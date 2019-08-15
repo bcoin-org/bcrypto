@@ -27,6 +27,8 @@ private:
 
   static NAN_METHOD(PublicKeyCreate);
   static NAN_METHOD(PublicKeyConvert);
+  static NAN_METHOD(PublicKeyFromUniform);
+  static NAN_METHOD(PublicKeyFromHash);
   static NAN_METHOD(PublicKeyVerify);
   static NAN_METHOD(PublicKeyTweakAdd);
   static NAN_METHOD(PublicKeyTweakMul);
@@ -51,9 +53,6 @@ private:
   static NAN_METHOD(RecoverDER);
 
   static NAN_METHOD(Derive);
-
-  static NAN_METHOD(PublicKeyFromUniform);
-  static NAN_METHOD(PublicKeyFromHash);
 
   static NAN_METHOD(SchnorrSign);
   static NAN_METHOD(SchnorrVerify);

@@ -20,6 +20,12 @@ private:
   static NAN_METHOD(PublicKeyFromScalar);
   static NAN_METHOD(PublicKeyConvert);
   static NAN_METHOD(PublicKeyDeconvert);
+  static NAN_METHOD(PublicKeyFromUniform);
+  static NAN_METHOD(PointFromUniform);
+  static NAN_METHOD(PublicKeyToUniform);
+  static NAN_METHOD(PointToUniform);
+  static NAN_METHOD(PublicKeyFromHash);
+  static NAN_METHOD(PointFromHash);
   static NAN_METHOD(PublicKeyVerify);
   static NAN_METHOD(PublicKeyTweakAdd);
   static NAN_METHOD(PublicKeyTweakMul);
@@ -37,12 +43,6 @@ private:
   static NAN_METHOD(DeriveWithScalar);
   static NAN_METHOD(Exchange);
   static NAN_METHOD(ExchangeWithScalar);
-  static NAN_METHOD(PublicKeyFromUniform);
-  static NAN_METHOD(PointFromUniform);
-  static NAN_METHOD(PublicKeyToUniform);
-  static NAN_METHOD(PointToUniform);
-  static NAN_METHOD(PublicKeyFromHash);
-  static NAN_METHOD(PointFromHash);
 };
 
 #endif

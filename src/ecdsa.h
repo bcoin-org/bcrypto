@@ -35,6 +35,8 @@ private:
   static NAN_METHOD(PrivateKeyInvert);
   static NAN_METHOD(PublicKeyCreate);
   static NAN_METHOD(PublicKeyConvert);
+  static NAN_METHOD(PublicKeyFromUniform);
+  static NAN_METHOD(PublicKeyFromHash);
   static NAN_METHOD(PublicKeyVerify);
   static NAN_METHOD(PublicKeyExportSPKI);
   static NAN_METHOD(PublicKeyImportSPKI);

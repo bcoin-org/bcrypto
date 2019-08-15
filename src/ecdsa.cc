@@ -48,6 +48,8 @@ BECDSA::Init(v8::Local<v8::Object> &target) {
   Nan::SetPrototypeMethod(tpl, "privateKeyInvert", BECDSA::PrivateKeyInvert);
   Nan::SetPrototypeMethod(tpl, "publicKeyCreate", BECDSA::PublicKeyCreate);
   Nan::SetPrototypeMethod(tpl, "publicKeyConvert", BECDSA::PublicKeyConvert);
+  Nan::SetPrototypeMethod(tpl, "publicKeyFromUniform", BECDSA::PublicKeyFromUniform);
+  Nan::SetPrototypeMethod(tpl, "publicKeyFromHash", BECDSA::PublicKeyFromHash);
   Nan::SetPrototypeMethod(tpl, "publicKeyVerify", BECDSA::PublicKeyVerify);
   Nan::SetPrototypeMethod(tpl, "publicKeyExportSPKI", BECDSA::PublicKeyExportSPKI);
   Nan::SetPrototypeMethod(tpl, "publicKeyImportSPKI", BECDSA::PublicKeyImportSPKI);
@@ -483,6 +485,14 @@ NAN_METHOD(BECDSA::PublicKeyConvert) {
 
   return info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)out, out_len).ToLocalChecked());
+}
+
+NAN_METHOD(BECDSA::PublicKeyFromUniform) {
+  return Nan::ThrowError("Not implemented.");
+}
+
+NAN_METHOD(BECDSA::PublicKeyFromHash) {
+  return Nan::ThrowError("Not implemented.");
 }
 
 NAN_METHOD(BECDSA::PublicKeyVerify) {
