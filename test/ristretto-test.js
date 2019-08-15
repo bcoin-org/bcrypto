@@ -39,18 +39,10 @@ describe('Ristretto', function() {
 
     for (const str of json) {
       const raw = Buffer.from(str, 'hex');
-      const b = ristretto.decode(raw);
-      const c = ristretto.toMain(b);
-      const d = ristretto.fromMain(c);
+      const q = ristretto.decode(raw);
 
-      assert(ristretto.equal(b, p));
-      assert(ristretto.equal(d, b));
-      assert(c.eq(p));
-      assert(d.eq(b));
-
+      assert.strictEqual(ristretto.eq(q, p), true);
       assert.bufferEqual(ristretto.encode(p), raw);
-      assert.bufferEqual(ristretto.encode(b), raw);
-      assert.bufferEqual(ristretto.encode(c), raw);
 
       p = p.add(curve.g);
     }
@@ -105,7 +97,7 @@ describe('Ristretto', function() {
     }
   });
 
-  it('should encode/decode decaf points (ed448-alt)', () => {
+  it('should encode and decode ristretto points (ed448-alt)', () => {
     const curve = new extra.ISOED448();
     const ristretto = new Ristretto(curve);
 
@@ -150,24 +142,16 @@ describe('Ristretto', function() {
     for (let i = 0; i < json.length; i += 2) {
       const str = json[i] + json[i + 1];
       const raw = Buffer.from(str, 'hex');
-      const b = ristretto.decode(raw);
-      const c = ristretto.toMain(b);
-      const d = ristretto.fromMain(c);
+      const q = ristretto.decode(raw);
 
-      assert(ristretto.equal(b, p));
-      assert(ristretto.equal(d, b));
-      assert(c.eq(p));
-      assert(d.eq(b));
-
+      assert.strictEqual(ristretto.eq(q, p), true);
       assert.bufferEqual(ristretto.encode(p), raw);
-      assert.bufferEqual(ristretto.encode(b), raw);
-      assert.bufferEqual(ristretto.encode(c), raw);
 
       p = p.add(curve.g);
     }
   });
 
-  it('should encode/decode decaf points (ed448)', () => {
+  it('should encode and decode ristretto points (ed448)', () => {
     const curve = new curves.ED448();
     const ristretto = new Ristretto(curve);
 
@@ -212,18 +196,10 @@ describe('Ristretto', function() {
     for (let i = 0; i < json.length; i += 2) {
       const str = json[i] + json[i + 1];
       const raw = Buffer.from(str, 'hex');
-      const b = ristretto.decode(raw);
-      const c = ristretto.toMain(b);
-      const d = ristretto.fromMain(c);
+      const q = ristretto.decode(raw);
 
-      assert(ristretto.equal(b, p));
-      assert(ristretto.equal(d, b));
-      assert(c.eq(p));
-      assert(d.eq(b));
-
+      assert.strictEqual(ristretto.eq(q, p), true);
       assert.bufferEqual(ristretto.encode(p), raw);
-      assert.bufferEqual(ristretto.encode(b), raw);
-      assert.bufferEqual(ristretto.encode(c), raw);
 
       p = p.add(curve.g);
     }
@@ -263,10 +239,9 @@ describe('Ristretto', function() {
     }
   });
 
-  it('should compute elligator (ed25519)', () => {
+  it('should compute elligator (ed25519, non-uniform)', () => {
     const curve = new curves.ED25519();
     const ristretto = new Ristretto(curve);
-    const {red} = curve;
 
     // https://github.com/dalek-cryptography/curve25519-dalek/blob/9a62386/src/ristretto.rs#L1232
     const bytes = [
@@ -310,14 +285,14 @@ describe('Ristretto', function() {
     for (let i = 0; i < 16; i++) {
       const raw = Buffer.from(bytes[i], 'hex');
       const image = Buffer.from(images[i], 'hex');
-      const r0 = ristretto.decodeField(raw).setn(255, 0).toRed(red);
+      const r0 = curve.decodeUniform(raw);
       const out = ristretto.pointFromUniform(r0);
 
       assert.bufferEqual(ristretto.encode(out), image);
     }
   });
 
-  it('should compute elligator (ed25519)', () => {
+  it('should compute elligator (ed25519, sodium)', () => {
     const curve = new curves.ED25519();
     const ristretto = new Ristretto(curve);
 
@@ -325,22 +300,16 @@ describe('Ristretto', function() {
     const bytes = [
       '5d1be09e3d0c82fc538112490e35701979d99e06ca3e2b5b54bffe8b4dc772c1',
       '4d98b696a1bbfb5ca32c436cc61c16563790306c79eaca7705668b47dffe5bb6',
-
       'f116b34b8f17ceb56e8732a60d913dd10cce47a6d53bee9204be8b44f6678b27',
       '0102a56902e2488c46120e9276cfe54638286b9e4b3cdb470b542d46c2068d38',
-
       '8422e1bbdaab52938b81fd602effb6f89110e1e57208ad12d9ad767e2e25510c',
       '27140775f9337088b982d83d7fcf0b2fa1edffe51952cbe7365e95c86eaf325c',
-
       'ac22415129b61427bf464e17baee8db65940c233b98afce8d17c57beeb7876c2',
       '150d15af1cb1fb824bbd14955f2b57d08d388aab431a391cfc33d5bafb5dbbaf',
-
       '165d697a1ef3d5cf3c38565beefcf88c0f282b8e7dbd28544c483432f1cec767',
       '5debea8ebb4e5fe7d6f6e5db15f15587ac4d4d4a1de7191e0c1ca6664abcc413',
-
       'a836e6c9a9ca9f1e8d486273ad56a78c70cf18f0ce10abb1c7172ddd605d7fd2',
       '979854f47ae1ccf204a33102095b4200e5befc0465accc263175485f0e17ea5c',
-
       '2cdc11eaeb95daf01189417cdddbf95952993aa9cb9c640eb5058d09702c7462',
       '2c9965a697a3b345ec24ee56335b556e677b30e6f90ac77d781064f866a3c982'
     ];
@@ -355,7 +324,7 @@ describe('Ristretto', function() {
       '80bd07262511cdde4863f8a7434cef696750681cb9510eea557088f76d9e5065'
     ];
 
-    const images2 = [
+    const eddsa = [
       'ce53ca6753e489c4c98c1afdf67f77778f47225ccac1a231660498a59afe4291',
       '8d7c30740697f5b2b75c2929c27334f02b9d9ee4890d52a9e7aac70335061a4d',
       '25f787c173e53d26727f2db890e8d0573af90132670e8ff767a81286b8805b73',
@@ -368,18 +337,17 @@ describe('Ristretto', function() {
     for (let i = 0; i < 14; i += 2) {
       const raw = Buffer.from(bytes[i] + bytes[i + 1], 'hex');
       const image = Buffer.from(images[i / 2], 'hex');
-      const image2 = Buffer.from(images2[i / 2], 'hex');
+      const pub = Buffer.from(eddsa[i / 2], 'hex');
       const out = ristretto.pointFromHash(raw);
 
       assert.bufferEqual(ristretto.encode(out), image);
-      assert.bufferEqual(out.encode(), image2);
+      assert.bufferEqual(out.encode(), pub);
     }
   });
 
-  it('should compute elligator (ed448-alt)', () => {
+  it('should compute elligator (ed448-alt, non-uniform)', () => {
     const curve = new extra.ISOED448();
     const ristretto = new Ristretto(curve);
-    const {red} = curve;
 
     // https://sourceforge.net/p/ed448goldilocks/code/ci/master/tree/test/ristretto_vectors.inc.cxx
     const bytes = [
@@ -455,7 +423,92 @@ describe('Ristretto', function() {
     for (let i = 0; i < 32; i += 2) {
       const raw = Buffer.from(bytes[i] + bytes[i + 1], 'hex');
       const image = Buffer.from(images[i] + images[i + 1], 'hex');
-      const r0 = ristretto.decodeField(raw).toRed(red);
+      const r0 = curve.decodeUniform(raw);
+      const out = ristretto.pointFromUniform(r0);
+
+      assert.bufferEqual(ristretto.encode(out), image);
+    }
+  });
+
+  it('should compute elligator (ed448, non-uniform)', () => {
+    const curve = new curves.ED448();
+    const ristretto = new Ristretto(curve);
+
+    // Self-generated.
+    const bytes = [
+      '2d86a142338de274806354c43e29af705aa9a1893e6fd3ee2e9522c9',
+      'ceb40be2441bac8a4f780643438925d79146988b1ca112da714de92a',
+      'ee798ee086de1f5a57a2ca28db8451d306cbb9ee2227c497f4a67a69',
+      '06d7ebbc7aa85f946ff9dff79e1b7e88d97e3ad4a4e0a12032323ab7',
+      '2e1b1093b3477597664649b0b7c6ac1f9bb75dd9fdb50896cbaa0615',
+      'c525436d6254ec13d9190ea425e5ba80eefc259bcd1e2a5af00e8a9e',
+      '8a593fb99c04b5c050c90dc790936589415b9bd6783d9e925e634b87',
+      '814fd1da2a36cd8045bb6c36d67eb82c178401356be840429c780c70',
+      '80b25ffcfbd80b83a786c1076d3a23d85049fd4c519192a7d1e85238',
+      '936e1c092215c80b2d9dd13d8849829d7f6a382a5ace05166e4b085b',
+      'c1157732c6d2baf448887a1c4a2a90b40b07840ff962da1f7191058c',
+      'b937dfe5ceb25e344e33fc9df0c68e99cb3507aafeb9a6c96675bbf1',
+      'a5509877a2bbe80d07c23b26467385f97c16be4882400f31800e15dd',
+      '439e523443cf94688859b762643d64beda91f750ac6e0016afafd309',
+      'bd9be4e92093cf244079a6ff63ad01e19cae6d8065ed83bb052e14e2',
+      '39048e3b8aeb90e935bebe29241e344dc90d31d04e99d6a1adca8b38',
+      'c35efbe1abee01f9e45e0384fa2f943a6e8f5611864b555f186c7cf8',
+      'e34cc627cba585fbcfc42684eb30be62235c1e10e882ca4219a8c485',
+      '3c300fedd9866f6afabc143e1f730af6eadac0207e008888b6eb79a2',
+      'f7e6e67ed01e71af64777b90bf610a5e36cad0cd88ef883a9b6ab813',
+      '11f82f21e4616436e69ed8e35703cccd1f65aa75f07e8afaa33529cc',
+      '2258eb2b0fb182710ffc67d1e0d0de373d4fd2d5b17b58b3c7d47312',
+      '3dbdcf91e835a830fd8af9c69dc13066df1e24448b9178a099bb0757',
+      '3efec48eab2c119bcbbb828d20c1647d4231dfeb9bd086f26db77e71',
+      'ac8bf3020a1c733a591092b67a3223ca2fab6453d225ba832e34d0c4',
+      'bfca952be32d3976ca738c5ab3ddc9c7627078418372db770f17b55c',
+      'f6c55d6b4697d6f83d6eccc4db2f72f8f2f67e7524ff91d6f6c8a756',
+      'ab03967a64894271e71e71d895729f0631fd7c0de1c273c090924323',
+      '9b300376a4b95ea2024bdbd97a9693c3f60ae0bbdbdafc4709278b65',
+      '34c8a2d5ff9bb3d210d949d5bf094919b90d2f0ff982ed927995dc60',
+      '90957d597810b27b849a691f5d27d548963d354ae9e29ad59a230a15',
+      '5aaa6fe7c54c82d50814d8fdcd2d3bb1e553a841f971d724a4647aba'
+    ];
+
+    const images = [
+      '965025d95c71aefdb2e686098252aa745139de7e82b72b5a2adf0d1a',
+      '57019dab08ae8adb54172b7b8a2b84ae84843c986d78b908f76832da',
+      '42fd17f2cff52697de6f393c3feaa64e97b2d614f7ddb30bbe925bda',
+      '281b15641eeb372a652440c23da6a3e4bf98f300a3fc7890110187a4',
+      '40386e8cd73d52addc4e31b51d1aaa02ae4d82479f4ee3a14f383ce6',
+      '33c34648f9a7fdd0ade459f3d51b44b95e8605fe042bf64b794687d1',
+      'c0c6ca9c0d39ea222fe13fb64476dc3316b03ceb16700b76ba992ac7',
+      'ce20be59f7fa50268d1200c733e8bbd0eb4dcd583edfb7a041814219',
+      '44317a9b95ff71437e2481a8a4032ee9c01ea6bdf1c224a4d8ef40ed',
+      '3f71b171f7ea86105fe9108b5c3daff1e53f0c0a5b09798a783e97aa',
+      'ce7d69b0eae20b44b514c71041aa43cb621c285a94d2954243c7924c',
+      '576e929c0d7442553616c7979270f6649cb6a2a6c3ab9e2ead82fb31',
+      '1a5a6dc6297bdbe52ae8e5278375ff25cdeae2964e60572d7899ff9b',
+      '719ac2d499b2e813eb9db0f518cfe0fb9b7b98b4872c47d8532fe39f',
+      '7a0a47729d3cc4bf5b389b4540eb577b7217096817a91a1d650b912c',
+      '03649294329c024f83d7217ce375e625ca1871176028ed945aed63af',
+      '7441c2ac3ae343f46703a26b468bbb45f4a546e8ebe03612cc0e19ea',
+      '46000621258662f75b1d736478e30fc9556889bd712c1c2a54cea74f',
+      '0c2236af2221ea31d17f03f3ecbe2616fc8e588a5190644561e93cf8',
+      '1821dbca97ffb3fbcc0b726258d5e867ad01f3701bda80f754e0bedb',
+      '06198ee978672c16a19bccd459e32e8fadcb3d40957b50bf31433165',
+      '7515364a6850678cebbf67ce4b2931000d49f2a870935793c9eeb053',
+      'bc42f044a942d8c9e0f8b560f2e30498389af521a35311fa2f5d445e',
+      '9b5b498563f42549637df878eac068ad121c1a09ae90b06fb5d7e3bc',
+      'a2627331de2753530416a24f34a7a7f8ce000fdfe68f74fe2e512c28',
+      '0c65d066b3b9e0819abe22878c62526478460b5673443acf6f0a2fe8',
+      '7288ecdd35adfaf97c7fc9b3d73a21db3bea500d2b324ce5cdb25359',
+      '40e3a814a7cda4ece733dbd9c2b51646bb535e6ec59265afea16a0d8',
+      '36f30b331696281f83054d2692538be3a9bb111e772f21b9361384ae',
+      '676f0086ba27400988990e8d8a2e1bcf5f0053a7476c661f1c5b6a33',
+      '5254972e6536f1c3effaefe101539b869a9b9ab0bfbf3f87926a588f',
+      '264e95268bf0dce584955190a9cf15aeb04988794e517ae02fff3f12'
+    ];
+
+    for (let i = 0; i < 32; i += 2) {
+      const raw = Buffer.from(bytes[i] + bytes[i + 1], 'hex');
+      const image = Buffer.from(images[i] + images[i + 1], 'hex');
+      const r0 = curve.decodeUniform(raw);
       const out = ristretto.pointFromUniform(r0);
 
       assert.bufferEqual(ristretto.encode(out), image);
