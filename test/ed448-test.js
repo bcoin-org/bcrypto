@@ -948,7 +948,7 @@ describe('Ed448', function() {
       + '9f3d68330e24951bdbc200ed6d25ef4e90bc678d68282af081e6204f'
       + 'c2f36dcc5d6611b41042d708caebbe80724e48d09adb9782a9a2d9ea');
 
-    assert.bufferEqual(ed448.publicKeyVerify(pub));
+    assert.strictEqual(ed448.publicKeyVerify(pub), true);
     assert.bufferEqual(ed448.publicKeyConvert(pub), point);
     assert.bufferEqual(ed448.publicKeyDeconvert(point, sign), pub);
   });
