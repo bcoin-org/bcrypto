@@ -2523,6 +2523,68 @@ fail:
  * Curve Mappings
  */
 
+static int
+bn_mod_fermat(BIGNUM *r, BIGNUM *a, const BIGNUM *n, BN_CTX *ctx) {
+  BIGNUM *e = BN_new();
+  int ret = 0;
+
+  if (e == NULL)
+    return 0;
+
+  // e = n - 2
+  if (!BN_copy(e, n))
+    goto fail;
+
+  if (!BN_sub_word(e, 2))
+    goto fail;
+
+  if (!BN_mod_exp(r, a, e, n, ctx))
+    goto fail;
+
+  ret = 1;
+fail:
+  BN_free(e);
+  return ret;
+}
+
+static int
+bn_legendre(const BIGNUM *a, const BIGNUM *n, BN_CTX *ctx) {
+  BIGNUM *e = BN_new();
+  BIGNUM *r = BN_new();
+
+  if (e == NULL || r == NULL)
+    goto fail;
+
+  // e = (n - 1) / 2
+  if (!BN_copy(e, n))
+    goto fail;
+
+  if (!BN_sub_word(e, 1))
+    goto fail;
+
+  if (!BN_rshift1(e, e))
+    goto fail;
+
+  if (!BN_mod_exp(r, a, e, n, ctx))
+    goto fail;
+
+  int x = !!BN_is_one(r);
+  int y = (!BN_is_zero(r)) & (!BN_is_one(r));
+
+  BN_free(e);
+  BN_free(r);
+
+  return x + y * -1;
+fail:
+  if (e != NULL)
+    BN_free(e);
+
+  if (r != NULL)
+    BN_free(r);
+
+  return -2;
+}
+
 static EC_POINT *
 bcrypto_ecdsa_icart(bcrypto_ecdsa_t *ec, const BIGNUM *r) {
   BIGNUM *c1 = BN_new();
@@ -2599,7 +2661,7 @@ bcrypto_ecdsa_icart(bcrypto_ecdsa_t *ec, const BIGNUM *r) {
   BN_mod_sub(v, c4, u4, ec->p, ec->ctx);
   BN_set_word(t1, 6);
   BN_mod_mul(t1, u, t1, ec->p, ec->ctx);
-  BN_mod_inverse(t1, t1, ec->p, ec->ctx);
+  bn_mod_fermat(t1, t1, ec->p, ec->ctx);
   BN_mod_mul(v, v, t1, ec->p, ec->ctx);
   BN_mod_sqr(x, v, ec->p, ec->ctx);
   BN_mod_sub(x, x, ec->b, ec->p, ec->ctx);
@@ -2724,7 +2786,7 @@ bcrypto_ecdsa_sswu(bcrypto_ecdsa_t *ec, const BIGNUM *r) {
   BN_mod_mul(t1, z, t1, ec->p, ec->ctx);
   BN_mod_sqr(t2, t1, ec->p, ec->ctx);
   BN_mod_add(x1, t1, t2, ec->p, ec->ctx);
-  BN_mod_inverse(x1, x1, ec->p, ec->ctx);
+  bn_mod_fermat(x1, x1, ec->p, ec->ctx);
   e1 = BN_is_zero(x1);
   BN_mod_add(x1, x1, ec->one, ec->p, ec->ctx);
   if (e1) BN_copy(x1, c2);
@@ -2736,7 +2798,7 @@ bcrypto_ecdsa_sswu(bcrypto_ecdsa_t *ec, const BIGNUM *r) {
   BN_mod_mul(x2, t1, x1, ec->p, ec->ctx);
   BN_mod_mul(t2, t1, t2, ec->p, ec->ctx);
   BN_mod_mul(gx2, gx1, t2, ec->p, ec->ctx);
-  e2 = BN_kronecker(gx1, ec->p, ec->ctx) == 1;
+  e2 = bn_legendre(gx1, ec->p, ec->ctx) == 1;
   BN_copy(x, e2 ? x1 : x2);
   BN_copy(y2, e2 ? gx1 : gx2);
   BN_mod_sqrt(y, y2, ec->p, ec->ctx);
@@ -2892,7 +2954,7 @@ bcrypto_ecdsa_svdw(bcrypto_ecdsa_t *ec, const BIGNUM *r) {
   BN_mod_sqr(t1, u, ec->p, ec->ctx);
   BN_mod_add(t2, t1, c1, ec->p, ec->ctx);
   BN_mod_mul(t3, t1, t2, ec->p, ec->ctx);
-  BN_mod_inverse(t4, t3, ec->p, ec->ctx);
+  bn_mod_fermat(t4, t3, ec->p, ec->ctx);
   BN_mod_sqr(t3, t1, ec->p, ec->ctx);
   BN_mod_mul(t3, t3, t4, ec->p, ec->ctx);
   BN_mod_mul(t3, t3, c2, ec->p, ec->ctx);
@@ -2900,12 +2962,12 @@ bcrypto_ecdsa_svdw(bcrypto_ecdsa_t *ec, const BIGNUM *r) {
   BN_mod_sqr(gx1, x1, ec->p, ec->ctx);
   BN_mod_mul(gx1, gx1, x1, ec->p, ec->ctx);
   BN_mod_add(gx1, gx1, ec->b, ec->p, ec->ctx);
-  e1 = BN_kronecker(gx1, ec->p, ec->ctx) == 1;
+  e1 = bn_legendre(gx1, ec->p, ec->ctx) == 1;
   BN_mod_sub(x2, t3, c4, ec->p, ec->ctx);
   BN_mod_sqr(gx2, x2, ec->p, ec->ctx);
   BN_mod_mul(gx2, gx2, x2, ec->p, ec->ctx);
   BN_mod_add(gx2, gx2, ec->b, ec->p, ec->ctx);
-  e2 = BN_kronecker(gx2, ec->p, ec->ctx) == 1;
+  e2 = bn_legendre(gx2, ec->p, ec->ctx) == 1;
   e3 = e1 | e2;
   BN_mod_sqr(x3, t2, ec->p, ec->ctx);
   BN_mod_mul(x3, x3, t2, ec->p, ec->ctx);
