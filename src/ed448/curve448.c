@@ -727,7 +727,7 @@ bcrypto_c448_error_t bcrypto_curve448_convert_public_key_to_x448(
     bcrypto_gf_sqr(n, y); /* y^2*/
     bcrypto_gf_sub(d, ONE, n); /* 1-y^2*/
     bcrypto_gf_invert(d, d, 0); /* 1/(1-y^2)*/
-    ret &= bcrypto_gf_neq(d, ZERO);
+    ret &= ~bcrypto_gf_eq(d, ZERO);
     bcrypto_gf_mul(y, n, d); /* y^2 / (1-y^2) */
     bcrypto_gf_mulw(d, n, BCRYPTO_EDWARDS_D); /* dy^2*/
     bcrypto_gf_sub(d, ONE, d); /* 1-dy^2*/
@@ -795,7 +795,7 @@ bcrypto_curve448_convert_public_key_to_eddsa(
 
     bcrypto_gf_invert(z, z, 0);
 
-    ret &= bcrypto_gf_neq(z, ZERO);
+    ret &= ~bcrypto_gf_eq(z, ZERO);
 
     bcrypto_gf_mul(v, y, z);
 

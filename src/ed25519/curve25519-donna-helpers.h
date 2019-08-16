@@ -156,10 +156,9 @@ curve25519_is_equal(const bignum25519 a, const bignum25519 b) {
 
 static int
 curve25519_sqrt(bignum25519 out, const bignum25519 x) {
-  bignum25519 ALIGN(16) one, t, a, b;
+  static const bignum25519 one = {1};
+  bignum25519 ALIGN(16) t, a, b;
   int r;
-
-  curve25519_set_word(one, 1);
 
   curve25519_add(t, x, x);
   curve25519_pow_two252m3(a, t);

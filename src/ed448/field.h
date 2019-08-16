@@ -59,7 +59,6 @@ void bcrypto_gf_mulw_unsigned(bcrypto_gf_s * BCRYPTO_RESTRICT out, const bcrypto
 void bcrypto_gf_sqr(bcrypto_gf_s * BCRYPTO_RESTRICT out, const bcrypto_gf a);
 bcrypto_mask_t bcrypto_gf_isr(bcrypto_gf a, const bcrypto_gf x); /** a^2 x = 1, QNR, or 0 if x=0.  Return true if successful */
 bcrypto_mask_t bcrypto_gf_eq(const bcrypto_gf x, const bcrypto_gf y);
-bcrypto_mask_t bcrypto_gf_neq(const bcrypto_gf x, const bcrypto_gf y);
 bcrypto_mask_t bcrypto_gf_lobit(const bcrypto_gf x);
 bcrypto_mask_t bcrypto_gf_hibit(const bcrypto_gf x);
 bcrypto_mask_t bcrypto_gf_sqrt(bcrypto_gf a, const bcrypto_gf x);
