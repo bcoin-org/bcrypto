@@ -51,6 +51,9 @@ int
 bcrypto_ed25519_pubkey_verify(const bcrypto_ed25519_pubkey_t pk);
 
 int
+bcrypto_ed25519_point_verify(const bcrypto_x25519_pubkey_t pk);
+
+int
 bcrypto_ed25519_verify_batch(
   const unsigned char **m,
   size_t *mlen,
@@ -64,12 +67,6 @@ bcrypto_ed25519_verify_batch(
 
 int
 bcrypto_ed25519_randombytes(void *out, size_t count);
-
-void
-bcrypto_x25519_pubkey_create(
-  bcrypto_x25519_pubkey_t pk,
-  const bcrypto_ed25519_scalar_t e
-);
 
 void
 bcrypto_ed25519_privkey_expand(

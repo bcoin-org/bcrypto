@@ -31,6 +31,7 @@ BED448::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "publicKeyFromHash", BED448::PublicKeyFromHash);
   Nan::Export(obj, "pointFromHash", BED448::PointFromHash);
   Nan::Export(obj, "publicKeyVerify", BED448::PublicKeyVerify);
+  Nan::Export(obj, "pointVerify", BED448::PointVerify);
   Nan::Export(obj, "publicKeyTweakAdd", BED448::PublicKeyTweakAdd);
   Nan::Export(obj, "publicKeyTweakMul", BED448::PublicKeyTweakMul);
   Nan::Export(obj, "publicKeyAdd", BED448::PublicKeyAdd);
@@ -533,6 +534,26 @@ NAN_METHOD(BED448::PublicKeyVerify) {
   bool result = (bool)bcrypto_curve448_point_valid(p);
 
   bcrypto_curve448_point_destroy(p);
+
+  return info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
+}
+
+NAN_METHOD(BED448::PointVerify) {
+  if (info.Length() < 1)
+    return Nan::ThrowError("ed448.pointVerify() requires arguments.");
+
+  v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(pbuf))
+    return Nan::ThrowTypeError("First argument must be a buffer.");
+
+  const uint8_t *pub = (const uint8_t *)node::Buffer::Data(pbuf);
+  size_t pub_len = node::Buffer::Length(pbuf);
+
+  if (pub_len != BCRYPTO_X448_PUBLIC_BYTES)
+    return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
+
+  bool result = (bool)bcrypto_x448_verify_public_key(pub);
 
   return info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }

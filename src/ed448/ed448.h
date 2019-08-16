@@ -347,6 +347,9 @@ bcrypto_curve448_point_from_hash(
   const unsigned char bytes[112]
 );
 
+bcrypto_c448_error_t
+bcrypto_x448_verify_public_key(const uint8_t x[BCRYPTO_X_PUBLIC_BYTES]);
+
 #if defined(__cplusplus)
 }
 #endif

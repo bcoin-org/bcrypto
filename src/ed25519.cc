@@ -31,6 +31,7 @@ BED25519::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "publicKeyFromHash", BED25519::PublicKeyFromHash);
   Nan::Export(obj, "pointFromHash", BED25519::PointFromHash);
   Nan::Export(obj, "publicKeyVerify", BED25519::PublicKeyVerify);
+  Nan::Export(obj, "pointVerify", BED25519::PointVerify);
   Nan::Export(obj, "publicKeyTweakAdd", BED25519::PublicKeyTweakAdd);
   Nan::Export(obj, "publicKeyTweakMul", BED25519::PublicKeyTweakMul);
   Nan::Export(obj, "publicKeyAdd", BED25519::PublicKeyAdd);
@@ -510,6 +511,26 @@ NAN_METHOD(BED25519::PublicKeyVerify) {
     return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
 
   bool result = bcrypto_ed25519_pubkey_verify(pub) == 1;
+
+  return info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
+}
+
+NAN_METHOD(BED25519::PointVerify) {
+  if (info.Length() < 1)
+    return Nan::ThrowError("ed25519.pointVerify() requires arguments.");
+
+  v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(pbuf))
+    return Nan::ThrowTypeError("First argument must be a buffer.");
+
+  const uint8_t *pub = (const uint8_t *)node::Buffer::Data(pbuf);
+  size_t pub_len = node::Buffer::Length(pbuf);
+
+  if (pub_len != 32)
+    return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
+
+  bool result = bcrypto_ed25519_point_verify(pub) == 1;
 
   return info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }

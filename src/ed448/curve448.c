@@ -691,14 +691,33 @@ void bcrypto_x448_derive_public_key(uint8_t out[BCRYPTO_X_PUBLIC_BYTES],
   bcrypto_curve448_point_destroy(p);
 }
 
+bcrypto_c448_error_t bcrypto_x448_verify_public_key(const uint8_t x[BCRYPTO_X_PUBLIC_BYTES])
+{
+  bcrypto_mask_t ret = -1;
+  bcrypto_gf u;
+
+  ret &= bcrypto_gf_deserialize(u, x, 1, 0);
+  ret &= bcrypto_gf_valid_x(u);
+
+  return bcrypto_c448_succeed_if(mask_to_bool(ret));
+}
+
 /* Thanks Johan Pascal */
 bcrypto_c448_error_t bcrypto_curve448_convert_public_key_to_x448(
   uint8_t x[BCRYPTO_X_PUBLIC_BYTES],
   const uint8_t ed[BCRYPTO_EDDSA_448_PUBLIC_BYTES]
 ) {
+  bcrypto_curve448_point_t p;
   bcrypto_gf y;
   const uint8_t mask = (uint8_t)(0xFE << (7));
   bcrypto_mask_t ret = -1;
+
+  bcrypto_c448_error_t error =
+    bcrypto_curve448_point_decode_like_eddsa_and_mul_by_ratio(p, ed);
+
+  if (error != BCRYPTO_C448_SUCCESS)
+    return error;
+
   bcrypto_gf_deserialize(y, ed, 1, mask);
 
   {
@@ -720,6 +739,8 @@ bcrypto_c448_error_t bcrypto_curve448_convert_public_key_to_x448(
     OPENSSL_cleanse(d, sizeof(d));
   }
 
+  bcrypto_curve448_point_destroy(p);
+
   return bcrypto_c448_succeed_if(mask_to_bool(ret));
 }
 
@@ -734,23 +755,7 @@ bcrypto_curve448_convert_public_key_to_eddsa(
 
   ret &= bcrypto_gf_deserialize(u, x, 1, 0);
 
-  /* v^2 = u^3 + a * u^2 + u */
-  {
-    bcrypto_gf u2, u3, v2;
-
-    bcrypto_gf_sqr(u2, u);
-    bcrypto_gf_mul(u3, u2, u);
-    bcrypto_gf_add(v2, u3, u);
-    bcrypto_gf_mulw(u3, u2, 156326);
-
-    bcrypto_gf_add(v2, v2, u3);
-
-    ret &= bcrypto_gf_sqrt(v, v2);
-
-    OPENSSL_cleanse(u2, sizeof(u2));
-    OPENSSL_cleanse(u3, sizeof(u3));
-    OPENSSL_cleanse(v2, sizeof(v2));
-  }
+  ret &= bcrypto_gf_solve_y(v, u);
 
   /*
    * x = 4 * v * (u^2 - 1) / (u^4 - 2 * u^2 + 4 * v^2 + 1)
@@ -863,7 +868,8 @@ bcrypto_curve448_point_from_uniform(
   uint8_t out[BCRYPTO_X_PUBLIC_BYTES],
   const unsigned char bytes[56]
 ) {
-  bcrypto_gf r, v, v2, v3, e, l, x, t;
+  bcrypto_gf r, v, v2, v3, l, x, t;
+  int sign;
 
   /*
    * f(a) = a^((q - 1) / 2)
@@ -873,11 +879,11 @@ bcrypto_curve448_point_from_uniform(
    * y = -e * sqrt(x^3 + A * x^2 + B * x)
    */
 
+  static const bcrypto_gf a = {{{156326}}};
   bcrypto_gf z = {{{1}}};
-  bcrypto_gf a = {{{156326}}};
+  bcrypto_gf e = {{{1}}};
   bcrypto_gf i2 = {{{2}}};
 
-  bcrypto_gf_copy(e, ONE);
   bcrypto_gf_sub(z, ZERO, z);
   bcrypto_gf_invert(i2, i2, 1);
 
@@ -889,9 +895,8 @@ bcrypto_curve448_point_from_uniform(
   bcrypto_gf_add(v, t, ONE);
   bcrypto_gf_cond_swap(v, e, bcrypto_gf_eq(v, ZERO));
   bcrypto_gf_invert(t, v, 1);
-  bcrypto_gf_sub(a, ZERO, a);
   bcrypto_gf_mul(v, a, t);
-  bcrypto_gf_sub(a, ZERO, a);
+  bcrypto_gf_sub(v, ZERO, v);
 
   bcrypto_gf_sqr(v2, v);
   bcrypto_gf_mul(v3, v2, v);
@@ -913,7 +918,7 @@ bcrypto_curve448_point_from_uniform(
 
   bcrypto_gf_serialize(out, x, 1);
 
-  int sign = bcrypto_gf_is_odd(r);
+  sign = bcrypto_gf_is_odd(r);
 
   OPENSSL_cleanse(r, sizeof(r));
   OPENSSL_cleanse(v, sizeof(v));
@@ -951,6 +956,7 @@ bcrypto_curve448_point_to_uniform(
 ) {
   bcrypto_gf x, y, n, d, r, t;
   bcrypto_mask_t ret = -1;
+  bcrypto_mask_t lt;
 
   static const unsigned char fq2[56] = {
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
@@ -967,49 +973,30 @@ bcrypto_curve448_point_to_uniform(
    *   = sqrt(-(x + A) / (x * u)) otherwise
    */
 
+  static const bcrypto_gf a = {{{156326}}};
   bcrypto_gf z = {{{1}}};
-  bcrypto_gf a = {{{156326}}};
 
   bcrypto_gf_sub(z, ZERO, z);
 
   (void)bcrypto_gf_deserialize(x, pub, 1, 0);
 
-  /* y^2 = x^3 + a * x^2 + x */
-  {
-    bcrypto_gf x2, x3, y2;
+  ret &= bcrypto_gf_solve_y(y, x);
 
-    bcrypto_gf_sqr(x2, x);
-    bcrypto_gf_mul(x3, x2, x);
-    bcrypto_gf_add(y2, x3, x);
-    bcrypto_gf_mulw(x3, x2, 156326);
-
-    bcrypto_gf_add(y2, y2, x3);
-
-    ret &= bcrypto_gf_sqrt(y, y2);
-
-    bcrypto_gf_cond_neg(y, (bcrypto_gf_is_odd(y) ^ sign) * -1);
-
-    OPENSSL_cleanse(x2, sizeof(x2));
-    OPENSSL_cleanse(x3, sizeof(x3));
-    OPENSSL_cleanse(y2, sizeof(y2));
-  }
+  bcrypto_gf_cond_neg(y, (bcrypto_gf_is_odd(y) ^ sign) * -1);
 
   bcrypto_gf_serialize(out, y, 1);
 
-  bcrypto_mask_t lt = bcrypto_gf_bytes_le(out, fq2);
+  lt = bcrypto_gf_bytes_le(out, fq2);
 
   bcrypto_gf_copy(n, x);
   bcrypto_gf_add(d, x, a);
   bcrypto_gf_cond_swap(n, d, lt ^ -1);
   bcrypto_gf_sub(n, ZERO, n);
+
   bcrypto_gf_mul(t, d, z);
-  bcrypto_gf_invert(d, t, 0);
+  bcrypto_gf_copy(d, t);
 
-  ret &= bcrypto_gf_neq(d, ZERO);
-
-  bcrypto_gf_mul(r, n, d);
-
-  ret &= bcrypto_gf_sqrt(r, r);
+  ret &= bcrypto_gf_isqrt(r, n, d);
 
   bcrypto_gf_cond_neg(r, (bcrypto_gf_is_odd(r) ^ sign) * -1);
   bcrypto_gf_serialize(out, r, 1);

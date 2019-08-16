@@ -169,7 +169,8 @@ bcrypto_mask_t bcrypto_gf_eq(const bcrypto_gf a, const bcrypto_gf b)
   return word_is_zero(ret);
 }
 
-bcrypto_mask_t bcrypto_gf_neq(const bcrypto_gf a, const bcrypto_gf b) {
+bcrypto_mask_t bcrypto_gf_neq(const bcrypto_gf a, const bcrypto_gf b)
+{
   return mask_to_bool(bcrypto_gf_eq(a, b)) ? 0 : -1;
 }
 
@@ -300,7 +301,91 @@ void bcrypto_gf_legendre(bcrypto_gf a, const bcrypto_gf x)
   bcrypto_gf_copy(a, r);
 }
 
-int bcrypto_gf_is_odd(const bcrypto_gf a) {
+/* (p - 3) / 4 = [ [ 1, 223 ], [ 0, 1 ], [ 1, 222 ] ] */
+void bcrypto_gf_pow_pm3d4(bcrypto_gf a, const bcrypto_gf x)
+{
+  bcrypto_gf r = {{{1}}};
+  bcrypto_gf t;
+  int i;
+
+  for (i = 0; i < 223; i++) {
+    bcrypto_gf_sqr(t, r);
+    bcrypto_gf_mul(r, t, x);
+  }
+
+  bcrypto_gf_sqr(t, r);
+  bcrypto_gf_copy(r, t);
+
+  for (i = 0; i < 222; i++) {
+    bcrypto_gf_sqr(t, r);
+    bcrypto_gf_mul(r, t, x);
+  }
+
+  bcrypto_gf_copy(a, r);
+}
+
+bcrypto_mask_t bcrypto_gf_isqrt(bcrypto_gf out, const bcrypto_gf u, const bcrypto_gf v)
+{
+  bcrypto_gf u2, u3, u5, v3, p, x, c;
+
+  bcrypto_mask_t nz = bcrypto_gf_neq(v, ZERO);
+
+  /* U2 = U^2 */
+  bcrypto_gf_sqr(u2, u);
+
+  /* U3 = U2 * U */
+  bcrypto_gf_mul(u3, u2, u);
+
+  /* U5 = U3 * U2 */
+  bcrypto_gf_mul(u5, u3, u2);
+
+  /* V3 = V^2 * V */
+  bcrypto_gf_sqr(c, v);
+  bcrypto_gf_mul(v3, c, v);
+
+  /* P = (U5 * V3)^((p - 3) / 4) */
+  bcrypto_gf_mul(c, u5, v3);
+  bcrypto_gf_pow_pm3d4(p, c);
+
+  /* X = U3 * V * P */
+  bcrypto_gf_mul(c, u3, v);
+  bcrypto_gf_mul(x, c, p);
+
+  /* C = V * X^2 */
+  bcrypto_gf_sqr(u2, x);
+  bcrypto_gf_mul(c, v, u2);
+
+  /* C = U */
+  bcrypto_mask_t ret = bcrypto_gf_eq(c, u);
+
+  bcrypto_gf_copy(out, x);
+
+  return ret & nz;
+}
+
+bcrypto_mask_t bcrypto_gf_solve_y(bcrypto_gf out, const bcrypto_gf x)
+{
+  /* y^2 = x^3 + a * x^2 + x */
+  bcrypto_gf x2, x3, y2;
+
+  bcrypto_gf_sqr(x2, x);
+  bcrypto_gf_mul(x3, x2, x);
+  bcrypto_gf_add(y2, x3, x);
+  bcrypto_gf_mulw(x3, x2, 156326);
+
+  bcrypto_gf_add(y2, y2, x3);
+
+  return bcrypto_gf_sqrt(out, y2);
+}
+
+bcrypto_mask_t bcrypto_gf_valid_x(const bcrypto_gf x)
+{
+  bcrypto_gf y;
+  return bcrypto_gf_solve_y(y, x);
+}
+
+int bcrypto_gf_is_odd(const bcrypto_gf a)
+{
   bcrypto_gf c;
   bcrypto_gf_copy(c, a);
   bcrypto_gf_strong_reduce(c);

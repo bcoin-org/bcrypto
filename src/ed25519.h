@@ -27,6 +27,7 @@ private:
   static NAN_METHOD(PublicKeyFromHash);
   static NAN_METHOD(PointFromHash);
   static NAN_METHOD(PublicKeyVerify);
+  static NAN_METHOD(PointVerify);
   static NAN_METHOD(PublicKeyTweakAdd);
   static NAN_METHOD(PublicKeyTweakMul);
   static NAN_METHOD(PublicKeyAdd);
