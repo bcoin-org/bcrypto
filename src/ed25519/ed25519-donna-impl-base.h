@@ -401,9 +401,10 @@ ge25519_copy(ge25519 *a, const ge25519 *b) {
 
 static inline void
 ge25519_set_neutral(ge25519 *a) {
-  memset(a, 0, sizeof(ge25519));
-  a->y[0] = 1;
-  a->z[0] = 1;
+  curve25519_set_word(a->x, 0);
+  curve25519_set_word(a->y, 1);
+  curve25519_set_word(a->z, 1);
+  curve25519_set_word(a->t, 0);
 }
 
 /*
