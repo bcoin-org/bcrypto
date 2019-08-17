@@ -258,20 +258,32 @@ ge25519_has_torsion(const ge25519 *e) {
   pack & unpack
 */
 
+static inline int
+ge25519_is_zero(const unsigned char p[32]) {
+  static const unsigned char zero[32] = {0};
+  return bcrypto_ed25519_equal(p, zero, 32);
+}
+
+static inline int
+ge25519_is_one(const unsigned char p[32]) {
+  static const unsigned char one[32] = {1};
+  return bcrypto_ed25519_equal(p, one, 32);
+}
+
 static int
-ge25519_is_canonical(const unsigned char *s) {
+ge25519_is_canonical(const unsigned char p[32]) {
   /* https://github.com/jedisct1/libsodium/blob/3d37974/src/libsodium/crypto_core/ed25519/ref10/ed25519_ref10.c */
   unsigned char c;
   unsigned char d;
   unsigned int i;
 
-  c = (s[31] & 0x7f) ^ 0x7f;
+  c = (p[31] & 0x7f) ^ 0x7f;
 
   for (i = 30; i > 0; i--)
-    c |= s[i] ^ 0xff;
+    c |= p[i] ^ 0xff;
 
   c = (((unsigned int)c) - 1U) >> 8;
-  d = (0xed - 1U - (unsigned int)s[0]) >> 8;
+  d = (0xed - 1U - (unsigned int)p[0]) >> 8;
 
   return 1 - (c & d & 1);
 }
@@ -279,7 +291,6 @@ ge25519_is_canonical(const unsigned char *s) {
 static int
 ge25519_pack(unsigned char r[32], const ge25519 *p) {
   bignum25519 tx, ty, zi;
-
   unsigned char parity[32];
 
   curve25519_recip(zi, p->z);
@@ -290,20 +301,24 @@ ge25519_pack(unsigned char r[32], const ge25519 *p) {
 
   r[31] ^= ((parity[0] & 1) << 7);
 
-  return ge25519_is_neutral(p) ^ 1;
+  return ge25519_is_one(r) ^ 1;
 }
 
 static int
 ge25519_unpack(ge25519 *r, const unsigned char p[32]) {
-  static const bignum25519 one = {1};
   unsigned char sign = p[31] >> 7;
+  unsigned char check[32];
   int ret = 1;
   bignum25519 lhs, rhs;
 
+  /* y >= p */
   ret &= ge25519_is_canonical(p);
 
+  /* y = 1, sign = 0 (infinity) */
+  ret &= ge25519_is_one(p) ^ 1;
+
   curve25519_expand(r->y, p);
-  curve25519_copy(r->z, one);
+  curve25519_set_word(r->z, 1);
   curve25519_square(lhs, r->y); /* x = y^2 */
   curve25519_mul(rhs, lhs, ge25519_ecd); /* rhs = dy^2 */
   curve25519_sub_reduce(lhs, lhs, r->z); /* x = y^1 - 1 */
@@ -312,27 +327,33 @@ ge25519_unpack(ge25519 *r, const unsigned char p[32]) {
   /* Computation of sqrt(lhs/rhs) */
   ret &= curve25519_isqrt(r->x, lhs, rhs);
 
-  curve25519_cond_neg(r->x, r->x, curve25519_is_odd(r->x) ^ sign);
-  curve25519_mul(r->t, r->x, r->y);
+  curve25519_contract(check, r->x);
 
-  ret &= ge25519_is_neutral(r) ^ 1;
+  /* x = 0, sign = 1 (malleable) */
+  ret &= (ge25519_is_zero(check) & sign) ^ 1;
+
+  curve25519_cond_neg(r->x, r->x, (check[0] & 1) ^ sign);
+  curve25519_mul(r->t, r->x, r->y);
 
   return ret;
 }
 
 static int
 ge25519_unpack_vartime(ge25519 *r, const unsigned char p[32]) {
-  static const unsigned char zero[32] = {0};
-  static const bignum25519 one = {1};
-  unsigned char parity = p[31] >> 7;
+  unsigned char sign = p[31] >> 7;
   unsigned char check[32];
   bignum25519 t, root, num, den, d3;
 
+  /* y >= p */
   if (!ge25519_is_canonical(p))
     return 0;
 
+  /* y = 1, sign = 0 (infinity) */
+  if (ge25519_is_one(p))
+    return 0;
+
   curve25519_expand(r->y, p);
-  curve25519_copy(r->z, one);
+  curve25519_set_word(r->z, 1);
   curve25519_square(num, r->y); /* x = y^2 */
   curve25519_mul(den, num, ge25519_ecd); /* den = dy^2 */
   curve25519_sub_reduce(num, num, r->z); /* x = y^1 - 1 */
@@ -357,11 +378,11 @@ ge25519_unpack_vartime(ge25519 *r, const unsigned char p[32]) {
   curve25519_sub_reduce(root, t, num);
   curve25519_contract(check, root);
 
-  if (!bcrypto_ed25519_equal(check, zero, 32)) {
+  if (!ge25519_is_zero(check)) {
     curve25519_add_reduce(t, t, num);
     curve25519_contract(check, t);
 
-    if (!bcrypto_ed25519_equal(check, zero, 32))
+    if (!ge25519_is_zero(check))
       return 0;
 
     curve25519_mul(r->x, r->x, ge25519_sqrtneg1);
@@ -369,12 +390,16 @@ ge25519_unpack_vartime(ge25519 *r, const unsigned char p[32]) {
 
   curve25519_contract(check, r->x);
 
-  if ((check[0] & 1) != parity)
+  /* x = 0, sign = 1 (malleable) */
+  if (ge25519_is_zero(check) && sign)
+    return 0;
+
+  if ((check[0] & 1) != sign)
     curve25519_neg(r->x, r->x);
 
   curve25519_mul(r->t, r->x, r->y);
 
-  return !ge25519_is_neutral_vartime(r);
+  return 1;
 }
 
 /*
@@ -432,9 +457,7 @@ ge25519_double_scalarmult_vartime(ge25519 *r, const ge25519 *p1, const bignum256
     ge25519_pnielsadd(&pre1[i+1], &d1, &pre1[i]);
 
   /* set neutral */
-  memset(r, 0, sizeof(ge25519));
-  r->y[0] = 1;
-  r->z[0] = 1;
+  ge25519_set_neutral(r);
 
   i = 255;
   while ((i >= 0) && !(slide1[i] | slide2[i]))
@@ -476,9 +499,7 @@ ge25519_scalarmult_vartime(ge25519 *r, const ge25519 *p1, const bignum256modm s1
     ge25519_pnielsadd(&pre1[i+1], &d1, &pre1[i]);
 
   /* set neutral */
-  memset(r, 0, sizeof(ge25519));
-  r->y[0] = 1;
-  r->z[0] = 1;
+  ge25519_set_neutral(r);
 
   i = 255;
   while ((i >= 0) && !slide1[i])
