@@ -369,10 +369,8 @@ ge25519_unpack_vartime(ge25519 *r, const unsigned char p[32]) {
 
   curve25519_contract(check, r->x);
 
-  if ((check[0] & 1) != parity) {
-    curve25519_copy(t, r->x);
-    curve25519_neg(r->x, t);
-  }
+  if ((check[0] & 1) != parity)
+    curve25519_neg(r->x, r->x);
 
   curve25519_mul(r->t, r->x, r->y);
 

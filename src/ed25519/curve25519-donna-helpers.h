@@ -180,21 +180,21 @@ static const bignum25519 ALIGN(16) ge25519_sqrtneg1;
 
 static int
 curve25519_isqrt(bignum25519 out, const bignum25519 u, const bignum25519 v) {
-  bignum25519 ALIGN(16) t, v3, x, c;
+  bignum25519 ALIGN(16) v3, x, c;
   int nz, css, fss;
 
   nz = curve25519_is_zero(v) ^ 1;
 
   /* V3 = V^2 * V */
-  curve25519_square(t, v);
-  curve25519_mul(v3, t, v);
+  curve25519_square(c, v);
+  curve25519_mul(v3, c, v);
 
   /* V7 = V3^2 * V */
-  curve25519_square(x, v3);
-  curve25519_mul(x, x, v);
+  curve25519_square(c, v3);
+  curve25519_mul(c, c, v);
 
   /* P = (U * V7)^((p - 5) / 8) */
-  curve25519_mul(x, x, u);
+  curve25519_mul(x, u, c);
   curve25519_pow_two252m3(x, x);
 
   /* X = U * V3 * P */
@@ -209,12 +209,12 @@ curve25519_isqrt(bignum25519 out, const bignum25519 u, const bignum25519 v) {
   css = curve25519_is_equal(c, u);
 
   /* C = -U */
-  curve25519_neg(t, u);
-  fss = curve25519_is_equal(c, t);
+  curve25519_neg(c, c);
+  fss = curve25519_is_equal(c, u);
 
   /* X = X * I if C = -U */
-  curve25519_mul(t, x, ge25519_sqrtneg1);
-  curve25519_swap_conditional(x, t, fss);
+  curve25519_mul(c, x, ge25519_sqrtneg1);
+  curve25519_swap_conditional(x, c, fss);
   curve25519_copy(out, x);
 
   return (css | fss) & nz;
