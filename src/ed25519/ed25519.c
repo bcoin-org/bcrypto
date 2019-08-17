@@ -165,8 +165,8 @@ bcrypto_ed25519_verify_single(
   mulh256_modm(S, S);
 
   /* ShB - H(R,A,m)Ah */
-  ge25519_neg(&A, &A);
   ge25519_mulh(&A, &A);
+  ge25519_neg(&A, &A);
   ge25519_double_scalarmult_vartime(&R, &A, hram, S);
   ge25519_pack(checkR, &R);
 

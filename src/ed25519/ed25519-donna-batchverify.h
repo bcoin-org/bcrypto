@@ -244,19 +244,19 @@ bcrypto_ed25519_verify_batch(
       if (!ge25519_unpack_vartime(&batch.points[i + 1], pk[i]))
         return 0;
 
-      ge25519_neg(&batch.points[i + 1], &batch.points[i + 1]);
       ge25519_mulh(&batch.points[i + 1], &batch.points[i + 1]);
+      ge25519_neg(&batch.points[i + 1], &batch.points[i + 1]);
     }
 
     for (i = 0; i < batchsize; i++) {
       if (!ge25519_unpack_vartime(&batch.points[batchsize + i + 1], RS[i]))
         return 0;
 
-      ge25519_neg(&batch.points[batchsize + i + 1],
-                  &batch.points[batchsize + i + 1]);
-
       ge25519_mulh(&batch.points[batchsize + i + 1],
                    &batch.points[batchsize + i + 1]);
+
+      ge25519_neg(&batch.points[batchsize + i + 1],
+                  &batch.points[batchsize + i + 1]);
     }
 
     ge25519_multi_scalarmult_vartime(&p, &batch, (batchsize * 2) + 1);
