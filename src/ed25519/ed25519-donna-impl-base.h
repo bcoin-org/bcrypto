@@ -537,7 +537,7 @@ ge25519_scalarmult(ge25519 *r, const ge25519 *p, const bignum256modm s) {
     ge25519_swap_conditional(&a, &b, swap ^ bit);
 
     ge25519_add(&a, &a, &b);
-    ge25519_add(&b, &b, &b);
+    ge25519_double(&b, &b);
 
     swap = bit;
   }
