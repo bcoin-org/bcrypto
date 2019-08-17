@@ -1861,13 +1861,14 @@ describe('Elliptic', function() {
       assert(x25519._edwardsD().eq(ed25519.d));
       assert(ed25519._montA().eq(x25519.a));
 
-      for (let i = 1; i < 10; i++) {
+      for (let i = 0; i < 10; i++) {
         const we = wei25519.g.mul(new BN(i));
         const mo = x25519.g.mul(new BN(i));
         const ed = ed25519.g.mul(new BN(i));
+        const sign = we.isInfinity() ? false : we.y.redIsOdd();
 
         assert(wei25519.pointFromShort(we).eq(we));
-        assert(wei25519.pointFromMont(mo, we.y.redIsOdd()).eq(we));
+        assert(wei25519.pointFromMont(mo, sign).eq(we));
         assert(wei25519.pointFromEdwards(ed).eq(we));
 
         assert(x25519.pointFromShort(we).eq(mo));
