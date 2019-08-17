@@ -5,6 +5,7 @@ const BN = require('../lib/bn');
 const elliptic = require('../lib/js/elliptic');
 const extra = require('../test/util/curves');
 const id = (process.argv[2] || '').toUpperCase();
+const ell1 = process.argv.includes('--elligator1');
 const Curve = elliptic.curves[id] || extra[id];
 
 if (!Curve)
@@ -32,7 +33,10 @@ function printZ(curve) {
     else if (curve.p.modrn(3) === 1 && !curve.b.isZero())
       alg = 'svdw';
   } else {
-    alg = 'elligator2';
+    if (ell1 && curve.p.andln(3) === 3)
+      alg = 'elligator1';
+    else
+      alg = 'elligator2';
   }
 
   const str = sign + z.fromRed().toString(16);
@@ -59,13 +63,84 @@ function findZ(curve) {
     throw new Error('Not implemented.');
   }
 
-  if (curve.type === 'mont')
+  if (curve.type === 'mont'
+      || curve.type === 'edwards') {
+    if (ell1 && curve.p.andln(3) === 3)
+      return findElligator1S(curve);
     return findElligator2Z(curve);
-
-  if (curve.type === 'edwards')
-    return findElligator2Z(curve);
+  }
 
   throw new Error('Not implemented.');
+}
+
+function findElligator1S(curve) {
+  assert(curve instanceof elliptic.Curve);
+
+  const s = curve.one.clone();
+
+  for (;;) {
+    if (isElligator1S(curve, s))
+      return s;
+
+    if (isElligator1S(curve, s.redNeg()))
+      return s.redNeg();
+
+    s.redIAdd(curve.one);
+  }
+}
+
+function isElligator1S(curve, s) {
+  assert(curve instanceof elliptic.Curve);
+  assert(s instanceof BN);
+
+  try {
+    getElligator1SCRD(curve, s);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+function getElligator1SCRD(curve, s) {
+  assert(curve instanceof elliptic.Curve);
+  assert(s instanceof BN);
+
+  // Assumptions:
+  //
+  //   - Let q be a prime power congruent to 3 mod 4.
+  //   - Let s be a nonzero element of F(q) with (s^2 - 2)(s^2 + 2) != 0.
+  //   - Let c = 2 / s^2. Then c(c - 1)(c + 1) != 0.
+  //   - Let r = c + 1 / c. Then r != 0.
+  //   - Let d = -(c + 1)^2 / (c - 1)^2. Then d is not a square.
+  const s2 = s.redSqr();
+  const lhs = s2.redSub(curve.two);
+  const rhs = s2.redAdd(curve.two);
+  const k0 = lhs.redMul(rhs);
+
+  if (k0.isZero())
+    throw new Error('Invalid S.');
+
+  const c = curve.two.redMul(s2.redInvert());
+  const cm1 = c.redSub(curve.one);
+  const cp1 = c.redAdd(curve.one);
+  const k1 = c.redMul(cm1).redMul(cp1);
+
+  if (k1.isZero())
+    throw new Error('Invalid C.');
+
+  const r = c.redAdd(c.redInvert());
+
+  if (r.isZero())
+    throw new Error('Invalid R.');
+
+  const dl = c.redAdd(curve.one).redSqr().redINeg();
+  const dr = c.redSub(curve.one).redSqr();
+  const d = dl.redMul(dr.redInvert());
+
+  if (d.redJacobi() !== -1)
+    throw new Error('Invalid D.');
+
+  return [s, c, r, d];
 }
 
 function findElligator2Z(curve) {
@@ -150,6 +225,15 @@ function isSVDWZ(curve, z) {
   const d = c.redISub(z).redMul(curve.i2);
 
   return curve.solveY2(d).redJacobi() === 1;
+}
+
+// Test ED1174 `s`.
+{
+  const ed1174 = new extra.ED1174();
+  const s = new BN('03fe707f 0d7004fd 334ee813 a5f1a74a'
+                 + 'b2449139 c82c39d8 4a09ae74 cc78c615', 16);
+
+  assert(isElligator1S(ed1174, s.toRed(ed1174.red)));
 }
 
 printZ(new Curve());
