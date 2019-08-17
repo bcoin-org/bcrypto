@@ -138,6 +138,8 @@ describe('Elliptic', function() {
 
           assert(p.dbl().eq(p.uadd(p)));
           assert(j.dbl().eq(j.uadd(j)));
+          assert(p.dbl().eq(p.uadd(p)));
+          assert(j.dbl().eq(j.uadd(j)));
           assert(p.dbl().eq(p.udbl()));
           assert(j.dbl().eq(j.udbl()));
           assert(p.uadd(p).uadd(p).eq(tp));
@@ -2250,6 +2252,71 @@ describe('Elliptic', function() {
         assert(pj.zaddc(pj.neg())[0].eq(oj));
         assert(oj.zdblu()[0].eq(oj));
         assert(oj.ztrplu()[0].eq(oj));
+      }
+    });
+
+    it('should test doubling when infinity (udbl)', () => {
+      const p256 = new curves.P256();
+      const secp256k1 = new curves.SECP256K1();
+      const bp256 = new curves.BRAINPOOLP256();
+      const ed25519 = new curves.ED25519();
+      const ed448 = new curves.ED448();
+
+      for (const curve of [p256, secp256k1, bp256, ed25519, ed448]) {
+        const p = curve.jpoint().clone();
+        const q = p.udbl();
+
+        assert(q.isInfinity());
+        assert(q.eq(p));
+
+        if (curve.type === 'edwards') {
+          assert(q.x.eq(curve.zero));
+          assert(q.y.eq(q.z));
+        } else {
+          assert(q.x.eq(curve.one));
+          assert(q.y.eq(curve.one));
+          assert(q.z.eq(curve.zero));
+        }
+      }
+    });
+
+    it('should test doubling when infinity (udbl)', () => {
+      const p256 = new curves.P256();
+      const secp256k1 = new curves.SECP256K1();
+      const bp256 = new curves.BRAINPOOLP256();
+
+      for (const curve of [p256, secp256k1, bp256]) {
+        const x = curve.randomField(rng);
+        const y = curve.randomField(rng);
+        const z = curve.zero.clone();
+        const p = curve.jpoint(x, y, z);
+        const q = p.udbl();
+
+        assert(q.isInfinity());
+        assert(q.eq(curve.jpoint()));
+        assert(q.x.eq(curve.one));
+        assert(q.y.eq(curve.one));
+        assert(q.z.eq(curve.zero));
+      }
+    });
+
+    it('should test doubling when y=0 (udbl)', () => {
+      const p256 = new curves.P256();
+      const secp256k1 = new curves.SECP256K1();
+      const bp256 = new curves.BRAINPOOLP256();
+
+      for (const curve of [p256, secp256k1, bp256]) {
+        const x = curve.randomField(rng);
+        const y = curve.zero.clone();
+        const z = curve.randomField(rng);
+        const p = curve.jpoint(x, y, z);
+        const q = p.udbl();
+
+        assert(q.isInfinity());
+        assert(q.eq(curve.jpoint()));
+        assert(q.x.eq(curve.one));
+        assert(q.y.eq(curve.one));
+        assert(q.z.eq(curve.zero));
       }
     });
 
