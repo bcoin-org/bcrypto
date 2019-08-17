@@ -316,7 +316,7 @@ bcrypto_ed25519_exchange_with_scalar(
 ) {
   bcrypto_ed25519_scalar_t k;
   bignum25519 ALIGN(16) x1, x2, z2, x3, z3, t1, t2;
-  static const bignum25519 nd = {121666};
+  static const bignum25519 a24 = {121666};
   static const unsigned char zero[32] = {0};
 
   int swap = 0;
@@ -360,7 +360,7 @@ bcrypto_ed25519_exchange_with_scalar(
     curve25519_mul(x2, t2, t1);
     curve25519_sub(t2, t2, t1);
     curve25519_square(z2, z2);
-    curve25519_mul(z3, t2, nd);
+    curve25519_mul(z3, t2, a24);
     curve25519_square(x3, x3);
     curve25519_add(t1, t1, z3);
     curve25519_mul(z3, x1, z2);
