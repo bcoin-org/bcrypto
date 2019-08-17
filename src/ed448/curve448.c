@@ -542,6 +542,9 @@ bcrypto_c448_error_t bcrypto_curve448_point_decode_like_eddsa_and_mul_by_ratio(
   bcrypto_gf_cond_neg(p->x, bcrypto_gf_lobit(p->x) ^ low);
   bcrypto_gf_copy(p->z, ONE);
 
+  /* x = 0, sign = 1 (malleable) */
+  succ &= ~(bcrypto_gf_eq(p->x, ZERO) & low);
+
   {
     bcrypto_gf a, b, c, d;
 
