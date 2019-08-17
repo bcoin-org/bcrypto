@@ -34,6 +34,24 @@ static const bignum256modm modm_mu = {
   0x00000fffffffff
 };
 
+/* 8 */
+static const bignum256modm modm_h = {
+  0x00000000000008,
+  0x00000000000000,
+  0x00000000000000,
+  0x00000000000000,
+  0x00000000000000
+};
+
+/* 1 / 8 */
+static const bignum256modm modm_hinv = {
+  0x06e529e2dc2f79,
+  0x9db37d1cdad061,
+  0x000000000007d3,
+  0x00000000000000,
+  0x00000006000000
+};
+
 static bignum256modm_element_t
 lt_modm(bignum256modm_element_t a, bignum256modm_element_t b) {
   return (a - b) >> 63;
@@ -536,14 +554,6 @@ is_canonical256_modm(const unsigned char s[32]) {
 }
 
 static void
-set_order256_modm(bignum256modm r) {
-  memcpy(r, modm_m, sizeof(bignum256modm));
-}
-
-static void
 mulh256_modm(bignum256modm r, const bignum256modm n) {
-  bignum256modm h;
-  memset(&h[0], 0x00, sizeof(bignum256modm));
-  h[0] = 8;
-  mul256_modm(r, n, h);
+  mul256_modm(r, n, modm_h);
 }

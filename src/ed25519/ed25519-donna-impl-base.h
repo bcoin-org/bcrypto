@@ -227,9 +227,13 @@ ge25519_mulh(ge25519 *r, const ge25519 *e) {
 
 static void
 ge25519_divh(ge25519 *r, const ge25519 *e) {
-  bignum256modm k = {8};
-  recip256_modm(k, k);
-  ge25519_scalarmult_vartime(r, e, k);
+  ge25519_scalarmult_vartime(r, e, modm_hinv);
+}
+
+static void
+ge25519_untorsion(ge25519 *r, const ge25519 *e) {
+  ge25519_mulh(r, e);
+  ge25519_divh(r, r);
 }
 
 static int
@@ -243,11 +247,8 @@ ge25519_is_small(const ge25519 *e) {
 
 static int
 ge25519_has_torsion(const ge25519 *e) {
-  bignum256modm k;
   ge25519 ALIGN(16) p;
-
-  set_order256_modm(k);
-  ge25519_scalarmult_vartime(&p, e, k);
+  ge25519_scalarmult_vartime(&p, e, modm_m);
 
   return (ge25519_is_neutral(e) ^ 1)
        & (ge25519_is_neutral(&p) ^ 1);

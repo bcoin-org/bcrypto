@@ -734,9 +734,6 @@ bcrypto_ed25519_point_from_uniform(
   static const bignum25519 z = {2};
   static const bignum25519 a = {486662};
   bignum25519 e = {1};
-  bignum25519 i2 = {2};
-
-  curve25519_recip(i2, i2);
 
   curve25519_expand(r, bytes);
 
@@ -754,14 +751,14 @@ bcrypto_ed25519_point_from_uniform(
 
   /* e = (v^3 + a * v^2 + v)^((p - 1) / 2) */
   curve25519_mul(e, a, v2);
-  curve25519_add(e, e, v3);
+  curve25519_add_reduce(e, e, v3);
   curve25519_add(e, e, v);
   curve25519_pow_two255m20d2(e, e);
 
   /* l = (1 - e) * a / 2 */
   curve25519_sub(l, one, e);
   curve25519_mul(l, l, a);
-  curve25519_mul(l, l, i2);
+  curve25519_mul(l, l, curve25519_i2);
 
   /* x = e * v - l */
   curve25519_mul(x, e, v);

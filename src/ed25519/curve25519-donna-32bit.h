@@ -11,6 +11,12 @@ typedef uint32_t bignum25519align16[12];
 static const uint32_t reduce_mask_25 = (1 << 25) - 1;
 static const uint32_t reduce_mask_26 = (1 << 26) - 1;
 
+/* 1 / 2 */
+static const bignum25519 curve25519_i2 = {
+  0x3fffff7, 0x1ffffff, 0x3ffffff, 0x1ffffff,
+  0x3ffffff, 0x1ffffff, 0x3ffffff, 0x1ffffff,
+  0x3ffffff, 0x0ffffff
+};
 
 /* out = in */
 DONNA_INLINE static void

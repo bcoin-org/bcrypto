@@ -230,7 +230,7 @@ curve25519_solve_y(bignum25519 out, const bignum25519 x) {
   curve25519_mul(x3, x2, x);
   curve25519_add(y2, x3, x);
   curve25519_mul(x3, x2, a);
-  curve25519_add(y2, y2, x3);
+  curve25519_add_reduce(y2, y2, x3);
 
   return curve25519_sqrt(out, y2);
 }
