@@ -86,6 +86,46 @@ class SECP224K1 extends ShortCurve {
 }
 
 /**
+ * WEI25519
+ * https://tools.ietf.org/id/draft-ietf-lwig-curve-representations-02.html#rfc.appendix.E.3
+ */
+
+class WEI25519 extends ShortCurve {
+  constructor(pre) {
+    super({
+      id: 'WEI25519',
+      ossl: null,
+      type: 'short',
+      endian: 'be',
+      hash: 'SHA256',
+      prefix: null,
+      context: false,
+      iso4: false,
+      prime: 'p25519',
+      // 2^255 - 19
+      p: '7fffffff ffffffff ffffffff ffffffff'
+       + 'ffffffff ffffffff ffffffff ffffffed',
+      a: '2aaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa'
+       + 'aaaaaaaa aaaaaaaa aaaaaa98 4914a144',
+      b: '7b425ed0 97b425ed 097b425e d097b425'
+       + 'ed097b42 5ed097b4 260b5e9c 7710c864',
+      n: '10000000 00000000 00000000 00000000'
+       + '14def9de a2f79cd6 5812631a 5cf5d3ed',
+      h: '8',
+      // SSWU
+      z: '2',
+      g: [
+        ['2aaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa',
+         'aaaaaaaa aaaaaaaa aaaaaaaa aaad245a'].join(''),
+        ['20ae19a1 b8a086b4 e01edd2c 7748d14c',
+         '923d4d7e 6d7c61b2 29e9c5a2 7eced3d9'].join(''),
+        pre
+      ]
+    });
+  }
+}
+
+/**
  * ISOED448
  * https://tools.ietf.org/html/rfc7748#section-4.2
  * https://git.zx2c4.com/goldilocks/tree/_aux/ristretto/ristretto.sage#n658
@@ -508,6 +548,7 @@ class E521 extends EdwardsCurve {
 module.exports = {
   SECP192K1,
   SECP224K1,
+  WEI25519,
   ISOED448,
   ED1174,
   ED41417,

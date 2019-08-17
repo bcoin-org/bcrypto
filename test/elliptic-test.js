@@ -1853,6 +1853,33 @@ describe('Elliptic', function() {
       assert(g2.eq(ed448.g));
     });
 
+    it('should test wei25519 equivalence', () => {
+      const wei25519 = new extra.WEI25519();
+      const ed25519 = new curves.ED25519();
+      const x25519 = new curves.X25519();
+
+      assert(x25519._edwardsD().eq(ed25519.d));
+      assert(ed25519._montA().eq(x25519.a));
+
+      for (let i = 1; i < 10; i++) {
+        const we = wei25519.g.mul(new BN(i));
+        const mo = x25519.g.mul(new BN(i));
+        const ed = ed25519.g.mul(new BN(i));
+
+        assert(wei25519.pointFromShort(we).eq(we));
+        assert(wei25519.pointFromMont(mo, we.y.redIsOdd()).eq(we));
+        assert(wei25519.pointFromEdwards(ed).eq(we));
+
+        assert(x25519.pointFromShort(we).eq(mo));
+        assert(x25519.pointFromMont(mo, ed.x.redIsOdd()).eq(mo));
+        assert(x25519.pointFromEdwards(ed).eq(mo));
+
+        assert(ed25519.pointFromShort(we).eq(ed));
+        assert(ed25519.pointFromMont(mo, ed.x.redIsOdd()).eq(ed));
+        assert(ed25519.pointFromEdwards(ed).eq(ed));
+      }
+    });
+
     it('should test elligator (exceptional case, r=1)', () => {
       const x448 = new curves.X448();
       const [p, sign] = x448.pointFromUniform(x448.one);
