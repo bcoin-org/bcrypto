@@ -2006,6 +2006,21 @@ describe('Elliptic', function() {
       assert(p.eq(q));
     });
 
+    it('should test elligator 1', () => {
+      const curve = new extra.ED1174();
+
+      for (let i = 0; i < 100; i++) {
+        const r1 = curve.one.redMuln(i);
+        const p1 = curve._elligator1(r1);
+        const r2 = curve._invert1(p1);
+        const p2 = curve._elligator1(r2);
+
+        assert(!p1.isInfinity());
+        assert(p1.validate());
+        assert(p1.eq(p2));
+      }
+    });
+
     it('should test simple shallue-woestijne-ulas algorithm', () => {
       const curve = new curves.P256();
       const u = curve.randomField(rng);

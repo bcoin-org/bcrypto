@@ -205,6 +205,9 @@ class ED1174 extends EdwardsCurve {
       n: '01ffffff ffffffff ffffffff ffffffff'
        + 'f77965c4 dfd30734 8944d45f d166c971',
       h: '4',
+      // Elligator 1
+      s: '03fe707f 0d7004fd 334ee813 a5f1a74a'
+       + 'b2449139 c82c39d8 4a09ae74 cc78c615',
       // Elligator 2
       z: '-1',
       g: [
