@@ -2674,9 +2674,6 @@ bcrypto_ecdsa_icart(bcrypto_ecdsa_t *ec, const BIGNUM *r) {
   BN_mod_mul(y, u, x, ec->p, ec->ctx);
   BN_mod_add(y, y, v, ec->p, ec->ctx);
 
-  if (BN_is_odd(y) != BN_is_odd(u))
-    BN_mod_sub(y, ec->p, y, ec->p, ec->ctx);
-
 #if OPENSSL_VERSION_NUMBER >= 0x10200000L
   // Note: should be present with 1.1.1b
   if (!EC_POINT_set_affine_coordinates(ec->group, P, x, y, ec->ctx))
