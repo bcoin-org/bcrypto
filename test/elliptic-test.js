@@ -2009,6 +2009,27 @@ describe('Elliptic', function() {
     it('should test elligator 1', () => {
       const curve = new extra.ED1174();
 
+      const r1 = curve.one.redMuln(1337);
+      const p1 = curve._elligator1(r1);
+
+      assert(p1.validate());
+      assert.deepStrictEqual(p1.toJSON(), [
+        '0751dcb3ac43e56dd98495eb18dd99d601652d6303006f53d1629f3422cf9c55',
+        '029122c5febb9231a42535ff7dc960d33cc0845ca61864fa657ae4587f0c4f87'
+      ]);
+
+      const r2 = curve._invert1(p1);
+
+      assert.strictEqual(r2.redNeg().fromRed().toNumber(), 1337);
+
+      const p3 = curve.pointFromJSON([
+        '02b407fb3fdae072411ca31ec7baa1278be5fd5d2300a52fdcd212d7712d2a27',
+        '02aadd80383c1a4c807dac923e0e0f3f17680513b1c4cde2fadc21480dcb2785'
+      ]);
+
+      assert(p3.validate());
+      assert.throws(() => curve._invert1(p3));
+
       for (let i = 0; i < 100; i++) {
         const r1 = curve.one.redMuln(i);
         const p1 = curve._elligator1(r1);
