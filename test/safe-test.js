@@ -101,6 +101,24 @@ describe('Safe', function() {
     assert.strictEqual(safe.safeMax(2, 2), 2);
   });
 
+  it('should take abs', () => {
+    assert.strictEqual(safe.safeAbs(-1), 1);
+    assert.strictEqual(safe.safeAbs(0), 0);
+    assert.strictEqual(safe.safeAbs(1), 1);
+  });
+
+  it('should take bool', () => {
+    assert.strictEqual(safe.safeBool(-100), 1);
+    assert.strictEqual(safe.safeBool(-1), 1);
+    assert.strictEqual(safe.safeBool(0), 0);
+    assert.strictEqual(safe.safeBool(1), 1);
+    assert.strictEqual(safe.safeBool(100), 1);
+    assert.strictEqual(safe.safeBool(null), 0);
+    assert.strictEqual(safe.safeBool(false), 0);
+    assert.strictEqual(safe.safeBool(true), 1);
+    assert.strictEqual(safe.safeBool({}), 0);
+  });
+
   it('should copy', () => {
     const zero = Buffer.alloc(6, 0x00);
     const out = Buffer.alloc(6, 0x00);
