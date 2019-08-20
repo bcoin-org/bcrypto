@@ -2637,42 +2637,46 @@ bcrypto_ecdsa_icart(bcrypto_ecdsa_t *ec, const BIGNUM *r) {
    * P = (x, y)
    */
 
-  BN_copy(c1, ec->p);
-  BN_mul_word(c1, 2);
-  BN_sub_word(c1, 1);
-  BN_div_word(c1, 3);
+#define F(x) if (!(x)) goto fail
 
-  BN_set_word(c2, 3);
-  BN_mod_inverse(c2, c2, ec->p, ec->ctx);
+  F(BN_copy(c1, ec->p));
+  F(BN_mul_word(c1, 2));
+  F(BN_sub_word(c1, 1));
+  if (BN_div_word(c1, 3) == (BN_ULONG)-1) goto fail;
 
-  BN_mod_sqr(c3, c2, ec->p, ec->ctx);
-  BN_mod_mul(c3, c3, c2, ec->p, ec->ctx);
+  F(BN_set_word(c2, 3));
+  F(BN_mod_inverse(c2, c2, ec->p, ec->ctx));
 
-  BN_set_word(c4, 3);
-  BN_mod_mul(c4, c4, ec->a, ec->p, ec->ctx);
+  F(BN_mod_sqr(c3, c2, ec->p, ec->ctx));
+  F(BN_mod_mul(c3, c3, c2, ec->p, ec->ctx));
 
-  BN_copy(u, r);
+  F(BN_set_word(c4, 3));
+  F(BN_mod_mul(c4, c4, ec->a, ec->p, ec->ctx));
+
+  F(BN_copy(u, r));
 
   if (BN_is_zero(u))
-    BN_set_word(u, 1);
+    F(BN_set_word(u, 1));
 
-  BN_mod_sqr(u2, u, ec->p, ec->ctx);
-  BN_mod_sqr(u4, u2, ec->p, ec->ctx);
-  BN_mod_sub(v, c4, u4, ec->p, ec->ctx);
-  BN_set_word(t1, 6);
-  BN_mod_mul(t1, u, t1, ec->p, ec->ctx);
-  bn_mod_fermat(t1, t1, ec->p, ec->ctx);
-  BN_mod_mul(v, v, t1, ec->p, ec->ctx);
-  BN_mod_sqr(x, v, ec->p, ec->ctx);
-  BN_mod_sub(x, x, ec->b, ec->p, ec->ctx);
-  BN_mod_mul(u6, u4, c3, ec->p, ec->ctx);
-  BN_mod_mul(u6, u6, u2, ec->p, ec->ctx);
-  BN_mod_sub(x, x, u6, ec->p, ec->ctx);
-  BN_mod_exp(x, x, c1, ec->p, ec->ctx);
-  BN_mod_mul(t1, u2, c2, ec->p, ec->ctx);
-  BN_mod_add(x, x, t1, ec->p, ec->ctx);
-  BN_mod_mul(y, u, x, ec->p, ec->ctx);
-  BN_mod_add(y, y, v, ec->p, ec->ctx);
+  F(BN_mod_sqr(u2, u, ec->p, ec->ctx));
+  F(BN_mod_sqr(u4, u2, ec->p, ec->ctx));
+  F(BN_mod_sub(v, c4, u4, ec->p, ec->ctx));
+  F(BN_set_word(t1, 6));
+  F(BN_mod_mul(t1, u, t1, ec->p, ec->ctx));
+  F(bn_mod_fermat(t1, t1, ec->p, ec->ctx));
+  F(BN_mod_mul(v, v, t1, ec->p, ec->ctx));
+  F(BN_mod_sqr(x, v, ec->p, ec->ctx));
+  F(BN_mod_sub(x, x, ec->b, ec->p, ec->ctx));
+  F(BN_mod_mul(u6, u4, c3, ec->p, ec->ctx));
+  F(BN_mod_mul(u6, u6, u2, ec->p, ec->ctx));
+  F(BN_mod_sub(x, x, u6, ec->p, ec->ctx));
+  F(BN_mod_exp(x, x, c1, ec->p, ec->ctx));
+  F(BN_mod_mul(t1, u2, c2, ec->p, ec->ctx));
+  F(BN_mod_add(x, x, t1, ec->p, ec->ctx));
+  F(BN_mod_mul(y, u, x, ec->p, ec->ctx));
+  F(BN_mod_add(y, y, v, ec->p, ec->ctx));
+
+#undef F
 
 #if OPENSSL_VERSION_NUMBER >= 0x10200000L
   // Note: should be present with 1.1.1b
@@ -2731,13 +2735,15 @@ bcrypto_ecdsa_sswu(bcrypto_ecdsa_t *ec, const BIGNUM *r) {
     goto fail;
   }
 
+#define F(x) if (!(x)) goto fail
+
   Z = bcrypto_ecdsa_uniform_z(ec->type);
 
   if (Z < 0) {
-    BN_copy(z, ec->p);
-    BN_sub_word(z, -Z);
+    F(BN_copy(z, ec->p));
+    F(BN_sub_word(z, -Z));
   } else {
-    BN_set_word(z, Z);
+    F(BN_set_word(z, Z));
   }
 
   /*
@@ -2770,37 +2776,39 @@ bcrypto_ecdsa_sswu(bcrypto_ecdsa_t *ec, const BIGNUM *r) {
    * P = (x, y)
    */
 
-  BN_mod_inverse(c1, ec->a, ec->p, ec->ctx);
-  BN_mod_mul(c1, ec->b, c1, ec->p, ec->ctx);
-  BN_mod_sub(c1, ec->p, c1, ec->p, ec->ctx);
+  F(BN_mod_inverse(c1, ec->a, ec->p, ec->ctx));
+  F(BN_mod_mul(c1, ec->b, c1, ec->p, ec->ctx));
+  F(BN_mod_sub(c1, ec->p, c1, ec->p, ec->ctx));
 
-  BN_mod_inverse(c2, z, ec->p, ec->ctx);
-  BN_mod_sub(c2, ec->p, c2, ec->p, ec->ctx);
+  F(BN_mod_inverse(c2, z, ec->p, ec->ctx));
+  F(BN_mod_sub(c2, ec->p, c2, ec->p, ec->ctx));
 
-  BN_copy(u, r);
+  F(BN_copy(u, r));
 
-  BN_mod_sqr(t1, u, ec->p, ec->ctx);
-  BN_mod_mul(t1, z, t1, ec->p, ec->ctx);
-  BN_mod_sqr(t2, t1, ec->p, ec->ctx);
-  BN_mod_add(x1, t1, t2, ec->p, ec->ctx);
-  bn_mod_fermat(x1, x1, ec->p, ec->ctx);
+  F(BN_mod_sqr(t1, u, ec->p, ec->ctx));
+  F(BN_mod_mul(t1, z, t1, ec->p, ec->ctx));
+  F(BN_mod_sqr(t2, t1, ec->p, ec->ctx));
+  F(BN_mod_add(x1, t1, t2, ec->p, ec->ctx));
+  F(bn_mod_fermat(x1, x1, ec->p, ec->ctx));
   e1 = BN_is_zero(x1);
-  BN_mod_add(x1, x1, ec->one, ec->p, ec->ctx);
-  if (e1) BN_copy(x1, c2);
-  BN_mod_mul(x1, x1, c1, ec->p, ec->ctx);
-  BN_mod_sqr(gx1, x1, ec->p, ec->ctx);
-  BN_mod_add(gx1, gx1, ec->a, ec->p, ec->ctx);
-  BN_mod_mul(gx1, gx1, x1, ec->p, ec->ctx);
-  BN_mod_add(gx1, gx1, ec->b, ec->p, ec->ctx);
-  BN_mod_mul(x2, t1, x1, ec->p, ec->ctx);
-  BN_mod_mul(t2, t1, t2, ec->p, ec->ctx);
-  BN_mod_mul(gx2, gx1, t2, ec->p, ec->ctx);
+  F(BN_mod_add(x1, x1, ec->one, ec->p, ec->ctx));
+  if (e1) F(BN_copy(x1, c2));
+  F(BN_mod_mul(x1, x1, c1, ec->p, ec->ctx));
+  F(BN_mod_sqr(gx1, x1, ec->p, ec->ctx));
+  F(BN_mod_add(gx1, gx1, ec->a, ec->p, ec->ctx));
+  F(BN_mod_mul(gx1, gx1, x1, ec->p, ec->ctx));
+  F(BN_mod_add(gx1, gx1, ec->b, ec->p, ec->ctx));
+  F(BN_mod_mul(x2, t1, x1, ec->p, ec->ctx));
+  F(BN_mod_mul(t2, t1, t2, ec->p, ec->ctx));
+  F(BN_mod_mul(gx2, gx1, t2, ec->p, ec->ctx));
   e2 = bn_legendre(gx1, ec->p, ec->ctx) == 1;
-  BN_copy(x, e2 ? x1 : x2);
-  BN_copy(y2, e2 ? gx1 : gx2);
-  BN_mod_sqrt(y, y2, ec->p, ec->ctx);
+  F(BN_copy(x, e2 ? x1 : x2));
+  F(BN_copy(y2, e2 ? gx1 : gx2));
+  F(BN_mod_sqrt(y, y2, ec->p, ec->ctx));
   e3 = BN_is_odd(y) == BN_is_odd(u);
-  if (!e3) BN_mod_sub(y, ec->p, y, ec->p, ec->ctx);
+  if (!e3) F(BN_mod_sub(y, ec->p, y, ec->p, ec->ctx));
+
+#undef F
 
 #if OPENSSL_VERSION_NUMBER >= 0x10200000L
   // Note: should be present with 1.1.1b
@@ -2870,13 +2878,15 @@ bcrypto_ecdsa_svdw(bcrypto_ecdsa_t *ec, const BIGNUM *r) {
     goto fail;
   }
 
+#define F(x) if (!(x)) goto fail
+
   Z = bcrypto_ecdsa_uniform_z(ec->type);
 
   if (Z < 0) {
-    BN_copy(z, ec->p);
-    BN_sub_word(z, -Z);
+    F(BN_copy(z, ec->p));
+    F(BN_sub_word(z, -Z));
   } else {
-    BN_set_word(z, Z);
+    F(BN_set_word(z, Z));
   }
 
   /*
@@ -2924,63 +2934,65 @@ bcrypto_ecdsa_svdw(bcrypto_ecdsa_t *ec, const BIGNUM *r) {
    * P = (x, y)
    */
 
-  BN_set_word(i2, 2);
-  BN_mod_inverse(i2, i2, ec->p, ec->ctx);
+  F(BN_set_word(i2, 2));
+  F(BN_mod_inverse(i2, i2, ec->p, ec->ctx));
 
-  BN_mod_sqr(c1, z, ec->p, ec->ctx);
-  BN_mod_mul(c1, c1, z, ec->p, ec->ctx);
-  BN_mod_add(c1, c1, ec->b, ec->p, ec->ctx);
+  F(BN_mod_sqr(c1, z, ec->p, ec->ctx));
+  F(BN_mod_mul(c1, c1, z, ec->p, ec->ctx));
+  F(BN_mod_add(c1, c1, ec->b, ec->p, ec->ctx));
 
-  BN_mod_sqr(c2, z, ec->p, ec->ctx);
-  BN_mod_mul(c2, c2, ec->three, ec->p, ec->ctx);
-  BN_mod_sub(c2, ec->p, c2, ec->p, ec->ctx);
-  BN_mod_sqrt(c2, c2, ec->p, ec->ctx);
+  F(BN_mod_sqr(c2, z, ec->p, ec->ctx));
+  F(BN_mod_mul(c2, c2, ec->three, ec->p, ec->ctx));
+  F(BN_mod_sub(c2, ec->p, c2, ec->p, ec->ctx));
+  F(BN_mod_sqrt(c2, c2, ec->p, ec->ctx));
 
-  BN_mod_sub(c3, c2, z, ec->p, ec->ctx);
-  BN_mod_mul(c3, c3, i2, ec->p, ec->ctx);
+  F(BN_mod_sub(c3, c2, z, ec->p, ec->ctx));
+  F(BN_mod_mul(c3, c3, i2, ec->p, ec->ctx));
 
-  BN_mod_add(c4, c2, z, ec->p, ec->ctx);
-  BN_mod_mul(c4, c4, i2, ec->p, ec->ctx);
+  F(BN_mod_add(c4, c2, z, ec->p, ec->ctx));
+  F(BN_mod_mul(c4, c4, i2, ec->p, ec->ctx));
 
-  BN_mod_sqr(c5, z, ec->p, ec->ctx);
-  BN_mod_mul(c5, c5, ec->three, ec->p, ec->ctx);
-  BN_mod_inverse(c5, c5, ec->p, ec->ctx);
+  F(BN_mod_sqr(c5, z, ec->p, ec->ctx));
+  F(BN_mod_mul(c5, c5, ec->three, ec->p, ec->ctx));
+  F(BN_mod_inverse(c5, c5, ec->p, ec->ctx));
 
-  BN_copy(u, r);
+  F(BN_copy(u, r));
 
-  BN_mod_sqr(t1, u, ec->p, ec->ctx);
-  BN_mod_add(t2, t1, c1, ec->p, ec->ctx);
-  BN_mod_mul(t3, t1, t2, ec->p, ec->ctx);
-  bn_mod_fermat(t4, t3, ec->p, ec->ctx);
-  BN_mod_sqr(t3, t1, ec->p, ec->ctx);
-  BN_mod_mul(t3, t3, t4, ec->p, ec->ctx);
-  BN_mod_mul(t3, t3, c2, ec->p, ec->ctx);
-  BN_mod_sub(x1, c3, t3, ec->p, ec->ctx);
-  BN_mod_sqr(gx1, x1, ec->p, ec->ctx);
-  BN_mod_mul(gx1, gx1, x1, ec->p, ec->ctx);
-  BN_mod_add(gx1, gx1, ec->b, ec->p, ec->ctx);
+  F(BN_mod_sqr(t1, u, ec->p, ec->ctx));
+  F(BN_mod_add(t2, t1, c1, ec->p, ec->ctx));
+  F(BN_mod_mul(t3, t1, t2, ec->p, ec->ctx));
+  F(bn_mod_fermat(t4, t3, ec->p, ec->ctx));
+  F(BN_mod_sqr(t3, t1, ec->p, ec->ctx));
+  F(BN_mod_mul(t3, t3, t4, ec->p, ec->ctx));
+  F(BN_mod_mul(t3, t3, c2, ec->p, ec->ctx));
+  F(BN_mod_sub(x1, c3, t3, ec->p, ec->ctx));
+  F(BN_mod_sqr(gx1, x1, ec->p, ec->ctx));
+  F(BN_mod_mul(gx1, gx1, x1, ec->p, ec->ctx));
+  F(BN_mod_add(gx1, gx1, ec->b, ec->p, ec->ctx));
   e1 = bn_legendre(gx1, ec->p, ec->ctx) == 1;
-  BN_mod_sub(x2, t3, c4, ec->p, ec->ctx);
-  BN_mod_sqr(gx2, x2, ec->p, ec->ctx);
-  BN_mod_mul(gx2, gx2, x2, ec->p, ec->ctx);
-  BN_mod_add(gx2, gx2, ec->b, ec->p, ec->ctx);
+  F(BN_mod_sub(x2, t3, c4, ec->p, ec->ctx));
+  F(BN_mod_sqr(gx2, x2, ec->p, ec->ctx));
+  F(BN_mod_mul(gx2, gx2, x2, ec->p, ec->ctx));
+  F(BN_mod_add(gx2, gx2, ec->b, ec->p, ec->ctx));
   e2 = bn_legendre(gx2, ec->p, ec->ctx) == 1;
   e3 = e1 | e2;
-  BN_mod_sqr(x3, t2, ec->p, ec->ctx);
-  BN_mod_mul(x3, x3, t2, ec->p, ec->ctx);
-  BN_mod_mul(x3, x3, t4, ec->p, ec->ctx);
-  BN_mod_mul(x3, x3, c5, ec->p, ec->ctx);
-  BN_mod_sub(x3, z, x3, ec->p, ec->ctx);
-  BN_mod_sqr(gx3, x3, ec->p, ec->ctx);
-  BN_mod_mul(gx3, gx3, x3, ec->p, ec->ctx);
-  BN_mod_add(gx3, gx3, ec->b, ec->p, ec->ctx);
-  BN_copy(x, e1 ? x1 : x2);
-  BN_copy(gx, e1 ? gx1 : gx2);
-  BN_copy(x, e3 ? x : x3);
-  BN_copy(gx, e3 ? gx : gx3);
-  BN_mod_sqrt(y, gx, ec->p, ec->ctx);
+  F(BN_mod_sqr(x3, t2, ec->p, ec->ctx));
+  F(BN_mod_mul(x3, x3, t2, ec->p, ec->ctx));
+  F(BN_mod_mul(x3, x3, t4, ec->p, ec->ctx));
+  F(BN_mod_mul(x3, x3, c5, ec->p, ec->ctx));
+  F(BN_mod_sub(x3, z, x3, ec->p, ec->ctx));
+  F(BN_mod_sqr(gx3, x3, ec->p, ec->ctx));
+  F(BN_mod_mul(gx3, gx3, x3, ec->p, ec->ctx));
+  F(BN_mod_add(gx3, gx3, ec->b, ec->p, ec->ctx));
+  F(BN_copy(x, e1 ? x1 : x2));
+  F(BN_copy(gx, e1 ? gx1 : gx2));
+  F(BN_copy(x, e3 ? x : x3));
+  F(BN_copy(gx, e3 ? gx : gx3));
+  F(BN_mod_sqrt(y, gx, ec->p, ec->ctx));
   e4 = BN_is_odd(y) == BN_is_odd(u);
-  if (!e4) BN_mod_sub(y, ec->p, y, ec->p, ec->ctx);
+  if (!e4) F(BN_mod_sub(y, ec->p, y, ec->p, ec->ctx));
+
+#undef F
 
 #if OPENSSL_VERSION_NUMBER >= 0x10200000L
   // Note: should be present with 1.1.1b
