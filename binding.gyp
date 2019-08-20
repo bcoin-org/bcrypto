@@ -1,7 +1,7 @@
 {
   "variables": {
     "bcrypto_byteorder%":
-      "<!(python -c \"from __future__ import print_function; import sys; print(sys.byteorder)\")"
+      "<!(python -c \"from __future__ import print_function; import sys; print(sys.byteorder)\")",
   },
   "targets": [{
     "target_name": "bcrypto",
@@ -119,9 +119,9 @@
         ["OS=='win'", {
           "conditions": [
             ["target_arch=='ia32'", {
-              "openssl_root%": "C:/OpenSSL-Win32"
+              "openssl_root%": "<(module_root_dir)/nuget/openssl-vc141-static-x86_64.1.0.2/build/native/lib/Win32"
             }, {
-              "openssl_root%": "C:/OpenSSL-Win64"
+              "openssl_root%": "<(module_root_dir)/nuget/openssl-vc141-static-x86_64.1.0.2/build/native/lib/x64"
             }]
           ]
         }],
@@ -170,14 +170,14 @@
       }],
       ["OS=='win'", {
         "libraries": [
-          "-l<(openssl_root)/lib/libeay32.lib"
+          "-l<(openssl_root)/static/Release/libeay32.lib"
         ],
         "include_dirs": [
           "<(openssl_root)/include"
         ],
         "msbuild_settings": {
           "ClCompile": {
-            "ObjectFileName": "$(IntDir)/%(Directory)/%(Filename)"
+            "ObjectFileName": "$(IntDir)/%(Directory)/%(Filename)",
           },
           "Link": {
             "ImageHasSafeExceptionHandlers": "false"
