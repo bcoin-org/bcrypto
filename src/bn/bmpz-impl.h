@@ -879,6 +879,79 @@ bmpz_sqrtm(mpz_t ret, const mpz_t num, const mpz_t p) {
   if (mpz_sgn(p) <= 0 || mpz_even_p(p))
     goto fail;
 
+  // if x < 0 || x >= p
+  if (mpz_sgn(x) < 0 || mpz_cmp(x, p) >= 0) {
+    // x = x mod p
+    mpz_mod(x, x, p);
+  }
+
+  // if p mod 4 == 3
+  if ((mpz_getlimbn(p, 0) & 3) == 3) {
+    // e = (p + 1) >> 2
+    mpz_add_ui(e, p, 1);
+    mpz_tdiv_q_2exp(e, e, 2);
+
+    // b = x^e mod p
+    mpz_powm(b, x, e, p);
+
+    // g = b^2 mod p
+    mpz_mul(g, b, b);
+    mpz_mod(g, g, p);
+
+    // g != x
+    if (mpz_cmp(g, x) != 0)
+      goto fail;
+
+    // ret = b
+    mpz_set(ret, b);
+
+    goto success;
+  }
+
+  // if p mod 8 == 5
+  if ((mpz_getlimbn(p, 0) & 7) == 5) {
+    // e = p >> 3
+    mpz_tdiv_q_2exp(e, p, 3);
+
+    // t = x << 1
+    mpz_mul_2exp(t, x, 1);
+
+    // a = t^e mod p
+    mpz_powm(a, t, e, p);
+
+    // b = a^2 mod p
+    mpz_powm_ui(b, a, 2, p);
+
+    // b = (b * t) mod p
+    mpz_mul(b, b, t);
+    mpz_mod(b, b, p);
+
+    // b = (b - 1) mod p
+    mpz_sub_ui(b, b, 1);
+    mpz_mod(b, b, p);
+
+    // b = (b * x) mod p
+    mpz_mul(b, b, x);
+    mpz_mod(b, b, p);
+
+    // b = (b * a) mod p
+    mpz_mul(b, b, a);
+    mpz_mod(b, b, p);
+
+    // g = b^2 mod p
+    mpz_mul(g, b, b);
+    mpz_mod(g, g, p);
+
+    // g != x
+    if (mpz_cmp(g, x) != 0)
+      goto fail;
+
+    // ret = b
+    mpz_set(ret, b);
+
+    goto success;
+  }
+
   switch (bmpz_jacobi(x, p)) {
     case -1:
       goto fail;
@@ -887,49 +960,6 @@ bmpz_sqrtm(mpz_t ret, const mpz_t num, const mpz_t p) {
       goto success;
     case 1:
       break;
-  }
-
-  // if x < 0 || x >= p
-  if (mpz_sgn(x) < 0 || mpz_cmp(x, p) >= 0) {
-    // x = x mod p
-    mpz_mod(x, x, p);
-  }
-
-  // if p mod 4 == 3
-  if (mpz_tdiv_ui(p, 4) == 3) {
-    // e = (p + 1) >> 2
-    mpz_add_ui(e, p, 1);
-    mpz_tdiv_q_2exp(e, e, 2);
-    // ret = x^e mod p
-    mpz_powm(ret, x, e, p);
-    goto success;
-  }
-
-  // if p mod 8 == 5
-  if (mpz_tdiv_ui(p, 8) == 5) {
-    // e = p >> 3
-    mpz_tdiv_q_2exp(e, p, 3);
-    // t = x << 1
-    mpz_mul_2exp(t, x, 1);
-    // a = t^e mod p
-    mpz_powm(a, t, e, p);
-    // b = a^2 mod p
-    mpz_powm_ui(b, a, 2, p);
-    // b = (b * t) mod p
-    mpz_mul(b, b, t);
-    mpz_mod(b, b, p);
-    // b = (b - 1) mod p
-    mpz_sub_ui(b, b, 1);
-    mpz_mod(b, b, p);
-    // b = (b * x) mod p
-    mpz_mul(b, b, x);
-    mpz_mod(b, b, p);
-    // b = (b * a) mod p
-    mpz_mul(b, b, a);
-    mpz_mod(b, b, p);
-    // ret = b
-    mpz_set(ret, b);
-    goto success;
   }
 
   // s = p - 1
