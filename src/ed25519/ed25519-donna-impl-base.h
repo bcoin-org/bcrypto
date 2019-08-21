@@ -332,7 +332,7 @@ ge25519_unpack(ge25519 *r, const unsigned char p[32]) {
   /* x = 0, sign = 1 (malleable) */
   ret &= (ge25519_is_zero(check) & sign) ^ 1;
 
-  curve25519_cond_neg(r->x, r->x, (check[0] & 1) ^ sign);
+  curve25519_neg_conditional(r->x, r->x, (check[0] & 1) ^ sign);
   curve25519_mul(r->t, r->x, r->y);
 
   return ret;

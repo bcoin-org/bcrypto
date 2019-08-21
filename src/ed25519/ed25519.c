@@ -786,7 +786,7 @@ bcrypto_ed25519_point_to_uniform(
 
   /* recover y */
   ret &= curve25519_solve_y(y, x);
-  curve25519_cond_neg(y, y, curve25519_is_odd(y) ^ sign);
+  curve25519_neg_conditional(y, y, curve25519_is_odd(y) ^ sign);
 
   /* check y < F(q / 2) */
   curve25519_contract(out, y);
@@ -801,7 +801,7 @@ bcrypto_ed25519_point_to_uniform(
   ret &= curve25519_isqrt(u, n, d);
 
   /* adjust sign */
-  curve25519_cond_neg(u, u, curve25519_is_odd(u) ^ sign);
+  curve25519_neg_conditional(u, u, curve25519_is_odd(u) ^ sign);
   curve25519_contract(out, u);
 
   /* randomize the top bit */

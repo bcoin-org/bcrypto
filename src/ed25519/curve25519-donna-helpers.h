@@ -5,6 +5,8 @@
   Curve25519 implementation agnostic helpers
 */
 
+static const bignum25519 ALIGN(16) ge25519_sqrtneg1;
+
 /*
  * In:  b =   2^5 - 2^0
  * Out: b = 2^250 - 2^0
@@ -64,6 +66,25 @@ curve25519_pow_two252m3(bignum25519 two252m3, const bignum25519 z) {
   /* 2^250 - 2^0 */ curve25519_pow_two5mtwo0_two250mtwo0(b);
   /* 2^252 - 2^2 */ curve25519_square_times(b, b, 2);
   /* 2^252 - 3 */ curve25519_mul_noinline(two252m3, b, z);
+}
+
+/*
+ * z^((p+3)/8) = z^(2^252 - 2)
+ */
+static void
+curve25519_pow_two252m2(bignum25519 two252m2, const bignum25519 z) {
+  bignum25519 ALIGN(16) b,c,t0;
+
+  /* 2 */ curve25519_square_times(c, z, 1); /* c = 2 */
+  /* 8 */ curve25519_square_times(t0, c, 2); /* t0 = 8 */
+  /* 9 */ curve25519_mul_noinline(b, t0, z); /* b = 9 */
+  /* 11 */ curve25519_mul_noinline(c, b, c); /* c = 11 */
+  /* 22 */ curve25519_square_times(t0, c, 1);
+  /* 2^5 - 2^0 = 31 */ curve25519_mul_noinline(b, t0, b);
+  /* 2^250 - 2^0 */ curve25519_pow_two5mtwo0_two250mtwo0(b);
+  /* 2^252 - 2^1 */ curve25519_square_times(b, b, 1);
+  /* 2^252 - 2 */ curve25519_mul_noinline(b, b, z);
+  /* 2^252 - 2 */ curve25519_square_times(two252m2, b, 1);
 }
 
 /*
@@ -156,27 +177,24 @@ curve25519_is_equal(const bignum25519 a, const bignum25519 b) {
 
 static int
 curve25519_sqrt(bignum25519 out, const bignum25519 x) {
-  static const bignum25519 one = {1};
-  bignum25519 ALIGN(16) t, a, b;
+  bignum25519 ALIGN(16) a, b, c;
   int r;
 
-  curve25519_add_reduce(t, x, x);
-  curve25519_pow_two252m3(a, t);
-  curve25519_square(b, a);
-  curve25519_mul(b, b, t);
-  curve25519_sub(b, b, one);
-  curve25519_mul(b, b, x);
-  curve25519_mul(b, b, a);
+  curve25519_pow_two252m2(a, x);
+  curve25519_mul(b, a, ge25519_sqrtneg1);
 
-  curve25519_square(t, b);
-  r = curve25519_is_equal(t, x);
+  curve25519_square(c, a);
+  r = curve25519_is_equal(c, x);
 
-  curve25519_copy(out, b);
+  curve25519_swap_conditional(a, b, r ^ 1);
+
+  curve25519_square(c, a);
+  r = curve25519_is_equal(c, x);
+
+  curve25519_copy(out, a);
 
   return r;
 }
-
-static const bignum25519 ALIGN(16) ge25519_sqrtneg1;
 
 static int
 curve25519_isqrt(bignum25519 out, const bignum25519 u, const bignum25519 v) {
@@ -242,7 +260,7 @@ curve25519_valid_x(const bignum25519 x) {
 }
 
 static void
-curve25519_cond_neg(bignum25519 out, const bignum25519 x, int negate) {
+curve25519_neg_conditional(bignum25519 out, const bignum25519 x, int negate) {
   bignum25519 z;
   curve25519_copy(out, x);
   curve25519_neg(z, x);
