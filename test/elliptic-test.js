@@ -1897,12 +1897,13 @@ describe('Elliptic', function() {
       const curve = new curves.X25519();
       const lhs = curve.a.redNeg();
       const rhs = curve.one;
+      const i2 = curve.two.redInvert();
       const v = lhs.redMul(rhs.redFermat());
       const v2 = v.redSqr();
       const v3 = v2.redMul(v);
       const f = v3.redAdd(curve.a.redMul(v2)).redIAdd(curve.b.redMul(v));
       const e = f.redPow(curve.p.subn(1).iushrn(1));
-      const l = curve.one.redSub(e).redMul(curve.a).redMul(curve.i2);
+      const l = curve.one.redSub(e).redMul(curve.a).redMul(i2);
       const x = e.redMul(v).redISub(l);
 
       const [p, sign] = [curve.point(x), false];

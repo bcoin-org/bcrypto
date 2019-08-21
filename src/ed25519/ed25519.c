@@ -720,53 +720,32 @@ bcrypto_ed25519_point_from_uniform(
   bcrypto_x25519_pubkey_t out,
   const unsigned char bytes[32]
 ) {
-  bignum25519 ALIGN(16) r, v, v2, v3, l, x;
+  bignum25519 ALIGN(16) u, x1, x2;
 
-  /*
-   * f(a) = a^((q - 1) / 2)
-   * v = -A / (1 + u * r^2)
-   * e = f(v^3 + A * v^2 + B * v)
-   * x = e * v - (1 - e) * A / 2
-   * y = -e * sqrt(x^3 + A * x^2 + B * x)
-   */
-
-  static const bignum25519 one = {1};
   static const bignum25519 z = {2};
   static const bignum25519 a = {486662};
   bignum25519 e = {1};
 
-  curve25519_expand(r, bytes);
+  curve25519_expand(u, bytes);
 
-  /* v = -a / (1 + u * r^2) */
-  curve25519_square(v, r);
-  curve25519_mul(v, v, z);
-  curve25519_add(v, v, one);
-  curve25519_swap_conditional(v, e, curve25519_is_zero(v));
-  curve25519_recip(v, v);
-  curve25519_mul(v, a, v);
-  curve25519_neg(v, v);
+  /* x1 = -a / (1 + z * u^2) */
+  curve25519_square(x1, u);
+  curve25519_mul(x1, x1, z);
+  curve25519_add(x1, x1, e);
+  curve25519_swap_conditional(x1, e, curve25519_is_zero(x1));
+  curve25519_recip(x1, x1);
+  curve25519_mul(x1, a, x1);
+  curve25519_neg(x1, x1);
 
-  curve25519_square(v2, v);
-  curve25519_mul(v3, v2, v);
+  /* x2 = -x1 - a */
+  curve25519_neg(x2, x1);
+  curve25519_sub(x2, x2, a);
 
-  /* e = (v^3 + a * v^2 + v)^((p - 1) / 2) */
-  curve25519_mul(e, a, v2);
-  curve25519_add_reduce(e, e, v3);
-  curve25519_add(e, e, v);
-  curve25519_pow_two255m20d2(e, e);
+  /* x = cmov(x1, x2, f(g(x1)) != 1) */
+  curve25519_swap_conditional(x1, x2, curve25519_valid_x(x1) ^ 1);
+  curve25519_contract(out, x1);
 
-  /* l = (1 - e) * a / 2 */
-  curve25519_sub(l, one, e);
-  curve25519_mul(l, l, a);
-  curve25519_mul(l, l, curve25519_i2);
-
-  /* x = e * v - l */
-  curve25519_mul(x, e, v);
-  curve25519_sub(x, x, l);
-
-  curve25519_contract(out, x);
-
-  return curve25519_is_odd(r);
+  return curve25519_is_odd(u);
 }
 
 int
@@ -788,7 +767,7 @@ bcrypto_ed25519_point_to_uniform(
   const bcrypto_x25519_pubkey_t pub,
   int sign
 ) {
-  bignum25519 ALIGN(16) x, y, n, d, r;
+  bignum25519 ALIGN(16) x, y, n, d, u;
   unsigned char bit = 0;
   int ret = 1;
   int lt;
@@ -800,35 +779,32 @@ bcrypto_ed25519_point_to_uniform(
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x3f
   };
 
-  /*
-   * r = sqrt(-x / ((x + A) * u)) if y is in F(q / 2)
-   *   = sqrt(-(x + A) / (x * u)) otherwise
-   */
-
   static const bignum25519 z = {2};
   static const bignum25519 a = {486662};
 
   curve25519_expand(x, pub);
 
+  /* recover y */
   ret &= curve25519_solve_y(y, x);
-
   curve25519_cond_neg(y, y, curve25519_is_odd(y) ^ sign);
 
+  /* check y < F(q / 2) */
   curve25519_contract(out, y);
-
   lt = curve25519_bytes_le(out, fq2);
 
+  /* u = sqrt(-n / (d * z)) */
   curve25519_copy(n, x);
   curve25519_add(d, x, a);
   curve25519_swap_conditional(n, d, lt ^ 1);
   curve25519_neg(n, n);
   curve25519_mul(d, d, z);
+  ret &= curve25519_isqrt(u, n, d);
 
-  ret &= curve25519_isqrt(r, n, d);
+  /* adjust sign */
+  curve25519_cond_neg(u, u, curve25519_is_odd(u) ^ sign);
+  curve25519_contract(out, u);
 
-  curve25519_cond_neg(r, r, curve25519_is_odd(r) ^ sign);
-  curve25519_contract(out, r);
-
+  /* randomize the top bit */
   ret &= bcrypto_ed25519_randombytes(&bit, 1);
 
   out[31] |= (bit & 1) << 7;

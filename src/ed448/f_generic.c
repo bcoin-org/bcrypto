@@ -370,7 +370,6 @@ bcrypto_mask_t bcrypto_gf_solve_y(bcrypto_gf out, const bcrypto_gf x)
   bcrypto_gf_mul(x3, x2, x);
   bcrypto_gf_add(y2, x3, x);
   bcrypto_gf_mulw(x3, x2, 156326);
-
   bcrypto_gf_add(y2, y2, x3);
 
   return bcrypto_gf_sqrt(out, y2);

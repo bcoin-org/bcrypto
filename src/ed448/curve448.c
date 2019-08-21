@@ -871,66 +871,41 @@ bcrypto_curve448_point_from_uniform(
   uint8_t out[BCRYPTO_X_PUBLIC_BYTES],
   const unsigned char bytes[56]
 ) {
-  bcrypto_gf r, v, v2, v3, l, x, t;
+  bcrypto_gf u, x1, x2, t;
   int sign;
-
-  /*
-   * f(a) = a^((q - 1) / 2)
-   * v = -A / (1 + u * r^2)
-   * e = f(v^3 + A * v^2 + B * v)
-   * x = e * v - (1 - e) * A / 2
-   * y = -e * sqrt(x^3 + A * x^2 + B * x)
-   */
 
   static const bcrypto_gf a = {{{156326}}};
   bcrypto_gf z = {{{1}}};
   bcrypto_gf e = {{{1}}};
-  bcrypto_gf i2 = {{{2}}};
 
   bcrypto_gf_sub(z, ZERO, z);
-  bcrypto_gf_invert(i2, i2, 1);
 
-  (void)bcrypto_gf_deserialize(r, bytes, 1, 0);
+  (void)bcrypto_gf_deserialize(u, bytes, 1, 0);
 
-  /* v = -a / (1 + u * r^2) */
-  bcrypto_gf_sqr(v, r);
-  bcrypto_gf_mul(t, v, z);
-  bcrypto_gf_add(v, t, ONE);
-  bcrypto_gf_cond_swap(v, e, bcrypto_gf_eq(v, ZERO));
-  bcrypto_gf_invert(t, v, 1);
-  bcrypto_gf_mul(v, a, t);
-  bcrypto_gf_sub(v, ZERO, v);
+  /* x1 = -a / (1 + z * u^2) */
+  bcrypto_gf_sqr(x1, u);
+  bcrypto_gf_mul(t, x1, z);
+  bcrypto_gf_add(x1, t, ONE);
+  bcrypto_gf_cond_swap(x1, e, bcrypto_gf_eq(x1, ZERO));
+  bcrypto_gf_invert(t, x1, 1);
+  bcrypto_gf_mul(x1, a, t);
+  bcrypto_gf_sub(x1, ZERO, x1);
 
-  bcrypto_gf_sqr(v2, v);
-  bcrypto_gf_mul(v3, v2, v);
+  /* x2 = -x1 - a */
+  bcrypto_gf_sub(x2, ZERO, x1);
+  bcrypto_gf_sub(x2, x2, a);
 
-  /* e = (v^3 + a * v^2 + v)^((p - 1) / 2) */
-  bcrypto_gf_mul(e, a, v2);
-  bcrypto_gf_add(e, e, v3);
-  bcrypto_gf_add(e, e, v);
-  bcrypto_gf_legendre(e, e);
+  /* x = cmov(x1, x2, f(g(x1)) != 1) */
+  bcrypto_gf_cond_swap(x1, x2, bcrypto_gf_valid_x(x1) ^ -1);
+  bcrypto_gf_serialize(out, x1, 1);
 
-  /* l = (1 - e) * a / 2 */
-  bcrypto_gf_sub(l, ONE, e);
-  bcrypto_gf_mul(t, l, a);
-  bcrypto_gf_mul(l, t, i2);
+  sign = bcrypto_gf_is_odd(u);
 
-  /* x = e * v - l */
-  bcrypto_gf_mul(x, e, v);
-  bcrypto_gf_sub(x, x, l);
-
-  bcrypto_gf_serialize(out, x, 1);
-
-  sign = bcrypto_gf_is_odd(r);
-
-  OPENSSL_cleanse(r, sizeof(r));
-  OPENSSL_cleanse(v, sizeof(v));
-  OPENSSL_cleanse(v2, sizeof(v2));
-  OPENSSL_cleanse(v3, sizeof(v3));
-  OPENSSL_cleanse(e, sizeof(e));
-  OPENSSL_cleanse(l, sizeof(l));
-  OPENSSL_cleanse(x, sizeof(x));
+  OPENSSL_cleanse(u, sizeof(u));
+  OPENSSL_cleanse(x1, sizeof(x1));
+  OPENSSL_cleanse(x2, sizeof(x2));
   OPENSSL_cleanse(t, sizeof(t));
+  OPENSSL_cleanse(e, sizeof(e));
 
   return sign;
 }
@@ -957,7 +932,7 @@ bcrypto_curve448_point_to_uniform(
   const uint8_t pub[BCRYPTO_X_PUBLIC_BYTES],
   int sign
 ) {
-  bcrypto_gf x, y, n, d, r, t;
+  bcrypto_gf x, y, n, d, u, t;
   bcrypto_mask_t ret = -1;
   bcrypto_mask_t lt;
 
@@ -971,11 +946,6 @@ bcrypto_curve448_point_to_uniform(
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f
   };
 
-  /*
-   * r = sqrt(-x / ((x + A) * u)) if y is in F(q / 2)
-   *   = sqrt(-(x + A) / (x * u)) otherwise
-   */
-
   static const bcrypto_gf a = {{{156326}}};
   bcrypto_gf z = {{{1}}};
 
@@ -983,32 +953,31 @@ bcrypto_curve448_point_to_uniform(
 
   (void)bcrypto_gf_deserialize(x, pub, 1, 0);
 
+  /* recover y */
   ret &= bcrypto_gf_solve_y(y, x);
-
   bcrypto_gf_cond_neg(y, (bcrypto_gf_is_odd(y) ^ sign) * -1);
 
+  /* check y < F(q / 2) */
   bcrypto_gf_serialize(out, y, 1);
-
   lt = bcrypto_gf_bytes_le(out, fq2);
 
+  /* u = sqrt(-n / (d * z)) */
   bcrypto_gf_copy(n, x);
   bcrypto_gf_add(d, x, a);
   bcrypto_gf_cond_swap(n, d, lt ^ -1);
   bcrypto_gf_sub(n, ZERO, n);
-
   bcrypto_gf_mul(t, d, z);
-  bcrypto_gf_copy(d, t);
+  ret &= bcrypto_gf_isqrt(u, n, t);
 
-  ret &= bcrypto_gf_isqrt(r, n, d);
-
-  bcrypto_gf_cond_neg(r, (bcrypto_gf_is_odd(r) ^ sign) * -1);
-  bcrypto_gf_serialize(out, r, 1);
+  /* adjust sign */
+  bcrypto_gf_cond_neg(u, (bcrypto_gf_is_odd(u) ^ sign) * -1);
+  bcrypto_gf_serialize(out, u, 1);
 
   OPENSSL_cleanse(x, sizeof(x));
   OPENSSL_cleanse(y, sizeof(y));
   OPENSSL_cleanse(n, sizeof(n));
   OPENSSL_cleanse(d, sizeof(d));
-  OPENSSL_cleanse(r, sizeof(r));
+  OPENSSL_cleanse(u, sizeof(u));
   OPENSSL_cleanse(t, sizeof(t));
 
   return bcrypto_c448_succeed_if(mask_to_bool(ret));
