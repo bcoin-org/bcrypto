@@ -88,11 +88,11 @@ curve25519_pow_two252m2(bignum25519 two252m2, const bignum25519 z) {
 }
 
 /*
- * z^((2^255 - 19 - 1) / 2)
+ * z^((p - 1) / 2) = z^(2^254 - 10)
  * From: https://gist.github.com/Yawning/0181098c1119f49b3eb2
  */
 static void
-curve25519_pow_two255m20d2(bignum25519 out, const bignum25519 z) {
+curve25519_pow_two254m10(bignum25519 out, const bignum25519 z) {
   bignum25519 ALIGN(16) t0, t1, t2, t3;
   curve25519_square(t0, z);   /* 2^1 */
   curve25519_mul(t1, t0, z);  /* 2^1 + 2^0 */
@@ -238,8 +238,8 @@ curve25519_isqrt(bignum25519 out, const bignum25519 u, const bignum25519 v) {
   return (css | fss) & nz;
 }
 
-static int
-curve25519_solve_y(bignum25519 out, const bignum25519 x) {
+static void
+curve25519_solve_y2(bignum25519 out, const bignum25519 x) {
   /* y^2 = x^3 + a * x^2 + x */
   static const bignum25519 a = {486662};
   bignum25519 ALIGN(16) x2, x3, y2;
@@ -248,15 +248,25 @@ curve25519_solve_y(bignum25519 out, const bignum25519 x) {
   curve25519_mul(x3, x2, x);
   curve25519_add_reduce(y2, x3, x);
   curve25519_mul(x3, x2, a);
-  curve25519_add(y2, y2, x3);
+  curve25519_add(out, y2, x3);
+}
 
-  return curve25519_sqrt(out, y2);
+static int
+curve25519_solve_y(bignum25519 out, const bignum25519 x) {
+  curve25519_solve_y2(out, x);
+  return curve25519_sqrt(out, out);
 }
 
 static int
 curve25519_valid_x(const bignum25519 x) {
-  bignum25519 ALIGN(16) y;
-  return curve25519_solve_y(y, x);
+  static const bignum25519 one = {1};
+  bignum25519 ALIGN(16) e;
+
+  curve25519_solve_y2(e, x);
+  curve25519_pow_two254m10(e, e);
+  curve25519_add(e, e, one);
+
+  return curve25519_is_zero(e) ^ 1;
 }
 
 static void

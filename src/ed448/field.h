@@ -66,6 +66,7 @@ bcrypto_mask_t bcrypto_gf_recip(bcrypto_gf a, const bcrypto_gf x);
 void bcrypto_gf_legendre(bcrypto_gf a, const bcrypto_gf x);
 void bcrypto_gf_pow_pm3d4(bcrypto_gf a, const bcrypto_gf x);
 bcrypto_mask_t bcrypto_gf_isqrt(bcrypto_gf out, const bcrypto_gf u, const bcrypto_gf v);
+void bcrypto_gf_solve_y2(bcrypto_gf out, const bcrypto_gf x);
 bcrypto_mask_t bcrypto_gf_solve_y(bcrypto_gf out, const bcrypto_gf x);
 bcrypto_mask_t bcrypto_gf_valid_x(const bcrypto_gf x);
 int bcrypto_gf_is_odd(const bcrypto_gf a);

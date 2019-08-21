@@ -896,7 +896,7 @@ bcrypto_curve448_point_from_uniform(
   bcrypto_gf_sub(x2, x2, a);
 
   /* x = cmov(x1, x2, f(g(x1)) != 1) */
-  bcrypto_gf_cond_swap(x1, x2, bcrypto_gf_valid_x(x1) ^ -1);
+  bcrypto_gf_cond_swap(x1, x2, ~bcrypto_gf_valid_x(x1));
   bcrypto_gf_serialize(out, x1, 1);
 
   sign = bcrypto_gf_is_odd(u);
@@ -964,7 +964,7 @@ bcrypto_curve448_point_to_uniform(
   /* u = sqrt(-n / (d * z)) */
   bcrypto_gf_copy(n, x);
   bcrypto_gf_add(d, x, a);
-  bcrypto_gf_cond_swap(n, d, lt ^ -1);
+  bcrypto_gf_cond_swap(n, d, ~lt);
   bcrypto_gf_sub(n, ZERO, n);
   bcrypto_gf_mul(t, d, z);
   ret &= bcrypto_gf_isqrt(u, n, t);
