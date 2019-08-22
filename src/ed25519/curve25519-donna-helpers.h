@@ -259,14 +259,12 @@ curve25519_solve_y(bignum25519 out, const bignum25519 x) {
 
 static int
 curve25519_valid_x(const bignum25519 x) {
-  static const bignum25519 one = {1};
   bignum25519 ALIGN(16) e;
 
   curve25519_solve_y2(e, x);
   curve25519_pow_two254m10(e, e);
-  curve25519_add(e, e, one);
 
-  return curve25519_is_zero(e) ^ 1;
+  return curve25519_is_equal(e, curve25519_neg1) ^ 1;
 }
 
 static void

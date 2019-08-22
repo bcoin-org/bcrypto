@@ -13,8 +13,14 @@
 
 static const bcrypto_gf BCRYPTO_MODULUS = {
   BCRYPTO_FIELD_LITERAL(0xffffffffffffff, 0xffffffffffffff, 0xffffffffffffff,
-          0xffffffffffffff, 0xfffffffffffffe, 0xffffffffffffff,
-          0xffffffffffffff, 0xffffffffffffff)
+                        0xffffffffffffff, 0xfffffffffffffe, 0xffffffffffffff,
+                        0xffffffffffffff, 0xffffffffffffff)
+};
+
+static const bcrypto_gf NEG_ONE = {
+  BCRYPTO_FIELD_LITERAL(0xfffffffffffffe, 0xffffffffffffff, 0xffffffffffffff,
+                        0xffffffffffffff, 0xfffffffffffffe, 0xffffffffffffff,
+                        0xffffffffffffff, 0xffffffffffffff)
 };
 
 /* Serialize to wire format. */
@@ -384,8 +390,7 @@ bcrypto_mask_t bcrypto_gf_valid_x(const bcrypto_gf x)
   bcrypto_gf e;
   bcrypto_gf_solve_y2(e, x);
   bcrypto_gf_legendre(e, e);
-  bcrypto_gf_add(e, e, ONE);
-  return ~bcrypto_gf_eq(e, ZERO);
+  return ~bcrypto_gf_eq(e, NEG_ONE);
 }
 
 int bcrypto_gf_is_odd(const bcrypto_gf a)

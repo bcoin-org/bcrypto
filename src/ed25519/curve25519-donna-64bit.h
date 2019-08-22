@@ -12,6 +12,15 @@ static const uint64_t reduce_mask_40 = ((uint64_t)1 << 40) - 1;
 static const uint64_t reduce_mask_51 = ((uint64_t)1 << 51) - 1;
 static const uint64_t reduce_mask_56 = ((uint64_t)1 << 56) - 1;
 
+/* -1 */
+static const bignum25519 curve25519_neg1 = {
+  0x7ffffffffffec,
+  0x7ffffffffffff,
+  0x7ffffffffffff,
+  0x7ffffffffffff,
+  0x7ffffffffffff
+};
+
 /* out = in */
 DONNA_INLINE static void
 curve25519_copy(bignum25519 out, const bignum25519 in) {
