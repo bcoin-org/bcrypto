@@ -2287,6 +2287,9 @@ bcrypto_schnorr_verify(bcrypto_ecdsa_t *ec,
   if (Rx == NULL || S == NULL || A == NULL || e == NULL || R == NULL)
     goto fail;
 
+  if (BN_cmp(Rx, ec->p) >= 0 || BN_cmp(S, ec->n) >= 0)
+    goto fail;
+
   // Let R = s*G - e*P.
   if (!BN_is_zero(e)) {
     if (!BN_sub(e, ec->n, e))
@@ -2420,6 +2423,9 @@ bcrypto_schnorr_verify_batch(bcrypto_ecdsa_t *ec,
         || e == NULL || R == NULL || a == NULL) {
       goto fail;
     }
+
+    if (BN_cmp(Rx, ec->p) >= 0 || BN_cmp(S, ec->n) >= 0)
+      goto fail;
 
     if (!schnorr_lift_x(ec, R, Rx, ax, y))
       goto fail;
