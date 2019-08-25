@@ -7,7 +7,8 @@ const SHA512 = require('../lib/sha512');
 const derivations = require('./data/ed25519.json');
 const json = require('./data/ed25519-input.json');
 const rfc8032 = require('./data/rfc8032-vectors.json');
-const vectors = process.env.CI || ed25519.native ? json : json.slice(0, 128);
+const {env} = process;
+const vectors = env.CI || ed25519.native === 2 ? json : json.slice(0, 128);
 
 describe('Ed25519', function() {
   this.timeout(15000);
