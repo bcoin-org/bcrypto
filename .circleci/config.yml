@@ -16,7 +16,7 @@ jobs:
           # fallback to using the latest cache if no exact match is found
           - v1-dependencies-
       - run: npm install
-      - run: npm install eslint@6.1.0 browserify babel-eslint@10.0.2
+      - run: npm install eslint browserify babel-eslint
       - save_cache:
           paths:
             - node_modules
