@@ -1218,9 +1218,6 @@ bcrypto_ecdsa_privkey_invert(bcrypto_ecdsa_t *ec,
   if (!BN_mod_inverse(scalar, scalar, ec->n, ec->ctx))
     goto fail;
 
-  if (BN_is_zero(scalar))
-    goto fail;
-
   assert((size_t)BN_num_bytes(scalar) <= ec->scalar_size);
 
   assert(BN_bn2binpad(scalar, out, ec->scalar_size) > 0);

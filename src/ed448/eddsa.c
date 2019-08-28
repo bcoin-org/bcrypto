@@ -195,11 +195,15 @@ bcrypto_c448_error_t bcrypto_c448_ed448_scalar_invert(
             uint8_t out[BCRYPTO_C448_SCALAR_BYTES],
             const uint8_t scalar[BCRYPTO_C448_SCALAR_BYTES]) {
   bcrypto_curve448_scalar_t scalar_scalar;
+  const bcrypto_curve448_scalar_t zero = {{{0}}};
 
   bcrypto_curve448_scalar_decode(scalar_scalar, &scalar[0]);
 
   bcrypto_c448_error_t error =
     bcrypto_curve448_scalar_invert(scalar_scalar, scalar_scalar);
+
+  if (bcrypto_curve448_scalar_eq(scalar_scalar, zero))
+    error = BCRYPTO_C448_FAILURE;
 
   if (error == BCRYPTO_C448_SUCCESS)
     bcrypto_curve448_scalar_encode(out, scalar_scalar);
