@@ -14,7 +14,7 @@ const custom = require('./data/schnorr-legacy-custom.json');
 // const ECDSA = require('../lib/native/ecdsa');
 // const secp256k1 = new ECDSA('SECP256K1');
 
-describe('Secp256k1+Schnorr', function() {
+describe('Secp256k1+Schnorr Legacy', function() {
   const valid = [];
   const invalid = [];
   const batch = [];
