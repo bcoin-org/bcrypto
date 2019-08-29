@@ -8,7 +8,7 @@ const iter = csv.asArray(process.argv[2]);
 const json = [];
 
 // Parse test vectors.
-for (const [key_, pub_, msg_, sig_, result_, comment_] of iter) {
+for (const [, key_, pub_, msg_, sig_, result_, comment_] of iter) {
   const key = Buffer.from(key_, 'hex');
   const pub = Buffer.from(pub_, 'hex');
   const msg = Buffer.from(msg_, 'hex');
