@@ -2576,6 +2576,29 @@ describe('Elliptic', function() {
       }
     });
 
+    it('should test schnorr helpers', () => {
+      const secp256k1 = new curves.SECP256K1();
+      const p256 = new curves.P256();
+
+      for (const curve of [secp256k1, p256]) {
+        for (let i = 0; i < 10; i++) {
+          const p = curve.randomPoint(rng);
+          const q = p.randomize(rng);
+          const pr = p.toR();
+          const qr = q.toR();
+
+          const raw1 = p.encodeX();
+          const raw2 = q.encodeX();
+
+          assert(pr.eq(qr.toP()));
+          assert(qr.eq(pr.toJ()));
+          assert.bufferEqual(raw1, raw2);
+          assert(curve.decodeX(raw1).eq(pr));
+          assert(curve.decodeX(raw2).toJ().eq(qr));
+        }
+      }
+    });
+
     it('should test swapping (jacobi, edwards)', () => {
       const secp256k1 = new curves.SECP256K1();
       const ed25519 = new curves.ED25519();
