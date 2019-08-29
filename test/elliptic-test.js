@@ -1749,10 +1749,8 @@ describe('Elliptic', function() {
         const x = curve.g.getX();
         const s = curve.g.y.redIsOdd();
         const g = curve.pointFromX(x, s);
-        const r = curve.pointFromR(x);
 
         assert(curve.g.eq(g));
-        assert(curve.g.eq(r));
       }
 
       for (const curve of [ed25519, ed448]) {
@@ -1761,10 +1759,8 @@ describe('Elliptic', function() {
           const x = p.getX();
           const s = p.y.redIsOdd();
           const q = curve.pointFromX(x, s);
-          const r = curve.pointFromR(x);
 
           assert(p.eq(q));
-          assert(p.y.eq(r.y) || p.y.eq(r.y.redNeg()));
         }
       }
     });
@@ -2504,9 +2500,9 @@ describe('Elliptic', function() {
 
     it('should test x equality', () => {
       const secp256k1 = new curves.SECP256K1();
-      const ed25519 = new curves.ED25519();
+      const p256 = new curves.P256();
 
-      for (const curve of [secp256k1, ed25519]) {
+      for (const curve of [secp256k1, p256]) {
         const p = curve.randomPoint(rng);
         const x = p.getX();
         const r = p.randomize(rng);
@@ -2525,26 +2521,30 @@ describe('Elliptic', function() {
       }
     });
 
-    it('should test x equality (mont)', () => {
-      const curve = new curves.X448();
-      const p = curve.randomPoint(rng);
-      const x = p.getX();
-      const r = p.randomize(rng);
+    it('should test x equality (mont, edwards)', () => {
+      const x25519 = new curves.X25519();
+      const ed25519 = new curves.ED25519();
 
-      assert(p.eqX(x));
-      assert(r.eqX(x));
+      for (const curve of [x25519, ed25519]) {
+        const p = curve.randomPoint(rng);
+        const x = p.getX();
+        const r = p.randomize(rng);
 
-      x.iaddn(1);
+        assert(p.eqX(x));
+        assert(r.eqX(x));
 
-      assert(!p.eqX(x));
-      assert(!r.eqX(x));
+        x.iaddn(1);
+
+        assert(!p.eqX(x));
+        assert(!r.eqX(x));
+      }
     });
 
     it('should test fuzzy x equality', () => {
       const secp256k1 = new curves.SECP256K1();
-      const ed25519 = new curves.ED25519();
+      const p256 = new curves.P256();
 
-      for (const curve of [secp256k1, ed25519]) {
+      for (const curve of [secp256k1, p256]) {
         let p;
 
         for (;;) {
