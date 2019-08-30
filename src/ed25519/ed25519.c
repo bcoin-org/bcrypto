@@ -214,24 +214,17 @@ bcrypto_ed25519_pubkey_convert(
   ge25519 ALIGN(16) p;
   int ret = 1;
 
-  /* ed25519 pubkey -> ed25519 point */
   if (!ge25519_unpack(&p, pk))
     return 0;
 
-  /* ed25519 point -> x25519 point */
   curve25519_add(x, p.z, p.y);
   curve25519_sub(z, p.z, p.y);
 
-  // P = (x, 1) = O
   ret &= curve25519_is_zero(z) ^ 1;
 
-  // P = (0, y) = (0, 0)
   curve25519_swap_conditional(x, p.x, curve25519_is_zero(p.x));
-
   curve25519_recip(z, z);
   curve25519_mul(x, x, z);
-
-  /* output point (little-endian u coord) */
   curve25519_contract(out, x);
 
   return ret;
@@ -243,8 +236,8 @@ bcrypto_ed25519_pubkey_deconvert(
   const bcrypto_x25519_pubkey_t pk,
   int sign
 ) {
-  static const bignum25519 z = {1};
-  bignum25519 ALIGN(16) x, xminusz, xplusz;
+  static const bignum25519 one = {1};
+  bignum25519 ALIGN(16) x, y, z;
   int ret = 1;
 
   curve25519_expand(x, pk);
@@ -252,18 +245,16 @@ bcrypto_ed25519_pubkey_deconvert(
   if (!curve25519_valid_x(x))
     return 0;
 
-  curve25519_sub(xminusz, x, z);
-  curve25519_add(xplusz, x, z);
+  curve25519_sub(y, x, one);
+  curve25519_add(z, x, one);
 
-  // P = (-1, v) = O
-  ret &= curve25519_is_zero(xplusz) ^ 1;
+  ret &= curve25519_is_zero(z) ^ 1;
 
-  curve25519_recip(xplusz, xplusz);
-  curve25519_mul(x, xminusz, xplusz);
+  curve25519_recip(z, z);
+  curve25519_mul(y, y, z);
+  curve25519_contract(out, y);
 
-  curve25519_contract(out, x);
-
-  out[31] |= 0x80 * (sign != 0);
+  out[31] |= 0x80 * sign;
 
   return ret;
 }
@@ -376,7 +367,7 @@ bcrypto_ed25519_exchange_with_scalar(
 
   curve25519_contract(out, x1);
 
-  return bcrypto_ed25519_equal(out, &zero[0], 32) ^ 1;
+  return bcrypto_ed25519_equal(out, zero, 32) ^ 1;
 }
 
 int
