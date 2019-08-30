@@ -41,7 +41,7 @@ describe('Ed448', function() {
       pub);
   });
 
-  it('should disallow points at infinity', () => {
+  it('should allow points at infinity', () => {
     // Fun fact about edwards curves: points
     // at infinity can actually be serialized.
     const msg = Buffer.from(''
@@ -78,8 +78,10 @@ describe('Ed448', function() {
       + '000000000000000000',
       'hex');
 
-    assert(!ed448.publicKeyVerify(inf));
-    assert(!ed448.verify(msg, sig, inf));
+    assert(ed448.publicKeyVerify(inf));
+    assert(ed448.publicKeyIsInfinity(inf));
+    assert(ed448.scalarIsZero(sig.slice(57, 57 + 56)));
+    assert(ed448.verify(msg, sig, inf));
   });
 
   it('should validate small order points', () => {
@@ -104,9 +106,7 @@ describe('Ed448', function() {
       const str = small[i];
       const pub = Buffer.from(str, 'hex');
 
-      if (i > 1)
-        assert(ed448.publicKeyVerify(pub));
-
+      assert(ed448.publicKeyVerify(pub));
       assert.throws(() => ed448.deriveWithScalar(pub, key));
     }
   });
@@ -139,8 +139,8 @@ describe('Ed448', function() {
         'fefffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffffffffffffffffffffffffffffffffffffffffffffffffff00',
         '000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
         'fefffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffffffffffffffffffffffffffffffffffffffffffffffffff00',
-        false, // true,
-        false  // true
+        true,
+        true
       ],
 
       // (0, 1)
@@ -149,8 +149,8 @@ describe('Ed448', function() {
         '000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000080',
         '000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
         'fefffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffffffffffffffffffffffffffffffffffffffffffffffffff00',
-        false, // false,
-        false  // true
+        false,
+        true
       ],
 
       // (1, 0)
@@ -159,8 +159,8 @@ describe('Ed448', function() {
         'fefffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffffffffffffffffffffffffffffffffffffffffffffffffff00',
         '000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
         '000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000080',
-        false, // true,
-        false  // true
+        true,
+        true
       ],
 
       // (1, 1)

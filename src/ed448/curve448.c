@@ -521,6 +521,7 @@ bcrypto_c448_error_t bcrypto_curve448_point_decode_like_eddsa_and_mul_by_ratio(
   uint8_t enc2[BCRYPTO_EDDSA_448_PUBLIC_BYTES];
   bcrypto_mask_t low;
   bcrypto_mask_t succ;
+  bcrypto_mask_t inf;
 
   memcpy(enc2, enc, sizeof(enc2));
 
@@ -532,14 +533,16 @@ bcrypto_c448_error_t bcrypto_curve448_point_decode_like_eddsa_and_mul_by_ratio(
 
   bcrypto_gf_sqr(p->x, p->y);
   bcrypto_gf_sub(p->z, ONE, p->x);  /* num = 1-y^2 */
+  inf = bcrypto_gf_eq(p->z, ZERO);
   bcrypto_gf_mulw(p->t, p->x, BCRYPTO_EDWARDS_D); /* dy^2 */
   bcrypto_gf_sub(p->t, ONE, p->t);  /* denom = 1-dy^2 or 1-d + dy^2 */
 
   bcrypto_gf_mul(p->x, p->z, p->t);
-  succ &= bcrypto_gf_isr(p->t, p->x); /* 1/sqrt(num * denom) */
+  succ &= bcrypto_gf_isr(p->t, p->x) | inf; /* 1/sqrt(num * denom) */
 
   bcrypto_gf_mul(p->x, p->t, p->z);   /* sqrt(num / denom) */
   bcrypto_gf_cond_neg(p->x, bcrypto_gf_lobit(p->x) ^ low);
+  bcrypto_gf_cond_sel(p->x, p->x, ZERO, inf); /* allow (0, 1) and (0, -1) */
   bcrypto_gf_copy(p->z, ONE);
 
   /* x = 0, sign = 1 (malleable) */
@@ -838,12 +841,6 @@ bcrypto_curve448_convert_public_key_to_eddsa(
       bcrypto_curve448_scalar_halve(h, h);
 
     bcrypto_curve448_point_scalarmul(p, p, h);
-
-    if (bcrypto_curve448_point_infinity(p)) {
-      bcrypto_curve448_point_destroy(p);
-      return BCRYPTO_C448_FAILURE;
-    }
-
     bcrypto_curve448_point_mul_by_ratio_and_encode_like_eddsa(ed, p);
     bcrypto_curve448_point_destroy(p);
 

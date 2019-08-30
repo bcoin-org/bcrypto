@@ -288,7 +288,7 @@ ge25519_is_canonical(const unsigned char p[32]) {
   return 1 - (c & d & 1);
 }
 
-static int
+static void
 ge25519_pack(unsigned char r[32], const ge25519 *p) {
   bignum25519 tx, ty, zi;
   unsigned char parity[32];
@@ -300,8 +300,6 @@ ge25519_pack(unsigned char r[32], const ge25519 *p) {
   curve25519_contract(parity, tx);
 
   r[31] ^= ((parity[0] & 1) << 7);
-
-  return ge25519_is_one(r) ^ 1;
 }
 
 static int
@@ -313,9 +311,6 @@ ge25519_unpack(ge25519 *r, const unsigned char p[32]) {
 
   /* y >= p */
   ret &= ge25519_is_canonical(p);
-
-  /* y = 1, sign = 0 (infinity) */
-  ret &= ge25519_is_one(p) ^ 1;
 
   curve25519_expand(r->y, p);
   curve25519_set_word(r->z, 1);
@@ -346,10 +341,6 @@ ge25519_unpack_vartime(ge25519 *r, const unsigned char p[32]) {
 
   /* y >= p */
   if (!ge25519_is_canonical(p))
-    return 0;
-
-  /* y = 1, sign = 0 (infinity) */
-  if (ge25519_is_one(p))
     return 0;
 
   curve25519_expand(r->y, p);

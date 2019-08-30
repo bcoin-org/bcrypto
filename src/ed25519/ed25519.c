@@ -79,7 +79,9 @@ bcrypto_ed25519_pubkey_from_scalar(
   expand256_modm(a, sk, 32);
   ge25519_scalarmult_base_niels(&A, ge25519_niels_base_multiples, a);
 
-  return ge25519_pack(pk, &A);
+  ge25519_pack(pk, &A);
+
+  return 1;
 }
 
 int
@@ -123,9 +125,7 @@ bcrypto_ed25519_verify(
   /* SB - H(R,A,m)A */
   ge25519_neg(&A, &A);
   ge25519_double_scalarmult_vartime(&R, &A, hram, S);
-
-  if (!ge25519_pack(checkR, &R))
-    return 0;
+  ge25519_pack(checkR, &R);
 
   /* check that R = SB - H(R,A,m)A */
   return bcrypto_ed25519_equal(RS, checkR, 32);
@@ -283,8 +283,9 @@ bcrypto_ed25519_derive_with_scalar(
     return 0;
 
   ge25519_scalarmult(&r, &p, k);
+  ge25519_pack(out, &r);
 
-  return ge25519_pack(out, &r);
+  return ge25519_is_one(out) ^ 1;
 }
 
 int
@@ -393,9 +394,6 @@ bcrypto_ed25519_scalar_tweak_add(
 
   add256_modm(k, k, t);
 
-  if (iszero256_modm_batch(k))
-    return 0;
-
   contract256_modm(out, k);
 
   return 1;
@@ -413,9 +411,6 @@ bcrypto_ed25519_scalar_tweak_mul(
   expand256_modm(t, tweak, 32);
 
   mul256_modm(k, k, t);
-
-  if (iszero256_modm_batch(k))
-    return 0;
 
   contract256_modm(out, k);
 
@@ -482,8 +477,9 @@ bcrypto_ed25519_pubkey_tweak_add(
   ge25519_scalarmult_base_niels(&T, ge25519_niels_base_multiples, t);
 
   ge25519_add(&k, &k, &T);
+  ge25519_pack(out, &k);
 
-  return ge25519_pack(out, &k);
+  return 1;
 }
 
 int
@@ -499,9 +495,11 @@ bcrypto_ed25519_pubkey_tweak_mul(
     return 0;
 
   expand_raw256_modm(t, tweak);
-  ge25519_scalarmult(&T, &k, t);
 
-  return ge25519_pack(out, &T);
+  ge25519_scalarmult(&T, &k, t);
+  ge25519_pack(out, &T);
+
+  return 1;
 }
 
 int
@@ -519,8 +517,9 @@ bcrypto_ed25519_pubkey_add(
     return 0;
 
   ge25519_add(&k1, &k1, &k2);
+  ge25519_pack(out, &k1);
 
-  return ge25519_pack(out, &k1);
+  return 1;
 }
 
 int
@@ -545,7 +544,9 @@ bcrypto_ed25519_pubkey_combine(
     ge25519_add(&k1, &k1, &k2);
   }
 
-  return ge25519_pack(out, &k1);
+  ge25519_pack(out, &k1);
+
+  return 1;
 }
 
 int
@@ -559,8 +560,9 @@ bcrypto_ed25519_pubkey_negate(
     return 0;
 
   ge25519_neg(&k, &k);
+  ge25519_pack(out, &k);
 
-  return ge25519_pack(out, &k);
+  return 1;
 }
 
 int
@@ -589,9 +591,7 @@ bcrypto_ed25519_sign_with_scalar(
 
   /* R = rB */
   ge25519_scalarmult_base_niels(&R, ge25519_niels_base_multiples, r);
-
-  if (!ge25519_pack(RS, &R))
-    return 0;
+  ge25519_pack(RS, &R);
 
   /* S = H(R,A,m).. */
   bcrypto_ed25519_hram(hram, ph, ctx, ctx_len, RS, pk, m, mlen);
@@ -824,8 +824,9 @@ bcrypto_ed25519_pubkey_from_hash(
 
   ge25519_add(&p1, &p1, &p2);
   ge25519_mulh(&p1, &p1);
+  ge25519_pack(out, &p1);
 
-  return ge25519_pack(out, &p1);
+  return 1;
 }
 
 int

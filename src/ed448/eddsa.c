@@ -119,14 +119,6 @@ bcrypto_c448_error_t bcrypto_c448_ed448_scalar_tweak_add(
 
   bcrypto_curve448_scalar_add(scalar_scalar, scalar_scalar, tweak_scalar);
 
-  const bcrypto_curve448_scalar_t zero = {{{0}}};
-
-  if (bcrypto_curve448_scalar_eq(scalar_scalar, zero)) {
-    bcrypto_curve448_scalar_destroy(scalar_scalar);
-    bcrypto_curve448_scalar_destroy(tweak_scalar);
-    return BCRYPTO_C448_FAILURE;
-  }
-
   bcrypto_curve448_scalar_encode(out, scalar_scalar);
 
   bcrypto_curve448_scalar_destroy(scalar_scalar);
@@ -146,15 +138,6 @@ bcrypto_c448_error_t bcrypto_c448_ed448_scalar_tweak_mul(
   bcrypto_curve448_scalar_decode(tweak_scalar, &tweak[0]);
 
   bcrypto_curve448_scalar_mul(scalar_scalar, scalar_scalar, tweak_scalar);
-
-  const bcrypto_curve448_scalar_t zero = {{{0}}};
-
-  if (bcrypto_curve448_scalar_eq(scalar_scalar, zero)) {
-    bcrypto_curve448_scalar_destroy(scalar_scalar);
-    bcrypto_curve448_scalar_destroy(tweak_scalar);
-    return BCRYPTO_C448_FAILURE;
-  }
-
   bcrypto_curve448_scalar_encode(out, scalar_scalar);
 
   bcrypto_curve448_scalar_destroy(scalar_scalar);
@@ -226,29 +209,17 @@ bcrypto_c448_error_t bcrypto_c448_ed448_public_key_tweak_add(
   if (error != BCRYPTO_C448_SUCCESS)
     return error;
 
-  if (bcrypto_curve448_point_infinity(pk_point)) {
-    bcrypto_curve448_point_destroy(pk_point);
-    return BCRYPTO_C448_FAILURE;
-  }
-
   bcrypto_curve448_scalar_decode(tweak_scalar, &tweak[0]);
 
   bcrypto_curve448_precomputed_scalarmul(tweak_point, bcrypto_curve448_precomputed_base, tweak_scalar);
   bcrypto_curve448_point_add(pk_point, pk_point, tweak_point);
 
-  // We have to divide the new point by the ratio due to decaf's encoding.
+  /* We have to divide the new point by the ratio. */
   bcrypto_curve448_scalar_t ratio_scalar = {{{BCRYPTO_C448_EDDSA_ENCODE_RATIO}}};
   bcrypto_curve448_scalar_invert(ratio_scalar, ratio_scalar);
   bcrypto_curve448_point_t ratio_point;
   bcrypto_curve448_precomputed_scalarmul(ratio_point, bcrypto_curve448_precomputed_base, ratio_scalar);
   bcrypto_curve448_point_scalarmul(pk_point, pk_point, ratio_scalar);
-
-  if (bcrypto_curve448_point_infinity(pk_point)) {
-    bcrypto_curve448_scalar_destroy(tweak_scalar);
-    bcrypto_curve448_point_destroy(tweak_point);
-    bcrypto_curve448_point_destroy(pk_point);
-    return BCRYPTO_C448_FAILURE;
-  }
 
   bcrypto_curve448_point_mul_by_ratio_and_encode_like_eddsa(out, pk_point);
 
@@ -273,24 +244,12 @@ bcrypto_c448_error_t bcrypto_c448_ed448_public_key_tweak_mul(
   if (error != BCRYPTO_C448_SUCCESS)
     return error;
 
-  if (bcrypto_curve448_point_infinity(pk_point)) {
-    bcrypto_curve448_point_destroy(pk_point);
-    return BCRYPTO_C448_FAILURE;
-  }
-
   bcrypto_curve448_scalar_decode(tweak_scalar, &tweak[0]);
 
   for (c = 1; c < BCRYPTO_C448_EDDSA_ENCODE_RATIO; c <<= 1)
     bcrypto_curve448_scalar_halve(tweak_scalar, tweak_scalar);
 
   bcrypto_curve448_point_scalarmul(pk_point, pk_point, tweak_scalar);
-
-  if (bcrypto_curve448_point_infinity(pk_point)) {
-    bcrypto_curve448_scalar_destroy(tweak_scalar);
-    bcrypto_curve448_point_destroy(pk_point);
-    return BCRYPTO_C448_FAILURE;
-  }
-
   bcrypto_curve448_point_mul_by_ratio_and_encode_like_eddsa(out, pk_point);
 
   bcrypto_curve448_scalar_destroy(tweak_scalar);
@@ -311,11 +270,6 @@ bcrypto_c448_error_t bcrypto_c448_ed448_public_key_add(
   if (error1 != BCRYPTO_C448_SUCCESS)
     return error1;
 
-  if (bcrypto_curve448_point_infinity(pk1_point)) {
-    bcrypto_curve448_point_destroy(pk1_point);
-    return BCRYPTO_C448_FAILURE;
-  }
-
   bcrypto_c448_error_t error2 =
     bcrypto_curve448_point_decode_like_eddsa_and_mul_by_ratio(pk2_point, pubkey2);
 
@@ -324,26 +278,14 @@ bcrypto_c448_error_t bcrypto_c448_ed448_public_key_add(
     return error2;
   }
 
-  if (bcrypto_curve448_point_infinity(pk2_point)) {
-    bcrypto_curve448_point_destroy(pk1_point);
-    bcrypto_curve448_point_destroy(pk2_point);
-    return BCRYPTO_C448_FAILURE;
-  }
-
   bcrypto_curve448_point_add(pk1_point, pk1_point, pk2_point);
 
-  // We have to divide the new point by the ratio due to decaf's encoding.
+  /* We have to divide the new point by the ratio. */
   bcrypto_curve448_scalar_t ratio_scalar = {{{BCRYPTO_C448_EDDSA_ENCODE_RATIO}}};
   bcrypto_curve448_scalar_invert(ratio_scalar, ratio_scalar);
   bcrypto_curve448_point_t ratio_point;
   bcrypto_curve448_precomputed_scalarmul(ratio_point, bcrypto_curve448_precomputed_base, ratio_scalar);
   bcrypto_curve448_point_scalarmul(pk1_point, pk1_point, ratio_scalar);
-
-  if (bcrypto_curve448_point_infinity(pk1_point)) {
-    bcrypto_curve448_point_destroy(pk1_point);
-    bcrypto_curve448_point_destroy(pk2_point);
-    return BCRYPTO_C448_FAILURE;
-  }
 
   bcrypto_curve448_point_mul_by_ratio_and_encode_like_eddsa(out, pk1_point);
 
@@ -369,11 +311,6 @@ bcrypto_c448_error_t bcrypto_c448_ed448_public_key_combine(
   if (error1 != BCRYPTO_C448_SUCCESS)
     return error1;
 
-  if (bcrypto_curve448_point_infinity(pk1_point)) {
-    bcrypto_curve448_point_destroy(pk1_point);
-    return BCRYPTO_C448_FAILURE;
-  }
-
   for (; i < length; i++) {
     bcrypto_c448_error_t error2 =
       bcrypto_curve448_point_decode_like_eddsa_and_mul_by_ratio(pk2_point, pubkeys[i]);
@@ -383,27 +320,16 @@ bcrypto_c448_error_t bcrypto_c448_ed448_public_key_combine(
       return error2;
     }
 
-    if (bcrypto_curve448_point_infinity(pk2_point)) {
-      bcrypto_curve448_point_destroy(pk1_point);
-      bcrypto_curve448_point_destroy(pk2_point);
-      return BCRYPTO_C448_FAILURE;
-    }
-
     bcrypto_curve448_point_add(pk1_point, pk1_point, pk2_point);
     bcrypto_curve448_point_destroy(pk2_point);
   }
 
-  // We have to divide the new point by the ratio due to decaf's encoding.
+  /* We have to divide the new point by the ratio. */
   bcrypto_curve448_scalar_t ratio_scalar = {{{BCRYPTO_C448_EDDSA_ENCODE_RATIO}}};
   bcrypto_curve448_scalar_invert(ratio_scalar, ratio_scalar);
   bcrypto_curve448_point_t ratio_point;
   bcrypto_curve448_precomputed_scalarmul(ratio_point, bcrypto_curve448_precomputed_base, ratio_scalar);
   bcrypto_curve448_point_scalarmul(pk1_point, pk1_point, ratio_scalar);
-
-  if (bcrypto_curve448_point_infinity(pk1_point)) {
-    bcrypto_curve448_point_destroy(pk1_point);
-    return BCRYPTO_C448_FAILURE;
-  }
 
   bcrypto_curve448_point_mul_by_ratio_and_encode_like_eddsa(out, pk1_point);
 
@@ -423,24 +349,14 @@ bcrypto_c448_error_t bcrypto_c448_ed448_public_key_negate(
   if (error != BCRYPTO_C448_SUCCESS)
     return error;
 
-  if (bcrypto_curve448_point_infinity(pk_point)) {
-    bcrypto_curve448_point_destroy(pk_point);
-    return BCRYPTO_C448_FAILURE;
-  }
-
   bcrypto_curve448_point_negate(pk_point, pk_point);
 
-  // We have to divide the new point by the ratio due to decaf's encoding.
+  /* We have to divide the new point by the ratio. */
   bcrypto_curve448_scalar_t ratio_scalar = {{{BCRYPTO_C448_EDDSA_ENCODE_RATIO}}};
   bcrypto_curve448_scalar_invert(ratio_scalar, ratio_scalar);
   bcrypto_curve448_point_t ratio_point;
   bcrypto_curve448_precomputed_scalarmul(ratio_point, bcrypto_curve448_precomputed_base, ratio_scalar);
   bcrypto_curve448_point_scalarmul(pk_point, pk_point, ratio_scalar);
-
-  if (bcrypto_curve448_point_infinity(pk_point)) {
-    bcrypto_curve448_point_destroy(pk_point);
-    return BCRYPTO_C448_FAILURE;
-  }
 
   bcrypto_curve448_point_mul_by_ratio_and_encode_like_eddsa(out, pk_point);
 
@@ -473,12 +389,6 @@ bcrypto_c448_error_t bcrypto_c448_ed448_derive_public_key_with_scalar(
 
   bcrypto_curve448_precomputed_scalarmul(p,
     bcrypto_curve448_precomputed_base, secret_scalar);
-
-  if (bcrypto_curve448_point_infinity(p)) {
-    bcrypto_curve448_scalar_destroy(secret_scalar);
-    bcrypto_curve448_point_destroy(p);
-    return BCRYPTO_C448_FAILURE;
-  }
 
   bcrypto_curve448_point_mul_by_ratio_and_encode_like_eddsa(pubkey, p);
 
@@ -523,11 +433,6 @@ bcrypto_c448_error_t bcrypto_c448_ed448_derive_with_scalar(
 
   if (bcrypto_curve448_point_decode_like_eddsa_and_mul_by_ratio(p, pubkey)
       != BCRYPTO_C448_SUCCESS) {
-    return BCRYPTO_C448_FAILURE;
-  }
-
-  if (bcrypto_curve448_point_infinity(p)) {
-    bcrypto_curve448_point_destroy(p);
     return BCRYPTO_C448_FAILURE;
   }
 
@@ -748,7 +653,7 @@ bcrypto_c448_error_t bcrypto_c448_ed448_sign_tweak_add(
   if (ret != BCRYPTO_C448_SUCCESS)
     goto fail;
 
-  // Preimage:
+  /* Preimage */
   memcpy(&expanded2[0], &expanded[BCRYPTO_EDDSA_448_PRIVATE_BYTES], BCRYPTO_EDDSA_448_PRIVATE_BYTES);
   memcpy(&expanded2[BCRYPTO_EDDSA_448_PRIVATE_BYTES], &tweak[0], BCRYPTO_C448_SCALAR_BYTES);
   expanded2[sizeof(expanded2) - 1] = 0;
@@ -808,7 +713,7 @@ bcrypto_c448_error_t bcrypto_c448_ed448_sign_tweak_mul(
   if (ret != BCRYPTO_C448_SUCCESS)
     goto fail;
 
-  // Preimage:
+  /* Preimage */
   memcpy(&expanded2[0], &expanded[BCRYPTO_EDDSA_448_PRIVATE_BYTES], BCRYPTO_EDDSA_448_PRIVATE_BYTES);
   memcpy(&expanded2[BCRYPTO_EDDSA_448_PRIVATE_BYTES], &tweak[0], BCRYPTO_C448_SCALAR_BYTES);
   expanded2[sizeof(expanded2) - 1] = 0;
@@ -913,7 +818,7 @@ bcrypto_c448_error_t bcrypto_c448_ed448_verify(
           uint8_t prehashed, const uint8_t *context,
           uint8_t context_len)
 {
-  // We consider cofactor verification the default.
+  /* We consider cofactor verification the default. */
   return bcrypto_c448_ed448_verify_single(signature, pubkey, message,
                                           message_len, prehashed, context,
                                           context_len);

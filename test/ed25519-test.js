@@ -45,7 +45,7 @@ describe('Ed25519', function() {
       pub);
   });
 
-  it('should disallow points at infinity', () => {
+  it('should allow points at infinity', () => {
     // Fun fact about edwards curves: points
     // at infinity can actually be serialized.
     const msg = Buffer.from(
@@ -67,8 +67,10 @@ describe('Ed25519', function() {
       '0100000000000000000000000000000000000000000000000000000000000000',
       'hex');
 
-    assert(!ed25519.publicKeyVerify(inf));
-    assert(!ed25519.verify(msg, sig, inf));
+    assert(ed25519.publicKeyVerify(inf));
+    assert(ed25519.publicKeyIsInfinity(inf));
+    assert(ed25519.scalarIsZero(sig.slice(32)));
+    assert(ed25519.verify(msg, sig, inf));
   });
 
   it('should validate small order points', () => {
@@ -94,9 +96,7 @@ describe('Ed25519', function() {
       const str = small[i];
       const pub = Buffer.from(str, 'hex');
 
-      if (i > 0)
-        assert(ed25519.publicKeyVerify(pub));
-
+      assert(ed25519.publicKeyVerify(pub));
       assert.throws(() => ed25519.deriveWithScalar(pub, key));
     }
   });
