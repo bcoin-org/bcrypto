@@ -2970,7 +2970,7 @@ describe('Elliptic', function() {
         //   ['00000000000000000000000000000000000000000000000000000000',
         //    '00000000000000000000000000000000000000000000000000000001'].join('')
         // ],
-        // 0, -c (order 2, not 4-isogenous)
+        // 0, -c (order 2, rejected)
         [
           ['00000000000000000000000000000000000000000000000000000000',
            '00000000000000000000000000000000000000000000000000000000'].join(''),
@@ -3058,7 +3058,7 @@ describe('Elliptic', function() {
           ['00000000000000000000000000000000000000000000000000000000',
            '00000000000000000000000000000000000000000000000000000000'].join('')
         ],
-        // 1 (order 2, invalid, not 4-isogenous)
+        // 1 (order 2, invalid, rejected)
         [
           ['00000000000000000000000000000000000000000000000000000000',
            '00000000000000000000000000000000000000000000000000000001'].join('')
@@ -3073,7 +3073,7 @@ describe('Elliptic', function() {
           ['fffffffffffffffffffffffffffffffffffffffffffffffffffffffe',
            'ffffffffffffffffffffffffffffffffffffffffffffffffffffffff'].join('')
         ],
-        // p + 1 (order, invalid, not 4-isogenous)
+        // p + 1 (order, invalid, rejected)
         [
           ['ffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
            '00000000000000000000000000000000000000000000000000000000'].join('')

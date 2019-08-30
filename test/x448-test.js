@@ -193,7 +193,7 @@ describe('X448', function() {
       // 0 (order 1)
       ['00000000000000000000000000000000000000000000000000000000',
        '00000000000000000000000000000000000000000000000000000000'].join(''),
-      // 1 (order 2, invalid, not 4-isogenous)
+      // 1 (order 2, invalid, rejected)
       ['01000000000000000000000000000000000000000000000000000000',
        '00000000000000000000000000000000000000000000000000000000'].join(''),
       // p - 1 (order 4)
@@ -202,7 +202,7 @@ describe('X448', function() {
       // p (order 1)
       ['ffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
        'feffffffffffffffffffffffffffffffffffffffffffffffffffffff'].join(''),
-      // p + 1 (order, invalid, not 4-isogenous)
+      // p + 1 (order, invalid, rejected)
       ['00000000000000000000000000000000000000000000000000000000',
        'ffffffffffffffffffffffffffffffffffffffffffffffffffffffff'].join('')
     ];

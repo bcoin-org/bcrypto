@@ -87,10 +87,7 @@ describe('Ed448', function() {
       // 0, c (order 1)
       ['01000000000000000000000000000000000000000000000000000000',
        '0000000000000000000000000000000000000000000000000000000000'].join(''),
-      // 0, -c (order 2) (native backend doesn't like this guy,
-      //                  probably because it's the one small
-      //                  order point that is not 4-isogenous
-      //                  to curve448)
+      // 0, -c (order 2, rejected)
       ['feffffffffffffffffffffffffffffffffffffffffffffffffffffff',
        'feffffffffffffffffffffffffffffffffffffffffffffffffffffff00'].join(''),
       // c, 0 (order 4)
