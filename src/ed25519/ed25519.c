@@ -212,7 +212,6 @@ bcrypto_ed25519_pubkey_convert(
 ) {
   bignum25519 ALIGN(16) x, z;
   ge25519 ALIGN(16) p;
-  int ret = 1;
 
   if (!ge25519_unpack(&p, pk))
     return 0;
@@ -220,14 +219,14 @@ bcrypto_ed25519_pubkey_convert(
   curve25519_add(x, p.z, p.y);
   curve25519_sub(z, p.z, p.y);
 
-  ret &= curve25519_is_zero(z) ^ 1;
+  if (curve25519_is_zero(z))
+    return 0;
 
-  curve25519_swap_conditional(x, p.x, curve25519_is_zero(p.x));
   curve25519_recip(z, z);
   curve25519_mul(x, x, z);
   curve25519_contract(out, x);
 
-  return ret;
+  return 1;
 }
 
 int
@@ -238,7 +237,6 @@ bcrypto_ed25519_pubkey_deconvert(
 ) {
   static const bignum25519 one = {1};
   bignum25519 ALIGN(16) x, y, z;
-  int ret = 1;
 
   curve25519_expand(x, pk);
 
@@ -248,15 +246,16 @@ bcrypto_ed25519_pubkey_deconvert(
   curve25519_sub(y, x, one);
   curve25519_add(z, x, one);
 
-  ret &= curve25519_is_zero(z) ^ 1;
+  if (curve25519_is_zero(z))
+    return 0;
 
   curve25519_recip(z, z);
   curve25519_mul(y, y, z);
   curve25519_contract(out, y);
 
-  out[31] |= 0x80 * sign;
+  out[31] |= sign << 7;
 
-  return ret;
+  return 1;
 }
 
 int
@@ -266,7 +265,7 @@ bcrypto_ed25519_derive_with_scalar(
   const bcrypto_ed25519_scalar_t sk
 ) {
   bignum256modm k;
-  ge25519 ALIGN(16) s, p;
+  ge25519 ALIGN(16) r, p;
   bcrypto_ed25519_scalar_t ec;
   size_t i;
 
@@ -283,9 +282,9 @@ bcrypto_ed25519_derive_with_scalar(
   if (!ge25519_unpack(&p, pk))
     return 0;
 
-  ge25519_scalarmult(&s, &p, k);
+  ge25519_scalarmult(&r, &p, k);
 
-  return ge25519_pack(out, &s);
+  return ge25519_pack(out, &r);
 }
 
 int
@@ -388,18 +387,18 @@ bcrypto_ed25519_scalar_tweak_add(
   const bcrypto_ed25519_scalar_t tweak
 ) {
   bignum256modm k, t;
-  int ret = 1;
 
   expand256_modm(k, sk, 32);
   expand256_modm(t, tweak, 32);
 
   add256_modm(k, k, t);
 
-  ret &= iszero256_modm_batch(k) ^ 1;
+  if (iszero256_modm_batch(k))
+    return 0;
 
   contract256_modm(out, k);
 
-  return ret;
+  return 1;
 }
 
 int
@@ -409,18 +408,18 @@ bcrypto_ed25519_scalar_tweak_mul(
   const bcrypto_ed25519_scalar_t tweak
 ) {
   bignum256modm k, t;
-  int ret = 1;
 
   expand256_modm(k, sk, 32);
   expand256_modm(t, tweak, 32);
 
   mul256_modm(k, k, t);
 
-  ret &= iszero256_modm_batch(k) ^ 1;
+  if (iszero256_modm_batch(k))
+    return 0;
 
   contract256_modm(out, k);
 
-  return ret;
+  return 1;
 }
 
 void
@@ -454,16 +453,16 @@ bcrypto_ed25519_scalar_invert(
   const bcrypto_ed25519_scalar_t sk
 ) {
   bignum256modm k;
-  int ret = 1;
 
   expand256_modm(k, sk, 32);
   recip256_modm(k, k);
 
-  ret &= iszero256_modm_batch(k) ^ 1;
+  if (iszero256_modm_batch(k))
+    return 0;
 
   contract256_modm(out, k);
 
-  return ret;
+  return 1;
 }
 
 int
@@ -579,7 +578,6 @@ bcrypto_ed25519_sign_with_scalar(
   bignum256modm r, S, a;
   ge25519 ALIGN(16) R;
   hash_512bits hashr, hram;
-  int ret = 1;
 
   /* r = H(aExt[32..64], m) */
   bcrypto_ed25519_hash_init(&hctx);
@@ -592,7 +590,8 @@ bcrypto_ed25519_sign_with_scalar(
   /* R = rB */
   ge25519_scalarmult_base_niels(&R, ge25519_niels_base_multiples, r);
 
-  ret &= ge25519_pack(RS, &R);
+  if (!ge25519_pack(RS, &R))
+    return 0;
 
   /* S = H(R,A,m).. */
   bcrypto_ed25519_hram(hram, ph, ctx, ctx_len, RS, pk, m, mlen);
@@ -608,7 +607,7 @@ bcrypto_ed25519_sign_with_scalar(
   /* S = (r + H(R,A,m)a) mod L */
   contract256_modm(RS + 32, S);
 
-  return ret;
+  return 1;
 }
 
 int
