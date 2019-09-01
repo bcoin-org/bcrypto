@@ -199,9 +199,7 @@ curve25519_sqrt(bignum25519 out, const bignum25519 x) {
 static int
 curve25519_isqrt(bignum25519 out, const bignum25519 u, const bignum25519 v) {
   bignum25519 ALIGN(16) v3, x, c;
-  int nz, css, fss;
-
-  nz = curve25519_is_zero(v) ^ 1;
+  int css, fss;
 
   /* V3 = V^2 * V */
   curve25519_square(c, v);
@@ -235,7 +233,7 @@ curve25519_isqrt(bignum25519 out, const bignum25519 u, const bignum25519 v) {
   curve25519_swap_conditional(x, c, fss);
   curve25519_copy(out, x);
 
-  return (css | fss) & nz;
+  return css | fss;
 }
 
 static void

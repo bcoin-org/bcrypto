@@ -330,9 +330,7 @@ void bcrypto_gf_pow_pm3d4(bcrypto_gf a, const bcrypto_gf x)
 bcrypto_mask_t bcrypto_gf_isqrt(bcrypto_gf out, const bcrypto_gf u, const bcrypto_gf v)
 {
   bcrypto_gf u2, u3, u5, v3, p, x, c;
-  bcrypto_mask_t ret = -1;
-
-  ret &= ~bcrypto_gf_eq(v, ZERO);
+  bcrypto_mask_t ret;
 
   /* U2 = U^2 */
   bcrypto_gf_sqr(u2, u);
@@ -360,7 +358,7 @@ bcrypto_mask_t bcrypto_gf_isqrt(bcrypto_gf out, const bcrypto_gf u, const bcrypt
   bcrypto_gf_mul(c, v, u2);
 
   /* C = U */
-  ret &= bcrypto_gf_eq(c, u);
+  ret = bcrypto_gf_eq(c, u);
 
   bcrypto_gf_copy(out, x);
 
