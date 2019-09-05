@@ -73,6 +73,28 @@ describe('Ed25519', function() {
     assert(ed25519.verify(msg, sig, inf));
   });
 
+  it('should fail to validate malleated keys', () => {
+    // x = 0, y = 1, sign = 1
+    const hex1 = '01000000000000000000000000000000'
+               + '00000000000000000000000000000080';
+
+    // x = 0, y = -1, sign = 1
+    const hex2 = 'ecffffffffffffffffffffffffffffff'
+               + 'ffffffffffffffffffffffffffffffff';
+
+    const key1 = Buffer.from(hex1, 'hex');
+    const key2 = Buffer.from(hex2, 'hex');
+
+    assert(!ed25519.publicKeyVerify(key1));
+    assert(!ed25519.publicKeyVerify(key2));
+
+    key1[31] &= ~0x80;
+    key2[31] &= ~0x80;
+
+    assert(ed25519.publicKeyVerify(key1));
+    assert(ed25519.publicKeyVerify(key2));
+  });
+
   it('should validate small order points', () => {
     const small = [
       // 0 (order 1)
