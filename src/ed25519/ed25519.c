@@ -239,15 +239,18 @@ bcrypto_ed25519_point_has_torsion(const bcrypto_x25519_pubkey_t pk) {
   };
 
   bignum25519 ALIGN(16) x, z;
+  int zero;
 
   curve25519_expand(x, pk);
 
   if (!curve25519_valid_x(x))
     return 0;
 
+  zero = curve25519_is_zero(x);
+
   curve25519_ladder(x, z, x, k);
 
-  return curve25519_is_zero(z) ^ 1;
+  return (curve25519_is_zero(z) ^ 1) | zero;
 }
 
 void

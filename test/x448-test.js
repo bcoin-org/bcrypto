@@ -231,16 +231,12 @@ describe('X448', function() {
        'feffffffffffffffffffffffffffffffffffffffffffffffffffffff'].join('')
     ];
 
-    for (let i = 0; i < small.length; i++) {
-      const str = small[i];
+    for (const str of small) {
       const pub = Buffer.from(str, 'hex');
 
       assert(x448.publicKeyVerify(pub));
       assert(x448.publicKeyIsSmall(pub));
-
-      // Can't handle x=0.
-      if (i !== 0 && i !== 2)
-        assert(x448.publicKeyHasTorsion(pub));
+      assert(x448.publicKeyHasTorsion(pub));
     }
 
     {

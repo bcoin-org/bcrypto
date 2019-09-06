@@ -830,11 +830,14 @@ bcrypto_c448_bool_t bcrypto_x448_public_key_has_torsion(
   bcrypto_gf x1, x2, z2, x3, z3, t1, t2;
   bcrypto_mask_t ret = -1;
   bcrypto_mask_t swap = 0;
+  bcrypto_mask_t zero;
   int t;
 
   (void)bcrypto_gf_deserialize(x1, x, 1, 0);
 
   ret &= bcrypto_gf_valid_x(x1);
+
+  zero = bcrypto_gf_eq(x1, ZERO);
 
   bcrypto_gf_copy(x2, ONE);
   bcrypto_gf_copy(z2, ZERO);
@@ -876,7 +879,7 @@ bcrypto_c448_bool_t bcrypto_x448_public_key_has_torsion(
   bcrypto_gf_cond_swap(x2, x3, swap);
   bcrypto_gf_cond_swap(z2, z3, swap);
 
-  ret &= ~bcrypto_gf_eq(z2, ZERO);
+  ret &= ~bcrypto_gf_eq(z2, ZERO) | zero;
 
   return mask_to_bool(ret);
 }

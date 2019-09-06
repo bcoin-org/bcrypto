@@ -313,16 +313,12 @@ describe('X25519', function() {
       'eeffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f'
     ];
 
-    for (let i = 0; i < small.length; i++) {
-      const str = small[i];
+    for (const str of small) {
       const pub = Buffer.from(str, 'hex');
 
       assert(x25519.publicKeyVerify(pub));
       assert(x25519.publicKeyIsSmall(pub));
-
-      // Can't handle x=0.
-      if (i !== 0 && i !== 4)
-        assert(x25519.publicKeyHasTorsion(pub));
+      assert(x25519.publicKeyHasTorsion(pub));
     }
 
     {
