@@ -15,6 +15,7 @@ BED448::Init(v8::Local<v8::Object> &target) {
 
   Nan::Export(obj, "privateKeyExpand", BED448::PrivateKeyExpand);
   Nan::Export(obj, "privateKeyConvert", BED448::PrivateKeyConvert);
+  Nan::Export(obj, "scalarIsZero", BED448::ScalarIsZero);
   Nan::Export(obj, "scalarTweakAdd", BED448::ScalarTweakAdd);
   Nan::Export(obj, "scalarTweakMul", BED448::ScalarTweakMul);
   Nan::Export(obj, "scalarReduce", BED448::ScalarReduce);
@@ -31,7 +32,12 @@ BED448::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "publicKeyFromHash", BED448::PublicKeyFromHash);
   Nan::Export(obj, "pointFromHash", BED448::PointFromHash);
   Nan::Export(obj, "publicKeyVerify", BED448::PublicKeyVerify);
+  Nan::Export(obj, "publicKeyIsInfinity", BED448::PublicKeyIsInfinity);
+  Nan::Export(obj, "publicKeyIsSmall", BED448::PublicKeyIsSmall);
+  Nan::Export(obj, "publicKeyHasTorsion", BED448::PublicKeyHasTorsion);
   Nan::Export(obj, "pointVerify", BED448::PointVerify);
+  Nan::Export(obj, "pointIsSmall", BED448::PointIsSmall);
+  Nan::Export(obj, "pointHasTorsion", BED448::PointHasTorsion);
   Nan::Export(obj, "publicKeyTweakAdd", BED448::PublicKeyTweakAdd);
   Nan::Export(obj, "publicKeyTweakMul", BED448::PublicKeyTweakMul);
   Nan::Export(obj, "publicKeyAdd", BED448::PublicKeyAdd);
@@ -107,6 +113,26 @@ NAN_METHOD(BED448::PrivateKeyConvert) {
   return info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&out[0],
                     BCRYPTO_X448_PRIVATE_BYTES).ToLocalChecked());
+}
+
+NAN_METHOD(BED448::ScalarIsZero) {
+  if (info.Length() < 1)
+    return Nan::ThrowError("ed448.scalarIsZero() requires arguments.");
+
+  v8::Local<v8::Object> kbuf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(kbuf))
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+
+  const uint8_t *key = (const uint8_t *)node::Buffer::Data(kbuf);
+  size_t key_len = node::Buffer::Length(kbuf);
+
+  if (key_len != BCRYPTO_C448_SCALAR_BYTES)
+    return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
+
+  bool result = (bool)bcrypto_c448_ed448_scalar_is_zero(key);
+
+  return info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
 
 NAN_METHOD(BED448::ScalarTweakAdd) {
@@ -538,6 +564,66 @@ NAN_METHOD(BED448::PublicKeyVerify) {
   return info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
 
+NAN_METHOD(BED448::PublicKeyIsInfinity) {
+  if (info.Length() < 1)
+    return Nan::ThrowError("ed448.publicKeyIsInfinity() requires arguments.");
+
+  v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(pbuf))
+    return Nan::ThrowTypeError("First argument must be a buffer.");
+
+  const uint8_t *pub = (const uint8_t *)node::Buffer::Data(pbuf);
+  size_t pub_len = node::Buffer::Length(pbuf);
+
+  if (pub_len != BCRYPTO_EDDSA_448_PUBLIC_BYTES)
+    return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
+
+  bool result = (bool)bcrypto_curve448_public_key_is_infinity(pub);
+
+  return info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
+}
+
+NAN_METHOD(BED448::PublicKeyIsSmall) {
+  if (info.Length() < 1)
+    return Nan::ThrowError("ed448.publicKeyIsSmall() requires arguments.");
+
+  v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(pbuf))
+    return Nan::ThrowTypeError("First argument must be a buffer.");
+
+  const uint8_t *pub = (const uint8_t *)node::Buffer::Data(pbuf);
+  size_t pub_len = node::Buffer::Length(pbuf);
+
+  if (pub_len != BCRYPTO_EDDSA_448_PUBLIC_BYTES)
+    return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
+
+  bool result = (bool)bcrypto_curve448_public_key_is_small(pub);
+
+  return info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
+}
+
+NAN_METHOD(BED448::PublicKeyHasTorsion) {
+  if (info.Length() < 1)
+    return Nan::ThrowError("ed448.publicKeyHasTorsion() requires arguments.");
+
+  v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(pbuf))
+    return Nan::ThrowTypeError("First argument must be a buffer.");
+
+  const uint8_t *pub = (const uint8_t *)node::Buffer::Data(pbuf);
+  size_t pub_len = node::Buffer::Length(pbuf);
+
+  if (pub_len != BCRYPTO_EDDSA_448_PUBLIC_BYTES)
+    return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
+
+  bool result = (bool)bcrypto_curve448_public_key_has_torsion(pub);
+
+  return info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
+}
+
 NAN_METHOD(BED448::PointVerify) {
   if (info.Length() < 1)
     return Nan::ThrowError("ed448.pointVerify() requires arguments.");
@@ -554,6 +640,46 @@ NAN_METHOD(BED448::PointVerify) {
     return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
 
   bool result = (bool)bcrypto_x448_verify_public_key(pub);
+
+  return info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
+}
+
+NAN_METHOD(BED448::PointIsSmall) {
+  if (info.Length() < 1)
+    return Nan::ThrowError("ed448.pointIsSmall() requires arguments.");
+
+  v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(pbuf))
+    return Nan::ThrowTypeError("First argument must be a buffer.");
+
+  const uint8_t *pub = (const uint8_t *)node::Buffer::Data(pbuf);
+  size_t pub_len = node::Buffer::Length(pbuf);
+
+  if (pub_len != BCRYPTO_X448_PUBLIC_BYTES)
+    return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
+
+  bool result = (bool)bcrypto_x448_public_key_is_small(pub);
+
+  return info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
+}
+
+NAN_METHOD(BED448::PointHasTorsion) {
+  if (info.Length() < 1)
+    return Nan::ThrowError("ed448.pointHasTorsion() requires arguments.");
+
+  v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(pbuf))
+    return Nan::ThrowTypeError("First argument must be a buffer.");
+
+  const uint8_t *pub = (const uint8_t *)node::Buffer::Data(pbuf);
+  size_t pub_len = node::Buffer::Length(pbuf);
+
+  if (pub_len != BCRYPTO_X448_PUBLIC_BYTES)
+    return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
+
+  bool result = (bool)bcrypto_x448_public_key_has_torsion(pub);
 
   return info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }

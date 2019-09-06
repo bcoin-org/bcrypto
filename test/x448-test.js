@@ -218,6 +218,41 @@ describe('X448', function() {
     }
   });
 
+  it('should test small order points', () => {
+    const small = [
+      // 0 (order 1)
+      ['00000000000000000000000000000000000000000000000000000000',
+       '00000000000000000000000000000000000000000000000000000000'].join(''),
+      // p - 1 (order 4)
+      ['feffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+       'feffffffffffffffffffffffffffffffffffffffffffffffffffffff'].join(''),
+      // p (order 1)
+      ['ffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+       'feffffffffffffffffffffffffffffffffffffffffffffffffffffff'].join('')
+    ];
+
+    for (let i = 0; i < small.length; i++) {
+      const str = small[i];
+      const pub = Buffer.from(str, 'hex');
+
+      assert(x448.publicKeyVerify(pub));
+      assert(x448.publicKeyIsSmall(pub));
+
+      // Can't handle x=0.
+      if (i !== 0 && i !== 2)
+        assert(x448.publicKeyHasTorsion(pub));
+    }
+
+    {
+      const priv = x448.privateKeyGenerate();
+      const pub = x448.publicKeyCreate(priv);
+
+      assert(x448.publicKeyVerify(pub));
+      assert(!x448.publicKeyIsSmall(pub));
+      assert(!x448.publicKeyHasTorsion(pub));
+    }
+  });
+
   it('should do convert to edwards and back', () => {
     const priv = x448.privateKeyGenerate();
     const pub = x448.publicKeyCreate(priv);

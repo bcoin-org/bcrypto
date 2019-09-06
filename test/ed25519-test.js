@@ -123,6 +123,66 @@ describe('Ed25519', function() {
     }
   });
 
+  it('should test small order points', () => {
+    const small = [
+      // 0 (order 1)
+      '0100000000000000000000000000000000000000000000000000000000000000',
+      // 0 (order 2)
+      'ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f',
+      // 1 (order 4)
+      '0000000000000000000000000000000000000000000000000000000000000080',
+      '0000000000000000000000000000000000000000000000000000000000000000',
+      // 325606250916557431795983626356110631294008115727848805560023387167927233504 (order 8)
+      'c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac03fa',
+      'c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a',
+      // 39382357235489614581723060781553021112529911719440698176882885853963445705823 (order 8)
+      '26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc85',
+      '26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05'
+    ];
+
+    {
+      const pub = Buffer.from(small[0], 'hex');
+
+      assert(ed25519.publicKeyIsInfinity(pub));
+      assert(!ed25519.publicKeyIsSmall(pub));
+      assert(!ed25519.publicKeyHasTorsion(pub));
+    }
+
+    for (let i = 1; i < small.length; i++) {
+      const str = small[i];
+      const pub = Buffer.from(str, 'hex');
+
+      assert(!ed25519.publicKeyIsInfinity(pub));
+      assert(ed25519.publicKeyIsSmall(pub));
+      assert(ed25519.publicKeyHasTorsion(pub));
+    }
+
+    {
+      const priv = ed25519.privateKeyGenerate();
+      const pub = ed25519.publicKeyCreate(priv);
+
+      assert(!ed25519.publicKeyIsInfinity(pub));
+      assert(!ed25519.publicKeyIsSmall(pub));
+      assert(!ed25519.publicKeyHasTorsion(pub));
+    }
+  });
+
+  it('should test scalar zero', () => {
+    // n = 0
+    const hex1 = 'edd3f55c1a631258d69cf7a2def9de14'
+               + '00000000000000000000000000000010';
+
+    // n - 1 = -1
+    const hex2 = 'ecd3f55c1a631258d69cf7a2def9de14'
+               + '00000000000000000000000000000010';
+
+    assert(ed25519.scalarIsZero(Buffer.alloc(32, 0x00)));
+    assert(!ed25519.scalarIsZero(Buffer.alloc(32, 0x01)));
+
+    assert(ed25519.scalarIsZero(Buffer.from(hex1, 'hex')));
+    assert(!ed25519.scalarIsZero(Buffer.from(hex2, 'hex')));
+  });
+
   it('should validate signatures with small order points', () => {
     const json = [
       // (-1, -1)
@@ -389,6 +449,8 @@ describe('Ed25519', function() {
     for (const [msg, sig, pub, res1, res2] of vectors) {
       assert.strictEqual(ed25519.verify(msg, sig, pub), res1);
       assert.strictEqual(ed25519.verifySingle(msg, sig, pub), res2);
+      assert(!ed25519.publicKeyIsSmall(pub));
+      assert(ed25519.publicKeyHasTorsion(pub));
 
       batch.push([msg, sig, pub]);
     }

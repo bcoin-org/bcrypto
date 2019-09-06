@@ -11,6 +11,7 @@ public:
 private:
   static NAN_METHOD(PrivateKeyExpand);
   static NAN_METHOD(PrivateKeyConvert);
+  static NAN_METHOD(ScalarIsZero);
   static NAN_METHOD(ScalarTweakAdd);
   static NAN_METHOD(ScalarTweakMul);
   static NAN_METHOD(ScalarReduce);
@@ -27,7 +28,12 @@ private:
   static NAN_METHOD(PublicKeyFromHash);
   static NAN_METHOD(PointFromHash);
   static NAN_METHOD(PublicKeyVerify);
+  static NAN_METHOD(PublicKeyIsInfinity);
+  static NAN_METHOD(PublicKeyIsSmall);
+  static NAN_METHOD(PublicKeyHasTorsion);
   static NAN_METHOD(PointVerify);
+  static NAN_METHOD(PointIsSmall);
+  static NAN_METHOD(PointHasTorsion);
   static NAN_METHOD(PublicKeyTweakAdd);
   static NAN_METHOD(PublicKeyTweakMul);
   static NAN_METHOD(PublicKeyAdd);

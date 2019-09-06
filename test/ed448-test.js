@@ -110,6 +110,26 @@ describe('Ed448', function() {
     assert(ed448.publicKeyVerify(key2));
   });
 
+  it('should test scalar zero', () => {
+    // n = 0
+    const hex1 = 'f34458ab92c27823558fc58d72c2'
+               + '6c219036d6ae49db4ec4e923ca7c'
+               + 'ffffffffffffffffffffffffffff'
+               + 'ffffffffffffffffffffffffff3f';
+
+    // n - 1 = -1
+    const hex2 = 'f24458ab92c27823558fc58d72c2'
+               + '6c219036d6ae49db4ec4e923ca7c'
+               + 'ffffffffffffffffffffffffffff'
+               + 'ffffffffffffffffffffffffff3f';
+
+    assert(ed448.scalarIsZero(Buffer.alloc(56, 0x00)));
+    assert(!ed448.scalarIsZero(Buffer.alloc(56, 0x01)));
+
+    assert(ed448.scalarIsZero(Buffer.from(hex1, 'hex')));
+    assert(!ed448.scalarIsZero(Buffer.from(hex2, 'hex')));
+  });
+
   it('should validate small order points', () => {
     const small = [
       // 0, c (order 1)
@@ -134,6 +154,49 @@ describe('Ed448', function() {
 
       assert(ed448.publicKeyVerify(pub));
       assert.throws(() => ed448.deriveWithScalar(pub, key));
+    }
+  });
+
+  it('should test small order points', () => {
+    const small = [
+      // 0, c (order 1)
+      ['01000000000000000000000000000000000000000000000000000000',
+       '0000000000000000000000000000000000000000000000000000000000'].join(''),
+      // 0, -c (order 2, rejected)
+      ['feffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+       'feffffffffffffffffffffffffffffffffffffffffffffffffffffff00'].join(''),
+      // c, 0 (order 4)
+      ['00000000000000000000000000000000000000000000000000000000',
+       '0000000000000000000000000000000000000000000000000000000080'].join(''),
+      // -c, 0 (order 4)
+      ['00000000000000000000000000000000000000000000000000000000',
+       '0000000000000000000000000000000000000000000000000000000000'].join('')
+    ];
+
+    {
+      const pub = Buffer.from(small[0], 'hex');
+
+      assert(ed448.publicKeyIsInfinity(pub));
+      assert(!ed448.publicKeyIsSmall(pub));
+      assert(!ed448.publicKeyHasTorsion(pub));
+    }
+
+    for (let i = 1; i < small.length; i++) {
+      const str = small[i];
+      const pub = Buffer.from(str, 'hex');
+
+      assert(!ed448.publicKeyIsInfinity(pub));
+      assert(ed448.publicKeyIsSmall(pub));
+      assert(ed448.publicKeyHasTorsion(pub));
+    }
+
+    {
+      const priv = ed448.privateKeyGenerate();
+      const pub = ed448.publicKeyCreate(priv);
+
+      assert(!ed448.publicKeyIsInfinity(pub));
+      assert(!ed448.publicKeyIsSmall(pub));
+      assert(!ed448.publicKeyHasTorsion(pub));
     }
   });
 
@@ -333,6 +396,8 @@ describe('Ed448', function() {
     for (const [msg, sig, pub,, res2] of vectors) {
       assert.strictEqual(ed448.verify(msg, sig, pub), res2);
       assert.strictEqual(ed448.verifySingle(msg, sig, pub), res2);
+      assert(!ed448.publicKeyIsSmall(pub));
+      assert(ed448.publicKeyHasTorsion(pub));
 
       batch.push([msg, sig, pub]);
     }

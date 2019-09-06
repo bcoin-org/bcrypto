@@ -279,3 +279,91 @@ curve25519_is_odd(const bignum25519 a) {
   curve25519_contract(out, a);
   return out[0] & 1;
 }
+
+static void
+curve25519_double(
+  bignum25519 x0,
+  bignum25519 z0,
+  const bignum25519 x1,
+  const bignum25519 z1
+) {
+  bignum25519 ALIGN(16) a, aa, b, bb, c;
+  static const bignum25519 a24 = {121666};
+
+  /* A = X1 + Z1 */
+  curve25519_add(a, x1, z1);
+
+  /* AA = A^2 */
+  curve25519_square(aa, a);
+
+  /* B = X1 - Z1 */
+  curve25519_sub(b, x1, z1);
+
+  /* BB = B^2 */
+  curve25519_square(bb, b);
+
+  /* C = AA - BB */
+  curve25519_sub(c, aa, bb);
+
+  /* X3 = AA * BB */
+  curve25519_mul(x0, aa, bb);
+
+  /* Z3 = C * (BB + a24 * C) */
+  curve25519_mul(a, c, a24);
+  curve25519_add(a, a, bb);
+  curve25519_mul(z0, c, a);
+}
+
+static void
+curve25519_ladder(
+  bignum25519 x0,
+  bignum25519 z0,
+  const bignum25519 x1,
+  const unsigned char k[32]
+) {
+  bignum25519 ALIGN(16) x2, z2, x3, z3, t1, t2;
+  static const bignum25519 a24 = {121666};
+  int swap = 0;
+  int i, b;
+
+  curve25519_set_word(x2, 1);
+  curve25519_set_word(z2, 0);
+  curve25519_copy(x3, x1);
+  curve25519_set_word(z3, 1);
+
+  for (i = 255 - 1; i >= 0; i--) {
+    b = (k[i >> 3] >> (i & 7)) & 1;
+
+    swap ^= b;
+
+    curve25519_swap_conditional(x2, x3, swap);
+    curve25519_swap_conditional(z2, z3, swap);
+
+    swap = b;
+
+    curve25519_sub(t1, x3, z3);
+    curve25519_sub(t2, x2, z2);
+    curve25519_add(x2, x2, z2);
+    curve25519_add(z2, x3, z3);
+    curve25519_mul(z3, t1, x2);
+    curve25519_mul(z2, z2, t2);
+    curve25519_square(t1, t2);
+    curve25519_square(t2, x2);
+    curve25519_add(x3, z3, z2);
+    curve25519_sub(z2, z3, z2);
+    curve25519_mul(x2, t2, t1);
+    curve25519_sub(t2, t2, t1);
+    curve25519_square(z2, z2);
+    curve25519_mul(z3, t2, a24);
+    curve25519_square(x3, x3);
+    curve25519_add(t1, t1, z3);
+    curve25519_mul(z3, x1, z2);
+    curve25519_mul(z2, t2, t1);
+  }
+
+  curve25519_swap_conditional(x2, x3, swap);
+  curve25519_swap_conditional(z2, z3, swap);
+
+  curve25519_copy(x0, x2);
+  curve25519_copy(z0, z2);
+}

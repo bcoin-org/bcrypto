@@ -295,6 +295,46 @@ describe('X25519', function() {
     }
   });
 
+  it('should test small order points', () => {
+    const small = [
+      // 0 (order 1 & 2)
+      '0000000000000000000000000000000000000000000000000000000000000000',
+      // 1 (order 4)
+      '0100000000000000000000000000000000000000000000000000000000000000',
+      // 325606250916557431795983626356110631294008115727848805560023387167927233504 (order 8)
+      'e0eb7a7c3b41b8ae1656e3faf19fc46ada098deb9c32b1fd866205165f49b800',
+      // 39382357235489614581723060781553021112529911719440698176882885853963445705823 (order 8)
+      '5f9c95bca3508c24b1d0b1559c83ef5b04445cc4581c8e86d8224eddd09f1157',
+      // p - 1 (invalid)
+      // 'ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f',
+      // p (order 1 & 2)
+      'edffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f',
+      // p + 1 (order 4)
+      'eeffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f'
+    ];
+
+    for (let i = 0; i < small.length; i++) {
+      const str = small[i];
+      const pub = Buffer.from(str, 'hex');
+
+      assert(x25519.publicKeyVerify(pub));
+      assert(x25519.publicKeyIsSmall(pub));
+
+      // Can't handle x=0.
+      if (i !== 0 && i !== 4)
+        assert(x25519.publicKeyHasTorsion(pub));
+    }
+
+    {
+      const priv = x25519.privateKeyGenerate();
+      const pub = x25519.publicKeyCreate(priv);
+
+      assert(x25519.publicKeyVerify(pub));
+      assert(!x25519.publicKeyIsSmall(pub));
+      assert(!x25519.publicKeyHasTorsion(pub));
+    }
+  });
+
   it('should do convert to edwards and back', () => {
     const priv = x25519.privateKeyGenerate();
     const pub = x25519.publicKeyCreate(priv);

@@ -72,6 +72,9 @@ bcrypto_mask_t bcrypto_gf_valid_x(const bcrypto_gf x);
 int bcrypto_gf_is_odd(const bcrypto_gf a);
 bcrypto_mask_t bcrypto_gf_bytes_le(const unsigned char a[56],
                                    const unsigned char b[56]);
+bcrypto_mask_t bcrypto_gf_bytes_eq(const unsigned char *a,
+                                   const unsigned char *b,
+                                   size_t size);
 
 void bcrypto_gf_serialize(uint8_t *serial, const bcrypto_gf x, int with_highbit);
 bcrypto_mask_t bcrypto_gf_deserialize(bcrypto_gf x, const uint8_t serial[BCRYPTO_SER_BYTES], int with_hibit,

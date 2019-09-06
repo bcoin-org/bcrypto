@@ -350,6 +350,29 @@ bcrypto_curve448_point_from_hash(
 bcrypto_c448_error_t
 bcrypto_x448_verify_public_key(const uint8_t x[BCRYPTO_X_PUBLIC_BYTES]);
 
+bcrypto_c448_bool_t bcrypto_c448_ed448_scalar_is_zero(
+            const uint8_t scalar[BCRYPTO_C448_SCALAR_BYTES]);
+
+bcrypto_c448_bool_t bcrypto_curve448_public_key_is_infinity(
+  const uint8_t ed[BCRYPTO_EDDSA_448_PUBLIC_BYTES]
+);
+
+bcrypto_c448_bool_t bcrypto_curve448_public_key_is_small(
+  const uint8_t ed[BCRYPTO_EDDSA_448_PUBLIC_BYTES]
+);
+
+bcrypto_c448_bool_t bcrypto_curve448_public_key_has_torsion(
+  const uint8_t ed[BCRYPTO_EDDSA_448_PUBLIC_BYTES]
+);
+
+bcrypto_c448_bool_t bcrypto_x448_public_key_is_small(
+  const uint8_t x[BCRYPTO_X_PUBLIC_BYTES]
+);
+
+bcrypto_c448_bool_t bcrypto_x448_public_key_has_torsion(
+  const uint8_t x[BCRYPTO_X_PUBLIC_BYTES]
+);
+
 #if defined(__cplusplus)
 }
 #endif

@@ -51,7 +51,22 @@ int
 bcrypto_ed25519_pubkey_verify(const bcrypto_ed25519_pubkey_t pk);
 
 int
+bcrypto_ed25519_pubkey_is_infinity(const bcrypto_ed25519_pubkey_t pk);
+
+int
+bcrypto_ed25519_pubkey_is_small(const bcrypto_ed25519_pubkey_t pk);
+
+int
+bcrypto_ed25519_pubkey_has_torsion(const bcrypto_ed25519_pubkey_t pk);
+
+int
 bcrypto_ed25519_point_verify(const bcrypto_x25519_pubkey_t pk);
+
+int
+bcrypto_ed25519_point_is_small(const bcrypto_x25519_pubkey_t pk);
+
+int
+bcrypto_ed25519_point_has_torsion(const bcrypto_x25519_pubkey_t pk);
 
 int
 bcrypto_ed25519_verify_batch(
@@ -120,6 +135,9 @@ bcrypto_ed25519_exchange(
   const bcrypto_x25519_pubkey_t xpk,
   const bcrypto_ed25519_privkey_t sk
 );
+
+int
+bcrypto_ed25519_scalar_is_zero(const bcrypto_ed25519_scalar_t sk);
 
 int
 bcrypto_ed25519_scalar_tweak_add(

@@ -697,15 +697,188 @@ void bcrypto_x448_derive_public_key(uint8_t out[BCRYPTO_X_PUBLIC_BYTES],
   bcrypto_curve448_point_destroy(p);
 }
 
+bcrypto_c448_bool_t bcrypto_curve448_public_key_is_infinity(
+  const uint8_t ed[BCRYPTO_EDDSA_448_PUBLIC_BYTES]
+) {
+  static const unsigned char one[BCRYPTO_EDDSA_448_PUBLIC_BYTES] = {1};
+  size_t size = BCRYPTO_EDDSA_448_PUBLIC_BYTES;
+  bcrypto_mask_t ret = bcrypto_gf_bytes_eq(ed, one, size);
+
+  return mask_to_bool(ret);
+}
+
+bcrypto_c448_bool_t bcrypto_curve448_public_key_is_small(
+  const uint8_t ed[BCRYPTO_EDDSA_448_PUBLIC_BYTES]
+) {
+  bcrypto_curve448_point_t p;
+  static const unsigned char one[BCRYPTO_EDDSA_448_PUBLIC_BYTES] = {1};
+  size_t size = BCRYPTO_EDDSA_448_PUBLIC_BYTES;
+
+  /* exclude infinity */
+  if (bcrypto_gf_bytes_eq(ed, one, size))
+    return BCRYPTO_C448_FALSE;
+
+  bcrypto_c448_error_t error =
+    bcrypto_curve448_point_decode_like_eddsa_and_mul_by_ratio(p, ed);
+
+  if (error != BCRYPTO_C448_SUCCESS)
+    return BCRYPTO_C448_FALSE;
+
+  /* 4-isogeny should convert small order points to infinity */
+  bcrypto_c448_bool_t ret = bcrypto_curve448_point_infinity(p);
+
+  bcrypto_curve448_point_destroy(p);
+
+  return ret;
+}
+
+bcrypto_c448_bool_t bcrypto_curve448_public_key_has_torsion(
+  const uint8_t ed[BCRYPTO_EDDSA_448_PUBLIC_BYTES]
+) {
+  bcrypto_curve448_point_t p;
+  uint8_t out[BCRYPTO_EDDSA_448_PUBLIC_BYTES];
+  size_t size = BCRYPTO_EDDSA_448_PUBLIC_BYTES;
+  bcrypto_mask_t ret;
+
+  bcrypto_c448_error_t error =
+    bcrypto_curve448_point_decode_like_eddsa_and_mul_by_ratio(p, ed);
+
+  if (error != BCRYPTO_C448_SUCCESS)
+    return BCRYPTO_C448_FALSE;
+
+  /* 4-isogeny should remove torsion components */
+  bcrypto_curve448_scalar_t h = {{{BCRYPTO_C448_EDDSA_ENCODE_RATIO}}};
+  bcrypto_curve448_scalar_invert(h, h);
+  bcrypto_curve448_point_scalarmul(p, p, h);
+  bcrypto_curve448_point_mul_by_ratio_and_encode_like_eddsa(out, p);
+  bcrypto_curve448_point_destroy(p);
+
+  ret = ~bcrypto_gf_bytes_eq(ed, out, size);
+
+  return mask_to_bool(ret);
+}
+
 bcrypto_c448_error_t bcrypto_x448_verify_public_key(const uint8_t x[BCRYPTO_X_PUBLIC_BYTES])
 {
-  bcrypto_mask_t ret = -1;
+  bcrypto_mask_t ret;
   bcrypto_gf u;
 
-  ret &= bcrypto_gf_deserialize(u, x, 1, 0);
-  ret &= bcrypto_gf_valid_x(u);
+  (void)bcrypto_gf_deserialize(u, x, 1, 0);
+
+  ret = bcrypto_gf_valid_x(u);
 
   return bcrypto_c448_succeed_if(mask_to_bool(ret));
+}
+
+bcrypto_c448_bool_t bcrypto_x448_public_key_is_small(
+  const uint8_t x[BCRYPTO_X_PUBLIC_BYTES]
+) {
+  bcrypto_mask_t ret = -1;
+  bcrypto_gf x1;
+  bcrypto_gf z1 = {{{1}}};
+  bcrypto_gf a, aa, b, bb, c;
+  int i;
+
+  (void)bcrypto_gf_deserialize(x1, x, 1, 0);
+
+  ret &= bcrypto_gf_valid_x(x1);
+
+  for (i = 0; i < 2; i++) {
+    /* A = X1 + Z1 */
+    bcrypto_gf_add_nr(a, x1, z1);
+
+    /* AA = A^2 */
+    bcrypto_gf_sqr(aa, a);
+
+    /* B = X1 - Z1 */
+    bcrypto_gf_sub_nr(b, x1, z1);
+
+    /* BB = B^2 */
+    bcrypto_gf_sqr(bb, b);
+
+    /* C = AA - BB */
+    bcrypto_gf_sub_nr(c, aa, bb);
+
+    /* X3 = AA * BB */
+    bcrypto_gf_mul(x1, aa, bb);
+
+    /* Z3 = C * (BB + a24 * C) */
+    bcrypto_gf_mulw(a, c, -BCRYPTO_EDWARDS_D);
+    bcrypto_gf_add_nr(a, a, bb);
+    bcrypto_gf_mul(z1, c, a);
+  }
+
+  ret &= bcrypto_gf_eq(z1, ZERO);
+
+  return mask_to_bool(ret);
+}
+
+bcrypto_c448_bool_t bcrypto_x448_public_key_has_torsion(
+  const uint8_t x[BCRYPTO_X_PUBLIC_BYTES]
+) {
+  static const unsigned char order[BCRYPTO_X_PRIVATE_BYTES] = {
+    0xf3, 0x44, 0x58, 0xab, 0x92, 0xc2, 0x78,
+    0x23, 0x55, 0x8f, 0xc5, 0x8d, 0x72, 0xc2,
+    0x6c, 0x21, 0x90, 0x36, 0xd6, 0xae, 0x49,
+    0xdb, 0x4e, 0xc4, 0xe9, 0x23, 0xca, 0x7c,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x3f
+  };
+
+  bcrypto_gf x1, x2, z2, x3, z3, t1, t2;
+  bcrypto_mask_t ret = -1;
+  bcrypto_mask_t swap = 0;
+  int t;
+
+  (void)bcrypto_gf_deserialize(x1, x, 1, 0);
+
+  ret &= bcrypto_gf_valid_x(x1);
+
+  bcrypto_gf_copy(x2, ONE);
+  bcrypto_gf_copy(z2, ZERO);
+  bcrypto_gf_copy(x3, x1);
+  bcrypto_gf_copy(z3, ONE);
+
+  for (t = BCRYPTO_X_PRIVATE_BITS - 1; t >= 0; t--) {
+    uint8_t sb = order[t / 8];
+    bcrypto_mask_t k_t;
+
+    k_t = (sb >> (t % 8)) & 1;
+    k_t = 0 - k_t;
+
+    swap ^= k_t;
+    bcrypto_gf_cond_swap(x2, x3, swap);
+    bcrypto_gf_cond_swap(z2, z3, swap);
+    swap = k_t;
+
+    bcrypto_gf_add_nr(t1, x2, z2);
+    bcrypto_gf_sub_nr(t2, x2, z2);
+    bcrypto_gf_sub_nr(z2, x3, z3);
+    bcrypto_gf_mul(x2, t1, z2);
+    bcrypto_gf_add_nr(z2, z3, x3);
+    bcrypto_gf_mul(x3, t2, z2);
+    bcrypto_gf_sub_nr(z3, x2, x3);
+    bcrypto_gf_sqr(z2, z3);
+    bcrypto_gf_mul(z3, x1, z2);
+    bcrypto_gf_add_nr(z2, x2, x3);
+    bcrypto_gf_sqr(x3, z2);
+    bcrypto_gf_sqr(z2, t1);
+    bcrypto_gf_sqr(t1, t2);
+    bcrypto_gf_mul(x2, z2, t1);
+    bcrypto_gf_sub_nr(t2, z2, t1);
+    bcrypto_gf_mulw(t1, t2, -BCRYPTO_EDWARDS_D);
+    bcrypto_gf_add_nr(t1, t1, z2);
+    bcrypto_gf_mul(z2, t2, t1);
+  }
+
+  bcrypto_gf_cond_swap(x2, x3, swap);
+  bcrypto_gf_cond_swap(z2, z3, swap);
+
+  ret &= ~bcrypto_gf_eq(z2, ZERO);
+
+  return mask_to_bool(ret);
 }
 
 /* Thanks Johan Pascal */
@@ -759,7 +932,7 @@ bcrypto_curve448_convert_public_key_to_eddsa(
   bcrypto_mask_t ret = -1;
   bcrypto_gf u, v;
 
-  ret &= bcrypto_gf_deserialize(u, x, 1, 0);
+  (void)bcrypto_gf_deserialize(u, x, 1, 0);
 
   ret &= bcrypto_gf_solve_y(v, u);
 
@@ -833,12 +1006,8 @@ bcrypto_curve448_convert_public_key_to_eddsa(
     if (error != BCRYPTO_C448_SUCCESS)
       return error;
 
-    bcrypto_curve448_scalar_t h = {{{4}}};
+    bcrypto_curve448_scalar_t h = {{{16}}};
     bcrypto_curve448_scalar_invert(h, h);
-
-    unsigned int c;
-    for (c = 1; c < BCRYPTO_C448_EDDSA_ENCODE_RATIO; c <<= 1)
-      bcrypto_curve448_scalar_halve(h, h);
 
     bcrypto_curve448_point_scalarmul(p, p, h);
     bcrypto_curve448_point_mul_by_ratio_and_encode_like_eddsa(ed, p);

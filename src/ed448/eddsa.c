@@ -107,6 +107,21 @@ bcrypto_c448_error_t bcrypto_c448_ed448_convert_private_key_to_x448(
   return ret;
 }
 
+bcrypto_c448_bool_t bcrypto_c448_ed448_scalar_is_zero(
+            const uint8_t scalar[BCRYPTO_C448_SCALAR_BYTES])
+{
+  const bcrypto_curve448_scalar_t zero = {{{0}}};
+  bcrypto_curve448_scalar_t scalar_scalar;
+
+  bcrypto_curve448_scalar_decode(scalar_scalar, &scalar[0]);
+
+  bcrypto_c448_bool_t ret = bcrypto_curve448_scalar_eq(scalar_scalar, zero);
+
+  bcrypto_curve448_scalar_destroy(scalar_scalar);
+
+  return ret;
+}
+
 bcrypto_c448_error_t bcrypto_c448_ed448_scalar_tweak_add(
             uint8_t out[BCRYPTO_C448_SCALAR_BYTES],
             const uint8_t scalar[BCRYPTO_C448_SCALAR_BYTES],

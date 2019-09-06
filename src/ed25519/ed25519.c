@@ -181,10 +181,73 @@ bcrypto_ed25519_pubkey_verify(const bcrypto_ed25519_pubkey_t pk) {
 }
 
 int
+bcrypto_ed25519_pubkey_is_infinity(const bcrypto_ed25519_pubkey_t pk) {
+  return ge25519_is_one(pk);
+}
+
+int
+bcrypto_ed25519_pubkey_is_small(const bcrypto_ed25519_pubkey_t pk) {
+  ge25519 ALIGN(16) A;
+
+  if (!ge25519_unpack(&A, pk))
+    return 0;
+
+  return ge25519_is_small(&A);
+}
+
+int
+bcrypto_ed25519_pubkey_has_torsion(const bcrypto_ed25519_pubkey_t pk) {
+  ge25519 ALIGN(16) A;
+
+  if (!ge25519_unpack(&A, pk))
+    return 0;
+
+  return ge25519_has_torsion(&A);
+}
+
+int
 bcrypto_ed25519_point_verify(const bcrypto_x25519_pubkey_t pk) {
   bignum25519 ALIGN(16) x;
   curve25519_expand(x, pk);
   return curve25519_valid_x(x);
+}
+
+int
+bcrypto_ed25519_point_is_small(const bcrypto_x25519_pubkey_t pk) {
+  bignum25519 ALIGN(16) x, z;
+
+  curve25519_expand(x, pk);
+  curve25519_set_word(z, 1);
+
+  if (!curve25519_valid_x(x))
+    return 0;
+
+  curve25519_double(x, z, x, z);
+  curve25519_double(x, z, x, z);
+  curve25519_double(x, z, x, z);
+
+  return curve25519_is_zero(z);
+}
+
+int
+bcrypto_ed25519_point_has_torsion(const bcrypto_x25519_pubkey_t pk) {
+  static const unsigned char k[32] = {
+    0xed, 0xd3, 0xf5, 0x5c, 0x1a, 0x63, 0x12, 0x58,
+    0xd6, 0x9c, 0xf7, 0xa2, 0xde, 0xf9, 0xde, 0x14,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10
+  };
+
+  bignum25519 ALIGN(16) x, z;
+
+  curve25519_expand(x, pk);
+
+  if (!curve25519_valid_x(x))
+    return 0;
+
+  curve25519_ladder(x, z, x, k);
+
+  return curve25519_is_zero(z) ^ 1;
 }
 
 void
@@ -306,15 +369,10 @@ bcrypto_ed25519_exchange_with_scalar(
   const bcrypto_ed25519_scalar_t sk
 ) {
   bcrypto_ed25519_scalar_t k;
-  bignum25519 ALIGN(16) x1, x2, z2, x3, z3, t1, t2;
-  static const bignum25519 a24 = {121666};
+  bignum25519 ALIGN(16) x, z;
   static const unsigned char zero[32] = {0};
-
-  int swap = 0;
   size_t i;
-  int t, b;
 
-  /* clamp */
   for (i = 0; i < 32; i++)
     k[i] = sk[i];
 
@@ -322,50 +380,11 @@ bcrypto_ed25519_exchange_with_scalar(
   k[31] &= 127;
   k[31] |= 64;
 
-  curve25519_expand(x1, xpk);
-  curve25519_set_word(x2, 1);
-  curve25519_set_word(z2, 0);
-  curve25519_copy(x3, x1);
-  curve25519_set_word(z3, 1);
-
-  for (t = 255 - 1; t >= 0; t--) {
-    b = (k[t >> 3] >> (t & 7)) & 1;
-
-    swap ^= b;
-
-    curve25519_swap_conditional(x2, x3, swap);
-    curve25519_swap_conditional(z2, z3, swap);
-
-    swap = b;
-
-    curve25519_sub(t1, x3, z3);
-    curve25519_sub(t2, x2, z2);
-    curve25519_add(x2, x2, z2);
-    curve25519_add(z2, x3, z3);
-    curve25519_mul(z3, t1, x2);
-    curve25519_mul(z2, z2, t2);
-    curve25519_square(t1, t2);
-    curve25519_square(t2, x2);
-    curve25519_add(x3, z3, z2);
-    curve25519_sub(z2, z3, z2);
-    curve25519_mul(x2, t2, t1);
-    curve25519_sub(t2, t2, t1);
-    curve25519_square(z2, z2);
-    curve25519_mul(z3, t2, a24);
-    curve25519_square(x3, x3);
-    curve25519_add(t1, t1, z3);
-    curve25519_mul(z3, x1, z2);
-    curve25519_mul(z2, t2, t1);
-  }
-
-  /* Finish. */
-  curve25519_swap_conditional(x2, x3, swap);
-  curve25519_swap_conditional(z2, z3, swap);
-
-  curve25519_recip(z2, z2);
-  curve25519_mul(x1, x2, z2);
-
-  curve25519_contract(out, x1);
+  curve25519_expand(x, xpk);
+  curve25519_ladder(x, z, x, k);
+  curve25519_recip(z, z);
+  curve25519_mul(x, x, z);
+  curve25519_contract(out, x);
 
   return bcrypto_ed25519_equal(out, zero, 32) ^ 1;
 }
@@ -379,6 +398,13 @@ bcrypto_ed25519_exchange(
   hash_512bits extsk;
   bcrypto_ed25519_extsk(extsk, sk);
   return bcrypto_ed25519_exchange_with_scalar(out, xpk, extsk);
+}
+
+int
+bcrypto_ed25519_scalar_is_zero(const bcrypto_ed25519_scalar_t sk) {
+  bignum256modm k;
+  expand256_modm(k, sk, 32);
+  return iszero256_modm_batch(k);
 }
 
 int

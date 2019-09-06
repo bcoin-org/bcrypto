@@ -417,3 +417,17 @@ bcrypto_mask_t bcrypto_gf_bytes_le(const unsigned char a[56],
 
   return (bcrypto_mask_t)((~eq & lt) & 1) * -1;
 }
+
+bcrypto_mask_t bcrypto_gf_bytes_eq(const unsigned char *a,
+                                   const unsigned char *b,
+                                   size_t size)
+{
+  unsigned int z = 0;
+
+  for (size_t i = 0; i < size; i++)
+    z |= (unsigned int)a[i] ^ (unsigned int)b[i];
+
+  z = (z - 1) >> (sizeof(unsigned int) * 8 - 1);
+
+  return (bcrypto_mask_t)z * -1;
+}
