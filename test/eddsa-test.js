@@ -96,7 +96,7 @@ describe('EdDSA', function() {
           assert.bufferEqual(curve.publicKeyCombine([pub, pubNeg, pub]), pub);
           assert.bufferEqual(curve.privateKeyConvert(priv), scalar);
           assert.bufferEqual(curve.publicKeyConvert(pub), pubConv);
-          assert.bufferEqual(curve.publicKeyDeconvert(pubConv, sign), pub);
+          assert.bufferEqual(curve.pointConvert(pubConv, sign), pub);
 
           assert.doesNotThrow(() => curve.publicKeyAdd(pub, pubNeg));
           assert.doesNotThrow(() => curve.publicKeyCombine([pub, pubNeg]));

@@ -24,7 +24,7 @@ BED25519::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "publicKeyCreate", BED25519::PublicKeyCreate);
   Nan::Export(obj, "publicKeyFromScalar", BED25519::PublicKeyFromScalar);
   Nan::Export(obj, "publicKeyConvert", BED25519::PublicKeyConvert);
-  Nan::Export(obj, "publicKeyDeconvert", BED25519::PublicKeyDeconvert);
+  Nan::Export(obj, "pointConvert", BED25519::PointConvert);
   Nan::Export(obj, "publicKeyFromUniform", BED25519::PublicKeyFromUniform);
   Nan::Export(obj, "pointFromUniform", BED25519::PointFromUniform);
   Nan::Export(obj, "publicKeyToUniform", BED25519::PublicKeyToUniform);
@@ -343,9 +343,9 @@ NAN_METHOD(BED25519::PublicKeyConvert) {
     Nan::CopyBuffer((char *)&out[0], 32).ToLocalChecked());
 }
 
-NAN_METHOD(BED25519::PublicKeyDeconvert) {
+NAN_METHOD(BED25519::PointConvert) {
   if (info.Length() < 2)
-    return Nan::ThrowError("ed25519.publicKeyDeconvert() requires arguments.");
+    return Nan::ThrowError("ed25519.pointConvert() requires arguments.");
 
   v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
 
@@ -365,7 +365,7 @@ NAN_METHOD(BED25519::PublicKeyDeconvert) {
 
   bcrypto_ed25519_pubkey_t out;
 
-  if (!bcrypto_ed25519_pubkey_deconvert(out, pub, sign))
+  if (!bcrypto_ed25519_point_convert(out, pub, sign))
     return Nan::ThrowError("Invalid public key.");
 
   return info.GetReturnValue().Set(

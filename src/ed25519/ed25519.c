@@ -296,7 +296,7 @@ bcrypto_ed25519_pubkey_convert(
 }
 
 int
-bcrypto_ed25519_pubkey_deconvert(
+bcrypto_ed25519_point_convert(
   bcrypto_ed25519_pubkey_t out,
   const bcrypto_x25519_pubkey_t pk,
   int sign
@@ -731,7 +731,7 @@ bcrypto_ed25519_pubkey_from_uniform(
   if (sign < 0)
     return 0;
 
-  return bcrypto_ed25519_pubkey_deconvert(out, out, sign);
+  return bcrypto_ed25519_point_convert(out, out, sign);
 }
 
 int

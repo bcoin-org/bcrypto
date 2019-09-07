@@ -24,7 +24,7 @@ BED448::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "publicKeyCreate", BED448::PublicKeyCreate);
   Nan::Export(obj, "publicKeyFromScalar", BED448::PublicKeyFromScalar);
   Nan::Export(obj, "publicKeyConvert", BED448::PublicKeyConvert);
-  Nan::Export(obj, "publicKeyDeconvert", BED448::PublicKeyDeconvert);
+  Nan::Export(obj, "pointConvert", BED448::PointConvert);
   Nan::Export(obj, "publicKeyFromUniform", BED448::PublicKeyFromUniform);
   Nan::Export(obj, "pointFromUniform", BED448::PointFromUniform);
   Nan::Export(obj, "publicKeyToUniform", BED448::PublicKeyToUniform);
@@ -358,9 +358,9 @@ NAN_METHOD(BED448::PublicKeyConvert) {
                     BCRYPTO_X448_PUBLIC_BYTES).ToLocalChecked());
 }
 
-NAN_METHOD(BED448::PublicKeyDeconvert) {
+NAN_METHOD(BED448::PointConvert) {
   if (info.Length() < 2)
-    return Nan::ThrowError("ed448.publicKeyDeconvert() requires arguments.");
+    return Nan::ThrowError("ed448.pointConvert() requires arguments.");
 
   v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
 
@@ -381,7 +381,7 @@ NAN_METHOD(BED448::PublicKeyDeconvert) {
   uint8_t out[BCRYPTO_EDDSA_448_PUBLIC_BYTES];
 
   if (!bcrypto_curve448_convert_public_key_to_eddsa(out, pub, sign))
-    return Nan::ThrowError("Could not deconvert public key.");
+    return Nan::ThrowError("Could not convert public key.");
 
   return info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&out[0],

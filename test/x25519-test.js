@@ -335,7 +335,7 @@ describe('X25519', function() {
     const priv = x25519.privateKeyGenerate();
     const pub = x25519.publicKeyCreate(priv);
     const ed = x25519.publicKeyConvert(pub, false);
-    const mont = x25519.publicKeyDeconvert(ed);
+    const mont = ed25519.publicKeyConvert(ed);
 
     assert.bufferEqual(mont, pub);
   });

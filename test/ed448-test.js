@@ -719,7 +719,7 @@ describe('Ed448', function() {
     const pub = ed448.publicKeyCreate(secret);
     const sign = (pub[56] & 0x80) !== 0;
     const xpub = ed448.publicKeyConvert(pub);
-    const pub2 = ed448.publicKeyDeconvert(xpub, sign);
+    const pub2 = ed448.pointConvert(xpub, sign);
 
     assert.bufferEqual(pub2, pub);
   });
@@ -1038,7 +1038,7 @@ describe('Ed448', function() {
 
     assert.strictEqual(ed448.publicKeyVerify(pub), true);
     assert.bufferEqual(ed448.publicKeyConvert(pub), point);
-    assert.bufferEqual(ed448.publicKeyDeconvert(point, sign), pub);
+    assert.bufferEqual(ed448.pointConvert(point, sign), pub);
   });
 
   describe('RFC 8032 vectors', () => {

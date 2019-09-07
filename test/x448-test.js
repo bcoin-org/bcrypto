@@ -253,7 +253,7 @@ describe('X448', function() {
     const priv = x448.privateKeyGenerate();
     const pub = x448.publicKeyCreate(priv);
     const ed = x448.publicKeyConvert(pub, false);
-    const mont = x448.publicKeyDeconvert(ed);
+    const mont = ed448.publicKeyConvert(ed);
 
     assert.bufferEqual(mont, pub);
   });

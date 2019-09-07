@@ -856,7 +856,7 @@ describe('Ed25519', function() {
     const pub = ed25519.publicKeyCreate(secret);
     const sign = (pub[31] & 0x80) !== 0;
     const xpub = ed25519.publicKeyConvert(pub);
-    const pub2 = ed25519.publicKeyDeconvert(xpub, sign);
+    const pub2 = ed25519.pointConvert(xpub, sign);
 
     assert.bufferEqual(pub2, pub);
   });
@@ -1078,7 +1078,7 @@ describe('Ed25519', function() {
 
     assert.strictEqual(ed25519.publicKeyVerify(pub), true);
     assert.bufferEqual(ed25519.publicKeyConvert(pub), point);
-    assert.bufferEqual(ed25519.publicKeyDeconvert(point, sign), pub);
+    assert.bufferEqual(ed25519.pointConvert(point, sign), pub);
   });
 
   describe('ed25519 derivations', () => {

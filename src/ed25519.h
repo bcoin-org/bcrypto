@@ -20,7 +20,7 @@ private:
   static NAN_METHOD(PublicKeyCreate);
   static NAN_METHOD(PublicKeyFromScalar);
   static NAN_METHOD(PublicKeyConvert);
-  static NAN_METHOD(PublicKeyDeconvert);
+  static NAN_METHOD(PointConvert);
   static NAN_METHOD(PublicKeyFromUniform);
   static NAN_METHOD(PointFromUniform);
   static NAN_METHOD(PublicKeyToUniform);
