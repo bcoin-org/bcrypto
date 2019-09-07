@@ -370,8 +370,33 @@ bcrypto_x25519_pubkey_create(
   bcrypto_x25519_pubkey_t out,
   const bcrypto_ed25519_scalar_t sk
 ) {
-  static const unsigned char g[32] = {9};
-  return bcrypto_x25519_derive(out, g, sk);
+  bcrypto_ed25519_scalar_t k;
+  bignum256modm a;
+  ge25519 ALIGN(16) A;
+  bignum25519 ALIGN(16) x, z;
+  size_t i;
+
+  for (i = 0; i < 32; i++)
+    k[i] = sk[i];
+
+  k[0] &= 248;
+  k[31] &= 127;
+  k[31] |= 64;
+
+  expand256_modm(a, k, 32);
+  ge25519_scalarmult_base_niels(&A, ge25519_niels_base_multiples, a);
+
+  curve25519_add(x, A.z, A.y);
+  curve25519_sub(z, A.z, A.y);
+
+  if (curve25519_is_zero(z))
+    return 0;
+
+  curve25519_recip(z, z);
+  curve25519_mul(x, x, z);
+  curve25519_contract(out, x);
+
+  return 1;
 }
 
 int

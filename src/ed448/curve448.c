@@ -927,7 +927,7 @@ bcrypto_c448_error_t bcrypto_curve448_convert_public_key_to_x448(
 }
 
 bcrypto_c448_error_t
-bcrypto_curve448_convert_public_key_to_eddsa(
+bcrypto_x448_convert_public_key_to_eddsa(
   uint8_t ed[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
   const uint8_t x[BCRYPTO_X_PUBLIC_BYTES],
   int sign
@@ -1023,20 +1023,20 @@ bcrypto_curve448_convert_public_key_to_eddsa(
 }
 
 bcrypto_c448_error_t
-bcrypto_curve448_pubkey_from_uniform(
+bcrypto_curve448_public_key_from_uniform(
   uint8_t out[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
   const unsigned char bytes[56]
 ) {
-  int sign = bcrypto_curve448_point_from_uniform(out, bytes);
+  int sign = bcrypto_x448_public_key_from_uniform(out, bytes);
 
   if (sign < 0)
     return BCRYPTO_C448_FAILURE;
 
-  return bcrypto_curve448_convert_public_key_to_eddsa(out, out, sign);
+  return bcrypto_x448_convert_public_key_to_eddsa(out, out, sign);
 }
 
 int
-bcrypto_curve448_point_from_uniform(
+bcrypto_x448_public_key_from_uniform(
   uint8_t out[BCRYPTO_X_PUBLIC_BYTES],
   const unsigned char bytes[56]
 ) {
@@ -1080,7 +1080,7 @@ bcrypto_curve448_point_from_uniform(
 }
 
 bcrypto_c448_error_t
-bcrypto_curve448_pubkey_to_uniform(
+bcrypto_curve448_public_key_to_uniform(
   unsigned char out[56],
   const uint8_t pub[BCRYPTO_EDDSA_448_PUBLIC_BYTES]
 ) {
@@ -1092,11 +1092,11 @@ bcrypto_curve448_pubkey_to_uniform(
   if (error != BCRYPTO_C448_SUCCESS)
     return error;
 
-  return bcrypto_curve448_point_to_uniform(out, out, sign);
+  return bcrypto_x448_public_key_to_uniform(out, out, sign);
 }
 
 bcrypto_c448_error_t
-bcrypto_curve448_point_to_uniform(
+bcrypto_x448_public_key_to_uniform(
   unsigned char out[56],
   const uint8_t pub[BCRYPTO_X_PUBLIC_BYTES],
   int sign
@@ -1153,7 +1153,7 @@ bcrypto_curve448_point_to_uniform(
 }
 
 bcrypto_c448_error_t
-bcrypto_curve448_pubkey_from_hash(
+bcrypto_curve448_public_key_from_hash(
   uint8_t out[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
   const unsigned char bytes[112]
 ) {
@@ -1162,12 +1162,12 @@ bcrypto_curve448_pubkey_from_hash(
   bcrypto_c448_error_t error;
   bcrypto_curve448_point_t p1, p2;
 
-  error = bcrypto_curve448_pubkey_from_uniform(k1, &bytes[0]);
+  error = bcrypto_curve448_public_key_from_uniform(k1, &bytes[0]);
 
   if (error != BCRYPTO_C448_SUCCESS)
     return error;
 
-  error = bcrypto_curve448_pubkey_from_uniform(k2, &bytes[56]);
+  error = bcrypto_curve448_public_key_from_uniform(k2, &bytes[56]);
 
   if (error != BCRYPTO_C448_SUCCESS)
     return error;
@@ -1193,12 +1193,12 @@ bcrypto_curve448_pubkey_from_hash(
 }
 
 bcrypto_c448_error_t
-bcrypto_curve448_point_from_hash(
+bcrypto_x448_public_key_from_hash(
   uint8_t out[BCRYPTO_X_PUBLIC_BYTES],
   const unsigned char bytes[112]
 ) {
   unsigned char raw[BCRYPTO_EDDSA_448_PUBLIC_BYTES];
-  bcrypto_c448_error_t error = bcrypto_curve448_pubkey_from_hash(raw, bytes);
+  bcrypto_c448_error_t error = bcrypto_curve448_public_key_from_hash(raw, bytes);
 
   if (error != BCRYPTO_C448_SUCCESS)
     return error;

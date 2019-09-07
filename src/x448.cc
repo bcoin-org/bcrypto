@@ -41,12 +41,9 @@ NAN_METHOD(BX448::PublicKeyCreate) {
   if (key_len != BCRYPTO_X448_PRIVATE_BYTES)
     return Nan::ThrowRangeError("Invalid private key size.");
 
-  static const uint8_t g[BCRYPTO_X448_PUBLIC_BYTES] = {5};
-
   uint8_t out[BCRYPTO_X448_PUBLIC_BYTES];
 
-  if (!bcrypto_x448_int(out, g, key))
-    return Nan::ThrowError("Could not derive secret.");
+  bcrypto_x448_derive_public_key(out, key);
 
   return info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&out[0],
@@ -75,7 +72,7 @@ NAN_METHOD(BX448::PublicKeyConvert) {
 
   uint8_t out[BCRYPTO_EDDSA_448_PUBLIC_BYTES];
 
-  if (!bcrypto_curve448_convert_public_key_to_eddsa(out, pub, sign))
+  if (!bcrypto_x448_convert_public_key_to_eddsa(out, pub, sign))
     return Nan::ThrowError("Could not convert public key.");
 
   return info.GetReturnValue().Set(
@@ -100,7 +97,7 @@ NAN_METHOD(BX448::PublicKeyFromUniform) {
 
   uint8_t out[BCRYPTO_X448_PUBLIC_BYTES];
 
-  if (bcrypto_curve448_point_from_uniform(out, data) < 0)
+  if (bcrypto_x448_public_key_from_uniform(out, data) < 0)
     return Nan::ThrowError("Invalid public key.");
 
   return info.GetReturnValue().Set(
@@ -129,7 +126,7 @@ NAN_METHOD(BX448::PublicKeyToUniform) {
 
   uint8_t out[56];
 
-  if (!bcrypto_curve448_point_to_uniform(out, pub, sign))
+  if (!bcrypto_x448_public_key_to_uniform(out, pub, sign))
     return Nan::ThrowError("Invalid public key.");
 
   return info.GetReturnValue().Set(
@@ -153,7 +150,7 @@ NAN_METHOD(BX448::PublicKeyFromHash) {
 
   uint8_t out[BCRYPTO_X448_PUBLIC_BYTES];
 
-  if (!bcrypto_curve448_point_from_hash(out, data))
+  if (!bcrypto_x448_public_key_from_hash(out, data))
     return Nan::ThrowError("Invalid public key.");
 
   return info.GetReturnValue().Set(

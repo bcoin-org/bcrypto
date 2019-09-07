@@ -366,7 +366,7 @@ NAN_METHOD(BED448::PublicKeyFromUniform) {
 
   uint8_t out[BCRYPTO_EDDSA_448_PUBLIC_BYTES];
 
-  if (!bcrypto_curve448_pubkey_from_uniform(out, data))
+  if (!bcrypto_curve448_public_key_from_uniform(out, data))
     return Nan::ThrowError("Invalid public key.");
 
   return info.GetReturnValue().Set(
@@ -390,7 +390,7 @@ NAN_METHOD(BED448::PublicKeyToUniform) {
 
   uint8_t out[56];
 
-  if (!bcrypto_curve448_pubkey_to_uniform(out, pub))
+  if (!bcrypto_curve448_public_key_to_uniform(out, pub))
     return Nan::ThrowError("Invalid public key.");
 
   return info.GetReturnValue().Set(
@@ -414,7 +414,7 @@ NAN_METHOD(BED448::PublicKeyFromHash) {
 
   uint8_t out[BCRYPTO_EDDSA_448_PUBLIC_BYTES];
 
-  if (!bcrypto_curve448_pubkey_from_hash(out, data))
+  if (!bcrypto_curve448_public_key_from_hash(out, data))
     return Nan::ThrowError("Invalid public key.");
 
   return info.GetReturnValue().Set(
