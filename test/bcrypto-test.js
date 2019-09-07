@@ -210,8 +210,8 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.SHAKE256.native, 0);
         assert.strictEqual(bcrypto.siphash.native, 0);
         assert.strictEqual(bcrypto.Whirlpool.native, 1);
-        assert.strictEqual(bcrypto.x25519.native, NODE_MAJOR >= 12 ? 1 : 0);
-        assert.strictEqual(bcrypto.x448.native, NODE_MAJOR >= 12 ? 1 : 0);
+        assert.strictEqual(bcrypto.x25519.native, 0);
+        assert.strictEqual(bcrypto.x448.native, 0);
         break;
       case 'native':
       default:

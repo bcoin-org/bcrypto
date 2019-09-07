@@ -3,6 +3,7 @@
 const assert = require('bsert');
 const RNG = require('./util/rng');
 const pem = require('../lib/encoding/pem');
+const SHA256 = require('../lib/sha256');
 const SHA512 = require('../lib/sha512');
 const ed25519 = require('../lib/ed25519');
 const x25519 = require('../lib/x25519');
@@ -223,20 +224,6 @@ describe('X25519', function() {
     assert.bufferEqual(key, expect, 'hex');
   });
 
-  it('should do scalar base multiplication (mont)', () => {
-    const expect =
-      '89161fde887b2b53de549af483940106ecc114d6982daa98256de23bdf77661a';
-
-    let key = Buffer.alloc(32, 0x00);
-
-    key[0] = 1;
-
-    for (let i = 0; i < 200; i++)
-      key = x25519._scalarBaseMul(key);
-
-    assert.bufferEqual(key, expect, 'hex');
-  });
-
   it('should ignore high bit', () => {
     const s = rng.randomBytes(32);
     const u = rng.randomBytes(32);
@@ -358,6 +345,15 @@ describe('X25519', function() {
 
     assert.bufferEqual(pub,
       '88ddc62a46c484db54b6d6cb6badb173e0e7d9785385691443233983865acc4d');
+  });
+
+  it('should test random oracle encoding (doubling)', () => {
+    const bytes0 = SHA256.digest(Buffer.from('turn me into a point'));
+    const bytes = Buffer.concat([bytes0, bytes0]);
+    const pub = x25519.publicKeyFromHash(bytes);
+
+    assert.bufferEqual(pub,
+      '7b9965e30b586bab509c34d657d8be30fad1b179470f2f70a6c728092e000062');
   });
 
   it('should test x25519 api', () => {

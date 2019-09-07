@@ -60,13 +60,13 @@ int
 bcrypto_ed25519_pubkey_has_torsion(const bcrypto_ed25519_pubkey_t pk);
 
 int
-bcrypto_ed25519_point_verify(const bcrypto_x25519_pubkey_t pk);
+bcrypto_x25519_pubkey_verify(const bcrypto_x25519_pubkey_t pk);
 
 int
-bcrypto_ed25519_point_is_small(const bcrypto_x25519_pubkey_t pk);
+bcrypto_x25519_pubkey_is_small(const bcrypto_x25519_pubkey_t pk);
 
 int
-bcrypto_ed25519_point_has_torsion(const bcrypto_x25519_pubkey_t pk);
+bcrypto_x25519_pubkey_has_torsion(const bcrypto_x25519_pubkey_t pk);
 
 int
 bcrypto_ed25519_verify_batch(
@@ -102,7 +102,7 @@ bcrypto_ed25519_pubkey_convert(
 );
 
 int
-bcrypto_ed25519_point_convert(
+bcrypto_x25519_pubkey_convert(
   bcrypto_ed25519_pubkey_t out,
   const bcrypto_x25519_pubkey_t pk,
   int sign
@@ -123,17 +123,16 @@ bcrypto_ed25519_derive(
 );
 
 int
-bcrypto_ed25519_exchange_with_scalar(
+bcrypto_x25519_pubkey_create(
   bcrypto_x25519_pubkey_t out,
-  const bcrypto_x25519_pubkey_t xpk,
   const bcrypto_ed25519_scalar_t sk
 );
 
 int
-bcrypto_ed25519_exchange(
+bcrypto_x25519_derive(
   bcrypto_x25519_pubkey_t out,
   const bcrypto_x25519_pubkey_t xpk,
-  const bcrypto_ed25519_privkey_t sk
+  const bcrypto_ed25519_scalar_t sk
 );
 
 int
@@ -262,7 +261,7 @@ bcrypto_ed25519_pubkey_from_uniform(
 );
 
 int
-bcrypto_ed25519_point_from_uniform(
+bcrypto_x25519_pubkey_from_uniform(
   bcrypto_x25519_pubkey_t out,
   const unsigned char bytes[32]
 );
@@ -274,7 +273,7 @@ bcrypto_ed25519_pubkey_to_uniform(
 );
 
 int
-bcrypto_ed25519_point_to_uniform(
+bcrypto_x25519_pubkey_to_uniform(
   unsigned char out[32],
   const bcrypto_x25519_pubkey_t pub,
   int sign
@@ -287,7 +286,7 @@ bcrypto_ed25519_pubkey_from_hash(
 );
 
 int
-bcrypto_ed25519_point_from_hash(
+bcrypto_x25519_pubkey_from_hash(
   bcrypto_x25519_pubkey_t out,
   const unsigned char bytes[64]
 );

@@ -174,20 +174,6 @@ describe('X448', function() {
     assert.bufferEqual(key, expect, 'hex');
   });
 
-  it('should do scalar base multiplication (mont)', () => {
-    const expect = '61a50c522f8c9e75eb88cc09a28b23954a63e6409d6d517ffcacf70d'
-                 + '1e10d87cd107cbf6f4375307d10bc2ca7a116733e50d3c4191be7ab1';
-
-    let key = Buffer.alloc(56, 0x00);
-
-    key[0] = 1;
-
-    for (let i = 0; i < 20; i++)
-      key = x448._scalarBaseMul(key);
-
-    assert.bufferEqual(key, expect, 'hex');
-  });
-
   it('should reject small order points', () => {
     const small = [
       // 0 (order 1)
@@ -285,6 +271,16 @@ describe('X448', function() {
     assert.bufferEqual(pub, ''
       + '9f3d68330e24951bdbc200ed6d25ef4e90bc678d68282af081e6204f'
       + 'c2f36dcc5d6611b41042d708caebbe80724e48d09adb9782a9a2d9ea');
+  });
+
+  it('should test random oracle encoding (doubling)', () => {
+    const bytes0 = SHAKE256.digest(Buffer.from('turn me into a point'), 56);
+    const bytes = Buffer.concat([bytes0, bytes0]);
+    const pub = x448.publicKeyFromHash(bytes);
+
+    assert.bufferEqual(pub, ''
+      + '6fee3c18014c2c61dc1bc145c224d2b5c2e48ccbb41e007927d08435'
+      + '6dd0a932c189fa810622612d982a0326760c6e74b39866bbd905f9df');
   });
 
   it('should test x448 api', () => {

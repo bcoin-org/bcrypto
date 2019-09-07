@@ -3,11 +3,13 @@
 const assert = require('bsert');
 const fs = require('fs');
 const ed25519 = require('../lib/ed25519');
+const x25519 = require('../lib/x25519');
 const ed448 = require('../lib/ed448');
+const x448 = require('../lib/x448');
 
 const curves = [
-  ed25519,
-  ed448
+  [ed25519, x25519],
+  [ed448, x448]
 ];
 
 describe('EdDSA', function() {
@@ -26,7 +28,7 @@ describe('EdDSA', function() {
     });
   };
 
-  for (const curve of curves) {
+  for (const [curve, x] of curves) {
     describe(curve.id, () => {
       const batch = [];
 
@@ -96,7 +98,7 @@ describe('EdDSA', function() {
           assert.bufferEqual(curve.publicKeyCombine([pub, pubNeg, pub]), pub);
           assert.bufferEqual(curve.privateKeyConvert(priv), scalar);
           assert.bufferEqual(curve.publicKeyConvert(pub), pubConv);
-          assert.bufferEqual(curve.pointConvert(pubConv, sign), pub);
+          assert.bufferEqual(x.publicKeyConvert(pubConv, sign), pub);
 
           assert.doesNotThrow(() => curve.publicKeyAdd(pub, pubNeg));
           assert.doesNotThrow(() => curve.publicKeyCombine([pub, pubNeg]));
@@ -118,9 +120,7 @@ describe('EdDSA', function() {
 
           assert.bufferEqual(curve.derive(pub, other), edSecret);
           assert.bufferEqual(curve.deriveWithScalar(pub, otherConv), edSecret);
-          assert.bufferEqual(curve.exchange(pubConv, other), montSecret);
-          assert.bufferEqual(curve.exchangeWithScalar(pubConv, otherConv),
-                             montSecret);
+          assert.bufferEqual(x.derive(pubConv, otherConv), montSecret);
         });
 
         it(`should sign and verify (${i}) (${curve.id})`, () => {

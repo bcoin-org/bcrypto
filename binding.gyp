@@ -75,7 +75,9 @@
       "./src/sha384.cc",
       "./src/sha512.cc",
       "./src/siphash.cc",
-      "./src/whirlpool.cc"
+      "./src/whirlpool.cc",
+      "./src/x25519.cc",
+      "./src/x448.cc"
     ],
     "cflags": [
       "-Wall",

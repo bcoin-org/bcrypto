@@ -24,20 +24,13 @@ BED448::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "publicKeyCreate", BED448::PublicKeyCreate);
   Nan::Export(obj, "publicKeyFromScalar", BED448::PublicKeyFromScalar);
   Nan::Export(obj, "publicKeyConvert", BED448::PublicKeyConvert);
-  Nan::Export(obj, "pointConvert", BED448::PointConvert);
   Nan::Export(obj, "publicKeyFromUniform", BED448::PublicKeyFromUniform);
-  Nan::Export(obj, "pointFromUniform", BED448::PointFromUniform);
   Nan::Export(obj, "publicKeyToUniform", BED448::PublicKeyToUniform);
-  Nan::Export(obj, "pointToUniform", BED448::PointToUniform);
   Nan::Export(obj, "publicKeyFromHash", BED448::PublicKeyFromHash);
-  Nan::Export(obj, "pointFromHash", BED448::PointFromHash);
   Nan::Export(obj, "publicKeyVerify", BED448::PublicKeyVerify);
   Nan::Export(obj, "publicKeyIsInfinity", BED448::PublicKeyIsInfinity);
   Nan::Export(obj, "publicKeyIsSmall", BED448::PublicKeyIsSmall);
   Nan::Export(obj, "publicKeyHasTorsion", BED448::PublicKeyHasTorsion);
-  Nan::Export(obj, "pointVerify", BED448::PointVerify);
-  Nan::Export(obj, "pointIsSmall", BED448::PointIsSmall);
-  Nan::Export(obj, "pointHasTorsion", BED448::PointHasTorsion);
   Nan::Export(obj, "publicKeyTweakAdd", BED448::PublicKeyTweakAdd);
   Nan::Export(obj, "publicKeyTweakMul", BED448::PublicKeyTweakMul);
   Nan::Export(obj, "publicKeyAdd", BED448::PublicKeyAdd);
@@ -51,8 +44,6 @@ BED448::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "verifySingle", BED448::VerifySingle);
   Nan::Export(obj, "derive", BED448::Derive);
   Nan::Export(obj, "deriveWithScalar", BED448::DeriveWithScalar);
-  Nan::Export(obj, "exchange", BED448::Exchange);
-  Nan::Export(obj, "exchangeWithScalar", BED448::ExchangeWithScalar);
 
   Nan::Set(target, Nan::New("ed448").ToLocalChecked(), obj);
 }
@@ -358,36 +349,6 @@ NAN_METHOD(BED448::PublicKeyConvert) {
                     BCRYPTO_X448_PUBLIC_BYTES).ToLocalChecked());
 }
 
-NAN_METHOD(BED448::PointConvert) {
-  if (info.Length() < 2)
-    return Nan::ThrowError("ed448.pointConvert() requires arguments.");
-
-  v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
-
-  if (!node::Buffer::HasInstance(pbuf))
-    return Nan::ThrowTypeError("First argument must be a buffer.");
-
-  if (!info[1]->IsBoolean())
-    return Nan::ThrowTypeError("Second argument must be a boolean.");
-
-  const uint8_t *pub = (const uint8_t *)node::Buffer::Data(pbuf);
-  size_t pub_len = node::Buffer::Length(pbuf);
-
-  if (pub_len != BCRYPTO_X448_PUBLIC_BYTES)
-    return Nan::ThrowRangeError("Invalid public key size.");
-
-  int sign = (int)Nan::To<bool>(info[1]).FromJust();
-
-  uint8_t out[BCRYPTO_EDDSA_448_PUBLIC_BYTES];
-
-  if (!bcrypto_curve448_convert_public_key_to_eddsa(out, pub, sign))
-    return Nan::ThrowError("Could not convert public key.");
-
-  return info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)&out[0],
-                    BCRYPTO_EDDSA_448_PUBLIC_BYTES).ToLocalChecked());
-}
-
 NAN_METHOD(BED448::PublicKeyFromUniform) {
   if (info.Length() < 1)
     return Nan::ThrowError("ed448.publicKeyFromUniform() requires arguments.");
@@ -412,30 +373,6 @@ NAN_METHOD(BED448::PublicKeyFromUniform) {
     Nan::CopyBuffer((char *)&out[0], BCRYPTO_EDDSA_448_PUBLIC_BYTES).ToLocalChecked());
 }
 
-NAN_METHOD(BED448::PointFromUniform) {
-  if (info.Length() < 1)
-    return Nan::ThrowError("ed448.pointFromUniform() requires arguments.");
-
-  v8::Local<v8::Object> dbuf = info[0].As<v8::Object>();
-
-  if (!node::Buffer::HasInstance(dbuf))
-    return Nan::ThrowTypeError("First argument must be a buffer.");
-
-  const uint8_t *data = (const uint8_t *)node::Buffer::Data(dbuf);
-  size_t data_len = node::Buffer::Length(dbuf);
-
-  if (data_len != 56)
-    return Nan::ThrowRangeError("Invalid field element size.");
-
-  uint8_t out[BCRYPTO_X448_PUBLIC_BYTES];
-
-  if (bcrypto_curve448_point_from_uniform(out, data) < 0)
-    return Nan::ThrowError("Invalid public key.");
-
-  return info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)&out[0], BCRYPTO_X448_PUBLIC_BYTES).ToLocalChecked());
-}
-
 NAN_METHOD(BED448::PublicKeyToUniform) {
   if (info.Length() < 1)
     return Nan::ThrowError("ed448.publicKeyToUniform() requires arguments.");
@@ -454,35 +391,6 @@ NAN_METHOD(BED448::PublicKeyToUniform) {
   uint8_t out[56];
 
   if (!bcrypto_curve448_pubkey_to_uniform(out, pub))
-    return Nan::ThrowError("Invalid public key.");
-
-  return info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)&out[0], 56).ToLocalChecked());
-}
-
-NAN_METHOD(BED448::PointToUniform) {
-  if (info.Length() < 2)
-    return Nan::ThrowError("ed448.pointToUniform() requires arguments.");
-
-  v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
-
-  if (!node::Buffer::HasInstance(pbuf))
-    return Nan::ThrowTypeError("First argument must be a buffer.");
-
-  if (!info[1]->IsBoolean())
-    return Nan::ThrowTypeError("Second argument must be a boolean.");
-
-  const uint8_t *pub = (const uint8_t *)node::Buffer::Data(pbuf);
-  size_t pub_len = node::Buffer::Length(pbuf);
-
-  if (pub_len != BCRYPTO_X448_PUBLIC_BYTES)
-    return Nan::ThrowRangeError("Invalid public key size.");
-
-  int sign = (int)Nan::To<bool>(info[1]).FromJust();
-
-  uint8_t out[56];
-
-  if (!bcrypto_curve448_point_to_uniform(out, pub, sign))
     return Nan::ThrowError("Invalid public key.");
 
   return info.GetReturnValue().Set(
@@ -511,30 +419,6 @@ NAN_METHOD(BED448::PublicKeyFromHash) {
 
   return info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&out[0], BCRYPTO_EDDSA_448_PUBLIC_BYTES).ToLocalChecked());
-}
-
-NAN_METHOD(BED448::PointFromHash) {
-  if (info.Length() < 1)
-    return Nan::ThrowError("ed448.pointFromHash() requires arguments.");
-
-  v8::Local<v8::Object> dbuf = info[0].As<v8::Object>();
-
-  if (!node::Buffer::HasInstance(dbuf))
-    return Nan::ThrowTypeError("First argument must be a buffer.");
-
-  const uint8_t *data = (const uint8_t *)node::Buffer::Data(dbuf);
-  size_t data_len = node::Buffer::Length(dbuf);
-
-  if (data_len != 112)
-    return Nan::ThrowRangeError("Invalid hash size.");
-
-  uint8_t out[BCRYPTO_X448_PUBLIC_BYTES];
-
-  if (!bcrypto_curve448_point_from_hash(out, data))
-    return Nan::ThrowError("Invalid public key.");
-
-  return info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)&out[0], BCRYPTO_X448_PUBLIC_BYTES).ToLocalChecked());
 }
 
 NAN_METHOD(BED448::PublicKeyVerify) {
@@ -620,66 +504,6 @@ NAN_METHOD(BED448::PublicKeyHasTorsion) {
     return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
 
   bool result = (bool)bcrypto_curve448_public_key_has_torsion(pub);
-
-  return info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
-}
-
-NAN_METHOD(BED448::PointVerify) {
-  if (info.Length() < 1)
-    return Nan::ThrowError("ed448.pointVerify() requires arguments.");
-
-  v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
-
-  if (!node::Buffer::HasInstance(pbuf))
-    return Nan::ThrowTypeError("First argument must be a buffer.");
-
-  const uint8_t *pub = (const uint8_t *)node::Buffer::Data(pbuf);
-  size_t pub_len = node::Buffer::Length(pbuf);
-
-  if (pub_len != BCRYPTO_X448_PUBLIC_BYTES)
-    return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
-
-  bool result = (bool)bcrypto_x448_verify_public_key(pub);
-
-  return info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
-}
-
-NAN_METHOD(BED448::PointIsSmall) {
-  if (info.Length() < 1)
-    return Nan::ThrowError("ed448.pointIsSmall() requires arguments.");
-
-  v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
-
-  if (!node::Buffer::HasInstance(pbuf))
-    return Nan::ThrowTypeError("First argument must be a buffer.");
-
-  const uint8_t *pub = (const uint8_t *)node::Buffer::Data(pbuf);
-  size_t pub_len = node::Buffer::Length(pbuf);
-
-  if (pub_len != BCRYPTO_X448_PUBLIC_BYTES)
-    return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
-
-  bool result = (bool)bcrypto_x448_public_key_is_small(pub);
-
-  return info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
-}
-
-NAN_METHOD(BED448::PointHasTorsion) {
-  if (info.Length() < 1)
-    return Nan::ThrowError("ed448.pointHasTorsion() requires arguments.");
-
-  v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
-
-  if (!node::Buffer::HasInstance(pbuf))
-    return Nan::ThrowTypeError("First argument must be a buffer.");
-
-  const uint8_t *pub = (const uint8_t *)node::Buffer::Data(pbuf);
-  size_t pub_len = node::Buffer::Length(pbuf);
-
-  if (pub_len != BCRYPTO_X448_PUBLIC_BYTES)
-    return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
-
-  bool result = (bool)bcrypto_x448_public_key_has_torsion(pub);
 
   return info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
@@ -1340,76 +1164,4 @@ NAN_METHOD(BED448::DeriveWithScalar) {
   return info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&out[0],
                     BCRYPTO_EDDSA_448_PUBLIC_BYTES).ToLocalChecked());
-}
-
-NAN_METHOD(BED448::Exchange) {
-  if (info.Length() < 2)
-    return Nan::ThrowError("ed448.exchange() requires arguments.");
-
-  v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
-  v8::Local<v8::Object> sbuf = info[1].As<v8::Object>();
-
-  if (!node::Buffer::HasInstance(pbuf)
-      || !node::Buffer::HasInstance(sbuf)) {
-    return Nan::ThrowTypeError("Arguments must be buffers.");
-  }
-
-  const uint8_t *xpub = (const uint8_t *)node::Buffer::Data(pbuf);
-  size_t xpub_len = node::Buffer::Length(pbuf);
-
-  const uint8_t *secret = (const uint8_t *)node::Buffer::Data(sbuf);
-  size_t secret_len = node::Buffer::Length(sbuf);
-
-  if (xpub_len != BCRYPTO_X448_PUBLIC_BYTES)
-    return Nan::ThrowRangeError("Invalid public key size.");
-
-  if (secret_len != BCRYPTO_EDDSA_448_PRIVATE_BYTES)
-    return Nan::ThrowRangeError("Invalid secret size.");
-
-  uint8_t xpriv[BCRYPTO_X448_PRIVATE_BYTES];
-  uint8_t out[BCRYPTO_X448_PUBLIC_BYTES];
-
-  if (!bcrypto_c448_ed448_convert_private_key_to_x448(xpriv, secret))
-    return Nan::ThrowError("Could not convert.");
-
-  if (!bcrypto_x448_int(out, xpub, xpriv))
-    return Nan::ThrowError("Could not derive secret.");
-
-  return info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)&out[0],
-                    BCRYPTO_X448_PUBLIC_BYTES).ToLocalChecked());
-}
-
-NAN_METHOD(BED448::ExchangeWithScalar) {
-  if (info.Length() < 2)
-    return Nan::ThrowError("ed448.exchangeWithScalar() requires arguments.");
-
-  v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
-  v8::Local<v8::Object> sbuf = info[1].As<v8::Object>();
-
-  if (!node::Buffer::HasInstance(pbuf)
-      || !node::Buffer::HasInstance(sbuf)) {
-    return Nan::ThrowTypeError("Arguments must be buffers.");
-  }
-
-  const uint8_t *xpub = (const uint8_t *)node::Buffer::Data(pbuf);
-  size_t xpub_len = node::Buffer::Length(pbuf);
-
-  const uint8_t *xpriv = (const uint8_t *)node::Buffer::Data(sbuf);
-  size_t xpriv_len = node::Buffer::Length(sbuf);
-
-  if (xpub_len != BCRYPTO_X448_PUBLIC_BYTES)
-    return Nan::ThrowRangeError("Invalid public key size.");
-
-  if (xpriv_len != BCRYPTO_X448_PRIVATE_BYTES)
-    return Nan::ThrowRangeError("Invalid scalar size.");
-
-  uint8_t out[BCRYPTO_X448_PUBLIC_BYTES];
-
-  if (!bcrypto_x448_int(out, xpub, xpriv))
-    return Nan::ThrowError("Could not derive secret.");
-
-  return info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)&out[0],
-                    BCRYPTO_X448_PUBLIC_BYTES).ToLocalChecked());
 }

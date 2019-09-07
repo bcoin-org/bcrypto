@@ -3,6 +3,8 @@
 const assert = require('bsert');
 const random = require('../lib/random');
 const ed25519 = require('../lib/ed25519');
+const x25519 = require('../lib/x25519');
+const SHA256 = require('../lib/sha256');
 const SHA512 = require('../lib/sha512');
 const derivations = require('./data/ed25519.json');
 const json = require('./data/ed25519-input.json');
@@ -548,8 +550,11 @@ describe('Ed25519', function() {
 
     assert.notBufferEqual(xsecret, secret);
 
-    const xaliceSecret = ed25519.exchange(xbobPub, alicePriv);
-    const xbobSecret = ed25519.exchange(xalicePub, bobPriv);
+    const xaliceSecret = x25519.derive(xbobPub,
+      ed25519.privateKeyConvert(alicePriv));
+
+    const xbobSecret = x25519.derive(xalicePub,
+      ed25519.privateKeyConvert(bobPriv));
 
     assert.bufferEqual(xaliceSecret, xsecret);
     assert.bufferEqual(xbobSecret, xsecret);
@@ -576,8 +581,8 @@ describe('Ed25519', function() {
     const xalicePub = ed25519.publicKeyConvert(alicePub);
     const xbobPub = ed25519.publicKeyConvert(bobPub);
 
-    const xaliceSecret = ed25519.exchangeWithScalar(xbobPub, alicePriv);
-    const xbobSecret = ed25519.exchangeWithScalar(xalicePub, bobPriv);
+    const xaliceSecret = x25519.derive(xbobPub, alicePriv);
+    const xbobSecret = x25519.derive(xalicePub, bobPriv);
 
     assert.bufferEqual(xaliceSecret, xbobSecret);
   });
@@ -610,8 +615,11 @@ describe('Ed25519', function() {
     const xalicePub = ed25519.publicKeyConvert(alicePub);
     const xbobPub = ed25519.publicKeyConvert(bobPub);
 
-    const xaliceSecret2 = ed25519.exchange(xbobPub, alicePriv);
-    const xbobSecret2 = ed25519.exchange(xalicePub, bobPriv);
+    const xaliceSecret2 = x25519.derive(xbobPub,
+      ed25519.privateKeyConvert(alicePriv));
+
+    const xbobSecret2 = x25519.derive(xalicePub,
+      ed25519.privateKeyConvert(bobPriv));
 
     assert.bufferEqual(xaliceSecret2, xsecret);
     assert.bufferEqual(xbobSecret2, xsecret);
@@ -856,7 +864,7 @@ describe('Ed25519', function() {
     const pub = ed25519.publicKeyCreate(secret);
     const sign = (pub[31] & 0x80) !== 0;
     const xpub = ed25519.publicKeyConvert(pub);
-    const pub2 = ed25519.pointConvert(xpub, sign);
+    const pub2 = x25519.publicKeyConvert(xpub, sign);
 
     assert.bufferEqual(pub2, pub);
   });
@@ -875,11 +883,11 @@ describe('Ed25519', function() {
 
   it('should do elligator2 (mont)', () => {
     const u1 = random.randomBytes(32);
-    const p1 = ed25519.pointFromUniform(u1);
-    const u2 = ed25519.pointToUniform(p1, false);
-    const p2 = ed25519.pointFromUniform(u2);
-    const u3 = ed25519.pointToUniform(p2, false);
-    const p3 = ed25519.pointFromUniform(u3);
+    const p1 = x25519.publicKeyFromUniform(u1);
+    const u2 = x25519.publicKeyToUniform(p1, false);
+    const p2 = x25519.publicKeyFromUniform(u2);
+    const u3 = x25519.publicKeyToUniform(p2, false);
+    const p3 = x25519.publicKeyFromUniform(u3);
 
     assert.bufferEqual(p1, p2);
     assert.bufferEqual(p2, p3);
@@ -889,7 +897,7 @@ describe('Ed25519', function() {
     const p = Buffer.alloc(32, 0x00);
     p[0] = 9;
 
-    const u = ed25519.pointToUniform(p, false);
+    const u = x25519.publicKeyToUniform(p, false);
     const b = u[31] & 0x80;
 
     u[31] &= ~0x80;
@@ -899,7 +907,7 @@ describe('Ed25519', function() {
 
     u[31] |= b;
 
-    const q = ed25519.pointFromUniform(u);
+    const q = x25519.publicKeyFromUniform(u);
 
     assert.bufferEqual(q, p);
   });
@@ -937,7 +945,7 @@ describe('Ed25519', function() {
       '6da9f400aefa72f6510793baaee019971b66114230d43802858f6e776fef7658',
       'hex');
 
-    const u = ed25519.pointToUniform(p, false);
+    const u = x25519.publicKeyToUniform(p, false);
 
     u[31] &= ~0x80;
 
@@ -1056,18 +1064,18 @@ describe('Ed25519', function() {
 
       assert.strictEqual(ed25519.publicKeyVerify(key), true);
       assert.bufferEqual(ed25519.publicKeyFromUniform(preimage), key);
-      assert.bufferEqual(ed25519.pointFromUniform(preimage), point);
+      assert.bufferEqual(x25519.publicKeyFromUniform(preimage), point);
       assert.bufferEqual(un(ed25519.publicKeyToUniform(key)), un(raw1));
-      assert.bufferEqual(un(ed25519.pointToUniform(point, false)), un(raw2));
+      assert.bufferEqual(un(x25519.publicKeyToUniform(point, false)), un(raw2));
       assert.bufferEqual(ed25519.publicKeyFromUniform(raw1), key);
-      assert.bufferEqual(ed25519.pointFromUniform(raw2), point);
+      assert.bufferEqual(x25519.publicKeyFromUniform(raw2), point);
     }
   });
 
   it('should test random oracle encoding', () => {
     const bytes = SHA512.digest(Buffer.from('turn me into a point'));
     const pub = ed25519.publicKeyFromHash(bytes);
-    const point = ed25519.pointFromHash(bytes);
+    const point = x25519.publicKeyFromHash(bytes);
     const sign = (pub[31] & 0x80) !== 0;
 
     assert.bufferEqual(pub,
@@ -1078,7 +1086,25 @@ describe('Ed25519', function() {
 
     assert.strictEqual(ed25519.publicKeyVerify(pub), true);
     assert.bufferEqual(ed25519.publicKeyConvert(pub), point);
-    assert.bufferEqual(ed25519.pointConvert(point, sign), pub);
+    assert.bufferEqual(x25519.publicKeyConvert(point, sign), pub);
+  });
+
+  it('should test random oracle encoding (doubling)', () => {
+    const bytes0 = SHA256.digest(Buffer.from('turn me into a point'));
+    const bytes = Buffer.concat([bytes0, bytes0]);
+    const pub = ed25519.publicKeyFromHash(bytes);
+    const point = x25519.publicKeyFromHash(bytes);
+    const sign = (pub[31] & 0x80) !== 0;
+
+    assert.bufferEqual(pub,
+      '5694d147542d2c08657a203cea81c6f0e39caa5219a2eeb0dedc37e59cd31e40');
+
+    assert.bufferEqual(point,
+      '7b9965e30b586bab509c34d657d8be30fad1b179470f2f70a6c728092e000062');
+
+    assert.strictEqual(ed25519.publicKeyVerify(pub), true);
+    assert.bufferEqual(ed25519.publicKeyConvert(pub), point);
+    assert.bufferEqual(x25519.publicKeyConvert(point, sign), pub);
   });
 
   describe('ed25519 derivations', () => {

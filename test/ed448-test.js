@@ -3,6 +3,7 @@
 const assert = require('bsert');
 const random = require('../lib/random');
 const ed448 = require('../lib/ed448');
+const x448 = require('../lib/x448');
 const SHAKE256 = require('../lib/shake256');
 const rfc8032 = require('./data/rfc8032-vectors.json');
 
@@ -500,8 +501,11 @@ describe('Ed448', function() {
 
     assert.notBufferEqual(xsecret, secret);
 
-    const xaliceSecret = ed448.exchange(xbobPub, alicePriv);
-    const xbobSecret = ed448.exchange(xalicePub, bobPriv);
+    const xaliceSecret = x448.derive(xbobPub,
+      ed448.privateKeyConvert(alicePriv));
+
+    const xbobSecret = x448.derive(xalicePub,
+      ed448.privateKeyConvert(bobPriv));
 
     assert.bufferEqual(xaliceSecret, xsecret);
     assert.bufferEqual(xbobSecret, xsecret);
@@ -528,8 +532,8 @@ describe('Ed448', function() {
     const xalicePub = ed448.publicKeyConvert(alicePub);
     const xbobPub = ed448.publicKeyConvert(bobPub);
 
-    const xaliceSecret = ed448.exchangeWithScalar(xbobPub, alicePriv);
-    const xbobSecret = ed448.exchangeWithScalar(xalicePub, bobPriv);
+    const xaliceSecret = x448.derive(xbobPub, alicePriv);
+    const xbobSecret = x448.derive(xalicePub, bobPriv);
 
     assert.bufferEqual(xaliceSecret, xbobSecret);
   });
@@ -562,7 +566,7 @@ describe('Ed448', function() {
     assert.bufferEqual(xsecret2, xsecret);
 
     const xpub = ed448.publicKeyConvert(pub);
-    const xsecret3 = ed448.exchange(xpub, priv);
+    const xsecret3 = x448.derive(xpub, ed448.privateKeyConvert(priv));
 
     assert.bufferEqual(xsecret3, xsecret);
   });
@@ -719,7 +723,7 @@ describe('Ed448', function() {
     const pub = ed448.publicKeyCreate(secret);
     const sign = (pub[56] & 0x80) !== 0;
     const xpub = ed448.publicKeyConvert(pub);
-    const pub2 = ed448.pointConvert(xpub, sign);
+    const pub2 = x448.publicKeyConvert(xpub, sign);
 
     assert.bufferEqual(pub2, pub);
   });
@@ -795,16 +799,16 @@ describe('Ed448', function() {
       + '72ad074f3dbfbb3927125fab1f4023a408adc0ab1cbbbd6556615e3d'
       + '67501a428120ac1556a467734b1ad6820734d2100f0ed88510bd3e14', 'hex');
 
-    const p1 = ed448.pointFromUniform(u1);
+    const p1 = x448.publicKeyFromUniform(u1);
 
     assert.bufferEqual(p1, ''
       + '6bd0c1ee9599249bff3276e2a8279bea5e62e47f6507656826fe0182'
       + '3a0580129b6df46dabe81c7559a7028344b50da7682423586d6e80dd');
 
-    const u2 = ed448.pointToUniform(p1, false);
-    const p2 = ed448.pointFromUniform(u2);
-    const u3 = ed448.pointToUniform(p2, false);
-    const p3 = ed448.pointFromUniform(u3);
+    const u2 = x448.publicKeyToUniform(p1, false);
+    const p2 = x448.publicKeyFromUniform(u2);
+    const u3 = x448.publicKeyToUniform(p2, false);
+    const p3 = x448.publicKeyFromUniform(u3);
 
     assert.bufferEqual(p1, p2);
     assert.bufferEqual(p2, p3);
@@ -815,14 +819,14 @@ describe('Ed448', function() {
 
     u1[0] = 1;
 
-    const p1 = ed448.pointFromUniform(u1);
+    const p1 = x448.publicKeyFromUniform(u1);
 
     assert.bufferEqual(p1, Buffer.alloc(56, 0x00));
 
-    const u2 = ed448.pointToUniform(p1, false);
-    const p2 = ed448.pointFromUniform(u2);
-    const u3 = ed448.pointToUniform(p2, false);
-    const p3 = ed448.pointFromUniform(u3);
+    const u2 = x448.publicKeyToUniform(p1, false);
+    const p2 = x448.publicKeyFromUniform(u2);
+    const u3 = x448.publicKeyToUniform(p2, false);
+    const p3 = x448.publicKeyFromUniform(u3);
 
     assert.bufferEqual(p1, p2);
     assert.bufferEqual(p2, p3);
@@ -1013,18 +1017,18 @@ describe('Ed448', function() {
 
       assert.strictEqual(ed448.publicKeyVerify(key), true);
       assert.bufferEqual(ed448.publicKeyFromUniform(preimage), key);
-      assert.bufferEqual(ed448.pointFromUniform(preimage), point);
+      assert.bufferEqual(x448.publicKeyFromUniform(preimage), point);
       assert.bufferEqual(ed448.publicKeyToUniform(key), raw1);
-      assert.bufferEqual(ed448.pointToUniform(point, false), raw2);
+      assert.bufferEqual(x448.publicKeyToUniform(point, false), raw2);
       assert.bufferEqual(ed448.publicKeyFromUniform(raw1), key);
-      assert.bufferEqual(ed448.pointFromUniform(raw2), point);
+      assert.bufferEqual(x448.publicKeyFromUniform(raw2), point);
     }
   });
 
   it('should test random oracle encoding', () => {
     const bytes = SHAKE256.digest(Buffer.from('turn me into a point'), 112);
     const pub = ed448.publicKeyFromHash(bytes);
-    const point = ed448.pointFromHash(bytes);
+    const point = x448.publicKeyFromHash(bytes);
     const sign = (pub[56] & 0x80) !== 0;
 
     assert.bufferEqual(pub, ''
@@ -1038,7 +1042,28 @@ describe('Ed448', function() {
 
     assert.strictEqual(ed448.publicKeyVerify(pub), true);
     assert.bufferEqual(ed448.publicKeyConvert(pub), point);
-    assert.bufferEqual(ed448.pointConvert(point, sign), pub);
+    assert.bufferEqual(x448.publicKeyConvert(point, sign), pub);
+  });
+
+  it('should test random oracle encoding (doubling)', () => {
+    const bytes0 = SHAKE256.digest(Buffer.from('turn me into a point'), 56);
+    const bytes = Buffer.concat([bytes0, bytes0]);
+    const pub = ed448.publicKeyFromHash(bytes);
+    const point = x448.publicKeyFromHash(bytes);
+    const sign = (pub[56] & 0x80) !== 0;
+
+    assert.bufferEqual(pub, ''
+      + 'e54d0e650d175799577247b7bc9ed88628bc0123a602f9f3f4a8da17'
+      + '5e49cbf33912aca9396ded8b88b46807be5325f865587092ef71bc5e'
+      + '00');
+
+    assert.bufferEqual(point, ''
+      + '6fee3c18014c2c61dc1bc145c224d2b5c2e48ccbb41e007927d08435'
+      + '6dd0a932c189fa810622612d982a0326760c6e74b39866bbd905f9df');
+
+    assert.strictEqual(ed448.publicKeyVerify(pub), true);
+    assert.bufferEqual(ed448.publicKeyConvert(pub), point);
+    assert.bufferEqual(x448.publicKeyConvert(point, sign), pub);
   });
 
   describe('RFC 8032 vectors', () => {

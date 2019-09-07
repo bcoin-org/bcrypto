@@ -31,8 +31,8 @@ const ecdsa = [
 ];
 
 const eddsa = [
-  ed25519,
-  ed448
+  [ed25519, x25519],
+  [ed448, x448]
 ];
 
 const x = [
@@ -99,7 +99,7 @@ for (const curve of ecdsa) {
                    JSON.stringify(vectors, null, 2) + '\n');
 }
 
-for (const curve of eddsa) {
+for (const [curve, x] of eddsa) {
   const vectors = [];
 
   for (let i = 0; i < 32; i++) {
@@ -128,7 +128,7 @@ for (const curve of eddsa) {
     const sigMul = curve.signTweakMul(msg, priv, tweak, ph);
     const other = curve.privateKeyGenerate();
     const edSecret = curve.derive(pub, other);
-    const montSecret = curve.exchange(pubConv, other);
+    const montSecret = x.derive(pubConv, curve.privateKeyConvert(other));
 
     vectors.push([
       priv.toString('hex'),

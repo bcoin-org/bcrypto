@@ -49,6 +49,8 @@
 #include "sha512.h"
 #include "siphash.h"
 #include "whirlpool.h"
+#include "x25519.h"
+#include "x448.h"
 
 #include "bcrypto.h"
 
@@ -122,6 +124,8 @@ NAN_MODULE_INIT(init) {
   BSHA512::Init(target);
   BSiphash::Init(target);
   BWhirlpool::Init(target);
+  BX25519::Init(target);
+  BX448::Init(target);
 }
 
 #if NODE_MAJOR_VERSION >= 10
