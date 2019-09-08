@@ -1042,6 +1042,67 @@ describe('Elliptic', function() {
       }
     });
 
+    it('should twist curve', () => {
+      const x25519 = new curves.X25519();
+      const ed25519 = new curves.ED25519();
+      const [a, d] = x25519._twist(x25519.one.redNeg());
+
+      assert(a.eq(ed25519.a));
+      assert(d.eq(ed25519.d));
+    });
+
+    it('should twist point', () => {
+      const x25519 = new curves.X25519();
+      const p = x25519.randomPoint(rng).mulH();
+      const [u, v] = p.getXY(false);
+      const [x, y, z] = p._twist(false);
+
+      // (u, v) = ((1 + y) / (1 - y), (1 + y) / (1 - y)x)
+      const x0 = x.redMul(z.redInvert());
+      const y0 = y.redMul(z.redInvert());
+      const z0 = x25519.one.clone();
+      const v0 = z0.redAdd(y0).redMul(z0.redSub(y0).redMul(x0).redInvert());
+
+      assert(v0.eq(v));
+
+      const xi = x.redMul(z.redInvert());
+      const zpy = z.redAdd(y);
+      const zmy = z.redSub(y);
+      const u2 = zpy.redMul(xi);
+      const v2 = zpy;
+      const z2 = zmy.redMul(xi);
+
+      assert(u2.redMul(z2.redInvert()).eq(u));
+      assert(v2.redMul(z2.redInvert()).eq(v));
+    });
+
+    it('should untwist curve', () => {
+      const x25519 = new curves.X25519();
+      const ed25519 = new curves.ED25519();
+      const [a, b] = ed25519._untwist(ed25519.one);
+
+      assert(a.eq(x25519.a));
+      assert(b.eq(x25519.b));
+    });
+
+    it('should untwist point', () => {
+      const ed25519 = new curves.ED25519();
+      const p = ed25519.randomPoint(rng).mulH();
+      const [u, v, one] = p._untwist();
+
+      // (x, y) = (u / v, (u - 1) / (u + 1))
+      const xz = v;
+      const yz = u.redAdd(one);
+      const x = u.redMul(yz);
+      const y = u.redSub(one).redMul(xz);
+      const z = xz.redMul(yz);
+
+      p.normalize();
+
+      assert(y.redMul(z.redInvert()).eq(p.y));
+      assert(x.redMul(z.redInvert()).eq(p.x));
+    });
+
     it('should match multiplications', () => {
       const p256 = new curves.P256();
       const secp256k1 = new curves.SECP256K1();
@@ -1886,13 +1947,6 @@ describe('Elliptic', function() {
       const wei25519 = new extra.WEI25519();
       const ed25519 = new curves.ED25519();
       const x25519 = new curves.X25519();
-      const [a, d] = x25519._twist(x25519.one.redNeg());
-      const [A, B] = ed25519._untwist(ed25519.one);
-
-      assert(a.eq(ed25519.a));
-      assert(d.eq(ed25519.d));
-      assert(A.eq(x25519.a));
-      assert(B.eq(x25519.b));
 
       for (let i = 0; i < 10; i++) {
         const we = wei25519.g.mul(new BN(i));
