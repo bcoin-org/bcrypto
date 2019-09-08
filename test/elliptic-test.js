@@ -1013,6 +1013,35 @@ describe('Elliptic', function() {
       assert(point3.neg().eq(point1));
     });
 
+    it('should verify clamping constants', () => {
+      const ed25519 = new curves.ED25519();
+      const x25519 = new curves.X25519();
+      const ed448 = new curves.ED448();
+      const x448 = new curves.X448();
+
+      for (const {mask} of [ed25519, x25519]) {
+        assert(mask.h === (-8 & 0xff));
+        assert(mask.n === 0x7f);
+        assert(mask.b === 0x40);
+        assert.strictEqual(mask.and.toString(16),
+          '7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff8');
+        assert.strictEqual(mask.or.toString(16),
+          '4000000000000000000000000000000000000000000000000000000000000000');
+      }
+
+      for (const {mask} of [ed448, x448]) {
+        assert(mask.h === (-4 & 0xff));
+        assert(mask.n === 0xff);
+        assert(mask.b === 0x80);
+        assert.strictEqual(mask.and.toString(16), ''
+          + 'ffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
+          + 'fffffffffffffffffffffffffffffffffffffffffffffffffffffffc');
+        assert.strictEqual(mask.or.toString(16), ''
+          + '80000000000000000000000000000000000000000000000000000000'
+          + '00000000000000000000000000000000000000000000000000000000');
+      }
+    });
+
     it('should match multiplications', () => {
       const p256 = new curves.P256();
       const secp256k1 = new curves.SECP256K1();
@@ -3319,8 +3348,6 @@ describe('Elliptic', function() {
       const scalar = rng.randomBytes(e521.p.byteLength());
 
       e521.clamp(scalar);
-
-      assert(e521.isClamped(scalar));
     });
 
     it('should handle difference in scalar/field bytes', () => {
