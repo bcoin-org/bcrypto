@@ -3,7 +3,9 @@
 const assert = require('bsert');
 const BN = require('../lib/bn.js');
 const EDDSA = require('../lib/js/eddsa');
+const ECDH = require('../lib/js/ecdh');
 const SHAKE256 = require('../lib/shake256');
+const SHA512 = require('../lib/sha512');
 const elliptic = require('../lib/js/elliptic');
 const rng = require('../lib/random');
 const extra = require('./util/curves');
@@ -1855,9 +1857,13 @@ describe('Elliptic', function() {
       const wei25519 = new extra.WEI25519();
       const ed25519 = new curves.ED25519();
       const x25519 = new curves.X25519();
+      const [a, d] = x25519._twist(x25519.one.redNeg());
+      const [A, B] = ed25519._untwist(ed25519.one);
 
-      assert(x25519._edwardsD().eq(ed25519.d));
-      assert(ed25519._montA().eq(x25519.a));
+      assert(a.eq(ed25519.a));
+      assert(d.eq(ed25519.d));
+      assert(A.eq(x25519.a));
+      assert(B.eq(x25519.b));
 
       for (let i = 0; i < 10; i++) {
         const we = wei25519.g.mul(new BN(i));
@@ -2037,6 +2043,63 @@ describe('Elliptic', function() {
         assert(p1.validate());
         assert(p1.eq(p2));
       }
+
+      for (let i = 0; i < 10; i++) {
+        const r1 = curve.one.redMuln(i);
+        const p1 = curve.pointFromUniform(null, r1);
+        const r2 = curve.pointToUniform(null, p1);
+        const p2 = curve.pointFromUniform(null, r2);
+
+        assert(!p1.isInfinity());
+        assert(p1.validate());
+        assert(p1.eq(p2));
+      }
+    });
+
+    it('should test elligator 1 (api)', () => {
+      const eddsa = new EDDSA('ED1174', null, SHA512);
+
+      const u1 = Buffer.from(
+        '3905000000000000000000000000000000000000000000000000000000000000',
+        'hex');
+
+      const pub1 = eddsa.publicKeyFromUniform(u1);
+      const u2 = eddsa.publicKeyToUniform(pub1);
+      const pub2 = eddsa.publicKeyFromUniform(u2);
+
+      assert.bufferEqual(pub1,
+        '874f0c7f58e47a65fa6418a65c84c03cd360c97dff3525a43192bbfec5229182');
+      assert.bufferEqual(pub2, pub1);
+
+      const pub3 = eddsa.publicKeyFromHash(Buffer.concat([u1, pub1]));
+
+      assert(!eddsa.publicKeyHasTorsion(pub3));
+      assert(eddsa.publicKeyVerify(pub3));
+    });
+
+    it('should test elligator hash', () => {
+      const ed25519 = new curves.ED25519();
+      const x25519 = new curves.X25519();
+
+      for (let i = 0; i < 10; i++) {
+        const u = rng.randomBytes(64);
+        const p1 = x25519.pointFromHash(ed25519, u);
+        const p2 = x25519.pointFromHash(null, u);
+
+        assert(p1.validate());
+        assert(p2.validate());
+
+        // Fix me:
+        // assert(p1.eq(p2));
+      }
+    });
+
+    it('should test elligator hash (api)', () => {
+      const ecdh = new ECDH('M511');
+      const pub = ecdh.publicKeyFromHash(rng.randomBytes(128));
+
+      assert(!ecdh.publicKeyHasTorsion(pub));
+      assert(ecdh.publicKeyVerify(pub));
     });
 
     it('should test simple shallue-woestijne-ulas algorithm', () => {
@@ -3261,11 +3324,7 @@ describe('Elliptic', function() {
     });
 
     it('should handle difference in scalar/field bytes', () => {
-      const e521 = new EDDSA('ED25519', null, SHAKE256);
-
-      // Hack.
-      e521.id = 'E521';
-      e521._curve = new extra.E521();
+      const e521 = new EDDSA('E521', null, SHAKE256);
 
       const msg = rng.randomBytes(e521.size);
       const secret = e521.privateKeyGenerate();
@@ -3283,11 +3342,7 @@ describe('Elliptic', function() {
     });
 
     it('should do diffie hellman', () => {
-      const e521 = new EDDSA('ED25519', null, SHAKE256);
-
-      // Hack.
-      e521.id = 'E521';
-      e521._curve = new extra.E521();
+      const e521 = new EDDSA('E521', null, SHAKE256);
 
       const alicePriv = e521.privateKeyGenerate();
       const alicePub = e521.publicKeyCreate(alicePriv);

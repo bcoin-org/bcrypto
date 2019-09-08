@@ -545,6 +545,23 @@ class E521 extends EdwardsCurve {
 }
 
 /*
+ * Register
+ */
+
+elliptic.register('SECP192K1', SECP192K1);
+elliptic.register('SECP224K1', SECP224K1);
+elliptic.register('WEI25519', WEI25519);
+elliptic.register('ISOED448', ISOED448);
+elliptic.register('ED1174', ED1174);
+elliptic.register('ED41417', ED41417);
+elliptic.register('M221', M221);
+elliptic.register('E222', E222);
+elliptic.register('M383', M383);
+elliptic.register('E382', E382);
+elliptic.register('M511', M511);
+elliptic.register('E521', E521);
+
+/*
  * Expose
  */
 
