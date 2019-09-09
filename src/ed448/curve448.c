@@ -747,9 +747,7 @@ bcrypto_c448_bool_t bcrypto_curve448_public_key_has_torsion(
     return BCRYPTO_C448_FALSE;
 
   /* 4-isogeny should remove torsion components */
-  bcrypto_curve448_scalar_t h = {{{BCRYPTO_C448_EDDSA_ENCODE_RATIO}}};
-  bcrypto_curve448_scalar_invert(h, h);
-  bcrypto_curve448_point_scalarmul(p, p, h);
+  bcrypto_curve448_point_scalarmul(p, p, bcrypto_sc_inv_4);
   bcrypto_curve448_point_mul_by_ratio_and_encode_like_eddsa(out, p);
   bcrypto_curve448_point_destroy(p);
 
@@ -971,6 +969,7 @@ bcrypto_x448_convert_public_key_to_eddsa(
 ) {
   bcrypto_curve448_point_t p;
   bcrypto_mask_t ret = -1;
+  bcrypto_mask_t inf;
   bcrypto_gf u, v;
   bcrypto_gf u2, u3, u4, u5, v2;
   bcrypto_gf a, b, c, d;
@@ -1026,6 +1025,12 @@ bcrypto_x448_convert_public_key_to_eddsa(
   bcrypto_gf_mul(p->y, yy, xz);
   bcrypto_gf_mul(p->z, xz, yz);
 
+  /* exceptional case */
+  inf = bcrypto_gf_eq(p->z, ZERO);
+  bcrypto_gf_cond_sel(p->x, p->x, ZERO, inf);
+  bcrypto_gf_cond_sel(p->y, p->y, ONE, inf);
+  bcrypto_gf_cond_sel(p->z, p->z, ONE, inf);
+
   /* 4-isogeny 2xy/(y^2-ax^2), (y^2+ax^2)/(2-y^2-ax^2) */
   bcrypto_gf_sqr(c, p->x);
   bcrypto_gf_sqr(a, p->y);
@@ -1043,9 +1048,7 @@ bcrypto_x448_convert_public_key_to_eddsa(
   bcrypto_gf_mul(p->t, b, d);
 
   /* P / h */
-  bcrypto_curve448_scalar_t inv = {{{16}}};
-  bcrypto_curve448_scalar_invert(inv, inv);
-  bcrypto_curve448_point_scalarmul(p, p, inv);
+  bcrypto_curve448_point_scalarmul(p, p, bcrypto_sc_inv_16);
   bcrypto_curve448_point_mul_by_ratio_and_encode_like_eddsa(ed, p);
   bcrypto_curve448_point_destroy(p);
 

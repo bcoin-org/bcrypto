@@ -77,6 +77,9 @@ extern const bcrypto_curve448_scalar_t bcrypto_curve448_scalar_zero;
 /* The identity point on the curve. */
 extern const bcrypto_curve448_point_t bcrypto_curve448_point_identity;
 
+extern const bcrypto_curve448_scalar_t bcrypto_sc_inv_4;
+extern const bcrypto_curve448_scalar_t bcrypto_sc_inv_16;
+
 /* Precomputed table for the base point on the curve. */
 extern const struct bcrypto_curve448_precomputed_s *bcrypto_curve448_precomputed_base;
 extern const bcrypto_niels_t *bcrypto_curve448_wnaf_base;

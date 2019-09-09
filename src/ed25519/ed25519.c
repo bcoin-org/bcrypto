@@ -279,9 +279,10 @@ bcrypto_ed25519_pubkey_convert(
 ) {
   bignum25519 ALIGN(16) u, uz, v, vz, z;
   ge25519 ALIGN(16) p;
+  int ret = 1;
 
-  if (!ge25519_unpack(&p, pk))
-    return 0;
+  /* decode */
+  ret &= ge25519_unpack(&p, pk);
 
   /* u = (1 + y) / (1 - y) */
   curve25519_add(u, p.z, p.y);
@@ -295,11 +296,10 @@ bcrypto_ed25519_pubkey_convert(
   curve25519_mul(v, v, uz);
   curve25519_mul(z, uz, vz);
 
-  if (curve25519_is_zero(z))
-    return 0;
+  /* exceptional case */
+  ret &= curve25519_is_zero(z) ^ 1;
 
   curve25519_recip(z, z);
-
   curve25519_mul(u, u, z);
   curve25519_mul(v, v, z);
 
@@ -308,7 +308,7 @@ bcrypto_ed25519_pubkey_convert(
 
   curve25519_contract(out, u);
 
-  return 1;
+  return ret;
 }
 
 int
@@ -318,14 +318,13 @@ bcrypto_x25519_pubkey_convert(
   int sign
 ) {
   static const bignum25519 one = {1};
-  ge25519 ALIGN(16) p;
+  ge25519 ALIGN(16) p, o;
   bignum25519 ALIGN(16) u, v, xz, yz;
+  int ret;
 
+  /* decode */
   curve25519_expand(u, pk);
-
-  if (!curve25519_solve_y(v, u))
-    return 0;
-
+  ret = curve25519_solve_y(v, u);
   curve25519_neg_conditional(v, v, curve25519_is_odd(v) ^ sign);
 
   /* x = sqrt(-486664) * u / v */
@@ -340,12 +339,13 @@ bcrypto_x25519_pubkey_convert(
   curve25519_mul(p.y, p.y, xz);
   curve25519_mul(p.z, xz, yz);
 
-  if (curve25519_is_zero(p.z))
-    return 0;
+  /* exceptional case */
+  ge25519_set_neutral(&o);
+  ge25519_swap_conditional(&p, &o, curve25519_is_zero(p.z));
 
   ge25519_pack(out, &p);
 
-  return 1;
+  return ret;
 }
 
 int

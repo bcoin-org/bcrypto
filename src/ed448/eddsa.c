@@ -230,12 +230,7 @@ bcrypto_c448_error_t bcrypto_c448_ed448_public_key_tweak_add(
   bcrypto_curve448_point_add(pk_point, pk_point, tweak_point);
 
   /* We have to divide the new point by the ratio. */
-  bcrypto_curve448_scalar_t ratio_scalar = {{{BCRYPTO_C448_EDDSA_ENCODE_RATIO}}};
-  bcrypto_curve448_scalar_invert(ratio_scalar, ratio_scalar);
-  bcrypto_curve448_point_t ratio_point;
-  bcrypto_curve448_precomputed_scalarmul(ratio_point, bcrypto_curve448_precomputed_base, ratio_scalar);
-  bcrypto_curve448_point_scalarmul(pk_point, pk_point, ratio_scalar);
-
+  bcrypto_curve448_point_scalarmul(pk_point, pk_point, bcrypto_sc_inv_4);
   bcrypto_curve448_point_mul_by_ratio_and_encode_like_eddsa(out, pk_point);
 
   bcrypto_curve448_scalar_destroy(tweak_scalar);
@@ -296,12 +291,7 @@ bcrypto_c448_error_t bcrypto_c448_ed448_public_key_add(
   bcrypto_curve448_point_add(pk1_point, pk1_point, pk2_point);
 
   /* We have to divide the new point by the ratio. */
-  bcrypto_curve448_scalar_t ratio_scalar = {{{BCRYPTO_C448_EDDSA_ENCODE_RATIO}}};
-  bcrypto_curve448_scalar_invert(ratio_scalar, ratio_scalar);
-  bcrypto_curve448_point_t ratio_point;
-  bcrypto_curve448_precomputed_scalarmul(ratio_point, bcrypto_curve448_precomputed_base, ratio_scalar);
-  bcrypto_curve448_point_scalarmul(pk1_point, pk1_point, ratio_scalar);
-
+  bcrypto_curve448_point_scalarmul(pk1_point, pk1_point, bcrypto_sc_inv_4);
   bcrypto_curve448_point_mul_by_ratio_and_encode_like_eddsa(out, pk1_point);
 
   bcrypto_curve448_point_destroy(pk1_point);
@@ -340,12 +330,7 @@ bcrypto_c448_error_t bcrypto_c448_ed448_public_key_combine(
   }
 
   /* We have to divide the new point by the ratio. */
-  bcrypto_curve448_scalar_t ratio_scalar = {{{BCRYPTO_C448_EDDSA_ENCODE_RATIO}}};
-  bcrypto_curve448_scalar_invert(ratio_scalar, ratio_scalar);
-  bcrypto_curve448_point_t ratio_point;
-  bcrypto_curve448_precomputed_scalarmul(ratio_point, bcrypto_curve448_precomputed_base, ratio_scalar);
-  bcrypto_curve448_point_scalarmul(pk1_point, pk1_point, ratio_scalar);
-
+  bcrypto_curve448_point_scalarmul(pk1_point, pk1_point, bcrypto_sc_inv_4);
   bcrypto_curve448_point_mul_by_ratio_and_encode_like_eddsa(out, pk1_point);
 
   bcrypto_curve448_point_destroy(pk1_point);
@@ -367,12 +352,7 @@ bcrypto_c448_error_t bcrypto_c448_ed448_public_key_negate(
   bcrypto_curve448_point_negate(pk_point, pk_point);
 
   /* We have to divide the new point by the ratio. */
-  bcrypto_curve448_scalar_t ratio_scalar = {{{BCRYPTO_C448_EDDSA_ENCODE_RATIO}}};
-  bcrypto_curve448_scalar_invert(ratio_scalar, ratio_scalar);
-  bcrypto_curve448_point_t ratio_point;
-  bcrypto_curve448_precomputed_scalarmul(ratio_point, bcrypto_curve448_precomputed_base, ratio_scalar);
-  bcrypto_curve448_point_scalarmul(pk_point, pk_point, ratio_scalar);
-
+  bcrypto_curve448_point_scalarmul(pk_point, pk_point, bcrypto_sc_inv_4);
   bcrypto_curve448_point_mul_by_ratio_and_encode_like_eddsa(out, pk_point);
 
   bcrypto_curve448_point_destroy(pk_point);
