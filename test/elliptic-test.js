@@ -55,7 +55,8 @@ function checkCurve(curve) {
   assert(curve._simpleMulAdd([g, g], [k, k]).eq(g.dbl()));
 
   // Test unified ladder.
-  assert(curve._ladderMul(g, k).eq(g));
+  if (curve.type !== 'mont')
+    assert(curve._ladderMul(g, k).eq(g));
 
   // Test Co-Z ladder.
   if (curve.type === 'short')
@@ -88,7 +89,7 @@ function checkMont(curve) {
 
   // G * (N + 1) = G
   const k = curve.n.addn(1);
-  const g = curve.g;
+  const g = curve.g.toX();
 
   // Test simple multiplication.
   assert(g.mulSimple(k).eq(g));
@@ -102,7 +103,7 @@ function checkMont(curve) {
 
 function sanityCheck(curve) {
   if (curve.type === 'mont')
-    return checkMont(curve);
+    checkMont(curve);
 
   return checkCurve(curve);
 }
@@ -112,38 +113,39 @@ describe('Elliptic', function() {
     const test = (curve, vector) => {
       it(`should test curve ${curve.id}`, () => {
         // Quick sanity test.
+        const p = curve.g;
+        const j = curve.g.toJ();
+        const tp = p.trpl();
+        const tj = j.trpl();
+
+        assert(p.add(p).eq(p.dbl()));
+        assert(j.add(j).eq(j.dbl()));
+        assert(j.add(p).eq(j.dbl()));
+
+        assert(p.trpl().eq(p.dbl().add(p)));
+        assert(j.trpl().eq(j.dbl().add(j)));
+        assert(j.trpl().add(p).eq(j.dblp(2)));
+
+        assert(p.dbl().validate());
+        assert(j.dbl().validate());
+        assert(p.trpl().validate());
+        assert(j.trpl().validate());
+
         if (curve.type === 'mont') {
-          const g = curve.g;
+          const g = curve.g.toX();
           const p1 = g.mul(new BN(2));
           const p2 = g.mul(new BN(3));
 
           assert(g.dbl().eq(p1));
           assert(g.diffTrpl(g).eq(p2));
         } else {
-          const p = curve.g;
-          const j = curve.g.toJ();
-          const tp = p.trpl();
-          const tj = j.trpl();
-
-          assert(p.add(p).eq(p.dbl()));
-          assert(j.add(j).eq(j.dbl()));
-          assert(j.add(p).eq(j.dbl()));
-
-          assert(p.trpl().eq(p.dbl().add(p)));
-          assert(j.trpl().eq(j.dbl().add(j)));
-          assert(j.trpl().add(p).eq(j.dblp(2)));
-
-          assert(p.dbl().validate());
-          assert(j.dbl().validate());
-          assert(p.trpl().validate());
-          assert(j.trpl().validate());
-
           assert(p.dbl().eq(p.uadd(p)));
           assert(j.dbl().eq(j.uadd(j)));
           assert(p.dbl().eq(p.uadd(p)));
           assert(j.dbl().eq(j.uadd(j)));
           assert(p.dbl().eq(p.udbl()));
           assert(j.dbl().eq(j.udbl()));
+
           assert(p.uadd(p).uadd(p).eq(tp));
           assert(j.uadd(j).uadd(j).eq(tj));
         }
@@ -153,29 +155,39 @@ describe('Elliptic', function() {
 
         for (let i = 0; i < 2; i++) {
           const ak = new BN(vector.a.k, 16);
-          const ap = curve.g.mul(ak);
+          const g = curve.type === 'mont' ? curve.g.toX() : curve.g;
+          const ap = g.mul(ak);
 
           assert.equal(ap.getX().toString(16), vector.a.x);
-          assert.equal(ap.getY(false).toString(16), vector.a.y);
-          assert(curve.g.mulSimple(ak).eq(ap));
-          assert(curve.g.mulConst(ak).eq(ap));
-          assert(curve.g.mulConst(ak, rng).eq(ap));
+
+          if (curve.type !== 'mont')
+            assert.equal(ap.getY().toString(16), vector.a.y);
+
+          assert(g.mulSimple(ak).eq(ap));
+          assert(g.mulConst(ak).eq(ap));
+          assert(g.mulConst(ak, rng).eq(ap));
 
           const bk = new BN(vector.b.k, 16);
-          const bp = curve.g.mul(bk);
+          const bp = g.mul(bk);
 
           assert.equal(bp.getX().toString(16), vector.b.x);
-          assert.equal(bp.getY(false).toString(16), vector.b.y);
-          assert(curve.g.mulSimple(bk).eq(bp));
-          assert(curve.g.mulConst(bk).eq(bp));
-          assert(curve.g.mulConst(bk, rng).eq(bp));
+
+          if (curve.type !== 'mont')
+            assert.equal(bp.getY().toString(16), vector.b.y);
+
+          assert(g.mulSimple(bk).eq(bp));
+          assert(g.mulConst(bk).eq(bp));
+          assert(g.mulConst(bk, rng).eq(bp));
 
           const p1 = bp.mul(ak);
           const p2 = ap.mul(bk);
 
           assert(p1.eq(p2));
           assert.equal(p1.getX().toString(16), vector.s.x);
-          assert.equal(p1.getY(false).toString(16), vector.s.y);
+
+          if (curve.type !== 'mont')
+            assert.equal(p1.getY().toString(16), vector.s.y);
+
           assert(bp.mulSimple(ak).eq(p1));
           assert(ap.mulSimple(bk).eq(p1));
           assert(ap.mulConst(bk).eq(p1));
@@ -186,7 +198,10 @@ describe('Elliptic', function() {
 
           assert(p3.eq(p4));
           assert.equal(p3.getX().toString(16), vector.s.x);
-          assert.equal(p3.getY(false).toString(16), vector.s.y);
+
+          if (curve.type !== 'mont')
+            assert.equal(p3.getY().toString(16), vector.s.y);
+
           assert(bp.mulSimple(ak).eq(p3));
           assert(ap.mulSimple(bk).eq(p3));
           assert(bp.mulConst(ak).eq(p3));
@@ -194,12 +209,14 @@ describe('Elliptic', function() {
           assert(ap.mulConst(bk).eq(p3));
           assert(ap.mulConst(bk, rng).eq(p3));
 
-          assert(curve.decodePoint(ap.encode()).eq(ap));
-          assert(curve.decodePoint(bp.encode()).eq(bp));
-          assert(curve.decodePoint(p1.encode()).eq(p1));
-          assert(curve.decodePoint(p2.encode()).eq(p2));
-          assert(curve.decodePoint(p3.encode()).eq(p3));
-          assert(curve.decodePoint(p4.encode()).eq(p4));
+          if (curve.type !== 'mont') {
+            assert(curve.decodePoint(ap.encode()).eq(ap));
+            assert(curve.decodePoint(bp.encode()).eq(bp));
+            assert(curve.decodePoint(p1.encode()).eq(p1));
+            assert(curve.decodePoint(p2.encode()).eq(p2));
+            assert(curve.decodePoint(p3.encode()).eq(p3));
+            assert(curve.decodePoint(p4.encode()).eq(p4));
+          }
 
           curve.precompute(rng);
         }
@@ -1045,62 +1062,28 @@ describe('Elliptic', function() {
     it('should twist curve', () => {
       const x25519 = new curves.X25519();
       const ed25519 = new curves.ED25519();
-      const [a, d] = x25519._twist(x25519.one.redNeg());
+      const [a, d] = x25519._twisted(x25519.one.redNeg());
 
       assert(a.eq(ed25519.a));
       assert(d.eq(ed25519.d));
     });
 
-    it('should twist point', () => {
-      const x25519 = new curves.X25519();
-      const p = x25519.randomPoint(rng).mulH();
-      const [u, v] = p.getXY(false);
-      const [x, y, z] = p._twist(false);
-
-      // (u, v) = ((1 + y) / (1 - y), (1 + y) / (1 - y)x)
-      const x0 = x.redMul(z.redInvert());
-      const y0 = y.redMul(z.redInvert());
-      const z0 = x25519.one.clone();
-      const v0 = z0.redAdd(y0).redMul(z0.redSub(y0).redMul(x0).redInvert());
-
-      assert(v0.eq(v));
-
-      const xi = x.redMul(z.redInvert());
-      const zpy = z.redAdd(y);
-      const zmy = z.redSub(y);
-      const u2 = zpy.redMul(xi);
-      const v2 = zpy;
-      const z2 = zmy.redMul(xi);
-
-      assert(u2.redMul(z2.redInvert()).eq(u));
-      assert(v2.redMul(z2.redInvert()).eq(v));
-    });
-
     it('should untwist curve', () => {
       const x25519 = new curves.X25519();
       const ed25519 = new curves.ED25519();
-      const [a, b] = ed25519._untwist(ed25519.one);
+      const [a, b] = ed25519._untwisted(ed25519.one);
 
       assert(a.eq(x25519.a));
       assert(b.eq(x25519.b));
     });
 
-    it('should untwist point', () => {
-      const ed25519 = new curves.ED25519();
-      const p = ed25519.randomPoint(rng).mulH();
-      const [u, v, one] = p._untwist();
+    it('should twist point', () => {
+      const x25519 = new curves.X25519();
+      const p = x25519.randomPoint(rng).mulH();
+      const [x, y, z] = x25519._twist(p);
+      const q = x25519._untwist(x, y, z);
 
-      // (x, y) = (u / v, (u - 1) / (u + 1))
-      const xz = v;
-      const yz = u.redAdd(one);
-      const x = u.redMul(yz);
-      const y = u.redSub(one).redMul(xz);
-      const z = xz.redMul(yz);
-
-      p.normalize();
-
-      assert(y.redMul(z.redInvert()).eq(p.y));
-      assert(x.redMul(z.redInvert()).eq(p.x));
+      assert(q.eq(p));
     });
 
     it('should match multiplications', () => {
@@ -1860,7 +1843,7 @@ describe('Elliptic', function() {
     it('should have basepoint for x25519', () => {
       // https://tools.ietf.org/html/rfc7748#section-4.1
       const x25519 = new curves.X25519();
-      const v = x25519.g.getY(true);
+      const v = x25519.g.toX().toP(true).y;
 
       const e = new BN('20ae19a1 b8a086b4 e01edd2c 7748d14c'
                      + '923d4d7e 6d7c61b2 29e9c5a2 7eced3d9', 16);
@@ -1872,7 +1855,7 @@ describe('Elliptic', function() {
     it('should have basepoint for x448', () => {
       // https://tools.ietf.org/html/rfc7748#section-4.2
       const x448 = new curves.X448();
-      const v = x448.g.getY(false);
+      const v = x448.g.toX().toP(false).y;
 
       const e = new BN('7d235d12 95f5b1f6 6c98ab6e 58326fce'
                      + 'cbae5d34 f55545d0 60f75dc2 8df3f6ed'
@@ -1886,42 +1869,39 @@ describe('Elliptic', function() {
     it('should test birational equivalence (curve25519)', () => {
       const ed25519 = new curves.ED25519();
       const x25519 = new curves.X25519();
-      const edwardsG = ed25519.pointFromMont(x25519.g.randomize(rng), true);
+      const edwardsG = ed25519.pointFromMont(x25519.g);
       const montG = x25519.pointFromEdwards(ed25519.g.randomize(rng));
 
       assert(edwardsG.eq(ed25519.g));
       assert(montG.eq(x25519.g));
-      assert(montG.normalize().y.eq(x25519.g.y));
     });
 
     it('should test 4-isogeny equivalence (curve448)', () => {
       const ed448 = new curves.ED448();
       const x448 = new curves.X448();
-      const edwardsG = ed448.pointFromMont(x448.g.randomize(rng), false);
+      const edwardsG = ed448.pointFromMont(x448.g);
       const montG = x448.pointFromEdwards(ed448.g.randomize(rng));
 
       assert(edwardsG.eq(ed448.g));
       assert(montG.eq(x448.g));
-      assert(montG.normalize().y.eq(x448.g.y));
     });
 
     it('should test birational equivalence (iso-ed448)', () => {
       const ed448 = new extra.ISOED448();
       const x448 = new curves.X448();
-      const edwardsG = ed448.pointFromMont(x448.g.randomize(rng), false);
+      const edwardsG = ed448.pointFromMont(x448.g);
       const montG = x448.pointFromEdwards(ed448.g.randomize(rng));
 
       assert(!ed448.g.hasTorsion());
       assert(edwardsG.eq(ed448.g));
       assert(montG.eq(x448.g));
-      assert(montG.normalize().y.eq(x448.g.y));
 
       const k = ed448.randomScalar(rng);
       const p = ed448.g.mul(k);
-      const q = x448.g.mul(k);
-      const r0 = ed448.pointFromMont(q, false);
-      const r1 = ed448.pointFromMont(q, true);
-      const r2 = x448.pointFromEdwards(p);
+      const q = x448.g.toX().mul(k);
+      const r0 = ed448.pointFromMont(q.toP(false));
+      const r1 = ed448.pointFromMont(q.toP(true));
+      const r2 = x448.pointFromEdwards(p).toX();
 
       assert(r0.eq(p) || r1.eq(p));
       assert(r2.eq(q));
@@ -1939,12 +1919,11 @@ describe('Elliptic', function() {
       const g1 = x448.pointFromEdwards(g0);
 
       // Pass to ed448.
-      const g2 = ed448.pointFromMont(g1, false);
+      const g2 = ed448.pointFromMont(g1);
 
       // Should be the base point.
       assert(g0.eq(iso448.g));
       assert(g1.eq(x448.g));
-      assert(g1.normalize().y.eq(x448.g.y));
       assert(g2.eq(ed448.g));
     });
 
@@ -1955,29 +1934,29 @@ describe('Elliptic', function() {
 
       for (let i = 0; i < 10; i++) {
         const we = wei25519.g.mul(new BN(i));
-        const mo = x25519.g.mul(new BN(i));
+        const mo = x25519.g.toX().mul(new BN(i));
         const ed = ed25519.g.mul(new BN(i));
         const sign = we.isInfinity() ? false : we.y.redIsOdd();
 
         assert(wei25519.pointFromShort(we).eq(we));
-        assert(wei25519.pointFromMont(mo, sign).eq(we));
+        assert(wei25519.pointFromMont(mo.toP(sign)).eq(we));
         assert(wei25519.pointFromEdwards(ed).eq(we));
 
-        assert(x25519.pointFromShort(we).eq(mo));
-        assert(x25519.pointFromMont(mo, ed.x.redIsOdd()).eq(mo));
-        assert(x25519.pointFromEdwards(ed).eq(mo));
+        assert(x25519.pointFromShort(we).toX().eq(mo));
+        assert(x25519.pointFromMont(mo.toP(sign)).toX().eq(mo));
+        assert(x25519.pointFromEdwards(ed).toX().eq(mo));
 
         assert(ed25519.pointFromShort(we).eq(ed));
-        assert(ed25519.pointFromMont(mo, sign).eq(ed));
+        assert(ed25519.pointFromMont(mo.toP(sign)).eq(ed));
         assert(ed25519.pointFromEdwards(ed).eq(ed));
       }
     });
 
     it('should test elligator (exceptional case, r=1)', () => {
       const x448 = new curves.X448();
-      const [p, sign] = x448.pointFromUniform(x448.one);
-      const r = x448.pointToUniform(p, sign);
-      const [q] = x448.pointFromUniform(r);
+      const p = x448.pointFromUniform(x448.one);
+      const r = x448.pointToUniform(p);
+      const q = x448.pointFromUniform(r);
 
       assert(p.validate());
       assert(p.eq(q));
@@ -1996,9 +1975,9 @@ describe('Elliptic', function() {
       const l = curve.one.redSub(e).redMul(curve.a).redMul(i2);
       const x = e.redMul(v).redISub(l);
 
-      const [p, sign] = [curve.point(x), false];
-      const r = curve.pointToUniform(p, sign);
-      const [q] = curve.pointFromUniform(r);
+      const p = curve.pointFromX(x, false);
+      const r = curve.pointToUniform(p);
+      const q = curve.pointFromUniform(r);
 
       assert(p.validate());
       assert(p.eq(q));
@@ -2010,11 +1989,11 @@ describe('Elliptic', function() {
 
       for (const curve of [x25519, x448]) {
         const u1 = curve.randomField(rng);
-        const [p1, sign1] = curve.pointFromUniform(u1);
-        const u2 = curve.pointToUniform(p1, sign1);
-        const [p2, sign2] = curve.pointFromUniform(u2);
-        const u3 = curve.pointToUniform(p2, sign2);
-        const [p3] = curve.pointFromUniform(u3);
+        const p1 = curve.pointFromUniform(u1);
+        const u2 = curve.pointToUniform(p1);
+        const p2 = curve.pointFromUniform(u2);
+        const u3 = curve.pointToUniform(p2);
+        const p3 = curve.pointFromUniform(u3);
 
         assert(p1.validate());
         assert(p1.eq(p2));
@@ -2052,7 +2031,7 @@ describe('Elliptic', function() {
       do {
         u1 = curve.randomField(rng);
         x1 = u1.fromRed().toRed(x.red);
-      } while (x.pointFromUniform(x1)[0].hasTorsion());
+      } while (x.pointFromUniform(x1).toX().hasTorsion());
 
       const p1 = curve.pointFromUniform(x, u1);
       const u2 = curve.pointToUniform(x, p1);
@@ -2176,8 +2155,9 @@ describe('Elliptic', function() {
 
         for (let i = 0; i < 10; i++) {
           const u = rng.randomBytes(size);
-          const p1 = mont.pointFromHash(edwards, u);
-          const p2 = mont.pointFromHash(null, u);
+          const p0 = edwards.pointFromHash(mont, u);
+          const p1 = mont.pointFromEdwards(p0);
+          const p2 = mont.pointFromHash(u);
 
           assert(p1.validate());
           assert(p2.validate());
@@ -2585,26 +2565,29 @@ describe('Elliptic', function() {
     it('should test montgomery multiplication', () => {
       const curve = new curves.X25519();
       const k = curve.randomScalar(rng);
-      const p = curve.g.mul(k);
+      const g = curve.g.toX();
+      const p = g.mul(k);
+      const q = curve.g.mul(k);
 
-      assert(curve.g.mul(k).eq(p));
-      assert(curve.g.mulSimple(k).eq(p));
-      assert(curve.g.mulConst(k).eq(p));
-      assert(curve.g.mulBlind(k).eq(p));
-      assert(curve.g.mulBlind(k, rng).eq(p));
-      assert(curve.g.mulConst(k, rng).eq(p));
+      assert(q.toX().eq(p));
+      assert(g.mul(k).eq(p));
+      assert(g.mulSimple(k).eq(p));
+      assert(g.mulConst(k).eq(p));
+      assert(g.mulBlind(k).eq(p));
+      assert(g.mulBlind(k, rng).eq(p));
+      assert(g.mulConst(k, rng).eq(p));
 
       {
         const m = curve.n.muln(17);
-        const p1 = curve.g.mul(k.mul(m));
-        const p2 = curve.g.mulSimple(k.mul(m));
-        const p3 = curve.g.mulConst(k.mul(m));
-        const p4 = curve.g.mul(k.mul(m).imod(curve.n));
-        const p5 = curve.g.mulSimple(k.mul(m).imod(curve.n));
-        const p6 = curve.g.mulBlind(k.mul(m).imod(curve.n));
-        const p7 = curve.g.mulBlind(k.mul(m).imod(curve.n), rng);
-        const p8 = curve.g.mulConst(k.mul(m).imod(curve.n));
-        const p9 = curve.g.mulConst(k.mul(m).imod(curve.n), rng);
+        const p1 = g.mul(k.mul(m));
+        const p2 = g.mulSimple(k.mul(m));
+        const p3 = g.mulConst(k.mul(m));
+        const p4 = g.mul(k.mul(m).imod(curve.n));
+        const p5 = g.mulSimple(k.mul(m).imod(curve.n));
+        const p6 = g.mulBlind(k.mul(m).imod(curve.n));
+        const p7 = g.mulBlind(k.mul(m).imod(curve.n), rng);
+        const p8 = g.mulConst(k.mul(m).imod(curve.n));
+        const p9 = g.mulConst(k.mul(m).imod(curve.n), rng);
 
         assert(p1.eq(p2));
         assert(p2.eq(p3));
@@ -2616,15 +2599,15 @@ describe('Elliptic', function() {
       }
 
       {
-        const p1 = curve.g.mul(k.neg());
-        const p2 = curve.g.mulSimple(k.neg());
-        const p3 = curve.g.mulConst(k.neg());
-        const p4 = curve.g.mul(k.neg().imod(curve.n));
-        const p5 = curve.g.mulSimple(k.neg().imod(curve.n));
-        const p6 = curve.g.mulBlind(k.neg().imod(curve.n));
-        const p7 = curve.g.mulBlind(k.neg().imod(curve.n), rng);
-        const p8 = curve.g.mulConst(k.neg().imod(curve.n));
-        const p9 = curve.g.mulConst(k.neg().imod(curve.n), rng);
+        const p1 = g.mul(k.neg());
+        const p2 = g.mulSimple(k.neg());
+        const p3 = g.mulConst(k.neg());
+        const p4 = g.mul(k.neg().imod(curve.n));
+        const p5 = g.mulSimple(k.neg().imod(curve.n));
+        const p6 = g.mulBlind(k.neg().imod(curve.n));
+        const p7 = g.mulBlind(k.neg().imod(curve.n), rng);
+        const p8 = g.mulConst(k.neg().imod(curve.n));
+        const p9 = g.mulConst(k.neg().imod(curve.n), rng);
 
         assert(p1.eq(p2));
         assert(p2.eq(p3));
@@ -2639,14 +2622,14 @@ describe('Elliptic', function() {
     it('should test montgomery multiplication and conversion', () => {
       const ed25519 = new curves.ED25519();
       const x25519 = new curves.X25519();
-      const g = x25519.randomPoint(rng);
+      const g = x25519.randomPoint(rng).toX();
       const k = x25519.reduce(x25519.randomScalar(rng));
 
       const p = g.mul(k);
 
-      const eg = ed25519.pointFromMont(g, false);
-      const ep1 = ed25519.pointFromMont(p, false);
-      const ep2 = ed25519.pointFromMont(p, true);
+      const eg = ed25519.pointFromMont(g.toP(false));
+      const ep1 = ed25519.pointFromMont(p.toP(false));
+      const ep2 = ed25519.pointFromMont(p.toP(true));
 
       const ep = eg.mul(k);
 
@@ -2682,6 +2665,22 @@ describe('Elliptic', function() {
 
       for (const curve of [x25519, ed25519]) {
         const p = curve.randomPoint(rng);
+        const x = p.getX();
+
+        assert(p.eqX(x));
+
+        x.iaddn(1);
+
+        assert(!p.eqX(x));
+      }
+    });
+
+    it('should test x equality (xz, edwards)', () => {
+      const x25519 = new curves.X25519();
+      const ed25519 = new curves.ED25519();
+
+      for (const curve of [x25519, ed25519]) {
+        const p = curve.randomPoint(rng).toX();
         const x = p.getX();
         const r = p.randomize(rng);
 
@@ -2739,8 +2738,8 @@ describe('Elliptic', function() {
         for (let i = 0; i < 10; i++) {
           const p = curve.randomPoint(rng);
           const q = p.randomize(rng);
-          const pr = p.toR();
-          const qr = q.toR();
+          const pr = p.toX();
+          const qr = q.toX();
 
           const raw1 = p.encodeX();
           const raw2 = q.encodeX();
@@ -2782,8 +2781,8 @@ describe('Elliptic', function() {
 
     it('should test mont swapping', () => {
       const curve = new curves.X25519();
-      const p1 = curve.randomPoint(rng);
-      const p2 = curve.randomPoint(rng).randomize(rng);
+      const p1 = curve.randomPoint(rng).toX();
+      const p2 = curve.randomPoint(rng).toX().randomize(rng);
       const q1 = p1.clone();
       const q2 = p2.clone();
 
@@ -2926,11 +2925,11 @@ describe('Elliptic', function() {
       // v = sqrt(-a - 2) * u / x
       const v = am2.redSqrt().redMul(u.redMul(p.x.redInvert()));
 
-      const p1 = x25519.g.mulSimple(k.addn(0));
-      const p2 = x25519.g.mulSimple(k.addn(1));
+      const p1 = x25519.g.toX().mulSimple(k.addn(0));
+      const p2 = x25519.g.toX().mulSimple(k.addn(1));
 
       // Returns an affinized X and Y.
-      const [x, y] = x25519.g.randomize(rng).recover(p1, p2, true);
+      const {x, y} = x25519.g.recover(p1, p2);
 
       assert(x.eq(u));
       assert(y.eq(v));
@@ -3089,7 +3088,7 @@ describe('Elliptic', function() {
       let total = 0;
 
       for (const json of small) {
-        const p = curve.pointFromJSON(json);
+        const p = curve.xpoint(new BN(json[0], 16));
 
         if (p.validate()) {
           total += 1;
@@ -3239,7 +3238,7 @@ describe('Elliptic', function() {
       let total = 0;
 
       for (const json of small) {
-        const p = curve.pointFromJSON(json);
+        const p = curve.xpoint(new BN(json[0], 16));
 
         if (p.validate()) {
           total += 1;
@@ -3314,20 +3313,21 @@ describe('Elliptic', function() {
     const makeMontTest = (definition) => {
       return () => {
         const curve = new curves.X25519();
-        const p = curve.pointFromJSON(definition.coords);
+        const p = curve.xpoint(new BN(definition.coords[0], 16));
+        const g = curve.g.toX();
         const scalar = new BN(definition.scalar, 16);
         const encoded = p.encode();
-        const decoded = curve.decodePoint(encoded);
+        const decoded = curve.decodeX(encoded);
 
         assert(decoded.eq(p));
 
         assert.bufferEqual(encoded, definition.encoded);
-        assert.bufferEqual(curve.g.mul(scalar).encode(), encoded);
-        assert.bufferEqual(curve.g.mulSimple(scalar).encode(), encoded);
-        assert.bufferEqual(curve.g.mulConst(scalar).encode(), encoded);
-        assert.bufferEqual(curve.g.mulBlind(scalar).encode(), encoded);
-        assert.bufferEqual(curve.g.mulBlind(scalar, rng).encode(), encoded);
-        assert.bufferEqual(curve.g.mulConst(scalar, rng).encode(), encoded);
+        assert.bufferEqual(g.mul(scalar).encode(), encoded);
+        assert.bufferEqual(g.mulSimple(scalar).encode(), encoded);
+        assert.bufferEqual(g.mulConst(scalar).encode(), encoded);
+        assert.bufferEqual(g.mulBlind(scalar).encode(), encoded);
+        assert.bufferEqual(g.mulBlind(scalar, rng).encode(), encoded);
+        assert.bufferEqual(g.mulConst(scalar, rng).encode(), encoded);
       };
     };
 
