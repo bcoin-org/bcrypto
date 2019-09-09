@@ -274,23 +274,39 @@ bcrypto_ed25519_privkey_convert(
 int
 bcrypto_ed25519_pubkey_convert(
   bcrypto_x25519_pubkey_t out,
+  int *sign,
   const bcrypto_ed25519_pubkey_t pk
 ) {
-  bignum25519 ALIGN(16) x, z;
+  bignum25519 ALIGN(16) u, uz, v, vz, z;
   ge25519 ALIGN(16) p;
 
   if (!ge25519_unpack(&p, pk))
     return 0;
 
-  curve25519_add(x, p.z, p.y);
-  curve25519_sub(z, p.z, p.y);
+  /* u = (1 + y) / (1 - y) */
+  curve25519_add(u, p.z, p.y);
+  curve25519_sub(uz, p.z, p.y);
+
+  /* v = sqrt(-486664) * u / x */
+  curve25519_mul(v, curve25519_sqrt_m486664, u);
+  curve25519_mul(vz, p.x, uz);
+
+  curve25519_mul(u, u, vz);
+  curve25519_mul(v, v, uz);
+  curve25519_mul(z, uz, vz);
 
   if (curve25519_is_zero(z))
     return 0;
 
   curve25519_recip(z, z);
-  curve25519_mul(x, x, z);
-  curve25519_contract(out, x);
+
+  curve25519_mul(u, u, z);
+  curve25519_mul(v, v, z);
+
+  if (sign != NULL)
+    *sign = curve25519_is_odd(v);
+
+  curve25519_contract(out, u);
 
   return 1;
 }
@@ -302,24 +318,32 @@ bcrypto_x25519_pubkey_convert(
   int sign
 ) {
   static const bignum25519 one = {1};
-  bignum25519 ALIGN(16) x, y, z;
+  ge25519 ALIGN(16) p;
+  bignum25519 ALIGN(16) u, v, xz, yz;
 
-  curve25519_expand(x, pk);
+  curve25519_expand(u, pk);
 
-  if (!curve25519_valid_x(x))
+  if (!curve25519_solve_y(v, u))
     return 0;
 
-  curve25519_sub(y, x, one);
-  curve25519_add(z, x, one);
+  curve25519_neg_conditional(v, v, curve25519_is_odd(v) ^ sign);
 
-  if (curve25519_is_zero(z))
+  /* x = sqrt(-486664) * u / v */
+  curve25519_mul(p.x, curve25519_sqrt_m486664, u);
+  curve25519_copy(xz, v);
+
+  /* y = (u - 1) / (u + 1) */
+  curve25519_sub(p.y, u, one);
+  curve25519_add(yz, u, one);
+
+  curve25519_mul(p.x, p.x, yz);
+  curve25519_mul(p.y, p.y, xz);
+  curve25519_mul(p.z, xz, yz);
+
+  if (curve25519_is_zero(p.z))
     return 0;
 
-  curve25519_recip(z, z);
-  curve25519_mul(y, y, z);
-  curve25519_contract(out, y);
-
-  out[31] |= sign << 7;
+  ge25519_pack(out, &p);
 
   return 1;
 }
@@ -795,9 +819,9 @@ bcrypto_ed25519_pubkey_to_uniform(
   unsigned char out[32],
   const bcrypto_ed25519_pubkey_t pub
 ) {
-  int sign = (pub[31] & 0x80) != 0;
+  int sign;
 
-  if (!bcrypto_ed25519_pubkey_convert(out, pub))
+  if (!bcrypto_ed25519_pubkey_convert(out, &sign, pub))
     return 0;
 
   return bcrypto_x25519_pubkey_to_uniform(out, out, sign);
@@ -889,5 +913,5 @@ bcrypto_x25519_pubkey_from_hash(
   if (!bcrypto_ed25519_pubkey_from_hash(out, bytes))
     return 0;
 
-  return bcrypto_ed25519_pubkey_convert(out, out);
+  return bcrypto_ed25519_pubkey_convert(out, NULL, out);
 }

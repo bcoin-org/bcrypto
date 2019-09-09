@@ -544,9 +544,9 @@ describe('Ed25519', function() {
     assert.bufferEqual(aliceSecret, bobSecret);
 
     const secret = aliceSecret;
-    const xsecret = ed25519.publicKeyConvert(secret);
-    const xalicePub = ed25519.publicKeyConvert(alicePub);
-    const xbobPub = ed25519.publicKeyConvert(bobPub);
+    const [xsecret] = ed25519.publicKeyConvert(secret);
+    const [xalicePub] = ed25519.publicKeyConvert(alicePub);
+    const [xbobPub] = ed25519.publicKeyConvert(bobPub);
 
     assert.notBufferEqual(xsecret, secret);
 
@@ -578,8 +578,8 @@ describe('Ed25519', function() {
 
     assert.bufferEqual(aliceSecret, bobSecret);
 
-    const xalicePub = ed25519.publicKeyConvert(alicePub);
-    const xbobPub = ed25519.publicKeyConvert(bobPub);
+    const [xalicePub] = ed25519.publicKeyConvert(alicePub);
+    const [xbobPub] = ed25519.publicKeyConvert(bobPub);
 
     const xaliceSecret = x25519.derive(xbobPub, alicePriv);
     const xbobSecret = x25519.derive(xalicePub, bobPriv);
@@ -604,16 +604,16 @@ describe('Ed25519', function() {
       'hex');
 
     const aliceSecret = ed25519.derive(bobPub, alicePriv);
-    const xaliceSecret = ed25519.publicKeyConvert(aliceSecret);
+    const [xaliceSecret] = ed25519.publicKeyConvert(aliceSecret);
     const bobSecret = ed25519.derive(alicePub, bobPriv);
-    const xbobSecret = ed25519.publicKeyConvert(bobSecret);
+    const [xbobSecret] = ed25519.publicKeyConvert(bobSecret);
 
     assert.notBufferEqual(aliceSecret, xsecret);
     assert.bufferEqual(xaliceSecret, xsecret);
     assert.bufferEqual(xbobSecret, xsecret);
 
-    const xalicePub = ed25519.publicKeyConvert(alicePub);
-    const xbobPub = ed25519.publicKeyConvert(bobPub);
+    const [xalicePub] = ed25519.publicKeyConvert(alicePub);
+    const [xbobPub] = ed25519.publicKeyConvert(bobPub);
 
     const xaliceSecret2 = x25519.derive(xbobPub,
       ed25519.privateKeyConvert(alicePriv));
@@ -862,8 +862,7 @@ describe('Ed25519', function() {
   it('should convert to montgomery and back', () => {
     const secret = ed25519.privateKeyGenerate();
     const pub = ed25519.publicKeyCreate(secret);
-    const sign = (pub[31] & 0x80) !== 0;
-    const xpub = ed25519.publicKeyConvert(pub);
+    const [xpub, sign] = ed25519.publicKeyConvert(pub);
     const pub2 = x25519.publicKeyConvert(xpub, sign);
 
     assert.bufferEqual(pub2, pub);
@@ -920,7 +919,7 @@ describe('Ed25519', function() {
     const p1 = ed25519.publicKeyFromUniform(u1);
 
     assert.bufferEqual(p1,
-      'cc2947ef03b978b3c7b418e2acdf52bc26f51457d7b21730c551bbcf4cb2e27d');
+      'cc2947ef03b978b3c7b418e2acdf52bc26f51457d7b21730c551bbcf4cb2e2fd');
 
     const u2 = ed25519.publicKeyToUniform(p1);
 
@@ -985,10 +984,10 @@ describe('Ed25519', function() {
       'f16082b21fe30308185b9abf6a968fd177d950dbc11278150ae1c584f4604f66',
       '3ca574e0f07775f1ce61dfb3aaff2f080d253701b0e98617600e0b056b573bf1',
       'd88e8ac43439cc47af52ab76575e3d3f2de1a2670ac66ed9cdd219e12def9803',
-      '233febde461178fbd36fc25ed8c796b62bff8da0abdad1a7decefb68f94d986b',
-      'f1a8f5ba88cc36322c05ebb3c16ea24472c88b83436bbbe5fcbd321d91bd9a3f',
+      '233febde461178fbd36fc25ed8c796b62bff8da0abdad1a7decefb68f94d98eb',
+      'f1a8f5ba88cc36322c05ebb3c16ea24472c88b83436bbbe5fcbd321d91bd9abf',
       '11e876de9dda80763d9632e2ac57b1a7e10ed09ff76d58e1adaeea96ae0e2d92',
-      'f39869347e89e1a3dc4962a76895db6ee169cd92d3c506698d642b1942ab5046',
+      'f39869347e89e1a3dc4962a76895db6ee169cd92d3c506698d642b1942ab50c6',
       '879ed3d4d9d1c6bdc0ad1e6b4a22b06f6eff495b487e5a8b31d5ec2215aca1d0'
     ];
 
@@ -1076,16 +1075,17 @@ describe('Ed25519', function() {
     const bytes = SHA512.digest(Buffer.from('turn me into a point'));
     const pub = ed25519.publicKeyFromHash(bytes);
     const point = x25519.publicKeyFromHash(bytes);
-    const sign = (pub[31] & 0x80) !== 0;
 
     assert.bufferEqual(pub,
-      '37e3fe7969358395d6de5062f5a2ae4d80f88331a844bcd2058a1f3e2652e0e6');
+      '37e3fe7969358395d6de5062f5a2ae4d80f88331a844bcd2058a1f3e2652e066');
 
     assert.bufferEqual(point,
       '88ddc62a46c484db54b6d6cb6badb173e0e7d9785385691443233983865acc4d');
 
+    const [point2, sign] = ed25519.publicKeyConvert(pub);
+
     assert.strictEqual(ed25519.publicKeyVerify(pub), true);
-    assert.bufferEqual(ed25519.publicKeyConvert(pub), point);
+    assert.bufferEqual(point2, point);
     assert.bufferEqual(x25519.publicKeyConvert(point, sign), pub);
   });
 
@@ -1094,16 +1094,17 @@ describe('Ed25519', function() {
     const bytes = Buffer.concat([bytes0, bytes0]);
     const pub = ed25519.publicKeyFromHash(bytes);
     const point = x25519.publicKeyFromHash(bytes);
-    const sign = (pub[31] & 0x80) !== 0;
 
     assert.bufferEqual(pub,
-      '5694d147542d2c08657a203cea81c6f0e39caa5219a2eeb0dedc37e59cd31e40');
+      '5694d147542d2c08657a203cea81c6f0e39caa5219a2eeb0dedc37e59cd31ec0');
 
     assert.bufferEqual(point,
       '7b9965e30b586bab509c34d657d8be30fad1b179470f2f70a6c728092e000062');
 
+    const [point2, sign] = ed25519.publicKeyConvert(pub);
+
     assert.strictEqual(ed25519.publicKeyVerify(pub), true);
-    assert.bufferEqual(ed25519.publicKeyConvert(pub), point);
+    assert.bufferEqual(point2, point);
     assert.bufferEqual(x25519.publicKeyConvert(point, sign), pub);
   });
 

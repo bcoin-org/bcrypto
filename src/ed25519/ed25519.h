@@ -98,6 +98,7 @@ bcrypto_ed25519_privkey_convert(
 int
 bcrypto_ed25519_pubkey_convert(
   bcrypto_x25519_pubkey_t out,
+  int *sign,
   const bcrypto_ed25519_pubkey_t pk
 );
 

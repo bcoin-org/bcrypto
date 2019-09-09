@@ -340,13 +340,19 @@ NAN_METHOD(BED448::PublicKeyConvert) {
     return Nan::ThrowRangeError("Invalid public key size.");
 
   uint8_t out[BCRYPTO_X448_PUBLIC_BYTES];
+  int sign;
 
-  if (!bcrypto_curve448_convert_public_key_to_x448(out, pub))
+  if (!bcrypto_curve448_convert_public_key_to_x448(out, &sign, pub))
     return Nan::ThrowError("Could not convert public key.");
 
-  return info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)&out[0],
-                    BCRYPTO_X448_PUBLIC_BYTES).ToLocalChecked());
+  v8::Local<v8::Array> ret = Nan::New<v8::Array>();
+
+  Nan::Set(ret, 0, Nan::CopyBuffer((char *)&out[0],
+                   BCRYPTO_X448_PUBLIC_BYTES).ToLocalChecked());
+
+  Nan::Set(ret, 1, Nan::New<v8::Boolean>((bool)sign));
+
+  return info.GetReturnValue().Set(ret);
 }
 
 NAN_METHOD(BED448::PublicKeyFromUniform) {

@@ -342,8 +342,9 @@ void bcrypto_curve448_scalar_negate(
     const bcrypto_curve448_scalar_t a);
 
 bcrypto_c448_error_t bcrypto_curve448_convert_public_key_to_x448(
-  uint8_t x[BCRYPTO_X_PUBLIC_BYTES],
-  const uint8_t ed[57]
+  uint8_t out[BCRYPTO_X_PUBLIC_BYTES],
+  int *sign,
+  const uint8_t raw[57]
 );
 
 #endif              /* _BCRYPTO_POINT_448_H */

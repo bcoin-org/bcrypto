@@ -18,6 +18,20 @@ static const bignum25519 curve25519_neg1 = {
   0x3ffffff, 0x1ffffff
 };
 
+/* sqrt_atkins(-486664) (odd -- ours) */
+static const bignum25519 curve25519_sqrt_m486664 = {
+  0x0ba81e7, 0x07ed540, 0x0afa672, 0x175a417,
+  0x0e978b0, 0x003b081, 0x27b91fe, 0x12885b0,
+  0x0b9f5ff, 0x1c36448
+};
+
+/* sqrt_neg1(-486664) (even -- spec) */
+static const bignum25519 curve25519_sqrt_m486664_spec = {
+  0x3457e06, 0x1812abf, 0x350598d, 0x08a5be8,
+  0x316874f, 0x1fc4f7e, 0x1846e01, 0x0d77a4f,
+  0x3460a00, 0x03c9bb7
+};
+
 /* out = in */
 DONNA_INLINE static void
 curve25519_copy(bignum25519 out, const bignum25519 in) {

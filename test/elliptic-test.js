@@ -1886,11 +1886,12 @@ describe('Elliptic', function() {
     it('should test birational equivalence (curve25519)', () => {
       const ed25519 = new curves.ED25519();
       const x25519 = new curves.X25519();
-      const edwardsG = ed25519.pointFromMont(x25519.g.randomize(rng), false);
+      const edwardsG = ed25519.pointFromMont(x25519.g.randomize(rng), true);
       const montG = x25519.pointFromEdwards(ed25519.g.randomize(rng));
 
       assert(edwardsG.eq(ed25519.g));
       assert(montG.eq(x25519.g));
+      assert(montG.normalize().y.eq(x25519.g.y));
     });
 
     it('should test 4-isogeny equivalence (curve448)', () => {
@@ -1901,6 +1902,7 @@ describe('Elliptic', function() {
 
       assert(edwardsG.eq(ed448.g));
       assert(montG.eq(x448.g));
+      assert(montG.normalize().y.eq(x448.g.y));
     });
 
     it('should test birational equivalence (iso-ed448)', () => {
@@ -1912,14 +1914,16 @@ describe('Elliptic', function() {
       assert(!ed448.g.hasTorsion());
       assert(edwardsG.eq(ed448.g));
       assert(montG.eq(x448.g));
+      assert(montG.normalize().y.eq(x448.g.y));
 
       const k = ed448.randomScalar(rng);
       const p = ed448.g.mul(k);
       const q = x448.g.mul(k);
-      const r1 = ed448.pointFromMont(q, p.getX().isOdd());
+      const r0 = ed448.pointFromMont(q, false);
+      const r1 = ed448.pointFromMont(q, true);
       const r2 = x448.pointFromEdwards(p);
 
-      assert(r1.eq(p));
+      assert(r0.eq(p) || r1.eq(p));
       assert(r2.eq(q));
     });
 
@@ -1940,6 +1944,7 @@ describe('Elliptic', function() {
       // Should be the base point.
       assert(g0.eq(iso448.g));
       assert(g1.eq(x448.g));
+      assert(g1.normalize().y.eq(x448.g.y));
       assert(g2.eq(ed448.g));
     });
 
@@ -1963,7 +1968,7 @@ describe('Elliptic', function() {
         assert(x25519.pointFromEdwards(ed).eq(mo));
 
         assert(ed25519.pointFromShort(we).eq(ed));
-        assert(ed25519.pointFromMont(mo, ed.x.redIsOdd()).eq(ed));
+        assert(ed25519.pointFromMont(mo, sign).eq(ed));
         assert(ed25519.pointFromEdwards(ed).eq(ed));
       }
     });
@@ -2163,17 +2168,21 @@ describe('Elliptic', function() {
     it('should test elligator hash', () => {
       const ed25519 = new curves.ED25519();
       const x25519 = new curves.X25519();
+      const ed448 = new curves.ED448();
+      const x448 = new curves.X448();
 
-      for (let i = 0; i < 10; i++) {
-        const u = rng.randomBytes(64);
-        const p1 = x25519.pointFromHash(ed25519, u);
-        const p2 = x25519.pointFromHash(null, u);
+      for (const [edwards, mont] of [[ed25519, x25519], [ed448, x448]]) {
+        const size = mont.fieldSize * 2;
 
-        assert(p1.validate());
-        assert(p2.validate());
+        for (let i = 0; i < 10; i++) {
+          const u = rng.randomBytes(size);
+          const p1 = mont.pointFromHash(edwards, u);
+          const p2 = mont.pointFromHash(null, u);
 
-        // Fix me:
-        // assert(p1.eq(p2));
+          assert(p1.validate());
+          assert(p2.validate());
+          assert(p1.eq(p2));
+        }
       }
     });
 

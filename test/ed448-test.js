@@ -495,9 +495,9 @@ describe('Ed448', function() {
     assert.bufferEqual(aliceSecret, bobSecret);
 
     const secret = aliceSecret;
-    const xsecret = ed448.publicKeyConvert(secret);
-    const xalicePub = ed448.publicKeyConvert(alicePub);
-    const xbobPub = ed448.publicKeyConvert(bobPub);
+    const [xsecret] = ed448.publicKeyConvert(secret);
+    const [xalicePub] = ed448.publicKeyConvert(alicePub);
+    const [xbobPub] = ed448.publicKeyConvert(bobPub);
 
     assert.notBufferEqual(xsecret, secret);
 
@@ -529,8 +529,8 @@ describe('Ed448', function() {
 
     assert.bufferEqual(aliceSecret, bobSecret);
 
-    const xalicePub = ed448.publicKeyConvert(alicePub);
-    const xbobPub = ed448.publicKeyConvert(bobPub);
+    const [xalicePub] = ed448.publicKeyConvert(alicePub);
+    const [xbobPub] = ed448.publicKeyConvert(bobPub);
 
     const xaliceSecret = x448.derive(xbobPub, alicePriv);
     const xbobSecret = x448.derive(xalicePub, bobPriv);
@@ -560,12 +560,12 @@ describe('Ed448', function() {
       + '22af3dd09dd0529518b42a3d9655', 'hex');
 
     const secret2 = ed448.derive(pub, priv);
-    const xsecret2 = ed448.publicKeyConvert(secret2);
+    const [xsecret2] = ed448.publicKeyConvert(secret2);
 
     assert.notBufferEqual(secret2, xsecret);
     assert.bufferEqual(xsecret2, xsecret);
 
-    const xpub = ed448.publicKeyConvert(pub);
+    const [xpub] = ed448.publicKeyConvert(pub);
     const xsecret3 = x448.derive(xpub, ed448.privateKeyConvert(priv));
 
     assert.bufferEqual(xsecret3, xsecret);
@@ -713,7 +713,7 @@ describe('Ed448', function() {
       + 'a7f7e789a81e2f539b24c69bdf4f'
       + '4f1cfcb881a5e9205e21ca27ff25', 'hex');
 
-    const xpub2 = ed448.publicKeyConvert(pub);
+    const [xpub2] = ed448.publicKeyConvert(pub);
 
     assert.bufferEqual(xpub2, xpub);
   });
@@ -721,8 +721,7 @@ describe('Ed448', function() {
   it('should convert to montgomery and back', () => {
     const secret = ed448.privateKeyGenerate();
     const pub = ed448.publicKeyCreate(secret);
-    const sign = (pub[56] & 0x80) !== 0;
-    const xpub = ed448.publicKeyConvert(pub);
+    const [xpub, sign] = ed448.publicKeyConvert(pub);
     const pub2 = x448.publicKeyConvert(xpub, sign);
 
     assert.bufferEqual(pub2, pub);
@@ -783,7 +782,7 @@ describe('Ed448', function() {
 
     assert.bufferEqual(p1, ''
       + '133bf6517c0375c17d1e6d6bd715f6d58050bfe3dc571248628a0b19'
-      + '39ac87ac79524363b120b449aa107ab2159476946a584878247bb76c00', 'hex');
+      + '39ac87ac79524363b120b449aa107ab2159476946a584878247bb76c80', 'hex');
 
     const u2 = ed448.publicKeyToUniform(p1);
     const p2 = ed448.publicKeyFromUniform(u2);
@@ -870,33 +869,33 @@ describe('Ed448', function() {
 
     const keys = [
       '7cfd93ce8d09f20277bb196d2e486b34c9d15983781e6b4a9e8855d1',
-      '53a0972c375230d093866882484c14a93c43dc94a7b7ea7aaaebbc3c00',
+      '53a0972c375230d093866882484c14a93c43dc94a7b7ea7aaaebbc3c80',
       '9c2a0dfcbb06a17db17ef60078576210adc7e5d7c5e0c33e7a319005',
       '4960ac8accdd8e46c0dabe8da944ea47c242d46f16b02be08892c4ba00',
       'd88d28b13e0e49068d64eddeb20afdee18e9e8083ded79e0e448217b',
       '141564f26e88a1ade79687c359edadf17d025d5566c63378e1acac6000',
       '2b97d5840c16388921062365d5b5e979bbe4ea91fa5e7492a7474348',
-      '8c5f8475e56a1eeae39b50050d2c1b6dd5109048026d64fdeca2917780',
+      '8c5f8475e56a1eeae39b50050d2c1b6dd5109048026d64fdeca2917700',
       '81cfd3084bcbf0fe79ad5e551b2cdc6a57353d551645f7a90a136492',
-      'ba7e039759c5833524b8f70cc01cda837ea1430cf20c49355d7f082080',
+      'ba7e039759c5833524b8f70cc01cda837ea1430cf20c49355d7f082000',
       '3e14c84c41eaaf8e9cc81f5d874674eed5e3414c2872f94ddaea386c',
-      '002e0ebf95701d78423f3e7255972eaad7776ef00463f8614dc0ea7900',
+      '002e0ebf95701d78423f3e7255972eaad7776ef00463f8614dc0ea7980',
       '8cd399062925cbfd2a48e88fb935f57f73beb25755e70961993438d3',
-      'd63476581b2148909d29baaa5bc2567058ff1f9a83b298c61e65e39c00',
+      'd63476581b2148909d29baaa5bc2567058ff1f9a83b298c61e65e39c80',
       '31253d6e178e6a63383ae0761e4ded962dd98c8e8e975363b825ff22',
-      'b204ec4c23f9bcc932c9866e97969f252fddb61d1362688b9c21ad0680',
+      'b204ec4c23f9bcc932c9866e97969f252fddb61d1362688b9c21ad0600',
       '4290298f541d76507eddf62471ecd434e22814f0b26f7c674f5e35ec',
-      '59ad8dc9c18aab35120b2a64e4eec58d653896e8d9cd3cc8d4bf964e80',
+      '59ad8dc9c18aab35120b2a64e4eec58d653896e8d9cd3cc8d4bf964e00',
       'cfe5f767c5f93343d220b22ccdc741cae1b89691ecf3dcf99648da9c',
-      'a66acb390d86cd7e98d867437f45c41132d7d9435e436b9859f2871b80',
+      'a66acb390d86cd7e98d867437f45c41132d7d9435e436b9859f2871b00',
       'bc44782bbd9ec79df36c1a6c33cd84e54fac5a82ac7ac24577a7ba79',
-      '92f1e7ce34b675a3b67b7e4af53aa78516481a1026f2124853fde67900',
+      '92f1e7ce34b675a3b67b7e4af53aa78516481a1026f2124853fde67980',
       '0eaa3620405f613758498ba6f02117f0d8066db7a910f7f59e17571f',
       '5f5aa3fcc55331dba9a2e59fb9b954e0525ead29c7a24a65b7ef83da80',
       '9d397566a289d82e41ac87ee3f76b0d82f38518894b24650a209c341',
       '7374ce87a35b86fae1ba3d3ce6d0d5eeee4fd3680d51d05a077705e800',
       'a47546f59e9663ae7df06e4f23adc421c29c941ece89c537bfb20260',
-      '44d015b0b83c13a22d3940c4bd3f9ba0ba8192a089f44072d63d583280',
+      '44d015b0b83c13a22d3940c4bd3f9ba0ba8192a089f44072d63d583200',
       'fa4c8a0a3804737c7ddbbf4cbc2b23f3ba4896e28ff8b1f0e3a7a78f',
       '8546464c36c179300c41f4714a4a603ce2be7d10319620a2c3e5b5c180',
       '38a05ed15e3ea2e336cae8518e2bde3b50f1bc27a7f4d6de4799f1ea',
@@ -943,14 +942,14 @@ describe('Ed448', function() {
       'ca44cfdbd581b260432f089e331c98b226542572a2fb98b9c2e60d3f',
       '60f09a5d241c4ef67473a035ec405fd6bcf1decc5336f91f7a404e8f',
       'd33a2e6e0cf6645ece2f6a5343d99d4b811f9c2de3217f99c9cc8011',
-      '1807370cdaa481e7ff59d3324160cf9fb54a9ae63e1f80491d58f71f',
-      '9bfdb68fa2902730966a6ae39a3f9d529b15d4fd8ca8c6f51c2ed2cd',
+      'e127dee81bf8b93a36b1e5fc2de074025faf0a0352f626e838bb8e40',
+      '2ddcfaeec914af640efd0977ba6cfffae23676912a9815449455e210',
       '416c11fb5ad638eb34ac6478bad1d29c49039d680570683f2e6c4179',
       'f5ae015dad92a385c46fa8424c107f7dbe15e7395b5854449beac2a6',
       '8ba4bb6193a1442109f975e6225a8b82ed0c892cd7a1d22ef0a1693a',
       'f53fe066d12576e468b99aea67c11e08810344a56e9bfb964cd7bc47',
-      '0c6ae8a6e3c3fa1ebf35e5001dd21254b02761a37e1811b509246de0',
-      '56acfbd3631b2861262b4ae2514247b3391ebd43ea6ec5b9c2b1e1fc',
+      'df20379c352b1356379f0f5e50b3328a43349936f9f613aa002608f4',
+      'c0f7d2b374c83710bb3f95b696807c7f25d9b56bed9e02e51728da74',
       '7824cef672724f64e706e13169c621e164baee9a9b5b8d1c3934f175',
       'f682fe025437694b33dde63e9309eac430b74addde2aca05d0af3434',
       'bb6ff2caa698b0b8deed1323266fde88218881465f95c2413db88213',
@@ -961,16 +960,16 @@ describe('Ed448', function() {
       '69ac22e3171f1a4231350b65713ef0706c0372a395b01ed4b0a451eb',
       '2c6279d4eb13fd9e8e492c62f6b11750cb8834f364251196c7c61872',
       'd6d13fad7da869ec4de376bd8df68233babf6d7c79cf2a51b8720340',
-      '6dd3c9b274c409947b739afdb9a377e9df356fd666a277401dcd3f0b',
-      '929539a88759c5526a772f0c2647f0e8252732a19ea2e0c0d26c03ce',
+      '36fa4b29106aa3783d37fd43132ac3d0b7fbbf3b64e911fd9957f8e4',
+      '418a5a535d1b0aa0a0812e1019d0792e44ab15baf9aad449c5f6d789',
       'a0793b526f5d4d0fa03338be2838c233660ac6d229f12df3dd48f7ba',
       '6d85ced41a136abcfdef2a7b17480838344d3dc821c8953af2132e51',
-      'b3d3ecd911e3396ce31aa5ffd43720390f6ccb04b3b72246a1ed40b9',
-      '93e1b7b9df161720229f9bb934b929aabbf86674b18ce8a9fc1bda10',
+      '4665284e8bea0fdde5b1d49f4a756c3db9872045e4d48884d0a53170',
+      '95663ba62b83a66525d50c38bddc99d02856d6a038b78468335d1e9d',
       'a19d276542cf2af8db12be3c5ff2fba2869bd03f30a6677fe0c230ae',
       '971245199f9a39130bd404b4817009778a35e761f0462e30800f1be1',
-      '4a1037895017f61457a82e64425f71c2b6d291ed1a777f04c50eefae',
-      'ba501f6657e5e38d2d94cd4c281333f3aa79b98afa2897fa84fd86f1'
+      '45665ebad1d3733e1f0d7ffac7164fa22e08cbc65b3f051f135990cb',
+      '4ed643769e107eb8f1725f9d1f1e078399184f54c4331f966e3aef96'
     ];
 
     const raws2 = [
@@ -1029,19 +1028,20 @@ describe('Ed448', function() {
     const bytes = SHAKE256.digest(Buffer.from('turn me into a point'), 112);
     const pub = ed448.publicKeyFromHash(bytes);
     const point = x448.publicKeyFromHash(bytes);
-    const sign = (pub[56] & 0x80) !== 0;
 
     assert.bufferEqual(pub, ''
-      + 'a5f7d148e75933ec9c99348179d0f105a1bbffb84d2a03313e2724cf'
-      + '3647e1db13c2d6c41be53ffe9e8bf53c4c2e3242ef0066260ec04bf3'
+      + '661a0e31d29cd4a698b7a10821b656a1ec1ac62b95984f073f8ed8a9'
+      + '4585d8ecf770b310bec537e0b9a1096c8c84de51126710646d90262b'
       + '80');
 
     assert.bufferEqual(point, ''
-      + '9f3d68330e24951bdbc200ed6d25ef4e90bc678d68282af081e6204f'
-      + 'c2f36dcc5d6611b41042d708caebbe80724e48d09adb9782a9a2d9ea');
+      + 'bbf9b3970b4f192c2615dd66abbfe4f51b2b695da44d1578389de049'
+      + '043d83433a011ef906f7154c96fefd592d1981283fb99e8925a45f30');
+
+    const [point2, sign] = ed448.publicKeyConvert(pub);
 
     assert.strictEqual(ed448.publicKeyVerify(pub), true);
-    assert.bufferEqual(ed448.publicKeyConvert(pub), point);
+    assert.bufferEqual(point2, point);
     assert.bufferEqual(x448.publicKeyConvert(point, sign), pub);
   });
 
@@ -1050,19 +1050,20 @@ describe('Ed448', function() {
     const bytes = Buffer.concat([bytes0, bytes0]);
     const pub = ed448.publicKeyFromHash(bytes);
     const point = x448.publicKeyFromHash(bytes);
-    const sign = (pub[56] & 0x80) !== 0;
 
     assert.bufferEqual(pub, ''
       + 'e54d0e650d175799577247b7bc9ed88628bc0123a602f9f3f4a8da17'
       + '5e49cbf33912aca9396ded8b88b46807be5325f865587092ef71bc5e'
-      + '00');
+      + '80');
 
     assert.bufferEqual(point, ''
       + '6fee3c18014c2c61dc1bc145c224d2b5c2e48ccbb41e007927d08435'
       + '6dd0a932c189fa810622612d982a0326760c6e74b39866bbd905f9df');
 
+    const [point2, sign] = ed448.publicKeyConvert(pub);
+
     assert.strictEqual(ed448.publicKeyVerify(pub), true);
-    assert.bufferEqual(ed448.publicKeyConvert(pub), point);
+    assert.bufferEqual(point2, point);
     assert.bufferEqual(x448.publicKeyConvert(point, sign), pub);
   });
 

@@ -107,8 +107,8 @@ describe('X448', function() {
     it(`should convert secret: ${expect.toString('hex', 0, 16)}...`, () => {
       const edPub = ed448.publicKeyFromScalar(scalar);
       const edPoint = ed448.deriveWithScalar(edPub, tweak);
-      const pub = ed448.publicKeyConvert(edPub);
-      const result = ed448.publicKeyConvert(edPoint);
+      const [pub] = ed448.publicKeyConvert(edPub);
+      const [result] = ed448.publicKeyConvert(edPoint);
 
       assert.bufferEqual(result, expect);
       assert.bufferEqual(x448.derive(pub, tweak), expect);
@@ -152,8 +152,8 @@ describe('X448', function() {
       const edPub = ed448.publicKeyFromScalar(scalar);
       const tweak = ed448.scalarGenerate();
       const edPoint = ed448.deriveWithScalar(edPub, tweak);
-      const pub = ed448.publicKeyConvert(edPub);
-      const expect = ed448.publicKeyConvert(edPoint);
+      const [pub] = ed448.publicKeyConvert(edPub);
+      const [expect] = ed448.publicKeyConvert(edPoint);
       const result = x448.derive(pub, tweak);
 
       assert.bufferEqual(result, expect);
@@ -239,9 +239,10 @@ describe('X448', function() {
     const priv = x448.privateKeyGenerate();
     const pub = x448.publicKeyCreate(priv);
     const ed = x448.publicKeyConvert(pub, false);
-    const mont = ed448.publicKeyConvert(ed);
+    const [mont, sign] = ed448.publicKeyConvert(ed);
 
     assert.bufferEqual(mont, pub);
+    assert.strictEqual(sign, false);
   });
 
   it('should do elligator2', () => {
@@ -269,8 +270,8 @@ describe('X448', function() {
     const pub = x448.publicKeyFromHash(bytes);
 
     assert.bufferEqual(pub, ''
-      + '9f3d68330e24951bdbc200ed6d25ef4e90bc678d68282af081e6204f'
-      + 'c2f36dcc5d6611b41042d708caebbe80724e48d09adb9782a9a2d9ea');
+      + 'bbf9b3970b4f192c2615dd66abbfe4f51b2b695da44d1578389de049'
+      + '043d83433a011ef906f7154c96fefd592d1981283fb99e8925a45f30');
   });
 
   it('should test random oracle encoding (doubling)', () => {

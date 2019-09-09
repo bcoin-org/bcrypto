@@ -306,7 +306,7 @@ bcrypto_c448_error_t bcrypto_c448_ed448_verify_single(const uint8_t
 bcrypto_c448_error_t
 bcrypto_x448_convert_public_key_to_eddsa(
   uint8_t ed[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
-  const uint8_t x[BCRYPTO_X_PUBLIC_BYTES],
+  const uint8_t raw[BCRYPTO_X_PUBLIC_BYTES],
   int sign
 );
 
