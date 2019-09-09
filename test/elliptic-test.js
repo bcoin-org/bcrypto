@@ -2174,6 +2174,33 @@ describe('Elliptic', function() {
       assert(ecdh.publicKeyVerify(pub));
     });
 
+    it('should do elligator2 with b != 1', () => {
+      const ed25519 = new curves.ED25519();
+      const x25519 = new curves.X25519();
+      const [a, b] = ed25519._untwisted();
+
+      const native = new elliptic.MontCurve({
+        prime: ed25519.prime,
+        p: ed25519.p.toJSON(),
+        a: a.fromRed().toJSON(),
+        b: b.fromRed().toJSON(),
+        n: ed25519.n.toJSON(),
+        h: ed25519.h.toJSON(),
+        z: ed25519.z.fromRed().toJSON()
+      });
+
+      const u0 = ed25519.randomField(rng);
+      const p0 = ed25519.pointFromUniform(native, u0);
+      const p1 = ed25519.pointFromUniform(x25519, u0);
+
+      assert(p0.eq(p1) || p0.eq(p1.neg()));
+
+      const u1 = ed25519.pointToUniform(native, p0);
+      const p2 = ed25519.pointFromUniform(native, u1);
+
+      assert(p2.eq(p0));
+    });
+
     it('should test simple shallue-woestijne-ulas algorithm', () => {
       const curve = new curves.P256();
       const u = curve.randomField(rng);
