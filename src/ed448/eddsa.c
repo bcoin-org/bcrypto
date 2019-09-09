@@ -307,8 +307,11 @@ bcrypto_c448_error_t bcrypto_c448_ed448_public_key_combine(
   bcrypto_curve448_point_t pk1_point, pk2_point;
   size_t i = 1;
 
-  if (length == 0)
-    return BCRYPTO_C448_FAILURE;
+  if (length == 0) {
+    static const uint8_t one[BCRYPTO_EDDSA_448_PUBLIC_BYTES] = {1};
+    memcpy(out, one, sizeof(one));
+    return BCRYPTO_C448_SUCCESS;
+  }
 
   bcrypto_c448_error_t error1 =
     bcrypto_curve448_point_decode_like_eddsa_and_mul_by_ratio(pk1_point, pubkeys[0]);

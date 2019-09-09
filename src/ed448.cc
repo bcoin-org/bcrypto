@@ -627,13 +627,10 @@ NAN_METHOD(BED448::PublicKeyCombine) {
 
   size_t len = (size_t)batch->Length();
 
-  if (len == 0)
-    return Nan::ThrowError("Invalid point.");
-
   bcrypto_c448_ed448_public_key *pubs =
     (bcrypto_c448_ed448_public_key *)malloc(len * sizeof(bcrypto_c448_ed448_public_key));
 
-  if (pubs == NULL)
+  if (pubs == NULL && len != 0)
     return Nan::ThrowError("Allocation failed.");
 
   for (size_t i = 0; i < len; i++) {

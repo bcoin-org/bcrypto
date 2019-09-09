@@ -601,13 +601,10 @@ NAN_METHOD(BED25519::PublicKeyCombine) {
 
   size_t len = (size_t)batch->Length();
 
-  if (len == 0)
-    return Nan::ThrowError("Invalid point.");
-
   bcrypto_ed25519_pubkey_t *pubs =
     (bcrypto_ed25519_pubkey_t *)malloc(len * sizeof(bcrypto_ed25519_pubkey_t));
 
-  if (pubs == NULL)
+  if (pubs == NULL && len != 0)
     return Nan::ThrowError("Allocation failed.");
 
   for (size_t i = 0; i < len; i++) {

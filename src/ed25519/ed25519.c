@@ -607,13 +607,9 @@ bcrypto_ed25519_pubkey_combine(
   ge25519 ALIGN(16) k1, k2;
   size_t i;
 
-  if (length == 0)
-    return 0;
+  ge25519_set_neutral(&k1);
 
-  if (!ge25519_unpack(&k1, pks[0]))
-    return 0;
-
-  for (i = 1; i < length; i++) {
+  for (i = 0; i < length; i++) {
     if (!ge25519_unpack(&k2, pks[i]))
       return 0;
 

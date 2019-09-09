@@ -74,6 +74,8 @@ describe('EdDSA', function() {
           const tweakNeg = curve.scalarNegate(tweak);
           const tweakInv = curve.scalarInvert(tweak);
           const [pubConv2, sign] = curve.publicKeyConvert(pub);
+          const inf = Buffer.alloc(curve.size, 0x00);
+          inf[0] = 0x01;
 
           assert.bufferEqual(curve.publicKeyCreate(priv), pub);
           assert.bufferEqual(curve.publicKeyFromScalar(scalar), pub);
@@ -100,8 +102,9 @@ describe('EdDSA', function() {
           assert.bufferEqual(pubConv2, pubConv);
           assert.bufferEqual(x.publicKeyConvert(pubConv, sign), pub);
 
-          assert.doesNotThrow(() => curve.publicKeyAdd(pub, pubNeg));
-          assert.doesNotThrow(() => curve.publicKeyCombine([pub, pubNeg]));
+          assert.bufferEqual(curve.publicKeyCombine([]), inf);
+          assert.bufferEqual(curve.publicKeyAdd(pub, pubNeg), inf);
+          assert.bufferEqual(curve.publicKeyCombine([pub, pubNeg]), inf);
         });
 
         it(`should reserialize key (${i}) (${curve.id})`, () => {
