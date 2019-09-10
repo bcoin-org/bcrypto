@@ -97,7 +97,7 @@ NAN_METHOD(BX448::PublicKeyFromUniform) {
 
   uint8_t out[BCRYPTO_X448_PUBLIC_BYTES];
 
-  if (bcrypto_x448_public_key_from_uniform(out, data) < 0)
+  if (bcrypto_x448_public_key_from_uniform(out, data, 0) < 0)
     return Nan::ThrowError("Invalid public key.");
 
   return info.GetReturnValue().Set(

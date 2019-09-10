@@ -129,7 +129,7 @@ curve25519_pow_two254m10(bignum25519 out, const bignum25519 z) {
 
 /* From: https://gist.github.com/Yawning/0181098c1119f49b3eb2 */
 static unsigned int
-curve25519_bytes_le(const unsigned char a[32], const unsigned char b[32]) {
+curve25519_bytes_lte(const unsigned char a[32], const unsigned char b[32]) {
   int eq = ~0;
   int lt = 0;
   size_t shift = sizeof(int) * 8 - 1;
@@ -142,7 +142,23 @@ curve25519_bytes_le(const unsigned char a[32], const unsigned char b[32]) {
     eq = eq & (((x ^ y) - 1) >> shift);
   }
 
-  return (~eq & lt) & 1;
+  return (eq | lt) & 1;
+}
+
+static int
+curve25519_is_neg(const bignum25519 a) {
+  unsigned char out[32];
+
+  static const unsigned char fq2[32] = {
+    0xf6, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x3f
+  };
+
+  curve25519_contract(out, a);
+
+  return curve25519_bytes_lte(out, fq2) ^ 1;
 }
 
 static int

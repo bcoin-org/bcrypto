@@ -942,7 +942,7 @@ bcrypto_c448_error_t bcrypto_curve448_convert_public_key_to_x448(
   bcrypto_gf_serialize(out, uu, 1);
 
   if (sign != NULL)
-    *sign = bcrypto_gf_is_odd(vv);
+    *sign = bcrypto_gf_is_odd(vv) != 0;
 
   OPENSSL_cleanse(enc, sizeof(enc));
   OPENSSL_cleanse(x, sizeof(x));
@@ -968,6 +968,7 @@ bcrypto_x448_convert_public_key_to_eddsa(
   int sign
 ) {
   bcrypto_curve448_point_t p;
+  bcrypto_mask_t sgn = (bcrypto_mask_t)sign * -1;
   bcrypto_mask_t ret = -1;
   bcrypto_mask_t inf;
   bcrypto_gf u, v;
@@ -980,7 +981,7 @@ bcrypto_x448_convert_public_key_to_eddsa(
 
   ret &= bcrypto_gf_solve_y(v, u);
 
-  bcrypto_gf_cond_neg(v, (bcrypto_gf_is_odd(v) ^ sign) * -1);
+  bcrypto_gf_cond_neg(v, bcrypto_gf_is_odd(v) ^ sgn);
 
   /*
    * x = 4 * v * (u^2 - 1) / (u^4 - 2 * u^2 + 4 * v^2 + 1)
@@ -1078,9 +1079,10 @@ bcrypto_x448_convert_public_key_to_eddsa(
 bcrypto_c448_error_t
 bcrypto_curve448_public_key_from_uniform(
   uint8_t out[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
-  const unsigned char bytes[56]
+  const unsigned char bytes[56],
+  int spec
 ) {
-  int sign = bcrypto_x448_public_key_from_uniform(out, bytes);
+  int sign = bcrypto_x448_public_key_from_uniform(out, bytes, spec);
 
   if (sign < 0)
     return BCRYPTO_C448_FAILURE;
@@ -1091,14 +1093,15 @@ bcrypto_curve448_public_key_from_uniform(
 int
 bcrypto_x448_public_key_from_uniform(
   uint8_t out[BCRYPTO_X_PUBLIC_BYTES],
-  const unsigned char bytes[56]
+  const unsigned char bytes[56],
+  int spec
 ) {
-  bcrypto_gf u, x1, x2, t;
-  int sign;
-
   static const bcrypto_gf a = {{{156326}}};
+
+  bcrypto_mask_t quad1, quad2, sgn;
+  bcrypto_gf u, x1, x2, y1, y2, t;
+  bcrypto_gf one = {{{1}}};
   bcrypto_gf z = {{{1}}};
-  bcrypto_gf e = {{{1}}};
 
   bcrypto_gf_sub(z, ZERO, z);
 
@@ -1108,7 +1111,7 @@ bcrypto_x448_public_key_from_uniform(
   bcrypto_gf_sqr(x1, u);
   bcrypto_gf_mul(t, x1, z);
   bcrypto_gf_add(x1, t, ONE);
-  bcrypto_gf_cond_swap(x1, e, bcrypto_gf_eq(x1, ZERO));
+  bcrypto_gf_cond_swap(x1, one, bcrypto_gf_eq(x1, ZERO));
   bcrypto_gf_invert(t, x1, 1);
   bcrypto_gf_mul(x1, a, t);
   bcrypto_gf_sub(x1, ZERO, x1);
@@ -1117,19 +1120,38 @@ bcrypto_x448_public_key_from_uniform(
   bcrypto_gf_sub(x2, ZERO, x1);
   bcrypto_gf_sub(x2, x2, a);
 
+  /* compute y coordinate */
+  quad1 = bcrypto_gf_solve_y(y1, x1);
+  quad2 = bcrypto_gf_solve_y(y2, x2);
+
+  /* mathematically impossible */
+  assert((quad1 | quad2) != 0);
+
   /* x = cmov(x1, x2, f(g(x1)) != 1) */
-  bcrypto_gf_cond_swap(x1, x2, ~bcrypto_gf_valid_x(x1));
+  bcrypto_gf_cond_swap(x1, x2, ~quad1);
+  bcrypto_gf_cond_swap(y1, y2, ~quad1);
+
+  /* adjust sign */
+  if (spec) {
+    bcrypto_gf_cond_neg(y1, bcrypto_gf_is_neg(y1) ^ bcrypto_gf_is_neg(u));
+  } else {
+    bcrypto_gf_cond_neg(y1, bcrypto_gf_is_neg(y1));
+    bcrypto_gf_cond_neg(y1, quad1);
+  }
+
   bcrypto_gf_serialize(out, x1, 1);
 
-  sign = bcrypto_gf_is_odd(u);
+  sgn = bcrypto_gf_is_odd(y1);
 
   OPENSSL_cleanse(u, sizeof(u));
   OPENSSL_cleanse(x1, sizeof(x1));
   OPENSSL_cleanse(x2, sizeof(x2));
+  OPENSSL_cleanse(y1, sizeof(y1));
+  OPENSSL_cleanse(y2, sizeof(y2));
   OPENSSL_cleanse(t, sizeof(t));
-  OPENSSL_cleanse(e, sizeof(e));
+  OPENSSL_cleanse(one, sizeof(one));
 
-  return sign;
+  return sgn != 0;
 }
 
 bcrypto_c448_error_t
@@ -1154,21 +1176,11 @@ bcrypto_x448_public_key_to_uniform(
   const uint8_t pub[BCRYPTO_X_PUBLIC_BYTES],
   int sign
 ) {
-  bcrypto_gf x, y, n, d, u, t;
-  bcrypto_mask_t ret = -1;
-  bcrypto_mask_t lt;
-
-  static const unsigned char fq2[56] = {
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-    0xff, 0xff, 0xff, 0x7f, 0xff, 0xff, 0xff, 0xff,
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f
-  };
-
   static const bcrypto_gf a = {{{156326}}};
+
+  bcrypto_mask_t ret = -1;
+  bcrypto_mask_t sgn = (bcrypto_mask_t)sign * -1;
+  bcrypto_gf x, y, n, d, u, t;
   bcrypto_gf z = {{{1}}};
 
   bcrypto_gf_sub(z, ZERO, z);
@@ -1177,22 +1189,17 @@ bcrypto_x448_public_key_to_uniform(
 
   /* recover y */
   ret &= bcrypto_gf_solve_y(y, x);
-  bcrypto_gf_cond_neg(y, (bcrypto_gf_is_odd(y) ^ sign) * -1);
-
-  /* check y < F(q / 2) */
-  bcrypto_gf_serialize(out, y, 1);
-  lt = bcrypto_gf_bytes_le(out, fq2);
+  bcrypto_gf_cond_neg(y, bcrypto_gf_is_odd(y) ^ sgn);
 
   /* u = sqrt(-n / (d * z)) */
   bcrypto_gf_copy(n, x);
   bcrypto_gf_add(d, x, a);
-  bcrypto_gf_cond_swap(n, d, ~lt);
+  bcrypto_gf_cond_swap(n, d, bcrypto_gf_is_neg(y));
   bcrypto_gf_sub(n, ZERO, n);
   bcrypto_gf_mul(t, d, z);
   ret &= bcrypto_gf_isqrt(u, n, t);
 
-  /* adjust sign */
-  bcrypto_gf_cond_neg(u, (bcrypto_gf_is_odd(u) ^ sign) * -1);
+  /* output */
   bcrypto_gf_serialize(out, u, 1);
 
   OPENSSL_cleanse(x, sizeof(x));
@@ -1215,12 +1222,12 @@ bcrypto_curve448_public_key_from_hash(
   bcrypto_c448_error_t error;
   bcrypto_curve448_point_t p1, p2;
 
-  error = bcrypto_curve448_public_key_from_uniform(k1, &bytes[0]);
+  error = bcrypto_curve448_public_key_from_uniform(k1, &bytes[0], 1);
 
   if (error != BCRYPTO_C448_SUCCESS)
     return error;
 
-  error = bcrypto_curve448_public_key_from_uniform(k2, &bytes[56]);
+  error = bcrypto_curve448_public_key_from_uniform(k2, &bytes[56], 1);
 
   if (error != BCRYPTO_C448_SUCCESS)
     return error;

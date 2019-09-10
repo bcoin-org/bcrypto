@@ -2588,6 +2588,30 @@ fail:
   return -2;
 }
 
+static int
+bn_is_neg(const BIGNUM *a, const BIGNUM *n) {
+  BIGNUM *half = BN_new();
+  int cmp = 0;
+
+  if (half == NULL)
+    return 0;
+
+  // half = (n - 1) / 2
+  if (!BN_copy(half, n))
+    goto fail;
+
+  if (!BN_sub_word(half, 1))
+    goto fail;
+
+  if (!BN_rshift1(half, half))
+    goto fail;
+
+  cmp = BN_cmp(a, half) > 0;
+fail:
+  BN_free(half);
+  return cmp;
+}
+
 static EC_POINT *
 bcrypto_ecdsa_icart(bcrypto_ecdsa_t *ec, const BIGNUM *r) {
   BIGNUM *c1 = BN_new();
@@ -2808,7 +2832,7 @@ bcrypto_ecdsa_sswu(bcrypto_ecdsa_t *ec, const BIGNUM *r) {
   F(BN_copy(x, e2 ? x1 : x2));
   F(BN_copy(y2, e2 ? gx1 : gx2));
   F(BN_mod_sqrt(y, y2, ec->p, ec->ctx));
-  e3 = BN_is_odd(y) == BN_is_odd(u);
+  e3 = bn_is_neg(y, ec->p) == bn_is_neg(u, ec->p);
   if (!e3) F(BN_mod_sub(y, ec->p, y, ec->p, ec->ctx));
 
 #undef F
@@ -2992,7 +3016,7 @@ bcrypto_ecdsa_svdw(bcrypto_ecdsa_t *ec, const BIGNUM *r) {
   F(BN_copy(x, e3 ? x : x3));
   F(BN_copy(gx, e3 ? gx : gx3));
   F(BN_mod_sqrt(y, gx, ec->p, ec->ctx));
-  e4 = BN_is_odd(y) == BN_is_odd(u);
+  e4 = bn_is_neg(y, ec->p) == bn_is_neg(u, ec->p);
   if (!e4) F(BN_mod_sub(y, ec->p, y, ec->p, ec->ctx));
 
 #undef F

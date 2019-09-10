@@ -391,17 +391,17 @@ bcrypto_mask_t bcrypto_gf_valid_x(const bcrypto_gf x)
   return ~bcrypto_gf_eq(e, NEG_ONE);
 }
 
-int bcrypto_gf_is_odd(const bcrypto_gf a)
+bcrypto_mask_t bcrypto_gf_is_odd(const bcrypto_gf a)
 {
   bcrypto_gf c;
   bcrypto_gf_copy(c, a);
   bcrypto_gf_strong_reduce(c);
-  return c->limb[0] & 1;
+  return (bcrypto_mask_t)(c->limb[0] & 1) * -1;
 }
 
 /* From: https://gist.github.com/Yawning/0181098c1119f49b3eb2 */
-bcrypto_mask_t bcrypto_gf_bytes_le(const unsigned char a[56],
-                                   const unsigned char b[56])
+bcrypto_mask_t bcrypto_gf_bytes_lte(const unsigned char a[56],
+                                    const unsigned char b[56])
 {
   int eq = ~0;
   int lt = 0;
@@ -415,7 +415,7 @@ bcrypto_mask_t bcrypto_gf_bytes_le(const unsigned char a[56],
     eq = eq & (((x ^ y) - 1) >> shift);
   }
 
-  return (bcrypto_mask_t)((~eq & lt) & 1) * -1;
+  return (bcrypto_mask_t)((eq | lt) & 1) * -1;
 }
 
 bcrypto_mask_t bcrypto_gf_bytes_eq(const unsigned char *a,
@@ -430,4 +430,23 @@ bcrypto_mask_t bcrypto_gf_bytes_eq(const unsigned char *a,
   z = (z - 1) >> (sizeof(unsigned int) * 8 - 1);
 
   return (bcrypto_mask_t)z * -1;
+}
+
+bcrypto_mask_t bcrypto_gf_is_neg(const bcrypto_gf x)
+{
+  unsigned char check[56];
+
+  static const unsigned char fq2[56] = {
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0x7f, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f
+  };
+
+  bcrypto_gf_serialize(check, x, 1);
+
+  return ~bcrypto_gf_bytes_lte(check, fq2);
 }

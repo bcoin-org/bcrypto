@@ -96,7 +96,7 @@ NAN_METHOD(BX25519::PublicKeyFromUniform) {
 
   bcrypto_x25519_pubkey_t out;
 
-  if (bcrypto_x25519_pubkey_from_uniform(out, data) < 0)
+  if (bcrypto_x25519_pubkey_from_uniform(out, data, 0) < 0)
     return Nan::ThrowError("Invalid public key.");
 
   return info.GetReturnValue().Set(

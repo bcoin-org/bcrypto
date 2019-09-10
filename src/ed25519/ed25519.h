@@ -258,13 +258,15 @@ bcrypto_ed25519_sign_tweak_mul(
 int
 bcrypto_ed25519_pubkey_from_uniform(
   bcrypto_ed25519_pubkey_t out,
-  const unsigned char bytes[32]
+  const unsigned char bytes[32],
+  int spec
 );
 
 int
 bcrypto_x25519_pubkey_from_uniform(
   bcrypto_x25519_pubkey_t out,
-  const unsigned char bytes[32]
+  const unsigned char bytes[32],
+  int spec
 );
 
 int

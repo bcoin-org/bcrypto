@@ -313,13 +313,15 @@ bcrypto_x448_convert_public_key_to_eddsa(
 bcrypto_c448_error_t
 bcrypto_curve448_public_key_from_uniform(
   uint8_t out[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
-  const unsigned char bytes[56]
+  const unsigned char bytes[56],
+  int spec
 );
 
 int
 bcrypto_x448_public_key_from_uniform(
   uint8_t out[BCRYPTO_X_PUBLIC_BYTES],
-  const unsigned char bytes[56]
+  const unsigned char bytes[56],
+  int spec
 );
 
 bcrypto_c448_error_t

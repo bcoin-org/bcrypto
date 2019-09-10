@@ -372,7 +372,7 @@ NAN_METHOD(BED448::PublicKeyFromUniform) {
 
   uint8_t out[BCRYPTO_EDDSA_448_PUBLIC_BYTES];
 
-  if (!bcrypto_curve448_public_key_from_uniform(out, data))
+  if (!bcrypto_curve448_public_key_from_uniform(out, data, 0))
     return Nan::ThrowError("Invalid public key.");
 
   return info.GetReturnValue().Set(

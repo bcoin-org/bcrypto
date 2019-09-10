@@ -4,6 +4,7 @@
   Ed25519 reference implementation using Ed25519-donna
 */
 
+#include <assert.h>
 #include "ed25519-donna.h"
 #include "ed25519.h"
 #include "ed25519-randombytes.h"
@@ -767,9 +768,10 @@ bcrypto_ed25519_sign_tweak_mul(
 int
 bcrypto_ed25519_pubkey_from_uniform(
   bcrypto_ed25519_pubkey_t out,
-  const unsigned char bytes[32]
+  const unsigned char bytes[32],
+  int spec
 ) {
-  int sign = bcrypto_x25519_pubkey_from_uniform(out, bytes);
+  int sign = bcrypto_x25519_pubkey_from_uniform(out, bytes, spec);
 
   if (sign < 0)
     return 0;
@@ -780,21 +782,23 @@ bcrypto_ed25519_pubkey_from_uniform(
 int
 bcrypto_x25519_pubkey_from_uniform(
   bcrypto_x25519_pubkey_t out,
-  const unsigned char bytes[32]
+  const unsigned char bytes[32],
+  int spec
 ) {
-  bignum25519 ALIGN(16) u, x1, x2;
+  bignum25519 ALIGN(16) u, x1, x2, y1, y2;
 
   static const bignum25519 z = {2};
   static const bignum25519 a = {486662};
-  bignum25519 e = {1};
+  bignum25519 one = {1};
+  int quad1, quad2;
 
   curve25519_expand(u, bytes);
 
   /* x1 = -a / (1 + z * u^2) */
   curve25519_square(x1, u);
   curve25519_mul(x1, x1, z);
-  curve25519_add(x1, x1, e);
-  curve25519_swap_conditional(x1, e, curve25519_is_zero(x1));
+  curve25519_add(x1, x1, one);
+  curve25519_swap_conditional(x1, one, curve25519_is_zero(x1));
   curve25519_recip(x1, x1);
   curve25519_mul(x1, a, x1);
   curve25519_neg(x1, x1);
@@ -803,11 +807,29 @@ bcrypto_x25519_pubkey_from_uniform(
   curve25519_neg(x2, x1);
   curve25519_sub(x2, x2, a);
 
+  /* compute y coordinate */
+  quad1 = curve25519_solve_y(y1, x1);
+  quad2 = curve25519_solve_y(y2, x2);
+
+  /* mathematically impossible */
+  assert((quad1 | quad2) != 0);
+
   /* x = cmov(x1, x2, f(g(x1)) != 1) */
-  curve25519_swap_conditional(x1, x2, curve25519_valid_x(x1) ^ 1);
+  curve25519_swap_conditional(x1, x2, quad1 ^ 1);
+  curve25519_swap_conditional(y1, y2, quad1 ^ 1);
+
+  /* adjust sign */
+  if (spec) {
+    curve25519_neg_conditional(y1, y1,
+      curve25519_is_neg(y1) ^ curve25519_is_neg(u));
+  } else {
+    curve25519_neg_conditional(y1, y1, curve25519_is_neg(y1));
+    curve25519_neg_conditional(y1, y1, quad1);
+  }
+
   curve25519_contract(out, x1);
 
-  return curve25519_is_odd(u);
+  return curve25519_is_odd(y1);
 }
 
 int
@@ -829,20 +851,12 @@ bcrypto_x25519_pubkey_to_uniform(
   const bcrypto_x25519_pubkey_t pub,
   int sign
 ) {
+  static const bignum25519 z = {2};
+  static const bignum25519 a = {486662};
+
   bignum25519 ALIGN(16) x, y, n, d, u;
   unsigned char bit = 0;
   int ret = 1;
-  int lt;
-
-  static const unsigned char fq2[32] = {
-    0xf6, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x3f
-  };
-
-  static const bignum25519 z = {2};
-  static const bignum25519 a = {486662};
 
   curve25519_expand(x, pub);
 
@@ -850,20 +864,15 @@ bcrypto_x25519_pubkey_to_uniform(
   ret &= curve25519_solve_y(y, x);
   curve25519_neg_conditional(y, y, curve25519_is_odd(y) ^ sign);
 
-  /* check y < F(q / 2) */
-  curve25519_contract(out, y);
-  lt = curve25519_bytes_le(out, fq2);
-
   /* u = sqrt(-n / (d * z)) */
   curve25519_copy(n, x);
   curve25519_add(d, x, a);
-  curve25519_swap_conditional(n, d, lt ^ 1);
+  curve25519_swap_conditional(n, d, curve25519_is_neg(y));
   curve25519_neg(n, n);
   curve25519_mul(d, d, z);
   ret &= curve25519_isqrt(u, n, d);
 
-  /* adjust sign */
-  curve25519_neg_conditional(u, u, curve25519_is_odd(u) ^ sign);
+  /* output */
   curve25519_contract(out, u);
 
   /* randomize the top bit */
@@ -882,10 +891,10 @@ bcrypto_ed25519_pubkey_from_hash(
   bcrypto_ed25519_pubkey_t k1, k2;
   ge25519 ALIGN(16) p1, p2;
 
-  if (!bcrypto_ed25519_pubkey_from_uniform(k1, &bytes[0]))
+  if (!bcrypto_ed25519_pubkey_from_uniform(k1, &bytes[0], 1))
     return 0;
 
-  if (!bcrypto_ed25519_pubkey_from_uniform(k2, &bytes[32]))
+  if (!bcrypto_ed25519_pubkey_from_uniform(k2, &bytes[32], 1))
     return 0;
 
   if (!ge25519_unpack(&p1, k1))

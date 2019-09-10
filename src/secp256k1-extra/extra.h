@@ -4,6 +4,43 @@
  * file COPYING or http://www.opensource.org/licenses/mit-license.php.*
  **********************************************************************/
 
+static const unsigned char fq2[32] = {
+    0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0x7f, 0xff, 0xfe, 0x17
+};
+
+/* From: https://gist.github.com/Yawning/0181098c1119f49b3eb2 */
+static unsigned int secp256k1_bytes_lte(const unsigned char a[32], const unsigned char b[32]) {
+    int eq = ~0;
+    int lt = 0;
+    size_t shift = sizeof(int) * 8 - 1;
+    int i;
+
+    for (i = 0; i < 32; i++) {
+        int x = (int)a[i];
+        int y = (int)b[i];
+
+        lt = (~eq & lt) | (eq & ((x - y) >> shift));
+        eq = eq & (((x ^ y) - 1) >> shift);
+    }
+
+    return (eq | lt) & 1;
+}
+
+static int secp256k1_fe_is_neg(const secp256k1_fe* fe) {
+    unsigned char check[32];
+    secp256k1_fe u;
+
+    secp256k1_fe_cmov(&u, fe, 1);
+    secp256k1_fe_normalize(&u);
+    secp256k1_fe_get_b32(check, &u);
+    secp256k1_fe_clear(&u);
+
+    return secp256k1_bytes_lte(check, fq2) ^ 1;
+}
+
 static void shallue_van_de_woestijne(secp256k1_ge* ge, const secp256k1_fe* t) {
     /* Implements the algorithm from:
      *    Indifferentiable Hashing to Barreto-Naehrig Curves
@@ -94,7 +131,7 @@ static void shallue_van_de_woestijne(secp256k1_ge* ge, const secp256k1_fe* t) {
      * as long as negation of t results in negation of the y coordinate. Here
      * we choose to use t's oddness, as it is faster to determine. */
     secp256k1_fe_negate(&tmp, &ge->y, 1);
-    secp256k1_fe_cmov(&ge->y, &tmp, secp256k1_fe_is_odd(t) ^ secp256k1_fe_is_odd(&ge->y));
+    secp256k1_fe_cmov(&ge->y, &tmp, secp256k1_fe_is_neg(&ge->y) ^ secp256k1_fe_is_neg(t));
 }
 
 static void secp256k1_pubkey_store(secp256k1_pubkey* pubkey, secp256k1_ge* ge) {
@@ -129,7 +166,7 @@ static int secp256k1_pubkey_from_hash(secp256k1_pubkey* pubkey, const unsigned c
     secp256k1_gej r, j;
     secp256k1_ge ge1, ge2;
     secp256k1_fe t1, t2;
-    int ret = 1;
+    int ret;
 
     secp256k1_fe_set_b32(&t1, bytes);
     secp256k1_fe_set_b32(&t2, bytes + 32);
@@ -141,7 +178,7 @@ static int secp256k1_pubkey_from_hash(secp256k1_pubkey* pubkey, const unsigned c
     secp256k1_gej_add_ge(&r, &j, &ge2);
     secp256k1_ge_set_gej(&ge1, &r);
 
-    ret &= secp256k1_ge_is_infinity(&ge1) ^ 1;
+    ret = !secp256k1_ge_is_infinity(&ge1);
 
     if (ret)
       secp256k1_pubkey_store(pubkey, &ge1);

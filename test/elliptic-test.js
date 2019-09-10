@@ -2253,8 +2253,11 @@ describe('Elliptic', function() {
         const beta = curve.solveY2(x2).redLegendre();
         const i = mod((alpha - 1) * beta, 3);
         const x = [x1, x2, x3][i];
+        const y = curve.solveY(x);
 
-        return curve.pointFromX(x, t.redIsOdd());
+        y.cinject(y.redNeg(), y.redIsNeg() ^ t.redIsNeg());
+
+        return curve.point(x, y);
       };
 
       assert(p.validate());
