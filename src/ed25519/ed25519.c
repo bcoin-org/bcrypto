@@ -285,6 +285,9 @@ bcrypto_ed25519_pubkey_convert(
   /* decode */
   ret &= ge25519_unpack(&p, pk);
 
+  /* infinity does not exist in the mont affine space */
+  ret &= ge25519_is_neutral(&p) ^ 1;
+
   /* u = (1 + y) / (1 - y) */
   curve25519_add(u, p.z, p.y);
   curve25519_sub(uz, p.z, p.y);
@@ -297,9 +300,7 @@ bcrypto_ed25519_pubkey_convert(
   curve25519_mul(v, v, uz);
   curve25519_mul(z, uz, vz);
 
-  /* exceptional case */
-  ret &= curve25519_is_zero(z) ^ 1;
-
+  /* note that (0, -1) will be mapped to (0, 0) */
   curve25519_recip(z, z);
   curve25519_mul(u, u, z);
   curve25519_mul(v, v, z);
@@ -318,8 +319,8 @@ bcrypto_x25519_pubkey_convert(
   const bcrypto_x25519_pubkey_t pk,
   int sign
 ) {
-  static const bignum25519 one = {1};
-  ge25519 ALIGN(16) p, o;
+  bignum25519 one = {1};
+  ge25519 ALIGN(16) p;
   bignum25519 ALIGN(16) u, v, xz, yz;
   int ret;
 
@@ -336,13 +337,12 @@ bcrypto_x25519_pubkey_convert(
   curve25519_sub(p.y, u, one);
   curve25519_add(yz, u, one);
 
+  /* ensure that (0, 0) will be mapped to (0, -1) */
+  curve25519_swap_conditional(xz, one, curve25519_is_zero(u));
+
   curve25519_mul(p.x, p.x, yz);
   curve25519_mul(p.y, p.y, xz);
   curve25519_mul(p.z, xz, yz);
-
-  /* exceptional case */
-  ge25519_set_neutral(&o);
-  ge25519_swap_conditional(&p, &o, curve25519_is_zero(p.z));
 
   ge25519_pack(out, &p);
 

@@ -1108,6 +1108,20 @@ describe('Ed25519', function() {
     assert.bufferEqual(x25519.publicKeyConvert(point, sign), pub);
   });
 
+  it('should test equivalence edge cases', () => {
+    const inf = ed25519.publicKeyCombine([]);
+    const x = Buffer.alloc(32, 0x00);
+    const e = Buffer.from('ecffffffffffffffffffffffffffffff'
+                        + 'ffffffffffffffffffffffffffffff7f', 'hex');
+
+    const [key, sign] = ed25519.publicKeyConvert(e);
+
+    assert.bufferEqual(key, x);
+    assert.strictEqual(sign, false);
+    assert.bufferEqual(x25519.publicKeyConvert(key, sign), e);
+    assert.throws(() => ed25519.publicKeyConvert(inf));
+  });
+
   describe('ed25519 derivations', () => {
     for (const [i, test] of derivations.entries()) {
       it(`should compute correct a and A for secret #${i}`, () => {

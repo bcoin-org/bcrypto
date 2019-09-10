@@ -920,6 +920,9 @@ bcrypto_c448_error_t bcrypto_curve448_convert_public_key_to_x448(
    * v = (2 - x^2 - y^2) * y / x^3
    */
 
+  /* infinity does not exist in the mont affine space */
+  ret &= ~(bcrypto_gf_eq(x, ZERO) & bcrypto_gf_eq(y, ONE));
+
   bcrypto_gf_sqr(uu, y);
   bcrypto_gf_sqr(uz, x);
   bcrypto_gf_sub(vv, two, uz);
@@ -932,10 +935,8 @@ bcrypto_c448_error_t bcrypto_curve448_convert_public_key_to_x448(
   bcrypto_gf_mul(v, vv, uz);
   bcrypto_gf_mul(z, uz, vz);
 
+  /* note that (0, -1) will be mapped to (0, 0) */
   bcrypto_gf_invert(z, z, 0);
-
-  ret &= ~bcrypto_gf_eq(z, ZERO);
-
   bcrypto_gf_mul(uu, u, z);
   bcrypto_gf_mul(vv, v, z);
 
@@ -1026,10 +1027,12 @@ bcrypto_x448_convert_public_key_to_eddsa(
   bcrypto_gf_mul(p->y, yy, xz);
   bcrypto_gf_mul(p->z, xz, yz);
 
-  /* exceptional case */
+  /* ensure that (0, 0) will be mapped to (0, -1) */
+  /* this is then normalized to infinity */
   inf = bcrypto_gf_eq(p->z, ZERO);
   bcrypto_gf_cond_sel(p->x, p->x, ZERO, inf);
   bcrypto_gf_cond_sel(p->y, p->y, ONE, inf);
+  bcrypto_gf_cond_neg(p->y, inf);
   bcrypto_gf_cond_sel(p->z, p->z, ONE, inf);
 
   /* 4-isogeny 2xy/(y^2-ax^2), (y^2+ax^2)/(2-y^2-ax^2) */

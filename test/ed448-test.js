@@ -1067,6 +1067,22 @@ describe('Ed448', function() {
     assert.bufferEqual(x448.publicKeyConvert(point, sign), pub);
   });
 
+  it('should test equivalence edge cases', () => {
+    const inf = ed448.publicKeyCombine([]);
+    const x = Buffer.alloc(56, 0x00);
+    const e = Buffer.from('feffffffffffffffffffffffffff'
+                        + 'ffffffffffffffffffffffffffff'
+                        + 'feffffffffffffffffffffffffff'
+                        + 'ffffffffffffffffffffffffffff00', 'hex');
+
+    const [key, sign] = ed448.publicKeyConvert(e);
+
+    assert.bufferEqual(key, x);
+    assert.strictEqual(sign, false);
+    assert.bufferEqual(x448.publicKeyConvert(key, sign), inf);
+    assert.throws(() => ed448.publicKeyConvert(inf));
+  });
+
   describe('RFC 8032 vectors', () => {
     const batch = [];
 
