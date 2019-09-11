@@ -2689,41 +2689,6 @@ describe('Elliptic', function() {
       }
     });
 
-    it('should test x equality (mont, edwards)', () => {
-      const x25519 = new curves.X25519();
-      const ed25519 = new curves.ED25519();
-
-      for (const curve of [x25519, ed25519]) {
-        const p = curve.randomPoint(rng);
-        const x = p.getX();
-
-        assert(p.eqX(x));
-
-        x.iaddn(1);
-
-        assert(!p.eqX(x));
-      }
-    });
-
-    it('should test x equality (xz, edwards)', () => {
-      const x25519 = new curves.X25519();
-      const ed25519 = new curves.ED25519();
-
-      for (const curve of [x25519, ed25519]) {
-        const p = curve.randomPoint(rng).toX();
-        const x = p.getX();
-        const r = p.randomize(rng);
-
-        assert(p.eqX(x));
-        assert(r.eqX(x));
-
-        x.iaddn(1);
-
-        assert(!p.eqX(x));
-        assert(!r.eqX(x));
-      }
-    });
-
     it('should test fuzzy x equality', () => {
       const secp256k1 = new curves.SECP256K1();
       const p256 = new curves.P256();
@@ -2848,18 +2813,15 @@ describe('Elliptic', function() {
     });
 
     it('should test quad y', () => {
-      const secp256k1 = new curves.SECP256K1();
-      const ed25519 = new curves.ED25519();
+      const curve = new curves.SECP256K1();
 
-      for (const curve of [secp256k1, ed25519]) {
-        for (let i = 0; i < 100; i++) {
-          const p = curve.randomPoint(rng);
-          const q = p.normalize().y.redJacobi() === 1;
-          const r = p.randomize(rng);
+      for (let i = 0; i < 100; i++) {
+        const p = curve.randomPoint(rng);
+        const q = p.normalize().y.redJacobi() === 1;
+        const r = p.randomize(rng);
 
-          assert.strictEqual(p.hasQuadY(), q);
-          assert.strictEqual(r.hasQuadY(), q);
-        }
+        assert.strictEqual(p.hasQuadY(), q);
+        assert.strictEqual(r.hasQuadY(), q);
       }
     });
 
