@@ -2753,7 +2753,7 @@ describe('Elliptic', function() {
       const ed25519 = new curves.ED25519();
 
       for (const curve of [secp256k1, ed25519]) {
-        const p1 = curve.randomPoint(rng).toJ();
+        const p1 = curve.randomPoint(rng).toJ().normalize();
         const p2 = curve.randomPoint(rng).randomize(rng);
         const q1 = p1.clone();
         const q2 = p2.clone();
