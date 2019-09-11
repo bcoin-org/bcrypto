@@ -993,7 +993,7 @@ bcrypto_x448_convert_public_key_to_eddsa(
   bcrypto_gf_sqr(u2, u);
   bcrypto_gf_mul(u3, u2, u);
   bcrypto_gf_mul(u4, u3, u);
-  bcrypto_gf_mul(u5, u3, u2);
+  bcrypto_gf_mul(u5, u4, u);
   bcrypto_gf_sqr(v2, v);
 
   bcrypto_gf_mulw(a, v, 4);
