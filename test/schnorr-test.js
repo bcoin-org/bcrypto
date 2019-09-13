@@ -5,7 +5,7 @@ const schnorr = require('../lib/js/schnorr');
 const rng = require('../lib/random');
 const vectors = require('./data/schnorr.json');
 
-describe('Secp256k1+Schnorr', function() {
+describe('Schnorr', function() {
   const valid = [];
   const invalid = [];
 
