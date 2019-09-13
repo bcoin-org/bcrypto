@@ -41,5 +41,5 @@ for (let i = 0; i < 256; i++) {
   ]);
 }
 
-fs.writeFileSync(`${__dirname}/../data/schnorr-custom.json`,
+fs.writeFileSync(`${__dirname}/../data/schnorr-legacy-custom.json`,
   JSON.stringify(vectors, null, 2) + '\n');

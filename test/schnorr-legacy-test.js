@@ -7,8 +7,8 @@ const p256 = require('../lib/p256');
 const p384 = require('../lib/p384');
 const p521 = require('../lib/p521');
 const secp256k1 = require('../lib/secp256k1');
-const vectors = require('./data/schnorr.json');
-const custom = require('./data/schnorr-custom.json');
+const vectors = require('./data/schnorr-legacy.json');
+const custom = require('./data/schnorr-legacy-custom.json');
 
 // To test openssl schnorr:
 // const ECDSA = require('../lib/native/ecdsa');
