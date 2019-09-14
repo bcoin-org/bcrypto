@@ -2915,7 +2915,7 @@ describe('Elliptic', function() {
       const u = p.z.redAdd(p.y).redMul(p.z.redSub(p.y).redInvert());
 
       // v = sqrt(-a - 2) * u / x
-      const v = am2.redSqrt().redMul(u.redMul(p.x.redInvert()));
+      const v = am2.redSqrt().redINeg().redMul(u.redMul(p.x.redInvert()));
 
       const p1 = x25519.g.toX().mulSimple(k.addn(0));
       const p2 = x25519.g.toX().mulSimple(k.addn(1));
