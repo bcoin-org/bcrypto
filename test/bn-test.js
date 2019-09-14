@@ -5968,6 +5968,62 @@ describe('BN.js', function() {
       assert.strictEqual(s.sqr().mod(p).toString(), R.toString());
     });
 
+    it('should calculate sqrt (p = 5 mod 8)', () => {
+      const primes = [];
+      const squares = [];
+
+      for (let i = 0; i < 10; i++) {
+        let p;
+
+        for (;;) {
+          p = BN.randomBits(rng, 128);
+
+          if (p.andln(7) !== 5)
+            continue;
+
+          if (p.isPrime(rng, 20))
+            break;
+        }
+
+        primes.push(p);
+      }
+
+      for (let i = 0; i < 10; i++) {
+        const p = primes[i];
+        const items = [];
+
+        for (let j = 0; j < 10; j++) {
+          let x;
+
+          for (;;) {
+            x = BN.random(rng, 1, p);
+
+            if (x.jacobi(p) === 1)
+              break;
+          }
+
+          items.push(x);
+        }
+
+        squares.push(items);
+      }
+
+      for (let i = 0; i < 10; i++) {
+        const p = primes[i];
+        const items = squares[i];
+        const red = BN.red(p).precompute();
+
+        assert(red.sm1 != null);
+
+        for (let j = 0; j < 10; j++) {
+          const x = items[i].toRed(red);
+          const r = x.redSqrt();
+
+          assert(r.redSqr().eq(x));
+        }
+      }
+    });
+
     it('should compute sqrtm (p25519, zero)', () => {
       const p = P25519;
       const s1 = p.sqrtm(p);
