@@ -495,9 +495,9 @@ describe('Ed448', function() {
     assert.bufferEqual(aliceSecret, bobSecret);
 
     const secret = aliceSecret;
-    const [xsecret] = ed448.publicKeyConvert(secret);
-    const [xalicePub] = ed448.publicKeyConvert(alicePub);
-    const [xbobPub] = ed448.publicKeyConvert(bobPub);
+    const xsecret = ed448.publicKeyConvert(secret);
+    const xalicePub = ed448.publicKeyConvert(alicePub);
+    const xbobPub = ed448.publicKeyConvert(bobPub);
 
     assert.notBufferEqual(xsecret, secret);
 
@@ -529,8 +529,8 @@ describe('Ed448', function() {
 
     assert.bufferEqual(aliceSecret, bobSecret);
 
-    const [xalicePub] = ed448.publicKeyConvert(alicePub);
-    const [xbobPub] = ed448.publicKeyConvert(bobPub);
+    const xalicePub = ed448.publicKeyConvert(alicePub);
+    const xbobPub = ed448.publicKeyConvert(bobPub);
 
     const xaliceSecret = x448.derive(xbobPub, alicePriv);
     const xbobSecret = x448.derive(xalicePub, bobPriv);
@@ -560,12 +560,12 @@ describe('Ed448', function() {
       + '22af3dd09dd0529518b42a3d9655', 'hex');
 
     const secret2 = ed448.derive(pub, priv);
-    const [xsecret2] = ed448.publicKeyConvert(secret2);
+    const xsecret2 = ed448.publicKeyConvert(secret2);
 
     assert.notBufferEqual(secret2, xsecret);
     assert.bufferEqual(xsecret2, xsecret);
 
-    const [xpub] = ed448.publicKeyConvert(pub);
+    const xpub = ed448.publicKeyConvert(pub);
     const xsecret3 = x448.derive(xpub, ed448.privateKeyConvert(priv));
 
     assert.bufferEqual(xsecret3, xsecret);
@@ -713,7 +713,7 @@ describe('Ed448', function() {
       + 'a7f7e789a81e2f539b24c69bdf4f'
       + '4f1cfcb881a5e9205e21ca27ff25', 'hex');
 
-    const [xpub2] = ed448.publicKeyConvert(pub);
+    const xpub2 = ed448.publicKeyConvert(pub);
 
     assert.bufferEqual(xpub2, xpub);
   });
@@ -721,7 +721,8 @@ describe('Ed448', function() {
   it('should convert to montgomery and back', () => {
     const secret = ed448.privateKeyGenerate();
     const pub = ed448.publicKeyCreate(secret);
-    const [xpub, sign] = ed448.publicKeyConvert(pub);
+    const sign = (pub[56] & 0x80) !== 0;
+    const xpub = ed448.publicKeyConvert(pub);
     const pub2 = x448.publicKeyConvert(xpub, sign);
 
     assert.bufferEqual(pub2, pub);
@@ -804,9 +805,9 @@ describe('Ed448', function() {
       + '6bd0c1ee9599249bff3276e2a8279bea5e62e47f6507656826fe0182'
       + '3a0580129b6df46dabe81c7559a7028344b50da7682423586d6e80dd');
 
-    const u2 = x448.publicKeyToUniform(p1, false);
+    const u2 = x448.publicKeyToUniform(p1);
     const p2 = x448.publicKeyFromUniform(u2);
-    const u3 = x448.publicKeyToUniform(p2, false);
+    const u3 = x448.publicKeyToUniform(p2);
     const p3 = x448.publicKeyFromUniform(u3);
 
     assert.bufferEqual(p1, p2);
@@ -822,9 +823,9 @@ describe('Ed448', function() {
 
     assert.bufferEqual(p1, Buffer.alloc(56, 0x00));
 
-    const u2 = x448.publicKeyToUniform(p1, false);
+    const u2 = x448.publicKeyToUniform(p1);
     const p2 = x448.publicKeyFromUniform(u2);
-    const u3 = x448.publicKeyToUniform(p2, false);
+    const u3 = x448.publicKeyToUniform(p2);
     const p3 = x448.publicKeyFromUniform(u3);
 
     assert.bufferEqual(p1, p2);
@@ -977,34 +978,34 @@ describe('Ed448', function() {
       '1a246a95c5ca46b975dd777bd21dca1cc35fa73baade6811bc611826',
       'd9b76081129974727f97d80278e6ed478a0ba642d6dfab0b29a901cb',
       '6f2faa49df16e9ddadf86415a9466a2252eaa23a5e9ccf517f7af89b',
-      'f35f739a82d3523d7099b82f8b0c50e45dfb4ae2746077bb420a3b1f',
-      'bac63ba0b59483c4426ffd0e40cc578072f3c8f368b87046bcf7ff0a',
-      '3d0b810a90fcb616b18971732aba5d821043d409289e2acfd1bab084',
-      '135431af7e27fd62a164f0f427b19effdc4b0145ee54c8b68b9dcfdf',
+      '7fdfb9b96e84b887e40022f6a500b7e322c8bc64a279b2838bf2d83b',
+      '4028f303b6c7e8cff35bc42fbbc49eb7ee4c5c9f55c61246cf8de873',
+      'be93ee04a529c714cb539b87452e2d63b6fc6297fa8f97c0d193be86',
+      '0951fea2526d5c7a3b9057bdb3ef808241ea18c6a4a7abbb64153d59',
       '63e46333340f7e2366f2a06812d5f8e41e12edf9c5690bf4ab4b1532',
       'd881eff29cbb03c69d76aeab2dca00cc3cb5c3d0cfc8db2295d25c4f',
-      'c45c5a4cadd17cb6ba86ceacd547c846e6fec8d9089a7bfe3b413821',
-      'f4eb7469ea9138125112f42a6caa24d0adc2458ce4957c80c959e0ca',
-      '87db31098d8db09b18f91ece9639de1e9b45116564a472e3c6cb0e8a',
-      '087d01fdabc896b4cc2219c16cf6153bcf48b52221d535fa2f50cbcb',
+      'b320db469edfd989c45e35d8a33b4232b74d6659f61967fc26bb7aef',
+      '18909402c17f25683e7b0cdb03fb17c15df28441e3a973f7388a7906',
+      '8f35224b5fca037eaad767ece5996afb2d1364ffe8933376e70a9821',
+      '6ae05e18041b4f3c6998462ebc8a04b18bcb5c5da5013f12697c3ea1',
       'ae6ae0ba1e38e3c91e08031a0188d00152919f44b09d9a8841f35f12',
       '6eda361668afac3d50c24b97414c8fcb2670dfe67ca806496005bfea',
-      '8373639c433be7155a3d8bd24ab5b4ba229c64f917130903ec5d3543',
-      '2ba60281cfbf76a9f93a95786e95e0e53f9846dda8786d2b4f562fc4',
-      'b96c98439333ca853e903e4aa34792283201d1d3669ff3b2bcc1e6fa',
-      '4348feec7a9874d51cb0edd298b24ba1be397ab534e54686270bc8af',
-      '185689d18ece3930d9797368342a4891c021fa542a1c4dc30c7ffe8b',
-      '74311d492d40344ff3acb86f1a56713ab495bd7cedef738fa4fb39e2',
-      'e7f63ccf1e24e55c6669b5da291b194e548f53a99ec1ce1eac8af3c2',
-      '111aca0d4b9e2a61d22889eb14a6c15ec6f0c1d04ba38afd090b148b',
+      '27d6eb515b9ed0a9ffc6b51c1c4f8ec8bc69fca5f9619e3d6205340f',
+      '7469f4ac1d68e643f9d4689866120e14a1f4d87ec9ded25ddde4cef7',
+      '0b1d446c9d0f5a06130000bdf97a264cc001275afedb95a88298bf67',
+      '8a5f39aa192dcbc1ec40e79e540ed031bbd701d23c0909d451079419',
+      'da4ac444454227ff96e570bd5d5daa9f942f7eb3c30bf23c0f696d50',
+      'f76982e0e1c97e03c30c192b2cb09162db445793a8d894f33d618741',
+      '488b2f046f11609be959fa938972ae1c707cb39e8df9843fc1b6122b',
+      '7a585b6cd4b596b6f52710805e69bc5f3434a28652fee79c9ce066ba',
       'a0793b526f5d4d0fa03338be2838c233660ac6d229f12df3dd48f7ba',
       '6d85ced41a136abcfdef2a7b17480838344d3dc821c8953af2132e51',
       'd2b60a16bfe2f0839af12a142fc9f2e8ddf8d7fa75fab53ce7d92323',
       'f07a576a7a270efcb10dd35433360e8d2408582bd53d06955aaf85a2',
       'a0755dd8e1754c018e09ab788fdb5002457a6618141eb6549819774e',
       '5488b381595654f0bc08804f65c3ebb1ea0dcd1713d5d8769e4be6ec',
-      'a2677cded2eae650f80fd9701ef6aa2c99823c7571f7985dc101258a',
-      '2527aec7e97f426ba04c920056ca44bbd3afb71afc7cb8c952cfd0ed'
+      'e3f04214d839b22253ae4a93d4c5cc3fd4be31d0c4f2cb8cbd10003f',
+      '58c5e8cf83e7cfc14b717f1fa4b4cda98682672b1f8f73ab0eb5dc50'
     ];
 
     for (let i = 0; i < 32; i += 2) {
@@ -1018,7 +1019,7 @@ describe('Ed448', function() {
       assert.bufferEqual(ed448.publicKeyFromUniform(preimage), key);
       assert.bufferEqual(x448.publicKeyFromUniform(preimage), point);
       assert.bufferEqual(ed448.publicKeyToUniform(key), raw1);
-      assert.bufferEqual(x448.publicKeyToUniform(point, false), raw2);
+      assert.bufferEqual(x448.publicKeyToUniform(point), raw2);
       assert.bufferEqual(ed448.publicKeyFromUniform(raw1), key);
       assert.bufferEqual(x448.publicKeyFromUniform(raw2), point);
     }
@@ -1038,11 +1039,9 @@ describe('Ed448', function() {
       + '9f3d68330e24951bdbc200ed6d25ef4e90bc678d68282af081e6204f'
       + 'c2f36dcc5d6611b41042d708caebbe80724e48d09adb9782a9a2d9ea');
 
-    const [point2, sign] = ed448.publicKeyConvert(pub);
-
     assert.strictEqual(ed448.publicKeyVerify(pub), true);
-    assert.bufferEqual(point2, point);
-    assert.bufferEqual(x448.publicKeyConvert(point, sign), pub);
+    assert.bufferEqual(ed448.publicKeyConvert(pub), point);
+    assert.bufferEqual(x448.publicKeyConvert(point, false), pub);
   });
 
   it('should test random oracle encoding (doubling)', () => {
@@ -1060,11 +1059,9 @@ describe('Ed448', function() {
       + '6fee3c18014c2c61dc1bc145c224d2b5c2e48ccbb41e007927d08435'
       + '6dd0a932c189fa810622612d982a0326760c6e74b39866bbd905f9df');
 
-    const [point2, sign] = ed448.publicKeyConvert(pub);
-
     assert.strictEqual(ed448.publicKeyVerify(pub), true);
-    assert.bufferEqual(point2, point);
-    assert.bufferEqual(x448.publicKeyConvert(point, sign), pub);
+    assert.bufferEqual(ed448.publicKeyConvert(pub), point);
+    assert.bufferEqual(x448.publicKeyConvert(point, true), pub);
   });
 
   it('should test equivalence edge cases', () => {
@@ -1075,11 +1072,8 @@ describe('Ed448', function() {
                         + 'feffffffffffffffffffffffffff'
                         + 'ffffffffffffffffffffffffffff00', 'hex');
 
-    const [key, sign] = ed448.publicKeyConvert(e);
-
-    assert.bufferEqual(key, x);
-    assert.strictEqual(sign, false);
-    assert.bufferEqual(x448.publicKeyConvert(key, sign), inf);
+    assert.bufferEqual(ed448.publicKeyConvert(e), x);
+    assert.bufferEqual(x448.publicKeyConvert(x, false), inf);
     assert.throws(() => ed448.publicKeyConvert(inf));
   });
 

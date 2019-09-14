@@ -98,7 +98,6 @@ bcrypto_ed25519_privkey_convert(
 int
 bcrypto_ed25519_pubkey_convert(
   bcrypto_x25519_pubkey_t out,
-  int *sign,
   const bcrypto_ed25519_pubkey_t pk
 );
 
@@ -255,18 +254,16 @@ bcrypto_ed25519_sign_tweak_mul(
   size_t ctx_len
 );
 
-int
+void
 bcrypto_ed25519_pubkey_from_uniform(
   bcrypto_ed25519_pubkey_t out,
-  const unsigned char bytes[32],
-  int spec
+  const unsigned char bytes[32]
 );
 
-int
+void
 bcrypto_x25519_pubkey_from_uniform(
   bcrypto_x25519_pubkey_t out,
-  const unsigned char bytes[32],
-  int spec
+  const unsigned char bytes[32]
 );
 
 int
@@ -278,11 +275,10 @@ bcrypto_ed25519_pubkey_to_uniform(
 int
 bcrypto_x25519_pubkey_to_uniform(
   unsigned char out[32],
-  const bcrypto_x25519_pubkey_t pub,
-  int sign
+  const bcrypto_x25519_pubkey_t pub
 );
 
-int
+void
 bcrypto_ed25519_pubkey_from_hash(
   bcrypto_ed25519_pubkey_t out,
   const unsigned char bytes[64]

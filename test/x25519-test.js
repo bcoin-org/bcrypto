@@ -164,8 +164,8 @@ describe('X25519', function() {
     it(`should convert secret: ${expect.toString('hex', 0, 16)}...`, () => {
       const edPub = ed25519.publicKeyFromScalar(scalar);
       const edPoint = ed25519.deriveWithScalar(edPub, tweak);
-      const [pub] = ed25519.publicKeyConvert(edPub);
-      const [result] = ed25519.publicKeyConvert(edPoint);
+      const pub = ed25519.publicKeyConvert(edPub);
+      const result = ed25519.publicKeyConvert(edPoint);
 
       assert.bufferEqual(result, expect);
       assert.bufferEqual(x25519.derive(pub, tweak), expect);
@@ -202,8 +202,8 @@ describe('X25519', function() {
       const edPub = ed25519.publicKeyFromScalar(scalar);
       const tweak = ed25519.scalarGenerate();
       const edPoint = ed25519.deriveWithScalar(edPub, tweak);
-      const [pub] = ed25519.publicKeyConvert(edPub);
-      const [expect] = ed25519.publicKeyConvert(edPoint);
+      const pub = ed25519.publicKeyConvert(edPub);
+      const expect = ed25519.publicKeyConvert(edPoint);
       const result = x25519.derive(pub, tweak);
 
       assert.bufferEqual(result, expect);
@@ -322,18 +322,17 @@ describe('X25519', function() {
     const priv = x25519.privateKeyGenerate();
     const pub = x25519.publicKeyCreate(priv);
     const ed = x25519.publicKeyConvert(pub, false);
-    const [mont, sign] = ed25519.publicKeyConvert(ed);
+    const mont = ed25519.publicKeyConvert(ed);
 
     assert.bufferEqual(mont, pub);
-    assert.strictEqual(sign, false);
   });
 
   it('should do elligator2', () => {
     const u1 = rng.randomBytes(32);
     const p1 = x25519.publicKeyFromUniform(u1);
-    const u2 = x25519.publicKeyToUniform(p1, false);
+    const u2 = x25519.publicKeyToUniform(p1);
     const p2 = x25519.publicKeyFromUniform(u2);
-    const u3 = x25519.publicKeyToUniform(p2, false);
+    const u3 = x25519.publicKeyToUniform(p2);
     const p3 = x25519.publicKeyFromUniform(u3);
 
     assert.bufferEqual(p1, p2);

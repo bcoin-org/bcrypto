@@ -95,16 +95,14 @@ NAN_METHOD(BX25519::PublicKeyFromUniform) {
     return Nan::ThrowRangeError("Invalid field element size.");
 
   bcrypto_x25519_pubkey_t out;
-
-  if (bcrypto_x25519_pubkey_from_uniform(out, data, 0) < 0)
-    return Nan::ThrowError("Invalid public key.");
+  bcrypto_x25519_pubkey_from_uniform(out, data);
 
   return info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&out[0], 32).ToLocalChecked());
 }
 
 NAN_METHOD(BX25519::PublicKeyToUniform) {
-  if (info.Length() < 2)
+  if (info.Length() < 1)
     return Nan::ThrowError("x25519.publicKeyToUniform() requires arguments.");
 
   v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
@@ -112,20 +110,15 @@ NAN_METHOD(BX25519::PublicKeyToUniform) {
   if (!node::Buffer::HasInstance(pbuf))
     return Nan::ThrowTypeError("First argument must be a buffer.");
 
-  if (!info[1]->IsBoolean())
-    return Nan::ThrowTypeError("Second argument must be a boolean.");
-
   const uint8_t *pub = (const uint8_t *)node::Buffer::Data(pbuf);
   size_t pub_len = node::Buffer::Length(pbuf);
 
   if (pub_len != 32)
     return Nan::ThrowRangeError("Invalid public key size.");
 
-  int sign = (int)Nan::To<bool>(info[1]).FromJust();
-
   uint8_t out[32];
 
-  if (!bcrypto_x25519_pubkey_to_uniform(out, pub, sign))
+  if (!bcrypto_x25519_pubkey_to_uniform(out, pub))
     return Nan::ThrowError("Invalid public key.");
 
   return info.GetReturnValue().Set(

@@ -107,8 +107,8 @@ describe('X448', function() {
     it(`should convert secret: ${expect.toString('hex', 0, 16)}...`, () => {
       const edPub = ed448.publicKeyFromScalar(scalar);
       const edPoint = ed448.deriveWithScalar(edPub, tweak);
-      const [pub] = ed448.publicKeyConvert(edPub);
-      const [result] = ed448.publicKeyConvert(edPoint);
+      const pub = ed448.publicKeyConvert(edPub);
+      const result = ed448.publicKeyConvert(edPoint);
 
       assert.bufferEqual(result, expect);
       assert.bufferEqual(x448.derive(pub, tweak), expect);
@@ -152,8 +152,8 @@ describe('X448', function() {
       const edPub = ed448.publicKeyFromScalar(scalar);
       const tweak = ed448.scalarGenerate();
       const edPoint = ed448.deriveWithScalar(edPub, tweak);
-      const [pub] = ed448.publicKeyConvert(edPub);
-      const [expect] = ed448.publicKeyConvert(edPoint);
+      const pub = ed448.publicKeyConvert(edPub);
+      const expect = ed448.publicKeyConvert(edPoint);
       const result = x448.derive(pub, tweak);
 
       assert.bufferEqual(result, expect);
@@ -239,10 +239,9 @@ describe('X448', function() {
     const priv = x448.privateKeyGenerate();
     const pub = x448.publicKeyCreate(priv);
     const ed = x448.publicKeyConvert(pub, false);
-    const [mont, sign] = ed448.publicKeyConvert(ed);
+    const mont = ed448.publicKeyConvert(ed);
 
     assert.bufferEqual(mont, pub);
-    assert.strictEqual(sign, false);
   });
 
   it('should do elligator2', () => {
@@ -256,9 +255,9 @@ describe('X448', function() {
       + '6bd0c1ee9599249bff3276e2a8279bea5e62e47f6507656826fe0182'
       + '3a0580129b6df46dabe81c7559a7028344b50da7682423586d6e80dd');
 
-    const u2 = x448.publicKeyToUniform(p1, false);
+    const u2 = x448.publicKeyToUniform(p1);
     const p2 = x448.publicKeyFromUniform(u2);
-    const u3 = x448.publicKeyToUniform(p2, false);
+    const u3 = x448.publicKeyToUniform(p2);
     const p3 = x448.publicKeyFromUniform(u3);
 
     assert.bufferEqual(p1, p2);

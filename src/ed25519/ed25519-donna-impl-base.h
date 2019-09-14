@@ -422,6 +422,96 @@ ge25519_set_neutral(ge25519 *a) {
 }
 
 /*
+  conversion
+*/
+
+static int
+ge25519_to_mont(bignum25519 u, bignum25519 v, const ge25519 *p) {
+  bignum25519 ALIGN(16) x, y, z, uz, vz;
+
+  /* infinity does not exist in the mont affine space */
+  int ret = ge25519_is_neutral(p) ^ 1;
+
+  /* affinize */
+  curve25519_recip(z, p->z);
+  curve25519_mul(x, p->x, z);
+  curve25519_mul(y, p->y, z);
+  curve25519_set_word(z, 1);
+
+  /* u = (1 + y) / (1 - y) */
+  curve25519_add(u, z, y);
+  curve25519_sub(uz, z, y);
+
+  /* v = sqrt(-486664) * u / x */
+  curve25519_mul(v, curve25519_sqrt_m486664, u);
+  curve25519_mul(vz, x, uz);
+
+  /* scale */
+  curve25519_mul(u, u, vz);
+  curve25519_mul(v, v, uz);
+  curve25519_mul(z, uz, vz);
+
+  /* affinize */
+  /* note that (0, -1) will be mapped to (0, 0) */
+  curve25519_recip(z, z);
+  curve25519_mul(u, u, z);
+  curve25519_mul(v, v, z);
+
+  return ret;
+}
+
+static void
+ge25519_from_mont(ge25519 *p, const bignum25519 u, const bignum25519 v) {
+  bignum25519 one = {1};
+  bignum25519 ALIGN(16) xz, yz;
+
+  /* x = sqrt(-486664) * u / v */
+  curve25519_mul(p->x, curve25519_sqrt_m486664, u);
+  curve25519_copy(xz, v);
+
+  /* y = (u - 1) / (u + 1) */
+  curve25519_sub(p->y, u, one);
+  curve25519_add(yz, u, one);
+
+  /* ensure that (0, 0) will be mapped to (0, -1) */
+  curve25519_swap_conditional(xz, one, curve25519_is_zero(u));
+
+  /* scale */
+  curve25519_mul(p->x, p->x, yz);
+  curve25519_mul(p->y, p->y, xz);
+  curve25519_mul(p->z, xz, yz);
+
+  /* affinize */
+  curve25519_recip(p->z, p->z);
+  curve25519_mul(p->x, p->x, p->z);
+  curve25519_mul(p->y, p->y, p->z);
+  curve25519_set_word(p->z, 1);
+  curve25519_mul(p->t, p->x, p->y);
+}
+
+/*
+  elligator
+*/
+
+static void
+ge25519_elligator2(ge25519 *p, const unsigned char bytes[32], int spec) {
+  bignum25519 ALIGN(16) u, v;
+  curve25519_elligator2(u, v, bytes, spec);
+  ge25519_from_mont(p, u, v);
+}
+
+static int
+ge25519_invert2(unsigned char bytes[32], const ge25519 *p) {
+  bignum25519 ALIGN(16) u, v;
+  int ret = 1;
+
+  ret &= ge25519_to_mont(u, v, p);
+  ret &= curve25519_invert2(bytes, u, v);
+
+  return ret;
+}
+
+/*
   scalarmults
 */
 

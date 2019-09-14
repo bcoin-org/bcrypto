@@ -105,7 +105,7 @@ NAN_METHOD(BX448::PublicKeyFromUniform) {
 }
 
 NAN_METHOD(BX448::PublicKeyToUniform) {
-  if (info.Length() < 2)
+  if (info.Length() < 1)
     return Nan::ThrowError("x448.publicKeyToUniform() requires arguments.");
 
   v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
@@ -113,20 +113,15 @@ NAN_METHOD(BX448::PublicKeyToUniform) {
   if (!node::Buffer::HasInstance(pbuf))
     return Nan::ThrowTypeError("First argument must be a buffer.");
 
-  if (!info[1]->IsBoolean())
-    return Nan::ThrowTypeError("Second argument must be a boolean.");
-
   const uint8_t *pub = (const uint8_t *)node::Buffer::Data(pbuf);
   size_t pub_len = node::Buffer::Length(pbuf);
 
   if (pub_len != BCRYPTO_X448_PUBLIC_BYTES)
     return Nan::ThrowRangeError("Invalid public key size.");
 
-  int sign = (int)Nan::To<bool>(info[1]).FromJust();
-
   uint8_t out[56];
 
-  if (!bcrypto_x448_public_key_to_uniform(out, pub, sign))
+  if (!bcrypto_x448_public_key_to_uniform(out, pub, -1))
     return Nan::ThrowError("Invalid public key.");
 
   return info.GetReturnValue().Set(

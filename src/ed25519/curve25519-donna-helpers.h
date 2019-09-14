@@ -191,6 +191,21 @@ curve25519_is_equal(const bignum25519 a, const bignum25519 b) {
   return (c - 1) >> (sizeof(unsigned int) * 8 - 1);
 }
 
+static void
+curve25519_neg_conditional(bignum25519 out, const bignum25519 x, int negate) {
+  bignum25519 z;
+  curve25519_copy(out, x);
+  curve25519_neg(z, x);
+  curve25519_swap_conditional(out, z, negate);
+}
+
+static int
+curve25519_is_odd(const bignum25519 a) {
+  unsigned char out[32];
+  curve25519_contract(out, a);
+  return out[0] & 1;
+}
+
 static int
 curve25519_sqrt(bignum25519 out, const bignum25519 x) {
   bignum25519 ALIGN(16) a, b, c;
@@ -272,6 +287,16 @@ curve25519_solve_y(bignum25519 out, const bignum25519 x) {
 }
 
 static int
+curve25519_get_y(bignum25519 out, const bignum25519 x, int sign) {
+  int ret = curve25519_solve_y(out, x);
+
+  if (sign != -1)
+    curve25519_neg_conditional(out, out, curve25519_is_odd(out) ^ sign);
+
+  return ret;
+}
+
+static int
 curve25519_valid_x(const bignum25519 x) {
   bignum25519 ALIGN(16) e;
 
@@ -281,19 +306,12 @@ curve25519_valid_x(const bignum25519 x) {
   return curve25519_is_equal(e, curve25519_neg1) ^ 1;
 }
 
-static void
-curve25519_neg_conditional(bignum25519 out, const bignum25519 x, int negate) {
-  bignum25519 z;
-  curve25519_copy(out, x);
-  curve25519_neg(z, x);
-  curve25519_swap_conditional(out, z, negate);
-}
-
 static int
-curve25519_is_odd(const bignum25519 a) {
-  unsigned char out[32];
-  curve25519_contract(out, a);
-  return out[0] & 1;
+curve25519_unpack(bignum25519 x, bignum25519 y,
+                  const unsigned char raw[32],
+                  int sign) {
+  curve25519_expand(x, raw);
+  return curve25519_get_y(y, x, sign);
 }
 
 static void
@@ -382,4 +400,85 @@ curve25519_ladder(
 
   curve25519_copy(x0, x2);
   curve25519_copy(z0, z2);
+}
+
+static void
+curve25519_elligator2(bignum25519 x, bignum25519 y,
+                      const unsigned char bytes[32],
+                      int spec) {
+  static const bignum25519 z = {2};
+  static const bignum25519 a = {486662};
+  bignum25519 ALIGN(16) u, x1, x2, y1, y2;
+  bignum25519 one = {1};
+  int quad1, quad2;
+
+  curve25519_expand(u, bytes);
+
+  /* x1 = -a / (1 + z * u^2) */
+  curve25519_square(x1, u);
+  curve25519_mul(x1, x1, z);
+  curve25519_add(x1, x1, one);
+  curve25519_swap_conditional(x1, one, curve25519_is_zero(x1));
+  curve25519_recip(x1, x1);
+  curve25519_mul(x1, a, x1);
+  curve25519_neg(x1, x1);
+
+  /* x2 = -x1 - a */
+  curve25519_neg(x2, x1);
+  curve25519_sub(x2, x2, a);
+
+  /* compute y coordinate */
+  quad1 = curve25519_solve_y(y1, x1);
+  quad2 = curve25519_solve_y(y2, x2);
+
+  /* mathematically impossible */
+  assert((quad1 | quad2) != 0);
+
+  /* x = cmov(x1, x2, f(g(x1)) != 1) */
+  curve25519_swap_conditional(x1, x2, quad1 ^ 1);
+  curve25519_swap_conditional(y1, y2, quad1 ^ 1);
+
+  /* adjust sign */
+  if (spec) {
+    curve25519_neg_conditional(y1, y1,
+      curve25519_is_neg(y1) ^ curve25519_is_neg(u));
+  } else {
+    curve25519_neg_conditional(y1, y1, curve25519_is_neg(y1));
+    curve25519_neg_conditional(y1, y1, quad1);
+  }
+
+  curve25519_copy(x, x1);
+  curve25519_copy(y, y1);
+}
+
+int
+bcrypto_ed25519_randombytes(void *p, size_t len);
+
+static int
+curve25519_invert2(unsigned char out[32],
+                   const bignum25519 x,
+                   const bignum25519 y) {
+  static const bignum25519 z = {2};
+  static const bignum25519 a = {486662};
+  bignum25519 ALIGN(16) n, d, u;
+  unsigned char bit = 0;
+  int ret = 1;
+
+  /* u = sqrt(-n / (d * z)) */
+  curve25519_copy(n, x);
+  curve25519_add(d, x, a);
+  curve25519_swap_conditional(n, d, curve25519_is_neg(y));
+  curve25519_neg(n, n);
+  curve25519_mul(d, d, z);
+  ret &= curve25519_isqrt(u, n, d);
+
+  /* output */
+  curve25519_contract(out, u);
+
+  /* randomize the top bit */
+  ret &= bcrypto_ed25519_randombytes(&bit, 1);
+
+  out[31] |= (bit & 1) << 7;
+
+  return ret;
 }

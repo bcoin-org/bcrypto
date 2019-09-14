@@ -326,17 +326,12 @@ NAN_METHOD(BED25519::PublicKeyConvert) {
     return Nan::ThrowRangeError("Invalid public key size.");
 
   bcrypto_x25519_pubkey_t out;
-  int sign;
 
-  if (!bcrypto_ed25519_pubkey_convert(out, &sign, pub))
+  if (!bcrypto_ed25519_pubkey_convert(out, pub))
     return Nan::ThrowError("Invalid public key.");
 
-  v8::Local<v8::Array> ret = Nan::New<v8::Array>();
-
-  Nan::Set(ret, 0, Nan::CopyBuffer((char *)&out[0], 32).ToLocalChecked());
-  Nan::Set(ret, 1, Nan::New<v8::Boolean>((bool)sign));
-
-  return info.GetReturnValue().Set(ret);
+  return info.GetReturnValue().Set(
+    Nan::CopyBuffer((char *)&out[0], 32).ToLocalChecked());
 }
 
 NAN_METHOD(BED25519::PublicKeyFromUniform) {
@@ -355,9 +350,7 @@ NAN_METHOD(BED25519::PublicKeyFromUniform) {
     return Nan::ThrowRangeError("Invalid field element size.");
 
   bcrypto_ed25519_pubkey_t out;
-
-  if (!bcrypto_ed25519_pubkey_from_uniform(out, data, 0))
-    return Nan::ThrowError("Invalid public key.");
+  bcrypto_ed25519_pubkey_from_uniform(out, data);
 
   return info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&out[0], 32).ToLocalChecked());
@@ -404,8 +397,7 @@ NAN_METHOD(BED25519::PublicKeyFromHash) {
 
   uint8_t out[32];
 
-  if (!bcrypto_ed25519_pubkey_from_hash(out, data))
-    return Nan::ThrowError("Invalid public key.");
+  bcrypto_ed25519_pubkey_from_hash(out, data);
 
   return info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&out[0], 32).ToLocalChecked());

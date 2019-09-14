@@ -116,7 +116,7 @@ for (const [curve, x] of eddsa) {
     const pubMul = curve.publicKeyTweakMul(pub, tweak);
     const pubNeg = curve.publicKeyNegate(pub);
     const pubDbl = curve.publicKeyAdd(pub, pub);
-    const [pubConv] = curve.publicKeyConvert(pub);
+    const pubConv = curve.publicKeyConvert(pub);
     const privOct = curve.privateKeyExport(priv);
     const pubOct = curve.publicKeyExport(pub);
     const pkcs8 = curve.privateKeyExportPKCS8(priv);

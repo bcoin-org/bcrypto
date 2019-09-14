@@ -962,8 +962,8 @@ bcrypto_c448_error_t bcrypto_curve448_convert_public_key_to_x448(
   return bcrypto_c448_succeed_if(mask_to_bool(ret));
 }
 
-bcrypto_c448_error_t
-bcrypto_x448_convert_public_key_to_eddsa(
+static bcrypto_c448_error_t
+bcrypto_x448_convert_public_key_to_eddsa_inner(
   uint8_t ed[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
   const uint8_t raw[BCRYPTO_X_PUBLIC_BYTES],
   int sign
@@ -982,7 +982,8 @@ bcrypto_x448_convert_public_key_to_eddsa(
 
   ret &= bcrypto_gf_solve_y(v, u);
 
-  bcrypto_gf_cond_neg(v, bcrypto_gf_is_odd(v) ^ sgn);
+  if (sign != -1)
+    bcrypto_gf_cond_neg(v, bcrypto_gf_is_odd(v) ^ sgn);
 
   /*
    * x = 4 * v * (u^2 - 1) / (u^4 - 2 * u^2 + 4 * v^2 + 1)
@@ -1080,6 +1081,32 @@ bcrypto_x448_convert_public_key_to_eddsa(
 }
 
 bcrypto_c448_error_t
+bcrypto_x448_convert_public_key_to_eddsa(
+  uint8_t ed[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
+  const uint8_t raw[BCRYPTO_X_PUBLIC_BYTES],
+  int sign
+) {
+  bcrypto_c448_error_t error;
+  bcrypto_gf y;
+
+  error = bcrypto_x448_convert_public_key_to_eddsa_inner(ed, raw, -1);
+
+  if (error != BCRYPTO_C448_SUCCESS)
+    return error;
+
+  (void)bcrypto_gf_deserialize(y, ed, 1, 0);
+
+  sign &= ~bcrypto_gf_eq(y, ONE);
+
+  ed[BCRYPTO_EDDSA_448_PUBLIC_BYTES - 1] &= ~0x80;
+  ed[BCRYPTO_EDDSA_448_PUBLIC_BYTES - 1] |= sign << 7;
+
+  OPENSSL_cleanse(y, sizeof(y));
+
+  return BCRYPTO_C448_SUCCESS;
+}
+
+bcrypto_c448_error_t
 bcrypto_curve448_public_key_from_uniform(
   uint8_t out[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
   const unsigned char bytes[56],
@@ -1090,7 +1117,7 @@ bcrypto_curve448_public_key_from_uniform(
   if (sign < 0)
     return BCRYPTO_C448_FAILURE;
 
-  return bcrypto_x448_convert_public_key_to_eddsa(out, out, sign);
+  return bcrypto_x448_convert_public_key_to_eddsa_inner(out, out, sign);
 }
 
 int
@@ -1192,7 +1219,9 @@ bcrypto_x448_public_key_to_uniform(
 
   /* recover y */
   ret &= bcrypto_gf_solve_y(y, x);
-  bcrypto_gf_cond_neg(y, bcrypto_gf_is_odd(y) ^ sgn);
+
+  if (sign != -1)
+    bcrypto_gf_cond_neg(y, bcrypto_gf_is_odd(y) ^ sgn);
 
   /* u = sqrt(-n / (d * z)) */
   bcrypto_gf_copy(n, x);
