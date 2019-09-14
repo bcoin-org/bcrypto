@@ -1047,7 +1047,7 @@ describe('Ed25519', function() {
       '6c85d28110396a3a7a449815284f5e788b1394aca34d68a9be4e81fdebec6d15',
       '539e6019edfecee759a0f19d6090e3c29fd6a8a1b240a08a3057d11c353eb260',
       'a94ebddd48f3f1860288a68afa9993463b90e80505abc3ae00466dae9cfdab45'
-    ]
+    ];
 
     const un = (r) => {
       r = Buffer.from(r);
