@@ -476,7 +476,7 @@ curve25519_invert2(unsigned char out[32],
   curve25519_contract(out, u);
 
   /* randomize the top bit */
-  ret &= bcrypto_ed25519_randombytes(&bit, 1);
+  ret &= bcrypto_ed25519_randombytes(&bit, sizeof(unsigned char));
 
   out[31] |= (bit & 1) << 7;
 
