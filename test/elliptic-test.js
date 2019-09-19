@@ -1982,6 +1982,45 @@ describe('Elliptic', function() {
       assert(p.eq(q));
     });
 
+    it('should test elligator against DJB\'s formula', () => {
+      // Map:
+      //
+      //   f(a) = a^((q - 1) / 2)
+      //   v = -A / (1 + u * r^2)
+      //   e = f(v^3 + A * v^2 + B * v)
+      //   x = e * v - (1 - e) * A / 2
+      //   y = -e * sqrt(x^3 + A * x^2 + B * x)
+      const curve = new curves.X25519();
+      const i2 = curve.two.redInvert();
+      const u = curve.randomField(rng);
+
+      const lhs = curve.a.redNeg();
+      const rhs = curve.one.redAdd(curve.z.redMul(u.redSqr()));
+
+      rhs.cinject(curve.one, rhs.czero());
+
+      const v = lhs.redMul(rhs.redFermat());
+      const f = curve.solveY2(v);
+      const e = f.redPow(curve.p.subn(1).iushrn(1));
+      const l = curve.one.redSub(e).redMul(curve.a).redMul(i2);
+      const x = e.redMul(v).redISub(l);
+      const y0 = curve.solveY(x);
+
+      y0.cinject(y0.redNeg(), y0.redIsNeg());
+
+      const y = e.redNeg().redMul(y0);
+
+      const p = curve.point(x, y);
+      const q = curve.pointFromUniform(u);
+
+      assert(p.validate());
+      assert(p.eq(q));
+
+      const r = curve.pointToUniform(p);
+
+      assert(r.eq(u) || r.eq(u.redNeg()));
+    });
+
     it('should test elligator (mont)', () => {
       const x25519 = new curves.X25519();
       const x448 = new curves.X448();
