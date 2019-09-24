@@ -19,7 +19,10 @@ describe('DH', function() {
   this.timeout(30000);
 
   it('should generate and exchange', () => {
-    const params = dh.paramsGenerate(1024, 2);
+    const params = process.env.CI
+      ? dh.paramsGenerate(512, 2)
+      : dh.paramsImport(data1);
+
     const priv = dh.privateKeyCreate(params);
     const pub = dh.publicKeyCreate(priv);
 

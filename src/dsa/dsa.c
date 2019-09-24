@@ -65,7 +65,7 @@ bcrypto_count_bits(const uint8_t *in, size_t in_len) {
 }
 
 static int
-bcrypto_cmp(const uint8_t *x, size_t xl, const uint8_t *y, size_t yl) {
+bcrypto_cmp(const uint8_t *x, size_t xl, const uint8_t *y, size_t yl, int sub) {
   while (xl > 0 && *x == 0)
     x++, xl--;
 
@@ -80,11 +80,16 @@ bcrypto_cmp(const uint8_t *x, size_t xl, const uint8_t *y, size_t yl) {
 
   size_t i = 0;
 
+  if (sub && xl > 0)
+    assert((y[xl - 1] & 1) != 0);
+
   for (; i < xl; i++) {
-    if (x[i] < y[i])
+    uint8_t one = sub && (i == xl - 1) ? 1 : 0;
+
+    if (x[i] < y[i] - one)
       return -1;
 
-    if (x[i] > y[i])
+    if (x[i] > y[i] - one)
       return 1;
   }
 
@@ -115,7 +120,7 @@ bcrypto_dsa_sane_params(const bcrypto_dsa_key_t *params) {
   if ((params->qd[params->ql - 1] & 1) == 0)
     return 0;
 
-  if (bcrypto_cmp(params->gd, params->gl, params->pd, params->pl) >= 0)
+  if (bcrypto_cmp(params->gd, params->gl, params->pd, params->pl, 1) >= 0)
     return 0;
 
   return 1;
@@ -129,10 +134,10 @@ bcrypto_dsa_sane_pubkey(const bcrypto_dsa_key_t *key) {
   size_t pb = bcrypto_count_bits(key->pd, key->pl);
   size_t yb = bcrypto_count_bits(key->yd, key->yl);
 
-  if (yb == 0 || yb > pb)
+  if (yb < 2 || yb > pb)
     return 0;
 
-  if (bcrypto_cmp(key->yd, key->yl, key->pd, key->pl) >= 0)
+  if (bcrypto_cmp(key->yd, key->yl, key->pd, key->pl, 1) >= 0)
     return 0;
 
   return 1;
@@ -149,7 +154,7 @@ bcrypto_dsa_sane_privkey(const bcrypto_dsa_key_t *key) {
   if (xb == 0 || xb > qb)
     return 0;
 
-  if (bcrypto_cmp(key->xd, key->xl, key->qd, key->ql) >= 0)
+  if (bcrypto_cmp(key->xd, key->xl, key->qd, key->ql, 0) >= 0)
     return 0;
 
   return 1;
@@ -187,13 +192,13 @@ bcrypto_dsa_sane_compute(const bcrypto_dsa_key_t *key) {
   if (xb == 0 || xb > qb)
     return 0;
 
-  if (bcrypto_cmp(key->gd, key->gl, key->pd, key->pl) >= 0)
+  if (bcrypto_cmp(key->gd, key->gl, key->pd, key->pl, 1) >= 0)
     return 0;
 
-  if (bcrypto_cmp(key->yd, key->yl, key->pd, key->pl) >= 0)
+  if (bcrypto_cmp(key->yd, key->yl, key->pd, key->pl, 0) >= 0)
     return 0;
 
-  if (bcrypto_cmp(key->xd, key->xl, key->qd, key->ql) >= 0)
+  if (bcrypto_cmp(key->xd, key->xl, key->qd, key->ql, 0) >= 0)
     return 0;
 
   return 1;
@@ -1691,9 +1696,6 @@ bcrypto_dsa_derive(uint8_t **out,
 
   /* secret := y^x mod p */
   if (!mod_exp_const(secret, yp, x, p, ctx))
-    goto fail;
-
-  if (BN_is_zero(secret))
     goto fail;
 
   size = (size_t)BN_num_bytes(p);
