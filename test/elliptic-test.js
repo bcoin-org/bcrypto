@@ -2305,6 +2305,31 @@ describe('Elliptic', function() {
       assert(p.eq(q));
     });
 
+    it('should invert shallue-van de woestijne', () => {
+      const curve = new curves.SECP256K1();
+
+      for (let i = 0; i < 3; i++) {
+        let p, s;
+
+        for (;;) {
+          p = curve.randomPoint(rng);
+
+          try {
+            s = curve._invert2(p, rng);
+          } catch (e) {
+            assert(e.message === 'Invalid point.');
+            continue;
+          }
+
+          break;
+        }
+
+        const q = curve._svdw2(s);
+
+        assert(p.eq(q));
+      }
+    });
+
     it('should test unified addition', () => {
       const curve = new curves.SECP256K1();
 
