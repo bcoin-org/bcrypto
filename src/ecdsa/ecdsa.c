@@ -2589,6 +2589,11 @@ fail:
 }
 
 static int
+bn_is_square(const BIGNUM *a, const BIGNUM *n, BN_CTX *ctx) {
+  return bn_legendre(a, n, ctx) >= 0;
+}
+
+static int
 bn_is_neg(const BIGNUM *a, const BIGNUM *n) {
   BIGNUM *half = BN_new();
   int cmp = 0;
@@ -2828,7 +2833,7 @@ bcrypto_ecdsa_sswu(bcrypto_ecdsa_t *ec, const BIGNUM *r) {
   F(BN_mod_mul(x2, t1, x1, ec->p, ec->ctx));
   F(BN_mod_mul(t2, t1, t2, ec->p, ec->ctx));
   F(BN_mod_mul(gx2, gx1, t2, ec->p, ec->ctx));
-  e2 = bn_legendre(gx1, ec->p, ec->ctx) == 1;
+  e2 = bn_is_square(gx1, ec->p, ec->ctx);
   F(BN_copy(x, e2 ? x1 : x2));
   F(BN_copy(y2, e2 ? gx1 : gx2));
   F(BN_mod_sqrt(y, y2, ec->p, ec->ctx));
@@ -2996,12 +3001,12 @@ bcrypto_ecdsa_svdw(bcrypto_ecdsa_t *ec, const BIGNUM *r) {
   F(BN_mod_sqr(gx1, x1, ec->p, ec->ctx));
   F(BN_mod_mul(gx1, gx1, x1, ec->p, ec->ctx));
   F(BN_mod_add(gx1, gx1, ec->b, ec->p, ec->ctx));
-  e1 = bn_legendre(gx1, ec->p, ec->ctx) == 1;
+  e1 = bn_is_square(gx1, ec->p, ec->ctx);
   F(BN_mod_sub(x2, t3, c4, ec->p, ec->ctx));
   F(BN_mod_sqr(gx2, x2, ec->p, ec->ctx));
   F(BN_mod_mul(gx2, gx2, x2, ec->p, ec->ctx));
   F(BN_mod_add(gx2, gx2, ec->b, ec->p, ec->ctx));
-  e2 = bn_legendre(gx2, ec->p, ec->ctx) == 1;
+  e2 = bn_is_square(gx2, ec->p, ec->ctx);
   e3 = e1 | e2;
   F(BN_mod_sqr(x3, t2, ec->p, ec->ctx));
   F(BN_mod_mul(x3, x3, t2, ec->p, ec->ctx));

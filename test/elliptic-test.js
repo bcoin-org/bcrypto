@@ -2307,6 +2307,9 @@ describe('Elliptic', function() {
 
     it('should invert shallue-van de woestijne', () => {
       const curve = new curves.SECP256K1();
+      const p = curve._svdw2(curve.zero);
+
+      assert(p.validate());
 
       for (let i = 0; i < 3; i++) {
         let p, s;
