@@ -955,6 +955,9 @@ bmpz_sqrtm(mpz_t ret, const mpz_t num, const mpz_t p) {
     goto success;
   }
 
+  if (mpz_cmp_ui(p, 1) == 0)
+    goto fail;
+
   switch (bmpz_jacobi(x, p)) {
     case -1:
       goto fail;

@@ -1785,6 +1785,9 @@ NAN_METHOD(BBN::Isqrtm) {
   if (mpz_sgn(b->n) <= 0)
     return Nan::ThrowRangeError(RANGE_ERROR(isqrtm));
 
+  if (mpz_cmp_ui(b->n, 1) == 0)
+    return Nan::ThrowError("Invalid prime.");
+
   if (!bmpz_sqrtm(a->n, a->n, b->n))
     return Nan::ThrowError("X is not a square mod P.");
 
