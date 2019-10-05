@@ -6028,6 +6028,33 @@ describe('BN.js', function() {
       }
     });
 
+    it('should test squareness', () => {
+      const mods = [
+        P192, // legendre
+        P192.subn(2), // jacobi
+        P192.subn(1) // kronecker
+      ];
+
+      for (const p of mods) {
+        const red = BN.red(p === P192 ? 'p192' : p);
+        const zero = new BN(0).toRed(red);
+        const qnr = BN.random(rng, 1, p).toRed(red);
+
+        while (qnr.redKronecker() !== -1)
+          qnr.redIAddn(1);
+
+        const qr = qnr.redSqr();
+
+        assert(zero.redKronecker() === 0);
+        assert(qnr.redKronecker() === -1);
+        assert(qr.redKronecker() === 1);
+
+        assert.strictEqual(zero.redIsSquare(), 1);
+        assert.strictEqual(qnr.redIsSquare(), 0);
+        assert.strictEqual(qr.redIsSquare(), 1);
+      }
+    });
+
     it('should compute sqrtm (p25519, zero)', () => {
       const p = P25519;
       const s1 = p.sqrtm(p);
