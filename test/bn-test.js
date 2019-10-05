@@ -5993,16 +5993,9 @@ describe('BN.js', function() {
         const items = [];
 
         for (let j = 0; j < 10; j++) {
-          let x;
+          const x = BN.random(rng, 1, p);
 
-          for (;;) {
-            x = BN.random(rng, 1, p);
-
-            if (x.jacobi(p) === 1)
-              break;
-          }
-
-          items.push(x);
+          items.push(x.sqr().imod(p));
         }
 
         squares.push(items);
@@ -6011,12 +6004,23 @@ describe('BN.js', function() {
       for (let i = 0; i < 10; i++) {
         const p = primes[i];
         const items = squares[i];
-        const red = BN.red(p).precompute();
+        const red = BN.red(p);
+
+        assert(red.sm1 == null);
+
+        for (let j = 0; j < 10; j++) {
+          const x = items[j].toRed(red);
+          const r = x.redSqrt();
+
+          assert(r.redSqr().eq(x));
+        }
+
+        red.precompute();
 
         assert(red.sm1 != null);
 
         for (let j = 0; j < 10; j++) {
-          const x = items[i].toRed(red);
+          const x = items[j].toRed(red);
           const r = x.redSqrt();
 
           assert(r.redSqr().eq(x));
