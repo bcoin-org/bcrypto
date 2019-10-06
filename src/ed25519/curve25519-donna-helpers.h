@@ -443,8 +443,7 @@ curve25519_elligator2(bignum25519 x, bignum25519 y,
     curve25519_neg_conditional(y1, y1,
       curve25519_is_neg(y1) ^ curve25519_is_neg(u));
   } else {
-    curve25519_neg_conditional(y1, y1, curve25519_is_neg(y1));
-    curve25519_neg_conditional(y1, y1, quad1);
+    curve25519_neg_conditional(y1, y1, curve25519_is_neg(y1) ^ quad1);
   }
 
   curve25519_copy(x, x1);

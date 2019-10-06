@@ -1165,8 +1165,7 @@ bcrypto_x448_public_key_from_uniform(
   if (spec) {
     bcrypto_gf_cond_neg(y1, bcrypto_gf_is_neg(y1) ^ bcrypto_gf_is_neg(u));
   } else {
-    bcrypto_gf_cond_neg(y1, bcrypto_gf_is_neg(y1));
-    bcrypto_gf_cond_neg(y1, quad1);
+    bcrypto_gf_cond_neg(y1, bcrypto_gf_is_neg(y1) ^ quad1);
   }
 
   bcrypto_gf_serialize(out, x1, 1);
