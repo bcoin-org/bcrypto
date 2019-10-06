@@ -2,10 +2,8 @@
 
 var('a b z c gz x y u')
 
-def solve2(x, y, simple = True):
-  if simple:
-    return map(lambda x: x.full_simplify(), solve(x, y))[0]
-  return solve(x, y)[0]
+def solve2(x, y):
+  return map(lambda x: x.full_simplify(), solve(x, y))[0]
 
 print('Testing the complexity of elligator inversions.')
 print('')
@@ -30,8 +28,11 @@ print('')
 print('x1 = (-b / a) * (1 + (1 / (z^2 * u^4 + z * u^2)))')
 print('x2 = z * u^2 * x1')
 print('')
-print(solve2((-b / a) * (1 + (1 / (z^2 * u^4 + z * u^2))) == x, u, False))
-print(solve2(z * u^2 * ((-b / a) * (1 + (1 / (z^2 * u^4 + z * u^2)))) == x, u, False))
+print(solve2((-b / a) * (1 + (1 / (z^2 * u^4 + z * u^2))) == x, u))
+print(solve2(z * u^2 * ((-b / a) * (1 + (1 / (z^2 * u^4 + z * u^2)))) == x, u))
+print('')
+print(solve((-b / a) * (1 + (1 / (z^2 * u^4 + z * u^2))) == x, u)[0])
+print(solve(z * u^2 * ((-b / a) * (1 + (1 / (z^2 * u^4 + z * u^2)))) == x, u)[0])
 print('')
 
 print('Generalized SSWU Unsquared (4 preimages):')
@@ -48,8 +49,11 @@ print('')
 print('x1 = (-b / a) * (1 + (1 / (u^4 - u^2)))')
 print('x2 = -u^2 * x1')
 print('')
-print(solve2((-b / a) * (1 + (1 / (u^4 - u^2))) == x, u, False))
-print(solve2(-u^2 * (-b / a) * (1 + (1 / (u^4 - u^2))) == x, u, False))
+print(solve2((-b / a) * (1 + (1 / (u^4 - u^2))) == x, u))
+print(solve2(-u^2 * (-b / a) * (1 + (1 / (u^4 - u^2))) == x, u))
+print('')
+print(solve((-b / a) * (1 + (1 / (u^4 - u^2))) == x, u)[0])
+print(solve(-u^2 * (-b / a) * (1 + (1 / (u^4 - u^2))) == x, u)[0])
 print('')
 
 print('Simple SSWU Unsquared (4 preimages):')
@@ -158,14 +162,10 @@ print('y = w2 * w1')
 print('z = w1 * w3')
 print('t = w0 * w2')
 print('')
-var('d s r D r0 i nt')
-# Note that w1 and w3 are necessarily 1 if the point is affinized.
-# Convert back to jacobi quartic.
+var('d s r D x2 r0 i nt')
 print(solve2((1 + a * s^2) == y, s))
 print(solve2(2 * s * D == x, D))
-# We can now recalculate x as:
-print('x2 = 2*s*D')
-# We can then check the sign against the point and negate D if necessary.
+print(x2 == 2 * D * s)
 print(solve2(((d * r - a) * (a * r - d)) == D, r))
 print(solve2(c * (r - 1) * (d + a)^2 - D == nt, c))
 print(solve2(i * r0^2 == r, r0))
