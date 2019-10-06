@@ -1785,7 +1785,7 @@ NAN_METHOD(BBN::Isqrtm) {
   if (mpz_sgn(b->n) <= 0)
     return Nan::ThrowRangeError(RANGE_ERROR(isqrtm));
 
-  if (mpz_cmp_ui(b->n, 1) == 0)
+  if (mpz_cmp_ui(b->n, 1) == 0 || !mpz_odd_p(b->n))
     return Nan::ThrowError("Invalid prime.");
 
   if (!bmpz_sqrtm(a->n, a->n, b->n))

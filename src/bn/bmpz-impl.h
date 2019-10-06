@@ -877,7 +877,7 @@ bmpz_sqrtm(mpz_t ret, const mpz_t num, const mpz_t p) {
   // x = num
   mpz_set(x, num);
 
-  if (mpz_sgn(p) <= 0 || mpz_even_p(p))
+  if (mpz_sgn(p) <= 0 || !mpz_odd_p(p))
     goto fail;
 
   // if x < 0 || x >= p
