@@ -435,7 +435,7 @@ describe('Ristretto', function() {
 
       assert.bufferEqual(ristretto.encode(p0), image);
 
-      for (let j = 0; j < 8; j++) {
+      for (let j = 0; j < 4; j++) {
         const r1 = ristretto.pointToUniform(p0, j);
         const p1 = ristretto.pointFromUniform(r1);
 
@@ -527,7 +527,7 @@ describe('Ristretto', function() {
 
       assert.bufferEqual(ristretto.encode(p0), image);
 
-      for (let j = 0; j < 8; j++) {
+      for (let j = 0; j < 4; j++) {
         const r1 = ristretto.pointToUniform(p0, j);
         const p1 = ristretto.pointFromUniform(r1);
 
