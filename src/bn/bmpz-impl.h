@@ -137,13 +137,12 @@ bmpz_fermat(mpz_t ret, const mpz_t a, const mpz_t b) {
 
   // Invert using fermat's little theorem.
 #ifdef BCRYPTO_HAS_GMP
-  if (mpz_sgn(e) <= 0 || mpz_even_p(b))
-    goto fail;
-
-  mpz_powm_sec(ret, a, e, b);
+  if (mpz_sgn(e) != 0 && mpz_odd_p(b))
+    mpz_powm_sec(ret, a, e, b);
+  else
+    mpz_powm(ret, a, e, b);
 #else
-  if (!bmpz_powm(ret, a, e, b))
-    goto fail;
+  mpz_powm(ret, a, e, b);
 #endif
 
   if (mpz_sgn(ret) == 0)
