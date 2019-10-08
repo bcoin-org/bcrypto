@@ -286,9 +286,16 @@ describe('Ristretto', function() {
       const raw = Buffer.from(bytes[i], 'hex');
       const image = Buffer.from(images[i], 'hex');
       const r0 = curve.decodeUniform(raw);
-      const out = ristretto.pointFromUniform(r0);
+      const p0 = ristretto.pointFromUniform(r0);
 
-      assert.bufferEqual(ristretto.encode(out), image);
+      assert.bufferEqual(ristretto.encode(p0), image);
+
+      for (let j = 0; j < 8; j++) {
+        const r1 = ristretto.pointToUniform(p0, j);
+        const p1 = ristretto.pointFromUniform(r1);
+
+        assert.strictEqual(ristretto.eq(p1, p0), true);
+      }
     }
   });
 
@@ -424,9 +431,16 @@ describe('Ristretto', function() {
       const raw = Buffer.from(bytes[i] + bytes[i + 1], 'hex');
       const image = Buffer.from(images[i] + images[i + 1], 'hex');
       const r0 = curve.decodeUniform(raw);
-      const out = ristretto.pointFromUniform(r0);
+      const p0 = ristretto.pointFromUniform(r0);
 
-      assert.bufferEqual(ristretto.encode(out), image);
+      assert.bufferEqual(ristretto.encode(p0), image);
+
+      for (let j = 0; j < 8; j++) {
+        const r1 = ristretto.pointToUniform(p0, j);
+        const p1 = ristretto.pointFromUniform(r1);
+
+        assert.strictEqual(ristretto.eq(p1, p0), true);
+      }
     }
   });
 
@@ -509,9 +523,16 @@ describe('Ristretto', function() {
       const raw = Buffer.from(bytes[i] + bytes[i + 1], 'hex');
       const image = Buffer.from(images[i] + images[i + 1], 'hex');
       const r0 = curve.decodeUniform(raw);
-      const out = ristretto.pointFromUniform(r0);
+      const p0 = ristretto.pointFromUniform(r0);
 
-      assert.bufferEqual(ristretto.encode(out), image);
+      assert.bufferEqual(ristretto.encode(p0), image);
+
+      for (let j = 0; j < 8; j++) {
+        const r1 = ristretto.pointToUniform(p0, j);
+        const p1 = ristretto.pointFromUniform(r1);
+
+        assert.strictEqual(ristretto.eq(p1, p0), true);
+      }
     }
   });
 });
