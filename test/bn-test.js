@@ -5927,12 +5927,52 @@ describe('BN.js', function() {
       assert(R2.eq(r));
     });
 
-    it('should compute rootrem', () => {
+    it('should compute rootrem (1)', () => {
       const n = BN.randomBits(rng, 256);
       const [x, r] = n.rootrem(3);
       const v = x.pown(3).add(r);
 
       assert(v.eq(n));
+      assert(x.pown(3).root(3).eq(x));
+      assert(x.pown(3).rootrem(3)[0].eq(x));
+      assert(x.pown(3).rootrem(3)[1].isZero());
+    });
+
+    it('should compute rootrem (2)', () => {
+      const n = new BN(-134123);
+      const [x, r] = n.rootrem(3);
+
+      assert(x.eqn(-51));
+      assert(r.eqn(-1472));
+    });
+
+    it('should compute rootrem (3)', () => {
+      const [x1, r1] = new BN(0).rootrem(2);
+      const [x2, r2] = new BN(1).rootrem(2);
+      const [x3, r3] = new BN(0).sqrtrem();
+      const [x4, r4] = new BN(1).sqrtrem();
+
+      assert(x1.isZero());
+      assert(r1.isZero());
+      assert(x2.eqn(1));
+      assert(r2.isZero());
+
+      assert(x3.isZero());
+      assert(r3.isZero());
+      assert(x4.eqn(1));
+      assert(r4.isZero());
+
+      assert(new BN(0).root(2).eq(x1));
+      assert(new BN(1).root(2).eq(x2));
+      assert(new BN(0).sqrt().eq(x1));
+      assert(new BN(1).sqrt().eq(x2));
+
+      assert(new BN(0).isPower(2));
+      assert(new BN(1).isPower(2));
+      assert(!new BN(2).isPower(2));
+      assert(new BN(0).isSquare());
+      assert(new BN(1).isSquare());
+      assert(!new BN(2).isSquare());
     });
 
     it('should compute sqrtm (p192, p mod 4 == 3)', () => {
@@ -6049,9 +6089,9 @@ describe('BN.js', function() {
         assert(qnr.redKronecker() === -1);
         assert(qr.redKronecker() === 1);
 
-        assert.strictEqual(zero.redIsSquare(), 1);
-        assert.strictEqual(qnr.redIsSquare(), 0);
-        assert.strictEqual(qr.redIsSquare(), 1);
+        assert.strictEqual(zero.redIsSquare(), true);
+        assert.strictEqual(qnr.redIsSquare(), false);
+        assert.strictEqual(qr.redIsSquare(), true);
       }
     });
 
@@ -6371,6 +6411,7 @@ describe('BN.js', function() {
         const r17 = new BN(17).toRed(red);
         const r18 = new BN(18).toRed(red);
         const raaaa = new BN(0xaaaa).toRed(red);
+        const rp = new BN(P192.ushrn(1)).toRed(red);
         const n = BN.random(rng, P192.ushrn(1), P192).toRed(red);
 
         assert.strictEqual(n.redAddn(0).toString(), n.redAdd(r0).toString());
@@ -6441,6 +6482,9 @@ describe('BN.js', function() {
         assert.strictEqual(n.redShln(1).toString(), n.redMuln(2).toString());
         assert.strictEqual(n.redShln(2).toString(), n.redMuln(4).toString());
         assert.strictEqual(n.redShln(3).toString(), n.redMuln(8).toString());
+        assert.strictEqual(n.redShln(4).toString(), n.redMuln(16).toString());
+        assert.strictEqual(n.redShln(5).toString(), n.redMuln(32).toString());
+        assert.strictEqual(n.redShln(6).toString(), n.redMuln(64).toString());
 
         assert.strictEqual(n.redIsOdd(), n.fromRed().isOdd());
         assert.strictEqual(n.redIsEven(), n.fromRed().isEven());
@@ -6476,6 +6520,50 @@ describe('BN.js', function() {
         assert.strictEqual(r1.redNeg().redCmpn(-2), 1);
         assert.strictEqual(r1.redNeg().redAddn(1).redCmpn(0), 0);
         assert.strictEqual(r1.redNeg().redAddn(1).sign(), 0);
+
+        assert.strictEqual(r1.redIsPos(), true);
+        assert.strictEqual(r1.redIsNeg(), false);
+        assert.strictEqual(r1.redNeg().redIsPos(), false);
+        assert.strictEqual(r1.redNeg().redIsNeg(), true);
+
+        assert.strictEqual(rp.redIsPos(), true);
+        assert.strictEqual(rp.redIsNeg(), false);
+        assert.strictEqual(rp.redNeg().redIsPos(), false);
+        assert.strictEqual(rp.redNeg().redIsNeg(), true);
+
+        assert.strictEqual(rp.redAddn(1).redIsPos(), false);
+        assert.strictEqual(rp.redAddn(1).redIsNeg(), true);
+      });
+    }
+
+    for (const red of [BN.red(new BN(17)), BN.mont(new BN(17))]) {
+      it('should test red helpers (small field)', () => {
+        const mod = (x, m) => {
+          let r = x % m;
+
+          if (r < 0)
+            r += m;
+
+          return r;
+        };
+
+        const bn = x => new BN(x).toRed(red);
+        const mul = (x, y) => bn(x).redMuln(y).fromRed().toNumber();
+        const shl = (x, y) => bn(x).redShln(y).fromRed().toNumber();
+        const add = (x, y) => bn(x).redAddn(y).fromRed().toNumber();
+        const sub = (x, y) => bn(x).redSubn(y).fromRed().toNumber();
+
+        assert(mod(11 * -137, 17) === mod(11 * mod(-137, 17), 17));
+        assert(mod(11 * 137, 17) === mod(11 * mod(137, 17), 17));
+        assert(mod(11 + 137, 17) === mod(11 + mod(137, 17), 17));
+        assert(mod(11 - 137, 17) === mod(11 - mod(137, 17), 17));
+
+        assert.strictEqual(mul(11, -137), mod(11 * -137, 17));
+        assert.strictEqual(mul(11, 137), mod(11 * 137, 17));
+        assert.strictEqual(shl(11, 3), mod(11 << 3, 17));
+        assert.strictEqual(shl(11, 16), mod(11 << 16, 17));
+        assert.strictEqual(add(11, 137), mod(11 + 137, 17));
+        assert.strictEqual(sub(11, 137), mod(11 - 137, 17));
       });
     }
 

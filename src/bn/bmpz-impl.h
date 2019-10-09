@@ -954,6 +954,7 @@ bmpz_sqrtm(mpz_t ret, const mpz_t num, const mpz_t p) {
     goto success;
   }
 
+  // p = 1
   if (mpz_cmp_ui(p, 1) == 0)
     goto fail;
 
@@ -1017,8 +1018,8 @@ bmpz_sqrtm(mpz_t ret, const mpz_t num, const mpz_t p) {
     if (m == 0)
       break;
 
-    // if m == k
-    if (m == k)
+    // if m >= k
+    if (m >= k)
       goto fail;
 
     // t = 1 << (k - m - 1)
