@@ -2830,7 +2830,7 @@ bcrypto_ecdsa_icart(bcrypto_ecdsa_t *ec, const BIGNUM *r) {
   F(BN_copy(c1, ec->p));
   F(BN_mul_word(c1, 2));
   F(BN_sub_word(c1, 1));
-  if (BN_div_word(c1, 3) == (BN_ULONG)-1) goto fail;
+  F(BN_div_word(c1, 3) != (BN_ULONG)-1);
 
   F(BN_set_word(c2, 3));
   F(BN_mod_inverse(c2, c2, ec->p, ec->ctx));
@@ -3445,7 +3445,7 @@ bcrypto_ecdsa_svdwi(bcrypto_ecdsa_t *ec, const EC_POINT *P, unsigned int hint) {
    *   c = sqrt(-3 * z^2)
    *   t0 = 9 * (x^2 * z^2 + z^4)
    *   t1 = 18 * x * z^3
-   *   t2 = 12 * (g(z) * x - g(z) * z)
+   *   t2 = 12 * g(z) * (x - z)
    *   t3 = sqrt(t0 - t1 + t2)
    *   t4 = t3 / 2 * z
    *   u1 = sqrt(g(z) * (c - 2 * x - z) / (c + 2 * x + z))
