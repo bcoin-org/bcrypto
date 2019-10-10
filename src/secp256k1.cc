@@ -70,7 +70,7 @@
 #include "secp256k1/src/ecmult_const_impl.h"
 #include "secp256k1/src/ecmult_gen_impl.h"
 #include "random/random.h"
-#include "secp256k1-extra/extra.h"
+#include "extra256k1/elligator.h"
 
 #define COMPRESSED_TYPE_INVALID "compressed should be a boolean"
 
