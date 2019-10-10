@@ -1,3 +1,26 @@
+/*
+ * elligator.h - elligator for libsecp256k1
+ * Copyright (c) 2019, Christopher Jeffrey (MIT License).
+ * https://github.com/bcoin-org/bcrypto
+ *
+ * Parts of this software are based on ElementsProject/secp256k1-zkp:
+ *   Copyright (c) 2013, Pieter Wuille
+ *   https://github.com/ElementsProject/secp256k1-zkp
+ *
+ * This module implements the Elligator Squared protocol for secp256k1.
+ *
+ * See: Elligator Squared.
+ *   Mehdi Tibouchi.
+ *   Algorithm 1, Page 8, Section 3.3.
+ *   https://eprint.iacr.org/2014/043.pdf
+ *
+ * Also: Indifferentiable Hashing to Barreto-Naehrig Curves.
+ *   Pierre-Alain Fouque, Mehdi Tibouchi.
+ *   Page 8, Section 3.
+ *   Page 15, Section 6, Algorithm 1.
+ *   https://www.di.ens.fr/~fouque/pub/latincrypt12.pdf
+ */
+
 static unsigned int
 secp256k1_bytes32_le(const unsigned char *a, const unsigned char *b) {
   int eq = ~0;
@@ -40,36 +63,31 @@ static void
 shallue_van_de_woestijne(secp256k1_ge *ge, const secp256k1_fe *u) {
   /* Copyright (c) 2016 Andrew Poelstra & Pieter Wuille */
 
-  /* Implements the algorithm from:
-   *    Indifferentiable Hashing to Barreto-Naehrig Curves
-   *    Pierre-Alain Fouque and Mehdi Tibouchi
-   *    Latincrypt 2012
+  /*
+   * Map:
+   *
+   *   c = sqrt(-3)
+   *   d = (c - 1) / 2
+   *   w = c * u / (1 + b + u^2) [with b = 7]
+   *   x1 = d - u * w
+   *   x2 = -(x1 + 1)
+   *   x3 = 1 + 1 / w^2
+   *
+   * To avoid the 2 divisions, compute the above in numerator/denominator form:
+   *
+   *   wn = c * u
+   *   wd = 1 + 7 + u^2
+   *   x1n = d * wd - u * wn
+   *   x1d = wd
+   *   x2n = -(x1n + wd)
+   *   x2d = wd
+   *   x3n = wd^2 + c^2 + u^2
+   *   x3d = (c * u)^2
+   *
+   * The joint denominator j = wd * c^2 * u^2, and
+   *   1 / x1d = 1/j * c^2 * u^2
+   *   1 / x2d = x3d = 1/j * wd
    */
-
-  /* Basic algorithm:
-
-     c = sqrt(-3)
-     d = (c - 1)/2
-
-     w = c * u / (1 + b + u^2)  [with b = 7]
-     x1 = d - u*w
-     x2 = -(x1 + 1)
-     x3 = 1 + 1/w^2
-
-     To avoid the 2 divisions, compute the above in numerator/denominator form:
-     wn = c * u
-     wd = 1 + 7 + u^2
-     x1n = d*wd - u*wn
-     x1d = wd
-     x2n = -(x1n + wd)
-     x2d = wd
-     x3n = wd^2 + c^2 + u^2
-     x3d = (c * u)^2
-
-     The joint denominator j = wd * c^2 * u^2, and
-     1 / x1d = 1/j * c^2 * u^2
-     1 / x2d = x3d = 1/j * wd
-  */
 
   static const secp256k1_fe c = SECP256K1_FE_CONST(0x0a2d2ba9, 0x3507f1df,
                                                    0x233770c2, 0xa797962c,
@@ -372,7 +390,7 @@ secp256k1_pubkey_to_uniform(unsigned char *bytes32,
 static int
 secp256k1_pubkey_from_hash(secp256k1_pubkey *pubkey,
                            const unsigned char *bytes64) {
-  secp256k1_gej r, j;
+  secp256k1_gej j, r;
   secp256k1_ge p1, p2;
   secp256k1_fe u1, u2;
   int ret;
