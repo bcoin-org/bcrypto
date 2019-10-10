@@ -2864,15 +2864,14 @@ bcrypto_ecdsa_icart(bcrypto_ecdsa_t *ec, const BIGNUM *r) {
   F(BN_mod_mul(y, u, x, ec->p, ec->ctx));
   F(BN_mod_add(y, y, v, ec->p, ec->ctx));
 
-#undef F
-
 #if OPENSSL_VERSION_NUMBER >= 0x10200000L
   /* Note: should be present with 1.1.1b */
-  if (!EC_POINT_set_affine_coordinates(ec->group, P, x, y, ec->ctx))
+  F(EC_POINT_set_affine_coordinates(ec->group, P, x, y, ec->ctx));
 #else
-  if (!EC_POINT_set_affine_coordinates_GFp(ec->group, P, x, y, ec->ctx))
+  F(EC_POINT_set_affine_coordinates_GFp(ec->group, P, x, y, ec->ctx));
 #endif
-    goto fail;
+
+#undef F
 
   ret = 1;
 fail:
@@ -2996,15 +2995,14 @@ bcrypto_ecdsa_sswu(bcrypto_ecdsa_t *ec, const BIGNUM *r) {
   e3 = bn_is_neg(y, ec->p) == bn_is_neg(u, ec->p);
   if (!e3) F(BN_mod_sub(y, ec->p, y, ec->p, ec->ctx));
 
-#undef F
-
 #if OPENSSL_VERSION_NUMBER >= 0x10200000L
   /* Note: should be present with 1.1.1b */
-  if (!EC_POINT_set_affine_coordinates(ec->group, P, x, y, ec->ctx))
+  F(EC_POINT_set_affine_coordinates(ec->group, P, x, y, ec->ctx));
 #else
-  if (!EC_POINT_set_affine_coordinates_GFp(ec->group, P, x, y, ec->ctx))
+  F(EC_POINT_set_affine_coordinates_GFp(ec->group, P, x, y, ec->ctx));
 #endif
-    goto fail;
+
+#undef F
 
   ret = 1;
 fail:
@@ -3360,15 +3358,14 @@ bcrypto_ecdsa_svdw(bcrypto_ecdsa_t *ec, const BIGNUM *r) {
   e4 = bn_is_neg(y, ec->p) == bn_is_neg(u, ec->p);
   if (!e4) F(BN_mod_sub(y, ec->p, y, ec->p, ec->ctx));
 
-#undef F
-
 #if OPENSSL_VERSION_NUMBER >= 0x10200000L
   /* Note: should be present with 1.1.1b */
-  if (!EC_POINT_set_affine_coordinates(ec->group, P, x, y, ec->ctx))
+  F(EC_POINT_set_affine_coordinates(ec->group, P, x, y, ec->ctx));
 #else
-  if (!EC_POINT_set_affine_coordinates_GFp(ec->group, P, x, y, ec->ctx))
+  F(EC_POINT_set_affine_coordinates_GFp(ec->group, P, x, y, ec->ctx));
 #endif
-    goto fail;
+
+#undef F
 
   ret = 1;
 fail:
@@ -3611,6 +3608,7 @@ bcrypto_ecdsa_svdwi(bcrypto_ecdsa_t *ec, const EC_POINT *P, unsigned int hint) {
     F(BN_mod_sub(u, ec->p, u, ec->p, ec->ctx));
 
 #undef F
+
   ret = 1;
 fail:
   if (z != NULL) BN_free(z);
