@@ -2286,7 +2286,7 @@ schnorr_lift_x(bcrypto_ecdsa_t *ec,
     return 0;
 
 #if OPENSSL_VERSION_NUMBER >= 0x10200000L
-  // Note: should be present with 1.1.1b
+  /* Note: should be present with 1.1.1b */
   if (!EC_POINT_set_affine_coordinates(ec->group, R, x, y, ec->ctx))
 #else
   if (!EC_POINT_set_affine_coordinates_GFp(ec->group, R, x, y, ec->ctx))
@@ -2315,20 +2315,20 @@ bcrypto_schnorr_sign(bcrypto_ecdsa_t *ec,
   if (!bcrypto_ecdsa_valid_scalar(ec, priv))
     goto fail;
 
-  // The secret key d: an integer in the range 1..n-1.
+  /* The secret key d: an integer in the range 1..n-1. */
   a = BN_bin2bn(priv, ec->scalar_size, BN_secure_new());
 
   if (a == NULL || BN_is_zero(a) || BN_cmp(a, ec->n) >= 0)
     goto fail;
 
-  // Let k' = int(hash(bytes(d) || m)) mod n
+  /* Let k' = int(hash(bytes(d) || m)) mod n */
   k = schnorr_hash_am(ec, priv, msg);
 
-  // Fail if k' = 0.
+  /* Fail if k' = 0. */
   if (k == NULL || BN_is_zero(k))
     goto fail;
 
-  // Let R = k'*G.
+  /* Let R = k'*G. */
   R = EC_POINT_new(ec->group);
 
   if (R == NULL)
@@ -2343,9 +2343,9 @@ bcrypto_schnorr_sign(bcrypto_ecdsa_t *ec,
   if (x == NULL || y == NULL)
     goto fail;
 
-  // Encode x(R).
+  /* Encode x(R). */
 #if OPENSSL_VERSION_NUMBER >= 0x10200000L
-  // Note: should be present with 1.1.1b
+  /* Note: should be present with 1.1.1b */
   if (!EC_POINT_get_affine_coordinates(ec->group, R, x, y, ec->ctx))
 #else
   if (!EC_POINT_get_affine_coordinates_GFp(ec->group, R, x, y, ec->ctx))
@@ -2354,7 +2354,7 @@ bcrypto_schnorr_sign(bcrypto_ecdsa_t *ec,
 
   assert(BN_bn2binpad(x, sig->r, ec->size) != -1);
 
-  // Encode d*G.
+  /* Encode d*G. */
   A = EC_POINT_new(ec->group);
 
   if (A == NULL)
@@ -2366,7 +2366,7 @@ bcrypto_schnorr_sign(bcrypto_ecdsa_t *ec,
   if (!bcrypto_ecdsa_pubkey_from_ec_point(ec, &pub, A))
     goto fail;
 
-  // Let e = int(hash(bytes(x(R)) || bytes(d*G) || m)) mod n.
+  /* Let e = int(hash(bytes(x(R)) || bytes(d*G) || m)) mod n. */
   e = schnorr_hash_ram(ec, sig->r, &pub, msg);
 
   if (e == NULL)
@@ -2377,11 +2377,11 @@ bcrypto_schnorr_sign(bcrypto_ecdsa_t *ec,
   if (j < -1)
     goto fail;
 
-  // Let k = k' if jacobi(y(R)) = 1, otherwise let k = n - k'.
+  /* Let k = k' if jacobi(y(R)) = 1, otherwise let k = n - k'. */
   if (j != 1)
     BN_sub(k, ec->n, k);
 
-  // Let S = k + e*d mod n.
+  /* Let S = k + e*d mod n. */
   if (!BN_mod_mul(e, e, a, ec->n, ec->ctx))
     goto fail;
 
@@ -2443,7 +2443,7 @@ bcrypto_schnorr_verify(bcrypto_ecdsa_t *ec,
   if (BN_cmp(Rx, ec->p) >= 0 || BN_cmp(S, ec->n) >= 0)
     goto fail;
 
-  // Let R = s*G - e*P.
+  /* Let R = s*G - e*P. */
   if (!BN_is_zero(e)) {
     if (!BN_sub(e, ec->n, e))
       goto fail;
@@ -2462,20 +2462,20 @@ bcrypto_schnorr_verify(bcrypto_ecdsa_t *ec,
   if (!EC_POINT_get_Jprojective_coordinates_GFp(ec->group, R, x, y, z, ec->ctx))
     goto fail;
 
-  // Check for point at infinity.
+  /* Check for point at infinity. */
   if (BN_is_zero(z))
     goto fail;
 
-  // Check for quadratic residue in the jacobian space.
-  // Optimized as `jacobi(y(R) * z(R)) == 1`.
+  /* Check for quadratic residue in the jacobian space. */
+  /* Optimized as `jacobi(y(R) * z(R)) == 1`. */
   if (!BN_mod_mul(e, y, z, ec->p, ec->ctx))
     goto fail;
 
   if (BN_kronecker(e, ec->p, ec->ctx) != 1)
     goto fail;
 
-  // Check `x(R) == r` in the jacobian space.
-  // Optimized as `x(R) == r * z(R)^2 mod p`.
+  /* Check `x(R) == r` in the jacobian space. */
+  /* Optimized as `x(R) == r * z(R)^2 mod p`. */
   if (!BN_mod_sqr(e, z, ec->p, ec->ctx))
     goto fail;
 
@@ -2690,7 +2690,7 @@ bn_mod_fermat(BIGNUM *r, BIGNUM *a, const BIGNUM *n, BN_CTX *ctx) {
   if (e == NULL)
     return 0;
 
-  // e = n - 2
+  /* e = n - 2 */
   if (!BN_copy(e, n))
     goto fail;
 
@@ -2714,7 +2714,7 @@ bn_legendre(const BIGNUM *a, const BIGNUM *n, BN_CTX *ctx) {
   if (e == NULL || r == NULL)
     goto fail;
 
-  // e = (n - 1) / 2
+  /* e = (n - 1) / 2 */
   if (!BN_copy(e, n))
     goto fail;
 
@@ -2757,7 +2757,7 @@ bn_is_neg(const BIGNUM *a, const BIGNUM *n) {
   if (half == NULL)
     return 0;
 
-  // half = (n - 1) / 2
+  /* half = (n - 1) / 2 */
   if (!BN_copy(half, n))
     goto fail;
 
@@ -2867,7 +2867,7 @@ bcrypto_ecdsa_icart(bcrypto_ecdsa_t *ec, const BIGNUM *r) {
 #undef F
 
 #if OPENSSL_VERSION_NUMBER >= 0x10200000L
-  // Note: should be present with 1.1.1b
+  /* Note: should be present with 1.1.1b */
   if (!EC_POINT_set_affine_coordinates(ec->group, P, x, y, ec->ctx))
 #else
   if (!EC_POINT_set_affine_coordinates_GFp(ec->group, P, x, y, ec->ctx))
@@ -2999,7 +2999,7 @@ bcrypto_ecdsa_sswu(bcrypto_ecdsa_t *ec, const BIGNUM *r) {
 #undef F
 
 #if OPENSSL_VERSION_NUMBER >= 0x10200000L
-  // Note: should be present with 1.1.1b
+  /* Note: should be present with 1.1.1b */
   if (!EC_POINT_set_affine_coordinates(ec->group, P, x, y, ec->ctx))
 #else
   if (!EC_POINT_set_affine_coordinates_GFp(ec->group, P, x, y, ec->ctx))
@@ -3363,7 +3363,7 @@ bcrypto_ecdsa_svdw(bcrypto_ecdsa_t *ec, const BIGNUM *r) {
 #undef F
 
 #if OPENSSL_VERSION_NUMBER >= 0x10200000L
-  // Note: should be present with 1.1.1b
+  /* Note: should be present with 1.1.1b */
   if (!EC_POINT_set_affine_coordinates(ec->group, P, x, y, ec->ctx))
 #else
   if (!EC_POINT_set_affine_coordinates_GFp(ec->group, P, x, y, ec->ctx))
