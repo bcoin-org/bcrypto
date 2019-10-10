@@ -3518,7 +3518,6 @@ bcrypto_ecdsa_svdwi(bcrypto_ecdsa_t *ec, const EC_POINT *P, unsigned int hint) {
   F(BN_mul_word(t1, 18));
   F(BN_mod(t1, t1, ec->p, ec->ctx));
 
-  /* t2 = 12 * (g(z) * x - g(z) * z) */
   /* t2 = 12 * g(z) * (x - z) */
   F(BN_mod_sub(t2, x, z, ec->p, ec->ctx));
   F(BN_mod_mul(t2, t2, gz, ec->p, ec->ctx));
