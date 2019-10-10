@@ -1258,6 +1258,40 @@ describe('ECDSA', function() {
       assert.bufferEqual(pub,
         '032287235856654cff0bf82466518bb9e7eaef62632c4805b3c76f8a6675f2a1df');
     });
+
+    it('should invert elligator', () => {
+      for (const curve of [p256, secp256k1]) {
+        let priv, pub, bytes;
+
+        for (;;) {
+          priv = curve.privateKeyGenerate();
+          pub = curve.publicKeyCreate(priv);
+
+          try {
+            bytes = curve.publicKeyToUniform(pub, random.randomInt());
+          } catch (e) {
+            continue;
+          }
+
+          break;
+        }
+
+        const out = curve.publicKeyFromUniform(bytes);
+
+        assert.bufferEqual(out, pub);
+      }
+    });
+
+    it('should invert elligator squared', () => {
+      for (const curve of [p256, secp256k1]) {
+        const priv = curve.privateKeyGenerate();
+        const pub = curve.publicKeyCreate(priv);
+        const bytes = curve.publicKeyToHash(pub);
+        const out = curve.publicKeyFromHash(bytes);
+
+        assert.bufferEqual(out, pub);
+      }
+    });
   });
 
   describe('Canonical', () => {

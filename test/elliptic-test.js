@@ -2312,13 +2312,13 @@ describe('Elliptic', function() {
       assert(p.validate());
 
       for (let i = 0; i < 3; i++) {
-        let p, s;
+        let p, u;
 
         for (;;) {
           p = curve.randomPoint(rng);
 
           try {
-            s = curve._svdwi(p, rng.randomInt());
+            u = curve._svdwi(p, rng.randomInt());
           } catch (e) {
             assert(e.message === 'Invalid point.');
             continue;
@@ -2327,7 +2327,7 @@ describe('Elliptic', function() {
           break;
         }
 
-        const q = curve._svdw(s);
+        const q = curve._svdw(u);
 
         assert(p.eq(q));
       }
@@ -2340,13 +2340,13 @@ describe('Elliptic', function() {
       assert(p.validate());
 
       for (let i = 0; i < 3; i++) {
-        let p, s;
+        let p, u;
 
         for (;;) {
           p = curve.randomPoint(rng);
 
           try {
-            s = curve._sswui(p, rng.randomInt());
+            u = curve._sswui(p, rng.randomInt());
           } catch (e) {
             assert(e.message === 'Invalid point.');
             continue;
@@ -2355,7 +2355,46 @@ describe('Elliptic', function() {
           break;
         }
 
-        const q = curve._sswu(s);
+        const q = curve._sswu(u);
+
+        assert(p.eq(q));
+      }
+    });
+
+    it('should invert elligator for weierstrass', () => {
+      const p256 = new curves.P256();
+      const secp256k1 = new curves.SECP256K1();
+
+      for (const curve of [p256, secp256k1]) {
+        let p, u;
+
+        for (;;) {
+          p = curve.randomPoint(rng);
+
+          try {
+            u = curve.pointToUniform(p, rng.randomInt());
+          } catch (e) {
+            assert(e.message === 'Invalid point.');
+            continue;
+          }
+
+          break;
+        }
+
+        const q = curve.pointFromUniform(u);
+
+        assert(p.eq(q));
+      }
+    });
+
+    it('should invert elligator squared for weierstrass', () => {
+      const p256 = new curves.P256();
+      const secp256k1 = new curves.SECP256K1();
+
+      for (const curve of [p256, secp256k1]) {
+        const p = curve.randomPoint(rng);
+        const u = curve.pointToHash(p, rng);
+        const q = curve.pointFromHash(u);
 
         assert(p.eq(q));
       }
