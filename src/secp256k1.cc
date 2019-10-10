@@ -96,6 +96,7 @@
 #define EC_PUBLIC_KEY_TWEAK_MUL_FAIL "tweak out of range"
 #define EC_PUBLIC_KEY_COMBINE_FAIL "the sum of the public keys is not valid"
 #define EC_PUBLIC_KEY_NEGATE_FAIL "public key negation failed"
+#define EC_PUBLIC_KEY_INVERT_FAIL "public key inversion failed"
 
 #define ECDH_FAIL "scalar was invalid (zero or overflow)"
 
@@ -120,6 +121,8 @@
 
 #define RECOVERY_ID_TYPE_INVALID "recovery should be a Number"
 #define RECOVERY_ID_VALUE_INVALID "recovery should have value between -1 and 4"
+
+#define HINT_TYPE_INVALID "hint should be a Number"
 
 #define TWEAK_TYPE_INVALID "tweak should be a Buffer"
 #define TWEAK_LENGTH_INVALID "tweak length is invalid"
@@ -234,7 +237,9 @@ BSecp256k1::Init(v8::Local<v8::Object> &target) {
   Nan::SetPrototypeMethod(tpl, "publicKeyCreate", BSecp256k1::PublicKeyCreate);
   Nan::SetPrototypeMethod(tpl, "publicKeyConvert", BSecp256k1::PublicKeyConvert);
   Nan::SetPrototypeMethod(tpl, "publicKeyFromUniform", BSecp256k1::PublicKeyFromUniform);
+  Nan::SetPrototypeMethod(tpl, "publicKeyToUniform", BSecp256k1::PublicKeyToUniform);
   Nan::SetPrototypeMethod(tpl, "publicKeyFromHash", BSecp256k1::PublicKeyFromHash);
+  Nan::SetPrototypeMethod(tpl, "publicKeyToHash", BSecp256k1::PublicKeyToHash);
   Nan::SetPrototypeMethod(tpl, "publicKeyVerify", BSecp256k1::PublicKeyVerify);
   Nan::SetPrototypeMethod(tpl, "publicKeyTweakAdd", BSecp256k1::PublicKeyTweakAdd);
   Nan::SetPrototypeMethod(tpl, "publicKeyTweakMul", BSecp256k1::PublicKeyTweakMul);
@@ -564,6 +569,37 @@ NAN_METHOD(BSecp256k1::PublicKeyFromUniform) {
   info.GetReturnValue().Set(COPY_BUFFER(&output[0], output_length));
 }
 
+NAN_METHOD(BSecp256k1::PublicKeyToUniform) {
+  BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
+
+  v8::Local<v8::Object> input_buffer = info[0].As<v8::Object>();
+  CHECK_TYPE_BUFFER(input_buffer, EC_PUBLIC_KEY_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH2(input_buffer, 33, 65, EC_PUBLIC_KEY_LENGTH_INVALID);
+
+  const unsigned char *input =
+    (unsigned char *)node::Buffer::Data(input_buffer);
+  size_t input_length = node::Buffer::Length(input_buffer);
+
+  v8::Local<v8::Object> hint_object = info[1].As<v8::Object>();
+  CHECK_TYPE_NUMBER(hint_object, HINT_TYPE_INVALID);
+
+  unsigned int hint = (unsigned int)Nan::To<uint32_t>(hint_object).FromJust();
+
+  secp256k1_pubkey public_key;
+
+  if (secp256k1_ec_pubkey_parse(secp->ctx, &public_key,
+                                input, input_length) == 0) {
+    return Nan::ThrowError(EC_PUBLIC_KEY_PARSE_FAIL);
+  }
+
+  unsigned char output[32];
+
+  if (secp256k1_pubkey_to_uniform(output, &public_key, hint) == 0)
+    return Nan::ThrowError(EC_PUBLIC_KEY_INVERT_FAIL);
+
+  info.GetReturnValue().Set(COPY_BUFFER(&output[0], 32));
+}
+
 NAN_METHOD(BSecp256k1::PublicKeyFromHash) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
@@ -590,6 +626,36 @@ NAN_METHOD(BSecp256k1::PublicKeyFromHash) {
                                 &public_key, flags);
 
   info.GetReturnValue().Set(COPY_BUFFER(&output[0], output_length));
+}
+
+NAN_METHOD(BSecp256k1::PublicKeyToHash) {
+  BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
+
+  v8::Local<v8::Object> input_buffer = info[0].As<v8::Object>();
+  CHECK_TYPE_BUFFER(input_buffer, EC_PUBLIC_KEY_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH2(input_buffer, 33, 65, EC_PUBLIC_KEY_LENGTH_INVALID);
+
+  const unsigned char *input =
+    (unsigned char *)node::Buffer::Data(input_buffer);
+  size_t input_length = node::Buffer::Length(input_buffer);
+
+  secp256k1_pubkey public_key;
+
+  if (secp256k1_ec_pubkey_parse(secp->ctx, &public_key,
+                                input, input_length) == 0) {
+    return Nan::ThrowError(EC_PUBLIC_KEY_PARSE_FAIL);
+  }
+
+  unsigned char output[64];
+  unsigned char seed[32];
+
+  if (!bcrypto_random(&seed[0], 32))
+    return Nan::ThrowError(EC_PUBLIC_KEY_INVERT_FAIL);
+
+  if (secp256k1_pubkey_to_hash(output, &public_key, seed) == 0)
+    return Nan::ThrowError(EC_PUBLIC_KEY_INVERT_FAIL);
+
+  info.GetReturnValue().Set(COPY_BUFFER(&output[0], 64));
 }
 
 NAN_METHOD(BSecp256k1::PublicKeyVerify) {

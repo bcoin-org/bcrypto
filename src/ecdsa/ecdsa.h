@@ -202,9 +202,20 @@ bcrypto_ecdsa_pubkey_from_uniform(bcrypto_ecdsa_t *ec,
                                   const uint8_t *bytes);
 
 int
+bcrypto_ecdsa_pubkey_to_uniform(bcrypto_ecdsa_t *ec,
+                                uint8_t *bytes,
+                                const bcrypto_ecdsa_pubkey_t *pub,
+                                unsigned int hint);
+
+int
 bcrypto_ecdsa_pubkey_from_hash(bcrypto_ecdsa_t *ec,
                                bcrypto_ecdsa_pubkey_t *out,
                                const uint8_t *bytes);
+
+int
+bcrypto_ecdsa_pubkey_to_hash(bcrypto_ecdsa_t *ec,
+                             uint8_t *bytes,
+                             const bcrypto_ecdsa_pubkey_t *pub);
 
 int
 bcrypto_ecdsa_pubkey_export_spki(bcrypto_ecdsa_t *ec,

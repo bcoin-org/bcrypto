@@ -28,7 +28,9 @@ private:
   static NAN_METHOD(PublicKeyCreate);
   static NAN_METHOD(PublicKeyConvert);
   static NAN_METHOD(PublicKeyFromUniform);
+  static NAN_METHOD(PublicKeyToUniform);
   static NAN_METHOD(PublicKeyFromHash);
+  static NAN_METHOD(PublicKeyToHash);
   static NAN_METHOD(PublicKeyVerify);
   static NAN_METHOD(PublicKeyTweakAdd);
   static NAN_METHOD(PublicKeyTweakMul);
