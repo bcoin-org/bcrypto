@@ -1345,6 +1345,19 @@ bcrypto_ecdsa_pubkey_to_uniform(bcrypto_ecdsa_t *ec,
 
   assert(BN_bn2binpad(u, bytes, ec->size) != -1);
 
+  if (ec->bits & 7) {
+    size_t fill = 8 - (ec->bits & 7);
+    unsigned char r;
+
+    if (!bcrypto_random(&r, sizeof(unsigned char)))
+      goto fail;
+
+    r &= (1 << fill) - 1;
+    r <<= ec->bits & 7;
+
+    bytes[0] |= r;
+  }
+
   EC_POINT_clear_free(P);
   BN_clear_free(u);
 
@@ -1497,6 +1510,25 @@ bcrypto_ecdsa_pubkey_to_hash(bcrypto_ecdsa_t *ec,
 
   assert(BN_bn2binpad(u1, bytes, ec->size) != -1);
   assert(BN_bn2binpad(u2, bytes + ec->size, ec->size) != -1);
+
+  if (ec->bits & 7) {
+    size_t fill = 8 - (ec->bits & 7);
+    unsigned char r1, r2;
+
+    if (!bcrypto_random(&r1, sizeof(unsigned char)))
+      goto fail;
+
+    if (!bcrypto_random(&r2, sizeof(unsigned char)))
+      goto fail;
+
+    r1 &= (1 << fill) - 1;
+    r1 <<= ec->bits & 7;
+    r2 &= (1 << fill) - 1;
+    r2 <<= ec->bits & 7;
+
+    bytes[0] |= r1;
+    bytes[ec->size] |= r2;
+  }
 
   ret = 1;
 fail:
