@@ -1275,7 +1275,7 @@ fail:
 }
 
 static EC_POINT *
-bcrypto_ecdsa_uniform(bcrypto_ecdsa_t *ec, const BIGNUM *u);
+bcrypto_ecdsa_point_from_uniform(bcrypto_ecdsa_t *ec, const BIGNUM *u);
 
 int
 bcrypto_ecdsa_pubkey_from_uniform(bcrypto_ecdsa_t *ec,
@@ -1297,7 +1297,7 @@ bcrypto_ecdsa_pubkey_from_uniform(bcrypto_ecdsa_t *ec,
   if (!BN_mod(u, u, ec->p, ec->ctx))
     goto fail;
 
-  P = bcrypto_ecdsa_uniform(ec, u);
+  P = bcrypto_ecdsa_point_from_uniform(ec, u);
 
   if (P == NULL)
     goto fail;
@@ -1321,9 +1321,9 @@ fail:
 }
 
 static BIGNUM *
-bcrypto_ecdsa_invert(bcrypto_ecdsa_t *ec,
-                     const EC_POINT *P,
-                     unsigned int hint);
+bcrypto_ecdsa_point_to_uniform(bcrypto_ecdsa_t *ec,
+                               const EC_POINT *P,
+                               unsigned int hint);
 
 int
 bcrypto_ecdsa_pubkey_to_uniform(bcrypto_ecdsa_t *ec,
@@ -1338,7 +1338,7 @@ bcrypto_ecdsa_pubkey_to_uniform(bcrypto_ecdsa_t *ec,
   if (P == NULL)
     goto fail;
 
-  u = bcrypto_ecdsa_invert(ec, P, hint);
+  u = bcrypto_ecdsa_point_to_uniform(ec, P, hint);
 
   if (u == NULL)
     goto fail;
@@ -1407,12 +1407,12 @@ bcrypto_ecdsa_pubkey_from_hash(bcrypto_ecdsa_t *ec,
   if (!BN_mod(u2, u2, ec->p, ec->ctx))
     goto fail;
 
-  P1 = bcrypto_ecdsa_uniform(ec, u1);
+  P1 = bcrypto_ecdsa_point_from_uniform(ec, u1);
 
   if (P1 == NULL)
     goto fail;
 
-  P2 = bcrypto_ecdsa_uniform(ec, u2);
+  P2 = bcrypto_ecdsa_point_from_uniform(ec, u2);
 
   if (P2 == NULL)
     goto fail;
@@ -1485,7 +1485,7 @@ bcrypto_ecdsa_pubkey_to_hash(bcrypto_ecdsa_t *ec,
     if (!BN_rand_range(u1, ec->p))
       goto fail;
 
-    P1 = bcrypto_ecdsa_uniform(ec, u1);
+    P1 = bcrypto_ecdsa_point_from_uniform(ec, u1);
 
     if (P1 == NULL)
       goto fail;
@@ -1499,7 +1499,7 @@ bcrypto_ecdsa_pubkey_to_hash(bcrypto_ecdsa_t *ec,
     if (!bcrypto_random(&hint, sizeof(unsigned int)))
       goto fail;
 
-    u2 = bcrypto_ecdsa_invert(ec, P2, hint);
+    u2 = bcrypto_ecdsa_point_to_uniform(ec, P2, hint);
 
     if (u2 != NULL)
       break;
@@ -3654,7 +3654,7 @@ fail:
 }
 
 static EC_POINT *
-bcrypto_ecdsa_uniform(bcrypto_ecdsa_t *ec, const BIGNUM *u) {
+bcrypto_ecdsa_point_from_uniform(bcrypto_ecdsa_t *ec, const BIGNUM *u) {
   switch (bcrypto_ecdsa_uniform_type(ec->type)) {
     case BCRYPTO_ECDSA_ICART:
       return bcrypto_ecdsa_icart(ec, u);
@@ -3668,9 +3668,9 @@ bcrypto_ecdsa_uniform(bcrypto_ecdsa_t *ec, const BIGNUM *u) {
 }
 
 static BIGNUM *
-bcrypto_ecdsa_invert(bcrypto_ecdsa_t *ec,
-                     const EC_POINT *P,
-                     unsigned int hint) {
+bcrypto_ecdsa_point_to_uniform(bcrypto_ecdsa_t *ec,
+                               const EC_POINT *P,
+                               unsigned int hint) {
   switch (bcrypto_ecdsa_uniform_type(ec->type)) {
     case BCRYPTO_ECDSA_ICART:
       return NULL;
