@@ -1458,15 +1458,10 @@ bcrypto_ecdsa_pubkey_to_hash(bcrypto_ecdsa_t *ec,
   unsigned int hint;
   int ret = 0;
 
-  switch (bcrypto_ecdsa_uniform_type(ec->type)) {
-    case BCRYPTO_ECDSA_ICART:
-      return 0;
-    case BCRYPTO_ECDSA_SSWU:
-    case BCRYPTO_ECDSA_SVDW:
-      break;
-    default:
-      return 0;
-  }
+#ifdef BCRYPTO_ECDSA_WITH_ICART
+  if (bcrypto_ecdsa_uniform_type(ec->type) == BCRYPTO_ECDSA_ICART)
+    return 0;
+#endif
 
   u1 = BN_new();
   P2 = EC_POINT_new(ec->group);
@@ -2773,6 +2768,7 @@ fail:
   return cmp;
 }
 
+#ifdef BCRYPTO_ECDSA_WITH_ICART
 static EC_POINT *
 bcrypto_ecdsa_icart(bcrypto_ecdsa_t *ec, const BIGNUM *r) {
   BIGNUM *c1 = BN_new();
@@ -2895,6 +2891,7 @@ fail:
 
   return P;
 }
+#endif
 
 static EC_POINT *
 bcrypto_ecdsa_sswu(bcrypto_ecdsa_t *ec, const BIGNUM *r) {
@@ -3657,7 +3654,9 @@ static EC_POINT *
 bcrypto_ecdsa_point_from_uniform(bcrypto_ecdsa_t *ec, const BIGNUM *u) {
   switch (bcrypto_ecdsa_uniform_type(ec->type)) {
     case BCRYPTO_ECDSA_ICART:
+#ifdef BCRYPTO_ECDSA_WITH_ICART
       return bcrypto_ecdsa_icart(ec, u);
+#endif
     case BCRYPTO_ECDSA_SSWU:
       return bcrypto_ecdsa_sswu(ec, u);
     case BCRYPTO_ECDSA_SVDW:
@@ -3673,7 +3672,9 @@ bcrypto_ecdsa_point_to_uniform(bcrypto_ecdsa_t *ec,
                                unsigned int hint) {
   switch (bcrypto_ecdsa_uniform_type(ec->type)) {
     case BCRYPTO_ECDSA_ICART:
+#ifdef BCRYPTO_ECDSA_WITH_ICART
       return NULL;
+#endif
     case BCRYPTO_ECDSA_SSWU:
       return bcrypto_ecdsa_sswui(ec, P, hint);
     case BCRYPTO_ECDSA_SVDW:

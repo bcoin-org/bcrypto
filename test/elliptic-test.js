@@ -2250,7 +2250,7 @@ describe('Elliptic', function() {
     it('should test icart\'s method', () => {
       const curve = new curves.P384();
       const u = curve.randomField(rng);
-      const p = curve.pointFromUniform(u);
+      const p = curve._icart(u);
 
       assert(p.validate());
     });

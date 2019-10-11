@@ -1036,6 +1036,13 @@ describe('ECDSA', function() {
   });
 
   describe('Maps', () => {
+    let native = null;
+
+    if (secp256k1.native === 2) {
+      const ECDSA = require('../lib/native/ecdsa');
+      native = new ECDSA('SECP256K1');
+    }
+
     it('should create point from uniform bytes (sswu)', () => {
       const preimages = [
         '4f096bd02b4f50102e6a2f6e7570b7f6fe67425839e93b63b9c5fbe8af2646f9',
@@ -1094,109 +1101,7 @@ describe('ECDSA', function() {
         '03fbf5787142ed1d57662ed75bd90c18a581112cbe7be810fdaf68cb2cceeacc52');
     });
 
-    it('should create point from uniform bytes (icart)', () => {
-      const preimages = [
-        '0a849dd060ea126f18177939d7f9aebca55546e02bc00975',
-        'a96784ba9a8c0958cbb126e4303692519da3f5b16cb97241',
-        'baad184b4b07f34e5b38fef8c8835c008d66ea8f3537844c',
-        '19307069e0157660d00f607c757dab0115914ea4970f2cf7',
-        '20b16e2692722651bc0b9476d1d53bc29d06bade5d1454f9',
-        '8b58d8dcd461cd83cee9d725707bfb3921734d4b88d7f576',
-        'd050ddd876e44d2dccabc7c5adb42b5a1b51ffb7eb4bbe38',
-        '3081a358780f80dd6f81cacdf7b9db88823417522d877b96',
-        'ea9f9e35207a1df18c1d606517ad96acaf601288e2147960',
-        '4cc118d9a6396c88a9083dbac778101b03b0db67fe337ad8',
-        'febdf25e83c998bc8e3175afea2116c5ce6b600eed2c5228',
-        'b87504c8c8ae47f2cba4ae194f190d1fe8a4ce6ce87338c1',
-        'be0ce11004e8607580db943f888470b60dd8c402017b2413',
-        '92f7aafa3539c43e1e52bfd65adfa9df64b52b2042d00ab2',
-        '409a543d5cc7050cbe655930db3ff01511bc9c04f1fab7da',
-        '7fb36dd051a9363f2a27b73678f04dabb29b5f1e7530ea36',
-        '977843995a89c72eff3f422b2af5e1137c09ece2fbca5a35',
-        '1ce3aeb4c1a2b623bc7598cc58fc4efd860f9be0e87a7e17',
-        '15dd2689ba2d8ea02c5695aada6f6f6a1ef845a41ee79073',
-        '7867d742635a37d06d3cc753eb290b46b4432d97e55948ed',
-        '3dd4942f6c227ffc97c8282ce228903efa67813bea46ccae',
-        'bd9204acf38d3e15220650c04e02e874af71f601517a7928',
-        'b40c257ca2bc50f358ab7c951b5a9fa0af1df8343d0b43ad',
-        'f1c08f6e5cc262ce2ce010b4a4c1b9246930f1d14e83b1d6',
-        '0576a6bb1d4660e18abc1ec6bb73825cca9d739a9c060b22',
-        '39813a827499a6e625b0c9ca38a12e8b92389e30e5bd9e54',
-        '4213561d5fc1889acb16484281f83c7c7f98c8acc26f1687',
-        '9d4723cf1a68c45996b591a05190feebe7c4d69b18556acb',
-        '97da0624c62cf986dd0b2e92371f9b3605d362b89ef8b9bd',
-        'da751103d9d1cb32184afa4b25f6653d7c103a63fc7e01f5',
-        '1347caf26edc748deabedee119b8fece54427c5829d68049',
-        'c14df3bea06edd316b6abd39efef848eb8ea4f2759daba4f'
-      ];
-
-      const keys = [
-        '026d8ceb0949954e64f1bf4a9226e72ab97fa8a6be270b36',
-        '81d4a42133b4cb087be1e46377adf6895bd88ffc477a0a46b4',
-        '0323bd42330cc7ee988f8ac44e3e856485d2e815d6cb22d6',
-        '553acc4b157e4a53292c5162bb08d2c1e0a0dd7e4f5d507f9e',
-        '030f264782805645a2fa3602a92ebf0bc1c9b6b5684e0679',
-        'c13d6601b250cc3ea69620dd2f496cc14c84d162c89466f14d',
-        '02a057344bd54078b7163ba9975b8d64af9c8a66ef2c0c4a',
-        'a13da607f5f400d613cdd4edd7b5ea4d41a2cad78b6889898a',
-        '035b436579064bba0a0a90b9297794045a2254209febee9b',
-        'e3d615ae165075c4433a2c1c2f68f962a44a10e84daa26ff73',
-        '03f0bdc79103efcbbb0f80dd8270ef191d704f7a2c9394b9',
-        '683b8bb202bb757473b052dc44fc60b745a64d94c374f8798a',
-        '02acff064b5be030aadaee1ae8b35244fd23047fbd559595',
-        'c60de406e41264a779f23495520300d2569750fdfb49b24224',
-        '030d9270281777bdafff7051fbc5a6c552a5f4f1ff538267',
-        '6145e1a3fc89609af705e0291c027b75ffc449bf8a2a278c35',
-        '0248ae937e8e90e4236065db13a30abb11b1de951c9258ca',
-        '3b033f38eda40e7c4844cdaaa8c70db0dcb6a0a8cdc74991a2',
-        '024c3797708f012b42d3e354e4da48e124d7e09332c36bbe',
-        'f5332f5f40e5dfe8869b8c34f9a0fa1abd09b83717de455a89',
-        '02770e9241fd1efecec3eca8980097778e5941e34105d5e4',
-        'daab88523ebcf84f0f7cd7fac3cc9350cc88e01e4d10e3fa9d',
-        '03ac038e7be0673aa538ed9196d5b6b6c3b9dab044488cb1',
-        '9e7559826c460752e478eb6d244e7de0b3d0a258597c294273',
-        '0205b431661153a309feea8c2b32b4e9cea83ce730fe68cd',
-        '422c5d658bf1e89bd1441615eb20cf05bc78c6c1865d5f1838',
-        '03b092a746763be88894285a1b6cc95e466eb2b6543689b0',
-        '25ce545d2a6a95b583754a628b658fd8c672b8986630a025e4',
-        '0244a6bde53e66686167ab0f0533129b4485c0718b47b795',
-        '97a43a1cb5bfb3171bf89eabf4d6dcb16688ffaddd3424039a',
-        '026b8143149dcf82a175ccf659fb73824e9c927266b0951b',
-        '138c002af59f9f26da5431ceae4b78830ce22acd1dd9a8c10b'
-      ];
-
-      for (let i = 0; i < 32; i += 2) {
-        const preimage = Buffer.from(preimages[i] + preimages[i + 1], 'hex');
-        const key = Buffer.from(keys[i] + keys[i + 1], 'hex');
-
-        assert.strictEqual(p384.publicKeyVerify(key), true);
-        assert.bufferEqual(p384.publicKeyFromUniform(preimage), key);
-      }
-    });
-
-    it('should do random oracle encoding (icart)', () => {
-      const str1 = Buffer.from('turn me into a point.');
-      const str2 = Buffer.from('turn me into a point!');
-      const bytes1 = SHA512.digest(str1).slice(0, 48);
-      const bytes2 = SHA512.digest(str2).slice(0, 48);
-      const bytes = Buffer.concat([bytes1, bytes2]);
-      const pub = p384.publicKeyFromHash(bytes);
-
-      assert.strictEqual(p384.publicKeyVerify(pub), true);
-
-      assert.bufferEqual(pub, '02'
-        + '618a0341b34fbc425ab99da717b052aade0439243d4b6a18'
-        + 'abdba957f9530f56226df91f4666295d9afef3d01e60b026');
-    });
-
     it('should create point from uniform bytes (svdw)', () => {
-      let curve = null;
-
-      if (secp256k1.native === 2) {
-        const ECDSA = require('../lib/native/ecdsa');
-        curve = new ECDSA('SECP256K1');
-      }
-
       const preimages = [
         '98ba02ac9490595c56f5b26535d54423cfb080e4a46405c19dcf3b54aeaab558',
         '1c7c3badac99fed06d129f3dc15feabcd46c792976c67e1417f1a369f26e2e09',
@@ -1242,9 +1147,9 @@ describe('ECDSA', function() {
         assert.strictEqual(secp256k1.publicKeyVerify(key), true);
         assert.bufferEqual(secp256k1.publicKeyFromUniform(preimage), key);
 
-        if (curve) {
-          assert.strictEqual(curve.publicKeyVerify(key), true);
-          assert.bufferEqual(curve.publicKeyFromUniform(preimage), key);
+        if (native) {
+          assert.strictEqual(native.publicKeyVerify(key), true);
+          assert.bufferEqual(native.publicKeyFromUniform(preimage), key);
         }
       }
     });
@@ -1257,10 +1162,15 @@ describe('ECDSA', function() {
 
       assert.bufferEqual(pub,
         '032287235856654cff0bf82466518bb9e7eaef62632c4805b3c76f8a6675f2a1df');
+
+      if (native) {
+        assert.bufferEqual(native.publicKeyFromHash(bytes),
+          '032287235856654cff0bf82466518bb9e7eaef62632c4805b3c76f8a6675f2a1df');
+      }
     });
 
     it('should invert elligator', () => {
-      for (const curve of [p256, secp256k1]) {
+      for (const curve of [p256, secp256k1, native || secp256k1]) {
         let priv, pub, bytes;
 
         for (;;) {
@@ -1283,7 +1193,7 @@ describe('ECDSA', function() {
     });
 
     it('should invert elligator squared', () => {
-      for (const curve of [p256, secp256k1]) {
+      for (const curve of [p256, secp256k1, native || secp256k1]) {
         const priv = curve.privateKeyGenerate();
         const pub = curve.publicKeyCreate(priv);
         const bytes = curve.publicKeyToHash(pub);
