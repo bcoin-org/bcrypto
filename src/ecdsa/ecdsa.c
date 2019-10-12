@@ -3423,16 +3423,11 @@ bcrypto_ecdsa_svdwi(bcrypto_ecdsa_t *ec, const EC_POINT *P, unsigned int hint) {
   BIGNUM *u2 = BN_new();
   BIGNUM *u3 = BN_new();
   BIGNUM *u4 = BN_new();
-  EC_POINT *P1 = EC_POINT_new(ec->group);
-  EC_POINT *P2 = EC_POINT_new(ec->group);
-  EC_POINT *P3 = EC_POINT_new(ec->group);
-  EC_POINT *P4 = EC_POINT_new(ec->group);
-  BIGNUM *x1 = BN_new();
-  BIGNUM *x2 = BN_new();
-  BIGNUM *x3 = BN_new();
-  BIGNUM *x4 = BN_new();
+  EC_POINT *Q = EC_POINT_new(ec->group);
+  BIGNUM *x0 = BN_new();
   BIGNUM *u = BN_new();
-  int Z, s0, s1, s2, s3, s4;
+  int r = hint & 3;
+  int Z, s0, s1;
   int ret = 0;
 
   /*
@@ -3445,10 +3440,10 @@ bcrypto_ecdsa_svdwi(bcrypto_ecdsa_t *ec, const EC_POINT *P, unsigned int hint) {
    *   t2 = 12 * g(z) * (x - z)
    *   t3 = sqrt(t0 - t1 + t2)
    *   t4 = t3 / 2 * z
-   *   u1 = sqrt(g(z) * (c - 2 * x - z) / (c + 2 * x + z))
-   *   u2 = sqrt(g(z) * (c + 2 * x + z) / (c - 2 * x - z))
-   *   u3 = sqrt(((-x * z^2 + z^3) * 3) / 2 - g(z) + t4)
-   *   u4 = sqrt(((-x * z^2 + z^3) * 3) / 2 - g(z) - t4)
+   *   u1 = +-sqrt(g(z) * (c - 2 * x - z) / (c + 2 * x + z))
+   *   u2 = +-sqrt(g(z) * (c + 2 * x + z) / (c - 2 * x - z))
+   *   u3 = +-sqrt(((-x * z^2 + z^3) * 3) / 2 - g(z) + t4)
+   *   u4 = +-sqrt(((-x * z^2 + z^3) * 3) / 2 - g(z) - t4)
    */
 
   if (z == NULL || x == NULL || y == NULL || i2 == NULL
@@ -3457,9 +3452,7 @@ bcrypto_ecdsa_svdwi(bcrypto_ecdsa_t *ec, const EC_POINT *P, unsigned int hint) {
       || t3 == NULL || t4 == NULL || t5 == NULL || x2z == NULL
       || c1 == NULL || c2 == NULL || c3 == NULL || d1 == NULL
       || d2 == NULL || u1 == NULL || u2 == NULL || u3 == NULL
-      || u4 == NULL || P1 == NULL || P2 == NULL || P3 == NULL
-      || P4 == NULL || x1 == NULL || x2 == NULL || x3 == NULL
-      || x4 == NULL || u == NULL) {
+      || u4 == NULL || Q == NULL || x0 == NULL || u == NULL) {
     goto fail;
   }
 
@@ -3551,59 +3544,38 @@ bcrypto_ecdsa_svdwi(bcrypto_ecdsa_t *ec, const EC_POINT *P, unsigned int hint) {
   F(BN_mod_mul(d1, c3, c1, ec->p, ec->ctx));
   F(BN_mod_mul(d2, c3, c2, ec->p, ec->ctx));
 
-  /* u1 = sqrt(g(z) * (c - 2 * x - z) / (c + 2 * x + z)) */
+  /* u1 = g(z) * (c - 2 * x - z) / (c + 2 * x + z) */
   F(BN_mod_mul(u1, gz, c1, ec->p, ec->ctx));
   F(BN_mod_mul(u1, u1, d1, ec->p, ec->ctx));
-  s1 = BN_mod_sqrt(u1, u1, ec->p, ec->ctx) != 0;
 
-  /* u2 = sqrt(g(z) * (c + 2 * x + z) / (c - 2 * x - z)) */
+  /* u2 = g(z) * (c + 2 * x + z) / (c - 2 * x - z) */
   F(BN_mod_mul(u2, gz, c2, ec->p, ec->ctx));
   F(BN_mod_mul(u2, u2, d2, ec->p, ec->ctx));
-  s2 = BN_mod_sqrt(u2, u2, ec->p, ec->ctx) != 0;
 
-  /* u3 = sqrt(((-x * z^2 + z^3) * 3) / 2 - g(z) + t4) */
+  /* u3 = ((-x * z^2 + z^3) * 3) / 2 - g(z) + t4 */
   F(BN_mod_add(u3, t5, t4, ec->p, ec->ctx));
-  s3 = BN_mod_sqrt(u3, u3, ec->p, ec->ctx) != 0;
 
-  /* u4 = sqrt(((-x * z^2 + z^3) * 3) / 2 - g(z) - t4) */
+  /* u4 = ((-x * z^2 + z^3) * 3) / 2 - g(z) - t4 */
   F(BN_mod_sub(u4, t5, t4, ec->p, ec->ctx));
-  s4 = BN_mod_sqrt(u4, u4, ec->p, ec->ctx) != 0;
 
-  F(P1 = bcrypto_ecdsa_svdw(ec, u1));
-  F(P2 = bcrypto_ecdsa_svdw(ec, u2));
-  F(P3 = bcrypto_ecdsa_svdw(ec, u3));
-  F(P4 = bcrypto_ecdsa_svdw(ec, u4));
+  /* u = sqrt(ur) */
+  BIGNUM *U[4] = { u1, u2, u3, u4 };
+
+  s1 = BN_mod_sqrt(u, U[r], ec->p, ec->ctx) != 0;
+  F(Q = bcrypto_ecdsa_svdw(ec, u));
 
 #if OPENSSL_VERSION_NUMBER >= 0x10200000L
   /* Note: should be present with 1.1.1b */
-  F(EC_POINT_get_affine_coordinates(ec->group, P1, x1, NULL, ec->ctx));
-  F(EC_POINT_get_affine_coordinates(ec->group, P2, x2, NULL, ec->ctx));
-  F(EC_POINT_get_affine_coordinates(ec->group, P3, x3, NULL, ec->ctx));
-  F(EC_POINT_get_affine_coordinates(ec->group, P4, x4, NULL, ec->ctx));
+  F(EC_POINT_get_affine_coordinates(ec->group, Q, x0, NULL, ec->ctx));
 #else
-  F(EC_POINT_get_affine_coordinates_GFp(ec->group, P1, x1, NULL, ec->ctx));
-  F(EC_POINT_get_affine_coordinates_GFp(ec->group, P2, x2, NULL, ec->ctx));
-  F(EC_POINT_get_affine_coordinates_GFp(ec->group, P3, x3, NULL, ec->ctx));
-  F(EC_POINT_get_affine_coordinates_GFp(ec->group, P4, x4, NULL, ec->ctx));
+  F(EC_POINT_get_affine_coordinates_GFp(ec->group, Q, x0, NULL, ec->ctx));
 #endif
-
-  const int S[4] = {
-    s1 & (BN_cmp(x1, x) == 0),
-    s2 & (BN_cmp(x2, x) == 0),
-    s0 & s3 & (BN_cmp(x3, x) == 0),
-    s0 & s4 & (BN_cmp(x4, x) == 0)
-  };
-
-  if (S[hint & 3] == 0)
-    goto fail;
-
-  BIGNUM *U[4] = { u1, u2, u3, u4 };
-
-  F(BN_copy(u, U[hint & 3]));
 
   if (bn_is_neg(u, ec->p) ^ bn_is_neg(y, ec->p))
     F(BN_mod_sub(u, ec->p, u, ec->p, ec->ctx));
 
+  F((r < 2) | s0);
+  F(s1 & (BN_cmp(x0, x) == 0));
 #undef F
 
   ret = 1;
@@ -3633,14 +3605,8 @@ fail:
   if (u2 != NULL) BN_free(u2);
   if (u3 != NULL) BN_free(u3);
   if (u4 != NULL) BN_free(u4);
-  if (P1 != NULL) EC_POINT_free(P1);
-  if (P2 != NULL) EC_POINT_free(P2);
-  if (P3 != NULL) EC_POINT_free(P3);
-  if (P4 != NULL) EC_POINT_free(P4);
-  if (x1 != NULL) BN_free(x1);
-  if (x2 != NULL) BN_free(x2);
-  if (x3 != NULL) BN_free(x3);
-  if (x4 != NULL) BN_free(x4);
+  if (Q != NULL) EC_POINT_free(Q);
+  if (x0 != NULL) BN_free(x0);
 
   if (!ret && u != NULL) {
     BN_free(u);
