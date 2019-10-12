@@ -3043,9 +3043,8 @@ bcrypto_ecdsa_sswui(bcrypto_ecdsa_t *ec, const EC_POINT *P, unsigned int hint) {
   BIGNUM *u3 = BN_new();
   BIGNUM *u4 = BN_new();
   BIGNUM *u = BN_new();
-  BIGNUM *U[4];
-  int Z, s0, s1, s2, s3, s4;
-  int len = 0;
+  int r = hint & 3;
+  int Z, s0, s1;
   int ret = 0;
 
   /*
@@ -3056,10 +3055,10 @@ bcrypto_ecdsa_sswui(bcrypto_ecdsa_t *ec, const EC_POINT *P, unsigned int hint) {
    *   t2 = sqrt(a^2 * x^2 - 2 * a * b * x - 3 * b^2)
    *   t3 = t2 / 2
    *   t4 = (-a / 2) * x - (b / 2)
-   *   u1 = sqrt((t4 + t3) / t0)
-   *   u2 = sqrt((t4 - t3) / t0)
-   *   u3 = sqrt((t4 + t3) / t1)
-   *   u4 = sqrt((t4 - t3) / t1)
+   *   u1 = +-sqrt((t4 + t3) / t0)
+   *   u2 = +-sqrt((t4 - t3) / t0)
+   *   u3 = +-sqrt((t4 + t3) / t1)
+   *   u4 = +-sqrt((t4 - t3) / t1)
    */
 
   if (z == NULL || x == NULL || y == NULL || i2 == NULL
@@ -3137,46 +3136,31 @@ bcrypto_ecdsa_sswui(bcrypto_ecdsa_t *ec, const EC_POINT *P, unsigned int hint) {
   /* t0 = 1 / t0 */
   F(bn_mod_fermat(t0, t0, ec->p, ec->ctx));
 
-  /* u1 = sqrt((t4 + t3) / t0) */
+  /* u1 = (t4 + t3) / t0 */
   F(BN_mod_add(u1, t4, t3, ec->p, ec->ctx));
   F(BN_mod_mul(u1, u1, t0, ec->p, ec->ctx));
-  s1 = BN_mod_sqrt(u1, u1, ec->p, ec->ctx) != 0;
 
-  /* u2 = sqrt((t4 - t3) / t0) */
+  /* u2 = (t4 - t3) / t0 */
   F(BN_mod_sub(u2, t4, t3, ec->p, ec->ctx));
   F(BN_mod_mul(u2, u2, t0, ec->p, ec->ctx));
-  s2 = BN_mod_sqrt(u2, u2, ec->p, ec->ctx) != 0;
 
-  /* u3 = sqrt((t4 + t3) / t1) */
+  /* u3 = (t4 + t3) / t1 */
   F(BN_mod_add(u3, t4, t3, ec->p, ec->ctx));
   F(BN_mod_mul(u3, u3, t1, ec->p, ec->ctx));
-  s3 = BN_mod_sqrt(u3, u3, ec->p, ec->ctx) != 0;
 
-  /* u4 = sqrt((t4 - t3) / t1) */
+  /* u4 = (t4 - t3) / t1 */
   F(BN_mod_sub(u4, t4, t3, ec->p, ec->ctx));
   F(BN_mod_mul(u4, u4, t1, ec->p, ec->ctx));
-  s4 = BN_mod_sqrt(u4, u4, ec->p, ec->ctx) != 0;
 
-  if (s0 & s1)
-    U[len++] = u1;
+  /* u = sqrt(ur) */
+  BIGNUM *U[4] = { u1, u2, u3, u4 };
 
-  if (s0 & s2)
-    U[len++] = u2;
-
-  if (s0 & s3)
-    U[len++] = u3;
-
-  if (s0 & s4)
-    U[len++] = u4;
-
-  if (len == 0)
-    goto fail;
-
-  F(BN_copy(u, U[hint % len]));
+  s1 = BN_mod_sqrt(u, U[r], ec->p, ec->ctx) != 0;
 
   if (bn_is_neg(u, ec->p) ^ bn_is_neg(y, ec->p))
     F(BN_mod_sub(u, ec->p, u, ec->p, ec->ctx));
 
+  F(s0 & s1);
 #undef F
 
   ret = 1;
