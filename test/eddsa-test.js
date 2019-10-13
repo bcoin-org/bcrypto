@@ -244,20 +244,6 @@ describe('EdDSA', function() {
           msg[0] ^= 1;
         }
       });
-
-      it('should generate covert keypair (edwards)', () => {
-        const [key, bytes] = curve.privateKeyGenerateCovert();
-        const pub = curve.publicKeyCreate(key);
-
-        assert.bufferEqual(curve.publicKeyFromUniform(bytes), pub);
-      });
-
-      it('should generate covert keypair (mont)', () => {
-        const [key, bytes] = x.privateKeyGenerateCovert();
-        const pub = x.publicKeyCreate(key);
-
-        assert.bufferEqual(x.publicKeyFromUniform(bytes), pub);
-      });
     });
   }
 });

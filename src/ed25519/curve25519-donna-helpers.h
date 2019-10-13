@@ -404,13 +404,12 @@ curve25519_ladder(
 
 static void
 curve25519_elligator2(bignum25519 x, bignum25519 y,
-                      const unsigned char bytes[32],
-                      int spec) {
+                      const unsigned char bytes[32]) {
   static const bignum25519 z = {2};
   static const bignum25519 a = {486662};
   bignum25519 ALIGN(16) u, x1, x2, y1, y2;
   bignum25519 one = {1};
-  int quad1, quad2;
+  int quad1, quad2, flip;
 
   curve25519_expand(u, bytes);
 
@@ -439,12 +438,8 @@ curve25519_elligator2(bignum25519 x, bignum25519 y,
   curve25519_swap_conditional(y1, y2, quad1 ^ 1);
 
   /* adjust sign */
-  if (spec) {
-    curve25519_neg_conditional(y1, y1,
-      curve25519_is_neg(y1) ^ curve25519_is_neg(u));
-  } else {
-    curve25519_neg_conditional(y1, y1, curve25519_is_neg(y1) ^ quad1);
-  }
+  flip = curve25519_is_neg(y1) ^ curve25519_is_neg(u);
+  curve25519_neg_conditional(y1, y1, flip);
 
   curve25519_copy(x, x1);
   curve25519_copy(y, y1);
@@ -456,20 +451,26 @@ bcrypto_ed25519_randombytes(void *p, size_t len);
 static int
 curve25519_invert2(unsigned char out[32],
                    const bignum25519 x,
-                   const bignum25519 y) {
+                   const bignum25519 y,
+                   unsigned int hint) {
   static const bignum25519 z = {2};
   static const bignum25519 a = {486662};
   bignum25519 ALIGN(16) n, d, u;
   unsigned char bit = 0;
   int ret = 1;
+  int flip;
 
   /* u = sqrt(-n / (d * z)) */
-  curve25519_copy(n, x);
-  curve25519_add(d, x, a);
-  curve25519_swap_conditional(n, d, curve25519_is_neg(y));
+  curve25519_add(n, x, a);
+  curve25519_copy(d, x);
+  curve25519_swap_conditional(n, d, hint & 1);
   curve25519_neg(n, n);
   curve25519_mul(d, d, z);
   ret &= curve25519_isqrt(u, n, d);
+
+  /* adjust sign */
+  flip = curve25519_is_neg(u) ^ curve25519_is_neg(y);
+  curve25519_neg_conditional(u, u, flip);
 
   /* output */
   curve25519_contract(out, u);

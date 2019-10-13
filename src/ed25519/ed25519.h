@@ -269,25 +269,41 @@ bcrypto_x25519_pubkey_from_uniform(
 int
 bcrypto_ed25519_pubkey_to_uniform(
   unsigned char out[32],
-  const bcrypto_ed25519_pubkey_t pub
+  const bcrypto_ed25519_pubkey_t pub,
+  unsigned int hint
 );
 
 int
 bcrypto_x25519_pubkey_to_uniform(
   unsigned char out[32],
-  const bcrypto_x25519_pubkey_t pub
+  const bcrypto_x25519_pubkey_t pub,
+  unsigned int hint
 );
 
 void
 bcrypto_ed25519_pubkey_from_hash(
   bcrypto_ed25519_pubkey_t out,
-  const unsigned char bytes[64]
+  const unsigned char bytes[64],
+  int pake
 );
 
 int
 bcrypto_x25519_pubkey_from_hash(
   bcrypto_x25519_pubkey_t out,
-  const unsigned char bytes[64]
+  const unsigned char bytes[64],
+  int pake
+);
+
+int
+bcrypto_ed25519_pubkey_to_hash(
+  unsigned char out[64],
+  const bcrypto_ed25519_pubkey_t pub
+);
+
+int
+bcrypto_x25519_pubkey_to_hash(
+  unsigned char out[64],
+  const bcrypto_x25519_pubkey_t pub
 );
 
 #if defined(__cplusplus)

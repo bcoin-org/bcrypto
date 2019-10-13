@@ -10,6 +10,7 @@
  * Originally written by Mike Hamburg
  */
 #include "openssl/crypto.h"
+#include "../random/random.h"
 #include "word.h"
 #include "field.h"
 
@@ -69,6 +70,142 @@ static void bcrypto_gf_invert(bcrypto_gf y, const bcrypto_gf x, int assert_nonze
   bcrypto_gf_sqr(t1, t2);
   bcrypto_gf_mul(t2, t1, x);      /* not direct to y in case of alias. */
   bcrypto_gf_copy(y, t2);
+}
+
+static void
+curve448_proj_twist(curve448_proj_point *p,
+                    const bcrypto_gf u,
+                    const bcrypto_gf v)
+{
+  bcrypto_gf xx, xz, yy, yz;
+  bcrypto_mask_t torsion;
+
+  /* (0, 0) -> (0, -1) */
+  torsion = bcrypto_gf_eq(u, ZERO) & bcrypto_gf_eq(v, ZERO);
+
+  /* (x, y) = (u / v, (u - 1) / (u + 1)) */
+  bcrypto_gf_copy(xx, u);
+  bcrypto_gf_copy(xz, v);
+  bcrypto_gf_sub(yy, u, ONE);
+  bcrypto_gf_add(yz, u, ONE);
+  bcrypto_gf_mul(p->x, xx, yz);
+  bcrypto_gf_mul(p->y, yy, xz);
+  bcrypto_gf_mul(p->z, xz, yz);
+
+  bcrypto_gf_cond_sel(p->x, p->x, ZERO, torsion);
+  bcrypto_gf_cond_sel(p->y, p->y, ONE, torsion);
+  bcrypto_gf_cond_neg(p->y, torsion);
+  bcrypto_gf_cond_sel(p->z, p->z, ONE, torsion);
+}
+
+static bcrypto_mask_t
+curve448_proj_untwist(bcrypto_gf u, bcrypto_gf v,
+                      const curve448_proj_point *p)
+{
+  bcrypto_gf uu, uz, vv, vz, zi, t;
+  bcrypto_mask_t inf;
+  bcrypto_mask_t torsion;
+
+  /* (0, 1) -> O */
+  inf = bcrypto_gf_eq(p->x, ZERO) & bcrypto_gf_eq(p->y, p->z);
+
+  /* (0, -1) -> (0, 0) */
+  torsion = bcrypto_gf_eq(p->x, ZERO) & ~inf;
+
+  /* (u, v) = ((1 + y) / (1 - y), (1 + y) / (1 - y)x) */
+  bcrypto_gf_add(uu, p->z, p->y);
+  bcrypto_gf_sub(uz, p->z, p->y);
+  bcrypto_gf_mul(vv, p->z, uu);
+  bcrypto_gf_mul(vz, p->x, uz);
+
+  bcrypto_gf_mul(t, uz, vz);
+  bcrypto_gf_invert(zi, t, 0);
+
+  bcrypto_gf_mul(t, uu, vz);
+  bcrypto_gf_mul(u, t, zi);
+
+  bcrypto_gf_mul(t, vv, uz);
+  bcrypto_gf_mul(v, t, zi);
+
+  bcrypto_gf_cond_sel(u, u, ZERO, torsion);
+  bcrypto_gf_cond_sel(v, v, ZERO, torsion);
+
+  return ~inf;
+}
+
+static void
+curve448_proj_destroy(curve448_proj_point *p)
+{
+  OPENSSL_cleanse(p->x, sizeof(bcrypto_gf));
+  OPENSSL_cleanse(p->y, sizeof(bcrypto_gf));
+  OPENSSL_cleanse(p->z, sizeof(bcrypto_gf));
+}
+
+static void
+curve448_proj_neg(curve448_proj_point *p2,
+                  const curve448_proj_point *p1)
+{
+  bcrypto_gf_sub(p2->x, ZERO, p1->x);
+  bcrypto_gf_copy(p2->y, p1->y);
+  bcrypto_gf_copy(p2->z, p1->z);
+}
+
+static void
+curve448_proj_add(curve448_proj_point *p3,
+                  const curve448_proj_point *p1,
+                  const curve448_proj_point *p2)
+{
+  static const bcrypto_gf A = {{{156328}}}; /* (A + 2) / B */
+  static const bcrypto_gf D = {{{156324}}}; /* (A - 2) / B */
+  bcrypto_gf a, b, c, d, e, f, g, xyxy, t1, t2;
+
+  /* A = Z1 * Z2 */
+  bcrypto_gf_mul(a, p1->z, p2->z);
+
+  /* B = A^2 */
+  bcrypto_gf_sqr(b, a);
+
+  /* C = X1 * X2 */
+  bcrypto_gf_mul(c, p1->x, p2->x);
+
+  /* D = Y1 * Y2 */
+  bcrypto_gf_mul(d, p1->y, p2->y);
+
+  /* E = d * C * D */
+  bcrypto_gf_mul(t1, D, c);
+  bcrypto_gf_mul(e, t1, d);
+
+  /* F = B - E */
+  bcrypto_gf_sub(f, b, e);
+
+  /* G = B + E */
+  bcrypto_gf_add(g, b, e);
+
+  /* XYXY = (X1 + Y1) * (X2 + Y2) */
+  bcrypto_gf_add(t1, p1->x, p1->y);
+  bcrypto_gf_add(t2, p2->x, p2->y);
+  bcrypto_gf_mul(xyxy, t1, t2);
+
+  /* X3 = A * F * (XYXY - C - D) */
+  bcrypto_gf_sub(xyxy, xyxy, c);
+  bcrypto_gf_sub(xyxy, xyxy, d);
+  bcrypto_gf_mul(t1, xyxy, f);
+  bcrypto_gf_mul(p3->x, t1, a);
+
+  /* Y3 = A * G * (D - a * C) */
+  bcrypto_gf_mul(t1, A, c);
+  bcrypto_gf_sub(t1, d, t1);
+  bcrypto_gf_mul(t2, g, t1);
+  bcrypto_gf_mul(p3->y, t2, a);
+
+  /* Z3 = F * G */
+  bcrypto_gf_mul(p3->z, f, g);
+}
+
+static void
+curve448_proj_dbl(curve448_proj_point *p2, const curve448_proj_point *p1)
+{
+  curve448_proj_add(p2, p1, p1);
 }
 
 /** identity = (0,1) */
@@ -882,11 +1019,24 @@ bcrypto_c448_bool_t bcrypto_x448_public_key_has_torsion(
   return mask_to_bool(ret);
 }
 
-bcrypto_c448_error_t bcrypto_curve448_convert_public_key_to_x448(
-  uint8_t out[BCRYPTO_X_PUBLIC_BYTES],
-  int *sign,
-  const uint8_t raw[BCRYPTO_EDDSA_448_PUBLIC_BYTES]
-) {
+static bcrypto_mask_t
+curve448_decode_mont(bcrypto_gf u, bcrypto_gf v,
+                     const uint8_t raw[BCRYPTO_X_PUBLIC_BYTES])
+{
+  (void)bcrypto_gf_deserialize(u, raw, 1, 0);
+  return bcrypto_gf_solve_y(v, u);
+}
+
+static void
+curve448_encode_mont(uint8_t out[BCRYPTO_X_PUBLIC_BYTES], const bcrypto_gf u)
+{
+  bcrypto_gf_serialize(out, u, 1);
+}
+
+static bcrypto_mask_t
+curve448_decode_ed448_as_mont(bcrypto_gf u0, bcrypto_gf v0,
+                              const uint8_t raw[BCRYPTO_EDDSA_448_PUBLIC_BYTES])
+{
   static const bcrypto_gf two = {{{2}}};
   uint8_t enc[BCRYPTO_EDDSA_448_PUBLIC_BYTES];
   bcrypto_gf x, y, y2, n, d;
@@ -937,13 +1087,8 @@ bcrypto_c448_error_t bcrypto_curve448_convert_public_key_to_x448(
 
   /* note that (0, -1) will be mapped to (0, 0) */
   bcrypto_gf_invert(z, z, 0);
-  bcrypto_gf_mul(uu, u, z);
-  bcrypto_gf_mul(vv, v, z);
-
-  bcrypto_gf_serialize(out, uu, 1);
-
-  if (sign != NULL)
-    *sign = bcrypto_gf_is_odd(vv) != 0;
+  bcrypto_gf_mul(u0, u, z);
+  bcrypto_gf_mul(v0, v, z);
 
   OPENSSL_cleanse(enc, sizeof(enc));
   OPENSSL_cleanse(x, sizeof(x));
@@ -959,31 +1104,21 @@ bcrypto_c448_error_t bcrypto_curve448_convert_public_key_to_x448(
   OPENSSL_cleanse(v, sizeof(v));
   OPENSSL_cleanse(z, sizeof(z));
 
-  return bcrypto_c448_succeed_if(mask_to_bool(ret));
+  return ret;
 }
 
-static bcrypto_c448_error_t
-bcrypto_x448_convert_public_key_to_eddsa_inner(
+static void
+curve448_encode_mont_as_ed448(
   uint8_t ed[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
-  const uint8_t raw[BCRYPTO_X_PUBLIC_BYTES],
-  int sign
+  const bcrypto_gf u,
+  const bcrypto_gf v
 ) {
   bcrypto_curve448_point_t p;
-  bcrypto_mask_t sgn = (bcrypto_mask_t)sign * -1;
-  bcrypto_mask_t ret = -1;
   bcrypto_mask_t inf;
-  bcrypto_gf u, v;
   bcrypto_gf u2, u3, u4, u5, v2;
   bcrypto_gf a, b, c, d;
   bcrypto_gf e, f, g, h;
   bcrypto_gf xx, xz, yy, yz;
-
-  (void)bcrypto_gf_deserialize(u, raw, 1, 0);
-
-  ret &= bcrypto_gf_solve_y(v, u);
-
-  if (sign != -1)
-    bcrypto_gf_cond_neg(v, bcrypto_gf_is_odd(v) ^ sgn);
 
   /*
    * x = 4 * v * (u^2 - 1) / (u^4 - 2 * u^2 + 4 * v^2 + 1)
@@ -1057,8 +1192,6 @@ bcrypto_x448_convert_public_key_to_eddsa_inner(
   bcrypto_curve448_point_mul_by_ratio_and_encode_like_eddsa(ed, p);
   bcrypto_curve448_point_destroy(p);
 
-  OPENSSL_cleanse(u, sizeof(u));
-  OPENSSL_cleanse(v, sizeof(v));
   OPENSSL_cleanse(u2, sizeof(u2));
   OPENSSL_cleanse(u3, sizeof(u3));
   OPENSSL_cleanse(u4, sizeof(u4));
@@ -1076,59 +1209,14 @@ bcrypto_x448_convert_public_key_to_eddsa_inner(
   OPENSSL_cleanse(xz, sizeof(xz));
   OPENSSL_cleanse(yy, sizeof(yy));
   OPENSSL_cleanse(yz, sizeof(yz));
-
-  return bcrypto_c448_succeed_if(mask_to_bool(ret));
 }
 
-bcrypto_c448_error_t
-bcrypto_x448_convert_public_key_to_eddsa(
-  uint8_t ed[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
-  const uint8_t raw[BCRYPTO_X_PUBLIC_BYTES],
-  int sign
-) {
-  bcrypto_c448_error_t error;
-  bcrypto_gf y;
-
-  error = bcrypto_x448_convert_public_key_to_eddsa_inner(ed, raw, -1);
-
-  if (error != BCRYPTO_C448_SUCCESS)
-    return error;
-
-  (void)bcrypto_gf_deserialize(y, ed, 1, 0);
-
-  sign &= ~bcrypto_gf_eq(y, ONE);
-
-  ed[BCRYPTO_EDDSA_448_PUBLIC_BYTES - 1] &= ~0x80;
-  ed[BCRYPTO_EDDSA_448_PUBLIC_BYTES - 1] |= sign << 7;
-
-  OPENSSL_cleanse(y, sizeof(y));
-
-  return BCRYPTO_C448_SUCCESS;
-}
-
-bcrypto_c448_error_t
-bcrypto_curve448_public_key_from_uniform(
-  uint8_t out[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
-  const unsigned char bytes[56],
-  int spec
-) {
-  int sign = bcrypto_x448_public_key_from_uniform(out, bytes, spec);
-
-  if (sign < 0)
-    return BCRYPTO_C448_FAILURE;
-
-  return bcrypto_x448_convert_public_key_to_eddsa_inner(out, out, sign);
-}
-
-int
-bcrypto_x448_public_key_from_uniform(
-  uint8_t out[BCRYPTO_X_PUBLIC_BYTES],
-  const unsigned char bytes[56],
-  int spec
-) {
+static void
+curve448_elligator2(bcrypto_gf x, bcrypto_gf y, const unsigned char bytes[56])
+{
   static const bcrypto_gf a = {{{156326}}};
 
-  bcrypto_mask_t quad1, quad2, sgn;
+  bcrypto_mask_t quad1, quad2;
   bcrypto_gf u, x1, x2, y1, y2, t;
   bcrypto_gf one = {{{1}}};
   bcrypto_gf z = {{{1}}};
@@ -1162,15 +1250,10 @@ bcrypto_x448_public_key_from_uniform(
   bcrypto_gf_cond_swap(y1, y2, ~quad1);
 
   /* adjust sign */
-  if (spec) {
-    bcrypto_gf_cond_neg(y1, bcrypto_gf_is_neg(y1) ^ bcrypto_gf_is_neg(u));
-  } else {
-    bcrypto_gf_cond_neg(y1, bcrypto_gf_is_neg(y1) ^ quad1);
-  }
+  bcrypto_gf_cond_neg(y1, bcrypto_gf_is_neg(y1) ^ bcrypto_gf_is_neg(u));
 
-  bcrypto_gf_serialize(out, x1, 1);
-
-  sgn = bcrypto_gf_is_odd(y1);
+  bcrypto_gf_copy(x, x1);
+  bcrypto_gf_copy(y, y1);
 
   OPENSSL_cleanse(u, sizeof(u));
   OPENSSL_cleanse(x1, sizeof(x1));
@@ -1179,122 +1262,290 @@ bcrypto_x448_public_key_from_uniform(
   OPENSSL_cleanse(y2, sizeof(y2));
   OPENSSL_cleanse(t, sizeof(t));
   OPENSSL_cleanse(one, sizeof(one));
+}
 
-  return sgn != 0;
+static bcrypto_mask_t
+curve448_invert2(
+  unsigned char out[56],
+  const bcrypto_gf x,
+  const bcrypto_gf y,
+  bcrypto_mask_t hint
+) {
+  static const bcrypto_gf a = {{{156326}}};
+
+  bcrypto_mask_t ret = -1;
+  bcrypto_gf n, d, u, t;
+  bcrypto_gf z = {{{1}}};
+
+  bcrypto_gf_sub(z, ZERO, z);
+
+  /* u = sqrt(-n / (d * z)) */
+  bcrypto_gf_add(n, x, a);
+  bcrypto_gf_copy(d, x);
+  bcrypto_gf_cond_swap(n, d, hint);
+  bcrypto_gf_sub(n, ZERO, n);
+  bcrypto_gf_mul(t, d, z);
+  ret &= bcrypto_gf_isqrt(u, n, t);
+
+  /* adjust sign */
+  bcrypto_gf_cond_neg(u, bcrypto_gf_is_neg(u) ^ bcrypto_gf_is_neg(y));
+
+  /* output */
+  bcrypto_gf_serialize(out, u, 1);
+
+  OPENSSL_cleanse(n, sizeof(n));
+  OPENSSL_cleanse(d, sizeof(d));
+  OPENSSL_cleanse(u, sizeof(u));
+  OPENSSL_cleanse(t, sizeof(t));
+
+  return ret;
+}
+
+static bcrypto_mask_t
+curve448_point_from_hash(bcrypto_gf x, bcrypto_gf y,
+                         const unsigned char bytes[112],
+                         int pake)
+{
+  bcrypto_gf u1, v1, u2, v2;
+  curve448_proj_point p1, p2;
+
+  curve448_elligator2(u1, v1, bytes);
+  curve448_elligator2(u2, v2, bytes + 56);
+
+  curve448_proj_twist(&p1, u1, v1);
+  curve448_proj_twist(&p2, u2, v2);
+  curve448_proj_add(&p1, &p1, &p2);
+
+  if (pake) {
+    curve448_proj_dbl(&p1, &p1);
+    curve448_proj_dbl(&p1, &p1);
+  }
+
+  return curve448_proj_untwist(x, y, &p1);
+}
+
+static bcrypto_mask_t
+curve448_point_to_hash(unsigned char out[112],
+                       const bcrypto_gf x,
+                       const bcrypto_gf y)
+{
+  bcrypto_mask_t ret = 0;
+  bcrypto_gf x1, y1, x2, y2;
+  curve448_proj_point p, p1, p2;
+  unsigned char *u1 = &out[0];
+  unsigned char *u2 = &out[56];
+  unsigned int bit;
+  bcrypto_mask_t hint;
+
+  curve448_proj_twist(&p, x, y);
+
+  for (;;) {
+    if (!bcrypto_random(u1, 56))
+      goto fail;
+
+    if (!bcrypto_random(&bit, sizeof(unsigned int)))
+      goto fail;
+
+    curve448_elligator2(x1, y1, u1);
+    curve448_proj_twist(&p1, x1, y1);
+    curve448_proj_neg(&p1, &p1);
+    curve448_proj_add(&p2, &p, &p1);
+
+    if (!curve448_proj_untwist(x2, y2, &p2))
+      continue;
+
+    hint = -(bcrypto_mask_t)(bit & 1);
+
+    if (curve448_invert2(u2, x2, y2, hint))
+      break;
+  }
+
+  ret = (bcrypto_mask_t)-1;
+fail:
+  OPENSSL_cleanse(x1, sizeof(x1));
+  OPENSSL_cleanse(y1, sizeof(y1));
+  OPENSSL_cleanse(x2, sizeof(x2));
+  OPENSSL_cleanse(y2, sizeof(y2));
+  curve448_proj_destroy(&p);
+  curve448_proj_destroy(&p1);
+  curve448_proj_destroy(&p2);
+  return ret;
+}
+
+bcrypto_c448_error_t bcrypto_curve448_convert_public_key_to_x448(
+  uint8_t out[BCRYPTO_X_PUBLIC_BYTES],
+  const uint8_t raw[BCRYPTO_EDDSA_448_PUBLIC_BYTES]
+) {
+  bcrypto_gf x, y;
+  bcrypto_mask_t ret = -1;
+
+  ret &= curve448_decode_ed448_as_mont(x, y, raw);
+
+  curve448_encode_mont(out, x);
+
+  OPENSSL_cleanse(x, sizeof(x));
+  OPENSSL_cleanse(y, sizeof(y));
+
+  return bcrypto_c448_succeed_if(mask_to_bool(ret));
+}
+
+bcrypto_c448_error_t
+bcrypto_x448_convert_public_key_to_eddsa(
+  uint8_t ed[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
+  const uint8_t raw[BCRYPTO_X_PUBLIC_BYTES],
+  int sign
+) {
+  bcrypto_mask_t ret = -1;
+  bcrypto_gf x, y;
+
+  ret &= curve448_decode_mont(x, y, raw);
+
+  curve448_encode_mont_as_ed448(ed, x, y);
+
+  (void)bcrypto_gf_deserialize(y, ed, 1, 0);
+
+  sign &= ~bcrypto_gf_eq(y, ONE);
+
+  ed[BCRYPTO_EDDSA_448_PUBLIC_BYTES - 1] &= ~0x80;
+  ed[BCRYPTO_EDDSA_448_PUBLIC_BYTES - 1] |= sign << 7;
+
+  OPENSSL_cleanse(x, sizeof(x));
+  OPENSSL_cleanse(y, sizeof(y));
+
+  return bcrypto_c448_succeed_if(mask_to_bool(ret));
+}
+
+void
+bcrypto_curve448_public_key_from_uniform(
+  uint8_t out[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
+  const unsigned char bytes[56]
+) {
+  bcrypto_gf x, y;
+
+  curve448_elligator2(x, y, bytes);
+  curve448_encode_mont_as_ed448(out, x, y);
+
+  OPENSSL_cleanse(x, sizeof(x));
+  OPENSSL_cleanse(y, sizeof(y));
+}
+
+void
+bcrypto_x448_public_key_from_uniform(
+  uint8_t out[BCRYPTO_X_PUBLIC_BYTES],
+  const unsigned char bytes[56]
+) {
+  bcrypto_gf x, y;
+
+  curve448_elligator2(x, y, bytes);
+  curve448_encode_mont(out, x);
+
+  OPENSSL_cleanse(x, sizeof(x));
+  OPENSSL_cleanse(y, sizeof(y));
 }
 
 bcrypto_c448_error_t
 bcrypto_curve448_public_key_to_uniform(
   unsigned char out[56],
-  const uint8_t pub[BCRYPTO_EDDSA_448_PUBLIC_BYTES]
+  const uint8_t pub[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
+  unsigned int hint
 ) {
-  int sign;
+  bcrypto_mask_t ret = -1;
+  bcrypto_gf x, y;
 
-  bcrypto_c448_error_t error =
-    bcrypto_curve448_convert_public_key_to_x448(out, &sign, pub);
+  ret &= curve448_decode_ed448_as_mont(x, y, pub);
+  ret &= curve448_invert2(out, x, y, -(bcrypto_mask_t)(hint & 1));
 
-  if (error != BCRYPTO_C448_SUCCESS)
-    return error;
+  OPENSSL_cleanse(x, sizeof(x));
+  OPENSSL_cleanse(y, sizeof(y));
 
-  return bcrypto_x448_public_key_to_uniform(out, out, sign);
+  return bcrypto_c448_succeed_if(mask_to_bool(ret));
 }
 
 bcrypto_c448_error_t
 bcrypto_x448_public_key_to_uniform(
   unsigned char out[56],
   const uint8_t pub[BCRYPTO_X_PUBLIC_BYTES],
-  int sign
+  unsigned int hint
 ) {
-  static const bcrypto_gf a = {{{156326}}};
-
   bcrypto_mask_t ret = -1;
-  bcrypto_mask_t sgn = (bcrypto_mask_t)sign * -1;
-  bcrypto_gf x, y, n, d, u, t;
-  bcrypto_gf z = {{{1}}};
+  bcrypto_gf x, y;
 
-  bcrypto_gf_sub(z, ZERO, z);
-
-  (void)bcrypto_gf_deserialize(x, pub, 1, 0);
-
-  /* recover y */
-  ret &= bcrypto_gf_solve_y(y, x);
-
-  if (sign != -1)
-    bcrypto_gf_cond_neg(y, bcrypto_gf_is_odd(y) ^ sgn);
-
-  /* u = sqrt(-n / (d * z)) */
-  bcrypto_gf_copy(n, x);
-  bcrypto_gf_add(d, x, a);
-  bcrypto_gf_cond_swap(n, d, bcrypto_gf_is_neg(y));
-  bcrypto_gf_sub(n, ZERO, n);
-  bcrypto_gf_mul(t, d, z);
-  ret &= bcrypto_gf_isqrt(u, n, t);
-
-  /* output */
-  bcrypto_gf_serialize(out, u, 1);
+  ret &= curve448_decode_mont(x, y, pub);
+  ret &= curve448_invert2(out, x, y, -(bcrypto_mask_t)(hint & 1));
 
   OPENSSL_cleanse(x, sizeof(x));
   OPENSSL_cleanse(y, sizeof(y));
-  OPENSSL_cleanse(n, sizeof(n));
-  OPENSSL_cleanse(d, sizeof(d));
-  OPENSSL_cleanse(u, sizeof(u));
-  OPENSSL_cleanse(t, sizeof(t));
 
   return bcrypto_c448_succeed_if(mask_to_bool(ret));
 }
 
-bcrypto_c448_error_t
+void
 bcrypto_curve448_public_key_from_hash(
   uint8_t out[BCRYPTO_EDDSA_448_PUBLIC_BYTES],
-  const unsigned char bytes[112]
+  const unsigned char bytes[112],
+  int pake
 ) {
-  unsigned char k1[BCRYPTO_EDDSA_448_PUBLIC_BYTES];
-  unsigned char k2[BCRYPTO_EDDSA_448_PUBLIC_BYTES];
-  bcrypto_c448_error_t error;
-  bcrypto_curve448_point_t p1, p2;
+  bcrypto_gf x, y;
 
-  error = bcrypto_curve448_public_key_from_uniform(k1, &bytes[0], 1);
+  (void)curve448_point_from_hash(x, y, bytes, pake);
 
-  if (error != BCRYPTO_C448_SUCCESS)
-    return error;
+  curve448_encode_mont_as_ed448(out, x, y);
 
-  error = bcrypto_curve448_public_key_from_uniform(k2, &bytes[56], 1);
-
-  if (error != BCRYPTO_C448_SUCCESS)
-    return error;
-
-  error = bcrypto_curve448_point_decode_like_eddsa_and_mul_by_ratio(p1, k1);
-
-  if (error != BCRYPTO_C448_SUCCESS)
-    return error;
-
-  error = bcrypto_curve448_point_decode_like_eddsa_and_mul_by_ratio(p2, k2);
-
-  if (error != BCRYPTO_C448_SUCCESS) {
-    bcrypto_curve448_point_destroy(p1);
-    return error;
-  }
-
-  bcrypto_curve448_point_add(p1, p1, p2);
-  bcrypto_curve448_point_mul_by_ratio_and_encode_like_eddsa(out, p1);
-  bcrypto_curve448_point_destroy(p1);
-  bcrypto_curve448_point_destroy(p2);
-
-  return BCRYPTO_C448_SUCCESS;
+  OPENSSL_cleanse(x, sizeof(x));
+  OPENSSL_cleanse(y, sizeof(y));
 }
 
 bcrypto_c448_error_t
 bcrypto_x448_public_key_from_hash(
   uint8_t out[BCRYPTO_X_PUBLIC_BYTES],
-  const unsigned char bytes[112]
+  const unsigned char bytes[112],
+  int pake
 ) {
-  unsigned char raw[BCRYPTO_EDDSA_448_PUBLIC_BYTES];
-  bcrypto_c448_error_t error = bcrypto_curve448_public_key_from_hash(raw, bytes);
+  bcrypto_mask_t ret = -1;
+  bcrypto_gf x, y;
 
-  if (error != BCRYPTO_C448_SUCCESS)
-    return error;
+  ret &= curve448_point_from_hash(x, y, bytes, pake);
 
-  return bcrypto_curve448_convert_public_key_to_x448(out, NULL, raw);
+  curve448_encode_mont(out, x);
+
+  OPENSSL_cleanse(x, sizeof(x));
+  OPENSSL_cleanse(y, sizeof(y));
+
+  return bcrypto_c448_succeed_if(mask_to_bool(ret));
+}
+
+bcrypto_c448_error_t
+bcrypto_curve448_public_key_to_hash(
+  unsigned char out[112],
+  const uint8_t pub[BCRYPTO_EDDSA_448_PUBLIC_BYTES]
+) {
+  bcrypto_mask_t ret = -1;
+  bcrypto_gf x, y;
+
+  ret &= curve448_decode_ed448_as_mont(x, y, pub);
+  ret &= curve448_point_to_hash(out, x, y);
+
+  OPENSSL_cleanse(x, sizeof(x));
+  OPENSSL_cleanse(y, sizeof(y));
+
+  return bcrypto_c448_succeed_if(mask_to_bool(ret));
+}
+
+bcrypto_c448_error_t
+bcrypto_x448_public_key_to_hash(
+  unsigned char out[112],
+  const uint8_t pub[BCRYPTO_X_PUBLIC_BYTES]
+) {
+  bcrypto_mask_t ret = -1;
+  bcrypto_gf x, y;
+
+  ret &= curve448_decode_mont(x, y, pub);
+  ret &= curve448_point_to_hash(out, x, y);
+
+  OPENSSL_cleanse(x, sizeof(x));
+  OPENSSL_cleanse(y, sizeof(y));
+
+  return bcrypto_c448_succeed_if(mask_to_bool(ret));
 }
 
 /* Control for variable-time scalar multiply algorithms. */

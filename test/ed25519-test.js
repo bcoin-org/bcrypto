@@ -897,13 +897,13 @@ describe('Ed25519', function() {
     const p = Buffer.alloc(32, 0x00);
     p[0] = 9;
 
-    const u = x25519.publicKeyToUniform(p);
+    const u = x25519.publicKeyToUniform(p, 0);
     const b = u[31] & 0x80;
 
     u[31] &= ~0x80;
 
     assert.bufferEqual(u,
-      '4c4eb9ef825cd577702ed4d8f55eb3d139e2ccf0f1ff80a9f6d065fd25f5804b');
+      'b9762dadc1db2944f08aeb419d76f6b19e66fd47ec1076dfe7a7a1c4e0f0a92b');
 
     u[31] |= b;
 
@@ -922,14 +922,14 @@ describe('Ed25519', function() {
     assert.bufferEqual(p1,
       'cc2947ef03b978b3c7b418e2acdf52bc26f51457d7b21730c551bbcf4cb2e2fd');
 
-    const u2 = ed25519.publicKeyToUniform(p1);
+    const u2 = ed25519.publicKeyToUniform(p1, 0);
 
     u2[31] &= ~0x80;
     assert.bufferEqual(u2, u1);
 
     const p2 = ed25519.publicKeyFromUniform(u2);
 
-    const u3 = ed25519.publicKeyToUniform(p2);
+    const u3 = ed25519.publicKeyToUniform(p2, 0);
 
     u3[31] &= ~0x80;
     assert.bufferEqual(u3, u1);
@@ -945,7 +945,7 @@ describe('Ed25519', function() {
       '6da9f400aefa72f6510793baaee019971b66114230d43802858f6e776fef7658',
       'hex');
 
-    const u = x25519.publicKeyToUniform(p);
+    const u = x25519.publicKeyToUniform(p, 1);
 
     u[31] &= ~0x80;
 
@@ -955,98 +955,98 @@ describe('Ed25519', function() {
 
   it('should pass elligator2 test vectors', () => {
     const preimages = [
-      '031515eaf0c89d80b9c53045143fd6f2964000525031faed20ef78072af336d7',
-      '3b711832ccac412eb3b7d05255cb08a827cce31462d0578951fd1360563e975e',
-      'fec4f15e310b1a99acb645e88d20f6924e0fdc00dcc5d19aaf7365cd46ed9d00',
-      '20288b154f4780b149070d2052d45bf6c5b8aa33d73c1e0e0673a7ff94aa9eb3',
-      '0b1ae9649e90b763b4dc6ad41a7e25c78e7c2e0cf96ff80842884a864038c010',
-      '994a92eb0553aaf10c391efa03ccf32536f85ee2fe345a3d81ac08080a616681',
-      '210c050fafa9565b9cb91f37a0cb194b9616ece3dc089cd2d27525353ba553ab',
-      '4c8c847b0d328c479dadd5c98ecdb9f4ff5b6714b7e47ded99475c9ef0fe2a0f',
-      'e2a380393a2249a87bd9bff48bd2daa48e59aa891cce57bcd2db531778ae0950',
-      'd17e4047be6bb60c2d5d5f2bf4d0a747f14cbc08eb876e0f3cb83e0dab7fa8e7',
-      '54e6ac2a4431025712f68d7ac310ec1257e541decfe968e5c70f80529efbfb94',
-      '94bab539b817bbfea03585d6a0f34cebd34a3266f14dcf83dcfe92057375e4f3',
-      'b46981fdb99dae76e1b1f722c09140ee9958f3bd3529de088fea75f279259755',
-      'f945c0ece4291f4920969ec7b6face8044acfe345b8c167db9e30857b434d4a5',
-      '9a619fe612013118a65f0e629f6f1c3d6029575e4dbf5f75cfa82ee3cac14d1f',
-      'a94ebddd48f3f1860288a68afa9993463b90e80505abc3ae00466dae9cfdabc5'
+      'c9adf824cd85731f20dc1c6a9c749c99a8844420dcebfadbda711ca05202f362',
+      'd95bab25f5c276bd876011cf9490668669e209b3bbac71b5b0e7ebc8b91f9924',
+      '1ed2fb25520b55aa8cd587b55ff12cde689c82b94cac41a564d0fc5980416836',
+      '4aaf71b1830164e9bf75c7b2fa90cc3fd1acf4ab2d882fb7626f05420cb41852',
+      'c676ec90758d04ec4cc57afdbef7d99450fe8e69a2364fce301d60b565cee0af',
+      '978b073a732823841eb94e080084896c5dec4adbba8d12e2488686e92eda2159',
+      'f469163dccf13968f6f9cde8d90fc8ffc9c18b583312198480c54a01162b67b4',
+      'c0e7791e79dcb5a70bdba297f6e29535f72ce4524d8901e88a42992927f9e2a7',
+      '45c6b31e75cd541106ad80c3aab79ff36738c3465939e82d5e4d7a1a7c39c3fb',
+      '92afda3eaa89f79c3e93e58ff6e43cb1841e1549839d6f0f488a59686f452399',
+      'd58163e503546c1072f8eac4f8117ecae2ff9f5ef3da562d2916ea660360566d',
+      '21a376b3d43cb612d635a2e22b4c51d0552bce9e0deec604b7d35d9a7d1b4918',
+      '73f19eb397c8511f2d12cb728373a33169d3c3d2bc703a3106fb5d8327178c73',
+      'e84fabcb9796acaba658c7aa2db7cb89862a3fc997f3b7acf708ee426105b20b',
+      'b02ba87cd0a98c3ef3fa2ba009b9943e5801f5922a16335dc7b26180dc181288',
+      '12280007b43ac0c2dca0c4e1f1afadb36cad06a69c66fa44d29471b3bf8dae49'
     ];
 
     const keys = [
-      '8e41460d830ff06e0aa61b48236a2c59e3f9f4bfdbfad0ea689693a0bb4202fe',
-      'dd0018537463f9a6b7d8ad2835239068c1ec823300b2f8512f6c21254c1ef7af',
-      '56b39eac3ed8a21170d43d1fc3eb9652ba3c59f0056a9c5a297b84a22b69d4d1',
-      'dcbb3f5ac49349e7649b7046551bf8b91252ed1e253ffebf2103b39959acf375',
-      'dda2618dea7954be90132989f633cd27aab8c2d34a27baa600d2248465baff6b',
-      '937504cd60a50f8ed765353093b03a184d97c4329d5c15d007c81d9b8577058b',
-      'e5ccb7d4087ef376abe83c65e723ef92ce4055e71fc4d16806a11571b01bef88',
-      'e607775e58eb1940872c777045ec95c1d3a411f84978207a7525027fb5262413',
-      'f16082b21fe30308185b9abf6a968fd177d950dbc11278150ae1c584f4604f66',
-      '3ca574e0f07775f1ce61dfb3aaff2f080d253701b0e98617600e0b056b573bf1',
-      'd88e8ac43439cc47af52ab76575e3d3f2de1a2670ac66ed9cdd219e12def9803',
-      '233febde461178fbd36fc25ed8c796b62bff8da0abdad1a7decefb68f94d986b',
-      'f1a8f5ba88cc36322c05ebb3c16ea24472c88b83436bbbe5fcbd321d91bd9abf',
-      '11e876de9dda80763d9632e2ac57b1a7e10ed09ff76d58e1adaeea96ae0e2d12',
-      'f39869347e89e1a3dc4962a76895db6ee169cd92d3c506698d642b1942ab5046',
-      '879ed3d4d9d1c6bdc0ad1e6b4a22b06f6eff495b487e5a8b31d5ec2215aca150'
+      '095aa6447f2c0bc38da8c87338dcb0e94162d89fa2e76856fd4e07e95dc2e5bb',
+      '9b085d55d9b565d2dafb50a18ff6976597e5e3b01c8f68c4e60f83170ea1a52e',
+      '2654a006f8bb52c5f4109299a017857fd74a4e76fdda8cf7443b0038337e52c6',
+      '66114fe708f29c303dfcfd4a586d9a1aac3aa6addb60e166ce7e9228053acc74',
+      '21681e4705dd848e542c9b076a8f18cbd8e4bed23c067d9b81055c3859c67fe3',
+      '80b087e5af2a3b03f19a53ac2bb03d6e6b422f0cb9cb67dbafe292528105a5f6',
+      'cccbf2857681d7291c956b10d09fe215e93bb59ff417ce42672b6b8cc29e67de',
+      '14cc09d659fcc1583a7d062c32516374854a2ff78e75d948e88eb632520f501e',
+      '344fd658d566a52215ce0f549eac263d628efaab8c7b3dd745c380d7154809ef',
+      '50c869fd754154200c1eb027ddd55acd50a5aa3517ddbc1099f7f6196b19e7f1',
+      '58aa1a6280e2d9dadb7f81f97c43d98b6e2643697d93de0428f89f79ad12be58',
+      'f30a970193889a801ee61b7ddc97592d0554932c8ecd860b0d99ac85e3dcec07',
+      '9181c312ba7ba941c8452850fa43ff63a0da8f4dc7eb047734b74e96259ffd78',
+      '29be63ddf2dfafef646983be21c902f6196b52a3e43df33bb576ea3bd28a23ad',
+      '57710782f1fb3b9d73ea9f5cf77903307d321fdb5f462dd3a1b5cbbe6753c397',
+      '80f67a15875cc36fc4e28c0d72ff3a81babaae384167bf7384b7b48f5f636908'
     ];
 
     const points = [
-      '189012a627d9a4aab9ffd5b12614c12ece595cb2de6659ee0115434aa43d0c17',
-      '994c53b397403ec428b6a115a600bfadd11248a5740fbcf9340fa2b8bd6a3e1a',
-      '50eb7d75bfc701454ba80ac8cd0d75881894e757e2af74ab3a55a3a2eb7d5048',
-      'cecfd58de6e95501d41833036ab884d93b4ac4beefcdf0a3798c3f653e6b794a',
-      'bf8794f00f3508b81bed449962576d2b56428cb663ac85c599b06a914ce0f81d',
-      '64affcfb5b73b8f072b21cce93e28b4b5c7183333e58ae529bd8310131e96306',
-      '513cdbfb163ccc5f3b5ca6829cfd6c2ecab2e6bc265f00af1daf60dedc818968',
-      '39607313cd028cbae4c413dee9d5568b35861e4308d02d7089b2ff3fa6fcfa77',
-      '00874b22081923de306395a0d6e2aa845e2b2a95060a2ef198fa5b952682db76',
-      'ddb322575b23a4583824b42e018fec37eb4fe97063d73f8713f8cd4adc65c56a',
-      '9017c54cf142f3c129aafc84d23f52b30da92b69bcb7564fd37c68721c838531',
-      '374160d46e928a1f656da9737279bb7af6463d771b8d64d2cd38f7906e14be2f',
-      '0d7a2c2d450400a11467972044c011d22057822d9089bf8933f0fece595a746b',
-      '78e9cb2565185d5bab8f8dfb14c894d277ba34f48b68641af1ccfe0d80676555',
-      'd82e34a35eca1e3eee274505eecb164361ab6cd0128be9a56b8d536234e06b47',
-      '278d52eec3671c4b0b838cb3750e5f069c246fef327d958f59c2621697a2401e'
+      '04aed9e255f7d6c2772ba9ecc9cf3d97c0deb91ed5da6826f35da16ede0abe7e',
+      '160a0ab252c9ce59b5f4f483b80a3577489606052c9cb4ab04b98684aeb98e01',
+      '41214466fdc3b40eaec83a50f1a1d8b7300ad6db6115a951cd0a592b5bead73e',
+      'd90fd4ab11da2c572d0570719a455af92d73e9458c89af31ef04ecc45d095b2c',
+      '973ce29e94b2269c38a8ef528758812b6ff72edf4372657fead5f87ed4f9210f',
+      '0e40bead56ba625f1555277587754b9a6d081989258822562a2a9c22f6723e26',
+      'b96028c632605091652642f5dcabb19b1771f8f85ddbae10ededf5f48a42db78',
+      'fa393f71811ee31ae7a2ad9f1a0fb3323728b386509dbdb03fba3f833e7b3e2f',
+      '14fec3d893a51b4d4d8e3fe7b6b798a8dd2c7252d96c6442b35e8b76addce732',
+      '122f2409378ff2a41b4e1c37ce7ac770ac10fab843713df188e1af7bca6a765d',
+      'db7b23f18724b30ad9529182c1da830285cfb8b1ebf064bb4da004743f1f5271',
+      '8b28c6a77102adb7882d8460277581e69aa181a31d01d82f614f02aa17d2131e',
+      'ec46f2fdbac409caae18d5a31425bf93f65d66832e46b9b10278706f2949bf3a',
+      'e1f9cba8fea6169a37bc175b07d3a28a0918db1706df3a645cf0d910ffc3aa64',
+      '0d8e43bcf3d32bbe3660ac28543bdcd63e7ce537a13c469f43191484a7d67e0d',
+      '778506d4f0d6f64dd1f2c975264bd22d1e9584b58c40f64c0567e5b208315e5c'
     ];
 
     const raws1 = [
-      'eaeaea150f37627f463acfbaebc0290d69bfffadafce0512df1087f8d50cc928',
-      '3b711832ccac412eb3b7d05255cb08a827cce31462d0578951fd1360563e975e',
-      'fec4f15e310b1a99acb645e88d20f6924e0fdc00dcc5d19aaf7365cd46ed9d00',
-      '20288b154f4780b149070d2052d45bf6c5b8aa33d73c1e0e0673a7ff94aa9e33',
-      '0b1ae9649e90b763b4dc6ad41a7e25c78e7c2e0cf96ff80842884a864038c010',
-      '994a92eb0553aaf10c391efa03ccf32536f85ee2fe345a3d81ac08080a616601',
-      'ccf3faf05056a9a46346e0c85f34e6b469e9131c23f7632d2d8adacac45aac54',
-      '4c8c847b0d328c479dadd5c98ecdb9f4ff5b6714b7e47ded99475c9ef0fe2a0f',
-      '0b5c7fc6c5ddb6578426400b742d255b71a65576e331a8432d24ace88751f62f',
-      '1c81bfb8419449f3d2a2a0d40b2f58b80eb343f7147891f0c347c1f254805718',
-      '991953d5bbcefda8ed0972853cef13eda81abe213016971a38f07fad6104046b',
-      '59454ac647e844015fca7a295f0cb3142cb5cd990eb2307c23016dfa8c8a1b0c',
-      'b46981fdb99dae76e1b1f722c09140ee9958f3bd3529de088fea75f279259755',
-      'f4b93f131bd6e0b6df6961384905317fbb5301cba473e982461cf7a84bcb2b5a',
-      '539e6019edfecee759a0f19d6090e3c29fd6a8a1b240a08a3057d11c353eb260',
-      'a94ebddd48f3f1860288a68afa9993463b90e80505abc3ae00466dae9cfdab45'
+      'c9adf824cd85731f20dc1c6a9c749c99a8844420dcebfadbda711ca05202f362',
+      'd95bab25f5c276bd876011cf9490668669e209b3bbac71b5b0e7ebc8b91f9924',
+      '34f11f1e28c2f89e9d7681885c3c58825c392b3b366a9d68506f18eda8675110',
+      'b578809ca2c6a285668c68fbca5ee41df9f90b0ddce281a5d3907d3710c28f7a',
+      'c969e3293a9ad7a52bda129223d44c34b67fd44fc982bb4d3b2c412889870a17',
+      '978b073a732823841eb94e080084896c5dec4adbba8d12e2488686e92eda2159',
+      'f469163dccf13968f6f9cde8d90fc8ffc9c18b583312198480c54a01162b6734',
+      'c0e7791e79dcb5a70bdba297f6e29535f72ce4524d8901e88a42992927f9e227',
+      '45c6b31e75cd541106ad80c3aab79ff36738c3465939e82d5e4d7a1a7c39c37b',
+      '92afda3eaa89f79c3e93e58ff6e43cb1841e1549839d6f0f488a59686f452319',
+      'c9f06ee0bda590854b05c4ec6c217da5e379f1b5e6a11c88c2ec116e45939a75',
+      '21a376b3d43cb612d635a2e22b4c51d0552bce9e0deec604b7d35d9a7d1b4918',
+      '73f19eb397c8511f2d12cb728373a33169d3c3d2bc703a3106fb5d8327178c73',
+      'e84fabcb9796acaba658c7aa2db7cb89862a3fc997f3b7acf708ee426105b20b',
+      'b02ba87cd0a98c3ef3fa2ba009b9943e5801f5922a16335dc7b26180dc181208',
+      '12280007b43ac0c2dca0c4e1f1afadb36cad06a69c66fa44d29471b3bf8dae49'
     ];
 
     const raws2 = [
-      '09d51e1673b4a03197c0d8ca3e7375b6600f36208387b87be02004897b2dd255',
-      '3b711832ccac412eb3b7d05255cb08a827cce31462d0578951fd1360563e975e',
-      '05d0acfff01ed92b707715764e22e405288c64dcdb332a94971c287a32c39a26',
-      '20288b154f4780b149070d2052d45bf6c5b8aa33d73c1e0e0673a7ff94aa9e33',
-      '3018326e4ade40fb7bb71f86cd5a73e2b44583fe8b073a3ebea19e7cbad7f33d',
-      '994a92eb0553aaf10c391efa03ccf32536f85ee2fe345a3d81ac08080a616601',
-      'ccf3faf05056a9a46346e0c85f34e6b469e9131c23f7632d2d8adacac45aac54',
-      '1e8733cf57281c4bb99ae0b0915708f62b16688caa23f0ad37a3207cb5a5e000',
-      '0b5c7fc6c5ddb6578426400b742d255b71a65576e331a8432d24ace88751f62f',
-      'f2adce6d1db7834a2f08bb615e82696b4d046a7bb94db4edfc1228df09a02f33',
-      '991953d5bbcefda8ed0972853cef13eda81abe213016971a38f07fad6104046b',
-      '59454ac647e844015fca7a295f0cb3142cb5cd990eb2307c23016dfa8c8a1b0c',
-      'b46981fdb99dae76e1b1f722c09140ee9958f3bd3529de088fea75f279259755',
-      '6c85d28110396a3a7a449815284f5e788b1394aca34d68a9be4e81fdebec6d15',
-      '539e6019edfecee759a0f19d6090e3c29fd6a8a1b240a08a3057d11c353eb260',
-      'a94ebddd48f3f1860288a68afa9993463b90e80505abc3ae00466dae9cfdab45'
+      'c9adf824cd85731f20dc1c6a9c749c99a8844420dcebfadbda711ca05202f362',
+      'd95bab25f5c276bd876011cf9490668669e209b3bbac71b5b0e7ebc8b91f9924',
+      '34f11f1e28c2f89e9d7681885c3c58825c392b3b366a9d68506f18eda8675110',
+      '38877f635d395d7a9973970435a11be20606f4f2231d7e5a2c6f82c8ef3d7005',
+      '24961cd6c565285ad425ed6ddc2bb3cb49802bb0367d44b2c4d3bed77678f568',
+      '978b073a732823841eb94e080084896c5dec4adbba8d12e2488686e92eda2159',
+      'f469163dccf13968f6f9cde8d90fc8ffc9c18b583312198480c54a01162b6734',
+      '2d1886e186234a58f4245d68091d6aca08d31badb276fe1775bd66d6d8061d58',
+      'a8394ce18a32abeef9527f3c5548600c98c73cb9a6c617d2a1b285e583c63c04',
+      '92afda3eaa89f79c3e93e58ff6e43cb1841e1549839d6f0f488a59686f452319',
+      '240f911f425a6f7ab4fa3b1393de825a1c860e4a195ee3773d13ee91ba6c650a',
+      '21a376b3d43cb612d635a2e22b4c51d0552bce9e0deec604b7d35d9a7d1b4918',
+      '73f19eb397c8511f2d12cb728373a33169d3c3d2bc703a3106fb5d8327178c73',
+      '05b054346869535459a73855d248347679d5c036680c485308f711bd9efa4d74',
+      '3dd457832f5673c10c05d45ff6466bc1a7fe0a6dd5e9cca2384d9e7f23e7ed77',
+      'dbd7fff84bc53f3d235f3b1e0e50524c9352f959639905bb2d6b8e4c40725136'
     ];
 
     const un = (r) => {
@@ -1065,8 +1065,8 @@ describe('Ed25519', function() {
       assert.strictEqual(ed25519.publicKeyVerify(key), true);
       assert.bufferEqual(ed25519.publicKeyFromUniform(preimage), key);
       assert.bufferEqual(x25519.publicKeyFromUniform(preimage), point);
-      assert.bufferEqual(un(ed25519.publicKeyToUniform(key)), raw1);
-      assert.bufferEqual(un(x25519.publicKeyToUniform(point)), raw2);
+      assert.bufferEqual(un(ed25519.publicKeyToUniform(key, i)), raw1);
+      assert.bufferEqual(un(x25519.publicKeyToUniform(point, i)), raw2);
       assert.bufferEqual(ed25519.publicKeyFromUniform(raw1), key);
       assert.bufferEqual(x25519.publicKeyFromUniform(raw2), point);
     }
@@ -1074,8 +1074,8 @@ describe('Ed25519', function() {
 
   it('should test random oracle encoding', () => {
     const bytes = SHA512.digest(Buffer.from('turn me into a point'));
-    const pub = ed25519.publicKeyFromHash(bytes);
-    const point = x25519.publicKeyFromHash(bytes);
+    const pub = ed25519.publicKeyFromHash(bytes, true);
+    const point = x25519.publicKeyFromHash(bytes, true);
 
     assert.bufferEqual(pub,
       '37e3fe7969358395d6de5062f5a2ae4d80f88331a844bcd2058a1f3e2652e0e6');
@@ -1091,8 +1091,8 @@ describe('Ed25519', function() {
   it('should test random oracle encoding (doubling)', () => {
     const bytes0 = SHA256.digest(Buffer.from('turn me into a point'));
     const bytes = Buffer.concat([bytes0, bytes0]);
-    const pub = ed25519.publicKeyFromHash(bytes);
-    const point = x25519.publicKeyFromHash(bytes);
+    const pub = ed25519.publicKeyFromHash(bytes, true);
+    const point = x25519.publicKeyFromHash(bytes, true);
 
     assert.bufferEqual(pub,
       '5694d147542d2c08657a203cea81c6f0e39caa5219a2eeb0dedc37e59cd31ec0');
@@ -1103,6 +1103,15 @@ describe('Ed25519', function() {
     assert.strictEqual(ed25519.publicKeyVerify(pub), true);
     assert.bufferEqual(ed25519.publicKeyConvert(pub), point);
     assert.bufferEqual(x25519.publicKeyConvert(point, true), pub);
+  });
+
+  it('should test elligator squared', () => {
+    const priv = ed25519.privateKeyGenerate();
+    const pub = ed25519.publicKeyCreate(priv);
+    const bytes = ed25519.publicKeyToHash(pub);
+    const out = ed25519.publicKeyFromHash(bytes);
+
+    assert.bufferEqual(out, pub);
   });
 
   it('should test equivalence edge cases', () => {

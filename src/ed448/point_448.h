@@ -25,6 +25,7 @@
 typedef struct {
   bcrypto_gf a, b, c;
 } bcrypto_niels_s, bcrypto_niels_t[1];
+
 typedef struct {
   bcrypto_niels_t n;
   bcrypto_gf z;
@@ -51,6 +52,13 @@ struct bcrypto_curve448_precomputed_s {
 
 /* Number of bytes in an x448 private key */
 # define BCRYPTO_X448_PRIVATE_BYTES 56
+
+/* Twisted Edwards projective coordinates */
+typedef struct curve448_proj_point_s {
+  bcrypto_gf x;
+  bcrypto_gf y;
+  bcrypto_gf z;
+} curve448_proj_point;
 
 /* Twisted Edwards extended homogeneous coordinates */
 typedef struct bcrypto_curve448_point_s {
@@ -346,7 +354,6 @@ void bcrypto_curve448_scalar_negate(
 
 bcrypto_c448_error_t bcrypto_curve448_convert_public_key_to_x448(
   uint8_t out[BCRYPTO_X_PUBLIC_BYTES],
-  int *sign,
   const uint8_t raw[57]
 );
 

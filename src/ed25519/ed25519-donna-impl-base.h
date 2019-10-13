@@ -181,6 +181,8 @@ ge25519_pnielsadd(ge25519_pniels *r, const ge25519 *p, const ge25519_pniels *q) 
 static void
 ge25519_neg(ge25519 *r, const ge25519 *p) {
   curve25519_neg(r->x, p->x);
+  curve25519_copy(r->y, p->y);
+  curve25519_copy(r->z, p->z);
   curve25519_neg(r->t, p->t);
 }
 
@@ -483,21 +485,58 @@ ge25519_from_mont(ge25519 *p, const bignum25519 u, const bignum25519 v) {
 */
 
 static void
-ge25519_elligator2(ge25519 *p, const unsigned char bytes[32], int spec) {
+ge25519_elligator2(ge25519 *p, const unsigned char bytes[32]) {
   bignum25519 ALIGN(16) u, v;
-  curve25519_elligator2(u, v, bytes, spec);
+  curve25519_elligator2(u, v, bytes);
   ge25519_from_mont(p, u, v);
 }
 
 static int
-ge25519_invert2(unsigned char bytes[32], const ge25519 *p) {
+ge25519_invert2(unsigned char bytes[32], const ge25519 *p, unsigned int hint) {
   bignum25519 ALIGN(16) u, v;
   int ret = 1;
 
   ret &= ge25519_to_mont(u, v, p);
-  ret &= curve25519_invert2(bytes, u, v);
+  ret &= curve25519_invert2(bytes, u, v, hint);
 
   return ret;
+}
+
+static void
+ge25519_from_hash(ge25519 *p, const unsigned char bytes[64], int pake) {
+  ge25519 ALIGN(16) p1, p2;
+
+  ge25519_elligator2(&p1, bytes);
+  ge25519_elligator2(&p2, bytes + 32);
+  ge25519_add(p, &p1, &p2);
+
+  if (pake)
+    ge25519_mulh(p, p);
+}
+
+static int
+ge25519_to_hash(unsigned char bytes[64], const ge25519 *p) {
+  ge25519 ALIGN(16) p1, p2;
+  unsigned char *u1 = &bytes[0];
+  unsigned char *u2 = &bytes[32];
+  unsigned int hint;
+
+  for (;;) {
+    if (!bcrypto_ed25519_randombytes(u1, 32))
+      return 0;
+
+    ge25519_elligator2(&p1, u1);
+    ge25519_neg(&p1, &p1);
+    ge25519_add(&p2, p, &p1);
+
+    if (!bcrypto_ed25519_randombytes(&hint, sizeof(unsigned int)))
+      return 0;
+
+    if (ge25519_invert2(u2, &p2, hint))
+      break;
+  }
+
+  return 1;
 }
 
 /*

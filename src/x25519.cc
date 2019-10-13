@@ -18,6 +18,7 @@ BX25519::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "publicKeyFromUniform", BX25519::PublicKeyFromUniform);
   Nan::Export(obj, "publicKeyToUniform", BX25519::PublicKeyToUniform);
   Nan::Export(obj, "publicKeyFromHash", BX25519::PublicKeyFromHash);
+  Nan::Export(obj, "publicKeyToHash", BX25519::PublicKeyToHash);
   Nan::Export(obj, "publicKeyVerify", BX25519::PublicKeyVerify);
   Nan::Export(obj, "publicKeyIsSmall", BX25519::PublicKeyIsSmall);
   Nan::Export(obj, "publicKeyHasTorsion", BX25519::PublicKeyHasTorsion);
@@ -102,8 +103,66 @@ NAN_METHOD(BX25519::PublicKeyFromUniform) {
 }
 
 NAN_METHOD(BX25519::PublicKeyToUniform) {
-  if (info.Length() < 1)
+  if (info.Length() < 2)
     return Nan::ThrowError("x25519.publicKeyToUniform() requires arguments.");
+
+  v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(pbuf))
+    return Nan::ThrowTypeError("First argument must be a buffer.");
+
+  if (!info[1]->IsNumber())
+    return Nan::ThrowTypeError("Second argument must be a number.");
+
+  const uint8_t *pub = (const uint8_t *)node::Buffer::Data(pbuf);
+  size_t pub_len = node::Buffer::Length(pbuf);
+
+  if (pub_len != 32)
+    return Nan::ThrowRangeError("Invalid public key size.");
+
+  unsigned int hint = (unsigned int)Nan::To<uint32_t>(info[1]).FromJust();
+
+  uint8_t out[32];
+
+  if (!bcrypto_x25519_pubkey_to_uniform(out, pub, hint))
+    return Nan::ThrowError("Invalid public key.");
+
+  return info.GetReturnValue().Set(
+    Nan::CopyBuffer((char *)&out[0], 32).ToLocalChecked());
+}
+
+NAN_METHOD(BX25519::PublicKeyFromHash) {
+  if (info.Length() < 2)
+    return Nan::ThrowError("x25519.publicKeyFromHash() requires arguments.");
+
+  v8::Local<v8::Object> dbuf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(dbuf))
+    return Nan::ThrowTypeError("First argument must be a buffer.");
+
+  if (!info[1]->IsBoolean())
+    return Nan::ThrowTypeError("Second argument must be a boolean.");
+
+  const uint8_t *data = (const uint8_t *)node::Buffer::Data(dbuf);
+  size_t data_len = node::Buffer::Length(dbuf);
+
+  if (data_len != 64)
+    return Nan::ThrowRangeError("Invalid hash size.");
+
+  int pake = (int)Nan::To<bool>(info[1]).FromJust();
+
+  uint8_t out[32];
+
+  if (!bcrypto_x25519_pubkey_from_hash(out, data, pake))
+    return Nan::ThrowError("Invalid public key.");
+
+  return info.GetReturnValue().Set(
+    Nan::CopyBuffer((char *)&out[0], 32).ToLocalChecked());
+}
+
+NAN_METHOD(BX25519::PublicKeyToHash) {
+  if (info.Length() < 1)
+    return Nan::ThrowError("x25519.publicKeyToHash() requires arguments.");
 
   v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
 
@@ -116,37 +175,13 @@ NAN_METHOD(BX25519::PublicKeyToUniform) {
   if (pub_len != 32)
     return Nan::ThrowRangeError("Invalid public key size.");
 
-  uint8_t out[32];
+  uint8_t out[64];
 
-  if (!bcrypto_x25519_pubkey_to_uniform(out, pub))
+  if (!bcrypto_x25519_pubkey_to_hash(out, pub))
     return Nan::ThrowError("Invalid public key.");
 
   return info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)&out[0], 32).ToLocalChecked());
-}
-
-NAN_METHOD(BX25519::PublicKeyFromHash) {
-  if (info.Length() < 1)
-    return Nan::ThrowError("x25519.publicKeyFromHash() requires arguments.");
-
-  v8::Local<v8::Object> dbuf = info[0].As<v8::Object>();
-
-  if (!node::Buffer::HasInstance(dbuf))
-    return Nan::ThrowTypeError("First argument must be a buffer.");
-
-  const uint8_t *data = (const uint8_t *)node::Buffer::Data(dbuf);
-  size_t data_len = node::Buffer::Length(dbuf);
-
-  if (data_len != 64)
-    return Nan::ThrowRangeError("Invalid hash size.");
-
-  uint8_t out[32];
-
-  if (!bcrypto_x25519_pubkey_from_hash(out, data))
-    return Nan::ThrowError("Invalid public key.");
-
-  return info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)&out[0], 32).ToLocalChecked());
+    Nan::CopyBuffer((char *)&out[0], 64).ToLocalChecked());
 }
 
 NAN_METHOD(BX25519::PublicKeyVerify) {

@@ -341,7 +341,7 @@ describe('X25519', function() {
 
   it('should test random oracle encoding', () => {
     const bytes = SHA512.digest(Buffer.from('turn me into a point'));
-    const pub = x25519.publicKeyFromHash(bytes);
+    const pub = x25519.publicKeyFromHash(bytes, true);
 
     assert.bufferEqual(pub,
       '88ddc62a46c484db54b6d6cb6badb173e0e7d9785385691443233983865acc4d');
@@ -350,10 +350,19 @@ describe('X25519', function() {
   it('should test random oracle encoding (doubling)', () => {
     const bytes0 = SHA256.digest(Buffer.from('turn me into a point'));
     const bytes = Buffer.concat([bytes0, bytes0]);
-    const pub = x25519.publicKeyFromHash(bytes);
+    const pub = x25519.publicKeyFromHash(bytes, true);
 
     assert.bufferEqual(pub,
       '7b9965e30b586bab509c34d657d8be30fad1b179470f2f70a6c728092e000062');
+  });
+
+  it('should test elligator squared', () => {
+    const priv = x25519.privateKeyGenerate();
+    const pub = x25519.publicKeyCreate(priv);
+    const bytes = x25519.publicKeyToHash(pub);
+    const out = x25519.publicKeyFromHash(bytes);
+
+    assert.bufferEqual(out, pub);
   });
 
   it('should test x25519 api', () => {

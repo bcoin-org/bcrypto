@@ -266,7 +266,7 @@ describe('X448', function() {
 
   it('should test random oracle encoding', () => {
     const bytes = SHAKE256.digest(Buffer.from('turn me into a point'), 112);
-    const pub = x448.publicKeyFromHash(bytes);
+    const pub = x448.publicKeyFromHash(bytes, true);
 
     assert.bufferEqual(pub, ''
       + '9f3d68330e24951bdbc200ed6d25ef4e90bc678d68282af081e6204f'
@@ -276,11 +276,20 @@ describe('X448', function() {
   it('should test random oracle encoding (doubling)', () => {
     const bytes0 = SHAKE256.digest(Buffer.from('turn me into a point'), 56);
     const bytes = Buffer.concat([bytes0, bytes0]);
-    const pub = x448.publicKeyFromHash(bytes);
+    const pub = x448.publicKeyFromHash(bytes, true);
 
     assert.bufferEqual(pub, ''
       + '6fee3c18014c2c61dc1bc145c224d2b5c2e48ccbb41e007927d08435'
       + '6dd0a932c189fa810622612d982a0326760c6e74b39866bbd905f9df');
+  });
+
+  it('should test elligator squared', () => {
+    const priv = x448.privateKeyGenerate();
+    const pub = x448.publicKeyCreate(priv);
+    const bytes = x448.publicKeyToHash(pub);
+    const out = x448.publicKeyFromHash(bytes);
+
+    assert.bufferEqual(out, pub);
   });
 
   it('should test x448 api', () => {

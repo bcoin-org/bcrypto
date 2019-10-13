@@ -5,7 +5,6 @@ const BN = require('../lib/bn.js');
 const EDDSA = require('../lib/js/eddsa');
 const ECDH = require('../lib/js/ecdh');
 const SHAKE256 = require('../lib/shake256');
-const SHA512 = require('../lib/sha512');
 const elliptic = require('../lib/js/elliptic');
 const rng = require('../lib/random');
 const extra = require('./util/curves');
@@ -1954,7 +1953,7 @@ describe('Elliptic', function() {
     it('should test elligator (exceptional case, r=1)', () => {
       const x448 = new curves.X448();
       const p = x448.pointFromUniform(x448.one);
-      const r = x448.pointToUniform(p);
+      const r = x448.pointToUniform(p, 1);
       const q = x448.pointFromUniform(r);
 
       assert(p.validate());
@@ -1975,50 +1974,11 @@ describe('Elliptic', function() {
       const x = e.redMul(v).redISub(l);
 
       const p = curve.pointFromX(x, false);
-      const r = curve.pointToUniform(p);
+      const r = curve.pointToUniform(p, 1);
       const q = curve.pointFromUniform(r);
 
       assert(p.validate());
       assert(p.eq(q));
-    });
-
-    it('should test elligator against DJB\'s formula', () => {
-      // Map:
-      //
-      //   f(a) = a^((q - 1) / 2)
-      //   v = -A / (1 + u * r^2)
-      //   e = f(v^3 + A * v^2 + B * v)
-      //   x = e * v - (1 - e) * A / 2
-      //   y = -e * sqrt(x^3 + A * x^2 + B * x)
-      const curve = new curves.X25519();
-      const i2 = curve.two.redInvert();
-      const u = curve.randomField(rng);
-
-      const lhs = curve.a.redNeg();
-      const rhs = curve.one.redAdd(curve.z.redMul(u.redSqr()));
-
-      rhs.cinject(curve.one, rhs.czero());
-
-      const v = lhs.redMul(rhs.redFermat());
-      const f = curve.solveY2(v);
-      const e = f.redPow(curve.p.subn(1).iushrn(1));
-      const l = curve.one.redSub(e).redMul(curve.a).redMul(i2);
-      const x = e.redMul(v).redISub(l);
-      const y0 = curve.solveY(x);
-
-      y0.cinject(y0.redNeg(), y0.redIsNeg());
-
-      const y = e.redNeg().redMul(y0);
-
-      const p = curve.point(x, y);
-      const q = curve.pointFromUniform(u);
-
-      assert(p.validate());
-      assert(p.eq(q));
-
-      const r = curve.pointToUniform(p);
-
-      assert(r.eq(u) || r.eq(u.redNeg()));
     });
 
     it('should test elligator (mont)', () => {
@@ -2028,9 +1988,9 @@ describe('Elliptic', function() {
       for (const curve of [x25519, x448]) {
         const u1 = curve.randomField(rng);
         const p1 = curve.pointFromUniform(u1);
-        const u2 = curve.pointToUniform(p1);
+        const u2 = curve.pointToUniform(p1, 0);
         const p2 = curve.pointFromUniform(u2);
-        const u3 = curve.pointToUniform(p2);
+        const u3 = curve.pointToUniform(p2, 1);
         const p3 = curve.pointFromUniform(u3);
 
         assert(p1.validate());
@@ -2048,9 +2008,9 @@ describe('Elliptic', function() {
       for (const [x, curve] of [[x25519, ed25519], [x448, ed448]]) {
         const u1 = curve.randomField(rng);
         const p1 = curve.pointFromUniform(x, u1);
-        const u2 = curve.pointToUniform(x, p1);
+        const u2 = curve.pointToUniform(x, p1, 0);
         const p2 = curve.pointFromUniform(x, u2);
-        const u3 = curve.pointToUniform(x, p2);
+        const u3 = curve.pointToUniform(x, p2, 1);
         const p3 = curve.pointFromUniform(x, u3);
 
         assert(p1.validate());
@@ -2072,9 +2032,9 @@ describe('Elliptic', function() {
       } while (x.pointFromUniform(x1).toX().hasTorsion());
 
       const p1 = curve.pointFromUniform(x, u1);
-      const u2 = curve.pointToUniform(x, p1);
+      const u2 = curve.pointToUniform(x, p1, 0);
       const p2 = curve.pointFromUniform(x, u2);
-      const u3 = curve.pointToUniform(x, p2);
+      const u3 = curve.pointToUniform(x, p2, 1);
       const p3 = curve.pointFromUniform(x, u3);
 
       assert(p1.validate());
@@ -2096,7 +2056,7 @@ describe('Elliptic', function() {
         // Fails on about half the keys.
         let r;
         try {
-          r = curve.pointToUniform(x, p);
+          r = curve.pointToUniform(x, p, rng.randomInt());
         } catch (e) {
           continue;
         }
@@ -2148,38 +2108,6 @@ describe('Elliptic', function() {
         assert(p1.validate());
         assert(p1.eq(p2));
       }
-
-      for (let i = 0; i < 10; i++) {
-        const r1 = curve.one.redMuln(i);
-        const p1 = curve.pointFromUniform(null, r1);
-        const r2 = curve.pointToUniform(null, p1);
-        const p2 = curve.pointFromUniform(null, r2);
-
-        assert(!p1.isInfinity());
-        assert(p1.validate());
-        assert(p1.eq(p2));
-      }
-    });
-
-    it('should test elligator 1 (api)', () => {
-      const eddsa = new EDDSA('ED1174', null, SHA512);
-
-      const u1 = Buffer.from(
-        '3905000000000000000000000000000000000000000000000000000000000000',
-        'hex');
-
-      const pub1 = eddsa.publicKeyFromUniform(u1);
-      const u2 = eddsa.publicKeyToUniform(pub1);
-      const pub2 = eddsa.publicKeyFromUniform(u2);
-
-      assert.bufferEqual(pub1,
-        '874f0c7f58e47a65fa6418a65c84c03cd360c97dff3525a43192bbfec5229182');
-      assert.bufferEqual(pub2, pub1);
-
-      const pub3 = eddsa.publicKeyFromHash(Buffer.concat([u1, pub1]));
-
-      assert(!eddsa.publicKeyHasTorsion(pub3));
-      assert(eddsa.publicKeyVerify(pub3));
     });
 
     it('should test elligator hash', () => {
@@ -2193,9 +2121,9 @@ describe('Elliptic', function() {
 
         for (let i = 0; i < 10; i++) {
           const u = rng.randomBytes(size);
-          const p0 = edwards.pointFromHash(mont, u);
+          const p0 = edwards.pointFromHash(mont, u, true);
           const p1 = mont.pointFromEdwards(p0);
-          const p2 = mont.pointFromHash(u);
+          const p2 = mont.pointFromHash(u, true);
 
           assert(p1.validate());
           assert(p2.validate());
@@ -2206,7 +2134,7 @@ describe('Elliptic', function() {
 
     it('should test elligator hash (api)', () => {
       const ecdh = new ECDH('M511');
-      const pub = ecdh.publicKeyFromHash(rng.randomBytes(128));
+      const pub = ecdh.publicKeyFromHash(rng.randomBytes(128), true);
 
       assert(!ecdh.publicKeyHasTorsion(pub));
       assert(ecdh.publicKeyVerify(pub));
@@ -2233,7 +2161,7 @@ describe('Elliptic', function() {
 
       assert(p0.eq(p1) || p0.eq(p1.neg()));
 
-      const u1 = ed25519.pointToUniform(native, p0);
+      const u1 = ed25519.pointToUniform(native, p0, 0);
       const p2 = ed25519.pointFromUniform(native, u1);
 
       assert(p2.eq(p0));

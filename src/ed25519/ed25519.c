@@ -746,7 +746,7 @@ bcrypto_ed25519_pubkey_from_uniform(
   const unsigned char bytes[32]
 ) {
   ge25519 ALIGN(16) p;
-  ge25519_elligator2(&p, bytes, 0);
+  ge25519_elligator2(&p, bytes);
   ge25519_pack(out, &p);
 }
 
@@ -756,20 +756,21 @@ bcrypto_x25519_pubkey_from_uniform(
   const unsigned char bytes[32]
 ) {
   bignum25519 ALIGN(16) x, y;
-  curve25519_elligator2(x, y, bytes, 0);
+  curve25519_elligator2(x, y, bytes);
   curve25519_contract(out, x);
 }
 
 int
 bcrypto_ed25519_pubkey_to_uniform(
   unsigned char out[32],
-  const bcrypto_ed25519_pubkey_t pub
+  const bcrypto_ed25519_pubkey_t pub,
+  unsigned int hint
 ) {
   ge25519 ALIGN(16) p;
   int ret = 1;
 
   ret &= ge25519_unpack(&p, pub);
-  ret &= ge25519_invert2(out, &p);
+  ret &= ge25519_invert2(out, &p, hint);
 
   return ret;
 }
@@ -777,13 +778,14 @@ bcrypto_ed25519_pubkey_to_uniform(
 int
 bcrypto_x25519_pubkey_to_uniform(
   unsigned char out[32],
-  const bcrypto_x25519_pubkey_t pub
+  const bcrypto_x25519_pubkey_t pub,
+  unsigned int hint
 ) {
   bignum25519 ALIGN(16) x, y;
   int ret = 1;
 
   ret &= curve25519_unpack(x, y, pub, -1);
-  ret &= curve25519_invert2(out, x, y);
+  ret &= curve25519_invert2(out, x, y, hint);
 
   return ret;
 }
@@ -791,40 +793,62 @@ bcrypto_x25519_pubkey_to_uniform(
 void
 bcrypto_ed25519_pubkey_from_hash(
   bcrypto_ed25519_pubkey_t out,
-  const unsigned char bytes[64]
+  const unsigned char bytes[64],
+  int pake
 ) {
-  ge25519 ALIGN(16) p1, p2;
-
-  ge25519_elligator2(&p1, bytes, 1);
-  ge25519_elligator2(&p2, bytes + 32, 1);
-
-  ge25519_add(&p1, &p1, &p2);
-  ge25519_mulh(&p1, &p1);
-  ge25519_pack(out, &p1);
+  ge25519 ALIGN(16) p;
+  ge25519_from_hash(&p, bytes, pake);
+  ge25519_pack(out, &p);
 }
 
 int
 bcrypto_x25519_pubkey_from_hash(
   bcrypto_x25519_pubkey_t out,
-  const unsigned char bytes[64]
+  const unsigned char bytes[64],
+  int pake
 ) {
   bignum25519 ALIGN(16) u, z;
-  ge25519 ALIGN(16) p1, p2;
+  ge25519 ALIGN(16) p;
   int ret = 1;
 
-  ge25519_elligator2(&p1, bytes, 1);
-  ge25519_elligator2(&p2, bytes + 32, 1);
+  ge25519_from_hash(&p, bytes, pake);
 
-  ge25519_add(&p1, &p1, &p2);
-  ge25519_mulh(&p1, &p1);
+  ret &= ge25519_is_neutral(&p) ^ 1;
 
-  ret &= ge25519_is_neutral(&p1) ^ 1;
-
-  curve25519_add(u, p1.z, p1.y);
-  curve25519_sub(z, p1.z, p1.y);
+  curve25519_add(u, p.z, p.y);
+  curve25519_sub(z, p.z, p.y);
   curve25519_recip(z, z);
   curve25519_mul(u, u, z);
   curve25519_contract(out, u);
 
   return ret;
+}
+
+int
+bcrypto_ed25519_pubkey_to_hash(
+  unsigned char out[64],
+  const bcrypto_ed25519_pubkey_t pub
+) {
+  ge25519 ALIGN(16) p;
+
+  if (!ge25519_unpack(&p, pub))
+    return 0;
+
+  return ge25519_to_hash(out, &p);
+}
+
+int
+bcrypto_x25519_pubkey_to_hash(
+  unsigned char out[64],
+  const bcrypto_x25519_pubkey_t pub
+) {
+  ge25519 ALIGN(16) p;
+  bignum25519 ALIGN(16) x, y;
+
+  if (!curve25519_unpack(x, y, pub, -1))
+    return 0;
+
+  ge25519_from_mont(&p, x, y);
+
+  return ge25519_to_hash(out, &p);
 }
