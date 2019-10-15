@@ -179,8 +179,9 @@ shallue_van_de_woestijne_invert(secp256k1_fe* u,
   secp256k1_fe c1, c2, den, den1, den2;
   secp256k1_fe u1, u2, u3, u4, t, tmp;
   secp256k1_ge q;
-  int r = hint & 3;
-  int s0, s1, flip;
+  size_t shift = sizeof(unsigned int) * 8 - 1;
+  unsigned int r = hint & 3;
+  unsigned int s0, s1, s2, s3, flip;
 
   /*
    * Map:
@@ -221,6 +222,7 @@ shallue_van_de_woestijne_invert(secp256k1_fe* u,
 
   /* t = sqrt(t) / 2 */
   s0 = secp256k1_fe_sqrt(&tmp, &t);
+  s1 = ((r - 2) >> shift) | s0; /* r < 2 or t is square */
   secp256k1_fe_mul(&t, &tmp, &i2);
 
   /* tmp = x * 2 + 1 */
@@ -283,14 +285,15 @@ shallue_van_de_woestijne_invert(secp256k1_fe* u,
   secp256k1_fe_add(&u4, &t);
 
   /* u = sqrt(ur) */
-  secp256k1_fe_cmov(&tmp, &u1, r == 0);
-  secp256k1_fe_cmov(&tmp, &u2, r == 1);
-  secp256k1_fe_cmov(&tmp, &u3, r == 2);
-  secp256k1_fe_cmov(&tmp, &u4, r == 3);
-  s1 = secp256k1_fe_sqrt(&u1, &tmp);
+  secp256k1_fe_cmov(&tmp, &u1, ((r ^ 0) - 1) >> shift); /* r = 0 */
+  secp256k1_fe_cmov(&tmp, &u2, ((r ^ 1) - 1) >> shift); /* r = 1 */
+  secp256k1_fe_cmov(&tmp, &u3, ((r ^ 2) - 1) >> shift); /* r = 2 */
+  secp256k1_fe_cmov(&tmp, &u4, ((r ^ 3) - 1) >> shift); /* r = 3 */
+  s2 = secp256k1_fe_sqrt(&u1, &tmp);
 
   /* q = svdw(u) */
   shallue_van_de_woestijne(&q, &u1);
+  s3 = secp256k1_fe_equal(&q.x, &x);
 
   /* u = sign(y) * abs(u) */
   flip = secp256k1_fe_is_neg(&u1) ^ secp256k1_fe_is_neg(&y);
@@ -299,7 +302,7 @@ shallue_van_de_woestijne_invert(secp256k1_fe* u,
 
   *u = u1;
 
-  return ((r < 2) | s0) & s1 & secp256k1_fe_equal(&q.x, &x);
+  return s1 & s2 & s3;
 }
 
 static int
@@ -339,6 +342,7 @@ secp256k1_pubkey_from_uniform(secp256k1_pubkey *pubkey,
   secp256k1_fe u;
 
   secp256k1_fe_set_b32(&u, bytes32);
+  secp256k1_fe_normalize(&u);
 
   shallue_van_de_woestijne(&p, &u);
 
@@ -381,6 +385,9 @@ secp256k1_pubkey_from_hash(secp256k1_pubkey *pubkey,
   secp256k1_fe_set_b32(&u1, bytes64);
   secp256k1_fe_set_b32(&u2, bytes64 + 32);
 
+  secp256k1_fe_normalize(&u1);
+  secp256k1_fe_normalize(&u2);
+
   shallue_van_de_woestijne(&p1, &u1);
   shallue_van_de_woestijne(&p2, &u2);
 
@@ -406,24 +413,26 @@ secp256k1_pubkey_from_hash(secp256k1_pubkey *pubkey,
 static void
 secp256k1_fe_random(secp256k1_fe *fe, secp256k1_rfc6979_hmac_sha256_t *rng) {
   unsigned char raw[32];
-  secp256k1_rfc6979_hmac_sha256_generate(rng, raw, 32);
-  secp256k1_fe_set_b32(fe, raw);
+
+  for (;;) {
+    secp256k1_rfc6979_hmac_sha256_generate(rng, raw, 32);
+
+    if (secp256k1_fe_set_b32(fe, raw))
+      break;
+  }
 }
 
 static unsigned int
 secp256k1_random_int(secp256k1_rfc6979_hmac_sha256_t *rng) {
-  unsigned char raw[4];
-  secp256k1_rfc6979_hmac_sha256_generate(rng, raw, 4);
-  return ((unsigned int)raw[0] << 24)
-       | ((unsigned int)raw[1] << 16)
-       | ((unsigned int)raw[2] << 8)
-       | ((unsigned int)raw[3] << 0);
+  unsigned char raw[2];
+  secp256k1_rfc6979_hmac_sha256_generate(rng, raw, 2);
+  return ((unsigned int)raw[0] << 8) | (unsigned int)raw[1];
 }
 
 static int
 secp256k1_pubkey_to_hash(unsigned char *bytes64,
                          const secp256k1_pubkey *pubkey,
-                         const unsigned char *seed32) {
+                         const unsigned char *seed64) {
   secp256k1_rfc6979_hmac_sha256_t rng;
   secp256k1_ge p, p1, p2;
   secp256k1_gej j, r;
@@ -434,13 +443,11 @@ secp256k1_pubkey_to_hash(unsigned char *bytes64,
     return 0;
 
   secp256k1_gej_set_ge(&j, &p);
-  secp256k1_rfc6979_hmac_sha256_initialize(&rng, seed32, 32);
+  secp256k1_rfc6979_hmac_sha256_initialize(&rng, seed64, 64);
 
   for (;;) {
     secp256k1_fe_random(&u1, &rng);
     shallue_van_de_woestijne(&p1, &u1);
-
-    /* p2 = p - p1 */
     secp256k1_ge_neg(&p1, &p1);
     secp256k1_gej_add_ge(&r, &j, &p1);
     secp256k1_ge_set_gej(&p2, &r);

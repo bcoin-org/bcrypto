@@ -3410,8 +3410,10 @@ bcrypto_ecdsa_svdwi(bcrypto_ecdsa_t *ec, const EC_POINT *P, unsigned int hint) {
   EC_POINT *Q = EC_POINT_new(ec->group);
   BIGNUM *x0 = BN_new();
   BIGNUM *u = BN_new();
-  int r = hint & 3;
-  int Z, s0, s1;
+  size_t shift = sizeof(unsigned int) * 8 - 1;
+  unsigned int r = hint & 3;
+  unsigned int s0, s1, s2, s3;
+  int Z;
   int ret = 0;
 
   /*
@@ -3499,6 +3501,7 @@ bcrypto_ecdsa_svdwi(bcrypto_ecdsa_t *ec, const EC_POINT *P, unsigned int hint) {
   F(BN_mod_sub(t3, t0, t1, ec->p, ec->ctx));
   F(BN_mod_add(t3, t3, t2, ec->p, ec->ctx));
   s0 = BN_mod_sqrt(t3, t3, ec->p, ec->ctx) != 0;
+  s1 = ((r - 2) >> shift) | s0;
 
   /* t4 = t3 / 2 * z */
   F(BN_mod_mul(t4, t3, i2, ec->p, ec->ctx));
@@ -3545,7 +3548,7 @@ bcrypto_ecdsa_svdwi(bcrypto_ecdsa_t *ec, const EC_POINT *P, unsigned int hint) {
   /* u = sqrt(ur) */
   BIGNUM *U[4] = { u1, u2, u3, u4 };
 
-  s1 = BN_mod_sqrt(u, U[r], ec->p, ec->ctx) != 0;
+  s2 = BN_mod_sqrt(u, U[r], ec->p, ec->ctx) != 0;
   F(Q = bcrypto_ecdsa_svdw(ec, u));
 
 #if OPENSSL_VERSION_NUMBER >= 0x10200000L
@@ -3555,11 +3558,12 @@ bcrypto_ecdsa_svdwi(bcrypto_ecdsa_t *ec, const EC_POINT *P, unsigned int hint) {
   F(EC_POINT_get_affine_coordinates_GFp(ec->group, Q, x0, NULL, ec->ctx));
 #endif
 
+  s3 = BN_cmp(x0, x) == 0;
+
   if (bn_is_neg(u, ec->p) ^ bn_is_neg(y, ec->p))
     F(BN_mod_sub(u, ec->p, u, ec->p, ec->ctx));
 
-  F((r < 2) | s0);
-  F(s1 & (BN_cmp(x0, x) == 0));
+  F(s1 & s2 & s3);
 #undef F
 
   ret = 1;

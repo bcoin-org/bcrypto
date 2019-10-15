@@ -1192,6 +1192,56 @@ describe('ECDSA', function() {
       }
     });
 
+    if (secp256k1.native === 2) {
+      const native1 = p256;
+      const curve1 = require('../lib/js/p256');
+
+      const native2 = secp256k1;
+      const curve2 = require('../lib/js/secp256k1');
+
+      const native3 = native;
+      const curve3 = curve2;
+
+      it('should invert elligator (native vs. js)', () => {
+        for (const [native, curve] of [[native1, curve1],
+                                       [native2, curve2],
+                                       [native3, curve3]]) {
+          const priv = native.privateKeyGenerate();
+          const pub = native.publicKeyCreate(priv);
+
+          for (let i = 0; i < 4; i++) {
+            let bytes1 = null;
+            let bytes2 = null;
+
+            try {
+              bytes1 = native.publicKeyToUniform(pub, i);
+            } catch (e) {
+              ;
+            }
+
+            try {
+              bytes2 = curve.publicKeyToUniform(pub, i);
+            } catch (e) {
+              ;
+            }
+
+            if (!bytes1) {
+              assert(!bytes2);
+              continue;
+            }
+
+            assert(bytes2);
+            assert.bufferEqual(bytes1, bytes2);
+            assert.bufferEqual(native.publicKeyFromUniform(bytes1), pub);
+          }
+
+          const bytes = native.publicKeyToHash(pub);
+
+          assert.bufferEqual(native.publicKeyFromHash(bytes), pub);
+        }
+      });
+    }
+
     it('should invert elligator squared', () => {
       for (const curve of [p256, secp256k1, native || secp256k1]) {
         const priv = curve.privateKeyGenerate();
