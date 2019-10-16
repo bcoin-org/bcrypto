@@ -2700,6 +2700,24 @@ describe('Elliptic', function() {
       }
     });
 
+    it('should test doubling when y=0 (udbl, valid 2-torsion)', () => {
+      // Pick a curve with 2-torsion.
+      const curve = new curves.WEI25519();
+      const i3 = curve.three.redInvert();
+      const x = curve.field(486662).redMul(i3);
+      const y = curve.zero.clone();
+      const z = curve.one.clone();
+      const p = curve.jpoint(x, y, z).randomize(rng);
+      const q = p.udbl();
+
+      assert(p.validate());
+      assert(q.isInfinity());
+      assert(q.eq(curve.jpoint()));
+      assert(q.x.eq(curve.one));
+      assert(q.y.eq(curve.one));
+      assert(q.z.eq(curve.zero));
+    });
+
     it('should test adding when lambda=0', () => {
       const curve = new curves.SECP256K1();
 
