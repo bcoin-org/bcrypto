@@ -4,6 +4,7 @@ const assert = require('bsert');
 const BN = require('../lib/bn.js');
 const EDDSA = require('../lib/js/eddsa');
 const ECDH = require('../lib/js/ecdh');
+const SHA512 = require('../lib/sha512');
 const SHAKE256 = require('../lib/shake256');
 const elliptic = require('../lib/js/elliptic');
 const rng = require('../lib/random');
@@ -2007,11 +2008,11 @@ describe('Elliptic', function() {
 
       for (const [x, curve] of [[x25519, ed25519], [x448, ed448]]) {
         const u1 = curve.randomField(rng);
-        const p1 = curve.pointFromUniform(x, u1);
-        const u2 = curve.pointToUniform(x, p1, 0);
-        const p2 = curve.pointFromUniform(x, u2);
-        const u3 = curve.pointToUniform(x, p2, 1);
-        const p3 = curve.pointFromUniform(x, u3);
+        const p1 = curve.pointFromUniform(u1, x);
+        const u2 = curve.pointToUniform(p1, 0, x);
+        const p2 = curve.pointFromUniform(u2, x);
+        const u3 = curve.pointToUniform(p2, 1, x);
+        const p3 = curve.pointFromUniform(u3, x);
 
         assert(p1.validate());
         assert(p1.eq(p2));
@@ -2031,11 +2032,11 @@ describe('Elliptic', function() {
         x1 = u1.fromRed().toRed(x.red);
       } while (x.pointFromUniform(x1).toX().hasTorsion());
 
-      const p1 = curve.pointFromUniform(x, u1);
-      const u2 = curve.pointToUniform(x, p1, 0);
-      const p2 = curve.pointFromUniform(x, u2);
-      const u3 = curve.pointToUniform(x, p2, 1);
-      const p3 = curve.pointFromUniform(x, u3);
+      const p1 = curve.pointFromUniform(u1, x);
+      const u2 = curve.pointToUniform(p1, 0, x);
+      const p2 = curve.pointFromUniform(u2, x);
+      const u3 = curve.pointToUniform(p2, 1, x);
+      const p3 = curve.pointFromUniform(u3, x);
 
       assert(p1.validate());
       assert(p1.eq(p2));
@@ -2056,7 +2057,7 @@ describe('Elliptic', function() {
         // Fails on about half the keys.
         let r;
         try {
-          r = curve.pointToUniform(x, p, rng.randomInt());
+          r = curve.pointToUniform(p, rng.randomInt(), x);
         } catch (e) {
           continue;
         }
@@ -2069,7 +2070,7 @@ describe('Elliptic', function() {
 
       // Run elligator on the other side.
       const r = curve.decodeUniform(bytes);
-      const q = curve.pointFromUniform(x, r);
+      const q = curve.pointFromUniform(r, x);
 
       assert(p.eq(q));
     });
@@ -2086,7 +2087,7 @@ describe('Elliptic', function() {
         '029122c5febb9231a42535ff7dc960d33cc0845ca61864fa657ae4587f0c4f87'
       ]);
 
-      const r2 = curve._invert1(p1);
+      const r2 = curve._invert1(p1, 0);
 
       assert.strictEqual(r2.redNeg().fromRed().toNumber(), 1337);
 
@@ -2096,18 +2097,50 @@ describe('Elliptic', function() {
       ]);
 
       assert(p3.validate());
-      assert.throws(() => curve._invert1(p3));
+      assert.throws(() => curve._invert1(p3, 0));
 
       for (let i = 0; i < 100; i++) {
         const r1 = curve.one.redMuln(i);
         const p1 = curve._elligator1(r1);
-        const r2 = curve._invert1(p1);
+        const r2 = curve._invert1(p1, 0);
         const p2 = curve._elligator1(r2);
 
         assert(!p1.isInfinity());
         assert(p1.validate());
         assert(p1.eq(p2));
       }
+
+      for (let i = 0; i < 10; i++) {
+        const r1 = curve.one.redMuln(i);
+        const p1 = curve.pointFromUniform(r1);
+        const r2 = curve.pointToUniform(p1, 0);
+        const p2 = curve.pointFromUniform(r2);
+
+        assert(!p1.isInfinity());
+        assert(p1.validate());
+        assert(p1.eq(p2));
+      }
+    });
+
+    it('should test elligator 1 (api)', () => {
+      const eddsa = new EDDSA('ED1174', null, SHA512);
+
+      const u1 = Buffer.from(
+        '3905000000000000000000000000000000000000000000000000000000000000',
+        'hex');
+
+      const pub1 = eddsa.publicKeyFromUniform(u1);
+      const u2 = eddsa.publicKeyToUniform(pub1);
+      const pub2 = eddsa.publicKeyFromUniform(u2);
+
+      assert.bufferEqual(pub1,
+        '874f0c7f58e47a65fa6418a65c84c03cd360c97dff3525a43192bbfec5229182');
+      assert.bufferEqual(pub2, pub1);
+
+      const pub3 = eddsa.publicKeyFromHash(Buffer.concat([u1, pub1]), true);
+
+      assert(!eddsa.publicKeyHasTorsion(pub3));
+      assert(eddsa.publicKeyVerify(pub3));
     });
 
     it('should test elligator hash', () => {
@@ -2121,7 +2154,7 @@ describe('Elliptic', function() {
 
         for (let i = 0; i < 10; i++) {
           const u = rng.randomBytes(size);
-          const p0 = edwards.pointFromHash(mont, u, true);
+          const p0 = edwards.pointFromHash(u, true, mont);
           const p1 = mont.pointFromEdwards(p0);
           const p2 = mont.pointFromHash(u, true);
 
@@ -2156,13 +2189,13 @@ describe('Elliptic', function() {
       });
 
       const u0 = ed25519.randomField(rng);
-      const p0 = ed25519.pointFromUniform(native, u0);
-      const p1 = ed25519.pointFromUniform(x25519, u0);
+      const p0 = ed25519.pointFromUniform(u0, native);
+      const p1 = ed25519.pointFromUniform(u0, x25519);
 
       assert(p0.eq(p1) || p0.eq(p1.neg()));
 
-      const u1 = ed25519.pointToUniform(native, p0, 0);
-      const p2 = ed25519.pointFromUniform(native, u1);
+      const u1 = ed25519.pointToUniform(p0, 0, native);
+      const p2 = ed25519.pointFromUniform(u1, native);
 
       assert(p2.eq(p0));
     });

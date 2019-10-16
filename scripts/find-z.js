@@ -112,6 +112,11 @@ function findElligator1S(curve) {
   console.log('Found %d `s` values:', S.length);
   console.log(S.map(s => s.fromRed().toString(16)));
 
+  // Use DJB's `s` value.
+  if (curve.id === 'ED1174')
+    return S[2];
+
+  // Pick the smallest `s`.
   return S.sort(BN.cmp)[0];
 }
 
