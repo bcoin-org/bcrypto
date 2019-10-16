@@ -23,9 +23,9 @@
 
 static unsigned int
 secp256k1_bytes32_le(const unsigned char *a, const unsigned char *b) {
+  size_t shift = sizeof(int) * 8 - 1;
   int eq = ~0;
   int lt = 0;
-  size_t shift = sizeof(int) * 8 - 1;
   int i;
 
   for (i = 0; i < 32; i++) {
