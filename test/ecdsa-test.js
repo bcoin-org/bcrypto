@@ -1170,7 +1170,19 @@ describe('ECDSA', function() {
     });
 
     it('should invert elligator', () => {
-      for (const curve of [p256, p384, p521, secp256k1, native || secp256k1]) {
+      const curves = [
+        p192,
+        p224,
+        p256,
+        p384,
+        p521,
+        secp256k1
+      ];
+
+      if (native)
+        curves.push(native);
+
+      for (const curve of curves) {
         let priv, pub, bytes;
 
         for (;;) {
@@ -1192,20 +1204,19 @@ describe('ECDSA', function() {
       }
     });
 
-    if (secp256k1.native === 2) {
-      const native1 = p256;
-      const curve1 = require('../lib/js/p256');
-
-      const native2 = secp256k1;
-      const curve2 = require('../lib/js/secp256k1');
-
-      const native3 = native;
-      const curve3 = curve2;
+    if (native) {
+      const curves = [
+        [p192, require('../lib/js/p192')],
+        [p224, require('../lib/js/p224')],
+        [p256, require('../lib/js/p256')],
+        [p384, require('../lib/js/p384')],
+        [p521, require('../lib/js/p521')],
+        [secp256k1, require('../lib/js/secp256k1')],
+        [native, require('../lib/js/secp256k1')]
+      ];
 
       it('should invert elligator (native vs. js)', () => {
-        for (const [native, curve] of [[native1, curve1],
-                                       [native2, curve2],
-                                       [native3, curve3]]) {
+        for (const [native, curve] of curves) {
           const priv = native.privateKeyGenerate();
           const pub = native.publicKeyCreate(priv);
 
@@ -1231,6 +1242,12 @@ describe('ECDSA', function() {
             }
 
             assert(bytes2);
+
+            if (curve.id === 'P521') {
+              bytes1[0] &= 1;
+              bytes2[0] &= 1;
+            }
+
             assert.bufferEqual(bytes1, bytes2);
             assert.bufferEqual(native.publicKeyFromUniform(bytes1), pub);
           }
@@ -1243,7 +1260,19 @@ describe('ECDSA', function() {
     }
 
     it('should invert elligator squared', () => {
-      for (const curve of [p256, secp256k1, native || secp256k1]) {
+      const curves = [
+        p192,
+        p224,
+        p256,
+        p384,
+        p521,
+        secp256k1
+      ];
+
+      if (native)
+        curves.push(native);
+
+      for (const curve of curves) {
         const priv = curve.privateKeyGenerate();
         const pub = curve.publicKeyCreate(priv);
         const bytes = curve.publicKeyToHash(pub);

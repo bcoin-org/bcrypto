@@ -1134,10 +1134,11 @@ describe('Ed25519', function() {
           continue;
         }
 
+        assert(bytes2);
+
         bytes1[31] &= ~0x80;
         bytes2[31] &= ~0x80;
 
-        assert(bytes2);
         assert.bufferEqual(bytes1, bytes2);
         assert.bufferEqual(native.publicKeyFromUniform(bytes1), pub);
       }
