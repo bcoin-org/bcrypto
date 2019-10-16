@@ -61,10 +61,6 @@ function findZ(curve) {
   assert(curve instanceof elliptic.Curve);
 
   if (curve.type === 'short') {
-    // p = 2 mod 3
-    if (curve.p.modrn(3) === 2)
-      return findSSWUZ(curve); // Icart.
-
     // a != 0, b != 0
     if (!curve.a.isZero() && !curve.b.isZero())
       return findSSWUZ(curve);
