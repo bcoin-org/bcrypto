@@ -175,8 +175,7 @@ shallue_van_de_woestijne_invert(secp256k1_fe* u,
   static const secp256k1_fe one = SECP256K1_FE_CONST(0, 0, 0, 0,
                                                      0, 0, 0, 1);
 
-  secp256k1_fe x, y;
-  secp256k1_fe c1, c2, den, den1, den2;
+  secp256k1_fe x, y, c1, c2, d1, d2;
   secp256k1_fe u1, u2, u3, u4, t, tmp;
   secp256k1_ge q;
   size_t shift = sizeof(unsigned int) * 8 - 1;
@@ -239,15 +238,15 @@ shallue_van_de_woestijne_invert(secp256k1_fe* u,
   secp256k1_fe_negate(&tmp, &tmp, 1);
   secp256k1_fe_add(&c1, &tmp);
 
-  /* den = 1 / (c1 * c2) */
-  secp256k1_fe_mul(&den, &c1, &c2);
-  secp256k1_fe_inv(&den, &den);
+  /* tmp = 1 / (c1 * c2) */
+  secp256k1_fe_mul(&tmp, &c1, &c2);
+  secp256k1_fe_inv(&tmp, &tmp);
 
-  /* den1 = den * c1 */
-  secp256k1_fe_mul(&den1, &den, &c1);
+  /* d1 = tmp * c1 */
+  secp256k1_fe_mul(&d1, &tmp, &c1);
 
-  /* den2 = den * c2 */
-  secp256k1_fe_mul(&den2, &den, &c2);
+  /* d2 = tmp * c2 */
+  secp256k1_fe_mul(&d2, &tmp, &c2);
 
   /* c1 *= b + 1 */
   secp256k1_fe_mul_int(&c1, 8);
@@ -256,10 +255,10 @@ shallue_van_de_woestijne_invert(secp256k1_fe* u,
   secp256k1_fe_mul_int(&c2, 8);
 
   /* u1 = c1 / c2 */
-  secp256k1_fe_mul(&u1, &c1, &den1);
+  secp256k1_fe_mul(&u1, &c1, &d1);
 
   /* u2 = c2 / c1 */
-  secp256k1_fe_mul(&u2, &c2, &den2);
+  secp256k1_fe_mul(&u2, &c2, &d2);
 
   /* u3 = -b */
   secp256k1_fe_set_int(&u3, 7);
