@@ -255,6 +255,11 @@ class ED41417 extends EdwardsCurve {
        + '706022b3 6f1c0338 ad63cf18 1b0e71a5'
        + 'e106af79',
       h: '8',
+      // Elligator 1
+      s: '09d97112 36cb615f 21a3ee8b 56f69ebb'
+       + '592d05eb 9401dbd3 de60e7d4 b0bdbb03'
+       + 'f1ecba9b 5ce72822 e95ef209 e638bb96'
+       + 'dda55cef',
       // Elligator 2
       z: '-1',
       g: [
@@ -337,6 +342,9 @@ class E222 extends EdwardsCurve {
       n: '0fffffff ffffffff ffffffff fffff70c'
        + 'bc95e932 f802f314 23598cbf',
       h: '4',
+      // Elligator 1
+      s: '108bd829 b2739d6a 89a0d065 61849d96'
+       + '8cd2cf7d 01ea0846 5368b19b',
       // Elligator 2
       z: '-1',
       g: [
@@ -425,6 +433,10 @@ class E382 extends EdwardsCurve {
        + 'ffffffff ffffffff d5fb21f2 1e95eee1'
        + '7c5e6928 1b102d27 73e27e13 fd3c9719',
       h: '4',
+      // Elligator 1
+      s: '11e24c2d 89fc3662 81997e95 e0d98705'
+       + '3c450018 7834351f 34055452 39ac8ad5'
+       + '19dae89c e8c7a39a 131cc679 c00ffffc',
       // Elligator 2
       z: '-1',
       g: [
@@ -525,6 +537,12 @@ class E521 extends EdwardsCurve {
        + '7ec53f04 fbd8c456 9a8f1f45 40ea2435'
        + 'f5180d6b',
       h: '4',
+      // Elligator 1
+      s: '000000cd c45eed49 413d0fb4 56e2e7c4'
+       + '003c943e 8030aae7 5e6c0702 c871f054'
+       + '2fc3b693 70d50b2e 0dc92250 9eb0e675'
+       + '812bf1b2 f7ea84ad 2db62f78 aa8c789c'
+       + '85796224',
       // Elligator 2
       z: '-1',
       g: [

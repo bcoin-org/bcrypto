@@ -43,9 +43,18 @@ function printZ(curve) {
     throw new Error('Not implemented.');
   }
 
-  const str = sign + z.fromRed().toString(16);
+  let str = z.fromRed().toString(16);
 
-  console.log('%s Z: %s (%s)', curve.id, str, alg);
+  if (alg === 'elligator1') {
+    const size = (((curve.fieldBits + 7) >>> 3) + 3) & -4;
+
+    while (str.length < size * 2)
+      str = '0' + str;
+
+    console.log('%s S: %s (%s)', curve.id, sign + str, alg);
+  } else {
+    console.log('%s Z: %s (%s)', curve.id, sign + str, alg);
+  }
 }
 
 function findZ(curve) {
@@ -68,8 +77,15 @@ function findZ(curve) {
   }
 
   if (ell1 && curve.type === 'edwards') {
-    if (curve.p.andln(3) === 3 && curve.d.redJacobi() === -1)
-      return findElligator1S(curve);
+    if (curve.p.andln(3) === 3 && curve.d.redJacobi() === -1) {
+      try {
+        return findElligator1S(curve);
+      } catch (e) {
+        if (e.message === 'X is not a square mod P.')
+          throw new Error('Not an elligator1 curve.');
+        throw e;
+      }
+    }
   }
 
   if (curve.type === 'mont' || curve.type === 'edwards')
@@ -81,17 +97,26 @@ function findZ(curve) {
 function findElligator1S(curve) {
   assert(curve instanceof elliptic.Curve);
 
-  const s = curve.one.clone();
+  // s = +-sqrt(2 * d / (d + 1) +- 4 * sqrt(-d) / (d + 1) - 2 / (d + 1))
+  const {d, one} = curve;
+  const di = d.redAdd(one).redInvert();
+  const ds = d.redNeg().redSqrt();
+  const t0 = d.redMuln(2).redMul(di);
+  const t1 = ds.redMuln(4).redMul(di);
+  const t2 = di.redMuln(2);
+  const s1 = t0.redAdd(t1).redSub(t2).redSqrt();
+  const s2 = s1.redNeg();
+  const s3 = t0.redSub(t1).redSub(t2).redSqrt();
+  const s4 = s3.redNeg();
+  const S = [s1, s2, s3, s4].filter(s => isElligator1S(curve, s));
 
-  for (;;) {
-    if (isElligator1S(curve, s))
-      return s;
+  if (S.length === 0)
+    throw new Error('X is not a square mod P.');
 
-    if (isElligator1S(curve, s.redNeg()))
-      return s.redNeg();
+  console.log('Found %d `s` values:', S.length);
+  console.log(S.map(s => s.fromRed().toString(16)));
 
-    s.redIAdd(curve.one);
-  }
+  return S.sort(BN.cmp)[0];
 }
 
 function isElligator1S(curve, s) {
@@ -146,7 +171,7 @@ function getElligator1SCR(curve, s) {
     throw new Error('Invalid D (D != d).');
 
   if (d.redJacobi() !== -1)
-    throw new Error('Invalid D (not square).');
+    throw new Error('Invalid D (square).');
 
   return [s, c, r];
 }
