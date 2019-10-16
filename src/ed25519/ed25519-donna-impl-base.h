@@ -526,6 +526,11 @@ ge25519_to_hash(unsigned char bytes[64], const ge25519 *p) {
       return 0;
 
     ge25519_elligator2(&p1, u1);
+
+    /* Avoid the 2-torsion point (0, -1). */
+    if (curve25519_is_zero(p1.x))
+      continue;
+
     ge25519_neg(&p1, &p1);
     ge25519_add(&p2, p, &p1);
 

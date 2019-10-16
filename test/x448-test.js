@@ -292,6 +292,32 @@ describe('X448', function() {
     assert.bufferEqual(out, pub);
   });
 
+  it('should do elligator squared with torsion points', () => {
+    const small = [
+      ['00000000000000000000000000000000000000000000000000000000',
+       '00000000000000000000000000000000000000000000000000000000'].join(''),
+      ['feffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+       'feffffffffffffffffffffffffffffffffffffffffffffffffffffff'].join('')
+    ];
+
+    for (let i = 0; i < small.length; i++) {
+      const str = small[i];
+      const pub = Buffer.from(str, 'hex');
+
+      // Cannot handle the 4-torsion point (-1, +-sqrt((a - 2) / b)).
+      // We should somehow fix this in the future (?).
+      if (x448.native === 2 && i === 1) {
+        assert.throws(() => x448.publicKeyToHash(pub));
+        continue;
+      }
+
+      const bytes = x448.publicKeyToHash(pub);
+      const out = x448.publicKeyFromHash(bytes);
+
+      assert.bufferEqual(out, pub);
+    }
+  });
+
   it('should test x448 api', () => {
     const alicePriv = x448.privateKeyGenerate();
     const alicePub = x448.publicKeyCreate(alicePriv);

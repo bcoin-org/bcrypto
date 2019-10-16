@@ -72,30 +72,36 @@ static void bcrypto_gf_invert(bcrypto_gf y, const bcrypto_gf x, int assert_nonze
   bcrypto_gf_copy(y, t2);
 }
 
-static void
+static bcrypto_mask_t
 curve448_proj_twist(curve448_proj_point *p,
                     const bcrypto_gf u,
                     const bcrypto_gf v)
 {
   bcrypto_gf xx, xz, yy, yz;
-  bcrypto_mask_t torsion;
+  bcrypto_mask_t torsion2, torsion4;
 
   /* (0, 0) -> (0, -1) */
-  torsion = bcrypto_gf_eq(u, ZERO) & bcrypto_gf_eq(v, ZERO);
+  torsion2 = bcrypto_gf_eq(u, ZERO) & bcrypto_gf_eq(v, ZERO);
 
   /* (x, y) = (u / v, (u - 1) / (u + 1)) */
   bcrypto_gf_copy(xx, u);
   bcrypto_gf_copy(xz, v);
   bcrypto_gf_sub(yy, u, ONE);
   bcrypto_gf_add(yz, u, ONE);
+
+  /* (-1, +-sqrt((a - 2) / b)) -> (+-1, 0) */
+  torsion4 = bcrypto_gf_eq(yz, ZERO);
+
   bcrypto_gf_mul(p->x, xx, yz);
   bcrypto_gf_mul(p->y, yy, xz);
   bcrypto_gf_mul(p->z, xz, yz);
 
-  bcrypto_gf_cond_sel(p->x, p->x, ZERO, torsion);
-  bcrypto_gf_cond_sel(p->y, p->y, ONE, torsion);
-  bcrypto_gf_cond_neg(p->y, torsion);
-  bcrypto_gf_cond_sel(p->z, p->z, ONE, torsion);
+  bcrypto_gf_cond_sel(p->x, p->x, ZERO, torsion2);
+  bcrypto_gf_cond_sel(p->y, p->y, ONE, torsion2);
+  bcrypto_gf_cond_neg(p->y, torsion2);
+  bcrypto_gf_cond_sel(p->z, p->z, ONE, torsion2);
+
+  return ~torsion4;
 }
 
 static bcrypto_mask_t
@@ -104,13 +110,13 @@ curve448_proj_untwist(bcrypto_gf u, bcrypto_gf v,
 {
   bcrypto_gf uu, uz, vv, vz, zi, t;
   bcrypto_mask_t inf;
-  bcrypto_mask_t torsion;
+  bcrypto_mask_t torsion2;
 
   /* (0, 1) -> O */
   inf = bcrypto_gf_eq(p->x, ZERO) & bcrypto_gf_eq(p->y, p->z);
 
   /* (0, -1) -> (0, 0) */
-  torsion = bcrypto_gf_eq(p->x, ZERO) & ~inf;
+  torsion2 = bcrypto_gf_eq(p->x, ZERO) & ~inf;
 
   /* (u, v) = ((1 + y) / (1 - y), (1 + y) / (1 - y)x) */
   bcrypto_gf_add(uu, p->z, p->y);
@@ -127,8 +133,8 @@ curve448_proj_untwist(bcrypto_gf u, bcrypto_gf v,
   bcrypto_gf_mul(t, vv, uz);
   bcrypto_gf_mul(v, t, zi);
 
-  bcrypto_gf_cond_sel(u, u, ZERO, torsion);
-  bcrypto_gf_cond_sel(v, v, ZERO, torsion);
+  bcrypto_gf_cond_sel(u, u, ZERO, torsion2);
+  bcrypto_gf_cond_sel(v, v, ZERO, torsion2);
 
   return ~inf;
 }
@@ -1187,7 +1193,7 @@ curve448_encode_mont_as_ed448(
   bcrypto_gf_mul(p->y, p->t, d);
   bcrypto_gf_mul(p->t, b, d);
 
-  /* P / h */
+  /* P / h^2 */
   bcrypto_curve448_point_scalarmul(p, p, bcrypto_sc_inv_16);
   bcrypto_curve448_point_mul_by_ratio_and_encode_like_eddsa(ed, p);
   bcrypto_curve448_point_destroy(p);
@@ -1312,8 +1318,24 @@ curve448_point_from_hash(bcrypto_gf x, bcrypto_gf y,
   curve448_elligator2(u1, v1, bytes);
   curve448_elligator2(u2, v2, bytes + 56);
 
-  curve448_proj_twist(&p1, u1, v1);
-  curve448_proj_twist(&p2, u2, v2);
+  /*
+   * Montgomery curves don't have complete
+   * addition formulas. We could compute
+   * the 4-isogeny forwards and backwards
+   * to Ed448 in order to do addition, but
+   * this is expensive and clunky. To get
+   * around this, we do the addition on
+   * the twist of an Edwards curve.
+   *
+   * The downside of doing things this way
+   * is that we cannot handle the 4-torsion
+   * point (-1, +-sqrt((a - 2) / b)).
+   *
+   * Luckily, the elligator2 map will never
+   * produce such a point.
+   */
+  (void)curve448_proj_twist(&p1, u1, v1);
+  (void)curve448_proj_twist(&p2, u2, v2);
   curve448_proj_add(&p1, &p1, &p2);
 
   if (pake) {
@@ -1321,6 +1343,7 @@ curve448_point_from_hash(bcrypto_gf x, bcrypto_gf y,
     curve448_proj_dbl(&p1, &p1);
   }
 
+  /* Fails if P = O. */
   return curve448_proj_untwist(x, y, &p1);
 }
 
@@ -1337,7 +1360,9 @@ curve448_point_to_hash(unsigned char out[112],
   unsigned int bit;
   bcrypto_mask_t hint;
 
-  curve448_proj_twist(&p, x, y);
+  /* Cannot handle the 4-torsion point (-1, +-sqrt((a - 2) / b)). */
+  if (!curve448_proj_twist(&p, x, y))
+    goto fail;
 
   for (;;) {
     if (!bcrypto_random(u1, 56))
@@ -1347,7 +1372,12 @@ curve448_point_to_hash(unsigned char out[112],
       goto fail;
 
     curve448_elligator2(x1, y1, u1);
-    curve448_proj_twist(&p1, x1, y1);
+
+    /* Avoid the 2-torsion point (0, 0). */
+    if (bcrypto_gf_eq(y1, ZERO))
+      continue;
+
+    (void)curve448_proj_twist(&p1, x1, y1);
     curve448_proj_neg(&p1, &p1);
     curve448_proj_add(&p2, &p, &p1);
 
