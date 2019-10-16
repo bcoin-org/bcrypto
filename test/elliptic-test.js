@@ -1906,6 +1906,41 @@ describe('Elliptic', function() {
       assert(r2.eq(q));
     });
 
+    it('should test birational equivalence (raw25519)', () => {
+      const raw25519 = new extra.RAW25519();
+
+      // Test projective twisted formulas.
+      {
+        const p1 = raw25519.g;
+        const p2 = p1.randomize(rng);
+
+        for (const p of [p1, p2]) {
+          assert(p.add(p).eq(p.dbl()));
+          assert(p.trpl().eq(p.dbl().add(p)));
+          assert(p.dbl().validate());
+        }
+
+        sanityCheck(raw25519);
+      }
+
+      const x25519 = new curves.X25519();
+      const edwardsG = raw25519.pointFromMont(x25519.g);
+      const montG = x25519.pointFromEdwards(raw25519.g.randomize(rng));
+
+      assert(!raw25519.g.hasTorsion());
+      assert(edwardsG.eq(raw25519.g));
+      assert(montG.eq(x25519.g));
+
+      const k = raw25519.randomScalar(rng);
+      const p = raw25519.g.mul(k);
+      const q = x25519.g.mul(k);
+      const r0 = raw25519.pointFromMont(q);
+      const r1 = x25519.pointFromEdwards(p);
+
+      assert(r0.eq(p));
+      assert(r1.eq(q));
+    });
+
     it('should hot potato a point across 3 curves', () => {
       const iso448 = new extra.ISOED448();
       const x448 = new curves.X448();
