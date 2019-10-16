@@ -2348,14 +2348,67 @@ describe('Elliptic', function() {
       }
     });
 
-    it('should invert elligator squared for weierstrass', () => {
+    it('should invert elligator squared', () => {
+      const p192 = new curves.P192();
+      const p224 = new curves.P224();
       const p256 = new curves.P256();
+      const p384 = new curves.P384();
+      const p521 = new curves.P521();
+      const secp192k1 = new extra.SECP192K1();
+      const secp224k1 = new extra.SECP224K1();
       const secp256k1 = new curves.SECP256K1();
+      const x25519 = new curves.X25519();
+      const x448 = new curves.X448();
+      const wei25519 = new extra.WEI25519();
+      const ed1174 = new extra.ED1174();
+      const ed41417 = new extra.ED41417();
+      const m221 = new extra.M221();
+      const e222 = new extra.E222();
+      const m383 = new extra.M383();
+      const e382 = new extra.E382();
+      const m511 = new extra.M511();
+      const e521 = new extra.E521();
 
-      for (const curve of [p256, secp256k1]) {
+      for (const curve of [p192,
+                           p224,
+                           p256,
+                           p384,
+                           p521,
+                           secp192k1,
+                           secp224k1,
+                           secp256k1,
+                           x25519,
+                           x448,
+                           wei25519,
+                           ed1174,
+                           ed41417,
+                           m221,
+                           e222,
+                           m383,
+                           e382,
+                           m511,
+                           e521]) {
         const p = curve.randomPoint(rng);
         const u = curve.pointToHash(p, rng);
         const q = curve.pointFromHash(u);
+
+        assert(p.eq(q));
+      }
+    });
+
+    it('should invert elligator squared (elligator2)', () => {
+      const x25519 = new curves.X25519();
+      const ed25519 = new curves.ED25519();
+      const x448 = new curves.X448();
+      const ed448 = new curves.ED448();
+      const iso448 = new extra.ISOED448();
+
+      for (const [x, curve] of [[x25519, ed25519],
+                                [x448, ed448],
+                                [x448, iso448]]) {
+        const p = curve.randomPoint(rng);
+        const u = curve.pointToHash(p, rng, x);
+        const q = curve.pointFromHash(u, false, x);
 
         assert(p.eq(q));
       }

@@ -283,7 +283,47 @@ describe('X448', function() {
       + '6dd0a932c189fa810622612d982a0326760c6e74b39866bbd905f9df');
   });
 
-  it('should test elligator squared', () => {
+  if (x448.native === 2) {
+    const native = x448;
+    const curve = require('../lib/js/x448');
+
+    it('should invert elligator (native vs. js)', () => {
+      const priv = native.privateKeyGenerate();
+      const pub = native.publicKeyCreate(priv);
+
+      for (let i = 0; i < 2; i++) {
+        let bytes1 = null;
+        let bytes2 = null;
+
+        try {
+          bytes1 = native.publicKeyToUniform(pub, i);
+        } catch (e) {
+          ;
+        }
+
+        try {
+          bytes2 = curve.publicKeyToUniform(pub, i);
+        } catch (e) {
+          ;
+        }
+
+        if (!bytes1) {
+          assert(!bytes2);
+          continue;
+        }
+
+        assert(bytes2);
+        assert.bufferEqual(bytes1, bytes2);
+        assert.bufferEqual(native.publicKeyFromUniform(bytes1), pub);
+      }
+
+      const bytes = native.publicKeyToHash(pub);
+
+      assert.bufferEqual(native.publicKeyFromHash(bytes), pub);
+    });
+  }
+
+  it('should invert elligator squared', () => {
     const priv = x448.privateKeyGenerate();
     const pub = x448.publicKeyCreate(priv);
     const bytes = x448.publicKeyToHash(pub);

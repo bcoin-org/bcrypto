@@ -1064,7 +1064,47 @@ describe('Ed448', function() {
     assert.bufferEqual(x448.publicKeyConvert(point, true), pub);
   });
 
-  it('should test elligator squared', () => {
+  if (ed448.native === 2) {
+    const native = ed448;
+    const curve = require('../lib/js/ed448');
+
+    it('should invert elligator (native vs. js)', () => {
+      const priv = native.privateKeyGenerate();
+      const pub = native.publicKeyCreate(priv);
+
+      for (let i = 0; i < 2; i++) {
+        let bytes1 = null;
+        let bytes2 = null;
+
+        try {
+          bytes1 = native.publicKeyToUniform(pub, i);
+        } catch (e) {
+          ;
+        }
+
+        try {
+          bytes2 = curve.publicKeyToUniform(pub, i);
+        } catch (e) {
+          ;
+        }
+
+        if (!bytes1) {
+          assert(!bytes2);
+          continue;
+        }
+
+        assert(bytes2);
+        assert.bufferEqual(bytes1, bytes2);
+        assert.bufferEqual(native.publicKeyFromUniform(bytes1), pub);
+      }
+
+      const bytes = native.publicKeyToHash(pub);
+
+      assert.bufferEqual(native.publicKeyFromHash(bytes), pub);
+    });
+  }
+
+  it('should invert elligator squared', () => {
     const priv = ed448.privateKeyGenerate();
     const pub = ed448.publicKeyCreate(priv);
     const bytes = ed448.publicKeyToHash(pub);

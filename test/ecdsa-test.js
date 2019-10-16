@@ -1170,7 +1170,7 @@ describe('ECDSA', function() {
     });
 
     it('should invert elligator', () => {
-      for (const curve of [p256, secp256k1, native || secp256k1]) {
+      for (const curve of [p256, p384, p521, secp256k1, native || secp256k1]) {
         let priv, pub, bytes;
 
         for (;;) {

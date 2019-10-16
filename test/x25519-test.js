@@ -356,7 +356,50 @@ describe('X25519', function() {
       '7b9965e30b586bab509c34d657d8be30fad1b179470f2f70a6c728092e000062');
   });
 
-  it('should test elligator squared', () => {
+  if (x25519.native === 2) {
+    const native = x25519;
+    const curve = require('../lib/js/x25519');
+
+    it('should invert elligator (native vs. js)', () => {
+      const priv = native.privateKeyGenerate();
+      const pub = native.publicKeyCreate(priv);
+
+      for (let i = 0; i < 2; i++) {
+        let bytes1 = null;
+        let bytes2 = null;
+
+        try {
+          bytes1 = native.publicKeyToUniform(pub, i);
+        } catch (e) {
+          ;
+        }
+
+        try {
+          bytes2 = curve.publicKeyToUniform(pub, i);
+        } catch (e) {
+          ;
+        }
+
+        if (!bytes1) {
+          assert(!bytes2);
+          continue;
+        }
+
+        bytes1[31] &= ~0x80;
+        bytes2[31] &= ~0x80;
+
+        assert(bytes2);
+        assert.bufferEqual(bytes1, bytes2);
+        assert.bufferEqual(native.publicKeyFromUniform(bytes1), pub);
+      }
+
+      const bytes = native.publicKeyToHash(pub);
+
+      assert.bufferEqual(native.publicKeyFromHash(bytes), pub);
+    });
+  }
+
+  it('should invert elligator squared', () => {
     const priv = x25519.privateKeyGenerate();
     const pub = x25519.publicKeyCreate(priv);
     const bytes = x25519.publicKeyToHash(pub);
