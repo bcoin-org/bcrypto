@@ -2447,6 +2447,7 @@ describe('Elliptic', function() {
       const e382 = new extra.E382();
       const m511 = new extra.M511();
       const e521 = new extra.E521();
+      const mdc = new extra.MDC();
 
       for (const curve of [p192,
                            p224,
@@ -2466,7 +2467,8 @@ describe('Elliptic', function() {
                            m383,
                            e382,
                            m511,
-                           e521]) {
+                           e521,
+                           mdc]) {
         const p = curve.randomPoint(rng);
         const u = curve.pointToHash(p, rng);
         const q = curve.pointFromHash(u);

@@ -613,6 +613,48 @@ class E521 extends EdwardsCurve {
   }
 }
 
+/**
+ * MDC
+ * https://cryptoexperts.github.io/million-dollar-curve/
+ */
+
+class MDC extends EdwardsCurve {
+  constructor(pre) {
+    super({
+      id: 'MDC',
+      ossl: null,
+      type: 'edwards',
+      endian: 'le',
+      hash: 'SHA512',
+      prefix: 'SigMDC',
+      context: false,
+      prime: null,
+      // (= 3 mod 4)
+      p: 'f13b68b9 d456afb4 532f92fd d7a5fd4f'
+       + '086a9037 ef07af9e c1371040 5779ec13',
+      a: '1',
+      c: '1',
+      d: '57130452 1965b68a 7cdfbfcc fb0cb962'
+       + '5f1270f6 3f21f041 ee930925 0300cf89',
+      n: '3c4eda2e 7515abed 14cbe4bf 75e97f53'
+       + '4fb38975 faf974bb 588552f4 21b0f7fb',
+      h: '4',
+      // Elligator 1
+      s: '2bfcf45c fbcc3086 fb60bbeb fc611e28'
+       + 'f70e33ab 41de2ecb 42225097 817038e2',
+      // Elligator 2
+      z: '-1',
+      g: [
+        ['b681886a 7f903b83 d85b421 e03cbcf63',
+         '50d72abb 8d2713e2 232c25b fee68363b'].join(''),
+        ['ca6734e1 b59c0b03 59814dcf 6563da42',
+         '1da8bc3d 81a93a3a 7e73c355 bd2864b5'].join(''),
+        pre
+      ]
+    });
+  }
+}
+
 /*
  * Register
  */
@@ -630,6 +672,7 @@ elliptic.register('M383', M383);
 elliptic.register('E382', E382);
 elliptic.register('M511', M511);
 elliptic.register('E521', E521);
+elliptic.register('MDC', MDC);
 
 /*
  * Expose
@@ -648,5 +691,6 @@ module.exports = {
   M383,
   E382,
   M511,
-  E521
+  E521,
+  MDC
 };
