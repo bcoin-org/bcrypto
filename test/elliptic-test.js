@@ -2275,6 +2275,32 @@ describe('Elliptic', function() {
       assert(p2.eq(p0));
     });
 
+    it('should do elligator2 on fabricated twisted edwards curve', () => {
+      const mont = new extra.M383();
+      const [a, d] = mont._twisted(mont.one.redNeg());
+
+      const twisted = new elliptic.EdwardsCurve({
+        prime: mont.prime,
+        p: mont.p.toJSON(),
+        a: a.fromRed().toJSON(),
+        d: d.fromRed().toJSON(),
+        n: mont.n.toJSON(),
+        h: mont.h.toJSON(),
+        z: mont.z.fromRed().toJSON()
+      });
+
+      twisted.g = twisted.pointFromMont(mont.g);
+
+      checkCurve(twisted);
+
+      const u0 = twisted.randomField(rng);
+      const p0 = twisted.pointFromUniform(u0, mont);
+      const u1 = twisted.pointToUniform(p0, 0, mont);
+      const p1 = twisted.pointFromUniform(u1, mont);
+
+      assert(p1.eq(p0));
+    });
+
     it('should test simple shallue-woestijne-ulas algorithm', () => {
       const curve = new curves.P256();
       const u = curve.randomField(rng);
