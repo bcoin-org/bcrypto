@@ -126,49 +126,6 @@ class WEI25519 extends ShortCurve {
 }
 
 /**
- * RAW25519
- * https://eprint.iacr.org/2008/013.pdf
- */
-
-class RAW25519 extends EdwardsCurve {
-  constructor(pre) {
-    super({
-      id: 'RAW25519',
-      ossl: null,
-      type: 'edwards',
-      endian: 'le',
-      hash: 'SHA512',
-      prefix: null,
-      context: false,
-      iso4: false,
-      prime: 'p25519',
-      // 2^255 - 19 (= 5 mod 8)
-      p: '7fffffff ffffffff ffffffff ffffffff'
-       + 'ffffffff ffffffff ffffffff ffffffed',
-      // 486664
-      a: '076d08',
-      c: '1',
-      // 486660
-      d: '00000000 00000000 00000000 00000000'
-       + '00000000 00000000 00000000 00076d04',
-      n: '10000000 00000000 00000000 00000000'
-       + '14def9de a2f79cd6 5812631a 5cf5d3ed',
-      h: '8',
-      // Elligator 2
-      z: '2',
-      g: [
-        ['547c4350 219f5e19 dd26a3d6 668b7434',
-         '6a8eb726 eb2396e1 228cfa39 7ffe6bd4'].join(''),
-        // 4/5
-        ['66666666 66666666 66666666 66666666',
-         '66666666 66666666 66666666 66666658'].join(''),
-        pre
-      ]
-    });
-  }
-}
-
-/**
  * ISO448
  * https://tools.ietf.org/html/rfc7748#section-4.2
  * https://git.zx2c4.com/goldilocks/tree/_aux/ristretto/ristretto.sage#n658
@@ -663,7 +620,6 @@ class E521 extends EdwardsCurve {
 elliptic.register('SECP192K1', SECP192K1);
 elliptic.register('SECP224K1', SECP224K1);
 elliptic.register('WEI25519', WEI25519);
-elliptic.register('RAW25519', RAW25519);
 elliptic.register('ISO448', ISO448);
 elliptic.register('TWIST448', TWIST448);
 elliptic.register('ED1174', ED1174);
@@ -683,7 +639,6 @@ module.exports = {
   SECP192K1,
   SECP224K1,
   WEI25519,
-  RAW25519,
   ISO448,
   TWIST448,
   ED1174,

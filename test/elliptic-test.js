@@ -1942,7 +1942,8 @@ describe('Elliptic', function() {
     });
 
     it('should test birational equivalence (raw25519)', () => {
-      const raw25519 = new extra.RAW25519();
+      const x25519 = new curves.X25519();
+      const raw25519 = x25519.toTwisted();
 
       // Sanity check.
       {
@@ -1958,7 +1959,6 @@ describe('Elliptic', function() {
         sanityCheck(raw25519);
       }
 
-      const x25519 = new curves.X25519();
       const edwardsG = raw25519.pointFromMont(x25519.g);
       const montG = x25519.pointFromEdwards(raw25519.g.randomize(rng));
 
@@ -2251,17 +2251,7 @@ describe('Elliptic', function() {
     it('should do elligator2 with b != 1', () => {
       const ed25519 = new curves.ED25519();
       const x25519 = new curves.X25519();
-      const [a, b] = ed25519._untwisted();
-
-      const native = new elliptic.MontCurve({
-        prime: ed25519.prime,
-        p: ed25519.p.toJSON(),
-        a: a.fromRed().toJSON(),
-        b: b.fromRed().toJSON(),
-        n: ed25519.n.toJSON(),
-        h: ed25519.h.toJSON(),
-        z: ed25519.z.fromRed().toJSON()
-      });
+      const native = ed25519.toMont();
 
       const u0 = ed25519.randomField(rng);
       const p0 = ed25519.pointFromUniform(u0, native);
@@ -2277,19 +2267,7 @@ describe('Elliptic', function() {
 
     it('should do elligator2 on fabricated twisted edwards curve', () => {
       const mont = new extra.M383();
-      const [a, d] = mont._twisted(mont.one.redNeg());
-
-      const twisted = new elliptic.EdwardsCurve({
-        prime: mont.prime,
-        p: mont.p.toJSON(),
-        a: a.fromRed().toJSON(),
-        d: d.fromRed().toJSON(),
-        n: mont.n.toJSON(),
-        h: mont.h.toJSON(),
-        z: mont.z.fromRed().toJSON()
-      });
-
-      twisted.g = twisted.pointFromMont(mont.g);
+      const twisted = mont.toTwisted(mont.one.redNeg());
 
       checkCurve(twisted);
 
