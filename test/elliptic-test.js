@@ -1885,8 +1885,8 @@ describe('Elliptic', function() {
       assert(montG.eq(x448.g));
     });
 
-    it('should test birational equivalence (iso-ed448)', () => {
-      const ed448 = new extra.ISOED448();
+    it('should test birational equivalence (iso448)', () => {
+      const ed448 = new extra.ISO448();
       const x448 = new curves.X448();
       const edwardsG = ed448.pointFromMont(x448.g);
       const montG = x448.pointFromEdwards(ed448.g.randomize(rng));
@@ -1906,10 +1906,45 @@ describe('Elliptic', function() {
       assert(r2.eq(q));
     });
 
+    it('should test 4-isogeny (twist448)', () => {
+      const twist448 = new extra.TWIST448();
+
+      // Sanity check.
+      {
+        const p1 = twist448.g;
+        const p2 = p1.randomize(rng);
+
+        for (const p of [p1, p2]) {
+          assert(p.add(p).eq(p.dbl()));
+          assert(p.trpl().eq(p.dbl().add(p)));
+          assert(p.dbl().validate());
+        }
+
+        sanityCheck(twist448);
+      }
+
+      const ed448 = new curves.ED448();
+      const twistedG = twist448.pointFromEdwards(ed448.g.randomize(rng));
+      const untwistedG = ed448.pointFromEdwards(twist448.g.randomize(rng));
+
+      assert(!twist448.g.hasTorsion());
+      assert(twistedG.eq(twist448.g));
+      assert(untwistedG.eq(ed448.g));
+
+      const k = twist448.randomScalar(rng);
+      const p = twist448.g.mul(k);
+      const q = ed448.g.mul(k);
+      const r0 = twist448.pointFromEdwards(q);
+      const r1 = ed448.pointFromEdwards(p);
+
+      assert(r0.eq(p));
+      assert(r1.eq(q));
+    });
+
     it('should test birational equivalence (raw25519)', () => {
       const raw25519 = new extra.RAW25519();
 
-      // Test projective twisted formulas.
+      // Sanity check.
       {
         const p1 = raw25519.g;
         const p2 = p1.randomize(rng);
@@ -1941,12 +1976,13 @@ describe('Elliptic', function() {
       assert(r1.eq(q));
     });
 
-    it('should hot potato a point across 3 curves', () => {
-      const iso448 = new extra.ISOED448();
+    it('should hot potato a point across 4 curves', () => {
+      const iso448 = new extra.ISO448();
       const x448 = new curves.X448();
       const ed448 = new curves.ED448();
+      const twist448 = new curves.TWIST448();
 
-      // Start at iso-ed448.
+      // Start at iso448.
       const g0 = iso448.g.randomize(rng);
 
       // Pass to curve448.
@@ -1955,10 +1991,14 @@ describe('Elliptic', function() {
       // Pass to ed448.
       const g2 = ed448.pointFromMont(g1);
 
+      // Pass to twist448.
+      const g3 = twist448.pointFromEdwards(g2);
+
       // Should be the base point.
       assert(g0.eq(iso448.g));
       assert(g1.eq(x448.g));
       assert(g2.eq(ed448.g));
+      assert(g3.eq(twist448.g));
     });
 
     it('should test wei25519 equivalence', () => {
@@ -2039,7 +2079,7 @@ describe('Elliptic', function() {
       const x25519 = new curves.X25519();
       const ed25519 = new curves.ED25519();
       const x448 = new curves.X448();
-      const ed448 = new extra.ISOED448();
+      const ed448 = new extra.ISO448();
 
       for (const [x, curve] of [[x25519, ed25519], [x448, ed448]]) {
         const u1 = curve.randomField(rng);
@@ -2436,7 +2476,7 @@ describe('Elliptic', function() {
       const ed25519 = new curves.ED25519();
       const x448 = new curves.X448();
       const ed448 = new curves.ED448();
-      const iso448 = new extra.ISOED448();
+      const iso448 = new extra.ISO448();
 
       for (const [x, curve] of [[x25519, ed25519],
                                 [x448, ed448],

@@ -169,15 +169,15 @@ class RAW25519 extends EdwardsCurve {
 }
 
 /**
- * ISOED448
+ * ISO448
  * https://tools.ietf.org/html/rfc7748#section-4.2
  * https://git.zx2c4.com/goldilocks/tree/_aux/ristretto/ristretto.sage#n658
  */
 
-class ISOED448 extends EdwardsCurve {
+class ISO448 extends EdwardsCurve {
   constructor(pre) {
     super({
-      id: 'ISOED448',
+      id: 'ISO448',
       ossl: null,
       type: 'edwards',
       endian: 'le',
@@ -215,6 +215,57 @@ class ISOED448 extends EdwardsCurve {
          'ffffffff ffffffff ffffffff 80000000',
          '00000000 00000000 00000000 00000000',
          '00000000 00000001'].join(''),
+        pre
+      ]
+    });
+  }
+}
+
+/**
+ * TWIST448
+ * https://git.zx2c4.com/goldilocks/tree/_aux/ristretto/ristretto.sage#n675
+ */
+
+class TWIST448 extends EdwardsCurve {
+  constructor(pre) {
+    super({
+      id: 'TWIST448',
+      ossl: null,
+      type: 'edwards',
+      endian: 'le',
+      hash: 'SHAKE256',
+      prefix: 'SigEd448',
+      context: true,
+      iso4: false,
+      prime: 'p448',
+      // 2^448 - 2^224 - 1 (= 3 mod 4)
+      p: 'ffffffff ffffffff ffffffff ffffffff'
+       + 'ffffffff ffffffff fffffffe ffffffff'
+       + 'ffffffff ffffffff ffffffff ffffffff'
+       + 'ffffffff ffffffff',
+      a: '-1',
+      c: '1',
+      // -39082 mod p
+      d: 'ffffffff ffffffff ffffffff ffffffff'
+       + 'ffffffff ffffffff fffffffe ffffffff'
+       + 'ffffffff ffffffff ffffffff ffffffff'
+       + 'ffffffff ffff6755',
+      n: '3fffffff ffffffff ffffffff ffffffff'
+       + 'ffffffff ffffffff ffffffff 7cca23e9'
+       + 'c44edb49 aed63690 216cc272 8dc58f55'
+       + '2378c292 ab5844f3',
+      h: '4',
+      // Elligator 2
+      z: '-1',
+      g: [
+        ['7fffffff ffffffff ffffffff ffffffff',
+         'ffffffff ffffffff fffffffe 80000000',
+         '00000000 00000000 00000000 00000000',
+         '00000000 00000000'].join(''),
+        ['8508de14 f04286d4 8d06c130 78ca2408',
+         '05264370 504c74c3 93d5242c 50452714',
+         '14181844 d73f48e5 199b0c1e 3ab470a1',
+         'c86079b4 dfdd4a64'].join(''),
         pre
       ]
     });
@@ -613,7 +664,8 @@ elliptic.register('SECP192K1', SECP192K1);
 elliptic.register('SECP224K1', SECP224K1);
 elliptic.register('WEI25519', WEI25519);
 elliptic.register('RAW25519', RAW25519);
-elliptic.register('ISOED448', ISOED448);
+elliptic.register('ISO448', ISO448);
+elliptic.register('TWIST448', TWIST448);
 elliptic.register('ED1174', ED1174);
 elliptic.register('ED41417', ED41417);
 elliptic.register('M221', M221);
@@ -632,7 +684,8 @@ module.exports = {
   SECP224K1,
   WEI25519,
   RAW25519,
-  ISOED448,
+  ISO448,
+  TWIST448,
   ED1174,
   ED41417,
   M221,

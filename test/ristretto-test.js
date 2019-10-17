@@ -98,7 +98,7 @@ describe('Ristretto', function() {
   });
 
   it('should encode and decode ristretto points (ed448-alt)', () => {
-    const curve = new extra.ISOED448();
+    const curve = new extra.ISO448();
     const ristretto = new Ristretto(curve);
 
     // https://sourceforge.net/p/ed448goldilocks/code/ci/master/tree/test/ristretto_vectors.inc.cxx
@@ -353,7 +353,7 @@ describe('Ristretto', function() {
   });
 
   it('should compute elligator (ed448-alt, non-uniform)', () => {
-    const curve = new extra.ISOED448();
+    const curve = new extra.ISO448();
     const ristretto = new Ristretto(curve);
 
     // https://sourceforge.net/p/ed448goldilocks/code/ci/master/tree/test/ristretto_vectors.inc.cxx
