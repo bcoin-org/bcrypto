@@ -1076,13 +1076,13 @@ describe('Elliptic', function() {
       assert(b.eq(x25519.b));
     });
 
-    it('should twist point', () => {
+    it('should convert to weierstrass', () => {
+      const wei25519 = new curves.WEI25519();
       const x25519 = new curves.X25519();
-      const p = x25519.randomPoint(rng).mulH();
-      const [x, y, z] = x25519._twist(p);
-      const q = x25519._untwist(x, y, z);
+      const [a, b] = x25519._short();
 
-      assert(q.eq(p));
+      assert(a.eq(wei25519.a));
+      assert(b.eq(wei25519.b));
     });
 
     it('should match multiplications', () => {
