@@ -16,13 +16,6 @@ function printZ(curve) {
 
   const z = findZ(curve);
 
-  let sign = '';
-
-  if (z.redNeg().bitLength() < z.bitLength()) {
-    sign = '-';
-    z.redINeg();
-  }
-
   let alg;
 
   if (curve.type === 'short') {
@@ -41,6 +34,13 @@ function printZ(curve) {
     }
   } else {
     throw new Error('Not implemented.');
+  }
+
+  let sign = '';
+
+  if (alg !== 'elligator1' && z.redIsNeg()) {
+    sign = '-';
+    z.redINeg();
   }
 
   let str = z.fromRed().toString(16);
@@ -110,7 +110,12 @@ function findElligator1S(curve) {
     throw new Error('X is not a square mod P.');
 
   console.log('Found %d `s` values:', S.length);
-  console.log(S.map(s => s.fromRed().toString(16)));
+  console.log('');
+
+  for (const s of S)
+    console.log('  %s', s.fromRed().toString(16));
+
+  console.log('');
 
   // Use DJB's `s` value.
   if (curve.id === 'ED1174')
