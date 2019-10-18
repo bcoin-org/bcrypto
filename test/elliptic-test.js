@@ -3153,7 +3153,7 @@ describe('Elliptic', function() {
     it('should test okeya-sakurai y recovery (mont)', () => {
       const ed25519 = new curves.ED25519();
       const x25519 = new curves.X25519();
-      const am2 = new BN(-486664).toRed(ed25519.red);
+      const am2 = ed25519.field(-486664);
       const k = x25519.randomScalar(rng);
       const p = ed25519.g.mul(k).normalize();
 
@@ -3189,40 +3189,45 @@ describe('Elliptic', function() {
     it('should check for small order points (ed25519)', () => {
       const curve = new curves.ED25519();
 
+      // Note about order 8:
+      // `x` must satisfy: a * d * x^4 - 2 * a * x^2 + 1 = 0
       const small = [
-        // 0 (order 1)
-        // [
-        //   '0000000000000000000000000000000000000000000000000000000000000000',
-        //   '0000000000000000000000000000000000000000000000000000000000000001'
-        // ],
-        // 0 (order 2)
+        // (0, 1) (order 1)
+        [
+          '0000000000000000000000000000000000000000000000000000000000000000',
+          '0000000000000000000000000000000000000000000000000000000000000001'
+        ],
+        // (0, -1) (order 2)
         [
           '0000000000000000000000000000000000000000000000000000000000000000',
           '7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffec'
         ],
-        // 1 (order 4)
+        // (-sqrt(1 / a), 0) (order 4)
         [
           '547cdb7fb03e20f4d4b2ff66c2042858d0bce7f952d01b873b11e4d8b5f15f3d',
           '0000000000000000000000000000000000000000000000000000000000000000'
         ],
+        // (sqrt(1 / a), 0) (order 4)
         [
           '2b8324804fc1df0b2b4d00993dfbd7a72f431806ad2fe478c4ee1b274a0ea0b0',
           '0000000000000000000000000000000000000000000000000000000000000000'
         ],
-        // 325606250916557431795983626356110631294008115727848805560023387167927233504 (order 8)
+        // (-sqrt((1 / d) - sqrt(a^2 - a * d) / (a * d)), sqrt(a) * x) (order 8)
         [
           '602a465ff9c6b5d716cc66cdc721b544a3e6c38fec1a1dc7215eb9b93aba2ea3',
           '7a03ac9277fdc74ec6cc392cfa53202a0f67100d760b3cba4fd84d3d706a17c7'
         ],
+        // (sqrt((1 / d) - sqrt(a^2 - a * d) / (a * d)), sqrt(a) * x) (order 8)
         [
           '1fd5b9a006394a28e933993238de4abb5c193c7013e5e238dea14646c545d14a',
           '7a03ac9277fdc74ec6cc392cfa53202a0f67100d760b3cba4fd84d3d706a17c7'
         ],
-        // 39382357235489614581723060781553021112529911719440698176882885853963445705823 (order 8)
+        // (-sqrt((1 / d) - sqrt(a^2 - a * d) / (a * d)), -sqrt(a) * x) (order 8)
         [
           '602a465ff9c6b5d716cc66cdc721b544a3e6c38fec1a1dc7215eb9b93aba2ea3',
           '05fc536d880238b13933c6d305acdfd5f098eff289f4c345b027b2c28f95e826'
         ],
+        // (sqrt((1 / d) - sqrt(a^2 - a * d) / (a * d)), -sqrt(a) * x) (order 8)
         [
           '1fd5b9a006394a28e933993238de4abb5c193c7013e5e238dea14646c545d14a',
           '05fc536d880238b13933c6d305acdfd5f098eff289f4c345b027b2c28f95e826'
@@ -3233,9 +3238,9 @@ describe('Elliptic', function() {
       assert(!curve.g.hasTorsion());
 
       // This is why edwards curves suck.
-      for (const json of small) {
+      for (let i = 1; i < small.length; i++) {
         // P = point of small order
-        const p = curve.pointFromJSON(json);
+        const p = curve.pointFromJSON(small[i]);
 
         // Q = G + P
         const q = curve.g.add(p);
@@ -3354,12 +3359,12 @@ describe('Elliptic', function() {
       // - The points (c, 0) and (-c, 0) have order 4.
       const small = [
         // 0, c (order 1)
-        // [
-        //   ['00000000000000000000000000000000000000000000000000000000',
-        //    '00000000000000000000000000000000000000000000000000000000'].join(''),
-        //   ['00000000000000000000000000000000000000000000000000000000',
-        //    '00000000000000000000000000000000000000000000000000000001'].join('')
-        // ],
+        [
+          ['00000000000000000000000000000000000000000000000000000000',
+           '00000000000000000000000000000000000000000000000000000000'].join(''),
+          ['00000000000000000000000000000000000000000000000000000000',
+           '00000000000000000000000000000000000000000000000000000001'].join('')
+        ],
         // 0, -c (order 2, rejected)
         [
           ['00000000000000000000000000000000000000000000000000000000',
@@ -3387,9 +3392,9 @@ describe('Elliptic', function() {
       assert(!curve.g.hasTorsion());
 
       // This is why edwards curves suck.
-      for (const json of small) {
+      for (let i = 1; i < small.length; i++) {
         // P = point of small order
-        const p = curve.pointFromJSON(json);
+        const p = curve.pointFromJSON(small[i]);
 
         // Q = G + P
         const q = curve.g.add(p);
