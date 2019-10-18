@@ -35,7 +35,7 @@ function printZ(curve) {
   } else if (curve.type === 'mont' || curve.type === 'edwards') {
     alg = 'elligator2';
 
-    if (ell1 && curve.type === 'edwards') {
+    if (ell1 && curve.type === 'edwards' && !curve.twisted) {
       if (curve.p.andln(3) === 3 && curve.d.redJacobi() === -1)
         alg = 'elligator1';
     }
