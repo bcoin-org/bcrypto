@@ -3328,26 +3328,24 @@ describe('Elliptic', function() {
       assert(!curve.g.isSmall());
       assert(!curve.g.hasTorsion());
 
-      let total = 0;
+      for (let i = 0; i < small.length; i++) {
+        const json = small[i];
+        const x = curve.field(json[0], 16);
+        const p = curve.xpoint(x);
 
-      for (const json of small) {
-        const p = curve.xpoint(new BN(json[0], 16));
-
-        if (p.validate()) {
-          total += 1;
-        } else {
+        if (i === 4 || i === 9) {
           // Note that `p - 1`, and `2 * p - 1`
           // do not satisfy the curve equation.
           // `a - 2` is not a quadratic residue.
           assert(p.x.cmp(curve.one.redNeg()) === 0);
+        } else {
+          assert(p.validate());
         }
 
         assert(!p.isInfinity());
         assert(p.isSmall());
         assert(p.hasTorsion());
       }
-
-      assert.strictEqual(total, small.length - 2);
     });
 
     it('should check for small order points (ed448)', () => {
@@ -3478,26 +3476,24 @@ describe('Elliptic', function() {
       assert(!curve.g.isSmall());
       assert(!curve.g.hasTorsion());
 
-      let total = 0;
+      for (let i = 0; i < small.length; i++) {
+        const json = small[i];
+        const x = curve.field(json[0], 16);
+        const p = curve.xpoint(x);
 
-      for (const json of small) {
-        const p = curve.xpoint(new BN(json[0], 16));
-
-        if (p.validate()) {
-          total += 1;
-        } else {
+        if (i === 1 || i === 4) {
           // Note that `1`, and `p + 1`
           // do not satisfy the curve equation.
           // `a + 2` is not a quadratic residue.
           assert(p.x.cmp(curve.one) === 0);
+        } else {
+          assert(p.validate());
         }
 
         assert(!p.isInfinity());
         assert(p.isSmall());
         assert(p.hasTorsion());
       }
-
-      assert.strictEqual(total, small.length - 2);
     });
 
     it('should compute inverse sqrt properly', () => {
