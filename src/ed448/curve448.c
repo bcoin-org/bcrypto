@@ -44,6 +44,34 @@ static const bcrypto_curve448_scalar_t precomputed_scalarmul_adjustment = {
   }
 };
 
+/* Montgomery `a / 3` */
+static const bcrypto_gf mont_a3 = {
+  BCRYPTO_FIELD_LITERAL(
+    0x0000000000cb8c,
+    0x00000000000000,
+    0x00000000000000,
+    0x00000000000000,
+    0xaaaaaaaaaaaaaa,
+    0xaaaaaaaaaaaaaa,
+    0xaaaaaaaaaaaaaa,
+    0xaaaaaaaaaaaaaa
+  )
+};
+
+/* Weierstrass `a` coefficient. */
+static const bcrypto_gf wei_a = {
+  BCRYPTO_FIELD_LITERAL(
+    0xfffffe1a76d41f,
+    0xffffffffffffff,
+    0xffffffffffffff,
+    0xffffffffffffff,
+    0xaaaaaaaaaaaaa9,
+    0xaaaaaaaaaaaaaa,
+    0xaaaaaaaaaaaaaa,
+    0xaaaaaaaaaaaaaa
+  )
+};
+
 #define BCRYPTO_TWISTED_D (BCRYPTO_EDWARDS_D - 1)
 
 #if BCRYPTO_TWISTED_D < 0
@@ -72,69 +100,31 @@ static void bcrypto_gf_invert(bcrypto_gf y, const bcrypto_gf x, int assert_nonze
   bcrypto_gf_copy(y, t2);
 }
 
-static bcrypto_mask_t
+static void
 curve448_proj_twist(curve448_proj_point *p,
                     const bcrypto_gf u,
                     const bcrypto_gf v)
 {
-  bcrypto_gf xx, xz, yy, yz;
-  bcrypto_mask_t torsion2, torsion4;
-
-  /* (0, 0) -> (0, -1) */
-  torsion2 = bcrypto_gf_eq(u, ZERO) & bcrypto_gf_eq(v, ZERO);
-
-  /* (x, y) = (u / v, (u - 1) / (u + 1)) */
-  bcrypto_gf_copy(xx, u);
-  bcrypto_gf_copy(xz, v);
-  bcrypto_gf_sub(yy, u, ONE);
-  bcrypto_gf_add(yz, u, ONE);
-
-  /* (-1, +-sqrt((a - 2) / b)) -> (+-1, 0) */
-  torsion4 = bcrypto_gf_eq(yz, ZERO);
-
-  bcrypto_gf_mul(p->x, xx, yz);
-  bcrypto_gf_mul(p->y, yy, xz);
-  bcrypto_gf_mul(p->z, xz, yz);
-
-  bcrypto_gf_cond_sel(p->x, p->x, ZERO, torsion2);
-  bcrypto_gf_cond_sel(p->y, p->y, ONE, torsion2);
-  bcrypto_gf_cond_neg(p->y, torsion2);
-  bcrypto_gf_cond_sel(p->z, p->z, ONE, torsion2);
-
-  return ~torsion4;
+  bcrypto_gf_add(p->x, u, mont_a3);
+  bcrypto_gf_copy(p->y, v);
+  bcrypto_gf_copy(p->z, ONE);
 }
 
 static bcrypto_mask_t
 curve448_proj_untwist(bcrypto_gf u, bcrypto_gf v,
                       const curve448_proj_point *p)
 {
-  bcrypto_gf uu, uz, vv, vz, zi, t;
-  bcrypto_mask_t inf;
-  bcrypto_mask_t torsion2;
+  bcrypto_mask_t inf = bcrypto_gf_eq(p->z, ZERO);
+  bcrypto_gf zi;
 
-  /* (0, 1) -> O */
-  inf = bcrypto_gf_eq(p->x, ZERO) & bcrypto_gf_eq(p->y, p->z);
+  bcrypto_gf_invert(zi, p->z, 0);
 
-  /* (0, -1) -> (0, 0) */
-  torsion2 = bcrypto_gf_eq(p->x, ZERO) & ~inf;
+  bcrypto_gf_mul(u, p->x, zi);
+  bcrypto_gf_sub(u, u, mont_a3);
+  bcrypto_gf_mul(v, p->y, zi);
 
-  /* (u, v) = ((1 + y) / (1 - y), (1 + y) / (1 - y)x) */
-  bcrypto_gf_add(uu, p->z, p->y);
-  bcrypto_gf_sub(uz, p->z, p->y);
-  bcrypto_gf_mul(vv, p->z, uu);
-  bcrypto_gf_mul(vz, p->x, uz);
-
-  bcrypto_gf_mul(t, uz, vz);
-  bcrypto_gf_invert(zi, t, 0);
-
-  bcrypto_gf_mul(t, uu, vz);
-  bcrypto_gf_mul(u, t, zi);
-
-  bcrypto_gf_mul(t, vv, uz);
-  bcrypto_gf_mul(v, t, zi);
-
-  bcrypto_gf_cond_sel(u, u, ZERO, torsion2);
-  bcrypto_gf_cond_sel(v, v, ZERO, torsion2);
+  bcrypto_gf_cond_sel(u, u, ZERO, inf);
+  bcrypto_gf_cond_sel(v, v, ZERO, inf);
 
   return ~inf;
 }
@@ -151,9 +141,30 @@ static void
 curve448_proj_neg(curve448_proj_point *p2,
                   const curve448_proj_point *p1)
 {
-  bcrypto_gf_sub(p2->x, ZERO, p1->x);
-  bcrypto_gf_copy(p2->y, p1->y);
+  bcrypto_gf_copy(p2->x, p1->x);
+  bcrypto_gf_sub(p2->y, ZERO, p1->y);
   bcrypto_gf_copy(p2->z, p1->z);
+}
+
+static void
+curve448_proj_cond_sel(curve448_proj_point *p3,
+                       const curve448_proj_point *p1,
+                       const curve448_proj_point *p2,
+                       bcrypto_mask_t flag)
+{
+  bcrypto_gf_cond_sel(p3->x, p1->x, p2->x, flag);
+  bcrypto_gf_cond_sel(p3->y, p1->y, p2->y, flag);
+  bcrypto_gf_cond_sel(p3->z, p1->z, p2->z, flag);
+}
+
+static void
+curve448_proj_cond_inf(curve448_proj_point *p2,
+                       const curve448_proj_point *p1,
+                       bcrypto_mask_t flag)
+{
+  bcrypto_gf_cond_sel(p2->x, p1->x, ONE, flag);
+  bcrypto_gf_cond_sel(p2->y, p1->y, ONE, flag);
+  bcrypto_gf_cond_sel(p2->z, p1->z, ZERO, flag);
 }
 
 static void
@@ -161,57 +172,177 @@ curve448_proj_add(curve448_proj_point *p3,
                   const curve448_proj_point *p1,
                   const curve448_proj_point *p2)
 {
-  static const bcrypto_gf A = {{{156328}}}; /* (A + 2) / B */
-  static const bcrypto_gf D = {{{156324}}}; /* (A - 2) / B */
-  bcrypto_gf a, b, c, d, e, f, g, xyxy, t1, t2;
+  /*
+   * We're in a strange situation here...
+   *
+   * We want a constant-time unified addition
+   * formula, but complete addition formulas
+   * are not available on Montgomery curves.
+   *
+   * We could simply move to a twisted curve
+   * and do our addition there, however, the
+   * shape of the field dictates that `a` is
+   * non-square. This means:
+   *
+   *   1. The addition formulas are not
+   *      complete, and will fail on certain
+   *      points containing torsion components.
+   *      Particularly when Q*h = -P*h.
+   *
+   *   2. The birational map is incomplete.
+   *      The twisted curve would have no
+   *      4-torsion elements. The 4-torsion
+   *      point (-1, +-sqrt((a - 2) / b))
+   *      has nothing to map to, for example.
+   *
+   * We _could_ compute the 4-isogeny forwards
+   * and backwards to Ed448 in order to do
+   * addition, but this is expensive and clunky.
+   *
+   * To get around all of this, we move to a
+   * projective Weierstrass form and use the
+   * Brier-Joye unified addition formula.
+   */
 
-  /* A = Z1 * Z2 */
-  bcrypto_gf_mul(a, p1->z, p2->z);
+  /* https://hyperelliptic.org/EFD/g1p/auto-shortw-projective.html#addition-add-2002-bj */
+  /* 12M + 5S + 7A + 1*a + 3*2 */
+  bcrypto_gf u1, u2, s1, s2, zz, t, m, r, f, l, g, w;
+  bcrypto_mask_t ai, bi, fi, ni;
 
-  /* B = A^2 */
-  bcrypto_gf_sqr(b, a);
+  /* U1 = X1 * Z2 */
+  bcrypto_gf_mul(u1, p1->x, p2->z);
 
-  /* C = X1 * X2 */
-  bcrypto_gf_mul(c, p1->x, p2->x);
+  /* U2 = X2 * Z1 */
+  bcrypto_gf_mul(u2, p2->x, p1->z);
 
-  /* D = Y1 * Y2 */
-  bcrypto_gf_mul(d, p1->y, p2->y);
+  /* S1 = Y1 * Z2 */
+  bcrypto_gf_mul(s1, p1->y, p2->z);
 
-  /* E = d * C * D */
-  bcrypto_gf_mul(t1, D, c);
-  bcrypto_gf_mul(e, t1, d);
+  /* S2 = Y2 * Z1 */
+  bcrypto_gf_mul(s2, p2->y, p1->z);
 
-  /* F = B - E */
-  bcrypto_gf_sub(f, b, e);
+  /* ZZ = Z1 * Z2 */
+  bcrypto_gf_mul(zz, p1->z, p2->z);
 
-  /* G = B + E */
-  bcrypto_gf_add(g, b, e);
+  /* T = U1 + U2 */
+  bcrypto_gf_add(t, u1, u2);
 
-  /* XYXY = (X1 + Y1) * (X2 + Y2) */
-  bcrypto_gf_add(t1, p1->x, p1->y);
-  bcrypto_gf_add(t2, p2->x, p2->y);
-  bcrypto_gf_mul(xyxy, t1, t2);
+  /* M = S1 + S2 */
+  bcrypto_gf_add(m, s1, s2);
 
-  /* X3 = A * F * (XYXY - C - D) */
-  bcrypto_gf_sub(xyxy, xyxy, c);
-  bcrypto_gf_sub(xyxy, xyxy, d);
-  bcrypto_gf_mul(t1, xyxy, f);
-  bcrypto_gf_mul(p3->x, t1, a);
+  /* R = T^2 - U1 * U2 + a * ZZ^2 */
+  bcrypto_gf_sqr(f, zz);
+  bcrypto_gf_mul(l, wei_a, f);
+  bcrypto_gf_mul(f, u1, u2);
+  bcrypto_gf_sqr(r, t);
+  bcrypto_gf_sub(r, r, f);
+  bcrypto_gf_add(r, r, l);
 
-  /* Y3 = A * G * (D - a * C) */
-  bcrypto_gf_mul(t1, A, c);
-  bcrypto_gf_sub(t1, d, t1);
-  bcrypto_gf_mul(t2, g, t1);
-  bcrypto_gf_mul(p3->y, t2, a);
+  /* F = ZZ * M */
+  bcrypto_gf_mul(f, zz, m);
 
-  /* Z3 = F * G */
-  bcrypto_gf_mul(p3->z, f, g);
+  /* L = M * F */
+  bcrypto_gf_mul(l, m, f);
+
+  /* G = T * L */
+  bcrypto_gf_mul(g, t, l);
+
+  /* W = R^2 - G */
+  bcrypto_gf_sqr(w, r);
+  bcrypto_gf_sub(w, w, g);
+
+  /* X3 = 2 * F * W */
+  bcrypto_gf_mul(t, f, w);
+  bcrypto_gf_add(p3->x, t, t);
+
+  /* Y3 = R * (G - 2 * W) - L^2 */
+  bcrypto_gf_sub(t, g, w);
+  bcrypto_gf_sub(t, t, w);
+  bcrypto_gf_sqr(m, l);
+  bcrypto_gf_mul(p3->y, r, t);
+  bcrypto_gf_sub(p3->y, p3->y, m);
+
+  /* Z3 = 2 * F * F^2 */
+  bcrypto_gf_sqr(t, f);
+  bcrypto_gf_mul(m, t, f);
+  bcrypto_gf_add(p3->z, m, m);
+
+  /* Check for infinity. */
+  ai = bcrypto_gf_eq(p1->z, ZERO);
+  bi = bcrypto_gf_eq(p2->z, ZERO);
+  fi = bcrypto_gf_eq(f, ZERO);
+  ni = fi & ~ai & ~bi;
+
+  /* P3 = P1 (if Z2 = 0) */
+  curve448_proj_cond_sel(p3, p3, p1, bi);
+
+  /* P3 = P2 (if Z1 = 0) */
+  curve448_proj_cond_sel(p3, p3, p2, ai);
+
+  /* P3 = O (if Z3 = 0, Z1 != 0, Z2 != 0) */
+  curve448_proj_cond_inf(p3, p3, ni);
 }
 
 static void
 curve448_proj_dbl(curve448_proj_point *p2, const curve448_proj_point *p1)
 {
-  curve448_proj_add(p2, p1, p1);
+  /* https://hyperelliptic.org/EFD/g1p/auto-shortw-projective.html#doubling-dbl-2007-bl */
+  /* 5M + 6S + 7A + 1*a + 3*2 + 1*3 */
+  bcrypto_mask_t inf = bcrypto_gf_eq(p1->z, ZERO) | bcrypto_gf_eq(p1->y, ZERO);
+  bcrypto_gf xx, zz, w, s, ss, sss, r, rr, b, h;
+
+  /* XX = X1^2 */
+  bcrypto_gf_sqr(xx, p1->x);
+
+  /* ZZ = Z1^2 */
+  bcrypto_gf_sqr(zz, p1->z);
+
+  /* w = a * ZZ + 3 * XX */
+  bcrypto_gf_mulw(s, xx, 3);
+  bcrypto_gf_mul(w, wei_a, zz);
+  bcrypto_gf_add(w, w, s);
+
+  /* s = 2 * Y1 * Z1 */
+  bcrypto_gf_mul(s, p1->y, p1->z);
+  bcrypto_gf_add(s, s, s);
+
+  /* ss = s^2 */
+  bcrypto_gf_sqr(ss, s);
+
+  /* sss = s * ss */
+  bcrypto_gf_mul(sss, s, ss);
+
+  /* R = Y1 * s */
+  bcrypto_gf_mul(r, p1->y, s);
+
+  /* RR = R^2 */
+  bcrypto_gf_sqr(rr, r);
+
+  /* B = (X1 + R)^2 - XX - RR */
+  bcrypto_gf_add(h, p1->x, r);
+  bcrypto_gf_sqr(b, h);
+  bcrypto_gf_sub(b, b, xx);
+  bcrypto_gf_sub(b, b, rr);
+
+  /* h = w^2 - 2 * B */
+  bcrypto_gf_sqr(h, w);
+  bcrypto_gf_sub(h, h, b);
+  bcrypto_gf_sub(h, h, b);
+
+  /* X3 = h * s */
+  bcrypto_gf_mul(p2->x, h, s);
+
+  /* Y3 = w * (B - h) - 2 * RR */
+  bcrypto_gf_sub(b, b, h);
+  bcrypto_gf_mul(s, w, b);
+  bcrypto_gf_sub(s, s, rr);
+  bcrypto_gf_sub(p2->y, s, rr);
+
+  /* Z3 = sss */
+  bcrypto_gf_copy(p2->z, sss);
+
+  /* P3 = O (if infinity) */
+  curve448_proj_cond_inf(p2, p2, inf);
 }
 
 /** identity = (0,1) */
@@ -1318,24 +1449,8 @@ curve448_point_from_hash(bcrypto_gf x, bcrypto_gf y,
   curve448_elligator2(u1, v1, bytes);
   curve448_elligator2(u2, v2, bytes + 56);
 
-  /*
-   * Montgomery curves don't have complete
-   * addition formulas. We could compute
-   * the 4-isogeny forwards and backwards
-   * to Ed448 in order to do addition, but
-   * this is expensive and clunky. To get
-   * around this, we do the addition on
-   * the twist of an Edwards curve.
-   *
-   * The downside of doing things this way
-   * is that we cannot handle the 4-torsion
-   * point (-1, +-sqrt((a - 2) / b)).
-   *
-   * Luckily, the elligator2 map will never
-   * produce such a point.
-   */
-  (void)curve448_proj_twist(&p1, u1, v1);
-  (void)curve448_proj_twist(&p2, u2, v2);
+  curve448_proj_twist(&p1, u1, v1);
+  curve448_proj_twist(&p2, u2, v2);
   curve448_proj_add(&p1, &p1, &p2);
 
   if (pake) {
@@ -1360,9 +1475,7 @@ curve448_point_to_hash(unsigned char out[112],
   unsigned int bit;
   bcrypto_mask_t hint;
 
-  /* Cannot handle the 4-torsion point (-1, +-sqrt((a - 2) / b)). */
-  if (!curve448_proj_twist(&p, x, y))
-    goto fail;
+  curve448_proj_twist(&p, x, y);
 
   for (;;) {
     if (!bcrypto_random(u1, 56))
@@ -1377,7 +1490,7 @@ curve448_point_to_hash(unsigned char out[112],
     if (bcrypto_gf_eq(y1, ZERO))
       continue;
 
-    (void)curve448_proj_twist(&p1, x1, y1);
+    curve448_proj_twist(&p1, x1, y1);
     curve448_proj_neg(&p1, &p1);
     curve448_proj_add(&p2, &p, &p1);
 
