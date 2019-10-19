@@ -6799,8 +6799,6 @@ describe('BN.js', function() {
       it('should match public key for ' + name + ' group', () => {
         const group = dhGroups[name];
 
-        this.timeout(3600 * 1000);
-
         const base = new BN(2);
         const mont = BN.red(new BN(group.prime, 16));
         const priv = new BN(group.priv, 16);
