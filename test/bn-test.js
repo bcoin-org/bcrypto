@@ -6489,36 +6489,36 @@ describe('BN.js', function() {
         assert.strictEqual(n.redIsOdd(), n.fromRed().isOdd());
         assert.strictEqual(n.redIsEven(), n.fromRed().isEven());
 
-        assert.strictEqual(r1.redCmp(r1.redNeg()), -1);
-        assert.strictEqual(r2.redCmp(r2.redNeg()), -1);
-        assert.strictEqual(r3.redCmp(r3.redNeg()), -1);
+        assert.strictEqual(r1.redEq(r1.redNeg()), false);
+        assert.strictEqual(r2.redEq(r2.redNeg()), false);
+        assert.strictEqual(r3.redEq(r3.redNeg()), false);
 
-        assert.strictEqual(r0.redCmp(r3), -1);
-        assert.strictEqual(r1.redCmp(r2), -1);
-        assert.strictEqual(r2.redCmp(r1), 1);
-        assert.strictEqual(r3.redCmp(r0), 1);
+        assert.strictEqual(r0.redEq(r3), false);
+        assert.strictEqual(r1.redEq(r2), false);
+        assert.strictEqual(r2.redEq(r1), false);
+        assert.strictEqual(r3.redEq(r0), false);
 
-        assert.strictEqual(r0.redCmpn(0), 0);
-        assert.strictEqual(r1.redCmpn(1), 0);
-        assert.strictEqual(r2.redCmpn(2), 0);
-        assert.strictEqual(r3.redCmpn(3), 0);
+        assert.strictEqual(r0.redEqn(0), true);
+        assert.strictEqual(r1.redEqn(1), true);
+        assert.strictEqual(r2.redEqn(2), true);
+        assert.strictEqual(r3.redEqn(3), true);
 
-        assert.strictEqual(r1.redCmpn(-1), -1);
-        assert.strictEqual(r2.redCmpn(-2), -1);
-        assert.strictEqual(r3.redCmpn(-3), -1);
+        assert.strictEqual(r1.redEqn(-1), false);
+        assert.strictEqual(r2.redEqn(-2), false);
+        assert.strictEqual(r3.redEqn(-3), false);
 
-        assert.strictEqual(r0.redCmpn(3), -1);
-        assert.strictEqual(r1.redCmpn(2), -1);
-        assert.strictEqual(r2.redCmpn(1), 1);
-        assert.strictEqual(r3.redCmpn(0), 1);
+        assert.strictEqual(r0.redEqn(3), false);
+        assert.strictEqual(r1.redEqn(2), false);
+        assert.strictEqual(r2.redEqn(1), false);
+        assert.strictEqual(r3.redEqn(0), false);
 
-        assert.strictEqual(r1.redNeg().redCmpn(-1), 0);
-        assert.strictEqual(r2.redNeg().redCmpn(-2), 0);
+        assert.strictEqual(r1.redNeg().redEqn(-1), true);
+        assert.strictEqual(r2.redNeg().redEqn(-2), true);
 
-        assert.strictEqual(r1.redCmpn(-1), -1);
-        assert.strictEqual(r1.redNeg().redCmpn(-1), 0);
-        assert.strictEqual(r1.redNeg().redCmpn(-2), 1);
-        assert.strictEqual(r1.redNeg().redAddn(1).redCmpn(0), 0);
+        assert.strictEqual(r1.redEqn(-1), false);
+        assert.strictEqual(r1.redNeg().redEqn(-1), true);
+        assert.strictEqual(r1.redNeg().redEqn(-2), false);
+        assert.strictEqual(r1.redNeg().redAddn(1).redEqn(0), true);
         assert.strictEqual(r1.redNeg().redAddn(1).sign(), 0);
 
         assert.strictEqual(r1.redIsPos(), true);
@@ -6538,6 +6538,11 @@ describe('BN.js', function() {
 
     for (const red of [BN.red(new BN(17)), BN.mont(new BN(17))]) {
       it('should test red helpers (small field)', () => {
+        const r0 = new BN(0).toRed(red);
+        const r1 = new BN(1).toRed(red);
+        const r2 = new BN(2).toRed(red);
+        const r3 = new BN(3).toRed(red);
+
         const mod = (x, m) => {
           let r = x % m;
 
@@ -6564,6 +6569,43 @@ describe('BN.js', function() {
         assert.strictEqual(shl(11, 16), mod(11 << 16, 17));
         assert.strictEqual(add(11, 137), mod(11 + 137, 17));
         assert.strictEqual(sub(11, 137), mod(11 - 137, 17));
+
+        assert.strictEqual(r1.redEq(r1.redNeg()), false);
+        assert.strictEqual(r2.redEq(r2.redNeg()), false);
+        assert.strictEqual(r3.redEq(r3.redNeg()), false);
+
+        assert.strictEqual(r0.redEq(r3), false);
+        assert.strictEqual(r1.redEq(r2), false);
+        assert.strictEqual(r2.redEq(r1), false);
+        assert.strictEqual(r3.redEq(r0), false);
+
+        assert.strictEqual(r0.redEqn(0), true);
+        assert.strictEqual(r1.redEqn(1), true);
+        assert.strictEqual(r2.redEqn(2), true);
+        assert.strictEqual(r3.redEqn(3), true);
+
+        assert.strictEqual(r1.redEqn(-1), false);
+        assert.strictEqual(r2.redEqn(-2), false);
+        assert.strictEqual(r3.redEqn(-3), false);
+
+        assert.strictEqual(r0.redEqn(3), false);
+        assert.strictEqual(r1.redEqn(2), false);
+        assert.strictEqual(r2.redEqn(1), false);
+        assert.strictEqual(r3.redEqn(0), false);
+
+        assert.strictEqual(r1.redNeg().redEqn(-1), true);
+        assert.strictEqual(r2.redNeg().redEqn(-2), true);
+
+        assert.strictEqual(r1.redEqn(-1), false);
+        assert.strictEqual(r1.redNeg().redEqn(-1), true);
+        assert.strictEqual(r1.redNeg().redEqn(-2), false);
+        assert.strictEqual(r1.redNeg().redAddn(1).redEqn(0), true);
+        assert.strictEqual(r1.redNeg().redAddn(1).sign(), 0);
+
+        assert.strictEqual(r1.redIsPos(), true);
+        assert.strictEqual(r1.redIsNeg(), false);
+        assert.strictEqual(r1.redNeg().redIsPos(), false);
+        assert.strictEqual(r1.redNeg().redIsNeg(), true);
       });
     }
 
