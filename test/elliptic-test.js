@@ -55,7 +55,9 @@ function checkCurve(curve) {
   assert(curve._simpleMulAdd([g, g], [k, k]).eq(g.dbl()));
 
   // Test unified ladder.
-  if (curve.type !== 'mont')
+  if (curve.type === 'mont')
+    assert(g.mulConst(k).eq(g));
+  else
     assert(curve._ladderMul(g, k).eq(g));
 
   // Test Co-Z ladder.
@@ -131,6 +133,16 @@ describe('Elliptic', function() {
         assert(p.trpl().validate());
         assert(j.trpl().validate());
 
+        assert(p.dbl().eq(p.uadd(p)));
+        assert(j.dbl().eq(j.uadd(j)));
+        assert(p.dbl().eq(p.uadd(p)));
+        assert(j.dbl().eq(j.uadd(j)));
+        assert(p.dbl().eq(p.udbl()));
+        assert(j.dbl().eq(j.udbl()));
+
+        assert(p.uadd(p).uadd(p).eq(tp));
+        assert(j.uadd(j).uadd(j).eq(tj));
+
         if (curve.type === 'mont') {
           const g = curve.g.toX();
           const p1 = g.mul(new BN(2));
@@ -138,16 +150,6 @@ describe('Elliptic', function() {
 
           assert(g.dbl().eq(p1));
           assert(g.diffTrpl(g).eq(p2));
-        } else {
-          assert(p.dbl().eq(p.uadd(p)));
-          assert(j.dbl().eq(j.uadd(j)));
-          assert(p.dbl().eq(p.uadd(p)));
-          assert(j.dbl().eq(j.uadd(j)));
-          assert(p.dbl().eq(p.udbl()));
-          assert(j.dbl().eq(j.udbl()));
-
-          assert(p.uadd(p).uadd(p).eq(tp));
-          assert(j.uadd(j).uadd(j).eq(tj));
         }
 
         // Slow sanity test.
@@ -2838,7 +2840,64 @@ describe('Elliptic', function() {
       }
     });
 
-    it('should test montgomery multiplication', () => {
+    it('should match multiplications (mont-affine)', () => {
+      const curve = new curves.X25519();
+      const k = curve.randomScalar(rng);
+      const g = curve.g;
+      const p = g.mul(k);
+      const q = curve.g.mul(k);
+
+      assert(q.eq(p));
+      assert(g.mul(k).eq(p));
+      assert(g.mulSimple(k).eq(p));
+      assert(g.mulConst(k).eq(p));
+      assert(g.mulBlind(k).eq(p));
+      assert(g.mulBlind(k, rng).eq(p));
+      assert(g.mulConst(k, rng).eq(p));
+
+      {
+        const m = curve.n.muln(17);
+        const p1 = g.mul(k.mul(m));
+        const p2 = g.mulSimple(k.mul(m));
+        const p3 = g.mulConst(k.mul(m));
+        const p4 = g.mul(k.mul(m).imod(curve.n));
+        const p5 = g.mulSimple(k.mul(m).imod(curve.n));
+        const p6 = g.mulBlind(k.mul(m).imod(curve.n));
+        const p7 = g.mulBlind(k.mul(m).imod(curve.n), rng);
+        const p8 = g.mulConst(k.mul(m).imod(curve.n));
+        const p9 = g.mulConst(k.mul(m).imod(curve.n), rng);
+
+        assert(p1.eq(p2));
+        assert(p2.eq(p3));
+        assert(p3.eq(p4));
+        assert(p4.eq(p5));
+        assert(p5.eq(p6));
+        assert(p6.eq(p7));
+        assert(p8.eq(p9));
+      }
+
+      {
+        const p1 = g.mul(k.neg());
+        const p2 = g.mulSimple(k.neg());
+        const p3 = g.mulConst(k.neg());
+        const p4 = g.mul(k.neg().imod(curve.n));
+        const p5 = g.mulSimple(k.neg().imod(curve.n));
+        const p6 = g.mulBlind(k.neg().imod(curve.n));
+        const p7 = g.mulBlind(k.neg().imod(curve.n), rng);
+        const p8 = g.mulConst(k.neg().imod(curve.n));
+        const p9 = g.mulConst(k.neg().imod(curve.n), rng);
+
+        assert(p1.eq(p2));
+        assert(p2.eq(p3));
+        assert(p3.eq(p4));
+        assert(p4.eq(p5));
+        assert(p5.eq(p6));
+        assert(p6.eq(p7));
+        assert(p8.eq(p9));
+      }
+    });
+
+    it('should match multiplications (mont-x)', () => {
       const curve = new curves.X25519();
       const k = curve.randomScalar(rng);
       const g = curve.g.toX();
@@ -2910,6 +2969,205 @@ describe('Elliptic', function() {
       const ep = eg.mul(k);
 
       assert(ep.eq(ep1) || ep.eq(ep2));
+    });
+
+    it('should test montgomery recovery edge cases', () => {
+      // See Mike Hamburg's analysis of edge cases:
+      // https://www.reddit.com/r/crypto/comments/91711n/montgomery_ladder_y_coordinate_recovery/e2wd73o/
+      const curve = new curves.X25519();
+
+      // Simple multiplication.
+      {
+        const k = curve.randomScalar(rng);
+        const g = curve.randomPoint(rng);
+        const p1 = g.mulSimple(k);
+        const p2 = g.mulConst(k);
+
+        assert(p1.eq(p2));
+      }
+
+      // Edge Case 1: (0, 0)*3 = O
+      // The ladder will choke on points of small order.
+      // Sometimes it will be correct, other times it
+      // will simply be infinity.
+      {
+        const k = new BN(3);
+        const g = curve.point(curve.zero, curve.zero);
+        const p1 = g.mulSimple(k);
+        const p2 = g.mulConst(k);
+
+        // P1 = G
+        assert(p1.eq(g));
+
+        // P2 = O
+        assert(p2.isInfinity());
+      }
+
+      // Edge Case 2: G*(n-1) = O
+      // Recovery cannot be performed for k=n-1.
+      // This is because P2=G*(n-1)+G=O. Once
+      // again, we simply end up with infinity.
+      {
+        const k = curve.n.subn(1);
+        const g = curve.g;
+        const p1 = g.mulSimple(k);
+        const p2 = g.mulConst(k);
+
+        // P1 = -G
+        assert(p1.eq(g.neg()));
+
+        // P2 = O
+        assert(p2.isInfinity());
+      }
+
+      // Edge Case 3: G*((n-1)/2)
+      // Hamburg mentions this may be an edge case,
+      // but this doesn't appear to be the case.
+      {
+        const k = curve.n.subn(1).iushrn(1);
+        const g = curve.g;
+        const p1 = g.mulSimple(k);
+        const p2 = g.mulConst(k);
+
+        // P1 = P2
+        assert(p1.eq(p2));
+      }
+
+      // Test multiplications with torsion components.
+      {
+        const torsion = [curve.point()];
+
+        const small = [
+          '0000000000000000000000000000000000000000000000000000000000000000',
+          '0000000000000000000000000000000000000000000000000000000000000001',
+          '00b8495f16056286fdb1329ceb8d09da6ac49ff1fae35616aeb8413b7c7aebe0',
+          '57119fd0dd4e22d8868e1c58c45c44045bef839c55b1d0b1248c50a3bc959c5f'
+        ];
+
+        for (const json of small) {
+          const x = curve.field(json, 16);
+          const p = curve.pointFromX(x, false);
+          const q = p.neg();
+
+          torsion.push(p);
+
+          if (!q.eq(p))
+            torsion.push(q);
+        }
+
+        for (const t of torsion) {
+          const k = curve.randomScalar(rng);
+          const g = curve.randomPoint(rng).add(t);
+          const p1 = g.mulSimple(k);
+          const p2 = g.mulConst(k);
+
+          assert(p1.eq(p2));
+        }
+      }
+    });
+
+    it('should test mont torsion multiplication with blinding', () => {
+      const curve = new curves.X25519();
+      const torsion = [curve.point()];
+
+      curve.precompute(rng);
+
+      const small = [
+        '0000000000000000000000000000000000000000000000000000000000000000',
+        '0000000000000000000000000000000000000000000000000000000000000001',
+        '00b8495f16056286fdb1329ceb8d09da6ac49ff1fae35616aeb8413b7c7aebe0',
+        '57119fd0dd4e22d8868e1c58c45c44045bef839c55b1d0b1248c50a3bc959c5f'
+      ];
+
+      for (const json of small) {
+        const x = curve.field(json, 16);
+        const p = curve.pointFromX(x, false);
+        const q = p.neg();
+
+        torsion.push(p);
+
+        if (!q.eq(p))
+          torsion.push(q);
+      }
+
+      for (const g of torsion) {
+        const k = curve.randomScalar(rng);
+        const p1 = g.mulSimple(k);
+        const p2 = g.mulBlind(k, rng);
+
+        assert(p1.eq(p2));
+      }
+
+      for (const t of torsion) {
+        const k = curve.randomScalar(rng);
+        const g = curve.randomPoint(rng).add(t);
+        const p1 = g.mulSimple(k);
+        const p2 = g.mulBlind(k, rng);
+
+        assert(p1.eq(p2));
+      }
+    });
+
+    it('should test edwards torsion multiplication with blinding', () => {
+      const curve = new curves.ED25519();
+      const torsion = [];
+
+      curve.precompute(rng);
+
+      const small = [
+        [
+          '0000000000000000000000000000000000000000000000000000000000000000',
+          '0000000000000000000000000000000000000000000000000000000000000001'
+        ],
+        [
+          '0000000000000000000000000000000000000000000000000000000000000000',
+          '7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffec'
+        ],
+        [
+          '547cdb7fb03e20f4d4b2ff66c2042858d0bce7f952d01b873b11e4d8b5f15f3d',
+          '0000000000000000000000000000000000000000000000000000000000000000'
+        ],
+        [
+          '2b8324804fc1df0b2b4d00993dfbd7a72f431806ad2fe478c4ee1b274a0ea0b0',
+          '0000000000000000000000000000000000000000000000000000000000000000'
+        ],
+        [
+          '602a465ff9c6b5d716cc66cdc721b544a3e6c38fec1a1dc7215eb9b93aba2ea3',
+          '7a03ac9277fdc74ec6cc392cfa53202a0f67100d760b3cba4fd84d3d706a17c7'
+        ],
+        [
+          '1fd5b9a006394a28e933993238de4abb5c193c7013e5e238dea14646c545d14a',
+          '7a03ac9277fdc74ec6cc392cfa53202a0f67100d760b3cba4fd84d3d706a17c7'
+        ],
+        [
+          '602a465ff9c6b5d716cc66cdc721b544a3e6c38fec1a1dc7215eb9b93aba2ea3',
+          '05fc536d880238b13933c6d305acdfd5f098eff289f4c345b027b2c28f95e826'
+        ],
+        [
+          '1fd5b9a006394a28e933993238de4abb5c193c7013e5e238dea14646c545d14a',
+          '05fc536d880238b13933c6d305acdfd5f098eff289f4c345b027b2c28f95e826'
+        ]
+      ];
+
+      for (const json of small)
+        torsion.push(curve.pointFromJSON(json));
+
+      for (const g of torsion) {
+        const k = curve.randomScalar(rng);
+        const p1 = g.mulSimple(k);
+        const p2 = g.mulConst(k, rng);
+
+        assert(p1.eq(p2));
+      }
+
+      for (const t of torsion) {
+        const k = curve.randomScalar(rng);
+        const g = curve.randomPoint(rng).add(t);
+        const p1 = g.mulSimple(k);
+        const p2 = g.mulConst(k, rng);
+
+        assert(p1.eq(p2));
+      }
     });
 
     it('should test x equality', () => {
