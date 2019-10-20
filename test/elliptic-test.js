@@ -1945,7 +1945,7 @@ describe('Elliptic', function() {
 
     it('should test birational equivalence (raw25519)', () => {
       const x25519 = new curves.X25519();
-      const raw25519 = x25519.toTwisted();
+      const raw25519 = x25519.toEdwards();
 
       // Sanity check.
       {
@@ -2026,6 +2026,44 @@ describe('Elliptic', function() {
         assert(ed25519.pointFromMont(mo.toP(sign)).eq(ed));
         assert(ed25519.pointFromEdwards(ed).eq(ed));
       }
+    });
+
+    it('should test wei25519 creation', () => {
+      const wei25519 = new extra.WEI25519();
+      const ed = new curves.ED25519();
+      const mont = ed.toMont(ed.one);
+      const wei = mont.toShort();
+
+      assert(wei.a.eq(wei25519.a));
+      assert(wei.b.eq(wei25519.b));
+      assert(wei.g.eq(wei25519.g));
+      assert(mont.pointFromShort(wei.g).eq(mont.g));
+    });
+
+    it('should test wei25519 equivalence when b != 1', () => {
+      const ed = new curves.ED25519();
+      const mont = ed.toMont();
+      const wei = mont.toShort();
+
+      assert(wei.g.validate());
+      assert(mont.b.cmp(mont.one) !== 0);
+
+      const k = ed.randomScalar(rng);
+      const p1 = ed.g.mul(k);
+      const p2 = mont.g.mul(k);
+      const p3 = wei.g.mul(k);
+
+      // Edwards.
+      assert(ed.pointFromMont(p2).eq(p1));
+      // assert(ed.pointFromShort(p3).eq(p1));
+
+      // Mont.
+      assert(mont.pointFromEdwards(p1).eq(p2));
+      assert(mont.pointFromShort(p3).eq(p2));
+
+      // Short.
+      // assert(wei.pointFromEdwards(p1).eq(p3));
+      assert(wei.pointFromMont(p2).eq(p3));
     });
 
     it('should test elligator (exceptional case, r=1)', () => {
@@ -2269,7 +2307,7 @@ describe('Elliptic', function() {
 
     it('should do elligator2 on fabricated twisted edwards curve', () => {
       const mont = new extra.M383();
-      const twisted = mont.toTwisted(mont.one.redNeg());
+      const twisted = mont.toEdwards(mont.one.redNeg());
 
       checkCurve(twisted);
 
