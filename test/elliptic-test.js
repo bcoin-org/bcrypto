@@ -472,9 +472,9 @@ describe('Elliptic', function() {
       assert(p256.g.pre);
       assert(secp256k1.g.pre);
       assert(ed25519.g.pre);
-      assert(!x25519.g.pre);
+      assert(x25519.g.pre);
       assert(ed448.g.pre);
-      assert(!x448.g.pre);
+      assert(x448.g.pre);
     });
   });
 
@@ -2842,58 +2842,64 @@ describe('Elliptic', function() {
 
     it('should match multiplications (mont-affine)', () => {
       const curve = new curves.X25519();
-      const k = curve.randomScalar(rng);
-      const g = curve.g;
-      const p = g.mul(k);
-      const q = curve.g.mul(k);
 
-      assert(q.eq(p));
-      assert(g.mul(k).eq(p));
-      assert(g.mulSimple(k).eq(p));
-      assert(g.mulConst(k).eq(p));
-      assert(g.mulBlind(k).eq(p));
-      assert(g.mulBlind(k, rng).eq(p));
-      assert(g.mulConst(k, rng).eq(p));
+      for (let i = 0; i < 2; i++) {
+        if (i === 1)
+          curve.precompute(rng);
 
-      {
-        const m = curve.n.muln(17);
-        const p1 = g.mul(k.mul(m));
-        const p2 = g.mulSimple(k.mul(m));
-        const p3 = g.mulConst(k.mul(m));
-        const p4 = g.mul(k.mul(m).imod(curve.n));
-        const p5 = g.mulSimple(k.mul(m).imod(curve.n));
-        const p6 = g.mulBlind(k.mul(m).imod(curve.n));
-        const p7 = g.mulBlind(k.mul(m).imod(curve.n), rng);
-        const p8 = g.mulConst(k.mul(m).imod(curve.n));
-        const p9 = g.mulConst(k.mul(m).imod(curve.n), rng);
+        const k = curve.randomScalar(rng);
+        const g = curve.g;
+        const p = g.mul(k);
+        const q = curve.g.mul(k);
 
-        assert(p1.eq(p2));
-        assert(p2.eq(p3));
-        assert(p3.eq(p4));
-        assert(p4.eq(p5));
-        assert(p5.eq(p6));
-        assert(p6.eq(p7));
-        assert(p8.eq(p9));
-      }
+        assert(q.eq(p));
+        assert(g.mul(k).eq(p));
+        assert(g.mulSimple(k).eq(p));
+        assert(g.mulConst(k).eq(p));
+        assert(g.mulBlind(k).eq(p));
+        assert(g.mulBlind(k, rng).eq(p));
+        assert(g.mulConst(k, rng).eq(p));
 
-      {
-        const p1 = g.mul(k.neg());
-        const p2 = g.mulSimple(k.neg());
-        const p3 = g.mulConst(k.neg());
-        const p4 = g.mul(k.neg().imod(curve.n));
-        const p5 = g.mulSimple(k.neg().imod(curve.n));
-        const p6 = g.mulBlind(k.neg().imod(curve.n));
-        const p7 = g.mulBlind(k.neg().imod(curve.n), rng);
-        const p8 = g.mulConst(k.neg().imod(curve.n));
-        const p9 = g.mulConst(k.neg().imod(curve.n), rng);
+        {
+          const m = curve.n.muln(17);
+          const p1 = g.mul(k.mul(m));
+          const p2 = g.mulSimple(k.mul(m));
+          const p3 = g.mulConst(k.mul(m));
+          const p4 = g.mul(k.mul(m).imod(curve.n));
+          const p5 = g.mulSimple(k.mul(m).imod(curve.n));
+          const p6 = g.mulBlind(k.mul(m).imod(curve.n));
+          const p7 = g.mulBlind(k.mul(m).imod(curve.n), rng);
+          const p8 = g.mulConst(k.mul(m).imod(curve.n));
+          const p9 = g.mulConst(k.mul(m).imod(curve.n), rng);
 
-        assert(p1.eq(p2));
-        assert(p2.eq(p3));
-        assert(p3.eq(p4));
-        assert(p4.eq(p5));
-        assert(p5.eq(p6));
-        assert(p6.eq(p7));
-        assert(p8.eq(p9));
+          assert(p1.eq(p2));
+          assert(p2.eq(p3));
+          assert(p3.eq(p4));
+          assert(p4.eq(p5));
+          assert(p5.eq(p6));
+          assert(p6.eq(p7));
+          assert(p8.eq(p9));
+        }
+
+        {
+          const p1 = g.mul(k.neg());
+          const p2 = g.mulSimple(k.neg());
+          const p3 = g.mulConst(k.neg());
+          const p4 = g.mul(k.neg().imod(curve.n));
+          const p5 = g.mulSimple(k.neg().imod(curve.n));
+          const p6 = g.mulBlind(k.neg().imod(curve.n));
+          const p7 = g.mulBlind(k.neg().imod(curve.n), rng);
+          const p8 = g.mulConst(k.neg().imod(curve.n));
+          const p9 = g.mulConst(k.neg().imod(curve.n), rng);
+
+          assert(p1.eq(p2));
+          assert(p2.eq(p3));
+          assert(p3.eq(p4));
+          assert(p4.eq(p5));
+          assert(p5.eq(p6));
+          assert(p6.eq(p7));
+          assert(p8.eq(p9));
+        }
       }
     });
 
