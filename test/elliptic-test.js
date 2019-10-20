@@ -3214,6 +3214,92 @@ describe('Elliptic', function() {
       }
     });
 
+    it('should hit exceptional case when a is not square (twisted)', () => {
+      const x448 = new curves.X448();
+      const curve = x448.toEdwards();
+      const {zero, one} = curve;
+
+      assert(!curve.a.redIsSquare());
+      assert(curve.d.redIsSquare());
+
+      // P*h = -Q*h.
+      // P has 2-torsion (0, -1).
+      const p = curve.pointFromJSON([
+        ['25dd1f9d4f2450ed175c9a39ea7d9165698a1d4b97fc449f6bbc8a63',
+         'eafb0a2d2438ed7a248d441072f07aca20cb6d0730676f81c5617a5e'].join(''),
+        ['bdbfe8f1c1721151df0f46d228f3657390b320db1fdce2b05cf66c1a',
+         '0eee98f5732b591475e7ffeb0b0779f47ca7d2fdb96939b18cae56cd'].join('')
+      ]);
+
+      // Q has 4-torsion.
+      //
+      // On "normal" twisted curves, the 4-torsion point is:
+      //
+      //   (+-sqrt(1 / a), 0)
+      //
+      // Because `a` is non-square, our 4-torsion point is:
+      //
+      //   (+-sqrt(1 / d), oo)
+      //
+      // So, our 4-torsion point is _not_ representable.
+      //
+      // This causes exceptional cases in the addition formula.
+      const q = curve.pointFromJSON([
+        ['12fd957ff7b992df9b1c1bbba80a5d8861290cc1d8949972c507bdb8',
+         '7d31da593ff5f3ea6434eabeab8c48df8ac17fb695aaa325bda51407'].join(''),
+        ['5ad639725654d8853c543ab6d0831ac0e6483f8c81a308665167acc9',
+         '4e3236f24d5f1c36afc64fff5ad5ddf5cc1ff3ca1d6ddb15d3d79a4f'].join('')
+      ]);
+
+      assert(p.validate());
+      assert(q.validate());
+
+      // Affine twisted addition formula:
+      //
+      //   x3 = (x1 * y2 + y1 * x2) / (1 + d * x1 * x2 * y1 * y2)
+      //   y3 = (y1 * y2 - a * x1 * x2) / (1 - d * x1 * x2 * y1 * y2)
+      const x1x2 = p.x.redMul(q.x);
+      const y1y2 = p.y.redMul(q.y);
+      const x1y2 = p.x.redMul(q.y);
+      const y1x2 = p.y.redMul(q.x);
+      const dx1x2y1y2 = curve._mulD(x1x2).redMul(y1y2);
+
+      const xn = x1y2.redIAdd(y1x2);
+      const xd = one.redAdd(dx1x2y1y2);
+      const yn = y1y2.redISub(curve._mulA(x1x2));
+      const yd = one.redSub(dx1x2y1y2);
+      const d = xd.redMul(yd);
+
+      let x = null;
+      let y = null;
+
+      if (!d.isZero()) {
+        const l = d.redInvert();
+
+        x = xn.redMul(l.redMul(yd));
+        y = yn.redMul(l.redMul(xd));
+      }
+
+      assert(x == null);
+      assert(y == null);
+      assert(yd.isZero());
+
+      // Cannot add, as the result would
+      // be our unrepresentable 4-torsion
+      // point.
+      assert.throws(() => p.add(q));
+
+      // Likewise.
+      assert.throws(() => q.mul(curve.n));
+
+      // Should be 2-torsion.
+      const t2 = curve.point(zero, one.redNeg());
+      assert(p.mul(curve.n).eq(t2));
+
+      // P + -P = O
+      assert(p.mulH().add(q.mulH()).isInfinity());
+    });
+
     it('should test x equality', () => {
       const secp256k1 = new curves.SECP256K1();
       const p256 = new curves.P256();
