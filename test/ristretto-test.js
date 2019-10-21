@@ -4,6 +4,7 @@ const assert = require('bsert');
 const elliptic = require('../lib/js/elliptic');
 const Ristretto = require('../lib/js/ristretto');
 const SHA512 = require('../lib/sha512');
+const rng = require('../lib/random');
 const extra = require('./util/curves');
 const {curves} = elliptic;
 
@@ -42,6 +43,7 @@ describe('Ristretto', function() {
       const q = ristretto.decode(raw);
 
       assert.strictEqual(ristretto.eq(q, p), true);
+      assert.strictEqual(q.mulH().eq(p.mulH()), true);
       assert.bufferEqual(ristretto.encode(p), raw);
 
       p = p.add(curve.g);
@@ -145,6 +147,7 @@ describe('Ristretto', function() {
       const q = ristretto.decode(raw);
 
       assert.strictEqual(ristretto.eq(q, p), true);
+      assert.strictEqual(q.mulH().eq(p.mulH()), true);
       assert.bufferEqual(ristretto.encode(p), raw);
 
       p = p.add(curve.g);
@@ -199,6 +202,7 @@ describe('Ristretto', function() {
       const q = ristretto.decode(raw);
 
       assert.strictEqual(ristretto.eq(q, p), true);
+      assert.strictEqual(q.mulH().eq(p.mulH()), true);
       assert.bufferEqual(ristretto.encode(p), raw);
 
       p = p.add(curve.g);
@@ -295,6 +299,7 @@ describe('Ristretto', function() {
         const p1 = ristretto.pointFromUniform(r1);
 
         assert.strictEqual(ristretto.eq(p1, p0), true);
+        assert.strictEqual(p1.mulH().eq(p0.mulH()), true);
       }
     }
   });
@@ -440,6 +445,7 @@ describe('Ristretto', function() {
         const p1 = ristretto.pointFromUniform(r1);
 
         assert.strictEqual(ristretto.eq(p1, p0), true);
+        assert.strictEqual(p1.mulH().eq(p0.mulH()), true);
       }
     }
   });
@@ -532,7 +538,54 @@ describe('Ristretto', function() {
         const p1 = ristretto.pointFromUniform(r1);
 
         assert.strictEqual(ristretto.eq(p1, p0), true);
+        assert.strictEqual(p1.mulH().eq(p0.mulH()), true);
       }
     }
+  });
+
+  it('should multiply by random scalar', () => {
+    const curve = new curves.ED25519();
+    const ristretto = new Ristretto(curve);
+    const k = curve.randomScalar(rng);
+    const g = ristretto.decode(ristretto.encode(curve.g)).normalize();
+    const p1 = curve.g.mul(k);
+    const p2 = g.mul(k);
+
+    assert.strictEqual(ristretto.eq(p1, p2), true);
+    assert.strictEqual(p1.mulH().eq(p2.mulH()), true);
+  });
+
+  it('should invert elligator with random point', () => {
+    const curve = new curves.ED25519();
+    const ristretto = new Ristretto(curve);
+
+    for (;;) {
+      const p = curve.randomPoint(rng);
+
+      let r;
+      try {
+        r = ristretto.pointToUniform(p, rng.randomInt());
+      } catch (e) {
+        continue;
+      }
+
+      const q = ristretto.pointFromUniform(r);
+
+      assert.strictEqual(ristretto.eq(p, q), true);
+      assert.strictEqual(p.mulH().eq(q.mulH()), true);
+
+      break;
+    }
+  });
+
+  it('should invert elligator squared', () => {
+    const curve = new curves.ED25519();
+    const ristretto = new Ristretto(curve);
+    const p = ristretto.randomPoint(rng);
+    const r = ristretto.pointToHash(p, rng);
+    const q = ristretto.pointFromHash(r);
+
+    assert.strictEqual(ristretto.eq(p, q), true);
+    assert.strictEqual(p.mulH().eq(q.mulH()), true);
   });
 });
