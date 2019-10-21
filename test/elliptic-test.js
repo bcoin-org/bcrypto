@@ -529,16 +529,16 @@ describe('Elliptic', function() {
 
       const point = [
         ['21fd21b36cbdbe0d77ad8692c25d918774f5d3bc179c4cb0',
-         'ae3c364bf1bea981d02e9f97cc62f20acacf0c553887e5fb'].join(''),
+         'ae3c364bf1bea981d02e9f97cc62f20acacf0c553887e5fb'],
         ['29f994329799dba72aa12ceb06312300167b6e18fbed607c',
-         '63709826c57292cf29f5bab4f5c99c739cf107a3833bb553'].join('')
+         '63709826c57292cf29f5bab4f5c99c739cf107a3833bb553']
       ];
 
       const double = [
         ['0561c8722cf82b2f0d7c36bc72e34539dcbf181e8d98f524',
-         '4480e79f5b51a4a541457016c9c0509d49078eb5909a1121'].join(''),
+         '4480e79f5b51a4a541457016c9c0509d49078eb5909a1121'],
         ['05b7812fae9d164ee9249c56a16e29a1ad2cdc6353227074',
-         'dd96d59df363a0bcb5bc67d50b44843ea833156bdc0ac6a2'].join('')
+         'dd96d59df363a0bcb5bc67d50b44843ea833156bdc0ac6a2']
       ];
 
       const p = curve.pointFromJSON(point);
@@ -559,18 +559,17 @@ describe('Elliptic', function() {
         z: '-1'
       });
 
-      const target = curve.point(
-        new BN('05d040ddaa645bf27d2d2f302c569723'
-             + '1425185fd9a410f220ac5c5c7fbeb8a1', 16),
-        new BN('02f8ca771306cd23e929775177f2c213'
-             + '843a017a6487b2ec5f9b2a3808108ef2', 16)
-      );
+      const target = curve.pointFromJSON([
+        ['05d040ddaa645bf27d2d2f302c569723',
+         '1425185fd9a410f220ac5c5c7fbeb8a1'],
+        ['02f8ca771306cd23e929775177f2c213',
+         '843a017a6487b2ec5f9b2a3808108ef2']
+      ]);
 
-      const point = curve.pointFromY(
-        new BN('02f8ca771306cd23e929775177f2c213'
-             + '843a017a6487b2ec5f9b2a3808108ef2', 16),
-        true
-      );
+      const y = new BN('02f8ca771306cd23e929775177f2c213'
+                     + '843a017a6487b2ec5f9b2a3808108ef2', 16);
+
+      const point = curve.pointFromY(y, true);
 
       assert(point.eq(target));
       assert(point.randomize(rng).eq(target));
@@ -3379,9 +3378,9 @@ describe('Elliptic', function() {
       // P has 2-torsion (0, -1).
       const p = curve.pointFromJSON([
         ['25dd1f9d4f2450ed175c9a39ea7d9165698a1d4b97fc449f6bbc8a63',
-         'eafb0a2d2438ed7a248d441072f07aca20cb6d0730676f81c5617a5e'].join(''),
+         'eafb0a2d2438ed7a248d441072f07aca20cb6d0730676f81c5617a5e'],
         ['bdbfe8f1c1721151df0f46d228f3657390b320db1fdce2b05cf66c1a',
-         '0eee98f5732b591475e7ffeb0b0779f47ca7d2fdb96939b18cae56cd'].join('')
+         '0eee98f5732b591475e7ffeb0b0779f47ca7d2fdb96939b18cae56cd']
       ]);
 
       // Q has 4-torsion.
@@ -3399,9 +3398,9 @@ describe('Elliptic', function() {
       // This causes exceptional cases in the addition formula.
       const q = curve.pointFromJSON([
         ['12fd957ff7b992df9b1c1bbba80a5d8861290cc1d8949972c507bdb8',
-         '7d31da593ff5f3ea6434eabeab8c48df8ac17fb695aaa325bda51407'].join(''),
+         '7d31da593ff5f3ea6434eabeab8c48df8ac17fb695aaa325bda51407'],
         ['5ad639725654d8853c543ab6d0831ac0e6483f8c81a308665167acc9',
-         '4e3236f24d5f1c36afc64fff5ad5ddf5cc1ff3ca1d6ddb15d3d79a4f'].join('')
+         '4e3236f24d5f1c36afc64fff5ad5ddf5cc1ff3ca1d6ddb15d3d79a4f']
       ]);
 
       assert(p.validate());
@@ -3900,30 +3899,30 @@ describe('Elliptic', function() {
         // 0, c (order 1)
         [
           ['00000000000000000000000000000000000000000000000000000000',
-           '00000000000000000000000000000000000000000000000000000000'].join(''),
+           '00000000000000000000000000000000000000000000000000000000'],
           ['00000000000000000000000000000000000000000000000000000000',
-           '00000000000000000000000000000000000000000000000000000001'].join('')
+           '00000000000000000000000000000000000000000000000000000001']
         ],
         // 0, -c (order 2, rejected)
         [
           ['00000000000000000000000000000000000000000000000000000000',
-           '00000000000000000000000000000000000000000000000000000000'].join(''),
+           '00000000000000000000000000000000000000000000000000000000'],
           ['fffffffffffffffffffffffffffffffffffffffffffffffffffffffe',
-           'fffffffffffffffffffffffffffffffffffffffffffffffffffffffe'].join('')
+           'fffffffffffffffffffffffffffffffffffffffffffffffffffffffe']
         ],
         // c, 0 (order 4)
         [
           ['00000000000000000000000000000000000000000000000000000000',
-           '00000000000000000000000000000000000000000000000000000001'].join(''),
+           '00000000000000000000000000000000000000000000000000000001'],
           ['00000000000000000000000000000000000000000000000000000000',
-           '00000000000000000000000000000000000000000000000000000000'].join('')
+           '00000000000000000000000000000000000000000000000000000000']
         ],
         // -c, 0 (order 4)
         [
           ['fffffffffffffffffffffffffffffffffffffffffffffffffffffffe',
-           'fffffffffffffffffffffffffffffffffffffffffffffffffffffffe'].join(''),
+           'fffffffffffffffffffffffffffffffffffffffffffffffffffffffe'],
           ['00000000000000000000000000000000000000000000000000000000',
-           '00000000000000000000000000000000000000000000000000000000'].join('')
+           '00000000000000000000000000000000000000000000000000000000']
         ]
       ];
 
@@ -3990,27 +3989,27 @@ describe('Elliptic', function() {
         // 0 (order 1)
         [
           ['00000000000000000000000000000000000000000000000000000000',
-           '00000000000000000000000000000000000000000000000000000000'].join('')
+           '00000000000000000000000000000000000000000000000000000000']
         ],
         // 1 (order 2, invalid, rejected)
         [
           ['00000000000000000000000000000000000000000000000000000000',
-           '00000000000000000000000000000000000000000000000000000001'].join('')
+           '00000000000000000000000000000000000000000000000000000001']
         ],
         // p - 1 (order 4)
         [
           ['fffffffffffffffffffffffffffffffffffffffffffffffffffffffe',
-           'fffffffffffffffffffffffffffffffffffffffffffffffffffffffe'].join('')
+           'fffffffffffffffffffffffffffffffffffffffffffffffffffffffe']
         ],
         // p (order 1)
         [
           ['fffffffffffffffffffffffffffffffffffffffffffffffffffffffe',
-           'ffffffffffffffffffffffffffffffffffffffffffffffffffffffff'].join('')
+           'ffffffffffffffffffffffffffffffffffffffffffffffffffffffff']
         ],
         // p + 1 (order, invalid, rejected)
         [
           ['ffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
-           '00000000000000000000000000000000000000000000000000000000'].join('')
+           '00000000000000000000000000000000000000000000000000000000']
         ]
       ];
 
@@ -4019,7 +4018,7 @@ describe('Elliptic', function() {
 
       for (let i = 0; i < small.length; i++) {
         const json = small[i];
-        const x = curve.field(json[0], 16);
+        const x = curve.field(json[0].join(''), 16);
         const p = curve.xpoint(x);
 
         if (i === 1 || i === 4) {
