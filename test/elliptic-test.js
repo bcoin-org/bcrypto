@@ -1061,7 +1061,7 @@ describe('Elliptic', function() {
       }
     });
 
-    it('should twist curve', () => {
+    it('should convert mont to twisted', () => {
       const x25519 = new curves.X25519();
       const ed25519 = new curves.ED25519();
       const [a, d] = x25519._edwards(x25519.one.redNeg());
@@ -1070,7 +1070,16 @@ describe('Elliptic', function() {
       assert(d.eq(ed25519.d));
     });
 
-    it('should untwist curve (1)', () => {
+    it('should convert mont to edwards', () => {
+      const x448 = new curves.X448();
+      const ed448 = new curves.ISO448();
+      const [a, d] = x448._edwards(x448.one);
+
+      assert(a.eq(ed448.a));
+      assert(d.eq(ed448.d));
+    });
+
+    it('should convert twisted to mont', () => {
       const x25519 = new curves.X25519();
       const ed25519 = new curves.ED25519();
       const [a, b] = ed25519._mont(ed25519.one);
@@ -1079,7 +1088,7 @@ describe('Elliptic', function() {
       assert(b.eq(x25519.b));
     });
 
-    it('should untwist curve (2)', () => {
+    it('should convert edwards to mont', () => {
       const x448 = new curves.X448();
       const iso448 = new curves.ISO448();
       const [a, b] = iso448._mont(iso448.one);
@@ -1088,7 +1097,7 @@ describe('Elliptic', function() {
       assert(b.eq(x448.b));
     });
 
-    it('should convert to weierstrass', () => {
+    it('should convert mont to short', () => {
       const wei25519 = new curves.WEI25519();
       const x25519 = new curves.X25519();
       const [a, b] = x25519._short();
@@ -1097,13 +1106,32 @@ describe('Elliptic', function() {
       assert(b.eq(wei25519.b));
     });
 
-    it('should convert to mont', () => {
+    it('should convert short to mont (twisted)', () => {
       const x25519 = new curves.X25519();
       const wei25519 = new curves.WEI25519();
-      const [a, b] = wei25519._mont();
+      const [a, b] = wei25519._mont(wei25519.one, false);
 
       assert(a.eq(x25519.a));
       assert(b.eq(x25519.b));
+    });
+
+    it('should convert short to mont (twist448)', () => {
+      const ed448 = new curves.TWIST448();
+      const x448 = ed448.toMont(ed448.one);
+      const wei448 = x448.toShort();
+      const [a, b] = wei448._mont(wei448.one, false);
+
+      assert(a.eq(x448.a));
+      assert(b.eq(x448.b));
+    });
+
+    it('should convert short to mont (edwards)', () => {
+      const x448 = new curves.X448();
+      const wei448 = x448.toShort();
+      const [a, b] = wei448._mont(wei448.one, false);
+
+      assert(a.eq(x448.a));
+      assert(b.eq(x448.b));
     });
 
     it('should match multiplications', () => {
@@ -2081,7 +2109,7 @@ describe('Elliptic', function() {
     it('should test x25519 creation (1)', () => {
       const x25519 = new curves.X25519();
       const wei25519 = new extra.WEI25519();
-      const mont = wei25519.toMont();
+      const mont = wei25519.toMont(wei25519.one, false);
 
       assert(mont.a.eq(x25519.a));
       assert(mont.b.eq(x25519.b));
