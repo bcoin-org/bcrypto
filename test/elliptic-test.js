@@ -1956,6 +1956,35 @@ describe('Elliptic', function() {
       assert(r1.eq(p1));
     });
 
+    it('should test birational equivalence (mont448)', () => {
+      const ed448 = new curves.ED448();
+      const mont448 = ed448.toMont(ed448.one);
+      const edwardsG = ed448.pointFromMont(mont448.g);
+      const montG = mont448.pointFromEdwards(ed448.g.randomize(rng));
+
+      assert(!ed448.g.hasTorsion());
+      assert(edwardsG.eq(ed448.g));
+      assert(montG.eq(mont448.g));
+
+      sanityCheck(mont448);
+
+      const k = ed448.randomScalar(rng);
+      const p0 = ed448.g.mul(k);
+      const p1 = mont448.g.mul(k);
+      const r0 = ed448.pointFromMont(p1);
+      const r1 = mont448.pointFromEdwards(p0);
+
+      assert(r0.eq(p0));
+      assert(r1.eq(p1));
+
+      const m = new extra.MONT448();
+
+      assert(m.a.eq(mont448.a));
+      assert(m.b.eq(mont448.b));
+      assert(m.g.eq(mont448.g));
+      assert(m._scale(ed448).eq(mont448._scale(ed448)));
+    });
+
     it('should test birational equivalence (iso448)', () => {
       const ed448 = new extra.ISO448();
       const x448 = new curves.X448();
@@ -2215,9 +2244,13 @@ describe('Elliptic', function() {
       const x25519 = new curves.X25519();
       const ed25519 = new curves.ED25519();
       const x448 = new curves.X448();
-      const ed448 = new extra.ISO448();
+      const iso448 = new extra.ISO448();
+      const mont448 = new extra.MONT448();
+      const ed448 = new curves.ED448();
 
-      for (const [x, curve] of [[x25519, ed25519], [x448, ed448]]) {
+      for (const [x, curve] of [[x25519, ed25519],
+                                [x448, iso448],
+                                [mont448, ed448]]) {
         const u1 = curve.randomField(rng);
         const p1 = curve.pointFromUniform(u1, x);
         const u2 = curve.pointToUniform(p1, 0, x);
@@ -2619,10 +2652,12 @@ describe('Elliptic', function() {
       const x448 = new curves.X448();
       const ed448 = new curves.ED448();
       const iso448 = new extra.ISO448();
+      const mont448 = new extra.MONT448();
 
       for (const [x, curve] of [[x25519, ed25519],
                                 [x448, ed448],
-                                [x448, iso448]]) {
+                                [x448, iso448],
+                                [mont448, ed448]]) {
         const p = curve.randomPoint(rng);
         const u = curve.pointToHash(p, rng, x);
         const q = curve.pointFromHash(u, false, x);

@@ -230,6 +230,55 @@ class TWIST448 extends EdwardsCurve {
 }
 
 /**
+ * MONT448
+ * Isomorphic to Ed448-Goldilocks.
+ */
+
+class MONT448 extends MontCurve {
+  constructor() {
+    super({
+      id: 'MONT448',
+      ossl: null,
+      type: 'mont',
+      endian: 'le',
+      hash: 'SHAKE256',
+      prefix: null,
+      context: false,
+      iso4: false,
+      prime: 'p448',
+      // 2^448 - 2^224 - 1 (= 3 mod 4)
+      p: 'ffffffff ffffffff ffffffff ffffffff'
+       + 'ffffffff ffffffff fffffffe ffffffff'
+       + 'ffffffff ffffffff ffffffff ffffffff'
+       + 'ffffffff ffffffff',
+      // -78160 / -39082 mod p
+      a: 'b2cf97d2 d43459a9 31ed36b1 fc4e3cb5'
+       + '5d93f8d2 22746997 60ccffc6 49961ed6'
+       + 'c5b05fca c24864ed 6fb59697 931b78da'
+       + '84ddecd8 ca2b5cfb',
+      b: '1',
+      n: '3fffffff ffffffff ffffffff ffffffff'
+       + 'ffffffff ffffffff ffffffff 7cca23e9'
+       + 'c44edb49 aed63690 216cc272 8dc58f55'
+       + '2378c292 ab5844f3',
+      h: '4',
+      // Elligator 2
+      z: '-1',
+      g: [
+        ['ac0d24cc c6c75cb0 eb71f81e 7a6edf51',
+         '48e88aee 009a2a24 e795687e c28e125a',
+         '3e6730a6 0d46367b aa7fe99d 152128dc',
+         '41321bc7 7817f059'].join(''),
+        ['5a4437f6 80c0d0db 9b061276 d5d0ffcc',
+         'e786ff33 b6a53d30 98746425 82e66f09',
+         '4433dae7 7244a6e2 6b11e905 7228f483',
+         '556c41a5 913f55fe'].join('')
+      ]
+    });
+  }
+}
+
+/**
  * ED1174
  * http://elligator.cr.yp.to/elligator-20130828.pdf
  */
@@ -664,6 +713,7 @@ elliptic.register('SECP224K1', SECP224K1);
 elliptic.register('WEI25519', WEI25519);
 elliptic.register('ISO448', ISO448);
 elliptic.register('TWIST448', TWIST448);
+elliptic.register('MONT448', MONT448);
 elliptic.register('ED1174', ED1174);
 elliptic.register('ED41417', ED41417);
 elliptic.register('M221', M221);
@@ -684,6 +734,7 @@ module.exports = {
   WEI25519,
   ISO448,
   TWIST448,
+  MONT448,
   ED1174,
   ED41417,
   M221,
