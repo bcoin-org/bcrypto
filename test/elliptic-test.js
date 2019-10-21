@@ -20,6 +20,7 @@ function checkCurve(curve) {
   // Verify basepoint order.
   assert(!curve.g.isInfinity(), 'Must have base point.');
   assert(!curve.n.isZero(), 'Must have order.');
+  assert(!curve.g.hasTorsion());
 
   // G * (N + 1) = G
   const g = curve.g.toJ();
@@ -1905,6 +1906,28 @@ describe('Elliptic', function() {
       assert(montG.eq(x448.g));
     });
 
+    it('should test birational equivalence (x1174)', () => {
+      const ed1174 = new extra.ED1174();
+      const x1174 = ed1174.toMont(ed1174.one);
+      const edwardsG = ed1174.pointFromMont(x1174.g);
+      const montG = x1174.pointFromEdwards(ed1174.g.randomize(rng));
+
+      assert(!ed1174.g.hasTorsion());
+      assert(edwardsG.eq(ed1174.g));
+      assert(montG.eq(x1174.g));
+
+      sanityCheck(x1174);
+
+      const k = ed1174.randomScalar(rng);
+      const p0 = ed1174.g.mul(k);
+      const p1 = x1174.g.mul(k);
+      const r0 = ed1174.pointFromMont(p1);
+      const r1 = x1174.pointFromEdwards(p0);
+
+      assert(r0.eq(p0));
+      assert(r1.eq(p1));
+    });
+
     it('should test birational equivalence (iso448)', () => {
       const ed448 = new extra.ISO448();
       const x448 = new curves.X448();
@@ -1916,17 +1939,16 @@ describe('Elliptic', function() {
       assert(montG.eq(x448.g));
 
       const k = ed448.randomScalar(rng);
-      const p = ed448.g.mul(k);
-      const q = x448.g.toX().mul(k);
-      const r0 = ed448.pointFromMont(q.toP(false));
-      const r1 = ed448.pointFromMont(q.toP(true));
-      const r2 = x448.pointFromEdwards(p).toX();
+      const p0 = ed448.g.mul(k);
+      const p1 = x448.g.mul(k);
+      const r0 = ed448.pointFromMont(p1);
+      const r1 = x448.pointFromEdwards(p0);
 
-      assert(r0.eq(p) || r1.eq(p));
-      assert(r2.eq(q));
+      assert(r0.eq(p0));
+      assert(r1.eq(p1));
     });
 
-    it('should test 4-isogeny (twist448)', () => {
+    it('should test 4-isogeny equivalence (twist448)', () => {
       const twist448 = new extra.TWIST448();
 
       // Sanity check.
@@ -1987,13 +2009,13 @@ describe('Elliptic', function() {
       assert(montG.eq(x25519.g));
 
       const k = raw25519.randomScalar(rng);
-      const p = raw25519.g.mul(k);
-      const q = x25519.g.mul(k);
-      const r0 = raw25519.pointFromMont(q);
-      const r1 = x25519.pointFromEdwards(p);
+      const p0 = raw25519.g.mul(k);
+      const p1 = x25519.g.mul(k);
+      const r0 = raw25519.pointFromMont(p1);
+      const r1 = x25519.pointFromEdwards(p0);
 
-      assert(r0.eq(p));
-      assert(r1.eq(q));
+      assert(r0.eq(p0));
+      assert(r1.eq(p1));
     });
 
     it('should hot potato a point across 4 curves', () => {
