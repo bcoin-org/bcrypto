@@ -2666,6 +2666,28 @@ describe('Elliptic', function() {
       }
     });
 
+    it('should invert SSWU elligator squared on Ed448', () => {
+      const edwards = new curves.ED448();
+      const mont = edwards.toMont(edwards.one);
+      const wei = mont.toShort();
+
+      // Insane trick.
+      const u = rng.randomBytes(112);
+      const p = wei.pointFromHash(u, false);
+      const v = wei.pointToHash(p, rng);
+      const q = wei.pointFromHash(v, false);
+
+      const p0 = mont.pointFromShort(p);
+      const p1 = edwards.pointFromMont(p0);
+
+      const q0 = mont.pointFromShort(q);
+      const q1 = edwards.pointFromMont(q0);
+
+      assert(p.eq(q));
+      assert(p0.eq(q0));
+      assert(p1.eq(q1));
+    });
+
     it('should test unified addition', () => {
       const curve = new curves.SECP256K1();
 
