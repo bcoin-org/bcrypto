@@ -1063,19 +1063,28 @@ describe('Elliptic', function() {
     it('should twist curve', () => {
       const x25519 = new curves.X25519();
       const ed25519 = new curves.ED25519();
-      const [a, d] = x25519._twisted(x25519.one.redNeg());
+      const [a, d] = x25519._edwards(x25519.one.redNeg());
 
       assert(a.eq(ed25519.a));
       assert(d.eq(ed25519.d));
     });
 
-    it('should untwist curve', () => {
+    it('should untwist curve (1)', () => {
       const x25519 = new curves.X25519();
       const ed25519 = new curves.ED25519();
-      const [a, b] = ed25519._untwisted(ed25519.one);
+      const [a, b] = ed25519._mont(ed25519.one);
 
       assert(a.eq(x25519.a));
       assert(b.eq(x25519.b));
+    });
+
+    it('should untwist curve (2)', () => {
+      const x448 = new curves.X448();
+      const iso448 = new curves.ISO448();
+      const [a, b] = iso448._mont(iso448.one);
+
+      assert(a.eq(x448.a));
+      assert(b.eq(x448.b));
     });
 
     it('should convert to weierstrass', () => {
@@ -1085,6 +1094,15 @@ describe('Elliptic', function() {
 
       assert(a.eq(wei25519.a));
       assert(b.eq(wei25519.b));
+    });
+
+    it('should convert to mont', () => {
+      const x25519 = new curves.X25519();
+      const wei25519 = new curves.WEI25519();
+      const [a, b] = wei25519._mont();
+
+      assert(a.eq(x25519.a));
+      assert(b.eq(x25519.b));
     });
 
     it('should match multiplications', () => {
@@ -2016,13 +2034,11 @@ describe('Elliptic', function() {
 
         assert(wei25519.pointFromShort(we).eq(we));
         assert(wei25519.pointFromMont(mo.toP(sign)).eq(we));
-        assert(wei25519.pointFromEdwards(ed).eq(we));
 
         assert(x25519.pointFromShort(we).toX().eq(mo));
         assert(x25519.pointFromMont(mo.toP(sign)).toX().eq(mo));
         assert(x25519.pointFromEdwards(ed).toX().eq(mo));
 
-        assert(ed25519.pointFromShort(we).eq(ed));
         assert(ed25519.pointFromMont(mo.toP(sign)).eq(ed));
         assert(ed25519.pointFromEdwards(ed).eq(ed));
       }
@@ -2030,14 +2046,46 @@ describe('Elliptic', function() {
 
     it('should test wei25519 creation', () => {
       const wei25519 = new extra.WEI25519();
-      const ed = new curves.ED25519();
-      const mont = ed.toMont(ed.one);
+      const ed25519 = new curves.ED25519();
+      const mont = ed25519.toMont(ed25519.one);
       const wei = mont.toShort();
 
       assert(wei.a.eq(wei25519.a));
       assert(wei.b.eq(wei25519.b));
       assert(wei.g.eq(wei25519.g));
       assert(mont.pointFromShort(wei.g).eq(mont.g));
+    });
+
+    it('should test x25519 creation (1)', () => {
+      const x25519 = new curves.X25519();
+      const wei25519 = new extra.WEI25519();
+      const mont = wei25519.toMont();
+
+      assert(mont.a.eq(x25519.a));
+      assert(mont.b.eq(x25519.b));
+      assert(mont.g.eq(x25519.g));
+      assert(wei25519.pointFromMont(mont.g).eq(wei25519.g));
+    });
+
+    it('should test x25519 creation (2)', () => {
+      const x25519 = new curves.X25519();
+      const ed25519 = new curves.ED25519();
+      const mont = ed25519.toMont(ed25519.one);
+
+      assert(mont.a.eq(x25519.a));
+      assert(mont.b.eq(x25519.b));
+      assert(mont.g.eq(x25519.g));
+      assert(ed25519.pointFromMont(mont.g).eq(ed25519.g));
+    });
+
+    it('should test ed25519 creation', () => {
+      const x25519 = new curves.X25519();
+      const ed25519 = new curves.ED25519();
+      const ed = x25519.toEdwards(x25519.one.redNeg());
+
+      assert(ed.a.eq(ed25519.a));
+      assert(ed.d.eq(ed25519.d));
+      assert(ed.g.eq(ed25519.g));
     });
 
     it('should test wei25519 equivalence when b != 1', () => {
@@ -2055,14 +2103,12 @@ describe('Elliptic', function() {
 
       // Edwards.
       assert(ed.pointFromMont(p2).eq(p1));
-      // assert(ed.pointFromShort(p3).eq(p1));
 
       // Mont.
       assert(mont.pointFromEdwards(p1).eq(p2));
       assert(mont.pointFromShort(p3).eq(p2));
 
       // Short.
-      // assert(wei.pointFromEdwards(p1).eq(p3));
       assert(wei.pointFromMont(p2).eq(p3));
     });
 
