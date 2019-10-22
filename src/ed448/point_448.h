@@ -53,7 +53,7 @@ struct bcrypto_curve448_precomputed_s {
 /* Number of bytes in an x448 private key */
 # define BCRYPTO_X448_PRIVATE_BYTES 56
 
-/* Weierstrass projective coordinates */
+/* Twisted Edwards projective coordinates */
 typedef struct curve448_proj_point_s {
   bcrypto_gf x;
   bcrypto_gf y;
