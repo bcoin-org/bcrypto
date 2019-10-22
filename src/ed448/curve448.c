@@ -72,57 +72,43 @@ static void bcrypto_gf_invert(bcrypto_gf y, const bcrypto_gf x, int assert_nonze
   bcrypto_gf_copy(y, t2);
 }
 
-static bcrypto_mask_t
+void
 curve448_proj_twist(curve448_proj_point *p,
                     const bcrypto_gf u,
                     const bcrypto_gf v)
 {
   bcrypto_gf xx, xz, yy, yz;
-  bcrypto_mask_t torsion2, torsion4;
 
-  /* (0, 0) -> (0, -1) */
-  torsion2 = bcrypto_gf_eq(u, ZERO) & bcrypto_gf_eq(v, ZERO);
-
-  /* (x, y) = (u / v, (u - 1) / (u + 1)) */
+  /* (x, y) = (u / v, (u + 1) / (u - 1)) */
   bcrypto_gf_copy(xx, u);
   bcrypto_gf_copy(xz, v);
-  bcrypto_gf_sub(yy, u, ONE);
-  bcrypto_gf_add(yz, u, ONE);
+  bcrypto_gf_add(yy, u, ONE);
+  bcrypto_gf_sub(yz, u, ONE);
 
-  /* (-1, +-sqrt((a - 2) / b)) -> (+-1, 0) */
-  torsion4 = bcrypto_gf_eq(yz, ZERO);
+  /* (0, 0) -> (0, -1) */
+  bcrypto_gf_cond_sel(xz, xz, ONE, bcrypto_gf_eq(v, ZERO));
 
   bcrypto_gf_mul(p->x, xx, yz);
   bcrypto_gf_mul(p->y, yy, xz);
   bcrypto_gf_mul(p->z, xz, yz);
-
-  bcrypto_gf_cond_sel(p->x, p->x, ZERO, torsion2);
-  bcrypto_gf_cond_sel(p->y, p->y, ONE, torsion2);
-  bcrypto_gf_cond_neg(p->y, torsion2);
-  bcrypto_gf_cond_sel(p->z, p->z, ONE, torsion2);
-
-  return ~torsion4;
 }
 
 static bcrypto_mask_t
 curve448_proj_untwist(bcrypto_gf u, bcrypto_gf v,
                       const curve448_proj_point *p)
 {
+  bcrypto_mask_t torsion = bcrypto_gf_eq(p->x, ZERO);
+  bcrypto_mask_t inf = torsion & bcrypto_gf_eq(p->y, p->z);
   bcrypto_gf uu, uz, vv, vz, zi, t;
-  bcrypto_mask_t inf;
-  bcrypto_mask_t torsion2;
 
-  /* (0, 1) -> O */
-  inf = bcrypto_gf_eq(p->x, ZERO) & bcrypto_gf_eq(p->y, p->z);
-
-  /* (0, -1) -> (0, 0) */
-  torsion2 = bcrypto_gf_eq(p->x, ZERO) & ~inf;
-
-  /* (u, v) = ((1 + y) / (1 - y), (1 + y) / (1 - y)x) */
-  bcrypto_gf_add(uu, p->z, p->y);
-  bcrypto_gf_sub(uz, p->z, p->y);
+  /* (u, v) = ((y + 1) / (y - 1), u / x) */
+  bcrypto_gf_add(uu, p->y, p->z);
+  bcrypto_gf_sub(uz, p->y, p->z);
   bcrypto_gf_mul(vv, p->z, uu);
   bcrypto_gf_mul(vz, p->x, uz);
+
+  /* (0, -1) -> (0, 0) */
+  bcrypto_gf_cond_sel(vz, vz, ONE, torsion);
 
   bcrypto_gf_mul(t, uz, vz);
   bcrypto_gf_invert(zi, t, 0);
@@ -133,8 +119,9 @@ curve448_proj_untwist(bcrypto_gf u, bcrypto_gf v,
   bcrypto_gf_mul(t, vv, uz);
   bcrypto_gf_mul(v, t, zi);
 
-  bcrypto_gf_cond_sel(u, u, ZERO, torsion2);
-  bcrypto_gf_cond_sel(v, v, ZERO, torsion2);
+  /* (0, 1) -> O */
+  bcrypto_gf_cond_sel(u, u, ZERO, inf);
+  bcrypto_gf_cond_sel(v, v, ZERO, inf);
 
   return ~inf;
 }
@@ -161,8 +148,8 @@ curve448_proj_add(curve448_proj_point *p3,
                   const curve448_proj_point *p1,
                   const curve448_proj_point *p2)
 {
-  static const bcrypto_gf A = {{{156328}}}; /* (A + 2) / B */
-  static const bcrypto_gf D = {{{156324}}}; /* (A - 2) / B */
+  static const bcrypto_gf A = {{{156324}}}; /* (-A + 2) / -B */
+  static const bcrypto_gf D = {{{156328}}}; /* (-A - 2) / -B */
   bcrypto_gf a, b, c, d, e, f, g, xyxy, t1, t2;
 
   /* A = Z1 * Z2 */
@@ -1327,15 +1314,11 @@ curve448_point_from_hash(bcrypto_gf x, bcrypto_gf y,
    * around this, we do the addition on
    * the twist of an Edwards curve.
    *
-   * The downside of doing things this way
-   * is that we cannot handle the 4-torsion
-   * point (-1, +-sqrt((a - 2) / b)).
-   *
-   * Luckily, the elligator2 map will never
-   * produce such a point.
+   * Assuming curve448 is M(-A,-B), we
+   * are simply moving to E(a,d).
    */
-  (void)curve448_proj_twist(&p1, u1, v1);
-  (void)curve448_proj_twist(&p2, u2, v2);
+  curve448_proj_twist(&p1, u1, v1);
+  curve448_proj_twist(&p2, u2, v2);
   curve448_proj_add(&p1, &p1, &p2);
 
   if (pake) {
@@ -1360,9 +1343,7 @@ curve448_point_to_hash(unsigned char out[112],
   unsigned int bit;
   bcrypto_mask_t hint;
 
-  /* Cannot handle the 4-torsion point (-1, +-sqrt((a - 2) / b)). */
-  if (!curve448_proj_twist(&p, x, y))
-    goto fail;
+  curve448_proj_twist(&p, x, y);
 
   for (;;) {
     if (!bcrypto_random(u1, 56))
@@ -1377,7 +1358,7 @@ curve448_point_to_hash(unsigned char out[112],
     if (bcrypto_gf_eq(y1, ZERO))
       continue;
 
-    (void)curve448_proj_twist(&p1, x1, y1);
+    curve448_proj_twist(&p1, x1, y1);
     curve448_proj_neg(&p1, &p1);
     curve448_proj_add(&p2, &p, &p1);
 
