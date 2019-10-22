@@ -20,7 +20,8 @@ function checkCurve(curve) {
   // Verify basepoint order.
   assert(!curve.g.isInfinity(), 'Must have base point.');
   assert(!curve.n.isZero(), 'Must have order.');
-  assert(!curve.g.hasTorsion());
+  assert(!curve.g.hasTorsion(), 'Base point must be a generator.');
+  assert(curve.isElliptic(), 'Curve must be elliptic.');
 
   // G * (N + 1) = G
   const g = curve.g.toJ();
@@ -575,6 +576,21 @@ describe('Elliptic', function() {
       assert(point.randomize(rng).eq(target));
     });
 
+    it('should calculate j-invariant', () => {
+      const expect = '39240375672115510010799456308813573486'
+                   + '606784421612167109713554819120306934551';
+
+      const j1 = new curves.SECP256K1().jinv();
+      const j2 = new extra.WEI25519().jinv();
+      const j3 = new curves.X25519().jinv();
+      const j4 = new curves.ED25519().jinv();
+
+      assert.strictEqual(j1.toString(10), '0');
+      assert.strictEqual(j2.toString(10), expect);
+      assert.strictEqual(j3.toString(10), expect);
+      assert.strictEqual(j4.toString(10), expect);
+    });
+
     it('should find an odd point given a y coordinate', () => {
       const curve = new EdwardsCurve({
         id: 'ED25519',
@@ -1072,7 +1088,7 @@ describe('Elliptic', function() {
     it('should convert mont to edwards', () => {
       const x448 = new curves.X448();
       const ed448 = new curves.ISO448();
-      const [a, d] = x448._edwards(x448.one);
+      const [a, d] = x448._edwards(x448.one, true);
 
       assert(a.eq(ed448.a));
       assert(d.eq(ed448.d));
@@ -1935,7 +1951,7 @@ describe('Elliptic', function() {
 
     it('should test birational equivalence (x1174)', () => {
       const ed1174 = new extra.ED1174();
-      const x1174 = ed1174.toMont(ed1174.one);
+      const x1174 = ed1174.toMont();
       const edwardsG = ed1174.pointFromMont(x1174.g);
       const montG = x1174.pointFromEdwards(ed1174.g.randomize(rng));
 

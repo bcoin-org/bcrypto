@@ -22,9 +22,6 @@ class SECP192K1 extends ShortCurve {
       type: 'short',
       endian: 'be',
       hash: 'SHA256',
-      prefix: null,
-      context: false,
-      iso4: false,
       prime: null,
       // 2^192 − 2^32 − 4553 (= 3 mod 4)
       p: ['ffffffff ffffffff ffffffff ffffffff',
@@ -60,9 +57,6 @@ class SECP224K1 extends ShortCurve {
       type: 'short',
       endian: 'be',
       hash: 'SHA256',
-      prefix: null,
-      context: false,
-      iso4: false,
       prime: null,
       // 2^224 − 2^32 − 6803 (= 5 mod 8)
       p: ['ffffffff ffffffff ffffffff ffffffff',
@@ -98,9 +92,6 @@ class WEI25519 extends ShortCurve {
       type: 'short',
       endian: 'be',
       hash: 'SHA256',
-      prefix: null,
-      context: false,
-      iso4: false,
       prime: 'p25519',
       // 2^255 - 19 (= 5 mod 8)
       p: ['7fffffff ffffffff ffffffff ffffffff',
@@ -141,7 +132,7 @@ class ISO448 extends EdwardsCurve {
       hash: 'SHAKE256',
       prefix: 'SigEd448',
       context: true,
-      iso4: false,
+      invert: true,
       prime: 'p448',
       // 2^448 - 2^224 - 1 (= 3 mod 4)
       p: ['ffffffff ffffffff ffffffff ffffffff',
@@ -193,7 +184,7 @@ class TWIST448 extends EdwardsCurve {
       hash: 'SHAKE256',
       prefix: 'SigEd448',
       context: true,
-      iso4: false,
+      invert: false,
       prime: 'p448',
       // 2^448 - 2^224 - 1 (= 3 mod 4)
       p: ['ffffffff ffffffff ffffffff ffffffff',
@@ -242,9 +233,6 @@ class MONT448 extends MontCurve {
       type: 'mont',
       endian: 'le',
       hash: 'SHAKE256',
-      prefix: null,
-      context: false,
-      iso4: false,
       prime: 'p448',
       // 2^448 - 2^224 - 1 (= 3 mod 4)
       p: ['ffffffff ffffffff ffffffff ffffffff',
@@ -293,6 +281,7 @@ class ED1174 extends EdwardsCurve {
       hash: 'SHA512',
       prefix: 'SigEd1174',
       context: false,
+      invert: false,
       prime: null,
       // 2^251 - 9 (= 3 mod 4)
       p: ['07ffffff ffffffff ffffffff ffffffff',
@@ -337,6 +326,7 @@ class ED41417 extends EdwardsCurve {
       hash: 'SHAKE256',
       prefix: 'SigEd41417',
       context: false,
+      invert: false,
       prime: null,
       // 2^414 - 17 (= 3 mod 4)
       p: ['3fffffff ffffffff ffffffff ffffffff',
@@ -390,9 +380,6 @@ class M221 extends MontCurve {
       type: 'mont',
       endian: 'le',
       hash: 'SHA256',
-      prefix: null,
-      context: false,
-      iso4: false,
       prime: null,
       // 2^221 - 3 (= 5 mod 8)
       p: ['1fffffff ffffffff ffffffff ffffffff',
@@ -430,6 +417,7 @@ class E222 extends EdwardsCurve {
       hash: 'SHA512',
       prefix: 'SigE222',
       context: false,
+      invert: false,
       prime: null,
       // 2^222 - 117 (= 3 mod 4)
       p: ['3fffffff ffffffff ffffffff ffffffff',
@@ -472,9 +460,6 @@ class M383 extends MontCurve {
       type: 'mont',
       endian: 'le',
       hash: 'SHAKE256',
-      prefix: null,
-      context: false,
-      iso4: false,
       prime: null,
       // 2^383 - 187 (= 5 mod 8)
       p: ['7fffffff ffffffff ffffffff ffffffff',
@@ -517,7 +502,7 @@ class E382 extends EdwardsCurve {
       hash: 'SHAKE256',
       prefix: 'SigE382',
       context: false,
-      iso4: false,
+      invert: false,
       prime: null,
       // 2^382 - 105 (= 3 mod 4)
       p: ['3fffffff ffffffff ffffffff ffffffff',
@@ -566,9 +551,6 @@ class M511 extends MontCurve {
       type: 'mont',
       endian: 'le',
       hash: 'SHAKE256',
-      prefix: null,
-      context: false,
-      iso4: false,
       prime: null,
       // 2^511 - 187 (= 5 mod 8)
       p: ['7fffffff ffffffff ffffffff ffffffff',
@@ -615,7 +597,7 @@ class E521 extends EdwardsCurve {
       hash: 'SHAKE256',
       prefix: 'SigE521',
       context: false,
-      iso4: false,
+      invert: false,
       prime: 'p521',
       // 2^521 - 1 (= 3 mod 4)
       p: ['000001ff ffffffff ffffffff ffffffff',
@@ -677,6 +659,7 @@ class MDC extends EdwardsCurve {
       hash: 'SHA512',
       prefix: 'SigMDC',
       context: false,
+      invert: false,
       prime: null,
       // (= 3 mod 4)
       p: ['f13b68b9 d456afb4 532f92fd d7a5fd4f',
