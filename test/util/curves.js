@@ -37,7 +37,8 @@ class SECP192K1 extends ShortCurve {
         ['db4ff10e c057e9ae 26b07d02 80b7f434',
          '1da5d1b1 eae06c7d'],
         ['9b2f2f6d 9c5628a7 844163d0 15be8634',
-         '4082aa88 d95e2f9d']
+         '4082aa88 d95e2f9d'],
+        pre
       ]
     });
   }
@@ -73,8 +74,110 @@ class SECP224K1 extends ShortCurve {
         ['a1455b33 4df099df 30fc28a1 69a467e9',
          'e47075a9 0f7e650e b6b7a45c'],
         ['7e089fed 7fba3442 82cafbd6 f7e319f7',
-         'c0b0bd59 e2ca4bdb 556d61a5']
+         'c0b0bd59 e2ca4bdb 556d61a5'],
+        pre
       ]
+    });
+  }
+}
+
+/**
+ * ANSSI FRP256V1
+ */
+
+class FRP256V1 extends ShortCurve {
+  constructor(pre) {
+    super({
+      id: 'FRP256V1',
+      ossl: null,
+      type: 'short',
+      endian: 'be',
+      hash: 'SHA256',
+      prime: null,
+      // (= 3 mod 4)
+      p: ['f1fd178c 0b3ad58f 10126de8 ce42435b',
+          '3961adbc abc8ca6d e8fcf353 d86e9c03'],
+      a: '-3',
+      b: ['ee353fca 5428a930 0d4aba75 4a44c00f',
+          'dfec0c9a e4b1a180 3075ed96 7b7bb73f'],
+      n: ['f1fd178c 0b3ad58f 10126de8 ce42435b',
+          '53dc67e1 40d2bf94 1ffdd459 c6d655e1'],
+      h: '1',
+      // Icart
+      z: '-3',
+      g: [
+        ['b6b3d4c3 56c139eb 31183d47 49d42395',
+         '8c27d2dc af98b701 64c97a2d d98f5cff'],
+        ['6142e0f7 c8b20491 1f9271f0 f3ecef8c',
+         '2701c307 e8e4c9e1 83115a15 54062cfb'],
+        pre
+      ]
+    });
+  }
+}
+
+/**
+ * ANOMALOUS
+ * https://safecurves.cr.yp.to/index.html
+ */
+
+class ANOMALOUS extends ShortCurve {
+  constructor(pre) {
+    super({
+      id: 'ANOMALOUS',
+      ossl: null,
+      type: 'short',
+      endian: 'be',
+      hash: 'SHA256',
+      prime: null,
+      // (= 3 mod 4)
+      p: ['00000b00 00000000 00000000 00009530',
+          '00000000 00000000 0001f9d7'],
+      a: ['0000098d 0fac687d 6343eb1a 1f595283',
+          'eb1a1f58 d0fac687 d635f5e4'],
+      b: ['000004a1 f58d0fac 687d6343 eb1a5e2d',
+          '6343eb1a 1f58d0fa c688ab3f'],
+      n: ['00000b00 00000000 00000000 00009530',
+          '00000000 00000000 0001f9d7'],
+      h: '1',
+      // SSWU
+      z: '3',
+      g: [
+        ['00000101 efb35fd1 963c4871 a2d17eda',
+         'afa7e249 807f58f8 705126c6'],
+        ['00000223 89a39543 75834304 ba1d509a',
+         '97de6c07 148ea7f5 951b20e7'],
+        pre
+      ]
+    });
+  }
+}
+
+/**
+ * BN(2,254)
+ * https://eprint.iacr.org/2010/429
+ */
+
+class BN2254 extends ShortCurve {
+  constructor(pre) {
+    super({
+      id: 'BN2254',
+      ossl: null,
+      type: 'short',
+      endian: 'be',
+      hash: 'SHA256',
+      prime: null,
+      // (= 3 mod 4)
+      p: ['25236482 40000001 ba344d80 00000008',
+          '61210000 00000013 a7000000 00000013'],
+      a: '0',
+      b: '2',
+      n: ['25236482 40000001 ba344d80 00000007',
+          'ff9f8000 00000010 a1000000 0000000d'],
+      h: '1',
+      // SVDW
+      z: '-1',
+      g: ['-1', '1', pre]
     });
   }
 }
@@ -358,6 +461,45 @@ class ED41417 extends EdwardsCurve {
          '00000000 00000000 00000000 00000000',
          '00000022'],
         pre
+      ]
+    });
+  }
+}
+
+/**
+ * CURVE383187
+ * https://eprint.iacr.org/2013/647
+ */
+
+class CURVE383187 extends MontCurve {
+  constructor() {
+    super({
+      id: 'CURVE383187',
+      ossl: null,
+      type: 'mont',
+      endian: 'le',
+      hash: 'SHAKE256',
+      prime: null,
+      // 2^383 - 187 (= 5 mod 8)
+      p: ['7fffffff ffffffff ffffffff ffffffff',
+          'ffffffff ffffffff ffffffff ffffffff',
+          'ffffffff ffffffff ffffffff ffffff45'],
+      // 229969
+      a: '38251',
+      b: '1',
+      n: ['10000000 00000000 00000000 00000000',
+          '00000000 00000000 0e85a852 87a1488a',
+          'cd41ae84 b2b70304 46f72088 b00a0e21'],
+      h: '8',
+      // Elligator 2
+      z: '2',
+      g: [
+        ['00000000 00000000 00000000 00000000',
+         '00000000 00000000 00000000 00000000',
+         '00000000 00000000 00000000 00000005'],
+        ['1eebe07d c1871896 732b12d5 504a3237',
+         '0471965c 7a11f2c8 9865f855 ab3cbd7c',
+         '224e3620 c31af337 0788457d d5ce46df']
       ]
     });
   }
@@ -679,18 +821,63 @@ class MDC extends EdwardsCurve {
   }
 }
 
+/**
+ * Jubjub
+ * https://z.cash/technology/jubjub/
+ * https://github.com/zkcrypto/jubjub
+ */
+
+class JUBJUB extends EdwardsCurve {
+  constructor(pre) {
+    super({
+      id: 'JUBJUB',
+      ossl: null,
+      type: 'edwards',
+      endian: 'le',
+      hash: 'SHA512',
+      prefix: 'SigJubjub',
+      context: false,
+      prime: null,
+      // (= 1 mod 16)
+      p: '73eda753 299d7d48 3339d808 09a1d805'
+       + '53bda402 fffe5bfe ffffffff 00000001',
+      a: '-1',
+      c: '1',
+      // -(10240 / 10241) mod p
+      d: '2a9318e7 4bfa2b48 f5fd9207 e6bd7fd4'
+       + '292d7f6d 37579d26 01065fd6 d6343eb1',
+      n: '0e7db4ea 6533afa9 06673b01 01343b00'
+       + 'a6682093 ccc81082 d0970e5e d6f72cb7',
+      h: '8',
+      // Elligator 2
+      z: '5',
+      g: [
+        ['11dafe5d 23e12180 86a365b9 9fbf3d3b',
+         'e72f6afd 7d1f7262 3e6b0714 92d1122b'].join(''),
+        ['1d523cf1 ddab1a17 93132e78 c866c0c3',
+         '3e26ba5c c220fed7 cc3f870e 59d292aa'].join(''),
+        pre
+      ]
+    });
+  }
+}
+
 /*
  * Register
  */
 
 elliptic.register('SECP192K1', SECP192K1);
 elliptic.register('SECP224K1', SECP224K1);
+elliptic.register('FRP256V1', FRP256V1);
+elliptic.register('ANOMALOUS', ANOMALOUS);
+elliptic.register('BN2254', BN2254);
 elliptic.register('WEI25519', WEI25519);
 elliptic.register('ISO448', ISO448);
 elliptic.register('TWIST448', TWIST448);
 elliptic.register('MONT448', MONT448);
 elliptic.register('ED1174', ED1174);
 elliptic.register('ED41417', ED41417);
+elliptic.register('CURVE383187', CURVE383187);
 elliptic.register('M221', M221);
 elliptic.register('E222', E222);
 elliptic.register('M383', M383);
@@ -698,6 +885,7 @@ elliptic.register('E382', E382);
 elliptic.register('M511', M511);
 elliptic.register('E521', E521);
 elliptic.register('MDC', MDC);
+elliptic.register('JUBJUB', JUBJUB);
 
 /*
  * Expose
@@ -706,17 +894,22 @@ elliptic.register('MDC', MDC);
 module.exports = {
   SECP192K1,
   SECP224K1,
+  FRP256V1,
+  ANOMALOUS,
+  BN2254,
   WEI25519,
   ISO448,
   TWIST448,
   MONT448,
   ED1174,
   ED41417,
+  CURVE383187,
   M221,
   E222,
   M383,
   E382,
   M511,
   E521,
-  MDC
+  MDC,
+  JUBJUB
 };

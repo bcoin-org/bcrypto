@@ -3,58 +3,60 @@
 const assert = require('bsert');
 const BN = require('../lib/bn');
 const elliptic = require('../lib/js/elliptic');
-const extra = require('../test/util/curves');
-const id = (process.argv[2] || '').toUpperCase();
-const ell1 = process.argv.includes('--elligator1');
-const Curve = elliptic.curves[id] || extra[id];
 
-if (!Curve)
-  throw new Error(`Curve not found (${id}).`);
+require('../test/util/curves');
 
 function printZ(curve) {
   assert(curve instanceof elliptic.Curve);
 
+  const alg = getAlg(curve);
+  const s = tryFindS(curve);
   const z = findZ(curve);
 
-  let alg;
-
-  if (curve.type === 'short') {
-    if (curve.p.modrn(3) === 2)
-      alg = 'icart';
-    else if (!curve.a.isZero() && !curve.b.isZero())
-      alg = 'sswu';
-    else if (curve.p.modrn(3) === 1 && !curve.b.isZero())
-      alg = 'svdw';
-  } else if (curve.type === 'mont' || curve.type === 'edwards') {
-    alg = 'elligator2';
-
-    if (ell1 && curve.type === 'edwards') {
-      if (curve.p.andln(3) === 3 && curve.d.redJacobi() === -1)
-        alg = 'elligator1';
-    }
-  } else {
-    throw new Error('Not implemented.');
-  }
-
-  let sign = '';
-
-  if (alg !== 'elligator1' && z.redIsNeg()) {
-    sign = '-';
-    z.redINeg();
-  }
-
-  let str = z.fromRed().toString(16);
-
-  if (alg === 'elligator1') {
+  if (s != null) {
     const size = (((curve.fieldBits + 7) >>> 3) + 3) & -4;
+
+    let str = s.fromRed().toString(16);
 
     while (str.length < size * 2)
       str = '0' + str;
 
-    console.log('%s S: %s (%s)', curve.id, sign + str, alg);
-  } else {
-    console.log('%s Z: %s (%s)', curve.id, sign + str, alg);
+    console.log('%s S: %s (elligator1)', curve.id, str);
   }
+
+  let sign = '';
+
+  if (z.redIsNeg()) {
+    sign = '-';
+    z.redINeg();
+  }
+
+  const str = sign + z.fromRed().toString(16);
+
+  console.log('%s Z: %s (%s)', curve.id, str, alg);
+}
+
+function getAlg(curve) {
+  assert(curve instanceof elliptic.Curve);
+
+  if (curve.type === 'short') {
+    // p = 2 mod 3
+    if (curve.p.modrn(3) === 2)
+      return 'icart';
+
+    // a != 0, b != 0
+    if (!curve.a.isZero() && !curve.b.isZero())
+      return 'sswu';
+
+    // p = 1 mod 3, b != 0
+    if (curve.p.modrn(3) === 1 && !curve.b.isZero())
+      return 'svdw';
+  }
+
+  if (curve.type === 'mont' || curve.type === 'edwards')
+    return 'elligator2';
+
+  throw new Error('Not implemented.');
 }
 
 function findZ(curve) {
@@ -72,20 +74,29 @@ function findZ(curve) {
     throw new Error('Not implemented.');
   }
 
-  if (ell1 && curve.type === 'edwards') {
-    if (curve.p.andln(3) === 3 && curve.d.redJacobi() === -1) {
-      try {
-        return findElligator1S(curve);
-      } catch (e) {
-        if (e.message === 'X is not a square mod P.')
-          throw new Error('Not an elligator1 curve.');
-        throw e;
-      }
-    }
-  }
-
   if (curve.type === 'mont' || curve.type === 'edwards')
     return findElligator2Z(curve);
+
+  throw new Error('Not implemented.');
+}
+
+function tryFindS(curve) {
+  assert(curve instanceof elliptic.Curve);
+
+  try {
+    return findS(curve);
+  } catch (e) {
+    return null;
+  }
+}
+
+function findS(curve) {
+  assert(curve instanceof elliptic.Curve);
+
+  if (curve.type === 'edwards') {
+    if (curve.p.andln(3) === 3 && curve.d.redJacobi() === -1)
+      return findElligator1S(curve);
+  }
 
   throw new Error('Not implemented.');
 }
@@ -268,13 +279,16 @@ function isSVDWZ(curve, z) {
   return curve.solveY2(d).redJacobi() === 1;
 }
 
-// Test ED1174 `s`.
-{
-  const ed1174 = new extra.ED1174();
-  const s = new BN('03fe707f 0d7004fd 334ee813 a5f1a74a'
-                 + 'b2449139 c82c39d8 4a09ae74 cc78c615', 16);
+function main(argv) {
+  if (argv.length < 3) {
+    console.error('Must enter a curve ID.');
+    process.exit(1);
+    return;
+  }
 
-  assert(isElligator1S(ed1174, s.toRed(ed1174.red)));
+  const curve = elliptic.curve(argv[2]);
+
+  printZ(curve);
 }
 
-printZ(new Curve());
+main(process.argv);
