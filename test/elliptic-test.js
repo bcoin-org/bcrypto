@@ -116,6 +116,8 @@ describe('Elliptic', function() {
   describe('Vectors', () => {
     const test = (curve, vector) => {
       it(`should test curve ${curve.id}`, () => {
+        const mont = curve.type === 'mont' ? 1 : 0;
+
         // Quick sanity test.
         const p = curve.g;
         const j = curve.g.toJ();
@@ -145,7 +147,7 @@ describe('Elliptic', function() {
         assert(p.uadd(p).uadd(p).eq(tp));
         assert(j.uadd(j).uadd(j).eq(tj));
 
-        if (curve.type === 'mont') {
+        if (mont) {
           const g = curve.g.toX();
           const p1 = g.mul(new BN(2));
           const p2 = g.mul(new BN(3));
@@ -157,15 +159,16 @@ describe('Elliptic', function() {
         // Slow sanity test.
         sanityCheck(curve);
 
-        for (let i = 0; i < 2; i++) {
+        for (let i = 0; i < 2 + mont; i++) {
+          const single = mont && i === 0;
           const ak = new BN(vector.a.k, 16);
-          const g = curve.type === 'mont' ? curve.g.toX() : curve.g;
+          const g = single ? curve.g.toX() : curve.g;
+          const y = single ? 'Y' : 'y';
           const ap = g.mul(ak);
 
+          assert(ap.validate());
           assert.equal(ap.getX().toString(16), vector.a.x);
-
-          if (curve.type !== 'mont')
-            assert.equal(ap.getY().toString(16), vector.a.y);
+          assert.equal(ap.getY().toString(16), vector.a[y]);
 
           assert(g.mulSimple(ak).eq(ap));
           assert(g.mulConst(ak).eq(ap));
@@ -174,10 +177,9 @@ describe('Elliptic', function() {
           const bk = new BN(vector.b.k, 16);
           const bp = g.mul(bk);
 
+          assert(bp.validate());
           assert.equal(bp.getX().toString(16), vector.b.x);
-
-          if (curve.type !== 'mont')
-            assert.equal(bp.getY().toString(16), vector.b.y);
+          assert.equal(bp.getY().toString(16), vector.b[y]);
 
           assert(g.mulSimple(bk).eq(bp));
           assert(g.mulConst(bk).eq(bp));
@@ -186,11 +188,10 @@ describe('Elliptic', function() {
           const p1 = bp.mul(ak);
           const p2 = ap.mul(bk);
 
+          assert(p1.validate());
           assert(p1.eq(p2));
           assert.equal(p1.getX().toString(16), vector.s.x);
-
-          if (curve.type !== 'mont')
-            assert.equal(p1.getY().toString(16), vector.s.y);
+          assert.equal(p1.getY().toString(16), vector.s[y]);
 
           assert(bp.mulSimple(ak).eq(p1));
           assert(ap.mulSimple(bk).eq(p1));
@@ -200,11 +201,10 @@ describe('Elliptic', function() {
           const p3 = bp.mulBlind(ak);
           const p4 = ap.mulBlind(bk);
 
+          assert(p3.validate());
           assert(p3.eq(p4));
           assert.equal(p3.getX().toString(16), vector.s.x);
-
-          if (curve.type !== 'mont')
-            assert.equal(p3.getY().toString(16), vector.s.y);
+          assert.equal(p3.getY().toString(16), vector.s[y]);
 
           assert(bp.mulSimple(ak).eq(p3));
           assert(ap.mulSimple(bk).eq(p3));
@@ -213,7 +213,7 @@ describe('Elliptic', function() {
           assert(ap.mulConst(bk).eq(p3));
           assert(ap.mulConst(bk, rng).eq(p3));
 
-          if (curve.type !== 'mont') {
+          if (!mont) {
             assert(curve.decodePoint(ap.encode()).eq(ap));
             assert(curve.decodePoint(bp.encode()).eq(bp));
             assert(curve.decodePoint(p1.encode()).eq(p1));
@@ -222,7 +222,8 @@ describe('Elliptic', function() {
             assert(curve.decodePoint(p4.encode()).eq(p4));
           }
 
-          curve.precompute(rng);
+          if (!single)
+            curve.precompute(rng);
         }
       });
     };
@@ -333,16 +334,19 @@ describe('Elliptic', function() {
       a: {
         k: '4041c0f90e24de439869dc636e15f78dab1437652918cd23f24bf267838e5920',
         x: '4e855a3acc67d76456afc5a2c854bb4ee83f0df16d3010e9cfeb02854b518370',
-        y: '6069949d58d70d9b62ce29e09bb28f17d85698f6f77f34abf6db24eb58e01d14'
+        y: '1f966b62a728f2649d31d61f644d70e827a967090880cb540924db14a71fe2d9',
+        Y: '6069949d58d70d9b62ce29e09bb28f17d85698f6f77f34abf6db24eb58e01d14'
       },
       b: {
         k: '660dd8004c28dc548c341e3b9e39faad2fef0ce77fbc56beed9c016689cb9468',
         x: '2820cf502c9d9e227c785b4c58c0911cd3b6421c507f6a54dab413b0488ab82d',
-        y: '243f45f6f3822a93121cd88e36c7ffbfdec7c706c5278e09cd5b189f60e191c4'
+        y: '5bc0ba090c7dd56cede32771c9380040213838f93ad871f632a4e7609f1e6e29',
+        Y: '5bc0ba090c7dd56cede32771c9380040213838f93ad871f632a4e7609f1e6e29'
       },
       s: {
         x: '1af9818fd4ea2348a3695c730e647d4f0cbe9ad193e4d1d37b653afbc1ca27ed',
-        y: '6895d8b2bc9f023da982e5b3dae1d7c980317060bae54207322b376748efc2a8'
+        y: '176a274d4360fdc2567d1a4c251e28367fce8f9f451abdf8cdd4c898b7103d45',
+        Y: '6895d8b2bc9f023da982e5b3dae1d7c980317060bae54207322b376748efc2a8'
       }
     });
 
@@ -367,16 +371,19 @@ describe('Elliptic', function() {
       a: {
         k: 'c17d6835ec83facd2a3fe89cc909f901a45a535c34763669a55177b956ecbf54abe19011df330c1c2498b30b8e13277453636fe4e6312fbc',
         x: 'a31700b63788e5b28616a3528c361f15abb59af9541bc66b74dd5dffaf9a0e31ccd32e032e843bd199870a255b22cdedce637b680ec68786',
-        y: '2cdb7c77ee22cc2b25cf9a143d1efdc8326e3dbdfc2e1b95448dd0b7449dea313c82135b621db02d9edee8b1f7ecc55b5af77d3dfe200ad6'
+        y: 'd324838811dd33d4da3065ebc2e10237cd91c24203d1e46abb722f47bb6215cec37deca49de24fd26121174e08133aa4a50882c201dff529',
+        Y: '2cdb7c77ee22cc2b25cf9a143d1efdc8326e3dbdfc2e1b95448dd0b7449dea313c82135b621db02d9edee8b1f7ecc55b5af77d3dfe200ad6'
       },
       b: {
         k: 'a6e3d9e47b915f758efe24b373f7d94b6802f516e7608a6389bef1c3299cd0b176f0b41a0ead25f6cd03c8dffc02d0f94eeb57eb854c63c8',
         x: 'a9989ad97dc0c1a53cd6b25c3277f51aef5b285c4aa2d9def8db83021deea334878cd056eaecbf6bf1d1b8bb9748bd95f3199c707bd24874',
-        y: 'a6d629678478133e2685ab426064dd49681afd10000036059275365fe14c88dfc2b9e7467f059b12baa9d6fcdecaacd94052f93a15b6c9d2'
+        y: 'a6d629678478133e2685ab426064dd49681afd10000036059275365fe14c88dfc2b9e7467f059b12baa9d6fcdecaacd94052f93a15b6c9d2',
+        Y: '5929d6987b87ecc1d97a54bd9f9b22b697e502efffffc9fa6d8ac99f1eb377203d4618b980fa64ed4556290321355326bfad06c5ea49362d'
       },
       s: {
         x: 'd46033d9447dd8beb58504e511b007e09050e6009f605e55ee923ce61dca73a204d20cd0bb02209f9c67ba95dac759108d62299981d46e91',
-        y: '6c7c3b108999e690258bc1415b634302bbef170ed4099dbe0c911e41f0ef45e3cb25bdfa8aa0fc7e933325691d047b7fe31483cc3cd213ac'
+        y: '6c7c3b108999e690258bc1415b634302bbef170ed4099dbe0c911e41f0ef45e3cb25bdfa8aa0fc7e933325691d047b7fe31483cc3cd213ac',
+        Y: '9383c4ef7666196fda743ebea49cbcfd4410e8f12bf66241f36ee1bd0f10ba1c34da4205755f03816cccda96e2fb84801ceb7c33c32dec53'
       }
     });
 
@@ -1084,6 +1091,7 @@ describe('Elliptic', function() {
       assert(a.eq(ed25519.a));
       assert(d.eq(ed25519.d));
 
+      assert(x25519.jinv().eq(ed25519.jinv()));
       assert(x25519.isIsomorphic(ed25519));
       assert(ed25519.isIsomorphic(x25519));
       assert(!x25519.isIsomorphic(ed25519, true));
@@ -1098,6 +1106,7 @@ describe('Elliptic', function() {
       assert(a.eq(ed448.a));
       assert(d.eq(ed448.d));
 
+      assert(x448.jinv().eq(ed448.jinv()));
       assert(!x448.isIsomorphic(ed448));
       assert(!ed448.isIsomorphic(x448));
       assert(x448.isIsomorphic(ed448, true));
@@ -1118,6 +1127,7 @@ describe('Elliptic', function() {
       const iso448 = new curves.ISO448();
       const [a, b] = iso448._mont(iso448.one, true);
 
+      assert(x448.jinv().eq(iso448.jinv()));
       assert(a.eq(x448.a));
       assert(b.eq(x448.b));
     });
@@ -1130,6 +1140,7 @@ describe('Elliptic', function() {
       assert(a.eq(wei25519.a));
       assert(b.eq(wei25519.b));
 
+      assert(wei25519.jinv().eq(x25519.jinv()));
       assert(wei25519.isIsomorphic(x25519));
       assert(x25519.isIsomorphic(wei25519));
     });
@@ -1139,6 +1150,7 @@ describe('Elliptic', function() {
       const wei25519 = new curves.WEI25519();
       const [a, b] = wei25519._mont(wei25519.one);
 
+      assert(wei25519.jinv().eq(x25519.jinv()));
       assert(a.eq(x25519.a));
       assert(b.eq(x25519.b));
     });
@@ -1152,6 +1164,8 @@ describe('Elliptic', function() {
       assert(a.eq(x448.a));
       assert(b.eq(x448.b));
 
+      assert(ed448.jinv().eq(x448.jinv()));
+      assert(wei448.jinv().eq(x448.jinv()));
       assert(ed448.isIsomorphic(x448));
       assert(x448.isIsomorphic(ed448));
       assert(!ed448.isIsomorphic(x448, true));
@@ -1168,6 +1182,7 @@ describe('Elliptic', function() {
       assert(a.eq(x448.a));
       assert(b.eq(x448.b));
 
+      assert(wei448.jinv().eq(x448.jinv()));
       assert(wei448.isIsomorphic(x448));
       assert(x448.isIsomorphic(wei448));
     });
@@ -1929,7 +1944,7 @@ describe('Elliptic', function() {
     it('should have basepoint for x25519', () => {
       // https://tools.ietf.org/html/rfc7748#section-4.1
       const x25519 = new curves.X25519();
-      const v = x25519.g.toX().toP(true).y;
+      const v = x25519.g.toX().getY(true);
 
       const e = new BN('20ae19a1 b8a086b4 e01edd2c 7748d14c'
                      + '923d4d7e 6d7c61b2 29e9c5a2 7eced3d9', 16);
@@ -1941,7 +1956,7 @@ describe('Elliptic', function() {
     it('should have basepoint for x448', () => {
       // https://tools.ietf.org/html/rfc7748#section-4.2
       const x448 = new curves.X448();
-      const v = x448.g.toX().toP(false).y;
+      const v = x448.g.toX().getY(false);
 
       const e = new BN('7d235d12 95f5b1f6 6c98ab6e 58326fce'
                      + 'cbae5d34 f55545d0 60f75dc2 8df3f6ed'
@@ -1969,6 +1984,7 @@ describe('Elliptic', function() {
       const edwardsG = ed448.pointFromMont(x448.g);
       const montG = x448.pointFromEdwards(ed448.g.randomize(rng));
 
+      assert(!x448.jinv().eq(ed448.jinv()));
       assert(x448.isIsogenous(ed448));
       assert(edwardsG.eq(ed448.g));
       assert(montG.eq(x448.g));
@@ -1982,6 +1998,7 @@ describe('Elliptic', function() {
         const edwardsG = ed1174.pointFromMont(x1174.g);
         const montG = x1174.pointFromEdwards(ed1174.g.randomize(rng));
 
+        assert(x1174.jinv().eq(ed1174.jinv()));
         assert(x1174.isIsomorphic(ed1174, invert));
         assert(!ed1174.g.hasTorsion());
         assert(edwardsG.eq(ed1174.g));
@@ -2006,6 +2023,7 @@ describe('Elliptic', function() {
       const edwardsG = ed448.pointFromMont(mont448.g);
       const montG = mont448.pointFromEdwards(ed448.g.randomize(rng));
 
+      assert(mont448.jinv().eq(ed448.jinv()));
       assert(mont448.isIsomorphic(ed448, true));
       assert(!ed448.g.hasTorsion());
       assert(edwardsG.eq(ed448.g));
@@ -2036,6 +2054,7 @@ describe('Elliptic', function() {
       const edwardsG = ed448.pointFromMont(x448.g);
       const montG = x448.pointFromEdwards(ed448.g.randomize(rng));
 
+      assert(x448.jinv().eq(ed448.jinv()));
       assert(x448.isIsomorphic(ed448, true));
       assert(!ed448.g.hasTorsion());
       assert(edwardsG.eq(ed448.g));
@@ -2072,6 +2091,7 @@ describe('Elliptic', function() {
       const twistedG = twist448.pointFromEdwards(ed448.g.randomize(rng));
       const untwistedG = ed448.pointFromEdwards(twist448.g.randomize(rng));
 
+      assert(!ed448.jinv().eq(twist448.jinv()));
       assert(twist448.isIsogenous(ed448));
       assert(!twist448.g.hasTorsion());
       assert(twistedG.eq(twist448.g));
@@ -2108,6 +2128,7 @@ describe('Elliptic', function() {
       const edwardsG = raw25519.pointFromMont(x25519.g);
       const montG = x25519.pointFromEdwards(raw25519.g.randomize(rng));
 
+      assert(x25519.jinv().eq(raw25519.jinv()));
       assert(x25519.isIsomorphic(raw25519));
       assert(!raw25519.g.hasTorsion());
       assert(edwardsG.eq(raw25519.g));
@@ -2153,6 +2174,8 @@ describe('Elliptic', function() {
       const ed25519 = new curves.ED25519();
       const x25519 = new curves.X25519();
 
+      assert(wei25519.jinv().eq(ed25519.jinv()));
+      assert(x25519.jinv().eq(ed25519.jinv()));
       assert(x25519.isIsomorphic(wei25519));
       assert(x25519.isIsomorphic(ed25519));
 
@@ -2185,6 +2208,9 @@ describe('Elliptic', function() {
       assert(wei.g.eq(wei25519.g));
       assert(mont.pointFromShort(wei.g).eq(mont.g));
 
+      assert(wei25519.jinv().eq(ed25519.jinv()));
+      assert(mont.jinv().eq(ed25519.jinv()));
+      assert(wei.jinv().eq(ed25519.jinv()));
       assert(mont.isIsomorphic(wei));
       assert(mont.isIsomorphic(ed25519));
     });
@@ -2199,6 +2225,8 @@ describe('Elliptic', function() {
       assert(mont.g.eq(x25519.g));
       assert(wei25519.pointFromMont(mont.g).eq(wei25519.g));
 
+      assert(wei25519.jinv().eq(x25519.jinv()));
+      assert(mont.jinv().eq(x25519.jinv()));
       assert(mont.isIsomorphic(wei25519));
     });
 
@@ -2212,6 +2240,7 @@ describe('Elliptic', function() {
       assert(mont.g.eq(x25519.g));
       assert(ed25519.pointFromMont(mont.g).eq(ed25519.g));
 
+      assert(ed25519.jinv().eq(x25519.jinv()));
       assert(x25519.isIsomorphic(ed25519));
       assert(mont.isIsomorphic(ed25519));
     });
@@ -2225,6 +2254,8 @@ describe('Elliptic', function() {
       assert(ed.d.eq(ed25519.d));
       assert(ed.g.eq(ed25519.g));
 
+      assert(ed25519.jinv().eq(x25519.jinv()));
+      assert(ed.jinv().eq(x25519.jinv()));
       assert(x25519.isIsomorphic(ed25519));
       assert(x25519.isIsomorphic(ed));
     });
@@ -2237,6 +2268,8 @@ describe('Elliptic', function() {
       assert(wei.g.validate());
       assert(mont.b.cmp(mont.one) !== 0);
 
+      assert(wei.jinv().eq(mont.jinv()));
+      assert(ed.jinv().eq(mont.jinv()));
       assert(mont.isIsomorphic(wei));
       assert(mont.isIsomorphic(ed));
 
@@ -2338,7 +2371,7 @@ describe('Elliptic', function() {
       // 4-isogeny map can't handle torsion points.
       do {
         u1 = curve.randomField(rng);
-        x1 = u1.fromRed().toRed(x.red);
+        x1 = u1.forceRed(x.red);
       } while (x.pointFromUniform(x1).toX().hasTorsion());
 
       const p1 = curve.pointFromUniform(u1, x);
@@ -2387,7 +2420,7 @@ describe('Elliptic', function() {
     it('should test elligator 1', () => {
       const curve = new extra.ED1174();
 
-      const r1 = curve.one.redMuln(1337);
+      const r1 = curve.field(1337);
       const p1 = curve._elligator1(r1);
 
       assert(p1.validate());
@@ -3257,7 +3290,7 @@ describe('Elliptic', function() {
       // Sometimes it will be correct, other times it
       // will simply be infinity.
       {
-        const k = new BN(3);
+        const k = curve.scalar(3);
         const g = curve.point(curve.zero, curve.zero);
         const p1 = g.mulSimple(k);
         const p2 = g.mulConst(k);
@@ -3509,10 +3542,14 @@ describe('Elliptic', function() {
       // Cannot add, as the result would
       // be our unrepresentable 4-torsion
       // point.
-      assert.throws(() => p.add(q));
+      assert.throws(() => p.add(q), {
+        message: 'Invalid point.'
+      });
 
       // Likewise.
-      assert.throws(() => q.mul(curve.n));
+      assert.throws(() => q.mul(curve.n), {
+        message: 'Invalid point.'
+      });
 
       // Should be 2-torsion.
       const t2 = curve.point(zero, one.redNeg());
@@ -3910,37 +3947,36 @@ describe('Elliptic', function() {
       // https://eprint.iacr.org/2017/806.pdf
       const small = [
         // 0 (order 1 & 2)
-        ['0000000000000000000000000000000000000000000000000000000000000000'],
+        '0000000000000000000000000000000000000000000000000000000000000000',
         // 1 (order 4)
-        ['0000000000000000000000000000000000000000000000000000000000000001'],
+        '0000000000000000000000000000000000000000000000000000000000000001',
         // 325606250916557431795983626356110631294008115727848805560023387167927233504 (order 8)
-        ['00b8495f16056286fdb1329ceb8d09da6ac49ff1fae35616aeb8413b7c7aebe0'],
+        '00b8495f16056286fdb1329ceb8d09da6ac49ff1fae35616aeb8413b7c7aebe0',
         // 39382357235489614581723060781553021112529911719440698176882885853963445705823 (order 8)
-        ['57119fd0dd4e22d8868e1c58c45c44045bef839c55b1d0b1248c50a3bc959c5f'],
+        '57119fd0dd4e22d8868e1c58c45c44045bef839c55b1d0b1248c50a3bc959c5f',
         // p - 1 (invalid)
-        ['7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffec'],
+        '7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffec',
         // p (order 1 & 2)
-        ['7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed'],
+        '7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed',
         // p + 1 (order 4)
-        ['7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffee'],
+        '7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffee',
         // p + 325606250916557431795983626356110631294008115727848805560023387167927233504 (order 8)
-        ['80b8495f16056286fdb1329ceb8d09da6ac49ff1fae35616aeb8413b7c7aebcd'],
+        '80b8495f16056286fdb1329ceb8d09da6ac49ff1fae35616aeb8413b7c7aebcd',
         // p + 39382357235489614581723060781553021112529911719440698176882885853963445705823 (order 8)
-        ['d7119fd0dd4e22d8868e1c58c45c44045bef839c55b1d0b1248c50a3bc959c4c'],
+        'd7119fd0dd4e22d8868e1c58c45c44045bef839c55b1d0b1248c50a3bc959c4c',
         // 2 * p - 1 (invalid)
-        ['ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffd9'],
+        'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffd9',
         // 2 * p (order 1 & 2)
-        ['ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffda'],
+        'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffda',
         // 2 * p + 1 (order 4)
-        ['ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffdb']
+        'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffdb'
       ];
 
       assert(!curve.g.isSmall());
       assert(!curve.g.hasTorsion());
 
       for (let i = 0; i < small.length; i++) {
-        const json = small[i];
-        const x = curve.field(json[0], 16);
+        const x = curve.field(small[i], 16);
         const p = curve.xpoint(x);
 
         if (i === 4 || i === 9) {
@@ -4057,38 +4093,27 @@ describe('Elliptic', function() {
 
       const small = [
         // 0 (order 1)
-        [
-          ['00000000000000000000000000000000000000000000000000000000',
-           '00000000000000000000000000000000000000000000000000000000']
-        ],
+        ['00000000000000000000000000000000000000000000000000000000',
+         '00000000000000000000000000000000000000000000000000000000'],
         // 1 (order 2, invalid, rejected)
-        [
-          ['00000000000000000000000000000000000000000000000000000000',
-           '00000000000000000000000000000000000000000000000000000001']
-        ],
+        ['00000000000000000000000000000000000000000000000000000000',
+         '00000000000000000000000000000000000000000000000000000001'],
         // p - 1 (order 4)
-        [
-          ['fffffffffffffffffffffffffffffffffffffffffffffffffffffffe',
-           'fffffffffffffffffffffffffffffffffffffffffffffffffffffffe']
-        ],
+        ['fffffffffffffffffffffffffffffffffffffffffffffffffffffffe',
+         'fffffffffffffffffffffffffffffffffffffffffffffffffffffffe'],
         // p (order 1)
-        [
-          ['fffffffffffffffffffffffffffffffffffffffffffffffffffffffe',
-           'ffffffffffffffffffffffffffffffffffffffffffffffffffffffff']
-        ],
+        ['fffffffffffffffffffffffffffffffffffffffffffffffffffffffe',
+         'ffffffffffffffffffffffffffffffffffffffffffffffffffffffff'],
         // p + 1 (order, invalid, rejected)
-        [
-          ['ffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
-           '00000000000000000000000000000000000000000000000000000000']
-        ]
+        ['ffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+         '00000000000000000000000000000000000000000000000000000000']
       ];
 
       assert(!curve.g.isSmall());
       assert(!curve.g.hasTorsion());
 
       for (let i = 0; i < small.length; i++) {
-        const json = small[i];
-        const x = curve.field(json[0].join(''), 16);
+        const x = curve.field(small[i].join(''), 16);
         const p = curve.xpoint(x);
 
         if (i === 1 || i === 4) {
