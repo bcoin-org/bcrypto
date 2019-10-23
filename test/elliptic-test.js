@@ -1079,10 +1079,15 @@ describe('Elliptic', function() {
     it('should convert mont to twisted', () => {
       const x25519 = new curves.X25519();
       const ed25519 = new curves.ED25519();
-      const [a, d] = x25519._edwards(x25519.one.redNeg());
+      const [a, d] = x25519._edwards(x25519.one.redNeg(), false);
 
       assert(a.eq(ed25519.a));
       assert(d.eq(ed25519.d));
+
+      assert(x25519.isIsomorphic(ed25519));
+      assert(ed25519.isIsomorphic(x25519));
+      assert(!x25519.isIsomorphic(ed25519, true));
+      assert(!ed25519.isIsomorphic(x25519, true));
     });
 
     it('should convert mont to edwards', () => {
@@ -1092,12 +1097,17 @@ describe('Elliptic', function() {
 
       assert(a.eq(ed448.a));
       assert(d.eq(ed448.d));
+
+      assert(!x448.isIsomorphic(ed448));
+      assert(!ed448.isIsomorphic(x448));
+      assert(x448.isIsomorphic(ed448, true));
+      assert(ed448.isIsomorphic(x448, true));
     });
 
     it('should convert twisted to mont', () => {
       const x25519 = new curves.X25519();
       const ed25519 = new curves.ED25519();
-      const [a, b] = ed25519._mont(ed25519.one);
+      const [a, b] = ed25519._mont(ed25519.one, false);
 
       assert(a.eq(x25519.a));
       assert(b.eq(x25519.b));
@@ -1106,7 +1116,7 @@ describe('Elliptic', function() {
     it('should convert edwards to mont', () => {
       const x448 = new curves.X448();
       const iso448 = new curves.ISO448();
-      const [a, b] = iso448._mont(iso448.one);
+      const [a, b] = iso448._mont(iso448.one, true);
 
       assert(a.eq(x448.a));
       assert(b.eq(x448.b));
@@ -1119,6 +1129,9 @@ describe('Elliptic', function() {
 
       assert(a.eq(wei25519.a));
       assert(b.eq(wei25519.b));
+
+      assert(wei25519.isIsomorphic(x25519));
+      assert(x25519.isIsomorphic(wei25519));
     });
 
     it('should convert short to mont (twisted)', () => {
@@ -1138,6 +1151,13 @@ describe('Elliptic', function() {
 
       assert(a.eq(x448.a));
       assert(b.eq(x448.b));
+
+      assert(ed448.isIsomorphic(x448));
+      assert(x448.isIsomorphic(ed448));
+      assert(!ed448.isIsomorphic(x448, true));
+      assert(!x448.isIsomorphic(ed448, true));
+      assert(wei448.isIsomorphic(x448));
+      assert(x448.isIsomorphic(wei448));
     });
 
     it('should convert short to mont (edwards)', () => {
@@ -1147,6 +1167,9 @@ describe('Elliptic', function() {
 
       assert(a.eq(x448.a));
       assert(b.eq(x448.b));
+
+      assert(wei448.isIsomorphic(x448));
+      assert(x448.isIsomorphic(wei448));
     });
 
     it('should match multiplications', () => {
@@ -1935,6 +1958,7 @@ describe('Elliptic', function() {
       const edwardsG = ed25519.pointFromMont(x25519.g);
       const montG = x25519.pointFromEdwards(ed25519.g.randomize(rng));
 
+      assert(x25519.isIsomorphic(ed25519));
       assert(edwardsG.eq(ed25519.g));
       assert(montG.eq(x25519.g));
     });
@@ -1945,38 +1969,44 @@ describe('Elliptic', function() {
       const edwardsG = ed448.pointFromMont(x448.g);
       const montG = x448.pointFromEdwards(ed448.g.randomize(rng));
 
+      assert(x448.isIsogenous(ed448));
       assert(edwardsG.eq(ed448.g));
       assert(montG.eq(x448.g));
     });
 
     it('should test birational equivalence (x1174)', () => {
-      const ed1174 = new extra.ED1174();
-      const x1174 = ed1174.toMont();
-      const edwardsG = ed1174.pointFromMont(x1174.g);
-      const montG = x1174.pointFromEdwards(ed1174.g.randomize(rng));
+      for (const invert of [false, true]) {
+        const ed1174 = new extra.ED1174();
+        const b = invert ? ed1174.one : null;
+        const x1174 = ed1174.toMont(b, invert);
+        const edwardsG = ed1174.pointFromMont(x1174.g);
+        const montG = x1174.pointFromEdwards(ed1174.g.randomize(rng));
 
-      assert(!ed1174.g.hasTorsion());
-      assert(edwardsG.eq(ed1174.g));
-      assert(montG.eq(x1174.g));
+        assert(x1174.isIsomorphic(ed1174, invert));
+        assert(!ed1174.g.hasTorsion());
+        assert(edwardsG.eq(ed1174.g));
+        assert(montG.eq(x1174.g));
 
-      sanityCheck(x1174);
+        sanityCheck(x1174);
 
-      const k = ed1174.randomScalar(rng);
-      const p0 = ed1174.g.mul(k);
-      const p1 = x1174.g.mul(k);
-      const r0 = ed1174.pointFromMont(p1);
-      const r1 = x1174.pointFromEdwards(p0);
+        const k = ed1174.randomScalar(rng);
+        const p0 = ed1174.g.mul(k);
+        const p1 = x1174.g.mul(k);
+        const r0 = ed1174.pointFromMont(p1);
+        const r1 = x1174.pointFromEdwards(p0);
 
-      assert(r0.eq(p0));
-      assert(r1.eq(p1));
+        assert(r0.eq(p0));
+        assert(r1.eq(p1));
+      }
     });
 
     it('should test birational equivalence (mont448)', () => {
       const ed448 = new curves.ED448();
-      const mont448 = ed448.toMont(ed448.one);
+      const mont448 = ed448.toMont(ed448.one, true);
       const edwardsG = ed448.pointFromMont(mont448.g);
       const montG = mont448.pointFromEdwards(ed448.g.randomize(rng));
 
+      assert(mont448.isIsomorphic(ed448, true));
       assert(!ed448.g.hasTorsion());
       assert(edwardsG.eq(ed448.g));
       assert(montG.eq(mont448.g));
@@ -1997,7 +2027,7 @@ describe('Elliptic', function() {
       assert(m.a.eq(mont448.a));
       assert(m.b.eq(mont448.b));
       assert(m.g.eq(mont448.g));
-      assert(m._scale(ed448).eq(mont448._scale(ed448)));
+      assert(m._scale(ed448, true).eq(mont448._scale(ed448, true)));
     });
 
     it('should test birational equivalence (iso448)', () => {
@@ -2006,6 +2036,7 @@ describe('Elliptic', function() {
       const edwardsG = ed448.pointFromMont(x448.g);
       const montG = x448.pointFromEdwards(ed448.g.randomize(rng));
 
+      assert(x448.isIsomorphic(ed448, true));
       assert(!ed448.g.hasTorsion());
       assert(edwardsG.eq(ed448.g));
       assert(montG.eq(x448.g));
@@ -2041,6 +2072,7 @@ describe('Elliptic', function() {
       const twistedG = twist448.pointFromEdwards(ed448.g.randomize(rng));
       const untwistedG = ed448.pointFromEdwards(twist448.g.randomize(rng));
 
+      assert(twist448.isIsogenous(ed448));
       assert(!twist448.g.hasTorsion());
       assert(twistedG.eq(twist448.g));
       assert(untwistedG.eq(ed448.g));
@@ -2076,6 +2108,7 @@ describe('Elliptic', function() {
       const edwardsG = raw25519.pointFromMont(x25519.g);
       const montG = x25519.pointFromEdwards(raw25519.g.randomize(rng));
 
+      assert(x25519.isIsomorphic(raw25519));
       assert(!raw25519.g.hasTorsion());
       assert(edwardsG.eq(raw25519.g));
       assert(montG.eq(x25519.g));
@@ -2120,6 +2153,9 @@ describe('Elliptic', function() {
       const ed25519 = new curves.ED25519();
       const x25519 = new curves.X25519();
 
+      assert(x25519.isIsomorphic(wei25519));
+      assert(x25519.isIsomorphic(ed25519));
+
       for (let i = 0; i < 10; i++) {
         const we = wei25519.g.mul(new BN(i));
         const mo = x25519.g.toX().mul(new BN(i));
@@ -2148,6 +2184,9 @@ describe('Elliptic', function() {
       assert(wei.b.eq(wei25519.b));
       assert(wei.g.eq(wei25519.g));
       assert(mont.pointFromShort(wei.g).eq(mont.g));
+
+      assert(mont.isIsomorphic(wei));
+      assert(mont.isIsomorphic(ed25519));
     });
 
     it('should test x25519 creation (1)', () => {
@@ -2159,6 +2198,8 @@ describe('Elliptic', function() {
       assert(mont.b.eq(x25519.b));
       assert(mont.g.eq(x25519.g));
       assert(wei25519.pointFromMont(mont.g).eq(wei25519.g));
+
+      assert(mont.isIsomorphic(wei25519));
     });
 
     it('should test x25519 creation (2)', () => {
@@ -2170,6 +2211,9 @@ describe('Elliptic', function() {
       assert(mont.b.eq(x25519.b));
       assert(mont.g.eq(x25519.g));
       assert(ed25519.pointFromMont(mont.g).eq(ed25519.g));
+
+      assert(x25519.isIsomorphic(ed25519));
+      assert(mont.isIsomorphic(ed25519));
     });
 
     it('should test ed25519 creation', () => {
@@ -2180,6 +2224,9 @@ describe('Elliptic', function() {
       assert(ed.a.eq(ed25519.a));
       assert(ed.d.eq(ed25519.d));
       assert(ed.g.eq(ed25519.g));
+
+      assert(x25519.isIsomorphic(ed25519));
+      assert(x25519.isIsomorphic(ed));
     });
 
     it('should test wei25519 equivalence when b != 1', () => {
@@ -2189,6 +2236,9 @@ describe('Elliptic', function() {
 
       assert(wei.g.validate());
       assert(mont.b.cmp(mont.one) !== 0);
+
+      assert(mont.isIsomorphic(wei));
+      assert(mont.isIsomorphic(ed));
 
       const k = ed.randomScalar(rng);
       const p1 = ed.g.mul(k);
@@ -2683,7 +2733,7 @@ describe('Elliptic', function() {
 
     it('should invert SSWU elligator squared on Ed448', () => {
       const edwards = new curves.ED448();
-      const mont = edwards.toMont(edwards.one);
+      const mont = edwards.toMont(edwards.one, true);
       const wei = mont.toShort();
 
       // Insane trick.
