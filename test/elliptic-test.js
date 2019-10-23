@@ -2736,6 +2736,10 @@ describe('Elliptic', function() {
       const mont = edwards.toMont(edwards.one, true);
       const wei = mont.toShort();
 
+      // Satisfies jacobi(z) == -1
+      // and jacobi(g(b / (z * a))) == 1.
+      wei.z = wei.field(-2);
+
       // Insane trick.
       const u = rng.randomBytes(112);
       const p = wei.pointFromHash(u, false);
