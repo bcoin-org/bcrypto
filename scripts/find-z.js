@@ -238,8 +238,9 @@ function isSSWUZ(curve, z) {
     return false;
 
   const zai = z.redMul(curve.a).redInvert();
+  const g = curve.solveY2(curve.b.redMul(zai));
 
-  return curve.solveY2(curve.b.redMul(zai)).redJacobi() === 1;
+  return g.redJacobi() === 1;
 }
 
 function findSVDWZ(curve) {
@@ -264,19 +265,17 @@ function isSVDWZ(curve, z) {
   assert(curve instanceof elliptic.Curve);
   assert(z instanceof BN);
 
-  const z2 = z.redSqr();
-
   let c;
-
   try {
-    c = curve.three.redNeg().redMul(z2).redSqrt();
+    c = z.redSqr().redIMuln(-3).redSqrt();
   } catch (e) {
     return false;
   }
 
   const d = c.redISub(z).redMul(curve.i2);
+  const g = curve.solveY2(d);
 
-  return curve.solveY2(d).redJacobi() === 1;
+  return g.redJacobi() === 1;
 }
 
 function main(argv) {
