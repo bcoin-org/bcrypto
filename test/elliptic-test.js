@@ -116,8 +116,6 @@ describe('Elliptic', function() {
   describe('Vectors', () => {
     const test = (curve, vector) => {
       it(`should test curve ${curve.id}`, () => {
-        const mont = curve.type === 'mont' ? 1 : 0;
-
         // Quick sanity test.
         const p = curve.g;
         const j = curve.g.toJ();
@@ -147,28 +145,17 @@ describe('Elliptic', function() {
         assert(p.uadd(p).uadd(p).eq(tp));
         assert(j.uadd(j).uadd(j).eq(tj));
 
-        if (mont) {
-          const g = curve.g.toX();
-          const p1 = g.mul(new BN(2));
-          const p2 = g.mul(new BN(3));
-
-          assert(g.dbl().eq(p1));
-          assert(g.diffTrpl(g).eq(p2));
-        }
-
         // Slow sanity test.
         sanityCheck(curve);
 
-        for (let i = 0; i < 2 + mont; i++) {
-          const single = mont && i === 0;
+        for (let i = 0; i < 2; i++) {
           const ak = new BN(vector.a.k, 16);
-          const g = single ? curve.g.toX() : curve.g;
-          const y = single ? 'Y' : 'y';
+          const g = curve.g;
           const ap = g.mul(ak);
 
           assert(ap.validate());
           assert.equal(ap.getX().toString(16), vector.a.x);
-          assert.equal(ap.getY().toString(16), vector.a[y]);
+          assert.equal(ap.getY().toString(16), vector.a.y);
 
           assert(g.mulSimple(ak).eq(ap));
           assert(g.mulConst(ak).eq(ap));
@@ -179,7 +166,7 @@ describe('Elliptic', function() {
 
           assert(bp.validate());
           assert.equal(bp.getX().toString(16), vector.b.x);
-          assert.equal(bp.getY().toString(16), vector.b[y]);
+          assert.equal(bp.getY().toString(16), vector.b.y);
 
           assert(g.mulSimple(bk).eq(bp));
           assert(g.mulConst(bk).eq(bp));
@@ -191,7 +178,7 @@ describe('Elliptic', function() {
           assert(p1.validate());
           assert(p1.eq(p2));
           assert.equal(p1.getX().toString(16), vector.s.x);
-          assert.equal(p1.getY().toString(16), vector.s[y]);
+          assert.equal(p1.getY().toString(16), vector.s.y);
 
           assert(bp.mulSimple(ak).eq(p1));
           assert(ap.mulSimple(bk).eq(p1));
@@ -204,7 +191,7 @@ describe('Elliptic', function() {
           assert(p3.validate());
           assert(p3.eq(p4));
           assert.equal(p3.getX().toString(16), vector.s.x);
-          assert.equal(p3.getY().toString(16), vector.s[y]);
+          assert.equal(p3.getY().toString(16), vector.s.y);
 
           assert(bp.mulSimple(ak).eq(p3));
           assert(ap.mulSimple(bk).eq(p3));
@@ -213,7 +200,7 @@ describe('Elliptic', function() {
           assert(ap.mulConst(bk).eq(p3));
           assert(ap.mulConst(bk, rng).eq(p3));
 
-          if (!mont) {
+          if (curve.type !== 'mont') {
             assert(curve.decodePoint(ap.encode()).eq(ap));
             assert(curve.decodePoint(bp.encode()).eq(bp));
             assert(curve.decodePoint(p1.encode()).eq(p1));
@@ -222,8 +209,73 @@ describe('Elliptic', function() {
             assert(curve.decodePoint(p4.encode()).eq(p4));
           }
 
-          if (!single)
-            curve.precompute(rng);
+          curve.precompute(rng);
+        }
+
+        if (curve.type === 'mont') {
+          const ak = new BN(vector.a.k, 16);
+          const as = new BN(vector.a.y, 16).isOdd();
+          const bs = new BN(vector.b.y, 16).isOdd();
+          const ss = new BN(vector.s.y, 16).isOdd();
+          const g = curve.g.toX();
+          const ap = g.mul(ak);
+
+          assert(g.dbl().eq(g.mul(new BN(2))));
+          assert(g.diffTrpl(g).eq(g.mul(new BN(3))));
+
+          assert(ap.validate());
+          assert.equal(ap.getX().toString(16), vector.a.x);
+          assert.equal(ap.getY(as).toString(16), vector.a.y);
+
+          assert(g.mulSimple(ak).eq(ap));
+          assert(g.mulConst(ak).eq(ap));
+          assert(g.mulConst(ak, rng).eq(ap));
+
+          const bk = new BN(vector.b.k, 16);
+          const bp = g.mul(bk);
+
+          assert(bp.validate());
+          assert.equal(bp.getX().toString(16), vector.b.x);
+          assert.equal(bp.getY(bs).toString(16), vector.b.y);
+
+          assert(g.mulSimple(bk).eq(bp));
+          assert(g.mulConst(bk).eq(bp));
+          assert(g.mulConst(bk, rng).eq(bp));
+
+          const p1 = bp.mul(ak);
+          const p2 = ap.mul(bk);
+
+          assert(p1.validate());
+          assert(p1.eq(p2));
+          assert.equal(p1.getX().toString(16), vector.s.x);
+          assert.equal(p1.getY(ss).toString(16), vector.s.y);
+
+          assert(bp.mulSimple(ak).eq(p1));
+          assert(ap.mulSimple(bk).eq(p1));
+          assert(ap.mulConst(bk).eq(p1));
+          assert(ap.mulConst(bk, rng).eq(p1));
+
+          const p3 = bp.mulBlind(ak);
+          const p4 = ap.mulBlind(bk);
+
+          assert(p3.validate());
+          assert(p3.eq(p4));
+          assert.equal(p3.getX().toString(16), vector.s.x);
+          assert.equal(p3.getY(ss).toString(16), vector.s.y);
+
+          assert(bp.mulSimple(ak).eq(p3));
+          assert(ap.mulSimple(bk).eq(p3));
+          assert(bp.mulConst(ak).eq(p3));
+          assert(bp.mulConst(ak, rng).eq(p3));
+          assert(ap.mulConst(bk).eq(p3));
+          assert(ap.mulConst(bk, rng).eq(p3));
+
+          assert(curve.decodeX(ap.encode()).eq(ap));
+          assert(curve.decodeX(bp.encode()).eq(bp));
+          assert(curve.decodeX(p1.encode()).eq(p1));
+          assert(curve.decodeX(p2.encode()).eq(p2));
+          assert(curve.decodeX(p3.encode()).eq(p3));
+          assert(curve.decodeX(p4.encode()).eq(p4));
         }
       });
     };
@@ -334,19 +386,16 @@ describe('Elliptic', function() {
       a: {
         k: '4041c0f90e24de439869dc636e15f78dab1437652918cd23f24bf267838e5920',
         x: '4e855a3acc67d76456afc5a2c854bb4ee83f0df16d3010e9cfeb02854b518370',
-        y: '1f966b62a728f2649d31d61f644d70e827a967090880cb540924db14a71fe2d9',
-        Y: '6069949d58d70d9b62ce29e09bb28f17d85698f6f77f34abf6db24eb58e01d14'
+        y: '1f966b62a728f2649d31d61f644d70e827a967090880cb540924db14a71fe2d9'
       },
       b: {
         k: '660dd8004c28dc548c341e3b9e39faad2fef0ce77fbc56beed9c016689cb9468',
         x: '2820cf502c9d9e227c785b4c58c0911cd3b6421c507f6a54dab413b0488ab82d',
-        y: '5bc0ba090c7dd56cede32771c9380040213838f93ad871f632a4e7609f1e6e29',
-        Y: '5bc0ba090c7dd56cede32771c9380040213838f93ad871f632a4e7609f1e6e29'
+        y: '5bc0ba090c7dd56cede32771c9380040213838f93ad871f632a4e7609f1e6e29'
       },
       s: {
         x: '1af9818fd4ea2348a3695c730e647d4f0cbe9ad193e4d1d37b653afbc1ca27ed',
-        y: '176a274d4360fdc2567d1a4c251e28367fce8f9f451abdf8cdd4c898b7103d45',
-        Y: '6895d8b2bc9f023da982e5b3dae1d7c980317060bae54207322b376748efc2a8'
+        y: '176a274d4360fdc2567d1a4c251e28367fce8f9f451abdf8cdd4c898b7103d45'
       }
     });
 
@@ -371,19 +420,16 @@ describe('Elliptic', function() {
       a: {
         k: 'c17d6835ec83facd2a3fe89cc909f901a45a535c34763669a55177b956ecbf54abe19011df330c1c2498b30b8e13277453636fe4e6312fbc',
         x: 'a31700b63788e5b28616a3528c361f15abb59af9541bc66b74dd5dffaf9a0e31ccd32e032e843bd199870a255b22cdedce637b680ec68786',
-        y: 'd324838811dd33d4da3065ebc2e10237cd91c24203d1e46abb722f47bb6215cec37deca49de24fd26121174e08133aa4a50882c201dff529',
-        Y: '2cdb7c77ee22cc2b25cf9a143d1efdc8326e3dbdfc2e1b95448dd0b7449dea313c82135b621db02d9edee8b1f7ecc55b5af77d3dfe200ad6'
+        y: 'd324838811dd33d4da3065ebc2e10237cd91c24203d1e46abb722f47bb6215cec37deca49de24fd26121174e08133aa4a50882c201dff529'
       },
       b: {
         k: 'a6e3d9e47b915f758efe24b373f7d94b6802f516e7608a6389bef1c3299cd0b176f0b41a0ead25f6cd03c8dffc02d0f94eeb57eb854c63c8',
         x: 'a9989ad97dc0c1a53cd6b25c3277f51aef5b285c4aa2d9def8db83021deea334878cd056eaecbf6bf1d1b8bb9748bd95f3199c707bd24874',
-        y: 'a6d629678478133e2685ab426064dd49681afd10000036059275365fe14c88dfc2b9e7467f059b12baa9d6fcdecaacd94052f93a15b6c9d2',
-        Y: '5929d6987b87ecc1d97a54bd9f9b22b697e502efffffc9fa6d8ac99f1eb377203d4618b980fa64ed4556290321355326bfad06c5ea49362d'
+        y: 'a6d629678478133e2685ab426064dd49681afd10000036059275365fe14c88dfc2b9e7467f059b12baa9d6fcdecaacd94052f93a15b6c9d2'
       },
       s: {
         x: 'd46033d9447dd8beb58504e511b007e09050e6009f605e55ee923ce61dca73a204d20cd0bb02209f9c67ba95dac759108d62299981d46e91',
-        y: '6c7c3b108999e690258bc1415b634302bbef170ed4099dbe0c911e41f0ef45e3cb25bdfa8aa0fc7e933325691d047b7fe31483cc3cd213ac',
-        Y: '9383c4ef7666196fda743ebea49cbcfd4410e8f12bf66241f36ee1bd0f10ba1c34da4205755f03816cccda96e2fb84801ceb7c33c32dec53'
+        y: '6c7c3b108999e690258bc1415b634302bbef170ed4099dbe0c911e41f0ef45e3cb25bdfa8aa0fc7e933325691d047b7fe31483cc3cd213ac'
       }
     });
 
@@ -493,14 +539,16 @@ describe('Elliptic', function() {
         p: '1d',
         a: '4',
         b: '14',
-        n: '24',
+        n: '25',
         h: '1',
         z: '2', // Icart
         g: [
-          '18',
-          '16'
+          '0',
+          '7'
         ]
       });
+
+      sanityCheck(curve);
 
       const p = curve.pointFromJSON(['18', '16']);
 
@@ -515,22 +563,88 @@ describe('Elliptic', function() {
       assert(q.validate());
     });
 
+    it.skip('should verify all curves', () => {
+      const p192 = new curves.P192();
+      const p224 = new curves.P224();
+      const p256 = new curves.P256();
+      const p384 = new curves.P384();
+      const p521 = new curves.P521();
+      const secp192k1 = new extra.SECP192K1();
+      const secp224k1 = new extra.SECP224K1();
+      const secp256k1 = new curves.SECP256K1();
+      const x25519 = new curves.X25519();
+      const x448 = new curves.X448();
+      const frp256v1 = new extra.FRP256V1();
+      const anomalous = new extra.ANOMALOUS();
+      const bn2254 = new extra.BN2254();
+      const wei25519 = new extra.WEI25519();
+      const ed1174 = new extra.ED1174();
+      const ed41417 = new extra.ED41417();
+      const curve383187 = new extra.CURVE383187();
+      const m221 = new extra.M221();
+      const e222 = new extra.E222();
+      const m383 = new extra.M383();
+      const e382 = new extra.E382();
+      const m511 = new extra.M511();
+      const e521 = new extra.E521();
+      const mdc = new extra.MDC();
+      const ed25519 = new curves.ED25519();
+      const ed448 = new curves.ED448();
+      const iso448 = new extra.ISO448();
+      const mont448 = new extra.MONT448();
+      const jubjub = new extra.JUBJUB();
+
+      for (const curve of [p192,
+                           p224,
+                           p256,
+                           p384,
+                           p521,
+                           secp192k1,
+                           secp224k1,
+                           secp256k1,
+                           x25519,
+                           x448,
+                           frp256v1,
+                           anomalous,
+                           bn2254,
+                           wei25519,
+                           ed1174,
+                           ed41417,
+                           curve383187,
+                           m221,
+                           e222,
+                           m383,
+                           e382,
+                           m511,
+                           e521,
+                           mdc,
+                           x25519,
+                           ed25519,
+                           x448,
+                           ed448,
+                           iso448,
+                           mont448,
+                           jubjub]) {
+        sanityCheck(curve);
+      }
+    });
+
     it('should dbl points on edwards curve using proj coordinates', () => {
       const curve = new EdwardsCurve({
-        p: '3fffffffffffffffffffffffffffffffffffffffffffffff'
-         + 'ffffffffffffffffffffffffffffffffffffffffffffff97',
+        p: ['3fffffffffffffffffffffffffffffffffffffffffffffff',
+            'ffffffffffffffffffffffffffffffffffffffffffffff97'],
         a: '1',
         c: '1',
         // -67254 mod p
-        d: '3fffffffffffffffffffffffffffffffffffffffffffffff'
-         + 'fffffffffffffffffffffffffffffffffffffffffffef8e1',
-        n: '0fffffffffffffffffffffffffffffffffffffffffffffff'
-         + 'd5fb21f21e95eee17c5e69281b102d2773e27e13fd3c9719',
-        h: '8',
+        d: ['3fffffffffffffffffffffffffffffffffffffffffffffff',
+            'fffffffffffffffffffffffffffffffffffffffffffef8e1'],
+        n: ['0fffffffffffffffffffffffffffffffffffffffffffffff',
+            'd5fb21f21e95eee17c5e69281b102d2773e27e13fd3c9719'],
+        h: '4',
         z: '-1',
         g: [
           ['196f8dd0eab20391e5f05be96e8d20ae68f840032b0b6435',
-           '2923bab85364841193517dbce8105398ebc0cc9470f79603'].join(''),
+           '2923bab85364841193517dbce8105398ebc0cc9470f79603'],
           '11'
         ]
       });
@@ -552,6 +666,7 @@ describe('Elliptic', function() {
       const p = curve.pointFromJSON(point);
       const d = curve.pointFromJSON(double);
 
+      assert(p.add(p).eq(d));
       assert(p.dbl().eq(d));
     });
 
@@ -574,8 +689,8 @@ describe('Elliptic', function() {
          '843a017a6487b2ec5f9b2a3808108ef2']
       ]);
 
-      const y = new BN('02f8ca771306cd23e929775177f2c213'
-                     + '843a017a6487b2ec5f9b2a3808108ef2', 16);
+      const y = curve.field('02f8ca771306cd23e929775177f2c213'
+                          + '843a017a6487b2ec5f9b2a3808108ef2', 16);
 
       const point = curve.pointFromY(y, true);
 
@@ -602,15 +717,15 @@ describe('Elliptic', function() {
       const curve = new EdwardsCurve({
         id: 'ED25519',
         // 2^255 - 19
-        p: '7fffffffffffffff ffffffffffffffff'
-         + 'ffffffffffffffff ffffffffffffffed',
+        p: ['7fffffffffffffff ffffffffffffffff',
+            'ffffffffffffffff ffffffffffffffed'],
         a: '-1',
         c: '1',
         // (-121665 * 121666^-1) mod p
-        d: '52036cee2b6ffe73 8cc740797779e898'
-         + '00700a4d4141d8ab 75eb4dca135978a3',
-        n: '1000000000000000 0000000000000000'
-         + '14def9dea2f79cd6 5812631a5cf5d3ed',
+        d: ['52036cee2b6ffe73 8cc740797779e898',
+            '00700a4d4141d8ab 75eb4dca135978a3'],
+        n: ['1000000000000000 0000000000000000',
+            '14def9dea2f79cd6 5812631a5cf5d3ed'],
         h: '8',
         z: '2',
         g: [
@@ -620,16 +735,14 @@ describe('Elliptic', function() {
         ]
       });
 
-      const y = new BN(
+      const y = curve.field(
         '4627191eb12f51005d2a7f3ef570376a3403801aae928c8ffd13feabadf84505',
         16);
 
-      const point = curve.pointFromY(y, true);
+      const p = curve.pointFromY(y, true);
 
-      const target =
-        '2cd591ae3789fd62dc420a152002f79973a387eacecadc6a9a00c1a89488c15d';
-
-      assert.deepStrictEqual(point.getX().toString(16), target);
+      assert.deepStrictEqual(p.getX().toString(16),
+        '2cd591ae3789fd62dc420a152002f79973a387eacecadc6a9a00c1a89488c15d');
     });
 
     it('should work with secp112r1', () => {
@@ -851,12 +964,12 @@ describe('Elliptic', function() {
     it('should work with secp256k1', () => {
       const curve = new ShortCurve({
         id: 'SECP256K1',
-        p: 'ffffffff ffffffff ffffffff ffffffff'
-         + 'ffffffff ffffffff fffffffe fffffc2f',
+        p: ['ffffffff ffffffff ffffffff ffffffff',
+            'ffffffff ffffffff fffffffe fffffc2f'],
         a: '0',
         b: '7',
-        n: 'ffffffff ffffffff ffffffff fffffffe'
-         + 'baaedce6 af48a03b bfd25e8c d0364141',
+        n: ['ffffffff ffffffff ffffffff fffffffe',
+            'baaedce6 af48a03b bfd25e8c d0364141'],
         h: '1',
         z: '1',
         g: [
@@ -867,9 +980,9 @@ describe('Elliptic', function() {
 
       const p = curve.pointFromJSON([
         ['79be667e f9dcbbac 55a06295 ce870b07',
-         '029bfcdb 2dce28d9 59f2815b 16f81798'].join(''),
+         '029bfcdb 2dce28d9 59f2815b 16f81798'],
         ['483ada77 26a3c465 5da4fbfc 0e1108a8',
-         'fd17b448 a6855419 9c47d08f fb10d4b8'].join('')
+         'fd17b448 a6855419 9c47d08f fb10d4b8']
       ]);
 
       const s = new BN('79be667e f9dcbbac 55a06295 ce870b07', 16);
@@ -903,39 +1016,27 @@ describe('Elliptic', function() {
       assert.strictEqual(curve.endo.basis[1].b.toString(16),
                          '3086d221a7d46bcde86c90e49284eb15');
 
-      const scalars = [
-        '1234567890123456789012345678901234',
-        '-1234567890123456789012345678901234',
-        '1234567890123456789012345678901233',
-        '-1234567890123456789012345678901233'
-      ];
+      for (let i = 0; i < 10; i++) {
+        const k = curve.randomScalar(rng);
 
-      for (const hex of scalars) {
-        const k = new BN(hex, 16);
-
-        assert(k.abs().cmp(curve.n) < 0);
+        if (i & 1)
+          k.ineg();
 
         const [k1, k2] = curve._endoSplit(k);
+        const r = k1.add(k2.mul(curve.endo.lambda)).mod(curve.n);
 
-        const testK = k1.add(k2.mul(curve.endo.lambda)).mod(curve.n);
-
-        const km = k.sign() < 0 ? k.mod(curve.n) : k;
-
-        assert.strictEqual(testK.toString(16), km.toString(16));
+        assert.strictEqual(r.toString(16), k.mod(curve.n).toString(16));
       }
     });
 
     it('should compute this problematic secp256k1 multiplication', () => {
       const curve = new curves.SECP256K1();
+      const g1 = curve.g;
+      const g2 = curve.g.clone();
 
       curve.precompute(rng);
 
-      const g1 = curve.g; // precomputed g
-
       assert(g1.pre);
-
-      const g2 = curve.point(g1.getX(), g1.getY()); // not precomputed g
-
       assert(!g2.pre);
 
       const a = new BN(
@@ -950,14 +1051,12 @@ describe('Elliptic', function() {
 
     it('should not use fixed NAF when k is too large', () => {
       const curve = new curves.SECP256K1();
+      const g1 = curve.g;
+      const g2 = curve.g.clone();
 
       curve.precompute(rng);
 
-      const g1 = curve.g; // precomputed g
-
       assert(g1.pre);
-
-      const g2 = curve.point(g1.getX(), g1.getY()); // not precomputed g
       assert(!g2.pre);
 
       const a = new BN('6d1229a6b24c2e775c062870ad26bc26105'
@@ -1002,33 +1101,34 @@ describe('Elliptic', function() {
     });
 
     it('should correctly double the affine point on secp256k1', () => {
-      const bad = {
-        x: new BN(
+      const curve = new curves.SECP256K1();
+
+      const bad = [
+        curve.field(
           '026a2073b1ef6fab47ace18e60e728a05180a82755bbcec9a0abc08ad9f7a3d4',
           16),
-        y: new BN(
+        curve.field(
           '9cd8cb48c3281596139f147c1364a3ede88d3f310fdb0eb98c924e599ca1b3c9',
           16),
-        z: new BN(
+        curve.field(
           'd78587ad45e4102f48b54b5d85598296e069ce6085002e169c6bad78ddc6d9bd',
           16)
-      };
+      ];
 
-      const good = {
-        x: new BN(
+      const good = [
+        curve.field(
           'e7789226739ac2eb3c7ccb2a9a910066beeed86cdb4e0f8a7fee8eeb29dc7016',
           16),
-        y: new BN(
+        curve.field(
           '4b76b191fd6d47d07828ea965e275b76d0e3e0196cd5056d38384fbb819f9fcb',
           16),
-        z: new BN(
+        curve.field(
           'cbf8d99056618ba132d6145b904eee1ce566e0feedb9595139c45f84e90cfa7d',
           16)
-      };
+      ];
 
-      const curve = new curves.SECP256K1();
-      const pbad = curve.jpoint(bad.x, bad.y, bad.z);
-      const pgood = curve.jpoint(good.x, good.y, good.z);
+      const pbad = curve.jpoint(...bad);
+      const pgood = curve.jpoint(...good);
 
       // They are the same points
       assert(pbad.add(pgood.neg()).isInfinity());
@@ -1193,76 +1293,80 @@ describe('Elliptic', function() {
       const ed25519 = new curves.ED25519();
 
       for (const curve of [p256, secp256k1, ed25519]) {
-        const N = curve.n;
-        const s = curve.randomScalar(rng);
+        const k0 = curve.randomScalar(rng);
+        const k1 = k0.divn(3).mul(k0);
 
         curve.precompute(rng);
 
-        const p1 = curve.g.mul(s);
-        const p2 = curve.g.mulSimple(s);
+        const p1 = curve.g.mul(k0);
+        const p2 = curve.g.mulSimple(k0);
 
         assert(p1.eq(p2));
 
-        const j1 = curve.g.jmul(s);
-        const j2 = curve.g.jmulSimple(s);
+        const j1 = curve.g.jmul(k0);
+        const j2 = curve.g.jmulSimple(k0);
 
         assert(j1.eq(j2));
 
-        const j3 = curve.g.toJ().mul(s);
-        const j4 = curve.g.toJ().mulSimple(s);
+        const j3 = curve.g.toJ().mul(k0);
+        const j4 = curve.g.toJ().mulSimple(k0);
 
         assert(j3.eq(j4));
 
-        const p3 = curve.g.mul(s.divn(3).mul(s));
-        const p4 = curve.g.mulSimple(s.divn(3).mul(s).imod(N));
-        const p4_ = curve.g.mulSimple(s.divn(3).mul(s));
+        const p3 = curve.g.mul(k1);
+        const p4 = curve.g.mulSimple(k1.mod(curve.n));
+        const p5 = curve.g.mulSimple(k1);
 
         assert(p3.eq(p4));
-        assert(p4_.eq(p4));
+        assert(p4.eq(p5));
 
-        const p5 = curve.g.mul(s.divn(3).mul(s).ineg());
-        const p6 = curve.g.mulSimple(s.divn(3).mul(s).ineg().imod(N));
-        const p6_ = curve.g.mulSimple(s.divn(3).mul(s).ineg());
+        const p6 = curve.g.mul(k1.neg());
+        const p7 = curve.g.mulSimple(k1.neg().imod(curve.n));
+        const p8 = curve.g.mulSimple(k1.neg());
 
-        assert(p5.eq(p6));
-        assert(p6_.eq(p6));
+        assert(p6.eq(p3.neg()));
+        assert(p6.eq(p7));
+        assert(p7.eq(p8));
       }
     });
 
     it('should match multiplications (ladder)', () => {
       const curve = new curves.SECP256K1();
-      const N = curve.n;
 
-      const s = curve.randomScalar(rng);
+      const k0 = curve.randomScalar(rng);
+      const k1 = k0.muln(17);
 
-      const p1 = curve.g.mulConst(s);
-      const p2 = curve.g.mulSimple(s);
+      const p1 = curve.g.mulConst(k0);
+      const p2 = curve.g.mulSimple(k0);
 
       assert(p1.eq(p2));
 
-      const p3 = curve.g.mulConst(s.neg());
-      const p4 = curve.g.mulSimple(s.neg().imod(N));
+      const p3 = curve.g.mulConst(k0.neg());
+      const p4 = curve.g.mulSimple(k0.neg().imod(curve.n));
 
+      assert(p3.eq(p1.neg()));
       assert(p3.eq(p4));
 
-      const j1 = curve.g.jmulConst(s);
-      const j2 = curve.g.jmulSimple(s);
+      const j1 = curve.g.jmulConst(k0);
+      const j2 = curve.g.jmulSimple(k0);
 
       assert(j1.eq(j2));
 
-      const j3 = curve.g.jmulConst(s.neg());
-      const j4 = curve.g.jmulSimple(s.neg().imod(N));
+      const j3 = curve.g.jmulConst(k0.neg());
+      const j4 = curve.g.jmulSimple(k0.neg().imod(curve.n));
 
+      assert(j3.eq(j1.neg()));
       assert(j3.eq(j4));
 
-      const j5 = curve.g.jmulConst(s.muln(17));
-      const j6 = curve.g.jmulSimple(s.muln(17));
+      const j5 = curve.g.jmulConst(k1);
+      const j6 = curve.g.jmulSimple(k1);
 
       assert(j5.eq(j6));
 
-      const j7 = curve.g.jmulConst(s.muln(17).neg());
-      const j8 = curve.g.jmulSimple(s.muln(17).neg().imod(N));
+      const j7 = curve.g.jmulConst(k1.neg());
+      const j8 = curve.g.jmulSimple(k1.neg().imod(curve.n));
 
+      assert(j7.eq(j5.neg()));
       assert(j7.eq(j8));
 
       assert(curve.g.mulConst(new BN(0)).isInfinity());
@@ -1295,38 +1399,41 @@ describe('Elliptic', function() {
 
     it('should match multiplications (ladder+rng)', () => {
       const curve = new curves.SECP256K1();
-      const N = curve.n;
 
-      const s = curve.randomScalar(rng);
+      const k0 = curve.randomScalar(rng);
+      const k1 = k0.muln(17);
 
-      const p1 = curve.g.mulConst(s, rng);
-      const p2 = curve.g.mulSimple(s);
+      const p1 = curve.g.mulConst(k0, rng);
+      const p2 = curve.g.mulSimple(k0);
 
       assert(p1.eq(p2));
 
-      const p3 = curve.g.mulConst(s.neg(), rng);
-      const p4 = curve.g.mulSimple(s.neg().imod(N));
+      const p3 = curve.g.mulConst(k0.neg(), rng);
+      const p4 = curve.g.mulSimple(k0.neg().imod(curve.n));
 
+      assert(p3.eq(p1.neg()));
       assert(p3.eq(p4));
 
-      const j1 = curve.g.jmulConst(s, rng);
-      const j2 = curve.g.jmulSimple(s);
+      const j1 = curve.g.jmulConst(k0, rng);
+      const j2 = curve.g.jmulSimple(k0);
 
       assert(j1.eq(j2));
 
-      const j3 = curve.g.jmulConst(s.neg(), rng);
-      const j4 = curve.g.jmulSimple(s.neg().imod(N));
+      const j3 = curve.g.jmulConst(k0.neg(), rng);
+      const j4 = curve.g.jmulSimple(k0.neg().imod(curve.n));
 
+      assert(j3.eq(j1.neg()));
       assert(j3.eq(j4));
 
-      const j5 = curve.g.jmulConst(s.muln(17), rng);
-      const j6 = curve.g.jmulSimple(s.muln(17));
+      const j5 = curve.g.jmulConst(k1, rng);
+      const j6 = curve.g.jmulSimple(k1);
 
       assert(j5.eq(j6));
 
-      const j7 = curve.g.jmulConst(s.muln(17).neg(), rng);
-      const j8 = curve.g.jmulSimple(s.muln(17).neg().imod(N));
+      const j7 = curve.g.jmulConst(k1.neg(), rng);
+      const j8 = curve.g.jmulSimple(k1.neg().imod(curve.n));
 
+      assert(j7.eq(j5.neg()));
       assert(j7.eq(j8));
 
       assert(curve.g.mulConst(new BN(0), rng).isInfinity());
@@ -1359,323 +1466,238 @@ describe('Elliptic', function() {
 
     it('should match multiplications (fixed)', () => {
       const curve = new curves.SECP256K1();
-
-      curve.precompute(rng);
-
-      const N = curve.n;
-
       const mul = (p, k) => curve._fixedNafMul(p, k).toP();
       const jmul = (p, k) => curve._fixedNafMul(p, k);
 
-      const s = curve.randomScalar(rng);
-      const s2 = BN.mask(256);
+      const k1 = curve.randomScalar(rng);
+      const k2 = BN.mask(256);
 
-      assert(curve.g._hasDoubles(s));
-      assert(curve.g._hasDoubles(s.neg()));
+      curve.precompute(rng);
 
-      assert(s2.bitLength() === 256);
-      assert(curve.g._hasDoubles(s2));
-      assert(curve.g._hasDoubles(s2.neg()));
+      assert(curve.g._hasDoubles(k1));
+      assert(curve.g._hasDoubles(k1.neg()));
 
-      const p1 = mul(curve.g, s);
-      const p2 = curve.g.mulSimple(s);
+      assert(k2.bitLength() === 256);
+      assert(curve.g._hasDoubles(k2));
+      assert(curve.g._hasDoubles(k2.neg()));
+
+      const p1 = mul(curve.g, k1);
+      const p2 = curve.g.mulSimple(k1);
 
       assert(p1.eq(p2));
 
-      const p3 = mul(curve.g, s.neg());
-      const p4 = curve.g.mulSimple(s.neg().imod(N));
+      const p3 = mul(curve.g, k1.neg());
+      const p4 = curve.g.mulSimple(k1.neg().imod(curve.n));
 
+      assert(p3.eq(p1.neg()));
       assert(p3.eq(p4));
 
-      const j1 = jmul(curve.g, s);
-      const j2 = curve.g.jmulSimple(s);
+      const j1 = jmul(curve.g, k1);
+      const j2 = curve.g.jmulSimple(k1);
 
       assert(j1.eq(j2));
 
-      const j3 = jmul(curve.g, s.neg());
-      const j4 = curve.g.jmulSimple(s.neg().imod(N));
+      const j3 = jmul(curve.g, k1.neg());
+      const j4 = curve.g.jmulSimple(k1.neg().imod(curve.n));
 
+      assert(j3.eq(j1.neg()));
       assert(j3.eq(j4));
     });
 
     it('should match multiplications (ladder)', () => {
       const curve = new curves.SECP256K1();
-      const N = curve.n;
-
       const mul = (p, k) => curve._ladderMul(p, k).toP();
       const jmul = (p, k) => curve._ladderMul(p, k);
 
-      const s = curve.randomScalar(rng);
+      const k0 = curve.randomScalar(rng);
+      const k1 = k0.divn(3).mul(k0);
 
-      const p1 = mul(curve.g, s);
-      const p2 = curve.g.mulSimple(s);
+      const p1 = mul(curve.g, k0);
+      const p2 = curve.g.mulSimple(k0);
 
       assert(p1.eq(p2));
 
-      const j1 = jmul(curve.g, s);
-      const j2 = curve.g.jmulSimple(s);
+      const j1 = jmul(curve.g, k0);
+      const j2 = curve.g.jmulSimple(k0);
 
       assert(j1.eq(j2));
 
-      const p3 = mul(curve.g, s.divn(3).mul(s));
-      const p4 = curve.g.mulSimple(s.divn(3).mul(s).imod(N));
+      const p3 = mul(curve.g, k1);
+      const p4 = curve.g.mulSimple(k1.mod(curve.n));
 
       assert(p3.eq(p4));
 
-      const p5 = mul(curve.g, s.divn(3).mul(s).ineg());
-      const p6 = curve.g.mulSimple(s.divn(3).mul(s).ineg().imod(N));
+      const p5 = mul(curve.g, k1.neg());
+      const p6 = curve.g.mulSimple(k1.neg().imod(curve.n));
 
+      assert(p5.eq(p3.neg()));
       assert(p5.eq(p6));
     });
 
     it('should match multiplications (co-z)', () => {
       const curve = new curves.SECP256K1();
-      const N = curve.n;
-
       const mul = (p, k) => curve._coZLadderMul(p, k).toP();
       const jmul = (p, k) => curve._coZLadderMul(p, k);
 
-      const s = curve.randomScalar(rng);
+      const k0 = curve.randomScalar(rng);
+      const k1 = k0.divn(3).mul(k0);
 
-      const p1 = mul(curve.g, s);
-      const p2 = curve.g.mulSimple(s);
+      const p1 = mul(curve.g, k0);
+      const p2 = curve.g.mulSimple(k0);
 
       assert(p1.eq(p2));
 
-      const j1 = jmul(curve.g, s);
-      const j2 = curve.g.jmulSimple(s);
+      const j1 = jmul(curve.g, k0);
+      const j2 = curve.g.jmulSimple(k0);
 
       assert(j1.eq(j2));
 
-      const p3 = mul(curve.g, s.divn(3).mul(s));
-      const p4 = curve.g.mulSimple(s.divn(3).mul(s).imod(N));
+      const p3 = mul(curve.g, k1);
+      const p4 = curve.g.mulSimple(k1.mod(curve.n));
 
       assert(p3.eq(p4));
 
-      const p5 = mul(curve.g, s.divn(3).mul(s).ineg());
-      const p6 = curve.g.mulSimple(s.divn(3).mul(s).ineg().imod(N));
+      const p5 = mul(curve.g, k1.neg());
+      const p6 = curve.g.mulSimple(k1.neg().imod(curve.n));
 
+      assert(p5.eq(p3.neg()));
       assert(p5.eq(p6));
     });
 
     it('should match multiplications (wnaf)', () => {
       const curve = new curves.SECP256K1();
-
-      curve.precompute(rng);
-
-      const N = curve.n;
-
       const mul = (p, k) => curve._wnafMul(4, p, k).toP();
       const jmul = (p, k) => curve._wnafMul(4, p, k);
-      const pre = curve.g.pre;
 
-      let g = curve.g;
+      for (const g of [curve.g, curve.g, curve.randomPoint(rng)]) {
+        const k0 = curve.randomScalar(rng);
+        const k1 = k0.divn(3).mul(k0);
 
-      for (let i = 0; i < 3; i++) {
-        const s = curve.randomScalar(rng);
-
-        const p1 = mul(g, s);
-        const p2 = g.mulSimple(s);
+        const p1 = mul(g, k0);
+        const p2 = g.mulSimple(k0);
 
         assert(p1.eq(p2));
 
-        const j1 = jmul(g, s);
-        const j2 = g.jmulSimple(s);
+        const j1 = jmul(g, k0);
+        const j2 = g.jmulSimple(k0);
 
         assert(j1.eq(j2));
 
-        const p3 = mul(g, s.divn(3).mul(s));
-        const p4 = g.mulSimple(s.divn(3).mul(s).imod(N));
+        const p3 = mul(g, k1);
+        const p4 = g.mulSimple(k1.mod(curve.n));
 
         assert(p3.eq(p4));
 
-        const p5 = mul(g, s.divn(3).mul(s).ineg());
-        const p6 = g.mulSimple(s.divn(3).mul(s).ineg().imod(N));
+        const p5 = mul(g, k1.neg());
+        const p6 = g.mulSimple(k1.neg().imod(curve.n));
 
+        assert(p5.eq(p3.neg()));
         assert(p5.eq(p6));
 
-        if (i === 0) {
-          g.pre = null;
-          continue;
-        }
-
-        if (i === 1) {
-          assert(g === curve.g);
-          g.pre = pre;
-        }
-
-        if (i === 2)
-          assert(g !== curve.g);
-
-        g = p6;
+        curve.precompute(rng);
       }
-
-      assert(curve.g.pre === pre);
     });
 
     it('should match multiplications (muladd)', () => {
       const curve = new curves.SECP256K1();
-
-      curve.precompute(rng);
-
-      const N = curve.n;
-
       const mul = (p, k) => curve._wnafMulAdd(1, [p], [k]).toP();
       const jmul = (p, k) => curve._wnafMulAdd(1, [p], [k]);
-      const pre = curve.g.pre;
 
-      let g = curve.g;
+      for (const g of [curve.g, curve.g, curve.randomPoint(rng)]) {
+        const k0 = curve.randomScalar(rng);
+        const k1 = k0.divn(3).mul(k0);
 
-      for (let i = 0; i < 3; i++) {
-        const s = curve.randomScalar(rng);
-
-        const p1 = mul(g, s);
-        const p2 = g.mulSimple(s);
+        const p1 = mul(g, k0);
+        const p2 = g.mulSimple(k0);
 
         assert(p1.eq(p2));
 
-        const j1 = jmul(g, s);
-        const j2 = g.jmulSimple(s);
+        const j1 = jmul(g, k0);
+        const j2 = g.jmulSimple(k0);
 
         assert(j1.eq(j2));
 
-        const p3 = mul(g, s.divn(3).mul(s));
-        const p4 = g.mulSimple(s.divn(3).mul(s).imod(N));
+        const p3 = mul(g, k1);
+        const p4 = g.mulSimple(k1.mod(curve.n));
 
         assert(p3.eq(p4));
 
-        const p5 = mul(g, s.divn(3).mul(s).ineg());
-        const p6 = g.mulSimple(s.divn(3).mul(s).ineg().imod(N));
+        const p5 = mul(g, k1.neg());
+        const p6 = g.mulSimple(k1.neg().imod(curve.n));
 
+        assert(p5.eq(p3.neg()));
         assert(p5.eq(p6));
 
-        if (i === 0) {
-          g.pre = null;
-          continue;
-        }
-
-        if (i === 1) {
-          assert(g === curve.g);
-          g.pre = pre;
-        }
-
-        if (i === 2)
-          assert(g !== curve.g);
-
-        g = p6;
+        curve.precompute(rng);
       }
-
-      assert(curve.g.pre === pre);
     });
 
     it('should match multiplications (endo)', () => {
       const curve = new curves.SECP256K1();
-
-      curve.precompute(rng);
-
-      const N = curve.n;
-
       const mul = (p, k) => curve._endoWnafMulAdd([p], [k]).toP();
       const jmul = (p, k) => curve._endoWnafMulAdd([p], [k]);
-      const pre = curve.g.pre;
 
-      let g = curve.g;
+      for (const g of [curve.g, curve.g, curve.randomPoint(rng)]) {
+        const k0 = curve.randomScalar(rng);
+        const k1 = k0.divn(3).mul(k0);
 
-      for (let i = 0; i < 3; i++) {
-        const s = curve.randomScalar(rng);
-
-        const p1 = mul(g, s);
-        const p2 = g.mulSimple(s);
+        const p1 = mul(g, k0);
+        const p2 = g.mulSimple(k0);
 
         assert(p1.eq(p2));
 
-        const j1 = jmul(g, s);
-        const j2 = g.jmulSimple(s);
+        const j1 = jmul(g, k0);
+        const j2 = g.jmulSimple(k0);
 
         assert(j1.eq(j2));
 
-        const p3 = mul(g, s.divn(3).mul(s));
-        const p4 = g.mulSimple(s.divn(3).mul(s).imod(N));
+        const p3 = mul(g, k1);
+        const p4 = g.mulSimple(k1.mod(curve.n));
 
         assert(p3.eq(p4));
 
-        const p5 = mul(g, s.divn(3).mul(s).ineg());
-        const p6 = g.mulSimple(s.divn(3).mul(s).ineg().imod(N));
+        const p5 = mul(g, k1.neg());
+        const p6 = g.mulSimple(k1.neg().imod(curve.n));
 
+        assert(p5.eq(p3.neg()));
         assert(p5.eq(p6));
 
-        if (i === 0) {
-          g.pre = null;
-          continue;
-        }
-
-        if (i === 1) {
-          assert(g === curve.g);
-          g.pre = pre;
-        }
-
-        if (i === 2)
-          assert(g !== curve.g);
-
-        g = p6;
+        curve.precompute(rng);
       }
-
-      assert(curve.g.pre === pre);
     });
 
     it('should match multiplications (blind)', () => {
       const curve = new curves.SECP256K1();
-
-      curve.precompute(rng);
-
-      const N = curve.n;
-
       const mul = (p, k) => p.mulBlind(k, rng);
       const jmul = (p, k) => p.jmulBlind(k, rng);
-      const pre = curve.g.pre;
 
-      let g = curve.g;
+      for (const g of [curve.g, curve.g, curve.randomPoint(rng)]) {
+        const k0 = curve.randomScalar(rng);
+        const k1 = k0.divn(3).mul(k0);
 
-      for (let i = 0; i < 3; i++) {
-        const s = curve.randomScalar(rng);
-
-        const p1 = mul(g, s);
-        const p2 = g.mulSimple(s);
+        const p1 = mul(g, k0);
+        const p2 = g.mulSimple(k0);
 
         assert(p1.eq(p2));
 
-        const j1 = jmul(g, s);
-        const j2 = g.jmulSimple(s);
+        const j1 = jmul(g, k0);
+        const j2 = g.jmulSimple(k0);
 
         assert(j1.eq(j2));
 
-        const p3 = mul(g, s.divn(3).mul(s));
-        const p4 = g.mulSimple(s.divn(3).mul(s).imod(N));
+        const p3 = mul(g, k1);
+        const p4 = g.mulSimple(k1.mod(curve.n));
 
         assert(p3.eq(p4));
 
-        const p5 = mul(g, s.divn(3).mul(s).ineg());
-        const p6 = g.mulSimple(s.divn(3).mul(s).ineg().imod(N));
+        const p5 = mul(g, k1.neg());
+        const p6 = g.mulSimple(k1.neg().imod(curve.n));
 
+        assert(p5.eq(p3.neg()));
         assert(p5.eq(p6));
 
-        if (i === 0) {
-          g.pre = null;
-          continue;
-        }
-
-        if (i === 1) {
-          assert(g === curve.g);
-          g.pre = pre;
-        }
-
-        if (i === 2)
-          assert(g !== curve.g);
-
-        g = p6;
+        curve.precompute(rng);
       }
-
-      assert(curve.g.pre === pre);
     });
 
     it('should match multiply+add', () => {
@@ -1684,42 +1706,42 @@ describe('Elliptic', function() {
       const ed25519 = new curves.ED25519();
 
       for (const curve of [p256, secp256k1, ed25519]) {
-        const N = curve.n;
-        const s = curve.randomScalar(rng);
+        const k0 = curve.randomScalar(rng);
+        const k1 = curve.randomScalar(rng);
+        const k2 = k0.divn(3).mul(k0);
         const A = curve.randomPoint(rng);
-        const J = A.toJ();
-        const s0 = curve.randomScalar(rng);
+        const J = A.randomize(rng);
 
         curve.precompute(rng);
 
-        const p1 = curve.g.mulAdd(s, A, s0);
-        const p2 = curve.g.mulAddSimple(s, A, s0);
+        const p1 = curve.g.mulAdd(k0, A, k1);
+        const p2 = curve.g.mulAddSimple(k0, A, k1);
 
         assert(p1.eq(p2));
 
-        const j1 = curve.g.jmulAdd(s, A, s0);
-        const j2 = curve.g.jmulAddSimple(s, A, s0);
+        const j1 = curve.g.jmulAdd(k0, A, k1);
+        const j2 = curve.g.jmulAddSimple(k0, A, k1);
 
         assert(j1.eq(j2));
 
-        const j3 = curve.g.toJ().mulAdd(s, J, s0);
-        const j4 = curve.g.toJ().mulAddSimple(s, J, s0);
+        const j3 = curve.g.toJ().mulAdd(k0, J, k1);
+        const j4 = curve.g.toJ().mulAddSimple(k0, J, k1);
 
         assert(j3.eq(j4));
 
-        const p3 = curve.g.mulAdd(s.divn(3).mul(s), A, s0);
-        const p4 = curve.g.mulAddSimple(s.divn(3).mul(s).imod(N), A, s0);
-        const p4_ = curve.g.mulAddSimple(s.divn(3).mul(s), A, s0);
+        const p3 = curve.g.mulAdd(k2, A, k1);
+        const p4 = curve.g.mulAddSimple(k2.mod(curve.n), A, k1);
+        const p5 = curve.g.mulAddSimple(k2, A, k1);
 
         assert(p3.eq(p4));
-        assert(p4_.eq(p4));
+        assert(p5.eq(p4));
 
-        const p5 = curve.g.mulAdd(s.divn(3).mul(s).ineg(), A, s0);
-        const p6 = curve.g.mulAddSimple(s.divn(3).mul(s).ineg().imod(N), A, s0);
-        const p6_ = curve.g.mulAddSimple(s.divn(3).mul(s).ineg(), A, s0);
+        const p6 = curve.g.mulAdd(k2.neg(), A, k1);
+        const p7 = curve.g.mulAddSimple(k2.neg().imod(curve.n), A, k1);
+        const p8 = curve.g.mulAddSimple(k2.neg(), A, k1);
 
-        assert(p5.eq(p6));
-        assert(p6_.eq(p6));
+        assert(p6.eq(p7));
+        assert(p8.eq(p7));
       }
     });
 
@@ -1729,96 +1751,86 @@ describe('Elliptic', function() {
       const ed25519 = new curves.ED25519();
 
       for (const curve of [p256, secp256k1, ed25519]) {
-        const N = curve.n;
-        const s1 = curve.randomScalar(rng);
+        const k1 = curve.randomScalar(rng);
+        const k2 = k1.sqr();
+        const k3 = k2.divn(17);
+        const k4 = k3.mod(curve.n);
 
         curve.precompute(rng);
 
         {
-          const p1 = curve.g.mul(s1);
-          const p2 = curve.g.mul(s1.neg());
+          const p1 = curve.g.mul(k1);
+          const p2 = curve.g.mul(k1.neg());
 
           assert(!p2.isInfinity());
           assert(p2.eq(p1.neg()));
 
-          const s2 = s1.sqr();
-
-          const p3 = curve.g.mul(s2);
-          const p4 = curve.g.mul(s2.neg());
+          const p3 = curve.g.mul(k2);
+          const p4 = curve.g.mul(k2.neg());
 
           assert(!p4.isInfinity());
           assert(p4.eq(p3.neg()));
 
-          const s3 = s2.divn(17);
-          const p5 = p1.mul(s3);
-          const p6 = p1.mul(s3.neg());
+          const p5 = p1.mul(k3);
+          const p6 = p1.mul(k3.neg());
 
           assert(!p6.isInfinity());
           assert(p6.eq(p5.neg()));
 
-          const s4 = s3.mod(N);
-          const p7 = p2.mul(s4);
-          const p8 = p2.mul(s4.neg());
+          const p7 = p2.mul(k4);
+          const p8 = p2.mul(k4.neg());
 
           assert(!p8.isInfinity());
           assert(p8.eq(p7.neg()));
         }
 
         {
-          const p1 = curve.g.jmul(s1);
-          const p2 = curve.g.jmul(s1.neg());
+          const p1 = curve.g.jmul(k1);
+          const p2 = curve.g.jmul(k1.neg());
 
           assert(!p2.isInfinity());
           assert(p2.eq(p1.neg()));
 
-          const s2 = s1.sqr();
-
-          const p3 = curve.g.jmul(s2);
-          const p4 = curve.g.jmul(s2.neg());
+          const p3 = curve.g.jmul(k2);
+          const p4 = curve.g.jmul(k2.neg());
 
           assert(!p4.isInfinity());
           assert(p4.eq(p3.neg()));
 
-          const s3 = s2.divn(17);
-          const p5 = p1.jmul(s3);
-          const p6 = p1.jmul(s3.neg());
+          const p5 = p1.jmul(k3);
+          const p6 = p1.jmul(k3.neg());
 
           assert(!p6.isInfinity());
           assert(p6.eq(p5.neg()));
 
-          const s4 = s3.mod(N);
-          const p7 = p2.jmul(s4);
-          const p8 = p2.jmul(s4.neg());
+          const p7 = p2.jmul(k4);
+          const p8 = p2.jmul(k4.neg());
 
           assert(!p8.isInfinity());
           assert(p8.eq(p7.neg()));
         }
 
         {
-          const p1 = curve.g.mulBlind(s1, rng);
-          const p2 = curve.g.mulBlind(s1.neg(), rng);
+          const p1 = curve.g.mulBlind(k1, rng);
+          const p2 = curve.g.mulBlind(k1.neg(), rng);
 
           assert(!p2.isInfinity());
           assert(p2.eq(p1.neg()));
 
-          const s2 = s1.sqr();
-
-          const p3 = curve.g.mulBlind(s2, rng);
-          const p4 = curve.g.mulBlind(s2.neg(), rng);
+          const p3 = curve.g.mulBlind(k2, rng);
+          const p4 = curve.g.mulBlind(k2.neg(), rng);
 
           assert(!p4.isInfinity());
           assert(p4.eq(p3.neg()));
 
-          const s3 = s2.divn(17);
-          const p5 = p1.mulBlind(s3, rng);
-          const p6 = p1.mulBlind(s3.neg(), rng);
+          const p5 = p1.mulBlind(k3, rng);
+          const p6 = p1.mulBlind(k3.neg(), rng);
 
           assert(!p6.isInfinity());
           assert(p6.eq(p5.neg()));
 
-          const s4 = s3.mod(N);
-          const p7 = p2.mulBlind(s4, rng);
-          const p8 = p2.mulBlind(s4.neg(), rng);
+          const p7 = p2.mulBlind(k4, rng);
+          const p8 = p2.mulBlind(k4.neg(), rng);
 
           assert(!p8.isInfinity());
           assert(p8.eq(p7.neg()));
@@ -1832,71 +1844,65 @@ describe('Elliptic', function() {
       const ed25519 = new curves.ED25519();
 
       for (const curve of [p256, secp256k1, ed25519]) {
-        const N = curve.n;
-        const A = curve.randomPoint(rng);
-        const J = A.toJ();
-        const s0 = curve.randomScalar(rng);
-        const as0 = A.mul(s0);
-        const js0 = as0.toJ();
-        const s1 = curve.randomScalar(rng);
+        const A0 = curve.randomPoint(rng);
+        const J0 = A0.randomize(rng);
+        const k0 = curve.randomScalar(rng);
+        const A1 = A0.mul(k0);
+        const J1 = A1.randomize(rng);
+        const k1 = curve.randomScalar(rng);
+        const k2 = k1.sqr();
+        const k3 = k2.divn(17);
+        const k4 = k3.mod(curve.n);
 
         curve.precompute(rng);
 
         {
-          const p1 = curve.g.mul(s1).neg().add(as0);
-          const p2 = curve.g.mulAdd(s1.neg(), A, s0);
+          const p1 = curve.g.mul(k1).neg().add(A1);
+          const p2 = curve.g.mulAdd(k1.neg(), A0, k0);
 
           assert(!p2.isInfinity());
           assert(p2.eq(p1));
 
-          const s2 = s1.sqr();
-
-          const p3 = curve.g.mul(s2).neg().add(as0);
-          const p4 = curve.g.mulAdd(s2.neg(), A, s0);
+          const p3 = curve.g.mul(k2).neg().add(A1);
+          const p4 = curve.g.mulAdd(k2.neg(), A0, k0);
 
           assert(!p4.isInfinity());
           assert(p4.eq(p3));
 
-          const s3 = s2.divn(17);
-          const p5 = p1.mul(s3).neg().add(as0);
-          const p6 = p1.mulAdd(s3.neg(), A, s0);
+          const p5 = p1.mul(k3).neg().add(A1);
+          const p6 = p1.mulAdd(k3.neg(), A0, k0);
 
           assert(!p6.isInfinity());
           assert(p6.eq(p5));
 
-          const s4 = s3.mod(N);
-          const p7 = p2.mul(s4).neg().add(as0);
-          const p8 = p2.mulAdd(s4.neg(), A, s0);
+          const p7 = p2.mul(k4).neg().add(A1);
+          const p8 = p2.mulAdd(k4.neg(), A0, k0);
 
           assert(!p8.isInfinity());
           assert(p8.eq(p7));
         }
 
         {
-          const p1 = curve.g.jmul(s1).neg().add(js0);
-          const p2 = curve.g.jmulAdd(s1.neg(), A, s0);
+          const p1 = curve.g.jmul(k1).neg().add(J1);
+          const p2 = curve.g.jmulAdd(k1.neg(), A0, k0);
 
           assert(!p2.isInfinity());
           assert(p2.eq(p1));
 
-          const s2 = s1.sqr();
-
-          const p3 = curve.g.jmul(s2).neg().add(js0);
-          const p4 = curve.g.jmulAdd(s2.neg(), A, s0);
+          const p3 = curve.g.jmul(k2).neg().add(J1);
+          const p4 = curve.g.jmulAdd(k2.neg(), A0, k0);
 
           assert(!p4.isInfinity());
           assert(p4.eq(p3));
 
-          const s3 = s2.divn(17);
-          const p5 = p1.jmul(s3).neg().add(js0);
-          const p6 = p1.jmulAdd(s3.neg(), J, s0);
+          const p5 = p1.jmul(k3).neg().add(J1);
+          const p6 = p1.jmulAdd(k3.neg(), J0, k0);
 
           assert(!p6.isInfinity());
           assert(p6.eq(p5));
 
-          const s4 = s3.mod(N);
-          const p7 = p2.jmul(s4).neg().add(js0);
-          const p8 = p2.jmulAdd(s4.neg(), J, s0);
+          const p7 = p2.jmul(k4).neg().add(J1);
+          const p8 = p2.jmulAdd(k4.neg(), J0, k0);
 
           assert(!p8.isInfinity());
           assert(p8.eq(p7));
@@ -2183,7 +2189,7 @@ describe('Elliptic', function() {
         const we = wei25519.g.mul(new BN(i));
         const mo = x25519.g.toX().mul(new BN(i));
         const ed = ed25519.g.mul(new BN(i));
-        const sign = we.isInfinity() ? false : we.y.redIsOdd();
+        const sign = we.sign();
 
         assert(wei25519.pointFromShort(we).eq(we));
         assert(wei25519.pointFromMont(mo.toP(sign)).eq(we));
@@ -2366,14 +2372,13 @@ describe('Elliptic', function() {
       const x = new curves.X448();
       const curve = new curves.ED448();
 
-      let u1, x1;
-
       // 4-isogeny map can't handle torsion points.
+      let u;
       do {
-        u1 = curve.randomField(rng);
-        x1 = u1.forceRed(x.red);
-      } while (x.pointFromUniform(x1).toX().hasTorsion());
+        u = x.randomField(rng);
+      } while (x.pointFromUniform(u).toX().hasTorsion());
 
+      const u1 = u.forceRed(curve.red);
       const p1 = curve.pointFromUniform(u1, x);
       const u2 = curve.pointToUniform(p1, 0, x);
       const p2 = curve.pointFromUniform(u2, x);
@@ -2397,22 +2402,22 @@ describe('Elliptic', function() {
         p = curve.g.mul(k);
 
         // Fails on about half the keys.
-        let r;
+        let u;
         try {
-          r = curve.pointToUniform(p, rng.randomInt(), x);
+          u = curve.pointToUniform(p, rng.randomInt(), x);
         } catch (e) {
           continue;
         }
 
         // Encode uniform bytes.
-        bytes = curve.encodeUniform(r, rng);
+        bytes = curve.encodeUniform(u, rng);
 
         break;
       }
 
       // Run elligator on the other side.
-      const r = curve.decodeUniform(bytes);
-      const q = curve.pointFromUniform(r, x);
+      const u = curve.decodeUniform(bytes);
+      const q = curve.pointFromUniform(u, x);
 
       assert(p.eq(q));
     });
@@ -2424,6 +2429,7 @@ describe('Elliptic', function() {
       const p1 = curve._elligator1(r1);
 
       assert(p1.validate());
+
       assert.deepStrictEqual(p1.toJSON(), [
         '0751dcb3ac43e56dd98495eb18dd99d601652d6303006f53d1629f3422cf9c55',
         '029122c5febb9231a42535ff7dc960d33cc0845ca61864fa657ae4587f0c4f87'
@@ -2439,10 +2445,13 @@ describe('Elliptic', function() {
       ]);
 
       assert(p3.validate());
-      assert.throws(() => curve._invert1(p3, 0));
+
+      assert.throws(() => curve._invert1(p3, 0), {
+        message: 'X is not a square mod P.'
+      });
 
       for (let i = 0; i < 100; i++) {
-        const r1 = curve.one.redMuln(i);
+        const r1 = curve.field(i);
         const p1 = curve._elligator1(r1);
         const r2 = curve._invert1(p1, 0);
         const p2 = curve._elligator1(r2);
@@ -2453,7 +2462,7 @@ describe('Elliptic', function() {
       }
 
       for (let i = 0; i < 10; i++) {
-        const r1 = curve.one.redMuln(i);
+        const r1 = curve.field(i);
         const p1 = curve.pointFromUniform(r1);
         const r2 = curve.pointToUniform(p1, 0);
         const p2 = curve.pointFromUniform(r2);
@@ -2479,7 +2488,7 @@ describe('Elliptic', function() {
         '874f0c7f58e47a65fa6418a65c84c03cd360c97dff3525a43192bbfec5229182');
       assert.bufferEqual(pub2, pub1);
 
-      const pub3 = eddsa.publicKeyFromHash(Buffer.concat([u1, pub1]), true);
+      const pub3 = eddsa.publicKeyFromHash(rng.randomBytes(64), true);
 
       assert(!eddsa.publicKeyHasTorsion(pub3));
       assert(eddsa.publicKeyVerify(pub3));
@@ -2705,9 +2714,13 @@ describe('Elliptic', function() {
       const secp256k1 = new curves.SECP256K1();
       const x25519 = new curves.X25519();
       const x448 = new curves.X448();
+      const frp256v1 = new extra.FRP256V1();
+      const anomalous = new extra.ANOMALOUS();
+      const bn2254 = new extra.BN2254();
       const wei25519 = new extra.WEI25519();
       const ed1174 = new extra.ED1174();
       const ed41417 = new extra.ED41417();
+      const curve383187 = new extra.CURVE383187();
       const m221 = new extra.M221();
       const e222 = new extra.E222();
       const m383 = new extra.M383();
@@ -2726,9 +2739,13 @@ describe('Elliptic', function() {
                            secp256k1,
                            x25519,
                            x448,
+                           frp256v1,
+                           anomalous,
+                           bn2254,
                            wei25519,
                            ed1174,
                            ed41417,
+                           curve383187,
                            m221,
                            e222,
                            m383,
@@ -2751,11 +2768,14 @@ describe('Elliptic', function() {
       const ed448 = new curves.ED448();
       const iso448 = new extra.ISO448();
       const mont448 = new extra.MONT448();
+      const jubjub = new extra.JUBJUB();
+      const mubmub = jubjub.toMont(jubjub.one);
 
       for (const [x, curve] of [[x25519, ed25519],
                                 [x448, ed448],
                                 [x448, iso448],
-                                [mont448, ed448]]) {
+                                [mont448, ed448],
+                                [mubmub, jubjub]]) {
         const p = curve.randomPoint(rng);
         const u = curve.pointToHash(p, rng, x);
         const q = curve.pointFromHash(u, false, x);
@@ -2768,10 +2788,14 @@ describe('Elliptic', function() {
       const edwards = new curves.ED448();
       const mont = edwards.toMont(edwards.one, true);
       const wei = mont.toShort();
+      const zai = wei.a.redMuln(-2).redInvert();
 
       // Satisfies jacobi(z) == -1
       // and jacobi(g(b / (z * a))) == 1.
       wei.z = wei.field(-2);
+
+      assert(!wei.z.redIsSquare());
+      assert(wei.solveY2(wei.b.redMul(zai)).redIsSquare());
 
       // Insane trick.
       const u = rng.randomBytes(112);
@@ -3080,7 +3104,7 @@ describe('Elliptic', function() {
 
     it('should test doubling when lambda=0', () => {
       const curve = new curves.P521();
-      const p = curve.pointFromX(new BN(1), false);
+      const p = curve.pointFromX(curve.field(1), false);
       const q = p.toJ().dbl().toP();
 
       assert(p.dbl().eq(q));
@@ -3137,9 +3161,6 @@ describe('Elliptic', function() {
       const curve = new curves.X25519();
 
       for (let i = 0; i < 2; i++) {
-        if (i === 1)
-          curve.precompute(rng);
-
         const k = curve.randomScalar(rng);
         const g = curve.g;
         const p = g.mul(k);
@@ -3193,6 +3214,8 @@ describe('Elliptic', function() {
           assert(p6.eq(p7));
           assert(p8.eq(p9));
         }
+
+        curve.precompute(rng);
       }
     });
 
@@ -3253,21 +3276,52 @@ describe('Elliptic', function() {
       }
     });
 
-    it('should test montgomery multiplication and conversion', () => {
+    it('should test montgomery multiplication and conversion (1)', () => {
       const ed25519 = new curves.ED25519();
       const x25519 = new curves.X25519();
       const g = x25519.randomPoint(rng).toX();
       const k = x25519.reduce(x25519.randomScalar(rng));
-
       const p = g.mul(k);
+      const eg = ed25519.pointFromMont(g.toP());
+      const ep = ed25519.pointFromMont(p.toP());
+      const r = eg.mul(k);
 
-      const eg = ed25519.pointFromMont(g.toP(false));
-      const ep1 = ed25519.pointFromMont(p.toP(false));
-      const ep2 = ed25519.pointFromMont(p.toP(true));
+      assert(ep.eq(r) || ep.eq(r.neg()));
+    });
 
-      const ep = eg.mul(k);
+    it('should test montgomery multiplication and conversion (2)', () => {
+      const ed25519 = new curves.ED25519();
+      const x25519 = new curves.X25519();
+      const g = x25519.randomPoint(rng);
+      const k = x25519.randomScalar(rng);
+      const p = g.mul(k);
+      const eg = ed25519.pointFromMont(g);
+      const ep = ed25519.pointFromMont(p);
+      const r = eg.mul(k);
 
-      assert(ep.eq(ep1) || ep.eq(ep2));
+      assert(ep.eq(r));
+    });
+
+    it('should test montgomery multiplication and conversion (3)', () => {
+      const ed25519 = new curves.ED25519();
+      const x25519 = new curves.X25519();
+      const k = x25519.reduce(x25519.randomScalar(rng));
+      const p = x25519.g.toX().mul(k);
+      const q = ed25519.pointFromMont(p.toP());
+      const r = ed25519.g.mul(k);
+
+      assert(q.eq(r) || q.eq(r.neg()));
+    });
+
+    it('should test montgomery multiplication and conversion (4)', () => {
+      const ed25519 = new curves.ED25519();
+      const x25519 = new curves.X25519();
+      const k = x25519.randomScalar(rng);
+      const p = x25519.g.mul(k);
+      const q = ed25519.pointFromMont(p);
+      const r = ed25519.g.mul(k);
+
+      assert(q.eq(r));
     });
 
     it('should test montgomery recovery edge cases', () => {
@@ -4332,73 +4386,6 @@ describe('Elliptic', function() {
   });
 
   describe('Point codec', () => {
-    const makeShortTest = (definition) => {
-      return () => {
-        const curve = new curves.SECP256K1();
-        const p = curve.pointFromJSON(definition.coords);
-
-        // Encodes as expected
-        assert.bufferEqual(p.encode(false), definition.encoded);
-        assert.bufferEqual(p.encode(true), definition.compact);
-
-        // Decodes as expected
-        assert(curve.decodePoint(Buffer.from(definition.encoded, 'hex')).eq(p));
-        assert(curve.decodePoint(Buffer.from(definition.compact, 'hex')).eq(p));
-        assert(curve.decodePoint(Buffer.from(definition.hybrid, 'hex')).eq(p));
-      };
-    };
-
-    const makeMontTest = (definition) => {
-      return () => {
-        const curve = new curves.X25519();
-        const p = curve.xpoint(new BN(definition.coords[0], 16));
-        const g = curve.g.toX();
-        const scalar = new BN(definition.scalar, 16);
-        const encoded = p.encode();
-        const decoded = curve.decodeX(encoded);
-
-        assert(decoded.eq(p));
-
-        assert.bufferEqual(encoded, definition.encoded);
-        assert.bufferEqual(g.mul(scalar).encode(), encoded);
-        assert.bufferEqual(g.mulSimple(scalar).encode(), encoded);
-        assert.bufferEqual(g.mulConst(scalar).encode(), encoded);
-        assert.bufferEqual(g.mulBlind(scalar).encode(), encoded);
-        assert.bufferEqual(g.mulBlind(scalar, rng).encode(), encoded);
-        assert.bufferEqual(g.mulConst(scalar, rng).encode(), encoded);
-      };
-    };
-
-    const shortPointEvenY = {
-      coords: [
-        '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
-        '483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8'
-      ],
-      compact: '02'
-        + '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
-      encoded: '04'
-        + '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798'
-        + '483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8',
-      hybrid: '06'
-        + '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798'
-        + '483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8'
-    };
-
-    const shortPointOddY = {
-      coords: [
-        'fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556',
-        'ae12777aacfbb620f3be96017f45c560de80f0f6518fe4a03c870c36b075f297'
-      ],
-      compact: '03'
-        + 'fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556',
-      encoded: '04'
-        + 'fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556'
-        + 'ae12777aacfbb620f3be96017f45c560de80f0f6518fe4a03c870c36b075f297',
-      hybrid: '07'
-        + 'fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556'
-        + 'ae12777aacfbb620f3be96017f45c560de80f0f6518fe4a03c870c36b075f297'
-    };
-
     it('should throw when trying to decode random bytes', () => {
       const secp256k1 = new curves.SECP256K1();
 
@@ -4409,20 +4396,82 @@ describe('Elliptic', function() {
       });
     });
 
-    it('should be able to encode/decode a short curve point with even Y',
-        makeShortTest(shortPointEvenY));
+    it('should be able to encode/decode a short curve point', () => {
+      const curve = new curves.SECP256K1();
 
-    it('should be able to encode/decode a short curve point with odd Y',
-        makeShortTest(shortPointOddY));
+      const vectors = [
+        {
+          coords: [
+            '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
+            '483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8'
+          ],
+          compact: '02'
+            + '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
+          encoded: '04'
+            + '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798'
+            + '483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8',
+          hybrid: '06'
+            + '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798'
+            + '483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8'
+        },
+        {
+          coords: [
+            'fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556',
+            'ae12777aacfbb620f3be96017f45c560de80f0f6518fe4a03c870c36b075f297'
+          ],
+          compact: '03'
+            + 'fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556',
+          encoded: '04'
+            + 'fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556'
+            + 'ae12777aacfbb620f3be96017f45c560de80f0f6518fe4a03c870c36b075f297',
+          hybrid: '07'
+            + 'fff97bd5755eeea420453a14355235d382f6472f8568a18b2f057a1460297556'
+            + 'ae12777aacfbb620f3be96017f45c560de80f0f6518fe4a03c870c36b075f297'
+        }
+      ];
 
-    it('should be able to encode/decode a mont curve point', makeMontTest({
-      scalar: '6',
-      coords: [
-        '26954ccdc99ebf34f8f1dde5e6bb080685fec73640494c28f9fe0bfa8c794531'
-      ],
-      encoded:
-        '3145798cfa0bfef9284c494036c7fe850608bbe6e5ddf1f834bf9ec9cd4c9526'
-    }));
+      for (const vector of vectors) {
+        const p = curve.pointFromJSON(vector.coords);
+
+        // Encodes as expected
+        assert.bufferEqual(p.encode(false), vector.encoded);
+        assert.bufferEqual(p.encode(true), vector.compact);
+
+        // Decodes as expected
+        assert(curve.decodePoint(Buffer.from(vector.encoded, 'hex')).eq(p));
+        assert(curve.decodePoint(Buffer.from(vector.compact, 'hex')).eq(p));
+        assert(curve.decodePoint(Buffer.from(vector.hybrid, 'hex')).eq(p));
+      }
+    });
+
+    it('should be able to encode/decode a mont curve point', () => {
+      const curve = new curves.X25519();
+
+      const vector = {
+        scalar: '6',
+        coords: [
+          '26954ccdc99ebf34f8f1dde5e6bb080685fec73640494c28f9fe0bfa8c794531'
+        ],
+        encoded:
+          '3145798cfa0bfef9284c494036c7fe850608bbe6e5ddf1f834bf9ec9cd4c9526'
+      };
+
+      const p = curve.xpoint(curve.field(vector.coords[0], 16));
+      const g = curve.g.toX();
+      const scalar = new BN(vector.scalar, 16);
+      const encoded = p.encode();
+      const decoded = curve.decodeX(encoded);
+
+      assert(decoded.eq(p));
+
+      assert.bufferEqual(encoded, vector.encoded);
+      assert.bufferEqual(g.mul(scalar).encode(), encoded);
+      assert.bufferEqual(g.mulSimple(scalar).encode(), encoded);
+      assert.bufferEqual(g.mulConst(scalar).encode(), encoded);
+      assert.bufferEqual(g.mulBlind(scalar).encode(), encoded);
+      assert.bufferEqual(g.mulBlind(scalar, rng).encode(), encoded);
+      assert.bufferEqual(g.mulConst(scalar, rng).encode(), encoded);
+    });
   });
 
   describe('E521', () => {
