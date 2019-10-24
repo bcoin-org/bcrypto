@@ -1,11 +1,13 @@
 'use strict';
 
+const assert = require('bsert');
 const elliptic = require('../../lib/js/elliptic');
 
 const {
   ShortCurve,
   MontCurve,
-  EdwardsCurve
+  EdwardsCurve,
+  ShortPoint
 } = elliptic;
 
 /**
@@ -862,6 +864,93 @@ class JUBJUB extends EdwardsCurve {
   }
 }
 
+/**
+ * ISO256K1 (3-isogenous to secp256k1)
+ * https://github.com/cfrg/draft-irtf-cfrg-hash-to-curve/issues/158
+ */
+
+class ISO256K1 extends ShortCurve {
+  constructor(pre) {
+    super({
+      id: 'ISO256K1',
+      ossl: null,
+      type: 'short',
+      endian: 'be',
+      hash: 'SHA256',
+      prime: 'k256',
+      // 2^256 - 2^32 - 977 (= 3 mod 4)
+      p: ['ffffffff ffffffff ffffffff ffffffff',
+          'ffffffff ffffffff fffffffe fffffc2f'],
+      a: ['3f8731ab dd661adc a08a5558 f0f5d272',
+          'e953d363 cb6f0e5d 405447c0 1a444533'],
+      // 1771
+      b: '6eb',
+      n: ['ffffffff ffffffff ffffffff fffffffe',
+          'baaedce6 af48a03b bfd25e8c d0364141'],
+      h: '1',
+      // SSWU
+      z: '-1',
+      g: [
+        ['4010e1cb b86ab7f3 a40248e9 21dc5e7f',
+         '4d4384af d9d43b09 2fef88a7 4062e495'],
+        ['8e133b20 6fb54a5d 7c567df8 ecae8f71',
+         'e5018676 5ed9fa20 1e7cc15d 68368ca7'],
+        pre
+      ],
+      magic: [
+        '061b68589429614b5813c463a18e9f39530edc33f58b3f6c139c8ddf47268509',
+        'a4607468f701c68840f0c9f3c7c6a43a854a4eacfb32e30c5fec55a7cf345395',
+        '0000000000000000000000000000000000000000000000000000000000000054',
+        '177b7e58234965812dd9416bf7f7ce5180c178f423e2b2b89ffd30ced4753083',
+        '89291c84de3e11f1041da6957255eed5fc964a4df050df221d6ad4ce6ab9c5a5',
+        'b98d84f79623cf7c76743bbc1818950b7dbb95239457e7d620086d9282a06aa6',
+        '000000000000000000000000000000000000000000000000000000000000001c',
+        '46727b0869dc3083898bc443e7e76af482446adc6ba81829dff7926c7d5f9189'
+      ]
+    });
+  }
+
+  pointFromShort(point) {
+    assert(point instanceof ShortPoint);
+    assert(point.curve.id === 'SECP256K1');
+
+    // P = O
+    if (point.isInfinity())
+      return this.point();
+
+    // 3-isogeny maps:
+    //
+    //   x' = (x^3 + c1 * x^2 + c2 * x + c3) / (x^2 + c1 * x + c4)
+    //   y' = (x^3 * y + c5 * x^2 * y + c6 * x * y + c7 * y) /
+    //        (x^3 + c5 * x^2 + c8 * x + c7)
+    //
+    // No exceptional cases that I'm aware of.
+    const [c1, c2, c3, c4, c5, c6, c7, c8] = this.magic;
+    const x = point.x.forceRed(this.red);
+    const y = point.y.forceRed(this.red);
+    const x2 = x.redSqr();
+    const x3 = x2.redMul(x);
+    const t0 = c1.redMul(x2);
+    const t1 = c2.redMul(x);
+    const t2 = c1.redMul(x);
+    const t3 = x3.redMul(y);
+    const t4 = c5.redMul(x2).redMul(y);
+    const t5 = c6.redMul(x).redMul(y);
+    const t6 = c7.redMul(y);
+    const t7 = c5.redMul(x2);
+    const t8 = c8.redMul(x);
+    const n0 = x3.redAdd(t0).redIAdd(t1).redIAdd(c3);
+    const d0 = x2.redAdd(t2).redIAdd(c4);
+    const n1 = t3.redIAdd(t4).redIAdd(t5).redIAdd(t6);
+    const d1 = x3.redAdd(t7).redIAdd(t8).redIAdd(c7);
+    const d = d0.redMul(d1).redInvert();
+    const nx = n0.redMul(d.redMul(d1));
+    const ny = n1.redMul(d.redMul(d0));
+
+    return this.point(nx, ny);
+  }
+}
+
 /*
  * Register
  */
@@ -886,6 +975,7 @@ elliptic.register('M511', M511);
 elliptic.register('E521', E521);
 elliptic.register('MDC', MDC);
 elliptic.register('JUBJUB', JUBJUB);
+elliptic.register('ISO256K1', ISO256K1);
 
 /*
  * Expose
@@ -911,5 +1001,6 @@ module.exports = {
   M511,
   E521,
   MDC,
-  JUBJUB
+  JUBJUB,
+  ISO256K1
 };

@@ -4329,6 +4329,36 @@ describe('Elliptic', function() {
         assert(ed448.pointFromMont(p.neg()).eq(q));
       }
     });
+
+    it('should test secp256k1 3-isogeny', () => {
+      const secp256k1 = new curves.SECP256K1();
+      const iso256k1 = new extra.ISO256K1();
+
+      sanityCheck(iso256k1);
+
+      const p = iso256k1.pointFromShort(secp256k1.g);
+      const g = secp256k1.pointFromShort(p);
+
+      assert(g.eq(secp256k1.g));
+
+      const k = secp256k1.randomScalar(rng);
+      const p1 = secp256k1.g.mul(k);
+      const p2 = iso256k1.g.mul(k);
+
+      assert(secp256k1.pointFromShort(p2).eq(p1));
+      assert(iso256k1.pointFromShort(p1).eq(p2));
+
+      // SSWU
+      {
+        const p = secp256k1.randomPoint(rng);
+        const p0 = iso256k1.pointFromShort(p);
+        const u = iso256k1.pointToHash(p0, rng);
+        const q0 = iso256k1.pointFromHash(u);
+        const q = secp256k1.pointFromShort(q0);
+
+        assert(p.eq(q));
+      }
+    });
   });
 
   describe('Point codec', () => {
