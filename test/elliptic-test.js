@@ -4165,6 +4165,170 @@ describe('Elliptic', function() {
         }
       }
     });
+
+    it('should handle x25519<->ed25519 edge cases', () => {
+      const ed25519 = new curves.ED25519();
+      const x25519 = new curves.X25519();
+      const {a, bi, two} = x25519;
+      const c = ed25519._scale(x25519, false);
+
+      // Should be -sqrt(-(A + 2) / B).
+      const e = a.redAdd(two).redINeg().redMul(bi).redSqrt();
+
+      if (!e.redIsOdd())
+        e.redINeg();
+
+      assert(c.eq(e));
+
+      // (0, 1) -> O
+      {
+        const p = ed25519.point(ed25519.zero, ed25519.one);
+        const q = x25519.point();
+
+        assert(p.validate() && q.validate());
+        assert(x25519.pointFromEdwards(p).eq(q));
+        assert(ed25519.pointFromMont(q).eq(p));
+      }
+
+      // (0, -1) -> (0, 0)
+      {
+        const p = ed25519.point(ed25519.zero, ed25519.one.redNeg());
+        const q = x25519.point(x25519.zero, x25519.zero);
+
+        assert(p.validate() && q.validate());
+        assert(x25519.pointFromEdwards(p).eq(q));
+        assert(ed25519.pointFromMont(q).eq(p));
+      }
+
+      // (1 / +-sqrt(a), 0) -> (1, +-sqrt((A + 2) / B))
+      {
+        const x = ed25519.a.redSqrt().redInvert();
+        const y = ed25519.zero;
+
+        const u = x25519.one;
+        const v = a.redAdd(two).redMul(bi).redSqrt();
+
+        const p = ed25519.point(x, y);
+        const q = x25519.point(u, v);
+
+        assert(p.validate() && q.validate());
+        assert(x25519.pointFromEdwards(p).eq(q));
+        assert(ed25519.pointFromMont(q).eq(p));
+        assert(x25519.pointFromEdwards(p.neg()).eq(q.neg()));
+        assert(ed25519.pointFromMont(q.neg()).eq(p.neg()));
+      }
+    });
+
+    it('should handle x448<->iso448 edge cases', () => {
+      const ed448 = new curves.ISO448();
+      const x448 = new curves.X448();
+      const {a, bi, two} = x448;
+      const c = ed448._scale(x448, true);
+
+      // Should be +sqrt((A - 2) / B).
+      const e = a.redSub(two).redMul(bi).redSqrt();
+
+      if (e.redIsOdd())
+        e.redINeg();
+
+      assert(c.eq(e));
+
+      // (0, 1) -> O
+      {
+        const p = ed448.point(ed448.zero, ed448.one);
+        const q = x448.point();
+
+        assert(p.validate() && q.validate());
+        assert(x448.pointFromEdwards(p).eq(q));
+        assert(ed448.pointFromMont(q).eq(p));
+      }
+
+      // (0, -1) -> (0, 0)
+      {
+        const p = ed448.point(ed448.zero, ed448.one.redNeg());
+        const q = x448.point(x448.zero, x448.zero);
+
+        assert(p.validate() && q.validate());
+        assert(x448.pointFromEdwards(p).eq(q));
+        assert(ed448.pointFromMont(q).eq(p));
+      }
+
+      // (+-1, 0) -> (-1, +-sqrt((A - 2) / B))
+      {
+        const p = ed448.point(ed448.one, ed448.zero);
+        const q = x448.point(x448.one.redNeg(), e.redNeg());
+
+        assert(p.validate() && q.validate());
+        assert(x448.pointFromEdwards(p).eq(q));
+        assert(ed448.pointFromMont(q).eq(p));
+        assert(x448.pointFromEdwards(p.neg()).eq(q.neg()));
+        assert(ed448.pointFromMont(q.neg()).eq(p.neg()));
+      }
+    });
+
+    it('should handle x448<->ed448 edge cases', () => {
+      const ed448 = new curves.ED448();
+      const x448 = new curves.X448();
+
+      // (0, 1) -> O
+      {
+        const p = ed448.point(ed448.zero, ed448.one);
+        const q = x448.point();
+
+        assert(p.validate() && q.validate());
+        assert(x448.pointFromEdwards(p).eq(q));
+      }
+
+      // (0, -1) -> (0, 0)
+      {
+        const p = ed448.point(ed448.zero, ed448.one.redNeg());
+        const q = x448.point(x448.zero, x448.zero);
+
+        assert(p.validate() && q.validate());
+        assert(x448.pointFromEdwards(p).eq(q));
+      }
+
+      // (+-1, 0) -> (0, 0)
+      {
+        const p = ed448.point(ed448.one, ed448.zero);
+        const q = x448.point(x448.zero, x448.zero);
+
+        assert(p.validate() && q.validate());
+        assert(x448.pointFromEdwards(p).eq(q));
+        assert(x448.pointFromEdwards(p.neg()).eq(q.neg()));
+      }
+
+      // Other way:
+      // O -> (0, 1)
+      {
+        const p = x448.point();
+        const q = ed448.point(ed448.zero, ed448.one);
+
+        assert(p.validate() && q.validate());
+        assert(ed448.pointFromMont(p).eq(q));
+      }
+
+      // (0, 0) -> (0, -1) -> (0, 1)
+      {
+        const p = x448.point(x448.zero, x448.zero);
+        const q = ed448.point(ed448.zero, ed448.one);
+
+        assert(p.validate() && q.validate());
+        assert(ed448.pointFromMont(p).eq(q));
+      }
+
+      // (-1, +-sqrt((A - 2) / B)) -> (+-1, 0) -> (0, 1)
+      {
+        const {a, bi, two} = x448;
+        const v = a.redSub(two).redMul(bi).redSqrt();
+        const p = x448.point(x448.one.redNeg(), v);
+        const q = ed448.point(ed448.zero, ed448.one);
+
+        assert(p.validate() && q.validate());
+        assert(ed448.pointFromMont(p).eq(q));
+        assert(ed448.pointFromMont(p.neg()).eq(q));
+      }
+    });
   });
 
   describe('Point codec', () => {
