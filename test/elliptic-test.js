@@ -2331,7 +2331,7 @@ describe('Elliptic', function() {
       assert(x25519.isIsomorphic(ed));
     });
 
-    it('should test wei25519 equivalence when b != 1', () => {
+    it('should test wei25519 equivalence when B != 1', () => {
       const ed = new curves.ED25519();
       const mont = ed.toMont();
       const wei = mont.toShort();
@@ -2589,7 +2589,34 @@ describe('Elliptic', function() {
       assert(ecdh.publicKeyVerify(pub));
     });
 
-    it('should do elligator2 with b != 1', () => {
+    it('should do elligator2 with B != 1 (mont)', () => {
+      const ed25519 = new curves.ED25519();
+      const x25519 = new curves.X25519();
+      const native = ed25519.toMont();
+
+      // Some sanity checks.
+      const x0 = native.g.x.redMul(native.bi);
+      const y0 = native.g.y.redMul(native.bi);
+
+      assert(native.b0.eq(native.b.redSqr().redInvert()));
+      assert(native._solveY0(x0).eq(y0.redSqr()));
+
+      const u0 = native.randomField(rng);
+      const p0 = native.pointFromUniform(u0);
+      const p1 = x25519.pointFromUniform(u0.forceRed(x25519.red));
+
+      assert(p0.validate());
+      assert(p1.validate());
+      assert(p0.getX().eq(p1.getX()));
+
+      const u1 = native.pointToUniform(p0, 0);
+      const p2 = native.pointFromUniform(u1);
+
+      assert(p2.validate());
+      assert(p2.eq(p0));
+    });
+
+    it('should do elligator2 with B != 1 (edwards)', () => {
       const ed25519 = new curves.ED25519();
       const x25519 = new curves.X25519();
       const native = ed25519.toMont();
@@ -2598,11 +2625,14 @@ describe('Elliptic', function() {
       const p0 = ed25519.pointFromUniform(u0, native);
       const p1 = ed25519.pointFromUniform(u0, x25519);
 
+      assert(p0.validate());
+      assert(p1.validate());
       assert(p0.eq(p1) || p0.eq(p1.neg()));
 
       const u1 = ed25519.pointToUniform(p0, 0, native);
       const p2 = ed25519.pointFromUniform(u1, native);
 
+      assert(p2.validate());
       assert(p2.eq(p0));
     });
 
