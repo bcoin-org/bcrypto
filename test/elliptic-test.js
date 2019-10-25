@@ -58,7 +58,7 @@ function checkCurve(curve) {
 
   // Test unified ladder.
   if (curve.type === 'mont')
-    assert(g.mulConst(k).eq(g));
+    assert(g.mulConst(k.muln(2)).eq(g.dbl()));
   else
     assert(curve._ladderMul(g, k).eq(g));
 
