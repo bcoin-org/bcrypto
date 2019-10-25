@@ -1997,9 +1997,14 @@ describe('Elliptic', function() {
     });
 
     it('should test birational equivalence (x1174)', () => {
-      for (const invert of [false, true]) {
-        const ed1174 = new extra.ED1174();
-        const b = invert ? ed1174.one : null;
+      const ed1174 = new extra.ED1174();
+
+      const params = [
+        [null, false],
+        [ed1174.one, true]
+      ];
+
+      for (const [b, invert] of params) {
         const x1174 = ed1174.toMont(b, invert);
         const edwardsG = ed1174.pointFromMont(x1174.g);
         const montG = x1174.pointFromEdwards(ed1174.g.randomize(rng));
@@ -2190,7 +2195,7 @@ describe('Elliptic', function() {
         const mo = x25519.g.toX().mul(new BN(i));
         const ma = x25519.g.mul(new BN(i));
         const ed = ed25519.g.mul(new BN(i));
-        const sign = we.sign();
+        const sign = ma.sign();
 
         assert(wei25519.pointFromShort(we).eq(we));
         assert(wei25519.pointFromMont(mo.toP(sign)).eq(we));
