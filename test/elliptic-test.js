@@ -2046,6 +2046,7 @@ describe('Elliptic', function() {
 
       assert(!x448.jinv().eq(ed448.jinv()));
       assert(x448.isIsogenous(ed448));
+      assert(ed448.isIsogenous(x448));
       assert(edwardsG.eq(ed448.g));
       assert(montG.eq(x448.g));
     });
@@ -2158,6 +2159,7 @@ describe('Elliptic', function() {
 
       assert(!ed448.jinv().eq(twist448.jinv()));
       assert(twist448.isIsogenous(ed448));
+      assert(ed448.isIsogenous(twist448));
       assert(!twist448.g.hasTorsion());
       assert(twistedG.eq(twist448.g));
       assert(untwistedG.eq(ed448.g));
