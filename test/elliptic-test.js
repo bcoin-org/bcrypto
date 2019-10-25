@@ -1246,10 +1246,27 @@ describe('Elliptic', function() {
       const x25519 = new curves.X25519();
       const wei25519 = new curves.WEI25519();
       const [a, b] = wei25519._mont(wei25519.one);
+      const [a2, b2] = wei25519._mont2();
 
       assert(wei25519.jinv().eq(x25519.jinv()));
       assert(a.eq(x25519.a));
       assert(b.eq(x25519.b));
+      assert(a2.eq(x25519.a));
+      assert(b2.eq(x25519.b));
+    });
+
+    it('should convert short to mont (twisted, native)', () => {
+      const ed25519 = new curves.ED25519();
+      const x25519 = ed25519.toMont();
+      const wei25519 = x25519.toShort();
+      const [a, b] = wei25519._mont(x25519.b.forceRed(wei25519.red));
+      const [a2, b2] = wei25519._mont2();
+
+      assert(wei25519.jinv().eq(x25519.jinv()));
+      assert(a.eq(x25519.a));
+      assert(b.eq(x25519.b));
+      assert(a2.redNeg().eq(x25519.a));
+      assert(b2.redNeg().eq(x25519.b));
     });
 
     it('should convert short to mont (twist448)', () => {
@@ -1257,9 +1274,12 @@ describe('Elliptic', function() {
       const x448 = ed448.toMont(ed448.one);
       const wei448 = x448.toShort();
       const [a, b] = wei448._mont(wei448.one);
+      const [a2, b2] = wei448._mont2();
 
       assert(a.eq(x448.a));
       assert(b.eq(x448.b));
+      assert(a2.eq(x448.a));
+      assert(b2.eq(x448.b));
 
       assert(ed448.jinv().eq(x448.jinv()));
       assert(wei448.jinv().eq(x448.jinv()));
@@ -1275,13 +1295,50 @@ describe('Elliptic', function() {
       const x448 = new curves.X448();
       const wei448 = x448.toShort();
       const [a, b] = wei448._mont(wei448.one);
+      const [a2, b2] = wei448._mont2();
 
       assert(a.eq(x448.a));
       assert(b.eq(x448.b));
+      assert(a2.eq(x448.a));
+      assert(b2.eq(x448.b));
 
       assert(wei448.jinv().eq(x448.jinv()));
       assert(wei448.isIsomorphic(x448));
       assert(x448.isIsomorphic(wei448));
+    });
+
+    it('should convert short to mont (edwards, native)', () => {
+      const ed448 = new curves.ED448();
+      const x448 = ed448.toMont();
+      const wei448 = x448.toShort();
+      const [a, b] = wei448._mont(x448.b.forceRed(wei448.red));
+      const [a2, b2] = wei448._mont2();
+
+      assert(a.eq(x448.a));
+      assert(b.eq(x448.b));
+      assert(a2.redNeg().eq(x448.a));
+      assert(b2.redNeg().eq(x448.b));
+
+      assert(wei448.jinv().eq(x448.jinv()));
+      assert(wei448.isIsomorphic(x448));
+      assert(x448.isIsomorphic(wei448));
+    });
+
+    it('should convert short to mont (edwards, native, inverted)', () => {
+      const ed448 = new curves.ED448();
+      const x448 = ed448.toMont(null, true);
+      const wei448 = x448.toShort();
+      const [a, b] = wei448._mont(x448.b.forceRed(wei448.red));
+      const [a2, b2] = wei448._mont2();
+
+      assert(a.eq(x448.a));
+      assert(b.eq(x448.b));
+      assert(a2.eq(x448.a));
+      assert(b2.eq(x448.b));
+
+      assert(wei448.jinv().eq(x448.jinv()));
+      assert(wei448.isIsomorphic(x448, true));
+      assert(x448.isIsomorphic(wei448, true));
     });
 
     it('should match multiplications', () => {
