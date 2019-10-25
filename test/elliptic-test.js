@@ -2188,17 +2188,21 @@ describe('Elliptic', function() {
       for (let i = 0; i < 10; i++) {
         const we = wei25519.g.mul(new BN(i));
         const mo = x25519.g.toX().mul(new BN(i));
+        const ma = x25519.g.mul(new BN(i));
         const ed = ed25519.g.mul(new BN(i));
         const sign = we.sign();
 
         assert(wei25519.pointFromShort(we).eq(we));
         assert(wei25519.pointFromMont(mo.toP(sign)).eq(we));
+        assert(wei25519.pointFromMont(ma).eq(we));
 
         assert(x25519.pointFromShort(we).toX().eq(mo));
         assert(x25519.pointFromMont(mo.toP(sign)).toX().eq(mo));
+        assert(x25519.pointFromMont(ma).eq(ma));
         assert(x25519.pointFromEdwards(ed).toX().eq(mo));
 
         assert(ed25519.pointFromMont(mo.toP(sign)).eq(ed));
+        assert(ed25519.pointFromMont(ma).eq(ed));
         assert(ed25519.pointFromEdwards(ed).eq(ed));
       }
     });
