@@ -242,7 +242,6 @@ class ISO448 extends EdwardsCurve {
           'ffffffff ffffffff ffffffff ffffffff',
           'ffffffff ffffffff'],
       a: '1',
-      c: '1',
       // 39082 / 39081 mod p
       d: ['d78b4bdc 7f0daf19 f24f38c2 9373a2cc',
           'ad461572 42a50f37 809b1da3 412a12e7',
@@ -293,7 +292,6 @@ class TWIST448 extends EdwardsCurve {
           'ffffffff ffffffff ffffffff ffffffff',
           'ffffffff ffffffff'],
       a: '-1',
-      c: '1',
       // -39082 mod p
       d: ['ffffffff ffffffff ffffffff ffffffff',
           'ffffffff ffffffff fffffffe ffffffff',
@@ -387,7 +385,6 @@ class ED1174 extends EdwardsCurve {
       p: ['07ffffff ffffffff ffffffff ffffffff',
           'ffffffff ffffffff ffffffff fffffff7'],
       a: '1',
-      c: '1',
       // -1174 mod p
       d: ['07ffffff ffffffff ffffffff ffffffff',
           'ffffffff ffffffff ffffffff fffffb61'],
@@ -433,7 +430,6 @@ class ED41417 extends EdwardsCurve {
           'ffffffff ffffffff ffffffff ffffffff',
           'ffffffef'],
       a: '1',
-      c: '1',
       // 3617
       d: ['00000000 00000000 00000000 00000000',
           '00000000 00000000 00000000 00000000',
@@ -560,7 +556,6 @@ class E222 extends EdwardsCurve {
       p: ['3fffffff ffffffff ffffffff ffffffff',
           'ffffffff ffffffff ffffff8b'],
       a: '1',
-      c: '1',
       // 160102
       d: ['00000000 00000000 00000000 00000000',
           '00000000 00000000 00027166'],
@@ -645,7 +640,6 @@ class E382 extends EdwardsCurve {
           'ffffffff ffffffff ffffffff ffffffff',
           'ffffffff ffffffff ffffffff ffffff97'],
       a: '1',
-      c: '1',
       // -67254 mod p
       d: ['3fffffff ffffffff ffffffff ffffffff',
           'ffffffff ffffffff ffffffff ffffffff',
@@ -741,7 +735,6 @@ class E521 extends EdwardsCurve {
           'ffffffff ffffffff ffffffff ffffffff',
           'ffffffff'],
       a: '1',
-      c: '1',
       // -376014 mod p
       d: ['000001ff ffffffff ffffffff ffffffff',
           'ffffffff ffffffff ffffffff ffffffff',
@@ -799,7 +792,6 @@ class MDC extends EdwardsCurve {
       p: ['f13b68b9 d456afb4 532f92fd d7a5fd4f',
           '086a9037 ef07af9e c1371040 5779ec13'],
       a: '1',
-      c: '1',
       d: ['57130452 1965b68a 7cdfbfcc fb0cb962',
           '5f1270f6 3f21f041 ee930925 0300cf89'],
       n: ['3c4eda2e 7515abed 14cbe4bf 75e97f53',
@@ -842,7 +834,6 @@ class JUBJUB extends EdwardsCurve {
       p: '73eda753 299d7d48 3339d808 09a1d805'
        + '53bda402 fffe5bfe ffffffff 00000001',
       a: '-1',
-      c: '1',
       // -(10240 / 10241) mod p
       d: '2a9318e7 4bfa2b48 f5fd9207 e6bd7fd4'
        + '292d7f6d 37579d26 01065fd6 d6343eb1',

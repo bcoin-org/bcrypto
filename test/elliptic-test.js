@@ -634,7 +634,6 @@ describe('Elliptic', function() {
         p: ['3fffffffffffffffffffffffffffffffffffffffffffffff',
             'ffffffffffffffffffffffffffffffffffffffffffffff97'],
         a: '1',
-        c: '1',
         // -67254 mod p
         d: ['3fffffffffffffffffffffffffffffffffffffffffffffff',
             'fffffffffffffffffffffffffffffffffffffffffffef8e1'],
@@ -676,7 +675,6 @@ describe('Elliptic', function() {
         a: '1',
         // -1174 mod p
         d: '07fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffb61',
-        c: '1',
         n: '01fffffffffffffffffffffffffffffff77965c4dfd307348944d45fd166c971',
         h: '4',
         z: '-1'
@@ -720,7 +718,6 @@ describe('Elliptic', function() {
         p: ['7fffffffffffffff ffffffffffffffff',
             'ffffffffffffffff ffffffffffffffed'],
         a: '-1',
-        c: '1',
         // (-121665 * 121666^-1) mod p
         d: ['52036cee2b6ffe73 8cc740797779e898',
             '00700a4d4141d8ab 75eb4dca135978a3'],
