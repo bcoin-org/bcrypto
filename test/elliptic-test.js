@@ -1344,43 +1344,46 @@ describe('Elliptic', function() {
     it('should match multiplications', () => {
       const p256 = new curves.P256();
       const secp256k1 = new curves.SECP256K1();
+      const x25519 = new curves.X25519();
       const ed25519 = new curves.ED25519();
 
-      for (const curve of [p256, secp256k1, ed25519]) {
-        const k0 = curve.randomScalar(rng);
-        const k1 = k0.divn(3).mul(k0);
+      for (const curve of [p256, secp256k1, x25519, ed25519]) {
+        for (let i = 0; i < 2; i++) {
+          const k0 = curve.randomScalar(rng);
+          const k1 = k0.divn(3).mul(k0);
 
-        curve.precompute(rng);
+          const p1 = curve.g.mul(k0);
+          const p2 = curve.g.mulSimple(k0);
 
-        const p1 = curve.g.mul(k0);
-        const p2 = curve.g.mulSimple(k0);
+          assert(p1.eq(p2));
 
-        assert(p1.eq(p2));
+          const j1 = curve.g.jmul(k0);
+          const j2 = curve.g.jmulSimple(k0);
 
-        const j1 = curve.g.jmul(k0);
-        const j2 = curve.g.jmulSimple(k0);
+          assert(j1.eq(j2));
 
-        assert(j1.eq(j2));
+          const j3 = curve.g.toJ().mul(k0);
+          const j4 = curve.g.toJ().mulSimple(k0);
 
-        const j3 = curve.g.toJ().mul(k0);
-        const j4 = curve.g.toJ().mulSimple(k0);
+          assert(j3.eq(j4));
 
-        assert(j3.eq(j4));
+          const p3 = curve.g.mul(k1);
+          const p4 = curve.g.mulSimple(k1.mod(curve.n));
+          const p5 = curve.g.mulSimple(k1);
 
-        const p3 = curve.g.mul(k1);
-        const p4 = curve.g.mulSimple(k1.mod(curve.n));
-        const p5 = curve.g.mulSimple(k1);
+          assert(p3.eq(p4));
+          assert(p4.eq(p5));
 
-        assert(p3.eq(p4));
-        assert(p4.eq(p5));
+          const p6 = curve.g.mul(k1.neg());
+          const p7 = curve.g.mulSimple(k1.neg().imod(curve.n));
+          const p8 = curve.g.mulSimple(k1.neg());
 
-        const p6 = curve.g.mul(k1.neg());
-        const p7 = curve.g.mulSimple(k1.neg().imod(curve.n));
-        const p8 = curve.g.mulSimple(k1.neg());
+          assert(p6.eq(p3.neg()));
+          assert(p6.eq(p7));
+          assert(p7.eq(p8));
 
-        assert(p6.eq(p3.neg()));
-        assert(p6.eq(p7));
-        assert(p7.eq(p8));
+          curve.precompute(rng);
+        }
       }
     });
 
@@ -1757,137 +1760,143 @@ describe('Elliptic', function() {
     it('should match multiply+add', () => {
       const p256 = new curves.P256();
       const secp256k1 = new curves.SECP256K1();
+      const x25519 = new curves.X25519();
       const ed25519 = new curves.ED25519();
 
-      for (const curve of [p256, secp256k1, ed25519]) {
-        const k0 = curve.randomScalar(rng);
-        const k1 = curve.randomScalar(rng);
-        const k2 = k0.divn(3).mul(k0);
-        const A = curve.randomPoint(rng);
-        const J = A.randomize(rng);
+      for (const curve of [p256, secp256k1, x25519, ed25519]) {
+        for (let i = 0; i < 2; i++) {
+          const k0 = curve.randomScalar(rng);
+          const k1 = curve.randomScalar(rng);
+          const k2 = k0.divn(3).mul(k0);
+          const A = curve.randomPoint(rng);
+          const J = A.randomize(rng);
 
-        curve.precompute(rng);
+          const p1 = curve.g.mulAdd(k0, A, k1);
+          const p2 = curve.g.mulAddSimple(k0, A, k1);
 
-        const p1 = curve.g.mulAdd(k0, A, k1);
-        const p2 = curve.g.mulAddSimple(k0, A, k1);
+          assert(p1.eq(p2));
 
-        assert(p1.eq(p2));
+          const j1 = curve.g.jmulAdd(k0, A, k1);
+          const j2 = curve.g.jmulAddSimple(k0, A, k1);
 
-        const j1 = curve.g.jmulAdd(k0, A, k1);
-        const j2 = curve.g.jmulAddSimple(k0, A, k1);
+          assert(j1.eq(j2));
 
-        assert(j1.eq(j2));
+          const j3 = curve.g.toJ().mulAdd(k0, J, k1);
+          const j4 = curve.g.toJ().mulAddSimple(k0, J, k1);
 
-        const j3 = curve.g.toJ().mulAdd(k0, J, k1);
-        const j4 = curve.g.toJ().mulAddSimple(k0, J, k1);
+          assert(j3.eq(j4));
 
-        assert(j3.eq(j4));
+          const p3 = curve.g.mulAdd(k2, A, k1);
+          const p4 = curve.g.mulAddSimple(k2.mod(curve.n), A, k1);
+          const p5 = curve.g.mulAddSimple(k2, A, k1);
 
-        const p3 = curve.g.mulAdd(k2, A, k1);
-        const p4 = curve.g.mulAddSimple(k2.mod(curve.n), A, k1);
-        const p5 = curve.g.mulAddSimple(k2, A, k1);
+          assert(p3.eq(p4));
+          assert(p5.eq(p4));
 
-        assert(p3.eq(p4));
-        assert(p5.eq(p4));
+          const p6 = curve.g.mulAdd(k2.neg(), A, k1);
+          const p7 = curve.g.mulAddSimple(k2.neg().imod(curve.n), A, k1);
+          const p8 = curve.g.mulAddSimple(k2.neg(), A, k1);
 
-        const p6 = curve.g.mulAdd(k2.neg(), A, k1);
-        const p7 = curve.g.mulAddSimple(k2.neg().imod(curve.n), A, k1);
-        const p8 = curve.g.mulAddSimple(k2.neg(), A, k1);
+          assert(p6.eq(p7));
+          assert(p8.eq(p7));
 
-        assert(p6.eq(p7));
-        assert(p8.eq(p7));
+          curve.precompute(rng);
+        }
       }
     });
 
     it('should multiply negative scalar', () => {
       const p256 = new curves.P256();
       const secp256k1 = new curves.SECP256K1();
+      const x25519 = new curves.X25519();
       const ed25519 = new curves.ED25519();
 
-      for (const curve of [p256, secp256k1, ed25519]) {
-        const k1 = curve.randomScalar(rng);
-        const k2 = k1.sqr();
-        const k3 = k2.divn(17);
-        const k4 = k3.mod(curve.n);
+      for (const curve of [p256, secp256k1, x25519, ed25519]) {
+        for (let i = 0; i < 2; i++) {
+          const k1 = curve.randomScalar(rng);
+          const k2 = k1.sqr();
+          const k3 = k2.divn(17);
+          const k4 = k3.mod(curve.n);
 
-        curve.precompute(rng);
+          {
+            const p1 = curve.g.mul(k1);
+            const p2 = curve.g.mul(k1.neg());
 
-        {
-          const p1 = curve.g.mul(k1);
-          const p2 = curve.g.mul(k1.neg());
+            assert(!p2.isInfinity());
+            assert(p2.eq(p1.neg()));
 
-          assert(!p2.isInfinity());
-          assert(p2.eq(p1.neg()));
+            const p3 = curve.g.mul(k2);
+            const p4 = curve.g.mul(k2.neg());
 
-          const p3 = curve.g.mul(k2);
-          const p4 = curve.g.mul(k2.neg());
+            assert(!p4.isInfinity());
+            assert(p4.eq(p3.neg()));
 
-          assert(!p4.isInfinity());
-          assert(p4.eq(p3.neg()));
+            const p5 = p1.mul(k3);
+            const p6 = p1.mul(k3.neg());
 
-          const p5 = p1.mul(k3);
-          const p6 = p1.mul(k3.neg());
+            assert(!p6.isInfinity());
+            assert(p6.eq(p5.neg()));
 
-          assert(!p6.isInfinity());
-          assert(p6.eq(p5.neg()));
+            const p7 = p2.mul(k4);
+            const p8 = p2.mul(k4.neg());
 
-          const p7 = p2.mul(k4);
-          const p8 = p2.mul(k4.neg());
+            assert(!p8.isInfinity());
+            assert(p8.eq(p7.neg()));
+          }
 
-          assert(!p8.isInfinity());
-          assert(p8.eq(p7.neg()));
-        }
+          {
+            const p1 = curve.g.jmul(k1);
+            const p2 = curve.g.jmul(k1.neg());
 
-        {
-          const p1 = curve.g.jmul(k1);
-          const p2 = curve.g.jmul(k1.neg());
+            assert(!p2.isInfinity());
+            assert(p2.eq(p1.neg()));
 
-          assert(!p2.isInfinity());
-          assert(p2.eq(p1.neg()));
+            const p3 = curve.g.jmul(k2);
+            const p4 = curve.g.jmul(k2.neg());
 
-          const p3 = curve.g.jmul(k2);
-          const p4 = curve.g.jmul(k2.neg());
+            assert(!p4.isInfinity());
+            assert(p4.eq(p3.neg()));
 
-          assert(!p4.isInfinity());
-          assert(p4.eq(p3.neg()));
+            const p5 = p1.jmul(k3);
+            const p6 = p1.jmul(k3.neg());
 
-          const p5 = p1.jmul(k3);
-          const p6 = p1.jmul(k3.neg());
+            assert(!p6.isInfinity());
+            assert(p6.eq(p5.neg()));
 
-          assert(!p6.isInfinity());
-          assert(p6.eq(p5.neg()));
+            const p7 = p2.jmul(k4);
+            const p8 = p2.jmul(k4.neg());
 
-          const p7 = p2.jmul(k4);
-          const p8 = p2.jmul(k4.neg());
+            assert(!p8.isInfinity());
+            assert(p8.eq(p7.neg()));
+          }
 
-          assert(!p8.isInfinity());
-          assert(p8.eq(p7.neg()));
-        }
+          {
+            const p1 = curve.g.mulBlind(k1, rng);
+            const p2 = curve.g.mulBlind(k1.neg(), rng);
 
-        {
-          const p1 = curve.g.mulBlind(k1, rng);
-          const p2 = curve.g.mulBlind(k1.neg(), rng);
+            assert(!p2.isInfinity());
+            assert(p2.eq(p1.neg()));
 
-          assert(!p2.isInfinity());
-          assert(p2.eq(p1.neg()));
+            const p3 = curve.g.mulBlind(k2, rng);
+            const p4 = curve.g.mulBlind(k2.neg(), rng);
 
-          const p3 = curve.g.mulBlind(k2, rng);
-          const p4 = curve.g.mulBlind(k2.neg(), rng);
+            assert(!p4.isInfinity());
+            assert(p4.eq(p3.neg()));
 
-          assert(!p4.isInfinity());
-          assert(p4.eq(p3.neg()));
+            const p5 = p1.mulBlind(k3, rng);
+            const p6 = p1.mulBlind(k3.neg(), rng);
 
-          const p5 = p1.mulBlind(k3, rng);
-          const p6 = p1.mulBlind(k3.neg(), rng);
+            assert(!p6.isInfinity());
+            assert(p6.eq(p5.neg()));
 
-          assert(!p6.isInfinity());
-          assert(p6.eq(p5.neg()));
+            const p7 = p2.mulBlind(k4, rng);
+            const p8 = p2.mulBlind(k4.neg(), rng);
 
-          const p7 = p2.mulBlind(k4, rng);
-          const p8 = p2.mulBlind(k4.neg(), rng);
+            assert(!p8.isInfinity());
+            assert(p8.eq(p7.neg()));
+          }
 
-          assert(!p8.isInfinity());
-          assert(p8.eq(p7.neg()));
+          curve.precompute(rng);
         }
       }
     });
@@ -1895,71 +1904,74 @@ describe('Elliptic', function() {
     it('should multiply+add negative scalar', () => {
       const p256 = new curves.P256();
       const secp256k1 = new curves.SECP256K1();
+      const x25519 = new curves.X25519();
       const ed25519 = new curves.ED25519();
 
-      for (const curve of [p256, secp256k1, ed25519]) {
-        const A0 = curve.randomPoint(rng);
-        const J0 = A0.randomize(rng);
-        const k0 = curve.randomScalar(rng);
-        const A1 = A0.mul(k0);
-        const J1 = A1.randomize(rng);
-        const k1 = curve.randomScalar(rng);
-        const k2 = k1.sqr();
-        const k3 = k2.divn(17);
-        const k4 = k3.mod(curve.n);
+      for (const curve of [p256, secp256k1, x25519, ed25519]) {
+        for (let i = 0; i < 2; i++) {
+          const A0 = curve.randomPoint(rng);
+          const J0 = A0.randomize(rng);
+          const k0 = curve.randomScalar(rng);
+          const A1 = A0.mul(k0);
+          const J1 = A1.randomize(rng);
+          const k1 = curve.randomScalar(rng);
+          const k2 = k1.sqr();
+          const k3 = k2.divn(17);
+          const k4 = k3.mod(curve.n);
 
-        curve.precompute(rng);
+          {
+            const p1 = curve.g.mul(k1).neg().add(A1);
+            const p2 = curve.g.mulAdd(k1.neg(), A0, k0);
 
-        {
-          const p1 = curve.g.mul(k1).neg().add(A1);
-          const p2 = curve.g.mulAdd(k1.neg(), A0, k0);
+            assert(!p2.isInfinity());
+            assert(p2.eq(p1));
 
-          assert(!p2.isInfinity());
-          assert(p2.eq(p1));
+            const p3 = curve.g.mul(k2).neg().add(A1);
+            const p4 = curve.g.mulAdd(k2.neg(), A0, k0);
 
-          const p3 = curve.g.mul(k2).neg().add(A1);
-          const p4 = curve.g.mulAdd(k2.neg(), A0, k0);
+            assert(!p4.isInfinity());
+            assert(p4.eq(p3));
 
-          assert(!p4.isInfinity());
-          assert(p4.eq(p3));
+            const p5 = p1.mul(k3).neg().add(A1);
+            const p6 = p1.mulAdd(k3.neg(), A0, k0);
 
-          const p5 = p1.mul(k3).neg().add(A1);
-          const p6 = p1.mulAdd(k3.neg(), A0, k0);
+            assert(!p6.isInfinity());
+            assert(p6.eq(p5));
 
-          assert(!p6.isInfinity());
-          assert(p6.eq(p5));
+            const p7 = p2.mul(k4).neg().add(A1);
+            const p8 = p2.mulAdd(k4.neg(), A0, k0);
 
-          const p7 = p2.mul(k4).neg().add(A1);
-          const p8 = p2.mulAdd(k4.neg(), A0, k0);
+            assert(!p8.isInfinity());
+            assert(p8.eq(p7));
+          }
 
-          assert(!p8.isInfinity());
-          assert(p8.eq(p7));
-        }
+          {
+            const p1 = curve.g.jmul(k1).neg().add(J1);
+            const p2 = curve.g.jmulAdd(k1.neg(), A0, k0);
 
-        {
-          const p1 = curve.g.jmul(k1).neg().add(J1);
-          const p2 = curve.g.jmulAdd(k1.neg(), A0, k0);
+            assert(!p2.isInfinity());
+            assert(p2.eq(p1));
 
-          assert(!p2.isInfinity());
-          assert(p2.eq(p1));
+            const p3 = curve.g.jmul(k2).neg().add(J1);
+            const p4 = curve.g.jmulAdd(k2.neg(), A0, k0);
 
-          const p3 = curve.g.jmul(k2).neg().add(J1);
-          const p4 = curve.g.jmulAdd(k2.neg(), A0, k0);
+            assert(!p4.isInfinity());
+            assert(p4.eq(p3));
 
-          assert(!p4.isInfinity());
-          assert(p4.eq(p3));
+            const p5 = p1.jmul(k3).neg().add(J1);
+            const p6 = p1.jmulAdd(k3.neg(), J0, k0);
 
-          const p5 = p1.jmul(k3).neg().add(J1);
-          const p6 = p1.jmulAdd(k3.neg(), J0, k0);
+            assert(!p6.isInfinity());
+            assert(p6.eq(p5));
 
-          assert(!p6.isInfinity());
-          assert(p6.eq(p5));
+            const p7 = p2.jmul(k4).neg().add(J1);
+            const p8 = p2.jmulAdd(k4.neg(), J0, k0);
 
-          const p7 = p2.jmul(k4).neg().add(J1);
-          const p8 = p2.jmulAdd(k4.neg(), J0, k0);
+            assert(!p8.isInfinity());
+            assert(p8.eq(p7));
+          }
 
-          assert(!p8.isInfinity());
-          assert(p8.eq(p7));
+          curve.precompute(rng);
         }
       }
     });
@@ -2438,10 +2450,11 @@ describe('Elliptic', function() {
       const curve = new curves.ED448();
 
       // 4-isogeny map can't handle torsion points.
-      let u;
+      let u, p
       do {
         u = x.randomField(rng);
-      } while (x.pointFromUniform(u).toX().hasTorsion());
+        p = x.pointFromUniform(u);
+      } while (p.toX().hasTorsion());
 
       const u1 = u.forceRed(curve.red);
       const p1 = curve.pointFromUniform(u1, x);
