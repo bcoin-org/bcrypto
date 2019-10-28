@@ -593,6 +593,7 @@ describe('Elliptic', function() {
       const iso448 = new extra.ISO448();
       const mont448 = new extra.MONT448();
       const jubjub = new extra.JUBJUB();
+      const iso256k1 = new extra.ISO256K1();
 
       for (const curve of [p192,
                            p224,
@@ -624,7 +625,8 @@ describe('Elliptic', function() {
                            ed448,
                            iso448,
                            mont448,
-                           jubjub]) {
+                           jubjub,
+                           iso256k1]) {
         sanityCheck(curve);
       }
     });
@@ -2877,6 +2879,7 @@ describe('Elliptic', function() {
       const m511 = new extra.M511();
       const e521 = new extra.E521();
       const mdc = new extra.MDC();
+      const iso256k1 = new extra.ISO256K1();
 
       for (const curve of [p192,
                            p224,
@@ -2901,7 +2904,8 @@ describe('Elliptic', function() {
                            e382,
                            m511,
                            e521,
-                           mdc]) {
+                           mdc,
+                           iso256k1]) {
         const p = curve.randomPoint(rng);
         const u = curve.pointToHash(p, rng);
         const q = curve.pointFromHash(u);
