@@ -1,6 +1,6 @@
 #!/usr/bin/sage
 
-var('a b z c gz x y u')
+var('a b z c c1 c2 gz x y u')
 
 def solve2(x, y):
   return map(lambda x: x.full_simplify(), solve(x, y))[0]
@@ -66,6 +66,27 @@ print(solve2(-u * (-b / a) * (1 + (1 / (u^2 - u))) == x, u))
 print('')
 
 print('---')
+print('')
+
+# https://github.com/cfrg/draft-irtf-cfrg-hash-to-curve/pull/172
+print('Super-Generalized SVDW (12 preimages):')
+print('')
+print('c1 = sqrt(-g(z) * (3 * z^2 + 4 * a))')
+print('c2 = sqrt(-g(z) / (3 * z^2 + 4 * a))')
+print('t1 = u^2 * g(z)')
+print('t2 = 1 + t1')
+print('t3 = 1 - t1')
+print('t4 = 1 / (t2 * t3)')
+print('t5 = u * t3 * t4 * c1')
+print('t6 = 2 * t2^2 * t4 * c2')
+print('x1 = -z / 2 - t5')
+print('x2 = -z / 2 + t5')
+print('x3 = z + t6^2')
+print('')
+
+print(solve2(-z / 2 - (u * (1 - (u^2 * gz)) * (1 / ((1 + (u^2 * gz)) * (1 - (u^2 * gz)))) * c1) == x, u))
+print(solve2(-z / 2 + (u * (1 - (u^2 * gz)) * (1 / ((1 + (u^2 * gz)) * (1 - (u^2 * gz)))) * c1) == x, u))
+print(solve2(z + (2 * (1 + (u^2 * gz))^2 * (1 / ((1 + (u^2 * gz)) * (1 - (u^2 * gz)))) * c2)^2 == x, u))
 print('')
 
 print('Generalized SVDW (8 preimages):')

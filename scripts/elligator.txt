@@ -53,6 +53,24 @@ u2 = 1/2*(a*x + b +- sqrt(a^2*x^2 - 2*a*b*x - 3*b^2))/b
 
 ---
 
+Super-Generalized SVDW (12 preimages):
+
+c1 = sqrt(-g(z) * (3 * z^2 + 4 * a))
+c2 = sqrt(-g(z) / (3 * z^2 + 4 * a))
+t1 = u^2 * g(z)
+t2 = 1 + t1
+t3 = 1 - t1
+t4 = 1 / (t2 * t3)
+t5 = u * t3 * t4 * c1
+t6 = 2 * t2^2 * t4 * c2
+x1 = -z / 2 - t5
+x2 = -z / 2 + t5
+x3 = z + t6^2
+
+u1 = -(c1 +- sqrt(-4*gz*x^2 - 4*gz*x*z - gz*z^2 + c1^2))/(2*gz*x + gz*z)
+u2 = (c1 +- sqrt(-4*gz*x^2 - 4*gz*x*z - gz*z^2 + c1^2))/(2*gz*x + gz*z)
+u3 = +-sqrt(-(4*c2^2 +- 4*c2*sqrt(x - z) + x - z)/(4*c2^2*gz - gz*x + gz*z))
+
 Generalized SVDW (8 preimages):
 
 t1 = u^2 + g(z)
