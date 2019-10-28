@@ -219,8 +219,8 @@ function findElligator2Z(curve) {
 function findSSWUZ(curve) {
   assert(curve instanceof elliptic.Curve);
 
-  const {a, b, one} = curve;
-  const ctr = one.clone();
+  const {a, b} = curve;
+  const ctr = curve.one.clone();
 
   for (;;) {
     for (const z of [ctr, ctr.redNeg()]) {
@@ -229,7 +229,7 @@ function findSSWUZ(curve) {
         continue;
 
       // Criterion 2: z != -1 in F(p).
-      if (z.eq(one.redNeg()))
+      if (z.eq(curve.one.redNeg()))
         continue;
 
       // Criterion 3: g(x) - z is irreducible over F(p).
@@ -252,8 +252,8 @@ function findSSWUZ(curve) {
 function findSVDWZ(curve) {
   assert(curve instanceof elliptic.Curve);
 
-  const {one, i2} = curve;
-  const ctr = one.clone();
+  const {i2} = curve;
+  const ctr = curve.one.clone();
 
   for (;;) {
     for (const z of [ctr, ctr.redNeg()]) {
@@ -282,8 +282,8 @@ function findSVDWZ(curve) {
 function findSVDWZNew(curve) {
   assert(curve instanceof elliptic.Curve);
 
-  const {a, one, i2} = curve;
-  const ctr = one.clone();
+  const {a, i2} = curve;
+  const ctr = curve.one.clone();
 
   for (;;) {
     for (const z of [ctr, ctr.redNeg()]) {
