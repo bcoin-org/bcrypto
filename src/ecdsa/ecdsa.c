@@ -121,15 +121,15 @@ static int
 bcrypto_ecdsa_uniform_z(int type) {
   switch (type) {
     case NID_X9_62_prime192v1:
-      return -1;
+      return -5;
     case NID_secp224r1:
-      return -11;
+      return 31;
     case NID_X9_62_prime256v1:
-      return -2;
+      return -10;
     case NID_secp384r1:
-      return -1;
+      return -12;
     case NID_secp521r1:
-      return -2;
+      return -4;
     case NID_secp192k1:
       return 1;
     case NID_secp224k1:
@@ -139,9 +139,9 @@ bcrypto_ecdsa_uniform_z(int type) {
     case NID_brainpoolP256r1:
       return -2;
     case NID_brainpoolP384r1:
-      return -1;
+      return -5;
     case NID_brainpoolP512r1:
-      return 2;
+      return 7;
   }
   return 0;
 }
@@ -2744,30 +2744,6 @@ bn_is_square(const BIGNUM *a, const BIGNUM *n, BN_CTX *ctx) {
   return bn_legendre(a, n, ctx) >= 0;
 }
 
-static int
-bn_is_neg(const BIGNUM *a, const BIGNUM *n) {
-  BIGNUM *half = BN_new();
-  int cmp = 0;
-
-  if (half == NULL)
-    return 0;
-
-  /* half = (n - 1) / 2 */
-  if (!BN_copy(half, n))
-    goto fail;
-
-  if (!BN_sub_word(half, 1))
-    goto fail;
-
-  if (!BN_rshift1(half, half))
-    goto fail;
-
-  cmp = BN_cmp(a, half) > 0;
-fail:
-  BN_free(half);
-  return cmp;
-}
-
 #ifdef BCRYPTO_ECDSA_WITH_ICART
 static EC_POINT *
 bcrypto_ecdsa_icart(bcrypto_ecdsa_t *ec, const BIGNUM *r) {
@@ -2989,7 +2965,7 @@ bcrypto_ecdsa_sswu(bcrypto_ecdsa_t *ec, const BIGNUM *r) {
   F(BN_copy(x, e2 ? x1 : x2));
   F(BN_copy(y2, e2 ? gx1 : gx2));
   F(BN_mod_sqrt(y, y2, ec->p, ec->ctx));
-  e3 = bn_is_neg(y, ec->p) == bn_is_neg(u, ec->p);
+  e3 = BN_is_odd(y) == BN_is_odd(u);
   if (!e3) F(BN_mod_sub(y, ec->p, y, ec->p, ec->ctx));
 
 #if OPENSSL_VERSION_NUMBER >= 0x10200000L
@@ -3157,7 +3133,7 @@ bcrypto_ecdsa_sswui(bcrypto_ecdsa_t *ec, const EC_POINT *P, unsigned int hint) {
 
   s1 = BN_mod_sqrt(u, U[r], ec->p, ec->ctx) != 0;
 
-  if (bn_is_neg(u, ec->p) ^ bn_is_neg(y, ec->p))
+  if (BN_is_odd(u) ^ BN_is_odd(y))
     F(BN_mod_sub(u, ec->p, u, ec->p, ec->ctx));
 
   F(s0 & s1);
@@ -3336,7 +3312,7 @@ bcrypto_ecdsa_svdw(bcrypto_ecdsa_t *ec, const BIGNUM *r) {
   F(BN_copy(x, e3 ? x : x3));
   F(BN_copy(gx, e3 ? gx : gx3));
   F(BN_mod_sqrt(y, gx, ec->p, ec->ctx));
-  e4 = bn_is_neg(y, ec->p) == bn_is_neg(u, ec->p);
+  e4 = BN_is_odd(y) == BN_is_odd(u);
   if (!e4) F(BN_mod_sub(y, ec->p, y, ec->p, ec->ctx));
 
 #if OPENSSL_VERSION_NUMBER >= 0x10200000L
@@ -3560,7 +3536,7 @@ bcrypto_ecdsa_svdwi(bcrypto_ecdsa_t *ec, const EC_POINT *P, unsigned int hint) {
 
   s3 = BN_cmp(x0, x) == 0;
 
-  if (bn_is_neg(u, ec->p) ^ bn_is_neg(y, ec->p))
+  if (BN_is_odd(u) ^ BN_is_odd(y))
     F(BN_mod_sub(u, ec->p, u, ec->p, ec->ctx));
 
   F(s1 & s2 & s3);

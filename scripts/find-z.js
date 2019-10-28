@@ -1,6 +1,7 @@
 'use strict';
 
 const assert = require('bsert');
+const cp = require('child_process');
 const BN = require('../lib/bn');
 const elliptic = require('../lib/js/elliptic');
 
@@ -26,7 +27,7 @@ function printZ(curve) {
 
   let sign = '';
 
-  if (z.redIsNeg()) {
+  if (z.cmp(curve.p.ushrn(1)) > 0) {
     sign = '-';
     z.redINeg();
   }
@@ -40,17 +41,19 @@ function getAlg(curve) {
   assert(curve instanceof elliptic.Curve);
 
   if (curve.type === 'short') {
-    // p = 2 mod 3
-    if (curve.p.modrn(3) === 2)
-      return 'icart';
-
     // a != 0, b != 0
-    if (!curve.a.isZero() && !curve.b.isZero())
+    if (!curve.a.isZero() && !curve.b.isZero()) {
+      // p = 2 mod 3
+      if (curve.p.modrn(3) === 2)
+        return 'icart';
       return 'sswu';
+    }
 
     // p = 1 mod 3, b != 0
     if (curve.p.modrn(3) === 1 && !curve.b.isZero())
       return 'svdw';
+
+    throw new Error('Not implemented.');
   }
 
   if (curve.type === 'mont' || curve.type === 'edwards')
@@ -198,84 +201,119 @@ function getElligator1SCR(curve, s) {
 function findElligator2Z(curve) {
   assert(curve instanceof elliptic.Curve);
 
-  // Find non-square in F(q).
-  const z = curve.one.clone();
+  const ctr = curve.one.clone();
 
   for (;;) {
-    if (z.redJacobi() === -1)
+    for (const z of [ctr, ctr.redNeg()]) {
+      // Z must be a non-square in F.
+      if (z.redIsSquare())
+        continue;
+
       return z;
+    }
 
-    if (z.redNeg().redJacobi() === -1)
-      return z.redNeg();
-
-    z.redIAdd(curve.one);
+    ctr.redIAdd(curve.one);
   }
 }
 
 function findSSWUZ(curve) {
   assert(curve instanceof elliptic.Curve);
 
-  // Find non-square in F(q) where
-  // g(B / (Z * A)) is square.
-  const z = curve.one.clone();
+  const {a, b, one} = curve;
+  const ctr = curve.one.clone();
 
   for (;;) {
-    if (isSSWUZ(curve, z))
+    for (const z of [ctr, ctr.redNeg()]) {
+      // Criterion 1: Z is non-square in F.
+      if (z.redIsSquare())
+        continue;
+
+      // Criterion 2: Z != -1 in F.
+      if (z.eq(one.redNeg()))
+        continue;
+
+      // Criterion 3: g(x) - Z is irreducible over F.
+      if (!isIrreducible(curve, z))
+        continue;
+
+      // Criterion 4: g(B / (Z * A)) is square in F.
+      const c = b.redMul(z.redMul(a).redInvert());
+
+      if (!curve.solveY2(c).redIsSquare())
+        continue;
+
       return z;
+    }
 
-    if (isSSWUZ(curve, z.redNeg()))
-      return z.redNeg();
-
-    z.redIAdd(curve.one);
+    ctr.redIAdd(curve.one);
   }
-}
-
-function isSSWUZ(curve, z) {
-  assert(curve instanceof elliptic.Curve);
-  assert(z instanceof BN);
-
-  if (z.redJacobi() !== -1)
-    return false;
-
-  const zai = z.redMul(curve.a).redInvert();
-  const g = curve.solveY2(curve.b.redMul(zai));
-
-  return g.redJacobi() === 1;
 }
 
 function findSVDWZ(curve) {
   assert(curve instanceof elliptic.Curve);
 
-  // Find element in F(q) where
-  // g((sqrt(-3 * Z^2) - Z) / 2) is square.
-  const z = curve.one.clone();
+  const {a, i2} = curve;
+  const ctr = curve.one.clone();
 
   for (;;) {
-    if (isSVDWZ(curve, z))
+    for (const z of [ctr, ctr.redNeg()]) {
+      const gz = curve.solveY2(z);
+      const gz2 = curve.solveY2(z.redNeg().redMul(i2));
+      const t0 = z.redSqr().redIMuln(3).redIAdd(a.redMuln(4)).redINeg();
+      const t1 = gz.redMuln(4);
+      const hz = t0.redMul(t1.redInvert());
+
+      // Criterion 1: g(Z) != 0 in F.
+      if (gz.isZero())
+        continue;
+
+      // Criterion 2: -(3 * Z^2 + 4 * A) / (4 * g(Z)) != 0 in F.
+      if (hz.isZero())
+        continue;
+
+      // Criterion 3: -(3 * Z^2 + 4 * A) / (4 * g(Z)) is square in F.
+      if (!hz.redIsSquare())
+        continue;
+
+      // Criterion 4: At least one of g(Z) and g(-Z / 2) is square in F.
+      if (!gz.redIsSquare() && !gz2.redIsSquare())
+        continue;
+
       return z;
+    }
 
-    if (isSVDWZ(curve, z.redNeg()))
-      return z.redNeg();
-
-    z.redIAdd(curve.one);
+    ctr.redIAdd(curve.one);
   }
 }
 
-function isSVDWZ(curve, z) {
+function isIrreducible(curve, z) {
   assert(curve instanceof elliptic.Curve);
   assert(z instanceof BN);
 
-  let c;
-  try {
-    c = z.redSqr().redIMuln(-3).redSqrt();
-  } catch (e) {
-    return false;
-  }
+  const code = `
+    F = GF(0x${curve.p.toString(16)})
+    A = 0x${curve.a.fromRed().toString(16)}
+    B = 0x${curve.b.fromRed().toString(16)}
+    Z = F(0x${z.fromRed().toString(16)})
+    R.<xx> = F[]
+    g = xx ** 3 + F(A) * xx + F(B)
+    print((g - Z).is_irreducible())
+  `.replace(/^ +/gm, '');
 
-  const d = c.redISub(z).redMul(curve.i2);
-  const g = curve.solveY2(d);
+  return sage(code) === 'True';
+}
 
-  return g.redJacobi() === 1;
+function sage(code) {
+  assert(typeof code === 'string');
+
+  const out = cp.execFileSync('sage', ['-c', code], {
+    cwd: process.cwd(),
+    encoding: 'binary',
+    stdio: ['pipe', 'pipe', 'ignore']
+  });
+
+  // eslint-disable-next-line
+  return out.replace(/\x1b\[[^m]*?m/g, '').trim();
 }
 
 function main(argv) {

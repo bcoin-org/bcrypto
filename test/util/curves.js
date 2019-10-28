@@ -104,7 +104,7 @@ class FRP256V1 extends ShortCurve {
           '53dc67e1 40d2bf94 1ffdd459 c6d655e1'],
       h: '1',
       // Icart
-      z: '-3',
+      z: '-5',
       g: [
         ['b6b3d4c3 56c139eb 31183d47 49d42395',
          '8c27d2dc af98b701 64c97a2d d98f5cff'],
@@ -141,7 +141,7 @@ class ANOMALOUS extends ShortCurve {
           '00000000 00000000 0001f9d7'],
       h: '1',
       // SSWU
-      z: '3',
+      z: 'e',
       g: [
         ['00000101 efb35fd1 963c4871 a2d17eda',
          'afa7e249 807f58f8 705126c6'],
@@ -207,7 +207,7 @@ class WEI25519 extends ShortCurve {
           '14def9de a2f79cd6 5812631a 5cf5d3ed'],
       h: '8',
       // SSWU
-      z: '2',
+      z: '8',
       g: [
         ['2aaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa',
          'aaaaaaaa aaaaaaaa aaaaaaaa aaad245a'],

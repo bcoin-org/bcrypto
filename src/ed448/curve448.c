@@ -1243,7 +1243,7 @@ curve448_elligator2(bcrypto_gf x, bcrypto_gf y, const unsigned char bytes[56])
   bcrypto_gf_cond_swap(y1, y2, ~quad1);
 
   /* adjust sign */
-  bcrypto_gf_cond_neg(y1, bcrypto_gf_is_neg(y1) ^ bcrypto_gf_is_neg(u));
+  bcrypto_gf_cond_neg(y1, bcrypto_gf_is_odd(y1) ^ bcrypto_gf_is_odd(u));
 
   bcrypto_gf_copy(x, x1);
   bcrypto_gf_copy(y, y1);
@@ -1281,7 +1281,7 @@ curve448_invert2(
   ret &= bcrypto_gf_isqrt(u, n, t);
 
   /* adjust sign */
-  bcrypto_gf_cond_neg(u, bcrypto_gf_is_neg(u) ^ bcrypto_gf_is_neg(y));
+  bcrypto_gf_cond_neg(u, bcrypto_gf_is_odd(u) ^ bcrypto_gf_is_odd(y));
 
   /* output */
   bcrypto_gf_serialize(out, u, 1);

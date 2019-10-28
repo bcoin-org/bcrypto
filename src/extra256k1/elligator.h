@@ -21,44 +21,6 @@
  *   https://www.di.ens.fr/~fouque/pub/latincrypt12.pdf
  */
 
-static unsigned int
-secp256k1_bytes32_le(const unsigned char *a, const unsigned char *b) {
-  size_t shift = sizeof(int) * 8 - 1;
-  int eq = ~0;
-  int lt = 0;
-  int i;
-
-  for (i = 0; i < 32; i++) {
-    int x = (int)a[i];
-    int y = (int)b[i];
-
-    lt = (~eq & lt) | (eq & ((x - y) >> shift));
-    eq = eq & (((x ^ y) - 1) >> shift);
-  }
-
-  return (eq | lt) & 1;
-}
-
-static int
-secp256k1_fe_is_neg(const secp256k1_fe *fe) {
-  static const unsigned char fq2[32] = {
-    0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-    0xff, 0xff, 0xff, 0xff, 0x7f, 0xff, 0xfe, 0x17
-  };
-
-  unsigned char check[32];
-  secp256k1_fe u;
-
-  u = *fe;
-  secp256k1_fe_normalize(&u);
-  secp256k1_fe_get_b32(check, &u);
-  secp256k1_fe_clear(&u);
-
-  return secp256k1_bytes32_le(check, fq2) ^ 1;
-}
-
 static void
 shallue_van_de_woestijne(secp256k1_ge *ge, const secp256k1_fe *u) {
   /* Copyright (c) 2016 Andrew Poelstra & Pieter Wuille */
@@ -153,7 +115,7 @@ shallue_van_de_woestijne(secp256k1_ge *ge, const secp256k1_fe *u) {
 
   secp256k1_ge_set_xy(ge, &x1, &y1);
 
-  flip = secp256k1_fe_is_neg(&ge->y) ^ secp256k1_fe_is_neg(u);
+  flip = secp256k1_fe_is_odd(&ge->y) ^ secp256k1_fe_is_odd(u);
   secp256k1_fe_negate(&tmp, &ge->y, 1);
   secp256k1_fe_cmov(&ge->y, &tmp, flip);
 }
@@ -295,7 +257,7 @@ shallue_van_de_woestijne_invert(secp256k1_fe* u,
   s3 = secp256k1_fe_equal(&q.x, &x);
 
   /* u = sign(y) * abs(u) */
-  flip = secp256k1_fe_is_neg(&u1) ^ secp256k1_fe_is_neg(&y);
+  flip = secp256k1_fe_is_odd(&u1) ^ secp256k1_fe_is_odd(&y);
   secp256k1_fe_negate(&tmp, &u1, 1);
   secp256k1_fe_cmov(&u1, &tmp, flip);
 

@@ -127,40 +127,6 @@ curve25519_pow_two254m10(bignum25519 out, const bignum25519 z) {
   curve25519_mul(out, t1, t0); /* 253..4,2,1 */
 }
 
-/* From: https://gist.github.com/Yawning/0181098c1119f49b3eb2 */
-static unsigned int
-curve25519_bytes_lte(const unsigned char a[32], const unsigned char b[32]) {
-  int eq = ~0;
-  int lt = 0;
-  size_t shift = sizeof(int) * 8 - 1;
-
-  for (int i = 31; i >= 0; i--) {
-    int x = (int)a[i];
-    int y = (int)b[i];
-
-    lt = (~eq & lt) | (eq & ((x - y) >> shift));
-    eq = eq & (((x ^ y) - 1) >> shift);
-  }
-
-  return (eq | lt) & 1;
-}
-
-static int
-curve25519_is_neg(const bignum25519 a) {
-  unsigned char out[32];
-
-  static const unsigned char fq2[32] = {
-    0xf6, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x3f
-  };
-
-  curve25519_contract(out, a);
-
-  return curve25519_bytes_lte(out, fq2) ^ 1;
-}
-
 static int
 curve25519_is_zero(const bignum25519 a) {
   unsigned char out[32];
@@ -438,7 +404,7 @@ curve25519_elligator2(bignum25519 x, bignum25519 y,
   curve25519_swap_conditional(y1, y2, quad1 ^ 1);
 
   /* adjust sign */
-  flip = curve25519_is_neg(y1) ^ curve25519_is_neg(u);
+  flip = curve25519_is_odd(y1) ^ curve25519_is_odd(u);
   curve25519_neg_conditional(y1, y1, flip);
 
   curve25519_copy(x, x1);
@@ -469,7 +435,7 @@ curve25519_invert2(unsigned char out[32],
   ret &= curve25519_isqrt(u, n, d);
 
   /* adjust sign */
-  flip = curve25519_is_neg(u) ^ curve25519_is_neg(y);
+  flip = curve25519_is_odd(u) ^ curve25519_is_odd(y);
   curve25519_neg_conditional(u, u, flip);
 
   /* output */

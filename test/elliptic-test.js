@@ -2491,7 +2491,7 @@ describe('Elliptic', function() {
       const curve = new curves.ED448();
 
       // 4-isogeny map can't handle torsion points.
-      let u, p
+      let u, p;
       do {
         u = x.randomField(rng);
         p = x.pointFromUniform(u);
@@ -2752,13 +2752,13 @@ describe('Elliptic', function() {
         const x1 = curve.one.redNeg().redIAdd(u).redMul(curve.i2).redISub(tw);
         const x2 = curve.one.redNeg().redISub(x1);
         const x3 = curve.one.redAdd(w.redSqr().redPow(e));
-        const alpha = curve.solveY2(x1).redLegendre();
-        const beta = curve.solveY2(x2).redLegendre();
+        const alpha = curve.solveY2(x1).redLegendre() | 1;
+        const beta = curve.solveY2(x2).redLegendre() | 1;
         const i = mod((alpha - 1) * beta, 3);
         const x = [x1, x2, x3][i];
         const y = curve.solveY(x);
 
-        y.cinject(y.redNeg(), y.redIsNeg() ^ t.redIsNeg());
+        y.cinject(y.redNeg(), y.redIsOdd() ^ t.redIsOdd());
 
         return curve.point(x, y);
       };
