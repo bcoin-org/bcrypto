@@ -205,7 +205,7 @@ function findElligator2Z(curve) {
 
   for (;;) {
     for (const z of [ctr, ctr.redNeg()]) {
-      // Z must be a non-square in F.
+      // z must be a non-square in F(p).
       if (z.redIsSquare())
         continue;
 
@@ -224,19 +224,19 @@ function findSSWUZ(curve) {
 
   for (;;) {
     for (const z of [ctr, ctr.redNeg()]) {
-      // Criterion 1: Z is non-square in F.
+      // Criterion 1: z is non-square in F(p).
       if (z.redIsSquare())
         continue;
 
-      // Criterion 2: Z != -1 in F.
+      // Criterion 2: z != -1 in F(p).
       if (z.eq(one.redNeg()))
         continue;
 
-      // Criterion 3: g(x) - Z is irreducible over F.
+      // Criterion 3: g(x) - z is irreducible over F(p).
       if (!isIrreducible(curve, z))
         continue;
 
-      // Criterion 4: g(B / (Z * A)) is square in F.
+      // Criterion 4: g(b / (z * a)) is square in F(p).
       const c = b.redMul(z.redMul(a).redInvert());
 
       if (!curve.solveY2(c).redIsSquare())
@@ -257,13 +257,13 @@ function findSVDWZ(curve) {
 
   for (;;) {
     for (const z of [ctr, ctr.redNeg()]) {
-      // Criterion 1: sqrt(-3 * z^2) is square in F.
+      // Criterion 1: sqrt(-3 * z^2) is square in F(p).
       const c = z.redSqr().redIMuln(-3);
 
       if (!c.redIsSquare())
         continue;
 
-      // Criterion 2: g((sqrt(-3 * z^2) - z) / 2) is square in F.
+      // Criterion 2: g((sqrt(-3 * z^2) - z) / 2) is square in F(p).
       const g = curve.solveY2(c.redSqrt().redISub(z).redMul(i2));
 
       if (!g.redIsSquare())
@@ -293,19 +293,19 @@ function findSVDWZNew(curve) {
       const t1 = gz.redMuln(4);
       const hz = t0.redMul(t1.redInvert());
 
-      // Criterion 1: g(Z) != 0 in F.
+      // Criterion 1: g(z) != 0 in F(p).
       if (gz.isZero())
         continue;
 
-      // Criterion 2: -(3 * Z^2 + 4 * A) / (4 * g(Z)) != 0 in F.
+      // Criterion 2: -(3 * z^2 + 4 * a) / (4 * g(z)) != 0 in F(p).
       if (hz.isZero())
         continue;
 
-      // Criterion 3: -(3 * Z^2 + 4 * A) / (4 * g(Z)) is square in F.
+      // Criterion 3: -(3 * z^2 + 4 * a) / (4 * g(z)) is square in F(p).
       if (!hz.redIsSquare())
         continue;
 
-      // Criterion 4: At least one of g(Z) and g(-Z / 2) is square in F.
+      // Criterion 4: At least one of g(z) and g(-z / 2) is square in F(p).
       if (!gz.redIsSquare() && !gz2.redIsSquare())
         continue;
 
