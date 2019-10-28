@@ -220,7 +220,7 @@ function findSSWUZ(curve) {
   assert(curve instanceof elliptic.Curve);
 
   const {a, b, one} = curve;
-  const ctr = curve.one.clone();
+  const ctr = one.clone();
 
   for (;;) {
     for (const z of [ctr, ctr.redNeg()]) {
@@ -252,8 +252,38 @@ function findSSWUZ(curve) {
 function findSVDWZ(curve) {
   assert(curve instanceof elliptic.Curve);
 
+  const {one, i2} = curve;
+  const ctr = one.clone();
+
+  for (;;) {
+    for (const z of [ctr, ctr.redNeg()]) {
+      // Criterion 1: sqrt(-3 * z^2) is square in F.
+      const c = z.redSqr().redIMuln(-3);
+
+      if (!c.redIsSquare())
+        continue;
+
+      // Criterion 2: g((sqrt(-3 * z^2) - z) / 2) is square in F.
+      const g = curve.solveY2(c.redSqrt().redISub(z).redMul(i2));
+
+      if (!g.redIsSquare())
+        continue;
+
+      return z;
+    }
+
+    ctr.redIAdd(curve.one);
+  }
+}
+
+// See:
+// https://github.com/cfrg/draft-irtf-cfrg-hash-to-curve/pull/172
+// eslint-disable-next-line
+function findSVDWZNew(curve) {
+  assert(curve instanceof elliptic.Curve);
+
   const {a, i2} = curve;
-  const ctr = curve.one.clone();
+  const ctr = one.clone();
 
   for (;;) {
     for (const z of [ctr, ctr.redNeg()]) {
