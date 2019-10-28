@@ -282,7 +282,7 @@ function findSVDWZ(curve) {
 function findSVDWZNew(curve) {
   assert(curve instanceof elliptic.Curve);
 
-  const {a, i2} = curve;
+  const {a, one, i2} = curve;
   const ctr = one.clone();
 
   for (;;) {
