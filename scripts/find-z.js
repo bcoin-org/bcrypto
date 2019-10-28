@@ -257,7 +257,7 @@ function findSVDWZ(curve) {
 
   for (;;) {
     for (const z of [ctr, ctr.redNeg()]) {
-      // Criterion 1: sqrt(-3 * z^2) is square in F(p).
+      // Criterion 1: -3 * z^2 is square in F(p).
       const c = z.redSqr().redIMuln(-3);
 
       if (!c.redIsSquare())
