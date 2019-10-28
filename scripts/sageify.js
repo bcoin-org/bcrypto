@@ -5,10 +5,7 @@ const elliptic = require('../lib/js/elliptic');
 require('../test/util/curves');
 
 const id = process.argv[2];
+const invert = process.argv.includes('--invert');
 const curve = elliptic.curve(id);
 
-curve.precompute();
-
-const json = curve.g.pre.toJSON();
-
-console.log(JSON.stringify(json, null, 2));
+console.log(curve.toSage(invert));
