@@ -853,6 +853,43 @@ class JUBJUB extends EdwardsCurve {
   }
 }
 
+/**
+ * ISO256K1 (3-isogenous to secp256k1)
+ * https://github.com/cfrg/draft-irtf-cfrg-hash-to-curve/issues/158
+ */
+
+class ISO256K1 extends ShortCurve {
+  constructor(pre) {
+    super({
+      id: 'ISO256K1',
+      ossl: null,
+      type: 'short',
+      endian: 'be',
+      hash: 'SHA256',
+      prime: 'k256',
+      // 2^256 - 2^32 - 977 (= 3 mod 4)
+      p: ['ffffffff ffffffff ffffffff ffffffff',
+          'ffffffff ffffffff fffffffe fffffc2f'],
+      a: ['3f8731ab dd661adc a08a5558 f0f5d272',
+          'e953d363 cb6f0e5d 405447c0 1a444533'],
+      // 1771
+      b: '6eb',
+      n: ['ffffffff ffffffff ffffffff fffffffe',
+          'baaedce6 af48a03b bfd25e8c d0364141'],
+      h: '1',
+      // SSWU
+      z: '-b',
+      g: [
+        ['4010e1cb b86ab7f3 a40248e9 21dc5e7f',
+         '4d4384af d9d43b09 2fef88a7 4062e495'],
+        ['8e133b20 6fb54a5d 7c567df8 ecae8f71',
+         'e5018676 5ed9fa20 1e7cc15d 68368ca7'],
+        pre
+      ]
+    });
+  }
+}
+
 /*
  * Register
  */
@@ -877,6 +914,7 @@ elliptic.register('M511', M511);
 elliptic.register('E521', E521);
 elliptic.register('MDC', MDC);
 elliptic.register('JUBJUB', JUBJUB);
+elliptic.register('ISO256K1', ISO256K1);
 
 /*
  * Expose
@@ -902,5 +940,6 @@ module.exports = {
   M511,
   E521,
   MDC,
-  JUBJUB
+  JUBJUB,
+  ISO256K1
 };
