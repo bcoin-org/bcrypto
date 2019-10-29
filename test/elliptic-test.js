@@ -4525,6 +4525,83 @@ describe('Elliptic', function() {
         assert(ed448.pointFromMont(p.neg()).eq(q));
       }
     });
+
+    it('should test short isomorphism', () => {
+      const e = new curves.ED25519();
+      const m = e.toMont(e.one);
+      const w1 = m.toShort();
+      const w2 = w1.toShort(w1.field(2), true);
+
+      // https://tools.ietf.org/id/draft-ietf-lwig-curve-representations-02.html#further-dom-parms
+      assert(w2.a.fromRed().toJSON(), '02');
+      assert(w2.b.fromRed().toJSON(),
+        '1ac1da05b55bc14633bd39e47f94302ef19843dcf669916f6a5dfd0165538cd1');
+      assert(w2.g.x.fromRed().toJSON(),
+        '17cfeac378aed661318e8634582275b6d9ad4def072ea1935ee3c4e87a940ffa');
+      assert(w2.g.y.fromRed().toJSON(),
+        '0c08a952c55dfad62c4f13f1a8f68dcadc5c331d297a37b6f0d7fdcc51e16b4d');
+
+      assert(w1.isIsomorphic(w2));
+      assert(w2.isIsomorphic(w1));
+      assert(w1.pointFromShort(w2.g).eq(w1.g));
+      assert(w2.pointFromShort(w1.g).eq(w2.g));
+    });
+
+    it('should test mont isomorphism (1)', () => {
+      const e = new curves.ED25519();
+      const m1 = e.toMont(e.field(3));
+      const m2 = new curves.X25519();
+      const m3 = m2.toMont(m2.field(3));
+
+      assert(m1.a.eq(m3.a));
+      assert(m1.b.eq(m3.b));
+      assert(m1.g.eq(m3.g));
+
+      assert(m2.isIsomorphic(m3));
+      assert(m3.isIsomorphic(m2));
+      assert(m2.pointFromMont(m3.g).eq(m2.g));
+      assert(m3.pointFromMont(m2.g).eq(m3.g));
+    });
+
+    it('should test mont isomorphism (2)', () => {
+      const m0 = new curves.X25519();
+      const m1 = new curves.ED25519().toMont();
+      const m2 = m1.toMont(m1.field(1));
+
+      assert(!m1.b.eq(m0.b));
+      assert(!m1.g.eq(m0.g));
+
+      assert(m2.a.eq(m0.a));
+      assert(m2.b.eq(m0.b));
+      assert(m2.g.eq(m0.g.neg()));
+
+      assert(m1.isIsomorphic(m2));
+      assert(m2.isIsomorphic(m1));
+      assert(m1.pointFromMont(m2.g).eq(m1.g));
+      assert(m2.pointFromMont(m1.g).eq(m2.g));
+    });
+
+    it('should test edwards isomorphism', () => {
+      const e0 = new curves.ED25519();
+      const m0 = e0.toMont();
+      const e1 = m0.toEdwards(m0.field(3));
+      const e2 = e0.toEdwards(e0.field(3));
+
+      e2.g = e2.g.neg();
+
+      assert(e1.g.validate());
+      assert(e2.g.validate());
+      assert(e1.a.eq(e2.a));
+      assert(e1.d.eq(e2.d));
+      assert(e1.g.eq(e2.g));
+
+      assert(e1.isIsomorphic(e2));
+      assert(e2.isIsomorphic(e1));
+      assert(e1.pointFromEdwards(e2.g.randomize(rng)).eq(e1.g));
+      assert(e2.pointFromEdwards(e1.g.randomize(rng)).eq(e2.g));
+      assert(e1.pointFromEdwards(e2.g.randomize(rng)).validate());
+      assert(e2.pointFromEdwards(e1.g.randomize(rng)).validate());
+    });
   });
 
   describe('Point codec', () => {
