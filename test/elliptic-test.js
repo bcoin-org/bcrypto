@@ -2581,20 +2581,9 @@ describe('Elliptic', function() {
         assert(p1.validate());
         assert(p1.eq(p2));
       }
-
-      for (let i = 0; i < 10; i++) {
-        const r1 = curve.field(i);
-        const p1 = curve.pointFromUniform(r1);
-        const r2 = curve.pointToUniform(p1, 0);
-        const p2 = curve.pointFromUniform(r2);
-
-        assert(!p1.isInfinity());
-        assert(p1.validate());
-        assert(p1.eq(p2));
-      }
     });
 
-    it('should test elligator 1 (api)', () => {
+    it('should test elligator 2 (api)', () => {
       const eddsa = new EDDSA('ED1174', null, SHA512);
 
       const u1 = Buffer.from(
@@ -2606,7 +2595,7 @@ describe('Elliptic', function() {
       const pub2 = eddsa.publicKeyFromUniform(u2);
 
       assert.bufferEqual(pub1,
-        '874f0c7f58e47a65fa6418a65c84c03cd360c97dff3525a43192bbfec5229182');
+        '70b0f380a71b859a059be759a37b3fc32c9f368200cada5bce6d44013add6e85');
       assert.bufferEqual(pub2, pub1);
 
       const pub3 = eddsa.publicKeyFromHash(rng.randomBytes(64), true);
@@ -2645,7 +2634,7 @@ describe('Elliptic', function() {
       assert(ecdh.publicKeyVerify(pub));
     });
 
-    it('should do elligator2 with B != 1 (mont)', () => {
+    it('should do elligator 2 with B != 1 (mont)', () => {
       const ed25519 = new curves.ED25519();
       const x25519 = new curves.X25519();
       const native = ed25519.toMont();
@@ -2672,7 +2661,7 @@ describe('Elliptic', function() {
       assert(p2.eq(p0));
     });
 
-    it('should do elligator2 with B != 1 (edwards)', () => {
+    it('should do elligator 2 with B != 1 (edwards)', () => {
       const ed25519 = new curves.ED25519();
       const x25519 = new curves.X25519();
       const native = ed25519.toMont();
@@ -2692,7 +2681,7 @@ describe('Elliptic', function() {
       assert(p2.eq(p0));
     });
 
-    it('should do elligator2 on fabricated twisted edwards curve', () => {
+    it('should do elligator 2 on fabricated twisted edwards curve', () => {
       const mont = new extra.M383();
       const twisted = mont.toEdwards(mont.one.redNeg());
 
@@ -2914,7 +2903,7 @@ describe('Elliptic', function() {
       }
     });
 
-    it('should invert elligator squared (elligator2)', () => {
+    it('should invert elligator squared (elligator 2)', () => {
       const x25519 = new curves.X25519();
       const ed25519 = new curves.ED25519();
       const x448 = new curves.X448();
