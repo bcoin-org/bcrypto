@@ -541,7 +541,7 @@ describe('Elliptic', function() {
         b: '14',
         n: '25',
         h: '1',
-        z: '2', // Icart
+        z: '-8', // Icart
         g: [
           '0',
           '7'
@@ -753,7 +753,7 @@ describe('Elliptic', function() {
         b: '659e f8ba0439 16eede89 11702b22',
         n: 'db7c 2abf62e3 5e7628df ac6561c5',
         h: '1',
-        z: '-a', // Icart
+        z: 'e', // Icart
         g: [
           '0948 7239995a 5ee76b55 f9c2f098',
           'a89c e5af8724 c0a23e0e 0ff77500'
@@ -2941,11 +2941,11 @@ describe('Elliptic', function() {
       const edwards = new curves.ED448();
       const mont = edwards.toMont(edwards.one, true);
       const wei = mont.toShort();
-      const zai = wei.a.redMuln(-2).redInvert();
+      const zai = wei.a.redMuln(-3).redInvert();
 
       // Satisfies jacobi(z) == -1
       // and jacobi(g(b / (z * a))) == 1.
-      wei.z = wei.field(-2);
+      wei.z = wei.field(-3);
 
       assert(!wei.z.redIsSquare());
       assert(wei.solveY2(wei.b.redMul(zai)).redIsSquare());
