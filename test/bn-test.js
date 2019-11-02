@@ -6389,6 +6389,40 @@ describe('BN.js', function() {
       assert(r.fromRed().eq(n.mod(p)));
     });
 
+    it('should do division on finite field (1)', () => {
+      const red = BN.red('p192');
+      const n = BN.random(rng, 1, red.m).toRed(red);
+      const d = BN.random(rng, 2, red.m).toRed(red);
+      const expect = n.redMul(d.redInvert());
+      const r0 = n.redDiv(d);
+
+      assert(!n.eq(r0));
+
+      const r1 = n.redIDiv(d);
+
+      assert(r0.eq(expect));
+      assert(r1.eq(expect));
+      assert(r1.eq(expect));
+      assert(n.eq(r1));
+    });
+
+    it('should do division on finite field (2)', () => {
+      const red = BN.red('p192');
+      const n = BN.random(rng, 1, red.m).toRed(red);
+      const d = BN.randomBits(rng, 26).toNumber();
+      const expect = n.redMul(new BN(d).toRed(red).redInvert());
+      const r0 = n.redDivn(d);
+
+      assert(!n.eq(r0));
+
+      const r1 = n.redIDivn(d);
+
+      assert(r0.eq(expect));
+      assert(r1.eq(expect));
+      assert(r1.eq(expect));
+      assert(n.eq(r1));
+    });
+
     for (const red of [BN.red('p192'), BN.red(P192), BN.mont(P192)]) {
       it('should test red helpers', () => {
         const r0 = new BN(0).toRed(red);
