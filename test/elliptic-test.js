@@ -4602,6 +4602,36 @@ describe('Elliptic', function() {
       assert(e1.pointFromEdwards(e2.g.randomize(rng)).validate());
       assert(e2.pointFromEdwards(e1.g.randomize(rng)).validate());
     });
+
+    it('should do division (1)', () => {
+      const curve = new curves.ED25519();
+      const g = curve.g;
+      const p = g.muln(3);
+      const q = p.divn(3);
+
+      assert(p.eq(g.trpl()));
+      assert(q.eq(g));
+    });
+
+    it('should do division (2)', () => {
+      const curve = new curves.ED25519();
+      const g = curve.g;
+      const p = g.muln(-3);
+      const q = p.divn(-3);
+
+      assert(p.eq(g.trpl().neg()));
+      assert(q.eq(g));
+    });
+
+    it('should do subtraction', () => {
+      const curve = new curves.ED25519();
+      const p = curve.randomPoint(rng);
+      const q = curve.randomPoint(rng);
+      const r = p.add(q.neg());
+
+      assert(p.sub(q).eq(r));
+      assert(p.usub(q).eq(r));
+    });
   });
 
   describe('Point codec', () => {
