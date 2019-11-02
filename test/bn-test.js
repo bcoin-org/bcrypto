@@ -6555,18 +6555,18 @@ describe('BN.js', function() {
         assert.strictEqual(r1.redNeg().redAddn(1).redEqn(0), true);
         assert.strictEqual(r1.redNeg().redAddn(1).sign(), 0);
 
-        assert.strictEqual(r1.redIsPos(), true);
-        assert.strictEqual(r1.redIsNeg(), false);
-        assert.strictEqual(r1.redNeg().redIsPos(), false);
-        assert.strictEqual(r1.redNeg().redIsNeg(), true);
+        assert.strictEqual(r1.redIsLow(), true);
+        assert.strictEqual(r1.redIsHigh(), false);
+        assert.strictEqual(r1.redNeg().redIsLow(), false);
+        assert.strictEqual(r1.redNeg().redIsHigh(), true);
 
-        assert.strictEqual(rp.redIsPos(), true);
-        assert.strictEqual(rp.redIsNeg(), false);
-        assert.strictEqual(rp.redNeg().redIsPos(), false);
-        assert.strictEqual(rp.redNeg().redIsNeg(), true);
+        assert.strictEqual(rp.redIsLow(), true);
+        assert.strictEqual(rp.redIsHigh(), false);
+        assert.strictEqual(rp.redNeg().redIsLow(), false);
+        assert.strictEqual(rp.redNeg().redIsHigh(), true);
 
-        assert.strictEqual(rp.redAddn(1).redIsPos(), false);
-        assert.strictEqual(rp.redAddn(1).redIsNeg(), true);
+        assert.strictEqual(rp.redAddn(1).redIsLow(), false);
+        assert.strictEqual(rp.redAddn(1).redIsHigh(), true);
       });
     }
 
@@ -6636,10 +6636,10 @@ describe('BN.js', function() {
         assert.strictEqual(r1.redNeg().redAddn(1).redEqn(0), true);
         assert.strictEqual(r1.redNeg().redAddn(1).sign(), 0);
 
-        assert.strictEqual(r1.redIsPos(), true);
-        assert.strictEqual(r1.redIsNeg(), false);
-        assert.strictEqual(r1.redNeg().redIsPos(), false);
-        assert.strictEqual(r1.redNeg().redIsNeg(), true);
+        assert.strictEqual(r1.redIsLow(), true);
+        assert.strictEqual(r1.redIsHigh(), false);
+        assert.strictEqual(r1.redNeg().redIsLow(), false);
+        assert.strictEqual(r1.redNeg().redIsHigh(), true);
       });
     }
 
