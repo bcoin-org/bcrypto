@@ -6838,11 +6838,45 @@ describe('BN.js', function() {
       assert.strictEqual(new BN(14).mulShift(new BN(13), 2).toString(), '46');
       assert.strictEqual(new BN(14).mulShift(new BN(-13), 2).toString(), '-46');
     });
+
+    it('should do inverse square root', () => {
+      const p192 = BN.red('p192');
+      const p224 = BN.red('p224');
+      const p25519 = BN.red('p25519');
+      const p255192 = BN.red('p25519');
+
+      p25519.precompute();
+
+      for (const red of [p192, p224, p25519, p255192]) {
+        const pairs = [];
+
+        while (pairs.length < 10) {
+          const u = BN.random(rng, 0, red.m).toRed(red);
+          const v = BN.random(rng, 1, red.m).toRed(red);
+          const uv = u.redMul(v.redInvert());
+
+          if (uv.redJacobi() === -1)
+            continue;
+
+          pairs.push([u, v]);
+        }
+
+        for (const [u, v] of pairs) {
+          const e = u.redMul(v.redInvert()).redSqrt();
+          const r = u.redDivSqrt(v);
+
+          if (r.redIsOdd() !== e.redIsOdd())
+            r.redINeg();
+
+          assert(r.eq(e));
+        }
+      }
+    });
   });
 
   describe('BN.js/Slow DH test', () => {
     for (const name of Object.keys(dhGroups)) {
-      it('should match public key for ' + name + ' group', () => {
+      it(`should match public key for ${name} group`, () => {
         const group = dhGroups[name];
 
         const base = new BN(2);
