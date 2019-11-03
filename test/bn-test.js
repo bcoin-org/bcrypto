@@ -6848,7 +6848,19 @@ describe('BN.js', function() {
       p25519.precompute();
 
       for (const red of [p192, p224, p25519, p255192]) {
+        const zero = new BN(0).toRed(red);
+        const one = new BN(1).toRed(red);
         const pairs = [];
+
+        assert(zero.redDivSqrt(one).eq(zero));
+
+        assert.throws(() => zero.redDivSqrt(zero), {
+          message: 'Not invertible.'
+        });
+
+        assert.throws(() => one.redDivSqrt(zero), {
+          message: 'Not invertible.'
+        });
 
         while (pairs.length < 10) {
           const u = BN.random(rng, 0, red.m).toRed(red);

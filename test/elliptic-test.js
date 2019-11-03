@@ -2708,7 +2708,7 @@ describe('Elliptic', function() {
       assert(p3.validate());
 
       assert.throws(() => curve._invert1(p3, 0), {
-        message: 'X is not a square mod P.'
+        message: 'Invalid point.'
       });
 
       for (let i = 0; i < 100; i++) {
