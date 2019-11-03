@@ -6826,6 +6826,18 @@ describe('BN.js', function() {
         assert(p.eq(q));
       }
     });
+
+    it('should do rounded mul+shift', () => {
+      // even
+      assert.strictEqual(new BN(12).mulShift(new BN(13), 2).toString(), '39');
+      assert.strictEqual(new BN(12).mulShift(new BN(-13), 2).toString(), '-39');
+      // even
+      assert.strictEqual(new BN(13).mulShift(new BN(13), 2).toString(), '42');
+      assert.strictEqual(new BN(13).mulShift(new BN(-13), 2).toString(), '-42');
+      // odd
+      assert.strictEqual(new BN(14).mulShift(new BN(13), 2).toString(), '46');
+      assert.strictEqual(new BN(14).mulShift(new BN(-13), 2).toString(), '-46');
+    });
   });
 
   describe('BN.js/Slow DH test', () => {

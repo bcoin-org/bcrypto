@@ -803,6 +803,10 @@ describe('Elliptic', function() {
             a: '71169be7330b3038edb025f1',
             b: '012511cfe811d0f4e6bc688b4d'
           }
+        ],
+        pre: [
+          '012511cfe811d0f4e6bc688b4f1d8d',
+          '-71169be7330b3038edb025f1d0f9'
         ]
       });
 
@@ -845,6 +849,10 @@ describe('Elliptic', function() {
             a: '6b8cf07d4ca75c88957d9d670591',
             b: '01243ae1b4d71613bc9f780a03690e'
           }
+        ],
+        pre: [
+          '024875c369ae2c27793ef01406d217bf31',
+          '-d719e0fa994eb9112afb3ace0b206f48'
         ]
       });
 
@@ -883,6 +891,10 @@ describe('Elliptic', function() {
         basis: [
           { a: '7faab9faa7718443dc49', b: '-a70f68731db66985312e' },
           { a: '0126ba226dc527edc90d77', b: '7faab9faa7718443dc49' }
+        ],
+        pre: [
+          'ff5573f54ee30887b890336a',
+          '-014e1ed0e63b6cd30a6259a54b'
         ]
       });
 
@@ -892,6 +904,8 @@ describe('Elliptic', function() {
       const b1e = new BN('-602889891024722752429129', 10);
       const a2e = new BN('602889891024722752429129', 10);
       const b2e = new BN('1391809321217130704211319', 10);
+      const g1e = new BN('182427231350571755662385731766', 10);
+      const g2e = new BN('-79021983796392460606390678378', 10);
 
       // We pick index 0 when the example assumes 1.
       // Note that secp256k1 picks 1 (if we ever
@@ -902,6 +916,8 @@ describe('Elliptic', function() {
       curve.endo.basis[0].b = b1e.clone();
       curve.endo.basis[1].a = a2e.clone();
       curve.endo.basis[1].b = b2e.clone();
+      curve.endo.pre[0] = g1e.clone();
+      curve.endo.pre[1] = g2e.clone();
 
       assert(curve.endo.beta.fromRed().eq(beta));
       assert(curve.endo.lambda.eq(lambda));
@@ -937,17 +953,32 @@ describe('Elliptic', function() {
       assert(v2.a.eq(a2e));
       assert(v2.b.eq(b2e));
 
+      const [g1, g2] = curve._getEndoPrecomp(curve.endo.basis);
+
+      assert(g1.eq(g1e));
+      assert(g2.eq(g2e));
+
       const k = new BN('965486288327218559097909069724275579360008398257', 10);
       const c1e = new BN('919446671339517233512759', 10);
       const c2e = new BN('398276613783683332374156', 10);
       const k1e = new BN('-98093723971803846754077', 10);
       const k2e = new BN('381880690058693066485147', 10);
 
-      const c1 = v2.b.mul(k).divRound(curve.n);
-      const c2 = v1.b.neg().mul(k).divRound(curve.n);
+      {
+        const c1 = v2.b.mul(k).divRound(curve.n);
+        const c2 = v1.b.neg().mul(k).divRound(curve.n);
 
-      assert(c1.eq(c1e));
-      assert(c2.eq(c2e));
+        assert(c1.eq(c1e));
+        assert(c2.eq(c2e));
+      }
+
+      {
+        const c1 = k.mulShift(g1, 177);
+        const c2 = k.mulShift(g2, 177).ineg();
+
+        assert(c1.eq(c1e));
+        assert(c2.eq(c2e));
+      }
 
       assert(curve.endo.basis[0].a.eq(v1.a));
       assert(curve.endo.basis[0].b.eq(v1.b));
@@ -1015,13 +1046,88 @@ describe('Elliptic', function() {
       assert.strictEqual(curve.endo.basis[1].b.toString(16),
                          '3086d221a7d46bcde86c90e49284eb15');
 
+      assert.strictEqual(curve.endo.pre[0].toString(16),
+                         '3086d221a7d46bcde86c90e49284eb153dab');
+      assert.strictEqual(curve.endo.pre[1].toString(16),
+                         '-e4437ed6010e88286f547fa90abfe4c42212');
+
       for (let i = 0; i < 10; i++) {
         const k = curve.randomScalar(rng);
 
         if (i & 1)
           k.ineg();
 
+        if (i & 2)
+          k.imul(curve.randomScalar(rng));
+
         const [k1, k2] = curve._endoSplit(k);
+        const r = k1.add(k2.mul(curve.endo.lambda)).mod(curve.n);
+
+        assert.strictEqual(r.toString(16), k.mod(curve.n).toString(16));
+      }
+
+      const endoSplit2 = (k) => {
+        const shift = curve.scalarBits + 16;
+        const [v1, v2] = curve.endo.basis;
+        const [g1, g2] = curve.endo.pre;
+
+        const c1 = k.mulShift(g1, shift);
+        const c2 = k.mulShift(g2, shift).ineg();
+
+        const p1 = c1.mul(v1.a);
+        const p2 = c2.mul(v2.a);
+        const q1 = c1.ineg().mul(v1.b);
+        const q2 = c2.mul(v2.b);
+
+        const k1 = k.sub(p1).isub(p2);
+        const k2 = q1.isub(q2);
+
+        return [k1, k2];
+      };
+
+      for (let i = 0; i < 10; i++) {
+        const k = curve.randomScalar(rng);
+
+        if (i & 1)
+          k.ineg();
+
+        if (i & 2)
+          k.imul(curve.randomScalar(rng));
+
+        const [k1, k2] = endoSplit2(k);
+        const r = k1.add(k2.mul(curve.endo.lambda)).mod(curve.n);
+
+        assert.strictEqual(r.toString(16), k.mod(curve.n).toString(16));
+      }
+
+      const endoSplit3 = (k) => {
+        const shift = curve.scalarBits + 16;
+        const {lambda} = curve.endo;
+        const [v1, v2] = curve.endo.basis;
+        const [g1, g2] = curve.endo.pre;
+
+        // c1 = ((k * g1) >> t) * -b1
+        // c2 = ((k * g2) >> t) * -b2
+        // k2 = c1 + c2
+        // k1 = k2 * -lambda + k
+        const c1 = k.mulShift(g1, shift).mul(v1.b.neg());
+        const c2 = k.mulShift(g2, shift).mul(v2.b.neg());
+        const k2 = c1.add(c2);
+        const k1 = k2.mul(lambda.neg()).iadd(k);
+
+        return [k1, k2];
+      };
+
+      for (let i = 0; i < 10; i++) {
+        const k = curve.randomScalar(rng);
+
+        if (i & 1)
+          k.ineg();
+
+        if (i & 2)
+          k.imul(curve.randomScalar(rng));
+
+        const [k1, k2] = endoSplit3(k);
         const r = k1.add(k2.mul(curve.endo.lambda)).mod(curve.n);
 
         assert.strictEqual(r.toString(16), k.mod(curve.n).toString(16));
