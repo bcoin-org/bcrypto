@@ -4706,14 +4706,14 @@ describe('Elliptic', function() {
     it('should test mont isomorphism (2)', () => {
       const m0 = new curves.X25519();
       const m1 = new curves.ED25519().toMont();
-      const m2 = m1.toMont(m1.field(1));
+      const m2 = m1.toMont(m1.field(1), true);
 
       assert(!m1.b.eq(m0.b));
       assert(!m1.g.eq(m0.g));
 
       assert(m2.a.eq(m0.a));
       assert(m2.b.eq(m0.b));
-      assert(m2.g.eq(m0.g.neg()));
+      assert(m2.g.eq(m0.g));
 
       assert(m1.isIsomorphic(m2));
       assert(m2.isIsomorphic(m1));
@@ -4725,9 +4725,7 @@ describe('Elliptic', function() {
       const e0 = new curves.ED25519();
       const m0 = e0.toMont();
       const e1 = m0.toEdwards(m0.field(3));
-      const e2 = e0.toEdwards(e0.field(3));
-
-      e2.g = e2.g.neg();
+      const e2 = e0.toEdwards(e0.field(3), false);
 
       assert(e1.g.validate());
       assert(e2.g.validate());
