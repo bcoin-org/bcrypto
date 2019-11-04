@@ -96,7 +96,7 @@ function tryFindS(curve) {
 function findS(curve) {
   assert(curve instanceof elliptic.Curve);
 
-  if (curve.type === 'edwards') {
+  if (curve.type === 'edwards' && !curve.twisted) {
     if (curve.p.andln(3) === 3 && curve.d.redJacobi() === -1)
       return findElligator1S(curve);
   }
