@@ -1,6 +1,7 @@
 .babel*
 .bmocharc*
 .bpkgignore
+.circleci/
 .editorconfig
 .eslint*
 .git*
