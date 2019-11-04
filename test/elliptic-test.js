@@ -2711,6 +2711,25 @@ describe('Elliptic', function() {
         message: 'Invalid point.'
       });
 
+      // If x = 2 * s * (c - 1) * f(c) / r
+      // then ((y - 1) / 2 * (y + 1)) * r = -2.
+      // Has 2-torsion.
+      const p4 = curve.pointFromJSON([
+        '05e19eca85e361b2b0cfb2903df32a222a8f1ed6404d1355f3db39ea2b68874e',
+        '073d2571a3f4137c416f9acad9f974d6ebb700a7841ba0e655a5fd3cb5c43c2b'
+      ]);
+
+      const u4 = curve._invert1(p4, 0);
+
+      assert(u4.eq(curve.zero));
+      assert(curve._elligator1(u4).eq(p4));
+
+      // y + 1 = 0
+      const p5 = curve.point(curve.zero, curve.one.redNeg());
+      const u5 = curve._invert1(p5, 0);
+
+      assert(curve._elligator1(u5).eq(p5));
+
       for (let i = 0; i < 100; i++) {
         const r1 = curve.field(i);
         const p1 = curve._elligator1(r1);

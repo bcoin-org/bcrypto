@@ -164,17 +164,18 @@ function getElligator1SCR(curve, s) {
   //   - Let c = 2 / s^2. Then c(c - 1)(c + 1) != 0.
   //   - Let r = c + 1 / c. Then r != 0.
   //   - Let d = -(c + 1)^2 / (c - 1)^2. Then d is not a square.
+  const {one, two} = curve;
   const s2 = s.redSqr();
-  const lhs = s2.redSub(curve.two);
-  const rhs = s2.redAdd(curve.two);
+  const lhs = s2.redSub(two);
+  const rhs = s2.redAdd(two);
   const k0 = lhs.redMul(rhs);
 
   if (k0.isZero())
     throw new Error('Invalid S (s^2 - 2)(s^2 + 2) = 0).');
 
-  const c = curve.two.redMul(s2.redInvert());
-  const cm1 = c.redSub(curve.one);
-  const cp1 = c.redAdd(curve.one);
+  const c = two.redMul(s2.redInvert());
+  const cm1 = c.redSub(one);
+  const cp1 = c.redAdd(one);
   const k1 = c.redMul(cm1).redMul(cp1);
 
   if (k1.isZero())
@@ -185,8 +186,8 @@ function getElligator1SCR(curve, s) {
   if (r.isZero())
     throw new Error('Invalid R (c + 1 / c = 0).');
 
-  const dl = c.redAdd(curve.one).redSqr().redINeg();
-  const dr = c.redSub(curve.one).redSqr();
+  const dl = c.redAdd(one).redSqr().redINeg();
+  const dr = c.redSub(one).redSqr();
   const d = dl.redMul(dr.redInvert());
 
   if (!d.eq(curve.d))
@@ -195,7 +196,31 @@ function getElligator1SCR(curve, s) {
   if (d.redJacobi() !== -1)
     throw new Error('Invalid D (square).');
 
-  return [s, c, r];
+  // - If n * r = -2 then x = 2 * s * (c - 1) * f(c) / r.
+  // - Let n = (y - 1) / 2 * (y + 1).
+  const e0 = curve.p.subn(2);
+  const e1 = curve.p.subn(1).iushrn(1);
+  const xl = s.redMul(c.redSub(one)).redIMuln(2);
+  const xr = c.redPow(e1);
+  const x = xl.redMul(xr).redDiv(r);
+
+  let p = null;
+
+  for (const sign of [false, true]) {
+    const q = curve.pointFromX(x, sign);
+    const n = q.y.redSub(one).redMul(q.y.redAdd(one).redIMuln(2).redPow(e0));
+    const nr = n.redMul(r);
+
+    if (nr.eq(two.redNeg())) {
+      p = q;
+      break;
+    }
+  }
+
+  if (!p)
+    throw new Error('Invalid X (n * r != -2).');
+
+  return [s, c, r, p];
 }
 
 function findElligator2Z(curve) {
