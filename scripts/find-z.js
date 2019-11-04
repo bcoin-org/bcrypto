@@ -107,6 +107,7 @@ function findS(curve) {
 function findElligator1S(curve) {
   assert(curve instanceof elliptic.Curve);
 
+  // solve(d == -((2 / s^2) + 1)^2 / ((2 / s^2) - 1)^2, s)
   // s = +-sqrt(2 * d / (d + 1) +- 4 * sqrt(-d) / (d + 1) - 2 / (d + 1))
   const {d, one} = curve;
   const di = d.redAdd(one).redInvert();

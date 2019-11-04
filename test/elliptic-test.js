@@ -2696,9 +2696,9 @@ describe('Elliptic', function() {
         '029122c5febb9231a42535ff7dc960d33cc0845ca61864fa657ae4587f0c4f87'
       ]);
 
-      const r2 = curve._invert1(p1, 0);
+      const r2 = curve._invert1(p1, 1);
 
-      assert.strictEqual(r2.redNeg().fromRed().toNumber(), 1337);
+      assert.strictEqual(r2.fromRed().toNumber(), 1337);
 
       const p3 = curve.pointFromJSON([
         '02b407fb3fdae072411ca31ec7baa1278be5fd5d2300a52fdcd212d7712d2a27',
@@ -2733,8 +2733,11 @@ describe('Elliptic', function() {
       for (let i = 0; i < 100; i++) {
         const r1 = curve.field(i);
         const p1 = curve._elligator1(r1);
-        const r2 = curve._invert1(p1, 0);
+        const r2 = curve._invert1(p1, i);
         const p2 = curve._elligator1(r2);
+
+        assert(curve._elligator1(r1.redNeg()).eq(p1));
+        assert(curve._elligator1(r2.redNeg()).eq(p2));
 
         assert(!p1.isInfinity());
         assert(p1.validate());
