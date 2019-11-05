@@ -22,7 +22,84 @@
  */
 
 static void
-shallue_van_de_woestijne(secp256k1_ge *ge, const secp256k1_fe *u) {
+secp256k1_fe_pow_pm3d4(secp256k1_fe *r, const secp256k1_fe *a) {
+  /* Compute a^((p - 3) / 4) with sliding window. Could be improved. */
+  secp256k1_fe w2, w4, w11, w12, w14, w15;
+  int i;
+
+  secp256k1_fe_sqr(&w2, a);
+  secp256k1_fe_sqr(&w4, &w2);
+  secp256k1_fe_sqr(&w11, &w4);
+  secp256k1_fe_mul(&w11, &w11, &w2);
+  secp256k1_fe_mul(&w11, &w11, a);
+  secp256k1_fe_mul(&w12, &w11, a);
+  secp256k1_fe_mul(&w14, &w12, &w2);
+  secp256k1_fe_mul(&w15, &w11, &w4);
+
+  *r = w15;
+  secp256k1_fe_sqr(r, r);
+  secp256k1_fe_sqr(r, r);
+  secp256k1_fe_sqr(r, r);
+  secp256k1_fe_sqr(r, r);
+
+  for (i = 0; i < 54; i++) {
+    secp256k1_fe_mul(r, r, &w15);
+    secp256k1_fe_sqr(r, r);
+    secp256k1_fe_sqr(r, r);
+    secp256k1_fe_sqr(r, r);
+    secp256k1_fe_sqr(r, r);
+  }
+
+  secp256k1_fe_mul(r, r, &w14);
+  secp256k1_fe_sqr(r, r);
+  secp256k1_fe_sqr(r, r);
+  secp256k1_fe_sqr(r, r);
+  secp256k1_fe_sqr(r, r);
+
+  for (i = 0; i < 5; i++) {
+    secp256k1_fe_mul(r, r, &w15);
+    secp256k1_fe_sqr(r, r);
+    secp256k1_fe_sqr(r, r);
+    secp256k1_fe_sqr(r, r);
+    secp256k1_fe_sqr(r, r);
+  }
+
+  secp256k1_fe_mul(r, r, &w12);
+  secp256k1_fe_sqr(r, r);
+  secp256k1_fe_sqr(r, r);
+  secp256k1_fe_sqr(r, r);
+  secp256k1_fe_sqr(r, r);
+  secp256k1_fe_sqr(r, r);
+  secp256k1_fe_sqr(r, r);
+
+  secp256k1_fe_mul(r, r, &w11);
+}
+
+static int
+secp256k1_fe_isqrt(secp256k1_fe *r,
+                   const secp256k1_fe *u,
+                   const secp256k1_fe *v) {
+  /* x = u^3 * v * (u^5 * v^3)^((p - 3) / 4) mod p */
+  secp256k1_fe u2, u3, u5, v3, p, x, c;
+  secp256k1_fe_sqr(&u2, u);
+  secp256k1_fe_mul(&u3, &u2, u);
+  secp256k1_fe_mul(&u5, &u3, &u2);
+  secp256k1_fe_sqr(&v3, v);
+  secp256k1_fe_mul(&v3, &v3, v);
+  secp256k1_fe_mul(&p, &u5, &v3);
+  secp256k1_fe_pow_pm3d4(&p, &p);
+  secp256k1_fe_mul(&x, &u3, v);
+  secp256k1_fe_mul(&x, &x, &p);
+  secp256k1_fe_sqr(&c, &x);
+  secp256k1_fe_mul(&c, &c, v);
+  *r = x;
+  return secp256k1_fe_equal(&c, u);
+}
+
+static void
+shallue_van_de_woestijne_xy2(secp256k1_fe *x,
+                             secp256k1_fe *y,
+                             const secp256k1_fe *u) {
   /* Copyright (c) 2016 Andrew Poelstra & Pieter Wuille */
 
   /*
@@ -68,8 +145,8 @@ shallue_van_de_woestijne(secp256k1_ge *ge, const secp256k1_fe *u) {
                                                             0, 0, 0, 8);
 
   secp256k1_fe wn, wd, x1n, x2n, x3n, x3d, jinv, tmp, x1, x2, x3;
-  secp256k1_fe alphain, betain, gammain, y1, y2, y3;
-  int alphaquad, betaquad, flip;
+  secp256k1_fe y1, y2, y3;
+  int alphaquad, betaquad;
 
   secp256k1_fe_mul(&wn, &c, u); /* mag 1 */
   secp256k1_fe_sqr(&wd, u); /* mag 1 */
@@ -94,63 +171,68 @@ shallue_van_de_woestijne(secp256k1_ge *ge, const secp256k1_fe *u) {
   secp256k1_fe_mul(&x3, &x3n, &wd); /* mag 1 */
   secp256k1_fe_mul(&x3, &x3, &jinv); /* mag 1 */
 
-  secp256k1_fe_sqr(&alphain, &x1); /* mag 1 */
-  secp256k1_fe_mul(&alphain, &alphain, &x1); /* mag 1 */
-  secp256k1_fe_add(&alphain, &b); /* mag 2 */
-  secp256k1_fe_sqr(&betain, &x2); /* mag 1 */
-  secp256k1_fe_mul(&betain, &betain, &x2); /* mag 1 */
-  secp256k1_fe_add(&betain, &b); /* mag 2 */
-  secp256k1_fe_sqr(&gammain, &x3); /* mag 1 */
-  secp256k1_fe_mul(&gammain, &gammain, &x3); /* mag 1 */
-  secp256k1_fe_add(&gammain, &b); /* mag 2 */
+  secp256k1_fe_sqr(&y1, &x1); /* mag 1 */
+  secp256k1_fe_mul(&y1, &y1, &x1); /* mag 1 */
+  secp256k1_fe_add(&y1, &b); /* mag 2 */
+  secp256k1_fe_sqr(&y2, &x2); /* mag 1 */
+  secp256k1_fe_mul(&y2, &y2, &x2); /* mag 1 */
+  secp256k1_fe_add(&y2, &b); /* mag 2 */
+  secp256k1_fe_sqr(&y3, &x3); /* mag 1 */
+  secp256k1_fe_mul(&y3, &y3, &x3); /* mag 1 */
+  secp256k1_fe_add(&y3, &b); /* mag 2 */
 
-  alphaquad = secp256k1_fe_sqrt(&y1, &alphain);
-  betaquad = secp256k1_fe_sqrt(&y2, &betain);
-  secp256k1_fe_sqrt(&y3, &gammain);
+  alphaquad = secp256k1_fe_sqrt(&tmp, &y1);
+  betaquad = secp256k1_fe_sqrt(&tmp, &y2);
 
   secp256k1_fe_cmov(&x1, &x2, (!alphaquad) & betaquad);
   secp256k1_fe_cmov(&y1, &y2, (!alphaquad) & betaquad);
   secp256k1_fe_cmov(&x1, &x3, (!alphaquad) & !betaquad);
   secp256k1_fe_cmov(&y1, &y3, (!alphaquad) & !betaquad);
 
-  secp256k1_ge_set_xy(ge, &x1, &y1);
+  *x = x1;
+  *y = y1;
+}
 
-  flip = secp256k1_fe_is_odd(&ge->y) ^ secp256k1_fe_is_odd(u);
-  secp256k1_fe_negate(&tmp, &ge->y, 1);
-  secp256k1_fe_cmov(&ge->y, &tmp, flip);
+static void
+shallue_van_de_woestijne(secp256k1_ge *ge, const secp256k1_fe *u) {
+  secp256k1_fe x, y, y2;
+  int flip;
+
+  shallue_van_de_woestijne_xy2(&x, &y2, u);
+  secp256k1_fe_sqrt(&y, &y2);
+
+  flip = secp256k1_fe_is_odd(&y) ^ secp256k1_fe_is_odd(u);
+  secp256k1_fe_negate(&y2, &y, 1);
+  secp256k1_fe_cmov(&y, &y2, flip);
+
+  secp256k1_ge_set_xy(ge, &x, &y);
 }
 
 static int
 shallue_van_de_woestijne_invert(secp256k1_fe* u,
                                 const secp256k1_ge *ge,
                                 unsigned int hint) {
+  size_t shift = sizeof(unsigned int) * 8 - 1;
+
   static const secp256k1_fe c = SECP256K1_FE_CONST(0x0a2d2ba9, 0x3507f1df,
                                                    0x233770c2, 0xa797962c,
                                                    0xc61f6d15, 0xda14ecd4,
                                                    0x7d8d27ae, 0x1cd5f852);
 
-  static const secp256k1_fe i2 = SECP256K1_FE_CONST(0x7fffffff, 0xffffffff,
-                                                    0xffffffff, 0xffffffff,
-                                                    0xffffffff, 0xffffffff,
-                                                    0xffffffff, 0x7ffffe18);
-
   static const secp256k1_fe one = SECP256K1_FE_CONST(0, 0, 0, 0,
                                                      0, 0, 0, 1);
 
-  secp256k1_fe x, y, c1, c2, d1, d2;
-  secp256k1_fe u1, u2, u3, u4, t, tmp;
-  secp256k1_ge q;
-  size_t shift = sizeof(unsigned int) * 8 - 1;
+  secp256k1_fe x, y, c0, c1, n0, n1, n2, n3, d0, t, tmp;
   unsigned int r = hint & 3;
   unsigned int s0, s1, s2, s3, flip;
 
   /*
    * Map:
    *
-   *   t = sqrt(6 * (2 * b - 1) * x + 9 * x^2 - 12 * b - 3) / 2
+   *   t = sqrt(6 * (2 * b - 1) * x + 9 * x^2 - 12 * b - 3)
    *   u1 = +-sqrt(((b + 1) * (c - 2 * x - 1) / (c + 2 * x + 1))
    *   u2 = +-sqrt(((b + 1) * (c + 2 * x + 1) / (c - 2 * x - 1))
-   *   u3 = +-sqrt(-b - (3 * x) / 2 + (1 / 2) +- t)
+   *   u3 = +-sqrt((2 * -b - (3 * x) + 1 +- t) / 2)
    */
 
   if (secp256k1_ge_is_infinity(ge))
@@ -162,106 +244,84 @@ shallue_van_de_woestijne_invert(secp256k1_fe* u,
   secp256k1_fe_normalize(&x);
   secp256k1_fe_normalize(&y);
 
-  /* t = 6 * (2 * b - 1) * x */
+  /* t = sqrt(6 * (2 * b - 1) * x + 9 * x^2 - 12 * b - 3) */
   secp256k1_fe_set_int(&tmp, 78);
   secp256k1_fe_mul(&t, &tmp, &x);
 
-  /* t += 9 * x^2 */
   secp256k1_fe_sqr(&tmp, &x);
   secp256k1_fe_mul_int(&tmp, 9);
   secp256k1_fe_add(&t, &tmp);
 
-  /* t -= 12 * b */
   secp256k1_fe_set_int(&tmp, 84);
   secp256k1_fe_negate(&tmp, &tmp, 1);
   secp256k1_fe_add(&t, &tmp);
 
-  /* t -= 3 */
   secp256k1_fe_set_int(&tmp, 3);
   secp256k1_fe_negate(&tmp, &tmp, 1);
   secp256k1_fe_add(&t, &tmp);
 
-  /* t = sqrt(t) / 2 */
   s0 = secp256k1_fe_sqrt(&tmp, &t);
   s1 = ((r - 2) >> shift) | s0; /* r < 2 or t is square */
-  secp256k1_fe_mul(&t, &tmp, &i2);
+  t = tmp;
 
-  /* tmp = x * 2 + 1 */
+  /* c1 = c + 2 * x + 1 */
+  c1 = c;
   tmp = x;
   secp256k1_fe_mul_int(&tmp, 2);
   secp256k1_fe_add(&tmp, &one);
-
-  /* c2 = c + tmp */
-  c2 = c;
-  secp256k1_fe_add(&c2, &tmp);
-
-  /* c1 = c - tmp */
-  c1 = c;
-  secp256k1_fe_negate(&tmp, &tmp, 1);
   secp256k1_fe_add(&c1, &tmp);
 
-  /* tmp = 1 / (c1 * c2) */
-  secp256k1_fe_mul(&tmp, &c1, &c2);
-  secp256k1_fe_inv(&tmp, &tmp);
-
-  /* d1 = tmp * c1 */
-  secp256k1_fe_mul(&d1, &tmp, &c1);
-
-  /* d2 = tmp * c2 */
-  secp256k1_fe_mul(&d2, &tmp, &c2);
-
-  /* c1 *= b + 1 */
-  secp256k1_fe_mul_int(&c1, 8);
-
-  /* c2 *= b + 1 */
-  secp256k1_fe_mul_int(&c2, 8);
-
-  /* u1 = c1 / c2 */
-  secp256k1_fe_mul(&u1, &c1, &d1);
-
-  /* u2 = c2 / c1 */
-  secp256k1_fe_mul(&u2, &c2, &d2);
-
-  /* u3 = -b */
-  secp256k1_fe_set_int(&u3, 7);
-  secp256k1_fe_negate(&u3, &u3, 1);
-
-  /* tmp = (3 * x) / 2 */
-  secp256k1_fe_mul(&tmp, &x, &i2);
-  secp256k1_fe_mul_int(&tmp, 3);
-
-  /* u3 = u3 - tmp + i2 */
+  /* c0 = c - 2 * x - 1 */
+  c0 = c;
   secp256k1_fe_negate(&tmp, &tmp, 1);
-  secp256k1_fe_add(&u3, &tmp);
-  secp256k1_fe_add(&u3, &i2);
+  secp256k1_fe_add(&c0, &tmp);
 
-  /* u4 = u3 */
-  u4 = u3;
+  /* n0 = (b + 1) * c0 */
+  n0 = c0;
+  secp256k1_fe_mul_int(&n0, 8);
 
-  /* u3 += t */
-  secp256k1_fe_add(&u3, &t);
+  /* n1 = (b + 1) * c1 */
+  n1 = c1;
+  secp256k1_fe_mul_int(&n1, 8);
 
-  /* u4 -= t */
+  /* n2 = 2 * -b - (3 * x) + 1 + t */
+  secp256k1_fe_set_int(&n2, 14);
+  secp256k1_fe_negate(&n2, &n2, 1);
+  tmp = x;
+  secp256k1_fe_mul_int(&tmp, 3);
+  secp256k1_fe_negate(&tmp, &tmp, 1);
+  secp256k1_fe_add(&n2, &tmp);
+  secp256k1_fe_add(&n2, &one);
+  n3 = n2;
+  secp256k1_fe_add(&n2, &t);
+
+  /* n3 = 2 * -b - (3 * x) + 1 - t */
   secp256k1_fe_negate(&t, &t, 1);
-  secp256k1_fe_add(&u4, &t);
+  secp256k1_fe_add(&n3, &t);
 
-  /* u = sqrt(ur) */
-  secp256k1_fe_cmov(&tmp, &u1, ((r ^ 0) - 1) >> shift); /* r = 0 */
-  secp256k1_fe_cmov(&tmp, &u2, ((r ^ 1) - 1) >> shift); /* r = 1 */
-  secp256k1_fe_cmov(&tmp, &u3, ((r ^ 2) - 1) >> shift); /* r = 2 */
-  secp256k1_fe_cmov(&tmp, &u4, ((r ^ 3) - 1) >> shift); /* r = 3 */
-  s2 = secp256k1_fe_sqrt(&u1, &tmp);
+  /* d0 = 2 */
+  secp256k1_fe_set_int(&d0, 2);
 
-  /* q = svdw(u) */
-  shallue_van_de_woestijne(&q, &u1);
-  s3 = secp256k1_fe_equal(&q.x, &x);
+  /* Pick numerator and denominator. */
+  secp256k1_fe_cmov(&n0, &n1, ((r ^ 1) - 1) >> shift); /* r = 1 */
+  secp256k1_fe_cmov(&n0, &n2, ((r ^ 2) - 1) >> shift); /* r = 2 */
+  secp256k1_fe_cmov(&n0, &n3, ((r ^ 3) - 1) >> shift); /* r = 3 */
+  secp256k1_fe_cmov(&d0, &c1, ((r ^ 0) - 1) >> shift); /* r = 0 */
+  secp256k1_fe_cmov(&d0, &c0, ((r ^ 1) - 1) >> shift); /* r = 1 */
 
-  /* u = sign(y) * abs(u) */
-  flip = secp256k1_fe_is_odd(&u1) ^ secp256k1_fe_is_odd(&y);
-  secp256k1_fe_negate(&tmp, &u1, 1);
-  secp256k1_fe_cmov(&u1, &tmp, flip);
+  /* t = sqrt(n0 / d0) */
+  s2 = secp256k1_fe_isqrt(&t, &n0, &d0);
 
-  *u = u1;
+  /* (n0, d0) = svdw(t) */
+  shallue_van_de_woestijne_xy2(&n0, &d0, &t);
+  s3 = secp256k1_fe_equal(&n0, &x);
+
+  /* t = sign(y) * abs(t) */
+  flip = secp256k1_fe_is_odd(&t) ^ secp256k1_fe_is_odd(&y);
+  secp256k1_fe_negate(&tmp, &t, 1);
+  secp256k1_fe_cmov(&t, &tmp, flip);
+
+  *u = t;
 
   return s1 & s2 & s3;
 }

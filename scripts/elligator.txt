@@ -21,6 +21,9 @@ x2 = z * u^2 * x1
 u1 = +-1/2*sqrt(2)*sqrt(-(a*x + b +- sqrt(a^2*x^2 - 2*a*b*x - 3*b^2))/((a*x + b)*z))
 u2 = +-1/2*sqrt(2)*sqrt(-(a*x + b +- sqrt(a^2*x^2 - 2*a*b*x - 3*b^2))/(b*z))
 
+u1 = +-1/2*sqrt(2 * -(a*x + b +- sqrt(a^2*x^2 - 2*a*b*x - 3*b^2))/((a*x + b)*z))
+u2 = +-1/2*sqrt(2 * -(a*x + b +- sqrt(a^2*x^2 - 2*a*b*x - 3*b^2))/(b*z))
+
 u1 = +-sqrt(-1/2*a*x/(a*x*z + b*z) - 1/2*b/(a*x*z + b*z) +- 1/2*sqrt(a^2*x^2 - 2*a*b*x - 3*b^2)/(a*x*z + b*z))
 u2 = +-sqrt(-1/2*a*x/(b*z) - 1/2/z +- 1/2*sqrt(a^2*x^2 - 2*a*b*x - 3*b^2)/(b*z))
 
@@ -39,6 +42,9 @@ x2 = -u^2 * x1
 
 u1 = +-1/2*sqrt(2)*sqrt((a*x + b +- sqrt(a^2*x^2 - 2*a*b*x - 3*b^2))/(a*x + b))
 u2 = +-1/2*sqrt(2)*sqrt((a*x + b +- sqrt(a^2*x^2 - 2*a*b*x - 3*b^2))/b)
+
+u1 = +-1/2*sqrt(2 * (a*x + b +- sqrt(a^2*x^2 - 2*a*b*x - 3*b^2))/(a*x + b))
+u2 = +-1/2*sqrt(2 * (a*x + b +- sqrt(a^2*x^2 - 2*a*b*x - 3*b^2))/b)
 
 u1 = +-sqrt(1/2*a*x/(a*x + b) + 1/2*b/(a*x + b) +- 1/2*sqrt(a^2*x^2 - 2*a*b*x - 3*b^2)/(a*x + b))
 u2 = +-sqrt(1/2*a*x/b +- 1/2*sqrt(a^2*x^2 - 2*a*b*x - 3*b^2)/b + 1/2)
