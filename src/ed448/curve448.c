@@ -56,22 +56,6 @@ static const bcrypto_curve448_scalar_t precomputed_scalarmul_adjustment = {
 
 #define BCRYPTO_WBITS BCRYPTO_C448_WORD_BITS   /* NB this may be different from BCRYPTO_ARCH_WORD_BITS */
 
-/* Inverse. */
-static void bcrypto_gf_invert(bcrypto_gf y, const bcrypto_gf x, int assert_nonzero)
-{
-  bcrypto_mask_t ret;
-  bcrypto_gf t1, t2;
-
-  bcrypto_gf_sqr(t1, x);        /* o^2 */
-  ret = bcrypto_gf_isr(t2, t1);     /* +-1/sqrt(o^2) = +-1/o */
-  (void)ret;
-  if (assert_nonzero)
-    assert(ret);
-  bcrypto_gf_sqr(t1, t2);
-  bcrypto_gf_mul(t2, t1, x);      /* not direct to y in case of alias. */
-  bcrypto_gf_copy(y, t2);
-}
-
 void
 curve448_proj_twist(curve448_proj_point *p,
                     const bcrypto_gf u,
@@ -1243,7 +1227,7 @@ curve448_elligator2(bcrypto_gf x, bcrypto_gf y, const unsigned char bytes[56])
   bcrypto_gf_cond_swap(y1, y2, ~quad1);
 
   /* adjust sign */
-  bcrypto_gf_cond_neg(y1, bcrypto_gf_is_odd(y1) ^ bcrypto_gf_is_odd(u));
+  bcrypto_gf_cond_neg(y1, bcrypto_gf_lobit(y1) ^ bcrypto_gf_lobit(u));
 
   bcrypto_gf_copy(x, x1);
   bcrypto_gf_copy(y, y1);
@@ -1281,7 +1265,7 @@ curve448_invert2(
   ret &= bcrypto_gf_isqrt(u, n, t);
 
   /* adjust sign */
-  bcrypto_gf_cond_neg(u, bcrypto_gf_is_odd(u) ^ bcrypto_gf_is_odd(y));
+  bcrypto_gf_cond_neg(u, bcrypto_gf_lobit(u) ^ bcrypto_gf_lobit(y));
 
   /* output */
   bcrypto_gf_serialize(out, u, 1);

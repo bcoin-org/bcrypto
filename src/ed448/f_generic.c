@@ -17,12 +17,6 @@ static const bcrypto_gf BCRYPTO_MODULUS = {
                         0xffffffffffffff, 0xffffffffffffff)
 };
 
-static const bcrypto_gf NEG_ONE = {
-  BCRYPTO_FIELD_LITERAL(0xfffffffffffffe, 0xffffffffffffff, 0xffffffffffffff,
-                        0xffffffffffffff, 0xfffffffffffffe, 0xffffffffffffff,
-                        0xffffffffffffff, 0xffffffffffffff)
-};
-
 /* Serialize to wire format. */
 void bcrypto_gf_serialize(uint8_t serial[BCRYPTO_SER_BYTES], const bcrypto_gf x, int with_hibit)
 {
@@ -209,160 +203,62 @@ bcrypto_mask_t bcrypto_gf_isr(bcrypto_gf a, const bcrypto_gf x)
   return bcrypto_gf_eq(L0, ONE);
 }
 
-/* (p + 1) / 4 = [ [ 1, 224 ], [ 0, 222 ] ] */
+bcrypto_mask_t bcrypto_gf_invert(bcrypto_gf y, const bcrypto_gf x, int assert_nonzero)
+{
+  bcrypto_mask_t ret;
+  bcrypto_gf t1, t2;
+
+  bcrypto_gf_sqr(t1, x); /* o^2 */
+  ret = bcrypto_gf_isr(t2, t1); /* +-1/sqrt(o^2) = +-1/o */
+
+  (void)ret;
+
+  if (assert_nonzero)
+    assert(ret);
+
+  bcrypto_gf_sqr(t1, t2);
+  bcrypto_gf_mul(t2, t1, x); /* not direct to y in case of alias. */
+  bcrypto_gf_copy(y, t2);
+
+  return ret;
+}
+
 bcrypto_mask_t bcrypto_gf_sqrt(bcrypto_gf a, const bcrypto_gf x)
 {
-  /*
-   * Note that we could do:
-   *
-   *   bcrypto_gf r;
-   *   bcrypto_mask_t ret = bcrypto_gf_isr(r, x);
-   *   bcrypto_gf_invert(a, r, 0);
-   *   return ret;
-   */
+  bcrypto_mask_t zero = bcrypto_gf_eq(x, ZERO);
+  bcrypto_mask_t ret;
+  bcrypto_gf r;
 
-  bcrypto_mask_t ret = -1;
-  bcrypto_gf r = {{{1}}};
-  bcrypto_gf t;
-  int i;
+  ret = bcrypto_gf_isr(r, x);
 
-  for (i = 0; i < 224; i++) {
-    bcrypto_gf_sqr(t, r);
-    bcrypto_gf_mul(r, t, x);
-  }
+  bcrypto_gf_invert(a, r, 0);
 
-  bcrypto_gf_sqrn(t, r, 222);
-  bcrypto_gf_copy(r, t);
-
-  bcrypto_gf_sqr(t, r);
-
-  ret &= bcrypto_gf_eq(t, x);
-
-  bcrypto_gf_copy(a, r);
-
-  return ret;
+  return ret | zero;
 }
 
-/* (p - 2) = [ [ 1, 223 ], [ 0, 1 ], [ 1, 222 ], [ 0, 1 ], [ 1, 1 ] ] */
-bcrypto_mask_t bcrypto_gf_recip(bcrypto_gf a, const bcrypto_gf x)
+bcrypto_mask_t bcrypto_gf_is_square(const bcrypto_gf x)
 {
-  /*
-   * Note that we could do:
-   *
-   *   bcrypto_gf_invert(a, x, 0);
-   *   return ~bcrypto_gf_eq(a, ZERO);
-   */
+  bcrypto_mask_t zero = bcrypto_gf_eq(x, ZERO);
+  bcrypto_gf r;
 
-  bcrypto_mask_t ret = -1;
-  bcrypto_gf r = {{{1}}};
-  bcrypto_gf t;
-  int i;
-
-  for (i = 0; i < 223; i++) {
-    bcrypto_gf_sqr(t, r);
-    bcrypto_gf_mul(r, t, x);
-  }
-
-  bcrypto_gf_sqr(t, r);
-  bcrypto_gf_copy(r, t);
-
-  for (i = 0; i < 222; i++) {
-    bcrypto_gf_sqr(t, r);
-    bcrypto_gf_mul(r, t, x);
-  }
-
-  bcrypto_gf_sqrn(t, r, 2);
-  bcrypto_gf_mul(r, t, x);
-
-  ret &= ~bcrypto_gf_eq(r, ZERO);
-
-  bcrypto_gf_copy(a, r);
-
-  return ret;
-}
-
-/* (p - 1) / 2 = [ [ 1, 223 ], [ 0, 1 ], [ 1, 223 ] ] */
-void bcrypto_gf_legendre(bcrypto_gf a, const bcrypto_gf x)
-{
-  bcrypto_gf r = {{{1}}};
-  bcrypto_gf t;
-  int i;
-
-  for (i = 0; i < 223; i++) {
-    bcrypto_gf_sqr(t, r);
-    bcrypto_gf_mul(r, t, x);
-  }
-
-  bcrypto_gf_sqr(t, r);
-  bcrypto_gf_copy(r, t);
-
-  for (i = 0; i < 223; i++) {
-    bcrypto_gf_sqr(t, r);
-    bcrypto_gf_mul(r, t, x);
-  }
-
-  bcrypto_gf_copy(a, r);
-}
-
-/* (p - 3) / 4 = [ [ 1, 223 ], [ 0, 1 ], [ 1, 222 ] ] */
-void bcrypto_gf_pow_pm3d4(bcrypto_gf a, const bcrypto_gf x)
-{
-  bcrypto_gf r = {{{1}}};
-  bcrypto_gf t;
-  int i;
-
-  for (i = 0; i < 223; i++) {
-    bcrypto_gf_sqr(t, r);
-    bcrypto_gf_mul(r, t, x);
-  }
-
-  bcrypto_gf_sqr(t, r);
-  bcrypto_gf_copy(r, t);
-
-  for (i = 0; i < 222; i++) {
-    bcrypto_gf_sqr(t, r);
-    bcrypto_gf_mul(r, t, x);
-  }
-
-  bcrypto_gf_copy(a, r);
+  return bcrypto_gf_isr(r, x) | zero;
 }
 
 bcrypto_mask_t bcrypto_gf_isqrt(bcrypto_gf out, const bcrypto_gf u, const bcrypto_gf v)
 {
-  bcrypto_gf u2, u3, u5, v3, p, x, c;
+  /* sqrt(1 / (u * v)) * u == sqrt(u / v) */
+  bcrypto_mask_t zero = bcrypto_gf_eq(u, ZERO);
   bcrypto_mask_t ret;
+  bcrypto_gf t, r;
 
-  /* U2 = U^2 */
-  bcrypto_gf_sqr(u2, u);
+  bcrypto_gf_mul(t, u, v);
 
-  /* U3 = U2 * U */
-  bcrypto_gf_mul(u3, u2, u);
+  ret = bcrypto_gf_isr(r, t);
 
-  /* U5 = U3 * U2 */
-  bcrypto_gf_mul(u5, u3, u2);
+  bcrypto_gf_mul(t, r, u);
+  bcrypto_gf_copy(out, t);
 
-  /* V3 = V^2 * V */
-  bcrypto_gf_sqr(c, v);
-  bcrypto_gf_mul(v3, c, v);
-
-  /* P = (U5 * V3)^((p - 3) / 4) */
-  bcrypto_gf_mul(c, u5, v3);
-  bcrypto_gf_pow_pm3d4(p, c);
-
-  /* X = U3 * V * P */
-  bcrypto_gf_mul(c, u3, v);
-  bcrypto_gf_mul(x, c, p);
-
-  /* C = V * X^2 */
-  bcrypto_gf_sqr(u2, x);
-  bcrypto_gf_mul(c, v, u2);
-
-  /* C = U */
-  ret = bcrypto_gf_eq(c, u);
-
-  bcrypto_gf_copy(out, x);
-
-  return ret;
+  return ret | zero;
 }
 
 void bcrypto_gf_solve_y2(bcrypto_gf out, const bcrypto_gf x)
@@ -379,24 +275,16 @@ void bcrypto_gf_solve_y2(bcrypto_gf out, const bcrypto_gf x)
 
 bcrypto_mask_t bcrypto_gf_solve_y(bcrypto_gf out, const bcrypto_gf x)
 {
-  bcrypto_gf_solve_y2(out, x);
-  return bcrypto_gf_sqrt(out, out);
+  bcrypto_gf y2;
+  bcrypto_gf_solve_y2(y2, x);
+  return bcrypto_gf_sqrt(out, y2);
 }
 
 bcrypto_mask_t bcrypto_gf_valid_x(const bcrypto_gf x)
 {
-  bcrypto_gf e;
-  bcrypto_gf_solve_y2(e, x);
-  bcrypto_gf_legendre(e, e);
-  return ~bcrypto_gf_eq(e, NEG_ONE);
-}
-
-bcrypto_mask_t bcrypto_gf_is_odd(const bcrypto_gf a)
-{
-  bcrypto_gf c;
-  bcrypto_gf_copy(c, a);
-  bcrypto_gf_strong_reduce(c);
-  return (bcrypto_mask_t)(c->limb[0] & 1) * -1;
+  bcrypto_gf y2;
+  bcrypto_gf_solve_y2(y2, x);
+  return bcrypto_gf_is_square(y2);
 }
 
 bcrypto_mask_t bcrypto_gf_bytes_eq(const unsigned char *a,
@@ -410,5 +298,5 @@ bcrypto_mask_t bcrypto_gf_bytes_eq(const unsigned char *a,
 
   z = (z - 1) >> (sizeof(unsigned int) * 8 - 1);
 
-  return (bcrypto_mask_t)z * -1;
+  return -((bcrypto_mask_t)z);
 }

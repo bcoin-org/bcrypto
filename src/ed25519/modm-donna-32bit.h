@@ -219,6 +219,24 @@ mul256_modm(bignum256modm r, const bignum256modm x, const bignum256modm y) {
 }
 
 static void
+sqr256_modm(bignum256modm r, const bignum256modm x) {
+  mul256_modm(r, x, x);
+}
+
+static void
+sqrmul256_modm(bignum256modm r, const bignum256modm x,
+               int times, const bignum256modm y) {
+  int i;
+
+  memcpy(r, x, sizeof(bignum256modm));
+
+  for (i = 0; i < times; i++)
+    sqr256_modm(r, r);
+
+  mul256_modm(r, r, y);
+}
+
+static void
 expand256_modm(bignum256modm out, const unsigned char *in, size_t len) {
   unsigned char work[64] = {0};
   bignum256modm_element_t x[16];
@@ -490,148 +508,56 @@ sub256_modm(bignum256modm r, const bignum256modm x, const bignum256modm y) {
 
 static void
 negate256_modm(bignum256modm r, const bignum256modm x) {
-  if (!iszero256_modm_batch(x))
-    sub256_modm(r, modm_m, x);
+  sub256_modm(r, modm_m, x);
 }
 
 static void
-recip256_modm(bignum256modm r, const bignum256modm x) {
-  bignum256modm y;
-  int i = 0;
+recip256_modm(bignum256modm y, const bignum256modm x) {
+  bignum256modm x10, x100, x11, x101, x111, x1001, x1011, x1111;
 
-  memset(&y[0], 0x00, sizeof(bignum256modm));
-  y[0] = 1;
+  /*
+   * See:
+   *   https://github.com/dalek-cryptography/curve25519-dalek/blob/master/src/scalar.rs
+   *   https://briansmith.org/ecc-inversion-addition-chains-01#curve25519_scalar_inversion
+   */
 
-  /* computes x^(n - 2) mod n */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  for (; i < 127; i++)  mul256_modm(y, y, y); /* 0x127 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y);                       /* 0 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
-  mul256_modm(y, y, y); mul256_modm(y, y, x); /* 1 */
+  sqr256_modm(x10, x);
+  sqr256_modm(x100, x10);
+  mul256_modm(x11, x10, x);
+  mul256_modm(x101, x10, x11);
+  mul256_modm(x111, x10, x101);
+  mul256_modm(x1001, x10, x111);
+  mul256_modm(x1011, x10, x1001);
+  mul256_modm(x1111, x100, x1011);
+  mul256_modm(y, x1111, x);
 
-  memcpy(&r[0], &y[0], sizeof(bignum256modm));
+  sqrmul256_modm(y, y, 123 + 3, x101);
+  sqrmul256_modm(y, y, 2 + 2, x11);
+  sqrmul256_modm(y, y, 1 + 4, x1111);
+  sqrmul256_modm(y, y, 1 + 4, x1111);
+  sqrmul256_modm(y, y, 4, x1001);
+  sqrmul256_modm(y, y, 2, x11);
+  sqrmul256_modm(y, y, 1 + 4, x1111);
+  sqrmul256_modm(y, y, 1 + 3, x101);
+  sqrmul256_modm(y, y, 3 + 3, x101);
+  sqrmul256_modm(y, y, 3, x111);
+  sqrmul256_modm(y, y, 1 + 4, x1111);
+  sqrmul256_modm(y, y, 2 + 3, x111);
+  sqrmul256_modm(y, y, 2 + 2, x11);
+  sqrmul256_modm(y, y, 1 + 4, x1011);
+  sqrmul256_modm(y, y, 2 + 4, x1011);
+  sqrmul256_modm(y, y, 6 + 4, x1001);
+  sqrmul256_modm(y, y, 2 + 2, x11);
+  sqrmul256_modm(y, y, 3 + 2, x11);
+  sqrmul256_modm(y, y, 3 + 2, x11);
+  sqrmul256_modm(y, y, 1 + 4, x1001);
+  sqrmul256_modm(y, y, 1 + 3, x111);
+  sqrmul256_modm(y, y, 2 + 4, x1111);
+  sqrmul256_modm(y, y, 1 + 4, x1011);
+  sqrmul256_modm(y, y, 3, x101);
+  sqrmul256_modm(y, y, 2 + 4, x1111);
+  sqrmul256_modm(y, y, 3, x101);
+  sqrmul256_modm(y, y, 1 + 2, x11);
 }
 
 static int
