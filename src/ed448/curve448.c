@@ -1193,7 +1193,7 @@ curve448_elligator2(bcrypto_gf x, bcrypto_gf y, const unsigned char bytes[56])
 {
   static const bcrypto_gf a = {{{156326}}};
 
-  bcrypto_mask_t quad1, quad2;
+  bcrypto_mask_t alpha;
   bcrypto_gf u, x1, x2, y1, y2, t;
   bcrypto_gf one = {{{1}}};
   bcrypto_gf z = {{{1}}};
@@ -1216,15 +1216,12 @@ curve448_elligator2(bcrypto_gf x, bcrypto_gf y, const unsigned char bytes[56])
   bcrypto_gf_sub(x2, x2, a);
 
   /* compute y coordinate */
-  quad1 = bcrypto_gf_solve_y(y1, x1);
-  quad2 = bcrypto_gf_solve_y(y2, x2);
-
-  /* mathematically impossible */
-  assert((quad1 | quad2) != 0);
+  alpha = bcrypto_gf_solve_y(y1, x1);
+  bcrypto_gf_solve_y(y2, x2);
 
   /* x = cmov(x1, x2, f(g(x1)) != 1) */
-  bcrypto_gf_cond_swap(x1, x2, ~quad1);
-  bcrypto_gf_cond_swap(y1, y2, ~quad1);
+  bcrypto_gf_cond_swap(x1, x2, ~alpha);
+  bcrypto_gf_cond_swap(y1, y2, ~alpha);
 
   /* adjust sign */
   bcrypto_gf_cond_neg(y1, bcrypto_gf_lobit(y1) ^ bcrypto_gf_lobit(u));
@@ -1296,9 +1293,9 @@ curve448_point_from_hash(bcrypto_gf x, bcrypto_gf y,
    * to Ed448 in order to do addition, but
    * this is expensive and clunky. To get
    * around this, we do the addition on
-   * the twist of an Edwards curve.
+   * a twisted edwards curve.
    *
-   * Assuming curve448 is M(-A,-B), we
+   * Assuming Curve448 is M(-A,-B), we
    * are simply moving to E(a,d).
    */
   curve448_proj_twist(&p1, u1, v1);

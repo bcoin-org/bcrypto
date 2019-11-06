@@ -87,46 +87,6 @@ curve25519_pow_two252m2(bignum25519 two252m2, const bignum25519 z) {
   /* 2^252 - 2 */ curve25519_square_times(two252m2, b, 1);
 }
 
-/*
- * z^((p - 1) / 2) = z^(2^254 - 10)
- * From: https://gist.github.com/Yawning/0181098c1119f49b3eb2
- */
-static void
-curve25519_pow_two254m10(bignum25519 out, const bignum25519 z) {
-  bignum25519 ALIGN(16) t0, t1, t2, t3;
-  curve25519_square(t0, z);   /* 2^1 */
-  curve25519_mul(t1, t0, z);  /* 2^1 + 2^0 */
-  curve25519_square(t0, t1);  /* 2^2 + 2^1 */
-  curve25519_square(t2, t0);  /* 2^3 + 2^2 */
-  curve25519_square(t2, t2);  /* 4,3 */
-  curve25519_mul(t2, t2, t0); /* 4,3,2,1 */
-  curve25519_mul(t1, t2, z);  /* 4..0 */
-  curve25519_square(t2, t1);  /* 5..1 */
-  curve25519_square_times(t2, t2, 5 - 1);   /* 9,8,7,6,5 */
-  curve25519_mul(t1, t2, t1); /* 9,8,7,6,5,4,3,2,1,0 */
-  curve25519_square(t2, t1); /* 10..1 */
-  curve25519_square_times(t2, t2, 10 - 1);  /* 19..10 */
-  curve25519_mul(t2, t2, t1); /* 19..0 */
-  curve25519_square(t3, t2);  /* 20..1 */
-  curve25519_square_times(t3, t3, 20 - 1);  /* 39..20 */
-  curve25519_mul(t2, t3, t2); /* 39..0 */
-  curve25519_square(t2, t2);  /* 40..1 */
-  curve25519_square_times(t2, t2, 10 - 1);  /* 49..10 */
-  curve25519_mul(t1, t2, t1); /* 49..0 */
-  curve25519_square(t2, t1);  /* 50..1 */
-  curve25519_square_times(t2, t2, 50 - 1);  /* 99..50 */
-  curve25519_mul(t2, t2, t1); /* 99..0 */
-  curve25519_square(t3, t2);  /* 100..1 */
-  curve25519_square_times(t3, t3, 100 - 1); /* 199..100 */
-  curve25519_mul(t2, t3, t2); /* 199..0 */
-  curve25519_square(t2, t2);  /* 200..1 */
-  curve25519_square_times(t2, t2, 50 - 1);  /* 249..50 */
-  curve25519_mul(t1, t2, t1); /* 249..0 */
-  curve25519_square(t1, t1);  /* 250..1 */
-  curve25519_square_times(t1, t1, 4 - 1); /* 253..4 */
-  curve25519_mul(out, t1, t0); /* 253..4,2,1 */
-}
-
 static void
 curve25519_reduce(bignum25519 r, const bignum25519 x) {
   unsigned char out[32];
@@ -201,6 +161,12 @@ curve25519_sqrt(bignum25519 out, const bignum25519 x) {
 }
 
 static int
+curve25519_is_square(const bignum25519 x) {
+  bignum25519 ALIGN(16) r;
+  return curve25519_sqrt(r, x);
+}
+
+static int
 curve25519_isqrt(bignum25519 out, const bignum25519 u, const bignum25519 v) {
   bignum25519 ALIGN(16) v3, x, c;
   int css, fss;
@@ -260,31 +226,17 @@ curve25519_solve_y(bignum25519 out, const bignum25519 x) {
 }
 
 static int
-curve25519_get_y(bignum25519 out, const bignum25519 x, int sign) {
-  int ret = curve25519_solve_y(out, x);
-
-  if (sign != -1)
-    curve25519_neg_conditional(out, out, curve25519_is_odd(out) ^ sign);
-
-  return ret;
-}
-
-static int
 curve25519_valid_x(const bignum25519 x) {
-  bignum25519 ALIGN(16) e;
-
-  curve25519_solve_y2(e, x);
-  curve25519_pow_two254m10(e, e);
-
-  return curve25519_is_equal(e, curve25519_neg1) ^ 1;
+  bignum25519 ALIGN(16) y2;
+  curve25519_solve_y2(y2, x);
+  return curve25519_is_square(y2);
 }
 
 static int
 curve25519_unpack(bignum25519 x, bignum25519 y,
-                  const unsigned char raw[32],
-                  int sign) {
+                  const unsigned char raw[32]) {
   curve25519_expand(x, raw);
-  return curve25519_get_y(y, x, sign);
+  return curve25519_solve_y(y, x);
 }
 
 static void
@@ -383,7 +335,7 @@ curve25519_elligator2(bignum25519 x, bignum25519 y,
   static const bignum25519 a = {486662};
   bignum25519 ALIGN(16) u, x1, x2, y1, y2;
   bignum25519 one = {1};
-  int quad1, quad2, flip;
+  int alpha, flip;
 
   curve25519_expand(u, bytes);
 
@@ -401,15 +353,12 @@ curve25519_elligator2(bignum25519 x, bignum25519 y,
   curve25519_sub(x2, x2, a);
 
   /* compute y coordinate */
-  quad1 = curve25519_solve_y(y1, x1);
-  quad2 = curve25519_solve_y(y2, x2);
-
-  /* mathematically impossible */
-  assert((quad1 | quad2) != 0);
+  alpha = curve25519_solve_y(y1, x1);
+  curve25519_solve_y(y2, x2);
 
   /* x = cmov(x1, x2, f(g(x1)) != 1) */
-  curve25519_swap_conditional(x1, x2, quad1 ^ 1);
-  curve25519_swap_conditional(y1, y2, quad1 ^ 1);
+  curve25519_swap_conditional(x1, x2, alpha ^ 1);
+  curve25519_swap_conditional(y1, y2, alpha ^ 1);
 
   /* adjust sign */
   flip = curve25519_is_odd(y1) ^ curve25519_is_odd(u);

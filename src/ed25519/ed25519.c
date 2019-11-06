@@ -784,7 +784,7 @@ bcrypto_x25519_pubkey_to_uniform(
   bignum25519 ALIGN(16) x, y;
   int ret = 1;
 
-  ret &= curve25519_unpack(x, y, pub, -1);
+  ret &= curve25519_unpack(x, y, pub);
   ret &= curve25519_invert2(out, x, y, hint);
 
   return ret;
@@ -845,7 +845,7 @@ bcrypto_x25519_pubkey_to_hash(
   ge25519 ALIGN(16) p;
   bignum25519 ALIGN(16) x, y;
 
-  if (!curve25519_unpack(x, y, pub, -1))
+  if (!curve25519_unpack(x, y, pub))
     return 0;
 
   ge25519_from_mont(&p, x, y);
