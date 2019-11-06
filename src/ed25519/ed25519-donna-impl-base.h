@@ -435,8 +435,8 @@ ge25519_to_mont(bignum25519 u, bignum25519 v, const ge25519 *p) {
   int ret = ge25519_is_neutral(p) ^ 1;
 
   /* u = (1 + y) / (1 - y) */
-  curve25519_add(uu, p->z, p->y);
-  curve25519_sub(uz, p->z, p->y);
+  curve25519_add_reduce(uu, p->z, p->y);
+  curve25519_sub_reduce(uz, p->z, p->y);
 
   /* v = sqrt(-486664) * u / x */
   curve25519_mul(vv, curve25519_sqrt_m486664, p->z);
@@ -467,8 +467,8 @@ ge25519_from_mont(ge25519 *p, const bignum25519 u, const bignum25519 v) {
   curve25519_copy(xz, v);
 
   /* y = (u - 1) / (u + 1) */
-  curve25519_sub(yy, u, one);
-  curve25519_add(yz, u, one);
+  curve25519_sub_reduce(yy, u, one);
+  curve25519_add_reduce(yz, u, one);
 
   /* ensure that (0, 0) will be mapped to (0, -1) */
   curve25519_swap_conditional(xz, one, curve25519_is_zero(u));

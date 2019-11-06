@@ -285,8 +285,8 @@ bcrypto_ed25519_pubkey_convert(
   ret &= ge25519_is_neutral(&p) ^ 1;
 
   /* u = (1 + y) / (1 - y) */
-  curve25519_add(u, p.z, p.y);
-  curve25519_sub(z, p.z, p.y);
+  curve25519_add_reduce(u, p.z, p.y);
+  curve25519_sub_reduce(z, p.z, p.y);
   curve25519_recip(z, z);
   curve25519_mul(u, u, z);
 
@@ -310,8 +310,8 @@ bcrypto_x25519_pubkey_convert(
   ret &= curve25519_valid_x(u);
 
   /* y = (u - 1) / (u + 1) */
-  curve25519_sub(y, u, one);
-  curve25519_add(z, u, one);
+  curve25519_sub_reduce(y, u, one);
+  curve25519_add_reduce(z, u, one);
   curve25519_recip(z, z);
   curve25519_mul(y, y, z);
 
@@ -386,8 +386,8 @@ bcrypto_x25519_pubkey_create(
   expand256_modm(a, k, 32);
   ge25519_scalarmult_base_niels(&A, ge25519_niels_base_multiples, a);
 
-  curve25519_add(x, A.z, A.y);
-  curve25519_sub(z, A.z, A.y);
+  curve25519_add_reduce(x, A.z, A.y);
+  curve25519_sub_reduce(z, A.z, A.y);
 
   if (curve25519_is_zero(z))
     return 0;
@@ -815,8 +815,8 @@ bcrypto_x25519_pubkey_from_hash(
 
   ret &= ge25519_is_neutral(&p) ^ 1;
 
-  curve25519_add(u, p.z, p.y);
-  curve25519_sub(z, p.z, p.y);
+  curve25519_add_reduce(u, p.z, p.y);
+  curve25519_sub_reduce(z, p.z, p.y);
   curve25519_recip(z, z);
   curve25519_mul(u, u, z);
   curve25519_contract(out, u);

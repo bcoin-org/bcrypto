@@ -127,6 +127,13 @@ curve25519_pow_two254m10(bignum25519 out, const bignum25519 z) {
   curve25519_mul(out, t1, t0); /* 253..4,2,1 */
 }
 
+static void
+curve25519_reduce(bignum25519 r, const bignum25519 x) {
+  unsigned char out[32];
+  curve25519_contract(out, x);
+  curve25519_expand(r, out);
+}
+
 static int
 curve25519_is_zero(const bignum25519 a) {
   unsigned char out[32];
@@ -291,13 +298,13 @@ curve25519_double(
   static const bignum25519 a24 = {121666};
 
   /* A = X1 + Z1 */
-  curve25519_add(a, x1, z1);
+  curve25519_add_reduce(a, x1, z1);
 
   /* AA = A^2 */
   curve25519_square(aa, a);
 
   /* B = X1 - Z1 */
-  curve25519_sub(b, x1, z1);
+  curve25519_sub_reduce(b, x1, z1);
 
   /* BB = B^2 */
   curve25519_square(bb, b);
@@ -318,14 +325,15 @@ static void
 curve25519_ladder(
   bignum25519 x0,
   bignum25519 z0,
-  const bignum25519 x1,
+  const bignum25519 x,
   const unsigned char k[32]
 ) {
-  bignum25519 ALIGN(16) x2, z2, x3, z3, t1, t2;
+  bignum25519 ALIGN(16) x1, x2, z2, x3, z3, t1, t2;
   static const bignum25519 a24 = {121666};
   int swap = 0;
   int i, b;
 
+  curve25519_reduce(x1, x);
   curve25519_set_word(x2, 1);
   curve25519_set_word(z2, 0);
   curve25519_copy(x3, x1);
@@ -427,7 +435,7 @@ curve25519_invert2(unsigned char out[32],
   int flip;
 
   /* u = sqrt(-n / (d * z)) */
-  curve25519_add(n, x, a);
+  curve25519_add_reduce(n, x, a);
   curve25519_copy(d, x);
   curve25519_swap_conditional(n, d, hint & 1);
   curve25519_neg(n, n);
