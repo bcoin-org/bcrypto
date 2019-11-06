@@ -79,8 +79,10 @@ static int
 secp256k1_fe_isqrt(secp256k1_fe *r,
                    const secp256k1_fe *u,
                    const secp256k1_fe *v) {
-  /* x = u^3 * v * (u^5 * v^3)^((p - 3) / 4) mod p */
   secp256k1_fe u2, u3, u5, v3, p, x, c;
+  int s;
+
+  /* x = u^3 * v * (u^5 * v^3)^((p - 3) / 4) mod p */
   secp256k1_fe_sqr(&u2, u);
   secp256k1_fe_mul(&u3, &u2, u);
   secp256k1_fe_mul(&u5, &u3, &u2);
@@ -92,8 +94,11 @@ secp256k1_fe_isqrt(secp256k1_fe *r,
   secp256k1_fe_mul(&x, &x, &p);
   secp256k1_fe_sqr(&c, &x);
   secp256k1_fe_mul(&c, &c, v);
+
+  s = secp256k1_fe_equal(&c, u);
   *r = x;
-  return secp256k1_fe_equal(&c, u);
+
+  return s;
 }
 
 static void
@@ -223,8 +228,8 @@ shallue_van_de_woestijne_invert(secp256k1_fe* u,
                                                      0, 0, 0, 1);
 
   secp256k1_fe x, y, c0, c1, n0, n1, n2, n3, d0, t, tmp;
-  unsigned int r = hint & 3;
   unsigned int s0, s1, s2, s3, flip;
+  unsigned int r = hint & 3;
 
   /*
    * Map:
