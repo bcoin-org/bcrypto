@@ -1043,6 +1043,43 @@ describe('ECDSA', function() {
       native = new ECDSA('SECP256K1');
     }
 
+    const invert = (curve, point) => {
+      const out = [];
+
+      for (let i = 0; i < 4; i++) {
+        let u;
+
+        try {
+          u = curve.publicKeyToUniform(point, i);
+        } catch (e) {
+          u = null;
+        }
+
+        out.push(u);
+      }
+
+      return out;
+    };
+
+    const equal = (items, expect) => {
+      assert(Array.isArray(items));
+      assert(Array.isArray(expect));
+      assert(items.length === expect.length);
+
+      for (let i = 0; i < items.length; i++) {
+        assert(items[i] === null || Buffer.isBuffer(items[i]));
+        assert(expect[i] === null || typeof expect[i] === 'string');
+
+        if (expect[i] === null) {
+          assert.strictEqual(items[i], null);
+          continue;
+        }
+
+        assert(Buffer.isBuffer(items[i]));
+        assert.bufferEqual(items[i], expect[i], 'hex');
+      }
+    };
+
     it('should create point from uniform bytes (sswu)', () => {
       const preimages = [
         '35b83b4ecbe82852b8ea85b22457bd394b9345bca6279040018e13cc2c129d28',
@@ -1099,6 +1136,162 @@ describe('ECDSA', function() {
 
       assert.bufferEqual(pub,
         '02b84b65815d61a50646b891ccf7e4c80c66c0d7eafbce5d3e5f17de02a16748da');
+    });
+
+    it('should test sswu inversion', () => {
+      const points = [
+        '03d4e98f72e5297cf6b8524cdb4e376159d938fa509d838cdfcfbb8118cc9d4d68',
+        '022351ee8eef9ac7cdd83137634a17b36661dfb124031b5d96a252e42ba3fe60a8',
+        '02a2fdaf95ba9d08e5ce394b6ad5ba7b3a301684c450d1826ea1f5851254104c92',
+        '0365fc3c35cc7355d057f283b100d6262e54ccf124a4de44f12932b94b3e7f926b',
+        '02ce8880c3b2d2751dff85a0c38ac160bed37790a738998a90501d01651a383095',
+        '02378a5d28e723261056ce893d68055bc3490d257a469d953bfe50bf75ad199741',
+        '03af56385618d677e5a84f42ee3098b254569da7aa71714e06de3ebfe376fc3df9',
+        '02c5966a274e918c3209fb68cbfad09973d0ea529932c343aa98931947bcc32e07',
+        '02b2d43d621edfdaa4c0041b2bed9208e56d4a067400c51f3b61d6da7f6c1470dd',
+        '02256515f6fa166b25eb2c96930a083c75ef5fbd8a1285ae9e0cd39935acc56ae2',
+        '02b7ffd48508c7acef95d243c093a20895d6daecb7ae66cd284dca7240919959ff',
+        '036619b9c0409b593fbd47dad2fff8d61cd1956d7ba1062f545f638e26ceb85e63',
+        '0286380443420a28d7efc700b6ae88319431bf9094b5e36cfe987b46c128b3a508',
+        '0391cd16cd61348ec734206e28aab542b3cb1bb899abe9a2a07ddbc7bda2836bdb',
+        '0230cb9f78a927c3b59445683fac880d14572f9381b3fb4bf488eb23c8a3395226',
+        '02dc6631462b3c0befc9fe2edb05101c1dd77ddb1b3252bd3645bfef56b68206bb',
+        '021a7d8c905d1bbcc6d65f7770e33ae542e55e4a5a759abacdc8db36e824115a55',
+        '02aaa95e61bb232cea60a950fddc31c2069a896b00921c0de596828096b48429a9',
+        '0329d4949d3aafedebfe07d53cef85115917ee04e1b5ef54fe0749835b8e407eac',
+        '034c9f12b1dce890b25676a2b92070158a1f5e6cd1ba4bf7255ed2961b55309153'
+      ];
+
+      const expect = [
+        [
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          '326bf69614950f07d07c907e510ea4e31a90c0f401a5a7e7e616f8704fddf77e',
+          'e26eb65a779d9db778ed053a32c56b06d0be1bf4cac1b3b868730bf975007ec8',
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          '6515e139a57d184d151bf514eb9b210b72be514115bfb4a750230ab5ba1c3bf9',
+          null,
+          null,
+          'dfd1acfb77363a81e347b0e5990bf762171ce48fc380071b19e0422892837937'
+        ],
+        [
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          'de8abc89ec6bdfa0ce6f4bd00d21717f951c811e3918401f10c071e7fc0c2bb9',
+          '0e235e38d8252d17bd71709d42d9a123930afd128f256c1acda7dab311b9ebb5',
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          'a206069fb24a49af0b057385bda9404bd4fe8c17c9fab962560ec87eb72f3446',
+          null,
+          null,
+          '98eeeba60834726daca955c157ec67416bc77faf28c152c854782f32760d5d60'
+        ],
+        [
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          'ec9d52ca1abdd8ec22b7b5b83dc7f34c1121df077cbcc2724c365a29ac103190',
+          null,
+          null,
+          '1966ecdd34a8068c66644e318e043329addf0233f095761cd5679438949fdc44'
+        ],
+        [
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          'db40134a1c4e28f8619805dc9b02fe3edfeb2bf9e9d6bf75055302fa0ba91174',
+          'f70e0b9e30030ab322aa4c0036e84f0da4a0dfca40c4674750301005d40083b6',
+          null
+        ],
+        [
+          '676d711ed3714cc8da329489a90044ea1e26ea65956514d8fd0eea779d7b9bb7',
+          null,
+          null,
+          'b6c93a91c76345f1eb9f7de34a0896183d069ad848dffa5d77c787c15b0254eb'
+        ],
+        [
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          'f27894f63c7dd663588fe428a062ed24fd84851ffe90f8f61a72833457c1b45c',
+          '9c8a1606e03ba17e5d273eb8bfe69a155b784b6c03b846b3546fa47399e48c10',
+          '36ea9ade396d761da7c69e144aa608485c9a4b4468c947e10c482c15eb1cfaaa',
+          'ce205f10f1b610305e54961d3977eae7c944decd574a24a878c8d140507ccf8a'
+        ],
+        [
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          '32106502abb3d06a3aaf44ef5618e3467e0ef277ca440209c1a88f583ecc0171',
+          'd969acc42c30655a59eafc338f93693072f2f38991d5e72defd84e7ceca9bd7b',
+          '9a16d70312e7aca7972abbe9835db134fcd2a5a2865b1aaa16f2c15c51968f73',
+          '1bc2b0fcffe23c6f83683cdc25286badd9db0f789a8f8bd40bca16d366edfb13'
+        ],
+        [
+          null,
+          null,
+          null,
+          null
+        ]
+      ];
+
+      assert(expect.length === 20);
+
+      for (let i = 0; i < 20; i++) {
+        const point = Buffer.from(points[i], 'hex');
+
+        equal(invert(p256, point), expect[i]);
+      }
     });
 
     it('should create point from uniform bytes (svdw)', () => {
@@ -1166,6 +1359,170 @@ describe('ECDSA', function() {
       if (native) {
         assert.bufferEqual(native.publicKeyFromHash(bytes),
           '032287235856654cff0bf82466518bb9e7eaef62632c4805b3c76f8a6675f2a1df');
+      }
+    });
+
+    it('should test svdw inversion', () => {
+      const points = [
+        '025026a32a3c4f9c3b07458fd0c04e80f4c8eef8e1ffea0c26e42620851a5743ce',
+        '02009e116799afa712903f268d1794b8b7c7b846b61e2df905c86d9b70a29e96ad',
+        '03be7094c49db5549c0482783ad07aea50f71041ead8fc7f36aa86f489ca414bdb',
+        '03b33342e5c1de6893a9cd83f0302b0f4c4519a4128e7707e9ab725c31c04a2e6a',
+        '029ff72faf2640dc24c8309df40af02e3003abe1439e4ab1606ecd5eddc9f9d84a',
+        '03e0a64cacced01f40e19b6b5ac57fae56637560d389126e9bc6e34a2da3c00248',
+        '02bf2182aa75a46937ec099475f3993ce7940d71c95ead8dacbb11e9ace4fa3d79',
+        '024fc878ff413bf2b90c37237be726a4eb627b1dbb33f9dfab802220cd2ec51daa',
+        '038a5c8dc137cf10d920c07b1331febfa0fe760a1398afe6222c97f4119aa36639',
+        '02f718221402f454a33651862d92d4cdd9161bd04a0ad32df333a30e85aab191ef',
+        '030143c7400d6ee8baa93317fd352c841abd7befa6742e8361edc650607d8fa0e1',
+        '03ebf0b5096ad7898a8c90c6c0e33b559103f1e2a1b6378eb999525142f70d9e4e',
+        '03b6ead1c8aa5d1be5d59f6852e15d7aa49f372e786330c24147a82445eccad400',
+        '033b623a99d823d62742ebb17f1808c18b59d3590f0f836686bbe08b1a1a928e5a',
+        '03f8f15ae9bc58b9419d1d912f05af790585139c7358e51c75aa1de2d3680985ad',
+        '03b4241ad32782155c3d9a6f274df12a59dcc3580549f014040f8bea8e7deea54b',
+        '0331829115e3b22693ef879818fd90ce2a4ae4c5ca69bf0378ffc1809cc098373b',
+        '02d9a8c364392176e894b288deea0a6d1977f253009d1197ad7a75a2b2b72ae6b6',
+        '030945bebdd4e95e68950e41eb2e249ffcd44b0f155aa0cf1b7556b6efa2fad0b2',
+        '02bf3b977879c84583c1a11c1243cf9d819bb78d4193f9190f9c967eae6cb98087'
+      ];
+
+      const expect = [
+        [
+          null,
+          null,
+          '889912f187429a9a266bccb5231babf47f3e230c6642c6527c8f709399cd15cc',
+          '3c7f8118dd50b399f3ca5e9770b2e1f01cf4c06fd46068829d7be1eed6a46e16'
+        ],
+        [
+          'a6a51f6b6afd57964d18bd8283715141811a928afc1c919a5b4df8b786fe025a',
+          '94a61be369070bfbb04dd6b0d5d128e4c3996429c3c98f5db7fd3f729afe707a',
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          'bbc9772038407a7437798ca402aaf73eee98112893270128e9f8c8f8b09e69b8',
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          '3772e64bbdc6cd3dd2047333086ccccf00cbd33bad881de57e98ffedc895134a',
+          null,
+          null,
+          null
+        ],
+        [
+          '9ba07f2e4029e57396af0e90ed30e228cdde949091e1f9c522d0eb7cfaa60358',
+          'd668ff2f9adb45ac426dd1ff639553e034cc8338ded0f7f913ea1eabc4bcb7f2',
+          null,
+          null
+        ],
+        [
+          '71f793e29b1c77d1dcc52231e035326e216a6635324858426b14e72ea129e649',
+          '4fb56ebee6a9eb4c23dd6ac4632f7842d766010276d0c6f220c30066313b9b11',
+          null,
+          null
+        ],
+        [
+          '304964b8cad554f261f55f27d13e2ffd5de04c83eaaff2cbb7fdc87a5ffe5b96',
+          'bfa8cd1432f9852b282c66b0083ba2eb26c944df2112b7df51cfaf3035f40ad8',
+          '9bdc821569a7e49e2b802f61cd3ae93dcdc10899077087e57693c231d8489136',
+          'ce42298cd5389bdfc919a4667b49ad006a09c1ea1dbabc4cb4386691c82a94d0'
+        ],
+        [
+          'bb5da611dc28804c6da3e7dc38afb29d43f62f8793c1365bc90bf1678a760665',
+          null,
+          null,
+          null
+        ],
+        [
+          '6cd16e3b75e7b1df5efb01c7509eb1d5219df5052ceb2c045dba0c58395c0d8d',
+          null,
+          '36eaf212f5b86f83894f6b72efa0e48ff32260b440200792b0c5aca00ee1a4f5',
+          '8d99da53bd96310e8d4c2f28fcfcbe5c80ee0c0b86d9dc448496515a91a14c2b'
+        ],
+        [
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          '971e685c0c05be85ca1ce7ee40b2e2c3ed9f5c10dc9b908bc7d4845ac9989669',
+          null,
+          null,
+          null
+        ],
+        [
+          '157aaa6b2ac72baef94ea80ba4ebc1a45fa4c375cb9bdf13184332ee4cde74d3',
+          null,
+          '572ba4a654ea12279c0e2015f230ec7ea3e8152b0901e82eb95fe670ff2e32bd',
+          '5b8a178fdab6d6e34f774b30912bfb588effe97c416b7b7dac7e8ad786ef800b'
+        ],
+        [
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          'd77243029d81af007a8d3ac6134fe5ee2fba9174ad8ac538b02ba1a300d583e7',
+          '70a4b897f9a5cedaa8683a878ab73bb8bf42e9178ae99dd7fc32137238eeadcd',
+          '3f9ad83aaa64495cb6d8e0b65f8e4fed8904f12d9895c634c3f1496393b6ec4f',
+          'c93220898109d50c8c91f31fe21d388bfe37b5127075115418eef67fa15b5f1f'
+        ],
+        [
+          'e11839345f32c147d9433d8070507b8e58c674ecf7f80cb10e895f901f062078',
+          null,
+          null,
+          null
+        ],
+        [
+          '71150ca1b3435594cc920c0f4476be55767d14a59dc7a7df728bf3d28f69154f',
+          '13d44e1ff3a6615d441c60240f126088587009553cb4ebd4c8f0fd08b86bb83d',
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null
+        ]
+      ];
+
+      assert(expect.length === 20);
+
+      for (let i = 0; i < 20; i++) {
+        const point = Buffer.from(points[i], 'hex');
+
+        equal(invert(secp256k1, point), expect[i]);
+      }
+
+      if (native) {
+        for (let i = 0; i < 20; i++) {
+          const point = Buffer.from(points[i], 'hex');
+
+          equal(invert(native, point), expect[i]);
+        }
       }
     });
 
