@@ -141,6 +141,10 @@ const mul = secp256k1.native ? 10 : 1;
     ed25519.verify(msg, sig, pub);
   });
 
+  bench('ed25519 derive', rounds, () => {
+    ed25519.derive(pub, msg);
+  });
+
   // Compare against elliptic.
   if (ed25519.native === 0) {
     const ed25519e = require('./deps/elliptic').eddsa('ed25519');
