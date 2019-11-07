@@ -221,39 +221,36 @@ ge25519_is_neutral_vartime(const ge25519 *p) {
 */
 
 static void
-ge25519_mulh(ge25519 *r, const ge25519 *e) {
-  ge25519_double(r, e);
+ge25519_mulh(ge25519 *r, const ge25519 *p) {
+  ge25519_double(r, p);
   ge25519_double(r, r);
   ge25519_double(r, r);
 }
 
 static void
-ge25519_divh(ge25519 *r, const ge25519 *e) {
-  ge25519_scalarmult_vartime(r, e, modm_hinv);
+ge25519_divh(ge25519 *r, const ge25519 *p) {
+  ge25519_scalarmult_vartime(r, p, modm_hinv);
 }
 
 static void
-ge25519_untorsion(ge25519 *r, const ge25519 *e) {
-  ge25519_mulh(r, e);
+ge25519_untorsion(ge25519 *r, const ge25519 *p) {
+  ge25519_mulh(r, p);
   ge25519_divh(r, r);
 }
 
 static int
-ge25519_is_small(const ge25519 *e) {
-  ge25519 ALIGN(16) p;
-  ge25519_mulh(&p, e);
-
-  return (ge25519_is_neutral(e) ^ 1)
-        & ge25519_is_neutral(&p);
+ge25519_is_small(const ge25519 *p) {
+  ge25519 ALIGN(16) r;
+  ge25519_mulh(&r, p);
+  return (ge25519_is_neutral(p) ^ 1)
+        & ge25519_is_neutral(&r);
 }
 
 static int
-ge25519_has_torsion(const ge25519 *e) {
-  ge25519 ALIGN(16) p;
-  ge25519_scalarmult_vartime(&p, e, modm_m);
-
-  return (ge25519_is_neutral(e) ^ 1)
-       & (ge25519_is_neutral(&p) ^ 1);
+ge25519_has_torsion(const ge25519 *p) {
+  ge25519 ALIGN(16) r;
+  ge25519_scalarmult_vartime(&r, p, modm_m);
+  return ge25519_is_neutral(&r) ^ 1;
 }
 
 /*
@@ -384,7 +381,7 @@ ge25519_unpack_vartime(ge25519 *r, const unsigned char p[32]) {
   curve25519_contract(check, r->x);
 
   /* x = 0, sign = 1 (malleable) */
-  if (ge25519_is_zero(check) && sign)
+  if (sign && ge25519_is_zero(check))
     return 0;
 
   if ((check[0] & 1) != sign)
