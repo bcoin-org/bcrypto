@@ -1,6 +1,6 @@
 {
   "name": "bcrypto",
-  "version": "4.2.5",
+  "version": "4.2.6",
   "description": "JS crypto library",
   "keywords": [
     "cipher",
