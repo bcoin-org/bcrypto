@@ -92,10 +92,12 @@ secp256k1_fe_isqrt(secp256k1_fe *r,
   secp256k1_fe_pow_pm3d4(&p, &p);
   secp256k1_fe_mul(&x, &u3, v);
   secp256k1_fe_mul(&x, &x, &p);
+
+  /* x^2 * v == u */
   secp256k1_fe_sqr(&c, &x);
   secp256k1_fe_mul(&c, &c, v);
-
   s = secp256k1_fe_equal(&c, u);
+
   *r = x;
 
   return s;
@@ -200,11 +202,13 @@ shallue_van_de_woestijne_xy2(secp256k1_fe *x,
 
 static void
 shallue_van_de_woestijne(secp256k1_ge *ge, const secp256k1_fe *u) {
+  /* Note: `u` must be normalized for the is_odd() call. */
   secp256k1_fe x, y, y2;
   int flip;
 
   shallue_van_de_woestijne_xy2(&x, &y2, u);
   secp256k1_fe_sqrt(&y, &y2);
+  secp256k1_fe_normalize(&y);
 
   flip = secp256k1_fe_is_odd(&y) ^ secp256k1_fe_is_odd(u);
   secp256k1_fe_negate(&y2, &y, 1);
@@ -238,10 +242,19 @@ shallue_van_de_woestijne_invert(secp256k1_fe* u,
    *   u1 = +-sqrt(((b + 1) * (c - 2 * x - 1) / (c + 2 * x + 1))
    *   u2 = +-sqrt(((b + 1) * (c + 2 * x + 1) / (c - 2 * x - 1))
    *   u3 = +-sqrt((2 * -b - (3 * x) + 1 +- t) / 2)
+   *
+   * Because every square root has a denominator, we
+   * can optimize with the inverse square root trick.
+   *
+   * Note that the 32 bit backend has a maximum overflow
+   * of 6 bits (mag 32). Multiplication functions have a
+   * maximum overflow of 4 bits (mag 8).
    */
 
-  if (secp256k1_ge_is_infinity(ge))
+  if (secp256k1_ge_is_infinity(ge)) {
+    secp256k1_fe_set_int(u, 0);
     return 0;
+  }
 
   x = ge->x;
   y = ge->y;
@@ -250,62 +263,67 @@ shallue_van_de_woestijne_invert(secp256k1_fe* u,
   secp256k1_fe_normalize(&y);
 
   /* t = sqrt(6 * (2 * b - 1) * x + 9 * x^2 - 12 * b - 3) */
-  secp256k1_fe_set_int(&tmp, 78);
-  secp256k1_fe_mul(&t, &tmp, &x);
+  secp256k1_fe_set_int(&tmp, 78); /* mag 1 */
+  secp256k1_fe_mul(&t, &tmp, &x); /* mag 1 */
 
-  secp256k1_fe_sqr(&tmp, &x);
-  secp256k1_fe_mul_int(&tmp, 9);
-  secp256k1_fe_add(&t, &tmp);
+  secp256k1_fe_sqr(&tmp, &x); /* mag 1 */
+  secp256k1_fe_mul_int(&tmp, 9); /* mag 9 */
+  secp256k1_fe_add(&t, &tmp); /* mag 10 */
 
-  secp256k1_fe_set_int(&tmp, 84);
-  secp256k1_fe_negate(&tmp, &tmp, 1);
-  secp256k1_fe_add(&t, &tmp);
+  secp256k1_fe_set_int(&tmp, 84); /* mag 1 */
+  secp256k1_fe_negate(&tmp, &tmp, 1); /* mag 2 */
+  secp256k1_fe_add(&t, &tmp); /* mag 12 */
 
-  secp256k1_fe_set_int(&tmp, 3);
-  secp256k1_fe_negate(&tmp, &tmp, 1);
-  secp256k1_fe_add(&t, &tmp);
+  secp256k1_fe_set_int(&tmp, 3); /* mag 1 */
+  secp256k1_fe_negate(&tmp, &tmp, 1); /* mag 2 */
+  secp256k1_fe_add(&t, &tmp); /* mag 14 */
 
-  s0 = secp256k1_fe_sqrt(&tmp, &t);
+  secp256k1_fe_normalize_weak(&t); /* mag 1 */
+
+  s0 = secp256k1_fe_sqrt(&tmp, &t); /* mag 1 */
   s1 = ((r - 2) >> shift) | s0; /* r < 2 or t is square */
-  t = tmp;
+  t = tmp; /* mag 1 */
 
   /* c1 = c + 2 * x + 1 */
-  c1 = c;
-  tmp = x;
-  secp256k1_fe_mul_int(&tmp, 2);
-  secp256k1_fe_add(&tmp, &one);
-  secp256k1_fe_add(&c1, &tmp);
+  c1 = c; /* mag 1 */
+  tmp = x; /* mag 1 */
+  secp256k1_fe_mul_int(&tmp, 2); /* mag 2 */
+  secp256k1_fe_add(&tmp, &one); /* mag 3 */
+  secp256k1_fe_add(&c1, &tmp); /* mag 4 */
 
   /* c0 = c - 2 * x - 1 */
-  c0 = c;
-  secp256k1_fe_negate(&tmp, &tmp, 1);
-  secp256k1_fe_add(&c0, &tmp);
+  c0 = c; /* mag 1 */
+  secp256k1_fe_negate(&tmp, &tmp, 3); /* mag 4 */
+  secp256k1_fe_add(&c0, &tmp); /* mag 5 */
 
   /* n0 = (b + 1) * c0 */
-  n0 = c0;
-  secp256k1_fe_mul_int(&n0, 8);
+  n0 = c0; /* mag 5 */
+  secp256k1_fe_normalize_weak(&n0); /* mag 1 */
+  secp256k1_fe_mul_int(&n0, 8); /* mag 8 */
 
   /* n1 = (b + 1) * c1 */
-  n1 = c1;
-  secp256k1_fe_mul_int(&n1, 8);
+  n1 = c1; /* mag 4 */
+  secp256k1_fe_normalize_weak(&n1); /* mag 1 */
+  secp256k1_fe_mul_int(&n1, 8); /* mag 8 */
 
   /* n2 = 2 * -b - (3 * x) + 1 + t */
-  secp256k1_fe_set_int(&n2, 14);
-  secp256k1_fe_negate(&n2, &n2, 1);
-  tmp = x;
-  secp256k1_fe_mul_int(&tmp, 3);
-  secp256k1_fe_negate(&tmp, &tmp, 1);
-  secp256k1_fe_add(&n2, &tmp);
-  secp256k1_fe_add(&n2, &one);
-  n3 = n2;
-  secp256k1_fe_add(&n2, &t);
+  secp256k1_fe_set_int(&n2, 14); /* mag 1 */
+  secp256k1_fe_negate(&n2, &n2, 1); /* mag 2 */
+  tmp = x; /* mag 1 */
+  secp256k1_fe_mul_int(&tmp, 3); /* mag 3 */
+  secp256k1_fe_negate(&tmp, &tmp, 3); /* mag 4 */
+  secp256k1_fe_add(&n2, &tmp); /* mag 6 */
+  secp256k1_fe_add(&n2, &one); /* mag 7 */
+  n3 = n2; /* mag 7 */
+  secp256k1_fe_add(&n2, &t); /* mag 8 */
 
   /* n3 = 2 * -b - (3 * x) + 1 - t */
-  secp256k1_fe_negate(&t, &t, 1);
-  secp256k1_fe_add(&n3, &t);
+  secp256k1_fe_negate(&t, &t, 1); /* mag 2 */
+  secp256k1_fe_add(&n3, &t); /* mag 9 */
+  secp256k1_fe_normalize_weak(&n3); /* mag 1 */
 
   /* d0 = 2 */
-  secp256k1_fe_set_int(&d0, 2);
+  secp256k1_fe_set_int(&d0, 2); /* mag 1 */
 
   /* Pick numerator and denominator. */
   secp256k1_fe_cmov(&n0, &n1, ((r ^ 1) - 1) >> shift); /* r = 1 */
@@ -315,15 +333,16 @@ shallue_van_de_woestijne_invert(secp256k1_fe* u,
   secp256k1_fe_cmov(&d0, &c0, ((r ^ 1) - 1) >> shift); /* r = 1 */
 
   /* t = sqrt(n0 / d0) */
-  s2 = secp256k1_fe_isqrt(&t, &n0, &d0);
+  s2 = secp256k1_fe_isqrt(&t, &n0, &d0); /* mag 1 */
+  secp256k1_fe_normalize(&t);
 
   /* (n0, d0) = svdw(t) */
-  shallue_van_de_woestijne_xy2(&n0, &d0, &t);
+  shallue_van_de_woestijne_xy2(&n0, &d0, &t); /* mag 1 */
   s3 = secp256k1_fe_equal(&n0, &x);
 
   /* t = sign(y) * abs(t) */
   flip = secp256k1_fe_is_odd(&t) ^ secp256k1_fe_is_odd(&y);
-  secp256k1_fe_negate(&tmp, &t, 1);
+  secp256k1_fe_negate(&tmp, &t, 1); /* mag 2 */
   secp256k1_fe_cmov(&t, &tmp, flip);
 
   *u = t;
@@ -384,20 +403,20 @@ secp256k1_pubkey_to_uniform(unsigned char *bytes32,
                             unsigned int hint) {
   secp256k1_ge p;
   secp256k1_fe u;
+  int ret;
 
   if (!secp256k1_pubkey_unstore(&p, pubkey))
     return 0;
 
-  if (!shallue_van_de_woestijne_invert(&u, &p, hint)) {
-    secp256k1_ge_clear(&p);
-    return 0;
-  }
+  ret = shallue_van_de_woestijne_invert(&u, &p, hint);
 
   secp256k1_fe_normalize(&u);
   secp256k1_fe_get_b32(bytes32, &u);
+
+  secp256k1_ge_clear(&p);
   secp256k1_fe_clear(&u);
 
-  return 1;
+  return ret;
 }
 
 static int
