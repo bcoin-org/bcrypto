@@ -4622,6 +4622,26 @@ describe('Elliptic', function() {
         assert(x448.pointFromEdwards(p.neg()).eq(q.neg()));
         assert(ed448.pointFromMont(q.neg()).eq(p.neg()));
       }
+
+      // (-1, +-sqrt((A - 2) / B)) -> (+-sqrt(1 / d), oo)
+      // c = 2 / +-sqrt(B * (a - d))
+      // x = c * u / v
+      //   = c * -1 / +-sqrt((A - 2) / B)
+      //   = +-sqrt(1 / d)
+      {
+        const ed448 = x448.toEdwards();
+        const a = x448.field(ed448.a);
+        const d = x448.field(ed448.d);
+        const p = x448.pointFromX(x448.one.redNeg(), false);
+        const c = x448._scale(ed448, false);
+        const ce = x448.two.redDiv(x448.b.redMul(a.redSub(d)).redSqrt());
+        const x = c.redMul(p.x).redDiv(p.y);
+        const xe = ed448.d.redInvert().redSqrt();
+
+        assert(ed448.d.redIsSquare());
+        assert(c.eq(ce));
+        assert(x.eq(xe));
+      }
     });
 
     it('should handle x448<->ed448 edge cases', () => {
