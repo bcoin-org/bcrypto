@@ -4639,6 +4639,7 @@ describe('Elliptic', function() {
         const xe = ed448.d.redInvert().redSqrt();
 
         assert(ed448.d.redIsSquare());
+        assert(p.y.eq(e));
         assert(c.eq(ce));
         assert(x.eq(xe));
       }
