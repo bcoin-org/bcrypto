@@ -4813,6 +4813,82 @@ describe('Elliptic', function() {
       assert(p.sub(q).eq(r));
       assert(p.usub(q).eq(r));
     });
+
+    it('should test svdw inversion edge case (x = -(c + z) / 2)', () => {
+      const curve = new extra.SECP192K1();
+      const {z} = curve;
+      const z2 = z.redSqr();
+      const c = z2.redMuln(-3).redSqrt();
+      const x = c.redAdd(z).redINeg().redMul(curve.i2);
+      const p = curve.pointFromX(x);
+      const x2z = x.redMuln(2).redIAdd(z);
+
+      assert(x2z.eq(c.redNeg()));
+
+      // c1 = 0
+      // (2 * x + z) = -sqrt(-3 * z^2)
+      assert.throws(() => curve.pointToUniform(p, 0), {
+        message: 'Invalid point.'
+      });
+
+      // svdw(u) != x
+      assert.throws(() => curve.pointToUniform(p, 1), {
+        message: 'Invalid point.'
+      });
+
+      assert.strictEqual(curve.pointToUniform(p, 2).fromRed().toString(16),
+        '7925331b18c739cad09ed978d1fd2e9a2a937420e83d306a');
+
+      assert.strictEqual(curve.pointToUniform(p, 3).fromRed().toString(16),
+        '73c71fbc1ad4911630d2696473c3356c9df9d97a36d22626');
+    });
+
+    it('should test svdw inversion edge case (x = (c - z) / 2)', () => {
+      const curve = new curves.SECP256K1();
+      const {z} = curve;
+      const z2 = z.redSqr();
+      const c = z2.redMuln(-3).redSqrt();
+      const x = c.redSub(z).redMul(curve.i2);
+      const p = curve.pointFromX(x);
+      const x2z = x.redMuln(2).redIAdd(z);
+
+      assert(x2z.eq(c));
+
+      assert(curve.pointToUniform(p, 0).eq(curve.zero));
+
+      // c0 = 0
+      // (2 * x + z) = +sqrt(-3 * z^2)
+      assert.throws(() => curve.pointToUniform(p, 1), {
+        message: 'Invalid point.'
+      });
+
+      assert.throws(() => curve.pointToUniform(p, 2), {
+        message: 'Invalid point.'
+      });
+
+      assert.throws(() => curve.pointToUniform(p, 3), {
+        message: 'Invalid point.'
+      });
+    });
+
+    it('should test sswu inversion edge case (x = -b / a)', () => {
+      const curve = new curves.P192();
+      const x = curve.b.redNeg().redDiv(curve.a);
+      const p = curve.pointFromX(x);
+
+      // a * x + b = 0
+      assert.throws(() => curve.pointToUniform(p, 0), {
+        message: 'Invalid point.'
+      });
+
+      // a * x + b = 0
+      assert.throws(() => curve.pointToUniform(p, 1), {
+        message: 'Invalid point.'
+      });
+
+      assert(curve.pointToUniform(p, 2).eq(curve.zero));
+      assert(curve.pointToUniform(p, 3).eq(curve.zero));
+    });
   });
 
   describe('Point codec', () => {
