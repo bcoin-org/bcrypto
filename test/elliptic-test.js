@@ -1458,6 +1458,34 @@ describe('Elliptic', function() {
       assert(x448.isIsomorphic(wei448, true));
     });
 
+    it('should convert short to edwards', () => {
+      const ed25519 = new curves.ED25519();
+      const x25519 = ed25519.toMont();
+      const wei25519 = x25519.toShort();
+      const [a, d] = wei25519._edwards1(wei25519.one.redNeg());
+      const [a2, d2] = wei25519._edwards2(false);
+      const [a3, d3] = wei25519._edwards(wei25519.one.redNeg());
+      const [a4, d4] = wei25519._edwards(false);
+
+      assert(a.eq(ed25519.a));
+      assert(d.eq(ed25519.d));
+      assert(a2.eq(ed25519.a));
+      assert(d2.eq(ed25519.d));
+      assert(a3.eq(ed25519.a));
+      assert(d3.eq(ed25519.d));
+      assert(a4.eq(ed25519.a));
+      assert(d4.eq(ed25519.d));
+    });
+
+    it('should convert edwards to short', () => {
+      const ed25519 = new curves.ED25519();
+      const [a0, b0] = ed25519.toMont()._short();
+      const [a, b] = ed25519._short();
+
+      assert(a.eq(a0));
+      assert(b.eq(b0));
+    });
+
     it('should match multiplications', () => {
       const p256 = new curves.P256();
       const secp256k1 = new curves.SECP256K1();
@@ -2406,6 +2434,7 @@ describe('Elliptic', function() {
       assert(wei.a.eq(wei25519.a));
       assert(wei.b.eq(wei25519.b));
       assert(wei.g.eq(wei25519.g));
+      assert(wei.pointFromMont(mont.g).eq(wei.g));
       assert(mont.pointFromShort(wei.g).eq(mont.g));
 
       assert(wei25519.jinv().eq(ed25519.jinv()));
@@ -2423,6 +2452,7 @@ describe('Elliptic', function() {
       assert(mont.a.eq(x25519.a));
       assert(mont.b.eq(x25519.b));
       assert(mont.g.eq(x25519.g));
+      assert(mont.pointFromShort(wei25519.g).eq(mont.g));
       assert(wei25519.pointFromMont(mont.g).eq(wei25519.g));
 
       assert(wei25519.jinv().eq(x25519.jinv()));
@@ -2439,6 +2469,7 @@ describe('Elliptic', function() {
       assert(mont.a.eq(x25519.a));
       assert(mont.b.eq(x25519.b));
       assert(mont.g.eq(x25519.g));
+      assert(mont.pointFromShort(wei25519.g).eq(mont.g));
       assert(wei25519.pointFromMont(mont.g).eq(wei25519.g));
 
       assert(wei25519.jinv().eq(x25519.jinv()));
@@ -2455,6 +2486,7 @@ describe('Elliptic', function() {
       assert(mont.a.eq(x25519.a));
       assert(mont.b.eq(x25519.b));
       assert(mont.g.eq(x25519.g));
+      assert(mont.pointFromShort(wei25519.g).eq(mont.g));
       assert(wei25519.pointFromMont(mont.g).eq(wei25519.g));
 
       assert(wei25519.jinv().eq(x25519.jinv()));
@@ -2462,7 +2494,7 @@ describe('Elliptic', function() {
       assert(mont.isIsomorphic(wei25519));
     });
 
-    it('should test x25519 creation (2)', () => {
+    it('should test x25519 creation (4)', () => {
       const x25519 = new curves.X25519();
       const ed25519 = new curves.ED25519();
       const mont = ed25519.toMont(ed25519.one);
@@ -2470,6 +2502,8 @@ describe('Elliptic', function() {
       assert(mont.a.eq(x25519.a));
       assert(mont.b.eq(x25519.b));
       assert(mont.g.eq(x25519.g));
+      assert(mont.pointFromEdwards(ed25519.g).eq(mont.g));
+      assert(mont.pointFromEdwards(ed25519.g.randomize(rng)).eq(mont.g));
       assert(ed25519.pointFromMont(mont.g).eq(ed25519.g));
 
       assert(ed25519.jinv().eq(x25519.jinv()));
@@ -2485,11 +2519,79 @@ describe('Elliptic', function() {
       assert(ed.a.eq(ed25519.a));
       assert(ed.d.eq(ed25519.d));
       assert(ed.g.eq(ed25519.g));
+      assert(x25519.pointFromEdwards(ed.g).eq(x25519.g));
+      assert(x25519.pointFromEdwards(ed.g.randomize(rng)).eq(x25519.g));
+      assert(ed.pointFromMont(x25519.g).eq(ed.g));
 
       assert(ed25519.jinv().eq(x25519.jinv()));
       assert(ed.jinv().eq(x25519.jinv()));
       assert(x25519.isIsomorphic(ed25519));
       assert(x25519.isIsomorphic(ed));
+    });
+
+    it('should test short->edwards creation (1)', () => {
+      const expect = new curves.ED25519();
+      const short = expect.toMont().toShort();
+      const edwards = short.toEdwards(false);
+
+      assert(edwards.a.eq(expect.a));
+      assert(edwards.d.eq(expect.d));
+      assert(edwards.g.eq(expect.g));
+      assert(edwards.isIsomorphic(short));
+      assert(short.isIsomorphic(edwards));
+      assert(edwards.jinv().eq(short.jinv()));
+
+      assert(edwards.pointFromShort(short.g).eq(edwards.g));
+      assert(short.pointFromEdwards(edwards.g).eq(short.g));
+      assert(short.pointFromEdwards(edwards.g.randomize(rng)).eq(short.g));
+    });
+
+    it('should test short->edwards creation (2)', () => {
+      const expect = new curves.ED25519();
+      const short = expect.toMont().toShort();
+      const edwards = short.toEdwards(short.one.redNeg());
+
+      assert(edwards.a.eq(expect.a));
+      assert(edwards.d.eq(expect.d));
+      assert(edwards.g.eq(expect.g));
+      assert(edwards.isIsomorphic(short));
+      assert(short.isIsomorphic(edwards));
+      assert(edwards.jinv().eq(short.jinv()));
+
+      assert(edwards.pointFromShort(short.g).eq(edwards.g));
+      assert(short.pointFromEdwards(edwards.g).eq(short.g));
+      assert(short.pointFromEdwards(edwards.g.randomize(rng)).eq(short.g));
+
+      const k = short.randomScalar(rng);
+      const p0 = short.g.mul(k);
+      const p1 = expect.g.mul(k);
+
+      assert(edwards.pointFromShort(p0).eq(p1));
+      assert(short.pointFromEdwards(p1).eq(p0));
+    });
+
+    it('should test edwards->short creation', () => {
+      const edwards = new curves.ED25519();
+      const expect = edwards.toMont().toShort();
+      const short = edwards.toShort();
+
+      assert(short.a.eq(expect.a));
+      assert(short.b.eq(expect.b));
+      assert(short.g.eq(expect.g));
+      assert(short.isIsomorphic(edwards));
+      assert(edwards.isIsomorphic(short));
+      assert(short.jinv().eq(edwards.jinv()));
+
+      assert(edwards.pointFromShort(short.g).eq(edwards.g));
+      assert(short.pointFromEdwards(edwards.g).eq(short.g));
+      assert(short.pointFromEdwards(edwards.g.randomize(rng)).eq(short.g));
+
+      const k = short.randomScalar(rng);
+      const p0 = expect.g.mul(k);
+      const p1 = edwards.g.mul(k);
+
+      assert(edwards.pointFromShort(p0).eq(p1));
+      assert(short.pointFromEdwards(p1).eq(p0));
     });
 
     it('should test wei25519 equivalence when B != 1', () => {
