@@ -4751,6 +4751,58 @@ describe('Elliptic', function() {
       }
     });
 
+    it('should handle short->edwards edge case (1)', () => {
+      // ((5 * d - a) / 12, y) -> ((d - a) / (4 * y), oo)
+      // ((5 * d - a) / 12, y) -> (+-sqrt(1 / d), oo)
+      // y = (d - a) / 4 * +-sqrt(d)
+      const edwards = new extra.TWIST448();
+      const short = edwards.toShort();
+      const {a, d} = edwards;
+      const x0 = d.redMuln(5).redISub(a).redDivn(12);
+      const y0 = d.redSub(a).redDivn(4).redMul(d.redSqrt().redINeg());
+      const p = short.pointFromX(short.field(x0));
+      const px = edwards.field(p.x);
+      const py = edwards.field(p.y);
+
+      assert(px.eq(x0));
+      assert(py.eq(y0));
+
+      const ex = d.redSub(a).redDiv(py.redMuln(4));
+
+      assert.throws(() => edwards.pointFromX(ex), {
+        message: 'Not invertible.'
+      });
+
+      const d5 = d.redMuln(5);
+      const x6 = px.redMuln(6);
+      const x12 = px.redMuln(12);
+      const xx = x6.redSub(a).redISub(d);
+      const xz = py.redMuln(6);
+      const yz = x12.redAdd(a).redISub(d5);
+
+      assert(xx.redDiv(xz).eq(ex));
+      assert(yz.isZero());
+    });
+
+    it('should handle short->edwards edge case (2)', () => {
+      // ((5 * a - d) / 12, (a - d) / 4 * +-sqrt(a)) -> (+-sqrt(1 / a), 0)
+      const edwards = new curves.ED25519();
+      const short = edwards.toShort();
+      const {a, d} = edwards;
+      const x0 = a.redMuln(5).redISub(d).redDivn(12);
+      const y0 = a.redSub(d).redDivn(4).redMul(a.redSqrt().redINeg());
+      const p = short.pointFromX(short.field(x0));
+
+      assert(p.x.eq(x0));
+      assert(p.y.eq(y0));
+
+      const ex = a.redInvert().redSqrt();
+      const q = edwards.pointFromShort(p).normalize();
+
+      assert(q.x.eq(ex));
+      assert(q.y.isZero());
+    });
+
     it('should test short isomorphism (1)', () => {
       const e = new curves.ED25519();
       const m = e.toMont(e.one);
