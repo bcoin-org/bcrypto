@@ -1353,41 +1353,32 @@ describe('Elliptic', function() {
     it('should convert short to mont (twisted)', () => {
       const x25519 = new curves.X25519();
       const wei25519 = new curves.WEI25519();
-      const [a, b] = wei25519._mont1(wei25519.one);
-      const [a2, b2] = wei25519._mont2();
+      const [a, b] = wei25519._mont();
 
       assert(wei25519.jinv().eq(x25519.jinv()));
       assert(a.eq(x25519.a));
       assert(b.eq(x25519.b));
-      assert(a2.eq(x25519.a));
-      assert(b2.eq(x25519.b));
     });
 
     it('should convert short to mont (twisted, native)', () => {
       const ed25519 = new curves.ED25519();
       const x25519 = ed25519.toMont();
       const wei25519 = x25519.toShort();
-      const [a, b] = wei25519._mont1(x25519.b.forceRed(wei25519.red));
-      const [a2, b2] = wei25519._mont2();
+      const [a, b] = wei25519._mont(false);
 
       assert(wei25519.jinv().eq(x25519.jinv()));
       assert(a.eq(x25519.a));
       assert(b.eq(x25519.b));
-      assert(a2.redNeg().eq(x25519.a));
-      assert(b2.redNeg().eq(x25519.b));
     });
 
     it('should convert short to mont (twist448)', () => {
       const ed448 = new curves.TWIST448();
       const x448 = ed448.toMont(ed448.one);
       const wei448 = x448.toShort();
-      const [a, b] = wei448._mont1(wei448.one);
-      const [a2, b2] = wei448._mont2();
+      const [a, b] = wei448._mont();
 
       assert(a.eq(x448.a));
       assert(b.eq(x448.b));
-      assert(a2.eq(x448.a));
-      assert(b2.eq(x448.b));
 
       assert(ed448.jinv().eq(x448.jinv()));
       assert(wei448.jinv().eq(x448.jinv()));
@@ -1402,13 +1393,10 @@ describe('Elliptic', function() {
     it('should convert short to mont (edwards)', () => {
       const x448 = new curves.X448();
       const wei448 = x448.toShort();
-      const [a, b] = wei448._mont1(wei448.one);
-      const [a2, b2] = wei448._mont2();
+      const [a, b] = wei448._mont();
 
       assert(a.eq(x448.a));
       assert(b.eq(x448.b));
-      assert(a2.eq(x448.a));
-      assert(b2.eq(x448.b));
 
       assert(wei448.jinv().eq(x448.jinv()));
       assert(wei448.isIsomorphic(x448));
@@ -1419,22 +1407,10 @@ describe('Elliptic', function() {
       const ed448 = new curves.ED448();
       const x448 = ed448.toMont();
       const wei448 = x448.toShort();
-      const [a, b] = wei448._mont1(x448.b.forceRed(wei448.red));
-      const [a2, b2] = wei448._mont2();
-      const [a3, b3] = wei448._mont2(false);
-      const [a4, b4] = wei448._mont(false);
-      const [a5, b5] = wei448._mont(x448.b.forceRed(wei448.red));
+      const [a, b] = wei448._mont(false);
 
       assert(a.eq(x448.a));
       assert(b.eq(x448.b));
-      assert(a2.redNeg().eq(x448.a));
-      assert(b2.redNeg().eq(x448.b));
-      assert(a3.eq(x448.a));
-      assert(b3.eq(x448.b));
-      assert(a4.eq(x448.a));
-      assert(b4.eq(x448.b));
-      assert(a5.eq(x448.a));
-      assert(b5.eq(x448.b));
 
       assert(wei448.jinv().eq(x448.jinv()));
       assert(wei448.isIsomorphic(x448));
@@ -1445,13 +1421,10 @@ describe('Elliptic', function() {
       const ed448 = new curves.ED448();
       const x448 = ed448.toMont(null, true);
       const wei448 = x448.toShort();
-      const [a, b] = wei448._mont1(x448.b.forceRed(wei448.red));
-      const [a2, b2] = wei448._mont2();
+      const [a, b] = wei448._mont();
 
       assert(a.eq(x448.a));
       assert(b.eq(x448.b));
-      assert(a2.eq(x448.a));
-      assert(b2.eq(x448.b));
 
       assert(wei448.jinv().eq(x448.jinv()));
       assert(wei448.isIsomorphic(x448, true));
@@ -1462,19 +1435,10 @@ describe('Elliptic', function() {
       const ed25519 = new curves.ED25519();
       const x25519 = ed25519.toMont();
       const wei25519 = x25519.toShort();
-      const [a, d] = wei25519._edwards1(wei25519.one.redNeg());
-      const [a2, d2] = wei25519._edwards2(false);
-      const [a3, d3] = wei25519._edwards(wei25519.one.redNeg());
-      const [a4, d4] = wei25519._edwards(false);
+      const [a, d] = wei25519._edwards(false);
 
       assert(a.eq(ed25519.a));
       assert(d.eq(ed25519.d));
-      assert(a2.eq(ed25519.a));
-      assert(d2.eq(ed25519.d));
-      assert(a3.eq(ed25519.a));
-      assert(d3.eq(ed25519.d));
-      assert(a4.eq(ed25519.a));
-      assert(d4.eq(ed25519.d));
     });
 
     it('should convert edwards to short', () => {
@@ -2447,7 +2411,7 @@ describe('Elliptic', function() {
     it('should test x25519 creation (1)', () => {
       const x25519 = new curves.X25519();
       const wei25519 = new extra.WEI25519();
-      const mont = wei25519.toMont(wei25519.one);
+      const mont = wei25519.toMont();
 
       assert(mont.a.eq(x25519.a));
       assert(mont.b.eq(x25519.b));
@@ -2464,7 +2428,7 @@ describe('Elliptic', function() {
       const ed25519 = new curves.ED25519();
       const x25519 = ed25519.toMont();
       const wei25519 = x25519.toShort();
-      const mont = wei25519.toMont(x25519.b.forceRed(wei25519.red));
+      const mont = wei25519.toMont(false);
 
       assert(mont.a.eq(x25519.a));
       assert(mont.b.eq(x25519.b));
@@ -2529,7 +2493,7 @@ describe('Elliptic', function() {
       assert(x25519.isIsomorphic(ed));
     });
 
-    it('should test short->edwards creation (1)', () => {
+    it('should test short->edwards creation', () => {
       const expect = new curves.ED25519();
       const short = expect.toMont().toShort();
       const edwards = short.toEdwards(false);
@@ -2544,30 +2508,6 @@ describe('Elliptic', function() {
       assert(edwards.pointFromShort(short.g).eq(edwards.g));
       assert(short.pointFromEdwards(edwards.g).eq(short.g));
       assert(short.pointFromEdwards(edwards.g.randomize(rng)).eq(short.g));
-    });
-
-    it('should test short->edwards creation (2)', () => {
-      const expect = new curves.ED25519();
-      const short = expect.toMont().toShort();
-      const edwards = short.toEdwards(short.one.redNeg());
-
-      assert(edwards.a.eq(expect.a));
-      assert(edwards.d.eq(expect.d));
-      assert(edwards.g.eq(expect.g));
-      assert(edwards.isIsomorphic(short));
-      assert(short.isIsomorphic(edwards));
-      assert(edwards.jinv().eq(short.jinv()));
-
-      assert(edwards.pointFromShort(short.g).eq(edwards.g));
-      assert(short.pointFromEdwards(edwards.g).eq(short.g));
-      assert(short.pointFromEdwards(edwards.g.randomize(rng)).eq(short.g));
-
-      const k = short.randomScalar(rng);
-      const p0 = short.g.mul(k);
-      const p1 = expect.g.mul(k);
-
-      assert(edwards.pointFromShort(p0).eq(p1));
-      assert(short.pointFromEdwards(p1).eq(p0));
     });
 
     it('should test edwards->short creation', () => {
