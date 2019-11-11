@@ -4751,10 +4751,30 @@ describe('Elliptic', function() {
       }
     });
 
-    it('should test short isomorphism', () => {
+    it('should test short isomorphism (1)', () => {
       const e = new curves.ED25519();
       const m = e.toMont(e.one);
       const w1 = m.toShort();
+      const w2 = w1.toShort(w1.field(2), true);
+
+      // https://tools.ietf.org/id/draft-ietf-lwig-curve-representations-02.html#further-dom-parms
+      assert(w2.a.fromRed().toJSON(), '02');
+      assert(w2.b.fromRed().toJSON(),
+        '1ac1da05b55bc14633bd39e47f94302ef19843dcf669916f6a5dfd0165538cd1');
+      assert(w2.g.x.fromRed().toJSON(),
+        '17cfeac378aed661318e8634582275b6d9ad4def072ea1935ee3c4e87a940ffa');
+      assert(w2.g.y.fromRed().toJSON(),
+        '0c08a952c55dfad62c4f13f1a8f68dcadc5c331d297a37b6f0d7fdcc51e16b4d');
+
+      assert(w1.isIsomorphic(w2));
+      assert(w2.isIsomorphic(w1));
+      assert(w1.pointFromShort(w2.g).eq(w1.g));
+      assert(w2.pointFromShort(w1.g).eq(w2.g));
+    });
+
+    it('should test short isomorphism (2)', () => {
+      const e = new curves.ED25519();
+      const w1 = e.toShort();
       const w2 = w1.toShort(w1.field(2), true);
 
       // https://tools.ietf.org/id/draft-ietf-lwig-curve-representations-02.html#further-dom-parms
