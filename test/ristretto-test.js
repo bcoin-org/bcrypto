@@ -588,4 +588,54 @@ describe('Ristretto', function() {
     assert.strictEqual(ristretto.eq(p, q), true);
     assert.strictEqual(p.mulH().eq(q.mulH()), true);
   });
+
+  it('should test non-invertible points', () => {
+    const curve = new curves.ED25519();
+    const ristretto = new Ristretto(curve);
+
+    const points = [
+      // primary subgroup
+      [
+        '7a90edb72d6fc77bf161957219eab09ca98a289072459ca80e68361839c35ad0',
+        '2012a6a4de76d400bee99d2d96f7a67d9f6ae470c67881f132eb28a1b1136c3f'
+      ],
+      [
+        '1c77e2edeb17a3de6c1b5361ed3fdb63636b5934c1844094fe2d755ad9155925',
+        '5ce6d04920e261f5b1413e07a50dca8c1ae6233d40ba1aec4edf2fa0419b27e5'
+      ],
+      [
+        '5e74d84b00bc8077ff1c5b51fc5df43a775006d45b4514ea62aaab6bbcdeebd4',
+        '566c2a053339b921965876abc42199b8c46b7972fb4f5c4df07d0c81470c4f73'
+      ],
+      [
+        '2253c4294e8b28735dfb24996c9a59000c528ad2edfdfb623e7b68927c285a34',
+        '31a0a4f075cf1b0bda54f107096c8190cdf103aeecbe5bf6b13f301c5ab827b0'
+      ],
+      // ristretto 4-torsion subgroup
+      [
+        '281714913701e599a22134ac3dd9809fcdec9788d6ed58cf0859b730dbdd0b50',
+        '1bccfc27742c8ba31c2a3ded7bc91d0b431a78406e9cb1dc2e3364e330d439b4'
+      ],
+      [
+        '296a6d84f9d3bcbb88ec89152b50a831780348feedd4e8a0640b66ccfcabcc06',
+        '6898011a7c5ca2fdcfcd189e6a4c57a767caf8a0b3bfa49a89fc215c1752c7e7'
+      ],
+      [
+        '73c4e2729f3d22578f2791ac10bdaf02d0f689595e7e6ebe8fac29aab294a94c',
+        '088740fa9facbbe7bc5e251971098a5b249625e6017c1280fc1097efae6f13c4'
+      ],
+      [
+        '57a79d8c7c06576f48a8a15d39b2cfd3119a8f6dc7b7a1f798be66167ff07bce',
+        '181cce40842aa589aaaed0c227d75f1e724a5f9f790bab26fe1446de8c5f1170'
+      ]
+    ];
+
+    for (const json of points) {
+      const p = curve.pointFromJSON(json);
+
+      assert.throws(() => ristretto.pointToUniform(p, 0), {
+        message: 'Invalid point.'
+      });
+    }
+  });
 });
