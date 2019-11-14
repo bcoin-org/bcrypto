@@ -4803,6 +4803,17 @@ describe('Elliptic', function() {
       assert(q.y.isZero());
     });
 
+    it('should find r and s values', () => {
+      const edwards = new curves.ED25519();
+      const mont = edwards.toMont();
+      const short = mont.toShort();
+      const [r] = short._findRS();
+
+      assert(!mont.b.eq(mont.one));
+      assert(r.eq(edwards.ad6));
+      assert(r.eq(mont.a3.redMul(mont.bi)));
+    });
+
     it('should test short isomorphism (1)', () => {
       const e = new curves.ED25519();
       const m = e.toMont(e.one);
@@ -4851,6 +4862,7 @@ describe('Elliptic', function() {
       const short = ed25519.toShort(ed25519.field(2));
       const edwards = short.toEdwards(short.field(-1), true);
       const mont = short.toMont(short.field(1), true);
+      const inv = x25519.toEdwards(null, true);
 
       // https://tools.ietf.org/id/draft-ietf-lwig-curve-representations-02.html#further-dom-parms
       assert(short.a.fromRed().toJSON(), '02');
@@ -4885,6 +4897,9 @@ describe('Elliptic', function() {
       assert(x25519.pointFromShort(short.g).eq(x25519.g));
       assert(short.pointFromMont(x25519.g).eq(short.g));
 
+      assert(short.pointFromEdwards(inv.g).eq(short.g));
+      assert(inv.pointFromShort(short.g).eq(inv.g));
+
       const short2 = x25519.toShort(x25519.field(2), true);
 
       assert(short2.a.eq(short.a));
@@ -4907,6 +4922,13 @@ describe('Elliptic', function() {
       assert(short3.isIsomorphic(ed25519));
       assert(ed25519.pointFromShort(short3.g).eq(ed25519.g));
       assert(short3.pointFromEdwards(ed25519.g).eq(short3.g));
+
+      const p = ed25519.point(ed25519.zero, ed25519.one.redNeg());
+      const q = short.pointFromEdwards(p);
+
+      assert(!q.x.eq(ed25519.ad6));
+      assert(q.y.isZero());
+      assert(q.validate());
     });
 
     it('should test mont isomorphism (1)', () => {
