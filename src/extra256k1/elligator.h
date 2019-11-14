@@ -269,12 +269,9 @@ shallue_van_de_woestijne_invert(secp256k1_fe* u,
   secp256k1_fe_sqr(&tmp, &x); /* mag 1 */
   secp256k1_fe_mul_int(&tmp, 9); /* mag 9 */
   secp256k1_fe_add(&t, &tmp); /* mag 10 */
-  secp256k1_fe_set_int(&tmp, 84); /* mag 1 */
+  secp256k1_fe_set_int(&tmp, 87); /* mag 1 */
   secp256k1_fe_negate(&tmp, &tmp, 1); /* mag 2 */
   secp256k1_fe_add(&t, &tmp); /* mag 12 */
-  secp256k1_fe_set_int(&tmp, 3); /* mag 1 */
-  secp256k1_fe_negate(&tmp, &tmp, 1); /* mag 2 */
-  secp256k1_fe_add(&t, &tmp); /* mag 14 */
   secp256k1_fe_normalize_weak(&t); /* mag 1 */
   s0 = secp256k1_fe_sqrt(&tmp, &t); /* mag 1 */
   s1 = ((r - 2) >> shift) | s0; /* r < 2 or t is square */
