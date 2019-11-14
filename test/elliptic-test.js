@@ -2392,7 +2392,7 @@ describe('Elliptic', function() {
     it('should test wei25519 creation', () => {
       const wei25519 = new extra.WEI25519();
       const ed25519 = new curves.ED25519();
-      const mont = ed25519.toMont(ed25519.one);
+      const mont = ed25519.toMont(ed25519.one, false, true);
       const wei = mont.toShort();
 
       assert(wei.a.eq(wei25519.a));
@@ -2461,7 +2461,7 @@ describe('Elliptic', function() {
     it('should test x25519 creation (4)', () => {
       const x25519 = new curves.X25519();
       const ed25519 = new curves.ED25519();
-      const mont = ed25519.toMont(ed25519.one);
+      const mont = ed25519.toMont(ed25519.one, false, true);
 
       assert(mont.a.eq(x25519.a));
       assert(mont.b.eq(x25519.b));
@@ -2478,7 +2478,7 @@ describe('Elliptic', function() {
     it('should test ed25519 creation', () => {
       const x25519 = new curves.X25519();
       const ed25519 = new curves.ED25519();
-      const ed = x25519.toEdwards(x25519.one.redNeg());
+      const ed = x25519.toEdwards(x25519.one.redNeg(), false, true);
 
       assert(ed.a.eq(ed25519.a));
       assert(ed.d.eq(ed25519.d));
@@ -4848,7 +4848,7 @@ describe('Elliptic', function() {
       const e = new curves.ED25519();
       const m1 = e.toMont(e.field(3));
       const m2 = new curves.X25519();
-      const m3 = m2.toMont(m2.field(3));
+      const m3 = m2.toMont(m2.field(3), false, true);
 
       assert(m1.a.eq(m3.a));
       assert(m1.b.eq(m3.b));
@@ -4881,7 +4881,7 @@ describe('Elliptic', function() {
     it('should test edwards isomorphism', () => {
       const e0 = new curves.ED25519();
       const m0 = e0.toMont();
-      const e1 = m0.toEdwards(m0.field(3));
+      const e1 = m0.toEdwards(m0.field(3), false, false);
       const e2 = e0.toEdwards(e0.field(3), false);
 
       assert(e1.g.validate());
