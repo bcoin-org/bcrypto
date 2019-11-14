@@ -2377,12 +2377,14 @@ describe('Elliptic', function() {
         assert(wei25519.pointFromShort(we).eq(we));
         assert(wei25519.pointFromMont(mo.toP(sign)).eq(we));
         assert(wei25519.pointFromMont(ma).eq(we));
+        assert(wei25519.pointFromEdwards(ed).eq(we));
 
         assert(x25519.pointFromShort(we).toX().eq(mo));
         assert(x25519.pointFromMont(mo.toP(sign)).toX().eq(mo));
         assert(x25519.pointFromMont(ma).eq(ma));
         assert(x25519.pointFromEdwards(ed).toX().eq(mo));
 
+        assert(ed25519.pointFromShort(we).eq(ed));
         assert(ed25519.pointFromMont(mo.toP(sign)).eq(ed));
         assert(ed25519.pointFromMont(ma).eq(ed));
         assert(ed25519.pointFromEdwards(ed).eq(ed));
