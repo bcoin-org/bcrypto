@@ -1364,7 +1364,7 @@ describe('Elliptic', function() {
       const ed25519 = new curves.ED25519();
       const x25519 = ed25519.toMont();
       const wei25519 = x25519.toShort();
-      const [a, b] = wei25519._mont(false);
+      const [a, b] = wei25519._mont(null, false);
 
       assert(wei25519.jinv().eq(x25519.jinv()));
       assert(a.eq(x25519.a));
@@ -1407,7 +1407,7 @@ describe('Elliptic', function() {
       const ed448 = new curves.ED448();
       const x448 = ed448.toMont();
       const wei448 = x448.toShort();
-      const [a, b] = wei448._mont(false);
+      const [a, b] = wei448._mont(null, false);
 
       assert(a.eq(x448.a));
       assert(b.eq(x448.b));
@@ -1435,7 +1435,7 @@ describe('Elliptic', function() {
       const ed25519 = new curves.ED25519();
       const x25519 = ed25519.toMont();
       const wei25519 = x25519.toShort();
-      const [a, d] = wei25519._edwards(false);
+      const [a, d] = wei25519._edwards(null, false);
 
       assert(a.eq(ed25519.a));
       assert(d.eq(ed25519.d));
@@ -2428,7 +2428,7 @@ describe('Elliptic', function() {
       const ed25519 = new curves.ED25519();
       const x25519 = ed25519.toMont();
       const wei25519 = x25519.toShort();
-      const mont = wei25519.toMont(false);
+      const mont = wei25519.toMont(null, false);
 
       assert(mont.a.eq(x25519.a));
       assert(mont.b.eq(x25519.b));
@@ -2445,7 +2445,7 @@ describe('Elliptic', function() {
       const ed25519 = new curves.ED25519();
       const x25519 = ed25519.toMont();
       const wei25519 = x25519.toShort();
-      const mont = wei25519.toMont(false);
+      const mont = wei25519.toMont(null, false);
 
       assert(mont.a.eq(x25519.a));
       assert(mont.b.eq(x25519.b));
@@ -2496,7 +2496,7 @@ describe('Elliptic', function() {
     it('should test short->edwards creation', () => {
       const expect = new curves.ED25519();
       const short = expect.toMont().toShort();
-      const edwards = short.toEdwards(false);
+      const edwards = short.toEdwards(null, false);
 
       assert(edwards.a.eq(expect.a));
       assert(edwards.d.eq(expect.d));
@@ -4842,6 +4842,71 @@ describe('Elliptic', function() {
       assert(w2.isIsomorphic(w1));
       assert(w1.pointFromShort(w2.g).eq(w1.g));
       assert(w2.pointFromShort(w1.g).eq(w2.g));
+    });
+
+    it('should test short isomorphism (3)', () => {
+      const ed25519 = new curves.ED25519();
+      const x25519 = new curves.X25519();
+      const fresh = new curves.ED25519();
+      const short = ed25519.toShort(ed25519.field(2));
+      const edwards = short.toEdwards(short.field(-1), true);
+      const mont = short.toMont(short.field(1), true);
+
+      // https://tools.ietf.org/id/draft-ietf-lwig-curve-representations-02.html#further-dom-parms
+      assert(short.a.fromRed().toJSON(), '02');
+      assert(short.b.fromRed().toJSON(),
+        '1ac1da05b55bc14633bd39e47f94302ef19843dcf669916f6a5dfd0165538cd1');
+      assert(short.g.x.fromRed().toJSON(),
+        '17cfeac378aed661318e8634582275b6d9ad4def072ea1935ee3c4e87a940ffa');
+      assert(short.g.y.fromRed().toJSON(),
+        '0c08a952c55dfad62c4f13f1a8f68dcadc5c331d297a37b6f0d7fdcc51e16b4d');
+
+      assert(edwards.a.eq(ed25519.a));
+      assert(edwards.d.eq(ed25519.d));
+      assert(edwards.g.eq(ed25519.g));
+
+      assert(mont.a.eq(x25519.a));
+      assert(mont.b.eq(x25519.b));
+      assert(mont.g.eq(x25519.g));
+
+      assert(ed25519.isIsomorphic(short));
+      assert(short.isIsomorphic(ed25519));
+      assert(ed25519.pointFromShort(short.g).eq(ed25519.g));
+      assert(short.pointFromEdwards(ed25519.g).eq(short.g));
+
+      assert(mont.isIsomorphic(short));
+      assert(short.isIsomorphic(mont));
+      assert(mont.pointFromShort(short.g).eq(mont.g));
+      assert(short.pointFromMont(mont.g).eq(short.g));
+
+      assert(fresh.pointFromShort(short.g).eq(fresh.g));
+      assert(short.pointFromEdwards(fresh.g).eq(short.g));
+
+      assert(x25519.pointFromShort(short.g).eq(x25519.g));
+      assert(short.pointFromMont(x25519.g).eq(short.g));
+
+      const short2 = x25519.toShort(x25519.field(2), true);
+
+      assert(short2.a.eq(short.a));
+      assert(short2.b.eq(short.b));
+      assert(short2.g.eq(short.g));
+
+      assert(short2.isIsomorphic(x25519));
+      assert(x25519.isIsomorphic(short2));
+      assert(short2.pointFromMont(x25519.g).eq(short2.g));
+      assert(x25519.pointFromShort(short2.g).eq(x25519.g));
+
+      const short3 = x25519.toShort();
+
+      assert(short2.isIsomorphic(short3));
+      assert(short3.isIsomorphic(short2));
+      assert(short2.pointFromShort(short3.g).eq(short2.g));
+      assert(short3.pointFromShort(short2.g).eq(short3.g));
+
+      assert(ed25519.isIsomorphic(short3));
+      assert(short3.isIsomorphic(ed25519));
+      assert(ed25519.pointFromShort(short3.g).eq(ed25519.g));
+      assert(short3.pointFromEdwards(ed25519.g).eq(short3.g));
     });
 
     it('should test mont isomorphism (1)', () => {
