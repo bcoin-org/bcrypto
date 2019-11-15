@@ -2357,9 +2357,44 @@ describe('Elliptic', function() {
       assert(g3.eq(twist448.g));
     });
 
-    it('should test wei25519 equivalence', () => {
+    it('should test wei25519 equivalence (1)', () => {
       const wei25519 = new extra.WEI25519();
       const ed25519 = new curves.ED25519();
+      const x25519 = new curves.X25519();
+
+      assert(wei25519.jinv().eq(ed25519.jinv()));
+      assert(x25519.jinv().eq(ed25519.jinv()));
+      assert(x25519.isIsomorphic(wei25519));
+      assert(x25519.isIsomorphic(ed25519));
+
+      for (let i = 0; i < 10; i++) {
+        const we = wei25519.g.mul(new BN(i));
+        const mo = x25519.g.toX().mul(new BN(i));
+        const ma = x25519.g.mul(new BN(i));
+        const ed = ed25519.g.mul(new BN(i));
+        const sign = ma.sign();
+
+        assert(wei25519.pointFromShort(we).eq(we));
+        assert(wei25519.pointFromMont(mo.toP(sign)).eq(we));
+        assert(wei25519.pointFromMont(ma).eq(we));
+        assert(wei25519.pointFromEdwards(ed).eq(we));
+
+        assert(x25519.pointFromShort(we).toX().eq(mo));
+        assert(x25519.pointFromMont(mo.toP(sign)).toX().eq(mo));
+        assert(x25519.pointFromMont(ma).eq(ma));
+        assert(x25519.pointFromEdwards(ed).toX().eq(mo));
+
+        assert(ed25519.pointFromShort(we).eq(ed));
+        assert(ed25519.pointFromMont(mo.toP(sign)).eq(ed));
+        assert(ed25519.pointFromMont(ma).eq(ed));
+        assert(ed25519.pointFromEdwards(ed).eq(ed));
+      }
+    });
+
+    it('should test wei25519 equivalence (2)', () => {
+      const ed25519 = new curves.ED25519();
+      const ed = new curves.ED25519();
+      const wei25519 = ed.toShort(ed.field(2));
       const x25519 = new curves.X25519();
 
       assert(wei25519.jinv().eq(ed25519.jinv()));
@@ -2408,6 +2443,20 @@ describe('Elliptic', function() {
       assert(wei.jinv().eq(ed25519.jinv()));
       assert(mont.isIsomorphic(wei));
       assert(mont.isIsomorphic(ed25519));
+    });
+
+    it('should test iso448 creation', () => {
+      const x448 = new curves.X448();
+      const iso448 = x448.toEdwards(x448.one, true, false);
+      const expect = new extra.ISO448();
+
+      assert(iso448.a.eq(expect.a));
+      assert(iso448.d.eq(expect.d));
+      assert(iso448.g.eq(expect.g));
+      assert(iso448.pointFromMont(x448.g).eq(iso448.g));
+      assert(x448.pointFromEdwards(iso448.g).eq(x448.g));
+      assert(x448.isIsomorphic(iso448, true));
+      assert(iso448.isIsomorphic(x448, true));
     });
 
     it('should test x25519 creation (1)', () => {
