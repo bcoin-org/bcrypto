@@ -3199,6 +3199,11 @@ describe('Elliptic', function() {
     });
 
     it('should test unified addition', () => {
+      // Cases:
+      //
+      //   M == 0, R == 0: X1 != X2, Y1 == -Y2
+      //   M == 0, R != 0: X1 == X2, Y1 == -Y2
+      //   M != 0, R == 0: X1 != X2, Y1 == Y2
       const curve = new curves.SECP256K1();
 
       const vectors = [
