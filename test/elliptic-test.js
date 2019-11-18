@@ -3198,7 +3198,7 @@ describe('Elliptic', function() {
       assert(p1.eq(q1));
     });
 
-    it('should test unified addition', () => {
+    it('should test unified addition (secp256k1)', () => {
       // Cases:
       //
       //   M == 0, R == 0: X1 != X2, Y1 == -Y2
@@ -3518,16 +3518,29 @@ describe('Elliptic', function() {
       }
     });
 
-    it('should test edwards unified addition', () => {
+    it('should test unified addition', () => {
+      const p256 = new curves.P256();
+      const bp256 = new curves.BRAINPOOLP256();
+      const secp256k1 = new curves.SECP256K1();
+      const wei25519 = new extra.WEI25519();
+      const x25519 = new curves.X25519();
       const ed25519 = new curves.ED25519();
       const ed448 = new curves.ED448();
 
-      for (const curve of [ed25519, ed448]) {
+      for (const curve of [p256,
+                           bp256,
+                           secp256k1,
+                           wei25519,
+                           x25519,
+                           ed25519,
+                           ed448]) {
         const p = curve.randomPoint(rng);
         const q = curve.randomPoint(rng);
         const o = curve.point();
+        const pj = p.randomize(rng);
+        const qj = q.randomize(rng);
+        const oj = o.randomize(rng);
 
-        // Test edge cases.
         assert(p.uadd(q).eq(p.add(q)));
         assert(q.uadd(p).eq(p.add(q)));
         assert(p.uadd(p).eq(p.dbl()));
@@ -3540,6 +3553,39 @@ describe('Elliptic', function() {
         assert(o.uadd(p).eq(p));
         assert(q.uadd(o).eq(q));
         assert(o.uadd(q).eq(q));
+        assert(o.uadd(o).eq(o));
+
+        assert(pj.uadd(qj).eq(pj.add(qj)));
+        assert(qj.uadd(pj).eq(pj.add(qj)));
+        assert(pj.uadd(pj).eq(pj.dbl()));
+        assert(qj.uadd(qj).eq(qj.dbl()));
+        assert(pj.udbl().eq(pj.dbl()));
+        assert(qj.udbl().eq(qj.dbl()));
+        assert(pj.uadd(pj.neg()).eq(oj));
+        assert(qj.uadd(qj.neg()).eq(oj));
+        assert(pj.uadd(oj).eq(pj));
+        assert(oj.uadd(pj).eq(pj));
+        assert(qj.uadd(oj).eq(qj));
+        assert(oj.uadd(qj).eq(qj));
+        assert(oj.uadd(oj).eq(oj));
+      }
+
+      {
+        const [x] = wei25519._findRS();
+        const p = wei25519.pointFromX(x);
+        const j = p.randomize(rng);
+
+        assert(p.uadd(p).isInfinity());
+        assert(p.udbl().isInfinity());
+        assert(j.uadd(j).isInfinity());
+        assert(j.udbl().isInfinity());
+      }
+
+      {
+        const p = x25519.pointFromX(x25519.zero);
+
+        assert(p.uadd(p).isInfinity());
+        assert(p.udbl().isInfinity());
       }
     });
 
@@ -4260,9 +4306,11 @@ describe('Elliptic', function() {
       assert(y.eq(v));
     });
 
-    it('should mul by cofactor', () => {
+    it('should mul by cofactor (1)', () => {
       const curve = new curves.ED25519();
-      const p1 = curve.randomPoint(rng);
+      const t = curve.pointFromY(curve.one.redNeg());
+      const p0 = curve.randomPoint(rng);
+      const p1 = p0.add(t);
       const p2 = p1.mul(curve.h);
       const p3 = p1.mulSimple(curve.h);
       const p4 = p1.mulConst(curve.h);
@@ -4271,6 +4319,23 @@ describe('Elliptic', function() {
       assert(p2.eq(p3));
       assert(p3.eq(p4));
       assert(p4.eq(p5));
+      assert(p1.mulH().divH().eq(p0));
+    });
+
+    it('should mul by cofactor (2)', () => {
+      const curve = new curves.X25519();
+      const t = curve.pointFromX(curve.zero);
+      const p0 = curve.randomPoint(rng);
+      const p1 = p0.add(t);
+      const p2 = p1.mul(curve.h);
+      const p3 = p1.mulSimple(curve.h);
+      const p4 = p1.mulConst(curve.h);
+      const p5 = p1.mulH();
+
+      assert(p2.eq(p3));
+      assert(p3.eq(p4));
+      assert(p4.eq(p5));
+      assert(p1.mulH().divH().eq(p0));
     });
 
     it('should check for small order points (ed25519)', () => {
