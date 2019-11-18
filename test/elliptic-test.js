@@ -83,7 +83,7 @@ function checkCurve(curve) {
   assert(curve._wnafMulAdd(4, [curve.g, a], [k, k]).eq(g.dbl()));
 
   // Test Shamir's trick (precomp + JSF).
-  assert(curve._wnafMulAdd(4, [curve.g, a, a], [k, k, k]).eq(g.trpl()));
+  assert(curve._wnafMulAdd(4, [curve.g, a, a], [k, k, k]).eq(g.dbl().add(g)));
 }
 
 function checkMont(curve) {
@@ -119,21 +119,15 @@ describe('Elliptic', function() {
         // Quick sanity test.
         const p = curve.g;
         const j = curve.g.toJ();
-        const tp = p.trpl();
-        const tj = j.trpl();
+        const tp = p.dbl().add(p);
+        const tj = j.dbl().add(j);
 
         assert(p.add(p).eq(p.dbl()));
         assert(j.add(j).eq(j.dbl()));
         assert(j.add(p).eq(j.dbl()));
 
-        assert(p.trpl().eq(p.dbl().add(p)));
-        assert(j.trpl().eq(j.dbl().add(j)));
-        assert(j.trpl().add(p).eq(j.dblp(2)));
-
         assert(p.dbl().validate());
         assert(j.dbl().validate());
-        assert(p.trpl().validate());
-        assert(j.trpl().validate());
 
         assert(p.dbl().eq(p.uadd(p)));
         assert(j.dbl().eq(j.uadd(j)));
@@ -221,7 +215,6 @@ describe('Elliptic', function() {
           const ap = g.mul(ak);
 
           assert(g.dbl().eq(g.mul(new BN(2))));
-          assert(g.diffTrpl(g).eq(g.mul(new BN(3))));
 
           assert(ap.validate());
           assert.equal(ap.getX().toString(16), vector.a.x);
@@ -1022,10 +1015,6 @@ describe('Elliptic', function() {
       assert(p.toJ().dbl().toP().validate());
       assert(p.mul(s).validate());
 
-      const j = p.toJ();
-
-      assert(j.trpl().eq(j.dbl().add(j)));
-
       // Endomorphism test
       assert(curve.endo);
 
@@ -1538,11 +1527,11 @@ describe('Elliptic', function() {
       assert(curve.g.mulConst(new BN(0)).isInfinity());
       assert(curve.g.mulConst(new BN(-1)).eq(curve.g.neg()));
       assert(curve.g.mulConst(new BN(-2)).eq(curve.g.dbl().neg()));
-      assert(curve.g.mulConst(new BN(-3)).eq(curve.g.trpl().neg()));
+      assert(curve.g.mulConst(new BN(-3)).eq(curve.g.dbl().add(curve.g).neg()));
       assert(curve.g.mulConst(new BN(-4)).eq(curve.g.dbl().dbl().neg()));
       assert(curve.g.mulConst(new BN(1)).eq(curve.g));
       assert(curve.g.mulConst(new BN(2)).eq(curve.g.dbl()));
-      assert(curve.g.mulConst(new BN(3)).eq(curve.g.trpl()));
+      assert(curve.g.mulConst(new BN(3)).eq(curve.g.dbl().add(curve.g)));
       assert(curve.g.mulConst(new BN(4)).eq(curve.g.dbl().dbl()));
       assert(curve.g.mulConst(curve.n).isInfinity());
       assert(curve.g.mulConst(curve.n.add(curve.n)).isInfinity());
@@ -1550,13 +1539,13 @@ describe('Elliptic', function() {
       assert(curve.g.mulConst(curve.n.addn(1).add(curve.n)).eq(curve.g));
       assert(curve.g.mulConst(curve.n.addn(2)).eq(curve.g.dbl()));
       assert(curve.g.mulConst(curve.n.addn(2).add(curve.n)).eq(curve.g.dbl()));
-      assert(curve.g.mulConst(curve.n.addn(3)).eq(curve.g.trpl()));
+      assert(curve.g.mulConst(curve.n.addn(3)).eq(curve.g.dbl().add(curve.g)));
       assert(curve.g.mulConst(curve.n.addn(4)).eq(curve.g.dbl().dbl()));
       assert(curve.g.mulConst(curve.n.subn(1)).eq(curve.g.neg()));
       assert(curve.g.mulConst(curve.n.subn(1).add(curve.n)).eq(curve.g.neg()));
       assert(curve.g.mulConst(curve.n.subn(2)).eq(curve.g.dbl().neg()));
       assert(curve.g.mulConst(curve.n.subn(2).add(curve.n)).eq(curve.g.dbl().neg()));
-      assert(curve.g.mulConst(curve.n.subn(3)).eq(curve.g.trpl().neg()));
+      assert(curve.g.mulConst(curve.n.subn(3)).eq(curve.g.dbl().add(curve.g).neg()));
       assert(curve.g.mulConst(curve.n.subn(4)).eq(curve.g.dbl().dbl().neg()));
       assert(curve.g.mulConst(curve.n.muln(2)).isInfinity());
       assert(curve.g.mulConst(curve.n.neg()).isInfinity());
@@ -1605,11 +1594,11 @@ describe('Elliptic', function() {
       assert(curve.g.mulConst(new BN(0), rng).isInfinity());
       assert(curve.g.mulConst(new BN(-1), rng).eq(curve.g.neg()));
       assert(curve.g.mulConst(new BN(-2)).eq(curve.g.dbl().neg()));
-      assert(curve.g.mulConst(new BN(-3)).eq(curve.g.trpl().neg()));
+      assert(curve.g.mulConst(new BN(-3)).eq(curve.g.dbl().add(curve.g).neg()));
       assert(curve.g.mulConst(new BN(-4)).eq(curve.g.dbl().dbl().neg()));
       assert(curve.g.mulConst(new BN(1), rng).eq(curve.g));
       assert(curve.g.mulConst(new BN(2), rng).eq(curve.g.dbl()));
-      assert(curve.g.mulConst(new BN(3), rng).eq(curve.g.trpl()));
+      assert(curve.g.mulConst(new BN(3), rng).eq(curve.g.dbl().add(curve.g)));
       assert(curve.g.mulConst(new BN(4), rng).eq(curve.g.dbl().dbl()));
       assert(curve.g.mulConst(curve.n, rng).isInfinity());
       assert(curve.g.mulConst(curve.n.add(curve.n), rng).isInfinity());
@@ -1617,13 +1606,13 @@ describe('Elliptic', function() {
       assert(curve.g.mulConst(curve.n.addn(1).add(curve.n), rng).eq(curve.g));
       assert(curve.g.mulConst(curve.n.addn(2), rng).eq(curve.g.dbl()));
       assert(curve.g.mulConst(curve.n.addn(2).add(curve.n), rng).eq(curve.g.dbl()));
-      assert(curve.g.mulConst(curve.n.addn(3), rng).eq(curve.g.trpl()));
+      assert(curve.g.mulConst(curve.n.addn(3), rng).eq(curve.g.dbl().add(curve.g)));
       assert(curve.g.mulConst(curve.n.addn(4), rng).eq(curve.g.dbl().dbl()));
       assert(curve.g.mulConst(curve.n.subn(1), rng).eq(curve.g.neg()));
       assert(curve.g.mulConst(curve.n.subn(1).add(curve.n), rng).eq(curve.g.neg()));
       assert(curve.g.mulConst(curve.n.subn(2), rng).eq(curve.g.dbl().neg()));
       assert(curve.g.mulConst(curve.n.subn(2).add(curve.n), rng).eq(curve.g.dbl().neg()));
-      assert(curve.g.mulConst(curve.n.subn(3), rng).eq(curve.g.trpl().neg()));
+      assert(curve.g.mulConst(curve.n.subn(3), rng).eq(curve.g.dbl().add(curve.g).neg()));
       assert(curve.g.mulConst(curve.n.subn(4), rng).eq(curve.g.dbl().dbl().neg()));
       assert(curve.g.mulConst(curve.n.muln(2), rng).isInfinity());
       assert(curve.g.mulConst(curve.n.neg(), rng).isInfinity());
@@ -2267,7 +2256,6 @@ describe('Elliptic', function() {
 
         for (const p of [p1, p2]) {
           assert(p.add(p).eq(p.dbl()));
-          assert(p.trpl().eq(p.dbl().add(p)));
           assert(p.dbl().validate());
         }
 
@@ -2306,7 +2294,6 @@ describe('Elliptic', function() {
 
         for (const p of [p1, p2]) {
           assert(p.add(p).eq(p.dbl()));
-          assert(p.trpl().eq(p.dbl().add(p)));
           assert(p.dbl().validate());
         }
 
@@ -3388,12 +3375,9 @@ describe('Elliptic', function() {
         assert(pj.zaddc(qj)[0].eq(rj));
         assert(pj.zdblu()[0].eq(pj.dbl()));
         assert(qj.zdblu()[0].eq(qj.dbl()));
-        assert(pj.ztrplu()[0].eq(pj.trpl()));
-        assert(qj.ztrplu()[0].eq(qj.trpl()));
         assert(pj.zaddu(pj.neg())[0].eq(oj));
         assert(pj.zaddc(pj.neg())[0].eq(oj));
         assert(oj.zdblu()[0].eq(oj));
-        assert(oj.ztrplu()[0].eq(oj));
       }
     });
 
@@ -5042,7 +5026,7 @@ describe('Elliptic', function() {
       const p = g.muln(3);
       const q = p.divn(3);
 
-      assert(p.eq(g.trpl()));
+      assert(p.eq(g.dbl().add(g)));
       assert(q.eq(g));
     });
 
@@ -5052,7 +5036,7 @@ describe('Elliptic', function() {
       const p = g.muln(-3);
       const q = p.divn(-3);
 
-      assert(p.eq(g.trpl().neg()));
+      assert(p.eq(g.dbl().add(g).neg()));
       assert(q.eq(g));
     });
 
@@ -5239,14 +5223,13 @@ describe('Elliptic', function() {
 
       assert(e521.g.validate());
       assert(e521.g.dbl().validate());
-      assert(e521.g.trpl().validate());
       assert(e521.g.dbl().dbl().validate());
       assert(e521.g.mul(e521.n).eq(inf));
       assert(!e521.g.mul(e521.n.subn(1)).eq(inf));
       assert(e521.g.mul(e521.n.addn(1)).eq(e521.g));
       assert(e521.g.mul(new BN(1)).eq(e521.g));
       assert(e521.g.mul(new BN(2)).eq(e521.g.dbl()));
-      assert(e521.g.mul(new BN(3)).eq(e521.g.trpl()));
+      assert(e521.g.mul(new BN(3)).eq(e521.g.dbl().add(e521.g)));
 
       sanityCheck(e521);
     });
