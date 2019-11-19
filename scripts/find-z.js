@@ -137,7 +137,7 @@ function findElligator1S(curve) {
     return S[2];
 
   // Pick the smallest `s`.
-  const s = S.map(s => s.fromRed()).sort(BN.cmp)[0];
+  const s = BN.min(...S.map(s => s.fromRed()));
 
   return s.toRed(curve.red);
 }
