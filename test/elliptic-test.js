@@ -4302,55 +4302,34 @@ describe('Elliptic', function() {
       assert(j.dblp(3).toP().eq(p.dblp(3)));
     });
 
-    it('should test brier-joye y recovery (affine)', () => {
+    it('should test brier-joye y recovery (short)', () => {
       const curve = new curves.P256();
       const k = curve.randomScalar(rng);
-      const expect = curve.g.mul(k);
+      const p0 = curve.randomPoint(rng);
+      const p1 = p0.jmul(k);
+      const p2 = p1.add(p0);
+      const x1 = p1.x;
+      const z1 = p1.z.redSqr();
+      const x2 = p2.x;
+      const z2 = p2.z.redSqr();
+      const r = p0.recover(x1, z1, x2, z2);
+      const j = p0.toJ().recover(x1, z1, x2, z2);
 
-      const x1 = curve.g.mul(k.addn(0)).x;
-      const x2 = curve.g.mul(k.addn(1)).x;
-
-      const p = curve.g.recover(x1, x2);
-
-      assert(p.eq(expect));
-    });
-
-    it('should test brier-joye y recovery (jacobian)', () => {
-      const curve = new curves.P256();
-      const k = curve.randomScalar(rng);
-      const expect = curve.g.jmul(k);
-
-      const x1 = curve.g.mul(k.addn(0)).x;
-      const x2 = curve.g.mul(k.addn(1)).x;
-
-      const p = curve.g.randomize(rng).recover(x1, x2);
-      const q = curve.g.toJ().recover(x1, x2);
-
-      assert(p.eq(expect));
-      assert(q.eq(expect));
+      assert(r.eq(p1));
+      assert(j.eq(p1));
     });
 
     it('should test okeya-sakurai y recovery (mont)', () => {
-      const ed25519 = new curves.ED25519();
-      const x25519 = new curves.X25519();
-      const am2 = ed25519.field(-486664);
-      const k = x25519.randomScalar(rng);
-      const p = ed25519.g.mul(k).normalize();
+      const curve = new curves.X25519();
+      const k = curve.randomScalar(rng);
+      const p0 = curve.randomPoint(rng);
+      const p1 = p0.mul(k);
+      const p2 = p1.add(p0);
+      const x1 = p1.toX().randomize(rng);
+      const x2 = p2.toX().randomize(rng);
+      const r = p0.recover(x1, x2);
 
-      // u = (1 + y) / (1 - y)
-      const u = p.z.redAdd(p.y).redMul(p.z.redSub(p.y).redInvert());
-
-      // v = sqrt(-a - 2) * u / x
-      const v = am2.redSqrt().redINeg().redMul(u.redMul(p.x.redInvert()));
-
-      const p1 = x25519.g.toX().mulSimple(k.addn(0));
-      const p2 = x25519.g.toX().mulSimple(k.addn(1));
-
-      // Returns an affinized X and Y.
-      const {x, y} = x25519.g.recover(p1, p2);
-
-      assert(x.eq(u));
-      assert(y.eq(v));
+      assert(r.eq(p1));
     });
 
     it('should mul by cofactor (1)', () => {
