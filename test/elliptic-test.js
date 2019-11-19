@@ -4364,6 +4364,14 @@ describe('Elliptic', function() {
       assert(p1.mulH().divH().eq(p0));
     });
 
+    it('should mul by cofactor (3)', () => {
+      const curve = new curves.ED25519();
+      const k = curve.randomScalar(rng);
+      const e = k.mul(curve.h).mod(curve.n);
+
+      assert(curve.mulH(k).eq(e));
+    });
+
     it('should check for small order points (ed25519)', () => {
       const curve = new curves.ED25519();
 
