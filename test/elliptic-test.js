@@ -4127,6 +4127,53 @@ describe('Elliptic', function() {
       }
     });
 
+    it('should test swapping (short, mont)', () => {
+      const p256 = new curves.P256();
+      const x25519 = new curves.X25519();
+
+      for (const curve of [p256, x25519]) {
+        const p1 = curve.randomPoint(rng);
+        const p2 = curve.randomPoint(rng);
+        const q1 = p1.clone();
+        const q2 = p2.clone();
+
+        q1.swap(q2, 0);
+
+        assert(q1.clone().eq(p1.clone()));
+        assert(q2.clone().eq(p2.clone()));
+        assert(!q1.inf);
+        assert(!q2.inf);
+
+        q1.swap(q2, 1);
+
+        assert(q1.clone().eq(p2.clone()));
+        assert(q2.clone().eq(p1.clone()));
+        assert(!q1.inf);
+        assert(!q2.inf);
+      }
+
+      for (const curve of [p256, x25519]) {
+        const p1 = curve.randomPoint(rng);
+        const p2 = curve.point();
+        const q1 = p1.clone();
+        const q2 = p2.clone();
+
+        q1.swap(q2, 0);
+
+        assert(q1.clone().eq(p1.clone()));
+        assert(q2.clone().eq(p2.clone()));
+        assert(!q1.inf);
+        assert(q2.inf);
+
+        q1.swap(q2, 1);
+
+        assert(q1.clone().eq(p2.clone()));
+        assert(q2.clone().eq(p1.clone()));
+        assert(q1.inf);
+        assert(!q2.inf);
+      }
+    });
+
     it('should test swapping (jacobi, edwards)', () => {
       const secp256k1 = new curves.SECP256K1();
       const ed25519 = new curves.ED25519();
@@ -4153,7 +4200,7 @@ describe('Elliptic', function() {
       }
     });
 
-    it('should test mont swapping', () => {
+    it('should test mont swapping (mont x)', () => {
       const curve = new curves.X25519();
       const p1 = curve.randomPoint(rng).toX();
       const p2 = curve.randomPoint(rng).toX().randomize(rng);
