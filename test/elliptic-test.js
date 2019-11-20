@@ -2776,7 +2776,7 @@ describe('Elliptic', function() {
         '029122c5febb9231a42535ff7dc960d33cc0845ca61864fa657ae4587f0c4f87'
       ]);
 
-      const r2 = curve._invert1(p1, 1);
+      const r2 = curve._invert1(p1.randomize(rng), 1);
 
       assert.strictEqual(r2.fromRed().toNumber(), 1337);
 
@@ -2799,21 +2799,38 @@ describe('Elliptic', function() {
         '073d2571a3f4137c416f9acad9f974d6ebb700a7841ba0e655a5fd3cb5c43c2b'
       ]);
 
-      const u4 = curve._invert1(p4, 0);
+      const u4 = curve._invert1(p4.randomize(rng), 0);
 
       assert(u4.eq(curve.zero));
       assert(curve._elligator1(u4).eq(p4));
 
       // y + 1 = 0
       const p5 = curve.point(curve.zero, curve.one.redNeg());
-      const u5 = curve._invert1(p5, 0);
+      const u5 = curve._invert1(p5.randomize(rng), 0);
 
       assert(curve._elligator1(u5).eq(p5));
+
+      // solve(r * ((1 - t) / (1 + t)) == -(1 + ((1 - t) / (1 + t)))^2, t)
+      // solve(r * ((1 - t) / (1 + t)) + (1 + ((1 - t) / (1 + t)))^2 == 0, t)
+      // t = +-sqrt(4 / r + 1)
+
+      // +sqrt(4 / r + 1)
+      const u6 = curve.field(
+        'db45a143a82731b3f79da0767a2ad5795d14ca751205e86477dc24f45539a8',
+        16);
+
+      // -sqrt(4 / r + 1)
+      const u7 = curve.field(
+        '0724ba5ebc57d8ce4c08625f8985d52a86a2eb358aedfa179b8823db0baac64f',
+        16);
+
+      assert(curve._elligator1(u6).validate());
+      assert(curve._elligator1(u7).validate());
 
       for (let i = 0; i < 100; i++) {
         const r1 = curve.field(i);
         const p1 = curve._elligator1(r1);
-        const r2 = curve._invert1(p1, i);
+        const r2 = curve._invert1(p1.randomize(rng), i);
         const p2 = curve._elligator1(r2);
 
         assert(curve._elligator1(r1.redNeg()).eq(p1));
@@ -4300,6 +4317,29 @@ describe('Elliptic', function() {
       assert(j.dblp(1).toP().eq(p.dblp(1)));
       assert(j.dblp(2).toP().eq(p.dblp(2)));
       assert(j.dblp(3).toP().eq(p.dblp(3)));
+    });
+
+    it('should test projective validation (mont)', () => {
+      const curve = new curves.X25519();
+
+      for (let i = 0; i < 100; i++) {
+        const x = curve.randomField(rng);
+        const valid = curve.solveY2(x).redJacobi() >= 0;
+        const p = curve.xpoint(x).randomize(rng);
+
+        assert.strictEqual(p.validate(), valid);
+      }
+    });
+
+    it('should test zdblu with scaled points', () => {
+      const curve = new curves.P256();
+      const p = curve.randomPoint(rng).toJ();
+      const q = p.randomize(rng);
+      const [r0, p0] = p.zdblu();
+      const [r1, p1] = q.zdblu();
+
+      assert(r1.eq(r0));
+      assert(p1.eq(p0));
     });
 
     it('should test brier-joye y recovery (short)', () => {

@@ -6884,6 +6884,56 @@ describe('BN.js', function() {
         }
       }
     });
+
+    it('should test quadratic residuosity', () => {
+      const red = BN.red('p25519');
+      const qnrs = [];
+      const qrs = [];
+
+      while (qnrs.length < 100) {
+        const x = BN.random(rng, 1, red.m).toRed(red);
+
+        if (x.redJacobi() === -1)
+          qnrs.push(x);
+      }
+
+      while (qrs.length < 100) {
+        const x = BN.random(rng, 1, red.m).toRed(red);
+
+        if (x.redJacobi() === 1)
+          qrs.push(x);
+      }
+
+      // QNR * QNR = QR
+      // -1 * -1 = 1
+      for (let i = 0; i < qnrs.length; i += 2) {
+        const x1 = qnrs[i + 0];
+        const x2 = qnrs[i + 1];
+        const x3 = x1.redMul(x2);
+
+        assert(x3.redJacobi() === 1);
+      }
+
+      // QR * QR = QR
+      // 1 * 1 = 1
+      for (let i = 0; i < qrs.length; i += 2) {
+        const x1 = qrs[i + 0];
+        const x2 = qrs[i + 1];
+        const x3 = x1.redMul(x2);
+
+        assert(x3.redJacobi() === 1);
+      }
+
+      // QR * QNR = QNR
+      // 1 * -1 = -1
+      for (let i = 0; i < qnrs.length; i++) {
+        const x1 = qrs[i];
+        const x2 = qnrs[i];
+        const x3 = x1.redMul(x2);
+
+        assert(x3.redJacobi() === -1);
+      }
+    });
   });
 
   describe('BN.js/Slow DH test', () => {
