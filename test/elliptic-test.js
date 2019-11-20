@@ -2778,6 +2778,29 @@ describe('Elliptic', function() {
     it('should test elligator 1', () => {
       const curve = new extra.ED1174();
 
+      {
+        // c = 2 / s^2
+        // r = c + 1 / c
+        const {s, is, i2, two} = curve;
+        const c = two.redDiv(s.redSqr());
+        const ic = c.redInvert();
+        const r = c.redAdd(c.redInvert());
+        const ic2 = c.redSqr().redInvert();
+
+        // c = 2 / s^2 = 2 * (1 / s)^2
+        // 1 / c = s^2 / 2
+        // 1 / c^2 = (1 / c)^2
+        const c_ = is.redSqr().redIMuln(2);
+        const ic_ = s.redSqr().redMul(i2);
+        const r_ = c_.redAdd(ic_);
+        const ic2_ = ic_.redSqr();
+
+        assert(c_.eq(c));
+        assert(ic_.eq(ic));
+        assert(r_.eq(r));
+        assert(ic2_.eq(ic2));
+      }
+
       const r1 = curve.field(1337);
       const p1 = curve._elligator1(r1);
 
@@ -2972,6 +2995,22 @@ describe('Elliptic', function() {
       const p = curve.pointFromUniform(u);
 
       assert(p.validate());
+
+      {
+        // -b * (1 / a) == -b / a
+        const a = curve.b.redNeg().redMul(curve.ia);
+        const b = curve.b.redNeg().redDiv(curve.a);
+
+        assert(a.eq(b));
+      }
+
+      {
+        // b * (1 / z) * (1 / a) == b / (z * a)
+        const a = curve.b.redMul(curve.iz).redMul(curve.ia);
+        const b = curve.b.redDiv(curve.z.redMul(curve.a));
+
+        assert(a.eq(b));
+      }
     });
 
     it('should test icart\'s method', () => {
@@ -2980,6 +3019,14 @@ describe('Elliptic', function() {
       const p = curve._icart(u);
 
       assert(p.validate());
+
+      {
+        // (1 / 3)^3 == 1 / 27
+        const a = curve.i3.redSqr().redMul(curve.i3);
+        const b = curve.field(27).redInvert();
+
+        assert(a.eq(b));
+      }
     });
 
     it('should test shallue-van de woestijne encoding', () => {
@@ -3030,6 +3077,31 @@ describe('Elliptic', function() {
       const q = svdw(u);
 
       assert(p.eq(q));
+
+      {
+        // sqrt(-3 * z^2)
+        const c = curve.z.redSqr().redIMuln(-3).redSqrt();
+
+        assert(curve.c.eq(c));
+      }
+
+      {
+        // (1 / 3) * (1 / z)^2 == 1 / (3 * z^2)
+        const a = curve.i3.redMul(curve.iz.redSqr());
+        const b = curve.z.redSqr().redIMuln(3).redInvert();
+
+        assert(a.eq(b));
+      }
+
+      {
+        // (1 / 3) * (1 / z)^2 == 1 / (3 * z^2)
+        const z = curve.randomField(rng);
+        const iz = z.redInvert();
+        const a = curve.i3.redMul(iz.redSqr());
+        const b = z.redSqr().redIMuln(3).redInvert();
+
+        assert(a.eq(b));
+      }
     });
 
     it('should invert shallue-van de woestijne', () => {
@@ -3206,6 +3278,7 @@ describe('Elliptic', function() {
       // Satisfies jacobi(z) == -1
       // and jacobi(g(b / (z * a))) == 1.
       wei.z = wei.field(-3);
+      wei.iz = wei.z.redInvert();
 
       assert(!wei.z.redIsSquare());
       assert(wei.solveY2(wei.b.redMul(zai)).redIsSquare());

@@ -33,6 +33,9 @@ class SECP192K1 extends ShortCurve {
       h: '1',
       // SVDW
       z: '1',
+      // sqrt(-3)
+      c: ['88f52dcd 8c8f2c7c 5ef013fd 5568d28f',
+          'e6961547 941774e9'],
       g: [
         ['db4ff10e c057e9ae 26b07d02 80b7f434',
          '1da5d1b1 eae06c7d'],
@@ -70,6 +73,9 @@ class SECP224K1 extends ShortCurve {
       h: '1',
       // SVDW
       z: '-1',
+      // sqrt(-3)
+      c: ['03e2f1ff 4962f913 cdee75d9 c555aaf5',
+          'e9814e91 6c790612 8f64fc09'],
       g: [
         ['a1455b33 4df099df 30fc28a1 69a467e9',
          'e47075a9 0f7e650e b6b7a45c'],
@@ -177,6 +183,9 @@ class BN2254 extends ShortCurve {
       h: '1',
       // SVDW
       z: '-1',
+      // sqrt(-3)
+      c: ['25236482 40000001 26cd8900 00000003',
+          'cf0f0000 00000006 0c000000 00000004'],
       g: ['-1', '1', pre]
     });
   }

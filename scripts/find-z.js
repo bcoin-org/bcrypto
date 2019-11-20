@@ -10,13 +10,12 @@ require('../test/util/curves');
 function printZ(curve) {
   assert(curve instanceof elliptic.Curve);
 
+  const size = (((curve.fieldBits + 7) >>> 3) + 3) & -4;
   const alg = getAlg(curve);
   const s = tryFindS(curve);
   const z = findZ(curve);
 
   if (s != null) {
-    const size = (((curve.fieldBits + 7) >>> 3) + 3) & -4;
-
     let str = s.fromRed().toString(16);
 
     while (str.length < size * 2)
@@ -25,16 +24,25 @@ function printZ(curve) {
     console.log('%s S: %s (elligator1)', curve.id, str);
   }
 
-  let sign = '';
+  const n = z.fromRed();
 
-  if (z.cmp(curve.p.ushrn(1)) > 0) {
-    sign = '-';
-    z.redINeg();
-  }
+  if (z.redIsHigh())
+    n.isub(curve.p);
 
-  const str = sign + z.fromRed().toString(16);
+  const str = n.toString(16);
 
   console.log('%s Z: %s (%s)', curve.id, str, alg);
+
+  if (alg === 'svdw') {
+    const c = z.redSqr().redIMuln(-3).redSqrt();
+
+    let str = c.fromRed().toString(16);
+
+    while (str.length < size * 2)
+      str = '0' + str;
+
+    console.log('%s C: %s (%s)', curve.id, str, alg);
+  }
 }
 
 function getAlg(curve) {
