@@ -860,7 +860,7 @@ describe('Elliptic', function() {
 
     it('should get correct endomorphism', () => {
       // See: Guide to Elliptic Curve Cryptography,
-      // Example 3.73, page 125, section 3.5.
+      // Example 3.73, Page 125, Section 3.5.
       const curve = new ShortCurve({
         id: 'P160', // NID_wap_wsg_idm_ecid_wtls9
         p: 'fffffffffffffffffffffffffffffffffffc808f',
@@ -875,113 +875,125 @@ describe('Elliptic', function() {
         ]
       });
 
-      assert(curve.endo);
+      const vector = {
+        beta: new BN('771473166210819779552257112796337671037538143582', 10),
+        lambda: new BN('903860042511079968555273866340564498116022318806', 10),
+        a1: new BN('788919430192407951782190', 10),
+        b1: new BN('-602889891024722752429129', 10),
+        a2: new BN('602889891024722752429129', 10),
+        b2: new BN('1391809321217130704211319', 10),
+        g1: new BN('182427231350571755662385731766', 10),
+        g2: new BN('-79021983796392460606390678378', 10),
 
-      // Our code picks different beta/lambda values.
-      assert.deepStrictEqual(curve.endo.toJSON(), {
-        beta: '78ddf260453f1c29e9ad657a99290ffb7aa67330',
-        lambda: '61ad83913c4f1cba4aa27087d04e9fa19257885c',
-        basis: [
-          { a: '7faab9faa7718443dc49', b: '-a70f68731db66985312e' },
-          { a: '0126ba226dc527edc90d77', b: '7faab9faa7718443dc49' }
-        ],
-        pre: [
-          'ff5573f54ee30887b890336a',
-          '-014e1ed0e63b6cd30a6259a54b'
-        ]
-      });
+        // Example 3.75, Page 127, Section 3.5.
+        rl: new BN('2180728751409538655993509', 10),
+        tl: new BN('-186029539167685199353061', 10),
+        rl1: new BN('788919430192407951782190', 10),
+        tl1: new BN('602889891024722752429129', 10),
+        rl2: new BN('602889891024722752429129', 10),
+        tl2: new BN('-1391809321217130704211319', 10),
 
-      const beta = new BN('771473166210819779552257112796337671037538143582', 10);
-      const lambda = new BN('903860042511079968555273866340564498116022318806', 10);
-      const a1e = new BN('788919430192407951782190', 10);
-      const b1e = new BN('-602889891024722752429129', 10);
-      const a2e = new BN('602889891024722752429129', 10);
-      const b2e = new BN('1391809321217130704211319', 10);
-      const g1e = new BN('182427231350571755662385731766', 10);
-      const g2e = new BN('-79021983796392460606390678378', 10);
+        k: new BN('965486288327218559097909069724275579360008398257', 10),
+        c1: new BN('919446671339517233512759', 10),
+        c2: new BN('398276613783683332374156', 10),
+        k1: new BN('-98093723971803846754077', 10),
+        k2: new BN('381880690058693066485147', 10),
 
-      // We pick index 0 when the example assumes 1.
-      // Note that secp256k1 picks 1 (if we ever
-      // want to switch to always choosing 1).
-      curve.endo.beta = beta.toRed(curve.red);
-      curve.endo.lambda = lambda.clone();
-      curve.endo.basis[0].a = a1e.clone();
-      curve.endo.basis[0].b = b1e.clone();
-      curve.endo.basis[1].a = a2e.clone();
-      curve.endo.basis[1].b = b2e.clone();
-      curve.endo.pre[0] = g1e.clone();
-      curve.endo.pre[1] = g2e.clone();
+        x: new BN('1313336216859441506280637003930462525814923264244', 10),
+        y: new BN('935492494656886138804488857832238799944592224261', 10)
+      };
 
-      assert(curve.endo.beta.fromRed().eq(beta));
-      assert(curve.endo.lambda.eq(lambda));
+      curve.endo = null;
+      curve.endo = curve._getEndomorphism(1);
 
-      assert(curve._getEndoRoots(curve.p)[1].eq(beta));
-      assert(curve._getEndoRoots(curve.n)[0].eq(lambda));
-
-      // Should be cube roots.
-      assert(beta.powmn(3, curve.p).cmpn(1) === 0);
-      assert(lambda.powmn(3, curve.n).cmpn(1) === 0);
-
-      // Example 3.75, page 127, section 3.5.
-      const rle = new BN('2180728751409538655993509', 10);
-      const tle = new BN('-186029539167685199353061', 10);
-      const rl1e = new BN('788919430192407951782190', 10);
-      const tl1e = new BN('602889891024722752429129', 10);
-      const rl2e = new BN('602889891024722752429129', 10);
-      const tl2e = new BN('-1391809321217130704211319', 10);
-
-      const [rl, tl, rl1, tl1, rl2, tl2] = curve._egcdSqrt(lambda);
-
-      assert(rl.eq(rle));
-      assert(tl.eq(tle));
-      assert(rl1.eq(rl1e));
-      assert(tl1.eq(tl1e));
-      assert(rl2.eq(rl2e));
-      assert(tl2.eq(tl2e));
-
-      const [v1, v2] = curve._getEndoBasis(lambda);
-
-      assert(v1.a.eq(a1e));
-      assert(v1.b.eq(b1e));
-      assert(v2.a.eq(a2e));
-      assert(v2.b.eq(b2e));
-
-      const [g1, g2] = curve._getEndoPrecomp(curve.endo.basis);
-
-      assert(g1.eq(g1e));
-      assert(g2.eq(g2e));
-
-      const k = new BN('965486288327218559097909069724275579360008398257', 10);
-      const c1e = new BN('919446671339517233512759', 10);
-      const c2e = new BN('398276613783683332374156', 10);
-      const k1e = new BN('-98093723971803846754077', 10);
-      const k2e = new BN('381880690058693066485147', 10);
+      assert(curve.endo.beta.fromRed().eq(vector.beta));
+      assert(curve.endo.lambda.eq(vector.lambda));
+      assert(curve.endo.basis[0].a.eq(vector.a1));
+      assert(curve.endo.basis[0].b.eq(vector.b1));
+      assert(curve.endo.basis[1].a.eq(vector.a2));
+      assert(curve.endo.basis[1].b.eq(vector.b2));
+      assert(curve.endo.pre[0].eq(vector.g1));
+      assert(curve.endo.pre[1].eq(vector.g2));
 
       {
-        const c1 = v2.b.mul(k).divRound(curve.n);
-        const c2 = v1.b.neg().mul(k).divRound(curve.n);
+        const [, beta] = curve._getEndoRoots(curve.p);
+        const [, lambda] = curve._getEndoRoots(curve.n);
 
-        assert(c1.eq(c1e));
-        assert(c2.eq(c2e));
+        assert(beta.eq(vector.beta));
+        assert(lambda.eq(vector.lambda));
+
+        // Should be cube roots of unity.
+        assert(beta.powmn(3, curve.p).cmpn(1) === 0);
+        assert(lambda.powmn(3, curve.n).cmpn(1) === 0);
       }
 
       {
+        const {lambda} = vector;
+        const [rl, tl, rl1, tl1, rl2, tl2] = curve._egcdSqrt(lambda);
+
+        assert(rl.eq(vector.rl));
+        assert(tl.eq(vector.tl));
+        assert(rl1.eq(vector.rl1));
+        assert(tl1.eq(vector.tl1));
+        assert(rl2.eq(vector.rl2));
+        assert(tl2.eq(vector.tl2));
+      }
+
+      {
+        const {lambda} = vector;
+        const [v1, v2] = curve._getEndoBasis(lambda);
+
+        assert(v1.a.eq(vector.a1));
+        assert(v1.b.eq(vector.b1));
+        assert(v2.a.eq(vector.a2));
+        assert(v2.b.eq(vector.b2));
+      }
+
+      {
+        const {basis} = curve.endo;
+        const [g1, g2] = curve._getEndoPrecomp(basis);
+
+        assert(g1.eq(vector.g1));
+        assert(g2.eq(vector.g2));
+      }
+
+      {
+        const {b1, b2, k} = vector;
+        const c1 = b2.mul(k).divRound(curve.n);
+        const c2 = b1.neg().mul(k).divRound(curve.n);
+
+        assert(c1.eq(vector.c1));
+        assert(c2.eq(vector.c2));
+      }
+
+      {
+        const {g1, g2, k} = vector;
         const c1 = k.mulShift(g1, 177);
         const c2 = k.mulShift(g2, 177).ineg();
 
-        assert(c1.eq(c1e));
-        assert(c2.eq(c2e));
+        assert(c1.eq(vector.c1));
+        assert(c2.eq(vector.c2));
       }
 
-      assert(curve.endo.basis[0].a.eq(v1.a));
-      assert(curve.endo.basis[0].b.eq(v1.b));
-      assert(curve.endo.basis[1].a.eq(v2.a));
-      assert(curve.endo.basis[1].b.eq(v2.b));
+      {
+        const {k} = vector;
+        const [k1, k2] = curve._endoSplit(k);
 
-      const [k1, k2] = curve._endoSplit(k);
+        assert(k1.eq(vector.k1));
+        assert(k2.eq(vector.k2));
+      }
 
-      assert(k1.eq(k1e));
-      assert(k2.eq(k2e));
+      {
+        const {k} = vector;
+
+        curve.precompute(rng);
+
+        const p = curve.g.mul(k);
+
+        assert(!p.isInfinity());
+        assert(p.x.fromRed().eq(vector.x));
+        assert(p.y.fromRed().eq(vector.y));
+      }
     });
 
     it('should work with secp256k1', () => {
