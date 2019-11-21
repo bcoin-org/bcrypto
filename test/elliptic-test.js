@@ -19,6 +19,7 @@ const {
 function checkCurve(curve) {
   // Verify basepoint order.
   assert(!curve.g.isInfinity(), 'Must have base point.');
+  assert(curve.g.validate(), 'Invalid base point.');
   assert(!curve.n.isZero(), 'Must have order.');
   assert(!curve.g.hasTorsion(), 'Base point must be a generator.');
   assert(curve.isElliptic(), 'Curve must be elliptic.');
@@ -587,6 +588,7 @@ describe('Elliptic', function() {
       const mont448 = new extra.MONT448();
       const jubjub = new extra.JUBJUB();
       const iso256k1 = new extra.ISO256K1();
+      const curve13318 = new extra.CURVE13318();
 
       for (const curve of [p192,
                            p224,
@@ -619,7 +621,8 @@ describe('Elliptic', function() {
                            iso448,
                            mont448,
                            jubjub,
-                           iso256k1]) {
+                           iso256k1,
+                           curve13318]) {
         sanityCheck(curve);
       }
     });
@@ -3212,6 +3215,7 @@ describe('Elliptic', function() {
       const e521 = new extra.E521();
       const mdc = new extra.MDC();
       const iso256k1 = new extra.ISO256K1();
+      const curve13318 = new extra.CURVE13318();
 
       for (const curve of [p192,
                            p224,
@@ -3237,7 +3241,8 @@ describe('Elliptic', function() {
                            m511,
                            e521,
                            mdc,
-                           iso256k1]) {
+                           iso256k1,
+                           curve13318]) {
         const p = curve.randomPoint(rng);
         const u = curve.pointToHash(p, rng);
         const q = curve.pointFromHash(u);
@@ -5353,6 +5358,12 @@ describe('Elliptic', function() {
 
       assert(curve.pointToUniform(p, 2).eq(curve.zero));
       assert(curve.pointToUniform(p, 3).eq(curve.zero));
+    });
+
+    it('should test curve13318', () => {
+      const curve = new extra.CURVE13318();
+
+      sanityCheck(curve);
     });
   });
 

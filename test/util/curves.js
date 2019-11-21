@@ -864,7 +864,7 @@ class JUBJUB extends EdwardsCurve {
 
 /**
  * ISO256K1 (3-isogenous to secp256k1)
- * https://github.com/cfrg/draft-irtf-cfrg-hash-to-curve/issues/158
+ * https://gist.github.com/chjj/09c447047d5d0b63afcbbbc484d2c882
  */
 
 class ISO256K1 extends ShortCurve {
@@ -899,6 +899,46 @@ class ISO256K1 extends ShortCurve {
   }
 }
 
+/**
+ * Curve13318
+ * https://eprint.iacr.org/2019/1166
+ * https://twitter.com/pbarreto/status/869103226276134912
+ */
+
+class CURVE13318 extends ShortCurve {
+  constructor(pre) {
+    super({
+      id: 'CURVE13318',
+      ossl: null,
+      type: 'short',
+      endian: 'be',
+      hash: 'SHA256',
+      prime: 'p25519',
+      // 2^255 - 19 (= 5 mod 8)
+      p: ['7fffffff ffffffff ffffffff ffffffff',
+          'ffffffff ffffffff ffffffff ffffffed'],
+      // -3 mod p
+      a: ['7fffffff ffffffff ffffffff ffffffff',
+          'ffffffff ffffffff ffffffff ffffffea'],
+      // 13318
+      b: '3406',
+      n: ['80000000 00000000 00000000 00000000',
+          'f4f654f8 3deb8d16 eb7d12dc 4dc2cbe3'],
+      h: '1',
+      // SSWU
+      z: '2',
+      g: [
+        // (-7, 114)
+        ['7fffffff ffffffff ffffffff ffffffff',
+         'ffffffff ffffffff ffffffff ffffffe6'],
+        ['00000000 00000000 00000000 00000000',
+         '00000000 00000000 00000000 00000072'],
+        pre
+      ]
+    });
+  }
+}
+
 /*
  * Register
  */
@@ -924,6 +964,7 @@ elliptic.register('E521', E521);
 elliptic.register('MDC', MDC);
 elliptic.register('JUBJUB', JUBJUB);
 elliptic.register('ISO256K1', ISO256K1);
+elliptic.register('CURVE13318', CURVE13318);
 
 /*
  * Expose
@@ -950,5 +991,6 @@ module.exports = {
   E521,
   MDC,
   JUBJUB,
-  ISO256K1
+  ISO256K1,
+  CURVE13318
 };
