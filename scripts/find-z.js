@@ -49,16 +49,19 @@ function getAlg(curve) {
   assert(curve instanceof elliptic.Curve);
 
   if (curve.type === 'short') {
+    if (curve.b.isZero())
+      throw new Error('Not implemented.');
+
     // a != 0, b != 0
-    if (!curve.a.isZero() && !curve.b.isZero()) {
+    if (!curve.a.isZero()) {
       // p = 2 mod 3
       if (curve.p.modrn(3) === 2)
         return 'icart';
       return 'sswu';
     }
 
-    // p = 1 mod 3, b != 0
-    if (curve.p.modrn(3) === 1 && !curve.b.isZero())
+    // p = 1 mod 3, a = 0, b != 0
+    if (curve.p.modrn(3) === 1)
       return 'svdw';
 
     throw new Error('Not implemented.');
@@ -74,12 +77,15 @@ function findZ(curve) {
   assert(curve instanceof elliptic.Curve);
 
   if (curve.type === 'short') {
+    if (curve.b.isZero())
+      throw new Error('Not implemented.');
+
     // a != 0, b != 0
-    if (!curve.a.isZero() && !curve.b.isZero())
+    if (!curve.a.isZero())
       return findSSWUZ(curve);
 
-    // p = 1 mod 3, b != 0
-    if (curve.p.modrn(3) === 1 && !curve.b.isZero())
+    // p = 1 mod 3, a = 0, b != 0
+    if (curve.p.modrn(3) === 1)
       return findSVDWZ(curve);
 
     throw new Error('Not implemented.');
@@ -153,6 +159,7 @@ function findElligator1S(curve) {
 function isElligator1S(curve, s) {
   assert(curve instanceof elliptic.Curve);
   assert(s instanceof BN);
+  assert(s.red === curve.red);
 
   try {
     getElligator1SCR(curve, s);
@@ -182,7 +189,7 @@ function getElligator1SCR(curve, s) {
   if (k0.isZero())
     throw new Error('Invalid S (s^2 - 2)(s^2 + 2) = 0).');
 
-  const c = two.redMul(s2.redInvert());
+  const c = two.redDiv(s2);
   const cm1 = c.redSub(one);
   const cp1 = c.redAdd(one);
   const k1 = c.redMul(cm1).redMul(cp1);
@@ -197,7 +204,7 @@ function getElligator1SCR(curve, s) {
 
   const dl = c.redAdd(one).redSqr().redINeg();
   const dr = c.redSub(one).redSqr();
-  const d = dl.redMul(dr.redInvert());
+  const d = dl.redDiv(dr);
 
   if (!d.eq(curve.d))
     throw new Error('Invalid D (D != d).');
@@ -271,7 +278,7 @@ function findSSWUZ(curve) {
         continue;
 
       // Criterion 4: g(b / (z * a)) is square in F(p).
-      const c = b.redMul(z.redMul(a).redInvert());
+      const c = b.redDiv(z.redMul(a));
 
       if (!curve.solveY2(c).redIsSquare())
         continue;
@@ -291,14 +298,10 @@ function findSVDWZ(curve) {
 
   for (;;) {
     for (const z of [ctr, ctr.redNeg()]) {
-      // Criterion 1: -3 * z^2 is square in F(p).
-      const c = z.redSqr().redIMuln(-3);
+      const c = z.redSqr().redIMuln(-3).redSqrt();
 
-      if (!c.redIsSquare())
-        continue;
-
-      // Criterion 2: g((sqrt(-3 * z^2) - z) / 2) is square in F(p).
-      const g = curve.solveY2(c.redSqrt().redISub(z).redMul(i2));
+      // g((sqrt(-3 * z^2) - z) / 2) must be square in F(p).
+      const g = curve.solveY2(c.redSub(z).redMul(i2));
 
       if (!g.redIsSquare())
         continue;
@@ -324,8 +327,7 @@ function findSVDWZNew(curve) {
       const gz = curve.solveY2(z);
       const gz2 = curve.solveY2(z.redNeg().redMul(i2));
       const t0 = z.redSqr().redIMuln(3).redIAdd(a.redMuln(4)).redINeg();
-      const t1 = gz.redMuln(4);
-      const hz = t0.redMul(t1.redInvert());
+      const hz = t0.redDiv(gz.redMuln(4));
 
       // Criterion 1: g(z) != 0 in F(p).
       if (gz.isZero())
