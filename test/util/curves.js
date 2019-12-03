@@ -1,3 +1,9 @@
+/*!
+ * curves.js - curve definitions for bcrypto
+ * Copyright (c) 2018-2019, Christopher Jeffrey (MIT License).
+ * https://github.com/bcoin-org/bcrypto
+ */
+
 'use strict';
 
 const elliptic = require('../../lib/js/elliptic');
@@ -103,7 +109,9 @@ class FRP256V1 extends ShortCurve {
       // (= 3 mod 4)
       p: ['f1fd178c 0b3ad58f 10126de8 ce42435b',
           '3961adbc abc8ca6d e8fcf353 d86e9c03'],
-      a: '-3',
+      // -3 mod p
+      a: ['f1fd178c 0b3ad58f 10126de8 ce42435b',
+          '3961adbc abc8ca6d e8fcf353 d86e9c00'],
       b: ['ee353fca 5428a930 0d4aba75 4a44c00f',
           'dfec0c9a e4b1a180 3075ed96 7b7bb73f'],
       n: ['f1fd178c 0b3ad58f 10126de8 ce42435b',
@@ -186,7 +194,14 @@ class BN2254 extends ShortCurve {
       // sqrt(-3)
       c: ['25236482 40000001 26cd8900 00000003',
           'cf0f0000 00000006 0c000000 00000004'],
-      g: ['-1', '1', pre]
+      g: [
+        // (-1, 1)
+        ['25236482 40000001 ba344d80 00000008',
+         '61210000 00000013 a7000000 00000012'],
+        ['00000000 00000000 00000000 00000000',
+         '00000000 00000000 00000000 00000001'],
+        pre
+      ]
     });
   }
 }
