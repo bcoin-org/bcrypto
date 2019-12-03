@@ -840,22 +840,22 @@ class JUBJUB extends EdwardsCurve {
       context: false,
       prime: null,
       // (= 1 mod 16)
-      p: '73eda753 299d7d48 3339d808 09a1d805'
-       + '53bda402 fffe5bfe ffffffff 00000001',
+      p: ['73eda753 299d7d48 3339d808 09a1d805',
+          '53bda402 fffe5bfe ffffffff 00000001'],
       a: '-1',
       // -(10240 / 10241) mod p
-      d: '2a9318e7 4bfa2b48 f5fd9207 e6bd7fd4'
-       + '292d7f6d 37579d26 01065fd6 d6343eb1',
-      n: '0e7db4ea 6533afa9 06673b01 01343b00'
-       + 'a6682093 ccc81082 d0970e5e d6f72cb7',
+      d: ['2a9318e7 4bfa2b48 f5fd9207 e6bd7fd4',
+          '292d7f6d 37579d26 01065fd6 d6343eb1'],
+      n: ['0e7db4ea 6533afa9 06673b01 01343b00',
+          'a6682093 ccc81082 d0970e5e d6f72cb7'],
       h: '8',
       // Elligator 2
       z: '5',
       g: [
         ['11dafe5d 23e12180 86a365b9 9fbf3d3b',
-         'e72f6afd 7d1f7262 3e6b0714 92d1122b'].join(''),
+         'e72f6afd 7d1f7262 3e6b0714 92d1122b'],
         ['1d523cf1 ddab1a17 93132e78 c866c0c3',
-         '3e26ba5c c220fed7 cc3f870e 59d292aa'].join(''),
+         '3e26ba5c c220fed7 cc3f870e 59d292aa'],
         pre
       ]
     });
