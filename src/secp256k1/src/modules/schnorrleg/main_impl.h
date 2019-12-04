@@ -15,7 +15,6 @@
  * (https://github.com/sipa/bips/blob/bip-schnorr/bip-schnorr.mediawiki) */
 static int secp256k1_nonce_function_schnorrleg(unsigned char *nonce32, const unsigned char *msg32, const unsigned char *key32, const unsigned char *algo16, void *data, unsigned int counter) {
     secp256k1_sha256 sha;
-    (void) data;
     (void) counter;
     VERIFY_CHECK(counter == 0);
 
@@ -27,6 +26,9 @@ static int secp256k1_nonce_function_schnorrleg(unsigned char *nonce32, const uns
      * users depending on it to avoid nonce reuse across algorithms. */
     if (algo16 != NULL) {
         secp256k1_sha256_write(&sha, algo16, 16);
+    }
+    if (data != NULL) {
+        secp256k1_sha256_write(&sha, data, 32);
     }
     secp256k1_sha256_finalize(&sha, nonce32);
     return 1;
@@ -261,7 +263,7 @@ static int secp256k1_schnorrleg_verify_batch_ecmult_callback(secp256k1_scalar *s
  *            pk: array of public keys, or NULL if there are no signatures
  *        n_sigs: number of signatures in above arrays (must be 0 if they are NULL)
  */
-int secp256k1_schnorrleg_verify_batch_init_randomizer(const secp256k1_context *ctx, secp256k1_schnorrleg_verify_ecmult_context *ecmult_context, secp256k1_sha256 *sha, const secp256k1_schnorrleg *const *sig, const unsigned char *const *msg32, const secp256k1_pubkey *const *pk, size_t n_sigs) {
+static int secp256k1_schnorrleg_verify_batch_init_randomizer(const secp256k1_context *ctx, secp256k1_schnorrleg_verify_ecmult_context *ecmult_context, secp256k1_sha256 *sha, const secp256k1_schnorrleg *const *sig, const unsigned char *const *msg32, const secp256k1_pubkey *const *pk, size_t n_sigs) {
     size_t i;
 
     if (n_sigs > 0) {
@@ -276,7 +278,7 @@ int secp256k1_schnorrleg_verify_batch_init_randomizer(const secp256k1_context *c
         secp256k1_sha256_write(sha, sig[i]->data, 64);
         secp256k1_sha256_write(sha, msg32[i], 32);
         secp256k1_ec_pubkey_serialize(ctx, buf, &buflen, pk[i], SECP256K1_EC_COMPRESSED);
-        secp256k1_sha256_write(sha, buf, 33);
+        secp256k1_sha256_write(sha, buf, buflen);
     }
     ecmult_context->ctx = ctx;
     ecmult_context->sig = sig;
@@ -297,7 +299,7 @@ int secp256k1_schnorrleg_verify_batch_init_randomizer(const secp256k1_context *c
  *        sig: array of signatures, or NULL if there are no signatures
  *     n_sigs: number of signatures in above array (must be 0 if they are NULL)
  */
-int secp256k1_schnorrleg_verify_batch_sum_s(secp256k1_scalar *s, unsigned char *chacha_seed, const secp256k1_schnorrleg *const *sig, size_t n_sigs) {
+static int secp256k1_schnorrleg_verify_batch_sum_s(secp256k1_scalar *s, unsigned char *chacha_seed, const secp256k1_schnorrleg *const *sig, size_t n_sigs) {
     secp256k1_scalar randomizer_cache[2];
     size_t i;
 
@@ -337,7 +339,7 @@ int secp256k1_schnorrleg_verify_batch(const secp256k1_context *ctx, secp256k1_sc
     ARG_CHECK(n_sigs <= SIZE_MAX / 2);
     /* Check that n_sigs is less than 2^31 to ensure the same behavior of this function on 32-bit
      * and 64-bit platforms. */
-    ARG_CHECK(n_sigs < (size_t)(1 << 31));
+    ARG_CHECK(n_sigs < ((uint32_t)1 << 31));
 
     secp256k1_sha256_initialize(&sha);
     if (!secp256k1_schnorrleg_verify_batch_init_randomizer(ctx, &ecmult_context, &sha, sig, msg32, pk, n_sigs)) {
