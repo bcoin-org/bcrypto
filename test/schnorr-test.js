@@ -104,7 +104,6 @@ describe('Schnorr', function() {
   });
 
   it('should convert key pair to ECDSA', () => {
-    // Thoughts: perhaps add an ecdsa.publicKeyToX() call?
     const priv = Buffer.from(
       'f7cbf630b0692ca8db4f85b9f8f0c7a5750be2ae6e57f1ea5dcc4b0a8280d8ac',
       'hex');
@@ -135,6 +134,9 @@ describe('Schnorr', function() {
 
     // Should get our original privkey after negating.
     assert.bufferEqual(secp256k1.privateKeyNegate(ecdsaPriv), priv);
+
+    // Should get our original pubkey with the xOnly option.
+    assert.bufferEqual(secp256k1.publicKeyExport(ecdsaPub, true), pub);
   });
 
   it('should create point from uniform bytes (svdw)', () => {
