@@ -449,7 +449,7 @@ int
 secp256k1_pubkey_to_hash(const secp256k1_context *ctx,
                          unsigned char *bytes64,
                          const secp256k1_pubkey *pubkey,
-                         const unsigned char *seed32) {
+                         const unsigned char *seed64) {
   secp256k1_rfc6979_hmac_sha256 rng;
   secp256k1_ge p, p1, p2;
   secp256k1_gej j, r;
@@ -460,7 +460,7 @@ secp256k1_pubkey_to_hash(const secp256k1_context *ctx,
     return 0;
 
   secp256k1_gej_set_ge(&j, &p);
-  secp256k1_rfc6979_hmac_sha256_initialize(&rng, seed32, 32);
+  secp256k1_rfc6979_hmac_sha256_initialize(&rng, seed64, 64);
 
   for (;;) {
     secp256k1_fe_random(&u1, &rng);

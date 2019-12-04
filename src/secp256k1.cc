@@ -648,9 +648,9 @@ NAN_METHOD(BSecp256k1::PublicKeyToHash) {
   }
 
   unsigned char output[64];
-  unsigned char seed[32];
+  unsigned char seed[64];
 
-  if (!bcrypto_random(&seed[0], 32))
+  if (!bcrypto_random(&seed[0], 64))
     return Nan::ThrowError(EC_PUBLIC_KEY_INVERT_FAIL);
 
   if (secp256k1_pubkey_to_hash(secp->ctx, output, &public_key, seed) == 0)
