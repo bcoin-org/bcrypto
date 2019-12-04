@@ -2,6 +2,7 @@
 
 const assert = require('bsert');
 const schnorr = require('../lib/js/schnorr');
+const secp256k1 = require('../lib/secp256k1');
 const rng = require('../lib/random');
 const vectors = require('./data/schnorr.json');
 
@@ -100,6 +101,40 @@ describe('Schnorr', function() {
     const cpub = schnorr.publicKeyTweakMul(pub, tweak);
 
     assert.bufferEqual(schnorr.publicKeyCreate(cpriv), cpub);
+  });
+
+  it('should convert key pair to ECDSA', () => {
+    // Thoughts: perhaps add an ecdsa.publicKeyToX() call?
+    const priv = Buffer.from(
+      'f7cbf630b0692ca8db4f85b9f8f0c7a5750be2ae6e57f1ea5dcc4b0a8280d8ac',
+      'hex');
+
+    const pub = Buffer.from(
+      '99e47cdeb906a0474f255042a36e88b6de85e17f56f9efe070fe62b35ffb819b',
+      'hex');
+
+    const odd = Buffer.from([0x03]);
+
+    // Should produce a point with odd Y.
+    assert.bufferEqual(secp256k1.publicKeyCreate(priv),
+                       Buffer.concat([odd, pub]));
+
+    const ecdsaPriv = schnorr.privateKeyConvert(priv);
+    const ecdsaPub = schnorr.publicKeyConvert(pub);
+
+    // These calls must produce a sign-aware key pair such that G*a = A.
+    assert.bufferEqual(secp256k1.publicKeyCreate(ecdsaPriv), ecdsaPub);
+
+    // Private key is negated.
+    assert.bufferEqual(ecdsaPriv,
+      '083409cf4f96d35724b07a46070f385945a2fa3840f0ae51620613824db56895');
+
+    // When normalized, the Y coordinate is even.
+    assert.bufferEqual(ecdsaPub,
+      '0299e47cdeb906a0474f255042a36e88b6de85e17f56f9efe070fe62b35ffb819b');
+
+    // Should get our original privkey after negating.
+    assert.bufferEqual(secp256k1.privateKeyNegate(ecdsaPriv), priv);
   });
 
   it('should create point from uniform bytes (svdw)', () => {
