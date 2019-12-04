@@ -31,6 +31,41 @@ describe('Schnorr', function() {
     });
   }
 
+  if (schnorr.native !== 2) {
+    it('should test RNG', () => {
+      const seed =
+        '98b777ef9034ab1e1268bfe5d9a92df4c2940a4bc0a7bd3f9edbf36821bc511b';
+
+      const expect = [
+        '0000000000000000000000000000000000000000000000000000000000000001',
+        '55aed7eb7fb4ddab3f85be80bd789b943c80080620c2843c2329e77245817fba',
+        '0e910895fa99cbd592c97dc98f81c3c86082dee4a90c7db76c12a0df291517e3',
+        'd544ca456e02513b74440fd9269b9c7b4a526880798630b6732093bc06cd707c',
+        'f71f34ec036b4d2af5aade8fcb165396a2d53c8a6901cfc8a480fc72303e5f33',
+        'd0ef0b53bea232d824fd23c3ed1a0d97fdb125ff3368b0363bd5983660a3be16'
+      ];
+
+      const {rng} = schnorr;
+      const batch = [];
+
+      for (const [msg, sig, key] of valid.slice(0, 6)) {
+        const A = schnorr.curve.decodeX(key);
+
+        batch.push([msg, sig, key, A]);
+      }
+
+      rng.init(batch);
+
+      assert.bufferEqual(rng.key, seed);
+
+      for (let i = 0; i < expect.length; i++) {
+        const k = rng.generate(i);
+
+        assert.strictEqual(k.toString(16, 64), expect[i]);
+      }
+    });
+  }
+
   it('should do batch verification', () => {
     assert.strictEqual(schnorr.verifyBatch([]), true);
     assert.strictEqual(schnorr.verifyBatch(valid), true);

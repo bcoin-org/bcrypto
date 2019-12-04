@@ -41,6 +41,36 @@ describe('Secp256k1+Schnorr Legacy', function() {
     });
   }
 
+  if (secp256k1.native !== 2) {
+    it('should test RNG', () => {
+      // Vectors generated with libsecp256k1.
+      const seed =
+        'a821cecfe4d9883cb16d6218962b068e3c39f8f35b53d6babc5b09a557f92ce8';
+
+      const expect = [
+        '0000000000000000000000000000000000000000000000000000000000000001',
+        'd56ac0a8d89b330aee239ff08df26f3e5b3dc3a02ed3024df31d5390248afd65',
+        '31bedb0a8b3f479b64748a8b127efc5a9802b908f9db082d58e35cf81582b47a',
+        '8d1727447f9272a7aff12ebc00832c6df8ac06e44b790783c6c04d5869da9363',
+        'dcab50a1aea797a56bd935f64b246ade5e24f9fcddf33be95eb80955b9011d6e',
+        '014a9147f2b80d3a4b7f291dc8a9b63c061d0f1335cdc1e70f82fbe35c016783'
+      ];
+
+      const {rng} = secp256k1.schnorr;
+      const batch = valid.slice(0, 6);
+
+      rng.init(batch);
+
+      assert.bufferEqual(rng.key, seed);
+
+      for (let i = 0; i < expect.length; i++) {
+        const k = rng.generate(i);
+
+        assert.strictEqual(k.toString(16, 64), expect[i]);
+      }
+    });
+  }
+
   it('should do batch verification', () => {
     assert.strictEqual(secp256k1.schnorrVerifyBatch([]), true);
     assert.strictEqual(secp256k1.schnorrVerifyBatch(valid), true);
