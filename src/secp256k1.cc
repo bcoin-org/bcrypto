@@ -62,6 +62,7 @@
 #include "secp256k1/include/secp256k1_ecdh.h"
 #include "secp256k1/include/secp256k1_recovery.h"
 #include "secp256k1/include/secp256k1_schnorrleg.h"
+#include "secp256k1/include/secp256k1_elligator.h"
 #include "secp256k1/contrib/lax_der_privatekey_parsing.h"
 #include "secp256k1/contrib/lax_der_parsing.h"
 #include "secp256k1/src/util.h"
@@ -71,7 +72,6 @@
 #include "secp256k1/src/ecmult_const_impl.h"
 #include "secp256k1/src/ecmult_gen_impl.h"
 #include "random/random.h"
-#include "extra256k1/elligator.h"
 
 #define COMPRESSED_TYPE_INVALID "compressed should be a boolean"
 
@@ -559,7 +559,7 @@ NAN_METHOD(BSecp256k1::PublicKeyFromUniform) {
                                           SECP256K1_EC_UNCOMPRESSED);
 
   secp256k1_pubkey public_key;
-  secp256k1_pubkey_from_uniform(&public_key, data);
+  secp256k1_pubkey_from_uniform(secp->ctx, &public_key, data);
 
   unsigned char output[65];
   size_t output_length = 65;
@@ -595,7 +595,7 @@ NAN_METHOD(BSecp256k1::PublicKeyToUniform) {
 
   unsigned char output[32];
 
-  if (secp256k1_pubkey_to_uniform(output, &public_key, hint) == 0)
+  if (secp256k1_pubkey_to_uniform(secp->ctx, output, &public_key, hint) == 0)
     return Nan::ThrowError(EC_PUBLIC_KEY_INVERT_FAIL);
 
   info.GetReturnValue().Set(COPY_BUFFER(&output[0], 32));
@@ -617,7 +617,7 @@ NAN_METHOD(BSecp256k1::PublicKeyFromHash) {
 
   secp256k1_pubkey public_key;
 
-  if (!secp256k1_pubkey_from_hash(&public_key, data))
+  if (!secp256k1_pubkey_from_hash(secp->ctx, &public_key, data))
     return Nan::ThrowError(EC_PUBLIC_KEY_COMBINE_FAIL);
 
   unsigned char output[65];
@@ -648,12 +648,12 @@ NAN_METHOD(BSecp256k1::PublicKeyToHash) {
   }
 
   unsigned char output[64];
-  unsigned char seed[64];
+  unsigned char seed[32];
 
-  if (!bcrypto_random(&seed[0], 64))
+  if (!bcrypto_random(&seed[0], 32))
     return Nan::ThrowError(EC_PUBLIC_KEY_INVERT_FAIL);
 
-  if (secp256k1_pubkey_to_hash(output, &public_key, seed) == 0)
+  if (secp256k1_pubkey_to_hash(secp->ctx, output, &public_key, seed) == 0)
     return Nan::ThrowError(EC_PUBLIC_KEY_INVERT_FAIL);
 
   info.GetReturnValue().Set(COPY_BUFFER(&output[0], 64));

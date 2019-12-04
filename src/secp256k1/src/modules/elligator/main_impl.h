@@ -1,5 +1,5 @@
 /*
- * elligator.h - elligator for libsecp256k1
+ * main_impl.h - elligator module for libsecp256k1
  * Copyright (c) 2019, Christopher Jeffrey (MIT License).
  * https://github.com/bcoin-org/bcrypto
  *
@@ -20,6 +20,11 @@
  *   Page 15, Section 6, Algorithm 1.
  *   https://www.di.ens.fr/~fouque/pub/latincrypt12.pdf
  */
+
+#ifndef SECP256K1_MODULE_ELLIGATOR_MAIN_H
+#define SECP256K1_MODULE_ELLIGATOR_MAIN_H
+
+#include "../../../include/secp256k1_elligator.h"
 
 static void
 secp256k1_fe_pow_pm3d4(secp256k1_fe *r, const secp256k1_fe *a) {
@@ -343,38 +348,28 @@ shallue_van_de_woestijne_invert(secp256k1_fe* u,
   return s1 & s2 & s3;
 }
 
-static int
-secp256k1_pubkey_unstore(secp256k1_ge *ge, const secp256k1_pubkey *pubkey) {
-  if (sizeof(secp256k1_ge_storage) == 64) {
-    secp256k1_ge_storage s;
-    memcpy(&s, &pubkey->data[0], 64);
-    secp256k1_ge_from_storage(ge, &s);
-  } else {
-    secp256k1_fe x, y;
-    secp256k1_fe_set_b32(&x, pubkey->data);
-    secp256k1_fe_set_b32(&y, pubkey->data + 32);
-    secp256k1_ge_set_xy(ge, &x, &y);
-  }
-  return 1;
-}
-
 static void
-secp256k1_pubkey_store(secp256k1_pubkey *pubkey, secp256k1_ge *ge) {
-  if (sizeof(secp256k1_ge_storage) == 64) {
-    secp256k1_ge_storage s;
-    secp256k1_ge_to_storage(&s, ge);
-    memcpy(&pubkey->data[0], &s, 64);
-  } else {
-    VERIFY_CHECK(!secp256k1_ge_is_infinity(ge));
-    secp256k1_fe_normalize_var(&ge->x);
-    secp256k1_fe_normalize_var(&ge->y);
-    secp256k1_fe_get_b32(pubkey->data, &ge->x);
-    secp256k1_fe_get_b32(pubkey->data + 32, &ge->y);
+secp256k1_fe_random(secp256k1_fe *fe, secp256k1_rfc6979_hmac_sha256 *rng) {
+  unsigned char raw[32];
+
+  for (;;) {
+    secp256k1_rfc6979_hmac_sha256_generate(rng, raw, 32);
+
+    if (secp256k1_fe_set_b32(fe, raw))
+      break;
   }
 }
 
-static void
-secp256k1_pubkey_from_uniform(secp256k1_pubkey *pubkey,
+static unsigned int
+secp256k1_random_int(secp256k1_rfc6979_hmac_sha256 *rng) {
+  unsigned char raw[2];
+  secp256k1_rfc6979_hmac_sha256_generate(rng, raw, 2);
+  return ((unsigned int)raw[0] << 8) | (unsigned int)raw[1];
+}
+
+void
+secp256k1_pubkey_from_uniform(const secp256k1_context *ctx,
+                              secp256k1_pubkey *pubkey,
                               const unsigned char *bytes32) {
   secp256k1_ge p;
   secp256k1_fe u;
@@ -384,21 +379,22 @@ secp256k1_pubkey_from_uniform(secp256k1_pubkey *pubkey,
 
   shallue_van_de_woestijne(&p, &u);
 
-  secp256k1_pubkey_store(pubkey, &p);
+  secp256k1_pubkey_save(pubkey, &p);
 
   secp256k1_ge_clear(&p);
   secp256k1_fe_clear(&u);
 }
 
-static int
-secp256k1_pubkey_to_uniform(unsigned char *bytes32,
+int
+secp256k1_pubkey_to_uniform(const secp256k1_context *ctx,
+                            unsigned char *bytes32,
                             const secp256k1_pubkey *pubkey,
                             unsigned int hint) {
   secp256k1_ge p;
   secp256k1_fe u;
   int ret;
 
-  if (!secp256k1_pubkey_unstore(&p, pubkey))
+  if (!secp256k1_pubkey_load(ctx, &p, pubkey))
     return 0;
 
   ret = shallue_van_de_woestijne_invert(&u, &p, hint);
@@ -412,8 +408,9 @@ secp256k1_pubkey_to_uniform(unsigned char *bytes32,
   return ret;
 }
 
-static int
-secp256k1_pubkey_from_hash(secp256k1_pubkey *pubkey,
+int
+secp256k1_pubkey_from_hash(const secp256k1_context *ctx,
+                           secp256k1_pubkey *pubkey,
                            const unsigned char *bytes64) {
   secp256k1_gej j, r;
   secp256k1_ge p1, p2;
@@ -436,7 +433,7 @@ secp256k1_pubkey_from_hash(secp256k1_pubkey *pubkey,
   ret = !secp256k1_ge_is_infinity(&p1);
 
   if (ret)
-    secp256k1_pubkey_store(pubkey, &p1);
+    secp256k1_pubkey_save(pubkey, &p1);
 
   secp256k1_gej_clear(&r);
   secp256k1_gej_clear(&j);
@@ -448,40 +445,22 @@ secp256k1_pubkey_from_hash(secp256k1_pubkey *pubkey,
   return ret;
 }
 
-static void
-secp256k1_fe_random(secp256k1_fe *fe, secp256k1_rfc6979_hmac_sha256 *rng) {
-  unsigned char raw[32];
-
-  for (;;) {
-    secp256k1_rfc6979_hmac_sha256_generate(rng, raw, 32);
-
-    if (secp256k1_fe_set_b32(fe, raw))
-      break;
-  }
-}
-
-static unsigned int
-secp256k1_random_int(secp256k1_rfc6979_hmac_sha256 *rng) {
-  unsigned char raw[2];
-  secp256k1_rfc6979_hmac_sha256_generate(rng, raw, 2);
-  return ((unsigned int)raw[0] << 8) | (unsigned int)raw[1];
-}
-
-static int
-secp256k1_pubkey_to_hash(unsigned char *bytes64,
+int
+secp256k1_pubkey_to_hash(const secp256k1_context *ctx,
+                         unsigned char *bytes64,
                          const secp256k1_pubkey *pubkey,
-                         const unsigned char *seed64) {
+                         const unsigned char *seed32) {
   secp256k1_rfc6979_hmac_sha256 rng;
   secp256k1_ge p, p1, p2;
   secp256k1_gej j, r;
   secp256k1_fe u1, u2;
   unsigned int hint;
 
-  if (!secp256k1_pubkey_unstore(&p, pubkey))
+  if (!secp256k1_pubkey_load(ctx, &p, pubkey))
     return 0;
 
   secp256k1_gej_set_ge(&j, &p);
-  secp256k1_rfc6979_hmac_sha256_initialize(&rng, seed64, 64);
+  secp256k1_rfc6979_hmac_sha256_initialize(&rng, seed32, 32);
 
   for (;;) {
     secp256k1_fe_random(&u1, &rng);
@@ -513,3 +492,5 @@ secp256k1_pubkey_to_hash(unsigned char *bytes64,
 
   return 1;
 }
+
+#endif /* SECP256K1_MODULE_ELLIGATOR_MAIN_H */
