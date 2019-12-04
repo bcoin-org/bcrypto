@@ -203,12 +203,17 @@ static Nan::Persistent<v8::FunctionTemplate> secp256k1_constructor;
 
 BSecp256k1::BSecp256k1() {
   ctx = NULL;
+  scratch = NULL;
 }
 
 BSecp256k1::~BSecp256k1() {
   if (ctx != NULL) {
     secp256k1_context_destroy(ctx);
     ctx = NULL;
+  }
+  if (scratch != NULL) {
+    secp256k1_scratch_space_destroy(scratch);
+    scratch = NULL;
   }
 }
 
@@ -304,6 +309,7 @@ NAN_METHOD(BSecp256k1::New) {
 
   BSecp256k1 *secp = new BSecp256k1();
   secp->ctx = ctx;
+  secp->scratch = NULL;
   secp->Wrap(info.This());
 
   info.GetReturnValue().Set(info.This());
@@ -1587,27 +1593,31 @@ NAN_METHOD(BSecp256k1::SchnorrVerifyBatch) {
   const uint8_t **msgs =
     (const uint8_t **)malloc(len * sizeof(const uint8_t **));
 
-  if (msgs == NULL)
-    return Nan::ThrowError("allocation failed");
+  secp256k1_schnorrleg **sigs =
+    (secp256k1_schnorrleg **)malloc(len * sizeof(secp256k1_schnorrleg *));
 
-  secp256k1_schnorrleg *sigs =
+  secp256k1_pubkey **pubs =
+    (secp256k1_pubkey **)malloc(len * sizeof(secp256k1_pubkey *));
+
+  secp256k1_schnorrleg *sig_data =
     (secp256k1_schnorrleg *)malloc(len * sizeof(secp256k1_schnorrleg));
 
-  if (sigs == NULL) {
-    free(msgs);
-    return Nan::ThrowError("allocation failed");
-  }
-
-  secp256k1_pubkey *pubs =
+  secp256k1_pubkey *pub_data =
     (secp256k1_pubkey *)malloc(len * sizeof(secp256k1_pubkey));
 
-  if (pubs == NULL) {
-    free(sigs);
-    free(msgs);
+#define FREE_BATCH do {                 \
+  if (msgs != NULL) free(msgs);         \
+  if (sigs != NULL) free(sigs);         \
+  if (pubs != NULL) free(pubs);         \
+  if (sig_data != NULL) free(sig_data); \
+  if (pub_data != NULL) free(pub_data); \
+} while (0)
+
+  if (msgs == NULL || sigs == NULL || pubs == NULL
+      || sig_data == NULL || pub_data == NULL) {
+    FREE_BATCH;
     return Nan::ThrowError("allocation failed");
   }
-
-#define FREE_BATCH (free(msgs), free(sigs), free(pubs))
 
   for (size_t i = 0; i < len; i++) {
     if (!Nan::Get(batch, i).ToLocalChecked()->IsArray()) {
@@ -1671,39 +1681,35 @@ NAN_METHOD(BSecp256k1::SchnorrVerifyBatch) {
 
     msgs[i] = msg;
 
-    if (secp256k1_schnorrleg_parse(secp->ctx, &sigs[i], sig) == 0) {
+    if (secp256k1_schnorrleg_parse(secp->ctx, &sig_data[i], sig) == 0) {
       FREE_BATCH;
       return Nan::ThrowError(ECDSA_SIGNATURE_PARSE_FAIL);
     }
 
-    if (secp256k1_ec_pubkey_parse(secp->ctx, &pubs[i], pub, pub_len) == 0) {
+    if (secp256k1_ec_pubkey_parse(secp->ctx, &pub_data[i], pub, pub_len) == 0) {
       FREE_BATCH;
       return Nan::ThrowError(EC_PUBLIC_KEY_PARSE_FAIL);
     }
+
+    sigs[i] = &sig_data[i];
+    pubs[i] = &pub_data[i];
   }
 
-  // Todo: investigate scratch API:
-  // size_t size1 = secp256k1_strauss_scratch_size(n_points);
-  // size_t size2 = secp256k1_pippenger_scratch_size(n_points,
-  //                  secp256k1_pippenger_bucket_window(n_points));
-  // size_t max_size = size1 > size2 ? size1 : size2;
-  // secp256k1_scratch_space *scratch =
-  //   secp256k1_scratch_space_create(secp->ctx, max_size);
-  // secp256k1_scratch_space_destroy(scratch);
-  //
-  // int result = secp256k1_schnorrleg_verify_batch(secp->ctx, NULL,
-  //                                                sigs, msgs, pubs, len);
+  // Lazy allocation for scratch space.
+  if (secp->scratch == NULL) {
+    secp256k1_scratch_space *scratch =
+      secp256k1_scratch_space_create(secp->ctx, 1024 * 1024);
 
-  int result = 1;
-  size_t i = 0;
-
-  for (; i < len; i++) {
-    if (secp256k1_schnorrleg_verify(secp->ctx, &sigs[i],
-                                    msgs[i], &pubs[i]) == 0) {
-      result = 0;
-      break;
+    if (scratch == NULL) {
+      FREE_BATCH;
+      return Nan::ThrowError("allocation failed");
     }
+
+    secp->scratch = scratch;
   }
+
+  int result = secp256k1_schnorrleg_verify_batch(secp->ctx, secp->scratch,
+                                                 sigs, msgs, pubs, len);
 
   FREE_BATCH;
 

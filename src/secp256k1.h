@@ -14,6 +14,7 @@ public:
   ~BSecp256k1();
 
   secp256k1_context *ctx;
+  secp256k1_scratch_space *scratch;
 
 private:
   static NAN_METHOD(PrivateKeyVerify);
