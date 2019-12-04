@@ -276,7 +276,7 @@ int secp256k1_schnorrleg_verify_batch_init_randomizer(const secp256k1_context *c
         secp256k1_sha256_write(sha, sig[i]->data, 64);
         secp256k1_sha256_write(sha, msg32[i], 32);
         secp256k1_ec_pubkey_serialize(ctx, buf, &buflen, pk[i], SECP256K1_EC_COMPRESSED);
-        secp256k1_sha256_write(sha, buf, 32);
+        secp256k1_sha256_write(sha, buf, 33);
     }
     ecmult_context->ctx = ctx;
     ecmult_context->sig = sig;
