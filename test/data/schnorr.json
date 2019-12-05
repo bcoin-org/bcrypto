@@ -53,7 +53,7 @@
     "243f6a8885a308d313198a2e03707344a4093822299f31d0082efa98ec4e6c89",
     "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9935554d1aa5f0374e5cdaacb3925035c7c169b27c4426df0a6b19af3baeab138",
     false,
-    "incorrect R residuosity"
+    "has_square_y(R) is false"
   ],
   [
     "",
@@ -77,7 +77,7 @@
     "243f6a8885a308d313198a2e03707344a4093822299f31d0082efa98ec4e6c89",
     "000000000000000000000000000000000000000000000000000000000000000099d2f0ebc2996808208633cd9926bf7ec3dab73daad36e85b3040a698e6d1ce0",
     false,
-    "sG - eP is infinite. Test fails in single verification if jacobi(y(inf)) is defined as 1 and x(inf) as 0"
+    "sG - eP is infinite. Test fails in single verification if has_square_y(inf) is defined as true and x(inf) as 0"
   ],
   [
     "",
@@ -85,7 +85,7 @@
     "243f6a8885a308d313198a2e03707344a4093822299f31d0082efa98ec4e6c89",
     "000000000000000000000000000000000000000000000000000000000000000124e81d89f01304695ce943f7d5ebd00ef726a0864b4ff33895b4e86beadc5456",
     false,
-    "sG - eP is infinite. Test fails in single verification if jacobi(y(inf)) is defined as 1 and x(inf) as 1"
+    "sG - eP is infinite. Test fails in single verification if has_square_y(inf) is defined as true and x(inf) as 1"
   ],
   [
     "",
@@ -110,5 +110,13 @@
     "667c2f778e0616e611bd0c14b8a600c5884551701a949ef0ebfd72d452d64e84fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141",
     false,
     "sig[32:64] is equal to curve order"
+  ],
+  [
+    "",
+    "fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc30",
+    "243f6a8885a308d313198a2e03707344a4093822299f31d0082efa98ec4e6c89",
+    "667c2f778e0616e611bd0c14b8a600c5884551701a949ef0ebfd72d452d64e844160bcfc3f466ecb8facd19ade57d8699d74e7207d78c6aedc3799b52a8e0598",
+    false,
+    "public key is not a valid X coordinate because it exceeds the field size"
   ]
 ]

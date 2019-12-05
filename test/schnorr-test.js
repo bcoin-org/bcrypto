@@ -47,13 +47,7 @@ describe('Schnorr', function() {
       ];
 
       const {rng} = schnorr;
-      const batch = [];
-
-      for (const [msg, sig, key] of valid.slice(0, 6)) {
-        const A = schnorr.curve.decodeX(key);
-
-        batch.push([msg, sig, key, A]);
-      }
+      const batch = valid.slice(0, 5);
 
       rng.init(batch);
 
