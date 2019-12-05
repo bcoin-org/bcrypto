@@ -77,7 +77,7 @@ describe('ECDSA', function() {
 
           for (const p of [pub, pubu]) {
             assert.bufferEqual(
-              ec.publicKeyImport(ec.publicKeyExport(p, c), c),
+              ec.publicKeyImport(ec.publicKeyExport(p), c),
               c ? pub : pubu);
 
             assert.bufferEqual(
