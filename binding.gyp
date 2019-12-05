@@ -149,7 +149,8 @@
         ]
       }, {
         "defines": [
-          "BCRYPTO_BIG_ENDIAN"
+          "BCRYPTO_BIG_ENDIAN",
+          "WORDS_BIGENDIAN"
         ]
       }],
       ["target_arch=='x64' and OS!='win'", {
