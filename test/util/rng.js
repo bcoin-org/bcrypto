@@ -48,7 +48,7 @@ class RNG {
 
     const key = this.randomBytes(curve.size);
 
-    if (curve.type === 'short')
+    if (curve.type === 'ecdsa')
       return curve.privateKeyReduce(key);
 
     return key;
