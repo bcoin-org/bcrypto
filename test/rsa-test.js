@@ -115,17 +115,52 @@ describe('RSA', function() {
     const sig = rsa.sign(SHA256, msg, priv);
     assert(rsa.verify(SHA256, msg, sig, pub));
 
-    // Should veil/unveil.
-    const sig2 = rsa.veil(sig, 4096, pub);
-    assert(sig2.length === 512);
-    const sig3 = rsa.unveil(sig2, 4096, pub);
-    assert(rsa.verify(SHA256, msg, sig3, pub));
-
     assert(!rsa.verify(SHA256, zero, sig, pub));
     assert(!rsa.verify(SHA256, msg, zero, pub));
 
     sig[0] ^= 1;
     assert(!rsa.verify(SHA256, msg, sig, pub));
+  });
+
+  it('should veil/unveil', () => {
+    const bits = rsa.native < 2 ? 1024 : 4096;
+    const priv = rsa.privateKeyGenerate(bits);
+    const pub = rsa.publicKeyCreate(priv);
+
+    assert(rsa.privateKeyVerify(priv));
+    assert(rsa.publicKeyVerify(pub));
+
+    const s1 = rsa.sign(SHA256, msg, priv);
+    const v1 = rsa.veil(s1, bits, pub);
+    const s2 = rsa.unveil(v1, bits, pub);
+    const v2 = rsa.veil(s1, bits + 8, pub);
+    const s3 = rsa.unveil(v2, bits + 8, pub);
+    const v3 = rsa.veil(s1, bits + 1024, pub);
+    const s4 = rsa.unveil(v3, bits + 1024, pub);
+
+    assert(v1.length === bits / 8);
+    assert(v2.length === (bits + 8) / 8);
+    assert(v3.length === (bits + 1024) / 8);
+
+    assert(s1.length === bits / 8);
+    assert(s2.length === bits / 8);
+    assert(s3.length === bits / 8);
+    assert(s4.length === bits / 8);
+
+    assert(s2.equals(s1));
+    assert(s3.equals(s1));
+    assert(s4.equals(s1));
+
+    assert(v1.equals(s1));
+    assert(!v2.slice(0, (bits / 8)).equals(s1));
+    assert(!v2.slice(-(bits / 8)).equals(s1));
+    assert(!v3.slice(0, (bits / 8)).equals(s1));
+    assert(!v3.slice(-(bits / 8)).equals(s1));
+
+    assert(rsa.verify(SHA256, msg, s1, pub));
+    assert(rsa.verify(SHA256, msg, s2, pub));
+    assert(rsa.verify(SHA256, msg, s3, pub));
+    assert(rsa.verify(SHA256, msg, s4, pub));
   });
 
   it('should fail to verify non-canonical signature', () => {
@@ -153,12 +188,6 @@ describe('RSA', function() {
 
     const sig1 = rsa.signPSS(SHA256, msg, priv, -1);
     assert(rsa.verifyPSS(SHA256, msg, sig1, pub));
-
-    // Should veil/unveil.
-    const sig2 = rsa.veil(sig1, 4096, pub);
-    assert(sig2.length === 512);
-    const sig3 = rsa.unveil(sig2, 4096, pub);
-    assert(rsa.verifyPSS(SHA256, msg, sig3, pub));
 
     assert(!rsa.verifyPSS(SHA256, zero, sig1, pub));
     assert(!rsa.verifyPSS(SHA256, msg, zero, pub));

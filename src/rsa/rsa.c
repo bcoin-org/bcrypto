@@ -2237,12 +2237,12 @@ bcrypto_rsa_veil(uint8_t **out,
                  const bcrypto_rsa_key_t *pub) {
   int ret = 0;
   BN_CTX *ctx = NULL;
-  BIGNUM *c0 = NULL;
+  BIGNUM *c = NULL;
   BIGNUM *n = NULL;
-  BIGNUM *ctlim = NULL;
-  BIGNUM *rlim = NULL;
-  BIGNUM *c1 = NULL;
-  BIGNUM *cr = NULL;
+  BIGNUM *cmax = NULL;
+  BIGNUM *rmax = NULL;
+  BIGNUM *v = NULL;
+  BIGNUM *r = NULL;
   uint8_t *veiled = NULL;
   int veiled_len = 0;
 
@@ -2257,70 +2257,71 @@ bcrypto_rsa_veil(uint8_t **out,
     goto fail;
 
   ctx = BN_CTX_new();
-  c0 = BN_bin2bn(ct, ct_len, NULL);
+  c = BN_bin2bn(ct, ct_len, NULL);
   n = BN_bin2bn(pub->nd, pub->nl, NULL);
-  ctlim = BN_new();
-  rlim = BN_new();
-  c1 = BN_new();
-  cr = BN_new();
+  cmax = BN_new();
+  rmax = BN_new();
+  v = BN_new();
+  r = BN_new();
 
   if (ctx == NULL
-      || c0 == NULL
+      || c == NULL
       || n == NULL
-      || ctlim == NULL
-      || rlim == NULL
-      || c1 == NULL
-      || cr == NULL) {
+      || cmax == NULL
+      || rmax == NULL
+      || v == NULL
+      || r == NULL) {
     goto fail;
   }
 
   /* Invalid ciphertext. */
-  if (BN_cmp(c0, n) >= 0)
+  if (BN_cmp(c, n) >= 0)
     goto fail;
 
-  /* ctlim = 1 << (bits + 0) */
-  if (!BN_set_word(ctlim, 1)
-      || !BN_lshift(ctlim, ctlim, bits)) {
-    goto fail;
-  }
-
-  /* rlim = (ctlim - c0 + n - 1) / n */
-  if (!BN_copy(rlim, ctlim)
-      || !BN_sub(rlim, rlim, c0)
-      || !BN_add(rlim, rlim, n)
-      || !BN_sub(rlim, rlim, BN_value_one())
-      || !BN_div(rlim, NULL, rlim, n, ctx)) {
+  /* cmax = 1 << bits */
+  if (!BN_set_word(cmax, 1)
+      || !BN_lshift(cmax, cmax, bits)) {
     goto fail;
   }
 
-  /* c1 = ctlim */
-  if (!BN_copy(c1, ctlim))
+  /* rmax = (cmax - c + n - 1) / n */
+  if (!BN_copy(rmax, cmax)
+      || !BN_sub(rmax, rmax, c)
+      || !BN_add(rmax, rmax, n)
+      || !BN_sub_word(rmax, 1)
+      || !BN_div(rmax, NULL, rmax, n, ctx)) {
+    goto fail;
+  }
+
+  /* rmax > 0 */
+  assert(!BN_is_negative(rmax) && !BN_is_zero(rmax));
+
+  /* v = cmax */
+  if (!BN_copy(v, cmax))
     goto fail;
 
   bcrypto_poll();
 
-  /* while c1 >= ctlim */
-  while (BN_cmp(c1, ctlim) >= 0) {
-    /* cr = random_int(rlim) */
-    if (!BN_rand_range(cr, rlim))
+  /* while v >= cmax */
+  while (BN_cmp(v, cmax) >= 0) {
+    /* r = random integer in [0,rmax-1] */
+    if (!BN_rand_range(r, rmax))
       goto fail;
 
-    if (BN_cmp(rlim, BN_value_one()) > 0 && BN_is_zero(cr))
-      continue;
-
-    /* c1 = c0 + cr * n */
-    if (!BN_mul(cr, cr, n, ctx))
+    /* v = c + r * n */
+    if (!BN_mul(r, r, n, ctx))
       goto fail;
 
-    if (!BN_add(c1, c0, cr))
+    if (!BN_add(v, c, r))
       goto fail;
   }
 
-  if (!BN_mod(cr, c1, n, ctx))
+  if (!BN_mod(r, v, n, ctx))
     goto fail;
 
-  assert(BN_cmp(cr, c0) == 0);
-  assert((size_t)BN_num_bits(c1) <= bits);
+  /* v mod n == c */
+  assert(BN_cmp(r, c) == 0);
+  assert((size_t)BN_num_bits(v) <= bits);
 
   veiled_len = (bits + 7) / 8;
   veiled = (uint8_t *)malloc(veiled_len);
@@ -2328,7 +2329,7 @@ bcrypto_rsa_veil(uint8_t **out,
   if (veiled == NULL)
     goto fail;
 
-  assert(BN_bn2binpad(c1, veiled, veiled_len) != -1);
+  assert(BN_bn2binpad(v, veiled, veiled_len) != -1);
 
   *out = veiled;
   *out_len = veiled_len;
@@ -2339,23 +2340,23 @@ fail:
   if (ctx != NULL)
     BN_CTX_free(ctx);
 
-  if (c0 != NULL)
-    BN_free(c0);
+  if (c != NULL)
+    BN_free(c);
 
   if (n != NULL)
     BN_free(n);
 
-  if (ctlim != NULL)
-    BN_free(ctlim);
+  if (cmax != NULL)
+    BN_free(cmax);
 
-  if (rlim != NULL)
-    BN_free(rlim);
+  if (rmax != NULL)
+    BN_free(rmax);
 
-  if (c1 != NULL)
-    BN_free(c1);
+  if (v != NULL)
+    BN_free(v);
 
-  if (cr != NULL)
-    BN_free(cr);
+  if (r != NULL)
+    BN_free(r);
 
   if (veiled != NULL)
     free(veiled);
@@ -2373,7 +2374,7 @@ bcrypto_rsa_unveil(uint8_t **out,
   int ret = 0;
   size_t klen = 0;
   BN_CTX *ctx = NULL;
-  BIGNUM *c1 = NULL;
+  BIGNUM *v = NULL;
   BIGNUM *n = NULL;
   uint8_t *ct = NULL;
   int ct_len = 0;
@@ -2390,17 +2391,17 @@ bcrypto_rsa_unveil(uint8_t **out,
     goto fail;
 
   ctx = BN_CTX_new();
-  c1 = BN_bin2bn(veiled, veiled_len, NULL);
+  v = BN_bin2bn(veiled, veiled_len, NULL);
   n = BN_bin2bn(pub->nd, pub->nl, NULL);
 
-  if (ctx == NULL || c1 == NULL || n == NULL)
+  if (ctx == NULL || v == NULL || n == NULL)
     goto fail;
 
-  /* c0 = c1 % n */
-  if (!BN_mod(c1, c1, n, ctx))
+  /* c = v % n */
+  if (!BN_mod(v, v, n, ctx))
     goto fail;
 
-  assert((size_t)BN_num_bytes(c1) <= klen);
+  assert((size_t)BN_num_bytes(v) <= klen);
 
   ct_len = klen;
   ct = (uint8_t *)malloc(ct_len);
@@ -2408,7 +2409,7 @@ bcrypto_rsa_unveil(uint8_t **out,
   if (ct == NULL)
     goto fail;
 
-  assert(BN_bn2binpad(c1, ct, ct_len) != -1);
+  assert(BN_bn2binpad(v, ct, ct_len) != -1);
 
   *out = ct;
   *out_len = ct_len;
@@ -2419,8 +2420,8 @@ fail:
   if (ctx != NULL)
     BN_CTX_free(ctx);
 
-  if (c1 != NULL)
-    BN_free(c1);
+  if (v != NULL)
+    BN_free(v);
 
   if (n != NULL)
     BN_free(n);
