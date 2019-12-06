@@ -229,6 +229,7 @@ bcrypto_ed25519_verify_batch(
       add256_modm(batch.scalars[0], batch.scalars[0], batch.scalars[i]);
 
     mulh256_modm(batch.scalars[0], batch.scalars[0]);
+    negate256_modm(batch.scalars[0], batch.scalars[0]);
 
     /* compute scalars[1]..scalars[batchsize] as r[i]*H(R[i],A[i],m[i]) */
     for (i = 0; i < batchsize; i++) {
@@ -245,7 +246,6 @@ bcrypto_ed25519_verify_batch(
         return 0;
 
       ge25519_mulh(&batch.points[i + 1], &batch.points[i + 1]);
-      ge25519_neg(&batch.points[i + 1], &batch.points[i + 1]);
     }
 
     for (i = 0; i < batchsize; i++) {
@@ -254,9 +254,6 @@ bcrypto_ed25519_verify_batch(
 
       ge25519_mulh(&batch.points[batchsize + i + 1],
                    &batch.points[batchsize + i + 1]);
-
-      ge25519_neg(&batch.points[batchsize + i + 1],
-                  &batch.points[batchsize + i + 1]);
     }
 
     ge25519_multi_scalarmult_vartime(&p, &batch, (batchsize * 2) + 1);

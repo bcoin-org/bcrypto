@@ -153,6 +153,23 @@ barrett_reduce256_modm(bignum256modm r, const bignum256modm q1, const bignum256m
   reduce256_modm(r);
 }
 
+static void
+negate256_modm(bignum256modm r, const bignum256modm x) {
+  bignum256modm_element_t c;
+
+  r[0] = (modm_m[0] - x[0])    ; c = (r[0] >> 31); r[0] &= 0x3fffffff;
+  r[1] = (modm_m[1] - x[1]) - c; c = (r[1] >> 31); r[1] &= 0x3fffffff;
+  r[2] = (modm_m[2] - x[2]) - c; c = (r[2] >> 31); r[2] &= 0x3fffffff;
+  r[3] = (modm_m[3] - x[3]) - c; c = (r[3] >> 31); r[3] &= 0x3fffffff;
+  r[4] = (modm_m[4] - x[4]) - c; c = (r[4] >> 31); r[4] &= 0x3fffffff;
+  r[5] = (modm_m[5] - x[5]) - c; c = (r[5] >> 31); r[5] &= 0x3fffffff;
+  r[6] = (modm_m[6] - x[6]) - c; c = (r[6] >> 31); r[6] &= 0x3fffffff;
+  r[7] = (modm_m[7] - x[7]) - c; c = (r[7] >> 31); r[7] &= 0x3fffffff;
+  r[8] = (modm_m[8] - x[8]) - c;
+
+  reduce256_modm(r);
+}
+
 /* addition modulo m */
 static void
 add256_modm(bignum256modm r, const bignum256modm x, const bignum256modm y) {
@@ -501,17 +518,6 @@ isatmost128bits256_modm_batch(const bignum256modm a) {
 }
 
 static void
-sub256_modm(bignum256modm r, const bignum256modm x, const bignum256modm y) {
-  sub256_modm_batch(r, x, y, bignum256modm_limb_size - 1);
-  reduce256_modm(r);
-}
-
-static void
-negate256_modm(bignum256modm r, const bignum256modm x) {
-  sub256_modm(r, modm_m, x);
-}
-
-static void
 recip256_modm(bignum256modm y, const bignum256modm x) {
   bignum256modm x10, x100, x11, x101, x111, x1001, x1011, x1111;
 
@@ -585,5 +591,7 @@ is_canonical256_modm(const unsigned char s[32]) {
 
 static void
 mulh256_modm(bignum256modm r, const bignum256modm n) {
-  mul256_modm(r, n, modm_h);
+  add256_modm(r, n, n);
+  add256_modm(r, r, r);
+  add256_modm(r, r, r);
 }
