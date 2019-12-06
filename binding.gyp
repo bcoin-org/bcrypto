@@ -110,6 +110,7 @@
       "<!(node -e \"require('nan')\")"
     ],
     "defines": [
+      "USE_ENDOMORPHISM=1",
       "ENABLE_MODULE_ECDH=1",
       "ENABLE_MODULE_ELLIGATOR=1",
       "ENABLE_MODULE_EXTRA=1",
