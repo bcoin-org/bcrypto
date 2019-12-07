@@ -119,9 +119,6 @@
     ],
     "variables": {
       "conditions": [
-        ["OS!='win'", {
-          "cc": "<!(echo $CC)"
-        }],
         ["OS=='win'", {
           "conditions": [
             ["target_arch=='ia32'", {
@@ -139,11 +136,6 @@
       ]
     },
     "conditions": [
-      ["target_arch=='x64' and OS!='win' and cc=='clang'", {
-        "cflags": [
-          "-msse4.1"
-        ]
-      }],
       ["bcrypto_byteorder=='little'", {
         "defines": [
           "BCRYPTO_LITTLE_ENDIAN"
@@ -160,12 +152,14 @@
           "BCRYPTO_SIPHASH_64BIT",
           "BCRYPTO_USE_ASM",
           "BCRYPTO_USE_SSE",
-          "BCRYPTO_USE_SSE41",
           "HAVE___INT128=1",
           "USE_ASM_X86_64=1",
           "USE_FIELD_5X52=1",
           "USE_FIELD_5X52_INT128=1",
           "USE_SCALAR_4X64=1"
+        ],
+        "cflags": [
+          "-msse4.1"
         ]
       }, {
         "defines": [
