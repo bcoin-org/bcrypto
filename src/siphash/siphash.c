@@ -29,20 +29,20 @@ typedef unsigned uint128_t __attribute__((mode(TI)));
 
 static inline uint64_t
 read64(const void *src) {
-#ifdef BCRYPTO_LITTLE_ENDIAN
+#ifndef WORDS_BIGENDIAN
   uint64_t w;
   memcpy(&w, src, sizeof w);
   return w;
 #else
   const uint8_t *p = (const uint8_t *)src;
   return ((uint64_t)(p[0]) << 0)
-    | ((uint64_t)(p[1]) << 8)
-    | ((uint64_t)(p[2]) << 16)
-    | ((uint64_t)(p[3]) << 24)
-    | ((uint64_t)(p[4]) << 32)
-    | ((uint64_t)(p[5]) << 40)
-    | ((uint64_t)(p[6]) << 48)
-    | ((uint64_t)(p[7]) << 56);
+       | ((uint64_t)(p[1]) << 8)
+       | ((uint64_t)(p[2]) << 16)
+       | ((uint64_t)(p[3]) << 24)
+       | ((uint64_t)(p[4]) << 32)
+       | ((uint64_t)(p[5]) << 40)
+       | ((uint64_t)(p[6]) << 48)
+       | ((uint64_t)(p[7]) << 56);
 #endif
 }
 

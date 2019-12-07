@@ -95,7 +95,7 @@ void
 bcrypto_aead_final(bcrypto_aead_ctx *aead, uint8_t *tag) {
   uint8_t len[16];
 
-#ifdef BCRYPTO_BIG_ENDIAN
+#ifdef WORDS_BIGENDIAN
   len[0] = aead->aad_len & 0xff;
   len[1] = (aead->aad_len >> 8) & 0xff;
   len[2] = (aead->aad_len >> 16) & 0xff;

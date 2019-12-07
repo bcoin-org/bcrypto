@@ -6,16 +6,16 @@
 
 static inline uint32_t
 read32(const void *src) {
-#if defined(BCRYPTO_LITTLE_ENDIAN)
+#ifndef WORDS_BIGENDIAN
   uint32_t w;
   memcpy(&w, src, sizeof w);
   return w;
 #else
   const uint8_t *p = (const uint8_t *)src;
   return ((uint32_t)(p[0]) << 0)
-    | ((uint32_t)(p[1]) << 8)
-    | ((uint32_t)(p[2]) << 16)
-    | ((uint32_t)(p[3]) << 24);
+       | ((uint32_t)(p[1]) << 8)
+       | ((uint32_t)(p[2]) << 16)
+       | ((uint32_t)(p[3]) << 24);
 #endif
 }
 

@@ -1,8 +1,4 @@
 {
-  "variables": {
-    "bcrypto_byteorder%":
-      "<!(python -c \"from __future__ import print_function; import sys; print(sys.byteorder)\")"
-  },
   "targets": [{
     "target_name": "bcrypto",
     "sources": [
@@ -136,13 +132,8 @@
       ]
     },
     "conditions": [
-      ["bcrypto_byteorder=='little'", {
+      ["node_byteorder=='big'", {
         "defines": [
-          "BCRYPTO_LITTLE_ENDIAN"
-        ]
-      }, {
-        "defines": [
-          "BCRYPTO_BIG_ENDIAN",
           "WORDS_BIGENDIAN"
         ]
       }],
@@ -169,6 +160,23 @@
           "USE_SCALAR_8X32=1"
         ]
       }],
+      ["with_gmp=='true'", {
+        "defines": [
+          "HAVE_LIBGMP=1",
+          "USE_NUM_GMP=1",
+          "USE_FIELD_INV_NUM=1",
+          "USE_SCALAR_INV_NUM=1"
+        ],
+        "libraries": [
+          "-lgmp"
+        ]
+      }, {
+        "defines": [
+          "USE_NUM_NONE=1",
+          "USE_FIELD_INV_BUILTIN=1",
+          "USE_SCALAR_INV_BUILTIN=1"
+        ]
+      }],
       ["OS=='win'", {
         "libraries": [
           "-l<(openssl_root)/lib/libeay32.lib"
@@ -187,23 +195,6 @@
       }, {
         "include_dirs": [
           "<(node_root_dir)/deps/openssl/openssl/include"
-        ]
-      }],
-      ["with_gmp=='true'", {
-        "defines": [
-          "HAVE_LIBGMP=1",
-          "USE_NUM_GMP=1",
-          "USE_FIELD_INV_NUM=1",
-          "USE_SCALAR_INV_NUM=1"
-        ],
-        "libraries": [
-          "-lgmp"
-        ]
-      }, {
-        "defines": [
-          "USE_NUM_NONE=1",
-          "USE_FIELD_INV_BUILTIN=1",
-          "USE_SCALAR_INV_BUILTIN=1"
         ]
       }],
       ["OS=='mac'", {

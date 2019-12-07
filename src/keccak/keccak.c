@@ -108,7 +108,7 @@ swap_copy_u64_to_str(void *t, const void *f, size_t l) {
   }
 }
 
-#ifdef BCRYPTO_BIG_ENDIAN
+#ifdef WORDS_BIGENDIAN
 #define le2me_64(x) bswap_64(x)
 #define me64_to_le_str(to, from, length) \
   swap_copy_u64_to_str((to), (from), (length))
