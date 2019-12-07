@@ -108,6 +108,9 @@ describe('Hash', function() {
             const size = msg.length >>> 1;
             const left = msg.slice(0, size);
             const right = msg.slice(size);
+            const mid = right.length >>> 1;
+            const right1 = right.slice(0, mid);
+            const right2 = right.slice(mid);
             const ctx = hash.hash();
 
             assert.bufferEqual(ctx.init(arg).update(msg).final(), expect);
@@ -125,6 +128,7 @@ describe('Hash', function() {
 
             if (arg == null) {
               assert.bufferEqual(hash.multi(left, right), expect);
+              assert.bufferEqual(hash.multi(left, right1, right2), expect);
 
               assert.bufferEqual(hash.root(expect, expect),
                                  hash.multi(expect, expect));
