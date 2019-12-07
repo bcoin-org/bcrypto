@@ -132,6 +132,12 @@ describe('Hash', function() {
 
               assert.bufferEqual(hash.root(expect, expect),
                                  hash.multi(expect, expect));
+            } else {
+              assert.bufferEqual(hash.multi(left, right, null, arg), expect);
+              assert.bufferEqual(hash.multi(left, right1, right2, arg), expect);
+
+              assert.bufferEqual(hash.root(expect, expect, arg),
+                                 hash.multi(expect, expect, null, arg));
             }
           });
         }
