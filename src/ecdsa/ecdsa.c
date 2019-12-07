@@ -2296,26 +2296,22 @@ bcrypto_schnorr_sign(bcrypto_ecdsa_t *ec,
   EC_POINT *A = NULL;
   bcrypto_ecdsa_pubkey_t pub;
   BIGNUM *e = NULL;
-  int r = 0;
+  int ret = 0;
   int j;
 
   if (!bcrypto_ecdsa_valid_scalar(ec, priv))
     goto fail;
 
-  /* The secret key d: an integer in the range 1..n-1. */
   a = BN_bin2bn(priv, ec->scalar_size, BN_secure_new());
 
   if (a == NULL || BN_is_zero(a) || BN_cmp(a, ec->n) >= 0)
     goto fail;
 
-  /* Let k' = int(hash(bytes(d) || m)) mod n */
   k = schnorr_hash_am(ec, priv, msg);
 
-  /* Fail if k' = 0. */
   if (k == NULL || BN_is_zero(k))
     goto fail;
 
-  /* Let R = k'*G. */
   R = EC_POINT_new(ec->group);
 
   if (R == NULL)
@@ -2330,7 +2326,6 @@ bcrypto_schnorr_sign(bcrypto_ecdsa_t *ec,
   if (x == NULL || y == NULL)
     goto fail;
 
-  /* Encode x(R). */
 #if OPENSSL_VERSION_NUMBER >= 0x10200000L
   /* Note: should be present with 1.1.1b */
   if (!EC_POINT_get_affine_coordinates(ec->group, R, x, y, ec->ctx))
@@ -2341,7 +2336,6 @@ bcrypto_schnorr_sign(bcrypto_ecdsa_t *ec,
 
   assert(BN_bn2binpad(x, sig->r, ec->size) != -1);
 
-  /* Encode d*G. */
   A = EC_POINT_new(ec->group);
 
   if (A == NULL)
@@ -2353,7 +2347,6 @@ bcrypto_schnorr_sign(bcrypto_ecdsa_t *ec,
   if (!bcrypto_ecdsa_pubkey_from_ec_point(ec, &pub, A))
     goto fail;
 
-  /* Let e = int(hash(bytes(x(R)) || bytes(d*G) || m)) mod n. */
   e = schnorr_hash_ram(ec, sig->r, &pub, msg);
 
   if (e == NULL)
@@ -2364,11 +2357,9 @@ bcrypto_schnorr_sign(bcrypto_ecdsa_t *ec,
   if (j < -1)
     goto fail;
 
-  /* Let k = k' if jacobi(y(R)) = 1, otherwise let k = n - k'. */
   if (j != 1)
     BN_sub(k, ec->n, k);
 
-  /* Let S = k + e*d mod n. */
   if (!BN_mod_mul(e, e, a, ec->n, ec->ctx))
     goto fail;
 
@@ -2377,7 +2368,7 @@ bcrypto_schnorr_sign(bcrypto_ecdsa_t *ec,
 
   assert(BN_bn2binpad(e, sig->s, ec->scalar_size) != -1);
 
-  r = 1;
+  ret = 1;
 fail:
   if (a != NULL)
     BN_clear_free(a);
@@ -2400,7 +2391,7 @@ fail:
   if (e != NULL)
     BN_free(e);
 
-  return r;
+  return ret;
 }
 
 int
@@ -2408,35 +2399,34 @@ bcrypto_schnorr_verify(bcrypto_ecdsa_t *ec,
                        const uint8_t *msg,
                        const bcrypto_ecdsa_sig_t *sig,
                        const bcrypto_ecdsa_pubkey_t *pub) {
-  BIGNUM *Rx = NULL;
-  BIGNUM *S = NULL;
+  BIGNUM *r = NULL;
+  BIGNUM *s = NULL;
   EC_POINT *A = NULL;
   BIGNUM *e = NULL;
   EC_POINT *R = NULL;
   BIGNUM *x = NULL;
   BIGNUM *y = NULL;
   BIGNUM *z = NULL;
-  int r = 0;
+  int ret = 0;
 
-  Rx = BN_bin2bn(sig->r, ec->size, NULL);
-  S = BN_bin2bn(sig->s, ec->scalar_size, NULL);
+  r = BN_bin2bn(sig->r, ec->size, NULL);
+  s = BN_bin2bn(sig->s, ec->scalar_size, NULL);
   A = bcrypto_ecdsa_pubkey_to_ec_point(ec, pub);
   e = schnorr_hash_ram(ec, sig->r, pub, msg);
   R = EC_POINT_new(ec->group);
 
-  if (Rx == NULL || S == NULL || A == NULL || e == NULL || R == NULL)
+  if (r == NULL || s == NULL || A == NULL || e == NULL || R == NULL)
     goto fail;
 
-  if (BN_cmp(Rx, ec->p) >= 0 || BN_cmp(S, ec->n) >= 0)
+  if (BN_cmp(r, ec->p) >= 0 || BN_cmp(s, ec->n) >= 0)
     goto fail;
 
-  /* Let R = s*G - e*P. */
   if (!BN_is_zero(e)) {
     if (!BN_sub(e, ec->n, e))
       goto fail;
   }
 
-  if (!EC_POINT_mul(ec->group, R, S, A, e, ec->ctx))
+  if (!EC_POINT_mul(ec->group, R, s, A, e, ec->ctx))
     goto fail;
 
   x = BN_new();
@@ -2449,36 +2439,31 @@ bcrypto_schnorr_verify(bcrypto_ecdsa_t *ec,
   if (!EC_POINT_get_Jprojective_coordinates_GFp(ec->group, R, x, y, z, ec->ctx))
     goto fail;
 
-  /* Check for point at infinity. */
   if (BN_is_zero(z))
     goto fail;
 
-  /* Check for quadratic residue in the jacobian space. */
-  /* Optimized as `jacobi(y(R) * z(R)) == 1`. */
   if (!BN_mod_mul(e, y, z, ec->p, ec->ctx))
     goto fail;
 
   if (BN_kronecker(e, ec->p, ec->ctx) != 1)
     goto fail;
 
-  /* Check `x(R) == r` in the jacobian space. */
-  /* Optimized as `x(R) == r * z(R)^2 mod p`. */
   if (!BN_mod_sqr(e, z, ec->p, ec->ctx))
     goto fail;
 
-  if (!BN_mod_mul(e, Rx, e, ec->p, ec->ctx))
+  if (!BN_mod_mul(e, r, e, ec->p, ec->ctx))
     goto fail;
 
   if (BN_ucmp(x, e) != 0)
     goto fail;
 
-  r = 1;
+  ret = 1;
 fail:
-  if (Rx != NULL)
-    BN_free(Rx);
+  if (r != NULL)
+    BN_free(r);
 
-  if (S != NULL)
-    BN_free(S);
+  if (s != NULL)
+    BN_free(s);
 
   if (A != NULL)
     EC_POINT_free(A);
@@ -2498,7 +2483,7 @@ fail:
   if (z != NULL)
     BN_free(z);
 
-  return r;
+  return ret;
 }
 
 int
@@ -2510,10 +2495,10 @@ bcrypto_schnorr_verify_batch(bcrypto_ecdsa_t *ec,
   EC_POINT **points = NULL;
   BIGNUM **coeffs = NULL;
   BIGNUM *sum = NULL;
-  BIGNUM *Rx_tmp = NULL;
-  BIGNUM *S_tmp = NULL;
-  BIGNUM *Rx = NULL;
-  BIGNUM *S = NULL;
+  BIGNUM *r_tmp = NULL;
+  BIGNUM *s_tmp = NULL;
+  BIGNUM *r = NULL;
+  BIGNUM *s = NULL;
   EC_POINT *A = NULL;
   BIGNUM *e = NULL;
   EC_POINT *R = NULL;
@@ -2521,7 +2506,7 @@ bcrypto_schnorr_verify_batch(bcrypto_ecdsa_t *ec,
   BIGNUM *ax = NULL;
   BIGNUM *y = NULL;
   EC_POINT *res = NULL;
-  int r = 0;
+  int ret = 0;
   size_t i = 0;
 
   if (length == 0)
@@ -2530,15 +2515,15 @@ bcrypto_schnorr_verify_batch(bcrypto_ecdsa_t *ec,
   points = (EC_POINT **)OPENSSL_malloc(2 * length * sizeof(EC_POINT *));
   coeffs = (BIGNUM **)OPENSSL_malloc(2 * length * sizeof(BIGNUM *));
   sum = BN_new();
-  Rx_tmp = BN_new();
-  S_tmp = BN_new();
+  r_tmp = BN_new();
+  s_tmp = BN_new();
   ax = BN_new();
   y = BN_new();
   res = EC_POINT_new(ec->group);
 
   if (points == NULL || coeffs == NULL
-      || sum == NULL || Rx_tmp == NULL
-      || S_tmp == NULL || ax == NULL
+      || sum == NULL || r_tmp == NULL
+      || s_tmp == NULL || ax == NULL
       || y == NULL || res == NULL) {
     goto fail;
   }
@@ -2552,22 +2537,22 @@ bcrypto_schnorr_verify_batch(bcrypto_ecdsa_t *ec,
     const bcrypto_ecdsa_sig_t *sig = &sigs[i];
     const bcrypto_ecdsa_pubkey_t *pub = &pubs[i];
 
-    Rx = BN_bin2bn(sig->r, ec->size, Rx_tmp);
-    S = BN_bin2bn(sig->s, ec->scalar_size, S_tmp);
+    r = BN_bin2bn(sig->r, ec->size, r_tmp);
+    s = BN_bin2bn(sig->s, ec->scalar_size, s_tmp);
     A = bcrypto_ecdsa_pubkey_to_ec_point(ec, pub);
     e = schnorr_hash_ram(ec, sig->r, pub, msg);
     R = EC_POINT_new(ec->group);
     a = BN_new();
 
-    if (Rx == NULL || S == NULL || A == NULL
+    if (r == NULL || s == NULL || A == NULL
         || e == NULL || R == NULL || a == NULL) {
       goto fail;
     }
 
-    if (BN_cmp(Rx, ec->p) >= 0 || BN_cmp(S, ec->n) >= 0)
+    if (BN_cmp(r, ec->p) >= 0 || BN_cmp(s, ec->n) >= 0)
       goto fail;
 
-    if (!schnorr_lift_x(ec, R, Rx, ax, y))
+    if (!schnorr_lift_x(ec, R, r, ax, y))
       goto fail;
 
     if (i == 0) {
@@ -2583,11 +2568,11 @@ bcrypto_schnorr_verify_batch(bcrypto_ecdsa_t *ec,
       if (!BN_mod_mul(e, e, a, ec->n, ec->ctx))
         goto fail;
 
-      if (!BN_mod_mul(S, S, a, ec->n, ec->ctx))
+      if (!BN_mod_mul(s, s, a, ec->n, ec->ctx))
         goto fail;
     }
 
-    if (!BN_mod_add(sum, sum, S, ec->n, ec->ctx))
+    if (!BN_mod_add(sum, sum, s, ec->n, ec->ctx))
       goto fail;
 
     points[i * 2 + 0] = R;
@@ -2616,16 +2601,16 @@ bcrypto_schnorr_verify_batch(bcrypto_ecdsa_t *ec,
   if (!EC_POINT_is_at_infinity(ec->group, res))
     goto fail;
 
-  r = 1;
+  ret = 1;
 fail:
   if (sum != NULL)
     BN_free(sum);
 
-  if (Rx_tmp != NULL)
-    BN_free(Rx_tmp);
+  if (r_tmp != NULL)
+    BN_free(r_tmp);
 
-  if (S_tmp != NULL)
-    BN_free(S_tmp);
+  if (s_tmp != NULL)
+    BN_free(s_tmp);
 
   if (A != NULL)
     EC_POINT_free(A);
@@ -2662,7 +2647,7 @@ fail:
   if (coeffs != NULL)
     OPENSSL_free(coeffs);
 
-  return r;
+  return ret;
 }
 
 /*
