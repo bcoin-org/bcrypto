@@ -142,7 +142,7 @@ bcrypto_ecdsa_privkey_export(bcrypto_ecdsa_t *ec,
                              uint8_t **out,
                              size_t *out_len,
                              const uint8_t *priv,
-                             int compress);
+                             int flags);
 
 int
 bcrypto_ecdsa_privkey_import(bcrypto_ecdsa_t *ec,

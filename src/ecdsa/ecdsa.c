@@ -635,19 +635,21 @@ void
 bcrypto_ecdsa_sig_normalize(bcrypto_ecdsa_t *ec,
                             bcrypto_ecdsa_sig_t *out,
                             const bcrypto_ecdsa_sig_t *sig) {
-  if (out != sig)
-    memcpy(out, sig, sizeof(bcrypto_ecdsa_sig_t));
+  memcpy(out, sig, sizeof(bcrypto_ecdsa_sig_t));
 
-  if (memcmp(out->s, ec->half, ec->scalar_size) > 0) {
-    int carry = 0;
-    int i, r;
+  if (memcmp(out->s, ec->half, ec->scalar_size) <= 0)
+    return;
 
-    for (i = ec->scalar_size - 1; i >= 0; i--) {
-      r = (int)ec->order[i] - (int)out->s[i] + carry;
-      carry = r >> 8;
-      out->s[i] = r & 0xff;
-    }
+  int carry = 0;
+  int i, r;
+
+  for (i = ec->scalar_size - 1; i >= 0; i--) {
+    r = (int)ec->order[i] - (int)out->s[i] + carry;
+    carry = r >> 8;
+    out->s[i] = r & 0xff;
   }
+
+  assert(carry == 0);
 }
 
 int
@@ -809,17 +811,18 @@ bcrypto_ecdsa_privkey_verify(bcrypto_ecdsa_t *ec, const uint8_t *priv) {
   return bcrypto_ecdsa_valid_scalar(ec, priv);
 }
 
-static int
-bcrypto_ecdsa_privkey_export_inner(bcrypto_ecdsa_t *ec,
-                                   uint8_t **out,
-                                   size_t *out_len,
-                                   const uint8_t *priv,
-                                   int compress,
-                                   int no_params) {
+int
+bcrypto_ecdsa_privkey_export(bcrypto_ecdsa_t *ec,
+                             uint8_t **out,
+                             size_t *out_len,
+                             const uint8_t *priv,
+                             int flags) {
   EC_KEY *eckey = NULL;
   EC_POINT *point = NULL;
   const BIGNUM *scalar = NULL;
   uint8_t *buf = NULL;
+  int compress = flags & 1;
+  int no_params = (flags >> 1) & 1;
   int len = 0;
 
   if (!bcrypto_ecdsa_valid_scalar(ec, priv))
@@ -887,16 +890,6 @@ fail:
 }
 
 int
-bcrypto_ecdsa_privkey_export(bcrypto_ecdsa_t *ec,
-                             uint8_t **out,
-                             size_t *out_len,
-                             const uint8_t *priv,
-                             int compress) {
-  return bcrypto_ecdsa_privkey_export_inner(ec, out, out_len,
-                                            priv, compress, 0);
-}
-
-int
 bcrypto_ecdsa_privkey_import(bcrypto_ecdsa_t *ec,
                              uint8_t *out,
                              const uint8_t *raw,
@@ -947,12 +940,11 @@ bcrypto_ecdsa_privkey_export_pkcs8(bcrypto_ecdsa_t *ec,
   size_t eplen = 0;
   PKCS8_PRIV_KEY_INFO *p8 = NULL;
   uint8_t *buf = NULL;
+  int flags = compress | 2;
   int len = 0;
 
-  if (!bcrypto_ecdsa_privkey_export_inner(ec, &ep, &eplen,
-                                          priv, compress, 1)) {
+  if (!bcrypto_ecdsa_privkey_export(ec, &ep, &eplen, priv, flags))
     goto fail;
-  }
 
   p8 = PKCS8_PRIV_KEY_INFO_new();
 
@@ -1845,20 +1837,20 @@ bcrypto_ecdsa_sign_recoverable(bcrypto_ecdsa_t *ec,
                                const uint8_t *msg,
                                size_t msg_len,
                                const uint8_t *priv) {
-  bcrypto_ecdsa_pubkey_t Q, Qprime;
+  bcrypto_ecdsa_pubkey_t A, Q;
   int i = 0;
 
   if (!bcrypto_ecdsa_sign(ec, sig, msg, msg_len, priv))
     return 0;
 
-  if (!bcrypto_ecdsa_pubkey_create(ec, &Q, priv))
+  if (!bcrypto_ecdsa_pubkey_create(ec, &A, priv))
     return 0;
 
   for (; i < 4; i++) {
-    if (!bcrypto_ecdsa_recover(ec, &Qprime, msg, msg_len, sig, i))
+    if (!bcrypto_ecdsa_recover(ec, &Q, msg, msg_len, sig, i))
       continue;
 
-    if (!bcrypto_ecdsa_pubkey_equals(ec, &Q, &Qprime))
+    if (!bcrypto_ecdsa_pubkey_equals(ec, &Q, &A))
       continue;
 
     sig->param = i;
@@ -1913,25 +1905,26 @@ bcrypto_ecdsa_recover(bcrypto_ecdsa_t *ec,
                       size_t msg_len,
                       const bcrypto_ecdsa_sig_t *sig,
                       int param) {
-  int y_odd = 0;
-  int second_key = 0;
+  int sign = 0;
+  int high = 0;
   ECDSA_SIG *ecsig = NULL;
   const BIGNUM *r = NULL;
   const BIGNUM *s = NULL;
   BIGNUM *x = NULL;
-  EC_POINT *rp = NULL;
-  BIGNUM *rinv = NULL;
+  BIGNUM *pn = NULL;
+  EC_POINT *R = NULL;
+  BIGNUM *ri = NULL;
   BIGNUM *s1 = NULL;
   BIGNUM *s2 = NULL;
-  BIGNUM *e = NULL;
+  BIGNUM *m = NULL;
   int d = 0;
-  EC_POINT *Q = NULL;
+  EC_POINT *A = NULL;
 
   if (param < 0 || (param & 3) != param)
     goto fail;
 
-  y_odd = param & 1;
-  second_key = param >> 1;
+  sign = param & 1;
+  high = param >> 1;
 
   ecsig = bcrypto_ecdsa_sig_to_ecdsa_sig(ec, sig);
 
@@ -1956,64 +1949,60 @@ bcrypto_ecdsa_recover(bcrypto_ecdsa_t *ec,
   if (!BN_copy(x, r))
     goto fail;
 
-  if (second_key) {
-    BIGNUM *m = BN_new();
+  if (high) {
+    pn = BN_new();
 
-    if (m == NULL)
+    if (pn == NULL)
       goto fail;
 
-    if (!BN_mod(m, ec->p, ec->n, ec->ctx)) {
-      BN_free(m);
+    if (!BN_mod(pn, ec->p, ec->n, ec->ctx))
       goto fail;
-    }
 
-    if (BN_cmp(r, m) >= 0) {
-      BN_free(m);
+    if (BN_cmp(r, pn) >= 0)
       goto fail;
-    }
-
-    BN_free(m);
 
     if (!BN_mod_add(x, x, ec->n, ec->p, ec->ctx))
       goto fail;
+
+    BN_free(pn);
   }
 
-  rp = EC_POINT_new(ec->group);
+  R = EC_POINT_new(ec->group);
 
-  if (rp == NULL)
+  if (R == NULL)
     goto fail;
 
 #if OPENSSL_VERSION_NUMBER >= 0x10200000L
-  if (!EC_POINT_set_compressed_coordinates(ec->group, rp, x, y_odd, ec->ctx))
+  if (!EC_POINT_set_compressed_coordinates(ec->group, R, x, sign, ec->ctx))
 #else
-  if (!EC_POINT_set_compressed_coordinates_GFp(ec->group, rp, x, y_odd, ec->ctx))
+  if (!EC_POINT_set_compressed_coordinates_GFp(ec->group, R, x, sign, ec->ctx))
 #endif
     goto fail;
 
-  rinv = BN_new();
+  ri = BN_new();
 
-  if (rinv == NULL)
+  if (ri == NULL)
     goto fail;
 
-  if (!BN_mod_inverse(rinv, r, ec->n, ec->ctx))
+  if (!BN_mod_inverse(ri, r, ec->n, ec->ctx))
     goto fail;
 
   if (msg_len > ec->scalar_size)
     msg_len = ec->scalar_size;
 
-  e = BN_bin2bn(msg, msg_len, NULL);
+  m = BN_bin2bn(msg, msg_len, NULL);
 
-  if (e == NULL)
+  if (m == NULL)
     goto fail;
 
   d = (int)msg_len * 8 - (int)ec->scalar_bits;
 
   if (d > 0) {
-    if (!BN_rshift(e, e, d))
+    if (!BN_rshift(m, m, d))
       goto fail;
   }
 
-  if (!BN_mod(e, e, ec->n, ec->ctx))
+  if (!BN_mod(m, m, ec->n, ec->ctx))
     goto fail;
 
   s1 = BN_new();
@@ -2021,10 +2010,10 @@ bcrypto_ecdsa_recover(bcrypto_ecdsa_t *ec,
   if (s1 == NULL)
     goto fail;
 
-  if (!BN_mod_sub(s1, ec->n, e, ec->n, ec->ctx))
+  if (!BN_mod_mul(s1, m, ri, ec->n, ec->ctx))
     goto fail;
 
-  if (!BN_mod_mul(s1, s1, rinv, ec->n, ec->ctx))
+  if (!BN_mod_sub(s1, ec->n, s1, ec->n, ec->ctx))
     goto fail;
 
   s2 = BN_new();
@@ -2032,28 +2021,28 @@ bcrypto_ecdsa_recover(bcrypto_ecdsa_t *ec,
   if (s2 == NULL)
     goto fail;
 
-  if (!BN_mod_mul(s2, s, rinv, ec->n, ec->ctx))
+  if (!BN_mod_mul(s2, s, ri, ec->n, ec->ctx))
     goto fail;
 
-  Q = EC_POINT_new(ec->group);
+  A = EC_POINT_new(ec->group);
 
-  if (Q == NULL)
+  if (A == NULL)
     goto fail;
 
-  if (!EC_POINT_mul(ec->group, Q, s1, rp, s2, ec->ctx))
+  if (!EC_POINT_mul(ec->group, A, s1, R, s2, ec->ctx))
     goto fail;
 
-  if (!bcrypto_ecdsa_pubkey_from_ec_point(ec, pub, Q))
+  if (!bcrypto_ecdsa_pubkey_from_ec_point(ec, pub, A))
     goto fail;
 
   ECDSA_SIG_free(ecsig);
   BN_free(x);
-  EC_POINT_free(rp);
-  BN_free(rinv);
+  EC_POINT_free(R);
+  BN_free(ri);
   BN_free(s1);
   BN_free(s2);
-  BN_free(e);
-  EC_POINT_free(Q);
+  BN_free(m);
+  EC_POINT_free(A);
 
   return 1;
 
@@ -2064,11 +2053,14 @@ fail:
   if (x != NULL)
     BN_free(x);
 
-  if (rp != NULL)
-    EC_POINT_free(rp);
+  if (pn != NULL)
+    BN_free(pn);
 
-  if (rinv != NULL)
-    BN_free(rinv);
+  if (R != NULL)
+    EC_POINT_free(R);
+
+  if (ri != NULL)
+    BN_free(ri);
 
   if (s1 != NULL)
     BN_free(s1);
@@ -2076,11 +2068,11 @@ fail:
   if (s2 != NULL)
     BN_free(s2);
 
-  if (e != NULL)
-    BN_free(e);
+  if (m != NULL)
+    BN_free(m);
 
-  if (Q != NULL)
-    EC_POINT_free(Q);
+  if (A != NULL)
+    EC_POINT_free(A);
 
   return 0;
 }
