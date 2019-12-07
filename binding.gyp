@@ -131,7 +131,7 @@
         ["OS=='win'", {
           "with_gmp%": "false"
         }, {
-          "with_gmp%": "<!(utils/has_lib.sh gmp)"
+          "with_gmp%": "<!(./utils/has_gmp.sh)"
         }]
       ]
     },
