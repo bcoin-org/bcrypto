@@ -68,9 +68,13 @@
 #include "secp256k1/contrib/lax_der_parsing.h"
 #include "random/random.h"
 
-#define COMPRESSED_TYPE_INVALID "compressed should be a boolean"
+#define ALLOCATION_FAILURE "allocation failed"
 
-#define EC_PRIVATE_KEY_TYPE_INVALID "private key should be a Buffer"
+#define RNG_FAILURE "RNG failed"
+
+#define COMPRESSED_TYPE_INVALID "compressed must be a boolean"
+
+#define EC_PRIVATE_KEY_TYPE_INVALID "private key must be a Buffer"
 #define EC_PRIVATE_KEY_LENGTH_INVALID "private key length is invalid"
 #define EC_PRIVATE_KEY_RANGE_INVALID "private key range is invalid"
 #define EC_PRIVATE_KEY_TWEAK_ADD_FAIL \
@@ -79,10 +83,10 @@
 #define EC_PRIVATE_KEY_EXPORT_DER_FAIL "couldn't export to DER format"
 #define EC_PRIVATE_KEY_IMPORT_DER_FAIL "couldn't import from DER format"
 
-#define EC_PUBLIC_KEYS_TYPE_INVALID "public keys should be an Array"
+#define EC_PUBLIC_KEYS_TYPE_INVALID "public keys must be an Array"
 #define EC_PUBLIC_KEYS_LENGTH_INVALID \
-  "public keys Array should have at least 1 element"
-#define EC_PUBLIC_KEY_TYPE_INVALID "public key should be a Buffer"
+  "public keys Array must have at least 1 element"
+#define EC_PUBLIC_KEY_TYPE_INVALID "public key must be a Buffer"
 #define EC_PUBLIC_KEY_LENGTH_INVALID "public key length is invalid"
 #define EC_PUBLIC_KEY_PARSE_FAIL \
   "the public key could not be parsed or is invalid"
@@ -96,32 +100,31 @@
 
 #define ECDH_FAIL "scalar was invalid (zero or overflow)"
 
-#define ECDSA_SIGNATURE_TYPE_INVALID "signature should be a Buffer"
-#define ECDSA_SIGNATURE_LENGTH_INVALID "signature length is invalid"
-#define ECDSA_SIGNATURE_PARSE_FAIL "couldn't parse signature"
-#define ECDSA_SIGNATURE_PARSE_DER_FAIL "couldn't parse DER signature"
-#define ECDSA_SIGNATURE_SERIALIZE_DER_FAIL \
+#define EC_SIGNATURE_TYPE_INVALID "signature must be a Buffer"
+#define EC_SIGNATURE_LENGTH_INVALID "signature length is invalid"
+#define EC_SIGNATURE_PARSE_FAIL "couldn't parse signature"
+#define EC_SIGNATURE_PARSE_DER_FAIL "couldn't parse DER signature"
+#define EC_SIGNATURE_SERIALIZE_DER_FAIL \
   "couldn't serialize signature to DER format"
 
-#define ECDSA_SIGN_FAIL \
+#define EC_SIGN_FAIL \
   "nonce generation function failed or private key is invalid"
-#define ECDSA_RECOVER_FAIL "couldn't recover public key from signature"
+#define EC_RECOVER_FAIL "couldn't recover public key from signature"
 
-#define MSG32_TYPE_INVALID "message should be a Buffer"
+#define MSG32_TYPE_INVALID "message must be a Buffer"
 #define MSG32_LENGTH_INVALID "message length is invalid"
 
-#define OPTIONS_TYPE_INVALID "options should be an Object"
-#define OPTIONS_DATA_TYPE_INVALID "options.data should be a Buffer"
-#define OPTIONS_DATA_LENGTH_INVALID "options.data length is invalid"
-#define OPTIONS_NONCEFN_TYPE_INVALID "options.noncefn should be a Function"
+#define RECOVERY_ID_TYPE_INVALID "recovery must be a Number"
+#define RECOVERY_ID_VALUE_INVALID "recovery value must be in [0,3]"
 
-#define RECOVERY_ID_TYPE_INVALID "recovery should be a Number"
-#define RECOVERY_ID_VALUE_INVALID "recovery should have value between -1 and 4"
+#define HINT_TYPE_INVALID "hint must be a Number"
 
-#define HINT_TYPE_INVALID "hint should be a Number"
-
-#define TWEAK_TYPE_INVALID "tweak should be a Buffer"
+#define TWEAK_TYPE_INVALID "tweak must be a Buffer"
 #define TWEAK_LENGTH_INVALID "tweak length is invalid"
+
+#define BATCH_TYPE_INVALID "batch must be an Array"
+#define BATCH_ITEM_TYPE_INVALID "batch item must be an Array"
+#define BATCH_ITEM_LENGTH_INVALID "batch item must consist of 3 members"
 
 #define COPY_BUFFER(data, datalen) \
   Nan::CopyBuffer((const char *)data, (uint32_t)datalen).ToLocalChecked()
@@ -293,10 +296,10 @@ NAN_METHOD(BSecp256k1::New) {
 
   // Use blinded multiplication as a final
   // defense against side-channel attacks.
-  uint8_t seed[32];
+  unsigned char seed[32];
 
   if (bcrypto_random(&seed[0], 32)) {
-    if (secp256k1_context_randomize(ctx, seed) == 0) {
+    if (!secp256k1_context_randomize(ctx, &seed[0])) {
       secp256k1_context_destroy(ctx);
       return Nan::ThrowError("Could not randomize Secp256k1 instance.");
     }
@@ -313,16 +316,16 @@ NAN_METHOD(BSecp256k1::New) {
 NAN_METHOD(BSecp256k1::PrivateKeyVerify) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
-  v8::Local<v8::Object> private_key_buffer = info[0].As<v8::Object>();
-  CHECK_TYPE_BUFFER(private_key_buffer, EC_PRIVATE_KEY_TYPE_INVALID);
+  v8::Local<v8::Object> priv_buf = info[0].As<v8::Object>();
+  CHECK_TYPE_BUFFER(priv_buf, EC_PRIVATE_KEY_TYPE_INVALID);
 
-  const unsigned char *private_key =
-    (const unsigned char *)node::Buffer::Data(private_key_buffer);
+  const unsigned char *priv =
+    (const unsigned char *)node::Buffer::Data(priv_buf);
 
-  if (node::Buffer::Length(private_key_buffer) != 32)
+  if (node::Buffer::Length(priv_buf) != 32)
     return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
 
-  int result = secp256k1_ec_seckey_verify(secp->ctx, private_key);
+  int result = secp256k1_ec_seckey_verify(secp->ctx, priv);
 
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
@@ -330,331 +333,312 @@ NAN_METHOD(BSecp256k1::PrivateKeyVerify) {
 NAN_METHOD(BSecp256k1::PrivateKeyExport) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
-  v8::Local<v8::Object> private_key_buffer = info[0].As<v8::Object>();
-  CHECK_TYPE_BUFFER(private_key_buffer, EC_PRIVATE_KEY_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH(private_key_buffer, 32, EC_PRIVATE_KEY_LENGTH_INVALID);
+  v8::Local<v8::Object> priv_buf = info[0].As<v8::Object>();
+  CHECK_TYPE_BUFFER(priv_buf, EC_PRIVATE_KEY_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH(priv_buf, 32, EC_PRIVATE_KEY_LENGTH_INVALID);
 
-  const unsigned char *private_key =
-    (const unsigned char *)node::Buffer::Data(private_key_buffer);
+  const unsigned char *priv =
+    (const unsigned char *)node::Buffer::Data(priv_buf);
 
-  int compressed = 1;
-  UPDATE_COMPRESSED_VALUE(compressed, info[1], 1, 0);
+  int flags = 1;
+  UPDATE_COMPRESSED_VALUE(flags, info[1], 1, 0);
 
-  unsigned char output[279];
-  size_t output_length;
+  unsigned char out[279];
+  size_t out_len;
 
-  if (ec_privkey_export_der(secp->ctx, &output[0], &output_length,
-                            private_key, compressed) == 0) {
+  if (!ec_privkey_export_der(secp->ctx, &out[0], &out_len, priv, flags))
     return Nan::ThrowError(EC_PRIVATE_KEY_EXPORT_DER_FAIL);
-  }
 
-  info.GetReturnValue().Set(COPY_BUFFER(output, output_length));
+  info.GetReturnValue().Set(COPY_BUFFER(out, out_len));
 }
 
 NAN_METHOD(BSecp256k1::PrivateKeyImport) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
-  v8::Local<v8::Object> input_buffer = info[0].As<v8::Object>();
-  CHECK_TYPE_BUFFER(input_buffer, EC_PRIVATE_KEY_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH_GT_ZERO(input_buffer, EC_PRIVATE_KEY_LENGTH_INVALID);
+  v8::Local<v8::Object> inp_buf = info[0].As<v8::Object>();
+  CHECK_TYPE_BUFFER(inp_buf, EC_PRIVATE_KEY_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH_GT_ZERO(inp_buf, EC_PRIVATE_KEY_LENGTH_INVALID);
 
-  const unsigned char *input =
-    (const unsigned char *)node::Buffer::Data(input_buffer);
-  size_t input_length = node::Buffer::Length(input_buffer);
+  const unsigned char *inp = (const unsigned char *)node::Buffer::Data(inp_buf);
+  size_t inp_len = node::Buffer::Length(inp_buf);
 
-  unsigned char private_key[32];
+  unsigned char priv[32];
 
-  if (ec_privkey_import_der(secp->ctx, &private_key[0],
-                            input, input_length) == 0) {
+  if (!ec_privkey_import_der(secp->ctx, &priv[0], inp, inp_len))
     return Nan::ThrowError(EC_PRIVATE_KEY_IMPORT_DER_FAIL);
-  }
 
-  info.GetReturnValue().Set(COPY_BUFFER(private_key, 32));
+  info.GetReturnValue().Set(COPY_BUFFER(priv, 32));
 }
 
 NAN_METHOD(BSecp256k1::PrivateKeyReduce) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
-  v8::Local<v8::Object> private_key_buffer = info[0].As<v8::Object>();
-  CHECK_TYPE_BUFFER(private_key_buffer, EC_PRIVATE_KEY_TYPE_INVALID);
+  v8::Local<v8::Object> priv_buf = info[0].As<v8::Object>();
+  CHECK_TYPE_BUFFER(priv_buf, EC_PRIVATE_KEY_TYPE_INVALID);
 
-  unsigned char private_key[32];
+  unsigned char out[32];
 
-  const unsigned char *data =
-    (const unsigned char *)node::Buffer::Data(private_key_buffer);
+  const unsigned char *priv =
+    (const unsigned char *)node::Buffer::Data(priv_buf);
 
-  size_t len = node::Buffer::Length(private_key_buffer);
+  size_t priv_len = (size_t)node::Buffer::Length(priv_buf);
 
-  secp256k1_ec_privkey_reduce(secp->ctx, &private_key[0], data, len);
+  secp256k1_ec_privkey_reduce(secp->ctx, &out[0], priv, priv_len);
 
-  info.GetReturnValue().Set(COPY_BUFFER(&private_key[0], 32));
+  info.GetReturnValue().Set(COPY_BUFFER(&out[0], 32));
 }
 
 NAN_METHOD(BSecp256k1::PrivateKeyNegate) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
-  v8::Local<v8::Object> private_key_buffer = info[0].As<v8::Object>();
-  CHECK_TYPE_BUFFER(private_key_buffer, EC_PRIVATE_KEY_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH(private_key_buffer, 32, EC_PRIVATE_KEY_LENGTH_INVALID);
+  v8::Local<v8::Object> priv_buf = info[0].As<v8::Object>();
+  CHECK_TYPE_BUFFER(priv_buf, EC_PRIVATE_KEY_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH(priv_buf, 32, EC_PRIVATE_KEY_LENGTH_INVALID);
 
-  unsigned char private_key[32];
-  memcpy(&private_key[0], node::Buffer::Data(private_key_buffer), 32);
+  unsigned char priv[32];
+  memcpy(&priv[0], node::Buffer::Data(priv_buf), 32);
 
-  if (secp256k1_ec_privkey_negate_safe(secp->ctx, &private_key[0]) == 0)
+  if (!secp256k1_ec_privkey_negate_safe(secp->ctx, &priv[0]))
     return Nan::ThrowError(EC_PRIVATE_KEY_RANGE_INVALID);
 
-  info.GetReturnValue().Set(COPY_BUFFER(&private_key[0], 32));
+  info.GetReturnValue().Set(COPY_BUFFER(&priv[0], 32));
 }
 
 NAN_METHOD(BSecp256k1::PrivateKeyInvert) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
-  v8::Local<v8::Object> private_key_buffer = info[0].As<v8::Object>();
-  CHECK_TYPE_BUFFER(private_key_buffer, EC_PRIVATE_KEY_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH(private_key_buffer, 32, EC_PRIVATE_KEY_LENGTH_INVALID);
+  v8::Local<v8::Object> priv_buf = info[0].As<v8::Object>();
+  CHECK_TYPE_BUFFER(priv_buf, EC_PRIVATE_KEY_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH(priv_buf, 32, EC_PRIVATE_KEY_LENGTH_INVALID);
 
-  unsigned char private_key[32];
-  memcpy(&private_key[0], node::Buffer::Data(private_key_buffer), 32);
+  unsigned char priv[32];
+  memcpy(&priv[0], node::Buffer::Data(priv_buf), 32);
 
-  if (secp256k1_ec_privkey_invert(secp->ctx, &private_key[0]) == 0)
+  if (!secp256k1_ec_privkey_invert(secp->ctx, &priv[0]))
     return Nan::ThrowError(EC_PRIVATE_KEY_RANGE_INVALID);
 
-  info.GetReturnValue().Set(COPY_BUFFER(&private_key[0], 32));
+  info.GetReturnValue().Set(COPY_BUFFER(&priv[0], 32));
 }
 
 NAN_METHOD(BSecp256k1::PrivateKeyTweakAdd) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
-  v8::Local<v8::Object> private_key_buffer = info[0].As<v8::Object>();
-  CHECK_TYPE_BUFFER(private_key_buffer, EC_PRIVATE_KEY_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH(private_key_buffer, 32, EC_PRIVATE_KEY_LENGTH_INVALID);
+  v8::Local<v8::Object> priv_buf = info[0].As<v8::Object>();
+  CHECK_TYPE_BUFFER(priv_buf, EC_PRIVATE_KEY_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH(priv_buf, 32, EC_PRIVATE_KEY_LENGTH_INVALID);
 
-  unsigned char private_key[32];
-  memcpy(&private_key[0], node::Buffer::Data(private_key_buffer), 32);
+  unsigned char priv[32];
+  memcpy(&priv[0], node::Buffer::Data(priv_buf), 32);
 
-  v8::Local<v8::Object> tweak_buffer = info[1].As<v8::Object>();
-  CHECK_TYPE_BUFFER(tweak_buffer, TWEAK_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH(tweak_buffer, 32, TWEAK_LENGTH_INVALID);
+  v8::Local<v8::Object> tweak_buf = info[1].As<v8::Object>();
+  CHECK_TYPE_BUFFER(tweak_buf, TWEAK_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH(tweak_buf, 32, TWEAK_LENGTH_INVALID);
 
   const unsigned char *tweak =
-    (unsigned char *)node::Buffer::Data(tweak_buffer);
+    (const unsigned char *)node::Buffer::Data(tweak_buf);
 
-  if (secp256k1_ec_privkey_tweak_add(secp->ctx, &private_key[0], tweak) == 0)
+  if (!secp256k1_ec_privkey_tweak_add(secp->ctx, &priv[0], tweak))
     return Nan::ThrowError(EC_PRIVATE_KEY_TWEAK_ADD_FAIL);
 
-  info.GetReturnValue().Set(COPY_BUFFER(&private_key[0], 32));
+  info.GetReturnValue().Set(COPY_BUFFER(&priv[0], 32));
 }
 
 NAN_METHOD(BSecp256k1::PrivateKeyTweakMul) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
-  v8::Local<v8::Object> private_key_buffer = info[0].As<v8::Object>();
-  CHECK_TYPE_BUFFER(private_key_buffer, EC_PRIVATE_KEY_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH(private_key_buffer, 32, EC_PRIVATE_KEY_LENGTH_INVALID);
+  v8::Local<v8::Object> priv_buf = info[0].As<v8::Object>();
+  CHECK_TYPE_BUFFER(priv_buf, EC_PRIVATE_KEY_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH(priv_buf, 32, EC_PRIVATE_KEY_LENGTH_INVALID);
 
-  unsigned char private_key[32];
-  memcpy(&private_key[0], node::Buffer::Data(private_key_buffer), 32);
+  unsigned char priv[32];
+  memcpy(&priv[0], node::Buffer::Data(priv_buf), 32);
 
-  v8::Local<v8::Object> tweak_buffer = info[1].As<v8::Object>();
-  CHECK_TYPE_BUFFER(tweak_buffer, TWEAK_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH(tweak_buffer, 32, TWEAK_LENGTH_INVALID);
+  v8::Local<v8::Object> tweak_buf = info[1].As<v8::Object>();
+  CHECK_TYPE_BUFFER(tweak_buf, TWEAK_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH(tweak_buf, 32, TWEAK_LENGTH_INVALID);
 
   const unsigned char *tweak =
-    (unsigned char *)node::Buffer::Data(tweak_buffer);
+    (const unsigned char *)node::Buffer::Data(tweak_buf);
 
-  if (secp256k1_ec_privkey_tweak_mul(secp->ctx, &private_key[0], tweak) == 0)
+  if (!secp256k1_ec_privkey_tweak_mul(secp->ctx, &priv[0], tweak))
     return Nan::ThrowError(EC_PRIVATE_KEY_TWEAK_MUL_FAIL);
 
-  info.GetReturnValue().Set(COPY_BUFFER(&private_key[0], 32));
+  info.GetReturnValue().Set(COPY_BUFFER(&priv[0], 32));
 }
 
 NAN_METHOD(BSecp256k1::PublicKeyCreate) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
-  v8::Local<v8::Object> private_key_buffer = info[0].As<v8::Object>();
-  CHECK_TYPE_BUFFER(private_key_buffer, EC_PRIVATE_KEY_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH(private_key_buffer, 32, EC_PRIVATE_KEY_LENGTH_INVALID);
+  v8::Local<v8::Object> priv_buf = info[0].As<v8::Object>();
+  CHECK_TYPE_BUFFER(priv_buf, EC_PRIVATE_KEY_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH(priv_buf, 32, EC_PRIVATE_KEY_LENGTH_INVALID);
 
-  const unsigned char *private_key =
-    (const unsigned char *)node::Buffer::Data(private_key_buffer);
+  const unsigned char *priv =
+    (const unsigned char *)node::Buffer::Data(priv_buf);
 
   unsigned int flags = SECP256K1_EC_COMPRESSED;
   UPDATE_COMPRESSED_VALUE(flags, info[1], SECP256K1_EC_COMPRESSED,
                                           SECP256K1_EC_UNCOMPRESSED);
 
-  secp256k1_pubkey public_key;
+  secp256k1_pubkey pub;
 
-  if (secp256k1_ec_pubkey_create(secp->ctx, &public_key, private_key) == 0)
+  if (!secp256k1_ec_pubkey_create(secp->ctx, &pub, priv))
     return Nan::ThrowError(EC_PUBLIC_KEY_CREATE_FAIL);
 
-  unsigned char output[65];
-  size_t output_length = 65;
+  unsigned char out[65];
+  size_t out_len = 65;
 
-  secp256k1_ec_pubkey_serialize(secp->ctx, &output[0], &output_length,
-                                &public_key, flags);
+  secp256k1_ec_pubkey_serialize(secp->ctx, &out[0], &out_len, &pub, flags);
 
-  info.GetReturnValue().Set(COPY_BUFFER(&output[0], output_length));
+  info.GetReturnValue().Set(COPY_BUFFER(&out[0], out_len));
 }
 
 NAN_METHOD(BSecp256k1::PublicKeyConvert) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
-  v8::Local<v8::Object> input_buffer = info[0].As<v8::Object>();
-  CHECK_TYPE_BUFFER(input_buffer, EC_PUBLIC_KEY_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH2(input_buffer, 33, 65, EC_PUBLIC_KEY_LENGTH_INVALID);
+  v8::Local<v8::Object> inp_buf = info[0].As<v8::Object>();
+  CHECK_TYPE_BUFFER(inp_buf, EC_PUBLIC_KEY_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH2(inp_buf, 33, 65, EC_PUBLIC_KEY_LENGTH_INVALID);
 
-  const unsigned char *input =
-    (unsigned char *)node::Buffer::Data(input_buffer);
-  size_t input_length = node::Buffer::Length(input_buffer);
+  const unsigned char *inp = (const unsigned char *)node::Buffer::Data(inp_buf);
+  size_t inp_len = node::Buffer::Length(inp_buf);
 
   unsigned int flags = SECP256K1_EC_COMPRESSED;
   UPDATE_COMPRESSED_VALUE(flags, info[1], SECP256K1_EC_COMPRESSED,
                                           SECP256K1_EC_UNCOMPRESSED);
 
-  secp256k1_pubkey public_key;
+  secp256k1_pubkey pub;
 
-  if (secp256k1_ec_pubkey_parse(secp->ctx, &public_key,
-                                input, input_length) == 0) {
+  if (!secp256k1_ec_pubkey_parse(secp->ctx, &pub, inp, inp_len))
     return Nan::ThrowError(EC_PUBLIC_KEY_PARSE_FAIL);
-  }
 
-  unsigned char output[65];
-  size_t output_length = 65;
-  secp256k1_ec_pubkey_serialize(secp->ctx, &output[0], &output_length,
-                                &public_key, flags);
+  unsigned char out[65];
+  size_t out_len = 65;
 
-  info.GetReturnValue().Set(COPY_BUFFER(&output[0], output_length));
+  secp256k1_ec_pubkey_serialize(secp->ctx, &out[0], &out_len, &pub, flags);
+
+  info.GetReturnValue().Set(COPY_BUFFER(&out[0], out_len));
 }
 
 NAN_METHOD(BSecp256k1::PublicKeyFromUniform) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
-  v8::Local<v8::Object> data_buffer = info[0].As<v8::Object>();
-  CHECK_TYPE_BUFFER(data_buffer, TWEAK_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH(data_buffer, 32, TWEAK_LENGTH_INVALID);
+  v8::Local<v8::Object> data_buf = info[0].As<v8::Object>();
+  CHECK_TYPE_BUFFER(data_buf, TWEAK_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH(data_buf, 32, TWEAK_LENGTH_INVALID);
 
   const unsigned char *data =
-    (const unsigned char *)node::Buffer::Data(data_buffer);
+    (const unsigned char *)node::Buffer::Data(data_buf);
 
   unsigned int flags = SECP256K1_EC_COMPRESSED;
   UPDATE_COMPRESSED_VALUE(flags, info[1], SECP256K1_EC_COMPRESSED,
                                           SECP256K1_EC_UNCOMPRESSED);
 
-  secp256k1_pubkey public_key;
-  secp256k1_pubkey_from_uniform(secp->ctx, &public_key, data);
+  secp256k1_pubkey pub;
+  secp256k1_pubkey_from_uniform(secp->ctx, &pub, data);
 
-  unsigned char output[65];
-  size_t output_length = 65;
+  unsigned char out[65];
+  size_t out_len = 65;
 
-  secp256k1_ec_pubkey_serialize(secp->ctx, &output[0], &output_length,
-                                &public_key, flags);
+  secp256k1_ec_pubkey_serialize(secp->ctx, &out[0], &out_len, &pub, flags);
 
-  info.GetReturnValue().Set(COPY_BUFFER(&output[0], output_length));
+  info.GetReturnValue().Set(COPY_BUFFER(&out[0], out_len));
 }
 
 NAN_METHOD(BSecp256k1::PublicKeyToUniform) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
-  v8::Local<v8::Object> input_buffer = info[0].As<v8::Object>();
-  CHECK_TYPE_BUFFER(input_buffer, EC_PUBLIC_KEY_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH2(input_buffer, 33, 65, EC_PUBLIC_KEY_LENGTH_INVALID);
+  v8::Local<v8::Object> inp_buf = info[0].As<v8::Object>();
+  CHECK_TYPE_BUFFER(inp_buf, EC_PUBLIC_KEY_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH2(inp_buf, 33, 65, EC_PUBLIC_KEY_LENGTH_INVALID);
 
-  const unsigned char *input =
-    (unsigned char *)node::Buffer::Data(input_buffer);
-  size_t input_length = node::Buffer::Length(input_buffer);
+  const unsigned char *inp = (const unsigned char *)node::Buffer::Data(inp_buf);
+  size_t inp_len = node::Buffer::Length(inp_buf);
 
   v8::Local<v8::Object> hint_object = info[1].As<v8::Object>();
   CHECK_TYPE_NUMBER(hint_object, HINT_TYPE_INVALID);
 
   unsigned int hint = (unsigned int)Nan::To<uint32_t>(hint_object).FromJust();
 
-  secp256k1_pubkey public_key;
+  secp256k1_pubkey pub;
 
-  if (secp256k1_ec_pubkey_parse(secp->ctx, &public_key,
-                                input, input_length) == 0) {
+  if (!secp256k1_ec_pubkey_parse(secp->ctx, &pub, inp, inp_len))
     return Nan::ThrowError(EC_PUBLIC_KEY_PARSE_FAIL);
-  }
 
-  unsigned char output[32];
+  unsigned char out[32];
 
-  if (secp256k1_pubkey_to_uniform(secp->ctx, output, &public_key, hint) == 0)
+  if (!secp256k1_pubkey_to_uniform(secp->ctx, out, &pub, hint))
     return Nan::ThrowError(EC_PUBLIC_KEY_INVERT_FAIL);
 
-  info.GetReturnValue().Set(COPY_BUFFER(&output[0], 32));
+  info.GetReturnValue().Set(COPY_BUFFER(&out[0], 32));
 }
 
 NAN_METHOD(BSecp256k1::PublicKeyFromHash) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
-  v8::Local<v8::Object> data_buffer = info[0].As<v8::Object>();
-  CHECK_TYPE_BUFFER(data_buffer, TWEAK_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH(data_buffer, 64, TWEAK_LENGTH_INVALID);
+  v8::Local<v8::Object> data_buf = info[0].As<v8::Object>();
+  CHECK_TYPE_BUFFER(data_buf, TWEAK_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH(data_buf, 64, TWEAK_LENGTH_INVALID);
 
   const unsigned char *data =
-    (const unsigned char *)node::Buffer::Data(data_buffer);
+    (const unsigned char *)node::Buffer::Data(data_buf);
 
   unsigned int flags = SECP256K1_EC_COMPRESSED;
   UPDATE_COMPRESSED_VALUE(flags, info[1], SECP256K1_EC_COMPRESSED,
                                           SECP256K1_EC_UNCOMPRESSED);
 
-  secp256k1_pubkey public_key;
+  secp256k1_pubkey pub;
 
-  if (secp256k1_pubkey_from_hash(secp->ctx, &public_key, data) == 0)
+  if (!secp256k1_pubkey_from_hash(secp->ctx, &pub, data))
     return Nan::ThrowError(EC_PUBLIC_KEY_COMBINE_FAIL);
 
-  unsigned char output[65];
-  size_t output_length = 65;
+  unsigned char out[65];
+  size_t out_len = 65;
 
-  secp256k1_ec_pubkey_serialize(secp->ctx, &output[0], &output_length,
-                                &public_key, flags);
+  secp256k1_ec_pubkey_serialize(secp->ctx, &out[0], &out_len, &pub, flags);
 
-  info.GetReturnValue().Set(COPY_BUFFER(&output[0], output_length));
+  info.GetReturnValue().Set(COPY_BUFFER(&out[0], out_len));
 }
 
 NAN_METHOD(BSecp256k1::PublicKeyToHash) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
-  v8::Local<v8::Object> input_buffer = info[0].As<v8::Object>();
-  CHECK_TYPE_BUFFER(input_buffer, EC_PUBLIC_KEY_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH2(input_buffer, 33, 65, EC_PUBLIC_KEY_LENGTH_INVALID);
+  v8::Local<v8::Object> inp_buf = info[0].As<v8::Object>();
+  CHECK_TYPE_BUFFER(inp_buf, EC_PUBLIC_KEY_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH2(inp_buf, 33, 65, EC_PUBLIC_KEY_LENGTH_INVALID);
 
-  const unsigned char *input =
-    (unsigned char *)node::Buffer::Data(input_buffer);
-  size_t input_length = node::Buffer::Length(input_buffer);
+  const unsigned char *inp = (const unsigned char *)node::Buffer::Data(inp_buf);
+  size_t inp_len = node::Buffer::Length(inp_buf);
 
-  secp256k1_pubkey public_key;
+  secp256k1_pubkey pub;
 
-  if (secp256k1_ec_pubkey_parse(secp->ctx, &public_key,
-                                input, input_length) == 0) {
+  if (!secp256k1_ec_pubkey_parse(secp->ctx, &pub, inp, inp_len))
     return Nan::ThrowError(EC_PUBLIC_KEY_PARSE_FAIL);
-  }
 
-  unsigned char output[64];
+  unsigned char out[64];
   unsigned char seed[64];
 
   if (!bcrypto_random(&seed[0], 64))
+    return Nan::ThrowError(RNG_FAILURE);
+
+  if (!secp256k1_pubkey_to_hash(secp->ctx, out, &pub, seed))
     return Nan::ThrowError(EC_PUBLIC_KEY_INVERT_FAIL);
 
-  if (secp256k1_pubkey_to_hash(secp->ctx, output, &public_key, seed) == 0)
-    return Nan::ThrowError(EC_PUBLIC_KEY_INVERT_FAIL);
-
-  info.GetReturnValue().Set(COPY_BUFFER(&output[0], 64));
+  info.GetReturnValue().Set(COPY_BUFFER(&out[0], 64));
 }
 
 NAN_METHOD(BSecp256k1::PublicKeyVerify) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
-  v8::Local<v8::Object> input_buffer = info[0].As<v8::Object>();
-  CHECK_TYPE_BUFFER(input_buffer, EC_PUBLIC_KEY_TYPE_INVALID);
+  v8::Local<v8::Object> inp_buf = info[0].As<v8::Object>();
+  CHECK_TYPE_BUFFER(inp_buf, EC_PUBLIC_KEY_TYPE_INVALID);
 
-  const unsigned char *input =
-    (unsigned char *)node::Buffer::Data(input_buffer);
-  size_t input_length = node::Buffer::Length(input_buffer);
+  const unsigned char *inp = (const unsigned char *)node::Buffer::Data(inp_buf);
+  size_t inp_len = node::Buffer::Length(inp_buf);
 
-  secp256k1_pubkey public_key;
+  secp256k1_pubkey pub;
 
-  int result = secp256k1_ec_pubkey_parse(secp->ctx, &public_key,
-                                         input, input_length);
+  int result = secp256k1_ec_pubkey_parse(secp->ctx, &pub, inp, inp_len);
 
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
@@ -662,359 +646,324 @@ NAN_METHOD(BSecp256k1::PublicKeyVerify) {
 NAN_METHOD(BSecp256k1::PublicKeyTweakAdd) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
-  v8::Local<v8::Object> input_buffer = info[0].As<v8::Object>();
-  CHECK_TYPE_BUFFER(input_buffer, EC_PUBLIC_KEY_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH2(input_buffer, 33, 65, EC_PUBLIC_KEY_LENGTH_INVALID);
+  v8::Local<v8::Object> inp_buf = info[0].As<v8::Object>();
+  CHECK_TYPE_BUFFER(inp_buf, EC_PUBLIC_KEY_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH2(inp_buf, 33, 65, EC_PUBLIC_KEY_LENGTH_INVALID);
 
-  const unsigned char *input =
-    (unsigned char *)node::Buffer::Data(input_buffer);
-  size_t input_length = node::Buffer::Length(input_buffer);
+  const unsigned char *inp = (const unsigned char *)node::Buffer::Data(inp_buf);
+  size_t inp_len = node::Buffer::Length(inp_buf);
 
-  v8::Local<v8::Object> tweak_buffer = info[1].As<v8::Object>();
-  CHECK_TYPE_BUFFER(tweak_buffer, TWEAK_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH(tweak_buffer, 32, TWEAK_LENGTH_INVALID);
+  v8::Local<v8::Object> tweak_buf = info[1].As<v8::Object>();
+  CHECK_TYPE_BUFFER(tweak_buf, TWEAK_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH(tweak_buf, 32, TWEAK_LENGTH_INVALID);
 
   const unsigned char *tweak =
-    (const unsigned char *)node::Buffer::Data(tweak_buffer);
+    (const unsigned char *)node::Buffer::Data(tweak_buf);
 
   unsigned int flags = SECP256K1_EC_COMPRESSED;
   UPDATE_COMPRESSED_VALUE(flags, info[2], SECP256K1_EC_COMPRESSED,
                                           SECP256K1_EC_UNCOMPRESSED);
 
-  secp256k1_pubkey public_key;
+  secp256k1_pubkey pub;
 
-  if (secp256k1_ec_pubkey_parse(secp->ctx, &public_key,
-                                input, input_length) == 0) {
+  if (!secp256k1_ec_pubkey_parse(secp->ctx, &pub, inp, inp_len))
     return Nan::ThrowError(EC_PUBLIC_KEY_PARSE_FAIL);
-  }
 
-  if (secp256k1_ec_pubkey_tweak_add(secp->ctx, &public_key, tweak) == 0)
+  if (!secp256k1_ec_pubkey_tweak_add(secp->ctx, &pub, tweak))
     return Nan::ThrowError(EC_PUBLIC_KEY_TWEAK_ADD_FAIL);
 
-  unsigned char output[65];
-  size_t output_length = 65;
+  unsigned char out[65];
+  size_t out_len = 65;
 
-  secp256k1_ec_pubkey_serialize(secp->ctx, &output[0], &output_length,
-                                &public_key, flags);
+  secp256k1_ec_pubkey_serialize(secp->ctx, &out[0], &out_len, &pub, flags);
 
-  info.GetReturnValue().Set(COPY_BUFFER(&output[0], output_length));
+  info.GetReturnValue().Set(COPY_BUFFER(&out[0], out_len));
 }
 
 NAN_METHOD(BSecp256k1::PublicKeyTweakMul) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
-  v8::Local<v8::Object> input_buffer = info[0].As<v8::Object>();
-  CHECK_TYPE_BUFFER(input_buffer, EC_PUBLIC_KEY_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH2(input_buffer, 33, 65, EC_PUBLIC_KEY_LENGTH_INVALID);
+  v8::Local<v8::Object> inp_buf = info[0].As<v8::Object>();
+  CHECK_TYPE_BUFFER(inp_buf, EC_PUBLIC_KEY_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH2(inp_buf, 33, 65, EC_PUBLIC_KEY_LENGTH_INVALID);
 
-  const unsigned char *input =
-    (unsigned char *)node::Buffer::Data(input_buffer);
-  size_t input_length = node::Buffer::Length(input_buffer);
+  const unsigned char *inp = (const unsigned char *)node::Buffer::Data(inp_buf);
+  size_t inp_len = node::Buffer::Length(inp_buf);
 
-  v8::Local<v8::Object> tweak_buffer = info[1].As<v8::Object>();
-  CHECK_TYPE_BUFFER(tweak_buffer, TWEAK_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH(tweak_buffer, 32, TWEAK_LENGTH_INVALID);
+  v8::Local<v8::Object> tweak_buf = info[1].As<v8::Object>();
+  CHECK_TYPE_BUFFER(tweak_buf, TWEAK_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH(tweak_buf, 32, TWEAK_LENGTH_INVALID);
 
   const unsigned char *tweak =
-    (const unsigned char *)node::Buffer::Data(tweak_buffer);
+    (const unsigned char *)node::Buffer::Data(tweak_buf);
 
   unsigned int flags = SECP256K1_EC_COMPRESSED;
   UPDATE_COMPRESSED_VALUE(flags, info[2], SECP256K1_EC_COMPRESSED,
                                           SECP256K1_EC_UNCOMPRESSED);
 
-  secp256k1_pubkey public_key;
+  secp256k1_pubkey pub;
 
-  if (secp256k1_ec_pubkey_parse(secp->ctx, &public_key,
-                                input, input_length) == 0) {
+  if (!secp256k1_ec_pubkey_parse(secp->ctx, &pub, inp, inp_len))
     return Nan::ThrowError(EC_PUBLIC_KEY_PARSE_FAIL);
-  }
 
-  if (secp256k1_ec_pubkey_tweak_mul(secp->ctx, &public_key, tweak) == 0)
+  if (!secp256k1_ec_pubkey_tweak_mul(secp->ctx, &pub, tweak))
     return Nan::ThrowError(EC_PUBLIC_KEY_TWEAK_MUL_FAIL);
 
-  unsigned char output[65];
-  size_t output_length = 65;
+  unsigned char out[65];
+  size_t out_len = 65;
 
-  secp256k1_ec_pubkey_serialize(secp->ctx, &output[0], &output_length,
-                                &public_key, flags);
+  secp256k1_ec_pubkey_serialize(secp->ctx, &out[0], &out_len, &pub, flags);
 
-  info.GetReturnValue().Set(COPY_BUFFER(&output[0], output_length));
+  info.GetReturnValue().Set(COPY_BUFFER(&out[0], out_len));
 }
 
 NAN_METHOD(BSecp256k1::PublicKeyAdd) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
-  v8::Local<v8::Object> input1_buffer = info[0].As<v8::Object>();
-  CHECK_TYPE_BUFFER(input1_buffer, EC_PUBLIC_KEY_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH2(input1_buffer, 33, 65, EC_PUBLIC_KEY_LENGTH_INVALID);
+  v8::Local<v8::Object> inp1_buf = info[0].As<v8::Object>();
+  CHECK_TYPE_BUFFER(inp1_buf, EC_PUBLIC_KEY_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH2(inp1_buf, 33, 65, EC_PUBLIC_KEY_LENGTH_INVALID);
 
-  const unsigned char *input1 =
-    (unsigned char *)node::Buffer::Data(input1_buffer);
-  size_t input1_length = node::Buffer::Length(input1_buffer);
+  const unsigned char *inp1 =
+    (const unsigned char *)node::Buffer::Data(inp1_buf);
+  size_t inp1_len = node::Buffer::Length(inp1_buf);
 
-  v8::Local<v8::Object> input2_buffer = info[1].As<v8::Object>();
-  CHECK_TYPE_BUFFER(input2_buffer, EC_PUBLIC_KEY_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH2(input2_buffer, 33, 65, EC_PUBLIC_KEY_LENGTH_INVALID);
+  v8::Local<v8::Object> inp2_buf = info[1].As<v8::Object>();
+  CHECK_TYPE_BUFFER(inp2_buf, EC_PUBLIC_KEY_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH2(inp2_buf, 33, 65, EC_PUBLIC_KEY_LENGTH_INVALID);
 
-  const unsigned char *input2 =
-    (unsigned char *)node::Buffer::Data(input2_buffer);
-  size_t input2_length = node::Buffer::Length(input2_buffer);
+  const unsigned char *inp2 =
+    (const unsigned char *)node::Buffer::Data(inp2_buf);
+  size_t inp2_len = node::Buffer::Length(inp2_buf);
 
   unsigned int flags = SECP256K1_EC_COMPRESSED;
   UPDATE_COMPRESSED_VALUE(flags, info[2], SECP256K1_EC_COMPRESSED,
                                           SECP256K1_EC_UNCOMPRESSED);
 
-  secp256k1_pubkey public_key1;
+  secp256k1_pubkey pub1;
+  secp256k1_pubkey pub2;
+  secp256k1_pubkey *pubs[2];
+  secp256k1_pubkey pub;
 
-  if (secp256k1_ec_pubkey_parse(secp->ctx, &public_key1,
-                                input1, input1_length) == 0) {
+  if (!secp256k1_ec_pubkey_parse(secp->ctx, &pub1, inp1, inp1_len))
     return Nan::ThrowError(EC_PUBLIC_KEY_PARSE_FAIL);
-  }
 
-  secp256k1_pubkey public_key2;
-
-  if (secp256k1_ec_pubkey_parse(secp->ctx, &public_key2,
-                                input2, input2_length) == 0) {
+  if (!secp256k1_ec_pubkey_parse(secp->ctx, &pub2, inp2, inp2_len))
     return Nan::ThrowError(EC_PUBLIC_KEY_PARSE_FAIL);
-  }
 
-  secp256k1_pubkey *ins[2];
-  ins[0] = &public_key1;
-  ins[1] = &public_key2;
+  pubs[0] = &pub1;
+  pubs[1] = &pub2;
 
-  secp256k1_pubkey public_key;
-
-  if (secp256k1_ec_pubkey_combine(secp->ctx, &public_key, ins, 2) == 0)
+  if (!secp256k1_ec_pubkey_combine(secp->ctx, &pub, pubs, 2))
     return Nan::ThrowError(EC_PUBLIC_KEY_COMBINE_FAIL);
 
-  unsigned char output[65];
-  size_t output_length = 65;
+  unsigned char out[65];
+  size_t out_len = 65;
 
-  secp256k1_ec_pubkey_serialize(secp->ctx, &output[0], &output_length,
-                                &public_key, flags);
+  secp256k1_ec_pubkey_serialize(secp->ctx, &out[0], &out_len, &pub, flags);
 
-  info.GetReturnValue().Set(COPY_BUFFER(&output[0], output_length));
+  info.GetReturnValue().Set(COPY_BUFFER(&out[0], out_len));
 }
 
 NAN_METHOD(BSecp256k1::PublicKeyCombine) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
-  v8::Local<v8::Array> input_buffers = info[0].As<v8::Array>();
-  CHECK_TYPE_ARRAY(input_buffers, EC_PUBLIC_KEYS_TYPE_INVALID);
-  CHECK_LENGTH_GT_ZERO(input_buffers, EC_PUBLIC_KEYS_LENGTH_INVALID);
+  v8::Local<v8::Array> inp_buffers = info[0].As<v8::Array>();
+  CHECK_TYPE_ARRAY(inp_buffers, EC_PUBLIC_KEYS_TYPE_INVALID);
+  CHECK_LENGTH_GT_ZERO(inp_buffers, EC_PUBLIC_KEYS_LENGTH_INVALID);
+
+  size_t length = (size_t)inp_buffers->Length();
 
   unsigned int flags = SECP256K1_EC_COMPRESSED;
   UPDATE_COMPRESSED_VALUE(flags, info[1], SECP256K1_EC_COMPRESSED,
                                           SECP256K1_EC_UNCOMPRESSED);
 
-  std::unique_ptr<secp256k1_pubkey[]>
-    public_keys(new secp256k1_pubkey[input_buffers->Length()]);
+  std::unique_ptr<secp256k1_pubkey[]> pub_data(new secp256k1_pubkey[length]);
+  std::unique_ptr<secp256k1_pubkey*[]> pubs(new secp256k1_pubkey*[length]);
 
-  std::unique_ptr<secp256k1_pubkey*[]>
-    ins(new secp256k1_pubkey*[input_buffers->Length()]);
+  for (unsigned int i = 0; i < length; ++i) {
+    v8::Local<v8::Object> pub_buf =
+      Nan::Get(inp_buffers, i).ToLocalChecked().As<v8::Object>();
 
-  for (unsigned int i = 0; i < input_buffers->Length(); ++i) {
-    v8::Local<v8::Object> public_key_buffer =
-      Nan::Get(input_buffers, i).ToLocalChecked().As<v8::Object>();
+    CHECK_TYPE_BUFFER(pub_buf, EC_PUBLIC_KEY_TYPE_INVALID);
+    CHECK_BUFFER_LENGTH2(pub_buf, 33, 65, EC_PUBLIC_KEY_LENGTH_INVALID);
 
-    CHECK_TYPE_BUFFER(public_key_buffer, EC_PUBLIC_KEY_TYPE_INVALID);
-    CHECK_BUFFER_LENGTH2(public_key_buffer, 33, 65,
-                         EC_PUBLIC_KEY_LENGTH_INVALID);
+    const unsigned char *inp =
+      (const unsigned char *)node::Buffer::Data(pub_buf);
+    size_t inp_len = node::Buffer::Length(pub_buf);
 
-    const unsigned char *input =
-      (unsigned char *)node::Buffer::Data(public_key_buffer);
-    size_t input_length = node::Buffer::Length(public_key_buffer);
-
-    if (secp256k1_ec_pubkey_parse(secp->ctx, &public_keys[i],
-                                  input, input_length) == 0) {
+    if (!secp256k1_ec_pubkey_parse(secp->ctx, &pub_data[i], inp, inp_len))
       return Nan::ThrowError(EC_PUBLIC_KEY_PARSE_FAIL);
-    }
 
-    ins[i] = &public_keys[i];
+    pubs[i] = &pub_data[i];
   }
 
-  secp256k1_pubkey public_key;
+  secp256k1_pubkey pub;
 
-  if (secp256k1_ec_pubkey_combine(secp->ctx, &public_key, ins.get(),
-                                  input_buffers->Length()) == 0) {
+  if (!secp256k1_ec_pubkey_combine(secp->ctx, &pub, pubs.get(), length))
     return Nan::ThrowError(EC_PUBLIC_KEY_COMBINE_FAIL);
-  }
 
-  unsigned char output[65];
-  size_t output_length = 65;
+  unsigned char out[65];
+  size_t out_len = 65;
 
-  secp256k1_ec_pubkey_serialize(secp->ctx, &output[0], &output_length,
-                                &public_key, flags);
+  secp256k1_ec_pubkey_serialize(secp->ctx, &out[0], &out_len, &pub, flags);
 
-  info.GetReturnValue().Set(COPY_BUFFER(&output[0], output_length));
+  info.GetReturnValue().Set(COPY_BUFFER(&out[0], out_len));
 }
 
 NAN_METHOD(BSecp256k1::PublicKeyNegate) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
-  v8::Local<v8::Object> input_buffer = info[0].As<v8::Object>();
-  CHECK_TYPE_BUFFER(input_buffer, EC_PUBLIC_KEY_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH2(input_buffer, 33, 65, EC_PUBLIC_KEY_LENGTH_INVALID);
+  v8::Local<v8::Object> inp_buf = info[0].As<v8::Object>();
+  CHECK_TYPE_BUFFER(inp_buf, EC_PUBLIC_KEY_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH2(inp_buf, 33, 65, EC_PUBLIC_KEY_LENGTH_INVALID);
 
-  const unsigned char *input =
-    (unsigned char *)node::Buffer::Data(input_buffer);
-  size_t input_length = node::Buffer::Length(input_buffer);
+  const unsigned char *inp = (const unsigned char *)node::Buffer::Data(inp_buf);
+  size_t inp_len = node::Buffer::Length(inp_buf);
 
   unsigned int flags = SECP256K1_EC_COMPRESSED;
   UPDATE_COMPRESSED_VALUE(flags, info[1], SECP256K1_EC_COMPRESSED,
                                           SECP256K1_EC_UNCOMPRESSED);
 
-  secp256k1_pubkey public_key;
+  secp256k1_pubkey pub;
 
-  if (secp256k1_ec_pubkey_parse(secp->ctx, &public_key,
-                                input, input_length) == 0) {
+  if (!secp256k1_ec_pubkey_parse(secp->ctx, &pub, inp, inp_len))
     return Nan::ThrowError(EC_PUBLIC_KEY_PARSE_FAIL);
-  }
 
-  if (secp256k1_ec_pubkey_negate(secp->ctx, &public_key) == 0)
+  if (!secp256k1_ec_pubkey_negate(secp->ctx, &pub))
     return Nan::ThrowError(EC_PUBLIC_KEY_NEGATE_FAIL);
 
-  unsigned char output[65];
-  size_t output_length = 65;
+  unsigned char out[65];
+  size_t out_len = 65;
 
-  secp256k1_ec_pubkey_serialize(secp->ctx, &output[0], &output_length,
-                                &public_key, flags);
+  secp256k1_ec_pubkey_serialize(secp->ctx, &out[0], &out_len, &pub, flags);
 
-  info.GetReturnValue().Set(COPY_BUFFER(&output[0], output_length));
+  info.GetReturnValue().Set(COPY_BUFFER(&out[0], out_len));
 }
 
 NAN_METHOD(BSecp256k1::SignatureNormalize) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
-  v8::Local<v8::Object> input_buffer = info[0].As<v8::Object>();
-  CHECK_TYPE_BUFFER(input_buffer, ECDSA_SIGNATURE_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH(input_buffer, 64, ECDSA_SIGNATURE_LENGTH_INVALID);
+  v8::Local<v8::Object> inp_buf = info[0].As<v8::Object>();
+  CHECK_TYPE_BUFFER(inp_buf, EC_SIGNATURE_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH(inp_buf, 64, EC_SIGNATURE_LENGTH_INVALID);
 
-  const unsigned char *input =
-    (unsigned char *)node::Buffer::Data(input_buffer);
+  const unsigned char *inp = (const unsigned char *)node::Buffer::Data(inp_buf);
 
   secp256k1_ecdsa_signature sigin;
 
-  if (secp256k1_ecdsa_signature_parse_compact(secp->ctx, &sigin, input) == 0)
-    return Nan::ThrowError(ECDSA_SIGNATURE_PARSE_FAIL);
+  if (!secp256k1_ecdsa_signature_parse_compact(secp->ctx, &sigin, inp))
+    return Nan::ThrowError(EC_SIGNATURE_PARSE_FAIL);
 
   secp256k1_ecdsa_signature sigout;
   secp256k1_ecdsa_signature_normalize(secp->ctx, &sigout, &sigin);
 
-  unsigned char output[64];
+  unsigned char out[64];
 
-  secp256k1_ecdsa_signature_serialize_compact(secp->ctx, &output[0], &sigout);
+  secp256k1_ecdsa_signature_serialize_compact(secp->ctx, &out[0], &sigout);
 
-  info.GetReturnValue().Set(COPY_BUFFER(&output[0], 64));
+  info.GetReturnValue().Set(COPY_BUFFER(&out[0], 64));
 }
 
 NAN_METHOD(BSecp256k1::SignatureNormalizeDER) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
-  v8::Local<v8::Object> input_buffer = info[0].As<v8::Object>();
-  CHECK_TYPE_BUFFER(input_buffer, ECDSA_SIGNATURE_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH_GT_ZERO(input_buffer, ECDSA_SIGNATURE_LENGTH_INVALID);
+  v8::Local<v8::Object> inp_buf = info[0].As<v8::Object>();
+  CHECK_TYPE_BUFFER(inp_buf, EC_SIGNATURE_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH_GT_ZERO(inp_buf, EC_SIGNATURE_LENGTH_INVALID);
 
-  const unsigned char *input =
-    (const unsigned char *)node::Buffer::Data(input_buffer);
-  size_t input_length = node::Buffer::Length(input_buffer);
+  const unsigned char *inp = (const unsigned char *)node::Buffer::Data(inp_buf);
+  size_t inp_len = node::Buffer::Length(inp_buf);
 
   secp256k1_ecdsa_signature sigin;
 
-  if (ecdsa_signature_parse_der_lax(secp->ctx, &sigin,
-                                    input, input_length) == 0) {
-    return Nan::ThrowError(ECDSA_SIGNATURE_PARSE_DER_FAIL);
-  }
+  if (!ecdsa_signature_parse_der_lax(secp->ctx, &sigin, inp, inp_len))
+    return Nan::ThrowError(EC_SIGNATURE_PARSE_DER_FAIL);
 
   secp256k1_ecdsa_signature sigout;
   secp256k1_ecdsa_signature_normalize(secp->ctx, &sigout, &sigin);
 
-  unsigned char output[72];
-  size_t output_length = 72;
+  unsigned char out[72];
+  size_t out_len = 72;
 
-  if (secp256k1_ecdsa_signature_serialize_der(secp->ctx, &output[0],
-                                              &output_length, &sigout) == 0) {
-    return Nan::ThrowError(ECDSA_SIGNATURE_SERIALIZE_DER_FAIL);
+  if (!secp256k1_ecdsa_signature_serialize_der(secp->ctx, &out[0],
+                                               &out_len, &sigout)) {
+    return Nan::ThrowError(EC_SIGNATURE_SERIALIZE_DER_FAIL);
   }
 
-  info.GetReturnValue().Set(COPY_BUFFER(&output[0], output_length));
+  info.GetReturnValue().Set(COPY_BUFFER(&out[0], out_len));
 }
 
 NAN_METHOD(BSecp256k1::SignatureExport) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
-  v8::Local<v8::Object> input_buffer = info[0].As<v8::Object>();
-  CHECK_TYPE_BUFFER(input_buffer, ECDSA_SIGNATURE_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH(input_buffer, 64, ECDSA_SIGNATURE_LENGTH_INVALID);
+  v8::Local<v8::Object> inp_buf = info[0].As<v8::Object>();
+  CHECK_TYPE_BUFFER(inp_buf, EC_SIGNATURE_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH(inp_buf, 64, EC_SIGNATURE_LENGTH_INVALID);
 
-  const unsigned char *input =
-    (unsigned char *)node::Buffer::Data(input_buffer);
+  const unsigned char *inp = (const unsigned char *)node::Buffer::Data(inp_buf);
 
   secp256k1_ecdsa_signature sig;
 
-  if (secp256k1_ecdsa_signature_parse_compact(secp->ctx, &sig, input) == 0)
-    return Nan::ThrowError(ECDSA_SIGNATURE_PARSE_FAIL);
+  if (!secp256k1_ecdsa_signature_parse_compact(secp->ctx, &sig, inp))
+    return Nan::ThrowError(EC_SIGNATURE_PARSE_FAIL);
 
-  unsigned char output[72];
-  size_t output_length = 72;
+  unsigned char out[72];
+  size_t out_len = 72;
 
-  if (secp256k1_ecdsa_signature_serialize_der(secp->ctx, &output[0],
-                                              &output_length, &sig) == 0) {
-    return Nan::ThrowError(ECDSA_SIGNATURE_SERIALIZE_DER_FAIL);
+  if (!secp256k1_ecdsa_signature_serialize_der(secp->ctx, &out[0],
+                                               &out_len, &sig)) {
+    return Nan::ThrowError(EC_SIGNATURE_SERIALIZE_DER_FAIL);
   }
 
-  info.GetReturnValue().Set(COPY_BUFFER(&output[0], output_length));
+  info.GetReturnValue().Set(COPY_BUFFER(&out[0], out_len));
 }
 
 NAN_METHOD(BSecp256k1::SignatureImport) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
-  v8::Local<v8::Object> input_buffer = info[0].As<v8::Object>();
-  CHECK_TYPE_BUFFER(input_buffer, ECDSA_SIGNATURE_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH_GT_ZERO(input_buffer, ECDSA_SIGNATURE_LENGTH_INVALID);
+  v8::Local<v8::Object> inp_buf = info[0].As<v8::Object>();
+  CHECK_TYPE_BUFFER(inp_buf, EC_SIGNATURE_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH_GT_ZERO(inp_buf, EC_SIGNATURE_LENGTH_INVALID);
 
-  const unsigned char *input =
-    (const unsigned char *)node::Buffer::Data(input_buffer);
-  size_t input_length = node::Buffer::Length(input_buffer);
+  const unsigned char *inp = (const unsigned char *)node::Buffer::Data(inp_buf);
+  size_t inp_len = node::Buffer::Length(inp_buf);
 
   secp256k1_ecdsa_signature sig;
 
-  if (ecdsa_signature_parse_der_lax(secp->ctx, &sig,
-                                    input, input_length) == 0) {
-    return Nan::ThrowError(ECDSA_SIGNATURE_PARSE_DER_FAIL);
-  }
+  if (!ecdsa_signature_parse_der_lax(secp->ctx, &sig, inp, inp_len))
+    return Nan::ThrowError(EC_SIGNATURE_PARSE_DER_FAIL);
 
-  unsigned char output[64];
+  unsigned char out[64];
 
-  secp256k1_ecdsa_signature_serialize_compact(secp->ctx, &output[0], &sig);
+  secp256k1_ecdsa_signature_serialize_compact(secp->ctx, &out[0], &sig);
 
-  info.GetReturnValue().Set(COPY_BUFFER(&output[0], 64));
+  info.GetReturnValue().Set(COPY_BUFFER(&out[0], 64));
 }
 
 NAN_METHOD(BSecp256k1::IsLowS) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
-  v8::Local<v8::Object> input_buffer = info[0].As<v8::Object>();
-  CHECK_TYPE_BUFFER(input_buffer, ECDSA_SIGNATURE_TYPE_INVALID);
+  v8::Local<v8::Object> inp_buf = info[0].As<v8::Object>();
+  CHECK_TYPE_BUFFER(inp_buf, EC_SIGNATURE_TYPE_INVALID);
 
-  const unsigned char *input =
-    (const unsigned char *)node::Buffer::Data(input_buffer);
-  size_t input_length = node::Buffer::Length(input_buffer);
+  const unsigned char *inp = (const unsigned char *)node::Buffer::Data(inp_buf);
+  size_t inp_len = node::Buffer::Length(inp_buf);
 
-  if (input_length != 64)
+  if (inp_len != 64)
     return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
 
   secp256k1_ecdsa_signature sig;
 
-  if (secp256k1_ecdsa_signature_parse_compact(secp->ctx, &sig, input) == 0)
+  if (!secp256k1_ecdsa_signature_parse_compact(secp->ctx, &sig, inp))
     return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
 
-  unsigned char output[64];
+  unsigned char normal[64];
 
   secp256k1_ecdsa_signature_normalize(secp->ctx, &sig, &sig);
-  secp256k1_ecdsa_signature_serialize_compact(secp->ctx, &output[0], &sig);
+  secp256k1_ecdsa_signature_serialize_compact(secp->ctx, &normal[0], &sig);
 
-  int result = memcmp(&input[32], &output[32], 32) == 0;
+  int result = memcmp(&inp[32], &normal[32], 32) == 0;
 
   return info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
@@ -1022,29 +971,28 @@ NAN_METHOD(BSecp256k1::IsLowS) {
 NAN_METHOD(BSecp256k1::IsLowDER) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
-  v8::Local<v8::Object> input_buffer = info[0].As<v8::Object>();
-  CHECK_TYPE_BUFFER(input_buffer, ECDSA_SIGNATURE_TYPE_INVALID);
+  v8::Local<v8::Object> inp_buf = info[0].As<v8::Object>();
+  CHECK_TYPE_BUFFER(inp_buf, EC_SIGNATURE_TYPE_INVALID);
 
-  const unsigned char *input =
-    (const unsigned char *)node::Buffer::Data(input_buffer);
-  size_t input_length = node::Buffer::Length(input_buffer);
+  const unsigned char *inp = (const unsigned char *)node::Buffer::Data(inp_buf);
+  size_t inp_len = node::Buffer::Length(inp_buf);
 
-  if (input_length == 0)
+  if (inp_len == 0)
     return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
 
   secp256k1_ecdsa_signature sig;
 
-  if (ecdsa_signature_parse_der_lax(secp->ctx, &sig, input, input_length) == 0)
+  if (!ecdsa_signature_parse_der_lax(secp->ctx, &sig, inp, inp_len))
     return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
 
-  unsigned char input_[64];
-  unsigned char output[64];
+  unsigned char orig[64];
+  unsigned char normal[64];
 
-  secp256k1_ecdsa_signature_serialize_compact(secp->ctx, &input_[0], &sig);
+  secp256k1_ecdsa_signature_serialize_compact(secp->ctx, &orig[0], &sig);
   secp256k1_ecdsa_signature_normalize(secp->ctx, &sig, &sig);
-  secp256k1_ecdsa_signature_serialize_compact(secp->ctx, &output[0], &sig);
+  secp256k1_ecdsa_signature_serialize_compact(secp->ctx, &normal[0], &sig);
 
-  int result = memcmp(&input_[32], &output[32], 32) == 0;
+  int result = memcmp(&orig[32], &normal[32], 32) == 0;
 
   return info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
@@ -1052,71 +1000,67 @@ NAN_METHOD(BSecp256k1::IsLowDER) {
 NAN_METHOD(BSecp256k1::Sign) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
-  v8::Local<v8::Object> msg32_buffer = info[0].As<v8::Object>();
-  CHECK_TYPE_BUFFER(msg32_buffer, MSG32_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH(msg32_buffer, 32, MSG32_LENGTH_INVALID);
+  v8::Local<v8::Object> msg32_buf = info[0].As<v8::Object>();
+  CHECK_TYPE_BUFFER(msg32_buf, MSG32_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH(msg32_buf, 32, MSG32_LENGTH_INVALID);
 
   const unsigned char *msg32 =
-    (const unsigned char *)node::Buffer::Data(msg32_buffer);
+    (const unsigned char *)node::Buffer::Data(msg32_buf);
 
-  v8::Local<v8::Object> private_buffer = info[1].As<v8::Object>();
-  CHECK_TYPE_BUFFER(private_buffer, EC_PRIVATE_KEY_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH(private_buffer, 32, EC_PRIVATE_KEY_LENGTH_INVALID);
+  v8::Local<v8::Object> priv_buf = info[1].As<v8::Object>();
+  CHECK_TYPE_BUFFER(priv_buf, EC_PRIVATE_KEY_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH(priv_buf, 32, EC_PRIVATE_KEY_LENGTH_INVALID);
 
-  const unsigned char *private_key =
-    (const unsigned char *)node::Buffer::Data(private_buffer);
+  const unsigned char *priv =
+    (const unsigned char *)node::Buffer::Data(priv_buf);
 
   secp256k1_nonce_function noncefn = secp256k1_nonce_function_rfc6979;
-  void *data = NULL;
   secp256k1_ecdsa_signature sig;
 
-  if (secp256k1_ecdsa_sign(secp->ctx, &sig, msg32,
-                           private_key, noncefn, data) == 0) {
-    return Nan::ThrowError(ECDSA_SIGN_FAIL);
-  }
+  if (!secp256k1_ecdsa_sign(secp->ctx, &sig, msg32, priv, noncefn, NULL))
+    return Nan::ThrowError(EC_SIGN_FAIL);
 
-  unsigned char output[64];
+  unsigned char out[64];
 
-  secp256k1_ecdsa_signature_serialize_compact(secp->ctx, &output[0], &sig);
+  secp256k1_ecdsa_signature_serialize_compact(secp->ctx, &out[0], &sig);
 
-  info.GetReturnValue().Set(COPY_BUFFER(&output[0], 64));
+  info.GetReturnValue().Set(COPY_BUFFER(&out[0], 64));
 }
 
 NAN_METHOD(BSecp256k1::SignRecoverable) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
-  v8::Local<v8::Object> msg32_buffer = info[0].As<v8::Object>();
-  CHECK_TYPE_BUFFER(msg32_buffer, MSG32_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH(msg32_buffer, 32, MSG32_LENGTH_INVALID);
+  v8::Local<v8::Object> msg32_buf = info[0].As<v8::Object>();
+  CHECK_TYPE_BUFFER(msg32_buf, MSG32_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH(msg32_buf, 32, MSG32_LENGTH_INVALID);
 
   const unsigned char *msg32 =
-    (const unsigned char *)node::Buffer::Data(msg32_buffer);
+    (const unsigned char *)node::Buffer::Data(msg32_buf);
 
-  v8::Local<v8::Object> private_buffer = info[1].As<v8::Object>();
-  CHECK_TYPE_BUFFER(private_buffer, EC_PRIVATE_KEY_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH(private_buffer, 32, EC_PRIVATE_KEY_LENGTH_INVALID);
+  v8::Local<v8::Object> priv_buf = info[1].As<v8::Object>();
+  CHECK_TYPE_BUFFER(priv_buf, EC_PRIVATE_KEY_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH(priv_buf, 32, EC_PRIVATE_KEY_LENGTH_INVALID);
 
-  const unsigned char *private_key =
-    (const unsigned char *)node::Buffer::Data(private_buffer);
+  const unsigned char *priv =
+    (const unsigned char *)node::Buffer::Data(priv_buf);
 
   secp256k1_nonce_function noncefn = secp256k1_nonce_function_rfc6979;
-  void *data = NULL;
   secp256k1_ecdsa_recoverable_signature sig;
 
-  if (secp256k1_ecdsa_sign_recoverable(secp->ctx, &sig, msg32,
-                                       private_key, noncefn, data) == 0) {
-    return Nan::ThrowError(ECDSA_SIGN_FAIL);
+  if (!secp256k1_ecdsa_sign_recoverable(secp->ctx, &sig, msg32,
+                                        priv, noncefn, NULL)) {
+    return Nan::ThrowError(EC_SIGN_FAIL);
   }
 
   int recid;
-  unsigned char output[64];
+  unsigned char out[64];
 
-  secp256k1_ecdsa_recoverable_signature_serialize_compact(secp->ctx, &output[0],
+  secp256k1_ecdsa_recoverable_signature_serialize_compact(secp->ctx, &out[0],
                                                           &recid, &sig);
 
   v8::Local<v8::Array> ret = Nan::New<v8::Array>();
 
-  Nan::Set(ret, 0, COPY_BUFFER(&output[0], 64));
+  Nan::Set(ret, 0, COPY_BUFFER(&out[0], 64));
   Nan::Set(ret, 1, Nan::New<v8::Number>(recid));
 
   info.GetReturnValue().Set(ret);
@@ -1125,86 +1069,82 @@ NAN_METHOD(BSecp256k1::SignRecoverable) {
 NAN_METHOD(BSecp256k1::SignDER) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
-  v8::Local<v8::Object> msg32_buffer = info[0].As<v8::Object>();
-  CHECK_TYPE_BUFFER(msg32_buffer, MSG32_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH(msg32_buffer, 32, MSG32_LENGTH_INVALID);
+  v8::Local<v8::Object> msg32_buf = info[0].As<v8::Object>();
+  CHECK_TYPE_BUFFER(msg32_buf, MSG32_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH(msg32_buf, 32, MSG32_LENGTH_INVALID);
 
   const unsigned char *msg32 =
-    (const unsigned char *)node::Buffer::Data(msg32_buffer);
+    (const unsigned char *)node::Buffer::Data(msg32_buf);
 
-  v8::Local<v8::Object> private_buffer = info[1].As<v8::Object>();
-  CHECK_TYPE_BUFFER(private_buffer, EC_PRIVATE_KEY_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH(private_buffer, 32, EC_PRIVATE_KEY_LENGTH_INVALID);
+  v8::Local<v8::Object> priv_buf = info[1].As<v8::Object>();
+  CHECK_TYPE_BUFFER(priv_buf, EC_PRIVATE_KEY_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH(priv_buf, 32, EC_PRIVATE_KEY_LENGTH_INVALID);
 
-  const unsigned char *private_key =
-    (const unsigned char *)node::Buffer::Data(private_buffer);
+  const unsigned char *priv =
+    (const unsigned char *)node::Buffer::Data(priv_buf);
 
   secp256k1_nonce_function noncefn = secp256k1_nonce_function_rfc6979;
-  void *data = NULL;
   secp256k1_ecdsa_signature sig;
 
-  if (secp256k1_ecdsa_sign(secp->ctx, &sig, msg32,
-                           private_key, noncefn, data) == 0) {
-    return Nan::ThrowError(ECDSA_SIGN_FAIL);
+  if (!secp256k1_ecdsa_sign(secp->ctx, &sig, msg32, priv, noncefn, NULL))
+    return Nan::ThrowError(EC_SIGN_FAIL);
+
+  unsigned char out[72];
+  size_t out_len = 72;
+
+  if (!secp256k1_ecdsa_signature_serialize_der(secp->ctx, &out[0],
+                                               &out_len, &sig)) {
+    return Nan::ThrowError(EC_SIGNATURE_SERIALIZE_DER_FAIL);
   }
 
-  unsigned char output[72];
-  size_t output_length = 72;
-
-  if (secp256k1_ecdsa_signature_serialize_der(secp->ctx, &output[0],
-                                              &output_length, &sig) == 0) {
-    return Nan::ThrowError(ECDSA_SIGNATURE_SERIALIZE_DER_FAIL);
-  }
-
-  info.GetReturnValue().Set(COPY_BUFFER(&output[0], output_length));
+  info.GetReturnValue().Set(COPY_BUFFER(&out[0], out_len));
 }
 
 NAN_METHOD(BSecp256k1::SignRecoverableDER) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
-  v8::Local<v8::Object> msg32_buffer = info[0].As<v8::Object>();
-  CHECK_TYPE_BUFFER(msg32_buffer, MSG32_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH(msg32_buffer, 32, MSG32_LENGTH_INVALID);
+  v8::Local<v8::Object> msg32_buf = info[0].As<v8::Object>();
+  CHECK_TYPE_BUFFER(msg32_buf, MSG32_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH(msg32_buf, 32, MSG32_LENGTH_INVALID);
 
   const unsigned char *msg32 =
-    (const unsigned char *)node::Buffer::Data(msg32_buffer);
+    (const unsigned char *)node::Buffer::Data(msg32_buf);
 
-  v8::Local<v8::Object> private_buffer = info[1].As<v8::Object>();
-  CHECK_TYPE_BUFFER(private_buffer, EC_PRIVATE_KEY_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH(private_buffer, 32, EC_PRIVATE_KEY_LENGTH_INVALID);
+  v8::Local<v8::Object> priv_buf = info[1].As<v8::Object>();
+  CHECK_TYPE_BUFFER(priv_buf, EC_PRIVATE_KEY_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH(priv_buf, 32, EC_PRIVATE_KEY_LENGTH_INVALID);
 
-  const unsigned char *private_key =
-    (const unsigned char *)node::Buffer::Data(private_buffer);
+  const unsigned char *priv =
+    (const unsigned char *)node::Buffer::Data(priv_buf);
 
   secp256k1_nonce_function noncefn = secp256k1_nonce_function_rfc6979;
-  void *data = NULL;
   secp256k1_ecdsa_recoverable_signature sig;
 
-  if (secp256k1_ecdsa_sign_recoverable(secp->ctx, &sig, msg32,
-                                       private_key, noncefn, data) == 0) {
-    return Nan::ThrowError(ECDSA_SIGN_FAIL);
+  if (!secp256k1_ecdsa_sign_recoverable(secp->ctx, &sig, msg32,
+                                        priv, noncefn, NULL)) {
+    return Nan::ThrowError(EC_SIGN_FAIL);
   }
 
   int recid;
-  unsigned char output[72];
-  size_t output_length = 72;
+  unsigned char out[72];
+  size_t out_len = 72;
 
-  secp256k1_ecdsa_recoverable_signature_serialize_compact(secp->ctx, &output[0],
+  secp256k1_ecdsa_recoverable_signature_serialize_compact(secp->ctx, &out[0],
                                                           &recid, &sig);
 
   secp256k1_ecdsa_signature sig_;
 
-  if (secp256k1_ecdsa_signature_parse_compact(secp->ctx, &sig_, &output[0]) == 0)
-    return Nan::ThrowError(ECDSA_SIGNATURE_PARSE_FAIL);
+  if (!secp256k1_ecdsa_signature_parse_compact(secp->ctx, &sig_, &out[0]))
+    return Nan::ThrowError(EC_SIGNATURE_PARSE_FAIL);
 
-  if (secp256k1_ecdsa_signature_serialize_der(secp->ctx, &output[0],
-                                              &output_length, &sig_) == 0) {
-    return Nan::ThrowError(ECDSA_SIGNATURE_SERIALIZE_DER_FAIL);
+  if (!secp256k1_ecdsa_signature_serialize_der(secp->ctx, &out[0],
+                                               &out_len, &sig_)) {
+    return Nan::ThrowError(EC_SIGNATURE_SERIALIZE_DER_FAIL);
   }
 
   v8::Local<v8::Array> ret = Nan::New<v8::Array>();
 
-  Nan::Set(ret, 0, COPY_BUFFER(&output[0], output_length));
+  Nan::Set(ret, 0, COPY_BUFFER(&out[0], out_len));
   Nan::Set(ret, 1, Nan::New<v8::Number>(recid));
 
   info.GetReturnValue().Set(ret);
@@ -1213,44 +1153,41 @@ NAN_METHOD(BSecp256k1::SignRecoverableDER) {
 NAN_METHOD(BSecp256k1::Verify) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
-  v8::Local<v8::Object> msg32_buffer = info[0].As<v8::Object>();
-  CHECK_TYPE_BUFFER(msg32_buffer, MSG32_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH(msg32_buffer, 32, MSG32_LENGTH_INVALID);
+  v8::Local<v8::Object> msg32_buf = info[0].As<v8::Object>();
+  CHECK_TYPE_BUFFER(msg32_buf, MSG32_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH(msg32_buf, 32, MSG32_LENGTH_INVALID);
 
   const unsigned char *msg32 =
-    (const unsigned char *)node::Buffer::Data(msg32_buffer);
+    (const unsigned char *)node::Buffer::Data(msg32_buf);
 
-  v8::Local<v8::Object> sig_input_buffer = info[1].As<v8::Object>();
-  CHECK_TYPE_BUFFER(sig_input_buffer, ECDSA_SIGNATURE_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH(sig_input_buffer, 64, ECDSA_SIGNATURE_LENGTH_INVALID);
+  v8::Local<v8::Object> sig_inp_buf = info[1].As<v8::Object>();
+  CHECK_TYPE_BUFFER(sig_inp_buf, EC_SIGNATURE_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH(sig_inp_buf, 64, EC_SIGNATURE_LENGTH_INVALID);
 
-  const unsigned char *sig_input =
-    (unsigned char *)node::Buffer::Data(sig_input_buffer);
+  const unsigned char *sig_inp =
+    (const unsigned char *)node::Buffer::Data(sig_inp_buf);
 
-  v8::Local<v8::Object> public_key_buffer = info[2].As<v8::Object>();
-  CHECK_TYPE_BUFFER(public_key_buffer, EC_PUBLIC_KEY_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH2(public_key_buffer, 33, 65, EC_PUBLIC_KEY_LENGTH_INVALID);
+  v8::Local<v8::Object> pub_buf = info[2].As<v8::Object>();
+  CHECK_TYPE_BUFFER(pub_buf, EC_PUBLIC_KEY_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH2(pub_buf, 33, 65, EC_PUBLIC_KEY_LENGTH_INVALID);
 
-  const unsigned char *public_key_input =
-    (unsigned char *)node::Buffer::Data(public_key_buffer);
-  size_t public_key_input_length = node::Buffer::Length(public_key_buffer);
+  const unsigned char *pub_inp =
+    (const unsigned char *)node::Buffer::Data(pub_buf);
+  size_t pub_inp_len = node::Buffer::Length(pub_buf);
 
   secp256k1_ecdsa_signature sig;
 
-  if (secp256k1_ecdsa_signature_parse_compact(secp->ctx, &sig, sig_input) == 0)
-    return Nan::ThrowError(ECDSA_SIGNATURE_PARSE_FAIL);
+  if (!secp256k1_ecdsa_signature_parse_compact(secp->ctx, &sig, sig_inp))
+    return Nan::ThrowError(EC_SIGNATURE_PARSE_FAIL);
 
-  secp256k1_pubkey public_key;
+  secp256k1_pubkey pub;
 
-  if (secp256k1_ec_pubkey_parse(secp->ctx, &public_key, public_key_input,
-                                public_key_input_length) == 0) {
+  if (!secp256k1_ec_pubkey_parse(secp->ctx, &pub, pub_inp, pub_inp_len))
     return Nan::ThrowError(EC_PUBLIC_KEY_PARSE_FAIL);
-  }
 
-  // Normalize signature (ensure low S value).
   secp256k1_ecdsa_signature_normalize(secp->ctx, &sig, &sig);
 
-  int result = secp256k1_ecdsa_verify(secp->ctx, &sig, msg32, &public_key);
+  int result = secp256k1_ecdsa_verify(secp->ctx, &sig, msg32, &pub);
 
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
@@ -1258,47 +1195,42 @@ NAN_METHOD(BSecp256k1::Verify) {
 NAN_METHOD(BSecp256k1::VerifyDER) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
-  v8::Local<v8::Object> msg32_buffer = info[0].As<v8::Object>();
-  CHECK_TYPE_BUFFER(msg32_buffer, MSG32_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH(msg32_buffer, 32, MSG32_LENGTH_INVALID);
+  v8::Local<v8::Object> msg32_buf = info[0].As<v8::Object>();
+  CHECK_TYPE_BUFFER(msg32_buf, MSG32_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH(msg32_buf, 32, MSG32_LENGTH_INVALID);
 
   const unsigned char *msg32 =
-    (const unsigned char *)node::Buffer::Data(msg32_buffer);
+    (const unsigned char *)node::Buffer::Data(msg32_buf);
 
-  v8::Local<v8::Object> sig_input_buffer = info[1].As<v8::Object>();
-  CHECK_TYPE_BUFFER(sig_input_buffer, ECDSA_SIGNATURE_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH_GT_ZERO(sig_input_buffer, ECDSA_SIGNATURE_LENGTH_INVALID);
+  v8::Local<v8::Object> sig_inp_buf = info[1].As<v8::Object>();
+  CHECK_TYPE_BUFFER(sig_inp_buf, EC_SIGNATURE_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH_GT_ZERO(sig_inp_buf, EC_SIGNATURE_LENGTH_INVALID);
 
-  const unsigned char *sig_input =
-    (unsigned char *)node::Buffer::Data(sig_input_buffer);
-  size_t sig_input_length = node::Buffer::Length(sig_input_buffer);
+  const unsigned char *sig_inp =
+    (const unsigned char *)node::Buffer::Data(sig_inp_buf);
+  size_t sig_inp_len = node::Buffer::Length(sig_inp_buf);
 
-  v8::Local<v8::Object> public_key_buffer = info[2].As<v8::Object>();
-  CHECK_TYPE_BUFFER(public_key_buffer, EC_PUBLIC_KEY_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH2(public_key_buffer, 33, 65, EC_PUBLIC_KEY_LENGTH_INVALID);
+  v8::Local<v8::Object> pub_buf = info[2].As<v8::Object>();
+  CHECK_TYPE_BUFFER(pub_buf, EC_PUBLIC_KEY_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH2(pub_buf, 33, 65, EC_PUBLIC_KEY_LENGTH_INVALID);
 
-  const unsigned char *public_key_input =
-    (unsigned char *)node::Buffer::Data(public_key_buffer);
-  size_t public_key_input_length = node::Buffer::Length(public_key_buffer);
+  const unsigned char *pub_inp =
+    (const unsigned char *)node::Buffer::Data(pub_buf);
+  size_t pub_inp_len = node::Buffer::Length(pub_buf);
 
   secp256k1_ecdsa_signature sig;
 
-  if (ecdsa_signature_parse_der_lax(secp->ctx, &sig,
-                                    sig_input, sig_input_length) == 0) {
-    return Nan::ThrowError(ECDSA_SIGNATURE_PARSE_DER_FAIL);
-  }
+  if (!ecdsa_signature_parse_der_lax(secp->ctx, &sig, sig_inp, sig_inp_len))
+    return Nan::ThrowError(EC_SIGNATURE_PARSE_DER_FAIL);
 
-  secp256k1_pubkey public_key;
+  secp256k1_pubkey pub;
 
-  if (secp256k1_ec_pubkey_parse(secp->ctx, &public_key, public_key_input,
-                                public_key_input_length) == 0) {
+  if (!secp256k1_ec_pubkey_parse(secp->ctx, &pub, pub_inp, pub_inp_len))
     return Nan::ThrowError(EC_PUBLIC_KEY_PARSE_FAIL);
-  }
 
-  // Normalize signature (ensure low S value).
   secp256k1_ecdsa_signature_normalize(secp->ctx, &sig, &sig);
 
-  int result = secp256k1_ecdsa_verify(secp->ctx, &sig, msg32, &public_key);
+  int result = secp256k1_ecdsa_verify(secp->ctx, &sig, msg32, &pub);
 
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
@@ -1306,19 +1238,19 @@ NAN_METHOD(BSecp256k1::VerifyDER) {
 NAN_METHOD(BSecp256k1::Recover) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
-  v8::Local<v8::Object> msg32_buffer = info[0].As<v8::Object>();
-  CHECK_TYPE_BUFFER(msg32_buffer, MSG32_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH(msg32_buffer, 32, MSG32_LENGTH_INVALID);
+  v8::Local<v8::Object> msg32_buf = info[0].As<v8::Object>();
+  CHECK_TYPE_BUFFER(msg32_buf, MSG32_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH(msg32_buf, 32, MSG32_LENGTH_INVALID);
 
   const unsigned char *msg32 =
-    (const unsigned char *)node::Buffer::Data(msg32_buffer);
+    (const unsigned char *)node::Buffer::Data(msg32_buf);
 
-  v8::Local<v8::Object> sig_input_buffer = info[1].As<v8::Object>();
-  CHECK_TYPE_BUFFER(sig_input_buffer, ECDSA_SIGNATURE_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH(sig_input_buffer, 64, ECDSA_SIGNATURE_LENGTH_INVALID);
+  v8::Local<v8::Object> sig_inp_buf = info[1].As<v8::Object>();
+  CHECK_TYPE_BUFFER(sig_inp_buf, EC_SIGNATURE_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH(sig_inp_buf, 64, EC_SIGNATURE_LENGTH_INVALID);
 
-  const unsigned char *sig_input =
-    (unsigned char *)node::Buffer::Data(sig_input_buffer);
+  const unsigned char *sig_inp =
+    (const unsigned char *)node::Buffer::Data(sig_inp_buf);
 
   v8::Local<v8::Object> recid_object = info[2].As<v8::Object>();
   CHECK_TYPE_NUMBER(recid_object, RECOVERY_ID_TYPE_INVALID);
@@ -1332,44 +1264,44 @@ NAN_METHOD(BSecp256k1::Recover) {
 
   secp256k1_ecdsa_recoverable_signature sig;
 
-  if (secp256k1_ecdsa_recoverable_signature_parse_compact(secp->ctx,
-                                                          &sig,
-                                                          sig_input,
-                                                          recid) == 0) {
-    return Nan::ThrowError(ECDSA_SIGNATURE_PARSE_FAIL);
+  if (!secp256k1_ecdsa_recoverable_signature_parse_compact(secp->ctx,
+                                                           &sig,
+                                                           sig_inp,
+                                                           recid)) {
+    return Nan::ThrowError(EC_SIGNATURE_PARSE_FAIL);
   }
 
-  secp256k1_pubkey public_key;
+  secp256k1_pubkey pub;
 
-  if (secp256k1_ecdsa_recover(secp->ctx, &public_key, &sig, msg32) == 0)
-    return Nan::ThrowError(ECDSA_RECOVER_FAIL);
+  if (!secp256k1_ecdsa_recover(secp->ctx, &pub, &sig, msg32))
+    return Nan::ThrowError(EC_RECOVER_FAIL);
 
-  unsigned char output[65];
-  size_t output_length = 65;
+  unsigned char out[65];
+  size_t out_len = 65;
 
-  secp256k1_ec_pubkey_serialize(secp->ctx, &output[0], &output_length,
-                                &public_key, flags);
+  secp256k1_ec_pubkey_serialize(secp->ctx, &out[0], &out_len,
+                                &pub, flags);
 
-  info.GetReturnValue().Set(COPY_BUFFER(&output[0], output_length));
+  info.GetReturnValue().Set(COPY_BUFFER(&out[0], out_len));
 }
 
 NAN_METHOD(BSecp256k1::RecoverDER) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
-  v8::Local<v8::Object> msg32_buffer = info[0].As<v8::Object>();
-  CHECK_TYPE_BUFFER(msg32_buffer, MSG32_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH(msg32_buffer, 32, MSG32_LENGTH_INVALID);
+  v8::Local<v8::Object> msg32_buf = info[0].As<v8::Object>();
+  CHECK_TYPE_BUFFER(msg32_buf, MSG32_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH(msg32_buf, 32, MSG32_LENGTH_INVALID);
 
   const unsigned char *msg32 =
-    (const unsigned char *)node::Buffer::Data(msg32_buffer);
+    (const unsigned char *)node::Buffer::Data(msg32_buf);
 
-  v8::Local<v8::Object> sig_input_buffer = info[1].As<v8::Object>();
-  CHECK_TYPE_BUFFER(sig_input_buffer, ECDSA_SIGNATURE_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH_GT_ZERO(sig_input_buffer, ECDSA_SIGNATURE_LENGTH_INVALID);
+  v8::Local<v8::Object> sig_inp_buf = info[1].As<v8::Object>();
+  CHECK_TYPE_BUFFER(sig_inp_buf, EC_SIGNATURE_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH_GT_ZERO(sig_inp_buf, EC_SIGNATURE_LENGTH_INVALID);
 
-  const unsigned char *sig_input =
-    (unsigned char *)node::Buffer::Data(sig_input_buffer);
-  size_t sig_input_length = node::Buffer::Length(sig_input_buffer);
+  const unsigned char *sig_inp =
+    (const unsigned char *)node::Buffer::Data(sig_inp_buf);
+  size_t sig_inp_len = node::Buffer::Length(sig_inp_buf);
 
   v8::Local<v8::Object> recid_object = info[2].As<v8::Object>();
   CHECK_TYPE_NUMBER(recid_object, RECOVERY_ID_TYPE_INVALID);
@@ -1381,54 +1313,51 @@ NAN_METHOD(BSecp256k1::RecoverDER) {
   UPDATE_COMPRESSED_VALUE(flags, info[3], SECP256K1_EC_COMPRESSED,
                                           SECP256K1_EC_UNCOMPRESSED);
 
-  secp256k1_ecdsa_signature sig_;
+  secp256k1_ecdsa_signature orig;
 
-  if (ecdsa_signature_parse_der_lax(secp->ctx, &sig_,
-                                    sig_input, sig_input_length) == 0) {
-    return Nan::ThrowError(ECDSA_SIGNATURE_PARSE_DER_FAIL);
-  }
+  if (!ecdsa_signature_parse_der_lax(secp->ctx, &orig, sig_inp, sig_inp_len))
+    return Nan::ThrowError(EC_SIGNATURE_PARSE_DER_FAIL);
 
-  unsigned char sig_input_[64];
+  unsigned char compact[64];
 
-  secp256k1_ecdsa_signature_serialize_compact(secp->ctx, &sig_input_[0], &sig_);
+  secp256k1_ecdsa_signature_serialize_compact(secp->ctx, &compact[0], &orig);
 
   secp256k1_ecdsa_recoverable_signature sig;
 
-  if (secp256k1_ecdsa_recoverable_signature_parse_compact(secp->ctx,
-                                                          &sig,
-                                                          sig_input_,
-                                                          recid) == 0) {
-    return Nan::ThrowError(ECDSA_SIGNATURE_PARSE_FAIL);
+  if (!secp256k1_ecdsa_recoverable_signature_parse_compact(secp->ctx,
+                                                           &sig,
+                                                           compact,
+                                                           recid)) {
+    return Nan::ThrowError(EC_SIGNATURE_PARSE_FAIL);
   }
 
-  secp256k1_pubkey public_key;
+  secp256k1_pubkey pub;
 
-  if (secp256k1_ecdsa_recover(secp->ctx, &public_key, &sig, msg32) == 0)
-    return Nan::ThrowError(ECDSA_RECOVER_FAIL);
+  if (!secp256k1_ecdsa_recover(secp->ctx, &pub, &sig, msg32))
+    return Nan::ThrowError(EC_RECOVER_FAIL);
 
-  unsigned char output[65];
-  size_t output_length = 65;
+  unsigned char out[65];
+  size_t out_len = 65;
 
-  secp256k1_ec_pubkey_serialize(secp->ctx, &output[0], &output_length,
-                                &public_key, flags);
+  secp256k1_ec_pubkey_serialize(secp->ctx, &out[0], &out_len, &pub, flags);
 
-  info.GetReturnValue().Set(COPY_BUFFER(&output[0], output_length));
+  info.GetReturnValue().Set(COPY_BUFFER(&out[0], out_len));
 }
 
 static int
-ecdh_hash_function_raw(unsigned char *output,
+ecdh_hash_function_raw(unsigned char *out,
                        const unsigned char *x,
                        const unsigned char *y,
                        void *data) {
   unsigned int flags = *((unsigned int *)data);
 
   if (flags == SECP256K1_EC_COMPRESSED) {
-    output[0] = 0x02 | (y[31] & 1);
-    memcpy(&output[1], &x[0], 32);
+    out[0] = 0x02 | (y[31] & 1);
+    memcpy(&out[1], &x[0], 32);
   } else {
-    output[0] = 0x04;
-    memcpy(&output[1], &x[0], 32);
-    memcpy(&output[33], &y[0], 32);
+    out[0] = 0x04;
+    memcpy(&out[1], &x[0], 32);
+    memcpy(&out[33], &y[0], 32);
   }
 
   return 1;
@@ -1437,117 +1366,111 @@ ecdh_hash_function_raw(unsigned char *output,
 NAN_METHOD(BSecp256k1::Derive) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
-  v8::Local<v8::Object> pubkey_buffer = info[0].As<v8::Object>();
-  CHECK_TYPE_BUFFER(pubkey_buffer, EC_PUBLIC_KEY_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH2(pubkey_buffer, 33, 65, EC_PUBLIC_KEY_LENGTH_INVALID);
+  v8::Local<v8::Object> pub_buf = info[0].As<v8::Object>();
+  CHECK_TYPE_BUFFER(pub_buf, EC_PUBLIC_KEY_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH2(pub_buf, 33, 65, EC_PUBLIC_KEY_LENGTH_INVALID);
 
-  const unsigned char *public_key_input =
-    (unsigned char *)node::Buffer::Data(pubkey_buffer);
-  size_t public_key_input_length = node::Buffer::Length(pubkey_buffer);
+  const unsigned char *pub_inp =
+    (const unsigned char *)node::Buffer::Data(pub_buf);
+  size_t pub_inp_len = node::Buffer::Length(pub_buf);
 
-  v8::Local<v8::Object> private_key_buffer = info[1].As<v8::Object>();
-  CHECK_TYPE_BUFFER(private_key_buffer, EC_PRIVATE_KEY_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH(private_key_buffer, 32, EC_PRIVATE_KEY_LENGTH_INVALID);
+  v8::Local<v8::Object> priv_buf = info[1].As<v8::Object>();
+  CHECK_TYPE_BUFFER(priv_buf, EC_PRIVATE_KEY_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH(priv_buf, 32, EC_PRIVATE_KEY_LENGTH_INVALID);
 
-  const unsigned char *private_key =
-    (const unsigned char *)node::Buffer::Data(private_key_buffer);
+  const unsigned char *priv =
+    (const unsigned char *)node::Buffer::Data(priv_buf);
 
-  secp256k1_pubkey public_key;
+  secp256k1_pubkey pub;
 
-  if (secp256k1_ec_pubkey_parse(secp->ctx, &public_key, public_key_input,
-                                public_key_input_length) == 0) {
+  if (!secp256k1_ec_pubkey_parse(secp->ctx, &pub, pub_inp, pub_inp_len))
     return Nan::ThrowError(EC_PUBLIC_KEY_PARSE_FAIL);
-  }
 
   unsigned int flags = SECP256K1_EC_COMPRESSED;
   UPDATE_COMPRESSED_VALUE(flags, info[2], SECP256K1_EC_COMPRESSED,
                                           SECP256K1_EC_UNCOMPRESSED);
 
-  unsigned char output[65];
-  size_t output_length = 65;
+  unsigned char out[65];
+  size_t out_len = 65;
 
   secp256k1_ecdh_hash_function hashfp = ecdh_hash_function_raw;
 
-  if (secp256k1_ecdh(secp->ctx, &output[0], &public_key,
-                     private_key, hashfp, &flags) == 0) {
+  if (!secp256k1_ecdh(secp->ctx, &out[0], &pub, priv, hashfp, &flags))
     return Nan::ThrowError(ECDH_FAIL);
-  }
 
-  if (output[0] != 0x04)
-    output_length = 33;
+  if (out[0] != 0x04)
+    out_len = 33;
 
-  info.GetReturnValue().Set(COPY_BUFFER(&output[0], output_length));
+  info.GetReturnValue().Set(COPY_BUFFER(&out[0], out_len));
 }
 
 NAN_METHOD(BSecp256k1::SchnorrSign) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
-  v8::Local<v8::Object> msg32_buffer = info[0].As<v8::Object>();
-  CHECK_TYPE_BUFFER(msg32_buffer, MSG32_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH(msg32_buffer, 32, MSG32_LENGTH_INVALID);
+  v8::Local<v8::Object> msg32_buf = info[0].As<v8::Object>();
+  CHECK_TYPE_BUFFER(msg32_buf, MSG32_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH(msg32_buf, 32, MSG32_LENGTH_INVALID);
 
   const unsigned char *msg32 =
-    (const unsigned char *)node::Buffer::Data(msg32_buffer);
+    (const unsigned char *)node::Buffer::Data(msg32_buf);
 
-  v8::Local<v8::Object> private_buffer = info[1].As<v8::Object>();
-  CHECK_TYPE_BUFFER(private_buffer, EC_PRIVATE_KEY_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH(private_buffer, 32, EC_PRIVATE_KEY_LENGTH_INVALID);
+  v8::Local<v8::Object> priv_buf = info[1].As<v8::Object>();
+  CHECK_TYPE_BUFFER(priv_buf, EC_PRIVATE_KEY_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH(priv_buf, 32, EC_PRIVATE_KEY_LENGTH_INVALID);
 
-  const unsigned char *private_key =
-    (const unsigned char *)node::Buffer::Data(private_buffer);
+  const unsigned char *priv =
+    (const unsigned char *)node::Buffer::Data(priv_buf);
 
-  secp256k1_nonce_function noncefn = NULL;
-  void *data = NULL;
   secp256k1_schnorrleg sig;
 
-  if (secp256k1_schnorrleg_sign(secp->ctx, &sig, NULL, msg32,
-                                private_key, noncefn, data) == 0) {
-    return Nan::ThrowError(ECDSA_SIGN_FAIL);
+  if (!secp256k1_schnorrleg_sign(secp->ctx, &sig, NULL,
+                                 msg32, priv, NULL, NULL)) {
+    return Nan::ThrowError(EC_SIGN_FAIL);
   }
 
-  unsigned char output[64];
+  unsigned char out[64];
 
-  secp256k1_schnorrleg_serialize(secp->ctx, &output[0], &sig);
+  secp256k1_schnorrleg_serialize(secp->ctx, &out[0], &sig);
 
-  info.GetReturnValue().Set(COPY_BUFFER(&output[0], 64));
+  info.GetReturnValue().Set(COPY_BUFFER(&out[0], 64));
 }
 
 NAN_METHOD(BSecp256k1::SchnorrVerify) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
-  v8::Local<v8::Object> msg32_buffer = info[0].As<v8::Object>();
-  CHECK_TYPE_BUFFER(msg32_buffer, MSG32_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH(msg32_buffer, 32, MSG32_LENGTH_INVALID);
+  v8::Local<v8::Object> msg32_buf = info[0].As<v8::Object>();
+  CHECK_TYPE_BUFFER(msg32_buf, MSG32_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH(msg32_buf, 32, MSG32_LENGTH_INVALID);
 
   const unsigned char *msg32 =
-    (const unsigned char *)node::Buffer::Data(msg32_buffer);
+    (const unsigned char *)node::Buffer::Data(msg32_buf);
 
-  v8::Local<v8::Object> sig_input_buffer = info[1].As<v8::Object>();
-  CHECK_TYPE_BUFFER(sig_input_buffer, ECDSA_SIGNATURE_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH(sig_input_buffer, 64, ECDSA_SIGNATURE_LENGTH_INVALID);
+  v8::Local<v8::Object> sig_inp_buf = info[1].As<v8::Object>();
+  CHECK_TYPE_BUFFER(sig_inp_buf, EC_SIGNATURE_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH(sig_inp_buf, 64, EC_SIGNATURE_LENGTH_INVALID);
 
-  const unsigned char *sig_input =
-    (unsigned char *)node::Buffer::Data(sig_input_buffer);
+  const unsigned char *sig_inp =
+    (const unsigned char *)node::Buffer::Data(sig_inp_buf);
 
-  v8::Local<v8::Object> public_key_buffer = info[2].As<v8::Object>();
-  CHECK_TYPE_BUFFER(public_key_buffer, EC_PUBLIC_KEY_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH2(public_key_buffer, 33, 65, EC_PUBLIC_KEY_LENGTH_INVALID);
+  v8::Local<v8::Object> pub_buf = info[2].As<v8::Object>();
+  CHECK_TYPE_BUFFER(pub_buf, EC_PUBLIC_KEY_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH2(pub_buf, 33, 65, EC_PUBLIC_KEY_LENGTH_INVALID);
 
-  const unsigned char *public_key_input =
-    (unsigned char *)node::Buffer::Data(public_key_buffer);
-  size_t public_key_input_length = node::Buffer::Length(public_key_buffer);
+  const unsigned char *pub_inp =
+    (const unsigned char *)node::Buffer::Data(pub_buf);
+  size_t pub_inp_len = node::Buffer::Length(pub_buf);
 
   secp256k1_schnorrleg sig;
-  if (secp256k1_schnorrleg_parse(secp->ctx, &sig, sig_input) == 0)
-    return Nan::ThrowError(ECDSA_SIGNATURE_PARSE_FAIL);
 
-  secp256k1_pubkey public_key;
-  if (secp256k1_ec_pubkey_parse(secp->ctx, &public_key, public_key_input,
-                                public_key_input_length) == 0) {
+  if (!secp256k1_schnorrleg_parse(secp->ctx, &sig, sig_inp))
+    return Nan::ThrowError(EC_SIGNATURE_PARSE_FAIL);
+
+  secp256k1_pubkey pub;
+
+  if (!secp256k1_ec_pubkey_parse(secp->ctx, &pub, pub_inp, pub_inp_len))
     return Nan::ThrowError(EC_PUBLIC_KEY_PARSE_FAIL);
-  }
 
-  int result = secp256k1_schnorrleg_verify(secp->ctx, &sig, msg32, &public_key);
+  int result = secp256k1_schnorrleg_verify(secp->ctx, &sig, msg32, &pub);
 
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
@@ -1556,7 +1479,7 @@ NAN_METHOD(BSecp256k1::SchnorrVerifyBatch) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
   if (!info[0]->IsArray())
-    return Nan::ThrowTypeError("batch should be an Array");
+    return Nan::ThrowTypeError(BATCH_TYPE_INVALID);
 
   v8::Local<v8::Array> batch = info[0].As<v8::Array>();
 
@@ -1565,8 +1488,8 @@ NAN_METHOD(BSecp256k1::SchnorrVerifyBatch) {
   if (len == 0)
     return info.GetReturnValue().Set(Nan::New<v8::Boolean>(true));
 
-  const uint8_t **msgs =
-    (const uint8_t **)malloc(len * sizeof(const uint8_t *));
+  const unsigned char **msgs =
+    (const unsigned char **)malloc(len * sizeof(const unsigned char *));
 
   secp256k1_schnorrleg **sigs =
     (secp256k1_schnorrleg **)malloc(len * sizeof(secp256k1_schnorrleg *));
@@ -1591,53 +1514,57 @@ NAN_METHOD(BSecp256k1::SchnorrVerifyBatch) {
   if (msgs == NULL || sigs == NULL || pubs == NULL
       || sig_data == NULL || pub_data == NULL) {
     FREE_BATCH;
-    return Nan::ThrowError("allocation failed");
+    return Nan::ThrowError(ALLOCATION_FAILURE);
   }
 
   for (size_t i = 0; i < len; i++) {
-    if (!Nan::Get(batch, i).ToLocalChecked()->IsArray()) {
+    v8::Local<v8::Value> val = Nan::Get(batch, i).ToLocalChecked();
+
+    if (!val->IsArray()) {
       FREE_BATCH;
-      return Nan::ThrowTypeError("batch item should be an Array");
+      return Nan::ThrowTypeError(BATCH_ITEM_TYPE_INVALID);
     }
 
-    v8::Local<v8::Array> item = Nan::Get(batch, i).ToLocalChecked()
-                                                  .As<v8::Array>();
+    v8::Local<v8::Array> item = val.As<v8::Array>();
 
     if (item->Length() != 3) {
       FREE_BATCH;
-      return Nan::ThrowTypeError("batch item must consist of 3 members");
+      return Nan::ThrowTypeError(BATCH_ITEM_LENGTH_INVALID);
     }
 
-    v8::Local<v8::Object> mbuf = Nan::Get(item, 0).ToLocalChecked()
-                                                  .As<v8::Object>();
-    v8::Local<v8::Object> sbuf = Nan::Get(item, 1).ToLocalChecked()
-                                                  .As<v8::Object>();
-    v8::Local<v8::Object> pbuf = Nan::Get(item, 2).ToLocalChecked()
-                                                  .As<v8::Object>();
+    v8::Local<v8::Object> msg_buf = Nan::Get(item, 0).ToLocalChecked()
+                                                     .As<v8::Object>();
+    v8::Local<v8::Object> sig_buf = Nan::Get(item, 1).ToLocalChecked()
+                                                     .As<v8::Object>();
+    v8::Local<v8::Object> pub_buf = Nan::Get(item, 2).ToLocalChecked()
+                                                     .As<v8::Object>();
 
-    if (!node::Buffer::HasInstance(mbuf)) {
+    if (!node::Buffer::HasInstance(msg_buf)) {
       FREE_BATCH;
       return Nan::ThrowTypeError(MSG32_TYPE_INVALID);
     }
 
-    if (!node::Buffer::HasInstance(sbuf)) {
+    if (!node::Buffer::HasInstance(sig_buf)) {
       FREE_BATCH;
-      return Nan::ThrowTypeError(ECDSA_SIGNATURE_TYPE_INVALID);
+      return Nan::ThrowTypeError(EC_SIGNATURE_TYPE_INVALID);
     }
 
-    if (!node::Buffer::HasInstance(pbuf)) {
+    if (!node::Buffer::HasInstance(pub_buf)) {
       FREE_BATCH;
       return Nan::ThrowTypeError(EC_PUBLIC_KEY_TYPE_INVALID);
     }
 
-    const uint8_t *msg = (const uint8_t *)node::Buffer::Data(mbuf);
-    size_t msg_len = node::Buffer::Length(mbuf);
+    const unsigned char *msg =
+      (const unsigned char *)node::Buffer::Data(msg_buf);
+    size_t msg_len = node::Buffer::Length(msg_buf);
 
-    const uint8_t *sig = (const uint8_t *)node::Buffer::Data(sbuf);
-    size_t sig_len = node::Buffer::Length(sbuf);
+    const unsigned char *sig =
+      (const unsigned char *)node::Buffer::Data(sig_buf);
+    size_t sig_len = node::Buffer::Length(sig_buf);
 
-    const uint8_t *pub = (const uint8_t *)node::Buffer::Data(pbuf);
-    size_t pub_len = node::Buffer::Length(pbuf);
+    const unsigned char *pub =
+      (const unsigned char *)node::Buffer::Data(pub_buf);
+    size_t pub_len = node::Buffer::Length(pub_buf);
 
     if (msg_len != 32) {
       FREE_BATCH;
@@ -1646,7 +1573,7 @@ NAN_METHOD(BSecp256k1::SchnorrVerifyBatch) {
 
     if (sig_len != 64) {
       FREE_BATCH;
-      return Nan::ThrowRangeError(ECDSA_SIGNATURE_LENGTH_INVALID);
+      return Nan::ThrowRangeError(EC_SIGNATURE_LENGTH_INVALID);
     }
 
     if (pub_len != 33 && pub_len != 65) {
@@ -1654,12 +1581,12 @@ NAN_METHOD(BSecp256k1::SchnorrVerifyBatch) {
       return Nan::ThrowRangeError(EC_PUBLIC_KEY_LENGTH_INVALID);
     }
 
-    if (secp256k1_schnorrleg_parse(secp->ctx, &sig_data[i], sig) == 0) {
+    if (!secp256k1_schnorrleg_parse(secp->ctx, &sig_data[i], sig)) {
       FREE_BATCH;
-      return Nan::ThrowError(ECDSA_SIGNATURE_PARSE_FAIL);
+      return Nan::ThrowError(EC_SIGNATURE_PARSE_FAIL);
     }
 
-    if (secp256k1_ec_pubkey_parse(secp->ctx, &pub_data[i], pub, pub_len) == 0) {
+    if (!secp256k1_ec_pubkey_parse(secp->ctx, &pub_data[i], pub, pub_len)) {
       FREE_BATCH;
       return Nan::ThrowError(EC_PUBLIC_KEY_PARSE_FAIL);
     }
@@ -1678,7 +1605,7 @@ NAN_METHOD(BSecp256k1::SchnorrVerifyBatch) {
 
     if (scratch == NULL) {
       FREE_BATCH;
-      return Nan::ThrowError("allocation failed");
+      return Nan::ThrowError(ALLOCATION_FAILURE);
     }
 
     secp->scratch = scratch;
