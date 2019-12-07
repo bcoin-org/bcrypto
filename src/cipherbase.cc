@@ -8,11 +8,12 @@ static bool IsValidGCMTagLength(unsigned int tag_len) {
   return tag_len == 4 || tag_len == 8 || (tag_len >= 12 && tag_len <= 16);
 }
 
-#if NODE_MAJOR_VERSION < 10
+#ifndef EVP_CTRL_AEAD_SET_IVLEN
 #define BCRYPTO_AEAD_SET_IVLEN EVP_CTRL_GCM_SET_IVLEN
 #define BCRYPTO_AEAD_SET_TAG EVP_CTRL_GCM_SET_TAG
 #define BCRYPTO_AEAD_GET_TAG EVP_CTRL_GCM_GET_TAG
 #else
+/* Switched to these in version 10. */
 #define BCRYPTO_AEAD_SET_IVLEN EVP_CTRL_AEAD_SET_IVLEN
 #define BCRYPTO_AEAD_SET_TAG EVP_CTRL_AEAD_SET_TAG
 #define BCRYPTO_AEAD_GET_TAG EVP_CTRL_AEAD_GET_TAG
@@ -27,7 +28,7 @@ BCipherBase::BCipherBase() {
 BCipherBase::~BCipherBase() {
   type = NULL;
   encrypt = false;
-  if (ctx) {
+  if (ctx != NULL) {
     EVP_CIPHER_CTX_free(ctx);
     ctx = NULL;
   }
@@ -79,7 +80,7 @@ NAN_METHOD(BCipherBase::New) {
 
   const EVP_CIPHER *type = EVP_get_cipherbyname(name);
 
-  if (!type)
+  if (type == NULL)
     return Nan::ThrowError("Invalid cipher name.");
 
   int mode = EVP_CIPHER_mode(type);
@@ -139,14 +140,14 @@ NAN_METHOD(BCipherBase::Init) {
     }
   }
 
-  if (cipher->ctx) {
+  if (cipher->ctx != NULL) {
     EVP_CIPHER_CTX_free(cipher->ctx);
     cipher->ctx = NULL;
   }
 
   cipher->ctx = EVP_CIPHER_CTX_new();
 
-  if (!cipher->ctx)
+  if (cipher->ctx == NULL)
     return Nan::ThrowError("Failed to initialize cipher.");
 
   int r = EVP_CipherInit_ex(cipher->ctx, cipher->type, NULL,
@@ -181,7 +182,7 @@ NAN_METHOD(BCipherBase::Update) {
   if (info.Length() < 1)
     return Nan::ThrowError("cipher.update() requires arguments.");
 
-  if (!cipher->ctx)
+  if (cipher->ctx == NULL)
     return Nan::ThrowError("Cipher is not initialized.");
 
   v8::Local<v8::Object> data_buf = info[0].As<v8::Object>();
@@ -192,23 +193,30 @@ NAN_METHOD(BCipherBase::Update) {
   const uint8_t *data = (const uint8_t *)node::Buffer::Data(data_buf);
   size_t data_len = node::Buffer::Length(data_buf);
 
+  // This breaks things now for some reason.
+  if (data_len == 0) {
+    return info.GetReturnValue().Set(
+      Nan::CopyBuffer((char *)NULL, 0).ToLocalChecked());
+  }
+
   int buff_len = data_len + EVP_CIPHER_CTX_block_size(cipher->ctx);
   uint8_t *out = (uint8_t *)malloc(buff_len);
-  int out_len;
+  int out_len = buff_len;
 
-  if (!out)
+  if (out == NULL)
     return Nan::ThrowError("Failed to update cipher.");
 
   int r = EVP_CipherUpdate(cipher->ctx, out, &out_len, data, data_len);
 
   assert(out_len <= buff_len);
 
-  if (r != 1) {
+  if (r != 1 || out_len < 0) {
     free(out);
     return Nan::ThrowError("Failed to update cipher.");
   }
 
   if (out_len == 0) {
+    assert(out != NULL);
     free(out);
     out = NULL;
   }
@@ -220,14 +228,14 @@ NAN_METHOD(BCipherBase::Update) {
 NAN_METHOD(BCipherBase::Final) {
   BCipherBase *cipher = ObjectWrap::Unwrap<BCipherBase>(info.Holder());
 
-  if (!cipher->ctx)
+  if (cipher->ctx == NULL)
     return Nan::ThrowError("Cipher is not initialized.");
 
   size_t block_size = EVP_CIPHER_CTX_block_size(cipher->ctx);
   uint8_t *out = (uint8_t *)malloc(block_size);
   int out_len = -1;
 
-  if (!out)
+  if (out == NULL)
     return Nan::ThrowError("Failed to finalize cipher.");
 
   int r = EVP_CipherFinal_ex(cipher->ctx, out, &out_len);
@@ -238,6 +246,7 @@ NAN_METHOD(BCipherBase::Final) {
   }
 
   if (out_len == 0) {
+    assert(out != NULL);
     free(out);
     out = NULL;
   }
@@ -252,7 +261,7 @@ NAN_METHOD(BCipherBase::SetAAD) {
   if (info.Length() < 1)
     return Nan::ThrowError("cipher.setAAD() requires arguments.");
 
-  if (!cipher->ctx)
+  if (cipher->ctx == NULL)
     return Nan::ThrowError("Cipher is not initialized.");
 
   v8::Local<v8::Object> buf = info[0].As<v8::Object>();
@@ -264,7 +273,7 @@ NAN_METHOD(BCipherBase::SetAAD) {
   size_t len = node::Buffer::Length(buf);
 
   int outlen;
-  const int mode = EVP_CIPHER_CTX_mode(cipher->ctx);
+  int mode = EVP_CIPHER_CTX_mode(cipher->ctx);
 
   if (mode != EVP_CIPH_GCM_MODE)
     return Nan::ThrowError("Cipher is not authenticated.");
@@ -284,7 +293,7 @@ NAN_METHOD(BCipherBase::SetAAD) {
 NAN_METHOD(BCipherBase::GetAuthTag) {
   BCipherBase *cipher = ObjectWrap::Unwrap<BCipherBase>(info.Holder());
 
-  if (!cipher->ctx)
+  if (cipher->ctx == NULL)
     return Nan::ThrowError("Cipher is not initialized.");
 
   const int mode = EVP_CIPHER_CTX_mode(cipher->ctx);
@@ -313,7 +322,7 @@ NAN_METHOD(BCipherBase::SetAuthTag) {
   if (info.Length() < 1)
     return Nan::ThrowError("cipher.setAuthTag() requires arguments.");
 
-  if (!cipher->ctx)
+  if (cipher->ctx == NULL)
     return Nan::ThrowError("Cipher is not initialized.");
 
   v8::Local<v8::Object> buf = info[0].As<v8::Object>();
@@ -327,7 +336,7 @@ NAN_METHOD(BCipherBase::SetAuthTag) {
   if (!IsValidGCMTagLength(len))
     return Nan::ThrowRangeError("Invalid tag length.");
 
-  const int mode = EVP_CIPHER_CTX_mode(cipher->ctx);
+  int mode = EVP_CIPHER_CTX_mode(cipher->ctx);
 
   if (mode != EVP_CIPH_GCM_MODE)
     return Nan::ThrowError("Cipher is not authenticated.");

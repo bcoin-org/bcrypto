@@ -163,6 +163,9 @@ function encipher(name, key, iv, data) {
 
   ctx.init(key, iv);
 
+  if (Math.random() > 0.5)
+    ctx.update(Buffer.alloc(0));
+
   return Buffer.concat([
     ctx.update(data),
     ctx.final(),
@@ -181,6 +184,9 @@ function decipher(name, key, iv, data) {
     data = data.slice(0, -16);
     ctx.setAuthTag(tag);
   }
+
+  if (Math.random() > 0.5)
+    ctx.update(Buffer.alloc(0));
 
   return Buffer.concat([
     ctx.update(data),
