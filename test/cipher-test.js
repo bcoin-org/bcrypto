@@ -3,6 +3,7 @@
 const assert = require('bsert');
 const fs = require('fs');
 const cipher = require('../lib/cipher');
+const rng = require('../lib/random');
 const {Cipher, Decipher, encrypt, decrypt} = cipher;
 
 const algs = [
@@ -163,7 +164,7 @@ function encipher(name, key, iv, data) {
 
   ctx.init(key, iv);
 
-  if (Math.random() > 0.5)
+  if (rng.randomRange(0, 2))
     ctx.update(Buffer.alloc(0));
 
   return Buffer.concat([
@@ -185,7 +186,7 @@ function decipher(name, key, iv, data) {
     ctx.setAuthTag(tag);
   }
 
-  if (Math.random() > 0.5)
+  if (rng.randomRange(0, 2))
     ctx.update(Buffer.alloc(0));
 
   return Buffer.concat([
@@ -239,6 +240,61 @@ function decipherInc(name, key, iv, data) {
   return Buffer.concat(out);
 }
 
+function encipherRand(name, key, iv, data) {
+  const gcm = name.endsWith('-GCM');
+  const ctx = new Cipher(name);
+
+  ctx.init(key, iv);
+
+  const out = [];
+  const max = Math.max(2, data.length >>> 2);
+
+  let i = 0;
+
+  while (i < data.length) {
+    const j = rng.randomRange(0, max);
+
+    out.push(ctx.update(data.slice(i, i + j)));
+
+    i += j;
+  }
+
+  out.push(ctx.final());
+  out.push(gcm ? ctx.getAuthTag() : Buffer.alloc(0));
+
+  return Buffer.concat(out);
+}
+
+function decipherRand(name, key, iv, data) {
+  const gcm = name.endsWith('-GCM');
+  const ctx = new Decipher(name);
+
+  ctx.init(key, iv);
+
+  if (gcm) {
+    const tag = data.slice(-16);
+    data = data.slice(0, -16);
+    ctx.setAuthTag(tag);
+  }
+
+  const out = [];
+  const max = Math.max(2, data.length >>> 2);
+
+  let i = 0;
+
+  while (i < data.length) {
+    const j = rng.randomRange(0, max);
+
+    out.push(ctx.update(data.slice(i, i + j)));
+
+    i += j;
+  }
+
+  out.push(ctx.final());
+
+  return Buffer.concat(out);
+}
+
 describe('Cipher', function() {
   for (const alg of algs) {
     describe(alg.name, function() {
@@ -260,6 +316,8 @@ describe('Cipher', function() {
             assert.bufferEqual(decipher(id, key, iv, expect), data);
             assert.bufferEqual(encipherInc(id, key, iv, data), expect);
             assert.bufferEqual(decipherInc(id, key, iv, expect), data);
+            assert.bufferEqual(encipherRand(id, key, iv, data), expect);
+            assert.bufferEqual(decipherRand(id, key, iv, expect), data);
 
             if (!gcm) {
               assert.bufferEqual(encrypt(id, key, iv, data), expect);

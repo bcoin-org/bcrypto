@@ -2,6 +2,7 @@
 
 const assert = require('bsert');
 const fs = require('fs');
+const rng = require('../lib/random');
 const BLAKE2b160 = require('../lib/blake2b160');
 const BLAKE2b256 = require('../lib/blake2b256');
 const BLAKE2b384 = require('../lib/blake2b384');
@@ -70,6 +71,25 @@ const hashes = [
   ['whirlpool', Whirlpool]
 ];
 
+function hashRand(hash, arg, data) {
+  const ctx = hash.hash();
+  const max = Math.max(2, data.length >>> 2);
+
+  let i = 0;
+
+  ctx.init(arg);
+
+  while (i < data.length) {
+    const j = rng.randomRange(0, max);
+
+    ctx.update(data.slice(i, i + j));
+
+    i += j;
+  }
+
+  return ctx.final();
+}
+
 describe('Hash', function() {
   for (const [name, hash] of hashes) {
     const file = `${__dirname}/data/hashes/${name}.json`;
@@ -125,6 +145,7 @@ describe('Hash', function() {
             assert.bufferEqual(ctx.final(), expect);
 
             assert.bufferEqual(hash.digest(msg, arg), expect);
+            assert.bufferEqual(hashRand(hash, arg, msg), expect);
 
             if (arg == null) {
               assert.bufferEqual(hash.multi(left, right), expect);
