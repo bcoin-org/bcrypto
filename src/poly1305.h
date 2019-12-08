@@ -19,7 +19,8 @@ private:
   static NAN_METHOD(Init);
   static NAN_METHOD(Update);
   static NAN_METHOD(Final);
-  static NAN_METHOD(Auth);
   static NAN_METHOD(Verify);
+  static NAN_METHOD(StaticAuth);
+  static NAN_METHOD(StaticVerify);
 };
 #endif

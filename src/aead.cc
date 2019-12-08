@@ -28,10 +28,11 @@ BAEAD::Init(v8::Local<v8::Object> &target) {
   Nan::SetPrototypeMethod(tpl, "decrypt", BAEAD::Decrypt);
   Nan::SetPrototypeMethod(tpl, "auth", BAEAD::Auth);
   Nan::SetPrototypeMethod(tpl, "final", BAEAD::Final);
-  Nan::SetMethod(tpl, "encrypt", BAEAD::EncryptStatic);
-  Nan::SetMethod(tpl, "decrypt", BAEAD::DecryptStatic);
-  Nan::SetMethod(tpl, "auth", BAEAD::AuthStatic);
-  Nan::SetMethod(tpl, "verify", BAEAD::Verify);
+  Nan::SetPrototypeMethod(tpl, "verify", BAEAD::Verify);
+  Nan::SetMethod(tpl, "encrypt", BAEAD::StaticEncrypt);
+  Nan::SetMethod(tpl, "decrypt", BAEAD::StaticDecrypt);
+  Nan::SetMethod(tpl, "auth", BAEAD::StaticAuth);
+  Nan::SetMethod(tpl, "verify", BAEAD::StaticVerify);
 
   v8::Local<v8::FunctionTemplate> ctor =
     Nan::New<v8::FunctionTemplate>(aead_constructor);
@@ -167,17 +168,41 @@ NAN_METHOD(BAEAD::Auth) {
 NAN_METHOD(BAEAD::Final) {
   BAEAD *aead = ObjectWrap::Unwrap<BAEAD>(info.Holder());
 
-  uint8_t out[16];
-  bcrypto_aead_final(&aead->ctx, &out[0]);
+  uint8_t mac[16];
+  bcrypto_aead_final(&aead->ctx, &mac[0]);
 
   info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)&out[0], 16).ToLocalChecked());
+    Nan::CopyBuffer((char *)&mac[0], 16).ToLocalChecked());
 }
 
-// key, iv, msg, [aad]
-NAN_METHOD(BAEAD::EncryptStatic) {
+NAN_METHOD(BAEAD::Verify) {
+  BAEAD *aead = ObjectWrap::Unwrap<BAEAD>(info.Holder());
+
+  if (info.Length() < 1)
+    return Nan::ThrowError("aead.verify() requires arguments.");
+
+  v8::Local<v8::Object> tag_buf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(tag_buf))
+    return Nan::ThrowTypeError("First argument must be a buffer.");
+
+  const uint8_t *tag = (const uint8_t *)node::Buffer::Data(tag_buf);
+  size_t tag_len = node::Buffer::Length(tag_buf);
+
+  if (tag_len != 16)
+    return Nan::ThrowRangeError("Invalid key size.");
+
+  uint8_t mac[16];
+  bcrypto_aead_final(&aead->ctx, &mac[0]);
+
+  int result = bcrypto_aead_verify(&mac[0], tag);
+
+  info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
+}
+
+NAN_METHOD(BAEAD::StaticEncrypt) {
   if (info.Length() < 3)
-    return Nan::ThrowError("aead.encrypt() requires arguments.");
+    return Nan::ThrowError("AEAD.encrypt() requires arguments.");
 
   v8::Local<v8::Object> key_buf = info[0].As<v8::Object>();
 
@@ -240,9 +265,9 @@ NAN_METHOD(BAEAD::EncryptStatic) {
     Nan::CopyBuffer((char *)&out[0], 16).ToLocalChecked());
 }
 
-NAN_METHOD(BAEAD::DecryptStatic) {
+NAN_METHOD(BAEAD::StaticDecrypt) {
   if (info.Length() < 4)
-    return Nan::ThrowError("aead.decrypt() requires arguments.");
+    return Nan::ThrowError("AEAD.decrypt() requires arguments.");
 
   v8::Local<v8::Object> key_buf = info[0].As<v8::Object>();
 
@@ -317,9 +342,9 @@ NAN_METHOD(BAEAD::DecryptStatic) {
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
 
-NAN_METHOD(BAEAD::AuthStatic) {
+NAN_METHOD(BAEAD::StaticAuth) {
   if (info.Length() < 4)
-    return Nan::ThrowError("aead.decrypt() requires arguments.");
+    return Nan::ThrowError("AEAD.decrypt() requires arguments.");
 
   v8::Local<v8::Object> key_buf = info[0].As<v8::Object>();
 
@@ -394,9 +419,9 @@ NAN_METHOD(BAEAD::AuthStatic) {
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
 
-NAN_METHOD(BAEAD::Verify) {
+NAN_METHOD(BAEAD::StaticVerify) {
   if (info.Length() < 2)
-    return Nan::ThrowError("aead.verify() requires arguments.");
+    return Nan::ThrowError("AEAD.verify() requires arguments.");
 
   v8::Local<v8::Object> abuf = info[0].As<v8::Object>();
 

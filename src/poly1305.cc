@@ -24,8 +24,9 @@ BPoly1305::Init(v8::Local<v8::Object> &target) {
   Nan::SetPrototypeMethod(tpl, "init", BPoly1305::Init);
   Nan::SetPrototypeMethod(tpl, "update", BPoly1305::Update);
   Nan::SetPrototypeMethod(tpl, "final", BPoly1305::Final);
-  Nan::SetMethod(tpl, "auth", BPoly1305::Auth);
-  Nan::SetMethod(tpl, "verify", BPoly1305::Verify);
+  Nan::SetPrototypeMethod(tpl, "verify", BPoly1305::Verify);
+  Nan::SetMethod(tpl, "auth", BPoly1305::StaticAuth);
+  Nan::SetMethod(tpl, "verify", BPoly1305::StaticVerify);
 
   v8::Local<v8::FunctionTemplate> ctor =
     Nan::New<v8::FunctionTemplate>(poly1305_constructor);
@@ -95,9 +96,35 @@ NAN_METHOD(BPoly1305::Final) {
     Nan::CopyBuffer((char *)&mac[0], 16).ToLocalChecked());
 }
 
-NAN_METHOD(BPoly1305::Auth) {
+NAN_METHOD(BPoly1305::Verify) {
+  BPoly1305 *poly = ObjectWrap::Unwrap<BPoly1305>(info.Holder());
+
+  if (info.Length() < 1)
+    return Nan::ThrowError("poly1305.verify() requires arguments.");
+
+  v8::Local<v8::Object> buf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(buf))
+    return Nan::ThrowTypeError("First argument must be a buffer.");
+
+  const uint8_t *tag = (const uint8_t *)node::Buffer::Data(buf);
+  size_t len = node::Buffer::Length(buf);
+
+  if (len != 16)
+    return Nan::ThrowRangeError("Invalid tag size.");
+
+  uint8_t mac[16];
+
+  bcrypto_poly1305_finish(&poly->ctx, &mac[0]);
+
+  int result = bcrypto_poly1305_verify(&mac[0], tag);
+
+  info.GetReturnValue().Set(Nan::New<v8::Boolean>((bool)result));
+}
+
+NAN_METHOD(BPoly1305::StaticAuth) {
   if (info.Length() < 2)
-    return Nan::ThrowError("poly1305.auth() requires arguments.");
+    return Nan::ThrowError("Poly1305.auth() requires arguments.");
 
   v8::Local<v8::Object> buf = info[0].As<v8::Object>();
 
@@ -126,9 +153,9 @@ NAN_METHOD(BPoly1305::Auth) {
     Nan::CopyBuffer((char *)&mac[0], 16).ToLocalChecked());
 }
 
-NAN_METHOD(BPoly1305::Verify) {
+NAN_METHOD(BPoly1305::StaticVerify) {
   if (info.Length() < 2)
-    return Nan::ThrowError("poly1305.verify() requires arguments.");
+    return Nan::ThrowError("Poly1305.verify() requires arguments.");
 
   v8::Local<v8::Object> abuf = info[0].As<v8::Object>();
 
@@ -149,7 +176,7 @@ NAN_METHOD(BPoly1305::Verify) {
   if (alen != 16 || blen != 16)
     return Nan::ThrowRangeError("Invalid mac size.");
 
-  int32_t result = bcrypto_poly1305_verify(adata, bdata);
+  int result = bcrypto_poly1305_verify(adata, bdata);
 
   info.GetReturnValue().Set(Nan::New<v8::Boolean>((bool)result));
 }

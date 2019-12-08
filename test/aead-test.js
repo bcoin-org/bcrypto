@@ -15,7 +15,7 @@ describe('AEAD (ChaCha20+Poly1305)', function() {
     const tag = raw.slice(-16);
     const text = key_.slice(0, 32) + '...';
 
-    it(`should do encrypt and decrypt (${text})`, () => {
+    it(`should do incremental encrypt and decrypt (${text})`, () => {
       const data = Buffer.from(input);
       const ctx = new AEAD();
 
@@ -38,6 +38,42 @@ describe('AEAD (ChaCha20+Poly1305)', function() {
 
       assert.bufferEqual(data, input);
       assert.bufferEqual(ctx.final(), tag);
+    });
+
+    it(`should do incremental encrypt and decrypt + verify (${text})`, () => {
+      const data = Buffer.from(input);
+      const ctx = new AEAD();
+
+      ctx.init(key, nonce);
+      ctx.aad(aad);
+      ctx.encrypt(data);
+
+      assert.bufferEqual(data, output);
+      assert.strictEqual(ctx.verify(tag), true);
+
+      ctx.init(key, nonce);
+      ctx.aad(aad);
+      ctx.auth(data);
+
+      assert.strictEqual(ctx.verify(tag), true);
+
+      ctx.init(key, nonce);
+      ctx.aad(aad);
+      ctx.decrypt(data);
+
+      assert.bufferEqual(data, input);
+      assert.strictEqual(ctx.verify(tag), true);
+
+      ctx.init(key, nonce);
+      ctx.aad(aad);
+      ctx.encrypt(data);
+
+      const tag0 = Buffer.from(tag);
+
+      tag0[0] ^= 1;
+
+      assert.bufferEqual(data, output);
+      assert.strictEqual(ctx.verify(tag0), false);
     });
 
     it(`should do one-shot encrypt and decrypt (${text})`, () => {
