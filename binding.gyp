@@ -102,16 +102,15 @@
       "-Wno-undefined-internal"
     ],
     "include_dirs": [
-      "/usr/local/include",
       "<!(node -e \"require('nan')\")"
     ],
     "defines": [
-      "USE_ENDOMORPHISM=1",
-      "ENABLE_MODULE_ECDH=1",
-      "ENABLE_MODULE_ELLIGATOR=1",
-      "ENABLE_MODULE_EXTRA=1",
-      "ENABLE_MODULE_RECOVERY=1",
-      "ENABLE_MODULE_SCHNORRLEG=1"
+      "USE_ENDOMORPHISM",
+      "ENABLE_MODULE_ECDH",
+      "ENABLE_MODULE_ELLIGATOR",
+      "ENABLE_MODULE_EXTRA",
+      "ENABLE_MODULE_RECOVERY",
+      "ENABLE_MODULE_SCHNORRLEG"
     ],
     "variables": {
       "conditions": [
@@ -143,11 +142,11 @@
           "BCRYPTO_SIPHASH_64BIT",
           "BCRYPTO_USE_ASM",
           "BCRYPTO_USE_SSE",
-          "HAVE___INT128=1",
-          "USE_ASM_X86_64=1",
-          "USE_FIELD_5X52=1",
-          "USE_FIELD_5X52_INT128=1",
-          "USE_SCALAR_4X64=1"
+          "HAVE___INT128",
+          "USE_ASM_X86_64",
+          "USE_FIELD_5X52",
+          "USE_FIELD_5X52_INT128",
+          "USE_SCALAR_4X64"
         ],
         "cflags": [
           "-msse4.1"
@@ -156,25 +155,25 @@
         "defines": [
           "BCRYPTO_POLY1305_32BIT",
           "BCRYPTO_ED25519_NO_INLINE_ASM",
-          "USE_FIELD_10X26=1",
-          "USE_SCALAR_8X32=1"
+          "USE_FIELD_10X26",
+          "USE_SCALAR_8X32"
         ]
       }],
       ["with_gmp=='true'", {
         "defines": [
-          "HAVE_LIBGMP=1",
-          "USE_NUM_GMP=1",
-          "USE_FIELD_INV_NUM=1",
-          "USE_SCALAR_INV_NUM=1"
+          "HAVE_LIBGMP",
+          "USE_NUM_GMP",
+          "USE_FIELD_INV_NUM",
+          "USE_SCALAR_INV_NUM"
         ],
         "libraries": [
           "-lgmp"
         ]
       }, {
         "defines": [
-          "USE_NUM_NONE=1",
-          "USE_FIELD_INV_BUILTIN=1",
-          "USE_SCALAR_INV_BUILTIN=1"
+          "USE_NUM_NONE",
+          "USE_FIELD_INV_BUILTIN",
+          "USE_SCALAR_INV_BUILTIN"
         ]
       }],
       ["OS=='win'", {
@@ -198,6 +197,9 @@
         ]
       }],
       ["OS=='mac'", {
+        "include_dirs": [
+          "/usr/local/include"
+        ],
         "libraries": [
           "-L/usr/local/lib"
         ],
