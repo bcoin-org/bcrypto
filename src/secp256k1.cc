@@ -383,7 +383,8 @@ NAN_METHOD(BSecp256k1::PrivateKeyReduce) {
 
   size_t priv_len = (size_t)node::Buffer::Length(priv_buf);
 
-  secp256k1_ec_privkey_reduce(secp->ctx, &out[0], priv, priv_len);
+  if (!secp256k1_ec_privkey_reduce(secp->ctx, &out[0], priv, priv_len))
+    return Nan::ThrowError(EC_PRIVATE_KEY_RANGE_INVALID);
 
   info.GetReturnValue().Set(COPY_BUFFER(&out[0], 32));
 }

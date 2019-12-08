@@ -57,7 +57,7 @@ secp256k1_ec_privkey_invert(const secp256k1_context *ctx,
   return 1;
 }
 
-void
+int
 secp256k1_ec_privkey_reduce(const secp256k1_context* ctx,
                             unsigned char *output,
                             const unsigned char *bytes,
@@ -65,7 +65,7 @@ secp256k1_ec_privkey_reduce(const secp256k1_context* ctx,
   secp256k1_scalar sec;
 
   VERIFY_CHECK(ctx != NULL);
-  VERIFY_CHECK(output != NULL);
+  ARG_CHECK(output != NULL);
 
   memset(&output[0], 0x00, 32);
 
@@ -75,8 +75,14 @@ secp256k1_ec_privkey_reduce(const secp256k1_context* ctx,
   memcpy(&output[32 - len], bytes, len);
 
   secp256k1_scalar_set_b32(&sec, output, NULL);
+
+  if (secp256k1_scalar_is_zero(&sec))
+    return 0;
+
   secp256k1_scalar_get_b32(output, &sec);
   secp256k1_scalar_clear(&sec);
+
+  return 1;
 }
 
 #endif /* SECP256K1_MODULE_EXTRA_MAIN_H */
