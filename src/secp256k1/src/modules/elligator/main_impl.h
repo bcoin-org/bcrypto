@@ -367,12 +367,16 @@ secp256k1_random_int(secp256k1_rfc6979_hmac_sha256 *rng) {
   return ((unsigned int)raw[0] << 8) | (unsigned int)raw[1];
 }
 
-void
+int
 secp256k1_pubkey_from_uniform(const secp256k1_context *ctx,
                               secp256k1_pubkey *pubkey,
                               const unsigned char *bytes32) {
   secp256k1_ge p;
   secp256k1_fe u;
+
+  (void)ctx;
+  ARG_CHECK(pubkey != NULL);
+  ARG_CHECK(bytes32 != NULL);
 
   secp256k1_fe_set_b32(&u, bytes32);
   secp256k1_fe_normalize(&u);
@@ -383,6 +387,8 @@ secp256k1_pubkey_from_uniform(const secp256k1_context *ctx,
 
   secp256k1_ge_clear(&p);
   secp256k1_fe_clear(&u);
+
+  return 1;
 }
 
 int
@@ -393,6 +399,10 @@ secp256k1_pubkey_to_uniform(const secp256k1_context *ctx,
   secp256k1_ge p;
   secp256k1_fe u;
   int ret;
+
+  VERIFY_CHECK(ctx != NULL);
+  ARG_CHECK(bytes32 != NULL);
+  ARG_CHECK(pubkey != NULL);
 
   if (!secp256k1_pubkey_load(ctx, &p, pubkey))
     return 0;
@@ -416,6 +426,10 @@ secp256k1_pubkey_from_hash(const secp256k1_context *ctx,
   secp256k1_ge p1, p2;
   secp256k1_fe u1, u2;
   int ret;
+
+  (void)ctx;
+  ARG_CHECK(pubkey != NULL);
+  ARG_CHECK(bytes64 != NULL);
 
   secp256k1_fe_set_b32(&u1, bytes64);
   secp256k1_fe_set_b32(&u2, bytes64 + 32);
@@ -455,6 +469,11 @@ secp256k1_pubkey_to_hash(const secp256k1_context *ctx,
   secp256k1_gej j, r;
   secp256k1_fe u1, u2;
   unsigned int hint;
+
+  VERIFY_CHECK(ctx != NULL);
+  ARG_CHECK(bytes64 != NULL);
+  ARG_CHECK(pubkey != NULL);
+  ARG_CHECK(seed64 != NULL);
 
   if (!secp256k1_pubkey_load(ctx, &p, pubkey))
     return 0;

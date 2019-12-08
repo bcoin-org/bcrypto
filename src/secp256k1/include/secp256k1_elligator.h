@@ -9,11 +9,13 @@ extern "C" {
 
 /** Hash bytes to a point using the Shallue-van de Woestijne map.
  *
+ *  Returns: 1: the byte array was sucessfully mapped.
+ *           0: invalid arguments.
  *  Args:    ctx:      pointer to a context object (cannot be NULL).
  *  Out:     pubkey:   pointer to a pubkey object.
  *  In:      bytes32:  pointer to a raw 32-byte field element.
  */
-SECP256K1_API void
+SECP256K1_API SECP256K1_WARN_UNUSED_RESULT int
 secp256k1_pubkey_from_uniform(const secp256k1_context *ctx,
                               secp256k1_pubkey *pubkey,
                               const unsigned char *bytes32) SECP256K1_ARG_NONNULL(1)
