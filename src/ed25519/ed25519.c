@@ -504,9 +504,6 @@ bcrypto_ed25519_scalar_invert(
   expand256_modm(k, sk, 32);
   recip256_modm(k, k);
 
-  if (iszero256_modm_batch(k))
-    return 0;
-
   contract256_modm(out, k);
 
   return 1;
