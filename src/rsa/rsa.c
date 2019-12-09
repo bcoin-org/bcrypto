@@ -2239,7 +2239,7 @@ bcrypto_rsa_veil(uint8_t **out,
   BN_CTX *ctx = NULL;
   BIGNUM *c = NULL;
   BIGNUM *n = NULL;
-  BIGNUM *cmax = NULL;
+  BIGNUM *vmax = NULL;
   BIGNUM *rmax = NULL;
   BIGNUM *v = NULL;
   BIGNUM *r = NULL;
@@ -2259,7 +2259,7 @@ bcrypto_rsa_veil(uint8_t **out,
   ctx = BN_CTX_new();
   c = BN_bin2bn(ct, ct_len, NULL);
   n = BN_bin2bn(pub->nd, pub->nl, NULL);
-  cmax = BN_new();
+  vmax = BN_new();
   rmax = BN_new();
   v = BN_new();
   r = BN_new();
@@ -2267,7 +2267,7 @@ bcrypto_rsa_veil(uint8_t **out,
   if (ctx == NULL
       || c == NULL
       || n == NULL
-      || cmax == NULL
+      || vmax == NULL
       || rmax == NULL
       || v == NULL
       || r == NULL) {
@@ -2278,14 +2278,14 @@ bcrypto_rsa_veil(uint8_t **out,
   if (BN_cmp(c, n) >= 0)
     goto fail;
 
-  /* cmax = 1 << bits */
-  if (!BN_set_word(cmax, 1)
-      || !BN_lshift(cmax, cmax, bits)) {
+  /* vmax = 1 << bits */
+  if (!BN_set_word(vmax, 1)
+      || !BN_lshift(vmax, vmax, bits)) {
     goto fail;
   }
 
-  /* rmax = (cmax - c + n - 1) / n */
-  if (!BN_copy(rmax, cmax)
+  /* rmax = (vmax - c + n - 1) / n */
+  if (!BN_copy(rmax, vmax)
       || !BN_sub(rmax, rmax, c)
       || !BN_add(rmax, rmax, n)
       || !BN_sub_word(rmax, 1)
@@ -2296,14 +2296,14 @@ bcrypto_rsa_veil(uint8_t **out,
   /* rmax > 0 */
   assert(!BN_is_negative(rmax) && !BN_is_zero(rmax));
 
-  /* v = cmax */
-  if (!BN_copy(v, cmax))
+  /* v = vmax */
+  if (!BN_copy(v, vmax))
     goto fail;
 
   bcrypto_poll();
 
-  /* while v >= cmax */
-  while (BN_cmp(v, cmax) >= 0) {
+  /* while v >= vmax */
+  while (BN_cmp(v, vmax) >= 0) {
     /* r = random integer in [0,rmax-1] */
     if (!BN_rand_range(r, rmax))
       goto fail;
@@ -2346,8 +2346,8 @@ fail:
   if (n != NULL)
     BN_free(n);
 
-  if (cmax != NULL)
-    BN_free(cmax);
+  if (vmax != NULL)
+    BN_free(vmax);
 
   if (rmax != NULL)
     BN_free(rmax);
