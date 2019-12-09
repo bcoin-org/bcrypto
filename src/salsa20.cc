@@ -12,8 +12,7 @@ BSalsa20::BSalsa20() {
 }
 
 BSalsa20::~BSalsa20() {
-  if (started)
-    OPENSSL_cleanse(&ctx, sizeof(bcrypto_salsa20_ctx));
+  OPENSSL_cleanse(&ctx, sizeof(bcrypto_salsa20_ctx));
 }
 
 void
@@ -119,7 +118,6 @@ NAN_METHOD(BSalsa20::Encrypt) {
 NAN_METHOD(BSalsa20::Destroy) {
   BSalsa20 *salsa = ObjectWrap::Unwrap<BSalsa20>(info.Holder());
 
-  OPENSSL_cleanse(&salsa->ctx, sizeof(bcrypto_salsa20_ctx));
   salsa->started = false;
 
   info.GetReturnValue().Set(info.This());

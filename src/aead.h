@@ -15,7 +15,6 @@ public:
   ~BAEAD();
 
   bcrypto_aead_ctx ctx;
-  bool started;
 
 private:
   static NAN_METHOD(Init);

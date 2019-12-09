@@ -12,8 +12,7 @@ BChaCha20::BChaCha20() {
 }
 
 BChaCha20::~BChaCha20() {
-  if (started)
-    OPENSSL_cleanse(&ctx, sizeof(bcrypto_chacha20_ctx));
+  OPENSSL_cleanse(&ctx, sizeof(bcrypto_chacha20_ctx));
 }
 
 void
@@ -119,7 +118,6 @@ NAN_METHOD(BChaCha20::Encrypt) {
 NAN_METHOD(BChaCha20::Destroy) {
   BChaCha20 *chacha = ObjectWrap::Unwrap<BChaCha20>(info.Holder());
 
-  OPENSSL_cleanse(&chacha->ctx, sizeof(bcrypto_chacha20_ctx));
   chacha->started = false;
 
   info.GetReturnValue().Set(info.This());

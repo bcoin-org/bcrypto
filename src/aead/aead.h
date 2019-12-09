@@ -16,10 +16,10 @@ extern "C" {
 typedef struct bcrypto_aead_s {
   bcrypto_chacha20_ctx chacha;
   bcrypto_poly1305_ctx poly;
+  uint8_t key[64];
+  int mode;
   uint64_t aad_len;
   uint64_t cipher_len;
-  int has_cipher;
-  uint8_t poly_key[64];
 } bcrypto_aead_ctx;
 
 void

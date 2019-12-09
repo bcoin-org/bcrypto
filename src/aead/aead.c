@@ -13,12 +13,12 @@ bcrypto_aead_pad16(bcrypto_aead_ctx *aead, uint64_t size);
 
 void
 bcrypto_aead_init(bcrypto_aead_ctx *aead) {
-  memset(&aead->chacha, 0, sizeof(bcrypto_chacha20_ctx));
-  memset(&aead->poly, 0, sizeof(bcrypto_poly1305_ctx));
+  memset(&aead->chacha, 0x00, sizeof(bcrypto_chacha20_ctx));
+  memset(&aead->poly, 0x00, sizeof(bcrypto_poly1305_ctx));
+  memset(&aead->key[0], 0x00, 64);
+  aead->mode = -1;
   aead->aad_len = 0;
   aead->cipher_len = 0;
-  aead->has_cipher = 0;
-  memset(&aead->poly_key[0], 0, 64);
 }
 
 void
@@ -26,20 +26,23 @@ bcrypto_aead_setup(bcrypto_aead_ctx *aead,
                    const uint8_t *key,
                    const uint8_t *iv,
                    size_t iv_len) {
-  memset(&aead->poly_key[0], 0, 64);
+  memset(&aead->key[0], 0x00, 64);
 
   bcrypto_chacha20_init(&aead->chacha, key, 32, iv, iv_len, 0);
-  bcrypto_chacha20_encrypt(&aead->chacha, aead->poly_key, aead->poly_key, 64);
-  bcrypto_poly1305_init(&aead->poly, aead->poly_key);
+  bcrypto_chacha20_encrypt(&aead->chacha, aead->key, aead->key, 64);
+  bcrypto_poly1305_init(&aead->poly, aead->key);
 
+  aead->mode = 0;
   aead->aad_len = 0;
   aead->cipher_len = 0;
-  aead->has_cipher = 0;
 }
 
 void
 bcrypto_aead_aad(bcrypto_aead_ctx *aead, const uint8_t *aad, size_t len) {
+  assert(aead->mode == 0);
+
   bcrypto_poly1305_update(&aead->poly, aad, len);
+
   aead->aad_len += len;
 }
 
@@ -48,14 +51,17 @@ bcrypto_aead_encrypt(bcrypto_aead_ctx *aead,
                      uint8_t *out,
                      const uint8_t *in,
                      size_t len) {
-  if (!aead->has_cipher)
+  if (aead->mode == 0) {
     bcrypto_aead_pad16(aead, aead->aad_len);
+    aead->mode = 1;
+  }
+
+  assert(aead->mode == 1);
 
   bcrypto_chacha20_encrypt(&aead->chacha, out, in, len);
   bcrypto_poly1305_update(&aead->poly, out, len);
 
   aead->cipher_len += len;
-  aead->has_cipher = 1;
 }
 
 void
@@ -63,11 +69,14 @@ bcrypto_aead_decrypt(bcrypto_aead_ctx *aead,
                      uint8_t *out,
                      const uint8_t *in,
                      size_t len) {
-  if (!aead->has_cipher)
+  if (aead->mode == 0) {
     bcrypto_aead_pad16(aead, aead->aad_len);
+    aead->mode = 2;
+  }
+
+  assert(aead->mode == 2);
 
   aead->cipher_len += len;
-  aead->has_cipher = 1;
 
   bcrypto_poly1305_update(&aead->poly, in, len);
   bcrypto_chacha20_encrypt(&aead->chacha, out, in, len);
@@ -75,11 +84,14 @@ bcrypto_aead_decrypt(bcrypto_aead_ctx *aead,
 
 void
 bcrypto_aead_auth(bcrypto_aead_ctx *aead, const uint8_t *in, size_t len) {
-  if (!aead->has_cipher)
+  if (aead->mode == 0) {
     bcrypto_aead_pad16(aead, aead->aad_len);
+    aead->mode = 3;
+  }
+
+  assert(aead->mode == 3);
 
   aead->cipher_len += len;
-  aead->has_cipher = 1;
 
   bcrypto_poly1305_update(&aead->poly, in, len);
 }
@@ -111,13 +123,15 @@ bcrypto_aead_final(bcrypto_aead_ctx *aead, uint8_t *tag) {
   memcpy(&len[8], (void *)&aead->cipher_len, 8);
 #endif
 
-  if (!aead->has_cipher)
+  if (aead->mode == 0)
     bcrypto_aead_pad16(aead, aead->aad_len);
 
   bcrypto_aead_pad16(aead, aead->cipher_len);
   bcrypto_poly1305_update(&aead->poly, len, 16);
 
   bcrypto_poly1305_finish(&aead->poly, tag);
+
+  aead->mode = -1;
 }
 
 static void
@@ -129,7 +143,7 @@ bcrypto_aead_pad16(bcrypto_aead_ctx *aead, uint64_t size) {
 
   uint8_t pad[16];
 
-  memset(&pad[0], 0, 16);
+  memset(&pad[0], 0x00, 16);
 
   bcrypto_poly1305_update(&aead->poly, pad, 16 - pos);
 }

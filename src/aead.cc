@@ -9,12 +9,10 @@ static Nan::Persistent<v8::FunctionTemplate> aead_constructor;
 
 BAEAD::BAEAD() {
   bcrypto_aead_init(&ctx);
-  started = false;
 }
 
 BAEAD::~BAEAD() {
-  if (started)
-    OPENSSL_cleanse(&ctx, sizeof(bcrypto_aead_ctx));
+  OPENSSL_cleanse(&ctx, sizeof(bcrypto_aead_ctx));
 }
 
 void
@@ -89,7 +87,6 @@ NAN_METHOD(BAEAD::Init) {
 
   bcrypto_aead_init(&aead->ctx);
   bcrypto_aead_setup(&aead->ctx, key, iv, iv_len);
-  aead->started = true;
 
   info.GetReturnValue().Set(info.This());
 }
@@ -105,11 +102,11 @@ NAN_METHOD(BAEAD::AAD) {
   if (!node::Buffer::HasInstance(aad_buf))
     return Nan::ThrowTypeError("First argument must be a buffer.");
 
-  if (!aead->started)
+  if (aead->ctx.mode == -1)
     return Nan::ThrowError("Context is not initialized.");
 
-  if (aead->ctx.has_cipher)
-    return Nan::ThrowError("Cannot update AAD.");
+  if (aead->ctx.mode != 0)
+    return Nan::ThrowError("Invalid state for aad.");
 
   const uint8_t *aad = (const uint8_t *)node::Buffer::Data(aad_buf);
   size_t aad_len = node::Buffer::Length(aad_buf);
@@ -130,15 +127,18 @@ NAN_METHOD(BAEAD::Encrypt) {
   if (!node::Buffer::HasInstance(msg_buf))
     return Nan::ThrowTypeError("First argument must be a buffer.");
 
-  if (!aead->started)
+  if (aead->ctx.mode == -1)
     return Nan::ThrowError("Context is not initialized.");
+
+  if (aead->ctx.mode != 0 && aead->ctx.mode != 1)
+    return Nan::ThrowError("Invalid state for aad.");
 
   uint8_t *msg = (uint8_t *)node::Buffer::Data(msg_buf);
   size_t msg_len = node::Buffer::Length(msg_buf);
 
   bcrypto_aead_encrypt(&aead->ctx, msg, msg, msg_len);
 
-  info.GetReturnValue().Set(info.This());
+  info.GetReturnValue().Set(msg_buf);
 }
 
 NAN_METHOD(BAEAD::Decrypt) {
@@ -152,15 +152,18 @@ NAN_METHOD(BAEAD::Decrypt) {
   if (!node::Buffer::HasInstance(msg_buf))
     return Nan::ThrowTypeError("First argument must be a buffer.");
 
-  if (!aead->started)
+  if (aead->ctx.mode == -1)
     return Nan::ThrowError("Context is not initialized.");
+
+  if (aead->ctx.mode != 0 && aead->ctx.mode != 2)
+    return Nan::ThrowError("Invalid state for decrypt.");
 
   uint8_t *msg = (uint8_t *)node::Buffer::Data(msg_buf);
   size_t msg_len = node::Buffer::Length(msg_buf);
 
   bcrypto_aead_decrypt(&aead->ctx, msg, msg, msg_len);
 
-  info.GetReturnValue().Set(info.This());
+  info.GetReturnValue().Set(msg_buf);
 }
 
 NAN_METHOD(BAEAD::Auth) {
@@ -174,27 +177,29 @@ NAN_METHOD(BAEAD::Auth) {
   if (!node::Buffer::HasInstance(msg_buf))
     return Nan::ThrowTypeError("First argument must be a buffer.");
 
-  if (!aead->started)
+  if (aead->ctx.mode == -1)
     return Nan::ThrowError("Context is not initialized.");
+
+  if (aead->ctx.mode != 0 && aead->ctx.mode != 3)
+    return Nan::ThrowError("Invalid state for auth.");
 
   const uint8_t *msg = (const uint8_t *)node::Buffer::Data(msg_buf);
   size_t msg_len = node::Buffer::Length(msg_buf);
 
   bcrypto_aead_auth(&aead->ctx, msg, msg_len);
 
-  info.GetReturnValue().Set(info.This());
+  info.GetReturnValue().Set(msg_buf);
 }
 
 NAN_METHOD(BAEAD::Final) {
   BAEAD *aead = ObjectWrap::Unwrap<BAEAD>(info.Holder());
 
-  if (!aead->started)
+  if (aead->ctx.mode == -1)
     return Nan::ThrowError("Context is not initialized.");
 
   uint8_t mac[16];
 
   bcrypto_aead_final(&aead->ctx, &mac[0]);
-  aead->started = false;
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&mac[0], 16).ToLocalChecked());
@@ -203,8 +208,7 @@ NAN_METHOD(BAEAD::Final) {
 NAN_METHOD(BAEAD::Destroy) {
   BAEAD *aead = ObjectWrap::Unwrap<BAEAD>(info.Holder());
 
-  OPENSSL_cleanse(&aead->ctx, sizeof(bcrypto_aead_ctx));
-  aead->started = false;
+  aead->ctx.mode = -1;
 
   info.GetReturnValue().Set(info.This());
 }
@@ -220,7 +224,7 @@ NAN_METHOD(BAEAD::Verify) {
   if (!node::Buffer::HasInstance(tag_buf))
     return Nan::ThrowTypeError("First argument must be a buffer.");
 
-  if (!aead->started)
+  if (aead->ctx.mode == -1)
     return Nan::ThrowError("Context is not initialized.");
 
   const uint8_t *tag = (const uint8_t *)node::Buffer::Data(tag_buf);
@@ -232,7 +236,6 @@ NAN_METHOD(BAEAD::Verify) {
   uint8_t mac[16];
 
   bcrypto_aead_final(&aead->ctx, &mac[0]);
-  aead->started = false;
 
   int result = bcrypto_aead_verify(&mac[0], tag);
 
@@ -300,6 +303,8 @@ NAN_METHOD(BAEAD::StaticEncrypt) {
   uint8_t out[16];
 
   bcrypto_aead_final(&ctx, &out[0]);
+
+  OPENSSL_cleanse(&ctx, sizeof(bcrypto_aead_ctx));
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&out[0], 16).ToLocalChecked());
@@ -378,6 +383,8 @@ NAN_METHOD(BAEAD::StaticDecrypt) {
 
   bcrypto_aead_final(&ctx, &out[0]);
 
+  OPENSSL_cleanse(&ctx, sizeof(bcrypto_aead_ctx));
+
   int result = bcrypto_aead_verify(&out[0], tag);
 
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
@@ -455,6 +462,8 @@ NAN_METHOD(BAEAD::StaticAuth) {
   uint8_t out[16];
 
   bcrypto_aead_final(&ctx, &out[0]);
+
+  OPENSSL_cleanse(&ctx, sizeof(bcrypto_aead_ctx));
 
   int result = bcrypto_aead_verify(&out[0], tag);
 

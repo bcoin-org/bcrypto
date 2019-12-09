@@ -12,8 +12,7 @@ BPoly1305::BPoly1305() {
 }
 
 BPoly1305::~BPoly1305() {
-  if (started)
-    OPENSSL_cleanse(&ctx, sizeof(bcrypto_poly1305_ctx));
+  OPENSSL_cleanse(&ctx, sizeof(bcrypto_poly1305_ctx));
 }
 
 void
@@ -113,7 +112,6 @@ NAN_METHOD(BPoly1305::Final) {
 NAN_METHOD(BPoly1305::Destroy) {
   BPoly1305 *poly = ObjectWrap::Unwrap<BPoly1305>(info.Holder());
 
-  OPENSSL_cleanse(&poly->ctx, sizeof(bcrypto_poly1305_ctx));
   poly->started = false;
 
   info.GetReturnValue().Set(info.This());
