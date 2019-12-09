@@ -537,7 +537,7 @@ NAN_METHOD(BSecp256k1::PublicKeyFromUniform) {
 
   secp256k1_pubkey pub;
 
-  (void)secp256k1_pubkey_from_uniform(secp->ctx, &pub, data);
+  assert(secp256k1_pubkey_from_uniform(secp->ctx, &pub, data) == 1);
 
   unsigned char out[65];
   size_t out_len = 65;

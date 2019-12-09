@@ -77,29 +77,20 @@
     ],
     "cflags": [
       "-Wall",
-      "-Wno-implicit-fallthrough",
-      "-Wno-uninitialized",
-      "-Wno-unused-function",
-      "-Wno-unknown-warning-option",
-      "-Wno-maybe-uninitialized",
-      "-Wno-cast-function-type",
-      "-Wno-unused-result",
-      "-Wno-nonnull-compare",
       "-Wextra",
+      "-Wno-implicit-fallthrough",
+      "-Wno-nonnull-compare",
+      "-Wno-unknown-warning",
+      "-Wno-unused-function",
       "-O3"
     ],
     "cflags_c": [
-      "-std=c99",
-      "-Wno-unused-parameter"
+      "-std=c99"
     ],
     "cflags_cc+": [
       "-std=c++0x",
-      "-Wno-maybe-uninitialized",
       "-Wno-cast-function-type",
-      "-Wno-unused-parameter",
-      "-Wno-unknown-warning-option",
-      "-Wno-unused-const-variable",
-      "-Wno-undefined-internal"
+      "-Wno-unused-parameter"
     ],
     "include_dirs": [
       "<!(node -e \"require('nan')\")"

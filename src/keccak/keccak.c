@@ -92,6 +92,7 @@ bswap_64(uint64_t x) {
 }
 #endif
 
+#ifndef BCRYPTO_USE_ASM
 static void
 swap_copy_u64_to_str(void *t, const void *f, size_t l) {
   if (0 == (((int)((char *)t - (char *)0) | ((char *)f - (char *)0) | l) & 7)) {
@@ -107,6 +108,7 @@ swap_copy_u64_to_str(void *t, const void *f, size_t l) {
       *(dst++) = ((char *)f)[i ^ 7];
   }
 }
+#endif
 
 #ifdef WORDS_BIGENDIAN
 #define le2me_64(x) bswap_64(x)
@@ -187,6 +189,7 @@ bcrypto_keccak_512_init(bcrypto_keccak_ctx *ctx) {
   assert(bcrypto_keccak_init(ctx, 512));
 }
 
+#ifndef BCRYPTO_USE_ASM
 static void
 bcrypto_keccak_theta(uint64_t *A) {
   unsigned int x;
@@ -252,6 +255,7 @@ bcrypto_keccak_chi(uint64_t *A) {
     A[4 + i] ^= ~A0 & A1;
   }
 }
+#endif
 
 static void
 bcrypto_keccak_permutation(uint64_t *state) {
