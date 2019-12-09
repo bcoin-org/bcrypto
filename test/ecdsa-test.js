@@ -228,10 +228,8 @@ describe('ECDSA', function() {
 
       it(`should modulo key (${ec.id})`, () => {
         const key0 = Buffer.alloc(0);
-        const mod0 = ec.privateKeyReduce(key0);
-        const exp0 = Buffer.alloc(ec.size, 0x00);
 
-        assert.bufferEqual(mod0, exp0);
+        assert.throws(() => ec.privateKeyReduce(key0));
 
         const key1 = Buffer.alloc(1, 0x0a);
         const mod1 = ec.privateKeyReduce(key1);
