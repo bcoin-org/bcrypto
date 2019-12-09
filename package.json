@@ -34,7 +34,7 @@
     "bsert": "~0.0.10",
     "bufio": "~1.0.6",
     "loady": "~0.0.1",
-    "nan": "^2.13.2"
+    "nan": "^2.14.0"
   },
   "devDependencies": {
     "bmocha": "^2.1.0"
