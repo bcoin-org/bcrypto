@@ -98,15 +98,15 @@ bcrypto_rsa_sane_privkey(const bcrypto_rsa_key_t *key) {
     return 0;
 
   size_t nb = bcrypto_count_bits(key->nd, key->nl);
-  size_t db = bcrypto_count_bits(key->dd, key->dl);
-
-  if (db == 0 || db > nb)
-    return 0;
-
   size_t pb = bcrypto_count_bits(key->pd, key->pl);
   size_t qb = bcrypto_count_bits(key->qd, key->ql);
 
   if (nb > pb + qb)
+    return 0;
+
+  size_t db = bcrypto_count_bits(key->dd, key->dl);
+
+  if (db == 0 || db > nb)
     return 0;
 
   size_t dpb = bcrypto_count_bits(key->dpd, key->dpl);
