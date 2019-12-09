@@ -14,7 +14,7 @@ BScryptWorker::BScryptWorker (
   uint32_t p,
   size_t keylen,
   Nan::Callback *callback
-) : Nan::AsyncWorker(callback)
+) : Nan::AsyncWorker(callback, "bcrypto:scrypt")
   , pass(pass)
   , passlen(passlen)
   , salt(salt)
@@ -58,6 +58,8 @@ BScryptWorker::HandleOKCallback() {
     Nan::NewBuffer((char *)key, keylen).ToLocalChecked();
 
   v8::Local<v8::Value> argv[] = { Nan::Null(), keyBuffer };
+
+  key = NULL;
 
   callback->Call(2, argv, async_resource);
 }

@@ -13,7 +13,7 @@ BPBKDF2Worker::BPBKDF2Worker (
   uint32_t iter,
   size_t keylen,
   Nan::Callback *callback
-) : Nan::AsyncWorker(callback)
+) : Nan::AsyncWorker(callback, "bcrypto:pbkdf2")
   , name(name)
   , pass(pass)
   , passlen(passlen)
@@ -61,6 +61,8 @@ BPBKDF2Worker::HandleOKCallback() {
     Nan::NewBuffer((char *)key, keylen).ToLocalChecked();
 
   v8::Local<v8::Value> argv[] = { Nan::Null(), keyBuffer };
+
+  key = NULL;
 
   callback->Call(2, argv, async_resource);
 }

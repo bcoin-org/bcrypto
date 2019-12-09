@@ -14,7 +14,7 @@ BRSAWorker::BRSAWorker (
   int bits,
   unsigned long long exp,
   Nan::Callback *callback
-) : Nan::AsyncWorker(callback)
+) : Nan::AsyncWorker(callback, "bcrypto:rsa_privkey_generate")
   , bits(bits)
   , exp(exp)
   , key(NULL)
@@ -49,9 +49,10 @@ BRSAWorker::HandleOKCallback() {
   Nan::Set(ret, 6, Nan::CopyBuffer((char *)k->dqd, k->dql).ToLocalChecked());
   Nan::Set(ret, 7, Nan::CopyBuffer((char *)k->qid, k->qil).ToLocalChecked());
 
-  bcrypto_rsa_key_free(k);
-
   v8::Local<v8::Value> argv[] = { Nan::Null(), ret };
+
+  bcrypto_rsa_key_free(k);
+  key = NULL;
 
   callback->Call(2, argv, async_resource);
 }

@@ -13,7 +13,7 @@
 BDSAWorker::BDSAWorker (
   int bits,
   Nan::Callback *callback
-) : Nan::AsyncWorker(callback)
+) : Nan::AsyncWorker(callback, "bcrypto:dsa_params_generate")
   , bits(bits)
   , key(NULL)
 {
@@ -42,9 +42,10 @@ BDSAWorker::HandleOKCallback() {
   Nan::Set(ret, 1, Nan::CopyBuffer((char *)k->qd, k->ql).ToLocalChecked());
   Nan::Set(ret, 2, Nan::CopyBuffer((char *)k->gd, k->gl).ToLocalChecked());
 
-  bcrypto_dsa_key_free(k);
-
   v8::Local<v8::Value> argv[] = { Nan::Null(), ret };
+
+  bcrypto_dsa_key_free(k);
+  key = NULL;
 
   callback->Call(2, argv, async_resource);
 }
