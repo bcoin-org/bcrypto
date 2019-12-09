@@ -270,6 +270,15 @@ describe('RSA', function() {
     assert(rsa.verifyLax(SHA256, msg, sig, pub));
   });
 
+  it('should test PSS edge case', () => {
+    const priv = rsa.privateKeyGenerate(513);
+    const pub = rsa.publicKeyCreate(priv);
+    const msg = random.randomBytes(16);
+    const sig = rsa.signPSS(MD5, msg, priv);
+
+    assert(rsa.verifyPSS(MD5, msg, sig, pub));
+  });
+
   it('should test signature padding (PSS)', () => {
     const priv = rsa.privateKeyGenerate(512);
     const pub = rsa.publicKeyCreate(priv);
