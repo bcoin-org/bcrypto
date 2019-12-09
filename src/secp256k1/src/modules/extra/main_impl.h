@@ -67,12 +67,11 @@ secp256k1_ec_privkey_reduce(const secp256k1_context* ctx,
   VERIFY_CHECK(ctx != NULL);
   ARG_CHECK(output != NULL);
 
-  memset(&output[0], 0x00, 32);
-
   if (len > 32)
     len = 32;
 
-  memcpy(&output[32 - len], bytes, len);
+  memset(output, 0x00, 32 - len);
+  memcpy(output + 32 - len, bytes, len);
 
   secp256k1_scalar_set_b32(&sec, output, NULL);
 
