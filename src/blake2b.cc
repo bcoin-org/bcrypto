@@ -5,6 +5,7 @@ static Nan::Persistent<v8::FunctionTemplate> blake2b_constructor;
 
 BBLAKE2b::BBLAKE2b() {
   memset(&ctx, 0, sizeof(bcrypto_blake2b_ctx));
+  started = false;
 }
 
 BBLAKE2b::~BBLAKE2b() {}
@@ -83,6 +84,8 @@ NAN_METHOD(BBLAKE2b::Init) {
       return Nan::ThrowError("Could not initialize context.");
   }
 
+  blake->started = true;
+
   info.GetReturnValue().Set(info.This());
 }
 
@@ -97,6 +100,9 @@ NAN_METHOD(BBLAKE2b::Update) {
   if (!node::Buffer::HasInstance(buf))
     return Nan::ThrowTypeError("First argument must be a buffer.");
 
+  if (!blake->started)
+    return Nan::ThrowError("Context is not initialized.");
+
   const uint8_t *in = (const uint8_t *)node::Buffer::Data(buf);
   size_t inlen = node::Buffer::Length(buf);
 
@@ -108,10 +114,14 @@ NAN_METHOD(BBLAKE2b::Update) {
 NAN_METHOD(BBLAKE2b::Final) {
   BBLAKE2b *blake = ObjectWrap::Unwrap<BBLAKE2b>(info.Holder());
 
+  if (!blake->started)
+    return Nan::ThrowError("Context is not initialized.");
+
   uint32_t outlen = blake->ctx.outlen;
   uint8_t out[BCRYPTO_BLAKE2B_OUTBYTES];
 
   bcrypto_blake2b_final(&blake->ctx, &out[0], outlen);
+  blake->started = false;
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&out[0], outlen).ToLocalChecked());

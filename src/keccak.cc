@@ -5,6 +5,7 @@ static Nan::Persistent<v8::FunctionTemplate> keccak_constructor;
 
 BKeccak::BKeccak() {
   memset(&ctx, 0, sizeof(bcrypto_keccak_ctx));
+  started = false;
 }
 
 BKeccak::~BKeccak() {}
@@ -59,6 +60,8 @@ NAN_METHOD(BKeccak::Init) {
   if (!bcrypto_keccak_init(&keccak->ctx, bits))
     return Nan::ThrowError("Could not initialize context.");
 
+  keccak->started = true;
+
   info.GetReturnValue().Set(info.This());
 }
 
@@ -73,6 +76,9 @@ NAN_METHOD(BKeccak::Update) {
   if (!node::Buffer::HasInstance(buf))
     return Nan::ThrowTypeError("First argument must be a buffer.");
 
+  if (!keccak->started)
+    return Nan::ThrowError("Context is not initialized.");
+
   const uint8_t *in = (const uint8_t *)node::Buffer::Data(buf);
   size_t inlen = node::Buffer::Length(buf);
 
@@ -83,6 +89,9 @@ NAN_METHOD(BKeccak::Update) {
 
 NAN_METHOD(BKeccak::Final) {
   BKeccak *keccak = ObjectWrap::Unwrap<BKeccak>(info.Holder());
+
+  if (!keccak->started)
+    return Nan::ThrowError("Context is not initialized.");
 
   int pad = 0x01;
 
@@ -106,6 +115,8 @@ NAN_METHOD(BKeccak::Final) {
 
   if (!bcrypto_keccak_final(&keccak->ctx, out, &outlen, outlen, pad))
     return Nan::ThrowError("Could not finalize context.");
+
+  keccak->started = false;
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&out[0], outlen).ToLocalChecked());
