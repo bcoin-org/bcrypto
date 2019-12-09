@@ -362,9 +362,12 @@ secp256k1_fe_random(secp256k1_fe *fe, secp256k1_rfc6979_hmac_sha256 *rng) {
 
 static unsigned int
 secp256k1_random_int(secp256k1_rfc6979_hmac_sha256 *rng) {
-  unsigned char raw[2];
-  secp256k1_rfc6979_hmac_sha256_generate(rng, raw, 2);
-  return ((unsigned int)raw[0] << 8) | (unsigned int)raw[1];
+  unsigned char ch;
+
+  /* We only need one byte (the index ranges from 0-3). */
+  secp256k1_rfc6979_hmac_sha256_generate(rng, &ch, sizeof(ch));
+
+  return ch;
 }
 
 int
