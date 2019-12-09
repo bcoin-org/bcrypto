@@ -278,6 +278,8 @@ function encipherInc(name, key, iv, data) {
   else
     assert.throws(() => ctx.getAuthTag());
 
+  ctx.destroy();
+
   return Buffer.concat(out);
 }
 
@@ -304,6 +306,8 @@ function decipherInc(name, key, iv, data) {
   out.push(ctx.final());
 
   assert.throws(() => ctx.getAuthTag());
+
+  ctx.destroy();
 
   return Buffer.concat(out);
 }

@@ -38,6 +38,8 @@ describe('AEAD (ChaCha20+Poly1305)', function() {
 
       assert.bufferEqual(data, input);
       assert.bufferEqual(ctx.final(), tag);
+
+      ctx.destroy();
     });
 
     it(`should do incremental encrypt and decrypt + verify (${text})`, () => {
@@ -83,7 +85,6 @@ describe('AEAD (ChaCha20+Poly1305)', function() {
       assert.bufferEqual(data, output);
       assert.bufferEqual(mac, tag);
 
-      assert(AEAD.verify(mac, tag));
       assert(AEAD.auth(key, nonce, data, tag, aad));
       assert(AEAD.decrypt(key, nonce, data, tag, aad));
 
@@ -109,7 +110,6 @@ describe('AEAD (ChaCha20+Poly1305)', function() {
 
       tag[0] ^= 1;
 
-      assert(!AEAD.verify(mac, tag));
       assert(!AEAD.auth(key, nonce, data, tag, aad));
       assert(!AEAD.decrypt(key, nonce, Buffer.from(data), tag, key));
 

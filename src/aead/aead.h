@@ -19,7 +19,7 @@ typedef struct bcrypto_aead_s {
   uint64_t aad_len;
   uint64_t cipher_len;
   int has_cipher;
-  uint8_t poly_key[32];
+  uint8_t poly_key[64];
 } bcrypto_aead_ctx;
 
 void

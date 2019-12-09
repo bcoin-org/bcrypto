@@ -24,6 +24,7 @@ describe('Poly1305', function() {
     const key = Buffer.allocUnsafe(32);
     const msg = Buffer.allocUnsafe(73);
     const tag = Buffer.from('ddb9da7ddd5e52792730ed5cda5f90a4', 'hex');
+    const poly = new Poly1305();
 
     for (let i = 0; i < key.length; i++)
       key[i] = i + 221;
@@ -31,14 +32,10 @@ describe('Poly1305', function() {
     for (let i = 0; i < msg.length; i++)
       msg[i] = i + 121;
 
-    const mac = Poly1305.auth(msg, key);
+    poly.init(key);
+    poly.update(msg);
 
-    assert(Poly1305.verify(mac, tag));
-    assert.bufferEqual(mac, tag);
-
-    mac[0] ^= 1;
-
-    assert(!Poly1305.verify(mac, tag));
+    assert.bufferEqual(poly.final(), tag);
   });
 
   it('should perform poly1305 (2)', () => {
@@ -46,13 +43,12 @@ describe('Poly1305', function() {
                           + '80103808afb0db2fd4abff6af4149f51b', 'hex');
     const msg = Buffer.from('Cryptographic Forum Research Group', 'ascii');
     const tag = Buffer.from('a8061dc1305136c6c22b8baf0c0127a9', 'hex');
-    const mac = Poly1305.auth(msg, key);
+    const poly = new Poly1305();
 
-    assert(Poly1305.verify(mac, tag));
+    poly.init(key);
+    poly.update(msg);
 
-    mac[0] ^= 1;
-
-    assert(!Poly1305.verify(mac, tag));
+    assert.bufferEqual(poly.final(), tag);
   });
 
   for (const [key_, msg_, tag_] of vectors) {
@@ -68,14 +64,9 @@ describe('Poly1305', function() {
 
       updateRand(poly, msg);
 
-      const mac = poly.final();
+      assert.bufferEqual(poly.final(), tag);
 
-      assert(Poly1305.verify(mac, tag));
-      assert.bufferEqual(mac, tag);
-
-      mac[0] ^= 1;
-
-      assert(!Poly1305.verify(mac, tag));
+      poly.destroy();
     });
 
     it(`should perform incremental poly1305 + verify (${text})`, () => {
@@ -96,17 +87,6 @@ describe('Poly1305', function() {
       tag0[0] ^= 1;
 
       assert.strictEqual(poly.verify(tag0), false);
-    });
-
-    it(`should perform one-shot poly1305 (${text})`, () => {
-      const mac = Poly1305.auth(msg, key);
-
-      assert(Poly1305.verify(mac, tag));
-      assert.bufferEqual(mac, tag);
-
-      mac[0] ^= 1;
-
-      assert(!Poly1305.verify(mac, tag));
     });
   }
 });

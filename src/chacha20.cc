@@ -1,13 +1,20 @@
 #include "common.h"
 #include "chacha20.h"
 
+// For "cleanse"
+#include "openssl/crypto.h"
+
 static Nan::Persistent<v8::FunctionTemplate> chacha20_constructor;
 
 BChaCha20::BChaCha20() {
   memset(&ctx, 0, sizeof(bcrypto_chacha20_ctx));
+  started = false;
 }
 
-BChaCha20::~BChaCha20() {}
+BChaCha20::~BChaCha20() {
+  if (started)
+    OPENSSL_cleanse(&ctx, sizeof(bcrypto_chacha20_ctx));
+}
 
 void
 BChaCha20::Init(v8::Local<v8::Object> &target) {
@@ -23,7 +30,7 @@ BChaCha20::Init(v8::Local<v8::Object> &target) {
 
   Nan::SetPrototypeMethod(tpl, "init", BChaCha20::Init);
   Nan::SetPrototypeMethod(tpl, "encrypt", BChaCha20::Encrypt);
-  Nan::SetPrototypeMethod(tpl, "crypt", BChaCha20::Crypt);
+  Nan::SetPrototypeMethod(tpl, "destroy", BChaCha20::Destroy);
   Nan::SetMethod(tpl, "derive", BChaCha20::Derive);
 
   v8::Local<v8::FunctionTemplate> ctor =
@@ -82,6 +89,7 @@ NAN_METHOD(BChaCha20::Init) {
   }
 
   bcrypto_chacha20_init(&chacha->ctx, key, key_len, nonce, nonce_len, ctr);
+  chacha->started = true;
 
   info.GetReturnValue().Set(info.This());
 }
@@ -97,6 +105,9 @@ NAN_METHOD(BChaCha20::Encrypt) {
   if (!node::Buffer::HasInstance(data_buf))
     return Nan::ThrowTypeError("First argument must be a buffer.");
 
+  if (!chacha->started)
+    return Nan::ThrowError("Context is not initialized.");
+
   uint8_t *data = (uint8_t *)node::Buffer::Data(data_buf);
   size_t data_len = node::Buffer::Length(data_buf);
 
@@ -105,39 +116,11 @@ NAN_METHOD(BChaCha20::Encrypt) {
   info.GetReturnValue().Set(data_buf);
 }
 
-NAN_METHOD(BChaCha20::Crypt) {
-  BChaCha20 *chacha = ObjectWrap::Unwrap<BChaCha20>(info.Holder());
-
-  if (info.Length() < 2)
-    return Nan::ThrowError("chacha20.crypt() requires arguments.");
-
-  v8::Local<v8::Object> input_buf = info[0].As<v8::Object>();
-  v8::Local<v8::Object> output_buf = info[1].As<v8::Object>();
-
-  if (!node::Buffer::HasInstance(input_buf))
-    return Nan::ThrowTypeError("First argument must be a buffer.");
-
-  if (!node::Buffer::HasInstance(output_buf))
-    return Nan::ThrowTypeError("Second argument must be a buffer.");
-
-  const uint8_t *input = (const uint8_t *)node::Buffer::Data(input_buf);
-  size_t input_len = node::Buffer::Length(input_buf);
-
-  uint8_t *output = (uint8_t *)node::Buffer::Data(output_buf);
-  size_t output_len = node::Buffer::Length(output_buf);
-
-  if (output_len < input_len)
-    return Nan::ThrowRangeError("Invalid output size.");
-
-  bcrypto_chacha20_encrypt(&chacha->ctx, output, input, input_len);
-
-  info.GetReturnValue().Set(output_buf);
-}
-
 NAN_METHOD(BChaCha20::Destroy) {
   BChaCha20 *chacha = ObjectWrap::Unwrap<BChaCha20>(info.Holder());
 
-  memset(&chacha->ctx, 0, sizeof(bcrypto_chacha20_ctx));
+  OPENSSL_cleanse(&chacha->ctx, sizeof(bcrypto_chacha20_ctx));
+  chacha->started = false;
 
   info.GetReturnValue().Set(info.This());
 }
@@ -168,6 +151,7 @@ NAN_METHOD(BChaCha20::Derive) {
     return Nan::ThrowRangeError("Invalid nonce size.");
 
   uint8_t out[32];
+
   bcrypto_chacha20_derive(&out[0], key, key_len, nonce, nonce_len);
 
   info.GetReturnValue().Set(

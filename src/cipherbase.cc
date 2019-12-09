@@ -49,6 +49,7 @@ BCipherBase::Init(v8::Local<v8::Object> &target) {
   Nan::SetPrototypeMethod(tpl, "init", BCipherBase::Init);
   Nan::SetPrototypeMethod(tpl, "update", BCipherBase::Update);
   Nan::SetPrototypeMethod(tpl, "final", BCipherBase::Final);
+  Nan::SetPrototypeMethod(tpl, "destroy", BCipherBase::Destroy);
   Nan::SetPrototypeMethod(tpl, "setAAD", BCipherBase::SetAAD);
   Nan::SetPrototypeMethod(tpl, "getAuthTag", BCipherBase::GetAuthTag);
   Nan::SetPrototypeMethod(tpl, "setAuthTag", BCipherBase::SetAuthTag);
@@ -253,6 +254,17 @@ NAN_METHOD(BCipherBase::Final) {
 
   return info.GetReturnValue().Set(
     Nan::NewBuffer((char *)out, (size_t)out_len).ToLocalChecked());
+}
+
+NAN_METHOD(BCipherBase::Destroy) {
+  BCipherBase *cipher = ObjectWrap::Unwrap<BCipherBase>(info.Holder());
+
+  if (cipher->ctx != NULL) {
+    EVP_CIPHER_CTX_free(cipher->ctx);
+    cipher->ctx = NULL;
+  }
+
+  info.GetReturnValue().Set(info.This());
 }
 
 NAN_METHOD(BCipherBase::SetAAD) {

@@ -25,6 +25,8 @@ describe('ChaCha20', function() {
       ctx.encrypt(data);
 
       assert.bufferEqual(data, input);
+
+      ctx.destroy();
     });
   }
 });

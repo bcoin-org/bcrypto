@@ -15,11 +15,11 @@ public:
   ~BSalsa20();
 
   bcrypto_salsa20_ctx ctx;
+  bool started;
 
 private:
   static NAN_METHOD(Init);
   static NAN_METHOD(Encrypt);
-  static NAN_METHOD(Crypt);
   static NAN_METHOD(Destroy);
   static NAN_METHOD(Derive);
 };

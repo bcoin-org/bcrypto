@@ -1,13 +1,20 @@
 #include "common.h"
 #include "poly1305.h"
 
+// For "cleanse"
+#include "openssl/crypto.h"
+
 static Nan::Persistent<v8::FunctionTemplate> poly1305_constructor;
 
 BPoly1305::BPoly1305() {
   memset(&ctx, 0, sizeof(bcrypto_poly1305_ctx));
+  started = false;
 }
 
-BPoly1305::~BPoly1305() {}
+BPoly1305::~BPoly1305() {
+  if (started)
+    OPENSSL_cleanse(&ctx, sizeof(bcrypto_poly1305_ctx));
+}
 
 void
 BPoly1305::Init(v8::Local<v8::Object> &target) {
@@ -24,9 +31,8 @@ BPoly1305::Init(v8::Local<v8::Object> &target) {
   Nan::SetPrototypeMethod(tpl, "init", BPoly1305::Init);
   Nan::SetPrototypeMethod(tpl, "update", BPoly1305::Update);
   Nan::SetPrototypeMethod(tpl, "final", BPoly1305::Final);
+  Nan::SetPrototypeMethod(tpl, "destroy", BPoly1305::Destroy);
   Nan::SetPrototypeMethod(tpl, "verify", BPoly1305::Verify);
-  Nan::SetMethod(tpl, "auth", BPoly1305::StaticAuth);
-  Nan::SetMethod(tpl, "verify", BPoly1305::StaticVerify);
 
   v8::Local<v8::FunctionTemplate> ctor =
     Nan::New<v8::FunctionTemplate>(poly1305_constructor);
@@ -62,6 +68,7 @@ NAN_METHOD(BPoly1305::Init) {
     return Nan::ThrowRangeError("Invalid key size.");
 
   bcrypto_poly1305_init(&poly->ctx, data);
+  poly->started = true;
 
   info.GetReturnValue().Set(info.This());
 }
@@ -77,6 +84,9 @@ NAN_METHOD(BPoly1305::Update) {
   if (!node::Buffer::HasInstance(buf))
     return Nan::ThrowTypeError("First argument must be a buffer.");
 
+  if (!poly->started)
+    return Nan::ThrowError("Context is not initialized.");
+
   const uint8_t *data = (const uint8_t *)node::Buffer::Data(buf);
   size_t len = node::Buffer::Length(buf);
 
@@ -88,12 +98,25 @@ NAN_METHOD(BPoly1305::Update) {
 NAN_METHOD(BPoly1305::Final) {
   BPoly1305 *poly = ObjectWrap::Unwrap<BPoly1305>(info.Holder());
 
+  if (!poly->started)
+    return Nan::ThrowError("Context is not initialized.");
+
   uint8_t mac[16];
 
   bcrypto_poly1305_finish(&poly->ctx, &mac[0]);
+  poly->started = false;
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)&mac[0], 16).ToLocalChecked());
+}
+
+NAN_METHOD(BPoly1305::Destroy) {
+  BPoly1305 *poly = ObjectWrap::Unwrap<BPoly1305>(info.Holder());
+
+  OPENSSL_cleanse(&poly->ctx, sizeof(bcrypto_poly1305_ctx));
+  poly->started = false;
+
+  info.GetReturnValue().Set(info.This());
 }
 
 NAN_METHOD(BPoly1305::Verify) {
@@ -107,6 +130,9 @@ NAN_METHOD(BPoly1305::Verify) {
   if (!node::Buffer::HasInstance(buf))
     return Nan::ThrowTypeError("First argument must be a buffer.");
 
+  if (!poly->started)
+    return Nan::ThrowError("Context is not initialized.");
+
   const uint8_t *tag = (const uint8_t *)node::Buffer::Data(buf);
   size_t len = node::Buffer::Length(buf);
 
@@ -116,67 +142,9 @@ NAN_METHOD(BPoly1305::Verify) {
   uint8_t mac[16];
 
   bcrypto_poly1305_finish(&poly->ctx, &mac[0]);
+  poly->started = false;
 
   int result = bcrypto_poly1305_verify(&mac[0], tag);
-
-  info.GetReturnValue().Set(Nan::New<v8::Boolean>((bool)result));
-}
-
-NAN_METHOD(BPoly1305::StaticAuth) {
-  if (info.Length() < 2)
-    return Nan::ThrowError("Poly1305.auth() requires arguments.");
-
-  v8::Local<v8::Object> buf = info[0].As<v8::Object>();
-
-  if (!node::Buffer::HasInstance(buf))
-    return Nan::ThrowTypeError("First argument must be a buffer.");
-
-  v8::Local<v8::Object> kbuf = info[1].As<v8::Object>();
-
-  if (!node::Buffer::HasInstance(kbuf))
-    return Nan::ThrowTypeError("Second argument must be a buffer.");
-
-  const uint8_t *data = (const uint8_t *)node::Buffer::Data(buf);
-  size_t len = node::Buffer::Length(buf);
-
-  const uint8_t *kdata = (const uint8_t *)node::Buffer::Data(kbuf);
-  size_t klen = node::Buffer::Length(kbuf);
-
-  if (klen != 32)
-    return Nan::ThrowRangeError("Invalid key size.");
-
-  uint8_t mac[16];
-
-  bcrypto_poly1305_auth(&mac[0], data, len, kdata);
-
-  info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)&mac[0], 16).ToLocalChecked());
-}
-
-NAN_METHOD(BPoly1305::StaticVerify) {
-  if (info.Length() < 2)
-    return Nan::ThrowError("Poly1305.verify() requires arguments.");
-
-  v8::Local<v8::Object> abuf = info[0].As<v8::Object>();
-
-  if (!node::Buffer::HasInstance(abuf))
-    return Nan::ThrowTypeError("First argument must be a buffer.");
-
-  v8::Local<v8::Object> bbuf = info[1].As<v8::Object>();
-
-  if (!node::Buffer::HasInstance(bbuf))
-    return Nan::ThrowTypeError("Second argument must be a buffer.");
-
-  const uint8_t *adata = (const uint8_t *)node::Buffer::Data(abuf);
-  size_t alen = node::Buffer::Length(abuf);
-
-  const uint8_t *bdata = (const uint8_t *)node::Buffer::Data(bbuf);
-  size_t blen = node::Buffer::Length(bbuf);
-
-  if (alen != 16 || blen != 16)
-    return Nan::ThrowRangeError("Invalid mac size.");
-
-  int result = bcrypto_poly1305_verify(adata, bdata);
 
   info.GetReturnValue().Set(Nan::New<v8::Boolean>((bool)result));
 }

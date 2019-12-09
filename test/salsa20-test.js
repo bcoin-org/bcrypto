@@ -76,6 +76,8 @@ describe('Salsa20', function() {
       }
 
       assert.bufferEqual(xor, expect);
+
+      salsa.destroy();
     });
   }
 

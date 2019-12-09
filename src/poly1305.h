@@ -14,13 +14,13 @@ public:
   ~BPoly1305();
 
   bcrypto_poly1305_ctx ctx;
+  bool started;
 
 private:
   static NAN_METHOD(Init);
   static NAN_METHOD(Update);
   static NAN_METHOD(Final);
+  static NAN_METHOD(Destroy);
   static NAN_METHOD(Verify);
-  static NAN_METHOD(StaticAuth);
-  static NAN_METHOD(StaticVerify);
 };
 #endif

@@ -15,6 +15,7 @@ public:
   ~BAEAD();
 
   bcrypto_aead_ctx ctx;
+  bool started;
 
 private:
   static NAN_METHOD(Init);
@@ -23,10 +24,10 @@ private:
   static NAN_METHOD(Decrypt);
   static NAN_METHOD(Auth);
   static NAN_METHOD(Final);
+  static NAN_METHOD(Destroy);
   static NAN_METHOD(Verify);
   static NAN_METHOD(StaticEncrypt);
   static NAN_METHOD(StaticDecrypt);
   static NAN_METHOD(StaticAuth);
-  static NAN_METHOD(StaticVerify);
 };
 #endif

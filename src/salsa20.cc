@@ -1,13 +1,20 @@
 #include "common.h"
 #include "salsa20.h"
 
+// For "cleanse"
+#include "openssl/crypto.h"
+
 static Nan::Persistent<v8::FunctionTemplate> salsa20_constructor;
 
 BSalsa20::BSalsa20() {
   memset(&ctx, 0, sizeof(bcrypto_salsa20_ctx));
+  started = false;
 }
 
-BSalsa20::~BSalsa20() {}
+BSalsa20::~BSalsa20() {
+  if (started)
+    OPENSSL_cleanse(&ctx, sizeof(bcrypto_salsa20_ctx));
+}
 
 void
 BSalsa20::Init(v8::Local<v8::Object> &target) {
@@ -23,7 +30,7 @@ BSalsa20::Init(v8::Local<v8::Object> &target) {
 
   Nan::SetPrototypeMethod(tpl, "init", BSalsa20::Init);
   Nan::SetPrototypeMethod(tpl, "encrypt", BSalsa20::Encrypt);
-  Nan::SetPrototypeMethod(tpl, "crypt", BSalsa20::Crypt);
+  Nan::SetPrototypeMethod(tpl, "destroy", BSalsa20::Destroy);
   Nan::SetMethod(tpl, "derive", BSalsa20::Derive);
 
   v8::Local<v8::FunctionTemplate> ctor =
@@ -82,6 +89,7 @@ NAN_METHOD(BSalsa20::Init) {
   }
 
   bcrypto_salsa20_init(&salsa->ctx, key, key_len, nonce, nonce_len, ctr);
+  salsa->started = true;
 
   info.GetReturnValue().Set(info.This());
 }
@@ -97,6 +105,9 @@ NAN_METHOD(BSalsa20::Encrypt) {
   if (!node::Buffer::HasInstance(data_buf))
     return Nan::ThrowTypeError("First argument must be a buffer.");
 
+  if (!salsa->started)
+    return Nan::ThrowError("Context is not initialized.");
+
   uint8_t *data = (uint8_t *)node::Buffer::Data(data_buf);
   size_t data_len = node::Buffer::Length(data_buf);
 
@@ -105,39 +116,11 @@ NAN_METHOD(BSalsa20::Encrypt) {
   info.GetReturnValue().Set(data_buf);
 }
 
-NAN_METHOD(BSalsa20::Crypt) {
-  BSalsa20 *salsa = ObjectWrap::Unwrap<BSalsa20>(info.Holder());
-
-  if (info.Length() < 2)
-    return Nan::ThrowError("salsa20.crypt() requires arguments.");
-
-  v8::Local<v8::Object> input_buf = info[0].As<v8::Object>();
-  v8::Local<v8::Object> output_buf = info[1].As<v8::Object>();
-
-  if (!node::Buffer::HasInstance(input_buf))
-    return Nan::ThrowTypeError("First argument must be a buffer.");
-
-  if (!node::Buffer::HasInstance(output_buf))
-    return Nan::ThrowTypeError("Second argument must be a buffer.");
-
-  const uint8_t *input = (const uint8_t *)node::Buffer::Data(input_buf);
-  size_t input_len = node::Buffer::Length(input_buf);
-
-  uint8_t *output = (uint8_t *)node::Buffer::Data(output_buf);
-  size_t output_len = node::Buffer::Length(output_buf);
-
-  if (output_len < input_len)
-    return Nan::ThrowRangeError("Invalid output size.");
-
-  bcrypto_salsa20_encrypt(&salsa->ctx, output, input, input_len);
-
-  info.GetReturnValue().Set(output_buf);
-}
-
 NAN_METHOD(BSalsa20::Destroy) {
   BSalsa20 *salsa = ObjectWrap::Unwrap<BSalsa20>(info.Holder());
 
-  memset(&salsa->ctx, 0, sizeof(bcrypto_salsa20_ctx));
+  OPENSSL_cleanse(&salsa->ctx, sizeof(bcrypto_salsa20_ctx));
+  salsa->started = false;
 
   info.GetReturnValue().Set(info.This());
 }
