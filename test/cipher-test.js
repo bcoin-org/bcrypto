@@ -158,10 +158,7 @@ const algs = [
   }
 ];
 
-function encipher(name, key, iv, data) {
-  const gcm = name.endsWith('-GCM');
-  const ctx = new Cipher(name);
-
+function _encipher(ctx, gcm, key, iv, data) {
   ctx.init(key, iv);
 
   assert.throws(() => ctx.getAuthTag());
@@ -177,10 +174,7 @@ function encipher(name, key, iv, data) {
   ]);
 }
 
-function decipher(name, key, iv, data) {
-  const gcm = name.endsWith('-GCM');
-  const ctx = new Decipher(name);
-
+function _decipher(ctx, gcm, key, iv, data) {
   ctx.init(key, iv);
 
   if (gcm) {
@@ -200,6 +194,68 @@ function decipher(name, key, iv, data) {
   ]);
 }
 
+function encipher(name, key, iv, data) {
+  const ctx = new Cipher(name);
+  const gcm = name.endsWith('-GCM');
+  return _encipher(ctx, gcm, key, iv, data);
+}
+
+function decipher(name, key, iv, data) {
+  const ctx = new Decipher(name);
+  const gcm = name.endsWith('-GCM');
+  return _decipher(ctx, gcm, key, iv, data);
+}
+
+function encipher2(name, key, iv, data) {
+  const ctx = new Cipher(name);
+  const gcm = name.endsWith('-GCM');
+  const expect = _encipher(ctx, gcm, key, iv, data);
+  const out = _encipher(ctx, gcm, key, iv, data);
+
+  assert.bufferEqual(out, expect);
+
+  return out;
+}
+
+function decipher2(name, key, iv, data) {
+  const ctx = new Decipher(name);
+  const gcm = name.endsWith('-GCM');
+  const expect = _decipher(ctx, gcm, key, iv, data);
+  const out = _decipher(ctx, gcm, key, iv, data);
+
+  assert.bufferEqual(out, expect);
+
+  return out;
+}
+
+function encipher3(name, key, iv, data) {
+  const ctx = new Cipher(name);
+  const gcm = name.endsWith('-GCM');
+
+  ctx.init(key, iv);
+  ctx.update(data);
+
+  return _encipher(ctx, gcm, key, iv, data);
+}
+
+function decipher3(name, key, iv, data) {
+  const ctx = new Decipher(name);
+  const gcm = name.endsWith('-GCM');
+
+  ctx.init(key, iv);
+
+  if (gcm) {
+    const tag = data.slice(-16);
+    const d = data.slice(0, -16);
+    ctx.setAuthTag(tag);
+    ctx.update(d);
+  } else {
+    ctx.update(data);
+  }
+
+  return _decipher(ctx, gcm, key, iv, data);
+}
+
 function encipherInc(name, key, iv, data) {
   const gcm = name.endsWith('-GCM');
   const ctx = new Cipher(name);
@@ -216,6 +272,11 @@ function encipherInc(name, key, iv, data) {
 
   out.push(ctx.final());
   out.push(gcm ? ctx.getAuthTag() : Buffer.alloc(0));
+
+  if (gcm)
+    assert.doesNotThrow(() => ctx.getAuthTag());
+  else
+    assert.throws(() => ctx.getAuthTag());
 
   return Buffer.concat(out);
 }
@@ -241,6 +302,8 @@ function decipherInc(name, key, iv, data) {
   }
 
   out.push(ctx.final());
+
+  assert.throws(() => ctx.getAuthTag());
 
   return Buffer.concat(out);
 }
@@ -319,6 +382,10 @@ describe('Cipher', function() {
           it(`should encrypt and decrypt ${hex} with ${id}`, () => {
             assert.bufferEqual(encipher(id, key, iv, data), expect);
             assert.bufferEqual(decipher(id, key, iv, expect), data);
+            assert.bufferEqual(encipher2(id, key, iv, data), expect);
+            assert.bufferEqual(decipher2(id, key, iv, expect), data);
+            assert.bufferEqual(encipher3(id, key, iv, data), expect);
+            assert.bufferEqual(decipher3(id, key, iv, expect), data);
             assert.bufferEqual(encipherInc(id, key, iv, data), expect);
             assert.bufferEqual(decipherInc(id, key, iv, expect), data);
             assert.bufferEqual(encipherRand(id, key, iv, data), expect);
