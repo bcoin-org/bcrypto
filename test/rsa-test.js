@@ -151,7 +151,6 @@ describe('RSA', function() {
     assert(s3.equals(s1));
     assert(s4.equals(s1));
 
-    assert(v1.equals(s1));
     assert(!v2.slice(0, (bits / 8)).equals(s1));
     assert(!v2.slice(-(bits / 8)).equals(s1));
     assert(!v3.slice(0, (bits / 8)).equals(s1));
