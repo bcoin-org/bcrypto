@@ -213,6 +213,34 @@ describe('RSA', function() {
     assert(valid);
   });
 
+  it('should validate lambda key', () => {
+    const json = {
+      kty: 'RSA',
+      n: 'vAapTcBGyRClrxqI9ert54KizqnARN2d1OfMob4NTYaOYEfS4TOrZtVJlKXTFJkAn0'
+       + 'Y5BiCfkNC0E65NxhPrWwP1MlqJWfWt-WUuiUlExBN_GMWZI-KvQgzXFszN7SV-V4kU'
+       + 'avlQ-WvJOoP12hBuAkjM1dup9DtEqLXXFefOkVk',
+      e: 'AQAB',
+      d: 'DJfYH0lfXFBZfne1IF5gmnq_B38qTdp3e5beV19kofJ_Bu8MjlGA-3lRzStJjsW8G0'
+       + '7PWywUb9UwmGhaVGfJYaDT1nyv4dsxjifjAG-1ebtNYfvDaZCyz3N0GPHr3ix3NjXh'
+       + 'GrjXoKYrptBZLG5I0MYCCJI9qmAnYbpHHrQ4qaE',
+      p: '6_uMVgyIYUnEmCGRsAOx7E-gw5ytMqquuyAVkeaKcJA22nVZZscZ0dJRHT6Bolkel8'
+       + 'cqpv70vgdc-u6jKH6-OQ',
+      q: 'y_m3t42TnV0bYgqQfIrux1ym9M3WXeCvCUZ6J1rUaMC-C8Bmw1duoK0KKfsuJgYwUN'
+       + '3b459C1VBB8civcPhsIQ',
+      dp: 'CbNPc4IUYRttL2vB12Bvge1MCH56SCjoAd0xxcuaSUJEXvqP8D-i-hMRLoiRP6E2N'
+        + 'rsDL9YvLViUI-SHZHTBUQ',
+      dq: 'Te8LksY1MFryq3L94Zfzw5hS8hXzYcsHFbQn2AGMRrnd4v-QQ_KUAjAbQg8GguC6d'
+        + 'StPaJjhID-Z8peK8M76AQ',
+      qi: 'MmI7iG6EyGUMeg0rkC7TZXhtSCqrriN_U3PjWGtNGx34IfqpR3QgsyigByqJF2eu_'
+        + 'A8OutZUhmH3N4z0MjRmAA',
+      ext: true
+    };
+
+    const priv = rsa.privateKeyImportJWK(json);
+
+    assert(rsa.privateKeyVerify(priv));
+  });
+
   it('should sign and verify (blake2b)', () => {
     const bits = rsa.native < 2 ? 1024 : 4096;
     const priv = rsa.privateKeyGenerate(bits);

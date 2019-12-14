@@ -6148,13 +6148,26 @@ describe('BN.js', function() {
       assert.strictEqual(g1.toString(), g2.toString());
     });
 
-    it('should compute lcm', () => {
+    it('should compute lcm (1)', () => {
       const n = new BN('e99696a9507ceafdb46582adc8d66b4106bbd7f7856c3b0d', 16);
       const k = new BN('3b0f7fcc204c2790a9d11d8b19e2a8125b7ab803ac4bdedb', 16);
       const m = new BN('35e3d927cfaedef82e7f5b0c5bf04a3d7110e8dc28b656e79b9ccbcbd460d6ca2a8be2efabaa7fe2590b3dfc079aca1f', 16);
       const l = n.lcm(k);
+      const e = n.mul(k).div(n.gcd(k));
 
       assert.strictEqual(l.toString(), m.toString());
+      assert.strictEqual(e.toString(), m.toString());
+    });
+
+    it('should compute lcm (2)', () => {
+      for (let i = 0; i < 20; i++) {
+        const n = BN.randomBits(rng, 256);
+        const k = BN.randomBits(rng, 256);
+        const l = n.lcm(k);
+        const e = n.mul(k).div(n.gcd(k));
+
+        assert.strictEqual(l.toString(), e.toString());
+      }
     });
 
     it('should compute egcd', () => {
