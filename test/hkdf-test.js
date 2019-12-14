@@ -1,6 +1,7 @@
 'use strict';
 
 const assert = require('bsert');
+const rng = require('../lib/random');
 const HKDF = require('../lib/hkdf');
 const SHA1 = require('../lib/sha1');
 const SHA256 = require('../lib/sha256');
@@ -193,6 +194,29 @@ describe('HKDF', function() {
 
       for (let i = 0; i < okm.length; i++)
         parts.push(hkdf.generate(1));
+
+      const okm1 = Buffer.concat(parts);
+
+      assert.bufferEqual(okm1, okm);
+    });
+
+    it(`should do incremental hkdf (${i + 1})`, () => {
+      const hkdf = new HKDF(hash, ikm, salt, info);
+      const max = Math.max(2, okm.length >>> 1);
+      const parts = [];
+
+      let i = 0;
+
+      while (i < okm.length) {
+        let j = rng.randomRange(0, max);
+
+        if (i + j > okm.length)
+          j = okm.length - i;
+
+        parts.push(hkdf.generate(j));
+
+        i += j;
+      }
 
       const okm1 = Buffer.concat(parts);
 
