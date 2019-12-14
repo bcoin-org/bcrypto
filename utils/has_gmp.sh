@@ -12,7 +12,7 @@
 # to mini-gmp instead of gmp.
 
 if test -z "$CC"; then
-  CC='gcc';
+  CC='gcc'
 fi
 
 CODE=`
