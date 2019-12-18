@@ -27,39 +27,53 @@ function isRandom(data, d) {
 
 describe('Random', function() {
   it('should generate random bytes', () => {
-    const rand = Buffer.from(bytes);
-    random.randomFill(rand, 0, 32);
-    assert.notBufferEqual(rand, bytes);
+    assert.notBufferEqual(random.randomBytes(32), zero);
   });
 
   it('should fill random bytes', () => {
     const rand = Buffer.from(bytes);
-    random.randomFill(rand, 0, 32);
+
+    assert.strictEqual(random.randomFill(rand, 0, 32), rand);
     assert.notBufferEqual(rand, bytes);
   });
 
   it('should fill random bytes without args', () => {
     const rand = Buffer.from(bytes);
-    random.randomFill(rand);
+
+    assert.strictEqual(random.randomFill(rand), rand);
     assert.notBufferEqual(rand, bytes);
   });
 
-  it('should get random bytes', () => {
-    const rand = random.randomBytes(32);
-    assert.notBufferEqual(rand, zero);
+  it('should generate and fill zero random bytes', () => {
+    const rand = Buffer.alloc(0);
+
+    assert.bufferEqual(random.randomBytes(0), rand);
+    assert.strictEqual(random.randomFill(rand), rand);
   });
 
   it('should get random int', () => {
-    const rand = random.randomInt();
-    assert((rand >>> 0) === rand);
+    let n = random.randomInt();
+
+    assert((n >>> 0) === n);
+
+    for (let i = 0; i < 1000; i++) {
+      n = random.randomInt();
+
+      assert((n >>> 0) === n);
+
+      if (n !== 0)
+        break;
+    }
+
+    assert.notStrictEqual(n, 0);
   });
 
   it('should get random range', () => {
     for (let i = 0; i < 100; i++) {
-      const rand = random.randomRange(1, 100);
+      const n = random.randomRange(1, 100);
 
-      assert((rand >>> 0) === rand);
-      assert(rand >= 1 && rand < 100);
+      assert((n >>> 0) === n);
+      assert(n >= 1 && n < 100);
     }
   });
 

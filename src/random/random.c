@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <stdlib.h>
+#include <string.h>
 #include <limits.h>
 #include "openssl/rand.h"
 #include "random.h"
@@ -25,6 +26,8 @@ bcrypto_poll(void) {
 
 int
 bcrypto_random(void *dst, size_t len) {
+  memset(dst, 0x00, len);
+
   if (len > (size_t)INT_MAX)
     return 0;
 

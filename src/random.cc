@@ -34,6 +34,12 @@ NAN_METHOD(BRandom::RandomBytes) {
   if (size > max)
     return Nan::ThrowRangeError("Invalid size requested.");
 
+  if (size == 0) {
+    info.GetReturnValue().Set(
+      Nan::CopyBuffer((char *)NULL, 0).ToLocalChecked());
+    return;
+  }
+
   uint8_t *data = (uint8_t *)malloc(size);
 
   if (data == NULL)
