@@ -16,6 +16,7 @@ if test -z "$CC"; then
 fi
 
 CODE=`
+  echo '#include <stddef.h>'
   echo '#include <gmp.h>'
   echo ''
   echo 'int main(void) {'
