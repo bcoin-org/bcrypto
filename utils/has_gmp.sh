@@ -12,7 +12,14 @@
 # to mini-gmp instead of gmp.
 
 if test -z "$CC"; then
-  CC='gcc'
+  if type gcc > /dev/null 2>& 1; then
+    CC='gcc'
+  elif type clang > /dev/null 2>& 1; then
+    CC='clang'
+  else
+    echo 'false'
+    exit 0
+  fi
 fi
 
 CODE=`
