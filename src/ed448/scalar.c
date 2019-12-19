@@ -9,7 +9,7 @@
  *
  * Originally written by Mike Hamburg
  */
-#include "openssl/crypto.h"
+#include <openssl/crypto.h>
 
 #include "word.h"
 #include "point_448.h"

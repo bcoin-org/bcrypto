@@ -55,7 +55,7 @@
 #include "bcrypto.h"
 
 // For "cleanse"
-#include "openssl/crypto.h"
+#include <openssl/crypto.h>
 
 NAN_METHOD(cleanse) {
   if (info.Length() < 1)

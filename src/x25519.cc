@@ -6,7 +6,7 @@
 #include "common.h"
 #include "ed25519/ed25519.h"
 #include "x25519.h"
-#include "openssl/crypto.h"
+#include <openssl/crypto.h>
 
 void
 BX25519::Init(v8::Local<v8::Object> &target) {

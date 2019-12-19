@@ -1,7 +1,7 @@
 #ifndef _BCRYPTO_COMPAT_HH
 #define _BCRYPTO_COMPAT_HH
 
-#include "openssl/opensslv.h"
+#include <openssl/opensslv.h>
 
 #if OPENSSL_VERSION_NUMBER >= 0x1010008fL
 #define BCRYPTO_HAS_DSA

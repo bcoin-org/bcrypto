@@ -1,6 +1,6 @@
 #include "common.h"
 #include "cipherbase.h"
-#include "openssl/evp.h"
+#include <openssl/evp.h>
 
 static Nan::Persistent<v8::FunctionTemplate> cipher_constructor;
 

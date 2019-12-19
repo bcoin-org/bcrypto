@@ -2,7 +2,7 @@
 #include "poly1305.h"
 
 // For "cleanse"
-#include "openssl/crypto.h"
+#include <openssl/crypto.h>
 
 static Nan::Persistent<v8::FunctionTemplate> poly1305_constructor;
 

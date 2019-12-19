@@ -2,7 +2,7 @@
 #define _BCRYPTO_RIPEMD160_HH
 #include <node.h>
 #include <nan.h>
-#include "openssl/ripemd.h"
+#include <openssl/ripemd.h>
 
 class BRIPEMD160 : public Nan::ObjectWrap {
 public:

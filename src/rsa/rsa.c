@@ -9,12 +9,12 @@
 #include <stdlib.h>
 #include "rsa.h"
 
-#include "openssl/bn.h"
-#include "openssl/crypto.h"
-#include "openssl/evp.h"
-#include "openssl/objects.h"
-#include "openssl/rsa.h"
-#include "openssl/x509.h"
+#include <openssl/bn.h>
+#include <openssl/crypto.h>
+#include <openssl/evp.h>
+#include <openssl/objects.h>
+#include <openssl/rsa.h>
+#include <openssl/x509.h>
 #include "../random/random.h"
 
 #define BCRYPTO_RSA_DEFAULT_BITS 2048

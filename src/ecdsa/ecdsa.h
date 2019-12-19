@@ -7,7 +7,7 @@
 
 #include <stdint.h>
 #include <stdlib.h>
-#include "openssl/ecdsa.h"
+#include <openssl/ecdsa.h>
 
 #if defined(__cplusplus)
 extern "C" {

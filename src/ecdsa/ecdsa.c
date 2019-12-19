@@ -8,9 +8,9 @@
 #include <stdlib.h>
 #include "ecdsa.h"
 
-#include "openssl/ecdsa.h"
-#include "openssl/objects.h"
-#include "openssl/x509.h"
+#include <openssl/ecdsa.h>
+#include <openssl/objects.h>
+#include <openssl/x509.h>
 #include "../random/random.h"
 
 /*

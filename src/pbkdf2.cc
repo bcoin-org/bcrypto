@@ -4,7 +4,7 @@
 #include <nan.h>
 
 #include "common.h"
-#include "openssl/evp.h"
+#include <openssl/evp.h>
 #include "pbkdf2/pbkdf2.h"
 #include "pbkdf2.h"
 #include "pbkdf2_async.h"

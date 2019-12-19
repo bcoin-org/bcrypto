@@ -1,8 +1,8 @@
 #include <string.h>
 #include <limits.h>
 #include "pbkdf2.h"
-#include "openssl/evp.h"
-#include "openssl/objects.h"
+#include <openssl/evp.h>
+#include <openssl/objects.h>
 
 static int
 bcrypto_pbkdf2_hash_type(const char *alg) {

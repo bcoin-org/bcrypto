@@ -1,4 +1,4 @@
-#include "openssl/sha.h"
+#include <openssl/sha.h>
 
 typedef SHA512_CTX bcrypto_ed25519_hash_t;
 

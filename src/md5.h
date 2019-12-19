@@ -2,7 +2,7 @@
 #define _BCRYPTO_MD5_HH
 #include <node.h>
 #include <nan.h>
-#include "openssl/md5.h"
+#include <openssl/md5.h>
 
 class BMD5 : public Nan::ObjectWrap {
 public:

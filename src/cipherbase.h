@@ -4,7 +4,7 @@
 #include <node.h>
 #include <nan.h>
 
-#include "openssl/evp.h"
+#include <openssl/evp.h>
 
 #if defined(_WIN32) || defined(_WIN64)
 #define snprintf _snprintf

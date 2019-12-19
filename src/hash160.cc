@@ -1,6 +1,6 @@
 #include "common.h"
 #include "hash160.h"
-#include "openssl/ripemd.h"
+#include <openssl/ripemd.h>
 
 static Nan::Persistent<v8::FunctionTemplate> hash160_constructor;
 

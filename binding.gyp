@@ -182,24 +182,6 @@
             "ImageHasSafeExceptionHandlers": "false"
           }
         }
-      }, {
-        "include_dirs": [
-          "<(node_root_dir)/deps/openssl/openssl/include"
-        ]
-      }],
-      ["OS=='mac'", {
-        "include_dirs": [
-          "/usr/local/include"
-        ],
-        "libraries": [
-          "-L/usr/local/lib"
-        ],
-        "xcode_settings": {
-          "MACOSX_DEPLOYMENT_TARGET": "10.7",
-          "OTHER_CPLUSPLUSFLAGS": [
-            "-stdlib=libc++"
-          ]
-        }
       }]
     ]
   }]

@@ -2,7 +2,7 @@
 #define _BCRYPTO_MD4_HH
 #include <node.h>
 #include <nan.h>
-#include "openssl/md4.h"
+#include <openssl/md4.h>
 
 class BMD4 : public Nan::ObjectWrap {
 public:

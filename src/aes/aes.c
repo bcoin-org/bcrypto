@@ -3,7 +3,7 @@
 #include <string.h>
 
 #include "aes.h"
-#include "openssl/aes.h"
+#include <openssl/aes.h>
 
 static inline void
 XOR(uint8_t *out, const uint8_t *a, const uint8_t *b) {

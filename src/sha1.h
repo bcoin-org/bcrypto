@@ -2,7 +2,7 @@
 #define _BCRYPTO_SHA1_HH
 #include <node.h>
 #include <nan.h>
-#include "openssl/sha.h"
+#include <openssl/sha.h>
 
 class BSHA1 : public Nan::ObjectWrap {
 public:

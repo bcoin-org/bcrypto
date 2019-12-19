@@ -9,10 +9,10 @@
 #include <stdlib.h>
 #include "dsa.h"
 
-#include "openssl/bn.h"
-#include "openssl/dsa.h"
-#include "openssl/objects.h"
-#include "openssl/x509.h"
+#include <openssl/bn.h>
+#include <openssl/dsa.h>
+#include <openssl/objects.h>
+#include <openssl/x509.h>
 #include "../random/random.h"
 
 #define BCRYPTO_DSA_DEFAULT_BITS 2048

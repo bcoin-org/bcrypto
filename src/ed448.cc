@@ -6,7 +6,7 @@
 #include "common.h"
 #include "ed448/ed448.h"
 #include "ed448.h"
-#include "openssl/crypto.h"
+#include <openssl/crypto.h>
 
 void
 BED448::Init(v8::Local<v8::Object> &target) {

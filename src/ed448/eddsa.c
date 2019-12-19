@@ -10,7 +10,7 @@
  * Originally written by Mike Hamburg
  */
 #include <string.h>
-#include "openssl/crypto.h"
+#include <openssl/crypto.h>
 #include "curve448_lcl.h"
 #include "word.h"
 #include "ed448.h"

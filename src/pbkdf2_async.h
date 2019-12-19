@@ -3,7 +3,7 @@
 
 #include <node.h>
 #include <nan.h>
-#include "openssl/evp.h"
+#include <openssl/evp.h>
 
 class BPBKDF2Worker : public Nan::AsyncWorker {
 public:

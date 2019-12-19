@@ -2,7 +2,7 @@
 #define _BCRYPTO_WHIRLPOOL_HH
 #include <node.h>
 #include <nan.h>
-#include "openssl/whrlpool.h"
+#include <openssl/whrlpool.h>
 
 class BWhirlpool : public Nan::ObjectWrap {
 public:
