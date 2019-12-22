@@ -2,15 +2,23 @@
 
 const assert = require('bsert');
 const cleanse = require('../lib/cleanse');
-const bytes = Buffer.allocUnsafe(32);
-
-for (let i = 0; i < 32; i++)
-  bytes[i] = i;
 
 describe('Cleanse', function() {
-  it('should cleanse bytes', () => {
-    const c = Buffer.from(bytes);
-    cleanse(c);
-    assert.notBufferEqual(c, bytes);
-  });
+  for (const size of [0, 32, 65535, 65536, 65537]) {
+    it(`should cleanse ${size} bytes`, () => {
+      const bytes = Buffer.alloc(size);
+
+      for (let i = 0; i < size; i++)
+        bytes[i] = i & 0xff;
+
+      const clean = Buffer.from(bytes);
+
+      assert.bufferEqual(clean, bytes);
+
+      cleanse(clean);
+
+      if (size > 0)
+        assert.notBufferEqual(clean, bytes);
+    });
+  }
 });

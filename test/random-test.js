@@ -3,11 +3,6 @@
 const assert = require('bsert');
 const zlib = require('zlib');
 const random = require('../lib/random');
-const zero = Buffer.alloc(32, 0x00);
-const bytes = Buffer.allocUnsafe(32);
-
-for (let i = 0; i < 32; i++)
-  bytes[i] = i;
 
 function isRandom(data, d) {
   assert(Buffer.isBuffer(data));
@@ -27,10 +22,11 @@ function isRandom(data, d) {
 
 describe('Random', function() {
   it('should generate random bytes', () => {
-    assert.notBufferEqual(random.randomBytes(32), zero);
+    assert.notBufferEqual(random.randomBytes(32), Buffer.alloc(32, 0x00));
   });
 
   it('should fill random bytes', () => {
+    const bytes = Buffer.alloc(32, 0x00);
     const rand = Buffer.from(bytes);
 
     assert.strictEqual(random.randomFill(rand, 0, 32), rand);
@@ -38,6 +34,7 @@ describe('Random', function() {
   });
 
   it('should fill random bytes without args', () => {
+    const bytes = Buffer.alloc(32, 0x00);
     const rand = Buffer.from(bytes);
 
     assert.strictEqual(random.randomFill(rand), rand);
@@ -69,6 +66,9 @@ describe('Random', function() {
   });
 
   it('should get random range', () => {
+    assert.strictEqual(random.randomRange(0, 0), 0);
+    assert.strictEqual(random.randomRange(0, 1), 0);
+
     for (let i = 0; i < 100; i++) {
       const n = random.randomRange(1, 100);
 
@@ -80,6 +80,9 @@ describe('Random', function() {
   it('should get a large number of bytes', () => {
     // The browser limits us at 65,536 bytes per call.
     // Make sure our RNG wrapper can exceed that.
+    assert.strictEqual(random.randomBytes(65535).length, 65535);
+    assert.strictEqual(random.randomBytes(65536).length, 65536);
+    assert.strictEqual(random.randomBytes(65537).length, 65537);
     assert.strictEqual(random.randomBytes(1 << 17).length, 1 << 17);
   });
 
