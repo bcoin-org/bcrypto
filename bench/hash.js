@@ -1,13 +1,14 @@
 'use strict';
 
 const bench = require('./bench');
-const sha1 = require('../lib/sha1');
-const sha256 = require('../lib/sha256');
-const sha512 = require('../lib/sha512');
-const ripemd160 = require('../lib/ripemd160');
-const blake2b = require('../lib/blake2b');
-const blake2s = require('../lib/blake2s');
-const sha3 = require('../lib/sha3');
+const SHA1 = require('../lib/sha1');
+const SHA256 = require('../lib/sha256');
+const SHA512 = require('../lib/sha512');
+const RIPEMD160 = require('../lib/ripemd160');
+const BLAKE2b = require('../lib/blake2b');
+const BLAKE2s = require('../lib/blake2s');
+const SHA3 = require('../lib/sha3');
+const Hash256 = require('../lib/hash256');
 const random = require('../lib/random');
 
 for (const size of [32, 64, 65, 128, 512]) {
@@ -15,31 +16,35 @@ for (const size of [32, 64, 65, 128, 512]) {
   const msg = random.randomBytes(size);
 
   bench(`sha1 (${size})`, rounds, () => {
-    sha1.digest(msg);
+    SHA1.digest(msg);
   });
 
   bench(`sha256 (${size})`, rounds, () => {
-    sha256.digest(msg);
+    SHA256.digest(msg);
   });
 
   bench(`sha512 (${size})`, rounds, () => {
-    sha512.digest(msg);
+    SHA512.digest(msg);
   });
 
   bench(`ripemd160 (${size})`, rounds, () => {
-    ripemd160.digest(msg);
+    RIPEMD160.digest(msg);
   });
 
   bench(`blake2b (${size})`, rounds, () => {
-    blake2b.digest(msg);
+    BLAKE2b.digest(msg);
   });
 
   bench(`blake2s (${size})`, rounds, () => {
-    blake2s.digest(msg);
+    BLAKE2s.digest(msg);
   });
 
   bench(`sha3 (${size})`, rounds, () => {
-    sha3.digest(msg);
+    SHA3.digest(msg);
+  });
+
+  bench(`hash256 (${size})`, rounds, () => {
+    Hash256.digest(msg);
   });
 
   if (size !== 512)
