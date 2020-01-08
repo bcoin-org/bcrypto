@@ -1110,14 +1110,22 @@ describe('Elliptic', function() {
         const [v1, v2] = curve.endo.basis;
         const [g1, g2] = curve.endo.pre;
 
+        k = k.mod(curve.n);
+
         // c1 = ((k * g1) >> t) * -b1
-        // c2 = ((k * g2) >> t) * -b2
+        // c2 = ((k * -g2) >> t) * -b2
         // k2 = c1 + c2
         // k1 = k2 * -lambda + k
         const c1 = k.mulShift(g1, shift).mul(v1.b.neg());
-        const c2 = k.mulShift(g2, shift).mul(v2.b.neg());
-        const k2 = c1.add(c2);
-        const k1 = k2.mul(lambda.neg()).iadd(k);
+        const c2 = k.mulShift(g2.neg(), shift).mul(v2.b.neg());
+        const k2 = c1.add(c2).mod(curve.n);
+        const k1 = k2.mul(lambda.neg()).iadd(k).mod(curve.n);
+
+        if (k1.cmp(curve.nh) > 0)
+          k1.ineg().imod(curve.n).ineg();
+
+        if (k2.cmp(curve.nh) > 0)
+          k2.ineg().imod(curve.n).ineg();
 
         return [k1, k2];
       };
