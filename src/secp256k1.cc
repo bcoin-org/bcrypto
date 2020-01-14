@@ -960,12 +960,7 @@ NAN_METHOD(BSecp256k1::IsLowS) {
   if (!secp256k1_ecdsa_signature_parse_compact(secp->ctx, &sig, inp))
     return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
 
-  unsigned char normal[64];
-
-  secp256k1_ecdsa_signature_normalize(secp->ctx, &sig, &sig);
-  secp256k1_ecdsa_signature_serialize_compact(secp->ctx, &normal[0], &sig);
-
-  int result = memcmp(&inp[32], &normal[32], 32) == 0;
+  int result = !secp256k1_ecdsa_signature_normalize(secp->ctx, NULL, &sig);
 
   return info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
@@ -979,22 +974,12 @@ NAN_METHOD(BSecp256k1::IsLowDER) {
   const unsigned char *inp = (const unsigned char *)node::Buffer::Data(inp_buf);
   size_t inp_len = node::Buffer::Length(inp_buf);
 
-  if (inp_len == 0)
-    return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
-
   secp256k1_ecdsa_signature sig;
 
   if (!ecdsa_signature_parse_der_lax(secp->ctx, &sig, inp, inp_len))
     return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
 
-  unsigned char orig[64];
-  unsigned char normal[64];
-
-  secp256k1_ecdsa_signature_serialize_compact(secp->ctx, &orig[0], &sig);
-  secp256k1_ecdsa_signature_normalize(secp->ctx, &sig, &sig);
-  secp256k1_ecdsa_signature_serialize_compact(secp->ctx, &normal[0], &sig);
-
-  int result = memcmp(&orig[32], &normal[32], 32) == 0;
+  int result = !secp256k1_ecdsa_signature_normalize(secp->ctx, NULL, &sig);
 
   return info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
