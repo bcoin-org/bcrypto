@@ -81,6 +81,9 @@ bcrypto_rsa_sane_pubkey(const bcrypto_rsa_key_t *key) {
   if (nb < BCRYPTO_RSA_MIN_BITS || nb > BCRYPTO_RSA_MAX_BITS)
     return 0;
 
+  if ((key->nd[key->nl - 1] & 1) == 0)
+    return 0;
+
   size_t eb = bcrypto_count_bits(key->ed, key->el);
 
   if (eb < BCRYPTO_RSA_MIN_EXP_BITS || eb > BCRYPTO_RSA_MAX_EXP_BITS)
@@ -98,15 +101,19 @@ bcrypto_rsa_sane_privkey(const bcrypto_rsa_key_t *key) {
     return 0;
 
   size_t nb = bcrypto_count_bits(key->nd, key->nl);
-  size_t pb = bcrypto_count_bits(key->pd, key->pl);
-  size_t qb = bcrypto_count_bits(key->qd, key->ql);
-
-  if (nb > pb + qb)
-    return 0;
-
   size_t db = bcrypto_count_bits(key->dd, key->dl);
 
   if (db == 0 || db > nb)
+    return 0;
+
+  size_t pb = bcrypto_count_bits(key->pd, key->pl);
+
+  if (pb <= 1 || pb > nb)
+    return 0;
+
+  size_t qb = bcrypto_count_bits(key->qd, key->ql);
+
+  if (qb <= 1 || qb > nb)
     return 0;
 
   size_t dpb = bcrypto_count_bits(key->dpd, key->dpl);
@@ -122,6 +129,12 @@ bcrypto_rsa_sane_privkey(const bcrypto_rsa_key_t *key) {
   size_t qib = bcrypto_count_bits(key->qid, key->qil);
 
   if (qib == 0 || qib > pb)
+    return 0;
+
+  if ((key->pd[key->pl - 1] & 1) == 0)
+    return 0;
+
+  if ((key->qd[key->ql - 1] & 1) == 0)
     return 0;
 
   return 1;
@@ -141,9 +154,6 @@ bcrypto_rsa_sane_compute(const bcrypto_rsa_key_t *key) {
   size_t dqb = bcrypto_count_bits(key->dqd, key->dql);
   size_t qib = bcrypto_count_bits(key->qid, key->qil);
 
-  if (pb == 0 || qb == 0)
-    return 0;
-
   if (eb == 0 && db == 0)
     return 0;
 
@@ -151,7 +161,7 @@ bcrypto_rsa_sane_compute(const bcrypto_rsa_key_t *key) {
     if (nb < BCRYPTO_RSA_MIN_BITS || nb > BCRYPTO_RSA_MAX_BITS)
       return 0;
 
-    if (nb > pb + qb)
+    if ((key->nd[key->nl - 1] & 1) == 0)
       return 0;
   }
 
@@ -163,25 +173,26 @@ bcrypto_rsa_sane_compute(const bcrypto_rsa_key_t *key) {
       return 0;
   }
 
-  if (db != 0) {
-    if (db > pb + qb)
-      return 0;
-  }
+  if (pb <= 1 || qb <= 1)
+    return 0;
 
-  if (dpb != 0) {
-    if (dpb > pb)
-      return 0;
-  }
+  if (db != 0 && db > pb + qb)
+    return 0;
 
-  if (dqb != 0) {
-    if (dqb > qb)
-      return 0;
-  }
+  if (dpb != 0 && dpb > pb)
+    return 0;
 
-  if (qib != 0) {
-    if (qib > pb)
-      return 0;
-  }
+  if (dqb != 0 && dqb > qb)
+    return 0;
+
+  if (qib != 0 && qib > pb)
+    return 0;
+
+  if ((key->pd[key->pl - 1] & 1) == 0)
+    return 0;
+
+  if ((key->qd[key->ql - 1] & 1) == 0)
+    return 0;
 
   return 1;
 }
