@@ -774,7 +774,7 @@ describe('Ed448', function() {
     assert.strictEqual(result, true);
   });
 
-  it('should do elligator2 (edwards)', () => {
+  it.skip('should do elligator2 (edwards)', () => {
     const u1 = Buffer.from(''
       + '72ad074f3dbfbb3927125fab1f4023a408adc0ab1cbbbd6556615e3d'
       + '67501a428120ac1556a467734b1ad6820734d2100f0ed88510bd3e14', 'hex');
@@ -794,7 +794,7 @@ describe('Ed448', function() {
     assert.bufferEqual(p2, p3);
   });
 
-  it('should do elligator2 (mont)', () => {
+  it.skip('should do elligator2 (mont)', () => {
     const u1 = Buffer.from(''
       + '72ad074f3dbfbb3927125fab1f4023a408adc0ab1cbbbd6556615e3d'
       + '67501a428120ac1556a467734b1ad6820734d2100f0ed88510bd3e14', 'hex');
@@ -832,7 +832,7 @@ describe('Ed448', function() {
     assert.bufferEqual(p2, p3);
   });
 
-  it('should pass elligator2 test vectors', () => {
+  it.skip('should pass elligator2 test vectors', () => {
     const preimages = [
       '79f605234dd0ab29033f70d7e93072f047968d06cb8cc2ef1cf0c7ea',
       '19251d13e3a951cbb406dbcac68ee36f9bcf2c517a201d72e7e7d4d2',
@@ -1025,7 +1025,7 @@ describe('Ed448', function() {
     }
   });
 
-  it('should test random oracle encoding', () => {
+  it.skip('should test random oracle encoding', () => {
     const bytes = SHAKE256.digest(Buffer.from('turn me into a point'), 112);
     const pub = ed448.publicKeyFromHash(bytes, true);
     const point = x448.publicKeyFromHash(bytes, true);
@@ -1044,7 +1044,7 @@ describe('Ed448', function() {
     assert.bufferEqual(x448.publicKeyConvert(point, true), pub);
   });
 
-  it('should test random oracle encoding (doubling)', () => {
+  it.skip('should test random oracle encoding (doubling)', () => {
     const bytes0 = SHAKE256.digest(Buffer.from('turn me into a point'), 56);
     const bytes = Buffer.concat([bytes0, bytes0]);
     const pub = ed448.publicKeyFromHash(bytes, true);

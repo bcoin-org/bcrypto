@@ -244,57 +244,6 @@ class WEI25519 extends ShortCurve {
 }
 
 /**
- * ISO448
- * https://tools.ietf.org/html/rfc7748#section-4.2
- * https://git.zx2c4.com/goldilocks/tree/_aux/ristretto/ristretto.sage#n658
- */
-
-class ISO448 extends EdwardsCurve {
-  constructor(pre) {
-    super({
-      id: 'ISO448',
-      ossl: null,
-      type: 'edwards',
-      endian: 'le',
-      hash: 'SHAKE256',
-      prefix: 'SigEd448',
-      context: true,
-      prime: 'p448',
-      // 2^448 - 2^224 - 1 (= 3 mod 4)
-      p: ['ffffffff ffffffff ffffffff ffffffff',
-          'ffffffff ffffffff fffffffe ffffffff',
-          'ffffffff ffffffff ffffffff ffffffff',
-          'ffffffff ffffffff'],
-      a: '1',
-      // 39082 / 39081 mod p
-      d: ['d78b4bdc 7f0daf19 f24f38c2 9373a2cc',
-          'ad461572 42a50f37 809b1da3 412a12e7',
-          '9ccc9c81 264cfe9a d0809970 58fb61c4',
-          '243cc32d baa156b9'],
-      n: ['3fffffff ffffffff ffffffff ffffffff',
-          'ffffffff ffffffff ffffffff 7cca23e9',
-          'c44edb49 aed63690 216cc272 8dc58f55',
-          '2378c292 ab5844f3'],
-      h: '4',
-      // Elligator 2
-      z: '-1',
-      g: [
-        ['79a70b2b 70400553 ae7c9df4 16c792c6',
-         '1128751a c9296924 0c25a07d 728bdc93',
-         'e21f7787 ed697224 9de732f3 8496cd11',
-         '69871309 3e9c04fc'],
-        // Note: the RFC has this wrong.
-        ['7fffffff ffffffff ffffffff ffffffff',
-         'ffffffff ffffffff ffffffff 80000000',
-         '00000000 00000000 00000000 00000000',
-         '00000000 00000001'],
-        pre
-      ]
-    });
-  }
-}
-
-/**
  * TWIST448
  * https://git.zx2c4.com/goldilocks/tree/_aux/ristretto/ristretto.sage#n675
  */
@@ -338,52 +287,6 @@ class TWIST448 extends EdwardsCurve {
          '14181844 d73f48e5 199b0c1e 3ab470a1',
          'c86079b4 dfdd4a64'],
         pre
-      ]
-    });
-  }
-}
-
-/**
- * MONT448
- * Isomorphic to Ed448-Goldilocks.
- */
-
-class MONT448 extends MontCurve {
-  constructor() {
-    super({
-      id: 'MONT448',
-      ossl: null,
-      type: 'mont',
-      endian: 'le',
-      hash: 'SHAKE256',
-      prime: 'p448',
-      // 2^448 - 2^224 - 1 (= 3 mod 4)
-      p: ['ffffffff ffffffff ffffffff ffffffff',
-          'ffffffff ffffffff fffffffe ffffffff',
-          'ffffffff ffffffff ffffffff ffffffff',
-          'ffffffff ffffffff'],
-      // -78160 / -39082 mod p
-      a: ['b2cf97d2 d43459a9 31ed36b1 fc4e3cb5',
-          '5d93f8d2 22746997 60ccffc6 49961ed6',
-          'c5b05fca c24864ed 6fb59697 931b78da',
-          '84ddecd8 ca2b5cfb'],
-      b: '1',
-      n: ['3fffffff ffffffff ffffffff ffffffff',
-          'ffffffff ffffffff ffffffff 7cca23e9',
-          'c44edb49 aed63690 216cc272 8dc58f55',
-          '2378c292 ab5844f3'],
-      h: '4',
-      // Elligator 2
-      z: '-1',
-      g: [
-        ['ac0d24cc c6c75cb0 eb71f81e 7a6edf51',
-         '48e88aee 009a2a24 e795687e c28e125a',
-         '3e6730a6 0d46367b aa7fe99d 152128dc',
-         '41321bc7 7817f059'],
-        ['5a4437f6 80c0d0db 9b061276 d5d0ffcc',
-         'e786ff33 b6a53d30 98746425 82e66f09',
-         '4433dae7 7244a6e2 6b11e905 7228f483',
-         '556c41a5 913f55fe']
       ]
     });
   }
@@ -964,9 +867,7 @@ elliptic.register('FRP256V1', FRP256V1);
 elliptic.register('ANOMALOUS', ANOMALOUS);
 elliptic.register('BN2254', BN2254);
 elliptic.register('WEI25519', WEI25519);
-elliptic.register('ISO448', ISO448);
 elliptic.register('TWIST448', TWIST448);
-elliptic.register('MONT448', MONT448);
 elliptic.register('ED1174', ED1174);
 elliptic.register('ED41417', ED41417);
 elliptic.register('CURVE383187', CURVE383187);
@@ -992,9 +893,7 @@ module.exports = {
   ANOMALOUS,
   BN2254,
   WEI25519,
-  ISO448,
   TWIST448,
-  MONT448,
   ED1174,
   ED41417,
   CURVE383187,

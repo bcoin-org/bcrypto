@@ -584,8 +584,8 @@ describe('Elliptic', function() {
       const mdc = new extra.MDC();
       const ed25519 = new curves.ED25519();
       const ed448 = new curves.ED448();
-      const iso448 = new extra.ISO448();
-      const mont448 = new extra.MONT448();
+      const iso448 = new curves.ISO448();
+      const mont448 = new curves.MONT448();
       const jubjub = new extra.JUBJUB();
       const iso256k1 = new extra.ISO256K1();
       const curve13318 = new extra.CURVE13318();
@@ -2239,7 +2239,7 @@ describe('Elliptic', function() {
       assert(r0.eq(p0));
       assert(r1.eq(p1));
 
-      const m = new extra.MONT448();
+      const m = new curves.MONT448();
 
       assert(m.a.eq(mont448.a));
       assert(m.b.eq(mont448.b));
@@ -2248,7 +2248,7 @@ describe('Elliptic', function() {
     });
 
     it('should test birational equivalence (iso448)', () => {
-      const ed448 = new extra.ISO448();
+      const ed448 = new curves.ISO448();
       const x448 = new curves.X448();
       const edwardsG = ed448.pointFromMont(x448.g);
       const montG = x448.pointFromEdwards(ed448.g.randomize(rng));
@@ -2343,7 +2343,7 @@ describe('Elliptic', function() {
     });
 
     it('should hot potato a point across 4 curves', () => {
-      const iso448 = new extra.ISO448();
+      const iso448 = new curves.ISO448();
       const x448 = new curves.X448();
       const ed448 = new curves.ED448();
       const twist448 = new curves.TWIST448();
@@ -2458,7 +2458,7 @@ describe('Elliptic', function() {
     it('should test iso448 creation', () => {
       const x448 = new curves.X448();
       const iso448 = x448.toEdwards(x448.one, true, false);
-      const expect = new extra.ISO448();
+      const expect = new curves.ISO448();
 
       assert(iso448.a.eq(expect.a));
       assert(iso448.d.eq(expect.d));
@@ -2711,8 +2711,8 @@ describe('Elliptic', function() {
       const x25519 = new curves.X25519();
       const ed25519 = new curves.ED25519();
       const x448 = new curves.X448();
-      const iso448 = new extra.ISO448();
-      const mont448 = new extra.MONT448();
+      const iso448 = new curves.ISO448();
+      const mont448 = new curves.MONT448();
       const ed448 = new curves.ED448();
 
       for (const [x, curve] of [[x25519, ed25519],
@@ -2889,7 +2889,7 @@ describe('Elliptic', function() {
     });
 
     it('should test elligator 2 (api)', () => {
-      const eddsa = new EDDSA('ED1174', null, SHA512);
+      const eddsa = new EDDSA('ED1174', null, null, SHA512);
 
       const u1 = Buffer.from(
         '3905000000000000000000000000000000000000000000000000000000000000',
@@ -3264,8 +3264,8 @@ describe('Elliptic', function() {
       const ed25519 = new curves.ED25519();
       const x448 = new curves.X448();
       const ed448 = new curves.ED448();
-      const iso448 = new extra.ISO448();
-      const mont448 = new extra.MONT448();
+      const iso448 = new curves.ISO448();
+      const mont448 = new curves.MONT448();
       const jubjub = new extra.JUBJUB();
       const mubmub = jubjub.toMont(jubjub.one);
 
@@ -5490,7 +5490,7 @@ describe('Elliptic', function() {
     });
 
     it('should handle difference in scalar/field bytes', () => {
-      const e521 = new EDDSA('E521', null, SHAKE256);
+      const e521 = new EDDSA('E521', null, null, SHAKE256);
 
       const msg = rng.randomBytes(e521.size);
       const secret = e521.privateKeyGenerate();
@@ -5508,7 +5508,7 @@ describe('Elliptic', function() {
     });
 
     it('should do diffie hellman', () => {
-      const e521 = new EDDSA('E521', null, SHAKE256);
+      const e521 = new EDDSA('E521', null, null, SHAKE256);
 
       const alicePriv = e521.privateKeyGenerate();
       const alicePub = e521.publicKeyCreate(alicePriv);
