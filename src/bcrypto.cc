@@ -16,9 +16,6 @@
 #include "bech32.h"
 #include "blake2b.h"
 #include "blake2s.h"
-#ifdef BCRYPTO_HAS_GMP
-#include "bn.h"
-#endif
 #include "cash32.h"
 #include "chacha20.h"
 #include "dsa.h"
@@ -31,7 +28,6 @@
 #include "murmur3.h"
 #include "poly1305.h"
 #include "pbkdf2.h"
-#include "random.h"
 #include "rsa.h"
 #include "salsa20.h"
 #include "scrypt.h"
@@ -60,9 +56,6 @@ NAN_MODULE_INIT(init) {
   BBech32::Init(target);
   BBLAKE2b::Init(target);
   BBLAKE2s::Init(target);
-#ifdef BCRYPTO_HAS_GMP
-  BBN::Init(target);
-#endif
   BCash32::Init(target);
   BChaCha20::Init(target);
   Nan::Export(target, "cleanse", cleanse);
@@ -76,7 +69,6 @@ NAN_MODULE_INIT(init) {
   BMurmur3::Init(target);
   BPoly1305::Init(target);
   BPBKDF2::Init(target);
-  BRandom::Init(target);
   BRSA::Init(target);
   BSalsa20::Init(target);
   BScrypt::Init(target);

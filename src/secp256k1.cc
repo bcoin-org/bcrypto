@@ -66,11 +66,8 @@
 #include "secp256k1/include/secp256k1_extra.h"
 #include "secp256k1/contrib/lax_der_privatekey_parsing.h"
 #include "secp256k1/contrib/lax_der_parsing.h"
-#include "random/random.h"
 
 #define ALLOCATION_FAILURE "allocation failed"
-
-#define RNG_FAILURE "RNG failed"
 
 #define COMPRESSED_TYPE_INVALID "compressed must be a boolean"
 
@@ -121,6 +118,9 @@
 
 #define TWEAK_TYPE_INVALID "tweak must be a Buffer"
 #define TWEAK_LENGTH_INVALID "tweak length is invalid"
+
+#define ENTROPY_TYPE_INVALID "entropy must be a Buffer"
+#define ENTROPY_LENGTH_INVALID "entropy length is invalid"
 
 #define BATCH_TYPE_INVALID "batch must be an Array"
 #define BATCH_ITEM_TYPE_INVALID "batch item must be an Array"
@@ -293,17 +293,6 @@ NAN_METHOD(BSecp256k1::New) {
 
   if (ctx == NULL)
     return Nan::ThrowError("Could not create Secp256k1 instance.");
-
-  // Use blinded multiplication as a final
-  // defense against side-channel attacks.
-  unsigned char seed[32];
-
-  if (bcrypto_random(&seed[0], 32)) {
-    if (!secp256k1_context_randomize(ctx, &seed[0])) {
-      secp256k1_context_destroy(ctx);
-      return Nan::ThrowError("Could not randomize Secp256k1 instance.");
-    }
-  }
 
   BSecp256k1 *secp = new BSecp256k1();
   secp->ctx = ctx;
@@ -609,8 +598,15 @@ NAN_METHOD(BSecp256k1::PublicKeyToHash) {
   CHECK_TYPE_BUFFER(inp_buf, EC_PUBLIC_KEY_TYPE_INVALID);
   CHECK_BUFFER_LENGTH2(inp_buf, 33, 65, EC_PUBLIC_KEY_LENGTH_INVALID);
 
+  v8::Local<v8::Object> entropy_buf = info[1].As<v8::Object>();
+  CHECK_TYPE_BUFFER(entropy_buf, ENTROPY_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH(entropy_buf, 32, ENTROPY_LENGTH_INVALID);
+
   const unsigned char *inp = (const unsigned char *)node::Buffer::Data(inp_buf);
   size_t inp_len = node::Buffer::Length(inp_buf);
+
+  const unsigned char *entropy =
+    (const unsigned char *)node::Buffer::Data(entropy_buf);
 
   secp256k1_pubkey pub;
 
@@ -618,12 +614,8 @@ NAN_METHOD(BSecp256k1::PublicKeyToHash) {
     return Nan::ThrowError(EC_PUBLIC_KEY_PARSE_FAIL);
 
   unsigned char out[64];
-  unsigned char seed[64];
 
-  if (!bcrypto_random(&seed[0], 64))
-    return Nan::ThrowError(RNG_FAILURE);
-
-  if (!secp256k1_pubkey_to_hash(secp->ctx, out, &pub, seed))
+  if (!secp256k1_pubkey_to_hash(secp->ctx, out, &pub, entropy))
     return Nan::ThrowError(EC_PUBLIC_KEY_INVERT_FAIL);
 
   info.GetReturnValue().Set(COPY_BUFFER(&out[0], 64));

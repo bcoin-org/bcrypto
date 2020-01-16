@@ -1,10 +1,6 @@
 #ifndef _BCRYPTO_DSA_ASYNC_HH
 #define _BCRYPTO_DSA_ASYNC_HH
 
-#include "compat.h"
-
-#ifdef BCRYPTO_HAS_DSA
-
 #include <node.h>
 #include <nan.h>
 #include "dsa/dsa.h"
@@ -24,6 +20,4 @@ private:
   int bits;
   bcrypto_dsa_key_t *key;
 };
-#endif
-
 #endif

@@ -5,7 +5,6 @@
 
 #include "common.h"
 #include "rsa_async.h"
-#include "random/random.h"
 
 BRSAWorker::BRSAWorker (
   uint32_t bits,

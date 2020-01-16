@@ -3,11 +3,11 @@
 #include <node.h>
 #include <nan.h>
 #include <torsion/rsa.h>
+#include <torsion/util.h>
 
 #include "common.h"
 #include "rsa.h"
 #include "rsa_async.h"
-#include "random/random.h"
 
 void
 BRSA::Init(v8::Local<v8::Object> &target) {
@@ -41,7 +41,7 @@ BRSA::Init(v8::Local<v8::Object> &target) {
 }
 
 NAN_METHOD(BRSA::PrivateKeyGenerate) {
-  if (info.Length() < 2)
+  if (info.Length() < 3)
     return Nan::ThrowError("rsa.privateKeyGenerate() requires arguments.");
 
   if (!info[0]->IsNumber())
@@ -50,12 +50,18 @@ NAN_METHOD(BRSA::PrivateKeyGenerate) {
   if (!info[1]->IsNumber())
     return Nan::ThrowTypeError("Second argument must be a number.");
 
+  v8::Local<v8::Object> entropy_buf = info[2].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(entropy_buf))
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+
   uint32_t bits = Nan::To<uint32_t>(info[0]).FromJust();
   uint64_t exp = (uint64_t)Nan::To<int64_t>(info[1]).FromJust();
-  uint8_t entropy[32];
+  uint8_t *entropy = (uint8_t *)node::Buffer::Data(entropy_buf);
+  size_t entropy_len = node::Buffer::Length(entropy_buf);
 
-  if (!bcrypto_random(entropy, 32))
-    return Nan::ThrowError("Could not generate entropy.");
+  if (entropy_len != 32)
+    return Nan::ThrowRangeError("Entropy must be 32 bytes.");
 
   uint8_t *key = (uint8_t *)malloc(RSA_MAX_PRIV_SIZE);
   size_t key_len = RSA_MAX_PRIV_SIZE;
@@ -68,6 +74,8 @@ NAN_METHOD(BRSA::PrivateKeyGenerate) {
     return Nan::ThrowError("Could not generate key.");
   }
 
+  cleanse(entropy, entropy_len);
+
   key = (uint8_t *)realloc(key, key_len);
 
   if (key == NULL)
@@ -78,7 +86,7 @@ NAN_METHOD(BRSA::PrivateKeyGenerate) {
 }
 
 NAN_METHOD(BRSA::PrivateKeyGenerateAsync) {
-  if (info.Length() < 3)
+  if (info.Length() < 4)
     return Nan::ThrowError("rsa.privateKeyGenerateAsync() requires arguments.");
 
   if (!info[0]->IsNumber())
@@ -87,16 +95,22 @@ NAN_METHOD(BRSA::PrivateKeyGenerateAsync) {
   if (!info[1]->IsNumber())
     return Nan::ThrowTypeError("Second argument must be a number.");
 
-  if (!info[2]->IsFunction())
+  v8::Local<v8::Object> entropy_buf = info[2].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(entropy_buf))
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+
+  if (!info[3]->IsFunction())
     return Nan::ThrowTypeError("Third argument must be a function.");
 
   uint32_t bits = Nan::To<uint32_t>(info[0]).FromJust();
   uint64_t exp = (uint64_t)Nan::To<int64_t>(info[1]).FromJust();
-  uint8_t entropy[32];
-  v8::Local<v8::Function> callback = info[2].As<v8::Function>();
+  uint8_t *entropy = (uint8_t *)node::Buffer::Data(entropy_buf);
+  size_t entropy_len = node::Buffer::Length(entropy_buf);
+  v8::Local<v8::Function> callback = info[3].As<v8::Function>();
 
-  if (!bcrypto_random(entropy, 32))
-    return Nan::ThrowError("Could not generate entropy.");
+  if (entropy_len != 32)
+    return Nan::ThrowRangeError("Entropy must be 32 bytes.");
 
   BRSAWorker *worker = new BRSAWorker(bits, exp, entropy,
                                       new Nan::Callback(callback));
@@ -140,20 +154,24 @@ NAN_METHOD(BRSA::PrivateKeyVerify) {
 }
 
 NAN_METHOD(BRSA::PrivateKeyRecover) {
-  if (info.Length() < 1)
+  if (info.Length() < 2)
     return Nan::ThrowError("rsa.privateKeyRecover() requires arguments.");
 
   v8::Local<v8::Object> key_buf = info[0].As<v8::Object>();
+  v8::Local<v8::Object> entropy_buf = info[1].As<v8::Object>();
 
-  if (!node::Buffer::HasInstance(key_buf))
+  if (!node::Buffer::HasInstance(key_buf)
+      || !node::Buffer::HasInstance(entropy_buf)) {
     return Nan::ThrowTypeError("Arguments must be buffers.");
+  }
 
   const uint8_t *key = (const uint8_t *)node::Buffer::Data(key_buf);
   size_t key_len = node::Buffer::Length(key_buf);
-  uint8_t entropy[32];
+  uint8_t *entropy = (uint8_t *)node::Buffer::Data(entropy_buf);
+  size_t entropy_len = node::Buffer::Length(entropy_buf);
 
-  if (!bcrypto_random(entropy, 32))
-    return Nan::ThrowError("Could not generate entropy.");
+  if (entropy_len != 32)
+    return Nan::ThrowRangeError("Entropy must be 32 bytes.");
 
   uint8_t *out = (uint8_t *)malloc(RSA_MAX_PRIV_SIZE);
   size_t out_len = RSA_MAX_PRIV_SIZE;
@@ -165,6 +183,8 @@ NAN_METHOD(BRSA::PrivateKeyRecover) {
     free(out);
     return Nan::ThrowError("Could not recover key.");
   }
+
+  cleanse(entropy, entropy_len);
 
   out = (uint8_t *)realloc(out, out_len);
 
@@ -304,7 +324,7 @@ NAN_METHOD(BRSA::PublicKeyNormalize) {
 }
 
 NAN_METHOD(BRSA::Sign) {
-  if (info.Length() < 3)
+  if (info.Length() < 4)
     return Nan::ThrowError("rsa.sign() requires arguments.");
 
   if (!info[0]->IsNumber())
@@ -312,9 +332,11 @@ NAN_METHOD(BRSA::Sign) {
 
   v8::Local<v8::Object> msg_buf = info[1].As<v8::Object>();
   v8::Local<v8::Object> key_buf = info[2].As<v8::Object>();
+  v8::Local<v8::Object> entropy_buf = info[3].As<v8::Object>();
 
   if (!node::Buffer::HasInstance(msg_buf)
-      || !node::Buffer::HasInstance(key_buf)) {
+      || !node::Buffer::HasInstance(key_buf)
+      || !node::Buffer::HasInstance(entropy_buf)) {
     return Nan::ThrowTypeError("Arguments must be buffers.");
   }
 
@@ -323,10 +345,11 @@ NAN_METHOD(BRSA::Sign) {
   size_t msg_len = node::Buffer::Length(msg_buf);
   const uint8_t *key = (const uint8_t *)node::Buffer::Data(key_buf);
   size_t key_len = node::Buffer::Length(key_buf);
-  uint8_t entropy[32];
+  uint8_t *entropy = (uint8_t *)node::Buffer::Data(entropy_buf);
+  size_t entropy_len = node::Buffer::Length(entropy_buf);
 
-  if (!bcrypto_random(entropy, 32))
-    return Nan::ThrowError("Could not generate entropy.");
+  if (entropy_len != 32)
+    return Nan::ThrowRangeError("Entropy must be 32 bytes.");
 
   uint8_t *sig = (uint8_t *)malloc(RSA_MAX_MOD_SIZE);
   size_t sig_len = RSA_MAX_MOD_SIZE;
@@ -338,6 +361,8 @@ NAN_METHOD(BRSA::Sign) {
     free(sig);
     return Nan::ThrowError("Could not sign message.");
   }
+
+  cleanse(entropy, entropy_len);
 
   sig = (uint8_t *)realloc(sig, sig_len);
 
@@ -378,14 +403,16 @@ NAN_METHOD(BRSA::Verify) {
 }
 
 NAN_METHOD(BRSA::Encrypt) {
-  if (info.Length() < 2)
+  if (info.Length() < 3)
     return Nan::ThrowError("rsa.encrypt() requires arguments.");
 
   v8::Local<v8::Object> msg_buf = info[0].As<v8::Object>();
   v8::Local<v8::Object> key_buf = info[1].As<v8::Object>();
+  v8::Local<v8::Object> entropy_buf = info[2].As<v8::Object>();
 
   if (!node::Buffer::HasInstance(msg_buf)
-      || !node::Buffer::HasInstance(key_buf)) {
+      || !node::Buffer::HasInstance(key_buf)
+      || !node::Buffer::HasInstance(entropy_buf)) {
     return Nan::ThrowTypeError("Arguments must be buffers.");
   }
 
@@ -393,10 +420,11 @@ NAN_METHOD(BRSA::Encrypt) {
   size_t msg_len = node::Buffer::Length(msg_buf);
   const uint8_t *key = (const uint8_t *)node::Buffer::Data(key_buf);
   size_t key_len = node::Buffer::Length(key_buf);
-  uint8_t entropy[32];
+  uint8_t *entropy = (uint8_t *)node::Buffer::Data(entropy_buf);
+  size_t entropy_len = node::Buffer::Length(entropy_buf);
 
-  if (!bcrypto_random(entropy, 32))
-    return Nan::ThrowError("Could not generate entropy.");
+  if (entropy_len != 32)
+    return Nan::ThrowRangeError("Entropy must be 32 bytes.");
 
   uint8_t *ct = (uint8_t *)malloc(RSA_MAX_MOD_SIZE);
   size_t ct_len = RSA_MAX_MOD_SIZE;
@@ -409,6 +437,8 @@ NAN_METHOD(BRSA::Encrypt) {
     return Nan::ThrowError("Could not encrypt message.");
   }
 
+  cleanse(entropy, entropy_len);
+
   ct = (uint8_t *)realloc(ct, ct_len);
 
   if (ct == NULL)
@@ -419,14 +449,16 @@ NAN_METHOD(BRSA::Encrypt) {
 }
 
 NAN_METHOD(BRSA::Decrypt) {
-  if (info.Length() < 2)
+  if (info.Length() < 3)
     return Nan::ThrowError("rsa.decrypt() requires arguments.");
 
   v8::Local<v8::Object> msg_buf = info[0].As<v8::Object>();
   v8::Local<v8::Object> key_buf = info[1].As<v8::Object>();
+  v8::Local<v8::Object> entropy_buf = info[2].As<v8::Object>();
 
   if (!node::Buffer::HasInstance(msg_buf)
-      || !node::Buffer::HasInstance(key_buf)) {
+      || !node::Buffer::HasInstance(key_buf)
+      || !node::Buffer::HasInstance(entropy_buf)) {
     return Nan::ThrowTypeError("Arguments must be buffers.");
   }
 
@@ -434,10 +466,11 @@ NAN_METHOD(BRSA::Decrypt) {
   size_t msg_len = node::Buffer::Length(msg_buf);
   const uint8_t *key = (const uint8_t *)node::Buffer::Data(key_buf);
   size_t key_len = node::Buffer::Length(key_buf);
-  uint8_t entropy[32];
+  uint8_t *entropy = (uint8_t *)node::Buffer::Data(entropy_buf);
+  size_t entropy_len = node::Buffer::Length(entropy_buf);
 
-  if (!bcrypto_random(entropy, 32))
-    return Nan::ThrowError("Could not generate entropy.");
+  if (entropy_len != 32)
+    return Nan::ThrowRangeError("Entropy must be 32 bytes.");
 
   uint8_t *pt = (uint8_t *)malloc(RSA_MAX_MOD_SIZE);
   size_t pt_len = RSA_MAX_MOD_SIZE;
@@ -450,6 +483,8 @@ NAN_METHOD(BRSA::Decrypt) {
     return Nan::ThrowError("Could not decrypt message.");
   }
 
+  cleanse(entropy, entropy_len);
+
   pt = (uint8_t *)realloc(pt, pt_len);
 
   if (pt_len != 0 && pt == NULL)
@@ -460,7 +495,7 @@ NAN_METHOD(BRSA::Decrypt) {
 }
 
 NAN_METHOD(BRSA::EncryptOAEP) {
-  if (info.Length() < 3)
+  if (info.Length() < 4)
     return Nan::ThrowError("rsa.encryptOAEP() requires arguments.");
 
   if (!info[0]->IsNumber())
@@ -468,9 +503,11 @@ NAN_METHOD(BRSA::EncryptOAEP) {
 
   v8::Local<v8::Object> msg_buf = info[1].As<v8::Object>();
   v8::Local<v8::Object> key_buf = info[2].As<v8::Object>();
+  v8::Local<v8::Object> entropy_buf = info[3].As<v8::Object>();
 
   if (!node::Buffer::HasInstance(msg_buf)
-      || !node::Buffer::HasInstance(key_buf)) {
+      || !node::Buffer::HasInstance(key_buf)
+      || !node::Buffer::HasInstance(entropy_buf)) {
     return Nan::ThrowTypeError("Arguments must be buffers.");
   }
 
@@ -481,10 +518,11 @@ NAN_METHOD(BRSA::EncryptOAEP) {
   size_t key_len = node::Buffer::Length(key_buf);
   const uint8_t *label = NULL;
   size_t label_len = 0;
-  uint8_t entropy[32];
+  uint8_t *entropy = (uint8_t *)node::Buffer::Data(entropy_buf);
+  size_t entropy_len = node::Buffer::Length(entropy_buf);
 
-  if (info.Length() > 3 && !IsNull(info[3])) {
-    v8::Local<v8::Object> label_buf = info[3].As<v8::Object>();
+  if (info.Length() > 4 && !IsNull(info[4])) {
+    v8::Local<v8::Object> label_buf = info[4].As<v8::Object>();
 
     if (!node::Buffer::HasInstance(label_buf))
       return Nan::ThrowTypeError("Fourth argument must be a buffer.");
@@ -493,8 +531,8 @@ NAN_METHOD(BRSA::EncryptOAEP) {
     label_len = node::Buffer::Length(label_buf);
   }
 
-  if (!bcrypto_random(entropy, 32))
-    return Nan::ThrowError("Could not generate entropy.");
+  if (entropy_len != 32)
+    return Nan::ThrowRangeError("Entropy must be 32 bytes.");
 
   uint8_t *ct = (uint8_t *)malloc(RSA_MAX_MOD_SIZE);
   size_t ct_len = RSA_MAX_MOD_SIZE;
@@ -507,6 +545,8 @@ NAN_METHOD(BRSA::EncryptOAEP) {
     return Nan::ThrowError("Could not encrypt message.");
   }
 
+  cleanse(entropy, entropy_len);
+
   ct = (uint8_t *)realloc(ct, ct_len);
 
   if (ct == NULL)
@@ -517,7 +557,7 @@ NAN_METHOD(BRSA::EncryptOAEP) {
 }
 
 NAN_METHOD(BRSA::DecryptOAEP) {
-  if (info.Length() < 3)
+  if (info.Length() < 4)
     return Nan::ThrowError("rsa.decryptOAEP() requires arguments.");
 
   if (!info[0]->IsNumber())
@@ -525,9 +565,11 @@ NAN_METHOD(BRSA::DecryptOAEP) {
 
   v8::Local<v8::Object> msg_buf = info[1].As<v8::Object>();
   v8::Local<v8::Object> key_buf = info[2].As<v8::Object>();
+  v8::Local<v8::Object> entropy_buf = info[3].As<v8::Object>();
 
   if (!node::Buffer::HasInstance(msg_buf)
-      || !node::Buffer::HasInstance(key_buf)) {
+      || !node::Buffer::HasInstance(key_buf)
+      || !node::Buffer::HasInstance(entropy_buf)) {
     return Nan::ThrowTypeError("Arguments must be buffers.");
   }
 
@@ -538,10 +580,11 @@ NAN_METHOD(BRSA::DecryptOAEP) {
   size_t key_len = node::Buffer::Length(key_buf);
   const uint8_t *label = NULL;
   size_t label_len = 0;
-  uint8_t entropy[32];
+  uint8_t *entropy = (uint8_t *)node::Buffer::Data(entropy_buf);
+  size_t entropy_len = node::Buffer::Length(entropy_buf);
 
-  if (info.Length() > 3 && !IsNull(info[3])) {
-    v8::Local<v8::Object> label_buf = info[3].As<v8::Object>();
+  if (info.Length() > 4 && !IsNull(info[4])) {
+    v8::Local<v8::Object> label_buf = info[4].As<v8::Object>();
 
     if (!node::Buffer::HasInstance(label_buf))
       return Nan::ThrowTypeError("Fourth argument must be a buffer.");
@@ -550,8 +593,8 @@ NAN_METHOD(BRSA::DecryptOAEP) {
     label_len = node::Buffer::Length(label_buf);
   }
 
-  if (!bcrypto_random(entropy, 32))
-    return Nan::ThrowError("Could not generate entropy.");
+  if (entropy_len != 32)
+    return Nan::ThrowRangeError("Entropy must be 32 bytes.");
 
   uint8_t *pt = (uint8_t *)malloc(RSA_MAX_MOD_SIZE);
   size_t pt_len = RSA_MAX_MOD_SIZE;
@@ -564,6 +607,8 @@ NAN_METHOD(BRSA::DecryptOAEP) {
     return Nan::ThrowError("Could not encrypt message.");
   }
 
+  cleanse(entropy, entropy_len);
+
   pt = (uint8_t *)realloc(pt, pt_len);
 
   if (pt_len != 0 && pt == NULL)
@@ -574,7 +619,7 @@ NAN_METHOD(BRSA::DecryptOAEP) {
 }
 
 NAN_METHOD(BRSA::SignPSS) {
-  if (info.Length() < 3)
+  if (info.Length() < 4)
     return Nan::ThrowError("rsa.signPSS() requires arguments.");
 
   if (!info[0]->IsNumber())
@@ -582,9 +627,11 @@ NAN_METHOD(BRSA::SignPSS) {
 
   v8::Local<v8::Object> msg_buf = info[1].As<v8::Object>();
   v8::Local<v8::Object> key_buf = info[2].As<v8::Object>();
+  v8::Local<v8::Object> entropy_buf = info[3].As<v8::Object>();
 
   if (!node::Buffer::HasInstance(msg_buf)
-      || !node::Buffer::HasInstance(key_buf)) {
+      || !node::Buffer::HasInstance(key_buf)
+      || !node::Buffer::HasInstance(entropy_buf)) {
     return Nan::ThrowTypeError("Arguments must be buffers.");
   }
 
@@ -594,17 +641,18 @@ NAN_METHOD(BRSA::SignPSS) {
   const uint8_t *key = (const uint8_t *)node::Buffer::Data(key_buf);
   size_t key_len = node::Buffer::Length(key_buf);
   int salt_len = -1;
-  uint8_t entropy[32];
+  uint8_t *entropy = (uint8_t *)node::Buffer::Data(entropy_buf);
+  size_t entropy_len = node::Buffer::Length(entropy_buf);
 
-  if (info.Length() > 3 && !IsNull(info[3])) {
-    if (!info[3]->IsNumber())
+  if (info.Length() > 4 && !IsNull(info[4])) {
+    if (!info[4]->IsNumber())
       return Nan::ThrowTypeError("Third argument must be a number.");
 
-    salt_len = (int)Nan::To<int32_t>(info[3]).FromJust();
+    salt_len = (int)Nan::To<int32_t>(info[4]).FromJust();
   }
 
-  if (!bcrypto_random(entropy, 32))
-    return Nan::ThrowError("Could not generate entropy.");
+  if (entropy_len != 32)
+    return Nan::ThrowRangeError("Entropy must be 32 bytes.");
 
   uint8_t *sig = (uint8_t *)malloc(RSA_MAX_MOD_SIZE);
   size_t sig_len = RSA_MAX_MOD_SIZE;
@@ -616,6 +664,8 @@ NAN_METHOD(BRSA::SignPSS) {
     free(sig);
     return Nan::ThrowError("Could not sign message.");
   }
+
+  cleanse(entropy, entropy_len);
 
   sig = (uint8_t *)realloc(sig, sig_len);
 
@@ -701,14 +751,16 @@ NAN_METHOD(BRSA::EncryptRaw) {
 }
 
 NAN_METHOD(BRSA::DecryptRaw) {
-  if (info.Length() < 2)
+  if (info.Length() < 3)
     return Nan::ThrowError("rsa.decryptRaw() requires arguments.");
 
   v8::Local<v8::Object> msg_buf = info[0].As<v8::Object>();
   v8::Local<v8::Object> key_buf = info[1].As<v8::Object>();
+  v8::Local<v8::Object> entropy_buf = info[2].As<v8::Object>();
 
   if (!node::Buffer::HasInstance(msg_buf)
-      || !node::Buffer::HasInstance(key_buf)) {
+      || !node::Buffer::HasInstance(key_buf)
+      || !node::Buffer::HasInstance(entropy_buf)) {
     return Nan::ThrowTypeError("Arguments must be buffers.");
   }
 
@@ -716,10 +768,11 @@ NAN_METHOD(BRSA::DecryptRaw) {
   size_t msg_len = node::Buffer::Length(msg_buf);
   const uint8_t *key = (const uint8_t *)node::Buffer::Data(key_buf);
   size_t key_len = node::Buffer::Length(key_buf);
-  uint8_t entropy[32];
+  uint8_t *entropy = (uint8_t *)node::Buffer::Data(entropy_buf);
+  size_t entropy_len = node::Buffer::Length(entropy_buf);
 
-  if (!bcrypto_random(entropy, 32))
-    return Nan::ThrowError("Could not generate entropy.");
+  if (entropy_len != 32)
+    return Nan::ThrowRangeError("Entropy must be 32 bytes.");
 
   uint8_t *pt = (uint8_t *)malloc(RSA_MAX_MOD_SIZE);
   size_t pt_len = RSA_MAX_MOD_SIZE;
@@ -732,6 +785,8 @@ NAN_METHOD(BRSA::DecryptRaw) {
     return Nan::ThrowError("Could not decrypt message.");
   }
 
+  cleanse(entropy, entropy_len);
+
   pt = (uint8_t *)realloc(pt, pt_len);
 
   if (pt_len != 0 && pt == NULL)
@@ -742,14 +797,16 @@ NAN_METHOD(BRSA::DecryptRaw) {
 }
 
 NAN_METHOD(BRSA::Veil) {
-  if (info.Length() < 3)
+  if (info.Length() < 4)
     return Nan::ThrowError("rsa.veil() requires arguments.");
 
   v8::Local<v8::Object> msg_buf = info[0].As<v8::Object>();
   v8::Local<v8::Object> key_buf = info[2].As<v8::Object>();
+  v8::Local<v8::Object> entropy_buf = info[3].As<v8::Object>();
 
   if (!node::Buffer::HasInstance(msg_buf)
-      || !node::Buffer::HasInstance(key_buf)) {
+      || !node::Buffer::HasInstance(key_buf)
+      || !node::Buffer::HasInstance(entropy_buf)) {
     return Nan::ThrowTypeError("Arguments must be buffers.");
   }
 
@@ -761,10 +818,11 @@ NAN_METHOD(BRSA::Veil) {
   size_t bits = (size_t)Nan::To<uint32_t>(info[1]).FromJust();
   const uint8_t *key = (const uint8_t *)node::Buffer::Data(key_buf);
   size_t key_len = node::Buffer::Length(key_buf);
-  uint8_t entropy[32];
+  uint8_t *entropy = (uint8_t *)node::Buffer::Data(entropy_buf);
+  size_t entropy_len = node::Buffer::Length(entropy_buf);
 
-  if (!bcrypto_random(entropy, 32))
-    return Nan::ThrowError("Could not generate entropy.");
+  if (entropy_len != 32)
+    return Nan::ThrowRangeError("Entropy must be 32 bytes.");
 
   size_t out_len = (bits + 7) / 8;
   uint8_t *out = (uint8_t *)malloc(out_len);
@@ -776,6 +834,8 @@ NAN_METHOD(BRSA::Veil) {
     free(out);
     return Nan::ThrowError("Could not veil message.");
   }
+
+  cleanse(entropy, entropy_len);
 
   info.GetReturnValue().Set(
     Nan::NewBuffer((char *)out, out_len).ToLocalChecked());

@@ -3,10 +3,10 @@
 #include <node.h>
 #include <nan.h>
 #include <torsion/ecc.h>
+#include <torsion/util.h>
 
 #include "common.h"
 #include "ecdh.h"
-#include "random/random.h"
 
 static Nan::Persistent<v8::FunctionTemplate> ecdh_constructor;
 
@@ -100,13 +100,24 @@ NAN_METHOD(BECDH::Bits) {
 NAN_METHOD(BECDH::PrivateKeyGenerate) {
   BECDH *ec = ObjectWrap::Unwrap<BECDH>(info.Holder());
 
-  uint8_t out[ECDH_MAX_PRIV_SIZE];
-  uint8_t entropy[32];
+  if (info.Length() < 1)
+    return Nan::ThrowError("ecdh.privateKeyGenerate() requires arguments.");
 
-  if (!bcrypto_random(entropy, 32))
-    return Nan::ThrowError("Could not generate entropy.");
+  v8::Local<v8::Object> entropy_buf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(entropy_buf))
+    return Nan::ThrowTypeError("First argument must be a buffer.");
+
+  uint8_t *entropy = (uint8_t *)node::Buffer::Data(entropy_buf);
+  size_t entropy_len = node::Buffer::Length(entropy_buf);
+  uint8_t out[ECDH_MAX_PRIV_SIZE];
+
+  if (entropy_len != 32)
+    return Nan::ThrowRangeError("Entropy must be 32 bytes.");
 
   ecdh_privkey_generate(ec->ctx, out, entropy);
+
+  cleanse(entropy, entropy_len);
 
   return info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)out, ec->scalar_size).ToLocalChecked());
@@ -271,27 +282,33 @@ NAN_METHOD(BECDH::PublicKeyFromHash) {
 NAN_METHOD(BECDH::PublicKeyToHash) {
   BECDH *ec = ObjectWrap::Unwrap<BECDH>(info.Holder());
 
-  if (info.Length() < 1)
+  if (info.Length() < 2)
     return Nan::ThrowError("ecdh.publicKeyToHash() requires arguments.");
 
   v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
+  v8::Local<v8::Object> entropy_buf = info[1].As<v8::Object>();
 
-  if (!node::Buffer::HasInstance(pbuf))
-    return Nan::ThrowTypeError("First argument must be a buffer.");
+  if (!node::Buffer::HasInstance(pbuf)
+      || !node::Buffer::HasInstance(entropy_buf)) {
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+  }
 
   const uint8_t *pub = (const uint8_t *)node::Buffer::Data(pbuf);
   size_t pub_len = node::Buffer::Length(pbuf);
-  uint8_t entropy[32];
+  uint8_t *entropy = (uint8_t *)node::Buffer::Data(entropy_buf);
+  size_t entropy_len = node::Buffer::Length(entropy_buf);
   uint8_t out[ECDH_MAX_FIELD_SIZE * 2];
 
-  if (!bcrypto_random(entropy, 32))
-    return Nan::ThrowError("Could not generate entropy.");
+  if (entropy_len != 32)
+    return Nan::ThrowRangeError("Entropy must be 32 bytes.");
 
   if (pub_len != ec->field_size)
     return Nan::ThrowRangeError("Invalid public key size.");
 
   if (!ecdh_pubkey_to_hash(ec->ctx, out, pub, entropy))
     return Nan::ThrowError("Invalid public key.");
+
+  cleanse(entropy, entropy_len);
 
   return info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)out, ec->field_size * 2).ToLocalChecked());

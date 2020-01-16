@@ -1,10 +1,6 @@
 #ifndef _BCRYPTO_DSA_H
 #define _BCRYPTO_DSA_H
 
-#include "../compat.h"
-
-#ifdef BCRYPTO_HAS_DSA
-
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdint.h>
@@ -143,8 +139,6 @@ bcrypto_dsa_derive(uint8_t **out,
 
 #if defined(__cplusplus)
 }
-#endif
-
 #endif
 
 #endif

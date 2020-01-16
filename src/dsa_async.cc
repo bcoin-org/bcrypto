@@ -1,7 +1,3 @@
-#include "compat.h"
-
-#ifdef BCRYPTO_HAS_DSA
-
 #include <assert.h>
 #include <node.h>
 #include <nan.h>
@@ -49,4 +45,3 @@ BDSAWorker::HandleOKCallback() {
 
   callback->Call(2, argv, async_resource);
 }
-#endif

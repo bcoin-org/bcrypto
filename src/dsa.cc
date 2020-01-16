@@ -1,7 +1,3 @@
-#include "compat.h"
-
-#ifdef BCRYPTO_HAS_DSA
-
 #include <assert.h>
 #include <string.h>
 #include <node.h>
@@ -963,4 +959,3 @@ NAN_METHOD(BDSA::Derive) {
   info.GetReturnValue().Set(
     Nan::NewBuffer((char *)out, out_len).ToLocalChecked());
 }
-#endif

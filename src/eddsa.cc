@@ -3,10 +3,10 @@
 #include <node.h>
 #include <nan.h>
 #include <torsion/ecc.h>
+#include <torsion/util.h>
 
 #include "common.h"
 #include "eddsa.h"
-#include "random/random.h"
 
 static Nan::Persistent<v8::FunctionTemplate> eddsa_constructor;
 
@@ -142,13 +142,24 @@ NAN_METHOD(BEDDSA::Bits) {
 NAN_METHOD(BEDDSA::PrivateKeyGenerate) {
   BEDDSA *ec = ObjectWrap::Unwrap<BEDDSA>(info.Holder());
 
-  uint8_t priv[EDDSA_MAX_PRIV_SIZE];
-  uint8_t entropy[32];
+  if (info.Length() < 1)
+    return Nan::ThrowError("eddsa.privateKeyGenerate() requires arguments.");
 
-  if (!bcrypto_random(entropy, 32))
-    return Nan::ThrowError("Could not generate entropy.");
+  v8::Local<v8::Object> entropy_buf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(entropy_buf))
+    return Nan::ThrowTypeError("First argument must be a buffer.");
+
+  uint8_t *entropy = (uint8_t *)node::Buffer::Data(entropy_buf);
+  size_t entropy_len = node::Buffer::Length(entropy_buf);
+  uint8_t priv[EDDSA_MAX_PRIV_SIZE];
+
+  if (entropy_len != 32)
+    return Nan::ThrowRangeError("Entropy must be 32 bytes.");
 
   eddsa_privkey_generate(ec->ctx, priv, entropy);
+
+  cleanse(entropy, entropy_len);
 
   return info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)priv, ec->priv_size).ToLocalChecked());
@@ -226,13 +237,24 @@ NAN_METHOD(BEDDSA::PrivateKeyConvert) {
 NAN_METHOD(BEDDSA::ScalarGenerate) {
   BEDDSA *ec = ObjectWrap::Unwrap<BEDDSA>(info.Holder());
 
-  uint8_t scalar[EDDSA_MAX_SCALAR_SIZE];
-  uint8_t entropy[32];
+  if (info.Length() < 1)
+    return Nan::ThrowError("eddsa.scalarGenerate() requires arguments.");
 
-  if (!bcrypto_random(entropy, 32))
-    return Nan::ThrowError("Could not generate entropy.");
+  v8::Local<v8::Object> entropy_buf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(entropy_buf))
+    return Nan::ThrowTypeError("First argument must be a buffer.");
+
+  uint8_t *entropy = (uint8_t *)node::Buffer::Data(entropy_buf);
+  size_t entropy_len = node::Buffer::Length(entropy_buf);
+  uint8_t scalar[EDDSA_MAX_SCALAR_SIZE];
+
+  if (entropy_len != 32)
+    return Nan::ThrowRangeError("Entropy must be 32 bytes.");
 
   eddsa_scalar_generate(ec->ctx, scalar, entropy);
+
+  cleanse(entropy, entropy_len);
 
   return info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)scalar, ec->scalar_size).ToLocalChecked());
@@ -594,27 +616,33 @@ NAN_METHOD(BEDDSA::PublicKeyFromHash) {
 NAN_METHOD(BEDDSA::PublicKeyToHash) {
   BEDDSA *ec = ObjectWrap::Unwrap<BEDDSA>(info.Holder());
 
-  if (info.Length() < 1)
+  if (info.Length() < 2)
     return Nan::ThrowError("eddsa.publicKeyToHash() requires arguments.");
 
   v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
+  v8::Local<v8::Object> entropy_buf = info[1].As<v8::Object>();
 
-  if (!node::Buffer::HasInstance(pbuf))
+  if (!node::Buffer::HasInstance(pbuf)
+      || !node::Buffer::HasInstance(entropy_buf)) {
     return Nan::ThrowTypeError("First argument must be a buffer.");
+  }
 
   const uint8_t *pub = (const uint8_t *)node::Buffer::Data(pbuf);
   size_t pub_len = node::Buffer::Length(pbuf);
-  uint8_t entropy[32];
+  uint8_t *entropy = (uint8_t *)node::Buffer::Data(entropy_buf);
+  size_t entropy_len = node::Buffer::Length(entropy_buf);
   uint8_t out[EDDSA_MAX_FIELD_SIZE * 2];
 
-  if (!bcrypto_random(entropy, 32))
-    return Nan::ThrowError("Could not generate entropy.");
+  if (entropy_len != 32)
+    return Nan::ThrowRangeError("Entropy must be 32 bytes.");
 
   if (pub_len != ec->pub_size)
     return Nan::ThrowRangeError("Invalid public key size.");
 
   if (!eddsa_pubkey_to_hash(ec->ctx, out, pub, entropy))
     return Nan::ThrowError("Invalid public key.");
+
+  cleanse(entropy, entropy_len);
 
   return info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)out, ec->field_size * 2).ToLocalChecked());

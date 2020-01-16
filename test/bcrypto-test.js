@@ -4,13 +4,12 @@
 
 const assert = require('bsert');
 const bcrypto = require('../');
+const {env} = process;
 const parts = process.version.split(/[^\d]/);
 const NODE_MAJOR = parts[1] >>> 0;
 const NODE_MINOR = parts[2] >>> 0;
-const HAS_BIGINT = typeof BigInt === 'function';
-const FORCE_BIGINT = HAS_BIGINT && process.env.BCRYPTO_FORCE_BIGINT != null;
-const FORCE_GMP = process.env.BCRYPTO_FORCE_GMP != null;
-const BN_MODIFIED_VERSION = FORCE_GMP ? 2 : (FORCE_BIGINT ? 1 : 0);
+const HAS_BIGINT = typeof BigInt === 'function' ? 1 : 0;
+const FORCE_BIGINT = HAS_BIGINT && env.BCRYPTO_FORCE_BIGINT != null ? 1 : 0;
 
 describe('Bcrypto', function() {
   it('should have correct environment', () => {
@@ -35,7 +34,7 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.BLAKE2s160.native, 0);
         assert.strictEqual(bcrypto.BLAKE2s224.native, 0);
         assert.strictEqual(bcrypto.BLAKE2s256.native, 0);
-        assert.strictEqual(bcrypto.BN.native, BN_MODIFIED_VERSION || 0);
+        assert.strictEqual(bcrypto.BN.native, FORCE_BIGINT);
         assert.strictEqual(bcrypto.box.native, 0);
         assert.strictEqual(bcrypto.ChaCha20.native, 0);
         assert.strictEqual(bcrypto.cipher.native, 0);
@@ -131,7 +130,7 @@ describe('Bcrypto', function() {
           assert.strictEqual(bcrypto.BLAKE2s224.native, 1);
           assert.strictEqual(bcrypto.BLAKE2s256.native, 1);
         }
-        assert.strictEqual(bcrypto.BN.native, BN_MODIFIED_VERSION || 1);
+        assert.strictEqual(bcrypto.BN.native, HAS_BIGINT);
         assert.strictEqual(bcrypto.box.native, 0);
         assert.strictEqual(bcrypto.ChaCha20.native, 0);
         assert.strictEqual(bcrypto.cipher.native, 1);
@@ -217,7 +216,7 @@ describe('Bcrypto', function() {
       default:
         assert.strictEqual(bcrypto.native, 2);
         assert.strictEqual(bcrypto.AEAD.native, 2);
-        assert.strictEqual(bcrypto.aes.native, 2);
+        assert.strictEqual(bcrypto.aes.native, 1);
         assert.strictEqual(bcrypto.bcrypt.native, 0);
         assert.strictEqual(bcrypto.BLAKE2b.native, 2);
         assert.strictEqual(bcrypto.BLAKE2b160.native, 2);
@@ -229,10 +228,10 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.BLAKE2s160.native, 2);
         assert.strictEqual(bcrypto.BLAKE2s224.native, 2);
         assert.strictEqual(bcrypto.BLAKE2s256.native, 2);
-        assert.strictEqual(bcrypto.BN.native, BN_MODIFIED_VERSION || 1);
+        assert.strictEqual(bcrypto.BN.native, HAS_BIGINT);
         assert.strictEqual(bcrypto.box.native, 0);
         assert.strictEqual(bcrypto.ChaCha20.native, 2);
-        assert.strictEqual(bcrypto.cipher.native, 2);
+        assert.strictEqual(bcrypto.cipher.native, 1);
         assert.strictEqual(bcrypto.cleanse.native, 2);
         assert.strictEqual(bcrypto.CSHAKE.native, 2);
         assert.strictEqual(bcrypto.CSHAKE128.native, 2);
@@ -264,7 +263,7 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.KMAC128.native, 2);
         assert.strictEqual(bcrypto.KMAC256.native, 2);
         assert.strictEqual(bcrypto.MD2.native, 0);
-        assert.strictEqual(bcrypto.MD4.native, 2);
+        assert.strictEqual(bcrypto.MD4.native, 1);
         assert.strictEqual(bcrypto.MD5.native, 2);
         assert.strictEqual(bcrypto.MD5SHA1.native, 2);
         assert.strictEqual(bcrypto.merkle.native, undefined);
@@ -278,7 +277,7 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.pbkdf2.native, 2);
         assert.strictEqual(bcrypto.pgp.native, undefined);
         assert.strictEqual(bcrypto.Poly1305.native, 2);
-        assert.strictEqual(bcrypto.random.native, 2);
+        assert.strictEqual(bcrypto.random.native, 1);
         assert.strictEqual(bcrypto.RC4.native, 0);
         assert.strictEqual(bcrypto.RIPEMD160.native, 2);
         assert.strictEqual(bcrypto.rsa.native, NODE_MAJOR >= 10 ? 2 : 1);
@@ -304,7 +303,7 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.SHAKE128.native, 2);
         assert.strictEqual(bcrypto.SHAKE256.native, 2);
         assert.strictEqual(bcrypto.siphash.native, 2);
-        assert.strictEqual(bcrypto.Whirlpool.native, 2);
+        assert.strictEqual(bcrypto.Whirlpool.native, 1);
         assert.strictEqual(bcrypto.x25519.native, 2);
         assert.strictEqual(bcrypto.x448.native, 2);
         break;

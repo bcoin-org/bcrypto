@@ -1,7 +1,3 @@
-#include "../compat.h"
-
-#ifdef BCRYPTO_HAS_DSA
-
 #include <assert.h>
 #include <string.h>
 #include <stdint.h>
@@ -12,8 +8,8 @@
 #include <openssl/bn.h>
 #include <openssl/dsa.h>
 #include <openssl/objects.h>
+#include <openssl/rand.h>
 #include <openssl/x509.h>
-#include "../random/random.h"
 
 #define BCRYPTO_DSA_DEFAULT_BITS 2048
 #define BCRYPTO_DSA_MIN_BITS 512
@@ -560,6 +556,25 @@ fail:
   return 0;
 }
 
+static void
+bcrypto_poll(void) {
+  for (;;) {
+    // https://github.com/openssl/openssl/blob/bc420eb/crypto/rand/rand_lib.c#L792
+    // https://github.com/openssl/openssl/blob/bc420eb/crypto/rand/drbg_lib.c#L988
+    int status = RAND_status();
+
+    assert(status >= 0);
+
+    if (status != 0)
+      break;
+
+    // https://github.com/openssl/openssl/blob/bc420eb/crypto/rand/rand_lib.c#L376
+    // https://github.com/openssl/openssl/blob/32f803d/crypto/rand/drbg_lib.c#L471
+    if (RAND_poll() == 0)
+      break;
+  }
+}
+
 bcrypto_dsa_key_t *
 bcrypto_dsa_params_generate(int bits) {
   DSA *dsaparams = NULL;
@@ -670,8 +685,6 @@ bcrypto_dsa_params_export(uint8_t **out,
 
   if (len <= 0)
     return 0;
-
-  FIX_BORINGSSL(buf, len);
 
   *out = buf;
   *out_len = (size_t)len;
@@ -906,8 +919,6 @@ bcrypto_dsa_privkey_export(uint8_t **out,
   if (len <= 0)
     return 0;
 
-  FIX_BORINGSSL(buf, len);
-
   *out = buf;
   *out_len = (size_t)len;
 
@@ -1015,8 +1026,6 @@ bcrypto_dsa_privkey_export_pkcs8(uint8_t **out,
 
   if (len <= 0)
     goto fail;
-
-  FIX_BORINGSSL(buf, len);
 
   *out = buf;
   *out_len = (size_t)len;
@@ -1241,8 +1250,6 @@ bcrypto_dsa_pubkey_export(uint8_t **out,
   if (len <= 0)
     return 0;
 
-  FIX_BORINGSSL(buf, len);
-
   *out = buf;
   *out_len = (size_t)len;
 
@@ -1304,8 +1311,6 @@ bcrypto_dsa_pubkey_export_spki(uint8_t **out,
 
   if (len <= 0)
     return 0;
-
-  FIX_BORINGSSL(buf, len);
 
   *out = buf;
   *out_len = (size_t)len;
@@ -1372,8 +1377,6 @@ bcrypto_dsa_sig_export(uint8_t **out,
 
   if (len <= 0)
     return 0;
-
-  FIX_BORINGSSL(buf, len);
 
   DSA_SIG_free(dsasig);
 
@@ -1512,8 +1515,6 @@ bcrypto_dsa_sign_der(uint8_t **out,
 
   if (len <= 0)
     goto fail;
-
-  FIX_BORINGSSL(buf, len);
 
   *out = buf;
   *out_len = len;
@@ -1734,5 +1735,3 @@ fail:
 
   return 0;
 }
-
-#endif
