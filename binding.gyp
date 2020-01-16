@@ -16,8 +16,6 @@
       "./src/aes/aes.c",
       "./src/base58/base58.c",
       "./src/bech32/bech32.c",
-      "./src/blake2b/blake2b.c",
-      "./src/blake2s/blake2s.c",
       "./src/cash32/cash32.c",
       "./src/chacha20/chacha20.c",
       "./src/dsa/dsa.c",
@@ -125,9 +123,6 @@
           "USE_FIELD_5X52",
           "USE_FIELD_5X52_INT128",
           "USE_SCALAR_4X64"
-        ],
-        "cflags": [
-          "-msse4.1"
         ]
       }, {
         "defines": [
