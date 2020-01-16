@@ -29,7 +29,6 @@
       "./src/secp256k1/contrib/lax_der_parsing.c",
       "./src/secp256k1/contrib/lax_der_privatekey_parsing.c",
       "./src/siphash/siphash.c",
-      "./src/keccak/keccak.c",
       "./src/aead.cc",
       "./src/aes.cc",
       "./src/base58.cc",
