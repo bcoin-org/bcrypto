@@ -1,18 +1,19 @@
-#ifndef _BCRYPTO_SHA224_HH
-#define _BCRYPTO_SHA224_HH
+#ifndef _BCRYPTO_HASH_HH
+#define _BCRYPTO_HASH_HH
 #include <node.h>
 #include <nan.h>
-#include <openssl/sha.h>
+#include <torsion/hash.h>
 
-class BSHA224 : public Nan::ObjectWrap {
+class BHash : public Nan::ObjectWrap {
 public:
   static NAN_METHOD(New);
   static void Init(v8::Local<v8::Object> &target);
 
-  BSHA224();
-  ~BSHA224();
+  BHash();
+  ~BHash();
 
-  SHA256_CTX ctx;
+  int type;
+  hash_t ctx;
   bool started;
 
 private:

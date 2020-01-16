@@ -1,18 +1,19 @@
-#ifndef _BCRYPTO_MD4_HH
-#define _BCRYPTO_MD4_HH
+#ifndef _BCRYPTO_HMAC_HH
+#define _BCRYPTO_HMAC_HH
 #include <node.h>
 #include <nan.h>
-#include <openssl/md4.h>
+#include <torsion/hash.h>
 
-class BMD4 : public Nan::ObjectWrap {
+class BHMAC : public Nan::ObjectWrap {
 public:
   static NAN_METHOD(New);
   static void Init(v8::Local<v8::Object> &target);
 
-  BMD4();
-  ~BMD4();
+  BHMAC();
+  ~BHMAC();
 
-  MD4_CTX ctx;
+  int type;
+  hmac_t ctx;
   bool started;
 
 private:
@@ -20,7 +21,5 @@ private:
   static NAN_METHOD(Update);
   static NAN_METHOD(Final);
   static NAN_METHOD(Digest);
-  static NAN_METHOD(Root);
-  static NAN_METHOD(Multi);
 };
 #endif

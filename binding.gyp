@@ -12,7 +12,6 @@
       "../torsion/src/rsa.c",
       "../torsion/src/salsa20.c",
       "../torsion/src/util.c",
-      "./src/aes/aes.c",
       "./src/base58/base58.c",
       "./src/bech32/bech32.c",
       "./src/cash32/cash32.c",
@@ -24,7 +23,6 @@
       "./src/secp256k1/contrib/lax_der_privatekey_parsing.c",
       "./src/siphash/siphash.c",
       "./src/aead.cc",
-      "./src/aes.cc",
       "./src/base58.cc",
       "./src/bech32.cc",
       "./src/bcrypto.cc",
@@ -32,36 +30,26 @@
       "./src/blake2s.cc",
       "./src/cash32.cc",
       "./src/chacha20.cc",
-      "./src/cipherbase.cc",
       "./src/dsa.cc",
       "./src/dsa_async.cc",
       "./src/ecdh.cc",
       "./src/ecdsa.cc",
       "./src/eddsa.cc",
-      "./src/hash160.cc",
-      "./src/hash256.cc",
+      "./src/hash.cc",
+      "./src/hmac.cc",
       "./src/keccak.cc",
-      "./src/md4.cc",
-      "./src/md5.cc",
       "./src/murmur3.cc",
       "./src/pbkdf2.cc",
       "./src/pbkdf2_async.cc",
       "./src/poly1305.cc",
       "./src/random.cc",
-      "./src/ripemd160.cc",
       "./src/rsa.cc",
       "./src/rsa_async.cc",
       "./src/salsa20.cc",
       "./src/scrypt.cc",
       "./src/scrypt_async.cc",
       "./src/secp256k1.cc",
-      "./src/sha1.cc",
-      "./src/sha224.cc",
-      "./src/sha256.cc",
-      "./src/sha384.cc",
-      "./src/sha512.cc",
-      "./src/siphash.cc",
-      "./src/whirlpool.cc"
+      "./src/siphash.cc"
     ],
     "cflags": [
       "-Wall",
@@ -107,13 +95,16 @@
           "WORDS_BIGENDIAN"
         ]
       }],
+      ["OS!='win' and node_use_openssl=='true' and nodedir.find('electron')==-1", {
+        "defines": [
+          "TORSION_USE_OPENSSL"
+        ]
+      }],
       ["target_arch=='x64' and OS!='win'", {
         "defines": [
-          "TORSION_64BIT",
-          "BCRYPTO_POLY1305_64BIT",
+          "TORSION_USE_64BIT",
+          "TORSION_USE_ASM",
           "BCRYPTO_SIPHASH_64BIT",
-          "BCRYPTO_USE_ASM",
-          "BCRYPTO_USE_SSE",
           "HAVE___INT128",
           "USE_ASM_X86_64",
           "USE_FIELD_5X52",
@@ -122,14 +113,13 @@
         ]
       }, {
         "defines": [
-          "BCRYPTO_POLY1305_32BIT",
           "USE_FIELD_10X26",
           "USE_SCALAR_8X32"
         ]
       }],
       ["with_gmp=='true'", {
         "defines": [
-          "TORSION_HAS_GMP",
+          "TORSION_USE_GMP",
           "HAVE_LIBGMP",
           "USE_NUM_GMP",
           "USE_FIELD_INV_NUM",
