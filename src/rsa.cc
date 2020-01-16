@@ -1,16 +1,13 @@
-#include "compat.h"
-
-#ifdef BCRYPTO_HAS_RSA
-
 #include <assert.h>
 #include <string.h>
 #include <node.h>
 #include <nan.h>
+#include <torsion/rsa.h>
 
 #include "common.h"
-#include "rsa/rsa.h"
 #include "rsa.h"
 #include "rsa_async.h"
+#include "random/random.h"
 
 void
 BRSA::Init(v8::Local<v8::Object> &target) {
@@ -19,17 +16,14 @@ BRSA::Init(v8::Local<v8::Object> &target) {
 
   Nan::Export(obj, "privateKeyGenerate", BRSA::PrivateKeyGenerate);
   Nan::Export(obj, "privateKeyGenerateAsync", BRSA::PrivateKeyGenerateAsync);
-  Nan::Export(obj, "privateKeyCompute", BRSA::PrivateKeyCompute);
+  Nan::Export(obj, "privateKeyBits", BRSA::PrivateKeyBits);
   Nan::Export(obj, "privateKeyVerify", BRSA::PrivateKeyVerify);
-  Nan::Export(obj, "privateKeyExport", BRSA::PrivateKeyExport);
-  Nan::Export(obj, "privateKeyImport", BRSA::PrivateKeyImport);
-  Nan::Export(obj, "privateKeyExportPKCS8", BRSA::PrivateKeyExportPKCS8);
-  Nan::Export(obj, "privateKeyImportPKCS8", BRSA::PrivateKeyImportPKCS8);
+  Nan::Export(obj, "privateKeyRecover", BRSA::PrivateKeyRecover);
+  Nan::Export(obj, "privateKeyNormalize", BRSA::PrivateKeyNormalize);
+  Nan::Export(obj, "publicKeyCreate", BRSA::PublicKeyCreate);
+  Nan::Export(obj, "publicKeyBits", BRSA::PublicKeyBits);
   Nan::Export(obj, "publicKeyVerify", BRSA::PublicKeyVerify);
-  Nan::Export(obj, "publicKeyExport", BRSA::PublicKeyExport);
-  Nan::Export(obj, "publicKeyImport", BRSA::PublicKeyImport);
-  Nan::Export(obj, "publicKeyExportSPKI", BRSA::PublicKeyExportSPKI);
-  Nan::Export(obj, "publicKeyImportSPKI", BRSA::PublicKeyImportSPKI);
+  Nan::Export(obj, "publicKeyNormalize", BRSA::PublicKeyNormalize);
   Nan::Export(obj, "sign", BRSA::Sign);
   Nan::Export(obj, "verify", BRSA::Verify);
   Nan::Export(obj, "encrypt", BRSA::Encrypt);
@@ -42,7 +36,6 @@ BRSA::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "decryptRaw", BRSA::DecryptRaw);
   Nan::Export(obj, "veil", BRSA::Veil);
   Nan::Export(obj, "unveil", BRSA::Unveil);
-  Nan::Export(obj, "hasHash", BRSA::HasHash);
 
   Nan::Set(target, Nan::New("rsa").ToLocalChecked(), obj);
 }
@@ -58,27 +51,30 @@ NAN_METHOD(BRSA::PrivateKeyGenerate) {
     return Nan::ThrowTypeError("Second argument must be a number.");
 
   uint32_t bits = Nan::To<uint32_t>(info[0]).FromJust();
-  uint64_t exp = Nan::To<int64_t>(info[1]).FromJust();
+  uint64_t exp = (uint64_t)Nan::To<int64_t>(info[1]).FromJust();
+  uint8_t entropy[32];
 
-  bcrypto_rsa_key_t *k = bcrypto_rsa_privkey_generate(
-    (int)bits, (unsigned long long)exp);
+  if (!bcrypto_random(entropy, 32))
+    return Nan::ThrowError("Could not generate entropy.");
 
-  if (!k)
+  uint8_t *key = (uint8_t *)malloc(RSA_MAX_PRIV_SIZE);
+  size_t key_len = RSA_MAX_PRIV_SIZE;
+
+  if (key == NULL)
     return Nan::ThrowError("Could not generate key.");
 
-  v8::Local<v8::Array> ret = Nan::New<v8::Array>();
-  Nan::Set(ret, 0, Nan::CopyBuffer((char *)k->nd, k->nl).ToLocalChecked());
-  Nan::Set(ret, 1, Nan::CopyBuffer((char *)k->ed, k->el).ToLocalChecked());
-  Nan::Set(ret, 2, Nan::CopyBuffer((char *)k->dd, k->dl).ToLocalChecked());
-  Nan::Set(ret, 3, Nan::CopyBuffer((char *)k->pd, k->pl).ToLocalChecked());
-  Nan::Set(ret, 4, Nan::CopyBuffer((char *)k->qd, k->ql).ToLocalChecked());
-  Nan::Set(ret, 5, Nan::CopyBuffer((char *)k->dpd, k->dpl).ToLocalChecked());
-  Nan::Set(ret, 6, Nan::CopyBuffer((char *)k->dqd, k->dql).ToLocalChecked());
-  Nan::Set(ret, 7, Nan::CopyBuffer((char *)k->qid, k->qil).ToLocalChecked());
+  if (!rsa_privkey_generate(key, &key_len, bits, exp, entropy)) {
+    free(key);
+    return Nan::ThrowError("Could not generate key.");
+  }
 
-  bcrypto_rsa_key_free(k);
+  key = (uint8_t *)realloc(key, key_len);
 
-  return info.GetReturnValue().Set(ret);
+  if (key == NULL)
+    return Nan::ThrowError("Could not generate key.");
+
+  return info.GetReturnValue().Set(
+    Nan::NewBuffer((char *)key, key_len).ToLocalChecked());
 }
 
 NAN_METHOD(BRSA::PrivateKeyGenerateAsync) {
@@ -95,539 +91,257 @@ NAN_METHOD(BRSA::PrivateKeyGenerateAsync) {
     return Nan::ThrowTypeError("Third argument must be a function.");
 
   uint32_t bits = Nan::To<uint32_t>(info[0]).FromJust();
-  uint64_t exp = Nan::To<int64_t>(info[1]).FromJust();
-
+  uint64_t exp = (uint64_t)Nan::To<int64_t>(info[1]).FromJust();
+  uint8_t entropy[32];
   v8::Local<v8::Function> callback = info[2].As<v8::Function>();
 
-  BRSAWorker *worker = new BRSAWorker(
-    (int)bits,
-    (unsigned long long)exp,
-    new Nan::Callback(callback)
-  );
+  if (!bcrypto_random(entropy, 32))
+    return Nan::ThrowError("Could not generate entropy.");
+
+  BRSAWorker *worker = new BRSAWorker(bits, exp, entropy,
+                                      new Nan::Callback(callback));
 
   Nan::AsyncQueueWorker(worker);
 }
 
-NAN_METHOD(BRSA::PrivateKeyCompute) {
-  if (info.Length() < 8)
-    return Nan::ThrowError("rsa.privateKeyCompute() requires arguments.");
+NAN_METHOD(BRSA::PrivateKeyBits) {
+  if (info.Length() < 1)
+    return Nan::ThrowError("rsa.privateKeyBits() requires arguments.");
 
-  v8::Local<v8::Object> nbuf = info[0].As<v8::Object>();
-  v8::Local<v8::Object> ebuf = info[1].As<v8::Object>();
-  v8::Local<v8::Object> dbuf = info[2].As<v8::Object>();
-  v8::Local<v8::Object> pbuf = info[3].As<v8::Object>();
-  v8::Local<v8::Object> qbuf = info[4].As<v8::Object>();
-  v8::Local<v8::Object> dpbuf = info[5].As<v8::Object>();
-  v8::Local<v8::Object> dqbuf = info[6].As<v8::Object>();
-  v8::Local<v8::Object> qibuf = info[7].As<v8::Object>();
+  v8::Local<v8::Object> key_buf = info[0].As<v8::Object>();
 
-  if (!node::Buffer::HasInstance(nbuf)
-      || !node::Buffer::HasInstance(ebuf)
-      || !node::Buffer::HasInstance(dbuf)
-      || !node::Buffer::HasInstance(pbuf)
-      || !node::Buffer::HasInstance(qbuf)
-      || !node::Buffer::HasInstance(dpbuf)
-      || !node::Buffer::HasInstance(dqbuf)
-      || !node::Buffer::HasInstance(qibuf)) {
+  if (!node::Buffer::HasInstance(key_buf))
     return Nan::ThrowTypeError("Arguments must be buffers.");
-  }
 
-  bcrypto_rsa_key_t priv;
-  bcrypto_rsa_key_init(&priv);
+  const uint8_t *key = (const uint8_t *)node::Buffer::Data(key_buf);
+  size_t key_len = node::Buffer::Length(key_buf);
+  size_t bits = rsa_privkey_bits(key, key_len);
 
-  priv.nd = (uint8_t *)node::Buffer::Data(nbuf);
-  priv.nl = node::Buffer::Length(nbuf);
+  if (bits == 0)
+    return Nan::ThrowTypeError("Invalid private key.");
 
-  priv.ed = (uint8_t *)node::Buffer::Data(ebuf);
-  priv.el = node::Buffer::Length(ebuf);
-
-  priv.dd = (uint8_t *)node::Buffer::Data(dbuf);
-  priv.dl = node::Buffer::Length(dbuf);
-
-  priv.pd = (uint8_t *)node::Buffer::Data(pbuf);
-  priv.pl = node::Buffer::Length(pbuf);
-
-  priv.qd = (uint8_t *)node::Buffer::Data(qbuf);
-  priv.ql = node::Buffer::Length(qbuf);
-
-  priv.dpd = (uint8_t *)node::Buffer::Data(dpbuf);
-  priv.dpl = node::Buffer::Length(dpbuf);
-
-  priv.dqd = (uint8_t *)node::Buffer::Data(dqbuf);
-  priv.dql = node::Buffer::Length(dqbuf);
-
-  priv.qid = (uint8_t *)node::Buffer::Data(qibuf);
-  priv.qil = node::Buffer::Length(qibuf);
-
-  bcrypto_rsa_key_t *k;
-
-  if (!bcrypto_rsa_privkey_compute(&k, &priv))
-    return Nan::ThrowError("Could not compute private key.");
-
-  if (!k)
-    return info.GetReturnValue().Set(Nan::Null());
-
-  v8::Local<v8::Array> ret = Nan::New<v8::Array>();
-  Nan::Set(ret, 0, Nan::CopyBuffer((char *)k->nd, k->nl).ToLocalChecked());
-  Nan::Set(ret, 1, Nan::CopyBuffer((char *)k->ed, k->el).ToLocalChecked());
-  Nan::Set(ret, 2, Nan::CopyBuffer((char *)k->dd, k->dl).ToLocalChecked());
-  Nan::Set(ret, 3, Nan::CopyBuffer((char *)k->dpd, k->dpl).ToLocalChecked());
-  Nan::Set(ret, 4, Nan::CopyBuffer((char *)k->dqd, k->dql).ToLocalChecked());
-  Nan::Set(ret, 5, Nan::CopyBuffer((char *)k->qid, k->qil).ToLocalChecked());
-
-  bcrypto_rsa_key_free(k);
-
-  return info.GetReturnValue().Set(ret);
+  info.GetReturnValue().Set(Nan::New<v8::Uint32>((uint32_t)bits));
 }
 
 NAN_METHOD(BRSA::PrivateKeyVerify) {
-  if (info.Length() < 8)
+  if (info.Length() < 1)
     return Nan::ThrowError("rsa.privateKeyVerify() requires arguments.");
 
-  v8::Local<v8::Object> nbuf = info[0].As<v8::Object>();
-  v8::Local<v8::Object> ebuf = info[1].As<v8::Object>();
-  v8::Local<v8::Object> dbuf = info[2].As<v8::Object>();
-  v8::Local<v8::Object> pbuf = info[3].As<v8::Object>();
-  v8::Local<v8::Object> qbuf = info[4].As<v8::Object>();
-  v8::Local<v8::Object> dpbuf = info[5].As<v8::Object>();
-  v8::Local<v8::Object> dqbuf = info[6].As<v8::Object>();
-  v8::Local<v8::Object> qibuf = info[7].As<v8::Object>();
+  v8::Local<v8::Object> key_buf = info[0].As<v8::Object>();
 
-  if (!node::Buffer::HasInstance(nbuf)
-      || !node::Buffer::HasInstance(ebuf)
-      || !node::Buffer::HasInstance(dbuf)
-      || !node::Buffer::HasInstance(pbuf)
-      || !node::Buffer::HasInstance(qbuf)
-      || !node::Buffer::HasInstance(dpbuf)
-      || !node::Buffer::HasInstance(dqbuf)
-      || !node::Buffer::HasInstance(qibuf)) {
+  if (!node::Buffer::HasInstance(key_buf))
     return Nan::ThrowTypeError("Arguments must be buffers.");
-  }
 
-  bcrypto_rsa_key_t priv;
-  bcrypto_rsa_key_init(&priv);
-
-  priv.nd = (uint8_t *)node::Buffer::Data(nbuf);
-  priv.nl = node::Buffer::Length(nbuf);
-
-  priv.ed = (uint8_t *)node::Buffer::Data(ebuf);
-  priv.el = node::Buffer::Length(ebuf);
-
-  priv.dd = (uint8_t *)node::Buffer::Data(dbuf);
-  priv.dl = node::Buffer::Length(dbuf);
-
-  priv.pd = (uint8_t *)node::Buffer::Data(pbuf);
-  priv.pl = node::Buffer::Length(pbuf);
-
-  priv.qd = (uint8_t *)node::Buffer::Data(qbuf);
-  priv.ql = node::Buffer::Length(qbuf);
-
-  priv.dpd = (uint8_t *)node::Buffer::Data(dpbuf);
-  priv.dpl = node::Buffer::Length(dpbuf);
-
-  priv.dqd = (uint8_t *)node::Buffer::Data(dqbuf);
-  priv.dql = node::Buffer::Length(dqbuf);
-
-  priv.qid = (uint8_t *)node::Buffer::Data(qibuf);
-  priv.qil = node::Buffer::Length(qibuf);
-
-  int result = bcrypto_rsa_privkey_verify(&priv);
-
-  return info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
-}
-
-NAN_METHOD(BRSA::PrivateKeyExport) {
-  if (info.Length() < 8)
-    return Nan::ThrowError("rsa.privateKeyExport() requires arguments.");
-
-  v8::Local<v8::Object> nbuf = info[0].As<v8::Object>();
-  v8::Local<v8::Object> ebuf = info[1].As<v8::Object>();
-  v8::Local<v8::Object> dbuf = info[2].As<v8::Object>();
-  v8::Local<v8::Object> pbuf = info[3].As<v8::Object>();
-  v8::Local<v8::Object> qbuf = info[4].As<v8::Object>();
-  v8::Local<v8::Object> dpbuf = info[5].As<v8::Object>();
-  v8::Local<v8::Object> dqbuf = info[6].As<v8::Object>();
-  v8::Local<v8::Object> qibuf = info[7].As<v8::Object>();
-
-  if (!node::Buffer::HasInstance(nbuf)
-      || !node::Buffer::HasInstance(ebuf)
-      || !node::Buffer::HasInstance(dbuf)
-      || !node::Buffer::HasInstance(pbuf)
-      || !node::Buffer::HasInstance(qbuf)
-      || !node::Buffer::HasInstance(dpbuf)
-      || !node::Buffer::HasInstance(dqbuf)
-      || !node::Buffer::HasInstance(qibuf)) {
-    return Nan::ThrowTypeError("Arguments must be buffers.");
-  }
-
-  bcrypto_rsa_key_t priv;
-  bcrypto_rsa_key_init(&priv);
-
-  priv.nd = (uint8_t *)node::Buffer::Data(nbuf);
-  priv.nl = node::Buffer::Length(nbuf);
-
-  priv.ed = (uint8_t *)node::Buffer::Data(ebuf);
-  priv.el = node::Buffer::Length(ebuf);
-
-  priv.dd = (uint8_t *)node::Buffer::Data(dbuf);
-  priv.dl = node::Buffer::Length(dbuf);
-
-  priv.pd = (uint8_t *)node::Buffer::Data(pbuf);
-  priv.pl = node::Buffer::Length(pbuf);
-
-  priv.qd = (uint8_t *)node::Buffer::Data(qbuf);
-  priv.ql = node::Buffer::Length(qbuf);
-
-  priv.dpd = (uint8_t *)node::Buffer::Data(dpbuf);
-  priv.dpl = node::Buffer::Length(dpbuf);
-
-  priv.dqd = (uint8_t *)node::Buffer::Data(dqbuf);
-  priv.dql = node::Buffer::Length(dqbuf);
-
-  priv.qid = (uint8_t *)node::Buffer::Data(qibuf);
-  priv.qil = node::Buffer::Length(qibuf);
-
-  uint8_t *out;
-  size_t out_len;
-
-  if (!bcrypto_rsa_privkey_export(&out, &out_len, &priv))
-    return Nan::ThrowError("Could not export private key.");
-
-  info.GetReturnValue().Set(
-    Nan::NewBuffer((char *)out, out_len).ToLocalChecked());
-}
-
-NAN_METHOD(BRSA::PrivateKeyImport) {
-  if (info.Length() < 1)
-    return Nan::ThrowError("rsa.privateKeyImport() requires arguments.");
-
-  v8::Local<v8::Object> rbuf = info[0].As<v8::Object>();
-
-  if (!node::Buffer::HasInstance(rbuf))
-    return Nan::ThrowTypeError("First argument must be a buffer.");
-
-  const uint8_t *rd = (const uint8_t *)node::Buffer::Data(rbuf);
-  size_t rl = node::Buffer::Length(rbuf);
-
-  bcrypto_rsa_key_t *k = bcrypto_rsa_privkey_import(rd, rl);
-
-  if (!k)
-    return Nan::ThrowError("Could not import private key.");
-
-  v8::Local<v8::Array> ret = Nan::New<v8::Array>();
-  Nan::Set(ret, 0, Nan::CopyBuffer((char *)k->nd, k->nl).ToLocalChecked());
-  Nan::Set(ret, 1, Nan::CopyBuffer((char *)k->ed, k->el).ToLocalChecked());
-  Nan::Set(ret, 2, Nan::CopyBuffer((char *)k->dd, k->dl).ToLocalChecked());
-  Nan::Set(ret, 3, Nan::CopyBuffer((char *)k->pd, k->pl).ToLocalChecked());
-  Nan::Set(ret, 4, Nan::CopyBuffer((char *)k->qd, k->ql).ToLocalChecked());
-  Nan::Set(ret, 5, Nan::CopyBuffer((char *)k->dpd, k->dpl).ToLocalChecked());
-  Nan::Set(ret, 6, Nan::CopyBuffer((char *)k->dqd, k->dql).ToLocalChecked());
-  Nan::Set(ret, 7, Nan::CopyBuffer((char *)k->qid, k->qil).ToLocalChecked());
-
-  bcrypto_rsa_key_free(k);
-
-  return info.GetReturnValue().Set(ret);
-}
-
-NAN_METHOD(BRSA::PrivateKeyExportPKCS8) {
-  if (info.Length() < 8)
-    return Nan::ThrowError("rsa.privateKeyExportPKCS8() requires arguments.");
-
-  v8::Local<v8::Object> nbuf = info[0].As<v8::Object>();
-  v8::Local<v8::Object> ebuf = info[1].As<v8::Object>();
-  v8::Local<v8::Object> dbuf = info[2].As<v8::Object>();
-  v8::Local<v8::Object> pbuf = info[3].As<v8::Object>();
-  v8::Local<v8::Object> qbuf = info[4].As<v8::Object>();
-  v8::Local<v8::Object> dpbuf = info[5].As<v8::Object>();
-  v8::Local<v8::Object> dqbuf = info[6].As<v8::Object>();
-  v8::Local<v8::Object> qibuf = info[7].As<v8::Object>();
-
-  if (!node::Buffer::HasInstance(nbuf)
-      || !node::Buffer::HasInstance(ebuf)
-      || !node::Buffer::HasInstance(dbuf)
-      || !node::Buffer::HasInstance(pbuf)
-      || !node::Buffer::HasInstance(qbuf)
-      || !node::Buffer::HasInstance(dpbuf)
-      || !node::Buffer::HasInstance(dqbuf)
-      || !node::Buffer::HasInstance(qibuf)) {
-    return Nan::ThrowTypeError("Arguments must be buffers.");
-  }
-
-  bcrypto_rsa_key_t priv;
-  bcrypto_rsa_key_init(&priv);
-
-  priv.nd = (uint8_t *)node::Buffer::Data(nbuf);
-  priv.nl = node::Buffer::Length(nbuf);
-
-  priv.ed = (uint8_t *)node::Buffer::Data(ebuf);
-  priv.el = node::Buffer::Length(ebuf);
-
-  priv.dd = (uint8_t *)node::Buffer::Data(dbuf);
-  priv.dl = node::Buffer::Length(dbuf);
-
-  priv.pd = (uint8_t *)node::Buffer::Data(pbuf);
-  priv.pl = node::Buffer::Length(pbuf);
-
-  priv.qd = (uint8_t *)node::Buffer::Data(qbuf);
-  priv.ql = node::Buffer::Length(qbuf);
-
-  priv.dpd = (uint8_t *)node::Buffer::Data(dpbuf);
-  priv.dpl = node::Buffer::Length(dpbuf);
-
-  priv.dqd = (uint8_t *)node::Buffer::Data(dqbuf);
-  priv.dql = node::Buffer::Length(dqbuf);
-
-  priv.qid = (uint8_t *)node::Buffer::Data(qibuf);
-  priv.qil = node::Buffer::Length(qibuf);
-
-  uint8_t *out;
-  size_t out_len;
-
-  if (!bcrypto_rsa_privkey_export_pkcs8(&out, &out_len, &priv))
-    return Nan::ThrowError("Could not export private key.");
-
-  info.GetReturnValue().Set(
-    Nan::NewBuffer((char *)out, out_len).ToLocalChecked());
-}
-
-NAN_METHOD(BRSA::PrivateKeyImportPKCS8) {
-  if (info.Length() < 1)
-    return Nan::ThrowError("rsa.privateKeyImportPKCS8() requires arguments.");
-
-  v8::Local<v8::Object> rbuf = info[0].As<v8::Object>();
-
-  if (!node::Buffer::HasInstance(rbuf))
-    return Nan::ThrowTypeError("First argument must be a buffer.");
-
-  const uint8_t *rd = (const uint8_t *)node::Buffer::Data(rbuf);
-  size_t rl = node::Buffer::Length(rbuf);
-
-  bcrypto_rsa_key_t *k = bcrypto_rsa_privkey_import_pkcs8(rd, rl);
-
-  if (!k)
-    return Nan::ThrowError("Could not import private key.");
-
-  v8::Local<v8::Array> ret = Nan::New<v8::Array>();
-  Nan::Set(ret, 0, Nan::CopyBuffer((char *)k->nd, k->nl).ToLocalChecked());
-  Nan::Set(ret, 1, Nan::CopyBuffer((char *)k->ed, k->el).ToLocalChecked());
-  Nan::Set(ret, 2, Nan::CopyBuffer((char *)k->dd, k->dl).ToLocalChecked());
-  Nan::Set(ret, 3, Nan::CopyBuffer((char *)k->pd, k->pl).ToLocalChecked());
-  Nan::Set(ret, 4, Nan::CopyBuffer((char *)k->qd, k->ql).ToLocalChecked());
-  Nan::Set(ret, 5, Nan::CopyBuffer((char *)k->dpd, k->dpl).ToLocalChecked());
-  Nan::Set(ret, 6, Nan::CopyBuffer((char *)k->dqd, k->dql).ToLocalChecked());
-  Nan::Set(ret, 7, Nan::CopyBuffer((char *)k->qid, k->qil).ToLocalChecked());
-
-  bcrypto_rsa_key_free(k);
-
-  return info.GetReturnValue().Set(ret);
-}
-
-NAN_METHOD(BRSA::PublicKeyVerify) {
-  if (info.Length() < 2)
-    return Nan::ThrowError("rsa.publicKeyVerify() requires arguments.");
-
-  v8::Local<v8::Object> nbuf = info[0].As<v8::Object>();
-  v8::Local<v8::Object> ebuf = info[1].As<v8::Object>();
-
-  if (!node::Buffer::HasInstance(nbuf)
-      || !node::Buffer::HasInstance(ebuf)) {
-    return Nan::ThrowTypeError("Arguments must be buffers.");
-  }
-
-  bcrypto_rsa_key_t pub;
-  bcrypto_rsa_key_init(&pub);
-
-  pub.nd = (uint8_t *)node::Buffer::Data(nbuf);
-  pub.nl = node::Buffer::Length(nbuf);
-
-  pub.ed = (uint8_t *)node::Buffer::Data(ebuf);
-  pub.el = node::Buffer::Length(ebuf);
-
-  int result = bcrypto_rsa_pubkey_verify(&pub);
+  const uint8_t *key = (const uint8_t *)node::Buffer::Data(key_buf);
+  size_t key_len = node::Buffer::Length(key_buf);
+  int result = rsa_privkey_verify(key, key_len);
 
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
 
-NAN_METHOD(BRSA::PublicKeyExport) {
-  if (info.Length() < 2)
-    return Nan::ThrowError("rsa.publicKeyExport() requires arguments.");
+NAN_METHOD(BRSA::PrivateKeyRecover) {
+  if (info.Length() < 1)
+    return Nan::ThrowError("rsa.privateKeyRecover() requires arguments.");
 
-  v8::Local<v8::Object> nbuf = info[0].As<v8::Object>();
-  v8::Local<v8::Object> ebuf = info[1].As<v8::Object>();
+  v8::Local<v8::Object> key_buf = info[0].As<v8::Object>();
 
-  if (!node::Buffer::HasInstance(nbuf)
-      || !node::Buffer::HasInstance(ebuf)) {
+  if (!node::Buffer::HasInstance(key_buf))
     return Nan::ThrowTypeError("Arguments must be buffers.");
+
+  const uint8_t *key = (const uint8_t *)node::Buffer::Data(key_buf);
+  size_t key_len = node::Buffer::Length(key_buf);
+  uint8_t entropy[32];
+
+  if (!bcrypto_random(entropy, 32))
+    return Nan::ThrowError("Could not generate entropy.");
+
+  uint8_t *out = (uint8_t *)malloc(RSA_MAX_PRIV_SIZE);
+  size_t out_len = RSA_MAX_PRIV_SIZE;
+
+  if (out == NULL)
+    return Nan::ThrowError("Could not recover key.");
+
+  if (!rsa_privkey_recover(out, &out_len, key, key_len, entropy)) {
+    free(out);
+    return Nan::ThrowError("Could not recover key.");
   }
 
-  bcrypto_rsa_key_t pub;
-  bcrypto_rsa_key_init(&pub);
+  out = (uint8_t *)realloc(out, out_len);
 
-  pub.nd = (uint8_t *)node::Buffer::Data(nbuf);
-  pub.nl = node::Buffer::Length(nbuf);
+  if (out == NULL)
+    return Nan::ThrowError("Could not recover key.");
 
-  pub.ed = (uint8_t *)node::Buffer::Data(ebuf);
-  pub.el = node::Buffer::Length(ebuf);
-
-  uint8_t *out;
-  size_t out_len;
-
-  if (!bcrypto_rsa_pubkey_export(&out, &out_len, &pub))
-    return Nan::ThrowError("Could not export public key.");
-
-  info.GetReturnValue().Set(
+  return info.GetReturnValue().Set(
     Nan::NewBuffer((char *)out, out_len).ToLocalChecked());
 }
 
-NAN_METHOD(BRSA::PublicKeyImport) {
+NAN_METHOD(BRSA::PrivateKeyNormalize) {
   if (info.Length() < 1)
-    return Nan::ThrowError("rsa.publicKeyImport() requires arguments.");
+    return Nan::ThrowError("rsa.privateKeyNormalize() requires arguments.");
 
-  v8::Local<v8::Object> rbuf = info[0].As<v8::Object>();
+  v8::Local<v8::Object> key_buf = info[0].As<v8::Object>();
 
-  if (!node::Buffer::HasInstance(rbuf))
-    return Nan::ThrowTypeError("First argument must be a buffer.");
-
-  const uint8_t *rd = (const uint8_t *)node::Buffer::Data(rbuf);
-  size_t rl = node::Buffer::Length(rbuf);
-
-  bcrypto_rsa_key_t *k = bcrypto_rsa_pubkey_import(rd, rl);
-
-  if (!k)
-    return Nan::ThrowError("Could not import public key.");
-
-  v8::Local<v8::Array> ret = Nan::New<v8::Array>();
-  Nan::Set(ret, 0, Nan::CopyBuffer((char *)k->nd, k->nl).ToLocalChecked());
-  Nan::Set(ret, 1, Nan::CopyBuffer((char *)k->ed, k->el).ToLocalChecked());
-
-  bcrypto_rsa_key_free(k);
-
-  return info.GetReturnValue().Set(ret);
-}
-
-NAN_METHOD(BRSA::PublicKeyExportSPKI) {
-  if (info.Length() < 2)
-    return Nan::ThrowError("rsa.publicKeyExportSPKI() requires arguments.");
-
-  v8::Local<v8::Object> nbuf = info[0].As<v8::Object>();
-  v8::Local<v8::Object> ebuf = info[1].As<v8::Object>();
-
-  if (!node::Buffer::HasInstance(nbuf)
-      || !node::Buffer::HasInstance(ebuf)) {
+  if (!node::Buffer::HasInstance(key_buf))
     return Nan::ThrowTypeError("Arguments must be buffers.");
+
+  const uint8_t *key = (const uint8_t *)node::Buffer::Data(key_buf);
+  size_t key_len = node::Buffer::Length(key_buf);
+  uint8_t *out = (uint8_t *)malloc(RSA_MAX_PRIV_SIZE);
+  size_t out_len = RSA_MAX_PRIV_SIZE;
+
+  if (out == NULL)
+    return Nan::ThrowError("Could not normalize key.");
+
+  if (!rsa_privkey_normalize(out, &out_len, key, key_len)) {
+    free(out);
+    return Nan::ThrowError("Could not normalize key.");
   }
 
-  bcrypto_rsa_key_t pub;
-  bcrypto_rsa_key_init(&pub);
+  out = (uint8_t *)realloc(out, out_len);
 
-  pub.nd = (uint8_t *)node::Buffer::Data(nbuf);
-  pub.nl = node::Buffer::Length(nbuf);
+  if (out == NULL)
+    return Nan::ThrowError("Could not normalize key.");
 
-  pub.ed = (uint8_t *)node::Buffer::Data(ebuf);
-  pub.el = node::Buffer::Length(ebuf);
-
-  uint8_t *out;
-  size_t out_len;
-
-  if (!bcrypto_rsa_pubkey_export_spki(&out, &out_len, &pub))
-    return Nan::ThrowError("Could not export public key.");
-
-  info.GetReturnValue().Set(
+  return info.GetReturnValue().Set(
     Nan::NewBuffer((char *)out, out_len).ToLocalChecked());
 }
 
-NAN_METHOD(BRSA::PublicKeyImportSPKI) {
+NAN_METHOD(BRSA::PublicKeyCreate) {
   if (info.Length() < 1)
-    return Nan::ThrowError("rsa.publicKeyImportSPKI() requires arguments.");
+    return Nan::ThrowError("rsa.publicKeyCreate() requires arguments.");
 
-  v8::Local<v8::Object> rbuf = info[0].As<v8::Object>();
+  v8::Local<v8::Object> key_buf = info[0].As<v8::Object>();
 
-  if (!node::Buffer::HasInstance(rbuf))
-    return Nan::ThrowTypeError("First argument must be a buffer.");
+  if (!node::Buffer::HasInstance(key_buf))
+    return Nan::ThrowTypeError("Arguments must be buffers.");
 
-  const uint8_t *rd = (const uint8_t *)node::Buffer::Data(rbuf);
-  size_t rl = node::Buffer::Length(rbuf);
+  const uint8_t *key = (const uint8_t *)node::Buffer::Data(key_buf);
+  size_t key_len = node::Buffer::Length(key_buf);
+  uint8_t *out = (uint8_t *)malloc(RSA_MAX_PUB_SIZE);
+  size_t out_len = RSA_MAX_PUB_SIZE;
 
-  bcrypto_rsa_key_t *k = bcrypto_rsa_pubkey_import_spki(rd, rl);
+  if (out == NULL)
+    return Nan::ThrowError("Could not create key.");
 
-  if (!k)
-    return Nan::ThrowError("Could not import public key.");
+  if (!rsa_pubkey_create(out, &out_len, key, key_len)) {
+    free(out);
+    return Nan::ThrowError("Could not create key.");
+  }
 
-  v8::Local<v8::Array> ret = Nan::New<v8::Array>();
-  Nan::Set(ret, 0, Nan::CopyBuffer((char *)k->nd, k->nl).ToLocalChecked());
-  Nan::Set(ret, 1, Nan::CopyBuffer((char *)k->ed, k->el).ToLocalChecked());
+  out = (uint8_t *)realloc(out, out_len);
 
-  bcrypto_rsa_key_free(k);
+  if (out == NULL)
+    return Nan::ThrowError("Could not create key.");
 
-  return info.GetReturnValue().Set(ret);
+  return info.GetReturnValue().Set(
+    Nan::NewBuffer((char *)out, out_len).ToLocalChecked());
+}
+
+NAN_METHOD(BRSA::PublicKeyBits) {
+  if (info.Length() < 1)
+    return Nan::ThrowError("rsa.publicKeyBits() requires arguments.");
+
+  v8::Local<v8::Object> key_buf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(key_buf))
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+
+  const uint8_t *key = (const uint8_t *)node::Buffer::Data(key_buf);
+  size_t key_len = node::Buffer::Length(key_buf);
+  size_t bits = rsa_pubkey_bits(key, key_len);
+
+  if (bits == 0)
+    return Nan::ThrowTypeError("Invalid public key.");
+
+  info.GetReturnValue().Set(Nan::New<v8::Uint32>((uint32_t)bits));
+}
+
+NAN_METHOD(BRSA::PublicKeyVerify) {
+  if (info.Length() < 1)
+    return Nan::ThrowError("rsa.publicKeyVerify() requires arguments.");
+
+  v8::Local<v8::Object> key_buf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(key_buf))
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+
+  const uint8_t *key = (const uint8_t *)node::Buffer::Data(key_buf);
+  size_t key_len = node::Buffer::Length(key_buf);
+  int result = rsa_pubkey_verify(key, key_len);
+
+  info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
+}
+
+NAN_METHOD(BRSA::PublicKeyNormalize) {
+  if (info.Length() < 1)
+    return Nan::ThrowError("rsa.publicKeyNormalize() requires arguments.");
+
+  v8::Local<v8::Object> key_buf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(key_buf))
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+
+  const uint8_t *key = (const uint8_t *)node::Buffer::Data(key_buf);
+  size_t key_len = node::Buffer::Length(key_buf);
+  uint8_t *out = (uint8_t *)malloc(RSA_MAX_PUB_SIZE);
+  size_t out_len = RSA_MAX_PUB_SIZE;
+
+  if (out == NULL)
+    return Nan::ThrowError("Could not normalize key.");
+
+  if (!rsa_pubkey_normalize(out, &out_len, key, key_len)) {
+    free(out);
+    return Nan::ThrowError("Could not normalize key.");
+  }
+
+  out = (uint8_t *)realloc(out, out_len);
+
+  if (out == NULL)
+    return Nan::ThrowError("Could not normalize key.");
+
+  return info.GetReturnValue().Set(
+    Nan::NewBuffer((char *)out, out_len).ToLocalChecked());
 }
 
 NAN_METHOD(BRSA::Sign) {
-  if (info.Length() < 10)
+  if (info.Length() < 3)
     return Nan::ThrowError("rsa.sign() requires arguments.");
 
-  if (!info[0]->IsString())
-    return Nan::ThrowTypeError("First argument must be a string.");
+  if (!info[0]->IsNumber())
+    return Nan::ThrowTypeError("First argument must be a number.");
 
-  Nan::Utf8String alg_(info[0]);
-  const char *alg = (const char *)*alg_;
+  v8::Local<v8::Object> msg_buf = info[1].As<v8::Object>();
+  v8::Local<v8::Object> key_buf = info[2].As<v8::Object>();
 
-  v8::Local<v8::Object> mbuf = info[1].As<v8::Object>();
-  v8::Local<v8::Object> nbuf = info[2].As<v8::Object>();
-  v8::Local<v8::Object> ebuf = info[3].As<v8::Object>();
-  v8::Local<v8::Object> dbuf = info[4].As<v8::Object>();
-  v8::Local<v8::Object> pbuf = info[5].As<v8::Object>();
-  v8::Local<v8::Object> qbuf = info[6].As<v8::Object>();
-  v8::Local<v8::Object> dpbuf = info[7].As<v8::Object>();
-  v8::Local<v8::Object> dqbuf = info[8].As<v8::Object>();
-  v8::Local<v8::Object> qibuf = info[9].As<v8::Object>();
-
-  if (!node::Buffer::HasInstance(mbuf)
-      || !node::Buffer::HasInstance(nbuf)
-      || !node::Buffer::HasInstance(ebuf)
-      || !node::Buffer::HasInstance(dbuf)
-      || !node::Buffer::HasInstance(pbuf)
-      || !node::Buffer::HasInstance(qbuf)
-      || !node::Buffer::HasInstance(dpbuf)
-      || !node::Buffer::HasInstance(dqbuf)
-      || !node::Buffer::HasInstance(qibuf)) {
+  if (!node::Buffer::HasInstance(msg_buf)
+      || !node::Buffer::HasInstance(key_buf)) {
     return Nan::ThrowTypeError("Arguments must be buffers.");
   }
 
-  bcrypto_rsa_key_t priv;
-  bcrypto_rsa_key_init(&priv);
+  int type = (int)Nan::To<int32_t>(info[0]).FromJust();
+  const uint8_t *msg = (const uint8_t *)node::Buffer::Data(msg_buf);
+  size_t msg_len = node::Buffer::Length(msg_buf);
+  const uint8_t *key = (const uint8_t *)node::Buffer::Data(key_buf);
+  size_t key_len = node::Buffer::Length(key_buf);
+  uint8_t entropy[32];
 
-  const uint8_t *md = (const uint8_t *)node::Buffer::Data(mbuf);
-  size_t ml = node::Buffer::Length(mbuf);
+  if (!bcrypto_random(entropy, 32))
+    return Nan::ThrowError("Could not generate entropy.");
 
-  priv.nd = (uint8_t *)node::Buffer::Data(nbuf);
-  priv.nl = node::Buffer::Length(nbuf);
+  uint8_t *sig = (uint8_t *)malloc(RSA_MAX_MOD_SIZE);
+  size_t sig_len = RSA_MAX_MOD_SIZE;
 
-  priv.ed = (uint8_t *)node::Buffer::Data(ebuf);
-  priv.el = node::Buffer::Length(ebuf);
+  if (sig == NULL)
+    return Nan::ThrowError("Could not sign message.");
 
-  priv.dd = (uint8_t *)node::Buffer::Data(dbuf);
-  priv.dl = node::Buffer::Length(dbuf);
+  if (!rsa_sign(sig, &sig_len, type, msg, msg_len, key, key_len, entropy)) {
+    free(sig);
+    return Nan::ThrowError("Could not sign message.");
+  }
 
-  priv.pd = (uint8_t *)node::Buffer::Data(pbuf);
-  priv.pl = node::Buffer::Length(pbuf);
+  sig = (uint8_t *)realloc(sig, sig_len);
 
-  priv.qd = (uint8_t *)node::Buffer::Data(qbuf);
-  priv.ql = node::Buffer::Length(qbuf);
-
-  priv.dpd = (uint8_t *)node::Buffer::Data(dpbuf);
-  priv.dpl = node::Buffer::Length(dpbuf);
-
-  priv.dqd = (uint8_t *)node::Buffer::Data(dqbuf);
-  priv.dql = node::Buffer::Length(dqbuf);
-
-  priv.qid = (uint8_t *)node::Buffer::Data(qibuf);
-  priv.qil = node::Buffer::Length(qibuf);
-
-  uint8_t *sig;
-  size_t sig_len;
-
-  if (!bcrypto_rsa_sign(&sig, &sig_len, alg, md, ml, &priv))
+  if (sig == NULL)
     return Nan::ThrowError("Could not sign message.");
 
   info.GetReturnValue().Set(
@@ -635,77 +349,69 @@ NAN_METHOD(BRSA::Sign) {
 }
 
 NAN_METHOD(BRSA::Verify) {
-  if (info.Length() < 5)
+  if (info.Length() < 4)
     return Nan::ThrowError("rsa.verify() requires arguments.");
 
-  if (!info[0]->IsString())
-    return Nan::ThrowTypeError("First argument must be a string.");
+  if (!info[0]->IsNumber())
+    return Nan::ThrowTypeError("First argument must be a number.");
 
-  Nan::Utf8String alg_(info[0]);
-  const char *alg = (const char *)*alg_;
+  v8::Local<v8::Object> msg_buf = info[1].As<v8::Object>();
+  v8::Local<v8::Object> sig_buf = info[2].As<v8::Object>();
+  v8::Local<v8::Object> key_buf = info[3].As<v8::Object>();
 
-  v8::Local<v8::Object> mbuf = info[1].As<v8::Object>();
-  v8::Local<v8::Object> sbuf = info[2].As<v8::Object>();
-  v8::Local<v8::Object> nbuf = info[3].As<v8::Object>();
-  v8::Local<v8::Object> ebuf = info[4].As<v8::Object>();
-
-  if (!node::Buffer::HasInstance(mbuf)
-      || !node::Buffer::HasInstance(sbuf)
-      || !node::Buffer::HasInstance(nbuf)
-      || !node::Buffer::HasInstance(ebuf)) {
+  if (!node::Buffer::HasInstance(msg_buf)
+      || !node::Buffer::HasInstance(sig_buf)
+      || !node::Buffer::HasInstance(key_buf)) {
     return Nan::ThrowTypeError("Arguments must be buffers.");
   }
 
-  const uint8_t *md = (const uint8_t *)node::Buffer::Data(mbuf);
-  size_t ml = node::Buffer::Length(mbuf);
-
-  const uint8_t *sd = (const uint8_t *)node::Buffer::Data(sbuf);
-  size_t sl = node::Buffer::Length(sbuf);
-
-  bcrypto_rsa_key_t pub;
-  bcrypto_rsa_key_init(&pub);
-
-  pub.nd = (uint8_t *)node::Buffer::Data(nbuf);
-  pub.nl = node::Buffer::Length(nbuf);
-
-  pub.ed = (uint8_t *)node::Buffer::Data(ebuf);
-  pub.el = node::Buffer::Length(ebuf);
-
-  int result = bcrypto_rsa_verify(alg, md, ml, sd, sl, &pub);
+  int type = (int)Nan::To<int32_t>(info[0]).FromJust();
+  const uint8_t *msg = (const uint8_t *)node::Buffer::Data(msg_buf);
+  size_t msg_len = node::Buffer::Length(msg_buf);
+  const uint8_t *sig = (const uint8_t *)node::Buffer::Data(sig_buf);
+  size_t sig_len = node::Buffer::Length(sig_buf);
+  const uint8_t *key = (const uint8_t *)node::Buffer::Data(key_buf);
+  size_t key_len = node::Buffer::Length(key_buf);
+  int result = rsa_verify(type, msg, msg_len, sig, sig_len, key, key_len, 1);
 
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
 
 NAN_METHOD(BRSA::Encrypt) {
-  if (info.Length() < 3)
+  if (info.Length() < 2)
     return Nan::ThrowError("rsa.encrypt() requires arguments.");
 
-  v8::Local<v8::Object> mbuf = info[0].As<v8::Object>();
-  v8::Local<v8::Object> nbuf = info[1].As<v8::Object>();
-  v8::Local<v8::Object> ebuf = info[2].As<v8::Object>();
+  v8::Local<v8::Object> msg_buf = info[0].As<v8::Object>();
+  v8::Local<v8::Object> key_buf = info[1].As<v8::Object>();
 
-  if (!node::Buffer::HasInstance(mbuf)
-      || !node::Buffer::HasInstance(nbuf)
-      || !node::Buffer::HasInstance(ebuf)) {
+  if (!node::Buffer::HasInstance(msg_buf)
+      || !node::Buffer::HasInstance(key_buf)) {
     return Nan::ThrowTypeError("Arguments must be buffers.");
   }
 
-  const uint8_t *md = (const uint8_t *)node::Buffer::Data(mbuf);
-  size_t ml = node::Buffer::Length(mbuf);
+  const uint8_t *msg = (const uint8_t *)node::Buffer::Data(msg_buf);
+  size_t msg_len = node::Buffer::Length(msg_buf);
+  const uint8_t *key = (const uint8_t *)node::Buffer::Data(key_buf);
+  size_t key_len = node::Buffer::Length(key_buf);
+  uint8_t entropy[32];
 
-  bcrypto_rsa_key_t pub;
-  bcrypto_rsa_key_init(&pub);
+  if (!bcrypto_random(entropy, 32))
+    return Nan::ThrowError("Could not generate entropy.");
 
-  pub.nd = (uint8_t *)node::Buffer::Data(nbuf);
-  pub.nl = node::Buffer::Length(nbuf);
+  uint8_t *ct = (uint8_t *)malloc(RSA_MAX_MOD_SIZE);
+  size_t ct_len = RSA_MAX_MOD_SIZE;
 
-  pub.ed = (uint8_t *)node::Buffer::Data(ebuf);
-  pub.el = node::Buffer::Length(ebuf);
+  if (ct == NULL)
+    return Nan::ThrowError("Could not encrypt message.");
 
-  uint8_t *ct;
-  size_t ct_len;
+  if (!rsa_encrypt(ct, &ct_len, msg, msg_len, key, key_len, entropy)) {
+    free(ct);
+    return Nan::ThrowError("Could not encrypt message.");
+  }
 
-  if (!bcrypto_rsa_encrypt(&ct, &ct_len, md, ml, &pub))
+  ct = (uint8_t *)realloc(ct, ct_len);
+
+  if (ct == NULL)
     return Nan::ThrowError("Could not encrypt message.");
 
   info.GetReturnValue().Set(
@@ -713,65 +419,40 @@ NAN_METHOD(BRSA::Encrypt) {
 }
 
 NAN_METHOD(BRSA::Decrypt) {
-  if (info.Length() < 9)
+  if (info.Length() < 2)
     return Nan::ThrowError("rsa.decrypt() requires arguments.");
 
-  v8::Local<v8::Object> mbuf = info[0].As<v8::Object>();
-  v8::Local<v8::Object> nbuf = info[1].As<v8::Object>();
-  v8::Local<v8::Object> ebuf = info[2].As<v8::Object>();
-  v8::Local<v8::Object> dbuf = info[3].As<v8::Object>();
-  v8::Local<v8::Object> pbuf = info[4].As<v8::Object>();
-  v8::Local<v8::Object> qbuf = info[5].As<v8::Object>();
-  v8::Local<v8::Object> dpbuf = info[6].As<v8::Object>();
-  v8::Local<v8::Object> dqbuf = info[7].As<v8::Object>();
-  v8::Local<v8::Object> qibuf = info[8].As<v8::Object>();
+  v8::Local<v8::Object> msg_buf = info[0].As<v8::Object>();
+  v8::Local<v8::Object> key_buf = info[1].As<v8::Object>();
 
-  if (!node::Buffer::HasInstance(mbuf)
-      || !node::Buffer::HasInstance(nbuf)
-      || !node::Buffer::HasInstance(ebuf)
-      || !node::Buffer::HasInstance(dbuf)
-      || !node::Buffer::HasInstance(pbuf)
-      || !node::Buffer::HasInstance(qbuf)
-      || !node::Buffer::HasInstance(dpbuf)
-      || !node::Buffer::HasInstance(dqbuf)
-      || !node::Buffer::HasInstance(qibuf)) {
+  if (!node::Buffer::HasInstance(msg_buf)
+      || !node::Buffer::HasInstance(key_buf)) {
     return Nan::ThrowTypeError("Arguments must be buffers.");
   }
 
-  bcrypto_rsa_key_t priv;
-  bcrypto_rsa_key_init(&priv);
+  const uint8_t *msg = (const uint8_t *)node::Buffer::Data(msg_buf);
+  size_t msg_len = node::Buffer::Length(msg_buf);
+  const uint8_t *key = (const uint8_t *)node::Buffer::Data(key_buf);
+  size_t key_len = node::Buffer::Length(key_buf);
+  uint8_t entropy[32];
 
-  const uint8_t *md = (const uint8_t *)node::Buffer::Data(mbuf);
-  size_t ml = node::Buffer::Length(mbuf);
+  if (!bcrypto_random(entropy, 32))
+    return Nan::ThrowError("Could not generate entropy.");
 
-  priv.nd = (uint8_t *)node::Buffer::Data(nbuf);
-  priv.nl = node::Buffer::Length(nbuf);
+  uint8_t *pt = (uint8_t *)malloc(RSA_MAX_MOD_SIZE);
+  size_t pt_len = RSA_MAX_MOD_SIZE;
 
-  priv.ed = (uint8_t *)node::Buffer::Data(ebuf);
-  priv.el = node::Buffer::Length(ebuf);
+  if (pt == NULL)
+    return Nan::ThrowError("Could not decrypt message.");
 
-  priv.dd = (uint8_t *)node::Buffer::Data(dbuf);
-  priv.dl = node::Buffer::Length(dbuf);
+  if (!rsa_decrypt(pt, &pt_len, msg, msg_len, key, key_len, 1, entropy)) {
+    free(pt);
+    return Nan::ThrowError("Could not decrypt message.");
+  }
 
-  priv.pd = (uint8_t *)node::Buffer::Data(pbuf);
-  priv.pl = node::Buffer::Length(pbuf);
+  pt = (uint8_t *)realloc(pt, pt_len);
 
-  priv.qd = (uint8_t *)node::Buffer::Data(qbuf);
-  priv.ql = node::Buffer::Length(qbuf);
-
-  priv.dpd = (uint8_t *)node::Buffer::Data(dpbuf);
-  priv.dpl = node::Buffer::Length(dpbuf);
-
-  priv.dqd = (uint8_t *)node::Buffer::Data(dqbuf);
-  priv.dql = node::Buffer::Length(dqbuf);
-
-  priv.qid = (uint8_t *)node::Buffer::Data(qibuf);
-  priv.qil = node::Buffer::Length(qibuf);
-
-  uint8_t *pt;
-  size_t pt_len;
-
-  if (!bcrypto_rsa_decrypt(&pt, &pt_len, md, ml, &priv))
+  if (pt_len != 0 && pt == NULL)
     return Nan::ThrowError("Could not decrypt message.");
 
   info.GetReturnValue().Set(
@@ -779,54 +460,56 @@ NAN_METHOD(BRSA::Decrypt) {
 }
 
 NAN_METHOD(BRSA::EncryptOAEP) {
-  if (info.Length() < 4)
+  if (info.Length() < 3)
     return Nan::ThrowError("rsa.encryptOAEP() requires arguments.");
 
-  if (!info[0]->IsString())
-    return Nan::ThrowTypeError("First argument must be a string.");
+  if (!info[0]->IsNumber())
+    return Nan::ThrowTypeError("First argument must be a number.");
 
-  Nan::Utf8String alg_(info[0]);
-  const char *alg = (const char *)*alg_;
+  v8::Local<v8::Object> msg_buf = info[1].As<v8::Object>();
+  v8::Local<v8::Object> key_buf = info[2].As<v8::Object>();
 
-  v8::Local<v8::Object> mbuf = info[1].As<v8::Object>();
-  v8::Local<v8::Object> nbuf = info[2].As<v8::Object>();
-  v8::Local<v8::Object> ebuf = info[3].As<v8::Object>();
-
-  if (!node::Buffer::HasInstance(mbuf)
-      || !node::Buffer::HasInstance(nbuf)
-      || !node::Buffer::HasInstance(ebuf)) {
+  if (!node::Buffer::HasInstance(msg_buf)
+      || !node::Buffer::HasInstance(key_buf)) {
     return Nan::ThrowTypeError("Arguments must be buffers.");
   }
 
-  const uint8_t *md = (const uint8_t *)node::Buffer::Data(mbuf);
-  size_t ml = node::Buffer::Length(mbuf);
+  int type = (int)Nan::To<int32_t>(info[0]).FromJust();
+  const uint8_t *msg = (const uint8_t *)node::Buffer::Data(msg_buf);
+  size_t msg_len = node::Buffer::Length(msg_buf);
+  const uint8_t *key = (const uint8_t *)node::Buffer::Data(key_buf);
+  size_t key_len = node::Buffer::Length(key_buf);
+  const uint8_t *label = NULL;
+  size_t label_len = 0;
+  uint8_t entropy[32];
 
-  bcrypto_rsa_key_t pub;
-  bcrypto_rsa_key_init(&pub);
+  if (info.Length() > 3 && !IsNull(info[3])) {
+    v8::Local<v8::Object> label_buf = info[3].As<v8::Object>();
 
-  pub.nd = (uint8_t *)node::Buffer::Data(nbuf);
-  pub.nl = node::Buffer::Length(nbuf);
+    if (!node::Buffer::HasInstance(label_buf))
+      return Nan::ThrowTypeError("Fourth argument must be a buffer.");
 
-  pub.ed = (uint8_t *)node::Buffer::Data(ebuf);
-  pub.el = node::Buffer::Length(ebuf);
-
-  const uint8_t *ld = NULL;
-  size_t ll = 0;
-
-  if (info.Length() > 4 && !IsNull(info[4])) {
-    v8::Local<v8::Object> lbuf = info[4].As<v8::Object>();
-
-    if (!node::Buffer::HasInstance(lbuf))
-      return Nan::ThrowTypeError("Fifth argument must be a buffer.");
-
-    ld = (const uint8_t *)node::Buffer::Data(lbuf);
-    ll = node::Buffer::Length(lbuf);
+    label = (const uint8_t *)node::Buffer::Data(label_buf);
+    label_len = node::Buffer::Length(label_buf);
   }
 
-  uint8_t *ct;
-  size_t ct_len;
+  if (!bcrypto_random(entropy, 32))
+    return Nan::ThrowError("Could not generate entropy.");
 
-  if (!bcrypto_rsa_encrypt_oaep(&ct, &ct_len, alg, md, ml, &pub, ld, ll))
+  uint8_t *ct = (uint8_t *)malloc(RSA_MAX_MOD_SIZE);
+  size_t ct_len = RSA_MAX_MOD_SIZE;
+
+  if (ct == NULL)
+    return Nan::ThrowError("Could not encrypt message.");
+
+  if (!rsa_encrypt_oaep(ct, &ct_len, type, msg, msg_len, key, key_len, label, label_len, entropy)) {
+    free(ct);
+    return Nan::ThrowError("Could not encrypt message.");
+  }
+
+  ct = (uint8_t *)realloc(ct, ct_len);
+
+  if (ct == NULL)
     return Nan::ThrowError("Could not encrypt message.");
 
   info.GetReturnValue().Set(
@@ -834,165 +517,109 @@ NAN_METHOD(BRSA::EncryptOAEP) {
 }
 
 NAN_METHOD(BRSA::DecryptOAEP) {
-  if (info.Length() < 10)
+  if (info.Length() < 3)
     return Nan::ThrowError("rsa.decryptOAEP() requires arguments.");
 
-  if (!info[0]->IsString())
-    return Nan::ThrowTypeError("First argument must be a string.");
+  if (!info[0]->IsNumber())
+    return Nan::ThrowTypeError("First argument must be a number.");
 
-  Nan::Utf8String alg_(info[0]);
-  const char *alg = (const char *)*alg_;
+  v8::Local<v8::Object> msg_buf = info[1].As<v8::Object>();
+  v8::Local<v8::Object> key_buf = info[2].As<v8::Object>();
 
-  v8::Local<v8::Object> mbuf = info[1].As<v8::Object>();
-  v8::Local<v8::Object> nbuf = info[2].As<v8::Object>();
-  v8::Local<v8::Object> ebuf = info[3].As<v8::Object>();
-  v8::Local<v8::Object> dbuf = info[4].As<v8::Object>();
-  v8::Local<v8::Object> pbuf = info[5].As<v8::Object>();
-  v8::Local<v8::Object> qbuf = info[6].As<v8::Object>();
-  v8::Local<v8::Object> dpbuf = info[7].As<v8::Object>();
-  v8::Local<v8::Object> dqbuf = info[8].As<v8::Object>();
-  v8::Local<v8::Object> qibuf = info[9].As<v8::Object>();
-
-  if (!node::Buffer::HasInstance(mbuf)
-      || !node::Buffer::HasInstance(nbuf)
-      || !node::Buffer::HasInstance(ebuf)
-      || !node::Buffer::HasInstance(dbuf)
-      || !node::Buffer::HasInstance(pbuf)
-      || !node::Buffer::HasInstance(qbuf)
-      || !node::Buffer::HasInstance(dpbuf)
-      || !node::Buffer::HasInstance(dqbuf)
-      || !node::Buffer::HasInstance(qibuf)) {
+  if (!node::Buffer::HasInstance(msg_buf)
+      || !node::Buffer::HasInstance(key_buf)) {
     return Nan::ThrowTypeError("Arguments must be buffers.");
   }
 
-  bcrypto_rsa_key_t priv;
-  bcrypto_rsa_key_init(&priv);
+  int type = (int)Nan::To<int32_t>(info[0]).FromJust();
+  const uint8_t *msg = (const uint8_t *)node::Buffer::Data(msg_buf);
+  size_t msg_len = node::Buffer::Length(msg_buf);
+  const uint8_t *key = (const uint8_t *)node::Buffer::Data(key_buf);
+  size_t key_len = node::Buffer::Length(key_buf);
+  const uint8_t *label = NULL;
+  size_t label_len = 0;
+  uint8_t entropy[32];
 
-  const uint8_t *md = (const uint8_t *)node::Buffer::Data(mbuf);
-  size_t ml = node::Buffer::Length(mbuf);
+  if (info.Length() > 3 && !IsNull(info[3])) {
+    v8::Local<v8::Object> label_buf = info[3].As<v8::Object>();
 
-  priv.nd = (uint8_t *)node::Buffer::Data(nbuf);
-  priv.nl = node::Buffer::Length(nbuf);
+    if (!node::Buffer::HasInstance(label_buf))
+      return Nan::ThrowTypeError("Fourth argument must be a buffer.");
 
-  priv.ed = (uint8_t *)node::Buffer::Data(ebuf);
-  priv.el = node::Buffer::Length(ebuf);
-
-  priv.dd = (uint8_t *)node::Buffer::Data(dbuf);
-  priv.dl = node::Buffer::Length(dbuf);
-
-  priv.pd = (uint8_t *)node::Buffer::Data(pbuf);
-  priv.pl = node::Buffer::Length(pbuf);
-
-  priv.qd = (uint8_t *)node::Buffer::Data(qbuf);
-  priv.ql = node::Buffer::Length(qbuf);
-
-  priv.dpd = (uint8_t *)node::Buffer::Data(dpbuf);
-  priv.dpl = node::Buffer::Length(dpbuf);
-
-  priv.dqd = (uint8_t *)node::Buffer::Data(dqbuf);
-  priv.dql = node::Buffer::Length(dqbuf);
-
-  priv.qid = (uint8_t *)node::Buffer::Data(qibuf);
-  priv.qil = node::Buffer::Length(qibuf);
-
-  const uint8_t *ld = NULL;
-  size_t ll = 0;
-
-  if (info.Length() > 10 && !IsNull(info[10])) {
-    v8::Local<v8::Object> lbuf = info[10].As<v8::Object>();
-
-    if (!node::Buffer::HasInstance(lbuf))
-      return Nan::ThrowTypeError("Eleventh argument must be a buffer.");
-
-    ld = (const uint8_t *)node::Buffer::Data(lbuf);
-    ll = node::Buffer::Length(lbuf);
+    label = (const uint8_t *)node::Buffer::Data(label_buf);
+    label_len = node::Buffer::Length(label_buf);
   }
 
-  uint8_t *pt;
-  size_t pt_len;
+  if (!bcrypto_random(entropy, 32))
+    return Nan::ThrowError("Could not generate entropy.");
 
-  if (!bcrypto_rsa_decrypt_oaep(&pt, &pt_len, alg, md, ml, &priv, ld, ll))
-    return Nan::ThrowError("Could not decrypt message.");
+  uint8_t *pt = (uint8_t *)malloc(RSA_MAX_MOD_SIZE);
+  size_t pt_len = RSA_MAX_MOD_SIZE;
+
+  if (pt == NULL)
+    return Nan::ThrowError("Could not encrypt message.");
+
+  if (!rsa_decrypt_oaep(pt, &pt_len, type, msg, msg_len, key, key_len, label, label_len, 1, entropy)) {
+    free(pt);
+    return Nan::ThrowError("Could not encrypt message.");
+  }
+
+  pt = (uint8_t *)realloc(pt, pt_len);
+
+  if (pt_len != 0 && pt == NULL)
+    return Nan::ThrowError("Could not encrypt message.");
 
   info.GetReturnValue().Set(
     Nan::NewBuffer((char *)pt, pt_len).ToLocalChecked());
 }
 
 NAN_METHOD(BRSA::SignPSS) {
-  if (info.Length() < 10)
+  if (info.Length() < 3)
     return Nan::ThrowError("rsa.signPSS() requires arguments.");
 
-  if (!info[0]->IsString())
-    return Nan::ThrowTypeError("First argument must be a string.");
+  if (!info[0]->IsNumber())
+    return Nan::ThrowTypeError("First argument must be a number.");
 
-  Nan::Utf8String alg_(info[0]);
-  const char *alg = (const char *)*alg_;
+  v8::Local<v8::Object> msg_buf = info[1].As<v8::Object>();
+  v8::Local<v8::Object> key_buf = info[2].As<v8::Object>();
 
-  v8::Local<v8::Object> mbuf = info[1].As<v8::Object>();
-  v8::Local<v8::Object> nbuf = info[2].As<v8::Object>();
-  v8::Local<v8::Object> ebuf = info[3].As<v8::Object>();
-  v8::Local<v8::Object> dbuf = info[4].As<v8::Object>();
-  v8::Local<v8::Object> pbuf = info[5].As<v8::Object>();
-  v8::Local<v8::Object> qbuf = info[6].As<v8::Object>();
-  v8::Local<v8::Object> dpbuf = info[7].As<v8::Object>();
-  v8::Local<v8::Object> dqbuf = info[8].As<v8::Object>();
-  v8::Local<v8::Object> qibuf = info[9].As<v8::Object>();
-
-  if (!node::Buffer::HasInstance(mbuf)
-      || !node::Buffer::HasInstance(nbuf)
-      || !node::Buffer::HasInstance(ebuf)
-      || !node::Buffer::HasInstance(dbuf)
-      || !node::Buffer::HasInstance(pbuf)
-      || !node::Buffer::HasInstance(qbuf)
-      || !node::Buffer::HasInstance(dpbuf)
-      || !node::Buffer::HasInstance(dqbuf)
-      || !node::Buffer::HasInstance(qibuf)) {
+  if (!node::Buffer::HasInstance(msg_buf)
+      || !node::Buffer::HasInstance(key_buf)) {
     return Nan::ThrowTypeError("Arguments must be buffers.");
   }
 
-  bcrypto_rsa_key_t priv;
-  bcrypto_rsa_key_init(&priv);
-
-  const uint8_t *md = (const uint8_t *)node::Buffer::Data(mbuf);
-  size_t ml = node::Buffer::Length(mbuf);
-
-  priv.nd = (uint8_t *)node::Buffer::Data(nbuf);
-  priv.nl = node::Buffer::Length(nbuf);
-
-  priv.ed = (uint8_t *)node::Buffer::Data(ebuf);
-  priv.el = node::Buffer::Length(ebuf);
-
-  priv.dd = (uint8_t *)node::Buffer::Data(dbuf);
-  priv.dl = node::Buffer::Length(dbuf);
-
-  priv.pd = (uint8_t *)node::Buffer::Data(pbuf);
-  priv.pl = node::Buffer::Length(pbuf);
-
-  priv.qd = (uint8_t *)node::Buffer::Data(qbuf);
-  priv.ql = node::Buffer::Length(qbuf);
-
-  priv.dpd = (uint8_t *)node::Buffer::Data(dpbuf);
-  priv.dpl = node::Buffer::Length(dpbuf);
-
-  priv.dqd = (uint8_t *)node::Buffer::Data(dqbuf);
-  priv.dql = node::Buffer::Length(dqbuf);
-
-  priv.qid = (uint8_t *)node::Buffer::Data(qibuf);
-  priv.qil = node::Buffer::Length(qibuf);
-
+  int type = (int)Nan::To<int32_t>(info[0]).FromJust();
+  const uint8_t *msg = (const uint8_t *)node::Buffer::Data(msg_buf);
+  size_t msg_len = node::Buffer::Length(msg_buf);
+  const uint8_t *key = (const uint8_t *)node::Buffer::Data(key_buf);
+  size_t key_len = node::Buffer::Length(key_buf);
   int salt_len = -1;
+  uint8_t entropy[32];
 
-  if (info.Length() > 10 && !IsNull(info[10])) {
-    if (!info[10]->IsNumber())
-      return Nan::ThrowTypeError("Eleventh argument must be a number.");
+  if (info.Length() > 3 && !IsNull(info[3])) {
+    if (!info[3]->IsNumber())
+      return Nan::ThrowTypeError("Third argument must be a number.");
 
-    salt_len = (int)Nan::To<uint32_t>(info[10]).FromJust();
+    salt_len = (int)Nan::To<int32_t>(info[3]).FromJust();
   }
 
-  uint8_t *sig;
-  size_t sig_len;
+  if (!bcrypto_random(entropy, 32))
+    return Nan::ThrowError("Could not generate entropy.");
 
-  if (!bcrypto_rsa_sign_pss(&sig, &sig_len, alg, md, ml, &priv, salt_len))
+  uint8_t *sig = (uint8_t *)malloc(RSA_MAX_MOD_SIZE);
+  size_t sig_len = RSA_MAX_MOD_SIZE;
+
+  if (sig == NULL)
+    return Nan::ThrowError("Could not sign message.");
+
+  if (!rsa_sign_pss(sig, &sig_len, type, msg, msg_len, key, key_len, salt_len, entropy)) {
+    free(sig);
+    return Nan::ThrowError("Could not sign message.");
+  }
+
+  sig = (uint8_t *)realloc(sig, sig_len);
+
+  if (sig == NULL)
     return Nan::ThrowError("Could not sign message.");
 
   info.GetReturnValue().Set(
@@ -1000,86 +627,73 @@ NAN_METHOD(BRSA::SignPSS) {
 }
 
 NAN_METHOD(BRSA::VerifyPSS) {
-  if (info.Length() < 5)
+  if (info.Length() < 4)
     return Nan::ThrowError("rsa.verifyPSS() requires arguments.");
 
-  if (!info[0]->IsString())
-    return Nan::ThrowTypeError("First argument must be a string.");
+  if (!info[0]->IsNumber())
+    return Nan::ThrowTypeError("First argument must be a number.");
 
-  Nan::Utf8String alg_(info[0]);
-  const char *alg = (const char *)*alg_;
+  v8::Local<v8::Object> msg_buf = info[1].As<v8::Object>();
+  v8::Local<v8::Object> sig_buf = info[2].As<v8::Object>();
+  v8::Local<v8::Object> key_buf = info[3].As<v8::Object>();
 
-  v8::Local<v8::Object> mbuf = info[1].As<v8::Object>();
-  v8::Local<v8::Object> sbuf = info[2].As<v8::Object>();
-  v8::Local<v8::Object> nbuf = info[3].As<v8::Object>();
-  v8::Local<v8::Object> ebuf = info[4].As<v8::Object>();
-
-  if (!node::Buffer::HasInstance(mbuf)
-      || !node::Buffer::HasInstance(sbuf)
-      || !node::Buffer::HasInstance(nbuf)
-      || !node::Buffer::HasInstance(ebuf)) {
+  if (!node::Buffer::HasInstance(msg_buf)
+      || !node::Buffer::HasInstance(sig_buf)
+      || !node::Buffer::HasInstance(key_buf)) {
     return Nan::ThrowTypeError("Arguments must be buffers.");
   }
 
-  const uint8_t *md = (const uint8_t *)node::Buffer::Data(mbuf);
-  size_t ml = node::Buffer::Length(mbuf);
-
-  const uint8_t *sd = (const uint8_t *)node::Buffer::Data(sbuf);
-  size_t sl = node::Buffer::Length(sbuf);
-
-  bcrypto_rsa_key_t pub;
-  bcrypto_rsa_key_init(&pub);
-
-  pub.nd = (uint8_t *)node::Buffer::Data(nbuf);
-  pub.nl = node::Buffer::Length(nbuf);
-
-  pub.ed = (uint8_t *)node::Buffer::Data(ebuf);
-  pub.el = node::Buffer::Length(ebuf);
-
+  int type = (int)Nan::To<int32_t>(info[0]).FromJust();
+  const uint8_t *msg = (const uint8_t *)node::Buffer::Data(msg_buf);
+  size_t msg_len = node::Buffer::Length(msg_buf);
+  const uint8_t *sig = (const uint8_t *)node::Buffer::Data(sig_buf);
+  size_t sig_len = node::Buffer::Length(sig_buf);
+  const uint8_t *key = (const uint8_t *)node::Buffer::Data(key_buf);
+  size_t key_len = node::Buffer::Length(key_buf);
   int salt_len = -1;
 
-  if (info.Length() > 5 && !IsNull(info[5])) {
-    if (!info[5]->IsNumber())
-      return Nan::ThrowTypeError("Sixth argument must be a number.");
+  if (info.Length() > 4 && !IsNull(info[4])) {
+    if (!info[4]->IsNumber())
+      return Nan::ThrowTypeError("Third argument must be a number.");
 
-    salt_len = (int)Nan::To<uint32_t>(info[5]).FromJust();
+    salt_len = (int)Nan::To<int32_t>(info[4]).FromJust();
   }
 
-  int result = bcrypto_rsa_verify_pss(alg, md, ml, sd, sl, &pub, salt_len);
+  int result = rsa_verify_pss(type, msg, msg_len, sig, sig_len, key, key_len, salt_len, 1);
 
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
 
 NAN_METHOD(BRSA::EncryptRaw) {
-  if (info.Length() < 3)
+  if (info.Length() < 2)
     return Nan::ThrowError("rsa.encryptRaw() requires arguments.");
 
-  v8::Local<v8::Object> mbuf = info[0].As<v8::Object>();
-  v8::Local<v8::Object> nbuf = info[1].As<v8::Object>();
-  v8::Local<v8::Object> ebuf = info[2].As<v8::Object>();
+  v8::Local<v8::Object> msg_buf = info[0].As<v8::Object>();
+  v8::Local<v8::Object> key_buf = info[1].As<v8::Object>();
 
-  if (!node::Buffer::HasInstance(mbuf)
-      || !node::Buffer::HasInstance(nbuf)
-      || !node::Buffer::HasInstance(ebuf)) {
+  if (!node::Buffer::HasInstance(msg_buf)
+      || !node::Buffer::HasInstance(key_buf)) {
     return Nan::ThrowTypeError("Arguments must be buffers.");
   }
 
-  const uint8_t *md = (const uint8_t *)node::Buffer::Data(mbuf);
-  size_t ml = node::Buffer::Length(mbuf);
+  const uint8_t *msg = (const uint8_t *)node::Buffer::Data(msg_buf);
+  size_t msg_len = node::Buffer::Length(msg_buf);
+  const uint8_t *key = (const uint8_t *)node::Buffer::Data(key_buf);
+  size_t key_len = node::Buffer::Length(key_buf);
+  uint8_t *ct = (uint8_t *)malloc(RSA_MAX_MOD_SIZE);
+  size_t ct_len = RSA_MAX_MOD_SIZE;
 
-  bcrypto_rsa_key_t pub;
-  bcrypto_rsa_key_init(&pub);
+  if (ct == NULL)
+    return Nan::ThrowError("Could not encrypt message.");
 
-  pub.nd = (uint8_t *)node::Buffer::Data(nbuf);
-  pub.nl = node::Buffer::Length(nbuf);
+  if (!rsa_encrypt_raw(ct, &ct_len, msg, msg_len, key, key_len, 1)) {
+    free(ct);
+    return Nan::ThrowError("Could not encrypt message.");
+  }
 
-  pub.ed = (uint8_t *)node::Buffer::Data(ebuf);
-  pub.el = node::Buffer::Length(ebuf);
+  ct = (uint8_t *)realloc(ct, ct_len);
 
-  uint8_t *ct;
-  size_t ct_len;
-
-  if (!bcrypto_rsa_encrypt_raw(&ct, &ct_len, md, ml, &pub))
+  if (ct == NULL)
     return Nan::ThrowError("Could not encrypt message.");
 
   info.GetReturnValue().Set(
@@ -1087,65 +701,40 @@ NAN_METHOD(BRSA::EncryptRaw) {
 }
 
 NAN_METHOD(BRSA::DecryptRaw) {
-  if (info.Length() < 9)
+  if (info.Length() < 2)
     return Nan::ThrowError("rsa.decryptRaw() requires arguments.");
 
-  v8::Local<v8::Object> mbuf = info[0].As<v8::Object>();
-  v8::Local<v8::Object> nbuf = info[1].As<v8::Object>();
-  v8::Local<v8::Object> ebuf = info[2].As<v8::Object>();
-  v8::Local<v8::Object> dbuf = info[3].As<v8::Object>();
-  v8::Local<v8::Object> pbuf = info[4].As<v8::Object>();
-  v8::Local<v8::Object> qbuf = info[5].As<v8::Object>();
-  v8::Local<v8::Object> dpbuf = info[6].As<v8::Object>();
-  v8::Local<v8::Object> dqbuf = info[7].As<v8::Object>();
-  v8::Local<v8::Object> qibuf = info[8].As<v8::Object>();
+  v8::Local<v8::Object> msg_buf = info[0].As<v8::Object>();
+  v8::Local<v8::Object> key_buf = info[1].As<v8::Object>();
 
-  if (!node::Buffer::HasInstance(mbuf)
-      || !node::Buffer::HasInstance(nbuf)
-      || !node::Buffer::HasInstance(ebuf)
-      || !node::Buffer::HasInstance(dbuf)
-      || !node::Buffer::HasInstance(pbuf)
-      || !node::Buffer::HasInstance(qbuf)
-      || !node::Buffer::HasInstance(dpbuf)
-      || !node::Buffer::HasInstance(dqbuf)
-      || !node::Buffer::HasInstance(qibuf)) {
+  if (!node::Buffer::HasInstance(msg_buf)
+      || !node::Buffer::HasInstance(key_buf)) {
     return Nan::ThrowTypeError("Arguments must be buffers.");
   }
 
-  bcrypto_rsa_key_t priv;
-  bcrypto_rsa_key_init(&priv);
+  const uint8_t *msg = (const uint8_t *)node::Buffer::Data(msg_buf);
+  size_t msg_len = node::Buffer::Length(msg_buf);
+  const uint8_t *key = (const uint8_t *)node::Buffer::Data(key_buf);
+  size_t key_len = node::Buffer::Length(key_buf);
+  uint8_t entropy[32];
 
-  const uint8_t *md = (const uint8_t *)node::Buffer::Data(mbuf);
-  size_t ml = node::Buffer::Length(mbuf);
+  if (!bcrypto_random(entropy, 32))
+    return Nan::ThrowError("Could not generate entropy.");
 
-  priv.nd = (uint8_t *)node::Buffer::Data(nbuf);
-  priv.nl = node::Buffer::Length(nbuf);
+  uint8_t *pt = (uint8_t *)malloc(RSA_MAX_MOD_SIZE);
+  size_t pt_len = RSA_MAX_MOD_SIZE;
 
-  priv.ed = (uint8_t *)node::Buffer::Data(ebuf);
-  priv.el = node::Buffer::Length(ebuf);
+  if (pt == NULL)
+    return Nan::ThrowError("Could not decrypt message.");
 
-  priv.dd = (uint8_t *)node::Buffer::Data(dbuf);
-  priv.dl = node::Buffer::Length(dbuf);
+  if (!rsa_decrypt_raw(pt, &pt_len, msg, msg_len, key, key_len, 0, entropy)) {
+    free(pt);
+    return Nan::ThrowError("Could not decrypt message.");
+  }
 
-  priv.pd = (uint8_t *)node::Buffer::Data(pbuf);
-  priv.pl = node::Buffer::Length(pbuf);
+  pt = (uint8_t *)realloc(pt, pt_len);
 
-  priv.qd = (uint8_t *)node::Buffer::Data(qbuf);
-  priv.ql = node::Buffer::Length(qbuf);
-
-  priv.dpd = (uint8_t *)node::Buffer::Data(dpbuf);
-  priv.dpl = node::Buffer::Length(dpbuf);
-
-  priv.dqd = (uint8_t *)node::Buffer::Data(dqbuf);
-  priv.dql = node::Buffer::Length(dqbuf);
-
-  priv.qid = (uint8_t *)node::Buffer::Data(qibuf);
-  priv.qil = node::Buffer::Length(qibuf);
-
-  uint8_t *pt;
-  size_t pt_len;
-
-  if (!bcrypto_rsa_decrypt_raw(&pt, &pt_len, md, ml, &priv))
+  if (pt_len != 0 && pt == NULL)
     return Nan::ThrowError("Could not decrypt message.");
 
   info.GetReturnValue().Set(
@@ -1153,107 +742,81 @@ NAN_METHOD(BRSA::DecryptRaw) {
 }
 
 NAN_METHOD(BRSA::Veil) {
-  if (info.Length() < 4)
+  if (info.Length() < 3)
     return Nan::ThrowError("rsa.veil() requires arguments.");
 
-  v8::Local<v8::Object> mbuf = info[0].As<v8::Object>();
+  v8::Local<v8::Object> msg_buf = info[0].As<v8::Object>();
+  v8::Local<v8::Object> key_buf = info[2].As<v8::Object>();
 
-  if (!node::Buffer::HasInstance(mbuf))
-    return Nan::ThrowTypeError("First argument must be a buffer.");
+  if (!node::Buffer::HasInstance(msg_buf)
+      || !node::Buffer::HasInstance(key_buf)) {
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+  }
 
   if (!info[1]->IsNumber())
     return Nan::ThrowTypeError("Second argument must be a number.");
 
-  v8::Local<v8::Object> nbuf = info[2].As<v8::Object>();
-  v8::Local<v8::Object> ebuf = info[3].As<v8::Object>();
-
-  if (!node::Buffer::HasInstance(nbuf)
-      || !node::Buffer::HasInstance(ebuf)) {
-    return Nan::ThrowTypeError("Arguments must be buffers.");
-  }
-
-  const uint8_t *md = (const uint8_t *)node::Buffer::Data(mbuf);
-  size_t ml = node::Buffer::Length(mbuf);
-
+  const uint8_t *msg = (const uint8_t *)node::Buffer::Data(msg_buf);
+  size_t msg_len = node::Buffer::Length(msg_buf);
   size_t bits = (size_t)Nan::To<uint32_t>(info[1]).FromJust();
+  const uint8_t *key = (const uint8_t *)node::Buffer::Data(key_buf);
+  size_t key_len = node::Buffer::Length(key_buf);
+  uint8_t entropy[32];
 
-  bcrypto_rsa_key_t pub;
-  bcrypto_rsa_key_init(&pub);
+  if (!bcrypto_random(entropy, 32))
+    return Nan::ThrowError("Could not generate entropy.");
 
-  pub.nd = (uint8_t *)node::Buffer::Data(nbuf);
-  pub.nl = node::Buffer::Length(nbuf);
+  size_t out_len = (bits + 7) / 8;
+  uint8_t *out = (uint8_t *)malloc(out_len);
 
-  pub.ed = (uint8_t *)node::Buffer::Data(ebuf);
-  pub.el = node::Buffer::Length(ebuf);
-
-  uint8_t *ct;
-  size_t ct_len;
-
-  if (!bcrypto_rsa_veil(&ct, &ct_len, md, ml, bits, &pub))
+  if (out == NULL)
     return Nan::ThrowError("Could not veil message.");
 
+  if (!rsa_veil(out, &out_len, msg, msg_len, bits, key, key_len, 1, entropy)) {
+    free(out);
+    return Nan::ThrowError("Could not veil message.");
+  }
+
   info.GetReturnValue().Set(
-    Nan::NewBuffer((char *)ct, ct_len).ToLocalChecked());
+    Nan::NewBuffer((char *)out, out_len).ToLocalChecked());
 }
 
 NAN_METHOD(BRSA::Unveil) {
-  if (info.Length() < 4)
-    return Nan::ThrowError("rsa.unveil() requires arguments.");
+  if (info.Length() < 3)
+    return Nan::ThrowError("rsa.veil() requires arguments.");
 
-  v8::Local<v8::Object> mbuf = info[0].As<v8::Object>();
+  v8::Local<v8::Object> msg_buf = info[0].As<v8::Object>();
+  v8::Local<v8::Object> key_buf = info[2].As<v8::Object>();
 
-  if (!node::Buffer::HasInstance(mbuf))
-    return Nan::ThrowTypeError("First argument must be a buffer.");
+  if (!node::Buffer::HasInstance(msg_buf)
+      || !node::Buffer::HasInstance(key_buf)) {
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+  }
 
   if (!info[1]->IsNumber())
     return Nan::ThrowTypeError("Second argument must be a number.");
 
-  v8::Local<v8::Object> nbuf = info[2].As<v8::Object>();
-  v8::Local<v8::Object> ebuf = info[3].As<v8::Object>();
+  const uint8_t *msg = (const uint8_t *)node::Buffer::Data(msg_buf);
+  size_t msg_len = node::Buffer::Length(msg_buf);
+  size_t bits = (size_t)Nan::To<uint32_t>(info[1]).FromJust();
+  const uint8_t *key = (const uint8_t *)node::Buffer::Data(key_buf);
+  size_t key_len = node::Buffer::Length(key_buf);
+  uint8_t *out = (uint8_t *)malloc(RSA_MAX_MOD_SIZE);
+  size_t out_len = RSA_MAX_MOD_SIZE;
 
-  if (!node::Buffer::HasInstance(nbuf)
-      || !node::Buffer::HasInstance(ebuf)) {
-    return Nan::ThrowTypeError("Arguments must be buffers.");
+  if (out == NULL)
+    return Nan::ThrowError("Could not unveil message.");
+
+  if (!rsa_unveil(out, &out_len, msg, msg_len, bits, key, key_len, 1)) {
+    free(out);
+    return Nan::ThrowError("Could not unveil message.");
   }
 
-  const uint8_t *md = (const uint8_t *)node::Buffer::Data(mbuf);
-  size_t ml = node::Buffer::Length(mbuf);
+  out = (uint8_t *)realloc(out, out_len);
 
-  size_t bits = (size_t)Nan::To<uint32_t>(info[1]).FromJust();
-
-  bcrypto_rsa_key_t pub;
-  bcrypto_rsa_key_init(&pub);
-
-  pub.nd = (uint8_t *)node::Buffer::Data(nbuf);
-  pub.nl = node::Buffer::Length(nbuf);
-
-  pub.ed = (uint8_t *)node::Buffer::Data(ebuf);
-  pub.el = node::Buffer::Length(ebuf);
-
-  uint8_t *ct;
-  size_t ct_len;
-
-  if (!bcrypto_rsa_unveil(&ct, &ct_len, md, ml, bits, &pub))
+  if (out_len != 0 && out == NULL)
     return Nan::ThrowError("Could not unveil message.");
 
   info.GetReturnValue().Set(
-    Nan::NewBuffer((char *)ct, ct_len).ToLocalChecked());
+    Nan::NewBuffer((char *)out, out_len).ToLocalChecked());
 }
-
-NAN_METHOD(BRSA::HasHash) {
-  if (info.Length() < 1)
-    return Nan::ThrowError("rsa.hasHash() requires arguments.");
-
-  if (!info[0]->IsString())
-    return Nan::ThrowTypeError("First argument must be a string.");
-
-  Nan::Utf8String alg_(info[0]);
-  const char *alg = (const char *)*alg_;
-  int result = bcrypto_rsa_has_hash(alg);
-
-  if (!result && strcmp(alg, "SHA256") == 0)
-    return Nan::ThrowError("Algorithms not loaded for RSA.");
-
-  return info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
-}
-#endif

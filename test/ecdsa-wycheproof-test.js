@@ -29,10 +29,7 @@ const curves = {
   'secp256r1': p256,
   'secp384r1': p384,
   'secp521r1': p521,
-  'secp256k1': secp256k1,
-  'brainpoolP256r1': new ECDSA('BRAINPOOLP256', SHA256),
-  'brainpoolP384r1': new ECDSA('BRAINPOOLP384', SHA384),
-  'brainpoolP512r1': new ECDSA('BRAINPOOLP512', SHA512)
+  'secp256k1': secp256k1
 };
 
 const hashes = {

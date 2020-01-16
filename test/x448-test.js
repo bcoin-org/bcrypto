@@ -199,7 +199,7 @@ describe('X448', function() {
       const pub = Buffer.from(str, 'hex');
 
       assert.throws(() => x448.derive(pub, key), {
-        message: /^Invalid point\.|Could not derive secret\.$/
+        message: /^Invalid (point|public key)\.$/
       });
     }
   });

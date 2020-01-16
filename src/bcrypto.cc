@@ -25,9 +25,9 @@
 #include "chacha20.h"
 #include "cipherbase.h"
 #include "dsa.h"
+#include "ecdh.h"
 #include "ecdsa.h"
-#include "ed25519.h"
-#include "ed448.h"
+#include "eddsa.h"
 #include "hash160.h"
 #include "hash256.h"
 #include "keccak.h"
@@ -49,8 +49,6 @@
 #include "sha512.h"
 #include "siphash.h"
 #include "whirlpool.h"
-#include "x25519.h"
-#include "x448.h"
 
 #include "bcrypto.h"
 
@@ -96,11 +94,9 @@ NAN_MODULE_INIT(init) {
 #ifdef BCRYPTO_HAS_DSA
   BDSA::Init(target);
 #endif
-#ifdef BCRYPTO_HAS_ECDSA
+  BECDH::Init(target);
   BECDSA::Init(target);
-#endif
-  BED25519::Init(target);
-  BED448::Init(target);
+  BEDDSA::Init(target);
   BHash160::Init(target);
   BHash256::Init(target);
   BKeccak::Init(target);
@@ -111,9 +107,7 @@ NAN_MODULE_INIT(init) {
   BPBKDF2::Init(target);
   BRandom::Init(target);
   BRIPEMD160::Init(target);
-#ifdef BCRYPTO_HAS_RSA
   BRSA::Init(target);
-#endif
   BSalsa20::Init(target);
   BScrypt::Init(target);
   BSecp256k1::Init(target);
@@ -124,8 +118,6 @@ NAN_MODULE_INIT(init) {
   BSHA512::Init(target);
   BSiphash::Init(target);
   BWhirlpool::Init(target);
-  BX25519::Init(target);
-  BX448::Init(target);
 }
 
 #if NODE_MAJOR_VERSION >= 10

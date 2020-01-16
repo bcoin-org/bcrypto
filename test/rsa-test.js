@@ -105,7 +105,7 @@ describe('RSA', function() {
   });
 
   it('should sign and verify', () => {
-    const bits = rsa.native < 2 ? 1024 : 4096;
+    const bits = rsa.native < 2 ? 1024 : 2048;
     const priv = rsa.privateKeyGenerate(bits);
     const pub = rsa.publicKeyCreate(priv);
 
@@ -123,7 +123,7 @@ describe('RSA', function() {
   });
 
   it('should veil/unveil', () => {
-    const bits = rsa.native < 2 ? 1024 : 4096;
+    const bits = rsa.native < 2 ? 1024 : 2048;
     const priv = rsa.privateKeyGenerate(bits);
     const pub = rsa.publicKeyCreate(priv);
 
@@ -200,7 +200,7 @@ describe('RSA', function() {
   });
 
   it('should sign and verify (async)', async () => {
-    const bits = rsa.native < 2 ? 1024 : 4096;
+    const bits = rsa.native < 2 ? 1024 : 2048;
     const priv = await rsa.privateKeyGenerateAsync(bits);
     const pub = rsa.publicKeyCreate(priv);
 
@@ -242,7 +242,7 @@ describe('RSA', function() {
   });
 
   it('should sign and verify (blake2b)', () => {
-    const bits = rsa.native < 2 ? 1024 : 4096;
+    const bits = rsa.native < 2 ? 1024 : 2048;
     const priv = rsa.privateKeyGenerate(bits);
     const pub = rsa.publicKeyCreate(priv);
 
@@ -536,11 +536,6 @@ describe('RSA', function() {
       assert.deepStrictEqual(rsa.privateKeyImport(privRaw), priv);
       assert.deepStrictEqual(rsa.publicKeyImport(pubRaw), pub);
 
-      if (rsa.native === 2) {
-        assert.bufferEqual(rsa.privateKeyExportPKCS8(priv), pkcs8);
-        assert.bufferEqual(rsa.publicKeyExportSPKI(pub), spki);
-      }
-
       assert.deepStrictEqual(rsa.privateKeyImportPKCS8(pkcs8), priv);
       assert.deepStrictEqual(rsa.publicKeyImportSPKI(spki), pub);
     });
@@ -554,12 +549,6 @@ describe('RSA', function() {
       rsa.privateKeyCompute(priv);
       assert(rsa.privateKeyVerify(priv));
 
-      priv.e = empty;
-
-      assert(!rsa.privateKeyVerify(priv));
-      rsa.privateKeyCompute(priv);
-      assert(rsa.privateKeyVerify(priv));
-
       priv.d = empty;
 
       assert(!rsa.privateKeyVerify(priv));
@@ -601,7 +590,6 @@ describe('RSA', function() {
       assert(rsa.privateKeyVerify(priv));
 
       priv.n = empty;
-      priv.e = empty;
       priv.dp = empty;
       priv.dq = empty;
       priv.qi = empty;

@@ -286,8 +286,8 @@ describe('Ed448', function() {
 
     const batch = [];
 
-    for (const [msg, sig, pub,, res2] of vectors) {
-      assert.strictEqual(ed448.verify(msg, sig, pub), res2);
+    for (const [msg, sig, pub, res1, res2] of vectors) {
+      assert.strictEqual(ed448.verify(msg, sig, pub), res1);
       assert.strictEqual(ed448.verifySingle(msg, sig, pub), res2);
 
       if (res2)
@@ -394,8 +394,8 @@ describe('Ed448', function() {
 
     const batch = [];
 
-    for (const [msg, sig, pub,, res2] of vectors) {
-      assert.strictEqual(ed448.verify(msg, sig, pub), res2);
+    for (const [msg, sig, pub, res1, res2] of vectors) {
+      assert.strictEqual(ed448.verify(msg, sig, pub), res1);
       assert.strictEqual(ed448.verifySingle(msg, sig, pub), res2);
       assert(!ed448.publicKeyIsSmall(pub));
       assert(ed448.publicKeyHasTorsion(pub));

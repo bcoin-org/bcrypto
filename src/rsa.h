@@ -1,10 +1,6 @@
 #ifndef _BCRYPTO_RSA_HH
 #define _BCRYPTO_RSA_HH
 
-#include "compat.h"
-
-#ifdef BCRYPTO_HAS_RSA
-
 #include <node.h>
 #include <nan.h>
 
@@ -15,17 +11,14 @@ public:
 private:
   static NAN_METHOD(PrivateKeyGenerate);
   static NAN_METHOD(PrivateKeyGenerateAsync);
-  static NAN_METHOD(PrivateKeyCompute);
+  static NAN_METHOD(PrivateKeyBits);
   static NAN_METHOD(PrivateKeyVerify);
-  static NAN_METHOD(PrivateKeyExport);
-  static NAN_METHOD(PrivateKeyImport);
-  static NAN_METHOD(PrivateKeyExportPKCS8);
-  static NAN_METHOD(PrivateKeyImportPKCS8);
+  static NAN_METHOD(PrivateKeyRecover);
+  static NAN_METHOD(PrivateKeyNormalize);
+  static NAN_METHOD(PublicKeyCreate);
+  static NAN_METHOD(PublicKeyBits);
   static NAN_METHOD(PublicKeyVerify);
-  static NAN_METHOD(PublicKeyExport);
-  static NAN_METHOD(PublicKeyImport);
-  static NAN_METHOD(PublicKeyExportSPKI);
-  static NAN_METHOD(PublicKeyImportSPKI);
+  static NAN_METHOD(PublicKeyNormalize);
   static NAN_METHOD(Sign);
   static NAN_METHOD(Verify);
   static NAN_METHOD(Encrypt);
@@ -38,8 +31,5 @@ private:
   static NAN_METHOD(DecryptRaw);
   static NAN_METHOD(Veil);
   static NAN_METHOD(Unveil);
-  static NAN_METHOD(HasHash);
 };
-#endif
-
 #endif

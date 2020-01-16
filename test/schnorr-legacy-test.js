@@ -10,7 +10,7 @@ const secp256k1 = require('../lib/secp256k1');
 const vectors = require('./data/schnorr-legacy.json');
 const custom = require('./data/schnorr-legacy-custom.json');
 
-// To test openssl schnorr:
+// To test torsion schnorr:
 // const ECDSA = require('../lib/native/ecdsa');
 // const secp256k1 = new ECDSA('SECP256K1');
 
@@ -169,32 +169,6 @@ describe('Secp256k1+Schnorr Legacy', function() {
     assert(p384.schnorr.supported);
     assert(p521.schnorr.supported);
     assert(secp256k1.schnorr.supported);
-  });
-
-  it('should throw on curves which fail to satisfy jacobi(-1, p) == -1', () => {
-    const msg = Buffer.from(
-      '3b3c4a629b78ca392e689526c445119ac9f27d7986e177764a1db2d9935f2832',
-      'hex');
-
-    const key = Buffer.from(
-      '1a8e7926ac39de66fe1f86838e1915a2ae40d8e9adf4636b7d5dc698',
-      'hex');
-
-    const sig = Buffer.from(''
-      + '2a28df7533ab3e0fd255d1dd657d721c6d7f6ec7c6ef8b44e32601a8'
-      + 'bc440697e01348ddd45f392e420090856aed78f557e6440d1c3d4226',
-      'hex');
-
-    const pub = p224.publicKeyCreate(key);
-
-    if (p224.native === 0) {
-      assert(!p224.schnorr.supported);
-      assert(!p224.schnorr.support());
-    }
-
-    assert.throws(() => p224.schnorrSign(msg, key), /not supported/);
-    assert.throws(() => p224.schnorrVerify(msg, sig, pub), /not supported/);
-    assert.throws(() => p224.schnorrVerifyBatch([[msg, sig, pub]]), /not supported/);
   });
 
   for (const [key_, pub_, msg_, sig_, result, comment_] of custom) {
