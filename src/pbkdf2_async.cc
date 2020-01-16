@@ -1,6 +1,5 @@
 #include <torsion/kdf.h>
 #include "common.h"
-#include "pbkdf2/pbkdf2.h"
 #include "pbkdf2_async.h"
 
 BPBKDF2Worker::BPBKDF2Worker (
