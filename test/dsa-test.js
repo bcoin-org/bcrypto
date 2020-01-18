@@ -81,7 +81,8 @@ describe('DSA', function() {
   });
 
   it('should sign and verify (DER)', () => {
-    const params = createParams(P3072_256);
+    const size = dsa.native < 2 ? 1024 : 2048;
+    const params = dsa.paramsGenerate(size);
     const priv = dsa.privateKeyCreate(params);
     const pub = dsa.publicKeyCreate(priv);
 

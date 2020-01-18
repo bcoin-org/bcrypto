@@ -3,12 +3,12 @@
 
 #include <node.h>
 #include <nan.h>
-#include "dsa/dsa.h"
 
 class BDSAWorker : public Nan::AsyncWorker {
 public:
   BDSAWorker (
-    int bits,
+    uint32_t bits,
+    uint8_t seed[32],
     Nan::Callback *callback
   );
 
@@ -17,7 +17,9 @@ public:
   void HandleOKCallback();
 
 private:
-  int bits;
-  bcrypto_dsa_key_t *key;
+  uint32_t bits;
+  uint8_t entropy[32];
+  uint8_t *params;
+  size_t params_len;
 };
 #endif
