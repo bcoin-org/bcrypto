@@ -3,7 +3,7 @@
 
 #include <stdlib.h>
 
-#if defined(__cplusplus)
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -18,7 +18,7 @@ bcrypto_base58_decode(uint8_t **data, size_t *datalen,
 int
 bcrypto_base58_test(const char *str, size_t strlen);
 
-#if defined(__cplusplus)
+#ifdef __cplusplus
 }
 #endif
 

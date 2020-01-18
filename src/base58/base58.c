@@ -20,6 +20,13 @@ static const int TABLE[128] = {
 int
 bcrypto_base58_encode(char **str, size_t *strlen,
                       const uint8_t *data, size_t datalen) {
+  uint64_t b58size = (uint64_t)datalen * 138 / 100 + 1;
+  size_t b58len = (size_t)b58size; /* 31 bit max */
+  uint8_t *b58;
+  size_t zeroes = 0;
+  size_t length = 0;
+  size_t i, j;
+
   if (datalen > 1073741823ul) /* 2^30 - 1 */
     return 0;
 
@@ -29,9 +36,6 @@ bcrypto_base58_encode(char **str, size_t *strlen,
     return 1;
   }
 
-  size_t zeroes = 0;
-  size_t i;
-
   for (i = 0; i < datalen; i++) {
     if (data[i] != 0)
       break;
@@ -39,10 +43,7 @@ bcrypto_base58_encode(char **str, size_t *strlen,
     zeroes += 1;
   }
 
-  uint64_t b58size = (uint64_t)datalen * 138 / 100 + 1;
-  size_t b58len = (size_t)b58size; /* 31 bit max */
-  uint8_t *b58 = (uint8_t *)malloc(b58len);
-  size_t length = 0;
+  b58 = malloc(b58len);
 
   if (b58 == NULL)
     return 0;
@@ -73,14 +74,12 @@ bcrypto_base58_encode(char **str, size_t *strlen,
   while (i < b58len && b58[i] == 0)
     i += 1;
 
-  *str = (char *)malloc(zeroes + (b58len - i) + 1);
+  *str = malloc(zeroes + (b58len - i) + 1);
 
   if (*str == NULL) {
     free(b58);
     return 0;
   }
-
-  size_t j;
 
   for (j = 0; j < zeroes; j++)
     (*str)[j] = '1';
@@ -99,6 +98,13 @@ bcrypto_base58_encode(char **str, size_t *strlen,
 int
 bcrypto_base58_decode(uint8_t **data, size_t *datalen,
                       const char *str, size_t strlen) {
+  uint64_t b256size = (uint64_t)strlen * 733 / 1000 + 1;
+  size_t b256len = (size_t)b256size;
+  uint8_t *b256;
+  size_t zeroes = 0;
+  size_t length = 0;
+  size_t i, j;
+
   if (strlen > 1481763716ul) /* (2^30 - 1) * 138 / 100 + 1 */
     return 0;
 
@@ -108,9 +114,6 @@ bcrypto_base58_decode(uint8_t **data, size_t *datalen,
     return 1;
   }
 
-  size_t zeroes = 0;
-  size_t i;
-
   for (i = 0; i < strlen; i++) {
     if (str[i] != '1')
       break;
@@ -118,10 +121,7 @@ bcrypto_base58_decode(uint8_t **data, size_t *datalen,
     zeroes += 1;
   }
 
-  uint64_t b256size = (uint64_t)strlen * 733 / 1000 + 1;
-  size_t b256len = (size_t)b256size;
-  uint8_t *b256 = (uint8_t *)malloc(b256len);
-  size_t length = 0;
+  b256 = malloc(b256len);
 
   if (b256 == NULL)
     return 0;
@@ -131,15 +131,14 @@ bcrypto_base58_decode(uint8_t **data, size_t *datalen,
   for (; i < strlen; i++) {
     uint8_t ch = (uint8_t)str[i];
     int v = (ch & 0x80) ? -1 : TABLE[ch];
+    int carry = v;
+    size_t j = 0;
+    long k;
 
     if (v == -1) {
       free(b256);
       return 0;
     }
-
-    int carry = v;
-    size_t j = 0;
-    long k;
 
     for (k = (long)b256len - 1; k >= 0; k--, j++) {
       if (carry == 0 && j >= length)
@@ -160,14 +159,12 @@ bcrypto_base58_decode(uint8_t **data, size_t *datalen,
   while (i < b256len && b256[i] == 0)
     i += 1;
 
-  *data = (uint8_t *)malloc(zeroes + (b256len - i));
+  *data = malloc(zeroes + (b256len - i));
 
   if (*data == NULL) {
     free(b256);
     return 0;
   }
-
-  size_t j;
 
   for (j = 0; j < zeroes; j++)
     (*data)[j] = 0;
