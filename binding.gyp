@@ -134,6 +134,16 @@
         "sources": [
           "../torsion/src/mini-gmp.c"
         ]
+      }],
+      ["OS=='win'", {
+        "msbuild_settings": {
+          "ClCompile": {
+            "ObjectFileName": "$(IntDir)/%(Directory)/%(Filename)"
+          },
+          "Link": {
+            "ImageHasSafeExceptionHandlers": "false"
+          }
+        }
       }]
     ]
   }]
