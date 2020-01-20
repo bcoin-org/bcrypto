@@ -12,7 +12,6 @@ const rsa = require('../lib/rsa');
 const base64 = require('../lib/encoding/base64');
 const vectors = require('./data/rsa.json');
 const custom = require('./data/sign/rsa.json');
-const {RSAPublicKey} = rsa;
 
 const hashes = {
   SHA1,
@@ -28,11 +27,10 @@ function fromJSON(json) {
   assert(json && typeof json === 'object');
   assert(json.kty === 'RSA');
 
-  const key = new RSAPublicKey();
-  key.n = base64.decodeURL(json.n);
-  key.e = base64.decodeURL(json.e);
-
-  return key;
+  return rsa.publicKeyImport({
+    n: base64.decodeURL(json.n),
+    e: base64.decodeURL(json.e)
+  });
 }
 
 function parseVector(json) {
@@ -52,56 +50,32 @@ describe('RSA', function() {
 
   it('should generate keypair', () => {
     const priv = rsa.privateKeyGenerate(1024);
-    const {d, dp, dq, qi} = priv;
 
-    priv.setD(null);
-    priv.setDP(null);
-    priv.setDQ(null);
-    priv.setQI(null);
-    rsa.privateKeyCompute(priv);
-
-    assert.bufferEqual(priv.d, d);
-    assert.bufferEqual(priv.dp, dp);
-    assert.bufferEqual(priv.dq, dq);
-    assert.bufferEqual(priv.qi, qi);
-
-    assert.deepStrictEqual(
+    assert.bufferEqual(
       rsa.privateKeyImport(rsa.privateKeyExport(priv)),
-      priv);
-
-    assert.deepStrictEqual(
-      rsa.privateKeyImportPKCS8(rsa.privateKeyExportPKCS8(priv)),
-      priv);
-
-    assert.deepStrictEqual(
-      rsa.privateKeyImportJWK(rsa.privateKeyExportJWK(priv)),
       priv);
 
     const pub = rsa.publicKeyCreate(priv);
 
-    assert.deepStrictEqual(
+    assert.bufferEqual(
       rsa.publicKeyImport(rsa.publicKeyExport(pub)),
-      pub);
-
-    assert.deepStrictEqual(
-      rsa.publicKeyImportSPKI(rsa.publicKeyExportSPKI(pub)),
-      pub);
-
-    assert.deepStrictEqual(
-      rsa.publicKeyImportJWK(rsa.publicKeyExportJWK(pub)),
       pub);
   });
 
   it('should generate keypair with custom exponent', () => {
     const priv = rsa.privateKeyGenerate(1024, 0x0100000001);
-    assert.strictEqual(priv.n.length, 128);
-    assert.bufferEqual(priv.e, Buffer.from('0100000001', 'hex'));
+    const json = rsa.privateKeyExport(priv);
+
+    assert.strictEqual(json.n.length, 128);
+    assert.bufferEqual(json.e, Buffer.from('0100000001', 'hex'));
   });
 
   it('should generate keypair with custom exponent (async)', async () => {
     const priv = await rsa.privateKeyGenerateAsync(1024, 0x0100000001);
-    assert.strictEqual(priv.n.length, 128);
-    assert.bufferEqual(priv.e, Buffer.from('0100000001', 'hex'));
+    const json = rsa.privateKeyExport(priv);
+
+    assert.strictEqual(json.n.length, 128);
+    assert.bufferEqual(json.e, Buffer.from('0100000001', 'hex'));
   });
 
   it('should sign and verify', () => {
@@ -170,9 +144,9 @@ describe('RSA', function() {
     assert(rsa.publicKeyVerify(pub));
 
     const sig1 = rsa.sign(SHA256, msg, priv);
-    const n = BN.decode(priv.n);
+    const n = BN.decode(rsa.privateKeyExport(priv).n);
     const s = BN.decode(sig1);
-    const sig2 = s.add(n).encode('be', priv.size());
+    const sig2 = s.add(n).encode('be', (bits + 7) >> 3);
 
     assert(!rsa.verify(SHA256, msg, sig2, pub));
   });
@@ -211,34 +185,6 @@ describe('RSA', function() {
     const valid = rsa.verify(SHA256, msg, sig, pub);
 
     assert(valid);
-  });
-
-  it('should validate lambda key', () => {
-    const json = {
-      kty: 'RSA',
-      n: 'vAapTcBGyRClrxqI9ert54KizqnARN2d1OfMob4NTYaOYEfS4TOrZtVJlKXTFJkAn0'
-       + 'Y5BiCfkNC0E65NxhPrWwP1MlqJWfWt-WUuiUlExBN_GMWZI-KvQgzXFszN7SV-V4kU'
-       + 'avlQ-WvJOoP12hBuAkjM1dup9DtEqLXXFefOkVk',
-      e: 'AQAB',
-      d: 'DJfYH0lfXFBZfne1IF5gmnq_B38qTdp3e5beV19kofJ_Bu8MjlGA-3lRzStJjsW8G0'
-       + '7PWywUb9UwmGhaVGfJYaDT1nyv4dsxjifjAG-1ebtNYfvDaZCyz3N0GPHr3ix3NjXh'
-       + 'GrjXoKYrptBZLG5I0MYCCJI9qmAnYbpHHrQ4qaE',
-      p: '6_uMVgyIYUnEmCGRsAOx7E-gw5ytMqquuyAVkeaKcJA22nVZZscZ0dJRHT6Bolkel8'
-       + 'cqpv70vgdc-u6jKH6-OQ',
-      q: 'y_m3t42TnV0bYgqQfIrux1ym9M3WXeCvCUZ6J1rUaMC-C8Bmw1duoK0KKfsuJgYwUN'
-       + '3b459C1VBB8civcPhsIQ',
-      dp: 'CbNPc4IUYRttL2vB12Bvge1MCH56SCjoAd0xxcuaSUJEXvqP8D-i-hMRLoiRP6E2N'
-        + 'rsDL9YvLViUI-SHZHTBUQ',
-      dq: 'Te8LksY1MFryq3L94Zfzw5hS8hXzYcsHFbQn2AGMRrnd4v-QQ_KUAjAbQg8GguC6d'
-        + 'StPaJjhID-Z8peK8M76AQ',
-      qi: 'MmI7iG6EyGUMeg0rkC7TZXhtSCqrriN_U3PjWGtNGx34IfqpR3QgsyigByqJF2eu_'
-        + 'A8OutZUhmH3N4z0MjRmAA',
-      ext: true
-    };
-
-    const priv = rsa.privateKeyImportJWK(json);
-
-    assert(rsa.privateKeyVerify(priv));
   });
 
   it('should sign and verify (blake2b)', () => {
@@ -295,7 +241,6 @@ describe('RSA', function() {
     sig = sig.slice(1);
 
     assert(!rsa.verify(SHA256, msg, sig, pub));
-    assert(rsa.verifyLax(SHA256, msg, sig, pub));
   });
 
   it('should test PSS edge case', () => {
@@ -321,7 +266,6 @@ describe('RSA', function() {
     sig = sig.slice(1);
 
     assert(!rsa.verifyPSS(MD5, msg, sig, pub));
-    assert(rsa.verifyPSSLax(MD5, msg, sig, pub));
   });
 
   it('should encrypt and decrypt', () => {
@@ -389,21 +333,16 @@ describe('RSA', function() {
       sig[i % sig.length] ^= 1;
       assert(rsa.verify(hash, m, sig, key));
 
-      key.n[i % key.n.length] ^= 1;
+      key[i % key.length] ^= 1;
       assert(!rsa.verify(hash, m, sig, key));
-      key.n[i % key.n.length] ^= 1;
-      assert(rsa.verify(hash, m, sig, key));
-
-      key.e[i % key.e.length] ^= 1;
-      assert(!rsa.verify(hash, m, sig, key));
-      key.e[i % key.e.length] ^= 1;
+      key[i % key.length] ^= 1;
       assert(rsa.verify(hash, m, sig, key));
     });
   }
 
   {
     const vector = require('./data/rsa-other.json');
-    const priv = rsa.privateKeyImport(Buffer.from(vector.priv, 'hex'));
+    const priv = Buffer.from(vector.priv, 'hex');
     const pub = rsa.publicKeyCreate(priv);
     const msg = Buffer.from('hello world');
 
@@ -449,157 +388,30 @@ describe('RSA', function() {
     });
   }
 
-  it('should import standard JWK', () => {
-    // https://tools.ietf.org/html/rfc7517#appendix-A.2
-    const json = {
-      'kty': 'RSA',
-      'n': ''
-        + '0vx7agoebGcQSuuPiLJXZptN9nndrQmbXEps2aiAFbWhM78LhWx4cbbfAA'
-        + 'tVT86zwu1RK7aPFFxuhDR1L6tSoc_BJECPebWKRXjBZCiFV4n3oknjhMst'
-        + 'n64tZ_2W-5JsGY4Hc5n9yBXArwl93lqt7_RN5w6Cf0h4QyQ5v-65YGjQR0'
-        + '_FDW2QvzqY368QQMicAtaSqzs8KJZgnYb9c7d0zgdAZHzu6qMQvRL5hajr'
-        + 'n1n91CbOpbISD08qNLyrdkt-bFTWhAI4vMQFh6WeZu0fM4lFd2NcRwr3XP'
-        + 'ksINHaQ-G_xBniIqbw0Ls1jF44-csFCur-kEgU8awapJzKnqDKgw',
-      'e': 'AQAB',
-      'd': ''
-        + 'X4cTteJY_gn4FYPsXB8rdXix5vwsg1FLN5E3EaG6RJoVH-HLLKD9M7dx5o'
-        + 'o7GURknchnrRweUkC7hT5fJLM0WbFAKNLWY2vv7B6NqXSzUvxT0_YSfqij'
-        + 'wp3RTzlBaCxWp4doFk5N2o8Gy_nHNKroADIkJ46pRUohsXywbReAdYaMwF'
-        + 's9tv8d_cPVY3i07a3t8MN6TNwm0dSawm9v47UiCl3Sk5ZiG7xojPLu4sbg'
-        + '1U2jx4IBTNBznbJSzFHK66jT8bgkuqsk0GjskDJk19Z4qwjwbsnn4j2WBi'
-        + 'i3RL-Us2lGVkY8fkFzme1z0HbIkfz0Y6mqnOYtqc0X4jfcKoAC8Q',
-      'p': ''
-        + '83i-7IvMGXoMXCskv73TKr8637FiO7Z27zv8oj6pbWUQyLPQBQxtPVnwD2'
-        + '0R-60eTDmD2ujnMt5PoqMrm8RfmNhVWDtjjMmCMjOpSXicFHj7XOuVIYQy'
-        + 'qVWlWEh6dN36GVZYk93N8Bc9vY41xy8B9RzzOGVQzXvNEvn7O0nVbfs',
-      'q': ''
-        + '3dfOR9cuYq-0S-mkFLzgItgMEfFzB2q3hWehMuG0oCuqnb3vobLyumqjVZ'
-        + 'QO1dIrdwgTnCdpYzBcOfW5r370AFXjiWft_NGEiovonizhKpo9VVS78TzF'
-        + 'gxkIdrecRezsZ-1kYd_s1qDbxtkDEgfAITAG9LUnADun4vIcb6yelxk',
-      'dp': ''
-        + 'G4sPXkc6Ya9y8oJW9_ILj4xuppu0lzi_H7VTkS8xj5SdX3coE0oimYwxIi'
-        + '2emTAue0UOa5dpgFGyBJ4c8tQ2VF402XRugKDTP8akYhFo5tAA77Qe_Nmt'
-        + 'uYZc3C3m3I24G2GvR5sSDxUyAN2zq8Lfn9EUms6rY3Ob8YeiKkTiBj0',
-      'dq': ''
-        + 's9lAH9fggBsoFR8Oac2R_E2gw282rT2kGOAhvIllETE1efrA6huUUvMfBc'
-        + 'Mpn8lqeW6vzznYY5SSQF7pMdC_agI3nG8Ibp1BUb0JUiraRNqUfLhcQb_d'
-        + '9GF4Dh7e74WbRsobRonujTYN1xCaP6TO61jvWrX-L18txXw494Q_cgk',
-      'qi': ''
-        + 'GyM_p6JrXySiz1toFgKbWV-JdI3jQ4ypu9rbMWx3rQJBfmt0FoYzgUIZEV'
-        + 'FEcOqwemRN81zoDAaa-Bk0KWNGDjJHZDdDmFhW3AN7lI-puxk_mHZGJ11r'
-        + 'xyR8O55XLSe3SPmRfKwZI6yU24ZxvQKFYItdldUKGzO6Ia6zTKhAVRU',
-      'ext': true
-    };
-
-    const priv = rsa.privateKeyImportJWK(json);
-    const pub = rsa.publicKeyImportJWK(json);
-
-    assert(rsa.privateKeyVerify(priv));
-    assert(rsa.publicKeyVerify(pub));
-
-    assert.deepStrictEqual(rsa.publicKeyCreate(priv), pub);
-    assert.deepStrictEqual(rsa.privateKeyExportJWK(priv), json);
-  });
-
   for (const [i, json] of custom.entries()) {
     const vector = parseVector(json);
 
     const [
-      privRaw,
-      pubRaw,
+      priv,
+      pub,
       hash,
       saltLen,
       msg,
       sig1,
       sig2,
       ct1,
-      ct2,
-      ct3,
-      pkcs8,
-      spki
+      ct2
     ] = vector;
 
     const label = Buffer.from('bcrypto');
-    const priv = rsa.privateKeyImport(privRaw);
-    const pub = rsa.publicKeyImport(pubRaw);
 
     it(`should parse and serialize key (${i})`, () => {
       assert(rsa.privateKeyVerify(priv));
-      assert(rsa.publicKeyVerify(priv));
-
-      rsa.privateKeyCompute(priv);
-
-      assert(rsa.publicKeyVerify(priv));
+      assert(rsa.publicKeyVerify(pub));
       assert.deepStrictEqual(rsa.publicKeyCreate(priv), pub);
-      assert.bufferEqual(rsa.privateKeyExport(priv), privRaw);
-      assert.bufferEqual(rsa.publicKeyExport(pub), pubRaw);
-      assert.deepStrictEqual(rsa.privateKeyImport(privRaw), priv);
-      assert.deepStrictEqual(rsa.publicKeyImport(pubRaw), pub);
-
-      assert.deepStrictEqual(rsa.privateKeyImportPKCS8(pkcs8), priv);
-      assert.deepStrictEqual(rsa.publicKeyImportSPKI(spki), pub);
     });
 
-    it(`should recompute key (${i})`, () => {
-      const empty = Buffer.alloc(0);
-
-      priv.n = empty;
-
-      assert(!rsa.privateKeyVerify(priv));
-      rsa.privateKeyCompute(priv);
-      assert(rsa.privateKeyVerify(priv));
-
-      priv.d = empty;
-
-      assert(!rsa.privateKeyVerify(priv));
-      rsa.privateKeyCompute(priv);
-      assert(rsa.privateKeyVerify(priv));
-
-      priv.dp = empty;
-
-      assert(!rsa.privateKeyVerify(priv));
-      rsa.privateKeyCompute(priv);
-      assert(rsa.privateKeyVerify(priv));
-
-      priv.dq = empty;
-
-      assert(!rsa.privateKeyVerify(priv));
-      rsa.privateKeyCompute(priv);
-      assert(rsa.privateKeyVerify(priv));
-
-      priv.dq = empty;
-
-      assert(!rsa.privateKeyVerify(priv));
-      rsa.privateKeyCompute(priv);
-      assert(rsa.privateKeyVerify(priv));
-
-      priv.qi = empty;
-
-      assert(!rsa.privateKeyVerify(priv));
-      rsa.privateKeyCompute(priv);
-      assert(rsa.privateKeyVerify(priv));
-
-      priv.n = empty;
-      priv.d = empty;
-      priv.dp = empty;
-      priv.dq = empty;
-      priv.qi = empty;
-
-      assert(!rsa.privateKeyVerify(priv));
-      rsa.privateKeyCompute(priv);
-      assert(rsa.privateKeyVerify(priv));
-
-      priv.n = empty;
-      priv.dp = empty;
-      priv.dq = empty;
-      priv.qi = empty;
-
-      assert(!rsa.privateKeyVerify(priv));
-      rsa.privateKeyCompute(priv);
-      assert(rsa.privateKeyVerify(priv));
-
-      assert.bufferEqual(rsa.privateKeyExport(priv), privRaw);
-    });
+    it(`should recompute key (${i})`);
 
     it(`should sign and verify PKCS1v1.5 signature (${i})`, () => {
       const sig = rsa.sign(hash, msg, priv);
@@ -618,11 +430,11 @@ describe('RSA', function() {
       assert(!rsa.verify(hash, msg, sig, pub));
 
       sig[0] ^= 1;
-      pub.n[0] ^= 1;
+      pub[0] ^= 1;
 
       assert(!rsa.verify(hash, msg, sig, pub));
 
-      pub.n[0] ^= 1;
+      pub[0] ^= 1;
 
       assert(rsa.verify(hash, msg, sig, pub));
     });
@@ -645,11 +457,11 @@ describe('RSA', function() {
       assert(!rsa.verifyPSS(hash, msg, sig, pub, saltLen));
 
       sig[0] ^= 1;
-      pub.n[0] ^= 1;
+      pub[0] ^= 1;
 
       assert(!rsa.verifyPSS(hash, msg, sig, pub, saltLen));
 
-      pub.n[0] ^= 1;
+      pub[0] ^= 1;
 
       assert(rsa.verifyPSS(hash, msg, sig, pub, saltLen));
     });
@@ -663,17 +475,6 @@ describe('RSA', function() {
       assert.bufferEqual(rsa.decryptOAEP(hash, ct2, priv, label), msg);
       assert.bufferEqual(rsa.decryptOAEP(hash,
         rsa.encryptOAEP(hash, msg, pub, label), priv, label), msg);
-    });
-
-    it(`should encrypt and decrypt raw ciphertext (${i})`, () => {
-      const pad = Buffer.alloc(priv.size(), 0x00);
-      msg.copy(pad, pad.length - hash.size);
-
-      assert.bufferEqual(rsa.decryptRaw(ct3, priv).slice(-msg.length), msg);
-
-      const ct4 = rsa.encryptRaw(pad, pub);
-
-      assert.bufferEqual(rsa.decryptRaw(ct4, priv).slice(-msg.length), msg);
     });
   }
 });

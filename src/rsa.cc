@@ -18,22 +18,21 @@ BRSA::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "privateKeyGenerateAsync", BRSA::PrivateKeyGenerateAsync);
   Nan::Export(obj, "privateKeyBits", BRSA::PrivateKeyBits);
   Nan::Export(obj, "privateKeyVerify", BRSA::PrivateKeyVerify);
-  Nan::Export(obj, "privateKeyRecover", BRSA::PrivateKeyRecover);
-  Nan::Export(obj, "privateKeyNormalize", BRSA::PrivateKeyNormalize);
+  Nan::Export(obj, "privateKeyImport", BRSA::PrivateKeyImport);
+  Nan::Export(obj, "privateKeyExport", BRSA::PrivateKeyExport);
   Nan::Export(obj, "publicKeyCreate", BRSA::PublicKeyCreate);
   Nan::Export(obj, "publicKeyBits", BRSA::PublicKeyBits);
   Nan::Export(obj, "publicKeyVerify", BRSA::PublicKeyVerify);
-  Nan::Export(obj, "publicKeyNormalize", BRSA::PublicKeyNormalize);
+  Nan::Export(obj, "publicKeyImport", BRSA::PublicKeyImport);
+  Nan::Export(obj, "publicKeyExport", BRSA::PublicKeyExport);
   Nan::Export(obj, "sign", BRSA::Sign);
   Nan::Export(obj, "verify", BRSA::Verify);
   Nan::Export(obj, "encrypt", BRSA::Encrypt);
   Nan::Export(obj, "decrypt", BRSA::Decrypt);
-  Nan::Export(obj, "encryptOAEP", BRSA::EncryptOAEP);
-  Nan::Export(obj, "decryptOAEP", BRSA::DecryptOAEP);
   Nan::Export(obj, "signPSS", BRSA::SignPSS);
   Nan::Export(obj, "verifyPSS", BRSA::VerifyPSS);
-  Nan::Export(obj, "encryptRaw", BRSA::EncryptRaw);
-  Nan::Export(obj, "decryptRaw", BRSA::DecryptRaw);
+  Nan::Export(obj, "encryptOAEP", BRSA::EncryptOAEP);
+  Nan::Export(obj, "decryptOAEP", BRSA::DecryptOAEP);
   Nan::Export(obj, "veil", BRSA::Veil);
   Nan::Export(obj, "unveil", BRSA::Unveil);
 
@@ -153,9 +152,9 @@ NAN_METHOD(BRSA::PrivateKeyVerify) {
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
 
-NAN_METHOD(BRSA::PrivateKeyRecover) {
+NAN_METHOD(BRSA::PrivateKeyImport) {
   if (info.Length() < 2)
-    return Nan::ThrowError("rsa.privateKeyRecover() requires arguments.");
+    return Nan::ThrowError("rsa.privateKeyImport() requires arguments.");
 
   v8::Local<v8::Object> key_buf = info[0].As<v8::Object>();
   v8::Local<v8::Object> entropy_buf = info[1].As<v8::Object>();
@@ -177,11 +176,11 @@ NAN_METHOD(BRSA::PrivateKeyRecover) {
   size_t out_len = RSA_MAX_PRIV_SIZE;
 
   if (out == NULL)
-    return Nan::ThrowError("Could not recover key.");
+    return Nan::ThrowError("Could not import key.");
 
-  if (!rsa_privkey_recover(out, &out_len, key, key_len, entropy)) {
+  if (!rsa_privkey_import(out, &out_len, key, key_len, entropy)) {
     free(out);
-    return Nan::ThrowError("Could not recover key.");
+    return Nan::ThrowError("Could not import key.");
   }
 
   cleanse(entropy, entropy_len);
@@ -189,15 +188,15 @@ NAN_METHOD(BRSA::PrivateKeyRecover) {
   out = (uint8_t *)realloc(out, out_len);
 
   if (out == NULL)
-    return Nan::ThrowError("Could not recover key.");
+    return Nan::ThrowError("Could not import key.");
 
   return info.GetReturnValue().Set(
     Nan::NewBuffer((char *)out, out_len).ToLocalChecked());
 }
 
-NAN_METHOD(BRSA::PrivateKeyNormalize) {
+NAN_METHOD(BRSA::PrivateKeyExport) {
   if (info.Length() < 1)
-    return Nan::ThrowError("rsa.privateKeyNormalize() requires arguments.");
+    return Nan::ThrowError("rsa.privateKeyExport() requires arguments.");
 
   v8::Local<v8::Object> key_buf = info[0].As<v8::Object>();
 
@@ -210,17 +209,17 @@ NAN_METHOD(BRSA::PrivateKeyNormalize) {
   size_t out_len = RSA_MAX_PRIV_SIZE;
 
   if (out == NULL)
-    return Nan::ThrowError("Could not normalize key.");
+    return Nan::ThrowError("Could not export key.");
 
-  if (!rsa_privkey_normalize(out, &out_len, key, key_len)) {
+  if (!rsa_privkey_export(out, &out_len, key, key_len)) {
     free(out);
-    return Nan::ThrowError("Could not normalize key.");
+    return Nan::ThrowError("Could not export key.");
   }
 
   out = (uint8_t *)realloc(out, out_len);
 
   if (out == NULL)
-    return Nan::ThrowError("Could not normalize key.");
+    return Nan::ThrowError("Could not export key.");
 
   return info.GetReturnValue().Set(
     Nan::NewBuffer((char *)out, out_len).ToLocalChecked());
@@ -292,9 +291,9 @@ NAN_METHOD(BRSA::PublicKeyVerify) {
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
 
-NAN_METHOD(BRSA::PublicKeyNormalize) {
+NAN_METHOD(BRSA::PublicKeyImport) {
   if (info.Length() < 1)
-    return Nan::ThrowError("rsa.publicKeyNormalize() requires arguments.");
+    return Nan::ThrowError("rsa.publicKeyImport() requires arguments.");
 
   v8::Local<v8::Object> key_buf = info[0].As<v8::Object>();
 
@@ -307,17 +306,48 @@ NAN_METHOD(BRSA::PublicKeyNormalize) {
   size_t out_len = RSA_MAX_PUB_SIZE;
 
   if (out == NULL)
-    return Nan::ThrowError("Could not normalize key.");
+    return Nan::ThrowError("Could not import key.");
 
-  if (!rsa_pubkey_normalize(out, &out_len, key, key_len)) {
+  if (!rsa_pubkey_import(out, &out_len, key, key_len)) {
     free(out);
-    return Nan::ThrowError("Could not normalize key.");
+    return Nan::ThrowError("Could not import key.");
   }
 
   out = (uint8_t *)realloc(out, out_len);
 
   if (out == NULL)
-    return Nan::ThrowError("Could not normalize key.");
+    return Nan::ThrowError("Could not import key.");
+
+  return info.GetReturnValue().Set(
+    Nan::NewBuffer((char *)out, out_len).ToLocalChecked());
+}
+
+NAN_METHOD(BRSA::PublicKeyExport) {
+  if (info.Length() < 1)
+    return Nan::ThrowError("rsa.publicKeyExport() requires arguments.");
+
+  v8::Local<v8::Object> key_buf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(key_buf))
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+
+  const uint8_t *key = (const uint8_t *)node::Buffer::Data(key_buf);
+  size_t key_len = node::Buffer::Length(key_buf);
+  uint8_t *out = (uint8_t *)malloc(RSA_MAX_PUB_SIZE);
+  size_t out_len = RSA_MAX_PUB_SIZE;
+
+  if (out == NULL)
+    return Nan::ThrowError("Could not export key.");
+
+  if (!rsa_pubkey_export(out, &out_len, key, key_len)) {
+    free(out);
+    return Nan::ThrowError("Could not export key.");
+  }
+
+  out = (uint8_t *)realloc(out, out_len);
+
+  if (out == NULL)
+    return Nan::ThrowError("Could not export key.");
 
   return info.GetReturnValue().Set(
     Nan::NewBuffer((char *)out, out_len).ToLocalChecked());
@@ -397,7 +427,7 @@ NAN_METHOD(BRSA::Verify) {
   size_t sig_len = node::Buffer::Length(sig_buf);
   const uint8_t *key = (const uint8_t *)node::Buffer::Data(key_buf);
   size_t key_len = node::Buffer::Length(key_buf);
-  int result = rsa_verify(type, msg, msg_len, sig, sig_len, key, key_len, 1);
+  int result = rsa_verify(type, msg, msg_len, sig, sig_len, key, key_len);
 
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
@@ -478,7 +508,7 @@ NAN_METHOD(BRSA::Decrypt) {
   if (pt == NULL)
     return Nan::ThrowError("Could not decrypt message.");
 
-  if (!rsa_decrypt(pt, &pt_len, msg, msg_len, key, key_len, 1, entropy)) {
+  if (!rsa_decrypt(pt, &pt_len, msg, msg_len, key, key_len, entropy)) {
     free(pt);
     return Nan::ThrowError("Could not decrypt message.");
   }
@@ -492,6 +522,102 @@ NAN_METHOD(BRSA::Decrypt) {
 
   info.GetReturnValue().Set(
     Nan::NewBuffer((char *)pt, pt_len).ToLocalChecked());
+}
+
+NAN_METHOD(BRSA::SignPSS) {
+  if (info.Length() < 4)
+    return Nan::ThrowError("rsa.signPSS() requires arguments.");
+
+  if (!info[0]->IsNumber())
+    return Nan::ThrowTypeError("First argument must be a number.");
+
+  v8::Local<v8::Object> msg_buf = info[1].As<v8::Object>();
+  v8::Local<v8::Object> key_buf = info[2].As<v8::Object>();
+  v8::Local<v8::Object> entropy_buf = info[3].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(msg_buf)
+      || !node::Buffer::HasInstance(key_buf)
+      || !node::Buffer::HasInstance(entropy_buf)) {
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+  }
+
+  int type = (int)Nan::To<int32_t>(info[0]).FromJust();
+  const uint8_t *msg = (const uint8_t *)node::Buffer::Data(msg_buf);
+  size_t msg_len = node::Buffer::Length(msg_buf);
+  const uint8_t *key = (const uint8_t *)node::Buffer::Data(key_buf);
+  size_t key_len = node::Buffer::Length(key_buf);
+  int salt_len = -1;
+  uint8_t *entropy = (uint8_t *)node::Buffer::Data(entropy_buf);
+  size_t entropy_len = node::Buffer::Length(entropy_buf);
+
+  if (info.Length() > 4 && !IsNull(info[4])) {
+    if (!info[4]->IsNumber())
+      return Nan::ThrowTypeError("Third argument must be a number.");
+
+    salt_len = (int)Nan::To<int32_t>(info[4]).FromJust();
+  }
+
+  if (entropy_len != 32)
+    return Nan::ThrowRangeError("Entropy must be 32 bytes.");
+
+  uint8_t *sig = (uint8_t *)malloc(RSA_MAX_MOD_SIZE);
+  size_t sig_len = RSA_MAX_MOD_SIZE;
+
+  if (sig == NULL)
+    return Nan::ThrowError("Could not sign message.");
+
+  if (!rsa_sign_pss(sig, &sig_len, type, msg, msg_len, key, key_len, salt_len, entropy)) {
+    free(sig);
+    return Nan::ThrowError("Could not sign message.");
+  }
+
+  cleanse(entropy, entropy_len);
+
+  sig = (uint8_t *)realloc(sig, sig_len);
+
+  if (sig == NULL)
+    return Nan::ThrowError("Could not sign message.");
+
+  info.GetReturnValue().Set(
+    Nan::NewBuffer((char *)sig, sig_len).ToLocalChecked());
+}
+
+NAN_METHOD(BRSA::VerifyPSS) {
+  if (info.Length() < 4)
+    return Nan::ThrowError("rsa.verifyPSS() requires arguments.");
+
+  if (!info[0]->IsNumber())
+    return Nan::ThrowTypeError("First argument must be a number.");
+
+  v8::Local<v8::Object> msg_buf = info[1].As<v8::Object>();
+  v8::Local<v8::Object> sig_buf = info[2].As<v8::Object>();
+  v8::Local<v8::Object> key_buf = info[3].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(msg_buf)
+      || !node::Buffer::HasInstance(sig_buf)
+      || !node::Buffer::HasInstance(key_buf)) {
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+  }
+
+  int type = (int)Nan::To<int32_t>(info[0]).FromJust();
+  const uint8_t *msg = (const uint8_t *)node::Buffer::Data(msg_buf);
+  size_t msg_len = node::Buffer::Length(msg_buf);
+  const uint8_t *sig = (const uint8_t *)node::Buffer::Data(sig_buf);
+  size_t sig_len = node::Buffer::Length(sig_buf);
+  const uint8_t *key = (const uint8_t *)node::Buffer::Data(key_buf);
+  size_t key_len = node::Buffer::Length(key_buf);
+  int salt_len = -1;
+
+  if (info.Length() > 4 && !IsNull(info[4])) {
+    if (!info[4]->IsNumber())
+      return Nan::ThrowTypeError("Third argument must be a number.");
+
+    salt_len = (int)Nan::To<int32_t>(info[4]).FromJust();
+  }
+
+  int result = rsa_verify_pss(type, msg, msg_len, sig, sig_len, key, key_len, salt_len);
+
+  info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
 
 NAN_METHOD(BRSA::EncryptOAEP) {
@@ -602,7 +728,7 @@ NAN_METHOD(BRSA::DecryptOAEP) {
   if (pt == NULL)
     return Nan::ThrowError("Could not encrypt message.");
 
-  if (!rsa_decrypt_oaep(pt, &pt_len, type, msg, msg_len, key, key_len, label, label_len, 1, entropy)) {
+  if (!rsa_decrypt_oaep(pt, &pt_len, type, msg, msg_len, key, key_len, label, label_len, entropy)) {
     free(pt);
     return Nan::ThrowError("Could not encrypt message.");
   }
@@ -613,184 +739,6 @@ NAN_METHOD(BRSA::DecryptOAEP) {
 
   if (pt_len != 0 && pt == NULL)
     return Nan::ThrowError("Could not encrypt message.");
-
-  info.GetReturnValue().Set(
-    Nan::NewBuffer((char *)pt, pt_len).ToLocalChecked());
-}
-
-NAN_METHOD(BRSA::SignPSS) {
-  if (info.Length() < 4)
-    return Nan::ThrowError("rsa.signPSS() requires arguments.");
-
-  if (!info[0]->IsNumber())
-    return Nan::ThrowTypeError("First argument must be a number.");
-
-  v8::Local<v8::Object> msg_buf = info[1].As<v8::Object>();
-  v8::Local<v8::Object> key_buf = info[2].As<v8::Object>();
-  v8::Local<v8::Object> entropy_buf = info[3].As<v8::Object>();
-
-  if (!node::Buffer::HasInstance(msg_buf)
-      || !node::Buffer::HasInstance(key_buf)
-      || !node::Buffer::HasInstance(entropy_buf)) {
-    return Nan::ThrowTypeError("Arguments must be buffers.");
-  }
-
-  int type = (int)Nan::To<int32_t>(info[0]).FromJust();
-  const uint8_t *msg = (const uint8_t *)node::Buffer::Data(msg_buf);
-  size_t msg_len = node::Buffer::Length(msg_buf);
-  const uint8_t *key = (const uint8_t *)node::Buffer::Data(key_buf);
-  size_t key_len = node::Buffer::Length(key_buf);
-  int salt_len = -1;
-  uint8_t *entropy = (uint8_t *)node::Buffer::Data(entropy_buf);
-  size_t entropy_len = node::Buffer::Length(entropy_buf);
-
-  if (info.Length() > 4 && !IsNull(info[4])) {
-    if (!info[4]->IsNumber())
-      return Nan::ThrowTypeError("Third argument must be a number.");
-
-    salt_len = (int)Nan::To<int32_t>(info[4]).FromJust();
-  }
-
-  if (entropy_len != 32)
-    return Nan::ThrowRangeError("Entropy must be 32 bytes.");
-
-  uint8_t *sig = (uint8_t *)malloc(RSA_MAX_MOD_SIZE);
-  size_t sig_len = RSA_MAX_MOD_SIZE;
-
-  if (sig == NULL)
-    return Nan::ThrowError("Could not sign message.");
-
-  if (!rsa_sign_pss(sig, &sig_len, type, msg, msg_len, key, key_len, salt_len, entropy)) {
-    free(sig);
-    return Nan::ThrowError("Could not sign message.");
-  }
-
-  cleanse(entropy, entropy_len);
-
-  sig = (uint8_t *)realloc(sig, sig_len);
-
-  if (sig == NULL)
-    return Nan::ThrowError("Could not sign message.");
-
-  info.GetReturnValue().Set(
-    Nan::NewBuffer((char *)sig, sig_len).ToLocalChecked());
-}
-
-NAN_METHOD(BRSA::VerifyPSS) {
-  if (info.Length() < 4)
-    return Nan::ThrowError("rsa.verifyPSS() requires arguments.");
-
-  if (!info[0]->IsNumber())
-    return Nan::ThrowTypeError("First argument must be a number.");
-
-  v8::Local<v8::Object> msg_buf = info[1].As<v8::Object>();
-  v8::Local<v8::Object> sig_buf = info[2].As<v8::Object>();
-  v8::Local<v8::Object> key_buf = info[3].As<v8::Object>();
-
-  if (!node::Buffer::HasInstance(msg_buf)
-      || !node::Buffer::HasInstance(sig_buf)
-      || !node::Buffer::HasInstance(key_buf)) {
-    return Nan::ThrowTypeError("Arguments must be buffers.");
-  }
-
-  int type = (int)Nan::To<int32_t>(info[0]).FromJust();
-  const uint8_t *msg = (const uint8_t *)node::Buffer::Data(msg_buf);
-  size_t msg_len = node::Buffer::Length(msg_buf);
-  const uint8_t *sig = (const uint8_t *)node::Buffer::Data(sig_buf);
-  size_t sig_len = node::Buffer::Length(sig_buf);
-  const uint8_t *key = (const uint8_t *)node::Buffer::Data(key_buf);
-  size_t key_len = node::Buffer::Length(key_buf);
-  int salt_len = -1;
-
-  if (info.Length() > 4 && !IsNull(info[4])) {
-    if (!info[4]->IsNumber())
-      return Nan::ThrowTypeError("Third argument must be a number.");
-
-    salt_len = (int)Nan::To<int32_t>(info[4]).FromJust();
-  }
-
-  int result = rsa_verify_pss(type, msg, msg_len, sig, sig_len, key, key_len, salt_len, 1);
-
-  info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
-}
-
-NAN_METHOD(BRSA::EncryptRaw) {
-  if (info.Length() < 2)
-    return Nan::ThrowError("rsa.encryptRaw() requires arguments.");
-
-  v8::Local<v8::Object> msg_buf = info[0].As<v8::Object>();
-  v8::Local<v8::Object> key_buf = info[1].As<v8::Object>();
-
-  if (!node::Buffer::HasInstance(msg_buf)
-      || !node::Buffer::HasInstance(key_buf)) {
-    return Nan::ThrowTypeError("Arguments must be buffers.");
-  }
-
-  const uint8_t *msg = (const uint8_t *)node::Buffer::Data(msg_buf);
-  size_t msg_len = node::Buffer::Length(msg_buf);
-  const uint8_t *key = (const uint8_t *)node::Buffer::Data(key_buf);
-  size_t key_len = node::Buffer::Length(key_buf);
-  uint8_t *ct = (uint8_t *)malloc(RSA_MAX_MOD_SIZE);
-  size_t ct_len = RSA_MAX_MOD_SIZE;
-
-  if (ct == NULL)
-    return Nan::ThrowError("Could not encrypt message.");
-
-  if (!rsa_encrypt_raw(ct, &ct_len, msg, msg_len, key, key_len, 1)) {
-    free(ct);
-    return Nan::ThrowError("Could not encrypt message.");
-  }
-
-  ct = (uint8_t *)realloc(ct, ct_len);
-
-  if (ct == NULL)
-    return Nan::ThrowError("Could not encrypt message.");
-
-  info.GetReturnValue().Set(
-    Nan::NewBuffer((char *)ct, ct_len).ToLocalChecked());
-}
-
-NAN_METHOD(BRSA::DecryptRaw) {
-  if (info.Length() < 3)
-    return Nan::ThrowError("rsa.decryptRaw() requires arguments.");
-
-  v8::Local<v8::Object> msg_buf = info[0].As<v8::Object>();
-  v8::Local<v8::Object> key_buf = info[1].As<v8::Object>();
-  v8::Local<v8::Object> entropy_buf = info[2].As<v8::Object>();
-
-  if (!node::Buffer::HasInstance(msg_buf)
-      || !node::Buffer::HasInstance(key_buf)
-      || !node::Buffer::HasInstance(entropy_buf)) {
-    return Nan::ThrowTypeError("Arguments must be buffers.");
-  }
-
-  const uint8_t *msg = (const uint8_t *)node::Buffer::Data(msg_buf);
-  size_t msg_len = node::Buffer::Length(msg_buf);
-  const uint8_t *key = (const uint8_t *)node::Buffer::Data(key_buf);
-  size_t key_len = node::Buffer::Length(key_buf);
-  uint8_t *entropy = (uint8_t *)node::Buffer::Data(entropy_buf);
-  size_t entropy_len = node::Buffer::Length(entropy_buf);
-
-  if (entropy_len != 32)
-    return Nan::ThrowRangeError("Entropy must be 32 bytes.");
-
-  uint8_t *pt = (uint8_t *)malloc(RSA_MAX_MOD_SIZE);
-  size_t pt_len = RSA_MAX_MOD_SIZE;
-
-  if (pt == NULL)
-    return Nan::ThrowError("Could not decrypt message.");
-
-  if (!rsa_decrypt_raw(pt, &pt_len, msg, msg_len, key, key_len, 0, entropy)) {
-    free(pt);
-    return Nan::ThrowError("Could not decrypt message.");
-  }
-
-  cleanse(entropy, entropy_len);
-
-  pt = (uint8_t *)realloc(pt, pt_len);
-
-  if (pt_len != 0 && pt == NULL)
-    return Nan::ThrowError("Could not decrypt message.");
 
   info.GetReturnValue().Set(
     Nan::NewBuffer((char *)pt, pt_len).ToLocalChecked());
@@ -830,7 +778,7 @@ NAN_METHOD(BRSA::Veil) {
   if (out == NULL)
     return Nan::ThrowError("Could not veil message.");
 
-  if (!rsa_veil(out, &out_len, msg, msg_len, bits, key, key_len, 1, entropy)) {
+  if (!rsa_veil(out, &out_len, msg, msg_len, bits, key, key_len, entropy)) {
     free(out);
     return Nan::ThrowError("Could not veil message.");
   }
@@ -867,7 +815,7 @@ NAN_METHOD(BRSA::Unveil) {
   if (out == NULL)
     return Nan::ThrowError("Could not unveil message.");
 
-  if (!rsa_unveil(out, &out_len, msg, msg_len, bits, key, key_len, 1)) {
+  if (!rsa_unveil(out, &out_len, msg, msg_len, bits, key, key_len)) {
     free(out);
     return Nan::ThrowError("Could not unveil message.");
   }

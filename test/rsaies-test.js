@@ -52,8 +52,7 @@ describe('RSAIES', function() {
 
   for (const [i, json] of vectors.entries()) {
     const vector = json.map(item => Buffer.from(item, 'hex'));
-    const [priv_,, msg, ct] = vector;
-    const priv = rsa.privateKeyImport(priv_);
+    const [priv,, msg, ct] = vector;
     const label = Buffer.from('bcrypto');
 
     it(`should decrypt ciphertext #${i + 1}`, () => {

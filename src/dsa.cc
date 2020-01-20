@@ -14,13 +14,23 @@ BDSA::Init(v8::Local<v8::Object> &target) {
   Nan::HandleScope scope;
   v8::Local<v8::Object> obj = Nan::New<v8::Object>();
 
+  Nan::Export(obj, "paramsCreate", BDSA::ParamsCreate);
   Nan::Export(obj, "paramsGenerate", BDSA::ParamsGenerate);
   Nan::Export(obj, "paramsGenerateAsync", BDSA::ParamsGenerateAsync);
+  Nan::Export(obj, "paramsBits", BDSA::ParamsBits);
   Nan::Export(obj, "paramsVerify", BDSA::ParamsVerify);
+  Nan::Export(obj, "paramsImport", BDSA::ParamsImport);
+  Nan::Export(obj, "paramsExport", BDSA::ParamsExport);
   Nan::Export(obj, "privateKeyCreate", BDSA::PrivateKeyCreate);
-  Nan::Export(obj, "privateKeyRecover", BDSA::PrivateKeyRecover);
+  Nan::Export(obj, "privateKeyBits", BDSA::PrivateKeyBits);
   Nan::Export(obj, "privateKeyVerify", BDSA::PrivateKeyVerify);
+  Nan::Export(obj, "privateKeyImport", BDSA::PrivateKeyImport);
+  Nan::Export(obj, "privateKeyExport", BDSA::PrivateKeyExport);
+  Nan::Export(obj, "publicKeyCreate", BDSA::PublicKeyCreate);
+  Nan::Export(obj, "publicKeyBits", BDSA::PublicKeyBits);
   Nan::Export(obj, "publicKeyVerify", BDSA::PublicKeyVerify);
+  Nan::Export(obj, "publicKeyImport", BDSA::PublicKeyImport);
+  Nan::Export(obj, "publicKeyExport", BDSA::PublicKeyExport);
   Nan::Export(obj, "signatureExport", BDSA::SignatureExport);
   Nan::Export(obj, "signatureImport", BDSA::SignatureImport);
   Nan::Export(obj, "sign", BDSA::Sign);
@@ -30,6 +40,37 @@ BDSA::Init(v8::Local<v8::Object> &target) {
   Nan::Export(obj, "derive", BDSA::Derive);
 
   Nan::Set(target, Nan::New("dsa").ToLocalChecked(), obj);
+}
+
+NAN_METHOD(BDSA::ParamsCreate) {
+  if (info.Length() < 1)
+    return Nan::ThrowError("dsa.paramsCreate() requires arguments.");
+
+  v8::Local<v8::Object> key_buf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(key_buf))
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+
+  uint8_t *key = (uint8_t *)node::Buffer::Data(key_buf);
+  size_t key_len = node::Buffer::Length(key_buf);
+  uint8_t *out = (uint8_t *)malloc(DSA_MAX_PARAMS_SIZE);
+  size_t out_len = DSA_MAX_PARAMS_SIZE;
+
+  if (out == NULL)
+    return Nan::ThrowError("Could not create params.");
+
+  if (!dsa_params_create(out, &out_len, key, key_len)) {
+    free(out);
+    return Nan::ThrowError("Could not create params.");
+  }
+
+  out = (uint8_t *)realloc(out, out_len);
+
+  if (out == NULL)
+    return Nan::ThrowError("Could not create params.");
+
+  return info.GetReturnValue().Set(
+    Nan::NewBuffer((char *)out, out_len).ToLocalChecked());
 }
 
 NAN_METHOD(BDSA::ParamsGenerate) {
@@ -102,6 +143,25 @@ NAN_METHOD(BDSA::ParamsGenerateAsync) {
   Nan::AsyncQueueWorker(worker);
 }
 
+NAN_METHOD(BDSA::ParamsBits) {
+  if (info.Length() < 1)
+    return Nan::ThrowError("dsa.paramsBits() requires arguments.");
+
+  v8::Local<v8::Object> params_buf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(params_buf))
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+
+  const uint8_t *params = (const uint8_t *)node::Buffer::Data(params_buf);
+  size_t params_len = node::Buffer::Length(params_buf);
+  size_t bits = dsa_params_bits(params, params_len);
+
+  if (bits == 0)
+    return Nan::ThrowTypeError("Invalid params.");
+
+  info.GetReturnValue().Set(Nan::New<v8::Uint32>((uint32_t)bits));
+}
+
 NAN_METHOD(BDSA::ParamsVerify) {
   if (info.Length() < 1)
     return Nan::ThrowError("dsa.paramsVerify() requires arguments.");
@@ -116,6 +176,68 @@ NAN_METHOD(BDSA::ParamsVerify) {
   int result = dsa_params_verify(params, params_len);
 
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
+}
+
+NAN_METHOD(BDSA::ParamsImport) {
+  if (info.Length() < 1)
+    return Nan::ThrowError("dsa.paramsImport() requires arguments.");
+
+  v8::Local<v8::Object> key_buf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(key_buf))
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+
+  uint8_t *key = (uint8_t *)node::Buffer::Data(key_buf);
+  size_t key_len = node::Buffer::Length(key_buf);
+  uint8_t *out = (uint8_t *)malloc(DSA_MAX_PARAMS_SIZE);
+  size_t out_len = DSA_MAX_PARAMS_SIZE;
+
+  if (out == NULL)
+    return Nan::ThrowError("Could not compute key.");
+
+  if (!dsa_params_import(out, &out_len, key, key_len)) {
+    free(out);
+    return Nan::ThrowError("Could not compute key.");
+  }
+
+  out = (uint8_t *)realloc(out, out_len);
+
+  if (out == NULL)
+    return Nan::ThrowError("Could not compute key.");
+
+  return info.GetReturnValue().Set(
+    Nan::NewBuffer((char *)out, out_len).ToLocalChecked());
+}
+
+NAN_METHOD(BDSA::ParamsExport) {
+  if (info.Length() < 1)
+    return Nan::ThrowError("dsa.paramsExport() requires arguments.");
+
+  v8::Local<v8::Object> key_buf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(key_buf))
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+
+  uint8_t *key = (uint8_t *)node::Buffer::Data(key_buf);
+  size_t key_len = node::Buffer::Length(key_buf);
+  uint8_t *out = (uint8_t *)malloc(DSA_MAX_PARAMS_SIZE);
+  size_t out_len = DSA_MAX_PARAMS_SIZE;
+
+  if (out == NULL)
+    return Nan::ThrowError("Could not compute key.");
+
+  if (!dsa_params_export(out, &out_len, key, key_len)) {
+    free(out);
+    return Nan::ThrowError("Could not compute key.");
+  }
+
+  out = (uint8_t *)realloc(out, out_len);
+
+  if (out == NULL)
+    return Nan::ThrowError("Could not compute key.");
+
+  return info.GetReturnValue().Set(
+    Nan::NewBuffer((char *)out, out_len).ToLocalChecked());
 }
 
 NAN_METHOD(BDSA::PrivateKeyCreate) {
@@ -160,35 +282,23 @@ NAN_METHOD(BDSA::PrivateKeyCreate) {
     Nan::NewBuffer((char *)key, key_len).ToLocalChecked());
 }
 
-NAN_METHOD(BDSA::PrivateKeyRecover) {
+NAN_METHOD(BDSA::PrivateKeyBits) {
   if (info.Length() < 1)
-    return Nan::ThrowError("dsa.privateKeyRecover() requires arguments.");
+    return Nan::ThrowError("dsa.privateKeyBits() requires arguments.");
 
   v8::Local<v8::Object> key_buf = info[0].As<v8::Object>();
 
   if (!node::Buffer::HasInstance(key_buf))
     return Nan::ThrowTypeError("Arguments must be buffers.");
 
-  uint8_t *key = (uint8_t *)node::Buffer::Data(key_buf);
+  const uint8_t *key = (const uint8_t *)node::Buffer::Data(key_buf);
   size_t key_len = node::Buffer::Length(key_buf);
-  uint8_t *out = (uint8_t *)malloc(DSA_MAX_PRIV_SIZE);
-  size_t out_len = DSA_MAX_PRIV_SIZE;
+  size_t bits = dsa_privkey_bits(key, key_len);
 
-  if (out == NULL)
-    return Nan::ThrowError("Could not compute key.");
+  if (bits == 0)
+    return Nan::ThrowTypeError("Invalid private key.");
 
-  if (!dsa_privkey_recover(out, &out_len, key, key_len)) {
-    free(out);
-    return Nan::ThrowError("Could not compute key.");
-  }
-
-  out = (uint8_t *)realloc(out, out_len);
-
-  if (out == NULL)
-    return Nan::ThrowError("Could not compute key.");
-
-  return info.GetReturnValue().Set(
-    Nan::NewBuffer((char *)out, out_len).ToLocalChecked());
+  info.GetReturnValue().Set(Nan::New<v8::Uint32>((uint32_t)bits));
 }
 
 NAN_METHOD(BDSA::PrivateKeyVerify) {
@@ -207,6 +317,118 @@ NAN_METHOD(BDSA::PrivateKeyVerify) {
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }
 
+NAN_METHOD(BDSA::PrivateKeyImport) {
+  if (info.Length() < 1)
+    return Nan::ThrowError("dsa.privateKeyImport() requires arguments.");
+
+  v8::Local<v8::Object> key_buf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(key_buf))
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+
+  uint8_t *key = (uint8_t *)node::Buffer::Data(key_buf);
+  size_t key_len = node::Buffer::Length(key_buf);
+  uint8_t *out = (uint8_t *)malloc(DSA_MAX_PRIV_SIZE);
+  size_t out_len = DSA_MAX_PRIV_SIZE;
+
+  if (out == NULL)
+    return Nan::ThrowError("Could not compute key.");
+
+  if (!dsa_privkey_import(out, &out_len, key, key_len)) {
+    free(out);
+    return Nan::ThrowError("Could not compute key.");
+  }
+
+  out = (uint8_t *)realloc(out, out_len);
+
+  if (out == NULL)
+    return Nan::ThrowError("Could not compute key.");
+
+  return info.GetReturnValue().Set(
+    Nan::NewBuffer((char *)out, out_len).ToLocalChecked());
+}
+
+NAN_METHOD(BDSA::PrivateKeyExport) {
+  if (info.Length() < 1)
+    return Nan::ThrowError("dsa.privateKeyExport() requires arguments.");
+
+  v8::Local<v8::Object> key_buf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(key_buf))
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+
+  uint8_t *key = (uint8_t *)node::Buffer::Data(key_buf);
+  size_t key_len = node::Buffer::Length(key_buf);
+  uint8_t *out = (uint8_t *)malloc(DSA_MAX_PRIV_SIZE);
+  size_t out_len = DSA_MAX_PRIV_SIZE;
+
+  if (out == NULL)
+    return Nan::ThrowError("Could not compute key.");
+
+  if (!dsa_privkey_export(out, &out_len, key, key_len)) {
+    free(out);
+    return Nan::ThrowError("Could not compute key.");
+  }
+
+  out = (uint8_t *)realloc(out, out_len);
+
+  if (out == NULL)
+    return Nan::ThrowError("Could not compute key.");
+
+  return info.GetReturnValue().Set(
+    Nan::NewBuffer((char *)out, out_len).ToLocalChecked());
+}
+
+NAN_METHOD(BDSA::PublicKeyCreate) {
+  if (info.Length() < 1)
+    return Nan::ThrowError("dsa.publicKeyCreate() requires arguments.");
+
+  v8::Local<v8::Object> key_buf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(key_buf))
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+
+  uint8_t *key = (uint8_t *)node::Buffer::Data(key_buf);
+  size_t key_len = node::Buffer::Length(key_buf);
+  uint8_t *out = (uint8_t *)malloc(DSA_MAX_PUB_SIZE);
+  size_t out_len = DSA_MAX_PUB_SIZE;
+
+  if (out == NULL)
+    return Nan::ThrowError("Could not compute key.");
+
+  if (!dsa_pubkey_create(out, &out_len, key, key_len)) {
+    free(out);
+    return Nan::ThrowError("Could not compute key.");
+  }
+
+  out = (uint8_t *)realloc(out, out_len);
+
+  if (out == NULL)
+    return Nan::ThrowError("Could not compute key.");
+
+  return info.GetReturnValue().Set(
+    Nan::NewBuffer((char *)out, out_len).ToLocalChecked());
+}
+
+NAN_METHOD(BDSA::PublicKeyBits) {
+  if (info.Length() < 1)
+    return Nan::ThrowError("dsa.publicKeyBits() requires arguments.");
+
+  v8::Local<v8::Object> key_buf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(key_buf))
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+
+  const uint8_t *key = (const uint8_t *)node::Buffer::Data(key_buf);
+  size_t key_len = node::Buffer::Length(key_buf);
+  size_t bits = dsa_pubkey_bits(key, key_len);
+
+  if (bits == 0)
+    return Nan::ThrowTypeError("Invalid private key.");
+
+  info.GetReturnValue().Set(Nan::New<v8::Uint32>((uint32_t)bits));
+}
+
 NAN_METHOD(BDSA::PublicKeyVerify) {
   if (info.Length() < 1)
     return Nan::ThrowError("dsa.publicKeyVerify() requires arguments.");
@@ -221,6 +443,68 @@ NAN_METHOD(BDSA::PublicKeyVerify) {
   int result = dsa_pubkey_verify(key, key_len);
 
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
+}
+
+NAN_METHOD(BDSA::PublicKeyImport) {
+  if (info.Length() < 1)
+    return Nan::ThrowError("dsa.publicKeyImport() requires arguments.");
+
+  v8::Local<v8::Object> key_buf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(key_buf))
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+
+  uint8_t *key = (uint8_t *)node::Buffer::Data(key_buf);
+  size_t key_len = node::Buffer::Length(key_buf);
+  uint8_t *out = (uint8_t *)malloc(DSA_MAX_PUB_SIZE);
+  size_t out_len = DSA_MAX_PUB_SIZE;
+
+  if (out == NULL)
+    return Nan::ThrowError("Could not compute key.");
+
+  if (!dsa_pubkey_import(out, &out_len, key, key_len)) {
+    free(out);
+    return Nan::ThrowError("Could not compute key.");
+  }
+
+  out = (uint8_t *)realloc(out, out_len);
+
+  if (out == NULL)
+    return Nan::ThrowError("Could not compute key.");
+
+  return info.GetReturnValue().Set(
+    Nan::NewBuffer((char *)out, out_len).ToLocalChecked());
+}
+
+NAN_METHOD(BDSA::PublicKeyExport) {
+  if (info.Length() < 1)
+    return Nan::ThrowError("dsa.publicKeyExport() requires arguments.");
+
+  v8::Local<v8::Object> key_buf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(key_buf))
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+
+  uint8_t *key = (uint8_t *)node::Buffer::Data(key_buf);
+  size_t key_len = node::Buffer::Length(key_buf);
+  uint8_t *out = (uint8_t *)malloc(DSA_MAX_PUB_SIZE);
+  size_t out_len = DSA_MAX_PUB_SIZE;
+
+  if (out == NULL)
+    return Nan::ThrowError("Could not compute key.");
+
+  if (!dsa_pubkey_export(out, &out_len, key, key_len)) {
+    free(out);
+    return Nan::ThrowError("Could not compute key.");
+  }
+
+  out = (uint8_t *)realloc(out, out_len);
+
+  if (out == NULL)
+    return Nan::ThrowError("Could not compute key.");
+
+  return info.GetReturnValue().Set(
+    Nan::NewBuffer((char *)out, out_len).ToLocalChecked());
 }
 
 NAN_METHOD(BDSA::SignatureExport) {

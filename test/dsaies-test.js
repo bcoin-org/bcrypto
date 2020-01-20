@@ -12,12 +12,14 @@ describe('DSAIES', function() {
   const rng = new RNG();
 
   for (const key of keys) {
-    const priv = dsa.privateKeyImport(Buffer.from(key, 'hex'));
+    const priv = Buffer.from(key, 'hex');
+    const params = dsa.paramsCreate(priv);
+    const bits = dsa.paramsBits(params);
 
-    it(`should encrypt and decrypt (${priv.bits()})`, () => {
+    it(`should encrypt and decrypt (${bits})`, () => {
       const bobPriv = priv;
       const bobPub = dsa.publicKeyCreate(bobPriv);
-      const alicePriv = dsa.privateKeyCreate(bobPub);
+      const alicePriv = dsa.privateKeyCreate(params);
 
       const msg = rng.randomBytes(rng.randomRange(0, 100));
       const ct = dsaies.encrypt(SHA256, msg, bobPub, alicePriv);
@@ -42,8 +44,7 @@ describe('DSAIES', function() {
 
   for (const [i, json] of vectors.entries()) {
     const vector = json.map(item => Buffer.from(item, 'hex'));
-    const [, bob_,, msg, ct] = vector;
-    const bob = dsa.privateKeyImport(bob_);
+    const [, bob,, msg, ct] = vector;
 
     it(`should decrypt ciphertext #${i + 1}`, () => {
       const pt = dsaies.decrypt(SHA256, ct, bob);

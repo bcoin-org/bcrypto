@@ -16,14 +16,6 @@ const x509 = require('../lib/encoding/x509');
 const ecdsaVectors = require('./data/wycheproof/ecdsa_test.json');
 const ecdhVectors = require('./data/wycheproof/ecdh_test.json');
 
-let ECDSA;
-
-try {
-  ECDSA = require('../lib/native/ecdsa');
-} catch (e) {
-  ECDSA = require('../lib/js/ecdsa');
-}
-
 const curves = {
   'secp224r1': p224,
   'secp256r1': p256,
