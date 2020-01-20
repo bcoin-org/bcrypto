@@ -2,7 +2,6 @@
 
 const assert = require('bsert');
 const RNG = require('./util/rng');
-const pem = require('../lib/encoding/pem');
 const SHA256 = require('../lib/sha256');
 const SHA512 = require('../lib/sha512');
 const ed25519 = require('../lib/ed25519');
@@ -137,18 +136,6 @@ const scalarVectors = [
     Buffer.from('08a6638d9e1a1af96286ae6ff43d7b691ad39cc0a132c68507e10bbb232c666d', 'hex')
   ]
 ];
-
-const privPem = `
------BEGIN PRIVATE KEY-----
-MC4CAQAwBQYDK2VuBCIEIDB2uHPBie1qBDNVnbKUsLimC0bDITuFcV6ytky2z3Vb
------END PRIVATE KEY-----
-`;
-
-const pubPem = `
------BEGIN PUBLIC KEY-----
-MCowBQYDK2VuAyEAakLDF/7jDdqLlRRYPmC4h3hS1kph8OuJ+PrjQ2NlhUk=
------END PUBLIC KEY-----
-`;
 
 describe('X25519', function() {
   const rng = new RNG();
@@ -452,47 +439,5 @@ describe('X25519', function() {
 
     assert.bufferEqual(x25519.privateKeyImport(rawPriv), alicePriv);
     assert.bufferEqual(x25519.publicKeyImport(rawPub), alicePub);
-
-    const jsonPriv = x25519.privateKeyExportJWK(alicePriv);
-    const jsonPub = x25519.publicKeyExportJWK(alicePub);
-
-    assert.bufferEqual(x25519.privateKeyImportJWK(jsonPriv), alicePriv);
-    assert.bufferEqual(x25519.publicKeyImportJWK(jsonPub), alicePub);
-
-    const asnPriv = x25519.privateKeyExportPKCS8(alicePriv);
-    const asnPub = x25519.publicKeyExportSPKI(alicePub);
-
-    assert.bufferEqual(x25519.privateKeyImportPKCS8(asnPriv), alicePriv);
-    assert.bufferEqual(x25519.publicKeyImportSPKI(asnPub), alicePub);
-
-    const asnPriv2 = pem.fromPEM(privPem, 'PRIVATE KEY');
-    const asnPub2 = pem.fromPEM(pubPem, 'PUBLIC KEY');
-
-    assert.bufferEqual(x25519.publicKeyImportSPKI(asnPub2),
-      x25519.publicKeyCreate(x25519.privateKeyImportPKCS8(asnPriv2)));
-  });
-
-  it('should import standard JWK', () => {
-    // https://tools.ietf.org/html/draft-ietf-jose-cfrg-curves-06#appendix-A.6
-    const json = {
-      'kty': 'OKP',
-      'crv': 'X25519',
-      'x': 'hSDwCYkwp1R0i33ctD73Wg2_Og0mOBr066SpjqqbTmo'
-    };
-
-    const priv = Buffer.from(
-      '77076d0a7318a57d3c16c17251b26645df4c2f87ebc0992ab177fba51db92c2a',
-      'hex');
-
-    const pub = x25519.publicKeyImportJWK(json);
-
-    assert.bufferEqual(x25519.publicKeyCreate(priv), pub);
-
-    const json2 = x25519.privateKeyExportJWK(priv);
-
-    delete json2.d;
-    delete json2.ext;
-
-    assert.deepStrictEqual(json2, json);
   });
 });

@@ -40,6 +40,19 @@ const x = [
   x448
 ];
 
+function jsonify(obj) {
+  const out = {};
+
+  for (const key of Object.keys(obj)) {
+    if (Buffer.isBuffer(obj[key]))
+      out[key] = obj[key].toString('hex');
+    else
+      out[key] = obj[key];
+  }
+
+  return out;
+}
+
 for (const curve of ecdsa) {
   const vectors = [];
 
@@ -57,10 +70,8 @@ for (const curve of ecdsa) {
     const pubDbl = curve.publicKeyAdd(pub, pub);
     const pubConv = curve.publicKeyConvert(pub, false);
     const pubHybrid = Buffer.from(pubConv);
-    const sec1 = curve.privateKeyExport(priv);
-    const xy = curve.publicKeyExport(pub);
-    const pkcs8 = curve.privateKeyExportPKCS8(priv);
-    const spki = curve.publicKeyExportSPKI(pub);
+    const privJSON = jsonify(curve.privateKeyExport(priv));
+    const pubJSON = jsonify(curve.publicKeyExport(pub));
     const msg = random.randomBytes(curve.hash.size);
     const [signature, recovery] = curve.signRecoverable(msg, priv);
     const other = curve.privateKeyGenerate();
@@ -82,10 +93,8 @@ for (const curve of ecdsa) {
       pubDbl.toString('hex'),
       pubConv.toString('hex'),
       pubHybrid.toString('hex'),
-      sec1.toString('hex'),
-      xy.toString('hex'),
-      pkcs8.toString('hex'),
-      spki.toString('hex'),
+      privJSON,
+      pubJSON,
       msg.toString('hex'),
       signature.toString('hex'),
       curve.signatureExport(signature).toString('hex'),
@@ -117,10 +126,8 @@ for (const [curve, x] of eddsa) {
     const pubNeg = curve.publicKeyNegate(pub);
     const pubDbl = curve.publicKeyAdd(pub, pub);
     const pubConv = curve.publicKeyConvert(pub);
-    const privOct = curve.privateKeyExport(priv);
-    const pubOct = curve.publicKeyExport(pub);
-    const pkcs8 = curve.privateKeyExportPKCS8(priv);
-    const spki = curve.publicKeyExportSPKI(pub);
+    const privJSON = jsonify(curve.privateKeyExport(priv));
+    const pubJSON = jsonify(curve.publicKeyExport(pub));
     const msg = random.randomBytes(curve.size);
     const ph = (i & 1) === 0 ? null : true;
     const sig = curve.sign(msg, priv, ph);
@@ -146,10 +153,8 @@ for (const [curve, x] of eddsa) {
       pubNeg.toString('hex'),
       pubDbl.toString('hex'),
       pubConv.toString('hex'),
-      privOct.toString('hex'),
-      pubOct.toString('hex'),
-      pkcs8.toString('hex'),
-      spki.toString('hex'),
+      privJSON,
+      pubJSON,
       msg.toString('hex'),
       ph,
       sig.toString('hex'),
@@ -171,17 +176,13 @@ for (const ka of x) {
   for (let i = 0; i < 32; i++) {
     const priv = ka.privateKeyGenerate();
     const pub = ka.publicKeyCreate(priv);
-    const oct = ka.privateKeyExport(priv);
-    const pkcs8 = ka.privateKeyExportPKCS8(priv);
-    const spki = ka.publicKeyExportSPKI(pub);
+    const json = jsonify(ka.privateKeyExport(priv));
     const secret = ka.derive(pub, priv);
 
     vectors.push([
       priv.toString('hex'),
       pub.toString('hex'),
-      oct.toString('hex'),
-      pkcs8.toString('hex'),
-      spki.toString('hex'),
+      json,
       secret.toString('hex')
     ]);
   }
@@ -229,12 +230,10 @@ for (const ka of x) {
     const padded = Buffer.alloc(priv.size(), 0x00);
     msg.copy(padded, padded.length - hash.size);
     const ct3 = rsa.encryptRaw(padded, priv);
-    const pkcs8 = rsa.privateKeyExportPKCS8(priv);
-    const spki = rsa.publicKeyExportSPKI(pub);
 
     vectors.push([
-      rsa.privateKeyExport(priv).toString('hex'),
-      rsa.publicKeyExport(pub).toString('hex'),
+      jsonify(rsa.privateKeyExport(priv)),
+      jsonify(rsa.publicKeyExport(pub)),
       hash.id,
       saltLen,
       msg.toString('hex'),
@@ -242,9 +241,7 @@ for (const ka of x) {
       sig2.toString('hex'),
       ct1.toString('hex'),
       ct2.toString('hex'),
-      ct3.toString('hex'),
-      pkcs8.toString('hex'),
-      spki.toString('hex')
+      ct3.toString('hex')
     ]);
   }
 
@@ -272,18 +269,14 @@ for (const ka of x) {
     const pub = dsa.publicKeyCreate(priv);
     const msg = random.randomBytes(size);
     const sig = dsa.sign(msg, priv);
-    const pkcs8 = dsa.privateKeyExportPKCS8(priv);
-    const spki = dsa.publicKeyExportSPKI(pub);
 
     vectors.push([
-      dsa.paramsExport(params).toString('hex'),
-      dsa.privateKeyExport(priv).toString('hex'),
-      dsa.publicKeyExport(pub).toString('hex'),
+      jsonify(dsa.paramsExport(params)),
+      jsonify(dsa.privateKeyExport(priv)),
+      jsonify(dsa.publicKeyExport(pub)),
       msg.toString('hex'),
       sig.toString('hex'),
-      dsa.signatureExport(sig).toString('hex'),
-      pkcs8.toString('hex'),
-      spki.toString('hex')
+      dsa.signatureExport(sig).toString('hex')
     ]);
   }
 

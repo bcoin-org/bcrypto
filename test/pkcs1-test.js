@@ -45,7 +45,7 @@ describe('PKCS1', function() {
 
   it('should deserialize PKCS1 private key (backend)', () => {
     const data = pem.fromPEM(rsaPrivatePem, 'RSA PRIVATE KEY');
-    const key = rsa.privateKeyImport(data);
+    const key = rsa.privateKeyExport(data);
     const json = rsaPrivateJson;
 
     assert.strictEqual(key.n.toString('hex'), json.n);
@@ -57,7 +57,7 @@ describe('PKCS1', function() {
     assert.strictEqual(key.dq.toString('hex'), json.dq);
     assert.strictEqual(key.qi.toString('hex'), json.qi);
 
-    const data2 = rsa.privateKeyExport(key);
+    const data2 = rsa.privateKeyImport(key);
     assert.bufferEqual(data, data2);
     const pem2 = pem.toPEM(data2, 'RSA PRIVATE KEY');
 
@@ -66,13 +66,13 @@ describe('PKCS1', function() {
 
   it('should deserialize PKCS1 public key (backend)', () => {
     const data = pem.fromPEM(rsaPublicPem, 'RSA PUBLIC KEY');
-    const key = rsa.publicKeyImport(data);
+    const key = rsa.publicKeyExport(data);
     const json = rsaPublicJson;
 
     assert.strictEqual(key.n.toString('hex'), json.n);
     assert.strictEqual(key.e.toString('hex'), json.e);
 
-    const data2 = rsa.publicKeyExport(key);
+    const data2 = rsa.publicKeyImport(key);
     assert.bufferEqual(data, data2);
     const pem2 = pem.toPEM(data2, 'RSA PUBLIC KEY');
 

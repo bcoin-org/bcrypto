@@ -112,8 +112,9 @@ describe('Schnorr', function() {
     assert.bufferEqual(secp256k1.publicKeyCreate(priv),
                        Buffer.concat([odd, pub]));
 
-    const ecdsaPriv = schnorr.privateKeyExport(priv);
-    const ecdsaPub = schnorr.publicKeyExport(pub);
+    const ecdsaPriv =
+      secp256k1.privateKeyImport(schnorr.privateKeyExport(priv));
+    const ecdsaPub = secp256k1.publicKeyImport(schnorr.publicKeyExport(pub));
 
     // These calls must produce a sign-aware key pair such that G*a = A.
     assert.bufferEqual(secp256k1.publicKeyCreate(ecdsaPriv), ecdsaPub);
@@ -130,10 +131,13 @@ describe('Schnorr', function() {
     assert.bufferEqual(secp256k1.privateKeyNegate(ecdsaPriv), priv);
 
     // Should get our original pubkey.
-    assert.bufferEqual(schnorr.publicKeyImport(ecdsaPub), pub);
+    assert.bufferEqual(
+      schnorr.publicKeyImport(secp256k1.publicKeyExport(ecdsaPub)), pub);
 
     // Basically a no-op.
-    assert.bufferEqual(schnorr.privateKeyImport(ecdsaPriv), ecdsaPriv);
+    assert.bufferEqual(
+      schnorr.privateKeyImport(secp256k1.privateKeyExport(ecdsaPriv)),
+      ecdsaPriv);
   });
 
   it('should create point from uniform bytes (svdw)', () => {

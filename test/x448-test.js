@@ -1,7 +1,6 @@
 'use strict';
 
 const assert = require('bsert');
-const pem = require('../lib/encoding/pem');
 const SHAKE256 = require('../lib/shake256');
 const ed448 = require('../lib/ed448');
 const x448 = require('../lib/x448');
@@ -80,20 +79,6 @@ const scalarVectors = [
               + 'e9618e91839d1e9351e350fd855de230c6138e70a3d7cdb2fbb91356', 'hex')
   ]
 ];
-
-const privPem = `
------BEGIN PRIVATE KEY-----
-MEYCAQAwBQYDK2VvBDoEODS/v+7SdfH9nVquDWbSj5PvcABLtBO6uSnsiTVc6xTu
-u86nXUP4rZhJ7ZYJSa/szpJMMFnnRQrh
------END PRIVATE KEY-----
-`;
-
-const pubPem = `
------BEGIN PUBLIC KEY-----
-MEIwBQYDK2VvAzkAIakuL8JOtTmPmNj+Hj9Vk2pTl7WknxmyyRh4xTHBoodB/iqn
-pDWiqkjsYdlUUGH7se0wSZW3+AU=
------END PUBLIC KEY-----
-`;
 
 describe('X448', function() {
   for (const [pub, key, expect] of vectors) {
@@ -376,48 +361,5 @@ describe('X448', function() {
 
     assert.bufferEqual(x448.privateKeyImport(rawPriv), alicePriv);
     assert.bufferEqual(x448.publicKeyImport(rawPub), alicePub);
-
-    const jsonPriv = x448.privateKeyExportJWK(alicePriv);
-    const jsonPub = x448.publicKeyExportJWK(alicePub);
-
-    assert.bufferEqual(x448.privateKeyImportJWK(jsonPriv), alicePriv);
-    assert.bufferEqual(x448.publicKeyImportJWK(jsonPub), alicePub);
-
-    const asnPriv = x448.privateKeyExportPKCS8(alicePriv);
-    const asnPub = x448.publicKeyExportSPKI(alicePub);
-
-    assert.bufferEqual(x448.privateKeyImportPKCS8(asnPriv), alicePriv);
-    assert.bufferEqual(x448.publicKeyImportSPKI(asnPub), alicePub);
-
-    const asnPriv2 = pem.fromPEM(privPem, 'PRIVATE KEY');
-    const asnPub2 = pem.fromPEM(pubPem, 'PUBLIC KEY');
-
-    assert.bufferEqual(x448.publicKeyImportSPKI(asnPub2),
-      x448.publicKeyCreate(x448.privateKeyImportPKCS8(asnPriv2)));
-  });
-
-  it('should import standard JWK', () => {
-    // https://tools.ietf.org/html/draft-ietf-jose-cfrg-curves-06#appendix-A.7
-    const json = {
-      'kty': 'OKP',
-      'crv': 'X448',
-      'x': 'mwj3zDG34-Z9ItWuoSEHSic70rg94Jxj-qc9LCLF2bvINmRyQdlT1AxbEtqIEg1TF3-A5TLEH6A'
-    };
-
-    const priv = Buffer.from(''
-      + '9a8f4925d1519f5775cf46b04b5800d4ee9ee8bae8bc5565d498c28d'
-      + 'd9c9baf574a9419744897391006382a6f127ab1d9ac2d8c0a598726b',
-      'hex');
-
-    const pub = x448.publicKeyImportJWK(json);
-
-    assert.bufferEqual(x448.publicKeyCreate(priv), pub);
-
-    const json2 = x448.privateKeyExportJWK(priv);
-
-    delete json2.d;
-    delete json2.ext;
-
-    assert.deepStrictEqual(json2, json);
   });
 });

@@ -17,20 +17,36 @@ const hashes = {
   'SHA-512': SHA512
 };
 
+function parseHex(str) {
+  if (str.length & 1)
+    str = '0' + str;
+  return Buffer.from(str, 'hex');
+}
+
 describe('DSA-Wycheproof', function() {
   this.timeout(30000);
 
   for (const group of vectors.testGroups) {
-    const pub = dsa.publicKeyImportSPKI(Buffer.from(group.keyDer, 'hex'));
     const hash = hashes[group.sha];
 
     for (const test of group.tests) {
       const text = test.sig.slice(0, 32) + '...';
 
       it(`should verify signature ${text} (${hash.id})`, () => {
-        const msg = hash.digest(Buffer.from(test.msg, 'hex'));
-        const sig = Buffer.from(test.sig, 'hex');
-        const res = test.result !== 'invalid';
+        const msg = hash.digest(parseHex(test.msg));
+        const sig = parseHex(test.sig);
+
+        let res = test.result !== 'invalid';
+
+        if (test.flags.includes('NoLeadingZero'))
+          res = false;
+
+        const pub = dsa.publicKeyImport({
+          p: parseHex(group.key.p),
+          q: parseHex(group.key.q),
+          g: parseHex(group.key.g),
+          y: parseHex(group.key.y)
+        });
 
         assert.strictEqual(dsa.verifyDER(msg, sig, pub), res);
       });

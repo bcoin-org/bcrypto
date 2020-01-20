@@ -14,7 +14,6 @@ const SHA256 = require('../lib/sha256');
 const SHA384 = require('../lib/sha384');
 const SHA512 = require('../lib/sha512');
 const {isStrictDER} = require('./util/bip66');
-const Signature = require('../lib/internal/signature');
 
 const curves = [
   p192,
@@ -67,25 +66,9 @@ describe('ECDSA', function() {
             ec.privateKeyImport(ec.privateKeyExport(priv, c)),
             priv);
 
-          assert.bufferEqual(
-            ec.privateKeyImportPKCS8(ec.privateKeyExportPKCS8(priv, c)),
-            priv);
-
-          assert.bufferEqual(
-            ec.privateKeyImportJWK(ec.privateKeyExportJWK(priv)),
-            priv);
-
           for (const p of [pub, pubu]) {
             assert.bufferEqual(
               ec.publicKeyImport(ec.publicKeyExport(p), c),
-              c ? pub : pubu);
-
-            assert.bufferEqual(
-              ec.publicKeyImportSPKI(ec.publicKeyExportSPKI(p, c), c),
-              c ? pub : pubu);
-
-            assert.bufferEqual(
-              ec.publicKeyImportJWK(ec.publicKeyExportJWK(p), c),
               c ? pub : pubu);
           }
         }
@@ -296,18 +279,6 @@ describe('ECDSA', function() {
 
         assert.bufferEqual(ec.privateKeyImport(rawPriv), priv);
         assert.bufferEqual(ec.publicKeyImport(rawPub), pub);
-
-        const jsonPriv = ec.privateKeyExportJWK(priv);
-        const jsonPub = ec.publicKeyExportJWK(pub);
-
-        assert.bufferEqual(ec.privateKeyImportJWK(jsonPriv), priv);
-        assert.bufferEqual(ec.publicKeyImportJWK(jsonPub), pub);
-
-        const asnPriv = ec.privateKeyExportPKCS8(priv);
-        const asnPub = ec.publicKeyExportSPKI(pub);
-
-        assert.bufferEqual(ec.privateKeyImportPKCS8(asnPriv), priv);
-        assert.bufferEqual(ec.publicKeyImportSPKI(asnPub), pub);
       });
     });
   }
@@ -586,10 +557,10 @@ describe('ECDSA', function() {
           pubDbl,
           pubConv,
           pubHybrid,
-          sec1,
-          xy,
-          pkcs8,
-          spki,
+          ,
+          ,
+          ,
+          ,
           msg,
           sig,
           der,
@@ -634,16 +605,11 @@ describe('ECDSA', function() {
         });
 
         it(`should reserialize key (${i}) (${curve.id})`, () => {
-          assert.bufferEqual(curve.privateKeyExport(priv), sec1);
-          assert.bufferEqual(curve.privateKeyExportPKCS8(priv), pkcs8);
-          assert.bufferEqual(curve.publicKeyExport(pub), xy);
-          assert.bufferEqual(curve.publicKeyExportSPKI(pub), spki);
-          assert.bufferEqual(curve.privateKeyImport(sec1), priv);
-          assert.bufferEqual(curve.privateKeyImportPKCS8(pkcs8), priv);
-          assert.bufferEqual(curve.publicKeyImport(xy), pub);
-          assert.bufferEqual(curve.publicKeyImportSPKI(spki), pub);
-          assert.bufferEqual(curve.publicKeyImport(xy, false), pubConv);
-          assert.bufferEqual(curve.publicKeyImportSPKI(spki, false), pubConv);
+          const rawPriv = curve.privateKeyExport(priv);
+          const rawPub = curve.publicKeyExport(pub);
+
+          assert.bufferEqual(curve.privateKeyImport(rawPriv), priv);
+          assert.bufferEqual(curve.publicKeyImport(rawPub), pub);
         });
 
         it(`should check signature (${i}) (${curve.id})`, () => {
@@ -994,42 +960,6 @@ describe('ECDSA', function() {
 
       assert(p256.isLowS(sig));
       assert(p256.verify(msg, sig, pub));
-    });
-
-    it('should import standard JWK (1)', () => {
-      // https://tools.ietf.org/html/rfc7518#appendix-C
-      const json = {
-        'kty': 'EC',
-        'crv': 'P-256',
-        'x': 'gI0GAILBdu7T53akrFmMyGcsF3n5dO7MmwNBHKW5SV0',
-        'y': 'SLW_xSffzlPWrHEVI30DHM_4egVwt3NQqeUD7nMFpps',
-        'd': '0_NxaRPUMQoAJt50Gz8YiTr8gRTwyEaCumd-MToTmIo',
-        'ext': true
-      };
-
-      const priv = p256.privateKeyImportJWK(json);
-      const pub = p256.publicKeyImportJWK(json);
-
-      assert.bufferEqual(p256.publicKeyCreate(priv), pub);
-      assert.deepStrictEqual(p256.privateKeyExportJWK(priv), json);
-    });
-
-    it('should import standard JWK (2)', () => {
-      // https://tools.ietf.org/html/rfc7517#appendix-A.2
-      const json = {
-        'kty': 'EC',
-        'crv': 'P-256',
-        'x': 'MKBCTNIcKUSDii11ySs3526iDZ8AiTo7Tu6KPAqv7D4',
-        'y': '4Etl6SRW2YiLUrN5vfvVHuhp7x8PxltmWWlbbM4IFyM',
-        'd': '870MB6gfuTJ4HtUnUvYMyJpr5eUZNP4Bk43bVdj3eAE',
-        'ext': true
-      };
-
-      const priv = p256.privateKeyImportJWK(json);
-      const pub = p256.publicKeyImportJWK(json);
-
-      assert.bufferEqual(p256.publicKeyCreate(priv), pub);
-      assert.deepStrictEqual(p256.privateKeyExportJWK(priv), json);
     });
   });
 
@@ -1659,11 +1589,9 @@ describe('ECDSA', function() {
       const [m, r, s, p] = json;
       const msg = Buffer.from(m, 'hex');
       const sig = Buffer.from(r + s, 'hex');
-      const der = Signature.toDER(sig, 66);
       const pub = Buffer.from(p, 'hex');
 
       assert(!p521.verify(msg, sig, pub));
-      assert(!p521.verifyDER(msg, der, pub));
     });
 
     it('should reject non-canonical S value', () => {
@@ -1686,11 +1614,9 @@ describe('ECDSA', function() {
       const [m, r, s, p] = json;
       const msg = Buffer.from(m, 'hex');
       const sig = Buffer.from(r + s, 'hex');
-      const der = Signature.toDER(sig, 66);
       const pub = Buffer.from(p, 'hex');
 
       assert(!p521.verify(msg, sig, pub));
-      assert(!p521.verifyDER(msg, der, pub));
     });
 
     it('should reject non-canonical X coordinate (compressed)', () => {
@@ -1713,12 +1639,10 @@ describe('ECDSA', function() {
       const [m, r, s, p] = json;
       const msg = Buffer.from(m, 'hex');
       const sig = Buffer.from(r + s, 'hex');
-      const der = Signature.toDER(sig, 66);
       const pub = Buffer.from(p, 'hex');
 
       assert(!p521.publicKeyVerify(pub));
       assert(!p521.verify(msg, sig, pub));
-      assert(!p521.verifyDER(msg, der, pub));
     });
 
     it('should reject non-canonical X coordinate', () => {
@@ -1744,12 +1668,10 @@ describe('ECDSA', function() {
       const [m, r, s, p] = json;
       const msg = Buffer.from(m, 'hex');
       const sig = Buffer.from(r + s, 'hex');
-      const der = Signature.toDER(sig, 66);
       const pub = Buffer.from(p, 'hex');
 
       assert(!p521.publicKeyVerify(pub));
       assert(!p521.verify(msg, sig, pub));
-      assert(!p521.verifyDER(msg, der, pub));
     });
 
     it('should reject non-canonical Y coordinate', () => {
@@ -1775,12 +1697,10 @@ describe('ECDSA', function() {
       const [m, r, s, p] = json;
       const msg = Buffer.from(m, 'hex');
       const sig = Buffer.from(r + s, 'hex');
-      const der = Signature.toDER(sig, 66);
       const pub = Buffer.from(p, 'hex');
 
       assert(!p521.publicKeyVerify(pub));
       assert(!p521.verify(msg, sig, pub));
-      assert(!p521.verifyDER(msg, der, pub));
     });
 
     it('should reject non-canonical X coordinate (compressed)', () => {

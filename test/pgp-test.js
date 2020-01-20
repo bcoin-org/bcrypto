@@ -344,21 +344,26 @@ describe('PGP', function() {
         assert.strictEqual(secret.q.get().length, 128);
         assert.strictEqual(secret.qi.get().length, 128);
 
-        const pub = new rsa.RSAPublicKey();
-        pub.setN(priv.key.n.get());
-        pub.setE(priv.key.e.get());
+        const pub = rsa.publicKeyImport({
+          n: priv.key.n.get(),
+          e: priv.key.e.get()
+        });
 
-        const key = new rsa.RSAPrivateKey();
-        key.setE(priv.key.e.get());
-        key.setP(secret.p.get());
-        key.setQ(secret.q.get());
-        key.setD(secret.d.get());
-        rsa.privateKeyCompute(key);
+        const pubj = rsa.publicKeyExport(pub);
 
-        assert.bufferEqual(key.n, pub.n);
-        assert.bufferEqual(key.e, pub.e);
-        // assert.bufferEqual(key.d, secret.d.get());
-        assert.bufferEqual(key.qi, secret.qi.get());
+        const key = rsa.privateKeyImport({
+          e: priv.key.e.get(),
+          p: secret.p.get(),
+          q: secret.q.get(),
+          d: secret.d.get()
+        });
+
+        const keyj = rsa.privateKeyExport(key);
+
+        assert.bufferEqual(keyj.n, pubj.n);
+        assert.bufferEqual(keyj.e, pubj.e);
+        // assert.bufferEqual(keyj.d, secret.d.get());
+        assert.bufferEqual(keyj.qi, secret.qi.get());
 
         const m = SHA256.digest(Buffer.from('foobar'));
         const s = rsa.sign(SHA256, m, key);

@@ -49,10 +49,10 @@ describe('EdDSA', function() {
           pubNeg,
           pubDbl,
           pubConv,
-          privOct,
-          pubOct,
-          pkcs8,
-          spki,
+          ,
+          ,
+          ,
+          ,
           msg,
           ph,
           sig,
@@ -108,14 +108,11 @@ describe('EdDSA', function() {
         });
 
         it(`should reserialize key (${i}) (${curve.id})`, () => {
-          assert.bufferEqual(curve.privateKeyExport(priv), privOct);
-          assert.bufferEqual(curve.privateKeyExportPKCS8(priv), pkcs8);
-          assert.bufferEqual(curve.publicKeyExport(pub), pubOct);
-          assert.bufferEqual(curve.publicKeyExportSPKI(pub), spki);
-          assert.bufferEqual(curve.privateKeyImport(privOct), priv);
-          assert.bufferEqual(curve.privateKeyImportPKCS8(pkcs8), priv);
-          assert.bufferEqual(curve.publicKeyImport(pubOct), pub);
-          assert.bufferEqual(curve.publicKeyImportSPKI(spki), pub);
+          const rawPriv = curve.privateKeyExport(priv);
+          const rawPub = curve.publicKeyExport(pub);
+
+          assert.bufferEqual(curve.privateKeyImport(rawPriv), priv);
+          assert.bufferEqual(curve.publicKeyImport(rawPub), pub);
         });
 
         it(`should derive shared secret (${i}) (${curve.id})`, () => {

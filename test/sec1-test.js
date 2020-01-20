@@ -1,9 +1,6 @@
 'use strict';
 
 const assert = require('bsert');
-const p256 = require('../lib/p256');
-const secp256k1 = require('../lib/secp256k1');
-const pem = require('../lib/encoding/pem');
 const sec1 = require('../lib/encoding/sec1');
 
 const secpPriv =
@@ -66,29 +63,6 @@ describe('SEC1', function() {
     assert.strictEqual(key.publicKey.rightAlign().toString('hex'), secpPub);
   });
 
-  it('should parse secp256k1 key with backend (1)', () => {
-    const str = secpPem;
-    const data = pem.fromPEM(str, 'EC PRIVATE KEY');
-    const key = secp256k1.privateKeyImport(data);
-
-    assert.strictEqual(key.toString('hex'), secpPriv);
-    assert.strictEqual(secp256k1.publicKeyCreate(key).toString('hex'), secpPub);
-
-    const data2 = secp256k1.privateKeyExport(key);
-    const pem2 = pem.toPEM(data2, 'EC PRIVATE KEY');
-
-    assert.strictEqual(pem2.trim(), str.trim());
-  });
-
-  it('should parse secp256k1 key with backend (2)', () => {
-    const str = secpPem2;
-    const data = pem.fromPEM(str, 'EC PRIVATE KEY');
-    const key = secp256k1.privateKeyImport(data);
-
-    assert.strictEqual(key.toString('hex'), secpPriv);
-    assert.strictEqual(secp256k1.publicKeyCreate(key).toString('hex'), secpPub);
-  });
-
   it('should parse p256 key', () => {
     const key = sec1.ECPrivateKey.fromPEM(p256Pem);
 
@@ -99,18 +73,5 @@ describe('SEC1', function() {
     assert.strictEqual(key.publicKey.value.toString('hex'), p256Pub);
     assert.strictEqual(key.publicKey.rightAlign().toString('hex'), p256Pub);
     assert.strictEqual(key.toPEM().trim(), p256Pem.trim());
-  });
-
-  it('should parse p256 key with backend', () => {
-    const data = pem.fromPEM(p256Pem, 'EC PRIVATE KEY');
-    const key = p256.privateKeyImport(data);
-
-    assert.strictEqual(key.toString('hex'), p256Priv);
-    assert.strictEqual(p256.publicKeyCreate(key).toString('hex'), p256Pub);
-
-    const data2 = p256.privateKeyExport(key);
-    const pem2 = pem.toPEM(data2, 'EC PRIVATE KEY');
-
-    assert.strictEqual(pem2.trim(), p256Pem.trim());
   });
 });

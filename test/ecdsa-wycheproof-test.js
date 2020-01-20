@@ -46,7 +46,7 @@ describe('ECDSA-Wycheproof', function() {
     if (!curve)
       continue;
 
-    const pub = curve.publicKeyImportSPKI(Buffer.from(group.keyDer, 'hex'));
+    const pub = Buffer.from(group.key.uncompressed, 'hex');
     const hash = hashes[group.sha];
 
     for (const test of group.tests) {

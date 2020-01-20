@@ -4,6 +4,7 @@ const assert = require('bsert');
 const BN = require('../lib/bn.js');
 const random = require('../lib/random');
 const util = require('../lib/encoding/util');
+const EMPTY = Buffer.alloc(0);
 
 const {
   countLeft,
@@ -127,10 +128,8 @@ describe('Util', function() {
     const a = Buffer.from('0000e5180064264fb915227539ab9173d2077a2896', 'hex');
     const b = Buffer.from('e5180064264fb915227539ab9173d2077a2896', 'hex');
 
-    assert.bufferEqual(trimLeft(), Buffer.alloc(1, 0x00));
-    assert.bufferEqual(trimLeft(null), Buffer.alloc(1, 0x00));
-    assert.bufferEqual(trimLeft(Buffer.alloc(32, 0x00)), Buffer.alloc(1, 0x00));
-    assert.bufferEqual(trimLeft(Buffer.alloc(0)), Buffer.alloc(1, 0x00));
+    assert.bufferEqual(trimLeft(Buffer.alloc(32, 0x00)), EMPTY);
+    assert.bufferEqual(trimLeft(Buffer.alloc(0)), EMPTY);
     assert.bufferEqual(trimLeft(a), b);
   });
 
@@ -138,10 +137,8 @@ describe('Util', function() {
     const a = Buffer.from('34a300ae5955cff22b79f37e86bbc811b3670000', 'hex');
     const b = Buffer.from('34a300ae5955cff22b79f37e86bbc811b367', 'hex');
 
-    assert.bufferEqual(trimRight(), Buffer.alloc(1, 0x00));
-    assert.bufferEqual(trimRight(null), Buffer.alloc(1, 0x00));
-    assert.bufferEqual(trimRight(Buffer.alloc(32, 0x00)), Buffer.alloc(1, 0x00));
-    assert.bufferEqual(trimRight(Buffer.alloc(0)), Buffer.alloc(1, 0x00));
+    assert.bufferEqual(trimRight(Buffer.alloc(32, 0x00)), EMPTY);
+    assert.bufferEqual(trimRight(Buffer.alloc(0)), EMPTY);
     assert.bufferEqual(trimRight(a), b);
   });
 
@@ -179,8 +176,8 @@ describe('Util', function() {
       assert.strictEqual(compareLeft(a, a), x.cmp(x));
       assert.strictEqual(compareLeft(b, b), y.cmp(y));
 
-      assert.bufferEqual(trimLeft(a), x.encode('be'));
-      assert.bufferEqual(trimLeft(b), y.encode('be'));
+      assert.bufferEqual(trimLeft(a), x.isZero() ? EMPTY : x.encode('be'));
+      assert.bufferEqual(trimLeft(b), y.isZero() ? EMPTY : y.encode('be'));
 
       assert.bufferEqual(padLeft(a, i + 1), x.encode('be', i + 1));
       assert.bufferEqual(padLeft(b, i + 1), y.encode('be', i + 1));
@@ -203,8 +200,8 @@ describe('Util', function() {
       assert.strictEqual(compareRight(a, a), x.cmp(x));
       assert.strictEqual(compareRight(b, b), y.cmp(y));
 
-      assert.bufferEqual(trimRight(a), x.encode('le'));
-      assert.bufferEqual(trimRight(b), y.encode('le'));
+      assert.bufferEqual(trimRight(a), x.isZero() ? EMPTY : x.encode('le'));
+      assert.bufferEqual(trimRight(b), y.isZero() ? EMPTY : y.encode('le'));
 
       assert.bufferEqual(padRight(a, i + 1), x.encode('le', i + 1));
       assert.bufferEqual(padRight(b, i + 1), y.encode('le', i + 1));

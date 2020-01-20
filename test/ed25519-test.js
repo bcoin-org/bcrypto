@@ -33,18 +33,6 @@ describe('Ed25519', function() {
     assert.bufferEqual(
       ed25519.privateKeyImport(ed25519.privateKeyExport(secret)),
       secret);
-
-    assert.bufferEqual(
-      ed25519.privateKeyImportPKCS8(ed25519.privateKeyExportPKCS8(secret)),
-      secret);
-
-    assert.bufferEqual(
-      ed25519.publicKeyImport(ed25519.publicKeyExport(pub)),
-      pub);
-
-    assert.bufferEqual(
-      ed25519.publicKeyImportSPKI(ed25519.publicKeyExportSPKI(pub)),
-      pub);
   });
 
   it('should allow points at infinity', () => {
@@ -1313,34 +1301,5 @@ describe('Ed25519', function() {
 
     assert.bufferEqual(ed25519.privateKeyImport(rawPriv), priv);
     assert.bufferEqual(ed25519.publicKeyImport(rawPub), pub);
-
-    const jsonPriv = ed25519.privateKeyExportJWK(priv);
-    const jsonPub = ed25519.publicKeyExportJWK(pub);
-
-    assert.bufferEqual(ed25519.privateKeyImportJWK(jsonPriv), priv);
-    assert.bufferEqual(ed25519.publicKeyImportJWK(jsonPub), pub);
-
-    const asnPriv = ed25519.privateKeyExportPKCS8(priv);
-    const asnPub = ed25519.publicKeyExportSPKI(pub);
-
-    assert.bufferEqual(ed25519.privateKeyImportPKCS8(asnPriv), priv);
-    assert.bufferEqual(ed25519.publicKeyImportSPKI(asnPub), pub);
-  });
-
-  it('should import standard JWK', () => {
-    // https://tools.ietf.org/html/draft-ietf-jose-cfrg-curves-06#appendix-A.1
-    const json = {
-      'kty': 'OKP',
-      'crv': 'Ed25519',
-      'd': 'nWGxne_9WmC6hEr0kuwsxERJxWl7MmkZcDusAxyuf2A',
-      'x': '11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo',
-      'ext': true
-    };
-
-    const priv = ed25519.privateKeyImportJWK(json);
-    const pub = ed25519.publicKeyImportJWK(json);
-
-    assert.bufferEqual(ed25519.publicKeyCreate(priv), pub);
-    assert.deepStrictEqual(ed25519.privateKeyExportJWK(priv), json);
   });
 });

@@ -56,14 +56,14 @@ describe('SSH', function() {
       switch (key1.type) {
         case 'ssh-dss': {
           const {p, q, g, y} = key1;
-          const key = new dsa.DSAPublicKey(p, q, g, y);
+          const key = dsa.publicKeyImport({ p, q, g, y });
           assert(dsa.publicKeyVerify(key));
           break;
         }
 
         case 'ssh-rsa': {
           const {n, e} = key1;
-          const key = new rsa.RSAPublicKey(n, e);
+          const key = rsa.publicKeyImport({ n, e });
           assert(rsa.publicKeyVerify(key));
           break;
         }
@@ -110,14 +110,14 @@ describe('SSH', function() {
       switch (key1.type) {
         case 'ssh-dss': {
           const {p, q, g, y, x} = key1;
-          const key = new dsa.DSAPrivateKey(p, q, g, y, x);
+          const key = dsa.privateKeyImport({ p, q, g, y, x });
           assert(dsa.privateKeyVerify(key));
           break;
         }
 
         case 'ssh-rsa': {
           const {n, e, d, p, q, dp, dq, qi} = key1;
-          const key = new rsa.RSAPrivateKey(n, e, d, p, q, dp, dq, qi);
+          const key = rsa.privateKeyImport({ n, e, d, p, q, dp, dq, qi });
           assert(rsa.privateKeyVerify(key));
           break;
         }
