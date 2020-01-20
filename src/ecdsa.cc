@@ -42,6 +42,7 @@ BECDSA::Init(v8::Local<v8::Object> &target) {
 
   Nan::SetPrototypeMethod(tpl, "_size", BECDSA::Size);
   Nan::SetPrototypeMethod(tpl, "_bits", BECDSA::Bits);
+  Nan::SetPrototypeMethod(tpl, "_randomize", BECDSA::Randomize);
   Nan::SetPrototypeMethod(tpl, "privateKeyGenerate", BECDSA::PrivateKeyGenerate);
   Nan::SetPrototypeMethod(tpl, "privateKeyVerify", BECDSA::PrivateKeyVerify);
   Nan::SetPrototypeMethod(tpl, "privateKeyTweakAdd", BECDSA::PrivateKeyTweakAdd);
@@ -134,6 +135,30 @@ NAN_METHOD(BECDSA::Bits) {
   BECDSA *ec = ObjectWrap::Unwrap<BECDSA>(info.Holder());
   return info.GetReturnValue()
     .Set(Nan::New<v8::Number>((uint32_t)ec->field_bits));
+}
+
+NAN_METHOD(BECDSA::Randomize) {
+  BECDSA *ec = ObjectWrap::Unwrap<BECDSA>(info.Holder());
+
+  if (info.Length() < 1)
+    return Nan::ThrowError("ecdsa._randomize() requires arguments.");
+
+  v8::Local<v8::Object> entropy_buf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(entropy_buf))
+    return Nan::ThrowTypeError("First argument must be a buffer.");
+
+  uint8_t *entropy = (uint8_t *)node::Buffer::Data(entropy_buf);
+  size_t entropy_len = node::Buffer::Length(entropy_buf);
+
+  if (entropy_len != 32)
+    return Nan::ThrowRangeError("Entropy must be 32 bytes.");
+
+  ecdsa_context_randomize(ec->ctx, entropy);
+
+  cleanse(entropy, entropy_len);
+
+  return info.GetReturnValue().Set(info.Holder());
 }
 
 NAN_METHOD(BECDSA::PrivateKeyGenerate) {

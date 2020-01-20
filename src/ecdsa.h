@@ -25,6 +25,7 @@ public:
 private:
   static NAN_METHOD(Size);
   static NAN_METHOD(Bits);
+  static NAN_METHOD(Randomize);
   static NAN_METHOD(PrivateKeyGenerate);
   static NAN_METHOD(PrivateKeyVerify);
   static NAN_METHOD(PrivateKeyTweakAdd);

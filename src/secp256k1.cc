@@ -68,6 +68,7 @@
 #include "secp256k1/contrib/lax_der_parsing.h"
 
 #define ALLOCATION_FAILURE "allocation failed"
+#define RANDOMIZATION_FAILURE "randomization failed"
 
 #define COMPRESSED_TYPE_INVALID "compressed must be a boolean"
 
@@ -227,6 +228,9 @@ BSecp256k1::Init(v8::Local<v8::Object> &target) {
   tpl->SetClassName(Nan::New("Secp256k1").ToLocalChecked());
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
 
+  // internal
+  Nan::SetPrototypeMethod(tpl, "_randomize", BSecp256k1::Randomize);
+
   // secret key
   Nan::SetPrototypeMethod(tpl, "privateKeyVerify", BSecp256k1::PrivateKeyVerify);
   Nan::SetPrototypeMethod(tpl, "privateKeyExport", BSecp256k1::PrivateKeyExport);
@@ -300,6 +304,22 @@ NAN_METHOD(BSecp256k1::New) {
   secp->Wrap(info.This());
 
   info.GetReturnValue().Set(info.This());
+}
+
+NAN_METHOD(BSecp256k1::Randomize) {
+  BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
+
+  v8::Local<v8::Object> entropy_buf = info[1].As<v8::Object>();
+  CHECK_TYPE_BUFFER(entropy_buf, ENTROPY_TYPE_INVALID);
+  CHECK_BUFFER_LENGTH(entropy_buf, 32, ENTROPY_LENGTH_INVALID);
+
+  const unsigned char *entropy =
+    (const unsigned char *)node::Buffer::Data(entropy_buf);
+
+  if (!secp256k1_context_randomize(secp->ctx, entropy))
+    return Nan::ThrowError(RANDOMIZATION_FAILURE);
+
+  info.GetReturnValue().Set(info.Holder());
 }
 
 NAN_METHOD(BSecp256k1::PrivateKeyVerify) {

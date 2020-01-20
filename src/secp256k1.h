@@ -17,6 +17,8 @@ public:
   secp256k1_scratch_space *scratch;
 
 private:
+  static NAN_METHOD(Randomize);
+
   static NAN_METHOD(PrivateKeyVerify);
   static NAN_METHOD(PrivateKeyExport);
   static NAN_METHOD(PrivateKeyImport);
