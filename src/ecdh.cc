@@ -37,6 +37,8 @@ BECDH::Init(v8::Local<v8::Object> &target) {
   Nan::SetPrototypeMethod(tpl, "_bits", BECDH::Bits);
   Nan::SetPrototypeMethod(tpl, "privateKeyGenerate", BECDH::PrivateKeyGenerate);
   Nan::SetPrototypeMethod(tpl, "privateKeyVerify", BECDH::PrivateKeyVerify);
+  Nan::SetPrototypeMethod(tpl, "privateKeyExport", BECDH::PrivateKeyExport);
+  Nan::SetPrototypeMethod(tpl, "privateKeyImport", BECDH::PrivateKeyImport);
   Nan::SetPrototypeMethod(tpl, "publicKeyCreate", BECDH::PublicKeyCreate);
   Nan::SetPrototypeMethod(tpl, "publicKeyConvert", BECDH::PublicKeyConvert);
   Nan::SetPrototypeMethod(tpl, "publicKeyFromUniform", BECDH::PublicKeyFromUniform);
@@ -44,6 +46,8 @@ BECDH::Init(v8::Local<v8::Object> &target) {
   Nan::SetPrototypeMethod(tpl, "publicKeyFromHash", BECDH::PublicKeyFromHash);
   Nan::SetPrototypeMethod(tpl, "publicKeyToHash", BECDH::PublicKeyToHash);
   Nan::SetPrototypeMethod(tpl, "publicKeyVerify", BECDH::PublicKeyVerify);
+  Nan::SetPrototypeMethod(tpl, "publicKeyExport", BECDH::PublicKeyExport);
+  Nan::SetPrototypeMethod(tpl, "publicKeyImport", BECDH::PublicKeyImport);
   Nan::SetPrototypeMethod(tpl, "publicKeyIsSmall", BECDH::PublicKeyIsSmall);
   Nan::SetPrototypeMethod(tpl, "publicKeyHasTorsion", BECDH::PublicKeyHasTorsion);
   Nan::SetPrototypeMethod(tpl, "derive", BECDH::Derive);
@@ -138,6 +142,53 @@ NAN_METHOD(BECDH::PrivateKeyVerify) {
   int result = key_len == ec->scalar_size;
 
   return info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
+}
+
+NAN_METHOD(BECDH::PrivateKeyExport) {
+  BECDH *ec = ObjectWrap::Unwrap<BECDH>(info.Holder());
+
+  if (info.Length() < 1)
+    return Nan::ThrowError("ecdh.privateKeyExport() requires arguments.");
+
+  v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(pbuf))
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+
+  const uint8_t *priv = (const uint8_t *)node::Buffer::Data(pbuf);
+  size_t priv_len = node::Buffer::Length(pbuf);
+  uint8_t out[ECDH_MAX_PRIV_SIZE];
+
+  if (priv_len != ec->scalar_size)
+    return Nan::ThrowRangeError("Invalid length.");
+
+  if (!ecdh_privkey_export(ec->ctx, out, priv))
+    return Nan::ThrowError("Could not export private key.");
+
+  return info.GetReturnValue().Set(
+    Nan::CopyBuffer((char *)out, ec->scalar_size).ToLocalChecked());
+}
+
+NAN_METHOD(BECDH::PrivateKeyImport) {
+  BECDH *ec = ObjectWrap::Unwrap<BECDH>(info.Holder());
+
+  if (info.Length() < 1)
+    return Nan::ThrowError("ecdh.privateKeyImport() requires arguments.");
+
+  v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(pbuf))
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+
+  const uint8_t *priv = (const uint8_t *)node::Buffer::Data(pbuf);
+  size_t priv_len = node::Buffer::Length(pbuf);
+  uint8_t out[ECDH_MAX_PRIV_SIZE];
+
+  if (!ecdh_privkey_import(ec->ctx, out, priv, priv_len))
+    return Nan::ThrowError("Could not import private key.");
+
+  return info.GetReturnValue().Set(
+    Nan::CopyBuffer((char *)out, ec->scalar_size).ToLocalChecked());
 }
 
 NAN_METHOD(BECDH::PublicKeyCreate) {
@@ -334,6 +385,69 @@ NAN_METHOD(BECDH::PublicKeyVerify) {
   int result = ecdh_pubkey_verify(ec->ctx, pub);
 
   return info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
+}
+
+NAN_METHOD(BECDH::PublicKeyExport) {
+  BECDH *ec = ObjectWrap::Unwrap<BECDH>(info.Holder());
+
+  if (info.Length() < 1)
+    return Nan::ThrowError("ecdh.publicKeyExport() requires arguments.");
+
+  v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(pbuf))
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+
+  const uint8_t *pub = (const uint8_t *)node::Buffer::Data(pbuf);
+  size_t pub_len = node::Buffer::Length(pbuf);
+  uint8_t x[ECDH_MAX_FIELD_SIZE];
+  uint8_t y[ECDH_MAX_FIELD_SIZE];
+  int sign = -1;
+
+  if (info.Length() > 1 && !IsNull(info[1])) {
+    if (!info[1]->IsBoolean())
+      return Nan::ThrowTypeError("Second argument must be a boolean.");
+
+    sign = (int)Nan::To<bool>(info[1]).FromJust();
+  }
+
+  if (pub_len != ec->field_size)
+    return Nan::ThrowRangeError("Invalid public key size.");
+
+  if (!ecdh_pubkey_export(ec->ctx, x, y, pub, sign))
+    return Nan::ThrowError("Could not export public key.");
+
+  v8::Local<v8::Array> ret = Nan::New<v8::Array>();
+
+  Nan::Set(ret, 0, Nan::CopyBuffer((char *)x, ec->field_size).ToLocalChecked());
+  Nan::Set(ret, 1, Nan::CopyBuffer((char *)y, ec->field_size).ToLocalChecked());
+
+  return info.GetReturnValue().Set(ret);
+}
+
+NAN_METHOD(BECDH::PublicKeyImport) {
+  BECDH *ec = ObjectWrap::Unwrap<BECDH>(info.Holder());
+
+  const uint8_t *x = NULL;
+  size_t x_len = 0;
+
+  if (info.Length() > 0 && !IsNull(info[0])) {
+    v8::Local<v8::Object> xbuf = info[0].As<v8::Object>();
+
+    if (!node::Buffer::HasInstance(xbuf))
+      return Nan::ThrowTypeError("First argument must be a buffer.");
+
+    x = (const uint8_t *)node::Buffer::Data(xbuf);
+    x_len = node::Buffer::Length(xbuf);
+  }
+
+  uint8_t out[ECDH_MAX_PUB_SIZE];
+
+  if (!ecdh_pubkey_import(ec->ctx, out, x, x_len))
+    return Nan::ThrowError("Could not import public key.");
+
+  return info.GetReturnValue().Set(
+    Nan::CopyBuffer((char *)out, ec->field_size).ToLocalChecked());
 }
 
 NAN_METHOD(BECDH::PublicKeyIsSmall) {

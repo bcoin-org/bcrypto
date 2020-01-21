@@ -45,6 +45,8 @@ BECDSA::Init(v8::Local<v8::Object> &target) {
   Nan::SetPrototypeMethod(tpl, "_randomize", BECDSA::Randomize);
   Nan::SetPrototypeMethod(tpl, "privateKeyGenerate", BECDSA::PrivateKeyGenerate);
   Nan::SetPrototypeMethod(tpl, "privateKeyVerify", BECDSA::PrivateKeyVerify);
+  Nan::SetPrototypeMethod(tpl, "privateKeyExport", BECDSA::PrivateKeyExport);
+  Nan::SetPrototypeMethod(tpl, "privateKeyImport", BECDSA::PrivateKeyImport);
   Nan::SetPrototypeMethod(tpl, "privateKeyTweakAdd", BECDSA::PrivateKeyTweakAdd);
   Nan::SetPrototypeMethod(tpl, "privateKeyTweakMul", BECDSA::PrivateKeyTweakMul);
   Nan::SetPrototypeMethod(tpl, "privateKeyReduce", BECDSA::PrivateKeyReduce);
@@ -57,6 +59,8 @@ BECDSA::Init(v8::Local<v8::Object> &target) {
   Nan::SetPrototypeMethod(tpl, "publicKeyFromHash", BECDSA::PublicKeyFromHash);
   Nan::SetPrototypeMethod(tpl, "publicKeyToHash", BECDSA::PublicKeyToHash);
   Nan::SetPrototypeMethod(tpl, "publicKeyVerify", BECDSA::PublicKeyVerify);
+  Nan::SetPrototypeMethod(tpl, "publicKeyExport", BECDSA::PublicKeyExport);
+  Nan::SetPrototypeMethod(tpl, "publicKeyImport", BECDSA::PublicKeyImport);
   Nan::SetPrototypeMethod(tpl, "publicKeyTweakAdd", BECDSA::PublicKeyTweakAdd);
   Nan::SetPrototypeMethod(tpl, "publicKeyTweakMul", BECDSA::PublicKeyTweakMul);
   Nan::SetPrototypeMethod(tpl, "publicKeyAdd", BECDSA::PublicKeyAdd);
@@ -207,6 +211,53 @@ NAN_METHOD(BECDSA::PrivateKeyVerify) {
   int result = ecdsa_privkey_verify(ec->ctx, priv);
 
   return info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
+}
+
+NAN_METHOD(BECDSA::PrivateKeyExport) {
+  BECDSA *ec = ObjectWrap::Unwrap<BECDSA>(info.Holder());
+
+  if (info.Length() < 1)
+    return Nan::ThrowError("ecdsa.privateKeyExport() requires arguments.");
+
+  v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(pbuf))
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+
+  const uint8_t *priv = (const uint8_t *)node::Buffer::Data(pbuf);
+  size_t priv_len = node::Buffer::Length(pbuf);
+  uint8_t out[ECDSA_MAX_PRIV_SIZE];
+
+  if (priv_len != ec->scalar_size)
+    return Nan::ThrowRangeError("Invalid length.");
+
+  if (!ecdsa_privkey_export(ec->ctx, out, priv))
+    return Nan::ThrowError("Could not export private key.");
+
+  return info.GetReturnValue().Set(
+    Nan::CopyBuffer((char *)out, ec->scalar_size).ToLocalChecked());
+}
+
+NAN_METHOD(BECDSA::PrivateKeyImport) {
+  BECDSA *ec = ObjectWrap::Unwrap<BECDSA>(info.Holder());
+
+  if (info.Length() < 1)
+    return Nan::ThrowError("ecdsa.privateKeyImport() requires arguments.");
+
+  v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(pbuf))
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+
+  const uint8_t *priv = (const uint8_t *)node::Buffer::Data(pbuf);
+  size_t priv_len = node::Buffer::Length(pbuf);
+  uint8_t out[ECDSA_MAX_PRIV_SIZE];
+
+  if (!ecdsa_privkey_import(ec->ctx, out, priv, priv_len))
+    return Nan::ThrowError("Could not import private key.");
+
+  return info.GetReturnValue().Set(
+    Nan::CopyBuffer((char *)out, ec->scalar_size).ToLocalChecked());
 }
 
 NAN_METHOD(BECDSA::PrivateKeyTweakAdd) {
@@ -553,6 +604,87 @@ NAN_METHOD(BECDSA::PublicKeyVerify) {
   int result = ecdsa_pubkey_verify(ec->ctx, pub, pub_len);
 
   return info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
+}
+
+NAN_METHOD(BECDSA::PublicKeyExport) {
+  BECDSA *ec = ObjectWrap::Unwrap<BECDSA>(info.Holder());
+
+  if (info.Length() < 1)
+    return Nan::ThrowError("ecdsa.publicKeyExport() requires arguments.");
+
+  v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(pbuf))
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+
+  const uint8_t *pub = (const uint8_t *)node::Buffer::Data(pbuf);
+  size_t pub_len = node::Buffer::Length(pbuf);
+  uint8_t x[ECDSA_MAX_FIELD_SIZE];
+  uint8_t y[ECDSA_MAX_FIELD_SIZE];
+
+  if (!ecdsa_pubkey_export(ec->ctx, x, y, pub, pub_len))
+    return Nan::ThrowError("Could not export public key.");
+
+  v8::Local<v8::Array> ret = Nan::New<v8::Array>();
+
+  Nan::Set(ret, 0, Nan::CopyBuffer((char *)x, ec->field_size).ToLocalChecked());
+  Nan::Set(ret, 1, Nan::CopyBuffer((char *)y, ec->field_size).ToLocalChecked());
+
+  return info.GetReturnValue().Set(ret);
+}
+
+NAN_METHOD(BECDSA::PublicKeyImport) {
+  BECDSA *ec = ObjectWrap::Unwrap<BECDSA>(info.Holder());
+
+  const uint8_t *x = NULL;
+  size_t x_len = 0;
+  const uint8_t *y = NULL;
+  size_t y_len = 0;
+  int sign = -1;
+  int compress = 1;
+
+  if (info.Length() > 0 && !IsNull(info[0])) {
+    v8::Local<v8::Object> xbuf = info[0].As<v8::Object>();
+
+    if (!node::Buffer::HasInstance(xbuf))
+      return Nan::ThrowTypeError("First argument must be a buffer.");
+
+    x = (const uint8_t *)node::Buffer::Data(xbuf);
+    x_len = node::Buffer::Length(xbuf);
+  }
+
+  if (info.Length() > 1 && !IsNull(info[1])) {
+    v8::Local<v8::Object> ybuf = info[1].As<v8::Object>();
+
+    if (!node::Buffer::HasInstance(ybuf))
+      return Nan::ThrowTypeError("Second argument must be a buffer.");
+
+    y = (const uint8_t *)node::Buffer::Data(ybuf);
+    y_len = node::Buffer::Length(ybuf);
+  }
+
+  if (info.Length() > 2 && !IsNull(info[2])) {
+    if (!info[2]->IsBoolean())
+      return Nan::ThrowTypeError("Third argument must be a boolean.");
+
+    sign = (int)Nan::To<bool>(info[2]).FromJust();
+  }
+
+  if (info.Length() > 3 && !IsNull(info[3])) {
+    if (!info[3]->IsBoolean())
+      return Nan::ThrowTypeError("Fourth argument must be a boolean.");
+
+    compress = (int)Nan::To<bool>(info[3]).FromJust();
+  }
+
+  uint8_t out[ECDSA_MAX_PUB_SIZE];
+  size_t out_len = ECDSA_MAX_PUB_SIZE;
+
+  if (!ecdsa_pubkey_import(ec->ctx, out, &out_len, x, x_len, y, y_len, sign, compress))
+    return Nan::ThrowError("Could not import public key.");
+
+  return info.GetReturnValue().Set(
+    Nan::CopyBuffer((char *)out, out_len).ToLocalChecked());
 }
 
 NAN_METHOD(BECDSA::PublicKeyTweakAdd) {

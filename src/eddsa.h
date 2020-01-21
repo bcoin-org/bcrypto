@@ -29,6 +29,8 @@ private:
   static NAN_METHOD(Randomize);
   static NAN_METHOD(PrivateKeyGenerate);
   static NAN_METHOD(PrivateKeyVerify);
+  static NAN_METHOD(PrivateKeyExport);
+  static NAN_METHOD(PrivateKeyImport);
   static NAN_METHOD(PrivateKeyExpand);
   static NAN_METHOD(PrivateKeyConvert);
   static NAN_METHOD(ScalarGenerate);
@@ -48,6 +50,8 @@ private:
   static NAN_METHOD(PublicKeyFromHash);
   static NAN_METHOD(PublicKeyToHash);
   static NAN_METHOD(PublicKeyVerify);
+  static NAN_METHOD(PublicKeyExport);
+  static NAN_METHOD(PublicKeyImport);
   static NAN_METHOD(PublicKeyIsInfinity);
   static NAN_METHOD(PublicKeyIsSmall);
   static NAN_METHOD(PublicKeyHasTorsion);

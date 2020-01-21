@@ -45,6 +45,8 @@ BEDDSA::Init(v8::Local<v8::Object> &target) {
   Nan::SetPrototypeMethod(tpl, "_randomize", BEDDSA::Randomize);
   Nan::SetPrototypeMethod(tpl, "privateKeyGenerate", BEDDSA::PrivateKeyGenerate);
   Nan::SetPrototypeMethod(tpl, "privateKeyVerify", BEDDSA::PrivateKeyVerify);
+  Nan::SetPrototypeMethod(tpl, "privateKeyExport", BEDDSA::PrivateKeyExport);
+  Nan::SetPrototypeMethod(tpl, "privateKeyImport", BEDDSA::PrivateKeyImport);
   Nan::SetPrototypeMethod(tpl, "privateKeyExpand", BEDDSA::PrivateKeyExpand);
   Nan::SetPrototypeMethod(tpl, "privateKeyExpand", BEDDSA::PrivateKeyExpand);
   Nan::SetPrototypeMethod(tpl, "privateKeyConvert", BEDDSA::PrivateKeyConvert);
@@ -65,6 +67,8 @@ BEDDSA::Init(v8::Local<v8::Object> &target) {
   Nan::SetPrototypeMethod(tpl, "publicKeyFromHash", BEDDSA::PublicKeyFromHash);
   Nan::SetPrototypeMethod(tpl, "publicKeyToHash", BEDDSA::PublicKeyToHash);
   Nan::SetPrototypeMethod(tpl, "publicKeyVerify", BEDDSA::PublicKeyVerify);
+  Nan::SetPrototypeMethod(tpl, "publicKeyExport", BEDDSA::PublicKeyExport);
+  Nan::SetPrototypeMethod(tpl, "publicKeyImport", BEDDSA::PublicKeyImport);
   Nan::SetPrototypeMethod(tpl, "publicKeyIsInfinity", BEDDSA::PublicKeyIsInfinity);
   Nan::SetPrototypeMethod(tpl, "publicKeyIsSmall", BEDDSA::PublicKeyIsSmall);
   Nan::SetPrototypeMethod(tpl, "publicKeyHasTorsion", BEDDSA::PublicKeyHasTorsion);
@@ -205,6 +209,53 @@ NAN_METHOD(BEDDSA::PrivateKeyVerify) {
   int result = priv_len == ec->priv_size;
 
   return info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
+}
+
+NAN_METHOD(BEDDSA::PrivateKeyExport) {
+  BEDDSA *ec = ObjectWrap::Unwrap<BEDDSA>(info.Holder());
+
+  if (info.Length() < 1)
+    return Nan::ThrowError("eddsa.privateKeyExport() requires arguments.");
+
+  v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(pbuf))
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+
+  const uint8_t *priv = (const uint8_t *)node::Buffer::Data(pbuf);
+  size_t priv_len = node::Buffer::Length(pbuf);
+  uint8_t out[EDDSA_MAX_PRIV_SIZE];
+
+  if (priv_len != ec->priv_size)
+    return Nan::ThrowRangeError("Invalid length.");
+
+  if (!eddsa_privkey_export(ec->ctx, out, priv))
+    return Nan::ThrowError("Could not export private key.");
+
+  return info.GetReturnValue().Set(
+    Nan::CopyBuffer((char *)out, ec->priv_size).ToLocalChecked());
+}
+
+NAN_METHOD(BEDDSA::PrivateKeyImport) {
+  BEDDSA *ec = ObjectWrap::Unwrap<BEDDSA>(info.Holder());
+
+  if (info.Length() < 1)
+    return Nan::ThrowError("eddsa.privateKeyImport() requires arguments.");
+
+  v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(pbuf))
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+
+  const uint8_t *priv = (const uint8_t *)node::Buffer::Data(pbuf);
+  size_t priv_len = node::Buffer::Length(pbuf);
+  uint8_t out[EDDSA_MAX_PRIV_SIZE];
+
+  if (!eddsa_privkey_import(ec->ctx, out, priv, priv_len))
+    return Nan::ThrowError("Could not import private key.");
+
+  return info.GetReturnValue().Set(
+    Nan::CopyBuffer((char *)out, ec->priv_size).ToLocalChecked());
 }
 
 NAN_METHOD(BEDDSA::PrivateKeyExpand) {
@@ -693,6 +744,81 @@ NAN_METHOD(BEDDSA::PublicKeyVerify) {
   int result = eddsa_pubkey_verify(ec->ctx, pub);
 
   return info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
+}
+
+NAN_METHOD(BEDDSA::PublicKeyExport) {
+  BEDDSA *ec = ObjectWrap::Unwrap<BEDDSA>(info.Holder());
+
+  if (info.Length() < 1)
+    return Nan::ThrowError("eddsa.publicKeyExport() requires arguments.");
+
+  v8::Local<v8::Object> pbuf = info[0].As<v8::Object>();
+
+  if (!node::Buffer::HasInstance(pbuf))
+    return Nan::ThrowTypeError("Arguments must be buffers.");
+
+  const uint8_t *pub = (const uint8_t *)node::Buffer::Data(pbuf);
+  size_t pub_len = node::Buffer::Length(pbuf);
+  uint8_t x[EDDSA_MAX_FIELD_SIZE];
+  uint8_t y[EDDSA_MAX_FIELD_SIZE];
+
+  if (pub_len != ec->pub_size)
+    return Nan::ThrowRangeError("Invalid public key size.");
+
+  if (!eddsa_pubkey_export(ec->ctx, x, y, pub))
+    return Nan::ThrowError("Could not export public key.");
+
+  v8::Local<v8::Array> ret = Nan::New<v8::Array>();
+
+  Nan::Set(ret, 0, Nan::CopyBuffer((char *)x, ec->field_size).ToLocalChecked());
+  Nan::Set(ret, 1, Nan::CopyBuffer((char *)y, ec->field_size).ToLocalChecked());
+
+  return info.GetReturnValue().Set(ret);
+}
+
+NAN_METHOD(BEDDSA::PublicKeyImport) {
+  BEDDSA *ec = ObjectWrap::Unwrap<BEDDSA>(info.Holder());
+
+  const uint8_t *x = NULL;
+  size_t x_len = 0;
+  const uint8_t *y = NULL;
+  size_t y_len = 0;
+  int sign = -1;
+
+  if (info.Length() > 0 && !IsNull(info[0])) {
+    v8::Local<v8::Object> xbuf = info[0].As<v8::Object>();
+
+    if (!node::Buffer::HasInstance(xbuf))
+      return Nan::ThrowTypeError("First argument must be a buffer.");
+
+    x = (const uint8_t *)node::Buffer::Data(xbuf);
+    x_len = node::Buffer::Length(xbuf);
+  }
+
+  if (info.Length() > 1 && !IsNull(info[1])) {
+    v8::Local<v8::Object> ybuf = info[1].As<v8::Object>();
+
+    if (!node::Buffer::HasInstance(ybuf))
+      return Nan::ThrowTypeError("Second argument must be a buffer.");
+
+    y = (const uint8_t *)node::Buffer::Data(ybuf);
+    y_len = node::Buffer::Length(ybuf);
+  }
+
+  if (info.Length() > 2 && !IsNull(info[2])) {
+    if (!info[2]->IsBoolean())
+      return Nan::ThrowTypeError("Third argument must be a boolean.");
+
+    sign = (int)Nan::To<bool>(info[2]).FromJust();
+  }
+
+  uint8_t out[EDDSA_MAX_PUB_SIZE];
+
+  if (!eddsa_pubkey_import(ec->ctx, out, x, x_len, y, y_len, sign))
+    return Nan::ThrowError("Could not import public key.");
+
+  return info.GetReturnValue().Set(
+    Nan::CopyBuffer((char *)out, ec->pub_size).ToLocalChecked());
 }
 
 NAN_METHOD(BEDDSA::PublicKeyIsInfinity) {
