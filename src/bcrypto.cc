@@ -31,7 +31,9 @@
 #include "rsa.h"
 #include "salsa20.h"
 #include "scrypt.h"
+#ifdef BCRYPTO_USE_SECP256K1
 #include "secp256k1.h"
+#endif
 #include "siphash.h"
 #include "bcrypto.h"
 
@@ -72,7 +74,9 @@ NAN_MODULE_INIT(init) {
   BRSA::Init(target);
   BSalsa20::Init(target);
   BScrypt::Init(target);
+#ifdef BCRYPTO_USE_SECP256K1
   BSecp256k1::Init(target);
+#endif
   BSiphash::Init(target);
 }
 

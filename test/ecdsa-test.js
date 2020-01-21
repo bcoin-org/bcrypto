@@ -307,10 +307,8 @@ describe('ECDSA', function() {
           const msg = hash.digest(preimage);
           const sig2 = curve.sign(msg, key);
 
-          if (!c.custom) {
-            if (curve.native === 0 || curve === secp256k1)
-              assert.bufferEqual(sig2, curve.signatureNormalize(sig));
-          }
+          if (!c.custom)
+            assert.bufferEqual(sig2, curve.signatureNormalize(sig));
 
           assert(curve.isLowS(sig2));
           assert(curve.publicKeyVerify(pub), 'Invalid public key');
@@ -646,23 +644,12 @@ describe('ECDSA', function() {
             assert(isStrictDER(der3));
           }
 
-          if (curve.native === 0 || curve === secp256k1) {
-            assert.bufferEqual(sig2, sig);
-            assert.bufferEqual(sig3, sig);
-            assert.strictEqual(param2, param);
-            assert.bufferEqual(der2, der);
-            assert.bufferEqual(der3, der);
-            assert.strictEqual(param3, param);
-          } else {
-            assert(curve.isLowS(sig2));
-            assert(curve.isLowS(sig3));
-            assert(curve.isLowDER(der2));
-            assert(curve.isLowDER(der3));
-            assert(curve.verify(msg, sig2, pub));
-            assert(curve.verify(msg, sig3, pub));
-            assert(curve.verifyDER(msg, der2, pub));
-            assert(curve.verifyDER(msg, der3, pub));
-          }
+          assert.bufferEqual(sig2, sig);
+          assert.bufferEqual(sig3, sig);
+          assert.strictEqual(param2, param);
+          assert.bufferEqual(der2, der);
+          assert.bufferEqual(der3, der);
+          assert.strictEqual(param3, param);
 
           assert(curve.verify(msg, sig, pub));
           assert(curve.verifyDER(msg, der, pub));
@@ -964,13 +951,6 @@ describe('ECDSA', function() {
   });
 
   describe('Maps', () => {
-    let native = null;
-
-    if (secp256k1.native === 2) {
-      const ECDSA = require('../lib/native/ecdsa');
-      native = new ECDSA('SECP256K1');
-    }
-
     const invert = (curve, point) => {
       const out = [];
 
@@ -1267,11 +1247,6 @@ describe('ECDSA', function() {
 
         assert.strictEqual(secp256k1.publicKeyVerify(key), true);
         assert.bufferEqual(secp256k1.publicKeyFromUniform(preimage), key);
-
-        if (native) {
-          assert.strictEqual(native.publicKeyVerify(key), true);
-          assert.bufferEqual(native.publicKeyFromUniform(preimage), key);
-        }
       }
     });
 
@@ -1283,11 +1258,6 @@ describe('ECDSA', function() {
 
       assert.bufferEqual(pub,
         '032287235856654cff0bf82466518bb9e7eaef62632c4805b3c76f8a6675f2a1df');
-
-      if (native) {
-        assert.bufferEqual(native.publicKeyFromHash(bytes),
-          '032287235856654cff0bf82466518bb9e7eaef62632c4805b3c76f8a6675f2a1df');
-      }
     });
 
     it('should test svdw inversion', () => {
@@ -1444,29 +1414,9 @@ describe('ECDSA', function() {
 
         equal(invert(secp256k1, point), expect[i]);
       }
-
-      if (native) {
-        for (let i = 0; i < 20; i++) {
-          const point = Buffer.from(points[i], 'hex');
-
-          equal(invert(native, point), expect[i]);
-        }
-      }
     });
 
     it('should invert elligator', () => {
-      const curves = [
-        p192,
-        p224,
-        p256,
-        p384,
-        p521,
-        secp256k1
-      ];
-
-      if (native)
-        curves.push(native);
-
       for (const curve of curves) {
         let priv, pub, bytes;
 
@@ -1489,15 +1439,14 @@ describe('ECDSA', function() {
       }
     });
 
-    if (native) {
+    if (secp256k1.native === 2) {
       const curves = [
         [p192, require('../lib/js/p192')],
         [p224, require('../lib/js/p224')],
         [p256, require('../lib/js/p256')],
         [p384, require('../lib/js/p384')],
         [p521, require('../lib/js/p521')],
-        [secp256k1, require('../lib/js/secp256k1')],
-        [native, require('../lib/js/secp256k1')]
+        [secp256k1, require('../lib/js/secp256k1')]
       ];
 
       it('should invert elligator (native vs. js)', () => {
@@ -1545,18 +1494,6 @@ describe('ECDSA', function() {
     }
 
     it('should invert elligator squared', () => {
-      const curves = [
-        p192,
-        p224,
-        p256,
-        p384,
-        p521,
-        secp256k1
-      ];
-
-      if (native)
-        curves.push(native);
-
       for (const curve of curves) {
         const priv = curve.privateKeyGenerate();
         const pub = curve.publicKeyCreate(priv);

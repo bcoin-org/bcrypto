@@ -18,9 +18,6 @@
       "./src/bech32/bech32.c",
       "./src/cash32/cash32.c",
       "./src/murmur3/murmur3.c",
-      "./src/secp256k1/src/secp256k1.c",
-      "./src/secp256k1/contrib/lax_der_parsing.c",
-      "./src/secp256k1/contrib/lax_der_privatekey_parsing.c",
       "./src/aead.cc",
       "./src/base58.cc",
       "./src/bech32.cc",
@@ -46,7 +43,6 @@
       "./src/salsa20.cc",
       "./src/scrypt.cc",
       "./src/scrypt_async.cc",
-      "./src/secp256k1.cc",
       "./src/siphash.cc"
     ],
     "cflags": [
@@ -70,15 +66,8 @@
       "<!(node -e \"require('nan')\")",
       "../torsion/include"
     ],
-    "defines": [
-      "USE_ENDOMORPHISM",
-      "ENABLE_MODULE_ECDH",
-      "ENABLE_MODULE_ELLIGATOR",
-      "ENABLE_MODULE_EXTRA",
-      "ENABLE_MODULE_RECOVERY",
-      "ENABLE_MODULE_SCHNORRLEG"
-    ],
     "variables": {
+      "with_secp256k1%": "false",
       "conditions": [
         ["OS=='win'", {
           "with_gmp%": "false"
@@ -101,36 +90,17 @@
       ["target_arch=='x64' and OS!='win'", {
         "defines": [
           "TORSION_USE_64BIT",
-          "TORSION_USE_ASM",
-          "HAVE___INT128",
-          "USE_ASM_X86_64",
-          "USE_FIELD_5X52",
-          "USE_FIELD_5X52_INT128",
-          "USE_SCALAR_4X64"
-        ]
-      }, {
-        "defines": [
-          "USE_FIELD_10X26",
-          "USE_SCALAR_8X32"
+          "TORSION_USE_ASM"
         ]
       }],
       ["with_gmp=='true'", {
         "defines": [
           "TORSION_USE_GMP",
-          "HAVE_LIBGMP",
-          "USE_NUM_GMP",
-          "USE_FIELD_INV_NUM",
-          "USE_SCALAR_INV_NUM"
         ],
         "libraries": [
           "-lgmp"
         ]
       }, {
-        "defines": [
-          "USE_NUM_NONE",
-          "USE_FIELD_INV_BUILTIN",
-          "USE_SCALAR_INV_BUILTIN"
-        ],
         "sources": [
           "../torsion/src/mini-gmp.c"
         ]
@@ -144,6 +114,53 @@
             "ImageHasSafeExceptionHandlers": "false"
           }
         }
+      }],
+      ["with_secp256k1=='true'", {
+        "defines": [
+          "BCRYPTO_USE_SECP256K1",
+          "USE_ENDOMORPHISM",
+          "ENABLE_MODULE_ECDH",
+          "ENABLE_MODULE_ELLIGATOR",
+          "ENABLE_MODULE_EXTRA",
+          "ENABLE_MODULE_RECOVERY",
+          "ENABLE_MODULE_SCHNORRLEG"
+        ],
+        "sources": [
+          "./src/secp256k1/src/secp256k1.c",
+          "./src/secp256k1/contrib/lax_der_parsing.c",
+          "./src/secp256k1/contrib/lax_der_privatekey_parsing.c",
+          "./src/secp256k1.cc"
+        ],
+        "conditions": [
+          ["target_arch=='x64' and OS!='win'", {
+            "defines": [
+              "HAVE___INT128",
+              "USE_ASM_X86_64",
+              "USE_FIELD_5X52",
+              "USE_FIELD_5X52_INT128",
+              "USE_SCALAR_4X64"
+            ]
+          }, {
+            "defines": [
+              "USE_FIELD_10X26",
+              "USE_SCALAR_8X32"
+            ]
+          }],
+          ["with_gmp=='true'", {
+            "defines": [
+              "HAVE_LIBGMP",
+              "USE_NUM_GMP",
+              "USE_FIELD_INV_NUM",
+              "USE_SCALAR_INV_NUM"
+            ]
+          }, {
+            "defines": [
+              "USE_NUM_NONE",
+              "USE_FIELD_INV_BUILTIN",
+              "USE_SCALAR_INV_BUILTIN"
+            ]
+          }]
+        ]
       }]
     ]
   }]
