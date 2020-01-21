@@ -309,7 +309,7 @@ NAN_METHOD(BSecp256k1::New) {
 NAN_METHOD(BSecp256k1::Randomize) {
   BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
 
-  v8::Local<v8::Object> entropy_buf = info[1].As<v8::Object>();
+  v8::Local<v8::Object> entropy_buf = info[0].As<v8::Object>();
   CHECK_TYPE_BUFFER(entropy_buf, ENTROPY_TYPE_INVALID);
   CHECK_BUFFER_LENGTH(entropy_buf, 32, ENTROPY_LENGTH_INVALID);
 
