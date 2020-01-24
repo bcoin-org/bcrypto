@@ -641,7 +641,7 @@ describe('Ed25519', function() {
     assert.bufferEqual(parent, real);
 
     const tweakPub = ed25519.publicKeyFromScalar(tweak);
-    const parentPub = ed25519.publicKeyAdd(childPub, ed25519.publicKeyNegate(tweakPub));
+    const parentPub = ed25519.publicKeyCombine([childPub, ed25519.publicKeyNegate(tweakPub)]);
 
     assert.bufferEqual(parentPub, pub);
   });

@@ -171,7 +171,7 @@ describe('ECDSA', function() {
         assert.bufferEqual(parent, priv);
 
         const tweakPub = ec.publicKeyCreate(tweak);
-        const parentPub = ec.publicKeyAdd(tpub, ec.publicKeyNegate(tweakPub));
+        const parentPub = ec.publicKeyCombine([tpub, ec.publicKeyNegate(tweakPub)]);
 
         assert.bufferEqual(parentPub, pub);
       });
@@ -589,8 +589,6 @@ describe('ECDSA', function() {
           assert.bufferEqual(curve.publicKeyTweakMul(pub, tweak), pubMul);
           assert.bufferEqual(curve.publicKeyTweakMul(pubMul, tweakInv), pub);
           assert.bufferEqual(curve.publicKeyNegate(pub), pubNeg);
-          assert.bufferEqual(curve.publicKeyAdd(pub, pub), pubDbl);
-          assert.bufferEqual(curve.publicKeyAdd(pubDbl, pubNeg), pub);
           assert.bufferEqual(curve.publicKeyCombine([pub, pub]), pubDbl);
           assert.bufferEqual(curve.publicKeyCombine([pubDbl, pubNeg]), pub);
           assert.bufferEqual(curve.publicKeyCombine([pub, pubNeg, pub]), pub);
@@ -598,7 +596,6 @@ describe('ECDSA', function() {
           assert.bufferEqual(curve.publicKeyConvert(pub, false), pubConv);
           assert.bufferEqual(curve.publicKeyConvert(pubConv, true), pub);
 
-          assert.throws(() => curve.publicKeyAdd(pub, pubNeg));
           assert.throws(() => curve.publicKeyCombine([pub, pubNeg]));
         });
 

@@ -67,7 +67,7 @@ for (const curve of ecdsa) {
     const pubAdd = curve.publicKeyTweakAdd(pub, tweak);
     const pubMul = curve.publicKeyTweakMul(pub, tweak);
     const pubNeg = curve.publicKeyNegate(pub);
-    const pubDbl = curve.publicKeyAdd(pub, pub);
+    const pubDbl = curve.publicKeyCombine([pub, pub]);
     const pubConv = curve.publicKeyConvert(pub, false);
     const pubHybrid = Buffer.from(pubConv);
     const privJSON = jsonify(curve.privateKeyExport(priv));
@@ -124,7 +124,7 @@ for (const [curve, x] of eddsa) {
     const pubAdd = curve.publicKeyTweakAdd(pub, tweak);
     const pubMul = curve.publicKeyTweakMul(pub, tweak);
     const pubNeg = curve.publicKeyNegate(pub);
-    const pubDbl = curve.publicKeyAdd(pub, pub);
+    const pubDbl = curve.publicKeyCombine([pub, pub]);
     const pubConv = curve.publicKeyConvert(pub);
     const privJSON = jsonify(curve.privateKeyExport(priv));
     const pubJSON = jsonify(curve.publicKeyExport(pub));

@@ -63,7 +63,6 @@ BECDSA::Init(v8::Local<v8::Object> &target) {
   Nan::SetPrototypeMethod(tpl, "publicKeyImport", BECDSA::PublicKeyImport);
   Nan::SetPrototypeMethod(tpl, "publicKeyTweakAdd", BECDSA::PublicKeyTweakAdd);
   Nan::SetPrototypeMethod(tpl, "publicKeyTweakMul", BECDSA::PublicKeyTweakMul);
-  Nan::SetPrototypeMethod(tpl, "publicKeyAdd", BECDSA::PublicKeyAdd);
   Nan::SetPrototypeMethod(tpl, "publicKeyCombine", BECDSA::PublicKeyCombine);
   Nan::SetPrototypeMethod(tpl, "publicKeyNegate", BECDSA::PublicKeyNegate);
   Nan::SetPrototypeMethod(tpl, "signatureNormalize", BECDSA::SignatureNormalize);
@@ -762,43 +761,6 @@ NAN_METHOD(BECDSA::PublicKeyTweakMul) {
 
   if (!ecdsa_pubkey_tweak_mul(ec->ctx, out, &out_len, pub, pub_len, tweak, compress))
     return Nan::ThrowError("Could not tweak public key.");
-
-  return info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)out, out_len).ToLocalChecked());
-}
-
-NAN_METHOD(BECDSA::PublicKeyAdd) {
-  BECDSA *ec = ObjectWrap::Unwrap<BECDSA>(info.Holder());
-
-  if (info.Length() < 2)
-    return Nan::ThrowError("ecdsa.publicKeyAdd() requires arguments.");
-
-  v8::Local<v8::Object> p1buf = info[0].As<v8::Object>();
-  v8::Local<v8::Object> p2buf = info[1].As<v8::Object>();
-
-  if (!node::Buffer::HasInstance(p1buf)
-      || !node::Buffer::HasInstance(p2buf)) {
-    return Nan::ThrowTypeError("Arguments must be buffers.");
-  }
-
-  int compress = 1;
-
-  if (info.Length() > 2 && !IsNull(info[2])) {
-    if (!info[2]->IsBoolean())
-      return Nan::ThrowTypeError("Third argument must be a boolean.");
-
-    compress = (int)Nan::To<bool>(info[2]).FromJust();
-  }
-
-  const uint8_t *pub1 = (const uint8_t *)node::Buffer::Data(p1buf);
-  size_t pub1_len = node::Buffer::Length(p1buf);
-  const uint8_t *pub2 = (const uint8_t *)node::Buffer::Data(p2buf);
-  size_t pub2_len = node::Buffer::Length(p2buf);
-  uint8_t out[ECDSA_MAX_PUB_SIZE];
-  size_t out_len = ECDSA_MAX_PUB_SIZE;
-
-  if (!ecdsa_pubkey_add(ec->ctx, out, &out_len, pub1, pub1_len, pub2, pub2_len, compress))
-    return Nan::ThrowError("Invalid point.");
 
   return info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)out, out_len).ToLocalChecked());

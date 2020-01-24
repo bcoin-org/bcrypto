@@ -57,7 +57,6 @@ private:
   static NAN_METHOD(PublicKeyHasTorsion);
   static NAN_METHOD(PublicKeyTweakAdd);
   static NAN_METHOD(PublicKeyTweakMul);
-  static NAN_METHOD(PublicKeyAdd);
   static NAN_METHOD(PublicKeyCombine);
   static NAN_METHOD(PublicKeyNegate);
   static NAN_METHOD(Sign);

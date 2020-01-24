@@ -93,8 +93,6 @@ describe('EdDSA', function() {
           assert.bufferEqual(curve.publicKeyTweakMul(pub, tweak), pubMul);
           assert.bufferEqual(curve.publicKeyTweakMul(pubMul, tweakInv), pub);
           assert.bufferEqual(curve.publicKeyNegate(pub), pubNeg);
-          assert.bufferEqual(curve.publicKeyAdd(pub, pub), pubDbl);
-          assert.bufferEqual(curve.publicKeyAdd(pubDbl, pubNeg), pub);
           assert.bufferEqual(curve.publicKeyCombine([pub, pub]), pubDbl);
           assert.bufferEqual(curve.publicKeyCombine([pubDbl, pubNeg]), pub);
           assert.bufferEqual(curve.publicKeyCombine([pub, pubNeg, pub]), pub);
@@ -103,7 +101,6 @@ describe('EdDSA', function() {
           assert.bufferEqual(x.publicKeyConvert(pubConv, sign), pub);
 
           assert.bufferEqual(curve.publicKeyCombine([]), inf);
-          assert.bufferEqual(curve.publicKeyAdd(pub, pubNeg), inf);
           assert.bufferEqual(curve.publicKeyCombine([pub, pubNeg]), inf);
         });
 

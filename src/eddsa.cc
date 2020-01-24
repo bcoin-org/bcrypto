@@ -74,7 +74,6 @@ BEDDSA::Init(v8::Local<v8::Object> &target) {
   Nan::SetPrototypeMethod(tpl, "publicKeyHasTorsion", BEDDSA::PublicKeyHasTorsion);
   Nan::SetPrototypeMethod(tpl, "publicKeyTweakAdd", BEDDSA::PublicKeyTweakAdd);
   Nan::SetPrototypeMethod(tpl, "publicKeyTweakMul", BEDDSA::PublicKeyTweakMul);
-  Nan::SetPrototypeMethod(tpl, "publicKeyAdd", BEDDSA::PublicKeyAdd);
   Nan::SetPrototypeMethod(tpl, "publicKeyCombine", BEDDSA::PublicKeyCombine);
   Nan::SetPrototypeMethod(tpl, "publicKeyNegate", BEDDSA::PublicKeyNegate);
   Nan::SetPrototypeMethod(tpl, "sign", BEDDSA::Sign);
@@ -947,39 +946,6 @@ NAN_METHOD(BEDDSA::PublicKeyTweakMul) {
     return Nan::ThrowRangeError("Invalid tweak size.");
 
   if (!eddsa_pubkey_tweak_mul(ec->ctx, out, pub, tweak))
-    return Nan::ThrowError("Invalid public key.");
-
-  return info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)out, ec->pub_size).ToLocalChecked());
-}
-
-NAN_METHOD(BEDDSA::PublicKeyAdd) {
-  BEDDSA *ec = ObjectWrap::Unwrap<BEDDSA>(info.Holder());
-
-  if (info.Length() < 2)
-    return Nan::ThrowError("eddsa.publicKeyAdd() requires arguments.");
-
-  v8::Local<v8::Object> p1buf = info[0].As<v8::Object>();
-  v8::Local<v8::Object> p2buf = info[1].As<v8::Object>();
-
-  if (!node::Buffer::HasInstance(p1buf)
-      || !node::Buffer::HasInstance(p2buf)) {
-    return Nan::ThrowTypeError("Arguments must be buffers.");
-  }
-
-  const uint8_t *pub1 = (const uint8_t *)node::Buffer::Data(p1buf);
-  size_t pub1_len = node::Buffer::Length(p1buf);
-  const uint8_t *pub2 = (const uint8_t *)node::Buffer::Data(p2buf);
-  size_t pub2_len = node::Buffer::Length(p2buf);
-  uint8_t out[EDDSA_MAX_PUB_SIZE];
-
-  if (pub1_len != ec->pub_size)
-    return Nan::ThrowRangeError("Invalid public key size.");
-
-  if (pub2_len != ec->pub_size)
-    return Nan::ThrowRangeError("Invalid public key size.");
-
-  if (!eddsa_pubkey_add(ec->ctx, out, pub1, pub2))
     return Nan::ThrowError("Invalid public key.");
 
   return info.GetReturnValue().Set(

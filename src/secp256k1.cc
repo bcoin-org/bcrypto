@@ -260,7 +260,6 @@ BSecp256k1::Init(v8::Local<v8::Object> &target) {
   Nan::SetPrototypeMethod(tpl, "publicKeyImport", BSecp256k1::PublicKeyImport);
   Nan::SetPrototypeMethod(tpl, "publicKeyTweakAdd", BSecp256k1::PublicKeyTweakAdd);
   Nan::SetPrototypeMethod(tpl, "publicKeyTweakMul", BSecp256k1::PublicKeyTweakMul);
-  Nan::SetPrototypeMethod(tpl, "publicKeyAdd", BSecp256k1::PublicKeyAdd);
   Nan::SetPrototypeMethod(tpl, "publicKeyCombine", BSecp256k1::PublicKeyCombine);
   Nan::SetPrototypeMethod(tpl, "publicKeyNegate", BSecp256k1::PublicKeyNegate);
 
@@ -822,54 +821,6 @@ NAN_METHOD(BSecp256k1::PublicKeyTweakMul) {
 
   if (!secp256k1_ec_pubkey_tweak_mul(secp->ctx, &pub, tweak))
     return Nan::ThrowError(EC_PUBLIC_KEY_TWEAK_MUL_FAIL);
-
-  unsigned char out[65];
-  size_t out_len = 65;
-
-  secp256k1_ec_pubkey_serialize(secp->ctx, out, &out_len, &pub, flags);
-
-  info.GetReturnValue().Set(COPY_BUFFER(out, out_len));
-}
-
-NAN_METHOD(BSecp256k1::PublicKeyAdd) {
-  BSecp256k1 *secp = ObjectWrap::Unwrap<BSecp256k1>(info.Holder());
-
-  v8::Local<v8::Object> inp1_buf = info[0].As<v8::Object>();
-  CHECK_TYPE_BUFFER(inp1_buf, EC_PUBLIC_KEY_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH2(inp1_buf, 33, 65, EC_PUBLIC_KEY_LENGTH_INVALID);
-
-  const unsigned char *inp1 =
-    (const unsigned char *)node::Buffer::Data(inp1_buf);
-  size_t inp1_len = node::Buffer::Length(inp1_buf);
-
-  v8::Local<v8::Object> inp2_buf = info[1].As<v8::Object>();
-  CHECK_TYPE_BUFFER(inp2_buf, EC_PUBLIC_KEY_TYPE_INVALID);
-  CHECK_BUFFER_LENGTH2(inp2_buf, 33, 65, EC_PUBLIC_KEY_LENGTH_INVALID);
-
-  const unsigned char *inp2 =
-    (const unsigned char *)node::Buffer::Data(inp2_buf);
-  size_t inp2_len = node::Buffer::Length(inp2_buf);
-
-  unsigned int flags = SECP256K1_EC_COMPRESSED;
-  UPDATE_COMPRESSED_VALUE(flags, info[2], SECP256K1_EC_COMPRESSED,
-                                          SECP256K1_EC_UNCOMPRESSED);
-
-  secp256k1_pubkey pub1;
-  secp256k1_pubkey pub2;
-  secp256k1_pubkey *pubs[2];
-  secp256k1_pubkey pub;
-
-  if (!secp256k1_ec_pubkey_parse(secp->ctx, &pub1, inp1, inp1_len))
-    return Nan::ThrowError(EC_PUBLIC_KEY_PARSE_FAIL);
-
-  if (!secp256k1_ec_pubkey_parse(secp->ctx, &pub2, inp2, inp2_len))
-    return Nan::ThrowError(EC_PUBLIC_KEY_PARSE_FAIL);
-
-  pubs[0] = &pub1;
-  pubs[1] = &pub2;
-
-  if (!secp256k1_ec_pubkey_combine(secp->ctx, &pub, pubs, 2))
-    return Nan::ThrowError(EC_PUBLIC_KEY_COMBINE_FAIL);
 
   unsigned char out[65];
   size_t out_len = 65;
