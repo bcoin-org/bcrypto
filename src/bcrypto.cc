@@ -3,12 +3,8 @@
  * Copyright (c) 2016-2019, Christopher Jeffrey (MIT License)
  */
 
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
 #include <node.h>
 #include <nan.h>
-#include <torsion/util.h>
 
 #include "common.h"
 #include "aead.h"
@@ -35,22 +31,7 @@
 #include "secp256k1.h"
 #endif
 #include "siphash.h"
-#include "bcrypto.h"
-
-NAN_METHOD(cleanse) {
-  if (info.Length() < 1)
-    return Nan::ThrowError("cleanse() requires arguments.");
-
-  v8::Local<v8::Object> buf = info[0].As<v8::Object>();
-
-  if (!node::Buffer::HasInstance(buf))
-    return Nan::ThrowTypeError("First argument must be a buffer.");
-
-  const uint8_t *data = (const uint8_t *)node::Buffer::Data(buf);
-  size_t len = node::Buffer::Length(buf);
-
-  cleanse((void *)data, len);
-}
+#include "util.h"
 
 NAN_MODULE_INIT(init) {
   BAEAD::Init(target);
@@ -60,7 +41,6 @@ NAN_MODULE_INIT(init) {
   BBLAKE2s::Init(target);
   BCash32::Init(target);
   BChaCha20::Init(target);
-  Nan::Export(target, "cleanse", cleanse);
   BDSA::Init(target);
   BECDH::Init(target);
   BECDSA::Init(target);
@@ -78,6 +58,7 @@ NAN_MODULE_INIT(init) {
   BSecp256k1::Init(target);
 #endif
   BSiphash::Init(target);
+  BUtil::Init(target);
 }
 
 #if NODE_MAJOR_VERSION >= 10

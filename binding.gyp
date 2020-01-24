@@ -43,7 +43,8 @@
       "./src/salsa20.cc",
       "./src/scrypt.cc",
       "./src/scrypt_async.cc",
-      "./src/siphash.cc"
+      "./src/siphash.cc",
+      "./src/util.cc"
     ],
     "cflags": [
       "-Wall",
