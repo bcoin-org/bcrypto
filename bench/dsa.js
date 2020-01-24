@@ -67,7 +67,7 @@ const big = Buffer.from('308203560201000282010100ebec69b74460e4e82f2bf927'
 
 {
   const rounds = 1000 * mul;
-  const key = dsa.privateKeyImport(raw);
+  const key = raw;
   const pub = dsa.publicKeyCreate(key);
   const msg = Buffer.from('31260986ee940fa71d2c4cc7c00d4b1e'
                         + 'c2131b24f2b6243f48c2cbd3b7b82ea3', 'hex');
