@@ -7,6 +7,7 @@ const bcrypto = require('../');
 const {env} = process;
 const parts = process.version.split(/[^\d]/);
 const NODE_MAJOR = parts[1] >>> 0;
+// eslint-disable-next-line
 const NODE_MINOR = parts[2] >>> 0;
 const HAS_BIGINT = typeof BigInt === 'function' ? 1 : 0;
 const FORCE_BIGINT = HAS_BIGINT && env.BCRYPTO_FORCE_BIGINT != null ? 1 : 0;
