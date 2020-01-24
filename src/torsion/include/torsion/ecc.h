@@ -44,7 +44,6 @@ extern "C" {
 #define ecdsa_pubkey_import torsion_ecdsa_pubkey_import
 #define ecdsa_pubkey_tweak_add torsion_ecdsa_pubkey_tweak_add
 #define ecdsa_pubkey_tweak_mul torsion_ecdsa_pubkey_tweak_mul
-#define ecdsa_pubkey_add torsion_ecdsa_pubkey_add
 #define ecdsa_pubkey_combine torsion_ecdsa_pubkey_combine
 #define ecdsa_pubkey_negate torsion_ecdsa_pubkey_negate
 #define ecdsa_sig_export torsion_ecdsa_sig_export
@@ -91,7 +90,6 @@ extern "C" {
 #define schnorr_pubkey_import torsion_schnorr_pubkey_import
 #define schnorr_pubkey_tweak_add torsion_schnorr_pubkey_tweak_add
 #define schnorr_pubkey_tweak_mul torsion_schnorr_pubkey_tweak_mul
-#define schnorr_pubkey_add torsion_schnorr_pubkey_add
 #define schnorr_pubkey_combine torsion_schnorr_pubkey_combine
 #define schnorr_sign torsion_schnorr_sign
 #define schnorr_verify torsion_schnorr_verify
@@ -165,7 +163,6 @@ extern "C" {
 #define eddsa_pubkey_has_torsion torsion_eddsa_pubkey_has_torsion
 #define eddsa_pubkey_tweak_add torsion_eddsa_pubkey_tweak_add
 #define eddsa_pubkey_tweak_mul torsion_eddsa_pubkey_tweak_mul
-#define eddsa_pubkey_add torsion_eddsa_pubkey_add
 #define eddsa_pubkey_combine torsion_eddsa_pubkey_combine
 #define eddsa_pubkey_negate torsion_eddsa_pubkey_negate
 #define eddsa_sign_with_scalar torsion_eddsa_sign_with_scalar
@@ -391,16 +388,6 @@ ecdsa_pubkey_tweak_mul(ecdsa_t *ec,
                        size_t pub_len,
                        const unsigned char *tweak,
                        int compact);
-
-int
-ecdsa_pubkey_add(ecdsa_t *ec,
-                 unsigned char *out,
-                 size_t *out_len,
-                 const unsigned char *pub1,
-                 size_t pub1_len,
-                 const unsigned char *pub2,
-                 size_t pub2_len,
-                 int compact);
 
 int
 ecdsa_pubkey_combine(ecdsa_t *ec,
@@ -640,12 +627,6 @@ schnorr_pubkey_tweak_mul(schnorr_t *ec,
                          unsigned char *out,
                          const unsigned char *pub,
                          const unsigned char *tweak);
-
-int
-schnorr_pubkey_add(schnorr_t *ec,
-                   unsigned char *out,
-                   const unsigned char *pub1,
-                   const unsigned char *pub2);
 
 int
 schnorr_pubkey_combine(schnorr_t *ec,
@@ -973,12 +954,6 @@ eddsa_pubkey_tweak_mul(eddsa_t *ec,
                        unsigned char *out,
                        const unsigned char *pub,
                        const unsigned char *tweak);
-
-int
-eddsa_pubkey_add(eddsa_t *ec,
-                 unsigned char *out,
-                 const unsigned char *pub1,
-                 const unsigned char *pub2);
 
 int
 eddsa_pubkey_combine(eddsa_t *ec,
