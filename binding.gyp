@@ -128,7 +128,6 @@
         "sources": [
           "./src/secp256k1/src/secp256k1.c",
           "./src/secp256k1/contrib/lax_der_parsing.c",
-          "./src/secp256k1/contrib/lax_der_privatekey_parsing.c",
           "./src/secp256k1.cc"
         ],
         "conditions": [
