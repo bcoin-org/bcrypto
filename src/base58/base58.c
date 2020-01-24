@@ -18,25 +18,19 @@ static const int TABLE[128] = {
 };
 
 int
-bcrypto_base58_encode(char **str, size_t *strlen,
-                      const uint8_t *data, size_t datalen) {
-  uint64_t b58size = (uint64_t)datalen * 138 / 100 + 1;
+bcrypto_base58_encode(char **str, size_t *str_len,
+                      const uint8_t *data, size_t data_len) {
+  uint64_t b58size = (uint64_t)data_len * 138 / 100 + 1;
   size_t b58len = (size_t)b58size; /* 31 bit max */
   uint8_t *b58;
   size_t zeroes = 0;
   size_t length = 0;
   size_t i, j;
 
-  if (datalen > 1073741823ul) /* 2^30 - 1 */
+  if (data_len > 1073741823ul) /* 2^30 - 1 */
     return 0;
 
-  if (datalen == 0) {
-    *str = NULL;
-    *strlen = 0;
-    return 1;
-  }
-
-  for (i = 0; i < datalen; i++) {
+  for (i = 0; i < data_len; i++) {
     if (data[i] != 0)
       break;
 
@@ -50,18 +44,19 @@ bcrypto_base58_encode(char **str, size_t *strlen,
 
   memset(b58, 0, b58len);
 
-  for (; i < datalen; i++) {
-    int carry = data[i];
+  for (; i < data_len; i++) {
+    unsigned long carry = data[i];
     size_t j = 0;
-    long k;
+    size_t k;
 
-    for (k = (long)b58len - 1; k >= 0; k--, j++) {
+    for (j = 0; j < b58len; j++) {
       if (carry == 0 && j >= length)
         break;
 
+      k = b58len - 1 - j;
       carry += 256 * b58[k];
       b58[k] = carry % 58;
-      carry = carry / 58;
+      carry /= 58;
     }
 
     assert(carry == 0);
@@ -88,7 +83,7 @@ bcrypto_base58_encode(char **str, size_t *strlen,
     (*str)[j++] = CHARSET[b58[i]];
 
   (*str)[j] = '\0';
-  *strlen = j;
+  *str_len = j;
 
   free(b58);
 
@@ -96,25 +91,19 @@ bcrypto_base58_encode(char **str, size_t *strlen,
 }
 
 int
-bcrypto_base58_decode(uint8_t **data, size_t *datalen,
-                      const char *str, size_t strlen) {
-  uint64_t b256size = (uint64_t)strlen * 733 / 1000 + 1;
+bcrypto_base58_decode(uint8_t **data, size_t *data_len,
+                      const char *str, size_t str_len) {
+  uint64_t b256size = (uint64_t)str_len * 733 / 1000 + 1;
   size_t b256len = (size_t)b256size;
   uint8_t *b256;
   size_t zeroes = 0;
   size_t length = 0;
   size_t i, j;
 
-  if (strlen > 1481763716ul) /* (2^30 - 1) * 138 / 100 + 1 */
+  if (str_len > 1481763716ul) /* (2^30 - 1) * 138 / 100 + 1 */
     return 0;
 
-  if (strlen == 0) {
-    *data = NULL;
-    *datalen = 0;
-    return 1;
-  }
-
-  for (i = 0; i < strlen; i++) {
+  for (i = 0; i < str_len; i++) {
     if (str[i] != '1')
       break;
 
@@ -128,25 +117,26 @@ bcrypto_base58_decode(uint8_t **data, size_t *datalen,
 
   memset(b256, 0, b256len);
 
-  for (; i < strlen; i++) {
+  for (; i < str_len; i++) {
     uint8_t ch = (uint8_t)str[i];
     int v = (ch & 0x80) ? -1 : TABLE[ch];
-    int carry = v;
+    unsigned long carry = v;
     size_t j = 0;
-    long k;
+    size_t k;
 
     if (v == -1) {
       free(b256);
       return 0;
     }
 
-    for (k = (long)b256len - 1; k >= 0; k--, j++) {
+    for (j = 0; j < b256len; j++) {
       if (carry == 0 && j >= length)
         break;
 
+      k = b256len - 1 - j;
       carry += 58 * b256[k];
-      b256[k] = carry % 256;
-      carry = carry / 256;
+      b256[k] = carry & 0xff;
+      carry >>= 8;
     }
 
     assert(carry == 0);
@@ -159,7 +149,7 @@ bcrypto_base58_decode(uint8_t **data, size_t *datalen,
   while (i < b256len && b256[i] == 0)
     i += 1;
 
-  *data = malloc(zeroes + (b256len - i));
+  *data = malloc(zeroes + (b256len - i) + 1);
 
   if (*data == NULL) {
     free(b256);
@@ -172,7 +162,7 @@ bcrypto_base58_decode(uint8_t **data, size_t *datalen,
   while (i < b256len)
     (*data)[j++] = b256[i++];
 
-  *datalen = j;
+  *data_len = j;
 
   free(b256);
 
@@ -180,10 +170,10 @@ bcrypto_base58_decode(uint8_t **data, size_t *datalen,
 }
 
 int
-bcrypto_base58_test(const char *str, size_t strlen) {
+bcrypto_base58_test(const char *str, size_t str_len) {
   size_t i = 0;
 
-  for (; i < strlen; i++) {
+  for (; i < str_len; i++) {
     uint8_t ch = (uint8_t)str[i];
 
     if (ch & 0x80)
