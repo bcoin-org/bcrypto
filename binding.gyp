@@ -82,11 +82,6 @@
           "WORDS_BIGENDIAN"
         ]
       }],
-      ["OS!='win' and node_use_openssl=='true' and nodedir.find('electron')==-1", {
-        "defines": [
-          "TORSION_USE_OPENSSL"
-        ]
-      }],
       ["target_arch=='x64' and OS!='win'", {
         "defines": [
           "TORSION_USE_64BIT",
@@ -103,6 +98,11 @@
       }, {
         "sources": [
           "../torsion/src/mini-gmp.c"
+        ]
+      }],
+      ["OS!='win' and node_use_openssl=='true' and nodedir.find('electron')==-1", {
+        "defines": [
+          "TORSION_USE_OPENSSL"
         ]
       }],
       ["OS=='win'", {
