@@ -2,18 +2,18 @@
   "targets": [{
     "target_name": "bcrypto",
     "sources": [
-      "../torsion/src/aead.c",
-      "../torsion/src/chacha20.c",
-      "../torsion/src/drbg.c",
-      "../torsion/src/dsa.c",
-      "../torsion/src/ecc.c",
-      "../torsion/src/hash.c",
-      "../torsion/src/kdf.c",
-      "../torsion/src/poly1305.c",
-      "../torsion/src/rsa.c",
-      "../torsion/src/salsa20.c",
-      "../torsion/src/siphash.c",
-      "../torsion/src/util.c",
+      "./src/torsion/src/aead.c",
+      "./src/torsion/src/chacha20.c",
+      "./src/torsion/src/drbg.c",
+      "./src/torsion/src/dsa.c",
+      "./src/torsion/src/ecc.c",
+      "./src/torsion/src/hash.c",
+      "./src/torsion/src/kdf.c",
+      "./src/torsion/src/poly1305.c",
+      "./src/torsion/src/rsa.c",
+      "./src/torsion/src/salsa20.c",
+      "./src/torsion/src/siphash.c",
+      "./src/torsion/src/util.c",
       "./src/base58/base58.c",
       "./src/bech32/bech32.c",
       "./src/cash32/cash32.c",
@@ -64,7 +64,7 @@
     ],
     "include_dirs": [
       "<!(node -e \"require('nan')\")",
-      "../torsion/include"
+      "./src/torsion/include"
     ],
     "variables": {
       "with_secp256k1%": "false",
@@ -97,7 +97,7 @@
         ]
       }, {
         "sources": [
-          "../torsion/src/mini-gmp.c"
+          "./src/torsion/src/mini-gmp.c"
         ]
       }],
       ["OS!='win' and node_use_openssl=='true' and nodedir.find('electron')==-1", {
