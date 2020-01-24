@@ -204,7 +204,29 @@ describe('DSA', function() {
       assert.deepStrictEqual(dsa.publicKeyCreate(priv), pub);
     });
 
-    it(`should recompute key (${i})`);
+    it(`should recompute key (${i})`, () => {
+      const {p, q, g, y, x} = dsa.privateKeyExport(priv);
+      const k = dsa.privateKeyImport({ p, q, g, x });
+      const info = dsa.privateKeyExport(k);
+
+      assert.bufferEqual(info.p, p);
+      assert.bufferEqual(info.q, q);
+      assert.bufferEqual(info.g, g);
+      assert.bufferEqual(info.y, y);
+      assert.bufferEqual(info.x, x);
+      assert.bufferEqual(k, priv);
+
+      {
+        const {p, q, g, y} = dsa.publicKeyExport(pub);
+
+        assert.bufferEqual(p, info.p);
+        assert.bufferEqual(q, info.q);
+        assert.bufferEqual(g, info.g);
+        assert.bufferEqual(y, info.y);
+      }
+
+      assert.bufferEqual(dsa.publicKeyImport(info), pub);
+    });
 
     it(`should check signature (${i})`, () => {
       assert(dsa.signatureExport(sig), der);

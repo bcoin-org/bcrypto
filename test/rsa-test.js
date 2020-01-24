@@ -411,7 +411,46 @@ describe('RSA', function() {
       assert.deepStrictEqual(rsa.publicKeyCreate(priv), pub);
     });
 
-    it(`should recompute key (${i})`);
+    it(`should recompute key (${i})`, () => {
+      const {n, e, d, p, q, dp, dq, qi} = rsa.privateKeyExport(priv);
+      const k1 = rsa.privateKeyImport({ p, q, e });
+      const k2 = rsa.privateKeyImport({ p, q, d });
+      const k3 = rsa.privateKeyImport({ n, e, d });
+      const k4 = rsa.privateKeyImport({ n, e, d, p, q, dp, dq, qi });
+
+      // Ensure we recovered the exponent.
+      {
+        const info = rsa.privateKeyExport(k2);
+
+        assert.bufferEqual(info.e, e);
+      }
+
+      // Ensure we recovered the primes.
+      {
+        const info = rsa.privateKeyExport(k3);
+
+        assert(p.compare(q) > 0);
+        assert.bufferEqual(info.p, p);
+        assert.bufferEqual(info.q, q);
+      }
+
+      assert.bufferEqual(rsa.sign(hash, msg, k1), sig1);
+      assert.bufferEqual(rsa.sign(hash, msg, k2), sig1);
+      assert.bufferEqual(rsa.sign(hash, msg, k3), sig1);
+      assert.bufferEqual(rsa.sign(hash, msg, k4), sig1);
+
+      {
+        const info = rsa.publicKeyExport(pub);
+
+        assert.bufferEqual(info.n, n);
+        assert.bufferEqual(info.e, e);
+      }
+
+      assert.bufferEqual(rsa.publicKeyImport(rsa.privateKeyExport(k1)), pub);
+      assert.bufferEqual(rsa.publicKeyImport(rsa.privateKeyExport(k2)), pub);
+      assert.bufferEqual(rsa.publicKeyImport(rsa.privateKeyExport(k3)), pub);
+      assert.bufferEqual(rsa.publicKeyImport(rsa.privateKeyExport(k4)), pub);
+    });
 
     it(`should sign and verify PKCS1v1.5 signature (${i})`, () => {
       const sig = rsa.sign(hash, msg, priv);
