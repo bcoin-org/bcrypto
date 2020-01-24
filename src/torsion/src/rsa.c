@@ -1686,12 +1686,6 @@ rsa_sign(unsigned char *out,
 
   rsa_priv_init(&k);
 
-  if (!rsa_priv_import(&k, key, key_len))
-    goto fail;
-
-  if (!rsa_priv_verify(&k))
-    goto fail;
-
   if (!get_digest_info(&prefix, &prefix_len, type))
     goto fail;
 
@@ -1699,6 +1693,12 @@ rsa_sign(unsigned char *out,
     hlen = msg_len;
 
   if (msg_len != hlen)
+    goto fail;
+
+  if (!rsa_priv_import(&k, key, key_len))
+    goto fail;
+
+  if (!rsa_priv_verify(&k))
     goto fail;
 
   tlen = prefix_len + hlen;
@@ -1751,12 +1751,6 @@ rsa_verify(int type,
 
   rsa_pub_init(&k);
 
-  if (!rsa_pub_import(&k, key, key_len))
-    goto fail;
-
-  if (!rsa_pub_verify(&k))
-    goto fail;
-
   if (!get_digest_info(&prefix, &prefix_len, type))
     goto fail;
 
@@ -1764,6 +1758,12 @@ rsa_verify(int type,
     hlen = msg_len;
 
   if (msg_len != hlen)
+    goto fail;
+
+  if (!rsa_pub_import(&k, key, key_len))
+    goto fail;
+
+  if (!rsa_pub_verify(&k))
     goto fail;
 
   tlen = prefix_len + hlen;
@@ -1956,13 +1956,13 @@ rsa_sign_pss(unsigned char *out,
   if (!hash_has_backend(type))
     goto fail;
 
+  if (msg_len != hlen)
+    goto fail;
+
   if (!rsa_priv_import(&k, key, key_len))
     goto fail;
 
   if (!rsa_priv_verify(&k))
-    goto fail;
-
-  if (msg_len != hlen)
     goto fail;
 
   bits = mpz_bitlen(k.n);
@@ -2032,6 +2032,9 @@ rsa_verify_pss(int type,
   if (!hash_has_backend(type))
     goto fail;
 
+  if (msg_len != hlen)
+    goto fail;
+
   if (!rsa_pub_import(&k, key, key_len))
     goto fail;
 
@@ -2040,9 +2043,6 @@ rsa_verify_pss(int type,
 
   bits = mpz_bitlen(k.n);
   klen = (bits + 7) / 8;
-
-  if (msg_len != hlen)
-    goto fail;
 
   if (sig_len != klen)
     goto fail;
