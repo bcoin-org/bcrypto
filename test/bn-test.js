@@ -1,7 +1,7 @@
 'use strict';
 
 const assert = require('bsert');
-const BN = require('../lib/bn.js');
+const BN = require('../lib/bn');
 const RNG = require('./util/rng');
 
 const P192 = BN._prime('p192').p;

@@ -1,3 +1,5 @@
+#include <torsion/util.h>
+
 #include "common.h"
 #include "hmac.h"
 
@@ -109,6 +111,8 @@ NAN_METHOD(BHMAC::Final) {
   hmac_final(&hmac->ctx, out);
   hmac->started = false;
 
+  cleanse(&hmac->ctx, sizeof(hmac->ctx));
+
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)out, len).ToLocalChecked());
 }
@@ -144,6 +148,8 @@ NAN_METHOD(BHMAC::Digest) {
   hmac_init(&ctx, type, key, key_len);
   hmac_update(&ctx, data, data_len);
   hmac_final(&ctx, out);
+
+  cleanse(&ctx, sizeof(ctx));
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)out, len).ToLocalChecked());

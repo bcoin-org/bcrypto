@@ -1,3 +1,5 @@
+#include <torsion/util.h>
+
 #include "common.h"
 #include "hash.h"
 
@@ -100,6 +102,8 @@ NAN_METHOD(BHash::Final) {
   hash_final(&hash->ctx, out, len);
   hash->started = false;
 
+  cleanse(&hash->ctx, sizeof(hash->ctx));
+
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)out, len).ToLocalChecked());
 }
@@ -129,6 +133,8 @@ NAN_METHOD(BHash::Digest) {
   hash_init(&ctx, type);
   hash_update(&ctx, in, inlen);
   hash_final(&ctx, out, len);
+
+  cleanse(&ctx, sizeof(ctx));
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)out, len).ToLocalChecked());
@@ -169,6 +175,8 @@ NAN_METHOD(BHash::Root) {
   hash_update(&ctx, left, leftlen);
   hash_update(&ctx, right, rightlen);
   hash_final(&ctx, out, len);
+
+  cleanse(&ctx, sizeof(ctx));
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)out, len).ToLocalChecked());
@@ -219,6 +227,8 @@ NAN_METHOD(BHash::Multi) {
   hash_update(&ctx, y, ylen);
   hash_update(&ctx, z, zlen);
   hash_final(&ctx, out, len);
+
+  cleanse(&ctx, sizeof(ctx));
 
   info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)out, len).ToLocalChecked());

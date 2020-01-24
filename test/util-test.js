@@ -1,7 +1,7 @@
 'use strict';
 
 const assert = require('bsert');
-const BN = require('../lib/bn.js');
+const BN = require('../lib/bn');
 const random = require('../lib/random');
 const util = require('../lib/encoding/util');
 const EMPTY = Buffer.alloc(0);

@@ -1,7 +1,7 @@
 'use strict';
 
 const assert = require('bsert');
-const BN = require('../lib/bn.js');
+const BN = require('../lib/bn');
 const EDDSA = require('../lib/js/eddsa');
 const ECDH = require('../lib/js/ecdh');
 const SHA512 = require('../lib/sha512');
