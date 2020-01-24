@@ -997,10 +997,11 @@ NAN_METHOD(BEDDSA::PublicKeyCombine) {
 
   v8::Local<v8::Array> batch = info[0].As<v8::Array>();
   size_t len = (size_t)batch->Length();
-  const uint8_t **pubs = (const uint8_t **)malloc(len * sizeof(uint8_t *));
+  const uint8_t **pubs =
+    (const uint8_t **)malloc((len == 0 ? 1 : len) * sizeof(uint8_t *));
   uint8_t out[EDDSA_MAX_PUB_SIZE];
 
-  if (pubs == NULL && len != 0)
+  if (pubs == NULL)
     return Nan::ThrowError("Allocation failed.");
 
   for (size_t i = 0; i < len; i++) {
@@ -1461,27 +1462,27 @@ NAN_METHOD(BEDDSA::VerifyBatch) {
   if (len == 0)
     return info.GetReturnValue().Set(Nan::New<v8::Boolean>(true));
 
-  const uint8_t **slab =
-    (const uint8_t **)malloc(len * 3 * sizeof(const uint8_t *));
+  const uint8_t **ptrs = (const uint8_t **)malloc(3 * len * sizeof(uint8_t *));
+  size_t *lens = (size_t *)malloc(len * sizeof(size_t));
 
-  if (slab == NULL)
-    return Nan::ThrowError("Allocation failed.");
+#define FREE_BATCH do {         \
+  if (ptrs != NULL) free(ptrs); \
+  if (lens != NULL) free(lens); \
+} while (0)
 
-  size_t *msg_lens = (size_t *)malloc(len * sizeof(size_t));
-
-  if (msg_lens == NULL) {
-    free(slab);
+  if (ptrs == NULL || lens == NULL) {
+    FREE_BATCH;
     return Nan::ThrowError("Allocation failed.");
   }
 
-  const uint8_t **msgs = slab + len * 0;
-  const uint8_t **pubs = slab + len * 1;
-  const uint8_t **sigs = slab + len * 2;
+  const uint8_t **msgs = ptrs + len * 0;
+  const uint8_t **pubs = ptrs + len * 1;
+  const uint8_t **sigs = ptrs + len * 2;
+  size_t *msg_lens = lens;
 
   for (size_t i = 0; i < len; i++) {
     if (!Nan::Get(batch, i).ToLocalChecked()->IsArray()) {
-      free(slab);
-      free(msg_lens);
+      FREE_BATCH;
       return Nan::ThrowTypeError("Batch item must be an array.");
     }
 
@@ -1489,9 +1490,8 @@ NAN_METHOD(BEDDSA::VerifyBatch) {
                                                   .As<v8::Array>();
 
     if (item->Length() != 3) {
-      free(slab);
-      free(msg_lens);
-      return Nan::ThrowError("Invalid input.");
+      FREE_BATCH;
+      return Nan::ThrowError("Batch item must consist of 3 members.");
     }
 
     v8::Local<v8::Object> mbuf = Nan::Get(item, 0).ToLocalChecked()
@@ -1504,9 +1504,8 @@ NAN_METHOD(BEDDSA::VerifyBatch) {
     if (!node::Buffer::HasInstance(mbuf)
         || !node::Buffer::HasInstance(sbuf)
         || !node::Buffer::HasInstance(pbuf)) {
-      free(slab);
-      free(msg_lens);
-      return Nan::ThrowTypeError("Batch values must be buffers.");
+      FREE_BATCH;
+      return Nan::ThrowTypeError("Batch item values must be buffers.");
     }
 
     const uint8_t *msg = (const uint8_t *)node::Buffer::Data(mbuf);
@@ -1519,8 +1518,7 @@ NAN_METHOD(BEDDSA::VerifyBatch) {
     size_t pub_len = node::Buffer::Length(pbuf);
 
     if (sig_len != ec->sig_size || pub_len != ec->pub_size) {
-      free(slab);
-      free(msg_lens);
+      FREE_BATCH;
       return info.GetReturnValue().Set(Nan::New<v8::Boolean>(false));
     }
 
@@ -1534,8 +1532,9 @@ NAN_METHOD(BEDDSA::VerifyBatch) {
                                            pubs, len, ph, ctx,
                                            ctx_len, ec->scratch);
 
-  free(slab);
-  free(msg_lens);
+  FREE_BATCH;
+
+#undef FREE_BATCH
 
   info.GetReturnValue().Set(Nan::New<v8::Boolean>(result));
 }

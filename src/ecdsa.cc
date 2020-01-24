@@ -814,7 +814,6 @@ NAN_METHOD(BECDSA::PublicKeyCombine) {
     return Nan::ThrowTypeError("First argument must be an array.");
 
   v8::Local<v8::Array> batch = info[0].As<v8::Array>();
-
   size_t len = (size_t)batch->Length();
 
   if (len == 0)
@@ -830,14 +829,15 @@ NAN_METHOD(BECDSA::PublicKeyCombine) {
   }
 
   const uint8_t **pubs = (const uint8_t **)malloc(len * sizeof(uint8_t *));
-
-  if (pubs == NULL)
-    return Nan::ThrowError("Allocation failed.");
-
   size_t *pub_lens = (size_t *)malloc(len * sizeof(size_t));
 
-  if (pub_lens == NULL) {
-    free(pubs);
+#define FREE_BATCH do {                 \
+  if (pubs != NULL) free(pubs);         \
+  if (pub_lens != NULL) free(pub_lens); \
+} while (0)
+
+  if (pubs == NULL || pub_lens == NULL) {
+    FREE_BATCH;
     return Nan::ThrowError("Allocation failed.");
   }
 
@@ -846,8 +846,7 @@ NAN_METHOD(BECDSA::PublicKeyCombine) {
                                                    .As<v8::Object>();
 
     if (!node::Buffer::HasInstance(pbuf)) {
-      free(pubs);
-      free(pub_lens);
+      FREE_BATCH;
       return Nan::ThrowTypeError("Public key must be a buffer.");
     }
 
@@ -859,13 +858,13 @@ NAN_METHOD(BECDSA::PublicKeyCombine) {
   size_t out_len = ECDSA_MAX_PUB_SIZE;
 
   if (!ecdsa_pubkey_combine(ec->ctx, out, &out_len, pubs, pub_lens, len, compress)) {
-    free(pubs);
-    free(pub_lens);
+    FREE_BATCH;
     return Nan::ThrowError("Invalid point.");
   }
 
-  free(pubs);
-  free(pub_lens);
+  FREE_BATCH;
+
+#undef FREE_BATCH
 
   return info.GetReturnValue().Set(
     Nan::CopyBuffer((char *)out, out_len).ToLocalChecked());
@@ -1491,44 +1490,28 @@ NAN_METHOD(BECDSA::SchnorrVerifyBatch) {
   if (len == 0)
     return info.GetReturnValue().Set(Nan::New<v8::Boolean>(true));
 
-  const uint8_t **msgs =
-    (const uint8_t **)malloc(len * sizeof(const uint8_t **));
+  const uint8_t **ptrs = (const uint8_t **)malloc(3 * len * sizeof(uint8_t *));
+  size_t *lens = (size_t *)malloc(len * sizeof(size_t));
 
-  if (msgs == NULL)
-    return Nan::ThrowError("Allocation failed.");
+#define FREE_BATCH do {         \
+  if (ptrs != NULL) free(ptrs); \
+  if (lens != NULL) free(lens); \
+} while (0)
 
-  const uint8_t **sigs =
-    (const uint8_t **)malloc(len * sizeof(const uint8_t **));
-
-  if (sigs == NULL) {
-    free(msgs);
-    return Nan::ThrowError("Allocation failed.");
-  }
-
-  const uint8_t **pubs =
-    (const uint8_t **)malloc(len * sizeof(const uint8_t **));
-
-  if (pubs == NULL) {
-    free(msgs);
-    free(sigs);
+  if (ptrs == NULL || lens == NULL) {
+    FREE_BATCH;
     return Nan::ThrowError("Allocation failed.");
   }
 
-  size_t *pub_lens = (size_t *)malloc(len * sizeof(size_t));
-
-  if (pub_lens == NULL) {
-    free(msgs);
-    free(sigs);
-    free(pubs);
-    return Nan::ThrowError("Allocation failed.");
-  }
-
-#define FREE_BATCH (free(msgs), free(sigs), free(pubs), free(pub_lens))
+  const uint8_t **msgs = ptrs + len * 0;
+  const uint8_t **pubs = ptrs + len * 1;
+  const uint8_t **sigs = ptrs + len * 2;
+  size_t *pub_lens = lens;
 
   for (size_t i = 0; i < len; i++) {
     if (!Nan::Get(batch, i).ToLocalChecked()->IsArray()) {
       FREE_BATCH;
-      return Nan::ThrowTypeError("Item must be an array.");
+      return Nan::ThrowTypeError("Batch item must be an array.");
     }
 
     v8::Local<v8::Array> item = Nan::Get(batch, i).ToLocalChecked()
@@ -1536,7 +1519,7 @@ NAN_METHOD(BECDSA::SchnorrVerifyBatch) {
 
     if (item->Length() != 3) {
       FREE_BATCH;
-      return Nan::ThrowError("Item must consist of 3 members.");
+      return Nan::ThrowError("Batch item must consist of 3 members.");
     }
 
     v8::Local<v8::Object> mbuf = Nan::Get(item, 0).ToLocalChecked()
@@ -1550,7 +1533,7 @@ NAN_METHOD(BECDSA::SchnorrVerifyBatch) {
         || !node::Buffer::HasInstance(sbuf)
         || !node::Buffer::HasInstance(pbuf)) {
       FREE_BATCH;
-      return Nan::ThrowTypeError("Values must be buffers.");
+      return Nan::ThrowTypeError("Batch item values must be buffers.");
     }
 
     const uint8_t *msg = (const uint8_t *)node::Buffer::Data(mbuf);

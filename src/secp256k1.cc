@@ -886,16 +886,29 @@ NAN_METHOD(BSecp256k1::PublicKeyCombine) {
   CHECK_TYPE_ARRAY(inp_buffers, EC_PUBLIC_KEYS_TYPE_INVALID);
   CHECK_LENGTH_GT_ZERO(inp_buffers, EC_PUBLIC_KEYS_LENGTH_INVALID);
 
-  size_t length = (size_t)inp_buffers->Length();
+  size_t len = (size_t)inp_buffers->Length();
 
   unsigned int flags = SECP256K1_EC_COMPRESSED;
   UPDATE_COMPRESSED_VALUE(flags, info[1], SECP256K1_EC_COMPRESSED,
                                           SECP256K1_EC_UNCOMPRESSED);
 
-  std::unique_ptr<secp256k1_pubkey[]> pub_data(new secp256k1_pubkey[length]);
-  std::unique_ptr<secp256k1_pubkey*[]> pubs(new secp256k1_pubkey*[length]);
+  secp256k1_pubkey **pubs =
+    (secp256k1_pubkey **)malloc(len * sizeof(secp256k1_pubkey *));
 
-  for (unsigned int i = 0; i < length; ++i) {
+  secp256k1_pubkey *pub_data =
+    (secp256k1_pubkey *)malloc(len * sizeof(secp256k1_pubkey));
+
+#define FREE_BATCH do {                 \
+  if (pubs != NULL) free(pubs);         \
+  if (pub_data != NULL) free(pub_data); \
+} while (0)
+
+  if (pubs == NULL || pub_data == NULL) {
+    FREE_BATCH;
+    return Nan::ThrowError(ALLOCATION_FAILURE);
+  }
+
+  for (size_t i = 0; i < len; i++) {
     v8::Local<v8::Object> pub_buf =
       Nan::Get(inp_buffers, i).ToLocalChecked().As<v8::Object>();
 
@@ -906,16 +919,24 @@ NAN_METHOD(BSecp256k1::PublicKeyCombine) {
       (const unsigned char *)node::Buffer::Data(pub_buf);
     size_t inp_len = node::Buffer::Length(pub_buf);
 
-    if (!secp256k1_ec_pubkey_parse(secp->ctx, &pub_data[i], inp, inp_len))
+    if (!secp256k1_ec_pubkey_parse(secp->ctx, &pub_data[i], inp, inp_len)) {
+      FREE_BATCH;
       return Nan::ThrowError(EC_PUBLIC_KEY_PARSE_FAIL);
+    }
 
     pubs[i] = &pub_data[i];
   }
 
   secp256k1_pubkey pub;
 
-  if (!secp256k1_ec_pubkey_combine(secp->ctx, &pub, pubs.get(), length))
+  if (!secp256k1_ec_pubkey_combine(secp->ctx, &pub, pubs, len)) {
+    FREE_BATCH;
     return Nan::ThrowError(EC_PUBLIC_KEY_COMBINE_FAIL);
+  }
+
+  FREE_BATCH;
+
+#undef FREE_BATCH
 
   unsigned char out[65];
   size_t out_len = 65;
@@ -1517,7 +1538,7 @@ NAN_METHOD(BSecp256k1::Derive) {
   if (!secp256k1_ecdh(secp->ctx, out, &pub, priv, hashfp, &flags))
     return Nan::ThrowError(ECDH_FAIL);
 
-  if (out[0] != 0x04)
+  if (flags == SECP256K1_EC_COMPRESSED)
     out_len = 33;
 
   info.GetReturnValue().Set(COPY_BUFFER(out, out_len));
@@ -1608,7 +1629,7 @@ NAN_METHOD(BSecp256k1::SchnorrVerifyBatch) {
     return info.GetReturnValue().Set(Nan::New<v8::Boolean>(true));
 
   const unsigned char **msgs =
-    (const unsigned char **)malloc(len * sizeof(const unsigned char *));
+    (const unsigned char **)malloc(len * sizeof(unsigned char *));
 
   secp256k1_schnorrleg **sigs =
     (secp256k1_schnorrleg **)malloc(len * sizeof(secp256k1_schnorrleg *));
