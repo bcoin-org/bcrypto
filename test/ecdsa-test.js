@@ -2,7 +2,7 @@
 
 const assert = require('bsert');
 const fs = require('fs');
-const random = require('../lib/random');
+const rng = require('../lib/random');
 const p192 = require('../lib/p192');
 const p224 = require('../lib/p224');
 const p256 = require('../lib/p256');
@@ -30,7 +30,7 @@ describe('ECDSA', function() {
   for (const ec of curves) {
     describe(ec.id, () => {
       it(`should generate keypair and sign DER (${ec.id})`, () => {
-        const msg = random.randomBytes(ec.size);
+        const msg = rng.randomBytes(ec.size);
         const priv = ec.privateKeyGenerate();
         const pub = ec.publicKeyCreate(priv);
         const pubu = ec.publicKeyConvert(pub, false);
@@ -75,7 +75,7 @@ describe('ECDSA', function() {
       });
 
       it(`should generate keypair and sign RS (${ec.id})`, () => {
-        const msg = random.randomBytes(ec.size);
+        const msg = rng.randomBytes(ec.size);
         const priv = ec.privateKeyGenerate();
         const pub = ec.publicKeyCreate(priv);
         const pubu = ec.publicKeyConvert(pub, false);
@@ -103,7 +103,7 @@ describe('ECDSA', function() {
       });
 
       it(`should fail with padded key (${ec.id})`, () => {
-        const msg = random.randomBytes(ec.size);
+        const msg = rng.randomBytes(ec.size);
         const priv = ec.privateKeyGenerate();
         const pub = ec.publicKeyCreate(priv);
         const pubu = ec.publicKeyConvert(pub, false);
@@ -141,7 +141,7 @@ describe('ECDSA', function() {
       it(`should do additive tweak (${ec.id})`, () => {
         const priv = ec.privateKeyGenerate();
         const pub = ec.publicKeyCreate(priv);
-        const tweak = random.randomBytes(ec.size);
+        const tweak = rng.randomBytes(ec.size);
 
         tweak[0] = 0x00;
 
@@ -151,7 +151,7 @@ describe('ECDSA', function() {
 
         assert.bufferEqual(tpub, zpub);
 
-        const msg = random.randomBytes(ec.size);
+        const msg = rng.randomBytes(ec.size);
 
         const sig = ec.sign(msg, tpriv);
 
@@ -179,7 +179,7 @@ describe('ECDSA', function() {
       it(`should do multiplicative tweak (${ec.id})`, () => {
         const priv = ec.privateKeyGenerate();
         const pub = ec.publicKeyCreate(priv);
-        const tweak = random.randomBytes(ec.size);
+        const tweak = rng.randomBytes(ec.size);
 
         tweak[0] = 0x00;
 
@@ -189,7 +189,7 @@ describe('ECDSA', function() {
 
         assert.bufferEqual(tpub, zpub);
 
-        const msg = random.randomBytes(ec.size);
+        const msg = rng.randomBytes(ec.size);
 
         const sig = ec.sign(msg, tpriv);
 
@@ -248,7 +248,7 @@ describe('ECDSA', function() {
       });
 
       it(`should generate keypair, sign DER and recover (${ec.id})`, () => {
-        const msg = random.randomBytes(ec.size);
+        const msg = rng.randomBytes(ec.size);
         const priv = ec.privateKeyGenerate();
         const pub = ec.publicKeyCreate(priv);
         const pubu = ec.publicKeyConvert(pub, false);
@@ -915,7 +915,7 @@ describe('ECDSA', function() {
     });
 
     it('should generate keypair, sign RS and recover', () => {
-      const msg = random.randomBytes(secp256k1.size);
+      const msg = rng.randomBytes(secp256k1.size);
       const priv = secp256k1.privateKeyGenerate();
       const pub = secp256k1.publicKeyCreate(priv);
       const pubu = secp256k1.publicKeyConvert(pub, false);
@@ -1422,7 +1422,7 @@ describe('ECDSA', function() {
           pub = curve.publicKeyCreate(priv);
 
           try {
-            bytes = curve.publicKeyToUniform(pub, random.randomInt());
+            bytes = curve.publicKeyToUniform(pub);
           } catch (e) {
             continue;
           }

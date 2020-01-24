@@ -196,7 +196,7 @@ describe('Schnorr', function() {
       pub = schnorr.publicKeyCreate(priv);
 
       try {
-        bytes = schnorr.publicKeyToUniform(pub, rng.randomInt());
+        bytes = schnorr.publicKeyToUniform(pub);
       } catch (e) {
         continue;
       }
