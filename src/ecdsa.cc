@@ -1407,6 +1407,9 @@ NAN_METHOD(BECDSA::Derive) {
 NAN_METHOD(BECDSA::SchnorrSign) {
   BECDSA *ec = ObjectWrap::Unwrap<BECDSA>(info.Holder());
 
+  if (!ecdsa_schnorr_support(ec->ctx))
+    return Nan::ThrowError("Schnorr is not suppported.");
+
   if (info.Length() < 2)
     return Nan::ThrowError("ecdsa.schnorrSign() requires arguments.");
 
@@ -1438,6 +1441,9 @@ NAN_METHOD(BECDSA::SchnorrSign) {
 NAN_METHOD(BECDSA::SchnorrVerify) {
   BECDSA *ec = ObjectWrap::Unwrap<BECDSA>(info.Holder());
 
+  if (!ecdsa_schnorr_support(ec->ctx))
+    return Nan::ThrowError("Schnorr is not suppported.");
+
   if (info.Length() < 3)
     return Nan::ThrowError("ecdsa.schnorrVerify() requires arguments.");
 
@@ -1468,6 +1474,9 @@ NAN_METHOD(BECDSA::SchnorrVerify) {
 
 NAN_METHOD(BECDSA::SchnorrVerifyBatch) {
   BECDSA *ec = ObjectWrap::Unwrap<BECDSA>(info.Holder());
+
+  if (!ecdsa_schnorr_support(ec->ctx))
+    return Nan::ThrowError("Schnorr is not suppported.");
 
   if (info.Length() < 1)
     return Nan::ThrowError("ecdsa.schnorrVerifyBatch() requires arguments.");
