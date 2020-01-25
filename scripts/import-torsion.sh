@@ -2,12 +2,23 @@
 
 set -ex
 
-test -e package.json
-test -e ../torsion
-rm -rf src/torsion
-mkdir src/torsion
-cp -r ../torsion/src src/torsion/
-cp -r ../torsion/include src/torsion/
-cp -r ../torsion/LICENSE src/torsion/
-rm src/torsion/src/test.c
-rm src/torsion/src/test-internal.c
+type rsync > /dev/null 2>& 1
+test $# -eq 1
+test ! -z "$1"
+
+prefix="$1"
+
+test -f package.json
+test -d "$prefix"
+test -d "$prefix/src"
+test -d "$prefix/include"
+
+if test ! -d src/torsion; then
+  mkdir src/torsion
+  mkdir src/torsion/src
+  mkdir src/torsion/include
+fi
+
+cp "$prefix/LICENSE" src/torsion/
+rsync -av --exclude 'test*.c' "$prefix/src/" src/torsion/src/
+rsync -av "$prefix/include/" src/torsion/include/
