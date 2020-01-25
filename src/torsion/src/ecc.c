@@ -593,14 +593,21 @@ bytes_lte(const unsigned char *a,
 #else
 static int
 count_bits(unsigned int x) {
-  int bits = 0;
+  /* https://graphics.stanford.edu/~seander/bithacks.html#IntegerLogDeBruijn */
+  static const int debruijn[32] = {
+    0, 9, 1, 10, 13, 21, 2, 29, 11, 14, 16, 18, 22, 25, 3, 30,
+    8, 12, 20, 28, 15, 17, 24, 7, 19, 27, 23, 6, 26, 5, 4, 31
+  };
 
-  while (x != 0) {
-    bits += 1;
-    x >>= 1;
-  }
+  uint32_t v = x;
 
-  return bits;
+  v |= v >> 1;
+  v |= v >> 2;
+  v |= v >> 4;
+  v |= v >> 8;
+  v |= v >> 16;
+
+  return debruijn[(uint32_t)(v * 0x07c4acddu) >> 27] + (x != 0);
 }
 #endif
 
@@ -810,7 +817,7 @@ sc_sub(scalar_field_t *sc, sc_t r, const sc_t a, const sc_t b) {
 
 static void
 sc_mul_word(scalar_field_t *sc, sc_t r, const sc_t a, unsigned int word) {
-  /* Only constant-time if `num` is constant. */
+  /* Only constant-time if `word` is constant. */
   int bits = count_bits(word);
   int i;
 
@@ -1522,7 +1529,7 @@ fe_sub(prime_field_t *fe, fe_t r, const fe_t a, const fe_t b) {
 
 static void
 fe_mul_word(prime_field_t *fe, fe_t r, const fe_t a, unsigned int word) {
-  /* Only constant-time if `num` is constant. */
+  /* Only constant-time if `word` is constant. */
   int bits = count_bits(word);
   int i;
 
