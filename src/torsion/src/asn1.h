@@ -94,7 +94,6 @@ static int
 asn1_read_int(unsigned char *out, size_t out_len,
               const unsigned char **data, size_t *len, int strict) {
   size_t size;
-  int overflow = 0;
 
   if (*len == 0 || **data != 0x02)
     return 0;
@@ -118,7 +117,7 @@ asn1_read_int(unsigned char *out, size_t out_len,
 
     /* No negatives. */
     if (num[0] & 0x80)
-      overflow = 1;
+      return 0;
 
     /* Allow zero only if it prefixes a high bit. */
     if (size > 1 && num[0] == 0x00) {
@@ -136,14 +135,10 @@ asn1_read_int(unsigned char *out, size_t out_len,
 
   /* Invalid size. */
   if (size > out_len)
-    overflow = 1;
+    return 0;
 
-  if (overflow) {
-    memset(out, 0x00, out_len);
-  } else {
-    memset(out, 0x00, out_len - size);
-    memcpy(out + out_len - size, *data, size);
-  }
+  memset(out, 0x00, out_len - size);
+  memcpy(out + out_len - size, *data, size);
 
   *data += size;
   *len -= size;

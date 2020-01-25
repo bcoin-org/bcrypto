@@ -8715,7 +8715,6 @@ ecdsa_decode_der(wei_t *ec,
   scalar_field_t *sc = &ec->sc;
   unsigned char rp[MAX_SCALAR_SIZE];
   unsigned char sp[MAX_SCALAR_SIZE];
-  int ret = 1;
 
   if (!asn1_read_seq(&der, &der_len, strict))
     return 0;
@@ -8729,23 +8728,11 @@ ecdsa_decode_der(wei_t *ec,
   if (strict && der_len != 0)
     return 0;
 
-  if (strict) {
-    /* libsecp256k1 behavior. */
-    if (!sc_import(sc, r, rp))
-      sc_zero(sc, r);
+  if (!sc_import(sc, r, rp))
+    return 0;
 
-    if (!sc_import(sc, s, sp))
-      sc_zero(sc, s);
-  } else {
-    /* Lax parsing is slightly different. */
-    ret &= sc_import(sc, r, rp);
-    ret &= sc_import(sc, s, sp);
-
-    if (!ret) {
-      sc_zero(sc, r);
-      sc_zero(sc, s);
-    }
-  }
+  if (!sc_import(sc, s, sp))
+    return 0;
 
   return 1;
 }
