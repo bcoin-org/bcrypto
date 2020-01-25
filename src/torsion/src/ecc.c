@@ -8729,13 +8729,22 @@ ecdsa_decode_der(wei_t *ec,
   if (strict && der_len != 0)
     return 0;
 
-  ret &= sc_import(sc, r, rp);
-  ret &= sc_import(sc, s, sp);
+  if (strict) {
+    /* libsecp256k1 behavior. */
+    if (!sc_import(sc, r, rp))
+      sc_zero(sc, r);
 
-  /* libsecp256k1 behavior. */
-  if (!ret) {
-    sc_zero(sc, r);
-    sc_zero(sc, s);
+    if (!sc_import(sc, s, sp))
+      sc_zero(sc, s);
+  } else {
+    /* Lax parsing is slightly different. */
+    ret &= sc_import(sc, r, rp);
+    ret &= sc_import(sc, s, sp);
+
+    if (!ret) {
+      sc_zero(sc, r);
+      sc_zero(sc, s);
+    }
   }
 
   return 1;
