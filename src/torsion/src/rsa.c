@@ -357,9 +357,7 @@ rsa_priv_export(unsigned char *out, size_t *out_len, const rsa_priv_t *k) {
   size += asn1_size_mpz(k->dq);
   size += asn1_size_mpz(k->qi);
 
-  /* 0x30 [size] [body] */
-  out[pos++] = 0x30;
-  pos = asn1_write_size(out, pos, size);
+  pos = asn1_write_seq(out, pos, size);
   pos = asn1_write_version(out, pos, 0);
   pos = asn1_write_mpz(out, pos, k->n);
   pos = asn1_write_mpz(out, pos, k->e);
@@ -1053,9 +1051,7 @@ rsa_pub_export(unsigned char *out, size_t *out_len, const rsa_pub_t *k) {
   size += asn1_size_mpz(k->n);
   size += asn1_size_mpz(k->e);
 
-  /* 0x30 [size] [body] */
-  out[pos++] = 0x30;
-  pos = asn1_write_size(out, pos, size);
+  pos = asn1_write_seq(out, pos, size);
   pos = asn1_write_mpz(out, pos, k->n);
   pos = asn1_write_mpz(out, pos, k->e);
 

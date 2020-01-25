@@ -8698,9 +8698,7 @@ ecdsa_encode_der(wei_t *ec,
   size += asn1_size_int(rp, sc->size);
   size += asn1_size_int(sp, sc->size);
 
-  /* 0x30 [size] [body] */
-  out[pos++] = 0x30;
-  pos = asn1_write_size(out, pos, size);
+  pos = asn1_write_seq(out, pos, size);
   pos = asn1_write_int(out, pos, rp, sc->size);
   pos = asn1_write_int(out, pos, sp, sc->size);
 

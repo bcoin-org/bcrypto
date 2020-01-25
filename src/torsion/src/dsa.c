@@ -127,9 +127,7 @@ dsa_group_export(unsigned char *out,
   size += asn1_size_mpz(group->q);
   size += asn1_size_mpz(group->g);
 
-  /* 0x30 [size] [body] */
-  out[pos++] = 0x30;
-  pos = asn1_write_size(out, pos, size);
+  pos = asn1_write_seq(out, pos, size);
   pos = asn1_write_mpz(out, pos, group->p);
   pos = asn1_write_mpz(out, pos, group->q);
   pos = asn1_write_mpz(out, pos, group->g);
@@ -373,9 +371,7 @@ dsa_pub_export(unsigned char *out, size_t *out_len, const dsa_pub_t *k) {
   size += asn1_size_mpz(k->q);
   size += asn1_size_mpz(k->g);
 
-  /* 0x30 [size] [body] */
-  out[pos++] = 0x30;
-  pos = asn1_write_size(out, pos, size);
+  pos = asn1_write_seq(out, pos, size);
   pos = asn1_write_mpz(out, pos, k->y);
   pos = asn1_write_mpz(out, pos, k->p);
   pos = asn1_write_mpz(out, pos, k->q);
@@ -523,9 +519,7 @@ dsa_priv_export(unsigned char *out, size_t *out_len, const dsa_priv_t *k) {
   size += asn1_size_mpz(k->y);
   size += asn1_size_mpz(k->x);
 
-  /* 0x30 [size] [body] */
-  out[pos++] = 0x30;
-  pos = asn1_write_size(out, pos, size);
+  pos = asn1_write_seq(out, pos, size);
   pos = asn1_write_version(out, pos, 0);
   pos = asn1_write_mpz(out, pos, k->p);
   pos = asn1_write_mpz(out, pos, k->q);
@@ -724,9 +718,7 @@ dsa_sig_export_der(unsigned char *out, size_t *out_len, const dsa_sig_t *sig) {
   size += asn1_size_mpz(sig->r);
   size += asn1_size_mpz(sig->s);
 
-  /* 0x30 [size] [body] */
-  out[pos++] = 0x30;
-  pos = asn1_write_size(out, pos, size);
+  pos = asn1_write_seq(out, pos, size);
   pos = asn1_write_mpz(out, pos, sig->r);
   pos = asn1_write_mpz(out, pos, sig->s);
 

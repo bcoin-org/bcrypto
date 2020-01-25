@@ -327,6 +327,12 @@ asn1_write_size(unsigned char *data, size_t pos, size_t size) {
 }
 
 static size_t
+asn1_write_seq(unsigned char *data, size_t pos, size_t size) {
+  data[pos++] = 0x30;
+  return asn1_write_size(data, pos, size);
+}
+
+static size_t
 asn1_write_int(unsigned char *data, size_t pos,
                const unsigned char *num, size_t len) {
   size_t pad = 0;
