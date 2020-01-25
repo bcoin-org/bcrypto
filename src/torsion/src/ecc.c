@@ -589,11 +589,11 @@ bytes_lte(const unsigned char *a,
 #endif
 
 #if __has_builtin(__builtin_clz)
-#define count_bits(x) (sizeof(unsigned int) * CHAR_BIT - __builtin_clz(x))
+#define __torsion_clz __builtin_clz
 #else
 static int
-count_bits(unsigned int x) {
-  /* https://graphics.stanford.edu/~seander/bithacks.html#IntegerLogDeBruijn */
+__torsion_clz(unsigned int x) {
+  /* https://en.wikipedia.org/wiki/Find_first_set#CLZ */
   static const int debruijn[32] = {
     0, 9, 1, 10, 13, 21, 2, 29, 11, 14, 16, 18, 22, 25, 3, 30,
     8, 12, 20, 28, 15, 17, 24, 7, 19, 27, 23, 6, 26, 5, 4, 31
@@ -607,9 +607,11 @@ count_bits(unsigned int x) {
   v |= v >> 8;
   v |= v >> 16;
 
-  return debruijn[(uint32_t)(v * 0x07c4acddu) >> 27] + (x != 0);
+  return debruijn[(uint32_t)(v * 0x07c4acddu) >> 27];
 }
 #endif
+
+#define bit_length(x) (sizeof(unsigned int) * CHAR_BIT - __torsion_clz(x))
 
 /*
  * Scalar
@@ -818,7 +820,7 @@ sc_sub(scalar_field_t *sc, sc_t r, const sc_t a, const sc_t b) {
 static void
 sc_mul_word(scalar_field_t *sc, sc_t r, const sc_t a, unsigned int word) {
   /* Only constant-time if `word` is constant. */
-  int bits = count_bits(word);
+  int bits = bit_length(word);
   int i;
 
   if (word > 1 && (word & (word - 1)) == 0) {
@@ -1207,9 +1209,6 @@ fe_cleanse(prime_field_t *fe, fe_t r) {
 
 static int
 fe_import(prime_field_t *fe, fe_t r, const unsigned char *raw) {
-  unsigned char tmp[MAX_FIELD_SIZE];
-  size_t i;
-
   if (fe->from_montgomery) {
     /* Use a constant time barrett reduction
      * to montgomerize the field element.
@@ -1239,11 +1238,15 @@ fe_import(prime_field_t *fe, fe_t r, const unsigned char *raw) {
       memcpy(r, xp, fe->limbs * sizeof(mp_limb_t));
     } else {
       /* Export as little endian. */
+      unsigned char tmp[MAX_FIELD_SIZE];
       mpn_export_le(tmp, fe->size, xp, fe->limbs);
       fe->from_bytes(r, tmp);
     }
   } else {
     if (fe->endian == 1) {
+      unsigned char tmp[MAX_FIELD_SIZE];
+      size_t i;
+
       /* Swap endianness. */
       for (i = 0; i < fe->size; i++)
         tmp[i] = raw[fe->size - 1 - i];
@@ -1299,9 +1302,6 @@ fe_import_uniform(prime_field_t *fe, fe_t r, const unsigned char *raw) {
 
 static void
 fe_export(prime_field_t *fe, unsigned char *raw, const fe_t a) {
-  int i = 0;
-  int j = fe->size - 1;
-
   if (fe->from_montgomery) {
     fe_t tmp;
 
@@ -1330,6 +1330,9 @@ fe_export(prime_field_t *fe, unsigned char *raw, const fe_t a) {
   }
 
   if (fe->endian == 1) {
+    int i = 0;
+    int j = fe->size - 1;
+
     while (i < j) {
       unsigned char t = raw[j];
 
@@ -1530,7 +1533,7 @@ fe_sub(prime_field_t *fe, fe_t r, const fe_t a, const fe_t b) {
 static void
 fe_mul_word(prime_field_t *fe, fe_t r, const fe_t a, unsigned int word) {
   /* Only constant-time if `word` is constant. */
-  int bits = count_bits(word);
+  int bits = bit_length(word);
   int i;
 
   if (word > 1 && (word & (word - 1)) == 0) {
@@ -5272,7 +5275,7 @@ pge_to_mge(mont_t *ec, mge_t *r, const pge_t *p, int sign) {
 
 static void
 pge_mulh(mont_t *ec, pge_t *r, const pge_t *p) {
-  int bits = count_bits(ec->h);
+  int bits = bit_length(ec->h);
   int i;
 
   pge_set(ec, r, p);
@@ -6192,7 +6195,7 @@ xge_normalize_var(edwards_t *ec, xge_t *r, const xge_t *p) {
 
 static void
 xge_mulh(edwards_t *ec, xge_t *r, const xge_t *p) {
-  int bits = count_bits(ec->h);
+  int bits = bit_length(ec->h);
   int i;
 
   xge_set(ec, r, p);
@@ -9557,7 +9560,13 @@ ecdsa_schnorr_verify_batch(wei_t *ec,
 
     ecdsa_schnorr_hash_ram(ec, e, Rraw, Araw, msg);
 
-    sc_random(sc, a, &rng);
+    if (j == 0) {
+      sc_zero(sc, a);
+      a[0] = 1;
+    } else {
+      sc_random(sc, a, &rng);
+    }
+
     sc_mul(sc, e, e, a);
     sc_mul(sc, s, s, a);
     sc_add(sc, sum, sum, s);
@@ -10312,7 +10321,13 @@ schnorr_verify_batch(wei_t *ec,
 
     schnorr_hash_ram(ec, e, Rraw, pub, msg);
 
-    sc_random(sc, a, &rng);
+    if (j == 0) {
+      sc_zero(sc, a);
+      a[0] = 1;
+    } else {
+      sc_random(sc, a, &rng);
+    }
+
     sc_mul(sc, e, e, a);
     sc_mul(sc, s, s, a);
     sc_add(sc, sum, sum, s);
@@ -11816,7 +11831,13 @@ eddsa_verify_batch(edwards_t *ec,
 
     eddsa_hash_ram(ec, e, ph, ctx, ctx_len, Rraw, pub, msg, msg_len);
 
-    sc_random(sc, a, &rng);
+    if (j == 0) {
+      sc_zero(sc, a);
+      a[0] = 1;
+    } else {
+      sc_random(sc, a, &rng);
+    }
+
     sc_mul(sc, e, e, a);
     sc_mul(sc, s, s, a);
     sc_add(sc, sum, sum, s);
