@@ -87,6 +87,3 @@ workflows:
       - test_native:
           requires:
             - install
-      - test_node:
-          requires:
-            - install
