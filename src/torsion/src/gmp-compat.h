@@ -36,8 +36,8 @@
 /* `mpz_jacobi` is not implemented in mini-gmp. */
 static int
 mpz_jacobi(const mpz_t x, const mpz_t y) {
-  mpz_limb_t bmod8;
-  mpz_size_t s;
+  mp_limb_t bmod8;
+  mp_size_t s;
   mpz_t a, b, c;
   int j = 1;
 

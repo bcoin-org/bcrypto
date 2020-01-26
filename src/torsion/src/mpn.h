@@ -26,6 +26,7 @@
 #define mpn_cleanse torsion_mpn_cleanse
 #ifndef mpn_cnd_swap
 #define mpn_cnd_swap torsion_mpn_cnd_swap
+#define mpn_needs_cnd_swap
 #endif
 #define mpn_cnd_select torsion_mpn_cnd_select
 #define mpn_import_be torsion_mpn_import_be
@@ -89,7 +90,7 @@ mpn_cleanse(mp_limb_t *p, mp_size_t n) {
   cleanse(p, n * sizeof(mp_limb_t));
 }
 
-#ifndef mpn_cnd_swap
+#ifdef mpn_needs_cnd_swap
 static void
 mpn_cnd_swap(mp_limb_t cnd, mp_limb_t *ap, mp_limb_t *bp, mp_size_t n) {
   mp_limb_t mask = -(mp_limb_t)(cnd != 0);

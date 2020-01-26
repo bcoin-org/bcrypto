@@ -1081,16 +1081,18 @@ rsa_pub_export_dumb(unsigned char *out, size_t *out_len, const rsa_pub_t *k) {
 
 static int
 rsa_pub_verify(const rsa_pub_t *k) {
-  size_t nbits = mpz_bitlen(k->n);
-  size_t ebits = mpz_bitlen(k->e);
+  size_t bits = mpz_bitlen(k->n);
 
-  if (mpz_sgn(k->n) < 0 || mpz_sgn(k->e) < 0)
+  if (mpz_sgn(k->n) < 0)
     return 0;
 
-  if (nbits < RSA_MIN_MOD_BITS || nbits > RSA_MAX_MOD_BITS)
+  if (bits < RSA_MIN_MOD_BITS || bits > RSA_MAX_MOD_BITS)
     return 0;
 
-  if (ebits < RSA_MIN_EXP_BITS || ebits > RSA_MAX_EXP_BITS)
+  if (mpz_cmp_ui(k->e, RSA_MIN_EXP) < 0)
+    return 0;
+
+  if (mpz_bitlen(k->e) > RSA_MAX_EXP_BITS)
     return 0;
 
   if (!mpz_odd_p(k->n))

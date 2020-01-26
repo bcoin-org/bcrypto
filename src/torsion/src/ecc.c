@@ -589,29 +589,24 @@ bytes_lte(const unsigned char *a,
 #endif
 
 #if __has_builtin(__builtin_clz)
-#define __torsion_clz __builtin_clz
+#define bit_length(x) (sizeof(unsigned int) * CHAR_BIT - __builtin_clz(x))
 #else
 static int
-__torsion_clz(unsigned int x) {
-  /* https://en.wikipedia.org/wiki/Find_first_set#CLZ */
-  static const int debruijn[32] = {
-    0, 9, 1, 10, 13, 21, 2, 29, 11, 14, 16, 18, 22, 25, 3, 30,
-    8, 12, 20, 28, 15, 17, 24, 7, 19, 27, 23, 6, 26, 5, 4, 31
-  };
-
-  uint32_t v = x;
-
-  v |= v >> 1;
-  v |= v >> 2;
-  v |= v >> 4;
-  v |= v >> 8;
-  v |= v >> 16;
-
-  return debruijn[(uint32_t)(v * 0x07c4acddu) >> 27];
+bit_length(uint32_t x) {
+  /* http://aggregate.org/MAGIC/#Leading%20Zero%20Count */
+  x |= x >> 1;
+  x |= x >> 2;
+  x |= x >> 4;
+  x |= x >> 8;
+  x |= x >> 16;
+  x -= (x >> 1) & 0x55555555u;
+  x = ((x >> 2) & 0x33333333u) + (x & 0x33333333u);
+  x = ((x >> 4) + x) & 0x0f0f0f0fu;
+  x += x >> 8;
+  x += x >> 16;
+  return x & 0x0000003fu;
 }
 #endif
-
-#define bit_length(x) (sizeof(unsigned int) * CHAR_BIT - __torsion_clz(x))
 
 /*
  * Scalar

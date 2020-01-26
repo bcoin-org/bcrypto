@@ -688,6 +688,12 @@ dsa_sig_clear(dsa_sig_t *sig) {
 }
 
 static int
+dsa_sig_is_sane(const dsa_sig_t *sig) {
+  return mpz_bytelen(sig->r) <= DSA_MAX_QSIZE
+      && mpz_bytelen(sig->s) <= DSA_MAX_QSIZE;
+}
+
+static int
 dsa_sig_import_der(dsa_sig_t *sig, const unsigned char *data, size_t len) {
   if (!asn1_read_seq(&data, &len, 1))
     return 0;
@@ -702,12 +708,6 @@ dsa_sig_import_der(dsa_sig_t *sig, const unsigned char *data, size_t len) {
     return 0;
 
   return 1;
-}
-
-static int
-dsa_sig_is_sane(const dsa_sig_t *sig) {
-  return mpz_bytelen(sig->r) <= DSA_MAX_QSIZE
-      && mpz_bytelen(sig->s) <= DSA_MAX_QSIZE;
 }
 
 static void
