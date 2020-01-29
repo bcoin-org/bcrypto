@@ -68,7 +68,7 @@
       "./src/torsion/include"
     ],
     "variables": {
-      "with_secp256k1%": "false",
+      "with_secp256k1%": "true",
       "conditions": [
         ["OS=='win'", {
           "with_gmp%": "false"
