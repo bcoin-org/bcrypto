@@ -9637,7 +9637,7 @@ schnorr_scratch_create(wei_t *ec) {
 
 void
 schnorr_scratch_destroy(wei_t *ec, wei_scratch_t *scratch) {
-  return ecdsa_scratch_destroy(ec, scratch);
+  ecdsa_scratch_destroy(ec, scratch);
 }
 
 size_t
@@ -9679,7 +9679,7 @@ void
 schnorr_privkey_generate(wei_t *ec,
                          unsigned char *out,
                          const unsigned char *entropy) {
-  return ecdsa_privkey_generate(ec, out, entropy);
+  ecdsa_privkey_generate(ec, out, entropy);
 }
 
 int
