@@ -14,7 +14,7 @@ typedef uint64_t p448_fe_word_t;
 #include "p448_64.h"
 #else
 typedef uint32_t p448_fe_word_t;
-#define P448_FIELD_WORDS 15
+#define P448_FIELD_WORDS 18
 #include "p448_32.h"
 #endif
 
@@ -36,7 +36,7 @@ p448_fe_set(p448_fe_t out, const p448_fe_t in) {
   out[5] = in[5];
   out[6] = in[6];
   out[7] = in[7];
-#if P448_FIELD_WORDS == 15
+#if P448_FIELD_WORDS == 18
   out[8] = in[8];
   out[9] = in[9];
   out[10] = in[10];
@@ -44,6 +44,9 @@ p448_fe_set(p448_fe_t out, const p448_fe_t in) {
   out[12] = in[12];
   out[13] = in[13];
   out[14] = in[14];
+  out[15] = in[15];
+  out[16] = in[16];
+  out[17] = in[17];
 #endif
 }
 

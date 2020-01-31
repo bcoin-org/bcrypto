@@ -10,7 +10,7 @@ typedef uint64_t p192_fe_word_t;
 #include "p192_64.h"
 #else
 typedef uint32_t p192_fe_word_t;
-#define P192_FIELD_WORDS 7
+#define P192_FIELD_WORDS 9
 #include "p192_32.h"
 #endif
 
@@ -28,10 +28,12 @@ p192_fe_set(p192_fe_t out, const p192_fe_t in) {
   out[1] = in[1];
   out[2] = in[2];
   out[3] = in[3];
-#if P192_FIELD_WORDS == 7
+#if P192_FIELD_WORDS == 9
   out[4] = in[4];
   out[5] = in[5];
   out[6] = in[6];
+  out[7] = in[7];
+  out[8] = in[8];
 #endif
 }
 

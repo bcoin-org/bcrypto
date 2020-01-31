@@ -173,7 +173,7 @@ typedef uint64_t fe_word_t;
 #else
 typedef uint32_t fe_word_t;
 #define FIELD_WORD_SIZE 32
-#define MAX_FIELD_WORDS 18
+#define MAX_FIELD_WORDS 19
 #endif
 
 #define MAX_FIELD_BITS 521
@@ -197,10 +197,10 @@ typedef uint32_t fe_word_t;
 #define MAX_WNDS_SIZE (WND_STEPS(MAX_SCALAR_BITS) * WND_SIZE) /* 1024 */
 
 #define NAF_WIDTH 4
-#define NAF_SIZE ((1 << NAF_WIDTH) - 1)
+#define NAF_SIZE (1 << (NAF_WIDTH - 1)) /* 8 */
 
 #define NAF_WIDTH_PRE 8
-#define NAF_SIZE_PRE ((1 << NAF_WIDTH_PRE) - 1)
+#define NAF_SIZE_PRE (1 << (NAF_WIDTH_PRE - 1)) /* 128 */
 
 /*
  * Scalar Field
@@ -589,9 +589,10 @@ bytes_lte(const unsigned char *a,
 #endif
 
 #if __has_builtin(__builtin_clz)
-#define bit_length(x) (sizeof(unsigned int) * CHAR_BIT - __builtin_clz(x))
+#define bit_length(x) \
+  ((sizeof(unsigned int) * CHAR_BIT - __builtin_clz(x)) * ((x) != 0))
 #else
-static int
+static size_t
 bit_length(uint32_t x) {
   /* http://aggregate.org/MAGIC/#Leading%20Zero%20Count */
   x |= x >> 1;
@@ -989,6 +990,31 @@ sc_get_bit(scalar_field_t *sc, const sc_t k, size_t i) {
   return (k[i / GMP_NUMB_BITS] >> (i % GMP_NUMB_BITS)) & 1;
 }
 
+static size_t
+sc_maxlen_var(scalar_field_t *sc,
+              const sc_t k1, const sc_t k2,
+              const sc_t k3, const sc_t k4) {
+  size_t len1 = sc_bitlen_var(sc, k1);
+  size_t len2 = sc_bitlen_var(sc, k2);
+  size_t len3 = sc_bitlen_var(sc, k3);
+  size_t len4 = sc_bitlen_var(sc, k4);
+  size_t max = 0;
+
+  if (len1 > max)
+    max = len1;
+
+  if (len2 > max)
+    max = len2;
+
+  if (len3 > max)
+    max = len3;
+
+  if (len4 > max)
+    max = len4;
+
+  return max;
+}
+
 static int
 sc_minimize(scalar_field_t *sc, sc_t r, const sc_t a) {
   int high = sc_is_high(sc, a);
@@ -1003,17 +1029,17 @@ sc_naf_var(scalar_field_t *sc,
            int32_t sign,
            size_t width,
            size_t max) {
-  /* Computing the NAF of a positive integer.
+  /* Computing the width-w NAF of a positive integer.
    *
-   * [GECC] Algorithm 3.30, Page 98, Section 3.3.
-   *        Algorithm 3.35, Page 100, Section 3.3.
+   * [GECC] Algorithm 3.35, Page 100, Section 3.3.
    */
-  mp_limb_t k[MAX_SCALAR_LIMBS + 1];
+  mp_limb_t k[MAX_SCALAR_LIMBS + 2];
   mp_size_t nn = sc->limbs;
   mp_size_t kn = sc->limbs;
   mp_limb_t cy;
-  int32_t size = 1 << (width + 1);
+  int32_t pow = 1 << (width + 1);
   size_t i = 0;
+  int32_t z;
 
   mpn_copyi(k, x, nn);
 
@@ -1023,15 +1049,13 @@ sc_naf_var(scalar_field_t *sc,
     kn -= 1;
 
   while (kn > 0) {
-    int32_t z = 0;
+    z = 0;
 
     if (k[0] & 1) {
-      int32_t mod = k[0] & (size - 1);
+      z = k[0] & (pow - 1);
 
-      if (mod > (size >> 1) - 1)
-        z = (size >> 1) - mod;
-      else
-        z = mod;
+      if (z & (pow >> 1))
+        z -= pow;
 
       if (z < 0) {
         kn += 1;
@@ -1058,8 +1082,6 @@ sc_naf_var(scalar_field_t *sc,
 
   for (; i < max; i++)
     naf[i] = 0;
-
-  mpn_cleanse(k, nn);
 }
 
 static void
@@ -1164,9 +1186,6 @@ sc_jsf_var(scalar_field_t *sc,
 
   for (; i < max; i++)
     naf[i] = 0;
-
-  mpn_cleanse(k1, nn);
-  mpn_cleanse(k2, nn);
 }
 
 static void
@@ -2376,7 +2395,7 @@ wge_wnd_points_var(wei_t *ec, wge_t *out, const wge_t *p) {
 
 static void
 wge_naf_points_var(wei_t *ec, wge_t *points, const wge_t *p, size_t width) {
-  size_t size = (1 << width) - 1;
+  size_t size = 1 << (width - 1);
   wge_t dbl;
   size_t i;
 
@@ -3315,16 +3334,6 @@ jge_mixed_sub(wei_t *ec, jge_t *r, const jge_t *a, const wge_t *b) {
 }
 
 static void
-jge_dblp_var(wei_t *ec, jge_t *r, const jge_t *p, size_t pow) {
-  size_t i;
-
-  jge_set(ec, r, p);
-
-  for (i = 0; i < pow; i++)
-    jge_dbl_var(ec, r, r);
-}
-
-static void
 jge_to_wge(wei_t *ec, wge_t *r, const jge_t *p) {
   /* https://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian.html#scaling-z
    * 1I + 3M + 1S
@@ -3408,7 +3417,7 @@ jge_validate(wei_t *ec, const jge_t *p) {
 
 static void
 jge_naf_points_var(wei_t *ec, jge_t *points, const wge_t *p, size_t width) {
-  size_t size = (1 << width) - 1;
+  size_t size = 1 << (width - 1);
   jge_t dbl;
   size_t i;
 
@@ -3606,9 +3615,9 @@ wei_endo_split(wei_t *ec,
 static void
 wei_jmul_g(wei_t *ec, jge_t *r, const sc_t k) {
   scalar_field_t *sc = &ec->sc;
+  size_t i, j, b;
   sc_t k0;
   wge_t p;
-  size_t i, j, b;
 
   /* Blind if available. */
   sc_add(sc, k0, k, ec->blind);
@@ -3620,7 +3629,6 @@ wei_jmul_g(wei_t *ec, jge_t *r, const sc_t k) {
   for (i = 0; i < WND_STEPS(sc->bits); i++) {
     b = sc_get_bits(sc, k0, i * WND_WIDTH, WND_WIDTH);
 
-    /* Avoid secret data in array indices. */
     for (j = 0; j < WND_SIZE; j++)
       wge_select(ec, &p, &p, &ec->windows[i * WND_SIZE + j], j == b);
 
@@ -3781,8 +3789,8 @@ wei_jmul_double_normal_var(wei_t *ec,
   size_t max1 = sc_bitlen_var(sc, k1) + 1;
   size_t max2 = sc_bitlen_var(sc, k2) + 1;
   size_t max = max1 > max2 ? max1 : max2;
-  int i;
   jge_t acc;
+  size_t i;
 
   sc_naf_var(sc, naf1, k1, 1, NAF_WIDTH_PRE, max);
   sc_naf_var(sc, naf2, k2, 1, NAF_WIDTH, max);
@@ -3792,28 +3800,12 @@ wei_jmul_double_normal_var(wei_t *ec,
   /* Multiply and add. */
   jge_zero(ec, &acc);
 
-  for (i = max - 1; i >= 0; i--) {
-    size_t k = 0;
-    int32_t z1, z2;
+  for (i = max; i-- > 0;) {
+    int32_t z1 = naf1[i];
+    int32_t z2 = naf2[i];
 
-    while (i >= 0) {
-      if (naf1[i] != 0 || naf2[i] != 0)
-        break;
-
-      k += 1;
-      i -= 1;
-    }
-
-    if (i >= 0)
-      k += 1;
-
-    jge_dblp_var(ec, &acc, &acc, k);
-
-    if (i < 0)
-      break;
-
-    z1 = naf1[i];
-    z2 = naf2[i];
+    if (i != max - 1)
+      jge_dbl_var(ec, &acc, &acc);
 
     if (z1 > 0)
       jge_mixed_add_var(ec, &acc, &acc, &wnd1[(z1 - 1) >> 1]);
@@ -3847,12 +3839,10 @@ wei_jmul_double_endo_var(wei_t *ec,
   int32_t naf1[MAX_SCALAR_BITS + 1];
   int32_t naf2[MAX_SCALAR_BITS + 1];
   int32_t naf3[MAX_SCALAR_BITS + 1];
-  size_t len1, len2, len3, len4;
-  size_t max = 0;
   sc_t c1, c2, c3, c4;
   int32_t s1, s2, s3, s4;
+  size_t i, max;
   jge_t acc;
-  int i;
 
   assert(ec->endo == 1);
 
@@ -3861,22 +3851,7 @@ wei_jmul_double_endo_var(wei_t *ec,
   wei_endo_split(ec, c3, &s3, c4, &s4, k2);
 
   /* Compute max length. */
-  len1 = sc_bitlen_var(sc, c1) + 1;
-  len2 = sc_bitlen_var(sc, c2) + 1;
-  len3 = sc_bitlen_var(sc, c3) + 1;
-  len4 = sc_bitlen_var(sc, c4) + 1;
-
-  if (len1 > max)
-    max = len1;
-
-  if (len2 > max)
-    max = len2;
-
-  if (len3 > max)
-    max = len3;
-
-  if (len4 > max)
-    max = len4;
+  max = sc_maxlen_var(sc, c1, c2, c3, c4) + 1;
 
   /* Compute NAFs. */
   sc_naf_var(sc, naf1, c1, s1, NAF_WIDTH_PRE, max);
@@ -3889,29 +3864,13 @@ wei_jmul_double_endo_var(wei_t *ec,
   /* Multiply and add. */
   jge_zero(ec, &acc);
 
-  for (i = max - 1; i >= 0; i--) {
-    size_t k = 0;
-    int32_t z1, z2, z3;
+  for (i = max; i-- > 0;) {
+    int32_t z1 = naf1[i];
+    int32_t z2 = naf2[i];
+    int32_t z3 = naf3[i];
 
-    while (i >= 0) {
-      if (naf1[i] != 0 || naf2[i] != 0 || naf3[i] != 0)
-        break;
-
-      k += 1;
-      i -= 1;
-    }
-
-    if (i >= 0)
-      k += 1;
-
-    jge_dblp_var(ec, &acc, &acc, k);
-
-    if (i < 0)
-      break;
-
-    z1 = naf1[i];
-    z2 = naf2[i];
-    z3 = naf3[i];
+    if (i != max - 1)
+      jge_dbl_var(ec, &acc, &acc);
 
     if (z1 > 0)
       jge_mixed_add_var(ec, &acc, &acc, &wnd1[(z1 - 1) >> 1]);
@@ -3971,12 +3930,11 @@ wei_jmul_multi_normal_var(wei_t *ec,
    */
   scalar_field_t *sc = &ec->sc;
   wge_t *wnd0 = ec->points;
+  size_t max = sc_bitlen_var(sc, k0) + 1;
   int32_t naf0[MAX_SCALAR_BITS + 1];
   jge_t *wnds[32];
   int32_t *nafs[32];
-  int32_t tmp[32];
-  int max = sc_bitlen_var(sc, k0) + 1;
-  int i;
+  size_t i, j;
   jge_t acc;
 
   assert((len & 1) == 0);
@@ -3986,12 +3944,11 @@ wei_jmul_multi_normal_var(wei_t *ec,
   for (i = 0; i < 32; i++) {
     wnds[i] = &scratch->wnd_normal[i * 4];
     nafs[i] = &scratch->naf[i * (MAX_SCALAR_BITS + 1)];
-    tmp[i] = 0;
   }
 
   /* Compute max scalar size. */
-  for (i = 0; (size_t)i < len; i++) {
-    int bits = sc_bitlen_var(sc, coeffs[i]) + 1;
+  for (i = 0; i < len; i++) {
+    size_t bits = sc_bitlen_var(sc, coeffs[i]) + 1;
 
     if (bits > max)
       max = bits;
@@ -4000,7 +3957,7 @@ wei_jmul_multi_normal_var(wei_t *ec,
   /* Compute NAFs. */
   sc_naf_var(sc, naf0, k0, 1, NAF_WIDTH_PRE, max);
 
-  for (i = 0; (size_t)i < len; i += 2) {
+  for (i = 0; i < len; i += 2) {
     const wge_t *p1 = &points[i + 0];
     const wge_t *p2 = &points[i + 1];
     const sc_t *k1 = &coeffs[i + 0];
@@ -4015,48 +3972,19 @@ wei_jmul_multi_normal_var(wei_t *ec,
   /* Multiply and add. */
   jge_zero(ec, &acc);
 
-  for (i = max - 1; i >= 0; i--) {
-    size_t k = 0;
-    size_t j;
-    int32_t z;
+  for (i = max; i-- > 0;) {
+    int32_t z0 = naf0[i];
 
-    while (i >= 0) {
-      int zero = 1;
+    if (i != max - 1)
+      jge_dbl_var(ec, &acc, &acc);
 
-      if (naf0[i] != 0)
-        zero = 0;
-
-      for (j = 0; j < len; j++) {
-        tmp[j] = nafs[j][i];
-
-        if (tmp[j] != 0)
-          zero = 0;
-      }
-
-      if (!zero)
-        break;
-
-      k += 1;
-      i -= 1;
-    }
-
-    if (i >= 0)
-      k += 1;
-
-    jge_dblp_var(ec, &acc, &acc, k);
-
-    if (i < 0)
-      break;
-
-    z = naf0[i];
-
-    if (z > 0)
-      jge_mixed_add_var(ec, &acc, &acc, &wnd0[(z - 1) >> 1]);
-    else if (z < 0)
-      jge_mixed_sub_var(ec, &acc, &acc, &wnd0[(-z - 1) >> 1]);
+    if (z0 > 0)
+      jge_mixed_add_var(ec, &acc, &acc, &wnd0[(z0 - 1) >> 1]);
+    else if (z0 < 0)
+      jge_mixed_sub_var(ec, &acc, &acc, &wnd0[(-z0 - 1) >> 1]);
 
     for (j = 0; j < len; j++) {
-      z = tmp[j];
+      int32_t z = nafs[j][i];
 
       if (z > 0)
         jge_add_var(ec, &acc, &acc, &wnds[j][(z - 1) >> 1]);
@@ -4085,16 +4013,15 @@ wei_jmul_multi_endo_var(wei_t *ec,
   scalar_field_t *sc = &ec->sc;
   wge_t *wnd0 = ec->points;
   wge_t *wnd1 = ec->endo_points;
-  int max = ((sc->bits + 1) >> 1) + 1;
+  size_t max = ((sc->bits + 1) >> 1) + 1;
   int32_t naf0[MAX_SCALAR_BITS + 1];
   int32_t naf1[MAX_SCALAR_BITS + 1];
   wge_t *wnds[64];
   int32_t *nafs[64];
-  int32_t tmp[64];
   sc_t k1, k2;
   int32_t s1, s2;
+  size_t i, j;
   jge_t acc;
-  int i;
 
   assert(ec->endo == 1);
   assert(len <= 64);
@@ -4103,7 +4030,6 @@ wei_jmul_multi_endo_var(wei_t *ec,
   for (i = 0; i < 64; i++) {
     wnds[i] = &scratch->wnd_endo[i * 4];
     nafs[i] = &scratch->naf[i * (MAX_SCALAR_BITS + 1)];
-    tmp[i] = 0;
   }
 
   /* Split scalar. */
@@ -4113,7 +4039,7 @@ wei_jmul_multi_endo_var(wei_t *ec,
   sc_naf_var(sc, naf0, k1, s1, NAF_WIDTH_PRE, max);
   sc_naf_var(sc, naf1, k2, s2, NAF_WIDTH_PRE, max);
 
-  for (i = 0; (size_t)i < len; i++) {
+  for (i = 0; i < len; i++) {
     /* Split scalar. */
     wei_endo_split(ec, k1, &s1, k2, &s2, coeffs[i]);
 
@@ -4125,63 +4051,33 @@ wei_jmul_multi_endo_var(wei_t *ec,
 
 #ifdef TORSION_TEST
     /* Check max size.*/
-    assert(sc_bitlen_var(sc, k1) + 1 <= (size_t)max);
-    assert(sc_bitlen_var(sc, k2) + 1 <= (size_t)max);
+    assert(sc_bitlen_var(sc, k1) + 1 <= max);
+    assert(sc_bitlen_var(sc, k2) + 1 <= max);
 #endif
   }
 
   /* Multiply and add. */
   jge_zero(ec, &acc);
 
-  for (i = max - 1; i >= 0; i--) {
-    size_t k = 0;
-    size_t j;
-    int32_t z;
+  for (i = max; i-- > 0;) {
+    int32_t z0 = naf0[i];
+    int32_t z1 = naf1[i];
 
-    while (i >= 0) {
-      int zero = 1;
+    if (i != max - 1)
+      jge_dbl_var(ec, &acc, &acc);
 
-      if (naf0[i] != 0 || naf1[i] != 0)
-        zero = 0;
+    if (z0 > 0)
+      jge_mixed_add_var(ec, &acc, &acc, &wnd0[(z0 - 1) >> 1]);
+    else if (z0 < 0)
+      jge_mixed_sub_var(ec, &acc, &acc, &wnd0[(-z0 - 1) >> 1]);
 
-      for (j = 0; j < len; j++) {
-        tmp[j] = nafs[j][i];
-
-        if (tmp[j] != 0)
-          zero = 0;
-      }
-
-      if (!zero)
-        break;
-
-      k += 1;
-      i -= 1;
-    }
-
-    if (i >= 0)
-      k += 1;
-
-    jge_dblp_var(ec, &acc, &acc, k);
-
-    if (i < 0)
-      break;
-
-    z = naf0[i];
-
-    if (z > 0)
-      jge_mixed_add_var(ec, &acc, &acc, &wnd0[(z - 1) >> 1]);
-    else if (z < 0)
-      jge_mixed_sub_var(ec, &acc, &acc, &wnd0[(-z - 1) >> 1]);
-
-    z = naf1[i];
-
-    if (z > 0)
-      jge_mixed_add_var(ec, &acc, &acc, &wnd1[(z - 1) >> 1]);
-    else if (z < 0)
-      jge_mixed_sub_var(ec, &acc, &acc, &wnd1[(-z - 1) >> 1]);
+    if (z1 > 0)
+      jge_mixed_add_var(ec, &acc, &acc, &wnd1[(z1 - 1) >> 1]);
+    else if (z1 < 0)
+      jge_mixed_sub_var(ec, &acc, &acc, &wnd1[(-z1 - 1) >> 1]);
 
     for (j = 0; j < len; j++) {
-      z = tmp[j];
+      int32_t z = nafs[j][i];
 
       if (z > 0)
         jge_mixed_add_var(ec, &acc, &acc, &wnds[j][(z - 1) >> 1]);
@@ -6122,16 +6018,6 @@ xge_sub(edwards_t *ec, xge_t *r, const xge_t *a, const xge_t *b) {
 }
 
 static void
-xge_dblp(edwards_t *ec, xge_t *r, const xge_t *p, size_t pow) {
-  size_t i;
-
-  xge_set(ec, r, p);
-
-  for (i = 0; i < pow; i++)
-    xge_dbl(ec, r, r);
-}
-
-static void
 xge_normalize(edwards_t *ec, xge_t *r, const xge_t *p) {
   /* https://hyperelliptic.org/EFD/g1p/auto-edwards-projective.html#scaling-z
    * 1I + 2M (+ 1M if extended)
@@ -6230,7 +6116,7 @@ xge_wnd_points(edwards_t *ec, xge_t *out, const xge_t *p) {
 
 static void
 xge_naf_points(edwards_t *ec, xge_t *points, const xge_t *p, size_t width) {
-  size_t size = (1 << width) - 1;
+  size_t size = 1 << (width - 1);
   xge_t dbl;
   size_t i;
 
@@ -6404,9 +6290,9 @@ edwards_mul_a(edwards_t *ec, fe_t r, const fe_t x) {
 static void
 edwards_mul_g(edwards_t *ec, xge_t *r, const sc_t k) {
   scalar_field_t *sc = &ec->sc;
+  size_t i, j, b;
   sc_t k0;
   xge_t p;
-  size_t i, j, b;
 
   /* Blind if available. */
   sc_add(sc, k0, k, ec->blind);
@@ -6418,7 +6304,6 @@ edwards_mul_g(edwards_t *ec, xge_t *r, const sc_t k) {
   for (i = 0; i < WND_STEPS(sc->bits); i++) {
     b = sc_get_bits(sc, k0, i * WND_WIDTH, WND_WIDTH);
 
-    /* Avoid secret data in array indices. */
     for (j = 0; j < WND_SIZE; j++)
       xge_select(ec, &p, &p, &ec->windows[i * WND_SIZE + j], j == b);
 
@@ -6488,8 +6373,8 @@ edwards_mul_double_var(edwards_t *ec,
   size_t max1 = sc_bitlen_var(sc, k1) + 1;
   size_t max2 = sc_bitlen_var(sc, k2) + 1;
   size_t max = max1 > max2 ? max1 : max2;
-  int i;
   xge_t acc;
+  size_t i;
 
   sc_naf_var(sc, naf1, k1, 1, NAF_WIDTH_PRE, max);
   sc_naf_var(sc, naf2, k2, 1, NAF_WIDTH, max);
@@ -6499,28 +6384,12 @@ edwards_mul_double_var(edwards_t *ec,
   /* Multiply and add. */
   xge_zero(ec, &acc);
 
-  for (i = max - 1; i >= 0; i--) {
-    size_t k = 0;
-    int32_t z1, z2;
+  for (i = max; i-- > 0;) {
+    int32_t z1 = naf1[i];
+    int32_t z2 = naf2[i];
 
-    while (i >= 0) {
-      if (naf1[i] != 0 || naf2[i] != 0)
-        break;
-
-      k += 1;
-      i -= 1;
-    }
-
-    if (i >= 0)
-      k += 1;
-
-    xge_dblp(ec, &acc, &acc, k);
-
-    if (i < 0)
-      break;
-
-    z1 = naf1[i];
-    z2 = naf2[i];
+    if (i != max - 1)
+      xge_dbl(ec, &acc, &acc);
 
     if (z1 > 0)
       xge_add(ec, &acc, &acc, &wnd1[(z1 - 1) >> 1]);
@@ -6552,12 +6421,11 @@ edwards_mul_multi_var(edwards_t *ec,
    */
   scalar_field_t *sc = &ec->sc;
   xge_t *wnd0 = ec->points;
+  size_t max = sc_bitlen_var(sc, k0) + 1;
   int32_t naf0[MAX_SCALAR_BITS + 1];
   xge_t *wnds[32];
   int32_t *nafs[32];
-  int32_t tmp[32];
-  int max = sc_bitlen_var(sc, k0) + 1;
-  int i;
+  size_t i, j;
   xge_t acc;
 
   assert((len & 1) == 0);
@@ -6567,12 +6435,11 @@ edwards_mul_multi_var(edwards_t *ec,
   for (i = 0; i < 32; i++) {
     wnds[i] = &scratch->wnd[i * 4];
     nafs[i] = &scratch->naf[i * (MAX_SCALAR_BITS + 1)];
-    tmp[i] = 0;
   }
 
   /* Compute max scalar size. */
-  for (i = 0; (size_t)i < len; i++) {
-    int bits = sc_bitlen_var(sc, coeffs[i]) + 1;
+  for (i = 0; i < len; i++) {
+    size_t bits = sc_bitlen_var(sc, coeffs[i]) + 1;
 
     if (bits > max)
       max = bits;
@@ -6581,7 +6448,7 @@ edwards_mul_multi_var(edwards_t *ec,
   /* Compute NAFs. */
   sc_naf_var(sc, naf0, k0, 1, NAF_WIDTH_PRE, max);
 
-  for (i = 0; (size_t)i < len; i += 2) {
+  for (i = 0; i < len; i += 2) {
     const xge_t *p1 = &points[i + 0];
     const xge_t *p2 = &points[i + 1];
     const sc_t *k1 = &coeffs[i + 0];
@@ -6596,48 +6463,19 @@ edwards_mul_multi_var(edwards_t *ec,
   /* Multiply and add. */
   xge_zero(ec, &acc);
 
-  for (i = max - 1; i >= 0; i--) {
-    size_t k = 0;
-    size_t j;
-    int32_t z;
+  for (i = max; i-- > 0;) {
+    int32_t z0 = naf0[i];
 
-    while (i >= 0) {
-      int zero = 1;
+    if (i != max - 1)
+      xge_dbl(ec, &acc, &acc);
 
-      if (naf0[i] != 0)
-        zero = 0;
-
-      for (j = 0; j < len; j++) {
-        tmp[j] = nafs[j][i];
-
-        if (tmp[j] != 0)
-          zero = 0;
-      }
-
-      if (!zero)
-        break;
-
-      k += 1;
-      i -= 1;
-    }
-
-    if (i >= 0)
-      k += 1;
-
-    xge_dblp(ec, &acc, &acc, k);
-
-    if (i < 0)
-      break;
-
-    z = naf0[i];
-
-    if (z > 0)
-      xge_add(ec, &acc, &acc, &wnd0[(z - 1) >> 1]);
-    else if (z < 0)
-      xge_sub(ec, &acc, &acc, &wnd0[(-z - 1) >> 1]);
+    if (z0 > 0)
+      xge_add(ec, &acc, &acc, &wnd0[(z0 - 1) >> 1]);
+    else if (z0 < 0)
+      xge_sub(ec, &acc, &acc, &wnd0[(-z0 - 1) >> 1]);
 
     for (j = 0; j < len; j++) {
-      z = tmp[j];
+      int32_t z = nafs[j][i];
 
       if (z > 0)
         xge_add(ec, &acc, &acc, &wnds[j][(z - 1) >> 1]);
