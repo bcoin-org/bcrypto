@@ -1623,7 +1623,7 @@ fe_invert_var(prime_field_t *fe, fe_t r, const fe_t a) {
 
 static int
 fe_invert(prime_field_t *fe, fe_t r, const fe_t a) {
-  int zero = fe_is_zero(fe, a);
+  fe_word_t zero = fe_is_zero(fe, a);
   int ret = zero ^ 1;
 
 #ifdef TORSION_TEST
