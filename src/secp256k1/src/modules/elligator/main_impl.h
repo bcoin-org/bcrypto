@@ -277,7 +277,7 @@ shallue_van_de_woestijne_invert(secp256k1_fe* u,
   secp256k1_fe_set_int(&tmp, 87); /* mag 1 */
   secp256k1_fe_negate(&tmp, &tmp, 1); /* mag 2 */
   secp256k1_fe_add(&t, &tmp); /* mag 12 */
-  secp256k1_fe_normalize_weak(&t); /* mag 1 */
+  secp256k1_fe_normalize(&t); /* mag 1 */
   s0 = secp256k1_fe_sqrt(&tmp, &t); /* mag 1 */
   s1 = ((r - 2) >> shift) | s0; /* r < 2 or t is square */
   t = tmp; /* mag 1 */
@@ -296,12 +296,12 @@ shallue_van_de_woestijne_invert(secp256k1_fe* u,
 
   /* n0 = (b + 1) * c0 */
   n0 = c0; /* mag 5 */
-  secp256k1_fe_normalize_weak(&n0); /* mag 1 */
+  secp256k1_fe_normalize(&n0); /* mag 1 */
   secp256k1_fe_mul_int(&n0, 8); /* mag 8 */
 
   /* n1 = (b + 1) * c1 */
   n1 = c1; /* mag 4 */
-  secp256k1_fe_normalize_weak(&n1); /* mag 1 */
+  secp256k1_fe_normalize(&n1); /* mag 1 */
   secp256k1_fe_mul_int(&n1, 8); /* mag 8 */
 
   /* n2 = 3 * (1 - x) - 2 * (b + 1) + t */
@@ -312,7 +312,7 @@ shallue_van_de_woestijne_invert(secp256k1_fe* u,
   secp256k1_fe_set_int(&tmp, 16); /* mag 1 */
   secp256k1_fe_negate(&tmp, &tmp, 1); /* mag 2 */
   secp256k1_fe_add(&n2, &tmp); /* mag 11 */
-  secp256k1_fe_normalize_weak(&n2); /* mag 1 */
+  secp256k1_fe_normalize(&n2); /* mag 1 */
   n3 = n2; /* mag 1 */
   secp256k1_fe_add(&n2, &t); /* mag 2 */
 
