@@ -958,9 +958,13 @@ sc_pow(scalar_field_t *sc, sc_t r, const sc_t a, const sc_t e) {
 
 static int
 sc_invert(scalar_field_t *sc, sc_t r, const sc_t a) {
-  mp_limb_t zero = sc_is_zero(sc, a);
-  mp_size_t i;
+  int ret = sc_is_zero(sc, a) ^ 1;
   sc_t e;
+
+#ifdef TORSION_TEST
+  sc_t a0;
+  sc_set(sc, a0, a);
+#endif
 
   /* e = n - 2 */
   mpn_copyi(e, sc->n, sc->limbs);
@@ -968,10 +972,12 @@ sc_invert(scalar_field_t *sc, sc_t r, const sc_t a) {
 
   sc_pow(sc, r, a, e);
 
-  for (i = 0; i < sc->limbs; i++)
-    r[i] &= -(zero ^ 1);
+#ifdef TORSION_TEST
+  assert(sc_invert_var(sc, a0, a0) == ret);
+  assert(sc_equal(sc, r, a0));
+#endif
 
-  return zero ^ 1;
+  return ret;
 }
 
 static size_t
@@ -1623,8 +1629,7 @@ fe_invert_var(prime_field_t *fe, fe_t r, const fe_t a) {
 
 static int
 fe_invert(prime_field_t *fe, fe_t r, const fe_t a) {
-  fe_word_t zero = fe_is_zero(fe, a);
-  int ret = zero ^ 1;
+  int ret = fe_is_zero(fe, a) ^ 1;
 
 #ifdef TORSION_TEST
   fe_t a0;
@@ -1637,17 +1642,12 @@ fe_invert(prime_field_t *fe, fe_t r, const fe_t a) {
   } else {
     /* Fermat's little theorem. */
     mp_limb_t e[MAX_FIELD_LIMBS];
-    fe_word_t zero = fe_is_zero(fe, a);
-    size_t i;
 
     /* e = p - 2 */
     mpn_copyi(e, fe->p, fe->limbs);
     mpn_sub_1(e, e, fe->limbs, 2);
 
     fe_pow(fe, r, a, e);
-
-    for (i = 0; i < fe->words; i++)
-      r[i] &= -(zero ^ 1);
   }
 
 #ifdef TORSION_TEST
