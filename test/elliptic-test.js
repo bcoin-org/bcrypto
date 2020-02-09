@@ -380,16 +380,16 @@ describe('Elliptic', function() {
       a: {
         k: '4041c0f90e24de439869dc636e15f78dab1437652918cd23f24bf267838e5920',
         x: '4e855a3acc67d76456afc5a2c854bb4ee83f0df16d3010e9cfeb02854b518370',
-        y: '1f966b62a728f2649d31d61f644d70e827a967090880cb540924db14a71fe2d9'
+        y: '6069949d58d70d9b62ce29e09bb28f17d85698f6f77f34abf6db24eb58e01d14'
       },
       b: {
         k: '660dd8004c28dc548c341e3b9e39faad2fef0ce77fbc56beed9c016689cb9468',
         x: '2820cf502c9d9e227c785b4c58c0911cd3b6421c507f6a54dab413b0488ab82d',
-        y: '5bc0ba090c7dd56cede32771c9380040213838f93ad871f632a4e7609f1e6e29'
+        y: '243f45f6f3822a93121cd88e36c7ffbfdec7c706c5278e09cd5b189f60e191c4'
       },
       s: {
         x: '1af9818fd4ea2348a3695c730e647d4f0cbe9ad193e4d1d37b653afbc1ca27ed',
-        y: '176a274d4360fdc2567d1a4c251e28367fce8f9f451abdf8cdd4c898b7103d45'
+        y: '6895d8b2bc9f023da982e5b3dae1d7c980317060bae54207322b376748efc2a8'
       }
     });
 
@@ -2472,7 +2472,7 @@ describe('Elliptic', function() {
     it('should test x25519 creation (1)', () => {
       const x25519 = new curves.X25519();
       const wei25519 = new extra.WEI25519();
-      const mont = wei25519.toMont();
+      const mont = wei25519.toMont(null, null, false);
 
       assert(mont.a.eq(x25519.a));
       assert(mont.b.eq(x25519.b));
@@ -2522,7 +2522,7 @@ describe('Elliptic', function() {
     it('should test x25519 creation (4)', () => {
       const x25519 = new curves.X25519();
       const ed25519 = new curves.ED25519();
-      const mont = ed25519.toMont(ed25519.one, false, true);
+      const mont = ed25519.toMont(ed25519.one, false, false);
 
       assert(mont.a.eq(x25519.a));
       assert(mont.b.eq(x25519.b));
@@ -2539,7 +2539,7 @@ describe('Elliptic', function() {
     it('should test ed25519 creation', () => {
       const x25519 = new curves.X25519();
       const ed25519 = new curves.ED25519();
-      const ed = x25519.toEdwards(x25519.one.redNeg(), false, true);
+      const ed = x25519.toEdwards(x25519.one.redNeg(), false, false);
 
       assert(ed.a.eq(ed25519.a));
       assert(ed.d.eq(ed25519.d));
@@ -4849,10 +4849,10 @@ describe('Elliptic', function() {
       const {a, bi, two} = x25519;
       const c = ed25519._scale(x25519, false);
 
-      // Should be -sqrt(-(A + 2) / B).
+      // Should be +sqrt(-(A + 2) / B).
       const e = a.redAdd(two).redINeg().redMul(bi).redSqrt();
 
-      if (!e.redIsOdd())
+      if (e.redIsOdd())
         e.redINeg();
 
       assert(c.eq(e));
@@ -4883,7 +4883,7 @@ describe('Elliptic', function() {
         const y = ed25519.zero;
 
         const u = x25519.one;
-        const v = a.redAdd(two).redMul(bi).redSqrt();
+        const v = a.redAdd(two).redMul(bi).redSqrt().redINeg();
 
         const p = ed25519.point(x, y);
         const q = x25519.point(u, v);
@@ -5138,7 +5138,7 @@ describe('Elliptic', function() {
       const fresh = new curves.ED25519();
       const short = ed25519.toShort(ed25519.field(2));
       const edwards = short.toEdwards(short.field(-1), true);
-      const mont = short.toMont(short.field(1), true);
+      const mont = short.toMont(short.field(1), true, true);
       const inv = x25519.toEdwards(null, true);
 
       // https://tools.ietf.org/id/draft-ietf-lwig-curve-representations-02.html#further-dom-parms
@@ -5177,7 +5177,7 @@ describe('Elliptic', function() {
       assert(short.pointFromEdwards(inv.g).eq(short.g));
       assert(inv.pointFromShort(short.g).eq(inv.g));
 
-      const short2 = x25519.toShort(x25519.field(2), true);
+      const short2 = x25519.toShort(x25519.field(2), true, true);
 
       assert(short2.a.eq(short.a));
       assert(short2.b.eq(short.b));
@@ -5210,7 +5210,7 @@ describe('Elliptic', function() {
 
     it('should test mont isomorphism (1)', () => {
       const e = new curves.ED25519();
-      const m1 = e.toMont(e.field(3));
+      const m1 = e.toMont(e.field(3), false, false);
       const m2 = new curves.X25519();
       const m3 = m2.toMont(m2.field(3), false, true);
 
@@ -5226,7 +5226,7 @@ describe('Elliptic', function() {
 
     it('should test mont isomorphism (2)', () => {
       const m0 = new curves.X25519();
-      const m1 = new curves.ED25519().toMont();
+      const m1 = new curves.ED25519().toMont(null, false, false);
       const m2 = m1.toMont(m1.field(1), true);
 
       assert(!m1.b.eq(m0.b));

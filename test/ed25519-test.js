@@ -908,7 +908,7 @@ describe('Ed25519', function() {
     const p1 = ed25519.publicKeyFromUniform(u1);
 
     assert.bufferEqual(p1,
-      'cc2947ef03b978b3c7b418e2acdf52bc26f51457d7b21730c551bbcf4cb2e2fd');
+      'cc2947ef03b978b3c7b418e2acdf52bc26f51457d7b21730c551bbcf4cb2e27d');
 
     const u2 = ed25519.publicKeyToUniform(p1, 0);
 
@@ -962,22 +962,22 @@ describe('Ed25519', function() {
     ];
 
     const keys = [
-      'aa5228edd5b5712fcf5c63b9c799d87ebfabdae7b1d71715929dfeeb45eb80fc',
-      '27843ba9ac2c896f4041690a90bbdbf39ef59194b386dc1d9cf190c892b1ac68',
-      '5c4f1e1ea730b5ff8933147715075c1d1e01f9ffbf237c876d5a3a9dbfa7784c',
-      '5285c85bb0079b003a90a2333e8ed85d39b7db472f34016e31edbf13a6ea6d9e',
-      '8726d10374943ee7eedb962bc18b0480a413abd6cb47b915879b9eb472b368bf',
-      'b355c40d935b4393cbd2d5789ba49deecf36e96e9b8b0df40d06406a5a0373bb',
-      '0a4abfafa7c77ac17ede7c097bc5e70476b4bc69bf31b7f0db4187faafa1c3aa',
-      '866cb2ede2364b3850da623ebbd8cb4bad7571e0a725af664f07e2cb744e5bbf',
-      'c8e0fe848e6849937b04607d8d00a78cff4389c924577f55b735870909d2699c',
-      'd8b82662d66b92ed79da8703edfdf5fdd71a154dc78d4ae9bc5b294573588b5b',
-      'b6f7ddc10ae8862955f754df14dccd87960c883c3f8fc39cf02550f958d74631',
-      '3da8ce0962787688cb320b110fc4302182109d6bcaa68064de47b690973ba5b3',
-      'd3616a04533601331c05007dd151287346ce5a249891f59eec8bb9372a865c5b',
-      'f21c8394137b86d329280282132bb7a569e7370a6ca8d5a6c5f86f1bd254929a',
-      '0ed3628cfd4b30e1a4b192b8b16d0a43cedca07188bcfd352eca0d5cdaa442d7',
-      '9aeddf05ab71e45852672b633ef2e5d4c303e7affdb2df2392d55023076e4a46'
+      'aa5228edd5b5712fcf5c63b9c799d87ebfabdae7b1d71715929dfeeb45eb807c',
+      '27843ba9ac2c896f4041690a90bbdbf39ef59194b386dc1d9cf190c892b1ace8',
+      '5c4f1e1ea730b5ff8933147715075c1d1e01f9ffbf237c876d5a3a9dbfa778cc',
+      '5285c85bb0079b003a90a2333e8ed85d39b7db472f34016e31edbf13a6ea6d1e',
+      '8726d10374943ee7eedb962bc18b0480a413abd6cb47b915879b9eb472b3683f',
+      'b355c40d935b4393cbd2d5789ba49deecf36e96e9b8b0df40d06406a5a03733b',
+      '0a4abfafa7c77ac17ede7c097bc5e70476b4bc69bf31b7f0db4187faafa1c32a',
+      '866cb2ede2364b3850da623ebbd8cb4bad7571e0a725af664f07e2cb744e5b3f',
+      'c8e0fe848e6849937b04607d8d00a78cff4389c924577f55b735870909d2691c',
+      'd8b82662d66b92ed79da8703edfdf5fdd71a154dc78d4ae9bc5b294573588bdb',
+      'b6f7ddc10ae8862955f754df14dccd87960c883c3f8fc39cf02550f958d746b1',
+      '3da8ce0962787688cb320b110fc4302182109d6bcaa68064de47b690973ba533',
+      'd3616a04533601331c05007dd151287346ce5a249891f59eec8bb9372a865cdb',
+      'f21c8394137b86d329280282132bb7a569e7370a6ca8d5a6c5f86f1bd254921a',
+      '0ed3628cfd4b30e1a4b192b8b16d0a43cedca07188bcfd352eca0d5cdaa44257',
+      '9aeddf05ab71e45852672b633ef2e5d4c303e7affdb2df2392d55023076e4ac6'
     ];
 
     const points = [
@@ -1066,14 +1066,14 @@ describe('Ed25519', function() {
     const point = x25519.publicKeyFromHash(bytes, true);
 
     assert.bufferEqual(pub,
-      '37e3fe7969358395d6de5062f5a2ae4d80f88331a844bcd2058a1f3e2652e066');
+      '37e3fe7969358395d6de5062f5a2ae4d80f88331a844bcd2058a1f3e2652e0e6');
 
     assert.bufferEqual(point,
       '88ddc62a46c484db54b6d6cb6badb173e0e7d9785385691443233983865acc4d');
 
     assert.strictEqual(ed25519.publicKeyVerify(pub), true);
     assert.bufferEqual(ed25519.publicKeyConvert(pub), point);
-    assert.bufferEqual(x25519.publicKeyConvert(point, false), pub);
+    assert.bufferEqual(x25519.publicKeyConvert(point, true), pub);
   });
 
   it('should test random oracle encoding (doubling)', () => {
@@ -1083,14 +1083,14 @@ describe('Ed25519', function() {
     const point = x25519.publicKeyFromHash(bytes, true);
 
     assert.bufferEqual(pub,
-      '5694d147542d2c08657a203cea81c6f0e39caa5219a2eeb0dedc37e59cd31ec0');
+      '5694d147542d2c08657a203cea81c6f0e39caa5219a2eeb0dedc37e59cd31e40');
 
     assert.bufferEqual(point,
       '7b9965e30b586bab509c34d657d8be30fad1b179470f2f70a6c728092e000062');
 
     assert.strictEqual(ed25519.publicKeyVerify(pub), true);
     assert.bufferEqual(ed25519.publicKeyConvert(pub), point);
-    assert.bufferEqual(x25519.publicKeyConvert(point, true), pub);
+    assert.bufferEqual(x25519.publicKeyConvert(point, false), pub);
   });
 
   if (x25519.native === 2) {
