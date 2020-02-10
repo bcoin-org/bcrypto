@@ -2776,7 +2776,7 @@ jge_dbl3(wei_t *ec, jge_t *r, const jge_t *p) {
   fe_add(fe, t2, p->x, delta);
   fe_add(fe, alpha, t1, t1);
   fe_add(fe, alpha, alpha, t1);
-  fe_mul(fe, alpha, t1, t2);
+  fe_mul(fe, alpha, alpha, t2);
 
   /* Z3 = (Y1 + Z1)^2 - gamma - delta */
   fe_add(fe, r->z, p->y, p->z);
@@ -3463,6 +3463,7 @@ static void
 wei_init(wei_t *ec, const wei_def_t *def) {
   prime_field_t *fe = &ec->fe;
   scalar_field_t *sc = &ec->sc;
+  fe_t m3;
 
   ec->hash = def->hash;
   ec->h = def->h;
@@ -3489,8 +3490,10 @@ wei_init(wei_t *ec, const wei_def_t *def) {
   fe_invert_var(fe, ec->i2, fe->two);
   fe_invert_var(fe, ec->i3, fe->three);
 
+  fe_neg(fe, m3, fe->three);
+
   ec->zero_a = fe_is_zero(fe, ec->a);
-  ec->three_a = fe_equal(fe, ec->a, fe->three);
+  ec->three_a = fe_equal(fe, ec->a, m3);
 
   fe_import(fe, ec->g.x, def->x);
   fe_import(fe, ec->g.y, def->y);
