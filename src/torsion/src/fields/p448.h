@@ -26,6 +26,20 @@ typedef p448_fe_word_t p448_fe_t[P448_FIELD_WORDS];
 #define p448_fe_mul fiat_p448_carry_mul
 #define p448_fe_sqr fiat_p448_carry_square
 
+#ifdef TORSION_USE_64BIT
+static const p448_fe_t p448_zero = {0, 0, 0, 0, 0, 0, 0, 0};
+static const p448_fe_t p448_one = {1, 0, 0, 0, 0, 0, 0, 0};
+#else
+static const p448_fe_t p448_zero = {
+  0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0
+};
+static const p448_fe_t p448_one = {
+  1, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0
+};
+#endif
+
 static void
 p448_fe_set(p448_fe_t out, const p448_fe_t in) {
   out[0] = in[0];
@@ -77,8 +91,7 @@ p448_fe_sqrn(p448_fe_t out, const p448_fe_t in, int rounds) {
 }
 
 static int
-p448_fe_isr(p448_fe_t a, const p448_fe_t x) {
-  static const p448_fe_t ONE = {1, 0};
+p448_fe_isr(p448_fe_t r, const p448_fe_t x) {
   p448_fe_t L0, L1, L2;
 
   p448_fe_sqr(L1, x);
@@ -107,54 +120,48 @@ p448_fe_isr(p448_fe_t a, const p448_fe_t x) {
   p448_fe_mul(L1, L2, L0);
   p448_fe_sqr(L2, L1);
   p448_fe_mul(L0, L2, x);
-  p448_fe_set(a, L1);
+  p448_fe_set(r, L1);
 
-  return p448_fe_equal(L0, ONE);
+  return p448_fe_equal(L0, p448_one);
 }
 
 static void
-p448_fe_invert(p448_fe_t y, const p448_fe_t x) {
+p448_fe_invert(p448_fe_t r, const p448_fe_t x) {
   /* sqrt(1 / x^2) == 1 / x */
-  p448_fe_t t1, t2;
-
-  p448_fe_sqr(t1, x);
-  p448_fe_isr(t2, t1);
-
-  p448_fe_sqr(t1, t2);
-  p448_fe_mul(t2, t1, x);
-  p448_fe_set(y, t2);
+  /* sqrt(1 / x^2)^2 * x == 1 / x */
+  p448_fe_t t;
+  p448_fe_sqr(t, x);
+  p448_fe_isr(t, t);
+  p448_fe_sqr(t, t);
+  p448_fe_mul(r, t, x);
 }
 
 static int
-p448_fe_sqrt(p448_fe_t a, const p448_fe_t x) {
-  static const p448_fe_t ZERO = {0};
-  int zero = p448_fe_equal(x, ZERO);
-  int ret;
-  p448_fe_t r;
+p448_fe_sqrt(p448_fe_t r, const p448_fe_t x) {
+  /* sqrt(1 / x) * x == sqrt(x) */
+  int ret = p448_fe_equal(x, p448_zero);
+  p448_fe_t t;
 
-  ret = p448_fe_isr(r, x);
+  ret |= p448_fe_isr(t, x);
 
-  p448_fe_invert(a, r);
+  p448_fe_mul(r, t, x);
 
-  return ret | zero;
+  return ret;
 }
 
 static int
-p448_fe_isqrt(p448_fe_t out, const p448_fe_t u, const p448_fe_t v) {
+p448_fe_isqrt(p448_fe_t r, const p448_fe_t u, const p448_fe_t v) {
   /* sqrt(1 / (u * v)) * u == sqrt(u / v) */
-  static const p448_fe_t ZERO = {0};
-  int zero = p448_fe_equal(u, ZERO);
-  int ret;
-  p448_fe_t t, r;
+  int ret = p448_fe_equal(u, p448_zero);
+  p448_fe_t t;
 
   p448_fe_mul(t, u, v);
 
-  ret = p448_fe_isr(r, t);
+  ret |= p448_fe_isr(t, t);
 
-  p448_fe_mul(t, r, u);
-  p448_fe_set(out, t);
+  p448_fe_mul(r, t, u);
 
-  return ret | zero;
+  return ret;
 }
 
 static void
