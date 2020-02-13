@@ -1023,7 +1023,6 @@ describe('Ed448', function() {
       + 'bdba79f6c6c52deb0ddbe4cdedfc8ba33f31f69913f8a35bae3d05d7'
       + '80');
 
-
     assert.bufferEqual(point, ''
       + 'bbf9b3970b4f192c2615dd66abbfe4f51b2b695da44d1578389de049'
       + '043d83433a011ef906f7154c96fefd592d1981283fb99e8925a45f30');
