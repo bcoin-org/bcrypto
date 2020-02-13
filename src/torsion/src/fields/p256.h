@@ -54,69 +54,45 @@ p256_fe_sqrn(p256_fe_t out, const p256_fe_t in, int rounds) {
 /* https://github.com/google/boringssl/blob/master/third_party/fiat/p256.c */
 static void
 p256_fe_invert(p256_fe_t out, const p256_fe_t in) {
-  p256_fe_t ftmp, ftmp2;
-  p256_fe_t e2, e4, e8, e16, e32, e64;
-  int i;
+  p256_fe_t t1, t2, e2, e4, e8, e16, e32, e64;
 
-  p256_fe_sqr(ftmp, in); /* 2^1 */
-  p256_fe_mul(ftmp, in, ftmp); /* 2^2 - 2^0 */
-  p256_fe_set(e2, ftmp);
-  p256_fe_sqr(ftmp, ftmp); /* 2^3 - 2^1 */
-  p256_fe_sqr(ftmp, ftmp); /* 2^4 - 2^2 */
-  p256_fe_mul(ftmp, ftmp, e2); /* 2^4 - 2^0 */
-  p256_fe_set(e4, ftmp);
-  p256_fe_sqr(ftmp, ftmp); /* 2^5 - 2^1 */
-  p256_fe_sqr(ftmp, ftmp); /* 2^6 - 2^2 */
-  p256_fe_sqr(ftmp, ftmp); /* 2^7 - 2^3 */
-  p256_fe_sqr(ftmp, ftmp); /* 2^8 - 2^4 */
-  p256_fe_mul(ftmp, ftmp, e4); /* 2^8 - 2^0 */
-  p256_fe_set(e8, ftmp);
-
-  for (i = 0; i < 8; i++)
-    p256_fe_sqr(ftmp, ftmp); /* 2^16 - 2^8 */
-
-  p256_fe_mul(ftmp, ftmp, e8); /* 2^16 - 2^0 */
-  p256_fe_set(e16, ftmp);
-
-  for (i = 0; i < 16; i++)
-    p256_fe_sqr(ftmp, ftmp); /* 2^32 - 2^16 */
-
-  p256_fe_mul(ftmp, ftmp, e16); /* 2^32 - 2^0 */
-  p256_fe_set(e32, ftmp);
-
-  for (i = 0; i < 32; i++)
-    p256_fe_sqr(ftmp, ftmp); /* 2^64 - 2^32 */
-
-  p256_fe_set(e64, ftmp);
-  p256_fe_mul(ftmp, ftmp, in); /* 2^64 - 2^32 + 2^0 */
-
-  for (i = 0; i < 192; i++)
-    p256_fe_sqr(ftmp, ftmp); /* 2^256 - 2^224 + 2^192 */
-
-  p256_fe_mul(ftmp2, e64, e32); /* 2^64 - 2^0 */
-
-  for (i = 0; i < 16; i++)
-    p256_fe_sqr(ftmp2, ftmp2); /* 2^80 - 2^16 */
-
-  p256_fe_mul(ftmp2, ftmp2, e16); /* 2^80 - 2^0 */
-
-  for (i = 0; i < 8; i++)
-    p256_fe_sqr(ftmp2, ftmp2); /* 2^88 - 2^8 */
-
-  p256_fe_mul(ftmp2, ftmp2, e8); /* 2^88 - 2^0 */
-
-  for (i = 0; i < 4; i++)
-    p256_fe_sqr(ftmp2, ftmp2); /* 2^92 - 2^4 */
-
-  p256_fe_mul(ftmp2, ftmp2, e4); /* 2^92 - 2^0 */
-  p256_fe_sqr(ftmp2, ftmp2); /* 2^93 - 2^1 */
-  p256_fe_sqr(ftmp2, ftmp2); /* 2^94 - 2^2 */
-  p256_fe_mul(ftmp2, ftmp2, e2); /* 2^94 - 2^0 */
-  p256_fe_sqr(ftmp2, ftmp2); /* 2^95 - 2^1 */
-  p256_fe_sqr(ftmp2, ftmp2); /* 2^96 - 2^2 */
-  p256_fe_mul(ftmp2, ftmp2, in); /* 2^96 - 3 */
-
-  p256_fe_mul(out, ftmp2, ftmp); /* 2^256 - 2^224 + 2^192 + 2^96 - 3 */
+  p256_fe_sqr(t1, in); /* 2^1 */
+  p256_fe_mul(t1, in, t1); /* 2^2 - 2^0 */
+  p256_fe_set(e2, t1);
+  p256_fe_sqr(t1, t1); /* 2^3 - 2^1 */
+  p256_fe_sqr(t1, t1); /* 2^4 - 2^2 */
+  p256_fe_mul(t1, t1, e2); /* 2^4 - 2^0 */
+  p256_fe_set(e4, t1);
+  p256_fe_sqr(t1, t1); /* 2^5 - 2^1 */
+  p256_fe_sqr(t1, t1); /* 2^6 - 2^2 */
+  p256_fe_sqr(t1, t1); /* 2^7 - 2^3 */
+  p256_fe_sqr(t1, t1); /* 2^8 - 2^4 */
+  p256_fe_mul(t1, t1, e4); /* 2^8 - 2^0 */
+  p256_fe_set(e8, t1);
+  p256_fe_sqrn(t1, t1, 8); /* 2^16 - 2^8 */
+  p256_fe_mul(t1, t1, e8); /* 2^16 - 2^0 */
+  p256_fe_set(e16, t1);
+  p256_fe_sqrn(t1, t1, 16); /* 2^32 - 2^16 */
+  p256_fe_mul(t1, t1, e16); /* 2^32 - 2^0 */
+  p256_fe_set(e32, t1);
+  p256_fe_sqrn(t1, t1, 32); /* 2^64 - 2^32 */
+  p256_fe_set(e64, t1);
+  p256_fe_mul(t1, t1, in); /* 2^64 - 2^32 + 2^0 */
+  p256_fe_sqrn(t1, t1, 192); /* 2^256 - 2^224 + 2^192 */
+  p256_fe_mul(t2, e64, e32); /* 2^64 - 2^0 */
+  p256_fe_sqrn(t2, t2, 16); /* 2^80 - 2^16 */
+  p256_fe_mul(t2, t2, e16); /* 2^80 - 2^0 */
+  p256_fe_sqrn(t2, t2, 8); /* 2^88 - 2^8 */
+  p256_fe_mul(t2, t2, e8); /* 2^88 - 2^0 */
+  p256_fe_sqrn(t2, t2, 4); /* 2^92 - 2^4 */
+  p256_fe_mul(t2, t2, e4); /* 2^92 - 2^0 */
+  p256_fe_sqr(t2, t2); /* 2^93 - 2^1 */
+  p256_fe_sqr(t2, t2); /* 2^94 - 2^2 */
+  p256_fe_mul(t2, t2, e2); /* 2^94 - 2^0 */
+  p256_fe_sqr(t2, t2); /* 2^95 - 2^1 */
+  p256_fe_sqr(t2, t2); /* 2^96 - 2^2 */
+  p256_fe_mul(t2, t2, in); /* 2^96 - 3 */
+  p256_fe_mul(out, t2, t1); /* 2^256 - 2^224 + 2^192 + 2^96 - 3 */
 }
 
 /* https://github.com/dedis/kyber/blob/master/group/nist/p256.go */

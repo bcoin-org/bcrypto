@@ -169,14 +169,13 @@ p224_fe_sqrt_var(p224_fe_t out, const p224_fe_t in) {
    *
    * Algorithm:
    *
-   *   z = 96
    *   s = 2^128 - 1 (0xffffffffffffffffffffffffffffffff)
    *   n = 11
    *   e = 2^127 (0x80000000000000000000000000000000)
    *   y = x^e mod p
    *   b = x^s mod p
    *   g = n^s mod p (0x6a0fec678598a7920c55b2d40b2d6ffbbea3d8cef3fb3632dc691b74)
-   *   k = z
+   *   k = 96
    *
    *   loop:
    *     m = 0

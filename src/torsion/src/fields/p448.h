@@ -127,7 +127,6 @@ p448_fe_isr(p448_fe_t r, const p448_fe_t x) {
 
 static void
 p448_fe_invert(p448_fe_t r, const p448_fe_t x) {
-  /* sqrt(1 / x^2) == 1 / x */
   /* sqrt(1 / x^2)^2 * x == 1 / x */
   p448_fe_t t;
   p448_fe_sqr(t, x);
