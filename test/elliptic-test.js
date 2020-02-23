@@ -4219,45 +4219,6 @@ describe('Elliptic', function() {
       }
     });
 
-    it('should test schnorr helpers', () => {
-      const secp256k1 = new curves.SECP256K1();
-      const p256 = new curves.P256();
-
-      for (const curve of [secp256k1, p256]) {
-        for (let i = 0; i < 10; i++) {
-          const p = curve.randomPoint(rng);
-          const q = p.randomize(rng);
-          const pr = p.toSquare();
-          const qr = q.toSquare();
-
-          const raw1 = p.encodeX();
-          const raw2 = q.encodeX();
-
-          assert(pr.eq(qr.toP()));
-          assert(qr.eq(pr.toJ()));
-          assert.bufferEqual(raw1, raw2);
-          assert(curve.decodeSquare(raw1).eq(pr));
-          assert(curve.decodeSquare(raw2).toJ().eq(qr));
-        }
-
-        for (let i = 0; i < 10; i++) {
-          const p = curve.randomPoint(rng);
-          const q = p.randomize(rng);
-          const pr = p.toEven();
-          const qr = q.toEven();
-
-          const raw1 = p.encodeX();
-          const raw2 = q.encodeX();
-
-          assert(pr.eq(qr.toP()));
-          assert(qr.eq(pr.toJ()));
-          assert.bufferEqual(raw1, raw2);
-          assert(curve.decodeEven(raw1).eq(pr));
-          assert(curve.decodeEven(raw2).toJ().eq(qr));
-        }
-      }
-    });
-
     it('should test swapping (short, mont)', () => {
       const p256 = new curves.P256();
       const x25519 = new curves.X25519();
