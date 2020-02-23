@@ -2382,7 +2382,7 @@ describe('Elliptic', function() {
         const mo = x25519.g.toX().mul(new BN(i));
         const ma = x25519.g.mul(new BN(i));
         const ed = ed25519.g.mul(new BN(i));
-        const sign = ma.sign();
+        const sign = ma.isOdd();
 
         assert(wei25519.pointFromShort(we).eq(we));
         assert(wei25519.pointFromMont(mo.toP(sign)).eq(we));
@@ -2417,7 +2417,7 @@ describe('Elliptic', function() {
         const mo = x25519.g.toX().mul(new BN(i));
         const ma = x25519.g.mul(new BN(i));
         const ed = ed25519.g.mul(new BN(i));
-        const sign = ma.sign();
+        const sign = ma.isOdd();
 
         assert(wei25519.pointFromShort(we).eq(we));
         assert(wei25519.pointFromMont(mo.toP(sign)).eq(we));
@@ -4227,8 +4227,8 @@ describe('Elliptic', function() {
         for (let i = 0; i < 10; i++) {
           const p = curve.randomPoint(rng);
           const q = p.randomize(rng);
-          const pr = p.toX();
-          const qr = q.toX();
+          const pr = p.toSquare();
+          const qr = q.toSquare();
 
           const raw1 = p.encodeX();
           const raw2 = q.encodeX();
@@ -4236,8 +4236,24 @@ describe('Elliptic', function() {
           assert(pr.eq(qr.toP()));
           assert(qr.eq(pr.toJ()));
           assert.bufferEqual(raw1, raw2);
-          assert(curve.decodeX(raw1).eq(pr));
-          assert(curve.decodeX(raw2).toJ().eq(qr));
+          assert(curve.decodeSquare(raw1).eq(pr));
+          assert(curve.decodeSquare(raw2).toJ().eq(qr));
+        }
+
+        for (let i = 0; i < 10; i++) {
+          const p = curve.randomPoint(rng);
+          const q = p.randomize(rng);
+          const pr = p.toEven();
+          const qr = q.toEven();
+
+          const raw1 = p.encodeX();
+          const raw2 = q.encodeX();
+
+          assert(pr.eq(qr.toP()));
+          assert(qr.eq(pr.toJ()));
+          assert.bufferEqual(raw1, raw2);
+          assert(curve.decodeEven(raw1).eq(pr));
+          assert(curve.decodeEven(raw2).toJ().eq(qr));
         }
       }
     });
@@ -4361,8 +4377,8 @@ describe('Elliptic', function() {
         const q = p.normalize().y.redJacobi() === 1;
         const r = p.randomize(rng);
 
-        assert.strictEqual(p.hasQuadY(), q);
-        assert.strictEqual(r.hasQuadY(), q);
+        assert.strictEqual(p.isSquare(), q);
+        assert.strictEqual(r.isSquare(), q);
       }
     });
 
