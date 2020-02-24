@@ -25,6 +25,15 @@ jobs:
           root: .
           paths: .
 
+  lint:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: Lint
+          command: npm run lint-ci
+
   test_browser:
     <<: *defaults
     steps:
@@ -33,14 +42,7 @@ jobs:
       - run:
           name: Test browser
           command: npm run test-browser
-  test_native:
-    <<: *defaults
-    steps:
-      - attach_workspace:
-          at: .
-      - run:
-          name: Test with native backend
-          command: npm run test-native
+
   test_js:
     <<: *defaults
     steps:
@@ -49,6 +51,7 @@ jobs:
       - run:
           name: Test with javascript backend
           command: npm run test-js
+
   test_js_bigint:
     <<: *defaults
     steps:
@@ -58,14 +61,23 @@ jobs:
           name: Test with javascript backend and bigint
           command: npm run test-bigint
 
-  lint:
+  test_torsion:
     <<: *defaults
     steps:
       - attach_workspace:
           at: .
       - run:
-          name: Lint
-          command: npm run lint-ci
+          name: Test with native backend and libtorsion
+          command: npm run test-torsion
+
+  test_native:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: Test with native backend
+          command: npm run test-native
 
 workflows:
   version: 2
@@ -82,6 +94,9 @@ workflows:
           requires:
             - install
       - test_js_bigint:
+          requires:
+            - install
+      - test_torsion:
           requires:
             - install
       - test_native:
