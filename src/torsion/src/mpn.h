@@ -45,27 +45,25 @@
  */
 
 static mp_size_t
-mpn_bitlen(const mp_limb_t *xp, mp_size_t n) {
-  mp_size_t i, b;
-  mp_limb_t w;
+mpn_bitlen(const mp_limb_t *xp, mp_size_t xn) {
+  mp_size_t bits;
+  mp_limb_t word;
 
-  for (i = n - 1; i >= 0; i--) {
-    if (xp[i] != 0)
-      break;
-  }
+  while (xn > 0 && xp[xn - 1] == 0)
+    xn -= 1;
 
-  if (i < 0)
+  if (xn == 0)
     return 0;
 
-  w = xp[i];
-  b = 0;
+  bits = (xn - 1) * GMP_NUMB_BITS;
+  word = xp[xn - 1];
 
-  while (w != 0) {
-    w >>= 1;
-    b += 1;
+  while (word != 0) {
+    bits += 1;
+    word >>= 1;
   }
 
-  return i * GMP_NUMB_BITS + b;
+  return bits;
 }
 
 static int
@@ -86,8 +84,8 @@ mpn_cmp_limb(const mp_limb_t *xp, mp_size_t xn, int32_t num) {
 }
 
 static void
-mpn_cleanse(mp_limb_t *p, mp_size_t n) {
-  cleanse(p, n * sizeof(mp_limb_t));
+mpn_cleanse(mp_limb_t *xp, mp_size_t xn) {
+  cleanse(xp, xn * sizeof(mp_limb_t));
 }
 
 #ifdef mpn_needs_cnd_swap
