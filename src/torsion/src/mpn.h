@@ -156,7 +156,7 @@ mpn_import_le(mp_limb_t *rp, mp_size_t rn,
   mp_limb_t out;
   unsigned int bits;
 
-  for (xi = 0, out = bits = 0; xi < xn && rn > 0; ) {
+  for (xi = 0, out = bits = 0; xi < xn && rn > 0;) {
     mp_limb_t in = xp[xi++];
 
     out |= (in << bits) & GMP_NUMB_MASK;

@@ -231,91 +231,91 @@ void
 ecdsa_context_randomize(ecdsa_t *ec, const unsigned char *entropy);
 
 ecdsa_scratch_t *
-ecdsa_scratch_create(ecdsa_t *ec);
+ecdsa_scratch_create(const ecdsa_t *ec);
 
 void
-ecdsa_scratch_destroy(ecdsa_t *ec, ecdsa_scratch_t *scratch);
+ecdsa_scratch_destroy(const ecdsa_t *ec, ecdsa_scratch_t *scratch);
 
 size_t
-ecdsa_scalar_size(ecdsa_t *ec);
+ecdsa_scalar_size(const ecdsa_t *ec);
 
 size_t
-ecdsa_scalar_bits(ecdsa_t *ec);
+ecdsa_scalar_bits(const ecdsa_t *ec);
 
 size_t
-ecdsa_field_size(ecdsa_t *ec);
+ecdsa_field_size(const ecdsa_t *ec);
 
 size_t
-ecdsa_field_bits(ecdsa_t *ec);
+ecdsa_field_bits(const ecdsa_t *ec);
 
 size_t
-ecdsa_privkey_size(ecdsa_t *ec);
+ecdsa_privkey_size(const ecdsa_t *ec);
 
 size_t
-ecdsa_pubkey_size(ecdsa_t *ec, int compact);
+ecdsa_pubkey_size(const ecdsa_t *ec, int compact);
 
 size_t
-ecdsa_sig_size(ecdsa_t *ec);
+ecdsa_sig_size(const ecdsa_t *ec);
 
 size_t
-ecdsa_schnorr_size(ecdsa_t *ec);
+ecdsa_schnorr_size(const ecdsa_t *ec);
 
 void
-ecdsa_privkey_generate(ecdsa_t *ec,
+ecdsa_privkey_generate(const ecdsa_t *ec,
                        unsigned char *out,
                        const unsigned char *entropy);
 
 int
-ecdsa_privkey_verify(ecdsa_t *ec, const unsigned char *priv);
+ecdsa_privkey_verify(const ecdsa_t *ec, const unsigned char *priv);
 
 int
-ecdsa_privkey_export(ecdsa_t *ec,
+ecdsa_privkey_export(const ecdsa_t *ec,
                      unsigned char *out,
                      const unsigned char *priv);
 
 int
-ecdsa_privkey_import(ecdsa_t *ec,
+ecdsa_privkey_import(const ecdsa_t *ec,
                      unsigned char *out,
                      const unsigned char *bytes,
                      size_t len);
 
 int
-ecdsa_privkey_tweak_add(ecdsa_t *ec,
+ecdsa_privkey_tweak_add(const ecdsa_t *ec,
                         unsigned char *out,
                         const unsigned char *priv,
                         const unsigned char *tweak);
 
 int
-ecdsa_privkey_tweak_mul(ecdsa_t *ec,
+ecdsa_privkey_tweak_mul(const ecdsa_t *ec,
                         unsigned char *out,
                         const unsigned char *priv,
                         const unsigned char *tweak);
 
 int
-ecdsa_privkey_reduce(ecdsa_t *ec,
+ecdsa_privkey_reduce(const ecdsa_t *ec,
                      unsigned char *out,
                      const unsigned char *bytes,
                      size_t len);
 
 int
-ecdsa_privkey_negate(ecdsa_t *ec,
+ecdsa_privkey_negate(const ecdsa_t *ec,
                      unsigned char *out,
                      const unsigned char *priv);
 
 int
-ecdsa_privkey_invert(ecdsa_t *ec,
+ecdsa_privkey_invert(const ecdsa_t *ec,
                      unsigned char *out,
                      const unsigned char *priv);
 
 int
-ecdsa_pubkey_create(ecdsa_t *ec,
+ecdsa_pubkey_create(const ecdsa_t *ec,
                     unsigned char *pub,
                     size_t *pub_len,
                     const unsigned char *priv,
                     int compact);
 
 int
-ecdsa_pubkey_convert(ecdsa_t *ec,
+ecdsa_pubkey_convert(const ecdsa_t *ec,
                      unsigned char *out,
                      size_t *out_len,
                      const unsigned char *pub,
@@ -323,45 +323,47 @@ ecdsa_pubkey_convert(ecdsa_t *ec,
                      int compact);
 
 void
-ecdsa_pubkey_from_uniform(ecdsa_t *ec,
+ecdsa_pubkey_from_uniform(const ecdsa_t *ec,
                           unsigned char *out,
                           size_t *out_len,
                           const unsigned char *bytes,
                           int compact);
 
 int
-ecdsa_pubkey_to_uniform(ecdsa_t *ec,
+ecdsa_pubkey_to_uniform(const ecdsa_t *ec,
                         unsigned char *out,
                         const unsigned char *pub,
                         size_t pub_len,
                         unsigned int hint);
 
 int
-ecdsa_pubkey_from_hash(ecdsa_t *ec,
+ecdsa_pubkey_from_hash(const ecdsa_t *ec,
                        unsigned char *out,
                        size_t *out_len,
                        const unsigned char *bytes,
                        int compact);
 
 int
-ecdsa_pubkey_to_hash(ecdsa_t *ec,
+ecdsa_pubkey_to_hash(const ecdsa_t *ec,
                      unsigned char *out,
                      const unsigned char *pub,
                      size_t pub_len,
                      const unsigned char *entropy);
 
 int
-ecdsa_pubkey_verify(ecdsa_t *ec, const unsigned char *pub, size_t pub_len);
+ecdsa_pubkey_verify(const ecdsa_t *ec,
+                    const unsigned char *pub,
+                    size_t pub_len);
 
 int
-ecdsa_pubkey_export(ecdsa_t *ec,
+ecdsa_pubkey_export(const ecdsa_t *ec,
                     unsigned char *x,
                     unsigned char *y,
                     const unsigned char *pub,
                     size_t pub_len);
 
 int
-ecdsa_pubkey_import(ecdsa_t *ec,
+ecdsa_pubkey_import(const ecdsa_t *ec,
                     unsigned char *out,
                     size_t *out_len,
                     const unsigned char *x,
@@ -372,7 +374,7 @@ ecdsa_pubkey_import(ecdsa_t *ec,
                     int compact);
 
 int
-ecdsa_pubkey_tweak_add(ecdsa_t *ec,
+ecdsa_pubkey_tweak_add(const ecdsa_t *ec,
                        unsigned char *out,
                        size_t *out_len,
                        const unsigned char *pub,
@@ -381,7 +383,7 @@ ecdsa_pubkey_tweak_add(ecdsa_t *ec,
                        int compact);
 
 int
-ecdsa_pubkey_tweak_mul(ecdsa_t *ec,
+ecdsa_pubkey_tweak_mul(const ecdsa_t *ec,
                        unsigned char *out,
                        size_t *out_len,
                        const unsigned char *pub,
@@ -390,16 +392,16 @@ ecdsa_pubkey_tweak_mul(ecdsa_t *ec,
                        int compact);
 
 int
-ecdsa_pubkey_combine(ecdsa_t *ec,
+ecdsa_pubkey_combine(const ecdsa_t *ec,
                      unsigned char *out,
                      size_t *out_len,
                      const unsigned char **pubs,
-                     size_t *pub_lens,
+                     const size_t *pub_lens,
                      size_t len,
                      int compact);
 
 int
-ecdsa_pubkey_negate(ecdsa_t *ec,
+ecdsa_pubkey_negate(const ecdsa_t *ec,
                     unsigned char *out,
                     size_t *out_len,
                     const unsigned char *pub,
@@ -407,31 +409,33 @@ ecdsa_pubkey_negate(ecdsa_t *ec,
                     int compact);
 
 int
-ecdsa_sig_export(ecdsa_t *ec,
+ecdsa_sig_export(const ecdsa_t *ec,
                  unsigned char *out,
                  size_t *out_len,
                  const unsigned char *sig);
 
 int
-ecdsa_sig_import_lax(ecdsa_t *ec,
+ecdsa_sig_import_lax(const ecdsa_t *ec,
                      unsigned char *out,
                      const unsigned char *der,
                      size_t der_len);
 
 int
-ecdsa_sig_import(ecdsa_t *ec,
+ecdsa_sig_import(const ecdsa_t *ec,
                  unsigned char *out,
                  const unsigned char *der,
                  size_t der_len);
 
 int
-ecdsa_sig_normalize(ecdsa_t *ec, unsigned char *out, const unsigned char *sig);
+ecdsa_sig_normalize(const ecdsa_t *ec,
+                    unsigned char *out,
+                    const unsigned char *sig);
 
 int
-ecdsa_is_low_s(ecdsa_t *ec, const unsigned char *sig);
+ecdsa_is_low_s(const ecdsa_t *ec, const unsigned char *sig);
 
 int
-ecdsa_sign(ecdsa_t *ec,
+ecdsa_sign(const ecdsa_t *ec,
            unsigned char *sig,
            unsigned int *param,
            const unsigned char *msg,
@@ -439,7 +443,7 @@ ecdsa_sign(ecdsa_t *ec,
            const unsigned char *priv);
 
 int
-ecdsa_verify(ecdsa_t *ec,
+ecdsa_verify(const ecdsa_t *ec,
              const unsigned char *msg,
              size_t msg_len,
              const unsigned char *sig,
@@ -447,7 +451,7 @@ ecdsa_verify(ecdsa_t *ec,
              size_t pub_len);
 
 int
-ecdsa_recover(ecdsa_t *ec,
+ecdsa_recover(const ecdsa_t *ec,
               unsigned char *pub,
               size_t *pub_len,
               const unsigned char *msg,
@@ -457,36 +461,36 @@ ecdsa_recover(ecdsa_t *ec,
               int compact);
 
 int
-ecdsa_derive(ecdsa_t *ec,
+ecdsa_derive(const ecdsa_t *ec,
              unsigned char *secret,
              size_t *secret_len,
              const unsigned char *pub,
-             const size_t pub_len,
+             size_t pub_len,
              const unsigned char *priv,
              int compact);
 
 int
-ecdsa_schnorr_support(ecdsa_t *ec);
+ecdsa_schnorr_support(const ecdsa_t *ec);
 
 int
-ecdsa_schnorr_sign(ecdsa_t *ec,
+ecdsa_schnorr_sign(const ecdsa_t *ec,
                    unsigned char *sig,
                    const unsigned char *msg,
                    const unsigned char *priv);
 
 int
-ecdsa_schnorr_verify(ecdsa_t *ec,
+ecdsa_schnorr_verify(const ecdsa_t *ec,
                      const unsigned char *msg,
                      const unsigned char *sig,
                      const unsigned char *pub,
                      size_t pub_len);
 
 int
-ecdsa_schnorr_verify_batch(ecdsa_t *ec,
+ecdsa_schnorr_verify_batch(const ecdsa_t *ec,
                            const unsigned char **msgs,
                            const unsigned char **sigs,
                            const unsigned char **pubs,
-                           size_t *pub_lens,
+                           const size_t *pub_lens,
                            size_t len,
                            ecdsa_scratch_t *scratch);
 
@@ -504,138 +508,138 @@ void
 schnorr_context_randomize(schnorr_t *ec, const unsigned char *entropy);
 
 schnorr_scratch_t *
-schnorr_scratch_create(schnorr_t *ec);
+schnorr_scratch_create(const schnorr_t *ec);
 
 void
-schnorr_scratch_destroy(schnorr_t *ec, schnorr_scratch_t *scratch);
+schnorr_scratch_destroy(const schnorr_t *ec, schnorr_scratch_t *scratch);
 
 size_t
-schnorr_scalar_size(schnorr_t *ec);
+schnorr_scalar_size(const schnorr_t *ec);
 
 size_t
-schnorr_scalar_bits(schnorr_t *ec);
+schnorr_scalar_bits(const schnorr_t *ec);
 
 size_t
-schnorr_field_size(schnorr_t *ec);
+schnorr_field_size(const schnorr_t *ec);
 
 size_t
-schnorr_field_bits(schnorr_t *ec);
+schnorr_field_bits(const schnorr_t *ec);
 
 size_t
-schnorr_privkey_size(schnorr_t *ec);
+schnorr_privkey_size(const schnorr_t *ec);
 
 size_t
-schnorr_pubkey_size(schnorr_t *ec);
+schnorr_pubkey_size(const schnorr_t *ec);
 
 size_t
-schnorr_sig_size(schnorr_t *ec);
+schnorr_sig_size(const schnorr_t *ec);
 
 void
-schnorr_privkey_generate(schnorr_t *ec,
+schnorr_privkey_generate(const schnorr_t *ec,
                          unsigned char *out,
                          const unsigned char *entropy);
 
 int
-schnorr_privkey_verify(schnorr_t *ec, const unsigned char *priv);
+schnorr_privkey_verify(const schnorr_t *ec, const unsigned char *priv);
 
 int
-schnorr_privkey_export(schnorr_t *ec,
+schnorr_privkey_export(const schnorr_t *ec,
                        unsigned char *out,
                        const unsigned char *priv);
 
 int
-schnorr_privkey_import(schnorr_t *ec,
+schnorr_privkey_import(const schnorr_t *ec,
                        unsigned char *out,
                        const unsigned char *bytes,
                        size_t len);
 
 int
-schnorr_privkey_tweak_add(schnorr_t *ec,
+schnorr_privkey_tweak_add(const schnorr_t *ec,
                           unsigned char *out,
                           const unsigned char *priv,
                           const unsigned char *tweak);
 
 int
-schnorr_privkey_tweak_mul(schnorr_t *ec,
+schnorr_privkey_tweak_mul(const schnorr_t *ec,
                           unsigned char *out,
                           const unsigned char *priv,
                           const unsigned char *tweak);
 
 int
-schnorr_privkey_reduce(schnorr_t *ec,
+schnorr_privkey_reduce(const schnorr_t *ec,
                        unsigned char *out,
                        const unsigned char *bytes,
                        size_t len);
 
 int
-schnorr_privkey_invert(schnorr_t *ec,
+schnorr_privkey_invert(const schnorr_t *ec,
                        unsigned char *out,
                        const unsigned char *priv);
 
 int
-schnorr_pubkey_create(schnorr_t *ec,
+schnorr_pubkey_create(const schnorr_t *ec,
                       unsigned char *pub,
                       const unsigned char *priv);
 
 void
-schnorr_pubkey_from_uniform(schnorr_t *ec,
+schnorr_pubkey_from_uniform(const schnorr_t *ec,
                             unsigned char *out,
                             const unsigned char *bytes);
 
 int
-schnorr_pubkey_to_uniform(schnorr_t *ec,
+schnorr_pubkey_to_uniform(const schnorr_t *ec,
                           unsigned char *out,
                           const unsigned char *pub,
                           unsigned int hint);
 
 int
-schnorr_pubkey_from_hash(schnorr_t *ec,
+schnorr_pubkey_from_hash(const schnorr_t *ec,
                          unsigned char *out,
                          const unsigned char *bytes);
 
 int
-schnorr_pubkey_to_hash(schnorr_t *ec,
+schnorr_pubkey_to_hash(const schnorr_t *ec,
                        unsigned char *out,
                        const unsigned char *pub,
                        const unsigned char *entropy);
 
 int
-schnorr_pubkey_verify(schnorr_t *ec,
+schnorr_pubkey_verify(const schnorr_t *ec,
                       unsigned char *out,
                       const unsigned char *pub);
 
 int
-schnorr_pubkey_export(schnorr_t *ec,
+schnorr_pubkey_export(const schnorr_t *ec,
                       unsigned char *x,
                       unsigned char *y,
                       const unsigned char *pub);
 
 int
-schnorr_pubkey_import(schnorr_t *ec,
+schnorr_pubkey_import(const schnorr_t *ec,
                       unsigned char *out,
                       const unsigned char *x,
                       size_t x_len);
 
 int
-schnorr_pubkey_tweak_add(schnorr_t *ec,
+schnorr_pubkey_tweak_add(const schnorr_t *ec,
                          unsigned char *out,
                          const unsigned char *pub,
                          const unsigned char *tweak);
 
 int
-schnorr_pubkey_tweak_mul(schnorr_t *ec,
+schnorr_pubkey_tweak_mul(const schnorr_t *ec,
                          unsigned char *out,
                          const unsigned char *pub,
                          const unsigned char *tweak);
 
 int
-schnorr_pubkey_combine(schnorr_t *ec,
+schnorr_pubkey_combine(const schnorr_t *ec,
                        unsigned char *out,
                        const unsigned char **pubs,
                        size_t len);
 
 int
-schnorr_sign(schnorr_t *ec,
+schnorr_sign(const schnorr_t *ec,
              unsigned char *sig,
              const unsigned char *msg,
              const unsigned char *priv,
@@ -643,13 +647,13 @@ schnorr_sign(schnorr_t *ec,
              size_t aux_len);
 
 int
-schnorr_verify(schnorr_t *ec,
+schnorr_verify(const schnorr_t *ec,
                const unsigned char *msg,
                const unsigned char *sig,
                const unsigned char *pub);
 
 int
-schnorr_verify_batch(schnorr_t *ec,
+schnorr_verify_batch(const schnorr_t *ec,
                      const unsigned char **msgs,
                      const unsigned char **sigs,
                      const unsigned char **pubs,
@@ -657,7 +661,7 @@ schnorr_verify_batch(schnorr_t *ec,
                      schnorr_scratch_t *scratch);
 
 int
-schnorr_derive(schnorr_t *ec,
+schnorr_derive(const schnorr_t *ec,
                unsigned char *secret,
                const unsigned char *pub,
                const unsigned char *priv);
@@ -673,96 +677,100 @@ void
 ecdh_context_destroy(ecdh_t *ec);
 
 size_t
-ecdh_scalar_size(ecdh_t *ec);
+ecdh_scalar_size(const ecdh_t *ec);
 
 size_t
-ecdh_scalar_bits(ecdh_t *ec);
+ecdh_scalar_bits(const ecdh_t *ec);
 
 size_t
-ecdh_field_size(ecdh_t *ec);
+ecdh_field_size(const ecdh_t *ec);
 
 size_t
-ecdh_field_bits(ecdh_t *ec);
+ecdh_field_bits(const ecdh_t *ec);
 
 size_t
-ecdh_privkey_size(ecdh_t *ec);
+ecdh_privkey_size(const ecdh_t *ec);
 
 size_t
-ecdh_pubkey_size(ecdh_t *ec);
+ecdh_pubkey_size(const ecdh_t *ec);
 
 void
-ecdh_privkey_generate(ecdh_t *ec,
+ecdh_privkey_generate(const ecdh_t *ec,
                       unsigned char *out,
                       const unsigned char *entropy);
 
 int
-ecdh_privkey_verify(ecdh_t *ec, const unsigned char *priv);
+ecdh_privkey_verify(const ecdh_t *ec, const unsigned char *priv);
 
 int
-ecdh_privkey_export(ecdh_t *ec, unsigned char *out, const unsigned char *priv);
+ecdh_privkey_export(const ecdh_t *ec,
+                    unsigned char *out,
+                    const unsigned char *priv);
 
 int
-ecdh_privkey_import(ecdh_t *ec,
+ecdh_privkey_import(const ecdh_t *ec,
                     unsigned char *out,
                     const unsigned char *bytes,
                     size_t len);
 
 void
-ecdh_pubkey_create(ecdh_t *ec, unsigned char *pub, const unsigned char *priv);
+ecdh_pubkey_create(const ecdh_t *ec,
+                   unsigned char *pub,
+                   const unsigned char *priv);
 
 int
-ecdh_pubkey_convert(ecdh_t *ec,
+ecdh_pubkey_convert(const ecdh_t *ec,
                     unsigned char *out,
                     const unsigned char *pub,
                     int sign);
 
 void
-ecdh_pubkey_from_uniform(ecdh_t *ec,
+ecdh_pubkey_from_uniform(const ecdh_t *ec,
                          unsigned char *out,
                          const unsigned char *bytes);
 
 int
-ecdh_pubkey_to_uniform(ecdh_t *ec,
+ecdh_pubkey_to_uniform(const ecdh_t *ec,
                        unsigned char *out,
                        const unsigned char *pub,
                        unsigned int hint);
 
 int
-ecdh_pubkey_from_hash(ecdh_t *ec,
+ecdh_pubkey_from_hash(const ecdh_t *ec,
                       unsigned char *out,
                       const unsigned char *bytes,
                       int pake);
 
 int
-ecdh_pubkey_to_hash(ecdh_t *ec,
+ecdh_pubkey_to_hash(const ecdh_t *ec,
                     unsigned char *out,
                     const unsigned char *pub,
                     const unsigned char *entropy);
 
 int
-ecdh_pubkey_verify(ecdh_t *ec, const unsigned char *pub);
+ecdh_pubkey_verify(const ecdh_t *ec, const unsigned char *pub);
 
 int
-ecdh_pubkey_export(ecdh_t *ec,
+ecdh_pubkey_export(const ecdh_t *ec,
                    unsigned char *x,
                    unsigned char *y,
                    const unsigned char *pub,
                    int sign);
 
 int
-ecdh_pubkey_import(ecdh_t *ec,
+ecdh_pubkey_import(const ecdh_t *ec,
                    unsigned char *out,
                    const unsigned char *x,
                    size_t x_len);
 
 int
-ecdh_pubkey_is_small(ecdh_t *ec, const unsigned char *pub);
+ecdh_pubkey_is_small(const ecdh_t *ec, const unsigned char *pub);
 
 int
-ecdh_pubkey_has_torsion(ecdh_t *ec, const unsigned char *pub);
+ecdh_pubkey_has_torsion(const ecdh_t *ec, const unsigned char *pub);
 
 int
-ecdh_derive(ecdh_t *ec,
+ecdh_derive(const ecdh_t *ec,
             unsigned char *secret,
             const unsigned char *pub,
             const unsigned char *priv);
@@ -781,155 +789,155 @@ void
 eddsa_context_randomize(eddsa_t *ec, const unsigned char *entropy);
 
 eddsa_scratch_t *
-eddsa_scratch_create(eddsa_t *ec);
+eddsa_scratch_create(const eddsa_t *ec);
 
 void
-eddsa_scratch_destroy(eddsa_t *ec, eddsa_scratch_t *scratch);
+eddsa_scratch_destroy(const eddsa_t *ec, eddsa_scratch_t *scratch);
 
 size_t
-eddsa_scalar_size(eddsa_t *ec);
+eddsa_scalar_size(const eddsa_t *ec);
 
 size_t
-eddsa_scalar_bits(eddsa_t *ec);
+eddsa_scalar_bits(const eddsa_t *ec);
 
 size_t
-eddsa_field_size(eddsa_t *ec);
+eddsa_field_size(const eddsa_t *ec);
 
 size_t
-eddsa_field_bits(eddsa_t *ec);
+eddsa_field_bits(const eddsa_t *ec);
 
 size_t
-eddsa_privkey_size(eddsa_t *ec);
+eddsa_privkey_size(const eddsa_t *ec);
 
 size_t
-eddsa_pubkey_size(eddsa_t *ec);
+eddsa_pubkey_size(const eddsa_t *ec);
 
 size_t
-eddsa_sig_size(eddsa_t *ec);
+eddsa_sig_size(const eddsa_t *ec);
 
 void
-eddsa_privkey_generate(eddsa_t *ec,
+eddsa_privkey_generate(const eddsa_t *ec,
                        unsigned char *out,
                        const unsigned char *entropy);
 
 void
-eddsa_scalar_generate(eddsa_t *ec,
+eddsa_scalar_generate(const eddsa_t *ec,
                       unsigned char *out,
                       const unsigned char *entropy);
 
 void
-eddsa_privkey_expand(eddsa_t *ec,
+eddsa_privkey_expand(const eddsa_t *ec,
                      unsigned char *scalar,
                      unsigned char *prefix,
                      const unsigned char *priv);
 
 void
-eddsa_privkey_convert(eddsa_t *ec,
+eddsa_privkey_convert(const eddsa_t *ec,
                       unsigned char *scalar,
                       const unsigned char *priv);
 
 int
-eddsa_privkey_verify(eddsa_t *ec, const unsigned char *priv);
+eddsa_privkey_verify(const eddsa_t *ec, const unsigned char *priv);
 
 int
-eddsa_privkey_export(eddsa_t *ec,
+eddsa_privkey_export(const eddsa_t *ec,
                      unsigned char *out,
                      const unsigned char *priv);
 
 int
-eddsa_privkey_import(eddsa_t *ec,
+eddsa_privkey_import(const eddsa_t *ec,
                      unsigned char *out,
                      const unsigned char *bytes,
                      size_t len);
 
 int
-eddsa_scalar_verify(eddsa_t *ec, const unsigned char *scalar);
+eddsa_scalar_verify(const eddsa_t *ec, const unsigned char *scalar);
 
 int
-eddsa_scalar_is_zero(eddsa_t *ec, const unsigned char *scalar);
+eddsa_scalar_is_zero(const eddsa_t *ec, const unsigned char *scalar);
 
 void
-eddsa_scalar_clamp(eddsa_t *ec,
+eddsa_scalar_clamp(const eddsa_t *ec,
                    unsigned char *out,
                    const unsigned char *scalar);
 
 void
-eddsa_scalar_tweak_add(eddsa_t *ec,
+eddsa_scalar_tweak_add(const eddsa_t *ec,
                        unsigned char *out,
                        const unsigned char *scalar,
                        const unsigned char *tweak);
 
 void
-eddsa_scalar_tweak_mul(eddsa_t *ec,
+eddsa_scalar_tweak_mul(const eddsa_t *ec,
                        unsigned char *out,
                        const unsigned char *scalar,
                        const unsigned char *tweak);
 
 void
-eddsa_scalar_reduce(eddsa_t *ec,
+eddsa_scalar_reduce(const eddsa_t *ec,
                     unsigned char *out,
                     const unsigned char *bytes,
                     size_t len);
 
 void
-eddsa_scalar_negate(eddsa_t *ec,
+eddsa_scalar_negate(const eddsa_t *ec,
                     unsigned char *out,
                     const unsigned char *scalar);
 
 void
-eddsa_scalar_invert(eddsa_t *ec,
+eddsa_scalar_invert(const eddsa_t *ec,
                     unsigned char *out,
                     const unsigned char *scalar);
 
 void
-eddsa_pubkey_from_scalar(eddsa_t *ec,
+eddsa_pubkey_from_scalar(const eddsa_t *ec,
                          unsigned char *pub,
                          const unsigned char *scalar);
 
 void
-eddsa_pubkey_create(eddsa_t *ec,
+eddsa_pubkey_create(const eddsa_t *ec,
                     unsigned char *pub,
                     const unsigned char *priv);
 
 int
-eddsa_pubkey_convert(eddsa_t *ec,
+eddsa_pubkey_convert(const eddsa_t *ec,
                      unsigned char *out,
                      const unsigned char *pub);
 
 void
-eddsa_pubkey_from_uniform(eddsa_t *ec,
+eddsa_pubkey_from_uniform(const eddsa_t *ec,
                           unsigned char *out,
                           const unsigned char *bytes);
 
 int
-eddsa_pubkey_to_uniform(eddsa_t *ec,
+eddsa_pubkey_to_uniform(const eddsa_t *ec,
                         unsigned char *out,
                         const unsigned char *pub,
                         unsigned int hint);
 
 void
-eddsa_pubkey_from_hash(eddsa_t *ec,
+eddsa_pubkey_from_hash(const eddsa_t *ec,
                        unsigned char *out,
                        const unsigned char *bytes,
                        int pake);
 
 int
-eddsa_pubkey_to_hash(eddsa_t *ec,
+eddsa_pubkey_to_hash(const eddsa_t *ec,
                      unsigned char *out,
                      const unsigned char *pub,
                      const unsigned char *entropy);
 
 int
-eddsa_pubkey_verify(eddsa_t *ec, const unsigned char *pub);
+eddsa_pubkey_verify(const eddsa_t *ec, const unsigned char *pub);
 
 int
-eddsa_pubkey_export(eddsa_t *ec,
+eddsa_pubkey_export(const eddsa_t *ec,
                     unsigned char *x,
                     unsigned char *y,
                     const unsigned char *pub);
 
 int
-eddsa_pubkey_import(eddsa_t *ec,
+eddsa_pubkey_import(const eddsa_t *ec,
                     unsigned char *out,
                     const unsigned char *x,
                     size_t x_len,
@@ -937,39 +945,39 @@ eddsa_pubkey_import(eddsa_t *ec,
                     size_t y_len,
                     int sign);
 int
-eddsa_pubkey_is_infinity(eddsa_t *ec, const unsigned char *pub);
+eddsa_pubkey_is_infinity(const eddsa_t *ec, const unsigned char *pub);
 
 int
-eddsa_pubkey_is_small(eddsa_t *ec, const unsigned char *pub);
+eddsa_pubkey_is_small(const eddsa_t *ec, const unsigned char *pub);
 
 int
-eddsa_pubkey_has_torsion(eddsa_t *ec, const unsigned char *pub);
+eddsa_pubkey_has_torsion(const eddsa_t *ec, const unsigned char *pub);
 
 int
-eddsa_pubkey_tweak_add(eddsa_t *ec,
+eddsa_pubkey_tweak_add(const eddsa_t *ec,
                        unsigned char *out,
                        const unsigned char *pub,
                        const unsigned char *tweak);
 
 int
-eddsa_pubkey_tweak_mul(eddsa_t *ec,
+eddsa_pubkey_tweak_mul(const eddsa_t *ec,
                        unsigned char *out,
                        const unsigned char *pub,
                        const unsigned char *tweak);
 
 int
-eddsa_pubkey_combine(eddsa_t *ec,
+eddsa_pubkey_combine(const eddsa_t *ec,
                      unsigned char *out,
                      const unsigned char **pubs,
                      size_t len);
 
 int
-eddsa_pubkey_negate(eddsa_t *ec,
+eddsa_pubkey_negate(const eddsa_t *ec,
                     unsigned char *out,
                     const unsigned char *pub);
 
 void
-eddsa_sign_with_scalar(eddsa_t *ec,
+eddsa_sign_with_scalar(const eddsa_t *ec,
                        unsigned char *sig,
                        const unsigned char *msg,
                        size_t msg_len,
@@ -980,7 +988,7 @@ eddsa_sign_with_scalar(eddsa_t *ec,
                        size_t ctx_len);
 
 void
-eddsa_sign(eddsa_t *ec,
+eddsa_sign(const eddsa_t *ec,
            unsigned char *sig,
            const unsigned char *msg,
            size_t msg_len,
@@ -990,7 +998,7 @@ eddsa_sign(eddsa_t *ec,
            size_t ctx_len);
 
 void
-eddsa_sign_tweak_add(eddsa_t *ec,
+eddsa_sign_tweak_add(const eddsa_t *ec,
                      unsigned char *sig,
                      const unsigned char *msg,
                      size_t msg_len,
@@ -1001,7 +1009,7 @@ eddsa_sign_tweak_add(eddsa_t *ec,
                      size_t ctx_len);
 
 void
-eddsa_sign_tweak_mul(eddsa_t *ec,
+eddsa_sign_tweak_mul(const eddsa_t *ec,
                      unsigned char *sig,
                      const unsigned char *msg,
                      size_t msg_len,
@@ -1012,7 +1020,7 @@ eddsa_sign_tweak_mul(eddsa_t *ec,
                      size_t ctx_len);
 
 int
-eddsa_verify(eddsa_t *ec,
+eddsa_verify(const eddsa_t *ec,
              const unsigned char *msg,
              size_t msg_len,
              const unsigned char *sig,
@@ -1022,7 +1030,7 @@ eddsa_verify(eddsa_t *ec,
              size_t ctx_len);
 
 int
-eddsa_verify_single(eddsa_t *ec,
+eddsa_verify_single(const eddsa_t *ec,
                     const unsigned char *msg,
                     size_t msg_len,
                     const unsigned char *sig,
@@ -1032,9 +1040,9 @@ eddsa_verify_single(eddsa_t *ec,
                     size_t ctx_len);
 
 int
-eddsa_verify_batch(eddsa_t *ec,
+eddsa_verify_batch(const eddsa_t *ec,
                    const unsigned char **msgs,
-                   size_t *msg_lens,
+                   const size_t *msg_lens,
                    const unsigned char **sigs,
                    const unsigned char **pubs,
                    size_t len,
@@ -1044,12 +1052,12 @@ eddsa_verify_batch(eddsa_t *ec,
                    eddsa_scratch_t *scratch);
 
 int
-eddsa_derive_with_scalar(eddsa_t *ec,
+eddsa_derive_with_scalar(const eddsa_t *ec,
                          unsigned char *secret,
                          const unsigned char *pub,
                          const unsigned char *scalar);
 int
-eddsa_derive(eddsa_t *ec,
+eddsa_derive(const eddsa_t *ec,
              unsigned char *secret,
              const unsigned char *pub,
              const unsigned char *priv);
