@@ -638,7 +638,9 @@ int
 schnorr_sign(schnorr_t *ec,
              unsigned char *sig,
              const unsigned char *msg,
-             const unsigned char *priv);
+             const unsigned char *priv,
+             const unsigned char *aux,
+             size_t aux_len);
 
 int
 schnorr_verify(schnorr_t *ec,

@@ -97,11 +97,16 @@
  *
  *   [SCHNORR] Schnorr Signatures for secp256k1
  *     Pieter Wuille
- *     https://github.com/sipa/bips/blob/bip-schnorr/bip-schnorr.mediawiki
+ *     https://github.com/sipa/bips/blob/d194620/bip-schnorr.mediawiki
  *
  *   [CASH] Schnorr Signature specification
  *     Mark B. Lundeberg
  *     https://github.com/bitcoincashorg/bitcoincash.org/blob/master/spec/2019-05-15-schnorr.md
+ *
+ *   [BIP340] Schnorr Signatures for secp256k1
+ *     Pieter Wuille, Jonas Nick, Tim Ruffing
+ *     https://github.com/sipa/bips/blob/bip-taproot/bip-0340.mediawiki
+ *     https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki
  *
  *   [JCEN12] Efficient Software Implementation of Public-Key Cryptography
  *            on Sensor Networks Using the MSP430X Microcontroller
@@ -2082,7 +2087,18 @@ wge_export(wei_t *ec,
 }
 
 static int
-wge_import_x(wei_t *ec, wge_t *r, const unsigned char *raw) {
+wge_import_even(wei_t *ec, wge_t *r, const unsigned char *raw) {
+  /* [BIP340] "Specification". */
+  prime_field_t *fe = &ec->fe;
+
+  if (!fe_import(fe, r->x, raw))
+    return 0;
+
+  return wge_set_x(ec, r, r->x, 0);
+}
+
+static int
+wge_import_square(wei_t *ec, wge_t *r, const unsigned char *raw) {
   /* [SCHNORR] "Specification". */
   prime_field_t *fe = &ec->fe;
 
@@ -2095,6 +2111,7 @@ wge_import_x(wei_t *ec, wge_t *r, const unsigned char *raw) {
 static int
 wge_export_x(wei_t *ec, unsigned char *raw, const wge_t *p) {
   /* [SCHNORR] "Specification". */
+  /* [BIP340] "Specification". */
   prime_field_t *fe = &ec->fe;
 
   if (p->inf)
@@ -2179,6 +2196,11 @@ wge_is_square_var(wei_t *ec, const wge_t *p) {
     return 0;
 
   return fe_is_square_var(&ec->fe, p->y);
+}
+
+static int
+wge_is_even(wei_t *ec, const wge_t *p) {
+  return (fe_is_odd(&ec->fe, p->y) ^ 1) & (p->inf ^ 1);
 }
 
 static int
@@ -3620,22 +3642,22 @@ wei_jmul_g(wei_t *ec, jge_t *r, const sc_t k) {
   scalar_field_t *sc = &ec->sc;
   size_t i, j, b;
   sc_t k0;
-  wge_t p;
+  wge_t t;
 
   /* Blind if available. */
   sc_add(sc, k0, k, ec->blind);
 
   /* Multiply in constant time. */
-  wge_zero(ec, &p);
   wge_to_jge(ec, r, &ec->unblind);
+  wge_zero(ec, &t);
 
   for (i = 0; i < WND_STEPS(sc->bits); i++) {
     b = sc_get_bits(sc, k0, i * WND_WIDTH, WND_WIDTH);
 
     for (j = 0; j < WND_SIZE; j++)
-      wge_select(ec, &p, &p, &ec->windows[i * WND_SIZE + j], j == b);
+      wge_select(ec, &t, &t, &ec->windows[i * WND_SIZE + j], j == b);
 
-    jge_mixed_add(ec, r, r, &p);
+    jge_mixed_add(ec, r, r, &t);
   }
 
   /* Cleanse. */
@@ -3671,17 +3693,19 @@ wei_jmul_normal(wei_t *ec, jge_t *r, const wge_t *p, const sc_t k) {
   jge_zero(ec, &t);
 
   for (i = start; i >= 0; i--) {
-    if (i != start) {
-      for (j = 0; j < WND_WIDTH; j++)
-        jge_dbl(ec, r, r);
-    }
-
     b = sc_get_bits(sc, k, i * WND_WIDTH, WND_WIDTH);
 
     for (j = 0; j < WND_SIZE; j++)
       jge_select(ec, &t, &t, &table[j], j == b);
 
-    jge_add(ec, r, r, &t);
+    if (i == start) {
+      jge_set(ec, r, &t);
+    } else {
+      for (j = 0; j < WND_WIDTH; j++)
+        jge_dbl(ec, r, r);
+
+      jge_add(ec, r, r, &t);
+    }
   }
 
   cleanse(&b, sizeof(b));
@@ -3694,11 +3718,13 @@ wei_jmul_endo(wei_t *ec, jge_t *r, const wge_t *p, const sc_t k) {
   mp_size_t start = WND_STEPS(bits) - 1;
   jge_t table1[WND_SIZE];
   jge_t table2[WND_SIZE];
-  mp_size_t i, j, b;
+  mp_size_t i, j, b1, b2;
   int32_t s1, s2;
   wge_t p1, p2;
+  jge_t t1, t2;
   sc_t k1, k2;
-  jge_t t;
+
+  assert(ec->endo == 1);
 
   wge_set(ec, &p1, p);
   wge_endo_beta(ec, &p2, &p1);
@@ -3726,33 +3752,34 @@ wei_jmul_endo(wei_t *ec, jge_t *r, const wge_t *p, const sc_t k) {
   }
 
   jge_zero(ec, r);
-  jge_zero(ec, &t);
+  jge_zero(ec, &t1);
+  jge_zero(ec, &t2);
 
   for (i = start; i >= 0; i--) {
-    if (i != start) {
-      for (j = 0; j < WND_WIDTH; j++)
-        jge_dbl(ec, r, r);
+    b1 = sc_get_bits(sc, k1, i * WND_WIDTH, WND_WIDTH);
+    b2 = sc_get_bits(sc, k2, i * WND_WIDTH, WND_WIDTH);
+
+    for (j = 0; j < WND_SIZE; j++) {
+      jge_select(ec, &t1, &t1, &table1[j], j == b1);
+      jge_select(ec, &t2, &t2, &table2[j], j == b2);
     }
 
-    b = sc_get_bits(sc, k1, i * WND_WIDTH, WND_WIDTH);
+    if (i == start) {
+      jge_add(ec, r, &t1, &t2);
+    } else {
+      for (j = 0; j < WND_WIDTH; j++)
+        jge_dbl(ec, r, r);
 
-    for (j = 0; j < WND_SIZE; j++)
-      jge_select(ec, &t, &t, &table1[j], j == b);
-
-    jge_add(ec, r, r, &t);
-
-    b = sc_get_bits(sc, k2, i * WND_WIDTH, WND_WIDTH);
-
-    for (j = 0; j < WND_SIZE; j++)
-      jge_select(ec, &t, &t, &table2[j], j == b);
-
-    jge_add(ec, r, r, &t);
+      jge_add(ec, r, r, &t1);
+      jge_add(ec, r, r, &t2);
+    }
   }
 
   sc_cleanse(sc, k1);
   sc_cleanse(sc, k2);
 
-  cleanse(&b, sizeof(b));
+  cleanse(&b1, sizeof(b1));
+  cleanse(&b2, sizeof(b2));
   cleanse(&s1, sizeof(s1));
   cleanse(&s2, sizeof(s2));
 }
@@ -3792,7 +3819,6 @@ wei_jmul_double_normal_var(wei_t *ec,
   size_t max1 = sc_bitlen_var(sc, k1) + 1;
   size_t max2 = sc_bitlen_var(sc, k2) + 1;
   size_t max = max1 > max2 ? max1 : max2;
-  jge_t acc;
   size_t i;
 
   sc_naf_var(sc, naf1, k1, 1, NAF_WIDTH_PRE, max);
@@ -3801,27 +3827,25 @@ wei_jmul_double_normal_var(wei_t *ec,
   jge_naf_points_var(ec, wnd2, p2, NAF_WIDTH);
 
   /* Multiply and add. */
-  jge_zero(ec, &acc);
+  jge_zero(ec, r);
 
   for (i = max; i-- > 0;) {
     int32_t z1 = naf1[i];
     int32_t z2 = naf2[i];
 
     if (i != max - 1)
-      jge_dbl_var(ec, &acc, &acc);
+      jge_dbl_var(ec, r, r);
 
     if (z1 > 0)
-      jge_mixed_add_var(ec, &acc, &acc, &wnd1[(z1 - 1) >> 1]);
+      jge_mixed_add_var(ec, r, r, &wnd1[(z1 - 1) >> 1]);
     else if (z1 < 0)
-      jge_mixed_sub_var(ec, &acc, &acc, &wnd1[(-z1 - 1) >> 1]);
+      jge_mixed_sub_var(ec, r, r, &wnd1[(-z1 - 1) >> 1]);
 
     if (z2 > 0)
-      jge_add_var(ec, &acc, &acc, &wnd2[(z2 - 1) >> 1]);
+      jge_add_var(ec, r, r, &wnd2[(z2 - 1) >> 1]);
     else if (z2 < 0)
-      jge_sub_var(ec, &acc, &acc, &wnd2[(-z2 - 1) >> 1]);
+      jge_sub_var(ec, r, r, &wnd2[(-z2 - 1) >> 1]);
   }
-
-  jge_set(ec, r, &acc);
 }
 
 static void
@@ -3845,7 +3869,6 @@ wei_jmul_double_endo_var(wei_t *ec,
   sc_t c1, c2, c3, c4;
   int32_t s1, s2, s3, s4;
   size_t i, max;
-  jge_t acc;
 
   assert(ec->endo == 1);
 
@@ -3865,7 +3888,7 @@ wei_jmul_double_endo_var(wei_t *ec,
   wge_jsf_points_endo(ec, wnd3, p2);
 
   /* Multiply and add. */
-  jge_zero(ec, &acc);
+  jge_zero(ec, r);
 
   for (i = max; i-- > 0;) {
     int32_t z1 = naf1[i];
@@ -3873,25 +3896,23 @@ wei_jmul_double_endo_var(wei_t *ec,
     int32_t z3 = naf3[i];
 
     if (i != max - 1)
-      jge_dbl_var(ec, &acc, &acc);
+      jge_dbl_var(ec, r, r);
 
     if (z1 > 0)
-      jge_mixed_add_var(ec, &acc, &acc, &wnd1[(z1 - 1) >> 1]);
+      jge_mixed_add_var(ec, r, r, &wnd1[(z1 - 1) >> 1]);
     else if (z1 < 0)
-      jge_mixed_sub_var(ec, &acc, &acc, &wnd1[(-z1 - 1) >> 1]);
+      jge_mixed_sub_var(ec, r, r, &wnd1[(-z1 - 1) >> 1]);
 
     if (z2 > 0)
-      jge_mixed_add_var(ec, &acc, &acc, &wnd2[(z2 - 1) >> 1]);
+      jge_mixed_add_var(ec, r, r, &wnd2[(z2 - 1) >> 1]);
     else if (z2 < 0)
-      jge_mixed_sub_var(ec, &acc, &acc, &wnd2[(-z2 - 1) >> 1]);
+      jge_mixed_sub_var(ec, r, r, &wnd2[(-z2 - 1) >> 1]);
 
     if (z3 > 0)
-      jge_mixed_add_var(ec, &acc, &acc, &wnd3[(z3 - 1) >> 1]);
+      jge_mixed_add_var(ec, r, r, &wnd3[(z3 - 1) >> 1]);
     else if (z3 < 0)
-      jge_mixed_sub_var(ec, &acc, &acc, &wnd3[(-z3 - 1) >> 1]);
+      jge_mixed_sub_var(ec, r, r, &wnd3[(-z3 - 1) >> 1]);
   }
-
-  jge_set(ec, r, &acc);
 }
 
 static void
@@ -3938,7 +3959,6 @@ wei_jmul_multi_normal_var(wei_t *ec,
   jge_t *wnds[32];
   int32_t *nafs[32];
   size_t i, j;
-  jge_t acc;
 
   assert((len & 1) == 0);
   assert(len <= 64);
@@ -3973,30 +3993,28 @@ wei_jmul_multi_normal_var(wei_t *ec,
   len >>= 1;
 
   /* Multiply and add. */
-  jge_zero(ec, &acc);
+  jge_zero(ec, r);
 
   for (i = max; i-- > 0;) {
     int32_t z0 = naf0[i];
 
     if (i != max - 1)
-      jge_dbl_var(ec, &acc, &acc);
+      jge_dbl_var(ec, r, r);
 
     if (z0 > 0)
-      jge_mixed_add_var(ec, &acc, &acc, &wnd0[(z0 - 1) >> 1]);
+      jge_mixed_add_var(ec, r, r, &wnd0[(z0 - 1) >> 1]);
     else if (z0 < 0)
-      jge_mixed_sub_var(ec, &acc, &acc, &wnd0[(-z0 - 1) >> 1]);
+      jge_mixed_sub_var(ec, r, r, &wnd0[(-z0 - 1) >> 1]);
 
     for (j = 0; j < len; j++) {
       int32_t z = nafs[j][i];
 
       if (z > 0)
-        jge_add_var(ec, &acc, &acc, &wnds[j][(z - 1) >> 1]);
+        jge_add_var(ec, r, r, &wnds[j][(z - 1) >> 1]);
       else if (z < 0)
-        jge_sub_var(ec, &acc, &acc, &wnds[j][(-z - 1) >> 1]);
+        jge_sub_var(ec, r, r, &wnds[j][(-z - 1) >> 1]);
     }
   }
-
-  jge_set(ec, r, &acc);
 }
 
 static void
@@ -4024,7 +4042,6 @@ wei_jmul_multi_endo_var(wei_t *ec,
   sc_t k1, k2;
   int32_t s1, s2;
   size_t i, j;
-  jge_t acc;
 
   assert(ec->endo == 1);
   assert(len <= 64);
@@ -4060,36 +4077,34 @@ wei_jmul_multi_endo_var(wei_t *ec,
   }
 
   /* Multiply and add. */
-  jge_zero(ec, &acc);
+  jge_zero(ec, r);
 
   for (i = max; i-- > 0;) {
     int32_t z0 = naf0[i];
     int32_t z1 = naf1[i];
 
     if (i != max - 1)
-      jge_dbl_var(ec, &acc, &acc);
+      jge_dbl_var(ec, r, r);
 
     if (z0 > 0)
-      jge_mixed_add_var(ec, &acc, &acc, &wnd0[(z0 - 1) >> 1]);
+      jge_mixed_add_var(ec, r, r, &wnd0[(z0 - 1) >> 1]);
     else if (z0 < 0)
-      jge_mixed_sub_var(ec, &acc, &acc, &wnd0[(-z0 - 1) >> 1]);
+      jge_mixed_sub_var(ec, r, r, &wnd0[(-z0 - 1) >> 1]);
 
     if (z1 > 0)
-      jge_mixed_add_var(ec, &acc, &acc, &wnd1[(z1 - 1) >> 1]);
+      jge_mixed_add_var(ec, r, r, &wnd1[(z1 - 1) >> 1]);
     else if (z1 < 0)
-      jge_mixed_sub_var(ec, &acc, &acc, &wnd1[(-z1 - 1) >> 1]);
+      jge_mixed_sub_var(ec, r, r, &wnd1[(-z1 - 1) >> 1]);
 
     for (j = 0; j < len; j++) {
       int32_t z = nafs[j][i];
 
       if (z > 0)
-        jge_mixed_add_var(ec, &acc, &acc, &wnds[j][(z - 1) >> 1]);
+        jge_mixed_add_var(ec, r, r, &wnds[j][(z - 1) >> 1]);
       else if (z < 0)
-        jge_mixed_sub_var(ec, &acc, &acc, &wnds[j][(-z - 1) >> 1]);
+        jge_mixed_sub_var(ec, r, r, &wnds[j][(-z - 1) >> 1]);
     }
   }
-
-  jge_set(ec, r, &acc);
 }
 
 static void
@@ -4575,10 +4590,6 @@ wei_point_to_hash(wei_t *ec,
 
   for (;;) {
     drbg_generate(&rng, bytes, fe->size);
-
-    if (!bytes_lt(bytes, fe->raw, fe->size, fe->endian))
-      continue;
-
     wei_point_from_uniform(ec, &p1, bytes);
 
     /* Avoid 2-torsion points. */
@@ -5555,10 +5566,6 @@ mont_point_to_hash(mont_t *ec,
 
   for (;;) {
     drbg_generate(&rng, bytes, fe->size);
-
-    if (!bytes_lt(bytes, fe->raw, fe->size, fe->endian))
-      continue;
-
     mont_point_from_uniform(ec, &p1, bytes);
 
     /* Avoid 2-torsion points. */
@@ -6295,22 +6302,22 @@ edwards_mul_g(edwards_t *ec, xge_t *r, const sc_t k) {
   scalar_field_t *sc = &ec->sc;
   size_t i, j, b;
   sc_t k0;
-  xge_t p;
+  xge_t t;
 
   /* Blind if available. */
   sc_add(sc, k0, k, ec->blind);
 
   /* Multiply in constant time. */
-  xge_zero(ec, &p);
   xge_set(ec, r, &ec->unblind);
+  xge_zero(ec, &t);
 
   for (i = 0; i < WND_STEPS(sc->bits); i++) {
     b = sc_get_bits(sc, k0, i * WND_WIDTH, WND_WIDTH);
 
     for (j = 0; j < WND_SIZE; j++)
-      xge_select(ec, &p, &p, &ec->windows[i * WND_SIZE + j], j == b);
+      xge_select(ec, &t, &t, &ec->windows[i * WND_SIZE + j], j == b);
 
-    xge_add(ec, r, r, &p);
+    xge_add(ec, r, r, &t);
   }
 
   /* Cleanse. */
@@ -6340,17 +6347,19 @@ edwards_mul(edwards_t *ec, xge_t *r, const xge_t *p, const sc_t k) {
   xge_zero(ec, &t);
 
   for (i = start; i >= 0; i--) {
-    if (i != start) {
-      for (j = 0; j < WND_WIDTH; j++)
-        xge_dbl(ec, r, r);
-    }
-
     b = sc_get_bits(sc, k, i * WND_WIDTH, WND_WIDTH);
 
     for (j = 0; j < WND_SIZE; j++)
       xge_select(ec, &t, &t, &table[j], j == b);
 
-    xge_add(ec, r, r, &t);
+    if (i == start) {
+      xge_set(ec, r, &t);
+    } else {
+      for (j = 0; j < WND_WIDTH; j++)
+        xge_dbl(ec, r, r);
+
+      xge_add(ec, r, r, &t);
+    }
   }
 
   cleanse(&b, sizeof(b));
@@ -6376,7 +6385,6 @@ edwards_mul_double_var(edwards_t *ec,
   size_t max1 = sc_bitlen_var(sc, k1) + 1;
   size_t max2 = sc_bitlen_var(sc, k2) + 1;
   size_t max = max1 > max2 ? max1 : max2;
-  xge_t acc;
   size_t i;
 
   sc_naf_var(sc, naf1, k1, 1, NAF_WIDTH_PRE, max);
@@ -6385,27 +6393,25 @@ edwards_mul_double_var(edwards_t *ec,
   xge_naf_points(ec, wnd2, p2, NAF_WIDTH);
 
   /* Multiply and add. */
-  xge_zero(ec, &acc);
+  xge_zero(ec, r);
 
   for (i = max; i-- > 0;) {
     int32_t z1 = naf1[i];
     int32_t z2 = naf2[i];
 
     if (i != max - 1)
-      xge_dbl(ec, &acc, &acc);
+      xge_dbl(ec, r, r);
 
     if (z1 > 0)
-      xge_add(ec, &acc, &acc, &wnd1[(z1 - 1) >> 1]);
+      xge_add(ec, r, r, &wnd1[(z1 - 1) >> 1]);
     else if (z1 < 0)
-      xge_sub(ec, &acc, &acc, &wnd1[(-z1 - 1) >> 1]);
+      xge_sub(ec, r, r, &wnd1[(-z1 - 1) >> 1]);
 
     if (z2 > 0)
-      xge_add(ec, &acc, &acc, &wnd2[(z2 - 1) >> 1]);
+      xge_add(ec, r, r, &wnd2[(z2 - 1) >> 1]);
     else if (z2 < 0)
-      xge_sub(ec, &acc, &acc, &wnd2[(-z2 - 1) >> 1]);
+      xge_sub(ec, r, r, &wnd2[(-z2 - 1) >> 1]);
   }
-
-  xge_set(ec, r, &acc);
 }
 
 static void
@@ -6429,7 +6435,6 @@ edwards_mul_multi_var(edwards_t *ec,
   xge_t *wnds[32];
   int32_t *nafs[32];
   size_t i, j;
-  xge_t acc;
 
   assert((len & 1) == 0);
   assert(len <= 64);
@@ -6464,30 +6469,28 @@ edwards_mul_multi_var(edwards_t *ec,
   len >>= 1;
 
   /* Multiply and add. */
-  xge_zero(ec, &acc);
+  xge_zero(ec, r);
 
   for (i = max; i-- > 0;) {
     int32_t z0 = naf0[i];
 
     if (i != max - 1)
-      xge_dbl(ec, &acc, &acc);
+      xge_dbl(ec, r, r);
 
     if (z0 > 0)
-      xge_add(ec, &acc, &acc, &wnd0[(z0 - 1) >> 1]);
+      xge_add(ec, r, r, &wnd0[(z0 - 1) >> 1]);
     else if (z0 < 0)
-      xge_sub(ec, &acc, &acc, &wnd0[(-z0 - 1) >> 1]);
+      xge_sub(ec, r, r, &wnd0[(-z0 - 1) >> 1]);
 
     for (j = 0; j < len; j++) {
       int32_t z = nafs[j][i];
 
       if (z > 0)
-        xge_add(ec, &acc, &acc, &wnds[j][(z - 1) >> 1]);
+        xge_add(ec, r, r, &wnds[j][(z - 1) >> 1]);
       else if (z < 0)
-        xge_sub(ec, &acc, &acc, &wnds[j][(-z - 1) >> 1]);
+        xge_sub(ec, r, r, &wnds[j][(-z - 1) >> 1]);
     }
   }
-
-  xge_set(ec, r, &acc);
 }
 
 static void
@@ -6725,10 +6728,6 @@ edwards_point_to_hash(edwards_t *ec,
 
   for (;;) {
     drbg_generate(&rng, bytes, fe->size);
-
-    if (!bytes_lt(bytes, fe->raw, fe->size, fe->endian))
-      continue;
-
     edwards_point_from_uniform(ec, &p1, bytes);
 
     /* Avoid 2-torsion points. */
@@ -9061,9 +9060,9 @@ fail:
 }
 
 static void
-ecdsa_schnorr_hash_am(wei_t *ec, sc_t k,
-                      const unsigned char *scalar,
-                      const unsigned char *msg) {
+ecdsa_schnorr_hash_nonce(wei_t *ec, sc_t k,
+                         const unsigned char *scalar,
+                         const unsigned char *msg) {
   scalar_field_t *sc = &ec->sc;
   unsigned char bytes[MAX_SCALAR_SIZE];
   size_t hash_size = hash_output_size(ec->hash);
@@ -9080,7 +9079,7 @@ ecdsa_schnorr_hash_am(wei_t *ec, sc_t k,
   hash_init(&hash, ec->hash);
   hash_update(&hash, scalar, sc->size);
   hash_update(&hash, msg, 32);
-  hash_final(&hash, bytes + off, sc->size);
+  hash_final(&hash, bytes + off, hash_size);
 
   sc_import_reduce(sc, k, bytes);
 
@@ -9089,10 +9088,10 @@ ecdsa_schnorr_hash_am(wei_t *ec, sc_t k,
 }
 
 static void
-ecdsa_schnorr_hash_ram(wei_t *ec, sc_t e,
-                       const unsigned char *R,
-                       const unsigned char *A,
-                       const unsigned char *msg) {
+ecdsa_schnorr_hash_chal(wei_t *ec, sc_t e,
+                        const unsigned char *R,
+                        const unsigned char *A,
+                        const unsigned char *msg) {
   prime_field_t *fe = &ec->fe;
   scalar_field_t *sc = &ec->sc;
   unsigned char bytes[MAX_SCALAR_SIZE];
@@ -9111,7 +9110,7 @@ ecdsa_schnorr_hash_ram(wei_t *ec, sc_t e,
   hash_update(&hash, R, fe->size);
   hash_update(&hash, A, fe->size + 1);
   hash_update(&hash, msg, 32);
-  hash_final(&hash, bytes + off, sc->size);
+  hash_final(&hash, bytes + off, hash_size);
 
   sc_import_reduce(sc, e, bytes);
 
@@ -9121,6 +9120,7 @@ ecdsa_schnorr_hash_ram(wei_t *ec, sc_t e,
 
 int
 ecdsa_schnorr_support(wei_t *ec) {
+  /* [SCHNORR] "Footnotes". */
   /* Must satisfy p = 3 mod 4. */
   return (ec->fe.p[0] & 3) == 3;
 }
@@ -9179,7 +9179,7 @@ ecdsa_schnorr_sign(wei_t *ec,
 
   wei_mul_g(ec, &A, a);
 
-  ecdsa_schnorr_hash_am(ec, k, priv, msg);
+  ecdsa_schnorr_hash_nonce(ec, k, priv, msg);
 
   if (sc_is_zero(sc, k))
     goto fail;
@@ -9191,7 +9191,7 @@ ecdsa_schnorr_sign(wei_t *ec,
   wge_export_x(ec, Rraw, &R);
   wge_export(ec, Araw, NULL, &A, 1);
 
-  ecdsa_schnorr_hash_ram(ec, e, Rraw, Araw, msg);
+  ecdsa_schnorr_hash_chal(ec, e, Rraw, Araw, msg);
 
   sc_mul(sc, s, e, a);
   sc_add(sc, s, s, k);
@@ -9278,7 +9278,7 @@ ecdsa_schnorr_verify(wei_t *ec,
 
   wge_export(ec, Araw, NULL, &A, 1);
 
-  ecdsa_schnorr_hash_ram(ec, e, Rraw, Araw, msg);
+  ecdsa_schnorr_hash_chal(ec, e, Rraw, Araw, msg);
 
   sc_neg(sc, e, e);
 
@@ -9386,7 +9386,7 @@ ecdsa_schnorr_verify_batch(wei_t *ec,
     const unsigned char *Rraw = sig;
     const unsigned char *sraw = sig + fe->size;
 
-    if (!wge_import_x(ec, &R, Rraw))
+    if (!wge_import_square(ec, &R, Rraw))
       return 0;
 
     if (!wge_import(ec, &A, pub, pub_len))
@@ -9397,14 +9397,12 @@ ecdsa_schnorr_verify_batch(wei_t *ec,
 
     wge_export(ec, Araw, NULL, &A, 1);
 
-    ecdsa_schnorr_hash_ram(ec, e, Rraw, Araw, msg);
+    ecdsa_schnorr_hash_chal(ec, e, Rraw, Araw, msg);
 
-    if (j == 0) {
-      sc_zero(sc, a);
-      a[0] = 1;
-    } else {
+    if (j == 0)
+      sc_set_word(sc, a, 1);
+    else
       sc_random(sc, a, &rng);
-    }
 
     sc_mul(sc, e, e, a);
     sc_mul(sc, s, s, a);
@@ -9537,23 +9535,21 @@ schnorr_privkey_export(wei_t *ec,
                        const unsigned char *priv) {
   scalar_field_t *sc = &ec->sc;
   sc_t a;
-  jge_t A;
+  wge_t A;
   int ret = 0;
 
   if (!sc_import(sc, a, priv))
     goto fail;
 
-  wei_jmul_g(ec, &A, a);
+  wei_mul_g(ec, &A, a);
 
-  if (!jge_is_square_var(ec, &A))
-    sc_neg(sc, a, a);
-
+  sc_neg_cond(sc, a, a, wge_is_even(ec, &A) ^ 1);
   sc_export(sc, out, a);
 
   ret = 1;
 fail:
   sc_cleanse(sc, a);
-  jge_cleanse(ec, &A);
+  wge_cleanse(ec, &A);
   return ret;
 }
 
@@ -9572,7 +9568,7 @@ schnorr_privkey_tweak_add(wei_t *ec,
                           const unsigned char *tweak) {
   scalar_field_t *sc = &ec->sc;
   sc_t a, t;
-  jge_t A;
+  wge_t A;
   int ret = 0;
 
   if (!sc_import(sc, a, priv))
@@ -9584,11 +9580,9 @@ schnorr_privkey_tweak_add(wei_t *ec,
   if (!sc_import(sc, t, tweak))
     goto fail;
 
-  wei_jmul_g(ec, &A, a);
+  wei_mul_g(ec, &A, a);
 
-  if (!jge_is_square_var(ec, &A))
-    sc_neg(sc, a, a);
-
+  sc_neg_cond(sc, a, a, wge_is_even(ec, &A) ^ 1);
   sc_add(sc, a, a, t);
 
   if (sc_is_zero(sc, a))
@@ -9600,7 +9594,7 @@ schnorr_privkey_tweak_add(wei_t *ec,
 fail:
   sc_cleanse(sc, a);
   sc_cleanse(sc, t);
-  jge_cleanse(ec, &A);
+  wge_cleanse(ec, &A);
   return ret;
 }
 
@@ -9672,7 +9666,7 @@ schnorr_pubkey_to_uniform(wei_t *ec,
                           unsigned int hint) {
   wge_t A;
 
-  if (!wge_import_x(ec, &A, pub))
+  if (!wge_import_even(ec, &A, pub))
     return 0;
 
   return wei_point_to_uniform(ec, out, &A, hint);
@@ -9696,7 +9690,7 @@ schnorr_pubkey_to_hash(wei_t *ec,
                        const unsigned char *entropy) {
   wge_t A;
 
-  if (!wge_import_x(ec, &A, pub))
+  if (!wge_import_even(ec, &A, pub))
     return 0;
 
   wei_point_to_hash(ec, out, &A, entropy);
@@ -9708,7 +9702,7 @@ int
 schnorr_pubkey_verify(wei_t *ec, unsigned char *out, const unsigned char *pub) {
   wge_t A;
 
-  return wge_import_x(ec, &A, pub);
+  return wge_import_even(ec, &A, pub);
 }
 
 int
@@ -9719,7 +9713,7 @@ schnorr_pubkey_export(wei_t *ec,
   prime_field_t *fe = &ec->fe;
   wge_t A;
 
-  if (!wge_import_x(ec, &A, pub))
+  if (!wge_import_even(ec, &A, pub))
     return 0;
 
   assert(!A.inf);
@@ -9750,7 +9744,7 @@ schnorr_pubkey_import(wei_t *ec,
   memset(xp, 0x00, fe->size - x_len);
   memcpy(xp + fe->size - x_len, x, x_len);
 
-  if (!wge_import_x(ec, &A, xp))
+  if (!wge_import_even(ec, &A, xp))
     return 0;
 
   return wge_export_x(ec, out, &A);
@@ -9765,7 +9759,7 @@ schnorr_pubkey_tweak_add(wei_t *ec,
   wge_t A, T;
   sc_t t;
 
-  if (!wge_import_x(ec, &A, pub))
+  if (!wge_import_even(ec, &A, pub))
     return 0;
 
   if (!sc_import(sc, t, tweak))
@@ -9788,7 +9782,7 @@ schnorr_pubkey_tweak_mul(wei_t *ec,
   wge_t A;
   sc_t t;
 
-  if (!wge_import_x(ec, &A, pub))
+  if (!wge_import_even(ec, &A, pub))
     return 0;
 
   if (!sc_import(sc, t, tweak))
@@ -9813,7 +9807,7 @@ schnorr_pubkey_combine(wei_t *ec,
   jge_zero(ec, &P);
 
   for (i = 0; i < len; i++) {
-    if (!wge_import_x(ec, &A, pubs[i]))
+    if (!wge_import_even(ec, &A, pubs[i]))
       return 0;
 
     jge_mixed_add(ec, &P, &P, &A);
@@ -9826,27 +9820,35 @@ schnorr_pubkey_combine(wei_t *ec,
 
 static void
 schnorr_hash_init(hash_t *hash, int type, const char *tag) {
-  size_t size = hash_output_size(type);
-  unsigned char bytes[HASH_MAX_OUTPUT_SIZE * 2];
+  /* [BIP340] "Tagged Hashes". */
+  size_t hash_size = hash_output_size(type);
+  unsigned char bytes[HASH_MAX_OUTPUT_SIZE];
 
   hash_init(hash, type);
   hash_update(hash, tag, strlen(tag));
-  hash_final(hash, bytes, size);
-  memcpy(bytes + size, bytes, size);
+  hash_final(hash, bytes, hash_size);
 
   hash_init(hash, type);
-  hash_update(hash, bytes, size * 2);
+  hash_update(hash, bytes, hash_size);
+  hash_update(hash, bytes, hash_size);
 }
 
 static void
-schnorr_hash_am(wei_t *ec, sc_t k,
-                const unsigned char *scalar,
-                const unsigned char *msg) {
+schnorr_hash_nonce(wei_t *ec, sc_t k,
+                   const unsigned char *scalar,
+                   const unsigned char *point,
+                   const unsigned char *msg,
+                   const unsigned char *aux,
+                   size_t aux_len) {
+  prime_field_t *fe = &ec->fe;
   scalar_field_t *sc = &ec->sc;
+  unsigned char haux[HASH_MAX_OUTPUT_SIZE];
   unsigned char bytes[MAX_SCALAR_SIZE];
+  unsigned char secret[MAX_SCALAR_SIZE];
   size_t hash_size = hash_output_size(ec->hash);
   size_t off = 0;
   hash_t hash;
+  size_t i;
 
   assert(MAX_SCALAR_SIZE >= HASH_MAX_OUTPUT_SIZE);
 
@@ -9855,23 +9857,34 @@ schnorr_hash_am(wei_t *ec, sc_t k,
     memset(bytes, 0x00, off);
   }
 
-  schnorr_hash_init(&hash, ec->hash, "BIPSchnorrDerive");
+  schnorr_hash_init(&hash, ec->hash, "BIP340/aux");
 
-  hash_update(&hash, scalar, sc->size);
+  hash_update(&hash, aux, aux_len);
+  hash_final(&hash, haux, hash_size);
+
+  for (i = 0; i < sc->size; i++)
+    secret[i] = scalar[i] ^ haux[i % hash_size];
+
+  schnorr_hash_init(&hash, ec->hash, "BIP340/nonce");
+
+  hash_update(&hash, secret, sc->size);
+  hash_update(&hash, point, fe->size);
   hash_update(&hash, msg, 32);
-  hash_final(&hash, bytes + off, sc->size);
+  hash_final(&hash, bytes + off, hash_size);
 
   sc_import_reduce(sc, k, bytes);
 
+  cleanse(haux, sizeof(haux));
   cleanse(bytes, sizeof(bytes));
+  cleanse(secret, sizeof(secret));
   cleanse(&hash, sizeof(hash));
 }
 
 static void
-schnorr_hash_ram(wei_t *ec, sc_t e,
-                 const unsigned char *R,
-                 const unsigned char *A,
-                 const unsigned char *msg) {
+schnorr_hash_chal(wei_t *ec, sc_t e,
+                  const unsigned char *R,
+                  const unsigned char *A,
+                  const unsigned char *msg) {
   prime_field_t *fe = &ec->fe;
   scalar_field_t *sc = &ec->sc;
   unsigned char bytes[MAX_SCALAR_SIZE];
@@ -9886,12 +9899,12 @@ schnorr_hash_ram(wei_t *ec, sc_t e,
     memset(bytes, 0x00, off);
   }
 
-  schnorr_hash_init(&hash, ec->hash, "BIPSchnorr");
+  schnorr_hash_init(&hash, ec->hash, "BIP340/challenge");
 
   hash_update(&hash, R, fe->size);
   hash_update(&hash, A, fe->size);
   hash_update(&hash, msg, 32);
-  hash_final(&hash, bytes + off, sc->size);
+  hash_final(&hash, bytes + off, hash_size);
 
   sc_import_reduce(sc, e, bytes);
 
@@ -9903,28 +9916,32 @@ int
 schnorr_sign(wei_t *ec,
              unsigned char *sig,
              const unsigned char *msg,
-             const unsigned char *priv) {
+             const unsigned char *priv,
+             const unsigned char *aux,
+             size_t aux_len) {
   /* Schnorr Signing.
    *
-   * [SCHNORR] "Default Signing".
+   * [BIP340] "Default Signing".
    *
    * Assumptions:
    *
    *   - Let `H` be a cryptographic hash function.
    *   - Let `m` be a 32-byte array.
    *   - Let `a` be a secret non-zero scalar.
+   *   - Let `d` be a 0 to 32-byte array.
    *   - k != 0.
    *
    * Computation:
    *
    *   A = G * a
-   *   a = -a mod n, if y(A) is not square
-   *   k = H("BIPSchnorrDerive", a, m) mod n
+   *   a = -a mod n, if y(A) is not even
+   *   x = x(A)
+   *   t = a xor H("BIP340/aux", d)
+   *   k = H("BIP340/nonce", t, x, m) mod n
    *   R = G * k
    *   k = -k mod n, if y(R) is not square
    *   r = x(R)
-   *   x = x(A)
-   *   e = H("BIPSchnorr", r, x, m) mod n
+   *   e = H("BIP340/challenge", r, x, m) mod n
    *   s = (k + e * a) mod n
    *   S = (r, s)
    *
@@ -9946,6 +9963,9 @@ schnorr_sign(wei_t *ec,
   /* Must satisfy p = 3 mod 4. */
   assert((fe->p[0] & 3) == 3);
 
+  if (aux_len > 32)
+    goto fail;
+
   if (!sc_import(sc, a, priv))
     goto fail;
 
@@ -9954,10 +9974,12 @@ schnorr_sign(wei_t *ec,
 
   wei_mul_g(ec, &A, a);
 
-  sc_neg_cond(sc, a, a, wge_is_square(ec, &A) ^ 1);
+  sc_neg_cond(sc, a, a, wge_is_even(ec, &A) ^ 1);
   sc_export(sc, araw, a);
 
-  schnorr_hash_am(ec, k, araw, msg);
+  wge_export_x(ec, Araw, &A);
+
+  schnorr_hash_nonce(ec, k, araw, Araw, msg, aux, aux_len);
 
   if (sc_is_zero(sc, k))
     goto fail;
@@ -9967,9 +9989,8 @@ schnorr_sign(wei_t *ec,
   sc_neg_cond(sc, k, k, wge_is_square(ec, &R) ^ 1);
 
   wge_export_x(ec, Rraw, &R);
-  wge_export_x(ec, Araw, &A);
 
-  schnorr_hash_ram(ec, e, Rraw, Araw, msg);
+  schnorr_hash_chal(ec, e, Rraw, Araw, msg);
 
   sc_mul(sc, s, e, a);
   sc_add(sc, s, s, k);
@@ -9996,7 +10017,7 @@ schnorr_verify(wei_t *ec,
                const unsigned char *pub) {
   /* Schnorr Verification.
    *
-   * [SCHNORR] "Verification".
+   * [BIP340] "Verification".
    *
    * Assumptions:
    *
@@ -10005,7 +10026,7 @@ schnorr_verify(wei_t *ec,
    *   - Let `r` and `s` be signature elements.
    *   - Let `x` be a field element.
    *   - r^3 + a * r + b is square in F(p).
-   *   - x^3 + a * x + b is square in F(p).
+   *   - x^3 + a * x + b is even in F(p).
    *   - r < p, s < n, x < p.
    *   - R != O.
    *
@@ -10013,13 +10034,13 @@ schnorr_verify(wei_t *ec,
    *
    *   R = (r, sqrt(r^3 + a * r + b))
    *   A = (x, sqrt(x^3 + a * x + b))
-   *   e = H("BIPSchnorr", r, x, m) mod n
+   *   e = H("BIP340/challenge", r, x, m) mod n
    *   R == G * s - A * e
    *
    * We can skip a square root with:
    *
    *   A = (x, sqrt(x^3 + a * x + b))
-   *   e = H("BIPSchnorr", r, x, m) mod n
+   *   e = H("BIP340/challenge", r, x, m) mod n
    *   R = G * s - A * e
    *   y(R) is square
    *   x(R) == r
@@ -10051,10 +10072,10 @@ schnorr_verify(wei_t *ec,
   if (!sc_import(sc, s, sraw))
     return 0;
 
-  if (!wge_import_x(ec, &A, pub))
+  if (!wge_import_even(ec, &A, pub))
     return 0;
 
-  schnorr_hash_ram(ec, e, Rraw, pub, msg);
+  schnorr_hash_chal(ec, e, Rraw, pub, msg);
 
   sc_neg(sc, e, e);
 
@@ -10078,7 +10099,7 @@ schnorr_verify_batch(wei_t *ec,
                      wei_scratch_t *scratch) {
   /* Schnorr Batch Verification.
    *
-   * [SCHNORR] "Batch Verification".
+   * [BIP340] "Batch Verification".
    *
    * Assumptions:
    *
@@ -10088,7 +10109,7 @@ schnorr_verify_batch(wei_t *ec,
    *   - Let `x` be a field element.
    *   - Let `i` be the batch item index.
    *   - r^3 + a * r + b is square in F(p).
-   *   - x^3 + a * x + b is square in F(p).
+   *   - x^3 + a * x + b is even in F(p).
    *   - r < p, s < n, x < p.
    *   - a1 = 1 mod n.
    *
@@ -10096,7 +10117,7 @@ schnorr_verify_batch(wei_t *ec,
    *
    *   Ri = (ri, sqrt(ri^3 + a * ri + b))
    *   Ai = (xi, sqrt(xi^3 + a * xi + b))
-   *   ei = H("BIPSchnorr", ri, xi, mi) mod n
+   *   ei = H("BIP340/challenge", ri, xi, mi) mod n
    *   ai = random integer in [1,n-1]
    *   lhs = si * ai + ... mod n
    *   rhs = Ri * ai + Ai * (ei * ai mod n) + ...
@@ -10149,23 +10170,21 @@ schnorr_verify_batch(wei_t *ec,
     const unsigned char *Rraw = sig;
     const unsigned char *sraw = sig + fe->size;
 
-    if (!wge_import_x(ec, &R, Rraw))
+    if (!wge_import_square(ec, &R, Rraw))
       return 0;
 
-    if (!wge_import_x(ec, &A, pub))
+    if (!wge_import_even(ec, &A, pub))
       return 0;
 
     if (!sc_import(sc, s, sraw))
       return 0;
 
-    schnorr_hash_ram(ec, e, Rraw, pub, msg);
+    schnorr_hash_chal(ec, e, Rraw, pub, msg);
 
-    if (j == 0) {
-      sc_zero(sc, a);
-      a[0] = 1;
-    } else {
+    if (j == 0)
+      sc_set_word(sc, a, 1);
+    else
       sc_random(sc, a, &rng);
-    }
 
     sc_mul(sc, e, e, a);
     sc_mul(sc, s, s, a);
@@ -10221,7 +10240,7 @@ schnorr_derive(wei_t *ec,
   if (sc_is_zero(sc, a))
     goto fail;
 
-  if (!wge_import_x(ec, &A, pub))
+  if (!wge_import_even(ec, &A, pub))
     goto fail;
 
   wei_mul(ec, &P, &A, a);
@@ -11222,7 +11241,7 @@ eddsa_hash_init(edwards_t *ec,
 }
 
 static void
-eddsa_hash_final(edwards_t *ec, sc_t r, hash_t *hash) {
+eddsa_hash_final(edwards_t *ec, hash_t *hash, sc_t r) {
   unsigned char bytes[(MAX_FIELD_SIZE + 1) * 2];
   mp_limb_t k[MAX_REDUCE_LIMBS];
   prime_field_t *fe = &ec->fe;
@@ -11239,14 +11258,14 @@ eddsa_hash_final(edwards_t *ec, sc_t r, hash_t *hash) {
 }
 
 static void
-eddsa_hash_am(edwards_t *ec,
-              sc_t r,
-              int ph,
-              const unsigned char *ctx,
-              size_t ctx_len,
-              const unsigned char *prefix,
-              const unsigned char *msg,
-              size_t msg_len) {
+eddsa_hash_nonce(edwards_t *ec,
+                 sc_t k,
+                 int ph,
+                 const unsigned char *ctx,
+                 size_t ctx_len,
+                 const unsigned char *prefix,
+                 const unsigned char *msg,
+                 size_t msg_len) {
   prime_field_t *fe = &ec->fe;
   hash_t hash;
 
@@ -11255,19 +11274,19 @@ eddsa_hash_am(edwards_t *ec,
   hash_update(&hash, prefix, fe->adj_size);
   hash_update(&hash, msg, msg_len);
 
-  eddsa_hash_final(ec, r, &hash);
+  eddsa_hash_final(ec, &hash, k);
 }
 
 static void
-eddsa_hash_ram(edwards_t *ec,
-               sc_t r,
-               int ph,
-               const unsigned char *ctx,
-               size_t ctx_len,
-               const unsigned char *R,
-               const unsigned char *A,
-               const unsigned char *msg,
-               size_t msg_len) {
+eddsa_hash_chal(edwards_t *ec,
+                sc_t e,
+                int ph,
+                const unsigned char *ctx,
+                size_t ctx_len,
+                const unsigned char *R,
+                const unsigned char *A,
+                const unsigned char *msg,
+                size_t msg_len) {
   prime_field_t *fe = &ec->fe;
   hash_t hash;
 
@@ -11277,7 +11296,7 @@ eddsa_hash_ram(edwards_t *ec,
   hash_update(&hash, A, fe->adj_size);
   hash_update(&hash, msg, msg_len);
 
-  eddsa_hash_final(ec, r, &hash);
+  eddsa_hash_final(ec, &hash, e);
 }
 
 void
@@ -11327,7 +11346,7 @@ eddsa_sign_with_scalar(edwards_t *ec,
   sc_t k, a, e, s;
   xge_t R, A;
 
-  eddsa_hash_am(ec, k, ph, ctx, ctx_len, prefix, msg, msg_len);
+  eddsa_hash_nonce(ec, k, ph, ctx, ctx_len, prefix, msg, msg_len);
 
   edwards_mul_g(ec, &R, k);
   xge_export(ec, Rraw, &R);
@@ -11337,14 +11356,14 @@ eddsa_sign_with_scalar(edwards_t *ec,
   edwards_mul_g(ec, &A, a);
   xge_export(ec, Araw, &A);
 
-  eddsa_hash_ram(ec, e, ph, ctx, ctx_len, Rraw, Araw, msg, msg_len);
+  eddsa_hash_chal(ec, e, ph, ctx, ctx_len, Rraw, Araw, msg, msg_len);
 
   sc_mul(sc, s, e, a);
   sc_add(sc, s, s, k);
   sc_export(sc, sraw, s);
 
   if ((fe->bits & 7) == 0)
-    sraw[fe->size] = 0;
+    sraw[fe->size] = 0x00;
 
   cleanse(Araw, sizeof(Araw));
   sc_cleanse(sc, k);
@@ -11492,11 +11511,11 @@ eddsa_verify(edwards_t *ec,
     return 0;
 
   if ((fe->bits & 7) == 0) {
-    if (sraw[fe->size] != 0)
+    if (sraw[fe->size] != 0x00)
       return 0;
   }
 
-  eddsa_hash_ram(ec, e, ph, ctx, ctx_len, Rraw, pub, msg, msg_len);
+  eddsa_hash_chal(ec, e, ph, ctx, ctx_len, Rraw, pub, msg, msg_len);
 
   xge_neg(ec, &A, &A);
 
@@ -11556,11 +11575,11 @@ eddsa_verify_single(edwards_t *ec,
     return 0;
 
   if ((fe->bits & 7) == 0) {
-    if (sraw[fe->size] != 0)
+    if (sraw[fe->size] != 0x00)
       return 0;
   }
 
-  eddsa_hash_ram(ec, e, ph, ctx, ctx_len, Rraw, pub, msg, msg_len);
+  eddsa_hash_chal(ec, e, ph, ctx, ctx_len, Rraw, pub, msg, msg_len);
 
   sc_mul_word(sc, s, s, ec->h);
   xge_mulh(ec, &A, &A);
@@ -11664,18 +11683,16 @@ eddsa_verify_batch(edwards_t *ec,
       return 0;
 
     if ((fe->bits & 7) == 0) {
-      if (sraw[fe->size] != 0)
+      if (sraw[fe->size] != 0x00)
         return 0;
     }
 
-    eddsa_hash_ram(ec, e, ph, ctx, ctx_len, Rraw, pub, msg, msg_len);
+    eddsa_hash_chal(ec, e, ph, ctx, ctx_len, Rraw, pub, msg, msg_len);
 
-    if (j == 0) {
-      sc_zero(sc, a);
-      a[0] = 1;
-    } else {
+    if (j == 0)
+      sc_set_word(sc, a, 1);
+    else
       sc_random(sc, a, &rng);
-    }
 
     sc_mul(sc, e, e, a);
     sc_mul(sc, s, s, a);
