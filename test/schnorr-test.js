@@ -6,13 +6,14 @@ const secp256k1 = require('../lib/secp256k1');
 const rng = require('../lib/random');
 const vectors = require('./data/schnorr.json');
 
-describe.skip('Schnorr', function() {
+describe('Schnorr', function() {
   const valid = [];
   const invalid = [];
 
-  for (const [key_, pub_, msg_, sig_, result, comment_] of vectors) {
+  for (const [key_, pub_, aux_, msg_, sig_, result, comment_] of vectors) {
     const key = Buffer.from(key_, 'hex');
     const pub = Buffer.from(pub_, 'hex');
+    const aux = Buffer.from(aux_, 'hex');
     const msg = Buffer.from(msg_, 'hex');
     const sig = Buffer.from(sig_, 'hex');
     const text = sig_.slice(0, 32).toLowerCase() + '...';
@@ -25,7 +26,7 @@ describe.skip('Schnorr', function() {
       if (key.length > 0) {
         assert(schnorr.privateKeyVerify(key));
         assert.bufferEqual(schnorr.publicKeyCreate(key), pub);
-        assert.bufferEqual(schnorr.sign(msg, key), sig);
+        assert.bufferEqual(schnorr.sign(msg, key, aux), sig);
       }
 
       assert.strictEqual(schnorr.verify(msg, sig, pub), result);
@@ -35,15 +36,15 @@ describe.skip('Schnorr', function() {
   if (schnorr.native !== 2) {
     it('should test RNG', () => {
       const seed =
-        '98b777ef9034ab1e1268bfe5d9a92df4c2940a4bc0a7bd3f9edbf36821bc511b';
+        '33e87bc9d8f8b93a5240a7fe7041c5b8f3325ddf214116aeee089741894c20db';
 
       const expect = [
         '0000000000000000000000000000000000000000000000000000000000000001',
-        '55aed7eb7fb4ddab3f85be80bd789b943c80080620c2843c2329e77245817fba',
-        '0e910895fa99cbd592c97dc98f81c3c86082dee4a90c7db76c12a0df291517e3',
-        'd544ca456e02513b74440fd9269b9c7b4a526880798630b6732093bc06cd707c',
-        'f71f34ec036b4d2af5aade8fcb165396a2d53c8a6901cfc8a480fc72303e5f33',
-        'd0ef0b53bea232d824fd23c3ed1a0d97fdb125ff3368b0363bd5983660a3be16'
+        'c094cb8973637dacc2fbc834cce68a5f9be2eef601798d5eed3a6f1f2e01b0e5',
+        'ecc4d40e9429b388745337e7801ef5ebab8002c6e4aaf157a035c161c7811e21',
+        '4f663ce17aede969c572117ed1109193f4678c25bd2a6f170d83d0a6f6ee9ca2',
+        'bb5ce9a621c5aca705fb8f73384784b73943c0bb24cb75469274311fba715279',
+        '2911f9880367fd484ef57be418761620c0e3e1550736ec437864becab3427493'
       ];
 
       const {rng} = schnorr;
@@ -112,9 +113,10 @@ describe.skip('Schnorr', function() {
     assert.bufferEqual(secp256k1.publicKeyCreate(priv),
                        Buffer.concat([odd, pub]));
 
-    const ecdsaPriv =
-      secp256k1.privateKeyImport(schnorr.privateKeyExport(priv));
-    const ecdsaPub = secp256k1.publicKeyImport(schnorr.publicKeyExport(pub));
+    const jsonPriv = schnorr.privateKeyExport(priv);
+    const jsonPub = schnorr.publicKeyExport(pub);
+    const ecdsaPriv = secp256k1.privateKeyImport(jsonPriv);
+    const ecdsaPub = secp256k1.publicKeyImport(jsonPub);
 
     // These calls must produce a sign-aware key pair such that G*a = A.
     assert.bufferEqual(secp256k1.publicKeyCreate(ecdsaPriv), ecdsaPub);
