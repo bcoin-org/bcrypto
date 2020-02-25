@@ -715,7 +715,11 @@ sc_set_fe(const scalar_field_t *sc,
           const prime_field_t *fe,
           sc_t r, const fe_t a) {
   unsigned char tmp[MAX_FIELD_SIZE];
+
+  assert(sc->size == fe->size);
+
   fe_export(fe, tmp, a);
+
   return sc_import_reduce(sc, r, tmp);
 }
 
@@ -1438,6 +1442,9 @@ fe_set_sc(const prime_field_t *fe,
           fe_t r, const sc_t a) {
   unsigned char tmp[MAX_SCALAR_SIZE];
   int ret;
+
+  assert(sc->bits <= fe->bits);
+  assert(sc->size == fe->size);
 
   sc_export(sc, tmp, a);
 
@@ -2260,12 +2267,12 @@ wge_dbl_var(const wei_t *ec, wge_t *r, const wge_t *p) {
   }
 
   /* L = (3 * X1^2 + a) / (2 * Y1) */
-  fe_sqr(fe, l, p->x);
-  fe_add(fe, t, l, l);
-  fe_add(fe, l, t, l);
+  fe_sqr(fe, t, p->x);
+  fe_add(fe, l, t, t);
+  fe_add(fe, l, l, t);
   fe_add(fe, l, l, ec->a);
   fe_add(fe, t, p->y, p->y);
-  fe_invert_var(fe, t, t);
+  assert(fe_invert_var(fe, t, t));
   fe_mul(fe, l, l, t);
 
   /* X3 = L^2 - 2 * X1 */
@@ -2343,7 +2350,7 @@ wge_add_var(const wei_t *ec, wge_t *r, const wge_t *a, const wge_t *b) {
   /* L = (Y1 - Y2) / (X1 - X2) */
   fe_sub(fe, l, a->y, b->y);
   fe_sub(fe, t, a->x, b->x);
-  fe_invert_var(fe, t, t);
+  assert(fe_invert_var(fe, t, t));
   fe_mul(fe, l, l, t);
 
   /* X3 = L^2 - X1 - X2 */
@@ -3408,7 +3415,7 @@ jge_to_wge_var(const wei_t *ec, wge_t *r, const jge_t *p) {
   }
 
   /* A = 1 / Z1 */
-  fe_invert_var(fe, a, p->z);
+  assert(fe_invert_var(fe, a, p->z));
 
   /* AA = A^2 */
   fe_sqr(fe, aa, a);
@@ -6067,10 +6074,7 @@ xge_normalize_var(const edwards_t *ec, xge_t *r, const xge_t *p) {
 
   /* Z = 1 */
   if (fe_equal(fe, p->z, fe->one)) {
-    fe_set(fe, r->x, p->x);
-    fe_set(fe, r->y, p->y);
-    fe_set(fe, r->z, fe->one);
-    fe_set(fe, r->t, p->t);
+    xge_set(ec, r, p);
     return;
   }
 
@@ -8262,7 +8266,7 @@ ecdsa_privkey_invert(const wei_t *ec,
   if (sc_is_zero(sc, a))
     goto fail;
 
-  sc_invert(sc, a, a);
+  assert(sc_invert(sc, a, a));
   sc_export(sc, out, a);
 
   ret = 1;
@@ -8390,7 +8394,7 @@ ecdsa_pubkey_export(const wei_t *ec,
   if (!wge_import(ec, &A, pub, pub_len))
     return 0;
 
-  assert(!A.inf);
+  assert(!wge_is_zero(ec, &A));
 
   fe_export(fe, x, A.x);
   fe_export(fe, y, A.y);
@@ -8461,7 +8465,8 @@ ecdsa_pubkey_tweak_add(const wei_t *ec,
                        const unsigned char *tweak,
                        int compact) {
   const scalar_field_t *sc = &ec->sc;
-  wge_t A, T;
+  wge_t A;
+  jge_t T;
   sc_t t;
 
   if (!wge_import(ec, &A, pub, pub_len))
@@ -8470,8 +8475,10 @@ ecdsa_pubkey_tweak_add(const wei_t *ec,
   if (!sc_import(sc, t, tweak))
     return 0;
 
-  wei_mul_g(ec, &T, t);
-  wge_add(ec, &A, &A, &T);
+  wei_jmul_g(ec, &T, t);
+
+  jge_mixed_add(ec, &T, &T, &A);
+  jge_to_wge(ec, &A, &T);
 
   sc_cleanse(sc, t);
 
@@ -9145,7 +9152,7 @@ ecdsa_schnorr_hash_chal(const wei_t *ec, sc_t e,
 int
 ecdsa_schnorr_support(const wei_t *ec) {
   /* [SCHNORR] "Footnotes". */
-  /* Must satisfy p = 3 mod 4. */
+  /* Must be congruent to 3 mod 4. */
   return (ec->fe.p[0] & 3) == 3;
 }
 
@@ -9191,8 +9198,7 @@ ecdsa_schnorr_sign(const wei_t *ec,
   wge_t A, R;
   int ret = 0;
 
-  /* Must satisfy p = 3 mod 4. */
-  if ((fe->p[0] & 3) != 3)
+  if (!ecdsa_schnorr_support(ec))
     return 0;
 
   if (!sc_import(sc, a, priv))
@@ -9287,8 +9293,7 @@ ecdsa_schnorr_verify(const wei_t *ec,
   wge_t A;
   jge_t R;
 
-  /* Must satisfy p = 3 mod 4. */
-  if ((fe->p[0] & 3) != 3)
+  if (!ecdsa_schnorr_support(ec))
     return 0;
 
   if (!fe_import(fe, r, Rraw))
@@ -9361,8 +9366,7 @@ ecdsa_schnorr_verify_batch(const wei_t *ec,
   size_t j = 0;
   size_t i;
 
-  /* Must satisfy p = 3 mod 4. */
-  if ((fe->p[0] & 3) != 3)
+  if (!ecdsa_schnorr_support(ec))
     return 0;
 
   /* Seed RNG. */
@@ -9480,7 +9484,7 @@ schnorr_context_create(const char *id) {
   /* Must be congruent to 3 mod 4. */
   if ((ec->fe.p[0] & 3) != 3) {
     ecdsa_context_destroy(ec);
-    return 0;
+    return NULL;
   }
 
   return ec;
@@ -9563,6 +9567,9 @@ schnorr_privkey_export(const wei_t *ec,
   int ret = 0;
 
   if (!sc_import(sc, a, priv))
+    goto fail;
+
+  if (sc_is_zero(sc, a))
     goto fail;
 
   wei_mul_g(ec, &A, a);
@@ -9742,7 +9749,7 @@ schnorr_pubkey_export(const wei_t *ec,
   if (!wge_import_even(ec, &A, pub))
     return 0;
 
-  assert(!A.inf);
+  assert(!wge_is_zero(ec, &A));
 
   fe_export(fe, x, A.x);
   fe_export(fe, y, A.y);
@@ -9782,7 +9789,8 @@ schnorr_pubkey_tweak_add(const wei_t *ec,
                          const unsigned char *pub,
                          const unsigned char *tweak) {
   const scalar_field_t *sc = &ec->sc;
-  wge_t A, T;
+  wge_t A;
+  jge_t T;
   sc_t t;
 
   if (!wge_import_even(ec, &A, pub))
@@ -9791,8 +9799,10 @@ schnorr_pubkey_tweak_add(const wei_t *ec,
   if (!sc_import(sc, t, tweak))
     return 0;
 
-  wei_mul_g(ec, &T, t);
-  wge_add(ec, &A, &A, &T);
+  wei_jmul_g(ec, &T, t);
+
+  jge_mixed_add(ec, &T, &T, &A);
+  jge_to_wge(ec, &A, &T);
 
   sc_cleanse(sc, t);
 
@@ -9986,9 +9996,6 @@ schnorr_sign(const wei_t *ec,
   wge_t A, R;
   int ret = 0;
 
-  /* Must satisfy p = 3 mod 4. */
-  assert((fe->p[0] & 3) == 3);
-
   if (aux_len > 32)
     goto fail;
 
@@ -10089,9 +10096,6 @@ schnorr_verify(const wei_t *ec,
   wge_t A;
   jge_t R;
 
-  /* Must satisfy p = 3 mod 4. */
-  assert((fe->p[0] & 3) == 3);
-
   if (!fe_import(fe, r, Rraw))
     return 0;
 
@@ -10159,9 +10163,6 @@ schnorr_verify_batch(const wei_t *ec,
   sc_t sum, s, e, a;
   size_t j = 0;
   size_t i;
-
-  /* Must satisfy p = 3 mod 4. */
-  assert((fe->p[0] & 3) == 3);
 
   /* Seed RNG. */
   {
@@ -10447,7 +10448,7 @@ ecdh_pubkey_convert(const mont_t *ec,
     pge_mulh(ec, &P, &P);
 
     sc_set_word(sc, k, 16);
-    sc_invert_var(sc, k, k);
+    assert(sc_invert_var(sc, k, k));
 
     mont_mul(ec, &P, &P, k);
 
@@ -10557,7 +10558,7 @@ ecdh_pubkey_export(const mont_t *ec,
   if (!mge_import(ec, &A, pub, sign))
     return 0;
 
-  assert(!A.inf);
+  assert(!mge_is_zero(ec, &A));
 
   fe_export(fe, x, A.x);
   fe_export(fe, y, A.y);
