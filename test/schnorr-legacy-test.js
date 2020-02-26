@@ -163,12 +163,12 @@ describe('Secp256k1+Schnorr Legacy', function() {
     // prime doesn't satisfy either `p mod 4 == 3` or
     // `p mod 8 == 5`, lending itself to much slower
     // square roots.
-    assert(p192.schnorr.supported);
-    assert(!p224.schnorr.supported);
-    assert(p256.schnorr.supported);
-    assert(p384.schnorr.supported);
-    assert(p521.schnorr.supported);
-    assert(secp256k1.schnorr.supported);
+    p192.schnorr.check();
+    assert.throws(() => p224.schnorr.check());
+    p256.schnorr.check();
+    p384.schnorr.check();
+    p521.schnorr.check();
+    secp256k1.schnorr.check();
   });
 
   for (const [key_, pub_, msg_, sig_, result, comment_] of custom) {

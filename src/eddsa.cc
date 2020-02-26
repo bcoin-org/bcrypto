@@ -1061,14 +1061,8 @@ NAN_METHOD(BEDDSA::Sign) {
     if (!node::Buffer::HasInstance(cbuf))
       return Nan::ThrowTypeError("Fourth argument must be a buffer or null.");
 
-    if (ph == -1)
-      return Nan::ThrowError("Must pass pre-hash flag with context.");
-
     ctx = (const uint8_t *)node::Buffer::Data(cbuf);
     ctx_len = node::Buffer::Length(cbuf);
-
-    if (ctx_len > 255)
-      return Nan::ThrowRangeError("Invalid context length.");
   }
 
   if (priv_len != ec->priv_size)
@@ -1120,14 +1114,8 @@ NAN_METHOD(BEDDSA::SignWithScalar) {
     if (!node::Buffer::HasInstance(cbuf))
       return Nan::ThrowTypeError("Fifth argument must be a buffer or null.");
 
-    if (ph == -1)
-      return Nan::ThrowError("Must pass pre-hash flag with context.");
-
     ctx = (const uint8_t *)node::Buffer::Data(cbuf);
     ctx_len = node::Buffer::Length(cbuf);
-
-    if (ctx_len > 255)
-      return Nan::ThrowRangeError("Invalid context length.");
   }
 
   if (scalar_len != ec->scalar_size)
@@ -1183,14 +1171,8 @@ NAN_METHOD(BEDDSA::SignTweakAdd) {
     if (!node::Buffer::HasInstance(cbuf))
       return Nan::ThrowTypeError("Fourth argument must be a buffer or null.");
 
-    if (ph == -1)
-      return Nan::ThrowError("Must pass pre-hash flag with context.");
-
     ctx = (const uint8_t *)node::Buffer::Data(cbuf);
     ctx_len = node::Buffer::Length(cbuf);
-
-    if (ctx_len > 255)
-      return Nan::ThrowRangeError("Invalid context length.");
   }
 
   if (priv_len != ec->priv_size)
@@ -1246,14 +1228,8 @@ NAN_METHOD(BEDDSA::SignTweakMul) {
     if (!node::Buffer::HasInstance(cbuf))
       return Nan::ThrowTypeError("Fourth argument must be a buffer or null.");
 
-    if (ph == -1)
-      return Nan::ThrowError("Must pass pre-hash flag with context.");
-
     ctx = (const uint8_t *)node::Buffer::Data(cbuf);
     ctx_len = node::Buffer::Length(cbuf);
-
-    if (ctx_len > 255)
-      return Nan::ThrowRangeError("Invalid context length.");
   }
 
   if (priv_len != ec->priv_size)
@@ -1308,14 +1284,8 @@ NAN_METHOD(BEDDSA::Verify) {
     if (!node::Buffer::HasInstance(cbuf))
       return Nan::ThrowTypeError("Fourth argument must be a buffer or null.");
 
-    if (ph == -1)
-      return Nan::ThrowError("Must pass pre-hash flag with context.");
-
     ctx = (const uint8_t *)node::Buffer::Data(cbuf);
     ctx_len = node::Buffer::Length(cbuf);
-
-    if (ctx_len > 255)
-      return Nan::ThrowRangeError("Invalid context length.");
   }
 
   if (sig_len != ec->sig_size || pub_len != ec->pub_size)
@@ -1365,14 +1335,8 @@ NAN_METHOD(BEDDSA::VerifySingle) {
     if (!node::Buffer::HasInstance(cbuf))
       return Nan::ThrowTypeError("Fourth argument must be a buffer or null.");
 
-    if (ph == -1)
-      return Nan::ThrowError("Must pass pre-hash flag with context.");
-
     ctx = (const uint8_t *)node::Buffer::Data(cbuf);
     ctx_len = node::Buffer::Length(cbuf);
-
-    if (ctx_len > 255)
-      return Nan::ThrowRangeError("Invalid context length.");
   }
 
   if (sig_len != ec->sig_size || pub_len != ec->pub_size)
@@ -1412,14 +1376,8 @@ NAN_METHOD(BEDDSA::VerifyBatch) {
     if (!node::Buffer::HasInstance(cbuf))
       return Nan::ThrowTypeError("Third argument must be a buffer or null.");
 
-    if (ph == -1)
-      return Nan::ThrowError("Must pass pre-hash flag with context.");
-
     ctx = (const uint8_t *)node::Buffer::Data(cbuf);
     ctx_len = node::Buffer::Length(cbuf);
-
-    if (ctx_len > 255)
-      return Nan::ThrowRangeError("Invalid context length.");
   }
 
   size_t len = (size_t)batch->Length();
