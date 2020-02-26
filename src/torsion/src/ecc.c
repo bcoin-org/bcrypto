@@ -9338,10 +9338,10 @@ ecdsa_schnorr_verify_batch(const wei_t *ec,
 
   /* Seed RNG. */
   {
-    unsigned char bytes[64];
-    hash_t outer, inner;
+    unsigned char bytes[32];
+    sha256_t outer, inner;
 
-    hash_init(&outer, HASH_SHA512);
+    sha256_init(&outer);
 
     for (i = 0; i < len; i++) {
       const unsigned char *msg = msgs[i];
@@ -9360,18 +9360,18 @@ ecdsa_schnorr_verify_batch(const wei_t *ec,
         memset(Araw, 0x00, fe->size + 1);
       }
 
-      hash_init(&inner, HASH_SHA256);
-      hash_update(&inner, msg, msg_len);
-      hash_final(&inner, bytes, 32);
+      sha256_init(&inner);
+      sha256_update(&inner, msg, msg_len);
+      sha256_final(&inner, bytes);
 
-      hash_update(&outer, bytes, 32);
-      hash_update(&outer, sig, fe->size + sc->size);
-      hash_update(&outer, Araw, fe->size + 1);
+      sha256_update(&outer, bytes, 32);
+      sha256_update(&outer, sig, fe->size + sc->size);
+      sha256_update(&outer, Araw, fe->size + 1);
     }
 
-    hash_final(&outer, bytes, 64);
+    sha256_final(&outer, bytes);
 
-    drbg_init(&rng, HASH_SHA256, bytes, 64);
+    drbg_init(&rng, HASH_SHA256, bytes, 32);
   }
 
   /* Intialize sum. */
@@ -10147,10 +10147,10 @@ schnorr_verify_batch(const wei_t *ec,
 
   /* Seed RNG. */
   {
-    unsigned char bytes[64];
-    hash_t outer, inner;
+    unsigned char bytes[32];
+    sha256_t outer, inner;
 
-    hash_init(&outer, HASH_SHA512);
+    sha256_init(&outer);
 
     for (i = 0; i < len; i++) {
       const unsigned char *msg = msgs[i];
@@ -10158,18 +10158,18 @@ schnorr_verify_batch(const wei_t *ec,
       const unsigned char *sig = sigs[i];
       const unsigned char *pub = pubs[i];
 
-      hash_init(&inner, HASH_SHA256);
-      hash_update(&inner, msg, msg_len);
-      hash_final(&inner, bytes, 32);
+      sha256_init(&inner);
+      sha256_update(&inner, msg, msg_len);
+      sha256_final(&inner, bytes);
 
-      hash_update(&outer, bytes, 32);
-      hash_update(&outer, sig, fe->size + sc->size);
-      hash_update(&outer, pub, fe->size);
+      sha256_update(&outer, bytes, 32);
+      sha256_update(&outer, sig, fe->size + sc->size);
+      sha256_update(&outer, pub, fe->size);
     }
 
-    hash_final(&outer, bytes, 64);
+    sha256_final(&outer, bytes);
 
-    drbg_init(&rng, HASH_SHA256, bytes, 64);
+    drbg_init(&rng, HASH_SHA256, bytes, 32);
   }
 
   /* Intialize sum. */
@@ -11634,10 +11634,10 @@ eddsa_verify_batch(const edwards_t *ec,
 
   /* Seed RNG. */
   {
-    unsigned char bytes[64];
-    hash_t outer, inner;
+    unsigned char bytes[32];
+    sha256_t outer, inner;
 
-    hash_init(&outer, HASH_SHA512);
+    sha256_init(&outer);
 
     for (i = 0; i < len; i++) {
       const unsigned char *msg = msgs[i];
@@ -11645,18 +11645,18 @@ eddsa_verify_batch(const edwards_t *ec,
       const unsigned char *sig = sigs[i];
       const unsigned char *pub = pubs[i];
 
-      hash_init(&inner, HASH_SHA256);
-      hash_update(&inner, msg, msg_len);
-      hash_final(&inner, bytes, 32);
+      sha256_init(&inner);
+      sha256_update(&inner, msg, msg_len);
+      sha256_final(&inner, bytes);
 
-      hash_update(&outer, bytes, 32);
-      hash_update(&outer, sig, fe->adj_size * 2);
-      hash_update(&outer, pub, fe->adj_size);
+      sha256_update(&outer, bytes, 32);
+      sha256_update(&outer, sig, fe->adj_size * 2);
+      sha256_update(&outer, pub, fe->adj_size);
     }
 
-    hash_final(&outer, bytes, 64);
+    sha256_final(&outer, bytes);
 
-    drbg_init(&rng, HASH_SHA256, bytes, 64);
+    drbg_init(&rng, HASH_SHA256, bytes, 32);
   }
 
   /* Intialize sum. */
