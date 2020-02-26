@@ -105,7 +105,6 @@
  *
  *   [BIP340] Schnorr Signatures for secp256k1
  *     Pieter Wuille, Jonas Nick, Tim Ruffing
- *     https://github.com/sipa/bips/blob/bip-taproot/bip-0340.mediawiki
  *     https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki
  *
  *   [JCEN12] Efficient Software Implementation of Public-Key Cryptography
