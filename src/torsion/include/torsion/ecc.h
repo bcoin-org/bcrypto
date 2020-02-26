@@ -206,6 +206,34 @@ extern "C" {
 #define EDDSA_MAX_SIG_SIZE (EDDSA_MAX_PUB_SIZE * 2) /* 114 */
 
 /*
+ * Curves
+ */
+
+#define ECDSA_CURVE_P192 0
+#define ECDSA_CURVE_P224 1
+#define ECDSA_CURVE_P256 2
+#define ECDSA_CURVE_P384 3
+#define ECDSA_CURVE_P521 4
+#define ECDSA_CURVE_SECP256K1 5
+#define ECDSA_CURVE_MAX 5
+
+#define SCHNORR_CURVE_P192 0
+#define SCHNORR_CURVE_P256 2
+#define SCHNORR_CURVE_P384 3
+#define SCHNORR_CURVE_P521 4
+#define SCHNORR_CURVE_SECP256K1 5
+#define SCHNORR_CURVE_MAX 5
+
+#define ECDH_CURVE_X25519 0
+#define ECDH_CURVE_X448 1
+#define ECDH_CURVE_MAX 1
+
+#define EDDSA_CURVE_ED25519 0
+#define EDDSA_CURVE_ED448 1
+#define EDDSA_CURVE_ED1174 2
+#define EDDSA_CURVE_MAX 2
+
+/*
  * Structs
  */
 
@@ -222,7 +250,7 @@ typedef struct _edwards_scratch_s eddsa_scratch_t;
  */
 
 ecdsa_t *
-ecdsa_context_create(const char *id);
+ecdsa_context_create(int type);
 
 void
 ecdsa_context_destroy(ecdsa_t *ec);
@@ -499,7 +527,7 @@ ecdsa_schnorr_verify_batch(const ecdsa_t *ec,
  */
 
 schnorr_t *
-schnorr_context_create(const char *id);
+schnorr_context_create(int type);
 
 void
 schnorr_context_destroy(schnorr_t *ec);
@@ -671,7 +699,7 @@ schnorr_derive(const schnorr_t *ec,
  */
 
 ecdh_t *
-ecdh_context_create(const char *id);
+ecdh_context_create(int type);
 
 void
 ecdh_context_destroy(ecdh_t *ec);
@@ -780,7 +808,7 @@ ecdh_derive(const ecdh_t *ec,
  */
 
 eddsa_t *
-eddsa_context_create(const char *id);
+eddsa_context_create(int type);
 
 void
 eddsa_context_destroy(eddsa_t *ec);

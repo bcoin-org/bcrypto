@@ -98,15 +98,14 @@ NAN_METHOD(BECDSA::New) {
   if (info.Length() < 1)
     return Nan::ThrowError("ECDSA() requires arguments.");
 
-  if (!info[0]->IsString())
-    return Nan::ThrowTypeError("First argument must be a string.");
+  if (!info[0]->IsNumber())
+    return Nan::ThrowTypeError("First argument must be a number.");
 
-  Nan::Utf8String name_(info[0]);
-  const char *name = (const char *)*name_;
+  int type = (int)Nan::To<int32_t>(info[0]).FromJust();
 
   BECDSA *ec = new BECDSA();
 
-  ec->ctx = ecdsa_context_create(name);
+  ec->ctx = ecdsa_context_create(type);
 
   if (ec->ctx == NULL)
     return Nan::ThrowTypeError("Curve not available.");

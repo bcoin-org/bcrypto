@@ -29,6 +29,7 @@
 #define mpn_needs_cnd_swap
 #endif
 #define mpn_cnd_select torsion_mpn_cnd_select
+#define mpn_cnd_zero torsion_mpn_cnd_zero
 #define mpn_import_be torsion_mpn_import_be
 #define mpn_import_le torsion_mpn_import_le
 #define mpn_import torsion_mpn_import
@@ -118,6 +119,19 @@ mpn_cnd_select(mp_limb_t cnd,
 
   for (i = 0; i < n; i++)
     rp[i] = (ap[i] & mask0) | (bp[i] & mask1);
+}
+
+static void
+mpn_cnd_zero(mp_limb_t cnd,
+             mp_limb_t *rp,
+             const mp_limb_t *ap,
+             mp_size_t n) {
+  mp_limb_t cond = (cnd != 0);
+  mp_limb_t mask = cond - 1;
+  mp_size_t i;
+
+  for (i = 0; i < n; i++)
+    rp[i] = ap[i] & mask;
 }
 
 static void

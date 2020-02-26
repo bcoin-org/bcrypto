@@ -100,15 +100,14 @@ NAN_METHOD(BEDDSA::New) {
   if (info.Length() < 1)
     return Nan::ThrowError("EDDSA() requires arguments.");
 
-  if (!info[0]->IsString())
-    return Nan::ThrowTypeError("First argument must be a string.");
+  if (!info[0]->IsNumber())
+    return Nan::ThrowTypeError("First argument must be a number.");
 
-  Nan::Utf8String name_(info[0]);
-  const char *name = (const char *)*name_;
+  int type = (int)Nan::To<int32_t>(info[0]).FromJust();
 
   BEDDSA *ec = new BEDDSA();
 
-  ec->ctx = eddsa_context_create(name);
+  ec->ctx = eddsa_context_create(type);
 
   if (ec->ctx == NULL)
     return Nan::ThrowTypeError("Curve not available.");
