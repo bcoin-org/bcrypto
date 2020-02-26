@@ -993,15 +993,16 @@ sc_mulshift(const scalar_field_t *sc, sc_t r,
   mpn_mul_n(rp, a, b, nn);
   rp[rn] = 0;
 
-  /* bit = (rp >> 271) & 1 */
+  /* bit = (r >> 271) & 1 */
   bit = rp[i / GMP_NUMB_BITS] >> (i % GMP_NUMB_BITS);
 
-  /* r >>= 272 */
+  /* r >>= 256 */
   rp += limbs;
   rn -= limbs;
 
   assert(rn > 0);
 
+  /* r >>= 16 */
   if (left != 0) {
     mpn_rshift(rp, rp, rn, left);
     rn -= (rp[rn - 1] == 0);
@@ -2129,6 +2130,7 @@ wge_import_even(const wei_t *ec, wge_t *r, const unsigned char *raw) {
 static int
 wge_import_square(const wei_t *ec, wge_t *r, const unsigned char *raw) {
   /* [SCHNORR] "Specification". */
+  /* [BIP340] "Specification". */
   const prime_field_t *fe = &ec->fe;
   int ret = 1;
   fe_t x;
@@ -9062,8 +9064,8 @@ ecdsa_schnorr_hash_nonce(const wei_t *ec, sc_t k,
                          const unsigned char *scalar,
                          const unsigned char *msg) {
   const scalar_field_t *sc = &ec->sc;
-  unsigned char bytes[MAX_SCALAR_SIZE];
   size_t hash_size = hash_output_size(ec->hash);
+  unsigned char bytes[MAX_SCALAR_SIZE];
   size_t off = 0;
   hash_t hash;
 
@@ -9086,14 +9088,14 @@ ecdsa_schnorr_hash_nonce(const wei_t *ec, sc_t k,
 }
 
 static void
-ecdsa_schnorr_hash_chal(const wei_t *ec, sc_t e,
-                        const unsigned char *R,
-                        const unsigned char *A,
-                        const unsigned char *msg) {
+ecdsa_schnorr_hash_challenge(const wei_t *ec, sc_t e,
+                             const unsigned char *R,
+                             const unsigned char *A,
+                             const unsigned char *msg) {
   const prime_field_t *fe = &ec->fe;
   const scalar_field_t *sc = &ec->sc;
-  unsigned char bytes[MAX_SCALAR_SIZE];
   size_t hash_size = hash_output_size(ec->hash);
+  unsigned char bytes[MAX_SCALAR_SIZE];
   size_t off = 0;
   hash_t hash;
 
@@ -9183,7 +9185,7 @@ ecdsa_schnorr_sign(const wei_t *ec,
   wge_export_x(ec, Rraw, &R);
   wge_export(ec, Araw, NULL, &A, 1);
 
-  ecdsa_schnorr_hash_chal(ec, e, Rraw, Araw, msg);
+  ecdsa_schnorr_hash_challenge(ec, e, Rraw, Araw, msg);
 
   sc_mul(sc, s, e, a);
   sc_add(sc, s, s, k);
@@ -9269,7 +9271,7 @@ ecdsa_schnorr_verify(const wei_t *ec,
 
   wge_export(ec, Araw, NULL, &A, 1);
 
-  ecdsa_schnorr_hash_chal(ec, e, Rraw, Araw, msg);
+  ecdsa_schnorr_hash_challenge(ec, e, Rraw, Araw, msg);
 
   sc_neg(sc, e, e);
 
@@ -9386,7 +9388,7 @@ ecdsa_schnorr_verify_batch(const wei_t *ec,
 
     wge_export(ec, Araw, NULL, &A, 1);
 
-    ecdsa_schnorr_hash_chal(ec, e, Rraw, Araw, msg);
+    ecdsa_schnorr_hash_challenge(ec, e, Rraw, Araw, msg);
 
     if (j == 0)
       sc_set_word(sc, a, 1);
@@ -9442,6 +9444,7 @@ schnorr_context_create(int type) {
   if (ec == NULL)
     return NULL;
 
+  /* [BIP340] "Footnotes". */
   /* Must be congruent to 3 mod 4. */
   if ((ec->fe.p[0] & 3) != 3) {
     ecdsa_context_destroy(ec);
@@ -9821,6 +9824,33 @@ schnorr_hash_init(hash_t *hash, int type, const char *tag) {
 }
 
 static void
+schnorr_hash_aux(const wei_t *ec,
+                 unsigned char *out,
+                 const unsigned char *scalar,
+                 const unsigned char *aux,
+                 size_t aux_len) {
+  const scalar_field_t *sc = &ec->sc;
+  size_t hash_size = hash_output_size(ec->hash);
+  unsigned char bytes[HASH_MAX_OUTPUT_SIZE];
+  hash_t hash;
+  size_t i;
+
+  if (aux_len > 32)
+    aux_len = 32;
+
+  schnorr_hash_init(&hash, ec->hash, "BIP340/aux");
+
+  hash_update(&hash, aux, aux_len);
+  hash_final(&hash, bytes, hash_size);
+
+  for (i = 0; i < sc->size; i++)
+    out[i] = scalar[i] ^ bytes[i % hash_size];
+
+  cleanse(bytes, hash_size);
+  cleanse(&hash, sizeof(hash));
+}
+
+static void
 schnorr_hash_nonce(const wei_t *ec, sc_t k,
                    const unsigned char *scalar,
                    const unsigned char *point,
@@ -9829,28 +9859,20 @@ schnorr_hash_nonce(const wei_t *ec, sc_t k,
                    size_t aux_len) {
   const prime_field_t *fe = &ec->fe;
   const scalar_field_t *sc = &ec->sc;
-  unsigned char haux[HASH_MAX_OUTPUT_SIZE];
-  unsigned char bytes[MAX_SCALAR_SIZE];
-  unsigned char secret[MAX_SCALAR_SIZE];
   size_t hash_size = hash_output_size(ec->hash);
+  unsigned char secret[MAX_SCALAR_SIZE];
+  unsigned char bytes[MAX_SCALAR_SIZE];
   size_t off = 0;
   hash_t hash;
-  size_t i;
 
   assert(MAX_SCALAR_SIZE >= HASH_MAX_OUTPUT_SIZE);
+
+  schnorr_hash_aux(ec, secret, scalar, aux, aux_len);
 
   if (sc->size > hash_size) {
     off = sc->size - hash_size;
     memset(bytes, 0x00, off);
   }
-
-  schnorr_hash_init(&hash, ec->hash, "BIP340/aux");
-
-  hash_update(&hash, aux, aux_len);
-  hash_final(&hash, haux, hash_size);
-
-  for (i = 0; i < sc->size; i++)
-    secret[i] = scalar[i] ^ haux[i % hash_size];
 
   schnorr_hash_init(&hash, ec->hash, "BIP340/nonce");
 
@@ -9861,21 +9883,20 @@ schnorr_hash_nonce(const wei_t *ec, sc_t k,
 
   sc_import_reduce(sc, k, bytes);
 
-  cleanse(haux, hash_size);
-  cleanse(bytes, sc->size);
   cleanse(secret, sc->size);
+  cleanse(bytes, sc->size);
   cleanse(&hash, sizeof(hash));
 }
 
 static void
-schnorr_hash_chal(const wei_t *ec, sc_t e,
-                  const unsigned char *R,
-                  const unsigned char *A,
-                  const unsigned char *msg) {
+schnorr_hash_challenge(const wei_t *ec, sc_t e,
+                       const unsigned char *R,
+                       const unsigned char *A,
+                       const unsigned char *msg) {
   const prime_field_t *fe = &ec->fe;
   const scalar_field_t *sc = &ec->sc;
-  unsigned char bytes[MAX_SCALAR_SIZE];
   size_t hash_size = hash_output_size(ec->hash);
+  unsigned char bytes[MAX_SCALAR_SIZE];
   size_t off = 0;
   hash_t hash;
 
@@ -9947,8 +9968,6 @@ schnorr_sign(const wei_t *ec,
   wge_t A, R;
   int ret = 1;
 
-  assert(aux_len <= 32);
-
   ret &= sc_import(sc, a, priv);
   ret &= sc_is_zero(sc, a) ^ 1;
 
@@ -9969,7 +9988,7 @@ schnorr_sign(const wei_t *ec,
 
   wge_export_x(ec, Rraw, &R);
 
-  schnorr_hash_chal(ec, e, Rraw, Araw, msg);
+  schnorr_hash_challenge(ec, e, Rraw, Araw, msg);
 
   sc_mul(sc, s, e, a);
   sc_add(sc, s, s, k);
@@ -10052,7 +10071,7 @@ schnorr_verify(const wei_t *ec,
   if (!wge_import_even(ec, &A, pub))
     return 0;
 
-  schnorr_hash_chal(ec, e, Rraw, pub, msg);
+  schnorr_hash_challenge(ec, e, Rraw, pub, msg);
 
   sc_neg(sc, e, e);
 
@@ -10153,7 +10172,7 @@ schnorr_verify_batch(const wei_t *ec,
     if (!sc_import(sc, s, sraw))
       return 0;
 
-    schnorr_hash_chal(ec, e, Rraw, pub, msg);
+    schnorr_hash_challenge(ec, e, Rraw, pub, msg);
 
     if (j == 0)
       sc_set_word(sc, a, 1);
@@ -11117,7 +11136,7 @@ eddsa_pubkey_tweak_mul(const edwards_t *ec,
 
   ret &= xge_import(ec, &A, pub);
 
-  sc_import_reduce(sc, t, tweak);
+  sc_import_raw(sc, t, tweak);
 
   edwards_mul(ec, &A, &A, t);
 
@@ -11171,10 +11190,10 @@ eddsa_hash_init(const edwards_t *ec,
                 int ph,
                 const unsigned char *ctx,
                 size_t ctx_len) {
-  hash_init(hash, ec->hash);
-
   if (ctx_len > 255)
     ctx_len = 255;
+
+  hash_init(hash, ec->hash);
 
   if (ec->context || ph != -1 || ctx_len > 0) {
     uint8_t prehash = (ph > 0);
@@ -11190,11 +11209,17 @@ eddsa_hash_init(const edwards_t *ec,
 }
 
 static void
+eddsa_hash_update(const edwards_t *ec, hash_t *hash,
+                  const void *data, size_t len) {
+  hash_update(hash, data, len);
+}
+
+static void
 eddsa_hash_final(const edwards_t *ec, hash_t *hash, sc_t r) {
-  unsigned char bytes[(MAX_FIELD_SIZE + 1) * 2];
-  mp_limb_t k[MAX_REDUCE_LIMBS];
   const prime_field_t *fe = &ec->fe;
   const scalar_field_t *sc = &ec->sc;
+  unsigned char bytes[(MAX_FIELD_SIZE + 1) * 2];
+  mp_limb_t k[MAX_REDUCE_LIMBS];
 
   hash_final(hash, bytes, fe->adj_size * 2);
 
@@ -11210,42 +11235,38 @@ eddsa_hash_final(const edwards_t *ec, hash_t *hash, sc_t r) {
 static void
 eddsa_hash_nonce(const edwards_t *ec,
                  sc_t k,
-                 int ph,
-                 const unsigned char *ctx,
-                 size_t ctx_len,
                  const unsigned char *prefix,
                  const unsigned char *msg,
-                 size_t msg_len) {
+                 size_t msg_len,
+                 int ph,
+                 const unsigned char *ctx,
+                 size_t ctx_len) {
   const prime_field_t *fe = &ec->fe;
   hash_t hash;
 
   eddsa_hash_init(ec, &hash, ph, ctx, ctx_len);
-
-  hash_update(&hash, prefix, fe->adj_size);
-  hash_update(&hash, msg, msg_len);
-
+  eddsa_hash_update(ec, &hash, prefix, fe->adj_size);
+  eddsa_hash_update(ec, &hash, msg, msg_len);
   eddsa_hash_final(ec, &hash, k);
 }
 
 static void
-eddsa_hash_chal(const edwards_t *ec,
-                sc_t e,
-                int ph,
-                const unsigned char *ctx,
-                size_t ctx_len,
-                const unsigned char *R,
-                const unsigned char *A,
-                const unsigned char *msg,
-                size_t msg_len) {
+eddsa_hash_challenge(const edwards_t *ec,
+                     sc_t e,
+                     const unsigned char *R,
+                     const unsigned char *A,
+                     const unsigned char *msg,
+                     size_t msg_len,
+                     int ph,
+                     const unsigned char *ctx,
+                     size_t ctx_len) {
   const prime_field_t *fe = &ec->fe;
   hash_t hash;
 
   eddsa_hash_init(ec, &hash, ph, ctx, ctx_len);
-
-  hash_update(&hash, R, fe->adj_size);
-  hash_update(&hash, A, fe->adj_size);
-  hash_update(&hash, msg, msg_len);
-
+  eddsa_hash_update(ec, &hash, R, fe->adj_size);
+  eddsa_hash_update(ec, &hash, A, fe->adj_size);
+  eddsa_hash_update(ec, &hash, msg, msg_len);
   eddsa_hash_final(ec, &hash, e);
 }
 
@@ -11296,7 +11317,7 @@ eddsa_sign_with_scalar(const edwards_t *ec,
   sc_t k, a, e, s;
   xge_t R, A;
 
-  eddsa_hash_nonce(ec, k, ph, ctx, ctx_len, prefix, msg, msg_len);
+  eddsa_hash_nonce(ec, k, prefix, msg, msg_len, ph, ctx, ctx_len);
 
   edwards_mul_g(ec, &R, k);
   xge_export(ec, Rraw, &R);
@@ -11306,7 +11327,7 @@ eddsa_sign_with_scalar(const edwards_t *ec,
   edwards_mul_g(ec, &A, a);
   xge_export(ec, Araw, &A);
 
-  eddsa_hash_chal(ec, e, ph, ctx, ctx_len, Rraw, Araw, msg, msg_len);
+  eddsa_hash_challenge(ec, e, Rraw, Araw, msg, msg_len, ph, ctx, ctx_len);
 
   sc_mul(sc, s, e, a);
   sc_add(sc, s, s, k);
@@ -11360,7 +11381,6 @@ eddsa_sign_tweak_add(const edwards_t *ec,
                      int ph,
                      const unsigned char *ctx,
                      size_t ctx_len) {
-  const prime_field_t *fe = &ec->fe;
   const scalar_field_t *sc = &ec->sc;
   unsigned char scalar[MAX_SCALAR_SIZE];
   unsigned char prefix[MAX_FIELD_SIZE + 1];
@@ -11381,7 +11401,7 @@ eddsa_sign_tweak_add(const edwards_t *ec,
                          ph, ctx, ctx_len);
 
   cleanse(scalar, sc->size);
-  cleanse(prefix, fe->adj_size);
+  cleanse(prefix, sizeof(prefix));
 }
 
 void
@@ -11394,7 +11414,6 @@ eddsa_sign_tweak_mul(const edwards_t *ec,
                      int ph,
                      const unsigned char *ctx,
                      size_t ctx_len) {
-  const prime_field_t *fe = &ec->fe;
   const scalar_field_t *sc = &ec->sc;
   unsigned char scalar[MAX_SCALAR_SIZE];
   unsigned char prefix[MAX_FIELD_SIZE + 1];
@@ -11415,7 +11434,7 @@ eddsa_sign_tweak_mul(const edwards_t *ec,
                          ph, ctx, ctx_len);
 
   cleanse(scalar, sc->size);
-  cleanse(prefix, fe->adj_size);
+  cleanse(prefix, sizeof(prefix));
 }
 
 int
@@ -11473,7 +11492,7 @@ eddsa_verify(const edwards_t *ec,
       return 0;
   }
 
-  eddsa_hash_chal(ec, e, ph, ctx, ctx_len, Rraw, pub, msg, msg_len);
+  eddsa_hash_challenge(ec, e, Rraw, pub, msg, msg_len, ph, ctx, ctx_len);
 
   xge_neg(ec, &A, &A);
 
@@ -11537,7 +11556,7 @@ eddsa_verify_single(const edwards_t *ec,
       return 0;
   }
 
-  eddsa_hash_chal(ec, e, ph, ctx, ctx_len, Rraw, pub, msg, msg_len);
+  eddsa_hash_challenge(ec, e, Rraw, pub, msg, msg_len, ph, ctx, ctx_len);
 
   sc_mul_word(sc, s, s, ec->h);
   xge_mulh(ec, &A, &A);
@@ -11645,7 +11664,7 @@ eddsa_verify_batch(const edwards_t *ec,
         return 0;
     }
 
-    eddsa_hash_chal(ec, e, ph, ctx, ctx_len, Rraw, pub, msg, msg_len);
+    eddsa_hash_challenge(ec, e, Rraw, pub, msg, msg_len, ph, ctx, ctx_len);
 
     if (j == 0)
       sc_set_word(sc, a, 1);
