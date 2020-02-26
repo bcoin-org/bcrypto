@@ -504,11 +504,13 @@ int
 ecdsa_schnorr_sign(const ecdsa_t *ec,
                    unsigned char *sig,
                    const unsigned char *msg,
+                   size_t msg_len,
                    const unsigned char *priv);
 
 int
 ecdsa_schnorr_verify(const ecdsa_t *ec,
                      const unsigned char *msg,
+                     size_t msg_len,
                      const unsigned char *sig,
                      const unsigned char *pub,
                      size_t pub_len);
@@ -516,6 +518,7 @@ ecdsa_schnorr_verify(const ecdsa_t *ec,
 int
 ecdsa_schnorr_verify_batch(const ecdsa_t *ec,
                            const unsigned char **msgs,
+                           const size_t *msg_lens,
                            const unsigned char **sigs,
                            const unsigned char **pubs,
                            const size_t *pub_lens,
@@ -670,6 +673,7 @@ int
 schnorr_sign(const schnorr_t *ec,
              unsigned char *sig,
              const unsigned char *msg,
+             size_t msg_len,
              const unsigned char *priv,
              const unsigned char *aux,
              size_t aux_len);
@@ -677,12 +681,14 @@ schnorr_sign(const schnorr_t *ec,
 int
 schnorr_verify(const schnorr_t *ec,
                const unsigned char *msg,
+               size_t msg_len,
                const unsigned char *sig,
                const unsigned char *pub);
 
 int
 schnorr_verify_batch(const schnorr_t *ec,
                      const unsigned char **msgs,
+                     const size_t *msg_lens,
                      const unsigned char **sigs,
                      const unsigned char **pubs,
                      size_t len,

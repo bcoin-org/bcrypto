@@ -33,35 +33,6 @@ describe('Schnorr', function() {
     });
   }
 
-  if (schnorr.native !== 2) {
-    it('should test RNG', () => {
-      const seed =
-        '33e87bc9d8f8b93a5240a7fe7041c5b8f3325ddf214116aeee089741894c20db';
-
-      const expect = [
-        '0000000000000000000000000000000000000000000000000000000000000001',
-        'c094cb8973637dacc2fbc834cce68a5f9be2eef601798d5eed3a6f1f2e01b0e5',
-        'ecc4d40e9429b388745337e7801ef5ebab8002c6e4aaf157a035c161c7811e21',
-        '4f663ce17aede969c572117ed1109193f4678c25bd2a6f170d83d0a6f6ee9ca2',
-        'bb5ce9a621c5aca705fb8f73384784b73943c0bb24cb75469274311fba715279',
-        '2911f9880367fd484ef57be418761620c0e3e1550736ec437864becab3427493'
-      ];
-
-      const {rng} = schnorr;
-      const batch = valid.slice(0, 5);
-
-      rng.init(batch);
-
-      assert.bufferEqual(rng.key, seed);
-
-      for (let i = 0; i < expect.length; i++) {
-        const k = rng.generate(i);
-
-        assert.strictEqual(k.toString(16, 64), expect[i]);
-      }
-    });
-  }
-
   it('should do batch verification', () => {
     assert.strictEqual(schnorr.verifyBatch([]), true);
     assert.strictEqual(schnorr.verifyBatch(valid), true);

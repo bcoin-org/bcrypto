@@ -9062,7 +9062,8 @@ ecdsa_derive(const wei_t *ec,
 static void
 ecdsa_schnorr_hash_nonce(const wei_t *ec, sc_t k,
                          const unsigned char *scalar,
-                         const unsigned char *msg) {
+                         const unsigned char *msg,
+                         size_t msg_len) {
   const scalar_field_t *sc = &ec->sc;
   size_t hash_size = hash_output_size(ec->hash);
   unsigned char bytes[MAX_SCALAR_SIZE];
@@ -9078,7 +9079,7 @@ ecdsa_schnorr_hash_nonce(const wei_t *ec, sc_t k,
 
   hash_init(&hash, ec->hash);
   hash_update(&hash, scalar, sc->size);
-  hash_update(&hash, msg, 32);
+  hash_update(&hash, msg, msg_len);
   hash_final(&hash, bytes + off, hash_size);
 
   sc_import_reduce(sc, k, bytes);
@@ -9091,7 +9092,8 @@ static void
 ecdsa_schnorr_hash_challenge(const wei_t *ec, sc_t e,
                              const unsigned char *R,
                              const unsigned char *A,
-                             const unsigned char *msg) {
+                             const unsigned char *msg,
+                             size_t msg_len) {
   const prime_field_t *fe = &ec->fe;
   const scalar_field_t *sc = &ec->sc;
   size_t hash_size = hash_output_size(ec->hash);
@@ -9109,7 +9111,7 @@ ecdsa_schnorr_hash_challenge(const wei_t *ec, sc_t e,
   hash_init(&hash, ec->hash);
   hash_update(&hash, R, fe->size);
   hash_update(&hash, A, fe->size + 1);
-  hash_update(&hash, msg, 32);
+  hash_update(&hash, msg, msg_len);
   hash_final(&hash, bytes + off, hash_size);
 
   sc_import_reduce(sc, e, bytes);
@@ -9129,6 +9131,7 @@ int
 ecdsa_schnorr_sign(const wei_t *ec,
                    unsigned char *sig,
                    const unsigned char *msg,
+                   size_t msg_len,
                    const unsigned char *priv) {
   /* Schnorr Signing.
    *
@@ -9174,7 +9177,7 @@ ecdsa_schnorr_sign(const wei_t *ec,
 
   wei_mul_g(ec, &A, a);
 
-  ecdsa_schnorr_hash_nonce(ec, k, priv, msg);
+  ecdsa_schnorr_hash_nonce(ec, k, priv, msg, msg_len);
 
   ret &= sc_is_zero(sc, k) ^ 1;
 
@@ -9185,7 +9188,7 @@ ecdsa_schnorr_sign(const wei_t *ec,
   wge_export_x(ec, Rraw, &R);
   wge_export(ec, Araw, NULL, &A, 1);
 
-  ecdsa_schnorr_hash_challenge(ec, e, Rraw, Araw, msg);
+  ecdsa_schnorr_hash_challenge(ec, e, Rraw, Araw, msg, msg_len);
 
   sc_mul(sc, s, e, a);
   sc_add(sc, s, s, k);
@@ -9208,6 +9211,7 @@ ecdsa_schnorr_sign(const wei_t *ec,
 int
 ecdsa_schnorr_verify(const wei_t *ec,
                      const unsigned char *msg,
+                     size_t msg_len,
                      const unsigned char *sig,
                      const unsigned char *pub,
                      size_t pub_len) {
@@ -9271,7 +9275,7 @@ ecdsa_schnorr_verify(const wei_t *ec,
 
   wge_export(ec, Araw, NULL, &A, 1);
 
-  ecdsa_schnorr_hash_challenge(ec, e, Rraw, Araw, msg);
+  ecdsa_schnorr_hash_challenge(ec, e, Rraw, Araw, msg, msg_len);
 
   sc_neg(sc, e, e);
 
@@ -9289,6 +9293,7 @@ ecdsa_schnorr_verify(const wei_t *ec,
 int
 ecdsa_schnorr_verify_batch(const wei_t *ec,
                            const unsigned char **msgs,
+                           const size_t *msg_lens,
                            const unsigned char **sigs,
                            const unsigned char **pubs,
                            const size_t *pub_lens,
@@ -9335,12 +9340,13 @@ ecdsa_schnorr_verify_batch(const wei_t *ec,
   /* Seed RNG. */
   {
     unsigned char bytes[64];
-    hash_t hash;
+    hash_t outer, inner;
 
-    hash_init(&hash, HASH_SHA512);
+    hash_init(&outer, HASH_SHA512);
 
     for (i = 0; i < len; i++) {
       const unsigned char *msg = msgs[i];
+      size_t msg_len = msg_lens[i];
       const unsigned char *sig = sigs[i];
       const unsigned char *pub = pubs[i];
       size_t pub_len = pub_lens[i];
@@ -9355,12 +9361,16 @@ ecdsa_schnorr_verify_batch(const wei_t *ec,
         memset(Araw, 0x00, fe->size + 1);
       }
 
-      hash_update(&hash, msg, 32);
-      hash_update(&hash, sig, fe->size + sc->size);
-      hash_update(&hash, Araw, fe->size + 1);
+      hash_init(&inner, HASH_SHA256);
+      hash_update(&inner, msg, msg_len);
+      hash_final(&inner, bytes, 32);
+
+      hash_update(&outer, bytes, 32);
+      hash_update(&outer, sig, fe->size + sc->size);
+      hash_update(&outer, Araw, fe->size + 1);
     }
 
-    hash_final(&hash, bytes, 64);
+    hash_final(&outer, bytes, 64);
 
     drbg_init(&rng, HASH_SHA256, bytes, 64);
   }
@@ -9371,6 +9381,7 @@ ecdsa_schnorr_verify_batch(const wei_t *ec,
   /* Verify signatures. */
   for (i = 0; i < len; i++) {
     const unsigned char *msg = msgs[i];
+    size_t msg_len = msg_lens[i];
     const unsigned char *sig = sigs[i];
     const unsigned char *pub = pubs[i];
     size_t pub_len = pub_lens[i];
@@ -9388,7 +9399,7 @@ ecdsa_schnorr_verify_batch(const wei_t *ec,
 
     wge_export(ec, Araw, NULL, &A, 1);
 
-    ecdsa_schnorr_hash_challenge(ec, e, Rraw, Araw, msg);
+    ecdsa_schnorr_hash_challenge(ec, e, Rraw, Araw, msg, msg_len);
 
     if (j == 0)
       sc_set_word(sc, a, 1);
@@ -9855,6 +9866,7 @@ schnorr_hash_nonce(const wei_t *ec, sc_t k,
                    const unsigned char *scalar,
                    const unsigned char *point,
                    const unsigned char *msg,
+                   size_t msg_len,
                    const unsigned char *aux,
                    size_t aux_len) {
   const prime_field_t *fe = &ec->fe;
@@ -9878,7 +9890,7 @@ schnorr_hash_nonce(const wei_t *ec, sc_t k,
 
   hash_update(&hash, secret, sc->size);
   hash_update(&hash, point, fe->size);
-  hash_update(&hash, msg, 32);
+  hash_update(&hash, msg, msg_len);
   hash_final(&hash, bytes + off, hash_size);
 
   sc_import_reduce(sc, k, bytes);
@@ -9892,7 +9904,8 @@ static void
 schnorr_hash_challenge(const wei_t *ec, sc_t e,
                        const unsigned char *R,
                        const unsigned char *A,
-                       const unsigned char *msg) {
+                       const unsigned char *msg,
+                       size_t msg_len) {
   const prime_field_t *fe = &ec->fe;
   const scalar_field_t *sc = &ec->sc;
   size_t hash_size = hash_output_size(ec->hash);
@@ -9911,7 +9924,7 @@ schnorr_hash_challenge(const wei_t *ec, sc_t e,
 
   hash_update(&hash, R, fe->size);
   hash_update(&hash, A, fe->size);
-  hash_update(&hash, msg, 32);
+  hash_update(&hash, msg, msg_len);
   hash_final(&hash, bytes + off, hash_size);
 
   sc_import_reduce(sc, e, bytes);
@@ -9924,6 +9937,7 @@ int
 schnorr_sign(const wei_t *ec,
              unsigned char *sig,
              const unsigned char *msg,
+             size_t msg_len,
              const unsigned char *priv,
              const unsigned char *aux,
              size_t aux_len) {
@@ -9978,7 +9992,7 @@ schnorr_sign(const wei_t *ec,
 
   wge_export_x(ec, Araw, &A);
 
-  schnorr_hash_nonce(ec, k, araw, Araw, msg, aux, aux_len);
+  schnorr_hash_nonce(ec, k, araw, Araw, msg, msg_len, aux, aux_len);
 
   ret &= sc_is_zero(sc, k) ^ 1;
 
@@ -9988,7 +10002,7 @@ schnorr_sign(const wei_t *ec,
 
   wge_export_x(ec, Rraw, &R);
 
-  schnorr_hash_challenge(ec, e, Rraw, Araw, msg);
+  schnorr_hash_challenge(ec, e, Rraw, Araw, msg, msg_len);
 
   sc_mul(sc, s, e, a);
   sc_add(sc, s, s, k);
@@ -10012,6 +10026,7 @@ schnorr_sign(const wei_t *ec,
 int
 schnorr_verify(const wei_t *ec,
                const unsigned char *msg,
+               size_t msg_len,
                const unsigned char *sig,
                const unsigned char *pub) {
   /* Schnorr Verification.
@@ -10071,7 +10086,7 @@ schnorr_verify(const wei_t *ec,
   if (!wge_import_even(ec, &A, pub))
     return 0;
 
-  schnorr_hash_challenge(ec, e, Rraw, pub, msg);
+  schnorr_hash_challenge(ec, e, Rraw, pub, msg, msg_len);
 
   sc_neg(sc, e, e);
 
@@ -10089,6 +10104,7 @@ schnorr_verify(const wei_t *ec,
 int
 schnorr_verify_batch(const wei_t *ec,
                      const unsigned char **msgs,
+                     const size_t *msg_lens,
                      const unsigned char **sigs,
                      const unsigned char **pubs,
                      size_t len,
@@ -10133,21 +10149,26 @@ schnorr_verify_batch(const wei_t *ec,
   /* Seed RNG. */
   {
     unsigned char bytes[64];
-    hash_t hash;
+    hash_t outer, inner;
 
-    hash_init(&hash, HASH_SHA512);
+    hash_init(&outer, HASH_SHA512);
 
     for (i = 0; i < len; i++) {
       const unsigned char *msg = msgs[i];
+      size_t msg_len = msg_lens[i];
       const unsigned char *sig = sigs[i];
       const unsigned char *pub = pubs[i];
 
-      hash_update(&hash, msg, 32);
-      hash_update(&hash, sig, fe->size + sc->size);
-      hash_update(&hash, pub, fe->size);
+      hash_init(&inner, HASH_SHA256);
+      hash_update(&inner, msg, msg_len);
+      hash_final(&inner, bytes, 32);
+
+      hash_update(&outer, bytes, 32);
+      hash_update(&outer, sig, fe->size + sc->size);
+      hash_update(&outer, pub, fe->size);
     }
 
-    hash_final(&hash, bytes, 64);
+    hash_final(&outer, bytes, 64);
 
     drbg_init(&rng, HASH_SHA256, bytes, 64);
   }
@@ -10158,6 +10179,7 @@ schnorr_verify_batch(const wei_t *ec,
   /* Verify signatures. */
   for (i = 0; i < len; i++) {
     const unsigned char *msg = msgs[i];
+    size_t msg_len = msg_lens[i];
     const unsigned char *sig = sigs[i];
     const unsigned char *pub = pubs[i];
     const unsigned char *Rraw = sig;
@@ -10172,7 +10194,7 @@ schnorr_verify_batch(const wei_t *ec,
     if (!sc_import(sc, s, sraw))
       return 0;
 
-    schnorr_hash_challenge(ec, e, Rraw, pub, msg);
+    schnorr_hash_challenge(ec, e, Rraw, pub, msg, msg_len);
 
     if (j == 0)
       sc_set_word(sc, a, 1);
