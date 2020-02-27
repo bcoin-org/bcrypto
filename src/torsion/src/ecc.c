@@ -1067,12 +1067,14 @@ sc_bitlen_var(const scalar_field_t *sc, const sc_t a) {
 
 static mp_limb_t
 sc_get_bits(const scalar_field_t *sc, const sc_t a, size_t i, size_t w) {
+  (void)sc;
   mp_limb_t mask = ((mp_limb_t)1 << w) - 1;
   return (a[i / GMP_NUMB_BITS] >> (i % GMP_NUMB_BITS)) & mask;
 }
 
 static mp_limb_t
 sc_get_bit(const scalar_field_t *sc, const sc_t k, size_t i) {
+  (void)sc;
   return (k[i / GMP_NUMB_BITS] >> (i % GMP_NUMB_BITS)) & 1;
 }
 
@@ -2211,6 +2213,7 @@ wge_equal(const wei_t *ec, const wge_t *a, const wge_t *b) {
 
 static int
 wge_is_zero(const wei_t *ec, const wge_t *a) {
+  (void)ec;
   return a->inf;
 }
 
@@ -4807,6 +4810,7 @@ mge_equal(const mont_t *ec, const mge_t *a, const mge_t *b) {
 
 static int
 mge_is_zero(const mont_t *ec, const mge_t *a) {
+  (void)ec;
   return a->inf;
 }
 
@@ -8034,11 +8038,13 @@ ecdsa_context_randomize(wei_t *ec, const unsigned char *entropy) {
 
 wei_scratch_t *
 ecdsa_scratch_create(const wei_t *ec) {
+  (void)ec;
   return malloc(sizeof(wei_scratch_t));
 }
 
 void
 ecdsa_scratch_destroy(const wei_t *ec, wei_scratch_t *scratch) {
+  (void)ec;
   if (scratch != NULL)
     free(scratch);
 }
@@ -8630,8 +8636,6 @@ ecdsa_reduce(const wei_t *ec, sc_t r,
   memset(tmp, 0x00, sc->size - msg_len);
   memcpy(tmp + sc->size - msg_len, msg, msg_len);
 
-  assert(sc->endian == 1);
-
   /* Shift by the remaining bits. */
   /* Note that the message length is not secret. */
   if (msg_len * 8 > sc->bits) {
@@ -8814,25 +8818,20 @@ ecdsa_sign(const wei_t *ec,
 
   drbg_init(&rng, ec->hash, bytes, sc->size * 2);
 
-retry:
-  ok = 1;
+  do {
+    drbg_generate(&rng, bytes, sc->size);
 
-  drbg_generate(&rng, bytes, sc->size);
+    ok = ecdsa_reduce(ec, k, bytes, sc->size);
 
-  ok &= ecdsa_reduce(ec, k, bytes, sc->size);
-  ok &= sc_is_zero(sc, k) ^ 1;
+    wei_mul_g(ec, &R, k);
 
-  wei_mul_g(ec, &R, k);
+    sign = fe_is_odd(fe, R.y);
+    high = sc_set_fe(sc, fe, r, R.x) ^ 1;
 
-  ok &= wge_is_zero(ec, &R) ^ 1;
-
-  sign = fe_is_odd(fe, R.y);
-  high = sc_set_fe(sc, fe, r, R.x) ^ 1;
-
-  ok &= sc_is_zero(sc, r) ^ 1;
-
-  if (!ok)
-    goto retry;
+    ok &= sc_is_zero(sc, k) ^ 1;
+    ok &= wge_is_zero(ec, &R) ^ 1;
+    ok &= sc_is_zero(sc, r) ^ 1;
+  } while (!ok);
 
   assert(sc_invert(sc, k, k));
   sc_mul(sc, s, r, a);
@@ -9692,9 +9691,7 @@ schnorr_pubkey_to_hash(const wei_t *ec,
 }
 
 int
-schnorr_pubkey_verify(const wei_t *ec,
-                      unsigned char *out,
-                      const unsigned char *pub) {
+schnorr_pubkey_verify(const wei_t *ec, const unsigned char *pub) {
   wge_t A;
 
   return wge_import_even(ec, &A, pub);
@@ -10339,6 +10336,8 @@ ecdh_privkey_generate(const mont_t *ec,
 
 int
 ecdh_privkey_verify(const mont_t *ec, const unsigned char *priv) {
+  (void)ec;
+  (void)priv;
   return 1;
 }
 
@@ -10654,11 +10653,13 @@ eddsa_context_randomize(edwards_t *ec, const unsigned char *entropy) {
 
 edwards_scratch_t *
 eddsa_scratch_create(const edwards_t *ec) {
+  (void)ec;
   return malloc(sizeof(edwards_scratch_t));
 }
 
 void
 eddsa_scratch_destroy(const edwards_t *ec, edwards_scratch_t *scratch) {
+  (void)ec;
   if (scratch != NULL)
     free(scratch);
 }
@@ -10776,6 +10777,8 @@ eddsa_privkey_convert(const edwards_t *ec,
 
 int
 eddsa_privkey_verify(const edwards_t *ec, const unsigned char *priv) {
+  (void)ec;
+  (void)priv;
   return 1;
 }
 
@@ -10802,6 +10805,8 @@ eddsa_privkey_import(const edwards_t *ec,
 
 int
 eddsa_scalar_verify(const edwards_t *ec, const unsigned char *scalar) {
+  (void)ec;
+  (void)scalar;
   return 1;
 }
 
@@ -11232,6 +11237,7 @@ eddsa_hash_init(const edwards_t *ec,
 static void
 eddsa_hash_update(const edwards_t *ec, hash_t *hash,
                   const void *data, size_t len) {
+  (void)ec;
   hash_update(hash, data, len);
 }
 

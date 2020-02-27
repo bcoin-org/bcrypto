@@ -52,6 +52,7 @@
       "-Wno-implicit-fallthrough",
       "-Wno-nonnull-compare",
       "-Wno-unknown-warning",
+      "-Wno-unknown-warning-option",
       "-Wno-unused-function",
       "-O3"
     ],

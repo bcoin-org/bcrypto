@@ -635,9 +635,7 @@ schnorr_pubkey_to_hash(const schnorr_t *ec,
                        const unsigned char *entropy);
 
 int
-schnorr_pubkey_verify(const schnorr_t *ec,
-                      unsigned char *out,
-                      const unsigned char *pub);
+schnorr_pubkey_verify(const schnorr_t *ec, const unsigned char *pub);
 
 int
 schnorr_pubkey_export(const schnorr_t *ec,
