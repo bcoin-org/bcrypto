@@ -63,6 +63,50 @@ p192_fe_sqrn(p192_fe_t out, const p192_fe_t in, int rounds) {
     p192_fe_sqr(out, out);
 }
 
+static void
+p192_fe_invert(p192_fe_t out, const p192_fe_t in) {
+  /* Compute a^(p - 2) with sliding window. */
+  p192_fe_t t1, t2, t4, t8, t16, t32, t64, t253, t255;
+  int i;
+
+  p192_fe_set(t1, in);
+  p192_fe_sqr(t2, t1);
+  p192_fe_sqr(t4, t2);
+  p192_fe_sqr(t8, t4);
+  p192_fe_sqr(t16, t8);
+  p192_fe_sqr(t32, t16);
+  p192_fe_sqr(t64, t32);
+
+  p192_fe_sqr(t253, t64);
+  p192_fe_mul(t253, t253, t64);
+  p192_fe_mul(t253, t253, t32);
+  p192_fe_mul(t253, t253, t16);
+  p192_fe_mul(t253, t253, t8);
+  p192_fe_mul(t253, t253, t4);
+  p192_fe_mul(t253, t253, t1);
+
+  p192_fe_mul(t255, t253, t2);
+
+  p192_fe_set(out, t255);
+
+  for (i = 0; i < 14; i++) {
+    p192_fe_sqrn(out, out, 8);
+    p192_fe_mul(out, out, t255);
+  }
+
+  p192_fe_sqrn(out, out, 8);
+  p192_fe_mul(out, out, t253);
+  p192_fe_mul(out, out, t1);
+
+  for (i = 0; i < 7; i++) {
+    p192_fe_sqrn(out, out, 8);
+    p192_fe_mul(out, out, t255);
+  }
+
+  p192_fe_sqrn(out, out, 8);
+  p192_fe_mul(out, out, t253);
+}
+
 /* Mathematical routines for the NIST prime elliptic curves
  *
  * See: http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.204.9073&rep=rep1&type=pdf

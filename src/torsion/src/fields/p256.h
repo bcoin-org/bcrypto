@@ -25,7 +25,6 @@ typedef p256_fe_word_t p256_fe_t[P256_FIELD_WORDS];
 #define p256_fe_neg fiat_p256_opp
 #define p256_fe_mul fiat_p256_mul
 #define p256_fe_sqr fiat_p256_square
-#define p256_fe_nonzero fiat_p256_nonzero
 
 static void
 p256_fe_set(p256_fe_t out, const p256_fe_t in) {
@@ -39,6 +38,17 @@ p256_fe_set(p256_fe_t out, const p256_fe_t in) {
   out[6] = in[6];
   out[7] = in[7];
 #endif
+}
+
+static int
+p256_fe_equal(const p256_fe_t a, const p256_fe_t b) {
+  p256_fe_word_t z = 0;
+  size_t i;
+
+  for (i = 0; i < P256_FIELD_WORDS; i++)
+    z |= a[i] ^ b[i];
+
+  return z == 0;
 }
 
 static void
@@ -98,8 +108,8 @@ p256_fe_invert(p256_fe_t out, const p256_fe_t in) {
 /* https://github.com/dedis/kyber/blob/master/group/nist/p256.go */
 static int
 p256_fe_sqrt(p256_fe_t out, const p256_fe_t in) {
-  p256_fe_word_t ret;
   p256_fe_t t1, t2, t3, t4, r;
+  int ret;
 
   /* t1 = c^(2^2-1) */
   p256_fe_sqr(t1, in);
@@ -129,15 +139,14 @@ p256_fe_sqrt(p256_fe_t out, const p256_fe_t in) {
   p256_fe_sqrn(r, r, 96);
   p256_fe_mul(r, r, in);
 
+  /* r = c^(2^254-2^222+2^190+2^94) = sqrt(c) mod p256 */
   p256_fe_sqrn(r, r, 94);
 
-  /* r = c^(2^254-2^222+2^190+2^94) = sqrt(c) mod p256 */
+  /* Check. */
   p256_fe_sqr(t1, r);
-  p256_fe_sub(t1, t1, in);
+  ret = p256_fe_equal(t1, in);
 
   p256_fe_set(out, r);
 
-  p256_fe_nonzero(&ret, t1);
-
-  return ret == 0;
+  return ret;
 }

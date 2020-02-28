@@ -25,6 +25,7 @@ typedef p25519_fe_word_t p25519_fe_t[P25519_FIELD_WORDS];
 #define p25519_fe_neg fiat_p25519_opp
 #define p25519_fe_mul fiat_p25519_carry_mul
 #define p25519_fe_sqr fiat_p25519_carry_square
+#define p25519_fe_carry fiat_p25519_carry
 #define p25519_fe_select(r, a, b, flag) \
   fiat_p25519_selectznz(r, (flag) != 0, a, b)
 
@@ -58,16 +59,6 @@ p25519_fe_set(p25519_fe_t out, const p25519_fe_t in) {
 #endif
 }
 
-static void
-p25519_fe_sqrn(p25519_fe_t out, const p25519_fe_t in, int rounds) {
-  int i;
-
-  p25519_fe_set(out, in);
-
-  for (i = 0; i < rounds; i++)
-    p25519_fe_sqr(out, out);
-}
-
 static int
 p25519_fe_equal(const p25519_fe_t a, const p25519_fe_t b) {
   uint32_t z = 0;
@@ -82,6 +73,16 @@ p25519_fe_equal(const p25519_fe_t a, const p25519_fe_t b) {
     z |= (uint32_t)u[i] ^ (uint32_t)v[i];
 
   return (z - 1) >> 31;
+}
+
+static void
+p25519_fe_sqrn(p25519_fe_t out, const p25519_fe_t in, int rounds) {
+  int i;
+
+  p25519_fe_set(out, in);
+
+  for (i = 0; i < rounds; i++)
+    p25519_fe_sqr(out, out);
 }
 
 static void
@@ -210,7 +211,7 @@ p25519_fe_isqrt(p25519_fe_t out, const p25519_fe_t u, const p25519_fe_t v) {
 
   /* C = -U */
   p25519_fe_neg(c, c);
-  fiat_p25519_carry(c, c);
+  p25519_fe_carry(c, c);
   fss = p25519_fe_equal(c, u);
 
   /* X = X * I if C = -U */
@@ -219,11 +220,4 @@ p25519_fe_isqrt(p25519_fe_t out, const p25519_fe_t u, const p25519_fe_t v) {
   p25519_fe_set(out, x);
 
   return css | fss;
-}
-
-static void
-p25519_clamp(unsigned char *raw) {
-  raw[0] &= 0xf8; /* -8 */
-  raw[31] &= 0x7f;
-  raw[31] |= 0x40;
 }

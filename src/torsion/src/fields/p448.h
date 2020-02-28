@@ -162,10 +162,3 @@ p448_fe_isqrt(p448_fe_t r, const p448_fe_t u, const p448_fe_t v) {
 
   return ret;
 }
-
-static void
-p448_clamp(unsigned char *raw) {
-  raw[0] &= 0xfc; /* -4 */
-  raw[55] &= 0xff;
-  raw[55] |= 0x80;
-}

@@ -21,7 +21,6 @@ typedef p384_fe_word_t p384_fe_t[P384_FIELD_WORDS];
 #define p384_fe_neg fiat_p384_opp
 #define p384_fe_mul fiat_p384_mul
 #define p384_fe_sqr fiat_p384_square
-#define p384_fe_nonzero fiat_p384_nonzero
 
 static void
 p384_fe_set(p384_fe_t out, const p384_fe_t in) {
@@ -41,6 +40,17 @@ p384_fe_set(p384_fe_t out, const p384_fe_t in) {
   out[10] = in[10];
   out[11] = in[11];
 #endif
+}
+
+static int
+p384_fe_equal(const p384_fe_t a, const p384_fe_t b) {
+  p384_fe_word_t z = 0;
+  size_t i;
+
+  for (i = 0; i < P384_FIELD_WORDS; i++)
+    z |= a[i] ^ b[i];
+
+  return z == 0;
 }
 
 static void
@@ -149,7 +159,7 @@ p384_fe_sqrt(p384_fe_t out, const p384_fe_t in) {
    *   15:  r <- r^(2^30)
    */
   p384_fe_t r, t1, t2, t3, t4;
-  p384_fe_word_t ret;
+  int ret;
 
   /* 1 */
   p384_fe_sqr(t1, in);
@@ -210,11 +220,10 @@ p384_fe_sqrt(p384_fe_t out, const p384_fe_t in) {
 
   /* Check. */
   p384_fe_sqr(t1, r);
-  p384_fe_sub(t1, t1, in);
-  fiat_p384_nonzero(&ret, t1);
+  ret = p384_fe_equal(t1, in);
 
   /* Output. */
   p384_fe_set(out, r);
 
-  return ret == 0;
+  return ret;
 }

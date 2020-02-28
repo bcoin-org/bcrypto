@@ -23,6 +23,8 @@
 /* Avoid collisions with future versions of GMP. */
 #define mpn_bitlen torsion_mpn_bitlen
 #define mpn_cmp_limb torsion_mpn_cmp_limb
+#define mpn_get_bit torsion_mpn_get_bit
+#define mpn_get_bits torsion_mpn_get_bits
 #define mpn_cleanse torsion_mpn_cleanse
 #ifndef mpn_cnd_swap
 #define mpn_cnd_swap torsion_mpn_cnd_swap
@@ -82,6 +84,17 @@ mpn_cmp_limb(const mp_limb_t *xp, mp_size_t xn, int32_t num) {
     w = xp[0];
 
   return (int)(w > n) - (int)(w < n);
+}
+
+static mp_limb_t
+mpn_get_bit(const mp_limb_t *k, mp_size_t i) {
+  return (k[i / GMP_NUMB_BITS] >> (i % GMP_NUMB_BITS)) & 1;
+}
+
+static mp_limb_t
+mpn_get_bits(const mp_limb_t *k, mp_size_t i, mp_size_t w) {
+  mp_limb_t mask = ((mp_limb_t)1 << w) - 1;
+  return (k[i / GMP_NUMB_BITS] >> (i % GMP_NUMB_BITS)) & mask;
 }
 
 static void

@@ -331,7 +331,7 @@ typedef struct _wei_s {
   scalar_field_t sc;
   unsigned int h;
   mp_limb_t pmodn[MAX_REDUCE_LIMBS];
-  fe_t red_n;
+  fe_t fe_n;
   fe_t a;
   fe_t b;
   fe_t c;
@@ -390,8 +390,6 @@ typedef struct _wei_scratch_s {
  * Montgomery
  */
 
-typedef void clamp_func(unsigned char *raw);
-
 /* mge = montgomery group element (affine) */
 typedef struct _mge_s {
   fe_t x;
@@ -421,7 +419,6 @@ typedef struct _mont_s {
   fe_t a0;
   fe_t b0;
   mge_t g;
-  clamp_func *clamp;
 } mont_t;
 
 typedef struct _mont_def_s {
@@ -437,7 +434,6 @@ typedef struct _mont_def_s {
   const unsigned char c[MAX_FIELD_SIZE];
   const unsigned char x[MAX_FIELD_SIZE];
   const unsigned char y[MAX_FIELD_SIZE];
-  clamp_func *clamp;
 } mont_def_t;
 
 /*
@@ -477,7 +473,6 @@ typedef struct _edwards_s {
   xge_t unblind;
   xge_t windows[MAX_WNDS_SIZE];
   xge_t points[NAF_SIZE_PRE];
-  clamp_func *clamp;
 } edwards_t;
 
 typedef struct _edwards_def_s {
@@ -495,7 +490,6 @@ typedef struct _edwards_def_s {
   const unsigned char c[MAX_FIELD_SIZE];
   const unsigned char x[MAX_FIELD_SIZE];
   const unsigned char y[MAX_FIELD_SIZE];
-  clamp_func *clamp;
 } edwards_def_t;
 
 typedef struct _edwards_scratch_s {
@@ -636,7 +630,7 @@ reverse_bytes(void *out, const void *in, size_t size) {
 }
 
 static void
-reverse_inplace(void *ptr, size_t size) {
+swap_bytes(void *ptr, size_t size) {
 #ifdef TORSION_USE_64BIT
 #if (defined(__GNUC__) && (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 3))) \
     || (defined(__clang__) && __has_builtin(__builtin_bswap64))
@@ -981,7 +975,6 @@ sc_mulshift(const scalar_field_t *sc, sc_t r,
   mp_limb_t *rp = scratch;
   mp_size_t rn = sc->limbs * 2;
   mp_size_t nn = sc->limbs;
-  mp_size_t i = shift - 1;
   mp_size_t limbs = shift / GMP_NUMB_BITS;
   mp_size_t left = shift % GMP_NUMB_BITS;
   mp_limb_t bit, cy;
@@ -993,7 +986,7 @@ sc_mulshift(const scalar_field_t *sc, sc_t r,
   rp[rn] = 0;
 
   /* bit = (r >> 271) & 1 */
-  bit = rp[i / GMP_NUMB_BITS] >> (i % GMP_NUMB_BITS);
+  bit = mpn_get_bit(rp, shift - 1);
 
   /* r >>= 256 */
   rp += limbs;
@@ -1009,7 +1002,7 @@ sc_mulshift(const scalar_field_t *sc, sc_t r,
 
   /* r += bit */
   rn += 1;
-  cy = mpn_add_1(rp, rp, rn, bit & 1);
+  cy = mpn_add_1(rp, rp, rn, bit);
   rn -= (rp[rn - 1] == 0);
 
   assert(cy == 0);
@@ -1027,33 +1020,44 @@ sc_invert_var(const scalar_field_t *sc, sc_t r, const sc_t a) {
 }
 
 static void
-sc_pow(const scalar_field_t *sc, sc_t r, const sc_t a, const sc_t e) {
+sc_pow(const scalar_field_t *sc, sc_t r, const sc_t a, const mp_limb_t *e) {
   /* Used for inversion if not available otherwise. */
-  mp_size_t i;
-  sc_t b;
+  mp_size_t start = WND_STEPS(sc->bits) - 1;
+  sc_t table[WND_SIZE];
+  mp_size_t i, j;
+  mp_limb_t b;
 
-  sc_set_word(sc, b, 1);
+  sc_set_word(sc, table[0], 1);
+  sc_set(sc, table[1], a);
 
-  for (i = sc->bits - 1; i >= 0; i--) {
-    mp_limb_t bit = e[i / GMP_NUMB_BITS] >> (i % GMP_NUMB_BITS);
-
-    sc_sqr(sc, b, b);
-
-    if (bit & 1)
-      sc_mul(sc, b, b, a);
+  for (i = 2; i < WND_SIZE; i += 2) {
+    sc_sqr(sc, table[i], table[i >> 1]);
+    sc_mul(sc, table[i + 1], table[i], a);
   }
 
-  sc_set(sc, r, b);
+  sc_set_word(sc, r, 1);
+
+  for (i = start; i >= 0; i--) {
+    b = mpn_get_bits(e, i * WND_WIDTH, WND_WIDTH);
+
+    if (i == start) {
+      sc_set(sc, r, table[b]);
+    } else {
+      for (j = 0; j < WND_WIDTH; j++)
+        sc_sqr(sc, r, r);
+
+      sc_mul(sc, r, r, table[b]);
+    }
+  }
 }
 
 static int
 sc_invert(const scalar_field_t *sc, sc_t r, const sc_t a) {
   int ret = sc_is_zero(sc, a) ^ 1;
-  sc_t e;
+  mp_limb_t e[MAX_SCALAR_LIMBS];
 
   /* e = n - 2 */
-  mpn_copyi(e, sc->n, sc->limbs);
-  mpn_sub_1(e, e, sc->limbs, 2);
+  mpn_sub_1(e, sc->n, sc->limbs, 2);
 
   sc_pow(sc, r, a, e);
 
@@ -1066,16 +1070,15 @@ sc_bitlen_var(const scalar_field_t *sc, const sc_t a) {
 }
 
 static mp_limb_t
-sc_get_bits(const scalar_field_t *sc, const sc_t a, size_t i, size_t w) {
+sc_get_bit(const scalar_field_t *sc, const sc_t k, size_t i) {
   (void)sc;
-  mp_limb_t mask = ((mp_limb_t)1 << w) - 1;
-  return (a[i / GMP_NUMB_BITS] >> (i % GMP_NUMB_BITS)) & mask;
+  return mpn_get_bit(k, i);
 }
 
 static mp_limb_t
-sc_get_bit(const scalar_field_t *sc, const sc_t k, size_t i) {
+sc_get_bits(const scalar_field_t *sc, const sc_t k, size_t i, size_t w) {
   (void)sc;
-  return (k[i / GMP_NUMB_BITS] >> (i % GMP_NUMB_BITS)) & 1;
+  return mpn_get_bits(k, i, w);
 }
 
 static size_t
@@ -1416,7 +1419,7 @@ fe_export(const prime_field_t *fe, unsigned char *raw, const fe_t a) {
   }
 
   if (fe->endian == 1)
-    reverse_inplace(raw, fe->size);
+    swap_bytes(raw, fe->size);
 }
 
 static void
@@ -1512,7 +1515,7 @@ fe_set_word(const prime_field_t *fe, fe_t r, uint32_t word) {
       tmp[3] = (word >> 24) & 0xff;
     }
 
-    fe_import(fe, r, tmp);
+    assert(fe_import(fe, r, tmp));
   } else {
     /* Note: the limit of the word size here depends
      * on how saturated the field implementation is.
@@ -1543,14 +1546,24 @@ fe_is_zero(const prime_field_t *fe, const fe_t a) {
 
 static int
 fe_equal(const prime_field_t *fe, const fe_t a, const fe_t b) {
-  fe_t c;
+  fe_word_t z = 0;
+  size_t i;
 
-  fe->sub(c, a, b);
+  if (fe->from_montgomery) {
+    for (i = 0; i < fe->words; i++)
+      z |= a[i] ^ b[i];
+  } else {
+    unsigned char x[MAX_FIELD_SIZE];
+    unsigned char y[MAX_FIELD_SIZE];
 
-  if (fe->carry)
-    fe->carry(c, c);
+    fe->to_bytes(x, a);
+    fe->to_bytes(y, b);
 
-  return fe_is_zero(fe, c);
+    for (i = 0; i < fe->size; i++)
+      z |= (fe_word_t)x[i] ^ (fe_word_t)y[i];
+  }
+
+  return z == 0;
 }
 
 static int
@@ -1651,22 +1664,34 @@ fe_mul121666(const prime_field_t *fe, fe_t r, const fe_t a) {
 
 static void
 fe_pow(const prime_field_t *fe, fe_t r, const fe_t a, const mp_limb_t *e) {
-  /* Used for inversion and legendre if not available otherwise. */
-  mp_size_t i;
-  fe_t b;
+  /* Used for inversion and square roots if not available otherwise. */
+  mp_size_t start = WND_STEPS(fe->bits) - 1;
+  fe_t table[WND_SIZE];
+  mp_size_t i, j;
+  mp_limb_t b;
 
-  fe_set(fe, b, fe->one);
+  fe_set(fe, table[0], fe->one);
+  fe_set(fe, table[1], a);
 
-  for (i = fe->bits - 1; i >= 0; i--) {
-    mp_limb_t bit = e[i / GMP_NUMB_BITS] >> (i % GMP_NUMB_BITS);
-
-    fe_sqr(fe, b, b);
-
-    if (bit & 1)
-      fe_mul(fe, b, b, a);
+  for (i = 2; i < WND_SIZE; i += 2) {
+    fe_sqr(fe, table[i], table[i >> 1]);
+    fe_mul(fe, table[i + 1], table[i], a);
   }
 
-  fe_set(fe, r, b);
+  fe_set(fe, r, fe->one);
+
+  for (i = start; i >= 0; i--) {
+    b = mpn_get_bits(e, i * WND_WIDTH, WND_WIDTH);
+
+    if (i == start) {
+      fe_set(fe, r, table[b]);
+    } else {
+      for (j = 0; j < WND_WIDTH; j++)
+        fe_sqr(fe, r, r);
+
+      fe_mul(fe, r, r, table[b]);
+    }
+  }
 }
 
 static int
@@ -1695,8 +1720,7 @@ fe_invert(const prime_field_t *fe, fe_t r, const fe_t a) {
     mp_limb_t e[MAX_FIELD_LIMBS];
 
     /* e = p - 2 */
-    mpn_copyi(e, fe->p, fe->limbs);
-    mpn_sub_1(e, e, fe->limbs, 2);
+    mpn_sub_1(e, fe->p, fe->limbs, 2);
 
     fe_pow(fe, r, a, e);
   }
@@ -1718,8 +1742,7 @@ fe_sqrt(const prime_field_t *fe, fe_t r, const fe_t a) {
 
     if ((fe->p[0] & 3) == 3) {
       /* b = a^((p + 1) / 4) mod p */
-      mpn_copyi(e, fe->p, fe->limbs + 1);
-      mpn_add_1(e, e, fe->limbs + 1, 1);
+      mpn_add_1(e, fe->p, fe->limbs + 1, 1);
       mpn_rshift(e, e, fe->limbs + 1, 2);
       fe_pow(fe, b, a, e);
     } else if ((fe->p[0] & 7) == 5) {
@@ -1729,8 +1752,7 @@ fe_sqrt(const prime_field_t *fe, fe_t r, const fe_t a) {
       fe_add(fe, a2, a, a);
 
       /* c = a2^((p - 5) / 8) mod p */
-      mpn_copyi(e, fe->p, fe->limbs);
-      mpn_sub_1(e, e, fe->limbs, 5);
+      mpn_sub_1(e, fe->p, fe->limbs, 5);
       mpn_rshift(e, e, fe->limbs, 3);
       fe_pow(fe, c, a2, e);
 
@@ -1783,8 +1805,7 @@ fe_is_square(const prime_field_t *fe, const fe_t a) {
     fe_t b;
 
     /* e = (p - 1) / 2 */
-    mpn_copyi(e, fe->p, fe->limbs);
-    mpn_sub_1(e, e, fe->limbs, 1);
+    mpn_sub_1(e, fe->p, fe->limbs, 1);
     mpn_rshift(e, e, fe->limbs, 1);
 
     fe_pow(fe, b, a, e);
@@ -2581,10 +2602,10 @@ jge_is_zero(const wei_t *ec, const jge_t *a) {
 static int
 jge_equal(const wei_t *ec, const jge_t *a, const jge_t *b) {
   const prime_field_t *fe = &ec->fe;
-  fe_t z1, z2, e1, e2;
   int inf1 = jge_is_zero(ec, a);
   int inf2 = jge_is_zero(ec, b);
   int both = inf1 & inf2;
+  fe_t z1, z2, e1, e2;
   int ret = 1;
 
   /* P = O, Q = O */
@@ -2611,6 +2632,8 @@ jge_equal(const wei_t *ec, const jge_t *a, const jge_t *b) {
 
 static int
 jge_is_square(const wei_t *ec, const jge_t *p) {
+  /* [SCHNORR] "Optimizations". */
+  /* [BIP340] "Optimizations". */
   const prime_field_t *fe = &ec->fe;
   fe_t yz;
 
@@ -2622,6 +2645,8 @@ jge_is_square(const wei_t *ec, const jge_t *p) {
 
 static int
 jge_is_square_var(const wei_t *ec, const jge_t *p) {
+  /* [SCHNORR] "Optimizations". */
+  /* [BIP340] "Optimizations". */
   const prime_field_t *fe = &ec->fe;
   fe_t yz;
 
@@ -2635,6 +2660,8 @@ jge_is_square_var(const wei_t *ec, const jge_t *p) {
 
 static int
 jge_equal_x(const wei_t *ec, const jge_t *p, const fe_t x) {
+  /* [SCHNORR] "Optimizations". */
+  /* [BIP340] "Optimizations". */
   const prime_field_t *fe = &ec->fe;
   fe_t xz;
 
@@ -2648,11 +2675,14 @@ jge_equal_x(const wei_t *ec, const jge_t *p, const fe_t x) {
 #ifdef ECC_WITH_TRICK
 static int
 jge_equal_r_var(const wei_t *ec, const jge_t *p, const sc_t x) {
+  /* Generalized version of the trick used in libsecp256k1: */
+  /* https://github.com/bitcoin-core/secp256k1/commit/ce7eb6f */
   const prime_field_t *fe = &ec->fe;
   const scalar_field_t *sc = &ec->sc;
   mp_limb_t cp[MAX_FIELD_LIMBS + 1];
   mp_size_t cn = fe->limbs + 1;
   fe_t zz, rx, rn;
+  mp_limb_t cy;
 
   assert(fe->limbs >= sc->limbs);
 
@@ -2670,13 +2700,15 @@ jge_equal_r_var(const wei_t *ec, const jge_t *p, const sc_t x) {
   mpn_zero(cp + sc->limbs, cn - sc->limbs);
   mpn_copyi(cp, x, sc->limbs);
 
-  fe_mul(fe, rn, ec->red_n, zz);
+  fe_mul(fe, rn, ec->fe_n, zz);
 
   assert(sc->n[cn - 1] == 0);
   assert(fe->p[cn - 1] == 0);
 
   for (;;) {
-    mpn_add_n(cp, cp, sc->n, cn);
+    cy = mpn_add_n(cp, cp, sc->n, cn);
+
+    assert(cy == 0);
 
     if (mpn_cmp(cp, fe->p, cn) >= 0)
       return 0;
@@ -3530,7 +3562,7 @@ wei_init(wei_t *ec, const wei_def_t *def) {
 
   sc_reduce(sc, ec->pmodn, fe->p);
 
-  fe_set_limbs(fe, ec->red_n, sc->n, sc->limbs);
+  fe_set_limbs(fe, ec->fe_n, sc->n, sc->limbs);
   fe_import(fe, ec->a, def->a);
   fe_import(fe, ec->b, def->b);
   fe_import(fe, ec->c, def->c);
@@ -5133,10 +5165,10 @@ pge_is_zero(const mont_t *ec, const pge_t *a) {
 static int
 pge_equal(const mont_t *ec, const pge_t *a, const pge_t *b) {
   const prime_field_t *fe = &ec->fe;
-  fe_t e1, e2;
   int inf1 = pge_is_zero(ec, a);
   int inf2 = pge_is_zero(ec, b);
   int both = inf1 & inf2;
+  fe_t e1, e2;
   int ret = 1;
 
   /* P = O, Q = O */
@@ -5326,7 +5358,6 @@ mont_init(mont_t *ec, const mont_def_t *def) {
   scalar_field_t *sc = &ec->sc;
 
   ec->h = def->h;
-  ec->clamp = def->clamp;
 
   prime_field_init(fe, def->fe, -1);
   scalar_field_init(sc, def->sc, -1);
@@ -5385,8 +5416,23 @@ mont_init_isomorphism(mont_t *ec, const mont_def_t *def) {
 
 static void
 mont_clamp(const mont_t *ec, unsigned char *out, const unsigned char *in) {
-  memcpy(out, in, ec->sc.size);
-  ec->clamp(out);
+  size_t size = ec->sc.size;
+  size_t top = ec->fe.bits & 7;
+
+  if (top == 0)
+    top = 8;
+
+  /* Copy. */
+  memcpy(out, in, size);
+
+  /* Ensure a multiple of the cofactor. */
+  out[0] &= -ec->h;
+
+  /* Clamp to the prime. */
+  out[size - 1] &= (1 << top) - 1;
+
+  /* Set the high bit. */
+  out[size - 1] |= 1 << (top - 1);
 }
 
 static void
@@ -6250,7 +6296,6 @@ edwards_init(edwards_t *ec, const edwards_def_t *def) {
   ec->context = def->context;
   ec->prefix = def->prefix;
   ec->h = def->h;
-  ec->clamp = def->clamp;
 
   prime_field_init(fe, def->fe, -1);
   scalar_field_init(sc, def->sc, -1);
@@ -6339,8 +6384,23 @@ static void
 edwards_clamp(const edwards_t *ec,
               unsigned char *out,
               const unsigned char *in) {
-  memcpy(out, in, ec->sc.size);
-  ec->clamp(out);
+  size_t size = ec->sc.size;
+  size_t top = ec->fe.bits & 7;
+
+  if (top == 0)
+    top = 8;
+
+  /* Copy. */
+  memcpy(out, in, size);
+
+  /* Ensure a multiple of the cofactor. */
+  out[0] &= -ec->h;
+
+  /* Clamp to the prime. */
+  out[size - 1] &= (1 << top) - 1;
+
+  /* Set the high bit. */
+  out[size - 1] |= 1 << (top - 1);
 }
 
 static void
@@ -7062,7 +7122,7 @@ static const prime_def_t field_p192 = {
   .to_bytes = fiat_p192_to_bytes,
   .from_bytes = fiat_p192_from_bytes,
   .carry = fiat_p192_carry,
-  .invert = NULL,
+  .invert = p192_fe_invert,
   .sqrt = p192_fe_sqrt,
   .isqrt = NULL,
   .scmul_121666 = NULL
@@ -7409,9 +7469,9 @@ static const prime_def_t field_p251 = {
   .to_bytes = fiat_p251_to_bytes,
   .from_bytes = fiat_p251_from_bytes,
   .carry = fiat_p251_carry,
-  .invert = NULL,
-  .sqrt = NULL,
-  .isqrt = NULL,
+  .invert = p251_fe_invert,
+  .sqrt = p251_fe_sqrt,
+  .isqrt = p251_fe_isqrt,
   .scmul_121666 = NULL
 };
 
@@ -7756,8 +7816,7 @@ static const mont_def_t curve_x25519 = {
     0x1f, 0xe1, 0x22, 0xd3, 0x88, 0xb7, 0x2e, 0xb3,
     0x6d, 0xc2, 0xb2, 0x81, 0x92, 0x83, 0x9e, 0x4d,
     0xd6, 0x16, 0x3a, 0x5d, 0x81, 0x31, 0x2c, 0x14
-  },
-  .clamp = p25519_clamp
+  }
 };
 
 static const mont_def_t curve_x448 = {
@@ -7814,8 +7873,7 @@ static const mont_def_t curve_x448 = {
     0xb8, 0x02, 0x7e, 0x23, 0x46, 0x43, 0x0d, 0x21,
     0x13, 0x12, 0xc4, 0xb1, 0x50, 0x67, 0x7a, 0xf7,
     0x6f, 0xd7, 0x22, 0x3d, 0x45, 0x7b, 0x5b, 0x1a
-  },
-  .clamp = p448_clamp
+  }
 };
 
 /*
@@ -7867,8 +7925,7 @@ static const edwards_def_t curve_ed25519 = {
     0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66,
     0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66,
     0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x58
-  },
-  .clamp = p25519_clamp
+  }
 };
 
 static const edwards_def_t curve_ed448 = {
@@ -7929,8 +7986,7 @@ static const edwards_def_t curve_ed448 = {
     0x3a, 0xd3, 0xff, 0x1c, 0xe6, 0x7c, 0x39, 0xc4,
     0xfd, 0xbd, 0x13, 0x2c, 0x4e, 0xd7, 0xc8, 0xad,
     0x98, 0x08, 0x79, 0x5b, 0xf2, 0x30, 0xfa, 0x14
-  },
-  .clamp = p448_clamp
+  }
 };
 
 static const edwards_def_t curve_ed1174 = {
@@ -7976,8 +8032,7 @@ static const edwards_def_t curve_ed1174 = {
     0x66, 0x56, 0x84, 0x11, 0x69, 0x84, 0x0e, 0x0c,
     0x4f, 0xe2, 0xde, 0xe2, 0xaf, 0x3f, 0x97, 0x6b,
     0xa4, 0xcc, 0xb1, 0xbf, 0x9b, 0x46, 0x36, 0x0e
-  },
-  .clamp = p251_clamp
+  }
 };
 
 /*
@@ -9012,7 +9067,7 @@ ecdsa_recover(const wei_t *ec,
     if (sc_cmp_var(sc, r, ec->pmodn) >= 0)
       return 0;
 
-    fe_add(fe, x, x, ec->red_n);
+    fe_add(fe, x, x, ec->fe_n);
   }
 
   if (!wge_set_x(ec, &R, x, sign))
@@ -9183,8 +9238,8 @@ ecdsa_schnorr_sign(const wei_t *ec,
 
   sc_neg_cond(sc, k, k, wge_is_square(ec, &R) ^ 1);
 
-  wge_export_x(ec, Rraw, &R);
-  wge_export(ec, Araw, NULL, &A, 1);
+  ret &= wge_export_x(ec, Rraw, &R);
+  ret &= wge_export(ec, Araw, NULL, &A, 1);
 
   ecdsa_schnorr_hash_challenge(ec, e, Rraw, Araw, msg, msg_len);
 
@@ -9271,7 +9326,7 @@ ecdsa_schnorr_verify(const wei_t *ec,
   if (!wge_import(ec, &A, pub, pub_len))
     return 0;
 
-  wge_export(ec, Araw, NULL, &A, 1);
+  assert(wge_export(ec, Araw, NULL, &A, 1));
 
   ecdsa_schnorr_hash_challenge(ec, e, Rraw, Araw, msg, msg_len);
 
@@ -9395,7 +9450,7 @@ ecdsa_schnorr_verify_batch(const wei_t *ec,
     if (!sc_import(sc, s, sraw))
       return 0;
 
-    wge_export(ec, Araw, NULL, &A, 1);
+    assert(wge_export(ec, Araw, NULL, &A, 1));
 
     ecdsa_schnorr_hash_challenge(ec, e, Rraw, Araw, msg, msg_len);
 
@@ -9986,7 +10041,7 @@ schnorr_sign(const wei_t *ec,
   sc_neg_cond(sc, a, a, wge_is_even(ec, &A) ^ 1);
   sc_export(sc, araw, a);
 
-  wge_export_x(ec, Araw, &A);
+  ret &= wge_export_x(ec, Araw, &A);
 
   schnorr_hash_nonce(ec, k, araw, Araw, msg, msg_len, aux, aux_len);
 
@@ -9996,7 +10051,7 @@ schnorr_sign(const wei_t *ec,
 
   sc_neg_cond(sc, k, k, wge_is_square(ec, &R) ^ 1);
 
-  wge_export_x(ec, Rraw, &R);
+  ret &= wge_export_x(ec, Rraw, &R);
 
   schnorr_hash_challenge(ec, e, Rraw, Araw, msg, msg_len);
 
