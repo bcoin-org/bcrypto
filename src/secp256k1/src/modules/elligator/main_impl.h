@@ -30,9 +30,9 @@ static void
 secp256k1_fe_sqrn(secp256k1_fe *out, const secp256k1_fe *in, int rounds) {
   int i;
 
-  *out = *in;
+  secp256k1_fe_sqr(out, in);
 
-  for (i = 0; i < rounds; i++)
+  for (i = 1; i < rounds; i++)
     secp256k1_fe_sqr(out, out);
 }
 
@@ -40,13 +40,15 @@ static void
 secp256k1_fe_pow_pm3d4(secp256k1_fe *out, const secp256k1_fe *in) {
   /* Compute a^((p - 3) / 4) with a modification of the square root chain. */
   /* 14M + 254S */
-  secp256k1_fe x2, x3, x6, x9, x11, x22, x44, x88, x176, x220, x223, t1;
+  secp256k1_fe x1, x2, x3, x6, x9, x11, x22, x44, x88, x176, x220, x223;
 
-  secp256k1_fe_sqr(&x2, in);
-  secp256k1_fe_mul(&x2, &x2, in);
+  x1 = *in;
+
+  secp256k1_fe_sqr(&x2, &x1);
+  secp256k1_fe_mul(&x2, &x2, &x1);
 
   secp256k1_fe_sqr(&x3, &x2);
-  secp256k1_fe_mul(&x3, &x3, in);
+  secp256k1_fe_mul(&x3, &x3, &x1);
 
   secp256k1_fe_sqrn(&x6, &x3, 3);
   secp256k1_fe_mul(&x6, &x6, &x3);
@@ -75,14 +77,12 @@ secp256k1_fe_pow_pm3d4(secp256k1_fe *out, const secp256k1_fe *in) {
   secp256k1_fe_sqrn(&x223, &x220, 3);
   secp256k1_fe_mul(&x223, &x223, &x3);
 
-  secp256k1_fe_sqrn(&t1, &x223, 23);
-  secp256k1_fe_mul(&t1, &t1, &x22);
-
-  /* 1100 -> 1011 */
-  secp256k1_fe_sqrn(&t1, &t1, 5);
-  secp256k1_fe_mul(&t1, &t1, in);
-  secp256k1_fe_sqrn(&t1, &t1, 3);
-  secp256k1_fe_mul(out, &t1, &x2);
+  secp256k1_fe_sqrn(out, &x223, 23);
+  secp256k1_fe_mul(out, out, &x22);
+  secp256k1_fe_sqrn(out, out, 5);
+  secp256k1_fe_mul(out, out, &x1);
+  secp256k1_fe_sqrn(out, out, 3);
+  secp256k1_fe_mul(out, out, &x2);
 }
 
 static int
@@ -90,7 +90,7 @@ secp256k1_fe_isqrt(secp256k1_fe *r,
                    const secp256k1_fe *u,
                    const secp256k1_fe *v) {
   secp256k1_fe u2, u3, u5, v3, p, x, c;
-  int s;
+  int ret;
 
   /* x = u^3 * v * (u^5 * v^3)^((p - 3) / 4) mod p */
   secp256k1_fe_sqr(&u2, u);
@@ -106,11 +106,11 @@ secp256k1_fe_isqrt(secp256k1_fe *r,
   /* x^2 * v == u */
   secp256k1_fe_sqr(&c, &x);
   secp256k1_fe_mul(&c, &c, v);
-  s = secp256k1_fe_equal(&c, u);
+  ret = secp256k1_fe_equal(&c, u);
 
   *r = x;
 
-  return s;
+  return ret;
 }
 
 static void
@@ -492,6 +492,7 @@ secp256k1_pubkey_to_hash(const secp256k1_context *ctx,
   for (;;) {
     secp256k1_fe_random(&u1, &rng);
     shallue_van_de_woestijne(&p1, &u1);
+
     secp256k1_ge_neg(&p1, &p1);
     secp256k1_gej_add_ge(&r, &j, &p1);
     secp256k1_ge_set_gej(&p2, &r);
