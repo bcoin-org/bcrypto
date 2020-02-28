@@ -48,44 +48,34 @@ secp256k1_fe_pow_pm3d4(secp256k1_fe *out, const secp256k1_fe *in) {
   secp256k1_fe_sqr(&x3, &x2);
   secp256k1_fe_mul(&x3, &x3, in);
 
-  x6 = x3;
-  secp256k1_fe_sqrn(&x6, &x6, 3);
+  secp256k1_fe_sqrn(&x6, &x3, 3);
   secp256k1_fe_mul(&x6, &x6, &x3);
 
-  x9 = x6;
-  secp256k1_fe_sqrn(&x9, &x9, 3);
+  secp256k1_fe_sqrn(&x9, &x6, 3);
   secp256k1_fe_mul(&x9, &x9, &x3);
 
-  x11 = x9;
-  secp256k1_fe_sqrn(&x11, &x11, 2);
+  secp256k1_fe_sqrn(&x11, &x9, 2);
   secp256k1_fe_mul(&x11, &x11, &x2);
 
-  x22 = x11;
-  secp256k1_fe_sqrn(&x22, &x22, 11);
+  secp256k1_fe_sqrn(&x22, &x11, 11);
   secp256k1_fe_mul(&x22, &x22, &x11);
 
-  x44 = x22;
-  secp256k1_fe_sqrn(&x44, &x44, 22);
+  secp256k1_fe_sqrn(&x44, &x22, 22);
   secp256k1_fe_mul(&x44, &x44, &x22);
 
-  x88 = x44;
-  secp256k1_fe_sqrn(&x88, &x88, 44);
+  secp256k1_fe_sqrn(&x88, &x44, 44);
   secp256k1_fe_mul(&x88, &x88, &x44);
 
-  x176 = x88;
-  secp256k1_fe_sqrn(&x176, &x176, 88);
+  secp256k1_fe_sqrn(&x176, &x88, 88);
   secp256k1_fe_mul(&x176, &x176, &x88);
 
-  x220 = x176;
-  secp256k1_fe_sqrn(&x220, &x220, 44);
+  secp256k1_fe_sqrn(&x220, &x176, 44);
   secp256k1_fe_mul(&x220, &x220, &x44);
 
-  x223 = x220;
-  secp256k1_fe_sqrn(&x223, &x223, 3);
+  secp256k1_fe_sqrn(&x223, &x220, 3);
   secp256k1_fe_mul(&x223, &x223, &x3);
 
-  t1 = x223;
-  secp256k1_fe_sqrn(&t1, &t1, 23);
+  secp256k1_fe_sqrn(&t1, &x223, 23);
   secp256k1_fe_mul(&t1, &t1, &x22);
 
   /* 1100 -> 1011 */
