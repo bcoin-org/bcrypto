@@ -1,7 +1,7 @@
 'use strict';
 
 const assert = require('bsert');
-const schnorr = require('../lib/js/schnorr');
+const schnorr = require('../lib/schnorr');
 const secp256k1 = require('../lib/secp256k1');
 const rng = require('../lib/random');
 const vectors = require('./data/schnorr.json');

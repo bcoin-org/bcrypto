@@ -82,6 +82,7 @@
     "./lib/ripemd160": "./lib/ripemd160-browser.js",
     "./lib/rsa": "./lib/rsa-browser.js",
     "./lib/salsa20": "./lib/salsa20-browser.js",
+    "./lib/schnorr": "./lib/schnorr-browser.js",
     "./lib/scrypt": "./lib/scrypt-browser.js",
     "./lib/secp256k1": "./lib/secp256k1-browser.js",
     "./lib/sha1": "./lib/sha1-browser.js",

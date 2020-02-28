@@ -41,6 +41,7 @@
       "./src/rsa.cc",
       "./src/rsa_async.cc",
       "./src/salsa20.cc",
+      "./src/schnorr.cc",
       "./src/scrypt.cc",
       "./src/scrypt_async.cc",
       "./src/siphash.cc",

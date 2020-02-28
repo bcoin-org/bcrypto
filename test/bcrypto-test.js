@@ -90,6 +90,7 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.rsaies.native, undefined);
         assert.strictEqual(bcrypto.safe.native, undefined);
         assert.strictEqual(bcrypto.Salsa20.native, 0);
+        assert.strictEqual(bcrypto.schnorr.native, 0);
         assert.strictEqual(bcrypto.scrypt.native, 0);
         assert.strictEqual(bcrypto.secp256k1.native, 0);
         assert.strictEqual(bcrypto.secretbox.native, 0);
@@ -184,6 +185,7 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.rsaies.native, undefined);
         assert.strictEqual(bcrypto.safe.native, undefined);
         assert.strictEqual(bcrypto.Salsa20.native, 2);
+        assert.strictEqual(bcrypto.schnorr.native, 2);
         assert.strictEqual(bcrypto.scrypt.native, 2);
         assert.strictEqual(bcrypto.secp256k1.native, 2);
         assert.strictEqual(bcrypto.secretbox.native, 0);

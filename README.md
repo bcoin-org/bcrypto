@@ -60,6 +60,7 @@ TODO
 | rsa                          | c (libtorsion²)   | c (libtorsion²)   | c (libtorsion)    | js      |
 | rsaies                       | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion¹)   | js      |
 | salsa20                      | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion¹)   | js      |
+| schnorr                      | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
 | scrypt                       | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
 | secp256k1                    | c (libsecp256k1⁴) | c (libsecp256k1⁴) | c (libsecp256k1⁴) | js      |
 | sha1                         | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
