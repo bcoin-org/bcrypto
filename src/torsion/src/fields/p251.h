@@ -58,161 +58,150 @@ static void
 p251_fe_sqrn(p251_fe_t out, const p251_fe_t in, int rounds) {
   int i;
 
-  p251_fe_set(out, in);
+  p251_fe_sqr(out, in);
 
-  for (i = 0; i < rounds; i++)
+  for (i = 1; i < rounds; i++)
     p251_fe_sqr(out, out);
 }
 
 static void
 p251_fe_invert(p251_fe_t out, const p251_fe_t in) {
-  /* https://github.com/stegos/stegos/blob/532a15a/crypto/src/curve1174/fq51.rs#L454 */
-  p251_fe_t w, t1, t2, x3, x5;
+  /* 247x1 1x0 1x1 1x0 1x1 */
+  p251_fe_t x1, x2, x3, x6, x12, x24, x48, x96;
 
-  p251_fe_sqr(w, in);
-  p251_fe_mul(x3, w, in);
-  p251_fe_mul(x5, x3, w);
+  p251_fe_set(x1, in);
 
-  p251_fe_sqr(w, x3);
-  p251_fe_sqr(t1, w);
-  p251_fe_mul(w, x3, t1);
+  p251_fe_sqr(x2, x1);
+  p251_fe_mul(x2, x2, x1);
 
-  p251_fe_sqr(t1, w);
-  p251_fe_sqr(w, t1);
-  p251_fe_mul(t1, x3, w);
-  p251_fe_set(t2, t1);
-  p251_fe_sqrn(t1, t1, 6);
-  p251_fe_mul(w, t1, t2);
+  p251_fe_sqr(x3, x2);
+  p251_fe_mul(x3, x3, x1);
 
-  p251_fe_sqr(t1, w);
-  p251_fe_sqr(w, t1);
-  p251_fe_mul(t1, x3, w);
-  p251_fe_set(t2, t1);
-  p251_fe_sqrn(t1, t1, 14);
-  p251_fe_mul(w, t1, t2);
+  p251_fe_sqrn(x6, x3, 3);
+  p251_fe_mul(x6, x6, x3);
 
-  p251_fe_sqr(t1, w);
-  p251_fe_sqr(w, t1);
-  p251_fe_mul(t1, x3, w);
-  p251_fe_set(t2, t1);
-  p251_fe_sqrn(t1, t1, 30);
-  p251_fe_mul(w, t1, t2);
+  p251_fe_sqrn(x12, x6, 6);
+  p251_fe_mul(x12, x12, x6);
 
-  p251_fe_set(t2, w);
-  p251_fe_sqrn(w, w, 60);
-  p251_fe_mul(t1, w, t2);
+  p251_fe_sqrn(x24, x12, 12);
+  p251_fe_mul(x24, x24, x12);
 
-  p251_fe_sqr(w, t1);
-  p251_fe_sqr(t1, w);
-  p251_fe_mul(w, x3, t1);
-  p251_fe_set(t2, w);
-  p251_fe_sqrn(w, w, 122);
-  p251_fe_mul(t1, w, t2);
+  p251_fe_sqrn(x48, x24, 24);
+  p251_fe_mul(x48, x48, x24);
 
-  p251_fe_sqr(w, t1);
-  p251_fe_mul(t1, w, in);
-  p251_fe_sqr(w, t1);
-  p251_fe_sqr(t1, w);
-  p251_fe_mul(w, x3, t1);
+  p251_fe_sqrn(x96, x48, 48);
+  p251_fe_mul(x96, x96, x48);
 
-  p251_fe_sqr(t1, w);
-  p251_fe_sqr(w, t1);
-  p251_fe_sqr(t1, w);
-  p251_fe_sqr(w, t1);
-  p251_fe_mul(out, w, x5);
+  p251_fe_sqrn(out, x96, 96); /* x192 */
+  p251_fe_mul(out, out, x96);
+
+  p251_fe_sqrn(out, out, 48); /* x240 */
+  p251_fe_mul(out, out, x48);
+
+  p251_fe_sqrn(out, out, 6); /* x246 */
+  p251_fe_mul(out, out, x6);
+
+  p251_fe_sqr(out, out); /* x247 */
+  p251_fe_mul(out, out, x1);
+
+  p251_fe_sqr(out, out);
+
+  p251_fe_sqr(out, out);
+  p251_fe_mul(out, out, x1);
+
+  p251_fe_sqr(out, out);
+
+  p251_fe_sqr(out, out);
+  p251_fe_mul(out, out, x1);
 }
 
 static int
 p251_fe_sqrt(p251_fe_t out, const p251_fe_t in) {
-  /* https://github.com/stegos/stegos/blob/532a15a/crypto/src/curve1174/fq51.rs#L536 */
-  p251_fe_t w, t1, t2, t8, t16, t32, t64;
-  int ret;
+  /* 248x1 1x0 */
+  p251_fe_t x1, x2, x3, x6, x12, x24, x31, x62, x124;
 
-  p251_fe_sqr(w, in);
-  p251_fe_mul(t1, w, in);
-  p251_fe_sqr(w, t1);
-  p251_fe_sqr(t2, w);
-  p251_fe_mul(w, t1, t2);
+  p251_fe_set(x1, in);
 
-  p251_fe_set(t2, w);
-  p251_fe_sqrn(w, w, 4);
-  p251_fe_mul(t8, t2, w);
+  p251_fe_sqr(x2, x1);
+  p251_fe_mul(x2, x2, x1);
 
-  p251_fe_set(w, t8);
-  p251_fe_sqrn(w, w, 8);
-  p251_fe_mul(t16, t8, w);
+  p251_fe_sqr(x3, x2);
+  p251_fe_mul(x3, x3, x1);
 
-  p251_fe_set(w, t16);
-  p251_fe_sqrn(w, w, 16);
-  p251_fe_mul(t32, t16, w);
+  p251_fe_sqrn(x6, x3, 3);
+  p251_fe_mul(x6, x6, x3);
 
-  p251_fe_set(w, t32);
-  p251_fe_sqrn(w, w, 32);
-  p251_fe_mul(t64, t32, w);
+  p251_fe_sqrn(x12, x6, 6);
+  p251_fe_mul(x12, x12, x6);
 
-  p251_fe_set(w, t64);
-  p251_fe_sqrn(w, w, 64);
-  p251_fe_mul(t1, t64, w);
+  p251_fe_sqrn(x24, x12, 12);
+  p251_fe_mul(x24, x24, x12);
 
-  p251_fe_sqrn(t1, t1, 64);
-  p251_fe_mul(w, t64, t1);
+  p251_fe_sqrn(x31, x24, 6);
+  p251_fe_mul(x31, x31, x6);
+  p251_fe_sqr(x31, x31);
+  p251_fe_mul(x31, x31, x1);
 
-  p251_fe_sqrn(w, w, 32);
-  p251_fe_mul(t1, t32, w);
+  p251_fe_sqrn(x62, x31, 31);
+  p251_fe_mul(x62, x62, x31);
 
-  p251_fe_sqrn(t1, t1, 16);
-  p251_fe_mul(w, t16, t1);
+  p251_fe_sqrn(x124, x62, 62);
+  p251_fe_mul(x124, x124, x62);
 
-  p251_fe_sqrn(w, w, 8);
-  p251_fe_mul(t1, t8, w);
+  p251_fe_sqrn(out, x124, 124); /* x248 */
+  p251_fe_mul(out, out, x124);
 
-  p251_fe_sqr(w, t1);
+  p251_fe_sqr(out, out);
 
-  p251_fe_sqr(t1, w);
-  ret = p251_fe_equal(t1, in);
+  p251_fe_sqr(x2, out);
 
-  p251_fe_set(out, w);
-
-  return ret;
+  return p251_fe_equal(x2, x1);
 }
 
 static void
 p251_fe_pow_pm3d4(p251_fe_t out, const p251_fe_t in) {
-  /* Compute a^((p - 3) / 4) with sliding window. */
-  p251_fe_t t1, t2, t3, t4, t8, t16, t32, t64, t254, t255;
-  int i;
+  /* 247x1 1x0 1x1 */
+  p251_fe_t x1, x2, x3, x6, x12, x24, x48, x96;
 
-  p251_fe_set(t1, in);
-  p251_fe_sqr(t2, t1);
-  p251_fe_mul(t3, t2, t1);
-  p251_fe_sqr(t4, t2);
-  p251_fe_sqr(t8, t4);
-  p251_fe_sqr(t16, t8);
-  p251_fe_sqr(t32, t16);
-  p251_fe_sqr(t64, t32);
+  p251_fe_set(x1, in);
 
-  p251_fe_sqr(t254, t64);
-  p251_fe_mul(t254, t254, t64);
-  p251_fe_mul(t254, t254, t32);
-  p251_fe_mul(t254, t254, t16);
-  p251_fe_mul(t254, t254, t8);
-  p251_fe_mul(t254, t254, t4);
-  p251_fe_mul(t254, t254, t2);
+  p251_fe_sqr(x2, x1);
+  p251_fe_mul(x2, x2, x1);
 
-  p251_fe_mul(t255, t254, t1);
+  p251_fe_sqr(x3, x2);
+  p251_fe_mul(x3, x3, x1);
 
-  p251_fe_set(out, t255);
+  p251_fe_sqrn(x6, x3, 3);
+  p251_fe_mul(x6, x6, x3);
 
-  for (i = 0; i < 29; i++) {
-    p251_fe_sqrn(out, out, 8);
-    p251_fe_mul(out, out, t255);
-  }
+  p251_fe_sqrn(x12, x6, 6);
+  p251_fe_mul(x12, x12, x6);
 
-  p251_fe_sqrn(out, out, 8);
-  p251_fe_mul(out, out, t254);
+  p251_fe_sqrn(x24, x12, 12);
+  p251_fe_mul(x24, x24, x12);
 
-  p251_fe_sqrn(out, out, 1);
-  p251_fe_mul(out, out, t1);
+  p251_fe_sqrn(x48, x24, 24);
+  p251_fe_mul(x48, x48, x24);
+
+  p251_fe_sqrn(x96, x48, 48);
+  p251_fe_mul(x96, x96, x48);
+
+  p251_fe_sqrn(out, x96, 96); /* x192 */
+  p251_fe_mul(out, out, x96);
+
+  p251_fe_sqrn(out, out, 48); /* x240 */
+  p251_fe_mul(out, out, x48);
+
+  p251_fe_sqrn(out, out, 6); /* x246 */
+  p251_fe_mul(out, out, x6);
+
+  p251_fe_sqr(out, out); /* x247 */
+  p251_fe_mul(out, out, x1);
+
+  p251_fe_sqr(out, out);
+
+  p251_fe_sqr(out, out);
+  p251_fe_mul(out, out, x1);
 }
 
 static int

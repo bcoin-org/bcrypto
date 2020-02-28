@@ -79,9 +79,9 @@ static void
 p25519_fe_sqrn(p25519_fe_t out, const p25519_fe_t in, int rounds) {
   int i;
 
-  p25519_fe_set(out, in);
+  p25519_fe_sqr(out, in);
 
-  for (i = 0; i < rounds; i++)
+  for (i = 1; i < rounds; i++)
     p25519_fe_sqr(out, out);
 }
 
@@ -164,13 +164,10 @@ p25519_fe_sqrt(p25519_fe_t out, const p25519_fe_t x) {
   /* A = X^((p + 3) / 8) */
   p25519_fe_pow_two252m2(a, x);
 
-  /* B = A * I */
+  /* A = A * I (if A^2 != X) */
   p25519_fe_mul(b, a, p25519_sqrtneg1);
-
-  /* A = B (if A^2 != X) */
   p25519_fe_sqr(c, a);
   r = p25519_fe_equal(c, x);
-
   p25519_fe_select(a, a, b, r ^ 1);
 
   p25519_fe_sqr(c, a);

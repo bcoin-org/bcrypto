@@ -207,15 +207,22 @@ NAN_METHOD(BSchnorr::PrivateKeyExport) {
   const uint8_t *priv = (const uint8_t *)node::Buffer::Data(pbuf);
   size_t priv_len = node::Buffer::Length(pbuf);
   uint8_t out[SCHNORR_MAX_PRIV_SIZE];
+  uint8_t x[SCHNORR_MAX_FIELD_SIZE];
+  uint8_t y[SCHNORR_MAX_FIELD_SIZE];
 
   if (priv_len != ec->scalar_size)
     return Nan::ThrowRangeError("Invalid length.");
 
-  if (!schnorr_privkey_export(ec->ctx, out, priv))
+  if (!schnorr_privkey_export(ec->ctx, out, x, y, priv))
     return Nan::ThrowError("Could not export private key.");
 
-  return info.GetReturnValue().Set(
-    Nan::CopyBuffer((char *)out, ec->scalar_size).ToLocalChecked());
+  v8::Local<v8::Array> ret = Nan::New<v8::Array>();
+
+  Nan::Set(ret, 0, Nan::CopyBuffer((char *)out, ec->scalar_size).ToLocalChecked());
+  Nan::Set(ret, 1, Nan::CopyBuffer((char *)x, ec->field_size).ToLocalChecked());
+  Nan::Set(ret, 2, Nan::CopyBuffer((char *)y, ec->field_size).ToLocalChecked());
+
+  return info.GetReturnValue().Set(ret);
 }
 
 NAN_METHOD(BSchnorr::PrivateKeyImport) {

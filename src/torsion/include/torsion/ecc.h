@@ -576,6 +576,8 @@ schnorr_privkey_verify(const schnorr_t *ec, const unsigned char *priv);
 int
 schnorr_privkey_export(const schnorr_t *ec,
                        unsigned char *out,
+                       unsigned char *x,
+                       unsigned char *y,
                        const unsigned char *priv);
 
 int

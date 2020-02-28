@@ -211,6 +211,9 @@ typedef uint32_t fe_word_t;
  */
 
 typedef mp_limb_t sc_t[MAX_SCALAR_LIMBS];
+typedef struct _scalar_field_s scalar_field_t;
+
+typedef void sc_invert_func(const scalar_field_t *sc, sc_t r, const sc_t x);
 
 typedef struct _scalar_field_s {
   int endian;
@@ -222,11 +225,13 @@ typedef struct _scalar_field_s {
   mp_limb_t m[MAX_REDUCE_LIMBS];
   mp_size_t limbs;
   unsigned char raw[MAX_SCALAR_SIZE];
+  sc_invert_func *invert;
 } scalar_field_t;
 
 typedef struct _scalar_def_s {
   size_t bits;
   const unsigned char n[MAX_FIELD_SIZE];
+  sc_invert_func *invert;
 } scalar_def_t;
 
 /*
@@ -1054,12 +1059,17 @@ sc_pow(const scalar_field_t *sc, sc_t r, const sc_t a, const mp_limb_t *e) {
 static int
 sc_invert(const scalar_field_t *sc, sc_t r, const sc_t a) {
   int ret = sc_is_zero(sc, a) ^ 1;
-  mp_limb_t e[MAX_SCALAR_LIMBS];
 
-  /* e = n - 2 */
-  mpn_sub_1(e, sc->n, sc->limbs, 2);
+  if (sc->invert) {
+    sc->invert(sc, r, a);
+  } else {
+    mp_limb_t e[MAX_SCALAR_LIMBS];
 
-  sc_pow(sc, r, a, e);
+    /* e = n - 2 */
+    mpn_sub_1(e, sc->n, sc->limbs, 2);
+
+    sc_pow(sc, r, a, e);
+  }
 
   return ret;
 }
@@ -1896,11 +1906,14 @@ scalar_field_set(scalar_field_t *sc,
   }
 
   mpn_export(sc->raw, sc->size, sc->n, sc->limbs, sc->endian);
+
+  sc->invert = NULL;
 }
 
 static void
 scalar_field_init(scalar_field_t *sc, const scalar_def_t *def, int endian) {
   scalar_field_set(sc, def->n, def->bits, endian);
+  sc->invert = def->invert;
 }
 
 /*
@@ -7098,6 +7111,8 @@ _edwards_to_mont(const prime_field_t *fe, mge_t *r,
  * Fields
  */
 
+#include "fields/scalar.h"
+
 /*
  * P192
  */
@@ -7134,7 +7149,8 @@ static const scalar_def_t field_q192 = {
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0x99, 0xde, 0xf8, 0x36,
     0x14, 0x6b, 0xc9, 0xb1, 0xb4, 0xd2, 0x28, 0x31
-  }
+  },
+  .invert = NULL
 };
 
 /*
@@ -7175,7 +7191,8 @@ static const scalar_def_t field_q224 = {
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x16, 0xa2,
     0xe0, 0xb8, 0xf0, 0x3e, 0x13, 0xdd, 0x29, 0x45,
     0x5c, 0x5c, 0x2a, 0x3d
-  }
+  },
+  .invert = NULL
 };
 
 /*
@@ -7216,7 +7233,8 @@ static const scalar_def_t field_q256 = {
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xbc, 0xe6, 0xfa, 0xad, 0xa7, 0x17, 0x9e, 0x84,
     0xf3, 0xb9, 0xca, 0xc2, 0xfc, 0x63, 0x25, 0x51
-  }
+  },
+  .invert = q256_sc_invert
 };
 
 /*
@@ -7261,7 +7279,8 @@ static const scalar_def_t field_q384 = {
     0xc7, 0x63, 0x4d, 0x81, 0xf4, 0x37, 0x2d, 0xdf,
     0x58, 0x1a, 0x0d, 0xb2, 0x48, 0xb0, 0xa7, 0x7a,
     0xec, 0xec, 0x19, 0x6a, 0xcc, 0xc5, 0x29, 0x73
-  }
+  },
+  .invert = q384_sc_invert
 };
 
 /*
@@ -7312,7 +7331,8 @@ static const scalar_def_t field_q521 = {
     0xa5, 0xd0, 0x3b, 0xb5, 0xc9, 0xb8, 0x89, 0x9c,
     0x47, 0xae, 0xbb, 0x6f, 0xb7, 0x1e, 0x91, 0x38,
     0x64, 0x09
-  }
+  },
+  .invert = NULL
 };
 
 /*
@@ -7353,7 +7373,8 @@ static const scalar_def_t field_q256k1 = {
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe,
     0xba, 0xae, 0xdc, 0xe6, 0xaf, 0x48, 0xa0, 0x3b,
     0xbf, 0xd2, 0x5e, 0x8c, 0xd0, 0x36, 0x41, 0x41
-  }
+  },
+  .invert = q256k1_sc_invert
 };
 
 /*
@@ -7394,7 +7415,8 @@ static const scalar_def_t field_q25519 = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x14, 0xde, 0xf9, 0xde, 0xa2, 0xf7, 0x9c, 0xd6,
     0x58, 0x12, 0x63, 0x1a, 0x5c, 0xf5, 0xd3, 0xed
-  }
+  },
+  .invert = q25519_sc_invert
 };
 
 /*
@@ -7441,7 +7463,8 @@ static const scalar_def_t field_q448 = {
     0xc4, 0x4e, 0xdb, 0x49, 0xae, 0xd6, 0x36, 0x90,
     0x21, 0x6c, 0xc2, 0x72, 0x8d, 0xc5, 0x8f, 0x55,
     0x23, 0x78, 0xc2, 0x92, 0xab, 0x58, 0x44, 0xf3
-  }
+  },
+  .invert = NULL
 };
 
 /*
@@ -7482,7 +7505,8 @@ static const scalar_def_t field_q251 = {
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xf7, 0x79, 0x65, 0xc4, 0xdf, 0xd3, 0x07, 0x34,
     0x89, 0x44, 0xd4, 0x5f, 0xd1, 0x66, 0xc9, 0x71
-  }
+  },
+  .invert = NULL
 };
 
 /*
@@ -9588,7 +9612,10 @@ schnorr_privkey_verify(const wei_t *ec, const unsigned char *priv) {
 int
 schnorr_privkey_export(const wei_t *ec,
                        unsigned char *out,
+                       unsigned char *x,
+                       unsigned char *y,
                        const unsigned char *priv) {
+  const prime_field_t *fe = &ec->fe;
   const scalar_field_t *sc = &ec->sc;
   sc_t a;
   wge_t A;
@@ -9600,7 +9627,11 @@ schnorr_privkey_export(const wei_t *ec,
   wei_mul_g(ec, &A, a);
 
   sc_neg_cond(sc, a, a, wge_is_even(ec, &A) ^ 1);
+  wge_neg_cond(ec, &A, &A, wge_is_even(ec, &A) ^ 1);
+
   sc_export(sc, out, a);
+  fe_export(fe, x, A.x);
+  fe_export(fe, y, A.y);
 
   sc_cleanse(sc, a);
 

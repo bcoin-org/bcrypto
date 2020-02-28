@@ -84,9 +84,9 @@ static void
 p448_fe_sqrn(p448_fe_t out, const p448_fe_t in, int rounds) {
   int i;
 
-  p448_fe_set(out, in);
+  p448_fe_sqr(out, in);
 
-  for (i = 0; i < rounds; i++)
+  for (i = 1; i < rounds; i++)
     p448_fe_sqr(out, out);
 }
 
