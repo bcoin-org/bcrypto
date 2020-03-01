@@ -2,6 +2,10 @@
   "targets": [{
     "target_name": "bcrypto",
     "sources": [
+      "./src/base58/base58.c",
+      "./src/bech32/bech32.c",
+      "./src/cash32/cash32.c",
+      "./src/murmur3/murmur3.c",
       "./src/torsion/src/aead.c",
       "./src/torsion/src/chacha20.c",
       "./src/torsion/src/drbg.c",
@@ -14,10 +18,6 @@
       "./src/torsion/src/salsa20.c",
       "./src/torsion/src/siphash.c",
       "./src/torsion/src/util.c",
-      "./src/base58/base58.c",
-      "./src/bech32/bech32.c",
-      "./src/cash32/cash32.c",
-      "./src/murmur3/murmur3.c",
       "./src/aead.cc",
       "./src/base58.cc",
       "./src/bech32.cc",
