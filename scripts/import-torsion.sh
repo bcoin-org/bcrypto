@@ -15,10 +15,16 @@ test -d "$prefix/include"
 
 if test ! -d src/torsion; then
   mkdir src/torsion
+fi
+
+if test ! -d src/torsion/src; then
   mkdir src/torsion/src
+fi
+
+if test ! -d src/torsion/include; then
   mkdir src/torsion/include
 fi
 
-cp "$prefix/LICENSE" src/torsion/
-rsync -av --exclude 'test*.c' "$prefix/src/" src/torsion/src/
+cp -f "$prefix/LICENSE" src/torsion/
+rsync -av --exclude 'test*.c' --exclude '*.o' "$prefix/src/" src/torsion/src/
 rsync -av "$prefix/include/" src/torsion/include/
