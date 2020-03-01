@@ -7573,4 +7573,3 @@ static void fiat_p384_from_bytes(uint32_t out1[12], const uint8_t arg1[48]) {
   out1[10] = x71;
   out1[11] = x51;
 }
-

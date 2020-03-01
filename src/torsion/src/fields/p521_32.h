@@ -1760,4 +1760,3 @@ static void fiat_p521_from_bytes(uint32_t out1[19], const uint8_t arg1[66]) {
   out1[17] = x134;
   out1[18] = x135;
 }
-

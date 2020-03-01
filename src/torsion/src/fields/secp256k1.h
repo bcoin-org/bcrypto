@@ -8,6 +8,17 @@
  *   https://github.com/bitcoin-core/secp256k1
  */
 
+#ifdef TORSION_USE_LIBSECP256K1
+#ifdef TORSION_USE_64BIT
+typedef uint64_t secp256k1_fe_word_t;
+#define SECP256K1_FIELD_WORDS 5
+#include "libsecp256k1_64.h"
+#else
+typedef uint32_t secp256k1_fe_word_t;
+#define SECP256K1_FIELD_WORDS 10
+#include "libsecp256k1_32.h"
+#endif
+#else /* TORSION_USE_LIBSECP256K1 */
 #ifdef TORSION_USE_64BIT
 typedef uint64_t secp256k1_fe_word_t;
 #define SECP256K1_FIELD_WORDS 4
@@ -17,6 +28,15 @@ typedef uint32_t secp256k1_fe_word_t;
 #define SECP256K1_FIELD_WORDS 8
 #include "secp256k1_32.h"
 #endif
+#endif
+
+#ifdef TORSION_USE_LIBSECP256K1
+#define fiat_secp256k1_mul fiat_secp256k1_carry_mul
+#define fiat_secp256k1_square fiat_secp256k1_carry_square
+#define fiat_secp256k1_from_montgomery NULL
+#else
+#define fiat_secp256k1_carry NULL
+#endif
 
 typedef secp256k1_fe_word_t secp256k1_fe_t[SECP256K1_FIELD_WORDS];
 
@@ -25,9 +45,24 @@ typedef secp256k1_fe_word_t secp256k1_fe_t[SECP256K1_FIELD_WORDS];
 #define secp256k1_fe_neg fiat_secp256k1_opp
 #define secp256k1_fe_mul fiat_secp256k1_mul
 #define secp256k1_fe_sqr fiat_secp256k1_square
+#define secp256k1_fe_nonzero fiat_secp256k1_nonzero
 
 static void
 secp256k1_fe_set(secp256k1_fe_t out, const secp256k1_fe_t in) {
+#ifdef TORSION_USE_LIBSECP256K1
+  out[0] = in[0];
+  out[1] = in[1];
+  out[2] = in[2];
+  out[3] = in[3];
+  out[4] = in[4];
+#if SECP256K1_FIELD_WORDS == 10
+  out[5] = in[5];
+  out[6] = in[6];
+  out[7] = in[7];
+  out[8] = in[8];
+  out[9] = in[9];
+#endif
+#else /* TORSION_USE_LIBSECP256K1 */
   out[0] = in[0];
   out[1] = in[1];
   out[2] = in[2];
@@ -38,10 +73,18 @@ secp256k1_fe_set(secp256k1_fe_t out, const secp256k1_fe_t in) {
   out[6] = in[6];
   out[7] = in[7];
 #endif
+#endif
 }
 
 static int
 secp256k1_fe_equal(const secp256k1_fe_t a, const secp256k1_fe_t b) {
+#ifdef TORSION_USE_LIBSECP256K1
+  secp256k1_fe_word_t z = 0;
+  secp256k1_fe_t c;
+  secp256k1_fe_sub(c, a, b);
+  secp256k1_fe_nonzero(&z, c);
+  return z == 0;
+#else
   secp256k1_fe_word_t z = 0;
   size_t i;
 
@@ -49,6 +92,7 @@ secp256k1_fe_equal(const secp256k1_fe_t a, const secp256k1_fe_t b) {
     z |= a[i] ^ b[i];
 
   return z == 0;
+#endif
 }
 
 static void
@@ -218,7 +262,7 @@ static int
 secp256k1_fe_isqrt(secp256k1_fe_t r,
                    const secp256k1_fe_t u,
                    const secp256k1_fe_t v) {
-  /* 48M + 256S */
+  /* 21M + 257S */
   secp256k1_fe_t u2, u3, u5, v3, p, x, c;
   int ret;
 

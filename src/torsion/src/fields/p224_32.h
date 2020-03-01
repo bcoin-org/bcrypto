@@ -2850,4 +2850,3 @@ static void fiat_p224_from_bytes(uint32_t out1[7], const uint8_t arg1[28]) {
   out1[5] = x41;
   out1[6] = x31;
 }
-

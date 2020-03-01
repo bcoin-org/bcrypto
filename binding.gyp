@@ -58,7 +58,12 @@
       "-O3"
     ],
     "cflags_c": [
-      "-std=c89"
+      "-std=c89",
+      "-pedantic",
+      "-Wshadow",
+      "-Wno-declaration-after-statement",
+      "-Wno-long-long",
+      "-Wno-overlength-strings"
     ],
     "cflags_cc+": [
       "-std=c++0x",

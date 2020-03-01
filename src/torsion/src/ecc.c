@@ -149,6 +149,12 @@
 #include <torsion/hash.h>
 #include <torsion/util.h>
 
+#if defined(TORSION_USE_64BIT) && defined(__GNUC__)
+#define FIAT_EXTENSION __extension__
+#else
+#define FIAT_EXTENSION
+#endif
+
 #include "fields/p192.h"
 #include "fields/p224.h"
 #include "fields/p256.h"
@@ -211,9 +217,10 @@ typedef uint32_t fe_word_t;
  */
 
 typedef mp_limb_t sc_t[MAX_SCALAR_LIMBS];
-typedef struct _scalar_field_s scalar_field_t;
+struct _scalar_field_s;
 
-typedef void sc_invert_func(const scalar_field_t *sc, sc_t r, const sc_t x);
+typedef void
+sc_invert_func(const struct _scalar_field_s *sc, sc_t r, const sc_t x);
 
 typedef struct _scalar_field_s {
   int endian;
@@ -238,21 +245,51 @@ typedef struct _scalar_def_s {
  * Prime Field
  */
 
-typedef void fe_add_func(fe_word_t *out1, const fe_word_t *arg1, const fe_word_t *arg2);
-typedef void fe_sub_func(fe_word_t *out1, const fe_word_t *arg1, const fe_word_t *arg2);
-typedef void fe_opp_func(fe_word_t *out1, const fe_word_t *arg1);
-typedef void fe_mul_func(fe_word_t *out1, const fe_word_t *arg1, const fe_word_t *arg2);
-typedef void fe_sqr_func(fe_word_t *out1, const fe_word_t *arg1);
-typedef void fe_from_montgomery_func(fe_word_t *out1, const fe_word_t *arg1);
-typedef void fe_nonzero_func(fe_word_t *out1, const fe_word_t *arg1);
-typedef void fe_selectznz_func(fe_word_t *out1, unsigned char arg1, const fe_word_t *arg2, const fe_word_t *arg3);
-typedef void fe_to_bytes_func(uint8_t *out1, const fe_word_t *arg1);
-typedef void fe_from_bytes_func(fe_word_t *out1, const uint8_t *arg1);
-typedef void fe_carry_func(fe_word_t *out1, const fe_word_t *arg1);
-typedef void fe_invert_func(fe_word_t *out, const fe_word_t *in);
-typedef int fe_sqrt_func(fe_word_t *out, const fe_word_t *in);
-typedef int fe_isqrt_func(fe_word_t *out, const fe_word_t *u, const fe_word_t *v);
-typedef void fe_scmul_121666(fe_word_t *out1, const fe_word_t *arg1);
+typedef void
+fe_add_func(fe_word_t *out1, const fe_word_t *arg1, const fe_word_t *arg2);
+
+typedef void
+fe_sub_func(fe_word_t *out1, const fe_word_t *arg1, const fe_word_t *arg2);
+
+typedef void
+fe_opp_func(fe_word_t *out1, const fe_word_t *arg1);
+
+typedef void
+fe_mul_func(fe_word_t *out1, const fe_word_t *arg1, const fe_word_t *arg2);
+
+typedef void
+fe_sqr_func(fe_word_t *out1, const fe_word_t *arg1);
+
+typedef void
+fe_from_montgomery_func(fe_word_t *out1, const fe_word_t *arg1);
+
+typedef void
+fe_nonzero_func(fe_word_t *out1, const fe_word_t *arg1);
+
+typedef void
+fe_selectznz_func(fe_word_t *out1, unsigned char arg1,
+                  const fe_word_t *arg2, const fe_word_t *arg3);
+
+typedef void
+fe_to_bytes_func(uint8_t *out1, const fe_word_t *arg1);
+
+typedef void
+fe_from_bytes_func(fe_word_t *out1, const uint8_t *arg1);
+
+typedef void
+fe_carry_func(fe_word_t *out1, const fe_word_t *arg1);
+
+typedef void
+fe_invert_func(fe_word_t *out, const fe_word_t *in);
+
+typedef int
+fe_sqrt_func(fe_word_t *out, const fe_word_t *in);
+
+typedef int
+fe_isqrt_func(fe_word_t *out, const fe_word_t *u, const fe_word_t *v);
+
+typedef void
+fe_scmul_121666(fe_word_t *out1, const fe_word_t *arg1);
 
 typedef fe_word_t fe_t[MAX_FIELD_WORDS];
 
@@ -279,10 +316,10 @@ typedef struct _prime_field_s {
   fe_to_bytes_func *to_bytes;
   fe_from_bytes_func *from_bytes;
   fe_carry_func *carry;
+  fe_scmul_121666 *scmul_121666;
   fe_invert_func *invert;
   fe_sqrt_func *sqrt;
   fe_isqrt_func *isqrt;
-  fe_scmul_121666 *scmul_121666;
   fe_t zero;
   fe_t one;
   fe_t two;
@@ -306,10 +343,10 @@ typedef struct _prime_def_s {
   fe_to_bytes_func *to_bytes;
   fe_from_bytes_func *from_bytes;
   fe_carry_func *carry;
+  fe_scmul_121666 *scmul_121666;
   fe_invert_func *invert;
   fe_sqrt_func *sqrt;
   fe_isqrt_func *isqrt;
-  fe_scmul_121666 *scmul_121666;
 } prime_def_t;
 
 /*
@@ -363,18 +400,17 @@ typedef struct _wei_s {
 } wei_t;
 
 typedef struct _wei_def_s {
-  const char *id;
   int hash;
   const prime_def_t *fe;
   const scalar_def_t *sc;
-  const unsigned char a[MAX_FIELD_SIZE];
-  const unsigned char b[MAX_FIELD_SIZE];
   unsigned int h;
   int z;
-  const unsigned char c[MAX_FIELD_SIZE];
+  int endo;
+  const unsigned char a[MAX_FIELD_SIZE];
+  const unsigned char b[MAX_FIELD_SIZE];
   const unsigned char x[MAX_FIELD_SIZE];
   const unsigned char y[MAX_FIELD_SIZE];
-  int endo;
+  const unsigned char c[MAX_FIELD_SIZE];
   const unsigned char beta[MAX_FIELD_SIZE];
   const unsigned char lambda[MAX_SCALAR_SIZE];
   const unsigned char b1[MAX_SCALAR_SIZE];
@@ -409,7 +445,6 @@ typedef struct _pge_s {
 } pge_t;
 
 typedef struct _mont_s {
-  const char *prefix;
   prime_field_t fe;
   scalar_field_t sc;
   unsigned int h;
@@ -423,22 +458,21 @@ typedef struct _mont_s {
   fe_t a24;
   fe_t a0;
   fe_t b0;
+  sc_t i16;
   mge_t g;
 } mont_t;
 
 typedef struct _mont_def_s {
-  const char *id;
-  const char *prefix;
   const prime_def_t *fe;
   const scalar_def_t *sc;
-  const unsigned char a[MAX_FIELD_SIZE];
-  const unsigned char b[MAX_FIELD_SIZE];
   unsigned int h;
   int z;
   int invert;
-  const unsigned char c[MAX_FIELD_SIZE];
+  const unsigned char a[MAX_FIELD_SIZE];
+  const unsigned char b[MAX_FIELD_SIZE];
   const unsigned char x[MAX_FIELD_SIZE];
   const unsigned char y[MAX_FIELD_SIZE];
+  const unsigned char c[MAX_FIELD_SIZE];
 } mont_def_t;
 
 /*
@@ -481,20 +515,19 @@ typedef struct _edwards_s {
 } edwards_t;
 
 typedef struct _edwards_def_s {
-  const char *id;
   int hash;
   int context;
   const char *prefix;
   const prime_def_t *fe;
   const scalar_def_t *sc;
-  const unsigned char a[MAX_FIELD_SIZE];
-  const unsigned char d[MAX_FIELD_SIZE];
   unsigned int h;
   int z;
   int invert;
-  const unsigned char c[MAX_FIELD_SIZE];
+  const unsigned char a[MAX_FIELD_SIZE];
+  const unsigned char d[MAX_FIELD_SIZE];
   const unsigned char x[MAX_FIELD_SIZE];
   const unsigned char y[MAX_FIELD_SIZE];
+  const unsigned char c[MAX_FIELD_SIZE];
 } edwards_def_t;
 
 typedef struct _edwards_scratch_s {
@@ -512,7 +545,7 @@ typedef struct _edwards_scratch_s {
 #define __has_builtin(x) 0
 #endif
 
-static uint32_t
+static int
 bytes_zero(const unsigned char *a, size_t size) {
   /* Compute (a == 0) in constant time. */
   uint32_t z = 0;
@@ -524,62 +557,28 @@ bytes_zero(const unsigned char *a, size_t size) {
   return (z - 1) >> 31;
 }
 
-static uint32_t
-bytes_equal(const unsigned char *a,
-            const unsigned char *b,
-            size_t size) {
-  /* Compute (a == b) in constant time. */
-  uint32_t z = 0;
-  size_t i;
-
-  for (i = 0; i < size; i++)
-    z |= (uint32_t)a[i] ^ (uint32_t)b[i];
-
-  return (z - 1) >> 31;
-}
-
-static uint32_t
+static int
 bytes_lt(const unsigned char *a,
          const unsigned char *b,
-         int size,
+         size_t size,
          int endian) {
   /* Compute (a < b) in constant time. */
-  int le = (endian == -1);
-  int i = le ? size - 1 : 0;
+  size_t i = endian < 0 ? size - 1 : 0;
   uint32_t eq = 1;
   uint32_t lt = 0;
   uint32_t x, y;
 
-  for (; le ? i >= 0 : i < size; le ? i-- : i++) {
+  assert(endian == -1 || endian == 1);
+
+  while (size--) {
     x = a[i];
     y = b[i];
     lt = ((eq ^ 1) & lt) | (eq & ((x - y) >> 31));
     eq &= ((x ^ y) - 1) >> 31;
+    i += endian;
   }
 
   return lt & (eq ^ 1);
-}
-
-static uint32_t
-bytes_lte(const unsigned char *a,
-          const unsigned char *b,
-          int size,
-          int endian) {
-  /* Compute (a <= b) in constant time. */
-  int le = (endian == -1);
-  int i = le ? size - 1 : 0;
-  uint32_t eq = 1;
-  uint32_t lt = 0;
-  uint32_t x, y;
-
-  for (; le ? i >= 0 : i < size; le ? i-- : i++) {
-    x = a[i];
-    y = b[i];
-    lt = ((eq ^ 1) & lt) | (eq & ((x - y) >> 31));
-    eq &= ((x ^ y) - 1) >> 31;
-  }
-
-  return lt | eq;
 }
 
 static size_t
@@ -607,73 +606,26 @@ bit_length(uint32_t x) {
 }
 
 static void
-reverse_bytes(void *out, const void *in, size_t size) {
-#ifdef TORSION_USE_64BIT
-#if (defined(__GNUC__) && (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 3))) \
-    || (defined(__clang__) && __has_builtin(__builtin_bswap64))
-  if ((((uintptr_t)out | (uintptr_t)in | size) & 7) == 0) {
-    const uint64_t *from = (const uint64_t *)in;
-    uint64_t *to = (uint64_t *)out;
-    size_t len = size >> 3;
-    size_t i;
+reverse_copy(unsigned char *dst, const unsigned char *src, size_t size) {
+  size_t i = 0;
+  size_t j = size - 1;
 
-    for (i = 0; i < len; i++)
-      to[i] = __builtin_bswap64(from[len - 1 - i]);
-
-    return;
-  }
-#endif
-#endif
-  {
-    const unsigned char *from = (const unsigned char *)in;
-    unsigned char *to = (unsigned char *)out;
-    size_t i;
-
-    for (i = 0; i < size; i++)
-      to[i] = from[size - 1 - i];
-  }
+  while (size--)
+    dst[i++] = src[j--];
 }
 
 static void
-swap_bytes(void *ptr, size_t size) {
-#ifdef TORSION_USE_64BIT
-#if (defined(__GNUC__) && (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 3))) \
-    || (defined(__clang__) && __has_builtin(__builtin_bswap64))
-  if ((((uintptr_t)ptr | size) & 7) == 0) {
-    uint64_t *arr = (uint64_t *)ptr;
-    size_t len = size >> 3;
-    long i = 0;
-    long j = (long)len - 1;
-    uint64_t tmp;
+reverse_bytes(unsigned char *ptr, size_t size) {
+  size_t i = 0;
+  size_t j = size - 1;
+  unsigned char tmp;
 
-    while (i < j) {
-      tmp = __builtin_bswap64(arr[i]);
-      arr[i] = __builtin_bswap64(arr[j]);
-      arr[j] = tmp;
-      i += 1;
-      j -= 1;
-    }
+  size >>= 1;
 
-    if (len & 1)
-      arr[i] = __builtin_bswap64(arr[i]);
-
-    return;
-  }
-#endif
-#endif
-  {
-    unsigned char *raw = (unsigned char *)ptr;
-    long i = 0;
-    long j = (long)size - 1;
-    unsigned char tmp;
-
-    while (i < j) {
-      tmp = raw[i];
-      raw[i] = raw[j];
-      raw[j] = tmp;
-      i += 1;
-      j -= 1;
-    }
+  while (size--) {
+    tmp = ptr[i];
+    ptr[i++] = ptr[j];
+    ptr[j--] = tmp;
   }
 }
 
@@ -1061,8 +1013,10 @@ sc_invert(const scalar_field_t *sc, sc_t r, const sc_t a) {
   int ret = sc_is_zero(sc, a) ^ 1;
 
   if (sc->invert) {
+    /* Fast inversion chain. */
     sc->invert(sc, r, a);
   } else {
+    /* Fermat's little theorem. */
     mp_limb_t e[MAX_SCALAR_LIMBS];
 
     /* e = n - 2 */
@@ -1324,21 +1278,6 @@ fe_cleanse(const prime_field_t *fe, fe_t r) {
 
 static int
 fe_import(const prime_field_t *fe, fe_t r, const unsigned char *raw) {
-  int ret = bytes_lt(raw, fe->raw, fe->size, fe->endian);
-  unsigned char masked[MAX_FIELD_SIZE];
-
-  /* Ignore the high bits. */
-  if (fe->mask != 0xff) {
-    memcpy(masked, raw, fe->size);
-
-    if (fe->endian == -1)
-      masked[fe->size - 1] &= fe->mask;
-    else
-      masked[0] &= fe->mask;
-
-    raw = masked;
-  }
-
   if (fe->from_montgomery) {
     /* Use a constant time barrett reduction
      * to montgomerize the field element.
@@ -1348,17 +1287,26 @@ fe_import(const prime_field_t *fe, fe_t r, const unsigned char *raw) {
     mp_size_t left = fe->shift % GMP_NUMB_BITS;
     mp_size_t xn = fe->limbs + shift + (left != 0);
 
-    /* We can only handle 2*(max+1) limbs. */
+    /* We can only handle 2*(size+1) limbs. */
     assert(xn <= fe->sc.shift);
 
     /* x = (x << shift) mod p */
     mpn_zero(xp, fe->sc.shift * 2);
     mpn_import(xp + shift, fe->limbs, raw, fe->size, fe->endian);
 
-    /* Align if necessary. */
+    /* Ignore the high bits. */
+    if ((fe->bits & 7) != 0) {
+      mp_limb_t mask = ((mp_limb_t)1 << (fe->bits % GMP_NUMB_BITS)) - 1;
+
+      if (mask != 0)
+        xp[shift + fe->limbs - 1] &= mask;
+    }
+
+    /* Shift more if necessary. */
     if (left != 0)
       assert(mpn_lshift(xp, xp, xn, left) == 0);
 
+    /* Reduce the shift. */
     sc_reduce(&fe->sc, xp, xp);
 
     if (GMP_NUMB_BITS == FIELD_WORD_SIZE) {
@@ -1367,32 +1315,36 @@ fe_import(const prime_field_t *fe, fe_t r, const unsigned char *raw) {
       assert((size_t)fe->limbs == fe->words);
       memcpy(r, xp, fe->limbs * sizeof(mp_limb_t));
     } else {
-      /* Export as little endian. */
+      /* Export as little endian first. */
       unsigned char tmp[MAX_FIELD_SIZE];
       mpn_export_le(tmp, fe->size, xp, fe->limbs);
       fe->from_bytes(r, tmp);
     }
   } else {
-    /* Deserialize and carry. */
-    if (fe->endian == 1) {
-      unsigned char tmp[MAX_FIELD_SIZE];
-      reverse_bytes(tmp, raw, fe->size);
-      fe->from_bytes(r, tmp);
-    } else {
-      fe->from_bytes(r, raw);
-    }
+    unsigned char tmp[MAX_FIELD_SIZE];
 
+    /* Swap endianness if necessary. */
+    if (fe->endian == 1)
+      reverse_copy(tmp, raw, fe->size);
+    else
+      memcpy(tmp, raw, fe->size);
+
+    /* Ignore the high bits. */
+    tmp[fe->size - 1] &= fe->mask;
+
+    /* Deserialize and carry. */
+    fe->from_bytes(r, tmp);
     fe->carry(r, r);
   }
 
-  return ret;
+  return bytes_lt(raw, fe->raw, fe->size, fe->endian);
 }
 
 static int
 fe_import_be(const prime_field_t *fe, fe_t r, const unsigned char *raw) {
   if (fe->endian == -1) {
     unsigned char tmp[MAX_FIELD_SIZE];
-    reverse_bytes(tmp, raw, fe->size);
+    reverse_copy(tmp, raw, fe->size);
     return fe_import(fe, r, tmp);
   }
 
@@ -1402,10 +1354,10 @@ fe_import_be(const prime_field_t *fe, fe_t r, const unsigned char *raw) {
 static void
 fe_export(const prime_field_t *fe, unsigned char *raw, const fe_t a) {
   if (fe->from_montgomery) {
-    fe_t tmp;
+    fe_t b;
 
     /* Demontgomerize. */
-    fe->from_montgomery(tmp, a);
+    fe->from_montgomery(b, a);
 
     if (fe->size != fe->words * (FIELD_WORD_SIZE / 8)) {
       /* Fiat accepts bytes serialized as full
@@ -1414,22 +1366,23 @@ fe_export(const prime_field_t *fe, unsigned char *raw, const fe_t a) {
        * during deserialization as fiat will zero
        * the remaining limbs.
        */
-      unsigned char buf[MAX_FIELD_SIZE];
+      unsigned char tmp[MAX_FIELD_SIZE];
 
       assert(fe->bits == 224);
       assert(FIELD_WORD_SIZE == 64);
 
-      fe->to_bytes(buf, tmp);
-      memcpy(raw, buf, fe->size);
+      fe->to_bytes(tmp, b);
+
+      memcpy(raw, tmp, fe->size);
     } else {
-      fe->to_bytes(raw, tmp);
+      fe->to_bytes(raw, b);
     }
   } else {
     fe->to_bytes(raw, a);
   }
 
   if (fe->endian == 1)
-    swap_bytes(raw, fe->size);
+    reverse_bytes(raw, fe->size);
 }
 
 static void
@@ -1667,12 +1620,6 @@ fe_sqr(const prime_field_t *fe, fe_t r, const fe_t a) {
 }
 
 static void
-fe_mul121666(const prime_field_t *fe, fe_t r, const fe_t a) {
-  assert(fe->scmul_121666 != NULL);
-  fe->scmul_121666(r, a);
-}
-
-static void
 fe_pow(const prime_field_t *fe, fe_t r, const fe_t a, const mp_limb_t *e) {
   /* Used for inversion and square roots if not available otherwise. */
   mp_size_t start = WND_STEPS(fe->bits) - 1;
@@ -1880,6 +1827,8 @@ scalar_field_set(scalar_field_t *sc,
                  const unsigned char *modulus,
                  size_t bits,
                  int endian) {
+  memset(sc, 0, sizeof(scalar_field_t));
+
   sc->endian = endian;
   sc->limbs = (bits + GMP_NUMB_BITS - 1) / GMP_NUMB_BITS;
   sc->size = (bits + 7) / 8;
@@ -1922,6 +1871,8 @@ scalar_field_init(scalar_field_t *sc, const scalar_def_t *def, int endian) {
 
 static void
 prime_field_init(prime_field_t *fe, const prime_def_t *def, int endian) {
+  memset(fe, 0, sizeof(prime_field_t));
+
   fe->endian = endian;
   fe->limbs = (def->bits + GMP_NUMB_BITS - 1) / GMP_NUMB_BITS;
   fe->size = (def->bits + 7) / 8;
@@ -1954,10 +1905,10 @@ prime_field_init(prime_field_t *fe, const prime_def_t *def, int endian) {
   fe->to_bytes = def->to_bytes;
   fe->from_bytes = def->from_bytes;
   fe->carry = def->carry;
+  fe->scmul_121666 = def->scmul_121666;
   fe->invert = def->invert;
   fe->sqrt = def->sqrt;
   fe->isqrt = def->isqrt;
-  fe->scmul_121666 = def->scmul_121666;
 
   fe_set_word(fe, fe->zero, 0);
   fe_set_word(fe, fe->one, 1);
@@ -3566,6 +3517,8 @@ wei_init(wei_t *ec, const wei_def_t *def) {
   prime_field_t *fe = &ec->fe;
   scalar_field_t *sc = &ec->sc;
   fe_t m3;
+
+  memset(ec, 0, sizeof(wei_t));
 
   ec->hash = def->hash;
   ec->h = def->h;
@@ -5234,7 +5187,8 @@ pge_ladder(const mont_t *ec,
            pge_t *p5,
            const pge_t *p1,
            const pge_t *p2,
-           const pge_t *p3) {
+           const pge_t *p3,
+           int affine) {
   /* https://hyperelliptic.org/EFD/g1p/auto-montgom-xz.html#ladder-ladd-1987-m-3
    * 6M + 4S + 8A + 1*a24
    */
@@ -5274,7 +5228,9 @@ pge_ladder(const mont_t *ec,
   /* X5 = Z1 * (DA + CB)^2 */
   fe_add(fe, p5->x, da, cb);
   fe_sqr(fe, p5->x, p5->x);
-  fe_mul(fe, p5->x, p5->x, p1->z);
+
+  if (!affine)
+    fe_mul(fe, p5->x, p5->x, p1->z);
 
   /* Z5 = X1 * (DA - CB)^2 */
   fe_sub(fe, p5->z, da, cb);
@@ -5370,6 +5326,8 @@ mont_init(mont_t *ec, const mont_def_t *def) {
   prime_field_t *fe = &ec->fe;
   scalar_field_t *sc = &ec->sc;
 
+  memset(ec, 0, sizeof(mont_t));
+
   ec->h = def->h;
 
   prime_field_init(fe, def->fe, -1);
@@ -5400,6 +5358,12 @@ mont_init(mont_t *ec, const mont_def_t *def) {
   /* b0 = 1 / b^2 */
   fe_sqr(fe, ec->b0, ec->bi);
 
+  /* i16 = 1 / 16 (mod n) */
+  if (fe->bits == 448) {
+    sc_set_word(sc, ec->i16, 16);
+    assert(sc_invert_var(sc, ec->i16, ec->i16));
+  }
+
   fe_import_be(fe, ec->g.x, def->x);
   fe_import_be(fe, ec->g.y, def->y);
   ec->g.inf = 0;
@@ -5425,6 +5389,9 @@ mont_init_isomorphism(mont_t *ec, const mont_def_t *def) {
 
   ec->invert = def->invert;
   fe_import_be(fe, ec->c, def->c);
+
+  if (fe_is_zero(fe, ec->c))
+    fe_set(fe, ec->c, fe->one);
 }
 
 static void
@@ -5453,13 +5420,13 @@ mont_mul_a24(const mont_t *ec, fe_t r, const fe_t a) {
   const prime_field_t *fe = &ec->fe;
 
   if (fe->scmul_121666)
-    fe_mul121666(fe, r, a);
+    fe->scmul_121666(r, a);
   else
     fe_mul(fe, r, a, ec->a24);
 }
 
 static void
-mont_mul(const mont_t *ec, pge_t *r, const pge_t *p, const sc_t k) {
+mont_mul(const mont_t *ec, pge_t *r, const pge_t *p, const sc_t k, int affine) {
   /* Multiply with the Montgomery Ladder.
    *
    * [MONT3] Algorithm 7, Page 16, Section 5.3.
@@ -5490,7 +5457,7 @@ mont_mul(const mont_t *ec, pge_t *r, const pge_t *p, const sc_t k) {
     pge_swap(ec, &a, &b, swap ^ bit);
 
     /* Single coordinate add+double. */
-    pge_ladder(ec, &a, &b, p, &a, &b);
+    pge_ladder(ec, &a, &b, p, &a, &b, affine);
 
     swap = bit;
   }
@@ -5508,12 +5475,12 @@ static void
 mont_mul_g(const mont_t *ec, pge_t *r, const sc_t k) {
   pge_t g;
   mge_to_pge(ec, &g, &ec->g);
-  mont_mul(ec, r, &g, k);
+  mont_mul(ec, r, &g, k, 1);
 }
 
 static void
 mont_solve_y0(const mont_t *ec, fe_t y2, const fe_t x) {
-  /* y^2 = x^3 + A * x^2 + B * x */
+  /* y'^2 = x'^3 + A' * x'^2 + B' * x' */
   const prime_field_t *fe = &ec->fe;
   fe_t x2, x3, ax2, bx;
 
@@ -6305,6 +6272,8 @@ edwards_init(edwards_t *ec, const edwards_def_t *def) {
   prime_field_t *fe = &ec->fe;
   scalar_field_t *sc = &ec->sc;
 
+  memset(ec, 0, sizeof(edwards_t));
+
   ec->hash = def->hash;
   ec->context = def->context;
   ec->prefix = def->prefix;
@@ -6363,6 +6332,9 @@ edwards_init_isomorphism(edwards_t *ec, const edwards_def_t *def) {
   ec->invert = def->invert;
   fe_import_be(fe, ec->c, def->c);
 
+  if (fe_is_zero(fe, ec->c))
+    fe_set(fe, ec->c, fe->one);
+
   if (!ec->invert) {
     fe_add(fe, u, ec->a, ec->d);
     fe_sub(fe, v, ec->a, ec->d);
@@ -6372,7 +6344,7 @@ edwards_init_isomorphism(edwards_t *ec, const edwards_def_t *def) {
   }
 
   fe_add(fe, u, u, u);
-  fe_invert_var(fe, v, v);
+  assert(fe_invert_var(fe, v, v));
   fe_mul(fe, ec->A, u, v);
 
   if (!ec->invert)
@@ -6382,9 +6354,9 @@ edwards_init_isomorphism(edwards_t *ec, const edwards_def_t *def) {
 
   fe_sqr(fe, v, ec->c);
   fe_mul(fe, v, v, ec->a);
-  fe_invert_var(fe, v, v);
+  assert(fe_invert_var(fe, v, v));
   fe_mul(fe, ec->B, u, v);
-  fe_invert_var(fe, ec->Bi, ec->B);
+  assert(fe_invert_var(fe, ec->Bi, ec->B));
 
   /* A0 = A / B */
   fe_mul(fe, ec->A0, ec->A, ec->Bi);
@@ -6647,7 +6619,7 @@ edwards_randomize(edwards_t *ec, const unsigned char *entropy) {
 
 static void
 edwards_solve_y0(const edwards_t *ec, fe_t y2, const fe_t x) {
-  /* y^2 = x^3 + A * x^2 + B * x */
+  /* y'^2 = x'^3 + A' * x'^2 + B' * x' */
   const prime_field_t *fe = &ec->fe;
   fe_t x2, x3, ax2, bx;
 
@@ -6918,7 +6890,7 @@ _mont_to_edwards(const prime_field_t *fe, xge_t *r,
      *
      * The point (1, v) is invalid on Curve448.
      */
-    fe_t u2, u3, u4, u5, v2, a, b, c, d, e, f, g, h;
+    fe_t u2, u3, u4, u5, v2, a, b, c0, d, e, f, g, h;
 
     fe_sqr(fe, u2, p->x);
     fe_mul(fe, u3, u2, p->x);
@@ -6928,7 +6900,7 @@ _mont_to_edwards(const prime_field_t *fe, xge_t *r,
 
     fe_mul_word(fe, a, p->y, 4);
     fe_sub(fe, b, u2, fe->one);
-    fe_mul_word(fe, c, u2, 2);
+    fe_mul_word(fe, c0, u2, 2);
     fe_mul_word(fe, d, v2, 4);
     fe_mul_word(fe, e, u3, 2);
     fe_mul(fe, f, p->x, v2);
@@ -6939,7 +6911,7 @@ _mont_to_edwards(const prime_field_t *fe, xge_t *r,
 
     fe_mul(fe, xx, a, b);
 
-    fe_sub(fe, xz, u4, c);
+    fe_sub(fe, xz, u4, c0);
     fe_add(fe, xz, xz, d);
     fe_add(fe, xz, xz, fe->one);
 
@@ -7118,39 +7090,39 @@ _edwards_to_mont(const prime_field_t *fe, mge_t *r,
  */
 
 static const prime_def_t field_p192 = {
-  .bits = 192,
-  .words = P192_FIELD_WORDS,
+  192,
+  P192_FIELD_WORDS,
   /* 2^192 - 2^64 - 1 (= 3 mod 4) */
-  .p = {
+  {
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff
   },
-  .add = fiat_p192_add,
-  .sub = fiat_p192_sub,
-  .opp = fiat_p192_opp,
-  .mul = fiat_p192_carry_mul,
-  .square = fiat_p192_carry_square,
-  .from_montgomery = NULL,
-  .nonzero = NULL,
-  .selectznz = fiat_p192_selectznz,
-  .to_bytes = fiat_p192_to_bytes,
-  .from_bytes = fiat_p192_from_bytes,
-  .carry = fiat_p192_carry,
-  .invert = p192_fe_invert,
-  .sqrt = p192_fe_sqrt,
-  .isqrt = NULL,
-  .scmul_121666 = NULL
+  fiat_p192_add,
+  fiat_p192_sub,
+  fiat_p192_opp,
+  fiat_p192_carry_mul,
+  fiat_p192_carry_square,
+  NULL,
+  NULL,
+  fiat_p192_selectznz,
+  fiat_p192_to_bytes,
+  fiat_p192_from_bytes,
+  fiat_p192_carry,
+  NULL,
+  p192_fe_invert,
+  p192_fe_sqrt,
+  NULL
 };
 
 static const scalar_def_t field_q192 = {
-  .bits = 192,
-  .n = {
+  192,
+  {
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0x99, 0xde, 0xf8, 0x36,
     0x14, 0x6b, 0xc9, 0xb1, 0xb4, 0xd2, 0x28, 0x31
   },
-  .invert = NULL
+  NULL
 };
 
 /*
@@ -7158,41 +7130,41 @@ static const scalar_def_t field_q192 = {
  */
 
 static const prime_def_t field_p224 = {
-  .bits = 224,
-  .words = P224_FIELD_WORDS,
+  224,
+  P224_FIELD_WORDS,
   /* 2^224 - 2^96 + 1 (no congruence) */
-  .p = {
+  {
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x01
   },
-  .add = fiat_p224_add,
-  .sub = fiat_p224_sub,
-  .opp = fiat_p224_opp,
-  .mul = fiat_p224_mul,
-  .square = fiat_p224_square,
-  .from_montgomery = fiat_p224_from_montgomery,
-  .nonzero = fiat_p224_nonzero,
-  .selectznz = fiat_p224_selectznz,
-  .to_bytes = fiat_p224_to_bytes,
-  .from_bytes = fiat_p224_from_bytes,
-  .carry = NULL,
-  .invert = p224_fe_invert,
-  .sqrt = p224_fe_sqrt_var,
-  .isqrt = NULL,
-  .scmul_121666 = NULL
+  fiat_p224_add,
+  fiat_p224_sub,
+  fiat_p224_opp,
+  fiat_p224_mul,
+  fiat_p224_square,
+  fiat_p224_from_montgomery,
+  fiat_p224_nonzero,
+  fiat_p224_selectznz,
+  fiat_p224_to_bytes,
+  fiat_p224_from_bytes,
+  NULL,
+  NULL,
+  p224_fe_invert,
+  p224_fe_sqrt_var,
+  NULL
 };
 
 static const scalar_def_t field_q224 = {
-  .bits = 224,
-  .n = {
+  224,
+  {
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x16, 0xa2,
     0xe0, 0xb8, 0xf0, 0x3e, 0x13, 0xdd, 0x29, 0x45,
     0x5c, 0x5c, 0x2a, 0x3d
   },
-  .invert = NULL
+  NULL
 };
 
 /*
@@ -7200,41 +7172,41 @@ static const scalar_def_t field_q224 = {
  */
 
 static const prime_def_t field_p256 = {
-  .bits = 256,
-  .words = P256_FIELD_WORDS,
+  256,
+  P256_FIELD_WORDS,
   /* 2^256 - 2^224 + 2^192 + 2^96 - 1 (= 3 mod 4) */
-  .p = {
+  {
     0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x01,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff
   },
-  .add = fiat_p256_add,
-  .sub = fiat_p256_sub,
-  .opp = fiat_p256_opp,
-  .mul = fiat_p256_mul,
-  .square = fiat_p256_square,
-  .from_montgomery = fiat_p256_from_montgomery,
-  .nonzero = fiat_p256_nonzero,
-  .selectznz = fiat_p256_selectznz,
-  .to_bytes = fiat_p256_to_bytes,
-  .from_bytes = fiat_p256_from_bytes,
-  .carry = NULL,
-  .invert = p256_fe_invert,
-  .sqrt = p256_fe_sqrt,
-  .isqrt = NULL,
-  .scmul_121666 = NULL
+  fiat_p256_add,
+  fiat_p256_sub,
+  fiat_p256_opp,
+  fiat_p256_mul,
+  fiat_p256_square,
+  fiat_p256_from_montgomery,
+  fiat_p256_nonzero,
+  fiat_p256_selectznz,
+  fiat_p256_to_bytes,
+  fiat_p256_from_bytes,
+  NULL,
+  NULL,
+  p256_fe_invert,
+  p256_fe_sqrt,
+  NULL
 };
 
 static const scalar_def_t field_q256 = {
-  .bits = 256,
-  .n = {
+  256,
+  {
     0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xbc, 0xe6, 0xfa, 0xad, 0xa7, 0x17, 0x9e, 0x84,
     0xf3, 0xb9, 0xca, 0xc2, 0xfc, 0x63, 0x25, 0x51
   },
-  .invert = q256_sc_invert
+  q256_sc_invert
 };
 
 /*
@@ -7242,10 +7214,10 @@ static const scalar_def_t field_q256 = {
  */
 
 static const prime_def_t field_p384 = {
-  .bits = 384,
-  .words = P384_FIELD_WORDS,
+  384,
+  P384_FIELD_WORDS,
   /* 2^384 - 2^128 - 2^96 + 2^32 - 1 (= 3 mod 4) */
-  .p = {
+  {
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
@@ -7253,26 +7225,26 @@ static const prime_def_t field_p384 = {
     0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff
   },
-  .add = fiat_p384_add,
-  .sub = fiat_p384_sub,
-  .opp = fiat_p384_opp,
-  .mul = fiat_p384_mul,
-  .square = fiat_p384_square,
-  .from_montgomery = fiat_p384_from_montgomery,
-  .nonzero = fiat_p384_nonzero,
-  .selectznz = fiat_p384_selectznz,
-  .to_bytes = fiat_p384_to_bytes,
-  .from_bytes = fiat_p384_from_bytes,
-  .carry = NULL,
-  .invert = p384_fe_invert,
-  .sqrt = p384_fe_sqrt,
-  .isqrt = NULL,
-  .scmul_121666 = NULL
+  fiat_p384_add,
+  fiat_p384_sub,
+  fiat_p384_opp,
+  fiat_p384_mul,
+  fiat_p384_square,
+  fiat_p384_from_montgomery,
+  fiat_p384_nonzero,
+  fiat_p384_selectznz,
+  fiat_p384_to_bytes,
+  fiat_p384_from_bytes,
+  NULL,
+  NULL,
+  p384_fe_invert,
+  p384_fe_sqrt,
+  NULL
 };
 
 static const scalar_def_t field_q384 = {
-  .bits = 384,
-  .n = {
+  384,
+  {
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
@@ -7280,7 +7252,7 @@ static const scalar_def_t field_q384 = {
     0x58, 0x1a, 0x0d, 0xb2, 0x48, 0xb0, 0xa7, 0x7a,
     0xec, 0xec, 0x19, 0x6a, 0xcc, 0xc5, 0x29, 0x73
   },
-  .invert = q384_sc_invert
+  q384_sc_invert
 };
 
 /*
@@ -7288,10 +7260,10 @@ static const scalar_def_t field_q384 = {
  */
 
 static const prime_def_t field_p521 = {
-  .bits = 521,
-  .words = P521_FIELD_WORDS,
+  521,
+  P521_FIELD_WORDS,
   /* 2^521 - 1 (= 3 mod 4) */
-  .p = {
+  {
     0x01, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
@@ -7302,26 +7274,26 @@ static const prime_def_t field_p521 = {
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff
   },
-  .add = fiat_p521_add,
-  .sub = fiat_p521_sub,
-  .opp = fiat_p521_opp,
-  .mul = fiat_p521_carry_mul,
-  .square = fiat_p521_carry_square,
-  .from_montgomery = NULL,
-  .nonzero = NULL,
-  .selectznz = fiat_p521_selectznz,
-  .to_bytes = fiat_p521_to_bytes,
-  .from_bytes = fiat_p521_from_bytes,
-  .carry = fiat_p521_carry,
-  .invert = p521_fe_invert,
-  .sqrt = p521_fe_sqrt,
-  .isqrt = NULL,
-  .scmul_121666 = NULL
+  fiat_p521_add,
+  fiat_p521_sub,
+  fiat_p521_opp,
+  fiat_p521_carry_mul,
+  fiat_p521_carry_square,
+  NULL,
+  NULL,
+  fiat_p521_selectznz,
+  fiat_p521_to_bytes,
+  fiat_p521_from_bytes,
+  fiat_p521_carry,
+  NULL,
+  p521_fe_invert,
+  p521_fe_sqrt,
+  NULL
 };
 
 static const scalar_def_t field_q521 = {
-  .bits = 521,
-  .n = {
+  521,
+  {
     0x01, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
@@ -7332,7 +7304,7 @@ static const scalar_def_t field_q521 = {
     0x47, 0xae, 0xbb, 0x6f, 0xb7, 0x1e, 0x91, 0x38,
     0x64, 0x09
   },
-  .invert = NULL
+  NULL
 };
 
 /*
@@ -7340,41 +7312,41 @@ static const scalar_def_t field_q521 = {
  */
 
 static const prime_def_t field_p256k1 = {
-  .bits = 256,
-  .words = SECP256K1_FIELD_WORDS,
+  256,
+  SECP256K1_FIELD_WORDS,
   /* 2^256 - 2^32 - 977 (= 3 mod 4) */
-  .p = {
+  {
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xfe, 0xff, 0xff, 0xfc, 0x2f
   },
-  .add = fiat_secp256k1_add,
-  .sub = fiat_secp256k1_sub,
-  .opp = fiat_secp256k1_opp,
-  .mul = fiat_secp256k1_mul,
-  .square = fiat_secp256k1_square,
-  .from_montgomery = fiat_secp256k1_from_montgomery,
-  .nonzero = fiat_secp256k1_nonzero,
-  .selectznz = fiat_secp256k1_selectznz,
-  .to_bytes = fiat_secp256k1_to_bytes,
-  .from_bytes = fiat_secp256k1_from_bytes,
-  .carry = NULL,
-  .invert = secp256k1_fe_invert,
-  .sqrt = secp256k1_fe_sqrt,
-  .isqrt = secp256k1_fe_isqrt,
-  .scmul_121666 = NULL
+  fiat_secp256k1_add,
+  fiat_secp256k1_sub,
+  fiat_secp256k1_opp,
+  fiat_secp256k1_mul,
+  fiat_secp256k1_square,
+  fiat_secp256k1_from_montgomery,
+  fiat_secp256k1_nonzero,
+  fiat_secp256k1_selectznz,
+  fiat_secp256k1_to_bytes,
+  fiat_secp256k1_from_bytes,
+  fiat_secp256k1_carry,
+  NULL,
+  secp256k1_fe_invert,
+  secp256k1_fe_sqrt,
+  secp256k1_fe_isqrt
 };
 
 static const scalar_def_t field_q256k1 = {
-  .bits = 256,
-  .n = {
+  256,
+  {
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe,
     0xba, 0xae, 0xdc, 0xe6, 0xaf, 0x48, 0xa0, 0x3b,
     0xbf, 0xd2, 0x5e, 0x8c, 0xd0, 0x36, 0x41, 0x41
   },
-  .invert = q256k1_sc_invert
+  q256k1_sc_invert
 };
 
 /*
@@ -7382,41 +7354,41 @@ static const scalar_def_t field_q256k1 = {
  */
 
 static const prime_def_t field_p25519 = {
-  .bits = 255,
-  .words = P25519_FIELD_WORDS,
+  255,
+  P25519_FIELD_WORDS,
   /* 2^255 - 19 (= 5 mod 8) */
-  .p = {
+  {
     0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xed
   },
-  .add = fiat_p25519_add,
-  .sub = fiat_p25519_sub,
-  .opp = fiat_p25519_opp,
-  .mul = fiat_p25519_carry_mul,
-  .square = fiat_p25519_carry_square,
-  .from_montgomery = NULL,
-  .nonzero = NULL,
-  .selectznz = fiat_p25519_selectznz,
-  .to_bytes = fiat_p25519_to_bytes,
-  .from_bytes = fiat_p25519_from_bytes,
-  .carry = fiat_p25519_carry,
-  .invert = p25519_fe_invert,
-  .sqrt = p25519_fe_sqrt,
-  .isqrt = p25519_fe_isqrt,
-  .scmul_121666 = fiat_p25519_carry_scmul_121666
+  fiat_p25519_add,
+  fiat_p25519_sub,
+  fiat_p25519_opp,
+  fiat_p25519_carry_mul,
+  fiat_p25519_carry_square,
+  NULL,
+  NULL,
+  fiat_p25519_selectznz,
+  fiat_p25519_to_bytes,
+  fiat_p25519_from_bytes,
+  fiat_p25519_carry,
+  fiat_p25519_carry_scmul_121666,
+  p25519_fe_invert,
+  p25519_fe_sqrt,
+  p25519_fe_isqrt
 };
 
 static const scalar_def_t field_q25519 = {
-  .bits = 253,
-  .n = {
+  253,
+  {
     0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x14, 0xde, 0xf9, 0xde, 0xa2, 0xf7, 0x9c, 0xd6,
     0x58, 0x12, 0x63, 0x1a, 0x5c, 0xf5, 0xd3, 0xed
   },
-  .invert = q25519_sc_invert
+  q25519_sc_invert
 };
 
 /*
@@ -7424,10 +7396,10 @@ static const scalar_def_t field_q25519 = {
  */
 
 static const prime_def_t field_p448 = {
-  .bits = 448,
-  .words = P448_FIELD_WORDS,
+  448,
+  P448_FIELD_WORDS,
   /* 2^448 - 2^224 - 1 (= 3 mod 4) */
-  .p = {
+  {
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
@@ -7436,26 +7408,26 @@ static const prime_def_t field_p448 = {
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff
   },
-  .add = fiat_p448_add,
-  .sub = fiat_p448_sub,
-  .opp = fiat_p448_opp,
-  .mul = fiat_p448_carry_mul,
-  .square = fiat_p448_carry_square,
-  .from_montgomery = NULL,
-  .nonzero = NULL,
-  .selectznz = fiat_p448_selectznz,
-  .to_bytes = fiat_p448_to_bytes,
-  .from_bytes = fiat_p448_from_bytes,
-  .carry = fiat_p448_carry,
-  .invert = p448_fe_invert,
-  .sqrt = p448_fe_sqrt,
-  .isqrt = p448_fe_isqrt,
-  .scmul_121666 = NULL
+  fiat_p448_add,
+  fiat_p448_sub,
+  fiat_p448_opp,
+  fiat_p448_carry_mul,
+  fiat_p448_carry_square,
+  NULL,
+  NULL,
+  fiat_p448_selectznz,
+  fiat_p448_to_bytes,
+  fiat_p448_from_bytes,
+  fiat_p448_carry,
+  NULL,
+  p448_fe_invert,
+  p448_fe_sqrt,
+  p448_fe_isqrt
 };
 
 static const scalar_def_t field_q448 = {
-  .bits = 446,
-  .n = {
+  446,
+  {
     0x3f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
@@ -7464,7 +7436,7 @@ static const scalar_def_t field_q448 = {
     0x21, 0x6c, 0xc2, 0x72, 0x8d, 0xc5, 0x8f, 0x55,
     0x23, 0x78, 0xc2, 0x92, 0xab, 0x58, 0x44, 0xf3
   },
-  .invert = NULL
+  NULL
 };
 
 /*
@@ -7472,41 +7444,41 @@ static const scalar_def_t field_q448 = {
  */
 
 static const prime_def_t field_p251 = {
-  .bits = 251,
-  .words = P251_FIELD_WORDS,
+  251,
+  P251_FIELD_WORDS,
   /* 2^251 - 9 (= 3 mod 4) */
-  .p = {
+  {
     0x07, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xf7
   },
-  .add = fiat_p251_add,
-  .sub = fiat_p251_sub,
-  .opp = fiat_p251_opp,
-  .mul = fiat_p251_carry_mul,
-  .square = fiat_p251_carry_square,
-  .from_montgomery = NULL,
-  .nonzero = NULL,
-  .selectznz = fiat_p251_selectznz,
-  .to_bytes = fiat_p251_to_bytes,
-  .from_bytes = fiat_p251_from_bytes,
-  .carry = fiat_p251_carry,
-  .invert = p251_fe_invert,
-  .sqrt = p251_fe_sqrt,
-  .isqrt = p251_fe_isqrt,
-  .scmul_121666 = NULL
+  fiat_p251_add,
+  fiat_p251_sub,
+  fiat_p251_opp,
+  fiat_p251_carry_mul,
+  fiat_p251_carry_square,
+  NULL,
+  NULL,
+  fiat_p251_selectznz,
+  fiat_p251_to_bytes,
+  fiat_p251_from_bytes,
+  fiat_p251_carry,
+  NULL,
+  p251_fe_invert,
+  p251_fe_sqrt,
+  p251_fe_isqrt
 };
 
 static const scalar_def_t field_q251 = {
-  .bits = 249,
-  .n = {
+  249,
+  {
     0x01, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xf7, 0x79, 0x65, 0xc4, 0xdf, 0xd3, 0x07, 0x34,
     0x89, 0x44, 0xd4, 0x5f, 0xd1, 0x66, 0xc9, 0x71
   },
-  .invert = NULL
+  NULL
 };
 
 /*
@@ -7514,116 +7486,140 @@ static const scalar_def_t field_q251 = {
  */
 
 static const wei_def_t curve_p192 = {
-  .id = "P192",
-  .hash = HASH_SHA256,
-  .fe = &field_p192,
-  .sc = &field_q192,
-  /* -3 mod p */
-  .a = {
+  HASH_SHA256,
+  &field_p192,
+  &field_q192,
+  1,
+  -5,
+  0,
+  /* Coefficients (a, b). */
+  {
+    /* -3 mod p */
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfc
   },
-  .b = {
+  {
     0x64, 0x21, 0x05, 0x19, 0xe5, 0x9c, 0x80, 0xe7,
     0x0f, 0xa7, 0xe9, 0xab, 0x72, 0x24, 0x30, 0x49,
     0xfe, 0xb8, 0xde, 0xec, 0xc1, 0x46, 0xb9, 0xb1
   },
-  .h = 1,
-  /* Icart */
-  .z = -5,
-  .x = {
+  /* Base point coordinates (x, y). */
+  {
     0x18, 0x8d, 0xa8, 0x0e, 0xb0, 0x30, 0x90, 0xf6,
     0x7c, 0xbf, 0x20, 0xeb, 0x43, 0xa1, 0x88, 0x00,
     0xf4, 0xff, 0x0a, 0xfd, 0x82, 0xff, 0x10, 0x12
   },
-  .y = {
+  {
     0x07, 0x19, 0x2b, 0x95, 0xff, 0xc8, 0xda, 0x78,
     0x63, 0x10, 0x11, 0xed, 0x6b, 0x24, 0xcd, 0xd5,
     0x73, 0xf9, 0x77, 0xa1, 0x1e, 0x79, 0x48, 0x11
   },
-  .endo = 0
+  {0},
+  {0},
+  {0},
+  {0},
+  {0},
+  {0},
+  {0}
 };
 
 static const wei_def_t curve_p224 = {
-  .id = "P224",
-  .hash = HASH_SHA256,
-  .fe = &field_p224,
-  .sc = &field_q224,
-  /* -3 mod p */
-  .a = {
+  HASH_SHA256,
+  &field_p224,
+  &field_q224,
+  1,
+  31,
+  0,
+  /* Coefficients (a, b). */
+  {
+    /* -3 mod p */
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xfe
   },
-  .b = {
+  {
     0xb4, 0x05, 0x0a, 0x85, 0x0c, 0x04, 0xb3, 0xab,
     0xf5, 0x41, 0x32, 0x56, 0x50, 0x44, 0xb0, 0xb7,
     0xd7, 0xbf, 0xd8, 0xba, 0x27, 0x0b, 0x39, 0x43,
     0x23, 0x55, 0xff, 0xb4
   },
-  .h = 1,
-  /* SSWU */
-  .z = 31,
-  .x = {
+  /* Base point coordinates (x, y). */
+  {
     0xb7, 0x0e, 0x0c, 0xbd, 0x6b, 0xb4, 0xbf, 0x7f,
     0x32, 0x13, 0x90, 0xb9, 0x4a, 0x03, 0xc1, 0xd3,
     0x56, 0xc2, 0x11, 0x22, 0x34, 0x32, 0x80, 0xd6,
     0x11, 0x5c, 0x1d, 0x21
   },
-  .y = {
+  {
     0xbd, 0x37, 0x63, 0x88, 0xb5, 0xf7, 0x23, 0xfb,
     0x4c, 0x22, 0xdf, 0xe6, 0xcd, 0x43, 0x75, 0xa0,
     0x5a, 0x07, 0x47, 0x64, 0x44, 0xd5, 0x81, 0x99,
     0x85, 0x00, 0x7e, 0x34
   },
-  .endo = 0
+  {0},
+  {0},
+  {0},
+  {0},
+  {0},
+  {0},
+  {0}
 };
 
 static const wei_def_t curve_p256 = {
-  .id = "P256",
-  .hash = HASH_SHA256,
-  .fe = &field_p256,
-  .sc = &field_q256,
-  /* -3 mod p */
-  .a = {
+  HASH_SHA256,
+  &field_p256,
+  &field_q256,
+  1,
+  -10,
+  0,
+  /* Coefficients (a, b). */
+  {
+    /* -3 mod p */
     0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x01,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfc
   },
-  .b = {
+  {
     0x5a, 0xc6, 0x35, 0xd8, 0xaa, 0x3a, 0x93, 0xe7,
     0xb3, 0xeb, 0xbd, 0x55, 0x76, 0x98, 0x86, 0xbc,
     0x65, 0x1d, 0x06, 0xb0, 0xcc, 0x53, 0xb0, 0xf6,
     0x3b, 0xce, 0x3c, 0x3e, 0x27, 0xd2, 0x60, 0x4b
   },
-  .h = 1,
-  /* SSWU */
-  .z = -10,
-  .x = {
+  /* Base point coordinates (x, y). */
+  {
     0x6b, 0x17, 0xd1, 0xf2, 0xe1, 0x2c, 0x42, 0x47,
     0xf8, 0xbc, 0xe6, 0xe5, 0x63, 0xa4, 0x40, 0xf2,
     0x77, 0x03, 0x7d, 0x81, 0x2d, 0xeb, 0x33, 0xa0,
     0xf4, 0xa1, 0x39, 0x45, 0xd8, 0x98, 0xc2, 0x96
   },
-  .y = {
+  {
     0x4f, 0xe3, 0x42, 0xe2, 0xfe, 0x1a, 0x7f, 0x9b,
     0x8e, 0xe7, 0xeb, 0x4a, 0x7c, 0x0f, 0x9e, 0x16,
     0x2b, 0xce, 0x33, 0x57, 0x6b, 0x31, 0x5e, 0xce,
     0xcb, 0xb6, 0x40, 0x68, 0x37, 0xbf, 0x51, 0xf5
   },
-  .endo = 0
+  {0},
+  {0},
+  {0},
+  {0},
+  {0},
+  {0},
+  {0}
 };
 
 static const wei_def_t curve_p384 = {
-  .id = "P384",
-  .hash = HASH_SHA384,
-  .fe = &field_p384,
-  .sc = &field_q384,
-  /* -3 mod p */
-  .a = {
+  HASH_SHA384,
+  &field_p384,
+  &field_q384,
+  1,
+  -12,
+  0,
+  /* Coefficients (a, b). */
+  {
+    /* -3 mod p */
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
@@ -7631,7 +7627,7 @@ static const wei_def_t curve_p384 = {
     0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xfc
   },
-  .b = {
+  {
     0xb3, 0x31, 0x2f, 0xa7, 0xe2, 0x3e, 0xe7, 0xe4,
     0x98, 0x8e, 0x05, 0x6b, 0xe3, 0xf8, 0x2d, 0x19,
     0x18, 0x1d, 0x9c, 0x6e, 0xfe, 0x81, 0x41, 0x12,
@@ -7639,10 +7635,8 @@ static const wei_def_t curve_p384 = {
     0xc6, 0x56, 0x39, 0x8d, 0x8a, 0x2e, 0xd1, 0x9d,
     0x2a, 0x85, 0xc8, 0xed, 0xd3, 0xec, 0x2a, 0xef
   },
-  .h = 1,
-  /* Icart */
-  .z = -12,
-  .x = {
+  /* Base point coordinates (x, y). */
+  {
     0xaa, 0x87, 0xca, 0x22, 0xbe, 0x8b, 0x05, 0x37,
     0x8e, 0xb1, 0xc7, 0x1e, 0xf3, 0x20, 0xad, 0x74,
     0x6e, 0x1d, 0x3b, 0x62, 0x8b, 0xa7, 0x9b, 0x98,
@@ -7650,7 +7644,7 @@ static const wei_def_t curve_p384 = {
     0x55, 0x02, 0xf2, 0x5d, 0xbf, 0x55, 0x29, 0x6c,
     0x3a, 0x54, 0x5e, 0x38, 0x72, 0x76, 0x0a, 0xb7
   },
-  .y = {
+  {
     0x36, 0x17, 0xde, 0x4a, 0x96, 0x26, 0x2c, 0x6f,
     0x5d, 0x9e, 0x98, 0xbf, 0x92, 0x92, 0xdc, 0x29,
     0xf8, 0xf4, 0x1d, 0xbd, 0x28, 0x9a, 0x14, 0x7c,
@@ -7658,16 +7652,25 @@ static const wei_def_t curve_p384 = {
     0x0a, 0x60, 0xb1, 0xce, 0x1d, 0x7e, 0x81, 0x9d,
     0x7a, 0x43, 0x1d, 0x7c, 0x90, 0xea, 0x0e, 0x5f
   },
-  .endo = 0
+  {0},
+  {0},
+  {0},
+  {0},
+  {0},
+  {0},
+  {0}
 };
 
 static const wei_def_t curve_p521 = {
-  .id = "P521",
-  .hash = HASH_SHA512,
-  .fe = &field_p521,
-  .sc = &field_q521,
-  /* -3 mod p */
-  .a = {
+  HASH_SHA512,
+  &field_p521,
+  &field_q521,
+  1,
+  -4,
+  0,
+  /* Coefficients (a, b). */
+  {
+    /* -3 mod p */
     0x01, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
@@ -7678,7 +7681,7 @@ static const wei_def_t curve_p521 = {
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xfc
   },
-  .b = {
+  {
     0x00, 0x51, 0x95, 0x3e, 0xb9, 0x61, 0x8e, 0x1c,
     0x9a, 0x1f, 0x92, 0x9a, 0x21, 0xa0, 0xb6, 0x85,
     0x40, 0xee, 0xa2, 0xda, 0x72, 0x5b, 0x99, 0xb3,
@@ -7689,10 +7692,8 @@ static const wei_def_t curve_p521 = {
     0x34, 0xf1, 0xef, 0x45, 0x1f, 0xd4, 0x6b, 0x50,
     0x3f, 0x00
   },
-  .h = 1,
-  /* SSWU */
-  .z = -4,
-  .x = {
+  /* Base point coordinates (x, y). */
+  {
     0x00, 0xc6, 0x85, 0x8e, 0x06, 0xb7, 0x04, 0x04,
     0xe9, 0xcd, 0x9e, 0x3e, 0xcb, 0x66, 0x23, 0x95,
     0xb4, 0x42, 0x9c, 0x64, 0x81, 0x39, 0x05, 0x3f,
@@ -7703,7 +7704,7 @@ static const wei_def_t curve_p521 = {
     0x42, 0x9b, 0xf9, 0x7e, 0x7e, 0x31, 0xc2, 0xe5,
     0xbd, 0x66
   },
-  .y = {
+  {
     0x01, 0x18, 0x39, 0x29, 0x6a, 0x78, 0x9a, 0x3b,
     0xc0, 0x04, 0x5c, 0x8a, 0x5f, 0xb4, 0x2c, 0x7d,
     0x1b, 0xd9, 0x98, 0xf5, 0x44, 0x49, 0x57, 0x9b,
@@ -7714,80 +7715,88 @@ static const wei_def_t curve_p521 = {
     0xc2, 0x40, 0x88, 0xbe, 0x94, 0x76, 0x9f, 0xd1,
     0x66, 0x50
   },
-  .endo = 0
+  {0},
+  {0},
+  {0},
+  {0},
+  {0},
+  {0},
+  {0}
 };
 
 static const wei_def_t curve_secp256k1 = {
-  .id = "SECP256K1",
-  .hash = HASH_SHA256,
-  .fe = &field_p256k1,
-  .sc = &field_q256k1,
-  .a = {
+  HASH_SHA256,
+  &field_p256k1,
+  &field_q256k1,
+  1,
+  1,
+  1,
+  /* Coefficients (a, b). */
+  {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
   },
-  .b = {
+  {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x07
   },
-  .h = 1,
-  /* SVDW */
-  .z = 1,
-  /* sqrt(-3) */
-  .c = {
-    0x0a, 0x2d, 0x2b, 0xa9, 0x35, 0x07, 0xf1, 0xdf,
-    0x23, 0x37, 0x70, 0xc2, 0xa7, 0x97, 0x96, 0x2c,
-    0xc6, 0x1f, 0x6d, 0x15, 0xda, 0x14, 0xec, 0xd4,
-    0x7d, 0x8d, 0x27, 0xae, 0x1c, 0xd5, 0xf8, 0x52
-  },
-  .x = {
+  /* Base point coordinates (x, y). */
+  {
     0x79, 0xbe, 0x66, 0x7e, 0xf9, 0xdc, 0xbb, 0xac,
     0x55, 0xa0, 0x62, 0x95, 0xce, 0x87, 0x0b, 0x07,
     0x02, 0x9b, 0xfc, 0xdb, 0x2d, 0xce, 0x28, 0xd9,
     0x59, 0xf2, 0x81, 0x5b, 0x16, 0xf8, 0x17, 0x98
   },
-  .y = {
+  {
     0x48, 0x3a, 0xda, 0x77, 0x26, 0xa3, 0xc4, 0x65,
     0x5d, 0xa4, 0xfb, 0xfc, 0x0e, 0x11, 0x08, 0xa8,
     0xfd, 0x17, 0xb4, 0x48, 0xa6, 0x85, 0x54, 0x19,
     0x9c, 0x47, 0xd0, 0x8f, 0xfb, 0x10, 0xd4, 0xb8
   },
-  .endo = 1,
-  .beta = {
+  /* Shallue-van de Woestijne constant (c). */
+  {
+    /* sqrt(-3) */
+    0x0a, 0x2d, 0x2b, 0xa9, 0x35, 0x07, 0xf1, 0xdf,
+    0x23, 0x37, 0x70, 0xc2, 0xa7, 0x97, 0x96, 0x2c,
+    0xc6, 0x1f, 0x6d, 0x15, 0xda, 0x14, 0xec, 0xd4,
+    0x7d, 0x8d, 0x27, 0xae, 0x1c, 0xd5, 0xf8, 0x52
+  },
+  /* Endomorphism constants (beta, lambda, b1, b2, g1, g2). */
+  {
     0x7a, 0xe9, 0x6a, 0x2b, 0x65, 0x7c, 0x07, 0x10,
     0x6e, 0x64, 0x47, 0x9e, 0xac, 0x34, 0x34, 0xe9,
     0x9c, 0xf0, 0x49, 0x75, 0x12, 0xf5, 0x89, 0x95,
     0xc1, 0x39, 0x6c, 0x28, 0x71, 0x95, 0x01, 0xee
   },
-  .lambda = {
+  {
     0xac, 0x9c, 0x52, 0xb3, 0x3f, 0xa3, 0xcf, 0x1f,
     0x5a, 0xd9, 0xe3, 0xfd, 0x77, 0xed, 0x9b, 0xa4,
     0xa8, 0x80, 0xb9, 0xfc, 0x8e, 0xc7, 0x39, 0xc2,
     0xe0, 0xcf, 0xc8, 0x10, 0xb5, 0x12, 0x83, 0xcf
   },
-  .b1 = {
+  {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0xe4, 0x43, 0x7e, 0xd6, 0x01, 0x0e, 0x88, 0x28,
     0x6f, 0x54, 0x7f, 0xa9, 0x0a, 0xbf, 0xe4, 0xc3
   },
-  .b2 = {
+  {
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe,
     0x8a, 0x28, 0x0a, 0xc5, 0x07, 0x74, 0x34, 0x6d,
     0xd7, 0x65, 0xcd, 0xa8, 0x3d, 0xb1, 0x56, 0x2c
   },
-  .g1 = {
+  {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x30, 0x86,
     0xd2, 0x21, 0xa7, 0xd4, 0x6b, 0xcd, 0xe8, 0x6c,
     0x90, 0xe4, 0x92, 0x84, 0xeb, 0x15, 0x3d, 0xab
   },
-  .g2 = {
+  {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xe4, 0x43,
     0x7e, 0xd6, 0x01, 0x0e, 0x88, 0x28, 0x6f, 0x54,
@@ -7800,55 +7809,59 @@ static const wei_def_t curve_secp256k1 = {
  */
 
 static const mont_def_t curve_x25519 = {
-  .id = "X25519",
-  .fe = &field_p25519,
-  .sc = &field_q25519,
-  /* 486662 */
-  .a = {
+  &field_p25519,
+  &field_q25519,
+  8,
+  2,
+  0,
+  /* Coefficients (A, B). */
+  {
+    /* 486662 */
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x07, 0x6d, 0x06
   },
-  .b = {
+  {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01
   },
-  .h = 8,
-  /* Elligator 2 */
-  .z = 2,
-  .invert = 0,
-  /* sqrt(-486664) */
-  .c = {
-    /* See: https://github.com/cfrg/draft-irtf-cfrg-hash-to-curve/issues/206 */
-    0x0f, 0x26, 0xed, 0xf4, 0x60, 0xa0, 0x06, 0xbb,
-    0xd2, 0x7b, 0x08, 0xdc, 0x03, 0xfc, 0x4f, 0x7e,
-    0xc5, 0xa1, 0xd3, 0xd1, 0x4b, 0x7d, 0x1a, 0x82,
-    0xcc, 0x6e, 0x04, 0xaa, 0xff, 0x45, 0x7e, 0x06
-  },
-  .x = {
+  /* Base point coordinates (u, v). */
+  {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x09
   },
-  .y = {
+  {
     /* See: https://www.rfc-editor.org/errata/eid4730 */
     0x5f, 0x51, 0xe6, 0x5e, 0x47, 0x5f, 0x79, 0x4b,
     0x1f, 0xe1, 0x22, 0xd3, 0x88, 0xb7, 0x2e, 0xb3,
     0x6d, 0xc2, 0xb2, 0x81, 0x92, 0x83, 0x9e, 0x4d,
     0xd6, 0x16, 0x3a, 0x5d, 0x81, 0x31, 0x2c, 0x14
+  },
+  /* Isomorphism scaling factor (c). */
+  {
+    /* sqrt(-486664) */
+    /* See: https://github.com/cfrg/draft-irtf-cfrg-hash-to-curve/issues/206 */
+    0x0f, 0x26, 0xed, 0xf4, 0x60, 0xa0, 0x06, 0xbb,
+    0xd2, 0x7b, 0x08, 0xdc, 0x03, 0xfc, 0x4f, 0x7e,
+    0xc5, 0xa1, 0xd3, 0xd1, 0x4b, 0x7d, 0x1a, 0x82,
+    0xcc, 0x6e, 0x04, 0xaa, 0xff, 0x45, 0x7e, 0x06
   }
 };
 
 static const mont_def_t curve_x448 = {
-  .id = "X448",
-  .fe = &field_p448,
-  .sc = &field_q448,
-  /* 156326 */
-  .a = {
+  &field_p448,
+  &field_q448,
+  4,
+  -1,
+  1,
+  /* Coefficients (A, B). */
+  {
+    /* 156326 */
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -7857,7 +7870,7 @@ static const mont_def_t curve_x448 = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x62, 0xa6
   },
-  .b = {
+  {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -7866,21 +7879,8 @@ static const mont_def_t curve_x448 = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01
   },
-  .h = 4,
-  /* Elligator 2 */
-  .z = -1,
-  .invert = 1,
-  /* IsoEd448 scaling factor. */
-  .c = {
-    0x45, 0xb2, 0xc5, 0xf7, 0xd6, 0x49, 0xee, 0xd0,
-    0x77, 0xed, 0x1a, 0xe4, 0x5f, 0x44, 0xd5, 0x41,
-    0x43, 0xe3, 0x4f, 0x71, 0x4b, 0x71, 0xaa, 0x96,
-    0xc9, 0x45, 0xaf, 0x01, 0x2d, 0x18, 0x29, 0x75,
-    0x07, 0x34, 0xcd, 0xe9, 0xfa, 0xdd, 0xbd, 0xa4,
-    0xc0, 0x66, 0xf7, 0xed, 0x54, 0x41, 0x9c, 0xa5,
-    0x2c, 0x85, 0xde, 0x1e, 0x8a, 0xae, 0x4e, 0x6c
-  },
-  .x = {
+  /* Base point coordinates (u, v). */
+  {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -7889,7 +7889,7 @@ static const mont_def_t curve_x448 = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05
   },
-  .y = {
+  {
     0x7d, 0x23, 0x5d, 0x12, 0x95, 0xf5, 0xb1, 0xf6,
     0x6c, 0x98, 0xab, 0x6e, 0x58, 0x32, 0x6f, 0xce,
     0xcb, 0xae, 0x5d, 0x34, 0xf5, 0x55, 0x45, 0xd0,
@@ -7897,6 +7897,17 @@ static const mont_def_t curve_x448 = {
     0xb8, 0x02, 0x7e, 0x23, 0x46, 0x43, 0x0d, 0x21,
     0x13, 0x12, 0xc4, 0xb1, 0x50, 0x67, 0x7a, 0xf7,
     0x6f, 0xd7, 0x22, 0x3d, 0x45, 0x7b, 0x5b, 0x1a
+  },
+  /* Isomorphism scaling factor (c). */
+  {
+    /* IsoEd448 scaling factor. */
+    0x45, 0xb2, 0xc5, 0xf7, 0xd6, 0x49, 0xee, 0xd0,
+    0x77, 0xed, 0x1a, 0xe4, 0x5f, 0x44, 0xd5, 0x41,
+    0x43, 0xe3, 0x4f, 0x71, 0x4b, 0x71, 0xaa, 0x96,
+    0xc9, 0x45, 0xaf, 0x01, 0x2d, 0x18, 0x29, 0x75,
+    0x07, 0x34, 0xcd, 0xe9, 0xfa, 0xdd, 0xbd, 0xa4,
+    0xc0, 0x66, 0xf7, 0xed, 0x54, 0x41, 0x9c, 0xa5,
+    0x2c, 0x85, 0xde, 0x1e, 0x8a, 0xae, 0x4e, 0x6c
   }
 };
 
@@ -7905,62 +7916,66 @@ static const mont_def_t curve_x448 = {
  */
 
 static const edwards_def_t curve_ed25519 = {
-  .id = "ED25519",
-  .hash = HASH_SHA512,
-  .context = 0,
-  .prefix = "SigEd25519 no Ed25519 collisions",
-  .fe = &field_p25519,
-  .sc = &field_q25519,
-  /* -1 mod p */
-  .a = {
+  HASH_SHA512,
+  0,
+  "SigEd25519 no Ed25519 collisions",
+  &field_p25519,
+  &field_q25519,
+  8,
+  2,
+  0,
+  /* Coefficients (a, d). */
+  {
+    /* -1 mod p */
     0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xec
   },
-  /* -121665 / 121666 mod p */
-  .d = {
+  {
+    /* -121665 / 121666 mod p */
     0x52, 0x03, 0x6c, 0xee, 0x2b, 0x6f, 0xfe, 0x73,
     0x8c, 0xc7, 0x40, 0x79, 0x77, 0x79, 0xe8, 0x98,
     0x00, 0x70, 0x0a, 0x4d, 0x41, 0x41, 0xd8, 0xab,
     0x75, 0xeb, 0x4d, 0xca, 0x13, 0x59, 0x78, 0xa3
   },
-  .h = 8,
-  /* Elligator 2 */
-  .z = 2,
-  .invert = 0,
-  /* sqrt(-486664) */
-  .c = {
-    /* See: https://github.com/cfrg/draft-irtf-cfrg-hash-to-curve/issues/206 */
-    0x0f, 0x26, 0xed, 0xf4, 0x60, 0xa0, 0x06, 0xbb,
-    0xd2, 0x7b, 0x08, 0xdc, 0x03, 0xfc, 0x4f, 0x7e,
-    0xc5, 0xa1, 0xd3, 0xd1, 0x4b, 0x7d, 0x1a, 0x82,
-    0xcc, 0x6e, 0x04, 0xaa, 0xff, 0x45, 0x7e, 0x06
-  },
-  .x = {
+  /* Base point coordinates (x, y). */
+  {
     0x21, 0x69, 0x36, 0xd3, 0xcd, 0x6e, 0x53, 0xfe,
     0xc0, 0xa4, 0xe2, 0x31, 0xfd, 0xd6, 0xdc, 0x5c,
     0x69, 0x2c, 0xc7, 0x60, 0x95, 0x25, 0xa7, 0xb2,
     0xc9, 0x56, 0x2d, 0x60, 0x8f, 0x25, 0xd5, 0x1a
   },
-  /* 4/5 */
-  .y = {
+  {
+    /* 4/5 */
     0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66,
     0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66,
     0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66,
     0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x58
+  },
+  /* Isomorphism scaling factor (c). */
+  {
+    /* sqrt(-486664) */
+    /* See: https://github.com/cfrg/draft-irtf-cfrg-hash-to-curve/issues/206 */
+    0x0f, 0x26, 0xed, 0xf4, 0x60, 0xa0, 0x06, 0xbb,
+    0xd2, 0x7b, 0x08, 0xdc, 0x03, 0xfc, 0x4f, 0x7e,
+    0xc5, 0xa1, 0xd3, 0xd1, 0x4b, 0x7d, 0x1a, 0x82,
+    0xcc, 0x6e, 0x04, 0xaa, 0xff, 0x45, 0x7e, 0x06
   }
 };
 
 static const edwards_def_t curve_ed448 = {
-  .id = "ED448",
-  .hash = HASH_SHAKE256,
-  .context = 1,
-  .prefix = "SigEd448",
-  .fe = &field_p448,
-  .sc = &field_q448,
-  /* 1 mod p */
-  .a = {
+  HASH_SHAKE256,
+  1,
+  "SigEd448",
+  &field_p448,
+  &field_q448,
+  4,
+  -1,
+  1,
+  /* Coefficients (a, d). */
+  {
+    /* 1 mod p */
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -7969,8 +7984,8 @@ static const edwards_def_t curve_ed448 = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01
   },
-  /* -39081 mod p */
-  .d = {
+  {
+    /* -39081 mod p */
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
@@ -7979,21 +7994,8 @@ static const edwards_def_t curve_ed448 = {
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x67, 0x56
   },
-  .h = 4,
-  /* Elligator 2 */
-  .z = -1,
-  .invert = 1,
-  /* Mont448 scaling factor. */
-  .c = {
-    0x41, 0x36, 0xd0, 0x2f, 0x92, 0x5d, 0x53, 0x0d,
-    0x4b, 0x1d, 0x9e, 0x17, 0x83, 0x10, 0xf2, 0xcb,
-    0xdd, 0x18, 0xa3, 0xe7, 0xc3, 0xa7, 0x67, 0xa8,
-    0x48, 0xe6, 0xdb, 0x19, 0x8c, 0x3d, 0x06, 0x31,
-    0x1e, 0x72, 0x5a, 0x0d, 0xb9, 0x91, 0xd0, 0xc6,
-    0xc3, 0xd1, 0x12, 0x0f, 0x0e, 0xfa, 0x59, 0xf5,
-    0x4b, 0xf3, 0x8e, 0x82, 0xb0, 0xe1, 0xe0, 0x28
-  },
-  .x = {
+  /* Base point coordinates (x, y). */
+  {
     0x4f, 0x19, 0x70, 0xc6, 0x6b, 0xed, 0x0d, 0xed,
     0x22, 0x1d, 0x15, 0xa6, 0x22, 0xbf, 0x36, 0xda,
     0x9e, 0x14, 0x65, 0x70, 0x47, 0x0f, 0x17, 0x67,
@@ -8002,7 +8004,7 @@ static const edwards_def_t curve_ed448 = {
     0x43, 0x3b, 0x80, 0xe1, 0x8b, 0x00, 0x93, 0x8e,
     0x26, 0x26, 0xa8, 0x2b, 0xc7, 0x0c, 0xc0, 0x5e
   },
-  .y = {
+  {
     0x69, 0x3f, 0x46, 0x71, 0x6e, 0xb6, 0xbc, 0x24,
     0x88, 0x76, 0x20, 0x37, 0x56, 0xc9, 0xc7, 0x62,
     0x4b, 0xea, 0x73, 0x73, 0x6c, 0xa3, 0x98, 0x40,
@@ -8010,52 +8012,64 @@ static const edwards_def_t curve_ed448 = {
     0x3a, 0xd3, 0xff, 0x1c, 0xe6, 0x7c, 0x39, 0xc4,
     0xfd, 0xbd, 0x13, 0x2c, 0x4e, 0xd7, 0xc8, 0xad,
     0x98, 0x08, 0x79, 0x5b, 0xf2, 0x30, 0xfa, 0x14
+  },
+  /* Isomorphism scaling factor (c). */
+  {
+    /* Mont448 scaling factor. */
+    0x41, 0x36, 0xd0, 0x2f, 0x92, 0x5d, 0x53, 0x0d,
+    0x4b, 0x1d, 0x9e, 0x17, 0x83, 0x10, 0xf2, 0xcb,
+    0xdd, 0x18, 0xa3, 0xe7, 0xc3, 0xa7, 0x67, 0xa8,
+    0x48, 0xe6, 0xdb, 0x19, 0x8c, 0x3d, 0x06, 0x31,
+    0x1e, 0x72, 0x5a, 0x0d, 0xb9, 0x91, 0xd0, 0xc6,
+    0xc3, 0xd1, 0x12, 0x0f, 0x0e, 0xfa, 0x59, 0xf5,
+    0x4b, 0xf3, 0x8e, 0x82, 0xb0, 0xe1, 0xe0, 0x28
   }
 };
 
 static const edwards_def_t curve_ed1174 = {
-  .id = "ED1174",
-  .hash = HASH_SHA512,
-  .context = 1,
-  .prefix = "SigEd1174",
-  .fe = &field_p251,
-  .sc = &field_q251,
-  /* 1 mod p */
-  .a = {
+  HASH_SHA512,
+  1,
+  "SigEd1174",
+  &field_p251,
+  &field_q251,
+  4,
+  -1,
+  1,
+  /* Coefficients (a, d). */
+  {
+    /* 1 mod p */
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01
   },
-  /* -1174 mod p */
-  .d = {
+  {
+    /* -1174 mod p */
     0x07, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfb, 0x61
   },
-  .h = 4,
-  /* Elligator 2 */
-  .z = -1,
-  .invert = 1,
-  /* Should give us B=1. */
-  .c = {
-    0x00, 0x5a, 0x7a, 0x03, 0xfb, 0x02, 0xf7, 0x19,
-    0x5e, 0x44, 0x1c, 0xd2, 0xe3, 0xf7, 0x08, 0xf9,
-    0x6f, 0x8f, 0xfb, 0xe8, 0x35, 0x95, 0x48, 0xba,
-    0x82, 0x76, 0xac, 0xe6, 0xbb, 0xe7, 0xdf, 0xd2
-  },
-  .x = {
+  /* Base point coordinates (x, y). */
+  {
     0x03, 0x7f, 0xbb, 0x0c, 0xea, 0x30, 0x8c, 0x47,
     0x93, 0x43, 0xae, 0xe7, 0xc0, 0x29, 0xa1, 0x90,
     0xc0, 0x21, 0xd9, 0x6a, 0x49, 0x2e, 0xcd, 0x65,
     0x16, 0x12, 0x3f, 0x27, 0xbc, 0xe2, 0x9e, 0xda
   },
-  .y = {
+  {
     0x06, 0xb7, 0x2f, 0x82, 0xd4, 0x7f, 0xb7, 0xcc,
     0x66, 0x56, 0x84, 0x11, 0x69, 0x84, 0x0e, 0x0c,
     0x4f, 0xe2, 0xde, 0xe2, 0xaf, 0x3f, 0x97, 0x6b,
     0xa4, 0xcc, 0xb1, 0xbf, 0x9b, 0x46, 0x36, 0x0e
+  },
+  /* Isomorphism scaling factor (c). */
+  {
+    /* Should give us B=1. */
+    0x00, 0x5a, 0x7a, 0x03, 0xfb, 0x02, 0xf7, 0x19,
+    0x5e, 0x44, 0x1c, 0xd2, 0xe3, 0xf7, 0x08, 0xf9,
+    0x6f, 0x8f, 0xfb, 0xe8, 0x35, 0x95, 0x48, 0xba,
+    0x82, 0x76, 0xac, 0xe6, 0xbb, 0xe7, 0xdf, 0xd2
   }
 };
 
@@ -8106,8 +8120,12 @@ ecdsa_context_create(int type) {
 
 void
 ecdsa_context_destroy(wei_t *ec) {
-  if (ec != NULL)
+  if (ec != NULL) {
+    sc_cleanse(&ec->sc, ec->blind);
+    wge_cleanse(ec, &ec->unblind);
+
     free(ec);
+  }
 }
 
 void
@@ -8456,8 +8474,8 @@ ecdsa_pubkey_verify(const wei_t *ec, const unsigned char *pub, size_t pub_len) {
 
 int
 ecdsa_pubkey_export(const wei_t *ec,
-                    unsigned char *x,
-                    unsigned char *y,
+                    unsigned char *x_raw,
+                    unsigned char *y_raw,
                     const unsigned char *pub,
                     size_t pub_len) {
   const prime_field_t *fe = &ec->fe;
@@ -8466,8 +8484,8 @@ ecdsa_pubkey_export(const wei_t *ec,
 
   ret &= wge_import(ec, &A, pub, pub_len);
 
-  fe_export(fe, x, A.x);
-  fe_export(fe, y, A.y);
+  fe_export(fe, x_raw, A.x);
+  fe_export(fe, y_raw, A.y);
 
   return ret;
 }
@@ -8476,27 +8494,29 @@ int
 ecdsa_pubkey_import(const wei_t *ec,
                     unsigned char *out,
                     size_t *out_len,
-                    const unsigned char *x,
+                    const unsigned char *x_raw,
                     size_t x_len,
-                    const unsigned char *y,
+                    const unsigned char *y_raw,
                     size_t y_len,
                     int sign,
                     int compact) {
   const prime_field_t *fe = &ec->fe;
   unsigned char xp[MAX_FIELD_SIZE];
   unsigned char yp[MAX_FIELD_SIZE];
+  int has_x = (x_len > 0);
   int has_y = (y_len > 0);
   int ret = 1;
+  fe_t x, y;
   wge_t A;
 
-  while (x_len > 0 && x[0] == 0x00) {
+  while (x_len > 0 && x_raw[0] == 0x00) {
     x_len -= 1;
-    x += 1;
+    x_raw += 1;
   }
 
-  while (y_len > 0 && y[0] == 0x00) {
+  while (y_len > 0 && y_raw[0] == 0x00) {
     y_len -= 1;
-    y += 1;
+    y_raw += 1;
   }
 
   ret &= (x_len <= fe->size);
@@ -8506,18 +8526,19 @@ ecdsa_pubkey_import(const wei_t *ec,
   y_len *= ret;
 
   memset(xp, 0x00, fe->size - x_len);
-  memcpy(xp + fe->size - x_len, x, x_len);
+  memcpy(xp + fe->size - x_len, x_raw, x_len);
 
   memset(yp, 0x00, fe->size - y_len);
-  memcpy(yp + fe->size - y_len, y, y_len);
+  memcpy(yp + fe->size - y_len, y_raw, y_len);
 
-  ret &= fe_import(fe, A.x, xp);
-  ret &= fe_import(fe, A.y, yp);
+  ret &= has_x;
+  ret &= fe_import(fe, x, xp);
+  ret &= fe_import(fe, y, yp);
 
-  if (has_y)
-    ret &= wge_set_xy(ec, &A, A.x, A.y);
+  if (has_x && has_y)
+    ret &= wge_set_xy(ec, &A, x, y);
   else
-    ret &= wge_set_x(ec, &A, A.x, sign);
+    ret &= wge_set_x(ec, &A, x, sign);
 
   ret &= wge_export(ec, out, out_len, &A, compact);
 
@@ -8988,11 +9009,6 @@ ecdsa_verify(const wei_t *ec,
   sc_t x;
 #endif
 
-  ecdsa_reduce(ec, m, msg, msg_len);
-
-  if (!wge_import(ec, &A, pub, pub_len))
-    return 0;
-
   if (!sc_import(sc, r, sig))
     return 0;
 
@@ -9004,6 +9020,11 @@ ecdsa_verify(const wei_t *ec,
 
   if (sc_is_high_var(sc, s))
     return 0;
+
+  if (!wge_import(ec, &A, pub, pub_len))
+    return 0;
+
+  ecdsa_reduce(ec, m, msg, msg_len);
 
   assert(sc_invert_var(sc, s, s));
   sc_mul(sc, u1, m, s);
@@ -9071,8 +9092,6 @@ ecdsa_recover(const wei_t *ec,
   fe_t x;
   wge_t R, A;
 
-  ecdsa_reduce(ec, m, msg, msg_len);
-
   if (!sc_import(sc, r, sig))
     return 0;
 
@@ -9096,6 +9115,8 @@ ecdsa_recover(const wei_t *ec,
 
   if (!wge_set_x(ec, &R, x, sign))
     return 0;
+
+  ecdsa_reduce(ec, m, msg, msg_len);
 
   assert(sc_invert_var(sc, r, r));
   sc_mul(sc, s1, m, r);
@@ -9465,13 +9486,13 @@ ecdsa_schnorr_verify_batch(const wei_t *ec,
     const unsigned char *Rraw = sig;
     const unsigned char *sraw = sig + fe->size;
 
+    if (!sc_import(sc, s, sraw))
+      return 0;
+
     if (!wge_import_square(ec, &R, Rraw))
       return 0;
 
     if (!wge_import(ec, &A, pub, pub_len))
-      return 0;
-
-    if (!sc_import(sc, s, sraw))
       return 0;
 
     assert(wge_export(ec, Araw, NULL, &A, 1));
@@ -9498,7 +9519,7 @@ ecdsa_schnorr_verify_batch(const wei_t *ec,
     if (j == 64) {
       sc_neg(sc, sum, sum);
 
-      wei_jmul_multi_var(ec, &r, sum, points, coeffs, j, scratch);
+      wei_jmul_multi_var(ec, &r, sum, points, (const sc_t *)coeffs, j, scratch);
 
       if (!jge_is_zero(ec, &r))
         return 0;
@@ -9512,7 +9533,7 @@ ecdsa_schnorr_verify_batch(const wei_t *ec,
   if (j > 0) {
     sc_neg(sc, sum, sum);
 
-    wei_jmul_multi_var(ec, &r, sum, points, coeffs, j, scratch);
+    wei_jmul_multi_var(ec, &r, sum, points, (const sc_t *)coeffs, j, scratch);
 
     if (!jge_is_zero(ec, &r))
       return 0;
@@ -9611,9 +9632,9 @@ schnorr_privkey_verify(const wei_t *ec, const unsigned char *priv) {
 
 int
 schnorr_privkey_export(const wei_t *ec,
-                       unsigned char *out,
-                       unsigned char *x,
-                       unsigned char *y,
+                       unsigned char *d_raw,
+                       unsigned char *x_raw,
+                       unsigned char *y_raw,
                        const unsigned char *priv) {
   const prime_field_t *fe = &ec->fe;
   const scalar_field_t *sc = &ec->sc;
@@ -9629,9 +9650,9 @@ schnorr_privkey_export(const wei_t *ec,
   sc_neg_cond(sc, a, a, wge_is_even(ec, &A) ^ 1);
   wge_neg_cond(ec, &A, &A, wge_is_even(ec, &A) ^ 1);
 
-  sc_export(sc, out, a);
-  fe_export(fe, x, A.x);
-  fe_export(fe, y, A.y);
+  sc_export(sc, d_raw, a);
+  fe_export(fe, x_raw, A.x);
+  fe_export(fe, y_raw, A.y);
 
   sc_cleanse(sc, a);
 
@@ -9785,8 +9806,8 @@ schnorr_pubkey_verify(const wei_t *ec, const unsigned char *pub) {
 
 int
 schnorr_pubkey_export(const wei_t *ec,
-                      unsigned char *x,
-                      unsigned char *y,
+                      unsigned char *x_raw,
+                      unsigned char *y_raw,
                       const unsigned char *pub) {
   const prime_field_t *fe = &ec->fe;
   wge_t A;
@@ -9794,8 +9815,8 @@ schnorr_pubkey_export(const wei_t *ec,
 
   ret &= wge_import_even(ec, &A, pub);
 
-  fe_export(fe, x, A.x);
-  fe_export(fe, y, A.y);
+  fe_export(fe, x_raw, A.x);
+  fe_export(fe, y_raw, A.y);
 
   return ret;
 }
@@ -9803,16 +9824,17 @@ schnorr_pubkey_export(const wei_t *ec,
 int
 schnorr_pubkey_import(const wei_t *ec,
                       unsigned char *out,
-                      const unsigned char *x,
+                      const unsigned char *x_raw,
                       size_t x_len) {
   const prime_field_t *fe = &ec->fe;
   unsigned char xp[MAX_FIELD_SIZE];
+  int has_x = (x_len > 0);
   wge_t A;
   int ret = 1;
 
-  while (x_len > 0 && x[0] == 0x00) {
+  while (x_len > 0 && x_raw[0] == 0x00) {
     x_len -= 1;
-    x += 1;
+    x_raw += 1;
   }
 
   ret &= (x_len <= fe->size);
@@ -9820,8 +9842,9 @@ schnorr_pubkey_import(const wei_t *ec,
   x_len *= ret;
 
   memset(xp, 0x00, fe->size - x_len);
-  memcpy(xp + fe->size - x_len, x, x_len);
+  memcpy(xp + fe->size - x_len, x_raw, x_len);
 
+  ret &= has_x;
   ret &= wge_import_even(ec, &A, xp);
   ret &= wge_export_x(ec, out, &A);
 
@@ -10267,13 +10290,13 @@ schnorr_verify_batch(const wei_t *ec,
     const unsigned char *Rraw = sig;
     const unsigned char *sraw = sig + fe->size;
 
+    if (!sc_import(sc, s, sraw))
+      return 0;
+
     if (!wge_import_square(ec, &R, Rraw))
       return 0;
 
     if (!wge_import_even(ec, &A, pub))
-      return 0;
-
-    if (!sc_import(sc, s, sraw))
       return 0;
 
     schnorr_hash_challenge(ec, e, Rraw, pub, msg, msg_len);
@@ -10298,7 +10321,7 @@ schnorr_verify_batch(const wei_t *ec,
     if (j == 64) {
       sc_neg(sc, sum, sum);
 
-      wei_jmul_multi_var(ec, &r, sum, points, coeffs, j, scratch);
+      wei_jmul_multi_var(ec, &r, sum, points, (const sc_t *)coeffs, j, scratch);
 
       if (!jge_is_zero(ec, &r))
         return 0;
@@ -10312,7 +10335,7 @@ schnorr_verify_batch(const wei_t *ec,
   if (j > 0) {
     sc_neg(sc, sum, sum);
 
-    wei_jmul_multi_var(ec, &r, sum, points, coeffs, j, scratch);
+    wei_jmul_multi_var(ec, &r, sum, points, (const sc_t *)coeffs, j, scratch);
 
     if (!jge_is_zero(ec, &r))
       return 0;
@@ -10490,10 +10513,8 @@ ecdh_pubkey_convert(const mont_t *ec,
                     const unsigned char *pub,
                     int sign) {
   const prime_field_t *fe = &ec->fe;
-  const scalar_field_t *sc = &ec->sc;
   mge_t A;
   pge_t P;
-  sc_t k;
   xge_t e;
   int ret = 1;
 
@@ -10501,12 +10522,9 @@ ecdh_pubkey_convert(const mont_t *ec,
   if (fe->bits == 448) {
     ret &= pge_import(ec, &P, pub);
 
+    /* P * 4 * 4 / 16 = P */
     pge_mulh(ec, &P, &P);
-
-    sc_set_word(sc, k, 16);
-    assert(sc_invert_var(sc, k, k));
-
-    mont_mul(ec, &P, &P, k);
+    mont_mul(ec, &P, &P, ec->i16, 0);
 
     assert(pge_to_mge(ec, &A, &P, -1));
   } else {
@@ -10602,8 +10620,8 @@ ecdh_pubkey_verify(const mont_t *ec, const unsigned char *pub) {
 
 int
 ecdh_pubkey_export(const mont_t *ec,
-                   unsigned char *x,
-                   unsigned char *y,
+                   unsigned char *x_raw,
+                   unsigned char *y_raw,
                    const unsigned char *pub,
                    int sign) {
   const prime_field_t *fe = &ec->fe;
@@ -10612,8 +10630,8 @@ ecdh_pubkey_export(const mont_t *ec,
 
   ret &= mge_import(ec, &A, pub, sign);
 
-  fe_export(fe, x, A.x);
-  fe_export(fe, y, A.y);
+  fe_export(fe, x_raw, A.x);
+  fe_export(fe, y_raw, A.y);
 
   return ret;
 }
@@ -10621,23 +10639,25 @@ ecdh_pubkey_export(const mont_t *ec,
 int
 ecdh_pubkey_import(const mont_t *ec,
                    unsigned char *out,
-                   const unsigned char *x,
+                   const unsigned char *x_raw,
                    size_t x_len) {
   const prime_field_t *fe = &ec->fe;
   unsigned char xp[MAX_FIELD_SIZE];
+  int has_x = (x_len > 0);
   pge_t A;
   int ret = 1;
 
-  while (x_len > 0 && x[x_len - 1] == 0x00)
+  while (x_len > 0 && x_raw[x_len - 1] == 0x00)
     x_len -= 1;
 
   ret &= (x_len <= fe->size);
 
   x_len *= ret;
 
-  memcpy(xp, x, x_len);
+  memcpy(xp, x_raw, x_len);
   memset(xp + x_len, 0x00, fe->size - x_len);
 
+  ret &= has_x;
   ret &= pge_import(ec, &A, xp);
   ret &= pge_export(ec, out, &A);
 
@@ -10667,7 +10687,7 @@ ecdh_pubkey_has_torsion(const mont_t *ec, const unsigned char *pub) {
 
   zero = fe_is_zero(fe, A.x);
 
-  mont_mul(ec, &A, &A, sc->n);
+  mont_mul(ec, &A, &A, sc->n, 0);
 
   ret &= (pge_is_zero(ec, &A) ^ 1) | zero;
 
@@ -10691,7 +10711,7 @@ ecdh_derive(const mont_t *ec,
 
   pge_import_unsafe(ec, &A, pub);
 
-  mont_mul(ec, &P, &A, a);
+  mont_mul(ec, &P, &A, a, 1);
 
   ret &= pge_export(ec, secret, &P);
 
@@ -10728,8 +10748,12 @@ eddsa_context_create(int type) {
 
 void
 eddsa_context_destroy(edwards_t *ec) {
-  if (ec != NULL)
+  if (ec != NULL) {
+    sc_cleanse(&ec->sc, ec->blind);
+    xge_cleanse(ec, &ec->unblind);
+
     free(ec);
+  }
 }
 
 void
@@ -11111,8 +11135,8 @@ eddsa_pubkey_verify(const edwards_t *ec, const unsigned char *pub) {
 
 int
 eddsa_pubkey_export(const edwards_t *ec,
-                    unsigned char *x,
-                    unsigned char *y,
+                    unsigned char *x_raw,
+                    unsigned char *y_raw,
                     const unsigned char *pub) {
   const prime_field_t *fe = &ec->fe;
   xge_t A;
@@ -11120,8 +11144,8 @@ eddsa_pubkey_export(const edwards_t *ec,
 
   ret &= xge_import(ec, &A, pub);
 
-  fe_export(fe, x, A.x);
-  fe_export(fe, y, A.y);
+  fe_export(fe, x_raw, A.x);
+  fe_export(fe, y_raw, A.y);
 
   return ret;
 }
@@ -11129,9 +11153,9 @@ eddsa_pubkey_export(const edwards_t *ec,
 int
 eddsa_pubkey_import(const edwards_t *ec,
                     unsigned char *out,
-                    const unsigned char *x,
+                    const unsigned char *x_raw,
                     size_t x_len,
-                    const unsigned char *y,
+                    const unsigned char *y_raw,
                     size_t y_len,
                     int sign) {
   const prime_field_t *fe = &ec->fe;
@@ -11139,13 +11163,14 @@ eddsa_pubkey_import(const edwards_t *ec,
   unsigned char yp[MAX_FIELD_SIZE];
   int has_x = (x_len > 0);
   int has_y = (y_len > 0);
+  fe_t x, y;
   xge_t A;
   int ret = 1;
 
-  while (x_len > 0 && x[x_len - 1] == 0x00)
+  while (x_len > 0 && x_raw[x_len - 1] == 0x00)
     x_len -= 1;
 
-  while (y_len > 0 && y[y_len - 1] == 0x00)
+  while (y_len > 0 && y_raw[y_len - 1] == 0x00)
     y_len -= 1;
 
   ret &= (x_len <= fe->size);
@@ -11154,21 +11179,22 @@ eddsa_pubkey_import(const edwards_t *ec,
   x_len *= ret;
   y_len *= ret;
 
-  memcpy(xp, x, x_len);
+  memcpy(xp, x_raw, x_len);
   memset(xp + x_len, 0x00, fe->size - x_len);
 
-  memcpy(yp, y, y_len);
+  memcpy(yp, y_raw, y_len);
   memset(yp + y_len, 0x00, fe->size - y_len);
 
-  ret &= fe_import(fe, A.x, xp);
-  ret &= fe_import(fe, A.y, yp);
+  ret &= has_x | has_y;
+  ret &= fe_import(fe, x, xp);
+  ret &= fe_import(fe, y, yp);
 
   if (has_x && has_y)
-    ret &= xge_set_xy(ec, &A, A.x, A.y);
+    ret &= xge_set_xy(ec, &A, x, y);
   else if (has_x)
-    ret &= xge_set_x(ec, &A, A.x, sign);
-  else if (has_y)
-    ret &= xge_set_y(ec, &A, A.y, sign);
+    ret &= xge_set_x(ec, &A, x, sign);
+  else
+    ret &= xge_set_y(ec, &A, y, sign);
 
   xge_export(ec, out, &A);
 
@@ -11803,7 +11829,8 @@ eddsa_verify_batch(const edwards_t *ec,
       sc_mul_word(sc, sum, sum, ec->h);
       sc_neg(sc, sum, sum);
 
-      edwards_mul_multi_var(ec, &R, sum, points, coeffs, j, scratch);
+      edwards_mul_multi_var(ec, &R, sum, points,
+                            (const sc_t *)coeffs, j, scratch);
 
       if (!xge_is_zero(ec, &R))
         return 0;
@@ -11818,7 +11845,8 @@ eddsa_verify_batch(const edwards_t *ec,
     sc_mul_word(sc, sum, sum, ec->h);
     sc_neg(sc, sum, sum);
 
-    edwards_mul_multi_var(ec, &R, sum, points, coeffs, j, scratch);
+    edwards_mul_multi_var(ec, &R, sum, points,
+                          (const sc_t *)coeffs, j, scratch);
 
     if (!xge_is_zero(ec, &R))
       return 0;

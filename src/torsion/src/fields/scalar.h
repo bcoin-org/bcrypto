@@ -233,7 +233,7 @@ q256k1_sc_invert(const scalar_field_t *sc, sc_t r, const sc_t x) {
   sc_set(sc, u1, x);
   sc_sqr(sc, u2, u1);
   sc_mul(sc, x2, u2, u1);
-  sc_mul(sc, u5, u2,x2);
+  sc_mul(sc, u5, u2, x2);
   sc_mul(sc, x3, u5, u2);
   sc_mul(sc, u9, x3, u2);
   sc_mul(sc, u11, u9, u2);

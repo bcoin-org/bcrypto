@@ -4082,4 +4082,3 @@ static void fiat_secp256k1_from_bytes(uint32_t out1[8], const uint8_t arg1[32]) 
   out1[6] = x47;
   out1[7] = x35;
 }
-

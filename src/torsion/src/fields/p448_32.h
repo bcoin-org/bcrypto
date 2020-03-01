@@ -1949,4 +1949,3 @@ static void fiat_p448_from_bytes(uint32_t out1[18], const uint8_t arg1[56]) {
   out1[16] = x119;
   out1[17] = x60;
 }
-

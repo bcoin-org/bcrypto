@@ -385,8 +385,8 @@ ecdsa_pubkey_verify(const ecdsa_t *ec,
 
 int
 ecdsa_pubkey_export(const ecdsa_t *ec,
-                    unsigned char *x,
-                    unsigned char *y,
+                    unsigned char *x_raw,
+                    unsigned char *y_raw,
                     const unsigned char *pub,
                     size_t pub_len);
 
@@ -394,9 +394,9 @@ int
 ecdsa_pubkey_import(const ecdsa_t *ec,
                     unsigned char *out,
                     size_t *out_len,
-                    const unsigned char *x,
+                    const unsigned char *x_raw,
                     size_t x_len,
-                    const unsigned char *y,
+                    const unsigned char *y_raw,
                     size_t y_len,
                     int sign,
                     int compact);
@@ -575,9 +575,9 @@ schnorr_privkey_verify(const schnorr_t *ec, const unsigned char *priv);
 
 int
 schnorr_privkey_export(const schnorr_t *ec,
-                       unsigned char *out,
-                       unsigned char *x,
-                       unsigned char *y,
+                       unsigned char *d_raw,
+                       unsigned char *x_raw,
+                       unsigned char *y_raw,
                        const unsigned char *priv);
 
 int
@@ -641,14 +641,14 @@ schnorr_pubkey_verify(const schnorr_t *ec, const unsigned char *pub);
 
 int
 schnorr_pubkey_export(const schnorr_t *ec,
-                      unsigned char *x,
-                      unsigned char *y,
+                      unsigned char *x_raw,
+                      unsigned char *y_raw,
                       const unsigned char *pub);
 
 int
 schnorr_pubkey_import(const schnorr_t *ec,
                       unsigned char *out,
-                      const unsigned char *x,
+                      const unsigned char *x_raw,
                       size_t x_len);
 
 int
@@ -786,15 +786,15 @@ ecdh_pubkey_verify(const ecdh_t *ec, const unsigned char *pub);
 
 int
 ecdh_pubkey_export(const ecdh_t *ec,
-                   unsigned char *x,
-                   unsigned char *y,
+                   unsigned char *x_raw,
+                   unsigned char *y_raw,
                    const unsigned char *pub,
                    int sign);
 
 int
 ecdh_pubkey_import(const ecdh_t *ec,
                    unsigned char *out,
-                   const unsigned char *x,
+                   const unsigned char *x_raw,
                    size_t x_len);
 
 int
@@ -966,16 +966,16 @@ eddsa_pubkey_verify(const eddsa_t *ec, const unsigned char *pub);
 
 int
 eddsa_pubkey_export(const eddsa_t *ec,
-                    unsigned char *x,
-                    unsigned char *y,
+                    unsigned char *x_raw,
+                    unsigned char *y_raw,
                     const unsigned char *pub);
 
 int
 eddsa_pubkey_import(const eddsa_t *ec,
                     unsigned char *out,
-                    const unsigned char *x,
+                    const unsigned char *x_raw,
                     size_t x_len,
-                    const unsigned char *y,
+                    const unsigned char *y_raw,
                     size_t y_len,
                     int sign);
 int

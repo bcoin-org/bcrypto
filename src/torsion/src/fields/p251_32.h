@@ -902,4 +902,3 @@ static void fiat_p251_from_bytes(uint32_t out1[10], const uint8_t arg1[32]) {
   out1[8] = x66;
   out1[9] = x67;
 }
-
