@@ -615,7 +615,7 @@ reverse_copy(unsigned char *dst, const unsigned char *src, size_t size) {
 }
 
 static void
-reverse_bytes(unsigned char *ptr, size_t size) {
+reverse_bytes(unsigned char *raw, size_t size) {
   size_t i = 0;
   size_t j = size - 1;
   unsigned char tmp;
@@ -623,9 +623,9 @@ reverse_bytes(unsigned char *ptr, size_t size) {
   size >>= 1;
 
   while (size--) {
-    tmp = ptr[i];
-    ptr[i++] = ptr[j];
-    ptr[j--] = tmp;
+    tmp = raw[i];
+    raw[i++] = raw[j];
+    raw[j--] = tmp;
   }
 }
 
@@ -677,6 +677,10 @@ sc_import_weak(const scalar_field_t *sc, sc_t r, const unsigned char *raw) {
   mpn_cnd_select(cy == 0, r, r, sp, nn);
 
   cleanse(sp, sc->limbs);
+
+#ifdef TORSION_TEST
+  assert(mpn_cmp(r, np, nn) < 0);
+#endif
 
   return cy != 0;
 }
@@ -804,6 +808,10 @@ sc_neg(const scalar_field_t *sc, sc_t r, const sc_t a) {
   assert(cy == 0);
 
   mpn_cnd_zero(zero, r, r, nn);
+
+#ifdef TORSION_TEST
+  assert(sc_cmp_var(sc, r, sc->n) < 0);
+#endif
 }
 
 static void
@@ -837,6 +845,10 @@ sc_add(const scalar_field_t *sc, sc_t r, const sc_t ap, const sc_t bp) {
   /* r = r - n if u >= n */
   cy = mpn_sub_n(vp, up, np, nn);
   mpn_cnd_select(cy == 0, r, up, vp, sc->limbs);
+
+#ifdef TORSION_TEST
+  assert(sc_cmp_var(sc, r, sc->n) < 0);
+#endif
 }
 
 static void
@@ -899,6 +911,10 @@ sc_reduce(const scalar_field_t *sc, sc_t r, const mp_limb_t *ap) {
   /* u = u - n if u >= n */
   cy = mpn_sub_n(qp, up, np, sh);
   mpn_cnd_select(cy == 0, r, up, qp, sc->limbs);
+
+#ifdef TORSION_TEST
+  assert(sc_cmp_var(sc, r, sc->n) < 0);
+#endif
 }
 
 static void
@@ -969,6 +985,10 @@ sc_mulshift(const scalar_field_t *sc, sc_t r,
   mpn_copyi(r, rp, rn);
 
   mpn_cleanse(scratch, sc->limbs * 2 + 1);
+
+#ifdef TORSION_TEST
+  assert(sc_cmp_var(sc, r, sc->n) < 0);
+#endif
 }
 
 static int
@@ -6890,7 +6910,7 @@ _mont_to_edwards(const prime_field_t *fe, xge_t *r,
      *
      * The point (1, v) is invalid on Curve448.
      */
-    fe_t u2, u3, u4, u5, v2, a, b, c0, d, e, f, g, h;
+    fe_t u2, u3, u4, u5, v2, a, b, d, e, f, g, h, i;
 
     fe_sqr(fe, u2, p->x);
     fe_mul(fe, u3, u2, p->x);
@@ -6898,31 +6918,34 @@ _mont_to_edwards(const prime_field_t *fe, xge_t *r,
     fe_mul(fe, u5, u4, p->x);
     fe_sqr(fe, v2, p->y);
 
-    fe_mul_word(fe, a, p->y, 4);
+    fe_add(fe, a, p->y, p->y); /* x4 */
+    fe_add(fe, a, a, a);
     fe_sub(fe, b, u2, fe->one);
-    fe_mul_word(fe, c0, u2, 2);
-    fe_mul_word(fe, d, v2, 4);
-    fe_mul_word(fe, e, u3, 2);
-    fe_mul(fe, f, p->x, v2);
-    fe_mul_word(fe, f, f, 4);
-    fe_mul(fe, g, u2, v2);
-    fe_mul_word(fe, g, g, 2);
-    fe_mul_word(fe, h, v2, 2);
+    fe_add(fe, d, u2, u2); /* x2 */
+    fe_add(fe, e, v2, v2); /* x4 */
+    fe_add(fe, e, e, e);
+    fe_add(fe, f, u3, u3); /* x2 */
+    fe_mul(fe, g, p->x, v2);
+    fe_add(fe, g, g, g); /* x4 */
+    fe_add(fe, g, g, g);
+    fe_mul(fe, h, u2, v2);
+    fe_add(fe, h, h, h); /* x2 */
+    fe_add(fe, i, v2, v2); /* x2 */
 
     fe_mul(fe, xx, a, b);
 
-    fe_sub(fe, xz, u4, c0);
-    fe_add(fe, xz, xz, d);
+    fe_sub(fe, xz, u4, d);
+    fe_add(fe, xz, xz, e);
     fe_add(fe, xz, xz, fe->one);
 
-    fe_sub(fe, yy, u5, e);
-    fe_sub(fe, yy, yy, f);
+    fe_sub(fe, yy, u5, f);
+    fe_sub(fe, yy, yy, g);
     fe_add(fe, yy, yy, p->x);
     fe_neg(fe, yy, yy);
 
-    fe_sub(fe, yz, u5, g);
-    fe_sub(fe, yz, yz, e);
-    fe_sub(fe, yz, yz, h);
+    fe_sub(fe, yz, u5, h);
+    fe_sub(fe, yz, yz, f);
+    fe_sub(fe, yz, yz, i);
     fe_add(fe, yz, yz, p->x);
 
     /* Handle 2-torsion as infinity. */
