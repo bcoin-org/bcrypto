@@ -195,7 +195,7 @@ typedef uint32_t fe_word_t;
 #define MAX_SCALAR_SIZE 66
 #define MAX_SCALAR_LIMBS \
   ((MAX_SCALAR_BITS + GMP_NUMB_BITS - 1) / GMP_NUMB_BITS)
-#define MAX_REDUCE_LIMBS ((MAX_SCALAR_LIMBS + 1) * 4)
+#define MAX_REDUCE_LIMBS (MAX_SCALAR_LIMBS * 2 + 2)
 
 #define MAX_PUB_SIZE (1 + MAX_FIELD_SIZE * 2)
 #define MAX_SIG_SIZE (MAX_FIELD_SIZE + MAX_SCALAR_SIZE)
@@ -228,10 +228,10 @@ typedef struct _scalar_field_s {
   size_t bits;
   mp_size_t shift;
   mp_limb_t n[MAX_REDUCE_LIMBS];
+  unsigned char raw[MAX_SCALAR_SIZE];
   mp_limb_t nh[MAX_REDUCE_LIMBS];
   mp_limb_t m[MAX_REDUCE_LIMBS];
   mp_size_t limbs;
-  unsigned char raw[MAX_SCALAR_SIZE];
   sc_invert_func *invert;
 } scalar_field_t;
 
@@ -302,7 +302,8 @@ typedef struct _prime_field_s {
   size_t adj_size;
   mp_limb_t p[MAX_REDUCE_LIMBS];
   mp_size_t limbs;
-  unsigned char mask;
+  unsigned char byte_mask;
+  mp_limb_t limb_mask;
   unsigned char raw[MAX_FIELD_SIZE];
   scalar_field_t sc;
   fe_add_func *add;
@@ -665,21 +666,19 @@ sc_import(const scalar_field_t *sc, sc_t r, const unsigned char *raw) {
 static int
 sc_import_weak(const scalar_field_t *sc, sc_t r, const unsigned char *raw) {
   /* Weak reduction if we're aligned to 8 bits. */
-  const mp_limb_t *np = sc->n;
-  mp_size_t nn = sc->limbs;
   mp_limb_t sp[MAX_SCALAR_LIMBS];
   mp_limb_t cy;
 
   sc_import_raw(sc, r, raw);
 
-  cy = mpn_sub_n(sp, r, np, nn);
+  cy = mpn_sub_n(sp, r, sc->n, sc->limbs);
 
-  mpn_cnd_select(cy == 0, r, r, sp, nn);
+  mpn_cnd_select(cy == 0, r, r, sp, sc->limbs);
 
   cleanse(sp, sc->limbs);
 
 #ifdef TORSION_TEST
-  assert(mpn_cmp(r, np, nn) < 0);
+  assert(mpn_cmp(r, sc->n, sc->limbs) < 0);
 #endif
 
   return cy != 0;
@@ -690,11 +689,11 @@ sc_import_strong(const scalar_field_t *sc, sc_t r, const unsigned char *raw) {
   /* Otherwise, a full reduction. */
   mp_limb_t rp[MAX_REDUCE_LIMBS];
 
-  mpn_import(rp, sc->shift * 2, raw, sc->size, sc->endian);
+  mpn_import(rp, sc->shift, raw, sc->size, sc->endian);
 
   sc_reduce(sc, r, rp);
 
-  cleanse(rp, sc->shift * 2);
+  cleanse(rp, sc->shift);
 
   return bytes_lt(raw, sc->raw, sc->size, sc->endian);
 }
@@ -799,18 +798,18 @@ sc_is_high_var(const scalar_field_t *sc, const sc_t a) {
 
 static void
 sc_neg(const scalar_field_t *sc, sc_t r, const sc_t a) {
-  const mp_limb_t *np = sc->n;
-  mp_size_t nn = sc->limbs;
   mp_limb_t zero = sc_is_zero(sc, a);
   mp_limb_t cy;
 
-  cy = mpn_sub_n(r, np, a, nn);
+  /* r = n - a */
+  cy = mpn_sub_n(r, sc->n, a, sc->limbs);
   assert(cy == 0);
 
-  mpn_cnd_zero(zero, r, r, nn);
+  /* r = 0 if a = 0 */
+  mpn_cnd_zero(zero, r, r, sc->limbs);
 
 #ifdef TORSION_TEST
-  assert(sc_cmp_var(sc, r, sc->n) < 0);
+  assert(mpn_cmp(r, sc->n, sc->limbs) < 0);
 #endif
 }
 
@@ -823,31 +822,29 @@ sc_neg_cond(const scalar_field_t *sc, sc_t r, const sc_t a, unsigned int flag) {
 }
 
 static void
-sc_add(const scalar_field_t *sc, sc_t r, const sc_t ap, const sc_t bp) {
-  const mp_limb_t *np = sc->n;
-  mp_size_t nn = sc->limbs + 1;
-  mp_limb_t up[MAX_SCALAR_LIMBS + 1];
-  mp_limb_t vp[MAX_SCALAR_LIMBS + 1];
+sc_add(const scalar_field_t *sc, sc_t r, const sc_t a, const sc_t b) {
+  mp_limb_t ap[MAX_SCALAR_LIMBS + 1];
+  mp_limb_t bp[MAX_SCALAR_LIMBS + 1];
   mp_limb_t cy;
 
-  assert(np[nn - 1] == 0);
+  assert(sc->n[sc->limbs] == 0);
 
-  mpn_copyi(up, ap, sc->limbs);
-  mpn_copyi(vp, bp, sc->limbs);
+  mpn_copyi(ap, a, sc->limbs);
+  mpn_copyi(bp, b, sc->limbs);
 
-  up[nn - 1] = 0;
-  vp[nn - 1] = 0;
+  ap[sc->limbs] = 0;
+  bp[sc->limbs] = 0;
 
   /* r = a + b */
-  cy = mpn_add_n(up, up, vp, nn);
+  cy = mpn_add_n(ap, ap, bp, sc->limbs + 1);
   assert(cy == 0);
 
-  /* r = r - n if u >= n */
-  cy = mpn_sub_n(vp, up, np, nn);
-  mpn_cnd_select(cy == 0, r, up, vp, sc->limbs);
+  /* r = r - n if r >= n */
+  cy = mpn_sub_n(bp, ap, sc->n, sc->limbs + 1);
+  mpn_cnd_select(cy == 0, r, ap, bp, sc->limbs);
 
 #ifdef TORSION_TEST
-  assert(sc_cmp_var(sc, r, sc->n) < 0);
+  assert(mpn_cmp(r, sc->n, sc->limbs) < 0);
 #endif
 }
 
@@ -888,55 +885,54 @@ sc_mul_word(const scalar_field_t *sc, sc_t r, const sc_t a, unsigned int word) {
 
 static void
 sc_reduce(const scalar_field_t *sc, sc_t r, const mp_limb_t *ap) {
-  /* Barrett reduction. */
-  const mp_limb_t *np = sc->n;
-  const mp_limb_t *mp = sc->m;
-  mp_size_t sh = sc->shift;
-  mp_limb_t qp[MAX_REDUCE_LIMBS];
-  mp_limb_t up[MAX_REDUCE_LIMBS];
-  mp_limb_t *hp = qp;
+  /* Barrett reduction (264 bytes). */
+  mp_limb_t scratch[1 + MAX_REDUCE_LIMBS + MAX_SCALAR_LIMBS + 3];
+  mp_limb_t *qp = scratch;
+  mp_limb_t *hp = scratch + 1;
   mp_limb_t cy;
 
-  /* q = a * m */
-  mpn_mul_n(qp, ap, mp, sh);
+  /* h = a * m */
+  mpn_mul(hp, ap, sc->shift, sc->m, sc->limbs + 3);
 
-  /* h = q >> k */
-  hp += sh;
+  /* h = h >> shift */
+  hp += sc->shift;
 
-  /* u = a - h * n */
-  mpn_mul_n(up, hp, np, sh);
-  cy = mpn_sub_n(up, ap, up, sh * 2);
+  /* q = a - h * n */
+  mpn_mul(qp, hp, sc->limbs + 3, sc->n, sc->limbs);
+  cy = mpn_sub_n(qp, ap, qp, sc->shift);
   assert(cy == 0);
 
-  /* u = u - n if u >= n */
-  cy = mpn_sub_n(qp, up, np, sh);
-  mpn_cnd_select(cy == 0, r, up, qp, sc->limbs);
+  /* q = q - n if q >= n */
+  cy = mpn_sub_n(hp, qp, sc->n, sc->limbs + 1);
+  mpn_cnd_select(cy == 0, r, qp, hp, sc->limbs);
 
 #ifdef TORSION_TEST
-  assert(sc_cmp_var(sc, r, sc->n) < 0);
+  assert(mpn_cmp(r, sc->n, sc->limbs) < 0);
 #endif
 }
 
 static void
 sc_mul(const scalar_field_t *sc, sc_t r, const sc_t a, const sc_t b) {
-  mp_limb_t ap[MAX_REDUCE_LIMBS];
-  mp_size_t an = sc->limbs * 2;
+  mp_limb_t rp[MAX_REDUCE_LIMBS]; /* 160 bytes */
 
-  mpn_zero(ap + an, sc->shift * 2 - an);
-  mpn_mul_n(ap, a, b, sc->limbs);
+  mpn_mul_n(rp, a, b, sc->limbs);
 
-  sc_reduce(sc, r, ap);
+  rp[sc->shift - 2] = 0;
+  rp[sc->shift - 1] = 0;
+
+  sc_reduce(sc, r, rp);
 }
 
 static void
 sc_sqr(const scalar_field_t *sc, sc_t r, const sc_t a) {
-  mp_limb_t ap[MAX_REDUCE_LIMBS];
-  mp_size_t an = sc->limbs * 2;
+  mp_limb_t rp[MAX_REDUCE_LIMBS]; /* 160 bytes */
 
-  mpn_zero(ap + an, sc->shift * 2 - an);
-  mpn_sqr(ap, a, sc->limbs);
+  mpn_sqr(rp, a, sc->limbs);
 
-  sc_reduce(sc, r, ap);
+  rp[sc->shift - 2] = 0;
+  rp[sc->shift - 1] = 0;
+
+  sc_reduce(sc, r, rp);
 }
 
 static void
@@ -945,17 +941,16 @@ sc_mulshift(const scalar_field_t *sc, sc_t r,
             size_t shift) {
   /* Compute r = round((a * b) >> 272). */
   mp_limb_t scratch[MAX_SCALAR_LIMBS * 2 + 1];
-  mp_limb_t *rp = scratch;
-  mp_size_t rn = sc->limbs * 2;
-  mp_size_t nn = sc->limbs;
   mp_size_t limbs = shift / GMP_NUMB_BITS;
   mp_size_t left = shift % GMP_NUMB_BITS;
+  mp_limb_t *rp = scratch;
+  mp_size_t rn = sc->limbs * 2;
   mp_limb_t bit, cy;
 
   assert(shift > sc->bits);
 
   /* r = a * b */
-  mpn_mul_n(rp, a, b, nn);
+  mpn_mul_n(rp, a, b, sc->limbs);
   rp[rn] = 0;
 
   /* bit = (r >> 271) & 1 */
@@ -979,15 +974,15 @@ sc_mulshift(const scalar_field_t *sc, sc_t r,
   rn -= (rp[rn - 1] == 0);
 
   assert(cy == 0);
-  assert(rn <= nn);
+  assert(rn <= sc->limbs);
 
-  mpn_zero(r + rn, nn - rn);
+  mpn_zero(r + rn, sc->limbs - rn);
   mpn_copyi(r, rp, rn);
 
   mpn_cleanse(scratch, sc->limbs * 2 + 1);
 
 #ifdef TORSION_TEST
-  assert(sc_cmp_var(sc, r, sc->n) < 0);
+  assert(mpn_cmp(r, sc->n, sc->limbs) < 0);
 #endif
 }
 
@@ -1109,16 +1104,15 @@ sc_naf_var(const scalar_field_t *sc,
    * [GECC] Algorithm 3.35, Page 100, Section 3.3.
    */
   mp_limb_t k[MAX_SCALAR_LIMBS + 2];
-  mp_size_t nn = sc->limbs;
   mp_size_t kn = sc->limbs;
   mp_limb_t cy;
   int32_t pow = 1 << (width + 1);
   size_t i = 0;
   int32_t z;
 
-  mpn_copyi(k, x, nn);
+  mpn_copyi(k, x, sc->limbs);
 
-  k[nn] = 0;
+  k[sc->limbs] = 0;
 
   while (kn > 0 && k[kn - 1] == 0)
     kn -= 1;
@@ -1139,7 +1133,7 @@ sc_naf_var(const scalar_field_t *sc,
         cy = mpn_sub_1(k, k, kn, z);
       }
 
-      assert(kn <= nn + 1);
+      assert(kn <= sc->limbs + 1);
       assert(cy == 0);
 
       kn -= (k[kn - 1] == 0);
@@ -1173,7 +1167,6 @@ sc_jsf_var(const scalar_field_t *sc,
    */
   mp_limb_t k1[MAX_SCALAR_LIMBS];
   mp_limb_t k2[MAX_SCALAR_LIMBS];
-  mp_size_t nn = sc->limbs;
   mp_size_t n1 = sc->limbs;
   mp_size_t n2 = sc->limbs;
   size_t i = 0;
@@ -1193,8 +1186,8 @@ sc_jsf_var(const scalar_field_t *sc,
     3  /* 1 1 */
   };
 
-  mpn_copyi(k1, x1, nn);
-  mpn_copyi(k2, x2, nn);
+  mpn_copyi(k1, x1, sc->limbs);
+  mpn_copyi(k2, x2, sc->limbs);
 
   while (n1 > 0 && k1[n1 - 1] == 0)
     n1 -= 1;
@@ -1307,20 +1300,15 @@ fe_import(const prime_field_t *fe, fe_t r, const unsigned char *raw) {
     mp_size_t left = fe->shift % GMP_NUMB_BITS;
     mp_size_t xn = fe->limbs + shift + (left != 0);
 
-    /* We can only handle 2*(size+1) limbs. */
+    /* We can only handle 2*size+2 limbs. */
     assert(xn <= fe->sc.shift);
 
     /* x = (x << shift) mod p */
-    mpn_zero(xp, fe->sc.shift * 2);
+    mpn_zero(xp, fe->sc.shift);
     mpn_import(xp + shift, fe->limbs, raw, fe->size, fe->endian);
 
     /* Ignore the high bits. */
-    if ((fe->bits & 7) != 0) {
-      mp_limb_t mask = ((mp_limb_t)1 << (fe->bits % GMP_NUMB_BITS)) - 1;
-
-      if (mask != 0)
-        xp[shift + fe->limbs - 1] &= mask;
-    }
+    xp[shift + fe->limbs - 1] &= fe->limb_mask;
 
     /* Shift more if necessary. */
     if (left != 0)
@@ -1350,7 +1338,7 @@ fe_import(const prime_field_t *fe, fe_t r, const unsigned char *raw) {
       memcpy(tmp, raw, fe->size);
 
     /* Ignore the high bits. */
-    tmp[fe->size - 1] &= fe->mask;
+    tmp[fe->size - 1] &= fe->byte_mask;
 
     /* Deserialize and carry. */
     fe->from_bytes(r, tmp);
@@ -1847,35 +1835,64 @@ scalar_field_set(scalar_field_t *sc,
                  const unsigned char *modulus,
                  size_t bits,
                  int endian) {
+  /* Scalar field using Barrett reduction. */
   memset(sc, 0, sizeof(scalar_field_t));
 
+  /* Field constants. */
   sc->endian = endian;
   sc->limbs = (bits + GMP_NUMB_BITS - 1) / GMP_NUMB_BITS;
   sc->size = (bits + 7) / 8;
   sc->bits = bits;
-  sc->shift = (sc->limbs + 1) * 2;
+  sc->shift = sc->limbs * 2 + 2;
 
+  /* Deserialize order into GMP limbs. */
   mpn_import_be(sc->n, MAX_REDUCE_LIMBS, modulus, sc->size);
 
+  /* Keep a raw representation for byte comparisons. */
+  mpn_export(sc->raw, sc->size, sc->n, sc->limbs, sc->endian);
+
+  /* Store `n / 2` for ECDSA checks and scalar minimization. */
   mpn_rshift(sc->nh, sc->n, MAX_REDUCE_LIMBS, 1);
 
   /* Compute the barrett reduction constant `m`:
    *
    *   m = (1 << (bits * 2)) / n
+   *
+   * Where `bits` should be greater than or equal to
+   * `field_bytes * 8 + 8`. We align this to limbs,
+   * so `bits * 2` should be greater than or equal
+   * to `field_limbs * 2 + 1` in terms of limbs.
+   *
+   * Since we do not have access to the prime field
+   * here, we assume that a prime field would never
+   * be more than 1 limb larger, and we add a padding
+   * of 1. The calculation becomes:
+   *
+   *   shift = field_limbs * 2 + 2
+   *
+   * This is necessary because the scalar being
+   * reduced cannot be larger than `bits * 2`. EdDSA
+   * in particular has large size requirements where:
+   *
+   *   max_scalar_bits = (field_bytes + 1) * 2 * 8
+   *
+   * Ed448 is the most severely affected by this, as
+   * it appends an extra byte to the field element.
    */
   {
-    mp_limb_t x[MAX_REDUCE_LIMBS];
+    mp_limb_t x[MAX_REDUCE_LIMBS + 1];
 
     mpn_zero(sc->m, MAX_REDUCE_LIMBS);
-    mpn_zero(x, MAX_REDUCE_LIMBS);
+    mpn_zero(x, MAX_REDUCE_LIMBS + 1);
 
     x[sc->shift] = 1;
 
     mpn_tdiv_qr(sc->m, x, 0, x, sc->shift + 1, sc->n, sc->limbs);
+
+    assert(sc->m[sc->limbs + 3] == 0);
   }
 
-  mpn_export(sc->raw, sc->size, sc->n, sc->limbs, sc->endian);
-
+  /* Optimized scalar inverse (optional). */
   sc->invert = NULL;
 }
 
@@ -1891,8 +1908,10 @@ scalar_field_init(scalar_field_t *sc, const scalar_def_t *def, int endian) {
 
 static void
 prime_field_init(prime_field_t *fe, const prime_def_t *def, int endian) {
+  /* Prime field using a fiat backend. */
   memset(fe, 0, sizeof(prime_field_t));
 
+  /* Field constants. */
   fe->endian = endian;
   fe->limbs = (def->bits + GMP_NUMB_BITS - 1) / GMP_NUMB_BITS;
   fe->size = (def->bits + 7) / 8;
@@ -1900,20 +1919,40 @@ prime_field_init(prime_field_t *fe, const prime_def_t *def, int endian) {
   fe->shift = def->bits;
   fe->words = def->words;
   fe->adj_size = fe->size + ((fe->bits & 7) == 0);
-  fe->mask = 0xff;
+  fe->byte_mask = 0xff;
+  fe->limb_mask = ~((mp_limb_t)0);
 
+  /* Number of bits to shift for montgomerization. */
+  /* Note that fiat aligns to the word size. */
   if ((fe->shift % FIELD_WORD_SIZE) != 0)
     fe->shift += FIELD_WORD_SIZE - (fe->shift % FIELD_WORD_SIZE);
 
-  if ((fe->bits & 7) != 0)
-    fe->mask = (1 << (fe->bits & 7)) - 1;
+  /* Masks to ignore high bits during deserialization. */
+  if ((fe->bits & 7) != 0) {
+    fe->byte_mask = (1 << (fe->bits & 7)) - 1;
+    fe->limb_mask = ((mp_limb_t)1 << (fe->bits % GMP_NUMB_BITS)) - 1;
+  }
 
+  /* Deserialize prime into GMP limbs. */
   mpn_import_be(fe->p, MAX_REDUCE_LIMBS, def->p, fe->size);
 
+  /* Keep a raw representation for byte comparisons. */
   mpn_export(fe->raw, fe->size, fe->p, fe->limbs, fe->endian);
 
+  /* We use a barrett reduction to montgomerize
+   * field elements by computing:
+   *
+   *   x = (x << shift) mod p
+   *
+   * Allocate a scalar field to achieve this.
+   */
   scalar_field_set(&fe->sc, def->p, def->bits, endian);
 
+  /* Function pointers for field arithmetic. In
+   * addition to fiat's default functions, we
+   * have optimized addition chains for inversions,
+   * square roots, and inverse square roots.
+   */
   fe->add = def->add;
   fe->sub = def->sub;
   fe->opp = def->opp;
@@ -1930,6 +1969,7 @@ prime_field_init(prime_field_t *fe, const prime_def_t *def, int endian) {
   fe->sqrt = def->sqrt;
   fe->isqrt = def->isqrt;
 
+  /* Pre-montgomerized constants. */
   fe_set_word(fe, fe->zero, 0);
   fe_set_word(fe, fe->one, 1);
   fe_set_word(fe, fe->two, 2);
@@ -3619,7 +3659,7 @@ wei_endo_split(const wei_t *ec,
    * This involves precomputing `g1` and `g2` as:
    *
    *   d = a1 * b2 - b1 * a2
-   *   t = ceil(log2(d)) + 16
+   *   t = ceil(log2(d+1)) + 16
    *   g1 = round((2^t * b2) / d)
    *   g2 = round((2^t * b1) / d)
    *
@@ -3627,7 +3667,7 @@ wei_endo_split(const wei_t *ec,
    *
    * `c1` and `c2` can then be computed as follows:
    *
-   *   t = ceil(log2(n)) + 16
+   *   t = ceil(log2(n+1)) + 16
    *   c1 = (k * g1) >> t
    *   c2 = -((k * g2) >> t)
    *   k1 = k - c1 * a1 - c2 * a2
@@ -3640,7 +3680,7 @@ wei_endo_split(const wei_t *ec,
    *
    * libsecp256k1 modifies the computation further:
    *
-   *   t = ceil(log2(n)) + 16
+   *   t = ceil(log2(n+1)) + 16
    *   c1 = ((k * g1) >> t) * -b1
    *   c2 = ((k * -g2) >> t) * -b2
    *   k2 = c1 + c2
@@ -4612,7 +4652,7 @@ wei_point_to_uniform(const wei_t *ec,
   fe_export(fe, bytes, u);
   fe_cleanse(fe, u);
 
-  bytes[0] |= (hint >> 8) & ~fe->mask;
+  bytes[0] |= (hint >> 8) & ~fe->byte_mask;
 
   return ret;
 }
@@ -5672,7 +5712,7 @@ mont_point_to_uniform(const mont_t *ec,
   fe_export(fe, bytes, u);
   fe_cleanse(fe, u);
 
-  bytes[fe->size - 1] |= (hint >> 8) & ~fe->mask;
+  bytes[fe->size - 1] |= (hint >> 8) & ~fe->byte_mask;
 
   return ret;
 }
@@ -6818,7 +6858,7 @@ edwards_point_to_uniform(const edwards_t *ec,
   fe_export(fe, bytes, u);
   fe_cleanse(fe, u);
 
-  bytes[fe->size - 1] |= (hint >> 8) & ~fe->mask;
+  bytes[fe->size - 1] |= (hint >> 8) & ~fe->byte_mask;
 
   return ret;
 }
@@ -8739,7 +8779,7 @@ ecdsa_reduce(const wei_t *ec, sc_t r,
    *
    * FIPS186 simply modulos the entire byte
    * array by the order, whereas SEC1 takes
-   * the left-most ceil(log2(n)) bits modulo
+   * the left-most ceil(log2(n+1)) bits modulo
    * the order (and maybe does other stuff).
    *
    * Instead of trying to decipher all of
@@ -11385,11 +11425,11 @@ eddsa_hash_final(const edwards_t *ec, hash_t *hash, sc_t r) {
 
   hash_final(hash, bytes, fe->adj_size * 2);
 
-  mpn_import(k, sc->shift * 2, bytes, fe->adj_size * 2, sc->endian);
+  mpn_import(k, sc->shift, bytes, fe->adj_size * 2, sc->endian);
 
   sc_reduce(sc, r, k);
 
-  mpn_cleanse(k, sc->shift * 2);
+  mpn_cleanse(k, sc->shift);
 
   cleanse(bytes, fe->adj_size * 2);
 }

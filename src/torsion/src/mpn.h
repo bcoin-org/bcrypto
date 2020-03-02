@@ -74,6 +74,10 @@ mpn_cmp_limb(const mp_limb_t *xp, mp_size_t xn, int32_t num) {
   mp_limb_t w = 0;
   mp_limb_t n = num;
 
+#ifdef TORSION_TEST
+  assert(xn == 0 || xp[xn - 1] != 0);
+#endif
+
   if (num < 0)
     return 1;
 

@@ -106,6 +106,10 @@
       }, {
         "sources": [
           "./src/torsion/src/mini-gmp.c"
+        ],
+        "cflags_c": [
+          "-Wno-unused-parameter",
+          "-Wno-sign-compare"
         ]
       }],
       ["OS!='win' and node_use_openssl=='true' and nodedir.find('electron')==-1", {
