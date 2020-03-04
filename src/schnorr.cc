@@ -736,9 +736,11 @@ NAN_METHOD(BSchnorr::Sign) {
 
   v8::Local<v8::Object> mbuf = info[0].As<v8::Object>();
   v8::Local<v8::Object> pbuf = info[1].As<v8::Object>();
+  v8::Local<v8::Object> abuf = info[2].As<v8::Object>();
 
   if (!node::Buffer::HasInstance(mbuf)
-      || !node::Buffer::HasInstance(pbuf)) {
+      || !node::Buffer::HasInstance(pbuf)
+      || !node::Buffer::HasInstance(abuf)) {
     return Nan::ThrowTypeError("Arguments must be buffers.");
   }
 
@@ -746,24 +748,17 @@ NAN_METHOD(BSchnorr::Sign) {
   size_t msg_len = node::Buffer::Length(mbuf);
   const uint8_t *priv = (const uint8_t *)node::Buffer::Data(pbuf);
   size_t priv_len = node::Buffer::Length(pbuf);
-  const uint8_t *aux = NULL;
-  size_t aux_len = 0;
+  const uint8_t *aux = (const uint8_t *)node::Buffer::Data(abuf);
+  size_t aux_len = node::Buffer::Length(abuf);
   uint8_t out[SCHNORR_MAX_SIG_SIZE];
 
-  if (info.Length() > 2 && !IsNull(info[2])) {
-    v8::Local<v8::Object> abuf = info[2].As<v8::Object>();
-
-    if (!node::Buffer::HasInstance(abuf))
-      return Nan::ThrowTypeError("Arguments must be buffers.");
-
-    aux = (const uint8_t *)node::Buffer::Data(abuf);
-    aux_len = node::Buffer::Length(abuf);
-  }
+  if (aux_len != 32)
+    return Nan::ThrowRangeError("Invalid aux data length.");
 
   if (priv_len != ec->scalar_size)
     return Nan::ThrowRangeError("Invalid length.");
 
-  if (!schnorr_sign(ec->ctx, out, msg, msg_len, priv, aux, aux_len))
+  if (!schnorr_sign(ec->ctx, out, msg, msg_len, priv, aux))
     return Nan::ThrowError("Could not sign.");
 
   return info.GetReturnValue().Set(

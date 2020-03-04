@@ -1,7 +1,7 @@
 'use strict';
 
 // https://github.com/sipa/bips/pull/196
-// https://github.com/sipa/bips/blob/d6f3ee4/bip-0340/test-vectors.csv
+// https://github.com/sipa/bips/blob/9bfa53e/bip-0340/test-vectors.csv
 
 const csv = require('./csv');
 

@@ -10006,20 +10006,16 @@ static void
 schnorr_hash_aux(const wei_t *ec,
                  unsigned char *out,
                  const unsigned char *scalar,
-                 const unsigned char *aux,
-                 size_t aux_len) {
+                 const unsigned char *aux) {
   const scalar_field_t *sc = &ec->sc;
   size_t hash_size = hash_output_size(ec->hash);
   unsigned char bytes[HASH_MAX_OUTPUT_SIZE];
   hash_t hash;
   size_t i;
 
-  if (aux_len > 32)
-    aux_len = 32;
-
   schnorr_hash_init(&hash, ec->hash, "BIP340/aux");
 
-  hash_update(&hash, aux, aux_len);
+  hash_update(&hash, aux, 32);
   hash_final(&hash, bytes, hash_size);
 
   for (i = 0; i < sc->size; i++)
@@ -10035,8 +10031,7 @@ schnorr_hash_nonce(const wei_t *ec, sc_t k,
                    const unsigned char *point,
                    const unsigned char *msg,
                    size_t msg_len,
-                   const unsigned char *aux,
-                   size_t aux_len) {
+                   const unsigned char *aux) {
   const prime_field_t *fe = &ec->fe;
   const scalar_field_t *sc = &ec->sc;
   size_t hash_size = hash_output_size(ec->hash);
@@ -10047,7 +10042,7 @@ schnorr_hash_nonce(const wei_t *ec, sc_t k,
 
   assert(MAX_SCALAR_SIZE >= HASH_MAX_OUTPUT_SIZE);
 
-  schnorr_hash_aux(ec, secret, scalar, aux, aux_len);
+  schnorr_hash_aux(ec, secret, scalar, aux);
 
   if (sc->size > hash_size) {
     off = sc->size - hash_size;
@@ -10107,8 +10102,7 @@ schnorr_sign(const wei_t *ec,
              const unsigned char *msg,
              size_t msg_len,
              const unsigned char *priv,
-             const unsigned char *aux,
-             size_t aux_len) {
+             const unsigned char *aux) {
   /* Schnorr Signing.
    *
    * [BIP340] "Default Signing".
@@ -10160,7 +10154,7 @@ schnorr_sign(const wei_t *ec,
 
   ret &= wge_export_x(ec, Araw, &A);
 
-  schnorr_hash_nonce(ec, k, araw, Araw, msg, msg_len, aux, aux_len);
+  schnorr_hash_nonce(ec, k, araw, Araw, msg, msg_len, aux);
 
   ret &= sc_is_zero(sc, k) ^ 1;
 
