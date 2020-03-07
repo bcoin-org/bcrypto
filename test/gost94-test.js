@@ -136,11 +136,13 @@ describe('GOST94', function() {
     });
   }
 
-  for (const [msg, expect, enc] of vectors_test) {
-    const text = expect.slice(0, 32) + '...';
+  if (GOST94.native === 0) {
+    for (const [msg, expect, enc] of vectors_test) {
+      const text = expect.slice(0, 32) + '...';
 
-    it(`should get GOST94 hash of ${text}`, () => {
-      testHash(msg, expect, enc, GOST94.TEST);
-    });
+      it(`should get GOST94 hash of ${text}`, () => {
+        testHash(msg, expect, enc, GOST94.TEST);
+      });
+    }
   }
 });

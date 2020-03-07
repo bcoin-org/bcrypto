@@ -62,6 +62,7 @@
     "./lib/encoding/base58": "./lib/encoding/base58-browser.js",
     "./lib/encoding/bech32": "./lib/encoding/bech32-browser.js",
     "./lib/encoding/cash32": "./lib/encoding/cash32-browser.js",
+    "./lib/gost94": "./lib/gost94-browser.js",
     "./lib/hash160": "./lib/hash160-browser.js",
     "./lib/hash256": "./lib/hash256-browser.js",
     "./lib/internal/custom": "./lib/internal/custom-browser.js",
@@ -92,6 +93,7 @@
     "./lib/sha512": "./lib/sha512-browser.js",
     "./lib/sha3": "./lib/sha3-browser.js",
     "./lib/siphash": "./lib/siphash-browser.js",
+    "./lib/whirlpool": "./lib/whirlpool-browser.js",
     "./lib/x25519": "./lib/x25519-browser.js",
     "./lib/x448": "./lib/x448-browser.js"
   }

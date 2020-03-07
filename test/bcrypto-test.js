@@ -149,7 +149,7 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.encoding.base58.native, 2);
         assert.strictEqual(bcrypto.encoding.bech32.native, 2);
         assert.strictEqual(bcrypto.encoding.cash32.native, 2);
-        assert.strictEqual(bcrypto.GOST94.native, 0);
+        assert.strictEqual(bcrypto.GOST94.native, 2);
         assert.strictEqual(bcrypto.Hash160.native, 2);
         assert.strictEqual(bcrypto.Hash256.native, 2);
         assert.strictEqual(bcrypto.HashDRBG.native, 0);
@@ -205,7 +205,7 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.SHAKE128.native, 2);
         assert.strictEqual(bcrypto.SHAKE256.native, 2);
         assert.strictEqual(bcrypto.siphash.native, 2);
-        assert.strictEqual(bcrypto.Whirlpool.native, 0);
+        assert.strictEqual(bcrypto.Whirlpool.native, 2);
         assert.strictEqual(bcrypto.x25519.native, 2);
         assert.strictEqual(bcrypto.x448.native, 2);
         break;
