@@ -10112,7 +10112,7 @@ schnorr_sign(const wei_t *ec,
    *   - Let `H` be a cryptographic hash function.
    *   - Let `m` be a 32-byte array.
    *   - Let `a` be a secret non-zero scalar.
-   *   - Let `d` be a 0 to 32-byte array.
+   *   - Let `d` be a 32-byte array.
    *   - k != 0.
    *
    * Computation:
