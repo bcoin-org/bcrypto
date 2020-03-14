@@ -655,12 +655,14 @@ schnorr_pubkey_import(const schnorr_t *ec,
 int
 schnorr_pubkey_tweak_add(const schnorr_t *ec,
                          unsigned char *out,
+                         int *negated,
                          const unsigned char *pub,
                          const unsigned char *tweak);
 
 int
 schnorr_pubkey_tweak_mul(const schnorr_t *ec,
                          unsigned char *out,
+                         int *negated,
                          const unsigned char *pub,
                          const unsigned char *tweak);
 

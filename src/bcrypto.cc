@@ -7916,7 +7916,8 @@ bcrypto_schnorr_pubkey_tweak_add(napi_env env, napi_callback_info info) {
 
   JS_ASSERT(pub_len == ec->field_size, JS_ERR_PUBKEY_SIZE);
   JS_ASSERT(tweak_len == ec->scalar_size, JS_ERR_SCALAR_SIZE);
-  JS_ASSERT(schnorr_pubkey_tweak_add(ec->ctx, out, pub, tweak), JS_ERR_PUBKEY);
+  JS_ASSERT(schnorr_pubkey_tweak_add(ec->ctx, out, NULL, pub, tweak),
+            JS_ERR_PUBKEY);
 
   CHECK(napi_create_buffer_copy(env,
                                 ec->field_size,
@@ -7947,13 +7948,53 @@ bcrypto_schnorr_pubkey_tweak_mul(napi_env env, napi_callback_info info) {
 
   JS_ASSERT(pub_len == ec->field_size, JS_ERR_PUBKEY_SIZE);
   JS_ASSERT(tweak_len == ec->scalar_size, JS_ERR_SCALAR_SIZE);
-  JS_ASSERT(schnorr_pubkey_tweak_mul(ec->ctx, out, pub, tweak), JS_ERR_PUBKEY);
+  JS_ASSERT(schnorr_pubkey_tweak_mul(ec->ctx, out, NULL, pub, tweak),
+            JS_ERR_PUBKEY);
 
   CHECK(napi_create_buffer_copy(env,
                                 ec->field_size,
                                 out,
                                 NULL,
                                 &result) == napi_ok);
+
+  return result;
+}
+
+static napi_value
+bcrypto_schnorr_pubkey_tweak_sum(napi_env env, napi_callback_info info) {
+  napi_value argv[3];
+  size_t argc = 3;
+  uint8_t out[SCHNORR_MAX_PUB_SIZE];
+  int negated;
+  const uint8_t *pub, *tweak;
+  size_t pub_len, tweak_len;
+  bcrypto_schnorr_t *ec;
+  napi_value outval, negval, result;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 3);
+  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
+                             &pub_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], (void **)&tweak,
+                             &tweak_len) == napi_ok);
+
+  JS_ASSERT(pub_len == ec->field_size, JS_ERR_PUBKEY_SIZE);
+  JS_ASSERT(tweak_len == ec->scalar_size, JS_ERR_SCALAR_SIZE);
+  JS_ASSERT(schnorr_pubkey_tweak_add(ec->ctx, out, &negated, pub, tweak),
+                                     JS_ERR_PUBKEY);
+
+  CHECK(napi_create_buffer_copy(env,
+                                ec->field_size,
+                                out,
+                                NULL,
+                                &outval) == napi_ok);
+
+  CHECK(napi_get_boolean(env, negated, &negval) == napi_ok);
+
+  CHECK(napi_create_array_with_length(env, 2, &result) == napi_ok);
+  CHECK(napi_set_element(env, result, 0, outval) == napi_ok);
+  CHECK(napi_set_element(env, result, 1, negval) == napi_ok);
 
   return result;
 }
@@ -10322,6 +10363,7 @@ bcrypto_init(napi_env env, napi_value exports) {
     { "schnorr_pubkey_import", bcrypto_schnorr_pubkey_import },
     { "schnorr_pubkey_tweak_add", bcrypto_schnorr_pubkey_tweak_add },
     { "schnorr_pubkey_tweak_mul", bcrypto_schnorr_pubkey_tweak_mul },
+    { "schnorr_pubkey_tweak_sum", bcrypto_schnorr_pubkey_tweak_sum },
     { "schnorr_pubkey_tweak_test", bcrypto_schnorr_pubkey_tweak_test },
     { "schnorr_pubkey_combine", bcrypto_schnorr_pubkey_combine },
     { "schnorr_sign", bcrypto_schnorr_sign },

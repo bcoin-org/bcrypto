@@ -191,7 +191,7 @@ describe('Schnorr', function() {
     assert.bufferEqual(out, pub);
   });
 
-  it('should test tweaking', () => {
+  it('should test tweaking (1)', () => {
     for (let i = 0; i < 10; i++) {
       const priv = secp256k1.privateKeyGenerate();
       const pub = secp256k1.publicKeyCreate(priv);
@@ -208,6 +208,22 @@ describe('Schnorr', function() {
       assert.strictEqual(yes, true);
 
       const no = schnorr.publicKeyTweakTest(xonly, tweak, expect, !negated);
+
+      assert.strictEqual(no, false);
+    }
+  });
+
+  it('should test tweaking (2)', () => {
+    for (let i = 0; i < 10; i++) {
+      const priv = schnorr.privateKeyGenerate();
+      const pub = schnorr.publicKeyCreate(priv);
+      const tweak = schnorr.privateKeyGenerate();
+      const [expect, negated] = schnorr.publicKeyTweakSum(pub, tweak);
+      const yes = schnorr.publicKeyTweakTest(pub, tweak, expect, negated);
+
+      assert.strictEqual(yes, true);
+
+      const no = schnorr.publicKeyTweakTest(pub, tweak, expect, !negated);
 
       assert.strictEqual(no, false);
     }

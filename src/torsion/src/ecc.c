@@ -9931,6 +9931,7 @@ schnorr_pubkey_import(const wei_t *ec,
 int
 schnorr_pubkey_tweak_add(const wei_t *ec,
                          unsigned char *out,
+                         int *negated,
                          const unsigned char *pub,
                          const unsigned char *tweak) {
   const scalar_field_t *sc = &ec->sc;
@@ -9949,6 +9950,9 @@ schnorr_pubkey_tweak_add(const wei_t *ec,
 
   ret &= wge_export_x(ec, out, &A);
 
+  if (negated != NULL)
+    *negated = wge_is_even(ec, &A) ^ 1;
+
   sc_cleanse(sc, t);
 
   return ret;
@@ -9957,6 +9961,7 @@ schnorr_pubkey_tweak_add(const wei_t *ec,
 int
 schnorr_pubkey_tweak_mul(const wei_t *ec,
                          unsigned char *out,
+                         int *negated,
                          const unsigned char *pub,
                          const unsigned char *tweak) {
   const scalar_field_t *sc = &ec->sc;
@@ -9970,6 +9975,9 @@ schnorr_pubkey_tweak_mul(const wei_t *ec,
   wei_mul(ec, &A, &A, t);
 
   ret &= wge_export_x(ec, out, &A);
+
+  if (negated != NULL)
+    *negated = wge_is_even(ec, &A) ^ 1;
 
   sc_cleanse(sc, t);
 
