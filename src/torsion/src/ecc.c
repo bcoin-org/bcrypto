@@ -9955,6 +9955,28 @@ schnorr_pubkey_tweak_add(const wei_t *ec,
 }
 
 int
+schnorr_pubkey_tweak_mul(const wei_t *ec,
+                         unsigned char *out,
+                         const unsigned char *pub,
+                         const unsigned char *tweak) {
+  const scalar_field_t *sc = &ec->sc;
+  wge_t A;
+  sc_t t;
+  int ret = 1;
+
+  ret &= wge_import_even(ec, &A, pub);
+  ret &= sc_import(sc, t, tweak);
+
+  wei_mul(ec, &A, &A, t);
+
+  ret &= wge_export_x(ec, out, &A);
+
+  sc_cleanse(sc, t);
+
+  return ret;
+}
+
+int
 schnorr_pubkey_tweak_test(const wei_t *ec,
                           int *result,
                           const unsigned char *pub,
@@ -9979,28 +10001,6 @@ schnorr_pubkey_tweak_test(const wei_t *ec,
   wge_to_jge(ec, &J, &Q);
 
   *result = ret & jge_equal(ec, &T, &J);
-
-  sc_cleanse(sc, t);
-
-  return ret;
-}
-
-int
-schnorr_pubkey_tweak_mul(const wei_t *ec,
-                         unsigned char *out,
-                         const unsigned char *pub,
-                         const unsigned char *tweak) {
-  const scalar_field_t *sc = &ec->sc;
-  wge_t A;
-  sc_t t;
-  int ret = 1;
-
-  ret &= wge_import_even(ec, &A, pub);
-  ret &= sc_import(sc, t, tweak);
-
-  wei_mul(ec, &A, &A, t);
-
-  ret &= wge_export_x(ec, out, &A);
 
   sc_cleanse(sc, t);
 
