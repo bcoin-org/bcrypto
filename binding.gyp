@@ -18,7 +18,7 @@
       "./src/torsion/src/salsa20.c",
       "./src/torsion/src/siphash.c",
       "./src/torsion/src/util.c",
-      "./src/napi.cc"
+      "./src/bcrypto.cc"
     ],
     "cflags": [
       "-Wall",
