@@ -27,6 +27,7 @@
 #include <torsion/rsa.h>
 #include <torsion/util.h>
 #include "asn1.h"
+#include "internal.h"
 #include "mpz.h"
 
 /*
@@ -450,7 +451,7 @@ rsa_priv_generate(rsa_priv_t *k,
     return 0;
   }
 
-  drbg_init(&rng, HASH_SHA256, entropy, 32);
+  drbg_init(&rng, HASH_SHA256, entropy, ENTROPY_SIZE);
 
   mpz_init(pm1);
   mpz_init(qm1);
@@ -503,7 +504,7 @@ rsa_priv_generate(rsa_priv_t *k,
     mpz_mod(k->dp, k->d, pm1);
     mpz_mod(k->dq, k->d, qm1);
 
-    assert(mpz_invert(k->qi, k->q, k->p));
+    CHECK(mpz_invert(k->qi, k->q, k->p));
 
     break;
   }
@@ -704,7 +705,7 @@ rsa_priv_from_pqe(rsa_priv_t *out,
   if (!mpz_invert(k.qi, q, p))
     goto fail;
 
-  assert(rsa_priv_verify(&k));
+  CHECK(rsa_priv_verify(&k));
 
   rsa_priv_set(out, &k);
   r = 1;
@@ -826,7 +827,7 @@ rsa_priv_from_ned(rsa_priv_t *out,
   mpz_tdiv_q_2exp(g, f, s);
 
   /* Seed RNG. */
-  drbg_init(&rng, HASH_SHA256, entropy, 32);
+  drbg_init(&rng, HASH_SHA256, entropy, ENTROPY_SIZE);
 
   for (i = 0; i < 128; i++) {
     /* a = random int in [2,n-1] */
@@ -896,7 +897,7 @@ rsa_priv_decrypt(const rsa_priv_t *k,
   drbg_t rng;
   int r = 0;
 
-  drbg_init(&rng, HASH_SHA256, entropy, 32);
+  drbg_init(&rng, HASH_SHA256, entropy, ENTROPY_SIZE);
 
   mpz_init(t);
   mpz_init(s);
@@ -1175,7 +1176,7 @@ rsa_pub_veil(const rsa_pub_t *k,
 
   mpz_set(v, vmax);
 
-  drbg_init(&rng, HASH_SHA256, entropy, 32);
+  drbg_init(&rng, HASH_SHA256, entropy, ENTROPY_SIZE);
 
   while (mpz_cmp(v, vmax) >= 0) {
     mpz_random_int(r, rmax, &rng);
@@ -1817,7 +1818,7 @@ rsa_encrypt(unsigned char *out,
   drbg_t rng;
   int r = 0;
 
-  drbg_init(&rng, HASH_SHA256, entropy, 32);
+  drbg_init(&rng, HASH_SHA256, entropy, ENTROPY_SIZE);
 
   rsa_pub_init(&k);
 
@@ -1985,7 +1986,7 @@ rsa_sign_pss(unsigned char *out,
     if (salt == NULL)
       goto fail;
 
-    drbg_init(&rng, HASH_SHA512, entropy, 32);
+    drbg_init(&rng, HASH_SHA512, entropy, ENTROPY_SIZE);
     drbg_generate(&rng, salt, salt_len);
   }
 
@@ -2141,7 +2142,7 @@ rsa_encrypt_oaep(unsigned char *out,
 
   em[0] = 0x00;
 
-  drbg_init(&rng, HASH_SHA256, entropy, 32);
+  drbg_init(&rng, HASH_SHA256, entropy, ENTROPY_SIZE);
   drbg_generate(&rng, seed, slen);
 
   memcpy(db, lhash, hlen);

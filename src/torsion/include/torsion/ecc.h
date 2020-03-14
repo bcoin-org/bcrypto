@@ -90,6 +90,7 @@ extern "C" {
 #define schnorr_pubkey_import torsion_schnorr_pubkey_import
 #define schnorr_pubkey_tweak_add torsion_schnorr_pubkey_tweak_add
 #define schnorr_pubkey_tweak_mul torsion_schnorr_pubkey_tweak_mul
+#define schnorr_pubkey_tweak_test torsion_schnorr_pubkey_tweak_test
 #define schnorr_pubkey_combine torsion_schnorr_pubkey_combine
 #define schnorr_sign torsion_schnorr_sign
 #define schnorr_verify torsion_schnorr_verify
@@ -662,6 +663,14 @@ schnorr_pubkey_tweak_mul(const schnorr_t *ec,
                          unsigned char *out,
                          const unsigned char *pub,
                          const unsigned char *tweak);
+
+int
+schnorr_pubkey_tweak_test(const schnorr_t *ec,
+                          int *result,
+                          const unsigned char *pub,
+                          const unsigned char *tweak,
+                          const unsigned char *expect,
+                          int negated);
 
 int
 schnorr_pubkey_combine(const schnorr_t *ec,

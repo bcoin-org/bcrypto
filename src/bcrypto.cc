@@ -7958,7 +7958,6 @@ bcrypto_schnorr_pubkey_tweak_mul(napi_env env, napi_callback_info info) {
   return result;
 }
 
-#if 0
 static napi_value
 bcrypto_schnorr_pubkey_tweak_test(napi_env env, napi_callback_info info) {
   napi_value argv[5];
@@ -7993,7 +7992,6 @@ bcrypto_schnorr_pubkey_tweak_test(napi_env env, napi_callback_info info) {
 
   return result;
 }
-#endif
 
 static napi_value
 bcrypto_schnorr_pubkey_combine(napi_env env, napi_callback_info info) {
@@ -10324,9 +10322,7 @@ bcrypto_init(napi_env env, napi_value exports) {
     { "schnorr_pubkey_import", bcrypto_schnorr_pubkey_import },
     { "schnorr_pubkey_tweak_add", bcrypto_schnorr_pubkey_tweak_add },
     { "schnorr_pubkey_tweak_mul", bcrypto_schnorr_pubkey_tweak_mul },
-#if 0
     { "schnorr_pubkey_tweak_test", bcrypto_schnorr_pubkey_tweak_test },
-#endif
     { "schnorr_pubkey_combine", bcrypto_schnorr_pubkey_combine },
     { "schnorr_sign", bcrypto_schnorr_sign },
     { "schnorr_verify", bcrypto_schnorr_verify },

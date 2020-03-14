@@ -166,6 +166,7 @@
 #include "fields/p251.h"
 
 #include "asn1.h"
+#include "internal.h"
 #include "mpn.h"
 
 #if CHAR_BIT != 8
@@ -1299,6 +1300,7 @@ fe_import(const prime_field_t *fe, fe_t r, const unsigned char *raw) {
     mp_size_t shift = fe->shift / GMP_NUMB_BITS;
     mp_size_t left = fe->shift % GMP_NUMB_BITS;
     mp_size_t xn = fe->limbs + shift + (left != 0);
+    mp_limb_t cy;
 
     /* We can only handle 2*size+2 limbs. */
     assert(xn <= fe->sc.shift);
@@ -1311,8 +1313,10 @@ fe_import(const prime_field_t *fe, fe_t r, const unsigned char *raw) {
     xp[shift + fe->limbs - 1] &= fe->limb_mask;
 
     /* Shift more if necessary. */
-    if (left != 0)
-      assert(mpn_lshift(xp, xp, xn, left) == 0);
+    if (left != 0) {
+      cy = mpn_lshift(xp, xp, xn, left);
+      assert(cy == 0);
+    }
 
     /* Reduce the shift. */
     sc_reduce(&fe->sc, xp, xp);
@@ -1464,7 +1468,7 @@ fe_set_sc(const prime_field_t *fe,
 
   sc_export(sc, tmp, a);
 
-  assert(fe_import(fe, r, tmp));
+  CHECK(fe_import(fe, r, tmp));
 }
 
 static void
@@ -1486,7 +1490,7 @@ fe_set_word(const prime_field_t *fe, fe_t r, uint32_t word) {
       tmp[3] = (word >> 24) & 0xff;
     }
 
-    assert(fe_import(fe, r, tmp));
+    CHECK(fe_import(fe, r, tmp));
   } else {
     /* Note: the limit of the word size here depends
      * on how saturated the field implementation is.
@@ -1668,7 +1672,7 @@ fe_invert_var(const prime_field_t *fe, fe_t r, const fe_t a) {
 
   ret = mpn_invert_n(rp, rp, fe->p, fe->limbs);
 
-  assert(fe_set_limbs(fe, r, rp, fe->limbs));
+  CHECK(fe_set_limbs(fe, r, rp, fe->limbs));
 
   return ret;
 }
@@ -2336,7 +2340,7 @@ wge_dbl_var(const wei_t *ec, wge_t *r, const wge_t *p) {
   fe_add(fe, l, l, t);
   fe_add(fe, l, l, ec->a);
   fe_add(fe, t, p->y, p->y);
-  assert(fe_invert_var(fe, t, t));
+  CHECK(fe_invert_var(fe, t, t));
   fe_mul(fe, l, l, t);
 
   /* X3 = L^2 - 2 * X1 */
@@ -2414,7 +2418,7 @@ wge_add_var(const wei_t *ec, wge_t *r, const wge_t *a, const wge_t *b) {
   /* L = (Y1 - Y2) / (X1 - X2) */
   fe_sub(fe, l, a->y, b->y);
   fe_sub(fe, t, a->x, b->x);
-  assert(fe_invert_var(fe, t, t));
+  CHECK(fe_invert_var(fe, t, t));
   fe_mul(fe, l, l, t);
 
   /* X3 = L^2 - X1 - X2 */
@@ -3490,7 +3494,7 @@ jge_to_wge_var(const wei_t *ec, wge_t *r, const jge_t *p) {
   }
 
   /* A = 1 / Z1 */
-  assert(fe_invert_var(fe, a, p->z));
+  CHECK(fe_invert_var(fe, a, p->z));
 
   /* AA = A^2 */
   fe_sqr(fe, aa, a);
@@ -4232,7 +4236,7 @@ wei_randomize(wei_t *ec, const unsigned char *entropy) {
   wge_t unblind;
   drbg_t rng;
 
-  drbg_init(&rng, HASH_SHA256, entropy, 32);
+  drbg_init(&rng, HASH_SHA256, entropy, ENTROPY_SIZE);
 
   sc_random(sc, blind, &rng);
 
@@ -4323,7 +4327,7 @@ wei_sswu(const wei_t *ec, wge_t *p, const fe_t u) {
 
   fe_select(fe, x1, x1, x2, alpha ^ 1);
   fe_select(fe, y1, y1, y2, alpha ^ 1);
-  assert(fe_sqrt(fe, y1, y1));
+  CHECK(fe_sqrt(fe, y1, y1));
 
   fe_set_odd(fe, y1, y1, fe_is_odd(fe, u));
 
@@ -4501,7 +4505,7 @@ wei_svdw(const wei_t *ec, wge_t *p, const fe_t u) {
 
   wei_svdwf(ec, x, y, u);
 
-  assert(fe_sqrt(fe, y, y));
+  CHECK(fe_sqrt(fe, y, y));
 
   fe_set_odd(fe, y, y, fe_is_odd(fe, u));
 
@@ -4682,7 +4686,7 @@ wei_point_to_hash(const wei_t *ec,
   wge_t p1, p2;
   drbg_t rng;
 
-  drbg_init(&rng, HASH_SHA256, entropy, 32);
+  drbg_init(&rng, HASH_SHA256, entropy, ENTROPY_SIZE);
 
   for (;;) {
     drbg_generate(&rng, bytes, fe->size);
@@ -5421,7 +5425,7 @@ mont_init(mont_t *ec, const mont_def_t *def) {
   /* i16 = 1 / 16 (mod n) */
   if (fe->bits == 448) {
     sc_set_word(sc, ec->i16, 16);
-    assert(sc_invert_var(sc, ec->i16, ec->i16));
+    CHECK(sc_invert_var(sc, ec->i16, ec->i16));
   }
 
   fe_import_be(fe, ec->g.x, def->x);
@@ -5629,7 +5633,7 @@ mont_elligator2(const mont_t *ec, mge_t *r, const fe_t u) {
 
   fe_select(fe, x1, x1, x2, alpha ^ 1);
   fe_select(fe, y1, y1, y2, alpha ^ 1);
-  assert(fe_sqrt(fe, y1, y1));
+  CHECK(fe_sqrt(fe, y1, y1));
 
   fe_set_odd(fe, y1, y1, fe_is_odd(fe, u));
 
@@ -5742,7 +5746,7 @@ mont_point_to_hash(const mont_t *ec,
   mge_t p1, p2;
   drbg_t rng;
 
-  drbg_init(&rng, HASH_SHA256, entropy, 32);
+  drbg_init(&rng, HASH_SHA256, entropy, ENTROPY_SIZE);
 
   for (;;) {
     drbg_generate(&rng, bytes, fe->size);
@@ -5959,7 +5963,7 @@ xge_export(const edwards_t *ec,
   const prime_field_t *fe = &ec->fe;
   fe_t x, y, z;
 
-  assert(fe_invert(fe, z, p->z));
+  CHECK(fe_invert(fe, z, p->z));
 
   fe_mul(fe, x, p->x, z);
   fe_mul(fe, y, p->y, z);
@@ -6404,7 +6408,7 @@ edwards_init_isomorphism(edwards_t *ec, const edwards_def_t *def) {
   }
 
   fe_add(fe, u, u, u);
-  assert(fe_invert_var(fe, v, v));
+  CHECK(fe_invert_var(fe, v, v));
   fe_mul(fe, ec->A, u, v);
 
   if (!ec->invert)
@@ -6414,9 +6418,9 @@ edwards_init_isomorphism(edwards_t *ec, const edwards_def_t *def) {
 
   fe_sqr(fe, v, ec->c);
   fe_mul(fe, v, v, ec->a);
-  assert(fe_invert_var(fe, v, v));
+  CHECK(fe_invert_var(fe, v, v));
   fe_mul(fe, ec->B, u, v);
-  assert(fe_invert_var(fe, ec->Bi, ec->B));
+  CHECK(fe_invert_var(fe, ec->Bi, ec->B));
 
   /* A0 = A / B */
   fe_mul(fe, ec->A0, ec->A, ec->Bi);
@@ -6663,7 +6667,7 @@ edwards_randomize(edwards_t *ec, const unsigned char *entropy) {
   xge_t unblind;
   drbg_t rng;
 
-  drbg_init(&rng, HASH_SHA256, entropy, 32);
+  drbg_init(&rng, HASH_SHA256, entropy, ENTROPY_SIZE);
 
   sc_random(sc, blind, &rng);
 
@@ -6769,7 +6773,7 @@ edwards_elligator2(const edwards_t *ec, xge_t *r, const fe_t u) {
 
   fe_select(fe, x1, x1, x2, alpha ^ 1);
   fe_select(fe, y1, y1, y2, alpha ^ 1);
-  assert(fe_sqrt(fe, y1, y1));
+  CHECK(fe_sqrt(fe, y1, y1));
 
   fe_set_odd(fe, y1, y1, fe_is_odd(fe, u));
 
@@ -6889,7 +6893,7 @@ edwards_point_to_hash(const edwards_t *ec,
   xge_t p1, p2;
   drbg_t rng;
 
-  drbg_init(&rng, HASH_SHA256, entropy, 32);
+  drbg_init(&rng, HASH_SHA256, entropy, ENTROPY_SIZE);
 
   for (;;) {
     drbg_generate(&rng, bytes, fe->size);
@@ -8256,7 +8260,7 @@ ecdsa_privkey_generate(const wei_t *ec,
   const scalar_field_t *sc = &ec->sc;
   drbg_t rng;
 
-  drbg_init(&rng, HASH_SHA256, entropy, 32);
+  drbg_init(&rng, HASH_SHA256, entropy, ENTROPY_SIZE);
 
   do {
     drbg_generate(&rng, out, sc->size);
@@ -8481,7 +8485,7 @@ ecdsa_pubkey_from_uniform(const wei_t *ec,
 
   wei_point_from_uniform(ec, &A, bytes);
 
-  assert(wge_export(ec, out, out_len, &A, compact));
+  CHECK(wge_export(ec, out, out_len, &A, compact));
 }
 
 int
@@ -8746,24 +8750,28 @@ ecdsa_decode_der(const wei_t *ec,
   unsigned char sp[MAX_SCALAR_SIZE];
 
   if (!asn1_read_seq(&der, &der_len, strict))
-    return 0;
+    goto fail;
 
   if (!asn1_read_int(rp, sc->size, &der, &der_len, strict))
-    return 0;
+    goto fail;
 
   if (!asn1_read_int(sp, sc->size, &der, &der_len, strict))
-    return 0;
+    goto fail;
 
   if (strict && der_len != 0)
-    return 0;
+    goto fail;
 
   if (!sc_import(sc, r, rp))
-    return 0;
+    goto fail;
 
   if (!sc_import(sc, s, sp))
-    return 0;
+    goto fail;
 
   return 1;
+fail:
+  sc_zero(sc, r);
+  sc_zero(sc, s);
+  return 0;
 }
 
 static int
@@ -8832,16 +8840,19 @@ ecdsa_sig_export(const wei_t *ec,
                  const unsigned char *sig) {
   const scalar_field_t *sc = &ec->sc;
   sc_t r, s;
+  int ret = 1;
 
-  if (!sc_import(sc, r, sig))
-    return 0;
+  ret &= sc_import(sc, r, sig);
+  ret &= sc_import(sc, s, sig + sc->size);
 
-  if (!sc_import(sc, s, sig + sc->size))
-    return 0;
+  if (!ret) {
+    sc_zero(sc, r);
+    sc_zero(sc, s);
+  }
 
   ecdsa_encode_der(ec, out, out_len, r, s);
 
-  return 1;
+  return ret;
 }
 
 int
@@ -8851,14 +8862,14 @@ ecdsa_sig_import(const wei_t *ec,
                  size_t der_len) {
   const scalar_field_t *sc = &ec->sc;
   sc_t r, s;
+  int ret = 1;
 
-  if (!ecdsa_decode_der(ec, r, s, der, der_len, 1))
-    return 0;
+  ret &= ecdsa_decode_der(ec, r, s, der, der_len, 1);
 
   sc_export(sc, out, r);
   sc_export(sc, out + sc->size, s);
 
-  return 1;
+  return ret;
 }
 
 int
@@ -8868,14 +8879,14 @@ ecdsa_sig_import_lax(const wei_t *ec,
                      size_t der_len) {
   const scalar_field_t *sc = &ec->sc;
   sc_t r, s;
+  int ret = 1;
 
-  if (!ecdsa_decode_der(ec, r, s, der, der_len, 0))
-    return 0;
+  ret &= ecdsa_decode_der(ec, r, s, der, der_len, 0);
 
   sc_export(sc, out, r);
   sc_export(sc, out + sc->size, s);
 
-  return 1;
+  return ret;
 }
 
 int
@@ -8996,7 +9007,7 @@ ecdsa_sign(const wei_t *ec,
     ok &= sc_is_zero(sc, r) ^ 1;
   } while (!ok);
 
-  assert(sc_invert(sc, k, k));
+  CHECK(sc_invert(sc, k, k));
   sc_mul(sc, s, r, a);
   sc_add(sc, s, s, m);
   sc_mul(sc, s, s, k);
@@ -9089,7 +9100,7 @@ ecdsa_verify(const wei_t *ec,
 
   ecdsa_reduce(ec, m, msg, msg_len);
 
-  assert(sc_invert_var(sc, s, s));
+  CHECK(sc_invert_var(sc, s, s));
   sc_mul(sc, u1, m, s);
   sc_mul(sc, u2, r, s);
 
@@ -9155,39 +9166,42 @@ ecdsa_recover(const wei_t *ec,
   fe_t x;
   wge_t R, A;
 
+  wge_zero(ec, &A);
+
   if (!sc_import(sc, r, sig))
-    return 0;
+    goto fail;
 
   if (!sc_import(sc, s, sig + sc->size))
-    return 0;
+    goto fail;
 
   if (sc_is_zero(sc, r) || sc_is_zero(sc, s))
-    return 0;
+    goto fail;
 
   if (sc_is_high_var(sc, s))
-    return 0;
+    goto fail;
 
   fe_set_sc(fe, sc, x, r);
 
   if (high) {
     if (sc_cmp_var(sc, r, ec->pmodn) >= 0)
-      return 0;
+      goto fail;
 
     fe_add(fe, x, x, ec->fe_n);
   }
 
   if (!wge_set_x(ec, &R, x, sign))
-    return 0;
+    goto fail;
 
   ecdsa_reduce(ec, m, msg, msg_len);
 
-  assert(sc_invert_var(sc, r, r));
+  CHECK(sc_invert_var(sc, r, r));
   sc_mul(sc, s1, m, r);
   sc_mul(sc, s2, s, r);
   sc_neg(sc, s1, s1);
 
   wei_mul_double_var(ec, &A, s1, &R, s2);
 
+fail:
   return wge_export(ec, pub, pub_len, &A, compact);
 }
 
@@ -9434,7 +9448,7 @@ ecdsa_schnorr_verify(const wei_t *ec,
   if (!wge_import(ec, &A, pub, pub_len))
     return 0;
 
-  assert(wge_export(ec, Araw, NULL, &A, 1));
+  CHECK(wge_export(ec, Araw, NULL, &A, 1));
 
   ecdsa_schnorr_hash_challenge(ec, e, Rraw, Araw, msg, msg_len);
 
@@ -9558,7 +9572,7 @@ ecdsa_schnorr_verify_batch(const wei_t *ec,
     if (!wge_import(ec, &A, pub, pub_len))
       return 0;
 
-    assert(wge_export(ec, Araw, NULL, &A, 1));
+    CHECK(wge_export(ec, Araw, NULL, &A, 1));
 
     ecdsa_schnorr_hash_challenge(ec, e, Rraw, Araw, msg, msg_len);
 
@@ -9817,7 +9831,7 @@ schnorr_pubkey_from_uniform(const wei_t *ec,
 
   wei_point_from_uniform(ec, &A, bytes);
 
-  assert(wge_export_x(ec, out, &A));
+  CHECK(wge_export_x(ec, out, &A));
 }
 
 int
@@ -9934,6 +9948,37 @@ schnorr_pubkey_tweak_add(const wei_t *ec,
   jge_to_wge(ec, &A, &T);
 
   ret &= wge_export_x(ec, out, &A);
+
+  sc_cleanse(sc, t);
+
+  return ret;
+}
+
+int
+schnorr_pubkey_tweak_test(const wei_t *ec,
+                          int *result,
+                          const unsigned char *pub,
+                          const unsigned char *tweak,
+                          const unsigned char *expect,
+                          int negated) {
+  const scalar_field_t *sc = &ec->sc;
+  wge_t A, Q;
+  jge_t T, J;
+  sc_t t;
+  int ret = 1;
+
+  ret &= wge_import_even(ec, &A, pub);
+  ret &= sc_import(sc, t, tweak);
+  ret &= wge_import_even(ec, &Q, expect);
+
+  wei_jmul_g(ec, &T, t);
+
+  jge_mixed_add(ec, &T, &T, &A);
+  jge_neg_cond(ec, &T, &T, negated);
+
+  wge_to_jge(ec, &J, &Q);
+
+  *result = ret & jge_equal(ec, &T, &J);
 
   sc_cleanse(sc, t);
 
@@ -10491,7 +10536,7 @@ ecdh_privkey_generate(const mont_t *ec,
   const scalar_field_t *sc = &ec->sc;
   drbg_t rng;
 
-  drbg_init(&rng, HASH_SHA256, entropy, 32);
+  drbg_init(&rng, HASH_SHA256, entropy, ENTROPY_SIZE);
 
   drbg_generate(&rng, out, sc->size);
 
@@ -10555,7 +10600,7 @@ ecdh_pubkey_create(const mont_t *ec,
 
   mont_mul_g(ec, &A, a);
 
-  assert(pge_export(ec, pub, &A));
+  CHECK(pge_export(ec, pub, &A));
 
   sc_cleanse(sc, a);
 
@@ -10583,7 +10628,7 @@ ecdh_pubkey_convert(const mont_t *ec,
     pge_mulh(ec, &P, &P);
     mont_mul(ec, &P, &P, ec->i16, 0);
 
-    assert(pge_to_mge(ec, &A, &P, -1));
+    CHECK(pge_to_mge(ec, &A, &P, -1));
   } else {
     ret &= mge_import(ec, &A, pub, -1);
   }
@@ -10592,7 +10637,7 @@ ecdh_pubkey_convert(const mont_t *ec,
   mge_to_xge(ec, &e, &A);
 
   /* Affinize. */
-  assert(fe_invert(fe, e.z, e.z));
+  CHECK(fe_invert(fe, e.z, e.z));
   fe_mul(fe, e.x, e.x, e.z);
   fe_mul(fe, e.y, e.y, e.z);
 
@@ -10619,7 +10664,7 @@ ecdh_pubkey_from_uniform(const mont_t *ec,
 
   mont_point_from_uniform(ec, &A, bytes);
 
-  assert(mge_export(ec, out, &A));
+  CHECK(mge_export(ec, out, &A));
 }
 
 int
@@ -10887,7 +10932,7 @@ eddsa_privkey_generate(const edwards_t *ec,
   const prime_field_t *fe = &ec->fe;
   drbg_t rng;
 
-  drbg_init(&rng, HASH_SHA256, entropy, 32);
+  drbg_init(&rng, HASH_SHA256, entropy, ENTROPY_SIZE);
 
   drbg_generate(&rng, out, fe->adj_size);
 
@@ -10901,7 +10946,7 @@ eddsa_scalar_generate(const edwards_t *ec,
   const scalar_field_t *sc = &ec->sc;
   drbg_t rng;
 
-  drbg_init(&rng, HASH_SHA256, entropy, 32);
+  drbg_init(&rng, HASH_SHA256, entropy, ENTROPY_SIZE);
 
   drbg_generate(&rng, out, sc->size);
 
