@@ -7958,6 +7958,43 @@ bcrypto_schnorr_pubkey_tweak_mul(napi_env env, napi_callback_info info) {
   return result;
 }
 
+#if 0
+static napi_value
+bcrypto_schnorr_pubkey_tweak_test(napi_env env, napi_callback_info info) {
+  napi_value argv[5];
+  size_t argc = 5;
+  int out;
+  const uint8_t *pub, *tweak, *expect;
+  size_t pub_len, tweak_len, expect_len;
+  bool negated;
+  bcrypto_schnorr_t *ec;
+  napi_value result;
+  int ok;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 5);
+  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
+                             &pub_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], (void **)&tweak,
+                             &tweak_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[3], (void **)&expect,
+                             &expect_len) == napi_ok);
+  CHECK(napi_get_value_bool(env, argv[4], &negated) == napi_ok);
+
+  JS_ASSERT(pub_len == ec->field_size, JS_ERR_PUBKEY_SIZE);
+  JS_ASSERT(tweak_len == ec->scalar_size, JS_ERR_SCALAR_SIZE);
+  JS_ASSERT(expect_len == ec->field_size, JS_ERR_PUBKEY_SIZE);
+
+  ok = schnorr_pubkey_tweak_test(ec->ctx, &out, pub, tweak, expect, negated);
+  JS_ASSERT(ok, JS_ERR_PUBKEY);
+
+  CHECK(napi_get_boolean(env, out, &result) == napi_ok);
+
+  return result;
+}
+#endif
+
 static napi_value
 bcrypto_schnorr_pubkey_combine(napi_env env, napi_callback_info info) {
   napi_value argv[2];
@@ -10287,6 +10324,9 @@ bcrypto_init(napi_env env, napi_value exports) {
     { "schnorr_pubkey_import", bcrypto_schnorr_pubkey_import },
     { "schnorr_pubkey_tweak_add", bcrypto_schnorr_pubkey_tweak_add },
     { "schnorr_pubkey_tweak_mul", bcrypto_schnorr_pubkey_tweak_mul },
+#if 0
+    { "schnorr_pubkey_tweak_test", bcrypto_schnorr_pubkey_tweak_test },
+#endif
     { "schnorr_pubkey_combine", bcrypto_schnorr_pubkey_combine },
     { "schnorr_sign", bcrypto_schnorr_sign },
     { "schnorr_verify", bcrypto_schnorr_verify },
