@@ -39,7 +39,6 @@
       "-Wno-overlength-strings"
     ],
     "include_dirs": [
-      "<!(node -e \"require('nan')\")",
       "./src/torsion/include"
     ],
     "variables": {
