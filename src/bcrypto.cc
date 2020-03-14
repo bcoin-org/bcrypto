@@ -1,6 +1,7 @@
 /**
- * bcrypto.cc - fast native bindings to crypto functions.
+ * bcrypto.cc - fast native bindings to crypto functions
  * Copyright (c) 2016-2020, Christopher Jeffrey (MIT License)
+ * https://github.com/bcoin-org/bcrypto
  */
 
 #include <stdint.h>
@@ -8,7 +9,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+
 #include <node_api.h>
+
 #include <torsion/aead.h>
 #include <torsion/chacha20.h>
 #include <torsion/drbg.h>
@@ -21,6 +24,7 @@
 #include <torsion/salsa20.h>
 #include <torsion/siphash.h>
 #include <torsion/util.h>
+
 #include "base58/base58.h"
 #include "bech32/bech32.h"
 #include "cash32/cash32.h"
@@ -44,8 +48,6 @@
     abort();                                           \
   }                                                    \
 } while (0)
-
-#define OK(expr) CHECK((expr) == napi_ok)
 
 #define ENTROPY_SIZE 32
 
@@ -270,10 +272,7 @@ read_value_string_utf8(napi_env env, napi_value value,
 
 static void
 finalize_buffer(napi_env env, void *data, void *hint) {
-  CHECK(data == hint);
-
-  if (data != NULL)
-    safe_free(data);
+  safe_free(data);
 }
 
 static napi_status
@@ -283,7 +282,7 @@ create_external_buffer(napi_env env, size_t length,
                                      length,
                                      data,
                                      finalize_buffer,
-                                     data, /* hint */
+                                     NULL,
                                      result);
 }
 
@@ -10358,10 +10357,11 @@ bcrypto_init(napi_env env, napi_value exports) {
     int value;
   } flags[] = {
 #ifdef BCRYPTO_USE_SECP256K1
-    { "HAS_SECP256K1", 1 }
+    { "HAS_SECP256K1", 1 },
 #else
-    { "HAS_SECP256K1", 0 }
+    { "HAS_SECP256K1", 0 },
 #endif
+    { "ENTROPY_SIZE", ENTROPY_SIZE }
   };
 
   for (i = 0; i < sizeof(funcs) / sizeof(funcs[0]); i++) {
