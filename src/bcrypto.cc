@@ -47,6 +47,8 @@
 
 #define OK(expr) CHECK((expr) == napi_ok)
 
+#define ENTROPY_SIZE 32
+
 #define JS_ERR_CONTEXT "Could not create context."
 #define JS_ERR_SIGNATURE "Invalid signature."
 #define JS_ERR_SIGNATURE_SIZE "Invalid signature size."
@@ -1710,7 +1712,7 @@ bcrypto_dsa_params_generate(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&entropy,
                              &entropy_len) == napi_ok);
 
-  JS_ASSERT(entropy_len == 32, JS_ERR_ENTROPY_SIZE);
+  JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
 
   out = (uint8_t *)safe_malloc(DSA_MAX_PARAMS_SIZE);
   out_len = DSA_MAX_PARAMS_SIZE;
@@ -1731,7 +1733,7 @@ bcrypto_dsa_params_generate(napi_env env, napi_callback_info info) {
 
 typedef struct bcrypto_dsa_worker_s {
   uint32_t bits;
-  uint8_t entropy[32];
+  uint8_t entropy[ENTROPY_SIZE];
   uint8_t *out;
   size_t out_len;
   const char *error;
@@ -1748,7 +1750,7 @@ bcrypto_dsa_execute_(napi_env env, void *data) {
     return;
   }
 
-  cleanse(w->entropy, 32);
+  cleanse(w->entropy, ENTROPY_SIZE);
 
   w->out = (uint8_t *)safe_realloc(w->out, w->out_len);
 }
@@ -1796,7 +1798,7 @@ bcrypto_dsa_params_generate_async(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&entropy,
                              &entropy_len) == napi_ok);
 
-  JS_ASSERT(entropy_len == 32, JS_ERR_ENTROPY_SIZE);
+  JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
 
   worker = (bcrypto_dsa_worker_t *)safe_malloc(sizeof(bcrypto_dsa_worker_t));
   worker->bits = bits;
@@ -1804,7 +1806,7 @@ bcrypto_dsa_params_generate_async(napi_env env, napi_callback_info info) {
   worker->out_len = DSA_MAX_PARAMS_SIZE;
   worker->error = NULL;
 
-  memcpy(worker->entropy, entropy, 32);
+  memcpy(worker->entropy, entropy, ENTROPY_SIZE);
 
   cleanse(entropy, entropy_len);
 
@@ -1944,7 +1946,7 @@ bcrypto_dsa_privkey_create(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&entropy,
                              &entropy_len) == napi_ok);
 
-  JS_ASSERT(entropy_len == 32, JS_ERR_ENTROPY_SIZE);
+  JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
 
   out = (uint8_t *)safe_malloc(DSA_MAX_PRIV_SIZE);
   out_len = DSA_MAX_PRIV_SIZE;
@@ -2259,7 +2261,7 @@ bcrypto_dsa_sign(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&entropy,
                              &entropy_len) == napi_ok);
 
-  JS_ASSERT(entropy_len == 32, JS_ERR_ENTROPY_SIZE);
+  JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
   JS_ASSERT(dsa_sign(out, &out_len, msg, msg_len, key, key_len, entropy),
             JS_ERR_SIGN);
 
@@ -2289,7 +2291,7 @@ bcrypto_dsa_sign_der(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&entropy,
                              &entropy_len) == napi_ok);
 
-  JS_ASSERT(entropy_len == 32, JS_ERR_ENTROPY_SIZE);
+  JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
   JS_ASSERT(dsa_sign(out, &out_len, msg, msg_len, key, key_len, entropy),
             JS_ERR_SIGN);
 
@@ -2388,7 +2390,7 @@ bcrypto_dsa_derive(napi_env env, napi_callback_info info) {
  */
 
 static void
-bcrypto_ecdh_context_destroy(napi_env env, void *data, void *hint) {
+bcrypto_ecdh_destroy(napi_env env, void *data, void *hint) {
   bcrypto_ecdh_t *ec = (bcrypto_ecdh_t *)data;
 
   ecdh_context_destroy(ec->ctx);
@@ -2396,7 +2398,7 @@ bcrypto_ecdh_context_destroy(napi_env env, void *data, void *hint) {
 }
 
 static napi_value
-bcrypto_ecdh_context_create(napi_env env, napi_callback_info info) {
+bcrypto_ecdh_create(napi_env env, napi_callback_info info) {
   napi_value argv[1];
   size_t argc = 1;
   uint32_t type;
@@ -2422,7 +2424,7 @@ bcrypto_ecdh_context_create(napi_env env, napi_callback_info info) {
   CHECK(napi_wrap(env,
                   handle,
                   ec,
-                  bcrypto_ecdh_context_destroy,
+                  bcrypto_ecdh_destroy,
                   NULL,
                   NULL) == napi_ok);
 
@@ -2475,7 +2477,7 @@ bcrypto_ecdh_privkey_generate(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&entropy,
                              &entropy_len) == napi_ok);
 
-  JS_ASSERT(entropy_len == 32, JS_ERR_ENTROPY_SIZE);
+  JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
 
   ecdh_privkey_generate(ec->ctx, out, entropy);
 
@@ -2732,7 +2734,7 @@ bcrypto_ecdh_pubkey_to_hash(napi_env env, napi_callback_info info) {
                              &entropy_len) == napi_ok);
 
   JS_ASSERT(pub_len == ec->field_size, JS_ERR_PUBKEY_SIZE);
-  JS_ASSERT(entropy_len == 32, JS_ERR_ENTROPY_SIZE);
+  JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
   JS_ASSERT(ecdh_pubkey_to_hash(ec->ctx, out, pub, entropy), JS_ERR_PUBKEY);
 
   cleanse(entropy, entropy_len);
@@ -2905,7 +2907,7 @@ bcrypto_ecdh_derive(napi_env env, napi_callback_info info) {
  */
 
 static void
-bcrypto_ecdsa_context_destroy(napi_env env, void *data, void *hint) {
+bcrypto_ecdsa_destroy(napi_env env, void *data, void *hint) {
   bcrypto_ecdsa_t *ec = (bcrypto_ecdsa_t *)data;
 
   ecdsa_scratch_destroy(ec->ctx, ec->scratch);
@@ -2914,7 +2916,7 @@ bcrypto_ecdsa_context_destroy(napi_env env, void *data, void *hint) {
 }
 
 static napi_value
-bcrypto_ecdsa_context_create(napi_env env, napi_callback_info info) {
+bcrypto_ecdsa_create(napi_env env, napi_callback_info info) {
   napi_value argv[1];
   size_t argc = 1;
   uint32_t type;
@@ -2945,7 +2947,7 @@ bcrypto_ecdsa_context_create(napi_env env, napi_callback_info info) {
   CHECK(napi_wrap(env,
                   handle,
                   ec,
-                  bcrypto_ecdsa_context_destroy,
+                  bcrypto_ecdsa_destroy,
                   NULL,
                   NULL) == napi_ok);
 
@@ -2996,7 +2998,7 @@ bcrypto_ecdsa_randomize(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&entropy,
                              &entropy_len) == napi_ok);
 
-  JS_ASSERT(entropy_len == 32, JS_ERR_ENTROPY_SIZE);
+  JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
 
   ecdsa_context_randomize(ec->ctx, entropy);
 
@@ -3021,7 +3023,7 @@ bcrypto_ecdsa_privkey_generate(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&entropy,
                              &entropy_len) == napi_ok);
 
-  JS_ASSERT(entropy_len == 32, JS_ERR_ENTROPY_SIZE);
+  JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
 
   ecdsa_privkey_generate(ec->ctx, out, entropy);
 
@@ -3418,7 +3420,7 @@ bcrypto_ecdsa_pubkey_to_hash(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&entropy,
                              &entropy_len) == napi_ok);
 
-  JS_ASSERT(entropy_len == 32, JS_ERR_ENTROPY_SIZE);
+  JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
   JS_ASSERT(ecdsa_pubkey_to_hash(ec->ctx, out, pub, pub_len, entropy),
             JS_ERR_PUBKEY);
 
@@ -3764,7 +3766,7 @@ bcrypto_ecdsa_signature_import(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
-bcrypto_ecdsa_signature_is_low_s(napi_env env, napi_callback_info info) {
+bcrypto_ecdsa_is_low_s(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   const uint8_t *sig;
@@ -3787,7 +3789,7 @@ bcrypto_ecdsa_signature_is_low_s(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
-bcrypto_ecdsa_signature_is_low_der(napi_env env, napi_callback_info info) {
+bcrypto_ecdsa_is_low_der(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t tmp[ECDSA_MAX_SIG_SIZE];
@@ -4224,7 +4226,7 @@ fail:
  */
 
 static void
-bcrypto_eddsa_context_destroy(napi_env env, void *data, void *hint) {
+bcrypto_eddsa_destroy(napi_env env, void *data, void *hint) {
   bcrypto_eddsa_t *ec = (bcrypto_eddsa_t *)data;
 
   eddsa_scratch_destroy(ec->ctx, ec->scratch);
@@ -4233,7 +4235,7 @@ bcrypto_eddsa_context_destroy(napi_env env, void *data, void *hint) {
 }
 
 static napi_value
-bcrypto_eddsa_context_create(napi_env env, napi_callback_info info) {
+bcrypto_eddsa_create(napi_env env, napi_callback_info info) {
   napi_value argv[1];
   size_t argc = 1;
   uint32_t type;
@@ -4265,7 +4267,7 @@ bcrypto_eddsa_context_create(napi_env env, napi_callback_info info) {
   CHECK(napi_wrap(env,
                   handle,
                   ec,
-                  bcrypto_eddsa_context_destroy,
+                  bcrypto_eddsa_destroy,
                   NULL,
                   NULL) == napi_ok);
 
@@ -4316,7 +4318,7 @@ bcrypto_eddsa_randomize(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&entropy,
                              &entropy_len) == napi_ok);
 
-  JS_ASSERT(entropy_len == 32, JS_ERR_ENTROPY_SIZE);
+  JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
 
   eddsa_context_randomize(ec->ctx, entropy);
 
@@ -4341,7 +4343,7 @@ bcrypto_eddsa_privkey_generate(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&entropy,
                              &entropy_len) == napi_ok);
 
-  JS_ASSERT(entropy_len == 32, JS_ERR_ENTROPY_SIZE);
+  JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
 
   eddsa_privkey_generate(ec->ctx, out, entropy);
 
@@ -4519,7 +4521,7 @@ bcrypto_eddsa_scalar_generate(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&entropy,
                              &entropy_len) == napi_ok);
 
-  JS_ASSERT(entropy_len == 32, JS_ERR_ENTROPY_SIZE);
+  JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
 
   eddsa_scalar_generate(ec->ctx, out, entropy);
 
@@ -4951,7 +4953,7 @@ bcrypto_eddsa_pubkey_to_hash(napi_env env, napi_callback_info info) {
                              &entropy_len) == napi_ok);
 
   JS_ASSERT(pub_len == ec->pub_size, JS_ERR_PUBKEY_SIZE);
-  JS_ASSERT(entropy_len == 32, JS_ERR_ENTROPY_SIZE);
+  JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
   JS_ASSERT(eddsa_pubkey_to_hash(ec->ctx, out, pub, entropy),
             JS_ERR_PUBKEY);
 
@@ -6492,7 +6494,7 @@ bcrypto_rsa_privkey_generate(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&entropy,
                              &entropy_len) == napi_ok);
 
-  JS_ASSERT(entropy_len == 32, JS_ERR_ENTROPY_SIZE);
+  JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
 
   out = (uint8_t *)safe_malloc(RSA_MAX_PRIV_SIZE);
   out_len = RSA_MAX_PRIV_SIZE;
@@ -6514,7 +6516,7 @@ bcrypto_rsa_privkey_generate(napi_env env, napi_callback_info info) {
 typedef struct bcrypto_rsa_worker_s {
   uint32_t bits;
   int64_t exp;
-  uint8_t entropy[32];
+  uint8_t entropy[ENTROPY_SIZE];
   uint8_t *out;
   size_t out_len;
   const char *error;
@@ -6531,7 +6533,7 @@ bcrypto_rsa_execute_(napi_env env, void *data) {
     return;
   }
 
-  cleanse(w->entropy, 32);
+  cleanse(w->entropy, ENTROPY_SIZE);
 
   w->out = (uint8_t *)safe_realloc(w->out, w->out_len);
 }
@@ -6581,7 +6583,7 @@ bcrypto_rsa_privkey_generate_async(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&entropy,
                              &entropy_len) == napi_ok);
 
-  JS_ASSERT(entropy_len == 32, JS_ERR_ENTROPY_SIZE);
+  JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
 
   worker = (bcrypto_rsa_worker_t *)safe_malloc(sizeof(bcrypto_rsa_worker_t));
   worker->bits = bits;
@@ -6590,7 +6592,7 @@ bcrypto_rsa_privkey_generate_async(napi_env env, napi_callback_info info) {
   worker->out_len = RSA_MAX_PRIV_SIZE;
   worker->error = NULL;
 
-  memcpy(worker->entropy, entropy, 32);
+  memcpy(worker->entropy, entropy, ENTROPY_SIZE);
 
   cleanse(entropy, entropy_len);
 
@@ -6672,7 +6674,7 @@ bcrypto_rsa_privkey_import(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&entropy,
                              &entropy_len) == napi_ok);
 
-  JS_ASSERT(entropy_len == 32, JS_ERR_ENTROPY_SIZE);
+  JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
 
   out = (uint8_t *)safe_malloc(RSA_MAX_PRIV_SIZE);
   out_len = RSA_MAX_PRIV_SIZE;
@@ -6870,7 +6872,7 @@ bcrypto_rsa_sign(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[3], (void **)&entropy,
                              &entropy_len) == napi_ok);
 
-  JS_ASSERT(entropy_len == 32, JS_ERR_ENTROPY_SIZE);
+  JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
 
   out = (uint8_t *)safe_malloc(RSA_MAX_MOD_SIZE);
   out_len = RSA_MAX_MOD_SIZE;
@@ -6932,7 +6934,7 @@ bcrypto_rsa_encrypt(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&entropy,
                              &entropy_len) == napi_ok);
 
-  JS_ASSERT(entropy_len == 32, JS_ERR_ENTROPY_SIZE);
+  JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
 
   out = (uint8_t *)safe_malloc(RSA_MAX_MOD_SIZE);
   out_len = RSA_MAX_MOD_SIZE;
@@ -6970,7 +6972,7 @@ bcrypto_rsa_decrypt(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&entropy,
                              &entropy_len) == napi_ok);
 
-  JS_ASSERT(entropy_len == 32, JS_ERR_ENTROPY_SIZE);
+  JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
 
   out = (uint8_t *)safe_malloc(RSA_MAX_MOD_SIZE);
   out_len = RSA_MAX_MOD_SIZE;
@@ -7012,7 +7014,7 @@ bcrypto_rsa_sign_pss(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[4], (void **)&entropy,
                              &entropy_len) == napi_ok);
 
-  JS_ASSERT(entropy_len == 32, JS_ERR_ENTROPY_SIZE);
+  JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
 
   out = (uint8_t *)safe_malloc(RSA_MAX_MOD_SIZE);
   out_len = RSA_MAX_MOD_SIZE;
@@ -7081,7 +7083,7 @@ bcrypto_rsa_encrypt_oaep(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[4], (void **)&entropy,
                              &entropy_len) == napi_ok);
 
-  JS_ASSERT(entropy_len == 32, JS_ERR_ENTROPY_SIZE);
+  JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
 
   out = (uint8_t *)safe_malloc(RSA_MAX_MOD_SIZE);
   out_len = RSA_MAX_MOD_SIZE;
@@ -7124,7 +7126,7 @@ bcrypto_rsa_decrypt_oaep(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[4], (void **)&entropy,
                              &entropy_len) == napi_ok);
 
-  JS_ASSERT(entropy_len == 32, JS_ERR_ENTROPY_SIZE);
+  JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
 
   out = (uint8_t *)safe_malloc(RSA_MAX_MOD_SIZE);
   out_len = RSA_MAX_MOD_SIZE;
@@ -7165,7 +7167,7 @@ bcrypto_rsa_veil(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[3], (void **)&entropy,
                              &entropy_len) == napi_ok);
 
-  JS_ASSERT(entropy_len == 32, JS_ERR_ENTROPY_SIZE);
+  JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
 
   out_len = (bits + 7) / 8;
   out = (uint8_t *)safe_malloc(out_len);
@@ -7339,7 +7341,7 @@ bcrypto_salsa20_derive(napi_env env, napi_callback_info info) {
  */
 
 static void
-bcrypto_schnorr_context_destroy(napi_env env, void *data, void *hint) {
+bcrypto_schnorr_destroy(napi_env env, void *data, void *hint) {
   bcrypto_schnorr_t *ec = (bcrypto_schnorr_t *)data;
 
   schnorr_scratch_destroy(ec->ctx, ec->scratch);
@@ -7348,7 +7350,7 @@ bcrypto_schnorr_context_destroy(napi_env env, void *data, void *hint) {
 }
 
 static napi_value
-bcrypto_schnorr_context_create(napi_env env, napi_callback_info info) {
+bcrypto_schnorr_create(napi_env env, napi_callback_info info) {
   napi_value argv[1];
   size_t argc = 1;
   uint32_t type;
@@ -7378,7 +7380,7 @@ bcrypto_schnorr_context_create(napi_env env, napi_callback_info info) {
   CHECK(napi_wrap(env,
                   handle,
                   ec,
-                  bcrypto_schnorr_context_destroy,
+                  bcrypto_schnorr_destroy,
                   NULL,
                   NULL) == napi_ok);
 
@@ -7429,7 +7431,7 @@ bcrypto_schnorr_randomize(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&entropy,
                              &entropy_len) == napi_ok);
 
-  JS_ASSERT(entropy_len == 32, JS_ERR_ENTROPY_SIZE);
+  JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
 
   schnorr_context_randomize(ec->ctx, entropy);
 
@@ -7454,7 +7456,7 @@ bcrypto_schnorr_privkey_generate(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&entropy,
                              &entropy_len) == napi_ok);
 
-  JS_ASSERT(entropy_len == 32, JS_ERR_ENTROPY_SIZE);
+  JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
 
   schnorr_privkey_generate(ec->ctx, out, entropy);
 
@@ -7805,7 +7807,7 @@ bcrypto_schnorr_pubkey_to_hash(napi_env env, napi_callback_info info) {
                              &entropy_len) == napi_ok);
 
   JS_ASSERT(pub_len == ec->field_size, JS_ERR_PUBKEY_SIZE);
-  JS_ASSERT(entropy_len == 32, JS_ERR_ENTROPY_SIZE);
+  JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
   JS_ASSERT(schnorr_pubkey_to_hash(ec->ctx, out, pub, entropy), JS_ERR_PUBKEY);
 
   cleanse(entropy, entropy_len);
@@ -8022,7 +8024,6 @@ bcrypto_schnorr_sign(napi_env env, napi_callback_info info) {
                              &priv_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[3], (void **)&aux, &aux_len) == napi_ok);
 
-  JS_ASSERT(ecdsa_schnorr_support(ec->ctx), JS_ERR_NO_SCHNORR);
   JS_ASSERT(priv_len == ec->scalar_size, JS_ERR_PRIVKEY_SIZE);
   JS_ASSERT(aux_len == 32, JS_ERR_PRIVKEY_SIZE);
   JS_ASSERT(schnorr_sign(ec->ctx, out, msg, msg_len, priv, aux), JS_ERR_SIGN);
@@ -8053,8 +8054,6 @@ bcrypto_schnorr_verify(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&sig, &sig_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[3], (void **)&pub, &pub_len) == napi_ok);
 
-  JS_ASSERT(ecdsa_schnorr_support(ec->ctx), JS_ERR_NO_SCHNORR);
-
   ok = sig_len == ec->sig_size
     && pub_len == ec->field_size
     && schnorr_verify(ec->ctx, msg, msg_len, sig, pub);
@@ -8081,8 +8080,6 @@ bcrypto_schnorr_verify_batch(napi_env env, napi_callback_info info) {
   CHECK(argc == 2);
   CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_array_length(env, argv[1], &length) == napi_ok);
-
-  JS_ASSERT(ecdsa_schnorr_support(ec->ctx), JS_ERR_NO_SCHNORR);
 
   if (length == 0) {
     CHECK(napi_get_boolean(env, true, &result) == napi_ok);
@@ -8323,7 +8320,7 @@ bcrypto_scrypt_derive_async(napi_env env, napi_callback_info info) {
 
 #ifdef BCRYPTO_USE_SECP256K1
 static void
-bcrypto_secp256k1_context_destroy(napi_env env, void *data, void *hint) {
+bcrypto_secp256k1_destroy(napi_env env, void *data, void *hint) {
   bcrypto_secp256k1_t *ec = (bcrypto_secp256k1_t *)data;
 
   secp256k1_scratch_space_destroy(ec->scratch);
@@ -8332,7 +8329,7 @@ bcrypto_secp256k1_context_destroy(napi_env env, void *data, void *hint) {
 }
 
 static napi_value
-bcrypto_secp256k1_context_create(napi_env env, napi_callback_info info) {
+bcrypto_secp256k1_create(napi_env env, napi_callback_info info) {
   static const int flags = SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY;
   bcrypto_secp256k1_t *ec;
   secp256k1_context *ctx;
@@ -8355,7 +8352,7 @@ bcrypto_secp256k1_context_create(napi_env env, napi_callback_info info) {
   CHECK(napi_wrap(env,
                   handle,
                   ec,
-                  bcrypto_secp256k1_context_destroy,
+                  bcrypto_secp256k1_destroy,
                   NULL,
                   NULL) == napi_ok);
 
@@ -8400,7 +8397,7 @@ bcrypto_secp256k1_privkey_generate(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&entropy,
                              &entropy_len) == napi_ok);
 
-  JS_ASSERT(entropy_len == 32, JS_ERR_ENTROPY_SIZE);
+  JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
 
   CHECK(secp256k1_ec_privkey_generate(ec->ctx, out, entropy));
 
@@ -8798,7 +8795,7 @@ bcrypto_secp256k1_pubkey_to_hash(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&entropy,
                              &entropy_len) == napi_ok);
 
-  JS_ASSERT(entropy_len == 32, JS_ERR_ENTROPY_SIZE);
+  JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
 
   JS_ASSERT(secp256k1_ec_pubkey_parse(ec->ctx, &pubkey, pub, pub_len),
             JS_ERR_PUBKEY);
@@ -9201,7 +9198,7 @@ bcrypto_secp256k1_signature_import(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
-bcrypto_secp256k1_signature_is_low_s(napi_env env, napi_callback_info info) {
+bcrypto_secp256k1_is_low_s(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   const uint8_t *sig;
@@ -9227,7 +9224,7 @@ bcrypto_secp256k1_signature_is_low_s(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
-bcrypto_secp256k1_signature_is_low_der(napi_env env, napi_callback_info info) {
+bcrypto_secp256k1_is_low_der(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   const uint8_t *sig;
@@ -10084,7 +10081,7 @@ bcrypto_init(napi_env env, napi_value exports) {
     { "dsa_derive", bcrypto_dsa_derive },
 
     /* ECDH */
-    { "ecdh_context_create", bcrypto_ecdh_context_create },
+    { "ecdh_create", bcrypto_ecdh_create },
     { "ecdh_size", bcrypto_ecdh_size },
     { "ecdh_bits", bcrypto_ecdh_bits },
     { "ecdh_privkey_generate", bcrypto_ecdh_privkey_generate },
@@ -10105,7 +10102,7 @@ bcrypto_init(napi_env env, napi_value exports) {
     { "ecdh_derive", bcrypto_ecdh_derive },
 
     /* ECDSA */
-    { "ecdsa_context_create", bcrypto_ecdsa_context_create },
+    { "ecdsa_create", bcrypto_ecdsa_create },
     { "ecdsa_size", bcrypto_ecdsa_size },
     { "ecdsa_bits", bcrypto_ecdsa_bits },
     { "ecdsa_randomize", bcrypto_ecdsa_randomize },
@@ -10135,8 +10132,8 @@ bcrypto_init(napi_env env, napi_value exports) {
     { "ecdsa_signature_normalize_der", bcrypto_ecdsa_signature_normalize_der },
     { "ecdsa_signature_export", bcrypto_ecdsa_signature_export },
     { "ecdsa_signature_import", bcrypto_ecdsa_signature_import },
-    { "ecdsa_signature_is_low_s", bcrypto_ecdsa_signature_is_low_s },
-    { "ecdsa_signature_is_low_der", bcrypto_ecdsa_signature_is_low_der },
+    { "ecdsa_is_low_s", bcrypto_ecdsa_is_low_s },
+    { "ecdsa_is_low_der", bcrypto_ecdsa_is_low_der },
     { "ecdsa_sign", bcrypto_ecdsa_sign },
     { "ecdsa_sign_recoverable", bcrypto_ecdsa_sign_recoverable },
     { "ecdsa_sign_der", bcrypto_ecdsa_sign_der },
@@ -10151,7 +10148,7 @@ bcrypto_init(napi_env env, napi_value exports) {
     { "ecdsa_schnorr_verify_batch", bcrypto_ecdsa_schnorr_verify_batch },
 
     /* EdDSA */
-    { "eddsa_context_create", bcrypto_eddsa_context_create },
+    { "eddsa_create", bcrypto_eddsa_create },
     { "eddsa_size", bcrypto_eddsa_size },
     { "eddsa_bits", bcrypto_eddsa_bits },
     { "eddsa_randomize", bcrypto_eddsa_randomize },
@@ -10269,7 +10266,7 @@ bcrypto_init(napi_env env, napi_value exports) {
     { "salsa20_derive", bcrypto_salsa20_derive },
 
     /* Schnorr */
-    { "schnorr_context_create", bcrypto_schnorr_context_create },
+    { "schnorr_create", bcrypto_schnorr_create },
     { "schnorr_size", bcrypto_schnorr_size },
     { "schnorr_bits", bcrypto_schnorr_bits },
     { "schnorr_randomize", bcrypto_schnorr_randomize },
@@ -10303,7 +10300,7 @@ bcrypto_init(napi_env env, napi_value exports) {
 
 #ifdef BCRYPTO_USE_SECP256K1
     /* Secp256k1 */
-    { "secp256k1_context_create", bcrypto_secp256k1_context_create },
+    { "secp256k1_create", bcrypto_secp256k1_create },
     { "secp256k1_randomize", bcrypto_secp256k1_randomize },
     { "secp256k1_privkey_generate", bcrypto_secp256k1_privkey_generate },
     { "secp256k1_privkey_verify", bcrypto_secp256k1_privkey_verify },
@@ -10331,8 +10328,8 @@ bcrypto_init(napi_env env, napi_value exports) {
     { "secp256k1_signature_normalize_der", bcrypto_secp256k1_signature_normalize_der },
     { "secp256k1_signature_export", bcrypto_secp256k1_signature_export },
     { "secp256k1_signature_import", bcrypto_secp256k1_signature_import },
-    { "secp256k1_signature_is_low_s", bcrypto_secp256k1_signature_is_low_s },
-    { "secp256k1_signature_is_low_der", bcrypto_secp256k1_signature_is_low_der },
+    { "secp256k1_is_low_s", bcrypto_secp256k1_is_low_s },
+    { "secp256k1_is_low_der", bcrypto_secp256k1_is_low_der },
     { "secp256k1_sign", bcrypto_secp256k1_sign },
     { "secp256k1_sign_recoverable", bcrypto_secp256k1_sign_recoverable },
     { "secp256k1_sign_der", bcrypto_secp256k1_sign_der },
