@@ -278,7 +278,7 @@ describe('Cash32', function() {
     }
   });
 
-  describe('Invalid Encoding', () => {
+  describe.skip('Invalid Encoding', () => {
     for (const vector of vectors.encode) {
       it(`"${vector.reason}" (${vector.note})`, () => {
         assert.throws(() => {
@@ -289,7 +289,7 @@ describe('Cash32', function() {
     }
   });
 
-  describe('Invalid Decoding', () => {
+  describe.skip('Invalid Decoding', () => {
     for (const vector of vectors.decode) {
       const text = vector.addr.slice(0, 32) + '...';
 

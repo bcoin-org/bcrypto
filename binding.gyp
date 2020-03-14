@@ -18,34 +18,7 @@
       "./src/torsion/src/salsa20.c",
       "./src/torsion/src/siphash.c",
       "./src/torsion/src/util.c",
-      "./src/aead.cc",
-      "./src/base58.cc",
-      "./src/bech32.cc",
-      "./src/bcrypto.cc",
-      "./src/blake2b.cc",
-      "./src/blake2s.cc",
-      "./src/cash32.cc",
-      "./src/chacha20.cc",
-      "./src/dsa.cc",
-      "./src/dsa_async.cc",
-      "./src/ecdh.cc",
-      "./src/ecdsa.cc",
-      "./src/eddsa.cc",
-      "./src/hash.cc",
-      "./src/hmac.cc",
-      "./src/keccak.cc",
-      "./src/murmur3.cc",
-      "./src/pbkdf2.cc",
-      "./src/pbkdf2_async.cc",
-      "./src/poly1305.cc",
-      "./src/rsa.cc",
-      "./src/rsa_async.cc",
-      "./src/salsa20.cc",
-      "./src/schnorr.cc",
-      "./src/scrypt.cc",
-      "./src/scrypt_async.cc",
-      "./src/siphash.cc",
-      "./src/util.cc"
+      "./src/napi.cc"
     ],
     "cflags": [
       "-Wall",
@@ -64,11 +37,6 @@
       "-Wno-declaration-after-statement",
       "-Wno-long-long",
       "-Wno-overlength-strings"
-    ],
-    "cflags_cc+": [
-      "-std=c++0x",
-      "-Wno-cast-function-type",
-      "-Wno-unused-parameter"
     ],
     "include_dirs": [
       "<!(node -e \"require('nan')\")",
@@ -139,8 +107,7 @@
         ],
         "sources": [
           "./src/secp256k1/src/secp256k1.c",
-          "./src/secp256k1/contrib/lax_der_parsing.c",
-          "./src/secp256k1.cc"
+          "./src/secp256k1/contrib/lax_der_parsing.c"
         ],
         "conditions": [
           ["target_arch=='x64' and OS!='win'", {
