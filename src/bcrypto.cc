@@ -9988,7 +9988,7 @@ bcrypto_init(napi_env env, napi_value exports) {
   static struct {
     const char *name;
     napi_callback callback;
-  } exported[] = {
+  } funcs[] = {
     /* AEAD */
     { "aead_create", bcrypto_aead_create },
     { "aead_init", bcrypto_aead_init },
@@ -10353,9 +10353,20 @@ bcrypto_init(napi_env env, napi_value exports) {
     { "sipmod", bcrypto_sipmod }
   };
 
-  for (i = 0; i < sizeof(exported) / sizeof(exported[0]); i++) {
-    const char *name = exported[i].name;
-    napi_callback callback = exported[i].callback;
+  static struct {
+    const char *name;
+    int value;
+  } flags[] = {
+#ifdef BCRYPTO_USE_SECP256K1
+    { "HAS_SECP256K1", 1 }
+#else
+    { "HAS_SECP256K1", 0 }
+#endif
+  };
+
+  for (i = 0; i < sizeof(funcs) / sizeof(funcs[0]); i++) {
+    const char *name = funcs[i].name;
+    napi_callback callback = funcs[i].callback;
     napi_value fn;
 
     CHECK(napi_create_function(env,
@@ -10366,6 +10377,15 @@ bcrypto_init(napi_env env, napi_value exports) {
                                &fn) == napi_ok);
 
     CHECK(napi_set_named_property(env, exports, name, fn) == napi_ok);
+  }
+
+  for (i = 0; i < sizeof(flags) / sizeof(flags[0]); i++) {
+    const char *name = flags[i].name;
+    int value = flags[i].value;
+    napi_value val;
+
+    CHECK(napi_create_uint32(env, value, &val) == napi_ok);
+    CHECK(napi_set_named_property(env, exports, name, val) == napi_ok);
   }
 
   return exports;
