@@ -1759,11 +1759,8 @@ bcrypto_dsa_complete_(napi_env env, napi_status status, void *data) {
   bcrypto_dsa_worker_t *w = (bcrypto_dsa_worker_t *)data;
   napi_value result, strval;
 
-  if (status != napi_ok) {
-    safe_free(w->out);
-    safe_free(w);
-    return;
-  }
+  if (status != napi_ok)
+    w->error = JS_ERR_GENERATE;
 
   if (w->error == NULL) {
     CHECK(create_external_buffer(env, w->out_len, w->out, &result) == napi_ok);
@@ -6256,13 +6253,8 @@ bcrypto_pbkdf2_complete_(napi_env env, napi_status status, void *data) {
   bcrypto_pbkdf2_worker_t *w = (bcrypto_pbkdf2_worker_t *)data;
   napi_value result, strval;
 
-  if (status != napi_ok) {
-    safe_free(w->pass);
-    safe_free(w->salt);
-    safe_free(w->out);
-    safe_free(w);
-    return;
-  }
+  if (status != napi_ok)
+    w->error = JS_ERR_DERIVE;
 
   if (w->error == NULL) {
     CHECK(create_external_buffer(env, w->out_len, w->out, &result) == napi_ok);
@@ -6542,11 +6534,8 @@ bcrypto_rsa_complete_(napi_env env, napi_status status, void *data) {
   bcrypto_rsa_worker_t *w = (bcrypto_rsa_worker_t *)data;
   napi_value result, strval;
 
-  if (status != napi_ok) {
-    safe_free(w->out);
-    safe_free(w);
-    return;
-  }
+  if (status != napi_ok)
+    w->error = JS_ERR_GENERATE;
 
   if (w->error == NULL) {
     CHECK(create_external_buffer(env, w->out_len, w->out, &result) == napi_ok);
@@ -8307,13 +8296,8 @@ bcrypto_scrypt_complete_(napi_env env, napi_status status, void *data) {
   bcrypto_scrypt_worker_t *w = (bcrypto_scrypt_worker_t *)data;
   napi_value result, strval;
 
-  if (status != napi_ok) {
-    safe_free(w->pass);
-    safe_free(w->salt);
-    safe_free(w->out);
-    safe_free(w);
-    return;
-  }
+  if (status != napi_ok)
+    w->error = JS_ERR_DERIVE;
 
   if (w->error == NULL) {
     CHECK(create_external_buffer(env, w->out_len, w->out, &result) == napi_ok);
