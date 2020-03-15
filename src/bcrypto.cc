@@ -10377,9 +10377,9 @@ bcrypto_init(napi_env env, napi_value exports) {
     int value;
   } flags[] = {
 #ifdef BCRYPTO_USE_SECP256K1
-    { "HAS_SECP256K1", 1 },
+    { "USE_SECP256K1", 1 },
 #else
-    { "HAS_SECP256K1", 0 },
+    { "USE_SECP256K1", 0 },
 #endif
     { "ENTROPY_SIZE", ENTROPY_SIZE }
   };
@@ -10404,7 +10404,7 @@ bcrypto_init(napi_env env, napi_value exports) {
     int value = flags[i].value;
     napi_value val;
 
-    CHECK(napi_create_uint32(env, value, &val) == napi_ok);
+    CHECK(napi_create_int32(env, value, &val) == napi_ok);
     CHECK(napi_set_named_property(env, exports, name, val) == napi_ok);
   }
 
