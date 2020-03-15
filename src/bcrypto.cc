@@ -303,14 +303,11 @@ bcrypto_aead_create(napi_env env, napi_callback_info info) {
 
   aead_init(ctx);
 
-  CHECK(napi_create_object(env, &handle) == napi_ok);
-
-  CHECK(napi_wrap(env,
-                  handle,
-                  ctx,
-                  bcrypto_aead_destroy_,
-                  NULL,
-                  NULL) == napi_ok);
+  CHECK(napi_create_external(env,
+                             ctx,
+                             bcrypto_aead_destroy_,
+                             NULL,
+                             &handle) == napi_ok);
 
   return handle;
 }
@@ -325,7 +322,7 @@ bcrypto_aead_init(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ctx) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ctx) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&key, &key_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&iv, &iv_len) == napi_ok);
 
@@ -349,7 +346,7 @@ bcrypto_aead_aad(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ctx) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ctx) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&aad, &aad_len) == napi_ok);
 
   JS_ASSERT(ctx->mode != -1, JS_ERR_INIT);
@@ -370,7 +367,7 @@ bcrypto_aead_encrypt(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ctx) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ctx) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
 
   JS_ASSERT(ctx->mode != -1, JS_ERR_INIT);
@@ -391,7 +388,7 @@ bcrypto_aead_decrypt(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ctx) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ctx) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
 
   JS_ASSERT(ctx->mode != -1, JS_ERR_INIT);
@@ -412,7 +409,7 @@ bcrypto_aead_auth(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ctx) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ctx) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
 
   JS_ASSERT(ctx->mode != -1, JS_ERR_INIT);
@@ -433,7 +430,7 @@ bcrypto_aead_final(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ctx) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ctx) == napi_ok);
 
   JS_ASSERT(ctx->mode != -1, JS_ERR_INIT);
 
@@ -452,7 +449,7 @@ bcrypto_aead_destroy(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ctx) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ctx) == napi_ok);
 
   ctx->mode = -1;
 
@@ -472,7 +469,7 @@ bcrypto_aead_verify(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ctx) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ctx) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&tag, &tag_len) == napi_ok);
 
   JS_ASSERT(ctx->mode != -1, JS_ERR_INIT);
@@ -908,14 +905,11 @@ bcrypto_blake2b_create(napi_env env, napi_callback_info info) {
 
   blake->started = 0;
 
-  CHECK(napi_create_object(env, &handle) == napi_ok);
-
-  CHECK(napi_wrap(env,
-                  handle,
-                  blake,
-                  bcrypto_blake2b_destroy,
-                  NULL,
-                  NULL) == napi_ok);
+  CHECK(napi_create_external(env,
+                             blake,
+                             bcrypto_blake2b_destroy,
+                             NULL,
+                             &handle) == napi_ok);
 
   return handle;
 }
@@ -931,7 +925,7 @@ bcrypto_blake2b_init(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&blake) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&blake) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[1], &out_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&key, &key_len) == napi_ok);
 
@@ -954,7 +948,7 @@ bcrypto_blake2b_update(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&blake) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&blake) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&in, &in_len) == napi_ok);
 
   JS_ASSERT(blake->started, JS_ERR_INIT);
@@ -975,7 +969,7 @@ bcrypto_blake2b_final(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_unwrap(env, argv[0], (void **)&blake) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&blake) == napi_ok);
 
   JS_ASSERT(blake->started, JS_ERR_INIT);
 
@@ -1103,14 +1097,11 @@ bcrypto_blake2s_create(napi_env env, napi_callback_info info) {
 
   blake->started = 0;
 
-  CHECK(napi_create_object(env, &handle) == napi_ok);
-
-  CHECK(napi_wrap(env,
-                  handle,
-                  blake,
-                  bcrypto_blake2s_destroy,
-                  NULL,
-                  NULL) == napi_ok);
+  CHECK(napi_create_external(env,
+                             blake,
+                             bcrypto_blake2s_destroy,
+                             NULL,
+                             &handle) == napi_ok);
 
   return handle;
 }
@@ -1126,7 +1117,7 @@ bcrypto_blake2s_init(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&blake) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&blake) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[1], &out_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&key, &key_len) == napi_ok);
 
@@ -1149,7 +1140,7 @@ bcrypto_blake2s_update(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&blake) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&blake) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&in, &in_len) == napi_ok);
 
   JS_ASSERT(blake->started, JS_ERR_INIT);
@@ -1170,7 +1161,7 @@ bcrypto_blake2s_final(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_unwrap(env, argv[0], (void **)&blake) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&blake) == napi_ok);
 
   JS_ASSERT(blake->started, JS_ERR_INIT);
 
@@ -1541,14 +1532,11 @@ bcrypto_chacha20_create(napi_env env, napi_callback_info info) {
 
   chacha->started = 0;
 
-  CHECK(napi_create_object(env, &handle) == napi_ok);
-
-  CHECK(napi_wrap(env,
-                  handle,
-                  chacha,
-                  bcrypto_chacha20_destroy_,
-                  NULL,
-                  NULL) == napi_ok);
+  CHECK(napi_create_external(env,
+                             chacha,
+                             bcrypto_chacha20_destroy_,
+                             NULL,
+                             &handle) == napi_ok);
 
   return handle;
 }
@@ -1564,7 +1552,7 @@ bcrypto_chacha20_init(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_unwrap(env, argv[0], (void **)&chacha) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&chacha) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&key, &key_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&nonce,
                              &nonce_len) == napi_ok);
@@ -1591,7 +1579,7 @@ bcrypto_chacha20_encrypt(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&chacha) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&chacha) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
 
   JS_ASSERT(chacha->started, JS_ERR_INIT);
@@ -1609,7 +1597,7 @@ bcrypto_chacha20_destroy(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_unwrap(env, argv[0], (void **)&chacha) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&chacha) == napi_ok);
 
   chacha->started = 0;
 
@@ -2415,14 +2403,11 @@ bcrypto_ecdh_create(napi_env env, napi_callback_info info) {
   ec->field_size = ecdh_field_size(ec->ctx);
   ec->field_bits = ecdh_field_bits(ec->ctx);
 
-  CHECK(napi_create_object(env, &handle) == napi_ok);
-
-  CHECK(napi_wrap(env,
-                  handle,
-                  ec,
-                  bcrypto_ecdh_destroy,
-                  NULL,
-                  NULL) == napi_ok);
+  CHECK(napi_create_external(env,
+                             ec,
+                             bcrypto_ecdh_destroy,
+                             NULL,
+                             &handle) == napi_ok);
 
   return handle;
 }
@@ -2436,7 +2421,7 @@ bcrypto_ecdh_size(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_create_uint32(env, ec->field_size, &result) == napi_ok);
 
   return result;
@@ -2451,7 +2436,7 @@ bcrypto_ecdh_bits(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_create_uint32(env, ec->field_bits, &result) == napi_ok);
 
   return result;
@@ -2469,7 +2454,7 @@ bcrypto_ecdh_privkey_generate(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&entropy,
                              &entropy_len) == napi_ok);
 
@@ -2500,7 +2485,7 @@ bcrypto_ecdh_privkey_verify(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
                              &priv_len) == napi_ok);
 
@@ -2523,7 +2508,7 @@ bcrypto_ecdh_privkey_export(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
                              &priv_len) == napi_ok);
 
@@ -2551,7 +2536,7 @@ bcrypto_ecdh_privkey_import(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
                              &priv_len) == napi_ok);
 
@@ -2579,7 +2564,7 @@ bcrypto_ecdh_pubkey_create(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
                              &priv_len) == napi_ok);
 
@@ -2610,7 +2595,7 @@ bcrypto_ecdh_pubkey_convert(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub, &pub_len) == napi_ok);
   CHECK(napi_get_value_int32(env, argv[2], &sign) == napi_ok);
 
@@ -2636,7 +2621,7 @@ bcrypto_ecdh_pubkey_from_uniform(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&data,
                              &data_len) == napi_ok);
 
@@ -2666,7 +2651,7 @@ bcrypto_ecdh_pubkey_to_uniform(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
                              &pub_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[2], &hint) == napi_ok);
@@ -2693,7 +2678,7 @@ bcrypto_ecdh_pubkey_from_hash(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&data,
                              &data_len) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[2], &pake) == napi_ok);
@@ -2723,7 +2708,7 @@ bcrypto_ecdh_pubkey_to_hash(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
                              &pub_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&entropy,
@@ -2753,7 +2738,7 @@ bcrypto_ecdh_pubkey_verify(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
                              &pub_len) == napi_ok);
 
@@ -2778,7 +2763,7 @@ bcrypto_ecdh_pubkey_export(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
                              &pub_len) == napi_ok);
   CHECK(napi_get_value_int32(env, argv[2], &sign) == napi_ok);
@@ -2808,7 +2793,7 @@ bcrypto_ecdh_pubkey_import(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&x, &x_len) == napi_ok);
 
   JS_ASSERT(ecdh_pubkey_import(ec->ctx, out, x, x_len), JS_ERR_PUBKEY);
@@ -2834,7 +2819,7 @@ bcrypto_ecdh_pubkey_is_small(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
                              &pub_len) == napi_ok);
 
@@ -2857,7 +2842,7 @@ bcrypto_ecdh_pubkey_has_torsion(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
                              &pub_len) == napi_ok);
 
@@ -2880,7 +2865,7 @@ bcrypto_ecdh_derive(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub, &pub_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&priv,
                              &priv_len) == napi_ok);
@@ -2938,14 +2923,11 @@ bcrypto_ecdsa_create(napi_env env, napi_callback_info info) {
 
   CHECK(ec->scratch != NULL);
 
-  CHECK(napi_create_object(env, &handle) == napi_ok);
-
-  CHECK(napi_wrap(env,
-                  handle,
-                  ec,
-                  bcrypto_ecdsa_destroy,
-                  NULL,
-                  NULL) == napi_ok);
+  CHECK(napi_create_external(env,
+                             ec,
+                             bcrypto_ecdsa_destroy,
+                             NULL,
+                             &handle) == napi_ok);
 
   return handle;
 }
@@ -2959,7 +2941,7 @@ bcrypto_ecdsa_size(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_create_uint32(env, ec->field_size, &result) == napi_ok);
 
   return result;
@@ -2974,7 +2956,7 @@ bcrypto_ecdsa_bits(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_create_uint32(env, ec->field_bits, &result) == napi_ok);
 
   return result;
@@ -2990,7 +2972,7 @@ bcrypto_ecdsa_randomize(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&entropy,
                              &entropy_len) == napi_ok);
 
@@ -3015,7 +2997,7 @@ bcrypto_ecdsa_privkey_generate(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&entropy,
                              &entropy_len) == napi_ok);
 
@@ -3046,7 +3028,7 @@ bcrypto_ecdsa_privkey_verify(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
                              &priv_len) == napi_ok);
 
@@ -3069,7 +3051,7 @@ bcrypto_ecdsa_privkey_export(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
                              &priv_len) == napi_ok);
 
@@ -3097,7 +3079,7 @@ bcrypto_ecdsa_privkey_import(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
                              &priv_len) == napi_ok);
 
@@ -3124,7 +3106,7 @@ bcrypto_ecdsa_privkey_tweak_add(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
                              &priv_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&tweak,
@@ -3155,7 +3137,7 @@ bcrypto_ecdsa_privkey_tweak_mul(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
                              &priv_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&tweak,
@@ -3186,7 +3168,7 @@ bcrypto_ecdsa_privkey_reduce(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
                              &priv_len) == napi_ok);
 
@@ -3213,7 +3195,7 @@ bcrypto_ecdsa_privkey_negate(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
                              &priv_len) == napi_ok);
 
@@ -3241,7 +3223,7 @@ bcrypto_ecdsa_privkey_invert(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
                              &priv_len) == napi_ok);
 
@@ -3271,7 +3253,7 @@ bcrypto_ecdsa_pubkey_create(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
                              &priv_len) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[2], &compress) == napi_ok);
@@ -3300,7 +3282,7 @@ bcrypto_ecdsa_pubkey_convert(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
                              &pub_len) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[2], &compress) == napi_ok);
@@ -3328,7 +3310,7 @@ bcrypto_ecdsa_pubkey_from_uniform(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&data,
                              &data_len) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[2], &compress) == napi_ok);
@@ -3355,7 +3337,7 @@ bcrypto_ecdsa_pubkey_to_uniform(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
                              &pub_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[2], &hint) == napi_ok);
@@ -3383,7 +3365,7 @@ bcrypto_ecdsa_pubkey_from_hash(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&data,
                              &data_len) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[2], &compress) == napi_ok);
@@ -3410,7 +3392,7 @@ bcrypto_ecdsa_pubkey_to_hash(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
                              &pub_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&entropy,
@@ -3440,7 +3422,7 @@ bcrypto_ecdsa_pubkey_verify(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
                              &pub_len) == napi_ok);
 
@@ -3464,7 +3446,7 @@ bcrypto_ecdsa_pubkey_export(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
                              &pub_len) == napi_ok);
 
@@ -3496,7 +3478,7 @@ bcrypto_ecdsa_pubkey_import(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 5);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&x, &x_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&y, &y_len) == napi_ok);
   CHECK(napi_get_value_int32(env, argv[3], &sign) == napi_ok);
@@ -3528,7 +3510,7 @@ bcrypto_ecdsa_pubkey_tweak_add(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
                              &pub_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&tweak,
@@ -3562,7 +3544,7 @@ bcrypto_ecdsa_pubkey_tweak_mul(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
                              &pub_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&tweak,
@@ -3597,7 +3579,7 @@ bcrypto_ecdsa_pubkey_combine(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_array_length(env, argv[1], &length) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[2], &compress) == napi_ok);
 
@@ -3641,7 +3623,7 @@ bcrypto_ecdsa_pubkey_negate(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
                              &pub_len) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[2], &compress) == napi_ok);
@@ -3667,7 +3649,7 @@ bcrypto_ecdsa_signature_normalize(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&sig,
                              &sig_len) == napi_ok);
 
@@ -3696,7 +3678,7 @@ bcrypto_ecdsa_signature_normalize_der(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&sig,
                              &sig_len) == napi_ok);
 
@@ -3722,7 +3704,7 @@ bcrypto_ecdsa_signature_export(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&sig,
                              &sig_len) == napi_ok);
 
@@ -3746,7 +3728,7 @@ bcrypto_ecdsa_signature_import(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&sig,
                              &sig_len) == napi_ok);
 
@@ -3773,7 +3755,7 @@ bcrypto_ecdsa_is_low_s(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&sig,
                              &sig_len) == napi_ok);
 
@@ -3797,7 +3779,7 @@ bcrypto_ecdsa_is_low_der(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&sig,
                              &sig_len) == napi_ok);
 
@@ -3821,7 +3803,7 @@ bcrypto_ecdsa_sign(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&priv,
                              &priv_len) == napi_ok);
@@ -3851,7 +3833,7 @@ bcrypto_ecdsa_sign_recoverable(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&priv,
                              &priv_len) == napi_ok);
@@ -3887,7 +3869,7 @@ bcrypto_ecdsa_sign_der(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&priv,
                              &priv_len) == napi_ok);
@@ -3915,7 +3897,7 @@ bcrypto_ecdsa_sign_recoverable_der(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&priv,
                              &priv_len) == napi_ok);
@@ -3947,7 +3929,7 @@ bcrypto_ecdsa_verify(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&sig, &sig_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[3], (void **)&pub, &pub_len) == napi_ok);
@@ -3974,7 +3956,7 @@ bcrypto_ecdsa_verify_der(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&sig, &sig_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[3], (void **)&pub, &pub_len) == napi_ok);
@@ -4005,7 +3987,7 @@ bcrypto_ecdsa_recover(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 5);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&sig, &sig_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[3], &parm) == napi_ok);
@@ -4042,7 +4024,7 @@ bcrypto_ecdsa_recover_der(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 5);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&sig, &sig_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[3], &parm) == napi_ok);
@@ -4076,7 +4058,7 @@ bcrypto_ecdsa_derive(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub, &pub_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&priv,
                              &priv_len) == napi_ok);
@@ -4103,7 +4085,7 @@ bcrypto_ecdsa_schnorr_sign(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&priv,
                              &priv_len) == napi_ok);
@@ -4133,7 +4115,7 @@ bcrypto_ecdsa_schnorr_verify(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&sig, &sig_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[3], (void **)&pub, &pub_len) == napi_ok);
@@ -4163,7 +4145,7 @@ bcrypto_ecdsa_schnorr_verify_batch(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_array_length(env, argv[1], &length) == napi_ok);
 
   JS_ASSERT(ecdsa_schnorr_support(ec->ctx), JS_ERR_NO_SCHNORR);
@@ -4258,14 +4240,11 @@ bcrypto_eddsa_create(napi_env env, napi_callback_info info) {
 
   CHECK(ec->scratch != NULL);
 
-  CHECK(napi_create_object(env, &handle) == napi_ok);
-
-  CHECK(napi_wrap(env,
-                  handle,
-                  ec,
-                  bcrypto_eddsa_destroy,
-                  NULL,
-                  NULL) == napi_ok);
+  CHECK(napi_create_external(env,
+                             ec,
+                             bcrypto_eddsa_destroy,
+                             NULL,
+                             &handle) == napi_ok);
 
   return handle;
 }
@@ -4279,7 +4258,7 @@ bcrypto_eddsa_size(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_create_uint32(env, ec->pub_size, &result) == napi_ok);
 
   return result;
@@ -4294,7 +4273,7 @@ bcrypto_eddsa_bits(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_create_uint32(env, ec->field_bits, &result) == napi_ok);
 
   return result;
@@ -4310,7 +4289,7 @@ bcrypto_eddsa_randomize(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&entropy,
                              &entropy_len) == napi_ok);
 
@@ -4335,7 +4314,7 @@ bcrypto_eddsa_privkey_generate(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&entropy,
                              &entropy_len) == napi_ok);
 
@@ -4366,7 +4345,7 @@ bcrypto_eddsa_privkey_verify(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
                              &priv_len) == napi_ok);
 
@@ -4389,7 +4368,7 @@ bcrypto_eddsa_privkey_export(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
                              &priv_len) == napi_ok);
 
@@ -4417,7 +4396,7 @@ bcrypto_eddsa_privkey_import(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
                              &priv_len) == napi_ok);
 
@@ -4445,7 +4424,7 @@ bcrypto_eddsa_privkey_expand(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
                              &priv_len) == napi_ok);
 
@@ -4484,7 +4463,7 @@ bcrypto_eddsa_privkey_convert(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
                              &priv_len) == napi_ok);
 
@@ -4513,7 +4492,7 @@ bcrypto_eddsa_scalar_generate(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&entropy,
                              &entropy_len) == napi_ok);
 
@@ -4544,7 +4523,7 @@ bcrypto_eddsa_scalar_verify(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&scalar,
                              &scalar_len) == napi_ok);
 
@@ -4567,7 +4546,7 @@ bcrypto_eddsa_scalar_clamp(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&scalar,
                              &scalar_len) == napi_ok);
 
@@ -4596,7 +4575,7 @@ bcrypto_eddsa_scalar_is_zero(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&scalar,
                              &scalar_len) == napi_ok);
 
@@ -4619,7 +4598,7 @@ bcrypto_eddsa_scalar_tweak_add(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&scalar,
                              &scalar_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&tweak,
@@ -4651,7 +4630,7 @@ bcrypto_eddsa_scalar_tweak_mul(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&scalar,
                              &scalar_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&tweak,
@@ -4683,7 +4662,7 @@ bcrypto_eddsa_scalar_reduce(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&scalar,
                              &scalar_len) == napi_ok);
 
@@ -4710,7 +4689,7 @@ bcrypto_eddsa_scalar_negate(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&scalar,
                              &scalar_len) == napi_ok);
 
@@ -4739,7 +4718,7 @@ bcrypto_eddsa_scalar_invert(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&scalar,
                              &scalar_len) == napi_ok);
 
@@ -4768,7 +4747,7 @@ bcrypto_eddsa_pubkey_create(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
                              &priv_len) == napi_ok);
 
@@ -4797,7 +4776,7 @@ bcrypto_eddsa_pubkey_from_scalar(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&scalar,
                              &scalar_len) == napi_ok);
 
@@ -4826,7 +4805,7 @@ bcrypto_eddsa_pubkey_convert(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
                              &pub_len) == napi_ok);
 
@@ -4854,7 +4833,7 @@ bcrypto_eddsa_pubkey_from_uniform(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&data,
                              &data_len) == napi_ok);
 
@@ -4884,7 +4863,7 @@ bcrypto_eddsa_pubkey_to_uniform(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
                              &pub_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[2], &hint) == napi_ok);
@@ -4911,7 +4890,7 @@ bcrypto_eddsa_pubkey_from_hash(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&data,
                              &data_len) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[2], &pake) == napi_ok);
@@ -4942,7 +4921,7 @@ bcrypto_eddsa_pubkey_to_hash(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
                              &pub_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&entropy,
@@ -4973,7 +4952,7 @@ bcrypto_eddsa_pubkey_verify(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
                              &pub_len) == napi_ok);
 
@@ -4997,7 +4976,7 @@ bcrypto_eddsa_pubkey_export(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
                              &pub_len) == napi_ok);
 
@@ -5027,7 +5006,7 @@ bcrypto_eddsa_pubkey_import(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&x, &x_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&y, &y_len) == napi_ok);
   CHECK(napi_get_value_int32(env, argv[3], &sign) == napi_ok);
@@ -5056,7 +5035,7 @@ bcrypto_eddsa_pubkey_is_infinity(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
                              &pub_len) == napi_ok);
 
@@ -5079,7 +5058,7 @@ bcrypto_eddsa_pubkey_is_small(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
                              &pub_len) == napi_ok);
 
@@ -5102,7 +5081,7 @@ bcrypto_eddsa_pubkey_has_torsion(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
                              &pub_len) == napi_ok);
 
@@ -5125,7 +5104,7 @@ bcrypto_eddsa_pubkey_tweak_add(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
                              &pub_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&tweak,
@@ -5156,7 +5135,7 @@ bcrypto_eddsa_pubkey_tweak_mul(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
                              &pub_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&tweak,
@@ -5189,7 +5168,7 @@ bcrypto_eddsa_pubkey_combine(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_array_length(env, argv[1], &length) == napi_ok);
 
   pubs = (const uint8_t **)safe_malloc((length + 1) * sizeof(uint8_t *));
@@ -5232,7 +5211,7 @@ bcrypto_eddsa_pubkey_negate(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
                              &pub_len) == napi_ok);
 
@@ -5261,7 +5240,7 @@ bcrypto_eddsa_sign(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 5);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&priv,
                              &priv_len) == napi_ok);
@@ -5294,7 +5273,7 @@ bcrypto_eddsa_sign_with_scalar(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 6);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&scalar,
                              &scalar_len) == napi_ok);
@@ -5331,7 +5310,7 @@ bcrypto_eddsa_sign_tweak_add(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 6);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&priv,
                              &priv_len) == napi_ok);
@@ -5368,7 +5347,7 @@ bcrypto_eddsa_sign_tweak_mul(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 6);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&priv,
                              &priv_len) == napi_ok);
@@ -5405,7 +5384,7 @@ bcrypto_eddsa_verify(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 6);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&sig, &sig_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[3], (void **)&pub, &pub_len) == napi_ok);
@@ -5434,7 +5413,7 @@ bcrypto_eddsa_verify_single(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 6);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&sig, &sig_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[3], (void **)&pub, &pub_len) == napi_ok);
@@ -5467,7 +5446,7 @@ bcrypto_eddsa_verify_batch(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_array_length(env, argv[1], &length) == napi_ok);
   CHECK(napi_get_value_int32(env, argv[2], &ph) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[3], (void **)&ctx, &ctx_len) == napi_ok);
@@ -5533,7 +5512,7 @@ bcrypto_eddsa_derive(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub, &pub_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&priv,
                              &priv_len) == napi_ok);
@@ -5563,7 +5542,7 @@ bcrypto_eddsa_derive_with_scalar(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub, &pub_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&scalar,
                              &scalar_len) == napi_ok);
@@ -5609,14 +5588,11 @@ bcrypto_hash_create(napi_env env, napi_callback_info info) {
   hash->type = type;
   hash->started = 0;
 
-  CHECK(napi_create_object(env, &handle) == napi_ok);
-
-  CHECK(napi_wrap(env,
-                  handle,
-                  hash,
-                  bcrypto_hash_destroy,
-                  NULL,
-                  NULL) == napi_ok);
+  CHECK(napi_create_external(env,
+                             hash,
+                             bcrypto_hash_destroy,
+                             NULL,
+                             &handle) == napi_ok);
 
   return handle;
 }
@@ -5629,7 +5605,7 @@ bcrypto_hash_init(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_unwrap(env, argv[0], (void **)&hash) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&hash) == napi_ok);
 
   hash_init(&hash->ctx, hash->type);
   hash->started = 1;
@@ -5647,7 +5623,7 @@ bcrypto_hash_update(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&hash) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&hash) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&in, &in_len) == napi_ok);
 
   JS_ASSERT(hash->started, JS_ERR_INIT);
@@ -5668,7 +5644,7 @@ bcrypto_hash_final(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_unwrap(env, argv[0], (void **)&hash) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&hash) == napi_ok);
 
   JS_ASSERT(hash->started, JS_ERR_INIT);
 
@@ -5810,14 +5786,11 @@ bcrypto_hmac_create(napi_env env, napi_callback_info info) {
   hmac->type = type;
   hmac->started = 0;
 
-  CHECK(napi_create_object(env, &handle) == napi_ok);
-
-  CHECK(napi_wrap(env,
-                  handle,
-                  hmac,
-                  bcrypto_hmac_destroy,
-                  NULL,
-                  NULL) == napi_ok);
+  CHECK(napi_create_external(env,
+                             hmac,
+                             bcrypto_hmac_destroy,
+                             NULL,
+                             &handle) == napi_ok);
 
   return handle;
 }
@@ -5832,7 +5805,7 @@ bcrypto_hmac_init(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&hmac) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&hmac) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&key, &key_len) == napi_ok);
 
   hmac_init(&hmac->ctx, hmac->type, key, key_len);
@@ -5851,7 +5824,7 @@ bcrypto_hmac_update(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&hmac) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&hmac) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&in, &in_len) == napi_ok);
 
   JS_ASSERT(hmac->started, JS_ERR_INIT);
@@ -5872,7 +5845,7 @@ bcrypto_hmac_final(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_unwrap(env, argv[0], (void **)&hmac) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&hmac) == napi_ok);
 
   JS_ASSERT(hmac->started, JS_ERR_INIT);
 
@@ -5935,14 +5908,11 @@ bcrypto_keccak_create(napi_env env, napi_callback_info info) {
 
   keccak->started = 0;
 
-  CHECK(napi_create_object(env, &handle) == napi_ok);
-
-  CHECK(napi_wrap(env,
-                  handle,
-                  keccak,
-                  bcrypto_keccak_destroy,
-                  NULL,
-                  NULL) == napi_ok);
+  CHECK(napi_create_external(env,
+                             keccak,
+                             bcrypto_keccak_destroy,
+                             NULL,
+                             &handle) == napi_ok);
 
   return handle;
 }
@@ -5956,7 +5926,7 @@ bcrypto_keccak_init(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&keccak) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&keccak) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[1], &bits) == napi_ok);
 
   rate = 1600 - bits * 2;
@@ -5979,7 +5949,7 @@ bcrypto_keccak_update(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&keccak) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&keccak) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&in, &in_len) == napi_ok);
 
   JS_ASSERT(keccak->started, JS_ERR_INIT);
@@ -6000,7 +5970,7 @@ bcrypto_keccak_final(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&keccak) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&keccak) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[1], &pad) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[2], &out_len) == napi_ok);
 
@@ -6344,14 +6314,11 @@ bcrypto_poly1305_create(napi_env env, napi_callback_info info) {
 
   poly->started = 0;
 
-  CHECK(napi_create_object(env, &handle) == napi_ok);
-
-  CHECK(napi_wrap(env,
-                  handle,
-                  poly,
-                  bcrypto_poly1305_destroy_,
-                  NULL,
-                  NULL) == napi_ok);
+  CHECK(napi_create_external(env,
+                             poly,
+                             bcrypto_poly1305_destroy_,
+                             NULL,
+                             &handle) == napi_ok);
 
   return handle;
 }
@@ -6366,7 +6333,7 @@ bcrypto_poly1305_init(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&poly) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&poly) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&key, &key_len) == napi_ok);
 
   JS_ASSERT(key_len == 32, JS_ERR_KEY_SIZE);
@@ -6387,7 +6354,7 @@ bcrypto_poly1305_update(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&poly) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&poly) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
 
   JS_ASSERT(poly->started, JS_ERR_INIT);
@@ -6407,7 +6374,7 @@ bcrypto_poly1305_final(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_unwrap(env, argv[0], (void **)&poly) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&poly) == napi_ok);
 
   JS_ASSERT(poly->started, JS_ERR_INIT);
 
@@ -6427,7 +6394,7 @@ bcrypto_poly1305_destroy(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_unwrap(env, argv[0], (void **)&poly) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&poly) == napi_ok);
 
   poly->started = 0;
 
@@ -6446,7 +6413,7 @@ bcrypto_poly1305_verify(napi_env env, napi_callback_info info) {
   int ok;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
-  CHECK(napi_unwrap(env, argv[0], (void **)&poly) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&poly) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&tag, &tag_len) == napi_ok);
 
   JS_ASSERT(tag_len == 16, JS_ERR_TAG_SIZE);
@@ -7224,14 +7191,11 @@ bcrypto_salsa20_create(napi_env env, napi_callback_info info) {
 
   salsa->started = 0;
 
-  CHECK(napi_create_object(env, &handle) == napi_ok);
-
-  CHECK(napi_wrap(env,
-                  handle,
-                  salsa,
-                  bcrypto_salsa20_destroy_,
-                  NULL,
-                  NULL) == napi_ok);
+  CHECK(napi_create_external(env,
+                             salsa,
+                             bcrypto_salsa20_destroy_,
+                             NULL,
+                             &handle) == napi_ok);
 
   return handle;
 }
@@ -7247,7 +7211,7 @@ bcrypto_salsa20_init(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_unwrap(env, argv[0], (void **)&salsa) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&salsa) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&key, &key_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&nonce,
                              &nonce_len) == napi_ok);
@@ -7274,7 +7238,7 @@ bcrypto_salsa20_encrypt(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&salsa) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&salsa) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
 
   JS_ASSERT(salsa->started, JS_ERR_INIT);
@@ -7292,7 +7256,7 @@ bcrypto_salsa20_destroy(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_unwrap(env, argv[0], (void **)&salsa) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&salsa) == napi_ok);
 
   salsa->started = 0;
 
@@ -7363,14 +7327,11 @@ bcrypto_schnorr_create(napi_env env, napi_callback_info info) {
 
   CHECK(ec->scratch != NULL);
 
-  CHECK(napi_create_object(env, &handle) == napi_ok);
-
-  CHECK(napi_wrap(env,
-                  handle,
-                  ec,
-                  bcrypto_schnorr_destroy,
-                  NULL,
-                  NULL) == napi_ok);
+  CHECK(napi_create_external(env,
+                             ec,
+                             bcrypto_schnorr_destroy,
+                             NULL,
+                             &handle) == napi_ok);
 
   return handle;
 }
@@ -7384,7 +7345,7 @@ bcrypto_schnorr_size(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_create_uint32(env, ec->field_size, &result) == napi_ok);
 
   return result;
@@ -7399,7 +7360,7 @@ bcrypto_schnorr_bits(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_create_uint32(env, ec->field_bits, &result) == napi_ok);
 
   return result;
@@ -7415,7 +7376,7 @@ bcrypto_schnorr_randomize(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&entropy,
                              &entropy_len) == napi_ok);
 
@@ -7440,7 +7401,7 @@ bcrypto_schnorr_privkey_generate(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&entropy,
                              &entropy_len) == napi_ok);
 
@@ -7471,7 +7432,7 @@ bcrypto_schnorr_privkey_verify(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
                              &priv_len) == napi_ok);
 
@@ -7496,7 +7457,7 @@ bcrypto_schnorr_privkey_export(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
                              &priv_len) == napi_ok);
 
@@ -7527,7 +7488,7 @@ bcrypto_schnorr_privkey_import(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
                              &priv_len) == napi_ok);
 
@@ -7555,7 +7516,7 @@ bcrypto_schnorr_privkey_tweak_add(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
                              &priv_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&tweak,
@@ -7587,7 +7548,7 @@ bcrypto_schnorr_privkey_tweak_mul(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
                              &priv_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&tweak,
@@ -7619,7 +7580,7 @@ bcrypto_schnorr_privkey_reduce(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
                              &priv_len) == napi_ok);
 
@@ -7647,7 +7608,7 @@ bcrypto_schnorr_privkey_invert(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
                              &priv_len) == napi_ok);
 
@@ -7675,7 +7636,7 @@ bcrypto_schnorr_pubkey_create(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
                              &priv_len) == napi_ok);
 
@@ -7703,7 +7664,7 @@ bcrypto_schnorr_pubkey_from_uniform(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&data,
                              &data_len) == napi_ok);
 
@@ -7733,7 +7694,7 @@ bcrypto_schnorr_pubkey_to_uniform(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
                              &pub_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[2], &hint) == napi_ok);
@@ -7759,7 +7720,7 @@ bcrypto_schnorr_pubkey_from_hash(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&data,
                              &data_len) == napi_ok);
 
@@ -7788,7 +7749,7 @@ bcrypto_schnorr_pubkey_to_hash(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
                              &pub_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&entropy,
@@ -7818,7 +7779,7 @@ bcrypto_schnorr_pubkey_verify(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
                              &pub_len) == napi_ok);
 
@@ -7842,7 +7803,7 @@ bcrypto_schnorr_pubkey_export(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
                              &pub_len) == napi_ok);
 
@@ -7871,7 +7832,7 @@ bcrypto_schnorr_pubkey_import(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&x, &x_len) == napi_ok);
 
   JS_ASSERT(schnorr_pubkey_import(ec->ctx, out, x, x_len), JS_ERR_PUBKEY);
@@ -7897,7 +7858,7 @@ bcrypto_schnorr_pubkey_tweak_add(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
                              &pub_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&tweak,
@@ -7929,7 +7890,7 @@ bcrypto_schnorr_pubkey_tweak_mul(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
                              &pub_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&tweak,
@@ -7962,7 +7923,7 @@ bcrypto_schnorr_pubkey_tweak_sum(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
                              &pub_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&tweak,
@@ -8002,7 +7963,7 @@ bcrypto_schnorr_pubkey_tweak_test(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 5);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
                              &pub_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&tweak,
@@ -8037,7 +7998,7 @@ bcrypto_schnorr_pubkey_combine(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_array_length(env, argv[1], &length) == napi_ok);
 
   JS_ASSERT(length != 0, JS_ERR_PUBKEY);
@@ -8082,7 +8043,7 @@ bcrypto_schnorr_sign(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&priv,
                              &priv_len) == napi_ok);
@@ -8113,7 +8074,7 @@ bcrypto_schnorr_verify(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&sig, &sig_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[3], (void **)&pub, &pub_len) == napi_ok);
@@ -8142,7 +8103,7 @@ bcrypto_schnorr_verify_batch(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_array_length(env, argv[1], &length) == napi_ok);
 
   if (length == 0) {
@@ -8205,7 +8166,7 @@ bcrypto_schnorr_derive(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub, &pub_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&priv,
                              &priv_len) == napi_ok);
@@ -8406,14 +8367,11 @@ bcrypto_secp256k1_create(napi_env env, napi_callback_info info) {
 
   CHECK(ec->scratch != NULL);
 
-  CHECK(napi_create_object(env, &handle) == napi_ok);
-
-  CHECK(napi_wrap(env,
-                  handle,
-                  ec,
-                  bcrypto_secp256k1_destroy,
-                  NULL,
-                  NULL) == napi_ok);
+  CHECK(napi_create_external(env,
+                             ec,
+                             bcrypto_secp256k1_destroy,
+                             NULL,
+                             &handle) == napi_ok);
 
   return handle;
 }
@@ -8428,7 +8386,7 @@ bcrypto_secp256k1_randomize(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&entropy,
                              &entropy_len) == napi_ok);
 
@@ -8452,7 +8410,7 @@ bcrypto_secp256k1_privkey_generate(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&entropy,
                              &entropy_len) == napi_ok);
 
@@ -8479,7 +8437,7 @@ bcrypto_secp256k1_privkey_verify(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
                              &priv_len) == napi_ok);
 
@@ -8502,7 +8460,7 @@ bcrypto_secp256k1_privkey_export(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
                              &priv_len) == napi_ok);
 
@@ -8526,7 +8484,7 @@ bcrypto_secp256k1_privkey_import(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
                              &priv_len) == napi_ok);
 
@@ -8550,7 +8508,7 @@ bcrypto_secp256k1_privkey_tweak_add(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
                              &priv_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&tweak,
@@ -8581,7 +8539,7 @@ bcrypto_secp256k1_privkey_tweak_mul(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
                              &priv_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&tweak,
@@ -8612,7 +8570,7 @@ bcrypto_secp256k1_privkey_reduce(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
                              &priv_len) == napi_ok);
 
@@ -8636,7 +8594,7 @@ bcrypto_secp256k1_privkey_negate(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
                              &priv_len) == napi_ok);
 
@@ -8663,7 +8621,7 @@ bcrypto_secp256k1_privkey_invert(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
                              &priv_len) == napi_ok);
 
@@ -8693,7 +8651,7 @@ bcrypto_secp256k1_pubkey_create(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
                              &priv_len) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[2], &compress) == napi_ok);
@@ -8724,7 +8682,7 @@ bcrypto_secp256k1_pubkey_convert(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
                              &pub_len) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[2], &compress) == napi_ok);
@@ -8755,7 +8713,7 @@ bcrypto_secp256k1_pubkey_from_uniform(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&data,
                              &data_len) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[2], &compress) == napi_ok);
@@ -8786,7 +8744,7 @@ bcrypto_secp256k1_pubkey_to_uniform(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
                              &pub_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[2], &hint) == napi_ok);
@@ -8817,7 +8775,7 @@ bcrypto_secp256k1_pubkey_from_hash(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&data,
                              &data_len) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[2], &compress) == napi_ok);
@@ -8848,7 +8806,7 @@ bcrypto_secp256k1_pubkey_to_hash(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
                              &pub_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&entropy,
@@ -8882,7 +8840,7 @@ bcrypto_secp256k1_pubkey_verify(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
                              &pub_len) == napi_ok);
 
@@ -8907,7 +8865,7 @@ bcrypto_secp256k1_pubkey_export(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
                              &pub_len) == napi_ok);
 
@@ -8944,7 +8902,7 @@ bcrypto_secp256k1_pubkey_import(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 5);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&x, &x_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&y, &y_len) == napi_ok);
   CHECK(napi_get_value_int32(env, argv[3], &sign) == napi_ok);
@@ -8977,7 +8935,7 @@ bcrypto_secp256k1_pubkey_tweak_add(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
                              &pub_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&tweak,
@@ -9015,7 +8973,7 @@ bcrypto_secp256k1_pubkey_tweak_mul(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
                              &pub_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&tweak,
@@ -9057,7 +9015,7 @@ bcrypto_secp256k1_pubkey_combine(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_array_length(env, argv[1], &length) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[2], &compress) == napi_ok);
 
@@ -9115,7 +9073,7 @@ bcrypto_secp256k1_pubkey_negate(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
                              &pub_len) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[2], &compress) == napi_ok);
@@ -9147,7 +9105,7 @@ bcrypto_secp256k1_signature_normalize(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&sig,
                              &sig_len) == napi_ok);
 
@@ -9181,7 +9139,7 @@ bcrypto_secp256k1_signature_normalize_der(napi_env env,
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&sig,
                              &sig_len) == napi_ok);
 
@@ -9213,7 +9171,7 @@ bcrypto_secp256k1_signature_export(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&sig,
                              &sig_len) == napi_ok);
 
@@ -9242,7 +9200,7 @@ bcrypto_secp256k1_signature_import(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&sig,
                              &sig_len) == napi_ok);
 
@@ -9269,7 +9227,7 @@ bcrypto_secp256k1_is_low_s(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&sig,
                              &sig_len) == napi_ok);
 
@@ -9295,7 +9253,7 @@ bcrypto_secp256k1_is_low_der(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&sig,
                              &sig_len) == napi_ok);
 
@@ -9322,7 +9280,7 @@ bcrypto_secp256k1_sign(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&priv,
                              &priv_len) == napi_ok);
@@ -9358,7 +9316,7 @@ bcrypto_secp256k1_sign_recoverable(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&priv,
                              &priv_len) == napi_ok);
@@ -9401,7 +9359,7 @@ bcrypto_secp256k1_sign_der(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&priv,
                              &priv_len) == napi_ok);
@@ -9439,7 +9397,7 @@ bcrypto_secp256k1_sign_recoverable_der(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&priv,
                              &priv_len) == napi_ok);
@@ -9485,7 +9443,7 @@ bcrypto_secp256k1_verify(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&sig, &sig_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[3], (void **)&pub, &pub_len) == napi_ok);
@@ -9521,7 +9479,7 @@ bcrypto_secp256k1_verify_der(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&sig, &sig_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[3], (void **)&pub, &pub_len) == napi_ok);
@@ -9559,7 +9517,7 @@ bcrypto_secp256k1_recover(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 5);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&sig, &sig_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[3], &parm) == napi_ok);
@@ -9613,7 +9571,7 @@ bcrypto_secp256k1_recover_der(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 5);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&sig, &sig_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[3], &parm) == napi_ok);
@@ -9684,7 +9642,7 @@ bcrypto_secp256k1_derive(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub, &pub_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&priv,
                              &priv_len) == napi_ok);
@@ -9719,7 +9677,7 @@ bcrypto_secp256k1_schnorr_sign(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&priv,
                              &priv_len) == napi_ok);
@@ -9749,7 +9707,7 @@ bcrypto_secp256k1_schnorr_verify(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&sig, &sig_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[3], (void **)&pub, &pub_len) == napi_ok);
@@ -9784,7 +9742,7 @@ bcrypto_secp256k1_schnorr_verify_batch(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_unwrap(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_array_length(env, argv[1], &length) == napi_ok);
 
   if (length == 0) {
