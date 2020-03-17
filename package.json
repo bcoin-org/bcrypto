@@ -35,12 +35,12 @@
     "test-all": "npm run test-browser && npm run test-js && npm run test-bigint && npm run test-torsion && npm run test-native"
   },
   "dependencies": {
-    "bufio": "~1.0.6",
-    "loady": "~0.0.1"
+    "bufio": "git+https://github.com/bcoin-org/bufio.git#semver:~1.0.6",
+    "loady": "git+https://github.com/chjj/loady.git#semver:~0.0.1"
   },
   "devDependencies": {
-    "bmocha": "^2.1.3",
-    "bsert": "~0.0.10"
+    "bmocha": "git+https://github.com/bcoin-org/bmocha.git#semver:^2.1.3",
+    "bsert": "git+https://github.com/chjj/bsert.git#semver:~0.0.10"
   },
   "engines": {
     "node": ">=8.0.0"
