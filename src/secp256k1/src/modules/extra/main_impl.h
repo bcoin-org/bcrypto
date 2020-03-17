@@ -250,7 +250,7 @@ secp256k1_ec_pubkey_import(const secp256k1_context *ctx,
   return 1;
 }
 
-#ifdef SECP256K1_USE_XONLY
+#ifdef BCRYPTO_USE_SECP256K1_LATEST
 int
 secp256k1_xonly_pubkey_export(const secp256k1_context *ctx,
                               unsigned char *x,

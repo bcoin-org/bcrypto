@@ -97,24 +97,32 @@
       ["with_secp256k1=='true'", {
         "defines": [
           "BCRYPTO_USE_SECP256K1",
+          # "BCRYPTO_USE_SECP256K1_LATEST",
+          # "ECMULT_GEN_PREC_BITS=4",
+          # "ECMULT_WINDOW_SIZE=15",
           "USE_ENDOMORPHISM",
           "ENABLE_MODULE_ECDH",
           "ENABLE_MODULE_ELLIGATOR",
           "ENABLE_MODULE_EXTRA",
           "ENABLE_MODULE_RECOVERY",
           "ENABLE_MODULE_SCHNORRLEG"
+          # "ENABLE_MODULE_SCHNORRSIG"
         ],
         "sources": [
           "./src/secp256k1/src/secp256k1.c",
           "./src/secp256k1/contrib/lax_der_parsing.c"
         ],
+        # "include_dirs": [
+        #   "./src/secp256k1",
+        #   "./src/secp256k1/include",
+        #   "./src/secp256k1/src"
+        # ],
         "conditions": [
           ["target_arch=='x64' and OS!='win'", {
             "defines": [
               "HAVE___INT128",
               "USE_ASM_X86_64",
               "USE_FIELD_5X52",
-              "USE_FIELD_5X52_INT128",
               "USE_SCALAR_4X64"
             ]
           }, {

@@ -521,7 +521,7 @@ secp256k1_ec_pubkey_to_hash(const secp256k1_context *ctx,
   return 1;
 }
 
-#ifdef SECP256K1_USE_XONLY
+#ifdef BCRYPTO_USE_SECP256K1_LATEST
 int
 secp256k1_xonly_pubkey_from_uniform(const secp256k1_context *ctx,
                                     secp256k1_xonly_pubkey *pubkey,

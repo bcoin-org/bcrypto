@@ -75,7 +75,7 @@ secp256k1_ec_pubkey_to_hash(const secp256k1_context *ctx,
                                                           SECP256K1_ARG_NONNULL(3)
                                                           SECP256K1_ARG_NONNULL(4);
 
-#ifdef SECP256K1_USE_XONLY
+#ifdef BCRYPTO_USE_SECP256K1_LATEST
 /** Hash bytes to a point using the Shallue-van de Woestijne map.
  *
  *  Returns: 1: the byte array was sucessfully mapped.
@@ -86,7 +86,7 @@ secp256k1_ec_pubkey_to_hash(const secp256k1_context *ctx,
  */
 SECP256K1_API SECP256K1_WARN_UNUSED_RESULT int
 secp256k1_xonly_pubkey_from_uniform(const secp256k1_context *ctx,
-                                    secp256k1_pubkey *pubkey,
+                                    secp256k1_xonly_pubkey *pubkey,
                                     const unsigned char *bytes32) SECP256K1_ARG_NONNULL(1)
                                                                   SECP256K1_ARG_NONNULL(2)
                                                                   SECP256K1_ARG_NONNULL(3);
@@ -105,7 +105,7 @@ secp256k1_xonly_pubkey_from_uniform(const secp256k1_context *ctx,
 SECP256K1_API SECP256K1_WARN_UNUSED_RESULT int
 secp256k1_xonly_pubkey_to_uniform(const secp256k1_context *ctx,
                                   unsigned char *bytes32,
-                                  const secp256k1_pubkey *pubkey,
+                                  const secp256k1_xonly_pubkey *pubkey,
                                   unsigned int hint) SECP256K1_ARG_NONNULL(1)
                                                      SECP256K1_ARG_NONNULL(2)
                                                      SECP256K1_ARG_NONNULL(3);
@@ -120,7 +120,7 @@ secp256k1_xonly_pubkey_to_uniform(const secp256k1_context *ctx,
  */
 SECP256K1_API SECP256K1_WARN_UNUSED_RESULT int
 secp256k1_xonly_pubkey_from_hash(const secp256k1_context *ctx,
-                                 secp256k1_pubkey *pubkey,
+                                 secp256k1_xonly_pubkey *pubkey,
                                  const unsigned char *bytes64) SECP256K1_ARG_NONNULL(1)
                                                                SECP256K1_ARG_NONNULL(2)
                                                                SECP256K1_ARG_NONNULL(3);
@@ -138,7 +138,7 @@ secp256k1_xonly_pubkey_from_hash(const secp256k1_context *ctx,
 SECP256K1_API SECP256K1_WARN_UNUSED_RESULT int
 secp256k1_xonly_pubkey_to_hash(const secp256k1_context *ctx,
                                unsigned char *bytes64,
-                               const secp256k1_pubkey *pubkey,
+                               const secp256k1_xonly_pubkey *pubkey,
                                const unsigned char *entropy) SECP256K1_ARG_NONNULL(1)
                                                              SECP256K1_ARG_NONNULL(2)
                                                              SECP256K1_ARG_NONNULL(3)
