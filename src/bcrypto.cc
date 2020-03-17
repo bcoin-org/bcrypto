@@ -3584,8 +3584,6 @@ bcrypto_ecdsa_pubkey_combine(napi_env env, napi_callback_info info) {
   CHECK(napi_get_array_length(env, argv[1], &length) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[2], &compress) == napi_ok);
 
-  JS_ASSERT(length != 0, JS_ERR_PUBKEY);
-
   pubs = (const uint8_t **)safe_malloc(length * sizeof(uint8_t *));
   pub_lens = (size_t *)safe_malloc(length * sizeof(size_t));
 
@@ -5172,7 +5170,7 @@ bcrypto_eddsa_pubkey_combine(napi_env env, napi_callback_info info) {
   CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_array_length(env, argv[1], &length) == napi_ok);
 
-  pubs = (const uint8_t **)safe_malloc((length + 1) * sizeof(uint8_t *));
+  pubs = (const uint8_t **)safe_malloc(length * sizeof(uint8_t *));
 
   for (i = 0; i < length; i++) {
     CHECK(napi_get_element(env, argv[1], i, &item) == napi_ok);
@@ -7933,7 +7931,7 @@ bcrypto_schnorr_pubkey_tweak_sum(napi_env env, napi_callback_info info) {
   JS_ASSERT(pub_len == ec->field_size, JS_ERR_PUBKEY_SIZE);
   JS_ASSERT(tweak_len == ec->scalar_size, JS_ERR_SCALAR_SIZE);
   JS_ASSERT(schnorr_pubkey_tweak_add(ec->ctx, out, &negated, pub, tweak),
-                                     JS_ERR_PUBKEY);
+            JS_ERR_PUBKEY);
 
   CHECK(napi_create_buffer_copy(env,
                                 ec->field_size,
@@ -7954,7 +7952,6 @@ static napi_value
 bcrypto_schnorr_pubkey_tweak_test(napi_env env, napi_callback_info info) {
   napi_value argv[5];
   size_t argc = 5;
-  int out;
   const uint8_t *pub, *tweak, *expect;
   size_t pub_len, tweak_len, expect_len;
   bool negated;
@@ -7979,8 +7976,7 @@ bcrypto_schnorr_pubkey_tweak_test(napi_env env, napi_callback_info info) {
     goto fail;
   }
 
-  ok = schnorr_pubkey_tweak_test(ec->ctx, &out, pub, tweak, expect, negated);
-  ok &= out;
+  schnorr_pubkey_tweak_test(ec->ctx, &ok, pub, tweak, expect, negated);
 
 fail:
   CHECK(napi_get_boolean(env, ok, &result) == napi_ok);
@@ -8004,8 +8000,6 @@ bcrypto_schnorr_pubkey_combine(napi_env env, napi_callback_info info) {
   CHECK(argc == 2);
   CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_array_length(env, argv[1], &length) == napi_ok);
-
-  JS_ASSERT(length != 0, JS_ERR_PUBKEY);
 
   pubs = (const uint8_t **)safe_malloc(length * sizeof(uint8_t *));
 
