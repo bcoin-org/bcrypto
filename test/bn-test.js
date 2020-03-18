@@ -3898,11 +3898,13 @@ describe('BN.js', function() {
           for (let i = 0; i < bl; i++) {
             assert.strictEqual(bn.testn(i), 1);
             assert.strictEqual(bn.utestn(i), 1);
+            assert.strictEqual(bn.bit(i), 1);
           }
 
           // test off the end
           assert.strictEqual(bn.testn(bl), 0);
           assert.strictEqual(bn.utestn(bl), 0);
+          assert.strictEqual(bn.bit(bl), 0);
         });
 
         const xbits = '01111001010111001001000100011101'
@@ -3919,6 +3921,7 @@ describe('BN.js', function() {
         for (let i = 0; i < x.bitLength(); i++) {
           assert.strictEqual(x.testn(i), xbits.charCodeAt(i) & 1, 'Failed @ bit ' + i);
           assert.strictEqual(x.utestn(i), xbits.charCodeAt(i) & 1, 'Failed @ bit ' + i);
+          assert.strictEqual(x.bit(i), xbits.charCodeAt(i) & 1, 'Failed @ bit ' + i);
         }
       });
 
@@ -3949,6 +3952,7 @@ describe('BN.js', function() {
         const x = new BN('abcd', 16);
         assert(!x.testn(128));
         assert(!x.utestn(128));
+        assert(!x.bit(128));
       });
     });
 
@@ -6947,6 +6951,20 @@ describe('BN.js', function() {
         assert(x3.redJacobi() === -1);
       }
     });
+  });
+
+  it('should test bits()', () => {
+    for (let i = 0; i < 10; i++) {
+      const x = BN.randomBits(rng, 256);
+      const expect = x.toArray('le');
+      const size = x.byteLength();
+      const words = [];
+
+      for (let i = 0; i < size; i++)
+        words.push(x.bits(i * 8, 8));
+
+      assert.deepStrictEqual(words, expect);
+    }
   });
 
   describe('BN.js/Slow DH test', () => {
