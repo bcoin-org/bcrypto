@@ -5461,7 +5461,7 @@ describe('Elliptic', function() {
 
     it('should clamp properly', () => {
       const e521 = new extra.E521();
-      const scalar = rng.randomBytes(e521.p.byteLength());
+      const scalar = rng.randomBytes(e521.n.byteLength());
 
       e521.clamp(scalar);
     });
