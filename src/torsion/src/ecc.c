@@ -201,6 +201,8 @@ typedef uint32_t fe_word_t;
   ((MAX_SCALAR_BITS + GMP_NUMB_BITS - 1) / GMP_NUMB_BITS)
 #define MAX_REDUCE_LIMBS (MAX_SCALAR_LIMBS * 2 + 2)
 
+#define MAX_ELEMENT_SIZE MAX_FIELD_SIZE
+
 #define MAX_PUB_SIZE (1 + MAX_FIELD_SIZE * 2)
 #define MAX_SIG_SIZE (MAX_FIELD_SIZE + MAX_SCALAR_SIZE)
 #define MAX_DER_SIZE (9 + MAX_SIG_SIZE)
@@ -221,7 +223,7 @@ typedef uint32_t fe_word_t;
  * Scalar Field
  */
 
-typedef mp_limb_t sc_t[MAX_SCALAR_LIMBS];
+typedef mp_limb_t sc_t[MAX_SCALAR_LIMBS]; /* 72 bytes */
 struct _scalar_field_s;
 
 typedef void
@@ -296,7 +298,7 @@ fe_isqrt_func(fe_word_t *out, const fe_word_t *u, const fe_word_t *v);
 typedef void
 fe_scmul_121666(fe_word_t *out1, const fe_word_t *arg1);
 
-typedef fe_word_t fe_t[MAX_FIELD_WORDS];
+typedef fe_word_t fe_t[MAX_FIELD_WORDS]; /* 72 bytes */
 
 typedef struct _prime_field_s {
   int endian;
@@ -361,6 +363,7 @@ typedef struct _prime_def_s {
 
 /* wge = weierstrass group element (affine) */
 typedef struct _wge_s {
+  /* 152 bytes */
   fe_t x;
   fe_t y;
   int inf;
@@ -368,6 +371,7 @@ typedef struct _wge_s {
 
 /* jge = jacobian group element */
 typedef struct _jge_s {
+  /* 216 bytes */
   fe_t x;
   fe_t y;
   fe_t z;
@@ -378,7 +382,7 @@ typedef struct _wei_s {
   prime_field_t fe;
   scalar_field_t sc;
   unsigned int h;
-  mp_limb_t pmodn[MAX_REDUCE_LIMBS];
+  mp_limb_t sc_p[MAX_REDUCE_LIMBS];
   fe_t fe_n;
   fe_t a;
   fe_t b;
@@ -390,11 +394,13 @@ typedef struct _wei_s {
   fe_t i3;
   int zero_a;
   int three_a;
+  int high_order;
+  int small_gap;
   wge_t g;
   sc_t blind;
   wge_t unblind;
-  wge_t windows[MAX_WNDS_SIZE];
-  wge_t points[NAF_SIZE_PRE];
+  wge_t wnd_fixed[MAX_WNDS_SIZE]; /* 311.2kb */
+  wge_t wnd_naf[NAF_SIZE_PRE]; /* 19kb */
   int endo;
   fe_t beta;
   sc_t lambda;
@@ -402,7 +408,7 @@ typedef struct _wei_s {
   sc_t b2;
   sc_t g1;
   sc_t g2;
-  wge_t endo_points[NAF_SIZE_PRE];
+  wge_t wnd_endo[NAF_SIZE_PRE]; /* 19kb */
 } wei_t;
 
 typedef struct _wei_def_s {
@@ -426,11 +432,12 @@ typedef struct _wei_def_s {
 } wei_def_t;
 
 typedef struct _wei_scratch_s {
+  /* 209.5kb */
   jge_t wnd_normal[32 * 4]; /* 27kb */
-  wge_t wnd_endo[64 * 4];
-  int32_t naf[64 * (MAX_SCALAR_BITS + 1)]; /* 65kb */
-  wge_t points[64];
-  sc_t coeffs[64];
+  wge_t wnd_endo[64 * 4]; /* 38kb */
+  int32_t naf[64 * (MAX_SCALAR_BITS + 1)]; /* 130.5kb */
+  wge_t points[64]; /* 9.5kb */
+  sc_t coeffs[64]; /* 4.5kb */
 } wei_scratch_t;
 
 /*
@@ -439,6 +446,7 @@ typedef struct _wei_scratch_s {
 
 /* mge = montgomery group element (affine) */
 typedef struct _mge_s {
+  /* 152 bytes */
   fe_t x;
   fe_t y;
   int inf;
@@ -446,6 +454,7 @@ typedef struct _mge_s {
 
 /* pge = projective group element (x/z) */
 typedef struct _pge_s {
+  /* 144 bytes */
   fe_t x;
   fe_t z;
 } pge_t;
@@ -487,6 +496,7 @@ typedef struct _mont_def_s {
 
 /* xge = extended group element */
 typedef struct _xge_s {
+  /* 288 bytes */
   fe_t x;
   fe_t y;
   fe_t z;
@@ -516,8 +526,8 @@ typedef struct _edwards_s {
   xge_t g;
   sc_t blind;
   xge_t unblind;
-  xge_t windows[MAX_WNDS_SIZE];
-  xge_t points[NAF_SIZE_PRE];
+  xge_t wnd_fixed[MAX_WNDS_SIZE]; /* 589.5kb */
+  xge_t wnd_naf[NAF_SIZE_PRE]; /* 36kb */
 } edwards_t;
 
 typedef struct _edwards_def_s {
@@ -537,10 +547,11 @@ typedef struct _edwards_def_s {
 } edwards_def_t;
 
 typedef struct _edwards_scratch_s {
+  /* 124kb */
   xge_t wnd[32 * 4]; /* 36kb */
-  int32_t naf[32 * (MAX_SCALAR_BITS + 1)]; /* 65kb */
-  xge_t points[64];
-  sc_t coeffs[64];
+  int32_t naf[32 * (MAX_SCALAR_BITS + 1)]; /* 65.5kb */
+  xge_t points[64]; /* 18kb */
+  sc_t coeffs[64]; /* 4.5kb */
 } edwards_scratch_t;
 
 /*
@@ -689,17 +700,23 @@ sc_import_weak(const scalar_field_t *sc, sc_t r, const unsigned char *raw) {
   return cy != 0;
 }
 
-static int
-sc_import_strong(const scalar_field_t *sc, sc_t r, const unsigned char *raw) {
-  /* Otherwise, a full reduction. */
+static void
+sc_import_wide(const scalar_field_t *sc, sc_t r,
+               const unsigned char *raw, size_t size) {
   mp_limb_t rp[MAX_REDUCE_LIMBS];
 
-  mpn_import(rp, sc->shift, raw, sc->size, sc->endian);
+  assert(size * 8 <= (size_t)sc->shift * GMP_NUMB_BITS);
+
+  mpn_import(rp, sc->shift, raw, size, sc->endian);
 
   sc_reduce(sc, r, rp);
 
   cleanse(rp, sc->shift);
+}
 
+static int
+sc_import_strong(const scalar_field_t *sc, sc_t r, const unsigned char *raw) {
+  sc_import_wide(sc, r, raw, sc->size);
   return bytes_lt(raw, sc->raw, sc->size, sc->endian);
 }
 
@@ -744,13 +761,27 @@ static int
 sc_set_fe(const scalar_field_t *sc,
           const prime_field_t *fe,
           sc_t r, const fe_t a) {
-  unsigned char tmp[MAX_FIELD_SIZE];
+  unsigned char raw[MAX_ELEMENT_SIZE];
 
-  assert(sc->size == fe->size);
+  assert(sc->endian == 1);
+  assert(fe->endian == 1);
 
-  fe_export(fe, tmp, a);
+  if (fe->size < sc->size) {
+    memset(raw, 0x00, sc->size - fe->size);
+    fe_export(fe, raw + sc->size - fe->size, a);
+    return sc_import(sc, r, raw);
+  }
 
-  return sc_import_reduce(sc, r, tmp);
+  if (fe->size > sc->size) {
+    fe_export(fe, raw, a);
+    sc_import_wide(sc, r, raw, fe->size);
+    sc_export(sc, raw, r);
+    return bytes_lt(raw, sc->raw, sc->size, sc->endian);
+  }
+
+  fe_export(fe, raw, a);
+
+  return sc_import_reduce(sc, r, raw);
 }
 
 static void
@@ -945,7 +976,7 @@ sc_mulshift(const scalar_field_t *sc, sc_t r,
             const sc_t a, const sc_t b,
             size_t shift) {
   /* Compute r = round((a * b) >> 272). */
-  mp_limb_t scratch[MAX_SCALAR_LIMBS * 2 + 1];
+  mp_limb_t scratch[MAX_SCALAR_LIMBS * 2 + 1]; /* 152 bytes */
   mp_size_t limbs = shift / GMP_NUMB_BITS;
   mp_size_t left = shift % GMP_NUMB_BITS;
   mp_limb_t *rp = scratch;
@@ -1000,16 +1031,16 @@ static void
 sc_pow(const scalar_field_t *sc, sc_t r, const sc_t a, const mp_limb_t *e) {
   /* Used for inversion if not available otherwise. */
   mp_size_t start = WND_STEPS(sc->bits) - 1;
-  sc_t table[WND_SIZE];
+  sc_t wnd[WND_SIZE]; /* 1152 bytes */
   mp_size_t i, j;
   mp_limb_t b;
 
-  sc_set_word(sc, table[0], 1);
-  sc_set(sc, table[1], a);
+  sc_set_word(sc, wnd[0], 1);
+  sc_set(sc, wnd[1], a);
 
   for (i = 2; i < WND_SIZE; i += 2) {
-    sc_sqr(sc, table[i], table[i >> 1]);
-    sc_mul(sc, table[i + 1], table[i], a);
+    sc_sqr(sc, wnd[i], wnd[i >> 1]);
+    sc_mul(sc, wnd[i + 1], wnd[i], a);
   }
 
   sc_set_word(sc, r, 1);
@@ -1018,12 +1049,12 @@ sc_pow(const scalar_field_t *sc, sc_t r, const sc_t a, const mp_limb_t *e) {
     b = mpn_get_bits(e, i * WND_WIDTH, WND_WIDTH);
 
     if (i == start) {
-      sc_set(sc, r, table[b]);
+      sc_set(sc, r, wnd[b]);
     } else {
       for (j = 0; j < WND_WIDTH; j++)
         sc_sqr(sc, r, r);
 
-      sc_mul(sc, r, r, table[b]);
+      sc_mul(sc, r, r, wnd[b]);
     }
   }
 }
@@ -1461,18 +1492,30 @@ fe_print(const prime_field_t *fe, const fe_t a) {
 }
 #endif
 
-static void
+static int
 fe_set_sc(const prime_field_t *fe,
           const scalar_field_t *sc,
           fe_t r, const sc_t a) {
-  /* Assumes n < p. */
-  unsigned char tmp[MAX_SCALAR_SIZE];
+  unsigned char raw[MAX_ELEMENT_SIZE];
 
-  assert(sc->size == fe->size);
+  assert(fe->endian == 1);
+  assert(sc->endian == 1);
 
-  sc_export(sc, tmp, a);
+  if (sc->size < fe->size) {
+    memset(raw, 0x00, fe->size - sc->size);
+    sc_export(sc, raw + fe->size - sc->size, a);
+    return fe_import(fe, r, raw);
+  }
 
-  CHECK(fe_import(fe, r, tmp));
+  if (sc->size > fe->size) {
+    sc_export(sc, raw, a);
+    return fe_import(fe, r, raw + sc->size - fe->size)
+         & bytes_zero(raw, sc->size - fe->size);
+  }
+
+  sc_export(sc, raw, a);
+
+  return fe_import(fe, r, raw);
 }
 
 static void
@@ -1639,16 +1682,16 @@ static void
 fe_pow(const prime_field_t *fe, fe_t r, const fe_t a, const mp_limb_t *e) {
   /* Used for inversion and square roots if not available otherwise. */
   mp_size_t start = WND_STEPS(fe->bits) - 1;
-  fe_t table[WND_SIZE];
+  fe_t wnd[WND_SIZE]; /* 1152 bytes */
   mp_size_t i, j;
   mp_limb_t b;
 
-  fe_set(fe, table[0], fe->one);
-  fe_set(fe, table[1], a);
+  fe_set(fe, wnd[0], fe->one);
+  fe_set(fe, wnd[1], a);
 
   for (i = 2; i < WND_SIZE; i += 2) {
-    fe_sqr(fe, table[i], table[i >> 1]);
-    fe_mul(fe, table[i + 1], table[i], a);
+    fe_sqr(fe, wnd[i], wnd[i >> 1]);
+    fe_mul(fe, wnd[i + 1], wnd[i], a);
   }
 
   fe_set(fe, r, fe->one);
@@ -1657,12 +1700,12 @@ fe_pow(const prime_field_t *fe, fe_t r, const fe_t a, const mp_limb_t *e) {
     b = mpn_get_bits(e, i * WND_WIDTH, WND_WIDTH);
 
     if (i == start) {
-      fe_set(fe, r, table[b]);
+      fe_set(fe, r, wnd[b]);
     } else {
       for (j = 0; j < WND_WIDTH; j++)
         fe_sqr(fe, r, r);
 
-      fe_mul(fe, r, r, table[b]);
+      fe_mul(fe, r, r, wnd[b]);
     }
   }
 }
@@ -1888,7 +1931,7 @@ scalar_field_set(scalar_field_t *sc,
    * it appends an extra byte to the field element.
    */
   {
-    mp_limb_t x[MAX_REDUCE_LIMBS + 1];
+    mp_limb_t x[MAX_REDUCE_LIMBS + 1]; /* 168 bytes */
 
     mpn_zero(sc->m, MAX_REDUCE_LIMBS);
     mpn_zero(x, MAX_REDUCE_LIMBS + 1);
@@ -2596,10 +2639,11 @@ wge_to_jge(const wei_t *ec, jge_t *r, const wge_t *a) {
 }
 
 static void
-wge_wnd_points_var(const wei_t *ec, wge_t *out, const wge_t *p) {
+wge_fixed_points_var(const wei_t *ec, wge_t *out, const wge_t *p) {
   /* NOTE: Only called on initialization. */
   const scalar_field_t *sc = &ec->sc;
-  jge_t *wnds = malloc(WNDS_SIZE(sc->bits) * sizeof(jge_t));
+  size_t size = WNDS_SIZE(sc->bits);
+  jge_t *wnds = malloc(size * sizeof(jge_t)); /* 442.2kb */
   size_t i, j;
   jge_t g;
 
@@ -2617,7 +2661,7 @@ wge_wnd_points_var(const wei_t *ec, wge_t *out, const wge_t *p) {
       jge_dbl_var(ec, &g, &g);
   }
 
-  jge_to_wge_all_var(ec, out, wnds, WNDS_SIZE(sc->bits));
+  jge_to_wge_all_var(ec, out, wnds, size);
 
   free(wnds);
 }
@@ -2627,22 +2671,22 @@ wge_naf_points_var(const wei_t *ec, wge_t *out,
                    const wge_t *p, size_t width) {
   /* NOTE: Only called on initialization. */
   size_t size = 1 << (width - 1);
-  jge_t *points = malloc(size * sizeof(jge_t));
+  jge_t *wnd = malloc(size * sizeof(jge_t)); /* 27kb */
   jge_t j, dbl;
   size_t i;
 
-  assert(points != NULL);
+  assert(wnd != NULL);
 
   wge_to_jge(ec, &j, p);
   jge_dbl_var(ec, &dbl, &j);
-  jge_set(ec, &points[0], &j);
+  jge_set(ec, &wnd[0], &j);
 
   for (i = 1; i < size; i++)
-    jge_add_var(ec, &points[i], &points[i - 1], &dbl);
+    jge_add_var(ec, &wnd[i], &wnd[i - 1], &dbl);
 
-  jge_to_wge_all_var(ec, out, points, size);
+  jge_to_wge_all_var(ec, out, wnd, size);
 
-  free(points);
+  free(wnd);
 }
 
 static void
@@ -2835,56 +2879,36 @@ jge_equal_x(const wei_t *ec, const jge_t *p, const fe_t x) {
        & (jge_is_zero(ec, p) ^ 1);
 }
 
-#ifdef ECC_WITH_TRICK
 static int
 jge_equal_r_var(const wei_t *ec, const jge_t *p, const sc_t x) {
-  /* Generalized version of the trick used in libsecp256k1: */
-  /* https://github.com/bitcoin-core/secp256k1/commit/ce7eb6f */
+  /* See: https://github.com/bitcoin-core/secp256k1/commit/ce7eb6f */
   const prime_field_t *fe = &ec->fe;
   const scalar_field_t *sc = &ec->sc;
-  mp_limb_t cp[MAX_FIELD_LIMBS + 1];
-  mp_size_t cn = fe->limbs + 1;
-  fe_t zz, rx, rn;
-  mp_limb_t cy;
-
-  assert(fe->limbs >= sc->limbs);
+  fe_t rx, rn, zz;
 
   if (jge_is_zero(ec, p))
     return 0;
 
-  fe_sqr(fe, zz, p->z);
+  if (!fe_set_sc(fe, sc, rx, x))
+    return 0;
 
-  fe_set_sc(fe, sc, rx, x);
+  fe_sqr(fe, zz, p->z);
   fe_mul(fe, rx, rx, zz);
 
   if (fe_equal(fe, p->x, rx))
     return 1;
 
-  mpn_zero(cp + sc->limbs, cn - sc->limbs);
-  mpn_copyi(cp, x, sc->limbs);
+  if (ec->high_order)
+    return 0;
+
+  if (sc_cmp_var(sc, x, ec->sc_p) >= 0)
+    return 0;
 
   fe_mul(fe, rn, ec->fe_n, zz);
+  fe_add(fe, rx, rx, rn);
 
-  assert(sc->n[cn - 1] == 0);
-  assert(fe->p[cn - 1] == 0);
-
-  for (;;) {
-    cy = mpn_add_n(cp, cp, sc->n, cn);
-
-    assert(cy == 0);
-
-    if (mpn_cmp(cp, fe->p, cn) >= 0)
-      return 0;
-
-    fe_add(fe, rx, rx, rn);
-
-    if (fe_equal(fe, p->x, rx))
-      break;
-  }
-
-  return 1;
+  return fe_equal(fe, p->x, rx);
 }
-#endif
 
 static void
 jge_neg(const wei_t *ec, jge_t *r, const jge_t *a) {
@@ -3754,6 +3778,12 @@ jge_print(const wei_t *ec, const jge_t *p) {
  * Short Weierstrass Curve
  */
 
+static int
+wei_has_high_order(const wei_t *ec);
+
+static int
+wei_has_small_gap(const wei_t *ec);
+
 static void
 wei_init(wei_t *ec, const wei_def_t *def) {
   prime_field_t *fe = &ec->fe;
@@ -3768,7 +3798,7 @@ wei_init(wei_t *ec, const wei_def_t *def) {
   prime_field_init(fe, def->fe, 1);
   scalar_field_init(sc, def->sc, 1);
 
-  sc_reduce(sc, ec->pmodn, fe->p);
+  sc_reduce(sc, ec->sc_p, fe->p);
 
   fe_set_limbs(fe, ec->fe_n, sc->n, sc->limbs);
   fe_import(fe, ec->a, def->a);
@@ -3791,6 +3821,8 @@ wei_init(wei_t *ec, const wei_def_t *def) {
 
   ec->zero_a = fe_is_zero(fe, ec->a);
   ec->three_a = fe_equal(fe, ec->a, m3);
+  ec->high_order = wei_has_high_order(ec);
+  ec->small_gap = wei_has_small_gap(ec);
 
   fe_import(fe, ec->g.x, def->x);
   fe_import(fe, ec->g.y, def->y);
@@ -3799,8 +3831,8 @@ wei_init(wei_t *ec, const wei_def_t *def) {
   sc_zero(sc, ec->blind);
   wge_zero(ec, &ec->unblind);
 
-  wge_wnd_points_var(ec, ec->windows, &ec->g);
-  wge_naf_points_var(ec, ec->points, &ec->g, NAF_WIDTH_PRE);
+  wge_fixed_points_var(ec, ec->wnd_fixed, &ec->g);
+  wge_naf_points_var(ec, ec->wnd_naf, &ec->g, NAF_WIDTH_PRE);
 
   ec->endo = def->endo;
 
@@ -3815,8 +3847,43 @@ wei_init(wei_t *ec, const wei_def_t *def) {
     sc_import(sc, ec->g2, def->g2);
 
     for (i = 0; i < NAF_SIZE_PRE; i++)
-      wge_endo_beta(ec, &ec->endo_points[i], &ec->points[i]);
+      wge_endo_beta(ec, &ec->wnd_endo[i], &ec->wnd_naf[i]);
   }
+}
+
+static int
+wei_has_high_order(const wei_t *ec) {
+  const prime_field_t *fe = &ec->fe;
+  const scalar_field_t *sc = &ec->sc;
+
+  if (sc->limbs < fe->limbs)
+    return 0;
+
+  if (sc->limbs > fe->limbs)
+    return 1;
+
+  return mpn_cmp(sc->n, fe->p, sc->limbs) >= 0;
+}
+
+static int
+wei_has_small_gap(const wei_t *ec) {
+  const prime_field_t *fe = &ec->fe;
+  const scalar_field_t *sc = &ec->sc;
+  mp_limb_t r[MAX_SCALAR_LIMBS];
+  mp_limb_t q;
+
+  if (sc->limbs < fe->limbs)
+    return 0;
+
+  if (sc->limbs > fe->limbs)
+    return 1;
+
+  if (mpn_cmp(sc->n, fe->p, sc->limbs) >= 0)
+    return 1;
+
+  mpn_tdiv_qr(&q, r, 0, fe->p, fe->limbs, sc->n, sc->limbs);
+
+  return q == 1;
 }
 
 static void
@@ -3922,6 +3989,7 @@ wei_jmul_g(const wei_t *ec, jge_t *r, const sc_t k) {
    * down to 64 additions with a window size of 4.
    */
   const scalar_field_t *sc = &ec->sc;
+  const wge_t *wnds = ec->wnd_fixed;
   size_t i, j, b;
   sc_t k0;
   wge_t t;
@@ -3937,7 +4005,7 @@ wei_jmul_g(const wei_t *ec, jge_t *r, const sc_t k) {
     b = sc_get_bits(sc, k0, i * WND_WIDTH, WND_WIDTH);
 
     for (j = 0; j < WND_SIZE; j++)
-      wge_select(ec, &t, &t, &ec->windows[i * WND_SIZE + j], j == b);
+      wge_select(ec, &t, &t, &wnds[i * WND_SIZE + j], j == b);
 
     jge_mixed_add(ec, r, r, &t);
   }
@@ -3964,16 +4032,16 @@ wei_jmul_normal(const wei_t *ec, jge_t *r, const wge_t *p, const sc_t k) {
    */
   const scalar_field_t *sc = &ec->sc;
   mp_size_t start = WND_STEPS(sc->bits) - 1;
-  jge_t table[WND_SIZE];
+  jge_t wnd[WND_SIZE]; /* 3456 bytes */
   mp_size_t i, j, b;
   jge_t t;
 
-  jge_zero(ec, &table[0]);
-  wge_to_jge(ec, &table[1], p);
+  jge_zero(ec, &wnd[0]);
+  wge_to_jge(ec, &wnd[1], p);
 
   for (i = 2; i < WND_SIZE; i += 2) {
-    jge_dbl(ec, &table[i], &table[i >> 1]);
-    jge_mixed_add(ec, &table[i + 1], &table[i], p);
+    jge_dbl(ec, &wnd[i], &wnd[i >> 1]);
+    jge_mixed_add(ec, &wnd[i + 1], &wnd[i], p);
   }
 
   jge_zero(ec, r);
@@ -3983,7 +4051,7 @@ wei_jmul_normal(const wei_t *ec, jge_t *r, const wge_t *p, const sc_t k) {
     b = sc_get_bits(sc, k, i * WND_WIDTH, WND_WIDTH);
 
     for (j = 0; j < WND_SIZE; j++)
-      jge_select(ec, &t, &t, &table[j], j == b);
+      jge_select(ec, &t, &t, &wnd[j], j == b);
 
     if (i == start) {
       jge_set(ec, r, &t);
@@ -4009,8 +4077,8 @@ wei_jmul_endo(const wei_t *ec, jge_t *r, const wge_t *p, const sc_t k) {
   const scalar_field_t *sc = &ec->sc;
   mp_size_t bits = (sc->bits + 1) >> 1;
   mp_size_t start = WND_STEPS(bits) - 1;
-  jge_t table1[WND_SIZE];
-  jge_t table2[WND_SIZE];
+  jge_t wnd1[WND_SIZE]; /* 3456 bytes */
+  jge_t wnd2[WND_SIZE]; /* 3456 bytes */
   mp_size_t i, j, b1, b2;
   int32_t s1, s2;
   wge_t p1, p2;
@@ -4030,18 +4098,18 @@ wei_jmul_endo(const wei_t *ec, jge_t *r, const wge_t *p, const sc_t k) {
   assert(sc_bitlen_var(sc, k2) <= (size_t)bits);
 #endif
 
-  jge_zero(ec, &table1[0]);
-  jge_zero(ec, &table2[0]);
+  jge_zero(ec, &wnd1[0]);
+  jge_zero(ec, &wnd2[0]);
 
-  wge_to_jge(ec, &table1[1], &p1);
-  wge_to_jge(ec, &table2[1], &p2);
+  wge_to_jge(ec, &wnd1[1], &p1);
+  wge_to_jge(ec, &wnd2[1], &p2);
 
   for (i = 2; i < WND_SIZE; i += 2) {
-    jge_dbl(ec, &table1[i], &table1[i >> 1]);
-    jge_dbl(ec, &table2[i], &table2[i >> 1]);
+    jge_dbl(ec, &wnd1[i], &wnd1[i >> 1]);
+    jge_dbl(ec, &wnd2[i], &wnd2[i >> 1]);
 
-    jge_mixed_add(ec, &table1[i + 1], &table1[i], &p1);
-    jge_mixed_add(ec, &table2[i + 1], &table2[i], &p2);
+    jge_mixed_add(ec, &wnd1[i + 1], &wnd1[i], &p1);
+    jge_mixed_add(ec, &wnd2[i + 1], &wnd2[i], &p2);
   }
 
   jge_zero(ec, r);
@@ -4053,8 +4121,8 @@ wei_jmul_endo(const wei_t *ec, jge_t *r, const wge_t *p, const sc_t k) {
     b2 = sc_get_bits(sc, k2, i * WND_WIDTH, WND_WIDTH);
 
     for (j = 0; j < WND_SIZE; j++) {
-      jge_select(ec, &t1, &t1, &table1[j], j == b1);
-      jge_select(ec, &t2, &t2, &table2[j], j == b2);
+      jge_select(ec, &t1, &t1, &wnd1[j], j == b1);
+      jge_select(ec, &t2, &t2, &wnd2[j], j == b2);
     }
 
     if (i == start) {
@@ -4105,10 +4173,10 @@ wei_jmul_double_normal_var(const wei_t *ec,
    *        Algorithm 3.51, Page 112, Section 3.3.
    */
   const scalar_field_t *sc = &ec->sc;
-  const wge_t *wnd1 = ec->points;
-  jge_t wnd2[NAF_SIZE];
-  int32_t naf1[MAX_SCALAR_BITS + 1];
-  int32_t naf2[MAX_SCALAR_BITS + 1];
+  const wge_t *wnd1 = ec->wnd_naf;
+  jge_t wnd2[NAF_SIZE]; /* 1728 bytes */
+  int32_t naf1[MAX_SCALAR_BITS + 1]; /* 2088 bytes */
+  int32_t naf2[MAX_SCALAR_BITS + 1]; /* 2088 bytes */
   size_t max1 = sc_bitlen_var(sc, k1) + 1;
   size_t max2 = sc_bitlen_var(sc, k2) + 1;
   size_t max = max1 > max2 ? max1 : max2;
@@ -4153,13 +4221,13 @@ wei_jmul_double_endo_var(const wei_t *ec,
    * [GLV] Page 193, Section 3 (Using Efficient Endomorphisms).
    */
   const scalar_field_t *sc = &ec->sc;
-  const wge_t *wnd1 = ec->points;
-  const wge_t *wnd2 = ec->endo_points;
-  wge_t wnd3[4];
-  int32_t naf1[MAX_SCALAR_BITS + 1];
-  int32_t naf2[MAX_SCALAR_BITS + 1];
-  int32_t naf3[MAX_SCALAR_BITS + 1];
-  sc_t c1, c2, c3, c4;
+  const wge_t *wnd1 = ec->wnd_naf;
+  const wge_t *wnd2 = ec->wnd_endo;
+  wge_t wnd3[4]; /* 608 bytes */
+  int32_t naf1[MAX_SCALAR_BITS + 1]; /* 2088 bytes */
+  int32_t naf2[MAX_SCALAR_BITS + 1]; /* 2088 bytes */
+  int32_t naf3[MAX_SCALAR_BITS + 1]; /* 2088 bytes */
+  sc_t c1, c2, c3, c4; /* 288 bytes */
   int32_t s1, s2, s3, s4;
   size_t i, max;
 
@@ -4246,11 +4314,11 @@ wei_jmul_multi_normal_var(const wei_t *ec,
    *        Algorithm 3.51, Page 112, Section 3.3.
    */
   const scalar_field_t *sc = &ec->sc;
-  const wge_t *wnd0 = ec->points;
+  const wge_t *wnd0 = ec->wnd_naf;
   size_t max = sc_bitlen_var(sc, k0) + 1;
-  int32_t naf0[MAX_SCALAR_BITS + 1];
-  jge_t *wnds[32];
-  int32_t *nafs[32];
+  int32_t naf0[MAX_SCALAR_BITS + 1]; /* 2088 bytes */
+  jge_t *wnds[32]; /* 256 bytes */
+  int32_t *nafs[32]; /* 256 bytes */
   size_t i, j;
 
   assert((len & 1) == 0);
@@ -4325,13 +4393,13 @@ wei_jmul_multi_endo_var(const wei_t *ec,
    *        Algorithm 3.51, Page 112, Section 3.3.
    */
   const scalar_field_t *sc = &ec->sc;
-  const wge_t *wnd0 = ec->points;
-  const wge_t *wnd1 = ec->endo_points;
+  const wge_t *wnd0 = ec->wnd_naf;
+  const wge_t *wnd1 = ec->wnd_endo;
   size_t max = ((sc->bits + 1) >> 1) + 1;
-  int32_t naf0[MAX_SCALAR_BITS + 1];
-  int32_t naf1[MAX_SCALAR_BITS + 1];
-  wge_t *wnds[64];
-  int32_t *nafs[64];
+  int32_t naf0[MAX_SCALAR_BITS + 1]; /* 2088 bytes */
+  int32_t naf1[MAX_SCALAR_BITS + 1]; /* 2088 bytes */
+  wge_t *wnds[64]; /* 512 bytes */
+  int32_t *nafs[64]; /* 512 bytes */
   sc_t k1, k2;
   int32_t s1, s2;
   size_t i, j;
@@ -5595,6 +5663,8 @@ mont_init(mont_t *ec, const mont_def_t *def) {
   prime_field_init(fe, def->fe, -1);
   scalar_field_init(sc, def->sc, -1);
 
+  assert(sc->limbs >= fe->limbs);
+
   fe_import_be(fe, ec->a, def->a);
   fe_import_be(fe, ec->b, def->b);
 
@@ -5667,6 +5737,14 @@ mont_clamp(const mont_t *ec, unsigned char *out, const unsigned char *in) {
   /* Copy. */
   memcpy(out, in, size);
 
+  /* Adjust for low order. */
+  if (size < ec->fe.size)
+    top = 8;
+
+  /* Adjust for high order. */
+  if (size > ec->fe.size)
+    out[--size] = 0;
+
   /* Ensure a multiple of the cofactor. */
   out[0] &= -ec->h;
 
@@ -5705,8 +5783,6 @@ mont_mul(const mont_t *ec, pge_t *r, const pge_t *p, const sc_t k, int affine) {
   mp_limb_t bit = 0;
   mp_size_t i;
   pge_t a, b;
-
-  assert((size_t)sc->limbs * GMP_NUMB_BITS >= fe->bits);
 
   pge_zero(ec, &a);
   pge_set(ec, &b, p);
@@ -6448,7 +6524,7 @@ xge_is_small(const edwards_t *ec, const xge_t *p) {
 }
 
 static void
-xge_wnd_points(const edwards_t *ec, xge_t *out, const xge_t *p) {
+xge_fixed_points(const edwards_t *ec, xge_t *out, const xge_t *p) {
   const scalar_field_t *sc = &ec->sc;
   size_t i, j;
   xge_t g;
@@ -6544,6 +6620,8 @@ edwards_init(edwards_t *ec, const edwards_def_t *def) {
   prime_field_init(fe, def->fe, -1);
   scalar_field_init(sc, def->sc, -1);
 
+  assert(sc->limbs >= fe->limbs);
+
   fe_import_be(fe, ec->a, def->a);
   fe_import_be(fe, ec->d, def->d);
   fe_add(fe, ec->k, ec->d, ec->d);
@@ -6568,8 +6646,8 @@ edwards_init(edwards_t *ec, const edwards_def_t *def) {
   sc_zero(sc, ec->blind);
   xge_zero(ec, &ec->unblind);
 
-  xge_wnd_points(ec, ec->windows, &ec->g);
-  xge_naf_points(ec, ec->points, &ec->g, NAF_WIDTH_PRE);
+  xge_fixed_points(ec, ec->wnd_fixed, &ec->g);
+  xge_naf_points(ec, ec->wnd_naf, &ec->g, NAF_WIDTH_PRE);
 }
 
 static void
@@ -6640,6 +6718,14 @@ edwards_clamp(const edwards_t *ec,
   /* Copy. */
   memcpy(out, in, size);
 
+  /* Adjust for low order. */
+  if (size < ec->fe.size)
+    top = 8;
+
+  /* Adjust for high order. */
+  if (size > ec->fe.size)
+    out[--size] = 0;
+
   /* Ensure a multiple of the cofactor. */
   out[0] &= -ec->h;
 
@@ -6674,6 +6760,7 @@ edwards_mul_g(const edwards_t *ec, xge_t *r, const sc_t k) {
    * down to 64 additions with a window size of 4.
    */
   const scalar_field_t *sc = &ec->sc;
+  const xge_t *wnds = ec->wnd_fixed;
   size_t i, j, b;
   sc_t k0;
   xge_t t;
@@ -6689,7 +6776,7 @@ edwards_mul_g(const edwards_t *ec, xge_t *r, const sc_t k) {
     b = sc_get_bits(sc, k0, i * WND_WIDTH, WND_WIDTH);
 
     for (j = 0; j < WND_SIZE; j++)
-      xge_select(ec, &t, &t, &ec->windows[i * WND_SIZE + j], j == b);
+      xge_select(ec, &t, &t, &wnds[i * WND_SIZE + j], j == b);
 
     xge_add(ec, r, r, &t);
   }
@@ -6710,16 +6797,16 @@ edwards_mul(const edwards_t *ec, xge_t *r, const xge_t *p, const sc_t k) {
   const prime_field_t *fe = &ec->fe;
   const scalar_field_t *sc = &ec->sc;
   mp_size_t start = WND_STEPS(fe->bits) - 1;
-  xge_t table[WND_SIZE];
+  xge_t wnd[WND_SIZE]; /* 4608 bytes */
   mp_size_t i, j, b;
   xge_t t;
 
-  xge_zero(ec, &table[0]);
-  xge_set(ec, &table[1], p);
+  xge_zero(ec, &wnd[0]);
+  xge_set(ec, &wnd[1], p);
 
   for (i = 2; i < WND_SIZE; i += 2) {
-    xge_dbl(ec, &table[i], &table[i >> 1]);
-    xge_add(ec, &table[i + 1], &table[i], p);
+    xge_dbl(ec, &wnd[i], &wnd[i >> 1]);
+    xge_add(ec, &wnd[i + 1], &wnd[i], p);
   }
 
   xge_zero(ec, r);
@@ -6729,7 +6816,7 @@ edwards_mul(const edwards_t *ec, xge_t *r, const xge_t *p, const sc_t k) {
     b = sc_get_bits(sc, k, i * WND_WIDTH, WND_WIDTH);
 
     for (j = 0; j < WND_SIZE; j++)
-      xge_select(ec, &t, &t, &table[j], j == b);
+      xge_select(ec, &t, &t, &wnd[j], j == b);
 
     if (i == start) {
       xge_set(ec, r, &t);
@@ -6757,10 +6844,10 @@ edwards_mul_double_var(const edwards_t *ec,
    *        Algorithm 3.51, Page 112, Section 3.3.
    */
   const scalar_field_t *sc = &ec->sc;
-  const xge_t *wnd1 = ec->points;
-  xge_t wnd2[NAF_SIZE];
-  int32_t naf1[MAX_SCALAR_BITS + 1];
-  int32_t naf2[MAX_SCALAR_BITS + 1];
+  const xge_t *wnd1 = ec->wnd_naf;
+  xge_t wnd2[NAF_SIZE]; /* 2304 bytes */
+  int32_t naf1[MAX_SCALAR_BITS + 1]; /* 2088 bytes */
+  int32_t naf2[MAX_SCALAR_BITS + 1]; /* 2088 bytes */
   size_t max1 = sc_bitlen_var(sc, k1) + 1;
   size_t max2 = sc_bitlen_var(sc, k2) + 1;
   size_t max = max1 > max2 ? max1 : max2;
@@ -6808,11 +6895,11 @@ edwards_mul_multi_var(const edwards_t *ec,
    *        Algorithm 3.51, Page 112, Section 3.3.
    */
   const scalar_field_t *sc = &ec->sc;
-  const xge_t *wnd0 = ec->points;
+  const xge_t *wnd0 = ec->wnd_naf;
   size_t max = sc_bitlen_var(sc, k0) + 1;
-  int32_t naf0[MAX_SCALAR_BITS + 1];
-  xge_t *wnds[32];
-  int32_t *nafs[32];
+  int32_t naf0[MAX_SCALAR_BITS + 1]; /* 2088 bytes */
+  xge_t *wnds[32]; /* 256 bytes */
+  int32_t *nafs[32]; /* 256 bytes */
   size_t i, j;
 
   assert((len & 1) == 0);
@@ -9284,16 +9371,12 @@ ecdsa_verify(const wei_t *ec,
    * repeatedly adding `n * z^2` to it up
    * to a certain threshold.
    */
+  const prime_field_t *fe = &ec->fe;
   const scalar_field_t *sc = &ec->sc;
   sc_t m, r, s, u1, u2;
-  wge_t A;
-#ifdef ECC_WITH_TRICK
-  jge_t R;
-#else
-  const prime_field_t *fe = &ec->fe;
-  wge_t R;
+  wge_t A, R;
+  jge_t J;
   sc_t x;
-#endif
 
   if (!sc_import(sc, r, sig))
     return 0;
@@ -9316,11 +9399,12 @@ ecdsa_verify(const wei_t *ec,
   sc_mul(sc, u1, m, s);
   sc_mul(sc, u2, r, s);
 
-#ifdef ECC_WITH_TRICK
-  wei_jmul_double_var(ec, &R, u1, &A, u2);
+  if (ec->small_gap) {
+    wei_jmul_double_var(ec, &J, u1, &A, u2);
 
-  return jge_equal_r_var(ec, &R, r);
-#else
+    return jge_equal_r_var(ec, &J, r);
+  }
+
   wei_mul_double_var(ec, &R, u1, &A, u2);
 
   if (wge_is_zero(ec, &R))
@@ -9329,7 +9413,6 @@ ecdsa_verify(const wei_t *ec,
   sc_set_fe(sc, fe, x, R.x);
 
   return sc_equal(sc, x, r);
-#endif
 }
 
 int
@@ -9392,10 +9475,14 @@ ecdsa_recover(const wei_t *ec,
   if (sc_is_high_var(sc, s))
     goto fail;
 
-  fe_set_sc(fe, sc, x, r);
+  if (!fe_set_sc(fe, sc, x, r))
+    goto fail;
 
   if (high) {
-    if (sc_cmp_var(sc, r, ec->pmodn) >= 0)
+    if (ec->high_order)
+      goto fail;
+
+    if (sc_cmp_var(sc, r, ec->sc_p) >= 0)
       goto fail;
 
     fe_add(fe, x, x, ec->fe_n);
@@ -11680,15 +11767,10 @@ eddsa_hash_final(const edwards_t *ec, hash_t *hash, sc_t r) {
   const prime_field_t *fe = &ec->fe;
   const scalar_field_t *sc = &ec->sc;
   unsigned char bytes[(MAX_FIELD_SIZE + 1) * 2];
-  mp_limb_t k[MAX_REDUCE_LIMBS];
 
   hash_final(hash, bytes, fe->adj_size * 2);
 
-  mpn_import(k, sc->shift, bytes, fe->adj_size * 2, sc->endian);
-
-  sc_reduce(sc, r, k);
-
-  mpn_cleanse(k, sc->shift);
+  sc_import_wide(sc, r, bytes, fe->adj_size * 2);
 
   cleanse(bytes, fe->adj_size * 2);
 }
