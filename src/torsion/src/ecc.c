@@ -132,6 +132,9 @@
  *   [RFC8032] Edwards-Curve Digital Signature Algorithm (EdDSA)
  *     S. Josefsson, I. Liusvaara
  *     https://tools.ietf.org/html/rfc8032
+ *
+ *   [ECPM] Elliptic Curve Point Multiplication (wikipedia)
+ *     https://en.wikipedia.org/wiki/Elliptic_curve_point_multiplication
  */
 
 #include <assert.h>
@@ -205,7 +208,8 @@ typedef uint32_t fe_word_t;
 #define WND_WIDTH 4
 #define WND_SIZE (1 << WND_WIDTH) /* 16 */
 #define WND_STEPS(bits) (((bits) + WND_WIDTH - 1) / WND_WIDTH) /* 64 */
-#define MAX_WNDS_SIZE (WND_STEPS(MAX_SCALAR_BITS) * WND_SIZE) /* 1024 */
+#define WNDS_SIZE(bits) (WND_STEPS(bits) * WND_SIZE) /* 1024 */
+#define MAX_WNDS_SIZE WNDS_SIZE(MAX_SCALAR_BITS) /* 2096 */
 
 #define NAF_WIDTH 4
 #define NAF_SIZE (1 << (NAF_WIDTH - 1)) /* 8 */
@@ -1990,6 +1994,15 @@ static void
 wge_to_jge(const wei_t *ec, jge_t *r, const wge_t *a);
 
 static void
+jge_zero(const wei_t *ec, jge_t *r);
+
+static void
+jge_set(const wei_t *ec, jge_t *r, const jge_t *a);
+
+static void
+jge_dbl_var(const wei_t *ec, jge_t *r, const jge_t *p);
+
+static void
 jge_add_var(const wei_t *ec, jge_t *r, const jge_t *a, const jge_t *b);
 
 static void
@@ -2009,6 +2022,9 @@ jge_mixed_add(const wei_t *ec, jge_t *r, const jge_t *a, const wge_t *b);
 
 static void
 jge_to_wge(const wei_t *ec, wge_t *r, const jge_t *p);
+
+static void
+jge_to_wge_all_var(const wei_t *ec, wge_t *out, const jge_t *in, size_t len);
 
 /*
  * Short Weierstrass Affine Point
@@ -2445,20 +2461,122 @@ wge_sub_var(const wei_t *ec, wge_t *r, const wge_t *a, const wge_t *b) {
 
 static void
 wge_dbl(const wei_t *ec, wge_t *r, const wge_t *p) {
-  jge_t j;
+  /* [GECC] Page 80, Section 3.1.2.
+   *
+   * Addition Law (doubling):
+   *
+   *   l = (3 * x1^2 + a) / (2 * y1)
+   *   x3 = l^2 - 2 * x1
+   *   y3 = l * (x1 - x3) - y1
+   *
+   * 1I + 2M + 2S + 3A + 2*2 + 1*3
+   */
+  const prime_field_t *fe = &ec->fe;
+  int inf = p->inf | (ec->h > 1 && fe_is_zero(fe, p->y));
+  fe_t l, t, x3, y3;
 
-  wge_to_jge(ec, &j, p);
-  jge_dbl(ec, &j, &j);
-  jge_to_wge(ec, r, &j);
+  /* L = (3 * X1^2 + a) / (2 * Y1) */
+  fe_sqr(fe, t, p->x);
+  fe_add(fe, l, t, t);
+  fe_add(fe, l, l, t);
+  fe_add(fe, l, l, ec->a);
+  fe_add(fe, t, p->y, p->y);
+  fe_invert(fe, t, t);
+  fe_mul(fe, l, l, t);
+
+  /* X3 = L^2 - 2 * X1 */
+  fe_sqr(fe, x3, l);
+  fe_sub(fe, x3, x3, p->x);
+  fe_sub(fe, x3, x3, p->x);
+
+  /* Y3 = L * (X1 - X3) - Y1 */
+  fe_sub(fe, t, p->x, x3);
+  fe_mul(fe, y3, l, t);
+  fe_sub(fe, y3, y3, p->y);
+
+  fe_select(fe, r->x, x3, fe->zero, inf);
+  fe_select(fe, r->y, y3, fe->zero, inf);
+  r->inf = inf;
 }
 
 static void
 wge_add(const wei_t *ec, wge_t *r, const wge_t *a, const wge_t *b) {
-  jge_t j;
+  /* [SIDE2] Page 5, Section 3.
+   * [SIDE3] Page 4, Section 3.
+   *
+   * Addition Law (unified):
+   *
+   *   l = ((x1 + x2)^2 - (x1 * x2) + a) / (y1 + y2)
+   *   x3 = l^2 - x1 - x2
+   *   y3 = l * (x1 - x3) - y1
+   *
+   * If x1 != x2 and y1 = -y2, we switch
+   * back to the regular addition lambda:
+   *
+   *   l = (y1 - y2) / (x1 - x2)
+   *
+   * 1I + 3M + 2S + 10A
+   */
+  const prime_field_t *fe = &ec->fe;
+  fe_t m, r0, l, x3, y3, t;
+  int degenerate, neg, inf;
 
-  wge_to_jge(ec, &j, a);
-  jge_mixed_add(ec, &j, &j, b);
-  jge_to_wge(ec, r, &j);
+  /* M = Y1 + Y2 */
+  fe_add(fe, m, a->y, b->y);
+
+  /* R = (X1 + X2)^2 - X1 * X2 + a */
+  fe_add(fe, t, a->x, b->x);
+  fe_sqr(fe, t, t);
+  fe_mul(fe, l, a->x, b->x);
+  fe_sub(fe, r0, t, l);
+  fe_add(fe, r0, r0, ec->a);
+
+  /* Check for degenerate case (X1 != X2, Y1 = -Y2). */
+  degenerate = fe_is_zero(fe, m) & fe_is_zero(fe, r0);
+
+  /* M = X1 - X2 (if degenerate) */
+  fe_sub(fe, t, a->x, b->x);
+  fe_select(fe, m, m, t, degenerate);
+
+  /* R = Y1 - Y2 (if degenerate) */
+  fe_sub(fe, t, a->y, b->y);
+  fe_select(fe, r0, r0, t, degenerate);
+
+  /* Check for negation (X1 = X2, Y1 = -Y2). */
+  neg = fe_is_zero(fe, m) & ((a->inf | b->inf) ^ 1);
+
+  /* L = R / M */
+  fe_invert(fe, m, m);
+  fe_mul(fe, l, r0, m);
+
+  /* X3 = L^2 - X1 - X2 */
+  fe_sqr(fe, x3, l);
+  fe_sub(fe, x3, x3, a->x);
+  fe_sub(fe, x3, x3, b->x);
+
+  /* Y3 = L * (X1 - X3) - Y1 */
+  fe_sub(fe, t, a->x, x3);
+  fe_mul(fe, y3, l, t);
+  fe_sub(fe, y3, y3, a->y);
+
+  /* Check for infinity. */
+  inf = neg | (a->inf & b->inf);
+
+  /* Case 1: O + P = P */
+  fe_select(fe, x3, x3, b->x, a->inf);
+  fe_select(fe, y3, y3, b->y, a->inf);
+
+  /* Case 2: P + O = P */
+  fe_select(fe, x3, x3, a->x, b->inf);
+  fe_select(fe, y3, y3, a->y, b->inf);
+
+  /* Case 3 & 4: P + -P = O, O + O = O */
+  fe_select(fe, x3, x3, fe->zero, inf);
+  fe_select(fe, y3, y3, fe->zero, inf);
+
+  fe_set(fe, r->x, x3);
+  fe_set(fe, r->y, y3);
+  r->inf = inf;
 }
 
 static void
@@ -2479,45 +2597,62 @@ wge_to_jge(const wei_t *ec, jge_t *r, const wge_t *a) {
 
 static void
 wge_wnd_points_var(const wei_t *ec, wge_t *out, const wge_t *p) {
+  /* NOTE: Only called on initialization. */
   const scalar_field_t *sc = &ec->sc;
+  jge_t *wnds = malloc(WNDS_SIZE(sc->bits) * sizeof(jge_t));
   size_t i, j;
-  wge_t g;
+  jge_t g;
 
-  wge_set(ec, &g, p);
+  assert(wnds != NULL);
+
+  wge_to_jge(ec, &g, p);
 
   for (i = 0; i < WND_STEPS(sc->bits); i++) {
-    wge_zero(ec, &out[i * WND_SIZE]);
+    jge_zero(ec, &wnds[i * WND_SIZE]);
 
     for (j = 1; j < WND_SIZE; j++)
-      wge_add_var(ec, &out[i * WND_SIZE + j], &out[i * WND_SIZE + j - 1], &g);
+      jge_add_var(ec, &wnds[i * WND_SIZE + j], &wnds[i * WND_SIZE + j - 1], &g);
 
     for (j = 0; j < WND_WIDTH; j++)
-      wge_dbl_var(ec, &g, &g);
+      jge_dbl_var(ec, &g, &g);
   }
+
+  jge_to_wge_all_var(ec, out, wnds, WNDS_SIZE(sc->bits));
+
+  free(wnds);
 }
 
 static void
-wge_naf_points_var(const wei_t *ec, wge_t *points,
+wge_naf_points_var(const wei_t *ec, wge_t *out,
                    const wge_t *p, size_t width) {
+  /* NOTE: Only called on initialization. */
   size_t size = 1 << (width - 1);
-  wge_t dbl;
+  jge_t *points = malloc(size * sizeof(jge_t));
+  jge_t j, dbl;
   size_t i;
 
-  wge_dbl_var(ec, &dbl, p);
-  wge_set(ec, &points[0], p);
+  assert(points != NULL);
+
+  wge_to_jge(ec, &j, p);
+  jge_dbl_var(ec, &dbl, &j);
+  jge_set(ec, &points[0], &j);
 
   for (i = 1; i < size; i++)
-    wge_add_var(ec, &points[i], &points[i - 1], &dbl);
+    jge_add_var(ec, &points[i], &points[i - 1], &dbl);
+
+  jge_to_wge_all_var(ec, out, points, size);
+
+  free(points);
 }
 
 static void
-wge_jsf_points_var(const wei_t *ec, jge_t *points,
+wge_jsf_points_var(const wei_t *ec, jge_t *out,
                    const wge_t *p1, const wge_t *p2) {
   /* Create comb for JSF. */
-  wge_to_jge(ec, &points[0], p1); /* 1 */
-  jge_mixed_add_var(ec, &points[1], &points[0], p2); /* 3 */
-  jge_mixed_sub_var(ec, &points[2], &points[0], p2); /* 5 */
-  wge_to_jge(ec, &points[3], p2); /* 7 */
+  wge_to_jge(ec, &out[0], p1); /* 1 */
+  jge_mixed_add_var(ec, &out[1], &out[0], p2); /* 3 */
+  jge_mixed_sub_var(ec, &out[2], &out[0], p2); /* 5 */
+  wge_to_jge(ec, &out[3], p2); /* 7 */
 }
 
 static void
@@ -2530,7 +2665,7 @@ wge_endo_beta(const wei_t *ec, wge_t *r, const wge_t *p) {
 }
 
 static void
-wge_jsf_points_endo(const wei_t *ec, wge_t *points, const wge_t *p1) {
+wge_jsf_points_endo(const wei_t *ec, wge_t *out, const wge_t *p1) {
   /* Runs in constant time despite _var calls. */
   wge_t p2;
 
@@ -2538,10 +2673,10 @@ wge_jsf_points_endo(const wei_t *ec, wge_t *points, const wge_t *p1) {
   wge_endo_beta(ec, &p2, p1);
 
   /* Create comb for JSF. */
-  wge_set(ec, &points[0], p1); /* 1 */
-  wge_add_var(ec, &points[1], p1, &p2); /* 3 */
-  wge_sub_var(ec, &points[2], p1, &p2); /* 5 */
-  wge_set(ec, &points[3], &p2); /* 7 */
+  wge_set(ec, &out[0], p1); /* 1 */
+  wge_add_var(ec, &out[1], p1, &p2); /* 3 */
+  wge_sub_var(ec, &out[2], p1, &p2); /* 5 */
+  wge_set(ec, &out[3], &p2); /* 7 */
 }
 
 #ifdef TORSION_TEST
@@ -3147,8 +3282,10 @@ jge_add(const wei_t *ec, jge_t *r, const jge_t *a, const jge_t *b) {
    * [SIDE2] Page 6, Section 3.
    * [SIDE3] Page 4, Section 3.
    *
-   * The above documents use projective coordinates[1]. The
-   * formula below was heavily adapted from libsecp256k1[2].
+   * The above documents use projective coordinates[1]
+   * and have been modified for jacobian coordinates. A
+   * further modification, taken from libsecp256k1[2],
+   * handles the degenerate case of: x1 != x2, y1 = -y2.
    *
    * [1] https://hyperelliptic.org/EFD/g1p/auto-shortw-projective.html#addition-add-2002-bj
    * [2] https://github.com/bitcoin-core/secp256k1/blob/ee9e68c/src/group_impl.h#L525
@@ -3508,6 +3645,47 @@ jge_to_wge_var(const wei_t *ec, wge_t *r, const jge_t *p) {
   r->inf = 0;
 }
 
+static void
+jge_to_wge_all_var(const wei_t *ec, wge_t *out, const jge_t *in, size_t len) {
+  /* Montgomery's trick. */
+  const prime_field_t *fe = &ec->fe;
+  fe_t acc, z2, z3;
+  size_t i;
+
+  fe_set(fe, acc, fe->one);
+
+  for (i = 0; i < len; i++) {
+    if (fe_is_zero(fe, in[i].z))
+      continue;
+
+    fe_set(fe, out[i].x, acc);
+    fe_mul(fe, acc, acc, in[i].z);
+  }
+
+  CHECK(fe_invert_var(fe, acc, acc));
+
+  for (i = len; i-- > 0;) {
+    if (fe_is_zero(fe, in[i].z))
+      continue;
+
+    fe_mul(fe, out[i].x, out[i].x, acc);
+    fe_mul(fe, acc, acc, in[i].z);
+  }
+
+  for (i = 0; i < len; i++) {
+    if (fe_is_zero(fe, in[i].z)) {
+      wge_zero(ec, &out[i]);
+      continue;
+    }
+
+    fe_sqr(fe, z2, out[i].x);
+    fe_mul(fe, z3, z2, out[i].x);
+    fe_mul(fe, out[i].x, in[i].x, z2);
+    fe_mul(fe, out[i].y, in[i].y, z3);
+    out[i].inf = 0;
+  }
+}
+
 static int
 jge_validate(const wei_t *ec, const jge_t *p) {
   /* [GECC] Example 3.20, Page 88, Section 3. */
@@ -3532,17 +3710,17 @@ jge_validate(const wei_t *ec, const jge_t *p) {
 }
 
 static void
-jge_naf_points_var(const wei_t *ec, jge_t *points,
+jge_naf_points_var(const wei_t *ec, jge_t *out,
                    const wge_t *p, size_t width) {
   size_t size = 1 << (width - 1);
   jge_t dbl;
   size_t i;
 
-  wge_to_jge(ec, &points[0], p);
-  jge_dbl_var(ec, &dbl, &points[0]);
+  wge_to_jge(ec, &out[0], p);
+  jge_dbl_var(ec, &dbl, &out[0]);
 
   for (i = 1; i < size; i++)
-    jge_add_var(ec, &points[i], &points[i - 1], &dbl);
+    jge_add_var(ec, &out[i], &out[i - 1], &dbl);
 }
 
 #ifdef TORSION_TEST
@@ -3734,6 +3912,15 @@ wei_endo_split(const wei_t *ec,
 
 static void
 wei_jmul_g(const wei_t *ec, jge_t *r, const sc_t k) {
+  /* Fixed-base method for point multiplication.
+   *
+   * [ECPM] "Windowed method".
+   * [GECC] Page 95, Section 3.3.
+   *
+   * Windows are appropriately shifted to avoid any
+   * doublings. This reduces a 256 bit multiplication
+   * down to 64 additions with a window size of 4.
+   */
   const scalar_field_t *sc = &ec->sc;
   size_t i, j, b;
   sc_t k0;
@@ -3770,6 +3957,11 @@ wei_mul_g(const wei_t *ec, wge_t *r, const sc_t k) {
 
 static void
 wei_jmul_normal(const wei_t *ec, jge_t *r, const wge_t *p, const sc_t k) {
+  /* Windowed method for point multiplication.
+   *
+   * [ECPM] "Windowed method".
+   * [GECC] Page 95, Section 3.3.
+   */
   const scalar_field_t *sc = &ec->sc;
   mp_size_t start = WND_STEPS(sc->bits) - 1;
   jge_t table[WND_SIZE];
@@ -3808,6 +4000,12 @@ wei_jmul_normal(const wei_t *ec, jge_t *r, const wge_t *p, const sc_t k) {
 
 static void
 wei_jmul_endo(const wei_t *ec, jge_t *r, const wge_t *p, const sc_t k) {
+  /* Windowed method for point multiplication
+   * (with endomorphism).
+   *
+   * [ECPM] "Windowed method".
+   * [GECC] Page 95, Section 3.3.
+   */
   const scalar_field_t *sc = &ec->sc;
   mp_size_t bits = (sc->bits + 1) >> 1;
   mp_size_t start = WND_STEPS(bits) - 1;
@@ -6269,27 +6467,27 @@ xge_wnd_points(const edwards_t *ec, xge_t *out, const xge_t *p) {
 }
 
 static void
-xge_naf_points(const edwards_t *ec, xge_t *points,
+xge_naf_points(const edwards_t *ec, xge_t *out,
                const xge_t *p, size_t width) {
   size_t size = 1 << (width - 1);
   xge_t dbl;
   size_t i;
 
   xge_dbl(ec, &dbl, p);
-  xge_set(ec, &points[0], p);
+  xge_set(ec, &out[0], p);
 
   for (i = 1; i < size; i++)
-    xge_add(ec, &points[i], &points[i - 1], &dbl);
+    xge_add(ec, &out[i], &out[i - 1], &dbl);
 }
 
 static void
-xge_jsf_points(const edwards_t *ec, xge_t *points,
+xge_jsf_points(const edwards_t *ec, xge_t *out,
                const xge_t *p1, const xge_t *p2) {
   /* Create comb for JSF. */
-  xge_set(ec, &points[0], p1); /* 1 */
-  xge_add(ec, &points[1], p1, p2); /* 3 */
-  xge_sub(ec, &points[2], p1, p2); /* 5 */
-  xge_set(ec, &points[3], p2); /* 7 */
+  xge_set(ec, &out[0], p1); /* 1 */
+  xge_add(ec, &out[1], p1, p2); /* 3 */
+  xge_sub(ec, &out[2], p1, p2); /* 5 */
+  xge_set(ec, &out[3], p2); /* 7 */
 }
 
 static void
@@ -6466,6 +6664,15 @@ edwards_mul_a(const edwards_t *ec, fe_t r, const fe_t x) {
 
 static void
 edwards_mul_g(const edwards_t *ec, xge_t *r, const sc_t k) {
+  /* Fixed-base method for point multiplication.
+   *
+   * [ECPM] "Windowed method".
+   * [GECC] Page 95, Section 3.3.
+   *
+   * Windows are appropriately shifted to avoid any
+   * doublings. This reduces a 256 bit multiplication
+   * down to 64 additions with a window size of 4.
+   */
   const scalar_field_t *sc = &ec->sc;
   size_t i, j, b;
   sc_t k0;
@@ -6495,6 +6702,11 @@ edwards_mul_g(const edwards_t *ec, xge_t *r, const sc_t k) {
 
 static void
 edwards_mul(const edwards_t *ec, xge_t *r, const xge_t *p, const sc_t k) {
+  /* Windowed method for point multiplication.
+   *
+   * [ECPM] "Windowed method".
+   * [GECC] Page 95, Section 3.3.
+   */
   const prime_field_t *fe = &ec->fe;
   const scalar_field_t *sc = &ec->sc;
   mp_size_t start = WND_STEPS(fe->bits) - 1;

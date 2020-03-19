@@ -251,10 +251,18 @@ safe_cmp(const unsigned char *x, const unsigned char *y, size_t len) {
 
 static void *
 safe_malloc(size_t size) {
+  void *ptr;
+
   if (size == 0)
     return NULL;
 
-  return calloc(size, sizeof(unsigned char));
+  ptr = malloc(size);
+
+  CHECK(ptr != NULL);
+
+  memset(ptr, 0, size);
+
+  return ptr;
 }
 
 static void
@@ -1776,9 +1784,6 @@ rsa_verify(int type,
 
   em = safe_malloc(klen);
 
-  if (em == NULL)
-    goto fail;
-
   if (!rsa_pub_encrypt(&k, em, sig, sig_len))
     goto fail;
 
@@ -1980,15 +1985,10 @@ rsa_sign_pss(unsigned char *out,
   if (salt_len < 0 || (size_t)salt_len > klen)
     goto fail;
 
-  if (salt_len > 0) {
-    salt = safe_malloc(salt_len);
+  salt = safe_malloc(salt_len);
 
-    if (salt == NULL)
-      goto fail;
-
-    drbg_init(&rng, HASH_SHA512, entropy, ENTROPY_SIZE);
-    drbg_generate(&rng, salt, salt_len);
-  }
+  drbg_init(&rng, HASH_SHA512, entropy, ENTROPY_SIZE);
+  drbg_generate(&rng, salt, salt_len);
 
   if (!pss_encode(em, &emlen, type, msg, msg_len, bits - 1, salt, salt_len))
     goto fail;
@@ -2056,9 +2056,6 @@ rsa_verify_pss(int type,
     goto fail;
 
   em = safe_malloc(klen);
-
-  if (em == NULL)
-    goto fail;
 
   if (!rsa_pub_encrypt(&k, em, sig, sig_len))
     goto fail;
