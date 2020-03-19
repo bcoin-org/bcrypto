@@ -2701,26 +2701,29 @@ bcrypto_ecdh_pubkey_from_hash(napi_env env, napi_callback_info info) {
 
 static napi_value
 bcrypto_ecdh_pubkey_to_hash(napi_env env, napi_callback_info info) {
-  napi_value argv[3];
-  size_t argc = 3;
+  napi_value argv[4];
+  size_t argc = 4;
   uint8_t out[ECDH_MAX_FIELD_SIZE * 2];
   const uint8_t *pub;
+  uint32_t subgroup;
   uint8_t *entropy;
   size_t pub_len, entropy_len;
   bcrypto_ecdh_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
-  CHECK(argc == 3);
+  CHECK(argc == 4);
   CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
                              &pub_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&entropy,
+  CHECK(napi_get_value_uint32(env, argv[2], &subgroup) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[3], (void **)&entropy,
                              &entropy_len) == napi_ok);
 
   JS_ASSERT(pub_len == ec->field_size, JS_ERR_PUBKEY_SIZE);
   JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
-  JS_ASSERT(ecdh_pubkey_to_hash(ec->ctx, out, pub, entropy), JS_ERR_PUBKEY);
+  JS_ASSERT(ecdh_pubkey_to_hash(ec->ctx, out, pub, subgroup, entropy),
+            JS_ERR_PUBKEY);
 
   cleanse(entropy, entropy_len);
 
@@ -3403,7 +3406,7 @@ bcrypto_ecdsa_pubkey_to_hash(napi_env env, napi_callback_info info) {
                              &entropy_len) == napi_ok);
 
   JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
-  JS_ASSERT(ecdsa_pubkey_to_hash(ec->ctx, out, pub, pub_len, entropy),
+  JS_ASSERT(ecdsa_pubkey_to_hash(ec->ctx, out, pub, pub_len, 0, entropy),
             JS_ERR_PUBKEY);
 
   cleanse(entropy, entropy_len);
@@ -4912,26 +4915,28 @@ bcrypto_eddsa_pubkey_from_hash(napi_env env, napi_callback_info info) {
 
 static napi_value
 bcrypto_eddsa_pubkey_to_hash(napi_env env, napi_callback_info info) {
-  napi_value argv[3];
-  size_t argc = 3;
+  napi_value argv[4];
+  size_t argc = 4;
   uint8_t out[EDDSA_MAX_FIELD_SIZE * 2];
   const uint8_t *pub;
+  uint32_t subgroup;
   uint8_t *entropy;
   size_t pub_len, entropy_len;
   bcrypto_eddsa_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
-  CHECK(argc == 3);
+  CHECK(argc == 4);
   CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
                              &pub_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&entropy,
+  CHECK(napi_get_value_uint32(env, argv[2], &subgroup) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[3], (void **)&entropy,
                              &entropy_len) == napi_ok);
 
   JS_ASSERT(pub_len == ec->pub_size, JS_ERR_PUBKEY_SIZE);
   JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
-  JS_ASSERT(eddsa_pubkey_to_hash(ec->ctx, out, pub, entropy),
+  JS_ASSERT(eddsa_pubkey_to_hash(ec->ctx, out, pub, subgroup, entropy),
             JS_ERR_PUBKEY);
 
   cleanse(entropy, entropy_len);
@@ -7759,7 +7764,8 @@ bcrypto_schnorr_pubkey_to_hash(napi_env env, napi_callback_info info) {
 
   JS_ASSERT(pub_len == ec->field_size, JS_ERR_PUBKEY_SIZE);
   JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
-  JS_ASSERT(schnorr_pubkey_to_hash(ec->ctx, out, pub, entropy), JS_ERR_PUBKEY);
+  JS_ASSERT(schnorr_pubkey_to_hash(ec->ctx, out, pub, 0, entropy),
+            JS_ERR_PUBKEY);
 
   cleanse(entropy, entropy_len);
 

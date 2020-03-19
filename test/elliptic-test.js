@@ -2768,13 +2768,13 @@ describe('Elliptic', function() {
         // Fails on about half the keys.
         let u;
         try {
-          u = curve.pointToUniform(p, rng.randomInt(), x);
+          u = curve.pointToUniform(p, rng.randomInt() & 3, x);
         } catch (e) {
           continue;
         }
 
         // Encode uniform bytes.
-        bytes = curve.encodeUniform(u, rng);
+        bytes = curve.encodeUniform(u, rng.randomInt());
 
         break;
       }
@@ -2896,7 +2896,7 @@ describe('Elliptic', function() {
         'hex');
 
       const pub1 = eddsa.publicKeyFromUniform(u1);
-      const u2 = eddsa.publicKeyToUniform(pub1);
+      const u2 = eddsa.publicKeyToUniform(pub1, rng.randomInt() & 3);
       const pub2 = eddsa.publicKeyFromUniform(u2);
 
       assert.bufferEqual(pub1,
@@ -3182,7 +3182,7 @@ describe('Elliptic', function() {
           p = curve.randomPoint(rng);
 
           try {
-            u = curve.pointToUniform(p, rng.randomInt());
+            u = curve.pointToUniform(p, rng.randomInt() & 3);
           } catch (e) {
             assert(e.message === 'Invalid point.');
             continue;
@@ -3252,7 +3252,7 @@ describe('Elliptic', function() {
                            iso256k1,
                            curve13318]) {
         const p = curve.randomPoint(rng);
-        const u = curve.pointToHash(p, rng);
+        const u = curve.pointToHash(p, 0, rng);
         const q = curve.pointFromHash(u);
 
         assert(p.eq(q));
@@ -3275,7 +3275,7 @@ describe('Elliptic', function() {
                                 [mont448, ed448],
                                 [mubmub, jubjub]]) {
         const p = curve.randomPoint(rng);
-        const u = curve.pointToHash(p, rng, x);
+        const u = curve.pointToHash(p, 0, rng, x);
         const q = curve.pointFromHash(u, false, x);
 
         assert(p.eq(q));
@@ -3299,7 +3299,7 @@ describe('Elliptic', function() {
       // Insane trick.
       const u = rng.randomBytes(112);
       const p = wei.pointFromHash(u, false);
-      const v = wei.pointToHash(p, rng);
+      const v = wei.pointToHash(p, 0, rng);
       const q = wei.pointFromHash(v, false);
 
       const p0 = mont.pointFromShort(p);

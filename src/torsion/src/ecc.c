@@ -358,6 +358,29 @@ typedef struct _prime_def_s {
 } prime_def_t;
 
 /*
+ * Endomorphism
+ */
+
+typedef struct _endo_def_s {
+  const unsigned char beta[MAX_FIELD_SIZE];
+  const unsigned char lambda[MAX_SCALAR_SIZE];
+  const unsigned char b1[MAX_SCALAR_SIZE];
+  const unsigned char b2[MAX_SCALAR_SIZE];
+  const unsigned char g1[MAX_SCALAR_SIZE];
+  const unsigned char g2[MAX_SCALAR_SIZE];
+} endo_def_t;
+
+/*
+ * Torsion
+ */
+
+typedef struct _subgroup_s {
+  const unsigned char x[MAX_FIELD_SIZE];
+  const unsigned char y[MAX_FIELD_SIZE];
+  int inf;
+} subgroup_def_t;
+
+/*
  * Short Weierstrass
  */
 
@@ -401,6 +424,7 @@ typedef struct _wei_s {
   wge_t unblind;
   wge_t wnd_fixed[MAX_WNDS_SIZE]; /* 311.2kb */
   wge_t wnd_naf[NAF_SIZE_PRE]; /* 19kb */
+  wge_t torsion[8];
   int endo;
   fe_t beta;
   sc_t lambda;
@@ -417,18 +441,13 @@ typedef struct _wei_def_s {
   const scalar_def_t *sc;
   unsigned int h;
   int z;
-  int endo;
   const unsigned char a[MAX_FIELD_SIZE];
   const unsigned char b[MAX_FIELD_SIZE];
   const unsigned char x[MAX_FIELD_SIZE];
   const unsigned char y[MAX_FIELD_SIZE];
   const unsigned char c[MAX_FIELD_SIZE];
-  const unsigned char beta[MAX_FIELD_SIZE];
-  const unsigned char lambda[MAX_SCALAR_SIZE];
-  const unsigned char b1[MAX_SCALAR_SIZE];
-  const unsigned char b2[MAX_SCALAR_SIZE];
-  const unsigned char g1[MAX_SCALAR_SIZE];
-  const unsigned char g2[MAX_SCALAR_SIZE];
+  const subgroup_def_t *torsion;
+  const endo_def_t *endo;
 } wei_def_t;
 
 typedef struct _wei_scratch_s {
@@ -475,6 +494,7 @@ typedef struct _mont_s {
   fe_t b0;
   sc_t i16;
   mge_t g;
+  mge_t torsion[8];
 } mont_t;
 
 typedef struct _mont_def_s {
@@ -488,6 +508,7 @@ typedef struct _mont_def_s {
   const unsigned char x[MAX_FIELD_SIZE];
   const unsigned char y[MAX_FIELD_SIZE];
   const unsigned char c[MAX_FIELD_SIZE];
+  const subgroup_def_t *torsion;
 } mont_def_t;
 
 /*
@@ -528,6 +549,7 @@ typedef struct _edwards_s {
   xge_t unblind;
   xge_t wnd_fixed[MAX_WNDS_SIZE]; /* 589.5kb */
   xge_t wnd_naf[NAF_SIZE_PRE]; /* 36kb */
+  xge_t torsion[8];
 } edwards_t;
 
 typedef struct _edwards_def_s {
@@ -544,6 +566,7 @@ typedef struct _edwards_def_s {
   const unsigned char x[MAX_FIELD_SIZE];
   const unsigned char y[MAX_FIELD_SIZE];
   const unsigned char c[MAX_FIELD_SIZE];
+  const subgroup_def_t *torsion;
 } edwards_def_t;
 
 typedef struct _edwards_scratch_s {
@@ -3788,6 +3811,7 @@ static void
 wei_init(wei_t *ec, const wei_def_t *def) {
   prime_field_t *fe = &ec->fe;
   scalar_field_t *sc = &ec->sc;
+  unsigned int i;
   fe_t m3;
 
   memset(ec, 0, sizeof(wei_t));
@@ -3834,17 +3858,22 @@ wei_init(wei_t *ec, const wei_def_t *def) {
   wge_fixed_points_var(ec, ec->wnd_fixed, &ec->g);
   wge_naf_points_var(ec, ec->wnd_naf, &ec->g, NAF_WIDTH_PRE);
 
-  ec->endo = def->endo;
+  for (i = 0; i < ec->h; i++) {
+    fe_import_be(fe, ec->torsion[i].x, def->torsion[i].x);
+    fe_import_be(fe, ec->torsion[i].y, def->torsion[i].y);
 
-  if (ec->endo) {
-    size_t i;
+    ec->torsion[i].inf = def->torsion[i].inf;
+  }
 
-    fe_import(fe, ec->beta, def->beta);
-    sc_import(sc, ec->lambda, def->lambda);
-    sc_import(sc, ec->b1, def->b1);
-    sc_import(sc, ec->b2, def->b2);
-    sc_import(sc, ec->g1, def->g1);
-    sc_import(sc, ec->g2, def->g2);
+  if (def->endo) {
+    ec->endo = 1;
+
+    fe_import(fe, ec->beta, def->endo->beta);
+    sc_import(sc, ec->lambda, def->endo->lambda);
+    sc_import(sc, ec->b1, def->endo->b1);
+    sc_import(sc, ec->b2, def->endo->b2);
+    sc_import(sc, ec->g1, def->endo->g1);
+    sc_import(sc, ec->g2, def->endo->g2);
 
     for (i = 0; i < NAF_SIZE_PRE; i++)
       wge_endo_beta(ec, &ec->wnd_endo[i], &ec->wnd_naf[i]);
@@ -4911,16 +4940,25 @@ wei_point_to_uniform(const wei_t *ec,
                      const wge_t *p,
                      unsigned int hint) {
   const prime_field_t *fe = &ec->fe;
+  unsigned int subgroup = (hint >> 4) & 15;
+  wge_t p0;
   fe_t u;
   int ret;
 
-  if (ec->zero_a)
-    ret = wei_svdwi(ec, u, p, hint);
+  if (ec->h > 1)
+    wge_add(ec, &p0, p, &ec->torsion[subgroup % ec->h]);
   else
-    ret = wei_sswui(ec, u, p, hint);
+    wge_set(ec, &p0, p);
+
+  if (ec->zero_a)
+    ret = wei_svdwi(ec, u, &p0, hint);
+  else
+    ret = wei_sswui(ec, u, &p0, hint);
 
   fe_export(fe, bytes, u);
   fe_cleanse(fe, u);
+
+  wge_cleanse(ec, &p0);
 
   bytes[0] |= (hint >> 8) & ~fe->byte_mask;
 
@@ -4945,12 +4983,19 @@ static void
 wei_point_to_hash(const wei_t *ec,
                   unsigned char *bytes,
                   const wge_t *p,
+                  unsigned int subgroup,
                   const unsigned char *entropy) {
   /* [SQUARED] Algorithm 1, Page 8, Section 3.3. */
   const prime_field_t *fe = &ec->fe;
+  unsigned int mask = (255 << 8) | 15;
   unsigned int hint;
-  wge_t p1, p2;
+  wge_t p0, p1, p2;
   drbg_t rng;
+
+  if (ec->h > 1)
+    wge_add(ec, &p0, p, &ec->torsion[subgroup % ec->h]);
+  else
+    wge_set(ec, &p0, p);
 
   drbg_init(&rng, HASH_SHA256, entropy, ENTROPY_SIZE);
 
@@ -4962,11 +5007,11 @@ wei_point_to_hash(const wei_t *ec,
     if (ec->h > 1 && fe_is_zero(fe, p1.y))
       continue;
 
-    wge_sub(ec, &p2, p, &p1);
+    wge_sub(ec, &p2, &p0, &p1);
 
     drbg_generate(&rng, &hint, sizeof(hint));
 
-    if (!wei_point_to_uniform(ec, bytes + fe->size, &p2, hint))
+    if (!wei_point_to_uniform(ec, bytes + fe->size, &p2, hint & mask))
       continue;
 
     break;
@@ -4975,6 +5020,7 @@ wei_point_to_hash(const wei_t *ec,
   cleanse(&rng, sizeof(rng));
   cleanse(&hint, sizeof(hint));
 
+  wge_cleanse(ec, &p0);
   wge_cleanse(ec, &p1);
   wge_cleanse(ec, &p2);
 }
@@ -5655,6 +5701,7 @@ static void
 mont_init(mont_t *ec, const mont_def_t *def) {
   prime_field_t *fe = &ec->fe;
   scalar_field_t *sc = &ec->sc;
+  unsigned int i;
 
   memset(ec, 0, sizeof(mont_t));
 
@@ -5699,6 +5746,13 @@ mont_init(mont_t *ec, const mont_def_t *def) {
   fe_import_be(fe, ec->g.x, def->x);
   fe_import_be(fe, ec->g.y, def->y);
   ec->g.inf = 0;
+
+  for (i = 0; i < ec->h; i++) {
+    fe_import_be(fe, ec->torsion[i].x, def->torsion[i].x);
+    fe_import_be(fe, ec->torsion[i].y, def->torsion[i].y);
+
+    ec->torsion[i].inf = def->torsion[i].inf;
+  }
 }
 
 static void
@@ -5982,13 +6036,19 @@ mont_point_to_uniform(const mont_t *ec,
                       const mge_t *p,
                       unsigned int hint) {
   const prime_field_t *fe = &ec->fe;
+  unsigned int subgroup = (hint >> 4) & 15;
+  mge_t p0;
   fe_t u;
   int ret;
 
-  ret = mont_invert2(ec, u, p, hint);
+  mge_add(ec, &p0, p, &ec->torsion[subgroup % ec->h]);
+
+  ret = mont_invert2(ec, u, &p0, hint);
 
   fe_export(fe, bytes, u);
   fe_cleanse(fe, u);
+
+  mge_cleanse(ec, &p0);
 
   bytes[fe->size - 1] |= (hint >> 8) & ~fe->byte_mask;
 
@@ -6013,12 +6073,16 @@ static void
 mont_point_to_hash(const mont_t *ec,
                    unsigned char *bytes,
                    const mge_t *p,
+                   unsigned int subgroup,
                    const unsigned char *entropy) {
   /* [SQUARED] Algorithm 1, Page 8, Section 3.3. */
   const prime_field_t *fe = &ec->fe;
+  unsigned int mask = (255 << 8) | 15;
   unsigned int hint;
-  mge_t p1, p2;
+  mge_t p0, p1, p2;
   drbg_t rng;
+
+  mge_add(ec, &p0, p, &ec->torsion[subgroup % ec->h]);
 
   drbg_init(&rng, HASH_SHA256, entropy, ENTROPY_SIZE);
 
@@ -6030,11 +6094,11 @@ mont_point_to_hash(const mont_t *ec,
     if (fe_is_zero(fe, p1.y))
       continue;
 
-    mge_sub(ec, &p2, p, &p1);
+    mge_sub(ec, &p2, &p0, &p1);
 
     drbg_generate(&rng, &hint, sizeof(hint));
 
-    if (!mont_point_to_uniform(ec, bytes + fe->size, &p2, hint))
+    if (!mont_point_to_uniform(ec, bytes + fe->size, &p2, hint & mask))
       continue;
 
     break;
@@ -6043,6 +6107,7 @@ mont_point_to_hash(const mont_t *ec,
   cleanse(&rng, sizeof(rng));
   cleanse(&hint, sizeof(hint));
 
+  mge_cleanse(ec, &p0);
   mge_cleanse(ec, &p1);
   mge_cleanse(ec, &p2);
 }
@@ -6609,6 +6674,7 @@ static void
 edwards_init(edwards_t *ec, const edwards_def_t *def) {
   prime_field_t *fe = &ec->fe;
   scalar_field_t *sc = &ec->sc;
+  unsigned int i;
 
   memset(ec, 0, sizeof(edwards_t));
 
@@ -6648,6 +6714,14 @@ edwards_init(edwards_t *ec, const edwards_def_t *def) {
 
   xge_fixed_points(ec, ec->wnd_fixed, &ec->g);
   xge_naf_points(ec, ec->wnd_naf, &ec->g, NAF_WIDTH_PRE);
+
+  for (i = 0; i < ec->h; i++) {
+    fe_import_be(fe, ec->torsion[i].x, def->torsion[i].x);
+    fe_import_be(fe, ec->torsion[i].y, def->torsion[i].y);
+
+    fe_set(fe, ec->torsion[i].z, fe->one);
+    fe_mul(fe, ec->torsion[i].t, ec->torsion[i].x, ec->torsion[i].y);
+  }
 }
 
 static void
@@ -7153,13 +7227,19 @@ edwards_point_to_uniform(const edwards_t *ec,
                          const xge_t *p,
                          unsigned int hint) {
   const prime_field_t *fe = &ec->fe;
+  unsigned int subgroup = (hint >> 4) & 15;
+  xge_t p0;
   fe_t u;
   int ret;
 
-  ret = edwards_invert2(ec, u, p, hint);
+  xge_add(ec, &p0, p, &ec->torsion[subgroup % ec->h]);
+
+  ret = edwards_invert2(ec, u, &p0, hint);
 
   fe_export(fe, bytes, u);
   fe_cleanse(fe, u);
+
+  xge_cleanse(ec, &p0);
 
   bytes[fe->size - 1] |= (hint >> 8) & ~fe->byte_mask;
 
@@ -7185,12 +7265,16 @@ static void
 edwards_point_to_hash(const edwards_t *ec,
                       unsigned char *bytes,
                       const xge_t *p,
+                      unsigned int subgroup,
                       const unsigned char *entropy) {
   /* [SQUARED] Algorithm 1, Page 8, Section 3.3. */
   const prime_field_t *fe = &ec->fe;
+  unsigned int mask = (255 << 8) | 15;
   unsigned int hint;
-  xge_t p1, p2;
+  xge_t p0, p1, p2;
   drbg_t rng;
+
+  xge_add(ec, &p0, p, &ec->torsion[subgroup % ec->h]);
 
   drbg_init(&rng, HASH_SHA256, entropy, ENTROPY_SIZE);
 
@@ -7202,11 +7286,11 @@ edwards_point_to_hash(const edwards_t *ec,
     if (fe_is_zero(fe, p1.x))
       continue;
 
-    xge_sub(ec, &p2, p, &p1);
+    xge_sub(ec, &p2, &p0, &p1);
 
     drbg_generate(&rng, &hint, sizeof(hint));
 
-    if (!edwards_point_to_uniform(ec, bytes + fe->size, &p2, hint))
+    if (!edwards_point_to_uniform(ec, bytes + fe->size, &p2, hint & mask))
       continue;
 
     break;
@@ -7215,6 +7299,7 @@ edwards_point_to_hash(const edwards_t *ec,
   cleanse(&rng, sizeof(rng));
   cleanse(&hint, sizeof(hint));
 
+  xge_cleanse(ec, &p0);
   xge_cleanse(ec, &p1);
   xge_cleanse(ec, &p2);
 }
@@ -7848,6 +7933,56 @@ static const scalar_def_t field_q251 = {
 };
 
 /*
+ * Endomorphism
+ */
+
+static const endo_def_t endo_secp256k1 = {
+  /* Endomorphism constants (beta, lambda, b1, b2, g1, g2). */
+  {
+    0x7a, 0xe9, 0x6a, 0x2b, 0x65, 0x7c, 0x07, 0x10,
+    0x6e, 0x64, 0x47, 0x9e, 0xac, 0x34, 0x34, 0xe9,
+    0x9c, 0xf0, 0x49, 0x75, 0x12, 0xf5, 0x89, 0x95,
+    0xc1, 0x39, 0x6c, 0x28, 0x71, 0x95, 0x01, 0xee
+  },
+  {
+    0xac, 0x9c, 0x52, 0xb3, 0x3f, 0xa3, 0xcf, 0x1f,
+    0x5a, 0xd9, 0xe3, 0xfd, 0x77, 0xed, 0x9b, 0xa4,
+    0xa8, 0x80, 0xb9, 0xfc, 0x8e, 0xc7, 0x39, 0xc2,
+    0xe0, 0xcf, 0xc8, 0x10, 0xb5, 0x12, 0x83, 0xcf
+  },
+  {
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0xe4, 0x43, 0x7e, 0xd6, 0x01, 0x0e, 0x88, 0x28,
+    0x6f, 0x54, 0x7f, 0xa9, 0x0a, 0xbf, 0xe4, 0xc3
+  },
+  {
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe,
+    0x8a, 0x28, 0x0a, 0xc5, 0x07, 0x74, 0x34, 0x6d,
+    0xd7, 0x65, 0xcd, 0xa8, 0x3d, 0xb1, 0x56, 0x2c
+  },
+  {
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x30, 0x86,
+    0xd2, 0x21, 0xa7, 0xd4, 0x6b, 0xcd, 0xe8, 0x6c,
+    0x90, 0xe4, 0x92, 0x84, 0xeb, 0x15, 0x3d, 0xab
+  },
+  {
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xe4, 0x43,
+    0x7e, 0xd6, 0x01, 0x0e, 0x88, 0x28, 0x6f, 0x54,
+    0x7f, 0xa9, 0x0a, 0xbf, 0xe4, 0xc4, 0x22, 0x12
+  }
+};
+
+/*
+ * Torsion Points
+ */
+
+#include "subgroups.h"
+
+/*
  * Short Weierstrass Curves
  */
 
@@ -7857,7 +7992,6 @@ static const wei_def_t curve_p192 = {
   &field_q192,
   1,
   -5,
-  0,
   /* Coefficients (a, b). */
   {
     /* -3 mod p */
@@ -7882,12 +8016,8 @@ static const wei_def_t curve_p192 = {
     0x73, 0xf9, 0x77, 0xa1, 0x1e, 0x79, 0x48, 0x11
   },
   {0},
-  {0},
-  {0},
-  {0},
-  {0},
-  {0},
-  {0}
+  subgroups_prime,
+  NULL
 };
 
 static const wei_def_t curve_p224 = {
@@ -7896,7 +8026,6 @@ static const wei_def_t curve_p224 = {
   &field_q224,
   1,
   31,
-  0,
   /* Coefficients (a, b). */
   {
     /* -3 mod p */
@@ -7925,12 +8054,8 @@ static const wei_def_t curve_p224 = {
     0x85, 0x00, 0x7e, 0x34
   },
   {0},
-  {0},
-  {0},
-  {0},
-  {0},
-  {0},
-  {0}
+  subgroups_prime,
+  NULL
 };
 
 static const wei_def_t curve_p256 = {
@@ -7939,7 +8064,6 @@ static const wei_def_t curve_p256 = {
   &field_q256,
   1,
   -10,
-  0,
   /* Coefficients (a, b). */
   {
     /* -3 mod p */
@@ -7968,12 +8092,8 @@ static const wei_def_t curve_p256 = {
     0xcb, 0xb6, 0x40, 0x68, 0x37, 0xbf, 0x51, 0xf5
   },
   {0},
-  {0},
-  {0},
-  {0},
-  {0},
-  {0},
-  {0}
+  subgroups_prime,
+  NULL
 };
 
 static const wei_def_t curve_p384 = {
@@ -7982,7 +8102,6 @@ static const wei_def_t curve_p384 = {
   &field_q384,
   1,
   -12,
-  0,
   /* Coefficients (a, b). */
   {
     /* -3 mod p */
@@ -8019,12 +8138,8 @@ static const wei_def_t curve_p384 = {
     0x7a, 0x43, 0x1d, 0x7c, 0x90, 0xea, 0x0e, 0x5f
   },
   {0},
-  {0},
-  {0},
-  {0},
-  {0},
-  {0},
-  {0}
+  subgroups_prime,
+  NULL
 };
 
 static const wei_def_t curve_p521 = {
@@ -8033,7 +8148,6 @@ static const wei_def_t curve_p521 = {
   &field_q521,
   1,
   -4,
-  0,
   /* Coefficients (a, b). */
   {
     /* -3 mod p */
@@ -8082,19 +8196,14 @@ static const wei_def_t curve_p521 = {
     0x66, 0x50
   },
   {0},
-  {0},
-  {0},
-  {0},
-  {0},
-  {0},
-  {0}
+  subgroups_prime,
+  NULL
 };
 
 static const wei_def_t curve_secp256k1 = {
   HASH_SHA256,
   &field_p256k1,
   &field_q256k1,
-  1,
   1,
   1,
   /* Coefficients (a, b). */
@@ -8131,43 +8240,8 @@ static const wei_def_t curve_secp256k1 = {
     0xc6, 0x1f, 0x6d, 0x15, 0xda, 0x14, 0xec, 0xd4,
     0x7d, 0x8d, 0x27, 0xae, 0x1c, 0xd5, 0xf8, 0x52
   },
-  /* Endomorphism constants (beta, lambda, b1, b2, g1, g2). */
-  {
-    0x7a, 0xe9, 0x6a, 0x2b, 0x65, 0x7c, 0x07, 0x10,
-    0x6e, 0x64, 0x47, 0x9e, 0xac, 0x34, 0x34, 0xe9,
-    0x9c, 0xf0, 0x49, 0x75, 0x12, 0xf5, 0x89, 0x95,
-    0xc1, 0x39, 0x6c, 0x28, 0x71, 0x95, 0x01, 0xee
-  },
-  {
-    0xac, 0x9c, 0x52, 0xb3, 0x3f, 0xa3, 0xcf, 0x1f,
-    0x5a, 0xd9, 0xe3, 0xfd, 0x77, 0xed, 0x9b, 0xa4,
-    0xa8, 0x80, 0xb9, 0xfc, 0x8e, 0xc7, 0x39, 0xc2,
-    0xe0, 0xcf, 0xc8, 0x10, 0xb5, 0x12, 0x83, 0xcf
-  },
-  {
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0xe4, 0x43, 0x7e, 0xd6, 0x01, 0x0e, 0x88, 0x28,
-    0x6f, 0x54, 0x7f, 0xa9, 0x0a, 0xbf, 0xe4, 0xc3
-  },
-  {
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe,
-    0x8a, 0x28, 0x0a, 0xc5, 0x07, 0x74, 0x34, 0x6d,
-    0xd7, 0x65, 0xcd, 0xa8, 0x3d, 0xb1, 0x56, 0x2c
-  },
-  {
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x30, 0x86,
-    0xd2, 0x21, 0xa7, 0xd4, 0x6b, 0xcd, 0xe8, 0x6c,
-    0x90, 0xe4, 0x92, 0x84, 0xeb, 0x15, 0x3d, 0xab
-  },
-  {
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xe4, 0x43,
-    0x7e, 0xd6, 0x01, 0x0e, 0x88, 0x28, 0x6f, 0x54,
-    0x7f, 0xa9, 0x0a, 0xbf, 0xe4, 0xc4, 0x22, 0x12
-  }
+  subgroups_prime,
+  &endo_secp256k1
 };
 
 /*
@@ -8216,7 +8290,8 @@ static const mont_def_t curve_x25519 = {
     0xd2, 0x7b, 0x08, 0xdc, 0x03, 0xfc, 0x4f, 0x7e,
     0xc5, 0xa1, 0xd3, 0xd1, 0x4b, 0x7d, 0x1a, 0x82,
     0xcc, 0x6e, 0x04, 0xaa, 0xff, 0x45, 0x7e, 0x06
-  }
+  },
+  subgroups_x25519
 };
 
 static const mont_def_t curve_x448 = {
@@ -8274,7 +8349,8 @@ static const mont_def_t curve_x448 = {
     0x07, 0x34, 0xcd, 0xe9, 0xfa, 0xdd, 0xbd, 0xa4,
     0xc0, 0x66, 0xf7, 0xed, 0x54, 0x41, 0x9c, 0xa5,
     0x2c, 0x85, 0xde, 0x1e, 0x8a, 0xae, 0x4e, 0x6c
-  }
+  },
+  subgroups_x448
 };
 
 /*
@@ -8327,7 +8403,8 @@ static const edwards_def_t curve_ed25519 = {
     0xd2, 0x7b, 0x08, 0xdc, 0x03, 0xfc, 0x4f, 0x7e,
     0xc5, 0xa1, 0xd3, 0xd1, 0x4b, 0x7d, 0x1a, 0x82,
     0xcc, 0x6e, 0x04, 0xaa, 0xff, 0x45, 0x7e, 0x06
-  }
+  },
+  subgroups_ed25519
 };
 
 static const edwards_def_t curve_ed448 = {
@@ -8389,7 +8466,8 @@ static const edwards_def_t curve_ed448 = {
     0x1e, 0x72, 0x5a, 0x0d, 0xb9, 0x91, 0xd0, 0xc6,
     0xc3, 0xd1, 0x12, 0x0f, 0x0e, 0xfa, 0x59, 0xf5,
     0x4b, 0xf3, 0x8e, 0x82, 0xb0, 0xe1, 0xe0, 0x28
-  }
+  },
+  subgroups_ed448
 };
 
 static const edwards_def_t curve_ed1174 = {
@@ -8436,7 +8514,8 @@ static const edwards_def_t curve_ed1174 = {
     0x5e, 0x44, 0x1c, 0xd2, 0xe3, 0xf7, 0x08, 0xf9,
     0x6f, 0x8f, 0xfb, 0xe8, 0x35, 0x95, 0x48, 0xba,
     0x82, 0x76, 0xac, 0xe6, 0xbb, 0xe7, 0xdf, 0xd2
-  }
+  },
+  subgroups_ed1174
 };
 
 /*
@@ -8820,13 +8899,14 @@ ecdsa_pubkey_to_hash(const wei_t *ec,
                      unsigned char *out,
                      const unsigned char *pub,
                      size_t pub_len,
+                     unsigned int subgroup,
                      const unsigned char *entropy) {
   wge_t A;
   int ret = 1;
 
   ret &= wge_import(ec, &A, pub, pub_len);
 
-  wei_point_to_hash(ec, out, &A, entropy);
+  wei_point_to_hash(ec, out, &A, subgroup, entropy);
 
   return ret;
 }
@@ -10162,13 +10242,14 @@ int
 schnorr_pubkey_to_hash(const wei_t *ec,
                        unsigned char *out,
                        const unsigned char *pub,
+                       unsigned int subgroup,
                        const unsigned char *entropy) {
   wge_t A;
   int ret = 1;
 
   ret &= wge_import_even(ec, &A, pub);
 
-  wei_point_to_hash(ec, out, &A, entropy);
+  wei_point_to_hash(ec, out, &A, subgroup, entropy);
 
   return ret;
 }
@@ -11009,13 +11090,14 @@ int
 ecdh_pubkey_to_hash(const mont_t *ec,
                     unsigned char *out,
                     const unsigned char *pub,
+                    unsigned int subgroup,
                     const unsigned char *entropy) {
   mge_t A;
   int ret = 1;
 
   ret &= mge_import(ec, &A, pub, -1);
 
-  mont_point_to_hash(ec, out, &A, entropy);
+  mont_point_to_hash(ec, out, &A, subgroup, entropy);
 
   return ret;
 }
@@ -11525,13 +11607,14 @@ int
 eddsa_pubkey_to_hash(const edwards_t *ec,
                      unsigned char *out,
                      const unsigned char *pub,
+                     unsigned int subgroup,
                      const unsigned char *entropy) {
   xge_t A;
   int ret = 1;
 
   ret &= xge_import(ec, &A, pub);
 
-  edwards_point_to_hash(ec, out, &A, entropy);
+  edwards_point_to_hash(ec, out, &A, subgroup, entropy);
 
   return ret;
 }

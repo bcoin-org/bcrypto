@@ -317,9 +317,9 @@ describe('X25519', function() {
   it('should do elligator2', () => {
     const u1 = rng.randomBytes(32);
     const p1 = x25519.publicKeyFromUniform(u1);
-    const u2 = x25519.publicKeyToUniform(p1);
+    const u2 = x25519.publicKeyToUniform(p1, rng.randomInt() & 1);
     const p2 = x25519.publicKeyFromUniform(u2);
-    const u3 = x25519.publicKeyToUniform(p2);
+    const u3 = x25519.publicKeyToUniform(p2, rng.randomInt() & 1);
     const p3 = x25519.publicKeyFromUniform(u3);
 
     assert.bufferEqual(p1, p2);
@@ -381,7 +381,7 @@ describe('X25519', function() {
         assert.bufferEqual(native.publicKeyFromUniform(bytes1), pub);
       }
 
-      const bytes = native.publicKeyToHash(pub);
+      const bytes = native.publicKeyToHash(pub, 0);
 
       assert.bufferEqual(native.publicKeyFromHash(bytes), pub);
     });
@@ -390,7 +390,7 @@ describe('X25519', function() {
   it('should invert elligator squared', () => {
     const priv = x25519.privateKeyGenerate();
     const pub = x25519.publicKeyCreate(priv);
-    const bytes = x25519.publicKeyToHash(pub);
+    const bytes = x25519.publicKeyToHash(pub, 0);
     const out = x25519.publicKeyFromHash(bytes);
 
     assert.bufferEqual(out, pub);
@@ -406,11 +406,37 @@ describe('X25519', function() {
 
     for (const str of small) {
       const pub = Buffer.from(str, 'hex');
-      const bytes = x25519.publicKeyToHash(pub);
+      const bytes = x25519.publicKeyToHash(pub, 0);
       const out = x25519.publicKeyFromHash(bytes);
 
       assert.bufferEqual(out, pub);
     }
+  });
+
+  it('should do covert ecdh', () => {
+    const alicePriv = x25519.privateKeyGenerate();
+    const alicePub = x25519.publicKeyCreate(alicePriv);
+    const bobPriv = x25519.privateKeyGenerate();
+    const bobPub = x25519.publicKeyCreate(bobPriv);
+    const alicePreimage = x25519.publicKeyToHash(alicePub, 7); // Add 8-torsion.
+    const alicePub2 = x25519.publicKeyFromHash(alicePreimage);
+    const bobPreimage = x25519.publicKeyToHash(bobPub, 2); // Add 4-torsion.
+    const bobPub2 = x25519.publicKeyFromHash(bobPreimage);
+
+    assert(!x25519.publicKeyHasTorsion(alicePub));
+    assert(!x25519.publicKeyHasTorsion(bobPub));
+    assert(x25519.publicKeyHasTorsion(alicePub2));
+    assert(x25519.publicKeyHasTorsion(bobPub2));
+
+    const aliceSecret = x25519.derive(bobPub, alicePriv);
+    const bobSecret = x25519.derive(alicePub, bobPriv);
+    const aliceSecret2 = x25519.derive(bobPub2, alicePriv);
+    const bobSecret2 = x25519.derive(alicePub2, bobPriv);
+
+    assert.bufferEqual(aliceSecret, bobSecret);
+    assert.bufferEqual(aliceSecret2, bobSecret2);
+    assert.bufferEqual(aliceSecret, aliceSecret2);
+    assert.bufferEqual(bobSecret, bobSecret2);
   });
 
   it('should test x25519 api', () => {

@@ -377,6 +377,7 @@ ecdsa_pubkey_to_hash(const ecdsa_t *ec,
                      unsigned char *out,
                      const unsigned char *pub,
                      size_t pub_len,
+                     unsigned int subgroup,
                      const unsigned char *entropy);
 
 int
@@ -635,6 +636,7 @@ int
 schnorr_pubkey_to_hash(const schnorr_t *ec,
                        unsigned char *out,
                        const unsigned char *pub,
+                       unsigned int subgroup,
                        const unsigned char *entropy);
 
 int
@@ -789,6 +791,7 @@ int
 ecdh_pubkey_to_hash(const ecdh_t *ec,
                     unsigned char *out,
                     const unsigned char *pub,
+                    unsigned int subgroup,
                     const unsigned char *entropy);
 
 int
@@ -969,6 +972,7 @@ int
 eddsa_pubkey_to_hash(const eddsa_t *ec,
                      unsigned char *out,
                      const unsigned char *pub,
+                     unsigned int subgroup,
                      const unsigned char *entropy);
 
 int

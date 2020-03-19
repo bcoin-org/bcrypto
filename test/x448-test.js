@@ -1,6 +1,7 @@
 'use strict';
 
 const assert = require('bsert');
+const RNG = require('./util/rng');
 const SHAKE256 = require('../lib/shake256');
 const ed448 = require('../lib/ed448');
 const x448 = require('../lib/x448');
@@ -81,6 +82,8 @@ const scalarVectors = [
 ];
 
 describe('X448', function() {
+  const rng = new RNG();
+
   for (const [pub, key, expect] of vectors) {
     it(`should compute secret: ${expect.toString('hex', 0, 16)}...`, () => {
       const result = x448.derive(pub, key);
@@ -240,9 +243,9 @@ describe('X448', function() {
       + '6bd0c1ee9599249bff3276e2a8279bea5e62e47f6507656826fe0182'
       + '3a0580129b6df46dabe81c7559a7028344b50da7682423586d6e80dd');
 
-    const u2 = x448.publicKeyToUniform(p1);
+    const u2 = x448.publicKeyToUniform(p1, rng.randomInt() & 1);
     const p2 = x448.publicKeyFromUniform(u2);
-    const u3 = x448.publicKeyToUniform(p2);
+    const u3 = x448.publicKeyToUniform(p2, rng.randomInt() & 1);
     const p3 = x448.publicKeyFromUniform(u3);
 
     assert.bufferEqual(p1, p2);
@@ -302,7 +305,7 @@ describe('X448', function() {
         assert.bufferEqual(native.publicKeyFromUniform(bytes1), pub);
       }
 
-      const bytes = native.publicKeyToHash(pub);
+      const bytes = native.publicKeyToHash(pub, 0);
 
       assert.bufferEqual(native.publicKeyFromHash(bytes), pub);
     });
@@ -311,7 +314,7 @@ describe('X448', function() {
   it('should invert elligator squared', () => {
     const priv = x448.privateKeyGenerate();
     const pub = x448.publicKeyCreate(priv);
-    const bytes = x448.publicKeyToHash(pub);
+    const bytes = x448.publicKeyToHash(pub, 0);
     const out = x448.publicKeyFromHash(bytes);
 
     assert.bufferEqual(out, pub);
@@ -328,11 +331,37 @@ describe('X448', function() {
     for (let i = 0; i < small.length; i++) {
       const str = small[i];
       const pub = Buffer.from(str, 'hex');
-      const bytes = x448.publicKeyToHash(pub);
+      const bytes = x448.publicKeyToHash(pub, 0);
       const out = x448.publicKeyFromHash(bytes);
 
       assert.bufferEqual(out, pub);
     }
+  });
+
+  it('should do covert ecdh', () => {
+    const alicePriv = x448.privateKeyGenerate();
+    const alicePub = x448.publicKeyCreate(alicePriv);
+    const bobPriv = x448.privateKeyGenerate();
+    const bobPub = x448.publicKeyCreate(bobPriv);
+    const alicePreimage = x448.publicKeyToHash(alicePub, 2); // Add 4-torsion.
+    const alicePub2 = x448.publicKeyFromHash(alicePreimage);
+    const bobPreimage = x448.publicKeyToHash(bobPub, 1); // Add 2-torsion.
+    const bobPub2 = x448.publicKeyFromHash(bobPreimage);
+
+    assert(!x448.publicKeyHasTorsion(alicePub));
+    assert(!x448.publicKeyHasTorsion(bobPub));
+    assert(x448.publicKeyHasTorsion(alicePub2));
+    assert(x448.publicKeyHasTorsion(bobPub2));
+
+    const aliceSecret = x448.derive(bobPub, alicePriv);
+    const bobSecret = x448.derive(alicePub, bobPriv);
+    const aliceSecret2 = x448.derive(bobPub2, alicePriv);
+    const bobSecret2 = x448.derive(alicePub2, bobPriv);
+
+    assert.bufferEqual(aliceSecret, bobSecret);
+    assert.bufferEqual(aliceSecret2, bobSecret2);
+    assert.bufferEqual(aliceSecret, aliceSecret2);
+    assert.bufferEqual(bobSecret, bobSecret2);
   });
 
   it('should test x448 api', () => {

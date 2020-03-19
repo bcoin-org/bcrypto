@@ -329,6 +329,25 @@ class ED1174 extends EdwardsCurve {
         ['06b72f82 d47fb7cc 66568411 69840e0c',
          '4fe2dee2 af3f976b a4ccb1bf 9b46360e'],
         pre
+      ],
+      torsion: [
+        // (1)
+        [],
+        // (2)
+        [
+          '0000000000000000000000000000000000000000000000000000000000000000',
+          '07fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff6'
+        ],
+        // (4)
+        [
+          '0000000000000000000000000000000000000000000000000000000000000001',
+          '0000000000000000000000000000000000000000000000000000000000000000'
+        ],
+        // (4)
+        [
+          '07fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff6',
+          '0000000000000000000000000000000000000000000000000000000000000000'
+        ]
       ]
     });
   }

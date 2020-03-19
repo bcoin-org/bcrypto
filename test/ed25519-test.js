@@ -860,9 +860,9 @@ describe('Ed25519', function() {
   it('should do elligator2 (edwards)', () => {
     const u1 = random.randomBytes(32);
     const p1 = ed25519.publicKeyFromUniform(u1);
-    const u2 = ed25519.publicKeyToUniform(p1);
+    const u2 = ed25519.publicKeyToUniform(p1, random.randomInt() & 1);
     const p2 = ed25519.publicKeyFromUniform(u2);
-    const u3 = ed25519.publicKeyToUniform(p2);
+    const u3 = ed25519.publicKeyToUniform(p2, random.randomInt() & 1);
     const p3 = ed25519.publicKeyFromUniform(u3);
 
     assert.bufferEqual(p1, p2);
@@ -872,9 +872,9 @@ describe('Ed25519', function() {
   it('should do elligator2 (mont)', () => {
     const u1 = random.randomBytes(32);
     const p1 = x25519.publicKeyFromUniform(u1);
-    const u2 = x25519.publicKeyToUniform(p1);
+    const u2 = x25519.publicKeyToUniform(p1, random.randomInt() & 1);
     const p2 = x25519.publicKeyFromUniform(u2);
-    const u3 = x25519.publicKeyToUniform(p2);
+    const u3 = x25519.publicKeyToUniform(p2, random.randomInt() & 1);
     const p3 = x25519.publicKeyFromUniform(u3);
 
     assert.bufferEqual(p1, p2);
@@ -1053,8 +1053,8 @@ describe('Ed25519', function() {
       assert.strictEqual(ed25519.publicKeyVerify(key), true);
       assert.bufferEqual(ed25519.publicKeyFromUniform(preimage), key);
       assert.bufferEqual(x25519.publicKeyFromUniform(preimage), point);
-      assert.bufferEqual(un(ed25519.publicKeyToUniform(key, i)), raw1);
-      assert.bufferEqual(un(x25519.publicKeyToUniform(point, i)), raw2);
+      assert.bufferEqual(un(ed25519.publicKeyToUniform(key, i & 1)), raw1);
+      assert.bufferEqual(un(x25519.publicKeyToUniform(point, i & 1)), raw2);
       assert.bufferEqual(ed25519.publicKeyFromUniform(raw1), key);
       assert.bufferEqual(x25519.publicKeyFromUniform(raw2), point);
     }
@@ -1131,7 +1131,7 @@ describe('Ed25519', function() {
         assert.bufferEqual(native.publicKeyFromUniform(bytes1), pub);
       }
 
-      const bytes = native.publicKeyToHash(pub);
+      const bytes = native.publicKeyToHash(pub, 0);
 
       assert.bufferEqual(native.publicKeyFromHash(bytes), pub);
     });
@@ -1140,7 +1140,7 @@ describe('Ed25519', function() {
   it('should invert elligator squared', () => {
     const priv = ed25519.privateKeyGenerate();
     const pub = ed25519.publicKeyCreate(priv);
-    const bytes = ed25519.publicKeyToHash(pub);
+    const bytes = ed25519.publicKeyToHash(pub, 0);
     const out = ed25519.publicKeyFromHash(bytes);
 
     assert.bufferEqual(out, pub);
@@ -1291,6 +1291,32 @@ describe('Ed25519', function() {
         }
       });
     }
+  });
+
+  it('should do covert ecdh', () => {
+    const alicePriv = ed25519.privateKeyGenerate();
+    const alicePub = ed25519.publicKeyCreate(alicePriv);
+    const bobPriv = ed25519.privateKeyGenerate();
+    const bobPub = ed25519.publicKeyCreate(bobPriv);
+    const alicePreimage = ed25519.publicKeyToHash(alicePub, 7); // Add 8-torsion.
+    const alicePub2 = ed25519.publicKeyFromHash(alicePreimage);
+    const bobPreimage = ed25519.publicKeyToHash(bobPub, 2); // Add 4-torsion.
+    const bobPub2 = ed25519.publicKeyFromHash(bobPreimage);
+
+    assert(!ed25519.publicKeyHasTorsion(alicePub));
+    assert(!ed25519.publicKeyHasTorsion(bobPub));
+    assert(ed25519.publicKeyHasTorsion(alicePub2));
+    assert(ed25519.publicKeyHasTorsion(bobPub2));
+
+    const aliceSecret = ed25519.derive(bobPub, alicePriv);
+    const bobSecret = ed25519.derive(alicePub, bobPriv);
+    const aliceSecret2 = ed25519.derive(bobPub2, alicePriv);
+    const bobSecret2 = ed25519.derive(alicePub2, bobPriv);
+
+    assert.bufferEqual(aliceSecret, bobSecret);
+    assert.bufferEqual(aliceSecret2, bobSecret2);
+    assert.bufferEqual(aliceSecret, aliceSecret2);
+    assert.bufferEqual(bobSecret, bobSecret2);
   });
 
   it('should test serialization formats', () => {
