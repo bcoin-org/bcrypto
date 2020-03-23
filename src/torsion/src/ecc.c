@@ -182,11 +182,11 @@
 
 #ifdef TORSION_USE_64BIT
 typedef uint64_t fe_word_t;
-#define FIELD_WORD_SIZE 64
+#define FIELD_WORD_BITS 64
 #define MAX_FIELD_WORDS 9
 #else
 typedef uint32_t fe_word_t;
-#define FIELD_WORD_SIZE 32
+#define FIELD_WORD_BITS 32
 #define MAX_FIELD_WORDS 19
 #endif
 
@@ -194,6 +194,8 @@ typedef uint32_t fe_word_t;
 #define MAX_FIELD_SIZE 66
 #define MAX_FIELD_LIMBS \
   ((MAX_FIELD_BITS + GMP_NUMB_BITS - 1) / GMP_NUMB_BITS)
+#define MAX_FIELD_SHIFT \
+  ((MAX_FIELD_WORDS * FIELD_WORD_BITS * 2 + GMP_NUMB_BITS - 1) / GMP_NUMB_BITS)
 
 #define MAX_SCALAR_BITS 521
 #define MAX_SCALAR_SIZE 66
@@ -1391,7 +1393,7 @@ fe_export(const prime_field_t *fe, unsigned char *raw, const fe_t a) {
     /* Demontgomerize. */
     fe->from_montgomery(b, a);
 
-    if (fe->size != fe->words * (FIELD_WORD_SIZE / 8)) {
+    if (fe->size != fe->words * (FIELD_WORD_BITS / 8)) {
       /* Fiat accepts bytes serialized as full
        * words. In particular, this affects the
        * P224 64 bit backend. This is a non-issue
@@ -1401,7 +1403,7 @@ fe_export(const prime_field_t *fe, unsigned char *raw, const fe_t a) {
       unsigned char tmp[MAX_FIELD_SIZE];
 
       assert(fe->bits == 224);
-      assert(FIELD_WORD_SIZE == 64);
+      assert(FIELD_WORD_BITS == 64);
 
       fe->to_bytes(tmp, b);
 
@@ -1916,7 +1918,7 @@ scalar_field_init(scalar_field_t *sc, const scalar_def_t *def, int endian) {
     mp_limb_t x[MAX_REDUCE_LIMBS + 1]; /* 168 bytes */
 
     mpn_zero(sc->m, MAX_REDUCE_LIMBS);
-    mpn_zero(x, MAX_REDUCE_LIMBS + 1);
+    mpn_zero(x, sc->shift);
 
     x[sc->shift] = 1;
 
@@ -1964,17 +1966,14 @@ prime_field_init(prime_field_t *fe, const prime_def_t *def, int endian) {
    * Note that `bits` will be aligned to the word size.
    */
   if (def->from_montgomery) {
-    mp_limb_t q[MAX_SCALAR_LIMBS * 4 + 2];
-    mp_limb_t r[MAX_SCALAR_LIMBS * 4 + 2];
-    mp_size_t aligned = fe->words * FIELD_WORD_SIZE;
-    mp_size_t shift = (aligned * 2) / GMP_NUMB_BITS;
-    mp_size_t left = (aligned * 2) % GMP_NUMB_BITS;
+    mp_limb_t q[MAX_FIELD_SHIFT + 1 - MAX_FIELD_LIMBS + 1];
+    mp_limb_t r[MAX_FIELD_SHIFT + 1];
+    mp_size_t bits = fe->words * FIELD_WORD_BITS;
+    mp_size_t shift = (bits * 2) / GMP_NUMB_BITS;
+    mp_size_t left = (bits * 2) % GMP_NUMB_BITS;
     unsigned char tmp[MAX_FIELD_SIZE];
 
-    assert(((size_t)shift + 1) * GMP_NUMB_BITS <= sizeof(r) * CHAR_BIT);
-
-    mpn_zero(q, MAX_SCALAR_LIMBS * 4 + 2);
-    mpn_zero(r, MAX_SCALAR_LIMBS * 4 + 2);
+    mpn_zero(r, shift);
 
     r[shift] = 1;
 
