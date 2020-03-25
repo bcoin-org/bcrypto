@@ -76,11 +76,6 @@
           "./src/torsion/src/mini-gmp.c"
         ]
       }],
-      ["OS!='win' and node_use_openssl=='true' and nodedir.find('electron')==-1", {
-        "defines": [
-          "TORSION_USE_OPENSSL"
-        ]
-      }],
       ["OS=='win'", {
         "msbuild_settings": {
           "ClCompile": {

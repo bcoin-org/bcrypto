@@ -214,20 +214,16 @@ typedef struct _md5sha1_s {
 
 typedef struct _sha256_s {
   uint32_t state[8];
-  uint32_t _pad1, _pad2;
   uint8_t block[64];
   uint64_t size;
-  uint32_t _pad3;
 } sha256_t;
 
 typedef sha256_t sha224_t;
 
 typedef struct _sha512_s {
   uint64_t state[8];
-  uint64_t _pad1, _pad2;
   uint8_t block[128];
   uint64_t size;
-  uint64_t _pad3;
 } sha512_t;
 
 typedef sha512_t sha384_t;

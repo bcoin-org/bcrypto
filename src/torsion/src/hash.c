@@ -1162,27 +1162,6 @@ sha1_final(sha1_t *ctx, unsigned char *out) {
  * SHA256
  */
 
-#ifdef TORSION_USE_OPENSSL
-/* Doubtful that this ABI will change. */
-int SHA256_Init(sha256_t *c);
-int SHA256_Update(sha256_t *c, const void *data, size_t len);
-int SHA256_Final(unsigned char *md, sha256_t *c);
-
-void
-sha256_init(sha256_t *ctx) {
-  SHA256_Init(ctx);
-}
-
-void
-sha256_update(sha256_t *ctx, const void *data, size_t len) {
-  SHA256_Update(ctx, data, len);
-}
-
-void
-sha256_final(sha256_t *ctx, unsigned char *out) {
-  SHA256_Final(out, ctx);
-}
-#else /* TORSION_USE_OPENSSL */
 static const uint32_t sha256_K[64] = {
   0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5,
   0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
@@ -2569,21 +2548,11 @@ sha256_final(sha256_t *ctx, unsigned char *out) {
   for (i = 0; i < 8; i++)
     write32be(out + i * 4, ctx->state[i]);
 }
-#endif /* TORSION_USE_OPENSSL */
 
 /*
  * SHA224
  */
 
-#ifdef TORSION_USE_OPENSSL
-/* Doubtful that this ABI will change. */
-int SHA224_Init(sha224_t *c);
-
-void
-sha224_init(sha224_t *ctx) {
-  SHA224_Init(ctx);
-}
-#else /* TORSION_USE_OPENSSL */
 void
 sha224_init(sha224_t *ctx) {
   ctx->state[0] = 0xc1059ed8;
@@ -2596,7 +2565,6 @@ sha224_init(sha224_t *ctx) {
   ctx->state[7] = 0xbefa4fa4;
   ctx->size = 0;
 }
-#endif /* TORSION_USE_OPENSSL */
 
 void
 sha224_update(sha224_t *ctx, const void *data, size_t len) {
@@ -2617,27 +2585,6 @@ sha224_final(sha224_t *ctx, unsigned char *out) {
  * SHA512
  */
 
-#ifdef TORSION_USE_OPENSSL
-/* Doubtful that this ABI will change. */
-int SHA512_Init(sha512_t *c);
-int SHA512_Update(sha512_t *c, const void *data, size_t len);
-int SHA512_Final(unsigned char *md, sha512_t *c);
-
-void
-sha512_init(sha512_t *ctx) {
-  SHA512_Init(ctx);
-}
-
-void
-sha512_update(sha512_t *ctx, const void *data, size_t len) {
-  SHA512_Update(ctx, data, len);
-}
-
-void
-sha512_final(sha512_t *ctx, unsigned char *out) {
-  SHA512_Final(out, ctx);
-}
-#else /* TORSION_USE_OPENSSL */
 static const uint64_t sha512_K[80] = {
   0x428a2f98d728ae22ull, 0x7137449123ef65cdull,
   0xb5c0fbcfec4d3b2full, 0xe9b5dba58189dbbcull,
@@ -4058,21 +4005,11 @@ sha512_final(sha512_t *ctx, unsigned char *out) {
   for (i = 0; i < 8; i++)
     write64be(out + i * 8, ctx->state[i]);
 }
-#endif /* TORSION_USE_OPENSSL */
 
 /*
  * SHA384
  */
 
-#ifdef TORSION_USE_OPENSSL
-/* Doubtful that this ABI will change. */
-int SHA384_Init(sha384_t *c);
-
-void
-sha384_init(sha384_t *ctx) {
-  SHA384_Init(ctx);
-}
-#else /* TORSION_USE_OPENSSL */
 void
 sha384_init(sha384_t *ctx) {
   ctx->state[0] = 0xcbbb9d5dc1059ed8ull;
@@ -4085,7 +4022,6 @@ sha384_init(sha384_t *ctx) {
   ctx->state[7] = 0x47b5481dbefa4fa4ull;
   ctx->size = 0;
 }
-#endif /* TORSION_USE_OPENSSL */
 
 void
 sha384_update(sha384_t *ctx, const void *data, size_t len) {
