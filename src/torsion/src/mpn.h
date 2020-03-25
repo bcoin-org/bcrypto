@@ -18,7 +18,17 @@
 #endif
 #include <torsion/util.h>
 
-#include "gmp-compat.h"
+#ifdef TORSION_USE_GMP
+#include <gmp.h>
+#if GMP_NAIL_BITS != 0 || GMP_LIMB_BITS != GMP_NUMB_BITS
+#error "please use a build of gmp without nails"
+#endif
+#if (GMP_NUMB_BITS & 31) != 0
+#error "invalid gmp bit alignment"
+#endif
+#else
+#include "mini-gmp.h"
+#endif
 
 /* Avoid collisions with future versions of GMP. */
 #define mpn_bitlen torsion_mpn_bitlen
@@ -302,7 +312,7 @@ mpn_invert_n(mp_limb_t *rp,
   mp_size_t sn = n + 1;
   mp_size_t gn;
 
-  assert(n <= (mp_size_t)MAX_EGCD_LIMBS);
+  assert(n <= MAX_EGCD_LIMBS);
 
   if (mpn_zero_p(xp, n)) {
     mpn_zero(rp, n);

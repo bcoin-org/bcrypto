@@ -122,25 +122,25 @@ chacha20_block(chacha20_t *ctx) {
   /* Borrowed from:
    * https://github.com/gnutls/nettle/blob/master/x86_64/chacha-core-internal.asm
    *
-   * Layout:
-   *   %rsi = src pointer (&ctx->state[0])
-   *   %rdi = dst pointer (&stream[0])
+   * Registers:
+   *
+   *   %rdi = dst pointer (stream)
+   *   %rsi = src pointer (ctx->state)
    *   %edx = rounds integer (nettle does `20 >> 1`)
    *
    * For reference, our full range of clobbered registers:
-   * rsi, rdi, edx
+   *
+   *   %rsi, %rdi, %edx, %xmm[0-5]
    */
   __asm__ __volatile__(
-    "movq %[src], %%rsi\n"
-    "movq %[dst], %%rdi\n"
-    "movl $20, %%edx\n"
+    "movl $10, %%edx\n"
 
     "movups (%%rsi), %%xmm0\n"
     "movups 16(%%rsi), %%xmm1\n"
     "movups 32(%%rsi), %%xmm2\n"
     "movups 48(%%rsi), %%xmm3\n"
 
-    "shrl $1, %%edx\n"
+    ".align 16\n"
 
     "1:\n"
 
@@ -226,9 +226,10 @@ chacha20_block(chacha20_t *ctx) {
 
     "incq 48(%%rsi)\n"
     :
-    : [src] "r" (ctx->state),
-      [dst] "r" (stream)
-    : "rsi", "rdi", "edx", "cc", "memory"
+    : "D" (stream), "S" (ctx->state)
+    : "edx", "xmm0", "xmm1", "xmm2",
+      "xmm3", "xmm4", "xmm5", "cc",
+      "memory"
   );
 #else
   size_t i;

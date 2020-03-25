@@ -17,7 +17,11 @@
 #include <torsion/drbg.h>
 #include <torsion/util.h>
 
-#include "gmp-compat.h"
+#ifdef TORSION_USE_GMP
+#include <gmp.h>
+#else
+#include "mini-gmp.h"
+#endif
 
 /* Avoid collisions with future versions of GMP. */
 #define mpz_bitlen(n) (mpz_sgn(n) == 0 ? 0 : mpz_sizeinbase(n, 2))
