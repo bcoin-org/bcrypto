@@ -23,11 +23,11 @@
     "cflags": [
       "-Wall",
       "-Wextra",
-      "-Wno-implicit-fallthrough",
-      "-Wno-nonnull-compare",
-      "-Wno-unknown-warning",
-      "-Wno-unknown-warning-option",
-      "-Wno-unused-function",
+      "-Wno-implicit-fallthrough", # murmur3
+      "-Wno-nonnull-compare", # secp256k1
+      "-Wno-unknown-warning", # gcc
+      "-Wno-unknown-warning-option", # clang
+      "-Wno-unused-function", # secp256k1 & torsion
       "-O3"
     ],
     "cflags_c": [
@@ -43,13 +43,14 @@
     ],
     "variables": {
       "with_secp256k1%": "true",
-      "conditions": [
-        ["OS=='win'", {
-          "with_gmp%": "false"
-        }, {
-          "with_gmp%": "<!(./utils/has_gmp.sh)"
-        }]
-      ]
+      "with_gmp%": "false"
+      # "conditions": [
+      #   ["OS=='win'", {
+      #     "with_gmp%": "false"
+      #   }, {
+      #     "with_gmp%": "<!(./utils/has_gmp.sh)"
+      #   }]
+      # ]
     },
     "conditions": [
       ["node_byteorder=='big'", {
@@ -73,10 +74,6 @@
       }, {
         "sources": [
           "./src/torsion/src/mini-gmp.c"
-        ],
-        "cflags_c": [
-          "-Wno-unused-parameter",
-          "-Wno-sign-compare"
         ]
       }],
       ["OS!='win' and node_use_openssl=='true' and nodedir.find('electron')==-1", {
