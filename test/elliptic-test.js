@@ -72,19 +72,19 @@ function checkCurve(curve) {
     assert(curve._fixedNafMul(curve.g, k).eq(g));
 
   // Test wNAF multiplication.
-  assert(curve._wnafMul(4, g, k).eq(g));
+  assert(curve._wnafMul(5, g, k).eq(g));
 
   // Test wNAF multiplication (precomp).
-  assert(curve._wnafMul(4, curve.g, k).eq(g));
+  assert(curve._wnafMul(5, curve.g, k).eq(g));
 
   // Test Shamir's trick.
-  assert(curve._wnafMulAdd(4, [g, g], [k, k]).eq(g.dbl()));
+  assert(curve._wnafMulAdd(5, [g, g], [k, k]).eq(g.dbl()));
 
   // Test Shamir's trick (precomp).
-  assert(curve._wnafMulAdd(4, [curve.g, a], [k, k]).eq(g.dbl()));
+  assert(curve._wnafMulAdd(5, [curve.g, a], [k, k]).eq(g.dbl()));
 
   // Test Shamir's trick (precomp + JSF).
-  assert(curve._wnafMulAdd(4, [curve.g, a, a], [k, k, k]).eq(g.dbl().add(g)));
+  assert(curve._wnafMulAdd(5, [curve.g, a, a], [k, k, k]).eq(g.dbl().add(g)));
 }
 
 function checkMont(curve) {
@@ -1744,8 +1744,8 @@ describe('Elliptic', function() {
 
     it('should match multiplications (wnaf)', () => {
       const curve = new curves.SECP256K1();
-      const mul = (p, k) => curve._wnafMul(4, p, k).toP();
-      const jmul = (p, k) => curve._wnafMul(4, p, k);
+      const mul = (p, k) => curve._wnafMul(5, p, k).toP();
+      const jmul = (p, k) => curve._wnafMul(5, p, k);
 
       for (const g of [curve.g, curve.g, curve.randomPoint(rng)]) {
         const k0 = curve.randomScalar(rng);
@@ -1778,8 +1778,8 @@ describe('Elliptic', function() {
 
     it('should match multiplications (muladd)', () => {
       const curve = new curves.SECP256K1();
-      const mul = (p, k) => curve._wnafMulAdd(1, [p], [k]).toP();
-      const jmul = (p, k) => curve._wnafMulAdd(1, [p], [k]);
+      const mul = (p, k) => curve._wnafMulAdd(2, [p], [k]).toP();
+      const jmul = (p, k) => curve._wnafMulAdd(2, [p], [k]);
 
       for (const g of [curve.g, curve.g, curve.randomPoint(rng)]) {
         const k0 = curve.randomScalar(rng);
