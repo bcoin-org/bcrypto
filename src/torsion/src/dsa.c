@@ -33,7 +33,8 @@
 #include <torsion/util.h>
 #include "asn1.h"
 #include "internal.h"
-#include "mpz.h"
+#include "mpi.h"
+#include "prime.h"
 
 /*
  * Structs
@@ -737,8 +738,8 @@ dsa_sig_import_rs(dsa_sig_t *sig,
   if (len != qsize * 2)
     return 0;
 
-  mpz_import(sig->r, qsize, 1, 1, 0, 0, data);
-  mpz_import(sig->s, qsize, 1, 1, 0, 0, data + qsize);
+  mpz_decode(sig->r, data, qsize, 1);
+  mpz_decode(sig->s, data + qsize, qsize, 1);
 
   return 1;
 }
@@ -751,8 +752,8 @@ dsa_sig_export_rs(unsigned char *out, size_t *out_len,
     return 0;
   }
 
-  mpz_export_pad(out, sig->r, qsize, 1);
-  mpz_export_pad(out + qsize, sig->s, qsize, 1);
+  mpz_encode(out, sig->r, qsize, 1);
+  mpz_encode(out + qsize, sig->s, qsize, 1);
 
   *out_len = qsize * 2;
 
@@ -1243,7 +1244,7 @@ dsa_truncate(mpz_t m, const unsigned char *msg, size_t msg_len, const mpz_t q) {
   if (msg_len > bytes)
     msg_len = bytes;
 
-  mpz_import(m, msg_len, 1, 1, 0, 0, msg);
+  mpz_decode(m, msg, msg_len, 1);
 }
 
 static void
@@ -1332,8 +1333,8 @@ dsa_sign(unsigned char *out, size_t *out_len,
   qsize = mpz_bytelen(priv.q);
   dsa_reduce(m, msg, msg_len, priv.q);
 
-  mpz_export_pad(bytes, priv.x, qsize, 1);
-  mpz_export_pad(bytes + qsize, m, qsize, 1);
+  mpz_encode(bytes, priv.x, qsize, 1);
+  mpz_encode(bytes + qsize, m, qsize, 1);
 
   drbg_init(&drbg, HASH_SHA256, bytes, qsize * 2);
   drbg_init(&rng, HASH_SHA256, entropy, ENTROPY_SIZE);
@@ -1527,7 +1528,7 @@ dsa_derive(unsigned char *out, size_t *out_len,
   mpz_powm_sec(e, k1.y, k2.x, k1.p);
 
   *out_len = mpz_bytelen(k1.p);
-  mpz_export_pad(out, e, *out_len, 1);
+  mpz_encode(out, e, *out_len, 1);
   r = 1;
 fail:
   dsa_pub_clear(&k1);

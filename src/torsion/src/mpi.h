@@ -53,6 +53,10 @@
 #include <limits.h>
 #endif
 
+#ifdef TORSION_TEST
+#include <stdio.h>
+#endif
+
 #ifdef __GNUC__
 #define MINI_GMP_EXTENSION __extension__
 #else
@@ -70,6 +74,7 @@ extern "C" {
 #define mpn_copyi _torsion_mpn_copyi
 #define mpn_copyd _torsion_mpn_copyd
 #define mpn_zero _torsion_mpn_zero
+#define mpn_cleanse _torsion_mpn_cleanse
 #define mpn_cmp _torsion_mpn_cmp
 #define mpn_zero_p _torsion_mpn_zero_p
 #define mpn_add_1 _torsion_mpn_add_1
@@ -95,11 +100,27 @@ extern "C" {
 #define mpn_popcount _torsion_mpn_popcount
 #define mpn_invert_3by2 _torsion_mpn_invert_3by2
 #define mpn_tdiv_qr _torsion_mpn_tdiv_qr
+#define mpn_cnd_select _torsion_mpn_cnd_select
+#define mpn_cnd_swap _torsion_mpn_cnd_swap
+#define mpn_cnd_zero _torsion_mpn_cnd_zero
+#define mpn_sec_zero_p _torsion_mpn_sec_zero_p
+#define mpn_sec_eq _torsion_mpn_sec_eq
+#define mpn_sec_lt _torsion_mpn_sec_lt
+#define mpn_sec_lte _torsion_mpn_sec_lte
+#define mpn_sec_gt _torsion_mpn_sec_gt
+#define mpn_sec_gte _torsion_mpn_sec_gte
+#define mpn_bitlen _torsion_mpn_bitlen
+#define mpn_get_bit _torsion_mpn_get_bit
+#define mpn_get_bits _torsion_mpn_get_bits
 #define mpn_get_str _torsion_mpn_get_str
 #define mpn_set_str _torsion_mpn_set_str
+#define mpn_import _torsion_mpn_import
+#define mpn_export _torsion_mpn_export
+#define mpn_out_str _torsion_mpn_out_str
 #define mpz_init _torsion_mpz_init
 #define mpz_init2 _torsion_mpz_init2
 #define mpz_clear _torsion_mpz_clear
+#define mpz_cleanse _torsion_mpz_cleanse
 #define mpz_sgn _torsion_mpz_sgn
 #define mpz_cmp_si _torsion_mpz_cmp_si
 #define mpz_cmp_ui _torsion_mpz_cmp_ui
@@ -165,6 +186,7 @@ extern "C" {
 #define mpz_lcm_ui _torsion_mpz_lcm_ui
 #define mpz_lcm _torsion_mpz_lcm
 #define mpz_invert _torsion_mpz_invert
+#define mpn_invert_n _torsion_mpn_invert_n
 #define mpz_jacobi _torsion_mpz_jacobi
 #define mpz_sqrtrem _torsion_mpz_sqrtrem
 #define mpz_sqrt _torsion_mpz_sqrt
@@ -209,18 +231,23 @@ extern "C" {
 #define mpz_set_si _torsion_mpz_set_si
 #define mpz_set_ui _torsion_mpz_set_ui
 #define mpz_set _torsion_mpz_set
+#define mpz_roset _torsion_mpz_roset
 #define mpz_set_d _torsion_mpz_set_d
 #define mpz_init_set_si _torsion_mpz_init_set_si
 #define mpz_init_set_ui _torsion_mpz_init_set_ui
 #define mpz_init_set _torsion_mpz_init_set
 #define mpz_init_set_d _torsion_mpz_init_set_d
 #define mpz_sizeinbase _torsion_mpz_sizeinbase
+#define mpz_bitlen _torsion_mpz_bitlen
+#define mpz_bytelen _torsion_mpz_bytelen
 #define mpz_get_str _torsion_mpz_get_str
 #define mpz_set_str _torsion_mpz_set_str
 #define mpz_init_set_str _torsion_mpz_init_set_str
 #define mpz_out_str _torsion_mpz_out_str
 #define mpz_import _torsion_mpz_import
 #define mpz_export _torsion_mpz_export
+#define mpz_decode _torsion_mpz_decode
+#define mpz_encode _torsion_mpz_encode
 
 void mp_set_memory_functions(void *(*)(size_t),
                              void *(*)(void *, size_t, size_t),
@@ -230,29 +257,23 @@ void mp_get_memory_functions(void *(**)(size_t),
                              void *(**)(void *, size_t, size_t),
                              void (**)(void *, size_t));
 
-#if defined(MINI_GMP_FIXED_LIMBS) && defined(TORSION_USE_64BIT)
+#ifdef MINI_GMP_FIXED_LIMBS
+#ifdef TORSION_USE_64BIT
 typedef uint64_t mp_limb_t;
 MINI_GMP_EXTENSION typedef unsigned __int128 mp_wide_t;
 #define GMP_LIMB_BITS 64
-#define GMP_NUMB_MASK UINT64_C(0xffffffffffffffff)
-#elif defined(MINI_GMP_FIXED_LIMBS)
+#else
 typedef uint32_t mp_limb_t;
 typedef uint64_t mp_wide_t;
 #define GMP_LIMB_BITS 32
-#define GMP_NUMB_MASK UINT32_C(0xffffffff)
+#endif
 #else
 #ifndef MINI_GMP_LIMB_TYPE
 #define MINI_GMP_LIMB_TYPE long
 #endif
 typedef unsigned MINI_GMP_LIMB_TYPE mp_limb_t;
 #define GMP_LIMB_BITS ((int)(sizeof(mp_limb_t) * CHAR_BIT))
-#define GMP_NUMB_MASK (~((mp_limb_t)0))
 #endif
-
-#define GMP_NUMB_BITS GMP_LIMB_BITS
-#define GMP_NUMB_MAX GMP_NUMB_MASK
-#define GMP_NAIL_BITS 0
-#define GMP_NAIL_MASK 0
 
 typedef long mp_size_t;
 typedef unsigned long mp_bitcnt_t;
@@ -279,6 +300,7 @@ extern const int mp_bits_per_limb;
 void mpn_copyi(mp_ptr, mp_srcptr, mp_size_t);
 void mpn_copyd(mp_ptr, mp_srcptr, mp_size_t);
 void mpn_zero(mp_ptr, mp_size_t);
+void mpn_cleanse(mp_ptr, mp_size_t);
 
 int mpn_cmp(mp_srcptr, mp_srcptr, mp_size_t);
 int mpn_zero_p(mp_srcptr, mp_size_t);
@@ -319,12 +341,30 @@ void mpn_tdiv_qr(mp_ptr, mp_ptr, mp_size_t,
                  mp_srcptr, mp_size_t,
                  mp_srcptr, mp_size_t);
 
+void mpn_cnd_select(mp_limb_t, mp_ptr, mp_srcptr, mp_srcptr, mp_size_t);
+void mpn_cnd_swap(mp_limb_t, mp_ptr, mp_ptr, mp_size_t);
+void mpn_cnd_zero(mp_limb_t, mp_ptr, mp_srcptr, mp_size_t);
+int mpn_sec_zero_p(mp_srcptr, mp_size_t);
+int mpn_sec_eq(mp_srcptr, mp_srcptr, mp_size_t);
+int mpn_sec_lt(mp_srcptr, mp_srcptr, mp_size_t);
+int mpn_sec_lte(mp_srcptr, mp_srcptr, mp_size_t);
+int mpn_sec_gt(mp_srcptr, mp_srcptr, mp_size_t);
+int mpn_sec_gte(mp_srcptr, mp_srcptr, mp_size_t);
+
+size_t mpn_bitlen(mp_srcptr, mp_size_t);
+mp_limb_t mpn_get_bit(mp_srcptr, mp_size_t, mp_size_t);
+mp_limb_t mpn_get_bits(mp_srcptr, mp_size_t, mp_size_t, mp_size_t);
+
 size_t mpn_get_str(unsigned char *, int, mp_ptr, mp_size_t);
 mp_size_t mpn_set_str(mp_ptr, const unsigned char *, size_t, int);
+
+void mpn_import(mp_ptr, mp_size_t, const unsigned char *, size_t, int);
+void mpn_export(unsigned char *, size_t, mp_srcptr, mp_size_t, int);
 
 void mpz_init(mpz_t);
 void mpz_init2(mpz_t, mp_bitcnt_t);
 void mpz_clear(mpz_t);
+void mpz_cleanse(mpz_t);
 
 #define mpz_odd_p(z) (((z)->_mp_size != 0) & (int)(z)->_mp_d[0])
 #define mpz_even_p(z) (!mpz_odd_p(z))
@@ -409,6 +449,7 @@ mp_size_t mpn_gcdext(mp_ptr, mp_ptr, mp_size_t *,
 void mpz_lcm_ui(mpz_t, const mpz_t, unsigned long);
 void mpz_lcm(mpz_t, const mpz_t, const mpz_t);
 int mpz_invert(mpz_t, const mpz_t, const mpz_t);
+int mpn_invert_n(mp_ptr, mp_srcptr, mp_srcptr, mp_size_t);
 int mpz_jacobi(const mpz_t, const mpz_t);
 
 void mpz_sqrtrem(mpz_t, mpz_t, const mpz_t);
@@ -466,6 +507,7 @@ mpz_srcptr mpz_roinit_n(mpz_t, mp_srcptr, mp_size_t);
 void mpz_set_si(mpz_t, signed long int);
 void mpz_set_ui(mpz_t, unsigned long int);
 void mpz_set(mpz_t, const mpz_t);
+void mpz_roset(mpz_t, const mpz_t);
 void mpz_set_d(mpz_t, double);
 
 void mpz_init_set_si(mpz_t, signed long int);
@@ -474,6 +516,8 @@ void mpz_init_set(mpz_t, const mpz_t);
 void mpz_init_set_d(mpz_t, double);
 
 size_t mpz_sizeinbase(const mpz_t, int);
+size_t mpz_bitlen(const mpz_t);
+size_t mpz_bytelen(const mpz_t);
 char *mpz_get_str(char *, int, const mpz_t);
 int mpz_set_str(mpz_t, const char *, int);
 int mpz_init_set_str(mpz_t, const char *, int);
@@ -496,11 +540,14 @@ int mpz_init_set_str(mpz_t, const char *, int);
   || defined(_STDIO_H_INCLUDED)      /* QNX4 */            \
   || defined(_ISO_STDIO_ISO_H)       /* Sun C++ */         \
   || defined(__STDIO_LOADED)         /* VMS */
+size_t mpn_out_str(FILE *, int, mp_srcptr, mp_size_t);
 size_t mpz_out_str(FILE *, int, const mpz_t);
 #endif
 
 void mpz_import(mpz_t, size_t, int, size_t, int, size_t, const void *);
 void *mpz_export(void *, size_t *, int, size_t, int, size_t, const mpz_t);
+void mpz_decode(mpz_t, const unsigned char *, size_t, int);
+void mpz_encode(unsigned char *, const mpz_t, size_t, int);
 
 #if defined(__cplusplus)
 }

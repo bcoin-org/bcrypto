@@ -123,6 +123,7 @@ extern "C" {
 #define hash_init torsion_hash_init
 #define hash_update torsion_hash_update
 #define hash_final torsion_hash_final
+#define hash_has_backend torsion_hash_has_backend
 #define hash_output_size torsion_hash_output_size
 #define hash_block_size torsion_hash_block_size
 #define hmac_init torsion_hmac_init

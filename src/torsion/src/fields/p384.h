@@ -50,7 +50,9 @@ p384_fe_equal(const p384_fe_t a, const p384_fe_t b) {
   for (i = 0; i < P384_FIELD_WORDS; i++)
     z |= a[i] ^ b[i];
 
-  return z == 0;
+  z = (z >> 1) | (z & 1);
+
+  return (z - 1) >> (sizeof(z) * CHAR_BIT - 1);
 }
 
 static void

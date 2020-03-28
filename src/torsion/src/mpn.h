@@ -32,7 +32,6 @@
 
 /* Avoid collisions with future versions of GMP. */
 #define mpn_bitlen torsion_mpn_bitlen
-#define mpn_cmp_limb torsion_mpn_cmp_limb
 #define mpn_get_bit torsion_mpn_get_bit
 #define mpn_get_bits torsion_mpn_get_bits
 #define mpn_cleanse torsion_mpn_cleanse
@@ -79,36 +78,36 @@ mpn_bitlen(const mp_limb_t *xp, mp_size_t xn) {
   return bits;
 }
 
-static int
-mpn_cmp_limb(const mp_limb_t *xp, mp_size_t xn, int32_t num) {
-  mp_limb_t w = 0;
-  mp_limb_t n = num;
+static mp_limb_t
+mpn_get_bit(const mp_limb_t *xp, mp_size_t xn, mp_size_t pos) {
+  mp_size_t index = pos / GMP_NUMB_BITS;
+  mp_size_t shift = pos % GMP_NUMB_BITS;
 
-#ifdef TORSION_TEST
-  assert(xn == 0 || xp[xn - 1] != 0);
-#endif
+  if (index >= xn)
+    return 0;
 
-  if (num < 0)
-    return 1;
-
-  if (xn > 1)
-    return 1;
-
-  if (xn > 0)
-    w = xp[0];
-
-  return (int)(w > n) - (int)(w < n);
+  return (xp[index] >> shift) & 1;
 }
 
 static mp_limb_t
-mpn_get_bit(const mp_limb_t *k, mp_size_t i) {
-  return (k[i / GMP_NUMB_BITS] >> (i % GMP_NUMB_BITS)) & 1;
-}
+mpn_get_bits(const mp_limb_t *xp, mp_size_t xn, mp_size_t pos, mp_size_t width) {
+  mp_size_t index = pos / GMP_NUMB_BITS;
+  mp_size_t shift = pos % GMP_NUMB_BITS;
+  mp_limb_t bits;
 
-static mp_limb_t
-mpn_get_bits(const mp_limb_t *k, mp_size_t i, mp_size_t w) {
-  mp_limb_t mask = ((mp_limb_t)1 << w) - 1;
-  return (k[i / GMP_NUMB_BITS] >> (i % GMP_NUMB_BITS)) & mask;
+  if (index >= xn)
+    return 0;
+
+  bits = (xp[index] >> shift) & (((mp_limb_t)1 << width) - 1);
+
+  if (shift + width > (mp_size_t)GMP_NUMB_BITS && index + 1 < xn) {
+    mp_size_t more = shift + width - GMP_NUMB_BITS;
+    mp_limb_t next = xp[index + 1] & (((mp_limb_t)1 << more) - 1);
+
+    bits |= next << (GMP_NUMB_BITS - shift);
+  }
+
+  return bits;
 }
 
 static void

@@ -73,7 +73,9 @@ p224_fe_equal(const p224_fe_t a, const p224_fe_t b) {
   for (i = 0; i < P224_FIELD_WORDS; i++)
     z |= a[i] ^ b[i];
 
-  return z == 0;
+  z = (z >> 1) | (z & 1);
+
+  return (z - 1) >> (sizeof(z) * CHAR_BIT - 1);
 }
 
 static void

@@ -260,7 +260,7 @@ void
 ecdsa_context_randomize(ecdsa_t *ec, const unsigned char *entropy);
 
 ecdsa_scratch_t *
-ecdsa_scratch_create(const ecdsa_t *ec);
+ecdsa_scratch_create(const ecdsa_t *ec, size_t size);
 
 void
 ecdsa_scratch_destroy(const ecdsa_t *ec, ecdsa_scratch_t *scratch);
@@ -541,7 +541,7 @@ void
 schnorr_context_randomize(schnorr_t *ec, const unsigned char *entropy);
 
 schnorr_scratch_t *
-schnorr_scratch_create(const schnorr_t *ec);
+schnorr_scratch_create(const schnorr_t *ec, size_t size);
 
 void
 schnorr_scratch_destroy(const schnorr_t *ec, schnorr_scratch_t *scratch);
@@ -836,7 +836,7 @@ void
 eddsa_context_randomize(eddsa_t *ec, const unsigned char *entropy);
 
 eddsa_scratch_t *
-eddsa_scratch_create(const eddsa_t *ec);
+eddsa_scratch_create(const eddsa_t *ec, size_t size);
 
 void
 eddsa_scratch_destroy(const eddsa_t *ec, eddsa_scratch_t *scratch);

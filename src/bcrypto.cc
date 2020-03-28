@@ -2920,7 +2920,7 @@ bcrypto_ecdsa_create(napi_env env, napi_callback_info info) {
 
   ec = (bcrypto_ecdsa_t *)safe_malloc(sizeof(bcrypto_ecdsa_t));
   ec->ctx = ctx;
-  ec->scratch = ecdsa_scratch_create(ec->ctx);
+  ec->scratch = ecdsa_scratch_create(ec->ctx, 64);
   ec->scalar_size = ecdsa_scalar_size(ec->ctx);
   ec->scalar_bits = ecdsa_scalar_bits(ec->ctx);
   ec->field_size = ecdsa_field_size(ec->ctx);
@@ -4234,7 +4234,7 @@ bcrypto_eddsa_create(napi_env env, napi_callback_info info) {
 
   ec = (bcrypto_eddsa_t *)safe_malloc(sizeof(bcrypto_eddsa_t));
   ec->ctx = ctx;
-  ec->scratch = eddsa_scratch_create(ec->ctx);
+  ec->scratch = eddsa_scratch_create(ec->ctx, 64);
   ec->scalar_size = eddsa_scalar_size(ec->ctx);
   ec->scalar_bits = eddsa_scalar_bits(ec->ctx);
   ec->field_size = eddsa_field_size(ec->ctx);
@@ -7325,7 +7325,7 @@ bcrypto_schnorr_create(napi_env env, napi_callback_info info) {
 
   ec = (bcrypto_schnorr_t *)safe_malloc(sizeof(bcrypto_schnorr_t));
   ec->ctx = ctx;
-  ec->scratch = schnorr_scratch_create(ec->ctx);
+  ec->scratch = schnorr_scratch_create(ec->ctx, 64);
   ec->scalar_size = schnorr_scalar_size(ec->ctx);
   ec->scalar_bits = schnorr_scalar_bits(ec->ctx);
   ec->field_size = schnorr_field_size(ec->ctx);

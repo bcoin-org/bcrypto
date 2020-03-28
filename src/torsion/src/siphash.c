@@ -51,7 +51,7 @@ static uint64_t
 read64le(const void *src) {
 #ifndef WORDS_BIGENDIAN
   uint64_t w;
-  memcpy(&w, src, sizeof w);
+  memcpy(&w, src, sizeof(w));
   return w;
 #else
   const uint8_t *p = (const uint8_t *)src;

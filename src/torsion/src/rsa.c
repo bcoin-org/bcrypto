@@ -28,7 +28,8 @@
 #include <torsion/util.h>
 #include "asn1.h"
 #include "internal.h"
-#include "mpz.h"
+#include "mpi.h"
+#include "prime.h"
 
 /*
  * Constants
@@ -258,7 +259,7 @@ safe_malloc(size_t size) {
 
   ptr = malloc(size);
 
-  CHECK(ptr != NULL);
+  assert(ptr != NULL);
 
   memset(ptr, 0, size);
 
@@ -467,7 +468,9 @@ rsa_priv_generate(rsa_priv_t *k,
   mpz_init(lam);
   mpz_init(tmp);
 
-  mpz_set_u64(k->e, exp);
+  mpz_set_ui(k->e, exp >> 32);
+  mpz_mul_2exp(k->e, k->e, 32);
+  mpz_add_ui(k->e, k->e, exp & 0xfffffffful);
 
   for (;;) {
     mpz_random_prime(k->p, (bits >> 1) + (bits & 1), &rng);
@@ -934,7 +937,7 @@ rsa_priv_decrypt(const rsa_priv_t *k,
     goto fail;
 #endif
 
-  mpz_import(c, msg_len, 1, 1, 0, 0, msg);
+  mpz_decode(c, msg, msg_len, 1);
 
   if (mpz_cmp(c, k->n) >= 0)
     goto fail;
@@ -995,7 +998,7 @@ rsa_priv_decrypt(const rsa_priv_t *k,
   /* m = m * bi mod n (unblind) */
   mpz_mul(m, m, bi);
   mpz_mod(m, m, k->n);
-  mpz_export_pad(out, m, mpz_bytelen(k->n), 1);
+  mpz_encode(out, m, mpz_bytelen(k->n), 1);
 
   r = 1;
 fail:
@@ -1129,14 +1132,14 @@ rsa_pub_encrypt(const rsa_pub_t *k,
   if (mpz_sgn(k->n) <= 0 || mpz_sgn(k->e) <= 0)
     goto fail;
 
-  mpz_import(m, msg_len, 1, 1, 0, 0, msg);
+  mpz_decode(m, msg, msg_len, 1);
 
   if (mpz_cmp(m, k->n) >= 0)
     goto fail;
 
   /* c = m^e mod n */
   mpz_powm(m, m, k->e, k->n);
-  mpz_export_pad(out, m, mpz_bytelen(k->n), 1);
+  mpz_encode(out, m, mpz_bytelen(k->n), 1);
 
   r = 1;
 fail:
@@ -1165,7 +1168,7 @@ rsa_pub_veil(const rsa_pub_t *k,
   if (bits < mpz_bitlen(k->n))
     goto fail;
 
-  mpz_import(c, msg_len, 1, 1, 0, 0, msg);
+  mpz_decode(c, msg, msg_len, 1);
 
   if (mpz_cmp(c, k->n) >= 0)
     goto fail;
@@ -1199,7 +1202,7 @@ rsa_pub_veil(const rsa_pub_t *k,
   assert(mpz_cmp(r, c) == 0);
   assert(mpz_bitlen(v) <= bits);
 
-  mpz_export_pad(out, v, (bits + 7) / 8, 1);
+  mpz_encode(out, v, (bits + 7) / 8, 1);
   ret = 1;
 fail:
   cleanse(&rng, sizeof(rng));
@@ -1221,13 +1224,13 @@ rsa_pub_unveil(const rsa_pub_t *k,
   mpz_t v;
 
   mpz_init(v);
-  mpz_import(v, msg_len, 1, 1, 0, 0, msg);
+  mpz_decode(v, msg, msg_len, 1);
 
   if (bits != 0 && mpz_bitlen(v) > bits)
     goto fail;
 
   mpz_mod(v, v, k->n);
-  mpz_export_pad(out, v, mpz_bytelen(k->n), 1);
+  mpz_encode(out, v, mpz_bytelen(k->n), 1);
 
   r = 1;
 fail:

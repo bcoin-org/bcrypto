@@ -10,7 +10,7 @@
 #include <assert.h>
 #include <limits.h>
 #include <stddef.h>
-#include "mpz.h"
+#include "mpi.h"
 
 /*
  * ASN1
@@ -198,7 +198,7 @@ asn1_read_mpz(mpz_t n, const unsigned char **data, size_t *len, int strict) {
   if (size > 2048)
     goto fail;
 
-  mpz_import(n, size, 1, 1, 0, 0, *data);
+  mpz_decode(n, *data, size, 1);
 
   *data += size;
   *len -= size;
@@ -256,7 +256,7 @@ asn1_read_dumb(mpz_t n, const unsigned char **data, size_t *len) {
   if (size > *len)
     goto fail;
 
-  mpz_import(n, size, 1, 1, 0, 0, *data);
+  mpz_decode(n, *data, size, 1);
 
   *data += size;
   *len -= size;
@@ -394,10 +394,7 @@ asn1_write_mpz(unsigned char *data, size_t pos, const mpz_t n) {
   if (pad)
     data[pos++] = 0x00;
 
-  if (bits != 0)
-    mpz_export(data + pos, NULL, 1, 1, 0, 0, n);
-  else
-    data[pos] = 0x00;
+  mpz_encode(data + pos, n, size, 1);
 
   pos += size;
 
@@ -419,7 +416,7 @@ asn1_write_dumb(unsigned char *data, size_t pos, const mpz_t n) {
   data[pos++] = size >> 8;
   data[pos++] = size;
 
-  mpz_export(data + pos, NULL, 1, 1, 0, 0, n);
+  mpz_encode(data + pos, n, size, 1);
 
   pos += size;
 

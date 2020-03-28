@@ -78,21 +78,22 @@ secp256k1_fe_set(secp256k1_fe_t out, const secp256k1_fe_t in) {
 
 static int
 secp256k1_fe_equal(const secp256k1_fe_t a, const secp256k1_fe_t b) {
-#ifdef TORSION_USE_LIBSECP256K1
   secp256k1_fe_word_t z = 0;
+
+#ifdef TORSION_USE_LIBSECP256K1
   secp256k1_fe_t c;
   secp256k1_fe_sub(c, a, b);
   secp256k1_fe_nonzero(&z, c);
-  return z == 0;
 #else
-  secp256k1_fe_word_t z = 0;
   size_t i;
 
   for (i = 0; i < SECP256K1_FIELD_WORDS; i++)
     z |= a[i] ^ b[i];
 
-  return z == 0;
+  z = (z >> 1) | (z & 1);
 #endif
+
+  return (z - 1) >> (sizeof(z) * CHAR_BIT - 1);
 }
 
 static void
