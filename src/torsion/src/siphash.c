@@ -19,22 +19,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <torsion/siphash.h>
+#include "bio.h"
+#include "internal.h"
 
-#ifdef TORSION_USE_64BIT
 #ifdef _MSC_VER
 #include <intrin.h>
-#else
-#ifdef __SIZEOF_INT128___
-#ifdef __GNUC__
-__extension__ typedef unsigned __int128 uint128_t;
-#else
-typedef unsigned __int128 uint128_t;
 #endif
-#else /* __SIZEOF_INT128__ */
-typedef unsigned uint128_t __attribute__((mode(TI)));
-#endif
-#endif
-#endif
+
+/*
+ * Macros
+ */
 
 #define ROTL64(x, b) (uint64_t)(((x) << (b)) | ((x) >> (64 - (b))))
 
@@ -47,34 +41,17 @@ typedef unsigned uint128_t __attribute__((mode(TI)));
   v2 = ROTL64(v2, 32);                     \
 } while (0)
 
-static uint64_t
-read64le(const void *src) {
-#ifndef WORDS_BIGENDIAN
-  uint64_t w;
-  memcpy(&w, src, sizeof(w));
-  return w;
-#else
-  const uint8_t *p = (const uint8_t *)src;
-  return ((uint64_t)p[0] << 0)
-       | ((uint64_t)p[1] << 8)
-       | ((uint64_t)p[2] << 16)
-       | ((uint64_t)p[3] << 24)
-       | ((uint64_t)p[4] << 32)
-       | ((uint64_t)p[5] << 40)
-       | ((uint64_t)p[6] << 48)
-       | ((uint64_t)p[7] << 56);
-#endif
-}
+/*
+ * Helpers
+ */
 
 static uint64_t
 reduce64(uint64_t a, uint64_t b) {
-#ifdef TORSION_USE_64BIT
-#ifdef _MSC_VER
+#if defined(TORSION_HAS_INT128)
+  return ((torsion_uint128_t)a * b) >> 64;
+#elif defined(TORSION_USE_64BIT) && defined(_MSC_VER)
   return __umulh(a, b);
 #else
-  return ((uint128_t)a * b) >> 64;
-#endif
-#else /* TORSION_USE_64BIT */
   /* https://stackoverflow.com/questions/28868367 */
   uint64_t ahi = a >> 32;
   uint64_t alo = a & 0xffffffff;
@@ -89,6 +66,10 @@ reduce64(uint64_t a, uint64_t b) {
   return axbhi + (axbmid >> 32) + (bxamid >> 32) + (c >> 32);
 #endif
 }
+
+/*
+ * Siphash
+ */
 
 static uint64_t
 _siphash(const unsigned char *data, size_t len, const unsigned char *key) {

@@ -18,7 +18,6 @@
  *     https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.186-4.pdf
  */
 
-#include <assert.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
@@ -29,7 +28,6 @@
 #include "asn1.h"
 #include "internal.h"
 #include "mpi.h"
-#include "prime.h"
 
 /*
  * Constants
@@ -250,27 +248,11 @@ safe_cmp(const unsigned char *x, const unsigned char *y, size_t len) {
   return (v - 1) >> 31;
 }
 
-static void *
-safe_malloc(size_t size) {
-  void *ptr;
-
-  if (size == 0)
-    return NULL;
-
-  ptr = malloc(size);
-
-  assert(ptr != NULL);
-
-  memset(ptr, 0, size);
-
-  return ptr;
-}
-
 static void
 safe_free(void *ptr, size_t size) {
   if (ptr != NULL) {
     cleanse(ptr, size);
-    free(ptr);
+    torsion_free(ptr);
   }
 }
 
@@ -468,13 +450,11 @@ rsa_priv_generate(rsa_priv_t *k,
   mpz_init(lam);
   mpz_init(tmp);
 
-  mpz_set_ui(k->e, exp >> 32);
-  mpz_mul_2exp(k->e, k->e, 32);
-  mpz_add_ui(k->e, k->e, exp & 0xfffffffful);
+  mpz_set_u64(k->e, exp);
 
   for (;;) {
-    mpz_random_prime(k->p, (bits >> 1) + (bits & 1), &rng);
-    mpz_random_prime(k->q, bits >> 1, &rng);
+    mpz_random_prime(k->p, (bits >> 1) + (bits & 1), drbg_rng, &rng);
+    mpz_random_prime(k->q, bits >> 1, drbg_rng, &rng);
 
     if (mpz_cmp(k->p, k->q) == 0)
       continue;
@@ -515,7 +495,7 @@ rsa_priv_generate(rsa_priv_t *k,
     mpz_mod(k->dp, k->d, pm1);
     mpz_mod(k->dq, k->d, qm1);
 
-    CHECK(mpz_invert(k->qi, k->q, k->p));
+    ASSERT(mpz_invert(k->qi, k->q, k->p));
 
     break;
   }
@@ -694,7 +674,7 @@ rsa_priv_from_pqe(rsa_priv_t *out,
 
   mpz_mul(k.n, p, q);
 
-  assert(mpz_odd_p(k.n));
+  ASSERT(mpz_odd_p(k.n));
 
   if (mpz_bitlen(k.n) < RSA_MIN_MOD_BITS || mpz_bitlen(k.n) > RSA_MAX_MOD_BITS)
     goto fail;
@@ -716,7 +696,7 @@ rsa_priv_from_pqe(rsa_priv_t *out,
   if (!mpz_invert(k.qi, q, p))
     goto fail;
 
-  CHECK(rsa_priv_verify(&k));
+  ASSERT(rsa_priv_verify(&k));
 
   rsa_priv_set(out, &k);
   r = 1;
@@ -832,17 +812,17 @@ rsa_priv_from_ned(rsa_priv_t *out,
   mpz_sub_ui(nm3, nm1, 2);
 
   /* s = f factors of 2 */
-  s = mpz_scan1(f, 0);
+  s = mpz_ctz(f);
 
   /* g = f >> s */
-  mpz_tdiv_q_2exp(g, f, s);
+  mpz_rshift(g, f, s);
 
   /* Seed RNG. */
   drbg_init(&rng, HASH_SHA256, entropy, ENTROPY_SIZE);
 
   for (i = 0; i < 128; i++) {
     /* a = random int in [2,n-1] */
-    mpz_random_int(a, nm3, &rng);
+    mpz_random_int(a, nm3, drbg_rng, &rng);
     mpz_add_ui(a, a, 2);
 
     /* b = a^g mod n */
@@ -937,7 +917,7 @@ rsa_priv_decrypt(const rsa_priv_t *k,
     goto fail;
 #endif
 
-  mpz_decode(c, msg, msg_len, 1);
+  mpz_import(c, msg, msg_len, 1);
 
   if (mpz_cmp(c, k->n) >= 0)
     goto fail;
@@ -948,7 +928,7 @@ rsa_priv_decrypt(const rsa_priv_t *k,
   /* Generate blinding factor. */
   for (;;) {
     /* s = random integer in [1,n-1] */
-    mpz_random_int(s, t, &rng);
+    mpz_random_int(s, t, drbg_rng, &rng);
     mpz_add_ui(s, s, 1);
 
     /* bi = s^-1 mod n */
@@ -998,7 +978,7 @@ rsa_priv_decrypt(const rsa_priv_t *k,
   /* m = m * bi mod n (unblind) */
   mpz_mul(m, m, bi);
   mpz_mod(m, m, k->n);
-  mpz_encode(out, m, mpz_bytelen(k->n), 1);
+  mpz_export(out, m, mpz_bytelen(k->n), 1);
 
   r = 1;
 fail:
@@ -1032,7 +1012,7 @@ rsa_pub_clear(rsa_pub_t *k) {
   mpz_cleanse(k->e);
 }
 
-static void
+TORSION_UNUSED static void
 rsa_pub_set(rsa_pub_t *r, const rsa_pub_t *k) {
   mpz_set(r->n, k->n);
   mpz_set(r->e, k->e);
@@ -1132,14 +1112,14 @@ rsa_pub_encrypt(const rsa_pub_t *k,
   if (mpz_sgn(k->n) <= 0 || mpz_sgn(k->e) <= 0)
     goto fail;
 
-  mpz_decode(m, msg, msg_len, 1);
+  mpz_import(m, msg, msg_len, 1);
 
   if (mpz_cmp(m, k->n) >= 0)
     goto fail;
 
   /* c = m^e mod n */
   mpz_powm(m, m, k->e, k->n);
-  mpz_encode(out, m, mpz_bytelen(k->n), 1);
+  mpz_export(out, m, mpz_bytelen(k->n), 1);
 
   r = 1;
 fail:
@@ -1168,29 +1148,29 @@ rsa_pub_veil(const rsa_pub_t *k,
   if (bits < mpz_bitlen(k->n))
     goto fail;
 
-  mpz_decode(c, msg, msg_len, 1);
+  mpz_import(c, msg, msg_len, 1);
 
   if (mpz_cmp(c, k->n) >= 0)
     goto fail;
 
   /* vmax = 1 << bits */
   mpz_set_ui(vmax, 1);
-  mpz_mul_2exp(vmax, vmax, bits);
+  mpz_lshift(vmax, vmax, bits);
 
   /* rmax = (vmax - c + n - 1) / n */
   mpz_sub(rmax, vmax, c);
   mpz_add(rmax, rmax, k->n);
   mpz_sub_ui(rmax, rmax, 1);
-  mpz_tdiv_q(rmax, rmax, k->n);
+  mpz_quo(rmax, rmax, k->n);
 
-  assert(mpz_sgn(rmax) > 0);
+  ASSERT(mpz_sgn(rmax) > 0);
 
   mpz_set(v, vmax);
 
   drbg_init(&rng, HASH_SHA256, entropy, ENTROPY_SIZE);
 
   while (mpz_cmp(v, vmax) >= 0) {
-    mpz_random_int(r, rmax, &rng);
+    mpz_random_int(r, rmax, drbg_rng, &rng);
 
     /* v = c + r * n */
     mpz_mul(r, r, k->n);
@@ -1199,10 +1179,10 @@ rsa_pub_veil(const rsa_pub_t *k,
 
   mpz_mod(r, v, k->n);
 
-  assert(mpz_cmp(r, c) == 0);
-  assert(mpz_bitlen(v) <= bits);
+  ASSERT(mpz_cmp(r, c) == 0);
+  ASSERT(mpz_bitlen(v) <= bits);
 
-  mpz_encode(out, v, (bits + 7) / 8, 1);
+  mpz_export(out, v, (bits + 7) / 8, 1);
   ret = 1;
 fail:
   cleanse(&rng, sizeof(rng));
@@ -1224,13 +1204,13 @@ rsa_pub_unveil(const rsa_pub_t *k,
   mpz_t v;
 
   mpz_init(v);
-  mpz_decode(v, msg, msg_len, 1);
+  mpz_import(v, msg, msg_len, 1);
 
   if (bits != 0 && mpz_bitlen(v) > bits)
     goto fail;
 
   mpz_mod(v, v, k->n);
-  mpz_encode(out, v, mpz_bytelen(k->n), 1);
+  mpz_export(out, v, mpz_bytelen(k->n), 1);
 
   r = 1;
 fail:
@@ -1785,7 +1765,7 @@ rsa_verify(int type,
   if (klen < tlen + 11)
     goto fail;
 
-  em = safe_malloc(klen);
+  em = torsion_alloc(klen);
 
   if (!rsa_pub_encrypt(&k, em, sig, sig_len))
     goto fail;
@@ -1988,7 +1968,7 @@ rsa_sign_pss(unsigned char *out,
   if (salt_len < 0 || (size_t)salt_len > klen)
     goto fail;
 
-  salt = safe_malloc(salt_len);
+  salt = torsion_alloc(salt_len);
 
   drbg_init(&rng, HASH_SHA512, entropy, ENTROPY_SIZE);
   drbg_generate(&rng, salt, salt_len);
@@ -2058,7 +2038,7 @@ rsa_verify_pss(int type,
   if (salt_len < 0 || (size_t)salt_len > klen)
     goto fail;
 
-  em = safe_malloc(klen);
+  em = torsion_alloc(klen);
 
   if (!rsa_pub_encrypt(&k, em, sig, sig_len))
     goto fail;

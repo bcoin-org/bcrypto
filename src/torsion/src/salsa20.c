@@ -11,15 +11,16 @@
  *   http://www.ecrypt.eu.org/stream/salsa20pf.html
  */
 
-#include <assert.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
 #include <torsion/salsa20.h>
 #include <torsion/util.h>
+#include "bio.h"
+#include "internal.h"
 
 /*
- * Helpers
+ * Macros
  */
 
 #define ROTL32(v, n) ((v) << (n)) | ((v) >> (32 - (n)))
@@ -29,34 +30,6 @@
   x[c] ^= ROTL32(x[b] + x[a], 9);  \
   x[d] ^= ROTL32(x[c] + x[b], 13); \
   x[a] ^= ROTL32(x[d] + x[c], 18)
-
-static uint32_t
-read32le(const void *src) {
-#ifndef WORDS_BIGENDIAN
-  uint32_t w;
-  memcpy(&w, src, sizeof(w));
-  return w;
-#else
-  const uint8_t *p = (const uint8_t *)src;
-  return ((uint32_t)(p[0]) << 0)
-       | ((uint32_t)(p[1]) << 8)
-       | ((uint32_t)(p[2]) << 16)
-       | ((uint32_t)(p[3]) << 24);
-#endif
-}
-
-static void
-write32le(void *dst, uint32_t w) {
-#ifndef WORDS_BIGENDIAN
-  memcpy(dst, (void *)&w, sizeof(w));
-#else
-  uint8_t *p = (uint8_t *)dst;
-  p[0] = w >> 0;
-  p[1] = w >> 8;
-  p[2] = w >> 16;
-  p[3] = w >> 24;
-#endif
-}
 
 /*
  * salsa20
@@ -71,7 +44,7 @@ salsa20_init(salsa20_t *ctx,
              uint64_t counter) {
   uint8_t tmp[32];
 
-  assert(key_len == 16 || key_len == 32);
+  ASSERT(key_len == 16 || key_len == 32);
 
   if (nonce_len >= 24) {
     salsa20_derive(tmp, key, key_len, nonce);
@@ -104,7 +77,7 @@ salsa20_init(salsa20_t *ctx,
     ctx->state[8] = read32le(nonce + 8);
     ctx->state[9] = read32le(nonce + 12);
   } else {
-    assert(0 && "invalid nonce size");
+    ASSERT(0 && "invalid nonce size");
   }
 
   ctx->state[10] = key_len < 32 ? 0x79622d36 : 0x79622d32;
@@ -357,7 +330,7 @@ salsa20_derive(unsigned char *out,
   uint32_t state[16];
   size_t i;
 
-  assert(key_len == 16 || key_len == 32);
+  ASSERT(key_len == 16 || key_len == 32);
 
   state[0] = 0x61707865;
   state[1] = read32le(key + 0);

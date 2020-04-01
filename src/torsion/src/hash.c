@@ -12,12 +12,17 @@
  *   https://github.com/BLAKE2/BLAKE2
  */
 
-#include <assert.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
 #include <torsion/hash.h>
 #include <torsion/util.h>
+#include "bio.h"
+#include "internal.h"
+
+/*
+ * Macros
+ */
 
 #define ROTL32(n, x) (((x) << (n)) | ((x) >> ((-(n) & 31))))
 #define ROTL64(n, x) (((x) << (n)) | ((x) >> ((-(n)) & 63)))
@@ -34,134 +39,6 @@ rotr32(const uint32_t w, const unsigned c) {
 static uint64_t
 rotr64(const uint64_t w, const unsigned c) {
   return (w >> c) | (w << (64 - c));
-}
-
-static uint32_t
-read32be(const void *src) {
-#ifdef WORDS_BIGENDIAN
-  uint32_t w;
-  memcpy(&w, src, sizeof(w));
-  return w;
-#else
-  const uint8_t *p = (const uint8_t *)src;
-  return ((uint32_t)p[0] << 24)
-       | ((uint32_t)p[1] << 16)
-       | ((uint32_t)p[2] << 8)
-       | ((uint32_t)p[3] << 0);
-#endif
-}
-
-static void
-write32be(void *dst, uint32_t w) {
-#ifdef WORDS_BIGENDIAN
-  memcpy(dst, &w, sizeof(w));
-#else
-  uint8_t *p = (uint8_t *)dst;
-  p[0] = w >> 24;
-  p[1] = w >> 16;
-  p[2] = w >> 8;
-  p[3] = w >> 0;
-#endif
-}
-
-static uint64_t
-read64be(const void *src) {
-#ifdef WORDS_BIGENDIAN
-  uint64_t w;
-  memcpy(&w, src, sizeof(w));
-  return w;
-#else
-  const uint8_t *p = (const uint8_t *)src;
-  return ((uint64_t)p[0] << 56)
-       | ((uint64_t)p[1] << 48)
-       | ((uint64_t)p[2] << 40)
-       | ((uint64_t)p[3] << 32)
-       | ((uint64_t)p[4] << 24)
-       | ((uint64_t)p[5] << 16)
-       | ((uint64_t)p[6] << 8)
-       | ((uint64_t)p[7] << 0);
-#endif
-}
-
-static void
-write64be(void *dst, uint64_t w) {
-#ifdef WORDS_BIGENDIAN
-  memcpy(dst, &w, sizeof(w));
-#else
-  uint8_t *p = (uint8_t *)dst;
-  p[0] = w >> 56;
-  p[1] = w >> 48;
-  p[2] = w >> 40;
-  p[3] = w >> 32;
-  p[4] = w >> 24;
-  p[5] = w >> 16;
-  p[6] = w >> 8;
-  p[7] = w >> 0;
-#endif
-}
-
-static uint32_t
-read32le(const void *src) {
-#ifndef WORDS_BIGENDIAN
-  uint32_t w;
-  memcpy(&w, src, sizeof(w));
-  return w;
-#else
-  const uint8_t *p = (const uint8_t *)src;
-  return ((uint32_t)p[3] << 24)
-       | ((uint32_t)p[2] << 16)
-       | ((uint32_t)p[1] << 8)
-       | ((uint32_t)p[0] << 0);
-#endif
-}
-
-static void
-write32le(void *dst, uint32_t w) {
-#ifndef WORDS_BIGENDIAN
-  memcpy(dst, &w, sizeof(w));
-#else
-  uint8_t *p = (uint8_t *)dst;
-  p[3] = w >> 24;
-  p[2] = w >> 16;
-  p[1] = w >> 8;
-  p[0] = w >> 0;
-#endif
-}
-
-static uint64_t
-read64le(const void *src) {
-#ifndef WORDS_BIGENDIAN
-  uint64_t w;
-  memcpy(&w, src, sizeof(w));
-  return w;
-#else
-  const uint8_t *p = (const uint8_t *)src;
-  return ((uint64_t)p[7] << 56)
-       | ((uint64_t)p[6] << 48)
-       | ((uint64_t)p[5] << 40)
-       | ((uint64_t)p[4] << 32)
-       | ((uint64_t)p[3] << 24)
-       | ((uint64_t)p[2] << 16)
-       | ((uint64_t)p[1] << 8)
-       | ((uint64_t)p[0] << 0);
-#endif
-}
-
-static void
-write64le(void *dst, uint64_t w) {
-#ifndef WORDS_BIGENDIAN
-  memcpy(dst, &w, sizeof(w));
-#else
-  uint8_t *p = (uint8_t *)dst;
-  p[7] = w >> 56;
-  p[6] = w >> 48;
-  p[5] = w >> 40;
-  p[4] = w >> 32;
-  p[3] = w >> 24;
-  p[2] = w >> 16;
-  p[1] = w >> 8;
-  p[0] = w >> 0;
-#endif
 }
 
 /*
@@ -228,6 +105,9 @@ md2_update(md2_t *ctx, const void *data, size_t len) {
   size_t pos = ctx->size & 15;
   size_t off = 0;
 
+  if (len == 0)
+    return;
+
   ctx->size += len;
 
   if (pos > 0) {
@@ -236,7 +116,7 @@ md2_update(md2_t *ctx, const void *data, size_t len) {
     if (want > len)
       want = len;
 
-    memcpy(ctx->block + pos, bytes + off, want);
+    memcpy(ctx->block + pos, bytes, want);
 
     pos += want;
     len -= want;
@@ -386,6 +266,9 @@ md4_update(md4_t *ctx, const void *data, size_t len) {
   size_t pos = ctx->size & 63;
   size_t off = 0;
 
+  if (len == 0)
+    return;
+
   ctx->size += len;
 
   if (pos > 0) {
@@ -394,7 +277,7 @@ md4_update(md4_t *ctx, const void *data, size_t len) {
     if (want > len)
       want = len;
 
-    memcpy(ctx->block + pos, bytes + off, want);
+    memcpy(ctx->block + pos, bytes, want);
 
     pos += want;
     len -= want;
@@ -563,6 +446,9 @@ md5_update(md5_t *ctx, const void *data, size_t len) {
   size_t pos = ctx->size & 63;
   size_t off = 0;
 
+  if (len == 0)
+    return;
+
   ctx->size += len;
 
   if (pos > 0) {
@@ -571,7 +457,7 @@ md5_update(md5_t *ctx, const void *data, size_t len) {
     if (want > len)
       want = len;
 
-    memcpy(ctx->block + pos, bytes + off, want);
+    memcpy(ctx->block + pos, bytes, want);
 
     pos += want;
     len -= want;
@@ -904,6 +790,9 @@ ripemd160_update(ripemd160_t *ctx, const void *data, size_t len) {
   size_t pos = ctx->size & 63;
   size_t off = 0;
 
+  if (len == 0)
+    return;
+
   ctx->size += len;
 
   if (pos > 0) {
@@ -912,7 +801,7 @@ ripemd160_update(ripemd160_t *ctx, const void *data, size_t len) {
     if (want > len)
       want = len;
 
-    memcpy(ctx->block + pos, bytes + off, want);
+    memcpy(ctx->block + pos, bytes, want);
 
     pos += want;
     len -= want;
@@ -1112,6 +1001,9 @@ sha1_update(sha1_t *ctx, const void *data, size_t len) {
   size_t pos = ctx->size & 63;
   size_t off = 0;
 
+  if (len == 0)
+    return;
+
   ctx->size += len;
 
   if (pos > 0) {
@@ -1120,7 +1012,7 @@ sha1_update(sha1_t *ctx, const void *data, size_t len) {
     if (want > len)
       want = len;
 
-    memcpy(ctx->block + pos, bytes + off, want);
+    memcpy(ctx->block + pos, bytes, want);
 
     pos += want;
     len -= want;
@@ -1219,7 +1111,10 @@ sha256_transform(sha256_t *ctx, const unsigned char *chunk) {
    *
    * For reference, our full range of clobbered registers:
    *
-   *   %rdi, %rsi, %rdx, %edi, %eax, %ebx, %ecx, %r[8-14]
+   *   %rdi, %rsi, %rdx, %edi, %eax, %ebx, %ecx, %r[8-15]
+   *
+   * Note that %rdi is clobbered when it is read-only.
+   * We save it on the stack and restore it at the end.
    */
   __asm__ __volatile__(
     "sub $72, %%rsp\n"
@@ -2503,6 +2398,9 @@ sha256_update(sha256_t *ctx, const void *data, size_t len) {
   size_t pos = ctx->size & 63;
   size_t off = 0;
 
+  if (len == 0)
+    return;
+
   ctx->size += len;
 
   if (pos > 0) {
@@ -2511,7 +2409,7 @@ sha256_update(sha256_t *ctx, const void *data, size_t len) {
     if (want > len)
       want = len;
 
-    memcpy(ctx->block + pos, bytes + off, want);
+    memcpy(ctx->block + pos, bytes, want);
 
     pos += want;
     len -= want;
@@ -2674,8 +2572,10 @@ sha512_transform(sha512_t *ctx, const unsigned char *chunk) {
    *
    * For reference, our full range of clobbered registers:
    *
-   *   %rdi, %rsi, %rax, %rbx, %rcx, %rdx,
-   *   %r8, %r9, %r10, %r11, %r12, %r13, %r14, %r15
+   *   %rdi, %rsi, %rax, %rbx, %rcx, %rdx, %r[8-15]
+   *
+   * Note that %rdi is clobbered when it is read-only.
+   * We save it on the stack and restore it at the end.
    */
   __asm__ __volatile__(
     "sub $136, %%rsp\n"
@@ -3959,6 +3859,9 @@ sha512_update(sha512_t *ctx, const void *data, size_t len) {
   size_t pos = ctx->size & 127;
   size_t off = 0;
 
+  if (len == 0)
+    return;
+
   ctx->size += len;
 
   if (pos > 0) {
@@ -3967,7 +3870,7 @@ sha512_update(sha512_t *ctx, const void *data, size_t len) {
     if (want > len)
       want = len;
 
-    memcpy(ctx->block + pos, bytes + off, want);
+    memcpy(ctx->block + pos, bytes, want);
 
     pos += want;
     len -= want;
@@ -4096,9 +3999,9 @@ void
 keccak_init(keccak_t *ctx, size_t bits) {
   size_t rate = 1600 - bits * 2;
 
-  assert(bits >= 128);
-  assert(bits <= 512);
-  assert((rate & 63) == 0);
+  ASSERT(bits >= 128);
+  ASSERT(bits <= 512);
+  ASSERT((rate & 63) == 0);
 
   ctx->bs = rate >> 3;
   ctx->pos = 0;
@@ -4643,6 +4546,9 @@ keccak_update(keccak_t *ctx, const void *data, size_t len) {
   size_t pos = ctx->pos;
   size_t off = 0;
 
+  if (len == 0)
+    return;
+
   ctx->pos = (ctx->pos + len) % ctx->bs;
 
   if (pos > 0) {
@@ -4651,7 +4557,7 @@ keccak_update(keccak_t *ctx, const void *data, size_t len) {
     if (want > len)
       want = len;
 
-    memcpy(ctx->block + pos, bytes + off, want);
+    memcpy(ctx->block + pos, bytes, want);
 
     pos += want;
     len -= want;
@@ -4683,7 +4589,7 @@ keccak_final(keccak_t *ctx, unsigned char *out, unsigned char pad, size_t len) {
   if (len == 0)
     len = 100 - (ctx->bs >> 1);
 
-  assert(len < ctx->bs);
+  ASSERT(len < ctx->bs);
 
   memset(ctx->block + ctx->pos, 0x00, ctx->bs - ctx->pos);
 
@@ -4725,8 +4631,8 @@ blake2s_init(blake2s_t *ctx,
              size_t keylen) {
   size_t i;
 
-  assert(outlen >= 1 && outlen <= 32);
-  assert(keylen <= 32);
+  ASSERT(outlen >= 1 && outlen <= 32);
+  ASSERT(keylen <= 32);
 
   memset(ctx, 0, sizeof(blake2s_t));
 
@@ -4901,8 +4807,8 @@ blake2b_init(blake2b_t *ctx,
              size_t keylen) {
   size_t i;
 
-  assert(outlen >= 1 && outlen <= 64);
-  assert(keylen <= 64);
+  ASSERT(outlen >= 1 && outlen <= 64);
+  ASSERT(keylen <= 64);
 
   memset(ctx, 0, sizeof(blake2b_t));
 
@@ -5247,6 +5153,9 @@ gost94_update(gost94_t *ctx, const void *data, size_t len) {
   size_t pos = ctx->size & 31;
   size_t off = 0;
 
+  if (len == 0)
+    return;
+
   ctx->size += len;
 
   if (pos > 0) {
@@ -5255,7 +5164,7 @@ gost94_update(gost94_t *ctx, const void *data, size_t len) {
     if (want > len)
       want = len;
 
-    memcpy(ctx->block + pos, bytes + off, want);
+    memcpy(ctx->block + pos, bytes, want);
 
     pos += want;
     len -= want;
@@ -6095,6 +6004,9 @@ whirlpool_update(whirlpool_t *ctx, const void *data, size_t len) {
   size_t pos = ctx->size & 63;
   size_t off = 0;
 
+  if (len == 0)
+    return;
+
   ctx->size += len;
 
   if (pos > 0) {
@@ -6103,7 +6015,7 @@ whirlpool_update(whirlpool_t *ctx, const void *data, size_t len) {
     if (want > len)
       want = len;
 
-    memcpy(ctx->block + pos, bytes + off, want);
+    memcpy(ctx->block + pos, bytes, want);
 
     pos += want;
     len -= want;
@@ -6234,7 +6146,7 @@ hash_init(hash_t *hash, int type) {
       whirlpool_init(&hash->ctx.whirlpool);
       break;
     default:
-      assert(0);
+      ASSERT(0);
       break;
   }
 }
@@ -6301,7 +6213,7 @@ hash_update(hash_t *hash, const void *data, size_t len) {
       whirlpool_update(&hash->ctx.whirlpool, data, len);
       break;
     default:
-      assert(0);
+      ASSERT(0);
       break;
   }
 }
@@ -6380,7 +6292,7 @@ hash_final(hash_t *hash, unsigned char *out, size_t len) {
       whirlpool_final(&hash->ctx.whirlpool, out);
       break;
     default:
-      assert(0);
+      ASSERT(0);
       break;
   }
 }
@@ -6591,7 +6503,7 @@ hmac_init(hmac_t *hmac, int type, const unsigned char *key, size_t len) {
     len = hash_size;
   }
 
-  assert(len <= block_size);
+  ASSERT(len <= block_size);
 
   for (i = 0; i < len; i++)
     pad[i] = key[i] ^ 0x36;

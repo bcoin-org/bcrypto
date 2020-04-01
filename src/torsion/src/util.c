@@ -4,7 +4,8 @@
  * https://github.com/bcoin-org/libtorsion
  */
 
-#include <stddef.h>
+#include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
 #ifdef _WIN32
@@ -15,7 +16,103 @@
 #include <torsion/util.h>
 
 /*
- * Util
+ * Constants
+ */
+
+static torsion_malloc_t *malloc_cb = &malloc;
+static torsion_realloc_t *realloc_cb = &realloc;
+static torsion_free_t *free_cb = &free;
+
+/*
+ * Allocation
+ */
+
+static void
+torsion_die(const char *msg) {
+  fprintf(stderr, "%s\n", msg);
+  fflush(stderr);
+  abort();
+}
+
+void
+torsion_set_memory_functions(torsion_malloc_t *malloc_fn,
+                             torsion_realloc_t *realloc_fn,
+                             torsion_free_t *free_fn) {
+  if (malloc_fn)
+    malloc_cb = malloc_fn;
+
+  if (realloc_fn)
+    realloc_cb = realloc_fn;
+
+  if (free_fn)
+    free_cb = free_fn;
+}
+
+void
+torsion_get_memory_functions(torsion_malloc_t **malloc_fn,
+                             torsion_realloc_t **realloc_fn,
+                             torsion_free_t **free_fn) {
+  if (malloc_fn)
+    *malloc_fn = malloc_cb;
+
+  if (realloc_fn)
+    *realloc_fn = realloc_cb;
+
+  if (free_fn)
+    *free_fn = free_cb;
+}
+
+void *
+torsion_malloc(size_t size) {
+  void *ptr;
+
+  if (size == 0)
+    return NULL;
+
+  ptr = (*malloc_cb)(size);
+
+  if (ptr == NULL)
+    torsion_die("torsion_malloc: allocation failure.");
+
+  return ptr;
+}
+
+void *
+torsion_alloc(size_t size) {
+  void *ptr = torsion_malloc(size);
+
+  if (size > 0)
+    memset(ptr, 0, size);
+
+  return ptr;
+}
+
+void *
+torsion_realloc(void *ptr, size_t size) {
+  if (ptr == NULL)
+    return torsion_malloc(size);
+
+  if (size == 0) {
+    torsion_free(ptr);
+    return NULL;
+  }
+
+  ptr = (*realloc_cb)(ptr, size);
+
+  if (ptr == NULL)
+    torsion_die("torsion_realloc: allocation failure.");
+
+  return ptr;
+}
+
+void
+torsion_free(void *ptr) {
+  if (ptr != NULL)
+    (*free_cb)(ptr);
+}
+
+/*
+ * Memzero
  */
 
 void

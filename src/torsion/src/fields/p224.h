@@ -168,7 +168,7 @@ p224_fe_pow_e(p224_fe_t out, const p224_fe_t in) {
   p224_fe_sqrn(out, in, 127);
 }
 
-static int
+TORSION_UNUSED static int
 p224_fe_is_square(const p224_fe_t in) {
   p224_fe_t b;
   p224_fe_pow_s(b, in);

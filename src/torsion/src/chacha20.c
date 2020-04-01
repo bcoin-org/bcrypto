@@ -9,15 +9,16 @@
  *   https://cr.yp.to/chacha.html
  */
 
-#include <assert.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
 #include <torsion/chacha20.h>
 #include <torsion/util.h>
+#include "bio.h"
+#include "internal.h"
 
 /*
- * Helpers
+ * Macros
  */
 
 #define ROTL32(x, y) ((x) << (y)) | ((x) >> (32 - (y)))
@@ -27,34 +28,6 @@
   x[c] += x[d]; x[b] = ROTL32(x[b] ^ x[c], 12); \
   x[a] += x[b]; x[d] = ROTL32(x[d] ^ x[a], 8);  \
   x[c] += x[d]; x[b] = ROTL32(x[b] ^ x[c], 7)
-
-static uint32_t
-read32le(const void *src) {
-#ifndef WORDS_BIGENDIAN
-  uint32_t w;
-  memcpy(&w, src, sizeof(w));
-  return w;
-#else
-  const uint8_t *p = (const uint8_t *)src;
-  return ((uint32_t)(p[0]) << 0)
-       | ((uint32_t)(p[1]) << 8)
-       | ((uint32_t)(p[2]) << 16)
-       | ((uint32_t)(p[3]) << 24);
-#endif
-}
-
-static void
-write32le(void *dst, uint32_t w) {
-#ifndef WORDS_BIGENDIAN
-  memcpy(dst, (void *)&w, sizeof(w));
-#else
-  uint8_t *p = (uint8_t *)dst;
-  p[0] = w >> 0;
-  p[1] = w >> 8;
-  p[2] = w >> 16;
-  p[3] = w >> 24;
-#endif
-}
 
 /*
  * ChaCha20
@@ -69,7 +42,7 @@ chacha20_init(chacha20_t *ctx,
               uint64_t counter) {
   uint8_t tmp[32];
 
-  assert(key_len == 16 || key_len == 32);
+  ASSERT(key_len == 16 || key_len == 32);
 
   if (nonce_len >= 24) {
     chacha20_derive(tmp, key, key_len, nonce);
@@ -107,7 +80,7 @@ chacha20_init(chacha20_t *ctx,
     ctx->state[14] = read32le(nonce + 8);
     ctx->state[15] = read32le(nonce + 12);
   } else {
-    assert(0 && "invalid nonce size");
+    ASSERT(0 && "invalid nonce size");
   }
 
   ctx->pos = 0;
@@ -290,7 +263,7 @@ chacha20_derive(unsigned char *out,
   uint32_t state[16];
   size_t i;
 
-  assert(key_len == 16 || key_len == 32);
+  ASSERT(key_len == 16 || key_len == 32);
 
   state[0] = 0x61707865;
   state[1] = key_len < 32 ? 0x3120646e : 0x3320646e;

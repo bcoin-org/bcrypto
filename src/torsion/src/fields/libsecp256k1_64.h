@@ -12,7 +12,7 @@
 #include <stdint.h>
 
 typedef unsigned char fiat_secp256k1_uint1;
-FIAT_EXTENSION typedef unsigned __int128 fiat_secp256k1_uint128;
+TORSION_EXTENSION typedef unsigned __int128 fiat_secp256k1_uint128;
 
 #if (-1 & 3) != 3
 #error "This code only works on a two's complement system"

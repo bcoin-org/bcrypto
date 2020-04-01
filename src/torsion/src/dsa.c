@@ -23,7 +23,6 @@
  *     https://tools.ietf.org/html/rfc6979
  */
 
-#include <assert.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
@@ -34,7 +33,6 @@
 #include "asn1.h"
 #include "internal.h"
 #include "mpi.h"
-#include "prime.h"
 
 /*
  * Structs
@@ -198,17 +196,17 @@ dsa_group_generate(dsa_group_t *group,
   drbg_init(&rng, HASH_SHA256, entropy, ENTROPY_SIZE);
 
   for (;;) {
-    mpz_random_bits(q, N, &rng);
-    mpz_setbit(q, 0);
-    mpz_setbit(q, N - 1);
+    mpz_random_bits(q, N, drbg_rng, &rng);
+    mpz_set_bit(q, 0);
+    mpz_set_bit(q, N - 1);
 
-    if (!mpz_is_prime(q, 64, &rng))
+    if (!mpz_is_prime(q, 64, drbg_rng, &rng))
       continue;
 
     for (i = 0; i < 4 * L; i++) {
-      mpz_random_bits(p, L, &rng);
-      mpz_setbit(p, 0);
-      mpz_setbit(p, L - 1);
+      mpz_random_bits(p, L, drbg_rng, &rng);
+      mpz_set_bit(p, 0);
+      mpz_set_bit(p, L - 1);
 
       mpz_mod(t, p, q);
       mpz_sub_ui(t, t, 1);
@@ -219,7 +217,7 @@ dsa_group_generate(dsa_group_t *group,
       if (bits < L || bits > DSA_MAX_BITS)
         continue;
 
-      if (!mpz_is_prime(p, 64, &rng))
+      if (!mpz_is_prime(p, 64, drbg_rng, &rng))
         continue;
 
       goto out;
@@ -229,7 +227,7 @@ dsa_group_generate(dsa_group_t *group,
 out:
   mpz_set_ui(h, 2);
   mpz_sub_ui(pm1, p, 1);
-  mpz_fdiv_q(e, pm1, q);
+  mpz_quo(e, pm1, q);
 
   for (;;) {
     mpz_powm(g, h, e, p);
@@ -619,7 +617,7 @@ dsa_priv_create(dsa_priv_t *k,
   drbg_init(&rng, HASH_SHA256, entropy, ENTROPY_SIZE);
 
   while (mpz_sgn(k->x) == 0)
-    mpz_random_int(k->x, k->q, &rng);
+    mpz_random_int(k->x, k->q, drbg_rng, &rng);
 
   mpz_powm_sec(k->y, k->g, k->x, k->p);
 
@@ -738,8 +736,8 @@ dsa_sig_import_rs(dsa_sig_t *sig,
   if (len != qsize * 2)
     return 0;
 
-  mpz_decode(sig->r, data, qsize, 1);
-  mpz_decode(sig->s, data + qsize, qsize, 1);
+  mpz_import(sig->r, data, qsize, 1);
+  mpz_import(sig->s, data + qsize, qsize, 1);
 
   return 1;
 }
@@ -752,8 +750,8 @@ dsa_sig_export_rs(unsigned char *out, size_t *out_len,
     return 0;
   }
 
-  mpz_encode(out, sig->r, qsize, 1);
-  mpz_encode(out + qsize, sig->s, qsize, 1);
+  mpz_export(out, sig->r, qsize, 1);
+  mpz_export(out + qsize, sig->s, qsize, 1);
 
   *out_len = qsize * 2;
 
@@ -1239,12 +1237,12 @@ dsa_truncate(mpz_t m, const unsigned char *msg, size_t msg_len, const mpz_t q) {
   size_t bits = mpz_bitlen(q);
   size_t bytes = bits >> 3;
 
-  assert((bits & 7) == 0);
+  ASSERT((bits & 7) == 0);
 
   if (msg_len > bytes)
     msg_len = bytes;
 
-  mpz_decode(m, msg, msg_len, 1);
+  mpz_import(m, msg, msg_len, 1);
 }
 
 static void
@@ -1333,14 +1331,14 @@ dsa_sign(unsigned char *out, size_t *out_len,
   qsize = mpz_bytelen(priv.q);
   dsa_reduce(m, msg, msg_len, priv.q);
 
-  mpz_encode(bytes, priv.x, qsize, 1);
-  mpz_encode(bytes + qsize, m, qsize, 1);
+  mpz_export(bytes, priv.x, qsize, 1);
+  mpz_export(bytes + qsize, m, qsize, 1);
 
   drbg_init(&drbg, HASH_SHA256, bytes, qsize * 2);
   drbg_init(&rng, HASH_SHA256, entropy, ENTROPY_SIZE);
 
   for (;;) {
-    mpz_random_int(b, priv.q, &rng);
+    mpz_random_int(b, priv.q, drbg_rng, &rng);
 
     if (mpz_sgn(b) == 0)
       continue;
@@ -1528,7 +1526,7 @@ dsa_derive(unsigned char *out, size_t *out_len,
   mpz_powm_sec(e, k1.y, k2.x, k1.p);
 
   *out_len = mpz_bytelen(k1.p);
-  mpz_encode(out, e, *out_len, 1);
+  mpz_export(out, e, *out_len, 1);
   r = 1;
 fail:
   dsa_pub_clear(&k1);

@@ -22,13 +22,14 @@
  *   https://github.com/Tarsnap/scrypt/blob/master/lib/crypto/crypto_scrypt-ref.c
  */
 
-#include <stdlib.h>
-#include <stdint.h>
 #include <limits.h>
+#include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 #include <torsion/hash.h>
 #include <torsion/kdf.h>
 #include <torsion/util.h>
+#include "bio.h"
 
 /*
  * Prototypes
@@ -40,57 +41,6 @@ static void salsa20_8(uint8_t *);
 static void blockmix_salsa8(uint8_t *, uint8_t *, size_t);
 static uint64_t integerify(uint8_t *, size_t);
 static void smix(uint8_t *, size_t, uint64_t, uint8_t *, uint8_t *);
-
-/*
- * Helpers
- */
-
-static uint32_t
-read32le(const void *src) {
-#ifndef WORDS_BIGENDIAN
-  uint32_t w;
-  memcpy(&w, src, sizeof(w));
-  return w;
-#else
-  const uint8_t *p = (const uint8_t *)src;
-  return ((uint32_t)p[3] << 24)
-       | ((uint32_t)p[2] << 16)
-       | ((uint32_t)p[1] << 8)
-       | ((uint32_t)p[0] << 0);
-#endif
-}
-
-static void
-write32le(void *dst, uint32_t w) {
-#ifndef WORDS_BIGENDIAN
-  memcpy(dst, &w, sizeof(w));
-#else
-  uint8_t *p = (uint8_t *)dst;
-  p[3] = w >> 24;
-  p[2] = w >> 16;
-  p[1] = w >> 8;
-  p[0] = w >> 0;
-#endif
-}
-
-static uint64_t
-read64le(const void *src) {
-#ifndef WORDS_BIGENDIAN
-  uint64_t w;
-  memcpy(&w, src, sizeof(w));
-  return w;
-#else
-  const uint8_t *p = (const uint8_t *)src;
-  return ((uint64_t)p[7] << 56)
-       | ((uint64_t)p[6] << 48)
-       | ((uint64_t)p[5] << 40)
-       | ((uint64_t)p[4] << 32)
-       | ((uint64_t)p[3] << 24)
-       | ((uint64_t)p[2] << 16)
-       | ((uint64_t)p[1] << 8)
-       | ((uint64_t)p[0] << 0);
-#endif
-}
 
 /*
  * PBKDF2
@@ -115,7 +65,7 @@ pbkdf2_derive(unsigned char *out,
   unsigned char *buffer = NULL;
   unsigned char *state = NULL;
   size_t i, k;
-  uint32_t j, round;
+  uint32_t j;
   hmac_t hmac;
   int r = 0;
 
@@ -134,8 +84,8 @@ pbkdf2_derive(unsigned char *out,
   if (len == 0)
     return 1;
 
-  buffer = malloc(buffer_len);
-  state = malloc(state_len);
+  buffer = torsion_alloc(buffer_len);
+  state = torsion_alloc(state_len);
 
   if (buffer == NULL || state == NULL)
     goto fail;
@@ -152,12 +102,7 @@ pbkdf2_derive(unsigned char *out,
   memcpy(state, salt, salt_len);
 
   for (i = 0; i < blocks; i++) {
-    round = i + 1;
-
-    state[salt_len + 0] = round >> 24;
-    state[salt_len + 1] = round >> 16;
-    state[salt_len + 2] = round >> 8;
-    state[salt_len + 3] = round >> 0;
+    write32be(state + salt_len, i + 1);
 
     hmac_init(&hmac, type, pass, pass_len);
     hmac_update(&hmac, state, state_len);
@@ -188,12 +133,12 @@ fail:
 
   if (buffer != NULL) {
     cleanse(buffer, buffer_len);
-    free(buffer);
+    torsion_free(buffer);
   }
 
   if (state != NULL) {
     cleanse(state, state_len);
-    free(state);
+    torsion_free(state);
   }
 
   return r;
@@ -235,9 +180,9 @@ scrypt_derive(unsigned char *out,
   if (N == 0 || (N & (N - 1)) != 0)
     return 0;
 
-  B = malloc(128 * r * p);
-  XY = malloc(256 * r);
-  V = malloc(128 * r * N);
+  B = torsion_alloc(128 * r * p);
+  XY = torsion_alloc(256 * r);
+  V = torsion_alloc(128 * r * N);
 
   if (B == NULL || XY == NULL || V == NULL)
     goto fail;
@@ -255,17 +200,17 @@ scrypt_derive(unsigned char *out,
 fail:
   if (B != NULL) {
     cleanse(B, 128 * r * p);
-    free(B);
+    torsion_free(B);
   }
 
   if (XY != NULL) {
     cleanse(XY, 256 * r);
-    free(XY);
+    torsion_free(XY);
   }
 
   if (V != NULL) {
     cleanse(V, 128 * r * N);
-    free(V);
+    torsion_free(V);
   }
 
   return ret;

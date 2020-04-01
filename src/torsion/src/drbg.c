@@ -13,12 +13,12 @@
  *   https://github.com/indutny/hmac-drbg/blob/master/lib/hmac-drbg.js
  */
 
-#include <assert.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
 #include <torsion/hash.h>
 #include <torsion/drbg.h>
+#include "internal.h"
 
 /*
  * Constants
@@ -65,8 +65,8 @@ void
 drbg_init(drbg_t *drbg, int type, const unsigned char *seed, size_t seed_len) {
   size_t hash_size = hash_output_size(type);
 
-  assert(seed != NULL);
-  assert(seed_len >= 24);
+  ASSERT(seed != NULL);
+  ASSERT(seed_len >= 24);
 
   drbg->type = type;
 
@@ -78,8 +78,8 @@ drbg_init(drbg_t *drbg, int type, const unsigned char *seed, size_t seed_len) {
 
 void
 drbg_reseed(drbg_t *drbg, const unsigned char *seed, size_t seed_len) {
-  assert(seed != NULL);
-  assert(seed_len >= 24);
+  ASSERT(seed != NULL);
+  ASSERT(seed_len >= 24);
 
   drbg_update(drbg, seed, seed_len);
 }
@@ -106,8 +106,13 @@ drbg_generate(drbg_t *drbg, void *out, size_t len) {
     left -= outlen;
   }
 
-  assert(pos == len);
-  assert(left == 0);
+  ASSERT(pos == len);
+  ASSERT(left == 0);
 
   drbg_update(drbg, NULL, 0);
+}
+
+void
+drbg_rng(void *out, size_t size, void *arg) {
+  drbg_generate((drbg_t *)arg, out, size);
 }

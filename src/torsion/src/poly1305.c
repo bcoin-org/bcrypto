@@ -12,99 +12,17 @@
 #include <stdint.h>
 #include <string.h>
 #include <torsion/poly1305.h>
+#include "bio.h"
+#include "internal.h"
 
 #define POLY1305_BLOCK_SIZE 16
-
-/*
- * Helpers
- */
-
-#ifdef TORSION_USE_64BIT
-
-#ifdef __SIZEOF_INT128___
-#ifdef __GNUC__
-__extension__ typedef unsigned __int128 uint128_t;
-#else
-typedef unsigned __int128 uint128_t;
-#endif
-#else /* __SIZEOF_INT128___ */
-typedef unsigned uint128_t __attribute__((mode(TI)));
-#endif
-
-static uint64_t
-read64le(const void *src) {
-#ifndef WORDS_BIGENDIAN
-  uint64_t w;
-  memcpy(&w, src, sizeof(w));
-  return w;
-#else
-  const uint8_t *p = (const uint8_t *)src;
-  return ((uint64_t)p[7] << 56)
-       | ((uint64_t)p[6] << 48)
-       | ((uint64_t)p[5] << 40)
-       | ((uint64_t)p[4] << 32)
-       | ((uint64_t)p[3] << 24)
-       | ((uint64_t)p[2] << 16)
-       | ((uint64_t)p[1] << 8)
-       | ((uint64_t)p[0] << 0);
-#endif
-}
-
-static void
-write64le(void *dst, uint64_t w) {
-#ifndef WORDS_BIGENDIAN
-  memcpy(dst, &w, sizeof(w));
-#else
-  uint8_t *p = (uint8_t *)dst;
-  p[7] = w >> 56;
-  p[6] = w >> 48;
-  p[5] = w >> 40;
-  p[4] = w >> 32;
-  p[3] = w >> 24;
-  p[2] = w >> 16;
-  p[1] = w >> 8;
-  p[0] = w >> 0;
-#endif
-}
-
-#else /* TORSION_USE_64BIT */
-
-static uint32_t
-read32le(const void *src) {
-#ifndef WORDS_BIGENDIAN
-  uint32_t w;
-  memcpy(&w, src, sizeof(w));
-  return w;
-#else
-  const uint8_t *p = (const uint8_t *)src;
-  return ((uint32_t)p[3] << 24)
-       | ((uint32_t)p[2] << 16)
-       | ((uint32_t)p[1] << 8)
-       | ((uint32_t)p[0] << 0);
-#endif
-}
-
-static void
-write32le(void *dst, uint32_t w) {
-#ifndef WORDS_BIGENDIAN
-  memcpy(dst, &w, sizeof(w));
-#else
-  uint8_t *p = (uint8_t *)dst;
-  p[3] = w >> 24;
-  p[2] = w >> 16;
-  p[1] = w >> 8;
-  p[0] = w >> 0;
-#endif
-}
-
-#endif /* TORSION_USE_64BIT */
 
 /*
  * State
  */
 
 typedef struct _poly1305_internal_s {
-#ifdef TORSION_USE_64BIT
+#ifdef TORSION_HAS_INT128
   uint64_t r[3];
   uint64_t h[3];
   uint64_t pad[2];
@@ -125,7 +43,7 @@ typedef struct _poly1305_internal_s {
 void
 poly1305_init(poly1305_t *ctx, const unsigned char *key) {
   poly1305_internal_t *st = (poly1305_internal_t *)ctx;
-#ifdef TORSION_USE_64BIT
+#ifdef TORSION_HAS_INT128
   uint64_t t0, t1;
 
   /* r &= 0xffffffc0ffffffc0ffffffc0fffffff */
@@ -147,7 +65,7 @@ poly1305_init(poly1305_t *ctx, const unsigned char *key) {
 
   st->leftover = 0;
   st->final = 0;
-#else /* TORSION_USE_64BIT */
+#else /* TORSION_HAS_INT128 */
   /* r &= 0xffffffc0ffffffc0ffffffc0fffffff */
   st->r[0] = read32le(key + 0) & 0x3ffffff;
   st->r[1] = (read32le(key + 3) >> 2) & 0x3ffff03;
@@ -170,18 +88,18 @@ poly1305_init(poly1305_t *ctx, const unsigned char *key) {
 
   st->leftover = 0;
   st->final = 0;
-#endif /* TORSION_USE_64BIT */
+#endif /* TORSION_HAS_INT128 */
 }
 
 static void
 poly1305_blocks(poly1305_internal_t *st, const unsigned char *m, size_t bytes) {
-#ifdef TORSION_USE_64BIT
+#ifdef TORSION_HAS_INT128
   uint64_t hibit = st->final ? 0 : ((uint64_t)1 << 40); /* 1 << 128 */
   uint64_t r0, r1, r2;
   uint64_t s1, s2;
   uint64_t h0, h1, h2;
   uint64_t c;
-  uint128_t d0, d1, d2, d;
+  torsion_uint128_t d0, d1, d2, d;
 
   r0 = st->r[0];
   r1 = st->r[1];
@@ -206,22 +124,22 @@ poly1305_blocks(poly1305_internal_t *st, const unsigned char *m, size_t bytes) {
     h2 += (((t1 >> 24)) & 0x3ffffffffff) | hibit;
 
     /* h *= r */
-    d0 = (uint128_t)h0 * r0;
-    d = (uint128_t)h1 * s2;
+    d0 = (torsion_uint128_t)h0 * r0;
+    d = (torsion_uint128_t)h1 * s2;
     d0 += d;
-    d = (uint128_t)h2 * s1;
+    d = (torsion_uint128_t)h2 * s1;
     d0 += d;
 
-    d1 = (uint128_t)h0 * r1;
-    d = (uint128_t)h1 * r0;
+    d1 = (torsion_uint128_t)h0 * r1;
+    d = (torsion_uint128_t)h1 * r0;
     d1 += d;
-    d = (uint128_t)h2 * s2;
+    d = (torsion_uint128_t)h2 * s2;
     d1 += d;
 
-    d2 = (uint128_t)h0 * r2;
-    d = (uint128_t)h1 * r1;
+    d2 = (torsion_uint128_t)h0 * r2;
+    d = (torsion_uint128_t)h1 * r1;
     d2 += d;
-    d = (uint128_t)h2 * r0;
+    d = (torsion_uint128_t)h2 * r0;
     d2 += d;
 
     /* (partial) h %= p */
@@ -249,7 +167,7 @@ poly1305_blocks(poly1305_internal_t *st, const unsigned char *m, size_t bytes) {
   st->h[0] = h0;
   st->h[1] = h1;
   st->h[2] = h2;
-#else /* TORSION_USE_64BIT */
+#else /* TORSION_HAS_INT128 */
   uint32_t hibit = st->final ? 0 : (1ul << 24); /* 1 << 128 */
   uint32_t r0, r1, r2, r3, r4;
   uint32_t s1, s2, s3, s4;
@@ -347,13 +265,13 @@ poly1305_blocks(poly1305_internal_t *st, const unsigned char *m, size_t bytes) {
   st->h[2] = h2;
   st->h[3] = h3;
   st->h[4] = h4;
-#endif /* TORSION_USE_64BIT */
+#endif /* TORSION_HAS_INT128 */
 }
 
 void
 poly1305_final(poly1305_t *ctx, unsigned char *mac) {
   poly1305_internal_t *st = (poly1305_internal_t *)ctx;
-#ifdef TORSION_USE_64BIT
+#ifdef TORSION_HAS_INT128
   uint64_t h0, h1, h2, c;
   uint64_t g0, g1, g2;
   uint64_t t0, t1;
@@ -452,7 +370,7 @@ poly1305_final(poly1305_t *ctx, unsigned char *mac) {
   st->r[2] = 0;
   st->pad[0] = 0;
   st->pad[1] = 0;
-#else /* TORSION_USE_64BIT */
+#else /* TORSION_HAS_INT128 */
   uint32_t h0, h1, h2, h3, h4, c;
   uint32_t g0, g1, g2, g3, g4;
   uint64_t f;
@@ -571,7 +489,7 @@ poly1305_final(poly1305_t *ctx, unsigned char *mac) {
   st->pad[1] = 0;
   st->pad[2] = 0;
   st->pad[3] = 0;
-#endif /* TORSION_USE_64BIT */
+#endif /* TORSION_HAS_INT128 */
 }
 
 void

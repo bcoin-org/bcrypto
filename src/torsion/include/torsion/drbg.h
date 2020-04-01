@@ -15,6 +15,7 @@ extern "C" {
 #define drbg_init torsion_drbg_init
 #define drbg_reseed torsion_drbg_reseed
 #define drbg_generate torsion_drbg_generate
+#define drbg_rng __torsion_drbg_rng
 
 /*
  * Structs
@@ -39,6 +40,9 @@ drbg_reseed(drbg_t *drbg, const unsigned char *seed, size_t seed_len);
 
 void
 drbg_generate(drbg_t *drbg, void *out, size_t len);
+
+void
+drbg_rng(void *out, size_t size, void *arg);
 
 #ifdef __cplusplus
 }
