@@ -1746,7 +1746,7 @@ fe_sqrt(const prime_field_t *fe, fe_t r, const fe_t a) {
       fe_mul(fe, b, b, a);
       fe_mul(fe, b, b, c);
     } else {
-      ASSERT(0 && "no sqrt implementation");
+      ASSERT_FAIL("fe_sqrt: no sqrt implementation.");
     }
 
     /* b2 = b^2 mod p */

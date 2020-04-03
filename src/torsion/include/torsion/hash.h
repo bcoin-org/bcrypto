@@ -75,9 +75,6 @@ extern "C" {
 #define sha3_512_init torsion_sha3_512_init
 #define sha3_512_update torsion_sha3_512_update
 #define sha3_512_final torsion_sha3_512_final
-#define shake_init torsion_shake_init
-#define shake_update torsion_shake_update
-#define shake_final torsion_shake_final
 #define shake128_init torsion_shake128_init
 #define shake128_update torsion_shake128_update
 #define shake128_final torsion_shake128_final
@@ -171,12 +168,6 @@ extern "C" {
 #define HASH_WHIRLPOOL 31
 #define HASH_MAX 31
 
-#define HASH_BLAKE2B HASH_BLAKE2B_256
-#define HASH_BLAKE2S HASH_BLAKE2S_256
-#define HASH_KECCAK HASH_KECCAK256
-#define HASH_SHA3 HASH_SHA3_256
-#define HASH_SHAKE HASH_SHAKE256
-
 /*
  * Structs
  */
@@ -234,9 +225,11 @@ typedef sha256_t hash256_t;
 typedef struct _keccak_s {
   size_t bs;
   uint64_t state[25];
-  uint8_t block[168];
+  uint8_t block[200];
   size_t pos;
 } keccak_t;
+
+typedef keccak_t sha3_t;
 
 typedef struct _blake2s_s {
   uint32_t h[8];
@@ -463,6 +456,43 @@ void
 keccak_final(keccak_t *ctx, unsigned char *out, unsigned char pad, size_t len);
 
 /*
+ * Keccak{224,256,384,512}, SHA3-{224,256,384,512}, SHAKE{128,256}
+ */
+
+#define __TORSION_DEFINE_KECCAK(name)                               \
+void                                                                \
+torsion_##name##_init(sha3_t *ctx);                                 \
+                                                                    \
+void                                                                \
+torsion_##name##_update(sha3_t *ctx, const void *data, size_t len); \
+                                                                    \
+void                                                                \
+torsion_##name##_final(sha3_t *ctx, unsigned char *out);
+
+#define __TORSION_DEFINE_SHAKE(name)                                 \
+void                                                                 \
+torsion_##name##_init(sha3_t *ctx);                                  \
+                                                                     \
+void                                                                 \
+torsion_##name##_update(sha3_t *ctx, const void *data, size_t len);  \
+                                                                     \
+void                                                                 \
+torsion_##name##_final(sha3_t *ctx, unsigned char *out, size_t len);
+
+__TORSION_DEFINE_KECCAK(keccak224)
+__TORSION_DEFINE_KECCAK(keccak256)
+__TORSION_DEFINE_KECCAK(keccak384)
+__TORSION_DEFINE_KECCAK(keccak512)
+
+__TORSION_DEFINE_KECCAK(sha3_224)
+__TORSION_DEFINE_KECCAK(sha3_256)
+__TORSION_DEFINE_KECCAK(sha3_384)
+__TORSION_DEFINE_KECCAK(sha3_512)
+
+__TORSION_DEFINE_SHAKE(shake224)
+__TORSION_DEFINE_SHAKE(shake256)
+
+/*
  * BLAKE2s
  */
 
@@ -493,6 +523,32 @@ blake2b_update(blake2b_t *ctx, const void *data, size_t len);
 
 void
 blake2b_final(blake2b_t *ctx, unsigned char *out);
+
+/*
+ * BLAKE2s-{128,160,224,256}, BLAKE2b-{160,256,384,512}
+ */
+
+#define __TORSION_DEFINE_BLAKE2(name, bits)                              \
+void                                                                     \
+torsion_##name##_##bits##_init(name##_t *ctx,                            \
+                               const unsigned char *key, size_t keylen); \
+                                                                         \
+void                                                                     \
+torsion_##name##_##bits##_update(name##_t *ctx,                          \
+                                 const void *data, size_t len);          \
+                                                                         \
+void                                                                     \
+torsion_##name##_##bits##_final(name##_t *ctx, unsigned char *out);
+
+__TORSION_DEFINE_BLAKE2(blake2s, 128)
+__TORSION_DEFINE_BLAKE2(blake2s, 160)
+__TORSION_DEFINE_BLAKE2(blake2s, 224)
+__TORSION_DEFINE_BLAKE2(blake2s, 256)
+
+__TORSION_DEFINE_BLAKE2(blake2b, 160)
+__TORSION_DEFINE_BLAKE2(blake2b, 256)
+__TORSION_DEFINE_BLAKE2(blake2b, 384)
+__TORSION_DEFINE_BLAKE2(blake2b, 512)
 
 /*
  * GOST94

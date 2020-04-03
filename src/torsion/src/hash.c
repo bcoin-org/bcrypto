@@ -4525,7 +4525,7 @@ keccak_permute(keccak_t *ctx) {
     A[3] ^= D[3]; C[3] = A[3];
     A[4] ^= D[4]; C[4] = A[4];
 
-    for (y = 5; y < 25; y+= 5) {
+    for (y = 5; y < 25; y += 5) {
       D[0] = ~A[y + 1] & A[y + 2];
       D[1] = ~A[y + 2] & A[y + 3];
       D[2] = ~A[y + 3] & A[y + 4];
@@ -4603,7 +4603,7 @@ keccak_final(keccak_t *ctx, unsigned char *out, unsigned char pad, size_t len) {
   if (len == 0)
     len = 100 - (ctx->bs >> 1);
 
-  ASSERT(len < ctx->bs);
+  ASSERT(len <= ctx->bs);
 
   memset(ctx->block + ctx->pos, 0x00, ctx->bs - ctx->pos);
 
@@ -4615,6 +4615,55 @@ keccak_final(keccak_t *ctx, unsigned char *out, unsigned char pad, size_t len) {
   for (i = 0; i < len; i++)
     out[i] = ctx->state[i >> 3] >> (8 * (i & 7));
 }
+
+/*
+ * Keccak{224,256,384,512}, SHA3-{224,256,384,512}, SHAKE{128,256}
+ */
+
+#define DEFINE_KECCAK(name, bits, pad)                               \
+void                                                                 \
+torsion_##name##_init(sha3_t *ctx) {                                 \
+  keccak_init(ctx, bits);                                            \
+}                                                                    \
+                                                                     \
+void                                                                 \
+torsion_##name##_update(sha3_t *ctx, const void *data, size_t len) { \
+  keccak_update(ctx, data, len);                                     \
+}                                                                    \
+                                                                     \
+void                                                                 \
+torsion_##name##_final(sha3_t *ctx, unsigned char *out) {            \
+  keccak_final(ctx, out, pad, 0);                                    \
+}
+
+#define DEFINE_SHAKE(name, bits)                                      \
+void                                                                  \
+torsion_##name##_init(sha3_t *ctx) {                                  \
+  keccak_init(ctx, bits);                                             \
+}                                                                     \
+                                                                      \
+void                                                                  \
+torsion_##name##_update(sha3_t *ctx, const void *data, size_t len) {  \
+  keccak_update(ctx, data, len);                                      \
+}                                                                     \
+                                                                      \
+void                                                                  \
+torsion_##name##_final(sha3_t *ctx, unsigned char *out, size_t len) { \
+  keccak_final(ctx, out, 0x1f, len);                                  \
+}
+
+DEFINE_KECCAK(keccak224, 224, 0x01)
+DEFINE_KECCAK(keccak256, 256, 0x01)
+DEFINE_KECCAK(keccak384, 384, 0x01)
+DEFINE_KECCAK(keccak512, 512, 0x01)
+
+DEFINE_KECCAK(sha3_224, 224, 0x06)
+DEFINE_KECCAK(sha3_256, 256, 0x06)
+DEFINE_KECCAK(sha3_384, 384, 0x06)
+DEFINE_KECCAK(sha3_512, 512, 0x06)
+
+DEFINE_SHAKE(shake128, 128)
+DEFINE_SHAKE(shake256, 256)
 
 /*
  * BLAKE2s
@@ -4787,6 +4836,38 @@ blake2s_final(blake2s_t *ctx, unsigned char *out) {
 
   cleanse(buffer, sizeof(buffer));
 }
+
+/*
+ * BLAKE2s-{128,160,224,256}, BLAKE2b-{160,256,384,512}
+ */
+
+#define DEFINE_BLAKE2(name, bits)                                         \
+void                                                                      \
+torsion_##name##_##bits##_init(name##_t *ctx,                             \
+                               const unsigned char *key, size_t keylen) { \
+  name##_init(ctx, (bits) / 8, key, keylen);                              \
+}                                                                         \
+                                                                          \
+void                                                                      \
+torsion_##name##_##bits##_update(name##_t *ctx,                           \
+                                 const void *data, size_t len) {          \
+  name##_update(ctx, data, len);                                          \
+}                                                                         \
+                                                                          \
+void                                                                      \
+torsion_##name##_##bits##_final(name##_t *ctx, unsigned char *out) {      \
+  name##_final(ctx, out);                                                 \
+}
+
+DEFINE_BLAKE2(blake2s, 128)
+DEFINE_BLAKE2(blake2s, 160)
+DEFINE_BLAKE2(blake2s, 224)
+DEFINE_BLAKE2(blake2s, 256)
+
+DEFINE_BLAKE2(blake2b, 160)
+DEFINE_BLAKE2(blake2b, 256)
+DEFINE_BLAKE2(blake2b, 384)
+DEFINE_BLAKE2(blake2b, 512)
 
 /*
  * BLAKE2b
