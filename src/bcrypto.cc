@@ -5952,7 +5952,7 @@ bcrypto_keccak_final(napi_env env, napi_callback_info info) {
     out_len = 100 - (keccak->ctx.bs >> 1);
 
   JS_ASSERT(keccak->started, JS_ERR_INIT);
-  JS_ASSERT(out_len < keccak->ctx.bs, JS_ERR_OUTPUT_SIZE);
+  JS_ASSERT(out_len <= keccak->ctx.bs, JS_ERR_OUTPUT_SIZE);
 
   keccak_final(&keccak->ctx, out, pad, out_len);
   keccak->started = 0;
@@ -5987,7 +5987,7 @@ bcrypto_keccak_digest(napi_env env, napi_callback_info info) {
     out_len = 100 - (bs >> 1);
 
   JS_ASSERT(bits >= 128 && bits <= 512 && (rate & 63) == 0, JS_ERR_OUTPUT_SIZE);
-  JS_ASSERT(out_len < bs, JS_ERR_OUTPUT_SIZE);
+  JS_ASSERT(out_len <= bs, JS_ERR_OUTPUT_SIZE);
 
   keccak_init(&ctx, bits);
   keccak_update(&ctx, in, in_len);
@@ -6026,7 +6026,7 @@ bcrypto_keccak_root(napi_env env, napi_callback_info info) {
     out_len = 100 - (bs >> 1);
 
   JS_ASSERT(bits >= 128 && bits <= 512 && (rate & 63) == 0, JS_ERR_OUTPUT_SIZE);
-  JS_ASSERT(out_len < bs, JS_ERR_OUTPUT_SIZE);
+  JS_ASSERT(out_len <= bs, JS_ERR_OUTPUT_SIZE);
   JS_ASSERT(left_len == out_len && right_len == out_len, JS_ERR_NODE_SIZE);
 
   keccak_init(&ctx, bits);
@@ -6066,7 +6066,7 @@ bcrypto_keccak_multi(napi_env env, napi_callback_info info) {
     out_len = 100 - (bs >> 1);
 
   JS_ASSERT(bits >= 128 && bits <= 512 && (rate & 63) == 0, JS_ERR_OUTPUT_SIZE);
-  JS_ASSERT(out_len < bs, JS_ERR_OUTPUT_SIZE);
+  JS_ASSERT(out_len <= bs, JS_ERR_OUTPUT_SIZE);
 
   keccak_init(&ctx, bits);
   keccak_update(&ctx, x, x_len);
