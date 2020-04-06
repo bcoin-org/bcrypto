@@ -43,6 +43,153 @@ static uint64_t integerify(uint8_t *, size_t);
 static void smix(uint8_t *, size_t, uint64_t, uint8_t *, uint8_t *);
 
 /*
+ * EB2K (OpenSSL Legacy)
+ */
+
+int
+eb2k_derive(unsigned char *key,
+            unsigned char *iv,
+            int type,
+            const unsigned char *passwd,
+            size_t passwd_len,
+            const unsigned char *salt,
+            size_t salt_len,
+            size_t key_len,
+            size_t iv_len) {
+  size_t hash_size = hash_output_size(type);
+  unsigned char prev[HASH_MAX_OUTPUT_SIZE];
+  size_t prev_pos, avail, want, use;
+  size_t prev_len = 0;
+  size_t key_pos = 0;
+  size_t iv_pos = 0;
+  hash_t hash;
+
+  if (salt_len > 8)
+    salt_len = 8;
+
+  if (!hash_has_backend(type))
+    return 0;
+
+  if (salt_len != 0 && salt_len != 8)
+    return 0;
+
+  while (key_pos < key_len || iv_pos < iv_len) {
+    hash_init(&hash, type);
+    hash_update(&hash, prev, prev_len);
+    hash_update(&hash, passwd, passwd_len);
+    hash_update(&hash, salt, salt_len);
+    hash_final(&hash, prev, hash_size);
+
+    prev_pos = 0;
+    prev_len = hash_size;
+
+    if (key_pos < key_len) {
+      avail = prev_len - prev_pos;
+      want = key_len - key_pos;
+      use = avail < want ? avail : want;
+
+      memcpy(key + key_pos, prev + prev_pos, use);
+
+      key_pos += use;
+      prev_pos += use;
+    }
+
+    if (iv_pos < iv_len) {
+      avail = prev_len - prev_pos;
+      want = iv_len - iv_pos;
+      use = avail < want ? avail : want;
+
+      memcpy(iv + iv_pos, prev + prev_pos, use);
+
+      iv_pos += use;
+      prev_pos += use;
+    }
+  }
+
+  cleanse(prev, sizeof(prev));
+  cleanse(&hash, sizeof(hash));
+
+  return 1;
+}
+
+/*
+ * HKDF
+ */
+
+int
+hkdf_extract(unsigned char *out, int type,
+             const unsigned char *ikm, size_t ikm_len,
+             const unsigned char *salt, size_t salt_len) {
+  hmac_t hmac;
+
+  if (!hash_has_backend(type))
+    return 0;
+
+  hmac_init(&hmac, type, salt, salt_len);
+  hmac_update(&hmac, ikm, ikm_len);
+  hmac_final(&hmac, out);
+
+  return 1;
+}
+
+int
+hkdf_expand(unsigned char *out,
+            int type,
+            const unsigned char *prk,
+            const unsigned char *info,
+            size_t info_len,
+            size_t len) {
+  size_t hash_size = hash_output_size(type);
+  unsigned char prev[HASH_MAX_OUTPUT_SIZE];
+  unsigned char ctr = 0;
+  size_t prev_len = 0;
+  hmac_t pmac, hmac;
+  size_t i, blocks;
+
+  if (!hash_has_backend(type))
+    return 0;
+
+  if (len + hash_size - 1 < len)
+    return 0;
+
+  blocks = (len + hash_size - 1) / hash_size;
+
+  if (blocks > 255)
+    return 0;
+
+  if (len == 0)
+    return 1;
+
+  hmac_init(&pmac, type, prk, hash_size);
+
+  for (i = 0; i < blocks; i++) {
+    ctr += 1;
+
+    memcpy(&hmac, &pmac, sizeof(pmac));
+    hmac_update(&hmac, prev, prev_len);
+    hmac_update(&hmac, info, info_len);
+    hmac_update(&hmac, &ctr, 1);
+    hmac_final(&hmac, prev);
+
+    prev_len = hash_size;
+
+    if (hash_size > len)
+      hash_size = len;
+
+    memcpy(out, prev, hash_size);
+
+    out += hash_size;
+    len -= hash_size;
+  }
+
+  cleanse(prev, sizeof(prev));
+  cleanse(&pmac, sizeof(pmac));
+  cleanse(&hmac, sizeof(hmac));
+
+  return 1;
+}
+
+/*
  * PBKDF2
  */
 
@@ -56,62 +203,43 @@ pbkdf2_derive(unsigned char *out,
               uint32_t iter,
               size_t len) {
   size_t hash_size = hash_output_size(type);
-  size_t blocks = (len + hash_size - 1) / hash_size;
-  size_t buffer_len = blocks * hash_size;
-  size_t state_len = salt_len + 4;
-  unsigned char tmp[HASH_MAX_OUTPUT_SIZE];
   unsigned char block[HASH_MAX_OUTPUT_SIZE];
   unsigned char mac[HASH_MAX_OUTPUT_SIZE];
-  unsigned char *buffer = NULL;
-  unsigned char *state = NULL;
-  size_t i, k;
+  unsigned char ctr[4];
+  hmac_t pmac, smac, hmac;
+  size_t i, k, blocks;
   uint32_t j;
-  hmac_t hmac;
-  int r = 0;
 
   if (!hash_has_backend(type))
     return 0;
 
-  if (len > UINT32_MAX - hash_size)
+  if (len + hash_size - 1 < len)
     return 0;
 
-  if (blocks > UINT32_MAX / hash_size)
-    return 0;
+  blocks = (len + hash_size - 1) / hash_size;
 
-  if (salt_len > UINT32_MAX - 4)
+  if (blocks > UINT32_MAX)
     return 0;
 
   if (len == 0)
     return 1;
 
-  buffer = torsion_alloc(buffer_len);
-  state = torsion_alloc(state_len);
+  hmac_init(&pmac, type, pass, pass_len);
 
-  if (buffer == NULL || state == NULL)
-    goto fail;
-
-  /* Preemptively shorten key. */
-  if (pass_len > hash_block_size(type)) {
-    hash_init(&hmac.inner, type);
-    hash_update(&hmac.inner, pass, pass_len);
-    hash_final(&hmac.inner, tmp, hash_size);
-    pass = tmp;
-    pass_len = hash_size;
-  }
-
-  memcpy(state, salt, salt_len);
+  memcpy(&smac, &pmac, sizeof(pmac));
+  hmac_update(&smac, salt, salt_len);
 
   for (i = 0; i < blocks; i++) {
-    write32be(state + salt_len, i + 1);
+    write32be(ctr, i + 1);
 
-    hmac_init(&hmac, type, pass, pass_len);
-    hmac_update(&hmac, state, state_len);
+    memcpy(&hmac, &smac, sizeof(smac));
+    hmac_update(&hmac, ctr, 4);
     hmac_final(&hmac, block);
 
     memcpy(mac, block, hash_size);
 
     for (j = 1; j < iter; j++) {
-      hmac_init(&hmac, type, pass, pass_len);
+      memcpy(&hmac, &pmac, sizeof(pmac));
       hmac_update(&hmac, mac, hash_size);
       hmac_final(&hmac, mac);
 
@@ -119,29 +247,22 @@ pbkdf2_derive(unsigned char *out,
         block[k] ^= mac[k];
     }
 
-    memcpy(buffer + i * hash_size, block, hash_size);
+    if (hash_size > len)
+      hash_size = len;
+
+    memcpy(out, block, hash_size);
+
+    out += hash_size;
+    len -= hash_size;
   }
 
-  memcpy(out, buffer, len);
-
-  r = 1;
-fail:
-  cleanse(tmp, sizeof(tmp));
   cleanse(block, sizeof(block));
   cleanse(mac, sizeof(mac));
+  cleanse(&pmac, sizeof(pmac));
+  cleanse(&smac, sizeof(smac));
   cleanse(&hmac, sizeof(hmac));
 
-  if (buffer != NULL) {
-    cleanse(buffer, buffer_len);
-    torsion_free(buffer);
-  }
-
-  if (state != NULL) {
-    cleanse(state, state_len);
-    torsion_free(state);
-  }
-
-  return r;
+  return 1;
 }
 
 /*
@@ -180,9 +301,12 @@ scrypt_derive(unsigned char *out,
   if (N == 0 || (N & (N - 1)) != 0)
     return 0;
 
-  B = torsion_alloc(128 * r * p);
-  XY = torsion_alloc(256 * r);
-  V = torsion_alloc(128 * r * N);
+  if (len == 0)
+    return 1;
+
+  B = torsion_malloc_unsafe(128 * r * p);
+  XY = torsion_malloc_unsafe(256 * r);
+  V = torsion_malloc_unsafe(128 * r * N);
 
   if (B == NULL || XY == NULL || V == NULL)
     goto fail;

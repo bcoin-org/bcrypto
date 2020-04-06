@@ -45,6 +45,9 @@ void *
 torsion_malloc(size_t size) __TORSION_MALLOC;
 
 void *
+torsion_malloc_unsafe(size_t size) __TORSION_MALLOC;
+
+void *
 torsion_alloc(size_t size) __TORSION_MALLOC;
 
 void *

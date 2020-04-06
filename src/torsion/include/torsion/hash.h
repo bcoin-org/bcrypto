@@ -528,17 +528,17 @@ blake2b_final(blake2b_t *ctx, unsigned char *out);
  * BLAKE2s-{128,160,224,256}, BLAKE2b-{160,256,384,512}
  */
 
-#define __TORSION_DEFINE_BLAKE2(name, bits)                              \
-void                                                                     \
-torsion_##name##_##bits##_init(name##_t *ctx,                            \
-                               const unsigned char *key, size_t keylen); \
-                                                                         \
-void                                                                     \
-torsion_##name##_##bits##_update(name##_t *ctx,                          \
-                                 const void *data, size_t len);          \
-                                                                         \
-void                                                                     \
-torsion_##name##_##bits##_final(name##_t *ctx, unsigned char *out);
+#define __TORSION_DEFINE_BLAKE2(name, bits)                           \
+void                                                                  \
+torsion_##name##bits##_init(name##_t *ctx,                            \
+                            const unsigned char *key, size_t keylen); \
+                                                                      \
+void                                                                  \
+torsion_##name##bits##_update(name##_t *ctx,                          \
+                              const void *data, size_t len);          \
+                                                                      \
+void                                                                  \
+torsion_##name##bits##_final(name##_t *ctx, unsigned char *out);
 
 __TORSION_DEFINE_BLAKE2(blake2s, 128)
 __TORSION_DEFINE_BLAKE2(blake2s, 160)

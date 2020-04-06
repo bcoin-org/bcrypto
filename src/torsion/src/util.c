@@ -78,6 +78,14 @@ torsion_malloc(size_t size) {
 }
 
 void *
+torsion_malloc_unsafe(size_t size) {
+  if (size == 0)
+    return NULL;
+
+  return (*malloc_cb)(size);
+}
+
+void *
 torsion_alloc(size_t size) {
   void *ptr = torsion_malloc(size);
 

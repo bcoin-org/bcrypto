@@ -12,8 +12,43 @@ extern "C" {
  * Symbol Aliases
  */
 
+#define eb2k_derive torsion_eb2k_derive
+#define hkdf_extract torsion_hkdf_extract
+#define hkdf_expand torsion_hkdf_expand
 #define pbkdf2_derive torsion_pbkdf2_derive
 #define scrypt_derive torsion_scrypt_derive
+
+/*
+ * EB2K (OpenSSL Legacy)
+ */
+
+int
+eb2k_derive(unsigned char *key,
+            unsigned char *iv,
+            int type,
+            const unsigned char *passwd,
+            size_t passwd_len,
+            const unsigned char *salt,
+            size_t salt_len,
+            size_t key_len,
+            size_t iv_len);
+
+/*
+ * HKDF
+ */
+
+int
+hkdf_extract(unsigned char *out, int type,
+             const unsigned char *ikm, size_t ikm_len,
+             const unsigned char *salt, size_t salt_len);
+
+int
+hkdf_expand(unsigned char *out,
+            int type,
+            const unsigned char *prk,
+            const unsigned char *info,
+            size_t info_len,
+            size_t len);
 
 /*
  * PBKDF2
