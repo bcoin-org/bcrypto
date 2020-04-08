@@ -222,22 +222,22 @@ typedef struct _rsa_priv_s {
  * Helpers
  */
 
-static uint32_t
+static TORSION_INLINE uint32_t
 safe_equal(uint32_t x, uint32_t y) {
   return ((x ^ y) - 1) >> 31;
 }
 
-static uint32_t
+static TORSION_INLINE uint32_t
 safe_select(uint32_t x, uint32_t y, uint32_t v) {
   return (x & (v - 1)) | (y & ~(v - 1));
 }
 
-static uint32_t
+static TORSION_INLINE uint32_t
 safe_lte(uint32_t x, uint32_t y) {
   return (x - y - 1) >> 31;
 }
 
-static uint32_t
+static TORSION_INLINE uint32_t
 safe_cmp(const unsigned char *x, const unsigned char *y, size_t len) {
   uint32_t v = 0;
   size_t i;
@@ -246,14 +246,6 @@ safe_cmp(const unsigned char *x, const unsigned char *y, size_t len) {
     v |= (uint32_t)x[i] ^ (uint32_t)y[i];
 
   return (v - 1) >> 31;
-}
-
-static void
-safe_free(void *ptr, size_t size) {
-  if (ptr != NULL) {
-    cleanse(ptr, size);
-    torsion_free(ptr);
-  }
 }
 
 /*
@@ -1786,7 +1778,7 @@ rsa_verify(int type,
   r = (ok == 1);
 fail:
   rsa_pub_clear(&k);
-  safe_free(em, klen);
+  torsion_free(em);
   return r;
 }
 
@@ -1988,7 +1980,7 @@ rsa_sign_pss(unsigned char *out,
 fail:
   rsa_priv_clear(&k);
   cleanse(&rng, sizeof(rng));
-  safe_free(salt, salt_len < 0 ? 0 : salt_len);
+  torsion_free(salt);
   if (r == 0) cleanse(out, klen);
   return r;
 }
@@ -2063,7 +2055,7 @@ rsa_verify_pss(int type,
   r = 1;
 fail:
   rsa_pub_clear(&k);
-  safe_free(em, klen);
+  torsion_free(em);
   return r;
 }
 

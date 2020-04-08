@@ -28,18 +28,10 @@
 #define UNLIKELY(x) (x)
 #endif
 
-#define ASSERT_FAIL(expr) __torsion_assert_fail(__FILE__, __LINE__, #expr)
-
-#define ASSERT_ALWAYS(expr) do { \
-  if (UNLIKELY(!(expr)))         \
-    ASSERT_FAIL(expr);           \
+#define ASSERT(expr) do {                             \
+  if (UNLIKELY(!(expr)))                              \
+    __torsion_assert_fail(__FILE__, __LINE__, #expr); \
 } while (0)
-
-#ifdef TORSION_NO_ASSERT
-#define ASSERT(expr) do {} while (0)
-#else
-#define ASSERT(expr) ASSERT_ALWAYS(expr)
-#endif
 
 #if !defined(__STDC_VERSION__) || __STDC_VERSION__ < 199901L
 #  if TORSION_GNUC_PREREQ(2, 7)

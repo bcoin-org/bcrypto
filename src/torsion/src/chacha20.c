@@ -80,7 +80,7 @@ chacha20_init(chacha20_t *ctx,
     ctx->state[14] = read32le(nonce + 8);
     ctx->state[15] = read32le(nonce + 12);
   } else {
-    ASSERT_FAIL("chacha20_init: invalid nonce size.");
+    ASSERT(0 && "chacha20_init: invalid nonce size.");
   }
 
   ctx->pos = 0;

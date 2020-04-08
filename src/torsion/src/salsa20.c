@@ -77,7 +77,7 @@ salsa20_init(salsa20_t *ctx,
     ctx->state[8] = read32le(nonce + 8);
     ctx->state[9] = read32le(nonce + 12);
   } else {
-    ASSERT_FAIL("salsa20_init: invalid nonce size.");
+    ASSERT(0 && "salsa20_init: invalid nonce size.");
   }
 
   ctx->state[10] = key_len < 32 ? 0x79622d36 : 0x79622d32;

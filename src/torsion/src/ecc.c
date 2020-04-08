@@ -1445,12 +1445,17 @@ fe_get_limbs(const prime_field_t *fe, mp_limb_t *r, const fe_t a) {
 
 #ifdef TORSION_TEST
 static void
-fe_print(const prime_field_t *fe, const fe_t a) {
+fe_out_str(const prime_field_t *fe, const fe_t a) {
   mp_limb_t xp[MAX_FIELD_LIMBS];
 
   fe_get_limbs(fe, xp, a);
 
   mpn_out_str(stdout, 16, xp, fe->limbs);
+}
+
+TORSION_UNUSED static void
+fe_print(const prime_field_t *fe, const fe_t a) {
+  fe_out_str(fe, a);
   printf("\n");
 }
 #endif
@@ -1746,7 +1751,7 @@ fe_sqrt(const prime_field_t *fe, fe_t r, const fe_t a) {
       fe_mul(fe, b, b, a);
       fe_mul(fe, b, b, c);
     } else {
-      ASSERT_FAIL("fe_sqrt: no sqrt implementation.");
+      ASSERT(0 && "fe_sqrt: no sqrt implementation.");
     }
 
     /* b2 = b^2 mod p */
@@ -2695,9 +2700,9 @@ wge_print(const wei_t *ec, const wge_t *p) {
     printf("(infinity)\n");
   } else {
     printf("(");
-    fe_print(fe, p->x);
+    fe_out_str(fe, p->x);
     printf(", ");
-    fe_print(fe, p->y);
+    fe_out_str(fe, p->y);
     printf(")\n");
   }
 }
@@ -3764,6 +3769,15 @@ jge_naf_points_var(const wei_t *ec, jge_t *out,
     jge_add_var(ec, &out[i], &out[i - 1], &dbl);
 }
 
+TORSION_UNUSED static void
+jge_endo_beta(const wei_t *ec, jge_t *r, const jge_t *p) {
+  const prime_field_t *fe = &ec->fe;
+
+  fe_mul(fe, r->x, p->x, ec->beta);
+  fe_set(fe, r->y, p->y);
+  fe_set(fe, r->z, p->z);
+}
+
 #ifdef TORSION_TEST
 TORSION_UNUSED static void
 jge_print(const wei_t *ec, const jge_t *p) {
@@ -3773,11 +3787,11 @@ jge_print(const wei_t *ec, const jge_t *p) {
     printf("(infinity)\n");
   } else {
     printf("(");
-    fe_print(fe, p->x);
+    fe_out_str(fe, p->x);
     printf(", ");
-    fe_print(fe, p->y);
+    fe_out_str(fe, p->y);
     printf(", ");
-    fe_print(fe, p->z);
+    fe_out_str(fe, p->z);
     printf(")\n");
   }
 }
@@ -5397,9 +5411,9 @@ mge_print(const mont_t *ec, const mge_t *p) {
     printf("(infinity)\n");
   } else {
     printf("(");
-    fe_print(fe, p->x);
+    fe_out_str(fe, p->x);
     printf(", ");
-    fe_print(fe, p->y);
+    fe_out_str(fe, p->y);
     printf(")\n");
   }
 }
@@ -5689,9 +5703,9 @@ pge_print(const mont_t *ec, const pge_t *p) {
     printf("(infinity)\n");
   } else {
     printf("(");
-    fe_print(fe, p->x);
+    fe_out_str(fe, p->x);
     printf(", ");
-    fe_print(fe, p->z);
+    fe_out_str(fe, p->z);
     printf(")\n");
   }
 }
@@ -6711,11 +6725,11 @@ xge_print(const edwards_t *ec, const xge_t *p) {
     printf("(infinity)\n");
   } else {
     printf("(");
-    fe_print(fe, p->x);
+    fe_out_str(fe, p->x);
     printf(", ");
-    fe_print(fe, p->y);
+    fe_out_str(fe, p->y);
     printf(", ");
-    fe_print(fe, p->z);
+    fe_out_str(fe, p->z);
     printf(")\n");
   }
 }
