@@ -703,11 +703,11 @@ mpn_cmp4(mp_srcptr ap, mp_size_t an, mp_srcptr bp, mp_size_t bn) {
  */
 #define AORS_N(ADCSBB)                      \
   __asm__ __volatile__(                     \
-    "mov %%ecx, %%eax\n"                    \
-    /* guard for n <= 0 */                  \
-    "test %%eax, %%eax\n"                   \
+    "mov $0, %%eax\n"                       \
+    "test %%ecx, %%ecx\n"                   \
     "jle 7f\n" /* exit */                   \
-    /* end guard */                         \
+                                            \
+    "mov %%ecx, %%eax\n"                    \
     "shr $2, %%rcx\n"                       \
     "and $3, %%eax\n"                       \
     "jrcxz 1f\n" /* lt4 */                  \
@@ -2840,7 +2840,7 @@ mpn_export(unsigned char *rp, size_t rn,
 size_t
 mpn_out_str(FILE *stream, int base, mp_srcptr xp, mp_size_t xn) {
   mp_size_t bytes = 0;
-  mp_limb_t ch, hi, lo;
+  mp_limb_t ch;
   mp_size_t i;
 
   ASSERT(base == 16);
@@ -2853,31 +2853,22 @@ mpn_out_str(FILE *stream, int base, mp_srcptr xp, mp_size_t xn) {
   xn = mpn_normalized_size(xp, xn);
 
   while (xn--) {
-    i = MP_LIMB_BITS / 8;
+    i = MP_LIMB_BITS / 4;
 
     while (i--) {
-      ch = (xp[xn] >> (i * 8)) & 0xff;
+      ch = (xp[xn] >> (i * 4)) & 0x0f;
 
       if (bytes == 0 && ch == 0)
         continue;
 
-      hi = ch >> 4;
-      lo = ch & 0x0f;
-
-      if (hi < 0x0a)
-        hi += '0';
+      if (ch < 0x0a)
+        ch += '0';
       else
-        hi += 'a' - 0x0a;
+        ch += 'a' - 0x0a;
 
-      if (lo < 0x0a)
-        lo += '0';
-      else
-        lo += 'a' - 0x0a;
+      fputc(ch, stream);
 
-      fputc(hi, stream);
-      fputc(lo, stream);
-
-      bytes += 2;
+      bytes += 1;
     }
   }
 
@@ -3098,9 +3089,9 @@ mpz_fits_slong_p(const mpz_t u) {
 int
 mpz_fits_u64_p(const mpz_t u) {
 #if MP_LIMB_BITS == 32
-  return MP_ABS(u->_mp_size) <= 2;
+  return u->_mp_size >= 0 && u->_mp_size <= 2;
 #else
-  return MP_ABS(u->_mp_size) <= 1;
+  return mpz_fits_ulong_p(u);
 #endif
 }
 
