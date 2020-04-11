@@ -274,14 +274,14 @@ class WEI25519 extends ShortCurve {
         [
           ['2b62f409 c0b00d31 a85bdd47 9637b485',
            '156f4a9c a58e00c1 5962ebe6 27281031'],
-          ['3931c129 569e83a5 29482c14 e628b457',
-           '933bfc29 ed801b4d 68871483 92507b1a']
+          ['46ce3ed6 a9617c5a d6b7d3eb 19d74ba8',
+           '6cc403d6 127fe4b2 9778eb7c 6daf84d3']
         ],
         [
           ['2b62f409 c0b00d31 a85bdd47 9637b485',
            '156f4a9c a58e00c1 5962ebe6 27281031'],
-          ['46ce3ed6 a9617c5a d6b7d3eb 19d74ba8',
-           '6cc403d6 127fe4b2 9778eb7c 6daf84d3']
+          ['3931c129 569e83a5 29482c14 e628b457',
+           '933bfc29 ed801b4d 68871483 92507b1a']
         ]
       ]
     });
