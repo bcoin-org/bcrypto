@@ -3,10 +3,9 @@
 [![Build Status][circleci-status-img]][circleci-status-url]
 
 The missing crypto module for Node.js. Bcrypto provides you with a consistent
-interface across Node.js and the browser. It is implemented as a
-[Node.js addon][addon] for C libraries [libtorsion][libtorsion] (with
-support for openssl and libgmp) and [libsecp256k1][libsecp256k1] with
-corresponding implementations in JavaScript.
+interface across Node.js and the browser. It is implemented as a [Node.js
+addon][addon] for C libraries [libtorsion][libtorsion] and
+[libsecp256k1][libsecp256k1] with corresponding implementations in JavaScript.
 
 ## Usage
 
@@ -67,7 +66,7 @@ See the `./lib` directory for available modules and APIs.
 | scrypt                       | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
 | secp256k1                    | c (libsecp256k1²) | c (libsecp256k1²) | c (libsecp256k1²) | js      |
 | sha1                         | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
-| sha{256,384,512}             | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion)    | js      |
+| sha{224,256,384,512}         | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion)    | js      |
 | shake{128,256}               | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion)    | js      |
 | siphash                      | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
 | ssh                          | js                | js                | js                | js      |
