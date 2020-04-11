@@ -184,7 +184,6 @@ typedef uint32_t fe_word_t;
 #define MAX_SCALAR_LIMBS ((MAX_SCALAR_BITS + MP_LIMB_BITS - 1) / MP_LIMB_BITS)
 #define MAX_REDUCE_LIMBS (MAX_SCALAR_LIMBS * 2 + 2)
 #define MAX_ENDO_BITS ((MAX_SCALAR_BITS + 1) / 2 + 1)
-#define MAX_ENDO_LIMBS ((MAX_ENDO_BITS + MP_LIMB_BITS - 1) / MP_LIMB_BITS)
 
 #define MAX_ELEMENT_SIZE MAX_FIELD_SIZE
 
@@ -215,11 +214,11 @@ typedef uint32_t fe_word_t;
  * Scalar Field
  */
 
-typedef mp_limb_t sc_t[MAX_SCALAR_LIMBS]; /* 72 bytes */
 struct _scalar_field_s;
 
-typedef void
-sc_invert_func(const struct _scalar_field_s *sc, sc_t r, const sc_t x);
+typedef mp_limb_t sc_t[MAX_SCALAR_LIMBS]; /* 72 bytes */
+
+typedef void sc_invert_func(const struct _scalar_field_s *, sc_t, const sc_t);
 
 typedef struct _scalar_field_s {
   int endian;
@@ -232,7 +231,6 @@ typedef struct _scalar_field_s {
   mp_limb_t nh[MAX_REDUCE_LIMBS];
   mp_limb_t m[MAX_REDUCE_LIMBS];
   mp_size_t limbs;
-  mp_size_t endo_limbs;
   sc_invert_func *invert;
 } scalar_field_t;
 
@@ -246,53 +244,24 @@ typedef struct _scalar_def_s {
  * Prime Field
  */
 
-typedef void
-fe_add_func(fe_word_t *out1, const fe_word_t *arg1, const fe_word_t *arg2);
-
-typedef void
-fe_sub_func(fe_word_t *out1, const fe_word_t *arg1, const fe_word_t *arg2);
-
-typedef void
-fe_opp_func(fe_word_t *out1, const fe_word_t *arg1);
-
-typedef void
-fe_mul_func(fe_word_t *out1, const fe_word_t *arg1, const fe_word_t *arg2);
-
-typedef void
-fe_sqr_func(fe_word_t *out1, const fe_word_t *arg1);
-
-typedef void
-fe_from_montgomery_func(fe_word_t *out1, const fe_word_t *arg1);
-
-typedef void
-fe_nonzero_func(fe_word_t *out1, const fe_word_t *arg1);
-
-typedef void
-fe_selectznz_func(fe_word_t *out1, unsigned char arg1,
-                  const fe_word_t *arg2, const fe_word_t *arg3);
-
-typedef void
-fe_to_bytes_func(uint8_t *out1, const fe_word_t *arg1);
-
-typedef void
-fe_from_bytes_func(fe_word_t *out1, const uint8_t *arg1);
-
-typedef void
-fe_carry_func(fe_word_t *out1, const fe_word_t *arg1);
-
-typedef void
-fe_invert_func(fe_word_t *out, const fe_word_t *in);
-
-typedef int
-fe_sqrt_func(fe_word_t *out, const fe_word_t *in);
-
-typedef int
-fe_isqrt_func(fe_word_t *out, const fe_word_t *u, const fe_word_t *v);
-
-typedef void
-fe_scmul_121666(fe_word_t *out1, const fe_word_t *arg1);
-
 typedef fe_word_t fe_t[MAX_FIELD_WORDS]; /* 72 bytes */
+
+typedef void fe_add_func(fe_word_t *, const fe_word_t *, const fe_word_t *);
+typedef void fe_sub_func(fe_word_t *, const fe_word_t *, const fe_word_t *);
+typedef void fe_opp_func(fe_word_t *, const fe_word_t *);
+typedef void fe_mul_func(fe_word_t *, const fe_word_t *, const fe_word_t *);
+typedef void fe_sqr_func(fe_word_t *, const fe_word_t *);
+typedef void fe_from_montgomery_func(fe_word_t *, const fe_word_t *);
+typedef void fe_nonzero_func(fe_word_t *, const fe_word_t *);
+typedef void fe_selectznz_func(fe_word_t *, unsigned char,
+                               const fe_word_t *, const fe_word_t *);
+typedef void fe_to_bytes_func(uint8_t *, const fe_word_t *);
+typedef void fe_from_bytes_func(fe_word_t *, const uint8_t *);
+typedef void fe_carry_func(fe_word_t *, const fe_word_t *);
+typedef void fe_invert_func(fe_word_t *, const fe_word_t *);
+typedef int fe_sqrt_func(fe_word_t *, const fe_word_t *);
+typedef int fe_isqrt_func(fe_word_t *, const fe_word_t *, const fe_word_t *);
+typedef void fe_scmul_121666_func(fe_word_t *, const fe_word_t *);
 
 typedef struct _prime_field_s {
   int endian;
@@ -316,7 +285,7 @@ typedef struct _prime_field_s {
   fe_to_bytes_func *to_bytes;
   fe_from_bytes_func *from_bytes;
   fe_carry_func *carry;
-  fe_scmul_121666 *scmul_121666;
+  fe_scmul_121666_func *scmul_121666;
   fe_invert_func *invert;
   fe_sqrt_func *sqrt;
   fe_isqrt_func *isqrt;
@@ -343,7 +312,7 @@ typedef struct _prime_def_s {
   fe_to_bytes_func *to_bytes;
   fe_from_bytes_func *from_bytes;
   fe_carry_func *carry;
-  fe_scmul_121666 *scmul_121666;
+  fe_scmul_121666_func *scmul_121666;
   fe_invert_func *invert;
   fe_sqrt_func *sqrt;
   fe_isqrt_func *isqrt;
@@ -695,7 +664,6 @@ sc_import(const scalar_field_t *sc, sc_t r, const unsigned char *raw) {
 
 static int
 sc_import_weak(const scalar_field_t *sc, sc_t r, const unsigned char *raw) {
-  /* Weak reduction if we're aligned to 8 bits. */
   mp_limb_t sp[MAX_SCALAR_LIMBS];
   mp_limb_t cy;
 
@@ -831,7 +799,7 @@ sc_is_high_var(const scalar_field_t *sc, const sc_t a) {
 
 static void
 sc_neg(const scalar_field_t *sc, sc_t r, const sc_t a) {
-  mp_limb_t zero = sc_is_zero(sc, a);
+  mp_limb_t zero = mpn_sec_zero_p(a, sc->limbs);
   mp_limb_t cy;
 
   /* r = n - a */
@@ -851,7 +819,6 @@ sc_neg_cond(const scalar_field_t *sc, sc_t r, const sc_t a, unsigned int flag) {
   sc_t b;
   sc_neg(sc, b, a);
   sc_select(sc, r, a, b, flag);
-  sc_cleanse(sc, b);
 }
 
 static void
@@ -862,15 +829,8 @@ sc_add(const scalar_field_t *sc, sc_t r, const sc_t a, const sc_t b) {
 
   ASSERT(sc->n[sc->limbs] == 0);
 
-  mpn_copyi(ap, a, sc->limbs);
-  mpn_copyi(bp, b, sc->limbs);
-
-  ap[sc->limbs] = 0;
-  bp[sc->limbs] = 0;
-
   /* r = a + b */
-  cy = mpn_add_n(ap, ap, bp, sc->limbs + 1);
-  ASSERT(cy == 0);
+  ap[sc->limbs] = mpn_add_n(ap, a, b, sc->limbs);
 
   /* r = r - n if r >= n */
   cy = mpn_sub_n(bp, ap, sc->n, sc->limbs + 1);
@@ -886,7 +846,6 @@ sc_sub(const scalar_field_t *sc, sc_t r, const sc_t a, const sc_t b) {
   sc_t c;
   sc_neg(sc, c, b);
   sc_add(sc, r, a, c);
-  sc_cleanse(sc, c);
 }
 
 static void
@@ -972,30 +931,21 @@ static void
 sc_mulshift(const scalar_field_t *sc, sc_t r,
             const sc_t a, const sc_t b,
             size_t shift) {
-  /* Computes `r = round((a * b) >> 272)`.
+  /* Computes `r = round((a * b) >> shift)`.
    *
    * Constant time assuming `shift` is constant.
-   *
-   * Note that `b` must be less than or equal
-   * to `(scalar_bits + 1) / 2 + 1 + 16` bits.
-   *
-   * If `shift` is aligned to the limb size,
-   * this function may leak a single bit of
-   * information, however, this is never the
-   * case with secp256k1.
    */
-  mp_limb_t scratch[MAX_SCALAR_LIMBS + MAX_ENDO_LIMBS + 1 + 1]; /* 128 bytes */
+  mp_limb_t scratch[MAX_SCALAR_LIMBS * 2]; /* 144 bytes */
   mp_size_t limbs = shift / MP_LIMB_BITS;
   mp_size_t left = shift % MP_LIMB_BITS;
   mp_limb_t *rp = scratch;
-  mp_size_t rn = sc->limbs + sc->endo_limbs + 1;
+  mp_size_t rn = sc->limbs * 2;
   mp_limb_t bit, cy;
 
   ASSERT(shift > sc->bits);
-  ASSERT(rn > limbs);
 
   /* r = a * b */
-  mpn_mul(rp, a, sc->limbs, b, sc->endo_limbs + 1);
+  mpn_mul_n(rp, a, b, sc->limbs);
 
   /* bit = (r >> 271) & 1 */
   bit = mpn_get_bit(rp, rn, shift - 1);
@@ -1004,25 +954,22 @@ sc_mulshift(const scalar_field_t *sc, sc_t r,
   rp += limbs;
   rn -= limbs;
 
-  if (left == 0) {
-    /* r += bit (leaky) */
-    rp[rn] = mpn_add_1(rp, rp, rn, bit);
-    rn += rp[rn];
-  } else {
-    /* r >>= 16 */
+  ASSERT(rn >= 0);
+
+  /* r >>= 16 */
+  if (left > 0)
     mpn_rshift(rp, rp, rn, left);
 
-    /* r += bit */
-    cy = mpn_add_1(rp, rp, rn, bit);
-    ASSERT(cy == 0);
-  }
+  /* r += bit */
+  cy = mpn_add_1(rp, rp, rn, bit);
 
+  ASSERT(cy == 0);
   ASSERT(rn <= sc->limbs);
 
   mpn_copyi(r, rp, rn);
   mpn_zero(r + rn, sc->limbs - rn);
 
-  mpn_cleanse(scratch, sc->limbs + sc->endo_limbs + 1 + 1);
+  mpn_cleanse(scratch, sc->limbs * 2);
 
 #ifdef TORSION_TEST
   ASSERT(mpn_cmp(r, sc->n, sc->limbs) < 0);
@@ -1861,7 +1808,6 @@ scalar_field_init(scalar_field_t *sc, const scalar_def_t *def, int endian) {
   sc->size = (def->bits + 7) / 8;
   sc->bits = def->bits;
   sc->endo_bits = (def->bits + 1) / 2 + 1;
-  sc->endo_limbs = (sc->endo_bits + MP_LIMB_BITS - 1) / MP_LIMB_BITS;
   sc->shift = sc->limbs * 2 + 2;
 
   /* Deserialize order into GMP limbs. */
@@ -2012,9 +1958,6 @@ static int
 wei_validate_xy(const wei_t *ec, const fe_t x, const fe_t y);
 
 static void
-wge_to_jge(const wei_t *ec, jge_t *r, const wge_t *a);
-
-static void
 jge_zero(const wei_t *ec, jge_t *r);
 
 static void
@@ -2027,9 +1970,6 @@ static void
 jge_add_var(const wei_t *ec, jge_t *r, const jge_t *a, const jge_t *b);
 
 static void
-jge_sub_var(const wei_t *ec, jge_t *r, const jge_t *a, const jge_t *b);
-
-static void
 jge_mixed_addsub_var(const wei_t *ec, jge_t *r, const jge_t *a,
                      const fe_t bx, const fe_t by, int negate);
 
@@ -2038,18 +1978,6 @@ jge_mixed_add_var(const wei_t *ec, jge_t *r, const jge_t *a, const wge_t *b);
 
 static void
 jge_mixed_sub_var(const wei_t *ec, jge_t *r, const jge_t *a, const wge_t *b);
-
-static void
-jge_dbl(const wei_t *ec, jge_t *r, const jge_t *p);
-
-static void
-jge_mixed_add(const wei_t *ec, jge_t *r, const jge_t *a, const wge_t *b);
-
-static void
-jge_to_wge(const wei_t *ec, wge_t *r, const jge_t *p);
-
-static void
-jge_to_wge_var(const wei_t *ec, wge_t *r, const jge_t *p);
 
 static void
 jge_to_wge_all_var(const wei_t *ec, wge_t *out, const jge_t *in, size_t len);
@@ -3824,7 +3752,7 @@ wei_init(wei_t *ec, const wei_def_t *def) {
 
   sc_reduce(sc, ec->sc_p, fe->p);
 
-  fe_set_limbs(fe, ec->fe_n, sc->n, sc->limbs);
+  fe_set_limbs(fe, ec->fe_n, sc->n, fe->limbs);
   fe_import(fe, ec->a, def->a);
   fe_import(fe, ec->b, def->b);
   fe_import(fe, ec->c, def->c);
@@ -5804,32 +5732,32 @@ mont_init_isomorphism(mont_t *ec, const mont_def_t *def) {
 }
 
 static void
-mont_clamp(const mont_t *ec, unsigned char *out, const unsigned char *in) {
-  size_t size = ec->sc.size;
+mont_clamp(const mont_t *ec, unsigned char *out, const unsigned char *scalar) {
+  /* [RFC7748] Page 8, Section 5. */
+  const prime_field_t *fe = &ec->fe;
+  const scalar_field_t *sc = &ec->sc;
   size_t top = ec->fe.bits & 7;
+
+  ASSERT(sc->size <= fe->size);
 
   if (top == 0)
     top = 8;
 
   /* Copy. */
-  memcpy(out, in, size);
+  memcpy(out, scalar, sc->size);
 
   /* Adjust for low order. */
-  if (size < ec->fe.size)
+  if (sc->size < fe->size)
     top = 8;
-
-  /* Adjust for high order. */
-  if (size > ec->fe.size)
-    out[--size] = 0;
 
   /* Ensure a multiple of the cofactor. */
   out[0] &= -ec->h;
 
   /* Clamp to the prime. */
-  out[size - 1] &= (1 << top) - 1;
+  out[sc->size - 1] &= (1 << top) - 1;
 
   /* Set the high bit. */
-  out[size - 1] |= 1 << (top - 1);
+  out[sc->size - 1] |= 1 << (top - 1);
 }
 
 static void
@@ -6854,32 +6782,32 @@ edwards_init_isomorphism(edwards_t *ec, const edwards_def_t *def) {
 static void
 edwards_clamp(const edwards_t *ec,
               unsigned char *out,
-              const unsigned char *in) {
-  size_t size = ec->sc.size;
+              const unsigned char *scalar) {
+  /* [RFC8032] Section 5.1.5 & 5.2.5. */
+  const prime_field_t *fe = &ec->fe;
+  const scalar_field_t *sc = &ec->sc;
   size_t top = ec->fe.bits & 7;
+
+  ASSERT(sc->size <= fe->size);
 
   if (top == 0)
     top = 8;
 
   /* Copy. */
-  memcpy(out, in, size);
+  memcpy(out, scalar, sc->size);
 
   /* Adjust for low order. */
-  if (size < ec->fe.size)
+  if (sc->size < fe->size)
     top = 8;
-
-  /* Adjust for high order. */
-  if (size > ec->fe.size)
-    out[--size] = 0;
 
   /* Ensure a multiple of the cofactor. */
   out[0] &= -ec->h;
 
   /* Clamp to the prime. */
-  out[size - 1] &= (1 << top) - 1;
+  out[sc->size - 1] &= (1 << top) - 1;
 
   /* Set the high bit. */
-  out[size - 1] |= 1 << (top - 1);
+  out[sc->size - 1] |= 1 << (top - 1);
 }
 
 static void
@@ -11476,9 +11404,12 @@ eddsa_privkey_expand(const edwards_t *ec,
                      unsigned char *scalar,
                      unsigned char *prefix,
                      const unsigned char *priv) {
+  /* [RFC8032] Section 5.1.6 & 5.2.6. */
   unsigned char bytes[(MAX_FIELD_SIZE + 1) * 2];
   const prime_field_t *fe = &ec->fe;
   const scalar_field_t *sc = &ec->sc;
+
+  ASSERT(sc->size <= fe->adj_size);
 
   eddsa_privkey_hash(ec, bytes, priv);
 
