@@ -26,28 +26,28 @@ See the `./lib` directory for available modules and APIs.
 
 |                              | nodejs (linux)    | nodejs (macos)    | nodejs (win)      | browser |
 | :--------------------------- |:------------------| :-----------------|:------------------|:--------|
-| aead                         | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion¹)   | js      |
+| aead                         | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion)    | js      |
 | aes                          | c (openssl)       | c (openssl)       | c (openssl)       | js      |
 | bcrypt                       | js                | js                | js                | js      |
 | blake2b{160,256,384,512}     | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
 | blake2s{128,160,224,256}     | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
 | bn                           | js w/ bigint      | js w/ bigint      | js w/ bigint      | js      |
-| chacha20                     | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion¹)   | js      |
-| cshake{128,256}              | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion¹)   | js      |
+| chacha20                     | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion)    | js      |
+| cshake{128,256}              | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion)    | js      |
 | ctr-drbg                     | js                | js                | js                | js      |
 | dsa                          | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
 | eb2k                         | js                | js                | js                | js      |
-| ecies                        | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion¹)   | js      |
+| ecies                        | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion)    | js      |
 | ed25519                      | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
 | ed448                        | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
 | gost94                       | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
-| hash160                      | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion¹)   | js      |
-| hash256                      | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion¹)   | js      |
+| hash160                      | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion)    | js      |
+| hash256                      | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion)    | js      |
 | hash-drbg                    | js                | js                | js                | js      |
 | hkdf                         | js                | js                | js                | js      |
 | hmac-drbg                    | js                | js                | js                | js      |
-| keccak/sha3{224,256,384,512} | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion¹)   | js      |
-| kmac{128,256}                | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion¹)   | js      |
+| keccak/sha3{224,256,384,512} | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion)    | js      |
+| kmac{128,256}                | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion)    | js      |
 | md{2,4,5}                    | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
 | md5sha1                      | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
 | merkle                       | js                | js                | js                | js      |
@@ -61,14 +61,14 @@ See the `./lib` directory for available modules and APIs.
 | rc4                          | js                | js                | js                | js      |
 | ripemd160                    | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
 | rsa                          | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
-| rsaies                       | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion¹)   | js      |
-| salsa20                      | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion¹)   | js      |
+| rsaies                       | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion)    | js      |
+| salsa20                      | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion)    | js      |
 | schnorr                      | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
 | scrypt                       | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
 | secp256k1                    | c (libsecp256k1²) | c (libsecp256k1²) | c (libsecp256k1²) | js      |
 | sha1                         | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
-| sha{256,384,512}             | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion¹)   | js      |
-| shake{128,256}               | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion¹)   | js      |
+| sha{256,384,512}             | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion)    | js      |
+| shake{128,256}               | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion)    | js      |
 | siphash                      | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
 | ssh                          | js                | js                | js                | js      |
 | whirlpool                    | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
