@@ -35,14 +35,14 @@ See the `./lib` directory for available modules and APIs.
 | chacha20                     | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion¹)   | js      |
 | cshake{128,256}              | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion¹)   | js      |
 | ctr-drbg                     | js                | js                | js                | js      |
-| dsa                          | c (libtorsion²)   | c (libtorsion²)   | c (libtorsion)    | js      |
+| dsa                          | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
 | eb2k                         | js                | js                | js                | js      |
 | ecies                        | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion¹)   | js      |
 | ed25519                      | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
 | ed448                        | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
 | gost94                       | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
-| hash160                      | c (libtorsion³)   | c (libtorsion³)   | c (libtorsion)    | js      |
-| hash256                      | c (libtorsion³)   | c (libtorsion³)   | c (libtorsion)    | js      |
+| hash160                      | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion¹)   | js      |
+| hash256                      | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion¹)   | js      |
 | hash-drbg                    | js                | js                | js                | js      |
 | hkdf                         | js                | js                | js                | js      |
 | hmac-drbg                    | js                | js                | js                | js      |
@@ -60,14 +60,14 @@ See the `./lib` directory for available modules and APIs.
 | random                       | c (openssl)       | c (openssl)       | c (openssl)       | js      |
 | rc4                          | js                | js                | js                | js      |
 | ripemd160                    | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
-| rsa                          | c (libtorsion²)   | c (libtorsion²)   | c (libtorsion)    | js      |
+| rsa                          | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
 | rsaies                       | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion¹)   | js      |
 | salsa20                      | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion¹)   | js      |
 | schnorr                      | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
 | scrypt                       | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
-| secp256k1                    | c (libsecp256k1⁴) | c (libsecp256k1⁴) | c (libsecp256k1⁴) | js      |
+| secp256k1                    | c (libsecp256k1²) | c (libsecp256k1²) | c (libsecp256k1²) | js      |
 | sha1                         | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
-| sha{256,384,512}             | c (libtorsion³)   | c (libtorsion³)   | c (libtorsion)    | js      |
+| sha{256,384,512}             | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion¹)   | js      |
 | shake{128,256}               | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion¹)   | js      |
 | siphash                      | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
 | ssh                          | js                | js                | js                | js      |
@@ -76,10 +76,9 @@ See the `./lib` directory for available modules and APIs.
 | x448                         | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
 
 ### Footnotes
-1. with assembly for x64
-2. with libgmp and openssl (only libgmp on electron)
-3. with openssl (except on electron)
-4. optionally with libtorsion
+
+1. with x86-64 assembly
+2. optionally with libtorsion
 
 ## Contribution and License Agreement
 
