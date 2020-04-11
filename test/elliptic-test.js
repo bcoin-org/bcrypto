@@ -4176,16 +4176,16 @@ describe('Elliptic', function() {
         const r = p.randomize(rng);
 
         assert(p.eqX(x));
-        assert(p.eqXToP(x));
+        assert(p.eqR(x));
         assert(r.eqX(x));
-        assert(r.eqXToP(x));
+        assert(r.eqR(x));
 
         x.iaddn(1);
 
         assert(!p.eqX(x));
-        assert(!p.eqXToP(x));
+        assert(!p.eqR(x));
         assert(!r.eqX(x));
-        assert(!r.eqXToP(x));
+        assert(!r.eqR(x));
       }
     });
 
@@ -4213,15 +4213,15 @@ describe('Elliptic', function() {
 
         assert(x.cmp(p.getX()) < 0);
 
-        assert(p.eqXToP(x));
-        assert(!p.eqXToP(x.subn(1)));
-        assert(!p.eqXToP(x.addn(1)));
+        assert(p.eqR(x));
+        assert(!p.eqR(x.subn(1)));
+        assert(!p.eqR(x.addn(1)));
 
         const r = p.randomize(rng);
 
-        assert(r.eqXToP(x));
-        assert(!r.eqXToP(x.subn(1)));
-        assert(!r.eqXToP(x.addn(1)));
+        assert(r.eqR(x));
+        assert(!r.eqR(x.subn(1)));
+        assert(!r.eqR(x.addn(1)));
       }
     });
 
