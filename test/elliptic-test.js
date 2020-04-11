@@ -606,6 +606,7 @@ describe('Elliptic', function() {
       const bn2254 = new extra.BN2254();
       const wei25519 = new extra.WEI25519();
       const ed1174 = new extra.ED1174();
+      const mont1174 = new extra.MONT1174();
       const ed41417 = new extra.ED41417();
       const curve383187 = new extra.CURVE383187();
       const m221 = new extra.M221();
@@ -638,6 +639,7 @@ describe('Elliptic', function() {
                            bn2254,
                            wei25519,
                            ed1174,
+                           mont1174,
                            ed41417,
                            curve383187,
                            m221,

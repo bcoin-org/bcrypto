@@ -376,7 +376,7 @@ class ED1174 extends EdwardsCurve {
       hash: 'SHA512',
       prefix: 'SigEd1174',
       context: false,
-      prime: null,
+      prime: 'p251',
       // 2^251 - 9 (= 3 mod 4)
       p: ['07ffffff ffffffff ffffffff ffffffff',
           'ffffffff ffffffff ffffffff fffffff7'],
@@ -423,6 +423,63 @@ class ED1174 extends EdwardsCurve {
            'ffffffff ffffffff ffffffff fffffff6'],
           ['00000000 00000000 00000000 00000000',
            '00000000 00000000 00000000 00000000']
+        ]
+      ]
+    });
+  }
+}
+
+/**
+ * MONT1174
+ * Isomorphic to Ed1174.
+ */
+
+class MONT1174 extends MontCurve {
+  constructor() {
+    super({
+      id: 'MONT1174',
+      ossl: null,
+      type: 'mont',
+      endian: 'le',
+      hash: 'SHA512',
+      prime: 'p251',
+      // 2^251 - 9 (= 3 mod 4)
+      p: ['07ffffff ffffffff ffffffff ffffffff',
+          'ffffffff ffffffff ffffffff fffffff7'],
+      // -2346 / -1175 mod p
+      a: ['00c1787b c0619b57 cd74203e bf4abaef',
+          '394ce8b0 0a75371f 27dee226 c801be35'],
+      b: '1',
+      n: ['01ffffff ffffffff ffffffff ffffffff',
+          'f77965c4 dfd30734 8944d45f d166c971'],
+      h: '4',
+      // Elligator 2
+      z: '-1',
+      g: [
+        ['025ce209 06ce32bf bcb056eb 1c23bc02',
+         '6203486a ba85a5a5 ff17e62d 1052d2e5'],
+        ['048dfca1 329feb9d bc9625dd aff063cc',
+         '30dfc71d 09fbefe9 1e1bafa2 42de55c5']
+      ],
+      torsion: [
+        [],
+        [
+          ['00000000 00000000 00000000 00000000',
+           '00000000 00000000 00000000 00000000'],
+          ['00000000 00000000 00000000 00000000',
+           '00000000 00000000 00000000 00000000']
+        ],
+        [
+          ['07ffffff ffffffff ffffffff ffffffff',
+           'ffffffff ffffffff ffffffff fffffff6'],
+          ['07a585fc 04fd08e6 a1bbe32d 1c08f706',
+           '90700417 ca6ab745 7d895319 44182025']
+        ],
+        [
+          ['07ffffff ffffffff ffffffff ffffffff',
+           'ffffffff ffffffff ffffffff fffffff6'],
+          ['005a7a03 fb02f719 5e441cd2 e3f708f9',
+           '6f8ffbe8 359548ba 8276ace6 bbe7dfd2']
         ]
       ]
     });
@@ -1468,6 +1525,7 @@ elliptic.register('BN2254', BN2254);
 elliptic.register('WEI25519', WEI25519);
 elliptic.register('TWIST448', TWIST448);
 elliptic.register('ED1174', ED1174);
+elliptic.register('MONT1174', MONT1174);
 elliptic.register('ED41417', ED41417);
 elliptic.register('CURVE383187', CURVE383187);
 elliptic.register('M221', M221);
@@ -1494,6 +1552,7 @@ module.exports = {
   WEI25519,
   TWIST448,
   ED1174,
+  MONT1174,
   ED41417,
   CURVE383187,
   M221,
