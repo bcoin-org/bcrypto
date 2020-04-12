@@ -28,11 +28,9 @@ describe('X509', function() {
       const crt2 = x509.Certificate.decode(raw1);
       const raw2 = crt2.encode();
 
-      clear(crt1);
-      clear(crt2);
-
       assert.deepStrictEqual(crt1, crt2);
       assert.bufferEqual(raw1, raw2);
+      assert.bufferEqual(raw1, block.data);
     });
   }
 });
