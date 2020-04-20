@@ -9,12 +9,6 @@ const pem = require('../lib/encoding/pem');
 const file = Path.resolve(__dirname, 'data', 'certs.pem');
 const data = fs.readFileSync(file, 'utf8');
 
-function clear(crt) {
-  crt.raw = null;
-  crt.tbsCertificate.raw = null;
-  crt.tbsCertificate.subjectPublicKeyInfo.raw = null;
-}
-
 describe('X509', function() {
   if (process.env.BMOCHA_VALGRIND)
     this.skip();
@@ -31,6 +25,18 @@ describe('X509', function() {
       assert.deepStrictEqual(crt1, crt2);
       assert.bufferEqual(raw1, raw2);
       assert.bufferEqual(raw1, block.data);
+    });
+
+    it(`should read JSON and write JSON (${i++})`, () => {
+      const crt1 = x509.Certificate.decode(block.data);
+      const json1 = crt1.getJSON();
+
+      const crt2 = x509.Certificate.fromJSON(json1);
+      const raw2 = crt2.encode();
+      const json2 = crt1.getJSON();
+
+      assert.deepStrictEqual(json1, json2);
+      assert.bufferEqual(raw2, block.data);
     });
   }
 });
