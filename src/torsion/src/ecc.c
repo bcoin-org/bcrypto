@@ -3697,7 +3697,7 @@ jge_naf_points_var(const wei_t *ec, jge_t *out,
     jge_add_var(ec, &out[i], &out[i - 1], &dbl);
 }
 
-TORSION_UNUSED static void
+static void
 jge_endo_beta(const wei_t *ec, jge_t *r, const jge_t *p) {
   const prime_field_t *fe = &ec->fe;
 
@@ -4068,16 +4068,11 @@ wei_jmul_endo(const wei_t *ec, jge_t *r, const wge_t *p, const sc_t k) {
   jge_t wnd1[WND_SIZE]; /* 3456 bytes */
   jge_t wnd2[WND_SIZE]; /* 3456 bytes */
   mp_size_t i, j, b1, b2;
-  wge_t p1, p2;
   jge_t t1, t2;
   sc_t k1, k2;
   int s1, s2;
 
   ASSERT(ec->endo == 1);
-
-  /* Split point. */
-  wge_set(ec, &p1, p);
-  wge_endo_beta(ec, &p2, &p1);
 
   /* Split scalar. */
   wei_endo_split(ec, k1, k2, k);
@@ -4086,28 +4081,30 @@ wei_jmul_endo(const wei_t *ec, jge_t *r, const wge_t *p, const sc_t k) {
   s1 = sc_minimize(sc, k1, k1);
   s2 = sc_minimize(sc, k2, k2);
 
-  /* Adjust point signs. */
-  wge_neg_cond(ec, &p1, &p1, s1);
-  wge_neg_cond(ec, &p2, &p2, s2);
-
 #ifdef TORSION_TEST
   ASSERT(sc_bitlen_var(sc, k1) <= sc->endo_bits);
   ASSERT(sc_bitlen_var(sc, k2) <= sc->endo_bits);
 #endif
 
-  /* Create windows. */
+  /* Create window. */
   jge_zero(ec, &wnd1[0]);
-  jge_zero(ec, &wnd2[0]);
-
-  wge_to_jge(ec, &wnd1[1], &p1);
-  wge_to_jge(ec, &wnd2[1], &p2);
+  wge_to_jge(ec, &wnd1[1], p);
 
   for (i = 2; i < WND_SIZE; i += 2) {
     jge_dbl(ec, &wnd1[i], &wnd1[i / 2]);
-    jge_dbl(ec, &wnd2[i], &wnd2[i / 2]);
+    jge_mixed_add(ec, &wnd1[i + 1], &wnd1[i], p);
+  }
 
-    jge_mixed_add(ec, &wnd1[i + 1], &wnd1[i], &p1);
-    jge_mixed_add(ec, &wnd2[i + 1], &wnd2[i], &p2);
+  /* Create beta window. */
+  jge_zero(ec, &wnd2[0]);
+
+  for (i = 1; i < WND_SIZE; i++)
+    jge_endo_beta(ec, &wnd2[i], &wnd1[i]);
+
+  /* Adjust signs. */
+  for (i = 1; i < WND_SIZE; i++) {
+    jge_neg_cond(ec, &wnd1[i], &wnd1[i], s1);
+    jge_neg_cond(ec, &wnd2[i], &wnd2[i], s2);
   }
 
   /* Multiply and add in constant time. */
