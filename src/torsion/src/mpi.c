@@ -220,9 +220,9 @@ enum mpz_div_round_mode { MP_DIV_FLOOR, MP_DIV_CEIL, MP_DIV_TRUNC };
   __x3 = (mp_limb_t)__uh * __vh;                                           \
                                                                            \
   __x1 += __x0 >> (MP_LIMB_BITS / 2); /* this can't give carry */          \
-  __x1 += __x2;                        /* but this indeed can */           \
+  __x1 += __x2;                       /* but this indeed can */            \
                                                                            \
-  if (__x1 < __x2)                     /* did we get it? */                \
+  if (__x1 < __x2)                    /* did we get it? */                 \
     __x3 += MP_HLIMB_BIT;             /* yes, add it in the proper pos. */ \
                                                                            \
   (w1) = __x3 + (__x1 >> (MP_LIMB_BITS / 2));                              \
@@ -1381,15 +1381,54 @@ mpn_sqr(mp_ptr rp, mp_srcptr up, mp_size_t n) {
 #endif
 }
 
+/*
+ * Montgomery Multiplication
+ *
+ * See: Efficient Software Implementations of Modular Exponentiation
+ *   Shay Gueron
+ *   Page 5, Section 3
+ *   https://eprint.iacr.org/2011/239.pdf
+ */
+
+static void
+mpn_div_qr(mp_ptr, mp_ptr, mp_size_t, mp_srcptr, mp_size_t);
+
 void
-mpn_mont(mp_ptr zp,
-         mp_srcptr xp,
-         mp_srcptr yp,
-         mp_srcptr mp,
-         mp_limb_t k,
-         mp_size_t n) {
+mpn_mont(mp_ptr kp, mp_ptr rp, mp_srcptr mp, mp_size_t n) {
+  /* Montgomery precomputation. */
+  /* 2 * n + 1 limbs are required at rp. */
+  mp_limb_t k, t;
+  mp_size_t i;
+
+  /* k = -m^-1 mod 2^MP_LIMB_BITS */
+  k = 2 - mp[0];
+  t = mp[0] - 1;
+
+  for (i = 1; i < MP_LIMB_BITS; i <<= 1) {
+    t *= t;
+    k *= (t + 1);
+  }
+
+  kp[0] = -k;
+
+  /* r = 2^(n * MP_LIMB_BITS * 2) mod m */
+  mpn_zero(rp, n * 2);
+
+  rp[n * 2] = 1;
+
+  mpn_div_qr(NULL, rp, n * 2 + 1, mp, n);
+}
+
+void
+mpn_montmul(mp_ptr zp,
+            mp_srcptr xp,
+            mp_srcptr yp,
+            mp_srcptr mp,
+            mp_limb_t k,
+            mp_size_t n) {
   /* Montgomery multiplication. */
-  /* Guarantees zn <= mn, but not necessarily z < m. */
+  /* 2 * n limbs are required at zp. */
+  /* No overlap allowed between src and dst. */
   mp_limb_t c2, c3, cx, cy;
   mp_limb_t c1 = 0;
   mp_size_t i;
@@ -1405,8 +1444,8 @@ mpn_mont(mp_ptr zp,
     c1 = (cx < c2) | (cy < c3);
   }
 
-  mpn_sub_n(zp, zp + n, mp, n);
-  mpn_cnd_select(c1 != 0, zp, zp + n, zp, n);
+  cy = mpn_sub_n(zp, zp + n, mp, n);
+  mpn_cnd_select((c1 != 0) | (cy == 0), zp, zp + n, zp, n);
 }
 
 /*
@@ -2459,7 +2498,7 @@ mpn_powm_sec(mp_ptr zp,
   mp_ptr wnd[1 << 4];
   mp_size_t yb = yn * MP_LIMB_BITS;
   mp_size_t start = (yb + MP_WND_WIDTH - 1) / MP_WND_WIDTH - 1;
-  mp_limb_t k, t, b, j, cy;
+  mp_limb_t k, b, j;
   mp_size_t i, un;
 
   if (mn == 0 || (mp[0] & 1) == 0)
@@ -2468,19 +2507,7 @@ mpn_powm_sec(mp_ptr zp,
   MPN_COPY_MOD(up, un, xp, xn, mp, mn, xs);
   mpn_zero(up + un, mn - un);
 
-  k = 2 - mp[0];
-  t = mp[0] - 1;
-
-  for (i = 1; i < MP_LIMB_BITS; i <<= 1) {
-    t *= t;
-    k *= (t + 1);
-  }
-
-  k = -k;
-
-  mpn_zero(rr, mn * 2);
-  rr[mn * 2] = 1;
-  mpn_div_qr(NULL, rr, mn * 2 + 1, mp, mn);
+  mpn_mont(&k, rr, mp, mn);
 
   one[0] = 1;
   mpn_zero(one + 1, mn - 1);
@@ -2488,11 +2515,11 @@ mpn_powm_sec(mp_ptr zp,
   for (i = 0; i < MP_WND_SIZE; i++)
     wnd[i] = &wnds[i * mn];
 
-  mpn_mont(wnd[0], one, rr, mp, k, mn);
-  mpn_mont(wnd[1], up, rr, mp, k, mn);
+  mpn_montmul(wnd[0], one, rr, mp, k, mn);
+  mpn_montmul(wnd[1], up, rr, mp, k, mn);
 
   for (i = 2; i < MP_WND_SIZE; i++)
-    mpn_mont(wnd[i], wnd[i - 1], wnd[1], mp, k, mn);
+    mpn_montmul(wnd[i], wnd[i - 1], wnd[1], mp, k, mn);
 
   mpn_copyi(z1, wnd[0], mn);
 
@@ -2507,23 +2534,22 @@ mpn_powm_sec(mp_ptr zp,
     } else {
       for (j = 0; j < MP_WND_WIDTH; j++) {
         if (j & 1)
-          mpn_mont(z1, z2, z2, mp, k, mn);
+          mpn_montmul(z1, z2, z2, mp, k, mn);
         else
-          mpn_mont(z2, z1, z1, mp, k, mn);
+          mpn_montmul(z2, z1, z1, mp, k, mn);
       }
 
 #if MP_WND_WIDTH % 2 == 0
       MP_PTR_SWAP(z1, z2);
 #endif
 
-      mpn_mont(z1, z2, tmp, mp, k, mn);
+      mpn_montmul(z1, z2, tmp, mp, k, mn);
     }
   }
 
-  mpn_mont(z2, z1, one, mp, k, mn);
+  mpn_montmul(z2, z1, one, mp, k, mn);
 
-  cy = mpn_sub_n(z1, z2, mp, mn);
-  mpn_cnd_select(cy == 0, zp, z2, z1, mn);
+  mpn_copyi(zp, z2, mn);
 }
 
 /*
@@ -2851,6 +2877,11 @@ mpn_out_str(FILE *stream, int base, mp_srcptr xp, mp_size_t xn) {
   }
 
   xn = mpn_normalized_size(xp, xn);
+
+  if (xn == 0) {
+    fputc('0', stream);
+    return 1;
+  }
 
   while (xn--) {
     i = MP_LIMB_BITS / 4;

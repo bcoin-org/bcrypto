@@ -75,6 +75,7 @@ extern "C" {
 #define mpn_mul_n __torsion_mpn_mul_n
 #define mpn_sqr __torsion_mpn_sqr
 #define mpn_mont __torsion_mpn_mont
+#define mpn_montmul __torsion_mpn_montmul
 #define mpn_quorem __torsion_mpn_quorem
 #define mpn_lshift __torsion_mpn_lshift
 #define mpn_rshift __torsion_mpn_rshift
@@ -306,8 +307,14 @@ mp_limb_t mpn_submul_1(mp_ptr, mp_srcptr, mp_size_t, mp_limb_t);
 mp_limb_t mpn_mul(mp_ptr, mp_srcptr, mp_size_t, mp_srcptr, mp_size_t);
 void mpn_mul_n(mp_ptr, mp_srcptr, mp_srcptr, mp_size_t);
 void mpn_sqr(mp_ptr, mp_srcptr, mp_size_t);
-void mpn_mont(mp_ptr, mp_srcptr, mp_srcptr,
-              mp_srcptr, mp_limb_t, mp_size_t);
+
+/*
+ * Montgomery Multiplication
+ */
+
+void mpn_mont(mp_ptr, mp_ptr, mp_srcptr, mp_size_t);
+void mpn_montmul(mp_ptr, mp_srcptr, mp_srcptr,
+                 mp_srcptr, mp_limb_t, mp_size_t);
 
 /*
  * Truncation Division

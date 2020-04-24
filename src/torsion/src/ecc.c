@@ -230,6 +230,8 @@ typedef struct _scalar_field_s {
   unsigned char raw[MAX_SCALAR_SIZE];
   mp_limb_t nh[MAX_REDUCE_LIMBS];
   mp_limb_t m[MAX_REDUCE_LIMBS];
+  mp_limb_t k;
+  mp_limb_t r2[MAX_SCALAR_LIMBS * 2 + 1];
   mp_size_t limbs;
   sc_invert_func *invert;
 } scalar_field_t;
@@ -239,6 +241,8 @@ typedef struct _scalar_def_s {
   const unsigned char n[MAX_FIELD_SIZE];
   sc_invert_func *invert;
 } scalar_def_t;
+
+static const sc_t sc_one = {1, 0};
 
 /*
  * Prime Field
@@ -382,7 +386,7 @@ typedef struct _wei_s {
   int small_gap;
   wge_t g;
   sc_t blind;
-  wge_t unblind;
+  jge_t unblind;
   wge_t wnd_fixed[FIXED_MAX_LENGTH]; /* 311.2kb */
   wge_t wnd_naf[NAF_SIZE_PRE]; /* 152kb */
   wge_t torsion[8];
@@ -915,7 +919,7 @@ sc_mul(const scalar_field_t *sc, sc_t r, const sc_t a, const sc_t b) {
   sc_reduce(sc, r, rp);
 }
 
-static void
+TORSION_UNUSED static void
 sc_sqr(const scalar_field_t *sc, sc_t r, const sc_t a) {
   mp_limb_t rp[MAX_REDUCE_LIMBS]; /* 160 bytes */
 
@@ -976,6 +980,30 @@ sc_mulshift(const scalar_field_t *sc, sc_t r,
 #endif
 }
 
+static void
+sc_montmul(const scalar_field_t *sc, sc_t r, const sc_t a, const sc_t b) {
+  mp_limb_t tmp[MAX_SCALAR_LIMBS * 2]; /* 144 bytes */
+
+  mpn_montmul(tmp, a, b, sc->n, sc->k, sc->limbs);
+
+  mpn_copyi(r, tmp, sc->limbs);
+}
+
+static void
+sc_montsqr(const scalar_field_t *sc, sc_t r, const sc_t a) {
+  sc_montmul(sc, r, a, a);
+}
+
+static void
+sc_mont(const scalar_field_t *sc, sc_t r, const sc_t a) {
+  sc_montmul(sc, r, a, sc->r2);
+}
+
+static void
+sc_normal(const scalar_field_t *sc, sc_t r, const sc_t a) {
+  sc_montmul(sc, r, a, sc_one);
+}
+
 static int
 sc_invert_var(const scalar_field_t *sc, sc_t r, const sc_t a) {
   mp_limb_t scratch[MPN_INVERT_ITCH(MAX_SCALAR_LIMBS)];
@@ -985,20 +1013,21 @@ sc_invert_var(const scalar_field_t *sc, sc_t r, const sc_t a) {
 static void
 sc_pow(const scalar_field_t *sc, sc_t r, const sc_t a, const mp_limb_t *e) {
   /* Used for inversion if not available otherwise. */
+  /* Note that our exponent is not secret. */
   mp_size_t start = WND_STEPS(sc->bits) - 1;
   sc_t wnd[WND_SIZE]; /* 1152 bytes */
   mp_size_t i, j;
   mp_limb_t b;
 
-  sc_set_word(sc, wnd[0], 1);
-  sc_set(sc, wnd[1], a);
+  sc_mont(sc, wnd[0], sc_one);
+  sc_mont(sc, wnd[1], a);
 
   for (i = 2; i < WND_SIZE; i += 2) {
-    sc_sqr(sc, wnd[i], wnd[i / 2]);
-    sc_mul(sc, wnd[i + 1], wnd[i], a);
+    sc_montsqr(sc, wnd[i], wnd[i / 2]);
+    sc_montmul(sc, wnd[i + 1], wnd[i], wnd[1]);
   }
 
-  sc_set_word(sc, r, 1);
+  sc_set(sc, r, wnd[0]);
 
   for (i = start; i >= 0; i--) {
     b = mpn_get_bits(e, sc->limbs, i * WND_WIDTH, WND_WIDTH);
@@ -1007,11 +1036,13 @@ sc_pow(const scalar_field_t *sc, sc_t r, const sc_t a, const mp_limb_t *e) {
       sc_set(sc, r, wnd[b]);
     } else {
       for (j = 0; j < WND_WIDTH; j++)
-        sc_sqr(sc, r, r);
+        sc_montsqr(sc, r, r);
 
-      sc_mul(sc, r, r, wnd[b]);
+      sc_montmul(sc, r, r, wnd[b]);
     }
   }
+
+  sc_normal(sc, r, r);
 }
 
 static int
@@ -1857,6 +1888,9 @@ scalar_field_init(scalar_field_t *sc, const scalar_def_t *def, int endian) {
     ASSERT(sc->m[sc->limbs + 3] == 0);
   }
 
+  /* Montgomery precomputation. */
+  mpn_mont(&sc->k, sc->r2, sc->n, sc->limbs);
+
   /* Optimized scalar inverse (optional). */
   sc->invert = def->invert;
 }
@@ -2011,18 +2045,20 @@ wge_validate(const wei_t *ec, const wge_t *p) {
 
 static int
 wge_set_x(const wei_t *ec, wge_t *r, const fe_t x, int sign) {
-  /* [GECC] Page 89, Section 3.2.2. */
   const prime_field_t *fe = &ec->fe;
   fe_t y;
   int ret;
 
-  /* y^2 = x^3 + a * x + b */
   wei_solve_y2(ec, y, x);
 
   ret = fe_sqrt(fe, y, y);
 
-  if (sign != -1)
+  if (sign != -1) {
     fe_set_odd(fe, y, y, sign);
+
+    if (ec->h > 1)
+      ret &= (fe_is_zero(fe, y) & (sign != 0)) ^ 1;
+  }
 
   fe_select(fe, r->x, x, fe->zero, ret ^ 1);
   fe_select(fe, r->y, y, fe->zero, ret ^ 1);
@@ -2175,13 +2211,11 @@ wge_select(const wei_t *ec,
            unsigned int flag) {
   const prime_field_t *fe = &ec->fe;
   int cond = (flag != 0);
-  int mask0 = cond - 1;
-  int mask1 = ~mask0;
 
   fe_select(fe, r->x, a->x, b->x, flag);
   fe_select(fe, r->y, a->y, b->y, flag);
 
-  r->inf = (a->inf & mask0) | (b->inf & mask1);
+  r->inf = (a->inf & (cond ^ 1)) | (b->inf & cond);
 }
 
 static void
@@ -2196,19 +2230,18 @@ wge_set(const wei_t *ec, wge_t *r, const wge_t *a) {
 TORSION_UNUSED static int
 wge_equal(const wei_t *ec, const wge_t *a, const wge_t *b) {
   const prime_field_t *fe = &ec->fe;
-  int both = a->inf & b->inf;
   int ret = 1;
 
-  /* P = O, Q = O */
-  ret &= (a->inf ^ b->inf) ^ 1;
+  /* P != O, Q != O */
+  ret &= (a->inf | b->inf) ^ 1;
 
   /* X1 = X2 */
-  ret &= fe_equal(fe, a->x, b->x) | both;
+  ret &= fe_equal(fe, a->x, b->x);
 
   /* Y1 = Y2 */
-  ret &= fe_equal(fe, a->y, b->y) | both;
+  ret &= fe_equal(fe, a->y, b->y);
 
-  return ret;
+  return ret | (a->inf & b->inf);
 }
 
 static int
@@ -2708,12 +2741,11 @@ jge_equal(const wei_t *ec, const jge_t *a, const jge_t *b) {
   const prime_field_t *fe = &ec->fe;
   int inf1 = jge_is_zero(ec, a);
   int inf2 = jge_is_zero(ec, b);
-  int both = inf1 & inf2;
   fe_t z1, z2, e1, e2;
   int ret = 1;
 
-  /* P = O, Q = O */
-  ret &= (inf1 ^ inf2) ^ 1;
+  /* P != O, Q != O */
+  ret &= (inf1 | inf2) ^ 1;
 
   /* X1 * Z2^2 == X2 * Z1^2 */
   fe_sqr(fe, z1, a->z);
@@ -2721,7 +2753,7 @@ jge_equal(const wei_t *ec, const jge_t *a, const jge_t *b) {
   fe_mul(fe, e1, a->x, z2);
   fe_mul(fe, e2, b->x, z1);
 
-  ret &= fe_equal(fe, e1, e2) | both;
+  ret &= fe_equal(fe, e1, e2);
 
   /* Y1 * Z2^3 == Y2 * Z1^3 */
   fe_mul(fe, z1, z1, a->z);
@@ -2729,9 +2761,9 @@ jge_equal(const wei_t *ec, const jge_t *a, const jge_t *b) {
   fe_mul(fe, e1, a->y, z2);
   fe_mul(fe, e2, b->y, z1);
 
-  ret &= fe_equal(fe, e1, e2) | both;
+  ret &= fe_equal(fe, e1, e2);
 
-  return ret;
+  return ret | (inf1 & inf2);
 }
 
 TORSION_UNUSED static int
@@ -3781,14 +3813,14 @@ wei_init(wei_t *ec, const wei_def_t *def) {
   ec->g.inf = 0;
 
   sc_zero(sc, ec->blind);
-  wge_zero(ec, &ec->unblind);
+  jge_zero(ec, &ec->unblind);
 
   wge_fixed_points_var(ec, ec->wnd_fixed, &ec->g);
   wge_naf_points_var(ec, ec->wnd_naf, &ec->g, NAF_WIDTH_PRE);
 
   for (i = 0; i < ec->h; i++) {
-    fe_import_be(fe, ec->torsion[i].x, def->torsion[i].x);
-    fe_import_be(fe, ec->torsion[i].y, def->torsion[i].y);
+    fe_import(fe, ec->torsion[i].x, def->torsion[i].x);
+    fe_import(fe, ec->torsion[i].y, def->torsion[i].y);
 
     ec->torsion[i].inf = def->torsion[i].inf;
   }
@@ -3862,10 +3894,10 @@ wei_mul_a(const wei_t *ec, fe_t r, const fe_t x) {
 static void
 wei_solve_y2(const wei_t *ec, fe_t r, const fe_t x) {
   /* [GECC] Page 89, Section 3.2.2. */
+  /* y^2 = x^3 + a * x + b */
   const prime_field_t *fe = &ec->fe;
   fe_t x3, ax;
 
-  /* y^2 = x^3 + a * x + b */
   fe_sqr(fe, x3, x);
   fe_mul(fe, x3, x3, x);
   wei_mul_a(ec, ax, x);
@@ -3875,11 +3907,9 @@ wei_solve_y2(const wei_t *ec, fe_t r, const fe_t x) {
 
 static int
 wei_validate_xy(const wei_t *ec, const fe_t x, const fe_t y) {
-  /* [GECC] Page 89, Section 3.2.2. */
   const prime_field_t *fe = &ec->fe;
   fe_t lhs, rhs;
 
-  /* y^2 = x^3 + a * x + b */
   fe_sqr(fe, lhs, y);
   wei_solve_y2(ec, rhs, x);
 
@@ -3985,7 +4015,7 @@ wei_jmul_g(const wei_t *ec, jge_t *r, const sc_t k) {
   sc_add(sc, k0, k, ec->blind);
 
   /* Multiply in constant time. */
-  wge_to_jge(ec, r, &ec->unblind);
+  jge_set(ec, r, &ec->unblind);
   wge_zero(ec, &t);
 
   for (i = 0; i < FIXED_STEPS(sc->bits); i++) {
@@ -4486,20 +4516,20 @@ static void
 wei_randomize(wei_t *ec, const unsigned char *entropy) {
   const scalar_field_t *sc = &ec->sc;
   sc_t blind;
-  wge_t unblind;
+  jge_t unblind;
   drbg_t rng;
 
   drbg_init(&rng, HASH_SHA256, entropy, ENTROPY_SIZE);
 
   sc_random(sc, blind, &rng);
 
-  wei_mul_g(ec, &unblind, blind);
+  wei_jmul_g(ec, &unblind, blind);
 
   sc_neg(sc, ec->blind, blind);
-  wge_set(ec, &ec->unblind, &unblind);
+  jge_set(ec, &ec->unblind, &unblind);
 
   sc_cleanse(sc, blind);
-  wge_cleanse(ec, &unblind);
+  jge_cleanse(ec, &unblind);
   cleanse(&rng, sizeof(rng));
 }
 
@@ -5065,8 +5095,6 @@ mge_validate(const mont_t *ec, const mge_t *p) {
 
 static int
 mge_set_x(const mont_t *ec, mge_t *r, const fe_t x, int sign) {
-  /* [MONT3] Page 3, Section 2. */
-  /* B * y^2 = x^3 + A * x^2 + x */
   const prime_field_t *fe = &ec->fe;
   fe_t y;
   int ret;
@@ -5075,8 +5103,10 @@ mge_set_x(const mont_t *ec, mge_t *r, const fe_t x, int sign) {
 
   ret = fe_sqrt(fe, y, y);
 
-  if (sign != -1)
+  if (sign != -1) {
     fe_set_odd(fe, y, y, sign);
+    ret &= (fe_is_zero(fe, y) & (sign != 0)) ^ 1;
+  }
 
   fe_select(fe, r->x, x, fe->zero, ret ^ 1);
   fe_select(fe, r->y, y, fe->zero, ret ^ 1);
@@ -5143,19 +5173,18 @@ mge_set(const mont_t *ec, mge_t *r, const mge_t *a) {
 TORSION_UNUSED static int
 mge_equal(const mont_t *ec, const mge_t *a, const mge_t *b) {
   const prime_field_t *fe = &ec->fe;
-  int both = a->inf & b->inf;
   int ret = 1;
 
-  /* P = O, Q = O */
-  ret &= (a->inf ^ b->inf) ^ 1;
+  /* P != O, Q != O */
+  ret &= (a->inf | b->inf) ^ 1;
 
   /* X1 = X2 */
-  ret &= fe_equal(fe, a->x, b->x) | both;
+  ret &= fe_equal(fe, a->x, b->x);
 
   /* Y1 = Y2 */
-  ret &= fe_equal(fe, a->y, b->y) | both;
+  ret &= fe_equal(fe, a->y, b->y);
 
-  return ret;
+  return ret | (a->inf & b->inf);
 }
 
 static int
@@ -5461,20 +5490,19 @@ pge_equal(const mont_t *ec, const pge_t *a, const pge_t *b) {
   const prime_field_t *fe = &ec->fe;
   int inf1 = pge_is_zero(ec, a);
   int inf2 = pge_is_zero(ec, b);
-  int both = inf1 & inf2;
   fe_t e1, e2;
   int ret = 1;
 
-  /* P = O, Q = O */
-  ret &= (inf1 ^ inf2) ^ 1;
+  /* P != O, Q != O */
+  ret &= (inf1 | inf2) ^ 1;
 
   /* X1 * Z2 == X2 * Z1 */
   fe_mul(fe, e1, a->x, b->z);
   fe_mul(fe, e2, b->x, a->z);
 
-  ret &= fe_equal(fe, e1, e2) | both;
+  ret &= fe_equal(fe, e1, e2);
 
-  return ret;
+  return ret | (inf1 & inf2);
 }
 
 static void
@@ -5679,10 +5707,10 @@ mont_init(mont_t *ec, const mont_def_t *def) {
   fe_add(fe, ec->a24, ec->a, fe->two);
   fe_mul(fe, ec->a24, ec->a24, ec->i4);
 
-  /* a0 = a / b */
+  /* a' = a / b */
   fe_mul(fe, ec->a0, ec->a, ec->bi);
 
-  /* b0 = 1 / b^2 */
+  /* b' = 1 / b^2 */
   fe_sqr(fe, ec->b0, ec->bi);
 
   /* i16 = 1 / 16 (mod n) */
@@ -5790,6 +5818,7 @@ mont_mul_a24(const mont_t *ec, fe_t r, const fe_t a) {
 static void
 mont_solve_y2(const mont_t *ec, fe_t r, const fe_t x) {
   /* [MONT3] Page 3, Section 2. */
+  /* https://hyperelliptic.org/EFD/g1p/auto-montgom.html */
   /* B * y^2 = x^3 + A * x^2 + x */
   const prime_field_t *fe = &ec->fe;
   fe_t by2, x2, x3;
@@ -5804,8 +5833,6 @@ mont_solve_y2(const mont_t *ec, fe_t r, const fe_t x) {
 
 static int
 mont_validate_xy(const mont_t *ec, const fe_t x, const fe_t y) {
-  /* [MONT3] Page 3, Section 2. */
-  /* y^2 = (x^3 + A * x^2 + x) / B */
   const prime_field_t *fe = &ec->fe;
   fe_t lhs, rhs;
 
@@ -5817,18 +5844,10 @@ mont_validate_xy(const mont_t *ec, const fe_t x, const fe_t y) {
 
 static int
 mont_validate_x(const mont_t *ec, const fe_t x) {
-  /* [MONT3] Page 3, Section 2. */
-  /* https://hyperelliptic.org/EFD/g1p/auto-montgom.html */
   const prime_field_t *fe = &ec->fe;
-  fe_t x2, x3, ax2, y2;
+  fe_t y2;
 
-  /* B * y^2 = x^3 + A * x^2 + x */
-  fe_sqr(fe, x2, x);
-  fe_mul(fe, x3, x2, x);
-  fe_mul(fe, ax2, ec->a, x2);
-  fe_add(fe, y2, x3, ax2);
-  fe_add(fe, y2, y2, x);
-  mont_div_b(ec, y2, y2);
+  mont_solve_y2(ec, y2, x);
 
   return fe_is_square(fe, y2);
 }
@@ -6769,10 +6788,10 @@ edwards_init_isomorphism(edwards_t *ec, const edwards_def_t *def) {
   fe_mul(fe, ec->B, u, v);
   ASSERT(fe_invert_var(fe, ec->Bi, ec->B));
 
-  /* A0 = A / B */
+  /* A' = A / B */
   fe_mul(fe, ec->A0, ec->A, ec->Bi);
 
-  /* B0 = 1 / B^2 */
+  /* B' = 1 / B^2 */
   fe_sqr(fe, ec->B0, ec->Bi);
 }
 
@@ -8629,7 +8648,7 @@ void
 ecdsa_context_destroy(wei_t *ec) {
   if (ec != NULL) {
     sc_cleanse(&ec->sc, ec->blind);
-    wge_cleanse(ec, &ec->unblind);
+    jge_cleanse(ec, &ec->unblind);
     torsion_free(ec);
   }
 }
