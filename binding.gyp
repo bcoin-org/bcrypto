@@ -9,6 +9,7 @@
       "./src/torsion/src/aead.c",
       "./src/torsion/src/asn1.c",
       "./src/torsion/src/chacha20.c",
+      "./src/torsion/src/cipher.c",
       "./src/torsion/src/drbg.c",
       "./src/torsion/src/dsa.c",
       "./src/torsion/src/ecc.c",

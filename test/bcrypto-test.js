@@ -58,7 +58,7 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.Hash160.native, 0);
         assert.strictEqual(bcrypto.Hash256.native, 0);
         assert.strictEqual(bcrypto.HashDRBG.native, 0);
-        assert.strictEqual(bcrypto.HKDF.native, 0);
+        assert.strictEqual(bcrypto.hkdf.native, 0);
         assert.strictEqual(bcrypto.HmacDRBG.native, 0);
         assert.strictEqual(bcrypto.Keccak.native, 0);
         assert.strictEqual(bcrypto.Keccak224.native, 0);
@@ -119,7 +119,7 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.native, 2);
         assert.strictEqual(bcrypto.AEAD.native, 2);
         assert.strictEqual(bcrypto.aes.native, 1);
-        assert.strictEqual(bcrypto.bcrypt.native, 0);
+        assert.strictEqual(bcrypto.bcrypt.native, 2);
         assert.strictEqual(bcrypto.BLAKE2b.native, 2);
         assert.strictEqual(bcrypto.BLAKE2b160.native, 2);
         assert.strictEqual(bcrypto.BLAKE2b256.native, 2);
@@ -141,7 +141,7 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.CtrDRBG.native, 0);
         assert.strictEqual(bcrypto.dsa.native, NODE_MAJOR >= 10 ? 2 : 1);
         assert.strictEqual(bcrypto.dsaies.native, undefined);
-        assert.strictEqual(bcrypto.eb2k.native, 0);
+        assert.strictEqual(bcrypto.eb2k.native, 2);
         assert.strictEqual(bcrypto.ecies.native, undefined);
         assert.strictEqual(bcrypto.ed25519.native, 2);
         assert.strictEqual(bcrypto.ed448.native, 2);
@@ -153,7 +153,7 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.Hash160.native, 2);
         assert.strictEqual(bcrypto.Hash256.native, 2);
         assert.strictEqual(bcrypto.HashDRBG.native, 0);
-        assert.strictEqual(bcrypto.HKDF.native, 0);
+        assert.strictEqual(bcrypto.hkdf.native, 2);
         assert.strictEqual(bcrypto.HmacDRBG.native, 0);
         assert.strictEqual(bcrypto.Keccak.native, 2);
         assert.strictEqual(bcrypto.Keccak224.native, 2);

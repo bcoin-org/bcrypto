@@ -648,6 +648,213 @@ bcrypto_base58_test(napi_env env, napi_callback_info info) {
 }
 
 /*
+ * Bcrypt
+ */
+
+static napi_value
+bcrypto_bcrypt_hash192(napi_env env, napi_callback_info info) {
+  napi_value argv[3];
+  size_t argc = 3;
+  uint8_t out[24];
+  uint32_t rounds;
+  const uint8_t *pass, *salt;
+  size_t pass_len, salt_len;
+  napi_value result;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 3);
+  CHECK(napi_get_buffer_info(env, argv[0], (void **)&pass,
+                             &pass_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], (void **)&salt,
+                             &salt_len) == napi_ok);
+  CHECK(napi_get_value_uint32(env, argv[2], &rounds) == napi_ok);
+
+  JS_ASSERT(rounds >= 4 && rounds <= 31, JS_ERR_DERIVE);
+
+  bcrypt_hash192(out, pass, pass_len, salt, salt_len, rounds);
+
+  CHECK(napi_create_buffer_copy(env, 24, out, NULL, &result) == napi_ok);
+
+  return result;
+}
+
+static napi_value
+bcrypto_bcrypt_hash256(napi_env env, napi_callback_info info) {
+  napi_value argv[3];
+  size_t argc = 3;
+  uint8_t out[32];
+  uint32_t rounds;
+  const uint8_t *pass, *salt;
+  size_t pass_len, salt_len;
+  napi_value result;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 3);
+  CHECK(napi_get_buffer_info(env, argv[0], (void **)&pass,
+                             &pass_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], (void **)&salt,
+                             &salt_len) == napi_ok);
+  CHECK(napi_get_value_uint32(env, argv[2], &rounds) == napi_ok);
+
+  JS_ASSERT(rounds >= 4 && rounds <= 31, JS_ERR_DERIVE);
+
+  bcrypt_hash256(out, pass, pass_len, salt, salt_len, rounds);
+
+  CHECK(napi_create_buffer_copy(env, 32, out, NULL, &result) == napi_ok);
+
+  return result;
+}
+
+static napi_value
+bcrypto_bcrypt_pbkdf(napi_env env, napi_callback_info info) {
+  napi_value argv[4];
+  size_t argc = 4;
+  uint8_t *out;
+  uint32_t rounds, out_len;
+  const uint8_t *pass, *salt;
+  size_t pass_len, salt_len;
+  napi_value result;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 4);
+  CHECK(napi_get_buffer_info(env, argv[0], (void **)&pass,
+                             &pass_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], (void **)&salt,
+                             &salt_len) == napi_ok);
+  CHECK(napi_get_value_uint32(env, argv[2], &rounds) == napi_ok);
+  CHECK(napi_get_value_uint32(env, argv[3], &out_len) == napi_ok);
+
+  out = (uint8_t *)torsion_malloc_unsafe(out_len);
+
+  if (out == NULL && out_len != 0)
+    goto fail;
+
+  if (!bcrypt_pbkdf(out, pass, pass_len, salt, salt_len, rounds, out_len))
+    goto fail;
+
+  CHECK(create_external_buffer(env, out_len, out, &result) == napi_ok);
+
+  return result;
+fail:
+  torsion_free(out);
+  JS_THROW(JS_ERR_DERIVE);
+  return NULL;
+}
+
+static napi_value
+bcrypto_bcrypt_derive(napi_env env, napi_callback_info info) {
+  napi_value argv[4];
+  size_t argc = 4;
+  uint8_t out[31];
+  uint32_t rounds, minor;
+  const uint8_t *pass, *salt;
+  size_t pass_len, salt_len;
+  napi_value result;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 4);
+  CHECK(napi_get_buffer_info(env, argv[0], (void **)&pass,
+                             &pass_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], (void **)&salt,
+                             &salt_len) == napi_ok);
+  CHECK(napi_get_value_uint32(env, argv[2], &rounds) == napi_ok);
+  CHECK(napi_get_value_uint32(env, argv[3], &minor) == napi_ok);
+
+  JS_ASSERT(bcrypt_derive(out, pass, pass_len, salt, salt_len, rounds, minor),
+            JS_ERR_DERIVE);
+
+  CHECK(napi_create_buffer_copy(env, 31, out, NULL, &result) == napi_ok);
+
+  return result;
+}
+
+static napi_value
+bcrypto_bcrypt_generate(napi_env env, napi_callback_info info) {
+  napi_value argv[4];
+  size_t argc = 4;
+  char out[62];
+  uint32_t rounds, minor;
+  const uint8_t *pass, *salt;
+  size_t pass_len, salt_len;
+  napi_value result;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 4);
+  CHECK(napi_get_buffer_info(env, argv[0], (void **)&pass,
+                             &pass_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], (void **)&salt,
+                             &salt_len) == napi_ok);
+  CHECK(napi_get_value_uint32(env, argv[2], &rounds) == napi_ok);
+  CHECK(napi_get_value_uint32(env, argv[3], &minor) == napi_ok);
+
+  JS_ASSERT(bcrypt_generate(out, pass, pass_len, salt, salt_len, rounds, minor),
+            JS_ERR_DERIVE);
+
+  CHECK(napi_create_string_utf8(env, out, NAPI_AUTO_LENGTH,
+                                &result) == napi_ok);
+
+  return result;
+}
+
+static napi_value
+bcrypto_bcrypt_generate_with_salt64(napi_env env, napi_callback_info info) {
+  napi_value argv[4];
+  size_t argc = 4;
+  char out[62];
+  uint32_t rounds, minor;
+  const uint8_t *pass;
+  char salt[23 + 1];
+  size_t pass_len, salt_len;
+  napi_value result;
+  int ok;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 4);
+  CHECK(napi_get_buffer_info(env, argv[0], (void **)&pass,
+                             &pass_len) == napi_ok);
+  CHECK(napi_get_value_string_utf8(env, argv[1],
+                                   salt, sizeof(salt), &salt_len) == napi_ok);
+  CHECK(napi_get_value_uint32(env, argv[2], &rounds) == napi_ok);
+  CHECK(napi_get_value_uint32(env, argv[3], &minor) == napi_ok);
+
+  JS_ASSERT(salt_len != sizeof(salt) - 1, JS_ERR_DERIVE);
+
+  ok = bcrypt_generate_with_salt64(out, pass, pass_len, salt, rounds, minor);
+
+  JS_ASSERT(ok, JS_ERR_DERIVE);
+
+  CHECK(napi_create_string_utf8(env, out, NAPI_AUTO_LENGTH,
+                                &result) == napi_ok);
+
+  return result;
+}
+
+static napi_value
+bcrypto_bcrypt_verify(napi_env env, napi_callback_info info) {
+  napi_value argv[2];
+  size_t argc = 2;
+  const uint8_t *pass;
+  char record[62 + 1];
+  size_t pass_len, record_len;
+  napi_value result;
+  int ok;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 2);
+  CHECK(napi_get_buffer_info(env, argv[0], (void **)&pass,
+                             &pass_len) == napi_ok);
+  CHECK(napi_get_value_string_utf8(env, argv[1], record, sizeof(record),
+                                   &record_len) == napi_ok);
+
+  ok = record_len != sizeof(record) - 1
+    && bcrypt_verify(pass, pass_len, record);
+
+  CHECK(napi_get_boolean(env, ok, &result) == napi_ok);
+
+  return result;
+}
+
+/*
  * Bech32
  */
 
@@ -2338,6 +2545,59 @@ bcrypto_dsa_derive(napi_env env, napi_callback_info info) {
   CHECK(create_external_buffer(env, out_len, out, &result) == napi_ok);
 
   return result;
+}
+
+/*
+ * EB2K
+ */
+
+static napi_value
+bcrypto_eb2k_derive(napi_env env, napi_callback_info info) {
+  napi_value argv[5];
+  size_t argc = 5;
+  uint8_t *key, *iv;
+  uint32_t type, key_len, iv_len;
+  const uint8_t *pass, *salt;
+  size_t pass_len, salt_len;
+  napi_value keyval, ivval, result;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 5);
+  CHECK(napi_get_value_uint32(env, argv[0], &type) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pass,
+                             &pass_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], (void **)&salt,
+                             &salt_len) == napi_ok);
+  CHECK(napi_get_value_uint32(env, argv[3], &key_len) == napi_ok);
+  CHECK(napi_get_value_uint32(env, argv[4], &iv_len) == napi_ok);
+
+  key = (uint8_t *)torsion_malloc_unsafe(key_len);
+  iv = (uint8_t *)torsion_malloc_unsafe(iv_len);
+
+  if (key == NULL && key_len != 0)
+    goto fail;
+
+  if (iv == NULL && iv_len != 0)
+    goto fail;
+
+  if (!eb2k_derive(key, iv, type, pass, pass_len,
+                   salt, salt_len, key_len, iv_len)) {
+    goto fail;
+  }
+
+  CHECK(create_external_buffer(env, key_len, key, &keyval) == napi_ok);
+  CHECK(create_external_buffer(env, iv_len, iv, &ivval) == napi_ok);
+
+  CHECK(napi_create_array_with_length(env, 2, &result) == napi_ok);
+  CHECK(napi_set_element(env, result, 0, keyval) == napi_ok);
+  CHECK(napi_set_element(env, result, 1, ivval) == napi_ok);
+
+  return result;
+fail:
+  torsion_free(key);
+  torsion_free(iv);
+  JS_THROW(JS_ERR_DERIVE);
+  return NULL;
 }
 
 /*
@@ -5733,6 +5993,77 @@ bcrypto_hash_multi(napi_env env, napi_callback_info info) {
 }
 
 /*
+ * HKDF
+ */
+
+static napi_value
+bcrypto_hkdf_extract(napi_env env, napi_callback_info info) {
+  napi_value argv[3];
+  size_t argc = 3;
+  uint8_t out[HASH_MAX_OUTPUT_SIZE];
+  uint32_t type, out_len;
+  const uint8_t *ikm, *salt;
+  size_t ikm_len, salt_len;
+  napi_value result;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 3);
+  CHECK(napi_get_value_uint32(env, argv[0], &type) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], (void **)&ikm,
+                             &ikm_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], (void **)&salt,
+                             &salt_len) == napi_ok);
+
+  JS_ASSERT(hkdf_extract(out, type, ikm, ikm_len, salt, salt_len),
+            JS_ERR_DERIVE);
+
+  out_len = hash_output_size(type);
+
+  CHECK(napi_create_buffer_copy(env, out_len, out, NULL, &result) == napi_ok);
+
+  return result;
+}
+
+static napi_value
+bcrypto_hkdf_expand(napi_env env, napi_callback_info info) {
+  napi_value argv[4];
+  size_t argc = 4;
+  uint8_t *out;
+  uint32_t type, out_len;
+  const uint8_t *prk, *info_;
+  size_t prk_len, info_len;
+  napi_value result;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 4);
+  CHECK(napi_get_value_uint32(env, argv[0], &type) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], (void **)&prk,
+                             &prk_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], (void **)&info_,
+                             &info_len) == napi_ok);
+  CHECK(napi_get_value_uint32(env, argv[3], &out_len) == napi_ok);
+
+  JS_ASSERT(hash_has_backend(type), JS_ERR_DERIVE);
+  JS_ASSERT(prk_len == hash_output_size(type), JS_ERR_DERIVE);
+
+  out = (uint8_t *)torsion_malloc_unsafe(out_len);
+
+  if (out == NULL && out_len != 0)
+    goto fail;
+
+  if (!hkdf_expand(out, type, prk, info_, info_len, out_len))
+    goto fail;
+
+  CHECK(create_external_buffer(env, out_len, out, &result) == napi_ok);
+
+  return result;
+fail:
+  torsion_free(out);
+  JS_THROW(JS_ERR_DERIVE);
+  return NULL;
+}
+
+/*
  * HMAC
  */
 
@@ -6152,17 +6483,23 @@ bcrypto_pbkdf2_derive(napi_env env, napi_callback_info info) {
   CHECK(napi_get_value_uint32(env, argv[3], &iter) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[4], &out_len) == napi_ok);
 
-  out = (uint8_t *)torsion_alloc(out_len);
+  out = (uint8_t *)torsion_malloc_unsafe(out_len);
+
+  if (out == NULL && out_len != 0)
+    goto fail;
 
   if (!pbkdf2_derive(out, type, pass, pass_len,
                      salt, salt_len, iter, out_len)) {
-    torsion_free(out);
-    JS_THROW(JS_ERR_DERIVE);
+    goto fail;
   }
 
   CHECK(create_external_buffer(env, out_len, out, &result) == napi_ok);
 
   return result;
+fail:
+  torsion_free(out);
+  JS_THROW(JS_ERR_DERIVE);
+  return NULL;
 }
 
 typedef struct bcrypto_pbkdf2_worker_s {
@@ -6224,6 +6561,7 @@ bcrypto_pbkdf2_derive_async(napi_env env, napi_callback_info info) {
     (bcrypto_pbkdf2_worker_t *)torsion_alloc(sizeof(bcrypto_pbkdf2_worker_t));
   napi_value argv[5];
   size_t argc = 5;
+  uint8_t *out;
   uint32_t type, iter, out_len;
   const uint8_t *pass, *salt;
   size_t pass_len, salt_len;
@@ -6239,13 +6577,20 @@ bcrypto_pbkdf2_derive_async(napi_env env, napi_callback_info info) {
   CHECK(napi_get_value_uint32(env, argv[3], &iter) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[4], &out_len) == napi_ok);
 
+  out = (uint8_t *)torsion_malloc_unsafe(out_len);
+
+  if (out == NULL && out_len != 0) {
+    torsion_free(worker);
+    JS_THROW(JS_ERR_DERIVE);
+  }
+
   worker->type = type;
   worker->pass = (uint8_t *)torsion_alloc(pass_len);
   worker->pass_len = pass_len;
   worker->salt = (uint8_t *)torsion_alloc(salt_len);
   worker->salt_len = salt_len;
   worker->iter = iter;
-  worker->out = (uint8_t *)torsion_alloc(out_len);
+  worker->out = out;
   worker->out_len = out_len;
   worker->error = NULL;
 
@@ -6268,6 +6613,121 @@ bcrypto_pbkdf2_derive_async(napi_env env, napi_callback_info info) {
   CHECK(napi_queue_async_work(env, worker->work) == napi_ok);
 
   return result;
+}
+
+/*
+ * PGPDF
+ */
+
+static napi_value
+bcrypto_pgpdf_derive_simple(napi_env env, napi_callback_info info) {
+  napi_value argv[3];
+  size_t argc = 3;
+  uint8_t *out;
+  uint32_t type, out_len;
+  const uint8_t *pass;
+  size_t pass_len;
+  napi_value result;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 3);
+  CHECK(napi_get_value_uint32(env, argv[0], &type) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pass,
+                             &pass_len) == napi_ok);
+  CHECK(napi_get_value_uint32(env, argv[2], &out_len) == napi_ok);
+
+  out = (uint8_t *)torsion_malloc_unsafe(out_len);
+
+  if (out == NULL && out_len != 0)
+    goto fail;
+
+  if (!pgpdf_derive_simple(out, type, pass, pass_len, out_len))
+    goto fail;
+
+  CHECK(create_external_buffer(env, out_len, out, &result) == napi_ok);
+
+  return result;
+fail:
+  torsion_free(out);
+  JS_THROW(JS_ERR_DERIVE);
+  return NULL;
+}
+
+static napi_value
+bcrypto_pgpdf_derive_salted(napi_env env, napi_callback_info info) {
+  napi_value argv[4];
+  size_t argc = 4;
+  uint8_t *out;
+  uint32_t type, out_len;
+  const uint8_t *pass, *salt;
+  size_t pass_len, salt_len;
+  napi_value result;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 4);
+  CHECK(napi_get_value_uint32(env, argv[0], &type) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pass,
+                             &pass_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], (void **)&salt,
+                             &salt_len) == napi_ok);
+  CHECK(napi_get_value_uint32(env, argv[3], &out_len) == napi_ok);
+
+  out = (uint8_t *)torsion_malloc_unsafe(out_len);
+
+  if (out == NULL && out_len != 0)
+    goto fail;
+
+  if (!pgpdf_derive_salted(out, type, pass, pass_len,
+                           salt, salt_len, out_len)) {
+    goto fail;
+  }
+
+  CHECK(create_external_buffer(env, out_len, out, &result) == napi_ok);
+
+  return result;
+fail:
+  torsion_free(out);
+  JS_THROW(JS_ERR_DERIVE);
+  return NULL;
+}
+
+static napi_value
+bcrypto_pgpdf_derive_iterated(napi_env env, napi_callback_info info) {
+  napi_value argv[5];
+  size_t argc = 5;
+  uint8_t *out;
+  uint32_t type, count, out_len;
+  const uint8_t *pass, *salt;
+  size_t pass_len, salt_len;
+  napi_value result;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 5);
+  CHECK(napi_get_value_uint32(env, argv[0], &type) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pass,
+                             &pass_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], (void **)&salt,
+                             &salt_len) == napi_ok);
+  CHECK(napi_get_value_uint32(env, argv[3], &count) == napi_ok);
+  CHECK(napi_get_value_uint32(env, argv[4], &out_len) == napi_ok);
+
+  out = (uint8_t *)torsion_malloc_unsafe(out_len);
+
+  if (out == NULL && out_len != 0)
+    goto fail;
+
+  if (!pgpdf_derive_iterated(out, type, pass, pass_len,
+                             salt, salt_len, count, out_len)) {
+    goto fail;
+  }
+
+  CHECK(create_external_buffer(env, out_len, out, &result) == napi_ok);
+
+  return result;
+fail:
+  torsion_free(out);
+  JS_THROW(JS_ERR_DERIVE);
+  return NULL;
 }
 
 /*
@@ -8185,17 +8645,23 @@ bcrypto_scrypt_derive(napi_env env, napi_callback_info info) {
   CHECK(napi_get_value_uint32(env, argv[4], &p) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[5], &out_len) == napi_ok);
 
-  out = (uint8_t *)torsion_alloc(out_len);
+  out = (uint8_t *)torsion_malloc_unsafe(out_len);
+
+  if (out == NULL && out_len != 0)
+    goto fail;
 
   if (!scrypt_derive(out, pass, pass_len,
                      salt, salt_len, N, r, p, out_len)) {
-    torsion_free(out);
-    JS_THROW(JS_ERR_DERIVE);
+    goto fail;
   }
 
   CHECK(create_external_buffer(env, out_len, out, &result) == napi_ok);
 
   return result;
+fail:
+  torsion_free(out);
+  JS_THROW(JS_ERR_DERIVE);
+  return NULL;
 }
 
 typedef struct bcrypto_scrypt_worker_s {
@@ -8258,6 +8724,7 @@ bcrypto_scrypt_derive_async(napi_env env, napi_callback_info info) {
     (bcrypto_scrypt_worker_t *)torsion_alloc(sizeof(bcrypto_scrypt_worker_t));
   napi_value argv[6];
   size_t argc = 6;
+  uint8_t *out;
   uint32_t out_len;
   const uint8_t *pass, *salt;
   size_t pass_len, salt_len;
@@ -8276,6 +8743,13 @@ bcrypto_scrypt_derive_async(napi_env env, napi_callback_info info) {
   CHECK(napi_get_value_uint32(env, argv[4], &p) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[5], &out_len) == napi_ok);
 
+  out = (uint8_t *)torsion_malloc_unsafe(out_len);
+
+  if (out == NULL && out_len != 0) {
+    torsion_free(worker);
+    JS_THROW(JS_ERR_DERIVE);
+  }
+
   worker->pass = (uint8_t *)torsion_alloc(pass_len);
   worker->pass_len = pass_len;
   worker->salt = (uint8_t *)torsion_alloc(salt_len);
@@ -8283,7 +8757,7 @@ bcrypto_scrypt_derive_async(napi_env env, napi_callback_info info) {
   worker->N = N;
   worker->r = r;
   worker->p = p;
-  worker->out = (uint8_t *)torsion_alloc(out_len);
+  worker->out = out;
   worker->out_len = out_len;
   worker->error = NULL;
 
@@ -10749,6 +11223,15 @@ bcrypto_init(napi_env env, napi_value exports) {
     { "base58_decode", bcrypto_base58_decode },
     { "base58_test", bcrypto_base58_test },
 
+    /* Bcrypt */
+    { "bcrypt_hash192", bcrypto_bcrypt_hash192 },
+    { "bcrypt_hash256", bcrypto_bcrypt_hash256 },
+    { "bcrypt_pbkdf", bcrypto_bcrypt_pbkdf },
+    { "bcrypt_derive", bcrypto_bcrypt_derive },
+    { "bcrypt_generate", bcrypto_bcrypt_generate },
+    { "bcrypt_generate_with_salt64", bcrypto_bcrypt_generate_with_salt64 },
+    { "bcrypt_verify", bcrypto_bcrypt_verify },
+
     /* Bech32 */
     { "bech32_serialize", bcrypto_bech32_serialize },
     { "bech32_deserialize", bcrypto_bech32_deserialize },
@@ -10820,6 +11303,9 @@ bcrypto_init(napi_env env, napi_value exports) {
     { "dsa_verify", bcrypto_dsa_verify },
     { "dsa_verify_der", bcrypto_dsa_verify_der },
     { "dsa_derive", bcrypto_dsa_derive },
+
+    /* EB2K */
+    { "eb2k_derive", bcrypto_eb2k_derive },
 
     /* ECDH */
     { "ecdh_create", bcrypto_ecdh_create },
@@ -10944,6 +11430,10 @@ bcrypto_init(napi_env env, napi_value exports) {
     { "hash_root", bcrypto_hash_root },
     { "hash_multi", bcrypto_hash_multi },
 
+    /* HKDF */
+    { "hkdf_extract", bcrypto_hkdf_extract },
+    { "hkdf_expand", bcrypto_hkdf_expand },
+
     /* HMAC */
     { "hmac_create", bcrypto_hmac_create },
     { "hmac_init", bcrypto_hmac_init },
@@ -10967,6 +11457,11 @@ bcrypto_init(napi_env env, napi_value exports) {
     /* PBKDF2 */
     { "pbkdf2_derive", bcrypto_pbkdf2_derive },
     { "pbkdf2_derive_async", bcrypto_pbkdf2_derive_async },
+
+    /* PGPDF */
+    { "pgpdf_derive_simple", bcrypto_pgpdf_derive_simple },
+    { "pgpdf_derive_salted", bcrypto_pgpdf_derive_salted },
+    { "pgpdf_derive_iterated", bcrypto_pgpdf_derive_iterated },
 
     /* Poly1305 */
     { "poly1305_create", bcrypto_poly1305_create },
