@@ -1,3 +1,9 @@
+/*!
+ * rsa.h - rsa for libtorsion
+ * Copyright (c) 2020, Christopher Jeffrey (MIT License).
+ * https://github.com/bcoin-org/libtorsion
+ */
+
 #ifndef _TORSION_RSA_H
 #define _TORSION_RSA_H
 
@@ -6,6 +12,7 @@ extern "C" {
 #endif
 
 #include <stddef.h>
+#include <stdint.h>
 
 /*
  * Symbol Aliases
@@ -44,8 +51,8 @@ extern "C" {
 #define RSA_MAX_MOD_BITS 16384
 #define RSA_MIN_MOD_SIZE ((RSA_MIN_MOD_BITS + 7) / 8)
 #define RSA_MAX_MOD_SIZE ((RSA_MAX_MOD_BITS + 7) / 8)
-#define RSA_MIN_EXP 3ull
-#define RSA_MAX_EXP 0x1ffffffffull
+#define RSA_MIN_EXP UINT64_C(3)
+#define RSA_MAX_EXP UINT64_C(0x1ffffffff)
 #define RSA_MIN_EXP_BITS 2
 #define RSA_MAX_EXP_BITS 33
 #define RSA_MIN_EXP_SIZE 1
@@ -92,7 +99,7 @@ int
 rsa_privkey_generate(unsigned char *out,
                      size_t *out_len,
                      unsigned long bits,
-                     unsigned long long exp,
+                     uint64_t exp,
                      const unsigned char *entropy);
 
 size_t

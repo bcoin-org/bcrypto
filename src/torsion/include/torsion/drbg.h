@@ -1,3 +1,9 @@
+/*!
+ * drbg.h - hmac-drbg implementation for libtorsion
+ * Copyright (c) 2020, Christopher Jeffrey (MIT License).
+ * https://github.com/bcoin-org/libtorsion
+ */
+
 #ifndef _TORSION_DRBG_H
 #define _TORSION_DRBG_H
 

@@ -1,5 +1,5 @@
 /*!
- * salsa20.c - salsa20 for C89
+ * salsa20.c - salsa20 for libtorsion
  * Copyright (c) 2019-2020, Christopher Jeffrey (MIT License).
  * https://github.com/bcoin-org/libtorsion
  *

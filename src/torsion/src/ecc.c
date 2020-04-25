@@ -1939,7 +1939,7 @@ prime_field_init(prime_field_t *fe, const prime_def_t *def, int endian) {
 
     mpn_zero(r, shift);
 
-    r[shift] = (mp_limb_t)1 << left;
+    r[shift] = MP_LIMB_C(1) << left;
 
     mpn_quorem(q, r, r, shift + 1, fe->p, fe->limbs);
     mpn_export(tmp, fe->size, r, fe->limbs, -1);

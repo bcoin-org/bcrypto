@@ -26,29 +26,29 @@ typedef p224_fe_word_t p224_fe_t[P224_FIELD_WORDS];
 static const p224_fe_t p224_zero = {0, 0, 0, 0};
 
 static const p224_fe_t p224_one = {
-  0xffffffff00000000ull, 0xffffffffffffffffull,
-  0x0000000000000000ull, 0x0000000000000000ull
+  UINT64_C(0xffffffff00000000), UINT64_C(0xffffffffffffffff),
+  UINT64_C(0x0000000000000000), UINT64_C(0x0000000000000000)
 };
 
 /* 11^(2^128 - 1) mod p */
 /* mont: 0xa31b1da46d3e2af0dd915e4b7869be5d866c223b174131b85ee27c6c */
 static const p224_fe_t p224_g = {
-  0x174131b85ee27c6cull, 0x7869be5d866c223bull,
-  0x6d3e2af0dd915e4bull, 0x00000000a31b1da4ull
+  UINT64_C(0x174131b85ee27c6c), UINT64_C(0x7869be5d866c223b),
+  UINT64_C(0x6d3e2af0dd915e4b), UINT64_C(0x00000000a31b1da4)
 };
 #else
 static const p224_fe_t p224_zero = {0, 0, 0, 0, 0, 0, 0};
 
 static const p224_fe_t p224_one = {
-  0xfffffffful, 0xfffffffful, 0xfffffffful, 0x00000000ul,
-  0x00000000ul, 0x00000000ul, 0x00000000ul
+  0xffffffff, 0xffffffff, 0xffffffff, 0x00000000,
+  0x00000000, 0x00000000, 0x00000000
 };
 
 /* 11^(2^128 - 1) mod p */
 /* mont: 0xa11d8394a31b1da46d3e2af0dd915e4ad74c3ac9866c223b174131b9 */
 static const p224_fe_t p224_g = {
-  0x174131b9ul, 0x866c223bul, 0xd74c3ac9ul, 0xdd915e4aul,
-  0x6d3e2af0ul, 0xa31b1da4ul, 0xa11d8394ul
+  0x174131b9, 0x866c223b, 0xd74c3ac9, 0xdd915e4a,
+  0x6d3e2af0, 0xa31b1da4, 0xa11d8394
 };
 #endif
 

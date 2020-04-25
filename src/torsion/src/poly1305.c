@@ -50,9 +50,9 @@ poly1305_init(poly1305_t *ctx, const unsigned char *key) {
   t0 = read64le(key + 0);
   t1 = read64le(key + 8);
 
-  st->r[0] = t0 & 0xffc0fffffff;
-  st->r[1] = ((t0 >> 44) | (t1 << 20)) & 0xfffffc0ffff;
-  st->r[2] = (t1 >> 24) & 0x00ffffffc0f;
+  st->r[0] = t0 & UINT64_C(0xffc0fffffff);
+  st->r[1] = ((t0 >> 44) | (t1 << 20)) & UINT64_C(0xfffffc0ffff);
+  st->r[2] = (t1 >> 24) & UINT64_C(0x00ffffffc0f);
 
   /* h = 0 */
   st->h[0] = 0;
@@ -94,7 +94,7 @@ poly1305_init(poly1305_t *ctx, const unsigned char *key) {
 static void
 poly1305_blocks(poly1305_internal_t *st, const unsigned char *m, size_t bytes) {
 #ifdef TORSION_HAS_INT128
-  uint64_t hibit = st->final ? 0 : ((uint64_t)1 << 40); /* 1 << 128 */
+  uint64_t hibit = st->final ? 0 : (UINT64_C(1) << 40); /* 1 << 128 */
   uint64_t r0, r1, r2;
   uint64_t s1, s2;
   uint64_t h0, h1, h2;
@@ -119,9 +119,9 @@ poly1305_blocks(poly1305_internal_t *st, const unsigned char *m, size_t bytes) {
     t0 = read64le(m + 0);
     t1 = read64le(m + 8);
 
-    h0 += t0 & 0xfffffffffff;
-    h1 += ((t0 >> 44) | (t1 << 20)) & 0xfffffffffff;
-    h2 += (((t1 >> 24)) & 0x3ffffffffff) | hibit;
+    h0 += t0 & UINT64_C(0xfffffffffff);
+    h1 += ((t0 >> 44) | (t1 << 20)) & UINT64_C(0xfffffffffff);
+    h2 += (((t1 >> 24)) & UINT64_C(0x3ffffffffff)) | hibit;
 
     /* h *= r */
     d0 = (torsion_uint128_t)h0 * r0;
@@ -144,19 +144,19 @@ poly1305_blocks(poly1305_internal_t *st, const unsigned char *m, size_t bytes) {
 
     /* (partial) h %= p */
     c = (uint64_t)(d0 >> 44);
-    h0 = (uint64_t)d0 & 0xfffffffffff;
+    h0 = (uint64_t)d0 & UINT64_C(0xfffffffffff);
 
     d1 += c;
     c = (uint64_t)(d1 >> 44);
-    h1 = (uint64_t)d1 & 0xfffffffffff;
+    h1 = (uint64_t)d1 & UINT64_C(0xfffffffffff);
 
     d2 += c;
     c = (uint64_t)(d2 >> 42);
-    h2 = (uint64_t)d2 & 0x3ffffffffff;
+    h2 = (uint64_t)d2 & UINT64_C(0x3ffffffffff);
 
     h0 += c * 5;
     c = (h0 >> 44);
-    h0 = h0 & 0xfffffffffff;
+    h0 = h0 & UINT64_C(0xfffffffffff);
 
     h1 += c;
 
@@ -168,7 +168,7 @@ poly1305_blocks(poly1305_internal_t *st, const unsigned char *m, size_t bytes) {
   st->h[1] = h1;
   st->h[2] = h2;
 #else /* TORSION_HAS_INT128 */
-  uint32_t hibit = st->final ? 0 : (1ul << 24); /* 1 << 128 */
+  uint32_t hibit = st->final ? 0 : (UINT32_C(1) << 24); /* 1 << 128 */
   uint32_t r0, r1, r2, r3, r4;
   uint32_t s1, s2, s3, s4;
   uint32_t h0, h1, h2, h3, h4;
@@ -296,38 +296,38 @@ poly1305_final(poly1305_t *ctx, unsigned char *mac) {
   h2 = st->h[2];
 
   c = (h1 >> 44);
-  h1 &= 0xfffffffffff;
+  h1 &= UINT64_C(0xfffffffffff);
 
   h2 += c;
   c = (h2 >> 42);
-  h2 &= 0x3ffffffffff;
+  h2 &= UINT64_C(0x3ffffffffff);
 
   h0 += c * 5;
   c = (h0 >> 44);
-  h0 &= 0xfffffffffff;
+  h0 &= UINT64_C(0xfffffffffff);
 
   h1 += c;
   c = (h1 >> 44);
-  h1 &= 0xfffffffffff;
+  h1 &= UINT64_C(0xfffffffffff);
 
   h2 += c;
   c = (h2 >> 42);
-  h2 &= 0x3ffffffffff;
+  h2 &= UINT64_C(0x3ffffffffff);
 
   h0 += c * 5;
   c = (h0 >> 44);
-  h0 &= 0xfffffffffff;
+  h0 &= UINT64_C(0xfffffffffff);
   h1 += c;
 
   /* compute h + -p */
   g0 = h0 + 5;
   c = (g0 >> 44);
-  g0 &= 0xfffffffffff;
+  g0 &= UINT64_C(0xfffffffffff);
 
   g1 = h1 + c;
   c = (g1 >> 44);
-  g1 &= 0xfffffffffff;
-  g2 = h2 + c - ((uint64_t)1 << 42);
+  g1 &= UINT64_C(0xfffffffffff);
+  g2 = h2 + c - (UINT64_C(1) << 42);
 
   /* select h if h < p, or h + -p if h >= p */
   c = (g2 >> 63) - 1;
@@ -343,16 +343,16 @@ poly1305_final(poly1305_t *ctx, unsigned char *mac) {
   t0 = st->pad[0];
   t1 = st->pad[1];
 
-  h0 += (t0 & 0xfffffffffff);
+  h0 += (t0 & UINT64_C(0xfffffffffff));
   c = (h0 >> 44);
-  h0 &= 0xfffffffffff;
+  h0 &= UINT64_C(0xfffffffffff);
 
-  h1 += (((t0 >> 44) | (t1 << 20)) & 0xfffffffffff) + c;
+  h1 += (((t0 >> 44) | (t1 << 20)) & UINT64_C(0xfffffffffff)) + c;
   c = (h1 >> 44);
-  h1 &= 0xfffffffffff;
+  h1 &= UINT64_C(0xfffffffffff);
 
-  h2 += (((t1 >> 24)) & 0x3ffffffffff) + c;
-  h2 &= 0x3ffffffffff;
+  h2 += (((t1 >> 24)) & UINT64_C(0x3ffffffffff)) + c;
+  h2 &= UINT64_C(0x3ffffffffff);
 
   /* mac = h % (2^128) */
   h0 = (h0 | (h1 << 44));
@@ -434,7 +434,7 @@ poly1305_final(poly1305_t *ctx, unsigned char *mac) {
   g3 = h3 + c;
   c = g3 >> 26;
   g3 &= 0x3ffffff;
-  g4 = h4 + c - (1ul << 26);
+  g4 = h4 + c - (UINT32_C(1) << 26);
 
   /* select h if h < p, or h + -p if h >= p */
   mask = (g4 >> 31) - 1;

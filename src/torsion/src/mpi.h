@@ -201,6 +201,8 @@ extern "C" {
 typedef uint64_t mp_limb_t;
 typedef int64_t mp_long_t;
 #define MP_LIMB_BITS 64
+#define MP_LIMB_C(x) UINT64_C(x)
+#define MP_LIMB_MAX MP_LIMB_C(0xffffffffffffffff)
 #ifdef __SIZEOF_INT128__
 MP_EXTENSION typedef unsigned __int128 mp_wide_t;
 #define MP_HAS_WIDE
@@ -210,6 +212,8 @@ typedef uint32_t mp_limb_t;
 typedef int32_t mp_long_t;
 typedef uint64_t mp_wide_t;
 #define MP_LIMB_BITS 32
+#define MP_LIMB_C(x) UINT32_C(x)
+#define MP_LIMB_MAX MP_LIMB_C(0xffffffff)
 #define MP_HAS_WIDE
 #endif
 

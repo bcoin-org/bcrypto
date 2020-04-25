@@ -1,3 +1,9 @@
+/*!
+ * hash.h - hash functions for libtorsion
+ * Copyright (c) 2020, Christopher Jeffrey (MIT License).
+ * https://github.com/bcoin-org/libtorsion
+ */
+
 #ifndef _TORSION_HASH_H
 #define _TORSION_HASH_H
 

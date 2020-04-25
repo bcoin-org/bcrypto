@@ -22,7 +22,7 @@
 #include "bio.h"
 #include "internal.h"
 
-#ifdef _MSC_VER
+#if defined(TORSION_USE_64BIT) && defined(_MSC_VER)
 #include <intrin.h>
 #endif
 
@@ -73,10 +73,10 @@ reduce64(uint64_t a, uint64_t b) {
 
 static uint64_t
 _siphash(const unsigned char *data, size_t len, const unsigned char *key) {
-  uint64_t c0 = 0x736f6d6570736575ull;
-  uint64_t c1 = 0x646f72616e646f6dull;
-  uint64_t c2 = 0x6c7967656e657261ull;
-  uint64_t c3 = 0x7465646279746573ull;
+  uint64_t c0 = UINT64_C(0x736f6d6570736575);
+  uint64_t c1 = UINT64_C(0x646f72616e646f6d);
+  uint64_t c2 = UINT64_C(0x6c7967656e657261);
+  uint64_t c3 = UINT64_C(0x7465646279746573);
   uint64_t f0 = (uint64_t)len << 56;
   uint64_t f1 = 0xff;
   uint64_t k0 = read64le(key);
@@ -132,10 +132,10 @@ _siphash(const unsigned char *data, size_t len, const unsigned char *key) {
 
 static uint64_t
 _siphash64(uint64_t num, const unsigned char *key) {
-  uint64_t c0 = 0x736f6d6570736575ull;
-  uint64_t c1 = 0x646f72616e646f6dull;
-  uint64_t c2 = 0x6c7967656e657261ull;
-  uint64_t c3 = 0x7465646279746573ull;
+  uint64_t c0 = UINT64_C(0x736f6d6570736575);
+  uint64_t c1 = UINT64_C(0x646f72616e646f6d);
+  uint64_t c2 = UINT64_C(0x6c7967656e657261);
+  uint64_t c3 = UINT64_C(0x7465646279746573);
   uint64_t f0 = num;
   uint64_t f1 = 0xff;
   uint64_t k0 = read64le(key);

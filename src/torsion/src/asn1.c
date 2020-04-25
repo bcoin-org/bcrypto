@@ -53,7 +53,7 @@ asn1_read_size(size_t *size,
       *data += 1;
       *len -= 1;
 
-      if (*size >= (1ul << 24))
+      if (*size >= ((size_t)1 << 24))
         goto fail;
 
       *size <<= 8;

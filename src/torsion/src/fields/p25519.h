@@ -31,15 +31,15 @@ typedef p25519_fe_word_t p25519_fe_t[P25519_FIELD_WORDS];
 
 #ifdef TORSION_USE_64BIT
 static const p25519_fe_t p25519_sqrtneg1 = {
-  0x00061b274a0ea0b0ull, 0x0000d5a5fc8f189dull,
-  0x0007ef5e9cbd0c60ull, 0x00078595a6804c9eull,
-  0x0002b8324804fc1dull
+  UINT64_C(0x00061b274a0ea0b0), UINT64_C(0x0000d5a5fc8f189d),
+  UINT64_C(0x0007ef5e9cbd0c60), UINT64_C(0x00078595a6804c9e),
+  UINT64_C(0x0002b8324804fc1d)
 };
 #else
 static const p25519_fe_t p25519_sqrtneg1 = {
-  0x020ea0b0ul, 0x0186c9d2ul, 0x008f189dul, 0x0035697ful,
-  0x00bd0c60ul, 0x01fbd7a7ul, 0x02804c9eul, 0x01e16569ul,
-  0x0004fc1dul, 0x00ae0c92ul
+  0x020ea0b0, 0x0186c9d2, 0x008f189d, 0x0035697f,
+  0x00bd0c60, 0x01fbd7a7, 0x02804c9e, 0x01e16569,
+  0x0004fc1d, 0x00ae0c92
 };
 #endif
 

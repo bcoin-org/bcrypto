@@ -430,7 +430,7 @@ rsa_priv_generate(rsa_priv_t *k,
       || bits > RSA_MAX_MOD_BITS
       || exp < RSA_MIN_EXP
       || exp > RSA_MAX_EXP
-      || (exp & 1ull) == 0) {
+      || (exp & 1) == 0) {
     return 0;
   }
 
@@ -1423,7 +1423,7 @@ int
 rsa_privkey_generate(unsigned char *out,
                      size_t *out_len,
                      unsigned long bits,
-                     unsigned long long exp,
+                     uint64_t exp,
                      const unsigned char *entropy) {
   rsa_priv_t k;
   int r = 0;

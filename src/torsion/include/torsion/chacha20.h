@@ -1,5 +1,5 @@
 /*!
- * chacha20.h - chacha20 for C89
+ * chacha20.h - chacha20 for libtorsion
  * Copyright (c) 2019-2020, Christopher Jeffrey (MIT License).
  * https://github.com/bcoin-org/libtorsion
  */

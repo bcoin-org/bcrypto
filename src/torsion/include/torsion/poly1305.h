@@ -1,9 +1,7 @@
-/**
- * Parts of this software are based on poly1305-donna:
- * https://github.com/floodyberry/poly1305-donna
- *
- * MIT License
- * http://www.opensource.org/licenses/mit-license.php
+/*!
+ * poly1305.h - poly1305 for libtorsion
+ * Copyright (c) 2020, Christopher Jeffrey (MIT License).
+ * https://github.com/bcoin-org/libtorsion
  */
 
 #ifndef _TORSION_POLY1305_H

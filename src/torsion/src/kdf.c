@@ -9,13 +9,22 @@
  *   Copyright (c) 2014, Sean Kelly. All rights reserved.
  *   https://github.com/Tarsnap/scrypt
  *
- * Resources:
+ * EB2K Resources:
+ *   https://github.com/openssl/openssl/blob/2e9d61e/crypto/evp/evp_key.c
+ *
+ * HKDF Resources:
+ *   https://en.wikipedia.org/wiki/HKDF
+ *   https://tools.ietf.org/html/rfc5869
+ *
+ * PBKDF2 Resources:
  *   https://en.wikipedia.org/wiki/PBKDF2
  *   https://tools.ietf.org/html/rfc2898
  *   https://tools.ietf.org/html/rfc2898#section-5.2
  *   https://tools.ietf.org/html/rfc6070
  *   https://www.emc.com/collateral/white-papers/h11302-pkcs5v2-1-password-based-cryptography-standard-wp.pdf
  *   http://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-132.pdf
+ *
+ * Scrypt Resources:
  *   https://en.wikipedia.org/wiki/Scrypt
  *   http://www.tarsnap.com/scrypt.html
  *   http://www.tarsnap.com/scrypt/scrypt.pdf
@@ -289,13 +298,13 @@ scrypt_derive(unsigned char *out,
   if (N > UINT32_MAX)
     return 0;
 
-  if ((uint64_t)r * (uint64_t)p >= (1ull << 25))
+  if ((uint64_t)r * (uint64_t)p >= (UINT64_C(1) << 25))
     return 0;
 
-  if (r >= (1ul << 24))
+  if (r >= (UINT32_C(1) << 24))
     return 0;
 
-  if ((uint64_t)r * N >= (1ull << 25))
+  if ((uint64_t)r * N >= (UINT64_C(1) << 25))
     return 0;
 
   if (N == 0 || (N & (N - 1)) != 0)

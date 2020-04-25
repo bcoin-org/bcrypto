@@ -1,3 +1,9 @@
+/*!
+ * aead.h - aead for libtorsion
+ * Copyright (c) 2020, Christopher Jeffrey (MIT License).
+ * https://github.com/bcoin-org/libtorsion
+ */
+
 #ifndef _TORSION_AEAD_H
 #define _TORSION_AEAD_H
 
@@ -5,8 +11,8 @@
 extern "C" {
 #endif
 
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #include "chacha20.h"
 #include "poly1305.h"
