@@ -5191,6 +5191,50 @@ describe('Elliptic', function() {
       assert(q.validate());
     });
 
+    it('should test short isomorphism with j-invariant 0', () => {
+      const curve = new curves.SECP256K1();
+      const other = curve.toShort(curve.field(1337));
+
+      assert(curve.isIsomorphic(other));
+
+      {
+        const g = curve.pointFromShort(other.g);
+
+        assert(g.eq(curve.g));
+
+        const g2 = curve.pointFromShort(other.g.dbl());
+
+        assert(g2.eq(curve.g.dbl()));
+      }
+
+      {
+        const g = other.pointFromShort(curve.g);
+
+        assert(g.eq(other.g));
+
+        const g2 = other.pointFromShort(curve.g.dbl());
+
+        assert(g2.eq(other.g.dbl()));
+      }
+
+      const k = curve.randomScalar(rng);
+      const p1 = curve.g.mul(k);
+      const p2 = other.g.mul(k);
+
+      assert(curve.pointFromShort(p2).eq(p1));
+      assert(other.pointFromShort(p1).eq(p2));
+    });
+
+    it('should create short point from y coordinate', () => {
+      const curve = new curves.SECP256K1();
+      const {y} = curve.g;
+
+      assert(curve.pointFromY(y, 2).eq(curve.g));
+
+      for (const x of curve.solveX(y))
+        assert(curve.point(x, y).validate());
+    });
+
     it('should test mont isomorphism (1)', () => {
       const e = new curves.ED25519();
       const m1 = e.toMont(e.field(3), false, false);
