@@ -3,10 +3,6 @@
  * Copyright (c) 2020, Christopher Jeffrey (MIT License).
  * https://github.com/bcoin-org/libtorsion
  *
- * Parts of this software are based on gnutls/nettle:
- *   Copyright (c) 1998-2019, Niels Möller and Contributors
- *   https://github.com/gnutls/nettle
- *
  * Parts of this software are based on openssl/openssl:
  *   Based on code entered into the public domain by Vincent Rijmen.
  *   https://github.com/openssl/openssl/blob/master/crypto/aes/aes_core.c
@@ -759,12 +755,12 @@ aes_init_encrypt(aes_t *ctx, unsigned int bits, const unsigned char *key) {
 
 void
 aes_init_decrypt(aes_t *ctx, unsigned int bits, const unsigned char *key) {
-  size_t i, j, p;
+  size_t p = 0;
+  size_t i, j;
   uint32_t tmp;
 
   aes_init_encrypt(ctx, bits, key);
 
-  /* Invert the order of the round keys. */
   for (i = 0, j = 4 * ctx->rounds; i < j; i += 4, j -= 4) {
     tmp = K[i + 0];
     K[i + 0] = K[j + 0];
@@ -783,10 +779,6 @@ aes_init_decrypt(aes_t *ctx, unsigned int bits, const unsigned char *key) {
     K[j + 3] = tmp;
   }
 
-  p = 0;
-
-  /* Apply the inverse MixColumn transform to
-     all round keys but the first and the last. */
   for (i = 1; i < ctx->rounds; i++) {
     p += 4;
 
@@ -814,20 +806,13 @@ aes_init_decrypt(aes_t *ctx, unsigned int bits, const unsigned char *key) {
 
 void
 aes_encrypt(const aes_t *ctx, unsigned char *dst, const unsigned char *src) {
-  uint32_t s0, s1, s2, s3;
+  uint32_t s0 = read32be(src +  0) ^ K[0];
+  uint32_t s1 = read32be(src +  4) ^ K[1];
+  uint32_t s2 = read32be(src +  8) ^ K[2];
+  uint32_t s3 = read32be(src + 12) ^ K[3];
   uint32_t t0, t1, t2, t3;
-  size_t r, p;
-
-  /* Map byte array block to cipher
-     state and add initial round key. */
-  s0 = read32be(src +  0) ^ K[0];
-  s1 = read32be(src +  4) ^ K[1];
-  s2 = read32be(src +  8) ^ K[2];
-  s3 = read32be(src + 12) ^ K[3];
-
-  /* Nr - 1 full rounds */
-  r = ctx->rounds >> 1;
-  p = 0;
+  size_t r = ctx->rounds >> 1;
+  size_t p = 0;
 
   for (;;) {
     t0 = TE0[(s0 >> 24) & 0xff]
@@ -885,8 +870,6 @@ aes_encrypt(const aes_t *ctx, unsigned char *dst, const unsigned char *src) {
        ^ K[p + 3];
   }
 
-  /* Apply last round and map cipher
-     state to byte array block. */
   s0 = (TE2[(t0 >> 24) & 0xff] & 0xff000000)
      ^ (TE3[(t1 >> 16) & 0xff] & 0x00ff0000)
      ^ (TE0[(t2 >>  8) & 0xff] & 0x0000ff00)
@@ -919,20 +902,13 @@ aes_encrypt(const aes_t *ctx, unsigned char *dst, const unsigned char *src) {
 
 void
 aes_decrypt(const aes_t *ctx, unsigned char *dst, const unsigned char *src) {
-  uint32_t s0, s1, s2, s3;
+  uint32_t s0 = read32be(src +  0) ^ K[0];
+  uint32_t s1 = read32be(src +  4) ^ K[1];
+  uint32_t s2 = read32be(src +  8) ^ K[2];
+  uint32_t s3 = read32be(src + 12) ^ K[3];
   uint32_t t0, t1, t2, t3;
-  size_t r, p;
-
-  /* Map byte array block to cipher
-     state and add initial round key. */
-  s0 = read32be(src +  0) ^ K[0];
-  s1 = read32be(src +  4) ^ K[1];
-  s2 = read32be(src +  8) ^ K[2];
-  s3 = read32be(src + 12) ^ K[3];
-
-  /* Nr - 1 full rounds */
-  r = ctx->rounds >> 1;
-  p = 0;
+  size_t r = ctx->rounds >> 1;
+  size_t p = 0;
 
   for (;;) {
     t0 = TD0[(s0 >> 24) & 0xff]
@@ -990,8 +966,6 @@ aes_decrypt(const aes_t *ctx, unsigned char *dst, const unsigned char *src) {
        ^ K[p + 3];
   }
 
-  /* Apply last round and map cipher
-     state to byte array block. */
   s0 = (TD4[(t0 >> 24) & 0xff] << 24)
      ^ (TD4[(t3 >> 16) & 0xff] << 16)
      ^ (TD4[(t2 >>  8) & 0xff] <<  8)
@@ -1342,78 +1316,64 @@ blowfish_init(blowfish_t *ctx,
     blowfish_expand0state(ctx, key, key_len);
 }
 
-/* Borrowed from nettle. */
-#define F(c, x) \
-  ((((c->S[0][(x >> 24) & 0xff] + c->S[1][(x >> 16) & 0xff]) \
-    ^ c->S[2][(x >> 8) & 0xff]) + c->S[3][x & 0xff]) & 0xffffffff)
-
-#define R(c, l, r, i) do { \
-  l ^= c->P[i];            \
-  r ^= F(c, l);            \
-} while(0)
+#define substitute(x) (((ctx->S[0][((x) >> 24) & 0xff]  \
+                       + ctx->S[1][((x) >> 16) & 0xff]) \
+                       ^ ctx->S[2][((x) >>  8) & 0xff]) \
+                       + ctx->S[3][((x) >>  0) & 0xff])
 
 static void
-blowfish_encipher(blowfish_t *ctx, uint32_t *x1, uint32_t *x2) {
-  /* Borrowed from nettle. */
-  uint32_t xl = *x1;
-  uint32_t xr = *x2;
+blowfish_encipher(blowfish_t *ctx, uint32_t *xl, uint32_t *xr) {
+  uint32_t l = *xl ^ ctx->P[0];
+  uint32_t r = *xr;
 
-  R(ctx, xl, xr, 0);
-  R(ctx, xr, xl, 1);
-  R(ctx, xl, xr, 2);
-  R(ctx, xr, xl, 3);
-  R(ctx, xl, xr, 4);
-  R(ctx, xr, xl, 5);
-  R(ctx, xl, xr, 6);
-  R(ctx, xr, xl, 7);
-  R(ctx, xl, xr, 8);
-  R(ctx, xr, xl, 9);
-  R(ctx, xl, xr, 10);
-  R(ctx, xr, xl, 11);
-  R(ctx, xl, xr, 12);
-  R(ctx, xr, xl, 13);
-  R(ctx, xl, xr, 14);
-  R(ctx, xr, xl, 15);
+  r ^= substitute(l) ^ ctx->P[1];
+  l ^= substitute(r) ^ ctx->P[2];
+  r ^= substitute(l) ^ ctx->P[3];
+  l ^= substitute(r) ^ ctx->P[4];
+  r ^= substitute(l) ^ ctx->P[5];
+  l ^= substitute(r) ^ ctx->P[6];
+  r ^= substitute(l) ^ ctx->P[7];
+  l ^= substitute(r) ^ ctx->P[8];
+  r ^= substitute(l) ^ ctx->P[9];
+  l ^= substitute(r) ^ ctx->P[10];
+  r ^= substitute(l) ^ ctx->P[11];
+  l ^= substitute(r) ^ ctx->P[12];
+  r ^= substitute(l) ^ ctx->P[13];
+  l ^= substitute(r) ^ ctx->P[14];
+  r ^= substitute(l) ^ ctx->P[15];
+  l ^= substitute(r) ^ ctx->P[16];
 
-  xl ^= ctx->P[16];
-  xr ^= ctx->P[17];
-
-  *x1 = xr;
-  *x2 = xl;
+  *xl = r ^ ctx->P[17];
+  *xr = l;
 }
 
 static void
-blowfish_decipher(blowfish_t *ctx, uint32_t *x1, uint32_t *x2) {
-  /* Borrowed from nettle. */
-  uint32_t xl = *x1;
-  uint32_t xr = *x2;
+blowfish_decipher(blowfish_t *ctx, uint32_t *xl, uint32_t *xr) {
+  uint32_t l = *xl ^ ctx->P[17];
+  uint32_t r = *xr;
 
-  R(ctx, xl, xr, 17);
-  R(ctx, xr, xl, 16);
-  R(ctx, xl, xr, 15);
-  R(ctx, xr, xl, 14);
-  R(ctx, xl, xr, 13);
-  R(ctx, xr, xl, 12);
-  R(ctx, xl, xr, 11);
-  R(ctx, xr, xl, 10);
-  R(ctx, xl, xr, 9);
-  R(ctx, xr, xl, 8);
-  R(ctx, xl, xr, 7);
-  R(ctx, xr, xl, 6);
-  R(ctx, xl, xr, 5);
-  R(ctx, xr, xl, 4);
-  R(ctx, xl, xr, 3);
-  R(ctx, xr, xl, 2);
+  r ^= substitute(l) ^ ctx->P[16];
+  l ^= substitute(r) ^ ctx->P[15];
+  r ^= substitute(l) ^ ctx->P[14];
+  l ^= substitute(r) ^ ctx->P[13];
+  r ^= substitute(l) ^ ctx->P[12];
+  l ^= substitute(r) ^ ctx->P[11];
+  r ^= substitute(l) ^ ctx->P[10];
+  l ^= substitute(r) ^ ctx->P[9];
+  r ^= substitute(l) ^ ctx->P[8];
+  l ^= substitute(r) ^ ctx->P[7];
+  r ^= substitute(l) ^ ctx->P[6];
+  l ^= substitute(r) ^ ctx->P[5];
+  r ^= substitute(l) ^ ctx->P[4];
+  l ^= substitute(r) ^ ctx->P[3];
+  r ^= substitute(l) ^ ctx->P[2];
+  l ^= substitute(r) ^ ctx->P[1];
 
-  xl ^= ctx->P[1];
-  xr ^= ctx->P[0];
-
-  *x1 = xr;
-  *x2 = xl;
+  *xl = r ^ ctx->P[0];
+  *xr = l;
 }
 
-#undef F
-#undef R
+#undef substitute
 
 uint32_t
 blowfish_stream2word(const unsigned char *data, size_t len, size_t *off) {
@@ -1848,13 +1808,13 @@ static const uint32_t S4[256] = {
                                              \
   r[i3] ^= (z >> 8) | (z << (32 - 8));       \
                                              \
-  t0 = z ^ S1[(t1 >>  0) & 0xff]             \
-         ^ S4[(t1 >>  8) & 0xff]             \
-         ^ S3[(t1 >> 16) & 0xff]             \
-         ^ S2[(t1 >> 24) & 0xff];            \
+  z ^= S1[(t1 >>  0) & 0xff]                 \
+     ^ S4[(t1 >>  8) & 0xff]                 \
+     ^ S3[(t1 >> 16) & 0xff]                 \
+     ^ S2[(t1 >> 24) & 0xff];                \
                                              \
-  r[i2] ^= t0;                               \
-  r[i3] ^= t0;                               \
+  r[i2] ^= z;                                \
+  r[i3] ^= z;                                \
 } while (0)
 
 #define ROTL(r, i0, i1, i2, i3, n) do {       \
@@ -2066,6 +2026,8 @@ static void
 camellia256_init(camellia_t *ctx, const unsigned char *key, size_t key_len) {
   uint32_t *k = ctx->key;
   uint32_t s[4];
+
+  memset(ctx, 0, sizeof(*ctx));
 
   k[0] = read32be(key + 0);
   k[1] = read32be(key + 4);
@@ -2949,30 +2911,33 @@ static const struct {
 
 static const uint8_t X[4] = {6, 7, 4, 5};
 
-static TORSION_INLINE
-uint32_t f1(uint32_t d, uint32_t m, uint32_t r) {
+static TORSION_INLINE uint32_t
+f1(uint32_t d, uint32_t m, uint32_t r) {
   uint32_t t = m + d;
   uint32_t I = (t << r) | (t >> (32 - r));;
+
   return (((S[0][(I >> 24) & 0xff]
           ^ S[1][(I >> 16) & 0xff])
           - S[2][(I >>  8) & 0xff])
           + S[3][(I >>  0) & 0xff]);
 }
 
-static TORSION_INLINE
-uint32_t f2(uint32_t d, uint32_t m, uint32_t r) {
+static TORSION_INLINE uint32_t
+f2(uint32_t d, uint32_t m, uint32_t r) {
   uint32_t t = m ^ d;
   uint32_t I = (t << r) | (t >> (32 - r));
+
   return (((S[0][(I >> 24) & 0xff]
           - S[1][(I >> 16) & 0xff])
           + S[2][(I >>  8) & 0xff])
           ^ S[3][(I >>  0) & 0xff]);
 }
 
-static TORSION_INLINE
-uint32_t f3(uint32_t d, uint32_t m, uint32_t r) {
+static TORSION_INLINE uint32_t
+f3(uint32_t d, uint32_t m, uint32_t r) {
   uint32_t t = m - d;
   uint32_t I = (t << r) | (t >> (32 - r));
+
   return (((S[0][(I >> 24) & 0xff]
           + S[1][(I >> 16) & 0xff])
           ^ S[2][(I >>  8) & 0xff])
@@ -2986,6 +2951,8 @@ cast5_init(cast5_t *ctx, const unsigned char *key) {
   size_t i, half, r, j;
   size_t ki = 0;
   uint32_t w;
+
+  memset(ctx, 0, sizeof(*ctx));
 
   for (i = 0; i < 4; i++)
     t[i] = read32be(key + i * 4);
@@ -3212,71 +3179,75 @@ static const uint8_t des_shift_table[16] = {
 };
 
 static TORSION_INLINE void
-des_ip(uint32_t *ol, uint32_t *or, uint32_t inl, uint32_t inr) {
-  uint32_t outl = 0;
-  uint32_t outr = 0;
+des_ip(uint32_t *xl, uint32_t *xr) {
+  uint32_t l = *xl;
+  uint32_t r = *xr;
+  uint32_t u = 0;
+  uint32_t v = 0;
   int i, j;
 
   for (i = 6; i >= 0; i -= 2) {
     for (j = 0; j <= 24; j += 8) {
-      outl <<= 1;
-      outl |= (inr >> (j + i)) & 1;
+      u <<= 1;
+      u |= (r >> (j + i)) & 1;
     }
 
     for (j = 0; j <= 24; j += 8) {
-      outl <<= 1;
-      outl |= (inl >> (j + i)) & 1;
+      u <<= 1;
+      u |= (l >> (j + i)) & 1;
     }
   }
 
   for (i = 6; i >= 0; i -= 2) {
     for (j = 1; j <= 25; j += 8) {
-      outr <<= 1;
-      outr |= (inr >> (j + i)) & 1;
+      v <<= 1;
+      v |= (r >> (j + i)) & 1;
     }
 
     for (j = 1; j <= 25; j += 8) {
-      outr <<= 1;
-      outr |= (inl >> (j + i)) & 1;
+      v <<= 1;
+      v |= (l >> (j + i)) & 1;
     }
   }
 
-  *ol = outl;
-  *or = outr;
+  *xl = u;
+  *xr = v;
 }
 
 static TORSION_INLINE void
-des_rip(uint32_t *ol, uint32_t *or, uint32_t inl, uint32_t inr) {
-  uint32_t outl = 0;
-  uint32_t outr = 0;
+des_rip(uint32_t *xl, uint32_t *xr, uint32_t l, uint32_t r) {
+  uint32_t u = 0;
+  uint32_t v = 0;
   int i, j;
 
   for (i = 0; i < 4; i++) {
     for (j = 24; j >= 0; j -= 8) {
-      outl <<= 1;
-      outl |= (inr >> (j + i)) & 1;
-      outl <<= 1;
-      outl |= (inl >> (j + i)) & 1;
+      u <<= 1;
+      u |= (r >> (j + i)) & 1;
+      u <<= 1;
+      u |= (l >> (j + i)) & 1;
     }
   }
 
   for (i = 4; i < 8; i++) {
     for (j = 24; j >= 0; j -= 8) {
-      outr <<= 1;
-      outr |= (inr >> (j + i)) & 1;
-      outr <<= 1;
-      outr |= (inl >> (j + i)) & 1;
+      v <<= 1;
+      v |= (r >> (j + i)) & 1;
+      v <<= 1;
+      v |= (l >> (j + i)) & 1;
     }
   }
 
-  *ol = outl;
-  *or = outr;
+  *xl = u;
+  *xr = v;
 }
 
 static TORSION_INLINE void
-des_pc1(uint32_t *ol, uint32_t *or, uint32_t inl, uint32_t inr) {
-  uint32_t outl = 0;
-  uint32_t outr = 0;
+des_pc1(uint32_t *xl, uint32_t *xr) {
+  uint32_t l = *xl;
+  uint32_t r = *xr;
+  uint32_t u = 0;
+  uint32_t v = 0;
   int i, j;
 
   /* 7, 15, 23, 31, 39, 47, 55, 63
@@ -3285,19 +3256,19 @@ des_pc1(uint32_t *ol, uint32_t *or, uint32_t inl, uint32_t inr) {
      4, 12, 20, 28 */
   for (i = 7; i >= 5; i--) {
     for (j = 0; j <= 24; j += 8) {
-      outl <<= 1;
-      outl |= (inr >> (j + i)) & 1;
+      u <<= 1;
+      u |= (r >> (j + i)) & 1;
     }
 
     for (j = 0; j <= 24; j += 8) {
-      outl <<= 1;
-      outl |= (inl >> (j + i)) & 1;
+      u <<= 1;
+      u |= (l >> (j + i)) & 1;
     }
   }
 
   for (j = 0; j <= 24; j += 8) {
-    outl <<= 1;
-    outl |= (inr >> (j + 4)) & 1;
+    u <<= 1;
+    u |= (r >> (j + 4)) & 1;
   }
 
   /* 1, 9, 17, 25, 33, 41, 49, 57
@@ -3306,118 +3277,110 @@ des_pc1(uint32_t *ol, uint32_t *or, uint32_t inl, uint32_t inr) {
      36, 44, 52, 60 */
   for (i = 1; i <= 3; i++) {
     for (j = 0; j <= 24; j += 8) {
-      outr <<= 1;
-      outr |= (inr >> (j + i)) & 1;
+      v <<= 1;
+      v |= (r >> (j + i)) & 1;
     }
 
     for (j = 0; j <= 24; j += 8) {
-      outr <<= 1;
-      outr |= (inl >> (j + i)) & 1;
+      v <<= 1;
+      v |= (l >> (j + i)) & 1;
     }
   }
 
   for (j = 0; j <= 24; j += 8) {
-    outr <<= 1;
-    outr |= (inl >> (j + 4)) & 1;
+    v <<= 1;
+    v |= (l >> (j + 4)) & 1;
   }
 
-  *ol = outl;
-  *or = outr;
+  *xl = u;
+  *xr = v;
 }
 
 static TORSION_INLINE uint32_t
-des_r28shl(uint32_t num, size_t shift) {
-  return ((num << shift) & 0xfffffff) | (num >> (28 - shift));
+des_r28shl(uint32_t x, size_t b) {
+  return ((x << b) & 0xfffffff) | (x >> (28 - b));
 }
 
 static TORSION_INLINE void
-des_pc2(uint32_t *ol, uint32_t *or, uint32_t inl, uint32_t inr) {
-  uint32_t outl = 0;
-  uint32_t outr = 0;
+des_pc2(uint32_t *xl, uint32_t *xr, uint32_t l, uint32_t r) {
+  uint32_t u = 0;
+  uint32_t v = 0;
   size_t i = 0;
 
   for (; i < 24; i++) {
-    outl <<= 1;
-    outl |= (inl >> des_pc2_table[i]) & 1;
+    u <<= 1;
+    u |= (l >> des_pc2_table[i]) & 1;
   }
 
   for (; i < 48; i++) {
-    outr <<= 1;
-    outr |= (inr >> des_pc2_table[i]) & 1;
+    v <<= 1;
+    v |= (r >> des_pc2_table[i]) & 1;
   }
 
-  *ol = outl;
-  *or = outr;
+  *xl = u;
+  *xr = v;
 }
 
 static TORSION_INLINE void
-des_expand(uint32_t *ol, uint32_t *or, uint32_t r) {
-  uint32_t outl = 0;
-  uint32_t outr = 0;
+des_expand(uint32_t *xl, uint32_t *xr, uint32_t r) {
+  uint32_t u = 0;
+  uint32_t v = 0;
   int i;
 
-  outl = ((r & 1) << 5) | (r >> 27);
+  u = ((r & 1) << 5) | (r >> 27);
 
   for (i = 23; i >= 15; i -= 4) {
-    outl <<= 6;
-    outl |= (r >> i) & 0x3f;
+    u <<= 6;
+    u |= (r >> i) & 0x3f;
   }
 
   for (i = 11; i >= 3; i -= 4) {
-    outr |= (r >> i) & 0x3f;
-    outr <<= 6;
+    v |= (r >> i) & 0x3f;
+    v <<= 6;
   }
 
-  outr |= ((r & 0x1f) << 1) | (r >> 31);
+  v |= ((r & 0x1f) << 1) | (r >> 31);
 
-  *ol = outl;
-  *or = outr;
+  *xl = u;
+  *xr = v;
 }
 
 static TORSION_INLINE uint32_t
-des_substitute(uint32_t inl, uint32_t inr) {
-  uint32_t out = 0;
-  uint32_t b, sb;
+des_substitute(uint32_t l, uint32_t r) {
+  uint32_t s = 0;
+  uint32_t b;
   size_t i;
 
   for (i = 0; i < 4; i++) {
-    b = (inl >> (18 - i * 6)) & 0x3f;
-    sb = des_s_table[i * 0x40 + b];
-
-    out <<= 4;
-    out |= sb;
+    b = (l >> (18 - i * 6)) & 0x3f;
+    s = (s << 4) | des_s_table[i * 0x40 + b];
   }
 
   for (i = 0; i < 4; i++) {
-    b = (inr >> (18 - i * 6)) & 0x3f;
-    sb = des_s_table[4 * 0x40 + i * 0x40 + b];
-
-    out <<= 4;
-    out |= sb;
+    b = (r >> (18 - i * 6)) & 0x3f;
+    s = (s << 4) | des_s_table[4 * 0x40 + i * 0x40 + b];
   }
 
-  return out;
+  return s;
 }
 
 static TORSION_INLINE uint32_t
-des_permute(uint32_t num) {
-  uint32_t out = 0;
+des_permute(uint32_t s) {
+  uint32_t f = 0;
   size_t i;
 
   for (i = 0; i < 32; i++) {
-    out <<= 1;
-    out |= (num >> des_permute_table[i]) & 1;
+    f <<= 1;
+    f |= (s >> des_permute_table[i]) & 1;
   }
 
-  return out;
+  return f;
 }
 
 static TORSION_INLINE void
-des_encipher(const des_t *ctx,
-             uint32_t *ol, uint32_t *or,
-             uint32_t lstart, uint32_t rstart) {
-  uint32_t l = lstart;
-  uint32_t r = rstart;
+des_encipher(const des_t *ctx, uint32_t *xl, uint32_t *xr) {
+  uint32_t l = *xl;
+  uint32_t r = *xr;
   uint32_t kl, kr, b1, b2, s, f, t;
   size_t i;
 
@@ -3441,15 +3404,13 @@ des_encipher(const des_t *ctx,
   }
 
   /* Reverse Initial Permutation */
-  des_rip(ol, or, r, l);
+  des_rip(xl, xr, r, l);
 }
 
 static TORSION_INLINE void
-des_decipher(const des_t *ctx,
-             uint32_t *ol, uint32_t *or,
-             uint32_t lstart, uint32_t rstart) {
-  uint32_t l = rstart;
-  uint32_t r = lstart;
+des_decipher(const des_t *ctx, uint32_t *xl, uint32_t *xr) {
+  uint32_t l = *xr;
+  uint32_t r = *xl;
   uint32_t kl, kr, b1, b2, s, f, t;
   int i;
 
@@ -3473,7 +3434,7 @@ des_decipher(const des_t *ctx,
   }
 
   /* Reverse Initial Permutation */
-  des_rip(ol, or, l, r);
+  des_rip(xl, xr, l, r);
 }
 
 void
@@ -3482,7 +3443,9 @@ des_init(des_t *ctx, const unsigned char *key) {
   uint32_t kr = read32be(key + 4);
   size_t i, shift;
 
-  des_pc1(&kl, &kr, kl, kr);
+  memset(ctx, 0, sizeof(*ctx));
+
+  des_pc1(&kl, &kr);
 
   for (i = 0; i < 32; i += 2) {
     shift = des_shift_table[i >> 1];
@@ -3500,9 +3463,9 @@ des_encrypt(const des_t *ctx, unsigned char *dst, const unsigned char *src) {
   uint32_t r = read32be(src + 4);
 
   /* Initial Permutation */
-  des_ip(&l, &r, l, r);
+  des_ip(&l, &r);
 
-  des_encipher(ctx, &l, &r, l, r);
+  des_encipher(ctx, &l, &r);
 
   write32be(dst + 0, l);
   write32be(dst + 4, r);
@@ -3514,9 +3477,9 @@ des_decrypt(const des_t *ctx, unsigned char *dst, const unsigned char *src) {
   uint32_t r = read32be(src + 4);
 
   /* Initial Permutation */
-  des_ip(&l, &r, l, r);
+  des_ip(&l, &r);
 
-  des_decipher(ctx, &l, &r, l, r);
+  des_decipher(ctx, &l, &r);
 
   write32be(dst + 0, l);
   write32be(dst + 4, r);
@@ -3647,6 +3610,8 @@ idea_init_encrypt(idea_t *ctx, const unsigned char *key) {
   size_t p = 0;
   size_t j = 0;
   size_t i = 0;
+
+  memset(ctx, 0, sizeof(*ctx));
 
   for (; j < 8; j++)
     K[j] = read16be(key + j * 2);
@@ -3829,6 +3794,8 @@ rc2_init(rc2_t *ctx, const unsigned char *key, size_t key_len) {
   size_t i;
 
   ASSERT(key_len >= 1 && key_len <= 128);
+
+  memset(ctx, 0, sizeof(*ctx));
 
   memcpy(L, key, key_len);
   memset(L + key_len, 0x00, 128 - key_len);
