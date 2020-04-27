@@ -97,6 +97,8 @@ typedef signed torsion_int128_t __attribute__((mode(TI)));
 
 #define ENTROPY_SIZE 32
 
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+
 void
 __torsion_assert_fail(const char *file, int line, const char *expr);
 

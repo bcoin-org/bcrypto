@@ -121,6 +121,13 @@ describe('Twofish', function() {
 
       assert.bufferEqual(data, zero);
     });
+
+    it(`should pass twofish vector #${i} (ECB)`, () => {
+      const bits = key.length * 8;
+      const c = new cipher.Cipher(`TWOFISH-${bits}-ECB`).init(key);
+
+      assert.bufferEqual(c.update(dec), enc);
+    });
   }
 
   it('should encrypt & decrypt with twofish CBC', () => {

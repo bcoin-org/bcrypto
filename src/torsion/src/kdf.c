@@ -9,6 +9,14 @@
  *   Copyright (c) 2014, Sean Kelly. All rights reserved.
  *   https://github.com/Tarsnap/scrypt
  *
+ * Parts of this software are based on joyent/node-bcrypt-pbkdf:
+ *   Copyright (c) 2016, Joyent Inc
+ *   https://github.com/joyent/node-bcrypt-pbkdf
+ *
+ * Parts of this software are based on golang/crypto:
+ *   Copyright (c) 2009 The Go Authors. All rights reserved.
+ *   https://github.com/golang/crypto
+ *
  * EB2K Resources:
  *   https://github.com/openssl/openssl/blob/2e9d61e/crypto/evp/evp_key.c
  *
@@ -30,6 +38,9 @@
  *   http://www.tarsnap.com/scrypt/scrypt.pdf
  *   https://github.com/Tarsnap/scrypt/blob/master/lib/crypto/crypto_scrypt-ref.c
  *
+ * PGPDF Resources:
+ *   https://github.com/golang/crypto/tree/master/openpgp
+ *
  * Bcrypt Resources:
  *   https://en.wikipedia.org/wiki/Bcrypt
  *   http://www.usenix.org/events/usenix99/provos/provos_html/node1.html
@@ -38,6 +49,7 @@
  *   https://github.com/openssh/openssh-portable
  *   https://github.com/openssh/openssh-portable/blob/master/openbsd-compat/bcrypt_pbkdf.c
  *   https://github.com/openssh/openssh-portable/blob/master/openbsd-compat/blowfish.c
+ *   https://github.com/joyent/node-bcrypt-pbkdf/blob/master/index.js
  */
 
 #include <limits.h>

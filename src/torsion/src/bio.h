@@ -17,6 +17,30 @@
  * Little Endian
  */
 
+static TORSION_INLINE uint16_t
+read16le(const void *src) {
+#ifndef WORDS_BIGENDIAN
+  uint16_t w;
+  memcpy(&w, src, sizeof(w));
+  return w;
+#else
+  const uint8_t *p = (const uint8_t *)src;
+  return ((uint16_t)p[1] << 8)
+       | ((uint16_t)p[0] << 0);
+#endif
+}
+
+static TORSION_INLINE void
+write16le(void *dst, uint16_t w) {
+#ifndef WORDS_BIGENDIAN
+  memcpy(dst, &w, sizeof(w));
+#else
+  uint8_t *p = (uint8_t *)dst;
+  p[1] = w >> 8;
+  p[0] = w >> 0;
+#endif
+}
+
 static TORSION_INLINE uint32_t
 read32le(const void *src) {
 #ifndef WORDS_BIGENDIAN
@@ -84,6 +108,30 @@ write64le(void *dst, uint64_t w) {
 /*
  * Big Endian
  */
+
+static TORSION_INLINE uint16_t
+read16be(const void *src) {
+#ifdef WORDS_BIGENDIAN
+  uint16_t w;
+  memcpy(&w, src, sizeof(w));
+  return w;
+#else
+  const uint8_t *p = (const uint8_t *)src;
+  return ((uint16_t)p[0] << 8)
+       | ((uint16_t)p[1] << 0);
+#endif
+}
+
+static TORSION_INLINE void
+write16be(void *dst, uint16_t w) {
+#ifdef WORDS_BIGENDIAN
+  memcpy(dst, &w, sizeof(w));
+#else
+  uint8_t *p = (uint8_t *)dst;
+  p[0] = w >> 8;
+  p[1] = w >> 0;
+#endif
+}
 
 static TORSION_INLINE uint32_t
 read32be(const void *src) {

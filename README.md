@@ -26,8 +26,8 @@ See the `./lib` directory for available modules and APIs.
 |                              | nodejs (linux)    | nodejs (macos)    | nodejs (win)      | browser |
 | :--------------------------- |:------------------| :-----------------|:------------------|:--------|
 | aead                         | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion)    | js      |
-| aes                          | c (openssl)       | c (openssl)       | c (openssl)       | js      |
-| bcrypt                       | js                | js                | js                | js      |
+| aes                          | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
+| bcrypt                       | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
 | blake2b{160,256,384,512}     | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
 | blake2s{128,160,224,256}     | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
 | bn                           | js w/ bigint      | js w/ bigint      | js w/ bigint      | js      |
@@ -35,7 +35,7 @@ See the `./lib` directory for available modules and APIs.
 | cshake{128,256}              | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion)    | js      |
 | ctr-drbg                     | js                | js                | js                | js      |
 | dsa                          | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
-| eb2k                         | js                | js                | js                | js      |
+| eb2k                         | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
 | ecies                        | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion)    | js      |
 | ed25519                      | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
 | ed448                        | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
@@ -43,7 +43,7 @@ See the `./lib` directory for available modules and APIs.
 | hash160                      | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion)    | js      |
 | hash256                      | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion)    | js      |
 | hash-drbg                    | js                | js                | js                | js      |
-| hkdf                         | js                | js                | js                | js      |
+| hkdf                         | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
 | hmac-drbg                    | js                | js                | js                | js      |
 | keccak/sha3{224,256,384,512} | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion)    | js      |
 | kmac{128,256}                | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion)    | js      |

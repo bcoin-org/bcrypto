@@ -6,9 +6,6 @@ const assert = require('bsert');
 const bcrypto = require('../');
 const {env} = process;
 const parts = process.version.split(/[^\d]/);
-const NODE_MAJOR = parts[1] >>> 0;
-// eslint-disable-next-line
-const NODE_MINOR = parts[2] >>> 0;
 const HAS_BIGINT = typeof BigInt === 'function' ? 1 : 0;
 const FORCE_BIGINT = HAS_BIGINT && env.BCRYPTO_FORCE_BIGINT != null ? 1 : 0;
 
@@ -118,7 +115,7 @@ describe('Bcrypto', function() {
       default:
         assert.strictEqual(bcrypto.native, 2);
         assert.strictEqual(bcrypto.AEAD.native, 2);
-        assert.strictEqual(bcrypto.aes.native, 1);
+        assert.strictEqual(bcrypto.aes.native, 2);
         assert.strictEqual(bcrypto.bcrypt.native, 2);
         assert.strictEqual(bcrypto.BLAKE2b.native, 2);
         assert.strictEqual(bcrypto.BLAKE2b160.native, 2);
@@ -133,13 +130,13 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.BN.native, HAS_BIGINT);
         assert.strictEqual(bcrypto.box.native, 0);
         assert.strictEqual(bcrypto.ChaCha20.native, 2);
-        assert.strictEqual(bcrypto.cipher.native, 1);
+        assert.strictEqual(bcrypto.cipher.native, 2);
         assert.strictEqual(bcrypto.cleanse.native, 2);
         assert.strictEqual(bcrypto.CSHAKE.native, 2);
         assert.strictEqual(bcrypto.CSHAKE128.native, 2);
         assert.strictEqual(bcrypto.CSHAKE256.native, 2);
         assert.strictEqual(bcrypto.CtrDRBG.native, 0);
-        assert.strictEqual(bcrypto.dsa.native, NODE_MAJOR >= 10 ? 2 : 1);
+        assert.strictEqual(bcrypto.dsa.native, 2);
         assert.strictEqual(bcrypto.dsaies.native, undefined);
         assert.strictEqual(bcrypto.eb2k.native, 2);
         assert.strictEqual(bcrypto.ecies.native, undefined);
@@ -170,18 +167,18 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.merkle.native, undefined);
         assert.strictEqual(bcrypto.mrkl.native, undefined);
         assert.strictEqual(bcrypto.murmur3.native, 2);
-        assert.strictEqual(bcrypto.p192.native, NODE_MAJOR >= 10 ? 2 : 0);
-        assert.strictEqual(bcrypto.p224.native, NODE_MAJOR >= 10 ? 2 : 0);
-        assert.strictEqual(bcrypto.p256.native, NODE_MAJOR >= 10 ? 2 : 0);
-        assert.strictEqual(bcrypto.p384.native, NODE_MAJOR >= 10 ? 2 : 0);
-        assert.strictEqual(bcrypto.p521.native, NODE_MAJOR >= 10 ? 2 : 0);
+        assert.strictEqual(bcrypto.p192.native, 2);
+        assert.strictEqual(bcrypto.p224.native, 2);
+        assert.strictEqual(bcrypto.p256.native, 2);
+        assert.strictEqual(bcrypto.p384.native, 2);
+        assert.strictEqual(bcrypto.p521.native, 2);
         assert.strictEqual(bcrypto.pbkdf2.native, 2);
         assert.strictEqual(bcrypto.pgp.native, undefined);
         assert.strictEqual(bcrypto.Poly1305.native, 2);
         assert.strictEqual(bcrypto.random.native, 1);
         assert.strictEqual(bcrypto.RC4.native, 0);
         assert.strictEqual(bcrypto.RIPEMD160.native, 2);
-        assert.strictEqual(bcrypto.rsa.native, NODE_MAJOR >= 10 ? 2 : 1);
+        assert.strictEqual(bcrypto.rsa.native, 2);
         assert.strictEqual(bcrypto.rsaies.native, undefined);
         assert.strictEqual(bcrypto.safe.native, undefined);
         assert.strictEqual(bcrypto.Salsa20.native, 2);

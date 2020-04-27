@@ -14,6 +14,7 @@
 
 #include <torsion/aead.h>
 #include <torsion/chacha20.h>
+#include <torsion/cipher.h>
 #include <torsion/drbg.h>
 #include <torsion/dsa.h>
 #include <torsion/ecc.h>
@@ -51,6 +52,7 @@
 #define ENTROPY_SIZE 32
 
 #define JS_ERR_CONTEXT "Could not create context."
+#define JS_ERR_FINAL "Could not finalize context."
 #define JS_ERR_SIGNATURE "Invalid signature."
 #define JS_ERR_SIGNATURE_SIZE "Invalid signature size."
 #define JS_ERR_PRIVKEY "Invalid private key."
@@ -118,6 +120,14 @@ typedef struct bcrypto_chacha20_s {
   chacha20_t ctx;
   int started;
 } bcrypto_chacha20_t;
+
+typedef struct bcrypto_cipher_s {
+  cipher_t ctx;
+  int type;
+  int mode;
+  int encrypt;
+  int started;
+} bcrypto_cipher_t;
 
 typedef struct bcrypto_ecdh_s {
   ecdh_t *ctx;
@@ -1803,6 +1813,286 @@ bcrypto_chacha20_derive(napi_env env, napi_callback_info info) {
   chacha20_derive(out, key, key_len, nonce);
 
   CHECK(napi_create_buffer_copy(env, 32, out, NULL, &result) == napi_ok);
+
+  return result;
+}
+
+/*
+ * Cipher
+ */
+
+static void
+bcrypto_cipher_destroy_(napi_env env, void *data, void *hint) {
+  cleanse(data, sizeof(bcrypto_cipher_t));
+  torsion_free(data);
+}
+
+static napi_value
+bcrypto_cipher_create(napi_env env, napi_callback_info info) {
+  napi_value argv[3];
+  size_t argc = 3;
+  uint32_t type, mode;
+  bool encrypt;
+  bcrypto_cipher_t *cipher;
+  napi_value handle;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 3);
+  CHECK(napi_get_value_uint32(env, argv[0], &type) == napi_ok);
+  CHECK(napi_get_value_uint32(env, argv[1], &mode) == napi_ok);
+  CHECK(napi_get_value_bool(env, argv[2], &encrypt) == napi_ok);
+
+  JS_ASSERT(type <= CIPHER_MAX, JS_ERR_CONTEXT);
+  JS_ASSERT(mode <= CIPHER_MODE_MAX, JS_ERR_CONTEXT);
+
+  cipher = (bcrypto_cipher_t *)torsion_alloc(sizeof(bcrypto_cipher_t));
+  cipher->type = type;
+  cipher->mode = mode;
+  cipher->encrypt = encrypt;
+  cipher->started = 0;
+
+  CHECK(napi_create_external(env,
+                             cipher,
+                             bcrypto_cipher_destroy_,
+                             NULL,
+                             &handle) == napi_ok);
+
+  return handle;
+}
+
+static napi_value
+bcrypto_cipher_init(napi_env env, napi_callback_info info) {
+  napi_value argv[3];
+  size_t argc = 3;
+  const uint8_t *key, *iv;
+  size_t key_len, iv_len;
+  bcrypto_cipher_t *cipher;
+  int ok;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 3);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&cipher) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], (void **)&key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], (void **)&iv, &iv_len) == napi_ok);
+
+  ok = cipher_init(&cipher->ctx,
+                   cipher->type,
+                   cipher->mode,
+                   cipher->encrypt,
+                   key, key_len,
+                   iv, iv_len);
+
+  JS_ASSERT(ok, JS_ERR_CONTEXT);
+
+  cipher->started = 1;
+
+  return argv[0];
+}
+
+static napi_value
+bcrypto_cipher_set_aad(napi_env env, napi_callback_info info) {
+  napi_value argv[2];
+  size_t argc = 2;
+  const uint8_t *aad;
+  size_t aad_len;
+  bcrypto_cipher_t *cipher;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 2);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&cipher) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], (void **)&aad, &aad_len) == napi_ok);
+
+  JS_ASSERT(cipher->started, JS_ERR_INIT);
+  JS_ASSERT(cipher_set_aad(&cipher->ctx, aad, aad_len), JS_ERR_INIT);
+
+  return argv[0];
+}
+
+static napi_value
+bcrypto_cipher_set_tag(napi_env env, napi_callback_info info) {
+  napi_value argv[2];
+  size_t argc = 2;
+  const uint8_t *tag;
+  size_t tag_len;
+  bcrypto_cipher_t *cipher;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 2);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&cipher) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], (void **)&tag, &tag_len) == napi_ok);
+
+  JS_ASSERT(cipher->started, JS_ERR_INIT);
+  JS_ASSERT(cipher_set_tag(&cipher->ctx, tag, tag_len), JS_ERR_INIT);
+
+  return argv[0];
+}
+
+static napi_value
+bcrypto_cipher_get_tag(napi_env env, napi_callback_info info) {
+  napi_value argv[1];
+  size_t argc = 1;
+  uint8_t out[16];
+  size_t out_len;
+  bcrypto_cipher_t *cipher;
+  napi_value result;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 1);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&cipher) == napi_ok);
+
+  JS_ASSERT(cipher_get_tag(&cipher->ctx, out, &out_len), JS_ERR_INIT);
+
+  CHECK(napi_create_buffer_copy(env, out_len, out, NULL, &result) == napi_ok);
+
+  return result;
+}
+
+static napi_value
+bcrypto_cipher_update(napi_env env, napi_callback_info info) {
+  napi_value argv[2];
+  size_t argc = 2;
+  uint8_t *out;
+  size_t out_len;
+  const uint8_t *in;
+  size_t in_len;
+  bcrypto_cipher_t *cipher;
+  napi_value result;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 2);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&cipher) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], (void **)&in, &in_len) == napi_ok);
+
+  JS_ASSERT(cipher->started, JS_ERR_INIT);
+
+  out_len = cipher_update_size(&cipher->ctx, in_len);
+  out = (uint8_t *)torsion_alloc(out_len);
+
+  cipher_update(&cipher->ctx, out, &out_len, in, in_len);
+
+  CHECK(create_external_buffer(env, out_len, out, &result) == napi_ok);
+
+  return result;
+}
+
+static napi_value
+bcrypto_cipher_final(napi_env env, napi_callback_info info) {
+  napi_value argv[1];
+  size_t argc = 1;
+  uint8_t out[CIPHER_MAX_BLOCK_SIZE];
+  size_t out_len;
+  bcrypto_cipher_t *cipher;
+  napi_value result;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 1);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&cipher) == napi_ok);
+
+  JS_ASSERT(cipher->started, JS_ERR_INIT);
+  JS_ASSERT(cipher_final(&cipher->ctx, out, &out_len), JS_ERR_FINAL);
+
+  cipher->started = 0;
+
+  CHECK(napi_create_buffer_copy(env, out_len, out, NULL, &result) == napi_ok);
+
+  return result;
+}
+
+static napi_value
+bcrypto_cipher_destroy(napi_env env, napi_callback_info info) {
+  napi_value argv[1];
+  size_t argc = 1;
+  bcrypto_cipher_t *cipher;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 1);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&cipher) == napi_ok);
+
+  cipher->started = 0;
+
+  return argv[0];
+}
+
+static napi_value
+bcrypto_cipher_encrypt(napi_env env, napi_callback_info info) {
+  napi_value argv[5];
+  size_t argc = 5;
+  uint8_t *out;
+  size_t out_len;
+  uint32_t type, mode;
+  const uint8_t *key, *iv, *in;
+  size_t key_len, iv_len, in_len;
+  napi_value result;
+  int ok;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 5);
+  CHECK(napi_get_value_uint32(env, argv[0], &type) == napi_ok);
+  CHECK(napi_get_value_uint32(env, argv[1], &mode) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], (void **)&key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[3], (void **)&iv, &iv_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[4], (void **)&in, &in_len) == napi_ok);
+
+  JS_ASSERT(type <= CIPHER_MAX, JS_ERR_CONTEXT);
+  JS_ASSERT(mode <= CIPHER_MODE_MAX, JS_ERR_CONTEXT);
+
+  out_len = CIPHER_MAX_ENCRYPT_SIZE(in_len);
+  out = (uint8_t *)torsion_alloc(out_len);
+
+  ok = cipher_encrypt(out, &out_len,
+                      type, mode,
+                      key, key_len,
+                      iv, iv_len,
+                      in, in_len);
+
+  if (!ok) {
+    torsion_free(out);
+    JS_THROW(JS_ERR_FINAL);
+  }
+
+  CHECK(create_external_buffer(env, out_len, out, &result) == napi_ok);
+
+  return result;
+}
+
+static napi_value
+bcrypto_cipher_decrypt(napi_env env, napi_callback_info info) {
+  napi_value argv[5];
+  size_t argc = 5;
+  uint8_t *out;
+  size_t out_len;
+  uint32_t type, mode;
+  const uint8_t *key, *iv, *in;
+  size_t key_len, iv_len, in_len;
+  napi_value result;
+  int ok;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 5);
+  CHECK(napi_get_value_uint32(env, argv[0], &type) == napi_ok);
+  CHECK(napi_get_value_uint32(env, argv[1], &mode) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], (void **)&key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[3], (void **)&iv, &iv_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[4], (void **)&in, &in_len) == napi_ok);
+
+  JS_ASSERT(type <= CIPHER_MAX, JS_ERR_CONTEXT);
+  JS_ASSERT(mode <= CIPHER_MODE_MAX, JS_ERR_CONTEXT);
+
+  out_len = CIPHER_MAX_DECRYPT_SIZE(in_len);
+  out = (uint8_t *)torsion_alloc(out_len);
+
+  ok = cipher_decrypt(out, &out_len,
+                      type, mode,
+                      key, key_len,
+                      iv, iv_len,
+                      in, in_len);
+
+  if (!ok) {
+    torsion_free(out);
+    JS_THROW(JS_ERR_FINAL);
+  }
+
+  CHECK(create_external_buffer(env, out_len, out, &result) == napi_ok);
 
   return result;
 }
@@ -11274,6 +11564,18 @@ bcrypto_init(napi_env env, napi_value exports) {
     { "chacha20_encrypt", bcrypto_chacha20_encrypt },
     { "chacha20_destroy", bcrypto_chacha20_destroy },
     { "chacha20_derive", bcrypto_chacha20_derive },
+
+    /* Cipher */
+    { "cipher_create", bcrypto_cipher_create },
+    { "cipher_init", bcrypto_cipher_init },
+    { "cipher_set_aad", bcrypto_cipher_set_aad },
+    { "cipher_set_tag", bcrypto_cipher_set_tag },
+    { "cipher_get_tag", bcrypto_cipher_get_tag },
+    { "cipher_update", bcrypto_cipher_update },
+    { "cipher_final", bcrypto_cipher_final },
+    { "cipher_destroy", bcrypto_cipher_destroy },
+    { "cipher_encrypt", bcrypto_cipher_encrypt },
+    { "cipher_decrypt", bcrypto_cipher_decrypt },
 
     /* Cleanse */
     { "cleanse", bcrypto_cleanse },
