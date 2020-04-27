@@ -3215,7 +3215,9 @@ des_ip(uint32_t *xl, uint32_t *xr) {
 }
 
 static TORSION_INLINE void
-des_rip(uint32_t *xl, uint32_t *xr, uint32_t l, uint32_t r) {
+des_rip(uint32_t *xl, uint32_t *xr) {
+  uint32_t l = *xl;
+  uint32_t r = *xr;
   uint32_t u = 0;
   uint32_t v = 0;
   int i, j;
@@ -3302,7 +3304,9 @@ des_r28shl(uint32_t x, size_t b) {
 }
 
 static TORSION_INLINE void
-des_pc2(uint32_t *xl, uint32_t *xr, uint32_t l, uint32_t r) {
+des_pc2(uint32_t *xl, uint32_t *xr) {
+  uint32_t l = *xl;
+  uint32_t r = *xr;
   uint32_t u = 0;
   uint32_t v = 0;
   size_t i = 0;
@@ -3404,7 +3408,10 @@ des_encipher(const des_t *ctx, uint32_t *xl, uint32_t *xr) {
   }
 
   /* Reverse Initial Permutation */
-  des_rip(xl, xr, r, l);
+  des_rip(&r, &l);
+
+  *xl = r;
+  *xr = l;
 }
 
 static TORSION_INLINE void
@@ -3434,7 +3441,10 @@ des_decipher(const des_t *ctx, uint32_t *xl, uint32_t *xr) {
   }
 
   /* Reverse Initial Permutation */
-  des_rip(xl, xr, l, r);
+  des_rip(&l, &r);
+
+  *xl = l;
+  *xr = r;
 }
 
 void
@@ -3453,7 +3463,11 @@ des_init(des_t *ctx, const unsigned char *key) {
     kl = des_r28shl(kl, shift);
     kr = des_r28shl(kr, shift);
 
-    des_pc2(ctx->keys + i + 0, ctx->keys + i + 1, kl, kr);
+    ctx->keys[i + 0] = kl;
+    ctx->keys[i + 1] = kr;
+
+    des_pc2(&ctx->keys[i + 0],
+            &ctx->keys[i + 1]);
   }
 }
 
@@ -3619,7 +3633,7 @@ idea_init_encrypt(idea_t *ctx, const unsigned char *key) {
   for (; j < 52; j++) {
     i += 1;
 
-    K[p + (i + 7)] = (K[p + (i & 7)] << 9)
+    K[p + (i + 7)] = (K[p + ((i + 0) & 7)] << 9)
                    | (K[p + ((i + 1) & 7)] >> 7);
 
     p += i & 8;
