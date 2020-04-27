@@ -3643,23 +3643,19 @@ mul16(uint16_t x, uint16_t y) {
 
 void
 idea_init_encrypt(idea_t *ctx, const unsigned char *key) {
-  uint16_t *ek = ctx->ek;
+  uint16_t *K = ctx->key;
   size_t p = 0;
   size_t j = 0;
   size_t i = 0;
 
-  for (; j < 8; j++) {
-    ek[j] = read16be(key + p);
-    p += 2;
-  }
-
-  p = 0;
+  for (; j < 8; j++)
+    K[j] = read16be(key + j * 2);
 
   for (; j < 52; j++) {
     i += 1;
 
-    ek[p + (i + 7)] = (ek[p + (i & 7)] << 9)
-                    | (ek[p + ((i + 1) & 7)] >> 7);
+    K[p + (i + 7)] = (K[p + (i & 7)] << 9)
+                   | (K[p + ((i + 1) & 7)] >> 7);
 
     p += i & 8;
     i &= 7;
@@ -3668,83 +3664,61 @@ idea_init_encrypt(idea_t *ctx, const unsigned char *key) {
 
 void
 idea_init_decrypt(idea_t *ctx, const unsigned char *key) {
-  uint16_t *ek = ctx->ek;
-  uint16_t *dk = ctx->dk;
+  uint16_t *K = ctx->key;
   uint16_t t1, t2, t3;
-  size_t dki = 52;
-  size_t eki = 0;
-  size_t i;
+  uint16_t D[52];
+  size_t di = 52 - 1;
+  size_t ki = 0;
+  int i;
 
   idea_init_encrypt(ctx, key);
 
-  t1 = inv16(ek[eki]);
-  eki += 1;
-  t2 = -ek[eki];
-  eki += 1;
-  t3 = -ek[eki];
-  eki += 1;
-  dki -= 1;
-  dk[dki] = inv16(ek[eki]);
-  eki += 1;
-  dki -= 1;
-  dk[dki] = t3;
-  dki -= 1;
-  dk[dki] = t2;
-  dki -= 1;
-  dk[dki] = t1;
+  t1 = inv16(K[ki++]);
+  t2 = -K[ki++];
+  t3 = -K[ki++];
+
+  D[di--] = inv16(K[ki++]);
+  D[di--] = t3;
+  D[di--] = t2;
+  D[di--] = t1;
 
   for (i = 0; i < 8 - 1; i++) {
-    t1 = ek[eki];
-    eki += 1;
-    dki -= 1;
-    dk[dki] = ek[eki];
-    eki += 1;
-    dki -= 1;
-    dk[dki] = t1;
+    t1 = K[ki++];
 
-    t1 = inv16(ek[eki]);
-    eki += 1;
-    t2 = -ek[eki];
-    eki += 1;
-    t3 = -ek[eki];
-    eki += 1;
-    dki -= 1;
-    dk[dki] = inv16(ek[eki]);
-    eki += 1;
-    dki -= 1;
-    dk[dki] = t2;
-    dki -= 1;
-    dk[dki] = t3;
-    dki -= 1;
-    dk[dki] = t1;
+    D[di--] = K[ki++];
+    D[di--] = t1;
+
+    t1 = inv16(K[ki++]);
+    t2 = -K[ki++];
+    t3 = -K[ki++];
+
+    D[di--] = inv16(K[ki++]);
+    D[di--] = t2;
+    D[di--] = t3;
+    D[di--] = t1;
   }
 
-  t1 = ek[eki];
-  eki += 1;
-  dki -= 1;
-  dk[dki] = ek[eki];
-  eki += 1;
-  dki -= 1;
-  dk[dki] = t1;
+  t1 = K[ki++];
 
-  t1 = inv16(ek[eki]);
-  eki += 1;
-  t2 = -ek[eki];
-  eki += 1;
-  t3 = -ek[eki];
-  eki += 1;
-  dki -= 1;
-  dk[dki] = inv16(ek[eki]);
-  dki -= 1;
-  dk[dki] = t3;
-  dki -= 1;
-  dk[dki] = t2;
-  dki -= 1;
-  dk[dki] = t1;
+  D[di--] = K[ki++];
+  D[di--] = t1;
+
+  t1 = inv16(K[ki++]);
+  t2 = -K[ki++];
+  t3 = -K[ki++];
+
+  D[di--] = inv16(K[ki++]);
+  D[di--] = t3;
+  D[di--] = t2;
+  D[di--] = t1;
+
+  for (i = 0; i < 52; i++)
+    K[i] = D[i];
 }
 
 static void
-idea_crypt(const uint16_t *key, unsigned char *dst, const unsigned char *src) {
+idea_crypt(const idea_t *ctx, unsigned char *dst, const unsigned char *src) {
+  const uint16_t *K = ctx->key;
   uint16_t x1 = read16be(src + 0);
   uint16_t x2 = read16be(src + 2);
   uint16_t x3 = read16be(src + 4);
@@ -3752,46 +3726,34 @@ idea_crypt(const uint16_t *key, unsigned char *dst, const unsigned char *src) {
   uint16_t s2 = 0;
   uint16_t s3 = 0;
   size_t p = 0;
-  int r;
+  int i;
 
-  for (r = 8; r > 0; r--) {
-    x1 = mul16(x1, key[p]);
-    p += 1;
-    x2 += key[p];
-    p += 1;
-    x3 += key[p];
-    p += 1;
-
-    x4 = mul16(x4, key[p]);
-    p += 1;
+  for (i = 8 - 1; i >= 0; i--) {
+    x1 = mul16(x1, K[p++]);
+    x2 += K[p++];
+    x3 += K[p++];
+    x4 = mul16(x4, K[p++]);
 
     s3 = x3;
     x3 ^= x1;
-    x3 = mul16(x3, key[p]);
-    p += 1;
+    x3 = mul16(x3, K[p++]);
     s2 = x2;
 
     x2 ^= x4;
     x2 += x3;
-    x2 = mul16(x2, key[p]);
-    p += 1;
+    x2 = mul16(x2, K[p++]);
     x3 += x2;
 
     x1 ^= x2;
     x4 ^= x3;
-
     x2 ^= s3;
     x3 ^= s2;
   }
 
-  x1 = mul16(x1, key[p]);
-  p += 1;
-
-  x3 += key[p];
-  p += 1;
-  x2 += key[p];
-  p += 1;
-  x4 = mul16(x4, key[p]);
+  x1 = mul16(x1, K[p++]);
+  x3 += K[p++];
+  x2 += K[p++];
+  x4 = mul16(x4, K[p++]);
 
   write16be(dst + 0, x1);
   write16be(dst + 2, x3);
@@ -3801,12 +3763,12 @@ idea_crypt(const uint16_t *key, unsigned char *dst, const unsigned char *src) {
 
 void
 idea_encrypt(const idea_t *ctx, unsigned char *dst, const unsigned char *src) {
-  idea_crypt(ctx->ek, dst, src);
+  idea_crypt(ctx, dst, src);
 }
 
 void
 idea_decrypt(const idea_t *ctx, unsigned char *dst, const unsigned char *src) {
-  idea_crypt(ctx->dk, dst, src);
+  idea_crypt(ctx, dst, src);
 }
 
 #undef inv16

@@ -151,8 +151,7 @@ typedef struct _des_ede3_s {
 } des_ede3_t;
 
 typedef struct _idea_s {
-  uint16_t ek[52];
-  uint16_t dk[52];
+  uint16_t key[52];
 } idea_t;
 
 typedef struct _rc2_s {
