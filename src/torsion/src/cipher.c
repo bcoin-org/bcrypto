@@ -4173,7 +4173,6 @@ static const uint8_t S1[256] = {
 
 static uint8_t
 gf_mul(uint8_t a, uint8_t b, uint32_t p) {
-  /* gfMult = a*b in GF(2^8)/p */
   uint32_t B[2];
   uint32_t P[2];
   uint32_t res = 0;
@@ -4185,7 +4184,6 @@ gf_mul(uint8_t a, uint8_t b, uint32_t p) {
   P[0] = 0;
   P[1] = p;
 
-  /* Branchless GF multiplier. */
   for (i = 0; i < 7; i++) {
     res ^= B[a & 1];
     a >>= 1;
@@ -4199,7 +4197,6 @@ gf_mul(uint8_t a, uint8_t b, uint32_t p) {
 
 static uint32_t
 mds_mul(uint8_t v, size_t col) {
-  /* mdsColumnMult = y{col} where [y0 y1 y2 y3] = MDS * [x0] */
   static const uint32_t MDS_POLY = 0x169; /* x^8 + x^6 + x^5 + x^3 + 1 */
   uint32_t x = v;
   uint32_t y = gf_mul(v, 0x5b, MDS_POLY);
@@ -4264,7 +4261,6 @@ h_gen(const uint8_t *v, const uint8_t *key, size_t off, size_t k) {
 
   mult = 0;
 
-  /* [y0 y1 y2 y3] = MDS . [x0 x1 x2 x3] */
   for (i = 0; i < 4; i++)
     mult ^= mds_mul(y[i], i);
 
@@ -4284,7 +4280,6 @@ ror32(uint32_t x, size_t y) {
 void
 twofish_init(twofish_t *ctx, unsigned int bits, const unsigned char *key) {
   static const uint32_t RS_POLY = 0x14d; /* x^8 + x^6 + x^3 + x^2 + 1 */
-  /* k is the number of 64 bit words in key. */
   size_t k = bits >> 6;
   size_t i, j, v;
   uint8_t W[4 * 4];
@@ -4299,7 +4294,6 @@ twofish_init(twofish_t *ctx, unsigned int bits, const unsigned char *key) {
   memset(W, 0, sizeof(W));
 
   for (i = 0; i < k; i++) {
-    /* Computes [y0 y1 y2 y3] = rs . [x0 x1 x2 x3 x4 x5 x6 x7]. */
     for (j = 0; j < 4; j++) {
       for (v = 0; v < 8; v++)
         W[4 * i + j] ^= gf_mul(key[8 * i + v], RS[j][v], RS_POLY);
@@ -4308,21 +4302,17 @@ twofish_init(twofish_t *ctx, unsigned int bits, const unsigned char *key) {
 
   /* Calculate subkeys. */
   for (i = 0; i < 20; i++) {
-    /* A = h(p * 2x, Me) */
     for (j = 0; j < 4; j++)
       tmp[j] = 2 * i;
 
     A = h_gen(tmp, key, 0, k);
 
-    /* B = rolc(h(p * (2x + 1), Mo), 8) */
     for (j = 0; j < 4; j++)
       tmp[j] = 2 * i + 1;
 
     B = rol32(h_gen(tmp, key, 1, k), 8);
 
     ctx->k[2 * i + 0] = A + B;
-
-    /* K[2i+1] = (A + 2B) <<< 9 */
     ctx->k[2 * i + 1] = rol32(2 * B + A, 9);
   }
 

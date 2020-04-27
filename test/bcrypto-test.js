@@ -5,7 +5,6 @@
 const assert = require('bsert');
 const bcrypto = require('../');
 const {env} = process;
-const parts = process.version.split(/[^\d]/);
 const HAS_BIGINT = typeof BigInt === 'function' ? 1 : 0;
 const FORCE_BIGINT = HAS_BIGINT && env.BCRYPTO_FORCE_BIGINT != null ? 1 : 0;
 
