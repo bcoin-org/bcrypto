@@ -4,6 +4,7 @@ const assert = require('bsert');
 const ChaCha20 = require('../lib/chacha20');
 const eb2k = require('../lib/eb2k');
 const json = require('./data/eb2k.json');
+const MD5 = require('../lib/md5');
 
 const vectors = [
   [
@@ -81,7 +82,7 @@ const vectors = [
 ];
 
 function deriveChacha(pass) {
-  const [key, iv] = eb2k.derive(pass, null, 32, 16);
+  const [key, iv] = eb2k.derive(MD5, pass, null, 32, 16);
   const chacha = new ChaCha20().init(key, iv);
   const state = Buffer.alloc(64, 0x00);
 
@@ -96,7 +97,7 @@ describe('EB2K', function() {
     const ivOut = Buffer.from(iv_, 'hex');
 
     it(`should derive key ${key_}`, () => {
-      const [key, iv] = eb2k.derive(pass, salt, keyLen, ivLen);
+      const [key, iv] = eb2k.derive(MD5, pass, salt, keyLen, ivLen);
 
       assert.bufferEqual(key, keyOut);
       assert.bufferEqual(iv, ivOut);
