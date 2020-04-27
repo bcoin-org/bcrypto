@@ -59,6 +59,8 @@ drbg_update(drbg_t *drbg, const unsigned char *seed, size_t seed_len) {
     hmac_update(&drbg->kmac, drbg->V, hash_size);
     hmac_final(&drbg->kmac, drbg->V);
   }
+
+  hmac_init(&drbg->kmac, drbg->type, drbg->K, hash_size);
 }
 
 void
@@ -91,11 +93,12 @@ drbg_generate(drbg_t *drbg, void *out, size_t len) {
   size_t pos = 0;
   size_t left = len;
   size_t outlen = hash_size;
+  hmac_t kmac;
 
   while (pos < len) {
-    hmac_init(&drbg->kmac, drbg->type, drbg->K, hash_size);
-    hmac_update(&drbg->kmac, drbg->V, hash_size);
-    hmac_final(&drbg->kmac, drbg->V);
+    kmac = drbg->kmac;
+    hmac_update(&kmac, drbg->V, hash_size);
+    hmac_final(&kmac, drbg->V);
 
     if (outlen > left)
       outlen = left;

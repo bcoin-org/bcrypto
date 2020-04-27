@@ -18,6 +18,7 @@ extern "C" {
  * Symbol Aliases
  */
 
+#define aes_init torsion_aes_init
 #define aes_init_encrypt torsion_aes_init_encrypt
 #define aes_init_decrypt torsion_aes_init_decrypt
 #define aes_encrypt torsion_aes_encrypt
@@ -45,6 +46,7 @@ extern "C" {
 #define des_ede3_init torsion_des_ede3_init
 #define des_ede3_encrypt torsion_des_ede3_encrypt
 #define des_ede3_decrypt torsion_des_ede3_decrypt
+#define idea_init torsion_idea_init
 #define idea_init_encrypt torsion_idea_init_encrypt
 #define idea_init_decrypt torsion_idea_init_decrypt
 #define idea_encrypt torsion_idea_encrypt
@@ -117,7 +119,8 @@ extern "C" {
 
 typedef struct _aes_s {
   unsigned int rounds;
-  uint32_t key[60];
+  uint32_t enckey[60];
+  uint32_t deckey[60];
 } aes_t;
 
 typedef struct _blowfish_s {
@@ -151,7 +154,8 @@ typedef struct _des_ede3_s {
 } des_ede3_t;
 
 typedef struct _idea_s {
-  uint16_t key[52];
+  uint16_t enckey[52];
+  uint16_t deckey[52];
 } idea_t;
 
 typedef struct _rc2_s {
@@ -213,10 +217,13 @@ typedef struct _cipher_s {
  */
 
 void
+aes_init(aes_t *ctx, unsigned int bits, const unsigned char *key);
+
+void
 aes_init_encrypt(aes_t *ctx, unsigned int bits, const unsigned char *key);
 
 void
-aes_init_decrypt(aes_t *ctx, unsigned int bits, const unsigned char *key);
+aes_init_decrypt(aes_t *ctx);
 
 void
 aes_encrypt(const aes_t *ctx, unsigned char *dst, const unsigned char *src);
@@ -344,10 +351,13 @@ des_ede3_decrypt(const des_ede3_t *ctx,
  */
 
 void
+idea_init(idea_t *ctx, const unsigned char *key);
+
+void
 idea_init_encrypt(idea_t *ctx, const unsigned char *key);
 
 void
-idea_init_decrypt(idea_t *ctx, const unsigned char *key);
+idea_init_decrypt(idea_t *ctx);
 
 void
 idea_encrypt(const idea_t *ctx, unsigned char *dst, const unsigned char *src);

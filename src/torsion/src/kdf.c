@@ -196,7 +196,7 @@ hkdf_expand(unsigned char *out,
   for (i = 0; i < blocks; i++) {
     ctr += 1;
 
-    memcpy(&hmac, &pmac, sizeof(pmac));
+    hmac = pmac;
     hmac_update(&hmac, prev, prev_len);
     hmac_update(&hmac, info, info_len);
     hmac_update(&hmac, &ctr, 1);
@@ -257,20 +257,21 @@ pbkdf2_derive(unsigned char *out,
 
   hmac_init(&pmac, type, pass, pass_len);
 
-  memcpy(&smac, &pmac, sizeof(pmac));
+  smac = pmac;
+
   hmac_update(&smac, salt, salt_len);
 
   for (i = 0; i < blocks; i++) {
     write32be(ctr, i + 1);
 
-    memcpy(&hmac, &smac, sizeof(smac));
+    hmac = smac;
     hmac_update(&hmac, ctr, 4);
     hmac_final(&hmac, block);
 
     memcpy(mac, block, hash_size);
 
     for (j = 1; j < iter; j++) {
-      memcpy(&hmac, &pmac, sizeof(pmac));
+      hmac = pmac;
       hmac_update(&hmac, mac, hash_size);
       hmac_final(&hmac, mac);
 
@@ -961,7 +962,7 @@ bcrypt_pbkdf(unsigned char *key,
   for (count = 1; keylen > 0; count++) {
     write32be(ctr, count);
 
-    memcpy(&hash, &shash, sizeof(shash));
+    hash = shash;
     sha512_update(&hash, ctr, 4);
     sha512_final(&hash, sha2salt);
 

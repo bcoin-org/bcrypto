@@ -1258,7 +1258,7 @@ mgf1xor(int type,
   hash_update(&cache, seed, seed_len);
 
   while (i < out_len) {
-    memcpy(&hash, &cache, sizeof(hash_t));
+    hash = cache;
     hash_update(&hash, ctr, sizeof(ctr));
     hash_final(&hash, digest, hash_size);
 
