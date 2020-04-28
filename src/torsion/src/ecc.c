@@ -415,7 +415,7 @@ typedef struct _wei_def_s {
   const endo_def_t *endo;
 } wei_def_t;
 
-typedef struct _wei_scratch_s {
+struct wei_scratch_s {
   size_t size;
   jge_t *wnd;
   jge_t **wnds;
@@ -423,7 +423,7 @@ typedef struct _wei_scratch_s {
   int **nafs;
   wge_t *points;
   sc_t *coeffs;
-} wei_scratch_t;
+};
 
 /*
  * Montgomery
@@ -536,7 +536,7 @@ typedef struct _edwards_def_s {
   const subgroup_def_t *torsion;
 } edwards_def_t;
 
-typedef struct _edwards_scratch_s {
+struct edwards_scratch_s {
   size_t size;
   xge_t *wnd;
   xge_t **wnds;
@@ -544,7 +544,7 @@ typedef struct _edwards_scratch_s {
   int **nafs;
   xge_t *points;
   sc_t *coeffs;
-} edwards_scratch_t;
+};
 
 /*
  * Helpers
@@ -4328,7 +4328,7 @@ wei_jmul_multi_normal_var(const wei_t *ec,
                           const wge_t *points,
                           const sc_t *coeffs,
                           size_t len,
-                          wei_scratch_t *scratch) {
+                          struct wei_scratch_s *scratch) {
   /* Multiple point multiplication, also known
    * as "Shamir's trick" (with interleaved NAFs).
    *
@@ -4414,7 +4414,7 @@ wei_jmul_multi_endo_var(const wei_t *ec,
                         const wge_t *points,
                         const sc_t *coeffs,
                         size_t len,
-                        wei_scratch_t *scratch) {
+                        struct wei_scratch_s *scratch) {
   /* Multiple point multiplication, also known
    * as "Shamir's trick" (with interleaved NAFs).
    *
@@ -4492,7 +4492,7 @@ wei_jmul_multi_var(const wei_t *ec,
                    const wge_t *points,
                    const sc_t *coeffs,
                    size_t len,
-                   wei_scratch_t *scratch) {
+                   struct wei_scratch_s *scratch) {
   if (ec->endo)
     wei_jmul_multi_endo_var(ec, r, k0, points, coeffs, len, scratch);
   else
@@ -4506,7 +4506,7 @@ wei_mul_multi_var(const wei_t *ec,
                   const wge_t *points,
                   const sc_t *coeffs,
                   size_t len,
-                  wei_scratch_t *scratch) {
+                  struct wei_scratch_s *scratch) {
   jge_t j;
   wei_jmul_multi_var(ec, &j, k0, points, coeffs, len, scratch);
   jge_to_wge_var(ec, r, &j);
@@ -4997,46 +4997,6 @@ wei_point_to_hash(const wei_t *ec,
   wge_cleanse(ec, &p0);
   wge_cleanse(ec, &p1);
   wge_cleanse(ec, &p2);
-}
-
-/*
- * Short Weierstrass Scratch
- */
-
-static wei_scratch_t *
-wei_scratch_create(const wei_t *ec, size_t size) {
-  wei_scratch_t *scratch = torsion_alloc(sizeof(wei_scratch_t));
-  size_t length = ec->endo ? size : size / 2;
-  size_t bits = ec->endo ? ec->sc.endo_bits : ec->sc.bits;
-  size_t i;
-
-  scratch->size = size;
-  scratch->wnd = torsion_alloc(length * 4 * sizeof(jge_t));
-  scratch->wnds = torsion_alloc(length * sizeof(jge_t *));
-  scratch->naf = torsion_alloc(length * (bits + 1) * sizeof(int));
-  scratch->nafs = torsion_alloc(length * sizeof(int *));
-
-  for (i = 0; i < length; i++) {
-    scratch->wnds[i] = &scratch->wnd[i * 4];
-    scratch->nafs[i] = &scratch->naf[i * (bits + 1)];
-  }
-
-  scratch->points = torsion_alloc(size * sizeof(wge_t));
-  scratch->coeffs = torsion_alloc(size * sizeof(sc_t));
-
-  return scratch;
-}
-
-static void
-wei_scratch_destroy(const wei_t *ec, wei_scratch_t *scratch) {
-  (void)ec;
-  torsion_free(scratch->wnd);
-  torsion_free(scratch->wnds);
-  torsion_free(scratch->naf);
-  torsion_free(scratch->nafs);
-  torsion_free(scratch->points);
-  torsion_free(scratch->coeffs);
-  torsion_free(scratch);
 }
 
 /*
@@ -6998,7 +6958,7 @@ edwards_mul_multi_var(const edwards_t *ec,
                       const xge_t *points,
                       const sc_t *coeffs,
                       size_t len,
-                      edwards_scratch_t *scratch) {
+                      struct edwards_scratch_s *scratch) {
   /* Multiple point multiplication, also known
    * as "Shamir's trick" (with interleaved NAFs).
    *
@@ -7346,46 +7306,6 @@ edwards_point_to_hash(const edwards_t *ec,
   xge_cleanse(ec, &p0);
   xge_cleanse(ec, &p1);
   xge_cleanse(ec, &p2);
-}
-
-/*
- * Edwards Scratch
- */
-
-static edwards_scratch_t *
-edwards_scratch_create(const edwards_t *ec, size_t size) {
-  edwards_scratch_t *scratch = torsion_alloc(sizeof(edwards_scratch_t));
-  size_t length = size / 2;
-  size_t bits = ec->sc.bits;
-  size_t i;
-
-  scratch->size = size;
-  scratch->wnd = torsion_alloc(length * 4 * sizeof(xge_t));
-  scratch->wnds = torsion_alloc(length * sizeof(xge_t *));
-  scratch->naf = torsion_alloc(length * (bits + 1) * sizeof(int));
-  scratch->nafs = torsion_alloc(length * sizeof(int *));
-
-  for (i = 0; i < length; i++) {
-    scratch->wnds[i] = &scratch->wnd[i * 4];
-    scratch->nafs[i] = &scratch->naf[i * (bits + 1)];
-  }
-
-  scratch->points = torsion_alloc(size * sizeof(xge_t));
-  scratch->coeffs = torsion_alloc(size * sizeof(sc_t));
-
-  return scratch;
-}
-
-static void
-edwards_scratch_destroy(const edwards_t *ec, edwards_scratch_t *scratch) {
-  (void)ec;
-  torsion_free(scratch->wnd);
-  torsion_free(scratch->wnds);
-  torsion_free(scratch->naf);
-  torsion_free(scratch->nafs);
-  torsion_free(scratch->points);
-  torsion_free(scratch->coeffs);
-  torsion_free(scratch);
 }
 
 /*
@@ -8627,14 +8547,14 @@ static const edwards_def_t *edwards_curves[3] = {
 };
 
 /*
- * ECDSA
+ * Short Weierstrass API
  */
 
 wei_t *
-ecdsa_context_create(int type) {
+wei_curve_create(int type) {
   wei_t *ec = NULL;
 
-  if (type < 0 || type > ECDSA_CURVE_MAX)
+  if (type < 0 || (size_t)type > ARRAY_SIZE(wei_curves))
     return NULL;
 
   ec = torsion_alloc(sizeof(wei_t));
@@ -8645,7 +8565,7 @@ ecdsa_context_create(int type) {
 }
 
 void
-ecdsa_context_destroy(wei_t *ec) {
+wei_curve_destroy(wei_t *ec) {
   if (ec != NULL) {
     sc_cleanse(&ec->sc, ec->blind);
     jge_cleanse(ec, &ec->unblind);
@@ -8654,40 +8574,208 @@ ecdsa_context_destroy(wei_t *ec) {
 }
 
 void
-ecdsa_context_randomize(wei_t *ec, const unsigned char *entropy) {
+wei_curve_randomize(wei_t *ec, const unsigned char *entropy) {
   wei_randomize(ec, entropy);
 }
 
-wei_scratch_t *
-ecdsa_scratch_create(const wei_t *ec, size_t size) {
-  return wei_scratch_create(ec, size);
-}
-
-void
-ecdsa_scratch_destroy(const wei_t *ec, wei_scratch_t *scratch) {
-  if (scratch != NULL)
-    wei_scratch_destroy(ec, scratch);
-}
-
 size_t
-ecdsa_scalar_size(const wei_t *ec) {
+wei_curve_scalar_size(const wei_t *ec) {
   return ec->sc.size;
 }
 
 size_t
-ecdsa_scalar_bits(const wei_t *ec) {
+wei_curve_scalar_bits(const wei_t *ec) {
   return ec->sc.bits;
 }
 
 size_t
-ecdsa_field_size(const wei_t *ec) {
+wei_curve_field_size(const wei_t *ec) {
   return ec->fe.size;
 }
 
 size_t
-ecdsa_field_bits(const wei_t *ec) {
+wei_curve_field_bits(const wei_t *ec) {
   return ec->fe.bits;
 }
+
+struct wei_scratch_s *
+wei_scratch_create(const wei_t *ec, size_t size) {
+  struct wei_scratch_s *scratch = torsion_alloc(sizeof(struct wei_scratch_s));
+  size_t length = ec->endo ? size : size / 2;
+  size_t bits = ec->endo ? ec->sc.endo_bits : ec->sc.bits;
+  size_t i;
+
+  scratch->size = size;
+  scratch->wnd = torsion_alloc(length * 4 * sizeof(jge_t));
+  scratch->wnds = torsion_alloc(length * sizeof(jge_t *));
+  scratch->naf = torsion_alloc(length * (bits + 1) * sizeof(int));
+  scratch->nafs = torsion_alloc(length * sizeof(int *));
+
+  for (i = 0; i < length; i++) {
+    scratch->wnds[i] = &scratch->wnd[i * 4];
+    scratch->nafs[i] = &scratch->naf[i * (bits + 1)];
+  }
+
+  scratch->points = torsion_alloc(size * sizeof(wge_t));
+  scratch->coeffs = torsion_alloc(size * sizeof(sc_t));
+
+  return scratch;
+}
+
+void
+wei_scratch_destroy(const wei_t *ec, struct wei_scratch_s *scratch) {
+  (void)ec;
+
+  if (scratch != NULL) {
+    torsion_free(scratch->wnd);
+    torsion_free(scratch->wnds);
+    torsion_free(scratch->naf);
+    torsion_free(scratch->nafs);
+    torsion_free(scratch->points);
+    torsion_free(scratch->coeffs);
+    torsion_free(scratch);
+  }
+}
+
+/*
+ * Montgomery API
+ */
+
+mont_t *
+mont_curve_create(int type) {
+  mont_t *ec = NULL;
+
+  if (type < 0 || (size_t)type > ARRAY_SIZE(mont_curves))
+    return NULL;
+
+  ec = torsion_alloc(sizeof(mont_t));
+
+  mont_init(ec, mont_curves[type]);
+
+  return ec;
+}
+
+void
+mont_curve_destroy(mont_t *ec) {
+  torsion_free(ec);
+}
+
+size_t
+mont_curve_scalar_size(const mont_t *ec) {
+  return ec->sc.size;
+}
+
+size_t
+mont_curve_scalar_bits(const mont_t *ec) {
+  return ec->sc.bits;
+}
+
+size_t
+mont_curve_field_size(const mont_t *ec) {
+  return ec->fe.size;
+}
+
+size_t
+mont_curve_field_bits(const mont_t *ec) {
+  return ec->fe.bits;
+}
+
+/*
+ * Edwards API
+ */
+
+edwards_t *
+edwards_curve_create(int type) {
+  edwards_t *ec = NULL;
+
+  if (type < 0 || (size_t)type > ARRAY_SIZE(edwards_curves))
+    return NULL;
+
+  ec = torsion_alloc(sizeof(edwards_t));
+
+  edwards_init(ec, edwards_curves[type]);
+
+  return ec;
+}
+
+void
+edwards_curve_destroy(edwards_t *ec) {
+  if (ec != NULL) {
+    sc_cleanse(&ec->sc, ec->blind);
+    xge_cleanse(ec, &ec->unblind);
+    torsion_free(ec);
+  }
+}
+
+void
+edwards_curve_randomize(edwards_t *ec, const unsigned char *entropy) {
+  edwards_randomize(ec, entropy);
+}
+
+size_t
+edwards_curve_scalar_size(const edwards_t *ec) {
+  return ec->sc.size;
+}
+
+size_t
+edwards_curve_scalar_bits(const edwards_t *ec) {
+  return ec->sc.bits;
+}
+
+size_t
+edwards_curve_field_size(const edwards_t *ec) {
+  return ec->fe.size;
+}
+
+size_t
+edwards_curve_field_bits(const edwards_t *ec) {
+  return ec->fe.bits;
+}
+
+struct edwards_scratch_s *
+edwards_scratch_create(const edwards_t *ec, size_t size) {
+  struct edwards_scratch_s *scratch =
+    torsion_alloc(sizeof(struct edwards_scratch_s));
+  size_t length = size / 2;
+  size_t bits = ec->sc.bits;
+  size_t i;
+
+  scratch->size = size;
+  scratch->wnd = torsion_alloc(length * 4 * sizeof(xge_t));
+  scratch->wnds = torsion_alloc(length * sizeof(xge_t *));
+  scratch->naf = torsion_alloc(length * (bits + 1) * sizeof(int));
+  scratch->nafs = torsion_alloc(length * sizeof(int *));
+
+  for (i = 0; i < length; i++) {
+    scratch->wnds[i] = &scratch->wnd[i * 4];
+    scratch->nafs[i] = &scratch->naf[i * (bits + 1)];
+  }
+
+  scratch->points = torsion_alloc(size * sizeof(xge_t));
+  scratch->coeffs = torsion_alloc(size * sizeof(sc_t));
+
+  return scratch;
+}
+
+void
+edwards_scratch_destroy(const edwards_t *ec,
+                        struct edwards_scratch_s *scratch) {
+  (void)ec;
+
+  if (scratch != NULL) {
+    torsion_free(scratch->wnd);
+    torsion_free(scratch->wnds);
+    torsion_free(scratch->naf);
+    torsion_free(scratch->nafs);
+    torsion_free(scratch->points);
+    torsion_free(scratch->coeffs);
+    torsion_free(scratch);
+  }
+}
+
+/*
+ * ECDSA
+ */
 
 size_t
 ecdsa_privkey_size(const wei_t *ec) {
@@ -8702,11 +8790,6 @@ ecdsa_pubkey_size(const wei_t *ec, int compact) {
 size_t
 ecdsa_sig_size(const wei_t *ec) {
   return ec->sc.size * 2;
-}
-
-size_t
-ecdsa_schnorr_size(const wei_t *ec) {
-  return ec->fe.size + ec->sc.size;
 }
 
 void
@@ -9752,15 +9835,24 @@ ecdsa_schnorr_hash_challenge(const wei_t *ec, sc_t e,
   cleanse(&hash, sizeof(hash));
 }
 
+/*
+ * Schnorr Legacy
+ */
+
 int
-ecdsa_schnorr_support(const wei_t *ec) {
+schnorr_legacy_support(const wei_t *ec) {
   /* [SCHNORR] "Footnotes". */
   /* Must be congruent to 3 mod 4. */
   return (ec->fe.p[0] & 3) == 3;
 }
 
+size_t
+schnorr_legacy_sig_size(const wei_t *ec) {
+  return ec->fe.size + ec->sc.size;
+}
+
 int
-ecdsa_schnorr_sign(const wei_t *ec,
+schnorr_legacy_sign(const wei_t *ec,
                    unsigned char *sig,
                    const unsigned char *msg,
                    size_t msg_len,
@@ -9802,7 +9894,7 @@ ecdsa_schnorr_sign(const wei_t *ec,
   wge_t A, R;
   int ret = 1;
 
-  ASSERT(ecdsa_schnorr_support(ec));
+  ASSERT(schnorr_legacy_support(ec));
 
   ret &= sc_import(sc, a, priv);
   ret &= sc_is_zero(sc, a) ^ 1;
@@ -9841,7 +9933,7 @@ ecdsa_schnorr_sign(const wei_t *ec,
 }
 
 int
-ecdsa_schnorr_verify(const wei_t *ec,
+schnorr_legacy_verify(const wei_t *ec,
                      const unsigned char *msg,
                      size_t msg_len,
                      const unsigned char *sig,
@@ -9894,7 +9986,7 @@ ecdsa_schnorr_verify(const wei_t *ec,
   wge_t A;
   jge_t R;
 
-  ASSERT(ecdsa_schnorr_support(ec));
+  ASSERT(schnorr_legacy_support(ec));
 
   if (!fe_import(fe, r, Rraw))
     return 0;
@@ -9923,14 +10015,14 @@ ecdsa_schnorr_verify(const wei_t *ec,
 }
 
 int
-ecdsa_schnorr_verify_batch(const wei_t *ec,
+schnorr_legacy_verify_batch(const wei_t *ec,
                            const unsigned char **msgs,
                            const size_t *msg_lens,
                            const unsigned char **sigs,
                            const unsigned char **pubs,
                            const size_t *pub_lens,
                            size_t len,
-                           wei_scratch_t *scratch) {
+                           struct wei_scratch_s *scratch) {
   /* Schnorr Batch Verification.
    *
    * [SCHNORR] "Batch Verification".
@@ -9967,7 +10059,7 @@ ecdsa_schnorr_verify_batch(const wei_t *ec,
   size_t j = 0;
   size_t i;
 
-  ASSERT(ecdsa_schnorr_support(ec));
+  ASSERT(schnorr_legacy_support(ec));
   ASSERT(scratch->size >= 2);
 
   /* Seed RNG. */
@@ -10080,63 +10172,6 @@ ecdsa_schnorr_verify_batch(const wei_t *ec,
 /*
  * Schnorr
  */
-
-wei_t *
-schnorr_context_create(int type) {
-  wei_t *ec = ecdsa_context_create(type);
-
-  if (ec == NULL)
-    return NULL;
-
-  /* [BIP340] "Footnotes". */
-  /* Must be congruent to 3 mod 4. */
-  if ((ec->fe.p[0] & 3) != 3) {
-    ecdsa_context_destroy(ec);
-    return NULL;
-  }
-
-  return ec;
-}
-
-void
-schnorr_context_destroy(wei_t *ec) {
-  ecdsa_context_destroy(ec);
-}
-
-void
-schnorr_context_randomize(wei_t *ec, const unsigned char *entropy) {
-  ecdsa_context_randomize(ec, entropy);
-}
-
-wei_scratch_t *
-schnorr_scratch_create(const wei_t *ec, size_t size) {
-  return ecdsa_scratch_create(ec, size);
-}
-
-void
-schnorr_scratch_destroy(const wei_t *ec, wei_scratch_t *scratch) {
-  ecdsa_scratch_destroy(ec, scratch);
-}
-
-size_t
-schnorr_scalar_size(const wei_t *ec) {
-  return ec->sc.size;
-}
-
-size_t
-schnorr_scalar_bits(const wei_t *ec) {
-  return ec->sc.bits;
-}
-
-size_t
-schnorr_field_size(const wei_t *ec) {
-  return ec->fe.size;
-}
-
-size_t
-schnorr_field_bits(const wei_t *ec) {
-  return ec->fe.bits;
-}
 
 size_t
 schnorr_privkey_size(const wei_t *ec) {
@@ -10782,7 +10817,7 @@ schnorr_verify_batch(const wei_t *ec,
                      const unsigned char **sigs,
                      const unsigned char **pubs,
                      size_t len,
-                     wei_scratch_t *scratch) {
+                     struct wei_scratch_s *scratch) {
   /* Schnorr Batch Verification.
    *
    * [BIP340] "Batch Verification".
@@ -10944,45 +10979,6 @@ schnorr_derive(const wei_t *ec,
 /*
  * ECDH
  */
-
-mont_t *
-ecdh_context_create(int type) {
-  mont_t *ec = NULL;
-
-  if (type < 0 || type > ECDH_CURVE_MAX)
-    return NULL;
-
-  ec = torsion_alloc(sizeof(mont_t));
-
-  mont_init(ec, mont_curves[type]);
-
-  return ec;
-}
-
-void
-ecdh_context_destroy(mont_t *ec) {
-  torsion_free(ec);
-}
-
-size_t
-ecdh_scalar_size(const mont_t *ec) {
-  return ec->sc.size;
-}
-
-size_t
-ecdh_scalar_bits(const mont_t *ec) {
-  return ec->sc.bits;
-}
-
-size_t
-ecdh_field_size(const mont_t *ec) {
-  return ec->fe.size;
-}
-
-size_t
-ecdh_field_bits(const mont_t *ec) {
-  return ec->fe.bits;
-}
 
 size_t
 ecdh_privkey_size(const mont_t *ec) {
@@ -11296,65 +11292,6 @@ ecdh_derive(const mont_t *ec,
 /*
  * EdDSA
  */
-
-edwards_t *
-eddsa_context_create(int type) {
-  edwards_t *ec = NULL;
-
-  if (type < 0 || type > EDDSA_CURVE_MAX)
-    return NULL;
-
-  ec = torsion_alloc(sizeof(edwards_t));
-
-  edwards_init(ec, edwards_curves[type]);
-
-  return ec;
-}
-
-void
-eddsa_context_destroy(edwards_t *ec) {
-  if (ec != NULL) {
-    sc_cleanse(&ec->sc, ec->blind);
-    xge_cleanse(ec, &ec->unblind);
-    torsion_free(ec);
-  }
-}
-
-void
-eddsa_context_randomize(edwards_t *ec, const unsigned char *entropy) {
-  edwards_randomize(ec, entropy);
-}
-
-edwards_scratch_t *
-eddsa_scratch_create(const edwards_t *ec, size_t size) {
-  return edwards_scratch_create(ec, size);
-}
-
-void
-eddsa_scratch_destroy(const edwards_t *ec, edwards_scratch_t *scratch) {
-  if (scratch != NULL)
-    edwards_scratch_destroy(ec, scratch);
-}
-
-size_t
-eddsa_scalar_size(const edwards_t *ec) {
-  return ec->sc.size;
-}
-
-size_t
-eddsa_scalar_bits(const edwards_t *ec) {
-  return ec->sc.bits;
-}
-
-size_t
-eddsa_field_size(const edwards_t *ec) {
-  return ec->fe.size;
-}
-
-size_t
-eddsa_field_bits(const edwards_t *ec) {
-  return ec->fe.bits;
-}
 
 size_t
 eddsa_privkey_size(const edwards_t *ec) {
@@ -12279,7 +12216,7 @@ eddsa_verify_batch(const edwards_t *ec,
                    int ph,
                    const unsigned char *ctx,
                    size_t ctx_len,
-                   edwards_scratch_t *scratch) {
+                   struct edwards_scratch_s *scratch) {
   /* EdDSA Batch Verification.
    *
    * [EDDSA] Page 16, Section 5.

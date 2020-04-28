@@ -637,9 +637,9 @@ aes_init(aes_t *ctx, unsigned int bits, const unsigned char *key) {
 void
 aes_init_encrypt(aes_t *ctx, unsigned int bits, const unsigned char *key) {
   uint32_t *K = ctx->enckey;
+  uint32_t tmp;
   size_t p = 0;
   size_t i = 0;
-  uint32_t tmp;
 
   memset(ctx, 0, sizeof(*ctx));
 
@@ -761,9 +761,9 @@ aes_init_encrypt(aes_t *ctx, unsigned int bits, const unsigned char *key) {
 void
 aes_init_decrypt(aes_t *ctx) {
   uint32_t *K = ctx->deckey;
+  uint32_t tmp;
   size_t p = 0;
   size_t i, j;
-  uint32_t tmp;
 
   memcpy(K, ctx->enckey, sizeof(ctx->enckey));
 
@@ -1324,7 +1324,7 @@ blowfish_init(blowfish_t *ctx,
                        + ctx->S[3][((x) >>  0) & 0xff])
 
 static void
-blowfish_encipher(blowfish_t *ctx, uint32_t *xl, uint32_t *xr) {
+blowfish_encipher(const blowfish_t *ctx, uint32_t *xl, uint32_t *xr) {
   uint32_t l = *xl ^ ctx->P[0];
   uint32_t r = *xr;
 
@@ -1350,7 +1350,7 @@ blowfish_encipher(blowfish_t *ctx, uint32_t *xl, uint32_t *xr) {
 }
 
 static void
-blowfish_decipher(blowfish_t *ctx, uint32_t *xl, uint32_t *xr) {
+blowfish_decipher(const blowfish_t *ctx, uint32_t *xl, uint32_t *xr) {
   uint32_t l = *xl ^ ctx->P[17];
   uint32_t r = *xr;
 
@@ -1388,8 +1388,8 @@ blowfish_stream2word(const unsigned char *data, size_t len, size_t *off) {
 
   word = ((uint32_t)data[(*off + 0) % len] << 24)
        | ((uint32_t)data[(*off + 1) % len] << 16)
-       | ((uint32_t)data[(*off + 2) % len] << 8)
-       | ((uint32_t)data[(*off + 3) % len] << 0);
+       | ((uint32_t)data[(*off + 2) % len] <<  8)
+       | ((uint32_t)data[(*off + 3) % len] <<  0);
 
   *off = (*off + 4) % len;
 
@@ -1463,7 +1463,7 @@ blowfish_expandstate(blowfish_t *ctx,
 }
 
 void
-blowfish_enc(blowfish_t *ctx, uint32_t *data, size_t len) {
+blowfish_enc(const blowfish_t *ctx, uint32_t *data, size_t len) {
   size_t blocks = len / 2;
 
   while (blocks--) {
@@ -1473,7 +1473,7 @@ blowfish_enc(blowfish_t *ctx, uint32_t *data, size_t len) {
 }
 
 void
-blowfish_dec(blowfish_t *ctx, uint32_t *data, size_t len) {
+blowfish_dec(const blowfish_t *ctx, uint32_t *data, size_t len) {
   size_t blocks = len / 2;
 
   while (blocks--) {
@@ -1483,7 +1483,7 @@ blowfish_dec(blowfish_t *ctx, uint32_t *data, size_t len) {
 }
 
 void
-blowfish_encrypt(blowfish_t *ctx,
+blowfish_encrypt(const blowfish_t *ctx,
                  unsigned char *dst,
                  const unsigned char *src) {
   uint32_t xl = read32be(src + 0);
@@ -1496,7 +1496,7 @@ blowfish_encrypt(blowfish_t *ctx,
 }
 
 void
-blowfish_decrypt(blowfish_t *ctx,
+blowfish_decrypt(const blowfish_t *ctx,
                  unsigned char *dst,
                  const unsigned char *src) {
   uint32_t xl = read32be(src + 0);
@@ -1797,115 +1797,152 @@ static const uint32_t S4[256] = {
   0xe3e300e3, 0xf4f400f4, 0xc7c700c7, 0x9e9e009e
 };
 
-#define FEIS(r, i0, i1, i2, i3, k0, k1) do { \
-  uint32_t t0, t1, z;                        \
-                                             \
-  t0 = k0 ^ r[i0];                           \
-  t1 = k1 ^ r[i1];                           \
-                                             \
-  z = S4[(t0 >>  0) & 0xff]                  \
-    ^ S3[(t0 >>  8) & 0xff]                  \
-    ^ S2[(t0 >> 16) & 0xff]                  \
-    ^ S1[(t0 >> 24) & 0xff];                 \
-                                             \
-  r[i3] ^= (z >> 8) | (z << (32 - 8));       \
-                                             \
-  z ^= S1[(t1 >>  0) & 0xff]                 \
-     ^ S4[(t1 >>  8) & 0xff]                 \
-     ^ S3[(t1 >> 16) & 0xff]                 \
-     ^ S2[(t1 >> 24) & 0xff];                \
-                                             \
-  r[i2] ^= z;                                \
-  r[i3] ^= z;                                \
+#define F(r0, r1, r2, r3, k0, k1) do { \
+  uint32_t t0, t1, z;                  \
+                                       \
+  t0 = (k0) ^ (r0);                    \
+  t1 = (k1) ^ (r1);                    \
+                                       \
+  z = S4[(t0 >>  0) & 0xff]            \
+    ^ S3[(t0 >>  8) & 0xff]            \
+    ^ S2[(t0 >> 16) & 0xff]            \
+    ^ S1[(t0 >> 24) & 0xff];           \
+                                       \
+  (r3) ^= (z >> 8) | (z << (32 - 8));  \
+                                       \
+  z ^= S1[(t1 >>  0) & 0xff]           \
+     ^ S4[(t1 >>  8) & 0xff]           \
+     ^ S3[(t1 >> 16) & 0xff]           \
+     ^ S2[(t1 >> 24) & 0xff];          \
+                                       \
+  (r2) ^= z;                           \
+  (r3) ^= z;                           \
 } while (0)
 
-#define ROTL(r, i0, i1, i2, i3, n) do {       \
-  uint32_t t = r[i0] >> (32 - n);             \
-                                              \
-  r[i0] = (r[i0] << n) | (r[i1] >> (32 - n)); \
-  r[i1] = (r[i1] << n) | (r[i2] >> (32 - n)); \
-  r[i2] = (r[i2] << n) | (r[i3] >> (32 - n)); \
-  r[i3] = (r[i3] << n) | t;                   \
-} while (0)
-
-#define SET2(x, x0, x1, y, y0, y1) do { \
-  x[x0] = y[y0];                        \
-  x[x1] = y[y1];                        \
-} while (0)
-
-#define SET4(x, x0, x1, x2, x3, y, y0, y1, y2, y3) do { \
-  x[x0] = y[y0];                                        \
-  x[x1] = y[y1];                                        \
-  x[x2] = y[y2];                                        \
-  x[x3] = y[y3];                                        \
-} while (0)
-
-#define XOR4(x, x0, x1, x2, x3, y, y0, y1, y2, y3) do { \
-  x[x0] ^= y[y0];                                       \
-  x[x1] ^= y[y1];                                       \
-  x[x2] ^= y[y2];                                       \
-  x[x3] ^= y[y3];                                       \
+#define ROTL128(s0, s1, s2, s3, n) do {    \
+  uint32_t t = (s0) >> (32 - n);           \
+                                           \
+  (s0) = ((s0) << n) | ((s1) >> (32 - n)); \
+  (s1) = ((s1) << n) | ((s2) >> (32 - n)); \
+  (s2) = ((s2) << n) | ((s3) >> (32 - n)); \
+  (s3) = ((s3) << n) | t;                  \
 } while (0)
 
 static void
 camellia128_init(camellia_t *ctx, const unsigned char *key) {
   uint32_t *k = ctx->key;
-  uint32_t s[4];
+  uint32_t s0 = read32be(key +  0);
+  uint32_t s1 = read32be(key +  4);
+  uint32_t s2 = read32be(key +  8);
+  uint32_t s3 = read32be(key + 12);
 
   memset(ctx, 0, sizeof(*ctx));
 
-  s[0] = read32be(key +  0);
-  s[1] = read32be(key +  4);
-  s[2] = read32be(key +  8);
-  s[3] = read32be(key + 12);
+  k[0] = s0;
+  k[1] = s1;
+  k[2] = s2;
+  k[3] = s3;
 
-  SET4(k, 0, 1, 2, 3, s, 0, 1, 2, 3);
+  F(s0, s1, s2, s3, SIGMA[0], SIGMA[1]);
+  F(s2, s3, s0, s1, SIGMA[2], SIGMA[3]);
 
-  FEIS(s, 0, 1, 2, 3, SIGMA[0], SIGMA[1]);
-  FEIS(s, 2, 3, 0, 1, SIGMA[2], SIGMA[3]);
+  s0 ^= k[0];
+  s1 ^= k[1];
+  s2 ^= k[2];
+  s3 ^= k[3];
 
-  XOR4(s, 0, 1, 2, 3, k, 0, 1, 2, 3);
+  F(s0, s1, s2, s3, SIGMA[4], SIGMA[5]);
+  F(s2, s3, s0, s1, SIGMA[6], SIGMA[7]);
 
-  FEIS(s, 0, 1, 2, 3, SIGMA[4], SIGMA[5]);
-  FEIS(s, 2, 3, 0, 1, SIGMA[6], SIGMA[7]);
-  SET4(k, 4, 5, 6, 7, s, 0, 1, 2, 3);
+  k[4] = s0;
+  k[5] = s1;
+  k[6] = s2;
+  k[7] = s3;
 
-  ROTL(s, 0, 1, 2, 3, 15); /* KA << 15 */
-  SET4(k, 12, 13, 14, 15, s, 0, 1, 2, 3);
+  ROTL128(s0, s1, s2, s3, 15); /* KA << 15 */
 
-  ROTL(s, 0, 1, 2, 3, 15); /* KA << 30 */
-  SET4(k, 16, 17, 18, 19, s, 0, 1, 2, 3);
+  k[12] = s0;
+  k[13] = s1;
+  k[14] = s2;
+  k[15] = s3;
 
-  ROTL(s, 0, 1, 2, 3, 15); /* KA << 45 */
-  SET2(k, 24, 25, s, 0, 1);
+  ROTL128(s0, s1, s2, s3, 15); /* KA << 30 */
 
-  ROTL(s, 0, 1, 2, 3, 15); /* KA << 60 */
-  SET4(k, 28, 29, 30, 31, s, 0, 1, 2, 3);
+  k[16] = s0;
+  k[17] = s1;
+  k[18] = s2;
+  k[19] = s3;
 
-  ROTL(s, 1, 2, 3, 0, 2); /* KA << 94 */
-  SET4(k, 40, 41, 42, 43, s, 1, 2, 3, 0);
+  ROTL128(s0, s1, s2, s3, 15); /* KA << 45 */
 
-  ROTL(s, 1, 2, 3, 0, 17); /* KA << 111 */
-  SET4(k, 48, 49, 50, 51, s, 1, 2, 3, 0);
-  SET4(s, 0, 1, 2, 3, k, 0, 1, 2, 3);
+  k[24] = s0;
+  k[25] = s1;
 
-  ROTL(s, 0, 1, 2, 3, 15); /* KL << 15 */
-  SET4(k, 8, 9, 10, 11, s, 0, 1, 2, 3);
+  ROTL128(s0, s1, s2, s3, 15); /* KA << 60 */
 
-  ROTL(s, 0, 1, 2, 3, 30); /* KL << 45 */
-  SET4(k, 20, 21, 22, 23, s, 0, 1, 2, 3);
+  k[28] = s0;
+  k[29] = s1;
+  k[30] = s2;
+  k[31] = s3;
 
-  ROTL(s, 0, 1, 2, 3, 15); /* KL << 60 */
-  SET2(k, 26, 27, s, 2, 3);
+  ROTL128(s1, s2, s3, s0, 2); /* KA << 94 */
 
-  ROTL(s, 0, 1, 2, 3, 17); /* KL << 77 */
-  SET4(k, 32, 33, 34, 35, s, 0, 1, 2, 3);
+  k[40] = s1;
+  k[41] = s2;
+  k[42] = s3;
+  k[43] = s0;
 
-  ROTL(s, 0, 1, 2, 3, 17); /* KL << 94 */
-  SET4(k, 36, 37, 38, 39, s, 0, 1, 2, 3);
+  ROTL128(s1, s2, s3, s0, 17); /* KA << 111 */
 
-  ROTL(s, 0, 1, 2, 3, 17); /* KL << 111 */
-  SET4(k, 44, 45, 46, 47, s, 0, 1, 2, 3);
+  k[48] = s1;
+  k[49] = s2;
+  k[50] = s3;
+  k[51] = s0;
+
+  s0 = k[0];
+  s1 = k[1];
+  s2 = k[2];
+  s3 = k[3];
+
+  ROTL128(s0, s1, s2, s3, 15); /* KL << 15 */
+
+  k[8] = s0;
+  k[9] = s1;
+  k[10] = s2;
+  k[11] = s3;
+
+  ROTL128(s0, s1, s2, s3, 30); /* KL << 45 */
+
+  k[20] = s0;
+  k[21] = s1;
+  k[22] = s2;
+  k[23] = s3;
+
+  ROTL128(s0, s1, s2, s3, 15); /* KL << 60 */
+
+  k[26] = s2;
+  k[27] = s3;
+
+  ROTL128(s0, s1, s2, s3, 17); /* KL << 77 */
+
+  k[32] = s0;
+  k[33] = s1;
+  k[34] = s2;
+  k[35] = s3;
+
+  ROTL128(s0, s1, s2, s3, 17); /* KL << 94 */
+
+  k[36] = s0;
+  k[37] = s1;
+  k[38] = s2;
+  k[39] = s3;
+
+  ROTL128(s0, s1, s2, s3, 17); /* KL << 111 */
+
+  k[44] = s0;
+  k[45] = s1;
+  k[46] = s2;
+  k[47] = s3;
 }
 
 static void
@@ -1913,57 +1950,61 @@ camellia128_encrypt(const camellia_t *ctx,
                     unsigned char *dst,
                     const unsigned char *src) {
   const uint32_t *k = ctx->key;
-  uint32_t r[4];
+  uint32_t r0 = read32be(src +  0);
+  uint32_t r1 = read32be(src +  4);
+  uint32_t r2 = read32be(src +  8);
+  uint32_t r3 = read32be(src + 12);
   uint32_t t;
 
-  r[0] = read32be(src +  0);
-  r[1] = read32be(src +  4);
-  r[2] = read32be(src +  8);
-  r[3] = read32be(src + 12);
+  r0 ^= k[0];
+  r1 ^= k[1];
+  r2 ^= k[2];
+  r3 ^= k[3];
 
-  XOR4(r, 0, 1, 2, 3, k, 0, 1, 2, 3);
+  F(r0, r1, r2, r3, k[4], k[5]);
+  F(r2, r3, r0, r1, k[6], k[7]);
+  F(r0, r1, r2, r3, k[8], k[9]);
+  F(r2, r3, r0, r1, k[10], k[11]);
+  F(r0, r1, r2, r3, k[12], k[13]);
+  F(r2, r3, r0, r1, k[14], k[15]);
 
-  FEIS(r, 0, 1, 2, 3, k[4], k[5]);
-  FEIS(r, 2, 3, 0, 1, k[6], k[7]);
-  FEIS(r, 0, 1, 2, 3, k[8], k[9]);
-  FEIS(r, 2, 3, 0, 1, k[10], k[11]);
-  FEIS(r, 0, 1, 2, 3, k[12], k[13]);
-  FEIS(r, 2, 3, 0, 1, k[14], k[15]);
+  t = r0 & k[16];
+  r1 ^= (t << 1) | (t >> (32 - 1));
+  r2 ^= r3 | k[19];
+  r0 ^= r1 | k[17];
+  t = r2 & k[18];
+  r3 ^= (t << 1) | (t >> (32 - 1));
 
-  t = r[0] & k[16];
-  r[1] ^= (t << 1) | (t >> (32 - 1));
-  r[2] ^= r[3] | k[19];
-  r[0] ^= r[1] | k[17];
-  t = r[2] & k[18];
-  r[3] ^= (t << 1) | (t >> (32 - 1));
+  F(r0, r1, r2, r3, k[20], k[21]);
+  F(r2, r3, r0, r1, k[22], k[23]);
+  F(r0, r1, r2, r3, k[24], k[25]);
+  F(r2, r3, r0, r1, k[26], k[27]);
+  F(r0, r1, r2, r3, k[28], k[29]);
+  F(r2, r3, r0, r1, k[30], k[31]);
 
-  FEIS(r, 0, 1, 2, 3, k[20], k[21]);
-  FEIS(r, 2, 3, 0, 1, k[22], k[23]);
-  FEIS(r, 0, 1, 2, 3, k[24], k[25]);
-  FEIS(r, 2, 3, 0, 1, k[26], k[27]);
-  FEIS(r, 0, 1, 2, 3, k[28], k[29]);
-  FEIS(r, 2, 3, 0, 1, k[30], k[31]);
+  t = r0 & k[32];
+  r1 ^= (t << 1) | (t >> (32 - 1));
+  r2 ^= r3 | k[35];
+  r0 ^= r1 | k[33];
+  t = r2 & k[34];
+  r3 ^= (t << 1) | (t >> (32 - 1));
 
-  t = r[0] & k[32];
-  r[1] ^= (t << 1) | (t >> (32 - 1));
-  r[2] ^= r[3] | k[35];
-  r[0] ^= r[1] | k[33];
-  t = r[2] & k[34];
-  r[3] ^= (t << 1) | (t >> (32 - 1));
+  F(r0, r1, r2, r3, k[36], k[37]);
+  F(r2, r3, r0, r1, k[38], k[39]);
+  F(r0, r1, r2, r3, k[40], k[41]);
+  F(r2, r3, r0, r1, k[42], k[43]);
+  F(r0, r1, r2, r3, k[44], k[45]);
+  F(r2, r3, r0, r1, k[46], k[47]);
 
-  FEIS(r, 0, 1, 2, 3, k[36], k[37]);
-  FEIS(r, 2, 3, 0, 1, k[38], k[39]);
-  FEIS(r, 0, 1, 2, 3, k[40], k[41]);
-  FEIS(r, 2, 3, 0, 1, k[42], k[43]);
-  FEIS(r, 0, 1, 2, 3, k[44], k[45]);
-  FEIS(r, 2, 3, 0, 1, k[46], k[47]);
+  r2 ^= k[48];
+  r3 ^= k[49];
+  r0 ^= k[50];
+  r1 ^= k[51];
 
-  XOR4(r, 2, 3, 0, 1, k, 48, 49, 50, 51);
-
-  write32be(dst +  0, r[2]);
-  write32be(dst +  4, r[3]);
-  write32be(dst +  8, r[0]);
-  write32be(dst + 12, r[1]);
+  write32be(dst +  0, r2);
+  write32be(dst +  4, r3);
+  write32be(dst +  8, r0);
+  write32be(dst + 12, r1);
 }
 
 static void
@@ -1971,69 +2012,73 @@ camellia128_decrypt(const camellia_t *ctx,
                     unsigned char *dst,
                     const unsigned char *src) {
   const uint32_t *k = ctx->key;
-  uint32_t r[4];
+  uint32_t r0 = read32be(src +  0);
+  uint32_t r1 = read32be(src +  4);
+  uint32_t r2 = read32be(src +  8);
+  uint32_t r3 = read32be(src + 12);
   uint32_t t;
 
-  r[0] = read32be(src +  0);
-  r[1] = read32be(src +  4);
-  r[2] = read32be(src +  8);
-  r[3] = read32be(src + 12);
+  r3 ^= k[51];
+  r2 ^= k[50];
+  r1 ^= k[49];
+  r0 ^= k[48];
 
-  XOR4(r, 3, 2, 1, 0, k, 51, 50, 49, 48);
+  F(r0, r1, r2, r3, k[46], k[47]);
+  F(r2, r3, r0, r1, k[44], k[45]);
+  F(r0, r1, r2, r3, k[42], k[43]);
+  F(r2, r3, r0, r1, k[40], k[41]);
+  F(r0, r1, r2, r3, k[38], k[39]);
+  F(r2, r3, r0, r1, k[36], k[37]);
 
-  FEIS(r, 0, 1, 2, 3, k[46], k[47]);
-  FEIS(r, 2, 3, 0, 1, k[44], k[45]);
-  FEIS(r, 0, 1, 2, 3, k[42], k[43]);
-  FEIS(r, 2, 3, 0, 1, k[40], k[41]);
-  FEIS(r, 0, 1, 2, 3, k[38], k[39]);
-  FEIS(r, 2, 3, 0, 1, k[36], k[37]);
+  t = r0 & k[34];
+  r1 ^= (t << 1) | (t >> (32 - 1));
+  r2 ^= r3 | k[33];
+  r0 ^= r1 | k[35];
+  t = r2 & k[32];
+  r3 ^= (t << 1) | (t >> (32 - 1));
 
-  t = r[0] & k[34];
-  r[1] ^= (t << 1) | (t >> (32 - 1));
-  r[2] ^= r[3] | k[33];
-  r[0] ^= r[1] | k[35];
-  t = r[2] & k[32];
-  r[3] ^= (t << 1) | (t >> (32 - 1));
+  F(r0, r1, r2, r3, k[30], k[31]);
+  F(r2, r3, r0, r1, k[28], k[29]);
+  F(r0, r1, r2, r3, k[26], k[27]);
+  F(r2, r3, r0, r1, k[24], k[25]);
+  F(r0, r1, r2, r3, k[22], k[23]);
+  F(r2, r3, r0, r1, k[20], k[21]);
 
-  FEIS(r, 0, 1, 2, 3, k[30], k[31]);
-  FEIS(r, 2, 3, 0, 1, k[28], k[29]);
-  FEIS(r, 0, 1, 2, 3, k[26], k[27]);
-  FEIS(r, 2, 3, 0, 1, k[24], k[25]);
-  FEIS(r, 0, 1, 2, 3, k[22], k[23]);
-  FEIS(r, 2, 3, 0, 1, k[20], k[21]);
+  t = r0 & k[18];
+  r1 ^= (t << 1) | (t >> (32 - 1));
+  r2 ^= r3 | k[17];
+  r0 ^= r1 | k[19];
+  t = r2 & k[16];
+  r3 ^= (t << 1) | (t >> (32 - 1));
 
-  t = r[0] & k[18];
-  r[1] ^= (t << 1) | (t >> (32 - 1));
-  r[2] ^= r[3] | k[17];
-  r[0] ^= r[1] | k[19];
-  t = r[2] & k[16];
-  r[3] ^= (t << 1) | (t >> (32 - 1));
+  F(r0, r1, r2, r3, k[14], k[15]);
+  F(r2, r3, r0, r1, k[12], k[13]);
+  F(r0, r1, r2, r3, k[10], k[11]);
+  F(r2, r3, r0, r1, k[8], k[9]);
+  F(r0, r1, r2, r3, k[6], k[7]);
+  F(r2, r3, r0, r1, k[4], k[5]);
 
-  FEIS(r, 0, 1, 2, 3, k[14], k[15]);
-  FEIS(r, 2, 3, 0, 1, k[12], k[13]);
-  FEIS(r, 0, 1, 2, 3, k[10], k[11]);
-  FEIS(r, 2, 3, 0, 1, k[8], k[9]);
-  FEIS(r, 0, 1, 2, 3, k[6], k[7]);
-  FEIS(r, 2, 3, 0, 1, k[4], k[5]);
+  r1 ^= k[3];
+  r0 ^= k[2];
+  r3 ^= k[1];
+  r2 ^= k[0];
 
-  XOR4(r, 1, 0, 3, 2, k, 3, 2, 1, 0);
-
-  write32be(dst +  0, r[2]);
-  write32be(dst +  4, r[3]);
-  write32be(dst +  8, r[0]);
-  write32be(dst + 12, r[1]);
+  write32be(dst +  0, r2);
+  write32be(dst +  4, r3);
+  write32be(dst +  8, r0);
+  write32be(dst + 12, r1);
 }
 
 static void
 camellia256_init(camellia_t *ctx, const unsigned char *key, size_t key_len) {
   uint32_t *k = ctx->key;
-  uint32_t s[4];
+  uint32_t s0, s1, s2, s3;
 
   memset(ctx, 0, sizeof(*ctx));
 
-  k[0] = read32be(key + 0);
-  k[1] = read32be(key + 4);
-  k[2] = read32be(key + 8);
+  k[0] = read32be(key +  0);
+  k[1] = read32be(key +  4);
+  k[2] = read32be(key +  8);
   k[3] = read32be(key + 12);
 
   k[8] = read32be(key + 16);
@@ -2049,61 +2094,158 @@ camellia256_init(camellia_t *ctx, const unsigned char *key, size_t key_len) {
     ASSERT(0);
   }
 
-  s[0] = k[8] ^ k[0];
-  s[1] = k[9] ^ k[1];
-  s[2] = k[10] ^ k[2];
-  s[3] = k[11] ^ k[3];
+  s0 = k[8] ^ k[0];
+  s1 = k[9] ^ k[1];
+  s2 = k[10] ^ k[2];
+  s3 = k[11] ^ k[3];
 
-  FEIS(s, 0, 1, 2, 3, SIGMA[0], SIGMA[1]);
-  FEIS(s, 2, 3, 0, 1, SIGMA[2], SIGMA[3]);
+  F(s0, s1, s2, s3, SIGMA[0], SIGMA[1]);
+  F(s2, s3, s0, s1, SIGMA[2], SIGMA[3]);
 
-  XOR4(s, 0, 1, 2, 3, k, 0, 1, 2, 3);
-  FEIS(s, 0, 1, 2, 3, SIGMA[4], SIGMA[5]);
-  FEIS(s, 2, 3, 0, 1, SIGMA[6], SIGMA[7]);
+  s0 ^= k[0];
+  s1 ^= k[1];
+  s2 ^= k[2];
+  s3 ^= k[3];
 
-  SET4(k, 12, 13, 14, 15, s, 0, 1, 2, 3);
+  F(s0, s1, s2, s3, SIGMA[4], SIGMA[5]);
+  F(s2, s3, s0, s1, SIGMA[6], SIGMA[7]);
 
-  XOR4(s, 0, 1, 2, 3, k, 8, 9, 10, 11);
-  FEIS(s, 0, 1, 2, 3, SIGMA[8], SIGMA[9]);
-  FEIS(s, 2, 3, 0, 1, SIGMA[10], SIGMA[11]);
+  k[12] = s0;
+  k[13] = s1;
+  k[14] = s2;
+  k[15] = s3;
 
-  SET4(k, 4, 5, 6, 7, s, 0, 1, 2, 3);
-  ROTL(s, 0, 1, 2, 3, 30); /* KB << 30 */
-  SET4(k, 20, 21, 22, 23, s, 0, 1, 2, 3);
-  ROTL(s, 0, 1, 2, 3, 30); /* KB << 60 */
-  SET4(k, 40, 41, 42, 43, s, 0, 1, 2, 3);
-  ROTL(s, 1, 2, 3, 0, 19); /* KB << 111 */
-  SET4(k, 64, 65, 66, 67, s, 1, 2, 3, 0);
+  s0 ^= k[8];
+  s1 ^= k[9];
+  s2 ^= k[10];
+  s3 ^= k[11];
 
-  SET4(s, 0, 1, 2, 3, k, 8, 9, 10, 11);
-  ROTL(s, 0, 1, 2, 3, 15); /* KR << 15 */
-  SET4(k, 8, 9, 10, 11, s, 0, 1, 2, 3);
-  ROTL(s, 0, 1, 2, 3, 15); /* KR << 30 */
-  SET4(k, 16, 17, 18, 19, s, 0, 1, 2, 3);
-  ROTL(s, 0, 1, 2, 3, 30); /* KR << 60 */
-  SET4(k, 36, 37, 38, 39, s, 0, 1, 2, 3);
-  ROTL(s, 1, 2, 3, 0, 2); /* KR << 94 */
-  SET4(k, 52, 53, 54, 55, s, 1, 2, 3, 0);
+  F(s0, s1, s2, s3, SIGMA[8], SIGMA[9]);
+  F(s2, s3, s0, s1, SIGMA[10], SIGMA[11]);
 
-  SET4(s, 0, 1, 2, 3, k, 12, 13, 14, 15);
-  ROTL(s, 0, 1, 2, 3, 15); /* KA << 15 */
-  SET4(k, 12, 13, 14, 15, s, 0, 1, 2, 3);
-  ROTL(s, 0, 1, 2, 3, 30); /* KA << 45 */
-  SET4(k, 28, 29, 30, 31, s, 0, 1, 2, 3);
+  k[4] = s0;
+  k[5] = s1;
+  k[6] = s2;
+  k[7] = s3;
+
+  ROTL128(s0, s1, s2, s3, 30); /* KB << 30 */
+
+  k[20] = s0;
+  k[21] = s1;
+  k[22] = s2;
+  k[23] = s3;
+
+  ROTL128(s0, s1, s2, s3, 30); /* KB << 60 */
+
+  k[40] = s0;
+  k[41] = s1;
+  k[42] = s2;
+  k[43] = s3;
+
+  ROTL128(s1, s2, s3, s0, 19); /* KB << 111 */
+
+  k[64] = s1;
+  k[65] = s2;
+  k[66] = s3;
+  k[67] = s0;
+
+  s0 = k[8];
+  s1 = k[9];
+  s2 = k[10];
+  s3 = k[11];
+
+  ROTL128(s0, s1, s2, s3, 15); /* KR << 15 */
+
+  k[8] = s0;
+  k[9] = s1;
+  k[10] = s2;
+  k[11] = s3;
+
+  ROTL128(s0, s1, s2, s3, 15); /* KR << 30 */
+
+  k[16] = s0;
+  k[17] = s1;
+  k[18] = s2;
+  k[19] = s3;
+
+  ROTL128(s0, s1, s2, s3, 30); /* KR << 60 */
+
+  k[36] = s0;
+  k[37] = s1;
+  k[38] = s2;
+  k[39] = s3;
+
+  ROTL128(s1, s2, s3, s0, 2); /* KR << 94 */
+
+  k[52] = s1;
+  k[53] = s2;
+  k[54] = s3;
+  k[55] = s0;
+
+  s0 = k[12];
+  s1 = k[13];
+  s2 = k[14];
+  s3 = k[15];
+
+  ROTL128(s0, s1, s2, s3, 15); /* KA << 15 */
+
+  k[12] = s0;
+  k[13] = s1;
+  k[14] = s2;
+  k[15] = s3;
+
+  ROTL128(s0, s1, s2, s3, 30); /* KA << 45 */
+
+  k[28] = s0;
+  k[29] = s1;
+  k[30] = s2;
+  k[31] = s3;
+
   /* KA << 77 */
-  SET4(k, 48, 49, 50, 51, s, 1, 2, 3, 0);
-  ROTL(s, 1, 2, 3, 0, 17); /* KA << 94 */
-  SET4(k, 56, 57, 58, 59, s, 1, 2, 3, 0);
+  k[48] = s1;
+  k[49] = s2;
+  k[50] = s3;
+  k[51] = s0;
 
-  SET4(s, 0, 1, 2, 3, k, 0, 1, 2, 3);
-  ROTL(s, 1, 2, 3, 0, 13); /* KL << 45 */
-  SET4(k, 24, 25, 26, 27, s, 1, 2, 3, 0);
-  ROTL(s, 1, 2, 3, 0, 15); /* KL << 60 */
-  SET4(k, 32, 33, 34, 35, s, 1, 2, 3, 0);
-  ROTL(s, 1, 2, 3, 0, 17); /* KL << 77 */
-  SET4(k, 44, 45, 46, 47, s, 1, 2, 3, 0);
-  ROTL(s, 2, 3, 0, 1, 2); /* KL << 111 */
-  SET4(k, 60, 61, 62, 63, s, 2, 3, 0, 1);
+  ROTL128(s1, s2, s3, s0, 17); /* KA << 94 */
+
+  k[56] = s1;
+  k[57] = s2;
+  k[58] = s3;
+  k[59] = s0;
+
+  s0 = k[0];
+  s1 = k[1];
+  s2 = k[2];
+  s3 = k[3];
+
+  ROTL128(s1, s2, s3, s0, 13); /* KL << 45 */
+
+  k[24] = s1;
+  k[25] = s2;
+  k[26] = s3;
+  k[27] = s0;
+
+  ROTL128(s1, s2, s3, s0, 15); /* KL << 60 */
+
+  k[32] = s1;
+  k[33] = s2;
+  k[34] = s3;
+  k[35] = s0;
+
+  ROTL128(s1, s2, s3, s0, 17); /* KL << 77 */
+
+  k[44] = s1;
+  k[45] = s2;
+  k[46] = s3;
+  k[47] = s0;
+
+  ROTL128(s2, s3, s0, s1, 2); /* KL << 111 */
+
+  k[60] = s2;
+  k[61] = s3;
+  k[62] = s0;
+  k[63] = s1;
 }
 
 static void
@@ -2111,71 +2253,75 @@ camellia256_encrypt(const camellia_t *ctx,
                     unsigned char *dst,
                     const unsigned char *src) {
   const uint32_t *k = ctx->key;
-  uint32_t r[4];
+  uint32_t r0 = read32be(src +  0);
+  uint32_t r1 = read32be(src +  4);
+  uint32_t r2 = read32be(src +  8);
+  uint32_t r3 = read32be(src + 12);
   uint32_t t;
 
-  r[0] = read32be(src +  0);
-  r[1] = read32be(src +  4);
-  r[2] = read32be(src +  8);
-  r[3] = read32be(src + 12);
+  r0 ^= k[0];
+  r1 ^= k[1];
+  r2 ^= k[2];
+  r3 ^= k[3];
 
-  XOR4(r, 0, 1, 2, 3, k, 0, 1, 2, 3);
+  F(r0, r1, r2, r3, k[4], k[5]);
+  F(r2, r3, r0, r1, k[6], k[7]);
+  F(r0, r1, r2, r3, k[8], k[9]);
+  F(r2, r3, r0, r1, k[10], k[11]);
+  F(r0, r1, r2, r3, k[12], k[13]);
+  F(r2, r3, r0, r1, k[14], k[15]);
 
-  FEIS(r, 0, 1, 2, 3, k[4], k[5]);
-  FEIS(r, 2, 3, 0, 1, k[6], k[7]);
-  FEIS(r, 0, 1, 2, 3, k[8], k[9]);
-  FEIS(r, 2, 3, 0, 1, k[10], k[11]);
-  FEIS(r, 0, 1, 2, 3, k[12], k[13]);
-  FEIS(r, 2, 3, 0, 1, k[14], k[15]);
+  t = r0 & k[16];
+  r1 ^= (t << 1) | (t >> (32 - 1));
+  r2 ^= r3 | k[19];
+  r0 ^= r1 | k[17];
+  t = r2 & k[18];
+  r3 ^= (t << 1) | (t >> (32 - 1));
 
-  t = r[0] & k[16];
-  r[1] ^= (t << 1) | (t >> (32 - 1));
-  r[2] ^= r[3] | k[19];
-  r[0] ^= r[1] | k[17];
-  t = r[2] & k[18];
-  r[3] ^= (t << 1) | (t >> (32 - 1));
+  F(r0, r1, r2, r3, k[20], k[21]);
+  F(r2, r3, r0, r1, k[22], k[23]);
+  F(r0, r1, r2, r3, k[24], k[25]);
+  F(r2, r3, r0, r1, k[26], k[27]);
+  F(r0, r1, r2, r3, k[28], k[29]);
+  F(r2, r3, r0, r1, k[30], k[31]);
 
-  FEIS(r, 0, 1, 2, 3, k[20], k[21]);
-  FEIS(r, 2, 3, 0, 1, k[22], k[23]);
-  FEIS(r, 0, 1, 2, 3, k[24], k[25]);
-  FEIS(r, 2, 3, 0, 1, k[26], k[27]);
-  FEIS(r, 0, 1, 2, 3, k[28], k[29]);
-  FEIS(r, 2, 3, 0, 1, k[30], k[31]);
+  t = r0 & k[32];
+  r1 ^= (t << 1) | (t >> (32 - 1));
+  r2 ^= r3 | k[35];
+  r0 ^= r1 | k[33];
+  t = r2 & k[34];
+  r3 ^= (t << 1) | (t >> (32 - 1));
 
-  t = r[0] & k[32];
-  r[1] ^= (t << 1) | (t >> (32 - 1));
-  r[2] ^= r[3] | k[35];
-  r[0] ^= r[1] | k[33];
-  t = r[2] & k[34];
-  r[3] ^= (t << 1) | (t >> (32 - 1));
+  F(r0, r1, r2, r3, k[36], k[37]);
+  F(r2, r3, r0, r1, k[38], k[39]);
+  F(r0, r1, r2, r3, k[40], k[41]);
+  F(r2, r3, r0, r1, k[42], k[43]);
+  F(r0, r1, r2, r3, k[44], k[45]);
+  F(r2, r3, r0, r1, k[46], k[47]);
 
-  FEIS(r, 0, 1, 2, 3, k[36], k[37]);
-  FEIS(r, 2, 3, 0, 1, k[38], k[39]);
-  FEIS(r, 0, 1, 2, 3, k[40], k[41]);
-  FEIS(r, 2, 3, 0, 1, k[42], k[43]);
-  FEIS(r, 0, 1, 2, 3, k[44], k[45]);
-  FEIS(r, 2, 3, 0, 1, k[46], k[47]);
+  t = r0 & k[48];
+  r1 ^= (t << 1) | (t >> (32 - 1));
+  r2 ^= r3 | k[51];
+  r0 ^= r1 | k[49];
+  t = r2 & k[50];
+  r3 ^= (t << 1) | (t >> (32 - 1));
 
-  t = r[0] & k[48];
-  r[1] ^= (t << 1) | (t >> (32 - 1));
-  r[2] ^= r[3] | k[51];
-  r[0] ^= r[1] | k[49];
-  t = r[2] & k[50];
-  r[3] ^= (t << 1) | (t >> (32 - 1));
+  F(r0, r1, r2, r3, k[52], k[53]);
+  F(r2, r3, r0, r1, k[54], k[55]);
+  F(r0, r1, r2, r3, k[56], k[57]);
+  F(r2, r3, r0, r1, k[58], k[59]);
+  F(r0, r1, r2, r3, k[60], k[61]);
+  F(r2, r3, r0, r1, k[62], k[63]);
 
-  FEIS(r, 0, 1, 2, 3, k[52], k[53]);
-  FEIS(r, 2, 3, 0, 1, k[54], k[55]);
-  FEIS(r, 0, 1, 2, 3, k[56], k[57]);
-  FEIS(r, 2, 3, 0, 1, k[58], k[59]);
-  FEIS(r, 0, 1, 2, 3, k[60], k[61]);
-  FEIS(r, 2, 3, 0, 1, k[62], k[63]);
+  r2 ^= k[64];
+  r3 ^= k[65];
+  r0 ^= k[66];
+  r1 ^= k[67];
 
-  XOR4(r, 2, 3, 0, 1, k, 64, 65, 66, 67);
-
-  write32be(dst +  0, r[2]);
-  write32be(dst +  4, r[3]);
-  write32be(dst +  8, r[0]);
-  write32be(dst + 12, r[1]);
+  write32be(dst +  0, r2);
+  write32be(dst +  4, r3);
+  write32be(dst +  8, r0);
+  write32be(dst + 12, r1);
 }
 
 static void
@@ -2183,78 +2329,79 @@ camellia256_decrypt(const camellia_t *ctx,
                     unsigned char *dst,
                     const unsigned char *src) {
   const uint32_t *k = ctx->key;
-  uint32_t r[4];
+  uint32_t r0 = read32be(src +  0);
+  uint32_t r1 = read32be(src +  4);
+  uint32_t r2 = read32be(src +  8);
+  uint32_t r3 = read32be(src + 12);
   uint32_t t;
 
-  r[0] = read32be(src +  0);
-  r[1] = read32be(src +  4);
-  r[2] = read32be(src +  8);
-  r[3] = read32be(src + 12);
+  r3 ^= k[67];
+  r2 ^= k[66];
+  r1 ^= k[65];
+  r0 ^= k[64];
 
-  XOR4(r, 3, 2, 1, 0, k, 67, 66, 65, 64);
+  F(r0, r1, r2, r3, k[62], k[63]);
+  F(r2, r3, r0, r1, k[60], k[61]);
+  F(r0, r1, r2, r3, k[58], k[59]);
+  F(r2, r3, r0, r1, k[56], k[57]);
+  F(r0, r1, r2, r3, k[54], k[55]);
+  F(r2, r3, r0, r1, k[52], k[53]);
 
-  FEIS(r, 0, 1, 2, 3, k[62], k[63]);
-  FEIS(r, 2, 3, 0, 1, k[60], k[61]);
-  FEIS(r, 0, 1, 2, 3, k[58], k[59]);
-  FEIS(r, 2, 3, 0, 1, k[56], k[57]);
-  FEIS(r, 0, 1, 2, 3, k[54], k[55]);
-  FEIS(r, 2, 3, 0, 1, k[52], k[53]);
+  t = r0 & k[50];
+  r1 ^= (t << 1) | (t >> (32 - 1));
+  r2 ^= r3 | k[49];
+  r0 ^= r1 | k[51];
+  t = r2 & k[48];
+  r3 ^= (t << 1) | (t >> (32 - 1));
 
-  t = r[0] & k[50];
-  r[1] ^= (t << 1) | (t >> (32 - 1));
-  r[2] ^= r[3] | k[49];
-  r[0] ^= r[1] | k[51];
-  t = r[2] & k[48];
-  r[3] ^= (t << 1) | (t >> (32 - 1));
+  F(r0, r1, r2, r3, k[46], k[47]);
+  F(r2, r3, r0, r1, k[44], k[45]);
+  F(r0, r1, r2, r3, k[42], k[43]);
+  F(r2, r3, r0, r1, k[40], k[41]);
+  F(r0, r1, r2, r3, k[38], k[39]);
+  F(r2, r3, r0, r1, k[36], k[37]);
 
-  FEIS(r, 0, 1, 2, 3, k[46], k[47]);
-  FEIS(r, 2, 3, 0, 1, k[44], k[45]);
-  FEIS(r, 0, 1, 2, 3, k[42], k[43]);
-  FEIS(r, 2, 3, 0, 1, k[40], k[41]);
-  FEIS(r, 0, 1, 2, 3, k[38], k[39]);
-  FEIS(r, 2, 3, 0, 1, k[36], k[37]);
+  t = r0 & k[34];
+  r1 ^= (t << 1) | (t >> (32 - 1));
+  r2 ^= r3 | k[33];
+  r0 ^= r1 | k[35];
+  t = r2 & k[32];
+  r3 ^= (t << 1) | (t >> (32 - 1));
 
-  t = r[0] & k[34];
-  r[1] ^= (t << 1) | (t >> (32 - 1));
-  r[2] ^= r[3] | k[33];
-  r[0] ^= r[1] | k[35];
-  t = r[2] & k[32];
-  r[3] ^= (t << 1) | (t >> (32 - 1));
+  F(r0, r1, r2, r3, k[30], k[31]);
+  F(r2, r3, r0, r1, k[28], k[29]);
+  F(r0, r1, r2, r3, k[26], k[27]);
+  F(r2, r3, r0, r1, k[24], k[25]);
+  F(r0, r1, r2, r3, k[22], k[23]);
+  F(r2, r3, r0, r1, k[20], k[21]);
 
-  FEIS(r, 0, 1, 2, 3, k[30], k[31]);
-  FEIS(r, 2, 3, 0, 1, k[28], k[29]);
-  FEIS(r, 0, 1, 2, 3, k[26], k[27]);
-  FEIS(r, 2, 3, 0, 1, k[24], k[25]);
-  FEIS(r, 0, 1, 2, 3, k[22], k[23]);
-  FEIS(r, 2, 3, 0, 1, k[20], k[21]);
+  t = r0 & k[18];
+  r1 ^= (t << 1) | (t >> (32 - 1));
+  r2 ^= r3 | k[17];
+  r0 ^= r1 | k[19];
+  t = r2 & k[16];
+  r3 ^= (t << 1) | (t >> (32 - 1));
 
-  t = r[0] & k[18];
-  r[1] ^= (t << 1) | (t >> (32 - 1));
-  r[2] ^= r[3] | k[17];
-  r[0] ^= r[1] | k[19];
-  t = r[2] & k[16];
-  r[3] ^= (t << 1) | (t >> (32 - 1));
+  F(r0, r1, r2, r3, k[14], k[15]);
+  F(r2, r3, r0, r1, k[12], k[13]);
+  F(r0, r1, r2, r3, k[10], k[11]);
+  F(r2, r3, r0, r1, k[8], k[9]);
+  F(r0, r1, r2, r3, k[6], k[7]);
+  F(r2, r3, r0, r1, k[4], k[5]);
 
-  FEIS(r, 0, 1, 2, 3, k[14], k[15]);
-  FEIS(r, 2, 3, 0, 1, k[12], k[13]);
-  FEIS(r, 0, 1, 2, 3, k[10], k[11]);
-  FEIS(r, 2, 3, 0, 1, k[8], k[9]);
-  FEIS(r, 0, 1, 2, 3, k[6], k[7]);
-  FEIS(r, 2, 3, 0, 1, k[4], k[5]);
+  r1 ^= k[3];
+  r0 ^= k[2];
+  r3 ^= k[1];
+  r2 ^= k[0];
 
-  XOR4(r, 1, 0, 3, 2, k, 3, 2, 1, 0);
-
-  write32be(dst +  0, r[2]);
-  write32be(dst +  4, r[3]);
-  write32be(dst +  8, r[0]);
-  write32be(dst + 12, r[1]);
+  write32be(dst +  0, r2);
+  write32be(dst +  4, r3);
+  write32be(dst +  8, r0);
+  write32be(dst + 12, r1);
 }
 
-#undef FEIS
-#undef ROTL
-#undef SET2
-#undef SET4
-#undef XOR4
+#undef F
+#undef ROTL128
 
 void
 camellia_init(camellia_t *ctx, unsigned int bits, const unsigned char *key) {
@@ -5308,9 +5455,7 @@ cipher_mode_final(cipher_t *ctx, unsigned char *out, size_t *out_len) {
       for (i = 0; i < ctx->tag_len; i++)
         res |= (uint32_t)mac[i] ^ (uint32_t)ctx->tag[i];
 
-      res = (res - 1) >> 31;
-
-      return res;
+      return (res - 1) >> 31;
     }
 
     default: {
@@ -5359,6 +5504,7 @@ cipher_set_tag(cipher_t *ctx, const unsigned char *tag, size_t len) {
     return 0;
 
   memcpy(ctx->tag, tag, len);
+
   ctx->tag_len = len;
 
   return 1;
@@ -5373,6 +5519,7 @@ cipher_get_tag(cipher_t *ctx, unsigned char *tag, size_t *len) {
     return 0;
 
   memcpy(tag, ctx->tag, ctx->tag_len);
+
   *len = ctx->tag_len;
 
   return 1;

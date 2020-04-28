@@ -254,16 +254,20 @@ blowfish_expandstate(blowfish_t *ctx,
                      const unsigned char *data, size_t data_len);
 
 void
-blowfish_enc(blowfish_t *ctx, uint32_t *data, size_t len);
+blowfish_enc(const blowfish_t *ctx, uint32_t *data, size_t len);
 
 void
-blowfish_dec(blowfish_t *ctx, uint32_t *data, size_t len);
+blowfish_dec(const blowfish_t *ctx, uint32_t *data, size_t len);
 
 void
-blowfish_encrypt(blowfish_t *ctx, unsigned char *dst, const unsigned char *src);
+blowfish_encrypt(const blowfish_t *ctx,
+                 unsigned char *dst,
+                 const unsigned char *src);
 
 void
-blowfish_decrypt(blowfish_t *ctx, unsigned char *dst, const unsigned char *src);
+blowfish_decrypt(const blowfish_t *ctx,
+                 unsigned char *dst,
+                 const unsigned char *src);
 
 /*
  * Camellia

@@ -17,19 +17,36 @@ extern "C" {
  * Symbol Aliases
  */
 
-#define ecdsa_context_create torsion_ecdsa_context_create
-#define ecdsa_context_destroy torsion_ecdsa_context_destroy
-#define ecdsa_context_randomize torsion_ecdsa_context_randomize
-#define ecdsa_scratch_create torsion_ecdsa_scratch_create
-#define ecdsa_scratch_destroy torsion_ecdsa_scratch_destroy
-#define ecdsa_scalar_size torsion_ecdsa_scalar_size
-#define ecdsa_scalar_bits torsion_ecdsa_scalar_bits
-#define ecdsa_field_size torsion_ecdsa_field_size
-#define ecdsa_field_bits torsion_ecdsa_field_bits
+#define wei_curve_create torsion_wei_curve_create
+#define wei_curve_destroy torsion_wei_curve_destroy
+#define wei_scratch_destroy torsion_wei_scratch_destroy
+#define wei_curve_scalar_size torsion_wei_curve_scalar_size
+#define wei_curve_scalar_bits torsion_wei_curve_scalar_bits
+#define wei_curve_field_size torsion_wei_curve_field_size
+#define wei_curve_field_bits torsion_wei_curve_field_bits
+#define wei_curve_randomize torsion_wei_curve_randomize
+#define wei_scratch_create torsion_wei_scratch_create
+
+#define mont_curve_create torsion_mont_curve_create
+#define mont_curve_destroy torsion_mont_curve_destroy
+#define mont_curve_scalar_size torsion_mont_curve_scalar_size
+#define mont_curve_scalar_bits torsion_mont_curve_scalar_bits
+#define mont_curve_field_size torsion_mont_curve_field_size
+#define mont_curve_field_bits torsion_mont_curve_field_bits
+
+#define edwards_curve_create torsion_edwards_curve_create
+#define edwards_curve_destroy torsion_edwards_curve_destroy
+#define edwards_curve_randomize torsion_edwards_curve_randomize
+#define edwards_curve_scalar_size torsion_edwards_curve_scalar_size
+#define edwards_curve_scalar_bits torsion_edwards_curve_scalar_bits
+#define edwards_curve_field_size torsion_edwards_curve_field_size
+#define edwards_curve_field_bits torsion_edwards_curve_field_bits
+#define edwards_scratch_create torsion_edwards_scratch_create
+#define edwards_scratch_destroy torsion_edwards_scratch_destroy
+
 #define ecdsa_privkey_size torsion_ecdsa_privkey_size
 #define ecdsa_pubkey_size torsion_ecdsa_pubkey_size
 #define ecdsa_sig_size torsion_ecdsa_sig_size
-#define ecdsa_schnorr_size torsion_ecdsa_schnorr_size
 #define ecdsa_privkey_generate torsion_ecdsa_privkey_generate
 #define ecdsa_privkey_verify torsion_ecdsa_privkey_verify
 #define ecdsa_privkey_export torsion_ecdsa_privkey_export
@@ -61,20 +78,13 @@ extern "C" {
 #define ecdsa_verify torsion_ecdsa_verify
 #define ecdsa_recover torsion_ecdsa_recover
 #define ecdsa_derive torsion_ecdsa_derive
-#define ecdsa_schnorr_support torsion_ecdsa_schnorr_support
-#define ecdsa_schnorr_sign torsion_ecdsa_schnorr_sign
-#define ecdsa_schnorr_verify torsion_ecdsa_schnorr_verify
-#define ecdsa_schnorr_verify_batch torsion_ecdsa_schnorr_verify_batch
 
-#define schnorr_context_create torsion_schnorr_context_create
-#define schnorr_context_destroy torsion_schnorr_context_destroy
-#define schnorr_context_randomize torsion_schnorr_context_randomize
-#define schnorr_scratch_create torsion_schnorr_scratch_create
-#define schnorr_scratch_destroy torsion_schnorr_scratch_destroy
-#define schnorr_scalar_size torsion_schnorr_scalar_size
-#define schnorr_scalar_bits torsion_schnorr_scalar_bits
-#define schnorr_field_size torsion_schnorr_field_size
-#define schnorr_field_bits torsion_schnorr_field_bits
+#define schnorr_legacy_support torsion_schnorr_legacy_support
+#define schnorr_legacy_sig_size torsion_schnorr_legacy_sig_size
+#define schnorr_legacy_sign torsion_schnorr_legacy_sign
+#define schnorr_legacy_verify torsion_schnorr_legacy_verify
+#define schnorr_legacy_verify_batch torsion_schnorr_legacy_verify_batch
+
 #define schnorr_privkey_size torsion_schnorr_privkey_size
 #define schnorr_pubkey_size torsion_schnorr_pubkey_size
 #define schnorr_sig_size torsion_schnorr_sig_size
@@ -103,12 +113,6 @@ extern "C" {
 #define schnorr_verify_batch torsion_schnorr_verify_batch
 #define schnorr_derive torsion_schnorr_derive
 
-#define ecdh_context_create torsion_ecdh_context_create
-#define ecdh_context_destroy torsion_ecdh_context_destroy
-#define ecdh_scalar_size torsion_ecdh_scalar_size
-#define ecdh_scalar_bits torsion_ecdh_scalar_bits
-#define ecdh_field_size torsion_ecdh_field_size
-#define ecdh_field_bits torsion_ecdh_field_bits
 #define ecdh_privkey_size torsion_ecdh_privkey_size
 #define ecdh_pubkey_size torsion_ecdh_pubkey_size
 #define ecdh_privkey_generate torsion_ecdh_privkey_generate
@@ -128,15 +132,6 @@ extern "C" {
 #define ecdh_pubkey_has_torsion torsion_ecdh_pubkey_has_torsion
 #define ecdh_derive torsion_ecdh_derive
 
-#define eddsa_context_create torsion_eddsa_context_create
-#define eddsa_context_destroy torsion_eddsa_context_destroy
-#define eddsa_context_randomize torsion_eddsa_context_randomize
-#define eddsa_scratch_create torsion_eddsa_scratch_create
-#define eddsa_scratch_destroy torsion_eddsa_scratch_destroy
-#define eddsa_scalar_size torsion_eddsa_scalar_size
-#define eddsa_scalar_bits torsion_eddsa_scalar_bits
-#define eddsa_field_size torsion_eddsa_field_size
-#define eddsa_field_bits torsion_eddsa_field_bits
 #define eddsa_privkey_size torsion_eddsa_privkey_size
 #define eddsa_pubkey_size torsion_eddsa_pubkey_size
 #define eddsa_sig_size torsion_eddsa_sig_size
@@ -186,171 +181,218 @@ extern "C" {
  * Defs
  */
 
-#define ECDSA_MAX_FIELD_SIZE 66
-#define ECDSA_MAX_SCALAR_SIZE 66
-#define ECDSA_MAX_PRIV_SIZE ECDSA_MAX_SCALAR_SIZE /* 66 */
-#define ECDSA_MAX_PUB_SIZE (1 + ECDSA_MAX_FIELD_SIZE * 2) /* 133 */
-#define ECDSA_MAX_SIG_SIZE (ECDSA_MAX_SCALAR_SIZE * 2) /* 132 */
+#define WEI_MAX_FIELD_SIZE 66
+#define WEI_MAX_SCALAR_SIZE 66
+
+#define MONT_MAX_FIELD_SIZE 56
+#define MONT_MAX_SCALAR_SIZE 56
+
+#define EDWARDS_MAX_FIELD_SIZE 56
+#define EDWARDS_MAX_SCALAR_SIZE 56
+
+#define ECDSA_MAX_PRIV_SIZE WEI_MAX_SCALAR_SIZE /* 66 */
+#define ECDSA_MAX_PUB_SIZE (1 + WEI_MAX_FIELD_SIZE * 2) /* 133 */
+#define ECDSA_MAX_SIG_SIZE (WEI_MAX_SCALAR_SIZE * 2) /* 132 */
 #define ECDSA_MAX_DER_SIZE (9 + ECDSA_MAX_SIG_SIZE) /* 141 */
-#define ECDSA_MAX_SCHNORR_SIZE (ECDSA_MAX_FIELD_SIZE + ECDSA_MAX_SCALAR_SIZE) /* 132 */
 
-#define SCHNORR_MAX_FIELD_SIZE 66
-#define SCHNORR_MAX_SCALAR_SIZE 66
-#define SCHNORR_MAX_PRIV_SIZE SCHNORR_MAX_SCALAR_SIZE /* 66 */
-#define SCHNORR_MAX_PUB_SIZE SCHNORR_MAX_FIELD_SIZE /* 66 */
-#define SCHNORR_MAX_SIG_SIZE (SCHNORR_MAX_FIELD_SIZE + SCHNORR_MAX_SCALAR_SIZE) /* 132 */
+#define SCHNORR_LEGACY_MAX_SIG_SIZE (WEI_MAX_FIELD_SIZE + WEI_MAX_SCALAR_SIZE) /* 132 */
 
-#define ECDH_MAX_FIELD_SIZE 56
-#define ECDH_MAX_SCALAR_SIZE 56
-#define ECDH_MAX_PRIV_SIZE ECDH_MAX_SCALAR_SIZE /* 56 */
-#define ECDH_MAX_PUB_SIZE ECDH_MAX_FIELD_SIZE /* 56 */
+#define SCHNORR_MAX_PRIV_SIZE WEI_MAX_SCALAR_SIZE /* 66 */
+#define SCHNORR_MAX_PUB_SIZE WEI_MAX_FIELD_SIZE /* 66 */
+#define SCHNORR_MAX_SIG_SIZE (WEI_MAX_FIELD_SIZE + WEI_MAX_SCALAR_SIZE) /* 132 */
 
-#define EDDSA_MAX_FIELD_SIZE 56
-#define EDDSA_MAX_SCALAR_SIZE 56
-#define EDDSA_MAX_PRIV_SIZE (EDDSA_MAX_FIELD_SIZE + 1) /* 57 */
-#define EDDSA_MAX_PUB_SIZE (EDDSA_MAX_FIELD_SIZE + 1) /* 57 */
-#define EDDSA_MAX_PREFIX_SIZE (EDDSA_MAX_FIELD_SIZE + 1) /* 57 */
+#define ECDH_MAX_PRIV_SIZE MONT_MAX_SCALAR_SIZE /* 56 */
+#define ECDH_MAX_PUB_SIZE MONT_MAX_FIELD_SIZE /* 56 */
+
+#define EDDSA_MAX_PRIV_SIZE (EDWARDS_MAX_FIELD_SIZE + 1) /* 57 */
+#define EDDSA_MAX_PUB_SIZE (EDWARDS_MAX_FIELD_SIZE + 1) /* 57 */
+#define EDDSA_MAX_PREFIX_SIZE (EDWARDS_MAX_FIELD_SIZE + 1) /* 57 */
 #define EDDSA_MAX_SIG_SIZE (EDDSA_MAX_PUB_SIZE * 2) /* 114 */
 
 /*
  * Curves
  */
 
-#define ECDSA_CURVE_P192 0
-#define ECDSA_CURVE_P224 1
-#define ECDSA_CURVE_P256 2
-#define ECDSA_CURVE_P384 3
-#define ECDSA_CURVE_P521 4
-#define ECDSA_CURVE_SECP256K1 5
-#define ECDSA_CURVE_MAX 5
+#define WEI_CURVE_P192 0
+#define WEI_CURVE_P224 1
+#define WEI_CURVE_P256 2
+#define WEI_CURVE_P384 3
+#define WEI_CURVE_P521 4
+#define WEI_CURVE_SECP256K1 5
+#define WEI_CURVE_MAX 5
 
-#define SCHNORR_CURVE_P192 0
-#define SCHNORR_CURVE_P256 2
-#define SCHNORR_CURVE_P384 3
-#define SCHNORR_CURVE_P521 4
-#define SCHNORR_CURVE_SECP256K1 5
-#define SCHNORR_CURVE_MAX 5
+#define MONT_CURVE_X25519 0
+#define MONT_CURVE_X448 1
+#define MONT_CURVE_MAX 1
 
-#define ECDH_CURVE_X25519 0
-#define ECDH_CURVE_X448 1
-#define ECDH_CURVE_MAX 1
-
-#define EDDSA_CURVE_ED25519 0
-#define EDDSA_CURVE_ED448 1
-#define EDDSA_CURVE_ED1174 2
-#define EDDSA_CURVE_MAX 2
+#define EDWARDS_CURVE_ED25519 0
+#define EDWARDS_CURVE_ED448 1
+#define EDWARDS_CURVE_ED1174 2
+#define EDWARDS_CURVE_MAX 2
 
 /*
  * Structs
  */
 
-typedef struct _wei_s ecdsa_t;
-typedef struct _wei_scratch_s ecdsa_scratch_t;
-typedef struct _wei_s schnorr_t;
-typedef struct _wei_scratch_s schnorr_scratch_t;
-typedef struct _mont_s ecdh_t;
-typedef struct _edwards_s eddsa_t;
-typedef struct _edwards_scratch_s eddsa_scratch_t;
+typedef struct _wei_s wei_curve_t;
+typedef struct wei_scratch_s wei_scratch_t;
+typedef struct _mont_s mont_curve_t;
+typedef struct _edwards_s edwards_curve_t;
+typedef struct edwards_scratch_s edwards_scratch_t;
+
+/*
+ * Short Weierstrass Curve
+ */
+
+wei_curve_t *
+wei_curve_create(int type);
+
+void
+wei_curve_destroy(wei_curve_t *ec);
+
+void
+wei_curve_randomize(wei_curve_t *ec, const unsigned char *entropy);
+
+size_t
+wei_curve_scalar_size(const wei_curve_t *ec);
+
+size_t
+wei_curve_scalar_bits(const wei_curve_t *ec);
+
+size_t
+wei_curve_field_size(const wei_curve_t *ec);
+
+size_t
+wei_curve_field_bits(const wei_curve_t *ec);
+
+wei_scratch_t *
+wei_scratch_create(const wei_curve_t *ec, size_t size);
+
+void
+wei_scratch_destroy(const wei_curve_t *ec, wei_scratch_t *scratch);
+
+/*
+ * Montgomery Curve
+ */
+
+mont_curve_t *
+mont_curve_create(int type);
+
+void
+mont_curve_destroy(mont_curve_t *ec);
+
+size_t
+mont_curve_scalar_size(const mont_curve_t *ec);
+
+size_t
+mont_curve_scalar_bits(const mont_curve_t *ec);
+
+size_t
+mont_curve_field_size(const mont_curve_t *ec);
+
+size_t
+mont_curve_field_bits(const mont_curve_t *ec);
+
+/*
+ * Edwards Curve
+ */
+
+edwards_curve_t *
+edwards_curve_create(int type);
+
+void
+edwards_curve_destroy(edwards_curve_t *ec);
+
+void
+edwards_curve_randomize(edwards_curve_t *ec, const unsigned char *entropy);
+
+size_t
+edwards_curve_scalar_size(const edwards_curve_t *ec);
+
+size_t
+edwards_curve_scalar_bits(const edwards_curve_t *ec);
+
+size_t
+edwards_curve_field_size(const edwards_curve_t *ec);
+
+size_t
+edwards_curve_field_bits(const edwards_curve_t *ec);
+
+edwards_scratch_t *
+edwards_scratch_create(const edwards_curve_t *ec, size_t size);
+
+void
+edwards_scratch_destroy(const edwards_curve_t *ec, edwards_scratch_t *scratch);
 
 /*
  * ECDSA
  */
 
-ecdsa_t *
-ecdsa_context_create(int type);
+size_t
+ecdsa_privkey_size(const wei_curve_t *ec);
+
+size_t
+ecdsa_pubkey_size(const wei_curve_t *ec, int compact);
+
+size_t
+ecdsa_sig_size(const wei_curve_t *ec);
 
 void
-ecdsa_context_destroy(ecdsa_t *ec);
-
-void
-ecdsa_context_randomize(ecdsa_t *ec, const unsigned char *entropy);
-
-ecdsa_scratch_t *
-ecdsa_scratch_create(const ecdsa_t *ec, size_t size);
-
-void
-ecdsa_scratch_destroy(const ecdsa_t *ec, ecdsa_scratch_t *scratch);
-
-size_t
-ecdsa_scalar_size(const ecdsa_t *ec);
-
-size_t
-ecdsa_scalar_bits(const ecdsa_t *ec);
-
-size_t
-ecdsa_field_size(const ecdsa_t *ec);
-
-size_t
-ecdsa_field_bits(const ecdsa_t *ec);
-
-size_t
-ecdsa_privkey_size(const ecdsa_t *ec);
-
-size_t
-ecdsa_pubkey_size(const ecdsa_t *ec, int compact);
-
-size_t
-ecdsa_sig_size(const ecdsa_t *ec);
-
-size_t
-ecdsa_schnorr_size(const ecdsa_t *ec);
-
-void
-ecdsa_privkey_generate(const ecdsa_t *ec,
+ecdsa_privkey_generate(const wei_curve_t *ec,
                        unsigned char *out,
                        const unsigned char *entropy);
 
 int
-ecdsa_privkey_verify(const ecdsa_t *ec, const unsigned char *priv);
+ecdsa_privkey_verify(const wei_curve_t *ec, const unsigned char *priv);
 
 int
-ecdsa_privkey_export(const ecdsa_t *ec,
+ecdsa_privkey_export(const wei_curve_t *ec,
                      unsigned char *out,
                      const unsigned char *priv);
 
 int
-ecdsa_privkey_import(const ecdsa_t *ec,
+ecdsa_privkey_import(const wei_curve_t *ec,
                      unsigned char *out,
                      const unsigned char *bytes,
                      size_t len);
 
 int
-ecdsa_privkey_tweak_add(const ecdsa_t *ec,
+ecdsa_privkey_tweak_add(const wei_curve_t *ec,
                         unsigned char *out,
                         const unsigned char *priv,
                         const unsigned char *tweak);
 
 int
-ecdsa_privkey_tweak_mul(const ecdsa_t *ec,
+ecdsa_privkey_tweak_mul(const wei_curve_t *ec,
                         unsigned char *out,
                         const unsigned char *priv,
                         const unsigned char *tweak);
 
 int
-ecdsa_privkey_reduce(const ecdsa_t *ec,
+ecdsa_privkey_reduce(const wei_curve_t *ec,
                      unsigned char *out,
                      const unsigned char *bytes,
                      size_t len);
 
 int
-ecdsa_privkey_negate(const ecdsa_t *ec,
+ecdsa_privkey_negate(const wei_curve_t *ec,
                      unsigned char *out,
                      const unsigned char *priv);
 
 int
-ecdsa_privkey_invert(const ecdsa_t *ec,
+ecdsa_privkey_invert(const wei_curve_t *ec,
                      unsigned char *out,
                      const unsigned char *priv);
 
 int
-ecdsa_pubkey_create(const ecdsa_t *ec,
+ecdsa_pubkey_create(const wei_curve_t *ec,
                     unsigned char *pub,
                     size_t *pub_len,
                     const unsigned char *priv,
                     int compact);
 
 int
-ecdsa_pubkey_convert(const ecdsa_t *ec,
+ecdsa_pubkey_convert(const wei_curve_t *ec,
                      unsigned char *out,
                      size_t *out_len,
                      const unsigned char *pub,
@@ -358,28 +400,28 @@ ecdsa_pubkey_convert(const ecdsa_t *ec,
                      int compact);
 
 void
-ecdsa_pubkey_from_uniform(const ecdsa_t *ec,
+ecdsa_pubkey_from_uniform(const wei_curve_t *ec,
                           unsigned char *out,
                           size_t *out_len,
                           const unsigned char *bytes,
                           int compact);
 
 int
-ecdsa_pubkey_to_uniform(const ecdsa_t *ec,
+ecdsa_pubkey_to_uniform(const wei_curve_t *ec,
                         unsigned char *out,
                         const unsigned char *pub,
                         size_t pub_len,
                         unsigned int hint);
 
 int
-ecdsa_pubkey_from_hash(const ecdsa_t *ec,
+ecdsa_pubkey_from_hash(const wei_curve_t *ec,
                        unsigned char *out,
                        size_t *out_len,
                        const unsigned char *bytes,
                        int compact);
 
 int
-ecdsa_pubkey_to_hash(const ecdsa_t *ec,
+ecdsa_pubkey_to_hash(const wei_curve_t *ec,
                      unsigned char *out,
                      const unsigned char *pub,
                      size_t pub_len,
@@ -387,19 +429,19 @@ ecdsa_pubkey_to_hash(const ecdsa_t *ec,
                      const unsigned char *entropy);
 
 int
-ecdsa_pubkey_verify(const ecdsa_t *ec,
+ecdsa_pubkey_verify(const wei_curve_t *ec,
                     const unsigned char *pub,
                     size_t pub_len);
 
 int
-ecdsa_pubkey_export(const ecdsa_t *ec,
+ecdsa_pubkey_export(const wei_curve_t *ec,
                     unsigned char *x_raw,
                     unsigned char *y_raw,
                     const unsigned char *pub,
                     size_t pub_len);
 
 int
-ecdsa_pubkey_import(const ecdsa_t *ec,
+ecdsa_pubkey_import(const wei_curve_t *ec,
                     unsigned char *out,
                     size_t *out_len,
                     const unsigned char *x_raw,
@@ -410,7 +452,7 @@ ecdsa_pubkey_import(const ecdsa_t *ec,
                     int compact);
 
 int
-ecdsa_pubkey_tweak_add(const ecdsa_t *ec,
+ecdsa_pubkey_tweak_add(const wei_curve_t *ec,
                        unsigned char *out,
                        size_t *out_len,
                        const unsigned char *pub,
@@ -419,7 +461,7 @@ ecdsa_pubkey_tweak_add(const ecdsa_t *ec,
                        int compact);
 
 int
-ecdsa_pubkey_tweak_mul(const ecdsa_t *ec,
+ecdsa_pubkey_tweak_mul(const wei_curve_t *ec,
                        unsigned char *out,
                        size_t *out_len,
                        const unsigned char *pub,
@@ -428,7 +470,7 @@ ecdsa_pubkey_tweak_mul(const ecdsa_t *ec,
                        int compact);
 
 int
-ecdsa_pubkey_combine(const ecdsa_t *ec,
+ecdsa_pubkey_combine(const wei_curve_t *ec,
                      unsigned char *out,
                      size_t *out_len,
                      const unsigned char **pubs,
@@ -437,7 +479,7 @@ ecdsa_pubkey_combine(const ecdsa_t *ec,
                      int compact);
 
 int
-ecdsa_pubkey_negate(const ecdsa_t *ec,
+ecdsa_pubkey_negate(const wei_curve_t *ec,
                     unsigned char *out,
                     size_t *out_len,
                     const unsigned char *pub,
@@ -445,33 +487,33 @@ ecdsa_pubkey_negate(const ecdsa_t *ec,
                     int compact);
 
 int
-ecdsa_sig_export(const ecdsa_t *ec,
+ecdsa_sig_export(const wei_curve_t *ec,
                  unsigned char *out,
                  size_t *out_len,
                  const unsigned char *sig);
 
 int
-ecdsa_sig_import_lax(const ecdsa_t *ec,
+ecdsa_sig_import_lax(const wei_curve_t *ec,
                      unsigned char *out,
                      const unsigned char *der,
                      size_t der_len);
 
 int
-ecdsa_sig_import(const ecdsa_t *ec,
+ecdsa_sig_import(const wei_curve_t *ec,
                  unsigned char *out,
                  const unsigned char *der,
                  size_t der_len);
 
 int
-ecdsa_sig_normalize(const ecdsa_t *ec,
+ecdsa_sig_normalize(const wei_curve_t *ec,
                     unsigned char *out,
                     const unsigned char *sig);
 
 int
-ecdsa_is_low_s(const ecdsa_t *ec, const unsigned char *sig);
+ecdsa_is_low_s(const wei_curve_t *ec, const unsigned char *sig);
 
 int
-ecdsa_sign(const ecdsa_t *ec,
+ecdsa_sign(const wei_curve_t *ec,
            unsigned char *sig,
            unsigned int *param,
            const unsigned char *msg,
@@ -479,7 +521,7 @@ ecdsa_sign(const ecdsa_t *ec,
            const unsigned char *priv);
 
 int
-ecdsa_verify(const ecdsa_t *ec,
+ecdsa_verify(const wei_curve_t *ec,
              const unsigned char *msg,
              size_t msg_len,
              const unsigned char *sig,
@@ -487,7 +529,7 @@ ecdsa_verify(const ecdsa_t *ec,
              size_t pub_len);
 
 int
-ecdsa_recover(const ecdsa_t *ec,
+ecdsa_recover(const wei_curve_t *ec,
               unsigned char *pub,
               size_t *pub_len,
               const unsigned char *msg,
@@ -497,7 +539,7 @@ ecdsa_recover(const ecdsa_t *ec,
               int compact);
 
 int
-ecdsa_derive(const ecdsa_t *ec,
+ecdsa_derive(const wei_curve_t *ec,
              unsigned char *secret,
              size_t *secret_len,
              const unsigned char *pub,
@@ -505,177 +547,185 @@ ecdsa_derive(const ecdsa_t *ec,
              const unsigned char *priv,
              int compact);
 
-int
-ecdsa_schnorr_support(const ecdsa_t *ec);
+/*
+ * Schnorr Legacy
+ */
 
 int
-ecdsa_schnorr_sign(const ecdsa_t *ec,
-                   unsigned char *sig,
-                   const unsigned char *msg,
-                   size_t msg_len,
-                   const unsigned char *priv);
+schnorr_legacy_support(const wei_curve_t *ec);
+
+#define schnorr_legacy_privkey_size ecdsa_privkey_size
+#define schnorr_legacy_pubkey_size ecdsa_pubkey_size
+
+size_t
+schnorr_legacy_sig_size(const wei_curve_t *ec);
+
+#define schnorr_legacy_privkey_generate ecdsa_privkey_generate
+#define schnorr_legacy_privkey_verify ecdsa_privkey_verify
+#define schnorr_legacy_privkey_export ecdsa_privkey_export
+#define schnorr_legacy_privkey_import ecdsa_privkey_import
+#define schnorr_legacy_privkey_tweak_add ecdsa_privkey_tweak_add
+#define schnorr_legacy_privkey_tweak_mul ecdsa_privkey_tweak_mul
+#define schnorr_legacy_privkey_reduce ecdsa_privkey_reduce
+#define schnorr_legacy_privkey_negate ecdsa_privkey_negate
+#define schnorr_legacy_privkey_invert ecdsa_privkey_invert
+#define schnorr_legacy_pubkey_create ecdsa_pubkey_create
+#define schnorr_legacy_pubkey_convert ecdsa_pubkey_convert
+#define schnorr_legacy_pubkey_from_uniform ecdsa_pubkey_from_uniform
+#define schnorr_legacy_pubkey_to_uniform ecdsa_pubkey_to_uniform
+#define schnorr_legacy_pubkey_from_hash ecdsa_pubkey_from_hash
+#define schnorr_legacy_pubkey_to_hash ecdsa_pubkey_to_hash
+#define schnorr_legacy_pubkey_verify ecdsa_pubkey_verify
+#define schnorr_legacy_pubkey_export ecdsa_pubkey_export
+#define schnorr_legacy_pubkey_import ecdsa_pubkey_import
+#define schnorr_legacy_pubkey_tweak_add ecdsa_pubkey_tweak_add
+#define schnorr_legacy_pubkey_tweak_mul ecdsa_pubkey_tweak_mul
+#define schnorr_legacy_pubkey_combine ecdsa_pubkey_combine
+#define schnorr_legacy_pubkey_negate ecdsa_pubkey_negate
 
 int
-ecdsa_schnorr_verify(const ecdsa_t *ec,
-                     const unsigned char *msg,
-                     size_t msg_len,
-                     const unsigned char *sig,
-                     const unsigned char *pub,
-                     size_t pub_len);
+schnorr_legacy_sign(const wei_curve_t *ec,
+                    unsigned char *sig,
+                    const unsigned char *msg,
+                    size_t msg_len,
+                    const unsigned char *priv);
 
 int
-ecdsa_schnorr_verify_batch(const ecdsa_t *ec,
-                           const unsigned char **msgs,
-                           const size_t *msg_lens,
-                           const unsigned char **sigs,
-                           const unsigned char **pubs,
-                           const size_t *pub_lens,
-                           size_t len,
-                           ecdsa_scratch_t *scratch);
+schnorr_legacy_verify(const wei_curve_t *ec,
+                      const unsigned char *msg,
+                      size_t msg_len,
+                      const unsigned char *sig,
+                      const unsigned char *pub,
+                      size_t pub_len);
+
+int
+schnorr_legacy_verify_batch(const wei_curve_t *ec,
+                            const unsigned char **msgs,
+                            const size_t *msg_lens,
+                            const unsigned char **sigs,
+                            const unsigned char **pubs,
+                            const size_t *pub_lens,
+                            size_t len,
+                            wei_scratch_t *scratch);
+
+#define schnorr_legacy_derive ecdsa_derive
 
 /*
  * Schnorr
  */
 
-schnorr_t *
-schnorr_context_create(int type);
+size_t
+schnorr_privkey_size(const wei_curve_t *ec);
+
+size_t
+schnorr_pubkey_size(const wei_curve_t *ec);
+
+size_t
+schnorr_sig_size(const wei_curve_t *ec);
 
 void
-schnorr_context_destroy(schnorr_t *ec);
-
-void
-schnorr_context_randomize(schnorr_t *ec, const unsigned char *entropy);
-
-schnorr_scratch_t *
-schnorr_scratch_create(const schnorr_t *ec, size_t size);
-
-void
-schnorr_scratch_destroy(const schnorr_t *ec, schnorr_scratch_t *scratch);
-
-size_t
-schnorr_scalar_size(const schnorr_t *ec);
-
-size_t
-schnorr_scalar_bits(const schnorr_t *ec);
-
-size_t
-schnorr_field_size(const schnorr_t *ec);
-
-size_t
-schnorr_field_bits(const schnorr_t *ec);
-
-size_t
-schnorr_privkey_size(const schnorr_t *ec);
-
-size_t
-schnorr_pubkey_size(const schnorr_t *ec);
-
-size_t
-schnorr_sig_size(const schnorr_t *ec);
-
-void
-schnorr_privkey_generate(const schnorr_t *ec,
+schnorr_privkey_generate(const wei_curve_t *ec,
                          unsigned char *out,
                          const unsigned char *entropy);
 
 int
-schnorr_privkey_verify(const schnorr_t *ec, const unsigned char *priv);
+schnorr_privkey_verify(const wei_curve_t *ec, const unsigned char *priv);
 
 int
-schnorr_privkey_export(const schnorr_t *ec,
+schnorr_privkey_export(const wei_curve_t *ec,
                        unsigned char *d_raw,
                        unsigned char *x_raw,
                        unsigned char *y_raw,
                        const unsigned char *priv);
 
 int
-schnorr_privkey_import(const schnorr_t *ec,
+schnorr_privkey_import(const wei_curve_t *ec,
                        unsigned char *out,
                        const unsigned char *bytes,
                        size_t len);
 
 int
-schnorr_privkey_tweak_add(const schnorr_t *ec,
+schnorr_privkey_tweak_add(const wei_curve_t *ec,
                           unsigned char *out,
                           const unsigned char *priv,
                           const unsigned char *tweak);
 
 int
-schnorr_privkey_tweak_mul(const schnorr_t *ec,
+schnorr_privkey_tweak_mul(const wei_curve_t *ec,
                           unsigned char *out,
                           const unsigned char *priv,
                           const unsigned char *tweak);
 
 int
-schnorr_privkey_reduce(const schnorr_t *ec,
+schnorr_privkey_reduce(const wei_curve_t *ec,
                        unsigned char *out,
                        const unsigned char *bytes,
                        size_t len);
 
 int
-schnorr_privkey_invert(const schnorr_t *ec,
+schnorr_privkey_invert(const wei_curve_t *ec,
                        unsigned char *out,
                        const unsigned char *priv);
 
 int
-schnorr_pubkey_create(const schnorr_t *ec,
+schnorr_pubkey_create(const wei_curve_t *ec,
                       unsigned char *pub,
                       const unsigned char *priv);
 
 void
-schnorr_pubkey_from_uniform(const schnorr_t *ec,
+schnorr_pubkey_from_uniform(const wei_curve_t *ec,
                             unsigned char *out,
                             const unsigned char *bytes);
 
 int
-schnorr_pubkey_to_uniform(const schnorr_t *ec,
+schnorr_pubkey_to_uniform(const wei_curve_t *ec,
                           unsigned char *out,
                           const unsigned char *pub,
                           unsigned int hint);
 
 int
-schnorr_pubkey_from_hash(const schnorr_t *ec,
+schnorr_pubkey_from_hash(const wei_curve_t *ec,
                          unsigned char *out,
                          const unsigned char *bytes);
 
 int
-schnorr_pubkey_to_hash(const schnorr_t *ec,
+schnorr_pubkey_to_hash(const wei_curve_t *ec,
                        unsigned char *out,
                        const unsigned char *pub,
                        unsigned int subgroup,
                        const unsigned char *entropy);
 
 int
-schnorr_pubkey_verify(const schnorr_t *ec, const unsigned char *pub);
+schnorr_pubkey_verify(const wei_curve_t *ec, const unsigned char *pub);
 
 int
-schnorr_pubkey_export(const schnorr_t *ec,
+schnorr_pubkey_export(const wei_curve_t *ec,
                       unsigned char *x_raw,
                       unsigned char *y_raw,
                       const unsigned char *pub);
 
 int
-schnorr_pubkey_import(const schnorr_t *ec,
+schnorr_pubkey_import(const wei_curve_t *ec,
                       unsigned char *out,
                       const unsigned char *x_raw,
                       size_t x_len);
 
 int
-schnorr_pubkey_tweak_add(const schnorr_t *ec,
+schnorr_pubkey_tweak_add(const wei_curve_t *ec,
                          unsigned char *out,
                          int *negated,
                          const unsigned char *pub,
                          const unsigned char *tweak);
 
 int
-schnorr_pubkey_tweak_mul(const schnorr_t *ec,
+schnorr_pubkey_tweak_mul(const wei_curve_t *ec,
                          unsigned char *out,
                          int *negated,
                          const unsigned char *pub,
                          const unsigned char *tweak);
 
 int
-schnorr_pubkey_tweak_test(const schnorr_t *ec,
+schnorr_pubkey_tweak_test(const wei_curve_t *ec,
                           int *result,
                           const unsigned char *pub,
                           const unsigned char *tweak,
@@ -683,13 +733,13 @@ schnorr_pubkey_tweak_test(const schnorr_t *ec,
                           int negated);
 
 int
-schnorr_pubkey_combine(const schnorr_t *ec,
+schnorr_pubkey_combine(const wei_curve_t *ec,
                        unsigned char *out,
                        const unsigned char **pubs,
                        size_t len);
 
 int
-schnorr_sign(const schnorr_t *ec,
+schnorr_sign(const wei_curve_t *ec,
              unsigned char *sig,
              const unsigned char *msg,
              size_t msg_len,
@@ -697,23 +747,23 @@ schnorr_sign(const schnorr_t *ec,
              const unsigned char *aux);
 
 int
-schnorr_verify(const schnorr_t *ec,
+schnorr_verify(const wei_curve_t *ec,
                const unsigned char *msg,
                size_t msg_len,
                const unsigned char *sig,
                const unsigned char *pub);
 
 int
-schnorr_verify_batch(const schnorr_t *ec,
+schnorr_verify_batch(const wei_curve_t *ec,
                      const unsigned char **msgs,
                      const size_t *msg_lens,
                      const unsigned char **sigs,
                      const unsigned char **pubs,
                      size_t len,
-                     schnorr_scratch_t *scratch);
+                     wei_scratch_t *scratch);
 
 int
-schnorr_derive(const schnorr_t *ec,
+schnorr_derive(const wei_curve_t *ec,
                unsigned char *secret,
                const unsigned char *pub,
                const unsigned char *priv);
@@ -722,108 +772,90 @@ schnorr_derive(const schnorr_t *ec,
  * ECDH
  */
 
-ecdh_t *
-ecdh_context_create(int type);
+size_t
+ecdh_privkey_size(const mont_curve_t *ec);
+
+size_t
+ecdh_pubkey_size(const mont_curve_t *ec);
 
 void
-ecdh_context_destroy(ecdh_t *ec);
-
-size_t
-ecdh_scalar_size(const ecdh_t *ec);
-
-size_t
-ecdh_scalar_bits(const ecdh_t *ec);
-
-size_t
-ecdh_field_size(const ecdh_t *ec);
-
-size_t
-ecdh_field_bits(const ecdh_t *ec);
-
-size_t
-ecdh_privkey_size(const ecdh_t *ec);
-
-size_t
-ecdh_pubkey_size(const ecdh_t *ec);
-
-void
-ecdh_privkey_generate(const ecdh_t *ec,
+ecdh_privkey_generate(const mont_curve_t *ec,
                       unsigned char *out,
                       const unsigned char *entropy);
 
 int
-ecdh_privkey_verify(const ecdh_t *ec, const unsigned char *priv);
+ecdh_privkey_verify(const mont_curve_t *ec, const unsigned char *priv);
 
 int
-ecdh_privkey_export(const ecdh_t *ec,
+ecdh_privkey_export(const mont_curve_t *ec,
                     unsigned char *out,
                     const unsigned char *priv);
 
 int
-ecdh_privkey_import(const ecdh_t *ec,
+ecdh_privkey_import(const mont_curve_t *ec,
                     unsigned char *out,
                     const unsigned char *bytes,
                     size_t len);
 
 void
-ecdh_pubkey_create(const ecdh_t *ec,
+ecdh_pubkey_create(const mont_curve_t *ec,
                    unsigned char *pub,
                    const unsigned char *priv);
 
 int
-ecdh_pubkey_convert(const ecdh_t *ec,
+ecdh_pubkey_convert(const mont_curve_t *ec,
                     unsigned char *out,
                     const unsigned char *pub,
                     int sign);
 
 void
-ecdh_pubkey_from_uniform(const ecdh_t *ec,
+ecdh_pubkey_from_uniform(const mont_curve_t *ec,
                          unsigned char *out,
                          const unsigned char *bytes);
 
 int
-ecdh_pubkey_to_uniform(const ecdh_t *ec,
+ecdh_pubkey_to_uniform(const mont_curve_t *ec,
                        unsigned char *out,
                        const unsigned char *pub,
                        unsigned int hint);
 
 int
-ecdh_pubkey_from_hash(const ecdh_t *ec,
+ecdh_pubkey_from_hash(const mont_curve_t *ec,
                       unsigned char *out,
                       const unsigned char *bytes,
                       int pake);
 
 int
-ecdh_pubkey_to_hash(const ecdh_t *ec,
+ecdh_pubkey_to_hash(const mont_curve_t *ec,
                     unsigned char *out,
                     const unsigned char *pub,
                     unsigned int subgroup,
                     const unsigned char *entropy);
 
 int
-ecdh_pubkey_verify(const ecdh_t *ec, const unsigned char *pub);
+ecdh_pubkey_verify(const mont_curve_t *ec, const unsigned char *pub);
 
 int
-ecdh_pubkey_export(const ecdh_t *ec,
+ecdh_pubkey_export(const mont_curve_t *ec,
                    unsigned char *x_raw,
                    unsigned char *y_raw,
                    const unsigned char *pub,
                    int sign);
 
 int
-ecdh_pubkey_import(const ecdh_t *ec,
+ecdh_pubkey_import(const mont_curve_t *ec,
                    unsigned char *out,
                    const unsigned char *x_raw,
                    size_t x_len);
 
 int
-ecdh_pubkey_is_small(const ecdh_t *ec, const unsigned char *pub);
+ecdh_pubkey_is_small(const mont_curve_t *ec, const unsigned char *pub);
 
 int
-ecdh_pubkey_has_torsion(const ecdh_t *ec, const unsigned char *pub);
+ecdh_pubkey_has_torsion(const mont_curve_t *ec, const unsigned char *pub);
 
 int
-ecdh_derive(const ecdh_t *ec,
+ecdh_derive(const mont_curve_t *ec,
             unsigned char *secret,
             const unsigned char *pub,
             const unsigned char *priv);
@@ -832,166 +864,139 @@ ecdh_derive(const ecdh_t *ec,
  * EdDSA
  */
 
-eddsa_t *
-eddsa_context_create(int type);
+size_t
+eddsa_privkey_size(const edwards_curve_t *ec);
+
+size_t
+eddsa_pubkey_size(const edwards_curve_t *ec);
+
+size_t
+eddsa_sig_size(const edwards_curve_t *ec);
 
 void
-eddsa_context_destroy(eddsa_t *ec);
-
-void
-eddsa_context_randomize(eddsa_t *ec, const unsigned char *entropy);
-
-eddsa_scratch_t *
-eddsa_scratch_create(const eddsa_t *ec, size_t size);
-
-void
-eddsa_scratch_destroy(const eddsa_t *ec, eddsa_scratch_t *scratch);
-
-size_t
-eddsa_scalar_size(const eddsa_t *ec);
-
-size_t
-eddsa_scalar_bits(const eddsa_t *ec);
-
-size_t
-eddsa_field_size(const eddsa_t *ec);
-
-size_t
-eddsa_field_bits(const eddsa_t *ec);
-
-size_t
-eddsa_privkey_size(const eddsa_t *ec);
-
-size_t
-eddsa_pubkey_size(const eddsa_t *ec);
-
-size_t
-eddsa_sig_size(const eddsa_t *ec);
-
-void
-eddsa_privkey_generate(const eddsa_t *ec,
+eddsa_privkey_generate(const edwards_curve_t *ec,
                        unsigned char *out,
                        const unsigned char *entropy);
 
 void
-eddsa_scalar_generate(const eddsa_t *ec,
+eddsa_scalar_generate(const edwards_curve_t *ec,
                       unsigned char *out,
                       const unsigned char *entropy);
 
 void
-eddsa_privkey_expand(const eddsa_t *ec,
+eddsa_privkey_expand(const edwards_curve_t *ec,
                      unsigned char *scalar,
                      unsigned char *prefix,
                      const unsigned char *priv);
 
 void
-eddsa_privkey_convert(const eddsa_t *ec,
+eddsa_privkey_convert(const edwards_curve_t *ec,
                       unsigned char *scalar,
                       const unsigned char *priv);
 
 int
-eddsa_privkey_verify(const eddsa_t *ec, const unsigned char *priv);
+eddsa_privkey_verify(const edwards_curve_t *ec, const unsigned char *priv);
 
 int
-eddsa_privkey_export(const eddsa_t *ec,
+eddsa_privkey_export(const edwards_curve_t *ec,
                      unsigned char *out,
                      const unsigned char *priv);
 
 int
-eddsa_privkey_import(const eddsa_t *ec,
+eddsa_privkey_import(const edwards_curve_t *ec,
                      unsigned char *out,
                      const unsigned char *bytes,
                      size_t len);
 
 int
-eddsa_scalar_verify(const eddsa_t *ec, const unsigned char *scalar);
+eddsa_scalar_verify(const edwards_curve_t *ec, const unsigned char *scalar);
 
 int
-eddsa_scalar_is_zero(const eddsa_t *ec, const unsigned char *scalar);
+eddsa_scalar_is_zero(const edwards_curve_t *ec, const unsigned char *scalar);
 
 void
-eddsa_scalar_clamp(const eddsa_t *ec,
+eddsa_scalar_clamp(const edwards_curve_t *ec,
                    unsigned char *out,
                    const unsigned char *scalar);
 
 void
-eddsa_scalar_tweak_add(const eddsa_t *ec,
+eddsa_scalar_tweak_add(const edwards_curve_t *ec,
                        unsigned char *out,
                        const unsigned char *scalar,
                        const unsigned char *tweak);
 
 void
-eddsa_scalar_tweak_mul(const eddsa_t *ec,
+eddsa_scalar_tweak_mul(const edwards_curve_t *ec,
                        unsigned char *out,
                        const unsigned char *scalar,
                        const unsigned char *tweak);
 
 void
-eddsa_scalar_reduce(const eddsa_t *ec,
+eddsa_scalar_reduce(const edwards_curve_t *ec,
                     unsigned char *out,
                     const unsigned char *bytes,
                     size_t len);
 
 void
-eddsa_scalar_negate(const eddsa_t *ec,
+eddsa_scalar_negate(const edwards_curve_t *ec,
                     unsigned char *out,
                     const unsigned char *scalar);
 
 void
-eddsa_scalar_invert(const eddsa_t *ec,
+eddsa_scalar_invert(const edwards_curve_t *ec,
                     unsigned char *out,
                     const unsigned char *scalar);
 
 void
-eddsa_pubkey_from_scalar(const eddsa_t *ec,
+eddsa_pubkey_from_scalar(const edwards_curve_t *ec,
                          unsigned char *pub,
                          const unsigned char *scalar);
 
 void
-eddsa_pubkey_create(const eddsa_t *ec,
+eddsa_pubkey_create(const edwards_curve_t *ec,
                     unsigned char *pub,
                     const unsigned char *priv);
 
 int
-eddsa_pubkey_convert(const eddsa_t *ec,
+eddsa_pubkey_convert(const edwards_curve_t *ec,
                      unsigned char *out,
                      const unsigned char *pub);
 
 void
-eddsa_pubkey_from_uniform(const eddsa_t *ec,
+eddsa_pubkey_from_uniform(const edwards_curve_t *ec,
                           unsigned char *out,
                           const unsigned char *bytes);
 
 int
-eddsa_pubkey_to_uniform(const eddsa_t *ec,
+eddsa_pubkey_to_uniform(const edwards_curve_t *ec,
                         unsigned char *out,
                         const unsigned char *pub,
                         unsigned int hint);
 
 void
-eddsa_pubkey_from_hash(const eddsa_t *ec,
+eddsa_pubkey_from_hash(const edwards_curve_t *ec,
                        unsigned char *out,
                        const unsigned char *bytes,
                        int pake);
 
 int
-eddsa_pubkey_to_hash(const eddsa_t *ec,
+eddsa_pubkey_to_hash(const edwards_curve_t *ec,
                      unsigned char *out,
                      const unsigned char *pub,
                      unsigned int subgroup,
                      const unsigned char *entropy);
 
 int
-eddsa_pubkey_verify(const eddsa_t *ec, const unsigned char *pub);
+eddsa_pubkey_verify(const edwards_curve_t *ec, const unsigned char *pub);
 
 int
-eddsa_pubkey_export(const eddsa_t *ec,
+eddsa_pubkey_export(const edwards_curve_t *ec,
                     unsigned char *x_raw,
                     unsigned char *y_raw,
                     const unsigned char *pub);
 
 int
-eddsa_pubkey_import(const eddsa_t *ec,
+eddsa_pubkey_import(const edwards_curve_t *ec,
                     unsigned char *out,
                     const unsigned char *x_raw,
                     size_t x_len,
@@ -999,39 +1004,39 @@ eddsa_pubkey_import(const eddsa_t *ec,
                     size_t y_len,
                     int sign);
 int
-eddsa_pubkey_is_infinity(const eddsa_t *ec, const unsigned char *pub);
+eddsa_pubkey_is_infinity(const edwards_curve_t *ec, const unsigned char *pub);
 
 int
-eddsa_pubkey_is_small(const eddsa_t *ec, const unsigned char *pub);
+eddsa_pubkey_is_small(const edwards_curve_t *ec, const unsigned char *pub);
 
 int
-eddsa_pubkey_has_torsion(const eddsa_t *ec, const unsigned char *pub);
+eddsa_pubkey_has_torsion(const edwards_curve_t *ec, const unsigned char *pub);
 
 int
-eddsa_pubkey_tweak_add(const eddsa_t *ec,
+eddsa_pubkey_tweak_add(const edwards_curve_t *ec,
                        unsigned char *out,
                        const unsigned char *pub,
                        const unsigned char *tweak);
 
 int
-eddsa_pubkey_tweak_mul(const eddsa_t *ec,
+eddsa_pubkey_tweak_mul(const edwards_curve_t *ec,
                        unsigned char *out,
                        const unsigned char *pub,
                        const unsigned char *tweak);
 
 int
-eddsa_pubkey_combine(const eddsa_t *ec,
+eddsa_pubkey_combine(const edwards_curve_t *ec,
                      unsigned char *out,
                      const unsigned char **pubs,
                      size_t len);
 
 int
-eddsa_pubkey_negate(const eddsa_t *ec,
+eddsa_pubkey_negate(const edwards_curve_t *ec,
                     unsigned char *out,
                     const unsigned char *pub);
 
 void
-eddsa_sign_with_scalar(const eddsa_t *ec,
+eddsa_sign_with_scalar(const edwards_curve_t *ec,
                        unsigned char *sig,
                        const unsigned char *msg,
                        size_t msg_len,
@@ -1042,7 +1047,7 @@ eddsa_sign_with_scalar(const eddsa_t *ec,
                        size_t ctx_len);
 
 void
-eddsa_sign(const eddsa_t *ec,
+eddsa_sign(const edwards_curve_t *ec,
            unsigned char *sig,
            const unsigned char *msg,
            size_t msg_len,
@@ -1052,7 +1057,7 @@ eddsa_sign(const eddsa_t *ec,
            size_t ctx_len);
 
 void
-eddsa_sign_tweak_add(const eddsa_t *ec,
+eddsa_sign_tweak_add(const edwards_curve_t *ec,
                      unsigned char *sig,
                      const unsigned char *msg,
                      size_t msg_len,
@@ -1063,7 +1068,7 @@ eddsa_sign_tweak_add(const eddsa_t *ec,
                      size_t ctx_len);
 
 void
-eddsa_sign_tweak_mul(const eddsa_t *ec,
+eddsa_sign_tweak_mul(const edwards_curve_t *ec,
                      unsigned char *sig,
                      const unsigned char *msg,
                      size_t msg_len,
@@ -1074,7 +1079,7 @@ eddsa_sign_tweak_mul(const eddsa_t *ec,
                      size_t ctx_len);
 
 int
-eddsa_verify(const eddsa_t *ec,
+eddsa_verify(const edwards_curve_t *ec,
              const unsigned char *msg,
              size_t msg_len,
              const unsigned char *sig,
@@ -1084,7 +1089,7 @@ eddsa_verify(const eddsa_t *ec,
              size_t ctx_len);
 
 int
-eddsa_verify_single(const eddsa_t *ec,
+eddsa_verify_single(const edwards_curve_t *ec,
                     const unsigned char *msg,
                     size_t msg_len,
                     const unsigned char *sig,
@@ -1094,7 +1099,7 @@ eddsa_verify_single(const eddsa_t *ec,
                     size_t ctx_len);
 
 int
-eddsa_verify_batch(const eddsa_t *ec,
+eddsa_verify_batch(const edwards_curve_t *ec,
                    const unsigned char **msgs,
                    const size_t *msg_lens,
                    const unsigned char **sigs,
@@ -1103,15 +1108,15 @@ eddsa_verify_batch(const eddsa_t *ec,
                    int ph,
                    const unsigned char *ctx,
                    size_t ctx_len,
-                   eddsa_scratch_t *scratch);
+                   edwards_scratch_t *scratch);
 
 int
-eddsa_derive_with_scalar(const eddsa_t *ec,
+eddsa_derive_with_scalar(const edwards_curve_t *ec,
                          unsigned char *secret,
                          const unsigned char *pub,
                          const unsigned char *scalar);
 int
-eddsa_derive(const eddsa_t *ec,
+eddsa_derive(const edwards_curve_t *ec,
              unsigned char *secret,
              const unsigned char *pub,
              const unsigned char *priv);
