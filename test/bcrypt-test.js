@@ -111,6 +111,11 @@ describe('Bcrypt', function() {
         const key = bcrypt.pbkdf(pass, salt, rounds, size);
         assert.bufferEqual(key, expect);
       });
+
+      it(`should derive key (pbkdf, async): ${text}`, async () => {
+        const key = await bcrypt.pbkdfAsync(pass, salt, rounds, size);
+        assert.bufferEqual(key, expect);
+      });
     }
   });
 });

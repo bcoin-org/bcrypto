@@ -744,6 +744,117 @@ fail:
   return NULL;
 }
 
+typedef struct bcrypto_bcrypt_worker_s {
+  uint8_t *pass;
+  size_t pass_len;
+  uint8_t *salt;
+  size_t salt_len;
+  uint32_t rounds;
+  uint8_t *out;
+  uint32_t out_len;
+  const char *error;
+  napi_async_work work;
+  napi_deferred deferred;
+} bcrypto_bcrypt_worker_t;
+
+static void
+bcrypto_bcrypt_execute_(napi_env env, void *data) {
+  bcrypto_bcrypt_worker_t *w = (bcrypto_bcrypt_worker_t *)data;
+
+  if (!bcrypt_pbkdf(w->out, w->pass, w->pass_len,
+                            w->salt, w->salt_len,
+                            w->rounds, w->out_len)) {
+    w->error = JS_ERR_DERIVE;
+  }
+
+  cleanse(w->pass, w->pass_len);
+  cleanse(w->salt, w->salt_len);
+}
+
+static void
+bcrypto_bcrypt_complete_(napi_env env, napi_status status, void *data) {
+  bcrypto_bcrypt_worker_t *w = (bcrypto_bcrypt_worker_t *)data;
+  napi_value result, strval;
+
+  if (status != napi_ok)
+    w->error = JS_ERR_DERIVE;
+
+  if (w->error == NULL) {
+    CHECK(create_external_buffer(env, w->out_len, w->out, &result) == napi_ok);
+    CHECK(napi_resolve_deferred(env, w->deferred, result) == napi_ok);
+  } else {
+    CHECK(napi_create_string_utf8(env, w->error,
+                                  NAPI_AUTO_LENGTH, &strval) == napi_ok);
+    CHECK(napi_create_error(env, NULL, strval, &result) == napi_ok);
+    CHECK(napi_reject_deferred(env, w->deferred, result) == napi_ok);
+    torsion_free(w->out);
+  }
+
+  CHECK(napi_delete_async_work(env, w->work) == napi_ok);
+
+  torsion_free(w->pass);
+  torsion_free(w->salt);
+  torsion_free(w);
+}
+
+static napi_value
+bcrypto_bcrypt_pbkdf_async(napi_env env, napi_callback_info info) {
+  bcrypto_bcrypt_worker_t *worker =
+    (bcrypto_bcrypt_worker_t *)torsion_alloc(sizeof(bcrypto_bcrypt_worker_t));
+  napi_value argv[4];
+  size_t argc = 4;
+  uint8_t *out;
+  uint32_t rounds, out_len;
+  const uint8_t *pass, *salt;
+  size_t pass_len, salt_len;
+  napi_value workname, result;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 4);
+  CHECK(napi_get_buffer_info(env, argv[0], (void **)&pass,
+                             &pass_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], (void **)&salt,
+                             &salt_len) == napi_ok);
+  CHECK(napi_get_value_uint32(env, argv[2], &rounds) == napi_ok);
+  CHECK(napi_get_value_uint32(env, argv[3], &out_len) == napi_ok);
+
+  out = (uint8_t *)torsion_malloc_unsafe(out_len);
+
+  if (out == NULL && out_len != 0) {
+    torsion_free(worker);
+    JS_THROW(JS_ERR_DERIVE);
+  }
+
+  worker->pass = (uint8_t *)torsion_alloc(pass_len);
+  worker->pass_len = pass_len;
+  worker->salt = (uint8_t *)torsion_alloc(salt_len);
+  worker->salt_len = salt_len;
+  worker->rounds = rounds;
+  worker->out = out;
+  worker->out_len = out_len;
+  worker->error = NULL;
+
+  memcpy(worker->pass, pass, pass_len);
+  memcpy(worker->salt, salt, salt_len);
+
+  CHECK(napi_create_string_utf8(env, "bcrypto:bcrypt_pbkdf",
+                                NAPI_AUTO_LENGTH, &workname) == napi_ok);
+
+  CHECK(napi_create_promise(env, &worker->deferred, &result) == napi_ok);
+
+  CHECK(napi_create_async_work(env,
+                               NULL,
+                               workname,
+                               bcrypto_bcrypt_execute_,
+                               bcrypto_bcrypt_complete_,
+                               worker,
+                               &worker->work) == napi_ok);
+
+  CHECK(napi_queue_async_work(env, worker->work) == napi_ok);
+
+  return result;
+}
+
 static napi_value
 bcrypto_bcrypt_derive(napi_env env, napi_callback_info info) {
   napi_value argv[4];
@@ -11474,6 +11585,7 @@ bcrypto_init(napi_env env, napi_value exports) {
     { "bcrypt_hash192", bcrypto_bcrypt_hash192 },
     { "bcrypt_hash256", bcrypto_bcrypt_hash256 },
     { "bcrypt_pbkdf", bcrypto_bcrypt_pbkdf },
+    { "bcrypt_pbkdf_async", bcrypto_bcrypt_pbkdf_async },
     { "bcrypt_derive", bcrypto_bcrypt_derive },
     { "bcrypt_generate", bcrypto_bcrypt_generate },
     { "bcrypt_generate_with_salt64", bcrypto_bcrypt_generate_with_salt64 },
