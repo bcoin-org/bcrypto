@@ -54,6 +54,8 @@ extern "C" {
 #define rc2_init torsion_rc2_init
 #define rc2_encrypt torsion_rc2_encrypt
 #define rc2_decrypt torsion_rc2_decrypt
+#define rc4_init torsion_rc4_init
+#define rc4_encrypt torsion_rc4_encrypt
 #define twofish_init torsion_twofish_init
 #define twofish_encrypt torsion_twofish_encrypt
 #define twofish_decrypt torsion_twofish_decrypt
@@ -161,6 +163,12 @@ typedef struct _idea_s {
 typedef struct _rc2_s {
   uint16_t k[64];
 } rc2_t;
+
+typedef struct _rc4_s {
+  uint8_t s[256];
+  uint8_t i;
+  uint8_t j;
+} rc4_t;
 
 typedef struct _twofish_s {
   uint32_t S[4][256];
@@ -374,13 +382,29 @@ idea_decrypt(const idea_t *ctx, unsigned char *dst, const unsigned char *src);
  */
 
 void
-rc2_init(rc2_t *ctx, const unsigned char *key, size_t key_len);
+rc2_init(rc2_t *ctx,
+         const unsigned char *key,
+         size_t key_len,
+         unsigned int bits);
 
 void
 rc2_encrypt(const rc2_t *ctx, unsigned char *dst, const unsigned char *src);
 
 void
 rc2_decrypt(const rc2_t *ctx, unsigned char *dst, const unsigned char *src);
+
+/*
+ * RC4
+ */
+
+void
+rc4_init(rc4_t *ctx, const unsigned char *key, size_t key_len);
+
+void
+rc4_encrypt(rc4_t *ctx,
+            unsigned char *dst,
+            const unsigned char *src,
+            size_t len);
 
 /*
  * Twofish

@@ -3952,27 +3952,42 @@ static const uint8_t PI[256] = {
 };
 
 void
-rc2_init(rc2_t *ctx, const unsigned char *key, size_t key_len) {
+rc2_init(rc2_t *ctx,
+         const unsigned char *key,
+         size_t key_len,
+         unsigned int bits) {
+  /* Initialization logic borrowed from nettle. */
   uint8_t L[128];
-  size_t i;
+  size_t i, len;
+  uint8_t x;
 
   ASSERT(key_len >= 1 && key_len <= 128);
+  ASSERT(bits <= 1024);
 
-  memset(ctx, 0, sizeof(*ctx));
-
-  memcpy(L, key, key_len);
-  memset(L + key_len, 0x00, 128 - key_len);
+  for (i = 0; i < key_len; i++)
+    L[i] = key[i];
 
   for (i = key_len; i < 128; i++)
-    L[i] = PI[(L[i - 1] + L[i - key_len]) & 0xff];
+    L[i] = PI[(L[i - key_len] + L[i - 1]) & 0xff];
 
-  L[128 - key_len] = PI[L[128 - key_len]];
+  L[0] = PI[L[0]];
 
-  for (i = 128 - key_len; i-- > 0;)
-    L[i] = PI[L[i + 1] ^ L[i + key_len]];
+  if (bits > 0 && bits < 1024) {
+    len = (bits + 7) >> 3;
+
+    i = 128 - len;
+    x = PI[L[i] & (255 >> (7 & -bits))];
+
+    L[i] = x;
+
+    while (i--) {
+      x = PI[x ^ L[i + len]];
+      L[i] = x;
+    }
+  }
 
   for (i = 0; i < 64; i++)
-    ctx->k[i] = read16le(L + 2 * i);
+    ctx->k[i] = read16le(L + i * 2);
 }
 
 void
@@ -4205,6 +4220,73 @@ rc2_decrypt(const rc2_t *ctx, unsigned char *dst, const unsigned char *src) {
 
 #undef PI
 #undef ROTL16
+
+/*
+ * RC4
+ *
+ * Resources:
+ *   https://en.wikipedia.org/wiki/RC4
+ *   http://cypherpunks.venona.com/archive/1994/09/msg00304.html
+ *   https://web.archive.org/web/20080207125928/http://cypherpunks.venona.com/archive/1994/09/msg00304.html
+ *   https://tools.ietf.org/html/rfc4345
+ *   https://tools.ietf.org/html/rfc6229
+ *   https://github.com/golang/go/blob/master/src/crypto/rc4/rc4.go
+ */
+
+void
+rc4_init(rc4_t *ctx, const unsigned char *key, size_t key_len) {
+  size_t k = key_len;
+  uint8_t *s = ctx->s;
+  uint8_t j, si;
+  size_t i;
+
+  ASSERT(k >= 1 && k <= 256);
+
+  for (i = 0; i < 256; i++)
+    s[i] = i;
+
+  j = 0;
+
+  for (i = 0; i < 256; i++) {
+    j += s[i] + key[i % k];
+    j &= 0xff;
+
+    si = s[i];
+    s[i] = s[j];
+    s[j] = si;
+  }
+
+  ctx->i = 0;
+  ctx->j = 0;
+}
+
+void
+rc4_encrypt(rc4_t *ctx,
+            unsigned char *dst,
+            const unsigned char *src,
+            size_t len) {
+  uint8_t *s = ctx->s;
+  uint8_t i = ctx->i;
+  uint8_t j = ctx->j;
+  uint8_t x, y;
+  size_t k;
+
+  for (k = 0; k < len; k++) {
+    i = (i + 1) & 0xff;
+    x = s[i];
+
+    j = (j + x) & 0xff;
+    y = s[j];
+
+    s[i] = y;
+    s[j] = x;
+
+    dst[k] = src[k] ^ s[(x + y) & 0xff];
+  }
+
+  ctx->i = i;
+  ctx->j = j;
+}
 
 /*
  * Twofish
@@ -4971,7 +5053,7 @@ cipher_ctx_init(cipher_t *ctx, const unsigned char *key, size_t key_len) {
 
       ctx->block_size = 8;
 
-      rc2_init(&ctx->ctx.rc2, key, key_len);
+      rc2_init(&ctx->ctx.rc2, key, key_len, key_len * 8);
 
       break;
     }

@@ -117,7 +117,7 @@ enum mpz_div_round_mode { MP_DIV_FLOOR, MP_DIV_CEIL, MP_DIV_TRUNC };
   uint64_t __cbtmp;           \
   ASSERT((x) != 0);           \
   __asm__ (                   \
-    "bsr %1, %0\n"            \
+    "bsrq %q1, %q0\n"         \
     : "=r" (__cbtmp)          \
     : "rm" ((uint64_t)(x))    \
   );                          \
@@ -128,7 +128,7 @@ enum mpz_div_round_mode { MP_DIV_FLOOR, MP_DIV_CEIL, MP_DIV_TRUNC };
   uint64_t __cbtmp;           \
   ASSERT((x) != 0);           \
   __asm__ (                   \
-    "bsf %1, %q0\n"           \
+    "bsfq %q1, %q0\n"         \
     : "=r" (__cbtmp)          \
     : "rm" ((uint64_t)(x))    \
   );                          \
@@ -137,8 +137,8 @@ enum mpz_div_round_mode { MP_DIV_FLOOR, MP_DIV_CEIL, MP_DIV_TRUNC };
 
 #define MP_ADD_SSAAAA(sh, sl, ah, al, bh, bl)       \
   __asm__ (                                         \
-    "addq %5, %q1\n"                                \
-    "adcq %3, %q0\n"                                \
+    "addq %q5, %q1\n"                               \
+    "adcq %q3, %q0\n"                               \
     : "=r" (sh), "=&r" (sl)                         \
     : "0" ((uint64_t)(ah)), "rme" ((uint64_t)(bh)), \
       "%1" ((uint64_t)(al)), "rme" ((uint64_t)(bl)) \
@@ -146,8 +146,8 @@ enum mpz_div_round_mode { MP_DIV_FLOOR, MP_DIV_CEIL, MP_DIV_TRUNC };
 
 #define MP_SUB_DDMMSS(sh, sl, ah, al, bh, bl)       \
   __asm__ (                                         \
-    "subq %5, %q1\n"                                \
-    "sbbq %3, %q0\n"                                \
+    "subq %q5, %q1\n"                               \
+    "sbbq %q3, %q0\n"                               \
     : "=r" (sh), "=&r" (sl)                         \
     : "0" ((uint64_t)(ah)), "rme" ((uint64_t)(bh)), \
       "1" ((uint64_t)(al)), "rme" ((uint64_t)(bl))  \
@@ -155,7 +155,7 @@ enum mpz_div_round_mode { MP_DIV_FLOOR, MP_DIV_CEIL, MP_DIV_TRUNC };
 
 #define MP_UMUL_PPMM(w1, w0, u, v) \
   __asm__ (                        \
-    "mulq %3\n"                    \
+    "mulq %q3\n"                   \
     : "=a" (w0), "=d" (w1)         \
     : "%0" ((uint64_t)(u)),        \
       "rm" ((uint64_t)(v))         \
@@ -516,38 +516,38 @@ mpn_copyi(mp_ptr d, mp_srcptr s, mp_size_t n) {
    *   %rdx = n
    */
   __asm__ __volatile__(
-    "lea -8(%%rdi), %%rdi\n"
-    "sub $4, %%rdx\n"
+    "leaq -8(%%rdi), %%rdi\n"
+    "subq $4, %%rdx\n"
     "jc 2f\n" /* end */
 
     "1:\n" /* top */
-    "mov (%%rsi), %%rax\n"
-    "mov 8(%%rsi), %%r9\n"
-    "lea 32(%%rdi), %%rdi\n"
-    "mov 16(%%rsi), %%r10\n"
-    "mov 24(%%rsi), %%r11\n"
-    "lea 32(%%rsi), %%rsi\n"
-    "mov %%rax, -24(%%rdi)\n"
-    "mov %%r9, -16(%%rdi)\n"
-    "sub $4, %%rdx\n"
-    "mov %%r10, -8(%%rdi)\n"
-    "mov %%r11, (%%rdi)\n"
+    "movq (%%rsi), %%rax\n"
+    "movq 8(%%rsi), %%r9\n"
+    "leaq 32(%%rdi), %%rdi\n"
+    "movq 16(%%rsi), %%r10\n"
+    "movq 24(%%rsi), %%r11\n"
+    "leaq 32(%%rsi), %%rsi\n"
+    "movq %%rax, -24(%%rdi)\n"
+    "movq %%r9, -16(%%rdi)\n"
+    "subq $4, %%rdx\n"
+    "movq %%r10, -8(%%rdi)\n"
+    "movq %%r11, (%%rdi)\n"
     "jnc 1b\n" /* top */
 
     "2:\n" /* end */
-    "shr %%edx\n"
+    "shrl %%edx\n"
     "jnc 3f\n"
-    "mov (%%rsi), %%rax\n"
-    "mov %%rax, 8(%%rdi)\n"
-    "lea 8(%%rdi), %%rdi\n"
-    "lea 8(%%rsi), %%rsi\n"
+    "movq (%%rsi), %%rax\n"
+    "movq %%rax, 8(%%rdi)\n"
+    "leaq 8(%%rdi), %%rdi\n"
+    "leaq 8(%%rsi), %%rsi\n"
     "3:\n"
-    "shr %%edx\n"
+    "shrl %%edx\n"
     "jnc 4f\n"
-    "mov (%%rsi), %%rax\n"
-    "mov 8(%%rsi), %%r9\n"
-    "mov %%rax, 8(%%rdi)\n"
-    "mov %%r9, 16(%%rdi)\n"
+    "movq (%%rsi), %%rax\n"
+    "movq 8(%%rsi), %%r9\n"
+    "movq %%rax, 8(%%rdi)\n"
+    "movq %%r9, 16(%%rdi)\n"
     "4:\n"
     : "+D" (d), "+S" (s), "+d" (n)
     :
@@ -574,40 +574,40 @@ mpn_copyd(mp_ptr d, mp_srcptr s, mp_size_t n) {
    *   %rdx = n
    */
   __asm__ __volatile__(
-    "lea -8(%%rsi,%%rdx,8), %%rsi\n"
-    "lea (%%rdi,%%rdx,8), %%rdi\n"
-    "sub $4, %%rdx\n"
+    "leaq -8(%%rsi,%%rdx,8), %%rsi\n"
+    "leaq (%%rdi,%%rdx,8), %%rdi\n"
+    "subq $4, %%rdx\n"
     "jc 2f\n" /* end */
     "nop\n"
 
     "1:\n" /* top */
-    "mov (%%rsi), %%rax\n"
-    "mov -8(%%rsi), %%r9\n"
-    "lea -32(%%rdi), %%rdi\n"
-    "mov -16(%%rsi), %%r10\n"
-    "mov -24(%%rsi), %%r11\n"
-    "lea -32(%%rsi), %%rsi\n"
-    "mov %%rax, 24(%%rdi)\n"
-    "mov %%r9, 16(%%rdi)\n"
-    "sub $4, %%rdx\n"
-    "mov %%r10, 8(%%rdi)\n"
-    "mov %%r11, (%%rdi)\n"
+    "movq (%%rsi), %%rax\n"
+    "movq -8(%%rsi), %%r9\n"
+    "leaq -32(%%rdi), %%rdi\n"
+    "movq -16(%%rsi), %%r10\n"
+    "movq -24(%%rsi), %%r11\n"
+    "leaq -32(%%rsi), %%rsi\n"
+    "movq %%rax, 24(%%rdi)\n"
+    "movq %%r9, 16(%%rdi)\n"
+    "subq $4, %%rdx\n"
+    "movq %%r10, 8(%%rdi)\n"
+    "movq %%r11, (%%rdi)\n"
     "jnc 1b\n" /* top */
 
     "2:\n" /* end */
-    "shr %%edx\n"
+    "shrl %%edx\n"
     "jnc 3f\n"
-    "mov (%%rsi), %%rax\n"
-    "mov %%rax, -8(%%rdi)\n"
-    "lea -8(%%rdi), %%rdi\n"
-    "lea -8(%%rsi), %%rsi\n"
+    "movq (%%rsi), %%rax\n"
+    "movq %%rax, -8(%%rdi)\n"
+    "leaq -8(%%rdi), %%rdi\n"
+    "leaq -8(%%rsi), %%rsi\n"
     "3:\n"
-    "shr %%edx\n"
+    "shrl %%edx\n"
     "jnc 4f\n"
-    "mov (%%rsi), %%rax\n"
-    "mov -8(%%rsi), %%r9\n"
-    "mov %%rax, -8(%%rdi)\n"
-    "mov %%r9, -16(%%rdi)\n"
+    "movq (%%rsi), %%rax\n"
+    "movq -8(%%rsi), %%r9\n"
+    "movq %%rax, -8(%%rdi)\n"
+    "movq %%r9, -16(%%rdi)\n"
     "4:\n"
     : "+D" (d), "+S" (s), "+d" (n)
     :
@@ -665,25 +665,25 @@ mpn_cmp4(mp_srcptr ap, mp_size_t an, mp_srcptr bp, mp_size_t bn) {
  */
 #define AORS_1(ADDSUB, ADCSBB) \
   __asm__ __volatile__(        \
-    "mov (%%rsi), %%rax\n"     \
+    "movq (%%rsi), %%rax\n"    \
     ADDSUB " %%rdx, %%rax\n"   \
-    "mov %%rax, (%%rdi)\n"     \
-    "dec %%rcx\n"              \
+    "movq %%rax, (%%rdi)\n"    \
+    "decq %%rcx\n"             \
     "jz 2f\n"                  \
                                \
     ".align 16\n"              \
     "1:\n"                     \
-    "lea 8(%%rsi), %%rsi\n"    \
-    "lea 8(%%rdi), %%rdi\n"    \
-    "mov (%%rsi), %%rax\n"     \
+    "leaq 8(%%rsi), %%rsi\n"   \
+    "leaq 8(%%rdi), %%rdi\n"   \
+    "movq (%%rsi), %%rax\n"    \
     ADCSBB " $0, %%rax\n"      \
-    "mov %%rax, (%%rdi)\n"     \
-    "dec %%rcx\n"              \
+    "movq %%rax, (%%rdi)\n"    \
+    "decq %%rcx\n"             \
     "jnz 1b\n"                 \
                                \
     "2:\n"                     \
-    "mov $0, %%rdx\n"          \
-    "adc $0, %%rdx\n"          \
+    "movq $0, %%rdx\n"         \
+    "adcq $0, %%rdx\n"         \
     : "+D" (rp), "+S" (ap),    \
       "+c" (n), "+d" (b)       \
     :                          \
@@ -702,48 +702,48 @@ mpn_cmp4(mp_srcptr ap, mp_size_t an, mp_srcptr bp, mp_size_t bn) {
  */
 #define AORS_N(ADCSBB)                      \
   __asm__ __volatile__(                     \
-    "mov $0, %%eax\n"                       \
-    "test %%ecx, %%ecx\n"                   \
+    "movl $0, %%eax\n"                      \
+    "testl %%ecx, %%ecx\n"                  \
     "jle 7f\n" /* exit */                   \
                                             \
-    "mov %%ecx, %%eax\n"                    \
-    "shr $2, %%rcx\n"                       \
-    "and $3, %%eax\n"                       \
+    "movl %%ecx, %%eax\n"                   \
+    "shrq $2, %%rcx\n"                      \
+    "andl $3, %%eax\n"                      \
     "jrcxz 1f\n" /* lt4 */                  \
                                             \
-    "mov (%%rsi), %%r8\n"                   \
-    "mov 8(%%rsi), %%r9\n"                  \
-    "dec %%rcx\n"                           \
+    "movq (%%rsi), %%r8\n"                  \
+    "movq 8(%%rsi), %%r9\n"                 \
+    "decq %%rcx\n"                          \
     "jmp 5f\n" /* mid */                    \
                                             \
     "1:\n" /* lt4 */                        \
-    "dec %%eax\n"                           \
-    "mov (%%rsi), %%r8\n"                   \
+    "decl %%eax\n"                          \
+    "movq (%%rsi), %%r8\n"                  \
     "jnz 2f\n" /* 2 */                      \
     ADCSBB " (%%rdx), %%r8\n"               \
-    "mov %%r8, (%%rdi)\n"                   \
-    "adc %%eax, %%eax\n"                    \
+    "movq %%r8, (%%rdi)\n"                  \
+    "adcl %%eax, %%eax\n"                   \
     "jmp 7f\n" /* exit */                   \
                                             \
     "2:\n" /* 2 */                          \
-    "dec %%eax\n"                           \
-    "mov 8(%%rsi), %%r9\n"                  \
+    "decl %%eax\n"                          \
+    "movq 8(%%rsi), %%r9\n"                 \
     "jnz 3f\n" /* 3 */                      \
     ADCSBB " (%%rdx), %%r8\n"               \
     ADCSBB " 8(%%rdx), %%r9\n"              \
-    "mov %%r8, (%%rdi)\n"                   \
-    "mov %%r9, 8(%%rdi)\n"                  \
-    "adc %%eax, %%eax\n"                    \
+    "movq %%r8, (%%rdi)\n"                  \
+    "movq %%r9, 8(%%rdi)\n"                 \
+    "adcl %%eax, %%eax\n"                   \
     "jmp 7f\n" /* exit */                   \
                                             \
     "3:\n" /* 3 */                          \
-    "mov 16(%%rsi), %%r10\n"                \
+    "movq 16(%%rsi), %%r10\n"               \
     ADCSBB " (%%rdx), %%r8\n"               \
     ADCSBB " 8(%%rdx), %%r9\n"              \
     ADCSBB " 16(%%rdx), %%r10\n"            \
-    "mov %%r8, (%%rdi)\n"                   \
-    "mov %%r9, 8(%%rdi)\n"                  \
-    "mov %%r10, 16(%%rdi)\n"                \
+    "movq %%r8, (%%rdi)\n"                  \
+    "movq %%r9, 8(%%rdi)\n"                 \
+    "movq %%r10, 16(%%rdi)\n"               \
     "setc %%al\n"                           \
     "jmp 7f\n" /* exit */                   \
                                             \
@@ -753,38 +753,38 @@ mpn_cmp4(mp_srcptr ap, mp_size_t an, mp_srcptr bp, mp_size_t bn) {
     ADCSBB " 8(%%rdx), %%r9\n"              \
     ADCSBB " 16(%%rdx), %%r10\n"            \
     ADCSBB " 24(%%rdx), %%r11\n"            \
-    "mov %%r8, (%%rdi)\n"                   \
-    "lea 32(%%rsi), %%rsi\n"                \
-    "mov %%r9, 8(%%rdi)\n"                  \
-    "mov %%r10, 16(%%rdi)\n"                \
-    "dec %%rcx\n"                           \
-    "mov %%r11, 24(%%rdi)\n"                \
-    "lea 32(%%rdx), %%rdx\n"                \
-    "mov (%%rsi), %%r8\n"                   \
-    "mov 8(%%rsi), %%r9\n"                  \
-    "lea 32(%%rdi), %%rdi\n"                \
+    "movq %%r8, (%%rdi)\n"                  \
+    "leaq 32(%%rsi), %%rsi\n"               \
+    "movq %%r9, 8(%%rdi)\n"                 \
+    "movq %%r10, 16(%%rdi)\n"               \
+    "decq %%rcx\n"                          \
+    "movq %%r11, 24(%%rdi)\n"               \
+    "leaq 32(%%rdx), %%rdx\n"               \
+    "movq (%%rsi), %%r8\n"                  \
+    "movq 8(%%rsi), %%r9\n"                 \
+    "leaq 32(%%rdi), %%rdi\n"               \
     "5:\n" /* mid */                        \
-    "mov 16(%%rsi), %%r10\n"                \
-    "mov 24(%%rsi), %%r11\n"                \
+    "movq 16(%%rsi), %%r10\n"               \
+    "movq 24(%%rsi), %%r11\n"               \
     "jnz 4b\n" /* top */                    \
                                             \
     "6:\n" /* end */                        \
-    "lea 32(%%rsi), %%rsi\n"                \
+    "leaq 32(%%rsi), %%rsi\n"               \
     ADCSBB " (%%rdx), %%r8\n"               \
     ADCSBB " 8(%%rdx), %%r9\n"              \
     ADCSBB " 16(%%rdx), %%r10\n"            \
     ADCSBB " 24(%%rdx), %%r11\n"            \
-    "lea 32(%%rdx), %%rdx\n"                \
-    "mov %%r8, (%%rdi)\n"                   \
-    "mov %%r9, 8(%%rdi)\n"                  \
-    "mov %%r10, 16(%%rdi)\n"                \
-    "mov %%r11, 24(%%rdi)\n"                \
-    "lea 32(%%rdi), %%rdi\n"                \
+    "leaq 32(%%rdx), %%rdx\n"               \
+    "movq %%r8, (%%rdi)\n"                  \
+    "movq %%r9, 8(%%rdi)\n"                 \
+    "movq %%r10, 16(%%rdi)\n"               \
+    "movq %%r11, 24(%%rdi)\n"               \
+    "leaq 32(%%rdi), %%rdi\n"               \
                                             \
-    "inc %%eax\n"                           \
-    "dec %%eax\n"                           \
+    "incl %%eax\n"                          \
+    "decl %%eax\n"                          \
     "jnz 1b\n" /* lt4 */                    \
-    "adc %%eax, %%eax\n"                    \
+    "adcl %%eax, %%eax\n"                   \
     "7:\n" /* exit */                       \
     "movq $0, %q0\n"                        \
     "movb %%al, %q0\n"                      \
@@ -804,7 +804,7 @@ mpn_cmp4(mp_srcptr ap, mp_size_t an, mp_srcptr bp, mp_size_t bn) {
 mp_limb_t
 mpn_add_1(mp_ptr rp, mp_srcptr ap, mp_size_t n, mp_limb_t b) {
 #ifdef TORSION_USE_ASM
-  AORS_1("add", "adc")
+  AORS_1("addq", "adcq")
   return b;
 #else
   mp_size_t i;
@@ -828,7 +828,7 @@ mp_limb_t
 mpn_add_n(mp_ptr rp, mp_srcptr ap, mp_srcptr bp, mp_size_t n) {
 #ifdef TORSION_USE_ASM
   mp_limb_t cy;
-  AORS_N("adc")
+  AORS_N("adcq")
   return cy;
 #else
   mp_size_t i;
@@ -869,7 +869,7 @@ mpn_add(mp_ptr rp, mp_srcptr ap, mp_size_t an, mp_srcptr bp, mp_size_t bn) {
 mp_limb_t
 mpn_sub_1(mp_ptr rp, mp_srcptr ap, mp_size_t n, mp_limb_t b) {
 #ifdef TORSION_USE_ASM
-  AORS_1("sub", "sbb")
+  AORS_1("subq", "sbbq")
   return b;
 #else
   mp_size_t i;
@@ -894,7 +894,7 @@ mp_limb_t
 mpn_sub_n(mp_ptr rp, mp_srcptr ap, mp_srcptr bp, mp_size_t n) {
 #ifdef TORSION_USE_ASM
   mp_limb_t cy;
-  AORS_N("sbb")
+  AORS_N("sbbq")
   return cy;
 #else
   mp_size_t i;
@@ -948,104 +948,104 @@ mpn_mul_1(mp_ptr rp, mp_srcptr up, mp_size_t n, mp_limb_t vl) {
   mp_limb_t cy;
 
   __asm__ __volatile__(
-    "xor %%r10, %%r10\n"
+    "xorq %%r10, %%r10\n"
     "1:\n" /* common */
-    "mov (%%rsi), %%rax\n" /* read first u limb early */
-    "mov %%rdx, %%rbx\n" /* move away n from rdx, mul uses it */
-    "mul %%rcx\n"
-    "mov %%rbx, %%r11\n"
+    "movq (%%rsi), %%rax\n" /* read first u limb early */
+    "movq %%rdx, %%rbx\n" /* move away n from rdx, mul uses it */
+    "mulq %%rcx\n"
+    "movq %%rbx, %%r11\n"
 
-    "add %%r10, %%rax\n"
-    "adc $0, %%rdx\n"
+    "addq %%r10, %%rax\n"
+    "adcq $0, %%rdx\n"
 
-    "and $3, %%ebx\n"
+    "andl $3, %%ebx\n"
     "jz 4f\n" /* b0 */
-    "cmp $2, %%ebx\n"
+    "cmpl $2, %%ebx\n"
     "jz 6f\n" /* b2 */
     "jg 5f\n" /* b3 */
 
     "2:\n" /* b1 */
-    "dec %%r11\n"
+    "decq %%r11\n"
     "jne 3f\n" /* gt1 */
-    "mov %%rax, (%%rdi)\n"
+    "movq %%rax, (%%rdi)\n"
     "jmp 12f\n" /* ret */
     "3:\n" /* gt1 */
-    "lea 8(%%rsi,%%r11,8), %%rsi\n"
-    "lea -8(%%rdi,%%r11,8), %%rdi\n"
-    "neg %%r11\n"
-    "xor %%r10, %%r10\n"
-    "xor %%ebx, %%ebx\n"
-    "mov %%rax, %%r9\n"
-    "mov (%%rsi,%%r11,8), %%rax\n"
-    "mov %%rdx, %%r8\n"
+    "leaq 8(%%rsi,%%r11,8), %%rsi\n"
+    "leaq -8(%%rdi,%%r11,8), %%rdi\n"
+    "negq %%r11\n"
+    "xorq %%r10, %%r10\n"
+    "xorl %%ebx, %%ebx\n"
+    "movq %%rax, %%r9\n"
+    "movq (%%rsi,%%r11,8), %%rax\n"
+    "movq %%rdx, %%r8\n"
     "jmp 8f\n" /* L1 */
 
     "4:\n" /* b0 */
-    "lea (%%rsi,%%r11,8), %%rsi\n"
-    "lea -16(%%rdi,%%r11,8), %%rdi\n"
-    "neg %%r11\n"
-    "xor %%r10, %%r10\n"
-    "mov %%rax, %%r8\n"
-    "mov %%rdx, %%rbx\n"
+    "leaq (%%rsi,%%r11,8), %%rsi\n"
+    "leaq -16(%%rdi,%%r11,8), %%rdi\n"
+    "negq %%r11\n"
+    "xorq %%r10, %%r10\n"
+    "movq %%rax, %%r8\n"
+    "movq %%rdx, %%rbx\n"
     "jmp 9f\n" /* L0 */
 
     "5:\n" /* b3 */
-    "lea -8(%%rsi,%%r11,8), %%rsi\n"
-    "lea -24(%%rdi,%%r11,8), %%rdi\n"
-    "neg %%r11\n"
-    "mov %%rax, %%rbx\n"
-    "mov %%rdx, %%r10\n"
+    "leaq -8(%%rsi,%%r11,8), %%rsi\n"
+    "leaq -24(%%rdi,%%r11,8), %%rdi\n"
+    "negq %%r11\n"
+    "movq %%rax, %%rbx\n"
+    "movq %%rdx, %%r10\n"
     "jmp 10f\n" /* L3 */
 
     "6:\n" /* b2 */
-    "lea -16(%%rsi,%%r11,8), %%rsi\n"
-    "lea -32(%%rdi,%%r11,8), %%rdi\n"
-    "neg %%r11\n"
-    "xor %%r8, %%r8\n"
-    "xor %%ebx, %%ebx\n"
-    "mov %%rax, %%r10\n"
-    "mov 24(%%rsi,%%r11,8), %%rax\n"
-    "mov %%rdx, %%r9\n"
+    "leaq -16(%%rsi,%%r11,8), %%rsi\n"
+    "leaq -32(%%rdi,%%r11,8), %%rdi\n"
+    "negq %%r11\n"
+    "xorq %%r8, %%r8\n"
+    "xorl %%ebx, %%ebx\n"
+    "movq %%rax, %%r10\n"
+    "movq 24(%%rsi,%%r11,8), %%rax\n"
+    "movq %%rdx, %%r9\n"
     "jmp 11f\n" /* L2 */
 
     ".align 16\n"
     "7:\n" /* top */
-    "mov %%r10, (%%rdi,%%r11,8)\n"
-    "add %%rax, %%r9\n"
-    "mov (%%rsi,%%r11,8), %%rax\n"
-    "adc %%rdx, %%r8\n"
-    "mov $0, %%r10d\n"
+    "movq %%r10, (%%rdi,%%r11,8)\n"
+    "addq %%rax, %%r9\n"
+    "movq (%%rsi,%%r11,8), %%rax\n"
+    "adcq %%rdx, %%r8\n"
+    "movl $0, %%r10d\n"
     "8:\n" /* L1 */
-    "mul %%rcx\n"
-    "mov %%r9, 8(%%rdi,%%r11,8)\n"
-    "add %%rax, %%r8\n"
-    "adc %%rdx, %%rbx\n"
+    "mulq %%rcx\n"
+    "movq %%r9, 8(%%rdi,%%r11,8)\n"
+    "addq %%rax, %%r8\n"
+    "adcq %%rdx, %%rbx\n"
     "9:\n" /* L0 */
-    "mov 8(%%rsi,%%r11,8), %%rax\n"
-    "mul %%rcx\n"
-    "mov %%r8, 16(%%rdi,%%r11,8)\n"
-    "add %%rax, %%rbx\n"
-    "adc %%rdx, %%r10\n"
+    "movq 8(%%rsi,%%r11,8), %%rax\n"
+    "mulq %%rcx\n"
+    "movq %%r8, 16(%%rdi,%%r11,8)\n"
+    "addq %%rax, %%rbx\n"
+    "adcq %%rdx, %%r10\n"
     "10:\n" /* L3 */
-    "mov 16(%%rsi,%%r11,8), %%rax\n"
-    "mul %%rcx\n"
-    "mov %%rbx, 24(%%rdi,%%r11,8)\n"
-    "mov $0, %%r8d\n" /* zero */
-    "mov %%r8, %%rbx\n" /* zero */
-    "add %%rax, %%r10\n"
-    "mov 24(%%rsi,%%r11,8), %%rax\n"
-    "mov %%r8, %%r9\n" /* zero */
-    "adc %%rdx, %%r9\n"
+    "movq 16(%%rsi,%%r11,8), %%rax\n"
+    "mulq %%rcx\n"
+    "movq %%rbx, 24(%%rdi,%%r11,8)\n"
+    "movl $0, %%r8d\n" /* zero */
+    "movq %%r8, %%rbx\n" /* zero */
+    "addq %%rax, %%r10\n"
+    "movq 24(%%rsi,%%r11,8), %%rax\n"
+    "movq %%r8, %%r9\n" /* zero */
+    "adcq %%rdx, %%r9\n"
     "11:\n" /* L2 */
-    "mul %%rcx\n"
-    "add $4, %%r11\n"
+    "mulq %%rcx\n"
+    "addq $4, %%r11\n"
     "js 7b\n" /* top */
 
-    "mov %%r10, (%%rdi,%%r11,8)\n"
-    "add %%rax, %%r9\n"
-    "adc %%r8, %%rdx\n"
-    "mov %%r9, 8(%%rdi,%%r11,8)\n"
-    "add %%r8, %%rdx\n"
+    "movq %%r10, (%%rdi,%%r11,8)\n"
+    "addq %%rax, %%r9\n"
+    "adcq %%r8, %%rdx\n"
+    "movq %%r9, 8(%%rdi,%%r11,8)\n"
+    "addq %%r8, %%rdx\n"
     "12:\n" /* ret */
     "movq %%rdx, %q0\n"
     : "=m" (cy), "+D" (rp), "+S" (up), "+d" (n)
@@ -1088,115 +1088,115 @@ mpn_mul_1(mp_ptr rp, mp_srcptr up, mp_size_t n, mp_limb_t vl) {
  *   %rcx = vl (r9)
  *   %r11 = n
  */
-#define AORSMUL_1(ADDSUB)                                        \
-  __asm__ __volatile__(                                          \
-    "mov (%%rsi), %%rax\n" /* read first u limb early */         \
-    "mov %%rdx, %%rbx\n" /* move away n from rdx, mul uses it */ \
-    "mul %%rcx\n"                                                \
-    "mov %%rbx, %%r11\n"                                         \
-                                                                 \
-    "and $3, %%ebx\n"                                            \
-    "jz 3f\n" /* b0 */                                           \
-    "cmp $2, %%ebx\n"                                            \
-    "jz 5f\n" /* b2 */                                           \
-    "jg 4f\n" /* b3 */                                           \
-                                                                 \
-    "1:\n" /* b1 */                                              \
-    "dec %%r11\n"                                                \
-    "jne 2f\n" /* gt1 */                                         \
-    ADDSUB " %%rax, (%%rdi)\n"                                   \
-    "jmp 11f\n" /* ret */                                        \
-    "2:\n" /* gt1 */                                             \
-    "lea 8(%%rsi,%%r11,8), %%rsi\n"                              \
-    "lea -8(%%rdi,%%r11,8), %%rdi\n"                             \
-    "neg %%r11\n"                                                \
-    "xor %%r10, %%r10\n"                                         \
-    "xor %%ebx, %%ebx\n"                                         \
-    "mov %%rax, %%r9\n"                                          \
-    "mov (%%rsi,%%r11,8), %%rax\n"                               \
-    "mov %%rdx, %%r8\n"                                          \
-    "jmp 7f\n" /* L1 */                                          \
-                                                                 \
-    "3:\n" /* b0 */                                              \
-    "lea (%%rsi,%%r11,8), %%rsi\n"                               \
-    "lea -16(%%rdi,%%r11,8), %%rdi\n"                            \
-    "neg %%r11\n"                                                \
-    "xor %%r10, %%r10\n"                                         \
-    "mov %%rax, %%r8\n"                                          \
-    "mov %%rdx, %%rbx\n"                                         \
-    "jmp 8f\n" /* L0 */                                          \
-                                                                 \
-    "4:\n" /* b3 */                                              \
-    "lea -8(%%rsi,%%r11,8), %%rsi\n"                             \
-    "lea -24(%%rdi,%%r11,8), %%rdi\n"                            \
-    "neg %%r11\n"                                                \
-    "mov %%rax, %%rbx\n"                                         \
-    "mov %%rdx, %%r10\n"                                         \
-    "jmp 9f\n" /* L3 */                                          \
-                                                                 \
-    "5:\n" /* b2 */                                              \
-    "lea -16(%%rsi,%%r11,8), %%rsi\n"                            \
-    "lea -32(%%rdi,%%r11,8), %%rdi\n"                            \
-    "neg %%r11\n"                                                \
-    "xor %%r8, %%r8\n"                                           \
-    "xor %%ebx, %%ebx\n"                                         \
-    "mov %%rax, %%r10\n"                                         \
-    "mov 24(%%rsi,%%r11,8), %%rax\n"                             \
-    "mov %%rdx, %%r9\n"                                          \
-    "jmp 10f\n" /* L2 */                                         \
-                                                                 \
-    ".align 16\n"                                                \
-    "6:\n" /* top */                                             \
-    ADDSUB " %%r10, (%%rdi,%%r11,8)\n"                           \
-    "adc %%rax, %%r9\n"                                          \
-    "mov (%%rsi,%%r11,8), %%rax\n"                               \
-    "adc %%rdx, %%r8\n"                                          \
-    "mov $0, %%r10d\n"                                           \
-    "7:\n" /* L1 */                                              \
-    "mul %%rcx\n"                                                \
-    ADDSUB " %%r9, 8(%%rdi,%%r11,8)\n"                           \
-    "adc %%rax, %%r8\n"                                          \
-    "adc %%rdx, %%rbx\n"                                         \
-    "8:\n" /* L0 */                                              \
-    "mov 8(%%rsi,%%r11,8), %%rax\n"                              \
-    "mul %%rcx\n"                                                \
-    ADDSUB " %%r8, 16(%%rdi,%%r11,8)\n"                          \
-    "adc %%rax, %%rbx\n"                                         \
-    "adc %%rdx, %%r10\n"                                         \
-    "9:\n" /* L3 */                                              \
-    "mov 16(%%rsi,%%r11,8), %%rax\n"                             \
-    "mul %%rcx\n"                                                \
-    ADDSUB " %%rbx, 24(%%rdi,%%r11,8)\n"                         \
-    "mov $0, %%r8d\n"                                            \
-    "mov %%r8, %%rbx\n" /* zero */                               \
-    "adc %%rax, %%r10\n"                                         \
-    "mov 24(%%rsi,%%r11,8), %%rax\n"                             \
-    "mov %%r8, %%r9\n" /* zero */                                \
-    "adc %%rdx, %%r9\n"                                          \
-    "10:\n" /* L2 */                                             \
-    "mul %%rcx\n"                                                \
-    "add $4, %%r11\n"                                            \
-    "js 6b\n" /* top */                                          \
-                                                                 \
-    ADDSUB " %%r10, (%%rdi,%%r11,8)\n"                           \
-    "adc %%rax, %%r9\n"                                          \
-    "adc %%r8, %%rdx\n"                                          \
-    ADDSUB " %%r9, 8(%%rdi,%%r11,8)\n"                           \
-    "11:\n" /* ret */                                            \
-    "adc $0, %%rdx\n"                                            \
-    "movq %%rdx, %q0\n"                                          \
-    : "=m" (cy), "+D" (rp), "+S" (up), "+d" (n)                  \
-    : "c" (vl)                                                   \
-    : "rax", "rbx", "ebx",                                       \
-      "r8", "r9", "r10", "r11",                                  \
-      "cc", "memory"                                             \
-  );                                                             \
+#define AORSMUL_1(ADDSUB)                                         \
+  __asm__ __volatile__(                                           \
+    "movq (%%rsi), %%rax\n" /* read first u limb early */         \
+    "movq %%rdx, %%rbx\n" /* move away n from rdx, mul uses it */ \
+    "mulq %%rcx\n"                                                \
+    "movq %%rbx, %%r11\n"                                         \
+                                                                  \
+    "andl $3, %%ebx\n"                                            \
+    "jz 3f\n" /* b0 */                                            \
+    "cmpl $2, %%ebx\n"                                            \
+    "jz 5f\n" /* b2 */                                            \
+    "jg 4f\n" /* b3 */                                            \
+                                                                  \
+    "1:\n" /* b1 */                                               \
+    "decq %%r11\n"                                                \
+    "jne 2f\n" /* gt1 */                                          \
+    ADDSUB " %%rax, (%%rdi)\n"                                    \
+    "jmp 11f\n" /* ret */                                         \
+    "2:\n" /* gt1 */                                              \
+    "leaq 8(%%rsi,%%r11,8), %%rsi\n"                              \
+    "leaq -8(%%rdi,%%r11,8), %%rdi\n"                             \
+    "negq %%r11\n"                                                \
+    "xorq %%r10, %%r10\n"                                         \
+    "xorl %%ebx, %%ebx\n"                                         \
+    "movq %%rax, %%r9\n"                                          \
+    "movq (%%rsi,%%r11,8), %%rax\n"                               \
+    "movq %%rdx, %%r8\n"                                          \
+    "jmp 7f\n" /* L1 */                                           \
+                                                                  \
+    "3:\n" /* b0 */                                               \
+    "leaq (%%rsi,%%r11,8), %%rsi\n"                               \
+    "leaq -16(%%rdi,%%r11,8), %%rdi\n"                            \
+    "negq %%r11\n"                                                \
+    "xorq %%r10, %%r10\n"                                         \
+    "movq %%rax, %%r8\n"                                          \
+    "movq %%rdx, %%rbx\n"                                         \
+    "jmp 8f\n" /* L0 */                                           \
+                                                                  \
+    "4:\n" /* b3 */                                               \
+    "leaq -8(%%rsi,%%r11,8), %%rsi\n"                             \
+    "leaq -24(%%rdi,%%r11,8), %%rdi\n"                            \
+    "negq %%r11\n"                                                \
+    "movq %%rax, %%rbx\n"                                         \
+    "movq %%rdx, %%r10\n"                                         \
+    "jmp 9f\n" /* L3 */                                           \
+                                                                  \
+    "5:\n" /* b2 */                                               \
+    "leaq -16(%%rsi,%%r11,8), %%rsi\n"                            \
+    "leaq -32(%%rdi,%%r11,8), %%rdi\n"                            \
+    "negq %%r11\n"                                                \
+    "xorq %%r8, %%r8\n"                                           \
+    "xorl %%ebx, %%ebx\n"                                         \
+    "movq %%rax, %%r10\n"                                         \
+    "movq 24(%%rsi,%%r11,8), %%rax\n"                             \
+    "movq %%rdx, %%r9\n"                                          \
+    "jmp 10f\n" /* L2 */                                          \
+                                                                  \
+    ".align 16\n"                                                 \
+    "6:\n" /* top */                                              \
+    ADDSUB " %%r10, (%%rdi,%%r11,8)\n"                            \
+    "adcq %%rax, %%r9\n"                                          \
+    "movq (%%rsi,%%r11,8), %%rax\n"                               \
+    "adcq %%rdx, %%r8\n"                                          \
+    "movl $0, %%r10d\n"                                           \
+    "7:\n" /* L1 */                                               \
+    "mulq %%rcx\n"                                                \
+    ADDSUB " %%r9, 8(%%rdi,%%r11,8)\n"                            \
+    "adcq %%rax, %%r8\n"                                          \
+    "adcq %%rdx, %%rbx\n"                                         \
+    "8:\n" /* L0 */                                               \
+    "movq 8(%%rsi,%%r11,8), %%rax\n"                              \
+    "mulq %%rcx\n"                                                \
+    ADDSUB " %%r8, 16(%%rdi,%%r11,8)\n"                           \
+    "adcq %%rax, %%rbx\n"                                         \
+    "adcq %%rdx, %%r10\n"                                         \
+    "9:\n" /* L3 */                                               \
+    "movq 16(%%rsi,%%r11,8), %%rax\n"                             \
+    "mulq %%rcx\n"                                                \
+    ADDSUB " %%rbx, 24(%%rdi,%%r11,8)\n"                          \
+    "movl $0, %%r8d\n"                                            \
+    "movq %%r8, %%rbx\n" /* zero */                               \
+    "adcq %%rax, %%r10\n"                                         \
+    "movq 24(%%rsi,%%r11,8), %%rax\n"                             \
+    "movq %%r8, %%r9\n" /* zero */                                \
+    "adcq %%rdx, %%r9\n"                                          \
+    "10:\n" /* L2 */                                              \
+    "mulq %%rcx\n"                                                \
+    "addq $4, %%r11\n"                                            \
+    "js 6b\n" /* top */                                           \
+                                                                  \
+    ADDSUB " %%r10, (%%rdi,%%r11,8)\n"                            \
+    "adcq %%rax, %%r9\n"                                          \
+    "adcq %%r8, %%rdx\n"                                          \
+    ADDSUB " %%r9, 8(%%rdi,%%r11,8)\n"                            \
+    "11:\n" /* ret */                                             \
+    "adcq $0, %%rdx\n"                                            \
+    "movq %%rdx, %q0\n"                                           \
+    : "=m" (cy), "+D" (rp), "+S" (up), "+d" (n)                   \
+    : "c" (vl)                                                    \
+    : "rax", "rbx", "ebx",                                        \
+      "r8", "r9", "r10", "r11",                                   \
+      "cc", "memory"                                              \
+  );                                                              \
 
 mp_limb_t
 mpn_addmul_1(mp_ptr rp, mp_srcptr up, mp_size_t n, mp_limb_t vl) {
 #ifdef TORSION_USE_ASM
   mp_limb_t cy;
-  AORSMUL_1("add")
+  AORSMUL_1("addq")
   return cy;
 #else
   mp_limb_t ul, cl, hpl, lpl, rl;
@@ -1226,7 +1226,7 @@ mp_limb_t
 mpn_submul_1(mp_ptr rp, mp_srcptr up, mp_size_t n, mp_limb_t vl) {
 #ifdef TORSION_USE_ASM
   mp_limb_t cy;
-  AORSMUL_1("sub")
+  AORSMUL_1("subq")
   return cy;
 #else
   mp_limb_t ul, cl, hpl, lpl, rl;
@@ -1296,47 +1296,47 @@ mpn_sqr_diag_addlsh1(mp_ptr rp, mp_srcptr tp, mp_srcptr up, mp_size_t n) {
    *   %rcx = n
    */
   __asm__ __volatile__(
-    "dec %%rcx\n"
-    "shl %%rcx\n"
+    "decq %%rcx\n"
+    "shlq %%rcx\n"
 
-    "mov (%%rdx),%%rax\n"
+    "movq (%%rdx),%%rax\n"
 
-    "lea (%%rdi,%%rcx,8),%%rdi\n"
-    "lea (%%rsi,%%rcx,8),%%rsi\n"
-    "lea (%%rdx,%%rcx,4),%%r11\n"
-    "neg %%rcx\n"
+    "leaq (%%rdi,%%rcx,8),%%rdi\n"
+    "leaq (%%rsi,%%rcx,8),%%rsi\n"
+    "leaq (%%rdx,%%rcx,4),%%r11\n"
+    "negq %%rcx\n"
 
-    "mul %%rax\n"
-    "mov %%rax,(%%rdi,%%rcx,8)\n"
+    "mulq %%rax\n"
+    "movq %%rax,(%%rdi,%%rcx,8)\n"
 
-    "xor %%ebx,%%ebx\n"
+    "xorl %%ebx,%%ebx\n"
     "jmp 2f\n" /* mid */
 
     ".align 16\n"
     "1:\n" /* top */
-    "add %%r10,%%r8\n"
-    "adc %%rax,%%r9\n"
-    "mov %%r8,-8(%%rdi,%%rcx,8)\n"
-    "mov %%r9,(%%rdi,%%rcx,8)\n"
+    "addq %%r10,%%r8\n"
+    "adcq %%rax,%%r9\n"
+    "movq %%r8,-8(%%rdi,%%rcx,8)\n"
+    "movq %%r9,(%%rdi,%%rcx,8)\n"
     "2:\n" /* mid */
-    "mov 8(%%r11,%%rcx,4),%%rax\n"
-    "mov (%%rsi,%%rcx,8),%%r8\n"
-    "mov 8(%%rsi,%%rcx,8),%%r9\n"
-    "adc %%r8,%%r8\n"
-    "adc %%r9,%%r9\n"
-    "lea (%%rdx,%%rbx,1),%%r10\n"
+    "movq 8(%%r11,%%rcx,4),%%rax\n"
+    "movq (%%rsi,%%rcx,8),%%r8\n"
+    "movq 8(%%rsi,%%rcx,8),%%r9\n"
+    "adcq %%r8,%%r8\n"
+    "adcq %%r9,%%r9\n"
+    "leaq (%%rdx,%%rbx,1),%%r10\n"
     "setc %%bl\n"
-    "mul %%rax\n"
-    "add $2,%%rcx\n"
+    "mulq %%rax\n"
+    "addq $2,%%rcx\n"
     "js 1b\n" /* top */
 
     "3:\n" /* end */
-    "add %%r10,%%r8\n"
-    "adc %%rax,%%r9\n"
-    "mov %%r8,-8(%%rdi)\n"
-    "mov %%r9,(%%rdi)\n"
-    "adc %%rbx,%%rdx\n"
-    "mov %%rdx,8(%%rdi)\n"
+    "addq %%r10,%%r8\n"
+    "adcq %%rax,%%r9\n"
+    "movq %%r8,-8(%%rdi)\n"
+    "movq %%r9,(%%rdi)\n"
+    "adcq %%rbx,%%rdx\n"
+    "movq %%rdx,8(%%rdi)\n"
     : "+D" (rp), "+S" (tp),
       "+d" (up), "+c" (n)
     :
@@ -1875,121 +1875,121 @@ mpn_lshift(mp_ptr rp, mp_srcptr up, mp_size_t n, unsigned int cnt) {
   mp_limb_t cy;
 
   __asm__ __volatile__(
-    "neg %%ecx\n" /* put rsh count in cl */
-    "mov -8(%%rsi,%%rdx,8), %%rax\n"
-    "shr %%cl, %%rax\n" /* function return value */
+    "negl %%ecx\n" /* put rsh count in cl */
+    "movq -8(%%rsi,%%rdx,8), %%rax\n"
+    "shrq %%cl, %%rax\n" /* function return value */
 
-    "neg %%ecx\n" /* put lsh count in cl */
-    "lea 1(%%rdx), %%r8d\n"
-    "and $3, %%r8d\n"
+    "negl %%ecx\n" /* put lsh count in cl */
+    "leal 1(%%rdx), %%r8d\n"
+    "andl $3, %%r8d\n"
     "je 4f\n" /* (rlx) jump for n = 3, 7, 11, ... */
 
-    "dec %%r8d\n"
+    "decl %%r8d\n"
     "jne 1f\n" /* 1 */
     /* n = 4, 8, 12, ... */
-    "mov -8(%%rsi,%%rdx,8), %%r10\n"
-    "shl %%cl, %%r10\n"
-    "neg %%ecx\n" /* put rsh count in cl */
-    "mov -16(%%rsi,%%rdx,8), %%r8\n"
-    "shr %%cl, %%r8\n"
-    "or %%r8, %%r10\n"
-    "mov %%r10, -8(%%rdi,%%rdx,8)\n"
-    "dec %%rdx\n"
+    "movq -8(%%rsi,%%rdx,8), %%r10\n"
+    "shlq %%cl, %%r10\n"
+    "negl %%ecx\n" /* put rsh count in cl */
+    "movq -16(%%rsi,%%rdx,8), %%r8\n"
+    "shrq %%cl, %%r8\n"
+    "orq %%r8, %%r10\n"
+    "movq %%r10, -8(%%rdi,%%rdx,8)\n"
+    "decq %%rdx\n"
     "jmp 3f\n" /* rll */
 
     "1:\n" /* 1 */
-    "dec %%r8d\n"
+    "decl %%r8d\n"
     "je 2f\n" /* (1x) jump for n = 1, 5, 9, 13, ... */
     /* n = 2, 6, 10, 16, ... */
-    "mov -8(%%rsi,%%rdx,8), %%r10\n"
-    "shl %%cl, %%r10\n"
-    "neg %%ecx\n" /* put rsh count in cl */
-    "mov -16(%%rsi,%%rdx,8), %%r8\n"
-    "shr %%cl, %%r8\n"
-    "or %%r8, %%r10\n"
-    "mov %%r10, -8(%%rdi,%%rdx,8)\n"
-    "dec %%rdx\n"
-    "neg %%ecx\n" /* put lsh count in cl */
+    "movq -8(%%rsi,%%rdx,8), %%r10\n"
+    "shlq %%cl, %%r10\n"
+    "negl %%ecx\n" /* put rsh count in cl */
+    "movq -16(%%rsi,%%rdx,8), %%r8\n"
+    "shrq %%cl, %%r8\n"
+    "orq %%r8, %%r10\n"
+    "movq %%r10, -8(%%rdi,%%rdx,8)\n"
+    "decq %%rdx\n"
+    "negl %%ecx\n" /* put lsh count in cl */
     "2:\n" /* 1x */
-    "cmp $1, %%rdx\n"
+    "cmpq $1, %%rdx\n"
     "je 7f\n" /* ast */
-    "mov -8(%%rsi,%%rdx,8), %%r10\n"
-    "shl %%cl, %%r10\n"
-    "mov -16(%%rsi,%%rdx,8), %%r11\n"
-    "shl %%cl, %%r11\n"
-    "neg %%ecx\n" /* put rsh count in cl */
-    "mov -16(%%rsi,%%rdx,8), %%r8\n"
-    "mov -24(%%rsi,%%rdx,8), %%r9\n"
-    "shr %%cl, %%r8\n"
-    "or %%r8, %%r10\n"
-    "shr %%cl, %%r9\n"
-    "or %%r9, %%r11\n"
-    "mov %%r10, -8(%%rdi,%%rdx,8)\n"
-    "mov %%r11, -16(%%rdi,%%rdx,8)\n"
-    "sub $2, %%rdx\n"
+    "movq -8(%%rsi,%%rdx,8), %%r10\n"
+    "shlq %%cl, %%r10\n"
+    "movq -16(%%rsi,%%rdx,8), %%r11\n"
+    "shlq %%cl, %%r11\n"
+    "negl %%ecx\n" /* put rsh count in cl */
+    "movq -16(%%rsi,%%rdx,8), %%r8\n"
+    "movq -24(%%rsi,%%rdx,8), %%r9\n"
+    "shrq %%cl, %%r8\n"
+    "orq %%r8, %%r10\n"
+    "shrq %%cl, %%r9\n"
+    "orq %%r9, %%r11\n"
+    "movq %%r10, -8(%%rdi,%%rdx,8)\n"
+    "movq %%r11, -16(%%rdi,%%rdx,8)\n"
+    "subq $2, %%rdx\n"
 
     "3:\n" /* rll */
-    "neg %%ecx\n" /* put lsh count in cl */
+    "negl %%ecx\n" /* put lsh count in cl */
     "4:\n" /* rlx */
-    "mov -8(%%rsi,%%rdx,8), %%r10\n"
-    "shl %%cl, %%r10\n"
-    "mov -16(%%rsi,%%rdx,8), %%r11\n"
-    "shl %%cl, %%r11\n"
+    "movq -8(%%rsi,%%rdx,8), %%r10\n"
+    "shlq %%cl, %%r10\n"
+    "movq -16(%%rsi,%%rdx,8), %%r11\n"
+    "shlq %%cl, %%r11\n"
 
-    "sub $4, %%rdx\n" /* 4 */
+    "subq $4, %%rdx\n" /* 4 */
     "jb 6f\n" /* (end) 2 */
     ".align 16\n"
     "5:\n" /* top */
     /* finish stuff from lsh block */
-    "neg %%ecx\n" /* put rsh count in cl */
-    "mov 16(%%rsi,%%rdx,8), %%r8\n"
-    "mov 8(%%rsi,%%rdx,8), %%r9\n"
-    "shr %%cl, %%r8\n"
-    "or %%r8, %%r10\n"
-    "shr %%cl, %%r9\n"
-    "or %%r9, %%r11\n"
-    "mov %%r10, 24(%%rdi,%%rdx,8)\n"
-    "mov %%r11, 16(%%rdi,%%rdx,8)\n"
+    "negl %%ecx\n" /* put rsh count in cl */
+    "movq 16(%%rsi,%%rdx,8), %%r8\n"
+    "movq 8(%%rsi,%%rdx,8), %%r9\n"
+    "shrq %%cl, %%r8\n"
+    "orq %%r8, %%r10\n"
+    "shrq %%cl, %%r9\n"
+    "orq %%r9, %%r11\n"
+    "movq %%r10, 24(%%rdi,%%rdx,8)\n"
+    "movq %%r11, 16(%%rdi,%%rdx,8)\n"
     /* start two new rsh */
-    "mov 0(%%rsi,%%rdx,8), %%r8\n"
-    "mov -8(%%rsi,%%rdx,8), %%r9\n"
-    "shr %%cl, %%r8\n"
-    "shr %%cl, %%r9\n"
+    "movq 0(%%rsi,%%rdx,8), %%r8\n"
+    "movq -8(%%rsi,%%rdx,8), %%r9\n"
+    "shrq %%cl, %%r8\n"
+    "shrq %%cl, %%r9\n"
 
     /* finish stuff from rsh block */
-    "neg %%ecx\n" /* put lsh count in cl */
-    "mov 8(%%rsi,%%rdx,8), %%r10\n"
-    "mov 0(%%rsi,%%rdx,8), %%r11\n"
-    "shl %%cl, %%r10\n"
-    "or %%r10, %%r8\n"
-    "shl %%cl, %%r11\n"
-    "or %%r11, %%r9\n"
-    "mov %%r8, 8(%%rdi,%%rdx,8)\n"
-    "mov %%r9, 0(%%rdi,%%rdx,8)\n"
+    "negl %%ecx\n" /* put lsh count in cl */
+    "movq 8(%%rsi,%%rdx,8), %%r10\n"
+    "movq 0(%%rsi,%%rdx,8), %%r11\n"
+    "shlq %%cl, %%r10\n"
+    "orq %%r10, %%r8\n"
+    "shlq %%cl, %%r11\n"
+    "orq %%r11, %%r9\n"
+    "movq %%r8, 8(%%rdi,%%rdx,8)\n"
+    "movq %%r9, 0(%%rdi,%%rdx,8)\n"
     /* start two new lsh */
-    "mov -8(%%rsi,%%rdx,8), %%r10\n"
-    "mov -16(%%rsi,%%rdx,8), %%r11\n"
-    "shl %%cl, %%r10\n"
-    "shl %%cl, %%r11\n"
+    "movq -8(%%rsi,%%rdx,8), %%r10\n"
+    "movq -16(%%rsi,%%rdx,8), %%r11\n"
+    "shlq %%cl, %%r10\n"
+    "shlq %%cl, %%r11\n"
 
-    "sub $4, %%rdx\n"
+    "subq $4, %%rdx\n"
     "jae 5b\n" /* (top) 2 */
     "6:\n" /* end */
-    "neg %%ecx\n" /* put rsh count in cl */
-    "mov 8(%%rsi), %%r8\n"
-    "shr %%cl, %%r8\n"
-    "or %%r8, %%r10\n"
-    "mov (%%rsi), %%r9\n"
-    "shr %%cl, %%r9\n"
-    "or %%r9, %%r11\n"
-    "mov %%r10, 16(%%rdi)\n"
-    "mov %%r11, 8(%%rdi)\n"
+    "negl %%ecx\n" /* put rsh count in cl */
+    "movq 8(%%rsi), %%r8\n"
+    "shrq %%cl, %%r8\n"
+    "orq %%r8, %%r10\n"
+    "movq (%%rsi), %%r9\n"
+    "shrq %%cl, %%r9\n"
+    "orq %%r9, %%r11\n"
+    "movq %%r10, 16(%%rdi)\n"
+    "movq %%r11, 8(%%rdi)\n"
 
-    "neg %%ecx\n" /* put lsh count in cl */
+    "negl %%ecx\n" /* put lsh count in cl */
     "7:\n" /* ast */
-    "mov (%%rsi), %%r10\n"
-    "shl %%cl, %%r10\n"
-    "mov %%r10, (%%rdi)\n"
+    "movq (%%rsi), %%r10\n"
+    "shlq %%cl, %%r10\n"
+    "movq %%r10, (%%rdi)\n"
     "movq %%rax, %q0\n"
     : "=m" (cy), "+d" (n), "+c" (cnt)
     : "D" (rp), "S" (up)
@@ -2047,126 +2047,126 @@ mpn_rshift(mp_ptr rp, mp_srcptr up, mp_size_t n, unsigned int cnt) {
   mp_limb_t cy;
 
   __asm__ __volatile__(
-    "neg %%ecx\n" /* put rsh count in cl */
-    "mov (%%rsi), %%rax\n"
-    "shl %%cl, %%rax\n" /* function return value */
-    "neg %%ecx\n" /* put lsh count in cl */
+    "negl %%ecx\n" /* put rsh count in cl */
+    "movq (%%rsi), %%rax\n"
+    "shlq %%cl, %%rax\n" /* function return value */
+    "negl %%ecx\n" /* put lsh count in cl */
 
-    "lea 1(%%rdx), %%r8d\n"
+    "leal 1(%%rdx), %%r8d\n"
 
-    "lea -8(%%rsi,%%rdx,8), %%rsi\n"
-    "lea -8(%%rdi,%%rdx,8), %%rdi\n"
-    "neg %%rdx\n"
+    "leaq -8(%%rsi,%%rdx,8), %%rsi\n"
+    "leaq -8(%%rdi,%%rdx,8), %%rdi\n"
+    "negq %%rdx\n"
 
-    "and $3, %%r8d\n"
+    "andl $3, %%r8d\n"
     "je 4f\n" /* (rlx) jump for n = 3, 7, 11, ... */
 
-    "dec %%r8d\n"
+    "decl %%r8d\n"
     "jne 1f\n" /* 1 */
     /* n = 4, 8, 12, ... */
-    "mov 8(%%rsi,%%rdx,8), %%r10\n"
-    "shr %%cl, %%r10\n"
-    "neg %%ecx\n" /* put rsh count in cl */
-    "mov 16(%%rsi,%%rdx,8), %%r8\n"
-    "shl %%cl, %%r8\n"
-    "or %%r8, %%r10\n"
-    "mov %%r10, 8(%%rdi,%%rdx,8)\n"
-    "inc %%rdx\n"
+    "movq 8(%%rsi,%%rdx,8), %%r10\n"
+    "shrq %%cl, %%r10\n"
+    "negl %%ecx\n" /* put rsh count in cl */
+    "movq 16(%%rsi,%%rdx,8), %%r8\n"
+    "shlq %%cl, %%r8\n"
+    "orq %%r8, %%r10\n"
+    "movq %%r10, 8(%%rdi,%%rdx,8)\n"
+    "incq %%rdx\n"
     "jmp 3f\n" /* rll */
 
     "1:\n" /* 1 */
-    "dec %%r8d\n"
+    "decl %%r8d\n"
     "je 2f\n" /* (1x) jump for n = 1, 5, 9, 13, ... */
     /* n = 2, 6, 10, 16, ... */
-    "mov 8(%%rsi,%%rdx,8), %%r10\n"
-    "shr %%cl, %%r10\n"
-    "neg %%ecx\n" /* put rsh count in cl */
-    "mov 16(%%rsi,%%rdx,8), %%r8\n"
-    "shl %%cl, %%r8\n"
-    "or %%r8, %%r10\n"
-    "mov %%r10, 8(%%rdi,%%rdx,8)\n"
-    "inc %%rdx\n"
-    "neg %%ecx\n" /* put lsh count in cl */
+    "movq 8(%%rsi,%%rdx,8), %%r10\n"
+    "shrq %%cl, %%r10\n"
+    "negl %%ecx\n" /* put rsh count in cl */
+    "movq 16(%%rsi,%%rdx,8), %%r8\n"
+    "shlq %%cl, %%r8\n"
+    "orq %%r8, %%r10\n"
+    "movq %%r10, 8(%%rdi,%%rdx,8)\n"
+    "incq %%rdx\n"
+    "negl %%ecx\n" /* put lsh count in cl */
     "2:\n" /* 1x */
-    "cmp $-1, %%rdx\n"
+    "cmpq $-1, %%rdx\n"
     "je 7f\n" /* ast */
-    "mov 8(%%rsi,%%rdx,8), %%r10\n"
-    "shr %%cl, %%r10\n"
-    "mov 16(%%rsi,%%rdx,8), %%r11\n"
-    "shr %%cl, %%r11\n"
-    "neg %%ecx\n" /* put rsh count in cl */
-    "mov 16(%%rsi,%%rdx,8), %%r8\n"
-    "mov 24(%%rsi,%%rdx,8), %%r9\n"
-    "shl %%cl, %%r8\n"
-    "or %%r8, %%r10\n"
-    "shl %%cl, %%r9\n"
-    "or %%r9, %%r11\n"
-    "mov %%r10, 8(%%rdi,%%rdx,8)\n"
-    "mov %%r11, 16(%%rdi,%%rdx,8)\n"
-    "add $2, %%rdx\n"
+    "movq 8(%%rsi,%%rdx,8), %%r10\n"
+    "shrq %%cl, %%r10\n"
+    "movq 16(%%rsi,%%rdx,8), %%r11\n"
+    "shrq %%cl, %%r11\n"
+    "negl %%ecx\n" /* put rsh count in cl */
+    "movq 16(%%rsi,%%rdx,8), %%r8\n"
+    "movq 24(%%rsi,%%rdx,8), %%r9\n"
+    "shlq %%cl, %%r8\n"
+    "orq %%r8, %%r10\n"
+    "shlq %%cl, %%r9\n"
+    "orq %%r9, %%r11\n"
+    "movq %%r10, 8(%%rdi,%%rdx,8)\n"
+    "movq %%r11, 16(%%rdi,%%rdx,8)\n"
+    "addq $2, %%rdx\n"
 
     "3:\n" /* rll */
-    "neg %%ecx\n" /* put lsh count in cl */
+    "negl %%ecx\n" /* put lsh count in cl */
     "4:\n" /* rlx */
-    "mov 8(%%rsi,%%rdx,8), %%r10\n"
-    "shr %%cl, %%r10\n"
-    "mov 16(%%rsi,%%rdx,8), %%r11\n"
-    "shr %%cl, %%r11\n"
+    "movq 8(%%rsi,%%rdx,8), %%r10\n"
+    "shrq %%cl, %%r10\n"
+    "movq 16(%%rsi,%%rdx,8), %%r11\n"
+    "shrq %%cl, %%r11\n"
 
-    "add $4, %%rdx\n" /* 4 */
+    "addq $4, %%rdx\n" /* 4 */
     "jb 6f\n" /* (end) 2 */
     ".align 16\n"
     "5:\n" /* top */
     /* finish stuff from lsh block */
-    "neg %%ecx\n" /* put rsh count in cl */
-    "mov -16(%%rsi,%%rdx,8), %%r8\n"
-    "mov -8(%%rsi,%%rdx,8), %%r9\n"
-    "shl %%cl, %%r8\n"
-    "or %%r8, %%r10\n"
-    "shl %%cl, %%r9\n"
-    "or %%r9, %%r11\n"
-    "mov %%r10, -24(%%rdi,%%rdx,8)\n"
-    "mov %%r11, -16(%%rdi,%%rdx,8)\n"
+    "negl %%ecx\n" /* put rsh count in cl */
+    "movq -16(%%rsi,%%rdx,8), %%r8\n"
+    "movq -8(%%rsi,%%rdx,8), %%r9\n"
+    "shlq %%cl, %%r8\n"
+    "orq %%r8, %%r10\n"
+    "shlq %%cl, %%r9\n"
+    "orq %%r9, %%r11\n"
+    "movq %%r10, -24(%%rdi,%%rdx,8)\n"
+    "movq %%r11, -16(%%rdi,%%rdx,8)\n"
     /* start two new rsh */
-    "mov (%%rsi,%%rdx,8), %%r8\n"
-    "mov 8(%%rsi,%%rdx,8), %%r9\n"
-    "shl %%cl, %%r8\n"
-    "shl %%cl, %%r9\n"
+    "movq (%%rsi,%%rdx,8), %%r8\n"
+    "movq 8(%%rsi,%%rdx,8), %%r9\n"
+    "shlq %%cl, %%r8\n"
+    "shlq %%cl, %%r9\n"
 
     /* finish stuff from rsh block */
-    "neg %%ecx\n" /* put lsh count in cl */
-    "mov -8(%%rsi,%%rdx,8), %%r10\n"
-    "mov 0(%%rsi,%%rdx,8), %%r11\n"
-    "shr %%cl, %%r10\n"
-    "or %%r10, %%r8\n"
-    "shr %%cl, %%r11\n"
-    "or %%r11, %%r9\n"
-    "mov %%r8, -8(%%rdi,%%rdx,8)\n"
-    "mov %%r9, 0(%%rdi,%%rdx,8)\n"
+    "negl %%ecx\n" /* put lsh count in cl */
+    "movq -8(%%rsi,%%rdx,8), %%r10\n"
+    "movq 0(%%rsi,%%rdx,8), %%r11\n"
+    "shrq %%cl, %%r10\n"
+    "orq %%r10, %%r8\n"
+    "shrq %%cl, %%r11\n"
+    "orq %%r11, %%r9\n"
+    "movq %%r8, -8(%%rdi,%%rdx,8)\n"
+    "movq %%r9, 0(%%rdi,%%rdx,8)\n"
     /* start two new lsh */
-    "mov 8(%%rsi,%%rdx,8), %%r10\n"
-    "mov 16(%%rsi,%%rdx,8), %%r11\n"
-    "shr %%cl, %%r10\n"
-    "shr %%cl, %%r11\n"
+    "movq 8(%%rsi,%%rdx,8), %%r10\n"
+    "movq 16(%%rsi,%%rdx,8), %%r11\n"
+    "shrq %%cl, %%r10\n"
+    "shrq %%cl, %%r11\n"
 
-    "add $4, %%rdx\n"
+    "addq $4, %%rdx\n"
     "jae 5b\n" /* (top) 2 */
     "6:\n" /* end */
-    "neg %%ecx\n" /* put rsh count in cl */
-    "mov -8(%%rsi), %%r8\n"
-    "shl %%cl, %%r8\n"
-    "or %%r8, %%r10\n"
-    "mov (%%rsi), %%r9\n"
-    "shl %%cl, %%r9\n"
-    "or %%r9, %%r11\n"
-    "mov %%r10, -16(%%rdi)\n"
-    "mov %%r11, -8(%%rdi)\n"
+    "negl %%ecx\n" /* put rsh count in cl */
+    "movq -8(%%rsi), %%r8\n"
+    "shlq %%cl, %%r8\n"
+    "orq %%r8, %%r10\n"
+    "movq (%%rsi), %%r9\n"
+    "shlq %%cl, %%r9\n"
+    "orq %%r9, %%r11\n"
+    "movq %%r10, -16(%%rdi)\n"
+    "movq %%r11, -8(%%rdi)\n"
 
-    "neg %%ecx\n" /* put lsh count in cl */
+    "negl %%ecx\n" /* put lsh count in cl */
     "7:\n" /* ast */
-    "mov (%%rsi), %%r10\n"
-    "shr %%cl, %%r10\n"
-    "mov %%r10, (%%rdi)\n"
+    "movq (%%rsi), %%r10\n"
+    "shrq %%cl, %%r10\n"
+    "movq %%r10, (%%rdi)\n"
     "movq %%rax, %q0\n"
     : "=m" (cy),
       "+D" (rp), "+S" (up),

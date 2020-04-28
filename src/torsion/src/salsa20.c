@@ -110,7 +110,7 @@ salsa20_block(salsa20_t *ctx) {
    *   %rsi, %rdi, %edx, %xmm[0-8]
    */
   __asm__ __volatile__(
-    "mov $-1, %%edx\n"
+    "movl $-1, %%edx\n"
     "movd %%edx, %%xmm6\n"
 
     "movl $10, %%edx\n"
