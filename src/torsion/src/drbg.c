@@ -36,10 +36,7 @@ hmac_drbg_update(hmac_drbg_t *drbg,
   hmac_init(&drbg->kmac, drbg->type, drbg->K, drbg->size);
   hmac_update(&drbg->kmac, drbg->V, drbg->size);
   hmac_update(&drbg->kmac, ZERO, 1);
-
-  if (seed_len != 0)
-    hmac_update(&drbg->kmac, seed, seed_len);
-
+  hmac_update(&drbg->kmac, seed, seed_len);
   hmac_final(&drbg->kmac, drbg->K);
 
   hmac_init(&drbg->kmac, drbg->type, drbg->K, drbg->size);
@@ -129,7 +126,7 @@ hash_drbg_init(hash_drbg_t *drbg,
                size_t seed_len) {
   size_t size = hash_output_size(type);
   size_t length = size <= 32 ? 55 : 111;
-  unsigned char output[128];
+  unsigned char output[165]; /* ceil(111 / 55) * 55 */
   unsigned char state[6];
   size_t i, blocks;
 
@@ -182,7 +179,7 @@ hash_drbg_reseed(hash_drbg_t *drbg,
                  size_t seed_len) {
   size_t size = drbg->size;
   size_t length = drbg->length;
-  unsigned char output[128];
+  unsigned char output[165]; /* ceil(111 / 55) * 55 */
   unsigned char state[6];
   size_t i, blocks;
 
@@ -425,6 +422,8 @@ ctr_drbg_derive(ctr_drbg_t *drbg,
                 size_t nonce_len,
                 const unsigned char *pers,
                 size_t pers_len) {
+  size_t bits = drbg->key_size * 8;
+  unsigned char tmp[MAX_ENT_BLKS * MAX_BLK_SIZE];
   unsigned char slab[MAX_ENT_BLKS * MAX_BLK_SIZE];
   unsigned char *x = slab + drbg->key_size;
   unsigned char chain[MAX_BLK_SIZE];
@@ -438,7 +437,7 @@ ctr_drbg_derive(ctr_drbg_t *drbg,
   for (i = 0; i < drbg->key_size; i++)
     K[i] = i;
 
-  aes_init_encrypt(&aes, drbg->key_size * 8, K);
+  aes_init_encrypt(&aes, bits, K);
 
   blocks = (drbg->ent_size + drbg->blk_size - 1) / drbg->blk_size;
 
@@ -458,24 +457,24 @@ ctr_drbg_derive(ctr_drbg_t *drbg,
     memcpy(slab + i * drbg->blk_size, chain, drbg->blk_size);
   }
 
-  aes_init_encrypt(&aes, drbg->key_size * 8, slab);
+  aes_init_encrypt(&aes, bits, slab);
 
   for (i = 0; i < blocks; i++) {
     aes_encrypt(&aes, x, x);
-    memcpy(slab + i * drbg->blk_size, x, drbg->blk_size);
+    memcpy(tmp + i * drbg->blk_size, x, drbg->blk_size);
   }
 
-  memcpy(out, slab, drbg->ent_size);
+  memcpy(out, tmp, drbg->ent_size);
 }
 
 void
 ctr_drbg_init(ctr_drbg_t *drbg,
               unsigned int bits,
+              int derivation,
               const unsigned char *nonce,
               size_t nonce_len,
               const unsigned char *pers,
-              size_t pers_len,
-              int derivation) {
+              size_t pers_len) {
   unsigned char entropy[MAX_ENT_SIZE];
   size_t i;
 

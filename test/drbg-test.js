@@ -148,10 +148,11 @@ describe('DRBG', function() {
       for (const id of ['AES-128', 'AES-192', 'AES-256']) {
         const name = id + (df ? ' use df' : ' no df');
         const vectors = getNIST('ctr', name);
+        const bits = id.slice(-3) | 0;
 
         for (const [i, vector] of vectors.entries()) {
           it(`should pass ${name} NIST vector #${i + 1} (ctr,df=${df})`, () => {
-            const drbg = new CtrDRBG(id, null, null, null, df);
+            const drbg = new CtrDRBG(bits, df);
 
             drbg.init(vector.EntropyInput, vector.Nonce,
                       vector.PersonalizationString);

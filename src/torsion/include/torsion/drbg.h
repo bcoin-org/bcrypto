@@ -132,11 +132,11 @@ hash_drbg_rng(void *out, size_t size, void *arg);
 void
 ctr_drbg_init(ctr_drbg_t *drbg,
               unsigned int bits,
+              int derivation,
               const unsigned char *nonce,
               size_t nonce_len,
               const unsigned char *pers,
-              size_t pers_len,
-              int derivation);
+              size_t pers_len);
 
 void
 ctr_drbg_reseed(ctr_drbg_t *drbg,
