@@ -63,7 +63,7 @@ describe('Serpent', function() {
     const ct = Buffer.from(ciphertext, 'hex');
     const pad = Buffer.from(padding, 'hex');
     const ect = Buffer.concat([ct, pad]);
-    const name = `SERPENT-${bits}-ECB`;
+    const name = `SERPENT-${bits}`;
     const text = ciphertext.slice(0, 32) + '...';
 
     it(`should compute vector ${text}`, () => {
@@ -76,8 +76,11 @@ describe('Serpent', function() {
       s.decrypt(ct, 0, out, 0);
       assert.bufferEqual(out, pt);
 
-      assert.bufferEqual(cipher.encrypt(name, k, null, pt), ect);
-      assert.bufferEqual(cipher.decrypt(name, k, null, ect), pt);
+      assert.bufferEqual(cipher.encrypt(name, k, null, pt), ct);
+      assert.bufferEqual(cipher.decrypt(name, k, null, ct), pt);
+
+      assert.bufferEqual(cipher.encrypt(`${name}-ECB`, k, null, pt), ect);
+      assert.bufferEqual(cipher.decrypt(`${name}-ECB`, k, null, ect), pt);
     });
   }
 });

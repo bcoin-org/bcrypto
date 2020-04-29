@@ -3959,14 +3959,14 @@ void
 rc2_init(rc2_t *ctx,
          const unsigned char *key,
          size_t key_len,
-         unsigned int bits) {
+         unsigned int ekb) {
   /* Initialization logic borrowed from nettle. */
   uint8_t L[128];
   size_t i, len;
   uint8_t x;
 
   ASSERT(key_len >= 1 && key_len <= 128);
-  ASSERT(bits <= 1024);
+  ASSERT(ekb <= 1024);
 
   for (i = 0; i < key_len; i++)
     L[i] = key[i];
@@ -3976,11 +3976,11 @@ rc2_init(rc2_t *ctx,
 
   L[0] = PI[L[0]];
 
-  if (bits > 0 && bits < 1024) {
-    len = (bits + 7) >> 3;
+  if (ekb > 0 && ekb < 1024) {
+    len = (ekb + 7) >> 3;
 
     i = 128 - len;
-    x = PI[L[i] & (255 >> (7 & -bits))];
+    x = PI[L[i] & (255 >> (7 & -ekb))];
 
     L[i] = x;
 
@@ -5597,7 +5597,7 @@ ghash_final(ghash_t *ctx, unsigned char *out) {
 
 static int
 cipher_ctx_init(cipher_t *ctx, const unsigned char *key, size_t key_len) {
-  int encrypt = ctx->encrypt || ctx->mode > CIPHER_MODE_CBC;
+  int decrypt = ctx->mode <= CIPHER_MODE_CBC && !ctx->encrypt;
 
   switch (ctx->type) {
     case CIPHER_AES128: {
@@ -5608,7 +5608,7 @@ cipher_ctx_init(cipher_t *ctx, const unsigned char *key, size_t key_len) {
 
       aes_init_encrypt(&ctx->ctx.aes, 128, key);
 
-      if (!encrypt)
+      if (decrypt)
         aes_init_decrypt(&ctx->ctx.aes);
 
       break;
@@ -5622,7 +5622,7 @@ cipher_ctx_init(cipher_t *ctx, const unsigned char *key, size_t key_len) {
 
       aes_init_encrypt(&ctx->ctx.aes, 192, key);
 
-      if (!encrypt)
+      if (decrypt)
         aes_init_decrypt(&ctx->ctx.aes);
 
       break;
@@ -5636,7 +5636,7 @@ cipher_ctx_init(cipher_t *ctx, const unsigned char *key, size_t key_len) {
 
       aes_init_encrypt(&ctx->ctx.aes, 256, key);
 
-      if (!encrypt)
+      if (decrypt)
         aes_init_decrypt(&ctx->ctx.aes);
 
       break;
@@ -5738,7 +5738,7 @@ cipher_ctx_init(cipher_t *ctx, const unsigned char *key, size_t key_len) {
 
       idea_init_encrypt(&ctx->ctx.idea, key);
 
-      if (!encrypt)
+      if (decrypt)
         idea_init_decrypt(&ctx->ctx.idea);
 
       break;
@@ -5751,6 +5751,61 @@ cipher_ctx_init(cipher_t *ctx, const unsigned char *key, size_t key_len) {
       ctx->block_size = 8;
 
       rc2_init(&ctx->ctx.rc2, key, key_len, key_len * 8);
+
+      break;
+    }
+
+    case CIPHER_RC2_GUTMANN: {
+      if (key_len < 1 || key_len > 128)
+        return 0;
+
+      ctx->block_size = 8;
+
+      rc2_init(&ctx->ctx.rc2, key, key_len, 0);
+
+      break;
+    }
+
+    case CIPHER_RC2_40: {
+      if (key_len != 5)
+        return 0;
+
+      ctx->block_size = 8;
+
+      rc2_init(&ctx->ctx.rc2, key, key_len, 40);
+
+      break;
+    }
+
+    case CIPHER_RC2_64: {
+      if (key_len != 8)
+        return 0;
+
+      ctx->block_size = 8;
+
+      rc2_init(&ctx->ctx.rc2, key, key_len, 64);
+
+      break;
+    }
+
+    case CIPHER_RC2_128: {
+      if (key_len != 16)
+        return 0;
+
+      ctx->block_size = 8;
+
+      rc2_init(&ctx->ctx.rc2, key, key_len, 128);
+
+      break;
+    }
+
+    case CIPHER_RC2_128_GUTMANN: {
+      if (key_len != 16)
+        return 0;
+
+      ctx->block_size = 8;
+
+      rc2_init(&ctx->ctx.rc2, key, key_len, 1024);
 
       break;
     }
@@ -5863,6 +5918,11 @@ cipher_ctx_encrypt(cipher_t *ctx,
       idea_encrypt(&ctx->ctx.idea, dst, src);
       break;
     case CIPHER_RC2:
+    case CIPHER_RC2_GUTMANN:
+    case CIPHER_RC2_40:
+    case CIPHER_RC2_64:
+    case CIPHER_RC2_128:
+    case CIPHER_RC2_128_GUTMANN:
       rc2_encrypt(&ctx->ctx.rc2, dst, src);
       break;
     case CIPHER_SERPENT128:
@@ -5915,6 +5975,11 @@ cipher_ctx_decrypt(cipher_t *ctx,
       idea_decrypt(&ctx->ctx.idea, dst, src);
       break;
     case CIPHER_RC2:
+    case CIPHER_RC2_GUTMANN:
+    case CIPHER_RC2_40:
+    case CIPHER_RC2_64:
+    case CIPHER_RC2_128:
+    case CIPHER_RC2_128_GUTMANN:
       rc2_decrypt(&ctx->ctx.rc2, dst, src);
       break;
     case CIPHER_SERPENT128:
@@ -5989,9 +6054,18 @@ cipher_ctr_encrypt(cipher_t *ctx,
 static int
 cipher_mode_init(cipher_t *ctx, const unsigned char *iv, size_t iv_len) {
   switch (ctx->mode) {
+    case CIPHER_MODE_RAW: {
+      if (iv_len != 0)
+        return 0;
+
+      break;
+    }
+
     case CIPHER_MODE_ECB: {
       if (iv_len != 0)
         return 0;
+
+      ctx->padding = !ctx->encrypt;
 
       break;
     }
@@ -5999,6 +6073,8 @@ cipher_mode_init(cipher_t *ctx, const unsigned char *iv, size_t iv_len) {
     case CIPHER_MODE_CBC: {
       if (iv_len != ctx->block_size)
         return 0;
+
+      ctx->padding = !ctx->encrypt;
 
       memcpy(ctx->prev, iv, iv_len);
 
@@ -6074,6 +6150,7 @@ cipher_mode_update(cipher_t *ctx,
   size_t i;
 
   switch (ctx->mode) {
+    case CIPHER_MODE_RAW:
     case CIPHER_MODE_ECB: {
       if (ctx->encrypt)
         cipher_ctx_encrypt(ctx, dst, src);
@@ -6167,6 +6244,15 @@ cipher_mode_final(cipher_t *ctx, unsigned char *out, size_t *out_len) {
   size_t i;
 
   switch (ctx->mode) {
+    case CIPHER_MODE_RAW: {
+      if (ctx->block_pos != 0)
+        return 0;
+
+      *out_len = 0;
+
+      break;
+    }
+
     case CIPHER_MODE_ECB:
     case CIPHER_MODE_CBC: {
       size_t left, end;
@@ -6351,7 +6437,6 @@ void
 cipher_update(cipher_t *ctx,
               unsigned char *output, size_t *output_len,
               const unsigned char *input, size_t input_len) {
-  int padding = ctx->mode <= CIPHER_MODE_CBC && !ctx->encrypt;
   size_t bsize = ctx->block_size;
   size_t bpos = ctx->block_pos;
   size_t ilen = input_len;
@@ -6366,7 +6451,7 @@ cipher_update(cipher_t *ctx,
 
   ctx->block_pos = (ctx->block_pos + ilen) % bsize;
 
-  if (padding)
+  if (ctx->padding)
     olen += ctx->last_size;
 
   if (bpos > 0) {
@@ -6393,7 +6478,7 @@ cipher_update(cipher_t *ctx,
 
   *output_len = olen;
 
-  if (padding) {
+  if (ctx->padding) {
     memcpy(output + opos, ctx->last, ctx->last_size);
     opos += ctx->last_size;
   }
@@ -6413,7 +6498,7 @@ cipher_update(cipher_t *ctx,
   if (ilen > 0)
     memcpy(ctx->block, input + ipos, ilen);
 
-  if (padding && olen > 0) {
+  if (ctx->padding && olen > 0) {
     memcpy(ctx->last, output + olen - bsize, bsize);
 
     ctx->last_size = bsize;
@@ -6424,7 +6509,6 @@ cipher_update(cipher_t *ctx,
 
 size_t
 cipher_update_size(const cipher_t *ctx, size_t input_len) {
-  int padding = ctx->mode <= CIPHER_MODE_CBC && !ctx->encrypt;
   size_t bsize = ctx->block_size;
   size_t bpos = ctx->block_pos;
   size_t ilen = input_len;
@@ -6433,7 +6517,7 @@ cipher_update_size(const cipher_t *ctx, size_t input_len) {
   if (ilen == 0)
     return 0;
 
-  if (padding)
+  if (ctx->padding)
     olen += ctx->last_size;
 
   if (bpos > 0) {

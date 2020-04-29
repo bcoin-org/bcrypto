@@ -93,21 +93,27 @@ extern "C" {
 #define CIPHER_DES_EDE3 10
 #define CIPHER_IDEA 11
 #define CIPHER_RC2 12
-#define CIPHER_SERPENT128 13
-#define CIPHER_SERPENT192 14
-#define CIPHER_SERPENT256 15
-#define CIPHER_TWOFISH128 16
-#define CIPHER_TWOFISH192 17
-#define CIPHER_TWOFISH256 18
-#define CIPHER_MAX 18
+#define CIPHER_RC2_GUTMANN 13
+#define CIPHER_RC2_40 14
+#define CIPHER_RC2_64 15
+#define CIPHER_RC2_128 16
+#define CIPHER_RC2_128_GUTMANN 17
+#define CIPHER_SERPENT128 18
+#define CIPHER_SERPENT192 19
+#define CIPHER_SERPENT256 20
+#define CIPHER_TWOFISH128 21
+#define CIPHER_TWOFISH192 22
+#define CIPHER_TWOFISH256 23
+#define CIPHER_MAX 23
 
-#define CIPHER_MODE_ECB 0
-#define CIPHER_MODE_CBC 1
-#define CIPHER_MODE_CTR 2
-#define CIPHER_MODE_CFB 3
-#define CIPHER_MODE_OFB 4
-#define CIPHER_MODE_GCM 5
-#define CIPHER_MODE_MAX 5
+#define CIPHER_MODE_RAW 0
+#define CIPHER_MODE_ECB 1
+#define CIPHER_MODE_CBC 2
+#define CIPHER_MODE_CTR 3
+#define CIPHER_MODE_CFB 4
+#define CIPHER_MODE_OFB 5
+#define CIPHER_MODE_GCM 6
+#define CIPHER_MODE_MAX 6
 
 #define CIPHER_MAX_BLOCK_SIZE 16
 
@@ -203,6 +209,7 @@ typedef struct _cipher_s {
   int type;
   int mode;
   int encrypt;
+  int padding;
   size_t block_size;
   size_t block_pos;
   size_t last_size;
@@ -396,7 +403,7 @@ void
 rc2_init(rc2_t *ctx,
          const unsigned char *key,
          size_t key_len,
-         unsigned int bits);
+         unsigned int ekb);
 
 void
 rc2_encrypt(const rc2_t *ctx, unsigned char *dst, const unsigned char *src);
