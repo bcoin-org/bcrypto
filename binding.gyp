@@ -20,6 +20,7 @@
       "./src/torsion/src/poly1305.c",
       "./src/torsion/src/rsa.c",
       "./src/torsion/src/salsa20.c",
+      "./src/torsion/src/secretbox.c",
       "./src/torsion/src/siphash.c",
       "./src/torsion/src/util.c",
       "./src/bcrypto.cc"

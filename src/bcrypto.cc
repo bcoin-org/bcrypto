@@ -275,7 +275,7 @@ bcrypto_aead_create(napi_env env, napi_callback_info info) {
   aead_t *ctx = (aead_t *)torsion_alloc(sizeof(aead_t));
   napi_value handle;
 
-  aead_init(ctx);
+  ctx->mode = -1;
 
   CHECK(napi_create_external(env,
                              ctx,
@@ -304,8 +304,7 @@ bcrypto_aead_init(napi_env env, napi_callback_info info) {
   JS_ASSERT(iv_len == 8 || iv_len == 12 || iv_len == 16
          || iv_len == 24 || iv_len == 28 || iv_len == 32, JS_ERR_IV_SIZE);
 
-  aead_init(ctx);
-  aead_setup(ctx, key, iv, iv_len);
+  aead_init(ctx, key, iv, iv_len);
 
   return argv[0];
 }
@@ -481,8 +480,7 @@ bcrypto_aead_static_encrypt(napi_env env, napi_callback_info info) {
   JS_ASSERT(iv_len == 8 || iv_len == 12 || iv_len == 16
          || iv_len == 24 || iv_len == 28 || iv_len == 32, JS_ERR_IV_SIZE);
 
-  aead_init(&ctx);
-  aead_setup(&ctx, key, iv, iv_len);
+  aead_init(&ctx, key, iv, iv_len);
   aead_aad(&ctx, aad, aad_len);
   aead_encrypt(&ctx, msg, msg, msg_len);
   aead_final(&ctx, out);
@@ -520,8 +518,7 @@ bcrypto_aead_static_decrypt(napi_env env, napi_callback_info info) {
          || iv_len == 24 || iv_len == 28 || iv_len == 32, JS_ERR_IV_SIZE);
   JS_ASSERT(tag_len == 16, JS_ERR_TAG_SIZE);
 
-  aead_init(&ctx);
-  aead_setup(&ctx, key, iv, iv_len);
+  aead_init(&ctx, key, iv, iv_len);
   aead_aad(&ctx, aad, aad_len);
   aead_decrypt(&ctx, msg, msg, msg_len);
   aead_final(&ctx, mac);
@@ -559,8 +556,7 @@ bcrypto_aead_static_auth(napi_env env, napi_callback_info info) {
          || iv_len == 24 || iv_len == 28 || iv_len == 32, JS_ERR_IV_SIZE);
   JS_ASSERT(tag_len == 16, JS_ERR_TAG_SIZE);
 
-  aead_init(&ctx);
-  aead_setup(&ctx, key, iv, iv_len);
+  aead_init(&ctx, key, iv, iv_len);
   aead_aad(&ctx, aad, aad_len);
   aead_auth(&ctx, msg, msg_len);
   aead_final(&ctx, mac);

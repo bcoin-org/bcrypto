@@ -39,8 +39,8 @@ typedef struct _aead_s {
   poly1305_t poly;
   unsigned char key[64];
   int mode;
-  uint64_t aad_len;
-  uint64_t cipher_len;
+  uint64_t adlen;
+  uint64_t ctlen;
 } aead_t;
 
 /*
@@ -48,13 +48,10 @@ typedef struct _aead_s {
  */
 
 void
-aead_init(aead_t *aead);
-
-void
-aead_setup(aead_t *aead,
-           const unsigned char *key,
-           const unsigned char *iv,
-           size_t iv_len);
+aead_init(aead_t *aead,
+          const unsigned char *key,
+          const unsigned char *iv,
+          size_t iv_len);
 
 void
 aead_aad(aead_t *aead, const unsigned char *aad, size_t len);

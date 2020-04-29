@@ -520,6 +520,7 @@ mpn_copyi(mp_ptr d, mp_srcptr s, mp_size_t n) {
     "subq $4, %%rdx\n"
     "jc 2f\n" /* end */
 
+    ".align 16\n"
     "1:\n" /* top */
     "movq (%%rsi), %%rax\n"
     "movq 8(%%rsi), %%r9\n"
@@ -578,8 +579,8 @@ mpn_copyd(mp_ptr d, mp_srcptr s, mp_size_t n) {
     "leaq (%%rdi,%%rdx,8), %%rdi\n"
     "subq $4, %%rdx\n"
     "jc 2f\n" /* end */
-    "nop\n"
 
+    ".align 16\n"
     "1:\n" /* top */
     "movq (%%rsi), %%rax\n"
     "movq -8(%%rsi), %%r9\n"

@@ -360,16 +360,6 @@ poly1305_final(poly1305_t *ctx, unsigned char *mac) {
 
   write64le(mac + 0, h0);
   write64le(mac + 8, h1);
-
-  /* zero out the state */
-  st->h[0] = 0;
-  st->h[1] = 0;
-  st->h[2] = 0;
-  st->r[0] = 0;
-  st->r[1] = 0;
-  st->r[2] = 0;
-  st->pad[0] = 0;
-  st->pad[1] = 0;
 #else /* TORSION_HAS_INT128 */
   uint32_t h0, h1, h2, h3, h4, c;
   uint32_t g0, g1, g2, g3, g4;
@@ -473,22 +463,6 @@ poly1305_final(poly1305_t *ctx, unsigned char *mac) {
   write32le(mac + 4, h1);
   write32le(mac + 8, h2);
   write32le(mac + 12, h3);
-
-  /* zero out the state */
-  st->h[0] = 0;
-  st->h[1] = 0;
-  st->h[2] = 0;
-  st->h[3] = 0;
-  st->h[4] = 0;
-  st->r[0] = 0;
-  st->r[1] = 0;
-  st->r[2] = 0;
-  st->r[3] = 0;
-  st->r[4] = 0;
-  st->pad[0] = 0;
-  st->pad[1] = 0;
-  st->pad[2] = 0;
-  st->pad[3] = 0;
 #endif /* TORSION_HAS_INT128 */
 }
 
