@@ -234,7 +234,7 @@ accumulate(unsigned char *dst, size_t dst_len,
   ASSERT(dst_len >= src_len);
 
   while (i >= 0) {
-    carry += src[i] + dst[j];
+    carry += (unsigned int)src[i] + dst[j];
     dst[j] = carry & 0xff;
     carry >>= 8;
     i -= 1;
@@ -242,7 +242,7 @@ accumulate(unsigned char *dst, size_t dst_len,
   }
 
   while (carry > 0 && j >= 0) {
-    carry += dst[j];
+    carry += (unsigned int)dst[j];
     dst[j] = carry & 0xff;
     carry >>= 8;
     j -= 1;

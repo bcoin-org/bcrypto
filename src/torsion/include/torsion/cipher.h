@@ -56,6 +56,9 @@ extern "C" {
 #define rc2_decrypt torsion_rc2_decrypt
 #define rc4_init torsion_rc4_init
 #define rc4_encrypt torsion_rc4_encrypt
+#define serpent_init torsion_serpent_init
+#define serpent_encrypt torsion_serpent_encrypt
+#define serpent_decrypt torsion_serpent_decrypt
 #define twofish_init torsion_twofish_init
 #define twofish_encrypt torsion_twofish_encrypt
 #define twofish_decrypt torsion_twofish_decrypt
@@ -90,10 +93,13 @@ extern "C" {
 #define CIPHER_DES_EDE3 10
 #define CIPHER_IDEA 11
 #define CIPHER_RC2 12
-#define CIPHER_TWOFISH128 13
-#define CIPHER_TWOFISH192 14
-#define CIPHER_TWOFISH256 15
-#define CIPHER_MAX 15
+#define CIPHER_SERPENT128 13
+#define CIPHER_SERPENT192 14
+#define CIPHER_SERPENT256 15
+#define CIPHER_TWOFISH128 16
+#define CIPHER_TWOFISH192 17
+#define CIPHER_TWOFISH256 18
+#define CIPHER_MAX 18
 
 #define CIPHER_MODE_ECB 0
 #define CIPHER_MODE_CBC 1
@@ -170,6 +176,10 @@ typedef struct _rc4_s {
   uint8_t j;
 } rc4_t;
 
+typedef struct _serpent_s {
+  uint32_t subkeys[132];
+} serpent_t;
+
 typedef struct _twofish_s {
   uint32_t S[4][256];
   uint32_t k[40];
@@ -206,6 +216,7 @@ typedef struct _cipher_s {
     des_ede3_t ede3;
     idea_t idea;
     rc2_t rc2;
+    serpent_t serpent;
     twofish_t twofish;
   } ctx;
   unsigned char block[CIPHER_MAX_BLOCK_SIZE];
@@ -405,6 +416,19 @@ rc4_encrypt(rc4_t *ctx,
             unsigned char *dst,
             const unsigned char *src,
             size_t len);
+
+/*
+ * Serpent
+ */
+
+void
+serpent_init(serpent_t *ctx, unsigned int bits, const unsigned char *key);
+
+void
+serpent_encrypt(serpent_t *ctx, unsigned char *dst, const unsigned char *src);
+
+void
+serpent_decrypt(serpent_t *ctx, unsigned char *dst, const unsigned char *src);
 
 /*
  * Twofish

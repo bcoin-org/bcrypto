@@ -15,6 +15,10 @@
  *   Copyright (c) 2016, Andreas Auernhammer (MIT License).
  *   https://github.com/aead/camellia
  *
+ * Parts of this software are based on aead/serpent:
+ *   Copyright (c) 2016, Andreas Auernhammer (MIT License).
+ *   https://github.com/aead/camellia
+ *
  * Parts of this software are based on indutny/des.js:
  *   Copyright (c) 2015, Fedor Indutny (MIT License).
  *   https://github.com/indutny/des.js
@@ -4289,6 +4293,699 @@ rc4_encrypt(rc4_t *ctx,
 }
 
 /*
+ * Serpent
+ *
+ * Resources:
+ *   https://en.wikipedia.org/wiki/Serpent_(cipher)
+ *   https://www.cl.cam.ac.uk/~rja14/serpent.html
+ *   https://github.com/aead/serpent
+ */
+
+#define linear serpent_linear
+#define linearinv serpent_linearinv
+#define sb0 serpent_sb0
+#define sb0inv serpent_sb0inv
+#define sb1 serpent_sb1
+#define sb1inv serpent_sb1inv
+#define sb2 serpent_sb2
+#define sb2inv serpent_sb2inv
+#define sb3 serpent_sb3
+#define sb3inv serpent_sb3inv
+#define sb4 serpent_sb4
+#define sb4inv serpent_sb4inv
+#define sb5 serpent_sb5
+#define sb5inv serpent_sb5inv
+#define sb6 serpent_sb6
+#define sb6inv serpent_sb6inv
+#define sb7 serpent_sb7
+#define sb7inv serpent_sb7inv
+
+static TORSION_INLINE void
+linear(uint32_t *v0, uint32_t *v1, uint32_t *v2, uint32_t *v3) {
+  uint32_t t0 = ((*v0 << 13) | (*v0 >> (32 - 13)));
+  uint32_t t2 = ((*v2 << 3) | (*v2 >> (32 - 3)));
+  uint32_t t1 = *v1 ^ t0 ^ t2;
+  uint32_t t3 = *v3 ^ t2 ^ (t0 << 3);
+
+  *v1 = (t1 << 1) | (t1 >> (32 - 1));
+  *v3 = (t3 << 7) | (t3 >> (32 - 7));
+  t0 ^= *v1 ^ *v3;
+  t2 ^= *v3 ^ (*v1 << 7);
+  *v0 = (t0 << 5) | (t0 >> (32 - 5));
+  *v2 = (t2 << 22) | (t2 >> (32 - 22));
+}
+
+static TORSION_INLINE void
+linearinv(uint32_t *v0, uint32_t *v1, uint32_t *v2, uint32_t *v3) {
+  uint32_t t2 = (*v2 >> 22) | (*v2 << (32 - 22));
+  uint32_t t0 = (*v0 >> 5) | (*v0 << (32 - 5));
+  uint32_t t3, t1;
+
+  t2 ^= *v3 ^ (*v1 << 7);
+  t0 ^= *v1 ^ *v3;
+  t3 = (*v3 >> 7) | (*v3 << (32 - 7));
+  t1 = (*v1 >> 1) | (*v1 << (32 - 1));
+  *v3 = t3 ^ t2 ^ (t0 << 3);
+  *v1 = t1 ^ t0 ^ t2;
+  *v2 = (t2 >> 3) | (t2 << (32 - 3));
+  *v0 = (t0 >> 13) | (t0 << (32 - 13));
+}
+
+static TORSION_INLINE void
+sb0(uint32_t *r0, uint32_t *r1, uint32_t *r2, uint32_t *r3) {
+  uint32_t t0 = *r0 ^ *r3;
+  uint32_t t1 = *r2 ^ t0;
+  uint32_t t2 = *r1 ^ t1;
+  uint32_t t3, t4;
+
+  *r3 = (*r0 & *r3) ^ t2;
+  t3 = *r0 ^ (*r1 & t0);
+  *r2 = t2 ^ (*r2 | t3);
+  t4 = *r3 & (t1 ^ t3);
+  *r1 = (~t1) ^ t4;
+  *r0 = t4 ^ (~t3);
+}
+
+static TORSION_INLINE void
+sb0inv(uint32_t *r0, uint32_t *r1, uint32_t *r2, uint32_t *r3) {
+  uint32_t t0 = ~(*r0);
+  uint32_t t1 = *r0 ^ *r1;
+  uint32_t t2 = *r3 ^ (t0 | t1);
+  uint32_t t3 = *r2 ^ t2;
+  uint32_t t4;
+
+  *r2 = t1 ^ t3;
+  t4 = t0 ^ (*r3 & t1);
+  *r1 = t2 ^ (*r2 & t4);
+  *r3 = (*r0 & t2) ^ (t3 | *r1);
+  *r0 = *r3 ^ (t3 ^ t4);
+}
+
+static TORSION_INLINE void
+sb1(uint32_t *r0, uint32_t *r1, uint32_t *r2, uint32_t *r3) {
+  uint32_t t0 = *r1 ^ (~(*r0));
+  uint32_t t1 = *r2 ^ (*r0 | t0);
+  uint32_t t2, t3, t4;
+
+  *r2 = *r3 ^ t1;
+  t2 = *r1 ^ (*r3 | t0);
+  t3 = t0 ^ *r2;
+  *r3 = t3 ^ (t1 & t2);
+  t4 = t1 ^ t2;
+  *r1 = *r3 ^ t4;
+  *r0 = t1 ^ (t3 & t4);
+}
+
+static TORSION_INLINE void
+sb1inv(uint32_t *r0, uint32_t *r1, uint32_t *r2, uint32_t *r3) {
+  uint32_t t0 = *r1 ^ *r3;
+  uint32_t t1 = *r0 ^ (*r1 & t0);
+  uint32_t t2 = t0 ^ t1;
+  uint32_t t3, t4, t5, t6;
+
+  *r3 = *r2 ^ t2;
+  t3 = *r1 ^ (t0 & t1);
+  t4 = *r3 | t3;
+  *r1 = t1 ^ t4;
+  t5 = ~(*r1);
+  t6 = *r3 ^ t3;
+  *r0 = t5 ^ t6;
+  *r2 = t2 ^ (t5 | t6);
+}
+
+static TORSION_INLINE void
+sb2(uint32_t *r0, uint32_t *r1, uint32_t *r2, uint32_t *r3) {
+  uint32_t v0 = *r0;
+  uint32_t v3 = *r3;
+  uint32_t t0 = ~v0;
+  uint32_t t1 = *r1 ^ v3;
+  uint32_t t2 = *r2 & t0;
+  uint32_t t3, t4, t5;
+
+  *r0 = t1 ^ t2;
+  t3 = *r2 ^ t0;
+  t4 = *r2 ^ *r0;
+  t5 = *r1 & t4;
+  *r3 = t3 ^ t5;
+  *r2 = v0 ^ ((v3 | t5) & (*r0 | t3));
+  *r1 = (t1 ^ *r3) ^ (*r2 ^ (v3 | t0));
+}
+
+static TORSION_INLINE void
+sb2inv(uint32_t *r0, uint32_t *r1, uint32_t *r2, uint32_t *r3) {
+  uint32_t v0 = *r0;
+  uint32_t v3 = *r3;
+  uint32_t t0 = *r1 ^ v3;
+  uint32_t t1 = ~t0;
+  uint32_t t2 = v0 ^ *r2;
+  uint32_t t3 = *r2 ^ t0;
+  uint32_t t4 = *r1 & t3;
+  uint32_t t5, t6, t7, t8, t9;
+
+  *r0 = t2 ^ t4;
+  t5 = v0 | t1;
+  t6 = v3 ^ t5;
+  t7 = t2 | t6;
+  *r3 = t0 ^ t7;
+  t8 = ~t3;
+  t9 = *r0 | *r3;
+  *r1 = t8 ^ t9;
+  *r2 = (v3 & t8) ^ (t2 ^ t9);
+}
+
+static TORSION_INLINE void
+sb3(uint32_t *r0, uint32_t *r1, uint32_t *r2, uint32_t *r3) {
+  uint32_t v1 = *r1;
+  uint32_t v3 = *r3;
+  uint32_t t0 = *r0 ^ *r1;
+  uint32_t t1 = *r0 & *r2;
+  uint32_t t2 = *r0 | *r3;
+  uint32_t t3 = *r2 ^ *r3;
+  uint32_t t4 = t0 & t2;
+  uint32_t t5 = t1 | t4;
+  uint32_t t6, t7, t8, t9;
+
+  *r2 = t3 ^ t5;
+  t6 = *r1 ^ t2;
+  t7 = t5 ^ t6;
+  t8 = t3 & t7;
+  *r0 = t0 ^ t8;
+  t9 = *r2 & *r0;
+  *r1 = t7 ^ t9;
+  *r3 = (v1 | v3) ^ (t3 ^ t9);
+}
+
+static TORSION_INLINE void
+sb3inv(uint32_t *r0, uint32_t *r1, uint32_t *r2, uint32_t *r3) {
+  uint32_t t0 = *r0 | *r1;
+  uint32_t t1 = *r1 ^ *r2;
+  uint32_t t2 = *r1 & t1;
+  uint32_t t3 = *r0 ^ t2;
+  uint32_t t4 = *r2 ^ t3;
+  uint32_t t5 = *r3 | t3;
+  uint32_t t6, t7, t8, t9;
+
+  *r0 = t1 ^ t5;
+  t6 = t1 | t5;
+  t7 = *r3 ^ t6;
+  *r2 = t4 ^ t7;
+  t8 = t0 ^ t7;
+  t9 = *r0 & t8;
+  *r3 = t3 ^ t9;
+  *r1 = *r3 ^ (*r0 ^ t8);
+}
+
+static TORSION_INLINE void
+sb4(uint32_t *r0, uint32_t *r1, uint32_t *r2, uint32_t *r3) {
+  uint32_t v0 = *r0;
+  uint32_t t0 = v0 ^ *r3;
+  uint32_t t1 = *r3 & t0;
+  uint32_t t2 = *r2 ^ t1;
+  uint32_t t3 = *r1 | t2;
+  uint32_t t4, t5, t6, t7, t8;
+
+  *r3 = t0 ^ t3;
+  t4 = ~(*r1);
+  t5 = t0 | t4;
+  *r0 = t2 ^ t5;
+  t6 = v0 & *r0;
+  t7 = t0 ^ t4;
+  t8 = t3 & t7;
+  *r2 = t6 ^ t8;
+  *r1 = (v0 ^ t2) ^ (t7 & *r2);
+}
+
+static TORSION_INLINE void
+sb4inv(uint32_t *r0, uint32_t *r1, uint32_t *r2, uint32_t *r3) {
+  uint32_t v3 = *r3;
+  uint32_t t0 = *r2 | v3;
+  uint32_t t1 = *r0 & t0;
+  uint32_t t2 = *r1 ^ t1;
+  uint32_t t3 = *r0 & t2;
+  uint32_t t4 = *r2 ^ t3;
+  uint32_t t5, t6, t7, t8;
+
+  *r1 = v3 ^ t4;
+  t5 = ~(*r0);
+  t6 = t4 & *r1;
+  *r3 = t2 ^ t6;
+  t7 = *r1 | t5;
+  t8 = v3 ^ t7;
+  *r0 = *r3 ^ t8;
+  *r2 = (t2 & t8) ^ (*r1 ^ t5);
+}
+
+static TORSION_INLINE void
+sb5(uint32_t *r0, uint32_t *r1, uint32_t *r2, uint32_t *r3) {
+  uint32_t v1 = *r1;
+  uint32_t t0 = ~(*r0);
+  uint32_t t1 = *r0 ^ v1;
+  uint32_t t2 = *r0 ^ *r3;
+  uint32_t t3 = *r2 ^ t0;
+  uint32_t t4 = t1 | t2;
+  uint32_t t5, t6, t7, t8, t9;
+
+  *r0 = t3 ^ t4;
+  t5 = *r3 & *r0;
+  t6 = t1 ^ *r0;
+  *r1 = t5 ^ t6;
+  t7 = t0 | *r0;
+  t8 = t1 | t5;
+  t9 = t2 ^ t7;
+  *r2 = t8 ^ t9;
+  *r3 = (v1 ^ t5) ^ (*r1 & t9);
+}
+
+static TORSION_INLINE void
+sb5inv(uint32_t *r0, uint32_t *r1, uint32_t *r2, uint32_t *r3) {
+  uint32_t v0 = *r0;
+  uint32_t v1 = *r1;
+  uint32_t v3 = *r3;
+  uint32_t t0 = ~(*r2);
+  uint32_t t1 = v1 & t0;
+  uint32_t t2 = v3 ^ t1;
+  uint32_t t3 = v0 & t2;
+  uint32_t t4 = v1 ^ t0;
+  uint32_t t5, t6, t7, t8;
+
+  *r3 = t3 ^ t4;
+  t5 = v1 | *r3;
+  t6 = v0 & t5;
+  *r1 = t2 ^ t6;
+  t7 = v0 | v3;
+  t8 = t0 ^ t5;
+  *r0 = t7 ^ t8;
+  *r2 = (v1 & t7) ^ (t3 | (v0 ^ *r2));
+}
+
+static TORSION_INLINE void
+sb6(uint32_t *r0, uint32_t *r1, uint32_t *r2, uint32_t *r3) {
+  uint32_t t0 = ~(*r0);
+  uint32_t t1 = *r0 ^ *r3;
+  uint32_t t2 = *r1 ^ t1;
+  uint32_t t3 = t0 | t1;
+  uint32_t t4 = *r2 ^ t3;
+  uint32_t t5, t6, t7, t8;
+
+  *r1 = *r1 ^ t4;
+  t5 = t1 | *r1;
+  t6 = *r3 ^ t5;
+  t7 = t4 & t6;
+  *r2 = t2 ^ t7;
+  t8 = t4 ^ t6;
+  *r0 = *r2 ^ t8;
+  *r3 = (~t4) ^ (t2 & t8);
+}
+
+static TORSION_INLINE void
+sb6inv(uint32_t *r0, uint32_t *r1, uint32_t *r2, uint32_t *r3) {
+  uint32_t v1 = *r1;
+  uint32_t v3 = *r3;
+  uint32_t t0 = ~(*r0);
+  uint32_t t1 = *r0 ^ v1;
+  uint32_t t2 = *r2 ^ t1;
+  uint32_t t3 = *r2 | t0;
+  uint32_t t4 = v3 ^ t3;
+  uint32_t t5, t6, t7, t8;
+
+  *r1 = t2 ^ t4;
+  t5 = t2 & t4;
+  t6 = t1 ^ t5;
+  t7 = v1 | t6;
+  *r3 = t4 ^ t7;
+  t8 = v1 | *r3;
+  *r0 = t6 ^ t8;
+  *r2 = (v3 & t0) ^ (t2 ^ t8);
+}
+
+static TORSION_INLINE void
+sb7(uint32_t *r0, uint32_t *r1, uint32_t *r2, uint32_t *r3) {
+  uint32_t t0 = *r1 ^ *r2;
+  uint32_t t1 = *r2 & t0;
+  uint32_t t2 = *r3 ^ t1;
+  uint32_t t3 = *r0 ^ t2;
+  uint32_t t4 = *r3 | t0;
+  uint32_t t5 = t3 & t4;
+  uint32_t t6, t7, t8, t9;
+
+  *r1 = *r1 ^ t5;
+  t6 = t2 | *r1;
+  t7 = *r0 & t3;
+  *r3 = t0 ^ t7;
+  t8 = t3 ^ t6;
+  t9 = *r3 & t8;
+  *r2 = t2 ^ t9;
+  *r0 = (~t8) ^ (*r3 & *r2);
+}
+
+static TORSION_INLINE void
+sb7inv(uint32_t *r0, uint32_t *r1, uint32_t *r2, uint32_t *r3) {
+  uint32_t v0 = *r0;
+  uint32_t v3 = *r3;
+  uint32_t t0 = *r2 | (v0 & *r1);
+  uint32_t t1 = v3 & (v0 | *r1);
+  uint32_t t2, t3, t4;
+
+  *r3 = t0 ^ t1;
+  t2 = ~v3;
+  t3 = *r1 ^ t1;
+  t4 = t3 | (*r3 ^ t2);
+  *r1 = v0 ^ t4;
+  *r0 = (*r2 ^ t3) ^ (v3 | *r1);
+  *r2 = (t0 ^ *r1) ^ (*r0 ^ (v0 & *r3));
+}
+
+void
+serpent_init(serpent_t *ctx, unsigned int bits, const unsigned char *key) {
+  static const uint32_t phi = 0x9e3779b9;
+  uint32_t *s = ctx->subkeys;
+  size_t key_len = bits / 8;
+  uint32_t k[16];
+  size_t j = 0;
+  uint32_t x;
+  size_t i;
+
+  ASSERT(bits == 128 || bits == 192 || bits == 256);
+
+  for (i = 0; i < key_len; i += 4)
+    k[j++] = read32le(key + i);
+
+  if (j < 8)
+    k[j++] = 1;
+
+  while (j < 16)
+    k[j++] = 0;
+
+  for (i = 8; i < 16; i++) {
+    x = k[i - 8] ^ k[i - 5] ^ k[i - 3] ^ k[i - 1] ^ phi ^ (uint32_t)(i - 8);
+    k[i] = (x << 11) | (x >> 21);
+    s[i - 8] = k[i];
+  }
+
+  for (i = 8; i < 132; i++) {
+    x = s[i - 8] ^ s[i - 5] ^ s[i - 3] ^ s[i - 1] ^ phi ^ (uint32_t)(i);
+    s[i] = (x << 11) | (x >> 21);
+  }
+
+  sb3(&s[0], &s[1], &s[2], &s[3]);
+  sb2(&s[4], &s[5], &s[6], &s[7]);
+  sb1(&s[8], &s[9], &s[10], &s[11]);
+  sb0(&s[12], &s[13], &s[14], &s[15]);
+  sb7(&s[16], &s[17], &s[18], &s[19]);
+  sb6(&s[20], &s[21], &s[22], &s[23]);
+  sb5(&s[24], &s[25], &s[26], &s[27]);
+  sb4(&s[28], &s[29], &s[30], &s[31]);
+
+  sb3(&s[32], &s[33], &s[34], &s[35]);
+  sb2(&s[36], &s[37], &s[38], &s[39]);
+  sb1(&s[40], &s[41], &s[42], &s[43]);
+  sb0(&s[44], &s[45], &s[46], &s[47]);
+  sb7(&s[48], &s[49], &s[50], &s[51]);
+  sb6(&s[52], &s[53], &s[54], &s[55]);
+  sb5(&s[56], &s[57], &s[58], &s[59]);
+  sb4(&s[60], &s[61], &s[62], &s[63]);
+
+  sb3(&s[64], &s[65], &s[66], &s[67]);
+  sb2(&s[68], &s[69], &s[70], &s[71]);
+  sb1(&s[72], &s[73], &s[74], &s[75]);
+  sb0(&s[76], &s[77], &s[78], &s[79]);
+  sb7(&s[80], &s[81], &s[82], &s[83]);
+  sb6(&s[84], &s[85], &s[86], &s[87]);
+  sb5(&s[88], &s[89], &s[90], &s[91]);
+  sb4(&s[92], &s[93], &s[94], &s[95]);
+
+  sb3(&s[96], &s[97], &s[98], &s[99]);
+  sb2(&s[100], &s[101], &s[102], &s[103]);
+  sb1(&s[104], &s[105], &s[106], &s[107]);
+  sb0(&s[108], &s[109], &s[110], &s[111]);
+  sb7(&s[112], &s[113], &s[114], &s[115]);
+  sb6(&s[116], &s[117], &s[118], &s[119]);
+  sb5(&s[120], &s[121], &s[122], &s[123]);
+  sb4(&s[124], &s[125], &s[126], &s[127]);
+
+  sb3(&s[128], &s[129], &s[130], &s[131]);
+}
+
+void
+serpent_encrypt(serpent_t *ctx, unsigned char *dst, const unsigned char *src) {
+  const uint32_t *sk = ctx->subkeys;
+  uint32_t r0 = read32le(src +  0);
+  uint32_t r1 = read32le(src +  4);
+  uint32_t r2 = read32le(src +  8);
+  uint32_t r3 = read32le(src + 12);
+
+  r0 ^= sk[0], r1 ^= sk[1], r2 ^= sk[2], r3 ^= sk[3];
+  sb0(&r0, &r1, &r2, &r3);
+  linear(&r0, &r1, &r2, &r3);
+  r0 ^= sk[4], r1 ^= sk[5], r2 ^= sk[6], r3 ^= sk[7];
+  sb1(&r0, &r1, &r2, &r3);
+  linear(&r0, &r1, &r2, &r3);
+  r0 ^= sk[8], r1 ^= sk[9], r2 ^= sk[10], r3 ^= sk[11];
+  sb2(&r0, &r1, &r2, &r3);
+  linear(&r0, &r1, &r2, &r3);
+  r0 ^= sk[12], r1 ^= sk[13], r2 ^= sk[14], r3 ^= sk[15];
+  sb3(&r0, &r1, &r2, &r3);
+  linear(&r0, &r1, &r2, &r3);
+  r0 ^= sk[16], r1 ^= sk[17], r2 ^= sk[18], r3 ^= sk[19];
+  sb4(&r0, &r1, &r2, &r3);
+  linear(&r0, &r1, &r2, &r3);
+  r0 ^= sk[20], r1 ^= sk[21], r2 ^= sk[22], r3 ^= sk[23];
+  sb5(&r0, &r1, &r2, &r3);
+  linear(&r0, &r1, &r2, &r3);
+  r0 ^= sk[24], r1 ^= sk[25], r2 ^= sk[26], r3 ^= sk[27];
+  sb6(&r0, &r1, &r2, &r3);
+  linear(&r0, &r1, &r2, &r3);
+  r0 ^= sk[28], r1 ^= sk[29], r2 ^= sk[30], r3 ^= sk[31];
+  sb7(&r0, &r1, &r2, &r3);
+  linear(&r0, &r1, &r2, &r3);
+
+  r0 ^= sk[32], r1 ^= sk[33], r2 ^= sk[34], r3 ^= sk[35];
+  sb0(&r0, &r1, &r2, &r3);
+  linear(&r0, &r1, &r2, &r3);
+  r0 ^= sk[36], r1 ^= sk[37], r2 ^= sk[38], r3 ^= sk[39];
+  sb1(&r0, &r1, &r2, &r3);
+  linear(&r0, &r1, &r2, &r3);
+  r0 ^= sk[40], r1 ^= sk[41], r2 ^= sk[42], r3 ^= sk[43];
+  sb2(&r0, &r1, &r2, &r3);
+  linear(&r0, &r1, &r2, &r3);
+  r0 ^= sk[44], r1 ^= sk[45], r2 ^= sk[46], r3 ^= sk[47];
+  sb3(&r0, &r1, &r2, &r3);
+  linear(&r0, &r1, &r2, &r3);
+  r0 ^= sk[48], r1 ^= sk[49], r2 ^= sk[50], r3 ^= sk[51];
+  sb4(&r0, &r1, &r2, &r3);
+  linear(&r0, &r1, &r2, &r3);
+  r0 ^= sk[52], r1 ^= sk[53], r2 ^= sk[54], r3 ^= sk[55];
+  sb5(&r0, &r1, &r2, &r3);
+  linear(&r0, &r1, &r2, &r3);
+  r0 ^= sk[56], r1 ^= sk[57], r2 ^= sk[58], r3 ^= sk[59];
+  sb6(&r0, &r1, &r2, &r3);
+  linear(&r0, &r1, &r2, &r3);
+  r0 ^= sk[60], r1 ^= sk[61], r2 ^= sk[62], r3 ^= sk[63];
+  sb7(&r0, &r1, &r2, &r3);
+  linear(&r0, &r1, &r2, &r3);
+
+  r0 ^= sk[64], r1 ^= sk[65], r2 ^= sk[66], r3 ^= sk[67];
+  sb0(&r0, &r1, &r2, &r3);
+  linear(&r0, &r1, &r2, &r3);
+  r0 ^= sk[68], r1 ^= sk[69], r2 ^= sk[70], r3 ^= sk[71];
+  sb1(&r0, &r1, &r2, &r3);
+  linear(&r0, &r1, &r2, &r3);
+  r0 ^= sk[72], r1 ^= sk[73], r2 ^= sk[74], r3 ^= sk[75];
+  sb2(&r0, &r1, &r2, &r3);
+  linear(&r0, &r1, &r2, &r3);
+  r0 ^= sk[76], r1 ^= sk[77], r2 ^= sk[78], r3 ^= sk[79];
+  sb3(&r0, &r1, &r2, &r3);
+  linear(&r0, &r1, &r2, &r3);
+  r0 ^= sk[80], r1 ^= sk[81], r2 ^= sk[82], r3 ^= sk[83];
+  sb4(&r0, &r1, &r2, &r3);
+  linear(&r0, &r1, &r2, &r3);
+  r0 ^= sk[84], r1 ^= sk[85], r2 ^= sk[86], r3 ^= sk[87];
+  sb5(&r0, &r1, &r2, &r3);
+  linear(&r0, &r1, &r2, &r3);
+  r0 ^= sk[88], r1 ^= sk[89], r2 ^= sk[90], r3 ^= sk[91];
+  sb6(&r0, &r1, &r2, &r3);
+  linear(&r0, &r1, &r2, &r3);
+  r0 ^= sk[92], r1 ^= sk[93], r2 ^= sk[94], r3 ^= sk[95];
+  sb7(&r0, &r1, &r2, &r3);
+  linear(&r0, &r1, &r2, &r3);
+
+  r0 ^= sk[96], r1 ^= sk[97], r2 ^= sk[98], r3 ^= sk[99];
+  sb0(&r0, &r1, &r2, &r3);
+  linear(&r0, &r1, &r2, &r3);
+  r0 ^= sk[100], r1 ^= sk[101], r2 ^= sk[102], r3 ^= sk[103];
+  sb1(&r0, &r1, &r2, &r3);
+  linear(&r0, &r1, &r2, &r3);
+  r0 ^= sk[104], r1 ^= sk[105], r2 ^= sk[106], r3 ^= sk[107];
+  sb2(&r0, &r1, &r2, &r3);
+  linear(&r0, &r1, &r2, &r3);
+  r0 ^= sk[108], r1 ^= sk[109], r2 ^= sk[110], r3 ^= sk[111];
+  sb3(&r0, &r1, &r2, &r3);
+  linear(&r0, &r1, &r2, &r3);
+  r0 ^= sk[112], r1 ^= sk[113], r2 ^= sk[114], r3 ^= sk[115];
+  sb4(&r0, &r1, &r2, &r3);
+  linear(&r0, &r1, &r2, &r3);
+  r0 ^= sk[116], r1 ^= sk[117], r2 ^= sk[118], r3 ^= sk[119];
+  sb5(&r0, &r1, &r2, &r3);
+  linear(&r0, &r1, &r2, &r3);
+  r0 ^= sk[120], r1 ^= sk[121], r2 ^= sk[122], r3 ^= sk[123];
+  sb6(&r0, &r1, &r2, &r3);
+  linear(&r0, &r1, &r2, &r3);
+  r0 ^= sk[124], r1 ^= sk[125], r2 ^= sk[126], r3 ^= sk[127];
+  sb7(&r0, &r1, &r2, &r3);
+
+  r0 ^= sk[128];
+  r1 ^= sk[129];
+  r2 ^= sk[130];
+  r3 ^= sk[131];
+
+  write32le(dst +  0, r0);
+  write32le(dst +  4, r1);
+  write32le(dst +  8, r2);
+  write32le(dst + 12, r3);
+}
+
+void
+serpent_decrypt(serpent_t *ctx, unsigned char *dst, const unsigned char *src) {
+  const uint32_t *sk = ctx->subkeys;
+  uint32_t r0 = read32le(src +  0);
+  uint32_t r1 = read32le(src +  4);
+  uint32_t r2 = read32le(src +  8);
+  uint32_t r3 = read32le(src + 12);
+
+  r0 ^= sk[128];
+  r1 ^= sk[129];
+  r2 ^= sk[130];
+  r3 ^= sk[131];
+
+  sb7inv(&r0, &r1, &r2, &r3);
+  r0 ^= sk[124], r1 ^= sk[125], r2 ^= sk[126], r3 ^= sk[127];
+  linearinv(&r0, &r1, &r2, &r3);
+  sb6inv(&r0, &r1, &r2, &r3);
+  r0 ^= sk[120], r1 ^= sk[121], r2 ^= sk[122], r3 ^= sk[123];
+  linearinv(&r0, &r1, &r2, &r3);
+  sb5inv(&r0, &r1, &r2, &r3);
+  r0 ^= sk[116], r1 ^= sk[117], r2 ^= sk[118], r3 ^= sk[119];
+  linearinv(&r0, &r1, &r2, &r3);
+  sb4inv(&r0, &r1, &r2, &r3);
+  r0 ^= sk[112], r1 ^= sk[113], r2 ^= sk[114], r3 ^= sk[115];
+  linearinv(&r0, &r1, &r2, &r3);
+  sb3inv(&r0, &r1, &r2, &r3);
+  r0 ^= sk[108], r1 ^= sk[109], r2 ^= sk[110], r3 ^= sk[111];
+  linearinv(&r0, &r1, &r2, &r3);
+  sb2inv(&r0, &r1, &r2, &r3);
+  r0 ^= sk[104], r1 ^= sk[105], r2 ^= sk[106], r3 ^= sk[107];
+  linearinv(&r0, &r1, &r2, &r3);
+  sb1inv(&r0, &r1, &r2, &r3);
+  r0 ^= sk[100], r1 ^= sk[101], r2 ^= sk[102], r3 ^= sk[103];
+  linearinv(&r0, &r1, &r2, &r3);
+  sb0inv(&r0, &r1, &r2, &r3);
+  r0 ^= sk[96], r1 ^= sk[97], r2 ^= sk[98], r3 ^= sk[99];
+  linearinv(&r0, &r1, &r2, &r3);
+
+  sb7inv(&r0, &r1, &r2, &r3);
+  r0 ^= sk[92], r1 ^= sk[93], r2 ^= sk[94], r3 ^= sk[95];
+  linearinv(&r0, &r1, &r2, &r3);
+  sb6inv(&r0, &r1, &r2, &r3);
+  r0 ^= sk[88], r1 ^= sk[89], r2 ^= sk[90], r3 ^= sk[91];
+  linearinv(&r0, &r1, &r2, &r3);
+  sb5inv(&r0, &r1, &r2, &r3);
+  r0 ^= sk[84], r1 ^= sk[85], r2 ^= sk[86], r3 ^= sk[87];
+  linearinv(&r0, &r1, &r2, &r3);
+  sb4inv(&r0, &r1, &r2, &r3);
+  r0 ^= sk[80], r1 ^= sk[81], r2 ^= sk[82], r3 ^= sk[83];
+  linearinv(&r0, &r1, &r2, &r3);
+  sb3inv(&r0, &r1, &r2, &r3);
+  r0 ^= sk[76], r1 ^= sk[77], r2 ^= sk[78], r3 ^= sk[79];
+  linearinv(&r0, &r1, &r2, &r3);
+  sb2inv(&r0, &r1, &r2, &r3);
+  r0 ^= sk[72], r1 ^= sk[73], r2 ^= sk[74], r3 ^= sk[75];
+  linearinv(&r0, &r1, &r2, &r3);
+  sb1inv(&r0, &r1, &r2, &r3);
+  r0 ^= sk[68], r1 ^= sk[69], r2 ^= sk[70], r3 ^= sk[71];
+  linearinv(&r0, &r1, &r2, &r3);
+  sb0inv(&r0, &r1, &r2, &r3);
+  r0 ^= sk[64], r1 ^= sk[65], r2 ^= sk[66], r3 ^= sk[67];
+  linearinv(&r0, &r1, &r2, &r3);
+
+  sb7inv(&r0, &r1, &r2, &r3);
+  r0 ^= sk[60], r1 ^= sk[61], r2 ^= sk[62], r3 ^= sk[63];
+  linearinv(&r0, &r1, &r2, &r3);
+  sb6inv(&r0, &r1, &r2, &r3);
+  r0 ^= sk[56], r1 ^= sk[57], r2 ^= sk[58], r3 ^= sk[59];
+  linearinv(&r0, &r1, &r2, &r3);
+  sb5inv(&r0, &r1, &r2, &r3);
+  r0 ^= sk[52], r1 ^= sk[53], r2 ^= sk[54], r3 ^= sk[55];
+  linearinv(&r0, &r1, &r2, &r3);
+  sb4inv(&r0, &r1, &r2, &r3);
+  r0 ^= sk[48], r1 ^= sk[49], r2 ^= sk[50], r3 ^= sk[51];
+  linearinv(&r0, &r1, &r2, &r3);
+  sb3inv(&r0, &r1, &r2, &r3);
+  r0 ^= sk[44], r1 ^= sk[45], r2 ^= sk[46], r3 ^= sk[47];
+  linearinv(&r0, &r1, &r2, &r3);
+  sb2inv(&r0, &r1, &r2, &r3);
+  r0 ^= sk[40], r1 ^= sk[41], r2 ^= sk[42], r3 ^= sk[43];
+  linearinv(&r0, &r1, &r2, &r3);
+  sb1inv(&r0, &r1, &r2, &r3);
+  r0 ^= sk[36], r1 ^= sk[37], r2 ^= sk[38], r3 ^= sk[39];
+  linearinv(&r0, &r1, &r2, &r3);
+  sb0inv(&r0, &r1, &r2, &r3);
+  r0 ^= sk[32], r1 ^= sk[33], r2 ^= sk[34], r3 ^= sk[35];
+  linearinv(&r0, &r1, &r2, &r3);
+
+  sb7inv(&r0, &r1, &r2, &r3);
+  r0 ^= sk[28], r1 ^= sk[29], r2 ^= sk[30], r3 ^= sk[31];
+  linearinv(&r0, &r1, &r2, &r3);
+  sb6inv(&r0, &r1, &r2, &r3);
+  r0 ^= sk[24], r1 ^= sk[25], r2 ^= sk[26], r3 ^= sk[27];
+  linearinv(&r0, &r1, &r2, &r3);
+  sb5inv(&r0, &r1, &r2, &r3);
+  r0 ^= sk[20], r1 ^= sk[21], r2 ^= sk[22], r3 ^= sk[23];
+  linearinv(&r0, &r1, &r2, &r3);
+  sb4inv(&r0, &r1, &r2, &r3);
+  r0 ^= sk[16], r1 ^= sk[17], r2 ^= sk[18], r3 ^= sk[19];
+  linearinv(&r0, &r1, &r2, &r3);
+  sb3inv(&r0, &r1, &r2, &r3);
+  r0 ^= sk[12], r1 ^= sk[13], r2 ^= sk[14], r3 ^= sk[15];
+  linearinv(&r0, &r1, &r2, &r3);
+  sb2inv(&r0, &r1, &r2, &r3);
+  r0 ^= sk[8], r1 ^= sk[9], r2 ^= sk[10], r3 ^= sk[11];
+  linearinv(&r0, &r1, &r2, &r3);
+  sb1inv(&r0, &r1, &r2, &r3);
+  r0 ^= sk[4], r1 ^= sk[5], r2 ^= sk[6], r3 ^= sk[7];
+  linearinv(&r0, &r1, &r2, &r3);
+  sb0inv(&r0, &r1, &r2, &r3);
+
+  r0 ^= sk[0];
+  r1 ^= sk[1];
+  r2 ^= sk[2];
+  r3 ^= sk[3];
+
+  write32le(dst +  0, r0);
+  write32le(dst +  4, r1);
+  write32le(dst +  8, r2);
+  write32le(dst + 12, r3);
+}
+
+#undef linear
+#undef linearinv
+#undef sb0
+#undef sb0inv
+#undef sb1
+#undef sb1inv
+#undef sb2
+#undef sb2inv
+#undef sb3
+#undef sb3inv
+#undef sb4
+#undef sb4inv
+#undef sb5
+#undef sb5inv
+#undef sb6
+#undef sb6inv
+#undef sb7
+#undef sb7inv
+
+/*
  * Twofish
  *
  * Resources:
@@ -5058,6 +5755,39 @@ cipher_ctx_init(cipher_t *ctx, const unsigned char *key, size_t key_len) {
       break;
     }
 
+    case CIPHER_SERPENT128: {
+      if (key_len != 16)
+        return 0;
+
+      ctx->block_size = 16;
+
+      serpent_init(&ctx->ctx.serpent, 128, key);
+
+      break;
+    }
+
+    case CIPHER_SERPENT192: {
+      if (key_len != 24)
+        return 0;
+
+      ctx->block_size = 16;
+
+      serpent_init(&ctx->ctx.serpent, 192, key);
+
+      break;
+    }
+
+    case CIPHER_SERPENT256: {
+      if (key_len != 32)
+        return 0;
+
+      ctx->block_size = 16;
+
+      serpent_init(&ctx->ctx.serpent, 256, key);
+
+      break;
+    }
+
     case CIPHER_TWOFISH128: {
       if (key_len != 16)
         return 0;
@@ -5135,6 +5865,11 @@ cipher_ctx_encrypt(cipher_t *ctx,
     case CIPHER_RC2:
       rc2_encrypt(&ctx->ctx.rc2, dst, src);
       break;
+    case CIPHER_SERPENT128:
+    case CIPHER_SERPENT192:
+    case CIPHER_SERPENT256:
+      serpent_encrypt(&ctx->ctx.serpent, dst, src);
+      break;
     case CIPHER_TWOFISH128:
     case CIPHER_TWOFISH192:
     case CIPHER_TWOFISH256:
@@ -5181,6 +5916,11 @@ cipher_ctx_decrypt(cipher_t *ctx,
       break;
     case CIPHER_RC2:
       rc2_decrypt(&ctx->ctx.rc2, dst, src);
+      break;
+    case CIPHER_SERPENT128:
+    case CIPHER_SERPENT192:
+    case CIPHER_SERPENT256:
+      serpent_decrypt(&ctx->ctx.serpent, dst, src);
       break;
     case CIPHER_TWOFISH128:
     case CIPHER_TWOFISH192:
