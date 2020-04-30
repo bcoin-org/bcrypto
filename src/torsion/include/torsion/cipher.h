@@ -432,10 +432,14 @@ void
 serpent_init(serpent_t *ctx, unsigned int bits, const unsigned char *key);
 
 void
-serpent_encrypt(serpent_t *ctx, unsigned char *dst, const unsigned char *src);
+serpent_encrypt(const serpent_t *ctx,
+                unsigned char *dst,
+                const unsigned char *src);
 
 void
-serpent_decrypt(serpent_t *ctx, unsigned char *dst, const unsigned char *src);
+serpent_decrypt(const serpent_t *ctx,
+                unsigned char *dst,
+                const unsigned char *src);
 
 /*
  * Twofish

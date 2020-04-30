@@ -4727,7 +4727,9 @@ serpent_init(serpent_t *ctx, unsigned int bits, const unsigned char *key) {
 }
 
 void
-serpent_encrypt(serpent_t *ctx, unsigned char *dst, const unsigned char *src) {
+serpent_encrypt(const serpent_t *ctx,
+                unsigned char *dst,
+                const unsigned char *src) {
   const uint32_t *sk = ctx->subkeys;
   uint32_t r0 = read32le(src +  0);
   uint32_t r1 = read32le(src +  4);
@@ -4845,7 +4847,9 @@ serpent_encrypt(serpent_t *ctx, unsigned char *dst, const unsigned char *src) {
 }
 
 void
-serpent_decrypt(serpent_t *ctx, unsigned char *dst, const unsigned char *src) {
+serpent_decrypt(const serpent_t *ctx,
+                unsigned char *dst,
+                const unsigned char *src) {
   const uint32_t *sk = ctx->subkeys;
   uint32_t r0 = read32le(src +  0);
   uint32_t r1 = read32le(src +  4);
@@ -5510,7 +5514,7 @@ ghash_absorb(ghash_t *ctx, const unsigned char *data, size_t len) {
     if (want > len)
       want = len;
 
-    memcpy(ctx->block + pos, data + off, want);
+    memcpy(ctx->block + pos, data, want);
 
     pos += want;
     len -= want;

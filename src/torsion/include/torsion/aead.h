@@ -37,7 +37,6 @@ extern "C" {
 typedef struct _aead_s {
   chacha20_t chacha;
   poly1305_t poly;
-  unsigned char key[64];
   int mode;
   uint64_t adlen;
   uint64_t ctlen;
