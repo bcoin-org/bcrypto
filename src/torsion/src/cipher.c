@@ -6029,20 +6029,28 @@ cipher_ctr_set(cipher_t *ctx, const unsigned char *nonce, size_t len) {
 }
 
 static void
+cipher_ctr_increment(cipher_t *ctx) {
+  unsigned int cy = 1;
+  size_t i = 4;
+
+  while (i--) {
+    cy += (unsigned int)ctx->ctr[12 + i];
+    ctx->ctr[12 + i] = cy;
+    cy >>= 8;
+  }
+}
+
+static void
 cipher_ctr_encrypt(cipher_t *ctx,
                    unsigned char *dst,
                    const unsigned char *src,
                    size_t len) {
-  size_t i, j;
+  size_t i;
 
   for (i = 0; i < len; i++) {
     if ((ctx->ctr_pos & 15) == 0) {
       cipher_ctx_encrypt(ctx, ctx->state, ctx->ctr);
-
-      for (j = 15; j >= 12; j--) {
-        if (++ctx->ctr[j] != 0)
-          break;
-      }
+      cipher_ctr_increment(ctx);
 
       ctx->ctr_pos = 0;
     }
@@ -6109,15 +6117,15 @@ cipher_mode_init(cipher_t *ctx, const unsigned char *iv, size_t iv_len) {
     }
 
     case CIPHER_MODE_GCM: {
+      static const unsigned char zero16[16] = {0};
       uint8_t key[16];
       uint8_t tmp[16];
 
       if (ctx->block_size != 16)
         return 0;
 
-      memset(key, 0, sizeof(key));
+      cipher_ctr_encrypt(ctx, key, zero16, 16);
 
-      cipher_ctr_encrypt(ctx, key, key, 16);
       ghash_init(&ctx->ghash, key);
 
       if (iv_len != 12) {
@@ -6241,24 +6249,23 @@ cipher_mode_update(cipher_t *ctx,
 
 static int
 cipher_mode_final(cipher_t *ctx, unsigned char *out, size_t *out_len) {
+  uint32_t res = 1;
   size_t i;
+
+  *out_len = 0;
 
   switch (ctx->mode) {
     case CIPHER_MODE_RAW: {
       if (ctx->block_pos != 0)
         return 0;
 
-      *out_len = 0;
-
       break;
     }
 
     case CIPHER_MODE_ECB:
     case CIPHER_MODE_CBC: {
-      size_t left, end;
-
       if (ctx->encrypt) {
-        left = ctx->block_size - ctx->block_pos;
+        size_t left = ctx->block_size - ctx->block_pos;
 
         memcpy(out, ctx->block, ctx->block_pos);
 
@@ -6269,29 +6276,38 @@ cipher_mode_final(cipher_t *ctx, unsigned char *out, size_t *out_len) {
 
         *out_len = ctx->block_size;
       } else {
+        uint32_t block_size = ctx->block_size;
+        uint32_t j, left, end, ch;
+
         if (ctx->block_pos != 0)
           return 0;
 
         if (ctx->last_size == 0)
           return 0;
 
-        ASSERT(ctx->last_size == ctx->block_size);
-
         memcpy(out, ctx->last, ctx->block_size);
 
         left = out[ctx->block_size - 1];
 
-        if (left == 0 || left > ctx->block_size)
-          return 0;
+        /* left != 0 */
+        res &= ((left - 1) >> 31) ^ 1;
 
-        end = ctx->block_size - left;
+        /* left <= block_size */
+        res &= (left - block_size - 1) >> 31;
 
-        for (i = end; i < ctx->block_size; i++) {
-          if (out[i] != left)
-            return 0;
+        /* left = 0 if left == 0 or left > block_size */
+        left &= -res;
+
+        /* Verify padding in constant time. */
+        end = block_size - left;
+
+        for (j = 0; j < block_size; j++) {
+          ch = out[j];
+          /* j < end or ch == left */
+          res &= ((j - end) >> 31) | (((ch ^ left) - 1) >> 31);
         }
 
-        *out_len = end;
+        *out_len = end & -res;
       }
 
       break;
@@ -6332,7 +6348,6 @@ cipher_mode_final(cipher_t *ctx, unsigned char *out, size_t *out_len) {
 
     case CIPHER_MODE_GCM: {
       uint8_t mac[16];
-      uint32_t res;
 
       if (ctx->encrypt) {
         cipher_ctr_encrypt(ctx, out, ctx->block, ctx->block_pos);
@@ -6342,8 +6357,6 @@ cipher_mode_final(cipher_t *ctx, unsigned char *out, size_t *out_len) {
         cipher_ctr_encrypt(ctx, out, ctx->block, ctx->block_pos);
       }
 
-      *out_len = ctx->block_pos;
-
       ghash_final(&ctx->ghash, mac);
 
       for (i = 0; i < 16; i++)
@@ -6352,18 +6365,21 @@ cipher_mode_final(cipher_t *ctx, unsigned char *out, size_t *out_len) {
       if (ctx->encrypt) {
         memcpy(ctx->tag, mac, 16);
         ctx->tag_len = 16;
-        return 1;
+      } else {
+        if (ctx->tag_len == 0)
+          return 0;
+
+        res = 0;
+
+        for (i = 0; i < ctx->tag_len; i++)
+          res |= (uint32_t)mac[i] ^ (uint32_t)ctx->tag[i];
+
+        res = (res - 1) >> 31;
       }
 
-      if (ctx->tag_len == 0)
-        return 0;
+      *out_len = ctx->block_pos & -res;
 
-      res = 0;
-
-      for (i = 0; i < ctx->tag_len; i++)
-        res |= (uint32_t)mac[i] ^ (uint32_t)ctx->tag[i];
-
-      return (res - 1) >> 31;
+      break;
     }
 
     default: {
@@ -6371,7 +6387,7 @@ cipher_mode_final(cipher_t *ctx, unsigned char *out, size_t *out_len) {
     }
   }
 
-  return 1;
+  return res;
 }
 
 int
@@ -6420,6 +6436,8 @@ cipher_set_tag(cipher_t *ctx, const unsigned char *tag, size_t len) {
 
 int
 cipher_get_tag(cipher_t *ctx, unsigned char *tag, size_t *len) {
+  *len = 0;
+
   if (ctx->mode != CIPHER_MODE_GCM || !ctx->encrypt)
     return 0;
 

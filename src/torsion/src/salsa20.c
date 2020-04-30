@@ -272,6 +272,10 @@ salsa20_block(salsa20_t *ctx) {
       "xmm7", "xmm8", "cc", "memory"
   );
 #else
+#ifdef WORDS_BIGENDIAN
+  uint8_t *bytes = ctx->stream.bytes;
+#endif
+  uint64_t c;
   size_t i;
 
   memcpy(stream, ctx->state, sizeof(ctx->state));
@@ -291,16 +295,14 @@ salsa20_block(salsa20_t *ctx) {
     stream[i] += ctx->state[i];
 
 #ifdef WORDS_BIGENDIAN
-  uint8_t *bytes = ctx->stream.bytes;
-
   for (i = 0; i < 16; i++)
     write32le(bytes + i * 4, stream[i]);
 #endif
 
-  ctx->state[8] += 1;
+  c = (uint64_t)ctx->state[8] + 1;
 
-  if (ctx->state[8] == 0)
-    ctx->state[9] += 1;
+  ctx->state[8] = c;
+  ctx->state[9] += (uint32_t)(c >> 32);
 #endif
 }
 

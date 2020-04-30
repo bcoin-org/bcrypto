@@ -222,27 +222,22 @@ hash_drbg_reseed(hash_drbg_t *drbg,
 }
 
 static void
-accumulate(unsigned char *dst, size_t dst_len,
-           const unsigned char *src, size_t src_len) {
-  unsigned int carry = 0;
-  int i = src_len - 1;
-  int j = dst_len - 1;
+accumulate(unsigned char *dst, size_t dlen,
+           const unsigned char *src, size_t slen) {
+  unsigned int cy = 0;
 
-  ASSERT(dst_len >= src_len);
+  ASSERT(dlen >= slen);
 
-  while (i >= 0) {
-    carry += (unsigned int)src[i] + dst[j];
-    dst[j] = carry & 0xff;
-    carry >>= 8;
-    i -= 1;
-    j -= 1;
+  while (slen > 0) {
+    cy += (unsigned int)src[--slen] + dst[--dlen];
+    dst[dlen] = cy & 0xff;
+    cy >>= 8;
   }
 
-  while (carry > 0 && j >= 0) {
-    carry += (unsigned int)dst[j];
-    dst[j] = carry & 0xff;
-    carry >>= 8;
-    j -= 1;
+  while (cy > 0 && dlen > 0) {
+    cy += (unsigned int)dst[--dlen];
+    dst[dlen] = cy & 0xff;
+    cy >>= 8;
   }
 }
 

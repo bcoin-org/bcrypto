@@ -205,6 +205,10 @@ chacha20_block(chacha20_t *ctx) {
       "memory"
   );
 #else
+#ifdef WORDS_BIGENDIAN
+  uint8_t *bytes = ctx->stream.bytes;
+#endif
+  uint64_t c;
   size_t i;
 
   memcpy(stream, ctx->state, sizeof(ctx->state));
@@ -224,16 +228,14 @@ chacha20_block(chacha20_t *ctx) {
     stream[i] += ctx->state[i];
 
 #ifdef WORDS_BIGENDIAN
-  uint8_t *bytes = ctx->stream.bytes;
-
   for (i = 0; i < 16; i++)
     write32le(bytes + i * 4, stream[i]);
 #endif
 
-  ctx->state[12] += 1;
+  c = (uint64_t)ctx->state[12] + 1;
 
-  if (ctx->state[12] == 0)
-    ctx->state[13] += 1;
+  ctx->state[12] = c;
+  ctx->state[13] += (uint32_t)(c >> 32);
 #endif
 }
 
