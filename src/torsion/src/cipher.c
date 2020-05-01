@@ -6863,7 +6863,8 @@ cipher_stream_init(cipher_stream_t *ctx,
   int is_block = mode == CIPHER_MODE_ECB || mode == CIPHER_MODE_CBC;
 
   ctx->encrypt = encrypt;
-  ctx->padding = is_block && !encrypt;
+  ctx->padding = 1;
+  ctx->unpad = is_block && !encrypt;
   ctx->block_size = cipher_block_size(type);
   ctx->block_pos = 0;
   ctx->last_size = 0;
@@ -6875,6 +6876,28 @@ cipher_stream_init(cipher_stream_t *ctx,
 
   if (!cipher_mode_init(&ctx->mode, &ctx->cipher, mode, iv, iv_len))
     return 0;
+
+  return 1;
+}
+
+int
+cipher_stream_set_padding(cipher_stream_t *ctx, int padding) {
+  int is_block = ctx->mode.type == CIPHER_MODE_ECB
+              || ctx->mode.type == CIPHER_MODE_CBC;
+
+  if (!is_block)
+    return 0;
+
+  if (!ctx->encrypt) {
+    if (ctx->last_size != 0)
+      return 0;
+
+    if (ctx->block_pos != 0)
+      return 0;
+  }
+
+  ctx->padding = !!padding;
+  ctx->unpad = padding && !ctx->encrypt;
 
   return 1;
 }
@@ -6984,7 +7007,7 @@ cipher_stream_update(cipher_stream_t *ctx,
 
   ctx->block_pos = (ctx->block_pos + ilen) % bsize;
 
-  if (ctx->padding)
+  if (ctx->unpad)
     olen += ctx->last_size;
 
   if (bpos > 0) {
@@ -7011,7 +7034,7 @@ cipher_stream_update(cipher_stream_t *ctx,
 
   *output_len = olen;
 
-  if (ctx->padding) {
+  if (ctx->unpad) {
     memcpy(output + opos, ctx->last, ctx->last_size);
     opos += ctx->last_size;
   }
@@ -7034,7 +7057,7 @@ cipher_stream_update(cipher_stream_t *ctx,
   if (ilen > 0)
     memcpy(ctx->block, input + ipos, ilen);
 
-  if (ctx->padding && olen > 0) {
+  if (ctx->unpad && olen > 0) {
     memcpy(ctx->last, output + olen - bsize, bsize);
 
     ctx->last_size = bsize;
@@ -7056,7 +7079,7 @@ cipher_stream_update_size(const cipher_stream_t *ctx, size_t input_len) {
   if (ctx->mode.type > CIPHER_MODE_CBC)
     return input_len;
 
-  if (ctx->padding)
+  if (ctx->unpad)
     olen += ctx->last_size;
 
   if (bpos > 0) {
@@ -7095,6 +7118,13 @@ cipher_stream_final(cipher_stream_t *ctx,
 
     case CIPHER_MODE_ECB:
     case CIPHER_MODE_CBC: {
+      if (!ctx->padding) {
+        if (ctx->block_pos != 0)
+          return 0;
+
+        return 1;
+      }
+
       if (!ctx->encrypt) {
         if (ctx->block_pos != 0)
           return 0;
@@ -7169,7 +7199,7 @@ cipher_static_crypt(unsigned char *output,
 
   *output_len = 0;
 
-  if (mode >= CIPHER_MODE_GCM)
+  if (mode < 0 || mode >= CIPHER_MODE_GCM)
     goto fail;
 
   if (!cipher_stream_init(&ctx, type, mode, encrypt, key, key_len, iv, iv_len))

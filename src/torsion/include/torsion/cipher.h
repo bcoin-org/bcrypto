@@ -100,6 +100,7 @@ extern "C" {
 #define cipher_mode_digest torsion_cipher_mode_digest
 #define cipher_mode_verify torsion_cipher_mode_verify
 #define cipher_stream_init torsion_cipher_stream_init
+#define cipher_stream_set_padding torsion_cipher_stream_set_padding
 #define cipher_stream_set_aad torsion_cipher_stream_set_aad
 #define cipher_stream_set_ccm torsion_cipher_stream_set_ccm
 #define cipher_stream_set_tag torsion_cipher_stream_set_tag
@@ -325,6 +326,7 @@ typedef struct _cipher_mode_s {
 typedef struct _cipher_stream_s {
   int encrypt;
   int padding;
+  int unpad;
   size_t block_size;
   size_t block_pos;
   size_t last_size;
@@ -766,6 +768,9 @@ cipher_stream_init(cipher_stream_t *ctx,
                    int type, int mode, int encrypt,
                    const unsigned char *key, size_t key_len,
                    const unsigned char *iv, size_t iv_len);
+
+int
+cipher_stream_set_padding(cipher_stream_t *ctx, int padding);
 
 int
 cipher_stream_set_aad(cipher_stream_t *ctx,

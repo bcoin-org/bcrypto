@@ -97,6 +97,9 @@
 #define JS_ERR_DERIVE "Derivation failed."
 #define JS_ERR_MSG_SIZE "Invalid message size."
 #define JS_ERR_ALLOC "Allocation failed."
+#define JS_ERR_ARG "Invalid argument."
+#define JS_ERR_OPT "Could not set option."
+#define JS_ERR_GET "Could not get value."
 
 #define JS_THROW(msg) do {                              \
   CHECK(napi_throw_error(env, NULL, (msg)) == napi_ok); \
@@ -2017,6 +2020,43 @@ bcrypto_cipher_init(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
+bcrypto_cipher_set_padding(napi_env env, napi_callback_info info) {
+  napi_value argv[2];
+  size_t argc = 2;
+  bool padding;
+  bcrypto_cipher_t *cipher;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 2);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&cipher) == napi_ok);
+  CHECK(napi_get_value_bool(env, argv[1], &padding) == napi_ok);
+
+  JS_ASSERT(cipher->started, JS_ERR_INIT);
+  JS_ASSERT(cipher_stream_set_padding(&cipher->ctx, padding), JS_ERR_OPT);
+
+  return argv[0];
+}
+
+static napi_value
+bcrypto_cipher_set_aad(napi_env env, napi_callback_info info) {
+  napi_value argv[2];
+  size_t argc = 2;
+  const uint8_t *aad;
+  size_t aad_len;
+  bcrypto_cipher_t *cipher;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 2);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&cipher) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], (void **)&aad, &aad_len) == napi_ok);
+
+  JS_ASSERT(cipher->started, JS_ERR_INIT);
+  JS_ASSERT(cipher_stream_set_aad(&cipher->ctx, aad, aad_len), JS_ERR_OPT);
+
+  return argv[0];
+}
+
+static napi_value
 bcrypto_cipher_set_ccm(napi_env env, napi_callback_info info) {
   napi_value argv[4];
   size_t argc = 4;
@@ -2037,31 +2077,13 @@ bcrypto_cipher_set_ccm(napi_env env, napi_callback_info info) {
 
   ok = cipher_stream_set_ccm(&cipher->ctx, msg_len, tag_len, aad, aad_len);
 
-  JS_ASSERT(ok, JS_ERR_CONTEXT);
+  JS_ASSERT(ok, JS_ERR_OPT);
 
   cipher->started = 1;
 
   return argv[0];
 }
 
-static napi_value
-bcrypto_cipher_set_aad(napi_env env, napi_callback_info info) {
-  napi_value argv[2];
-  size_t argc = 2;
-  const uint8_t *aad;
-  size_t aad_len;
-  bcrypto_cipher_t *cipher;
-
-  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
-  CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&cipher) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&aad, &aad_len) == napi_ok);
-
-  JS_ASSERT(cipher->started, JS_ERR_INIT);
-  JS_ASSERT(cipher_stream_set_aad(&cipher->ctx, aad, aad_len), JS_ERR_INIT);
-
-  return argv[0];
-}
 
 static napi_value
 bcrypto_cipher_set_tag(napi_env env, napi_callback_info info) {
@@ -2077,7 +2099,7 @@ bcrypto_cipher_set_tag(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&tag, &tag_len) == napi_ok);
 
   JS_ASSERT(cipher->started, JS_ERR_INIT);
-  JS_ASSERT(cipher_stream_set_tag(&cipher->ctx, tag, tag_len), JS_ERR_INIT);
+  JS_ASSERT(cipher_stream_set_tag(&cipher->ctx, tag, tag_len), JS_ERR_OPT);
 
   return argv[0];
 }
@@ -2095,7 +2117,7 @@ bcrypto_cipher_get_tag(napi_env env, napi_callback_info info) {
   CHECK(argc == 1);
   CHECK(napi_get_value_external(env, argv[0], (void **)&cipher) == napi_ok);
 
-  JS_ASSERT(cipher_stream_get_tag(&cipher->ctx, out, &out_len), JS_ERR_INIT);
+  JS_ASSERT(cipher_stream_get_tag(&cipher->ctx, out, &out_len), JS_ERR_GET);
 
   CHECK(napi_create_buffer_copy(env, out_len, out, NULL, &result) == napi_ok);
 
@@ -2296,7 +2318,7 @@ bcrypto_ctr_drbg_create(napi_env env, napi_callback_info info) {
   CHECK(napi_get_value_uint32(env, argv[0], &bits) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[1], &derivation) == napi_ok);
 
-  JS_ASSERT(bits == 128 || bits == 192 || bits == 256, JS_ERR_INIT);
+  JS_ASSERT(bits == 128 || bits == 192 || bits == 256, JS_ERR_ARG);
 
   drbg = (bcrypto_ctr_drbg_t *)torsion_alloc(sizeof(bcrypto_ctr_drbg_t));
   drbg->bits = bits;
@@ -6201,7 +6223,7 @@ bcrypto_hash_digest(napi_env env, napi_callback_info info) {
   CHECK(napi_get_value_uint32(env, argv[0], &type) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&in, &in_len) == napi_ok);
 
-  JS_ASSERT(hash_has_backend(type), JS_ERR_INIT);
+  JS_ASSERT(hash_has_backend(type), JS_ERR_ARG);
 
   out_len = hash_output_size(type);
 
@@ -6234,7 +6256,7 @@ bcrypto_hash_root(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&right,
                              &right_len) == napi_ok);
 
-  JS_ASSERT(hash_has_backend(type), JS_ERR_INIT);
+  JS_ASSERT(hash_has_backend(type), JS_ERR_ARG);
 
   out_len = hash_output_size(type);
 
@@ -6269,7 +6291,7 @@ bcrypto_hash_multi(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&y, &y_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[3], (void **)&z, &z_len) == napi_ok);
 
-  JS_ASSERT(hash_has_backend(type), JS_ERR_INIT);
+  JS_ASSERT(hash_has_backend(type), JS_ERR_ARG);
 
   out_len = hash_output_size(type);
 
@@ -6306,7 +6328,7 @@ bcrypto_hash_drbg_create(napi_env env, napi_callback_info info) {
   CHECK(argc == 1);
   CHECK(napi_get_value_uint32(env, argv[0], &type) == napi_ok);
 
-  JS_ASSERT(hash_has_backend(type), JS_ERR_INIT);
+  JS_ASSERT(hash_has_backend(type), JS_ERR_ARG);
 
   drbg = (bcrypto_hash_drbg_t *)torsion_alloc(sizeof(bcrypto_hash_drbg_t));
   drbg->type = type;
@@ -6485,7 +6507,7 @@ bcrypto_hmac_create(napi_env env, napi_callback_info info) {
   CHECK(argc == 1);
   CHECK(napi_get_value_uint32(env, argv[0], &type) == napi_ok);
 
-  JS_ASSERT(hash_has_backend(type), JS_ERR_INIT);
+  JS_ASSERT(hash_has_backend(type), JS_ERR_ARG);
 
   hmac = (bcrypto_hmac_t *)torsion_alloc(sizeof(bcrypto_hmac_t));
   hmac->type = type;
@@ -6582,7 +6604,7 @@ bcrypto_hmac_digest(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&in, &in_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&key, &key_len) == napi_ok);
 
-  JS_ASSERT(hash_has_backend(type), JS_ERR_INIT);
+  JS_ASSERT(hash_has_backend(type), JS_ERR_ARG);
 
   out_len = hash_output_size(type);
 
@@ -6617,7 +6639,7 @@ bcrypto_hmac_drbg_create(napi_env env, napi_callback_info info) {
   CHECK(argc == 1);
   CHECK(napi_get_value_uint32(env, argv[0], &type) == napi_ok);
 
-  JS_ASSERT(hash_has_backend(type), JS_ERR_INIT);
+  JS_ASSERT(hash_has_backend(type), JS_ERR_ARG);
 
   drbg = (bcrypto_hmac_drbg_t *)torsion_alloc(sizeof(bcrypto_hmac_drbg_t));
   drbg->type = type;
@@ -12194,8 +12216,9 @@ bcrypto_init(napi_env env, napi_value exports) {
     /* Cipher */
     { "cipher_create", bcrypto_cipher_create },
     { "cipher_init", bcrypto_cipher_init },
-    { "cipher_set_ccm", bcrypto_cipher_set_ccm },
+    { "cipher_set_padding", bcrypto_cipher_set_padding },
     { "cipher_set_aad", bcrypto_cipher_set_aad },
+    { "cipher_set_ccm", bcrypto_cipher_set_ccm },
     { "cipher_set_tag", bcrypto_cipher_set_tag },
     { "cipher_get_tag", bcrypto_cipher_get_tag },
     { "cipher_update", bcrypto_cipher_update },

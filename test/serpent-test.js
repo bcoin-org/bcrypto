@@ -70,10 +70,10 @@ describe('Serpent', function() {
       const s = new Serpent(bits).init(k);
       const out = Buffer.alloc(16);
 
-      s.encrypt(pt, 0, out, 0);
+      s.encrypt(out, 0, pt, 0);
       assert.bufferEqual(out, ct);
 
-      s.decrypt(ct, 0, out, 0);
+      s.decrypt(out, 0, ct, 0);
       assert.bufferEqual(out, pt);
 
       assert.bufferEqual(cipher.encrypt(name, k, null, pt), ct);
@@ -81,6 +81,20 @@ describe('Serpent', function() {
 
       assert.bufferEqual(cipher.encrypt(`${name}-ECB`, k, null, pt), ect);
       assert.bufferEqual(cipher.decrypt(`${name}-ECB`, k, null, ect), pt);
+
+      {
+        const c = new cipher.Cipher(`${name}-ECB`).init(k);
+        const d = new cipher.Decipher(`${name}-ECB`).init(k);
+
+        c.setAutoPadding(false);
+        d.setAutoPadding(false);
+
+        assert.bufferEqual(c.update(pt), ct);
+        assert.bufferEqual(d.update(ct), pt);
+
+        c.final();
+        d.final();
+      }
     });
   }
 });
