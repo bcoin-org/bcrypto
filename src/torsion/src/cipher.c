@@ -6468,6 +6468,225 @@ gcm_digest(gcm_t *mode, unsigned char *mac) {
 }
 
 /*
+ * CBC-MAC
+ */
+
+typedef struct __cbcmac_s cbcmac_t;
+
+static void
+cbcmac_init(cbcmac_t *ctx, const cipher_t *cipher) {
+  ctx->size = cipher_block_size(cipher->type);
+  memset(ctx->mac, 0, ctx->size);
+  ctx->pos = 0;
+}
+
+static void
+cbcmac_update(cbcmac_t *ctx, const cipher_t *cipher,
+              const unsigned char *data, size_t len) {
+  size_t mask = ctx->size - 1;
+  size_t i;
+
+  for (i = 0; i < len; i++) {
+    ctx->mac[ctx->pos++] ^= data[i];
+
+    if ((ctx->pos & mask) == 0) {
+      cipher_encrypt(cipher, ctx->mac, ctx->mac);
+      ctx->pos = 0;
+    }
+  }
+}
+
+static void
+cbcmac_pad(cbcmac_t *ctx, const cipher_t *cipher) {
+  if (ctx->pos > 0) {
+    cipher_encrypt(cipher, ctx->mac, ctx->mac);
+    ctx->pos = 0;
+  }
+}
+
+static void
+cbcmac_final(cbcmac_t *ctx, const cipher_t *cipher, unsigned char *mac) {
+  cbcmac_pad(ctx, cipher);
+  memcpy(mac, ctx->mac, ctx->size);
+}
+
+/*
+ * CCM
+ * https://tools.ietf.org/html/rfc3610
+ */
+
+int
+ccm_init(ccm_t *mode, const cipher_t *cipher,
+         const unsigned char *iv, size_t iv_len) {
+  memset(mode, 0, sizeof(*mode));
+
+  if (cipher_block_size(cipher->type) != 16)
+    return 0;
+
+  /* sjcl compat: no upper limit on l(N). */
+  if (iv_len < 7)
+    return 0;
+
+  if (iv_len > 13)
+    iv_len = 13;
+
+  cbcmac_init(&mode->hash, cipher);
+
+  mode->size = cipher_block_size(cipher->type);
+
+  /* Store the IV here for now. */
+  memcpy(mode->state, iv, iv_len);
+
+  mode->pos = iv_len;
+
+  return 1;
+}
+
+int
+ccm_setup(ccm_t *mode, const cipher_t *cipher,
+          size_t msg_len, size_t tag_len,
+          const unsigned char *aad, size_t aad_len) {
+  size_t block_size = cipher_block_size(cipher->type);
+  const unsigned char *iv = mode->state;
+  size_t iv_len = mode->pos;
+  unsigned char block[16];
+  size_t Adata = (aad_len > 0);
+  size_t lm = msg_len;
+  size_t M = tag_len;
+  size_t L = 0;
+  size_t i, N;
+
+  if (block_size != 16)
+    return 0;
+
+  /* sjcl compat: no upper limit on l(N). */
+  if (iv_len < 7)
+    return 0;
+
+  if (M < 4 || M > 16 || (M & 1) != 0)
+    return 0;
+
+  memset(block, 0, 16);
+
+  /* Compute L and N. */
+  L = 0;
+
+  while (msg_len > 0) {
+    L += 1;
+    msg_len >>= 1;
+  }
+
+  L = (L + 7) / 8;
+
+  if (L < 2)
+    L = 2;
+
+  N = 15 - L;
+
+  /* Compute flags. */
+  block[0] = 64 * Adata + 8 * ((M - 2) / 2) + (L - 1);
+
+  /* sjcl compat: clamp nonces to 15-L. */
+  memcpy(block + 1, iv, iv_len < N ? iv_len : N);
+
+  /* Serialize message length. */
+  for (i = 15; i >= 1 + N; i--) {
+    block[i] = lm & 0xff;
+    lm >>= 8;
+  }
+
+  if (lm != 0)
+    return 0;
+
+  cbcmac_init(&mode->hash, cipher);
+  cbcmac_update(&mode->hash, cipher, block, 16);
+
+  if (aad_len > 0) {
+    unsigned char buf[10];
+
+    if (aad_len < 0xff00) {
+      write16be(buf, aad_len);
+      cbcmac_update(&mode->hash, cipher, buf, 2);
+    } else if (aad_len < 0xffffffff) {
+      write16be(buf + 0, 0xfffe);
+      write32be(buf + 2, aad_len);
+      cbcmac_update(&mode->hash, cipher, buf, 6);
+    } else {
+      write16be(buf + 0, 0xffff);
+      write64be(buf + 2, aad_len);
+      cbcmac_update(&mode->hash, cipher, buf, 10);
+    }
+
+    cbcmac_update(&mode->hash, cipher, aad, aad_len);
+    cbcmac_pad(&mode->hash, cipher);
+  }
+
+  block[0] &= 7;
+  block[15] = 1;
+
+  for (i = 14; i >= 1 + N; i--)
+    block[i] = 0;
+
+  memcpy(mode->ctr, block, 16);
+
+  mode->size = block_size;
+  mode->pos = 0;
+
+  return 1;
+}
+
+static void
+ccm_crypt(ccm_t *mode, const cipher_t *cipher,
+          unsigned char *dst, const unsigned char *src, size_t len) {
+  size_t mask = mode->size - 1;
+  size_t i, j;
+
+  for (i = 0; i < len; i++) {
+    if ((mode->pos & mask) == 0) {
+      cipher_encrypt(cipher, mode->state, mode->ctr);
+
+      for (j = 15; j >= 1; j--) {
+        if (++mode->ctr[j] != 0x00)
+          break;
+      }
+
+      mode->pos = 0;
+    }
+
+    dst[i] = src[i] ^ mode->state[mode->pos++];
+  }
+}
+
+void
+ccm_encrypt(ccm_t *mode, const cipher_t *cipher,
+            unsigned char *dst, const unsigned char *src, size_t len) {
+  cbcmac_update(&mode->hash, cipher, src, len);
+  ccm_crypt(mode, cipher, dst, src, len);
+}
+
+void
+ccm_decrypt(ccm_t *mode, const cipher_t *cipher,
+            unsigned char *dst, const unsigned char *src, size_t len) {
+  ccm_crypt(mode, cipher, dst, src, len);
+  cbcmac_update(&mode->hash, cipher, dst, len);
+}
+
+void
+ccm_digest(ccm_t *mode, const cipher_t *cipher, unsigned char *mac) {
+  size_t i = 16 - ((mode->ctr[0] & 7) + 1);
+
+  cbcmac_final(&mode->hash, cipher, mac);
+
+  /* Recreate S_0. */
+  while (i < 16)
+    mode->ctr[i++] = 0;
+
+  mode->pos = 0;
+
+  ccm_crypt(mode, cipher, mac, mac, 16);
+}
+
+/*
  * Cipher Mode
  */
 
@@ -6490,6 +6709,8 @@ cipher_mode_init(cipher_mode_t *ctx, const cipher_t *cipher,
       return ofb_init(&ctx->mode.ofb, cipher, iv, iv_len);
     case CIPHER_MODE_GCM:
       return gcm_init(&ctx->mode.gcm, cipher, iv, iv_len);
+    case CIPHER_MODE_CCM:
+      return ccm_init(&ctx->mode.ccm, cipher, iv, iv_len);
     default:
       return 0;
   }
@@ -6505,6 +6726,20 @@ cipher_mode_aad(cipher_mode_t *ctx, const unsigned char *aad, size_t len) {
       ASSERT(0);
       break;
   }
+}
+
+int
+cipher_mode_set_ccm(cipher_mode_t *ctx,
+                    const cipher_t *cipher,
+                    size_t msg_len,
+                    size_t tag_len,
+                    const unsigned char *aad,
+                    size_t aad_len) {
+  if (ctx->type != CIPHER_MODE_CCM)
+    return 0;
+
+  return ccm_setup(&ctx->mode.ccm, cipher,
+                   msg_len, tag_len, aad, aad_len);
 }
 
 void
@@ -6532,6 +6767,9 @@ cipher_mode_encrypt(cipher_mode_t *ctx,
       break;
     case CIPHER_MODE_GCM:
       gcm_encrypt(&ctx->mode.gcm, cipher, dst, src, len);
+      break;
+    case CIPHER_MODE_CCM:
+      ccm_encrypt(&ctx->mode.ccm, cipher, dst, src, len);
       break;
     default:
       ASSERT(0);
@@ -6565,6 +6803,9 @@ cipher_mode_decrypt(cipher_mode_t *ctx,
     case CIPHER_MODE_GCM:
       gcm_decrypt(&ctx->mode.gcm, cipher, dst, src, len);
       break;
+    case CIPHER_MODE_CCM:
+      ccm_decrypt(&ctx->mode.ccm, cipher, dst, src, len);
+      break;
     default:
       ASSERT(0);
       break;
@@ -6572,10 +6813,15 @@ cipher_mode_decrypt(cipher_mode_t *ctx,
 }
 
 void
-cipher_mode_digest(cipher_mode_t *ctx, unsigned char *mac) {
+cipher_mode_digest(cipher_mode_t *ctx,
+                   const cipher_t *cipher,
+                   unsigned char *mac) {
   switch (ctx->type) {
     case CIPHER_MODE_GCM:
       gcm_digest(&ctx->mode.gcm, mac);
+      break;
+    case CIPHER_MODE_CCM:
+      ccm_digest(&ctx->mode.ccm, cipher, mac);
       break;
     default:
       ASSERT(0);
@@ -6585,6 +6831,7 @@ cipher_mode_digest(cipher_mode_t *ctx, unsigned char *mac) {
 
 int
 cipher_mode_verify(cipher_mode_t *ctx,
+                   const cipher_t *cipher,
                    const unsigned char *tag,
                    size_t tag_len) {
   unsigned char mac[CIPHER_MAX_TAG_SIZE];
@@ -6594,7 +6841,9 @@ cipher_mode_verify(cipher_mode_t *ctx,
   if (tag_len == 0 || tag_len > CIPHER_MAX_TAG_SIZE)
     return 0;
 
-  cipher_mode_digest(ctx, mac);
+  memset(mac, 0, sizeof(mac));
+
+  cipher_mode_digest(ctx, cipher, mac);
 
   for (i = 0; i < tag_len; i++)
     res |= (uint32_t)mac[i] ^ (uint32_t)tag[i];
@@ -6619,6 +6868,7 @@ cipher_stream_init(cipher_stream_t *ctx,
   ctx->block_pos = 0;
   ctx->last_size = 0;
   ctx->tag_len = 0;
+  ctx->ccm_len = 0;
 
   if (!cipher_init(&ctx->cipher, type, key, key_len))
     return 0;
@@ -6641,13 +6891,38 @@ cipher_stream_set_aad(cipher_stream_t *ctx,
 }
 
 int
+cipher_stream_set_ccm(cipher_stream_t *ctx,
+                      size_t msg_len,
+                      size_t tag_len,
+                      const unsigned char *aad,
+                      size_t aad_len) {
+  int r = cipher_mode_set_ccm(&ctx->mode, &ctx->cipher,
+                              msg_len, tag_len, aad, aad_len);
+
+  if (r)
+    ctx->ccm_len = tag_len;
+
+  return r;
+}
+
+int
 cipher_stream_set_tag(cipher_stream_t *ctx,
                       const unsigned char *tag, size_t len) {
-  if (ctx->mode.type != CIPHER_MODE_GCM || ctx->encrypt)
+  if (ctx->encrypt)
     return 0;
 
-  if (len != 4 && len != 8 && !(len >= 12 && len <= 16))
-    return 0;
+  switch (ctx->mode.type) {
+    case CIPHER_MODE_GCM:
+      if (len != 4 && len != 8 && !(len >= 12 && len <= 16))
+        return 0;
+      break;
+    case CIPHER_MODE_CCM:
+      if (len != ctx->ccm_len)
+        return 0;
+      break;
+    default:
+      return 0;
+  }
 
   memcpy(ctx->tag, tag, len);
 
@@ -6660,7 +6935,7 @@ int
 cipher_stream_get_tag(cipher_stream_t *ctx, unsigned char *tag, size_t *len) {
   *len = 0;
 
-  if (ctx->mode.type != CIPHER_MODE_GCM || !ctx->encrypt)
+  if (ctx->mode.type < CIPHER_MODE_GCM || !ctx->encrypt)
     return 0;
 
   if (ctx->tag_len == 0)
@@ -6840,12 +7115,30 @@ cipher_stream_final(cipher_stream_t *ctx,
     }
 
     case CIPHER_MODE_GCM: {
-      if (!ctx->encrypt)
-        return cipher_mode_verify(&ctx->mode, ctx->tag, ctx->tag_len);
+      if (!ctx->encrypt) {
+        return cipher_mode_verify(&ctx->mode, &ctx->cipher,
+                                  ctx->tag, ctx->tag_len);
+      }
 
-      cipher_mode_digest(&ctx->mode, ctx->tag);
+      cipher_mode_digest(&ctx->mode, &ctx->cipher, ctx->tag);
 
       ctx->tag_len = 16;
+
+      break;
+    }
+
+    case CIPHER_MODE_CCM: {
+      if (ctx->ccm_len == 0)
+        return 0;
+
+      if (!ctx->encrypt) {
+        return cipher_mode_verify(&ctx->mode, &ctx->cipher,
+                                  ctx->tag, ctx->tag_len);
+      }
+
+      cipher_mode_digest(&ctx->mode, &ctx->cipher, ctx->tag);
+
+      ctx->tag_len = ctx->ccm_len;
 
       break;
     }
@@ -6876,7 +7169,7 @@ cipher_static_crypt(unsigned char *output,
 
   *output_len = 0;
 
-  if (mode == CIPHER_MODE_GCM)
+  if (mode >= CIPHER_MODE_GCM)
     goto fail;
 
   if (!cipher_stream_init(&ctx, type, mode, encrypt, key, key_len, iv, iv_len))

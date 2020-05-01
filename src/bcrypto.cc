@@ -2017,6 +2017,34 @@ bcrypto_cipher_init(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
+bcrypto_cipher_set_ccm(napi_env env, napi_callback_info info) {
+  napi_value argv[4];
+  size_t argc = 4;
+  const uint8_t *aad;
+  size_t aad_len;
+  uint32_t msg_len, tag_len;
+  bcrypto_cipher_t *cipher;
+  int ok;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 4);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&cipher) == napi_ok);
+  CHECK(napi_get_value_uint32(env, argv[1], &msg_len) == napi_ok);
+  CHECK(napi_get_value_uint32(env, argv[2], &tag_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[3], (void **)&aad, &aad_len) == napi_ok);
+
+  JS_ASSERT(cipher->started, JS_ERR_INIT);
+
+  ok = cipher_stream_set_ccm(&cipher->ctx, msg_len, tag_len, aad, aad_len);
+
+  JS_ASSERT(ok, JS_ERR_CONTEXT);
+
+  cipher->started = 1;
+
+  return argv[0];
+}
+
+static napi_value
 bcrypto_cipher_set_aad(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
@@ -12166,6 +12194,7 @@ bcrypto_init(napi_env env, napi_value exports) {
     /* Cipher */
     { "cipher_create", bcrypto_cipher_create },
     { "cipher_init", bcrypto_cipher_init },
+    { "cipher_set_ccm", bcrypto_cipher_set_ccm },
     { "cipher_set_aad", bcrypto_cipher_set_aad },
     { "cipher_set_tag", bcrypto_cipher_set_tag },
     { "cipher_get_tag", bcrypto_cipher_get_tag },

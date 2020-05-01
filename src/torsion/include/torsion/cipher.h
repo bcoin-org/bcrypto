@@ -87,14 +87,21 @@ extern "C" {
 #define gcm_encrypt torsion_gcm_encrypt
 #define gcm_decrypt torsion_gcm_decrypt
 #define gcm_digest torsion_gcm_digest
+#define ccm_init torsion_ccm_init
+#define ccm_setup torsion_ccm_setup
+#define ccm_encrypt torsion_ccm_encrypt
+#define ccm_decrypt torsion_ccm_decrypt
+#define ccm_digest torsion_ccm_digest
 #define cipher_mode_init torsion_cipher_mode_init
 #define cipher_mode_aad torsion_cipher_mode_aad
+#define cipher_mode_set_ccm torsion_cipher_mode_set_ccm
 #define cipher_mode_encrypt torsion_cipher_mode_encrypt
 #define cipher_mode_decrypt torsion_cipher_mode_decrypt
 #define cipher_mode_digest torsion_cipher_mode_digest
 #define cipher_mode_verify torsion_cipher_mode_verify
 #define cipher_stream_init torsion_cipher_stream_init
 #define cipher_stream_set_aad torsion_cipher_stream_set_aad
+#define cipher_stream_set_ccm torsion_cipher_stream_set_ccm
 #define cipher_stream_set_tag torsion_cipher_stream_set_tag
 #define cipher_stream_get_tag torsion_cipher_stream_get_tag
 #define cipher_stream_update torsion_cipher_stream_update
@@ -140,7 +147,8 @@ extern "C" {
 #define CIPHER_MODE_CFB 4
 #define CIPHER_MODE_OFB 5
 #define CIPHER_MODE_GCM 6
-#define CIPHER_MODE_MAX 6
+#define CIPHER_MODE_CCM 7
+#define CIPHER_MODE_MAX 7
 
 #define CIPHER_MAX_BLOCK_SIZE 16
 #define CIPHER_MAX_TAG_SIZE 16
@@ -287,6 +295,20 @@ typedef struct _gcm_s {
   size_t pos;
 } gcm_t;
 
+struct __cbcmac_s {
+  unsigned char mac[CIPHER_MAX_BLOCK_SIZE];
+  size_t size;
+  size_t pos;
+};
+
+typedef struct _ccm_s {
+  struct __cbcmac_s hash;
+  unsigned char state[16];
+  uint8_t ctr[16];
+  size_t size;
+  size_t pos;
+} ccm_t;
+
 typedef struct _cipher_mode_s {
   int type;
   union {
@@ -296,6 +318,7 @@ typedef struct _cipher_mode_s {
     cfb_t cfb;
     ofb_t ofb;
     gcm_t gcm;
+    ccm_t ccm;
   } mode;
 } cipher_mode_t;
 
@@ -306,6 +329,7 @@ typedef struct _cipher_stream_s {
   size_t block_pos;
   size_t last_size;
   size_t tag_len;
+  size_t ccm_len;
   unsigned char block[CIPHER_MAX_BLOCK_SIZE];
   unsigned char last[CIPHER_MAX_BLOCK_SIZE];
   unsigned char tag[CIPHER_MAX_TAG_SIZE];
@@ -666,6 +690,30 @@ void
 gcm_digest(gcm_t *mode, unsigned char *mac);
 
 /*
+ * CCM
+ */
+
+int
+ccm_init(ccm_t *mode, const cipher_t *cipher,
+         const unsigned char *iv, size_t iv_len);
+
+int
+ccm_setup(ccm_t *mode, const cipher_t *cipher,
+          size_t msg_len, size_t tag_len,
+          const unsigned char *aad, size_t aad_len);
+
+void
+ccm_encrypt(ccm_t *mode, const cipher_t *cipher,
+            unsigned char *dst, const unsigned char *src, size_t len);
+
+void
+ccm_decrypt(ccm_t *mode, const cipher_t *cipher,
+            unsigned char *dst, const unsigned char *src, size_t len);
+
+void
+ccm_digest(ccm_t *mode, const cipher_t *cipher, unsigned char *mac);
+
+/*
  * Cipher Mode
  */
 
@@ -675,6 +723,14 @@ cipher_mode_init(cipher_mode_t *ctx, const cipher_t *cipher,
 
 void
 cipher_mode_aad(cipher_mode_t *ctx, const unsigned char *aad, size_t len);
+
+int
+cipher_mode_set_ccm(cipher_mode_t *ctx,
+                    const cipher_t *cipher,
+                    size_t msg_len,
+                    size_t tag_len,
+                    const unsigned char *aad,
+                    size_t aad_len);
 
 void
 cipher_mode_encrypt(cipher_mode_t *ctx,
@@ -691,10 +747,13 @@ cipher_mode_decrypt(cipher_mode_t *ctx,
                     size_t len);
 
 void
-cipher_mode_digest(cipher_mode_t *ctx, unsigned char *mac);
+cipher_mode_digest(cipher_mode_t *ctx,
+                   const cipher_t *cipher,
+                   unsigned char *mac);
 
 int
 cipher_mode_verify(cipher_mode_t *ctx,
+                   const cipher_t *cipher,
                    const unsigned char *tag,
                    size_t tag_len);
 
@@ -712,6 +771,13 @@ int
 cipher_stream_set_aad(cipher_stream_t *ctx,
                       const unsigned char *aad,
                       size_t len);
+
+int
+cipher_stream_set_ccm(cipher_stream_t *ctx,
+                      size_t msg_len,
+                      size_t tag_len,
+                      const unsigned char *aad,
+                      size_t aad_len);
 
 int
 cipher_stream_set_tag(cipher_stream_t *ctx,
