@@ -106,6 +106,7 @@ extern "C" {
 #define cipher_stream_set_tag torsion_cipher_stream_set_tag
 #define cipher_stream_get_tag torsion_cipher_stream_get_tag
 #define cipher_stream_update torsion_cipher_stream_update
+#define cipher_stream_update_in_place torsion_cipher_stream_update_in_place
 #define cipher_stream_update_size torsion_cipher_stream_update_size
 #define cipher_stream_final torsion_cipher_stream_final
 #define cipher_static_encrypt torsion_cipher_static_encrypt
@@ -796,6 +797,12 @@ void
 cipher_stream_update(cipher_stream_t *ctx,
                      unsigned char *output, size_t *output_len,
                      const unsigned char *input, size_t input_len);
+
+int
+cipher_stream_update_in_place(cipher_stream_t *ctx,
+                              unsigned char *dst,
+                              const unsigned char *src,
+                              size_t len);
 
 size_t
 cipher_stream_update_size(const cipher_stream_t *ctx, size_t input_len);

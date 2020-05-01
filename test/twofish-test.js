@@ -97,6 +97,15 @@ const vectors = [
   ]
 ];
 
+const mid = [
+  Buffer.from('13da15275237fe6ebe7d93c8745c14fe', 'hex'),
+  Buffer.from('cbfe324499b935323cbb648fc03fa27d', 'hex'),
+  Buffer.from('5d8bc12464d707bbb86cd75d70c64852', 'hex'),
+  Buffer.from('a1358fcad4902137792ace2b0f7cc26e', 'hex'),
+  Buffer.from('a357c2e320ad6d3faef59a754cc17e18', 'hex'),
+  Buffer.from('b074c6411f6fc42f06c50d86519db5f5', 'hex')
+];
+
 describe('Twofish', function() {
   for (const [i, [key, dec, enc]] of vectors.entries()) {
     it(`should pass twofish vector #${i}`, () => {
@@ -116,17 +125,64 @@ describe('Twofish', function() {
       for (let i = 0; i < 1000; i++)
         c.encrypt(data, 0, data, 0);
 
+      assert.bufferEqual(data, mid[i]);
+
       for (let i = 0; i < 1000; i++)
         c.decrypt(data, 0, data, 0);
 
       assert.bufferEqual(data, zero);
     });
 
-    it(`should pass twofish vector #${i} (ECB)`, () => {
+    it(`should pass twofish vector #${i} (cipher update)`, () => {
       const bits = key.length * 8;
       const c = new cipher.Cipher(`TWOFISH-${bits}-ECB`).init(key);
+      const d = new cipher.Decipher(`TWOFISH-${bits}-ECB`).init(key);
+
+      c.setAutoPadding(false);
+      d.setAutoPadding(false);
 
       assert.bufferEqual(c.update(dec), enc);
+      assert.bufferEqual(d.update(enc), dec);
+
+      const zero = Buffer.alloc(16, 0x00);
+
+      let data = Buffer.alloc(16, 0x00);
+
+      for (let i = 0; i < 1000; i++)
+        data = c.update(data);
+
+      assert.bufferEqual(data, mid[i]);
+
+      for (let i = 0; i < 1000; i++)
+        data = d.update(data);
+
+      assert.bufferEqual(data, zero);
+    });
+
+    it(`should pass twofish vector #${i} (cipher crypt)`, () => {
+      const bits = key.length * 8;
+      const c = new cipher.Cipher(`TWOFISH-${bits}`).init(key);
+      const d = new cipher.Decipher(`TWOFISH-${bits}`).init(key);
+      const buf = Buffer.alloc(16, 0x00);
+
+      c.crypt(buf, dec);
+      assert.bufferEqual(buf, enc);
+
+      d.crypt(buf, enc);
+      assert.bufferEqual(buf, dec);
+
+      const zero = Buffer.alloc(16, 0x00);
+      const data = Buffer.alloc(16, 0x00);
+
+      for (let i = 0; i < 1000; i++)
+        c.crypt(data, data);
+
+      assert.bufferEqual(data, mid[i]);
+
+      for (let i = 0; i < 1000; i++)
+        d.crypt(data, data);
+
+      assert.bufferEqual(data, zero);
     });
   }
 

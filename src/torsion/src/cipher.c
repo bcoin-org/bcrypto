@@ -7103,6 +7103,27 @@ cipher_stream_update_size(const cipher_stream_t *ctx, size_t input_len) {
 }
 
 int
+cipher_stream_update_in_place(cipher_stream_t *ctx,
+                              unsigned char *dst,
+                              const unsigned char *src,
+                              size_t len) {
+  if (ctx->mode.type > CIPHER_MODE_CBC) {
+    cipher_stream_crypt(ctx, dst, src, len);
+    return 1;
+  }
+
+  if (ctx->unpad || ctx->block_pos != 0)
+    return 0;
+
+  if ((len % ctx->block_size) != 0)
+    return 0;
+
+  cipher_stream_crypt(ctx, dst, src, len);
+
+  return 1;
+}
+
+int
 cipher_stream_final(cipher_stream_t *ctx,
                     unsigned char *output,
                     size_t *output_len) {

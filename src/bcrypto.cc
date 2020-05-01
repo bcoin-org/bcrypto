@@ -100,6 +100,7 @@
 #define JS_ERR_ARG "Invalid argument."
 #define JS_ERR_OPT "Could not set option."
 #define JS_ERR_GET "Could not get value."
+#define JS_ERR_CRYPT "Could not encipher."
 
 #define JS_THROW(msg) do {                              \
   CHECK(napi_throw_error(env, NULL, (msg)) == napi_ok); \
@@ -2150,6 +2151,32 @@ bcrypto_cipher_update(napi_env env, napi_callback_info info) {
   CHECK(create_external_buffer(env, out_len, out, &result) == napi_ok);
 
   return result;
+}
+
+static napi_value
+bcrypto_cipher_crypt(napi_env env, napi_callback_info info) {
+  napi_value argv[3];
+  size_t argc = 3;
+  uint8_t *out;
+  const uint8_t *in;
+  size_t out_len, in_len;
+  bcrypto_cipher_t *cipher;
+  int ok;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 3);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&cipher) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], (void **)&out, &out_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], (void **)&in, &in_len) == napi_ok);
+
+  JS_ASSERT(cipher->started, JS_ERR_INIT);
+  JS_ASSERT(out_len == in_len, JS_ERR_CRYPT);
+
+  ok = cipher_stream_update_in_place(&cipher->ctx, out, in, in_len);
+
+  JS_ASSERT(ok, JS_ERR_CRYPT);
+
+  return argv[1];
 }
 
 static napi_value
@@ -12222,6 +12249,7 @@ bcrypto_init(napi_env env, napi_value exports) {
     { "cipher_set_tag", bcrypto_cipher_set_tag },
     { "cipher_get_tag", bcrypto_cipher_get_tag },
     { "cipher_update", bcrypto_cipher_update },
+    { "cipher_crypt", bcrypto_cipher_crypt },
     { "cipher_final", bcrypto_cipher_final },
     { "cipher_destroy", bcrypto_cipher_destroy },
     { "cipher_encrypt", bcrypto_cipher_encrypt },
