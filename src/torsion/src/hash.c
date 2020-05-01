@@ -2485,7 +2485,7 @@ sha224_update(sha224_t *ctx, const void *data, size_t len) {
 
 void
 sha224_final(sha224_t *ctx, unsigned char *out) {
-  uint8_t tmp[32];
+  unsigned char tmp[32];
 
   sha256_final(ctx, tmp);
 
@@ -3947,7 +3947,7 @@ sha384_update(sha384_t *ctx, const void *data, size_t len) {
 
 void
 sha384_final(sha384_t *ctx, unsigned char *out) {
-  uint8_t tmp[64];
+  unsigned char tmp[64];
 
   sha512_final(ctx, tmp);
 
@@ -4707,7 +4707,7 @@ blake2s_init(blake2s_t *ctx,
   ctx->h[0] ^= 0x01010000 ^ (keylen << 8) ^ outlen;
 
   if (keylen > 0) {
-    uint8_t block[64];
+    unsigned char block[64];
 
     memset(block, 0x00, 64);
     memcpy(block, key, keylen);
@@ -4725,7 +4725,7 @@ blake2s_increment(blake2s_t *ctx, uint32_t inc) {
 }
 
 static void
-blake2s_compress(blake2s_t *ctx, const uint8_t *chunk) {
+blake2s_compress(blake2s_t *ctx, const unsigned char *chunk) {
   uint32_t m[16];
   uint32_t v[16];
   size_t i;
@@ -4818,7 +4818,7 @@ blake2s_update(blake2s_t *ctx, const void *data, size_t len) {
 
 void
 blake2s_final(blake2s_t *ctx, unsigned char *out) {
-  uint8_t buffer[32];
+  unsigned char buffer[32];
   size_t i;
 
   blake2s_increment(ctx, (uint32_t)ctx->buflen);
@@ -4883,7 +4883,7 @@ blake2b_init(blake2b_t *ctx,
   ctx->h[0] ^= 0x01010000 ^ (keylen << 8) ^ outlen;
 
   if (keylen > 0) {
-    uint8_t block[128];
+    unsigned char block[128];
 
     memset(block, 0x00, 128);
     memcpy(block, key, keylen);
@@ -4901,7 +4901,7 @@ blake2b_increment(blake2b_t *ctx, const uint64_t inc) {
 }
 
 static void
-blake2b_compress(blake2b_t *ctx, const uint8_t *chunk) {
+blake2b_compress(blake2b_t *ctx, const unsigned char *chunk) {
   uint64_t m[16];
   uint64_t v[16];
   size_t i;
@@ -4996,7 +4996,7 @@ blake2b_update(blake2b_t *ctx, const void *data, size_t len) {
 
 void
 blake2b_final(blake2b_t *ctx, unsigned char *out) {
-  uint8_t buffer[64];
+  unsigned char buffer[64];
   size_t i;
 
   blake2b_increment(ctx, ctx->buflen);
@@ -5092,7 +5092,7 @@ gost94_g(uint32_t a, uint32_t k) {
 }
 
 static void
-gost94_encrypt(uint8_t *msg, const uint8_t *key) {
+gost94_encrypt(unsigned char *msg, const unsigned char *key) {
   uint32_t k[8];
   uint32_t a = read32le(msg + 0);
   uint32_t b = read32le(msg + 4);
@@ -5285,7 +5285,7 @@ void
 gost94_final(gost94_t *ctx, unsigned char *out) {
   size_t pos = ctx->size & 31;
   uint64_t bits = ctx->size << 3;
-  uint8_t D[32];
+  unsigned char D[32];
 
   memset(D, 0x00, 32);
 

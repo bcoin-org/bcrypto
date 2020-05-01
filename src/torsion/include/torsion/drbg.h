@@ -65,7 +65,7 @@ typedef struct _ctr_drbg_s {
   unsigned char KV[48];
   unsigned char *K;
   unsigned char *V;
-  unsigned char state[16];
+  uint8_t state[16];
 } ctr_drbg_t;
 
 typedef hmac_drbg_t drbg_t;

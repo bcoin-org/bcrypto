@@ -1,8 +1,8 @@
 'use strict';
 
 const assert = require('bsert');
-const {GCM, GHASH} = require('../lib/js/ciphers/gcm');
-const AES = require('../lib/js/ciphers/aes');
+const GHASH = require('../lib/js/ciphers/ghash');
+const cipher = require('../lib/cipher');
 
 // https://github.com/golang/go/blob/master/src/crypto/cipher/gcm_test.go
 const vectors = [
@@ -227,6 +227,7 @@ describe('GCM', function() {
     ]);
 
     const h = new GHASH();
+
     h.init(key);
     h.aad(aad);
     h.update(data);
@@ -242,14 +243,18 @@ describe('GCM', function() {
     const expect = Buffer.from(vector[4], 'hex');
 
     it(`should compute GCM for ${vector[0].slice(0, 32)}...`, () => {
-      const gcm = new GCM(new AES(key.length * 8));
+      const name = `AES-${key.length * 8}-GCM`;
+      const gcm = new cipher.Cipher(name);
 
       gcm.init(key, nonce);
-      gcm.aad(ad);
-      gcm.encrypt(pt);
+      gcm.setAAD(ad);
 
-      const mac = gcm.final(expect.length - pt.length);
-      const result = Buffer.concat([pt, mac]);
+      const ct = gcm.update(pt);
+
+      gcm.final();
+
+      const mac = gcm.getAuthTag().slice(0, expect.length - pt.length);
+      const result = Buffer.concat([ct, mac]);
 
       assert.bufferEqual(result, expect);
     });

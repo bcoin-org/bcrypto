@@ -127,7 +127,7 @@ typedef struct bcrypto_chacha20_s {
 } bcrypto_chacha20_t;
 
 typedef struct bcrypto_cipher_s {
-  cipher_t ctx;
+  cipher_stream_t ctx;
   int type;
   int mode;
   int encrypt;
@@ -2002,12 +2002,12 @@ bcrypto_cipher_init(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&key, &key_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&iv, &iv_len) == napi_ok);
 
-  ok = cipher_init(&cipher->ctx,
-                   cipher->type,
-                   cipher->mode,
-                   cipher->encrypt,
-                   key, key_len,
-                   iv, iv_len);
+  ok = cipher_stream_init(&cipher->ctx,
+                          cipher->type,
+                          cipher->mode,
+                          cipher->encrypt,
+                          key, key_len,
+                          iv, iv_len);
 
   JS_ASSERT(ok, JS_ERR_CONTEXT);
 
@@ -2030,7 +2030,7 @@ bcrypto_cipher_set_aad(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&aad, &aad_len) == napi_ok);
 
   JS_ASSERT(cipher->started, JS_ERR_INIT);
-  JS_ASSERT(cipher_set_aad(&cipher->ctx, aad, aad_len), JS_ERR_INIT);
+  JS_ASSERT(cipher_stream_set_aad(&cipher->ctx, aad, aad_len), JS_ERR_INIT);
 
   return argv[0];
 }
@@ -2049,7 +2049,7 @@ bcrypto_cipher_set_tag(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&tag, &tag_len) == napi_ok);
 
   JS_ASSERT(cipher->started, JS_ERR_INIT);
-  JS_ASSERT(cipher_set_tag(&cipher->ctx, tag, tag_len), JS_ERR_INIT);
+  JS_ASSERT(cipher_stream_set_tag(&cipher->ctx, tag, tag_len), JS_ERR_INIT);
 
   return argv[0];
 }
@@ -2067,7 +2067,7 @@ bcrypto_cipher_get_tag(napi_env env, napi_callback_info info) {
   CHECK(argc == 1);
   CHECK(napi_get_value_external(env, argv[0], (void **)&cipher) == napi_ok);
 
-  JS_ASSERT(cipher_get_tag(&cipher->ctx, out, &out_len), JS_ERR_INIT);
+  JS_ASSERT(cipher_stream_get_tag(&cipher->ctx, out, &out_len), JS_ERR_INIT);
 
   CHECK(napi_create_buffer_copy(env, out_len, out, NULL, &result) == napi_ok);
 
@@ -2092,10 +2092,10 @@ bcrypto_cipher_update(napi_env env, napi_callback_info info) {
 
   JS_ASSERT(cipher->started, JS_ERR_INIT);
 
-  out_len = cipher_update_size(&cipher->ctx, in_len);
+  out_len = cipher_stream_update_size(&cipher->ctx, in_len);
   out = (uint8_t *)torsion_alloc(out_len);
 
-  cipher_update(&cipher->ctx, out, &out_len, in, in_len);
+  cipher_stream_update(&cipher->ctx, out, &out_len, in, in_len);
 
   CHECK(create_external_buffer(env, out_len, out, &result) == napi_ok);
 
@@ -2116,7 +2116,7 @@ bcrypto_cipher_final(napi_env env, napi_callback_info info) {
   CHECK(napi_get_value_external(env, argv[0], (void **)&cipher) == napi_ok);
 
   JS_ASSERT(cipher->started, JS_ERR_INIT);
-  JS_ASSERT(cipher_final(&cipher->ctx, out, &out_len), JS_ERR_FINAL);
+  JS_ASSERT(cipher_stream_final(&cipher->ctx, out, &out_len), JS_ERR_FINAL);
 
   cipher->started = 0;
 
@@ -2166,11 +2166,11 @@ bcrypto_cipher_encrypt(napi_env env, napi_callback_info info) {
   out_len = CIPHER_MAX_ENCRYPT_SIZE(in_len);
   out = (uint8_t *)torsion_alloc(out_len);
 
-  ok = cipher_encrypt(out, &out_len,
-                      type, mode,
-                      key, key_len,
-                      iv, iv_len,
-                      in, in_len);
+  ok = cipher_static_encrypt(out, &out_len,
+                             type, mode,
+                             key, key_len,
+                             iv, iv_len,
+                             in, in_len);
 
   if (!ok) {
     torsion_free(out);
@@ -2208,11 +2208,11 @@ bcrypto_cipher_decrypt(napi_env env, napi_callback_info info) {
   out_len = CIPHER_MAX_DECRYPT_SIZE(in_len);
   out = (uint8_t *)torsion_alloc(out_len);
 
-  ok = cipher_decrypt(out, &out_len,
-                      type, mode,
-                      key, key_len,
-                      iv, iv_len,
-                      in, in_len);
+  ok = cipher_static_decrypt(out, &out_len,
+                             type, mode,
+                             key, key_len,
+                             iv, iv_len,
+                             in, in_len);
 
   if (!ok) {
     torsion_free(out);

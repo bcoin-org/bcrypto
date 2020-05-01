@@ -179,15 +179,15 @@ extern "C" {
  */
 
 typedef struct _md2_s {
-  unsigned char state[48];
-  unsigned char checksum[16];
+  uint8_t state[48];
+  uint8_t checksum[16];
   unsigned char block[16];
   size_t size;
 } md2_t;
 
 typedef struct _md5_s {
   uint32_t state[4];
-  uint8_t block[64];
+  unsigned char block[64];
   uint64_t size;
 } md5_t;
 
@@ -195,13 +195,13 @@ typedef md5_t md4_t;
 
 typedef struct _ripemd160_s {
   uint32_t state[5];
-  uint8_t block[64];
+  unsigned char block[64];
   uint64_t size;
 } ripemd160_t;
 
 typedef struct _sha1_s {
   uint32_t state[5];
-  uint8_t block[64];
+  unsigned char block[64];
   uint64_t size;
 } sha1_t;
 
@@ -212,7 +212,7 @@ typedef struct _md5sha1_s {
 
 typedef struct _sha256_s {
   uint32_t state[8];
-  uint8_t block[64];
+  unsigned char block[64];
   uint64_t size;
 } sha256_t;
 
@@ -220,7 +220,7 @@ typedef sha256_t sha224_t;
 
 typedef struct _sha512_s {
   uint64_t state[8];
-  uint8_t block[128];
+  unsigned char block[128];
   uint64_t size;
 } sha512_t;
 
@@ -231,7 +231,7 @@ typedef sha256_t hash256_t;
 typedef struct _keccak_s {
   size_t bs;
   uint64_t state[25];
-  uint8_t block[200];
+  unsigned char block[200];
   size_t pos;
 } keccak_t;
 
@@ -241,7 +241,7 @@ typedef struct _blake2s_s {
   uint32_t h[8];
   uint32_t t[2];
   uint32_t f[2];
-  uint8_t buf[64];
+  unsigned char buf[64];
   size_t buflen;
   size_t outlen;
 } blake2s_t;
@@ -250,7 +250,7 @@ typedef struct _blake2b_s {
   uint64_t h[8];
   uint64_t t[2];
   uint64_t f[2];
-  uint8_t buf[128];
+  unsigned char buf[128];
   size_t buflen;
   size_t outlen;
 } blake2b_t;
@@ -258,13 +258,13 @@ typedef struct _blake2b_s {
 typedef struct _gost94_s {
   uint8_t state[32];
   uint8_t sigma[32];
-  uint8_t block[32];
+  unsigned char block[32];
   uint64_t size;
 } gost94_t;
 
 typedef struct _whirlpool_s {
   uint64_t state[8];
-  uint8_t block[64];
+  unsigned char block[64];
   uint64_t size;
 } whirlpool_t;
 

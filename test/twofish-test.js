@@ -104,10 +104,10 @@ describe('Twofish', function() {
       const c = new Twofish(bits).init(key);
       const buf = Buffer.alloc(16, 0x00);
 
-      c.encrypt(dec, 0, buf, 0);
+      c.encrypt(buf, 0, dec, 0);
       assert.bufferEqual(buf, enc);
 
-      c.decrypt(enc, 0, buf, 0);
+      c.decrypt(buf, 0, enc, 0);
       assert.bufferEqual(buf, dec);
 
       const zero = Buffer.alloc(16, 0x00);
