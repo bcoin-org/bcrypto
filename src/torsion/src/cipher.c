@@ -5502,14 +5502,12 @@ gfe_add(gfe_t *z, const gfe_t *x, const gfe_t *y) {
 
 static void
 gfe_dbl(gfe_t *z, const gfe_t *x) {
-  int msb = (x->hi & 1) == 1;
+  uint64_t msb = x->hi & 1;
 
   z->hi = x->hi >> 1;
   z->hi |= x->lo << 63;
   z->lo = x->lo >> 1;
-
-  if (msb)
-    z->lo ^= UINT64_C(0xe100000000000000);
+  z->lo ^= UINT64_C(0xe100000000000000) & -msb;
 }
 
 static void
