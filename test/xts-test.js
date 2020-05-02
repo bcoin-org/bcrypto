@@ -1,7 +1,7 @@
 'use strict';
 
 const assert = require('bsert');
-const cipher = require('../lib/js/cipher');
+const cipher = require('../lib/cipher');
 
 const vectors = [
   [

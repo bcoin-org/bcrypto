@@ -36,6 +36,25 @@
 #include "bio.h"
 
 /*
+ * Constants
+ */
+
+static const unsigned char zero64[64] = {0};
+
+/* Shifted by four. */
+static const uint32_t poly_table[9] = {
+  0x00001b, /* 8 */
+  0x000087, /* 16 */
+  0x000425, /* 32 */
+  0x000000,
+  0x000125, /* 64 */
+  0x000000,
+  0x000000,
+  0x000000,
+  0x080043  /* 128 */
+};
+
+/*
  * AES
  *
  * Resources:
@@ -5467,190 +5486,6 @@ pkcs7_unpad(unsigned char *dst,
 }
 
 /*
- * GHASH
- *
- * Resources:
- *   https://en.wikipedia.org/wiki/Galois/Counter_Mode
- *   https://dx.doi.org/10.6028/NIST.SP.800-38D
- *   https://github.com/golang/go/blob/master/src/crypto/cipher/gcm.go
- *   https://github.com/golang/go/blob/master/src/crypto/cipher/gcm_test.go
- *   https://github.com/DaGenix/rust-crypto/blob/master/src/ghash.rs
- */
-
-typedef struct __ghash_s ghash_t;
-typedef struct __ghash_fe_s gfe_t;
-
-static const uint16_t ghash_reduction[16] = {
-  0x0000, 0x1c20, 0x3840, 0x2460,
-  0x7080, 0x6ca0, 0x48c0, 0x54e0,
-  0xe100, 0xfd20, 0xd940, 0xc560,
-  0x9180, 0x8da0, 0xa9c0, 0xb5e0
-};
-
-static size_t
-revbits(size_t i) {
-  i = ((i << 2) & 0x0c) | ((i >> 2) & 0x03);
-  i = ((i << 1) & 0x0a) | ((i >> 1) & 0x05);
-  return i;
-}
-
-static void
-gfe_add(gfe_t *z, const gfe_t *x, const gfe_t *y) {
-  z->lo = x->lo ^ y->lo;
-  z->hi = x->hi ^ y->hi;
-}
-
-static void
-gfe_dbl(gfe_t *z, const gfe_t *x) {
-  uint64_t msb = x->hi & 1;
-
-  z->hi = x->hi >> 1;
-  z->hi |= x->lo << 63;
-  z->lo = x->lo >> 1;
-  z->lo ^= UINT64_C(0xe100000000000000) & -msb;
-}
-
-static void
-gfe_mul(gfe_t *r, const gfe_t *x, const gfe_t *table) {
-  uint64_t word, msw;
-  const gfe_t *t;
-  size_t i, j;
-  gfe_t z;
-
-  z.hi = 0;
-  z.lo = 0;
-
-  for (i = 0; i < 2; i++) {
-    word = x->hi;
-
-    if (i == 1)
-      word = x->lo;
-
-    for (j = 0; j < 64; j += 4) {
-      msw = z.hi & 0x0f;
-
-      z.hi >>= 4;
-      z.hi |= z.lo << 60;
-      z.lo >>= 4;
-      z.lo ^= (uint64_t)ghash_reduction[msw] << 48;
-
-      t = &table[word & 0x0f];
-
-      z.lo ^= t->lo;
-      z.hi ^= t->hi;
-
-      word >>= 4;
-    }
-  }
-
-  *r = z;
-}
-
-static void
-ghash_transform(ghash_t *ctx, const unsigned char *block) {
-  ctx->state.lo ^= read64be(block + 0);
-  ctx->state.hi ^= read64be(block + 8);
-  gfe_mul(&ctx->state, &ctx->state, ctx->table);
-}
-
-static void
-ghash_absorb(ghash_t *ctx, const unsigned char *data, size_t len) {
-  size_t pos = ctx->size & 15;
-  size_t off = 0;
-
-  if (len == 0)
-    return;
-
-  ctx->size += len;
-
-  if (pos > 0) {
-    size_t want = 16 - pos;
-
-    if (want > len)
-      want = len;
-
-    memcpy(ctx->block + pos, data, want);
-
-    pos += want;
-    len -= want;
-    off += want;
-
-    if (pos < 16)
-      return;
-
-    ghash_transform(ctx, ctx->block);
-  }
-
-  while (len >= 16) {
-    ghash_transform(ctx, data + off);
-    off += 16;
-    len -= 16;
-  }
-
-  if (len > 0)
-    memcpy(ctx->block, data + off, len);
-}
-
-static void
-ghash_pad(ghash_t *ctx) {
-  static const unsigned char padding[16] = {0};
-  size_t pos = ctx->size & 15;
-
-  if (pos != 0)
-    ghash_absorb(ctx, padding, 16 - pos);
-}
-
-static void
-ghash_init(ghash_t *ctx, const unsigned char *key) {
-  gfe_t x;
-  size_t i;
-
-  memset(ctx, 0, sizeof(*ctx));
-
-  x.lo = read64be(key + 0);
-  x.hi = read64be(key + 8);
-
-  ctx->table[revbits(1)] = x;
-
-  for (i = 2; i < 16; i += 2) {
-    gfe_dbl(&ctx->table[revbits(i + 0)], &ctx->table[revbits(i / 2)]);
-    gfe_add(&ctx->table[revbits(i + 1)], &ctx->table[revbits(i)], &x);
-  }
-}
-
-static void
-ghash_aad(ghash_t *ctx, const unsigned char *data, size_t len) {
-  ctx->adlen += len;
-  ghash_absorb(ctx, data, len);
-}
-
-static void
-ghash_update(ghash_t *ctx, const unsigned char *data, size_t len) {
-  if (len == 0)
-    return;
-
-  if (ctx->ctlen == 0)
-    ghash_pad(ctx);
-
-  ctx->ctlen += len;
-
-  ghash_absorb(ctx, data, len);
-}
-
-static void
-ghash_final(ghash_t *ctx, unsigned char *out) {
-  ghash_pad(ctx);
-
-  ctx->state.lo ^= ctx->adlen << 3;
-  ctx->state.hi ^= ctx->ctlen << 3;
-
-  gfe_mul(&ctx->state, &ctx->state, ctx->table);
-
-  write64be(out + 0, ctx->state.lo);
-  write64be(out + 8, ctx->state.hi);
-}
-
-/*
  * Cipher
  */
 
@@ -6229,6 +6064,192 @@ cbc_decrypt(cbc_t *mode, const cipher_t *cipher,
 }
 
 /*
+ * XTS
+ */
+
+int
+xts_init(xts_t *mode, const cipher_t *cipher,
+         const unsigned char *iv, size_t iv_len) {
+  if (iv_len != cipher_block_size(cipher->type))
+    return 0;
+
+  memcpy(mode->tweak, iv, iv_len);
+  memset(mode->prev, 0, iv_len);
+
+  mode->size = iv_len;
+
+  return 1;
+}
+
+int
+xts_setup(xts_t *mode, const cipher_t *cipher,
+          const unsigned char *key, size_t key_len) {
+  cipher_t c;
+
+  if (!cipher_init(&c, cipher->type, key, key_len))
+    return 0;
+
+  cipher_encrypt(&c, mode->tweak, mode->tweak);
+
+  cleanse(&c, sizeof(c));
+
+  return 1;
+}
+
+static void
+xts_shift(xts_t *mode) {
+  uint32_t poly = poly_table[mode->size >> 4];
+  uint8_t cy = 0;
+  uint8_t c;
+  size_t i;
+
+  for (i = 0; i < mode->size; i++) {
+    c = mode->tweak[i] >> 7;
+
+    mode->tweak[i] <<= 1;
+    mode->tweak[i] |= cy;
+
+    cy = c;
+  }
+
+  mode->tweak[2] ^= (uint8_t)(poly >> 16) & -cy;
+  mode->tweak[1] ^= (uint8_t)(poly >>  8) & -cy;
+  mode->tweak[0] ^= (uint8_t)(poly >>  0) & -cy;
+}
+
+void
+xts_encrypt(xts_t *mode, const cipher_t *cipher,
+            unsigned char *dst, const unsigned char *src, size_t len) {
+  size_t i;
+
+  ASSERT((len % mode->size) == 0);
+
+  while (len > 0) {
+    for (i = 0; i < mode->size; i++)
+      dst[i] = src[i] ^ mode->tweak[i];
+
+    cipher_encrypt(cipher, dst, dst);
+
+    for (i = 0; i < mode->size; i++)
+      dst[i] ^= mode->tweak[i];
+
+    xts_shift(mode);
+
+    dst += mode->size;
+    src += mode->size;
+    len -= mode->size;
+  }
+}
+
+void
+xts_steal(xts_t *mode,
+          const cipher_t *cipher,
+          unsigned char *last, /* last ciphertext */
+          unsigned char *block, /* partial block */
+          size_t len) {
+  unsigned char tmp;
+  size_t i;
+
+  if (len == 0)
+    return;
+
+  ASSERT(len < mode->size);
+
+  for (i = 0; i < len; i++) {
+    tmp = block[i];
+    block[i] = last[i];
+    last[i] = tmp;
+  }
+
+  for (i = 0; i < mode->size; i++)
+    last[i] ^= mode->tweak[i];
+
+  cipher_encrypt(cipher, last, last);
+
+  for (i = 0; i < mode->size; i++)
+    last[i] ^= mode->tweak[i];
+}
+
+void
+xts_decrypt(xts_t *mode, const cipher_t *cipher,
+            unsigned char *dst, const unsigned char *src, size_t len) {
+  size_t i;
+
+  ASSERT((len % mode->size) == 0);
+
+  while (len > 0) {
+    if (len == mode->size)
+      memcpy(mode->prev, mode->tweak, mode->size);
+
+    for (i = 0; i < mode->size; i++)
+      dst[i] = src[i] ^ mode->tweak[i];
+
+    cipher_decrypt(cipher, dst, dst);
+
+    for (i = 0; i < mode->size; i++)
+      dst[i] ^= mode->tweak[i];
+
+    xts_shift(mode);
+
+    dst += mode->size;
+    src += mode->size;
+    len -= mode->size;
+  }
+}
+
+void
+xts_unsteal(xts_t *mode,
+            const cipher_t *cipher,
+            unsigned char *last, /* last plaintext */
+            unsigned char *block, /* partial block */
+            size_t len) {
+  unsigned char tmp;
+  size_t i;
+
+  if (len == 0)
+    return;
+
+  ASSERT(len < mode->size);
+
+  /* We could ask for the last ciphertext
+     block, but it makes for a worse API.
+     Instead, we simply re-encrypt. */
+  for (i = 0; i < mode->size; i++)
+    last[i] ^= mode->prev[i];
+
+  cipher_encrypt(cipher, last, last);
+
+  for (i = 0; i < mode->size; i++)
+    last[i] ^= mode->prev[i];
+
+  /* Recreate the last partial plaintext
+     block (block) and the last ciphertext
+     block (last). */
+  for (i = 0; i < mode->size; i++)
+    last[i] ^= mode->tweak[i];
+
+  cipher_decrypt(cipher, last, last);
+
+  for (i = 0; i < mode->size; i++)
+    last[i] ^= mode->tweak[i];
+
+  for (i = 0; i < len; i++) {
+    tmp = block[i];
+    block[i] = last[i];
+    last[i] = tmp;
+  }
+
+  /* Now decrypt the last ciphertext block. */
+  for (i = 0; i < mode->size; i++)
+    last[i] ^= mode->prev[i];
+
+  cipher_decrypt(cipher, last, last);
+
+  for (i = 0; i < mode->size; i++)
+    last[i] ^= mode->prev[i];
+}
+
+/*
  * CTR
  */
 
@@ -6363,6 +6384,189 @@ ofb_crypt(ofb_t *mode, const cipher_t *cipher,
 }
 
 /*
+ * GHASH
+ *
+ * Resources:
+ *   https://en.wikipedia.org/wiki/Galois/Counter_Mode
+ *   https://dx.doi.org/10.6028/NIST.SP.800-38D
+ *   https://github.com/golang/go/blob/master/src/crypto/cipher/gcm.go
+ *   https://github.com/golang/go/blob/master/src/crypto/cipher/gcm_test.go
+ *   https://github.com/DaGenix/rust-crypto/blob/master/src/ghash.rs
+ */
+
+typedef struct __ghash_s ghash_t;
+typedef struct __ghash_fe_s gfe_t;
+
+static const uint16_t ghash_reduction[16] = {
+  0x0000, 0x1c20, 0x3840, 0x2460,
+  0x7080, 0x6ca0, 0x48c0, 0x54e0,
+  0xe100, 0xfd20, 0xd940, 0xc560,
+  0x9180, 0x8da0, 0xa9c0, 0xb5e0
+};
+
+static size_t
+revbits(size_t i) {
+  i = ((i << 2) & 0x0c) | ((i >> 2) & 0x03);
+  i = ((i << 1) & 0x0a) | ((i >> 1) & 0x05);
+  return i;
+}
+
+static void
+gfe_add(gfe_t *z, const gfe_t *x, const gfe_t *y) {
+  z->lo = x->lo ^ y->lo;
+  z->hi = x->hi ^ y->hi;
+}
+
+static void
+gfe_dbl(gfe_t *z, const gfe_t *x) {
+  uint64_t msb = x->hi & 1;
+
+  z->hi = x->hi >> 1;
+  z->hi |= x->lo << 63;
+  z->lo = x->lo >> 1;
+  z->lo ^= UINT64_C(0xe100000000000000) & -msb;
+}
+
+static void
+gfe_mul(gfe_t *r, const gfe_t *x, const gfe_t *table) {
+  uint64_t word, msw;
+  const gfe_t *t;
+  size_t i, j;
+  gfe_t z;
+
+  z.hi = 0;
+  z.lo = 0;
+
+  for (i = 0; i < 2; i++) {
+    word = x->hi;
+
+    if (i == 1)
+      word = x->lo;
+
+    for (j = 0; j < 64; j += 4) {
+      msw = z.hi & 0x0f;
+
+      z.hi >>= 4;
+      z.hi |= z.lo << 60;
+      z.lo >>= 4;
+      z.lo ^= (uint64_t)ghash_reduction[msw] << 48;
+
+      t = &table[word & 0x0f];
+
+      z.lo ^= t->lo;
+      z.hi ^= t->hi;
+
+      word >>= 4;
+    }
+  }
+
+  *r = z;
+}
+
+static void
+ghash_transform(ghash_t *ctx, const unsigned char *block) {
+  ctx->state.lo ^= read64be(block + 0);
+  ctx->state.hi ^= read64be(block + 8);
+  gfe_mul(&ctx->state, &ctx->state, ctx->table);
+}
+
+static void
+ghash_absorb(ghash_t *ctx, const unsigned char *data, size_t len) {
+  size_t pos = ctx->size & 15;
+  size_t off = 0;
+
+  if (len == 0)
+    return;
+
+  ctx->size += len;
+
+  if (pos > 0) {
+    size_t want = 16 - pos;
+
+    if (want > len)
+      want = len;
+
+    memcpy(ctx->block + pos, data, want);
+
+    pos += want;
+    len -= want;
+    off += want;
+
+    if (pos < 16)
+      return;
+
+    ghash_transform(ctx, ctx->block);
+  }
+
+  while (len >= 16) {
+    ghash_transform(ctx, data + off);
+    off += 16;
+    len -= 16;
+  }
+
+  if (len > 0)
+    memcpy(ctx->block, data + off, len);
+}
+
+static void
+ghash_pad(ghash_t *ctx) {
+  size_t pos = ctx->size & 15;
+
+  if (pos > 0)
+    ghash_absorb(ctx, zero64, 16 - pos);
+}
+
+static void
+ghash_init(ghash_t *ctx, const unsigned char *key) {
+  gfe_t x;
+  size_t i;
+
+  memset(ctx, 0, sizeof(*ctx));
+
+  x.lo = read64be(key + 0);
+  x.hi = read64be(key + 8);
+
+  ctx->table[revbits(1)] = x;
+
+  for (i = 2; i < 16; i += 2) {
+    gfe_dbl(&ctx->table[revbits(i + 0)], &ctx->table[revbits(i / 2)]);
+    gfe_add(&ctx->table[revbits(i + 1)], &ctx->table[revbits(i)], &x);
+  }
+}
+
+static void
+ghash_aad(ghash_t *ctx, const unsigned char *data, size_t len) {
+  ctx->adlen += len;
+  ghash_absorb(ctx, data, len);
+}
+
+static void
+ghash_update(ghash_t *ctx, const unsigned char *data, size_t len) {
+  if (len == 0)
+    return;
+
+  if (ctx->ctlen == 0)
+    ghash_pad(ctx);
+
+  ctx->ctlen += len;
+
+  ghash_absorb(ctx, data, len);
+}
+
+static void
+ghash_final(ghash_t *ctx, unsigned char *out) {
+  ghash_pad(ctx);
+
+  ctx->state.lo ^= ctx->adlen << 3;
+  ctx->state.hi ^= ctx->ctlen << 3;
+
+  gfe_mul(&ctx->state, &ctx->state, ctx->table);
+
+  write64be(out + 0, ctx->state.lo);
+  write64be(out + 8, ctx->state.hi);
+}
+
+/*
  * GCM
  */
 
@@ -6398,7 +6602,6 @@ gcm_crypt(gcm_t *mode,
 int
 gcm_init(gcm_t *mode, const cipher_t *cipher,
          const unsigned char *iv, size_t iv_len) {
-  static const unsigned char zero16[16] = {0};
   unsigned char key[16];
   unsigned char tmp[16];
 
@@ -6409,7 +6612,7 @@ gcm_init(gcm_t *mode, const cipher_t *cipher,
 
   mode->pos = 0;
 
-  gcm_crypt(mode, cipher, key, zero16, 16);
+  gcm_crypt(mode, cipher, key, zero64, 16);
 
   ghash_init(&mode->hash, key);
 
@@ -6431,7 +6634,7 @@ gcm_init(gcm_t *mode, const cipher_t *cipher,
     mode->ctr[15] = 0x01;
   }
 
-  gcm_crypt(mode, cipher, mode->mask, zero16, 16);
+  gcm_crypt(mode, cipher, mode->mask, zero64, 16);
 
   return 1;
 }
@@ -6469,7 +6672,7 @@ gcm_digest(gcm_t *mode, unsigned char *mac) {
  * CBC-MAC
  */
 
-typedef struct __cbcmac_s cbcmac_t;
+typedef struct __cmac_s cbcmac_t;
 
 static void
 cbcmac_init(cbcmac_t *ctx, const cipher_t *cipher) {
@@ -6481,13 +6684,12 @@ cbcmac_init(cbcmac_t *ctx, const cipher_t *cipher) {
 static void
 cbcmac_update(cbcmac_t *ctx, const cipher_t *cipher,
               const unsigned char *data, size_t len) {
-  size_t mask = ctx->size - 1;
   size_t i;
 
   for (i = 0; i < len; i++) {
     ctx->mac[ctx->pos++] ^= data[i];
 
-    if ((ctx->pos & mask) == 0) {
+    if (ctx->pos == ctx->size) {
       cipher_encrypt(cipher, ctx->mac, ctx->mac);
       ctx->pos = 0;
     }
@@ -6685,6 +6887,170 @@ ccm_digest(ccm_t *mode, const cipher_t *cipher, unsigned char *mac) {
 }
 
 /*
+ * CMAC
+ * https://tools.ietf.org/html/rfc4493
+ */
+
+typedef struct __cmac_s cmac_t;
+
+static void
+cmac_init(cmac_t *ctx, const cipher_t *cipher, unsigned char flag) {
+  ctx->size = cipher_block_size(cipher->type);
+
+  memset(ctx->mac, 0, ctx->size);
+
+  ctx->pos = 0;
+
+  if (flag != 0xff) {
+    ctx->mac[ctx->size - 1] ^= flag;
+    ctx->pos = ctx->size;
+  }
+}
+
+static void
+cmac_shift(uint8_t *dst, const uint8_t *src, size_t size) {
+  uint32_t poly = poly_table[size >> 4];
+  size_t i = size;
+  uint8_t cy = 0;
+  uint8_t c;
+
+  while (i--) {
+    c = src[i] >> 7;
+
+    dst[i] = (src[i] << 1) | cy;
+
+    cy = c;
+  }
+
+  dst[size - 3] ^= (uint8_t)(poly >> 16) & -cy;
+  dst[size - 2] ^= (uint8_t)(poly >>  8) & -cy;
+  dst[size - 1] ^= (uint8_t)(poly >>  0) & -cy;
+}
+
+static void
+cmac_update(cmac_t *ctx, const cipher_t *cipher,
+            const unsigned char *data, size_t len) {
+  size_t i;
+
+  for (i = 0; i < len; i++) {
+    if (ctx->pos == ctx->size) {
+      cipher_encrypt(cipher, ctx->mac, ctx->mac);
+      ctx->pos = 0;
+    }
+
+    ctx->mac[ctx->pos++] ^= data[i];
+  }
+}
+
+static void
+cmac_final(cmac_t *ctx, const cipher_t *cipher, unsigned char *mac) {
+  unsigned char k[CIPHER_MAX_BLOCK_SIZE];
+  size_t i;
+
+  cipher_encrypt(cipher, k, zero64);
+
+  cmac_shift(k, k, ctx->size);
+
+  if (ctx->pos < ctx->size) {
+    ctx->mac[ctx->pos] ^= 0x80;
+    cmac_shift(k, k, ctx->size);
+  }
+
+  for (i = 0; i < ctx->size; i++)
+    ctx->mac[i] ^= k[i];
+
+  cipher_encrypt(cipher, mac, ctx->mac);
+}
+
+/*
+ * EAX
+ */
+
+int
+eax_init(eax_t *mode, const cipher_t *cipher,
+         const unsigned char *iv, size_t iv_len) {
+  if (iv_len == 0)
+    return 0;
+
+  mode->size = cipher_block_size(cipher->type);
+  mode->pos = 0;
+
+  cmac_init(&mode->hash1, cipher, 0);
+  cmac_update(&mode->hash1, cipher, iv, iv_len);
+  cmac_final(&mode->hash1, cipher, mode->mask);
+
+  memcpy(mode->ctr, mode->mask, mode->size);
+
+  cmac_init(&mode->hash1, cipher, 1);
+  cmac_init(&mode->hash2, cipher, 2);
+
+  return 1;
+}
+
+void
+eax_aad(eax_t *mode, const cipher_t *cipher,
+        const unsigned char *aad, size_t len) {
+  cmac_update(&mode->hash1, cipher, aad, len);
+}
+
+static void
+eax_crypt(eax_t *mode,
+          const cipher_t *cipher,
+          unsigned char *dst,
+          const unsigned char *src,
+          size_t len) {
+  size_t mask = mode->size - 1;
+  unsigned int cy;
+  size_t i, j;
+
+  for (i = 0; i < len; i++) {
+    if ((mode->pos & mask) == 0) {
+      cipher_encrypt(cipher, mode->state, mode->ctr);
+
+      cy = 1;
+      j = mode->size;
+
+      while (j--) {
+        cy += (unsigned int)mode->ctr[j];
+        mode->ctr[j] = cy;
+        cy >>= 8;
+      }
+
+      mode->pos = 0;
+    }
+
+    dst[i] = src[i] ^ mode->state[mode->pos++];
+  }
+}
+
+void
+eax_encrypt(eax_t *mode, const cipher_t *cipher,
+            unsigned char *dst, const unsigned char *src, size_t len) {
+  eax_crypt(mode, cipher, dst, src, len);
+  cmac_update(&mode->hash2, cipher, dst, len);
+}
+
+void
+eax_decrypt(eax_t *mode, const cipher_t *cipher,
+            unsigned char *dst, const unsigned char *src, size_t len) {
+  cmac_update(&mode->hash2, cipher, src, len);
+  eax_crypt(mode, cipher, dst, src, len);
+}
+
+void
+eax_digest(eax_t *mode, const cipher_t *cipher, unsigned char *mac) {
+  unsigned char mac1[CIPHER_MAX_BLOCK_SIZE];
+  unsigned char mac2[CIPHER_MAX_BLOCK_SIZE];
+  size_t i;
+
+  cmac_final(&mode->hash1, cipher, mac1);
+  cmac_final(&mode->hash2, cipher, mac2);
+
+  for (i = 0; i < mode->size; i++)
+    mac[i] = mac1[i] ^ mac2[i] ^ mode->mask[i];
+}
+
+/*
  * Cipher Mode
  */
 
@@ -6699,6 +7065,8 @@ cipher_mode_init(cipher_mode_t *ctx, const cipher_t *cipher,
       return iv_len == 0 && ecb_init(&ctx->mode.ecb, cipher);
     case CIPHER_MODE_CBC:
       return cbc_init(&ctx->mode.cbc, cipher, iv, iv_len);
+    case CIPHER_MODE_XTS:
+      return xts_init(&ctx->mode.xts, cipher, iv, iv_len);
     case CIPHER_MODE_CTR:
       return ctr_init(&ctx->mode.ctr, cipher, iv, iv_len);
     case CIPHER_MODE_CFB:
@@ -6709,35 +7077,41 @@ cipher_mode_init(cipher_mode_t *ctx, const cipher_t *cipher,
       return gcm_init(&ctx->mode.gcm, cipher, iv, iv_len);
     case CIPHER_MODE_CCM:
       return ccm_init(&ctx->mode.ccm, cipher, iv, iv_len);
+    case CIPHER_MODE_EAX:
+      return eax_init(&ctx->mode.eax, cipher, iv, iv_len);
     default:
       return 0;
   }
 }
 
-void
-cipher_mode_aad(cipher_mode_t *ctx, const unsigned char *aad, size_t len) {
-  switch (ctx->type) {
-    case CIPHER_MODE_GCM:
-      gcm_aad(&ctx->mode.gcm, aad, len);
-      break;
-    default:
-      ASSERT(0);
-      break;
-  }
-}
-
 int
-cipher_mode_set_ccm(cipher_mode_t *ctx,
-                    const cipher_t *cipher,
-                    size_t msg_len,
-                    size_t tag_len,
-                    const unsigned char *aad,
-                    size_t aad_len) {
+cipher_mode_ccm_setup(cipher_mode_t *ctx,
+                      const cipher_t *cipher,
+                      size_t msg_len,
+                      size_t tag_len,
+                      const unsigned char *aad,
+                      size_t aad_len) {
   if (ctx->type != CIPHER_MODE_CCM)
     return 0;
 
   return ccm_setup(&ctx->mode.ccm, cipher,
                    msg_len, tag_len, aad, aad_len);
+}
+
+void
+cipher_mode_aad(cipher_mode_t *ctx, const cipher_t *cipher,
+                const unsigned char *aad, size_t len) {
+  switch (ctx->type) {
+    case CIPHER_MODE_GCM:
+      gcm_aad(&ctx->mode.gcm, aad, len);
+      break;
+    case CIPHER_MODE_EAX:
+      eax_aad(&ctx->mode.eax, cipher, aad, len);
+      break;
+    default:
+      ASSERT(0);
+      break;
+  }
 }
 
 void
@@ -6754,6 +7128,9 @@ cipher_mode_encrypt(cipher_mode_t *ctx,
     case CIPHER_MODE_CBC:
       cbc_encrypt(&ctx->mode.cbc, cipher, dst, src, len);
       break;
+    case CIPHER_MODE_XTS:
+      xts_encrypt(&ctx->mode.xts, cipher, dst, src, len);
+      break;
     case CIPHER_MODE_CTR:
       ctr_crypt(&ctx->mode.ctr, cipher, dst, src, len);
       break;
@@ -6768,6 +7145,9 @@ cipher_mode_encrypt(cipher_mode_t *ctx,
       break;
     case CIPHER_MODE_CCM:
       ccm_encrypt(&ctx->mode.ccm, cipher, dst, src, len);
+      break;
+    case CIPHER_MODE_EAX:
+      eax_encrypt(&ctx->mode.eax, cipher, dst, src, len);
       break;
     default:
       ASSERT(0);
@@ -6789,6 +7169,9 @@ cipher_mode_decrypt(cipher_mode_t *ctx,
     case CIPHER_MODE_CBC:
       cbc_decrypt(&ctx->mode.cbc, cipher, dst, src, len);
       break;
+    case CIPHER_MODE_XTS:
+      xts_decrypt(&ctx->mode.xts, cipher, dst, src, len);
+      break;
     case CIPHER_MODE_CTR:
       ctr_crypt(&ctx->mode.ctr, cipher, dst, src, len);
       break;
@@ -6803,6 +7186,9 @@ cipher_mode_decrypt(cipher_mode_t *ctx,
       break;
     case CIPHER_MODE_CCM:
       ccm_decrypt(&ctx->mode.ccm, cipher, dst, src, len);
+      break;
+    case CIPHER_MODE_EAX:
+      eax_decrypt(&ctx->mode.eax, cipher, dst, src, len);
       break;
     default:
       ASSERT(0);
@@ -6820,6 +7206,9 @@ cipher_mode_digest(cipher_mode_t *ctx,
       break;
     case CIPHER_MODE_CCM:
       ccm_digest(&ctx->mode.ccm, cipher, mac);
+      break;
+    case CIPHER_MODE_EAX:
+      eax_digest(&ctx->mode.eax, cipher, mac);
       break;
     default:
       ASSERT(0);
@@ -6859,21 +7248,36 @@ cipher_stream_init(cipher_stream_t *ctx,
                    const unsigned char *key, size_t key_len,
                    const unsigned char *iv, size_t iv_len) {
   int is_block = mode == CIPHER_MODE_ECB || mode == CIPHER_MODE_CBC;
+  int is_xts = mode == CIPHER_MODE_XTS;
 
   ctx->encrypt = encrypt;
   ctx->padding = 1;
-  ctx->unpad = is_block && !encrypt;
+  ctx->unpad = (is_block && !encrypt) || is_xts;
   ctx->block_size = cipher_block_size(type);
   ctx->block_pos = 0;
   ctx->last_size = 0;
   ctx->tag_len = 0;
   ctx->ccm_len = 0;
 
+  if (is_xts) {
+    if (key_len == 0 || (key_len & 1) != 0)
+      return 0;
+
+    key_len /= 2;
+  }
+
   if (!cipher_init(&ctx->cipher, type, key, key_len))
     return 0;
 
   if (!cipher_mode_init(&ctx->mode, &ctx->cipher, mode, iv, iv_len))
     return 0;
+
+  if (is_xts) {
+    key += key_len;
+
+    if (!xts_setup(&ctx->mode.mode.xts, &ctx->cipher, key, key_len))
+      return 0;
+  }
 
   return 1;
 }
@@ -6882,11 +7286,12 @@ int
 cipher_stream_set_padding(cipher_stream_t *ctx, int padding) {
   int is_block = ctx->mode.type == CIPHER_MODE_ECB
               || ctx->mode.type == CIPHER_MODE_CBC;
+  int is_xts = ctx->mode.type == CIPHER_MODE_XTS;
 
-  if (!is_block)
+  if (!is_block && !is_xts)
     return 0;
 
-  if (!ctx->encrypt) {
+  if (!ctx->encrypt || is_xts) {
     if (ctx->last_size != 0)
       return 0;
 
@@ -6895,7 +7300,7 @@ cipher_stream_set_padding(cipher_stream_t *ctx, int padding) {
   }
 
   ctx->padding = !!padding;
-  ctx->unpad = padding && !ctx->encrypt;
+  ctx->unpad = padding && (!ctx->encrypt || is_xts);
 
   return 1;
 }
@@ -6903,12 +7308,14 @@ cipher_stream_set_padding(cipher_stream_t *ctx, int padding) {
 int
 cipher_stream_set_aad(cipher_stream_t *ctx,
                       const unsigned char *aad, size_t len) {
-  if (ctx->mode.type != CIPHER_MODE_GCM)
-    return 0;
-
-  cipher_mode_aad(&ctx->mode, aad, len);
-
-  return 1;
+  switch (ctx->mode.type) {
+    case CIPHER_MODE_GCM:
+    case CIPHER_MODE_EAX:
+      cipher_mode_aad(&ctx->mode, &ctx->cipher, aad, len);
+      return 1;
+    default:
+      return 0;
+  }
 }
 
 int
@@ -6917,8 +7324,8 @@ cipher_stream_set_ccm(cipher_stream_t *ctx,
                       size_t tag_len,
                       const unsigned char *aad,
                       size_t aad_len) {
-  int r = cipher_mode_set_ccm(&ctx->mode, &ctx->cipher,
-                              msg_len, tag_len, aad, aad_len);
+  int r = cipher_mode_ccm_setup(&ctx->mode, &ctx->cipher,
+                                msg_len, tag_len, aad, aad_len);
 
   if (r)
     ctx->ccm_len = tag_len;
@@ -6939,6 +7346,10 @@ cipher_stream_set_tag(cipher_stream_t *ctx,
       break;
     case CIPHER_MODE_CCM:
       if (len != ctx->ccm_len)
+        return 0;
+      break;
+    case CIPHER_MODE_EAX:
+      if (len == 0 || len > ctx->block_size)
         return 0;
       break;
     default:
@@ -6997,7 +7408,7 @@ cipher_stream_update(cipher_stream_t *ctx,
     return;
   }
 
-  if (ctx->mode.type > CIPHER_MODE_CBC) {
+  if (ctx->mode.type > CIPHER_MODE_XTS) {
     cipher_stream_crypt(ctx, output, input, input_len);
     *output_len = input_len;
     return;
@@ -7074,7 +7485,7 @@ cipher_stream_update_size(const cipher_stream_t *ctx, size_t input_len) {
   if (ilen == 0)
     return 0;
 
-  if (ctx->mode.type > CIPHER_MODE_CBC)
+  if (ctx->mode.type > CIPHER_MODE_XTS)
     return input_len;
 
   if (ctx->unpad)
@@ -7105,7 +7516,7 @@ cipher_stream_update_in_place(cipher_stream_t *ctx,
                               unsigned char *dst,
                               const unsigned char *src,
                               size_t len) {
-  if (ctx->mode.type > CIPHER_MODE_CBC) {
+  if (ctx->mode.type > CIPHER_MODE_XTS) {
     cipher_stream_crypt(ctx, dst, src, len);
     return 1;
   }
@@ -7163,7 +7574,35 @@ cipher_stream_final(cipher_stream_t *ctx,
       break;
     }
 
-    case CIPHER_MODE_GCM: {
+    case CIPHER_MODE_XTS: {
+      if (!ctx->padding) {
+        if (ctx->block_pos != 0)
+          return 0;
+
+        return 1;
+      }
+
+      if (ctx->last_size == 0)
+        return 0;
+
+      if (ctx->encrypt) {
+        xts_steal(&ctx->mode.mode.xts, &ctx->cipher,
+                  ctx->last, ctx->block, ctx->block_pos);
+      } else {
+        xts_unsteal(&ctx->mode.mode.xts, &ctx->cipher,
+                    ctx->last, ctx->block, ctx->block_pos);
+      }
+
+      memcpy(output, ctx->last, ctx->block_size);
+      memcpy(output + ctx->block_size, ctx->block, ctx->block_pos);
+
+      *output_len = ctx->block_size + ctx->block_pos;
+
+      return 1;
+    }
+
+    case CIPHER_MODE_GCM:
+    case CIPHER_MODE_EAX: {
       if (!ctx->encrypt) {
         return cipher_mode_verify(&ctx->mode, &ctx->cipher,
                                   ctx->tag, ctx->tag_len);
@@ -7171,7 +7610,7 @@ cipher_stream_final(cipher_stream_t *ctx,
 
       cipher_mode_digest(&ctx->mode, &ctx->cipher, ctx->tag);
 
-      ctx->tag_len = 16;
+      ctx->tag_len = ctx->block_size;
 
       break;
     }
@@ -7218,7 +7657,7 @@ cipher_static_crypt(unsigned char *output,
 
   *output_len = 0;
 
-  if (mode < 0 || mode >= CIPHER_MODE_GCM)
+  if (mode >= CIPHER_MODE_GCM)
     goto fail;
 
   if (!cipher_stream_init(&ctx, type, mode, encrypt, key, key_len, iv, iv_len))

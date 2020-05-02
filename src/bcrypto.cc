@@ -2183,7 +2183,7 @@ static napi_value
 bcrypto_cipher_final(napi_env env, napi_callback_info info) {
   napi_value argv[1];
   size_t argc = 1;
-  uint8_t out[CIPHER_MAX_BLOCK_SIZE];
+  uint8_t out[CIPHER_MAX_FINAL_SIZE];
   size_t out_len;
   bcrypto_cipher_t *cipher;
   napi_value result;

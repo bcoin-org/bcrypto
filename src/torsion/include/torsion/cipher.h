@@ -75,6 +75,12 @@ extern "C" {
 #define cbc_init torsion_cbc_init
 #define cbc_encrypt torsion_cbc_encrypt
 #define cbc_decrypt torsion_cbc_decrypt
+#define xts_init torsion_xts_init
+#define xts_setup torsion_xts_setup
+#define xts_encrypt torsion_xts_encrypt
+#define xts_steal torsion_xts_steal
+#define xts_decrypt torsion_xts_decrypt
+#define xts_unsteal torsion_xts_unsteal
 #define ctr_init torsion_ctr_init
 #define ctr_crypt torsion_ctr_crypt
 #define cfb_init torsion_cfb_init
@@ -92,9 +98,14 @@ extern "C" {
 #define ccm_encrypt torsion_ccm_encrypt
 #define ccm_decrypt torsion_ccm_decrypt
 #define ccm_digest torsion_ccm_digest
+#define eax_init torsion_eax_init
+#define eax_aad torsion_eax_aad
+#define eax_encrypt torsion_eax_encrypt
+#define eax_decrypt torsion_eax_decrypt
+#define eax_digest torsion_eax_digest
 #define cipher_mode_init torsion_cipher_mode_init
+#define cipher_mode_ccm_setup torsion_cipher_mode_ccm_setup
 #define cipher_mode_aad torsion_cipher_mode_aad
-#define cipher_mode_set_ccm torsion_cipher_mode_set_ccm
 #define cipher_mode_encrypt torsion_cipher_mode_encrypt
 #define cipher_mode_decrypt torsion_cipher_mode_decrypt
 #define cipher_mode_digest torsion_cipher_mode_digest
@@ -145,12 +156,14 @@ extern "C" {
 #define CIPHER_MODE_RAW 0
 #define CIPHER_MODE_ECB 1
 #define CIPHER_MODE_CBC 2
-#define CIPHER_MODE_CTR 3
-#define CIPHER_MODE_CFB 4
-#define CIPHER_MODE_OFB 5
-#define CIPHER_MODE_GCM 6
-#define CIPHER_MODE_CCM 7
-#define CIPHER_MODE_MAX 7
+#define CIPHER_MODE_XTS 3
+#define CIPHER_MODE_CTR 4
+#define CIPHER_MODE_CFB 5
+#define CIPHER_MODE_OFB 6
+#define CIPHER_MODE_GCM 7
+#define CIPHER_MODE_CCM 8
+#define CIPHER_MODE_EAX 9
+#define CIPHER_MODE_MAX 9
 
 #define CIPHER_MAX_BLOCK_SIZE 16
 #define CIPHER_MAX_TAG_SIZE 16
@@ -161,6 +174,9 @@ extern "C" {
 /* One extra block due to ctx->last. */
 #define CIPHER_MAX_UPDATE_SIZE(n) \
   ((_CIPHER_BLOCKS(n) + 1) * CIPHER_MAX_BLOCK_SIZE)
+
+/* 2 * n - 1 bytes due to XTS mode. */
+#define CIPHER_MAX_FINAL_SIZE (2 * CIPHER_MAX_BLOCK_SIZE - 1)
 
 #define CIPHER_MAX_ENCRYPT_SIZE(n) CIPHER_MAX_UPDATE_SIZE(n)
 #define CIPHER_MAX_DECRYPT_SIZE(n) CIPHER_MAX_UPDATE_SIZE(n)
@@ -255,6 +271,12 @@ typedef struct _cbc_s {
   size_t size;
 } cbc_t;
 
+typedef struct _xts_s {
+  unsigned char tweak[CIPHER_MAX_BLOCK_SIZE];
+  unsigned char prev[CIPHER_MAX_BLOCK_SIZE];
+  size_t size;
+} xts_t;
+
 typedef struct _ctr_s {
   uint8_t ctr[CIPHER_MAX_BLOCK_SIZE];
   unsigned char state[CIPHER_MAX_BLOCK_SIZE];
@@ -297,30 +319,42 @@ typedef struct _gcm_s {
   size_t pos;
 } gcm_t;
 
-struct __cbcmac_s {
+struct __cmac_s {
   unsigned char mac[CIPHER_MAX_BLOCK_SIZE];
   size_t size;
   size_t pos;
 };
 
 typedef struct _ccm_s {
-  struct __cbcmac_s hash;
+  struct __cmac_s hash;
   unsigned char state[16];
   uint8_t ctr[16];
   size_t size;
   size_t pos;
 } ccm_t;
 
+typedef struct _eax_s {
+  struct __cmac_s hash1;
+  struct __cmac_s hash2;
+  unsigned char state[CIPHER_MAX_BLOCK_SIZE];
+  unsigned char mask[CIPHER_MAX_BLOCK_SIZE];
+  uint8_t ctr[CIPHER_MAX_BLOCK_SIZE];
+  size_t size;
+  size_t pos;
+} eax_t;
+
 typedef struct _cipher_mode_s {
   int type;
   union {
     ecb_t ecb;
     cbc_t cbc;
+    xts_t xts;
     ctr_t ctr;
     cfb_t cfb;
     ofb_t ofb;
     gcm_t gcm;
     ccm_t ccm;
+    eax_t eax;
   } mode;
 } cipher_mode_t;
 
@@ -631,6 +665,39 @@ cbc_decrypt(cbc_t *mode, const cipher_t *cipher,
             unsigned char *dst, const unsigned char *src, size_t len);
 
 /*
+ * XTS
+ */
+
+int
+xts_init(xts_t *mode, const cipher_t *cipher,
+         const unsigned char *iv, size_t iv_len);
+
+int
+xts_setup(xts_t *mode, const cipher_t *cipher,
+          const unsigned char *key, size_t key_len);
+
+void
+xts_encrypt(xts_t *mode, const cipher_t *cipher,
+            unsigned char *dst, const unsigned char *src, size_t len);
+
+void
+xts_steal(xts_t *mode,
+          const cipher_t *cipher,
+          unsigned char *last, /* last ciphertext */
+          unsigned char *block, /* partial block */
+          size_t len);
+
+void
+xts_decrypt(xts_t *mode, const cipher_t *cipher,
+            unsigned char *dst, const unsigned char *src, size_t len);
+
+void
+xts_unsteal(xts_t *mode,
+            const cipher_t *cipher,
+            unsigned char *last, /* last plaintext */
+            unsigned char *block, /* partial block */
+            size_t len);
+/*
  * CTR
  */
 
@@ -717,6 +784,29 @@ void
 ccm_digest(ccm_t *mode, const cipher_t *cipher, unsigned char *mac);
 
 /*
+ * EAX
+ */
+
+int
+eax_init(eax_t *mode, const cipher_t *cipher,
+         const unsigned char *iv, size_t iv_len);
+
+void
+eax_aad(eax_t *mode, const cipher_t *cipher,
+        const unsigned char *aad, size_t len);
+
+void
+eax_encrypt(eax_t *mode, const cipher_t *cipher,
+            unsigned char *dst, const unsigned char *src, size_t len);
+
+void
+eax_decrypt(eax_t *mode, const cipher_t *cipher,
+            unsigned char *dst, const unsigned char *src, size_t len);
+
+void
+eax_digest(eax_t *mode, const cipher_t *cipher, unsigned char *mac);
+
+/*
  * Cipher Mode
  */
 
@@ -724,16 +814,17 @@ int
 cipher_mode_init(cipher_mode_t *ctx, const cipher_t *cipher,
                  int type, const unsigned char *iv, size_t iv_len);
 
-void
-cipher_mode_aad(cipher_mode_t *ctx, const unsigned char *aad, size_t len);
-
 int
-cipher_mode_set_ccm(cipher_mode_t *ctx,
-                    const cipher_t *cipher,
-                    size_t msg_len,
-                    size_t tag_len,
-                    const unsigned char *aad,
-                    size_t aad_len);
+cipher_mode_ccm_setup(cipher_mode_t *ctx,
+                      const cipher_t *cipher,
+                      size_t msg_len,
+                      size_t tag_len,
+                      const unsigned char *aad,
+                      size_t aad_len);
+
+void
+cipher_mode_aad(cipher_mode_t *ctx, const cipher_t *cipher,
+                const unsigned char *aad, size_t len);
 
 void
 cipher_mode_encrypt(cipher_mode_t *ctx,

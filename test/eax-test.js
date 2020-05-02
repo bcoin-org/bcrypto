@@ -1,7 +1,7 @@
 'use strict';
 
 const assert = require('bsert');
-const cipher = require('../lib/js/cipher');
+const cipher = require('../lib/cipher');
 const AES = require('../lib/js/ciphers/aes');
 const {CMAC} = require('../lib/js/ciphers/modes');
 
