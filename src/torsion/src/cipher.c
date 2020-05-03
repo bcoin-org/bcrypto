@@ -5555,8 +5555,6 @@ cipher_key_size(int type) {
     default:
       return 0;
   }
-
-  return 1;
 }
 
 size_t
@@ -5613,8 +5611,6 @@ cipher_block_size(int type) {
     default:
       return 0;
   }
-
-  return 1;
 }
 
 int
@@ -5840,7 +5836,7 @@ cipher_init(cipher_t *ctx, int type, const unsigned char *key, size_t key_len) {
     }
 
     default: {
-      return 0;
+      goto fail;
     }
   }
 
@@ -6700,9 +6696,11 @@ cbcmac_final(cbcmac_t *ctx, const cipher_t *cipher, unsigned char *mac) {
 int
 ccm_init(ccm_t *mode, const cipher_t *cipher,
          const unsigned char *iv, size_t iv_len) {
+  /* CCM is specified to have a block size of 16. */
   if (cipher->size != 16)
     goto fail;
 
+  /* sjcl _does_ have a lower limit. */
   if (iv_len < 7)
     goto fail;
 
@@ -6712,9 +6710,12 @@ ccm_init(ccm_t *mode, const cipher_t *cipher,
 
   cbcmac_init(&mode->hash, cipher);
 
+  /* Defensive memsets. */
   memset(mode->ctr, 0, 16);
+  memset(mode->state + iv_len, 0, 16 - iv_len);
 
-  /* Store the IV here for now. */
+  /* Store the IV here for now. Note that
+     ccm_setup _must_ be called after this. */
   memcpy(mode->state, iv, iv_len);
 
   mode->pos = iv_len;
@@ -7043,38 +7044,73 @@ typedef struct __cipher_mode_s cipher_mode_t;
 static int
 cipher_mode_init(cipher_mode_t *ctx, const cipher_t *cipher,
                  int type, const unsigned char *iv, size_t iv_len) {
-  if (type >= CIPHER_MODE_CBC && type <= CIPHER_MODE_OFB) {
-    if (iv_len != cipher->size)
-      goto fail;
-  }
-
   ctx->type = type;
 
   switch (ctx->type) {
     case CIPHER_MODE_RAW:
-    case CIPHER_MODE_ECB:
-      return iv_len == 0;
-    case CIPHER_MODE_CBC:
+    case CIPHER_MODE_ECB: {
+      if (iv_len != 0)
+        goto fail;
+
+      return 1;
+    }
+
+    case CIPHER_MODE_CBC: {
+      if (iv_len != cipher->size)
+        goto fail;
+
       cbc_init(&ctx->mode.cbc, cipher, iv);
+
       return 1;
-    case CIPHER_MODE_XTS:
+    }
+
+    case CIPHER_MODE_XTS: {
+      if (iv_len != cipher->size)
+        goto fail;
+
       xts_init(&ctx->mode.xts, cipher, iv);
+
       return 1;
-    case CIPHER_MODE_CTR:
+    }
+
+    case CIPHER_MODE_CTR: {
+      if (iv_len != cipher->size)
+        goto fail;
+
       ctr_init(&ctx->mode.ctr, cipher, iv);
+
       return 1;
-    case CIPHER_MODE_CFB:
+    }
+
+    case CIPHER_MODE_CFB: {
+      if (iv_len != cipher->size)
+        goto fail;
+
       cfb_init(&ctx->mode.cfb, cipher, iv);
+
       return 1;
-    case CIPHER_MODE_OFB:
+    }
+
+    case CIPHER_MODE_OFB: {
+      if (iv_len != cipher->size)
+        goto fail;
+
       ofb_init(&ctx->mode.ofb, cipher, iv);
+
       return 1;
-    case CIPHER_MODE_GCM:
+    }
+
+    case CIPHER_MODE_GCM: {
       return gcm_init(&ctx->mode.gcm, cipher, iv, iv_len);
-    case CIPHER_MODE_CCM:
+    }
+
+    case CIPHER_MODE_CCM: {
       return ccm_init(&ctx->mode.ccm, cipher, iv, iv_len);
-    case CIPHER_MODE_EAX:
+    }
+
+    case CIPHER_MODE_EAX: {
       return eax_init(&ctx->mode.eax, cipher, iv, iv_len);
+    }
   }
 
 fail:
@@ -7447,120 +7483,97 @@ void
 cipher_stream_update(cipher_stream_t *ctx,
                      unsigned char *output, size_t *output_len,
                      const unsigned char *input, size_t input_len) {
-  size_t bsize = ctx->block_size;
-  size_t bpos = ctx->block_pos;
-  size_t ilen = input_len;
-  size_t olen = 0;
-  size_t ipos = 0;
-  size_t opos = 0;
-  size_t len;
-
-  if (ilen == 0) {
-    *output_len = 0;
-    return;
-  }
-
   if (ctx->mode.type > CIPHER_MODE_XTS) {
     cipher_stream_encipher(ctx, output, input, input_len);
     *output_len = input_len;
     return;
   }
 
-  ctx->block_pos = (ctx->block_pos + ilen) % bsize;
+  *output_len = 0;
 
-  if (ctx->unpad)
-    olen += ctx->last_size;
-
-  if (bpos > 0) {
-    size_t want = bsize - bpos;
-
-    if (want > ilen)
-      want = ilen;
-
-    memcpy(ctx->block + bpos, input, want);
-
-    bpos += want;
-    ilen -= want;
-    ipos += want;
-
-    if (bpos < bsize) {
-      *output_len = 0;
-      return;
-    }
-
-    olen += bsize;
+  if (ctx->block_pos + input_len < ctx->block_size) {
+    if (input_len > 0)
+      memcpy(ctx->block + ctx->block_pos, input, input_len);
+    ctx->block_pos += input_len;
+    return;
   }
-
-  olen += ilen - (ilen % bsize);
-
-  *output_len = olen;
 
   if (ctx->unpad) {
-    memcpy(output + opos, ctx->last, ctx->last_size);
-    opos += ctx->last_size;
+    memcpy(output, ctx->last, ctx->last_size);
+    output += ctx->last_size;
+    *output_len += ctx->last_size;
   }
 
-  if (bpos > 0) {
-    cipher_stream_encipher(ctx, output + opos, ctx->block, bsize);
-    opos += bsize;
+  if (ctx->block_pos > 0) {
+    size_t want = ctx->block_size - ctx->block_pos;
+
+    memcpy(ctx->block + ctx->block_pos, input, want);
+
+    input += want;
+    input_len -= want;
+
+    cipher_stream_encipher(ctx, output, ctx->block, ctx->block_size);
+
+    output += ctx->block_size;
+    *output_len += ctx->block_size;
+
+    ctx->block_pos = 0;
   }
 
-  if (ilen >= bsize) {
-    len = ilen - (ilen % bsize);
+  if (input_len >= ctx->block_size) {
+    size_t aligned = input_len - (input_len % ctx->block_size);
 
-    cipher_stream_encipher(ctx, output + opos, input + ipos, len);
+    cipher_stream_encipher(ctx, output, input, aligned);
 
-    opos += len;
-    ipos += len;
-    ilen -= len;
+    input += aligned;
+    input_len -= aligned;
+
+    output += aligned;
+    *output_len += aligned;
   }
 
-  if (ilen > 0)
-    memcpy(ctx->block, input + ipos, ilen);
+  if (input_len > 0) {
+    memcpy(ctx->block, input, input_len);
+    ctx->block_pos = input_len;
+  }
 
-  if (ctx->unpad && olen > 0) {
-    memcpy(ctx->last, output + olen - bsize, bsize);
+  ASSERT(*output_len >= ctx->block_size);
 
-    ctx->last_size = bsize;
+  if (ctx->unpad) {
+    memcpy(ctx->last, output - ctx->block_size, ctx->block_size);
 
-    *output_len = olen - bsize;
+    ctx->last_size = ctx->block_size;
+
+    *output_len -= ctx->block_size;
   }
 }
 
 size_t
 cipher_stream_update_size(const cipher_stream_t *ctx, size_t input_len) {
-  size_t bsize = ctx->block_size;
-  size_t bpos = ctx->block_pos;
-  size_t ilen = input_len;
-  size_t olen = 0;
-
-  if (ilen == 0)
-    return 0;
+  size_t output_len;
 
   if (ctx->mode.type > CIPHER_MODE_XTS)
     return input_len;
 
+  if (ctx->block_pos + input_len < ctx->block_size)
+    return 0;
+
+  output_len = 0;
+
   if (ctx->unpad)
-    olen += ctx->last_size;
+    output_len += ctx->last_size;
 
-  if (bpos > 0) {
-    size_t want = bsize - bpos;
-
-    if (want > ilen)
-      want = ilen;
-
-    bpos += want;
-    ilen -= want;
-
-    if (bpos < bsize)
-      return 0;
-
-    olen += bsize;
+  if (ctx->block_pos > 0) {
+    input_len -= ctx->block_size - ctx->block_pos;
+    output_len += ctx->block_size;
   }
 
-  olen += ilen - (ilen % bsize);
+  if (input_len >= ctx->block_size)
+    output_len += input_len - (input_len % ctx->block_size);
 
-  return olen;
+  ASSERT(output_len >= ctx->block_size);
+
+  return output_len;
 }
 
 int
