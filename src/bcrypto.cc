@@ -2172,7 +2172,7 @@ bcrypto_cipher_crypt(napi_env env, napi_callback_info info) {
   JS_ASSERT(cipher->started, JS_ERR_INIT);
   JS_ASSERT(out_len == in_len, JS_ERR_CRYPT);
 
-  ok = cipher_stream_update_in_place(&cipher->ctx, out, in, in_len);
+  ok = cipher_stream_crypt(&cipher->ctx, out, in, in_len);
 
   JS_ASSERT(ok, JS_ERR_CRYPT);
 
