@@ -71,9 +71,13 @@ extern "C" {
 #define cipher_decrypt torsion_cipher_decrypt
 #define ecb_encrypt torsion_ecb_encrypt
 #define ecb_decrypt torsion_ecb_decrypt
+#define ecb_steal torsion_ecb_steal
+#define ecb_unsteal torsion_ecb_unsteal
 #define cbc_init torsion_cbc_init
 #define cbc_encrypt torsion_cbc_encrypt
 #define cbc_decrypt torsion_cbc_decrypt
+#define cbc_steal torsion_cbc_steal
+#define cbc_unsteal torsion_cbc_unsteal
 #define xts_init torsion_xts_init
 #define xts_setup torsion_xts_setup
 #define xts_encrypt torsion_xts_encrypt
@@ -148,14 +152,15 @@ extern "C" {
 #define CIPHER_MODE_RAW 0
 #define CIPHER_MODE_ECB 1
 #define CIPHER_MODE_CBC 2
-#define CIPHER_MODE_XTS 3
-#define CIPHER_MODE_CTR 4
-#define CIPHER_MODE_CFB 5
-#define CIPHER_MODE_OFB 6
-#define CIPHER_MODE_GCM 7
-#define CIPHER_MODE_CCM 8
-#define CIPHER_MODE_EAX 9
-#define CIPHER_MODE_MAX 9
+#define CIPHER_MODE_CTS 3
+#define CIPHER_MODE_XTS 4
+#define CIPHER_MODE_CTR 5
+#define CIPHER_MODE_CFB 6
+#define CIPHER_MODE_OFB 7
+#define CIPHER_MODE_GCM 8
+#define CIPHER_MODE_CCM 9
+#define CIPHER_MODE_EAX 10
+#define CIPHER_MODE_MAX 10
 
 #define CIPHER_MAX_BLOCK_SIZE 16
 #define CIPHER_MAX_TAG_SIZE 16
@@ -625,6 +630,18 @@ void
 ecb_decrypt(const cipher_t *cipher, unsigned char *dst,
             const unsigned char *src, size_t len);
 
+void
+ecb_steal(const cipher_t *cipher,
+          unsigned char *last, /* last ciphertext */
+          unsigned char *block, /* partial block */
+          size_t len);
+
+void
+ecb_unsteal(const cipher_t *cipher,
+            unsigned char *last, /* last plaintext */
+            unsigned char *block, /* partial block */
+            size_t len);
+
 /*
  * CBC
  */
@@ -639,6 +656,20 @@ cbc_encrypt(cbc_t *mode, const cipher_t *cipher,
 void
 cbc_decrypt(cbc_t *mode, const cipher_t *cipher,
             unsigned char *dst, const unsigned char *src, size_t len);
+
+void
+cbc_steal(cbc_t *mode,
+          const cipher_t *cipher,
+          unsigned char *last, /* last ciphertext */
+          unsigned char *block, /* partial block */
+          size_t len);
+
+void
+cbc_unsteal(cbc_t *mode,
+            const cipher_t *cipher,
+            unsigned char *last, /* last plaintext */
+            unsigned char *block, /* partial block */
+            size_t len);
 
 /*
  * XTS
@@ -672,6 +703,7 @@ xts_unsteal(xts_t *mode,
             unsigned char *last, /* last plaintext */
             unsigned char *block, /* partial block */
             size_t len);
+
 /*
  * CTR
  */

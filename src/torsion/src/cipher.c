@@ -5992,6 +5992,44 @@ ecb_decrypt(const cipher_t *cipher, unsigned char *dst,
   }
 }
 
+void
+ecb_steal(const cipher_t *cipher,
+          unsigned char *last, /* last ciphertext */
+          unsigned char *block, /* partial block */
+          size_t len) {
+  unsigned char tmp;
+  size_t i;
+
+  ASSERT(len < cipher->size);
+
+  for (i = 0; i < len; i++) {
+    tmp = block[i];
+    block[i] = last[i];
+    last[i] = tmp;
+  }
+
+  cipher_encrypt(cipher, last, last);
+}
+
+void
+ecb_unsteal(const cipher_t *cipher,
+            unsigned char *last, /* last plaintext */
+            unsigned char *block, /* partial block */
+            size_t len) {
+  unsigned char tmp;
+  size_t i;
+
+  ASSERT(len < cipher->size);
+
+  for (i = 0; i < len; i++) {
+    tmp = block[i];
+    block[i] = last[i];
+    last[i] = tmp;
+  }
+
+  cipher_decrypt(cipher, last, last);
+}
+
 /*
  * CBC
  */
@@ -6059,6 +6097,58 @@ cbc_decrypt(cbc_t *mode, const cipher_t *cipher,
       len -= cipher->size;
     }
   }
+}
+
+void
+cbc_steal(cbc_t *mode,
+          const cipher_t *cipher,
+          unsigned char *last, /* last ciphertext */
+          unsigned char *block, /* partial block */
+          size_t len) {
+  size_t i;
+
+  ASSERT(len < cipher->size);
+
+  for (i = 0; i < len; i++)
+    mode->prev[i] ^= block[i];
+
+  cipher_encrypt(cipher, mode->prev, mode->prev);
+
+  memcpy(block, last, len);
+  memcpy(last, mode->prev, cipher->size);
+}
+
+void
+cbc_unsteal(cbc_t *mode,
+            const cipher_t *cipher,
+            unsigned char *last, /* last plaintext */
+            unsigned char *block, /* partial block */
+            size_t len) {
+  unsigned char tmp[CIPHER_MAX_BLOCK_SIZE];
+  size_t i;
+
+  ASSERT(len < cipher->size);
+
+  cipher_decrypt(cipher, mode->prev, mode->prev);
+
+  /* Recreate the previous (x2) ciphertext. */
+  for (i = 0; i < cipher->size; i++)
+    tmp[i] = last[i] ^ mode->prev[i];
+
+  for (i = 0; i < len; i++) {
+    last[i] = block[i];
+    block[i] ^= mode->prev[i];
+  }
+
+  for (i = len; i < cipher->size; i++)
+    last[i] = mode->prev[i];
+
+  cipher_decrypt(cipher, last, last);
+
+  for (i = 0; i < cipher->size; i++)
+    last[i] ^= tmp[i];
+
+  cleanse(tmp, cipher->size);
 }
 
 /*
@@ -7055,7 +7145,8 @@ cipher_mode_init(cipher_mode_t *ctx, const cipher_t *cipher,
       return 1;
     }
 
-    case CIPHER_MODE_CBC: {
+    case CIPHER_MODE_CBC:
+    case CIPHER_MODE_CTS: {
       if (iv_len != cipher->size)
         goto fail;
 
@@ -7171,6 +7262,7 @@ cipher_mode_encrypt(cipher_mode_t *ctx,
       ecb_encrypt(cipher, dst, src, len);
       break;
     case CIPHER_MODE_CBC:
+    case CIPHER_MODE_CTS:
       cbc_encrypt(&ctx->mode.cbc, cipher, dst, src, len);
       break;
     case CIPHER_MODE_XTS:
@@ -7212,6 +7304,7 @@ cipher_mode_decrypt(cipher_mode_t *ctx,
       ecb_decrypt(cipher, dst, src, len);
       break;
     case CIPHER_MODE_CBC:
+    case CIPHER_MODE_CTS:
       cbc_decrypt(&ctx->mode.cbc, cipher, dst, src, len);
       break;
     case CIPHER_MODE_XTS:
@@ -7248,6 +7341,9 @@ cipher_mode_steal(cipher_mode_t *ctx,
                   unsigned char *block,
                   size_t len) {
   switch (ctx->type) {
+    case CIPHER_MODE_CTS:
+      cbc_steal(&ctx->mode.cbc, cipher, last, block, len);
+      break;
     case CIPHER_MODE_XTS:
       xts_steal(&ctx->mode.xts, cipher, last, block, len);
       break;
@@ -7264,6 +7360,9 @@ cipher_mode_unsteal(cipher_mode_t *ctx,
                     unsigned char *block,
                     size_t len) {
   switch (ctx->type) {
+    case CIPHER_MODE_CTS:
+      cbc_unsteal(&ctx->mode.cbc, cipher, last, block, len);
+      break;
     case CIPHER_MODE_XTS:
       xts_unsteal(&ctx->mode.xts, cipher, last, block, len);
       break;
@@ -7325,12 +7424,12 @@ cipher_stream_init(cipher_stream_t *ctx,
                    int type, int mode, int encrypt,
                    const unsigned char *key, size_t key_len,
                    const unsigned char *iv, size_t iv_len) {
-  int is_block = mode == CIPHER_MODE_ECB || mode == CIPHER_MODE_CBC;
-  int is_xts = mode == CIPHER_MODE_XTS;
+  int is_pad = mode == CIPHER_MODE_ECB || mode == CIPHER_MODE_CBC;
+  int is_cts = mode == CIPHER_MODE_CTS || mode == CIPHER_MODE_XTS;
 
   ctx->encrypt = encrypt;
   ctx->padding = 1;
-  ctx->unpad = (is_block && !encrypt) || is_xts;
+  ctx->unpad = (is_pad && !encrypt) || is_cts;
   ctx->block_size = cipher_block_size(type);
   ctx->block_pos = 0;
   ctx->last_size = 0;
@@ -7342,7 +7441,7 @@ cipher_stream_init(cipher_stream_t *ctx,
   memset(ctx->last, 0, sizeof(ctx->last));
   memset(ctx->tag, 0, sizeof(ctx->tag));
 
-  if (is_xts) {
+  if (mode == CIPHER_MODE_XTS) {
     if (key_len == 0 || (key_len & 1) != 0)
       goto fail;
 
@@ -7355,7 +7454,7 @@ cipher_stream_init(cipher_stream_t *ctx,
   if (!cipher_mode_init(&ctx->mode, &ctx->cipher, mode, iv, iv_len))
     goto fail;
 
-  if (is_xts) {
+  if (mode == CIPHER_MODE_XTS) {
     key += key_len;
 
     if (!cipher_mode_xts_setup(&ctx->mode, &ctx->cipher, key, key_len))
@@ -7370,14 +7469,15 @@ fail:
 
 int
 cipher_stream_set_padding(cipher_stream_t *ctx, int padding) {
-  int is_block = ctx->mode.type == CIPHER_MODE_ECB
-              || ctx->mode.type == CIPHER_MODE_CBC;
-  int is_xts = ctx->mode.type == CIPHER_MODE_XTS;
+  int is_pad = ctx->mode.type == CIPHER_MODE_ECB
+            || ctx->mode.type == CIPHER_MODE_CBC;
+  int is_cts = ctx->mode.type == CIPHER_MODE_CTS
+            || ctx->mode.type == CIPHER_MODE_XTS;
 
-  if (!is_block && !is_xts)
+  if (!is_pad && !is_cts)
     return 0;
 
-  if (!ctx->encrypt || is_xts) {
+  if (!ctx->encrypt || is_cts) {
     if (ctx->last_size != 0)
       return 0;
 
@@ -7386,7 +7486,7 @@ cipher_stream_set_padding(cipher_stream_t *ctx, int padding) {
   }
 
   ctx->padding = !!padding;
-  ctx->unpad = padding && (!ctx->encrypt || is_xts);
+  ctx->unpad = padding && (!ctx->encrypt || is_cts);
 
   return 1;
 }
@@ -7639,6 +7739,7 @@ cipher_stream_final(cipher_stream_t *ctx,
       break;
     }
 
+    case CIPHER_MODE_CTS:
     case CIPHER_MODE_XTS: {
       if (!ctx->padding) {
         if (ctx->block_pos != 0)
