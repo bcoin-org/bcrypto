@@ -1248,11 +1248,10 @@ mgf1xor(int type,
   /* [RFC8017] Page 67, Section B.2.1. */
   size_t hash_size = hash_output_size(type);
   unsigned char digest[HASH_MAX_OUTPUT_SIZE];
-  unsigned char ctr[4] = {0, 0, 0, 0};
+  uint8_t ctr[4] = {0, 0, 0, 0};
   hash_t cache, hash;
   size_t i = 0;
   size_t j;
-  int k;
 
   hash_init(&cache, type);
   hash_update(&cache, seed, seed_len);
@@ -1267,10 +1266,10 @@ mgf1xor(int type,
     while (i < out_len && j < hash_size)
       out[i++] ^= digest[j++];
 
-    for (k = 3; k >= 0; k--) {
-      ctr[k] += 1;
+    j = 4;
 
-      if (ctr[k] != 0x00)
+    while (j--) {
+      if (++ctr[j] != 0x00)
         break;
     }
   }
