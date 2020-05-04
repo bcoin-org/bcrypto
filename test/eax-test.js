@@ -30,6 +30,8 @@ const mvectors = [
   ]
 ];
 
+// https://github.com/gnutls/nettle/blob/master/testsuite/eax-test.c
+// http://www.cs.ucdavis.edu/~rogaway/papers/eax.pdf
 const vectors = [
   // key, auth data, plaintext, ciphertext, nonce, tag
   [
