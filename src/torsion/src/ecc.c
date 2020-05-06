@@ -9853,10 +9853,10 @@ schnorr_legacy_sig_size(const wei_t *ec) {
 
 int
 schnorr_legacy_sign(const wei_t *ec,
-                   unsigned char *sig,
-                   const unsigned char *msg,
-                   size_t msg_len,
-                   const unsigned char *priv) {
+                    unsigned char *sig,
+                    const unsigned char *msg,
+                    size_t msg_len,
+                    const unsigned char *priv) {
   /* Schnorr Signing.
    *
    * [SCHNORR] "Signing".
@@ -9934,11 +9934,11 @@ schnorr_legacy_sign(const wei_t *ec,
 
 int
 schnorr_legacy_verify(const wei_t *ec,
-                     const unsigned char *msg,
-                     size_t msg_len,
-                     const unsigned char *sig,
-                     const unsigned char *pub,
-                     size_t pub_len) {
+                      const unsigned char *msg,
+                      size_t msg_len,
+                      const unsigned char *sig,
+                      const unsigned char *pub,
+                      size_t pub_len) {
   /* Schnorr Verification.
    *
    * [SCHNORR] "Verification".
@@ -10016,13 +10016,13 @@ schnorr_legacy_verify(const wei_t *ec,
 
 int
 schnorr_legacy_verify_batch(const wei_t *ec,
-                           const unsigned char **msgs,
-                           const size_t *msg_lens,
-                           const unsigned char **sigs,
-                           const unsigned char **pubs,
-                           const size_t *pub_lens,
-                           size_t len,
-                           struct wei_scratch_s *scratch) {
+                            const unsigned char **msgs,
+                            const size_t *msg_lens,
+                            const unsigned char **sigs,
+                            const unsigned char **pubs,
+                            const size_t *pub_lens,
+                            size_t len,
+                            struct wei_scratch_s *scratch) {
   /* Schnorr Batch Verification.
    *
    * [SCHNORR] "Batch Verification".
