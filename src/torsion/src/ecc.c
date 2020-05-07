@@ -2568,7 +2568,7 @@ wge_fixed_points_var(const wei_t *ec, wge_t *out, const wge_t *p) {
   /* NOTE: Only called on initialization. */
   const scalar_field_t *sc = &ec->sc;
   size_t size = FIXED_LENGTH(sc->bits);
-  jge_t *wnds = torsion_alloc(size * sizeof(jge_t)); /* 442.2kb */
+  jge_t *wnds = torsion_xmalloc(size * sizeof(jge_t)); /* 442.2kb */
   size_t i, j;
   jge_t g;
 
@@ -2596,7 +2596,7 @@ wge_naf_points_var(const wei_t *ec, wge_t *out,
                    const wge_t *p, size_t width) {
   /* NOTE: Only called on initialization. */
   size_t size = 1 << (width - 2);
-  jge_t *wnd = torsion_alloc(size * sizeof(jge_t)); /* 216kb */
+  jge_t *wnd = torsion_xmalloc(size * sizeof(jge_t)); /* 216kb */
   jge_t j, dbl;
   size_t i;
 
@@ -8557,7 +8557,7 @@ wei_curve_create(int type) {
   if (type < 0 || (size_t)type > ARRAY_SIZE(wei_curves))
     return NULL;
 
-  ec = torsion_alloc(sizeof(wei_t));
+  ec = torsion_xmalloc(sizeof(wei_t));
 
   wei_init(ec, wei_curves[type]);
 
@@ -8600,24 +8600,24 @@ wei_curve_field_bits(const wei_t *ec) {
 
 struct wei_scratch_s *
 wei_scratch_create(const wei_t *ec, size_t size) {
-  struct wei_scratch_s *scratch = torsion_alloc(sizeof(struct wei_scratch_s));
+  struct wei_scratch_s *scratch = torsion_xmalloc(sizeof(struct wei_scratch_s));
   size_t length = ec->endo ? size : size / 2;
   size_t bits = ec->endo ? ec->sc.endo_bits : ec->sc.bits;
   size_t i;
 
   scratch->size = size;
-  scratch->wnd = torsion_alloc(length * 4 * sizeof(jge_t));
-  scratch->wnds = torsion_alloc(length * sizeof(jge_t *));
-  scratch->naf = torsion_alloc(length * (bits + 1) * sizeof(int));
-  scratch->nafs = torsion_alloc(length * sizeof(int *));
+  scratch->wnd = torsion_xmalloc(length * 4 * sizeof(jge_t));
+  scratch->wnds = torsion_xmalloc(length * sizeof(jge_t *));
+  scratch->naf = torsion_xmalloc(length * (bits + 1) * sizeof(int));
+  scratch->nafs = torsion_xmalloc(length * sizeof(int *));
 
   for (i = 0; i < length; i++) {
     scratch->wnds[i] = &scratch->wnd[i * 4];
     scratch->nafs[i] = &scratch->naf[i * (bits + 1)];
   }
 
-  scratch->points = torsion_alloc(size * sizeof(wge_t));
-  scratch->coeffs = torsion_alloc(size * sizeof(sc_t));
+  scratch->points = torsion_xmalloc(size * sizeof(wge_t));
+  scratch->coeffs = torsion_xmalloc(size * sizeof(sc_t));
 
   return scratch;
 }
@@ -8648,7 +8648,7 @@ mont_curve_create(int type) {
   if (type < 0 || (size_t)type > ARRAY_SIZE(mont_curves))
     return NULL;
 
-  ec = torsion_alloc(sizeof(mont_t));
+  ec = torsion_xmalloc(sizeof(mont_t));
 
   mont_init(ec, mont_curves[type]);
 
@@ -8691,7 +8691,7 @@ edwards_curve_create(int type) {
   if (type < 0 || (size_t)type > ARRAY_SIZE(edwards_curves))
     return NULL;
 
-  ec = torsion_alloc(sizeof(edwards_t));
+  ec = torsion_xmalloc(sizeof(edwards_t));
 
   edwards_init(ec, edwards_curves[type]);
 
@@ -8735,24 +8735,24 @@ edwards_curve_field_bits(const edwards_t *ec) {
 struct edwards_scratch_s *
 edwards_scratch_create(const edwards_t *ec, size_t size) {
   struct edwards_scratch_s *scratch =
-    torsion_alloc(sizeof(struct edwards_scratch_s));
+    torsion_xmalloc(sizeof(struct edwards_scratch_s));
   size_t length = size / 2;
   size_t bits = ec->sc.bits;
   size_t i;
 
   scratch->size = size;
-  scratch->wnd = torsion_alloc(length * 4 * sizeof(xge_t));
-  scratch->wnds = torsion_alloc(length * sizeof(xge_t *));
-  scratch->naf = torsion_alloc(length * (bits + 1) * sizeof(int));
-  scratch->nafs = torsion_alloc(length * sizeof(int *));
+  scratch->wnd = torsion_xmalloc(length * 4 * sizeof(xge_t));
+  scratch->wnds = torsion_xmalloc(length * sizeof(xge_t *));
+  scratch->naf = torsion_xmalloc(length * (bits + 1) * sizeof(int));
+  scratch->nafs = torsion_xmalloc(length * sizeof(int *));
 
   for (i = 0; i < length; i++) {
     scratch->wnds[i] = &scratch->wnd[i * 4];
     scratch->nafs[i] = &scratch->naf[i * (bits + 1)];
   }
 
-  scratch->points = torsion_alloc(size * sizeof(xge_t));
-  scratch->coeffs = torsion_alloc(size * sizeof(sc_t));
+  scratch->points = torsion_xmalloc(size * sizeof(xge_t));
+  scratch->coeffs = torsion_xmalloc(size * sizeof(sc_t));
 
   return scratch;
 }

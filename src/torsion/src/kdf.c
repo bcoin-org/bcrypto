@@ -336,9 +336,9 @@ scrypt_derive(unsigned char *out,
   if (len == 0)
     return 1;
 
-  B = torsion_malloc_unsafe(128 * r * p);
-  XY = torsion_malloc_unsafe(256 * r);
-  V = torsion_malloc_unsafe(128 * r * N);
+  B = torsion_malloc(128 * r * p);
+  XY = torsion_malloc(256 * r);
+  V = torsion_malloc(128 * r * N);
 
   if (B == NULL || XY == NULL || V == NULL)
     goto fail;

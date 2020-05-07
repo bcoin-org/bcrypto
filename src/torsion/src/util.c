@@ -64,35 +64,10 @@ torsion_get_memory_functions(torsion_malloc_t **malloc_fn,
 
 void *
 torsion_malloc(size_t size) {
-  void *ptr;
-
-  if (size == 0)
-    return NULL;
-
-  ptr = (*malloc_cb)(size);
-
-  if (ptr == NULL)
-    torsion_die("torsion_malloc: allocation failure.");
-
-  return ptr;
-}
-
-void *
-torsion_malloc_unsafe(size_t size) {
   if (size == 0)
     return NULL;
 
   return (*malloc_cb)(size);
-}
-
-void *
-torsion_alloc(size_t size) {
-  void *ptr = torsion_malloc(size);
-
-  if (size > 0)
-    memset(ptr, 0, size);
-
-  return ptr;
 }
 
 void *
@@ -105,18 +80,33 @@ torsion_realloc(void *ptr, size_t size) {
     return NULL;
   }
 
-  ptr = (*realloc_cb)(ptr, size);
-
-  if (ptr == NULL)
-    torsion_die("torsion_realloc: allocation failure.");
-
-  return ptr;
+  return (*realloc_cb)(ptr, size);
 }
 
 void
 torsion_free(void *ptr) {
   if (ptr != NULL)
     (*free_cb)(ptr);
+}
+
+void *
+torsion_xmalloc(size_t size) {
+  void *ptr = torsion_malloc(size);
+
+  if (ptr == NULL && size != 0)
+    torsion_die("torsion_xmalloc: allocation failure.");
+
+  return ptr;
+}
+
+void *
+torsion_xrealloc(void *ptr, size_t size) {
+  ptr = torsion_realloc(ptr, size);
+
+  if (ptr == NULL && size != 0)
+    torsion_die("torsion_xrealloc: allocation failure.");
+
+  return ptr;
 }
 
 /*
@@ -128,12 +118,12 @@ cleanse(void *ptr, size_t len) {
 #if defined(_WIN32)
   /* https://github.com/jedisct1/libsodium/blob/3b26a5c/src/libsodium/sodium/utils.c#L112 */
   SecureZeroMemory(ptr, len);
-#elif defined(__GNUC__)
+#elif defined(__GNUC__) || defined(__clang__)
   /* https://github.com/torvalds/linux/blob/37d4e84/include/linux/string.h#L233 */
   /* https://github.com/torvalds/linux/blob/37d4e84/include/linux/compiler-gcc.h#L21 */
   /* https://github.com/bminor/glibc/blob/master/string/explicit_bzero.c */
   memset(ptr, 0, len);
-  __asm__ __volatile__("": :"r"(ptr) :"memory");
+  __asm__ __volatile__("" : : "r" (ptr) : "memory");
 #else
   /* http://www.daemonology.net/blog/2014-09-04-how-to-zero-a-buffer.html */
   static void *(*const volatile memset_ptr)(void *, int, size_t) = memset;

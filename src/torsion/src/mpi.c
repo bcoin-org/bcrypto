@@ -448,10 +448,10 @@ mp_die(const char *msg) {
  */
 
 void *
-torsion_malloc(size_t);
+torsion_xmalloc(size_t);
 
 void *
-torsion_realloc(void *, size_t);
+torsion_xrealloc(void *, size_t);
 
 void
 torsion_free(void *);
@@ -459,13 +459,13 @@ torsion_free(void *);
 static mp_ptr
 mp_alloc_limbs(mp_size_t size) {
   ASSERT(size > 0);
-  return torsion_malloc(size * sizeof(mp_limb_t));
+  return torsion_xmalloc(size * sizeof(mp_limb_t));
 }
 
 static mp_ptr
 mp_realloc_limbs(mp_ptr old, mp_size_t size) {
   ASSERT(size > 0);
-  return torsion_realloc(old, size * sizeof(mp_limb_t));
+  return torsion_xrealloc(old, size * sizeof(mp_limb_t));
 }
 
 static void

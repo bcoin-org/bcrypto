@@ -51,16 +51,16 @@ void *
 torsion_malloc(size_t size) __TORSION_MALLOC;
 
 void *
-torsion_malloc_unsafe(size_t size) __TORSION_MALLOC;
-
-void *
-torsion_alloc(size_t size) __TORSION_MALLOC;
-
-void *
 torsion_realloc(void *ptr, size_t size) __TORSION_MALLOC;
 
 void
 torsion_free(void *ptr);
+
+void *
+torsion_xmalloc(size_t size) __TORSION_MALLOC;
+
+void *
+torsion_xrealloc(void *ptr, size_t size) __TORSION_MALLOC;
 
 void
 cleanse(void *ptr, size_t len);

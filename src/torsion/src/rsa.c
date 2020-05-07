@@ -1756,7 +1756,10 @@ rsa_verify(int type,
   if (klen < tlen + 11)
     goto fail;
 
-  em = torsion_alloc(klen);
+  em = torsion_malloc(klen);
+
+  if (em == NULL)
+    goto fail;
 
   if (!rsa_pub_encrypt(&k, em, sig, sig_len))
     goto fail;
@@ -1959,7 +1962,12 @@ rsa_sign_pss(unsigned char *out,
   if (salt_len < 0 || (size_t)salt_len > klen)
     goto fail;
 
-  salt = torsion_alloc(salt_len);
+  if (salt_len > 0) {
+    salt = torsion_malloc(salt_len);
+
+    if (salt == NULL)
+      goto fail;
+  }
 
   drbg_init(&rng, HASH_SHA512, entropy, ENTROPY_SIZE);
   drbg_generate(&rng, salt, salt_len);
@@ -2029,7 +2037,10 @@ rsa_verify_pss(int type,
   if (salt_len < 0 || (size_t)salt_len > klen)
     goto fail;
 
-  em = torsion_alloc(klen);
+  em = torsion_malloc(klen);
+
+  if (em == NULL)
+    goto fail;
 
   if (!rsa_pub_encrypt(&k, em, sig, sig_len))
     goto fail;
