@@ -278,6 +278,19 @@ read_value_string_utf8(napi_env env, napi_value value,
   return napi_ok;
 }
 
+#if NODE_MAJOR_VERSION >= 14
+/* Temporary until we figure out how to work around this bug:
+   https://github.com/nodejs/node/issues/32463 */
+static napi_status
+create_external_buffer(napi_env env, size_t length,
+                       void *data, napi_value *result) {
+  napi_status status = napi_create_buffer_copy(env, length, data, NULL, result);
+
+  torsion_free(data);
+
+  return status;
+}
+#else
 static void
 finalize_buffer(napi_env env, void *data, void *hint) {
   torsion_free(data);
@@ -293,6 +306,7 @@ create_external_buffer(napi_env env, size_t length,
                                      NULL,
                                      result);
 }
+#endif
 
 /*
  * AEAD
