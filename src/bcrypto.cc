@@ -2428,7 +2428,7 @@ bcrypto_ctr_drbg_generate(napi_env env, napi_callback_info info) {
 
   out = (uint8_t *)torsion_malloc_unsafe(out_len);
 
-  JS_ASSERT(out != NULL, JS_ERR_ALLOC);
+  JS_ASSERT(out != NULL || out_len == 0, JS_ERR_ALLOC);
 
   ctr_drbg_generate(&drbg->ctx, out, out_len, add, add_len);
 
@@ -6432,7 +6432,7 @@ bcrypto_hash_drbg_generate(napi_env env, napi_callback_info info) {
 
   out = (uint8_t *)torsion_malloc_unsafe(out_len);
 
-  JS_ASSERT(out != NULL, JS_ERR_ALLOC);
+  JS_ASSERT(out != NULL || out_len == 0, JS_ERR_ALLOC);
 
   hash_drbg_generate(&drbg->ctx, out, out_len, add, add_len);
 
@@ -6743,7 +6743,7 @@ bcrypto_hmac_drbg_generate(napi_env env, napi_callback_info info) {
 
   out = (uint8_t *)torsion_malloc_unsafe(out_len);
 
-  JS_ASSERT(out != NULL, JS_ERR_ALLOC);
+  JS_ASSERT(out != NULL || out_len == 0, JS_ERR_ALLOC);
 
   hmac_drbg_generate(&drbg->ctx, out, out_len, add, add_len);
 
