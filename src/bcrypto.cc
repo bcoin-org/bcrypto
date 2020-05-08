@@ -287,6 +287,8 @@ create_external_buffer(napi_env env, size_t length,
                        void *data, napi_value *result) {
   napi_status status = napi_create_buffer_copy(env, length, data, NULL, result);
 
+  cleanse(data, length);
+
   torsion_free(data);
 
   return status;
@@ -2670,7 +2672,7 @@ bcrypto_dsa_params_import(napi_env env, napi_callback_info info) {
   size_t argc = 1;
   uint8_t *out;
   size_t out_len;
-  const uint8_t *key;
+  uint8_t *key;
   size_t key_len;
   napi_value result;
 
@@ -2682,9 +2684,12 @@ bcrypto_dsa_params_import(napi_env env, napi_callback_info info) {
   out_len = DSA_MAX_PARAMS_SIZE;
 
   if (!dsa_params_import(out, &out_len, key, key_len)) {
+    cleanse(key, key_len);
     torsion_free(out);
     JS_THROW(JS_ERR_PARAMS);
   }
+
+  cleanse(key, key_len);
 
   out = (uint8_t *)torsion_xrealloc(out, out_len);
 
@@ -2807,7 +2812,7 @@ bcrypto_dsa_privkey_import(napi_env env, napi_callback_info info) {
   size_t argc = 1;
   uint8_t *out;
   size_t out_len;
-  const uint8_t *key;
+  uint8_t *key;
   size_t key_len;
   napi_value result;
 
@@ -2819,9 +2824,12 @@ bcrypto_dsa_privkey_import(napi_env env, napi_callback_info info) {
   out_len = DSA_MAX_PRIV_SIZE;
 
   if (!dsa_privkey_import(out, &out_len, key, key_len)) {
+    cleanse(key, key_len);
     torsion_free(out);
     JS_THROW(JS_ERR_PRIVKEY);
   }
+
+  cleanse(key, key_len);
 
   out = (uint8_t *)torsion_xrealloc(out, out_len);
 
@@ -2936,7 +2944,7 @@ bcrypto_dsa_pubkey_import(napi_env env, napi_callback_info info) {
   size_t argc = 1;
   uint8_t *out;
   size_t out_len;
-  const uint8_t *key;
+  uint8_t *key;
   size_t key_len;
   napi_value result;
 
@@ -2948,9 +2956,12 @@ bcrypto_dsa_pubkey_import(napi_env env, napi_callback_info info) {
   out_len = DSA_MAX_PUB_SIZE;
 
   if (!dsa_pubkey_import(out, &out_len, key, key_len)) {
+    cleanse(key, key_len);
     torsion_free(out);
     JS_THROW(JS_ERR_PUBKEY);
   }
+
+  cleanse(key, key_len);
 
   out = (uint8_t *)torsion_xrealloc(out, out_len);
 
@@ -7786,7 +7797,7 @@ bcrypto_rsa_privkey_import(napi_env env, napi_callback_info info) {
   size_t argc = 2;
   uint8_t *out;
   size_t out_len;
-  const uint8_t *key;
+  uint8_t *key;
   size_t key_len;
   uint8_t *entropy;
   size_t entropy_len;
@@ -7804,10 +7815,13 @@ bcrypto_rsa_privkey_import(napi_env env, napi_callback_info info) {
   out_len = RSA_MAX_PRIV_SIZE;
 
   if (!rsa_privkey_import(out, &out_len, key, key_len, entropy)) {
+    cleanse(key, key_len);
+    cleanse(entropy, entropy_len);
     torsion_free(out);
     JS_THROW(JS_ERR_PRIVKEY);
   }
 
+  cleanse(key, key_len);
   cleanse(entropy, entropy_len);
 
   out = (uint8_t *)torsion_xrealloc(out, out_len);
@@ -7923,7 +7937,7 @@ bcrypto_rsa_pubkey_import(napi_env env, napi_callback_info info) {
   size_t argc = 1;
   uint8_t *out;
   size_t out_len;
-  const uint8_t *key;
+  uint8_t *key;
   size_t key_len;
   napi_value result;
 
@@ -7935,9 +7949,12 @@ bcrypto_rsa_pubkey_import(napi_env env, napi_callback_info info) {
   out_len = RSA_MAX_PUB_SIZE;
 
   if (!rsa_pubkey_import(out, &out_len, key, key_len)) {
+    cleanse(key, key_len);
     torsion_free(out);
     JS_THROW(JS_ERR_PUBKEY);
   }
+
+  cleanse(key, key_len);
 
   out = (uint8_t *)torsion_xrealloc(out, out_len);
 
@@ -9124,6 +9141,8 @@ bcrypto_schnorr_sign(napi_env env, napi_callback_info info) {
   JS_ASSERT(priv_len == ec->scalar_size, JS_ERR_PRIVKEY_SIZE);
   JS_ASSERT(aux_len == 32, JS_ERR_PRIVKEY_SIZE);
   JS_ASSERT(schnorr_sign(ec->ctx, out, msg, msg_len, priv, aux), JS_ERR_SIGN);
+
+  cleanse((void *)aux, aux_len);
 
   CHECK(napi_create_buffer_copy(env,
                                 ec->schnorr_size,
@@ -11621,6 +11640,8 @@ bcrypto_secp256k1_schnorr_sign(napi_env env, napi_callback_info info) {
                                  (void *)aux);
 
   JS_ASSERT(ok, JS_ERR_SIGN);
+
+  cleanse((void *)aux, aux_len);
 
   secp256k1_schnorrsig_serialize(ec->ctx, out, &sigout);
 
