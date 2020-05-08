@@ -20,26 +20,40 @@ extern "C" {
 #define cleanse torsion_cleanse
 
 /*
- * Types
+ * Callbacks
  */
 
-typedef void *torsion_malloc_t(size_t size);
-typedef void *torsion_realloc_t(void *ptr, size_t size);
-typedef void torsion_free_t(void *ptr);
+typedef void torsion_die_f(const char *msg);
+typedef void *torsion_malloc_f(size_t size);
+typedef void *torsion_realloc_f(void *ptr, size_t size);
+typedef void torsion_free_f(void *ptr);
 
 /*
- * Util
+ * Error Handling
  */
 
 void
-torsion_set_memory_functions(torsion_malloc_t *malloc_fn,
-                             torsion_realloc_t *realloc_fn,
-                             torsion_free_t *free_fn);
+torsion_set_die_function(torsion_die_f *die_fn);
 
 void
-torsion_get_memory_functions(torsion_malloc_t **malloc_fn,
-                             torsion_realloc_t **realloc_fn,
-                             torsion_free_t **free_fn);
+torsion_get_die_function(torsion_die_f **die_fn);
+
+void
+torsion_die(const char *msg);
+
+/*
+ * Allocation
+ */
+
+void
+torsion_set_memory_functions(torsion_malloc_f *malloc_fn,
+                             torsion_realloc_f *realloc_fn,
+                             torsion_free_f *free_fn);
+
+void
+torsion_get_memory_functions(torsion_malloc_f **malloc_fn,
+                             torsion_realloc_f **realloc_fn,
+                             torsion_free_f **free_fn);
 
 #ifdef __GNUC__
 #define __TORSION_MALLOC __attribute__((malloc))
@@ -67,6 +81,10 @@ torsion_xcalloc(size_t nmemb, size_t size) __TORSION_MALLOC;
 
 void *
 torsion_xrealloc(void *ptr, size_t size) __TORSION_MALLOC;
+
+/*
+ * Memzero
+ */
 
 void
 cleanse(void *ptr, size_t len);

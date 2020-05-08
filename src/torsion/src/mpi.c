@@ -75,10 +75,14 @@ enum mpz_div_round_mode { MP_DIV_FLOOR, MP_DIV_CEIL, MP_DIV_TRUNC };
  * Assertions
  */
 
+#ifdef TORSION_NO_ASSERT
+#define ASSERT(expr) (void)(expr)
+#else
 #define ASSERT(expr) do {                      \
   if (!(expr))                                 \
     mp_assert_fail(__FILE__, __LINE__, #expr); \
 } while (0)
+#endif
 
 #define ASSERT_NOCARRY(cy) ASSERT((cy) == 0)
 #define ASSERT_CARRY(cy) ASSERT((cy) != 0)
@@ -429,12 +433,14 @@ enum mpz_div_round_mode { MP_DIV_FLOOR, MP_DIV_CEIL, MP_DIV_TRUNC };
  * Assertions
  */
 
+#ifndef TORSION_NO_ASSERT
 static void
 mp_assert_fail(const char *file, int line, const char *expr) {
   fprintf(stderr, "%s:%d: Assertion `%s' failed.\n", file, line, expr);
   fflush(stderr);
   abort();
 }
+#endif
 
 static void
 mp_die(const char *msg) {
@@ -4285,7 +4291,7 @@ mpz_powm_sec(mpz_ptr r, mpz_srcptr b, mpz_srcptr e, mpz_srcptr m) {
 
 int
 mpz_is_prime_mr(const mpz_t n, unsigned long reps,
-                int force2, mp_rng_t rng, void *arg) {
+                int force2, mp_rng_f *rng, void *arg) {
   mpz_t nm1, nm3, q, x, y;
   unsigned long k, i, j;
   int ret = 0;
@@ -4539,7 +4545,7 @@ fail:
 }
 
 int
-mpz_is_prime(const mpz_t p, unsigned long rounds, mp_rng_t rng, void *arg) {
+mpz_is_prime(const mpz_t p, unsigned long rounds, mp_rng_f *rng, void *arg) {
   /* 3 * 5 * 7 * 11 * 13 * 17 * 19 * 23 * 37 */
   static const mp_limb_t primes_a = MP_LIMB_C(4127218095);
   /* 29 * 31 * 41 * 43 * 47 * 53 */
@@ -4597,7 +4603,7 @@ mpz_is_prime(const mpz_t p, unsigned long rounds, mp_rng_t rng, void *arg) {
 }
 
 void
-mpz_random_prime(mpz_t ret, mp_bitcnt_t bits, mp_rng_t rng, void *arg) {
+mpz_random_prime(mpz_t ret, mp_bitcnt_t bits, mp_rng_f *rng, void *arg) {
   static const uint64_t primes[15] =
     { 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53 };
 #if MP_LIMB_BITS == 32
@@ -4794,12 +4800,12 @@ mpz_out_str(FILE *stream, int base, const mpz_t x) {
  */
 
 void
-mpz_random_bits(mpz_t r, mp_bitcnt_t bits, mp_rng_t rng, void *arg) {
+mpz_random_bits(mpz_t r, mp_bitcnt_t bits, mp_rng_f *rng, void *arg) {
   mp_size_t size = (bits + MP_LIMB_BITS - 1) / MP_LIMB_BITS;
   mp_size_t low = bits % MP_LIMB_BITS;
   mp_ptr rp = MPZ_REALLOC(r, size);
 
-  (*rng)(rp, size * sizeof(mp_limb_t), arg);
+  rng(rp, size * sizeof(mp_limb_t), arg);
 
   if (low != 0)
     rp[size - 1] &= (MP_LIMB_C(1) << low) - 1;
@@ -4810,7 +4816,7 @@ mpz_random_bits(mpz_t r, mp_bitcnt_t bits, mp_rng_t rng, void *arg) {
 }
 
 void
-mpz_random_int(mpz_t ret, const mpz_t max, mp_rng_t rng, void *arg) {
+mpz_random_int(mpz_t ret, const mpz_t max, mp_rng_f *rng, void *arg) {
   mp_bitcnt_t bits = mpz_bitlen(max);
 
   mpz_set(ret, max);

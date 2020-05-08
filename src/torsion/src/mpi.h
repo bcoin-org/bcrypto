@@ -237,7 +237,7 @@ typedef __mpz_struct mpz_t[1];
 typedef __mpz_struct *mpz_ptr;
 typedef const __mpz_struct *mpz_srcptr;
 
-typedef void (*mp_rng_t)(void *out, size_t size, void *arg);
+typedef void mp_rng_f(void *out, size_t size, void *arg);
 
 /*
  * Definitions
@@ -562,10 +562,10 @@ void mpz_powm_sec(mpz_ptr, mpz_srcptr, mpz_srcptr, mpz_srcptr);
  */
 
 int mpz_is_prime_mr(const mpz_t, unsigned long,
-                    int, mp_rng_t, void *);
+                    int, mp_rng_f *, void *);
 int mpz_is_prime_lucas(const mpz_t, unsigned long);
-int mpz_is_prime(const mpz_t, unsigned long, mp_rng_t, void *);
-void mpz_random_prime(mpz_t, mp_bitcnt_t, mp_rng_t, void *);
+int mpz_is_prime(const mpz_t, unsigned long, mp_rng_f *, void *);
+void mpz_random_prime(mpz_t, mp_bitcnt_t, mp_rng_f *, void *);
 
 /*
  * Helpers
@@ -612,8 +612,8 @@ size_t mpz_out_str(FILE *, int, const mpz_t);
  * RNG
  */
 
-void mpz_random_bits(mpz_t, mp_bitcnt_t, mp_rng_t, void *);
-void mpz_random_int(mpz_t, const mpz_t, mp_rng_t, void *);
+void mpz_random_bits(mpz_t, mp_bitcnt_t, mp_rng_f *, void *);
+void mpz_random_int(mpz_t, const mpz_t, mp_rng_f *, void *);
 
 #ifdef __cplusplus
 }

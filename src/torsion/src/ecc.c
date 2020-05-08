@@ -250,22 +250,22 @@ static const sc_t sc_one = {1, 0};
 
 typedef fe_word_t fe_t[MAX_FIELD_WORDS]; /* 72 bytes */
 
-typedef void fe_add_func(fe_word_t *, const fe_word_t *, const fe_word_t *);
-typedef void fe_sub_func(fe_word_t *, const fe_word_t *, const fe_word_t *);
-typedef void fe_opp_func(fe_word_t *, const fe_word_t *);
-typedef void fe_mul_func(fe_word_t *, const fe_word_t *, const fe_word_t *);
-typedef void fe_sqr_func(fe_word_t *, const fe_word_t *);
-typedef void fe_from_montgomery_func(fe_word_t *, const fe_word_t *);
-typedef void fe_nonzero_func(fe_word_t *, const fe_word_t *);
-typedef void fe_selectznz_func(fe_word_t *, unsigned char,
-                               const fe_word_t *, const fe_word_t *);
-typedef void fe_to_bytes_func(uint8_t *, const fe_word_t *);
-typedef void fe_from_bytes_func(fe_word_t *, const uint8_t *);
-typedef void fe_carry_func(fe_word_t *, const fe_word_t *);
-typedef void fe_invert_func(fe_word_t *, const fe_word_t *);
-typedef int fe_sqrt_func(fe_word_t *, const fe_word_t *);
-typedef int fe_isqrt_func(fe_word_t *, const fe_word_t *, const fe_word_t *);
-typedef void fe_scmul_121666_func(fe_word_t *, const fe_word_t *);
+typedef void fe_add_f(fe_word_t *, const fe_word_t *, const fe_word_t *);
+typedef void fe_sub_f(fe_word_t *, const fe_word_t *, const fe_word_t *);
+typedef void fe_opp_f(fe_word_t *, const fe_word_t *);
+typedef void fe_mul_f(fe_word_t *, const fe_word_t *, const fe_word_t *);
+typedef void fe_sqr_f(fe_word_t *, const fe_word_t *);
+typedef void fe_from_montgomery_f(fe_word_t *, const fe_word_t *);
+typedef void fe_nonzero_f(fe_word_t *, const fe_word_t *);
+typedef void fe_selectznz_f(fe_word_t *, unsigned char,
+                            const fe_word_t *, const fe_word_t *);
+typedef void fe_to_bytes_f(uint8_t *, const fe_word_t *);
+typedef void fe_from_bytes_f(fe_word_t *, const uint8_t *);
+typedef void fe_carry_f(fe_word_t *, const fe_word_t *);
+typedef void fe_scmul_121666_f(fe_word_t *, const fe_word_t *);
+typedef void fe_invert_f(fe_word_t *, const fe_word_t *);
+typedef int fe_sqrt_f(fe_word_t *, const fe_word_t *);
+typedef int fe_isqrt_f(fe_word_t *, const fe_word_t *, const fe_word_t *);
 
 typedef struct _prime_field_s {
   int endian;
@@ -278,21 +278,21 @@ typedef struct _prime_field_s {
   unsigned char mask;
   unsigned char raw[MAX_FIELD_SIZE];
   fe_t r2;
-  fe_add_func *add;
-  fe_sub_func *sub;
-  fe_opp_func *opp;
-  fe_mul_func *mul;
-  fe_sqr_func *square;
-  fe_from_montgomery_func *from_montgomery;
-  fe_nonzero_func *nonzero;
-  fe_selectznz_func *selectznz;
-  fe_to_bytes_func *to_bytes;
-  fe_from_bytes_func *from_bytes;
-  fe_carry_func *carry;
-  fe_scmul_121666_func *scmul_121666;
-  fe_invert_func *invert;
-  fe_sqrt_func *sqrt;
-  fe_isqrt_func *isqrt;
+  fe_add_f *add;
+  fe_sub_f *sub;
+  fe_opp_f *opp;
+  fe_mul_f *mul;
+  fe_sqr_f *square;
+  fe_from_montgomery_f *from_montgomery;
+  fe_nonzero_f *nonzero;
+  fe_selectznz_f *selectznz;
+  fe_to_bytes_f *to_bytes;
+  fe_from_bytes_f *from_bytes;
+  fe_carry_f *carry;
+  fe_scmul_121666_f *scmul_121666;
+  fe_invert_f *invert;
+  fe_sqrt_f *sqrt;
+  fe_isqrt_f *isqrt;
   fe_t zero;
   fe_t one;
   fe_t two;
@@ -305,21 +305,21 @@ typedef struct _prime_def_s {
   size_t bits;
   size_t words;
   const unsigned char p[MAX_FIELD_SIZE];
-  fe_add_func *add;
-  fe_sub_func *sub;
-  fe_opp_func *opp;
-  fe_mul_func *mul;
-  fe_sqr_func *square;
-  fe_from_montgomery_func *from_montgomery;
-  fe_nonzero_func *nonzero;
-  fe_selectznz_func *selectznz;
-  fe_to_bytes_func *to_bytes;
-  fe_from_bytes_func *from_bytes;
-  fe_carry_func *carry;
-  fe_scmul_121666_func *scmul_121666;
-  fe_invert_func *invert;
-  fe_sqrt_func *sqrt;
-  fe_isqrt_func *isqrt;
+  fe_add_f *add;
+  fe_sub_f *sub;
+  fe_opp_f *opp;
+  fe_mul_f *mul;
+  fe_sqr_f *square;
+  fe_from_montgomery_f *from_montgomery;
+  fe_nonzero_f *nonzero;
+  fe_selectznz_f *selectznz;
+  fe_to_bytes_f *to_bytes;
+  fe_from_bytes_f *from_bytes;
+  fe_carry_f *carry;
+  fe_scmul_121666_f *scmul_121666;
+  fe_invert_f *invert;
+  fe_sqrt_f *sqrt;
+  fe_isqrt_f *isqrt;
 } prime_def_t;
 
 /*

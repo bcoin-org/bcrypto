@@ -28,10 +28,14 @@
 #define UNLIKELY(x) (x)
 #endif
 
+#ifdef TORSION_NO_ASSERT
+#define ASSERT(expr) (void)(expr)
+#else
 #define ASSERT(expr) do {                             \
   if (UNLIKELY(!(expr)))                              \
     __torsion_assert_fail(__FILE__, __LINE__, #expr); \
 } while (0)
+#endif
 
 #if !defined(__STDC_VERSION__) || __STDC_VERSION__ < 199901L
 #  if TORSION_GNUC_PREREQ(2, 7)
@@ -99,7 +103,9 @@ typedef signed torsion_int128_t __attribute__((mode(TI)));
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
+#ifndef TORSION_NO_ASSERT
 void
 __torsion_assert_fail(const char *file, int line, const char *expr);
+#endif
 
 #endif /* _TORSION_INTERNAL_H */

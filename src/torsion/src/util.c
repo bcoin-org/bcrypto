@@ -17,28 +17,63 @@
 #include "internal.h"
 
 /*
- * Constants
- */
-
-static torsion_malloc_t *malloc_cb = &malloc;
-static torsion_realloc_t *realloc_cb = &realloc;
-static torsion_free_t *free_cb = &free;
-
-/*
- * Allocation (avoids impl-defined behavior)
+ * Callbacks
  */
 
 static void
-torsion_die(const char *msg) {
+default_die(const char *msg) {
   fprintf(stderr, "%s\n", msg);
   fflush(stderr);
   abort();
 }
 
+static void *
+default_malloc(size_t size) {
+  return malloc(size);
+}
+
+static void *
+default_realloc(void *ptr, size_t size) {
+  return realloc(ptr, size);
+}
+
+static void
+default_free(void *ptr) {
+  free(ptr);
+}
+
+static torsion_die_f *die_cb = default_die;
+static torsion_malloc_f *malloc_cb = default_malloc;
+static torsion_realloc_f *realloc_cb = default_realloc;
+static torsion_free_f *free_cb = default_free;
+
+/*
+ * Error Handling
+ */
+
 void
-torsion_set_memory_functions(torsion_malloc_t *malloc_fn,
-                             torsion_realloc_t *realloc_fn,
-                             torsion_free_t *free_fn) {
+torsion_set_die_function(torsion_die_f *die_fn) {
+  die_cb = die_fn;
+}
+
+void
+torsion_get_die_function(torsion_die_f **die_fn) {
+  *die_fn = die_cb;
+}
+
+void
+torsion_die(const char *msg) {
+  die_cb(msg);
+}
+
+/*
+ * Allocation (avoids impl-defined behavior)
+ */
+
+void
+torsion_set_memory_functions(torsion_malloc_f *malloc_fn,
+                             torsion_realloc_f *realloc_fn,
+                             torsion_free_f *free_fn) {
   if (malloc_fn)
     malloc_cb = malloc_fn;
 
@@ -50,9 +85,9 @@ torsion_set_memory_functions(torsion_malloc_t *malloc_fn,
 }
 
 void
-torsion_get_memory_functions(torsion_malloc_t **malloc_fn,
-                             torsion_realloc_t **realloc_fn,
-                             torsion_free_t **free_fn) {
+torsion_get_memory_functions(torsion_malloc_f **malloc_fn,
+                             torsion_realloc_f **realloc_fn,
+                             torsion_free_f **free_fn) {
   if (malloc_fn)
     *malloc_fn = malloc_cb;
 
@@ -68,7 +103,7 @@ torsion_malloc(size_t size) {
   if (size == 0)
     return NULL;
 
-  return (*malloc_cb)(size);
+  return malloc_cb(size);
 }
 
 void *
@@ -80,7 +115,7 @@ torsion_calloc(size_t nmemb, size_t size) {
   if (size == 0)
     return NULL;
 
-  ptr = (*malloc_cb)(size);
+  ptr = malloc_cb(size);
 
   if (LIKELY(ptr != NULL))
     memset(ptr, 0, size);
@@ -94,21 +129,21 @@ torsion_realloc(void *ptr, size_t size) {
     if (size == 0)
       return NULL;
 
-    return (*malloc_cb)(size);
+    return malloc_cb(size);
   }
 
   if (size == 0) {
-    (*free_cb)(ptr);
+    free_cb(ptr);
     return NULL;
   }
 
-  return (*realloc_cb)(ptr, size);
+  return realloc_cb(ptr, size);
 }
 
 void
 torsion_free(void *ptr) {
   if (ptr != NULL)
-    (*free_cb)(ptr);
+    free_cb(ptr);
 }
 
 void *
@@ -116,7 +151,7 @@ torsion_xmalloc(size_t size) {
   void *ptr = torsion_malloc(size);
 
   if (UNLIKELY(ptr == NULL && size != 0))
-    torsion_die("torsion_xmalloc: allocation failure.");
+    die_cb("torsion_xmalloc: allocation failure.");
 
   return ptr;
 }
@@ -126,7 +161,7 @@ torsion_xcalloc(size_t nmemb, size_t size) {
   void *ptr = torsion_calloc(nmemb, size);
 
   if (UNLIKELY(ptr == NULL && nmemb != 0 && size != 0))
-    torsion_die("torsion_xcalloc: allocation failure.");
+    die_cb("torsion_xcalloc: allocation failure.");
 
   return ptr;
 }
@@ -136,7 +171,7 @@ torsion_xrealloc(void *ptr, size_t size) {
   ptr = torsion_realloc(ptr, size);
 
   if (UNLIKELY(ptr == NULL && size != 0))
-    torsion_die("torsion_xrealloc: allocation failure.");
+    die_cb("torsion_xrealloc: allocation failure.");
 
   return ptr;
 }
@@ -163,6 +198,6 @@ cleanse(void *ptr, size_t len) {
   /* http://www.daemonology.net/blog/2014-09-04-how-to-zero-a-buffer.html */
   static void *(*const volatile memset_ptr)(void *, int, size_t) = memset;
   if (len > 0)
-    (memset_ptr)(ptr, 0, len);
+    memset_ptr(ptr, 0, len);
 #endif
 }
