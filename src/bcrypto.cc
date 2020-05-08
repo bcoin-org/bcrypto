@@ -116,6 +116,8 @@
 
 #define JS_ASSERT(cond, msg) if (!(cond)) JS_THROW(msg)
 
+#define JS_CHECK_ALLOC(expr) JS_ASSERT((expr) == napi_ok, JS_ERR_ALLOC)
+
 /*
  * Structs
  */
@@ -309,12 +311,14 @@ create_external_buffer(napi_env env, size_t length,
     return status;
   }
 
-  return napi_create_external_buffer(env,
-                                     length,
-                                     data,
-                                     finalize_buffer,
-                                     NULL,
-                                     result);
+  CHECK(napi_create_external_buffer(env,
+                                    length,
+                                    data,
+                                    finalize_buffer,
+                                    NULL,
+                                    result) == napi_ok);
+
+  return napi_ok;
 }
 
 /*
@@ -650,10 +654,13 @@ bcrypto_base58_encode(napi_env env, napi_callback_info info) {
 
   if (out_len > MAX_STRING_LENGTH) {
     torsion_free(out);
-    JS_THROW(JS_ERR_ENCODE);
+    JS_THROW(JS_ERR_ALLOC);
   }
 
-  CHECK(napi_create_string_utf8(env, out, out_len, &result) == napi_ok);
+  if (napi_create_string_utf8(env, out, out_len, &result) != napi_ok) {
+    torsion_free(out);
+    JS_THROW(JS_ERR_ALLOC);
+  }
 
   torsion_free(out);
 
@@ -679,9 +686,9 @@ bcrypto_base58_decode(napi_env env, napi_callback_info info) {
     JS_THROW(JS_ERR_DECODE);
   }
 
-  CHECK(create_external_buffer(env, out_len, out, &result) == napi_ok);
-
   torsion_free(str);
+
+  JS_CHECK_ALLOC(create_external_buffer(env, out_len, out, &result));
 
   return result;
 }
@@ -796,7 +803,7 @@ bcrypto_bcrypt_pbkdf(napi_env env, napi_callback_info info) {
     JS_THROW(JS_ERR_DERIVE);
   }
 
-  CHECK(create_external_buffer(env, out_len, out, &result) == napi_ok);
+  JS_CHECK_ALLOC(create_external_buffer(env, out_len, out, &result));
 
   return result;
 }
@@ -1136,8 +1143,10 @@ bcrypto_bech32_convert_bits(napi_env env, napi_callback_info info) {
   if (pad)
     size += 1;
 
-  out = (uint8_t *)torsion_xmalloc(size);
+  out = (uint8_t *)torsion_malloc(size);
   out_len = 0;
+
+  JS_ASSERT(out != NULL || size == 0, JS_ERR_ALLOC);
 
   if (!bech32_convert_bits(out, &out_len, tobits,
                            data, data_len, frombits, pad)) {
@@ -1145,7 +1154,7 @@ bcrypto_bech32_convert_bits(napi_env env, napi_callback_info info) {
     JS_THROW(JS_ERR_ENCODE);
   }
 
-  CHECK(create_external_buffer(env, out_len, out, &result) == napi_ok);
+  JS_CHECK_ALLOC(create_external_buffer(env, out_len, out, &result));
 
   return result;
 }
@@ -1747,8 +1756,10 @@ bcrypto_cash32_convert_bits(napi_env env, napi_callback_info info) {
   if (pad)
     size += 1;
 
-  out = (uint8_t *)torsion_xmalloc(size);
+  out = (uint8_t *)torsion_malloc(size);
   out_len = 0;
+
+  JS_ASSERT(out != NULL || size == 0, JS_ERR_ALLOC);
 
   if (!cash32_convert_bits(out, &out_len, tobits,
                            data, data_len, frombits, pad)) {
@@ -1756,7 +1767,7 @@ bcrypto_cash32_convert_bits(napi_env env, napi_callback_info info) {
     JS_THROW(JS_ERR_ENCODE);
   }
 
-  CHECK(create_external_buffer(env, out_len, out, &result) == napi_ok);
+  JS_CHECK_ALLOC(create_external_buffer(env, out_len, out, &result));
 
   return result;
 }
@@ -2176,11 +2187,16 @@ bcrypto_cipher_update(napi_env env, napi_callback_info info) {
   JS_ASSERT(cipher->started, JS_ERR_INIT);
 
   out_len = cipher_stream_update_size(&cipher->ctx, in_len);
-  out = (uint8_t *)torsion_xmalloc(out_len);
+
+  JS_ASSERT(out_len <= MAX_BUFFER_LENGTH, JS_ERR_ALLOC);
+
+  out = (uint8_t *)torsion_malloc(out_len);
+
+  JS_ASSERT(out != NULL || out_len == 0, JS_ERR_ALLOC);
 
   cipher_stream_update(&cipher->ctx, out, &out_len, in, in_len);
 
-  CHECK(create_external_buffer(env, out_len, out, &result) == napi_ok);
+  JS_CHECK_ALLOC(create_external_buffer(env, out_len, out, &result));
 
   return result;
 }
@@ -2274,7 +2290,12 @@ bcrypto_cipher_encrypt(napi_env env, napi_callback_info info) {
   JS_ASSERT(mode <= CIPHER_MODE_MAX, JS_ERR_CONTEXT);
 
   out_len = CIPHER_MAX_ENCRYPT_SIZE(in_len);
-  out = (uint8_t *)torsion_xmalloc(out_len);
+
+  JS_ASSERT(out_len <= MAX_BUFFER_LENGTH, JS_ERR_ALLOC);
+
+  out = (uint8_t *)torsion_malloc(out_len);
+
+  JS_ASSERT(out != NULL || out_len == 0, JS_ERR_ALLOC);
 
   ok = cipher_static_encrypt(out, &out_len,
                              type, mode,
@@ -2282,12 +2303,12 @@ bcrypto_cipher_encrypt(napi_env env, napi_callback_info info) {
                              iv, iv_len,
                              in, in_len);
 
-  if (!ok) {
+  if (!ok || out_len > MAX_BUFFER_LENGTH) {
     torsion_free(out);
     JS_THROW(JS_ERR_FINAL);
   }
 
-  CHECK(create_external_buffer(env, out_len, out, &result) == napi_ok);
+  JS_CHECK_ALLOC(create_external_buffer(env, out_len, out, &result));
 
   return result;
 }
@@ -2316,7 +2337,12 @@ bcrypto_cipher_decrypt(napi_env env, napi_callback_info info) {
   JS_ASSERT(mode <= CIPHER_MODE_MAX, JS_ERR_CONTEXT);
 
   out_len = CIPHER_MAX_DECRYPT_SIZE(in_len);
-  out = (uint8_t *)torsion_xmalloc(out_len);
+
+  JS_ASSERT(out_len <= MAX_BUFFER_LENGTH, JS_ERR_ALLOC);
+
+  out = (uint8_t *)torsion_malloc(out_len);
+
+  JS_ASSERT(out != NULL || out_len == 0, JS_ERR_ALLOC);
 
   ok = cipher_static_decrypt(out, &out_len,
                              type, mode,
@@ -2324,12 +2350,12 @@ bcrypto_cipher_decrypt(napi_env env, napi_callback_info info) {
                              iv, iv_len,
                              in, in_len);
 
-  if (!ok) {
+  if (!ok || out_len > MAX_BUFFER_LENGTH) {
     torsion_free(out);
     JS_THROW(JS_ERR_FINAL);
   }
 
-  CHECK(create_external_buffer(env, out_len, out, &result) == napi_ok);
+  JS_CHECK_ALLOC(create_external_buffer(env, out_len, out, &result));
 
   return result;
 }
@@ -2466,7 +2492,7 @@ bcrypto_ctr_drbg_generate(napi_env env, napi_callback_info info) {
 
   ctr_drbg_generate(&drbg->ctx, out, out_len, add, add_len);
 
-  CHECK(create_external_buffer(env, out_len, out, &result) == napi_ok);
+  JS_CHECK_ALLOC(create_external_buffer(env, out_len, out, &result));
 
   return result;
 }
@@ -3241,8 +3267,8 @@ bcrypto_eb2k_derive(napi_env env, napi_callback_info info) {
     goto fail;
   }
 
-  CHECK(create_external_buffer(env, key_len, key, &keyval) == napi_ok);
-  CHECK(create_external_buffer(env, iv_len, iv, &ivval) == napi_ok);
+  JS_CHECK_ALLOC(create_external_buffer(env, key_len, key, &keyval));
+  JS_CHECK_ALLOC(create_external_buffer(env, iv_len, iv, &ivval));
 
   CHECK(napi_create_array_with_length(env, 2, &result) == napi_ok);
   CHECK(napi_set_element(env, result, 0, keyval) == napi_ok);
@@ -6482,7 +6508,7 @@ bcrypto_hash_drbg_generate(napi_env env, napi_callback_info info) {
 
   hash_drbg_generate(&drbg->ctx, out, out_len, add, add_len);
 
-  CHECK(create_external_buffer(env, out_len, out, &result) == napi_ok);
+  JS_CHECK_ALLOC(create_external_buffer(env, out_len, out, &result));
 
   return result;
 }
@@ -6551,7 +6577,7 @@ bcrypto_hkdf_expand(napi_env env, napi_callback_info info) {
     JS_THROW(JS_ERR_DERIVE);
   }
 
-  CHECK(create_external_buffer(env, out_len, out, &result) == napi_ok);
+  JS_CHECK_ALLOC(create_external_buffer(env, out_len, out, &result));
 
   return result;
 }
@@ -6792,7 +6818,7 @@ bcrypto_hmac_drbg_generate(napi_env env, napi_callback_info info) {
 
   hmac_drbg_generate(&drbg->ctx, out, out_len, add, add_len);
 
-  CHECK(create_external_buffer(env, out_len, out, &result) == napi_ok);
+  JS_CHECK_ALLOC(create_external_buffer(env, out_len, out, &result));
 
   return result;
 }
@@ -7170,7 +7196,7 @@ bcrypto_pbkdf2_derive(napi_env env, napi_callback_info info) {
     JS_THROW(JS_ERR_DERIVE);
   }
 
-  CHECK(create_external_buffer(env, out_len, out, &result) == napi_ok);
+  JS_CHECK_ALLOC(create_external_buffer(env, out_len, out, &result));
 
   return result;
 }
@@ -7319,7 +7345,7 @@ bcrypto_pgpdf_derive_simple(napi_env env, napi_callback_info info) {
     JS_THROW(JS_ERR_DERIVE);
   }
 
-  CHECK(create_external_buffer(env, out_len, out, &result) == napi_ok);
+  JS_CHECK_ALLOC(create_external_buffer(env, out_len, out, &result));
 
   return result;
 }
@@ -7355,7 +7381,7 @@ bcrypto_pgpdf_derive_salted(napi_env env, napi_callback_info info) {
     JS_THROW(JS_ERR_DERIVE);
   }
 
-  CHECK(create_external_buffer(env, out_len, out, &result) == napi_ok);
+  JS_CHECK_ALLOC(create_external_buffer(env, out_len, out, &result));
 
   return result;
 }
@@ -7392,7 +7418,7 @@ bcrypto_pgpdf_derive_iterated(napi_env env, napi_callback_info info) {
     JS_THROW(JS_ERR_DERIVE);
   }
 
-  CHECK(create_external_buffer(env, out_len, out, &result) == napi_ok);
+  JS_CHECK_ALLOC(create_external_buffer(env, out_len, out, &result));
 
   return result;
 }
@@ -8313,6 +8339,7 @@ bcrypto_rsa_veil(napi_env env, napi_callback_info info) {
                              &entropy_len) == napi_ok);
 
   JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
+  JS_ASSERT(bits <= RSA_MAX_MOD_BITS + 8, JS_ERR_VEIL);
 
   out_len = (bits + 7) / 8;
   out = (uint8_t *)torsion_xmalloc(out_len);
@@ -9458,7 +9485,7 @@ bcrypto_scrypt_derive(napi_env env, napi_callback_info info) {
     JS_THROW(JS_ERR_DERIVE);
   }
 
-  CHECK(create_external_buffer(env, out_len, out, &result) == napi_ok);
+  JS_CHECK_ALLOC(create_external_buffer(env, out_len, out, &result));
 
   return result;
 }
@@ -11859,11 +11886,16 @@ bcrypto_secretbox_seal(napi_env env, napi_callback_info info) {
   JS_ASSERT(nonce_len == 24, JS_ERR_NONCE_SIZE);
 
   out_len = SECRETBOX_SEAL_SIZE(msg_len);
-  out = (uint8_t *)torsion_xmalloc(out_len);
+
+  JS_ASSERT(out_len <= MAX_BUFFER_LENGTH, JS_ERR_ALLOC);
+
+  out = (uint8_t *)torsion_malloc(out_len);
+
+  JS_ASSERT(out != NULL || out_len == 0, JS_ERR_ALLOC);
 
   secretbox_seal(out, msg, msg_len, key, nonce);
 
-  CHECK(create_external_buffer(env, out_len, out, &result) == napi_ok);
+  JS_CHECK_ALLOC(create_external_buffer(env, out_len, out, &result));
 
   return result;
 }
@@ -11890,14 +11922,19 @@ bcrypto_secretbox_open(napi_env env, napi_callback_info info) {
   JS_ASSERT(nonce_len == 24, JS_ERR_NONCE_SIZE);
 
   out_len = SECRETBOX_OPEN_SIZE(sealed_len);
-  out = (uint8_t *)torsion_xmalloc(out_len);
+
+  JS_ASSERT(out_len <= MAX_BUFFER_LENGTH, JS_ERR_ALLOC);
+
+  out = (uint8_t *)torsion_malloc(out_len);
+
+  JS_ASSERT(out != NULL || out_len == 0, JS_ERR_ALLOC);
 
   if (!secretbox_open(out, sealed, sealed_len, key, nonce)) {
     torsion_free(out);
     JS_THROW(JS_ERR_DECRYPT);
   }
 
-  CHECK(create_external_buffer(env, out_len, out, &result) == napi_ok);
+  JS_CHECK_ALLOC(create_external_buffer(env, out_len, out, &result));
 
   return result;
 }
