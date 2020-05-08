@@ -14,6 +14,7 @@
 #endif
 
 #include <torsion/util.h>
+#include "internal.h"
 
 /*
  * Constants
@@ -24,7 +25,7 @@ static torsion_realloc_t *realloc_cb = &realloc;
 static torsion_free_t *free_cb = &free;
 
 /*
- * Allocation
+ * Allocation (avoids impl-defined behavior)
  */
 
 static void
@@ -71,12 +72,33 @@ torsion_malloc(size_t size) {
 }
 
 void *
+torsion_calloc(size_t nmemb, size_t size) {
+  void *ptr;
+
+  size *= nmemb;
+
+  if (size == 0)
+    return NULL;
+
+  ptr = (*malloc_cb)(size);
+
+  if (LIKELY(ptr != NULL))
+    memset(ptr, 0, size);
+
+  return ptr;
+}
+
+void *
 torsion_realloc(void *ptr, size_t size) {
-  if (ptr == NULL)
-    return torsion_malloc(size);
+  if (ptr == NULL) {
+    if (size == 0)
+      return NULL;
+
+    return (*malloc_cb)(size);
+  }
 
   if (size == 0) {
-    torsion_free(ptr);
+    (*free_cb)(ptr);
     return NULL;
   }
 
@@ -93,8 +115,18 @@ void *
 torsion_xmalloc(size_t size) {
   void *ptr = torsion_malloc(size);
 
-  if (ptr == NULL && size != 0)
+  if (UNLIKELY(ptr == NULL && size != 0))
     torsion_die("torsion_xmalloc: allocation failure.");
+
+  return ptr;
+}
+
+void *
+torsion_xcalloc(size_t nmemb, size_t size) {
+  void *ptr = torsion_calloc(nmemb, size);
+
+  if (UNLIKELY(ptr == NULL && nmemb != 0 && size != 0))
+    torsion_die("torsion_xcalloc: allocation failure.");
 
   return ptr;
 }
@@ -103,7 +135,7 @@ void *
 torsion_xrealloc(void *ptr, size_t size) {
   ptr = torsion_realloc(ptr, size);
 
-  if (ptr == NULL && size != 0)
+  if (UNLIKELY(ptr == NULL && size != 0))
     torsion_die("torsion_xrealloc: allocation failure.");
 
   return ptr;
@@ -117,16 +149,20 @@ void
 cleanse(void *ptr, size_t len) {
 #if defined(_WIN32)
   /* https://github.com/jedisct1/libsodium/blob/3b26a5c/src/libsodium/sodium/utils.c#L112 */
-  SecureZeroMemory(ptr, len);
+  if (len > 0)
+    SecureZeroMemory(ptr, len);
 #elif defined(__GNUC__) || defined(__clang__)
   /* https://github.com/torvalds/linux/blob/37d4e84/include/linux/string.h#L233 */
   /* https://github.com/torvalds/linux/blob/37d4e84/include/linux/compiler-gcc.h#L21 */
   /* https://github.com/bminor/glibc/blob/master/string/explicit_bzero.c */
-  memset(ptr, 0, len);
-  __asm__ __volatile__("" : : "r" (ptr) : "memory");
+  if (len > 0) {
+    memset(ptr, 0, len);
+    __asm__ __volatile__("" : : "r" (ptr) : "memory");
+  }
 #else
   /* http://www.daemonology.net/blog/2014-09-04-how-to-zero-a-buffer.html */
   static void *(*const volatile memset_ptr)(void *, int, size_t) = memset;
-  (memset_ptr)(ptr, 0, len);
+  if (len > 0)
+    (memset_ptr)(ptr, 0, len);
 #endif
 }
