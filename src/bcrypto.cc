@@ -136,6 +136,7 @@ typedef struct bcrypto_cipher_s {
   int mode;
   int encrypt;
   int started;
+  int has_tag;
 } bcrypto_cipher_t;
 
 typedef struct bcrypto_ctr_drbg_s {
@@ -1998,6 +1999,7 @@ bcrypto_cipher_create(napi_env env, napi_callback_info info) {
   cipher->mode = mode;
   cipher->encrypt = encrypt;
   cipher->started = 0;
+  cipher->has_tag = 0;
 
   CHECK(napi_create_external(env,
                              cipher,
@@ -2033,6 +2035,7 @@ bcrypto_cipher_init(napi_env env, napi_callback_info info) {
   JS_ASSERT(ok, JS_ERR_CONTEXT);
 
   cipher->started = 1;
+  cipher->has_tag = 0;
 
   return argv[0];
 }
@@ -2135,6 +2138,7 @@ bcrypto_cipher_get_tag(napi_env env, napi_callback_info info) {
   CHECK(argc == 1);
   CHECK(napi_get_value_external(env, argv[0], (void **)&cipher) == napi_ok);
 
+  JS_ASSERT(cipher->has_tag, JS_ERR_INIT);
   JS_ASSERT(cipher_stream_get_tag(&cipher->ctx, out, &out_len), JS_ERR_GET);
 
   CHECK(napi_create_buffer_copy(env, out_len, out, NULL, &result) == napi_ok);
@@ -2213,6 +2217,7 @@ bcrypto_cipher_final(napi_env env, napi_callback_info info) {
   JS_ASSERT(cipher_stream_final(&cipher->ctx, out, &out_len), JS_ERR_FINAL);
 
   cipher->started = 0;
+  cipher->has_tag = 1;
 
   CHECK(napi_create_buffer_copy(env, out_len, out, NULL, &result) == napi_ok);
 
