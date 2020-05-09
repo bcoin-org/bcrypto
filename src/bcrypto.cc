@@ -679,7 +679,7 @@ bcrypto_base58_decode(napi_env env, napi_callback_info info) {
   size_t out_len;
   char *str;
   size_t str_len;
-  napi_value bufval, lenval, result;
+  napi_value ab, result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
@@ -694,17 +694,14 @@ bcrypto_base58_decode(napi_env env, napi_callback_info info) {
   if (out_len > MAX_BUFFER_LENGTH)
     goto fail;
 
-  if (napi_create_buffer(env, out_len, (void **)&out, &bufval) != napi_ok)
+  if (napi_create_arraybuffer(env, out_len, (void **)&out, &ab) != napi_ok)
     goto fail;
 
   if (!base58_decode(out, &out_len, str, str_len))
     goto fail;
 
-  CHECK(napi_create_uint32(env, out_len, &lenval) == napi_ok);
-
-  CHECK(napi_create_array_with_length(env, 2, &result) == napi_ok);
-  CHECK(napi_set_element(env, result, 0, bufval) == napi_ok);
-  CHECK(napi_set_element(env, result, 1, lenval) == napi_ok);
+  CHECK(napi_create_typedarray(env, napi_uint8_array, out_len,
+                               ab, 0, &result) == napi_ok);
 
   bcrypto_free(str);
 
@@ -2198,7 +2195,7 @@ bcrypto_cipher_update(napi_env env, napi_callback_info info) {
   const uint8_t *in;
   size_t in_len;
   bcrypto_cipher_t *cipher;
-  napi_value bufval, lenval, result;
+  napi_value ab, result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
@@ -2211,15 +2208,12 @@ bcrypto_cipher_update(napi_env env, napi_callback_info info) {
 
   JS_ASSERT(out_len <= MAX_BUFFER_LENGTH, JS_ERR_ALLOC);
 
-  JS_CHECK_ALLOC(napi_create_buffer(env, out_len, (void **)&out, &bufval));
+  JS_CHECK_ALLOC(napi_create_arraybuffer(env, out_len, (void **)&out, &ab));
 
   cipher_stream_update(&cipher->ctx, out, &out_len, in, in_len);
 
-  CHECK(napi_create_uint32(env, out_len, &lenval) == napi_ok);
-
-  CHECK(napi_create_array_with_length(env, 2, &result) == napi_ok);
-  CHECK(napi_set_element(env, result, 0, bufval) == napi_ok);
-  CHECK(napi_set_element(env, result, 1, lenval) == napi_ok);
+  CHECK(napi_create_typedarray(env, napi_uint8_array, out_len,
+                               ab, 0, &result) == napi_ok);
 
   return result;
 }
@@ -2298,7 +2292,7 @@ bcrypto_cipher_encrypt(napi_env env, napi_callback_info info) {
   uint32_t type, mode;
   const uint8_t *key, *iv, *in;
   size_t key_len, iv_len, in_len;
-  napi_value bufval, lenval, result;
+  napi_value ab, result;
   int ok;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
@@ -2316,7 +2310,7 @@ bcrypto_cipher_encrypt(napi_env env, napi_callback_info info) {
 
   JS_ASSERT(out_len <= MAX_BUFFER_LENGTH, JS_ERR_ALLOC);
 
-  JS_CHECK_ALLOC(napi_create_buffer(env, out_len, (void **)&out, &bufval));
+  JS_CHECK_ALLOC(napi_create_arraybuffer(env, out_len, (void **)&out, &ab));
 
   ok = cipher_static_encrypt(out, &out_len,
                              type, mode,
@@ -2326,11 +2320,8 @@ bcrypto_cipher_encrypt(napi_env env, napi_callback_info info) {
 
   JS_ASSERT(ok, JS_ERR_ENCRYPT);
 
-  CHECK(napi_create_uint32(env, out_len, &lenval) == napi_ok);
-
-  CHECK(napi_create_array_with_length(env, 2, &result) == napi_ok);
-  CHECK(napi_set_element(env, result, 0, bufval) == napi_ok);
-  CHECK(napi_set_element(env, result, 1, lenval) == napi_ok);
+  CHECK(napi_create_typedarray(env, napi_uint8_array, out_len,
+                               ab, 0, &result) == napi_ok);
 
   return result;
 }
@@ -2344,7 +2335,7 @@ bcrypto_cipher_decrypt(napi_env env, napi_callback_info info) {
   uint32_t type, mode;
   const uint8_t *key, *iv, *in;
   size_t key_len, iv_len, in_len;
-  napi_value bufval, lenval, result;
+  napi_value ab, result;
   int ok;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
@@ -2362,7 +2353,7 @@ bcrypto_cipher_decrypt(napi_env env, napi_callback_info info) {
 
   JS_ASSERT(out_len <= MAX_BUFFER_LENGTH, JS_ERR_ALLOC);
 
-  JS_CHECK_ALLOC(napi_create_buffer(env, out_len, (void **)&out, &bufval));
+  JS_CHECK_ALLOC(napi_create_arraybuffer(env, out_len, (void **)&out, &ab));
 
   ok = cipher_static_decrypt(out, &out_len,
                              type, mode,
@@ -2372,11 +2363,8 @@ bcrypto_cipher_decrypt(napi_env env, napi_callback_info info) {
 
   JS_ASSERT(ok, JS_ERR_DECRYPT);
 
-  CHECK(napi_create_uint32(env, out_len, &lenval) == napi_ok);
-
-  CHECK(napi_create_array_with_length(env, 2, &result) == napi_ok);
-  CHECK(napi_set_element(env, result, 0, bufval) == napi_ok);
-  CHECK(napi_set_element(env, result, 1, lenval) == napi_ok);
+  CHECK(napi_create_typedarray(env, napi_uint8_array, out_len,
+                               ab, 0, &result) == napi_ok);
 
   return result;
 }
