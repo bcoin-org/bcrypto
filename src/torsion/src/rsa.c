@@ -1756,7 +1756,7 @@ rsa_verify(int type,
   if (klen < tlen + 11)
     goto fail;
 
-  em = torsion_malloc(klen);
+  em = malloc(klen);
 
   if (em == NULL)
     goto fail;
@@ -1780,7 +1780,7 @@ rsa_verify(int type,
   r = (ok == 1);
 fail:
   rsa_pub_clear(&k);
-  torsion_free(em);
+  if (em != NULL) free(em);
   return r;
 }
 
@@ -1963,7 +1963,7 @@ rsa_sign_pss(unsigned char *out,
     goto fail;
 
   if (salt_len > 0) {
-    salt = torsion_malloc(salt_len);
+    salt = malloc(salt_len);
 
     if (salt == NULL)
       goto fail;
@@ -1987,7 +1987,7 @@ rsa_sign_pss(unsigned char *out,
 fail:
   rsa_priv_clear(&k);
   cleanse(&rng, sizeof(rng));
-  torsion_free(salt);
+  if (salt != NULL) free(salt);
   if (r == 0) cleanse(out, klen);
   return r;
 }
@@ -2037,7 +2037,7 @@ rsa_verify_pss(int type,
   if (salt_len < 0 || (size_t)salt_len > klen)
     goto fail;
 
-  em = torsion_malloc(klen);
+  em = malloc(klen);
 
   if (em == NULL)
     goto fail;
@@ -2065,7 +2065,7 @@ rsa_verify_pss(int type,
   r = 1;
 fail:
   rsa_pub_clear(&k);
-  torsion_free(em);
+  if (em != NULL) free(em);
   return r;
 }
 

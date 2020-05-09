@@ -453,30 +453,37 @@ mp_die(const char *msg) {
  * Allocation
  */
 
-void *
-torsion_xmalloc(size_t);
-
-void *
-torsion_xrealloc(void *, size_t);
-
-void
-torsion_free(void *);
-
 static mp_ptr
 mp_alloc_limbs(mp_size_t size) {
+  mp_ptr ptr;
+
   ASSERT(size > 0);
-  return torsion_xmalloc(size * sizeof(mp_limb_t));
+
+  ptr = malloc(size * sizeof(mp_limb_t));
+
+  if (ptr == NULL)
+    mp_die("mpi: allocation failed.");
+
+  return ptr;
 }
 
 static mp_ptr
 mp_realloc_limbs(mp_ptr old, mp_size_t size) {
+  mp_ptr ptr;
+
   ASSERT(size > 0);
-  return torsion_xrealloc(old, size * sizeof(mp_limb_t));
+
+  ptr = realloc(old, size * sizeof(mp_limb_t));
+
+  if (ptr == NULL)
+    mp_die("mpi: allocation failed.");
+
+  return ptr;
 }
 
 static void
 mp_free_limbs(mp_ptr p) {
-  torsion_free(p);
+  free(p);
 }
 
 /*

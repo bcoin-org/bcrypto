@@ -108,4 +108,9 @@ void
 __torsion_assert_fail(const char *file, int line, const char *expr);
 #endif
 
+#define torsion_die __torsion_die
+
+void
+torsion_die(const char *msg);
+
 #endif /* _TORSION_INTERNAL_H */

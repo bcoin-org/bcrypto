@@ -17,3 +17,10 @@ __torsion_assert_fail(const char *file, int line, const char *expr) {
   abort();
 }
 #endif
+
+void
+torsion_die(const char *msg) {
+  fprintf(stderr, "%s\n", msg);
+  fflush(stderr);
+  abort();
+}

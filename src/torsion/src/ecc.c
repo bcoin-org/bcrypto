@@ -633,6 +633,16 @@ reverse_bytes(unsigned char *raw, size_t size) {
   }
 }
 
+static void *
+checked_malloc(size_t size) {
+  void *ptr = malloc(size);
+
+  if (ptr == NULL)
+    torsion_die("libtorsion: allocation failed.");
+
+  return ptr;
+}
+
 /*
  * Scalar
  */
@@ -2568,7 +2578,7 @@ wge_fixed_points_var(const wei_t *ec, wge_t *out, const wge_t *p) {
   /* NOTE: Only called on initialization. */
   const scalar_field_t *sc = &ec->sc;
   size_t size = FIXED_LENGTH(sc->bits);
-  jge_t *wnds = torsion_xmalloc(size * sizeof(jge_t)); /* 442.2kb */
+  jge_t *wnds = checked_malloc(size * sizeof(jge_t)); /* 442.2kb */
   size_t i, j;
   jge_t g;
 
@@ -2588,7 +2598,7 @@ wge_fixed_points_var(const wei_t *ec, wge_t *out, const wge_t *p) {
 
   jge_to_wge_all_var(ec, out, wnds, size);
 
-  torsion_free(wnds);
+  free(wnds);
 }
 
 static void
@@ -2596,7 +2606,7 @@ wge_naf_points_var(const wei_t *ec, wge_t *out,
                    const wge_t *p, size_t width) {
   /* NOTE: Only called on initialization. */
   size_t size = 1 << (width - 2);
-  jge_t *wnd = torsion_xmalloc(size * sizeof(jge_t)); /* 216kb */
+  jge_t *wnd = checked_malloc(size * sizeof(jge_t)); /* 216kb */
   jge_t j, dbl;
   size_t i;
 
@@ -2609,7 +2619,7 @@ wge_naf_points_var(const wei_t *ec, wge_t *out,
 
   jge_to_wge_all_var(ec, out, wnd, size);
 
-  torsion_free(wnd);
+  free(wnd);
 }
 
 static void
@@ -8557,7 +8567,7 @@ wei_curve_create(int type) {
   if (type < 0 || (size_t)type > ARRAY_SIZE(wei_curves))
     return NULL;
 
-  ec = torsion_xmalloc(sizeof(wei_t));
+  ec = checked_malloc(sizeof(wei_t));
 
   wei_init(ec, wei_curves[type]);
 
@@ -8569,7 +8579,7 @@ wei_curve_destroy(wei_t *ec) {
   if (ec != NULL) {
     sc_cleanse(&ec->sc, ec->blind);
     jge_cleanse(ec, &ec->unblind);
-    torsion_free(ec);
+    free(ec);
   }
 }
 
@@ -8600,24 +8610,24 @@ wei_curve_field_bits(const wei_t *ec) {
 
 struct wei_scratch_s *
 wei_scratch_create(const wei_t *ec, size_t size) {
-  struct wei_scratch_s *scratch = torsion_xmalloc(sizeof(struct wei_scratch_s));
+  struct wei_scratch_s *scratch = checked_malloc(sizeof(struct wei_scratch_s));
   size_t length = ec->endo ? size : size / 2;
   size_t bits = ec->endo ? ec->sc.endo_bits : ec->sc.bits;
   size_t i;
 
   scratch->size = size;
-  scratch->wnd = torsion_xmalloc(length * 4 * sizeof(jge_t));
-  scratch->wnds = torsion_xmalloc(length * sizeof(jge_t *));
-  scratch->naf = torsion_xmalloc(length * (bits + 1) * sizeof(int));
-  scratch->nafs = torsion_xmalloc(length * sizeof(int *));
+  scratch->wnd = checked_malloc(length * 4 * sizeof(jge_t));
+  scratch->wnds = checked_malloc(length * sizeof(jge_t *));
+  scratch->naf = checked_malloc(length * (bits + 1) * sizeof(int));
+  scratch->nafs = checked_malloc(length * sizeof(int *));
 
   for (i = 0; i < length; i++) {
     scratch->wnds[i] = &scratch->wnd[i * 4];
     scratch->nafs[i] = &scratch->naf[i * (bits + 1)];
   }
 
-  scratch->points = torsion_xmalloc(size * sizeof(wge_t));
-  scratch->coeffs = torsion_xmalloc(size * sizeof(sc_t));
+  scratch->points = checked_malloc(size * sizeof(wge_t));
+  scratch->coeffs = checked_malloc(size * sizeof(sc_t));
 
   return scratch;
 }
@@ -8627,13 +8637,13 @@ wei_scratch_destroy(const wei_t *ec, struct wei_scratch_s *scratch) {
   (void)ec;
 
   if (scratch != NULL) {
-    torsion_free(scratch->wnd);
-    torsion_free(scratch->wnds);
-    torsion_free(scratch->naf);
-    torsion_free(scratch->nafs);
-    torsion_free(scratch->points);
-    torsion_free(scratch->coeffs);
-    torsion_free(scratch);
+    free(scratch->wnd);
+    free(scratch->wnds);
+    free(scratch->naf);
+    free(scratch->nafs);
+    free(scratch->points);
+    free(scratch->coeffs);
+    free(scratch);
   }
 }
 
@@ -8648,7 +8658,7 @@ mont_curve_create(int type) {
   if (type < 0 || (size_t)type > ARRAY_SIZE(mont_curves))
     return NULL;
 
-  ec = torsion_xmalloc(sizeof(mont_t));
+  ec = checked_malloc(sizeof(mont_t));
 
   mont_init(ec, mont_curves[type]);
 
@@ -8657,7 +8667,8 @@ mont_curve_create(int type) {
 
 void
 mont_curve_destroy(mont_t *ec) {
-  torsion_free(ec);
+  if (ec != NULL)
+    free(ec);
 }
 
 size_t
@@ -8691,7 +8702,7 @@ edwards_curve_create(int type) {
   if (type < 0 || (size_t)type > ARRAY_SIZE(edwards_curves))
     return NULL;
 
-  ec = torsion_xmalloc(sizeof(edwards_t));
+  ec = checked_malloc(sizeof(edwards_t));
 
   edwards_init(ec, edwards_curves[type]);
 
@@ -8703,7 +8714,7 @@ edwards_curve_destroy(edwards_t *ec) {
   if (ec != NULL) {
     sc_cleanse(&ec->sc, ec->blind);
     xge_cleanse(ec, &ec->unblind);
-    torsion_free(ec);
+    free(ec);
   }
 }
 
@@ -8735,24 +8746,24 @@ edwards_curve_field_bits(const edwards_t *ec) {
 struct edwards_scratch_s *
 edwards_scratch_create(const edwards_t *ec, size_t size) {
   struct edwards_scratch_s *scratch =
-    torsion_xmalloc(sizeof(struct edwards_scratch_s));
+    checked_malloc(sizeof(struct edwards_scratch_s));
   size_t length = size / 2;
   size_t bits = ec->sc.bits;
   size_t i;
 
   scratch->size = size;
-  scratch->wnd = torsion_xmalloc(length * 4 * sizeof(xge_t));
-  scratch->wnds = torsion_xmalloc(length * sizeof(xge_t *));
-  scratch->naf = torsion_xmalloc(length * (bits + 1) * sizeof(int));
-  scratch->nafs = torsion_xmalloc(length * sizeof(int *));
+  scratch->wnd = checked_malloc(length * 4 * sizeof(xge_t));
+  scratch->wnds = checked_malloc(length * sizeof(xge_t *));
+  scratch->naf = checked_malloc(length * (bits + 1) * sizeof(int));
+  scratch->nafs = checked_malloc(length * sizeof(int *));
 
   for (i = 0; i < length; i++) {
     scratch->wnds[i] = &scratch->wnd[i * 4];
     scratch->nafs[i] = &scratch->naf[i * (bits + 1)];
   }
 
-  scratch->points = torsion_xmalloc(size * sizeof(xge_t));
-  scratch->coeffs = torsion_xmalloc(size * sizeof(sc_t));
+  scratch->points = checked_malloc(size * sizeof(xge_t));
+  scratch->coeffs = checked_malloc(size * sizeof(sc_t));
 
   return scratch;
 }
@@ -8763,13 +8774,13 @@ edwards_scratch_destroy(const edwards_t *ec,
   (void)ec;
 
   if (scratch != NULL) {
-    torsion_free(scratch->wnd);
-    torsion_free(scratch->wnds);
-    torsion_free(scratch->naf);
-    torsion_free(scratch->nafs);
-    torsion_free(scratch->points);
-    torsion_free(scratch->coeffs);
-    torsion_free(scratch);
+    free(scratch->wnd);
+    free(scratch->wnds);
+    free(scratch->naf);
+    free(scratch->nafs);
+    free(scratch->points);
+    free(scratch->coeffs);
+    free(scratch);
   }
 }
 

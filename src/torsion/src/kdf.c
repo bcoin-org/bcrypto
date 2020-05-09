@@ -318,6 +318,9 @@ scrypt_derive(unsigned char *out,
   uint32_t i;
   int ret = 0;
 
+  if (r == 0 || p == 0 || N == 0)
+    return 0;
+
   if (N > UINT32_MAX)
     return 0;
 
@@ -330,15 +333,15 @@ scrypt_derive(unsigned char *out,
   if ((uint64_t)r * N >= (UINT64_C(1) << 25))
     return 0;
 
-  if (N == 0 || (N & (N - 1)) != 0)
+  if ((N & (N - 1)) != 0)
     return 0;
 
   if (len == 0)
     return 1;
 
-  B = torsion_malloc(128 * r * p);
-  XY = torsion_malloc(256 * r);
-  V = torsion_malloc(128 * r * N);
+  B = malloc(128 * r * p);
+  XY = malloc(256 * r);
+  V = malloc(128 * r * N);
 
   if (B == NULL || XY == NULL || V == NULL)
     goto fail;
@@ -356,17 +359,17 @@ scrypt_derive(unsigned char *out,
 fail:
   if (B != NULL) {
     cleanse(B, 128 * r * p);
-    torsion_free(B);
+    free(B);
   }
 
   if (XY != NULL) {
     cleanse(XY, 256 * r);
-    torsion_free(XY);
+    free(XY);
   }
 
   if (V != NULL) {
     cleanse(V, 128 * r * N);
-    torsion_free(V);
+    free(V);
   }
 
   return ret;
