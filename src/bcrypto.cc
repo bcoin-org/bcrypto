@@ -9024,8 +9024,6 @@ bcrypto_schnorr_sign(napi_env env, napi_callback_info info) {
                                 NULL,
                                 &result) == napi_ok);
 
-  cleanse((void *)aux, aux_len);
-
   return result;
 }
 
@@ -11516,8 +11514,6 @@ bcrypto_secp256k1_schnorr_sign(napi_env env, napi_callback_info info) {
   secp256k1_schnorrsig_serialize(ec->ctx, out, &sigout);
 
   CHECK(napi_create_buffer_copy(env, 64, out, NULL, &result) == napi_ok);
-
-  cleanse((void *)aux, aux_len);
 
   return result;
 }
