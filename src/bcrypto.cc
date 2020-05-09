@@ -647,9 +647,9 @@ bcrypto_base58_encode(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[0], (void **)&data,
                              &data_len) == napi_ok);
 
-  JS_ASSERT(data_len <= BASE58_ENCODE_MAX, JS_ERR_ENCODE);
+  JS_ASSERT(data_len <= BASE58_DATA_MAX, JS_ERR_ENCODE);
 
-  out_len = BASE58_ENCODE_SIZE(data_len);
+  out_len = BASE58_STRING_ITCH(data_len);
 
   JS_ASSERT(out_len <= MAX_STRING_LENGTH, JS_ERR_ALLOC);
 
@@ -686,10 +686,10 @@ bcrypto_base58_decode(napi_env env, napi_callback_info info) {
 
   JS_CHECK_ALLOC(read_value_string_latin1(env, argv[0], &str, &str_len));
 
-  if (str_len > BASE58_DECODE_MAX)
+  if (str_len > BASE58_STRING_MAX)
     goto fail;
 
-  out_len = BASE58_DECODE_SIZE(str_len);
+  out_len = BASE58_DATA_ITCH(str_len);
 
   if (out_len > MAX_BUFFER_LENGTH)
     goto fail;
@@ -730,6 +730,76 @@ bcrypto_base58_test(napi_env env, napi_callback_info info) {
   CHECK(napi_get_boolean(env, ok, &result) == napi_ok);
 
   bcrypto_free(str);
+
+  return result;
+}
+
+static napi_value
+bcrypto_base58_encode_1024(napi_env env, napi_callback_info info) {
+  napi_value argv[1];
+  size_t argc = 1;
+  char out[BASE58_STRING_ITCH_1024 + 1];
+  size_t out_len = BASE58_STRING_ITCH_1024;
+  const uint8_t *data;
+  size_t data_len;
+  napi_value result;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 1);
+  CHECK(napi_get_buffer_info(env, argv[0], (void **)&data,
+                             &data_len) == napi_ok);
+
+  JS_ASSERT(data_len <= BASE58_DATA_MAX_1024, JS_ERR_ENCODE);
+
+  JS_ASSERT(base58_encode_1024(out, &out_len, data, data_len), JS_ERR_ENCODE);
+
+  JS_CHECK_ALLOC(napi_create_string_latin1(env, out, out_len, &result));
+
+  return result;
+}
+
+static napi_value
+bcrypto_base58_decode_1024(napi_env env, napi_callback_info info) {
+  napi_value argv[1];
+  size_t argc = 1;
+  uint8_t out[BASE58_DATA_ITCH_1024];
+  size_t out_len = BASE58_DATA_ITCH_1024;
+  char str[BASE58_STRING_MAX_1024 + 2];
+  size_t str_len;
+  napi_value result;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 1);
+  CHECK(napi_get_value_string_latin1(env, argv[0], str, sizeof(str),
+                                     &str_len) == napi_ok);
+
+  JS_ASSERT(str_len != sizeof(str) - 1, JS_ERR_DECODE);
+  JS_ASSERT(str_len <= BASE58_STRING_MAX_1024, JS_ERR_DECODE);
+
+  JS_ASSERT(base58_decode_1024(out, &out_len, str, str_len), JS_ERR_DECODE);
+
+  CHECK(napi_create_buffer_copy(env, out_len, out, NULL, &result) == napi_ok);
+
+  return result;
+}
+
+static napi_value
+bcrypto_base58_test_1024(napi_env env, napi_callback_info info) {
+  napi_value argv[1];
+  size_t argc = 1;
+  char str[BASE58_STRING_MAX_1024 + 2];
+  size_t str_len;
+  napi_value result;
+  int ok;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 1);
+  CHECK(napi_get_value_string_latin1(env, argv[0], str, sizeof(str),
+                                     &str_len) == napi_ok);
+
+  ok = str_len != sizeof(str) - 1 && base58_test_1024(str, str_len);
+
+  CHECK(napi_get_boolean(env, ok, &result) == napi_ok);
 
   return result;
 }
@@ -12029,6 +12099,9 @@ bcrypto_init(napi_env env, napi_value exports) {
     { "base58_encode", bcrypto_base58_encode },
     { "base58_decode", bcrypto_base58_decode },
     { "base58_test", bcrypto_base58_test },
+    { "base58_encode_1024", bcrypto_base58_encode_1024 },
+    { "base58_decode_1024", bcrypto_base58_decode_1024 },
+    { "base58_test_1024", bcrypto_base58_test_1024 },
 
     /* Bcrypt */
     { "bcrypt_hash192", bcrypto_bcrypt_hash192 },

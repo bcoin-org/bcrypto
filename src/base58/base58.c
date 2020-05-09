@@ -1,11 +1,21 @@
+/*!
+ * base58.c - base58 for bcrypto
+ * Copyright (c) 2016-2020, Christopher Jeffrey (MIT License).
+ * https://github.com/bcoin-org/bcrypto
+ */
+
 #include <assert.h>
-#include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "base58.h"
 
-static const char *CHARSET =
+/*
+ * Constants
+ */
+
+static const char CHARSET[58 + 1] =
   "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 
 static const int TABLE[128] = {
@@ -19,17 +29,18 @@ static const int TABLE[128] = {
   47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, -1, -1, -1, -1, -1
 };
 
-int
-base58_encode(char *str, size_t *str_len,
-              const uint8_t *data, size_t data_len) {
-  size_t b58len = BASE58_ENCODE_SIZE(data_len); /* 31 bit max */
-  uint8_t *b58;
+/*
+ * Base58
+ */
+
+static void
+_base58_encode(char *str, size_t *str_len,
+               const uint8_t *data, size_t data_len,
+               uint8_t *b58, size_t b58len) {
   size_t zeroes = 0;
   size_t length = 0;
-  size_t i, j;
-
-  if (data_len > BASE58_ENCODE_MAX)
-    return 0;
+  size_t i, j, k;
+  unsigned long carry;
 
   for (i = 0; i < data_len; i++) {
     if (data[i] != 0)
@@ -38,23 +49,16 @@ base58_encode(char *str, size_t *str_len,
     zeroes += 1;
   }
 
-  b58 = malloc(b58len);
-
-  if (b58 == NULL)
-    return 0;
-
   memset(b58, 0, b58len);
 
   for (; i < data_len; i++) {
-    unsigned long carry = data[i];
-    size_t k;
+    carry = data[i];
 
-    for (j = 0; j < b58len; j++) {
+    for (j = 0, k = b58len - 1; j < b58len; j++, k--) {
       if (carry == 0 && j >= length)
         break;
 
-      k = b58len - 1 - j;
-      carry += 256 * (unsigned long)b58[k];
+      carry += (unsigned long)b58[k] << 8;
       b58[k] = carry % 58;
       carry /= 58;
     }
@@ -79,23 +83,18 @@ base58_encode(char *str, size_t *str_len,
 
   str[j] = '\0';
   *str_len = j;
-
-  free(b58);
-
-  return 1;
 }
 
-int
-base58_decode(uint8_t *data, size_t *data_len,
-              const char *str, size_t str_len) {
-  size_t b256len = BASE58_DECODE_SIZE(str_len);
-  uint8_t *b256;
+static int
+_base58_decode(uint8_t *data, size_t *data_len,
+               const char *str, size_t str_len,
+               uint8_t *b256, size_t b256len) {
   size_t zeroes = 0;
   size_t length = 0;
-  size_t i, j;
-
-  if (str_len > BASE58_DECODE_MAX)
-    return 0;
+  size_t i, j, k;
+  unsigned long carry;
+  uint8_t ch;
+  int val;
 
   for (i = 0; i < str_len; i++) {
     if (str[i] != '1')
@@ -104,31 +103,27 @@ base58_decode(uint8_t *data, size_t *data_len,
     zeroes += 1;
   }
 
-  b256 = malloc(b256len);
-
-  if (b256 == NULL)
-    return 0;
-
   memset(b256, 0, b256len);
 
   for (; i < str_len; i++) {
-    uint8_t ch = (uint8_t)str[i];
-    int v = (ch & 0x80) ? -1 : TABLE[ch];
-    unsigned long carry = v;
-    size_t k;
+    ch = str[i];
 
-    if (v == -1) {
-      free(b256);
+    if (ch & 0x80)
       return 0;
-    }
 
-    for (j = 0; j < b256len; j++) {
+    val = TABLE[ch];
+
+    if (val == -1)
+      return 0;
+
+    carry = val;
+
+    for (j = 0, k = b256len - 1; j < b256len; j++, k--) {
       if (carry == 0 && j >= length)
         break;
 
-      k = b256len - 1 - j;
-      carry += 58 * (unsigned long)b256[k];
-      b256[k] = carry & 0xff;
+      carry += (unsigned long)b256[k] * 58;
+      b256[k] = carry;
       carry >>= 8;
     }
 
@@ -152,20 +147,16 @@ base58_decode(uint8_t *data, size_t *data_len,
 
   *data_len = j;
 
-  free(b256);
-
   return 1;
 }
 
-int
-base58_test(const char *str, size_t str_len) {
+static int
+_base58_test(const char *str, size_t str_len) {
   size_t i = 0;
-
-  if (str_len > BASE58_DECODE_MAX)
-    return 0;
+  uint8_t ch;
 
   for (; i < str_len; i++) {
-    uint8_t ch = (uint8_t)str[i];
+    ch = str[i];
 
     if (ch & 0x80)
       return 0;
@@ -175,4 +166,107 @@ base58_test(const char *str, size_t str_len) {
   }
 
   return 1;
+}
+
+/*
+ * Base58 (arbitrary length)
+ */
+
+int
+base58_encode(char *str, size_t *str_len,
+              const unsigned char *data, size_t data_len) {
+  size_t b58len;
+  uint8_t *b58;
+
+  if (data_len > BASE58_DATA_MAX)
+    return 0;
+
+  b58len = BASE58_STRING_ITCH(data_len);
+  b58 = malloc(b58len);
+
+  if (b58 == NULL)
+    return 0;
+
+  _base58_encode(str, str_len, data, data_len, b58, b58len);
+
+  free(b58);
+
+  return 1;
+}
+
+int
+base58_decode(unsigned char *data, size_t *data_len,
+              const char *str, size_t str_len) {
+  size_t b256len;
+  uint8_t *b256;
+  int ret;
+
+  if (str_len > BASE58_STRING_MAX)
+    return 0;
+
+  b256len = BASE58_DATA_ITCH(str_len);
+  b256 = malloc(b256len);
+
+  if (b256 == NULL)
+    return 0;
+
+  ret = _base58_decode(data, data_len, str, str_len, b256, b256len);
+
+  free(b256);
+
+  return ret;
+}
+
+int
+base58_test(const char *str, size_t str_len) {
+  if (str_len > BASE58_STRING_MAX)
+    return 0;
+
+  return _base58_test(str, str_len);
+}
+
+/*
+ * Base58 (length <= 1024)
+ */
+
+int
+base58_encode_1024(char *str, size_t *str_len,
+                   const unsigned char *data, size_t data_len) {
+  uint8_t b58[BASE58_STRING_ITCH_1024];
+  size_t b58len;
+
+  if (data_len > BASE58_DATA_MAX_1024)
+    return 0;
+
+  b58len = BASE58_STRING_ITCH(data_len);
+
+  assert(b58len <= sizeof(b58));
+
+  _base58_encode(str, str_len, data, data_len, b58, b58len);
+
+  return 1;
+}
+
+int
+base58_decode_1024(unsigned char *data, size_t *data_len,
+                   const char *str, size_t str_len) {
+  uint8_t b256[BASE58_DATA_ITCH_1024];
+  size_t b256len;
+
+  if (str_len > BASE58_STRING_MAX_1024)
+    return 0;
+
+  b256len = BASE58_DATA_ITCH(str_len);
+
+  assert(b256len <= sizeof(b256));
+
+  return _base58_decode(data, data_len, str, str_len, b256, b256len);
+}
+
+int
+base58_test_1024(const char *str, size_t str_len) {
+  if (str_len > BASE58_STRING_MAX_1024)
+    return 0;
+
+  return _base58_test(str, str_len);
 }
