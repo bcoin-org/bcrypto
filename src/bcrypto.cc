@@ -2161,7 +2161,7 @@ bcrypto_cipher_update(napi_env env, napi_callback_info info) {
   const uint8_t *in;
   size_t in_len;
   bcrypto_cipher_t *cipher;
-  napi_value result;
+  napi_value bufval, lenval, result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
@@ -2174,25 +2174,15 @@ bcrypto_cipher_update(napi_env env, napi_callback_info info) {
 
   JS_ASSERT(out_len <= MAX_BUFFER_LENGTH, JS_ERR_ALLOC);
 
-  if (!cipher->ctx.unpad) {
-    size_t tmp_len;
-
-    JS_CHECK_ALLOC(napi_create_buffer(env, out_len, (void **)&out, &result));
-
-    cipher_stream_update(&cipher->ctx, out, &tmp_len, in, in_len);
-
-    CHECK(tmp_len == out_len);
-
-    return result;
-  }
-
-  out = (uint8_t *)torsion_malloc(out_len);
-
-  JS_ASSERT(out != NULL || out_len == 0, JS_ERR_ALLOC);
+  JS_CHECK_ALLOC(napi_create_buffer(env, out_len, (void **)&out, &bufval));
 
   cipher_stream_update(&cipher->ctx, out, &out_len, in, in_len);
 
-  JS_CHECK_ALLOC(create_external_buffer(env, out_len, out, &result));
+  CHECK(napi_create_uint32(env, out_len, &lenval) == napi_ok);
+
+  CHECK(napi_create_array_with_length(env, 2, &result) == napi_ok);
+  CHECK(napi_set_element(env, result, 0, bufval) == napi_ok);
+  CHECK(napi_set_element(env, result, 1, lenval) == napi_ok);
 
   return result;
 }
@@ -2271,7 +2261,7 @@ bcrypto_cipher_encrypt(napi_env env, napi_callback_info info) {
   uint32_t type, mode;
   const uint8_t *key, *iv, *in;
   size_t key_len, iv_len, in_len;
-  napi_value result;
+  napi_value bufval, lenval, result;
   int ok;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
@@ -2289,9 +2279,7 @@ bcrypto_cipher_encrypt(napi_env env, napi_callback_info info) {
 
   JS_ASSERT(out_len <= MAX_BUFFER_LENGTH, JS_ERR_ALLOC);
 
-  out = (uint8_t *)torsion_malloc(out_len);
-
-  JS_ASSERT(out != NULL || out_len == 0, JS_ERR_ALLOC);
+  JS_CHECK_ALLOC(napi_create_buffer(env, out_len, (void **)&out, &bufval));
 
   ok = cipher_static_encrypt(out, &out_len,
                              type, mode,
@@ -2299,12 +2287,13 @@ bcrypto_cipher_encrypt(napi_env env, napi_callback_info info) {
                              iv, iv_len,
                              in, in_len);
 
-  if (!ok || out_len > MAX_BUFFER_LENGTH) {
-    torsion_free(out);
-    JS_THROW(JS_ERR_FINAL);
-  }
+  JS_ASSERT(ok, JS_ERR_ENCRYPT);
 
-  JS_CHECK_ALLOC(create_external_buffer(env, out_len, out, &result));
+  CHECK(napi_create_uint32(env, out_len, &lenval) == napi_ok);
+
+  CHECK(napi_create_array_with_length(env, 2, &result) == napi_ok);
+  CHECK(napi_set_element(env, result, 0, bufval) == napi_ok);
+  CHECK(napi_set_element(env, result, 1, lenval) == napi_ok);
 
   return result;
 }
@@ -2318,7 +2307,7 @@ bcrypto_cipher_decrypt(napi_env env, napi_callback_info info) {
   uint32_t type, mode;
   const uint8_t *key, *iv, *in;
   size_t key_len, iv_len, in_len;
-  napi_value result;
+  napi_value bufval, lenval, result;
   int ok;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
@@ -2336,9 +2325,7 @@ bcrypto_cipher_decrypt(napi_env env, napi_callback_info info) {
 
   JS_ASSERT(out_len <= MAX_BUFFER_LENGTH, JS_ERR_ALLOC);
 
-  out = (uint8_t *)torsion_malloc(out_len);
-
-  JS_ASSERT(out != NULL || out_len == 0, JS_ERR_ALLOC);
+  JS_CHECK_ALLOC(napi_create_buffer(env, out_len, (void **)&out, &bufval));
 
   ok = cipher_static_decrypt(out, &out_len,
                              type, mode,
@@ -2346,12 +2333,13 @@ bcrypto_cipher_decrypt(napi_env env, napi_callback_info info) {
                              iv, iv_len,
                              in, in_len);
 
-  if (!ok || out_len > MAX_BUFFER_LENGTH) {
-    torsion_free(out);
-    JS_THROW(JS_ERR_FINAL);
-  }
+  JS_ASSERT(ok, JS_ERR_DECRYPT);
 
-  JS_CHECK_ALLOC(create_external_buffer(env, out_len, out, &result));
+  CHECK(napi_create_uint32(env, out_len, &lenval) == napi_ok);
+
+  CHECK(napi_create_array_with_length(env, 2, &result) == napi_ok);
+  CHECK(napi_set_element(env, result, 0, bufval) == napi_ok);
+  CHECK(napi_set_element(env, result, 1, lenval) == napi_ok);
 
   return result;
 }
