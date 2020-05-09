@@ -1163,10 +1163,13 @@ bcrypto_bech32_convert_bits(napi_env env, napi_callback_info info) {
   CHECK(napi_get_value_uint32(env, argv[2], &tobits) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[3], &pad) == napi_ok);
 
+  JS_ASSERT(data_len < ((size_t)1 << 28), JS_ERR_ENCODE);
   JS_ASSERT(frombits >= 1 && frombits <= 8, JS_ERR_ENCODE);
   JS_ASSERT(tobits >= 1 && tobits <= 8, JS_ERR_ENCODE);
 
   out_len = (data_len * frombits + (tobits - 1) * (size_t)pad) / tobits;
+
+  JS_ASSERT(out_len <= MAX_BUFFER_LENGTH, JS_ERR_ALLOC);
 
   JS_CHECK_ALLOC(napi_create_buffer(env, out_len, (void **)&out, &result));
 
@@ -1770,10 +1773,13 @@ bcrypto_cash32_convert_bits(napi_env env, napi_callback_info info) {
   CHECK(napi_get_value_uint32(env, argv[2], &tobits) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[3], &pad) == napi_ok);
 
+  JS_ASSERT(data_len < ((size_t)1 << 28), JS_ERR_ENCODE);
   JS_ASSERT(frombits >= 1 && frombits <= 8, JS_ERR_ENCODE);
   JS_ASSERT(tobits >= 1 && tobits <= 8, JS_ERR_ENCODE);
 
   out_len = (data_len * frombits + (tobits - 1) * (size_t)pad) / tobits;
+
+  JS_ASSERT(out_len <= MAX_BUFFER_LENGTH, JS_ERR_ALLOC);
 
   JS_CHECK_ALLOC(napi_create_buffer(env, out_len, (void **)&out, &result));
 
