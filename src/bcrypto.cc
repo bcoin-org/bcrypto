@@ -832,26 +832,28 @@ bcrypto_bcrypt_execute_(napi_env env, void *data) {
 static void
 bcrypto_bcrypt_complete_(napi_env env, napi_status status, void *data) {
   bcrypto_bcrypt_worker_t *w = (bcrypto_bcrypt_worker_t *)data;
-  napi_value result, strval;
+  napi_value result, strval, errval;
+
+  if (w->error == NULL && status == napi_ok)
+    status = napi_create_buffer_copy(env, w->out_len, w->out, NULL, &result);
 
   if (status != napi_ok)
     w->error = JS_ERR_DERIVE;
 
   if (w->error == NULL) {
-    CHECK(create_external_buffer(env, w->out_len, w->out, &result) == napi_ok);
     CHECK(napi_resolve_deferred(env, w->deferred, result) == napi_ok);
   } else {
     CHECK(napi_create_string_utf8(env, w->error,
                                   NAPI_AUTO_LENGTH, &strval) == napi_ok);
-    CHECK(napi_create_error(env, NULL, strval, &result) == napi_ok);
-    CHECK(napi_reject_deferred(env, w->deferred, result) == napi_ok);
-    torsion_free(w->out);
+    CHECK(napi_create_error(env, NULL, strval, &errval) == napi_ok);
+    CHECK(napi_reject_deferred(env, w->deferred, errval) == napi_ok);
   }
 
   CHECK(napi_delete_async_work(env, w->work) == napi_ok);
 
   torsion_free(w->pass);
   torsion_free(w->salt);
+  torsion_free(w->out);
   torsion_free(w);
 }
 
@@ -2570,37 +2572,35 @@ static void
 bcrypto_dsa_execute_(napi_env env, void *data) {
   bcrypto_dsa_worker_t *w = (bcrypto_dsa_worker_t *)data;
 
-  if (!dsa_params_generate(w->out, &w->out_len, w->bits, w->entropy)) {
+  if (!dsa_params_generate(w->out, &w->out_len, w->bits, w->entropy))
     w->error = JS_ERR_GENERATE;
-    return;
-  }
 
   cleanse(w->entropy, ENTROPY_SIZE);
-
-  w->out = (uint8_t *)torsion_xrealloc(w->out, w->out_len);
 }
 
 static void
 bcrypto_dsa_complete_(napi_env env, napi_status status, void *data) {
   bcrypto_dsa_worker_t *w = (bcrypto_dsa_worker_t *)data;
-  napi_value result, strval;
+  napi_value result, strval, errval;
+
+  if (w->error == NULL && status == napi_ok)
+    status = napi_create_buffer_copy(env, w->out_len, w->out, NULL, &result);
 
   if (status != napi_ok)
     w->error = JS_ERR_GENERATE;
 
   if (w->error == NULL) {
-    CHECK(create_external_buffer(env, w->out_len, w->out, &result) == napi_ok);
     CHECK(napi_resolve_deferred(env, w->deferred, result) == napi_ok);
   } else {
     CHECK(napi_create_string_utf8(env, w->error,
                                   NAPI_AUTO_LENGTH, &strval) == napi_ok);
-    CHECK(napi_create_error(env, NULL, strval, &result) == napi_ok);
-    CHECK(napi_reject_deferred(env, w->deferred, result) == napi_ok);
-    torsion_free(w->out);
+    CHECK(napi_create_error(env, NULL, strval, &errval) == napi_ok);
+    CHECK(napi_reject_deferred(env, w->deferred, errval) == napi_ok);
   }
 
   CHECK(napi_delete_async_work(env, w->work) == napi_ok);
 
+  torsion_free(w->out);
   torsion_free(w);
 }
 
@@ -7194,26 +7194,28 @@ bcrypto_pbkdf2_execute_(napi_env env, void *data) {
 static void
 bcrypto_pbkdf2_complete_(napi_env env, napi_status status, void *data) {
   bcrypto_pbkdf2_worker_t *w = (bcrypto_pbkdf2_worker_t *)data;
-  napi_value result, strval;
+  napi_value result, strval, errval;
+
+  if (w->error == NULL && status == napi_ok)
+    status = napi_create_buffer_copy(env, w->out_len, w->out, NULL, &result);
 
   if (status != napi_ok)
     w->error = JS_ERR_DERIVE;
 
   if (w->error == NULL) {
-    CHECK(create_external_buffer(env, w->out_len, w->out, &result) == napi_ok);
     CHECK(napi_resolve_deferred(env, w->deferred, result) == napi_ok);
   } else {
     CHECK(napi_create_string_utf8(env, w->error,
                                   NAPI_AUTO_LENGTH, &strval) == napi_ok);
-    CHECK(napi_create_error(env, NULL, strval, &result) == napi_ok);
-    CHECK(napi_reject_deferred(env, w->deferred, result) == napi_ok);
-    torsion_free(w->out);
+    CHECK(napi_create_error(env, NULL, strval, &errval) == napi_ok);
+    CHECK(napi_reject_deferred(env, w->deferred, errval) == napi_ok);
   }
 
   CHECK(napi_delete_async_work(env, w->work) == napi_ok);
 
   torsion_free(w->pass);
   torsion_free(w->salt);
+  torsion_free(w->out);
   torsion_free(w);
 }
 
@@ -7645,37 +7647,35 @@ static void
 bcrypto_rsa_execute_(napi_env env, void *data) {
   bcrypto_rsa_worker_t *w = (bcrypto_rsa_worker_t *)data;
 
-  if (!rsa_privkey_generate(w->out, &w->out_len, w->bits, w->exp, w->entropy)) {
+  if (!rsa_privkey_generate(w->out, &w->out_len, w->bits, w->exp, w->entropy))
     w->error = JS_ERR_GENERATE;
-    return;
-  }
 
   cleanse(w->entropy, ENTROPY_SIZE);
-
-  w->out = (uint8_t *)torsion_xrealloc(w->out, w->out_len);
 }
 
 static void
 bcrypto_rsa_complete_(napi_env env, napi_status status, void *data) {
   bcrypto_rsa_worker_t *w = (bcrypto_rsa_worker_t *)data;
-  napi_value result, strval;
+  napi_value result, strval, errval;
+
+  if (w->error == NULL && status == napi_ok)
+    status = napi_create_buffer_copy(env, w->out_len, w->out, NULL, &result);
 
   if (status != napi_ok)
     w->error = JS_ERR_GENERATE;
 
   if (w->error == NULL) {
-    CHECK(create_external_buffer(env, w->out_len, w->out, &result) == napi_ok);
     CHECK(napi_resolve_deferred(env, w->deferred, result) == napi_ok);
   } else {
     CHECK(napi_create_string_utf8(env, w->error,
                                   NAPI_AUTO_LENGTH, &strval) == napi_ok);
-    CHECK(napi_create_error(env, NULL, strval, &result) == napi_ok);
-    CHECK(napi_reject_deferred(env, w->deferred, result) == napi_ok);
-    torsion_free(w->out);
+    CHECK(napi_create_error(env, NULL, strval, &errval) == napi_ok);
+    CHECK(napi_reject_deferred(env, w->deferred, errval) == napi_ok);
   }
 
   CHECK(napi_delete_async_work(env, w->work) == napi_ok);
 
+  torsion_free(w->out);
   torsion_free(w);
 }
 
@@ -9465,26 +9465,28 @@ bcrypto_scrypt_execute_(napi_env env, void *data) {
 static void
 bcrypto_scrypt_complete_(napi_env env, napi_status status, void *data) {
   bcrypto_scrypt_worker_t *w = (bcrypto_scrypt_worker_t *)data;
-  napi_value result, strval;
+  napi_value result, strval, errval;
+
+  if (w->error == NULL && status == napi_ok)
+    status = napi_create_buffer_copy(env, w->out_len, w->out, NULL, &result);
 
   if (status != napi_ok)
     w->error = JS_ERR_DERIVE;
 
   if (w->error == NULL) {
-    CHECK(create_external_buffer(env, w->out_len, w->out, &result) == napi_ok);
     CHECK(napi_resolve_deferred(env, w->deferred, result) == napi_ok);
   } else {
     CHECK(napi_create_string_utf8(env, w->error,
                                   NAPI_AUTO_LENGTH, &strval) == napi_ok);
-    CHECK(napi_create_error(env, NULL, strval, &result) == napi_ok);
-    CHECK(napi_reject_deferred(env, w->deferred, result) == napi_ok);
-    torsion_free(w->out);
+    CHECK(napi_create_error(env, NULL, strval, &errval) == napi_ok);
+    CHECK(napi_reject_deferred(env, w->deferred, errval) == napi_ok);
   }
 
   CHECK(napi_delete_async_work(env, w->work) == napi_ok);
 
   torsion_free(w->pass);
   torsion_free(w->salt);
+  torsion_free(w->out);
   torsion_free(w);
 }
 
