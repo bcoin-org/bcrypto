@@ -209,6 +209,9 @@ const composites = [
 ];
 
 describe('Primes', function() {
+  if (process.env.BMOCHA_VALGRIND)
+    this.skip();
+
   const rng = new RNG();
 
   for (let i = 0; i < primes_.length; i++) {

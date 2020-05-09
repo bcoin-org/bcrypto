@@ -8,6 +8,9 @@ const rsaies = require('../lib/rsaies');
 const vectors = require('./data/ies/rsa.json');
 
 describe('RSAIES', function() {
+  if (process.env.BMOCHA_VALGRIND)
+    this.skip();
+
   this.timeout(120000);
 
   const badPriv = rsa.privateKeyGenerate(1024);

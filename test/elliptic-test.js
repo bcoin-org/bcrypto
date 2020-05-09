@@ -147,6 +147,9 @@ function sanityCheck(curve) {
 }
 
 describe('Elliptic', function() {
+  if (process.env.BMOCHA_VALGRIND)
+    this.skip();
+
   describe('Vectors', () => {
     const test = (curve, vector) => {
       it(`should test curve ${curve.id}`, () => {

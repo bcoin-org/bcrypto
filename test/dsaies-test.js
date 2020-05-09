@@ -9,6 +9,9 @@ const keys = require('./data/dsaies-keys.json');
 const vectors = require('./data/ies/dsa.json');
 
 describe('DSAIES', function() {
+  if (process.env.BMOCHA_VALGRIND)
+    this.skip();
+
   const rng = new RNG();
 
   for (const key of keys) {

@@ -3014,6 +3014,9 @@ const kronecker = [
 ];
 
 describe('BN.js', function() {
+  if (process.env.BMOCHA_VALGRIND)
+    this.skip();
+
   const rng = new RNG();
 
   describe('BN.js/Arithmetic', () => {
