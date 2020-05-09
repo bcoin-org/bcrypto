@@ -59,6 +59,7 @@ extern "C" {
 #define DSA_MAX_SIG_SIZE 64
 #define DSA_MAX_DER_SIZE 73
 
+/* 2549 */
 #define DSA_MAX_PARAMS_SIZE (0    \
   + 4 /* seq */                   \
   + 4 + 1 + DSA_MAX_SIZE /* p */  \
@@ -66,6 +67,7 @@ extern "C" {
   + 4 + 1 + DSA_MAX_SIZE /* g */  \
 )
 
+/* 3804 */
 #define DSA_MAX_PUB_SIZE (0       \
   + 4 /* seq */                   \
   + 4 + 1 + DSA_MAX_SIZE /* y */  \
@@ -74,6 +76,7 @@ extern "C" {
   + 4 + 1 + DSA_MAX_SIZE /* g */  \
 )
 
+/* 3842 */
 #define DSA_MAX_PRIV_SIZE (0      \
   + 4 /* seq */                   \
   + 3 /* version */               \
