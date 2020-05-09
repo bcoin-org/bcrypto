@@ -1,32 +1,26 @@
-/* Copyright (c) 2017 Pieter Wuille
+/*!
+ * bech32.h - bech32 for bcrypto
+ * Copyright (c) 2017-2020, Christopher Jeffrey (MIT License).
+ * https://github.com/bcoin-org/bcrypto
  *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
+ * Parts of this software are based on sipa/bech32:
+ *   Copyright (c) 2017, Pieter Wuille (MIT License).
+ *   https://github.com/sipa/bech32
  */
 
 #ifndef _BCRYPTO_BECH32_H
 #define _BCRYPTO_BECH32_H
 
-#include <stdint.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#include <stddef.h>
+#include <stdint.h>
+
+/*
+ * Symbol Aliases
+ */
 
 #define bech32_serialize _bcrypto_bech32_serialize
 #define bech32_deserialize _bcrypto_bech32_deserialize
@@ -36,8 +30,12 @@ extern "C" {
 #define bech32_decode _bcrypto_bech32_decode
 #define bech32_test _bcrypto_bech32_test
 
+/*
+ * Bech32
+ */
+
 int
-bech32_serialize(char *output,
+bech32_serialize(char *out,
                  const char *hrp,
                  const uint8_t *data,
                  size_t data_len);
@@ -61,21 +59,21 @@ bech32_convert_bits(uint8_t *out,
                     int pad);
 
 int
-bech32_encode(char *output,
+bech32_encode(char *out,
               const char *hrp,
-              int ver,
-              const uint8_t *prog,
-              size_t prog_len);
+              int version,
+              const uint8_t *hash,
+              size_t hash_len);
 
 int
-bech32_decode(int *ver,
-              uint8_t *prog,
-              size_t *prog_len,
-              char *hrp,
-              const char *addr);
+bech32_decode(char *hrp,
+              int *version,
+              uint8_t *hash,
+              size_t *hash_len,
+              const char *str);
 
 int
-bech32_test(const char *addr);
+bech32_test(const char *str);
 
 #ifdef __cplusplus
 }

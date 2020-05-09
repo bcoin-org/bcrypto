@@ -1296,7 +1296,7 @@ bcrypto_bech32_decode(napi_env env, napi_callback_info info) {
                                      &str_len) == napi_ok);
 
   JS_ASSERT(str_len != sizeof(str) - 1, JS_ERR_ENCODE);
-  JS_ASSERT(bech32_decode(&version, data, &data_len, hrp, str), JS_ERR_ENCODE);
+  JS_ASSERT(bech32_decode(hrp, &version, data, &data_len, str), JS_ERR_ENCODE);
 
   CHECK(napi_create_string_latin1(env, hrp, NAPI_AUTO_LENGTH,
                                   &hrpval) == napi_ok);
@@ -1916,7 +1916,7 @@ bcrypto_cash32_decode(napi_env env, napi_callback_info info) {
 
   JS_ASSERT(str_len != sizeof(str) - 1, JS_ERR_ENCODE);
   JS_ASSERT(dprefix_len != sizeof(dprefix) - 1, JS_ERR_ENCODE);
-  JS_ASSERT(cash32_decode(&type, data, &data_len, prefix, dprefix, str),
+  JS_ASSERT(cash32_decode(prefix, &type, data, &data_len, dprefix, str),
             JS_ERR_ENCODE);
 
   CHECK(napi_create_string_latin1(env, prefix, NAPI_AUTO_LENGTH,

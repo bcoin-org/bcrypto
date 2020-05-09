@@ -1,33 +1,31 @@
-/* Copyright (c) 2018 the bcoin developers
- * Copyright (c) 2017 Pieter Wuille
+/*!
+ * cash32.h - cashaddr for bcrypto
+ * Copyright (c) 2018-2020, The Bcoin Developers (MIT License).
+ * https://github.com/bcoin-org/bcrypto
  *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
+ * Parts of this software are based on Bitcoin-ABC/bitcoin-abc:
+ *   Copyright (c) 2009-2019, The Bitcoin Developers (MIT License).
+ *   Copyright (c) 2009-2017, The Bitcoin Core Developers (MIT License).
+ *   https://github.com/Bitcoin-ABC/bitcoin-abc
  *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
+ * Parts of this software are based on sipa/bech32:
+ *   Copyright (c) 2017, Pieter Wuille (MIT License).
+ *   https://github.com/sipa/bech32
  */
 
 #ifndef _BCRYPTO_CASH32_H
 #define _BCRYPTO_CASH32_H
 
-#include <stdint.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#include <stddef.h>
+#include <stdint.h>
+
+/*
+ * Symbol Aliases
+ */
 
 #define cash32_serialize _bcrypto_cash32_serialize
 #define cash32_deserialize _bcrypto_cash32_deserialize
@@ -37,8 +35,12 @@ extern "C" {
 #define cash32_decode _bcrypto_cash32_decode
 #define cash32_test _bcrypto_cash32_test
 
+/*
+ * Cash32
+ */
+
 int
-cash32_serialize(char *output,
+cash32_serialize(char *out,
                  const char *prefix,
                  const uint8_t *data,
                  size_t data_len);
@@ -64,17 +66,17 @@ cash32_convert_bits(uint8_t *out,
                     int pad);
 
 int
-cash32_encode(char *output,
+cash32_encode(char *out,
               const char *prefix,
               int type,
               const uint8_t *hash,
               size_t hash_len);
 
 int
-cash32_decode(int *type,
+cash32_decode(char *prefix,
+              int *type,
               uint8_t *hash,
               size_t *hash_len,
-              char *prefix,
               const char *default_prefix,
               const char *addr);
 

@@ -1,30 +1,31 @@
-/* Copyright (c) 2018 the bcoin developers
- * Copyright (c) 2017 Pieter Wuille
+/*!
+ * cash32.c - cashaddr for bcrypto
+ * Copyright (c) 2018-2020, The Bcoin Developers (MIT License).
+ * https://github.com/bcoin-org/bcrypto
  *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
+ * Parts of this software are based on Bitcoin-ABC/bitcoin-abc:
+ *   Copyright (c) 2009-2019, The Bitcoin Developers (MIT License).
+ *   Copyright (c) 2009-2017, The Bitcoin Core Developers (MIT License).
+ *   https://github.com/Bitcoin-ABC/bitcoin-abc
  *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
+ * Parts of this software are based on sipa/bech32:
+ *   Copyright (c) 2017, Pieter Wuille (MIT License).
+ *   https://github.com/sipa/bech32
  *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
+ * Resources:
+ *   https://github.com/bitcoincashorg/spec/blob/master/cashaddr.md
+ *   https://github.com/Bitcoin-ABC/bitcoin-abc/blob/master/src/cashaddr.cpp
  */
 
-#include <stdlib.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "cash32.h"
+
+/*
+ * Constants
+ */
 
 static const char *CHARSET = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
 
@@ -39,19 +40,23 @@ static const int TABLE[128] = {
    1,  0,  3, 16, 11, 28, 12, 14,  6,  4,  2, -1, -1, -1, -1, -1
 };
 
+/*
+ * Helpers
+ */
+
 static uint64_t
 polymod_step(uint64_t pre) {
   uint8_t b = pre >> 35;
-  return ((pre & 0x07ffffffffull) << 5)
-    ^ (-((b >> 0) & 1) & 0x98f2bc8e61ull)
-    ^ (-((b >> 1) & 1) & 0x79b76d99e2ull)
-    ^ (-((b >> 2) & 1) & 0xf33e5fb3c4ull)
-    ^ (-((b >> 3) & 1) & 0xae2eabe2a8ull)
-    ^ (-((b >> 4) & 1) & 0x1e4f43e470ull);
+  return ((pre & UINT64_C(0x07ffffffff)) << 5)
+    ^ (-((b >> 0) & 1) & UINT64_C(0x98f2bc8e61))
+    ^ (-((b >> 1) & 1) & UINT64_C(0x79b76d99e2))
+    ^ (-((b >> 2) & 1) & UINT64_C(0xf33e5fb3c4))
+    ^ (-((b >> 3) & 1) & UINT64_C(0xae2eabe2a8))
+    ^ (-((b >> 4) & 1) & UINT64_C(0x1e4f43e470));
 }
 
 static int
-cash32_encoded_size(size_t bytes, size_t *encoded_size) {
+get_encoded_size(size_t *encoded_size, size_t bytes) {
   switch (bytes * 8) {
     case 160:
       *encoded_size = 0;
@@ -83,8 +88,12 @@ cash32_encoded_size(size_t bytes, size_t *encoded_size) {
   return 1;
 }
 
+/*
+ * Cash32
+ */
+
 int
-cash32_serialize(char *output,
+cash32_serialize(char *out,
                  const char *prefix,
                  const uint8_t *data,
                  size_t data_len) {
@@ -111,9 +120,9 @@ cash32_serialize(char *output,
 
     /* Lowercase prefix. */
     if (prefix[i] >= 65 && prefix[i] <= 90)
-      *(output++) = prefix[i] + 32;
+      *(out++) = prefix[i] + 32;
     else
-      *(output++) = prefix[i];
+      *(out++) = prefix[i];
 
     i += 1;
 
@@ -125,7 +134,7 @@ cash32_serialize(char *output,
     return 0;
 
   chk = polymod_step(chk);
-  *(output++) = ':';
+  *(out++) = ':';
 
   for (i = 0; i < data_len; i++) {
     uint8_t ch = data[i];
@@ -136,7 +145,7 @@ cash32_serialize(char *output,
     chk = polymod_step(chk);
     chk ^= ch;
 
-    *(output++) = CHARSET[ch];
+    *(out++) = CHARSET[ch];
   }
 
   for (i = 0; i < 8; i++)
@@ -145,7 +154,7 @@ cash32_serialize(char *output,
   chk ^= 1;
 
   for (i = 0; i < 8; i++)
-    *(output++) = CHARSET[(chk >> ((7 - i) * 5)) & 0x1f];
+    *(out++) = CHARSET[(chk >> ((7 - i) * 5)) & 0x1f];
 
   return 1;
 }
@@ -258,8 +267,8 @@ cash32_is(const char *default_prefix,
   uint8_t data[188];
   size_t data_len = 0;
 
-  memset(prefix, 0x00, sizeof(prefix));
-  memset(data, 0x00, sizeof(data));
+  memset(prefix, 0, sizeof(prefix));
+  memset(data, 0, sizeof(data));
 
   if (!cash32_deserialize(prefix, data, &data_len, default_prefix, addr))
     return 0;
@@ -303,7 +312,7 @@ cash32_convert_bits(uint8_t *out,
 }
 
 int
-cash32_encode(char *output,
+cash32_encode(char *out,
               const char *prefix,
               int type,
               const uint8_t *hash,
@@ -317,27 +326,27 @@ cash32_encode(char *output,
   if (type < 0 || type > 15)
     return 0;
 
-  if (!cash32_encoded_size(hash_len, &encoded_size))
+  if (!get_encoded_size(&encoded_size, hash_len))
     return 0;
 
   data[0] = type << 3 | (uint8_t)encoded_size;
   memcpy(data + 1, hash, hash_len);
 
-  memset(converted, 0x00, sizeof(converted));
+  memset(converted, 0, sizeof(converted));
 
   if (!cash32_convert_bits(converted, &converted_len,
                            5, data, hash_len + 1, 8, 1)) {
     return 0;
   }
 
-  return cash32_serialize(output, prefix, converted, converted_len);
+  return cash32_serialize(out, prefix, converted, converted_len);
 }
 
 int
-cash32_decode(int *type,
+cash32_decode(char *prefix,
+              int *type,
               uint8_t *hash,
               size_t *hash_len,
-              char *prefix,
               const char *default_prefix,
               const char *addr) {
   uint8_t data[188];
@@ -346,7 +355,7 @@ cash32_decode(int *type,
   size_t data_len = 0;
   size_t extrabits, last, mask, size;
 
-  memset(data, 0x00, sizeof(data));
+  memset(data, 0, sizeof(data));
 
   if (!cash32_deserialize(prefix, data, &data_len, default_prefix, addr))
     return 0;
@@ -362,7 +371,7 @@ cash32_decode(int *type,
   if (last & mask)
     return 0;
 
-  memset(converted, 0x00, sizeof(converted));
+  memset(converted, 0, sizeof(converted));
 
   if (!cash32_convert_bits(converted, &converted_len,
                            8, data, data_len, 5, 0)) {
@@ -395,11 +404,11 @@ cash32_test(const char *default_prefix,
   size_t hash_len;
   int type = 0;
 
-  memset(prefix, 0x00, sizeof(prefix));
-  memset(hash, 0x00, sizeof(hash));
+  memset(prefix, 0, sizeof(prefix));
+  memset(hash, 0, sizeof(hash));
 
-  if (!cash32_decode(&type, hash, &hash_len,
-                     prefix, default_prefix, addr)) {
+  if (!cash32_decode(prefix, &type, hash, &hash_len,
+                     default_prefix, addr)) {
     return 0;
   }
 

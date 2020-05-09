@@ -2,6 +2,9 @@
  * base58.c - base58 for bcrypto
  * Copyright (c) 2016-2020, Christopher Jeffrey (MIT License).
  * https://github.com/bcoin-org/bcrypto
+ *
+ * Resources:
+ *   https://github.com/bitcoin/bitcoin/blob/master/src/base58.cpp
  */
 
 #include <assert.h>
