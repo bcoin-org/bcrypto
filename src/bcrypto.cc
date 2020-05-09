@@ -650,21 +650,28 @@ bcrypto_base58_encode(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[0], (void **)&data,
                              &data_len) == napi_ok);
 
-  JS_ASSERT(base58_encode(&out, &out_len, data, data_len), JS_ERR_ENCODE);
+  JS_ASSERT(data_len <= BASE58_ENCODE_MAX, JS_ERR_ENCODE);
 
-  if (out_len > MAX_STRING_LENGTH) {
-    torsion_free(out);
-    JS_THROW(JS_ERR_ALLOC);
-  }
+  out_len = BASE58_ENCODE_SIZE(data_len);
 
-  if (napi_create_string_utf8(env, out, out_len, &result) != napi_ok) {
-    torsion_free(out);
-    JS_THROW(JS_ERR_ALLOC);
-  }
+  JS_ASSERT(out_len <= MAX_STRING_LENGTH, JS_ERR_ALLOC);
+
+  out = (char *)torsion_malloc(out_len + 1);
+
+  JS_ASSERT(out != NULL, JS_ERR_ALLOC);
+
+  if (!base58_encode(out, &out_len, data, data_len))
+    goto fail;
+
+  if (napi_create_string_utf8(env, out, out_len, &result) != napi_ok)
+    goto fail;
 
   torsion_free(out);
 
   return result;
+fail:
+  torsion_free(out);
+  JS_THROW(JS_ERR_ENCODE);
 }
 
 static napi_value
@@ -673,41 +680,62 @@ bcrypto_base58_decode(napi_env env, napi_callback_info info) {
   size_t argc = 1;
   uint8_t *out;
   size_t out_len;
-  char *str;
+  char *str = NULL;
   size_t str_len;
-  napi_value result;
+  napi_value bufval, lenval, result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(read_value_string_utf8(env, argv[0], &str, &str_len) == napi_ok);
 
-  if (!base58_decode(&out, &out_len, str, str_len)) {
-    torsion_free(str);
-    JS_THROW(JS_ERR_DECODE);
-  }
+  if (read_value_string_utf8(env, argv[0], &str, &str_len) != napi_ok)
+    goto fail;
+
+  if (str_len > BASE58_DECODE_MAX)
+    goto fail;
+
+  out_len = BASE58_DECODE_SIZE(str_len);
+
+  if (out_len > MAX_BUFFER_LENGTH)
+    goto fail;
+
+  if (napi_create_buffer(env, out_len, (void **)&out, &bufval) != napi_ok)
+    goto fail;
+
+  if (!base58_decode(out, &out_len, str, str_len))
+    goto fail;
+
+  CHECK(napi_create_uint32(env, out_len, &lenval) == napi_ok);
+
+  CHECK(napi_create_array_with_length(env, 2, &result) == napi_ok);
+  CHECK(napi_set_element(env, result, 0, bufval) == napi_ok);
+  CHECK(napi_set_element(env, result, 1, lenval) == napi_ok);
 
   torsion_free(str);
 
-  JS_CHECK_ALLOC(create_external_buffer(env, out_len, out, &result));
-
   return result;
+fail:
+  torsion_free(str);
+  JS_THROW(JS_ERR_DECODE);
 }
 
 static napi_value
 bcrypto_base58_test(napi_env env, napi_callback_info info) {
   napi_value argv[1];
   size_t argc = 1;
-  char *str;
+  char *str = NULL;
   size_t str_len;
   napi_value result;
-  int ok;
+  int ok = 0;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(read_value_string_utf8(env, argv[0], &str, &str_len) == napi_ok);
+
+  if (read_value_string_utf8(env, argv[0], &str, &str_len) != napi_ok)
+    goto fail;
 
   ok = base58_test(str, str_len);
 
+fail:
   CHECK(napi_get_boolean(env, ok, &result) == napi_ok);
 
   torsion_free(str);

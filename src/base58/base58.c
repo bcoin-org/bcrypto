@@ -20,16 +20,15 @@ static const int TABLE[128] = {
 };
 
 int
-base58_encode(char **str, size_t *str_len,
+base58_encode(char *str, size_t *str_len,
               const uint8_t *data, size_t data_len) {
-  uint64_t b58size = (uint64_t)data_len * 138 / 100 + 1;
-  size_t b58len = (size_t)b58size; /* 31 bit max */
+  size_t b58len = BASE58_ENCODE_SIZE(data_len); /* 31 bit max */
   uint8_t *b58;
   size_t zeroes = 0;
   size_t length = 0;
   size_t i, j;
 
-  if (data_len > 1073741823ul) /* 2^30 - 1 */
+  if (data_len > BASE58_ENCODE_MAX)
     return 0;
 
   for (i = 0; i < data_len; i++) {
@@ -55,7 +54,7 @@ base58_encode(char **str, size_t *str_len,
         break;
 
       k = b58len - 1 - j;
-      carry += 256 * b58[k];
+      carry += 256 * (unsigned long)b58[k];
       b58[k] = carry % 58;
       carry /= 58;
     }
@@ -70,20 +69,15 @@ base58_encode(char **str, size_t *str_len,
   while (i < b58len && b58[i] == 0)
     i += 1;
 
-  *str = malloc(zeroes + (b58len - i) + 1);
-
-  if (*str == NULL) {
-    free(b58);
-    return 0;
-  }
+  assert(*str_len >= zeroes + (b58len - i));
 
   for (j = 0; j < zeroes; j++)
-    (*str)[j] = '1';
+    str[j] = '1';
 
-  for (; i < b58len; i++)
-    (*str)[j++] = CHARSET[b58[i]];
+  while (i < b58len)
+    str[j++] = CHARSET[b58[i++]];
 
-  (*str)[j] = '\0';
+  str[j] = '\0';
   *str_len = j;
 
   free(b58);
@@ -92,16 +86,15 @@ base58_encode(char **str, size_t *str_len,
 }
 
 int
-base58_decode(uint8_t **data, size_t *data_len,
+base58_decode(uint8_t *data, size_t *data_len,
               const char *str, size_t str_len) {
-  uint64_t b256size = (uint64_t)str_len * 733 / 1000 + 1;
-  size_t b256len = (size_t)b256size;
+  size_t b256len = BASE58_DECODE_SIZE(str_len);
   uint8_t *b256;
   size_t zeroes = 0;
   size_t length = 0;
   size_t i, j;
 
-  if (str_len > 1481763716ul) /* (2^30 - 1) * 138 / 100 + 1 */
+  if (str_len > BASE58_DECODE_MAX)
     return 0;
 
   for (i = 0; i < str_len; i++) {
@@ -134,7 +127,7 @@ base58_decode(uint8_t **data, size_t *data_len,
         break;
 
       k = b256len - 1 - j;
-      carry += 58 * b256[k];
+      carry += 58 * (unsigned long)b256[k];
       b256[k] = carry & 0xff;
       carry >>= 8;
     }
@@ -149,18 +142,13 @@ base58_decode(uint8_t **data, size_t *data_len,
   while (i < b256len && b256[i] == 0)
     i += 1;
 
-  *data = malloc(zeroes + (b256len - i) + 1);
-
-  if (*data == NULL) {
-    free(b256);
-    return 0;
-  }
+  assert(*data_len >= zeroes + (b256len - i));
 
   for (j = 0; j < zeroes; j++)
-    (*data)[j] = 0;
+    data[j] = 0;
 
   while (i < b256len)
-    (*data)[j++] = b256[i++];
+    data[j++] = b256[i++];
 
   *data_len = j;
 
@@ -172,6 +160,9 @@ base58_decode(uint8_t **data, size_t *data_len,
 int
 base58_test(const char *str, size_t str_len) {
   size_t i = 0;
+
+  if (str_len > BASE58_DECODE_MAX)
+    return 0;
 
   for (; i < str_len; i++) {
     uint8_t ch = (uint8_t)str[i];
