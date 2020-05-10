@@ -984,9 +984,9 @@ bcrypto_bcrypt_pbkdf_async(napi_env env, napi_callback_info info) {
 
   if ((worker->pass == NULL && pass_len != 0)
       || (worker->salt == NULL && salt_len != 0)) {
-    bcrypto_free(out);
     bcrypto_free(worker->pass);
     bcrypto_free(worker->salt);
+    bcrypto_free(worker->out);
     bcrypto_free(worker);
     JS_THROW(JS_ERR_DERIVE);
   }
@@ -7256,9 +7256,9 @@ bcrypto_pbkdf2_derive_async(napi_env env, napi_callback_info info) {
 
   if ((worker->pass == NULL && pass_len != 0)
       || (worker->salt == NULL && salt_len != 0)) {
-    bcrypto_free(out);
     bcrypto_free(worker->pass);
     bcrypto_free(worker->salt);
+    bcrypto_free(worker->out);
     bcrypto_free(worker);
     JS_THROW(JS_ERR_DERIVE);
   }
@@ -9432,9 +9432,9 @@ bcrypto_scrypt_derive_async(napi_env env, napi_callback_info info) {
 
   if ((worker->pass == NULL && pass_len != 0)
       || (worker->salt == NULL && salt_len != 0)) {
-    bcrypto_free(out);
     bcrypto_free(worker->pass);
     bcrypto_free(worker->salt);
+    bcrypto_free(worker->out);
     bcrypto_free(worker);
     JS_THROW(JS_ERR_DERIVE);
   }
