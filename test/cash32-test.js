@@ -270,25 +270,23 @@ describe('Cash32', function() {
     }
   });
 
-  describe.skip('Invalid Encoding', () => {
+  describe('Invalid Encoding', () => {
     for (const vector of vectors.encode) {
       it(`"${vector.reason}" (${vector.note})`, () => {
         assert.throws(() => {
           cash32.encode(vector.prefix, vector.type,
                         Buffer.from(vector.hash, 'hex'));
-        }, { message: vector.reason });
+        });
       });
     }
   });
 
-  describe.skip('Invalid Decoding', () => {
+  describe('Invalid Decoding', () => {
     for (const vector of vectors.decode) {
       const text = vector.addr.slice(0, 32) + '...';
 
       it(`"${vector.reason}" w/ invalid address ${text}`, () => {
-        assert.throws(() => {
-          cash32.decode(vector.addr, vector.prefix);
-        }, { message: vector.reason });
+        assert.throws(() => cash32.decode(vector.addr, vector.prefix));
       });
     }
   });
