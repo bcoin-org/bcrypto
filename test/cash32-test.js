@@ -89,15 +89,15 @@ function encodeManual(prefix, type, hash) {
   return cash32.serialize(prefix, converted);
 }
 
-function decodeManual(str, defaultPrefix = 'bitcoincash') {
-  const [prefix, data] = cash32.deserialize(str, defaultPrefix);
-  const extrabits = (data.length * 5) & 7;
+function decodeManual(str, prefix = 'bitcoincash') {
+  const data = cash32.deserialize(str, prefix);
+  const extra = (data.length * 5) & 7;
 
-  if (extrabits >= 5)
+  if (extra >= 5)
     throw new Error('Invalid padding in data.');
 
   const last = data[data.length - 1];
-  const mask = (1 << extrabits) - 1;
+  const mask = (1 << extra) - 1;
 
   if (last & mask)
     throw new Error('Non zero padding.');
@@ -114,7 +114,7 @@ function decodeManual(str, defaultPrefix = 'bitcoincash') {
   if (size !== hash.length)
     throw new Error('Invalid cash32 data length.');
 
-  return [prefix, type, hash];
+  return [type, hash];
 }
 
 describe('Cash32', function() {
@@ -130,11 +130,10 @@ describe('Cash32', function() {
       });
 
       it(`should decode address ${text} (${vector.bytes} bytes)`, () => {
-        const [prefix, type, hash] = cash32.decode(vector.addr, vector.prefix);
+        const [type, hash] = cash32.decode(vector.addr, vector.prefix);
 
         assert.strictEqual(cash32.test(vector.addr, vector.prefix), true);
         assert.strictEqual(cash32.is(vector.addr, vector.prefix), true);
-        assert.strictEqual(prefix, vector.prefix);
         assert.strictEqual(type, vector.type);
         assert.bufferEqual(hash, Buffer.from(vector.hash, 'hex'));
       });
@@ -153,11 +152,10 @@ describe('Cash32', function() {
       });
 
       it(`should decode address ${text} (${vector.bytes} bytes)`, () => {
-        const [prefix, type, hash] = decodeManual(vector.addr, vector.prefix);
+        const [type, hash] = decodeManual(vector.addr, vector.prefix);
 
         assert.strictEqual(cash32.test(vector.addr, vector.prefix), true);
         assert.strictEqual(cash32.is(vector.addr, vector.prefix), true);
-        assert.strictEqual(prefix, vector.prefix);
         assert.strictEqual(type, vector.type);
         assert.bufferEqual(hash, Buffer.from(vector.hash, 'hex'));
       });
@@ -196,9 +194,8 @@ describe('Cash32', function() {
 
       it(`should decode P2PKH for ${text}`, () => {
         const addr = vector.address;
-        const [prefix, type, hash] = cash32.decode(addr);
+        const [type, hash] = cash32.decode(addr);
 
-        assert.strictEqual(prefix, 'bitcoincash');
         assert.strictEqual(type, 0);
         assert.bufferEqual(hash, Buffer.from(vector.hash, 'hex'));
       });
@@ -216,9 +213,8 @@ describe('Cash32', function() {
 
       it(`should decode P2SH for ${text}`, () => {
         const addr = vector.address;
-        const [prefix, type, hash] = cash32.decode(addr);
+        const [type, hash] = cash32.decode(addr);
 
-        assert.strictEqual(prefix, 'bitcoincash');
         assert.strictEqual(type, 1);
         assert.bufferEqual(hash, Buffer.from(vector.hash, 'hex'));
       });
@@ -236,19 +232,17 @@ describe('Cash32', function() {
 
       it(`should decode P2PKH with prefix ${text}`, () => {
         const addr = vector.address.split(':')[1];
-        const defaultPrefix = 'bitcoincash';
-        const [prefix, type, hash] = cash32.decode(addr, defaultPrefix);
+        const prefix = 'bitcoincash';
+        const [type, hash] = cash32.decode(addr, prefix);
 
-        assert.strictEqual(prefix, 'bitcoincash');
         assert.strictEqual(type, 0);
         assert.bufferEqual(hash, Buffer.from(vector.hash, 'hex'));
       });
 
       it(`should decode P2PKH with default prefix ${text}`, () => {
         const addr = vector.address.split(':')[1];
-        const [prefix, type, hash] = cash32.decode(addr);
+        const [type, hash] = cash32.decode(addr);
 
-        assert.strictEqual(prefix, 'bitcoincash');
         assert.strictEqual(type, 0);
         assert.bufferEqual(hash, Buffer.from(vector.hash, 'hex'));
       });
@@ -259,19 +253,17 @@ describe('Cash32', function() {
 
       it(`should decode P2SH with prefix ${text}`, () => {
         const addr = vector.address.split(':')[1];
-        const defaultPrefix = 'bitcoincash';
-        const [prefix, type, hash] = cash32.decode(addr, defaultPrefix);
+        const prefix = 'bitcoincash';
+        const [type, hash] = cash32.decode(addr, prefix);
 
-        assert.strictEqual(prefix, 'bitcoincash');
         assert.strictEqual(type, 1);
         assert.bufferEqual(hash, Buffer.from(vector.hash, 'hex'));
       });
 
       it(`should decode P2SH with default prefix ${text}`, () => {
         const addr = vector.address.split(':')[1];
-        const [prefix, type, hash] = cash32.decode(addr);
+        const [type, hash] = cash32.decode(addr);
 
-        assert.strictEqual(prefix, 'bitcoincash');
         assert.strictEqual(type, 1);
         assert.bufferEqual(hash, Buffer.from(vector.hash, 'hex'));
       });
@@ -306,30 +298,28 @@ describe('Cash32', function() {
       const text = vector.addr.slice(0, 32) + '...';
 
       it(`encode ${vector.note} with address: ${text}`, () => {
-        const addr = cash32.encode(vector.prefix, vector.type,
+        const addr = cash32.encode(vector.prefix.toLowerCase(), vector.type,
                                    Buffer.from(vector.hash, 'hex'));
         assert.strictEqual(addr, vector.addr.toLowerCase());
       });
 
       it(`decode ${vector.note} with address: ${text}`, () => {
-        const [prefix, type, hash] = cash32.decode(
+        const [type, hash] = cash32.decode(
           vector.addr, vector.prefix.toLowerCase());
 
-        assert.strictEqual(prefix.toLowerCase(), vector.prefix.toLowerCase());
         assert.strictEqual(type, vector.type);
         assert.bufferEqual(hash, Buffer.from(vector.hash, 'hex'));
       });
 
       it(`round trip ${vector.note} with address: ${text}`, () => {
-        const addr = cash32.encode(vector.prefix, vector.type,
+        const addr = cash32.encode(vector.prefix.toLowerCase(), vector.type,
                                    Buffer.from(vector.hash, 'hex'));
 
         assert.strictEqual(addr, vector.addr.toLowerCase());
 
-        const [prefix, type, hash] = cash32.decode(
+        const [type, hash] = cash32.decode(
           vector.addr, vector.prefix.toLowerCase());
 
-        assert.strictEqual(prefix.toLowerCase(), vector.prefix.toLowerCase());
         assert.strictEqual(type, vector.type);
         assert.bufferEqual(hash, Buffer.from(vector.hash, 'hex'));
       });
@@ -342,7 +332,7 @@ describe('Cash32', function() {
         const data = random.randomBytes(i);
         const data_ = cash32.convertBits(data, 8, 5, true);
         const str = cash32.serialize('prefix', data_);
-        const [, dec_] = cash32.deserialize(str, 'prefix');
+        const dec_ = cash32.deserialize(str, 'prefix');
         const dec = cash32.convertBits(dec_, 5, 8, false);
 
         assert(cash32.is(str, 'prefix'));

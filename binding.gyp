@@ -2,10 +2,6 @@
   "targets": [{
     "target_name": "bcrypto",
     "sources": [
-      "./src/base58/base58.c",
-      "./src/bech32/bech32.c",
-      "./src/cash32/cash32.c",
-      "./src/murmur3/murmur3.c",
       "./src/torsion/src/aead.c",
       "./src/torsion/src/asn1.c",
       "./src/torsion/src/chacha20.c",
@@ -13,6 +9,7 @@
       "./src/torsion/src/drbg.c",
       "./src/torsion/src/dsa.c",
       "./src/torsion/src/ecc.c",
+      "./src/torsion/src/encoding.c",
       "./src/torsion/src/hash.c",
       "./src/torsion/src/internal.c",
       "./src/torsion/src/kdf.c",
@@ -28,7 +25,7 @@
     "cflags": [
       "-Wall",
       "-Wextra",
-      "-Wno-implicit-fallthrough", # murmur3
+      "-Wno-implicit-fallthrough", # torsion
       "-Wno-nonnull-compare", # secp256k1
       "-Wno-unknown-warning", # gcc
       "-Wno-unknown-warning-option", # clang

@@ -2,7 +2,7 @@
 
 const assert = require('bsert');
 const base32 = require('../lib/encoding/base32');
-const random = require('../lib/random');
+const rng = require('../lib/random');
 
 // https://tools.ietf.org/html/rfc4648#section-10
 const vectors = [
@@ -54,7 +54,7 @@ describe('Base32', function() {
 
   it('should encode/decode random data', () => {
     for (let i = 0; i < 128; i++) {
-      const data = random.randomBytes(i);
+      const data = rng.randomBytes(i);
       const str1 = base32.encode(data, false);
       const dec1 = base32.decode(str1, false);
       const str2 = base32.encode(data, true);

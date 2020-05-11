@@ -10,11 +10,11 @@ addon][addon] for C libraries [libtorsion][libtorsion] and
 ## Usage
 
 ```js
-const random = require('bcrypto/lib/random');
-const entropy = random.randomBytes(32);
+const rng = require('bcrypto/lib/random');
+const entropy = rng.randomBytes(32);
 
-const hash256 = require('bcrypto/lib/hash256');
-const digest = hash256.digest(Buffer.alloc(32, 0x00));
+const Hash256 = require('bcrypto/lib/hash256');
+const digest = Hash256.digest(Buffer.alloc(32, 0xaa));
 ```
 
 ## API
@@ -33,7 +33,7 @@ See the `./lib` directory for available modules and APIs.
 | bn                           | js w/ bigint      | js w/ bigint      | js w/ bigint      | js      |
 | chacha20                     | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion)    | js      |
 | cshake{128,256}              | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion)    | js      |
-| ctr-drbg                     | js                | js                | js                | js      |
+| ctr-drbg                     | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
 | dsa                          | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
 | eb2k                         | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
 | ecies                        | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion)    | js      |
@@ -42,22 +42,22 @@ See the `./lib` directory for available modules and APIs.
 | gost94                       | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
 | hash160                      | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion)    | js      |
 | hash256                      | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion)    | js      |
-| hash-drbg                    | js                | js                | js                | js      |
+| hash-drbg                    | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
 | hkdf                         | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
-| hmac-drbg                    | js                | js                | js                | js      |
+| hmac-drbg                    | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
 | keccak/sha3{224,256,384,512} | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion)    | js      |
 | kmac{128,256}                | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion)    | js      |
 | md{2,4,5}                    | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
 | md5sha1                      | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
 | merkle                       | js                | js                | js                | js      |
 | mrkl                         | js                | js                | js                | js      |
-| murmur3                      | c                 | c                 | c                 | js      |
+| murmur3                      | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
 | p{192,224,256,384,521}       | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
 | pbkdf2                       | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
 | pgp                          | js                | js                | js                | js      |
 | poly1305                     | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
 | random                       | c (openssl)       | c (openssl)       | c (openssl)       | js      |
-| rc4                          | js                | js                | js                | js      |
+| rc4                          | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
 | ripemd160                    | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
 | rsa                          | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
 | rsaies                       | c (libtorsion¹)   | c (libtorsion¹)   | c (libtorsion)    | js      |

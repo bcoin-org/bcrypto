@@ -2,7 +2,7 @@
 
 const assert = require('bsert');
 const base16 = require('../lib/encoding/base16');
-const random = require('../lib/random');
+const rng = require('../lib/random');
 
 // https://tools.ietf.org/html/rfc4648#section-10
 const vectors = [
@@ -44,16 +44,6 @@ describe('Base16', function() {
       assert.strictEqual(base16.encode(data), hex);
       assert.bufferEqual(base16.decode(hex), data);
       assert.bufferEqual(base16.decode(hex.toUpperCase()), data);
-
-      // With sizes:
-      assert.strictEqual(base16.test(hex, data.length), true);
-      assert.strictEqual(base16.encode(data, data.length), hex);
-      assert.strictEqual(base16.encode(data, 1 + data.length), '00' + hex);
-      assert.bufferEqual(base16.decode(hex, data.length), data);
-
-      assert.strictEqual(base16.test(hex, data.length + 1), false);
-      assert.throws(() => base16.encode(data, data.length - 1));
-      assert.throws(() => base16.decode(hex, data.length + 1));
     });
   }
 
@@ -64,14 +54,6 @@ describe('Base16', function() {
       assert.strictEqual(base16.encodeLE(data), hex);
       assert.bufferEqual(base16.decodeLE(hex), data);
       assert.bufferEqual(base16.decodeLE(hex.toUpperCase()), data);
-
-      // With sizes:
-      assert.strictEqual(base16.encodeLE(data, data.length), hex);
-      assert.strictEqual(base16.encodeLE(data, data.length + 1), hex + '00');
-      assert.bufferEqual(base16.decodeLE(hex, data.length), data);
-
-      assert.throws(() => base16.encodeLE(data, data.length - 1));
-      assert.throws(() => base16.decodeLE(hex, data.length + 1));
     });
   }
 
@@ -88,12 +70,13 @@ describe('Base16', function() {
 
   it('should encode/decode random data', () => {
     for (let i = 0; i < 128; i++) {
-      const data = random.randomBytes(i);
+      const data = rng.randomBytes(i);
       const str = base16.encode(data);
       const dec = base16.decode(str);
 
       assert(base16.test(str));
 
+      assert.strictEqual(str, data.toString('hex'));
       assert.bufferEqual(dec, data);
     }
   });

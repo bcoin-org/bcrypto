@@ -18,6 +18,7 @@
 #include <torsion/drbg.h>
 #include <torsion/dsa.h>
 #include <torsion/ecc.h>
+#include <torsion/encoding.h>
 #include <torsion/hash.h>
 #include <torsion/kdf.h>
 #include <torsion/poly1305.h>
@@ -26,11 +27,6 @@
 #include <torsion/secretbox.h>
 #include <torsion/siphash.h>
 #include <torsion/util.h>
-
-#include "base58/base58.h"
-#include "bech32/bech32.h"
-#include "cash32/cash32.h"
-#include "murmur3/murmur3.h"
 
 #ifdef BCRYPTO_USE_SECP256K1
 #include "secp256k1/include/secp256k1.h"
@@ -629,6 +625,410 @@ bcrypto_aead_static_auth(napi_env env, napi_callback_info info) {
 }
 
 /*
+ * Base16
+ */
+
+static napi_value
+bcrypto_base16_encode(napi_env env, napi_callback_info info) {
+  napi_value argv[1];
+  size_t argc = 1;
+  char *out;
+  size_t out_len;
+  const uint8_t *data;
+  size_t data_len;
+  napi_value result;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 1);
+  CHECK(napi_get_buffer_info(env, argv[0], (void **)&data,
+                             &data_len) == napi_ok);
+
+  out_len = base16_encode_size(data_len);
+
+  JS_ASSERT(out_len <= MAX_STRING_LENGTH, JS_ERR_ALLOC);
+
+  out = (char *)bcrypto_malloc(out_len + 1);
+
+  JS_ASSERT(out != NULL, JS_ERR_ALLOC);
+
+  base16_encode(out, &out_len, data, data_len);
+
+  if (napi_create_string_latin1(env, out, out_len, &result) != napi_ok)
+    goto fail;
+
+  bcrypto_free(out);
+
+  return result;
+fail:
+  bcrypto_free(out);
+  JS_THROW(JS_ERR_ENCODE);
+}
+
+static napi_value
+bcrypto_base16_decode(napi_env env, napi_callback_info info) {
+  napi_value argv[1];
+  size_t argc = 1;
+  uint8_t *out;
+  size_t out_len;
+  char *str;
+  size_t str_len;
+  napi_value result;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 1);
+
+  JS_CHECK_ALLOC(read_value_string_latin1(env, argv[0], &str, &str_len));
+
+  out_len = base16_decode_size(str_len);
+
+  if (out_len > MAX_BUFFER_LENGTH)
+    goto fail;
+
+  if (napi_create_buffer(env, out_len, (void **)&out, &result) != napi_ok)
+    goto fail;
+
+  if (!base16_decode(out, &out_len, str, str_len))
+    goto fail;
+
+  bcrypto_free(str);
+
+  return result;
+fail:
+  bcrypto_free(str);
+  JS_THROW(JS_ERR_DECODE);
+}
+
+static napi_value
+bcrypto_base16_test(napi_env env, napi_callback_info info) {
+  napi_value argv[1];
+  size_t argc = 1;
+  char *str;
+  size_t str_len;
+  napi_value result;
+  int ok;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 1);
+
+  JS_CHECK_ALLOC(read_value_string_latin1(env, argv[0], &str, &str_len));
+
+  ok = base16_test(str, str_len);
+
+  CHECK(napi_get_boolean(env, ok, &result) == napi_ok);
+
+  bcrypto_free(str);
+
+  return result;
+}
+
+/*
+ * Base16 (Little Endian)
+ */
+
+static napi_value
+bcrypto_base16le_encode(napi_env env, napi_callback_info info) {
+  napi_value argv[1];
+  size_t argc = 1;
+  char *out;
+  size_t out_len;
+  const uint8_t *data;
+  size_t data_len;
+  napi_value result;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 1);
+  CHECK(napi_get_buffer_info(env, argv[0], (void **)&data,
+                             &data_len) == napi_ok);
+
+  out_len = base16le_encode_size(data_len);
+
+  JS_ASSERT(out_len <= MAX_STRING_LENGTH, JS_ERR_ALLOC);
+
+  out = (char *)bcrypto_malloc(out_len + 1);
+
+  JS_ASSERT(out != NULL, JS_ERR_ALLOC);
+
+  base16le_encode(out, &out_len, data, data_len);
+
+  if (napi_create_string_latin1(env, out, out_len, &result) != napi_ok)
+    goto fail;
+
+  bcrypto_free(out);
+
+  return result;
+fail:
+  bcrypto_free(out);
+  JS_THROW(JS_ERR_ENCODE);
+}
+
+static napi_value
+bcrypto_base16le_decode(napi_env env, napi_callback_info info) {
+  napi_value argv[1];
+  size_t argc = 1;
+  uint8_t *out;
+  size_t out_len;
+  char *str;
+  size_t str_len;
+  napi_value result;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 1);
+
+  JS_CHECK_ALLOC(read_value_string_latin1(env, argv[0], &str, &str_len));
+
+  out_len = base16le_decode_size(str_len);
+
+  if (out_len > MAX_BUFFER_LENGTH)
+    goto fail;
+
+  if (napi_create_buffer(env, out_len, (void **)&out, &result) != napi_ok)
+    goto fail;
+
+  if (!base16le_decode(out, &out_len, str, str_len))
+    goto fail;
+
+  bcrypto_free(str);
+
+  return result;
+fail:
+  bcrypto_free(str);
+  JS_THROW(JS_ERR_DECODE);
+}
+
+static napi_value
+bcrypto_base16le_test(napi_env env, napi_callback_info info) {
+  napi_value argv[1];
+  size_t argc = 1;
+  char *str;
+  size_t str_len;
+  napi_value result;
+  int ok;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 1);
+
+  JS_CHECK_ALLOC(read_value_string_latin1(env, argv[0], &str, &str_len));
+
+  ok = base16le_test(str, str_len);
+
+  CHECK(napi_get_boolean(env, ok, &result) == napi_ok);
+
+  bcrypto_free(str);
+
+  return result;
+}
+
+/*
+ * Base32
+ */
+
+static napi_value
+bcrypto_base32_encode(napi_env env, napi_callback_info info) {
+  napi_value argv[2];
+  size_t argc = 2;
+  char *out;
+  size_t out_len;
+  const uint8_t *data;
+  size_t data_len;
+  bool pad;
+  napi_value result;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 2);
+  CHECK(napi_get_buffer_info(env, argv[0], (void **)&data,
+                             &data_len) == napi_ok);
+  CHECK(napi_get_value_bool(env, argv[1], &pad) == napi_ok);
+
+  out_len = base32_encode_size(data_len, pad);
+
+  JS_ASSERT(out_len <= MAX_STRING_LENGTH, JS_ERR_ALLOC);
+
+  out = (char *)bcrypto_malloc(out_len + 1);
+
+  JS_ASSERT(out != NULL, JS_ERR_ALLOC);
+
+  base32_encode(out, &out_len, data, data_len, pad);
+
+  if (napi_create_string_latin1(env, out, out_len, &result) != napi_ok)
+    goto fail;
+
+  bcrypto_free(out);
+
+  return result;
+fail:
+  bcrypto_free(out);
+  JS_THROW(JS_ERR_ENCODE);
+}
+
+static napi_value
+bcrypto_base32_decode(napi_env env, napi_callback_info info) {
+  napi_value argv[2];
+  size_t argc = 2;
+  uint8_t *out;
+  size_t out_len;
+  char *str;
+  size_t str_len;
+  bool unpad;
+  napi_value result;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 2);
+
+  JS_CHECK_ALLOC(read_value_string_latin1(env, argv[0], &str, &str_len));
+
+  CHECK(napi_get_value_bool(env, argv[1], &unpad) == napi_ok);
+
+  out_len = base32_decode_size(str, str_len);
+
+  if (out_len > MAX_BUFFER_LENGTH)
+    goto fail;
+
+  if (napi_create_buffer(env, out_len, (void **)&out, &result) != napi_ok)
+    goto fail;
+
+  if (!base32_decode(out, &out_len, str, str_len, unpad))
+    goto fail;
+
+  bcrypto_free(str);
+
+  return result;
+fail:
+  bcrypto_free(str);
+  JS_THROW(JS_ERR_DECODE);
+}
+
+static napi_value
+bcrypto_base32_test(napi_env env, napi_callback_info info) {
+  napi_value argv[2];
+  size_t argc = 2;
+  char *str;
+  size_t str_len;
+  bool unpad;
+  napi_value result;
+  int ok;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 2);
+
+  JS_CHECK_ALLOC(read_value_string_latin1(env, argv[0], &str, &str_len));
+
+  CHECK(napi_get_value_bool(env, argv[1], &unpad) == napi_ok);
+
+  ok = base32_test(str, str_len, unpad);
+
+  CHECK(napi_get_boolean(env, ok, &result) == napi_ok);
+
+  bcrypto_free(str);
+
+  return result;
+}
+
+/*
+ * Base32-Hex
+ */
+
+static napi_value
+bcrypto_base32hex_encode(napi_env env, napi_callback_info info) {
+  napi_value argv[2];
+  size_t argc = 2;
+  char *out;
+  size_t out_len;
+  const uint8_t *data;
+  size_t data_len;
+  bool pad;
+  napi_value result;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 2);
+  CHECK(napi_get_buffer_info(env, argv[0], (void **)&data,
+                             &data_len) == napi_ok);
+  CHECK(napi_get_value_bool(env, argv[1], &pad) == napi_ok);
+
+  out_len = base32hex_encode_size(data_len, pad);
+
+  JS_ASSERT(out_len <= MAX_STRING_LENGTH, JS_ERR_ALLOC);
+
+  out = (char *)bcrypto_malloc(out_len + 1);
+
+  JS_ASSERT(out != NULL, JS_ERR_ALLOC);
+
+  base32hex_encode(out, &out_len, data, data_len, pad);
+
+  if (napi_create_string_latin1(env, out, out_len, &result) != napi_ok)
+    goto fail;
+
+  bcrypto_free(out);
+
+  return result;
+fail:
+  bcrypto_free(out);
+  JS_THROW(JS_ERR_ENCODE);
+}
+
+static napi_value
+bcrypto_base32hex_decode(napi_env env, napi_callback_info info) {
+  napi_value argv[2];
+  size_t argc = 2;
+  uint8_t *out;
+  size_t out_len;
+  char *str;
+  size_t str_len;
+  bool unpad;
+  napi_value result;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 2);
+
+  JS_CHECK_ALLOC(read_value_string_latin1(env, argv[0], &str, &str_len));
+
+  CHECK(napi_get_value_bool(env, argv[1], &unpad) == napi_ok);
+
+  out_len = base32hex_decode_size(str, str_len);
+
+  if (out_len > MAX_BUFFER_LENGTH)
+    goto fail;
+
+  if (napi_create_buffer(env, out_len, (void **)&out, &result) != napi_ok)
+    goto fail;
+
+  if (!base32hex_decode(out, &out_len, str, str_len, unpad))
+    goto fail;
+
+  bcrypto_free(str);
+
+  return result;
+fail:
+  bcrypto_free(str);
+  JS_THROW(JS_ERR_DECODE);
+}
+
+static napi_value
+bcrypto_base32hex_test(napi_env env, napi_callback_info info) {
+  napi_value argv[2];
+  size_t argc = 2;
+  char *str;
+  size_t str_len;
+  bool unpad;
+  napi_value result;
+  int ok;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 2);
+
+  JS_CHECK_ALLOC(read_value_string_latin1(env, argv[0], &str, &str_len));
+
+  CHECK(napi_get_value_bool(env, argv[1], &unpad) == napi_ok);
+
+  ok = base32hex_test(str, str_len, unpad);
+
+  CHECK(napi_get_boolean(env, ok, &result) == napi_ok);
+
+  bcrypto_free(str);
+
+  return result;
+}
+
+/*
  * Base58
  */
 
@@ -647,9 +1047,9 @@ bcrypto_base58_encode(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[0], (void **)&data,
                              &data_len) == napi_ok);
 
-  JS_ASSERT(data_len <= BASE58_DATA_MAX, JS_ERR_ENCODE);
+  JS_ASSERT(data_len <= 0x7ffffffe, JS_ERR_ENCODE);
 
-  out_len = BASE58_STRING_ITCH(data_len);
+  out_len = BASE58_ENCODE_SIZE(data_len);
 
   JS_ASSERT(out_len <= MAX_STRING_LENGTH, JS_ERR_ALLOC);
 
@@ -686,10 +1086,10 @@ bcrypto_base58_decode(napi_env env, napi_callback_info info) {
 
   JS_CHECK_ALLOC(read_value_string_latin1(env, argv[0], &str, &str_len));
 
-  if (str_len > BASE58_STRING_MAX)
+  if (str_len > 0xfffffffe)
     goto fail;
 
-  out_len = BASE58_DATA_ITCH(str_len);
+  out_len = BASE58_DECODE_SIZE(str_len);
 
   if (out_len > MAX_BUFFER_LENGTH)
     goto fail;
@@ -734,12 +1134,16 @@ bcrypto_base58_test(napi_env env, napi_callback_info info) {
   return result;
 }
 
+/*
+ * Base64
+ */
+
 static napi_value
-bcrypto_base58_encode_1024(napi_env env, napi_callback_info info) {
+bcrypto_base64_encode(napi_env env, napi_callback_info info) {
   napi_value argv[1];
   size_t argc = 1;
-  char out[BASE58_STRING_ITCH_1024 + 1];
-  size_t out_len = BASE58_STRING_ITCH_1024;
+  char *out;
+  size_t out_len;
   const uint8_t *data;
   size_t data_len;
   napi_value result;
@@ -749,57 +1153,177 @@ bcrypto_base58_encode_1024(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[0], (void **)&data,
                              &data_len) == napi_ok);
 
-  JS_ASSERT(data_len <= BASE58_DATA_MAX_1024, JS_ERR_ENCODE);
+  out_len = base64_encode_size(data_len);
 
-  JS_ASSERT(base58_encode_1024(out, &out_len, data, data_len), JS_ERR_ENCODE);
+  JS_ASSERT(out_len <= MAX_STRING_LENGTH, JS_ERR_ALLOC);
 
-  JS_CHECK_ALLOC(napi_create_string_latin1(env, out, out_len, &result));
+  out = (char *)bcrypto_malloc(out_len + 1);
+
+  JS_ASSERT(out != NULL, JS_ERR_ALLOC);
+
+  base64_encode(out, &out_len, data, data_len);
+
+  if (napi_create_string_latin1(env, out, out_len, &result) != napi_ok)
+    goto fail;
+
+  bcrypto_free(out);
 
   return result;
+fail:
+  bcrypto_free(out);
+  JS_THROW(JS_ERR_ENCODE);
 }
 
 static napi_value
-bcrypto_base58_decode_1024(napi_env env, napi_callback_info info) {
+bcrypto_base64_decode(napi_env env, napi_callback_info info) {
   napi_value argv[1];
   size_t argc = 1;
-  uint8_t out[BASE58_DATA_ITCH_1024];
-  size_t out_len = BASE58_DATA_ITCH_1024;
-  char str[BASE58_STRING_MAX_1024 + 2];
+  uint8_t *out;
+  size_t out_len;
+  char *str;
   size_t str_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_value_string_latin1(env, argv[0], str, sizeof(str),
-                                     &str_len) == napi_ok);
 
-  JS_ASSERT(str_len != sizeof(str) - 1, JS_ERR_DECODE);
-  JS_ASSERT(str_len <= BASE58_STRING_MAX_1024, JS_ERR_DECODE);
+  JS_CHECK_ALLOC(read_value_string_latin1(env, argv[0], &str, &str_len));
 
-  JS_ASSERT(base58_decode_1024(out, &out_len, str, str_len), JS_ERR_DECODE);
+  out_len = base64_decode_size(str, str_len);
 
-  CHECK(napi_create_buffer_copy(env, out_len, out, NULL, &result) == napi_ok);
+  if (out_len > MAX_BUFFER_LENGTH)
+    goto fail;
+
+  if (napi_create_buffer(env, out_len, (void **)&out, &result) != napi_ok)
+    goto fail;
+
+  if (!base64_decode(out, &out_len, str, str_len))
+    goto fail;
+
+  bcrypto_free(str);
 
   return result;
+fail:
+  bcrypto_free(str);
+  JS_THROW(JS_ERR_DECODE);
 }
 
 static napi_value
-bcrypto_base58_test_1024(napi_env env, napi_callback_info info) {
+bcrypto_base64_test(napi_env env, napi_callback_info info) {
   napi_value argv[1];
   size_t argc = 1;
-  char str[BASE58_STRING_MAX_1024 + 2];
+  char *str;
   size_t str_len;
   napi_value result;
   int ok;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_value_string_latin1(env, argv[0], str, sizeof(str),
-                                     &str_len) == napi_ok);
 
-  ok = str_len != sizeof(str) - 1 && base58_test_1024(str, str_len);
+  JS_CHECK_ALLOC(read_value_string_latin1(env, argv[0], &str, &str_len));
+
+  ok = base64_test(str, str_len);
 
   CHECK(napi_get_boolean(env, ok, &result) == napi_ok);
+
+  bcrypto_free(str);
+
+  return result;
+}
+
+/*
+ * Base64-URL
+ */
+
+static napi_value
+bcrypto_base64url_encode(napi_env env, napi_callback_info info) {
+  napi_value argv[1];
+  size_t argc = 1;
+  char *out;
+  size_t out_len;
+  const uint8_t *data;
+  size_t data_len;
+  napi_value result;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 1);
+  CHECK(napi_get_buffer_info(env, argv[0], (void **)&data,
+                             &data_len) == napi_ok);
+
+  out_len = base64url_encode_size(data_len);
+
+  JS_ASSERT(out_len <= MAX_STRING_LENGTH, JS_ERR_ALLOC);
+
+  out = (char *)bcrypto_malloc(out_len + 1);
+
+  JS_ASSERT(out != NULL, JS_ERR_ALLOC);
+
+  base64url_encode(out, &out_len, data, data_len);
+
+  if (napi_create_string_latin1(env, out, out_len, &result) != napi_ok)
+    goto fail;
+
+  bcrypto_free(out);
+
+  return result;
+fail:
+  bcrypto_free(out);
+  JS_THROW(JS_ERR_ENCODE);
+}
+
+static napi_value
+bcrypto_base64url_decode(napi_env env, napi_callback_info info) {
+  napi_value argv[1];
+  size_t argc = 1;
+  uint8_t *out;
+  size_t out_len;
+  char *str;
+  size_t str_len;
+  napi_value result;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 1);
+
+  JS_CHECK_ALLOC(read_value_string_latin1(env, argv[0], &str, &str_len));
+
+  out_len = base64url_decode_size(str, str_len);
+
+  if (out_len > MAX_BUFFER_LENGTH)
+    goto fail;
+
+  if (napi_create_buffer(env, out_len, (void **)&out, &result) != napi_ok)
+    goto fail;
+
+  if (!base64url_decode(out, &out_len, str, str_len))
+    goto fail;
+
+  bcrypto_free(str);
+
+  return result;
+fail:
+  bcrypto_free(str);
+  JS_THROW(JS_ERR_DECODE);
+}
+
+static napi_value
+bcrypto_base64url_test(napi_env env, napi_callback_info info) {
+  napi_value argv[1];
+  size_t argc = 1;
+  char *str;
+  size_t str_len;
+  napi_value result;
+  int ok;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 1);
+
+  JS_CHECK_ALLOC(read_value_string_latin1(env, argv[0], &str, &str_len));
+
+  ok = base64url_test(str, str_len);
+
+  CHECK(napi_get_boolean(env, ok, &result) == napi_ok);
+
+  bcrypto_free(str);
 
   return result;
 }
@@ -1133,9 +1657,9 @@ static napi_value
 bcrypto_bech32_serialize(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  char out[93];
-  char hrp[84 + 1];
-  size_t hrp_len;
+  char out[BECH32_MAX_SERIALIZE_SIZE + 1];
+  char hrp[BECH32_MAX_HRP_SIZE + 2];
+  size_t out_len, hrp_len;
   const uint8_t *data;
   size_t data_len;
   napi_value result;
@@ -1148,10 +1672,10 @@ bcrypto_bech32_serialize(napi_env env, napi_callback_info info) {
                              &data_len) == napi_ok);
 
   JS_ASSERT(hrp_len != sizeof(hrp) - 1, JS_ERR_ENCODE);
-  JS_ASSERT(bech32_serialize(out, hrp, data, data_len), JS_ERR_ENCODE);
+  JS_ASSERT(bech32_serialize(out, &out_len, hrp, hrp_len, data, data_len),
+            JS_ERR_ENCODE);
 
-  CHECK(napi_create_string_latin1(env, out, NAPI_AUTO_LENGTH,
-                                  &result) == napi_ok);
+  CHECK(napi_create_string_latin1(env, out, out_len, &result) == napi_ok);
 
   return result;
 }
@@ -1160,10 +1684,10 @@ static napi_value
 bcrypto_bech32_deserialize(napi_env env, napi_callback_info info) {
   napi_value argv[1];
   size_t argc = 1;
-  char hrp[84];
-  uint8_t data[84];
-  char str[93 + 1];
-  size_t data_len, str_len;
+  char hrp[BECH32_MAX_HRP_SIZE + 1];
+  uint8_t data[BECH32_MAX_DESERIALIZE_SIZE];
+  char str[BECH32_MAX_SERIALIZE_SIZE + 2];
+  size_t hrp_len, data_len, str_len;
   napi_value hrpval, dataval, result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
@@ -1172,10 +1696,10 @@ bcrypto_bech32_deserialize(napi_env env, napi_callback_info info) {
                                      &str_len) == napi_ok);
 
   JS_ASSERT(str_len != sizeof(str) - 1, JS_ERR_ENCODE);
-  JS_ASSERT(bech32_deserialize(hrp, data, &data_len, str), JS_ERR_ENCODE);
+  JS_ASSERT(bech32_deserialize(hrp, &hrp_len, data, &data_len, str, str_len),
+            JS_ERR_ENCODE);
 
-  CHECK(napi_create_string_latin1(env, hrp, NAPI_AUTO_LENGTH,
-                                  &hrpval) == napi_ok);
+  CHECK(napi_create_string_latin1(env, hrp, hrp_len, &hrpval) == napi_ok);
 
   CHECK(napi_create_buffer_copy(env, data_len, data, NULL,
                                 &dataval) == napi_ok);
@@ -1191,7 +1715,7 @@ static napi_value
 bcrypto_bech32_is(napi_env env, napi_callback_info info) {
   napi_value argv[1];
   size_t argc = 1;
-  char str[93 + 1];
+  char str[BECH32_MAX_SERIALIZE_SIZE + 2];
   size_t str_len;
   napi_value result;
   int ok;
@@ -1201,7 +1725,7 @@ bcrypto_bech32_is(napi_env env, napi_callback_info info) {
   CHECK(napi_get_value_string_latin1(env, argv[0], str, sizeof(str),
                                      &str_len) == napi_ok);
 
-  ok = str_len != sizeof(str) - 1 && bech32_is(str);
+  ok = str_len != sizeof(str) - 1 && bech32_is(str, str_len);
 
   CHECK(napi_get_boolean(env, ok, &result) == napi_ok);
 
@@ -1234,7 +1758,7 @@ bcrypto_bech32_convert_bits(napi_env env, napi_callback_info info) {
   JS_ASSERT(frombits >= 1 && frombits <= 8, JS_ERR_ENCODE);
   JS_ASSERT(tobits >= 1 && tobits <= 8, JS_ERR_ENCODE);
 
-  out_len = (data_len * frombits + (tobits - 1) * (size_t)pad) / tobits;
+  out_len = BECH32_CONVERT_SIZE(data_len, frombits, tobits, (size_t)pad);
 
   JS_ASSERT(out_len <= MAX_BUFFER_LENGTH, JS_ERR_ALLOC);
 
@@ -1254,9 +1778,9 @@ static napi_value
 bcrypto_bech32_encode(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
-  char out[93];
-  char hrp[84 + 1];
-  size_t hrp_len;
+  char out[BECH32_MAX_ENCODE_SIZE + 1];
+  char hrp[BECH32_MAX_HRP_SIZE + 2];
+  size_t out_len, hrp_len;
   uint32_t version;
   const uint8_t *data;
   size_t data_len;
@@ -1271,10 +1795,10 @@ bcrypto_bech32_encode(napi_env env, napi_callback_info info) {
                              &data_len) == napi_ok);
 
   JS_ASSERT(hrp_len != sizeof(hrp) - 1, JS_ERR_ENCODE);
-  JS_ASSERT(bech32_encode(out, hrp, version, data, data_len), JS_ERR_ENCODE);
+  JS_ASSERT(bech32_encode(out, &out_len, hrp, hrp_len, version, data, data_len),
+            JS_ERR_ENCODE);
 
-  CHECK(napi_create_string_latin1(env, out, NAPI_AUTO_LENGTH,
-                                  &result) == napi_ok);
+  CHECK(napi_create_string_latin1(env, out, out_len, &result) == napi_ok);
 
   return result;
 }
@@ -1283,12 +1807,14 @@ static napi_value
 bcrypto_bech32_decode(napi_env env, napi_callback_info info) {
   napi_value argv[1];
   size_t argc = 1;
-  char hrp[84];
-  int version;
-  uint8_t data[40];
-  char str[93 + 1];
+  char hrp[BECH32_MAX_HRP_SIZE + 1];
+  size_t hrp_len;
+  unsigned int version;
+  uint8_t data[BECH32_MAX_DECODE_SIZE];
+  char str[BECH32_MAX_ENCODE_SIZE + 2];
   size_t data_len, str_len;
   napi_value hrpval, versionval, dataval, result;
+  int ok;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
@@ -1296,10 +1822,12 @@ bcrypto_bech32_decode(napi_env env, napi_callback_info info) {
                                      &str_len) == napi_ok);
 
   JS_ASSERT(str_len != sizeof(str) - 1, JS_ERR_ENCODE);
-  JS_ASSERT(bech32_decode(hrp, &version, data, &data_len, str), JS_ERR_ENCODE);
 
-  CHECK(napi_create_string_latin1(env, hrp, NAPI_AUTO_LENGTH,
-                                  &hrpval) == napi_ok);
+  ok = bech32_decode(hrp, &hrp_len, &version, data, &data_len, str, str_len);
+
+  JS_ASSERT(ok, JS_ERR_ENCODE);
+
+  CHECK(napi_create_string_latin1(env, hrp, hrp_len, &hrpval) == napi_ok);
 
   CHECK(napi_create_uint32(env, version, &versionval) == napi_ok);
 
@@ -1318,7 +1846,7 @@ static napi_value
 bcrypto_bech32_test(napi_env env, napi_callback_info info) {
   napi_value argv[1];
   size_t argc = 1;
-  char str[93 + 1];
+  char str[BECH32_MAX_ENCODE_SIZE + 2];
   size_t str_len;
   napi_value result;
   int ok;
@@ -1328,7 +1856,7 @@ bcrypto_bech32_test(napi_env env, napi_callback_info info) {
   CHECK(napi_get_value_string_latin1(env, argv[0], str, sizeof(str),
                                      &str_len) == napi_ok);
 
-  ok = str_len != sizeof(str) - 1 && bech32_test(str);
+  ok = str_len != sizeof(str) - 1 && bech32_test(str, str_len);
 
   CHECK(napi_get_boolean(env, ok, &result) == napi_ok);
 
@@ -1727,27 +2255,29 @@ static napi_value
 bcrypto_cash32_serialize(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  char out[197];
-  char prefix[84 + 1];
-  size_t prefix_len;
+  char out[CASH32_MAX_SERIALIZE_SIZE + 1];
+  size_t out_len;
+  char pre[CASH32_MAX_PREFIX_SIZE + 2];
+  size_t pre_len;
   const uint8_t *data;
   size_t data_len;
   napi_value result;
-
-  memset(out, 0, sizeof(out));
+  int ok;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_string_latin1(env, argv[0], prefix, sizeof(prefix),
-                                     &prefix_len) == napi_ok);
+  CHECK(napi_get_value_string_latin1(env, argv[0], pre, sizeof(pre),
+                                     &pre_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&data,
                              &data_len) == napi_ok);
 
-  JS_ASSERT(prefix_len != sizeof(prefix) - 1, JS_ERR_ENCODE);
-  JS_ASSERT(cash32_serialize(out, prefix, data, data_len), JS_ERR_ENCODE);
+  JS_ASSERT(pre_len != sizeof(pre) - 1, JS_ERR_ENCODE);
 
-  CHECK(napi_create_string_latin1(env, out, NAPI_AUTO_LENGTH,
-                                  &result) == napi_ok);
+  ok = cash32_serialize(out, &out_len, pre, pre_len, data, data_len);
+
+  JS_ASSERT(ok, JS_ERR_ENCODE);
+
+  CHECK(napi_create_string_latin1(env, out, out_len, &result) == napi_ok);
 
   return result;
 }
@@ -1756,38 +2286,28 @@ static napi_value
 bcrypto_cash32_deserialize(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  char prefix[84];
-  uint8_t data[188];
-  char str[197 + 1];
-  char dprefix[84 + 1];
-  size_t data_len, str_len, dprefix_len;
-  napi_value prefixval, dataval, result;
-
-  memset(prefix, 0, sizeof(prefix));
-  memset(data, 0, sizeof(data));
-  data_len = 0;
+  uint8_t data[CASH32_MAX_DESERIALIZE_SIZE];
+  char str[CASH32_MAX_SERIALIZE_SIZE + 2];
+  char pre[CASH32_MAX_PREFIX_SIZE + 2];
+  size_t data_len, str_len, pre_len;
+  napi_value result;
+  int ok;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
   CHECK(napi_get_value_string_latin1(env, argv[0], str, sizeof(str),
                                      &str_len) == napi_ok);
-  CHECK(napi_get_value_string_latin1(env, argv[1], dprefix, sizeof(dprefix),
-                                     &dprefix_len) == napi_ok);
+  CHECK(napi_get_value_string_latin1(env, argv[1], pre, sizeof(pre),
+                                     &pre_len) == napi_ok);
 
   JS_ASSERT(str_len != sizeof(str) - 1, JS_ERR_ENCODE);
-  JS_ASSERT(dprefix_len != sizeof(dprefix) - 1, JS_ERR_ENCODE);
-  JS_ASSERT(cash32_deserialize(prefix, data, &data_len, dprefix, str),
-            JS_ERR_ENCODE);
+  JS_ASSERT(pre_len != sizeof(pre) - 1, JS_ERR_ENCODE);
 
-  CHECK(napi_create_string_latin1(env, prefix, NAPI_AUTO_LENGTH,
-                                  &prefixval) == napi_ok);
+  ok = cash32_deserialize(data, &data_len, str, str_len, pre, pre_len);
 
-  CHECK(napi_create_buffer_copy(env, data_len, data, NULL,
-                                &dataval) == napi_ok);
+  JS_ASSERT(ok, JS_ERR_ENCODE);
 
-  CHECK(napi_create_array_with_length(env, 2, &result) == napi_ok);
-  CHECK(napi_set_element(env, result, 0, prefixval) == napi_ok);
-  CHECK(napi_set_element(env, result, 1, dataval) == napi_ok);
+  CHECK(napi_create_buffer_copy(env, data_len, data, NULL, &result) == napi_ok);
 
   return result;
 }
@@ -1796,9 +2316,9 @@ static napi_value
 bcrypto_cash32_is(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  char str[197 + 1];
-  char dprefix[84 + 1];
-  size_t str_len, dprefix_len;
+  char str[CASH32_MAX_SERIALIZE_SIZE + 2];
+  char pre[CASH32_MAX_PREFIX_SIZE + 2];
+  size_t str_len, pre_len;
   napi_value result;
   int ok;
 
@@ -1806,12 +2326,12 @@ bcrypto_cash32_is(napi_env env, napi_callback_info info) {
   CHECK(argc == 2);
   CHECK(napi_get_value_string_latin1(env, argv[0], str, sizeof(str),
                                      &str_len) == napi_ok);
-  CHECK(napi_get_value_string_latin1(env, argv[1], dprefix, sizeof(dprefix),
-                                     &dprefix_len) == napi_ok);
+  CHECK(napi_get_value_string_latin1(env, argv[1], pre, sizeof(pre),
+                                     &pre_len) == napi_ok);
 
   ok = str_len != sizeof(str) - 1
-    && dprefix_len != sizeof(dprefix) - 1
-    && cash32_is(dprefix, str);
+    && pre_len != sizeof(pre) - 1
+    && cash32_is(str, str_len, pre, pre_len);
 
   CHECK(napi_get_boolean(env, ok, &result) == napi_ok);
 
@@ -1844,7 +2364,7 @@ bcrypto_cash32_convert_bits(napi_env env, napi_callback_info info) {
   JS_ASSERT(frombits >= 1 && frombits <= 8, JS_ERR_ENCODE);
   JS_ASSERT(tobits >= 1 && tobits <= 8, JS_ERR_ENCODE);
 
-  out_len = (data_len * frombits + (tobits - 1) * (size_t)pad) / tobits;
+  out_len = CASH32_CONVERT_SIZE(data_len, frombits, tobits, (size_t)pad);
 
   JS_ASSERT(out_len <= MAX_BUFFER_LENGTH, JS_ERR_ALLOC);
 
@@ -1864,30 +2384,31 @@ static napi_value
 bcrypto_cash32_encode(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
-  char out[197];
-  char prefix[84 + 1];
-  size_t prefix_len;
+  char out[CASH32_MAX_ENCODE_SIZE + 1];
+  size_t out_len;
+  char pre[CASH32_MAX_PREFIX_SIZE + 2];
+  size_t pre_len;
   uint32_t type;
   const uint8_t *data;
   size_t data_len;
   napi_value result;
-
-  memset(out, 0, sizeof(out));
+  int ok;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_string_latin1(env, argv[0], prefix, sizeof(prefix),
-                                     &prefix_len) == napi_ok);
+  CHECK(napi_get_value_string_latin1(env, argv[0], pre, sizeof(pre),
+                                     &pre_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[1], &type) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&data,
                              &data_len) == napi_ok);
 
-  JS_ASSERT(prefix_len != sizeof(prefix) - 1, JS_ERR_ENCODE);
-  JS_ASSERT(type <= 15, JS_ERR_ENCODE);
-  JS_ASSERT(cash32_encode(out, prefix, type, data, data_len), JS_ERR_ENCODE);
+  JS_ASSERT(pre_len != sizeof(pre) - 1, JS_ERR_ENCODE);
 
-  CHECK(napi_create_string_latin1(env, out, NAPI_AUTO_LENGTH,
-                                  &result) == napi_ok);
+  ok = cash32_encode(out, &out_len, pre, pre_len, type, data, data_len);
+
+  JS_ASSERT(ok, JS_ERR_ENCODE);
+
+  CHECK(napi_create_string_latin1(env, out, out_len, &result) == napi_ok);
 
   return result;
 }
@@ -1896,41 +2417,36 @@ static napi_value
 bcrypto_cash32_decode(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  char prefix[84];
-  int type;
-  uint8_t data[64];
-  char str[197 + 1];
-  char dprefix[84 + 1];
-  size_t data_len, str_len, dprefix_len;
-  napi_value prefixval, typeval, dataval, result;
-
-  memset(data, 0, sizeof(data));
-  memset(prefix, 0, sizeof(prefix));
+  unsigned int type;
+  uint8_t data[CASH32_MAX_DECODE_SIZE];
+  char str[CASH32_MAX_ENCODE_SIZE + 2];
+  char pre[CASH32_MAX_PREFIX_SIZE + 2];
+  size_t data_len, str_len, pre_len;
+  napi_value typeval, dataval, result;
+  int ok;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
   CHECK(napi_get_value_string_latin1(env, argv[0], str, sizeof(str),
                                      &str_len) == napi_ok);
-  CHECK(napi_get_value_string_latin1(env, argv[1], dprefix, sizeof(dprefix),
-                                     &dprefix_len) == napi_ok);
+  CHECK(napi_get_value_string_latin1(env, argv[1], pre, sizeof(pre),
+                                     &pre_len) == napi_ok);
 
   JS_ASSERT(str_len != sizeof(str) - 1, JS_ERR_ENCODE);
-  JS_ASSERT(dprefix_len != sizeof(dprefix) - 1, JS_ERR_ENCODE);
-  JS_ASSERT(cash32_decode(prefix, &type, data, &data_len, dprefix, str),
-            JS_ERR_ENCODE);
+  JS_ASSERT(pre_len != sizeof(pre) - 1, JS_ERR_ENCODE);
 
-  CHECK(napi_create_string_latin1(env, prefix, NAPI_AUTO_LENGTH,
-                                  &prefixval) == napi_ok);
+  ok = cash32_decode(&type, data, &data_len, str, str_len, pre, pre_len);
+
+  JS_ASSERT(ok, JS_ERR_ENCODE);
 
   CHECK(napi_create_uint32(env, type, &typeval) == napi_ok);
 
   CHECK(napi_create_buffer_copy(env, data_len, data, NULL,
                                 &dataval) == napi_ok);
 
-  CHECK(napi_create_array_with_length(env, 3, &result) == napi_ok);
-  CHECK(napi_set_element(env, result, 0, prefixval) == napi_ok);
-  CHECK(napi_set_element(env, result, 1, typeval) == napi_ok);
-  CHECK(napi_set_element(env, result, 2, dataval) == napi_ok);
+  CHECK(napi_create_array_with_length(env, 2, &result) == napi_ok);
+  CHECK(napi_set_element(env, result, 0, typeval) == napi_ok);
+  CHECK(napi_set_element(env, result, 1, dataval) == napi_ok);
 
   return result;
 }
@@ -1939,9 +2455,9 @@ static napi_value
 bcrypto_cash32_test(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  char str[197 + 1];
-  char dprefix[84 + 1];
-  size_t str_len, dprefix_len;
+  char str[CASH32_MAX_ENCODE_SIZE + 2];
+  char pre[CASH32_MAX_PREFIX_SIZE + 2];
+  size_t str_len, pre_len;
   napi_value result;
   int ok;
 
@@ -1949,12 +2465,12 @@ bcrypto_cash32_test(napi_env env, napi_callback_info info) {
   CHECK(argc == 2);
   CHECK(napi_get_value_string_latin1(env, argv[0], str, sizeof(str),
                                      &str_len) == napi_ok);
-  CHECK(napi_get_value_string_latin1(env, argv[1], dprefix, sizeof(dprefix),
-                                     &dprefix_len) == napi_ok);
+  CHECK(napi_get_value_string_latin1(env, argv[1], pre, sizeof(pre),
+                                     &pre_len) == napi_ok);
 
   ok = str_len != sizeof(str) - 1
-    && dprefix_len != sizeof(dprefix) - 1
-    && cash32_test(dprefix, str);
+    && pre_len != sizeof(pre) - 1
+    && cash32_test(str, str_len, pre, pre_len);
 
   CHECK(napi_get_boolean(env, ok, &result) == napi_ok);
 
@@ -12091,13 +12607,40 @@ bcrypto_init(napi_env env, napi_value exports) {
     { "aead_static_decrypt", bcrypto_aead_static_decrypt },
     { "aead_static_auth", bcrypto_aead_static_auth },
 
+    /* Base16 */
+    { "base16_encode", bcrypto_base16_encode },
+    { "base16_decode", bcrypto_base16_decode },
+    { "base16_test", bcrypto_base16_test },
+
+    /* Base16 (Little Endian) */
+    { "base16le_encode", bcrypto_base16le_encode },
+    { "base16le_decode", bcrypto_base16le_decode },
+    { "base16le_test", bcrypto_base16le_test },
+
+    /* Base32 */
+    { "base32_encode", bcrypto_base32_encode },
+    { "base32_decode", bcrypto_base32_decode },
+    { "base32_test", bcrypto_base32_test },
+
+    /* Base32-Hex */
+    { "base32hex_encode", bcrypto_base32hex_encode },
+    { "base32hex_decode", bcrypto_base32hex_decode },
+    { "base32hex_test", bcrypto_base32hex_test },
+
     /* Base58 */
     { "base58_encode", bcrypto_base58_encode },
     { "base58_decode", bcrypto_base58_decode },
     { "base58_test", bcrypto_base58_test },
-    { "base58_encode_1024", bcrypto_base58_encode_1024 },
-    { "base58_decode_1024", bcrypto_base58_decode_1024 },
-    { "base58_test_1024", bcrypto_base58_test_1024 },
+
+    /* Base64 */
+    { "base64_encode", bcrypto_base64_encode },
+    { "base64_decode", bcrypto_base64_decode },
+    { "base64_test", bcrypto_base64_test },
+
+    /* Base64-URL */
+    { "base64url_encode", bcrypto_base64url_encode },
+    { "base64url_decode", bcrypto_base64url_decode },
+    { "base64url_test", bcrypto_base64url_test },
 
     /* Bcrypt */
     { "bcrypt_hash192", bcrypto_bcrypt_hash192 },

@@ -9785,11 +9785,27 @@ ecdsa_derive(const wei_t *ec,
   return ret;
 }
 
+/*
+ * Schnorr Legacy
+ */
+
+int
+schnorr_legacy_support(const wei_t *ec) {
+  /* [SCHNORR] "Footnotes". */
+  /* Must be congruent to 3 mod 4. */
+  return (ec->fe.p[0] & 3) == 3;
+}
+
+size_t
+schnorr_legacy_sig_size(const wei_t *ec) {
+  return ec->fe.size + ec->sc.size;
+}
+
 static void
-ecdsa_schnorr_hash_nonce(const wei_t *ec, sc_t k,
-                         const unsigned char *scalar,
-                         const unsigned char *msg,
-                         size_t msg_len) {
+schnorr_legacy_hash_nonce(const wei_t *ec, sc_t k,
+                          const unsigned char *scalar,
+                          const unsigned char *msg,
+                          size_t msg_len) {
   const scalar_field_t *sc = &ec->sc;
   size_t hash_size = hash_output_size(ec->hash);
   unsigned char bytes[MAX_SCALAR_SIZE];
@@ -9815,11 +9831,11 @@ ecdsa_schnorr_hash_nonce(const wei_t *ec, sc_t k,
 }
 
 static void
-ecdsa_schnorr_hash_challenge(const wei_t *ec, sc_t e,
-                             const unsigned char *R,
-                             const unsigned char *A,
-                             const unsigned char *msg,
-                             size_t msg_len) {
+schnorr_legacy_hash_challenge(const wei_t *ec, sc_t e,
+                              const unsigned char *R,
+                              const unsigned char *A,
+                              const unsigned char *msg,
+                              size_t msg_len) {
   const prime_field_t *fe = &ec->fe;
   const scalar_field_t *sc = &ec->sc;
   size_t hash_size = hash_output_size(ec->hash);
@@ -9844,22 +9860,6 @@ ecdsa_schnorr_hash_challenge(const wei_t *ec, sc_t e,
 
   cleanse(bytes, sc->size);
   cleanse(&hash, sizeof(hash));
-}
-
-/*
- * Schnorr Legacy
- */
-
-int
-schnorr_legacy_support(const wei_t *ec) {
-  /* [SCHNORR] "Footnotes". */
-  /* Must be congruent to 3 mod 4. */
-  return (ec->fe.p[0] & 3) == 3;
-}
-
-size_t
-schnorr_legacy_sig_size(const wei_t *ec) {
-  return ec->fe.size + ec->sc.size;
 }
 
 int
@@ -9905,14 +9905,12 @@ schnorr_legacy_sign(const wei_t *ec,
   wge_t A, R;
   int ret = 1;
 
-  ASSERT(schnorr_legacy_support(ec));
-
   ret &= sc_import(sc, a, priv);
   ret &= sc_is_zero(sc, a) ^ 1;
 
   wei_mul_g(ec, &A, a);
 
-  ecdsa_schnorr_hash_nonce(ec, k, priv, msg, msg_len);
+  schnorr_legacy_hash_nonce(ec, k, priv, msg, msg_len);
 
   ret &= sc_is_zero(sc, k) ^ 1;
 
@@ -9923,7 +9921,7 @@ schnorr_legacy_sign(const wei_t *ec,
   ret &= wge_export_x(ec, Rraw, &R);
   ret &= wge_export(ec, Araw, NULL, &A, 1);
 
-  ecdsa_schnorr_hash_challenge(ec, e, Rraw, Araw, msg, msg_len);
+  schnorr_legacy_hash_challenge(ec, e, Rraw, Araw, msg, msg_len);
 
   sc_mul(sc, s, e, a);
   sc_add(sc, s, s, k);
@@ -9997,8 +9995,6 @@ schnorr_legacy_verify(const wei_t *ec,
   wge_t A;
   jge_t R;
 
-  ASSERT(schnorr_legacy_support(ec));
-
   if (!fe_import(fe, r, Rraw))
     return 0;
 
@@ -10010,7 +10006,7 @@ schnorr_legacy_verify(const wei_t *ec,
 
   ASSERT(wge_export(ec, Araw, NULL, &A, 1));
 
-  ecdsa_schnorr_hash_challenge(ec, e, Rraw, Araw, msg, msg_len);
+  schnorr_legacy_hash_challenge(ec, e, Rraw, Araw, msg, msg_len);
 
   sc_neg(sc, e, e);
 
@@ -10070,7 +10066,6 @@ schnorr_legacy_verify_batch(const wei_t *ec,
   size_t j = 0;
   size_t i;
 
-  ASSERT(schnorr_legacy_support(ec));
   ASSERT(scratch->size >= 2);
 
   /* Seed RNG. */
@@ -10135,7 +10130,7 @@ schnorr_legacy_verify_batch(const wei_t *ec,
 
     ASSERT(wge_export(ec, Araw, NULL, &A, 1));
 
-    ecdsa_schnorr_hash_challenge(ec, e, Rraw, Araw, msg, msg_len);
+    schnorr_legacy_hash_challenge(ec, e, Rraw, Araw, msg, msg_len);
 
     if (j == 0)
       sc_set_word(sc, a, 1);
@@ -10183,6 +10178,13 @@ schnorr_legacy_verify_batch(const wei_t *ec,
 /*
  * Schnorr
  */
+
+int
+schnorr_support(const wei_t *ec) {
+  /* [BIP340] "Footnotes". */
+  /* Must be congruent to 3 mod 4. */
+  return (ec->fe.p[0] & 3) == 3;
+}
 
 size_t
 schnorr_privkey_size(const wei_t *ec) {

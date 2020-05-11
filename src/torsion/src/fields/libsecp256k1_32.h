@@ -500,7 +500,8 @@ static void fiat_secp256k1_from_bytes(uint32_t r[10], const uint8_t a[32]) {
        | ((uint32_t)a[31] << 14);
 }
 
-static void fiat_secp256k1_to_bytes_be(uint8_t r[32], const uint32_t a[10]) {
+TORSION_UNUSED static void
+fiat_secp256k1_to_bytes_be(uint8_t r[32], const uint32_t a[10]) {
   r[0] = (a[9] >> 14) & 0xff;
   r[1] = (a[9] >> 6) & 0xff;
   r[2] = ((a[9] & 0x3F) << 2) | ((a[8] >> 24) & 0x3);
@@ -535,7 +536,8 @@ static void fiat_secp256k1_to_bytes_be(uint8_t r[32], const uint32_t a[10]) {
   r[31] = a[0] & 0xff;
 }
 
-static void fiat_secp256k1_from_bytes_be(uint32_t r[10], const uint8_t a[32]) {
+TORSION_UNUSED static void
+fiat_secp256k1_from_bytes_be(uint32_t r[10], const uint8_t a[32]) {
   r[0] = (uint32_t)a[31]
        | ((uint32_t)a[30] << 8)
        | ((uint32_t)a[29] << 16)
