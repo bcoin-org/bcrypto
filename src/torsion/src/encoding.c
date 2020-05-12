@@ -8,6 +8,11 @@
  *   Copyright (c) 2009-2019, The Bitcoin Developers (MIT License).
  *   https://github.com/bitcoin/bitcoin
  *
+ * Parts of this software are based on Bitcoin-ABC/bitcoin-abc:
+ *   Copyright (c) 2009-2019, The Bitcoin Developers (MIT License).
+ *   Copyright (c) 2009-2017, The Bitcoin Core Developers (MIT License).
+ *   https://github.com/Bitcoin-ABC/bitcoin-abc
+ *
  * Parts of this software are based on sipa/bech32:
  *   Copyright (c) 2017, Pieter Wuille (MIT License).
  *   https://github.com/sipa/bech32
@@ -1460,28 +1465,21 @@ bech32_decode(char *hrp,
 int
 bech32_test(const char *str, size_t len) {
   char hrp[BECH32_MAX_HRP_SIZE + 1];
-  uint8_t data[BECH32_MAX_DESERIALIZE_SIZE];
-  size_t data_len;
+  unsigned int version;
+  uint8_t hash[BECH32_MAX_DECODE_SIZE];
+  size_t hash_len;
 
-  if (!bech32_deserialize(hrp, NULL, data, &data_len, str, len))
-    return 0;
-
-  if (data_len == 0 || data_len > BECH32_MAX_DATA_SIZE)
-    return 0;
-
-  if (data[0] > BECH32_MAX_VERSION)
-    return 0;
-
-  return 1;
+  return bech32_decode(hrp, NULL, &version, hash, &hash_len, str, len);
 }
 
 /*
  * Cash32
  *
  * Resources:
- *   https://github.com/bitcoincashorg/spec/blob/master/cashaddr.md
+ *   https://github.com/bitcoincashorg/bitcoincash.org/blob/master/spec/cashaddr.md
  *   https://github.com/Bitcoin-ABC/bitcoin-abc/blob/master/src/cashaddr.cpp
  *   https://github.com/Bitcoin-ABC/bitcoin-abc/blob/master/src/cashaddrenc.cpp
+ *   https://github.com/Bitcoin-ABC/bitcoin-abc/blob/master/src/util/strencodings.h
  */
 
 static const char *cash32_charset = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
@@ -1528,7 +1526,7 @@ cash32_serialize(char *dst,
   size_t j = 0;
   size_t i;
 
-  if (prelen < 1 || prelen > CASH32_MAX_PREFIX_SIZE)
+  if (prelen == 0 || prelen > CASH32_MAX_PREFIX_SIZE)
     return 0;
 
   if (srclen > CASH32_MAX_DATA_SIZE)
@@ -1592,14 +1590,14 @@ cash32_deserialize(uint8_t *dst,
                    size_t srclen,
                    const char *pre,
                    size_t prelen) {
-  uint64_t chk = 1;
   size_t dlen = srclen;
+  uint64_t chk = 1;
   int lower = 0;
   int upper = 0;
   size_t j = 0;
   size_t i;
 
-  if (prelen < 1 || prelen > CASH32_MAX_PREFIX_SIZE)
+  if (prelen == 0 || prelen > CASH32_MAX_PREFIX_SIZE)
     return 0;
 
   if (srclen < 8 || srclen > CASH32_MAX_SERIALIZE_SIZE)
@@ -1611,18 +1609,9 @@ cash32_deserialize(uint8_t *dst,
   if (dlen < 8 || dlen > 112)
     return 0;
 
-  if (dlen < srclen) {
+  if (dlen != srclen) {
     for (i = 0; i < prelen; i++) {
       uint8_t ch = src[i];
-
-      if (ch < 33 || ch > 126)
-        return 0;
-
-      if (ch >= 48 && ch <= 57)
-        return 0;
-
-      if (ch == 58)
-        return 0;
 
       if (ch >= 97 && ch <= 122) {
         lower = 1;
@@ -1631,7 +1620,7 @@ cash32_deserialize(uint8_t *dst,
         ch += 32;
       }
 
-      if (ch != pre[i])
+      if (ch != (uint8_t)pre[i])
         return 0;
     }
   }
@@ -1784,6 +1773,7 @@ cash32_encode(char *out,
   }
 
   data[0] = (type << 3) | size;
+
   memcpy(data + 1, hash, hash_len);
 
   if (!cash32_convert_bits(conv, &conv_len, 5, data, hash_len + 1, 8, 1))
@@ -1807,13 +1797,13 @@ cash32_decode(unsigned int *type,
   if (!cash32_deserialize(data, &data_len, str, str_len, pre, pre_len))
     return 0;
 
-  if (data_len < 1 || data_len > CASH32_MAX_DATA_SIZE)
+  if (data_len == 0 || data_len > CASH32_MAX_DATA_SIZE)
     return 0;
 
   if (!cash32_convert_bits(conv, &conv_len, 8, data, data_len, 5, 0))
     return 0;
 
-  if (conv_len < 1 || conv_len > 1 + CASH32_MAX_HASH_SIZE)
+  if (conv_len == 0 || conv_len > 1 + CASH32_MAX_HASH_SIZE)
     return 0;
 
   *type = (conv[0] >> 3) & 31;

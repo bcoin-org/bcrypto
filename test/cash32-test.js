@@ -91,17 +91,6 @@ function encodeManual(prefix, type, hash) {
 
 function decodeManual(str, prefix = 'bitcoincash') {
   const data = cash32.deserialize(str, prefix);
-  const extra = (data.length * 5) & 7;
-
-  if (extra >= 5)
-    throw new Error('Invalid padding in data.');
-
-  const last = data[data.length - 1];
-  const mask = (1 << extra) - 1;
-
-  if (last & mask)
-    throw new Error('Non zero padding.');
-
   const converted = cash32.convertBits(data, 5, 8, false);
   const type = (converted[0] >>> 3) & 0x1f;
   const hash = converted.slice(1);
