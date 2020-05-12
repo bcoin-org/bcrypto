@@ -683,6 +683,7 @@ base58_encode(char *dst, size_t *dstlen,
   while (i < size && b58[i] == 0)
     i += 1;
 
+  /* Assumes sizeof(dst) >= zeroes + (size - i) + 1. */
   for (j = 0; j < zeroes; j++)
     dst[j] = '1';
 
@@ -751,11 +752,10 @@ base58_decode(uint8_t *dst, size_t *dstlen,
     length = j;
   }
 
-  i = 0;
+  /* See: https://github.com/bitcoin/bitcoin/commit/2bcf1fc4 */
+  i = size - length;
 
-  while (i < size && b256[i] == 0)
-    i += 1;
-
+  /* Assumes sizeof(dst) >= zeroes + (size - i). */
   for (j = 0; j < zeroes; j++)
     dst[j] = 0;
 
