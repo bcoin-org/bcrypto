@@ -20,7 +20,7 @@ describe('BLAKE2b', function() {
       const ctx = new BLAKE2b();
       ctx.init(size, k);
 
-      const ch = Buffer.allocUnsafe(1);
+      const ch = Buffer.alloc(1);
 
       for (let i = 0; i < m.length; i++) {
         ch[0] = m[i];

@@ -28,7 +28,7 @@ describe('SHA3', function() {
       const ctx = new SHA3();
       ctx.init(bits);
 
-      const ch = Buffer.allocUnsafe(1);
+      const ch = Buffer.alloc(1);
 
       for (let i = 0; i < m.length; i++) {
         ch[0] = m[i];

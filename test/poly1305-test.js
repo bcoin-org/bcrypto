@@ -21,8 +21,8 @@ function updateRand(ctx, msg) {
 
 describe('Poly1305', function() {
   it('should perform poly1305 (1)', () => {
-    const key = Buffer.allocUnsafe(32);
-    const msg = Buffer.allocUnsafe(73);
+    const key = Buffer.alloc(32);
+    const msg = Buffer.alloc(73);
     const tag = Buffer.from('ddb9da7ddd5e52792730ed5cda5f90a4', 'hex');
     const poly = new Poly1305();
 

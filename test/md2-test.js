@@ -31,7 +31,7 @@ describe('MD2', function() {
       const ctx = new MD2();
       ctx.init();
 
-      const ch = Buffer.allocUnsafe(1);
+      const ch = Buffer.alloc(1);
 
       for (let i = 0; i < m.length; i++) {
         ch[0] = m[i];

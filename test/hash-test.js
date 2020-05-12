@@ -106,7 +106,7 @@ describe('Hash', function() {
 
         if (key) {
           it(`should get ${hash.id} hmac of ${text}`, () => {
-            const ch = Buffer.allocUnsafe(1);
+            const ch = Buffer.alloc(1);
             const ctx = hash.hmac();
 
             assert.bufferEqual(ctx.init(key).update(msg).final(), expect);
@@ -124,7 +124,7 @@ describe('Hash', function() {
           });
         } else {
           it(`should get ${hash.id} hash of ${text}`, () => {
-            const ch = Buffer.allocUnsafe(1);
+            const ch = Buffer.alloc(1);
             const size = msg.length >>> 1;
             const left = msg.slice(0, size);
             const right = msg.slice(size);

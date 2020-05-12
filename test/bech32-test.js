@@ -143,7 +143,7 @@ function decodeManual(expect, addr, lax = false) {
 }
 
 function program(version, hash) {
-  const data = Buffer.allocUnsafe(2 + hash.length);
+  const data = Buffer.alloc(2 + hash.length);
   data[0] = version ? version + 0x80 : 0;
   data[1] = hash.length;
   hash.copy(data, 2);
@@ -151,7 +151,7 @@ function program(version, hash) {
 }
 
 function concat(version, hash) {
-  const buf = Buffer.allocUnsafe(1 + hash.length);
+  const buf = Buffer.alloc(1 + hash.length);
   buf[0] = version;
   hash.copy(buf, 1);
   return buf;

@@ -2,8 +2,8 @@
 
 const assert = require('bsert');
 const safe = require('../lib/safe');
-const bytes = Buffer.allocUnsafe(32);
-const rbytes = Buffer.allocUnsafe(32);
+const bytes = Buffer.alloc(32);
+const rbytes = Buffer.alloc(32);
 
 for (let i = 0; i < 32; i++)
   bytes[i] = i;
@@ -14,7 +14,7 @@ for (let i = 0; i < 32; i++)
 describe('Safe', function() {
   for (const safeEqual of [safe.safeEqual, safe.safeCompare]) {
     it('should compare bytes', () => {
-      const bytes2 = Buffer.allocUnsafe(32);
+      const bytes2 = Buffer.alloc(32);
 
       for (let i = 0; i < 32; i++)
         bytes2[i] = i;
