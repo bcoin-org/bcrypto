@@ -166,8 +166,8 @@ base32hex_test(const char *src, size_t srclen, int unpad);
  * Base58
  */
 
-#define BASE58_ENCODE_SIZE(n) ((n) * 2 + 1)
-#define BASE58_DECODE_SIZE(n) ((n) + 1)
+#define BASE58_ENCODE_SIZE(n) ((n) * 2)
+#define BASE58_DECODE_SIZE(n) (n)
 
 int
 base58_encode(char *dst, size_t *dstlen,
@@ -233,8 +233,8 @@ base64url_test(const char *str, size_t len);
  */
 
 #define BECH32_MAX_HRP_SIZE 83
-#define BECH32_MAX_SERIALIZE_SIZE 90 /* 92 */
-#define BECH32_MAX_DESERIALIZE_SIZE 83 /* 84 */
+#define BECH32_MAX_SERIALIZE_SIZE 90
+#define BECH32_MAX_DESERIALIZE_SIZE 83
 
 #define BECH32_CONVERT_SIZE(srclen, srcbits, dstbits, pad) \
   (((srclen) * (srcbits) + ((dstbits) - 1) * (pad)) / (dstbits))

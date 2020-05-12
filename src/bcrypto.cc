@@ -643,6 +643,8 @@ bcrypto_base16_encode(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[0], (void **)&data,
                              &data_len) == napi_ok);
 
+  JS_ASSERT(data_len <= 0x7fffffff, JS_ERR_ENCODE);
+
   out_len = base16_encode_size(data_len);
 
   JS_ASSERT(out_len <= MAX_STRING_LENGTH, JS_ERR_ALLOC);
@@ -739,6 +741,8 @@ bcrypto_base16le_encode(napi_env env, napi_callback_info info) {
   CHECK(argc == 1);
   CHECK(napi_get_buffer_info(env, argv[0], (void **)&data,
                              &data_len) == napi_ok);
+
+  JS_ASSERT(data_len <= 0x7fffffff, JS_ERR_ENCODE);
 
   out_len = base16le_encode_size(data_len);
 
@@ -838,6 +842,8 @@ bcrypto_base32_encode(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[0], (void **)&data,
                              &data_len) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[1], &pad) == napi_ok);
+
+  JS_ASSERT(data_len <= 0x7fffffff, JS_ERR_ENCODE);
 
   out_len = base32_encode_size(data_len, pad);
 
@@ -944,6 +950,8 @@ bcrypto_base32hex_encode(napi_env env, napi_callback_info info) {
                              &data_len) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[1], &pad) == napi_ok);
 
+  JS_ASSERT(data_len <= 0x7fffffff, JS_ERR_ENCODE);
+
   out_len = base32hex_encode_size(data_len, pad);
 
   JS_ASSERT(out_len <= MAX_STRING_LENGTH, JS_ERR_ALLOC);
@@ -1047,7 +1055,7 @@ bcrypto_base58_encode(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[0], (void **)&data,
                              &data_len) == napi_ok);
 
-  JS_ASSERT(data_len <= 0x7ffffffe, JS_ERR_ENCODE);
+  JS_ASSERT(data_len <= 0x7fffffff, JS_ERR_ENCODE);
 
   out_len = BASE58_ENCODE_SIZE(data_len);
 
@@ -1086,7 +1094,7 @@ bcrypto_base58_decode(napi_env env, napi_callback_info info) {
 
   JS_CHECK_ALLOC(read_value_string_latin1(env, argv[0], &str, &str_len));
 
-  if (str_len > 0xfffffffe)
+  if (str_len > 0xffffffff)
     goto fail;
 
   out_len = BASE58_DECODE_SIZE(str_len);
@@ -1152,6 +1160,8 @@ bcrypto_base64_encode(napi_env env, napi_callback_info info) {
   CHECK(argc == 1);
   CHECK(napi_get_buffer_info(env, argv[0], (void **)&data,
                              &data_len) == napi_ok);
+
+  JS_ASSERT(data_len <= 0x7fffffff, JS_ERR_ENCODE);
 
   out_len = base64_encode_size(data_len);
 
@@ -1249,6 +1259,8 @@ bcrypto_base64url_encode(napi_env env, napi_callback_info info) {
   CHECK(argc == 1);
   CHECK(napi_get_buffer_info(env, argv[0], (void **)&data,
                              &data_len) == napi_ok);
+
+  JS_ASSERT(data_len <= 0x7fffffff, JS_ERR_ENCODE);
 
   out_len = base64url_encode_size(data_len);
 
