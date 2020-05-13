@@ -91,8 +91,11 @@ function encodeManual(prefix, type, hash) {
   return cash32.serialize(prefix, conv);
 }
 
-function decodeManual(str, prefix = 'bitcoincash') {
-  const conv = cash32.deserialize(str, prefix);
+function decodeManual(str, expect = 'bitcoincash') {
+  const [prefix, conv] = cash32.deserialize(str, expect);
+
+  if (prefix !== expect)
+    throw new Error('Invalid cash32 prefix.');
 
   if (conv.length === 0 || conv.length > 104)
     throw new Error('Invalid cash32 data.');
@@ -324,11 +327,12 @@ describe('Cash32', function() {
         const data = rng.randomBytes(i);
         const data_ = cash32.convertBits(data, 8, 5, true);
         const str = cash32.serialize('prefix', data_);
-        const dec_ = cash32.deserialize(str, 'prefix');
+        const [prefix, dec_] = cash32.deserialize(str, 'prefix');
         const dec = cash32.convertBits(dec_, 5, 8, false);
 
         assert(cash32.is(str, 'prefix'));
 
+        assert.strictEqual(prefix, 'prefix');
         assert.bufferEqual(dec, data);
       }
     });
