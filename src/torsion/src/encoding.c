@@ -1219,52 +1219,56 @@ bech32_polymod(uint32_t pre) {
 }
 
 int
-bech32_serialize(char *dst,
-                 size_t *dstlen,
+bech32_serialize(char *str,
                  const char *hrp,
-                 size_t hrplen,
-                 const uint8_t *src,
-                 size_t srclen) {
+                 const uint8_t *data,
+                 size_t data_len) {
   uint32_t chk = 1;
+  size_t i, hlen;
   size_t j = 0;
-  size_t i;
 
-  if (hrplen + 1 + srclen + 6 > BECH32_MAX_SERIALIZE_SIZE)
-    return 0;
+  for (hlen = 0; hlen < BECH32_MAX_HRP_SIZE; hlen++) {
+    int ch = hrp[hlen];
 
-  for (i = 0; i < hrplen; i++) {
-    uint8_t ch = hrp[i];
+    if (ch == '\0')
+      break;
 
-    if (ch < 33 || ch > 126)
+    if (ch < '!' || ch > '~')
       return 0;
 
-    if (ch >= 65 && ch <= 90)
+    if (ch >= 'A' && ch <= 'Z')
       return 0;
 
     chk = bech32_polymod(chk) ^ (ch >> 5);
   }
 
+  if (hlen == 0 || hrp[hlen] != '\0')
+    return 0;
+
+  if (hlen + 1 + data_len + 6 > BECH32_MAX_SERIALIZE_SIZE)
+    return 0;
+
   chk = bech32_polymod(chk);
 
-  for (i = 0; i < hrplen; i++) {
-    uint8_t ch = hrp[i];
+  for (i = 0; i < hlen; i++) {
+    int ch = hrp[i];
 
     chk = bech32_polymod(chk) ^ (ch & 0x1f);
 
-    dst[j++] = ch;
+    str[j++] = ch;
   }
 
-  dst[j++] = '1';
+  str[j++] = '1';
 
-  for (i = 0; i < srclen; i++) {
-    uint8_t ch = src[i];
+  for (i = 0; i < data_len; i++) {
+    uint8_t ch = data[i];
 
     if (ch >> 5)
       return 0;
 
     chk = bech32_polymod(chk) ^ ch;
 
-    dst[j++] = bech32_charset[ch];
+    str[j++] = bech32_charset[ch];
   }
 
   for (i = 0; i < 6; i++)
@@ -1273,56 +1277,59 @@ bech32_serialize(char *dst,
   chk ^= 1;
 
   for (i = 0; i < 6; i++)
-    dst[j++] = bech32_charset[(chk >> ((5 - i) * 5)) & 0x1f];
+    str[j++] = bech32_charset[(chk >> ((5 - i) * 5)) & 0x1f];
 
-  dst[j] = '\0';
-
-  if (dstlen)
-    *dstlen = j;
+  str[j] = '\0';
 
   return 1;
 }
 
 int
 bech32_deserialize(char *hrp,
-                   size_t *hrplen,
-                   uint8_t *dst,
-                   size_t *dstlen,
-                   const char *src,
-                   size_t srclen) {
-  size_t hlen = srclen;
+                   uint8_t *data,
+                   size_t *data_len,
+                   const char *str) {
   uint32_t chk = 1;
+  size_t hlen = 0;
+  size_t i, slen;
   int lower = 0;
   int upper = 0;
   size_t j = 0;
-  size_t i;
 
-  if (srclen < 7 || srclen > BECH32_MAX_SERIALIZE_SIZE)
+  for (slen = 0; slen < BECH32_MAX_SERIALIZE_SIZE; slen++) {
+    int ch = str[slen];
+
+    if (ch == '\0')
+      break;
+
+    if (ch < '!' || ch > '~')
+      return 0;
+
+    if (ch >= 'a' && ch <= 'z')
+      lower = 1;
+    else if (ch >= 'A' && ch <= 'Z')
+      upper = 1;
+    else if (ch == '1')
+      hlen = slen;
+  }
+
+  if (slen < 8 || str[slen] != '\0')
     return 0;
-
-  while (hlen > 0 && src[hlen - 1] != '1')
-    hlen -= 1;
 
   if (hlen == 0)
     return 0;
 
-  hlen -= 1;
+  if (slen - (hlen + 1) < 6)
+    return 0;
 
-  if (srclen - (hlen + 1) < 6)
+  if (lower && upper)
     return 0;
 
   for (i = 0; i < hlen; i++) {
-    uint8_t ch = src[i];
+    int ch = str[i];
 
-    if (ch < 33 || ch > 126)
-      return 0;
-
-    if (ch >= 97 && ch <= 122) {
-      lower = 1;
-    } else if (ch >= 65 && ch <= 90) {
-      upper = 1;
-      ch += 32;
-    }
+    if (ch >= 'A' && ch <= 'Z')
+      ch += ' ';
 
     chk = bech32_polymod(chk) ^ (ch >> 5);
 
@@ -1334,56 +1341,35 @@ bech32_deserialize(char *hrp,
   chk = bech32_polymod(chk);
 
   for (i = 0; i < hlen; i++)
-    chk = bech32_polymod(chk) ^ (src[i] & 0x1f);
+    chk = bech32_polymod(chk) ^ (str[i] & 0x1f);
 
-  i += 1;
-
-  while (i < srclen) {
-    uint8_t ch = src[i];
-    uint8_t val;
-
-    if (ch & 0x80)
-      return 0;
-
-    val = bech32_table[ch];
+  for (i = hlen + 1; i < slen; i++) {
+    uint8_t val = bech32_table[(uint8_t)str[i]];
 
     if (val & 0x80)
       return 0;
 
-    if (ch >= 97 && ch <= 122)
-      lower = 1;
-    else if (ch >= 65 && ch <= 90)
-      upper = 1;
-
     chk = bech32_polymod(chk) ^ val;
 
-    if (i < srclen - 6)
-      dst[j++] = val;
-
-    i += 1;
+    if (i < slen - 6)
+      data[j++] = val;
   }
-
-  if (lower && upper)
-    return 0;
 
   if (chk != 1)
     return 0;
 
-  if (hrplen)
-    *hrplen = hlen;
-
-  if (dstlen)
-    *dstlen = j;
+  *data_len = j;
 
   return 1;
 }
 
 int
-bech32_is(const char *str, size_t len) {
+bech32_is(const char *str) {
   char hrp[BECH32_MAX_HRP_SIZE + 1];
   uint8_t data[BECH32_MAX_DESERIALIZE_SIZE];
+  size_t data_len;
 
-  return bech32_deserialize(hrp, NULL, data, NULL, str, len);
+  return bech32_deserialize(hrp, data, &data_len, str);
 }
 
 int
@@ -1427,10 +1413,8 @@ bech32_convert_bits(uint8_t *dst,
 }
 
 int
-bech32_encode(char *out,
-              size_t *out_len,
+bech32_encode(char *addr,
               const char *hrp,
-              size_t hrp_len,
               unsigned int version,
               const uint8_t *hash,
               size_t hash_len) {
@@ -1454,21 +1438,19 @@ bech32_encode(char *out,
 
   data_len += 1;
 
-  return bech32_serialize(out, out_len, hrp, hrp_len, data, data_len);
+  return bech32_serialize(addr, hrp, data, data_len);
 }
 
 int
 bech32_decode(char *hrp,
-              size_t *hrp_len,
               unsigned int *version,
               uint8_t *hash,
               size_t *hash_len,
-              const char *str,
-              size_t str_len) {
+              const char *addr) {
   uint8_t data[BECH32_MAX_DESERIALIZE_SIZE];
   size_t data_len;
 
-  if (!bech32_deserialize(hrp, hrp_len, data, &data_len, str, str_len))
+  if (!bech32_deserialize(hrp, data, &data_len, addr))
     return 0;
 
   if (data_len == 0 || data_len > BECH32_MAX_DATA_SIZE)
@@ -1493,13 +1475,13 @@ bech32_decode(char *hrp,
 }
 
 int
-bech32_test(const char *str, size_t len) {
+bech32_test(const char *addr) {
   char hrp[BECH32_MAX_HRP_SIZE + 1];
   unsigned int version;
   uint8_t hash[BECH32_MAX_DECODE_SIZE];
   size_t hash_len;
 
-  return bech32_decode(hrp, NULL, &version, hash, &hash_len, str, len);
+  return bech32_decode(hrp, &version, hash, &hash_len, addr);
 }
 
 /*
@@ -1546,46 +1528,51 @@ cash32_polymod(uint64_t pre) {
 }
 
 int
-cash32_serialize(char *dst,
-                 size_t *dstlen,
+cash32_serialize(char *str,
                  const char *prefix,
-                 size_t prefixlen,
-                 const uint8_t *src,
-                 size_t srclen) {
+                 const uint8_t *data,
+                 size_t data_len) {
   uint64_t chk = 1;
+  size_t i, plen;
   size_t j = 0;
-  size_t i;
 
-  if (prefixlen == 0 || prefixlen > CASH32_MAX_PREFIX_SIZE)
+  if (data_len > CASH32_MAX_DATA_SIZE)
     return 0;
 
-  if (srclen > CASH32_MAX_DATA_SIZE)
-    return 0;
+  for (plen = 0; plen < CASH32_MAX_PREFIX_SIZE; plen++) {
+    int ch = prefix[plen];
 
-  for (i = 0; i < prefixlen; i++) {
-    uint8_t ch = prefix[i];
+    if (ch == '\0')
+      break;
 
-    if (ch < 97 || ch > 122)
+    if (ch < 'a' || ch > 'z')
       return 0;
+  }
+
+  if (plen == 0 || prefix[plen] != '\0')
+    return 0;
+
+  for (i = 0; i < plen; i++) {
+    int ch = prefix[i];
 
     chk = cash32_polymod(chk) ^ (ch & 0x1f);
 
-    dst[j++] = ch;
+    str[j++] = ch;
   }
 
   chk = cash32_polymod(chk);
 
-  dst[j++] = ':';
+  str[j++] = ':';
 
-  for (i = 0; i < srclen; i++) {
-    uint8_t ch = src[i];
+  for (i = 0; i < data_len; i++) {
+    uint8_t ch = data[i];
 
     if (ch >> 5)
       return 0;
 
     chk = cash32_polymod(chk) ^ ch;
 
-    dst[j++] = cash32_charset[ch];
+    str[j++] = cash32_charset[ch];
   }
 
   for (i = 0; i < 8; i++)
@@ -1594,60 +1581,53 @@ cash32_serialize(char *dst,
   chk ^= 1;
 
   for (i = 0; i < 8; i++)
-    dst[j++] = cash32_charset[(chk >> ((7 - i) * 5)) & 0x1f];
+    str[j++] = cash32_charset[(chk >> ((7 - i) * 5)) & 0x1f];
 
-  dst[j] = '\0';
-
-  if (dstlen)
-    *dstlen = j;
+  str[j] = '\0';
 
   return 1;
 }
 
 int
 cash32_deserialize(char *prefix,
-                   size_t *prefixlen,
-                   uint8_t *dst,
-                   size_t *dstlen,
-                   const char *src,
-                   size_t srclen,
-                   const char *fallback,
-                   size_t fallbacklen) {
-  size_t dlen = srclen;
+                   uint8_t *data,
+                   size_t *data_len,
+                   const char *str,
+                   const char *fallback) {
+  size_t i, dlen, slen;
   uint64_t chk = 1;
+  size_t plen = 0;
+  int number = 0;
   int lower = 0;
   int upper = 0;
-  int number = 0;
-  size_t plen = 0;
   size_t j = 0;
-  size_t i;
 
-  if (srclen < 8 || srclen > CASH32_MAX_SERIALIZE_SIZE)
-    return 0;
+  for (slen = 0; slen < CASH32_MAX_SERIALIZE_SIZE; slen++) {
+    int ch = str[slen];
 
-  for (i = 0; i < srclen; i++) {
-    uint8_t ch = src[i];
+    if (ch == '\0')
+      break;
 
-    if (ch >= 97 && ch <= 122) {
+    if (ch >= 'a' && ch <= 'z') {
       lower = 1;
       continue;
     }
 
-    if (ch >= 65 && ch <= 90) {
+    if (ch >= 'A' && ch <= 'Z') {
       upper = 1;
       continue;
     }
 
-    if (ch >= 48 && ch <= 57) {
+    if (ch >= '0' && ch <= '9') {
       number = 1;
       continue;
     }
 
-    if (ch == 58) {
-      if (number || i == 0 || plen != 0)
+    if (ch == ':') {
+      if (number || slen == 0 || plen != 0)
         return 0;
 
-      plen = i;
+      plen = slen;
 
       continue;
     }
@@ -1655,17 +1635,20 @@ cash32_deserialize(char *prefix,
     return 0;
   }
 
-  if (upper && lower)
+  if (slen < 8 || str[slen] != '\0')
+    return 0;
+
+  if (lower && upper)
     return 0;
 
   if (plen == 0) {
-    if (fallbacklen == 0 || fallbacklen > CASH32_MAX_PREFIX_SIZE)
-      return 0;
+    for (i = 0; i < CASH32_MAX_PREFIX_SIZE; i++) {
+      int ch = fallback[i];
 
-    for (i = 0; i < fallbacklen; i++) {
-      uint8_t ch = fallback[i];
+      if (ch == '\0')
+        break;
 
-      if (ch < 97 || ch > 122)
+      if (ch < 'a' || ch > 'z')
         return 0;
 
       chk = cash32_polymod(chk) ^ (ch & 0x1f);
@@ -1673,61 +1656,61 @@ cash32_deserialize(char *prefix,
       prefix[i] = ch;
     }
 
-    dlen = srclen;
+    prefix[i] = '\0';
+
+    if (i == 0 || fallback[i] != '\0')
+      return 0;
+
+    dlen = slen;
   } else {
     if (plen > CASH32_MAX_PREFIX_SIZE)
       return 0;
 
     for (i = 0; i < plen; i++) {
-      uint8_t ch = src[i] | 0x20;
+      int ch = str[i] | ' ';
 
       chk = cash32_polymod(chk) ^ (ch & 0x1f);
 
       prefix[i] = ch;
     }
 
-    dlen = srclen - (plen + 1);
+    prefix[i] = '\0';
+
+    dlen = slen - (plen + 1);
   }
-
-  prefix[i] = '\0';
-
-  if (prefixlen)
-    *prefixlen = i;
 
   if (dlen < 8 || dlen > 112)
     return 0;
 
   chk = cash32_polymod(chk);
 
-  for (i = srclen - dlen; i < srclen; i++) {
-    uint8_t val = cash32_table[(uint8_t)src[i]];
+  for (i = slen - dlen; i < slen; i++) {
+    uint8_t val = cash32_table[(uint8_t)str[i]];
 
     if (val & 0x80)
       return 0;
 
     chk = cash32_polymod(chk) ^ val;
 
-    if (i < srclen - 8)
-      dst[j++] = val;
+    if (i < slen - 8)
+      data[j++] = val;
   }
 
   if (chk != 1)
     return 0;
 
-  if (dstlen)
-    *dstlen = j;
+  *data_len = j;
 
   return 1;
 }
 
 int
-cash32_is(const char *str, size_t strlen,
-          const char *fallback, size_t fallbacklen) {
+cash32_is(const char *str, const char *fallback) {
   char prefix[CASH32_MAX_PREFIX_SIZE + 1];
   uint8_t data[CASH32_MAX_DESERIALIZE_SIZE];
+  size_t data_len;
 
-  return cash32_deserialize(prefix, NULL, data, NULL,
-                            str, strlen, fallback, fallbacklen);
+  return cash32_deserialize(prefix, data, &data_len, str, fallback);
 }
 
 int
@@ -1772,10 +1755,8 @@ cash32_convert_bits(uint8_t *dst,
 }
 
 int
-cash32_encode(char *out,
-              size_t *out_len,
+cash32_encode(char *addr,
               const char *prefix,
-              size_t prefix_len,
               unsigned int type,
               const uint8_t *hash,
               size_t hash_len) {
@@ -1822,33 +1803,24 @@ cash32_encode(char *out,
   if (!cash32_convert_bits(conv, &conv_len, 5, data, hash_len + 1, 8, 1))
     return 0;
 
-  return cash32_serialize(out, out_len, prefix, prefix_len, conv, conv_len);
+  return cash32_serialize(addr, prefix, conv, conv_len);
 }
 
 int
 cash32_decode(unsigned int *type,
               uint8_t *hash,
               size_t *hash_len,
-              const char *str,
-              size_t str_len,
-              const char *expect,
-              size_t expect_len) {
+              const char *addr,
+              const char *expect) {
   char prefix[CASH32_MAX_PREFIX_SIZE + 1];
   uint8_t conv[CASH32_MAX_DESERIALIZE_SIZE];
   uint8_t data[1 + CASH32_MAX_HASH_SIZE];
-  size_t prefix_len, data_len, conv_len, size;
+  size_t data_len, conv_len, size;
 
-  if (!cash32_deserialize(prefix, &prefix_len,
-                          conv, &conv_len,
-                          str, str_len,
-                          expect, expect_len)) {
-    return 0;
-  }
-
-  if (prefix_len != expect_len)
+  if (!cash32_deserialize(prefix, conv, &conv_len, addr, expect))
     return 0;
 
-  if (memcmp(prefix, expect, expect_len) != 0)
+  if (strcmp(prefix, expect) != 0)
     return 0;
 
   if (conv_len == 0 || conv_len > CASH32_MAX_DATA_SIZE)
@@ -1880,12 +1852,10 @@ cash32_decode(unsigned int *type,
 }
 
 int
-cash32_test(const char *str, size_t str_len,
-            const char *expect, size_t expect_len) {
+cash32_test(const char *addr, const char *expect) {
+  unsigned int type;
   uint8_t hash[CASH32_MAX_DECODE_SIZE];
   size_t hash_len;
-  unsigned int type;
 
-  return cash32_decode(&type, hash, &hash_len,
-                       str, str_len, expect, expect_len);
+  return cash32_decode(&type, hash, &hash_len, addr, expect);
 }

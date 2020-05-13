@@ -91,8 +91,8 @@ function encodeManual(prefix, type, hash) {
   return cash32.serialize(prefix, conv);
 }
 
-function decodeManual(str, expect = 'bitcoincash') {
-  const [prefix, conv] = cash32.deserialize(str, expect);
+function decodeManual(addr, expect = 'bitcoincash') {
+  const [prefix, conv] = cash32.deserialize(addr, expect);
 
   if (prefix !== expect)
     throw new Error('Invalid cash32 prefix.');

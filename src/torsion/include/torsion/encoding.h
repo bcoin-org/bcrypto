@@ -250,23 +250,19 @@ base64url_test(const char *str, size_t len);
 #define BECH32_MAX_DECODE_SIZE BECH32_MAX_HASH_SIZE
 
 int
-bech32_serialize(char *dst,
-                 size_t *dstlen,
+bech32_serialize(char *str,
                  const char *hrp,
-                 size_t hrplen,
-                 const uint8_t *src,
-                 size_t srclen);
+                 const uint8_t *data,
+                 size_t data_len);
 
 int
 bech32_deserialize(char *hrp,
-                   size_t *hrplen,
-                   uint8_t *dst,
-                   size_t *dstlen,
-                   const char *src,
-                   size_t srclen);
+                   uint8_t *data,
+                   size_t *data_len,
+                   const char *str);
 
 int
-bech32_is(const char *str, size_t len);
+bech32_is(const char *str);
 
 int
 bech32_convert_bits(uint8_t *dst,
@@ -278,25 +274,21 @@ bech32_convert_bits(uint8_t *dst,
                     int pad);
 
 int
-bech32_encode(char *out,
-              size_t *out_len,
+bech32_encode(char *addr,
               const char *hrp,
-              size_t hrp_len,
               unsigned int version,
               const uint8_t *hash,
               size_t hash_len);
 
 int
 bech32_decode(char *hrp,
-              size_t *hrp_len,
               unsigned int *version,
               uint8_t *hash,
               size_t *hash_len,
-              const char *str,
-              size_t str_len);
+              const char *addr);
 
 int
-bech32_test(const char *str, size_t len);
+bech32_test(const char *addr);
 
 /*
  * Cash32
@@ -320,26 +312,20 @@ bech32_test(const char *str, size_t len);
 #define CASH32_MAX_DECODE_SIZE CASH32_MAX_HASH_SIZE
 
 int
-cash32_serialize(char *dst,
-                 size_t *dstlen,
+cash32_serialize(char *str,
                  const char *prefix,
-                 size_t prefixlen,
-                 const uint8_t *src,
-                 size_t srclen);
+                 const uint8_t *data,
+                 size_t data_len);
 
 int
 cash32_deserialize(char *prefix,
-                   size_t *prefixlen,
-                   uint8_t *dst,
-                   size_t *dstlen,
-                   const char *src,
-                   size_t srclen,
-                   const char *fallback,
-                   size_t fallbacklen);
+                   uint8_t *data,
+                   size_t *data_len,
+                   const char *str,
+                   const char *fallback);
 
 int
-cash32_is(const char *str, size_t strlen,
-          const char *fallback, size_t fallbacklen);
+cash32_is(const char *str, const char *fallback);
 
 int
 cash32_convert_bits(uint8_t *dst,
@@ -351,26 +337,20 @@ cash32_convert_bits(uint8_t *dst,
                     int pad);
 
 int
-cash32_encode(char *out,
-              size_t *out_len,
+cash32_encode(char *addr,
               const char *prefix,
-              size_t prefix_len,
               unsigned int type,
               const uint8_t *hash,
               size_t hash_len);
-
 int
 cash32_decode(unsigned int *type,
               uint8_t *hash,
               size_t *hash_len,
-              const char *str,
-              size_t str_len,
-              const char *expect,
-              size_t expect_len);
+              const char *addr,
+              const char *expect);
 
 int
-cash32_test(const char *str, size_t str_len,
-            const char *expect, size_t expect_len);
+cash32_test(const char *addr, const char *expect);
 
 #ifdef __cplusplus
 }
