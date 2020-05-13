@@ -36,15 +36,16 @@
       "-std=c89",
       "-pedantic",
       "-Wshadow",
+      "-Wcast-align",
       "-Wno-declaration-after-statement",
-      "-Wno-long-long",
-      "-Wno-overlength-strings"
+      "-Wno-overlength-strings",
+      "-Wno-long-long"
     ],
     "include_dirs": [
       "./src/torsion/include"
     ],
     "variables": {
-      "with_secp256k1%": "true",
+      "with_secp256k1%": "true"
     },
     "conditions": [
       ["node_byteorder=='big'", {
