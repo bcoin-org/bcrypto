@@ -58,7 +58,7 @@ int ecdsa_signature_parse_der_lax(const secp256k1_context* ctx, secp256k1_ecdsa_
             pos++;
             lenbyte--;
         }
-        if (lenbyte >= sizeof(size_t)) {
+        if (lenbyte >= 4) {
             return 0;
         }
         rlen = 0;
@@ -96,7 +96,7 @@ int ecdsa_signature_parse_der_lax(const secp256k1_context* ctx, secp256k1_ecdsa_
             pos++;
             lenbyte--;
         }
-        if (lenbyte >= sizeof(size_t)) {
+        if (lenbyte >= 4) {
             return 0;
         }
         slen = 0;
