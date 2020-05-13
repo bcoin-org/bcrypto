@@ -87,6 +87,62 @@ const invalidTest = [
   'bcfbbqhelpnoshitwe2z7anje5j3wvz8hw3rxadzcppgghm0aec23ttfstphjegfx08hwk5uhmusa7j28yrk8cx4qj'
 ];
 
+const validStrings = [
+  [
+    'A12UEL5L',
+    'a',
+    ''
+  ],
+  [
+    'a12uel5l',
+    'a',
+    ''
+  ],
+  [
+    'an83characterlonghumanreadablepartthatcontainsthenumber1andtheexcludedcharactersbio1tt5tgs',
+    'an83characterlonghumanreadablepartthatcontainsthenumber1andtheexcludedcharactersbio',
+    ''
+  ],
+  [
+    'abcdef1qpzry9x8gf2tvdw0s3jn54khce6mua7lmqqqxw',
+    'abcdef',
+    '000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f'
+  ],
+  [
+    '11qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqc8247j',
+    '1',
+    ['000000000000000000000000000000000000000000000000000000000000000000',
+     '000000000000000000000000000000000000000000000000000000000000000000',
+     '00000000000000000000000000000000'].join('')
+  ],
+  [
+    'split1checkupstagehandshakeupstreamerranterredcaperred2y9e3w',
+    'split',
+    '18171918161c01100b1d0819171d130d10171d16191c01100b03191d1b1903031d130b190303190d181d01190303190d'
+  ],
+  [
+    '?1ezyfcl',
+    '?',
+    ''
+  ]
+];
+
+const invalidStrings = [
+  'a12uel5l\x00foobar',
+  '\x201nwldj5',
+  '\x7f1axkwrx',
+  '\x801eym55h',
+  'an84characterslonghumanreadablepartthatcontainsthenumber1andtheexcludedcharactersbio1569pvx',
+  'pzry9x0s0muk',
+  '1pzry9x0s0muk',
+  'x1b4n0q5v',
+  'li1dgmt3',
+  'de1lg7wt\xff',
+  'A1G7SGD8',
+  '10a06t8',
+  '1qzzfhee'
+];
+
 function encode(hrp, version, hash) {
   const addr = bech32.encode(hrp, version, hash);
 
@@ -132,9 +188,7 @@ function decodeManual(expect, addr, lax = false) {
   if (!lax) {
     if (hash.length < 2 || hash.length > 40)
       throw new Error('Invalid witness program size.');
-  }
 
-  if (!lax) {
     if (data[0] === 0 && hash.length !== 20 && hash.length !== 32)
       throw new Error('Malformed witness program.');
   }
@@ -281,6 +335,28 @@ describe('Bech32', function() {
       const addr2 = encodeManual(hrp, version, hash, true);
 
       assert.strictEqual(addr2, addr1.toLowerCase());
+    });
+  }
+
+  for (const [str, hrp_, data_] of validStrings) {
+    const text = str.slice(0, 32) + '...';
+
+    it(`should have valid string for ${text}`, () => {
+      const [hrp, data] = bech32.deserialize(str);
+
+      assert(bech32.is(str));
+
+      assert.strictEqual(hrp, hrp_);
+      assert.bufferEqual(data, data_, 'hex');
+    });
+  }
+
+  for (const str of invalidStrings) {
+    const text = str.slice(0, 32).replace(/[^\w]/g, '') + '...';
+
+    it(`should have invalid string for ${text}`, () => {
+      assert(!bech32.is(str));
+      assert.throws(() => bech32.deserialize(str));
     });
   }
 
