@@ -1207,10 +1207,10 @@ static const int8_t bech32_table[128] = {
 };
 
 static uint32_t
-bech32_polymod(uint32_t pre) {
-  uint32_t b = pre >> 25;
+bech32_polymod(uint32_t c) {
+  uint32_t b = c >> 25;
 
-  return ((pre & UINT32_C(0x1ffffff)) << 5)
+  return ((c & UINT32_C(0x1ffffff)) << 5)
     ^ (UINT32_C(0x3b6a57b2) & -((b >> 0) & 1))
     ^ (UINT32_C(0x26508e6d) & -((b >> 1) & 1))
     ^ (UINT32_C(0x1ea119fa) & -((b >> 2) & 1))
@@ -1516,10 +1516,10 @@ static const int8_t cash32_table[128] = {
 };
 
 static uint64_t
-cash32_polymod(uint64_t pre) {
-  uint64_t b = pre >> 35;
+cash32_polymod(uint64_t c) {
+  uint64_t b = c >> 35;
 
-  return ((pre & UINT64_C(0x07ffffffff)) << 5)
+  return ((c & UINT64_C(0x07ffffffff)) << 5)
     ^ (UINT64_C(0x98f2bc8e61) & -((b >> 0) & 1))
     ^ (UINT64_C(0x79b76d99e2) & -((b >> 1) & 1))
     ^ (UINT64_C(0xf33e5fb3c4) & -((b >> 2) & 1))
