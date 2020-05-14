@@ -9,6 +9,7 @@ const BLAKE2s256 = require('../lib/blake2s256');
 const BN = require('../lib/bn');
 const random = require('../lib/random');
 const rsa = require('../lib/rsa');
+const primes = require('../lib/internal/primes');
 const base64 = require('../lib/encoding/base64');
 const vectors = require('./data/rsa.json');
 const custom = require('./data/sign/rsa.json');
@@ -60,6 +61,13 @@ describe('RSA', function() {
     assert.bufferEqual(
       rsa.publicKeyImport(rsa.publicKeyExport(pub)),
       pub);
+
+    if (rsa.native === 2) {
+      const {p, q} = rsa.privateKeyExport(priv);
+
+      assert(primes.isProbablePrime(new BN(p), 20));
+      assert(primes.isProbablePrime(new BN(q), 20));
+    }
   });
 
   it('should generate keypair with custom exponent', () => {
