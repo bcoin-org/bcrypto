@@ -36,24 +36,32 @@ describe('DSA', function() {
     const priv = dsa.privateKeyCreate(params);
     const pub = dsa.publicKeyCreate(priv);
 
-    assert(dsa.privateKeyVerify(priv));
-    assert(dsa.publicKeyVerify(pub));
+    assert.strictEqual(dsa.paramsVerify(params), true);
+    assert.strictEqual(dsa.privateKeyVerify(priv), true);
+    assert.strictEqual(dsa.publicKeyVerify(pub), true);
+
+    assert.strictEqual(dsa.paramsBits(params), 2048);
+    assert.strictEqual(dsa.paramsScalarBits(params), 256);
+
+    assert.strictEqual(dsa.privateKeyBits(priv), 2048);
+    assert.strictEqual(dsa.privateKeyScalarBits(priv), 256);
+
+    assert.strictEqual(dsa.publicKeyBits(pub), 2048);
+    assert.strictEqual(dsa.publicKeyScalarBits(pub), 256);
 
     const msg = Buffer.alloc(32, 0xaa);
     const sig = dsa.sign(msg, priv);
-    assert(sig);
 
-    const result = dsa.verify(msg, sig, pub);
-    assert(result);
+    assert.strictEqual(dsa.verify(msg, sig, pub), true);
 
     const zero = Buffer.alloc(0);
-    assert(!dsa.verify(zero, sig, pub));
-    assert(!dsa.verify(msg, zero, pub));
+
+    assert.strictEqual(dsa.verify(zero, sig, pub), false);
+    assert.strictEqual(dsa.verify(msg, zero, pub), false);
 
     sig[0] ^= 1;
 
-    const result2 = dsa.verify(msg, sig, pub);
-    assert(!result2);
+    assert.strictEqual(dsa.verify(msg, sig, pub), false);
 
     assert.bufferEqual(
       dsa.privateKeyImport(dsa.privateKeyExport(priv)),
@@ -69,14 +77,13 @@ describe('DSA', function() {
 
     const msg = Buffer.alloc(qsize, 0xaa);
     const sig = dsa.signDER(msg, priv);
-    assert(sig);
 
-    assert(dsa.verifyDER(msg, sig, pub));
-    assert(!dsa.verify(msg, sig, pub));
+    assert.strictEqual(dsa.verifyDER(msg, sig, pub), true);
+    assert.strictEqual(dsa.verify(msg, sig, pub), false);
 
     const sig2 = dsa.signatureImport(sig, qsize);
 
-    assert(dsa.verify(msg, sig2, pub));
+    assert.strictEqual(dsa.verify(msg, sig2, pub), true);
 
     const sig3 = dsa.signatureExport(sig2);
 
@@ -84,7 +91,7 @@ describe('DSA', function() {
 
     sig[5] ^= 1;
 
-    assert(!dsa.verifyDER(msg, sig, pub));
+    assert.strictEqual(dsa.verifyDER(msg, sig, pub), false);
   });
 
   it('should sign and verify (async)', async () => {
@@ -94,20 +101,17 @@ describe('DSA', function() {
     const pub = dsa.publicKeyCreate(priv);
     const qsize = size < 2048 ? 20 : 32;
 
-    assert(dsa.privateKeyVerify(priv));
-    assert(dsa.publicKeyVerify(pub));
+    assert.strictEqual(dsa.privateKeyVerify(priv), true);
+    assert.strictEqual(dsa.publicKeyVerify(pub), true);
 
     const msg = Buffer.alloc(qsize, 0xaa);
     const sig = dsa.sign(msg, priv);
-    assert(sig);
 
-    const result = dsa.verify(msg, sig, pub);
-    assert(result);
+    assert.strictEqual(dsa.verify(msg, sig, pub), true);
 
     sig[0] ^= 1;
 
-    const result2 = dsa.verify(msg, sig, pub);
-    assert(!result2);
+    assert.strictEqual(dsa.verify(msg, sig, pub), false);
   });
 
   it('should do diffie hellman', () => {
@@ -155,8 +159,11 @@ describe('DSA', function() {
       const priv = Buffer.from(vector.priv, 'hex');
 
       assert.bufferEqual(dsa.publicKeyCreate(priv), pub);
-      assert(dsa.privateKeyVerify(priv));
-      assert(dsa.publicKeyVerify(pub));
+      assert.strictEqual(dsa.privateKeyVerify(priv), true);
+      assert.strictEqual(dsa.publicKeyVerify(pub), true);
+
+      assert.strictEqual(sig.length * 8, dsa.privateKeyScalarBits(priv) * 2);
+      assert.strictEqual(sig.length * 8, dsa.publicKeyScalarBits(pub) * 2);
 
       assert.strictEqual(dsa.verify(msg, sig, pub), true);
 
@@ -198,9 +205,9 @@ describe('DSA', function() {
     ] = vector;
 
     it(`should parse and serialize key (${i})`, () => {
-      assert(dsa.paramsVerify(params));
-      assert(dsa.privateKeyVerify(priv));
-      assert(dsa.publicKeyVerify(pub));
+      assert.strictEqual(dsa.paramsVerify(params), true);
+      assert.strictEqual(dsa.privateKeyVerify(priv), true);
+      assert.strictEqual(dsa.publicKeyVerify(pub), true);
       assert.deepStrictEqual(dsa.publicKeyCreate(priv), pub);
     });
 

@@ -3277,6 +3277,28 @@ bcrypto_dsa_params_bits(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
+bcrypto_dsa_params_qbits(napi_env env, napi_callback_info info) {
+  napi_value argv[1];
+  size_t argc = 1;
+  size_t bits;
+  const uint8_t *key;
+  size_t key_len;
+  napi_value result;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 1);
+  CHECK(napi_get_buffer_info(env, argv[0], (void **)&key, &key_len) == napi_ok);
+
+  bits = dsa_params_qbits(key, key_len);
+
+  JS_ASSERT(bits != 0, JS_ERR_PARAMS);
+
+  CHECK(napi_create_uint32(env, bits, &result) == napi_ok);
+
+  return result;
+}
+
+static napi_value
 bcrypto_dsa_params_verify(napi_env env, napi_callback_info info) {
   napi_value argv[1];
   size_t argc = 1;
@@ -3391,6 +3413,28 @@ bcrypto_dsa_privkey_bits(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
+bcrypto_dsa_privkey_qbits(napi_env env, napi_callback_info info) {
+  napi_value argv[1];
+  size_t argc = 1;
+  size_t bits;
+  const uint8_t *key;
+  size_t key_len;
+  napi_value result;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 1);
+  CHECK(napi_get_buffer_info(env, argv[0], (void **)&key, &key_len) == napi_ok);
+
+  bits = dsa_privkey_qbits(key, key_len);
+
+  JS_ASSERT(bits != 0, JS_ERR_PRIVKEY);
+
+  CHECK(napi_create_uint32(env, bits, &result) == napi_ok);
+
+  return result;
+}
+
+static napi_value
 bcrypto_dsa_privkey_verify(napi_env env, napi_callback_info info) {
   napi_value argv[1];
   size_t argc = 1;
@@ -3492,6 +3536,28 @@ bcrypto_dsa_pubkey_bits(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[0], (void **)&key, &key_len) == napi_ok);
 
   bits = dsa_pubkey_bits(key, key_len);
+
+  JS_ASSERT(bits != 0, JS_ERR_PUBKEY);
+
+  CHECK(napi_create_uint32(env, bits, &result) == napi_ok);
+
+  return result;
+}
+
+static napi_value
+bcrypto_dsa_pubkey_qbits(napi_env env, napi_callback_info info) {
+  napi_value argv[1];
+  size_t argc = 1;
+  size_t bits;
+  const uint8_t *key;
+  size_t key_len;
+  napi_value result;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 1);
+  CHECK(napi_get_buffer_info(env, argv[0], (void **)&key, &key_len) == napi_ok);
+
+  bits = dsa_pubkey_qbits(key, key_len);
 
   JS_ASSERT(bits != 0, JS_ERR_PUBKEY);
 
@@ -12748,16 +12814,19 @@ bcrypto_init(napi_env env, napi_value exports) {
     { "dsa_params_generate", bcrypto_dsa_params_generate },
     { "dsa_params_generate_async", bcrypto_dsa_params_generate_async },
     { "dsa_params_bits", bcrypto_dsa_params_bits },
+    { "dsa_params_qbits", bcrypto_dsa_params_qbits },
     { "dsa_params_verify", bcrypto_dsa_params_verify },
     { "dsa_params_import", bcrypto_dsa_params_import },
     { "dsa_params_export", bcrypto_dsa_params_export },
     { "dsa_privkey_create", bcrypto_dsa_privkey_create },
     { "dsa_privkey_bits", bcrypto_dsa_privkey_bits },
+    { "dsa_privkey_qbits", bcrypto_dsa_privkey_qbits },
     { "dsa_privkey_verify", bcrypto_dsa_privkey_verify },
     { "dsa_privkey_import", bcrypto_dsa_privkey_import },
     { "dsa_privkey_export", bcrypto_dsa_privkey_export },
     { "dsa_pubkey_create", bcrypto_dsa_pubkey_create },
     { "dsa_pubkey_bits", bcrypto_dsa_pubkey_bits },
+    { "dsa_pubkey_qbits", bcrypto_dsa_pubkey_qbits },
     { "dsa_pubkey_verify", bcrypto_dsa_pubkey_verify },
     { "dsa_pubkey_import", bcrypto_dsa_pubkey_import },
     { "dsa_pubkey_export", bcrypto_dsa_pubkey_export },
