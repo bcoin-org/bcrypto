@@ -1259,9 +1259,10 @@ rng_seed(rng_t *rng) {
       sha256_write_int(&hash, out);
     }
   }
-#endif
 
   sha256_write_int(&hash, torsion_hrtime());
+#endif
+
   sha256_write_static_env(&hash);
   sha256_write_dynamic_env(&hash);
   sha256_write_int(&hash, torsion_hrtime());
