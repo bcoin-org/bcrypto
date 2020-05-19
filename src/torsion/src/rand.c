@@ -541,17 +541,18 @@ torsion_cpuid(uint32_t level,
 #endif
 }
 
-static void
-torsion_hwrand(int *has_rdrand, int *has_rdseed) {
+static int
+torsion_has_rdrand(void) {
   uint32_t eax, ebx, ecx, edx;
-
   torsion_cpuid(1, 0, &eax, &ebx, &ecx, &edx);
+  return !!(ecx & UINT32_C(0x40000000));
+}
 
-  *has_rdrand = !!(ecx & UINT32_C(0x40000000));
-
+static int
+torsion_has_rdseed(void) {
+  uint32_t eax, ebx, ecx, edx;
   torsion_cpuid(7, 0, &eax, &ebx, &ecx, &edx);
-
-  *has_rdseed = !!(ebx & UINT32_C(0x00040000));
+  return !!(ebx & UINT32_C(0x00040000));
 }
 
 static uint64_t
@@ -677,19 +678,22 @@ static int
 torsion_hardware_entropy(void *dst, size_t size) {
 #if defined(TORSION_HARDWARE_FALLBACK) && defined(HAVE_CPUID)
   unsigned char *data = (unsigned char *)dst;
-  int has_rdrand, has_rdseed;
+  int has_rdrand = torsion_has_rdrand();
+  int has_rdseed = torsion_has_rdseed();
   uint64_t x;
-
-  torsion_hwrand(&has_rdrand, &has_rdseed);
+  size_t i;
 
   if (!has_rdrand && !has_rdseed)
     return 0;
 
   while (size > 0) {
-    if (has_rdseed)
+    if (has_rdseed) {
       x = torsion_rdseed();
-    else
-      x = torsion_rdrand();
+    } else {
+      x = 0;
+      for (i = 0; i < 1024; i++)
+        x ^= torsion_rdrand();
+    }
 
     if (size < 8) {
       memcpy(data, &x, size);
@@ -1279,13 +1283,14 @@ rng_init(rng_t *rng) {
   memset(rng->key, 0, 32);
 
   rng->counter = torsion_hrtime();
+#ifdef HAVE_CPUID
+  rng->rdrand = torsion_has_rdrand();
+  rng->rdseed = torsion_has_rdseed();
+#else
   rng->rdrand = 0;
   rng->rdseed = 0;
-  rng->pos = 0;
-
-#ifdef HAVE_CPUID
-  torsion_hwrand(&rng->rdrand, &rng->rdseed);
 #endif
+  rng->pos = 0;
 
   return rng_seed(rng);
 }
