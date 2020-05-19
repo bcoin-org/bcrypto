@@ -206,8 +206,38 @@ EM_JS(int, js_getrandom, (void *ptr, size_t len), {
 #  endif
 #endif
 
+#ifndef _WIN32
+#  include <sys/resource.h> /* getrusage */
+#  include <sys/utsname.h> /* uname */
+#endif
+
+#ifdef __linux__
+#  include <sys/auxv.h> /* getauxval */
+#endif
+
+#if defined(__APPLE__) || defined(__OpenBSD__) \
+ || defined(__FreeBSD__) || defined(__NetBSD__)
+#  include <sys/sysctl.h>
+#  define HAVE_SYSCTL
+#endif
+
+#if defined(__APPLE__) || defined(__FreeBSD__)
+#  include <vm/vm_param.h> /* VM_{LOADAVG,TOTAL,METER} */
+#endif
+
+#ifdef __APPLE__
+#  include <crt_externs.h>
+#  define environ (*_NSGetEnviron())
+#else
+#  ifndef environ
+extern char **environ;
+#  endif
+#endif
+
 #include <torsion/chacha20.h>
+#include <torsion/hash.h>
 #include <torsion/rand.h>
+#include <torsion/util.h>
 #include "internal.h"
 
 /*
@@ -231,13 +261,13 @@ device_open(const char *device) {
     }
 
     if (fstat(fd, &st) != 0) {
-      (void)close(fd);
+      close(fd);
       return -1;
     }
 
     /* Ensure this is a character device. */
     if (!S_ISNAM(st.st_mode) && !S_ISCHR(st.st_mode)) {
-      (void)close(fd);
+      close(fd);
       return -1;
     }
 
@@ -306,7 +336,7 @@ poll_dev_random(void) {
   }
 
   if (ret != 1) {
-    (void)close(fd);
+    close(fd);
     return 0;
   }
 
@@ -473,11 +503,11 @@ torsion_device_entropy(void *dst, size_t size) {
       continue;
 
     if (!device_read(fd, dst, size)) {
-      (void)close(fd);
+      close(fd);
       continue;
     }
 
-    (void)close(fd);
+    close(fd);
 
     return 1;
   }
@@ -695,48 +725,568 @@ torsion_getentropy(void *dst, size_t size) {
 }
 
 /*
+ * Hashing
+ */
+
+static void
+sha256_write(sha256_t *hash, const void *data, size_t size) {
+  sha256_update(hash, data, size);
+}
+
+static void
+sha256_write_data(sha256_t *hash, const void *data, size_t size) {
+  sha256_write(hash, &size, sizeof(size));
+  sha256_write(hash, data, size);
+}
+
+static void
+sha256_write_string(sha256_t *hash, const char *str) {
+  sha256_write_data(hash, str, strlen(str));
+}
+
+static void
+sha256_write_int(sha256_t *hash, uint64_t num) {
+  sha256_write(hash, &num, sizeof(num));
+}
+
+static void
+sha256_write_ptr(sha256_t *hash, const void *ptr) {
+  uintptr_t uptr = (uintptr_t)ptr;
+
+  sha256_write(hash, &uptr, sizeof(uptr));
+}
+
+static void
+sha256_write_stat(sha256_t *hash, const char *file) {
+  struct stat st;
+
+  memset(&st, 0, sizeof(st));
+
+  if (stat(file, &st) == 0) {
+    sha256_write_string(hash, file);
+    sha256_write(hash, &st, sizeof(st));
+  }
+}
+
+static void
+sha256_write_file(sha256_t *hash, const char *file) {
+  unsigned char buf[4096];
+  struct stat st;
+  int fd, nread;
+  size_t total;
+
+  fd = open(file, O_RDONLY);
+
+  if (fd == -1)
+    return;
+
+  memset(&st, 0, sizeof(st));
+
+  if (fstat(fd, &st) == 0) {
+    sha256_write_string(hash, file);
+    sha256_write(hash, &st, sizeof(st));
+  }
+
+  total = 0;
+
+  do {
+    nread = read(fd, buf, sizeof(buf));
+
+    if (nread <= 0)
+      break;
+
+    sha256_write(hash, buf, nread);
+
+    total += nread;
+  } while ((size_t)nread == sizeof(buf) && total < 1048576);
+
+  close(fd);
+}
+
+#ifdef HAVE_SYSCTL
+void
+sha256_write_sysctl(sha256_t *hash, int c0, int c1) {
+  unsigned char buf[65536];
+  size_t size = 65536;
+  int ctl[2];
+  int ret;
+
+  ctl[0] = c0;
+  ctl[1] = c1;
+
+  ret = sysctl(ctl, 2, buf, &size, NULL, 0);
+
+  if (ret == 0 || (ret == -1 && errno == ENOMEM)) {
+    sha256_write_data(hash, ctl, sizeof(ctl));
+
+    if (size > sizeof(buf))
+      size = sizeof(buf);
+
+    sha256_write_data(hash, buf, size);
+  }
+}
+#endif
+
+#ifdef HAVE_CPUID
+static void
+sha256_write_cpuid(sha256_t *hash, uint32_t leaf, uint32_t subleaf,
+                   uint32_t *ax, uint32_t *bx, uint32_t *cx, uint32_t *dx) {
+  torsion_cpuid(leaf, subleaf, ax, bx, cx, dx);
+
+  sha256_write_int(hash, leaf);
+  sha256_write_int(hash, subleaf);
+  sha256_write_int(hash, *ax);
+  sha256_write_int(hash, *bx);
+  sha256_write_int(hash, *cx);
+  sha256_write_int(hash, *dx);
+}
+
+static void
+sha256_write_cpuids(sha256_t *hash) {
+  uint32_t max, leaf, maxsub, subleaf, maxext;
+  uint32_t ax, bx, cx, dx;
+
+  /* Iterate over all standard leaves. */
+  /* Returns max leaf in ax. */
+  sha256_write_cpuid(hash, 0, 0, &ax, &bx, &cx, &dx);
+
+  max = ax;
+
+  for (leaf = 1; leaf <= max && leaf <= 0xff; leaf++) {
+    maxsub = 0;
+
+    for (subleaf = 0; subleaf <= 0xff; subleaf++) {
+      sha256_write_cpuid(hash, leaf, subleaf, &ax, &bx, &cx, &dx);
+
+      /* Iterate subleafs for leaf values 4, 7, 11, 13. */
+      if (leaf == 4) {
+        if ((ax & 0x1f) == 0)
+          break;
+      } else if (leaf == 7) {
+        if (subleaf == 0)
+          maxsub = ax;
+
+        if (subleaf == maxsub)
+          break;
+      } else if (leaf == 11) {
+        if ((cx & 0xff00) == 0)
+          break;
+      } else if (leaf == 13) {
+        if (ax == 0 && bx == 0 && cx == 0 && dx == 0)
+          break;
+      } else {
+        /* For any other leaf, stop after subleaf 0. */
+        break;
+      }
+    }
+  }
+
+  /* Iterate over all extended leaves. */
+  /* Returns max extended leaf in ax. */
+  sha256_write_cpuid(hash, 0x80000000, 0, &ax, &bx, &cx, &dx);
+
+  maxext = ax;
+
+  for (leaf = 0x80000001; leaf <= maxext && leaf <= 0x800000ff; leaf++)
+    sha256_write_cpuid(hash, leaf, 0, &ax, &bx, &cx, &dx);
+}
+#endif
+
+#ifdef _WIN32
+static void
+sha256_write_perfdata(sha256_t *hash) {
+  static const size_t max = 10000000;
+  unsigned char *data = malloc(250000);
+  unsigned long nread = 0;
+  size_t size = 250000;
+  long ret = 0;
+  size_t old;
+
+  if (data == NULL)
+    return;
+
+  memset(data, 0, size);
+
+  for (;;) {
+    nread = size;
+    ret = RegQueryValueExA(HKEY_PERFORMANCE_DATA,
+                           "Global", NULL, NULL,
+                           data, &nread);
+
+    if (ret != ERROR_MORE_DATA || size >= max)
+      break;
+
+    old = size;
+    size = (size * 3) / 2;
+
+    if (size > max)
+      size = max;
+
+    data = realloc(data, size);
+
+    if (data == NULL)
+      break;
+
+    memset(data + old, 0, size - old);
+  }
+
+  RegCloseKey(HKEY_PERFORMANCE_DATA);
+
+  if (ret == ERROR_SUCCESS) {
+    sha256_write_data(hash, data, size);
+    cleanse(data, size);
+  }
+
+  if (data)
+    free(data);
+}
+#endif
+
+static void
+sha256_write_static_env(sha256_t *hash) {
+  /* Some compile-time static properties */
+  sha256_write_int(hash, CHAR_MIN < 0);
+  sha256_write_int(hash, sizeof(void *));
+  sha256_write_int(hash, sizeof(long));
+  sha256_write_int(hash, sizeof(int));
+
+#if defined(__GNUC__) && defined(__GNUC_MINOR__) && defined(__GNUC_PATCHLEVEL__)
+  sha256_write_int(hash, __GNUC__);
+  sha256_write_int(hash, __GNUC_MINOR__);
+  sha256_write_int(hash, __GNUC_PATCHLEVEL__);
+#endif
+
+#ifdef _MSC_VER
+  sha256_write_int(hash, _MSC_VER);
+#endif
+
+#ifdef __linux__
+  /* Information available through getauxval(). */
+#ifdef AT_HWCAP
+  sha256_write_int(hash, getauxval(AT_HWCAP));
+#endif
+#ifdef AT_HWCAP2
+  sha256_write_int(hash, getauxval(AT_HWCAP2));
+#endif
+#ifdef AT_RANDOM
+  {
+    const unsigned char *random_aux =
+      (const unsigned char *)getauxval(AT_RANDOM);
+
+    if (random_aux)
+      sha256_write(hash, random_aux, 16);
+  }
+#endif
+#ifdef AT_PLATFORM
+  {
+    const char *platform_str = (const char *)getauxval(AT_PLATFORM);
+
+    if (platform_str)
+      sha256_write_string(hash, platform_str);
+  }
+#endif
+#ifdef AT_EXECFN
+  {
+    const char *exec_str = (const char *)getauxval(AT_EXECFN);
+
+    if (exec_str)
+      sha256_write_string(hash, exec_str);
+  }
+#endif
+#endif /* __linux__ */
+
+#ifdef HAVE_CPUID
+  sha256_write_cpuids(hash);
+#endif
+
+  /* Memory locations. */
+  sha256_write_ptr(hash, hash);
+  sha256_write_ptr(hash, &errno);
+#ifndef environ
+  sha256_write_ptr(hash, &environ);
+#endif
+
+  /* Hostname. */
+  {
+    char hname[256];
+
+    memset(hname, 0, sizeof(hname));
+
+    if (gethostname(hname, sizeof(hname) - 1) == 0)
+      sha256_write_string(hash, hname);
+  }
+
+#ifndef _WIN32
+  /* UNIX kernel information. */
+  {
+    struct utsname name;
+
+    if (uname(&name) != -1) {
+      sha256_write_string(hash, name.sysname);
+      sha256_write_string(hash, name.nodename);
+      sha256_write_string(hash, name.release);
+      sha256_write_string(hash, name.version);
+      sha256_write_string(hash, name.machine);
+    }
+  }
+
+  /* Path and filesystem provided data. */
+  sha256_write_stat(hash, "/");
+  sha256_write_stat(hash, ".");
+  sha256_write_stat(hash, "/tmp");
+  sha256_write_stat(hash, "/home");
+  sha256_write_stat(hash, "/proc");
+#ifdef __linux__
+  sha256_write_file(hash, "/proc/cmdline");
+  sha256_write_file(hash, "/proc/cpuinfo");
+  sha256_write_file(hash, "/proc/version");
+#endif /* __linux__ */
+  sha256_write_file(hash, "/etc/passwd");
+  sha256_write_file(hash, "/etc/group");
+  sha256_write_file(hash, "/etc/hosts");
+  sha256_write_file(hash, "/etc/resolv.conf");
+  sha256_write_file(hash, "/etc/timezone");
+  sha256_write_file(hash, "/etc/localtime");
+#endif /* !_WIN32 */
+
+#ifdef HAVE_SYSCTL
+#ifdef CTL_HW
+#ifdef HW_MACHINE
+  sha256_write_sysctl(hash, CTL_HW, HW_MACHINE);
+#endif
+#ifdef HW_MODEL
+  sha256_write_sysctl(hash, CTL_HW, HW_MODEL);
+#endif
+#ifdef HW_NCPU
+  sha256_write_sysctl(hash, CTL_HW, HW_NCPU);
+#endif
+#ifdef HW_PHYSMEM
+  sha256_write_sysctl(hash, CTL_HW, HW_PHYSMEM);
+#endif
+#ifdef HW_USERMEM
+  sha256_write_sysctl(hash, CTL_HW, HW_USERMEM);
+#endif
+#ifdef HW_MACHINE_ARCH
+  sha256_write_sysctl(hash, CTL_HW, HW_MACHINE_ARCH);
+#endif
+#ifdef HW_REALMEM
+  sha256_write_sysctl(hash, CTL_HW, HW_REALMEM);
+#endif
+#ifdef HW_CPU_FREQ
+  sha256_write_sysctl(hash, CTL_HW, HW_CPU_FREQ);
+#endif
+#ifdef HW_BUS_FREQ
+  sha256_write_sysctl(hash, CTL_HW, HW_BUS_FREQ);
+#endif
+#ifdef HW_CACHELINE
+  sha256_write_sysctl(hash, CTL_HW, HW_CACHELINE);
+#endif
+#endif
+
+#ifdef CTL_KERN
+#ifdef KERN_BOOTFILE
+  sha256_write_sysctl(hash, CTL_KERN, KERN_BOOTFILE);
+#endif
+#ifdef KERN_BOOTTIME
+  sha256_write_sysctl(hash, CTL_KERN, KERN_BOOTTIME);
+#endif
+#ifdef KERN_CLOCKRATE
+  sha256_write_sysctl(hash, CTL_KERN, KERN_CLOCKRATE);
+#endif
+#ifdef KERN_HOSTID
+  sha256_write_sysctl(hash, CTL_KERN, KERN_HOSTID);
+#endif
+#ifdef KERN_HOSTUUID
+  sha256_write_sysctl(hash, CTL_KERN, KERN_HOSTUUID);
+#endif
+#ifdef KERN_HOSTNAME
+  sha256_write_sysctl(hash, CTL_KERN, KERN_HOSTNAME);
+#endif
+#ifdef KERN_OSRELDATE
+  sha256_write_sysctl(hash, CTL_KERN, KERN_OSRELDATE);
+#endif
+#ifdef KERN_OSRELEASE
+  sha256_write_sysctl(hash, CTL_KERN, KERN_OSRELEASE);
+#endif
+#ifdef KERN_OSREV
+  sha256_write_sysctl(hash, CTL_KERN, KERN_OSREV);
+#endif
+#ifdef KERN_OSTYPE
+  sha256_write_sysctl(hash, CTL_KERN, KERN_OSTYPE);
+#endif
+#ifdef KERN_POSIX1
+  sha256_write_sysctl(hash, CTL_KERN, KERN_OSREV);
+#endif
+#ifdef KERN_VERSION
+  sha256_write_sysctl(hash, CTL_KERN, KERN_VERSION);
+#endif
+#endif
+#endif
+
+  /* Environment variables. */
+  if (environ) {
+    size_t i;
+    for (i = 0; environ[i] != NULL; i++)
+      sha256_write_string(hash, environ[i]);
+  }
+
+#ifdef _WIN32
+  sha256_write_int(hash, GetCurrentProcessId());
+  sha256_write_int(hash, GetCurrentThreadId());
+#else /* _WIN32 */
+  sha256_write_int(hash, getpid());
+  sha256_write_int(hash, getppid());
+  sha256_write_int(hash, getsid(0));
+  sha256_write_int(hash, getpgid(0));
+  sha256_write_int(hash, getuid());
+  sha256_write_int(hash, geteuid());
+  sha256_write_int(hash, getgid());
+  sha256_write_int(hash, getegid());
+#endif /* _WIN32 */
+}
+
+static void
+sha256_write_dynamic_env(sha256_t *hash) {
+#ifdef _WIN32
+  sha256_write_perfdata(hash);
+
+  {
+    FILETIME ftime;
+
+    GetSystemTimeAsFileTime(&ftime);
+
+    sha256_write_int(hash, ftime);
+  }
+#else
+  {
+    struct timeval tv;
+
+    memset(&tv, 0, sizeof(tv));
+
+    gettimeofday(&tv, NULL);
+
+    sha256_write(hash, &tv, sizeof(tv));
+  }
+
+  /* Current resource usage. */
+  {
+    struct rusage usage;
+
+    memset(&usage, 0, sizeof(usage));
+
+    if (getrusage(RUSAGE_SELF, &usage) == 0)
+      sha256_write(hash, &usage, sizeof(usage));
+  }
+#endif
+
+#ifdef __linux__
+  sha256_write_file(hash, "/proc/diskstats");
+  sha256_write_file(hash, "/proc/vmstat");
+  sha256_write_file(hash, "/proc/schedstat");
+  sha256_write_file(hash, "/proc/zoneinfo");
+  sha256_write_file(hash, "/proc/meminfo");
+  sha256_write_file(hash, "/proc/softirqs");
+  sha256_write_file(hash, "/proc/stat");
+  sha256_write_file(hash, "/proc/self/schedstat");
+  sha256_write_file(hash, "/proc/self/status");
+#endif
+
+#ifdef HAVE_SYSCTL
+#ifdef CTL_HW
+#ifdef HW_DISKSTATS
+  sha256_write_sysctl(hash, CTL_HW, HW_DISKSTATS);
+#endif
+#endif
+#ifdef CTL_VM
+#ifdef VM_LOADAVG
+  sha256_write_sysctl(hash, CTL_VM, VM_LOADAVG);
+#endif
+#ifdef VM_TOTAL
+  sha256_write_sysctl(hash, CTL_VM, VM_TOTAL);
+#endif
+#ifdef VM_METER
+  sha256_write_sysctl(hash, CTL_VM, VM_METER);
+#endif
+#endif
+#endif
+
+  /* Stack and heap location. */
+  {
+    void *addr = malloc(4097);
+
+    if (addr) {
+      sha256_write_ptr(hash, &addr);
+      sha256_write_ptr(hash, addr);
+      free(addr);
+    }
+  }
+}
+
+/*
  * RNG
  */
 
-static uint64_t
-rng_rdrand(rng_t *rng) {
+static int
+rng_seed(rng_t *rng) {
+  unsigned char entropy[32];
+  sha256_t hash;
+
+  if (!torsion_getentropy(entropy, 32))
+    return 0;
+
+  sha256_init(&hash);
+  sha256_write_int(&hash, torsion_hrtime());
+  sha256_write_ptr(&hash, rng);
+  sha256_write_ptr(&hash, entropy);
+  sha256_write(&hash, entropy, 32);
+
 #ifdef HAVE_CPUID
-  if (rng->rdseed)
-    return torsion_rdseed();
+  if (rng->rdseed) {
+    size_t i;
 
-  if (rng->rdrand)
-    return torsion_rdrand();
+    for (i = 0; i < 4; i++)
+      sha256_write_int(&hash, torsion_rdseed());
+  } else if (rng->rdrand) {
+    size_t i;
 
-  return 0;
-#else
-  (void)rng;
-  return 0;
+    for (i = 0; i < 4; i++) {
+      uint64_t out = 0;
+      size_t j;
+
+      for (j = 0; j < 1024; j++)
+        out ^= torsion_rdrand();
+
+      sha256_write_int(&hash, out);
+    }
+  }
 #endif
+
+  sha256_write_int(&hash, torsion_hrtime());
+  sha256_write_static_env(&hash);
+  sha256_write_dynamic_env(&hash);
+  sha256_write_int(&hash, torsion_hrtime());
+  sha256_final(&hash, (unsigned char *)rng->key);
+
+  cleanse(entropy, sizeof(entropy));
+  cleanse(&hash, sizeof(hash));
+
+  return 1;
 }
 
 int
 rng_init(rng_t *rng) {
   memset(rng->key, 0, 32);
 
-  rng->counter = 0;
+  rng->counter = torsion_hrtime();
   rng->rdrand = 0;
   rng->rdseed = 0;
   rng->pos = 0;
-
-  if (!torsion_getentropy(rng->key, 32))
-    return 0;
-
-  rng->counter = torsion_hrtime();
 
 #ifdef HAVE_CPUID
   torsion_hwrand(&rng->rdrand, &rng->rdseed);
 #endif
 
-  /* On the off chance that the OS RNG is backdoored/broken
-     and RDRAND is not, mix in some bytes from RDRAND. */
-  rng->key[3] ^= rng_rdrand(rng);
-
-  return 1;
+  return rng_seed(rng);
 }
 
 void
@@ -750,7 +1300,6 @@ rng_generate(rng_t *rng, void *dst, size_t size) {
   /* Read chacha state. */
   chacha20_init(ctx, key, 32, zero, 8, rng->counter);
 
-  /* FIXME: Unnecessary xor'ing here. */
   while (left >= 64) {
     chacha20_encrypt(ctx, data, zero, 64);
     data += 64;
@@ -762,7 +1311,11 @@ rng_generate(rng_t *rng, void *dst, size_t size) {
 
   /* Re-key immediately. */
   rng->key[0] ^= size;
-  rng->key[3] ^= rng_rdrand(rng);
+
+#ifdef HAVE_CPUID
+  if (rng->rdrand)
+    rng->key[3] ^= torsion_rdrand();
+#endif
 
   rng->counter++;
 
