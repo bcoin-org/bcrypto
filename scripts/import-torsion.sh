@@ -26,5 +26,11 @@ if test ! -d src/torsion/include; then
 fi
 
 cp -f "$prefix/LICENSE" src/torsion/
-rsync -av --exclude '*.o' "$prefix/src/" src/torsion/src/
+
+rsync -av --exclude '*.o' \
+          --exclude '*.lo' \
+          --exclude '.deps' \
+          --exclude '.dirstamp' \
+          "$prefix/src/" src/torsion/src/
+
 rsync -av "$prefix/include/" src/torsion/include/

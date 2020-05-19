@@ -7,6 +7,7 @@ const bcrypto = require('../');
 const {env} = process;
 const HAS_BIGINT = typeof BigInt === 'function' ? 1 : 0;
 const FORCE_BIGINT = HAS_BIGINT && env.BCRYPTO_FORCE_BIGINT != null ? 1 : 0;
+const FORCE_TORSION = env.BCRYPTO_FORCE_TORSION === '1';
 
 describe('Bcrypto', function() {
   it('should have correct environment', () => {
@@ -180,7 +181,7 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.pbkdf2.native, 2);
         assert.strictEqual(bcrypto.pgp.native, undefined);
         assert.strictEqual(bcrypto.Poly1305.native, 2);
-        assert.strictEqual(bcrypto.random.native, 1);
+        assert.strictEqual(bcrypto.random.native, FORCE_TORSION ? 2 : 1);
         assert.strictEqual(bcrypto.RC4.native, 2);
         assert.strictEqual(bcrypto.RIPEMD160.native, 2);
         assert.strictEqual(bcrypto.rsa.native, 2);

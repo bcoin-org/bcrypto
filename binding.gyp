@@ -15,6 +15,7 @@
       "./src/torsion/src/kdf.c",
       "./src/torsion/src/mpi.c",
       "./src/torsion/src/poly1305.c",
+      "./src/torsion/src/rand.c",
       "./src/torsion/src/rsa.c",
       "./src/torsion/src/salsa20.c",
       "./src/torsion/src/secretbox.c",

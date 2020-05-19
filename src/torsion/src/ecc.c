@@ -689,7 +689,7 @@ sc_import_weak(const scalar_field_t *sc, sc_t r, const unsigned char *raw) {
 
   cleanse(sp, sc->limbs);
 
-#ifdef TORSION_TEST
+#ifdef TORSION_VERIFY
   ASSERT(mpn_cmp(r, sc->n, sc->limbs) < 0);
 #endif
 
@@ -823,7 +823,7 @@ sc_neg(const scalar_field_t *sc, sc_t r, const sc_t a) {
   /* r = 0 if a = 0 */
   mpn_cnd_zero(zero, r, r, sc->limbs);
 
-#ifdef TORSION_TEST
+#ifdef TORSION_VERIFY
   ASSERT(mpn_cmp(r, sc->n, sc->limbs) < 0);
 #endif
 }
@@ -850,7 +850,7 @@ sc_add(const scalar_field_t *sc, sc_t r, const sc_t a, const sc_t b) {
   cy = mpn_sub_n(bp, ap, sc->n, sc->limbs + 1);
   mpn_cnd_select(cy == 0, r, ap, bp, sc->limbs);
 
-#ifdef TORSION_TEST
+#ifdef TORSION_VERIFY
   ASSERT(mpn_cmp(r, sc->n, sc->limbs) < 0);
 #endif
 }
@@ -912,7 +912,7 @@ sc_reduce(const scalar_field_t *sc, sc_t r, const mp_limb_t *ap) {
   cy = mpn_sub_n(hp, qp, sc->n, sc->limbs + 1);
   mpn_cnd_select(cy == 0, r, qp, hp, sc->limbs);
 
-#ifdef TORSION_TEST
+#ifdef TORSION_VERIFY
   ASSERT(mpn_cmp(r, sc->n, sc->limbs) < 0);
 #endif
 }
@@ -985,7 +985,7 @@ sc_mulshift(const scalar_field_t *sc, sc_t r,
 
   mpn_cleanse(scratch, sc->limbs * 2);
 
-#ifdef TORSION_TEST
+#ifdef TORSION_VERIFY
   ASSERT(mpn_cmp(r, sc->n, sc->limbs) < 0);
 #endif
 }
@@ -4121,7 +4121,7 @@ wei_jmul_endo(const wei_t *ec, jge_t *r, const wge_t *p, const sc_t k) {
   s1 = sc_minimize(sc, k1, k1);
   s2 = sc_minimize(sc, k2, k2);
 
-#ifdef TORSION_TEST
+#ifdef TORSION_VERIFY
   ASSERT(sc_bitlen_var(sc, k1) <= sc->endo_bits);
   ASSERT(sc_bitlen_var(sc, k2) <= sc->endo_bits);
 #endif
@@ -12418,3 +12418,7 @@ eddsa_derive(const edwards_t *ec,
 
   return ret;
 }
+
+#ifdef TORSION_TEST
+#include "../test/ecc-internal.h"
+#endif

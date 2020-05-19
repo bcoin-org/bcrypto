@@ -133,4 +133,17 @@ describe('Random', function() {
     assert(perc >= 0.99, `Deflated data was %${perc.toFixed(2)} of original.`);
     assert(isRandom(rand, 0.02));
   });
+
+  if (random._getEntropy) {
+    it('should get OS entropy', () => {
+      const bytes = Buffer.alloc(65536, 0x00);
+      const rand = random._getEntropy(65536);
+      const defl = zlib.deflateRawSync(rand, { level: 5 });
+      const perc = defl.length / rand.length;
+
+      assert.notBufferEqual(rand, bytes);
+      assert(perc >= 0.99, `Deflated data was %${perc.toFixed(2)} of original.`);
+      assert(isRandom(rand, 0.02));
+    });
+  }
 });

@@ -22,6 +22,7 @@
 #include <torsion/hash.h>
 #include <torsion/kdf.h>
 #include <torsion/poly1305.h>
+#include <torsion/rand.h>
 #include <torsion/rsa.h>
 #include <torsion/salsa20.h>
 #include <torsion/secretbox.h>
@@ -104,6 +105,7 @@
 #define JS_ERR_OPT "Could not set option."
 #define JS_ERR_GET "Could not get value."
 #define JS_ERR_CRYPT "Could not encipher."
+#define JS_ERR_RNG "RNG failure."
 
 #define JS_THROW(msg) do {                              \
   CHECK(napi_throw_error(env, NULL, (msg)) == napi_ok); \
@@ -207,6 +209,11 @@ typedef struct bcrypto_rc4_s {
   rc4_t ctx;
   int started;
 } bcrypto_rc4_t;
+
+typedef struct bcrypto_rng_s {
+  rng_t ctx;
+  int started;
+} bcrypto_rng_t;
 
 typedef struct bcrypto_salsa20_s {
   salsa20_t ctx;
@@ -8203,6 +8210,143 @@ bcrypto_rc4_destroy(napi_env env, napi_callback_info info) {
 }
 
 /*
+ * RNG
+ */
+
+static void
+bcrypto_rng_destroy(napi_env env, void *data, void *hint) {
+  cleanse(data, sizeof(bcrypto_rng_t));
+  bcrypto_free(data);
+}
+
+static napi_value
+bcrypto_rng_create(napi_env env, napi_callback_info info) {
+  bcrypto_rng_t *rng;
+  napi_value handle;
+
+  rng = (bcrypto_rng_t *)bcrypto_xmalloc(sizeof(bcrypto_rng_t));
+  rng->started = 0;
+
+  CHECK(napi_create_external(env,
+                             rng,
+                             bcrypto_rng_destroy,
+                             NULL,
+                             &handle) == napi_ok);
+
+  return handle;
+}
+
+static napi_value
+bcrypto_rng_init(napi_env env, napi_callback_info info) {
+  napi_value argv[1];
+  size_t argc = 1;
+  bcrypto_rng_t *rng;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 1);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&rng) == napi_ok);
+
+  JS_ASSERT(rng_init(&rng->ctx), JS_ERR_RNG);
+
+  rng->started = 1;
+
+  return argv[0];
+}
+
+static napi_value
+bcrypto_rng_generate(napi_env env, napi_callback_info info) {
+  napi_value argv[4];
+  size_t argc = 4;
+  uint8_t *out;
+  size_t out_len;
+  uint32_t off, size;
+  bcrypto_rng_t *rng;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 4);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&rng) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], (void **)&out, &out_len) == napi_ok);
+  CHECK(napi_get_value_uint32(env, argv[2], &off) == napi_ok);
+  CHECK(napi_get_value_uint32(env, argv[3], &size) == napi_ok);
+
+  JS_ASSERT(rng->started, JS_ERR_INIT);
+  JS_ASSERT(off + size >= size, JS_ERR_RNG);
+  JS_ASSERT(off + size <= out_len, JS_ERR_RNG);
+
+  if (size > 0)
+    rng_generate(&rng->ctx, out + off, size);
+
+  return argv[1];
+}
+
+static napi_value
+bcrypto_rng_random(napi_env env, napi_callback_info info) {
+  napi_value argv[1];
+  size_t argc = 1;
+  uint32_t out;
+  bcrypto_rng_t *rng;
+  napi_value result;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 1);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&rng) == napi_ok);
+
+  JS_ASSERT(rng->started, JS_ERR_INIT);
+
+  out = rng_random(&rng->ctx);
+
+  CHECK(napi_create_uint32(env, out, &result) == napi_ok);
+
+  return result;
+}
+
+static napi_value
+bcrypto_rng_uniform(napi_env env, napi_callback_info info) {
+  napi_value argv[2];
+  size_t argc = 2;
+  uint32_t out, max;
+  bcrypto_rng_t *rng;
+  napi_value result;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 2);
+  CHECK(napi_get_value_external(env, argv[0], (void **)&rng) == napi_ok);
+  CHECK(napi_get_value_uint32(env, argv[1], &max) == napi_ok);
+
+  JS_ASSERT(rng->started, JS_ERR_INIT);
+
+  out = rng_uniform(&rng->ctx, max);
+
+  CHECK(napi_create_uint32(env, out, &result) == napi_ok);
+
+  return result;
+}
+
+/* For testing. */
+static napi_value
+bcrypto_getentropy(napi_env env, napi_callback_info info) {
+  napi_value argv[1];
+  size_t argc = 1;
+  uint8_t *out;
+  uint32_t out_len;
+  napi_value result;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 1);
+  CHECK(napi_get_value_uint32(env, argv[0], &out_len) == napi_ok);
+
+  JS_ASSERT(out_len <= MAX_BUFFER_LENGTH, JS_ERR_ALLOC);
+
+  JS_CHECK_ALLOC(napi_create_buffer(env, out_len, (void **)&out, &result));
+
+  memset(out, 0, out_len);
+
+  JS_ASSERT(torsion_getentropy(out, out_len), JS_ERR_RNG);
+
+  return result;
+}
+
+/*
  * RSA
  */
 
@@ -13020,6 +13164,14 @@ bcrypto_init(napi_env env, napi_value exports) {
     { "rc4_init", bcrypto_rc4_init },
     { "rc4_encrypt", bcrypto_rc4_encrypt },
     { "rc4_destroy", bcrypto_rc4_destroy },
+
+    /* RNG */
+    { "rng_create", bcrypto_rng_create },
+    { "rng_init", bcrypto_rng_init },
+    { "rng_generate", bcrypto_rng_generate },
+    { "rng_random", bcrypto_rng_random },
+    { "rng_uniform", bcrypto_rng_uniform },
+    { "getentropy", bcrypto_getentropy },
 
     /* RSA */
     { "rsa_privkey_generate", bcrypto_rsa_privkey_generate },

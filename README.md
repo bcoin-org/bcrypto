@@ -56,7 +56,7 @@ See the `./lib` directory for available modules and APIs.
 | pbkdf2                       | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
 | pgp                          | js                | js                | js                | js      |
 | poly1305                     | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
-| random                       | c (openssl)       | c (openssl)       | c (openssl)       | js      |
+| random                       | c (openssl²)      | c (openssl²)      | c (openssl²)      | js³     |
 | rc4                          | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
 | ripemd160                    | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
 | rsa                          | c (libtorsion)    | c (libtorsion)    | c (libtorsion)    | js      |
@@ -78,6 +78,7 @@ See the `./lib` directory for available modules and APIs.
 
 1. with x86-64 assembly
 2. optionally with libtorsion
+3. using the webcrypto api
 
 ## Contribution and License Agreement
 

@@ -9,14 +9,12 @@
 #include <string.h>
 #include "internal.h"
 
-#ifndef TORSION_NO_ASSERT
 void
 __torsion_assert_fail(const char *file, int line, const char *expr) {
   fprintf(stderr, "%s:%d: Assertion `%s' failed.\n", file, line, expr);
   fflush(stderr);
   abort();
 }
-#endif
 
 void
 torsion_die(const char *msg) {
