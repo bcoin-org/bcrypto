@@ -14,6 +14,7 @@
 #include <torsion/aead.h>
 #include <torsion/chacha20.h>
 #include <torsion/poly1305.h>
+#include <torsion/util.h>
 #include "bio.h"
 #include "internal.h"
 
@@ -21,7 +22,7 @@
  * Constants
  */
 
-static const unsigned char zero64[64] = {0};
+static const unsigned char zero32[32] = {0};
 
 /*
  * AEAD
@@ -32,16 +33,19 @@ aead_init(aead_t *aead,
           const unsigned char *key,
           const unsigned char *iv,
           size_t iv_len) {
-  unsigned char polykey[64];
+  unsigned char polykey[32];
 
   chacha20_init(&aead->chacha, key, 32, iv, iv_len, 0);
-  chacha20_encrypt(&aead->chacha, polykey, zero64, 64);
+  chacha20_encrypt(&aead->chacha, polykey, zero32, 32);
+  chacha20_pad(&aead->chacha);
 
   poly1305_init(&aead->poly, polykey);
 
   aead->mode = 0;
   aead->adlen = 0;
   aead->ctlen = 0;
+
+  cleanse(polykey, sizeof(polykey));
 }
 
 void
@@ -58,7 +62,7 @@ aead_pad16(aead_t *aead, uint64_t size) {
   uint64_t pos = size & 15;
 
   if (pos > 0)
-    poly1305_update(&aead->poly, zero64, 16 - pos);
+    poly1305_update(&aead->poly, zero32, 16 - pos);
 }
 
 void

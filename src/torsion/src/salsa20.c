@@ -325,6 +325,11 @@ salsa20_encrypt(salsa20_t *ctx,
 }
 
 void
+salsa20_pad(salsa20_t *ctx) {
+  ctx->pos = 0;
+}
+
+void
 salsa20_derive(unsigned char *out,
                const unsigned char *key,
                size_t key_len,

@@ -20,6 +20,7 @@ extern "C" {
 
 #define salsa20_init torsion_salsa20_init
 #define salsa20_encrypt torsion_salsa20_encrypt
+#define salsa20_pad torsion_salsa20_pad
 #define salsa20_derive torsion_salsa20_derive
 
 /*
@@ -52,6 +53,9 @@ salsa20_encrypt(salsa20_t *ctx,
                 unsigned char *out,
                 const unsigned char *data,
                 size_t len);
+
+void
+salsa20_pad(salsa20_t *ctx);
 
 void
 salsa20_derive(unsigned char *out,

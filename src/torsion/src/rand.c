@@ -36,16 +36,32 @@
 
 #include <sys/types.h>
 
-#ifndef _WIN32
+#ifdef _WIN32
+#  include <windows.h>
+#  include <sys/timeb.h>
+#  ifdef __BORLANDC__
+#    define _ftime ftime
+#    define _timeb timeb
+#  endif
+#else
 #  include <sys/stat.h>
-#  include <sys/time.h>
+#  ifdef __vxworks
+#    include <time.h>
+#  else
+#    include <sys/time.h>
+#  endif
 #endif
 
 #ifdef __linux__
 #  include <poll.h>
 #endif
 
+#ifdef __EMSCRIPTEN__
+#  include <emscripten.h>
+#endif
+
 #define HAVE_DEV_RANDOM
+#define HAVE_MANUAL_ENTROPY
 
 #if defined(__GNUC__) || defined(__clang__)
 #  define HAVE_INLINE_ASM
@@ -53,24 +69,17 @@
 
 #ifdef _WIN32
 /* https://docs.microsoft.com/en-us/windows/win32/api/ntsecapi/nf-ntsecapi-rtlgenrandom */
-#  include <windows.h>
-#  include <sys/timeb.h>
 #  define RtlGenRandom SystemFunction036
-#  ifdef __cplusplus
-extern "C"
-#  endif
 BOOLEAN NTAPI RtlGenRandom(PVOID RandomBuffer, ULONG RandomBufferLength);
 #  pragma comment(lib, "advapi32.lib")
-#  ifdef __BORLANDC__
-#    define _ftime ftime
-#    define _timeb timeb
-#  endif
+#  define HAVE_RTLGENRANDOM
+#  undef HAVE_DEV_RANDOM
 #endif
 
 #ifdef __linux__
 /* http://man7.org/linux/man-pages/man2/getrandom.2.html */
 #  include <sys/syscall.h>
-#  if defined(SYS_getrandom) && defined(__NR_getrandom)
+#  if defined(SYS_getrandom) && defined(__NR_getrandom) /* 3.17 (2014) */
 #    define getrandom(B, S, F) syscall(SYS_getrandom, (B), (int)(S), (F))
 #    define HAVE_GETRANDOM
 #  endif
@@ -78,21 +87,17 @@ BOOLEAN NTAPI RtlGenRandom(PVOID RandomBuffer, ULONG RandomBufferLength);
 
 #ifdef __APPLE__
 /* https://www.unix.com/man-page/mojave/2/getentropy/ */
-/* https://developer.apple.com/documentation/security/1399291-secrandomcopybytes?language=objc */
 #  include <Availability.h>
 #  include <TargetConditionals.h>
 #  if TARGET_OS_IPHONE
-#    if __IPHONE_OS_VERSION_MAX_ALLOWED >= 20000 /* 2.0 */
-#      include <Secure/SecRandom.h>
-#      define HAVE_SECRANDOM
-#    endif
-#  else
-#    if __MAC_OS_X_VERSION_MAX_ALLOWED >= 101200 /* 10.12 */
+#    if __IPHONE_OS_VERSION_MAX_ALLOWED >= 100000 /* 10.0 (2016) */
 #      include <sys/random.h>
 #      define HAVE_GETENTROPY
-#    elif __MAC_OS_X_VERSION_MAX_ALLOWED >= 1070 /* 10.7 */
-#      include <Secure/SecRandom.h>
-#      define HAVE_SECRANDOM
+#    endif
+#  else
+#    if __MAC_OS_X_VERSION_MAX_ALLOWED >= 101200 /* 10.12 (2016) */
+#      include <sys/random.h>
+#      define HAVE_GETENTROPY
 #    endif
 #  endif
 #endif
@@ -100,35 +105,73 @@ BOOLEAN NTAPI RtlGenRandom(PVOID RandomBuffer, ULONG RandomBufferLength);
 #ifdef __OpenBSD__
 /* https://man.openbsd.org/getentropy.2 */
 #  include <sys/param.h>
-#  if defined(OpenBSD) && OpenBSD >= 201411 /* 5.6 */
+#  if defined(OpenBSD) && OpenBSD >= 201411 /* 5.6 (2014) */
 #    define HAVE_GETENTROPY
 #  endif
 #endif
 
 #ifdef __FreeBSD__
 /* https://www.freebsd.org/cgi/man.cgi?query=getrandom&manpath=FreeBSD+12.0-stable */
+/* https://www.freebsd.org/cgi/man.cgi?query=getentropy&manpath=FreeBSD+12.0-stable */
 #  include <sys/param.h>
-#  if defined(__FreeBSD_version) && __FreeBSD_version >= 1200000 /* 12.0 */
+#  if defined(__FreeBSD_version) && __FreeBSD_version >= 1200000 /* 12.0 (2018) */
+#    include <sys/random.h>
+#    define HAVE_GETRANDOM
+#    define HAVE_GETENTROPY
+#  endif
+#endif
+
+#ifdef __NetBSD__
+/* No entropy sources here besides /dev/{u,}random. */
+#  include <sys/param.h>
+#endif
+
+#ifdef __DragonFly__
+/* https://www.dragonflybsd.org/release58/ */
+/* https://github.com/DragonFlyBSD/DragonFlyBSD/blob/3af8070/sys/sys/random.h */
+#  include <sys/param.h>
+#  if defined(__DragonFly_version) && __DragonFly_version >= 500800 /* 5.8 (2020) */
 #    include <sys/random.h>
 #    define HAVE_GETRANDOM
 #  endif
 #endif
 
-#if defined(__OpenBSD__) || defined(__FreeBSD__) || defined(__NetBSD__)
+#if defined(__OpenBSD__) || defined(__FreeBSD__) \
+ || (defined(__NetBSD__) && defined(__NetBSD_Version__) && __NetBSD_Version__ >= 400000000)
 /* https://github.com/openbsd/src/blob/2981a53/sys/sys/sysctl.h#L140 */
 /* https://www.freebsd.org/cgi/man.cgi?sysctl(3) */
 /* https://netbsd.gw.com/cgi-bin/man-cgi?sysctl+7+NetBSD-8.0 */
+/* Note that ARND was an alias to URND prior to NetBSD 4.0 (2007). */
+/* See: https://github.com/openssl/openssl/blob/ddec332/crypto/rand/rand_unix.c#L244 */
 #  include <sys/sysctl.h>
 #  if defined(CTL_KERN) && defined(KERN_ARND)
 #    define HAVE_SYSCTL_ARND
 #  endif
 #endif
 
-#if defined(__sun) && defined(__SVR4) /* 11.3 */
+#if defined(__sun) && defined(__SVR4) /* 11.3 (2015) */
 /* https://docs.oracle.com/cd/E88353_01/html/E37841/getrandom-2.html */
-/* FIXME: Seemingly no way to detect OS version here. */
-#  include <sys/random.h>
-#  define HAVE_GETRANDOM
+/* Note that Solaris 11 == SunOS 5.11. */
+#  if defined(__SUNPRO_C) || defined(__SUNPRO_CC)
+#    if defined(__SunOS_5_11) || (defined(__SunOS_RELEASE) && __SunOS_RELEASE >= 0x051103)
+#      include <sys/random.h>
+#      define HAVE_GETRANDOM
+#    endif
+#  else
+/* No way to verify the version without Sun Studio. */
+#    include <sys/random.h>
+#    define HAVE_GETRANDOM
+#  endif
+#endif
+
+#ifdef __vxworks
+/* https://docs.windriver.com/bundle/vxworks_7_application_core_os_sr0630-enus/page/CORE/randomNumGenLib.html */
+#  include <version.h>
+#  if defined(_WRS_VXWORKS_MAJOR) && _WRS_VXWORKS_MAJOR >= 7 /* 7 (2016) */
+#    include <randomNumGen.h>
+#    include <taskLib.h>
+#    define HAVE_RANDBYTES
+#  endif
 #endif
 
 #ifdef __Fuchsia__
@@ -137,13 +180,20 @@ BOOLEAN NTAPI RtlGenRandom(PVOID RandomBuffer, ULONG RandomBufferLength);
 #  define HAVE_CPRNG_DRAW
 #endif
 
-#if defined(__OpenBSD__) || defined(__CloudABI__) || defined(__wasi__)
-/* https://man.openbsd.org/arc4random */
-#  define HAVE_SAFE_ARC4RANDOM
+#ifdef __CloudABI__
+/* https://nuxi.nl/cloudabi/#random_get */
+/* https://github.com/NuxiNL/cloudabi/blob/d283c05/headers/cloudabi_syscalls.h#L193 */
+/* https://github.com/NuxiNL/cloudabi/blob/d283c05/headers/cloudabi_types_common.h#L89 */
+uint16_t cloudabi_sys_random_get(void *buf, size_t buf_len);
+#  define HAVE_SYS_RANDOM_GET
 #endif
 
-#if defined(_WIN32) || defined(__CloudABI__) || defined(__wasm__)
-#  undef HAVE_DEV_RANDOM
+#ifdef __wasi__
+/* https://github.com/WebAssembly/WASI/blob/5d10b2c/design/WASI-core.md#random_get */
+/* https://github.com/WebAssembly/WASI/blob/2627acd/phases/snapshot/witx/typenames.witx#L34 */
+/* https://github.com/WebAssembly/WASI/blob/2627acd/phases/snapshot/witx/wasi_snapshot_preview1.witx#L481 */
+uint16_t __wasi_random_get(void *buf, size_t buf_len);
+#  define HAVE_WASI_RANDOM_GET
 #endif
 
 #ifdef __EMSCRIPTEN__
@@ -160,18 +210,18 @@ EM_JS(int, js_getrandom, (void *ptr, size_t len), {
       crypto = self.crypto || self.msCrypto;
 
     if (crypto) {
-      var left = 65536;
+      var max = 65536;
 
       while (len > 0) {
-        if (left > len)
-          left = len;
+        if (max > len)
+          max = len;
 
-        var buf = HEAP8.subarray(ptr, ptr + left);
+        var buf = HEAP8.subarray(ptr, ptr + max);
 
         crypto.getRandomValues(buf);
 
-        ptr += left;
-        len -= left;
+        ptr += max;
+        len -= max;
       }
     } else {
       var buf = require('buffer').Buffer.from(HEAP8.buffer, ptr, len);
@@ -185,6 +235,18 @@ EM_JS(int, js_getrandom, (void *ptr, size_t len), {
   }
 });
 #  define HAVE_JS_GETRANDOM
+#endif
+
+#if defined(__CloudABI__) || defined(__wasm__) || defined(__asmjs__)
+#  undef HAVE_DEV_RANDOM
+#  undef HAVE_MANUAL_ENTROPY
+#  undef HAVE_INLINE_ASM
+#  undef HAVE_RTLGENRANDOM
+#  undef HAVE_GETRANDOM
+#  undef HAVE_GETENTROPY
+#  undef HAVE_SYSCTL_ARND
+#  undef HAVE_RANDBYTES
+#  undef HAVE_CPRNG_DRAW
 #endif
 
 #ifdef HAVE_INLINE_ASM
@@ -216,7 +278,8 @@ EM_JS(int, js_getrandom, (void *ptr, size_t len), {
 #endif
 
 #if defined(__APPLE__) || defined(__OpenBSD__) \
- || defined(__FreeBSD__) || defined(__NetBSD__)
+ || defined(__FreeBSD__) || defined(__NetBSD__) \
+ || defined(__DragonFly__)
 #  include <sys/sysctl.h>
 #  define HAVE_SYSCTL
 #endif
@@ -266,14 +329,14 @@ device_open(const char *device) {
     }
 
     /* Ensure this is a character device. */
-    if (!S_ISNAM(st.st_mode) && !S_ISCHR(st.st_mode)) {
+    if (!S_ISCHR(st.st_mode) && !S_ISNAM(st.st_mode)) {
       close(fd);
       return -1;
     }
 
 #if defined(F_SETFD) && defined(FD_CLOEXEC)
     /* Close on exec(). */
-    (void)fcntl(fd, F_SETFD, fcntl(fd, F_GETFD) | FD_CLOEXEC);
+    fcntl(fd, F_SETFD, fcntl(fd, F_GETFD) | FD_CLOEXEC);
 #endif
 
     return fd;
@@ -345,6 +408,7 @@ poll_dev_random(void) {
 #endif /* __linux__ */
 #endif /* HAVE_DEV_RANDOM */
 
+#ifdef HAVE_MANUAL_ENTROPY
 static uint64_t
 torsion_hrtime(void) {
 #if defined(_WIN32)
@@ -371,6 +435,25 @@ torsion_hrtime(void) {
   return (uint64_t)tv.tv_sec * 1000000 + (uint64_t)tv.tv_usec;
 #endif
 }
+#endif /* HAVE_MANUAL_ENTROPY */
+
+#ifdef HAVE_CPUID
+static void
+torsion_cpuid(uint32_t level,
+              uint32_t count,
+              uint32_t *a,
+              uint32_t *b,
+              uint32_t *c,
+              uint32_t *d) {
+#ifdef __GNUC__
+  __cpuid_count(level, count, *a, *b, *c, *d);
+#else
+  __asm__ ("cpuid\n"
+           : "=a" (*a), "=b" (*b), "=c" (*c), "=d" (*d)
+           : "0" (level), "2" (count));
+#endif
+}
+#endif /* HAVE_CPUID */
 
 /*
  * Syscall Entropy
@@ -378,19 +461,19 @@ torsion_hrtime(void) {
 
 static int
 torsion_syscall_entropy(void *dst, size_t size) {
-#if defined(_WIN32)
+#if defined(HAVE_RTLGENRANDOM)
   return !!RtlGenRandom((PVOID)dst, (ULONG)size);
 #elif defined(HAVE_GETRANDOM)
   unsigned char *data = (unsigned char *)dst;
-  size_t left = 256;
+  size_t max = 256;
   ssize_t nread;
 
   while (size > 0) {
-    if (left > size)
-      left = size;
+    if (max > size)
+      max = size;
 
     for (;;) {
-      nread = getrandom(data, left, 0);
+      nread = getrandom(data, max, 0);
 
       if (nread < 0) {
         if (errno == EINTR || errno == EAGAIN)
@@ -410,11 +493,9 @@ torsion_syscall_entropy(void *dst, size_t size) {
   }
 
   return 1;
-#elif defined(HAVE_SECRANDOM)
-  return SecRandomCopyBytes(kSecRandomDefault, size, dst) == 0;
 #elif defined(HAVE_GETENTROPY)
   unsigned char *data = (unsigned char *)dst;
-  size_t left = 256;
+  size_t max = 256;
 
   /* NULL on older iOS versions. */
   /* See: https://github.com/jedisct1/libsodium/commit/d54f072 */
@@ -422,28 +503,36 @@ torsion_syscall_entropy(void *dst, size_t size) {
     return 0
 
   while (size > 0) {
-    if (left > size)
-      left = size;
+    if (max > size)
+      max = size;
 
-    if (getentropy(data, left) != 0)
+    if (getentropy(data, max) != 0)
       return 0;
 
-    data += left;
-    size -= left;
+    data += max;
+    size -= max;
   }
 
   return 1;
 #elif defined(HAVE_SYSCTL_ARND)
   static int name[2] = {CTL_KERN, KERN_ARND};
   unsigned char *data = (unsigned char *)dst;
-  size_t left = 256;
+  size_t max = 256;
   size_t nread;
 
-  while (size > 0) {
-    if (left > size)
-      left = size;
+  /* Older FreeBSD versions returned longs.
+     Error if we're not properly aligned. */
+#ifdef __FreeBSD__
+  /* See: https://github.com/openssl/openssl/blob/ddec332/crypto/rand/rand_unix.c#L231 */
+  if ((size % sizeof(long)) != 0)
+    return 0;
+#endif
 
-    nread = left;
+  while (size > 0) {
+    if (max > size)
+      max = size;
+
+    nread = max;
 
     if (sysctl(name, 2, data, &nread, NULL, 0) != 0)
       return 0;
@@ -455,12 +544,30 @@ torsion_syscall_entropy(void *dst, size_t size) {
   }
 
   return 1;
+#elif defined(HAVE_RANDBYTES)
+  size_t i;
+
+  for (i = 0; i < 10; i++) {
+    RANDOM_NUM_GEN_STATUS status = randStatus();
+
+    if (status != RANDOM_NUM_GEN_ENOUGH_ENTROPY
+        && status != RANDOM_NUM_GEN_MAX_ENTROPY) {
+      taskDelay(5);
+      continue;
+    }
+
+    if (randBytes(dst, size) == OK)
+      return 1;
+  }
+
+  return 0;
 #elif defined(HAVE_CPRNG_DRAW)
   zx_cprng_draw(dst, size);
   return 1;
-#elif !defined(HAVE_DEV_RANDOM) && defined(HAVE_SAFE_ARC4RANDOM)
-  arc4random_buf(dst, size);
-  return 1;
+#elif defined(HAVE_SYS_RANDOM_GET)
+  return cloudabi_sys_random_get(dst, size) == 0;
+#elif defined(HAVE_WASI_RANDOM_GET)
+  return __wasi_random_get(dst, size) == 0;
 #elif defined(HAVE_JS_GETRANDOM)
   return js_getrandom(dst, size);
 #else
@@ -525,22 +632,6 @@ torsion_device_entropy(void *dst, size_t size) {
  */
 
 #ifdef HAVE_CPUID
-static void
-torsion_cpuid(uint32_t level,
-              uint32_t count,
-              uint32_t *a,
-              uint32_t *b,
-              uint32_t *c,
-              uint32_t *d) {
-#ifdef __GNUC__
-  __cpuid_count(level, count, *a, *b, *c, *d);
-#else
-  __asm__ ("cpuid\n"
-           : "=a" (*a), "=b" (*b), "=c" (*c), "=d" (*d)
-           : "0" (level), "2" (count));
-#endif
-}
-
 static int
 torsion_has_rdrand(void) {
   uint32_t eax, ebx, ecx, edx;
@@ -676,24 +767,20 @@ torsion_rdseed(void) {
 
 static int
 torsion_hardware_entropy(void *dst, size_t size) {
-#if defined(TORSION_HARDWARE_FALLBACK) && defined(HAVE_CPUID)
+#ifdef HAVE_CPUID
   unsigned char *data = (unsigned char *)dst;
   int has_rdrand = torsion_has_rdrand();
   int has_rdseed = torsion_has_rdseed();
   uint64_t x;
-  size_t i;
 
   if (!has_rdrand && !has_rdseed)
     return 0;
 
   while (size > 0) {
-    if (has_rdseed) {
+    if (has_rdseed)
       x = torsion_rdseed();
-    } else {
-      x = 0;
-      for (i = 0; i < 1024; i++)
-        x ^= torsion_rdrand();
-    }
+    else
+      x = torsion_rdrand();
 
     if (size < 8) {
       memcpy(data, &x, size);
@@ -729,51 +816,52 @@ torsion_getentropy(void *dst, size_t size) {
 }
 
 /*
- * Hashing
+ * Manual Entropy Gathering
  */
 
+#ifdef HAVE_MANUAL_ENTROPY
 static void
-sha256_write(sha256_t *hash, const void *data, size_t size) {
-  sha256_update(hash, data, size);
+sha512_write(sha512_t *hash, const void *data, size_t size) {
+  sha512_update(hash, data, size);
 }
 
 static void
-sha256_write_data(sha256_t *hash, const void *data, size_t size) {
-  sha256_write(hash, &size, sizeof(size));
-  sha256_write(hash, data, size);
+sha512_write_data(sha512_t *hash, const void *data, size_t size) {
+  sha512_write(hash, &size, sizeof(size));
+  sha512_write(hash, data, size);
 }
 
 static void
-sha256_write_string(sha256_t *hash, const char *str) {
-  sha256_write_data(hash, str, strlen(str));
+sha512_write_string(sha512_t *hash, const char *str) {
+  sha512_write_data(hash, str, strlen(str));
 }
 
 static void
-sha256_write_int(sha256_t *hash, uint64_t num) {
-  sha256_write(hash, &num, sizeof(num));
+sha512_write_int(sha512_t *hash, uint64_t num) {
+  sha512_write(hash, &num, sizeof(num));
 }
 
 static void
-sha256_write_ptr(sha256_t *hash, const void *ptr) {
+sha512_write_ptr(sha512_t *hash, const void *ptr) {
   uintptr_t uptr = (uintptr_t)ptr;
 
-  sha256_write(hash, &uptr, sizeof(uptr));
+  sha512_write(hash, &uptr, sizeof(uptr));
 }
 
 static void
-sha256_write_stat(sha256_t *hash, const char *file) {
+sha512_write_stat(sha512_t *hash, const char *file) {
   struct stat st;
 
   memset(&st, 0, sizeof(st));
 
   if (stat(file, &st) == 0) {
-    sha256_write_string(hash, file);
-    sha256_write(hash, &st, sizeof(st));
+    sha512_write_string(hash, file);
+    sha512_write(hash, &st, sizeof(st));
   }
 }
 
 static void
-sha256_write_file(sha256_t *hash, const char *file) {
+sha512_write_file(sha512_t *hash, const char *file) {
   unsigned char buf[4096];
   struct stat st;
   int fd, nread;
@@ -787,8 +875,8 @@ sha256_write_file(sha256_t *hash, const char *file) {
   memset(&st, 0, sizeof(st));
 
   if (fstat(fd, &st) == 0) {
-    sha256_write_string(hash, file);
-    sha256_write(hash, &st, sizeof(st));
+    sha512_write_string(hash, file);
+    sha512_write(hash, &st, sizeof(st));
   }
 
   total = 0;
@@ -799,7 +887,7 @@ sha256_write_file(sha256_t *hash, const char *file) {
     if (nread <= 0)
       break;
 
-    sha256_write(hash, buf, nread);
+    sha512_write(hash, buf, nread);
 
     total += nread;
   } while ((size_t)nread == sizeof(buf) && total < 1048576);
@@ -809,50 +897,50 @@ sha256_write_file(sha256_t *hash, const char *file) {
 
 #ifdef HAVE_SYSCTL
 void
-sha256_write_sysctl(sha256_t *hash, int c0, int c1) {
+sha512_write_sysctl(sha512_t *hash, int c0, int c1) {
   unsigned char buf[65536];
-  size_t size = 65536;
-  int ctl[2];
+  size_t size = sizeof(buf);
+  int name[2];
   int ret;
 
-  ctl[0] = c0;
-  ctl[1] = c1;
+  name[0] = c0;
+  name[1] = c1;
 
-  ret = sysctl(ctl, 2, buf, &size, NULL, 0);
+  ret = sysctl(name, 2, buf, &size, NULL, 0);
 
   if (ret == 0 || (ret == -1 && errno == ENOMEM)) {
-    sha256_write_data(hash, ctl, sizeof(ctl));
+    sha512_write_data(hash, name, sizeof(name));
 
     if (size > sizeof(buf))
       size = sizeof(buf);
 
-    sha256_write_data(hash, buf, size);
+    sha512_write_data(hash, buf, size);
   }
 }
-#endif
+#endif /* HAVE_SYSCTL */
 
 #ifdef HAVE_CPUID
 static void
-sha256_write_cpuid(sha256_t *hash, uint32_t leaf, uint32_t subleaf,
+sha512_write_cpuid(sha512_t *hash, uint32_t leaf, uint32_t subleaf,
                    uint32_t *ax, uint32_t *bx, uint32_t *cx, uint32_t *dx) {
   torsion_cpuid(leaf, subleaf, ax, bx, cx, dx);
 
-  sha256_write_int(hash, leaf);
-  sha256_write_int(hash, subleaf);
-  sha256_write_int(hash, *ax);
-  sha256_write_int(hash, *bx);
-  sha256_write_int(hash, *cx);
-  sha256_write_int(hash, *dx);
+  sha512_write_int(hash, leaf);
+  sha512_write_int(hash, subleaf);
+  sha512_write_int(hash, *ax);
+  sha512_write_int(hash, *bx);
+  sha512_write_int(hash, *cx);
+  sha512_write_int(hash, *dx);
 }
 
 static void
-sha256_write_cpuids(sha256_t *hash) {
+sha512_write_cpuids(sha512_t *hash) {
   uint32_t max, leaf, maxsub, subleaf, maxext;
   uint32_t ax, bx, cx, dx;
 
   /* Iterate over all standard leaves. */
   /* Returns max leaf in ax. */
-  sha256_write_cpuid(hash, 0, 0, &ax, &bx, &cx, &dx);
+  sha512_write_cpuid(hash, 0, 0, &ax, &bx, &cx, &dx);
 
   max = ax;
 
@@ -860,7 +948,7 @@ sha256_write_cpuids(sha256_t *hash) {
     maxsub = 0;
 
     for (subleaf = 0; subleaf <= 0xff; subleaf++) {
-      sha256_write_cpuid(hash, leaf, subleaf, &ax, &bx, &cx, &dx);
+      sha512_write_cpuid(hash, leaf, subleaf, &ax, &bx, &cx, &dx);
 
       /* Iterate subleafs for leaf values 4, 7, 11, 13. */
       if (leaf == 4) {
@@ -887,18 +975,18 @@ sha256_write_cpuids(sha256_t *hash) {
 
   /* Iterate over all extended leaves. */
   /* Returns max extended leaf in ax. */
-  sha256_write_cpuid(hash, 0x80000000, 0, &ax, &bx, &cx, &dx);
+  sha512_write_cpuid(hash, 0x80000000, 0, &ax, &bx, &cx, &dx);
 
   maxext = ax;
 
   for (leaf = 0x80000001; leaf <= maxext && leaf <= 0x800000ff; leaf++)
-    sha256_write_cpuid(hash, leaf, 0, &ax, &bx, &cx, &dx);
+    sha512_write_cpuid(hash, leaf, 0, &ax, &bx, &cx, &dx);
 }
-#endif
+#endif /* HAVE_CPUID */
 
 #ifdef _WIN32
 static void
-sha256_write_perfdata(sha256_t *hash) {
+sha512_write_perfdata(sha512_t *hash) {
   static const size_t max = 10000000;
   unsigned char *data = malloc(250000);
   unsigned long nread = 0;
@@ -937,40 +1025,40 @@ sha256_write_perfdata(sha256_t *hash) {
   RegCloseKey(HKEY_PERFORMANCE_DATA);
 
   if (ret == ERROR_SUCCESS) {
-    sha256_write_data(hash, data, size);
+    sha512_write_data(hash, data, size);
     cleanse(data, size);
   }
 
   if (data)
     free(data);
 }
-#endif
+#endif /* _WIN32 */
 
 static void
-sha256_write_static_env(sha256_t *hash) {
-  /* Some compile-time static properties */
-  sha256_write_int(hash, CHAR_MIN < 0);
-  sha256_write_int(hash, sizeof(void *));
-  sha256_write_int(hash, sizeof(long));
-  sha256_write_int(hash, sizeof(int));
+sha512_write_static_env(sha512_t *hash) {
+  /* Some compile-time static properties. */
+  sha512_write_int(hash, CHAR_MIN < 0);
+  sha512_write_int(hash, sizeof(void *));
+  sha512_write_int(hash, sizeof(long));
+  sha512_write_int(hash, sizeof(int));
 
 #if defined(__GNUC__) && defined(__GNUC_MINOR__) && defined(__GNUC_PATCHLEVEL__)
-  sha256_write_int(hash, __GNUC__);
-  sha256_write_int(hash, __GNUC_MINOR__);
-  sha256_write_int(hash, __GNUC_PATCHLEVEL__);
+  sha512_write_int(hash, __GNUC__);
+  sha512_write_int(hash, __GNUC_MINOR__);
+  sha512_write_int(hash, __GNUC_PATCHLEVEL__);
 #endif
 
 #ifdef _MSC_VER
-  sha256_write_int(hash, _MSC_VER);
+  sha512_write_int(hash, _MSC_VER);
 #endif
 
 #ifdef __linux__
   /* Information available through getauxval(). */
 #ifdef AT_HWCAP
-  sha256_write_int(hash, getauxval(AT_HWCAP));
+  sha512_write_int(hash, getauxval(AT_HWCAP));
 #endif
 #ifdef AT_HWCAP2
-  sha256_write_int(hash, getauxval(AT_HWCAP2));
+  sha512_write_int(hash, getauxval(AT_HWCAP2));
 #endif
 #ifdef AT_RANDOM
   {
@@ -978,7 +1066,7 @@ sha256_write_static_env(sha256_t *hash) {
       (const unsigned char *)getauxval(AT_RANDOM);
 
     if (random_aux)
-      sha256_write(hash, random_aux, 16);
+      sha512_write(hash, random_aux, 16);
   }
 #endif
 #ifdef AT_PLATFORM
@@ -986,7 +1074,7 @@ sha256_write_static_env(sha256_t *hash) {
     const char *platform_str = (const char *)getauxval(AT_PLATFORM);
 
     if (platform_str)
-      sha256_write_string(hash, platform_str);
+      sha512_write_string(hash, platform_str);
   }
 #endif
 #ifdef AT_EXECFN
@@ -994,20 +1082,20 @@ sha256_write_static_env(sha256_t *hash) {
     const char *exec_str = (const char *)getauxval(AT_EXECFN);
 
     if (exec_str)
-      sha256_write_string(hash, exec_str);
+      sha512_write_string(hash, exec_str);
   }
 #endif
 #endif /* __linux__ */
 
 #ifdef HAVE_CPUID
-  sha256_write_cpuids(hash);
+  sha512_write_cpuids(hash);
 #endif
 
   /* Memory locations. */
-  sha256_write_ptr(hash, hash);
-  sha256_write_ptr(hash, &errno);
+  sha512_write_ptr(hash, hash);
+  sha512_write_ptr(hash, &errno);
 #ifndef environ
-  sha256_write_ptr(hash, &environ);
+  sha512_write_ptr(hash, &environ);
 #endif
 
   /* Hostname. */
@@ -1017,7 +1105,7 @@ sha256_write_static_env(sha256_t *hash) {
     memset(hname, 0, sizeof(hname));
 
     if (gethostname(hname, sizeof(hname) - 1) == 0)
-      sha256_write_string(hash, hname);
+      sha512_write_string(hash, hname);
   }
 
 #ifndef _WIN32
@@ -1026,103 +1114,103 @@ sha256_write_static_env(sha256_t *hash) {
     struct utsname name;
 
     if (uname(&name) != -1) {
-      sha256_write_string(hash, name.sysname);
-      sha256_write_string(hash, name.nodename);
-      sha256_write_string(hash, name.release);
-      sha256_write_string(hash, name.version);
-      sha256_write_string(hash, name.machine);
+      sha512_write_string(hash, name.sysname);
+      sha512_write_string(hash, name.nodename);
+      sha512_write_string(hash, name.release);
+      sha512_write_string(hash, name.version);
+      sha512_write_string(hash, name.machine);
     }
   }
 
   /* Path and filesystem provided data. */
-  sha256_write_stat(hash, "/");
-  sha256_write_stat(hash, ".");
-  sha256_write_stat(hash, "/tmp");
-  sha256_write_stat(hash, "/home");
-  sha256_write_stat(hash, "/proc");
+  sha512_write_stat(hash, "/");
+  sha512_write_stat(hash, ".");
+  sha512_write_stat(hash, "/tmp");
+  sha512_write_stat(hash, "/home");
+  sha512_write_stat(hash, "/proc");
 #ifdef __linux__
-  sha256_write_file(hash, "/proc/cmdline");
-  sha256_write_file(hash, "/proc/cpuinfo");
-  sha256_write_file(hash, "/proc/version");
+  sha512_write_file(hash, "/proc/cmdline");
+  sha512_write_file(hash, "/proc/cpuinfo");
+  sha512_write_file(hash, "/proc/version");
 #endif /* __linux__ */
-  sha256_write_file(hash, "/etc/passwd");
-  sha256_write_file(hash, "/etc/group");
-  sha256_write_file(hash, "/etc/hosts");
-  sha256_write_file(hash, "/etc/resolv.conf");
-  sha256_write_file(hash, "/etc/timezone");
-  sha256_write_file(hash, "/etc/localtime");
+  sha512_write_file(hash, "/etc/passwd");
+  sha512_write_file(hash, "/etc/group");
+  sha512_write_file(hash, "/etc/hosts");
+  sha512_write_file(hash, "/etc/resolv.conf");
+  sha512_write_file(hash, "/etc/timezone");
+  sha512_write_file(hash, "/etc/localtime");
 #endif /* !_WIN32 */
 
 #ifdef HAVE_SYSCTL
 #ifdef CTL_HW
 #ifdef HW_MACHINE
-  sha256_write_sysctl(hash, CTL_HW, HW_MACHINE);
+  sha512_write_sysctl(hash, CTL_HW, HW_MACHINE);
 #endif
 #ifdef HW_MODEL
-  sha256_write_sysctl(hash, CTL_HW, HW_MODEL);
+  sha512_write_sysctl(hash, CTL_HW, HW_MODEL);
 #endif
 #ifdef HW_NCPU
-  sha256_write_sysctl(hash, CTL_HW, HW_NCPU);
+  sha512_write_sysctl(hash, CTL_HW, HW_NCPU);
 #endif
 #ifdef HW_PHYSMEM
-  sha256_write_sysctl(hash, CTL_HW, HW_PHYSMEM);
+  sha512_write_sysctl(hash, CTL_HW, HW_PHYSMEM);
 #endif
 #ifdef HW_USERMEM
-  sha256_write_sysctl(hash, CTL_HW, HW_USERMEM);
+  sha512_write_sysctl(hash, CTL_HW, HW_USERMEM);
 #endif
 #ifdef HW_MACHINE_ARCH
-  sha256_write_sysctl(hash, CTL_HW, HW_MACHINE_ARCH);
+  sha512_write_sysctl(hash, CTL_HW, HW_MACHINE_ARCH);
 #endif
 #ifdef HW_REALMEM
-  sha256_write_sysctl(hash, CTL_HW, HW_REALMEM);
+  sha512_write_sysctl(hash, CTL_HW, HW_REALMEM);
 #endif
 #ifdef HW_CPU_FREQ
-  sha256_write_sysctl(hash, CTL_HW, HW_CPU_FREQ);
+  sha512_write_sysctl(hash, CTL_HW, HW_CPU_FREQ);
 #endif
 #ifdef HW_BUS_FREQ
-  sha256_write_sysctl(hash, CTL_HW, HW_BUS_FREQ);
+  sha512_write_sysctl(hash, CTL_HW, HW_BUS_FREQ);
 #endif
 #ifdef HW_CACHELINE
-  sha256_write_sysctl(hash, CTL_HW, HW_CACHELINE);
+  sha512_write_sysctl(hash, CTL_HW, HW_CACHELINE);
 #endif
 #endif
 
 #ifdef CTL_KERN
 #ifdef KERN_BOOTFILE
-  sha256_write_sysctl(hash, CTL_KERN, KERN_BOOTFILE);
+  sha512_write_sysctl(hash, CTL_KERN, KERN_BOOTFILE);
 #endif
 #ifdef KERN_BOOTTIME
-  sha256_write_sysctl(hash, CTL_KERN, KERN_BOOTTIME);
+  sha512_write_sysctl(hash, CTL_KERN, KERN_BOOTTIME);
 #endif
 #ifdef KERN_CLOCKRATE
-  sha256_write_sysctl(hash, CTL_KERN, KERN_CLOCKRATE);
+  sha512_write_sysctl(hash, CTL_KERN, KERN_CLOCKRATE);
 #endif
 #ifdef KERN_HOSTID
-  sha256_write_sysctl(hash, CTL_KERN, KERN_HOSTID);
+  sha512_write_sysctl(hash, CTL_KERN, KERN_HOSTID);
 #endif
 #ifdef KERN_HOSTUUID
-  sha256_write_sysctl(hash, CTL_KERN, KERN_HOSTUUID);
+  sha512_write_sysctl(hash, CTL_KERN, KERN_HOSTUUID);
 #endif
 #ifdef KERN_HOSTNAME
-  sha256_write_sysctl(hash, CTL_KERN, KERN_HOSTNAME);
+  sha512_write_sysctl(hash, CTL_KERN, KERN_HOSTNAME);
 #endif
 #ifdef KERN_OSRELDATE
-  sha256_write_sysctl(hash, CTL_KERN, KERN_OSRELDATE);
+  sha512_write_sysctl(hash, CTL_KERN, KERN_OSRELDATE);
 #endif
 #ifdef KERN_OSRELEASE
-  sha256_write_sysctl(hash, CTL_KERN, KERN_OSRELEASE);
+  sha512_write_sysctl(hash, CTL_KERN, KERN_OSRELEASE);
 #endif
 #ifdef KERN_OSREV
-  sha256_write_sysctl(hash, CTL_KERN, KERN_OSREV);
+  sha512_write_sysctl(hash, CTL_KERN, KERN_OSREV);
 #endif
 #ifdef KERN_OSTYPE
-  sha256_write_sysctl(hash, CTL_KERN, KERN_OSTYPE);
+  sha512_write_sysctl(hash, CTL_KERN, KERN_OSTYPE);
 #endif
 #ifdef KERN_POSIX1
-  sha256_write_sysctl(hash, CTL_KERN, KERN_OSREV);
+  sha512_write_sysctl(hash, CTL_KERN, KERN_OSREV);
 #endif
 #ifdef KERN_VERSION
-  sha256_write_sysctl(hash, CTL_KERN, KERN_VERSION);
+  sha512_write_sysctl(hash, CTL_KERN, KERN_VERSION);
 #endif
 #endif
 #endif
@@ -1131,45 +1219,46 @@ sha256_write_static_env(sha256_t *hash) {
   if (environ) {
     size_t i;
     for (i = 0; environ[i] != NULL; i++)
-      sha256_write_string(hash, environ[i]);
+      sha512_write_string(hash, environ[i]);
   }
 
 #ifdef _WIN32
-  sha256_write_int(hash, GetCurrentProcessId());
-  sha256_write_int(hash, GetCurrentThreadId());
+  sha512_write_int(hash, GetCurrentProcessId());
+  sha512_write_int(hash, GetCurrentThreadId());
 #else /* _WIN32 */
-  sha256_write_int(hash, getpid());
-  sha256_write_int(hash, getppid());
-  sha256_write_int(hash, getsid(0));
-  sha256_write_int(hash, getpgid(0));
-  sha256_write_int(hash, getuid());
-  sha256_write_int(hash, geteuid());
-  sha256_write_int(hash, getgid());
-  sha256_write_int(hash, getegid());
+  sha512_write_int(hash, getpid());
+  sha512_write_int(hash, getppid());
+  sha512_write_int(hash, getsid(0));
+  sha512_write_int(hash, getpgid(0));
+  sha512_write_int(hash, getuid());
+  sha512_write_int(hash, geteuid());
+  sha512_write_int(hash, getgid());
+  sha512_write_int(hash, getegid());
 #endif /* _WIN32 */
 }
 
 static void
-sha256_write_dynamic_env(sha256_t *hash) {
+sha512_write_dynamic_env(sha512_t *hash) {
 #ifdef _WIN32
-  sha256_write_perfdata(hash);
+  sha512_write_perfdata(hash);
 
   {
     FILETIME ftime;
 
+    memset(&ftime, 0, sizeof(ftime));
+
     GetSystemTimeAsFileTime(&ftime);
 
-    sha256_write_int(hash, ftime);
+    sha512_write(hash, &ftime, sizeof(ftime));
   }
-#else
+#else /* _WIN32 */
   {
     struct timeval tv;
 
     memset(&tv, 0, sizeof(tv));
 
-    gettimeofday(&tv, NULL);
-
-    sha256_write(hash, &tv, sizeof(tv));
+    if (gettimeofday(&tv, NULL) == 0)
+      sha512_write(hash, &tv, sizeof(tv));
   }
 
   /* Current resource usage. */
@@ -1179,37 +1268,37 @@ sha256_write_dynamic_env(sha256_t *hash) {
     memset(&usage, 0, sizeof(usage));
 
     if (getrusage(RUSAGE_SELF, &usage) == 0)
-      sha256_write(hash, &usage, sizeof(usage));
+      sha512_write(hash, &usage, sizeof(usage));
   }
-#endif
+#endif /* _WIN32 */
 
 #ifdef __linux__
-  sha256_write_file(hash, "/proc/diskstats");
-  sha256_write_file(hash, "/proc/vmstat");
-  sha256_write_file(hash, "/proc/schedstat");
-  sha256_write_file(hash, "/proc/zoneinfo");
-  sha256_write_file(hash, "/proc/meminfo");
-  sha256_write_file(hash, "/proc/softirqs");
-  sha256_write_file(hash, "/proc/stat");
-  sha256_write_file(hash, "/proc/self/schedstat");
-  sha256_write_file(hash, "/proc/self/status");
+  sha512_write_file(hash, "/proc/diskstats");
+  sha512_write_file(hash, "/proc/vmstat");
+  sha512_write_file(hash, "/proc/schedstat");
+  sha512_write_file(hash, "/proc/zoneinfo");
+  sha512_write_file(hash, "/proc/meminfo");
+  sha512_write_file(hash, "/proc/softirqs");
+  sha512_write_file(hash, "/proc/stat");
+  sha512_write_file(hash, "/proc/self/schedstat");
+  sha512_write_file(hash, "/proc/self/status");
 #endif
 
 #ifdef HAVE_SYSCTL
 #ifdef CTL_HW
 #ifdef HW_DISKSTATS
-  sha256_write_sysctl(hash, CTL_HW, HW_DISKSTATS);
+  sha512_write_sysctl(hash, CTL_HW, HW_DISKSTATS);
 #endif
 #endif
 #ifdef CTL_VM
 #ifdef VM_LOADAVG
-  sha256_write_sysctl(hash, CTL_VM, VM_LOADAVG);
+  sha512_write_sysctl(hash, CTL_VM, VM_LOADAVG);
 #endif
 #ifdef VM_TOTAL
-  sha256_write_sysctl(hash, CTL_VM, VM_TOTAL);
+  sha512_write_sysctl(hash, CTL_VM, VM_TOTAL);
 #endif
 #ifdef VM_METER
-  sha256_write_sysctl(hash, CTL_VM, VM_METER);
+  sha512_write_sysctl(hash, CTL_VM, VM_METER);
 #endif
 #endif
 #endif
@@ -1218,41 +1307,50 @@ sha256_write_dynamic_env(sha256_t *hash) {
   {
     void *addr = malloc(4097);
 
+    sha512_write_ptr(hash, &addr);
+
     if (addr) {
-      sha256_write_ptr(hash, &addr);
-      sha256_write_ptr(hash, addr);
+      sha512_write_ptr(hash, addr);
       free(addr);
     }
   }
 }
+#endif /* HAVE_MANUAL_ENTROPY */
 
 /*
  * RNG
  */
 
-static int
-rng_seed(rng_t *rng) {
-  unsigned char entropy[32];
-  sha256_t hash;
+int
+rng_init(rng_t *rng) {
+  unsigned char seed[64];
+#ifdef HAVE_MANUAL_ENTROPY
+  sha512_t hash;
+  size_t i;
+#endif
 
-  if (!torsion_getentropy(entropy, 32))
+  memset(rng, 0, sizeof(*rng));
+
+  /* OS entropy (64 bytes). */
+  if (!torsion_getentropy(seed, 64))
     return 0;
 
-  sha256_init(&hash);
-  sha256_write_int(&hash, torsion_hrtime());
-  sha256_write_ptr(&hash, rng);
-  sha256_write_ptr(&hash, entropy);
-  sha256_write(&hash, entropy, 32);
+#ifdef HAVE_MANUAL_ENTROPY
+  sha512_init(&hash);
+  sha512_write_int(&hash, torsion_hrtime());
+  sha512_write_ptr(&hash, rng);
+  sha512_write_ptr(&hash, seed);
+  sha512_write(&hash, seed, 64);
 
+  /* Hardware entropy (32 bytes). */
 #ifdef HAVE_CPUID
+  rng->rdrand = torsion_has_rdrand();
+  rng->rdseed = torsion_has_rdseed();
+
   if (rng->rdseed) {
-    size_t i;
-
     for (i = 0; i < 4; i++)
-      sha256_write_int(&hash, torsion_rdseed());
+      sha512_write_int(&hash, torsion_rdseed());
   } else if (rng->rdrand) {
-    size_t i;
-
     for (i = 0; i < 4; i++) {
       uint64_t out = 0;
       size_t j;
@@ -1260,73 +1358,87 @@ rng_seed(rng_t *rng) {
       for (j = 0; j < 1024; j++)
         out ^= torsion_rdrand();
 
-      sha256_write_int(&hash, out);
+      sha512_write_int(&hash, out);
     }
   }
 
-  sha256_write_int(&hash, torsion_hrtime());
-#endif
+  sha512_write_int(&hash, torsion_hrtime());
+#endif /* HAVE_CPUID */
 
-  sha256_write_static_env(&hash);
-  sha256_write_dynamic_env(&hash);
-  sha256_write_int(&hash, torsion_hrtime());
-  sha256_final(&hash, (unsigned char *)rng->key);
+  /* Manual entropy (potentially ~10mb). */
+  sha512_write_static_env(&hash);
+  sha512_write_dynamic_env(&hash);
 
-  cleanse(entropy, sizeof(entropy));
+  /* At this point, only one of the above
+     entropy sources needs to be strong in
+     order for our RNG to work. It's extremely
+     unlikely that all three would somehow
+     be compromised. */
+  sha512_write_int(&hash, torsion_hrtime());
+  sha512_final(&hash, seed);
+
+  /* Strengthen the seed a bit. */
+  for (i = 0; i < 500; i++) {
+    sha512_init(&hash);
+    sha512_write(&hash, seed, 64);
+
+    if (i == 500 - 1)
+      sha512_write_int(&hash, torsion_hrtime());
+
+    sha512_final(&hash, seed);
+  }
+#endif /* HAVE_MANUAL_ENTROPY */
+
+  /* We use XChaCha20 to reduce the first
+     48 bytes down to 32. This allows us to
+     use the entire 64 byte hash as entropy. */
+  chacha20_derive(seed, seed, 32, seed + 32);
+
+  /* Read our initial ChaCha20 state. */
+  memcpy(rng->key, seed, 32);
+  memcpy(&rng->zero, seed + 48, 8);
+  memcpy(&rng->nonce, seed + 56, 8);
+
+  cleanse(seed, sizeof(seed));
+#ifdef HAVE_MANUAL_ENTROPY
   cleanse(&hash, sizeof(hash));
+#endif
 
   return 1;
 }
 
-int
-rng_init(rng_t *rng) {
-  memset(rng->key, 0, 32);
-
-  rng->counter = torsion_hrtime();
-#ifdef HAVE_CPUID
-  rng->rdrand = torsion_has_rdrand();
-  rng->rdseed = torsion_has_rdseed();
-#else
-  rng->rdrand = 0;
-  rng->rdseed = 0;
-#endif
-  rng->pos = 0;
-
-  return rng_seed(rng);
-}
-
 void
 rng_generate(rng_t *rng, void *dst, size_t size) {
-  static const unsigned char zero[64] = {0};
   unsigned char *key = (unsigned char *)rng->key;
-  unsigned char *data = (unsigned char *)dst;
-  chacha20_t *ctx = &rng->chacha;
-  size_t left = size;
+  unsigned char *nonce = (unsigned char *)&rng->nonce;
+  chacha20_t ctx;
 
-  /* Read chacha state. */
-  chacha20_init(ctx, key, 32, zero, 8, rng->counter);
+  if (size == 0)
+    return;
 
-  while (left >= 64) {
-    chacha20_encrypt(ctx, data, zero, 64);
-    data += 64;
-    left -= 64;
-  }
+  memset(dst, 0, size);
 
-  if (left > 0)
-    chacha20_encrypt(ctx, data, zero, left);
+  /* Read the keystream. */
+  chacha20_init(&ctx, key, 32, nonce, 8, rng->zero);
+  chacha20_encrypt(&ctx, dst, dst, size);
 
   /* Re-key immediately. */
   rng->key[0] ^= size;
 
 #ifdef HAVE_CPUID
+  /* Mix in some hardware entropy. */
   if (rng->rdrand)
     rng->key[3] ^= torsion_rdrand();
 #endif
 
-  rng->counter++;
+  rng->nonce++;
 
-  chacha20_init(ctx, key, 32, zero, 8, rng->counter);
-  chacha20_encrypt(ctx, key, key, 32);
+  /* XOR the current key with the keystream. */
+  chacha20_init(&ctx, key, 32, nonce, 8, rng->zero);
+  chacha20_encrypt(&ctx, key, key, 32);
+
+  /* Cleanse the chacha state. */
+  cleanse(&ctx, sizeof(ctx));
 }
 
 uint32_t

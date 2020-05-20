@@ -258,6 +258,11 @@ chacha20_encrypt(chacha20_t *ctx,
 }
 
 void
+chacha20_pad(chacha20_t *ctx) {
+  ctx->pos = 0;
+}
+
+void
 chacha20_derive(unsigned char *out,
                 const unsigned char *key,
                 size_t key_len,

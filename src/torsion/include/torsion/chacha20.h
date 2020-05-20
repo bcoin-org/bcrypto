@@ -20,6 +20,7 @@ extern "C" {
 
 #define chacha20_init torsion_chacha20_init
 #define chacha20_encrypt torsion_chacha20_encrypt
+#define chacha20_pad torsion_chacha20_pad
 #define chacha20_derive torsion_chacha20_derive
 
 /*
@@ -52,6 +53,9 @@ chacha20_encrypt(chacha20_t *ctx,
                  unsigned char *out,
                  const unsigned char *data,
                  size_t len);
+
+void
+chacha20_pad(chacha20_t *ctx);
 
 void
 chacha20_derive(unsigned char *out,
