@@ -302,7 +302,7 @@ EM_JS(int, js_getrandom, (void *ptr, size_t len), {
 #  define HAVE_SYSCTL
 #endif
 
-#if defined(__APPLE__) || defined(__FreeBSD__)
+#ifdef __FreeBSD__
 #  include <vm/vm_param.h> /* VM_{LOADAVG,TOTAL,METER} */
 #endif
 
@@ -520,8 +520,8 @@ torsion_syscall_entropy(void *dst, size_t size) {
 
   /* NULL on older iOS versions. */
   /* See: https://github.com/jedisct1/libsodium/commit/d54f072 */
-  if (&getentropy == NULL);
-    return 0
+  if (&getentropy == NULL)
+    return 0;
 
   while (size > 0) {
     if (max > size)
