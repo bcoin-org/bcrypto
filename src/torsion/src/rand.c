@@ -925,16 +925,26 @@ sha512_write_file(sha512_t *hash, const char *file) {
 
 #ifdef HAVE_SYSCTL
 void
-sha512_write_sysctl(sha512_t *hash, int c0, int c1) {
+sha512_write_sysctl(sha512_t *hash, int ctl, int opt) {
   unsigned char buf[65536];
   size_t size = sizeof(buf);
-  int name[2];
+  unsigned int len = 2;
+  int subopt = 0;
+  int name[3];
   int ret;
 
-  name[0] = c0;
-  name[1] = c1;
+#if defined(CTL_KERN) && defined(KERN_PROC) && defined(KERN_PROC_ALL)
+  if (ctl == CTL_KERN && opt == KERN_PROC) {
+    subopt = KERN_PROC_ALL;
+    len = 3;
+  }
+#endif
 
-  ret = sysctl(name, 2, buf, &size, NULL, 0);
+  name[0] = ctl;
+  name[1] = opt;
+  name[2] = subopt;
+
+  ret = sysctl(name, len, buf, &size, NULL, 0);
 
   if (ret == 0 || (ret == -1 && errno == ENOMEM)) {
     sha512_write_data(hash, name, sizeof(name));
@@ -1313,6 +1323,11 @@ sha512_write_dynamic_env(sha512_t *hash) {
 #endif
 
 #ifdef HAVE_SYSCTL
+#ifdef CTL_KERN
+#if defined(KERN_PROC) && defined(KERN_PROC_ALL)
+  sha512_write_sysctl(hash, CTL_KERN, KERN_PROC /*, KERN_PROC_ALL */);
+#endif
+#endif
 #ifdef CTL_HW
 #ifdef HW_DISKSTATS
   sha512_write_sysctl(hash, CTL_HW, HW_DISKSTATS);

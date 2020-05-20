@@ -5157,7 +5157,7 @@ mge_equal(const mont_t *ec, const mge_t *a, const mge_t *b) {
   return ret | (a->inf & b->inf);
 }
 
-static int
+TORSION_UNUSED static int
 mge_is_zero(const mont_t *ec, const mge_t *a) {
   (void)ec;
   return a->inf;
