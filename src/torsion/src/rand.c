@@ -68,11 +68,22 @@
 #endif
 
 #ifdef _WIN32
+/* https://docs.microsoft.com/en-us/windows/win32/api/bcrypt/nf-bcrypt-bcryptgenrandom */
 /* https://docs.microsoft.com/en-us/windows/win32/api/ntsecapi/nf-ntsecapi-rtlgenrandom */
-#  define RtlGenRandom SystemFunction036
+#  if defined(_MSC_VER) && _MSC_VER > 1500 /* VS 2008 */ \
+   && defined(_WIN32_WINNT) && _WIN32_WINNT >= 0x0600 /* >= Vista (2007) */
+#    include <bcrypt.h>
+#    pragma comment(lib, "bcrypt.lib")
+#    ifndef STATUS_SUCCESS
+#      define STATUS_SUCCESS ((NTSTATUS)0)
+#    endif
+#    define HAVE_BCRYPTGENRANDOM
+#  else
+#    define RtlGenRandom SystemFunction036
 BOOLEAN NTAPI RtlGenRandom(PVOID RandomBuffer, ULONG RandomBufferLength);
-#  pragma comment(lib, "advapi32.lib")
-#  define HAVE_RTLGENRANDOM
+#    pragma comment(lib, "advapi32.lib")
+#    define HAVE_RTLGENRANDOM
+#  endif
 #  undef HAVE_DEV_RANDOM
 #endif
 
@@ -122,7 +133,6 @@ BOOLEAN NTAPI RtlGenRandom(PVOID RandomBuffer, ULONG RandomBufferLength);
 #endif
 
 #ifdef __NetBSD__
-/* No entropy sources here besides /dev/{u,}random. */
 #  include <sys/param.h>
 #endif
 
@@ -137,12 +147,13 @@ BOOLEAN NTAPI RtlGenRandom(PVOID RandomBuffer, ULONG RandomBufferLength);
 #endif
 
 #if defined(__OpenBSD__) || defined(__FreeBSD__) \
- || (defined(__NetBSD__) && defined(__NetBSD_Version__) && __NetBSD_Version__ >= 400000000)
+ || (defined(__NetBSD__) && defined(__NetBSD_Version__) \
+     && __NetBSD_Version__ >= 400000000) /* 4.0 (2007) */
 /* https://github.com/openbsd/src/blob/2981a53/sys/sys/sysctl.h#L140 */
 /* https://www.freebsd.org/cgi/man.cgi?sysctl(3) */
-/* https://netbsd.gw.com/cgi-bin/man-cgi?sysctl+7+NetBSD-8.0 */
-/* Note that ARND was an alias to URND prior to NetBSD 4.0 (2007). */
-/* See: https://github.com/openssl/openssl/blob/ddec332/crypto/rand/rand_unix.c#L244 */
+/* https://netbsd.gw.com/cgi-bin/man-cgi?sysctl+3+NetBSD-8.0 */
+/* Note that ARND was an alias to URND prior to NetBSD 4.0 (2007).
+   See: https://github.com/openssl/openssl/blob/ddec332/crypto/rand/rand_unix.c#L244 */
 #  include <sys/sysctl.h>
 #  if defined(CTL_KERN) && defined(KERN_ARND)
 #    define HAVE_SYSCTL_ARND
@@ -153,7 +164,8 @@ BOOLEAN NTAPI RtlGenRandom(PVOID RandomBuffer, ULONG RandomBufferLength);
 /* https://docs.oracle.com/cd/E88353_01/html/E37841/getrandom-2.html */
 /* Note that Solaris 11 == SunOS 5.11. */
 #  if defined(__SUNPRO_C) || defined(__SUNPRO_CC)
-#    if defined(__SunOS_5_11) || (defined(__SunOS_RELEASE) && __SunOS_RELEASE >= 0x051103)
+#    if (defined(__SunOS_RELEASE) && __SunOS_RELEASE >= 0x051103) \
+      || defined(__SunOS_5_11)
 #      include <sys/random.h>
 #      define HAVE_GETRANDOM
 #    endif
@@ -174,10 +186,15 @@ BOOLEAN NTAPI RtlGenRandom(PVOID RandomBuffer, ULONG RandomBufferLength);
 #  endif
 #endif
 
-#ifdef __Fuchsia__
+#ifdef __fuchsia__
 /* https://fuchsia.dev/fuchsia-src/zircon/syscalls/cprng_draw */
 #  include <zircon/syscalls.h>
 #  define HAVE_CPRNG_DRAW
+#endif
+
+#ifdef __redox__
+/* https://github.com/redox-os/randd/blob/276270f/src/main.rs */
+#  define DEV_RANDOM_NAME ":rand"
 #endif
 
 #ifdef __CloudABI__
@@ -241,6 +258,7 @@ EM_JS(int, js_getrandom, (void *ptr, size_t len), {
 #  undef HAVE_DEV_RANDOM
 #  undef HAVE_MANUAL_ENTROPY
 #  undef HAVE_INLINE_ASM
+#  undef HAVE_BCRYPTGENRANDOM
 #  undef HAVE_RTLGENRANDOM
 #  undef HAVE_GETRANDOM
 #  undef HAVE_GETENTROPY
@@ -461,8 +479,11 @@ torsion_cpuid(uint32_t level,
 
 static int
 torsion_syscall_entropy(void *dst, size_t size) {
-#if defined(HAVE_RTLGENRANDOM)
-  return !!RtlGenRandom((PVOID)dst, (ULONG)size);
+#if defined(HAVE_BCRYPTGENRANDOM)
+  return BCryptGenRandom(NULL, (PUCHAR)dst, (ULONG)size,
+                         BCRYPT_USE_SYSTEM_PREFERRED_RNG) == STATUS_SUCCESS;
+#elif defined(HAVE_RTLGENRANDOM)
+  return RtlGenRandom((PVOID)dst, (ULONG)size) == TRUE;
 #elif defined(HAVE_GETRANDOM)
   unsigned char *data = (unsigned char *)dst;
   size_t max = 256;
@@ -547,6 +568,9 @@ torsion_syscall_entropy(void *dst, size_t size) {
 #elif defined(HAVE_RANDBYTES)
   size_t i;
 
+  if (size > (size_t)INT_MAX)
+    return 0;
+
   for (i = 0; i < 10; i++) {
     RANDOM_NUM_GEN_STATUS status = randStatus();
 
@@ -556,7 +580,7 @@ torsion_syscall_entropy(void *dst, size_t size) {
       continue;
     }
 
-    if (randBytes(dst, size) == OK)
+    if (randBytes((unsigned char *)dst, (int)size) == OK)
       return 1;
   }
 
@@ -585,6 +609,9 @@ static int
 torsion_device_entropy(void *dst, size_t size) {
 #ifdef HAVE_DEV_RANDOM
   static const char *devices[] = {
+#ifdef DEV_RANDOM_NAME
+    DEV_RANDOM_NAME
+#else
     /* Solaris has a symlink for:
        /dev/urandom -> /devices/pseudo/random@0:urandom */
 #if defined(__sun) && defined(__SVR4)
@@ -592,6 +619,7 @@ torsion_device_entropy(void *dst, size_t size) {
 #endif
     "/dev/urandom",
     "/dev/random" /* Last ditch effort. */
+#endif
   };
 
   size_t i;
