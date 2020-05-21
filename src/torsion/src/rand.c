@@ -41,7 +41,7 @@
 #    define WIN32_LEAN_AND_MEAN 1
 #  endif
 #  include <windows.h>
-#  include <sys/timeb.h>
+#  include <sys/timeb.h> /* _timeb */
 #  ifdef __BORLANDC__
 #    define _ftime ftime
 #    define _timeb timeb
@@ -337,6 +337,11 @@ extern char **environ;
 #  include <netinet/in.h> /* sockaddr_in{,6} */
 #  include <ifaddrs.h> /* getifaddrs */
 #  define HAVE_GETIFADDRS
+#endif
+
+#ifdef _WIN32
+#  include <winsock2.h> /* gethostname */
+#  pragma comment(lib, "ws2_32.lib") /* gethostname */
 #endif
 
 #include <torsion/chacha20.h>
