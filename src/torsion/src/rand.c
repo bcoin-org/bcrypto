@@ -324,8 +324,7 @@ extern char **environ;
  || defined(__NetBSD__) \
  || defined(__DragonFly__)
 #  include <sys/socket.h> /* AF_INET{,6} */
-#  include <netinet/in.h> /* sockaddr_in */
-#  include <netinet6/in6.h> /* sockaddr_in6 */
+#  include <netinet/in.h> /* sockaddr_in{,6} */
 #  include <ifaddrs.h> /* getifaddrs */
 #  define HAVE_GETIFADDRS
 #endif
