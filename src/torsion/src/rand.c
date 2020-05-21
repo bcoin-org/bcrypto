@@ -37,6 +37,9 @@
 #include <sys/types.h>
 
 #ifdef _WIN32
+#  ifndef WIN32_LEAN_AND_MEAN
+#    define WIN32_LEAN_AND_MEAN 1
+#  endif
 #  include <windows.h>
 #  include <sys/timeb.h>
 #  ifdef __BORLANDC__
@@ -267,6 +270,13 @@ EM_JS(int, js_getrandom, (void *ptr, size_t len), {
 #  undef HAVE_CPRNG_DRAW
 #endif
 
+#if defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))
+/* https://docs.microsoft.com/en-us/cpp/intrinsics/rdtsc?view=vs-2019 */
+#  include <intrin.h>
+#  pragma intrinsic(__rdtsc)
+#  define HAVE_RDTSC
+#endif
+
 #ifdef HAVE_INLINE_ASM
 /* https://software.intel.com/content/www/us/en/develop/articles/
    intel-digital-random-number-generator-drng-software-implementation-guide.html */
@@ -443,13 +453,9 @@ poll_dev_random(void) {
 #ifdef HAVE_MANUAL_ENTROPY
 static uint64_t
 torsion_hrtime(void) {
-#if defined(_WIN32)
-  struct _timeb tb;
-#pragma warning(push)
-#pragma warning(disable: 4996)
-  _ftime(&tb);
-#pragma warning(pop)
-  return (uint64_t)tb.time * 1000000 + (uint64_t)tb.millitm * 1000;
+  /* See: https://en.wikipedia.org/wiki/Time_Stamp_Counter */
+#if defined(HAVE_RDTSC)
+  return __rdtsc();
 #elif defined(HAVE_INLINE_ASM) && defined(__i386__)
   uint64_t r = 0;
   __asm__ __volatile__("rdtsc" : "=A" (r));
@@ -458,6 +464,13 @@ torsion_hrtime(void) {
   uint64_t r1 = 0, r2 = 0;
   __asm__ __volatile__("rdtsc" : "=a" (r1), "=d" (r2));
   return (r2 << 32) | r1;
+#elif defined(_WIN32)
+  struct _timeb tb;
+#pragma warning(push)
+#pragma warning(disable: 4996)
+  _ftime(&tb);
+#pragma warning(pop)
+  return (uint64_t)tb.time * 1000000 + (uint64_t)tb.millitm * 1000;
 #else
   struct timeval tv;
 
@@ -890,6 +903,7 @@ sha512_write_ptr(sha512_t *hash, const void *ptr) {
   sha512_write(hash, &uptr, sizeof(uptr));
 }
 
+#ifndef _WIN32
 static void
 sha512_write_stat(sha512_t *hash, const char *file) {
   struct stat st;
@@ -936,6 +950,7 @@ sha512_write_file(sha512_t *hash, const char *file) {
 
   close(fd);
 }
+#endif /* !_WIN32 */
 
 #ifdef HAVE_GETIFADDRS
 static void
@@ -958,27 +973,13 @@ sha512_write_sockaddr(sha512_t *hash, const struct sockaddr *addr) {
 #endif /* HAVE_GETIFADDRS */
 
 #ifdef HAVE_SYSCTL
-void
-sha512_write_sysctl(sha512_t *hash, int ctl, int opt) {
+static void
+sha512_write_sysctl(sha512_t *hash, int *name, unsigned int namelen) {
   unsigned char buf[65536];
   size_t size = sizeof(buf);
-  unsigned int len = 2;
-  int subopt = 0;
-  int name[3];
   int ret;
 
-#if defined(CTL_KERN) && defined(KERN_PROC) && defined(KERN_PROC_ALL)
-  if (ctl == CTL_KERN && opt == KERN_PROC) {
-    subopt = KERN_PROC_ALL;
-    len = 3;
-  }
-#endif
-
-  name[0] = ctl;
-  name[1] = opt;
-  name[2] = subopt;
-
-  ret = sysctl(name, len, buf, &size, NULL, 0);
+  ret = sysctl(name, namelen, buf, &size, NULL, 0);
 
   if (ret == 0 || (ret == -1 && errno == ENOMEM)) {
     sha512_write_data(hash, name, sizeof(name));
@@ -988,6 +989,27 @@ sha512_write_sysctl(sha512_t *hash, int ctl, int opt) {
 
     sha512_write_data(hash, buf, size);
   }
+}
+
+static void
+sha512_write_sysctl2(sha512_t *hash, int ctl, int opt) {
+  int name[2];
+
+  name[0] = ctl;
+  name[1] = opt;
+
+  sha512_write_sysctl(hash, name, 2);
+}
+
+static void
+sha512_write_sysctl3(sha512_t *hash, int ctl, int opt, int sub) {
+  int name[3];
+
+  name[0] = ctl;
+  name[1] = opt;
+  name[2] = sub;
+
+  sha512_write_sysctl(hash, name, 3);
 }
 #endif /* HAVE_SYSCTL */
 
@@ -1247,73 +1269,73 @@ sha512_write_static_env(sha512_t *hash) {
 #ifdef HAVE_SYSCTL
 #ifdef CTL_HW
 #ifdef HW_MACHINE
-  sha512_write_sysctl(hash, CTL_HW, HW_MACHINE);
+  sha512_write_sysctl2(hash, CTL_HW, HW_MACHINE);
 #endif
 #ifdef HW_MODEL
-  sha512_write_sysctl(hash, CTL_HW, HW_MODEL);
+  sha512_write_sysctl2(hash, CTL_HW, HW_MODEL);
 #endif
 #ifdef HW_NCPU
-  sha512_write_sysctl(hash, CTL_HW, HW_NCPU);
+  sha512_write_sysctl2(hash, CTL_HW, HW_NCPU);
 #endif
 #ifdef HW_PHYSMEM
-  sha512_write_sysctl(hash, CTL_HW, HW_PHYSMEM);
+  sha512_write_sysctl2(hash, CTL_HW, HW_PHYSMEM);
 #endif
 #ifdef HW_USERMEM
-  sha512_write_sysctl(hash, CTL_HW, HW_USERMEM);
+  sha512_write_sysctl2(hash, CTL_HW, HW_USERMEM);
 #endif
 #ifdef HW_MACHINE_ARCH
-  sha512_write_sysctl(hash, CTL_HW, HW_MACHINE_ARCH);
+  sha512_write_sysctl2(hash, CTL_HW, HW_MACHINE_ARCH);
 #endif
 #ifdef HW_REALMEM
-  sha512_write_sysctl(hash, CTL_HW, HW_REALMEM);
+  sha512_write_sysctl2(hash, CTL_HW, HW_REALMEM);
 #endif
 #ifdef HW_CPU_FREQ
-  sha512_write_sysctl(hash, CTL_HW, HW_CPU_FREQ);
+  sha512_write_sysctl2(hash, CTL_HW, HW_CPU_FREQ);
 #endif
 #ifdef HW_BUS_FREQ
-  sha512_write_sysctl(hash, CTL_HW, HW_BUS_FREQ);
+  sha512_write_sysctl2(hash, CTL_HW, HW_BUS_FREQ);
 #endif
 #ifdef HW_CACHELINE
-  sha512_write_sysctl(hash, CTL_HW, HW_CACHELINE);
+  sha512_write_sysctl2(hash, CTL_HW, HW_CACHELINE);
 #endif
 #endif
 
 #ifdef CTL_KERN
 #ifdef KERN_BOOTFILE
-  sha512_write_sysctl(hash, CTL_KERN, KERN_BOOTFILE);
+  sha512_write_sysctl2(hash, CTL_KERN, KERN_BOOTFILE);
 #endif
 #ifdef KERN_BOOTTIME
-  sha512_write_sysctl(hash, CTL_KERN, KERN_BOOTTIME);
+  sha512_write_sysctl2(hash, CTL_KERN, KERN_BOOTTIME);
 #endif
 #ifdef KERN_CLOCKRATE
-  sha512_write_sysctl(hash, CTL_KERN, KERN_CLOCKRATE);
+  sha512_write_sysctl2(hash, CTL_KERN, KERN_CLOCKRATE);
 #endif
 #ifdef KERN_HOSTID
-  sha512_write_sysctl(hash, CTL_KERN, KERN_HOSTID);
+  sha512_write_sysctl2(hash, CTL_KERN, KERN_HOSTID);
 #endif
 #ifdef KERN_HOSTUUID
-  sha512_write_sysctl(hash, CTL_KERN, KERN_HOSTUUID);
+  sha512_write_sysctl2(hash, CTL_KERN, KERN_HOSTUUID);
 #endif
 #ifdef KERN_HOSTNAME
-  sha512_write_sysctl(hash, CTL_KERN, KERN_HOSTNAME);
+  sha512_write_sysctl2(hash, CTL_KERN, KERN_HOSTNAME);
 #endif
 #ifdef KERN_OSRELDATE
-  sha512_write_sysctl(hash, CTL_KERN, KERN_OSRELDATE);
+  sha512_write_sysctl2(hash, CTL_KERN, KERN_OSRELDATE);
 #endif
 #ifdef KERN_OSRELEASE
-  sha512_write_sysctl(hash, CTL_KERN, KERN_OSRELEASE);
+  sha512_write_sysctl2(hash, CTL_KERN, KERN_OSRELEASE);
 #endif
 #ifdef KERN_OSREV
-  sha512_write_sysctl(hash, CTL_KERN, KERN_OSREV);
+  sha512_write_sysctl2(hash, CTL_KERN, KERN_OSREV);
 #endif
 #ifdef KERN_OSTYPE
-  sha512_write_sysctl(hash, CTL_KERN, KERN_OSTYPE);
+  sha512_write_sysctl2(hash, CTL_KERN, KERN_OSTYPE);
 #endif
 #ifdef KERN_POSIX1
-  sha512_write_sysctl(hash, CTL_KERN, KERN_OSREV);
+  sha512_write_sysctl2(hash, CTL_KERN, KERN_OSREV);
 #endif
 #ifdef KERN_VERSION
-  sha512_write_sysctl(hash, CTL_KERN, KERN_VERSION);
+  sha512_write_sysctl2(hash, CTL_KERN, KERN_VERSION);
 #endif
 #endif
 #endif
@@ -1410,23 +1432,23 @@ sha512_write_dynamic_env(sha512_t *hash) {
 #ifdef HAVE_SYSCTL
 #ifdef CTL_KERN
 #if defined(KERN_PROC) && defined(KERN_PROC_ALL)
-  sha512_write_sysctl(hash, CTL_KERN, KERN_PROC /*, KERN_PROC_ALL */);
+  sha512_write_sysctl3(hash, CTL_KERN, KERN_PROC, KERN_PROC_ALL);
 #endif
 #endif
 #ifdef CTL_HW
 #ifdef HW_DISKSTATS
-  sha512_write_sysctl(hash, CTL_HW, HW_DISKSTATS);
+  sha512_write_sysctl2(hash, CTL_HW, HW_DISKSTATS);
 #endif
 #endif
 #ifdef CTL_VM
 #ifdef VM_LOADAVG
-  sha512_write_sysctl(hash, CTL_VM, VM_LOADAVG);
+  sha512_write_sysctl2(hash, CTL_VM, VM_LOADAVG);
 #endif
 #ifdef VM_TOTAL
-  sha512_write_sysctl(hash, CTL_VM, VM_TOTAL);
+  sha512_write_sysctl2(hash, CTL_VM, VM_TOTAL);
 #endif
 #ifdef VM_METER
-  sha512_write_sysctl(hash, CTL_VM, VM_METER);
+  sha512_write_sysctl2(hash, CTL_VM, VM_METER);
 #endif
 #endif
 #endif
