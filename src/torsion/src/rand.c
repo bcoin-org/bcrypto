@@ -289,14 +289,17 @@ EM_JS(int, js_getrandom, (void *ptr, size_t len), {
 #ifndef _WIN32
 #  include <sys/resource.h> /* getrusage */
 #  include <sys/utsname.h> /* uname */
+#  include <time.h> /* clock_gettime */
 #endif
 
 #ifdef __linux__
 #  include <sys/auxv.h> /* getauxval */
 #endif
 
-#if defined(__APPLE__) || defined(__OpenBSD__) \
- || defined(__FreeBSD__) || defined(__NetBSD__) \
+#if defined(__APPLE__) \
+ || defined(__OpenBSD__) \
+ || defined(__FreeBSD__) \
+ || defined(__NetBSD__) \
  || defined(__DragonFly__)
 #  include <sys/sysctl.h>
 #  define HAVE_SYSCTL
@@ -313,6 +316,18 @@ EM_JS(int, js_getrandom, (void *ptr, size_t len), {
 #  ifndef environ
 extern char **environ;
 #  endif
+#endif
+
+#if defined(__APPLE__) \
+ || defined(__OpenBSD__) \
+ || defined(__FreeBSD__) \
+ || defined(__NetBSD__) \
+ || defined(__DragonFly__)
+#  include <sys/socket.h> /* AF_INET{,6} */
+#  include <netinet/in.h> /* sockaddr_in */
+#  include <netinet6/in6.h> /* sockaddr_in6 */
+#  include <ifaddrs.h> /* getifaddrs */
+#  define HAVE_GETIFADDRS
 #endif
 
 #include <torsion/chacha20.h>
@@ -861,7 +876,7 @@ sha512_write_data(sha512_t *hash, const void *data, size_t size) {
 
 static void
 sha512_write_string(sha512_t *hash, const char *str) {
-  sha512_write_data(hash, str, strlen(str));
+  sha512_write_data(hash, str, str == NULL ? 0 : strlen(str));
 }
 
 static void
@@ -922,6 +937,26 @@ sha512_write_file(sha512_t *hash, const char *file) {
 
   close(fd);
 }
+
+#ifdef HAVE_GETIFADDRS
+static void
+sha512_write_sockaddr(sha512_t *hash, const struct sockaddr *addr) {
+  if (addr == NULL)
+    return;
+
+  switch (addr->sa_family) {
+    case AF_INET:
+      sha512_write(hash, addr, sizeof(struct sockaddr_in));
+      break;
+    case AF_INET6:
+      sha512_write(hash, addr, sizeof(struct sockaddr_in6));
+      break;
+    default:
+      sha512_write(hash, &addr->sa_family, sizeof(addr->sa_family));
+      break;
+  }
+}
+#endif /* HAVE_GETIFADDRS */
 
 #ifdef HAVE_SYSCTL
 void
@@ -1090,6 +1125,14 @@ sha512_write_static_env(sha512_t *hash) {
   sha512_write_int(hash, _MSC_VER);
 #endif
 
+#ifdef _XOPEN_VERSION
+  sha512_write_int(hash, _XOPEN_VERSION);
+#endif
+
+#ifdef __VERSION__
+  sha512_write_string(hash, __VERSION__);
+#endif
+
 #ifdef __linux__
   /* Information available through getauxval(). */
 #ifdef AT_HWCAP
@@ -1145,6 +1188,29 @@ sha512_write_static_env(sha512_t *hash) {
     if (gethostname(hname, sizeof(hname) - 1) == 0)
       sha512_write_string(hash, hname);
   }
+
+#ifdef HAVE_GETIFADDRS
+  /* Network interfaces. */
+  {
+    struct ifaddrs *ifad = NULL;
+
+    if (getifaddrs(&ifad) == 0) {
+      struct ifaddrs *ifit = ifad;
+
+      while (ifit != NULL) {
+        sha512_write_string(hash, ifit->ifa_name);
+        sha512_write_int(hash, ifit->ifa_flags);
+        sha512_write_sockaddr(hash, ifit->ifa_addr);
+        sha512_write_sockaddr(hash, ifit->ifa_netmask);
+        sha512_write_sockaddr(hash, ifit->ifa_dstaddr);
+
+        ifit = ifit->ifa_next;
+      }
+
+      freeifaddrs(ifad);
+    }
+  }
+#endif /* HAVE_GETIFADDRS */
 
 #ifndef _WIN32
   /* UNIX kernel information. */
@@ -1278,8 +1344,7 @@ sha512_write_static_env(sha512_t *hash) {
 static void
 sha512_write_dynamic_env(sha512_t *hash) {
 #ifdef _WIN32
-  sha512_write_perfdata(hash);
-
+  /* System time. */
   {
     FILETIME ftime;
 
@@ -1289,14 +1354,35 @@ sha512_write_dynamic_env(sha512_t *hash) {
 
     sha512_write(hash, &ftime, sizeof(ftime));
   }
+
+  /* Performance data. */
+  sha512_write_perfdata(hash);
 #else /* _WIN32 */
+  /* Various clocks. */
   {
+    struct timespec ts;
     struct timeval tv;
 
+    memset(&ts, 0, sizeof(ts));
     memset(&tv, 0, sizeof(tv));
 
-    if (gettimeofday(&tv, NULL) == 0)
-      sha512_write(hash, &tv, sizeof(tv));
+#ifdef CLOCK_MONOTONIC
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    sha512_write(hash, &ts, sizeof(ts));
+#endif
+
+#ifdef CLOCK_REALTIME
+    clock_gettime(CLOCK_REALTIME, &ts);
+    sha512_write(hash, &ts, sizeof(ts));
+#endif
+
+#ifdef CLOCK_BOOTTIME
+    clock_gettime(CLOCK_BOOTTIME, &ts);
+    sha512_write(hash, &ts, sizeof(ts));
+#endif
+
+    gettimeofday(&tv, NULL);
+    sha512_write(hash, &tv, sizeof(tv));
   }
 
   /* Current resource usage. */
