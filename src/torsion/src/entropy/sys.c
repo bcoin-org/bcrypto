@@ -232,9 +232,9 @@ BOOLEAN NTAPI RtlGenRandom(PVOID RandomBuffer, ULONG RandomBufferLength);
 #elif defined(__fuchsia__)
 #  include <zircon/syscalls.h>
 #else
+#  include <sys/types.h> /* open */
 #  include <fcntl.h> /* fcntl */
 #  include <unistd.h> /* stat, read, close, syscall */
-#  include <sys/types.h> /* open */
 #  include <sys/stat.h> /* open, stat */
 #  ifndef S_ISNAM
 #    ifdef __COMPCERT__

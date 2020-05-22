@@ -78,10 +78,10 @@ extern char **environ;
 #elif defined(__fuchsia__)
 /* nothing */
 #else
+#  include <sys/types.h> /* open */
 #  include <fcntl.h> /* open */
 #  include <sys/resource.h> /* getrusage */
 #  include <sys/stat.h> /* open, stat */
-#  include <sys/types.h> /* open */
 #  include <sys/utsname.h> /* uname */
 #  include <sys/time.h> /* gettimeofday */
 #  include <time.h> /* clock_gettime */
@@ -223,7 +223,7 @@ sha512_write_sysctl(sha512_t *hash, int *name, unsigned int namelen) {
   ret = sysctl(name, namelen, buf, &size, NULL, 0);
 
   if (ret == 0 || (ret == -1 && errno == ENOMEM)) {
-    sha512_write_data(hash, name, sizeof(name));
+    sha512_write_data(hash, name, namelen * sizeof(int));
 
     if (size > sizeof(buf))
       size = sizeof(buf);
@@ -322,7 +322,7 @@ static void
 sha512_write_perfdata(sha512_t *hash) {
   static const size_t max = 10000000;
   unsigned char *data = malloc(250000);
-  unsigned long nread = 0;
+  unsigned long nsize = 0;
   size_t size = 250000;
   long ret = 0;
   size_t old;
@@ -333,10 +333,10 @@ sha512_write_perfdata(sha512_t *hash) {
   memset(data, 0, size);
 
   for (;;) {
-    nread = size;
+    nsize = size;
     ret = RegQueryValueExA(HKEY_PERFORMANCE_DATA,
                            "Global", NULL, NULL,
-                           data, &nread);
+                           data, &nsize);
 
     if (ret != ERROR_MORE_DATA || size >= max)
       break;
@@ -358,8 +358,8 @@ sha512_write_perfdata(sha512_t *hash) {
   RegCloseKey(HKEY_PERFORMANCE_DATA);
 
   if (ret == ERROR_SUCCESS) {
-    sha512_write_data(hash, data, size);
-    memset(data, 0, size);
+    sha512_write_data(hash, data, nsize);
+    memset(data, 0, nsize);
   }
 
   if (data)

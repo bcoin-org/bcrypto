@@ -187,19 +187,11 @@ rng_uniform(rng_t *rng, uint32_t max) {
 }
 
 /*
- * Global API
+ * Entropy
  */
 
 int
 torsion_getentropy(void *dst, size_t size) {
   return torsion_sysrand(dst, size)
       || torsion_hwrand(dst, size);
-}
-
-int
-torsion_getrandom(void *dst, size_t size) {
-  /* FIXME: We need locks to make this work. */
-  (void)dst;
-  (void)size;
-  return 0;
 }

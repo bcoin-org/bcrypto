@@ -45,6 +45,7 @@ torsion_cpuid(uint32_t level,
               uint32_t *b,
               uint32_t *c,
               uint32_t *d);
+
 int
 torsion_has_rdrand(void);
 
