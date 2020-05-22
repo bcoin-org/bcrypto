@@ -1,11 +1,11 @@
 /*!
- * rng.h - rng for libtorsion
+ * rand.h - RNG for libtorsion
  * Copyright (c) 2020, Christopher Jeffrey (MIT License).
  * https://github.com/bcoin-org/libtorsion
  */
 
-#ifndef _TORSION_RNG_H
-#define _TORSION_RNG_H
+#ifndef _TORSION_RAND_H
+#define _TORSION_RAND_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -34,15 +34,7 @@ typedef struct _rng_s {
   uint32_t pool[16];
   size_t pos;
   int rdrand;
-  int rdseed;
 } rng_t;
-
-/*
- * Entropy
- */
-
-int
-torsion_getentropy(void *dst, size_t size);
 
 /*
  * RNG
@@ -60,8 +52,18 @@ rng_random(rng_t *rng);
 uint32_t
 rng_uniform(rng_t *rng, uint32_t max);
 
+/*
+ * Global API
+ */
+
+int
+torsion_getentropy(void *dst, size_t size);
+
+int
+torsion_getrandom(void *dst, size_t size);
+
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* _TORSION_RNG_H */
+#endif /* _TORSION_RAND_H */

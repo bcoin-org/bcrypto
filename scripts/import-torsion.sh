@@ -31,6 +31,8 @@ rsync -av --exclude '*.o' \
           --exclude '*.lo' \
           --exclude '.deps' \
           --exclude '.dirstamp' \
+          --exclude '.libs' \
+          --exclude '*.md' \
           "$prefix/src/" src/torsion/src/
 
 rsync -av "$prefix/include/" src/torsion/include/
