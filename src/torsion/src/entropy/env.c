@@ -359,7 +359,7 @@ sha512_write_perfdata(sha512_t *hash) {
 
   if (ret == ERROR_SUCCESS) {
     sha512_write_data(hash, data, size);
-    cleanse(data, size);
+    memset(data, 0, size);
   }
 
   if (data)
