@@ -58,7 +58,7 @@
  *   - Date.now, process.hrtime (wasm, asm.js)
  *
  * Note that the only clocks which do not have nanosecond
- * precision are `_ftime` and `Date.now`.
+ * precision are `_ftime`, `gettimeofday`, and `Date.now`.
  *
  * The CPUID instruction can serve as good source of "static"
  * entropy for seeding (see env.c).
@@ -141,27 +141,25 @@ torsion_rdtsc(void) {
 
   return time;
 #elif defined(__EMSCRIPTEN__)
-  double sec, nsec;
+  uint32_t sec, nsec;
 
   int ret = EM_ASM_INT({
     try {
-      var heap = new Float64Array(HEAP8.buffer);
-      var sp = $0;
-      var np = $1;
-
       if (typeof process !== 'undefined' && process
           && typeof process.hrtime === 'function') {
         var times = process.hrtime();
-        heap[sp >>> 3] = times[0];
-        heap[np >>> 3] = times[1];
+
+        HEAPU32[$0 >>> 2] = times[0];
+        HEAPU32[$1 >>> 2] = times[1];
+
         return 1;
       }
 
       var now = Date.now ? Date.now() : +new Date();
       var ms = now % 1000;
 
-      heap[sp >>> 3] = (now - ms) / 1000;
-      heap[np >>> 3] = ms * 1e6;
+      HEAPU32[$0 >>> 2] = (now - ms) / 1000;
+      HEAPU32[$1 >>> 2] = ms * 1e6;
 
       return 1;
     } catch (e) {

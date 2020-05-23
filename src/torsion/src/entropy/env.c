@@ -33,7 +33,7 @@
  *   - HKEY_PERFORMANCE_DATA (win32)
  *   - The /proc filesystem (linux)
  *   - sysctl(2) (osx, ios, bsd)
- *   - I/O timing
+ *   - I/O timing, system load
  *
  * We use whatever data we can get our hands on and hash
  * it into a single 64 byte seed for use with a PRNG.
@@ -88,6 +88,17 @@ extern char **environ;
 #  include <unistd.h> /* stat, read, close, gethostname */
 #  ifdef __linux__
 #    include <sys/auxv.h> /* getauxval */
+#    ifdef __GLIBC_PREREQ
+#      define TORSION_GLIBC_PREREQ(maj, min) __GLIBC_PREREQ(maj, min)
+#    else
+#      define TORSION_GLIBC_PREREQ(maj, min) 0
+#    endif
+#    if TORSION_GLIBC_PREREQ(2, 3)
+#      include <sys/socket.h> /* AF_INET{,6} */
+#      include <netinet/in.h> /* sockaddr_in{,6} */
+#      include <ifaddrs.h> /* getifaddrs */
+#      define HAVE_GETIFADDRS
+#    endif
 #  endif
 #  if defined(__APPLE__) \
    || defined(__OpenBSD__) \
@@ -101,7 +112,7 @@ extern char **environ;
 #    define HAVE_SYSCTL
 #    define HAVE_GETIFADDRS
 #  endif
-#  ifdef __FreeBSD__
+#  if defined(__FreeBSD__) || defined(__DragonFly__)
 #    include <vm/vm_param.h> /* VM_{LOADAVG,TOTAL,METER} */
 #  endif
 #  ifdef __APPLE__

@@ -355,7 +355,7 @@ torsion_syscallrand(void *dst, size_t size) {
           if (max > len)
             max = len;
 
-          var buf = HEAP8.subarray(ptr, ptr + max);
+          var buf = HEAPU8.subarray(ptr, ptr + max);
 
           crypto.getRandomValues(buf);
 
@@ -363,7 +363,8 @@ torsion_syscallrand(void *dst, size_t size) {
           len -= max;
         }
       } else {
-        var buf = require('buffer').Buffer.from(HEAP8.buffer, ptr, len);
+        var Buffer = require('buffer').Buffer;
+        var buf = Buffer.from(HEAPU8.buffer, ptr, len);
 
         require('crypto').randomFillSync(buf, 0, len);
       }
