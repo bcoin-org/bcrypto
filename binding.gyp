@@ -33,17 +33,18 @@
       "-Wno-nonnull-compare", # secp256k1
       "-Wno-unknown-warning", # gcc
       "-Wno-unknown-warning-option", # clang
-      "-Wno-unused-function", # secp256k1 & torsion
+      "-Wno-unused-function", # secp256k1
+      "-Wno-unused-parameter", # bsd
       "-O3"
     ],
     "cflags_c": [
       "-std=c89",
       "-pedantic",
-      "-Wshadow",
       "-Wcast-align",
+      "-Wshadow",
       "-Wno-declaration-after-statement",
-      "-Wno-overlength-strings",
-      "-Wno-long-long"
+      "-Wno-long-long",
+      "-Wno-overlength-strings"
     ],
     "include_dirs": [
       "./src/torsion/include"
