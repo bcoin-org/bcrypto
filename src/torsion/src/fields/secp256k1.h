@@ -9,7 +9,7 @@
  */
 
 #ifdef TORSION_USE_LIBSECP256K1
-#ifdef TORSION_USE_64BIT
+#if defined(TORSION_HAVE_64BIT) && defined(TORSION_HAVE_INT128)
 typedef uint64_t secp256k1_fe_word_t;
 #define SECP256K1_FIELD_WORDS 5
 #include "libsecp256k1_64.h"
@@ -19,7 +19,7 @@ typedef uint32_t secp256k1_fe_word_t;
 #include "libsecp256k1_32.h"
 #endif
 #else /* TORSION_USE_LIBSECP256K1 */
-#ifdef TORSION_USE_64BIT
+#if defined(TORSION_HAVE_64BIT) && defined(TORSION_HAVE_INT128)
 typedef uint64_t secp256k1_fe_word_t;
 #define SECP256K1_FIELD_WORDS 4
 #include "secp256k1_64.h"

@@ -91,7 +91,7 @@ chacha20_init(chacha20_t *ctx,
 static void
 chacha20_block(chacha20_t *ctx) {
   uint32_t *stream = ctx->stream.ints;
-#ifdef TORSION_USE_ASM
+#if defined(TORSION_HAVE_ASM_X64) && defined(TORSION_HAVE_SSE2)
   /* Borrowed from:
    * https://github.com/gnutls/nettle/blob/master/x86_64/chacha-core-internal.asm
    *
@@ -205,7 +205,7 @@ chacha20_block(chacha20_t *ctx) {
       "memory"
   );
 #else
-#ifdef WORDS_BIGENDIAN
+#ifdef TORSION_BIGENDIAN
   uint8_t *bytes = ctx->stream.bytes;
 #endif
   uint64_t c;
@@ -227,7 +227,7 @@ chacha20_block(chacha20_t *ctx) {
   for (i = 0; i < 16; i++)
     stream[i] += ctx->state[i];
 
-#ifdef WORDS_BIGENDIAN
+#ifdef TORSION_BIGENDIAN
   for (i = 0; i < 16; i++)
     write32le(bytes + i * 4, stream[i]);
 #endif

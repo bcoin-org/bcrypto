@@ -4,7 +4,7 @@
  * https://github.com/bcoin-org/libtorsion
  */
 
-#ifdef TORSION_USE_64BIT
+#if defined(TORSION_HAVE_64BIT) && defined(TORSION_HAVE_INT128)
 typedef uint64_t p224_fe_word_t;
 #define P224_FIELD_WORDS 4
 #include "p224_64.h"
@@ -22,7 +22,7 @@ typedef p224_fe_word_t p224_fe_t[P224_FIELD_WORDS];
 #define p224_fe_mul fiat_p224_mul
 #define p224_fe_sqr fiat_p224_square
 
-#ifdef TORSION_USE_64BIT
+#if defined(TORSION_HAVE_64BIT) && defined(TORSION_HAVE_INT128)
 static const p224_fe_t p224_zero = {0, 0, 0, 0};
 
 static const p224_fe_t p224_one = {

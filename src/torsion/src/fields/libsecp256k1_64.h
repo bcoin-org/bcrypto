@@ -12,14 +12,14 @@
 #include <stdint.h>
 
 typedef unsigned char fiat_secp256k1_uint1;
-TORSION_EXTENSION typedef unsigned __int128 fiat_secp256k1_uint128;
+typedef torsion_uint128_t fiat_secp256k1_uint128;
 
 #if (-1 & 3) != 3
 #error "This code only works on a two's complement system"
 #endif
 
 static void fiat_secp256k1_carry_mul(uint64_t r[5], const uint64_t a[5], const uint64_t b[5]) {
-#ifdef TORSION_USE_ASM
+#ifdef TORSION_HAVE_ASM_X64
   /**
    * Registers: rdx:rax = multiplication accumulator
    *      r9:r8   = c
@@ -345,7 +345,7 @@ static void fiat_secp256k1_carry_mul(uint64_t r[5], const uint64_t a[5], const u
 }
 
 static void fiat_secp256k1_carry_square(uint64_t r[5], const uint64_t a[5]) {
-#ifdef TORSION_USE_ASM
+#ifdef TORSION_HAVE_ASM_X64
   /**
    * Registers: rdx:rax = multiplication accumulator
    *      r9:r8   = c

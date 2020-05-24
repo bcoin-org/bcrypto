@@ -57,12 +57,6 @@
           "WORDS_BIGENDIAN"
         ]
       }],
-      ["target_arch=='x64' and OS!='win'", {
-        "defines": [
-          "TORSION_USE_64BIT",
-          "TORSION_USE_ASM"
-        ]
-      }],
       ["OS=='win'", {
         "msbuild_settings": {
           "ClCompile": {

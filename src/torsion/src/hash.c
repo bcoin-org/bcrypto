@@ -562,7 +562,7 @@ ripemd160_transform(ripemd160_t *ctx, const unsigned char *chunk) {
   uint32_t aa, bb, cc, dd, ee, t;
   uint32_t x[16];
 
-#ifdef WORDS_BIGENDIAN
+#ifdef TORSION_BIGENDIAN
   {
     int i;
     for (i = 0; i < 16; i++, chunk += 4)
@@ -1113,7 +1113,7 @@ sha256_init(sha256_t *ctx) {
 
 static void
 sha256_transform(sha256_t *ctx, const unsigned char *chunk) {
-#ifdef TORSION_USE_ASM
+#ifdef TORSION_HAVE_ASM_X64
   /* Borrowed from:
    * https://github.com/gnutls/nettle/blob/master/x86_64/sha256-compress.asm
    *
@@ -2574,7 +2574,7 @@ sha512_init(sha512_t *ctx) {
 
 static void
 sha512_transform(sha512_t *ctx, const unsigned char *chunk) {
-#ifdef TORSION_USE_ASM
+#ifdef TORSION_HAVE_ASM_X64
   /* Borrowed from:
    * https://github.com/gnutls/nettle/blob/master/x86_64/sha512-compress.asm
    *
@@ -4025,7 +4025,7 @@ keccak_init(keccak_t *ctx, size_t bits) {
 
 static void
 keccak_permute(keccak_t *ctx) {
-#ifdef TORSION_USE_ASM
+#if defined(TORSION_HAVE_ASM_X64) && defined(TORSION_HAVE_SSE2)
   /* Borrowed from:
    * https://github.com/gnutls/nettle/blob/master/x86_64/sha3-permute.asm
    *

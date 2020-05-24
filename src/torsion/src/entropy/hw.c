@@ -109,12 +109,9 @@ uint16_t __wasi_clock_time_get(uint32_t clock_id,
 #  include <zircon/syscalls.h> /* zx_clock_get_monotonic */
 #else
 #  include <sys/time.h> /* gettimeofday */
-#  if defined(__GNUC__) || defined(__clang__)
+#  if defined(__GNUC__)
 #    define HAVE_INLINE_ASM
 #    if defined(__x86_64__) || defined(__amd64__) || defined(__i386__)
-#      ifdef __GNUC__
-#        include <cpuid.h> /* __cpuid_count */
-#      endif
 #      define HAVE_CPUID
 #    endif
 #  endif
@@ -236,13 +233,9 @@ torsion_cpuid(uint32_t level,
               uint32_t *c,
               uint32_t *d) {
 #ifdef HAVE_CPUID
-#ifdef __GNUC__
-  __cpuid_count(level, count, *a, *b, *c, *d);
-#else
   __asm__ ("cpuid\n"
            : "=a" (*a), "=b" (*b), "=c" (*c), "=d" (*d)
            : "0" (level), "2" (count));
-#endif
 #else /* HAVE_CPUID */
   (void)level;
   (void)count;

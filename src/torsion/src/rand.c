@@ -192,6 +192,5 @@ rng_uniform(rng_t *rng, uint32_t max) {
 
 int
 torsion_getentropy(void *dst, size_t size) {
-  return torsion_sysrand(dst, size)
-      || torsion_hwrand(dst, size);
+  return torsion_sysrand(dst, size);
 }

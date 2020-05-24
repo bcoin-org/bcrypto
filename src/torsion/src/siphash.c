@@ -22,8 +22,11 @@
 #include "bio.h"
 #include "internal.h"
 
-#if defined(TORSION_USE_64BIT) && defined(_MSC_VER)
-#include <intrin.h>
+#if defined(_MSC_VER) && !defined(__EMSCRIPTEN__)
+#  if defined(_M_AMD64) || defined(_M_X64)
+#    include <intrin.h>
+#    define HAVE_UMULH
+#  endif
 #endif
 
 /*
@@ -47,9 +50,9 @@
 
 static uint64_t
 reduce64(uint64_t a, uint64_t b) {
-#if defined(TORSION_HAS_INT128)
+#if defined(TORSION_HAVE_INT128)
   return ((torsion_uint128_t)a * b) >> 64;
-#elif defined(TORSION_USE_64BIT) && defined(_MSC_VER)
+#elif defined(HAVE_UMULH)
   return __umulh(a, b);
 #else
   /* https://stackoverflow.com/questions/28868367 */

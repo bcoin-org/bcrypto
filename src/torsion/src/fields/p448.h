@@ -8,7 +8,7 @@
  *   https://git.zx2c4.com/goldilocks
  */
 
-#ifdef TORSION_USE_64BIT
+#if defined(TORSION_HAVE_64BIT) && defined(TORSION_HAVE_INT128)
 typedef uint64_t p448_fe_word_t;
 #define P448_FIELD_WORDS 8
 #include "p448_64.h"
@@ -26,7 +26,7 @@ typedef p448_fe_word_t p448_fe_t[P448_FIELD_WORDS];
 #define p448_fe_mul fiat_p448_carry_mul
 #define p448_fe_sqr fiat_p448_carry_square
 
-#ifdef TORSION_USE_64BIT
+#if defined(TORSION_HAVE_64BIT) && defined(TORSION_HAVE_INT128)
 static const p448_fe_t p448_zero = {0, 0, 0, 0, 0, 0, 0, 0};
 static const p448_fe_t p448_one = {1, 0, 0, 0, 0, 0, 0, 0};
 #else

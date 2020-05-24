@@ -144,6 +144,9 @@
 #ifdef TORSION_TEST
 #include <stdio.h>
 #endif
+#ifdef TORSION_VALGRIND
+#include <valgrind/memcheck.h>
+#endif
 #include <torsion/drbg.h>
 #include <torsion/ecc.h>
 #include <torsion/hash.h>
@@ -163,7 +166,7 @@
 #include "fields/p448.h"
 #include "fields/p251.h"
 
-#ifdef TORSION_USE_64BIT
+#if defined(TORSION_HAVE_64BIT) && defined(TORSION_HAVE_INT128)
 typedef uint64_t fe_word_t;
 #define FIELD_WORD_BITS 64
 #define MAX_FIELD_WORDS 9
@@ -638,7 +641,7 @@ checked_malloc(size_t size) {
   void *ptr = malloc(size);
 
   if (ptr == NULL)
-    torsion_die("libtorsion: allocation failed.");
+    torsion_die("checked_malloc: allocation failed.");
 
   return ptr;
 }
@@ -9556,6 +9559,10 @@ ecdsa_sign(const wei_t *ec,
     ok &= sc_is_zero(sc, k) ^ 1;
     ok &= wge_is_zero(ec, &R) ^ 1;
     ok &= sc_is_zero(sc, r) ^ 1;
+
+#ifdef TORSION_VALGRIND
+    VALGRIND_MAKE_MEM_DEFINED(&ok, sizeof(ok));
+#endif
   } while (!ok);
 
   ASSERT(sc_invert(sc, k, k));
@@ -10552,6 +10559,24 @@ schnorr_hash_init(hash_t *hash, int type, const char *tag) {
   /* [BIP340] "Tagged Hashes". */
   size_t hash_size = hash_output_size(type);
   unsigned char bytes[HASH_MAX_OUTPUT_SIZE];
+
+  if (type == HASH_SHA256) {
+    sha256_t *sha = &hash->ctx.sha256;
+
+    if (strcmp(tag, "BIP340/challenge") == 0) {
+      hash->type = HASH_SHA256;
+      sha->state[0] = 0x71985ac9;
+      sha->state[1] = 0x198317a2;
+      sha->state[2] = 0x60b6e581;
+      sha->state[3] = 0x54c109b6;
+      sha->state[4] = 0x64bac2fd;
+      sha->state[5] = 0x91231de2;
+      sha->state[6] = 0x7301ebde;
+      sha->state[7] = 0x87635f83;
+      sha->size = 64;
+      return;
+    }
+  }
 
   hash_init(hash, type);
   hash_update(hash, tag, strlen(tag));

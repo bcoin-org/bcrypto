@@ -14,8 +14,8 @@
 #include <stdint.h>
 typedef unsigned char fiat_p224_uint1;
 typedef signed char fiat_p224_int1;
-TORSION_EXTENSION typedef signed __int128 fiat_p224_int128;
-TORSION_EXTENSION typedef unsigned __int128 fiat_p224_uint128;
+typedef torsion_int128_t fiat_p224_int128;
+typedef torsion_uint128_t fiat_p224_uint128;
 
 #if (-1 & 3) != 3
 #error "This code only works on a two's complement system"

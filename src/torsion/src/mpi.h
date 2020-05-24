@@ -46,6 +46,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+#include "internal.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -191,21 +192,16 @@ extern "C" {
  * Types
  */
 
-#ifdef __GNUC__
-#define MP_EXTENSION __extension__
-#else
-#define MP_EXTENSION
-#endif
-
-#ifdef TORSION_USE_64BIT
+#if defined(TORSION_HAVE_64BIT) && defined(TORSION_HAVE_INT128)
 typedef uint64_t mp_limb_t;
 typedef int64_t mp_long_t;
+typedef torsion_uint128_t mp_wide_t;
 #define MP_LIMB_BITS 64
 #define MP_LIMB_C(x) UINT64_C(x)
 #define MP_LIMB_MAX MP_LIMB_C(0xffffffffffffffff)
-#ifdef __SIZEOF_INT128__
-MP_EXTENSION typedef unsigned __int128 mp_wide_t;
 #define MP_HAS_WIDE
+#ifdef TORSION_HAVE_ASM_X64
+#define MPI_USE_ASM
 #endif
 #else
 typedef uint32_t mp_limb_t;

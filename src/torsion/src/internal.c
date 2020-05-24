@@ -22,3 +22,8 @@ torsion_die(const char *msg) {
   fflush(stderr);
   abort();
 }
+
+void
+torsion_abort(void) {
+  torsion_die("libtorsion: aborted.");
+}

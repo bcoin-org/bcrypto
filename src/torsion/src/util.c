@@ -7,14 +7,19 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
-
-#ifdef _WIN32
-/* For SecureZeroMemory (actually defined in winbase.h). */
-#include <windows.h>
-#endif
-
 #include <torsion/util.h>
 #include "bio.h"
+
+#if defined(__EMSCRIPTEN__)
+/* Inline assembly not supported in wasm/asm.js. */
+#else
+#  if defined(_WIN32)
+#    include <windows.h> /* actually defined in winbase.h */
+#    define HAVE_SECUREZEROMEMORY
+#  elif defined(__GNUC__)
+#    define HAVE_INLINE_ASM
+#  endif
+#endif
 
 /*
  * Memzero
@@ -22,11 +27,11 @@
 
 void
 cleanse(void *ptr, size_t len) {
-#if defined(_WIN32)
+#if defined(HAVE_SECUREZEROMEMORY)
   /* https://github.com/jedisct1/libsodium/blob/3b26a5c/src/libsodium/sodium/utils.c#L112 */
   if (len > 0)
     SecureZeroMemory(ptr, len);
-#elif defined(__GNUC__) || defined(__clang__)
+#elif defined(HAVE_INLINE_ASM)
   /* https://github.com/torvalds/linux/blob/37d4e84/include/linux/string.h#L233 */
   /* https://github.com/torvalds/linux/blob/37d4e84/include/linux/compiler-gcc.h#L21 */
   /* https://github.com/bminor/glibc/blob/master/string/explicit_bzero.c */

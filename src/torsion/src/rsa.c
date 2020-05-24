@@ -874,7 +874,7 @@ rsa_priv_decrypt(const rsa_priv_t *k,
    *           Page 15, Section 5.2.1.
    */
   mpz_t t, s, b, bi, c, m;
-#ifdef TORSION_RSA_USE_CRT
+#ifdef TORSION_USE_CRT
   mpz_t mp, mq, md;
 #endif
   drbg_t rng;
@@ -888,7 +888,7 @@ rsa_priv_decrypt(const rsa_priv_t *k,
   mpz_init(bi);
   mpz_init(c);
   mpz_init(m);
-#ifdef TORSION_RSA_USE_CRT
+#ifdef TORSION_USE_CRT
   mpz_init(mp);
   mpz_init(mq);
   mpz_init(md);
@@ -901,7 +901,7 @@ rsa_priv_decrypt(const rsa_priv_t *k,
   if (mpz_sgn(k->d) <= 0 || !mpz_odd_p(k->n))
     goto fail;
 
-#ifdef TORSION_RSA_USE_CRT
+#ifdef TORSION_USE_CRT
   if (mpz_sgn(k->dp) <= 0 || !mpz_odd_p(k->p))
     goto fail;
 
@@ -937,7 +937,7 @@ rsa_priv_decrypt(const rsa_priv_t *k,
   mpz_mul(c, c, b);
   mpz_mod(c, c, k->n);
 
-#ifdef TORSION_RSA_USE_CRT
+#ifdef TORSION_USE_CRT
   /* Leverage Chinese Remainder Theorem.
    *
    * Computation:
@@ -980,7 +980,7 @@ fail:
   mpz_cleanse(bi);
   mpz_cleanse(c);
   mpz_cleanse(m);
-#ifdef TORSION_RSA_USE_CRT
+#ifdef TORSION_USE_CRT
   mpz_cleanse(mp);
   mpz_cleanse(mq);
   mpz_cleanse(md);

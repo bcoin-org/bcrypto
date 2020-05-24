@@ -54,6 +54,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "internal.h"
 #include "mpi.h"
 
 /*
@@ -74,15 +75,6 @@ enum mpz_div_round_mode { MP_DIV_FLOOR, MP_DIV_CEIL, MP_DIV_TRUNC };
 /*
  * Assertions
  */
-
-#ifdef TORSION_NO_ASSERT
-#define ASSERT(expr) (void)(expr)
-#else
-#define ASSERT(expr) do {                      \
-  if (!(expr))                                 \
-    mp_assert_fail(__FILE__, __LINE__, #expr); \
-} while (0)
-#endif
 
 #define ASSERT_NOCARRY(cy) ASSERT((cy) == 0)
 #define ASSERT_CARRY(cy) ASSERT((cy) != 0)
@@ -115,7 +107,7 @@ enum mpz_div_round_mode { MP_DIV_FLOOR, MP_DIV_CEIL, MP_DIV_TRUNC };
  * See: https://gmplib.org/repo/gmp-6.2/file/tip/longlong.h#l1044
  */
 
-#ifdef TORSION_USE_ASM
+#ifdef MPI_USE_ASM
 
 #define MP_CLZ(count, x) do { \
   uint64_t __cbtmp;           \
@@ -165,7 +157,7 @@ enum mpz_div_round_mode { MP_DIV_FLOOR, MP_DIV_CEIL, MP_DIV_TRUNC };
       "rm" ((uint64_t)(v))         \
   )
 
-#else /* TORSION_USE_ASM */
+#else /* MPI_USE_ASM */
 
 #define MP_CLZ(count, x) do {                                      \
   mp_limb_t __clz_x = (x);                                         \
@@ -233,7 +225,7 @@ enum mpz_div_round_mode { MP_DIV_FLOOR, MP_DIV_CEIL, MP_DIV_TRUNC };
 } while (0)
 #endif
 
-#endif /* TORSION_USE_ASM */
+#endif /* MPI_USE_ASM */
 
 #define MP_UDIV_QRNND_PREINV(q, r, nh, nl, d, di) do {       \
   mp_limb_t _qh, _ql, _r, _mask;                             \
@@ -430,26 +422,6 @@ enum mpz_div_round_mode { MP_DIV_FLOOR, MP_DIV_CEIL, MP_DIV_TRUNC };
 } while (0)
 
 /*
- * Assertions
- */
-
-#ifndef TORSION_NO_ASSERT
-static void
-mp_assert_fail(const char *file, int line, const char *expr) {
-  fprintf(stderr, "%s:%d: Assertion `%s' failed.\n", file, line, expr);
-  fflush(stderr);
-  abort();
-}
-#endif
-
-static void
-mp_die(const char *msg) {
-  fprintf(stderr, "%s\n", msg);
-  fflush(stderr);
-  abort();
-}
-
-/*
  * Allocation
  */
 
@@ -462,7 +434,7 @@ mp_alloc_limbs(mp_size_t size) {
   ptr = malloc(size * sizeof(mp_limb_t));
 
   if (ptr == NULL)
-    mp_die("mpi: allocation failed.");
+    torsion_die("mp_alloc_limbs: allocation failed.");
 
   return ptr;
 }
@@ -476,7 +448,7 @@ mp_realloc_limbs(mp_ptr old, mp_size_t size) {
   ptr = realloc(old, size * sizeof(mp_limb_t));
 
   if (ptr == NULL)
-    mp_die("mpi: allocation failed.");
+    torsion_die("mp_realloc_limbs: allocation failed.");
 
   return ptr;
 }
@@ -518,7 +490,7 @@ mpn_cleanse(mp_ptr xp, mp_size_t xn) {
 
 void
 mpn_copyi(mp_ptr d, mp_srcptr s, mp_size_t n) {
-#ifdef TORSION_USE_ASM
+#ifdef MPI_USE_ASM
   /* From:
    * https://gmplib.org/repo/gmp-6.2/file/tip/mpn/x86_64/copyi.asm
    *
@@ -577,7 +549,7 @@ mpn_copyi(mp_ptr d, mp_srcptr s, mp_size_t n) {
 
 void
 mpn_copyd(mp_ptr d, mp_srcptr s, mp_size_t n) {
-#ifdef TORSION_USE_ASM
+#ifdef MPI_USE_ASM
   /* From:
    * https://gmplib.org/repo/gmp-6.2/file/tip/mpn/x86_64/copyd.asm
    *
@@ -817,7 +789,7 @@ mpn_cmp4(mp_srcptr ap, mp_size_t an, mp_srcptr bp, mp_size_t bn) {
 
 mp_limb_t
 mpn_add_1(mp_ptr rp, mp_srcptr ap, mp_size_t n, mp_limb_t b) {
-#ifdef TORSION_USE_ASM
+#ifdef MPI_USE_ASM
   AORS_1("addq", "adcq")
   return b;
 #else
@@ -840,7 +812,7 @@ mpn_add_1(mp_ptr rp, mp_srcptr ap, mp_size_t n, mp_limb_t b) {
 
 mp_limb_t
 mpn_add_n(mp_ptr rp, mp_srcptr ap, mp_srcptr bp, mp_size_t n) {
-#ifdef TORSION_USE_ASM
+#ifdef MPI_USE_ASM
   mp_limb_t cy;
   AORS_N("adcq")
   return cy;
@@ -882,7 +854,7 @@ mpn_add(mp_ptr rp, mp_srcptr ap, mp_size_t an, mp_srcptr bp, mp_size_t bn) {
 
 mp_limb_t
 mpn_sub_1(mp_ptr rp, mp_srcptr ap, mp_size_t n, mp_limb_t b) {
-#ifdef TORSION_USE_ASM
+#ifdef MPI_USE_ASM
   AORS_1("subq", "sbbq")
   return b;
 #else
@@ -906,7 +878,7 @@ mpn_sub_1(mp_ptr rp, mp_srcptr ap, mp_size_t n, mp_limb_t b) {
 
 mp_limb_t
 mpn_sub_n(mp_ptr rp, mp_srcptr ap, mp_srcptr bp, mp_size_t n) {
-#ifdef TORSION_USE_ASM
+#ifdef MPI_USE_ASM
   mp_limb_t cy;
   AORS_N("sbbq")
   return cy;
@@ -947,7 +919,7 @@ mpn_sub(mp_ptr rp, mp_srcptr ap, mp_size_t an, mp_srcptr bp, mp_size_t bn) {
 
 mp_limb_t
 mpn_mul_1(mp_ptr rp, mp_srcptr up, mp_size_t n, mp_limb_t vl) {
-#ifdef TORSION_USE_ASM
+#ifdef MPI_USE_ASM
   /* From:
    * https://gmplib.org/repo/gmp-6.2/file/tip/mpn/x86_64/mul_1.asm
    *
@@ -1208,7 +1180,7 @@ mpn_mul_1(mp_ptr rp, mp_srcptr up, mp_size_t n, mp_limb_t vl) {
 
 mp_limb_t
 mpn_addmul_1(mp_ptr rp, mp_srcptr up, mp_size_t n, mp_limb_t vl) {
-#ifdef TORSION_USE_ASM
+#ifdef MPI_USE_ASM
   mp_limb_t cy;
   AORSMUL_1("addq")
   return cy;
@@ -1238,7 +1210,7 @@ mpn_addmul_1(mp_ptr rp, mp_srcptr up, mp_size_t n, mp_limb_t vl) {
 
 mp_limb_t
 mpn_submul_1(mp_ptr rp, mp_srcptr up, mp_size_t n, mp_limb_t vl) {
-#ifdef TORSION_USE_ASM
+#ifdef MPI_USE_ASM
   mp_limb_t cy;
   AORSMUL_1("subq")
   return cy;
@@ -1296,7 +1268,7 @@ mpn_mul_n(mp_ptr rp, mp_srcptr ap, mp_srcptr bp, mp_size_t n) {
   mpn_mul(rp, ap, n, bp, n);
 }
 
-#ifdef TORSION_USE_ASM
+#ifdef MPI_USE_ASM
 static void
 mpn_sqr_diag_addlsh1(mp_ptr rp, mp_srcptr tp, mp_srcptr up, mp_size_t n) {
   /* From:
@@ -1363,7 +1335,7 @@ mpn_sqr_diag_addlsh1(mp_ptr rp, mp_srcptr tp, mp_srcptr up, mp_size_t n) {
 
 void
 mpn_sqr(mp_ptr rp, mp_srcptr up, mp_size_t n) {
-#ifdef TORSION_USE_ASM
+#ifdef MPI_USE_ASM
   /* https://gmplib.org/repo/gmp-6.2/file/tip/mpn/generic/sqr_basecase.c */
   ASSERT(n >= 1);
   ASSERT(!MPN_OVERLAP_P(rp, 2 * n, up, n));
@@ -1874,7 +1846,7 @@ mpn_quorem(mp_ptr qp, mp_ptr rp,
 
 mp_limb_t
 mpn_lshift(mp_ptr rp, mp_srcptr up, mp_size_t n, unsigned int cnt) {
-#ifdef TORSION_USE_ASM
+#ifdef MPI_USE_ASM
   /* From:
    * https://gmplib.org/repo/gmp-6.2/file/tip/mpn/x86_64/lshift.asm
    *
@@ -2047,7 +2019,7 @@ mpn_lshift(mp_ptr rp, mp_srcptr up, mp_size_t n, unsigned int cnt) {
 
 mp_limb_t
 mpn_rshift(mp_ptr rp, mp_srcptr up, mp_size_t n, unsigned int cnt) {
-#ifdef TORSION_USE_ASM
+#ifdef MPI_USE_ASM
   /* From:
    * https://gmplib.org/repo/gmp-6.2/file/tip/mpn/x86_64/rshift.asm
    *
@@ -2336,7 +2308,7 @@ mpn_invert(mp_ptr rp, mp_srcptr xp, mp_size_t xs,
   mp_bitcnt_t shift;
 
   if (yn == 0 || (yp[0] & 1) == 0)
-    mp_die("mpn_invert: Even modulus.");
+    torsion_die("mpn_invert: Even modulus.");
 
   if (yn == 1 && yp[0] == 1) {
     mpn_zero(rp, yn);
@@ -2420,7 +2392,7 @@ mpn_jacobi(mp_srcptr xp, mp_size_t xs,
   int j = 1;
 
   if (yn == 0 || (yp[0] & 1) == 0)
-    mp_die("mpn_jacobi: Even modulus.");
+    torsion_die("mpn_jacobi: Even modulus.");
 
   MPN_COPY_MOD(ap, an, xp, xn, yp, yn, xs);
   MPN_COPY(bp, bn, yp, yn);
@@ -2515,7 +2487,7 @@ mpn_powm_sec(mp_ptr zp,
   mp_size_t i, un;
 
   if (mn == 0 || (mp[0] & 1) == 0)
-    mp_die("mpn_powm_sec: Even modulus.");
+    torsion_die("mpn_powm_sec: Even modulus.");
 
   MPN_COPY_MOD(up, un, xp, xn, mp, mn, xs);
   mpn_zero(up + un, mn - un);
@@ -2797,7 +2769,7 @@ mpn_import(mp_ptr rp, mp_size_t rn,
   else if (endian == -1)
     mpn_import_le(rp, rn, xp, xn);
   else
-    mp_die("mpn_import: invalid endianness.");
+    torsion_die("mpn_import: invalid endianness.");
 }
 
 /*
@@ -2869,7 +2841,7 @@ mpn_export(unsigned char *rp, size_t rn,
   else if (endian == -1)
     mpn_export_le(rp, rn, xp, xn);
   else
-    mp_die("mpn_export: invalid endianness.");
+    torsion_die("mpn_export: invalid endianness.");
 }
 
 /*
@@ -3464,7 +3436,7 @@ mpz_div_qr(mpz_t q, mpz_t r, const mpz_t n, const mpz_t d,
   ds = d->_mp_size;
 
   if (ds == 0)
-    mp_die("mpz_div_qr: Divide by zero.");
+    torsion_die("mpz_div_qr: Divide by zero.");
 
   if (ns == 0) {
     if (q)
@@ -4171,7 +4143,7 @@ mpz_powm(mpz_t r, const mpz_t b, const mpz_t e, const mpz_t m) {
   mn = MP_ABS(m->_mp_size);
 
   if (mn == 0)
-    mp_die("mpz_powm: Zero modulo.");
+    torsion_die("mpz_powm: Zero modulo.");
 
   if (en == 0) {
     mpz_set_ui(r, 1);
@@ -4197,7 +4169,7 @@ mpz_powm(mpz_t r, const mpz_t b, const mpz_t e, const mpz_t m) {
 
   if (e->_mp_size < 0) {
     if (!mpz_invert(base, b, m))
-      mp_die("mpz_powm: Negative exponent and non-invertible base.");
+      torsion_die("mpz_powm: Negative exponent and non-invertible base.");
   } else {
     mp_size_t bn;
 
@@ -4266,16 +4238,16 @@ mpz_powm_sec(mpz_ptr r, mpz_srcptr b, mpz_srcptr e, mpz_srcptr m) {
   mp_size_t mn, itch;
 
   if (e->_mp_size < 0)
-    mp_die("mpz_powm_sec: Negative exponent.");
+    torsion_die("mpz_powm_sec: Negative exponent.");
 
   if (e->_mp_size == 0)
-    mp_die("mpz_powm_sec: Zero exponent.");
+    torsion_die("mpz_powm_sec: Zero exponent.");
 
   if (m->_mp_size == 0)
-    mp_die("mpz_powm_sec: Zero modulus.");
+    torsion_die("mpz_powm_sec: Zero modulus.");
 
   if ((m->_mp_d[0] & 1) == 0)
-    mp_die("mpz_powm_sec: Even modulus.");
+    torsion_die("mpz_powm_sec: Even modulus.");
 
   mn = MP_ABS(m->_mp_size);
   itch = MPN_POWM_SEC_ITCH(mn);

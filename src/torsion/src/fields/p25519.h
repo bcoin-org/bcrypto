@@ -8,7 +8,7 @@
  *   https://github.com/floodyberry/curve25519-donna
  */
 
-#ifdef TORSION_USE_64BIT
+#if defined(TORSION_HAVE_64BIT) && defined(TORSION_HAVE_INT128)
 typedef uint64_t p25519_fe_word_t;
 #define P25519_FIELD_WORDS 5
 #include "p25519_64.h"
@@ -29,7 +29,7 @@ typedef p25519_fe_word_t p25519_fe_t[P25519_FIELD_WORDS];
 #define p25519_fe_select(r, a, b, flag) \
   fiat_p25519_selectznz(r, (flag) != 0, a, b)
 
-#ifdef TORSION_USE_64BIT
+#if defined(TORSION_HAVE_64BIT) && defined(TORSION_HAVE_INT128)
 static const p25519_fe_t p25519_sqrtneg1 = {
   UINT64_C(0x00061b274a0ea0b0), UINT64_C(0x0000d5a5fc8f189d),
   UINT64_C(0x0007ef5e9cbd0c60), UINT64_C(0x00078595a6804c9e),
