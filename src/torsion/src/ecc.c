@@ -141,9 +141,6 @@
 #include <string.h>
 #include <stdint.h>
 #include <limits.h>
-#ifdef TORSION_TEST
-#include <stdio.h>
-#endif
 #ifdef TORSION_VALGRIND
 #include <valgrind/memcheck.h>
 #endif
@@ -166,7 +163,7 @@
 #include "fields/p448.h"
 #include "fields/p251.h"
 
-#if defined(TORSION_HAVE_64BIT) && defined(TORSION_HAVE_INT128)
+#ifdef TORSION_HAVE_INT128
 typedef uint64_t fe_word_t;
 #define FIELD_WORD_BITS 64
 #define MAX_FIELD_WORDS 9
@@ -747,14 +744,6 @@ sc_select(const scalar_field_t *sc, sc_t r,
           unsigned int flag) {
   mpn_cnd_select(flag != 0, r, a, b, sc->limbs);
 }
-
-#ifdef TORSION_TEST
-TORSION_UNUSED static void
-sc_print(const scalar_field_t *sc, const sc_t a) {
-  mpn_out_str(stdout, 16, a, sc->limbs);
-  printf("\n");
-}
-#endif
 
 static int
 sc_set_fe(const scalar_field_t *sc,
@@ -1433,23 +1422,6 @@ fe_get_limbs(const prime_field_t *fe, mp_limb_t *r, const fe_t a) {
 
   mpn_import(r, fe->limbs, tmp, fe->size, fe->endian);
 }
-
-#ifdef TORSION_TEST
-static void
-fe_out_str(const prime_field_t *fe, const fe_t a) {
-  mp_limb_t xp[MAX_FIELD_LIMBS];
-
-  fe_get_limbs(fe, xp, a);
-
-  mpn_out_str(stdout, 16, xp, fe->limbs);
-}
-
-TORSION_UNUSED static void
-fe_print(const prime_field_t *fe, const fe_t a) {
-  fe_out_str(fe, a);
-  printf("\n");
-}
-#endif
 
 static int
 fe_set_sc(const prime_field_t *fe,
@@ -2665,23 +2637,6 @@ wge_jsf_points_endo_var(const wei_t *ec, jge_t *out, const wge_t *p1) {
   wge_to_jge(ec, &out[3], &p2); /* 7 */
 }
 
-#ifdef TORSION_TEST
-TORSION_UNUSED static void
-wge_print(const wei_t *ec, const wge_t *p) {
-  const prime_field_t *fe = &ec->fe;
-
-  if (wge_is_zero(ec, p)) {
-    printf("(infinity)\n");
-  } else {
-    printf("(");
-    fe_out_str(fe, p->x);
-    printf(", ");
-    fe_out_str(fe, p->y);
-    printf(")\n");
-  }
-}
-#endif
-
 /*
  * Short Weierstrass Jacobian Point
  */
@@ -3750,25 +3705,6 @@ jge_endo_beta(const wei_t *ec, jge_t *r, const jge_t *p) {
   fe_set(fe, r->y, p->y);
   fe_set(fe, r->z, p->z);
 }
-
-#ifdef TORSION_TEST
-TORSION_UNUSED static void
-jge_print(const wei_t *ec, const jge_t *p) {
-  const prime_field_t *fe = &ec->fe;
-
-  if (jge_is_zero(ec, p)) {
-    printf("(infinity)\n");
-  } else {
-    printf("(");
-    fe_out_str(fe, p->x);
-    printf(", ");
-    fe_out_str(fe, p->y);
-    printf(", ");
-    fe_out_str(fe, p->z);
-    printf(")\n");
-  }
-}
-#endif
 
 /*
  * Short Weierstrass Curve
@@ -5329,23 +5265,6 @@ mge_to_xge(const mont_t *ec, xge_t *r, const mge_t *p) {
   _mont_to_edwards(&ec->fe, r, p, ec->c, ec->invert, 1);
 }
 
-#ifdef TORSION_TEST
-TORSION_UNUSED static void
-mge_print(const mont_t *ec, const mge_t *p) {
-  const prime_field_t *fe = &ec->fe;
-
-  if (mge_is_zero(ec, p)) {
-    printf("(infinity)\n");
-  } else {
-    printf("(");
-    fe_out_str(fe, p->x);
-    printf(", ");
-    fe_out_str(fe, p->y);
-    printf(")\n");
-  }
-}
-#endif
-
 /*
  * Montgomery Projective Point
  */
@@ -5619,23 +5538,6 @@ pge_is_small(const mont_t *ec, const pge_t *p) {
   return pge_is_zero(ec, &r)
       & (pge_is_zero(ec, p) ^ 1);
 }
-
-#ifdef TORSION_TEST
-TORSION_UNUSED static void
-pge_print(const mont_t *ec, const pge_t *p) {
-  const prime_field_t *fe = &ec->fe;
-
-  if (pge_is_zero(ec, p)) {
-    printf("(infinity)\n");
-  } else {
-    printf("(");
-    fe_out_str(fe, p->x);
-    printf(", ");
-    fe_out_str(fe, p->z);
-    printf(")\n");
-  }
-}
-#endif
 
 /*
  * Montgomery Curve
@@ -6632,25 +6534,6 @@ static void
 xge_to_mge(const edwards_t *ec, mge_t *r, const xge_t *p) {
   _edwards_to_mont(&ec->fe, r, p, ec->c, ec->invert, 1);
 }
-
-#ifdef TORSION_TEST
-TORSION_UNUSED static void
-xge_print(const edwards_t *ec, const xge_t *p) {
-  const prime_field_t *fe = &ec->fe;
-
-  if (xge_is_zero(ec, p)) {
-    printf("(infinity)\n");
-  } else {
-    printf("(");
-    fe_out_str(fe, p->x);
-    printf(", ");
-    fe_out_str(fe, p->y);
-    printf(", ");
-    fe_out_str(fe, p->z);
-    printf(")\n");
-  }
-}
-#endif
 
 /*
  * Edwards Curve
@@ -8567,8 +8450,10 @@ wei_t *
 wei_curve_create(int type) {
   wei_t *ec = NULL;
 
-  if (type < 0 || (size_t)type > ARRAY_SIZE(wei_curves))
+  if (type < 0 || (size_t)type > ARRAY_SIZE(wei_curves)) {
+    torsion_die("wei_curve_create: invalid curve.");
     return NULL;
+  }
 
   ec = checked_malloc(sizeof(wei_t));
 
@@ -8658,8 +8543,10 @@ mont_t *
 mont_curve_create(int type) {
   mont_t *ec = NULL;
 
-  if (type < 0 || (size_t)type > ARRAY_SIZE(mont_curves))
+  if (type < 0 || (size_t)type > ARRAY_SIZE(mont_curves)) {
+    torsion_die("mont_curve_create: invalid curve.");
     return NULL;
+  }
 
   ec = checked_malloc(sizeof(mont_t));
 
@@ -8702,8 +8589,10 @@ edwards_t *
 edwards_curve_create(int type) {
   edwards_t *ec = NULL;
 
-  if (type < 0 || (size_t)type > ARRAY_SIZE(edwards_curves))
+  if (type < 0 || (size_t)type > ARRAY_SIZE(edwards_curves)) {
+    torsion_die("edwards_curve_create: invalid curve.");
     return NULL;
+  }
 
   ec = checked_malloc(sizeof(edwards_t));
 

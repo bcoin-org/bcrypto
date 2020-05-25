@@ -51,7 +51,6 @@
 
 #include <limits.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 
 #include "internal.h"
@@ -2845,53 +2844,6 @@ mpn_export(unsigned char *rp, size_t rn,
 }
 
 /*
- * Stringification
- */
-
-size_t
-mpn_out_str(FILE *stream, int base, mp_srcptr xp, mp_size_t xn) {
-  mp_size_t bytes = 0;
-  mp_limb_t ch;
-  mp_size_t i;
-
-  ASSERT(base == 16);
-
-  if (xn < 0) {
-    fputc('-', stream);
-    xn = -xn;
-  }
-
-  xn = mpn_normalized_size(xp, xn);
-
-  if (xn == 0) {
-    fputc('0', stream);
-    return 1;
-  }
-
-  while (xn--) {
-    i = MP_LIMB_BITS / 4;
-
-    while (i--) {
-      ch = (xp[xn] >> (i * 4)) & 0x0f;
-
-      if (bytes == 0 && ch == 0)
-        continue;
-
-      if (ch < 0x0a)
-        ch += '0';
-      else
-        ch += 'a' - 0x0a;
-
-      fputc(ch, stream);
-
-      bytes += 1;
-    }
-  }
-
-  return bytes;
-}
-
-/*
  * MPZ Interface
  */
 
@@ -4763,15 +4715,6 @@ mpz_import(mpz_t r, const unsigned char *u, size_t size, int endian) {
 void
 mpz_export(unsigned char *r, const mpz_t u, size_t size, int endian) {
   mpn_export(r, size, u->_mp_d, MP_ABS(u->_mp_size), endian);
-}
-
-/*
- * Stringification
- */
-
-size_t
-mpz_out_str(FILE *stream, int base, const mpz_t x) {
-  return mpn_out_str(stream, base, x->_mp_d, x->_mp_size);
 }
 
 /*

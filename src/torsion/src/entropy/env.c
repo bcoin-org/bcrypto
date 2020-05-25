@@ -46,7 +46,7 @@
 
 #ifdef _WIN32
 /* winsock2.h must be included before windows.h. */
-/* See: https://stackoverflow.com/a/9168850/716248 */
+/* See: https://stackoverflow.com/a/9168850 */
 #  include <winsock2.h> /* gethostname */
 #  pragma comment(lib, "ws2_32.lib")
 #endif

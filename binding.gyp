@@ -53,11 +53,6 @@
       "with_secp256k1%": "true"
     },
     "conditions": [
-      ["node_byteorder=='big'", {
-        "defines": [
-          "WORDS_BIGENDIAN"
-        ]
-      }],
       ["OS=='win'", {
         "msbuild_settings": {
           "ClCompile": {
@@ -95,6 +90,11 @@
         #   "./src/secp256k1/src"
         # ],
         "conditions": [
+          ["node_byteorder=='big'", {
+            "defines": [
+              "WORDS_BIGENDIAN"
+            ]
+          }],
           ["target_arch=='x64' and OS!='win'", {
             "defines": [
               "HAVE___INT128",

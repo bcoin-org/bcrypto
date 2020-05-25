@@ -4025,7 +4025,7 @@ keccak_init(keccak_t *ctx, size_t bits) {
 
 static void
 keccak_permute(keccak_t *ctx) {
-#if defined(TORSION_HAVE_ASM_X64) && defined(TORSION_HAVE_SSE2)
+#ifdef TORSION_HAVE_ASM_X64
   /* Borrowed from:
    * https://github.com/gnutls/nettle/blob/master/x86_64/sha3-permute.asm
    *

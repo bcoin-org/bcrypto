@@ -45,7 +45,6 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
 #include "internal.h"
 
 #ifdef __cplusplus
@@ -104,7 +103,6 @@ extern "C" {
 #define mpn_sec_gte __torsion_mpn_sec_gte
 #define mpn_import __torsion_mpn_import
 #define mpn_export __torsion_mpn_export
-#define mpn_out_str __torsion_mpn_out_str
 #define mpz_init __torsion_mpz_init
 #define mpz_init2 __torsion_mpz_init2
 #define mpz_init_set __torsion_mpz_init_set
@@ -184,7 +182,6 @@ extern "C" {
 #define mpz_roinit_n __torsion_mpz_roinit_n
 #define mpz_import __torsion_mpz_import
 #define mpz_export __torsion_mpz_export
-#define mpz_out_str __torsion_mpz_out_str
 #define mpz_random_bits __torsion_mpz_random_bits
 #define mpz_random_int __torsion_mpz_random_int
 
@@ -192,7 +189,7 @@ extern "C" {
  * Types
  */
 
-#if defined(TORSION_HAVE_64BIT) && defined(TORSION_HAVE_INT128)
+#ifdef TORSION_HAVE_INT128
 typedef uint64_t mp_limb_t;
 typedef int64_t mp_long_t;
 typedef torsion_uint128_t mp_wide_t;
@@ -394,12 +391,6 @@ void mpn_import(mp_ptr, mp_size_t, const unsigned char *, size_t, int);
 void mpn_export(unsigned char *, size_t, mp_srcptr, mp_size_t, int);
 
 /*
- * Stringification
- */
-
-size_t mpn_out_str(FILE *, int, mp_srcptr, mp_size_t);
-
-/*
  * MPZ Interface
  */
 
@@ -597,12 +588,6 @@ void mpz_import(mpz_t, const unsigned char *, size_t, int);
  */
 
 void mpz_export(unsigned char *, const mpz_t, size_t, int);
-
-/*
- * Stringification
- */
-
-size_t mpz_out_str(FILE *, int, const mpz_t);
 
 /*
  * RNG

@@ -4,7 +4,7 @@
  * https://github.com/bcoin-org/libtorsion
  */
 
-#if defined(TORSION_HAVE_64BIT) && defined(TORSION_HAVE_INT128)
+#ifdef TORSION_HAVE_INT128
 typedef uint64_t p192_fe_word_t;
 #define P192_FIELD_WORDS 4
 #include "p192_64.h"

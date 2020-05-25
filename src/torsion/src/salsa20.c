@@ -95,7 +95,7 @@ salsa20_init(salsa20_t *ctx,
 static void
 salsa20_block(salsa20_t *ctx) {
   uint32_t *stream = ctx->stream.ints;
-#if defined(TORSION_HAVE_ASM_X64) && defined(TORSION_HAVE_SSE2)
+#ifdef TORSION_HAVE_ASM_X64
   /* Borrowed from:
    * https://github.com/gnutls/nettle/blob/master/x86_64/salsa20-core-internal.asm
    *
@@ -272,9 +272,7 @@ salsa20_block(salsa20_t *ctx) {
       "xmm7", "xmm8", "cc", "memory"
   );
 #else
-#ifdef TORSION_BIGENDIAN
   uint8_t *bytes = ctx->stream.bytes;
-#endif
   uint64_t c;
   size_t i;
 
@@ -294,10 +292,10 @@ salsa20_block(salsa20_t *ctx) {
   for (i = 0; i < 16; i++)
     stream[i] += ctx->state[i];
 
-#ifdef TORSION_BIGENDIAN
-  for (i = 0; i < 16; i++)
-    write32le(bytes + i * 4, stream[i]);
-#endif
+  if (TORSION_BIGENDIAN) {
+    for (i = 0; i < 16; i++)
+      write32le(bytes + i * 4, stream[i]);
+  }
 
   c = (uint64_t)ctx->state[8] + 1;
 

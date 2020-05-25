@@ -17,19 +17,8 @@
 #  define __has_builtin(x) 0
 #endif
 
-#ifndef __has_feature
-#  define __has_feature(x) 0
-#endif
-
-#if defined(__clang__) && defined(__clang_major__) && defined(__clang_minor__)
-#  define TORSION_CLANG_PREREQ(maj, min) \
-    ((__clang_major__ << 16) + __clang_minor__ >= ((maj) << 16) + (min))
-#else
-#  define TORSION_CLANG_PREREQ(maj, min) 0
-#endif
-
 /*
- * GCC Compat
+ * GNUC Compat
  */
 
 #if defined(__GNUC__) && defined(__GNUC_MINOR__)
@@ -106,6 +95,16 @@ __torsion_assert_fail(const char *file, int line, const char *expr);
 #endif
 
 /*
+ * Endianness
+ */
+
+/* Any decent compiler should be able to optimize this out. */
+static const unsigned long __torsion_endian_check = 1;
+
+#define TORSION_BIGENDIAN \
+  (*((const unsigned char *)&__torsion_endian_check) == 0)
+
+/*
  * Configuration
  */
 
@@ -163,25 +162,9 @@ __torsion_assert_fail(const char *file, int line, const char *expr);
 /* No inline ASM support for wasm/asm.js/win32. */
 #else
 #  ifdef __GNUC__
-#    define TORSION_HAVE_ASM
-#    if defined(__i386__)
-#      define TORSION_HAVE_ASM_X86
-#    endif
 #    if defined(__amd64__) || defined(__x86_64__)
 #      define TORSION_HAVE_ASM_X64
 #    endif
-#  endif
-#endif
-
-/* Detect endianness. */
-#if defined(__EMSCRIPTEN__)
-/* WASM uses native endianness, but in practice
-   everyone requires little-endian for their WASM
-   builds. Why you would build on big-endian and
-   run it on little-endian, I have no idea. */
-#else
-#  if defined(WORDS_BIGENDIAN)
-#    define TORSION_BIGENDIAN
 #  endif
 #endif
 
@@ -190,44 +173,35 @@ __torsion_assert_fail(const char *file, int line, const char *expr);
 /* According to libsodium, __int128 is broken in emscripten builds.
    See: https://github.com/jedisct1/libsodium/blob/master/configure.ac */
 #else
+/* According to this SO post[1], __int128 is supported
+   since gcc 4.6 and clang 3.1. However, a quick look at
+   godbolt suggests clang only gained support in 3.6. Note
+   that icc has supported __int128 since 13.0, but didn't
+   define `__SIZEOF_INT128__` until 16.0. All three of the
+   aforementioned compilers define `__GNUC__` (and have
+   since... forever?).
+
+   [1] https://stackoverflow.com/a/54815033 */
 #  ifdef TORSION_HAVE_64BIT
-#    if defined(__clang__)
-#      if TORSION_CLANG_PREREQ(3, 1)
-#        define TORSION_HAVE_INT128
-#      endif
-#    elif defined(__GNUC__)
-#      ifdef __SIZEOF_INT128__
-#        define TORSION_HAVE_INT128
-#      endif
-#      if TORSION_GNUC_PREREQ(4, 4)
-#        define TORSION_HAVE_MODETI
-#      endif
+#    if defined(__GNUC__) && defined(__SIZEOF_INT128__)
+#      define TORSION_HAVE_INT128
 #    endif
 #  endif
-#endif
-
-/* No reliable way to determine this. `__SSE2__`
-   is only defined if -msse was passed. Since
-   SSE2 is fairly well supported, we simply
-   assume it is available on x86-64 hardware. */
-#ifdef TORSION_HAVE_ASM_X64
-#  define TORSION_HAVE_SSE2
 #endif
 
 /* Allow some overrides (for testing). */
 #ifdef TORSION_FORCE_32BIT
 #  undef TORSION_HAVE_64BIT
-#  undef TORSION_HAVE_ASM
-#  undef TORSION_HAVE_ASM_X86
 #  undef TORSION_HAVE_ASM_X64
 #  undef TORSION_HAVE_INT128
-#  undef TORSION_HAVE_SSE2
 #endif
 
 #ifdef TORSION_NO_ASM
-#  undef TORSION_HAVE_ASM
-#  undef TORSION_HAVE_ASM_X86
 #  undef TORSION_HAVE_ASM_X64
+#endif
+
+#ifdef TORSION_NO_INT128
+#  undef TORSION_HAVE_INT128
 #endif
 
 #endif /* !TORSION_HAVE_CONFIG */
@@ -236,13 +210,9 @@ __torsion_assert_fail(const char *file, int line, const char *expr);
  * Types
  */
 
-#if defined(TORSION_HAVE_INT128)
+#ifdef TORSION_HAVE_INT128
 TORSION_EXTENSION typedef unsigned __int128 torsion_uint128_t;
 TORSION_EXTENSION typedef signed __int128 torsion_int128_t;
-#elif defined(TORSION_HAVE_MODETI)
-typedef unsigned torsion_uint128_t __attribute__((mode(TI)));
-typedef signed torsion_int128_t __attribute__((mode(TI)));
-#define TORSION_HAVE_INT128
 #endif
 
 /*
