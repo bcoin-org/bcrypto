@@ -135,7 +135,7 @@
  * DragonFly BSD:
  *   Source: getrandom(2)
  *   Fallback: /dev/random
- *   Support: kern.arandom added in DragonFly 5.8.
+ *   Support: getrandom(2) added in DragonFly BSD 5.8.
  *
  * Solaris/Illumos:
  *   Source: getrandom(2)
