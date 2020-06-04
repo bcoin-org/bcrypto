@@ -83,7 +83,8 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.pbkdf2.native, 0);
         assert.strictEqual(bcrypto.pgp.native, undefined);
         assert.strictEqual(bcrypto.Poly1305.native, 0);
-        assert.strictEqual(bcrypto.random.native, process.browser ? 0 : 1);
+        assert.strictEqual(bcrypto.random.native,
+          process.browser ? 0 : (FORCE_TORSION ? 2 : 1));
         assert.strictEqual(bcrypto.RC4.native, 0);
         assert.strictEqual(bcrypto.RIPEMD160.native, 0);
         assert.strictEqual(bcrypto.rsa.native, 0);
