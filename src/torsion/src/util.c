@@ -14,7 +14,7 @@
 /* Inline assembly not supported in wasm/asm.js. */
 #else
 #  if defined(_WIN32)
-#    include <windows.h> /* actually defined in winbase.h */
+#    include <windows.h>
 #    define HAVE_SECUREZEROMEMORY
 #  elif defined(__GNUC__)
 #    define HAVE_INLINE_ASM

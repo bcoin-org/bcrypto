@@ -15,6 +15,7 @@
  */
 
 #define torsion_envrand __torsion_envrand
+#define torsion_hrtime __torsion_hrtime
 #define torsion_rdtsc __torsion_rdtsc
 #define torsion_has_cpuid __torsion_has_cpuid
 #define torsion_cpuid __torsion_cpuid
@@ -33,18 +34,21 @@ int
 torsion_envrand(unsigned char *seed);
 
 uint64_t
+torsion_hrtime(void);
+
+uint64_t
 torsion_rdtsc(void);
 
 int
 torsion_has_cpuid(void);
 
 void
-torsion_cpuid(uint32_t level,
-              uint32_t count,
-              uint32_t *a,
+torsion_cpuid(uint32_t *a,
               uint32_t *b,
               uint32_t *c,
-              uint32_t *d);
+              uint32_t *d,
+              uint32_t leaf,
+              uint32_t subleaf);
 
 int
 torsion_has_rdrand(void);

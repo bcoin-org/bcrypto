@@ -3566,6 +3566,9 @@ des_encipher(const des_t *ctx, uint32_t *xl, uint32_t *xr) {
   uint32_t kl, kr, b1, b2, s, f, t;
   size_t i;
 
+  /* Initial Permutation */
+  des_ip(&l, &r);
+
   /* Apply f() x16 times */
   for (i = 0; i < 32; i += 2) {
     kl = ctx->keys[i + 0];
@@ -3598,6 +3601,9 @@ des_decipher(const des_t *ctx, uint32_t *xl, uint32_t *xr) {
   uint32_t r = *xl;
   uint32_t kl, kr, b1, b2, s, f, t;
   int i;
+
+  /* Initial Permutation */
+  des_ip(&r, &l);
 
   /* Apply f() x16 times */
   for (i = 32 - 2; i >= 0; i -= 2) {
@@ -3655,9 +3661,6 @@ des_encrypt(const des_t *ctx, unsigned char *dst, const unsigned char *src) {
   uint32_t l = read32be(src + 0);
   uint32_t r = read32be(src + 4);
 
-  /* Initial Permutation */
-  des_ip(&l, &r);
-
   des_encipher(ctx, &l, &r);
 
   write32be(dst + 0, l);
@@ -3668,9 +3671,6 @@ void
 des_decrypt(const des_t *ctx, unsigned char *dst, const unsigned char *src) {
   uint32_t l = read32be(src + 0);
   uint32_t r = read32be(src + 4);
-
-  /* Initial Permutation */
-  des_ip(&l, &r);
 
   des_decipher(ctx, &l, &r);
 
@@ -6667,8 +6667,8 @@ gcm_crypt(gcm_t *mode,
 int
 gcm_init(gcm_t *mode, const cipher_t *cipher,
          const unsigned char *iv, size_t iv_len) {
+  static const unsigned char initial[4] = {0, 0, 0, 1};
   unsigned char key[16];
-  unsigned char tmp[16];
 
   if (cipher->size != 16) {
     memset(mode, 0, sizeof(*mode));
@@ -6683,26 +6683,16 @@ gcm_init(gcm_t *mode, const cipher_t *cipher,
 
   gcm_crypt(mode, cipher, key, zero64, 16);
 
-  ghash_init(&mode->hash, key);
-
-  if (iv_len != 12) {
-    ghash_update(&mode->hash, iv, iv_len);
-    ghash_final(&mode->hash, tmp);
-    ghash_init(&mode->hash, key);
-
-    iv = tmp;
-    iv_len = 16;
-  }
-
-  memcpy(mode->ctr, iv, iv_len);
-
   if (iv_len == 12) {
-    mode->ctr[12] = 0x00;
-    mode->ctr[13] = 0x00;
-    mode->ctr[14] = 0x00;
-    mode->ctr[15] = 0x01;
+    memcpy(mode->ctr, iv, 12);
+    memcpy(mode->ctr + 12, initial, 4);
+  } else {
+    ghash_init(&mode->hash, key);
+    ghash_update(&mode->hash, iv, iv_len);
+    ghash_final(&mode->hash, mode->ctr);
   }
 
+  ghash_init(&mode->hash, key);
   gcm_crypt(mode, cipher, mode->mask, zero64, 16);
 
   return 1;

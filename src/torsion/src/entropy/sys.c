@@ -186,7 +186,7 @@
  * [2] https://github.com/libuv/libuv/blob/a62f8ce/src/unix/random-sysctl-linux.c
  */
 
-#ifdef __linux__
+#if defined(__linux__) && !defined(_GNU_SOURCE)
 /* For syscall(2). */
 #  define _GNU_SOURCE
 #endif
@@ -208,14 +208,14 @@ uint16_t __wasi_random_get(void *buf, size_t buf_len);
 #elif defined(__wasm__) || defined(__asmjs__)
 /* nothing */
 #elif defined(_WIN32)
-#  include <windows.h>
+#  include <windows.h> /* _WIN32_WINNT */
 #  if defined(_MSC_VER) && _MSC_VER > 1500 /* VS 2008 */ \
    && defined(_WIN32_WINNT) && _WIN32_WINNT >= 0x0600 /* >= Vista (2007) */
 #    include <bcrypt.h> /* BCryptGenRandom */
-#    pragma comment(lib, "bcrypt.lib")
 #    ifndef STATUS_SUCCESS
 #      define STATUS_SUCCESS ((NTSTATUS)0)
 #    endif
+#    pragma comment(lib, "bcrypt.lib")
 #    define HAVE_BCRYPTGENRANDOM
 #  else
 #    define RtlGenRandom SystemFunction036

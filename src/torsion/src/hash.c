@@ -32,17 +32,22 @@
  */
 
 static TORSION_INLINE uint32_t
-rotr32(const uint32_t w, const unsigned c) {
+rotr32(uint32_t w, unsigned int c) {
   return (w >> c) | (w << (32 - c));
 }
 
 static TORSION_INLINE uint64_t
-rotr64(const uint64_t w, const unsigned c) {
+rotr64(uint64_t w, unsigned int c) {
   return (w >> c) | (w << (64 - c));
 }
 
 /*
  * MD2
+ *
+ * Resources:
+ *   https://en.wikipedia.org/wiki/MD2_(hash_function)
+ *   https://tools.ietf.org/html/rfc1319
+ *   https://github.com/RustCrypto/hashes/blob/master/md2/src/lib.rs
  */
 
 static const uint8_t md2_S[256] = {
@@ -170,6 +175,11 @@ md2_final(md2_t *ctx, unsigned char *out) {
 
 /*
  * MD4
+ *
+ * Resources:
+ *   https://en.wikipedia.org/wiki/MD4
+ *   https://tools.ietf.org/html/rfc1320
+ *   https://github.com/gnutls/nettle/blob/master/md4.c
  */
 
 static const unsigned char md4_P[64] = {
@@ -331,6 +341,11 @@ md4_final(md4_t *ctx, unsigned char *out) {
 
 /*
  * MD5
+ *
+ * Resources:
+ *   https://en.wikipedia.org/wiki/MD5
+ *   https://tools.ietf.org/html/rfc1321
+ *   https://github.com/gnutls/nettle/blob/master/md5-compress.c
  */
 
 static const unsigned char md5_P[64] = {
@@ -533,6 +548,11 @@ md5sha1_final(md5sha1_t *ctx, unsigned char *out) {
 
 /*
  * RIPEMD160
+ *
+ * Resources:
+ *   https://en.wikipedia.org/wiki/RIPEMD-160
+ *   https://homes.esat.kuleuven.be/~bosselae/ripemd160/pdf/AB-9601/AB-9601.pdf
+ *   https://github.com/gnutls/nettle/blob/master/ripemd160-compress.c
  */
 
 static const unsigned char ripemd160_P[64] = {
@@ -562,15 +582,13 @@ ripemd160_transform(ripemd160_t *ctx, const unsigned char *chunk) {
   uint32_t aa, bb, cc, dd, ee, t;
   uint32_t x[16];
 
-#ifdef TORSION_BIGENDIAN
-  {
+  if (TORSION_BIGENDIAN) {
     int i;
     for (i = 0; i < 16; i++, chunk += 4)
       x[i] = read32le(chunk);
+  } else {
+    memcpy(x, chunk, sizeof(x));
   }
-#else
-  memcpy(x, chunk, sizeof(x));
-#endif
 
 #define K0 0x00000000
 #define K1 0x5a827999
@@ -855,6 +873,12 @@ ripemd160_final(ripemd160_t *ctx, unsigned char *out) {
 
 /*
  * SHA1
+ *
+ * Resources:
+ *   https://en.wikipedia.org/wiki/SHA-1
+ *   https://tools.ietf.org/html/rfc3174
+ *   http://csrc.nist.gov/publications/fips/fips180-4/fips-180-4.pdf
+ *   https://github.com/gnutls/nettle/blob/master/sha1-compress.c
  */
 
 static const unsigned char sha1_P[64] = {
@@ -1066,6 +1090,11 @@ sha1_final(sha1_t *ctx, unsigned char *out) {
 
 /*
  * SHA256
+ *
+ * Resources:
+ *   https://en.wikipedia.org/wiki/SHA-2
+ *   https://tools.ietf.org/html/rfc4634
+ *   https://github.com/gnutls/nettle/blob/master/sha256-compress.c
  */
 
 static const uint32_t sha256_K[64] = {
@@ -2463,6 +2492,10 @@ sha256_final(sha256_t *ctx, unsigned char *out) {
 
 /*
  * SHA224
+ *
+ * Resources:
+ *   https://en.wikipedia.org/wiki/SHA-2
+ *   https://tools.ietf.org/html/rfc4634
  */
 
 void
@@ -2495,6 +2528,11 @@ sha224_final(sha224_t *ctx, unsigned char *out) {
 
 /*
  * SHA512
+ *
+ * Resources:
+ *   https://en.wikipedia.org/wiki/SHA-2
+ *   https://tools.ietf.org/html/rfc4634
+ *   https://github.com/gnutls/nettle/blob/master/sha512-compress.c
  */
 
 static const uint64_t sha512_K[80] = {
@@ -3925,6 +3963,10 @@ sha512_final(sha512_t *ctx, unsigned char *out) {
 
 /*
  * SHA384
+ *
+ * Resources:
+ *   https://en.wikipedia.org/wiki/SHA-2
+ *   https://tools.ietf.org/html/rfc4634
  */
 
 void
@@ -3957,6 +3999,9 @@ sha384_final(sha384_t *ctx, unsigned char *out) {
 
 /*
  * Hash160
+ *
+ * Resources:
+ *   https://github.com/bitcoin/bitcoin/blob/master/src/hash.h
  */
 
 void
@@ -3985,6 +4030,9 @@ hash160_final(hash160_t *ctx, unsigned char *out) {
 
 /*
  * Hash256
+ *
+ * Resources:
+ *   https://github.com/bitcoin/bitcoin/blob/master/src/hash.h
  */
 
 void
@@ -4007,6 +4055,13 @@ hash256_final(hash256_t *ctx, unsigned char *out) {
 
 /*
  * Keccak
+ *
+ * Resources:
+ *   https://en.wikipedia.org/wiki/SHA-3
+ *   https://keccak.team/specifications.html
+ *   https://csrc.nist.gov/projects/hash-functions/sha-3-project/sha-3-standardization
+ *   http://dx.doi.org/10.6028/NIST.FIPS.202
+ *   https://github.com/gnutls/nettle/blob/master/sha3-permute.c
  */
 
 void
@@ -4618,6 +4673,12 @@ keccak_final(keccak_t *ctx, unsigned char *out, unsigned char pad, size_t len) {
 
 /*
  * Keccak{224,256,384,512}, SHA3-{224,256,384,512}, SHAKE{128,256}
+ *
+ * Resources:
+ *   https://en.wikipedia.org/wiki/SHA-3
+ *   https://keccak.team/specifications.html
+ *   https://csrc.nist.gov/projects/hash-functions/sha-3-project/sha-3-standardization
+ *   http://dx.doi.org/10.6028/NIST.FIPS.202
  */
 
 #define DEFINE_KECCAK(name, bits, pad)                               \
@@ -4667,6 +4728,11 @@ DEFINE_SHAKE(shake256, 256)
 
 /*
  * BLAKE2s
+ *
+ * Resources:
+ *   https://en.wikipedia.org/wiki/BLAKE_(hash_function)
+ *   https://tools.ietf.org/html/rfc7693
+ *   https://github.com/BLAKE2/BLAKE2/blob/master/ref/blake2s-ref.c
  */
 
 static const uint32_t blake2s_iv[8] = {
@@ -4675,16 +4741,16 @@ static const uint32_t blake2s_iv[8] = {
 };
 
 static const uint8_t blake2s_sigma[10][16] = {
-  {  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15 },
-  { 14, 10,  4,  8,  9, 15, 13,  6,  1, 12,  0,  2, 11,  7,  5,  3 },
-  { 11,  8, 12,  0,  5,  2, 15, 13, 10, 14,  3,  6,  7,  1,  9,  4 },
-  {  7,  9,  3,  1, 13, 12, 11, 14,  2,  6,  5, 10,  4,  0, 15,  8 },
-  {  9,  0,  5,  7,  2,  4, 10, 15, 14,  1, 11, 12,  6,  8,  3, 13 },
-  {  2, 12,  6, 10,  0, 11,  8,  3,  4, 13,  7,  5, 15, 14,  1,  9 },
-  { 12,  5,  1, 15, 14, 13,  4, 10,  0,  7,  6,  3,  9,  2,  8, 11 },
-  { 13, 11,  7, 14, 12,  1,  3,  9,  5,  0, 15,  4,  8,  6,  2, 10 },
-  {  6, 15, 14,  9, 11,  3,  0,  8, 12,  2, 13,  7,  1,  4, 10,  5 },
-  { 10,  2,  8,  4,  7,  6,  1,  5, 15, 11,  9, 14,  3, 12, 13 , 0 },
+  {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+  {14, 10, 4, 8, 9, 15, 13, 6, 1, 12, 0, 2, 11, 7, 5, 3},
+  {11, 8, 12, 0, 5, 2, 15, 13, 10, 14, 3, 6, 7, 1, 9, 4},
+  {7, 9, 3, 1, 13, 12, 11, 14, 2, 6, 5, 10, 4, 0, 15, 8},
+  {9, 0, 5, 7, 2, 4, 10, 15, 14, 1, 11, 12, 6, 8, 3, 13},
+  {2, 12, 6, 10, 0, 11, 8, 3, 4, 13, 7, 5, 15, 14, 1, 9},
+  {12, 5, 1, 15, 14, 13, 4, 10, 0, 7, 6, 3, 9, 2, 8, 11},
+  {13, 11, 7, 14, 12, 1, 3, 9, 5, 0, 15, 4, 8, 6, 2, 10},
+  {6, 15, 14, 9, 11, 3, 0, 8, 12, 2, 13, 7, 1, 4, 10, 5},
+  {10, 2, 8, 4, 7, 6, 1, 5, 15, 11, 9, 14, 3, 12, 13, 0},
 };
 
 void
@@ -4839,6 +4905,11 @@ blake2s_final(blake2s_t *ctx, unsigned char *out) {
 
 /*
  * BLAKE2b
+ *
+ * Resources:
+ *   https://en.wikipedia.org/wiki/BLAKE_(hash_function)
+ *   https://tools.ietf.org/html/rfc7693
+ *   https://github.com/BLAKE2/BLAKE2/blob/master/ref/blake2b-ref.c
  */
 
 static const uint64_t blake2b_iv[8] = {
@@ -4849,18 +4920,18 @@ static const uint64_t blake2b_iv[8] = {
 };
 
 static const uint8_t blake2b_sigma[12][16] = {
-  {  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15 },
-  { 14, 10,  4,  8,  9, 15, 13,  6,  1, 12,  0,  2, 11,  7,  5,  3 },
-  { 11,  8, 12,  0,  5,  2, 15, 13, 10, 14,  3,  6,  7,  1,  9,  4 },
-  {  7,  9,  3,  1, 13, 12, 11, 14,  2,  6,  5, 10,  4,  0, 15,  8 },
-  {  9,  0,  5,  7,  2,  4, 10, 15, 14,  1, 11, 12,  6,  8,  3, 13 },
-  {  2, 12,  6, 10,  0, 11,  8,  3,  4, 13,  7,  5, 15, 14,  1,  9 },
-  { 12,  5,  1, 15, 14, 13,  4, 10,  0,  7,  6,  3,  9,  2,  8, 11 },
-  { 13, 11,  7, 14, 12,  1,  3,  9,  5,  0, 15,  4,  8,  6,  2, 10 },
-  {  6, 15, 14,  9, 11,  3,  0,  8, 12,  2, 13,  7,  1,  4, 10,  5 },
-  { 10,  2,  8,  4,  7,  6,  1,  5, 15, 11,  9, 14,  3, 12, 13 , 0 },
-  {  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15 },
-  { 14, 10,  4,  8,  9, 15, 13,  6,  1, 12,  0,  2, 11,  7,  5,  3 }
+  {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+  {14, 10, 4, 8, 9, 15, 13, 6, 1, 12, 0, 2, 11, 7, 5, 3},
+  {11, 8, 12, 0, 5, 2, 15, 13, 10, 14, 3, 6, 7, 1, 9, 4},
+  {7, 9, 3, 1, 13, 12, 11, 14, 2, 6, 5, 10, 4, 0, 15, 8},
+  {9, 0, 5, 7, 2, 4, 10, 15, 14, 1, 11, 12, 6, 8, 3, 13},
+  {2, 12, 6, 10, 0, 11, 8, 3, 4, 13, 7, 5, 15, 14, 1, 9},
+  {12, 5, 1, 15, 14, 13, 4, 10, 0, 7, 6, 3, 9, 2, 8, 11},
+  {13, 11, 7, 14, 12, 1, 3, 9, 5, 0, 15, 4, 8, 6, 2, 10},
+  {6, 15, 14, 9, 11, 3, 0, 8, 12, 2, 13, 7, 1, 4, 10, 5},
+  {10, 2, 8, 4, 7, 6, 1, 5, 15, 11, 9, 14, 3, 12, 13, 0},
+  {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+  {14, 10, 4, 8, 9, 15, 13, 6, 1, 12, 0, 2, 11, 7, 5, 3}
 };
 
 void
@@ -5049,7 +5120,12 @@ DEFINE_BLAKE2(blake2b, 512)
 
 /*
  * GOST94
- * Logic from: https://github.com/RustCrypto/hashes
+ *
+ * Resources:
+ *   https://en.wikipedia.org/wiki/GOST_(hash_function)
+ *   https://tools.ietf.org/html/rfc4357
+ *   https://tools.ietf.org/html/rfc5831
+ *   https://github.com/RustCrypto/hashes/blob/master/gost94/src/gost94.rs
  */
 
 static const uint8_t gost94_C[32] = {
@@ -5302,7 +5378,14 @@ gost94_final(gost94_t *ctx, unsigned char *out) {
 
 /*
  * Whirlpool
- * Logic from: https://github.com/RustCrypto/hashes
+ *
+ * Resources:
+ *   https://en.wikipedia.org/wiki/Whirlpool_(hash_function)
+ *   https://www.iso.org/standard/39876.html
+ *   https://github.com/jzelinskie/whirlpool/blob/master/whirlpool.go
+ *   https://github.com/RustCrypto/hashes/blob/master/whirlpool/src/consts.rs
+ *   https://github.com/RustCrypto/hashes/blob/master/whirlpool/src/lib.rs
+ *   https://github.com/RustCrypto/hashes/blob/master/whirlpool/src/utils.rs
  */
 
 static const uint64_t whirlpool_RC[10] = {
@@ -6914,6 +6997,11 @@ hash_block_size(int type) {
 
 /*
  * HMAC
+ *
+ * Resources:
+ *   https://en.wikipedia.org/wiki/HMAC
+ *   https://tools.ietf.org/html/rfc2104
+ *   https://github.com/indutny/hash.js/blob/master/lib/hash/hmac.js
  */
 
 void

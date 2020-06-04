@@ -3,9 +3,9 @@
  * Copyright (c) 2020, Christopher Jeffrey (MIT License).
  * https://github.com/bcoin-org/libtorsion
  *
- * Parts of this software are based on floodyberry/curve25519-donna:
+ * Parts of this software are based on floodyberry/ed25519-donna:
  *   Placed into the public domain by Andrew Moon.
- *   https://github.com/floodyberry/curve25519-donna
+ *   https://github.com/floodyberry/ed25519-donna
  */
 
 #ifdef TORSION_HAVE_INT128

@@ -588,7 +588,8 @@ bytes_lt(const unsigned char *a,
 
 static size_t
 bit_length(uint32_t x) {
-#if TORSION_GNUC_PREREQ(3, 4) || __has_builtin(__builtin_clz)
+#if !defined(__EMSCRIPTEN__) \
+ && (TORSION_GNUC_PREREQ(3, 4) || __has_builtin(__builtin_clz))
   if (x == 0) /* Undefined behavior. */
     return 0;
 
@@ -8755,7 +8756,9 @@ ecdsa_privkey_import(const wei_t *ec,
   len *= ret;
 
   memset(key, 0x00, sc->size - len);
-  memcpy(key + sc->size - len, bytes, len);
+
+  if (len > 0)
+    memcpy(key + sc->size - len, bytes, len);
 
   ret &= ecdsa_privkey_verify(ec, key);
 
@@ -8828,7 +8831,9 @@ ecdsa_privkey_reduce(const wei_t *ec,
     len = sc->size;
 
   memset(key, 0x00, sc->size - len);
-  memcpy(key + sc->size - len, bytes, len);
+
+  if (len > 0)
+    memcpy(key + sc->size - len, bytes, len);
 
   sc_import_reduce(sc, a, key);
 
@@ -9036,10 +9041,14 @@ ecdsa_pubkey_import(const wei_t *ec,
   y_len *= ret;
 
   memset(xp, 0x00, fe->size - x_len);
-  memcpy(xp + fe->size - x_len, x_raw, x_len);
+
+  if (x_len > 0)
+    memcpy(xp + fe->size - x_len, x_raw, x_len);
 
   memset(yp, 0x00, fe->size - y_len);
-  memcpy(yp + fe->size - y_len, y_raw, y_len);
+
+  if (y_len > 0)
+    memcpy(yp + fe->size - y_len, y_raw, y_len);
 
   ret &= has_x;
   ret &= fe_import(fe, x, xp);
@@ -9248,7 +9257,9 @@ ecdsa_reduce(const wei_t *ec, sc_t r,
 
   /* Copy and pad. */
   memset(tmp, 0x00, sc->size - msg_len);
-  memcpy(tmp + sc->size - msg_len, msg, msg_len);
+
+  if (msg_len > 0)
+    memcpy(tmp + sc->size - msg_len, msg, msg_len);
 
   /* Shift by the remaining bits. */
   /* Note that the message length is not secret. */
@@ -10322,7 +10333,9 @@ schnorr_pubkey_import(const wei_t *ec,
   x_len *= ret;
 
   memset(xp, 0x00, fe->size - x_len);
-  memcpy(xp + fe->size - x_len, x_raw, x_len);
+
+  if (x_len > 0)
+    memcpy(xp + fe->size - x_len, x_raw, x_len);
 
   ret &= has_x;
   ret &= wge_import_even(ec, &A, xp);
@@ -10449,24 +10462,6 @@ schnorr_hash_init(hash_t *hash, int type, const char *tag) {
   size_t hash_size = hash_output_size(type);
   unsigned char bytes[HASH_MAX_OUTPUT_SIZE];
 
-  if (type == HASH_SHA256) {
-    sha256_t *sha = &hash->ctx.sha256;
-
-    if (strcmp(tag, "BIP340/challenge") == 0) {
-      hash->type = HASH_SHA256;
-      sha->state[0] = 0x71985ac9;
-      sha->state[1] = 0x198317a2;
-      sha->state[2] = 0x60b6e581;
-      sha->state[3] = 0x54c109b6;
-      sha->state[4] = 0x64bac2fd;
-      sha->state[5] = 0x91231de2;
-      sha->state[6] = 0x7301ebde;
-      sha->state[7] = 0x87635f83;
-      sha->size = 64;
-      return;
-    }
-  }
-
   hash_init(hash, type);
   hash_update(hash, tag, strlen(tag));
   hash_final(hash, bytes, hash_size);
@@ -10487,7 +10482,23 @@ schnorr_hash_aux(const wei_t *ec,
   hash_t hash;
   size_t i;
 
-  schnorr_hash_init(&hash, ec->hash, "BIP340/aux");
+  if (ec->hash == HASH_SHA256) {
+    sha256_t *sha = &hash.ctx.sha256;
+
+    sha->state[0] = 0x5d74a872;
+    sha->state[1] = 0xd57064d4;
+    sha->state[2] = 0x89495bec;
+    sha->state[3] = 0x910f46f5;
+    sha->state[4] = 0xcbc6fd3e;
+    sha->state[5] = 0xaf05d9d0;
+    sha->state[6] = 0xcb781ce6;
+    sha->state[7] = 0x062930ac;
+    sha->size = 64;
+
+    hash.type = HASH_SHA256;
+  } else {
+    schnorr_hash_init(&hash, ec->hash, "BIP340/aux");
+  }
 
   hash_update(&hash, aux, 32);
   hash_final(&hash, bytes, hash_size);
@@ -10523,7 +10534,23 @@ schnorr_hash_nonce(const wei_t *ec, sc_t k,
     memset(bytes, 0x00, off);
   }
 
-  schnorr_hash_init(&hash, ec->hash, "BIP340/nonce");
+  if (ec->hash == HASH_SHA256) {
+    sha256_t *sha = &hash.ctx.sha256;
+
+    sha->state[0] = 0xa96e75cb;
+    sha->state[1] = 0x74f9f0ac;
+    sha->state[2] = 0xc49e3c98;
+    sha->state[3] = 0x202f99ba;
+    sha->state[4] = 0x8946a616;
+    sha->state[5] = 0x4accf415;
+    sha->state[6] = 0x86e335c3;
+    sha->state[7] = 0x48d0a072;
+    sha->size = 64;
+
+    hash.type = HASH_SHA256;
+  } else {
+    schnorr_hash_init(&hash, ec->hash, "BIP340/nonce");
+  }
 
   hash_update(&hash, secret, sc->size);
   hash_update(&hash, point, fe->size);
@@ -10557,7 +10584,23 @@ schnorr_hash_challenge(const wei_t *ec, sc_t e,
     memset(bytes, 0x00, off);
   }
 
-  schnorr_hash_init(&hash, ec->hash, "BIP340/challenge");
+  if (ec->hash == HASH_SHA256) {
+    sha256_t *sha = &hash.ctx.sha256;
+
+    sha->state[0] = 0x71985ac9;
+    sha->state[1] = 0x198317a2;
+    sha->state[2] = 0x60b6e581;
+    sha->state[3] = 0x54c109b6;
+    sha->state[4] = 0x64bac2fd;
+    sha->state[5] = 0x91231de2;
+    sha->state[6] = 0x7301ebde;
+    sha->state[7] = 0x87635f83;
+    sha->size = 64;
+
+    hash.type = HASH_SHA256;
+  } else {
+    schnorr_hash_init(&hash, ec->hash, "BIP340/challenge");
+  }
 
   hash_update(&hash, R, fe->size);
   hash_update(&hash, A, fe->size);
@@ -10964,7 +11007,9 @@ ecdh_privkey_import(const mont_t *ec,
 
   len *= ret;
 
-  memcpy(key, bytes, len);
+  if (len > 0)
+    memcpy(key, bytes, len);
+
   memset(key + len, 0x00, sc->size - len);
   memcpy(out, key, sc->size);
 
@@ -11145,7 +11190,9 @@ ecdh_pubkey_import(const mont_t *ec,
 
   x_len *= ret;
 
-  memcpy(xp, x_raw, x_len);
+  if (x_len > 0)
+    memcpy(xp, x_raw, x_len);
+
   memset(xp + x_len, 0x00, fe->size - x_len);
 
   ret &= has_x;
@@ -11413,7 +11460,9 @@ eddsa_scalar_reduce(const edwards_t *ec,
   if (len > sc->size)
     len = sc->size;
 
-  memcpy(scalar, bytes, len);
+  if (len > 0)
+    memcpy(scalar, bytes, len);
+
   memset(scalar + len, 0x00, sc->size - len);
 
   sc_import_reduce(sc, a, scalar);
@@ -11609,10 +11658,14 @@ eddsa_pubkey_import(const edwards_t *ec,
   x_len *= ret;
   y_len *= ret;
 
-  memcpy(xp, x_raw, x_len);
+  if (x_len > 0)
+    memcpy(xp, x_raw, x_len);
+
   memset(xp + x_len, 0x00, fe->size - x_len);
 
-  memcpy(yp, y_raw, y_len);
+  if (y_len > 0)
+    memcpy(yp, y_raw, y_len);
+
   memset(yp + y_len, 0x00, fe->size - y_len);
 
   ret &= has_x | has_y;

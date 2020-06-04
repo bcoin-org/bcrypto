@@ -1324,7 +1324,9 @@ pss_encode(unsigned char *out,
 
   db[emlen - slen - hlen - 2] = 0x01;
 
-  memcpy(db + emlen - slen - hlen - 1, salt, salt_len);
+  if (salt_len > 0)
+    memcpy(db + emlen - slen - hlen - 1, salt, salt_len);
+
   memcpy(h, h0, hlen);
 
   em[emlen - 1] = 0xbc;
@@ -1697,8 +1699,11 @@ rsa_sign(unsigned char *out,
 
   em[klen - tlen - 1] = 0x00;
 
-  memcpy(em + klen - tlen, prefix, prefix_len);
-  memcpy(em + klen - hlen, msg, msg_len);
+  if (prefix_len > 0)
+    memcpy(em + klen - tlen, prefix, prefix_len);
+
+  if (msg_len > 0)
+    memcpy(em + klen - hlen, msg, msg_len);
 
   if (!rsa_priv_decrypt(&k, out, em, klen, entropy))
     goto fail;
@@ -1834,7 +1839,8 @@ rsa_encrypt(unsigned char *out,
 
   em[klen - mlen - 1] = 0x00;
 
-  memcpy(em + klen - mlen, msg, msg_len);
+  if (msg_len > 0)
+    memcpy(em + klen - mlen, msg, msg_len);
 
   if (!rsa_pub_encrypt(&k, out, em, klen))
     goto fail;
@@ -2132,7 +2138,8 @@ rsa_encrypt_oaep(unsigned char *out,
 
   db[dlen - mlen - 1] = 0x01;
 
-  memcpy(db + dlen - mlen, msg, mlen);
+  if (mlen > 0)
+    memcpy(db + dlen - mlen, msg, mlen);
 
   mgf1xor(type, db, dlen, seed, slen);
   mgf1xor(type, seed, slen, db, dlen);

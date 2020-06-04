@@ -207,4 +207,63 @@ write64be(void *dst, uint64_t w) {
   }
 }
 
+/*
+ * Endianness Swapping
+ *
+ * Resources:
+ *   https://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html
+ *   https://stackoverflow.com/a/2637138
+ */
+
+#if defined(__EMSCRIPTEN__)
+/* Unsure if emscripten supports a bswap builtin. */
+#elif TORSION_GNUC_PREREQ(4, 3)
+#  define HAVE_BUILTIN_BSWAP16
+#  define HAVE_BUILTIN_BSWAP32
+#  define HAVE_BUILTIN_BSWAP64
+#else
+#  if __has_builtin(__builtin_bswap16)
+#    define HAVE_BUILTIN_BSWAP16
+#  endif
+#  if __has_builtin(__builtin_bswap32)
+#    define HAVE_BUILTIN_BSWAP32
+#  endif
+#  if __has_builtin(__builtin_bswap64)
+#    define HAVE_BUILTIN_BSWAP64
+#  endif
+#endif
+
+#if defined(HAVE_BUILTIN_BSWAP16)
+#  define torsion_bswap16(x) __builtin_bswap16(x)
+#else
+static TORSION_INLINE uint16_t
+torsion_bswap16(uint16_t x) {
+  return (x << 8) | (x >> 8);
+}
+#endif
+
+#if defined(HAVE_BUILTIN_BSWAP32)
+#  define torsion_bswap32(x) __builtin_bswap32(x)
+#else
+static TORSION_INLINE uint32_t
+torsion_bswap32(uint32_t x) {
+  x = ((x << 8) & UINT32_C(0xff00ff00))
+    | ((x >> 8) & UINT32_C(0x00ff00ff));
+  return (x >> 16) | (x << 16);
+}
+#endif
+
+#if defined(HAVE_BUILTIN_BSWAP64)
+#  define torsion_bswap64(x) __builtin_bswap64(x)
+#else
+static TORSION_INLINE uint64_t
+torsion_bswap64(uint64_t x) {
+  x = ((x << 8) & UINT64_C(0xff00ff00ff00ff00))
+    | ((x >> 8) & UINT64_C(0x00ff00ff00ff00ff));
+  x = ((x << 16) & UINT64_C(0xffff0000ffff0000))
+    | ((x >> 16) & UINT64_C(0x0000ffff0000ffff));
+  return (x << 32) | (x >> 32);
+}
+#endif
+
 #endif /* _TORSION_BIO_H */

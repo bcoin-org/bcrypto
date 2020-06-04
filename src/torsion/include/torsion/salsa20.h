@@ -29,10 +29,7 @@ extern "C" {
 
 typedef struct _salsa20_s {
   uint32_t state[16];
-  union {
-    uint32_t ints[16];
-    unsigned char bytes[64];
-  } stream;
+  uint32_t stream[16];
   size_t pos;
 } salsa20_t;
 

@@ -17,16 +17,24 @@
  *
  * Most ideas for entropy gathering here are taken from Bitcoin Core.
  * We more or less faithfully port randomenv.cpp to C (see above).
+ * Our primary difference is that we add more win32 entropy sources.
  *
  * There are many sources of entropy on a given OS. This includes:
  *
- *   - Clocks (GetSystemTimeAsFileTime, gettimeofday, clock_gettime)
+ *   - Clocks (Get{System,Local}Time, gettimeofday, clock_gettime)
  *   - Environment Variables (char **environ)
- *   - Network Interfaces (getifaddrs(3))
- *   - Kernel Information (uname(2))
+ *   - Network Interfaces (GetAdaptersAddresses, getifaddrs(3))
+ *   - Kernel Information (GetSystemInfo, uname(2))
+ *   - CPU Information (cpuid)
  *   - Machine Hostname (gethostname(3))
- *   - Process/User/Group IDs (pid, ppid, sid, pgid, uid, euid, gid, egid)
- *   - Resource Usage (getrusage(3))
+ *   - Process/User/Group IDs (GetCurrentProcessId, GetCurrentThreadId,
+ *                             getpid(3), getppid(3), getsid(3), getpgid(3),
+ *                             getuid(3), geteuid(3), getgid(3), getegid(3))
+ *   - Resource Usage (GetProcessTimes, GetProcessMemoryInfo,
+ *                     GetProcessIoCounters, GetSystemTimes,
+ *                     GlobalMemoryStatusEx, GetDiskFreeSpaceExA,
+ *                     getrusage(3))
+ *   - Disk Usage (GetDiskFreeSpaceExA, HW_DISKSTATS)
  *   - Pointers (stack and heap locations)
  *   - stat(2) calls on system files & directories
  *   - System files (/etc/{passwd,group,hosts,resolv.conf,timezone})
@@ -35,11 +43,18 @@
  *   - sysctl(2) (osx, ios, bsd)
  *   - I/O timing, system load
  *
- * We use whatever data we can get our hands on and hash
- * it into a single 64 byte seed for use with a PRNG.
+ * We use whatever data we can get our hands on and hash it
+ * into a single 64 byte seed for use with a PRNG.
+ *
+ * Note that in the past, we used HKEY_PERFORMANCE_DATA as an
+ * entropy source on Windows, however, reading this data from
+ * the Windows registry proved to be unacceptably slow (taking
+ * up to ~2 seconds in some cases!). If the person building
+ * this library requires significantly more entropy, it can
+ * be re-enabled by defining TORSION_USE_PERFDATA.
  */
 
-#ifdef __linux__
+#if !defined(_WIN32) && !defined(_GNU_SOURCE)
 /* For gethostname(3), getsid(3), getpgid(3), clock_gettime(2). */
 #  define _GNU_SOURCE
 #endif
@@ -68,10 +83,19 @@
 #elif defined(__wasm__) || defined(__asmjs__)
 /* nothing */
 #elif defined(_WIN32)
+#  include <iphlpapi.h> /* GetAdaptersAddresses */
+#  include <processthreadsapi.h> /* GetCurrentProcess, GetProcessTimes */
+#  include <psapi.h> /* GetProcessMemoryInfo */
 #  include <windows.h>
 #  ifndef environ
 extern char **environ;
 #  endif
+#  ifdef TORSION_USE_PERFDATA
+#    pragma comment(lib, "advapi32.lib") /* RegQueryValueExA */
+#  endif
+#  pragma comment(lib, "iphlpapi.lib")
+#  pragma comment(lib, "kernel32.lib")
+#  pragma comment(lib, "psapi.lib")
 #  define HAVE_MANUAL_ENTROPY
 #elif defined(__vxworks)
 /* nothing */
@@ -122,6 +146,11 @@ extern char **environ;
 #    ifndef environ
 extern char **environ;
 #    endif
+#  endif
+#  if defined(CLOCK_MONOTONIC) \
+   || defined(CLOCK_REALTIME) \
+   || defined(CLOCK_BOOTTIME)
+#    define HAVE_CLOCK_GETTIME
 #  endif
 #  define HAVE_MANUAL_ENTROPY
 #endif
@@ -266,9 +295,11 @@ sha512_write_sysctl3(sha512_t *hash, int ctl, int opt, int sub) {
 #endif /* HAVE_SYSCTL */
 
 static void
-sha512_write_cpuid(sha512_t *hash, uint32_t leaf, uint32_t subleaf,
-                   uint32_t *ax, uint32_t *bx, uint32_t *cx, uint32_t *dx) {
-  torsion_cpuid(leaf, subleaf, ax, bx, cx, dx);
+sha512_write_cpuid(sha512_t *hash,
+                   uint32_t *ax, uint32_t *bx,
+                   uint32_t *cx, uint32_t *dx,
+                   uint32_t leaf, uint32_t subleaf) {
+  torsion_cpuid(ax, bx, cx, dx, leaf, subleaf);
 
   sha512_write_int(hash, leaf);
   sha512_write_int(hash, subleaf);
@@ -284,7 +315,7 @@ sha512_write_cpuids(sha512_t *hash) {
   uint32_t ax, bx, cx, dx;
 
   /* Iterate over all standard leaves. */
-  sha512_write_cpuid(hash, 0, 0, &ax, &bx, &cx, &dx);
+  sha512_write_cpuid(hash, &ax, &bx, &cx, &dx, 0, 0);
 
   /* Max leaf in ax. */
   max = ax;
@@ -293,7 +324,7 @@ sha512_write_cpuids(sha512_t *hash) {
     maxsub = 0;
 
     for (subleaf = 0; subleaf <= 0xff; subleaf++) {
-      sha512_write_cpuid(hash, leaf, subleaf, &ax, &bx, &cx, &dx);
+      sha512_write_cpuid(hash, &ax, &bx, &cx, &dx, leaf, subleaf);
 
       /* Iterate subleafs for leaf values 4, 7, 11, 13. */
       if (leaf == 4) {
@@ -319,24 +350,26 @@ sha512_write_cpuids(sha512_t *hash) {
   }
 
   /* Iterate over all extended leaves. */
-  sha512_write_cpuid(hash, 0x80000000, 0, &ax, &bx, &cx, &dx);
+  sha512_write_cpuid(hash, &ax, &bx, &cx, &dx, 0x80000000, 0);
 
   /* Max extended leaf in ax. */
   maxext = ax;
 
   for (leaf = 0x80000001; leaf <= maxext && leaf <= 0x800000ff; leaf++)
-    sha512_write_cpuid(hash, leaf, 0, &ax, &bx, &cx, &dx);
+    sha512_write_cpuid(hash, &ax, &bx, &cx, &dx, leaf, 0);
 }
 
 #ifdef _WIN32
+#ifdef TORSION_USE_PERFDATA
+/* This function is extraordinarily slow.
+   We prefer not to use it as we have more
+   win32 entropy sources than Bitcoin Core. */
 static void
-sha512_write_perfdata(sha512_t *hash) {
-  static const size_t max = 10000000;
-  unsigned char *data = malloc(250000);
-  unsigned long nsize = 0;
-  size_t size = 250000;
-  long ret = 0;
-  size_t old;
+sha512_write_perfdata(sha512_t *hash, size_t max) {
+  size_t size = max < 80 ? max : max / 40;
+  BYTE *data = malloc(size);
+  DWORD nread;
+  LSTATUS ret;
 
   if (data == NULL)
     return;
@@ -344,15 +377,14 @@ sha512_write_perfdata(sha512_t *hash) {
   memset(data, 0, size);
 
   for (;;) {
-    nsize = size;
+    nread = size;
     ret = RegQueryValueExA(HKEY_PERFORMANCE_DATA,
                            "Global", NULL, NULL,
-                           data, &nsize);
+                           data, &nread);
 
     if (ret != ERROR_MORE_DATA || size >= max)
       break;
 
-    old = size;
     size = (size * 3) / 2;
 
     if (size > max)
@@ -363,19 +395,20 @@ sha512_write_perfdata(sha512_t *hash) {
     if (data == NULL)
       break;
 
-    memset(data + old, 0, size - old);
+    memset(data, 0, size);
   }
 
   RegCloseKey(HKEY_PERFORMANCE_DATA);
 
   if (ret == ERROR_SUCCESS) {
-    sha512_write_data(hash, data, nsize);
-    memset(data, 0, nsize);
+    sha512_write_data(hash, data, nread);
+    SecureZeroMemory(data, nread);
   }
 
   if (data)
     free(data);
 }
+#endif /* TORSION_USE_PERFDATA */
 #endif /* _WIN32 */
 
 static void
@@ -392,8 +425,25 @@ sha512_write_static_env(sha512_t *hash) {
   sha512_write_int(hash, __GNUC_PATCHLEVEL__);
 #endif
 
+#if defined(__clang_major__) \
+ && defined(__clang_minor__) \
+ && defined(__clang_patchlevel__)
+  sha512_write_int(hash, __clang_major__);
+  sha512_write_int(hash, __clang_minor__);
+  sha512_write_int(hash, __clang_patchlevel__);
+#endif
+
 #ifdef _MSC_VER
   sha512_write_int(hash, _MSC_VER);
+#endif
+
+#ifdef _WIN32_WINNT
+  sha512_write_int(hash, _WIN32_WINNT);
+#endif
+
+#if defined(__GLIBC__) && defined(__GLIBC_MINOR__)
+  sha512_write_int(hash, __GLIBC__);
+  sha512_write_int(hash, __GLIBC_MINOR__);
 #endif
 
 #ifdef _XOPEN_VERSION
@@ -402,6 +452,72 @@ sha512_write_static_env(sha512_t *hash) {
 
 #ifdef __VERSION__
   sha512_write_string(hash, __VERSION__);
+#endif
+
+#ifdef _WIN32
+  /* System information. */
+  {
+    SYSTEM_INFO info;
+
+    memset(&info, 0, sizeof(info));
+
+    GetSystemInfo(&info);
+
+    sha512_write(hash, &info, sizeof(info));
+  }
+
+  /* Disk information. */
+  {
+    char vname[MAX_PATH + 1];
+    char fsname[MAX_PATH + 1];
+    DWORD serial, maxcmp, flags;
+
+    memset(vname, 0, sizeof(vname));
+    memset(fsname, 0, sizeof(fsname));
+
+    if (GetVolumeInformationA(NULL, vname, sizeof(vname),
+                              &serial, &maxcmp, &flags,
+                              fsname, sizeof(fsname))) {
+      sha512_write_string(hash, vname);
+      sha512_write_int(hash, serial);
+      sha512_write_int(hash, maxcmp);
+      sha512_write_int(hash, flags);
+      sha512_write_string(hash, fsname);
+    }
+
+    sha512_write_int(hash, GetLogicalDrives());
+  }
+
+  /* Network interfaces. */
+  {
+    IP_ADAPTER_ADDRESSES *addrs = NULL;
+    ULONG flags = GAA_FLAG_INCLUDE_PREFIX;
+    ULONG size = 0;
+    ULONG ret;
+
+    for (;;) {
+      ret = GetAdaptersAddresses(AF_UNSPEC, flags, NULL, addrs, &size);
+
+      if (ret == ERROR_BUFFER_OVERFLOW) {
+        addrs = realloc(addrs, size);
+
+        if (addrs == NULL)
+          break;
+
+        memset(addrs, 0, size);
+
+        continue;
+      }
+
+      break;
+    }
+
+    if (ret == ERROR_SUCCESS)
+      sha512_write_data(hash, addrs, size);
+
+    if (addrs)
+      free(addrs);
+  }
 #endif
 
 #ifdef __linux__
@@ -548,7 +664,7 @@ sha512_write_static_env(sha512_t *hash) {
 #ifdef HW_CACHELINE
   sha512_write_sysctl2(hash, CTL_HW, HW_CACHELINE);
 #endif
-#endif
+#endif /* CTL_HW */
 
 #ifdef CTL_KERN
 #ifdef KERN_BOOTFILE
@@ -587,8 +703,8 @@ sha512_write_static_env(sha512_t *hash) {
 #ifdef KERN_VERSION
   sha512_write_sysctl2(hash, CTL_KERN, KERN_VERSION);
 #endif
-#endif
-#endif
+#endif /* CTL_KERN */
+#endif /* HAVE_SYSCTL */
 
   /* Environment variables. */
   if (environ) {
@@ -626,35 +742,123 @@ sha512_write_dynamic_env(sha512_t *hash) {
     sha512_write(hash, &ftime, sizeof(ftime));
   }
 
+  /* Various clocks. */
+  {
+    SYSTEMTIME stime, ltime;
+
+    memset(&stime, 0, sizeof(stime));
+    memset(&ltime, 0, sizeof(ltime));
+
+    GetSystemTime(&stime);
+    GetLocalTime(&ltime);
+
+    sha512_write(hash, &stime, sizeof(stime));
+    sha512_write(hash, &ltime, sizeof(ltime));
+    sha512_write_int(hash, GetTickCount());
+  }
+
+  /* Current resource usage. */
+  {
+    FILETIME ctime, etime, ktime, utime;
+    PROCESS_MEMORY_COUNTERS mctrs;
+    IO_COUNTERS ioctrs;
+
+    memset(&ctime, 0, sizeof(ctime));
+    memset(&ktime, 0, sizeof(ktime));
+    memset(&utime, 0, sizeof(utime));
+    memset(&mctrs, 0, sizeof(mctrs));
+    memset(&ioctrs, 0, sizeof(ioctrs));
+
+    if (GetProcessTimes(GetCurrentProcess(), &ctime, &etime, &ktime, &utime)) {
+      /* Exit time value is undefined (our process has not exited). */
+      sha512_write(hash, &ctime, sizeof(ctime));
+      sha512_write(hash, &ktime, sizeof(ktime));
+      sha512_write(hash, &utime, sizeof(utime));
+    }
+
+    if (GetProcessMemoryInfo(GetCurrentProcess(), &mctrs, sizeof(mctrs)))
+      sha512_write(hash, &mctrs, sizeof(mctrs));
+
+    if (GetProcessIoCounters(GetCurrentProcess(), &ioctrs))
+      sha512_write(hash, &ioctrs, sizeof(ioctrs));
+  }
+
+  /* CPU usage. */
+  {
+    FILETIME idle, kern, user;
+
+    memset(&idle, 0, sizeof(idle));
+    memset(&kern, 0, sizeof(kern));
+    memset(&user, 0, sizeof(user));
+
+    if (GetSystemTimes(&idle, &kern, &user)) {
+      sha512_write(hash, &idle, sizeof(idle));
+      sha512_write(hash, &kern, sizeof(kern));
+      sha512_write(hash, &user, sizeof(user));
+    }
+  }
+
+  /* Memory usage. */
+  {
+    MEMORYSTATUSEX status;
+
+    memset(&status, 0, sizeof(status));
+
+    status.dwLength = sizeof(status);
+
+    if (GlobalMemoryStatusEx(&status))
+      sha512_write(hash, &status, sizeof(status));
+  }
+
+  /* Disk usage. */
+  {
+    ULARGE_INTEGER caller, total, avail;
+
+    if (GetDiskFreeSpaceExA(NULL, &caller, &total, &avail)) {
+      sha512_write_int(hash, caller.QuadPart);
+      sha512_write_int(hash, total.QuadPart);
+      sha512_write_int(hash, avail.QuadPart);
+    }
+  }
+
+#ifdef TORSION_USE_PERFDATA
   /* Performance data. */
-  sha512_write_perfdata(hash);
+  sha512_write_perfdata(hash, 10000000);
+#endif
 #else /* _WIN32 */
+  /* System time. */
+  {
+    struct timeval tv;
+
+    memset(&tv, 0, sizeof(tv));
+
+    if (gettimeofday(&tv, NULL) == 0)
+      sha512_write(hash, &tv, sizeof(tv));
+  }
+
+#ifdef HAVE_CLOCK_GETTIME
   /* Various clocks. */
   {
     struct timespec ts;
-    struct timeval tv;
 
     memset(&ts, 0, sizeof(ts));
-    memset(&tv, 0, sizeof(tv));
 
 #ifdef CLOCK_MONOTONIC
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    sha512_write(hash, &ts, sizeof(ts));
+    if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0)
+      sha512_write(hash, &ts, sizeof(ts));
 #endif
 
 #ifdef CLOCK_REALTIME
-    clock_gettime(CLOCK_REALTIME, &ts);
-    sha512_write(hash, &ts, sizeof(ts));
+    if (clock_gettime(CLOCK_REALTIME, &ts) == 0)
+      sha512_write(hash, &ts, sizeof(ts));
 #endif
 
 #ifdef CLOCK_BOOTTIME
-    clock_gettime(CLOCK_BOOTTIME, &ts);
-    sha512_write(hash, &ts, sizeof(ts));
+    if (clock_gettime(CLOCK_BOOTTIME, &ts) == 0)
+      sha512_write(hash, &ts, sizeof(ts));
 #endif
-
-    gettimeofday(&tv, NULL);
-    sha512_write(hash, &tv, sizeof(tv));
   }
+#endif /* HAVE_CLOCK_GETTIME */
 
   /* Current resource usage. */
   {
@@ -666,6 +870,10 @@ sha512_write_dynamic_env(sha512_t *hash) {
       sha512_write(hash, &usage, sizeof(usage));
   }
 #endif /* _WIN32 */
+
+  /* High-resolution time. */
+  sha512_write_int(hash, torsion_hrtime());
+  sha512_write_int(hash, torsion_rdtsc());
 
 #ifdef __linux__
   sha512_write_file(hash, "/proc/diskstats");
@@ -684,12 +892,12 @@ sha512_write_dynamic_env(sha512_t *hash) {
 #if defined(KERN_PROC) && defined(KERN_PROC_ALL)
   sha512_write_sysctl3(hash, CTL_KERN, KERN_PROC, KERN_PROC_ALL);
 #endif
-#endif
+#endif /* CTL_KERN */
 #ifdef CTL_HW
 #ifdef HW_DISKSTATS
   sha512_write_sysctl2(hash, CTL_HW, HW_DISKSTATS);
 #endif
-#endif
+#endif /* CTL_HW */
 #ifdef CTL_VM
 #ifdef VM_LOADAVG
   sha512_write_sysctl2(hash, CTL_VM, VM_LOADAVG);
@@ -700,8 +908,8 @@ sha512_write_dynamic_env(sha512_t *hash) {
 #ifdef VM_METER
   sha512_write_sysctl2(hash, CTL_VM, VM_METER);
 #endif
-#endif
-#endif
+#endif /* CTL_VM */
+#endif /* HAVE_SYSCTL */
 
   /* Stack and heap location. */
   {

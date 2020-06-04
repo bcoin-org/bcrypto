@@ -16,40 +16,6 @@
  * Parts of this software are based on golang/crypto:
  *   Copyright (c) 2009 The Go Authors. All rights reserved.
  *   https://github.com/golang/crypto
- *
- * EB2K Resources:
- *   https://github.com/openssl/openssl/blob/2e9d61e/crypto/evp/evp_key.c
- *
- * HKDF Resources:
- *   https://en.wikipedia.org/wiki/HKDF
- *   https://tools.ietf.org/html/rfc5869
- *
- * PBKDF2 Resources:
- *   https://en.wikipedia.org/wiki/PBKDF2
- *   https://tools.ietf.org/html/rfc2898
- *   https://tools.ietf.org/html/rfc2898#section-5.2
- *   https://tools.ietf.org/html/rfc6070
- *   https://www.emc.com/collateral/white-papers/h11302-pkcs5v2-1-password-based-cryptography-standard-wp.pdf
- *   http://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-132.pdf
- *
- * Scrypt Resources:
- *   https://en.wikipedia.org/wiki/Scrypt
- *   http://www.tarsnap.com/scrypt.html
- *   http://www.tarsnap.com/scrypt/scrypt.pdf
- *   https://github.com/Tarsnap/scrypt/blob/master/lib/crypto/crypto_scrypt-ref.c
- *
- * PGPDF Resources:
- *   https://github.com/golang/crypto/tree/master/openpgp
- *
- * Bcrypt Resources:
- *   https://en.wikipedia.org/wiki/Bcrypt
- *   http://www.usenix.org/events/usenix99/provos/provos_html/node1.html
- *   https://hackernoon.com/the-bcrypt-protocol-is-kind-of-a-mess-4aace5eb31bd
- *   https://github.com/openbsd/src/blob/master/lib/libc/crypt/bcrypt.c
- *   https://github.com/openssh/openssh-portable
- *   https://github.com/openssh/openssh-portable/blob/master/openbsd-compat/bcrypt_pbkdf.c
- *   https://github.com/openssh/openssh-portable/blob/master/openbsd-compat/blowfish.c
- *   https://github.com/joyent/node-bcrypt-pbkdf/blob/master/index.js
  */
 
 #include <limits.h>
@@ -63,18 +29,10 @@
 #include "bio.h"
 
 /*
- * Prototypes
- */
-
-static void blkcpy(uint8_t *, uint8_t *, size_t);
-static void blkxor(uint8_t *, uint8_t *, size_t);
-static void salsa20_8(uint8_t *);
-static void blockmix_salsa8(uint8_t *, uint8_t *, size_t);
-static uint64_t integerify(uint8_t *, size_t);
-static void smix(uint8_t *, size_t, uint64_t, uint8_t *, uint8_t *);
-
-/*
  * EB2K (OpenSSL Legacy)
+ *
+ * Resources:
+ *   https://github.com/openssl/openssl/blob/2e9d61e/crypto/evp/evp_key.c
  */
 
 int
@@ -145,6 +103,10 @@ eb2k_derive(unsigned char *key,
 
 /*
  * HKDF
+ *
+ * Resources:
+ *   https://en.wikipedia.org/wiki/HKDF
+ *   https://tools.ietf.org/html/rfc5869
  */
 
 int
@@ -222,6 +184,14 @@ hkdf_expand(unsigned char *out,
 
 /*
  * PBKDF2
+ *
+ * Resources:
+ *   https://en.wikipedia.org/wiki/PBKDF2
+ *   https://tools.ietf.org/html/rfc2898
+ *   https://tools.ietf.org/html/rfc2898#section-5.2
+ *   https://tools.ietf.org/html/rfc6070
+ *   https://www.emc.com/collateral/white-papers/h11302-pkcs5v2-1-password-based-cryptography-standard-wp.pdf
+ *   http://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-132.pdf
  */
 
 int
@@ -299,7 +269,20 @@ pbkdf2_derive(unsigned char *out,
 
 /*
  * Scrypt
+ *
+ * Resources:
+ *   https://en.wikipedia.org/wiki/Scrypt
+ *   http://www.tarsnap.com/scrypt.html
+ *   http://www.tarsnap.com/scrypt/scrypt.pdf
+ *   https://github.com/Tarsnap/scrypt/blob/master/lib/crypto/crypto_scrypt-ref.c
  */
+
+static void blkcpy(uint8_t *, uint8_t *, size_t);
+static void blkxor(uint8_t *, uint8_t *, size_t);
+static void salsa20_8(uint8_t *);
+static void blockmix_salsa8(uint8_t *, uint8_t *, size_t);
+static uint64_t integerify(uint8_t *, size_t);
+static void smix(uint8_t *, size_t, uint64_t, uint8_t *, uint8_t *);
 
 int
 scrypt_derive(unsigned char *out,
@@ -525,6 +508,9 @@ smix(uint8_t *B, size_t r, uint64_t N, uint8_t *V, uint8_t *XY) {
 
 /*
  * PGPDF
+ *
+ * Resources:
+ *   https://github.com/golang/crypto/tree/master/openpgp
  */
 
 int
@@ -660,6 +646,16 @@ pgpdf_derive_iterated(unsigned char *out,
 
 /*
  * Bcrypt
+ *
+ * Resources:
+ *   https://en.wikipedia.org/wiki/Bcrypt
+ *   http://www.usenix.org/events/usenix99/provos/provos_html/node1.html
+ *   https://hackernoon.com/the-bcrypt-protocol-is-kind-of-a-mess-4aace5eb31bd
+ *   https://github.com/openbsd/src/blob/master/lib/libc/crypt/bcrypt.c
+ *   https://github.com/openssh/openssh-portable
+ *   https://github.com/openssh/openssh-portable/blob/master/openbsd-compat/bcrypt_pbkdf.c
+ *   https://github.com/openssh/openssh-portable/blob/master/openbsd-compat/blowfish.c
+ *   https://github.com/joyent/node-bcrypt-pbkdf/blob/master/index.js
  */
 
 #define BCRYPT_VERSION '2'
@@ -1026,7 +1022,9 @@ bcrypt_derive(unsigned char *out,
   if (pass_len >= 255) {
     memcpy(key, pass, 255);
   } else {
-    memcpy(key, pass, pass_len);
+    if (pass_len > 0)
+      memcpy(key, pass, pass_len);
+
     key[pass_len] = 0;
   }
 

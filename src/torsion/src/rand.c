@@ -42,6 +42,24 @@
 #include "entropy/entropy.h"
 
 /*
+ * Helpers
+ */
+
+static void
+sha512_update_ptr(sha512_t *hash, const void *ptr) {
+  uintptr_t uptr = (uintptr_t)ptr;
+
+  sha512_update(hash, &uptr, sizeof(uptr));
+}
+
+static void
+sha512_update_tsc(sha512_t *hash) {
+  uint64_t tsc = torsion_rdtsc();
+
+  sha512_update(hash, &tsc, sizeof(tsc));
+}
+
+/*
  * RNG
  */
 
@@ -49,45 +67,32 @@ int
 rng_init(rng_t *rng) {
   unsigned char seed[64];
   sha512_t hash;
-  uintptr_t ptr;
-  uint64_t tsc;
-  size_t i;
 
   memset(rng, 0, sizeof(*rng));
 
   sha512_init(&hash);
-
-  ptr = (uintptr_t)((void *)rng);
-  sha512_update(&hash, &ptr, sizeof(ptr));
-
-  ptr = (uintptr_t)((void *)seed);
-  sha512_update(&hash, &ptr, sizeof(ptr));
-
-  tsc = torsion_rdtsc();
-  sha512_update(&hash, &tsc, sizeof(tsc));
+  sha512_update_ptr(&hash, rng);
+  sha512_update_ptr(&hash, seed);
+  sha512_update_tsc(&hash);
 
   /* OS entropy (64 bytes). */
   if (!torsion_sysrand(seed, 64))
     return 0;
 
   sha512_update(&hash, seed, 64);
-
-  tsc = torsion_rdtsc();
-  sha512_update(&hash, &tsc, sizeof(tsc));
+  sha512_update_tsc(&hash);
 
   /* Hardware entropy (32 bytes). */
-  if (torsion_hwrand(seed, 32))
+  if (torsion_hwrand(seed, 32)) {
     sha512_update(&hash, seed, 32);
-
-  tsc = torsion_rdtsc();
-  sha512_update(&hash, &tsc, sizeof(tsc));
+    sha512_update_tsc(&hash);
+  }
 
   /* Manual entropy (64 bytes). */
-  if (torsion_envrand(seed))
+  if (torsion_envrand(seed)) {
     sha512_update(&hash, seed, 64);
-
-  tsc = torsion_rdtsc();
-  sha512_update(&hash, &tsc, sizeof(tsc));
+    sha512_update_tsc(&hash);
+  }
 
   /* At this point, only one of the above
      entropy sources needs to be strong in
@@ -95,19 +100,6 @@ rng_init(rng_t *rng) {
      unlikely that all three would somehow
      be compromised. */
   sha512_final(&hash, seed);
-
-  /* Strengthen the seed a bit. */
-  for (i = 0; i < 500; i++) {
-    sha512_init(&hash);
-    sha512_update(&hash, seed, 64);
-
-    if (i == 500 - 1) {
-      tsc = torsion_rdtsc();
-      sha512_update(&hash, &tsc, sizeof(tsc));
-    }
-
-    sha512_final(&hash, seed);
-  }
 
   /* We use XChaCha20 to reduce the first
      48 bytes down to 32. This allows us to
@@ -136,10 +128,8 @@ rng_generate(rng_t *rng, void *dst, size_t size) {
   unsigned char *nonce = (unsigned char *)&rng->nonce;
   chacha20_t ctx;
 
-  if (size == 0)
-    return;
-
-  memset(dst, 0, size);
+  if (size > 0)
+    memset(dst, 0, size);
 
   /* Read the keystream. */
   chacha20_init(&ctx, key, 32, nonce, 8, rng->zero);
