@@ -255,7 +255,7 @@ torsion_has_rdrand(void) {
 #ifdef HAVE_CPUID
   uint32_t eax, ebx, ecx, edx;
   torsion_cpuid(1, 0, &eax, &ebx, &ecx, &edx);
-  return !!(ecx & UINT32_C(0x40000000));
+  return (ecx >> 30) & 1;
 #else
   return 0;
 #endif
@@ -266,7 +266,7 @@ torsion_has_rdseed(void) {
 #ifdef HAVE_CPUID
   uint32_t eax, ebx, ecx, edx;
   torsion_cpuid(7, 0, &eax, &ebx, &ecx, &edx);
-  return !!(ebx & UINT32_C(0x00040000));
+  return (ebx >> 18) & 1;
 #else
   return 0;
 #endif

@@ -114,7 +114,9 @@ rng_init(rng_t *rng) {
      use the entire 64 byte hash as entropy. */
   chacha20_derive(seed, seed, 32, seed + 32);
 
-  /* Read our initial ChaCha20 state. */
+  /* Read our initial ChaCha20 state. `zero`
+     becomes our random "zero value" for the
+     initial counter. */
   memcpy(rng->key, seed, 32);
   memcpy(&rng->zero, seed + 48, 8);
   memcpy(&rng->nonce, seed + 56, 8);
@@ -143,16 +145,25 @@ rng_generate(rng_t *rng, void *dst, size_t size) {
   chacha20_init(&ctx, key, 32, nonce, 8, rng->zero);
   chacha20_encrypt(&ctx, dst, dst, size);
 
-  /* Re-key immediately. */
+  /* Mix in some user entropy. */
   rng->key[0] ^= size;
 
-  /* Mix in some hardware entropy. */
+  /* Mix in some hardware entropy. We sacrifice
+     only 32 bits here, lest RDRAND is backdoored.
+     See: https://pastebin.com/A07q3nL3 */
   if (rng->rdrand)
-    rng->key[3] ^= torsion_rdrand();
+    rng->key[3] ^= (uint32_t)torsion_rdrand();
 
+  /* Re-key immediately. */
   rng->nonce++;
 
-  /* XOR the current key with the keystream. */
+  /* At this point, the CTR-DRBG simply reads the
+     keystream again in order to rekey. We mimic
+     libsodium instead by XOR'ing the partially
+     modified key with its own keystream. In truth,
+     there's probably not really a difference in
+     terms of security, as the outputs in both
+     scenarios are dependent on the key. */
   chacha20_init(&ctx, key, 32, nonce, 8, rng->zero);
   chacha20_encrypt(&ctx, key, key, 32);
 
@@ -175,7 +186,7 @@ rng_uniform(rng_t *rng, uint32_t max) {
   /* See: http://www.pcg-random.org/posts/bounded-rands.html */
   uint32_t x, r;
 
-  if (max < 2)
+  if (max <= 1)
     return 0;
 
   do {
