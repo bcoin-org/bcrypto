@@ -233,9 +233,9 @@ BOOLEAN NTAPI RtlGenRandom(PVOID RandomBuffer, ULONG RandomBufferLength);
 #  include <zircon/syscalls.h>
 #else
 #  include <sys/types.h> /* open */
-#  include <fcntl.h> /* fcntl */
-#  include <unistd.h> /* stat, read, close, syscall */
 #  include <sys/stat.h> /* open, stat */
+#  include <fcntl.h> /* open, fcntl */
+#  include <unistd.h> /* stat, read, close, syscall */
 #  ifndef S_ISNAM
 #    ifdef __COMPCERT__
 #      define S_ISNAM(x) 1
