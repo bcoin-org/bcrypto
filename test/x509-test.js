@@ -117,6 +117,16 @@ describe('X509', function() {
           extnID: 'BasicConstraints',
           critical: false,
           extnValue: {cA: false, pathLenConstraint: 0}
+        },
+        {
+          extnID: 'KeyUsage',
+          critical: false,
+          extnValue: [
+            'digitalSignature',
+            'nonRepudiation',
+            'keyEncipherment',
+            'dataEncipherment'
+          ]
         }
       ]
     };
