@@ -87,7 +87,11 @@ describe('X509', function() {
       version: 2,
       serialNumber: 'deadbeef0101',
       signature: {
-        algorithm: 'RSASHA256'
+        algorithm: 'RSASHA256',
+        parameters: {
+          type: 'NULL',
+          node: null
+        }
       },
       issuer: [],
       validity: {
@@ -97,7 +101,11 @@ describe('X509', function() {
       subject: [],
       subjectPublicKeyInfo: {
         algorithm: {
-          algorithm: 'RSAPublicKey'
+          algorithm: 'RSAPublicKey',
+          parameters: {
+            type: 'NULL',
+            node: null
+          }
         },
         publicKey: {
           modulus: pubJSON.n,
@@ -163,7 +171,12 @@ describe('X509', function() {
     // Complete
     certFromJSON = new x509.Certificate();
     certFromJSON.tbsCertificate = tbs;
-    certFromJSON.signatureAlgorithm.fromJSON({algorithm: 'RSASHA256'});
+    certFromJSON.signatureAlgorithm.fromJSON({
+      algorithm: 'RSASHA256',
+      parameters: {
+        type: 'NULL',
+        node: null
+      }});
     certFromJSON.signature.fromJSON({bits: sig.length * 8, value: sig.toString('hex')});
   });
 
