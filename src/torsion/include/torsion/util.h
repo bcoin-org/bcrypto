@@ -13,6 +13,7 @@ extern "C" {
 
 #include <stddef.h>
 #include <stdint.h>
+#include "common.h"
 
 /*
  * Symbol Aliases
@@ -26,17 +27,17 @@ extern "C" {
  * Memzero
  */
 
-void
+TORSION_EXTERN void
 cleanse(void *ptr, size_t len);
 
 /*
  * Murmur3
  */
 
-uint32_t
+TORSION_EXTERN uint32_t
 murmur3_sum(const unsigned char *data, size_t len, uint32_t seed);
 
-uint32_t
+TORSION_EXTERN uint32_t
 murmur3_tweak(const unsigned char *data,
               size_t len, uint32_t n, uint32_t tweak);
 

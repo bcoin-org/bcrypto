@@ -13,6 +13,7 @@ extern "C" {
 
 #include <stddef.h>
 #include <stdint.h>
+#include "common.h"
 
 /*
  * Symbol Aliases
@@ -73,21 +74,21 @@ extern "C" {
 #define BASE16_ENCODE_SIZE(n) ((n) * 2)
 #define BASE16_DECODE_SIZE(n) ((n) / 2)
 
-size_t
+TORSION_EXTERN size_t
 base16_encode_size(size_t len);
 
-void
+TORSION_EXTERN void
 base16_encode(char *dst, size_t *dstlen,
               const uint8_t *src, size_t srclen);
 
-size_t
+TORSION_EXTERN size_t
 base16_decode_size(size_t len);
 
-int
+TORSION_EXTERN int
 base16_decode(uint8_t *dst, size_t *dstlen,
               const char *src, size_t srclen);
 
-int
+TORSION_EXTERN int
 base16_test(const char *str, size_t len);
 
 /*
@@ -97,21 +98,21 @@ base16_test(const char *str, size_t len);
 #define BASE16LE_ENCODE_SIZE(n) BASE16_ENCODE_SIZE(n)
 #define BASE16LE_DECODE_SIZE(n) BASE16_DECODE_SIZE(n)
 
-size_t
+TORSION_EXTERN size_t
 base16le_encode_size(size_t len);
 
-void
+TORSION_EXTERN void
 base16le_encode(char *dst, size_t *dstlen,
                 const uint8_t *src, size_t srclen);
 
-size_t
+TORSION_EXTERN size_t
 base16le_decode_size(size_t len);
 
-int
+TORSION_EXTERN int
 base16le_decode(uint8_t *dst, size_t *dstlen,
                 const char *src, size_t srclen);
 
-int
+TORSION_EXTERN int
 base16le_test(const char *str, size_t len);
 
 /*
@@ -121,21 +122,21 @@ base16le_test(const char *str, size_t len);
 #define BASE32_ENCODE_SIZE(n) (((n) / 5) * 8 + 13)
 #define BASE32_DECODE_SIZE(n) (((n) / 8) * 5 + 4)
 
-size_t
+TORSION_EXTERN size_t
 base32_encode_size(size_t len, int pad);
 
-void
+TORSION_EXTERN void
 base32_encode(char *dst, size_t *dstlen,
               const uint8_t *src, size_t srclen, int pad);
 
-size_t
+TORSION_EXTERN size_t
 base32_decode_size(const char *str, size_t len);
 
-int
+TORSION_EXTERN int
 base32_decode(uint8_t *dst, size_t *dstlen,
               const char *src, size_t srclen, int unpad);
 
-int
+TORSION_EXTERN int
 base32_test(const char *src, size_t srclen, int unpad);
 
 /*
@@ -145,21 +146,21 @@ base32_test(const char *src, size_t srclen, int unpad);
 #define BASE32HEX_ENCODE_SIZE(n) BASE32_ENCODE_SIZE(n)
 #define BASE32HEX_DECODE_SIZE(n) BASE32_DECODE_SIZE(n)
 
-size_t
+TORSION_EXTERN size_t
 base32hex_encode_size(size_t len, int pad);
 
-void
+TORSION_EXTERN void
 base32hex_encode(char *dst, size_t *dstlen,
                  const uint8_t *src, size_t srclen, int pad);
 
-size_t
+TORSION_EXTERN size_t
 base32hex_decode_size(const char *str, size_t len);
 
-int
+TORSION_EXTERN int
 base32hex_decode(uint8_t *dst, size_t *dstlen,
                  const char *src, size_t srclen, int unpad);
 
-int
+TORSION_EXTERN int
 base32hex_test(const char *src, size_t srclen, int unpad);
 
 /*
@@ -169,15 +170,15 @@ base32hex_test(const char *src, size_t srclen, int unpad);
 #define BASE58_ENCODE_SIZE(n) ((n) * 2)
 #define BASE58_DECODE_SIZE(n) (n)
 
-int
+TORSION_EXTERN int
 base58_encode(char *dst, size_t *dstlen,
               const uint8_t *src, size_t srclen);
 
-int
+TORSION_EXTERN int
 base58_decode(uint8_t *dst, size_t *dstlen,
               const char *src, size_t srclen);
 
-int
+TORSION_EXTERN int
 base58_test(const char *str, size_t len);
 
 /*
@@ -187,21 +188,21 @@ base58_test(const char *str, size_t len);
 #define BASE64_ENCODE_SIZE(n) (((n) / 3) * 4 + 4)
 #define BASE64_DECODE_SIZE(n) ((((n) / 4) * 3) + 2)
 
-size_t
+TORSION_EXTERN size_t
 base64_encode_size(size_t len);
 
-void
+TORSION_EXTERN void
 base64_encode(char *dst, size_t *dstlen,
               const uint8_t *src, size_t srclen);
 
-size_t
+TORSION_EXTERN size_t
 base64_decode_size(const char *str, size_t len);
 
-int
+TORSION_EXTERN int
 base64_decode(uint8_t *dst, size_t *dstlen,
               const char *src, size_t srclen);
 
-int
+TORSION_EXTERN int
 base64_test(const char *str, size_t len);
 
 /*
@@ -211,21 +212,21 @@ base64_test(const char *str, size_t len);
 #define BASE64URL_ENCODE_SIZE(n) BASE64_ENCODE_SIZE(n)
 #define BASE64URL_DECODE_SIZE(n) BASE64_DECODE_SIZE(n)
 
-size_t
+TORSION_EXTERN size_t
 base64url_encode_size(size_t len);
 
-void
+TORSION_EXTERN void
 base64url_encode(char *dst, size_t *dstlen,
                  const uint8_t *src, size_t srclen);
 
-size_t
+TORSION_EXTERN size_t
 base64url_decode_size(const char *str, size_t len);
 
-int
+TORSION_EXTERN int
 base64url_decode(uint8_t *dst, size_t *dstlen,
                  const char *src, size_t srclen);
 
-int
+TORSION_EXTERN int
 base64url_test(const char *str, size_t len);
 
 /*
@@ -249,22 +250,22 @@ base64url_test(const char *str, size_t len);
 #define BECH32_MAX_ENCODE_SIZE BECH32_MAX_SERIALIZE_SIZE
 #define BECH32_MAX_DECODE_SIZE BECH32_MAX_HASH_SIZE
 
-int
+TORSION_EXTERN int
 bech32_serialize(char *str,
                  const char *hrp,
                  const uint8_t *data,
                  size_t data_len);
 
-int
+TORSION_EXTERN int
 bech32_deserialize(char *hrp,
                    uint8_t *data,
                    size_t *data_len,
                    const char *str);
 
-int
+TORSION_EXTERN int
 bech32_is(const char *str);
 
-int
+TORSION_EXTERN int
 bech32_convert_bits(uint8_t *dst,
                     size_t *dstlen,
                     size_t dstbits,
@@ -273,21 +274,21 @@ bech32_convert_bits(uint8_t *dst,
                     size_t srcbits,
                     int pad);
 
-int
+TORSION_EXTERN int
 bech32_encode(char *addr,
               const char *hrp,
               unsigned int version,
               const uint8_t *hash,
               size_t hash_len);
 
-int
+TORSION_EXTERN int
 bech32_decode(char *hrp,
               unsigned int *version,
               uint8_t *hash,
               size_t *hash_len,
               const char *addr);
 
-int
+TORSION_EXTERN int
 bech32_test(const char *addr);
 
 /*
@@ -311,23 +312,23 @@ bech32_test(const char *addr);
 #define CASH32_MAX_ENCODE_SIZE CASH32_MAX_SERIALIZE_SIZE
 #define CASH32_MAX_DECODE_SIZE CASH32_MAX_HASH_SIZE
 
-int
+TORSION_EXTERN int
 cash32_serialize(char *str,
                  const char *prefix,
                  const uint8_t *data,
                  size_t data_len);
 
-int
+TORSION_EXTERN int
 cash32_deserialize(char *prefix,
                    uint8_t *data,
                    size_t *data_len,
                    const char *str,
                    const char *fallback);
 
-int
+TORSION_EXTERN int
 cash32_is(const char *str, const char *fallback);
 
-int
+TORSION_EXTERN int
 cash32_convert_bits(uint8_t *dst,
                     size_t *dstlen,
                     size_t dstbits,
@@ -336,20 +337,21 @@ cash32_convert_bits(uint8_t *dst,
                     size_t srcbits,
                     int pad);
 
-int
+TORSION_EXTERN int
 cash32_encode(char *addr,
               const char *prefix,
               unsigned int type,
               const uint8_t *hash,
               size_t hash_len);
-int
+
+TORSION_EXTERN int
 cash32_decode(unsigned int *type,
               uint8_t *hash,
               size_t *hash_len,
               const char *addr,
               const char *expect);
 
-int
+TORSION_EXTERN int
 cash32_test(const char *addr, const char *expect);
 
 #ifdef __cplusplus

@@ -10,15 +10,16 @@
 #include <torsion/util.h>
 #include "bio.h"
 
-#if defined(__EMSCRIPTEN__)
-/* Inline assembly not supported in wasm/asm.js. */
-#else
-#  if defined(_WIN32)
-#    include <windows.h>
-#    define HAVE_SECUREZEROMEMORY
-#  elif defined(__GNUC__)
-#    define HAVE_INLINE_ASM
-#  endif
+#undef HAVE_SECUREZEROMEMORY
+#undef HAVE_INLINE_ASM
+
+#if defined(__EMSCRIPTEN__) || defined(__wasm__)
+/* Inline assembly not supported with emscripten/wasm. */
+#elif defined(_WIN32)
+#  include <windows.h>
+#  define HAVE_SECUREZEROMEMORY
+#elif defined(__GNUC__) && __GNUC__ >= 4
+#  define HAVE_INLINE_ASM
 #endif
 
 /*

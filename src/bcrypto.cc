@@ -13,20 +13,18 @@
 #include <node_api.h>
 
 #include <torsion/aead.h>
-#include <torsion/chacha20.h>
 #include <torsion/cipher.h>
 #include <torsion/drbg.h>
 #include <torsion/dsa.h>
 #include <torsion/ecc.h>
 #include <torsion/encoding.h>
 #include <torsion/hash.h>
+#include <torsion/ies.h>
 #include <torsion/kdf.h>
-#include <torsion/poly1305.h>
+#include <torsion/mac.h>
 #include <torsion/rand.h>
 #include <torsion/rsa.h>
-#include <torsion/salsa20.h>
-#include <torsion/secretbox.h>
-#include <torsion/siphash.h>
+#include <torsion/stream.h>
 #include <torsion/util.h>
 
 #ifdef BCRYPTO_USE_SECP256K1
@@ -2564,7 +2562,7 @@ bcrypto_chacha20_init(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
-bcrypto_chacha20_encrypt(napi_env env, napi_callback_info info) {
+bcrypto_chacha20_crypt(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t *msg;
@@ -2578,7 +2576,7 @@ bcrypto_chacha20_encrypt(napi_env env, napi_callback_info info) {
 
   JS_ASSERT(chacha->started, JS_ERR_INIT);
 
-  chacha20_encrypt(&chacha->ctx, msg, msg, msg_len);
+  chacha20_crypt(&chacha->ctx, msg, msg, msg_len);
 
   return argv[1];
 }
@@ -8175,7 +8173,7 @@ bcrypto_rc4_init(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
-bcrypto_rc4_encrypt(napi_env env, napi_callback_info info) {
+bcrypto_rc4_crypt(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t *msg;
@@ -8189,7 +8187,7 @@ bcrypto_rc4_encrypt(napi_env env, napi_callback_info info) {
 
   JS_ASSERT(rc4->started, JS_ERR_INIT);
 
-  rc4_encrypt(&rc4->ctx, msg, msg, msg_len);
+  rc4_crypt(&rc4->ctx, msg, msg, msg_len);
 
   return argv[1];
 }
@@ -9038,7 +9036,7 @@ bcrypto_salsa20_init(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
-bcrypto_salsa20_encrypt(napi_env env, napi_callback_info info) {
+bcrypto_salsa20_crypt(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t *msg;
@@ -9052,7 +9050,7 @@ bcrypto_salsa20_encrypt(napi_env env, napi_callback_info info) {
 
   JS_ASSERT(salsa->started, JS_ERR_INIT);
 
-  salsa20_encrypt(&salsa->ctx, msg, msg, msg_len);
+  salsa20_crypt(&salsa->ctx, msg, msg, msg_len);
 
   return argv[1];
 }
@@ -12925,7 +12923,7 @@ bcrypto_init(napi_env env, napi_value exports) {
     /* ChaCha20 */
     { "chacha20_create", bcrypto_chacha20_create },
     { "chacha20_init", bcrypto_chacha20_init },
-    { "chacha20_encrypt", bcrypto_chacha20_encrypt },
+    { "chacha20_crypt", bcrypto_chacha20_crypt },
     { "chacha20_destroy", bcrypto_chacha20_destroy },
     { "chacha20_derive", bcrypto_chacha20_derive },
 
@@ -13162,7 +13160,7 @@ bcrypto_init(napi_env env, napi_value exports) {
     /* RC4 */
     { "rc4_create", bcrypto_rc4_create },
     { "rc4_init", bcrypto_rc4_init },
-    { "rc4_encrypt", bcrypto_rc4_encrypt },
+    { "rc4_crypt", bcrypto_rc4_crypt },
     { "rc4_destroy", bcrypto_rc4_destroy },
 
     /* RNG */
@@ -13199,7 +13197,7 @@ bcrypto_init(napi_env env, napi_value exports) {
     /* Salsa20 */
     { "salsa20_create", bcrypto_salsa20_create },
     { "salsa20_init", bcrypto_salsa20_init },
-    { "salsa20_encrypt", bcrypto_salsa20_encrypt },
+    { "salsa20_crypt", bcrypto_salsa20_crypt },
     { "salsa20_destroy", bcrypto_salsa20_destroy },
     { "salsa20_derive", bcrypto_salsa20_derive },
 

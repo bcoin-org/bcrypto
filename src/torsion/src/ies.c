@@ -1,16 +1,13 @@
 /*!
- * secretbox.c - nacl secretbox for libtorsion
+ * ies.c - ies for libtorsion
  * Copyright (c) 2020, Christopher Jeffrey (MIT License).
  * https://github.com/bcoin-org/bcrypto
- *
- * Resources:
- *   https://nacl.cr.yp.to/secretbox.html
  */
 
 #include <stddef.h>
-#include <torsion/poly1305.h>
-#include <torsion/salsa20.h>
-#include <torsion/secretbox.h>
+#include <torsion/ies.h>
+#include <torsion/mac.h>
+#include <torsion/stream.h>
 #include <torsion/util.h>
 
 /*
@@ -21,6 +18,9 @@ static const unsigned char zero32[32] = {0};
 
 /*
  * Secret Box
+ *
+ * Resources:
+ *   https://nacl.cr.yp.to/secretbox.html
  */
 
 void
@@ -36,8 +36,8 @@ secretbox_seal(unsigned char *sealed,
   salsa20_t salsa;
 
   salsa20_init(&salsa, key, 32, nonce, 24, 0);
-  salsa20_encrypt(&salsa, polykey, zero32, 32);
-  salsa20_encrypt(&salsa, ct, msg, msg_len);
+  salsa20_crypt(&salsa, polykey, zero32, 32);
+  salsa20_crypt(&salsa, ct, msg, msg_len);
 
   poly1305_init(&poly, polykey);
   poly1305_update(&poly, ct, msg_len);
@@ -68,7 +68,7 @@ secretbox_open(unsigned char *msg,
   ct_len = sealed_len - 16;
 
   salsa20_init(&salsa, key, 32, nonce, 24, 0);
-  salsa20_encrypt(&salsa, polykey, zero32, 32);
+  salsa20_crypt(&salsa, polykey, zero32, 32);
 
   poly1305_init(&poly, polykey);
   poly1305_update(&poly, ct, ct_len);
@@ -76,7 +76,7 @@ secretbox_open(unsigned char *msg,
 
   ret = poly1305_verify(mac, tag);
 
-  salsa20_encrypt(&salsa, msg, ct, ct_len);
+  salsa20_crypt(&salsa, msg, ct, ct_len);
 
   cleanse(&salsa, sizeof(salsa));
 

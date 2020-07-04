@@ -24,6 +24,7 @@
 #define torsion_rdrand __torsion_rdrand
 #define torsion_rdseed __torsion_rdseed
 #define torsion_hwrand __torsion_hwrand
+#define torsion_getpid __torsion_getpid
 #define torsion_sysrand __torsion_sysrand
 
 /*
@@ -64,6 +65,9 @@ torsion_rdseed(void);
 
 int
 torsion_hwrand(void *dst, size_t size);
+
+uint64_t
+torsion_getpid(void);
 
 int
 torsion_sysrand(void *dst, size_t size);

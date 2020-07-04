@@ -12,6 +12,7 @@ extern "C" {
 #endif
 
 #include <stddef.h>
+#include "common.h"
 
 /*
  * Symbol Aliases
@@ -249,154 +250,154 @@ typedef struct edwards_scratch_s edwards_scratch_t;
  * Short Weierstrass Curve
  */
 
-wei_curve_t *
+TORSION_EXTERN wei_curve_t *
 wei_curve_create(int type);
 
-void
+TORSION_EXTERN void
 wei_curve_destroy(wei_curve_t *ec);
 
-void
+TORSION_EXTERN void
 wei_curve_randomize(wei_curve_t *ec, const unsigned char *entropy);
 
-size_t
+TORSION_EXTERN size_t
 wei_curve_scalar_size(const wei_curve_t *ec);
 
-size_t
+TORSION_EXTERN size_t
 wei_curve_scalar_bits(const wei_curve_t *ec);
 
-size_t
+TORSION_EXTERN size_t
 wei_curve_field_size(const wei_curve_t *ec);
 
-size_t
+TORSION_EXTERN size_t
 wei_curve_field_bits(const wei_curve_t *ec);
 
-wei_scratch_t *
+TORSION_EXTERN wei_scratch_t *
 wei_scratch_create(const wei_curve_t *ec, size_t size);
 
-void
+TORSION_EXTERN void
 wei_scratch_destroy(const wei_curve_t *ec, wei_scratch_t *scratch);
 
 /*
  * Montgomery Curve
  */
 
-mont_curve_t *
+TORSION_EXTERN mont_curve_t *
 mont_curve_create(int type);
 
-void
+TORSION_EXTERN void
 mont_curve_destroy(mont_curve_t *ec);
 
-size_t
+TORSION_EXTERN size_t
 mont_curve_scalar_size(const mont_curve_t *ec);
 
-size_t
+TORSION_EXTERN size_t
 mont_curve_scalar_bits(const mont_curve_t *ec);
 
-size_t
+TORSION_EXTERN size_t
 mont_curve_field_size(const mont_curve_t *ec);
 
-size_t
+TORSION_EXTERN size_t
 mont_curve_field_bits(const mont_curve_t *ec);
 
 /*
  * Edwards Curve
  */
 
-edwards_curve_t *
+TORSION_EXTERN edwards_curve_t *
 edwards_curve_create(int type);
 
-void
+TORSION_EXTERN void
 edwards_curve_destroy(edwards_curve_t *ec);
 
-void
+TORSION_EXTERN void
 edwards_curve_randomize(edwards_curve_t *ec, const unsigned char *entropy);
 
-size_t
+TORSION_EXTERN size_t
 edwards_curve_scalar_size(const edwards_curve_t *ec);
 
-size_t
+TORSION_EXTERN size_t
 edwards_curve_scalar_bits(const edwards_curve_t *ec);
 
-size_t
+TORSION_EXTERN size_t
 edwards_curve_field_size(const edwards_curve_t *ec);
 
-size_t
+TORSION_EXTERN size_t
 edwards_curve_field_bits(const edwards_curve_t *ec);
 
-edwards_scratch_t *
+TORSION_EXTERN edwards_scratch_t *
 edwards_scratch_create(const edwards_curve_t *ec, size_t size);
 
-void
+TORSION_EXTERN void
 edwards_scratch_destroy(const edwards_curve_t *ec, edwards_scratch_t *scratch);
 
 /*
  * ECDSA
  */
 
-size_t
+TORSION_EXTERN size_t
 ecdsa_privkey_size(const wei_curve_t *ec);
 
-size_t
+TORSION_EXTERN size_t
 ecdsa_pubkey_size(const wei_curve_t *ec, int compact);
 
-size_t
+TORSION_EXTERN size_t
 ecdsa_sig_size(const wei_curve_t *ec);
 
-void
+TORSION_EXTERN void
 ecdsa_privkey_generate(const wei_curve_t *ec,
                        unsigned char *out,
                        const unsigned char *entropy);
 
-int
+TORSION_EXTERN int
 ecdsa_privkey_verify(const wei_curve_t *ec, const unsigned char *priv);
 
-int
+TORSION_EXTERN int
 ecdsa_privkey_export(const wei_curve_t *ec,
                      unsigned char *out,
                      const unsigned char *priv);
 
-int
+TORSION_EXTERN int
 ecdsa_privkey_import(const wei_curve_t *ec,
                      unsigned char *out,
                      const unsigned char *bytes,
                      size_t len);
 
-int
+TORSION_EXTERN int
 ecdsa_privkey_tweak_add(const wei_curve_t *ec,
                         unsigned char *out,
                         const unsigned char *priv,
                         const unsigned char *tweak);
 
-int
+TORSION_EXTERN int
 ecdsa_privkey_tweak_mul(const wei_curve_t *ec,
                         unsigned char *out,
                         const unsigned char *priv,
                         const unsigned char *tweak);
 
-int
+TORSION_EXTERN int
 ecdsa_privkey_reduce(const wei_curve_t *ec,
                      unsigned char *out,
                      const unsigned char *bytes,
                      size_t len);
 
-int
+TORSION_EXTERN int
 ecdsa_privkey_negate(const wei_curve_t *ec,
                      unsigned char *out,
                      const unsigned char *priv);
 
-int
+TORSION_EXTERN int
 ecdsa_privkey_invert(const wei_curve_t *ec,
                      unsigned char *out,
                      const unsigned char *priv);
 
-int
+TORSION_EXTERN int
 ecdsa_pubkey_create(const wei_curve_t *ec,
                     unsigned char *pub,
                     size_t *pub_len,
                     const unsigned char *priv,
                     int compact);
 
-int
+TORSION_EXTERN int
 ecdsa_pubkey_convert(const wei_curve_t *ec,
                      unsigned char *out,
                      size_t *out_len,
@@ -404,28 +405,28 @@ ecdsa_pubkey_convert(const wei_curve_t *ec,
                      size_t pub_len,
                      int compact);
 
-void
+TORSION_EXTERN void
 ecdsa_pubkey_from_uniform(const wei_curve_t *ec,
                           unsigned char *out,
                           size_t *out_len,
                           const unsigned char *bytes,
                           int compact);
 
-int
+TORSION_EXTERN int
 ecdsa_pubkey_to_uniform(const wei_curve_t *ec,
                         unsigned char *out,
                         const unsigned char *pub,
                         size_t pub_len,
                         unsigned int hint);
 
-int
+TORSION_EXTERN int
 ecdsa_pubkey_from_hash(const wei_curve_t *ec,
                        unsigned char *out,
                        size_t *out_len,
                        const unsigned char *bytes,
                        int compact);
 
-int
+TORSION_EXTERN int
 ecdsa_pubkey_to_hash(const wei_curve_t *ec,
                      unsigned char *out,
                      const unsigned char *pub,
@@ -433,19 +434,19 @@ ecdsa_pubkey_to_hash(const wei_curve_t *ec,
                      unsigned int subgroup,
                      const unsigned char *entropy);
 
-int
+TORSION_EXTERN int
 ecdsa_pubkey_verify(const wei_curve_t *ec,
                     const unsigned char *pub,
                     size_t pub_len);
 
-int
+TORSION_EXTERN int
 ecdsa_pubkey_export(const wei_curve_t *ec,
                     unsigned char *x_raw,
                     unsigned char *y_raw,
                     const unsigned char *pub,
                     size_t pub_len);
 
-int
+TORSION_EXTERN int
 ecdsa_pubkey_import(const wei_curve_t *ec,
                     unsigned char *out,
                     size_t *out_len,
@@ -456,7 +457,7 @@ ecdsa_pubkey_import(const wei_curve_t *ec,
                     int sign,
                     int compact);
 
-int
+TORSION_EXTERN int
 ecdsa_pubkey_tweak_add(const wei_curve_t *ec,
                        unsigned char *out,
                        size_t *out_len,
@@ -465,7 +466,7 @@ ecdsa_pubkey_tweak_add(const wei_curve_t *ec,
                        const unsigned char *tweak,
                        int compact);
 
-int
+TORSION_EXTERN int
 ecdsa_pubkey_tweak_mul(const wei_curve_t *ec,
                        unsigned char *out,
                        size_t *out_len,
@@ -474,7 +475,7 @@ ecdsa_pubkey_tweak_mul(const wei_curve_t *ec,
                        const unsigned char *tweak,
                        int compact);
 
-int
+TORSION_EXTERN int
 ecdsa_pubkey_combine(const wei_curve_t *ec,
                      unsigned char *out,
                      size_t *out_len,
@@ -483,7 +484,7 @@ ecdsa_pubkey_combine(const wei_curve_t *ec,
                      size_t len,
                      int compact);
 
-int
+TORSION_EXTERN int
 ecdsa_pubkey_negate(const wei_curve_t *ec,
                     unsigned char *out,
                     size_t *out_len,
@@ -491,33 +492,33 @@ ecdsa_pubkey_negate(const wei_curve_t *ec,
                     size_t pub_len,
                     int compact);
 
-int
+TORSION_EXTERN int
 ecdsa_sig_export(const wei_curve_t *ec,
                  unsigned char *out,
                  size_t *out_len,
                  const unsigned char *sig);
 
-int
+TORSION_EXTERN int
 ecdsa_sig_import_lax(const wei_curve_t *ec,
                      unsigned char *out,
                      const unsigned char *der,
                      size_t der_len);
 
-int
+TORSION_EXTERN int
 ecdsa_sig_import(const wei_curve_t *ec,
                  unsigned char *out,
                  const unsigned char *der,
                  size_t der_len);
 
-int
+TORSION_EXTERN int
 ecdsa_sig_normalize(const wei_curve_t *ec,
                     unsigned char *out,
                     const unsigned char *sig);
 
-int
+TORSION_EXTERN int
 ecdsa_is_low_s(const wei_curve_t *ec, const unsigned char *sig);
 
-int
+TORSION_EXTERN int
 ecdsa_sign(const wei_curve_t *ec,
            unsigned char *sig,
            unsigned int *param,
@@ -525,7 +526,7 @@ ecdsa_sign(const wei_curve_t *ec,
            size_t msg_len,
            const unsigned char *priv);
 
-int
+TORSION_EXTERN int
 ecdsa_verify(const wei_curve_t *ec,
              const unsigned char *msg,
              size_t msg_len,
@@ -533,7 +534,7 @@ ecdsa_verify(const wei_curve_t *ec,
              const unsigned char *pub,
              size_t pub_len);
 
-int
+TORSION_EXTERN int
 ecdsa_recover(const wei_curve_t *ec,
               unsigned char *pub,
               size_t *pub_len,
@@ -543,7 +544,7 @@ ecdsa_recover(const wei_curve_t *ec,
               unsigned int param,
               int compact);
 
-int
+TORSION_EXTERN int
 ecdsa_derive(const wei_curve_t *ec,
              unsigned char *secret,
              size_t *secret_len,
@@ -556,13 +557,13 @@ ecdsa_derive(const wei_curve_t *ec,
  * Schnorr Legacy
  */
 
-int
+TORSION_EXTERN int
 schnorr_legacy_support(const wei_curve_t *ec);
 
 #define schnorr_legacy_privkey_size ecdsa_privkey_size
 #define schnorr_legacy_pubkey_size ecdsa_pubkey_size
 
-size_t
+TORSION_EXTERN size_t
 schnorr_legacy_sig_size(const wei_curve_t *ec);
 
 #define schnorr_legacy_privkey_generate ecdsa_privkey_generate
@@ -588,14 +589,14 @@ schnorr_legacy_sig_size(const wei_curve_t *ec);
 #define schnorr_legacy_pubkey_combine ecdsa_pubkey_combine
 #define schnorr_legacy_pubkey_negate ecdsa_pubkey_negate
 
-int
+TORSION_EXTERN int
 schnorr_legacy_sign(const wei_curve_t *ec,
                     unsigned char *sig,
                     const unsigned char *msg,
                     size_t msg_len,
                     const unsigned char *priv);
 
-int
+TORSION_EXTERN int
 schnorr_legacy_verify(const wei_curve_t *ec,
                       const unsigned char *msg,
                       size_t msg_len,
@@ -603,7 +604,7 @@ schnorr_legacy_verify(const wei_curve_t *ec,
                       const unsigned char *pub,
                       size_t pub_len);
 
-int
+TORSION_EXTERN int
 schnorr_legacy_verify_batch(const wei_curve_t *ec,
                             const unsigned char **msgs,
                             const size_t *msg_lens,
@@ -619,120 +620,120 @@ schnorr_legacy_verify_batch(const wei_curve_t *ec,
  * Schnorr
  */
 
-int
+TORSION_EXTERN int
 schnorr_support(const wei_curve_t *ec);
 
-size_t
+TORSION_EXTERN size_t
 schnorr_privkey_size(const wei_curve_t *ec);
 
-size_t
+TORSION_EXTERN size_t
 schnorr_pubkey_size(const wei_curve_t *ec);
 
-size_t
+TORSION_EXTERN size_t
 schnorr_sig_size(const wei_curve_t *ec);
 
-void
+TORSION_EXTERN void
 schnorr_privkey_generate(const wei_curve_t *ec,
                          unsigned char *out,
                          const unsigned char *entropy);
 
-int
+TORSION_EXTERN int
 schnorr_privkey_verify(const wei_curve_t *ec, const unsigned char *priv);
 
-int
+TORSION_EXTERN int
 schnorr_privkey_export(const wei_curve_t *ec,
                        unsigned char *d_raw,
                        unsigned char *x_raw,
                        unsigned char *y_raw,
                        const unsigned char *priv);
 
-int
+TORSION_EXTERN int
 schnorr_privkey_import(const wei_curve_t *ec,
                        unsigned char *out,
                        const unsigned char *bytes,
                        size_t len);
 
-int
+TORSION_EXTERN int
 schnorr_privkey_tweak_add(const wei_curve_t *ec,
                           unsigned char *out,
                           const unsigned char *priv,
                           const unsigned char *tweak);
 
-int
+TORSION_EXTERN int
 schnorr_privkey_tweak_mul(const wei_curve_t *ec,
                           unsigned char *out,
                           const unsigned char *priv,
                           const unsigned char *tweak);
 
-int
+TORSION_EXTERN int
 schnorr_privkey_reduce(const wei_curve_t *ec,
                        unsigned char *out,
                        const unsigned char *bytes,
                        size_t len);
 
-int
+TORSION_EXTERN int
 schnorr_privkey_invert(const wei_curve_t *ec,
                        unsigned char *out,
                        const unsigned char *priv);
 
-int
+TORSION_EXTERN int
 schnorr_pubkey_create(const wei_curve_t *ec,
                       unsigned char *pub,
                       const unsigned char *priv);
 
-void
+TORSION_EXTERN void
 schnorr_pubkey_from_uniform(const wei_curve_t *ec,
                             unsigned char *out,
                             const unsigned char *bytes);
 
-int
+TORSION_EXTERN int
 schnorr_pubkey_to_uniform(const wei_curve_t *ec,
                           unsigned char *out,
                           const unsigned char *pub,
                           unsigned int hint);
 
-int
+TORSION_EXTERN int
 schnorr_pubkey_from_hash(const wei_curve_t *ec,
                          unsigned char *out,
                          const unsigned char *bytes);
 
-int
+TORSION_EXTERN int
 schnorr_pubkey_to_hash(const wei_curve_t *ec,
                        unsigned char *out,
                        const unsigned char *pub,
                        unsigned int subgroup,
                        const unsigned char *entropy);
 
-int
+TORSION_EXTERN int
 schnorr_pubkey_verify(const wei_curve_t *ec, const unsigned char *pub);
 
-int
+TORSION_EXTERN int
 schnorr_pubkey_export(const wei_curve_t *ec,
                       unsigned char *x_raw,
                       unsigned char *y_raw,
                       const unsigned char *pub);
 
-int
+TORSION_EXTERN int
 schnorr_pubkey_import(const wei_curve_t *ec,
                       unsigned char *out,
                       const unsigned char *x_raw,
                       size_t x_len);
 
-int
+TORSION_EXTERN int
 schnorr_pubkey_tweak_add(const wei_curve_t *ec,
                          unsigned char *out,
                          int *negated,
                          const unsigned char *pub,
                          const unsigned char *tweak);
 
-int
+TORSION_EXTERN int
 schnorr_pubkey_tweak_mul(const wei_curve_t *ec,
                          unsigned char *out,
                          int *negated,
                          const unsigned char *pub,
                          const unsigned char *tweak);
 
-int
+TORSION_EXTERN int
 schnorr_pubkey_tweak_test(const wei_curve_t *ec,
                           int *result,
                           const unsigned char *pub,
@@ -740,13 +741,13 @@ schnorr_pubkey_tweak_test(const wei_curve_t *ec,
                           const unsigned char *expect,
                           int negated);
 
-int
+TORSION_EXTERN int
 schnorr_pubkey_combine(const wei_curve_t *ec,
                        unsigned char *out,
                        const unsigned char **pubs,
                        size_t len);
 
-int
+TORSION_EXTERN int
 schnorr_sign(const wei_curve_t *ec,
              unsigned char *sig,
              const unsigned char *msg,
@@ -754,14 +755,14 @@ schnorr_sign(const wei_curve_t *ec,
              const unsigned char *priv,
              const unsigned char *aux);
 
-int
+TORSION_EXTERN int
 schnorr_verify(const wei_curve_t *ec,
                const unsigned char *msg,
                size_t msg_len,
                const unsigned char *sig,
                const unsigned char *pub);
 
-int
+TORSION_EXTERN int
 schnorr_verify_batch(const wei_curve_t *ec,
                      const unsigned char **msgs,
                      const size_t *msg_lens,
@@ -770,7 +771,7 @@ schnorr_verify_batch(const wei_curve_t *ec,
                      size_t len,
                      wei_scratch_t *scratch);
 
-int
+TORSION_EXTERN int
 schnorr_derive(const wei_curve_t *ec,
                unsigned char *secret,
                const unsigned char *pub,
@@ -780,89 +781,89 @@ schnorr_derive(const wei_curve_t *ec,
  * ECDH
  */
 
-size_t
+TORSION_EXTERN size_t
 ecdh_privkey_size(const mont_curve_t *ec);
 
-size_t
+TORSION_EXTERN size_t
 ecdh_pubkey_size(const mont_curve_t *ec);
 
-void
+TORSION_EXTERN void
 ecdh_privkey_generate(const mont_curve_t *ec,
                       unsigned char *out,
                       const unsigned char *entropy);
 
-int
+TORSION_EXTERN int
 ecdh_privkey_verify(const mont_curve_t *ec, const unsigned char *priv);
 
-int
+TORSION_EXTERN int
 ecdh_privkey_export(const mont_curve_t *ec,
                     unsigned char *out,
                     const unsigned char *priv);
 
-int
+TORSION_EXTERN int
 ecdh_privkey_import(const mont_curve_t *ec,
                     unsigned char *out,
                     const unsigned char *bytes,
                     size_t len);
 
-void
+TORSION_EXTERN void
 ecdh_pubkey_create(const mont_curve_t *ec,
                    unsigned char *pub,
                    const unsigned char *priv);
 
-int
+TORSION_EXTERN int
 ecdh_pubkey_convert(const mont_curve_t *ec,
                     unsigned char *out,
                     const unsigned char *pub,
                     int sign);
 
-void
+TORSION_EXTERN void
 ecdh_pubkey_from_uniform(const mont_curve_t *ec,
                          unsigned char *out,
                          const unsigned char *bytes);
 
-int
+TORSION_EXTERN int
 ecdh_pubkey_to_uniform(const mont_curve_t *ec,
                        unsigned char *out,
                        const unsigned char *pub,
                        unsigned int hint);
 
-int
+TORSION_EXTERN int
 ecdh_pubkey_from_hash(const mont_curve_t *ec,
                       unsigned char *out,
                       const unsigned char *bytes,
                       int pake);
 
-int
+TORSION_EXTERN int
 ecdh_pubkey_to_hash(const mont_curve_t *ec,
                     unsigned char *out,
                     const unsigned char *pub,
                     unsigned int subgroup,
                     const unsigned char *entropy);
 
-int
+TORSION_EXTERN int
 ecdh_pubkey_verify(const mont_curve_t *ec, const unsigned char *pub);
 
-int
+TORSION_EXTERN int
 ecdh_pubkey_export(const mont_curve_t *ec,
                    unsigned char *x_raw,
                    unsigned char *y_raw,
                    const unsigned char *pub,
                    int sign);
 
-int
+TORSION_EXTERN int
 ecdh_pubkey_import(const mont_curve_t *ec,
                    unsigned char *out,
                    const unsigned char *x_raw,
                    size_t x_len);
 
-int
+TORSION_EXTERN int
 ecdh_pubkey_is_small(const mont_curve_t *ec, const unsigned char *pub);
 
-int
+TORSION_EXTERN int
 ecdh_pubkey_has_torsion(const mont_curve_t *ec, const unsigned char *pub);
 
-int
+TORSION_EXTERN int
 ecdh_derive(const mont_curve_t *ec,
             unsigned char *secret,
             const unsigned char *pub,
@@ -872,138 +873,138 @@ ecdh_derive(const mont_curve_t *ec,
  * EdDSA
  */
 
-size_t
+TORSION_EXTERN size_t
 eddsa_privkey_size(const edwards_curve_t *ec);
 
-size_t
+TORSION_EXTERN size_t
 eddsa_pubkey_size(const edwards_curve_t *ec);
 
-size_t
+TORSION_EXTERN size_t
 eddsa_sig_size(const edwards_curve_t *ec);
 
-void
+TORSION_EXTERN void
 eddsa_privkey_generate(const edwards_curve_t *ec,
                        unsigned char *out,
                        const unsigned char *entropy);
 
-void
+TORSION_EXTERN void
 eddsa_scalar_generate(const edwards_curve_t *ec,
                       unsigned char *out,
                       const unsigned char *entropy);
 
-void
+TORSION_EXTERN void
 eddsa_privkey_expand(const edwards_curve_t *ec,
                      unsigned char *scalar,
                      unsigned char *prefix,
                      const unsigned char *priv);
 
-void
+TORSION_EXTERN void
 eddsa_privkey_convert(const edwards_curve_t *ec,
                       unsigned char *scalar,
                       const unsigned char *priv);
 
-int
+TORSION_EXTERN int
 eddsa_privkey_verify(const edwards_curve_t *ec, const unsigned char *priv);
 
-int
+TORSION_EXTERN int
 eddsa_privkey_export(const edwards_curve_t *ec,
                      unsigned char *out,
                      const unsigned char *priv);
 
-int
+TORSION_EXTERN int
 eddsa_privkey_import(const edwards_curve_t *ec,
                      unsigned char *out,
                      const unsigned char *bytes,
                      size_t len);
 
-int
+TORSION_EXTERN int
 eddsa_scalar_verify(const edwards_curve_t *ec, const unsigned char *scalar);
 
-int
+TORSION_EXTERN int
 eddsa_scalar_is_zero(const edwards_curve_t *ec, const unsigned char *scalar);
 
-void
+TORSION_EXTERN void
 eddsa_scalar_clamp(const edwards_curve_t *ec,
                    unsigned char *out,
                    const unsigned char *scalar);
 
-void
+TORSION_EXTERN void
 eddsa_scalar_tweak_add(const edwards_curve_t *ec,
                        unsigned char *out,
                        const unsigned char *scalar,
                        const unsigned char *tweak);
 
-void
+TORSION_EXTERN void
 eddsa_scalar_tweak_mul(const edwards_curve_t *ec,
                        unsigned char *out,
                        const unsigned char *scalar,
                        const unsigned char *tweak);
 
-void
+TORSION_EXTERN void
 eddsa_scalar_reduce(const edwards_curve_t *ec,
                     unsigned char *out,
                     const unsigned char *bytes,
                     size_t len);
 
-void
+TORSION_EXTERN void
 eddsa_scalar_negate(const edwards_curve_t *ec,
                     unsigned char *out,
                     const unsigned char *scalar);
 
-void
+TORSION_EXTERN void
 eddsa_scalar_invert(const edwards_curve_t *ec,
                     unsigned char *out,
                     const unsigned char *scalar);
 
-void
+TORSION_EXTERN void
 eddsa_pubkey_from_scalar(const edwards_curve_t *ec,
                          unsigned char *pub,
                          const unsigned char *scalar);
 
-void
+TORSION_EXTERN void
 eddsa_pubkey_create(const edwards_curve_t *ec,
                     unsigned char *pub,
                     const unsigned char *priv);
 
-int
+TORSION_EXTERN int
 eddsa_pubkey_convert(const edwards_curve_t *ec,
                      unsigned char *out,
                      const unsigned char *pub);
 
-void
+TORSION_EXTERN void
 eddsa_pubkey_from_uniform(const edwards_curve_t *ec,
                           unsigned char *out,
                           const unsigned char *bytes);
 
-int
+TORSION_EXTERN int
 eddsa_pubkey_to_uniform(const edwards_curve_t *ec,
                         unsigned char *out,
                         const unsigned char *pub,
                         unsigned int hint);
 
-void
+TORSION_EXTERN void
 eddsa_pubkey_from_hash(const edwards_curve_t *ec,
                        unsigned char *out,
                        const unsigned char *bytes,
                        int pake);
 
-int
+TORSION_EXTERN int
 eddsa_pubkey_to_hash(const edwards_curve_t *ec,
                      unsigned char *out,
                      const unsigned char *pub,
                      unsigned int subgroup,
                      const unsigned char *entropy);
 
-int
+TORSION_EXTERN int
 eddsa_pubkey_verify(const edwards_curve_t *ec, const unsigned char *pub);
 
-int
+TORSION_EXTERN int
 eddsa_pubkey_export(const edwards_curve_t *ec,
                     unsigned char *x_raw,
                     unsigned char *y_raw,
                     const unsigned char *pub);
 
-int
+TORSION_EXTERN int
 eddsa_pubkey_import(const edwards_curve_t *ec,
                     unsigned char *out,
                     const unsigned char *x_raw,
@@ -1011,39 +1012,40 @@ eddsa_pubkey_import(const edwards_curve_t *ec,
                     const unsigned char *y_raw,
                     size_t y_len,
                     int sign);
-int
+
+TORSION_EXTERN int
 eddsa_pubkey_is_infinity(const edwards_curve_t *ec, const unsigned char *pub);
 
-int
+TORSION_EXTERN int
 eddsa_pubkey_is_small(const edwards_curve_t *ec, const unsigned char *pub);
 
-int
+TORSION_EXTERN int
 eddsa_pubkey_has_torsion(const edwards_curve_t *ec, const unsigned char *pub);
 
-int
+TORSION_EXTERN int
 eddsa_pubkey_tweak_add(const edwards_curve_t *ec,
                        unsigned char *out,
                        const unsigned char *pub,
                        const unsigned char *tweak);
 
-int
+TORSION_EXTERN int
 eddsa_pubkey_tweak_mul(const edwards_curve_t *ec,
                        unsigned char *out,
                        const unsigned char *pub,
                        const unsigned char *tweak);
 
-int
+TORSION_EXTERN int
 eddsa_pubkey_combine(const edwards_curve_t *ec,
                      unsigned char *out,
                      const unsigned char **pubs,
                      size_t len);
 
-int
+TORSION_EXTERN int
 eddsa_pubkey_negate(const edwards_curve_t *ec,
                     unsigned char *out,
                     const unsigned char *pub);
 
-void
+TORSION_EXTERN void
 eddsa_sign_with_scalar(const edwards_curve_t *ec,
                        unsigned char *sig,
                        const unsigned char *msg,
@@ -1054,7 +1056,7 @@ eddsa_sign_with_scalar(const edwards_curve_t *ec,
                        const unsigned char *ctx,
                        size_t ctx_len);
 
-void
+TORSION_EXTERN void
 eddsa_sign(const edwards_curve_t *ec,
            unsigned char *sig,
            const unsigned char *msg,
@@ -1064,7 +1066,7 @@ eddsa_sign(const edwards_curve_t *ec,
            const unsigned char *ctx,
            size_t ctx_len);
 
-void
+TORSION_EXTERN void
 eddsa_sign_tweak_add(const edwards_curve_t *ec,
                      unsigned char *sig,
                      const unsigned char *msg,
@@ -1075,7 +1077,7 @@ eddsa_sign_tweak_add(const edwards_curve_t *ec,
                      const unsigned char *ctx,
                      size_t ctx_len);
 
-void
+TORSION_EXTERN void
 eddsa_sign_tweak_mul(const edwards_curve_t *ec,
                      unsigned char *sig,
                      const unsigned char *msg,
@@ -1086,7 +1088,7 @@ eddsa_sign_tweak_mul(const edwards_curve_t *ec,
                      const unsigned char *ctx,
                      size_t ctx_len);
 
-int
+TORSION_EXTERN int
 eddsa_verify(const edwards_curve_t *ec,
              const unsigned char *msg,
              size_t msg_len,
@@ -1096,7 +1098,7 @@ eddsa_verify(const edwards_curve_t *ec,
              const unsigned char *ctx,
              size_t ctx_len);
 
-int
+TORSION_EXTERN int
 eddsa_verify_single(const edwards_curve_t *ec,
                     const unsigned char *msg,
                     size_t msg_len,
@@ -1106,7 +1108,7 @@ eddsa_verify_single(const edwards_curve_t *ec,
                     const unsigned char *ctx,
                     size_t ctx_len);
 
-int
+TORSION_EXTERN int
 eddsa_verify_batch(const edwards_curve_t *ec,
                    const unsigned char **msgs,
                    const size_t *msg_lens,
@@ -1118,12 +1120,13 @@ eddsa_verify_batch(const edwards_curve_t *ec,
                    size_t ctx_len,
                    edwards_scratch_t *scratch);
 
-int
+TORSION_EXTERN int
 eddsa_derive_with_scalar(const edwards_curve_t *ec,
                          unsigned char *secret,
                          const unsigned char *pub,
                          const unsigned char *scalar);
-int
+
+TORSION_EXTERN int
 eddsa_derive(const edwards_curve_t *ec,
              unsigned char *secret,
              const unsigned char *pub,

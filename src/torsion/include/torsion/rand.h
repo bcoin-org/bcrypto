@@ -13,6 +13,7 @@ extern "C" {
 
 #include <stddef.h>
 #include <stdint.h>
+#include "common.h"
 
 /*
  * Symbol Aliases
@@ -40,24 +41,36 @@ typedef struct _rng_s {
  * RNG
  */
 
-int
+TORSION_EXTERN int
 rng_init(rng_t *rng);
 
-void
+TORSION_EXTERN void
 rng_generate(rng_t *rng, void *dst, size_t size);
 
-uint32_t
+TORSION_EXTERN uint32_t
 rng_random(rng_t *rng);
 
-uint32_t
+TORSION_EXTERN uint32_t
 rng_uniform(rng_t *rng, uint32_t max);
 
 /*
- * Entropy
+ * Global API
  */
 
-int
+TORSION_EXTERN int
+torsion_is_reentrant(void);
+
+TORSION_EXTERN int
 torsion_getentropy(void *dst, size_t size);
+
+TORSION_EXTERN int
+torsion_getrandom(void *dst, size_t size);
+
+TORSION_EXTERN int
+torsion_random(uint32_t *out);
+
+TORSION_EXTERN int
+torsion_uniform(uint32_t *out, uint32_t max);
 
 #ifdef __cplusplus
 }

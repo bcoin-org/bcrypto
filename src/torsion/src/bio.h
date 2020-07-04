@@ -215,25 +215,7 @@ write64be(void *dst, uint64_t w) {
  *   https://stackoverflow.com/a/2637138
  */
 
-#if defined(__EMSCRIPTEN__)
-/* Unsure if emscripten supports a bswap builtin. */
-#elif TORSION_GNUC_PREREQ(4, 3)
-#  define HAVE_BUILTIN_BSWAP16
-#  define HAVE_BUILTIN_BSWAP32
-#  define HAVE_BUILTIN_BSWAP64
-#else
-#  if __has_builtin(__builtin_bswap16)
-#    define HAVE_BUILTIN_BSWAP16
-#  endif
-#  if __has_builtin(__builtin_bswap32)
-#    define HAVE_BUILTIN_BSWAP32
-#  endif
-#  if __has_builtin(__builtin_bswap64)
-#    define HAVE_BUILTIN_BSWAP64
-#  endif
-#endif
-
-#if defined(HAVE_BUILTIN_BSWAP16)
+#if TORSION_GNUC_PREREQ(4, 8) || __has_builtin(__builtin_bswap16)
 #  define torsion_bswap16(x) __builtin_bswap16(x)
 #else
 static TORSION_INLINE uint16_t
@@ -242,7 +224,7 @@ torsion_bswap16(uint16_t x) {
 }
 #endif
 
-#if defined(HAVE_BUILTIN_BSWAP32)
+#if TORSION_GNUC_PREREQ(4, 3) || __has_builtin(__builtin_bswap32)
 #  define torsion_bswap32(x) __builtin_bswap32(x)
 #else
 static TORSION_INLINE uint32_t
@@ -253,7 +235,7 @@ torsion_bswap32(uint32_t x) {
 }
 #endif
 
-#if defined(HAVE_BUILTIN_BSWAP64)
+#if TORSION_GNUC_PREREQ(4, 3) || __has_builtin(__builtin_bswap64)
 #  define torsion_bswap64(x) __builtin_bswap64(x)
 #else
 static TORSION_INLINE uint64_t

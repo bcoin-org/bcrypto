@@ -12,6 +12,7 @@ extern "C" {
 #endif
 
 #include <stddef.h>
+#include "common.h"
 #include "cipher.h"
 #include "hash.h"
 
@@ -68,11 +69,11 @@ typedef struct _ctr_drbg_s {
   uint8_t state[16];
 } ctr_drbg_t;
 
-typedef hmac_drbg_t drbg_t;
-
 /*
  * DRBG
  */
+
+typedef hmac_drbg_t drbg_t;
 
 #define drbg_init hmac_drbg_init
 #define drbg_reseed hmac_drbg_reseed
@@ -84,52 +85,52 @@ typedef hmac_drbg_t drbg_t;
  * HMAC-DRBG
  */
 
-void
+TORSION_EXTERN void
 hmac_drbg_init(hmac_drbg_t *drbg,
                int type,
                const unsigned char *seed,
                size_t seed_len);
 
-void
+TORSION_EXTERN void
 hmac_drbg_reseed(hmac_drbg_t *drbg, const unsigned char *seed, size_t seed_len);
 
-void
+TORSION_EXTERN void
 hmac_drbg_generate(hmac_drbg_t *drbg, void *out, size_t len,
                    const unsigned char *add, size_t add_len);
 
-void
+TORSION_EXTERN void
 hmac_drbg_rng(void *out, size_t size, void *arg);
 
 /*
  * Hash-DRBG
  */
 
-void
+TORSION_EXTERN void
 hash_drbg_init(hash_drbg_t *drbg,
                int type,
                const unsigned char *seed,
                size_t seed_len);
 
-void
+TORSION_EXTERN void
 hash_drbg_reseed(hash_drbg_t *drbg,
                  const unsigned char *seed,
                  size_t seed_len);
 
-void
+TORSION_EXTERN void
 hash_drbg_generate(hash_drbg_t *drbg,
                    void *out,
                    size_t len,
                    const unsigned char *add,
                    size_t add_len);
 
-void
+TORSION_EXTERN void
 hash_drbg_rng(void *out, size_t size, void *arg);
 
 /*
  * CTR-DRBG
  */
 
-void
+TORSION_EXTERN void
 ctr_drbg_init(ctr_drbg_t *drbg,
               unsigned int bits,
               int derivation,
@@ -138,21 +139,21 @@ ctr_drbg_init(ctr_drbg_t *drbg,
               const unsigned char *pers,
               size_t pers_len);
 
-void
+TORSION_EXTERN void
 ctr_drbg_reseed(ctr_drbg_t *drbg,
                 const unsigned char *nonce,
                 size_t nonce_len,
                 const unsigned char *add,
                 size_t add_len);
 
-void
+TORSION_EXTERN void
 ctr_drbg_generate(ctr_drbg_t *drbg,
                   void *out,
                   size_t len,
                   const unsigned char *add,
                   size_t add_len);
 
-void
+TORSION_EXTERN void
 ctr_drbg_rng(void *out, size_t size, void *arg);
 
 #ifdef __cplusplus

@@ -21,7 +21,7 @@ asn1_read_size(size_t *size,
                size_t *len, int strict) {
   unsigned char ch;
 
-  ASSERT(sizeof(size_t) * CHAR_BIT >= 32);
+  STATIC_ASSERT(sizeof(size_t) * CHAR_BIT >= 32);
 
   if (*len == 0)
     goto fail;

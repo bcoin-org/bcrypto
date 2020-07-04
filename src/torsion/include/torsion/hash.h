@@ -13,6 +13,7 @@ extern "C" {
 
 #include <stddef.h>
 #include <stdint.h>
+#include "common.h"
 
 /*
  * Symbol Aliases
@@ -296,169 +297,169 @@ typedef struct _hmac_s {
  * MD2
  */
 
-void
+TORSION_EXTERN void
 md2_init(md2_t *ctx);
 
-void
+TORSION_EXTERN void
 md2_update(md2_t *ctx, const void *data, size_t len);
 
-void
+TORSION_EXTERN void
 md2_final(md2_t *ctx, unsigned char *out);
 
 /*
  * MD4
  */
 
-void
+TORSION_EXTERN void
 md4_init(md4_t *ctx);
 
-void
+TORSION_EXTERN void
 md4_update(md4_t *ctx, const void *data, size_t len);
 
-void
+TORSION_EXTERN void
 md4_final(md4_t *ctx, unsigned char *out);
 
 /*
  * MD5
  */
 
-void
+TORSION_EXTERN void
 md5_init(md5_t *ctx);
 
-void
+TORSION_EXTERN void
 md5_update(md5_t *ctx, const void *data, size_t len);
 
-void
+TORSION_EXTERN void
 md5_final(md5_t *ctx, unsigned char *out);
 
 /*
  * MD5SHA1
  */
 
-void
+TORSION_EXTERN void
 md5sha1_init(md5sha1_t *ctx);
 
-void
+TORSION_EXTERN void
 md5sha1_update(md5sha1_t *ctx, const void *data, size_t len);
 
-void
+TORSION_EXTERN void
 md5sha1_final(md5sha1_t *ctx, unsigned char *out);
 
 /*
  * RIPEMD160
  */
 
-void
+TORSION_EXTERN void
 ripemd160_init(ripemd160_t *ctx);
 
-void
+TORSION_EXTERN void
 ripemd160_update(ripemd160_t *ctx, const void *data, size_t len);
 
-void
+TORSION_EXTERN void
 ripemd160_final(ripemd160_t *ctx, unsigned char *out);
 
 /*
  * SHA1
  */
 
-void
+TORSION_EXTERN void
 sha1_init(sha1_t *ctx);
 
-void
+TORSION_EXTERN void
 sha1_update(sha1_t *ctx, const void *data, size_t len);
 
-void
+TORSION_EXTERN void
 sha1_final(sha1_t *ctx, unsigned char *out);
 
 /*
  * SHA224
  */
 
-void
+TORSION_EXTERN void
 sha224_init(sha224_t *ctx);
 
-void
+TORSION_EXTERN void
 sha224_update(sha224_t *ctx, const void *data, size_t len);
 
-void
+TORSION_EXTERN void
 sha224_final(sha224_t *ctx, unsigned char *out);
 
 /*
  * SHA256
  */
 
-void
+TORSION_EXTERN void
 sha256_init(sha256_t *ctx);
 
-void
+TORSION_EXTERN void
 sha256_update(sha256_t *ctx, const void *data, size_t len);
 
-void
+TORSION_EXTERN void
 sha256_final(sha256_t *ctx, unsigned char *out);
 
 /*
  * SHA384
  */
 
-void
+TORSION_EXTERN void
 sha384_init(sha384_t *ctx);
 
-void
+TORSION_EXTERN void
 sha384_update(sha384_t *ctx, const void *data, size_t len);
 
-void
+TORSION_EXTERN void
 sha384_final(sha384_t *ctx, unsigned char *out);
 
 /*
  * SHA512
  */
 
-void
+TORSION_EXTERN void
 sha512_init(sha512_t *ctx);
 
-void
+TORSION_EXTERN void
 sha512_update(sha512_t *ctx, const void *data, size_t len);
 
-void
+TORSION_EXTERN void
 sha512_final(sha512_t *ctx, unsigned char *out);
 
 /*
  * Hash160
  */
 
-void
+TORSION_EXTERN void
 hash160_init(hash160_t *ctx);
 
-void
+TORSION_EXTERN void
 hash160_update(hash160_t *ctx, const void *data, size_t len);
 
-void
+TORSION_EXTERN void
 hash160_final(hash160_t *ctx, unsigned char *out);
 
 /*
  * Hash256
  */
 
-void
+TORSION_EXTERN void
 hash256_init(hash256_t *ctx);
 
-void
+TORSION_EXTERN void
 hash256_update(hash256_t *ctx, const void *data, size_t len);
 
-void
+TORSION_EXTERN void
 hash256_final(hash256_t *ctx, unsigned char *out);
 
 /*
  * Keccak
  */
 
-void
+TORSION_EXTERN void
 keccak_init(keccak_t *ctx, size_t bits);
 
-void
+TORSION_EXTERN void
 keccak_update(keccak_t *ctx, const void *data, size_t len);
 
-void
+TORSION_EXTERN void
 keccak_final(keccak_t *ctx, unsigned char *out, unsigned char pad, size_t len);
 
 /*
@@ -466,23 +467,23 @@ keccak_final(keccak_t *ctx, unsigned char *out, unsigned char pad, size_t len);
  */
 
 #define __TORSION_DEFINE_KECCAK(name)                               \
-void                                                                \
+TORSION_EXTERN void                                                 \
 torsion_##name##_init(sha3_t *ctx);                                 \
                                                                     \
-void                                                                \
+TORSION_EXTERN void                                                 \
 torsion_##name##_update(sha3_t *ctx, const void *data, size_t len); \
                                                                     \
-void                                                                \
+TORSION_EXTERN void                                                 \
 torsion_##name##_final(sha3_t *ctx, unsigned char *out);
 
 #define __TORSION_DEFINE_SHAKE(name)                                 \
-void                                                                 \
+TORSION_EXTERN void                                                  \
 torsion_##name##_init(sha3_t *ctx);                                  \
                                                                      \
-void                                                                 \
+TORSION_EXTERN void                                                  \
 torsion_##name##_update(sha3_t *ctx, const void *data, size_t len);  \
                                                                      \
-void                                                                 \
+TORSION_EXTERN void                                                  \
 torsion_##name##_final(sha3_t *ctx, unsigned char *out, size_t len);
 
 __TORSION_DEFINE_KECCAK(keccak224)
@@ -502,32 +503,32 @@ __TORSION_DEFINE_SHAKE(shake256)
  * BLAKE2s
  */
 
-void
+TORSION_EXTERN void
 blake2s_init(blake2s_t *ctx,
              size_t outlen,
              const unsigned char *key,
              size_t keylen);
 
-void
+TORSION_EXTERN void
 blake2s_update(blake2s_t *ctx, const void *data, size_t len);
 
-void
+TORSION_EXTERN void
 blake2s_final(blake2s_t *ctx, unsigned char *out);
 
 /*
  * BLAKE2b
  */
 
-void
+TORSION_EXTERN void
 blake2b_init(blake2b_t *ctx,
              size_t outlen,
              const unsigned char *key,
              size_t keylen);
 
-void
+TORSION_EXTERN void
 blake2b_update(blake2b_t *ctx, const void *data, size_t len);
 
-void
+TORSION_EXTERN void
 blake2b_final(blake2b_t *ctx, unsigned char *out);
 
 /*
@@ -535,15 +536,15 @@ blake2b_final(blake2b_t *ctx, unsigned char *out);
  */
 
 #define __TORSION_DEFINE_BLAKE2(name, bits)                           \
-void                                                                  \
+TORSION_EXTERN void                                                   \
 torsion_##name##bits##_init(name##_t *ctx,                            \
                             const unsigned char *key, size_t keylen); \
                                                                       \
-void                                                                  \
+TORSION_EXTERN void                                                   \
 torsion_##name##bits##_update(name##_t *ctx,                          \
                               const void *data, size_t len);          \
                                                                       \
-void                                                                  \
+TORSION_EXTERN void                                                   \
 torsion_##name##bits##_final(name##_t *ctx, unsigned char *out);
 
 __TORSION_DEFINE_BLAKE2(blake2s, 128)
@@ -560,61 +561,61 @@ __TORSION_DEFINE_BLAKE2(blake2b, 512)
  * GOST94
  */
 
-void
+TORSION_EXTERN void
 gost94_init(gost94_t *ctx);
 
-void
+TORSION_EXTERN void
 gost94_update(gost94_t *ctx, const void *data, size_t len);
 
-void
+TORSION_EXTERN void
 gost94_final(gost94_t *ctx, unsigned char *out);
 
 /*
  * Whirlpool
  */
 
-void
+TORSION_EXTERN void
 whirlpool_init(whirlpool_t *ctx);
 
-void
+TORSION_EXTERN void
 whirlpool_update(whirlpool_t *ctx, const void *data, size_t len);
 
-void
+TORSION_EXTERN void
 whirlpool_final(whirlpool_t *ctx, unsigned char *out);
 
 /*
  * Hash
  */
 
-void
+TORSION_EXTERN void
 hash_init(hash_t *hash, int type);
 
-void
+TORSION_EXTERN void
 hash_update(hash_t *hash, const void *data, size_t len);
 
-void
+TORSION_EXTERN void
 hash_final(hash_t *hash, unsigned char *out, size_t len);
 
-int
+TORSION_EXTERN int
 hash_has_backend(int type);
 
-size_t
+TORSION_EXTERN size_t
 hash_output_size(int type);
 
-size_t
+TORSION_EXTERN size_t
 hash_block_size(int type);
 
 /*
  * HMAC
  */
 
-void
+TORSION_EXTERN void
 hmac_init(hmac_t *hmac, int type, const unsigned char *key, size_t len);
 
-void
+TORSION_EXTERN void
 hmac_update(hmac_t *hmac, const void *data, size_t len);
 
-void
+TORSION_EXTERN void
 hmac_final(hmac_t *hmac, unsigned char *out);
 
 #ifdef __cplusplus

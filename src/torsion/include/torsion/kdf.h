@@ -13,6 +13,7 @@ extern "C" {
 
 #include <stddef.h>
 #include <stdint.h>
+#include "common.h"
 
 /*
  * Symbol Aliases
@@ -38,7 +39,7 @@ extern "C" {
  * EB2K (OpenSSL Legacy)
  */
 
-int
+TORSION_EXTERN int
 eb2k_derive(unsigned char *key,
             unsigned char *iv,
             int type,
@@ -53,12 +54,12 @@ eb2k_derive(unsigned char *key,
  * HKDF
  */
 
-int
+TORSION_EXTERN int
 hkdf_extract(unsigned char *out, int type,
              const unsigned char *ikm, size_t ikm_len,
              const unsigned char *salt, size_t salt_len);
 
-int
+TORSION_EXTERN int
 hkdf_expand(unsigned char *out,
             int type,
             const unsigned char *prk,
@@ -70,7 +71,7 @@ hkdf_expand(unsigned char *out,
  * PBKDF2
  */
 
-int
+TORSION_EXTERN int
 pbkdf2_derive(unsigned char *out,
               int type,
               const unsigned char *pass,
@@ -84,7 +85,7 @@ pbkdf2_derive(unsigned char *out,
  * Scrypt
  */
 
-int
+TORSION_EXTERN int
 scrypt_derive(unsigned char *out,
               const unsigned char *pass,
               size_t pass_len,
@@ -99,14 +100,14 @@ scrypt_derive(unsigned char *out,
  * PGPDF
  */
 
-int
+TORSION_EXTERN int
 pgpdf_derive_simple(unsigned char *out,
                     int type,
                     const unsigned char *pass,
                     size_t pass_len,
                     size_t len);
 
-int
+TORSION_EXTERN int
 pgpdf_derive_salted(unsigned char *out,
                     int type,
                     const unsigned char *pass,
@@ -115,7 +116,7 @@ pgpdf_derive_salted(unsigned char *out,
                     size_t salt_len,
                     size_t len);
 
-int
+TORSION_EXTERN int
 pgpdf_derive_iterated(unsigned char *out,
                       int type,
                       const unsigned char *pass,
@@ -129,37 +130,37 @@ pgpdf_derive_iterated(unsigned char *out,
  * Bcrypt
  */
 
-void
+TORSION_EXTERN void
 bcrypt_hash192(unsigned char *out,
                const unsigned char *pass, size_t pass_len,
                const unsigned char *salt, size_t salt_len,
                unsigned int rounds);
 
-void
+TORSION_EXTERN void
 bcrypt_hash256(unsigned char *out,
                const unsigned char *pass, size_t pass_len,
                const unsigned char *salt, size_t salt_len,
                unsigned int rounds);
 
-int
+TORSION_EXTERN int
 bcrypt_pbkdf(unsigned char *key,
              const unsigned char *pass, size_t pass_len,
              const unsigned char *salt, size_t salt_len,
              unsigned int rounds, size_t size);
 
-int
+TORSION_EXTERN int
 bcrypt_derive(unsigned char *out,
               const unsigned char *pass, size_t pass_len,
               const unsigned char *salt, size_t salt_len,
               unsigned int rounds, char minor);
 
-int
+TORSION_EXTERN int
 bcrypt_generate(char *out,
                 const unsigned char *pass, size_t pass_len,
                 const unsigned char *salt, size_t salt_len,
                 unsigned int rounds, char minor);
 
-int
+TORSION_EXTERN int
 bcrypt_generate_with_salt64(char *out,
                             const unsigned char *pass,
                             size_t pass_len,
@@ -167,7 +168,7 @@ bcrypt_generate_with_salt64(char *out,
                             unsigned int rounds,
                             char minor);
 
-int
+TORSION_EXTERN int
 bcrypt_verify(const unsigned char *pass, size_t pass_len, const char *record);
 
 #ifdef __cplusplus

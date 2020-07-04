@@ -12,6 +12,7 @@ extern "C" {
 #endif
 
 #include <stddef.h>
+#include "common.h"
 
 /*
  * Symbol Aliases
@@ -91,108 +92,108 @@ extern "C" {
  * DSA
  */
 
-int
+TORSION_EXTERN int
 dsa_params_create(unsigned char *out, size_t *out_len,
                   const unsigned char *key, size_t key_len);
 
-int
+TORSION_EXTERN int
 dsa_params_generate(unsigned char *out,
                     size_t *out_len,
                     size_t bits,
                     const unsigned char *entropy);
 
-size_t
+TORSION_EXTERN size_t
 dsa_params_bits(const unsigned char *params, size_t params_len);
 
-size_t
+TORSION_EXTERN size_t
 dsa_params_qbits(const unsigned char *params, size_t params_len);
 
-int
+TORSION_EXTERN int
 dsa_params_verify(const unsigned char *params, size_t params_len);
 
-int
+TORSION_EXTERN int
 dsa_params_import(unsigned char *out, size_t *out_len,
                   const unsigned char *params, size_t params_len);
 
-int
+TORSION_EXTERN int
 dsa_params_export(unsigned char *out, size_t *out_len,
                   const unsigned char *params, size_t params_len);
 
-int
+TORSION_EXTERN int
 dsa_privkey_create(unsigned char *out,
                    size_t *out_len,
                    const unsigned char *params,
                    size_t params_len,
                    const unsigned char *entropy);
 
-int
+TORSION_EXTERN int
 dsa_privkey_generate(unsigned char *out, size_t *out_len,
                      size_t bits, const unsigned char *entropy);
 
-size_t
+TORSION_EXTERN size_t
 dsa_privkey_bits(const unsigned char *key, size_t key_len);
 
-size_t
+TORSION_EXTERN size_t
 dsa_privkey_qbits(const unsigned char *key, size_t key_len);
 
-int
+TORSION_EXTERN int
 dsa_privkey_verify(const unsigned char *key, size_t key_len);
 
-int
+TORSION_EXTERN int
 dsa_privkey_import(unsigned char *out, size_t *out_len,
                    const unsigned char *key, size_t key_len);
 
-int
+TORSION_EXTERN int
 dsa_privkey_export(unsigned char *out, size_t *out_len,
                    const unsigned char *key, size_t key_len);
 
-int
+TORSION_EXTERN int
 dsa_pubkey_create(unsigned char *out, size_t *out_len,
                   const unsigned char *key, size_t key_len);
 
-size_t
+TORSION_EXTERN size_t
 dsa_pubkey_bits(const unsigned char *key, size_t key_len);
 
-size_t
+TORSION_EXTERN size_t
 dsa_pubkey_qbits(const unsigned char *key, size_t key_len);
 
-int
+TORSION_EXTERN int
 dsa_pubkey_verify(const unsigned char *key, size_t key_len);
 
-int
+TORSION_EXTERN int
 dsa_pubkey_import(unsigned char *out, size_t *out_len,
                   const unsigned char *key, size_t key_len);
 
-int
+TORSION_EXTERN int
 dsa_pubkey_export(unsigned char *out, size_t *out_len,
                   const unsigned char *key, size_t key_len);
 
-int
+TORSION_EXTERN int
 dsa_sig_export(unsigned char *out,
                size_t *out_len,
                const unsigned char *sig,
                size_t sig_len,
                size_t qsize);
 
-int
+TORSION_EXTERN int
 dsa_sig_import(unsigned char *out,
                size_t *out_len,
                const unsigned char *sig,
                size_t sig_len,
                size_t qsize);
 
-int
+TORSION_EXTERN int
 dsa_sign(unsigned char *out, size_t *out_len,
          const unsigned char *msg, size_t msg_len,
          const unsigned char *key, size_t key_len,
          const unsigned char *entropy);
 
-int
+TORSION_EXTERN int
 dsa_verify(const unsigned char *msg, size_t msg_len,
            const unsigned char *sig, size_t sig_len,
            const unsigned char *key, size_t key_len);
 
-int
+TORSION_EXTERN int
 dsa_derive(unsigned char *out, size_t *out_len,
            const unsigned char *pub, size_t pub_len,
            const unsigned char *priv, size_t priv_len);

@@ -14,67 +14,83 @@ extern "C" {
 #include <stddef.h>
 #include <stdint.h>
 
-#include "chacha20.h"
-#include "poly1305.h"
+#include "common.h"
+#include "mac.h"
+#include "stream.h"
 
 /*
  * Symbol Aliases
  */
 
-#define aead_init torsion_aead_init
-#define aead_setup torsion_aead_setup
-#define aead_aad torsion_aead_aad
-#define aead_encrypt torsion_aead_encrypt
-#define aead_decrypt torsion_aead_decrypt
-#define aead_auth torsion_aead_auth
-#define aead_final torsion_aead_final
-#define aead_verify torsion_aead_verify
+#define chachapoly_init torsion_chachapoly_init
+#define chachapoly_setup torsion_chachapoly_setup
+#define chachapoly_aad torsion_chachapoly_aad
+#define chachapoly_encrypt torsion_chachapoly_encrypt
+#define chachapoly_decrypt torsion_chachapoly_decrypt
+#define chachapoly_auth torsion_chachapoly_auth
+#define chachapoly_final torsion_chachapoly_final
+#define chachapoly_verify torsion_chachapoly_verify
 
 /*
  * Structs
  */
 
-typedef struct _aead_s {
+typedef struct _chachapoly_s {
   chacha20_t chacha;
   poly1305_t poly;
   int mode;
   uint64_t adlen;
   uint64_t ctlen;
-} aead_t;
+} chachapoly_t;
 
 /*
  * AEAD
  */
 
-void
-aead_init(aead_t *aead,
-          const unsigned char *key,
-          const unsigned char *iv,
-          size_t iv_len);
+typedef chachapoly_t aead_t;
 
-void
-aead_aad(aead_t *aead, const unsigned char *aad, size_t len);
+#define aead_init chachapoly_init
+#define aead_setup chachapoly_setup
+#define aead_aad chachapoly_aad
+#define aead_encrypt chachapoly_encrypt
+#define aead_decrypt chachapoly_decrypt
+#define aead_auth chachapoly_auth
+#define aead_final chachapoly_final
+#define aead_verify chachapoly_verify
 
-void
-aead_encrypt(aead_t *aead,
-             unsigned char *out,
-             const unsigned char *in,
-             size_t len);
+/*
+ * ChaCha20-Poly1305
+ */
 
-void
-aead_decrypt(aead_t *aead,
-             unsigned char *out,
-             const unsigned char *in,
-             size_t len);
+TORSION_EXTERN void
+chachapoly_init(chachapoly_t *aead,
+                const unsigned char *key,
+                const unsigned char *iv,
+                size_t iv_len);
 
-void
-aead_auth(aead_t *aead, const unsigned char *in, size_t len);
+TORSION_EXTERN void
+chachapoly_aad(chachapoly_t *aead, const unsigned char *aad, size_t len);
 
-void
-aead_final(aead_t *aead, unsigned char *tag);
+TORSION_EXTERN void
+chachapoly_encrypt(chachapoly_t *aead,
+                   unsigned char *out,
+                   const unsigned char *in,
+                   size_t len);
 
-int
-aead_verify(const unsigned char *mac1, const unsigned char *mac2);
+TORSION_EXTERN void
+chachapoly_decrypt(chachapoly_t *aead,
+                   unsigned char *out,
+                   const unsigned char *in,
+                   size_t len);
+
+TORSION_EXTERN void
+chachapoly_auth(chachapoly_t *aead, const unsigned char *in, size_t len);
+
+TORSION_EXTERN void
+chachapoly_final(chachapoly_t *aead, unsigned char *tag);
+
+TORSION_EXTERN int
+chachapoly_verify(const unsigned char *mac1, const unsigned char *mac2);
 
 #ifdef __cplusplus
 }

@@ -56,7 +56,8 @@
  */
 
 #if !defined(_WIN32) && !defined(_GNU_SOURCE)
-/* For gethostname(3), getsid(3), getpgid(3), clock_gettime(2). */
+/* For gethostname(3), getsid(3), getpgid(3),
+   clock_gettime(2), dl_iterate_phdr(3). */
 #  define _GNU_SOURCE
 #endif
 
@@ -68,14 +69,22 @@
 #include <torsion/hash.h>
 #include "entropy.h"
 
+#undef HAVE_MANUAL_ENTROPY
+#undef HAVE_DLITERATEPHDR
+#undef HAVE_GETIFADDRS
+#undef HAVE_GETAUXVAL
+#undef HAVE_SYSCTL
+#undef HAVE_CLOCK_GETTIME
+#undef HAVE_GETHOSTNAME
+#undef HAVE_GETSID
+#undef HAVE_OS_IPHONE
+
 #if defined(__CloudABI__)
-/* nothing */
+/* Could gather static entropy from filesystem in the future. */
 #elif defined(__wasi__)
-/* nothing */
-#elif defined(__EMSCRIPTEN__)
-/* nothing */
-#elif defined(__wasm__) || defined(__asmjs__)
-/* nothing */
+/* Could gather static entropy from args/env in the future. */
+#elif defined(__EMSCRIPTEN__) || defined(__wasm__)
+/* No reliable entropy sources available for emscripten/wasm. */
 #elif defined(_WIN32)
 #  include <winsock2.h> /* required by iphlpapi.h */
 #  include <iphlpapi.h> /* GetAdaptersAddresses */
@@ -87,10 +96,11 @@
 #  pragma comment(lib, "psapi.lib")
 #  define HAVE_MANUAL_ENTROPY
 #elif defined(__vxworks)
-/* nothing */
-#elif defined(__fuchsia__)
-/* nothing */
-#else
+/* Unsupported. */
+#elif defined(__Fuchsia__)
+/* Unsupported. */
+#elif defined(__unix) || defined(__unix__)     \
+  || (defined(__APPLE__) && defined(__MACH__))
 #  include <sys/types.h> /* open */
 #  include <sys/stat.h> /* open, stat */
 #  include <sys/time.h> /* gettimeofday, timeval */
@@ -106,6 +116,10 @@
 #      define TORSION_GLIBC_PREREQ(maj, min) 0
 #    endif
 #    if TORSION_GLIBC_PREREQ(2, 3)
+#      if defined(__GNUC__) && defined(__SIZEOF_INT128__)
+#        include <link.h> /* dl_iterate_phdr */
+#        define HAVE_DLITERATEPHDR
+#      endif
 #      include <sys/socket.h> /* AF_INET{,6} */
 #      include <netinet/in.h> /* sockaddr_in{,6} */
 #      include <ifaddrs.h> /* getifaddrs */
@@ -116,10 +130,10 @@
 #      define HAVE_GETAUXVAL
 #    endif
 #  endif
-#  if defined(__APPLE__) \
-   || defined(__OpenBSD__) \
-   || defined(__FreeBSD__) \
-   || defined(__NetBSD__) \
+#  if defined(__APPLE__)     \
+   || defined(__FreeBSD__)   \
+   || defined(__OpenBSD__)   \
+   || defined(__NetBSD__)    \
    || defined(__DragonFly__)
 #    include <sys/sysctl.h> /* sysctl */
 #    include <sys/socket.h> /* AF_INET{,6} */
@@ -132,6 +146,12 @@
 #    include <vm/vm_param.h> /* VM_{LOADAVG,TOTAL,METER} */
 #  endif
 #  ifdef __APPLE__
+#    include <TargetConditionals.h>
+#    if defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE
+#      define HAVE_OS_IPHONE
+#    endif
+#  endif
+#  if defined(__APPLE__) && !defined(HAVE_OS_IPHONE)
 #    include <crt_externs.h>
 #    define environ (*_NSGetEnviron())
 #  else
@@ -139,10 +159,21 @@
 extern char **environ;
 #    endif
 #  endif
-#  if defined(CLOCK_MONOTONIC) \
-   || defined(CLOCK_REALTIME) \
-   || defined(CLOCK_BOOTTIME)
-#    define HAVE_CLOCK_GETTIME
+#  ifdef _POSIX_VERSION
+#    if _POSIX_VERSION >= 199309L
+#      if defined(CLOCK_REALTIME) || defined(CLOCK_MONOTONIC)
+#        define HAVE_CLOCK_GETTIME
+#      endif
+#    endif
+#    if _POSIX_VERSION >= 200112L
+#      define HAVE_GETHOSTNAME
+#    endif
+#    if _POSIX_VERSION >= 200809L
+#      define HAVE_GETSID
+#    endif
+#  endif
+#  ifdef __GNUC__
+#    pragma GCC diagnostic ignored "-Waddress"
 #  endif
 #  define HAVE_MANUAL_ENTROPY
 #endif
@@ -204,51 +235,63 @@ sha512_write_file(sha512_t *hash, const char *file) {
 
   memset(&st, 0, sizeof(st));
 
-  for (;;) {
+  do {
+#if defined(O_CLOEXEC)
+    fd = open(file, O_RDONLY | O_CLOEXEC);
+
+    if (fd == -1 && errno == EINVAL)
+      fd = open(file, O_RDONLY);
+#else
     fd = open(file, O_RDONLY);
+#endif
+  } while (fd == -1 && errno == EINTR);
 
-    if (fd == -1) {
-      if (errno == EINTR)
-        continue;
+  if (fd == -1)
+    return;
 
-      return;
-    }
-
-    if (fstat(fd, &st) != 0) {
-      close(fd);
-      return;
-    }
-
-    break;
-  }
+  if (fstat(fd, &st) != 0)
+    goto done;
 
   sha512_write_string(hash, file);
   sha512_write_int(hash, fd);
   sha512_write(hash, &st, sizeof(st));
 
   do {
-    for (;;) {
+    do {
       nread = read(fd, buf, sizeof(buf));
-
-      if (nread < 0) {
-        if (errno == EINTR || errno == EAGAIN)
-          continue;
-      }
-
-      break;
-    }
+    } while (nread < 0 && (errno == EINTR || errno == EAGAIN));
 
     if (nread <= 0)
       break;
+
+    if ((size_t)nread > sizeof(buf))
+      abort();
 
     sha512_write(hash, buf, nread);
 
     total += nread;
   } while (total < 1048576);
 
+done:
   close(fd);
 }
 #endif /* !_WIN32 */
+
+#ifdef HAVE_DLITERATEPHDR
+static int
+sha512_write_phdr(struct dl_phdr_info *info, size_t size, void *data) {
+  sha512_t *hash = data;
+
+  (void)size;
+
+  sha512_write(hash, &info->dlpi_addr, sizeof(info->dlpi_addr));
+  sha512_write_ptr(hash, info->dlpi_name);
+  sha512_write_string(hash, info->dlpi_name);
+  sha512_write_ptr(hash, info->dlpi_phdr);
+
+  return 0;
+}
+#endif /* HAVE_DLITERATEPHDR */
 
 #ifdef HAVE_GETIFADDRS
 static void
@@ -452,6 +495,10 @@ sha512_write_static_env(sha512_t *hash) {
   sha512_write_int(hash, __clang_patchlevel__);
 #endif
 
+#ifdef __INTEL_COMPILER
+  sha512_write_int(hash, __INTEL_COMPILER);
+#endif
+
 #ifdef _MSC_VER
   sha512_write_int(hash, _MSC_VER);
 #endif
@@ -463,6 +510,10 @@ sha512_write_static_env(sha512_t *hash) {
 #if defined(__GLIBC__) && defined(__GLIBC_MINOR__)
   sha512_write_int(hash, __GLIBC__);
   sha512_write_int(hash, __GLIBC_MINOR__);
+#endif
+
+#ifdef _POSIX_VERSION
+  sha512_write_int(hash, _POSIX_VERSION);
 #endif
 
 #ifdef _XOPEN_VERSION
@@ -631,6 +682,11 @@ sha512_write_static_env(sha512_t *hash) {
     }
   }
 
+#ifdef HAVE_DLITERATEPHDR
+  /* Shared objects. */
+  dl_iterate_phdr(sha512_write_phdr, hash);
+#endif /* HAVE_DLITERATEPHDR */
+
 #ifdef HAVE_GETAUXVAL
   /* Information available through getauxval(). */
 #ifdef AT_HWCAP
@@ -673,6 +729,7 @@ sha512_write_static_env(sha512_t *hash) {
 #endif /* HAVE_GETAUXVAL */
 
   /* Hostname. */
+#ifdef HAVE_GETHOSTNAME
   {
     /* HOST_NAME_MAX is 64 on Linux, but we go a
        bit bigger in case an OS has a higher value. */
@@ -684,6 +741,7 @@ sha512_write_static_env(sha512_t *hash) {
       sha512_write_string(hash, hname);
     }
   }
+#endif /* HAVE_GETHOSTNAME */
 
 #ifdef HAVE_GETIFADDRS
   /* Network interfaces. */
@@ -729,6 +787,7 @@ sha512_write_static_env(sha512_t *hash) {
 
   /* Information available through sysctl(2). */
 #ifdef HAVE_SYSCTL
+  (void)sha512_write_sysctl2;
 #ifdef CTL_HW
 #ifdef HW_MACHINE
   sha512_write_sysctl2(hash, CTL_HW, HW_MACHINE);
@@ -825,8 +884,10 @@ sha512_write_static_env(sha512_t *hash) {
   /* Process/User/Group IDs. */
   sha512_write_int(hash, getpid());
   sha512_write_int(hash, getppid());
+#ifdef HAVE_GETSID
   sha512_write_int(hash, getsid(0));
   sha512_write_int(hash, getpgid(0));
+#endif
   sha512_write_int(hash, getuid());
   sha512_write_int(hash, geteuid());
   sha512_write_int(hash, getgid());
@@ -948,18 +1009,28 @@ sha512_write_dynamic_env(sha512_t *hash) {
 
 #ifdef HAVE_CLOCK_GETTIME
   /* Various clocks. */
-  {
+  if (clock_gettime != NULL) {
     struct timespec ts;
 
     memset(&ts, 0, sizeof(ts));
+
+#ifdef CLOCK_REALTIME
+    if (clock_gettime(CLOCK_REALTIME, &ts) == 0)
+      sha512_write(hash, &ts, sizeof(ts));
+#endif
 
 #ifdef CLOCK_MONOTONIC
     if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0)
       sha512_write(hash, &ts, sizeof(ts));
 #endif
 
-#ifdef CLOCK_REALTIME
-    if (clock_gettime(CLOCK_REALTIME, &ts) == 0)
+#ifdef CLOCK_PROCESS_CPUTIME_ID
+    if (clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &ts) == 0)
+      sha512_write(hash, &ts, sizeof(ts));
+#endif
+
+#ifdef CLOCK_THREAD_CPUTIME_ID
+    if (clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts) == 0)
       sha512_write(hash, &ts, sizeof(ts));
 #endif
 
@@ -978,6 +1049,11 @@ sha512_write_dynamic_env(sha512_t *hash) {
 
     if (getrusage(RUSAGE_SELF, &usage) == 0)
       sha512_write(hash, &usage, sizeof(usage));
+
+#ifdef RUSAGE_THREAD
+    if (getrusage(RUSAGE_THREAD, &usage) == 0)
+      sha512_write(hash, &usage, sizeof(usage));
+#endif
   }
 
 #ifdef __linux__
@@ -994,6 +1070,8 @@ sha512_write_dynamic_env(sha512_t *hash) {
 #endif
 
 #ifdef HAVE_SYSCTL
+  (void)sha512_write_sysctl3;
+  (void)sha512_write_sysctl2;
 #ifdef CTL_KERN
 #if defined(KERN_PROC) && defined(KERN_PROC_ALL)
   sha512_write_sysctl3(hash, CTL_KERN, KERN_PROC, KERN_PROC_ALL);

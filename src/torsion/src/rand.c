@@ -17,29 +17,36 @@
  * gathered from the environment. See entropy/ for
  * more information.
  *
- * We do not currently expose a global interface as
- * it would require locks and getpid() checks (in
- * order to be fork-aware). Instead, the programmer
- * is meant to instantiate a different RNG for each
- * thread/process. This achieves both reentrancy as
- * well as fork-awareness.
+ * We expose a global fork-aware and thread-safe
+ * RNG. However, instead of using locks or atomics
+ * for thread safety, we use thread local storage
+ * for the global context, meaning the context is
+ * not actually global, rather, it is local to
+ * each thread. This avoids us having to link to
+ * pthreads and deal with other OS compat issues.
+ *
+ * If TLS is not supported, we try to fall back
+ * to pthread (assuming _REENTRANT is defined).
  *
  * The RNG below is not used anywhere internally,
  * and as such, libtorsion can build without it (in
  * the case that more portability is desired).
  *
- * [1] https://github.com/jedisct1/libsodium/blob/master/src/libsodium/randombytes/internal/randombytes_internal_random.c
+ * [1] https://github.com/jedisct1/libsodium/blob/master/src/libsodium
+ *     /randombytes/internal/randombytes_internal_random.c
  * [2] https://github.com/bitcoin/bitcoin/blob/master/src/random.cpp
  */
 
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <torsion/chacha20.h>
 #include <torsion/hash.h>
 #include <torsion/rand.h>
+#include <torsion/stream.h>
 #include <torsion/util.h>
 #include "entropy/entropy.h"
+#include "internal.h"
+#include "tls.h"
 
 /*
  * Helpers
@@ -133,7 +140,7 @@ rng_generate(rng_t *rng, void *dst, size_t size) {
 
   /* Read the keystream. */
   chacha20_init(&ctx, key, 32, nonce, 8, rng->zero);
-  chacha20_encrypt(&ctx, dst, dst, size);
+  chacha20_crypt(&ctx, dst, dst, size);
 
   /* Mix in some user entropy. */
   rng->key[0] ^= size;
@@ -155,7 +162,7 @@ rng_generate(rng_t *rng, void *dst, size_t size) {
      terms of security, as the outputs in both
      scenarios are dependent on the key. */
   chacha20_init(&ctx, key, 32, nonce, 8, rng->zero);
-  chacha20_encrypt(&ctx, key, key, 32);
+  chacha20_crypt(&ctx, key, key, 32);
 
   /* Cleanse the chacha state. */
   cleanse(&ctx, sizeof(ctx));
@@ -188,10 +195,80 @@ rng_uniform(rng_t *rng, uint32_t max) {
 }
 
 /*
- * Entropy
+ * Global Context
  */
+
+static TORSION_TLS struct {
+  rng_t rng;
+  int started;
+  uint64_t pid;
+} rng_state;
+
+static int
+rng_global_init(void) {
+  uint64_t pid = torsion_getpid();
+
+  if (!rng_state.started || rng_state.pid != pid) {
+    if (!rng_init(&rng_state.rng))
+      return 0;
+
+    rng_state.started = 1;
+    rng_state.pid = pid;
+  }
+
+  return 1;
+}
+
+TORSION_EXTERN uintptr_t
+__torsion_rng_global_addr(void) {
+  void *ptr = (void *)&rng_state;
+  return (uintptr_t)ptr;
+}
+
+/*
+ * Global API
+ */
+
+int
+torsion_is_reentrant(void) {
+#ifdef TORSION_HAVE_TLS
+  return 1;
+#else
+  return 0;
+#endif
+}
 
 int
 torsion_getentropy(void *dst, size_t size) {
   return torsion_sysrand(dst, size);
+}
+
+int
+torsion_getrandom(void *dst, size_t size) {
+  if (!rng_global_init())
+    return 0;
+
+  rng_generate(&rng_state.rng, dst, size);
+
+  return 1;
+}
+
+int
+torsion_random(uint32_t *out) {
+  if (!rng_global_init())
+    return 0;
+
+  *out = rng_random(&rng_state.rng);
+
+  return 1;
+}
+
+int
+torsion_uniform(uint32_t *out, uint32_t max) {
+  if (!rng_global_init())
+    return 0;
+
+  *out = rng_uniform(&rng_state.rng, max);
+
+  return 1;
 }

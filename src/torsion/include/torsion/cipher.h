@@ -13,6 +13,7 @@ extern "C" {
 
 #include <stddef.h>
 #include <stdint.h>
+#include "common.h"
 
 /*
  * Symbol Aliases
@@ -54,8 +55,6 @@ extern "C" {
 #define rc2_init torsion_rc2_init
 #define rc2_encrypt torsion_rc2_encrypt
 #define rc2_decrypt torsion_rc2_decrypt
-#define rc4_init torsion_rc4_init
-#define rc4_encrypt torsion_rc4_encrypt
 #define serpent_init torsion_serpent_init
 #define serpent_encrypt torsion_serpent_encrypt
 #define serpent_decrypt torsion_serpent_decrypt
@@ -227,12 +226,6 @@ typedef struct _rc2_s {
   uint16_t k[64];
 } rc2_t;
 
-typedef struct _rc4_s {
-  uint8_t s[256];
-  uint8_t i;
-  uint8_t j;
-} rc4_t;
-
 typedef struct _serpent_s {
   uint32_t subkeys[132];
 } serpent_t;
@@ -363,55 +356,55 @@ typedef struct _cipher_stream_s {
  * AES
  */
 
-void
+TORSION_EXTERN void
 aes_init(aes_t *ctx, unsigned int bits, const unsigned char *key);
 
-void
+TORSION_EXTERN void
 aes_init_encrypt(aes_t *ctx, unsigned int bits, const unsigned char *key);
 
-void
+TORSION_EXTERN void
 aes_init_decrypt(aes_t *ctx);
 
-void
+TORSION_EXTERN void
 aes_encrypt(const aes_t *ctx, unsigned char *dst, const unsigned char *src);
 
-void
+TORSION_EXTERN void
 aes_decrypt(const aes_t *ctx, unsigned char *dst, const unsigned char *src);
 
 /*
  * Blowfish
  */
 
-void
+TORSION_EXTERN void
 blowfish_init(blowfish_t *ctx,
               const unsigned char *key, size_t key_len,
               const unsigned char *salt, size_t salt_len);
 
-uint32_t
+TORSION_EXTERN uint32_t
 blowfish_stream2word(const unsigned char *data, size_t len, size_t *off);
 
-void
+TORSION_EXTERN void
 blowfish_expand0state(blowfish_t *ctx,
                       const unsigned char *key,
                       size_t key_len);
 
-void
+TORSION_EXTERN void
 blowfish_expandstate(blowfish_t *ctx,
                      const unsigned char *key, size_t key_len,
                      const unsigned char *data, size_t data_len);
 
-void
+TORSION_EXTERN void
 blowfish_enc(const blowfish_t *ctx, uint32_t *data, size_t len);
 
-void
+TORSION_EXTERN void
 blowfish_dec(const blowfish_t *ctx, uint32_t *data, size_t len);
 
-void
+TORSION_EXTERN void
 blowfish_encrypt(const blowfish_t *ctx,
                  unsigned char *dst,
                  const unsigned char *src);
 
-void
+TORSION_EXTERN void
 blowfish_decrypt(const blowfish_t *ctx,
                  unsigned char *dst,
                  const unsigned char *src);
@@ -420,15 +413,15 @@ blowfish_decrypt(const blowfish_t *ctx,
  * Camellia
  */
 
-void
+TORSION_EXTERN void
 camellia_init(camellia_t *ctx, unsigned int bits, const unsigned char *key);
 
-void
+TORSION_EXTERN void
 camellia_encrypt(const camellia_t *ctx,
                  unsigned char *dst,
                  const unsigned char *src);
 
-void
+TORSION_EXTERN void
 camellia_decrypt(const camellia_t *ctx,
                  unsigned char *dst,
                  const unsigned char *src);
@@ -437,15 +430,15 @@ camellia_decrypt(const camellia_t *ctx,
  * CAST5
  */
 
-void
+TORSION_EXTERN void
 cast5_init(cast5_t *ctx, const unsigned char *key);
 
-void
+TORSION_EXTERN void
 cast5_encrypt(const cast5_t *ctx,
               unsigned char *dst,
               const unsigned char *src);
 
-void
+TORSION_EXTERN void
 cast5_decrypt(const cast5_t *ctx,
               unsigned char *dst,
               const unsigned char *src);
@@ -454,28 +447,28 @@ cast5_decrypt(const cast5_t *ctx,
  * DES
  */
 
-void
+TORSION_EXTERN void
 des_init(des_t *ctx, const unsigned char *key);
 
-void
+TORSION_EXTERN void
 des_encrypt(const des_t *ctx, unsigned char *dst, const unsigned char *src);
 
-void
+TORSION_EXTERN void
 des_decrypt(const des_t *ctx, unsigned char *dst, const unsigned char *src);
 
 /*
  * DES-EDE
  */
 
-void
+TORSION_EXTERN void
 des_ede_init(des_ede_t *ctx, const unsigned char *key);
 
-void
+TORSION_EXTERN void
 des_ede_encrypt(const des_ede_t *ctx,
                 unsigned char *dst,
                 const unsigned char *src);
 
-void
+TORSION_EXTERN void
 des_ede_decrypt(const des_ede_t *ctx,
                 unsigned char *dst,
                 const unsigned char *src);
@@ -484,15 +477,15 @@ des_ede_decrypt(const des_ede_t *ctx,
  * DES-EDE3
  */
 
-void
+TORSION_EXTERN void
 des_ede3_init(des_ede3_t *ctx, const unsigned char *key);
 
-void
+TORSION_EXTERN void
 des_ede3_encrypt(const des_ede3_t *ctx,
                  unsigned char *dst,
                  const unsigned char *src);
 
-void
+TORSION_EXTERN void
 des_ede3_decrypt(const des_ede3_t *ctx,
                  unsigned char *dst,
                  const unsigned char *src);
@@ -501,63 +494,50 @@ des_ede3_decrypt(const des_ede3_t *ctx,
  * IDEA
  */
 
-void
+TORSION_EXTERN void
 idea_init(idea_t *ctx, const unsigned char *key);
 
-void
+TORSION_EXTERN void
 idea_init_encrypt(idea_t *ctx, const unsigned char *key);
 
-void
+TORSION_EXTERN void
 idea_init_decrypt(idea_t *ctx);
 
-void
+TORSION_EXTERN void
 idea_encrypt(const idea_t *ctx, unsigned char *dst, const unsigned char *src);
 
-void
+TORSION_EXTERN void
 idea_decrypt(const idea_t *ctx, unsigned char *dst, const unsigned char *src);
 
 /*
  * RC2
  */
 
-void
+TORSION_EXTERN void
 rc2_init(rc2_t *ctx,
          const unsigned char *key,
          size_t key_len,
          unsigned int ekb);
 
-void
+TORSION_EXTERN void
 rc2_encrypt(const rc2_t *ctx, unsigned char *dst, const unsigned char *src);
 
-void
+TORSION_EXTERN void
 rc2_decrypt(const rc2_t *ctx, unsigned char *dst, const unsigned char *src);
-
-/*
- * RC4
- */
-
-void
-rc4_init(rc4_t *ctx, const unsigned char *key, size_t key_len);
-
-void
-rc4_encrypt(rc4_t *ctx,
-            unsigned char *dst,
-            const unsigned char *src,
-            size_t len);
 
 /*
  * Serpent
  */
 
-void
+TORSION_EXTERN void
 serpent_init(serpent_t *ctx, unsigned int bits, const unsigned char *key);
 
-void
+TORSION_EXTERN void
 serpent_encrypt(const serpent_t *ctx,
                 unsigned char *dst,
                 const unsigned char *src);
 
-void
+TORSION_EXTERN void
 serpent_decrypt(const serpent_t *ctx,
                 unsigned char *dst,
                 const unsigned char *src);
@@ -566,15 +546,15 @@ serpent_decrypt(const serpent_t *ctx,
  * Twofish
  */
 
-void
+TORSION_EXTERN void
 twofish_init(twofish_t *ctx, unsigned int bits, const unsigned char *key);
 
-void
+TORSION_EXTERN void
 twofish_encrypt(const twofish_t *ctx,
                 unsigned char *dst,
                 const unsigned char *src);
 
-void
+TORSION_EXTERN void
 twofish_decrypt(const twofish_t *ctx,
                 unsigned char *dst,
                 const unsigned char *src);
@@ -583,13 +563,13 @@ twofish_decrypt(const twofish_t *ctx,
  * PKCS7
  */
 
-void
+TORSION_EXTERN void
 pkcs7_pad(unsigned char *dst,
           const unsigned char *src,
           size_t len,
           size_t size);
 
-int
+TORSION_EXTERN int
 pkcs7_unpad(unsigned char *dst,
             size_t *len,
             const unsigned char *src,
@@ -599,21 +579,21 @@ pkcs7_unpad(unsigned char *dst,
  * Cipher
  */
 
-size_t
+TORSION_EXTERN size_t
 cipher_key_size(int type);
 
-size_t
+TORSION_EXTERN size_t
 cipher_block_size(int type);
 
-int
+TORSION_EXTERN int
 cipher_init(cipher_t *ctx, int type, const unsigned char *key, size_t key_len);
 
-void
+TORSION_EXTERN void
 cipher_encrypt(const cipher_t *ctx,
                unsigned char *dst,
                const unsigned char *src);
 
-void
+TORSION_EXTERN void
 cipher_decrypt(const cipher_t *ctx,
                unsigned char *dst,
                const unsigned char *src);
@@ -622,21 +602,21 @@ cipher_decrypt(const cipher_t *ctx,
  * ECB
  */
 
-void
+TORSION_EXTERN void
 ecb_encrypt(const cipher_t *cipher, unsigned char *dst,
             const unsigned char *src, size_t len);
 
-void
+TORSION_EXTERN void
 ecb_decrypt(const cipher_t *cipher, unsigned char *dst,
             const unsigned char *src, size_t len);
 
-void
+TORSION_EXTERN void
 ecb_steal(const cipher_t *cipher,
           unsigned char *last, /* last ciphertext */
           unsigned char *block, /* partial block */
           size_t len);
 
-void
+TORSION_EXTERN void
 ecb_unsteal(const cipher_t *cipher,
             unsigned char *last, /* last plaintext */
             unsigned char *block, /* partial block */
@@ -646,25 +626,25 @@ ecb_unsteal(const cipher_t *cipher,
  * CBC
  */
 
-void
+TORSION_EXTERN void
 cbc_init(cbc_t *mode, const cipher_t *cipher, const unsigned char *iv);
 
-void
+TORSION_EXTERN void
 cbc_encrypt(cbc_t *mode, const cipher_t *cipher,
             unsigned char *dst, const unsigned char *src, size_t len);
 
-void
+TORSION_EXTERN void
 cbc_decrypt(cbc_t *mode, const cipher_t *cipher,
             unsigned char *dst, const unsigned char *src, size_t len);
 
-void
+TORSION_EXTERN void
 cbc_steal(cbc_t *mode,
           const cipher_t *cipher,
           unsigned char *last, /* last ciphertext */
           unsigned char *block, /* partial block */
           size_t len);
 
-void
+TORSION_EXTERN void
 cbc_unsteal(cbc_t *mode,
             const cipher_t *cipher,
             unsigned char *last, /* last plaintext */
@@ -675,29 +655,29 @@ cbc_unsteal(cbc_t *mode,
  * XTS
  */
 
-void
+TORSION_EXTERN void
 xts_init(xts_t *mode, const cipher_t *cipher, const unsigned char *iv);
 
-int
+TORSION_EXTERN int
 xts_setup(xts_t *mode, const cipher_t *cipher,
           const unsigned char *key, size_t key_len);
 
-void
+TORSION_EXTERN void
 xts_encrypt(xts_t *mode, const cipher_t *cipher,
             unsigned char *dst, const unsigned char *src, size_t len);
 
-void
+TORSION_EXTERN void
 xts_decrypt(xts_t *mode, const cipher_t *cipher,
             unsigned char *dst, const unsigned char *src, size_t len);
 
-void
+TORSION_EXTERN void
 xts_steal(xts_t *mode,
           const cipher_t *cipher,
           unsigned char *last, /* last ciphertext */
           unsigned char *block, /* partial block */
           size_t len);
 
-void
+TORSION_EXTERN void
 xts_unsteal(xts_t *mode,
             const cipher_t *cipher,
             unsigned char *last, /* last plaintext */
@@ -708,10 +688,10 @@ xts_unsteal(xts_t *mode,
  * CTR
  */
 
-void
+TORSION_EXTERN void
 ctr_init(ctr_t *mode, const cipher_t *cipher, const unsigned char *iv);
 
-void
+TORSION_EXTERN void
 ctr_crypt(ctr_t *mode, const cipher_t *cipher,
           unsigned char *dst, const unsigned char *src, size_t len);
 
@@ -719,14 +699,14 @@ ctr_crypt(ctr_t *mode, const cipher_t *cipher,
  * CFB
  */
 
-void
+TORSION_EXTERN void
 cfb_init(cfb_t *mode, const cipher_t *cipher, const unsigned char *iv);
 
-void
+TORSION_EXTERN void
 cfb_encrypt(cfb_t *mode, const cipher_t *cipher,
             unsigned char *dst, const unsigned char *src, size_t len);
 
-void
+TORSION_EXTERN void
 cfb_decrypt(cfb_t *mode, const cipher_t *cipher,
             unsigned char *dst, const unsigned char *src, size_t len);
 
@@ -734,10 +714,10 @@ cfb_decrypt(cfb_t *mode, const cipher_t *cipher,
  * OFB
  */
 
-void
+TORSION_EXTERN void
 ofb_init(ofb_t *mode, const cipher_t *cipher, const unsigned char *iv);
 
-void
+TORSION_EXTERN void
 ofb_crypt(ofb_t *mode, const cipher_t *cipher,
           unsigned char *dst, const unsigned char *src, size_t len);
 
@@ -745,119 +725,119 @@ ofb_crypt(ofb_t *mode, const cipher_t *cipher,
  * GCM
  */
 
-int
+TORSION_EXTERN int
 gcm_init(gcm_t *mode, const cipher_t *cipher,
          const unsigned char *iv, size_t iv_len);
 
-void
+TORSION_EXTERN void
 gcm_aad(gcm_t *mode, const unsigned char *aad, size_t len);
 
-void
+TORSION_EXTERN void
 gcm_encrypt(gcm_t *mode, const cipher_t *cipher,
             unsigned char *dst, const unsigned char *src, size_t len);
 
-void
+TORSION_EXTERN void
 gcm_decrypt(gcm_t *mode, const cipher_t *cipher,
             unsigned char *dst, const unsigned char *src, size_t len);
 
-void
+TORSION_EXTERN void
 gcm_digest(gcm_t *mode, unsigned char *mac);
 
 /*
  * CCM
  */
 
-int
+TORSION_EXTERN int
 ccm_init(ccm_t *mode, const cipher_t *cipher,
          const unsigned char *iv, size_t iv_len);
 
-int
+TORSION_EXTERN int
 ccm_setup(ccm_t *mode, const cipher_t *cipher,
           size_t msg_len, size_t tag_len,
           const unsigned char *aad, size_t aad_len);
 
-void
+TORSION_EXTERN void
 ccm_encrypt(ccm_t *mode, const cipher_t *cipher,
             unsigned char *dst, const unsigned char *src, size_t len);
 
-void
+TORSION_EXTERN void
 ccm_decrypt(ccm_t *mode, const cipher_t *cipher,
             unsigned char *dst, const unsigned char *src, size_t len);
 
-void
+TORSION_EXTERN void
 ccm_digest(ccm_t *mode, const cipher_t *cipher, unsigned char *mac);
 
 /*
  * EAX
  */
 
-int
+TORSION_EXTERN int
 eax_init(eax_t *mode, const cipher_t *cipher,
          const unsigned char *iv, size_t iv_len);
 
-void
+TORSION_EXTERN void
 eax_aad(eax_t *mode, const cipher_t *cipher,
         const unsigned char *aad, size_t len);
 
-void
+TORSION_EXTERN void
 eax_encrypt(eax_t *mode, const cipher_t *cipher,
             unsigned char *dst, const unsigned char *src, size_t len);
 
-void
+TORSION_EXTERN void
 eax_decrypt(eax_t *mode, const cipher_t *cipher,
             unsigned char *dst, const unsigned char *src, size_t len);
 
-void
+TORSION_EXTERN void
 eax_digest(eax_t *mode, const cipher_t *cipher, unsigned char *mac);
 
 /*
  * Cipher Stream
  */
 
-int
+TORSION_EXTERN int
 cipher_stream_init(cipher_stream_t *ctx,
                    int type, int mode, int encrypt,
                    const unsigned char *key, size_t key_len,
                    const unsigned char *iv, size_t iv_len);
 
-int
+TORSION_EXTERN int
 cipher_stream_set_padding(cipher_stream_t *ctx, int padding);
 
-int
+TORSION_EXTERN int
 cipher_stream_set_aad(cipher_stream_t *ctx,
                       const unsigned char *aad,
                       size_t len);
 
-int
+TORSION_EXTERN int
 cipher_stream_set_ccm(cipher_stream_t *ctx,
                       size_t msg_len,
                       size_t tag_len,
                       const unsigned char *aad,
                       size_t aad_len);
 
-int
+TORSION_EXTERN int
 cipher_stream_set_tag(cipher_stream_t *ctx,
                       const unsigned char *tag,
                       size_t len);
 
-int
+TORSION_EXTERN int
 cipher_stream_get_tag(cipher_stream_t *ctx, unsigned char *tag, size_t *len);
 
-void
+TORSION_EXTERN void
 cipher_stream_update(cipher_stream_t *ctx,
                      unsigned char *output, size_t *output_len,
                      const unsigned char *input, size_t input_len);
 
-int
+TORSION_EXTERN int
 cipher_stream_crypt(cipher_stream_t *ctx,
                     unsigned char *dst,
                     const unsigned char *src,
                     size_t len);
 
-size_t
+TORSION_EXTERN size_t
 cipher_stream_update_size(const cipher_stream_t *ctx, size_t input_len);
 
-int
+TORSION_EXTERN int
 cipher_stream_final(cipher_stream_t *ctx,
                     unsigned char *output,
                     size_t *output_len);
@@ -866,7 +846,7 @@ cipher_stream_final(cipher_stream_t *ctx,
  * Static Encryption/Decryption
  */
 
-int
+TORSION_EXTERN int
 cipher_static_encrypt(unsigned char *ct,
                       size_t *ct_len,
                       int type,
@@ -878,7 +858,7 @@ cipher_static_encrypt(unsigned char *ct,
                       const unsigned char *pt,
                       size_t pt_len);
 
-int
+TORSION_EXTERN int
 cipher_static_decrypt(unsigned char *pt,
                       size_t *pt_len,
                       int type,

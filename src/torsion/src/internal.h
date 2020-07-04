@@ -2,8 +2,6 @@
  * internal.h - internal utils for libtorsion
  * Copyright (c) 2020, Christopher Jeffrey (MIT License).
  * https://github.com/bcoin-org/libtorsion
- *
- * Several macros based on GMP and libsecp256k1.
  */
 
 #ifndef _TORSION_INTERNAL_H
@@ -32,6 +30,9 @@
  * Builtins
  */
 
+#undef LIKELY
+#undef UNLIKELY
+
 #if TORSION_GNUC_PREREQ(3, 0) || __has_builtin(__builtin_expect)
 #  define LIKELY(x) __builtin_expect(!!(x), 1)
 #  define UNLIKELY(x) __builtin_expect(!!(x), 0)
@@ -44,7 +45,10 @@
  * Assertions
  */
 
-#define ASSERT_ALWAYS(expr) do {                      \
+#undef CHECK
+#undef ASSERT
+
+#define CHECK(expr) do {                              \
   if (UNLIKELY(!(expr)))                              \
     __torsion_assert_fail(__FILE__, __LINE__, #expr); \
 } while (0)
@@ -52,45 +56,72 @@
 #ifdef TORSION_NO_ASSERT
 #  define ASSERT(expr) (void)(expr)
 #else
-#  define ASSERT(expr) ASSERT_ALWAYS(expr)
+#  define ASSERT(expr) CHECK(expr)
 #endif
 
-void
-__torsion_assert_fail(const char *file, int line, const char *expr);
+/*
+ * Static Assertions
+ */
+
+#undef STATIC_ASSERT
+
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+#  undef _Static_assert
+#  define STATIC_ASSERT(x) _Static_assert(x, "static assertion failed")
+#elif TORSION_GNUC_PREREQ(2, 7)
+#  define __TORSION_STATIC_ASSERT(x, y) \
+     typedef char __torsion_assert_ ## y[(x) ? 1 : -1] __attribute__((unused))
+#  define _TORSION_STATIC_ASSERT(x, y) __TORSION_STATIC_ASSERT(x, y)
+#  define STATIC_ASSERT(x) _TORSION_STATIC_ASSERT(x, __LINE__)
+#else
+#  define STATIC_ASSERT(x) struct __torsion_assert_empty
+#endif
 
 /*
  * Keywords/Attributes
  */
 
-#if !defined(__STDC_VERSION__) || __STDC_VERSION__ < 199901L
-#  if TORSION_GNUC_PREREQ(2, 7)
-#    define TORSION_INLINE __inline__
-#  elif defined(_MSC_VER)
-#    define TORSION_INLINE __inline
-#  else
-#    define TORSION_INLINE
-#  endif
-#else
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
 #  define TORSION_INLINE inline
+#elif TORSION_GNUC_PREREQ(2, 7)
+#  define TORSION_INLINE __inline__
+#elif defined(_MSC_VER) && _MSC_VER >= 900
+#  define TORSION_INLINE __inline
+#else
+#  define TORSION_INLINE
 #endif
 
-#if !defined(__STDC_VERSION__) || __STDC_VERSION__ < 199901L
-#  if TORSION_GNUC_PREREQ(3, 0)
-#    define TORSION_RESTRICT __restrict__
-#  elif defined(_MSC_VER) && _MSC_VER >= 1400
-#    define TORSION_RESTRICT __restrict
-#  else
-#    define TORSION_RESTRICT
-#  endif
-#else
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
 #  define TORSION_RESTRICT restrict
+#elif TORSION_GNUC_PREREQ(3, 0)
+#  define TORSION_RESTRICT __restrict__
+#elif defined(_MSC_VER) && _MSC_VER >= 1400
+#  define TORSION_RESTRICT __restrict
+#else
+#  define TORSION_RESTRICT
+#endif
+
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+#  define TORSION_NORETURN _Noreturn
+#elif TORSION_GNUC_PREREQ(2, 7)
+#  undef noreturn
+#  define TORSION_NORETURN __attribute__((noreturn))
+#elif defined(_MSC_VER) && _MSC_VER >= 1200
+#  undef noreturn
+#  define TORSION_NORETURN __declspec(noreturn)
+#else
+#  define TORSION_NORETURN
+#endif
+
+#if TORSION_GNUC_PREREQ(2, 7)
+#  define TORSION_UNUSED __attribute__((unused))
+#else
+#  define TORSION_UNUSED
 #endif
 
 #ifdef __GNUC__
-#  define TORSION_UNUSED __attribute__((unused))
 #  define TORSION_EXTENSION __extension__
 #else
-#  define TORSION_UNUSED
 #  define TORSION_EXTENSION
 #endif
 
@@ -99,7 +130,7 @@ __torsion_assert_fail(const char *file, int line, const char *expr);
  */
 
 /* Any decent compiler should be able to optimize this out. */
-static const unsigned long __torsion_endian_check = 1;
+static const unsigned long __torsion_endian_check TORSION_UNUSED = 1;
 
 #define TORSION_BIGENDIAN \
   (*((const unsigned char *)&__torsion_endian_check) == 0)
@@ -114,54 +145,20 @@ static const unsigned long __torsion_endian_check = 1;
    Otherwise, auto configuration is useful if
    you're using an awful build system like gyp. */
 
-/* Detect arch word size. */
-#if defined(__EMSCRIPTEN__)
-/* WASM and asm.js run faster as 32 bit. */
-#else
-#  if defined(__amd64__) \
-   || defined(__amd64) \
-   || defined(__x86_64__) \
-   || defined(__x86_64) \
-   || defined(_M_X64) \
-   || defined(_M_AMD64) \
-   || defined(__aarch64__) \
-   || defined(_M_ARM64) \
-   || defined(__ia64__) \
-   || defined(_IA64) \
-   || defined(__IA64__) \
-   || defined(__ia64) \
-   || defined(_M_IA64) \
-   || ((defined(__mips__) \
-     || defined(__mips) \
-     || defined(__MIPS__)) \
-     && defined(_MIPS_SZLONG) \
-     && _MIPS_SZLONG == 64) \
-   || ((defined(__powerpc) \
-     || defined(__powerpc__) \
-     || defined(__POWERPC__) \
-     || defined(__ppc__) \
-     || defined(__PPC__) \
-     || defined(_M_PPC) \
-     || defined(_ARCH_PPC)) \
-     && defined(__64BIT__)) \
-   || defined(__powerpc64__) \
-   || defined(__ppc64__) \
-   || defined(__PPC64__) \
-   || defined(_ARCH_PPC64) \
-   || defined(__sparc_v9__) \
-   || defined(__sparcv9)
-#    define TORSION_HAVE_64BIT
-#  endif
-#endif
-
 /* Detect inline ASM support for x86-64. */
-#if defined(__EMSCRIPTEN__) \
- || defined(__CYGWIN__) \
- || defined(__MINGW32__) \
- || defined(_WIN32)
-/* No inline ASM support for wasm/asm.js/win32. */
+#if defined(__EMSCRIPTEN__) || defined(__wasm__)
+/* No inline ASM support for emscripten/wasm. */
 #else
-#  ifdef __GNUC__
+/* GCC inline assembly has been documented as
+ * far back as 2.95[1]. It appears in the GCC
+ * codebase as early as 2.0. However, early
+ * implementations may not have the features
+ * we require, so to be practical, we require
+ * GNUC version 4.0.
+ *
+ * [1] https://gcc.gnu.org/onlinedocs/gcc-2.95.3/gcc_4.html#SEC93
+ */
+#  if TORSION_GNUC_PREREQ(4, 0)
 #    if defined(__amd64__) || defined(__x86_64__)
 #      define TORSION_HAVE_ASM_X64
 #    endif
@@ -169,21 +166,29 @@ static const unsigned long __torsion_endian_check = 1;
 #endif
 
 /* Detect __int128 support. */
-#if defined(__EMSCRIPTEN__)
-/* According to libsodium, __int128 is broken in emscripten builds.
-   See: https://github.com/jedisct1/libsodium/blob/master/configure.ac */
+#if defined(__EMSCRIPTEN__) || defined(__wasm__)
+/* According to libsodium[1][2], __int128 is
+ * currently broken in emscripten/wasm builds.
+ *
+ * [1] https://github.com/jedisct1/libsodium/blob/8360706/configure.ac#L685
+ * [2] https://github.com/jedisct1/libsodium/commit/fff87d5
+ */
 #else
-/* According to this SO post[1], __int128 is supported
-   since gcc 4.6 and clang 3.1. However, a quick look at
-   godbolt suggests clang only gained support in 3.6. Note
-   that icc has supported __int128 since 13.0, but didn't
-   define `__SIZEOF_INT128__` until 16.0. All three of the
-   aforementioned compilers define `__GNUC__` (and have
-   since... forever?).
-
-   [1] https://stackoverflow.com/a/54815033 */
-#  ifdef TORSION_HAVE_64BIT
-#    if defined(__GNUC__) && defined(__SIZEOF_INT128__)
+/* Support for __int128 (verified on godbolt):
+ *
+ *   x86-64:
+ *     gcc 4.6.4 (gnuc 4.6)
+ *     clang 3.1 (gnuc 4.2) (__SIZEOF_INT128__ defined in 3.3)
+ *     icc <=13.0.1 (gnuc 4.7) (__SIZEOF_INT128__ defined in 16.0.3)
+ *
+ *   arm64:
+ *     gcc <=5.4.0 (gnuc 5.4)
+ *     clang <=9.0 (gnuc 4.2)
+ *
+ * See: https://stackoverflow.com/a/54815033
+ */
+#  if defined(__GNUC__) && defined(__SIZEOF_INT128__)
+#    if defined(__amd64__) || defined(__x86_64__)
 #      define TORSION_HAVE_INT128
 #    endif
 #  endif
@@ -191,7 +196,6 @@ static const unsigned long __torsion_endian_check = 1;
 
 /* Allow some overrides (for testing). */
 #ifdef TORSION_FORCE_32BIT
-#  undef TORSION_HAVE_64BIT
 #  undef TORSION_HAVE_ASM_X64
 #  undef TORSION_HAVE_INT128
 #endif
@@ -237,10 +241,13 @@ TORSION_EXTENSION typedef signed __int128 torsion_int128_t;
 #define torsion_die __torsion_die
 #define torsion_abort __torsion_abort
 
-void
+TORSION_NORETURN void
+__torsion_assert_fail(const char *file, int line, const char *expr);
+
+TORSION_NORETURN void
 torsion_die(const char *msg);
 
-void
+TORSION_NORETURN void
 torsion_abort(void);
 
 #endif /* _TORSION_INTERNAL_H */

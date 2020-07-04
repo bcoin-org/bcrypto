@@ -588,8 +588,7 @@ bytes_lt(const unsigned char *a,
 
 static size_t
 bit_length(uint32_t x) {
-#if !defined(__EMSCRIPTEN__) \
- && (TORSION_GNUC_PREREQ(3, 4) || __has_builtin(__builtin_clz))
+#if TORSION_GNUC_PREREQ(3, 4) || __has_builtin(__builtin_clz)
   if (x == 0) /* Undefined behavior. */
     return 0;
 
@@ -9461,7 +9460,8 @@ ecdsa_sign(const wei_t *ec,
     ok &= sc_is_zero(sc, r) ^ 1;
 
 #ifdef TORSION_VALGRIND
-    VALGRIND_MAKE_MEM_DEFINED(&ok, sizeof(ok));
+    if (RUNNING_ON_VALGRIND)
+      VALGRIND_MAKE_MEM_DEFINED(&ok, sizeof(ok));
 #endif
   } while (!ok);
 
@@ -9719,7 +9719,7 @@ schnorr_legacy_hash_nonce(const wei_t *ec, sc_t k,
   size_t off = 0;
   hash_t hash;
 
-  ASSERT(MAX_SCALAR_SIZE >= HASH_MAX_OUTPUT_SIZE);
+  STATIC_ASSERT(MAX_SCALAR_SIZE >= HASH_MAX_OUTPUT_SIZE);
 
   if (sc->size > hash_size) {
     off = sc->size - hash_size;
@@ -9750,7 +9750,7 @@ schnorr_legacy_hash_challenge(const wei_t *ec, sc_t e,
   size_t off = 0;
   hash_t hash;
 
-  ASSERT(MAX_SCALAR_SIZE >= HASH_MAX_OUTPUT_SIZE);
+  STATIC_ASSERT(MAX_SCALAR_SIZE >= HASH_MAX_OUTPUT_SIZE);
 
   if (sc->size > hash_size) {
     off = sc->size - hash_size;
@@ -10525,7 +10525,7 @@ schnorr_hash_nonce(const wei_t *ec, sc_t k,
   size_t off = 0;
   hash_t hash;
 
-  ASSERT(MAX_SCALAR_SIZE >= HASH_MAX_OUTPUT_SIZE);
+  STATIC_ASSERT(MAX_SCALAR_SIZE >= HASH_MAX_OUTPUT_SIZE);
 
   schnorr_hash_aux(ec, secret, scalar, aux);
 
@@ -10577,7 +10577,7 @@ schnorr_hash_challenge(const wei_t *ec, sc_t e,
   size_t off = 0;
   hash_t hash;
 
-  ASSERT(MAX_SCALAR_SIZE >= HASH_MAX_OUTPUT_SIZE);
+  STATIC_ASSERT(MAX_SCALAR_SIZE >= HASH_MAX_OUTPUT_SIZE);
 
   if (sc->size > hash_size) {
     off = sc->size - hash_size;
@@ -12003,10 +12003,10 @@ eddsa_sign_tweak_add(const edwards_t *ec,
   unsigned char prefix[MAX_FIELD_SIZE + 1];
   hash_t hash;
 
+  STATIC_ASSERT(MAX_FIELD_SIZE + 1 >= HASH_MAX_OUTPUT_SIZE);
+
   eddsa_privkey_expand(ec, scalar, prefix, priv);
   eddsa_scalar_tweak_add(ec, scalar, scalar, tweak);
-
-  ASSERT(MAX_FIELD_SIZE + 1 >= HASH_MAX_OUTPUT_SIZE);
 
   hash_init(&hash, ec->hash);
   hash_update(&hash, prefix, ec->fe.adj_size);
@@ -12036,10 +12036,10 @@ eddsa_sign_tweak_mul(const edwards_t *ec,
   unsigned char prefix[MAX_FIELD_SIZE + 1];
   hash_t hash;
 
+  STATIC_ASSERT(MAX_FIELD_SIZE + 1 >= HASH_MAX_OUTPUT_SIZE);
+
   eddsa_privkey_expand(ec, scalar, prefix, priv);
   eddsa_scalar_tweak_mul(ec, scalar, scalar, tweak);
-
-  ASSERT(MAX_FIELD_SIZE + 1 >= HASH_MAX_OUTPUT_SIZE);
 
   hash_init(&hash, ec->hash);
   hash_update(&hash, prefix, ec->fe.adj_size);
