@@ -1,7 +1,7 @@
 'use strict';
 
 const assert = require('bsert');
-const ARC4 = require('../lib/rc4');
+const ARC4 = require('../lib/arc4');
 
 // https://github.com/golang/go/blob/master/src/crypto/rc4/rc4_test.go
 const vectors = [

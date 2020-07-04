@@ -47,6 +47,14 @@ const algs = [
     ]
   },
   {
+    name: 'ARC2',
+    keyLen: 8,
+    ivLen: 8,
+    ids: [
+      'ARC2-64-CBC'
+    ]
+  },
+  {
     name: 'Blowfish',
     keyLen: 32,
     ivLen: 8,
@@ -124,14 +132,6 @@ const algs = [
       'IDEA-CBC',
       'IDEA-CFB',
       'IDEA-OFB'
-    ]
-  },
-  {
-    name: 'RC2',
-    keyLen: 8,
-    ivLen: 8,
-    ids: [
-      'RC2-64-CBC'
     ]
   },
   {

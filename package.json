@@ -49,6 +49,7 @@
   "browser": {
     "./lib/aead": "./lib/aead-browser.js",
     "./lib/aes": "./lib/aes-browser.js",
+    "./lib/arc4": "./lib/arc4-browser.js",
     "./lib/bcrypt": "./lib/bcrypt-browser.js",
     "./lib/blake2b": "./lib/blake2b-browser.js",
     "./lib/blake2s": "./lib/blake2s-browser.js",
@@ -89,7 +90,6 @@
     "./lib/pbkdf2": "./lib/pbkdf2-browser.js",
     "./lib/poly1305": "./lib/poly1305-browser.js",
     "./lib/random": "./lib/random-browser.js",
-    "./lib/rc4": "./lib/rc4-browser.js",
     "./lib/ripemd160": "./lib/ripemd160-browser.js",
     "./lib/rsa": "./lib/rsa-browser.js",
     "./lib/salsa20": "./lib/salsa20-browser.js",

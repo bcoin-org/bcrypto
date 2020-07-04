@@ -44,6 +44,14 @@ const algs = [
     ]
   },
   {
+    name: 'ARC2',
+    keyLen: 8,
+    ivLen: 8,
+    ids: [
+      'ARC2-64-CBC'
+    ]
+  },
+  {
     name: 'Blowfish',
     keyLen: 32,
     ivLen: 8,
@@ -124,14 +132,6 @@ const algs = [
     ]
   },
   {
-    name: 'RC2',
-    keyLen: 8,
-    ivLen: 8,
-    ids: [
-      'RC2-64-CBC'
-    ]
-  },
-  {
     name: 'Triple-DES (EDE)',
     keyLen: 16,
     ivLen: 8,
@@ -156,6 +156,9 @@ const algs = [
 ];
 
 function testVector(name, keyLen, ivLen) {
+  if (name.startsWith('ARC2'))
+    name = name.substring(1);
+
   const key = crypto.randomBytes(keyLen);
   const gcm = name.endsWith('-GCM');
 

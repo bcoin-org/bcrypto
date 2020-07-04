@@ -20,8 +20,8 @@ describe('Bcrypto', function() {
       case 'js':
         assert.strictEqual(bcrypto.native, 0);
         assert.strictEqual(bcrypto.AEAD.native, 0);
-        assert.strictEqual(bcrypto.ARC4.native, 0);
         assert.strictEqual(bcrypto.aes.native, 0);
+        assert.strictEqual(bcrypto.ARC4.native, 0);
         assert.strictEqual(bcrypto.bcrypt.native, 0);
         assert.strictEqual(bcrypto.BLAKE2b.native, 0);
         assert.strictEqual(bcrypto.BLAKE2b160.native, 0);
@@ -86,7 +86,6 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.Poly1305.native, 0);
         assert.strictEqual(bcrypto.random.native,
           process.browser ? 0 : (FORCE_TORSION ? 2 : 1));
-        assert.strictEqual(bcrypto.RC4.native, 0);
         assert.strictEqual(bcrypto.RIPEMD160.native, 0);
         assert.strictEqual(bcrypto.rsa.native, 0);
         assert.strictEqual(bcrypto.rsaies.native, undefined);
@@ -120,8 +119,8 @@ describe('Bcrypto', function() {
       default:
         assert.strictEqual(bcrypto.native, 2);
         assert.strictEqual(bcrypto.AEAD.native, 2);
-        assert.strictEqual(bcrypto.ARC4.native, 2);
         assert.strictEqual(bcrypto.aes.native, 2);
+        assert.strictEqual(bcrypto.ARC4.native, 2);
         assert.strictEqual(bcrypto.bcrypt.native, 2);
         assert.strictEqual(bcrypto.BLAKE2b.native, 2);
         assert.strictEqual(bcrypto.BLAKE2b160.native, 2);
@@ -185,7 +184,6 @@ describe('Bcrypto', function() {
         assert.strictEqual(bcrypto.pgp.native, undefined);
         assert.strictEqual(bcrypto.Poly1305.native, 2);
         assert.strictEqual(bcrypto.random.native, FORCE_TORSION ? 2 : 1);
-        assert.strictEqual(bcrypto.RC4.native, 2);
         assert.strictEqual(bcrypto.RIPEMD160.native, 2);
         assert.strictEqual(bcrypto.rsa.native, 2);
         assert.strictEqual(bcrypto.rsaies.native, undefined);
