@@ -13,7 +13,7 @@
 #include "internal.h"
 
 /*
- * RC4
+ * ARC4
  *
  * Resources:
  *   https://en.wikipedia.org/wiki/RC4
@@ -25,7 +25,7 @@
  */
 
 void
-rc4_init(rc4_t *ctx, const unsigned char *key, size_t key_len) {
+arc4_init(arc4_t *ctx, const unsigned char *key, size_t key_len) {
   size_t k = key_len;
   uint8_t *s = ctx->s;
   uint8_t j, si;
@@ -52,10 +52,10 @@ rc4_init(rc4_t *ctx, const unsigned char *key, size_t key_len) {
 }
 
 void
-rc4_crypt(rc4_t *ctx,
-          unsigned char *dst,
-          const unsigned char *src,
-          size_t len) {
+arc4_crypt(arc4_t *ctx,
+           unsigned char *dst,
+           const unsigned char *src,
+           size_t len) {
   uint8_t *s = ctx->s;
   uint8_t i = ctx->i;
   uint8_t j = ctx->j;
@@ -148,7 +148,7 @@ chacha20_init(chacha20_t *ctx,
 
   ctx->pos = 0;
 
-  cleanse(tmp, sizeof(tmp));
+  torsion_cleanse(tmp, sizeof(tmp));
 }
 
 static void
@@ -318,11 +318,6 @@ chacha20_crypt(chacha20_t *ctx,
 }
 
 void
-chacha20_pad(chacha20_t *ctx) {
-  ctx->pos = 0;
-}
-
-void
 chacha20_derive(unsigned char *out,
                 const unsigned char *key,
                 size_t key_len,
@@ -369,7 +364,7 @@ chacha20_derive(unsigned char *out,
   write32le(out + 24, state[14]);
   write32le(out + 28, state[15]);
 
-  cleanse(state, sizeof(state));
+  torsion_cleanse(state, sizeof(state));
 }
 
 #undef ROTL32
@@ -448,7 +443,7 @@ salsa20_init(salsa20_t *ctx,
 
   ctx->pos = 0;
 
-  cleanse(tmp, sizeof(tmp));
+  torsion_cleanse(tmp, sizeof(tmp));
 }
 
 static void
@@ -681,11 +676,6 @@ salsa20_crypt(salsa20_t *ctx,
 }
 
 void
-salsa20_pad(salsa20_t *ctx) {
-  ctx->pos = 0;
-}
-
-void
 salsa20_derive(unsigned char *out,
                const unsigned char *key,
                size_t key_len,
@@ -732,7 +722,7 @@ salsa20_derive(unsigned char *out,
   write32le(out + 24, state[8]);
   write32le(out + 28, state[9]);
 
-  cleanse(state, sizeof(state));
+  torsion_cleanse(state, sizeof(state));
 }
 
 #undef ROTL32

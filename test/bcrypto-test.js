@@ -20,6 +20,7 @@ describe('Bcrypto', function() {
       case 'js':
         assert.strictEqual(bcrypto.native, 0);
         assert.strictEqual(bcrypto.AEAD.native, 0);
+        assert.strictEqual(bcrypto.ARC4.native, 0);
         assert.strictEqual(bcrypto.aes.native, 0);
         assert.strictEqual(bcrypto.bcrypt.native, 0);
         assert.strictEqual(bcrypto.BLAKE2b.native, 0);
@@ -119,6 +120,7 @@ describe('Bcrypto', function() {
       default:
         assert.strictEqual(bcrypto.native, 2);
         assert.strictEqual(bcrypto.AEAD.native, 2);
+        assert.strictEqual(bcrypto.ARC4.native, 2);
         assert.strictEqual(bcrypto.aes.native, 2);
         assert.strictEqual(bcrypto.bcrypt.native, 2);
         assert.strictEqual(bcrypto.BLAKE2b.native, 2);

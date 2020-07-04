@@ -24,6 +24,9 @@ extern "C" {
 #define aes_init_decrypt torsion_aes_init_decrypt
 #define aes_encrypt torsion_aes_encrypt
 #define aes_decrypt torsion_aes_decrypt
+#define arc2_init torsion_arc2_init
+#define arc2_encrypt torsion_arc2_encrypt
+#define arc2_decrypt torsion_arc2_decrypt
 #define blowfish_init torsion_blowfish_init
 #define blowfish_stream2word torsion_blowfish_stream2word
 #define blowfish_expand0state torsion_blowfish_expand0state
@@ -52,9 +55,6 @@ extern "C" {
 #define idea_init_decrypt torsion_idea_init_decrypt
 #define idea_encrypt torsion_idea_encrypt
 #define idea_decrypt torsion_idea_decrypt
-#define rc2_init torsion_rc2_init
-#define rc2_encrypt torsion_rc2_encrypt
-#define rc2_decrypt torsion_rc2_decrypt
 #define serpent_init torsion_serpent_init
 #define serpent_encrypt torsion_serpent_encrypt
 #define serpent_decrypt torsion_serpent_decrypt
@@ -125,21 +125,21 @@ extern "C" {
 #define CIPHER_AES128 0
 #define CIPHER_AES192 1
 #define CIPHER_AES256 2
-#define CIPHER_BLOWFISH 3
-#define CIPHER_CAMELLIA128 4
-#define CIPHER_CAMELLIA192 5
-#define CIPHER_CAMELLIA256 6
-#define CIPHER_CAST5 7
-#define CIPHER_DES 8
-#define CIPHER_DES_EDE 9
-#define CIPHER_DES_EDE3 10
-#define CIPHER_IDEA 11
-#define CIPHER_RC2 12
-#define CIPHER_RC2_GUTMANN 13
-#define CIPHER_RC2_40 14
-#define CIPHER_RC2_64 15
-#define CIPHER_RC2_128 16
-#define CIPHER_RC2_128_GUTMANN 17
+#define CIPHER_ARC2 3
+#define CIPHER_ARC2_GUTMANN 4
+#define CIPHER_ARC2_40 5
+#define CIPHER_ARC2_64 6
+#define CIPHER_ARC2_128 7
+#define CIPHER_ARC2_128_GUTMANN 8
+#define CIPHER_BLOWFISH 9
+#define CIPHER_CAMELLIA128 10
+#define CIPHER_CAMELLIA192 11
+#define CIPHER_CAMELLIA256 12
+#define CIPHER_CAST5 13
+#define CIPHER_DES 14
+#define CIPHER_DES_EDE 15
+#define CIPHER_DES_EDE3 16
+#define CIPHER_IDEA 17
 #define CIPHER_SERPENT128 18
 #define CIPHER_SERPENT192 19
 #define CIPHER_SERPENT256 20
@@ -181,65 +181,66 @@ extern "C" {
  * Structs
  */
 
-typedef struct _aes_s {
+typedef struct aes_s {
   unsigned int rounds;
   uint32_t enckey[60];
   uint32_t deckey[60];
 } aes_t;
 
-typedef struct _blowfish_s {
+typedef struct arc2_s {
+  uint16_t k[64];
+} arc2_t;
+
+typedef struct blowfish_s {
   uint32_t S[4][256];
   uint32_t P[18];
 } blowfish_t;
 
-typedef struct _camellia_s {
+typedef struct camellia_s {
   unsigned int bits;
   uint32_t key[68];
 } camellia_t;
 
-typedef struct _cast5_s {
+typedef struct cast5_s {
   uint32_t masking[16];
   uint8_t rotate[16];
 } cast5_t;
 
-typedef struct _des_s {
+typedef struct des_s {
   uint32_t keys[32];
 } des_t;
 
-typedef struct _des_ede_s {
+typedef struct des_ede_s {
   des_t x;
   des_t y;
 } des_ede_t;
 
-typedef struct _des_ede3_s {
+typedef struct des_ede3_s {
   des_t x;
   des_t y;
   des_t z;
 } des_ede3_t;
 
-typedef struct _idea_s {
+typedef struct idea_s {
   uint16_t enckey[52];
   uint16_t deckey[52];
 } idea_t;
 
-typedef struct _rc2_s {
-  uint16_t k[64];
-} rc2_t;
-
-typedef struct _serpent_s {
+typedef struct serpent_s {
   uint32_t subkeys[132];
 } serpent_t;
 
-typedef struct _twofish_s {
+typedef struct twofish_s {
   uint32_t S[4][256];
   uint32_t k[40];
 } twofish_t;
 
-typedef struct _cipher_s {
+typedef struct cipher_s {
   int type;
   size_t size;
   union {
     aes_t aes;
+    arc2_t arc2;
     blowfish_t blowfish;
     camellia_t camellia;
     cast5_t cast5;
@@ -247,34 +248,33 @@ typedef struct _cipher_s {
     des_ede_t ede;
     des_ede3_t ede3;
     idea_t idea;
-    rc2_t rc2;
     serpent_t serpent;
     twofish_t twofish;
   } ctx;
 } cipher_t;
 
-typedef struct _cbc_s {
+typedef struct cbc_s {
   unsigned char prev[CIPHER_MAX_BLOCK_SIZE];
 } cbc_t;
 
-typedef struct _xts_s {
+typedef struct xts_s {
   unsigned char tweak[CIPHER_MAX_BLOCK_SIZE];
   unsigned char prev[CIPHER_MAX_BLOCK_SIZE];
 } xts_t;
 
-typedef struct _ctr_s {
+typedef struct ctr_s {
   uint8_t ctr[CIPHER_MAX_BLOCK_SIZE];
   unsigned char state[CIPHER_MAX_BLOCK_SIZE];
   size_t pos;
 } ctr_t;
 
-typedef struct _cfb_s {
+typedef struct cfb_s {
   unsigned char state[CIPHER_MAX_BLOCK_SIZE];
   unsigned char prev[CIPHER_MAX_BLOCK_SIZE];
   size_t pos;
 } cfb_t;
 
-typedef struct _ofb_s {
+typedef struct ofb_s {
   unsigned char state[CIPHER_MAX_BLOCK_SIZE];
   size_t pos;
 } ofb_t;
@@ -293,7 +293,7 @@ struct __ghash_s {
   size_t size;
 };
 
-typedef struct _gcm_s {
+typedef struct gcm_s {
   struct __ghash_s hash;
   uint8_t ctr[16];
   unsigned char state[16];
@@ -306,14 +306,14 @@ struct __cmac_s {
   size_t pos;
 };
 
-typedef struct _ccm_s {
+typedef struct ccm_s {
   struct __cmac_s hash;
   unsigned char state[16];
   uint8_t ctr[16];
   size_t pos;
 } ccm_t;
 
-typedef struct _eax_s {
+typedef struct eax_s {
   struct __cmac_s hash1;
   struct __cmac_s hash2;
   unsigned char state[CIPHER_MAX_BLOCK_SIZE];
@@ -336,7 +336,7 @@ struct __cipher_mode_s {
   } mode;
 };
 
-typedef struct _cipher_stream_s {
+typedef struct cipher_stream_s {
   int encrypt;
   int padding;
   int unpad;
@@ -370,6 +370,22 @@ aes_encrypt(const aes_t *ctx, unsigned char *dst, const unsigned char *src);
 
 TORSION_EXTERN void
 aes_decrypt(const aes_t *ctx, unsigned char *dst, const unsigned char *src);
+
+/*
+ * ARC2
+ */
+
+TORSION_EXTERN void
+arc2_init(arc2_t *ctx,
+          const unsigned char *key,
+          size_t key_len,
+          unsigned int ekb);
+
+TORSION_EXTERN void
+arc2_encrypt(const arc2_t *ctx, unsigned char *dst, const unsigned char *src);
+
+TORSION_EXTERN void
+arc2_decrypt(const arc2_t *ctx, unsigned char *dst, const unsigned char *src);
 
 /*
  * Blowfish
@@ -508,22 +524,6 @@ idea_encrypt(const idea_t *ctx, unsigned char *dst, const unsigned char *src);
 
 TORSION_EXTERN void
 idea_decrypt(const idea_t *ctx, unsigned char *dst, const unsigned char *src);
-
-/*
- * RC2
- */
-
-TORSION_EXTERN void
-rc2_init(rc2_t *ctx,
-         const unsigned char *key,
-         size_t key_len,
-         unsigned int ekb);
-
-TORSION_EXTERN void
-rc2_encrypt(const rc2_t *ctx, unsigned char *dst, const unsigned char *src);
-
-TORSION_EXTERN void
-rc2_decrypt(const rc2_t *ctx, unsigned char *dst, const unsigned char *src);
 
 /*
  * Serpent

@@ -10,6 +10,17 @@
 #include <torsion/util.h>
 #include "bio.h"
 
+/*
+ * Memzero
+ *
+ * Resources:
+ *   https://github.com/jedisct1/libsodium/blob/3b26a5c/src/libsodium/sodium/utils.c#L112
+ *   https://github.com/torvalds/linux/blob/37d4e84/include/linux/string.h#L233
+ *   https://github.com/torvalds/linux/blob/37d4e84/include/linux/compiler-gcc.h#L21
+ *   https://github.com/bminor/glibc/blob/master/string/explicit_bzero.c
+ *   http://www.daemonology.net/blog/2014-09-04-how-to-zero-a-buffer.html
+ */
+
 #undef HAVE_SECUREZEROMEMORY
 #undef HAVE_INLINE_ASM
 
@@ -22,30 +33,40 @@
 #  define HAVE_INLINE_ASM
 #endif
 
-/*
- * Memzero
- */
-
 void
-cleanse(void *ptr, size_t len) {
+torsion_cleanse(void *ptr, size_t len) {
 #if defined(HAVE_SECUREZEROMEMORY)
-  /* https://github.com/jedisct1/libsodium/blob/3b26a5c/src/libsodium/sodium/utils.c#L112 */
   if (len > 0)
     SecureZeroMemory(ptr, len);
 #elif defined(HAVE_INLINE_ASM)
-  /* https://github.com/torvalds/linux/blob/37d4e84/include/linux/string.h#L233 */
-  /* https://github.com/torvalds/linux/blob/37d4e84/include/linux/compiler-gcc.h#L21 */
-  /* https://github.com/bminor/glibc/blob/master/string/explicit_bzero.c */
   if (len > 0) {
     memset(ptr, 0, len);
     __asm__ __volatile__("" : : "r" (ptr) : "memory");
   }
 #else
-  /* http://www.daemonology.net/blog/2014-09-04-how-to-zero-a-buffer.html */
   static void *(*const volatile memset_ptr)(void *, int, size_t) = memset;
   if (len > 0)
     memset_ptr(ptr, 0, len);
 #endif
+}
+
+#undef HAVE_SECUREZEROMEMORY
+#undef HAVE_INLINE_ASM
+
+/*
+ * Memequal
+ */
+
+int
+torsion_memequal(const void *s1, const void *s2, size_t n) {
+  const unsigned char *x = (const unsigned char *)s1;
+  const unsigned char *y = (const unsigned char *)s2;
+  uint32_t z = 0;
+
+  while (n--)
+    z |= (uint32_t)x[n] ^ (uint32_t)y[n];
+
+  return (z - 1) >> 31;
 }
 
 /*

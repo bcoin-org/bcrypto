@@ -137,10 +137,10 @@
  *     https://en.wikipedia.org/wiki/Elliptic_curve_point_multiplication
  */
 
+#include <limits.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdint.h>
-#include <limits.h>
 #ifdef TORSION_VALGRIND
 #include <valgrind/memcheck.h>
 #endif
@@ -210,17 +210,19 @@ typedef uint32_t fe_word_t;
 #define ECC_MIN(a, b) ((a) < (b) ? (a) : (b))
 #define ECC_MAX(a, b) ((a) > (b) ? (a) : (b))
 
+#define cleanse torsion_cleanse
+
 /*
  * Scalar Field
  */
 
-struct _scalar_field_s;
+struct scalar_field_s;
 
 typedef mp_limb_t sc_t[MAX_SCALAR_LIMBS]; /* 72 bytes */
 
-typedef void sc_invert_func(const struct _scalar_field_s *, sc_t, const sc_t);
+typedef void sc_invert_func(const struct scalar_field_s *, sc_t, const sc_t);
 
-typedef struct _scalar_field_s {
+typedef struct scalar_field_s {
   int endian;
   size_t size;
   size_t bits;
@@ -236,7 +238,7 @@ typedef struct _scalar_field_s {
   sc_invert_func *invert;
 } scalar_field_t;
 
-typedef struct _scalar_def_s {
+typedef struct scalar_def_s {
   size_t bits;
   const unsigned char n[MAX_FIELD_SIZE];
   sc_invert_func *invert;
@@ -267,7 +269,7 @@ typedef void fe_invert_f(fe_word_t *, const fe_word_t *);
 typedef int fe_sqrt_f(fe_word_t *, const fe_word_t *);
 typedef int fe_isqrt_f(fe_word_t *, const fe_word_t *, const fe_word_t *);
 
-typedef struct _prime_field_s {
+typedef struct prime_field_s {
   int endian;
   size_t size;
   size_t bits;
@@ -301,7 +303,7 @@ typedef struct _prime_field_s {
   fe_t mone;
 } prime_field_t;
 
-typedef struct _prime_def_s {
+typedef struct prime_def_s {
   size_t bits;
   size_t words;
   const unsigned char p[MAX_FIELD_SIZE];
@@ -326,7 +328,7 @@ typedef struct _prime_def_s {
  * Endomorphism
  */
 
-typedef struct _endo_def_s {
+typedef struct endo_def_s {
   const unsigned char beta[MAX_FIELD_SIZE];
   const unsigned char lambda[MAX_SCALAR_SIZE];
   const unsigned char b1[MAX_SCALAR_SIZE];
@@ -336,10 +338,10 @@ typedef struct _endo_def_s {
 } endo_def_t;
 
 /*
- * Torsion
+ * Subgroup
  */
 
-typedef struct _subgroup_s {
+typedef struct subgroup_def_s {
   const unsigned char x[MAX_FIELD_SIZE];
   const unsigned char y[MAX_FIELD_SIZE];
   int inf;
@@ -350,7 +352,7 @@ typedef struct _subgroup_s {
  */
 
 /* wge = weierstrass group element (affine) */
-typedef struct _wge_s {
+typedef struct wge_s {
   /* 152 bytes */
   fe_t x;
   fe_t y;
@@ -358,14 +360,14 @@ typedef struct _wge_s {
 } wge_t;
 
 /* jge = jacobian group element */
-typedef struct _jge_s {
+typedef struct jge_s {
   /* 216 bytes */
   fe_t x;
   fe_t y;
   fe_t z;
 } jge_t;
 
-typedef struct _wei_s {
+typedef struct wei_s {
   int hash;
   prime_field_t fe;
   scalar_field_t sc;
@@ -400,7 +402,7 @@ typedef struct _wei_s {
   wge_t wnd_endo[NAF_SIZE_PRE]; /* 19kb */
 } wei_t;
 
-typedef struct _wei_def_s {
+typedef struct wei_def_s {
   int hash;
   const prime_def_t *fe;
   const scalar_def_t *sc;
@@ -430,7 +432,7 @@ struct wei_scratch_s {
  */
 
 /* mge = montgomery group element (affine) */
-typedef struct _mge_s {
+typedef struct mge_s {
   /* 152 bytes */
   fe_t x;
   fe_t y;
@@ -438,13 +440,13 @@ typedef struct _mge_s {
 } mge_t;
 
 /* pge = projective group element (x/z) */
-typedef struct _pge_s {
+typedef struct pge_s {
   /* 144 bytes */
   fe_t x;
   fe_t z;
 } pge_t;
 
-typedef struct _mont_s {
+typedef struct mont_s {
   prime_field_t fe;
   scalar_field_t sc;
   unsigned int h;
@@ -464,7 +466,7 @@ typedef struct _mont_s {
   mge_t torsion[8];
 } mont_t;
 
-typedef struct _mont_def_s {
+typedef struct mont_def_s {
   const prime_def_t *fe;
   const scalar_def_t *sc;
   unsigned int h;
@@ -483,7 +485,7 @@ typedef struct _mont_def_s {
  */
 
 /* xge = extended group element */
-typedef struct _xge_s {
+typedef struct xge_s {
   /* 288 bytes */
   fe_t x;
   fe_t y;
@@ -491,7 +493,7 @@ typedef struct _xge_s {
   fe_t t;
 } xge_t;
 
-typedef struct _edwards_s {
+typedef struct edwards_s {
   int hash;
   int context;
   const char *prefix;
@@ -519,7 +521,7 @@ typedef struct _edwards_s {
   xge_t torsion[8];
 } edwards_t;
 
-typedef struct _edwards_def_s {
+typedef struct edwards_def_s {
   int hash;
   int context;
   const char *prefix;
@@ -687,7 +689,7 @@ sc_import_weak(const scalar_field_t *sc, sc_t r, const unsigned char *raw) {
 
   mpn_cnd_select(cy == 0, r, r, sp, sc->limbs);
 
-  cleanse(sp, sc->limbs);
+  mpn_cleanse(sp, sc->limbs);
 
 #ifdef TORSION_VERIFY
   ASSERT(mpn_cmp(r, sc->n, sc->limbs) < 0);
@@ -707,7 +709,7 @@ sc_import_wide(const scalar_field_t *sc, sc_t r,
 
   sc_reduce(sc, r, rp);
 
-  cleanse(rp, sc->shift);
+  mpn_cleanse(rp, sc->shift);
 }
 
 static int

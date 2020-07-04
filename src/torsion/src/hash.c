@@ -2523,7 +2523,7 @@ sha224_final(sha224_t *ctx, unsigned char *out) {
   sha256_final(ctx, tmp);
 
   memcpy(out, tmp, 28);
-  cleanse(tmp, sizeof(tmp));
+  torsion_cleanse(tmp, sizeof(tmp));
 }
 
 /*
@@ -3994,7 +3994,7 @@ sha384_final(sha384_t *ctx, unsigned char *out) {
   sha512_final(ctx, tmp);
 
   memcpy(out, tmp, 48);
-  cleanse(tmp, sizeof(tmp));
+  torsion_cleanse(tmp, sizeof(tmp));
 }
 
 /*
@@ -4025,7 +4025,7 @@ hash160_final(hash160_t *ctx, unsigned char *out) {
   ripemd160_update(&rmd, tmp, 32);
   ripemd160_final(&rmd, out);
 
-  cleanse(tmp, sizeof(tmp));
+  torsion_cleanse(tmp, sizeof(tmp));
 }
 
 /*
@@ -4780,7 +4780,7 @@ blake2s_init(blake2s_t *ctx,
 
     blake2s_update(ctx, block, 64);
 
-    cleanse(block, 64);
+    torsion_cleanse(block, 64);
   }
 }
 
@@ -4900,7 +4900,7 @@ blake2s_final(blake2s_t *ctx, unsigned char *out) {
 
   memcpy(out, buffer, ctx->outlen);
 
-  cleanse(buffer, sizeof(buffer));
+  torsion_cleanse(buffer, sizeof(buffer));
 }
 
 /*
@@ -4961,7 +4961,7 @@ blake2b_init(blake2b_t *ctx,
 
     blake2b_update(ctx, block, 128);
 
-    cleanse(block, 128);
+    torsion_cleanse(block, 128);
   }
 }
 
@@ -5083,7 +5083,7 @@ blake2b_final(blake2b_t *ctx, unsigned char *out) {
 
   memcpy(out, buffer, ctx->outlen);
 
-  cleanse(buffer, sizeof(buffer));
+  torsion_cleanse(buffer, sizeof(buffer));
 }
 
 /*
@@ -7042,8 +7042,8 @@ hmac_init(hmac_t *hmac, int type, const unsigned char *key, size_t len) {
   hash_init(&hmac->outer, type);
   hash_update(&hmac->outer, pad, block_size);
 
-  cleanse(tmp, hash_size);
-  cleanse(pad, block_size);
+  torsion_cleanse(tmp, hash_size);
+  torsion_cleanse(pad, block_size);
 }
 
 void

@@ -95,8 +95,8 @@ eb2k_derive(unsigned char *key,
     }
   }
 
-  cleanse(prev, sizeof(prev));
-  cleanse(&hash, sizeof(hash));
+  torsion_cleanse(prev, sizeof(prev));
+  torsion_cleanse(&hash, sizeof(hash));
 
   return 1;
 }
@@ -175,9 +175,9 @@ hkdf_expand(unsigned char *out,
     len -= hash_size;
   }
 
-  cleanse(prev, sizeof(prev));
-  cleanse(&pmac, sizeof(pmac));
-  cleanse(&hmac, sizeof(hmac));
+  torsion_cleanse(prev, sizeof(prev));
+  torsion_cleanse(&pmac, sizeof(pmac));
+  torsion_cleanse(&hmac, sizeof(hmac));
 
   return 1;
 }
@@ -258,11 +258,11 @@ pbkdf2_derive(unsigned char *out,
     len -= hash_size;
   }
 
-  cleanse(block, sizeof(block));
-  cleanse(mac, sizeof(mac));
-  cleanse(&pmac, sizeof(pmac));
-  cleanse(&smac, sizeof(smac));
-  cleanse(&hmac, sizeof(hmac));
+  torsion_cleanse(block, sizeof(block));
+  torsion_cleanse(mac, sizeof(mac));
+  torsion_cleanse(&pmac, sizeof(pmac));
+  torsion_cleanse(&smac, sizeof(smac));
+  torsion_cleanse(&hmac, sizeof(hmac));
 
   return 1;
 }
@@ -341,17 +341,17 @@ scrypt_derive(unsigned char *out,
   ret = 1;
 fail:
   if (B != NULL) {
-    cleanse(B, 128 * r * p);
+    torsion_cleanse(B, 128 * r * p);
     free(B);
   }
 
   if (XY != NULL) {
-    cleanse(XY, 256 * r);
+    torsion_cleanse(XY, 256 * r);
     free(XY);
   }
 
   if (V != NULL) {
-    cleanse(V, 128 * r * N);
+    torsion_cleanse(V, 128 * r * N);
     free(V);
   }
 
@@ -561,8 +561,8 @@ pgpdf_derive_salted(unsigned char *out,
     i += 1;
   }
 
-  cleanse(buf, sizeof(buf));
-  cleanse(&hash, sizeof(hash));
+  torsion_cleanse(buf, sizeof(buf));
+  torsion_cleanse(&hash, sizeof(hash));
 
   return 1;
 }
@@ -638,8 +638,8 @@ pgpdf_derive_iterated(unsigned char *out,
     i += 1;
   }
 
-  cleanse(buf, sizeof(buf));
-  cleanse(&hash, sizeof(hash));
+  torsion_cleanse(buf, sizeof(buf));
+  torsion_cleanse(&hash, sizeof(hash));
 
   return 1;
 }
@@ -882,8 +882,8 @@ bcrypt_hash192(unsigned char *out,
   for (i = 0; i < BCRYPT_BLOCKS192; i++)
     write32be(out + i * 4, cdata[i]);
 
-  cleanse(cdata, sizeof(cdata));
-  cleanse(&state, sizeof(state));
+  torsion_cleanse(cdata, sizeof(cdata));
+  torsion_cleanse(&state, sizeof(state));
 }
 
 void
@@ -919,8 +919,8 @@ bcrypt_hash256(unsigned char *out,
   for (i = 0; i < BCRYPT_BLOCKS256; i++)
     write32le(out + i * 4, cdata[i]);
 
-  cleanse(cdata, sizeof(cdata));
-  cleanse(&state, sizeof(state));
+  torsion_cleanse(cdata, sizeof(cdata));
+  torsion_cleanse(&state, sizeof(state));
 }
 
 int
@@ -994,12 +994,12 @@ bcrypt_pbkdf(unsigned char *key,
     keylen -= i;
   }
 
-  cleanse(out, sizeof(out));
-  cleanse(tmpout, sizeof(tmpout));
-  cleanse(sha2pass, sizeof(sha2pass));
-  cleanse(sha2salt, sizeof(sha2salt));
-  cleanse(&shash, sizeof(shash));
-  cleanse(&hash, sizeof(hash));
+  torsion_cleanse(out, sizeof(out));
+  torsion_cleanse(tmpout, sizeof(tmpout));
+  torsion_cleanse(sha2pass, sizeof(sha2pass));
+  torsion_cleanse(sha2salt, sizeof(sha2salt));
+  torsion_cleanse(&shash, sizeof(shash));
+  torsion_cleanse(&hash, sizeof(hash));
 
   return 1;
 }
@@ -1046,8 +1046,8 @@ bcrypt_derive(unsigned char *out,
 
   memcpy(out, tmp, BCRYPT_HASH192);
 
-  cleanse(tmp, sizeof(tmp));
-  cleanse(key, sizeof(key));
+  torsion_cleanse(tmp, sizeof(tmp));
+  torsion_cleanse(key, sizeof(key));
 
   return 1;
 }
@@ -1097,8 +1097,6 @@ bcrypt_verify(const unsigned char *pass, size_t pass_len, const char *record) {
   unsigned char salt[BCRYPT_SALT192];
   unsigned char expect[BCRYPT_HASH192];
   unsigned char hash[BCRYPT_HASH192];
-  uint32_t res;
-  size_t i;
 
   if (!bcrypt_decode(&minor, &rounds, salt, expect, record))
     return 0;
@@ -1106,10 +1104,5 @@ bcrypt_verify(const unsigned char *pass, size_t pass_len, const char *record) {
   if (!bcrypt_derive(hash, pass, pass_len, salt, sizeof(salt), rounds, minor))
     return 0;
 
-  res = 0;
-
-  for (i = 0; i < BCRYPT_HASH192; i++)
-    res |= (uint32_t)hash[i] ^ (uint32_t)expect[i];
-
-  return (res - 1) >> 31;
+  return torsion_memequal(hash, expect, BCRYPT_HASH192);
 }

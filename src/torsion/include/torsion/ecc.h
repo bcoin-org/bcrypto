@@ -240,10 +240,10 @@ extern "C" {
  * Structs
  */
 
-typedef struct _wei_s wei_curve_t;
+typedef struct wei_s wei_curve_t;
 typedef struct wei_scratch_s wei_scratch_t;
-typedef struct _mont_s mont_curve_t;
-typedef struct _edwards_s edwards_curve_t;
+typedef struct mont_s mont_curve_t;
+typedef struct edwards_s edwards_curve_t;
 typedef struct edwards_scratch_s edwards_scratch_t;
 
 /*

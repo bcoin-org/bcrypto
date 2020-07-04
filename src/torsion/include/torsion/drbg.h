@@ -39,7 +39,7 @@ extern "C" {
  * Structs
  */
 
-typedef struct _hmac_drbg_s {
+typedef struct hmac_drbg_s {
   int type;
   size_t size;
   hmac_t kmac;
@@ -47,7 +47,7 @@ typedef struct _hmac_drbg_s {
   unsigned char V[HASH_MAX_OUTPUT_SIZE];
 } hmac_drbg_t;
 
-typedef struct _hash_drbg_s {
+typedef struct hash_drbg_s {
   int type;
   hash_t hash;
   size_t size;
@@ -57,7 +57,7 @@ typedef struct _hash_drbg_s {
   uint64_t rounds;
 } hash_drbg_t;
 
-typedef struct _ctr_drbg_s {
+typedef struct ctr_drbg_s {
   aes_t aes;
   size_t key_size;
   size_t blk_size;

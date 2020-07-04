@@ -179,14 +179,14 @@ extern "C" {
  * Structs
  */
 
-typedef struct _md2_s {
+typedef struct md2_s {
   uint8_t state[48];
   uint8_t checksum[16];
   unsigned char block[16];
   size_t size;
 } md2_t;
 
-typedef struct _md5_s {
+typedef struct md5_s {
   uint32_t state[4];
   unsigned char block[64];
   uint64_t size;
@@ -194,24 +194,24 @@ typedef struct _md5_s {
 
 typedef md5_t md4_t;
 
-typedef struct _ripemd160_s {
+typedef struct ripemd160_s {
   uint32_t state[5];
   unsigned char block[64];
   uint64_t size;
 } ripemd160_t;
 
-typedef struct _sha1_s {
+typedef struct sha1_s {
   uint32_t state[5];
   unsigned char block[64];
   uint64_t size;
 } sha1_t;
 
-typedef struct _md5sha1_s {
+typedef struct md5sha1_s {
   md5_t md5;
   sha1_t sha1;
 } md5sha1_t;
 
-typedef struct _sha256_s {
+typedef struct sha256_s {
   uint32_t state[8];
   unsigned char block[64];
   uint64_t size;
@@ -219,7 +219,7 @@ typedef struct _sha256_s {
 
 typedef sha256_t sha224_t;
 
-typedef struct _sha512_s {
+typedef struct sha512_s {
   uint64_t state[8];
   unsigned char block[128];
   uint64_t size;
@@ -229,7 +229,7 @@ typedef sha512_t sha384_t;
 typedef sha256_t hash160_t;
 typedef sha256_t hash256_t;
 
-typedef struct _keccak_s {
+typedef struct keccak_s {
   size_t bs;
   uint64_t state[25];
   unsigned char block[200];
@@ -238,7 +238,7 @@ typedef struct _keccak_s {
 
 typedef keccak_t sha3_t;
 
-typedef struct _blake2s_s {
+typedef struct blake2s_s {
   uint32_t h[8];
   uint32_t t[2];
   uint32_t f[2];
@@ -247,7 +247,7 @@ typedef struct _blake2s_s {
   size_t outlen;
 } blake2s_t;
 
-typedef struct _blake2b_s {
+typedef struct blake2b_s {
   uint64_t h[8];
   uint64_t t[2];
   uint64_t f[2];
@@ -256,20 +256,20 @@ typedef struct _blake2b_s {
   size_t outlen;
 } blake2b_t;
 
-typedef struct _gost94_s {
+typedef struct gost94_s {
   uint8_t state[32];
   uint8_t sigma[32];
   unsigned char block[32];
   uint64_t size;
 } gost94_t;
 
-typedef struct _whirlpool_s {
+typedef struct whirlpool_s {
   uint64_t state[8];
   unsigned char block[64];
   uint64_t size;
 } whirlpool_t;
 
-typedef struct _hash_s {
+typedef struct hash_s {
   int type;
   union {
     md2_t md2;
@@ -287,7 +287,7 @@ typedef struct _hash_s {
   } ctx;
 } hash_t;
 
-typedef struct _hmac_s {
+typedef struct hmac_s {
   int type;
   hash_t inner;
   hash_t outer;

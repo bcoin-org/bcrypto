@@ -22,20 +22,16 @@ extern "C" {
 #define poly1305_init torsion_poly1305_init
 #define poly1305_update torsion_poly1305_update
 #define poly1305_final torsion_poly1305_final
-#define poly1305_auth torsion_poly1305_auth
-#define poly1305_verify torsion_poly1305_verify
-#define siphash torsion_siphash
-#define siphash32 torsion_siphash32
-#define siphash64 torsion_siphash64
-#define siphash32k256 torsion_siphash32k256
-#define siphash64k256 torsion_siphash64k256
-#define sipmod torsion_sipmod
+#define siphash_sum torsion_siphash_sum
+#define siphash_mod torsion_siphash_mod
+#define siphash128_sum torsion_siphash128_sum
+#define siphash256_sum torsion_siphash256_sum
 
 /*
  * Structs
  */
 
-typedef struct _poly1305_s {
+typedef struct poly1305_s {
   size_t aligner;
   unsigned char opaque[136];
 } poly1305_t;
@@ -48,44 +44,29 @@ TORSION_EXTERN void
 poly1305_init(poly1305_t *ctx, const unsigned char *key);
 
 TORSION_EXTERN void
-poly1305_update(poly1305_t *ctx, const unsigned char *m, size_t bytes);
+poly1305_update(poly1305_t *ctx, const unsigned char *data, size_t len);
 
 TORSION_EXTERN void
 poly1305_final(poly1305_t *ctx, unsigned char *mac);
-
-TORSION_EXTERN void
-poly1305_auth(unsigned char *mac,
-              const unsigned char *m,
-              size_t bytes,
-              const unsigned char *key);
-
-TORSION_EXTERN int
-poly1305_verify(const unsigned char *mac1, const unsigned char *mac2);
 
 /*
  * Siphash
  */
 
 TORSION_EXTERN uint64_t
-siphash(const unsigned char *data, size_t len, const unsigned char *key);
-
-TORSION_EXTERN uint32_t
-siphash32(uint32_t num, const unsigned char *key);
+siphash_sum(const unsigned char *data, size_t len, const unsigned char *key);
 
 TORSION_EXTERN uint64_t
-siphash64(uint64_t num, const unsigned char *key);
-
-TORSION_EXTERN uint32_t
-siphash32k256(uint32_t num, const unsigned char *key);
-
-TORSION_EXTERN uint64_t
-siphash64k256(uint64_t num, const unsigned char *key);
+siphash_mod(const unsigned char *data,
+            size_t len,
+            const unsigned char *key,
+            uint64_t mod);
 
 TORSION_EXTERN uint64_t
-sipmod(const unsigned char *data,
-       size_t len,
-       const unsigned char *key,
-       uint64_t m);
+siphash128_sum(uint64_t num, const unsigned char *key);
+
+TORSION_EXTERN uint64_t
+siphash256_sum(uint64_t num, const unsigned char *key);
 
 #ifdef __cplusplus
 }

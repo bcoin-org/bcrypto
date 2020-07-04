@@ -123,8 +123,8 @@ rng_init(rng_t *rng) {
   /* Cache the rdrand check. */
   rng->rdrand = torsion_has_rdrand();
 
-  cleanse(seed, sizeof(seed));
-  cleanse(&hash, sizeof(hash));
+  torsion_cleanse(seed, sizeof(seed));
+  torsion_cleanse(&hash, sizeof(hash));
 
   return 1;
 }
@@ -165,7 +165,7 @@ rng_generate(rng_t *rng, void *dst, size_t size) {
   chacha20_crypt(&ctx, key, key, 32);
 
   /* Cleanse the chacha state. */
-  cleanse(&ctx, sizeof(ctx));
+  torsion_cleanse(&ctx, sizeof(ctx));
 }
 
 uint32_t

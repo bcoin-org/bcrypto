@@ -19,7 +19,6 @@ extern "C" {
  * Symbol Aliases
  */
 
-#define cleanse torsion_cleanse
 #define murmur3_sum torsion_murmur3_sum
 #define murmur3_tweak torsion_murmur3_tweak
 
@@ -28,7 +27,14 @@ extern "C" {
  */
 
 TORSION_EXTERN void
-cleanse(void *ptr, size_t len);
+torsion_cleanse(void *ptr, size_t len);
+
+/*
+ * Memequal
+ */
+
+TORSION_EXTERN int
+torsion_memequal(const void *s1, const void *s2, size_t n);
 
 /*
  * Murmur3

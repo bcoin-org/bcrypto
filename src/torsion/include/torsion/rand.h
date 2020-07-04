@@ -28,7 +28,7 @@ extern "C" {
  * Structs
  */
 
-typedef struct _rng_s {
+typedef struct rng_s {
   uint64_t key[4];
   uint64_t zero;
   uint64_t nonce;

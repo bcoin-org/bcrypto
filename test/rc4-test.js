@@ -1,7 +1,7 @@
 'use strict';
 
 const assert = require('bsert');
-const RC4 = require('../lib/rc4');
+const ARC4 = require('../lib/rc4');
 
 // https://github.com/golang/go/blob/master/src/crypto/rc4/rc4_test.go
 const vectors = [
@@ -80,9 +80,9 @@ function encrypt(desc, c, src, expect) {
   }
 }
 
-describe('RC4', function() {
+describe('ARC4', function() {
   for (const [i, [key, keystream]] of vectors.entries()) {
-    it(`should pass RC4 vector #${i}`, () => {
+    it(`should pass ARC4 vector #${i}`, () => {
       const data = Buffer.alloc(keystream.length);
 
       for (let i = 0; i < data.length; i++)
@@ -94,7 +94,7 @@ describe('RC4', function() {
         expect[i] = i ^ keystream[i];
 
       for (let size = 1; size <= keystream.length; size++) {
-        const c = new RC4().init(key);
+        const c = new ARC4().init(key);
 
         let off = 0;
 

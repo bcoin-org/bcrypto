@@ -492,7 +492,7 @@ rsa_priv_generate(rsa_priv_t *k,
     break;
   }
 
-  cleanse(&rng, sizeof(rng));
+  torsion_cleanse(&rng, sizeof(rng));
 
   mpz_cleanse(pm1);
   mpz_cleanse(qm1);
@@ -851,7 +851,7 @@ rsa_priv_from_ned(rsa_priv_t *out,
   }
 
 done:
-  cleanse(&rng, sizeof(rng));
+  torsion_cleanse(&rng, sizeof(rng));
   mpz_cleanse(f);
   mpz_cleanse(nm1);
   mpz_cleanse(nm3);
@@ -1177,7 +1177,7 @@ rsa_pub_veil(const rsa_pub_t *k,
   mpz_export(out, v, (bits + 7) / 8, 1);
   ret = 1;
 fail:
-  cleanse(&rng, sizeof(rng));
+  torsion_cleanse(&rng, sizeof(rng));
   mpz_cleanse(vmax);
   mpz_cleanse(rmax);
   mpz_cleanse(c);
@@ -1274,10 +1274,10 @@ mgf1xor(int type,
     }
   }
 
-  cleanse(ctr, sizeof(ctr));
-  cleanse(digest, sizeof(digest));
-  cleanse(&cache, sizeof(cache));
-  cleanse(&hash, sizeof(hash));
+  torsion_cleanse(ctr, sizeof(ctr));
+  torsion_cleanse(digest, sizeof(digest));
+  torsion_cleanse(&cache, sizeof(cache));
+  torsion_cleanse(&hash, sizeof(hash));
 }
 
 /*
@@ -1849,8 +1849,8 @@ rsa_encrypt(unsigned char *out,
   r = 1;
 fail:
   rsa_pub_clear(&k);
-  cleanse(&rng, sizeof(rng));
-  if (r == 0) cleanse(out, klen);
+  torsion_cleanse(&rng, sizeof(rng));
+  if (r == 0) torsion_cleanse(out, klen);
   return r;
 }
 
@@ -1914,7 +1914,7 @@ rsa_decrypt(unsigned char *out,
   r = 1;
 fail:
   rsa_priv_clear(&k);
-  if (r == 0) cleanse(out, klen);
+  if (r == 0) torsion_cleanse(out, klen);
   return r;
 }
 
@@ -1992,9 +1992,9 @@ rsa_sign_pss(unsigned char *out,
   r = 1;
 fail:
   rsa_priv_clear(&k);
-  cleanse(&rng, sizeof(rng));
+  torsion_cleanse(&rng, sizeof(rng));
   if (salt != NULL) free(salt);
-  if (r == 0) cleanse(out, klen);
+  if (r == 0) torsion_cleanse(out, klen);
   return r;
 }
 
@@ -2151,9 +2151,9 @@ rsa_encrypt_oaep(unsigned char *out,
   r = 1;
 fail:
   rsa_pub_clear(&k);
-  cleanse(&rng, sizeof(drbg_t));
-  cleanse(&hash, sizeof(hash_t));
-  if (r == 0) cleanse(out, klen);
+  torsion_cleanse(&rng, sizeof(drbg_t));
+  torsion_cleanse(&hash, sizeof(hash_t));
+  if (r == 0) torsion_cleanse(out, klen);
   return r;
 }
 
@@ -2245,8 +2245,8 @@ rsa_decrypt_oaep(unsigned char *out,
   r = 1;
 fail:
   rsa_priv_clear(&k);
-  cleanse(&hash, sizeof(hash));
-  if (r == 0) cleanse(out, klen);
+  torsion_cleanse(&hash, sizeof(hash));
+  if (r == 0) torsion_cleanse(out, klen);
   return r;
 }
 
@@ -2280,7 +2280,7 @@ rsa_veil(unsigned char *out,
   *out_len = (bits + 7) / 8;
   r = 1;
 fail:
-  cleanse(&rng, sizeof(rng));
+  torsion_cleanse(&rng, sizeof(rng));
   rsa_pub_clear(&k);
   return r;
 }

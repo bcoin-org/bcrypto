@@ -1039,6 +1039,325 @@ aes_decrypt(const aes_t *ctx, unsigned char *dst, const unsigned char *src) {
 #undef TD4
 #undef RCON
 
+/*
+ * ARC2
+ *
+ * Resources:
+ *   https://en.wikipedia.org/wiki/RC2
+ *   https://github.com/golang/crypto/blob/master/pkcs12/internal/rc2/rc2.go
+ *   https://en.wikipedia.org/wiki/RC2
+ *   https://www.ietf.org/rfc/rfc2268.txt
+ *   http://people.csail.mit.edu/rivest/pubs/KRRR98.pdf
+ */
+
+#define PI arc2_PI
+#define ROTL16(x, b) (((x) >> (16 - (b))) | ((x) << (b)))
+
+static const uint8_t PI[256] = {
+  0xd9, 0x78, 0xf9, 0xc4, 0x19, 0xdd, 0xb5, 0xed,
+  0x28, 0xe9, 0xfd, 0x79, 0x4a, 0xa0, 0xd8, 0x9d,
+  0xc6, 0x7e, 0x37, 0x83, 0x2b, 0x76, 0x53, 0x8e,
+  0x62, 0x4c, 0x64, 0x88, 0x44, 0x8b, 0xfb, 0xa2,
+  0x17, 0x9a, 0x59, 0xf5, 0x87, 0xb3, 0x4f, 0x13,
+  0x61, 0x45, 0x6d, 0x8d, 0x09, 0x81, 0x7d, 0x32,
+  0xbd, 0x8f, 0x40, 0xeb, 0x86, 0xb7, 0x7b, 0x0b,
+  0xf0, 0x95, 0x21, 0x22, 0x5c, 0x6b, 0x4e, 0x82,
+  0x54, 0xd6, 0x65, 0x93, 0xce, 0x60, 0xb2, 0x1c,
+  0x73, 0x56, 0xc0, 0x14, 0xa7, 0x8c, 0xf1, 0xdc,
+  0x12, 0x75, 0xca, 0x1f, 0x3b, 0xbe, 0xe4, 0xd1,
+  0x42, 0x3d, 0xd4, 0x30, 0xa3, 0x3c, 0xb6, 0x26,
+  0x6f, 0xbf, 0x0e, 0xda, 0x46, 0x69, 0x07, 0x57,
+  0x27, 0xf2, 0x1d, 0x9b, 0xbc, 0x94, 0x43, 0x03,
+  0xf8, 0x11, 0xc7, 0xf6, 0x90, 0xef, 0x3e, 0xe7,
+  0x06, 0xc3, 0xd5, 0x2f, 0xc8, 0x66, 0x1e, 0xd7,
+  0x08, 0xe8, 0xea, 0xde, 0x80, 0x52, 0xee, 0xf7,
+  0x84, 0xaa, 0x72, 0xac, 0x35, 0x4d, 0x6a, 0x2a,
+  0x96, 0x1a, 0xd2, 0x71, 0x5a, 0x15, 0x49, 0x74,
+  0x4b, 0x9f, 0xd0, 0x5e, 0x04, 0x18, 0xa4, 0xec,
+  0xc2, 0xe0, 0x41, 0x6e, 0x0f, 0x51, 0xcb, 0xcc,
+  0x24, 0x91, 0xaf, 0x50, 0xa1, 0xf4, 0x70, 0x39,
+  0x99, 0x7c, 0x3a, 0x85, 0x23, 0xb8, 0xb4, 0x7a,
+  0xfc, 0x02, 0x36, 0x5b, 0x25, 0x55, 0x97, 0x31,
+  0x2d, 0x5d, 0xfa, 0x98, 0xe3, 0x8a, 0x92, 0xae,
+  0x05, 0xdf, 0x29, 0x10, 0x67, 0x6c, 0xba, 0xc9,
+  0xd3, 0x00, 0xe6, 0xcf, 0xe1, 0x9e, 0xa8, 0x2c,
+  0x63, 0x16, 0x01, 0x3f, 0x58, 0xe2, 0x89, 0xa9,
+  0x0d, 0x38, 0x34, 0x1b, 0xab, 0x33, 0xff, 0xb0,
+  0xbb, 0x48, 0x0c, 0x5f, 0xb9, 0xb1, 0xcd, 0x2e,
+  0xc5, 0xf3, 0xdb, 0x47, 0xe5, 0xa5, 0x9c, 0x77,
+  0x0a, 0xa6, 0x20, 0x68, 0xfe, 0x7f, 0xc1, 0xad
+};
+
+void
+arc2_init(arc2_t *ctx,
+          const unsigned char *key,
+          size_t key_len,
+          unsigned int ekb) {
+  /* Initialization logic borrowed from nettle. */
+  uint8_t L[128];
+  size_t i, len;
+  uint8_t x;
+
+  ASSERT(key_len >= 1 && key_len <= 128);
+  ASSERT(ekb <= 1024);
+
+  for (i = 0; i < key_len; i++)
+    L[i] = key[i];
+
+  for (i = key_len; i < 128; i++)
+    L[i] = PI[(L[i - key_len] + L[i - 1]) & 0xff];
+
+  L[0] = PI[L[0]];
+
+  if (ekb > 0 && ekb < 1024) {
+    len = (ekb + 7) >> 3;
+
+    i = 128 - len;
+    x = PI[L[i] & (255 >> (7 & -ekb))];
+
+    L[i] = x;
+
+    while (i--) {
+      x = PI[x ^ L[i + len]];
+      L[i] = x;
+    }
+  }
+
+  for (i = 0; i < 64; i++)
+    ctx->k[i] = read16le(L + i * 2);
+}
+
+void
+arc2_encrypt(const arc2_t *ctx, unsigned char *dst, const unsigned char *src) {
+  uint16_t r0 = read16le(src + 0);
+  uint16_t r1 = read16le(src + 2);
+  uint16_t r2 = read16le(src + 4);
+  uint16_t r3 = read16le(src + 6);
+  int j = 0;
+
+  while (j <= 16) {
+    /* mix r0 */
+    r0 += ctx->k[j];
+    r0 += r3 & r2;
+    r0 += ~r3 & r1;
+    r0 = ROTL16(r0, 1);
+    j += 1;
+
+    /* mix r1 */
+    r1 += ctx->k[j];
+    r1 += r0 & r3;
+    r1 += ~r0 & r2;
+    r1 = ROTL16(r1, 2);
+    j += 1;
+
+    /* mix r2 */
+    r2 += ctx->k[j];
+    r2 += r1 & r0;
+    r2 += ~r1 & r3;
+    r2 = ROTL16(r2, 3);
+    j += 1;
+
+    /* mix r3 */
+    r3 += ctx->k[j];
+    r3 += r2 & r1;
+    r3 += ~r2 & r0;
+    r3 = ROTL16(r3, 5);
+    j += 1;
+  };
+
+  r0 += ctx->k[r3 & 63];
+  r1 += ctx->k[r0 & 63];
+  r2 += ctx->k[r1 & 63];
+  r3 += ctx->k[r2 & 63];
+
+  while (j <= 40) {
+    /* mix r0 */
+    r0 += ctx->k[j];
+    r0 += r3 & r2;
+    r0 += ~r3 & r1;
+    r0 = ROTL16(r0, 1);
+    j += 1;
+
+    /* mix r1 */
+    r1 += ctx->k[j];
+    r1 += r0 & r3;
+    r1 += ~r0 & r2;
+    r1 = ROTL16(r1, 2);
+    j += 1;
+
+    /* mix r2 */
+    r2 += ctx->k[j];
+    r2 += r1 & r0;
+    r2 += ~r1 & r3;
+    r2 = ROTL16(r2, 3);
+    j += 1;
+
+    /* mix r3 */
+    r3 += ctx->k[j];
+    r3 += r2 & r1;
+    r3 += ~r2 & r0;
+    r3 = ROTL16(r3, 5);
+    j += 1;
+  }
+
+  r0 += ctx->k[r3 & 63];
+  r1 += ctx->k[r0 & 63];
+  r2 += ctx->k[r1 & 63];
+  r3 += ctx->k[r2 & 63];
+
+  while (j <= 60) {
+    /* mix r0 */
+    r0 += ctx->k[j];
+    r0 += r3 & r2;
+    r0 += ~r3 & r1;
+    r0 = ROTL16(r0, 1);
+    j += 1;
+
+    /* mix r1 */
+    r1 += ctx->k[j];
+    r1 += r0 & r3;
+    r1 += ~r0 & r2;
+    r1 = ROTL16(r1, 2);
+    j += 1;
+
+    /* mix r2 */
+    r2 += ctx->k[j];
+    r2 += r1 & r0;
+    r2 += ~r1 & r3;
+    r2 = ROTL16(r2, 3);
+    j += 1;
+
+    /* mix r3 */
+    r3 += ctx->k[j];
+    r3 += r2 & r1;
+    r3 += ~r2 & r0;
+    r3 = ROTL16(r3, 5);
+    j += 1;
+  }
+
+  write16le(dst + 0, r0);
+  write16le(dst + 2, r1);
+  write16le(dst + 4, r2);
+  write16le(dst + 6, r3);
+}
+
+void
+arc2_decrypt(const arc2_t *ctx, unsigned char *dst, const unsigned char *src) {
+  uint16_t r0 = read16le(src + 0);
+  uint16_t r1 = read16le(src + 2);
+  uint16_t r2 = read16le(src + 4);
+  uint16_t r3 = read16le(src + 6);
+  int j = 63;
+
+  while (j >= 44) {
+    /* unmix r3 */
+    r3 = ROTL16(r3, 16 - 5);
+    r3 -= ctx->k[j];
+    r3 -= r2 & r1;
+    r3 -= ~r2 & r0;
+    j -= 1;
+
+    /* unmix r2 */
+    r2 = ROTL16(r2, 16 - 3);
+    r2 -= ctx->k[j];
+    r2 -= r1 & r0;
+    r2 -= ~r1 & r3;
+    j -= 1;
+
+    /* unmix r1 */
+    r1 = ROTL16(r1, 16 - 2);
+    r1 -= ctx->k[j];
+    r1 -= r0 & r3;
+    r1 -= ~r0 & r2;
+    j -= 1;
+
+    /* unmix r0 */
+    r0 = ROTL16(r0, 16 - 1);
+    r0 -= ctx->k[j];
+    r0 -= r3 & r2;
+    r0 -= ~r3 & r1;
+    j -= 1;
+  }
+
+  r3 -= ctx->k[r2 & 63];
+  r2 -= ctx->k[r1 & 63];
+  r1 -= ctx->k[r0 & 63];
+  r0 -= ctx->k[r3 & 63];
+
+  while (j >= 20) {
+    /* unmix r3 */
+    r3 = ROTL16(r3, 16 - 5);
+    r3 -= ctx->k[j];
+    r3 -= r2 & r1;
+    r3 -= ~r2 & r0;
+    j -= 1;
+
+    /* unmix r2 */
+    r2 = ROTL16(r2, 16 - 3);
+    r2 -= ctx->k[j];
+    r2 -= r1 & r0;
+    r2 -= ~r1 & r3;
+    j -= 1;
+
+    /* unmix r1 */
+    r1 = ROTL16(r1, 16 - 2);
+    r1 -= ctx->k[j];
+    r1 -= r0 & r3;
+    r1 -= ~r0 & r2;
+    j -= 1;
+
+    /* unmix r0 */
+    r0 = ROTL16(r0, 16 - 1);
+    r0 -= ctx->k[j];
+    r0 -= r3 & r2;
+    r0 -= ~r3 & r1;
+    j -= 1;
+  }
+
+  r3 -= ctx->k[r2 & 63];
+  r2 -= ctx->k[r1 & 63];
+  r1 -= ctx->k[r0 & 63];
+  r0 -= ctx->k[r3 & 63];
+
+  while (j >= 0) {
+    /* unmix r3 */
+    r3 = ROTL16(r3, 16 - 5);
+    r3 -= ctx->k[j];
+    r3 -= r2 & r1;
+    r3 -= ~r2 & r0;
+    j -= 1;
+
+    /* unmix r2 */
+    r2 = ROTL16(r2, 16 - 3);
+    r2 -= ctx->k[j];
+    r2 -= r1 & r0;
+    r2 -= ~r1 & r3;
+    j -= 1;
+
+    /* unmix r1 */
+    r1 = ROTL16(r1, 16 - 2);
+    r1 -= ctx->k[j];
+    r1 -= r0 & r3;
+    r1 -= ~r0 & r2;
+    j -= 1;
+
+    /* unmix r0 */
+    r0 = ROTL16(r0, 16 - 1);
+    r0 -= ctx->k[j];
+    r0 -= r3 & r2;
+    r0 -= ~r3 & r1;
+    j -= 1;
+  }
+
+  write16le(dst + 0, r0);
+  write16le(dst + 2, r1);
+  write16le(dst + 4, r2);
+  write16le(dst + 6, r3);
+}
+
+#undef PI
+#undef ROTL16
+
 /**
  * Blowfish
  *
@@ -3934,325 +4253,6 @@ idea_decrypt(const idea_t *ctx, unsigned char *dst, const unsigned char *src) {
 #undef mul16
 
 /*
- * RC2
- *
- * Resources:
- *   https://en.wikipedia.org/wiki/RC2
- *   https://github.com/golang/crypto/blob/master/pkcs12/internal/rc2/rc2.go
- *   https://en.wikipedia.org/wiki/RC2
- *   https://www.ietf.org/rfc/rfc2268.txt
- *   http://people.csail.mit.edu/rivest/pubs/KRRR98.pdf
- */
-
-#define PI rc2_PI
-#define ROTL16(x, b) (((x) >> (16 - (b))) | ((x) << (b)))
-
-static const uint8_t PI[256] = {
-  0xd9, 0x78, 0xf9, 0xc4, 0x19, 0xdd, 0xb5, 0xed,
-  0x28, 0xe9, 0xfd, 0x79, 0x4a, 0xa0, 0xd8, 0x9d,
-  0xc6, 0x7e, 0x37, 0x83, 0x2b, 0x76, 0x53, 0x8e,
-  0x62, 0x4c, 0x64, 0x88, 0x44, 0x8b, 0xfb, 0xa2,
-  0x17, 0x9a, 0x59, 0xf5, 0x87, 0xb3, 0x4f, 0x13,
-  0x61, 0x45, 0x6d, 0x8d, 0x09, 0x81, 0x7d, 0x32,
-  0xbd, 0x8f, 0x40, 0xeb, 0x86, 0xb7, 0x7b, 0x0b,
-  0xf0, 0x95, 0x21, 0x22, 0x5c, 0x6b, 0x4e, 0x82,
-  0x54, 0xd6, 0x65, 0x93, 0xce, 0x60, 0xb2, 0x1c,
-  0x73, 0x56, 0xc0, 0x14, 0xa7, 0x8c, 0xf1, 0xdc,
-  0x12, 0x75, 0xca, 0x1f, 0x3b, 0xbe, 0xe4, 0xd1,
-  0x42, 0x3d, 0xd4, 0x30, 0xa3, 0x3c, 0xb6, 0x26,
-  0x6f, 0xbf, 0x0e, 0xda, 0x46, 0x69, 0x07, 0x57,
-  0x27, 0xf2, 0x1d, 0x9b, 0xbc, 0x94, 0x43, 0x03,
-  0xf8, 0x11, 0xc7, 0xf6, 0x90, 0xef, 0x3e, 0xe7,
-  0x06, 0xc3, 0xd5, 0x2f, 0xc8, 0x66, 0x1e, 0xd7,
-  0x08, 0xe8, 0xea, 0xde, 0x80, 0x52, 0xee, 0xf7,
-  0x84, 0xaa, 0x72, 0xac, 0x35, 0x4d, 0x6a, 0x2a,
-  0x96, 0x1a, 0xd2, 0x71, 0x5a, 0x15, 0x49, 0x74,
-  0x4b, 0x9f, 0xd0, 0x5e, 0x04, 0x18, 0xa4, 0xec,
-  0xc2, 0xe0, 0x41, 0x6e, 0x0f, 0x51, 0xcb, 0xcc,
-  0x24, 0x91, 0xaf, 0x50, 0xa1, 0xf4, 0x70, 0x39,
-  0x99, 0x7c, 0x3a, 0x85, 0x23, 0xb8, 0xb4, 0x7a,
-  0xfc, 0x02, 0x36, 0x5b, 0x25, 0x55, 0x97, 0x31,
-  0x2d, 0x5d, 0xfa, 0x98, 0xe3, 0x8a, 0x92, 0xae,
-  0x05, 0xdf, 0x29, 0x10, 0x67, 0x6c, 0xba, 0xc9,
-  0xd3, 0x00, 0xe6, 0xcf, 0xe1, 0x9e, 0xa8, 0x2c,
-  0x63, 0x16, 0x01, 0x3f, 0x58, 0xe2, 0x89, 0xa9,
-  0x0d, 0x38, 0x34, 0x1b, 0xab, 0x33, 0xff, 0xb0,
-  0xbb, 0x48, 0x0c, 0x5f, 0xb9, 0xb1, 0xcd, 0x2e,
-  0xc5, 0xf3, 0xdb, 0x47, 0xe5, 0xa5, 0x9c, 0x77,
-  0x0a, 0xa6, 0x20, 0x68, 0xfe, 0x7f, 0xc1, 0xad
-};
-
-void
-rc2_init(rc2_t *ctx,
-         const unsigned char *key,
-         size_t key_len,
-         unsigned int ekb) {
-  /* Initialization logic borrowed from nettle. */
-  uint8_t L[128];
-  size_t i, len;
-  uint8_t x;
-
-  ASSERT(key_len >= 1 && key_len <= 128);
-  ASSERT(ekb <= 1024);
-
-  for (i = 0; i < key_len; i++)
-    L[i] = key[i];
-
-  for (i = key_len; i < 128; i++)
-    L[i] = PI[(L[i - key_len] + L[i - 1]) & 0xff];
-
-  L[0] = PI[L[0]];
-
-  if (ekb > 0 && ekb < 1024) {
-    len = (ekb + 7) >> 3;
-
-    i = 128 - len;
-    x = PI[L[i] & (255 >> (7 & -ekb))];
-
-    L[i] = x;
-
-    while (i--) {
-      x = PI[x ^ L[i + len]];
-      L[i] = x;
-    }
-  }
-
-  for (i = 0; i < 64; i++)
-    ctx->k[i] = read16le(L + i * 2);
-}
-
-void
-rc2_encrypt(const rc2_t *ctx, unsigned char *dst, const unsigned char *src) {
-  uint16_t r0 = read16le(src + 0);
-  uint16_t r1 = read16le(src + 2);
-  uint16_t r2 = read16le(src + 4);
-  uint16_t r3 = read16le(src + 6);
-  int j = 0;
-
-  while (j <= 16) {
-    /* mix r0 */
-    r0 += ctx->k[j];
-    r0 += r3 & r2;
-    r0 += ~r3 & r1;
-    r0 = ROTL16(r0, 1);
-    j += 1;
-
-    /* mix r1 */
-    r1 += ctx->k[j];
-    r1 += r0 & r3;
-    r1 += ~r0 & r2;
-    r1 = ROTL16(r1, 2);
-    j += 1;
-
-    /* mix r2 */
-    r2 += ctx->k[j];
-    r2 += r1 & r0;
-    r2 += ~r1 & r3;
-    r2 = ROTL16(r2, 3);
-    j += 1;
-
-    /* mix r3 */
-    r3 += ctx->k[j];
-    r3 += r2 & r1;
-    r3 += ~r2 & r0;
-    r3 = ROTL16(r3, 5);
-    j += 1;
-  };
-
-  r0 += ctx->k[r3 & 63];
-  r1 += ctx->k[r0 & 63];
-  r2 += ctx->k[r1 & 63];
-  r3 += ctx->k[r2 & 63];
-
-  while (j <= 40) {
-    /* mix r0 */
-    r0 += ctx->k[j];
-    r0 += r3 & r2;
-    r0 += ~r3 & r1;
-    r0 = ROTL16(r0, 1);
-    j += 1;
-
-    /* mix r1 */
-    r1 += ctx->k[j];
-    r1 += r0 & r3;
-    r1 += ~r0 & r2;
-    r1 = ROTL16(r1, 2);
-    j += 1;
-
-    /* mix r2 */
-    r2 += ctx->k[j];
-    r2 += r1 & r0;
-    r2 += ~r1 & r3;
-    r2 = ROTL16(r2, 3);
-    j += 1;
-
-    /* mix r3 */
-    r3 += ctx->k[j];
-    r3 += r2 & r1;
-    r3 += ~r2 & r0;
-    r3 = ROTL16(r3, 5);
-    j += 1;
-  }
-
-  r0 += ctx->k[r3 & 63];
-  r1 += ctx->k[r0 & 63];
-  r2 += ctx->k[r1 & 63];
-  r3 += ctx->k[r2 & 63];
-
-  while (j <= 60) {
-    /* mix r0 */
-    r0 += ctx->k[j];
-    r0 += r3 & r2;
-    r0 += ~r3 & r1;
-    r0 = ROTL16(r0, 1);
-    j += 1;
-
-    /* mix r1 */
-    r1 += ctx->k[j];
-    r1 += r0 & r3;
-    r1 += ~r0 & r2;
-    r1 = ROTL16(r1, 2);
-    j += 1;
-
-    /* mix r2 */
-    r2 += ctx->k[j];
-    r2 += r1 & r0;
-    r2 += ~r1 & r3;
-    r2 = ROTL16(r2, 3);
-    j += 1;
-
-    /* mix r3 */
-    r3 += ctx->k[j];
-    r3 += r2 & r1;
-    r3 += ~r2 & r0;
-    r3 = ROTL16(r3, 5);
-    j += 1;
-  }
-
-  write16le(dst + 0, r0);
-  write16le(dst + 2, r1);
-  write16le(dst + 4, r2);
-  write16le(dst + 6, r3);
-}
-
-void
-rc2_decrypt(const rc2_t *ctx, unsigned char *dst, const unsigned char *src) {
-  uint16_t r0 = read16le(src + 0);
-  uint16_t r1 = read16le(src + 2);
-  uint16_t r2 = read16le(src + 4);
-  uint16_t r3 = read16le(src + 6);
-  int j = 63;
-
-  while (j >= 44) {
-    /* unmix r3 */
-    r3 = ROTL16(r3, 16 - 5);
-    r3 -= ctx->k[j];
-    r3 -= r2 & r1;
-    r3 -= ~r2 & r0;
-    j -= 1;
-
-    /* unmix r2 */
-    r2 = ROTL16(r2, 16 - 3);
-    r2 -= ctx->k[j];
-    r2 -= r1 & r0;
-    r2 -= ~r1 & r3;
-    j -= 1;
-
-    /* unmix r1 */
-    r1 = ROTL16(r1, 16 - 2);
-    r1 -= ctx->k[j];
-    r1 -= r0 & r3;
-    r1 -= ~r0 & r2;
-    j -= 1;
-
-    /* unmix r0 */
-    r0 = ROTL16(r0, 16 - 1);
-    r0 -= ctx->k[j];
-    r0 -= r3 & r2;
-    r0 -= ~r3 & r1;
-    j -= 1;
-  }
-
-  r3 -= ctx->k[r2 & 63];
-  r2 -= ctx->k[r1 & 63];
-  r1 -= ctx->k[r0 & 63];
-  r0 -= ctx->k[r3 & 63];
-
-  while (j >= 20) {
-    /* unmix r3 */
-    r3 = ROTL16(r3, 16 - 5);
-    r3 -= ctx->k[j];
-    r3 -= r2 & r1;
-    r3 -= ~r2 & r0;
-    j -= 1;
-
-    /* unmix r2 */
-    r2 = ROTL16(r2, 16 - 3);
-    r2 -= ctx->k[j];
-    r2 -= r1 & r0;
-    r2 -= ~r1 & r3;
-    j -= 1;
-
-    /* unmix r1 */
-    r1 = ROTL16(r1, 16 - 2);
-    r1 -= ctx->k[j];
-    r1 -= r0 & r3;
-    r1 -= ~r0 & r2;
-    j -= 1;
-
-    /* unmix r0 */
-    r0 = ROTL16(r0, 16 - 1);
-    r0 -= ctx->k[j];
-    r0 -= r3 & r2;
-    r0 -= ~r3 & r1;
-    j -= 1;
-  }
-
-  r3 -= ctx->k[r2 & 63];
-  r2 -= ctx->k[r1 & 63];
-  r1 -= ctx->k[r0 & 63];
-  r0 -= ctx->k[r3 & 63];
-
-  while (j >= 0) {
-    /* unmix r3 */
-    r3 = ROTL16(r3, 16 - 5);
-    r3 -= ctx->k[j];
-    r3 -= r2 & r1;
-    r3 -= ~r2 & r0;
-    j -= 1;
-
-    /* unmix r2 */
-    r2 = ROTL16(r2, 16 - 3);
-    r2 -= ctx->k[j];
-    r2 -= r1 & r0;
-    r2 -= ~r1 & r3;
-    j -= 1;
-
-    /* unmix r1 */
-    r1 = ROTL16(r1, 16 - 2);
-    r1 -= ctx->k[j];
-    r1 -= r0 & r3;
-    r1 -= ~r0 & r2;
-    j -= 1;
-
-    /* unmix r0 */
-    r0 = ROTL16(r0, 16 - 1);
-    r0 -= ctx->k[j];
-    r0 -= r3 & r2;
-    r0 -= ~r3 & r1;
-    j -= 1;
-  }
-
-  write16le(dst + 0, r0);
-  write16le(dst + 2, r1);
-  write16le(dst + 4, r2);
-  write16le(dst + 6, r3);
-}
-
-#undef PI
-#undef ROTL16
-
-/*
  * Serpent
  *
  * Resources:
@@ -5443,6 +5443,18 @@ cipher_key_size(int type) {
       return 24;
     case CIPHER_AES256:
       return 32;
+    case CIPHER_ARC2:
+      return 8;
+    case CIPHER_ARC2_GUTMANN:
+      return 8;
+    case CIPHER_ARC2_40:
+      return 5;
+    case CIPHER_ARC2_64:
+      return 8;
+    case CIPHER_ARC2_128:
+      return 16;
+    case CIPHER_ARC2_128_GUTMANN:
+      return 16;
     case CIPHER_BLOWFISH:
       return 16;
     case CIPHER_CAMELLIA128:
@@ -5460,18 +5472,6 @@ cipher_key_size(int type) {
     case CIPHER_DES_EDE3:
       return 24;
     case CIPHER_IDEA:
-      return 16;
-    case CIPHER_RC2:
-      return 8;
-    case CIPHER_RC2_GUTMANN:
-      return 8;
-    case CIPHER_RC2_40:
-      return 5;
-    case CIPHER_RC2_64:
-      return 8;
-    case CIPHER_RC2_128:
-      return 16;
-    case CIPHER_RC2_128_GUTMANN:
       return 16;
     case CIPHER_SERPENT128:
       return 16;
@@ -5499,6 +5499,18 @@ cipher_block_size(int type) {
       return 16;
     case CIPHER_AES256:
       return 16;
+    case CIPHER_ARC2:
+      return 8;
+    case CIPHER_ARC2_GUTMANN:
+      return 8;
+    case CIPHER_ARC2_40:
+      return 8;
+    case CIPHER_ARC2_64:
+      return 8;
+    case CIPHER_ARC2_128:
+      return 8;
+    case CIPHER_ARC2_128_GUTMANN:
+      return 8;
     case CIPHER_BLOWFISH:
       return 8;
     case CIPHER_CAMELLIA128:
@@ -5516,18 +5528,6 @@ cipher_block_size(int type) {
     case CIPHER_DES_EDE3:
       return 8;
     case CIPHER_IDEA:
-      return 8;
-    case CIPHER_RC2:
-      return 8;
-    case CIPHER_RC2_GUTMANN:
-      return 8;
-    case CIPHER_RC2_40:
-      return 8;
-    case CIPHER_RC2_64:
-      return 8;
-    case CIPHER_RC2_128:
-      return 8;
-    case CIPHER_RC2_128_GUTMANN:
       return 8;
     case CIPHER_SERPENT128:
       return 16;
@@ -5575,6 +5575,60 @@ cipher_init(cipher_t *ctx, int type, const unsigned char *key, size_t key_len) {
         goto fail;
 
       aes_init(&ctx->ctx.aes, 256, key);
+
+      break;
+    }
+
+    case CIPHER_ARC2: {
+      if (key_len < 1 || key_len > 128)
+        goto fail;
+
+      arc2_init(&ctx->ctx.arc2, key, key_len, key_len * 8);
+
+      break;
+    }
+
+    case CIPHER_ARC2_GUTMANN: {
+      if (key_len < 1 || key_len > 128)
+        goto fail;
+
+      arc2_init(&ctx->ctx.arc2, key, key_len, 0);
+
+      break;
+    }
+
+    case CIPHER_ARC2_40: {
+      if (key_len != 5)
+        goto fail;
+
+      arc2_init(&ctx->ctx.arc2, key, key_len, 40);
+
+      break;
+    }
+
+    case CIPHER_ARC2_64: {
+      if (key_len != 8)
+        goto fail;
+
+      arc2_init(&ctx->ctx.arc2, key, key_len, 64);
+
+      break;
+    }
+
+    case CIPHER_ARC2_128: {
+      if (key_len != 16)
+        goto fail;
+
+      arc2_init(&ctx->ctx.arc2, key, key_len, 128);
+
+      break;
+    }
+
+    case CIPHER_ARC2_128_GUTMANN: {
+      if (key_len != 16)
+        goto fail;
+
+      arc2_init(&ctx->ctx.arc2, key, key_len, 1024);
 
       break;
     }
@@ -5660,60 +5714,6 @@ cipher_init(cipher_t *ctx, int type, const unsigned char *key, size_t key_len) {
       break;
     }
 
-    case CIPHER_RC2: {
-      if (key_len < 1 || key_len > 128)
-        goto fail;
-
-      rc2_init(&ctx->ctx.rc2, key, key_len, key_len * 8);
-
-      break;
-    }
-
-    case CIPHER_RC2_GUTMANN: {
-      if (key_len < 1 || key_len > 128)
-        goto fail;
-
-      rc2_init(&ctx->ctx.rc2, key, key_len, 0);
-
-      break;
-    }
-
-    case CIPHER_RC2_40: {
-      if (key_len != 5)
-        goto fail;
-
-      rc2_init(&ctx->ctx.rc2, key, key_len, 40);
-
-      break;
-    }
-
-    case CIPHER_RC2_64: {
-      if (key_len != 8)
-        goto fail;
-
-      rc2_init(&ctx->ctx.rc2, key, key_len, 64);
-
-      break;
-    }
-
-    case CIPHER_RC2_128: {
-      if (key_len != 16)
-        goto fail;
-
-      rc2_init(&ctx->ctx.rc2, key, key_len, 128);
-
-      break;
-    }
-
-    case CIPHER_RC2_128_GUTMANN: {
-      if (key_len != 16)
-        goto fail;
-
-      rc2_init(&ctx->ctx.rc2, key, key_len, 1024);
-
-      break;
-    }
-
     case CIPHER_SERPENT128: {
       if (key_len != 16)
         goto fail;
@@ -5789,6 +5789,14 @@ cipher_encrypt(const cipher_t *ctx,
     case CIPHER_AES256:
       aes_encrypt(&ctx->ctx.aes, dst, src);
       break;
+    case CIPHER_ARC2:
+    case CIPHER_ARC2_GUTMANN:
+    case CIPHER_ARC2_40:
+    case CIPHER_ARC2_64:
+    case CIPHER_ARC2_128:
+    case CIPHER_ARC2_128_GUTMANN:
+      arc2_encrypt(&ctx->ctx.arc2, dst, src);
+      break;
     case CIPHER_BLOWFISH:
       blowfish_encrypt(&ctx->ctx.blowfish, dst, src);
       break;
@@ -5811,14 +5819,6 @@ cipher_encrypt(const cipher_t *ctx,
       break;
     case CIPHER_IDEA:
       idea_encrypt(&ctx->ctx.idea, dst, src);
-      break;
-    case CIPHER_RC2:
-    case CIPHER_RC2_GUTMANN:
-    case CIPHER_RC2_40:
-    case CIPHER_RC2_64:
-    case CIPHER_RC2_128:
-    case CIPHER_RC2_128_GUTMANN:
-      rc2_encrypt(&ctx->ctx.rc2, dst, src);
       break;
     case CIPHER_SERPENT128:
     case CIPHER_SERPENT192:
@@ -5846,6 +5846,14 @@ cipher_decrypt(const cipher_t *ctx,
     case CIPHER_AES256:
       aes_decrypt(&ctx->ctx.aes, dst, src);
       break;
+    case CIPHER_ARC2:
+    case CIPHER_ARC2_GUTMANN:
+    case CIPHER_ARC2_40:
+    case CIPHER_ARC2_64:
+    case CIPHER_ARC2_128:
+    case CIPHER_ARC2_128_GUTMANN:
+      arc2_decrypt(&ctx->ctx.arc2, dst, src);
+      break;
     case CIPHER_BLOWFISH:
       blowfish_decrypt(&ctx->ctx.blowfish, dst, src);
       break;
@@ -5868,14 +5876,6 @@ cipher_decrypt(const cipher_t *ctx,
       break;
     case CIPHER_IDEA:
       idea_decrypt(&ctx->ctx.idea, dst, src);
-      break;
-    case CIPHER_RC2:
-    case CIPHER_RC2_GUTMANN:
-    case CIPHER_RC2_40:
-    case CIPHER_RC2_64:
-    case CIPHER_RC2_128:
-    case CIPHER_RC2_128_GUTMANN:
-      rc2_decrypt(&ctx->ctx.rc2, dst, src);
       break;
     case CIPHER_SERPENT128:
     case CIPHER_SERPENT192:
@@ -6081,7 +6081,7 @@ cbc_unsteal(cbc_t *mode,
   for (i = 0; i < cipher->size; i++)
     last[i] ^= tmp[i];
 
-  cleanse(tmp, cipher->size);
+  torsion_cleanse(tmp, cipher->size);
 }
 
 /*
@@ -6104,7 +6104,7 @@ xts_setup(xts_t *mode, const cipher_t *cipher,
 
   cipher_encrypt(&c, mode->tweak, mode->tweak);
 
-  cleanse(&c, sizeof(c));
+  torsion_cleanse(&c, sizeof(c));
 
   return 1;
 }
@@ -7760,7 +7760,7 @@ cipher_static_crypt(unsigned char *output,
   *output_len = len1 + len2;
   r = 1;
 fail:
-  cleanse(&ctx, sizeof(ctx));
+  torsion_cleanse(&ctx, sizeof(ctx));
   return r;
 }
 
