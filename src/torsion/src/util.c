@@ -59,8 +59,8 @@ torsion_cleanse(void *ptr, size_t len) {
 
 int
 torsion_memequal(const void *s1, const void *s2, size_t n) {
-  const unsigned char *x = (const unsigned char *)s1;
-  const unsigned char *y = (const unsigned char *)s2;
+  const unsigned char *x = s1;
+  const unsigned char *y = s2;
   uint32_t z = 0;
 
   while (n--)
@@ -106,11 +106,11 @@ murmur3_sum(const unsigned char *data, size_t len, uint32_t seed) {
 
   switch (left) {
     case 3:
-      k1 ^= (uint32_t)(data[2] & 0xff) << 16;
+      k1 ^= (uint32_t)data[2] << 16;
     case 2:
-      k1 ^= (uint32_t)(data[1] & 0xff) << 8;
+      k1 ^= (uint32_t)data[1] << 8;
     case 1:
-      k1 ^= (uint32_t)(data[0] & 0xff) << 0;
+      k1 ^= (uint32_t)data[0] << 0;
       k1 *= c1;
       k1 = ROTL32(k1, 15);
       k1 *= c2;

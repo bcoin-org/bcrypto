@@ -49,7 +49,7 @@ chachapoly_init(chachapoly_t *aead,
 
 void
 chachapoly_aad(chachapoly_t *aead, const unsigned char *aad, size_t len) {
-  ASSERT(aead->mode == 0);
+  CHECK(aead->mode == 0);
 
   poly1305_update(&aead->poly, aad, len);
 
@@ -74,7 +74,7 @@ chachapoly_encrypt(chachapoly_t *aead,
     aead->mode = 1;
   }
 
-  ASSERT(aead->mode == 1);
+  CHECK(aead->mode == 1);
 
   chacha20_crypt(&aead->chacha, dst, src, len);
   poly1305_update(&aead->poly, dst, len);
@@ -92,7 +92,7 @@ chachapoly_decrypt(chachapoly_t *aead,
     aead->mode = 2;
   }
 
-  ASSERT(aead->mode == 2);
+  CHECK(aead->mode == 2);
 
   aead->ctlen += len;
 
@@ -107,7 +107,7 @@ chachapoly_auth(chachapoly_t *aead, const unsigned char *data, size_t len) {
     aead->mode = 3;
   }
 
-  ASSERT(aead->mode == 3);
+  CHECK(aead->mode == 3);
 
   aead->ctlen += len;
 

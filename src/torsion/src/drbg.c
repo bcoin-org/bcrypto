@@ -65,7 +65,7 @@ hmac_drbg_init(hmac_drbg_t *drbg,
                size_t seed_len) {
   size_t size = hash_output_size(type);
 
-  ASSERT(size != 0);
+  CHECK(size != 0);
 
   drbg->type = type;
   drbg->size = size;
@@ -130,7 +130,7 @@ hash_drbg_init(hash_drbg_t *drbg,
   unsigned char state[6];
   size_t i, blocks;
 
-  ASSERT(size != 0);
+  CHECK(size != 0);
 
   drbg->type = type;
   drbg->size = size;
@@ -473,7 +473,7 @@ ctr_drbg_init(ctr_drbg_t *drbg,
   unsigned char entropy[MAX_ENT_SIZE];
   size_t i;
 
-  ASSERT(bits == 128 || bits == 192 || bits == 256);
+  CHECK(bits == 128 || bits == 192 || bits == 256);
 
   drbg->key_size = bits / 8;
   drbg->blk_size = 16;

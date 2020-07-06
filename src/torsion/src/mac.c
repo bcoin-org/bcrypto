@@ -40,9 +40,8 @@ typedef struct poly1305_internal_s {
   uint32_t h[5];
   uint32_t pad[4];
 #endif
-  size_t size;
   unsigned char block[16];
-  unsigned char final;
+  size_t size;
 } poly1305_internal_t;
 
 STATIC_ASSERT(sizeof(poly1305_t) >= sizeof(poly1305_internal_t));
@@ -69,7 +68,6 @@ poly1305_init(poly1305_t *ctx, const unsigned char *key) {
   st->pad[1] = read64le(key + 24);
 
   st->size = 0;
-  st->final = 0;
 #else /* TORSION_HAVE_INT128 */
   /* r &= 0xffffffc0ffffffc0ffffffc0fffffff */
   st->r[0] = (read32le(key +  0) >> 0) & 0x3ffffff;
@@ -92,16 +90,15 @@ poly1305_init(poly1305_t *ctx, const unsigned char *key) {
   st->pad[3] = read32le(key + 28);
 
   st->size = 0;
-  st->final = 0;
 #endif /* TORSION_HAVE_INT128 */
 }
 
 static void
 poly1305_blocks(poly1305_internal_t *st,
                 const unsigned char *data,
-                size_t len) {
+                size_t len, int final) {
 #ifdef TORSION_HAVE_INT128
-  uint64_t hibit = st->final ? 0 : (UINT64_C(1) << 40); /* 1 << 128 */
+  uint64_t hibit = final ? 0 : (UINT64_C(1) << 40); /* 1 << 128 */
   uint64_t r0 = st->r[0];
   uint64_t r1 = st->r[1];
   uint64_t r2 = st->r[2];
@@ -155,7 +152,7 @@ poly1305_blocks(poly1305_internal_t *st,
 
     h0 += c * 5;
     c = (h0 >> 44);
-    h0 = h0 & UINT64_C(0xfffffffffff);
+    h0 &= UINT64_C(0xfffffffffff);
 
     h1 += c;
 
@@ -167,7 +164,7 @@ poly1305_blocks(poly1305_internal_t *st,
   st->h[1] = h1;
   st->h[2] = h2;
 #else /* TORSION_HAVE_INT128 */
-  uint32_t hibit = st->final ? 0 : (UINT32_C(1) << 24); /* 1 << 128 */
+  uint32_t hibit = final ? 0 : (UINT32_C(1) << 24); /* 1 << 128 */
   uint32_t r0 = st->r[0];
   uint32_t r1 = st->r[1];
   uint32_t r2 = st->r[2];
@@ -246,7 +243,7 @@ poly1305_blocks(poly1305_internal_t *st,
     h0 += c * 5;
 
     c = (h0 >> 26);
-    h0 = h0 & 0x3ffffff;
+    h0 &= 0x3ffffff;
     h1 += c;
 
     data += 16;
@@ -283,7 +280,7 @@ poly1305_update(poly1305_t *ctx, const unsigned char *data, size_t len) {
     if (st->size < 16)
       return;
 
-    poly1305_blocks(st, st->block, 16);
+    poly1305_blocks(st, st->block, 16, 0);
 
     st->size = 0;
   }
@@ -292,7 +289,7 @@ poly1305_update(poly1305_t *ctx, const unsigned char *data, size_t len) {
   if (len >= 16) {
     size_t want = len & ~15;
 
-    poly1305_blocks(st, data, want);
+    poly1305_blocks(st, data, want, 0);
 
     data += want;
     len -= want;
@@ -319,14 +316,12 @@ poly1305_final(poly1305_t *ctx, unsigned char *mac) {
   if (st->size > 0) {
     size_t i = st->size;
 
-    st->block[i] = 1;
+    st->block[i++] = 1;
 
-    for (i = i + 1; i < 16; i++)
+    for (; i < 16; i++)
       st->block[i] = 0;
 
-    st->final = 1;
-
-    poly1305_blocks(st, st->block, 16);
+    poly1305_blocks(st, st->block, 16, 1);
   }
 
   /* fully carry h */
@@ -414,9 +409,7 @@ poly1305_final(poly1305_t *ctx, unsigned char *mac) {
     for (; i < 16; i++)
       st->block[i] = 0;
 
-    st->final = 1;
-
-    poly1305_blocks(st, st->block, 16);
+    poly1305_blocks(st, st->block, 16, 1);
   }
 
   /* Fully carry h. */
@@ -427,23 +420,23 @@ poly1305_final(poly1305_t *ctx, unsigned char *mac) {
   h4 = st->h[4];
 
   c = h1 >> 26;
-  h1 = h1 & 0x3ffffff;
+  h1 &= 0x3ffffff;
   h2 += c;
 
   c = h2 >> 26;
-  h2 = h2 & 0x3ffffff;
+  h2 &= 0x3ffffff;
   h3 += c;
 
   c = h3 >> 26;
-  h3 = h3 & 0x3ffffff;
+  h3 &= 0x3ffffff;
   h4 += c;
 
   c = h4 >> 26;
-  h4 = h4 & 0x3ffffff;
+  h4 &= 0x3ffffff;
   h0 += c * 5;
 
   c = h0 >> 26;
-  h0 = h0 & 0x3ffffff;
+  h0 &= 0x3ffffff;
 
   h1 += c;
 
@@ -552,9 +545,10 @@ siphash_sum(const unsigned char *data, size_t len, const unsigned char *key) {
   uint64_t v1 = k1 ^ c1;
   uint64_t v2 = k0 ^ c2;
   uint64_t v3 = k1 ^ c3;
+  uint64_t word;
 
   while (len >= 8) {
-    uint64_t word = read64le(data);
+    word = read64le(data);
 
     v3 ^= word;
     SIPROUND;

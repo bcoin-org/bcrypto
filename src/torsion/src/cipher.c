@@ -664,17 +664,10 @@ aes_init_encrypt(aes_t *ctx, unsigned int bits, const unsigned char *key) {
   size_t p = 0;
   size_t i = 0;
 
+  CHECK(bits == 128 || bits == 192 || bits == 256);
+
   /* Defensive memset. */
   memset(ctx, 0, sizeof(*ctx));
-
-  if (bits == 128)
-    ctx->rounds = 10;
-  else if (bits == 192)
-    ctx->rounds = 12;
-  else if (bits == 256)
-    ctx->rounds = 14;
-  else
-    ASSERT(0);
 
   K[0] = read32be(key + 0);
   K[1] = read32be(key + 4);
@@ -682,6 +675,8 @@ aes_init_encrypt(aes_t *ctx, unsigned int bits, const unsigned char *key) {
   K[3] = read32be(key + 12);
 
   if (bits == 128) {
+    ctx->rounds = 10;
+
     for (;;) {
       tmp = K[p + 3];
 
@@ -711,6 +706,8 @@ aes_init_encrypt(aes_t *ctx, unsigned int bits, const unsigned char *key) {
   K[p + 5] = read32be(key + 20);
 
   if (bits == 192) {
+    ctx->rounds = 12;
+
     for (;;) {
       tmp = K[p + 5];
 
@@ -742,6 +739,8 @@ aes_init_encrypt(aes_t *ctx, unsigned int bits, const unsigned char *key) {
   K[p + 7] = read32be(key + 28);
 
   if (bits == 256) {
+    ctx->rounds = 14;
+
     for (;;) {
       tmp = K[p + 7];
 
@@ -779,7 +778,7 @@ aes_init_encrypt(aes_t *ctx, unsigned int bits, const unsigned char *key) {
     return;
   }
 
-  ASSERT(0);
+  torsion_abort(); /* LCOV_EXCL_LINE */
 }
 
 void
@@ -1098,8 +1097,8 @@ arc2_init(arc2_t *ctx,
   size_t i, len;
   uint8_t x;
 
-  ASSERT(key_len >= 1 && key_len <= 128);
-  ASSERT(ekb <= 1024);
+  CHECK(key_len >= 1 && key_len <= 128);
+  CHECK(ekb <= 1024);
 
   for (i = 0; i < key_len; i++)
     L[i] = key[i];
@@ -2440,7 +2439,7 @@ camellia256_init(camellia_t *ctx, const unsigned char *key, size_t key_len) {
     k[10] = read32be(key + 24);
     k[11] = read32be(key + 28);
   } else {
-    ASSERT(0);
+    torsion_abort(); /* LCOV_EXCL_LINE */
   }
 
   s0 = k[8] ^ k[0];
@@ -2765,7 +2764,7 @@ camellia_init(camellia_t *ctx, unsigned int bits, const unsigned char *key) {
       camellia256_init(ctx, key, 32);
       break;
     default:
-      ASSERT(0);
+      torsion_abort(); /* LCOV_EXCL_LINE */
       break;
   }
 }
@@ -4625,7 +4624,7 @@ serpent_init(serpent_t *ctx, unsigned int bits, const unsigned char *key) {
   uint32_t x;
   size_t i;
 
-  ASSERT(bits == 128 || bits == 192 || bits == 256);
+  CHECK(bits == 128 || bits == 192 || bits == 256);
 
   /* Defensive memset. */
   memset(ctx, 0, sizeof(*ctx));
@@ -5089,7 +5088,7 @@ mds_mul(uint8_t v, size_t col) {
       return y | (x << 8) | (z << 16) | (y << 24);
   }
 
-  ASSERT(0);
+  torsion_abort(); /* LCOV_EXCL_LINE */
 
   return 0;
 }
@@ -5131,7 +5130,7 @@ h_gen(const uint8_t *v, const uint8_t *key, size_t off, size_t k) {
            ^ key[4 * (0 + off) + 3]];
       break;
     default:
-      ASSERT(0);
+      torsion_abort(); /* LCOV_EXCL_LINE */
       break;
   }
 
@@ -5162,7 +5161,7 @@ twofish_init(twofish_t *ctx, unsigned int bits, const unsigned char *key) {
   uint8_t tmp[4];
   uint32_t A, B;
 
-  ASSERT(bits == 128 || bits == 192 || bits == 256);
+  CHECK(bits == 128 || bits == 192 || bits == 256);
 
   /* Defensive memset. */
   memset(ctx, 0, sizeof(*ctx));
@@ -5224,7 +5223,7 @@ twofish_init(twofish_t *ctx, unsigned int bits, const unsigned char *key) {
       }
       break;
     default:
-      ASSERT(0);
+      torsion_abort(); /* LCOV_EXCL_LINE */
       break;
   }
 }
@@ -5386,7 +5385,7 @@ pkcs7_pad(unsigned char *dst,
   size_t left = size - len;
   size_t i;
 
-  ASSERT(len <= size);
+  CHECK(len <= size);
 
   for (i = 0; i < len; i++)
     dst[i] = src[i];
@@ -5831,7 +5830,7 @@ cipher_encrypt(const cipher_t *ctx,
       twofish_encrypt(&ctx->ctx.twofish, dst, src);
       break;
     default:
-      ASSERT(0);
+      torsion_abort(); /* LCOV_EXCL_LINE */
       break;
   }
 }
@@ -5888,7 +5887,7 @@ cipher_decrypt(const cipher_t *ctx,
       twofish_decrypt(&ctx->ctx.twofish, dst, src);
       break;
     default:
-      ASSERT(0);
+      torsion_abort(); /* LCOV_EXCL_LINE */
       break;
   }
 }
@@ -5900,7 +5899,7 @@ cipher_decrypt(const cipher_t *ctx,
 void
 ecb_encrypt(const cipher_t *cipher, unsigned char *dst,
             const unsigned char *src, size_t len) {
-  ASSERT((len % cipher->size) == 0);
+  CHECK((len % cipher->size) == 0);
 
   while (len > 0) {
     cipher_encrypt(cipher, dst, src);
@@ -5914,7 +5913,7 @@ ecb_encrypt(const cipher_t *cipher, unsigned char *dst,
 void
 ecb_decrypt(const cipher_t *cipher, unsigned char *dst,
             const unsigned char *src, size_t len) {
-  ASSERT((len % cipher->size) == 0);
+  CHECK((len % cipher->size) == 0);
 
   while (len > 0) {
     cipher_decrypt(cipher, dst, src);
@@ -5933,7 +5932,7 @@ ecb_steal(const cipher_t *cipher,
   unsigned char tmp;
   size_t i;
 
-  ASSERT(len < cipher->size);
+  CHECK(len < cipher->size);
 
   for (i = 0; i < len; i++) {
     tmp = block[i];
@@ -5952,7 +5951,7 @@ ecb_unsteal(const cipher_t *cipher,
   unsigned char tmp;
   size_t i;
 
-  ASSERT(len < cipher->size);
+  CHECK(len < cipher->size);
 
   for (i = 0; i < len; i++) {
     tmp = block[i];
@@ -5977,7 +5976,7 @@ cbc_encrypt(cbc_t *mode, const cipher_t *cipher,
             unsigned char *dst, const unsigned char *src, size_t len) {
   size_t i;
 
-  ASSERT((len % cipher->size) == 0);
+  CHECK((len % cipher->size) == 0);
 
   while (len > 0) {
     for (i = 0; i < cipher->size; i++)
@@ -5998,7 +5997,7 @@ cbc_decrypt(cbc_t *mode, const cipher_t *cipher,
             unsigned char *dst, const unsigned char *src, size_t len) {
   size_t i;
 
-  ASSERT((len % cipher->size) == 0);
+  CHECK((len % cipher->size) == 0);
 
   if (dst == src) {
     unsigned char prev[CIPHER_MAX_BLOCK_SIZE];
@@ -6040,7 +6039,7 @@ cbc_steal(cbc_t *mode,
           size_t len) {
   size_t i;
 
-  ASSERT(len < cipher->size);
+  CHECK(len < cipher->size);
 
   for (i = 0; i < len; i++)
     mode->prev[i] ^= block[i];
@@ -6060,7 +6059,7 @@ cbc_unsteal(cbc_t *mode,
   unsigned char tmp[CIPHER_MAX_BLOCK_SIZE];
   size_t i;
 
-  ASSERT(len < cipher->size);
+  CHECK(len < cipher->size);
 
   cipher_decrypt(cipher, mode->prev, mode->prev);
 
@@ -6134,7 +6133,7 @@ xts_encrypt(xts_t *mode, const cipher_t *cipher,
             unsigned char *dst, const unsigned char *src, size_t len) {
   size_t i;
 
-  ASSERT((len % cipher->size) == 0);
+  CHECK((len % cipher->size) == 0);
 
   while (len > 0) {
     for (i = 0; i < cipher->size; i++)
@@ -6158,7 +6157,7 @@ xts_decrypt(xts_t *mode, const cipher_t *cipher,
             unsigned char *dst, const unsigned char *src, size_t len) {
   size_t i;
 
-  ASSERT((len % cipher->size) == 0);
+  CHECK((len % cipher->size) == 0);
 
   while (len > 0) {
     if (len == cipher->size)
@@ -6192,7 +6191,7 @@ xts_steal(xts_t *mode,
   if (len == 0)
     return;
 
-  ASSERT(len < cipher->size);
+  CHECK(len < cipher->size);
 
   for (i = 0; i < len; i++) {
     tmp = block[i];
@@ -6221,7 +6220,7 @@ xts_unsteal(xts_t *mode,
   if (len == 0)
     return;
 
-  ASSERT(len < cipher->size);
+  CHECK(len < cipher->size);
 
   /* We could ask for the last ciphertext
      block, but it makes for a worse API.
@@ -6771,9 +6770,14 @@ ccm_setup(ccm_t *mode, const cipher_t *cipher,
   size_t i;
 
   /* Sanity checks (should already be initialized). */
-  ASSERT(cipher->size == 16);
-  ASSERT(iv_len >= 7 && iv_len <= 13);
-  ASSERT(N >= 7 && N <= 13);
+  if (cipher->size != 16)
+    return 0;
+
+  if (iv_len < 7 || iv_len > 13)
+    return 0;
+
+  if (N < 7 || N > 13)
+    return 0;
 
   /* Tag length restrictions. */
   if (M < 4 || M > 16 || (M & 1) != 0)
@@ -7168,7 +7172,7 @@ cipher_mode_aad(cipher_mode_t *ctx, const cipher_t *cipher,
       eax_aad(&ctx->mode.eax, cipher, aad, len);
       break;
     default:
-      ASSERT(0);
+      torsion_abort(); /* LCOV_EXCL_LINE */
       break;
   }
 }
@@ -7210,7 +7214,7 @@ cipher_mode_encrypt(cipher_mode_t *ctx,
       eax_encrypt(&ctx->mode.eax, cipher, dst, src, len);
       break;
     default:
-      ASSERT(0);
+      torsion_abort(); /* LCOV_EXCL_LINE */
       break;
   }
 }
@@ -7252,7 +7256,7 @@ cipher_mode_decrypt(cipher_mode_t *ctx,
       eax_decrypt(&ctx->mode.eax, cipher, dst, src, len);
       break;
     default:
-      ASSERT(0);
+      torsion_abort(); /* LCOV_EXCL_LINE */
       break;
   }
 }
@@ -7271,7 +7275,7 @@ cipher_mode_steal(cipher_mode_t *ctx,
       xts_steal(&ctx->mode.xts, cipher, last, block, len);
       break;
     default:
-      ASSERT(0);
+      torsion_abort(); /* LCOV_EXCL_LINE */
       break;
   }
 }
@@ -7290,7 +7294,7 @@ cipher_mode_unsteal(cipher_mode_t *ctx,
       xts_unsteal(&ctx->mode.xts, cipher, last, block, len);
       break;
     default:
-      ASSERT(0);
+      torsion_abort(); /* LCOV_EXCL_LINE */
       break;
   }
 }
@@ -7310,7 +7314,7 @@ cipher_mode_digest(cipher_mode_t *ctx,
       eax_digest(&ctx->mode.eax, cipher, mac);
       break;
     default:
-      ASSERT(0);
+      torsion_abort(); /* LCOV_EXCL_LINE */
       break;
   }
 }

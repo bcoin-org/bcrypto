@@ -219,12 +219,6 @@ rng_global_init(void) {
   return 1;
 }
 
-TORSION_EXTERN uintptr_t
-__torsion_rng_global_addr(void) {
-  void *ptr = (void *)&rng_state;
-  return (uintptr_t)ptr;
-}
-
 /*
  * Global API
  */
@@ -271,4 +265,14 @@ torsion_uniform(uint32_t *out, uint32_t max) {
   *out = rng_uniform(&rng_state.rng, max);
 
   return 1;
+}
+
+/*
+ * Testing
+ */
+
+TORSION_EXTERN uintptr_t
+__torsion_rng_global_addr(void) {
+  void *ptr = (void *)&rng_state;
+  return (uintptr_t)ptr;
 }

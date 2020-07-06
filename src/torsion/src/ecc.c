@@ -141,9 +141,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#ifdef TORSION_VALGRIND
-#include <valgrind/memcheck.h>
-#endif
 #include <torsion/drbg.h>
 #include <torsion/ecc.h>
 #include <torsion/hash.h>
@@ -640,7 +637,7 @@ checked_malloc(size_t size) {
   void *ptr = malloc(size);
 
   if (ptr == NULL)
-    torsion_die("checked_malloc: allocation failed.");
+    torsion_abort(); /* LCOV_EXCL_LINE */
 
   return ptr;
 }
@@ -1716,7 +1713,7 @@ fe_sqrt(const prime_field_t *fe, fe_t r, const fe_t a) {
       fe_mul(fe, b, b, a);
       fe_mul(fe, b, b, c);
     } else {
-      ASSERT(0 && "fe_sqrt: no sqrt implementation.");
+      torsion_abort(); /* LCOV_EXCL_LINE */
     }
 
     /* b2 = b^2 mod p */
@@ -8452,10 +8449,8 @@ wei_t *
 wei_curve_create(int type) {
   wei_t *ec = NULL;
 
-  if (type < 0 || (size_t)type > ARRAY_SIZE(wei_curves)) {
-    torsion_die("wei_curve_create: invalid curve.");
+  if (type < 0 || (size_t)type > ARRAY_SIZE(wei_curves))
     return NULL;
-  }
 
   ec = checked_malloc(sizeof(wei_t));
 
@@ -8545,10 +8540,8 @@ mont_t *
 mont_curve_create(int type) {
   mont_t *ec = NULL;
 
-  if (type < 0 || (size_t)type > ARRAY_SIZE(mont_curves)) {
-    torsion_die("mont_curve_create: invalid curve.");
+  if (type < 0 || (size_t)type > ARRAY_SIZE(mont_curves))
     return NULL;
-  }
 
   ec = checked_malloc(sizeof(mont_t));
 
@@ -8591,10 +8584,8 @@ edwards_t *
 edwards_curve_create(int type) {
   edwards_t *ec = NULL;
 
-  if (type < 0 || (size_t)type > ARRAY_SIZE(edwards_curves)) {
-    torsion_die("edwards_curve_create: invalid curve.");
+  if (type < 0 || (size_t)type > ARRAY_SIZE(edwards_curves))
     return NULL;
-  }
 
   ec = checked_malloc(sizeof(edwards_t));
 
@@ -9383,6 +9374,17 @@ ecdsa_sign(const wei_t *ec,
            const unsigned char *msg,
            size_t msg_len,
            const unsigned char *priv) {
+  return ecdsa_sign_internal(ec, sig, param, msg, msg_len, priv, NULL);
+}
+
+int
+ecdsa_sign_internal(const wei_t *ec,
+                    unsigned char *sig,
+                    unsigned int *param,
+                    const unsigned char *msg,
+                    size_t msg_len,
+                    const unsigned char *priv,
+                    ecdsa_redefine_f *redefine) {
   /* ECDSA Signing.
    *
    * [SEC1] Page 44, Section 4.1.3.
@@ -9461,11 +9463,9 @@ ecdsa_sign(const wei_t *ec,
     ok &= wge_is_zero(ec, &R) ^ 1;
     ok &= sc_is_zero(sc, r) ^ 1;
 
-#ifdef TORSION_VALGRIND
-    if (RUNNING_ON_VALGRIND)
-      VALGRIND_MAKE_MEM_DEFINED(&ok, sizeof(ok));
-#endif
-  } while (!ok);
+    if (redefine)
+      redefine(&ok, sizeof(ok));
+  } while (UNLIKELY(!ok));
 
   ASSERT(sc_invert(sc, k, k));
   sc_mul(sc, s, r, a);
@@ -9975,7 +9975,7 @@ schnorr_legacy_verify_batch(const wei_t *ec,
   size_t j = 0;
   size_t i;
 
-  ASSERT(scratch->size >= 2);
+  CHECK(scratch->size >= 2);
 
   /* Seed RNG. */
   {
@@ -10827,7 +10827,7 @@ schnorr_verify_batch(const wei_t *ec,
   size_t j = 0;
   size_t i;
 
-  ASSERT(scratch->size >= 2);
+  CHECK(scratch->size >= 2);
 
   /* Seed RNG. */
   {
@@ -12230,7 +12230,7 @@ eddsa_verify_batch(const edwards_t *ec,
   size_t j = 0;
   size_t i;
 
-  ASSERT(scratch->size >= 2);
+  CHECK(scratch->size >= 2);
 
   /* Seed RNG. */
   {
@@ -12388,6 +12388,15 @@ eddsa_derive(const edwards_t *ec,
   return ret;
 }
 
-#ifdef TORSION_TEST
-#include "../test/ecc-internal.h"
+/*
+ * Testing
+ */
+
+#ifdef TORSION_DEBUG
+#include "../test/ecc_internal.h"
+#else
+void
+test_ecc_internal(drbg_t *rng) {
+  (void)rng;
+}
 #endif

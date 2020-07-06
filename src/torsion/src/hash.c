@@ -42,6 +42,1355 @@ rotr64(uint64_t w, unsigned int c) {
 }
 
 /*
+ * BLAKE2b
+ *
+ * Resources:
+ *   https://en.wikipedia.org/wiki/BLAKE_(hash_function)
+ *   https://tools.ietf.org/html/rfc7693
+ *   https://github.com/BLAKE2/BLAKE2/blob/master/ref/blake2b-ref.c
+ */
+
+static const uint64_t blake2b_iv[8] = {
+  UINT64_C(0x6a09e667f3bcc908), UINT64_C(0xbb67ae8584caa73b),
+  UINT64_C(0x3c6ef372fe94f82b), UINT64_C(0xa54ff53a5f1d36f1),
+  UINT64_C(0x510e527fade682d1), UINT64_C(0x9b05688c2b3e6c1f),
+  UINT64_C(0x1f83d9abfb41bd6b), UINT64_C(0x5be0cd19137e2179)
+};
+
+static const uint8_t blake2b_sigma[12][16] = {
+  {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+  {14, 10, 4, 8, 9, 15, 13, 6, 1, 12, 0, 2, 11, 7, 5, 3},
+  {11, 8, 12, 0, 5, 2, 15, 13, 10, 14, 3, 6, 7, 1, 9, 4},
+  {7, 9, 3, 1, 13, 12, 11, 14, 2, 6, 5, 10, 4, 0, 15, 8},
+  {9, 0, 5, 7, 2, 4, 10, 15, 14, 1, 11, 12, 6, 8, 3, 13},
+  {2, 12, 6, 10, 0, 11, 8, 3, 4, 13, 7, 5, 15, 14, 1, 9},
+  {12, 5, 1, 15, 14, 13, 4, 10, 0, 7, 6, 3, 9, 2, 8, 11},
+  {13, 11, 7, 14, 12, 1, 3, 9, 5, 0, 15, 4, 8, 6, 2, 10},
+  {6, 15, 14, 9, 11, 3, 0, 8, 12, 2, 13, 7, 1, 4, 10, 5},
+  {10, 2, 8, 4, 7, 6, 1, 5, 15, 11, 9, 14, 3, 12, 13, 0},
+  {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+  {14, 10, 4, 8, 9, 15, 13, 6, 1, 12, 0, 2, 11, 7, 5, 3}
+};
+
+void
+blake2b_init(blake2b_t *ctx,
+             size_t outlen,
+             const unsigned char *key,
+             size_t keylen) {
+  size_t i;
+
+  CHECK(outlen >= 1 && outlen <= 64);
+  CHECK(keylen <= 64);
+
+  memset(ctx, 0, sizeof(blake2b_t));
+
+  ctx->outlen = outlen;
+
+  for (i = 0; i < 8; i++)
+    ctx->h[i] = blake2b_iv[i];
+
+  ctx->h[0] ^= 0x01010000 ^ (keylen << 8) ^ outlen;
+
+  if (keylen > 0) {
+    unsigned char block[128];
+
+    memset(block, 0x00, 128);
+    memcpy(block, key, keylen);
+
+    blake2b_update(ctx, block, 128);
+
+    torsion_cleanse(block, 128);
+  }
+}
+
+static void
+blake2b_increment(blake2b_t *ctx, const uint64_t inc) {
+  ctx->t[0] += inc;
+  ctx->t[1] += (ctx->t[0] < inc);
+}
+
+static void
+blake2b_compress(blake2b_t *ctx, const unsigned char *chunk, uint64_t f0) {
+  uint64_t m[16];
+  uint64_t v[16];
+  size_t i;
+
+  for (i = 0; i < 16; i++)
+    m[i] = read64le(chunk + i * 8);
+
+  for (i = 0; i < 8; i++)
+    v[i] = ctx->h[i];
+
+  v[ 8] = blake2b_iv[0];
+  v[ 9] = blake2b_iv[1];
+  v[10] = blake2b_iv[2];
+  v[11] = blake2b_iv[3];
+  v[12] = blake2b_iv[4] ^ ctx->t[0];
+  v[13] = blake2b_iv[5] ^ ctx->t[1];
+  v[14] = blake2b_iv[6] ^ f0;
+  v[15] = blake2b_iv[7];
+
+#define G(r, i, a, b, c, d) do {              \
+  a = a + b + m[blake2b_sigma[r][2 * i + 0]]; \
+  d = rotr64(d ^ a, 32);                      \
+  c = c + d;                                  \
+  b = rotr64(b ^ c, 24);                      \
+  a = a + b + m[blake2b_sigma[r][2 * i + 1]]; \
+  d = rotr64(d ^ a, 16);                      \
+  c = c + d;                                  \
+  b = rotr64(b ^ c, 63);                      \
+} while (0)
+
+#define ROUND(r) do {                  \
+  G(r, 0, v[ 0], v[ 4], v[ 8], v[12]); \
+  G(r, 1, v[ 1], v[ 5], v[ 9], v[13]); \
+  G(r, 2, v[ 2], v[ 6], v[10], v[14]); \
+  G(r, 3, v[ 3], v[ 7], v[11], v[15]); \
+  G(r, 4, v[ 0], v[ 5], v[10], v[15]); \
+  G(r, 5, v[ 1], v[ 6], v[11], v[12]); \
+  G(r, 6, v[ 2], v[ 7], v[ 8], v[13]); \
+  G(r, 7, v[ 3], v[ 4], v[ 9], v[14]); \
+} while (0)
+
+  ROUND(0);
+  ROUND(1);
+  ROUND(2);
+  ROUND(3);
+  ROUND(4);
+  ROUND(5);
+  ROUND(6);
+  ROUND(7);
+  ROUND(8);
+  ROUND(9);
+  ROUND(10);
+  ROUND(11);
+
+  for (i = 0; i < 8; i++)
+    ctx->h[i] ^= v[i] ^ v[i + 8];
+#undef G
+#undef ROUND
+}
+
+void
+blake2b_update(blake2b_t *ctx, const void *data, size_t len) {
+  const unsigned char *in = (const unsigned char *)data;
+
+  if (len > 0) {
+    size_t left = ctx->buflen;
+    size_t fill = 128 - left;
+
+    if (len > fill) {
+      ctx->buflen = 0;
+
+      memcpy(ctx->buf + left, in, fill);
+
+      blake2b_increment(ctx, 128);
+      blake2b_compress(ctx, ctx->buf, 0);
+
+      in += fill;
+      len -= fill;
+
+      while (len > 128) {
+        blake2b_increment(ctx, 128);
+        blake2b_compress(ctx, in, 0);
+        in += 128;
+        len -= 128;
+      }
+    }
+
+    memcpy(ctx->buf + ctx->buflen, in, len);
+    ctx->buflen += len;
+  }
+}
+
+void
+blake2b_final(blake2b_t *ctx, unsigned char *out) {
+  unsigned char buffer[64];
+  size_t i;
+
+  blake2b_increment(ctx, ctx->buflen);
+
+  memset(ctx->buf + ctx->buflen, 0x00, 128 - ctx->buflen);
+
+  blake2b_compress(ctx, ctx->buf, (uint64_t)-1);
+
+  for (i = 0; i < 8; i++)
+    write64le(buffer + i * 8, ctx->h[i]);
+
+  memcpy(out, buffer, ctx->outlen);
+
+  torsion_cleanse(buffer, sizeof(buffer));
+}
+
+/*
+ * BLAKE2b-{160,256,384,512}
+ */
+
+#define DEFINE_BLAKE2(name, bits)                                      \
+void                                                                   \
+torsion_##name##bits##_init(name##_t *ctx,                             \
+                            const unsigned char *key, size_t keylen) { \
+  name##_init(ctx, (bits) / 8, key, keylen);                           \
+}                                                                      \
+                                                                       \
+void                                                                   \
+torsion_##name##bits##_update(name##_t *ctx,                           \
+                              const void *data, size_t len) {          \
+  name##_update(ctx, data, len);                                       \
+}                                                                      \
+                                                                       \
+void                                                                   \
+torsion_##name##bits##_final(name##_t *ctx, unsigned char *out) {      \
+  name##_final(ctx, out);                                              \
+}
+
+DEFINE_BLAKE2(blake2b, 160)
+DEFINE_BLAKE2(blake2b, 256)
+DEFINE_BLAKE2(blake2b, 384)
+DEFINE_BLAKE2(blake2b, 512)
+
+/*
+ * BLAKE2s
+ *
+ * Resources:
+ *   https://en.wikipedia.org/wiki/BLAKE_(hash_function)
+ *   https://tools.ietf.org/html/rfc7693
+ *   https://github.com/BLAKE2/BLAKE2/blob/master/ref/blake2s-ref.c
+ */
+
+static const uint32_t blake2s_iv[8] = {
+  0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
+  0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19
+};
+
+static const uint8_t blake2s_sigma[10][16] = {
+  {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+  {14, 10, 4, 8, 9, 15, 13, 6, 1, 12, 0, 2, 11, 7, 5, 3},
+  {11, 8, 12, 0, 5, 2, 15, 13, 10, 14, 3, 6, 7, 1, 9, 4},
+  {7, 9, 3, 1, 13, 12, 11, 14, 2, 6, 5, 10, 4, 0, 15, 8},
+  {9, 0, 5, 7, 2, 4, 10, 15, 14, 1, 11, 12, 6, 8, 3, 13},
+  {2, 12, 6, 10, 0, 11, 8, 3, 4, 13, 7, 5, 15, 14, 1, 9},
+  {12, 5, 1, 15, 14, 13, 4, 10, 0, 7, 6, 3, 9, 2, 8, 11},
+  {13, 11, 7, 14, 12, 1, 3, 9, 5, 0, 15, 4, 8, 6, 2, 10},
+  {6, 15, 14, 9, 11, 3, 0, 8, 12, 2, 13, 7, 1, 4, 10, 5},
+  {10, 2, 8, 4, 7, 6, 1, 5, 15, 11, 9, 14, 3, 12, 13, 0},
+};
+
+void
+blake2s_init(blake2s_t *ctx,
+             size_t outlen,
+             const unsigned char *key,
+             size_t keylen) {
+  size_t i;
+
+  CHECK(outlen >= 1 && outlen <= 32);
+  CHECK(keylen <= 32);
+
+  memset(ctx, 0, sizeof(blake2s_t));
+
+  ctx->outlen = outlen;
+
+  for (i = 0; i < 8; i++)
+    ctx->h[i] = blake2s_iv[i];
+
+  ctx->h[0] ^= 0x01010000 ^ (keylen << 8) ^ outlen;
+
+  if (keylen > 0) {
+    unsigned char block[64];
+
+    memset(block, 0x00, 64);
+    memcpy(block, key, keylen);
+
+    blake2s_update(ctx, block, 64);
+
+    torsion_cleanse(block, 64);
+  }
+}
+
+static void
+blake2s_increment(blake2s_t *ctx, uint32_t inc) {
+  ctx->t[0] += inc;
+  ctx->t[1] += (ctx->t[0] < inc);
+}
+
+static void
+blake2s_compress(blake2s_t *ctx, const unsigned char *chunk, uint32_t f0) {
+  uint32_t m[16];
+  uint32_t v[16];
+  size_t i;
+
+  for (i = 0; i < 16; i++)
+    m[i] = read32le(chunk + i * 4);
+
+  for (i = 0; i < 8; i++)
+    v[i] = ctx->h[i];
+
+  v[ 8] = blake2s_iv[0];
+  v[ 9] = blake2s_iv[1];
+  v[10] = blake2s_iv[2];
+  v[11] = blake2s_iv[3];
+  v[12] = blake2s_iv[4] ^ ctx->t[0];
+  v[13] = blake2s_iv[5] ^ ctx->t[1];
+  v[14] = blake2s_iv[6] ^ f0;
+  v[15] = blake2s_iv[7];
+
+#define G(r, i, a, b, c, d) do {              \
+  a = a + b + m[blake2s_sigma[r][2 * i + 0]]; \
+  d = rotr32(d ^ a, 16);                      \
+  c = c + d;                                  \
+  b = rotr32(b ^ c, 12);                      \
+  a = a + b + m[blake2s_sigma[r][2 * i + 1]]; \
+  d = rotr32(d ^ a, 8);                       \
+  c = c + d;                                  \
+  b = rotr32(b ^ c, 7);                       \
+} while (0)
+
+#define ROUND(r) do {                  \
+  G(r, 0, v[ 0], v[ 4], v[ 8], v[12]); \
+  G(r, 1, v[ 1], v[ 5], v[ 9], v[13]); \
+  G(r, 2, v[ 2], v[ 6], v[10], v[14]); \
+  G(r, 3, v[ 3], v[ 7], v[11], v[15]); \
+  G(r, 4, v[ 0], v[ 5], v[10], v[15]); \
+  G(r, 5, v[ 1], v[ 6], v[11], v[12]); \
+  G(r, 6, v[ 2], v[ 7], v[ 8], v[13]); \
+  G(r, 7, v[ 3], v[ 4], v[ 9], v[14]); \
+} while (0)
+
+  ROUND(0);
+  ROUND(1);
+  ROUND(2);
+  ROUND(3);
+  ROUND(4);
+  ROUND(5);
+  ROUND(6);
+  ROUND(7);
+  ROUND(8);
+  ROUND(9);
+
+  for (i = 0; i < 8; i++)
+    ctx->h[i] ^= v[i] ^ v[i + 8];
+#undef G
+#undef ROUND
+}
+
+void
+blake2s_update(blake2s_t *ctx, const void *data, size_t len) {
+  const unsigned char *in = (const unsigned char *)data;
+
+  if (len > 0) {
+    size_t left = ctx->buflen;
+    size_t fill = 64 - left;
+
+    if (len > fill) {
+      ctx->buflen = 0;
+      memcpy(ctx->buf + left, in, fill);
+
+      blake2s_increment(ctx, 64);
+      blake2s_compress(ctx, ctx->buf, 0);
+
+      in += fill;
+      len -= fill;
+
+      while (len > 64) {
+        blake2s_increment(ctx, 64);
+        blake2s_compress(ctx, in, 0);
+
+        in += 64;
+        len -= 64;
+      }
+    }
+
+    memcpy(ctx->buf + ctx->buflen, in, len);
+    ctx->buflen += len;
+  }
+}
+
+void
+blake2s_final(blake2s_t *ctx, unsigned char *out) {
+  unsigned char buffer[32];
+  size_t i;
+
+  blake2s_increment(ctx, (uint32_t)ctx->buflen);
+
+  memset(ctx->buf + ctx->buflen, 0, 64 - ctx->buflen);
+
+  blake2s_compress(ctx, ctx->buf, (uint32_t)-1);
+
+  for (i = 0; i < 8; i++)
+    write32le(buffer + i * 4, ctx->h[i]);
+
+  memcpy(out, buffer, ctx->outlen);
+
+  torsion_cleanse(buffer, sizeof(buffer));
+}
+
+/*
+ * BLAKE2s-{128,160,224,256}
+ */
+
+DEFINE_BLAKE2(blake2s, 128)
+DEFINE_BLAKE2(blake2s, 160)
+DEFINE_BLAKE2(blake2s, 224)
+DEFINE_BLAKE2(blake2s, 256)
+
+/*
+ * GOST94
+ *
+ * Resources:
+ *   https://en.wikipedia.org/wiki/GOST_(hash_function)
+ *   https://tools.ietf.org/html/rfc4357
+ *   https://tools.ietf.org/html/rfc5831
+ *   https://github.com/RustCrypto/hashes/blob/master/gost94/src/gost94.rs
+ */
+
+static const uint8_t gost94_C[32] = {
+  0x00, 0xff, 0x00, 0xff, 0x00, 0xff, 0x00, 0xff,
+  0xff, 0x00, 0xff, 0x00, 0xff, 0x00, 0xff, 0x00,
+  0x00, 0xff, 0xff, 0x00, 0xff, 0x00, 0x00, 0xff,
+  0xff, 0x00, 0x00, 0x00, 0xff, 0xff, 0x00, 0xff
+};
+
+static const uint8_t gost94_S[8][16] = { /* CryptoPro */
+  {10, 4, 5, 6, 8, 1, 3, 7, 13, 12, 14, 0, 9, 2, 11, 15},
+  {5, 15, 4, 0, 2, 13, 11, 9, 1, 7, 6, 3, 12, 14, 10, 8},
+  {7, 15, 12, 14, 9, 4, 1, 0, 3, 11, 5, 2, 6, 10, 8, 13},
+  {4, 10, 7, 12, 0, 15, 2, 8, 14, 1, 6, 5, 13, 11, 9, 3},
+  {7, 6, 4, 11, 9, 12, 2, 10, 1, 8, 0, 14, 15, 13, 3, 5},
+  {7, 6, 2, 4, 13, 9, 15, 0, 10, 1, 5, 11, 8, 14, 12, 3},
+  {13, 14, 4, 1, 7, 0, 5, 10, 3, 12, 8, 15, 6, 2, 9, 11},
+  {1, 3, 10, 9, 5, 11, 4, 15, 8, 6, 7, 14, 13, 0, 2, 12}
+};
+
+static uint32_t
+gost94_sbox(uint32_t a) {
+  uint32_t v = 0;
+  uint32_t k;
+  size_t i, shift;
+
+  for (i = 0; i < 8; i++) {
+    shift = 4 * i;
+    k = (a & (15 << shift)) >> shift;
+    v += (uint32_t)gost94_S[i][k] << shift;
+  }
+
+  return v;
+}
+
+static uint32_t
+gost94_g(uint32_t a, uint32_t k) {
+  uint32_t w = gost94_sbox(a + k);
+  return (w << 11) | (w >> (32 - 11));
+}
+
+static void
+gost94_encrypt(unsigned char *msg, const unsigned char *key) {
+  uint32_t k[8];
+  uint32_t a = read32le(msg + 0);
+  uint32_t b = read32le(msg + 4);
+  uint32_t t;
+  size_t i, x;
+
+  for (i = 0; i < 8; i++)
+    k[i] = read32le(key + i * 4);
+
+  for (x = 0; x < 3; x++) {
+    for (i = 0; i < 8; i++) {
+      t = b ^ gost94_g(a, k[i]);
+      b = a;
+      a = t;
+    }
+  }
+
+  for (i = 8; i-- > 0;) {
+    t = b ^ gost94_g(a, k[i]);
+    b = a;
+    a = t;
+  }
+
+  write32le(msg + 0, b);
+  write32le(msg + 4, a);
+}
+
+static void
+gost94_x(uint8_t out[32], const uint8_t a[32], const uint8_t b[32]) {
+  size_t i;
+
+  for (i = 0; i < 32; i++)
+    out[i] = a[i] ^ b[i];
+}
+
+static void
+gost94_a(uint8_t out[32], const uint8_t x[32]) {
+  size_t i;
+
+  memcpy(out, x + 8, 24);
+
+  for (i = 0; i < 8; i++)
+    out[24 + i] = x[i] ^ x[i + 8];
+}
+
+static void
+gost94_p(uint8_t out[32], const uint8_t y[32]) {
+  size_t i, k;
+
+  for (i = 0; i < 4; i++) {
+    for (k = 0; k < 8; k++)
+      out[i + 4 * k] = y[8 * i + k];
+  }
+}
+
+static void
+gost94_psi(uint8_t block[32]) {
+  uint8_t out[32];
+
+  memcpy(out, block + 2, 30);
+  memcpy(out + 30, block, 2);
+
+  out[30] ^= block[2];
+  out[31] ^= block[3];
+
+  out[30] ^= block[4];
+  out[31] ^= block[5];
+
+  out[30] ^= block[6];
+  out[31] ^= block[7];
+
+  out[30] ^= block[24];
+  out[31] ^= block[25];
+
+  out[30] ^= block[30];
+  out[31] ^= block[31];
+
+  memcpy(block, out, 32);
+}
+
+static void
+gost94_compress(gost94_t *ctx, const uint8_t m[32]) {
+  uint8_t s[32], k[32], u[32], v[32], t[32];
+  size_t i;
+
+  memcpy(s, ctx->state, 32);
+
+  gost94_x(t, ctx->state, m);
+  gost94_p(k, t);
+  gost94_encrypt(s + 0, k);
+
+  gost94_a(u, ctx->state);
+  gost94_a(t, m);
+  gost94_a(v, t);
+  gost94_x(t, u, v);
+  gost94_p(k, t);
+  gost94_encrypt(s + 8, k);
+
+  memcpy(t, u, 32);
+  gost94_a(u, t);
+  gost94_x(u, u, gost94_C);
+  gost94_a(t, v);
+  gost94_a(v, t);
+  gost94_x(t, u, v);
+  gost94_p(k, t);
+  gost94_encrypt(s + 16, k);
+
+  memcpy(t, u, 32);
+  gost94_a(u, t);
+  gost94_a(t, v);
+  gost94_a(v, t);
+  gost94_x(t, u, v);
+  gost94_p(k, t);
+  gost94_encrypt(s + 24, k);
+
+  for (i = 0; i < 12; i++)
+    gost94_psi(s);
+
+  gost94_x(s, s, m);
+  gost94_psi(s);
+  gost94_x(ctx->state, ctx->state, s);
+
+  for (i = 0; i < 61; i++)
+    gost94_psi(ctx->state);
+}
+
+static void
+gost94_sum(gost94_t *ctx, const uint8_t m[32]) {
+  uint32_t c = 0;
+  size_t i;
+
+  for (i = 0; i < 32; i++) {
+    c += ctx->sigma[i] + m[i];
+    ctx->sigma[i] = c;
+    c >>= 8;
+  }
+}
+
+void
+gost94_init(gost94_t *ctx) {
+  memset(ctx, 0, sizeof(gost94_t));
+}
+
+static void
+gost94_transform(gost94_t *ctx, const unsigned char *chunk) {
+  gost94_compress(ctx, chunk);
+  gost94_sum(ctx, chunk);
+}
+
+void
+gost94_update(gost94_t *ctx, const void *data, size_t len) {
+  const unsigned char *bytes = (const unsigned char *)data;
+  size_t pos = ctx->size & 31;
+  size_t off = 0;
+
+  if (len == 0)
+    return;
+
+  ctx->size += len;
+
+  if (pos > 0) {
+    size_t want = 32 - pos;
+
+    if (want > len)
+      want = len;
+
+    memcpy(ctx->block + pos, bytes, want);
+
+    pos += want;
+    len -= want;
+    off += want;
+
+    if (pos < 32)
+      return;
+
+    gost94_transform(ctx, ctx->block);
+  }
+
+  while (len >= 32) {
+    gost94_transform(ctx, bytes + off);
+    off += 32;
+    len -= 32;
+  }
+
+  if (len > 0)
+    memcpy(ctx->block, bytes + off, len);
+}
+
+void
+gost94_final(gost94_t *ctx, unsigned char *out) {
+  size_t pos = ctx->size & 31;
+  uint64_t bits = ctx->size << 3;
+  unsigned char D[32];
+
+  memset(D, 0x00, 32);
+
+  if (pos != 0)
+    gost94_update(ctx, D, 32 - pos);
+
+  write64le(D, bits);
+
+  gost94_compress(ctx, D);
+  gost94_compress(ctx, ctx->sigma);
+
+  memcpy(out, ctx->state, 32);
+}
+
+/*
+ * Hash160
+ *
+ * Resources:
+ *   https://github.com/bitcoin/bitcoin/blob/master/src/hash.h
+ */
+
+void
+hash160_init(hash160_t *ctx) {
+  sha256_init(ctx);
+}
+
+void
+hash160_update(hash160_t *ctx, const void *data, size_t len) {
+  sha256_update(ctx, data, len);
+}
+
+void
+hash160_final(hash160_t *ctx, unsigned char *out) {
+  unsigned char tmp[32];
+  ripemd160_t rmd;
+
+  sha256_final(ctx, tmp);
+
+  ripemd160_init(&rmd);
+  ripemd160_update(&rmd, tmp, 32);
+  ripemd160_final(&rmd, out);
+
+  torsion_cleanse(tmp, sizeof(tmp));
+}
+
+/*
+ * Hash256
+ *
+ * Resources:
+ *   https://github.com/bitcoin/bitcoin/blob/master/src/hash.h
+ */
+
+void
+hash256_init(hash256_t *ctx) {
+  sha256_init(ctx);
+}
+
+void
+hash256_update(hash256_t *ctx, const void *data, size_t len) {
+  sha256_update(ctx, data, len);
+}
+
+void
+hash256_final(hash256_t *ctx, unsigned char *out) {
+  sha256_final(ctx, out);
+  sha256_init(ctx);
+  sha256_update(ctx, out, 32);
+  sha256_final(ctx, out);
+}
+
+/*
+ * Keccak
+ *
+ * Resources:
+ *   https://en.wikipedia.org/wiki/SHA-3
+ *   https://keccak.team/specifications.html
+ *   https://csrc.nist.gov/projects/hash-functions/sha-3-project/sha-3-standardization
+ *   http://dx.doi.org/10.6028/NIST.FIPS.202
+ *   https://github.com/gnutls/nettle/blob/master/sha3-permute.c
+ */
+
+void
+keccak_init(keccak_t *ctx, size_t bits) {
+  size_t rate = 1600 - bits * 2;
+
+  CHECK(bits >= 128);
+  CHECK(bits <= 512);
+  CHECK((rate & 63) == 0);
+
+  ctx->bs = rate >> 3;
+  ctx->pos = 0;
+
+  memset(ctx->state, 0, sizeof(ctx->state));
+}
+
+static void
+keccak_permute(keccak_t *ctx) {
+#ifdef TORSION_HAVE_ASM_X64
+  /* Borrowed from:
+   * https://github.com/gnutls/nettle/blob/master/x86_64/sha3-permute.asm
+   *
+   * Registers:
+   *
+   *   %rdi = state pointer (ctx->state)
+   *   %rsi = round constants pointer (reversed)
+   *   %r8 = round counter (starts at 24, decrements)
+   *
+   * For reference, our full range of clobbered registers:
+   *
+   *   %rax, %rbx, %rcx, %rdx, %rdi, %rsi, %r[8-13], %xmm[0-15]
+   */
+  static const uint64_t rc[25] = {
+    UINT64_C(0x0000000000000000),
+    UINT64_C(0x8000000080008008), UINT64_C(0x0000000080000001),
+    UINT64_C(0x8000000000008080), UINT64_C(0x8000000080008081),
+    UINT64_C(0x800000008000000a), UINT64_C(0x000000000000800a),
+    UINT64_C(0x8000000000000080), UINT64_C(0x8000000000008002),
+    UINT64_C(0x8000000000008003), UINT64_C(0x8000000000008089),
+    UINT64_C(0x800000000000008b), UINT64_C(0x000000008000808b),
+    UINT64_C(0x000000008000000a), UINT64_C(0x0000000080008009),
+    UINT64_C(0x0000000000000088), UINT64_C(0x000000000000008a),
+    UINT64_C(0x8000000000008009), UINT64_C(0x8000000080008081),
+    UINT64_C(0x0000000080000001), UINT64_C(0x000000000000808b),
+    UINT64_C(0x8000000080008000), UINT64_C(0x800000000000808a),
+    UINT64_C(0x0000000000008082), UINT64_C(0x0000000000000001)
+  };
+
+  __asm__ __volatile__(
+    "movl $24, %%r8d\n"
+
+    "movq (%%rdi), %%rax\n"
+    "movups 8(%%rdi), %%xmm0\n"
+    "movups 24(%%rdi), %%xmm1\n"
+    "movq %%rax, %%r10\n"
+
+    "movq 40(%%rdi), %%rcx\n"
+    "movdqa %%xmm0, %%xmm10\n"
+    "movups 48(%%rdi), %%xmm2\n"
+    "movdqa %%xmm1, %%xmm11\n"
+    "movups 64(%%rdi), %%xmm3\n"
+    "xorq %%rcx, %%r10\n"
+
+    "movq 80(%%rdi), %%rdx\n"
+    "pxor %%xmm2, %%xmm10\n"
+    "movups 88(%%rdi), %%xmm4\n"
+    "pxor %%xmm3, %%xmm11\n"
+    "movups 104(%%rdi), %%xmm5\n"
+    "xorq %%rdx, %%r10\n"
+
+    "movq 120(%%rdi), %%rbx\n"
+    "pxor %%xmm4, %%xmm10\n"
+    "movups 128(%%rdi), %%xmm6\n"
+    "pxor %%xmm5, %%xmm11\n"
+    "movups 144(%%rdi), %%xmm7\n"
+    "xorq %%rbx, %%r10\n"
+
+    "movq 160(%%rdi), %%r9\n"
+    "pxor %%xmm6, %%xmm10\n"
+    "movups 168(%%rdi), %%xmm8\n"
+    "pxor %%xmm7, %%xmm11\n"
+    "movups 184(%%rdi), %%xmm9\n"
+    "xorq %%r9, %%r10\n"
+    "pxor %%xmm8, %%xmm10\n"
+    "pxor %%xmm9, %%xmm11\n"
+
+    ".align 16\n"
+
+    "1:\n"
+
+    "pshufd $0x4e, %%xmm11, %%xmm11\n"
+    "movdqa %%xmm10, %%xmm13\n"
+
+    "movq %%r10, (%%rdi)\n"
+    "movq (%%rdi), %%xmm12\n"
+
+    "punpcklqdq %%xmm10, %%xmm12\n"
+    "punpckhqdq %%xmm11, %%xmm13\n"
+    "punpcklqdq %%xmm12, %%xmm11\n"
+
+    "movq %%xmm11, (%%rdi)\n"
+    "movq (%%rdi), %%r11\n"
+
+    "movq %%xmm10, (%%rdi)\n"
+    "movq (%%rdi), %%r12\n"
+
+    "rolq $1, %%r12\n"
+    "xorq %%r12, %%r11\n"
+
+    "movdqa %%xmm13, %%xmm14\n"
+    "movdqa %%xmm13, %%xmm15\n"
+    "psllq $1, %%xmm14\n"
+    "psrlq $63, %%xmm15\n"
+    "pxor %%xmm14, %%xmm12\n"
+    "pxor %%xmm15, %%xmm12\n"
+
+    "movdqa %%xmm11, %%xmm10\n"
+    "psrlq $63, %%xmm11\n"
+    "psllq $1, %%xmm10\n"
+    "pxor %%xmm11, %%xmm13\n"
+    "pxor %%xmm10, %%xmm13\n"
+
+    "xorq %%r11, %%rax\n"
+    "xorq %%r11, %%rcx\n"
+    "xorq %%r11, %%rdx\n"
+    "xorq %%r11, %%rbx\n"
+    "xorq %%r11, %%r9\n"
+    "pxor %%xmm12, %%xmm0\n"
+    "pxor %%xmm12, %%xmm2\n"
+    "pxor %%xmm12, %%xmm4\n"
+    "pxor %%xmm12, %%xmm6\n"
+    "pxor %%xmm12, %%xmm8\n"
+    "pxor %%xmm13, %%xmm1\n"
+    "pxor %%xmm13, %%xmm3\n"
+    "pxor %%xmm13, %%xmm5\n"
+    "pxor %%xmm13, %%xmm7\n"
+    "pxor %%xmm13, %%xmm9\n"
+
+    "movdqa %%xmm0, %%xmm14\n"
+    "movdqa %%xmm0, %%xmm15\n"
+    "movdqa %%xmm0, %%xmm12\n"
+    "psllq $1, %%xmm0\n"
+    "psrlq $63, %%xmm14\n"
+    "psllq $62, %%xmm15\n"
+    "por %%xmm0, %%xmm14\n"
+    "psrlq $2, %%xmm12\n"
+    "por %%xmm15, %%xmm12\n"
+
+    "movdqa %%xmm1, %%xmm0\n"
+    "movdqa %%xmm1, %%xmm15\n"
+    "psllq $28, %%xmm0\n"
+    "psrlq $36, %%xmm15\n"
+    "por %%xmm15, %%xmm0\n"
+    "movdqa %%xmm1, %%xmm15\n"
+    "psllq $27, %%xmm1\n"
+    "psrlq $37, %%xmm15\n"
+    "por %%xmm15, %%xmm1\n"
+
+    "punpcklqdq %%xmm14, %%xmm0\n"
+    "punpckhqdq %%xmm12, %%xmm1\n"
+
+    "rolq $36, %%rcx\n"
+
+    "movq %%rcx, (%%rdi)\n"
+    "movq (%%rdi), %%xmm14\n"
+
+    "movq %%xmm2, (%%rdi)\n"
+    "movq (%%rdi), %%rcx\n"
+
+    "rolq $44, %%rcx\n"
+
+    "movdqa %%xmm2, %%xmm15\n"
+    "psllq $6, %%xmm2\n"
+    "psrlq $58, %%xmm15\n"
+
+    "por %%xmm2, %%xmm15\n"
+    "movdqa %%xmm3, %%xmm2\n"
+
+    "movdqa %%xmm2, %%xmm12\n"
+    "psllq $20, %%xmm2\n"
+    "psrlq $44, %%xmm12\n"
+
+    "por %%xmm12, %%xmm2\n"
+    "punpckhqdq %%xmm15, %%xmm2\n"
+
+    "movdqa %%xmm3, %%xmm15\n"
+    "psllq $55, %%xmm3\n"
+    "psrlq $9, %%xmm15\n"
+
+    "por %%xmm3, %%xmm15\n"
+    "movdqa %%xmm14, %%xmm3\n"
+    "punpcklqdq %%xmm15, %%xmm3\n"
+
+    "rolq $42, %%rdx\n"
+    "pshufd $0x4e, %%xmm4, %%xmm14\n"
+
+    "movq %%rdx, (%%rdi)\n"
+    "movq (%%rdi), %%xmm4\n"
+
+    "movq %%xmm14, (%%rdi)\n"
+    "movq (%%rdi), %%rdx\n"
+
+    "rolq $43, %%rdx\n"
+
+    "punpcklqdq %%xmm5, %%xmm4\n"
+
+    "movdqa %%xmm4, %%xmm15\n"
+    "psllq $25, %%xmm4\n"
+    "psrlq $39, %%xmm15\n"
+
+    "por %%xmm15, %%xmm4\n"
+
+    "movdqa %%xmm5, %%xmm12\n"
+    "psllq $39, %%xmm5\n"
+    "psrlq $25, %%xmm12\n"
+
+    "por %%xmm5, %%xmm12\n"
+
+    "movdqa %%xmm14, %%xmm5\n"
+    "psllq $10, %%xmm14\n"
+    "psrlq $54, %%xmm5\n"
+
+    "por %%xmm14, %%xmm5\n"
+    "punpckhqdq %%xmm12, %%xmm5\n"
+
+    "pshufd $0x4e, %%xmm7, %%xmm14\n"
+    "rolq $41, %%rbx\n"
+
+    "movq %%rbx, (%%rdi)\n"
+    "movq (%%rdi), %%xmm15\n"
+
+    "movq %%xmm7, (%%rdi)\n"
+    "movq (%%rdi), %%rbx\n"
+
+    "rolq $21, %%rbx\n"
+    "pshufd $0x4e, %%xmm6, %%xmm7\n"
+
+    "movdqa %%xmm6, %%xmm12\n"
+    "psllq $45, %%xmm6\n"
+    "psrlq $19, %%xmm12\n"
+
+    "por %%xmm12, %%xmm6\n"
+
+    "movdqa %%xmm14, %%xmm13\n"
+    "psllq $8, %%xmm14\n"
+    "psrlq $56, %%xmm13\n"
+
+    "por %%xmm13, %%xmm14\n"
+    "punpcklqdq %%xmm14, %%xmm6\n"
+
+    "movdqa %%xmm7, %%xmm12\n"
+    "psllq $15, %%xmm7\n"
+    "psrlq $49, %%xmm12\n"
+
+    "por %%xmm12, %%xmm7\n"
+    "punpcklqdq %%xmm15, %%xmm7\n"
+
+    "rolq $18, %%r9\n"
+
+    "movq %%r9, (%%rdi)\n"
+    "movq (%%rdi), %%xmm14\n"
+
+    "pshufd $0x4e, %%xmm9, %%xmm15\n"
+    "movd %%xmm15, %%r9\n"
+    "rolq $14, %%r9\n"
+
+    "movdqa %%xmm9, %%xmm15\n"
+    "psllq $56, %%xmm9\n"
+    "psrlq $8, %%xmm15\n"
+
+    "por %%xmm15, %%xmm9\n"
+
+    "movdqa %%xmm8, %%xmm12\n"
+
+    "movdqa %%xmm12, %%xmm15\n"
+    "psllq $2, %%xmm12\n"
+    "psrlq $62, %%xmm15\n"
+
+    "por %%xmm15, %%xmm12\n"
+    "punpcklqdq %%xmm12, %%xmm9\n"
+
+    "movdqa %%xmm8, %%xmm15\n"
+    "psllq $61, %%xmm8\n"
+    "psrlq $3, %%xmm15\n"
+
+    "por %%xmm15, %%xmm8\n"
+    "psrldq $8, %%xmm8\n"
+    "punpcklqdq %%xmm14, %%xmm8\n"
+
+    "movq %%rcx, %%r12\n"
+    "notq %%r12\n"
+    "andq %%rdx, %%r12\n"
+    "movq %%rdx, %%r13\n"
+    "notq %%r13\n"
+    "andq %%rbx, %%r13\n"
+    "movq %%rbx, %%r11\n"
+    "notq %%r11\n"
+    "andq %%r9, %%r11\n"
+    "xorq %%r11, %%rdx\n"
+    "movq %%r9, %%r10\n"
+    "notq %%r10\n"
+    "andq %%rax, %%r10\n"
+    "xorq %%r10, %%rbx\n"
+    "movq %%rax, %%r11\n"
+    "notq %%r11\n"
+    "andq %%rcx, %%r11\n"
+    "xorq %%r11, %%r9\n"
+    "xorq %%r12, %%rax\n"
+    "xorq %%r13, %%rcx\n"
+
+    "movdqa %%xmm2, %%xmm14\n"
+    "pandn %%xmm4, %%xmm14\n"
+    "movdqa %%xmm4, %%xmm15\n"
+    "pandn %%xmm6, %%xmm15\n"
+    "movdqa %%xmm6, %%xmm12\n"
+    "pandn %%xmm8, %%xmm12\n"
+    "pxor %%xmm12, %%xmm4\n"
+    "movdqa %%xmm8, %%xmm13\n"
+    "pandn %%xmm0, %%xmm13\n"
+    "pxor %%xmm13, %%xmm6\n"
+    "movdqa %%xmm0, %%xmm12\n"
+    "pandn %%xmm2, %%xmm12\n"
+    "pxor %%xmm12, %%xmm8\n"
+    "pxor %%xmm14, %%xmm0\n"
+    "pxor %%xmm15, %%xmm2\n"
+
+    "movdqa %%xmm3, %%xmm14\n"
+    "pandn %%xmm5, %%xmm14\n"
+    "movdqa %%xmm5, %%xmm15\n"
+    "pandn %%xmm7, %%xmm15\n"
+    "movdqa %%xmm7, %%xmm12\n"
+    "pandn %%xmm9, %%xmm12\n"
+    "pxor %%xmm12, %%xmm5\n"
+    "movdqa %%xmm9, %%xmm13\n"
+    "pandn %%xmm1, %%xmm13\n"
+    "pxor %%xmm13, %%xmm7\n"
+    "movdqa %%xmm1, %%xmm12\n"
+    "pandn %%xmm3, %%xmm12\n"
+    "pxor %%xmm12, %%xmm9\n"
+    "pxor %%xmm14, %%xmm1\n"
+    "pxor %%xmm15, %%xmm3\n"
+
+    "xorq (%%rsi, %%r8, 8), %%rax\n"
+
+    "movq %%rcx, (%%rdi)\n"
+    "movq (%%rdi), %%xmm10\n"
+
+    "movq %%rbx, (%%rdi)\n"
+    "movq (%%rdi), %%xmm11\n"
+
+    "movq %%rdx, (%%rdi)\n"
+    "movq (%%rdi), %%xmm14\n"
+
+    "movq %%r9, (%%rdi)\n"
+    "movq (%%rdi), %%xmm15\n"
+
+    "movq %%rax, %%r10\n"
+    "punpcklqdq %%xmm14, %%xmm10\n"
+    "punpcklqdq %%xmm15, %%xmm11\n"
+
+    "movq %%xmm0, (%%rdi)\n"
+    "movq (%%rdi), %%rcx\n"
+
+    "movq %%xmm1, (%%rdi)\n"
+    "movq (%%rdi), %%rbx\n"
+
+    "psrldq $8, %%xmm0\n"
+    "psrldq $8, %%xmm1\n"
+    "xorq %%rcx, %%r10\n"
+    "xorq %%rbx, %%r10\n"
+
+    "movq %%xmm0, (%%rdi)\n"
+    "movq (%%rdi), %%rdx\n"
+
+    "movq %%xmm1, (%%rdi)\n"
+    "movq (%%rdi), %%r9\n"
+
+    "movdqa %%xmm10, %%xmm0\n"
+    "movdqa %%xmm11, %%xmm1\n"
+
+    "movdqa %%xmm2, %%xmm14\n"
+    "punpcklqdq %%xmm4, %%xmm2\n"
+    "xorq %%rdx, %%r10\n"
+    "xorq %%r9, %%r10\n"
+    "punpckhqdq %%xmm14, %%xmm4\n"
+    "pshufd $0x4e, %%xmm4, %%xmm4\n"
+
+    "movdqa %%xmm7, %%xmm14\n"
+    "punpcklqdq %%xmm9, %%xmm7\n"
+    "pxor %%xmm2, %%xmm10\n"
+    "pxor %%xmm4, %%xmm10\n"
+    "punpckhqdq %%xmm14, %%xmm9\n"
+    "pshufd $0x4e, %%xmm9, %%xmm9\n"
+
+    "movdqa %%xmm3, %%xmm14\n"
+    "movdqa %%xmm5, %%xmm15\n"
+    "movdqa %%xmm6, %%xmm3\n"
+    "movdqa %%xmm8, %%xmm5\n"
+    "pxor %%xmm7, %%xmm11\n"
+    "pxor %%xmm9, %%xmm11\n"
+    "punpcklqdq %%xmm8, %%xmm3\n"
+    "punpckhqdq %%xmm6, %%xmm5\n"
+    "pshufd $0x4e, %%xmm5, %%xmm5\n"
+    "movdqa %%xmm14, %%xmm6\n"
+    "movdqa %%xmm15, %%xmm8\n"
+    "pxor %%xmm3, %%xmm11\n"
+    "pxor %%xmm5, %%xmm11\n"
+    "punpcklqdq %%xmm15, %%xmm6\n"
+    "punpckhqdq %%xmm14, %%xmm8\n"
+    "pshufd $0x4e, %%xmm8, %%xmm8\n"
+
+    "decl %%r8d\n"
+    "pxor %%xmm6, %%xmm10\n"
+    "pxor %%xmm8, %%xmm10\n"
+    "jnz 1b\n"
+
+    "movq %%rax, (%%rdi)\n"
+    "movups %%xmm0, 8(%%rdi)\n"
+    "movups %%xmm1, 24(%%rdi)\n"
+
+    "movq %%rcx, 40(%%rdi)\n"
+    "movups %%xmm2, 48(%%rdi)\n"
+    "movups %%xmm3, 64(%%rdi)\n"
+
+    "movq %%rdx, 80(%%rdi)\n"
+    "movups %%xmm4, 88(%%rdi)\n"
+    "movups %%xmm5, 104(%%rdi)\n"
+
+    "movq %%rbx, 120(%%rdi)\n"
+    "movups %%xmm6, 128(%%rdi)\n"
+    "movups %%xmm7, 144(%%rdi)\n"
+
+    "movq %%r9, 160(%%rdi)\n"
+    "movups %%xmm8, 168(%%rdi)\n"
+    "movups %%xmm9, 184(%%rdi)\n"
+    :
+    : "D" (ctx->state), "S" (rc)
+    : "rax", "rbx", "rcx", "rdx",
+      "r8", "r9", "r10", "r11", "r12", "r13",
+      "xmm0", "xmm1", "xmm2", "xmm3",
+      "xmm4", "xmm5", "xmm6", "xmm7",
+      "xmm8", "xmm9", "xmm10", "xmm11",
+      "xmm12", "xmm13", "xmm14", "xmm15",
+      "cc", "memory"
+  );
+#else
+  static const uint64_t rc[24] = {
+    UINT64_C(0x0000000000000001), UINT64_C(0x0000000000008082),
+    UINT64_C(0x800000000000808a), UINT64_C(0x8000000080008000),
+    UINT64_C(0x000000000000808b), UINT64_C(0x0000000080000001),
+    UINT64_C(0x8000000080008081), UINT64_C(0x8000000000008009),
+    UINT64_C(0x000000000000008a), UINT64_C(0x0000000000000088),
+    UINT64_C(0x0000000080008009), UINT64_C(0x000000008000000a),
+    UINT64_C(0x000000008000808b), UINT64_C(0x800000000000008b),
+    UINT64_C(0x8000000000008089), UINT64_C(0x8000000000008003),
+    UINT64_C(0x8000000000008002), UINT64_C(0x8000000000000080),
+    UINT64_C(0x000000000000800a), UINT64_C(0x800000008000000a),
+    UINT64_C(0x8000000080008081), UINT64_C(0x8000000000008080),
+    UINT64_C(0x0000000080000001), UINT64_C(0x8000000080008008)
+  };
+
+  uint64_t C[5], D[5], T, X;
+  unsigned i, y;
+
+#define A ctx->state
+
+  C[0] = A[0] ^ A[5 + 0] ^ A[10 + 0] ^ A[15 + 0] ^ A[20 + 0];
+  C[1] = A[1] ^ A[5 + 1] ^ A[10 + 1] ^ A[15 + 1] ^ A[20 + 1];
+  C[2] = A[2] ^ A[5 + 2] ^ A[10 + 2] ^ A[15 + 2] ^ A[20 + 2];
+  C[3] = A[3] ^ A[5 + 3] ^ A[10 + 3] ^ A[15 + 3] ^ A[20 + 3];
+  C[4] = A[4] ^ A[5 + 4] ^ A[10 + 4] ^ A[15 + 4] ^ A[20 + 4];
+
+  for (i = 0; i < 24; i++) {
+    D[0] = C[4] ^ ROTL64(1, C[1]);
+    D[1] = C[0] ^ ROTL64(1, C[2]);
+    D[2] = C[1] ^ ROTL64(1, C[3]);
+    D[3] = C[2] ^ ROTL64(1, C[4]);
+    D[4] = C[3] ^ ROTL64(1, C[0]);
+
+    A[0] ^= D[0];
+    X = A[ 1] ^ D[1];     T = ROTL64( 1, X);
+    X = A[ 6] ^ D[1]; A[ 1] = ROTL64(44, X);
+    X = A[ 9] ^ D[4]; A[ 6] = ROTL64(20, X);
+    X = A[22] ^ D[2]; A[ 9] = ROTL64(61, X);
+    X = A[14] ^ D[4]; A[22] = ROTL64(39, X);
+    X = A[20] ^ D[0]; A[14] = ROTL64(18, X);
+    X = A[ 2] ^ D[2]; A[20] = ROTL64(62, X);
+    X = A[12] ^ D[2]; A[ 2] = ROTL64(43, X);
+    X = A[13] ^ D[3]; A[12] = ROTL64(25, X);
+    X = A[19] ^ D[4]; A[13] = ROTL64( 8, X);
+    X = A[23] ^ D[3]; A[19] = ROTL64(56, X);
+    X = A[15] ^ D[0]; A[23] = ROTL64(41, X);
+    X = A[ 4] ^ D[4]; A[15] = ROTL64(27, X);
+    X = A[24] ^ D[4]; A[ 4] = ROTL64(14, X);
+    X = A[21] ^ D[1]; A[24] = ROTL64( 2, X);
+    X = A[ 8] ^ D[3]; A[21] = ROTL64(55, X);
+    X = A[16] ^ D[1]; A[ 8] = ROTL64(45, X);
+    X = A[ 5] ^ D[0]; A[16] = ROTL64(36, X);
+    X = A[ 3] ^ D[3]; A[ 5] = ROTL64(28, X);
+    X = A[18] ^ D[3]; A[ 3] = ROTL64(21, X);
+    X = A[17] ^ D[2]; A[18] = ROTL64(15, X);
+    X = A[11] ^ D[1]; A[17] = ROTL64(10, X);
+    X = A[ 7] ^ D[2]; A[11] = ROTL64( 6, X);
+    X = A[10] ^ D[0]; A[ 7] = ROTL64( 3, X);
+    A[10] = T;
+
+    D[0] = ~A[1] & A[2];
+    D[1] = ~A[2] & A[3];
+    D[2] = ~A[3] & A[4];
+    D[3] = ~A[4] & A[0];
+    D[4] = ~A[0] & A[1];
+
+    A[0] ^= D[0] ^ rc[i]; C[0] = A[0];
+    A[1] ^= D[1]; C[1] = A[1];
+    A[2] ^= D[2]; C[2] = A[2];
+    A[3] ^= D[3]; C[3] = A[3];
+    A[4] ^= D[4]; C[4] = A[4];
+
+    for (y = 5; y < 25; y += 5) {
+      D[0] = ~A[y + 1] & A[y + 2];
+      D[1] = ~A[y + 2] & A[y + 3];
+      D[2] = ~A[y + 3] & A[y + 4];
+      D[3] = ~A[y + 4] & A[y + 0];
+      D[4] = ~A[y + 0] & A[y + 1];
+
+      A[y + 0] ^= D[0]; C[0] ^= A[y + 0];
+      A[y + 1] ^= D[1]; C[1] ^= A[y + 1];
+      A[y + 2] ^= D[2]; C[2] ^= A[y + 2];
+      A[y + 3] ^= D[3]; C[3] ^= A[y + 3];
+      A[y + 4] ^= D[4]; C[4] ^= A[y + 4];
+    }
+  }
+#undef A
+#endif
+}
+
+static void
+keccak_transform(keccak_t *ctx, const unsigned char *chunk) {
+  size_t count = ctx->bs >> 3;
+  size_t i;
+
+  for (i = 0; i < count; i++)
+    ctx->state[i] ^= read64le(chunk + i * 8);
+
+  keccak_permute(ctx);
+}
+
+void
+keccak_update(keccak_t *ctx, const void *data, size_t len) {
+  const unsigned char *bytes = (const unsigned char *)data;
+  size_t pos = ctx->pos;
+  size_t off = 0;
+
+  if (len == 0)
+    return;
+
+  ctx->pos = (ctx->pos + len) % ctx->bs;
+
+  if (pos > 0) {
+    size_t want = ctx->bs - pos;
+
+    if (want > len)
+      want = len;
+
+    memcpy(ctx->block + pos, bytes, want);
+
+    pos += want;
+    len -= want;
+    off += want;
+
+    if (pos < ctx->bs)
+      return;
+
+    keccak_transform(ctx, ctx->block);
+  }
+
+  while (len >= ctx->bs) {
+    keccak_transform(ctx, bytes + off);
+    off += ctx->bs;
+    len -= ctx->bs;
+  }
+
+  if (len > 0)
+    memcpy(ctx->block, bytes + off, len);
+}
+
+void
+keccak_final(keccak_t *ctx, unsigned char *out, unsigned char pad, size_t len) {
+  size_t i;
+
+  if (pad == 0)
+    pad = 0x01;
+
+  if (len == 0)
+    len = 100 - (ctx->bs >> 1);
+
+  CHECK(len <= ctx->bs);
+
+  memset(ctx->block + ctx->pos, 0x00, ctx->bs - ctx->pos);
+
+  ctx->block[ctx->pos] |= pad;
+  ctx->block[ctx->bs - 1] |= 0x80;
+
+  keccak_transform(ctx, ctx->block);
+
+  for (i = 0; i < len; i++)
+    out[i] = ctx->state[i >> 3] >> (8 * (i & 7));
+}
+
+/*
+ * Keccak{224,256,384,512}
+ */
+
+#define DEFINE_KECCAK(name, bits, pad)                               \
+void                                                                 \
+torsion_##name##_init(sha3_t *ctx) {                                 \
+  keccak_init(ctx, bits);                                            \
+}                                                                    \
+                                                                     \
+void                                                                 \
+torsion_##name##_update(sha3_t *ctx, const void *data, size_t len) { \
+  keccak_update(ctx, data, len);                                     \
+}                                                                    \
+                                                                     \
+void                                                                 \
+torsion_##name##_final(sha3_t *ctx, unsigned char *out) {            \
+  keccak_final(ctx, out, pad, 0);                                    \
+}
+
+DEFINE_KECCAK(keccak224, 224, 0x01)
+DEFINE_KECCAK(keccak256, 256, 0x01)
+DEFINE_KECCAK(keccak384, 384, 0x01)
+DEFINE_KECCAK(keccak512, 512, 0x01)
+
+/*
  * MD2
  *
  * Resources:
@@ -1086,6 +2435,42 @@ sha1_final(sha1_t *ctx, unsigned char *out) {
 
   for (i = 0; i < 5; i++)
     write32be(out + i * 4, ctx->state[i]);
+}
+
+/*
+ * SHA224
+ *
+ * Resources:
+ *   https://en.wikipedia.org/wiki/SHA-2
+ *   https://tools.ietf.org/html/rfc4634
+ */
+
+void
+sha224_init(sha224_t *ctx) {
+  ctx->state[0] = 0xc1059ed8;
+  ctx->state[1] = 0x367cd507;
+  ctx->state[2] = 0x3070dd17;
+  ctx->state[3] = 0xf70e5939;
+  ctx->state[4] = 0xffc00b31;
+  ctx->state[5] = 0x68581511;
+  ctx->state[6] = 0x64f98fa7;
+  ctx->state[7] = 0xbefa4fa4;
+  ctx->size = 0;
+}
+
+void
+sha224_update(sha224_t *ctx, const void *data, size_t len) {
+  sha256_update(ctx, data, len);
+}
+
+void
+sha224_final(sha224_t *ctx, unsigned char *out) {
+  unsigned char tmp[32];
+
+  sha256_final(ctx, tmp);
+
+  memcpy(out, tmp, 28);
+  torsion_cleanse(tmp, sizeof(tmp));
 }
 
 /*
@@ -2491,7 +3876,7 @@ sha256_final(sha256_t *ctx, unsigned char *out) {
 }
 
 /*
- * SHA224
+ * SHA384
  *
  * Resources:
  *   https://en.wikipedia.org/wiki/SHA-2
@@ -2499,30 +3884,30 @@ sha256_final(sha256_t *ctx, unsigned char *out) {
  */
 
 void
-sha224_init(sha224_t *ctx) {
-  ctx->state[0] = 0xc1059ed8;
-  ctx->state[1] = 0x367cd507;
-  ctx->state[2] = 0x3070dd17;
-  ctx->state[3] = 0xf70e5939;
-  ctx->state[4] = 0xffc00b31;
-  ctx->state[5] = 0x68581511;
-  ctx->state[6] = 0x64f98fa7;
-  ctx->state[7] = 0xbefa4fa4;
+sha384_init(sha384_t *ctx) {
+  ctx->state[0] = UINT64_C(0xcbbb9d5dc1059ed8);
+  ctx->state[1] = UINT64_C(0x629a292a367cd507);
+  ctx->state[2] = UINT64_C(0x9159015a3070dd17);
+  ctx->state[3] = UINT64_C(0x152fecd8f70e5939);
+  ctx->state[4] = UINT64_C(0x67332667ffc00b31);
+  ctx->state[5] = UINT64_C(0x8eb44a8768581511);
+  ctx->state[6] = UINT64_C(0xdb0c2e0d64f98fa7);
+  ctx->state[7] = UINT64_C(0x47b5481dbefa4fa4);
   ctx->size = 0;
 }
 
 void
-sha224_update(sha224_t *ctx, const void *data, size_t len) {
-  sha256_update(ctx, data, len);
+sha384_update(sha384_t *ctx, const void *data, size_t len) {
+  sha512_update(ctx, data, len);
 }
 
 void
-sha224_final(sha224_t *ctx, unsigned char *out) {
-  unsigned char tmp[32];
+sha384_final(sha384_t *ctx, unsigned char *out) {
+  unsigned char tmp[64];
 
-  sha256_final(ctx, tmp);
+  sha512_final(ctx, tmp);
 
-  memcpy(out, tmp, 28);
+  memcpy(out, tmp, 48);
   torsion_cleanse(tmp, sizeof(tmp));
 }
 
@@ -3962,740 +5347,17 @@ sha512_final(sha512_t *ctx, unsigned char *out) {
 }
 
 /*
- * SHA384
- *
- * Resources:
- *   https://en.wikipedia.org/wiki/SHA-2
- *   https://tools.ietf.org/html/rfc4634
+ * SHA3-{224,256,384,512}
  */
 
-void
-sha384_init(sha384_t *ctx) {
-  ctx->state[0] = UINT64_C(0xcbbb9d5dc1059ed8);
-  ctx->state[1] = UINT64_C(0x629a292a367cd507);
-  ctx->state[2] = UINT64_C(0x9159015a3070dd17);
-  ctx->state[3] = UINT64_C(0x152fecd8f70e5939);
-  ctx->state[4] = UINT64_C(0x67332667ffc00b31);
-  ctx->state[5] = UINT64_C(0x8eb44a8768581511);
-  ctx->state[6] = UINT64_C(0xdb0c2e0d64f98fa7);
-  ctx->state[7] = UINT64_C(0x47b5481dbefa4fa4);
-  ctx->size = 0;
-}
-
-void
-sha384_update(sha384_t *ctx, const void *data, size_t len) {
-  sha512_update(ctx, data, len);
-}
-
-void
-sha384_final(sha384_t *ctx, unsigned char *out) {
-  unsigned char tmp[64];
-
-  sha512_final(ctx, tmp);
-
-  memcpy(out, tmp, 48);
-  torsion_cleanse(tmp, sizeof(tmp));
-}
+DEFINE_KECCAK(sha3_224, 224, 0x06)
+DEFINE_KECCAK(sha3_256, 256, 0x06)
+DEFINE_KECCAK(sha3_384, 384, 0x06)
+DEFINE_KECCAK(sha3_512, 512, 0x06)
 
 /*
- * Hash160
- *
- * Resources:
- *   https://github.com/bitcoin/bitcoin/blob/master/src/hash.h
+ * SHAKE{128,256}
  */
-
-void
-hash160_init(hash160_t *ctx) {
-  sha256_init(ctx);
-}
-
-void
-hash160_update(hash160_t *ctx, const void *data, size_t len) {
-  sha256_update(ctx, data, len);
-}
-
-void
-hash160_final(hash160_t *ctx, unsigned char *out) {
-  unsigned char tmp[32];
-  ripemd160_t rmd;
-
-  sha256_final(ctx, tmp);
-
-  ripemd160_init(&rmd);
-  ripemd160_update(&rmd, tmp, 32);
-  ripemd160_final(&rmd, out);
-
-  torsion_cleanse(tmp, sizeof(tmp));
-}
-
-/*
- * Hash256
- *
- * Resources:
- *   https://github.com/bitcoin/bitcoin/blob/master/src/hash.h
- */
-
-void
-hash256_init(hash256_t *ctx) {
-  sha256_init(ctx);
-}
-
-void
-hash256_update(hash256_t *ctx, const void *data, size_t len) {
-  sha256_update(ctx, data, len);
-}
-
-void
-hash256_final(hash256_t *ctx, unsigned char *out) {
-  sha256_final(ctx, out);
-  sha256_init(ctx);
-  sha256_update(ctx, out, 32);
-  sha256_final(ctx, out);
-}
-
-/*
- * Keccak
- *
- * Resources:
- *   https://en.wikipedia.org/wiki/SHA-3
- *   https://keccak.team/specifications.html
- *   https://csrc.nist.gov/projects/hash-functions/sha-3-project/sha-3-standardization
- *   http://dx.doi.org/10.6028/NIST.FIPS.202
- *   https://github.com/gnutls/nettle/blob/master/sha3-permute.c
- */
-
-void
-keccak_init(keccak_t *ctx, size_t bits) {
-  size_t rate = 1600 - bits * 2;
-
-  ASSERT(bits >= 128);
-  ASSERT(bits <= 512);
-  ASSERT((rate & 63) == 0);
-
-  ctx->bs = rate >> 3;
-  ctx->pos = 0;
-
-  memset(ctx->state, 0, sizeof(ctx->state));
-}
-
-static void
-keccak_permute(keccak_t *ctx) {
-#ifdef TORSION_HAVE_ASM_X64
-  /* Borrowed from:
-   * https://github.com/gnutls/nettle/blob/master/x86_64/sha3-permute.asm
-   *
-   * Registers:
-   *
-   *   %rdi = state pointer (ctx->state)
-   *   %rsi = round constants pointer (reversed)
-   *   %r8 = round counter (starts at 24, decrements)
-   *
-   * For reference, our full range of clobbered registers:
-   *
-   *   %rax, %rbx, %rcx, %rdx, %rdi, %rsi, %r[8-13], %xmm[0-15]
-   */
-  static const uint64_t rc[25] = {
-    UINT64_C(0x0000000000000000),
-    UINT64_C(0x8000000080008008), UINT64_C(0x0000000080000001),
-    UINT64_C(0x8000000000008080), UINT64_C(0x8000000080008081),
-    UINT64_C(0x800000008000000a), UINT64_C(0x000000000000800a),
-    UINT64_C(0x8000000000000080), UINT64_C(0x8000000000008002),
-    UINT64_C(0x8000000000008003), UINT64_C(0x8000000000008089),
-    UINT64_C(0x800000000000008b), UINT64_C(0x000000008000808b),
-    UINT64_C(0x000000008000000a), UINT64_C(0x0000000080008009),
-    UINT64_C(0x0000000000000088), UINT64_C(0x000000000000008a),
-    UINT64_C(0x8000000000008009), UINT64_C(0x8000000080008081),
-    UINT64_C(0x0000000080000001), UINT64_C(0x000000000000808b),
-    UINT64_C(0x8000000080008000), UINT64_C(0x800000000000808a),
-    UINT64_C(0x0000000000008082), UINT64_C(0x0000000000000001)
-  };
-
-  __asm__ __volatile__(
-    "movl $24, %%r8d\n"
-
-    "movq (%%rdi), %%rax\n"
-    "movups 8(%%rdi), %%xmm0\n"
-    "movups 24(%%rdi), %%xmm1\n"
-    "movq %%rax, %%r10\n"
-
-    "movq 40(%%rdi), %%rcx\n"
-    "movdqa %%xmm0, %%xmm10\n"
-    "movups 48(%%rdi), %%xmm2\n"
-    "movdqa %%xmm1, %%xmm11\n"
-    "movups 64(%%rdi), %%xmm3\n"
-    "xorq %%rcx, %%r10\n"
-
-    "movq 80(%%rdi), %%rdx\n"
-    "pxor %%xmm2, %%xmm10\n"
-    "movups 88(%%rdi), %%xmm4\n"
-    "pxor %%xmm3, %%xmm11\n"
-    "movups 104(%%rdi), %%xmm5\n"
-    "xorq %%rdx, %%r10\n"
-
-    "movq 120(%%rdi), %%rbx\n"
-    "pxor %%xmm4, %%xmm10\n"
-    "movups 128(%%rdi), %%xmm6\n"
-    "pxor %%xmm5, %%xmm11\n"
-    "movups 144(%%rdi), %%xmm7\n"
-    "xorq %%rbx, %%r10\n"
-
-    "movq 160(%%rdi), %%r9\n"
-    "pxor %%xmm6, %%xmm10\n"
-    "movups 168(%%rdi), %%xmm8\n"
-    "pxor %%xmm7, %%xmm11\n"
-    "movups 184(%%rdi), %%xmm9\n"
-    "xorq %%r9, %%r10\n"
-    "pxor %%xmm8, %%xmm10\n"
-    "pxor %%xmm9, %%xmm11\n"
-
-    ".align 16\n"
-
-    "1:\n"
-
-    "pshufd $0x4e, %%xmm11, %%xmm11\n"
-    "movdqa %%xmm10, %%xmm13\n"
-
-    "movq %%r10, (%%rdi)\n"
-    "movq (%%rdi), %%xmm12\n"
-
-    "punpcklqdq %%xmm10, %%xmm12\n"
-    "punpckhqdq %%xmm11, %%xmm13\n"
-    "punpcklqdq %%xmm12, %%xmm11\n"
-
-    "movq %%xmm11, (%%rdi)\n"
-    "movq (%%rdi), %%r11\n"
-
-    "movq %%xmm10, (%%rdi)\n"
-    "movq (%%rdi), %%r12\n"
-
-    "rolq $1, %%r12\n"
-    "xorq %%r12, %%r11\n"
-
-    "movdqa %%xmm13, %%xmm14\n"
-    "movdqa %%xmm13, %%xmm15\n"
-    "psllq $1, %%xmm14\n"
-    "psrlq $63, %%xmm15\n"
-    "pxor %%xmm14, %%xmm12\n"
-    "pxor %%xmm15, %%xmm12\n"
-
-    "movdqa %%xmm11, %%xmm10\n"
-    "psrlq $63, %%xmm11\n"
-    "psllq $1, %%xmm10\n"
-    "pxor %%xmm11, %%xmm13\n"
-    "pxor %%xmm10, %%xmm13\n"
-
-    "xorq %%r11, %%rax\n"
-    "xorq %%r11, %%rcx\n"
-    "xorq %%r11, %%rdx\n"
-    "xorq %%r11, %%rbx\n"
-    "xorq %%r11, %%r9\n"
-    "pxor %%xmm12, %%xmm0\n"
-    "pxor %%xmm12, %%xmm2\n"
-    "pxor %%xmm12, %%xmm4\n"
-    "pxor %%xmm12, %%xmm6\n"
-    "pxor %%xmm12, %%xmm8\n"
-    "pxor %%xmm13, %%xmm1\n"
-    "pxor %%xmm13, %%xmm3\n"
-    "pxor %%xmm13, %%xmm5\n"
-    "pxor %%xmm13, %%xmm7\n"
-    "pxor %%xmm13, %%xmm9\n"
-
-    "movdqa %%xmm0, %%xmm14\n"
-    "movdqa %%xmm0, %%xmm15\n"
-    "movdqa %%xmm0, %%xmm12\n"
-    "psllq $1, %%xmm0\n"
-    "psrlq $63, %%xmm14\n"
-    "psllq $62, %%xmm15\n"
-    "por %%xmm0, %%xmm14\n"
-    "psrlq $2, %%xmm12\n"
-    "por %%xmm15, %%xmm12\n"
-
-    "movdqa %%xmm1, %%xmm0\n"
-    "movdqa %%xmm1, %%xmm15\n"
-    "psllq $28, %%xmm0\n"
-    "psrlq $36, %%xmm15\n"
-    "por %%xmm15, %%xmm0\n"
-    "movdqa %%xmm1, %%xmm15\n"
-    "psllq $27, %%xmm1\n"
-    "psrlq $37, %%xmm15\n"
-    "por %%xmm15, %%xmm1\n"
-
-    "punpcklqdq %%xmm14, %%xmm0\n"
-    "punpckhqdq %%xmm12, %%xmm1\n"
-
-    "rolq $36, %%rcx\n"
-
-    "movq %%rcx, (%%rdi)\n"
-    "movq (%%rdi), %%xmm14\n"
-
-    "movq %%xmm2, (%%rdi)\n"
-    "movq (%%rdi), %%rcx\n"
-
-    "rolq $44, %%rcx\n"
-
-    "movdqa %%xmm2, %%xmm15\n"
-    "psllq $6, %%xmm2\n"
-    "psrlq $58, %%xmm15\n"
-
-    "por %%xmm2, %%xmm15\n"
-    "movdqa %%xmm3, %%xmm2\n"
-
-    "movdqa %%xmm2, %%xmm12\n"
-    "psllq $20, %%xmm2\n"
-    "psrlq $44, %%xmm12\n"
-
-    "por %%xmm12, %%xmm2\n"
-    "punpckhqdq %%xmm15, %%xmm2\n"
-
-    "movdqa %%xmm3, %%xmm15\n"
-    "psllq $55, %%xmm3\n"
-    "psrlq $9, %%xmm15\n"
-
-    "por %%xmm3, %%xmm15\n"
-    "movdqa %%xmm14, %%xmm3\n"
-    "punpcklqdq %%xmm15, %%xmm3\n"
-
-    "rolq $42, %%rdx\n"
-    "pshufd $0x4e, %%xmm4, %%xmm14\n"
-
-    "movq %%rdx, (%%rdi)\n"
-    "movq (%%rdi), %%xmm4\n"
-
-    "movq %%xmm14, (%%rdi)\n"
-    "movq (%%rdi), %%rdx\n"
-
-    "rolq $43, %%rdx\n"
-
-    "punpcklqdq %%xmm5, %%xmm4\n"
-
-    "movdqa %%xmm4, %%xmm15\n"
-    "psllq $25, %%xmm4\n"
-    "psrlq $39, %%xmm15\n"
-
-    "por %%xmm15, %%xmm4\n"
-
-    "movdqa %%xmm5, %%xmm12\n"
-    "psllq $39, %%xmm5\n"
-    "psrlq $25, %%xmm12\n"
-
-    "por %%xmm5, %%xmm12\n"
-
-    "movdqa %%xmm14, %%xmm5\n"
-    "psllq $10, %%xmm14\n"
-    "psrlq $54, %%xmm5\n"
-
-    "por %%xmm14, %%xmm5\n"
-    "punpckhqdq %%xmm12, %%xmm5\n"
-
-    "pshufd $0x4e, %%xmm7, %%xmm14\n"
-    "rolq $41, %%rbx\n"
-
-    "movq %%rbx, (%%rdi)\n"
-    "movq (%%rdi), %%xmm15\n"
-
-    "movq %%xmm7, (%%rdi)\n"
-    "movq (%%rdi), %%rbx\n"
-
-    "rolq $21, %%rbx\n"
-    "pshufd $0x4e, %%xmm6, %%xmm7\n"
-
-    "movdqa %%xmm6, %%xmm12\n"
-    "psllq $45, %%xmm6\n"
-    "psrlq $19, %%xmm12\n"
-
-    "por %%xmm12, %%xmm6\n"
-
-    "movdqa %%xmm14, %%xmm13\n"
-    "psllq $8, %%xmm14\n"
-    "psrlq $56, %%xmm13\n"
-
-    "por %%xmm13, %%xmm14\n"
-    "punpcklqdq %%xmm14, %%xmm6\n"
-
-    "movdqa %%xmm7, %%xmm12\n"
-    "psllq $15, %%xmm7\n"
-    "psrlq $49, %%xmm12\n"
-
-    "por %%xmm12, %%xmm7\n"
-    "punpcklqdq %%xmm15, %%xmm7\n"
-
-    "rolq $18, %%r9\n"
-
-    "movq %%r9, (%%rdi)\n"
-    "movq (%%rdi), %%xmm14\n"
-
-    "pshufd $0x4e, %%xmm9, %%xmm15\n"
-    "movd %%xmm15, %%r9\n"
-    "rolq $14, %%r9\n"
-
-    "movdqa %%xmm9, %%xmm15\n"
-    "psllq $56, %%xmm9\n"
-    "psrlq $8, %%xmm15\n"
-
-    "por %%xmm15, %%xmm9\n"
-
-    "movdqa %%xmm8, %%xmm12\n"
-
-    "movdqa %%xmm12, %%xmm15\n"
-    "psllq $2, %%xmm12\n"
-    "psrlq $62, %%xmm15\n"
-
-    "por %%xmm15, %%xmm12\n"
-    "punpcklqdq %%xmm12, %%xmm9\n"
-
-    "movdqa %%xmm8, %%xmm15\n"
-    "psllq $61, %%xmm8\n"
-    "psrlq $3, %%xmm15\n"
-
-    "por %%xmm15, %%xmm8\n"
-    "psrldq $8, %%xmm8\n"
-    "punpcklqdq %%xmm14, %%xmm8\n"
-
-    "movq %%rcx, %%r12\n"
-    "notq %%r12\n"
-    "andq %%rdx, %%r12\n"
-    "movq %%rdx, %%r13\n"
-    "notq %%r13\n"
-    "andq %%rbx, %%r13\n"
-    "movq %%rbx, %%r11\n"
-    "notq %%r11\n"
-    "andq %%r9, %%r11\n"
-    "xorq %%r11, %%rdx\n"
-    "movq %%r9, %%r10\n"
-    "notq %%r10\n"
-    "andq %%rax, %%r10\n"
-    "xorq %%r10, %%rbx\n"
-    "movq %%rax, %%r11\n"
-    "notq %%r11\n"
-    "andq %%rcx, %%r11\n"
-    "xorq %%r11, %%r9\n"
-    "xorq %%r12, %%rax\n"
-    "xorq %%r13, %%rcx\n"
-
-    "movdqa %%xmm2, %%xmm14\n"
-    "pandn %%xmm4, %%xmm14\n"
-    "movdqa %%xmm4, %%xmm15\n"
-    "pandn %%xmm6, %%xmm15\n"
-    "movdqa %%xmm6, %%xmm12\n"
-    "pandn %%xmm8, %%xmm12\n"
-    "pxor %%xmm12, %%xmm4\n"
-    "movdqa %%xmm8, %%xmm13\n"
-    "pandn %%xmm0, %%xmm13\n"
-    "pxor %%xmm13, %%xmm6\n"
-    "movdqa %%xmm0, %%xmm12\n"
-    "pandn %%xmm2, %%xmm12\n"
-    "pxor %%xmm12, %%xmm8\n"
-    "pxor %%xmm14, %%xmm0\n"
-    "pxor %%xmm15, %%xmm2\n"
-
-    "movdqa %%xmm3, %%xmm14\n"
-    "pandn %%xmm5, %%xmm14\n"
-    "movdqa %%xmm5, %%xmm15\n"
-    "pandn %%xmm7, %%xmm15\n"
-    "movdqa %%xmm7, %%xmm12\n"
-    "pandn %%xmm9, %%xmm12\n"
-    "pxor %%xmm12, %%xmm5\n"
-    "movdqa %%xmm9, %%xmm13\n"
-    "pandn %%xmm1, %%xmm13\n"
-    "pxor %%xmm13, %%xmm7\n"
-    "movdqa %%xmm1, %%xmm12\n"
-    "pandn %%xmm3, %%xmm12\n"
-    "pxor %%xmm12, %%xmm9\n"
-    "pxor %%xmm14, %%xmm1\n"
-    "pxor %%xmm15, %%xmm3\n"
-
-    "xorq (%%rsi, %%r8, 8), %%rax\n"
-
-    "movq %%rcx, (%%rdi)\n"
-    "movq (%%rdi), %%xmm10\n"
-
-    "movq %%rbx, (%%rdi)\n"
-    "movq (%%rdi), %%xmm11\n"
-
-    "movq %%rdx, (%%rdi)\n"
-    "movq (%%rdi), %%xmm14\n"
-
-    "movq %%r9, (%%rdi)\n"
-    "movq (%%rdi), %%xmm15\n"
-
-    "movq %%rax, %%r10\n"
-    "punpcklqdq %%xmm14, %%xmm10\n"
-    "punpcklqdq %%xmm15, %%xmm11\n"
-
-    "movq %%xmm0, (%%rdi)\n"
-    "movq (%%rdi), %%rcx\n"
-
-    "movq %%xmm1, (%%rdi)\n"
-    "movq (%%rdi), %%rbx\n"
-
-    "psrldq $8, %%xmm0\n"
-    "psrldq $8, %%xmm1\n"
-    "xorq %%rcx, %%r10\n"
-    "xorq %%rbx, %%r10\n"
-
-    "movq %%xmm0, (%%rdi)\n"
-    "movq (%%rdi), %%rdx\n"
-
-    "movq %%xmm1, (%%rdi)\n"
-    "movq (%%rdi), %%r9\n"
-
-    "movdqa %%xmm10, %%xmm0\n"
-    "movdqa %%xmm11, %%xmm1\n"
-
-    "movdqa %%xmm2, %%xmm14\n"
-    "punpcklqdq %%xmm4, %%xmm2\n"
-    "xorq %%rdx, %%r10\n"
-    "xorq %%r9, %%r10\n"
-    "punpckhqdq %%xmm14, %%xmm4\n"
-    "pshufd $0x4e, %%xmm4, %%xmm4\n"
-
-    "movdqa %%xmm7, %%xmm14\n"
-    "punpcklqdq %%xmm9, %%xmm7\n"
-    "pxor %%xmm2, %%xmm10\n"
-    "pxor %%xmm4, %%xmm10\n"
-    "punpckhqdq %%xmm14, %%xmm9\n"
-    "pshufd $0x4e, %%xmm9, %%xmm9\n"
-
-    "movdqa %%xmm3, %%xmm14\n"
-    "movdqa %%xmm5, %%xmm15\n"
-    "movdqa %%xmm6, %%xmm3\n"
-    "movdqa %%xmm8, %%xmm5\n"
-    "pxor %%xmm7, %%xmm11\n"
-    "pxor %%xmm9, %%xmm11\n"
-    "punpcklqdq %%xmm8, %%xmm3\n"
-    "punpckhqdq %%xmm6, %%xmm5\n"
-    "pshufd $0x4e, %%xmm5, %%xmm5\n"
-    "movdqa %%xmm14, %%xmm6\n"
-    "movdqa %%xmm15, %%xmm8\n"
-    "pxor %%xmm3, %%xmm11\n"
-    "pxor %%xmm5, %%xmm11\n"
-    "punpcklqdq %%xmm15, %%xmm6\n"
-    "punpckhqdq %%xmm14, %%xmm8\n"
-    "pshufd $0x4e, %%xmm8, %%xmm8\n"
-
-    "decl %%r8d\n"
-    "pxor %%xmm6, %%xmm10\n"
-    "pxor %%xmm8, %%xmm10\n"
-    "jnz 1b\n"
-
-    "movq %%rax, (%%rdi)\n"
-    "movups %%xmm0, 8(%%rdi)\n"
-    "movups %%xmm1, 24(%%rdi)\n"
-
-    "movq %%rcx, 40(%%rdi)\n"
-    "movups %%xmm2, 48(%%rdi)\n"
-    "movups %%xmm3, 64(%%rdi)\n"
-
-    "movq %%rdx, 80(%%rdi)\n"
-    "movups %%xmm4, 88(%%rdi)\n"
-    "movups %%xmm5, 104(%%rdi)\n"
-
-    "movq %%rbx, 120(%%rdi)\n"
-    "movups %%xmm6, 128(%%rdi)\n"
-    "movups %%xmm7, 144(%%rdi)\n"
-
-    "movq %%r9, 160(%%rdi)\n"
-    "movups %%xmm8, 168(%%rdi)\n"
-    "movups %%xmm9, 184(%%rdi)\n"
-    :
-    : "D" (ctx->state), "S" (rc)
-    : "rax", "rbx", "rcx", "rdx",
-      "r8", "r9", "r10", "r11", "r12", "r13",
-      "xmm0", "xmm1", "xmm2", "xmm3",
-      "xmm4", "xmm5", "xmm6", "xmm7",
-      "xmm8", "xmm9", "xmm10", "xmm11",
-      "xmm12", "xmm13", "xmm14", "xmm15",
-      "cc", "memory"
-  );
-#else
-  static const uint64_t rc[24] = {
-    UINT64_C(0x0000000000000001), UINT64_C(0x0000000000008082),
-    UINT64_C(0x800000000000808a), UINT64_C(0x8000000080008000),
-    UINT64_C(0x000000000000808b), UINT64_C(0x0000000080000001),
-    UINT64_C(0x8000000080008081), UINT64_C(0x8000000000008009),
-    UINT64_C(0x000000000000008a), UINT64_C(0x0000000000000088),
-    UINT64_C(0x0000000080008009), UINT64_C(0x000000008000000a),
-    UINT64_C(0x000000008000808b), UINT64_C(0x800000000000008b),
-    UINT64_C(0x8000000000008089), UINT64_C(0x8000000000008003),
-    UINT64_C(0x8000000000008002), UINT64_C(0x8000000000000080),
-    UINT64_C(0x000000000000800a), UINT64_C(0x800000008000000a),
-    UINT64_C(0x8000000080008081), UINT64_C(0x8000000000008080),
-    UINT64_C(0x0000000080000001), UINT64_C(0x8000000080008008)
-  };
-
-  uint64_t C[5], D[5], T, X;
-  unsigned i, y;
-
-#define A ctx->state
-
-  C[0] = A[0] ^ A[5 + 0] ^ A[10 + 0] ^ A[15 + 0] ^ A[20 + 0];
-  C[1] = A[1] ^ A[5 + 1] ^ A[10 + 1] ^ A[15 + 1] ^ A[20 + 1];
-  C[2] = A[2] ^ A[5 + 2] ^ A[10 + 2] ^ A[15 + 2] ^ A[20 + 2];
-  C[3] = A[3] ^ A[5 + 3] ^ A[10 + 3] ^ A[15 + 3] ^ A[20 + 3];
-  C[4] = A[4] ^ A[5 + 4] ^ A[10 + 4] ^ A[15 + 4] ^ A[20 + 4];
-
-  for (i = 0; i < 24; i++) {
-    D[0] = C[4] ^ ROTL64(1, C[1]);
-    D[1] = C[0] ^ ROTL64(1, C[2]);
-    D[2] = C[1] ^ ROTL64(1, C[3]);
-    D[3] = C[2] ^ ROTL64(1, C[4]);
-    D[4] = C[3] ^ ROTL64(1, C[0]);
-
-    A[0] ^= D[0];
-    X = A[ 1] ^ D[1];     T = ROTL64( 1, X);
-    X = A[ 6] ^ D[1]; A[ 1] = ROTL64(44, X);
-    X = A[ 9] ^ D[4]; A[ 6] = ROTL64(20, X);
-    X = A[22] ^ D[2]; A[ 9] = ROTL64(61, X);
-    X = A[14] ^ D[4]; A[22] = ROTL64(39, X);
-    X = A[20] ^ D[0]; A[14] = ROTL64(18, X);
-    X = A[ 2] ^ D[2]; A[20] = ROTL64(62, X);
-    X = A[12] ^ D[2]; A[ 2] = ROTL64(43, X);
-    X = A[13] ^ D[3]; A[12] = ROTL64(25, X);
-    X = A[19] ^ D[4]; A[13] = ROTL64( 8, X);
-    X = A[23] ^ D[3]; A[19] = ROTL64(56, X);
-    X = A[15] ^ D[0]; A[23] = ROTL64(41, X);
-    X = A[ 4] ^ D[4]; A[15] = ROTL64(27, X);
-    X = A[24] ^ D[4]; A[ 4] = ROTL64(14, X);
-    X = A[21] ^ D[1]; A[24] = ROTL64( 2, X);
-    X = A[ 8] ^ D[3]; A[21] = ROTL64(55, X);
-    X = A[16] ^ D[1]; A[ 8] = ROTL64(45, X);
-    X = A[ 5] ^ D[0]; A[16] = ROTL64(36, X);
-    X = A[ 3] ^ D[3]; A[ 5] = ROTL64(28, X);
-    X = A[18] ^ D[3]; A[ 3] = ROTL64(21, X);
-    X = A[17] ^ D[2]; A[18] = ROTL64(15, X);
-    X = A[11] ^ D[1]; A[17] = ROTL64(10, X);
-    X = A[ 7] ^ D[2]; A[11] = ROTL64( 6, X);
-    X = A[10] ^ D[0]; A[ 7] = ROTL64( 3, X);
-    A[10] = T;
-
-    D[0] = ~A[1] & A[2];
-    D[1] = ~A[2] & A[3];
-    D[2] = ~A[3] & A[4];
-    D[3] = ~A[4] & A[0];
-    D[4] = ~A[0] & A[1];
-
-    A[0] ^= D[0] ^ rc[i]; C[0] = A[0];
-    A[1] ^= D[1]; C[1] = A[1];
-    A[2] ^= D[2]; C[2] = A[2];
-    A[3] ^= D[3]; C[3] = A[3];
-    A[4] ^= D[4]; C[4] = A[4];
-
-    for (y = 5; y < 25; y += 5) {
-      D[0] = ~A[y + 1] & A[y + 2];
-      D[1] = ~A[y + 2] & A[y + 3];
-      D[2] = ~A[y + 3] & A[y + 4];
-      D[3] = ~A[y + 4] & A[y + 0];
-      D[4] = ~A[y + 0] & A[y + 1];
-
-      A[y + 0] ^= D[0]; C[0] ^= A[y + 0];
-      A[y + 1] ^= D[1]; C[1] ^= A[y + 1];
-      A[y + 2] ^= D[2]; C[2] ^= A[y + 2];
-      A[y + 3] ^= D[3]; C[3] ^= A[y + 3];
-      A[y + 4] ^= D[4]; C[4] ^= A[y + 4];
-    }
-  }
-#undef A
-#endif
-}
-
-static void
-keccak_transform(keccak_t *ctx, const unsigned char *chunk) {
-  size_t count = ctx->bs >> 3;
-  size_t i;
-
-  for (i = 0; i < count; i++)
-    ctx->state[i] ^= read64le(chunk + i * 8);
-
-  keccak_permute(ctx);
-}
-
-void
-keccak_update(keccak_t *ctx, const void *data, size_t len) {
-  const unsigned char *bytes = (const unsigned char *)data;
-  size_t pos = ctx->pos;
-  size_t off = 0;
-
-  if (len == 0)
-    return;
-
-  ctx->pos = (ctx->pos + len) % ctx->bs;
-
-  if (pos > 0) {
-    size_t want = ctx->bs - pos;
-
-    if (want > len)
-      want = len;
-
-    memcpy(ctx->block + pos, bytes, want);
-
-    pos += want;
-    len -= want;
-    off += want;
-
-    if (pos < ctx->bs)
-      return;
-
-    keccak_transform(ctx, ctx->block);
-  }
-
-  while (len >= ctx->bs) {
-    keccak_transform(ctx, bytes + off);
-    off += ctx->bs;
-    len -= ctx->bs;
-  }
-
-  if (len > 0)
-    memcpy(ctx->block, bytes + off, len);
-}
-
-void
-keccak_final(keccak_t *ctx, unsigned char *out, unsigned char pad, size_t len) {
-  size_t i;
-
-  if (pad == 0)
-    pad = 0x01;
-
-  if (len == 0)
-    len = 100 - (ctx->bs >> 1);
-
-  ASSERT(len <= ctx->bs);
-
-  memset(ctx->block + ctx->pos, 0x00, ctx->bs - ctx->pos);
-
-  ctx->block[ctx->pos] |= pad;
-  ctx->block[ctx->bs - 1] |= 0x80;
-
-  keccak_transform(ctx, ctx->block);
-
-  for (i = 0; i < len; i++)
-    out[i] = ctx->state[i >> 3] >> (8 * (i & 7));
-}
-
-/*
- * Keccak{224,256,384,512}, SHA3-{224,256,384,512}, SHAKE{128,256}
- *
- * Resources:
- *   https://en.wikipedia.org/wiki/SHA-3
- *   https://keccak.team/specifications.html
- *   https://csrc.nist.gov/projects/hash-functions/sha-3-project/sha-3-standardization
- *   http://dx.doi.org/10.6028/NIST.FIPS.202
- */
-
-#define DEFINE_KECCAK(name, bits, pad)                               \
-void                                                                 \
-torsion_##name##_init(sha3_t *ctx) {                                 \
-  keccak_init(ctx, bits);                                            \
-}                                                                    \
-                                                                     \
-void                                                                 \
-torsion_##name##_update(sha3_t *ctx, const void *data, size_t len) { \
-  keccak_update(ctx, data, len);                                     \
-}                                                                    \
-                                                                     \
-void                                                                 \
-torsion_##name##_final(sha3_t *ctx, unsigned char *out) {            \
-  keccak_final(ctx, out, pad, 0);                                    \
-}
 
 #define DEFINE_SHAKE(name, bits)                                      \
 void                                                                  \
@@ -4713,668 +5375,8 @@ torsion_##name##_final(sha3_t *ctx, unsigned char *out, size_t len) { \
   keccak_final(ctx, out, 0x1f, len);                                  \
 }
 
-DEFINE_KECCAK(keccak224, 224, 0x01)
-DEFINE_KECCAK(keccak256, 256, 0x01)
-DEFINE_KECCAK(keccak384, 384, 0x01)
-DEFINE_KECCAK(keccak512, 512, 0x01)
-
-DEFINE_KECCAK(sha3_224, 224, 0x06)
-DEFINE_KECCAK(sha3_256, 256, 0x06)
-DEFINE_KECCAK(sha3_384, 384, 0x06)
-DEFINE_KECCAK(sha3_512, 512, 0x06)
-
 DEFINE_SHAKE(shake128, 128)
 DEFINE_SHAKE(shake256, 256)
-
-/*
- * BLAKE2s
- *
- * Resources:
- *   https://en.wikipedia.org/wiki/BLAKE_(hash_function)
- *   https://tools.ietf.org/html/rfc7693
- *   https://github.com/BLAKE2/BLAKE2/blob/master/ref/blake2s-ref.c
- */
-
-static const uint32_t blake2s_iv[8] = {
-  0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
-  0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19
-};
-
-static const uint8_t blake2s_sigma[10][16] = {
-  {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
-  {14, 10, 4, 8, 9, 15, 13, 6, 1, 12, 0, 2, 11, 7, 5, 3},
-  {11, 8, 12, 0, 5, 2, 15, 13, 10, 14, 3, 6, 7, 1, 9, 4},
-  {7, 9, 3, 1, 13, 12, 11, 14, 2, 6, 5, 10, 4, 0, 15, 8},
-  {9, 0, 5, 7, 2, 4, 10, 15, 14, 1, 11, 12, 6, 8, 3, 13},
-  {2, 12, 6, 10, 0, 11, 8, 3, 4, 13, 7, 5, 15, 14, 1, 9},
-  {12, 5, 1, 15, 14, 13, 4, 10, 0, 7, 6, 3, 9, 2, 8, 11},
-  {13, 11, 7, 14, 12, 1, 3, 9, 5, 0, 15, 4, 8, 6, 2, 10},
-  {6, 15, 14, 9, 11, 3, 0, 8, 12, 2, 13, 7, 1, 4, 10, 5},
-  {10, 2, 8, 4, 7, 6, 1, 5, 15, 11, 9, 14, 3, 12, 13, 0},
-};
-
-void
-blake2s_init(blake2s_t *ctx,
-             size_t outlen,
-             const unsigned char *key,
-             size_t keylen) {
-  size_t i;
-
-  ASSERT(outlen >= 1 && outlen <= 32);
-  ASSERT(keylen <= 32);
-
-  memset(ctx, 0, sizeof(blake2s_t));
-
-  ctx->outlen = outlen;
-
-  for (i = 0; i < 8; i++)
-    ctx->h[i] = blake2s_iv[i];
-
-  ctx->h[0] ^= 0x01010000 ^ (keylen << 8) ^ outlen;
-
-  if (keylen > 0) {
-    unsigned char block[64];
-
-    memset(block, 0x00, 64);
-    memcpy(block, key, keylen);
-
-    blake2s_update(ctx, block, 64);
-
-    torsion_cleanse(block, 64);
-  }
-}
-
-static void
-blake2s_increment(blake2s_t *ctx, uint32_t inc) {
-  ctx->t[0] += inc;
-  ctx->t[1] += (ctx->t[0] < inc);
-}
-
-static void
-blake2s_compress(blake2s_t *ctx, const unsigned char *chunk) {
-  uint32_t m[16];
-  uint32_t v[16];
-  size_t i;
-
-  for (i = 0; i < 16; i++)
-    m[i] = read32le(chunk + i * 4);
-
-  for (i = 0; i < 8; i++)
-    v[i] = ctx->h[i];
-
-  v[ 8] = blake2s_iv[0];
-  v[ 9] = blake2s_iv[1];
-  v[10] = blake2s_iv[2];
-  v[11] = blake2s_iv[3];
-  v[12] = ctx->t[0] ^ blake2s_iv[4];
-  v[13] = ctx->t[1] ^ blake2s_iv[5];
-  v[14] = ctx->f[0] ^ blake2s_iv[6];
-  v[15] = ctx->f[1] ^ blake2s_iv[7];
-
-#define G(r, i, a, b, c, d) do {              \
-  a = a + b + m[blake2s_sigma[r][2 * i + 0]]; \
-  d = rotr32(d ^ a, 16);                      \
-  c = c + d;                                  \
-  b = rotr32(b ^ c, 12);                      \
-  a = a + b + m[blake2s_sigma[r][2 * i + 1]]; \
-  d = rotr32(d ^ a, 8);                       \
-  c = c + d;                                  \
-  b = rotr32(b ^ c, 7);                       \
-} while (0)
-
-#define ROUND(r) do {                  \
-  G(r, 0, v[ 0], v[ 4], v[ 8], v[12]); \
-  G(r, 1, v[ 1], v[ 5], v[ 9], v[13]); \
-  G(r, 2, v[ 2], v[ 6], v[10], v[14]); \
-  G(r, 3, v[ 3], v[ 7], v[11], v[15]); \
-  G(r, 4, v[ 0], v[ 5], v[10], v[15]); \
-  G(r, 5, v[ 1], v[ 6], v[11], v[12]); \
-  G(r, 6, v[ 2], v[ 7], v[ 8], v[13]); \
-  G(r, 7, v[ 3], v[ 4], v[ 9], v[14]); \
-} while (0)
-
-  ROUND(0);
-  ROUND(1);
-  ROUND(2);
-  ROUND(3);
-  ROUND(4);
-  ROUND(5);
-  ROUND(6);
-  ROUND(7);
-  ROUND(8);
-  ROUND(9);
-
-  for (i = 0; i < 8; i++)
-    ctx->h[i] = ctx->h[i] ^ v[i] ^ v[i + 8];
-#undef G
-#undef ROUND
-}
-
-void
-blake2s_update(blake2s_t *ctx, const void *data, size_t len) {
-  const unsigned char *in = (const unsigned char *)data;
-
-  if (len > 0) {
-    size_t left = ctx->buflen;
-    size_t fill = 64 - left;
-
-    if (len > fill) {
-      ctx->buflen = 0;
-      memcpy(ctx->buf + left, in, fill);
-
-      blake2s_increment(ctx, 64);
-      blake2s_compress(ctx, ctx->buf);
-
-      in += fill;
-      len -= fill;
-
-      while (len > 64) {
-        blake2s_increment(ctx, 64);
-        blake2s_compress(ctx, in);
-
-        in += 64;
-        len -= 64;
-      }
-    }
-
-    memcpy(ctx->buf + ctx->buflen, in, len);
-    ctx->buflen += len;
-  }
-}
-
-void
-blake2s_final(blake2s_t *ctx, unsigned char *out) {
-  unsigned char buffer[32];
-  size_t i;
-
-  blake2s_increment(ctx, (uint32_t)ctx->buflen);
-
-  ctx->f[0] = (uint32_t)-1;
-
-  memset(ctx->buf + ctx->buflen, 0, 64 - ctx->buflen);
-
-  blake2s_compress(ctx, ctx->buf);
-
-  for (i = 0; i < 8; i++)
-    write32le(buffer + i * 4, ctx->h[i]);
-
-  memcpy(out, buffer, ctx->outlen);
-
-  torsion_cleanse(buffer, sizeof(buffer));
-}
-
-/*
- * BLAKE2b
- *
- * Resources:
- *   https://en.wikipedia.org/wiki/BLAKE_(hash_function)
- *   https://tools.ietf.org/html/rfc7693
- *   https://github.com/BLAKE2/BLAKE2/blob/master/ref/blake2b-ref.c
- */
-
-static const uint64_t blake2b_iv[8] = {
-  UINT64_C(0x6a09e667f3bcc908), UINT64_C(0xbb67ae8584caa73b),
-  UINT64_C(0x3c6ef372fe94f82b), UINT64_C(0xa54ff53a5f1d36f1),
-  UINT64_C(0x510e527fade682d1), UINT64_C(0x9b05688c2b3e6c1f),
-  UINT64_C(0x1f83d9abfb41bd6b), UINT64_C(0x5be0cd19137e2179)
-};
-
-static const uint8_t blake2b_sigma[12][16] = {
-  {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
-  {14, 10, 4, 8, 9, 15, 13, 6, 1, 12, 0, 2, 11, 7, 5, 3},
-  {11, 8, 12, 0, 5, 2, 15, 13, 10, 14, 3, 6, 7, 1, 9, 4},
-  {7, 9, 3, 1, 13, 12, 11, 14, 2, 6, 5, 10, 4, 0, 15, 8},
-  {9, 0, 5, 7, 2, 4, 10, 15, 14, 1, 11, 12, 6, 8, 3, 13},
-  {2, 12, 6, 10, 0, 11, 8, 3, 4, 13, 7, 5, 15, 14, 1, 9},
-  {12, 5, 1, 15, 14, 13, 4, 10, 0, 7, 6, 3, 9, 2, 8, 11},
-  {13, 11, 7, 14, 12, 1, 3, 9, 5, 0, 15, 4, 8, 6, 2, 10},
-  {6, 15, 14, 9, 11, 3, 0, 8, 12, 2, 13, 7, 1, 4, 10, 5},
-  {10, 2, 8, 4, 7, 6, 1, 5, 15, 11, 9, 14, 3, 12, 13, 0},
-  {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
-  {14, 10, 4, 8, 9, 15, 13, 6, 1, 12, 0, 2, 11, 7, 5, 3}
-};
-
-void
-blake2b_init(blake2b_t *ctx,
-             size_t outlen,
-             const unsigned char *key,
-             size_t keylen) {
-  size_t i;
-
-  ASSERT(outlen >= 1 && outlen <= 64);
-  ASSERT(keylen <= 64);
-
-  memset(ctx, 0, sizeof(blake2b_t));
-
-  ctx->outlen = outlen;
-
-  for (i = 0; i < 8; i++)
-    ctx->h[i] = blake2b_iv[i];
-
-  ctx->h[0] ^= 0x01010000 ^ (keylen << 8) ^ outlen;
-
-  if (keylen > 0) {
-    unsigned char block[128];
-
-    memset(block, 0x00, 128);
-    memcpy(block, key, keylen);
-
-    blake2b_update(ctx, block, 128);
-
-    torsion_cleanse(block, 128);
-  }
-}
-
-static void
-blake2b_increment(blake2b_t *ctx, const uint64_t inc) {
-  ctx->t[0] += inc;
-  ctx->t[1] += (ctx->t[0] < inc);
-}
-
-static void
-blake2b_compress(blake2b_t *ctx, const unsigned char *chunk) {
-  uint64_t m[16];
-  uint64_t v[16];
-  size_t i;
-
-  for (i = 0; i < 16; i++)
-    m[i] = read64le(chunk + i * 8);
-
-  for (i = 0; i < 8; i++)
-    v[i] = ctx->h[i];
-
-  v[ 8] = blake2b_iv[0];
-  v[ 9] = blake2b_iv[1];
-  v[10] = blake2b_iv[2];
-  v[11] = blake2b_iv[3];
-  v[12] = blake2b_iv[4] ^ ctx->t[0];
-  v[13] = blake2b_iv[5] ^ ctx->t[1];
-  v[14] = blake2b_iv[6] ^ ctx->f[0];
-  v[15] = blake2b_iv[7] ^ ctx->f[1];
-
-#define G(r, i, a, b, c, d) do {              \
-  a = a + b + m[blake2b_sigma[r][2 * i + 0]]; \
-  d = rotr64(d ^ a, 32);                      \
-  c = c + d;                                  \
-  b = rotr64(b ^ c, 24);                      \
-  a = a + b + m[blake2b_sigma[r][2 * i + 1]]; \
-  d = rotr64(d ^ a, 16);                      \
-  c = c + d;                                  \
-  b = rotr64(b ^ c, 63);                      \
-} while (0)
-
-#define ROUND(r) do {                  \
-  G(r, 0, v[ 0], v[ 4], v[ 8], v[12]); \
-  G(r, 1, v[ 1], v[ 5], v[ 9], v[13]); \
-  G(r, 2, v[ 2], v[ 6], v[10], v[14]); \
-  G(r, 3, v[ 3], v[ 7], v[11], v[15]); \
-  G(r, 4, v[ 0], v[ 5], v[10], v[15]); \
-  G(r, 5, v[ 1], v[ 6], v[11], v[12]); \
-  G(r, 6, v[ 2], v[ 7], v[ 8], v[13]); \
-  G(r, 7, v[ 3], v[ 4], v[ 9], v[14]); \
-} while (0)
-
-  ROUND(0);
-  ROUND(1);
-  ROUND(2);
-  ROUND(3);
-  ROUND(4);
-  ROUND(5);
-  ROUND(6);
-  ROUND(7);
-  ROUND(8);
-  ROUND(9);
-  ROUND(10);
-  ROUND(11);
-
-  for (i = 0; i < 8; i++)
-    ctx->h[i] = ctx->h[i] ^ v[i] ^ v[i + 8];
-#undef G
-#undef ROUND
-}
-
-void
-blake2b_update(blake2b_t *ctx, const void *data, size_t len) {
-  const unsigned char *in = (const unsigned char *)data;
-
-  if (len > 0) {
-    size_t left = ctx->buflen;
-    size_t fill = 128 - left;
-
-    if (len > fill) {
-      ctx->buflen = 0;
-
-      memcpy(ctx->buf + left, in, fill);
-
-      blake2b_increment(ctx, 128);
-      blake2b_compress(ctx, ctx->buf);
-
-      in += fill;
-      len -= fill;
-
-      while (len > 128) {
-        blake2b_increment(ctx, 128);
-        blake2b_compress(ctx, in);
-        in += 128;
-        len -= 128;
-      }
-    }
-
-    memcpy(ctx->buf + ctx->buflen, in, len);
-    ctx->buflen += len;
-  }
-}
-
-void
-blake2b_final(blake2b_t *ctx, unsigned char *out) {
-  unsigned char buffer[64];
-  size_t i;
-
-  blake2b_increment(ctx, ctx->buflen);
-
-  ctx->f[0] = (uint64_t)-1;
-
-  memset(ctx->buf + ctx->buflen, 0x00, 128 - ctx->buflen);
-
-  blake2b_compress(ctx, ctx->buf);
-
-  for (i = 0; i < 8; i++)
-    write64le(buffer + i * 8, ctx->h[i]);
-
-  memcpy(out, buffer, ctx->outlen);
-
-  torsion_cleanse(buffer, sizeof(buffer));
-}
-
-/*
- * BLAKE2s-{128,160,224,256}, BLAKE2b-{160,256,384,512}
- */
-
-#define DEFINE_BLAKE2(name, bits)                                      \
-void                                                                   \
-torsion_##name##bits##_init(name##_t *ctx,                             \
-                            const unsigned char *key, size_t keylen) { \
-  name##_init(ctx, (bits) / 8, key, keylen);                           \
-}                                                                      \
-                                                                       \
-void                                                                   \
-torsion_##name##bits##_update(name##_t *ctx,                           \
-                              const void *data, size_t len) {          \
-  name##_update(ctx, data, len);                                       \
-}                                                                      \
-                                                                       \
-void                                                                   \
-torsion_##name##bits##_final(name##_t *ctx, unsigned char *out) {      \
-  name##_final(ctx, out);                                              \
-}
-
-DEFINE_BLAKE2(blake2s, 128)
-DEFINE_BLAKE2(blake2s, 160)
-DEFINE_BLAKE2(blake2s, 224)
-DEFINE_BLAKE2(blake2s, 256)
-
-DEFINE_BLAKE2(blake2b, 160)
-DEFINE_BLAKE2(blake2b, 256)
-DEFINE_BLAKE2(blake2b, 384)
-DEFINE_BLAKE2(blake2b, 512)
-
-/*
- * GOST94
- *
- * Resources:
- *   https://en.wikipedia.org/wiki/GOST_(hash_function)
- *   https://tools.ietf.org/html/rfc4357
- *   https://tools.ietf.org/html/rfc5831
- *   https://github.com/RustCrypto/hashes/blob/master/gost94/src/gost94.rs
- */
-
-static const uint8_t gost94_C[32] = {
-  0x00, 0xff, 0x00, 0xff, 0x00, 0xff, 0x00, 0xff,
-  0xff, 0x00, 0xff, 0x00, 0xff, 0x00, 0xff, 0x00,
-  0x00, 0xff, 0xff, 0x00, 0xff, 0x00, 0x00, 0xff,
-  0xff, 0x00, 0x00, 0x00, 0xff, 0xff, 0x00, 0xff
-};
-
-static const uint8_t gost94_S[8][16] = { /* CryptoPro */
-  {10, 4, 5, 6, 8, 1, 3, 7, 13, 12, 14, 0, 9, 2, 11, 15},
-  {5, 15, 4, 0, 2, 13, 11, 9, 1, 7, 6, 3, 12, 14, 10, 8},
-  {7, 15, 12, 14, 9, 4, 1, 0, 3, 11, 5, 2, 6, 10, 8, 13},
-  {4, 10, 7, 12, 0, 15, 2, 8, 14, 1, 6, 5, 13, 11, 9, 3},
-  {7, 6, 4, 11, 9, 12, 2, 10, 1, 8, 0, 14, 15, 13, 3, 5},
-  {7, 6, 2, 4, 13, 9, 15, 0, 10, 1, 5, 11, 8, 14, 12, 3},
-  {13, 14, 4, 1, 7, 0, 5, 10, 3, 12, 8, 15, 6, 2, 9, 11},
-  {1, 3, 10, 9, 5, 11, 4, 15, 8, 6, 7, 14, 13, 0, 2, 12}
-};
-
-static uint32_t
-gost94_sbox(uint32_t a) {
-  uint32_t v = 0;
-  uint32_t k;
-  size_t i, shift;
-
-  for (i = 0; i < 8; i++) {
-    shift = 4 * i;
-    k = (a & (15 << shift)) >> shift;
-    v += (uint32_t)gost94_S[i][k] << shift;
-  }
-
-  return v;
-}
-
-static uint32_t
-gost94_g(uint32_t a, uint32_t k) {
-  uint32_t w = gost94_sbox(a + k);
-  return (w << 11) | (w >> (32 - 11));
-}
-
-static void
-gost94_encrypt(unsigned char *msg, const unsigned char *key) {
-  uint32_t k[8];
-  uint32_t a = read32le(msg + 0);
-  uint32_t b = read32le(msg + 4);
-  uint32_t t;
-  size_t i, x;
-
-  for (i = 0; i < 8; i++)
-    k[i] = read32le(key + i * 4);
-
-  for (x = 0; x < 3; x++) {
-    for (i = 0; i < 8; i++) {
-      t = b ^ gost94_g(a, k[i]);
-      b = a;
-      a = t;
-    }
-  }
-
-  for (i = 8; i-- > 0;) {
-    t = b ^ gost94_g(a, k[i]);
-    b = a;
-    a = t;
-  }
-
-  write32le(msg + 0, b);
-  write32le(msg + 4, a);
-}
-
-static void
-gost94_x(uint8_t out[32], const uint8_t a[32], const uint8_t b[32]) {
-  size_t i;
-
-  for (i = 0; i < 32; i++)
-    out[i] = a[i] ^ b[i];
-}
-
-static void
-gost94_a(uint8_t out[32], const uint8_t x[32]) {
-  size_t i;
-
-  memcpy(out, x + 8, 24);
-
-  for (i = 0; i < 8; i++)
-    out[24 + i] = x[i] ^ x[i + 8];
-}
-
-static void
-gost94_p(uint8_t out[32], const uint8_t y[32]) {
-  size_t i, k;
-
-  for (i = 0; i < 4; i++) {
-    for (k = 0; k < 8; k++)
-      out[i + 4 * k] = y[8 * i + k];
-  }
-}
-
-static void
-gost94_psi(uint8_t block[32]) {
-  uint8_t out[32];
-
-  memcpy(out, block + 2, 30);
-  memcpy(out + 30, block, 2);
-
-  out[30] ^= block[2];
-  out[31] ^= block[3];
-
-  out[30] ^= block[4];
-  out[31] ^= block[5];
-
-  out[30] ^= block[6];
-  out[31] ^= block[7];
-
-  out[30] ^= block[24];
-  out[31] ^= block[25];
-
-  out[30] ^= block[30];
-  out[31] ^= block[31];
-
-  memcpy(block, out, 32);
-}
-
-static void
-gost94_compress(gost94_t *ctx, const uint8_t m[32]) {
-  uint8_t s[32], k[32], u[32], v[32], t[32];
-  size_t i;
-
-  memcpy(s, ctx->state, 32);
-
-  gost94_x(t, ctx->state, m);
-  gost94_p(k, t);
-  gost94_encrypt(s + 0, k);
-
-  gost94_a(u, ctx->state);
-  gost94_a(t, m);
-  gost94_a(v, t);
-  gost94_x(t, u, v);
-  gost94_p(k, t);
-  gost94_encrypt(s + 8, k);
-
-  memcpy(t, u, 32);
-  gost94_a(u, t);
-  gost94_x(u, u, gost94_C);
-  gost94_a(t, v);
-  gost94_a(v, t);
-  gost94_x(t, u, v);
-  gost94_p(k, t);
-  gost94_encrypt(s + 16, k);
-
-  memcpy(t, u, 32);
-  gost94_a(u, t);
-  gost94_a(t, v);
-  gost94_a(v, t);
-  gost94_x(t, u, v);
-  gost94_p(k, t);
-  gost94_encrypt(s + 24, k);
-
-  for (i = 0; i < 12; i++)
-    gost94_psi(s);
-
-  gost94_x(s, s, m);
-  gost94_psi(s);
-  gost94_x(ctx->state, ctx->state, s);
-
-  for (i = 0; i < 61; i++)
-    gost94_psi(ctx->state);
-}
-
-static void
-gost94_sum(gost94_t *ctx, const uint8_t m[32]) {
-  uint32_t c = 0;
-  size_t i;
-
-  for (i = 0; i < 32; i++) {
-    c += ctx->sigma[i] + m[i];
-    ctx->sigma[i] = c;
-    c >>= 8;
-  }
-}
-
-void
-gost94_init(gost94_t *ctx) {
-  memset(ctx, 0, sizeof(gost94_t));
-}
-
-static void
-gost94_transform(gost94_t *ctx, const unsigned char *chunk) {
-  gost94_compress(ctx, chunk);
-  gost94_sum(ctx, chunk);
-}
-
-void
-gost94_update(gost94_t *ctx, const void *data, size_t len) {
-  const unsigned char *bytes = (const unsigned char *)data;
-  size_t pos = ctx->size & 31;
-  size_t off = 0;
-
-  if (len == 0)
-    return;
-
-  ctx->size += len;
-
-  if (pos > 0) {
-    size_t want = 32 - pos;
-
-    if (want > len)
-      want = len;
-
-    memcpy(ctx->block + pos, bytes, want);
-
-    pos += want;
-    len -= want;
-    off += want;
-
-    if (pos < 32)
-      return;
-
-    gost94_transform(ctx, ctx->block);
-  }
-
-  while (len >= 32) {
-    gost94_transform(ctx, bytes + off);
-    off += 32;
-    len -= 32;
-  }
-
-  if (len > 0)
-    memcpy(ctx->block, bytes + off, len);
-}
-
-void
-gost94_final(gost94_t *ctx, unsigned char *out) {
-  size_t pos = ctx->size & 31;
-  uint64_t bits = ctx->size << 3;
-  unsigned char D[32];
-
-  memset(D, 0x00, 32);
-
-  if (pos != 0)
-    gost94_update(ctx, D, 32 - pos);
-
-  write64le(D, bits);
-
-  gost94_compress(ctx, D);
-  gost94_compress(ctx, ctx->sigma);
-
-  memcpy(out, ctx->state, 32);
-}
 
 /*
  * Whirlpool
@@ -6577,6 +6579,49 @@ void
 hash_init(hash_t *hash, int type) {
   hash->type = type;
   switch (hash->type) {
+    case HASH_BLAKE2B_160:
+      blake2b_init(&hash->ctx.blake2b, 20, NULL, 0);
+      break;
+    case HASH_BLAKE2B_256:
+      blake2b_init(&hash->ctx.blake2b, 32, NULL, 0);
+      break;
+    case HASH_BLAKE2B_384:
+      blake2b_init(&hash->ctx.blake2b, 48, NULL, 0);
+      break;
+    case HASH_BLAKE2B_512:
+      blake2b_init(&hash->ctx.blake2b, 64, NULL, 0);
+      break;
+    case HASH_BLAKE2S_128:
+      blake2s_init(&hash->ctx.blake2s, 16, NULL, 0);
+      break;
+    case HASH_BLAKE2S_160:
+      blake2s_init(&hash->ctx.blake2s, 20, NULL, 0);
+      break;
+    case HASH_BLAKE2S_224:
+      blake2s_init(&hash->ctx.blake2s, 28, NULL, 0);
+      break;
+    case HASH_BLAKE2S_256:
+      blake2s_init(&hash->ctx.blake2s, 32, NULL, 0);
+      break;
+    case HASH_GOST94:
+      gost94_init(&hash->ctx.gost94);
+      break;
+    case HASH_HASH160:
+    case HASH_HASH256:
+      sha256_init(&hash->ctx.sha256);
+      break;
+    case HASH_KECCAK224:
+      keccak_init(&hash->ctx.keccak, 224);
+      break;
+    case HASH_KECCAK256:
+      keccak_init(&hash->ctx.keccak, 256);
+      break;
+    case HASH_KECCAK384:
+      keccak_init(&hash->ctx.keccak, 384);
+      break;
+    case HASH_KECCAK512:
+      keccak_init(&hash->ctx.keccak, 512);
+      break;
     case HASH_MD2:
       md2_init(&hash->ctx.md2);
       break;
@@ -6599,8 +6644,6 @@ hash_init(hash_t *hash, int type) {
       sha224_init(&hash->ctx.sha256);
       break;
     case HASH_SHA256:
-    case HASH_HASH160:
-    case HASH_HASH256:
       sha256_init(&hash->ctx.sha256);
       break;
     case HASH_SHA384:
@@ -6609,58 +6652,29 @@ hash_init(hash_t *hash, int type) {
     case HASH_SHA512:
       sha512_init(&hash->ctx.sha512);
       break;
-    case HASH_SHAKE128:
-      keccak_init(&hash->ctx.keccak, 128);
-      break;
-    case HASH_KECCAK224:
     case HASH_SHA3_224:
       keccak_init(&hash->ctx.keccak, 224);
       break;
-    case HASH_KECCAK256:
     case HASH_SHA3_256:
-    case HASH_SHAKE256:
       keccak_init(&hash->ctx.keccak, 256);
       break;
-    case HASH_KECCAK384:
     case HASH_SHA3_384:
       keccak_init(&hash->ctx.keccak, 384);
       break;
-    case HASH_KECCAK512:
     case HASH_SHA3_512:
       keccak_init(&hash->ctx.keccak, 512);
       break;
-    case HASH_BLAKE2S_128:
-      blake2s_init(&hash->ctx.blake2s, 16, NULL, 0);
+    case HASH_SHAKE128:
+      keccak_init(&hash->ctx.keccak, 128);
       break;
-    case HASH_BLAKE2S_160:
-      blake2s_init(&hash->ctx.blake2s, 20, NULL, 0);
-      break;
-    case HASH_BLAKE2S_224:
-      blake2s_init(&hash->ctx.blake2s, 28, NULL, 0);
-      break;
-    case HASH_BLAKE2S_256:
-      blake2s_init(&hash->ctx.blake2s, 32, NULL, 0);
-      break;
-    case HASH_BLAKE2B_160:
-      blake2b_init(&hash->ctx.blake2b, 20, NULL, 0);
-      break;
-    case HASH_BLAKE2B_256:
-      blake2b_init(&hash->ctx.blake2b, 32, NULL, 0);
-      break;
-    case HASH_BLAKE2B_384:
-      blake2b_init(&hash->ctx.blake2b, 48, NULL, 0);
-      break;
-    case HASH_BLAKE2B_512:
-      blake2b_init(&hash->ctx.blake2b, 64, NULL, 0);
-      break;
-    case HASH_GOST94:
-      gost94_init(&hash->ctx.gost94);
+    case HASH_SHAKE256:
+      keccak_init(&hash->ctx.keccak, 256);
       break;
     case HASH_WHIRLPOOL:
       whirlpool_init(&hash->ctx.whirlpool);
       break;
     default:
-      ASSERT(0);
+      torsion_abort(); /* LCOV_EXCL_LINE */
       break;
   }
 }
@@ -6668,6 +6682,31 @@ hash_init(hash_t *hash, int type) {
 void
 hash_update(hash_t *hash, const void *data, size_t len) {
   switch (hash->type) {
+    case HASH_BLAKE2B_160:
+    case HASH_BLAKE2B_256:
+    case HASH_BLAKE2B_384:
+    case HASH_BLAKE2B_512:
+      blake2b_update(&hash->ctx.blake2b, data, len);
+      break;
+    case HASH_BLAKE2S_128:
+    case HASH_BLAKE2S_160:
+    case HASH_BLAKE2S_224:
+    case HASH_BLAKE2S_256:
+      blake2s_update(&hash->ctx.blake2s, data, len);
+      break;
+    case HASH_GOST94:
+      gost94_update(&hash->ctx.gost94, data, len);
+      break;
+    case HASH_HASH160:
+    case HASH_HASH256:
+      sha256_update(&hash->ctx.sha256, data, len);
+      break;
+    case HASH_KECCAK224:
+    case HASH_KECCAK256:
+    case HASH_KECCAK384:
+    case HASH_KECCAK512:
+      keccak_update(&hash->ctx.keccak, data, len);
+      break;
     case HASH_MD2:
       md2_update(&hash->ctx.md2, data, len);
       break;
@@ -6688,18 +6727,12 @@ hash_update(hash_t *hash, const void *data, size_t len) {
       break;
     case HASH_SHA224:
     case HASH_SHA256:
-    case HASH_HASH160:
-    case HASH_HASH256:
       sha256_update(&hash->ctx.sha256, data, len);
       break;
     case HASH_SHA384:
     case HASH_SHA512:
       sha512_update(&hash->ctx.sha512, data, len);
       break;
-    case HASH_KECCAK224:
-    case HASH_KECCAK256:
-    case HASH_KECCAK384:
-    case HASH_KECCAK512:
     case HASH_SHA3_224:
     case HASH_SHA3_256:
     case HASH_SHA3_384:
@@ -6708,26 +6741,11 @@ hash_update(hash_t *hash, const void *data, size_t len) {
     case HASH_SHAKE256:
       keccak_update(&hash->ctx.keccak, data, len);
       break;
-    case HASH_BLAKE2S_128:
-    case HASH_BLAKE2S_160:
-    case HASH_BLAKE2S_224:
-    case HASH_BLAKE2S_256:
-      blake2s_update(&hash->ctx.blake2s, data, len);
-      break;
-    case HASH_BLAKE2B_160:
-    case HASH_BLAKE2B_256:
-    case HASH_BLAKE2B_384:
-    case HASH_BLAKE2B_512:
-      blake2b_update(&hash->ctx.blake2b, data, len);
-      break;
-    case HASH_GOST94:
-      gost94_update(&hash->ctx.gost94, data, len);
-      break;
     case HASH_WHIRLPOOL:
       whirlpool_update(&hash->ctx.whirlpool, data, len);
       break;
     default:
-      ASSERT(0);
+      torsion_abort(); /* LCOV_EXCL_LINE */
       break;
   }
 }
@@ -6735,6 +6753,33 @@ hash_update(hash_t *hash, const void *data, size_t len) {
 void
 hash_final(hash_t *hash, unsigned char *out, size_t len) {
   switch (hash->type) {
+    case HASH_BLAKE2B_160:
+    case HASH_BLAKE2B_256:
+    case HASH_BLAKE2B_384:
+    case HASH_BLAKE2B_512:
+      blake2b_final(&hash->ctx.blake2b, out);
+      break;
+    case HASH_BLAKE2S_128:
+    case HASH_BLAKE2S_160:
+    case HASH_BLAKE2S_224:
+    case HASH_BLAKE2S_256:
+      blake2s_final(&hash->ctx.blake2s, out);
+      break;
+    case HASH_GOST94:
+      gost94_final(&hash->ctx.gost94, out);
+      break;
+    case HASH_HASH160:
+      hash160_final(&hash->ctx.sha256, out);
+      break;
+    case HASH_HASH256:
+      hash256_final(&hash->ctx.sha256, out);
+      break;
+    case HASH_KECCAK224:
+    case HASH_KECCAK256:
+    case HASH_KECCAK384:
+    case HASH_KECCAK512:
+      keccak_final(&hash->ctx.keccak, out, 0x01, 0);
+      break;
     case HASH_MD2:
       md2_final(&hash->ctx.md2, out);
       break;
@@ -6765,18 +6810,6 @@ hash_final(hash_t *hash, unsigned char *out, size_t len) {
     case HASH_SHA512:
       sha512_final(&hash->ctx.sha512, out);
       break;
-    case HASH_HASH160:
-      hash160_final(&hash->ctx.sha256, out);
-      break;
-    case HASH_HASH256:
-      hash256_final(&hash->ctx.sha256, out);
-      break;
-    case HASH_KECCAK224:
-    case HASH_KECCAK256:
-    case HASH_KECCAK384:
-    case HASH_KECCAK512:
-      keccak_final(&hash->ctx.keccak, out, 0x01, 0);
-      break;
     case HASH_SHA3_224:
     case HASH_SHA3_256:
     case HASH_SHA3_384:
@@ -6787,26 +6820,11 @@ hash_final(hash_t *hash, unsigned char *out, size_t len) {
     case HASH_SHAKE256:
       keccak_final(&hash->ctx.keccak, out, 0x1f, len);
       break;
-    case HASH_BLAKE2S_128:
-    case HASH_BLAKE2S_160:
-    case HASH_BLAKE2S_224:
-    case HASH_BLAKE2S_256:
-      blake2s_final(&hash->ctx.blake2s, out);
-      break;
-    case HASH_BLAKE2B_160:
-    case HASH_BLAKE2B_256:
-    case HASH_BLAKE2B_384:
-    case HASH_BLAKE2B_512:
-      blake2b_final(&hash->ctx.blake2b, out);
-      break;
-    case HASH_GOST94:
-      gost94_final(&hash->ctx.gost94, out);
-      break;
     case HASH_WHIRLPOOL:
       whirlpool_final(&hash->ctx.whirlpool, out);
       break;
     default:
-      ASSERT(0);
+      torsion_abort(); /* LCOV_EXCL_LINE */
       break;
   }
 }

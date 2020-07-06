@@ -433,7 +433,7 @@ mp_alloc_limbs(mp_size_t size) {
   ptr = malloc(size * sizeof(mp_limb_t));
 
   if (ptr == NULL)
-    torsion_die("mp_alloc_limbs: allocation failed.");
+    torsion_abort(); /* LCOV_EXCL_LINE */
 
   return ptr;
 }
@@ -447,7 +447,7 @@ mp_realloc_limbs(mp_ptr old, mp_size_t size) {
   ptr = realloc(old, size * sizeof(mp_limb_t));
 
   if (ptr == NULL)
-    torsion_die("mp_realloc_limbs: allocation failed.");
+    torsion_abort(); /* LCOV_EXCL_LINE */
 
   return ptr;
 }
@@ -2307,7 +2307,7 @@ mpn_invert(mp_ptr rp, mp_srcptr xp, mp_size_t xs,
   mp_bitcnt_t shift;
 
   if (yn == 0 || (yp[0] & 1) == 0)
-    torsion_die("mpn_invert: Even modulus.");
+    torsion_abort(); /* LCOV_EXCL_LINE */
 
   if (yn == 1 && yp[0] == 1) {
     mpn_zero(rp, yn);
@@ -2391,7 +2391,7 @@ mpn_jacobi(mp_srcptr xp, mp_size_t xs,
   int j = 1;
 
   if (yn == 0 || (yp[0] & 1) == 0)
-    torsion_die("mpn_jacobi: Even modulus.");
+    torsion_abort(); /* LCOV_EXCL_LINE */
 
   MPN_COPY_MOD(ap, an, xp, xn, yp, yn, xs);
   MPN_COPY(bp, bn, yp, yn);
@@ -2486,7 +2486,7 @@ mpn_powm_sec(mp_ptr zp,
   mp_size_t i, un;
 
   if (mn == 0 || (mp[0] & 1) == 0)
-    torsion_die("mpn_powm_sec: Even modulus.");
+    torsion_abort(); /* LCOV_EXCL_LINE */
 
   MPN_COPY_MOD(up, un, xp, xn, mp, mn, xs);
   mpn_zero(up + un, mn - un);
@@ -2768,7 +2768,7 @@ mpn_import(mp_ptr rp, mp_size_t rn,
   else if (endian == -1)
     mpn_import_le(rp, rn, xp, xn);
   else
-    torsion_die("mpn_import: invalid endianness.");
+    torsion_abort(); /* LCOV_EXCL_LINE */
 }
 
 /*
@@ -2840,7 +2840,7 @@ mpn_export(unsigned char *rp, size_t rn,
   else if (endian == -1)
     mpn_export_le(rp, rn, xp, xn);
   else
-    torsion_die("mpn_export: invalid endianness.");
+    torsion_abort(); /* LCOV_EXCL_LINE */
 }
 
 /*
@@ -3388,7 +3388,7 @@ mpz_div_qr(mpz_t q, mpz_t r, const mpz_t n, const mpz_t d,
   ds = d->_mp_size;
 
   if (ds == 0)
-    torsion_die("mpz_div_qr: Divide by zero.");
+    torsion_abort(); /* LCOV_EXCL_LINE */
 
   if (ns == 0) {
     if (q)
@@ -4095,7 +4095,7 @@ mpz_powm(mpz_t r, const mpz_t b, const mpz_t e, const mpz_t m) {
   mn = MP_ABS(m->_mp_size);
 
   if (mn == 0)
-    torsion_die("mpz_powm: Zero modulo.");
+    torsion_abort(); /* LCOV_EXCL_LINE */
 
   if (en == 0) {
     mpz_set_ui(r, 1);
@@ -4121,7 +4121,7 @@ mpz_powm(mpz_t r, const mpz_t b, const mpz_t e, const mpz_t m) {
 
   if (e->_mp_size < 0) {
     if (!mpz_invert(base, b, m))
-      torsion_die("mpz_powm: Negative exponent and non-invertible base.");
+      torsion_abort(); /* LCOV_EXCL_LINE */
   } else {
     mp_size_t bn;
 
@@ -4190,16 +4190,16 @@ mpz_powm_sec(mpz_ptr r, mpz_srcptr b, mpz_srcptr e, mpz_srcptr m) {
   mp_size_t mn, itch;
 
   if (e->_mp_size < 0)
-    torsion_die("mpz_powm_sec: Negative exponent.");
+    torsion_abort(); /* LCOV_EXCL_LINE */
 
   if (e->_mp_size == 0)
-    torsion_die("mpz_powm_sec: Zero exponent.");
+    torsion_abort(); /* LCOV_EXCL_LINE */
 
   if (m->_mp_size == 0)
-    torsion_die("mpz_powm_sec: Zero modulus.");
+    torsion_abort(); /* LCOV_EXCL_LINE */
 
   if ((m->_mp_d[0] & 1) == 0)
-    torsion_die("mpz_powm_sec: Even modulus.");
+    torsion_abort(); /* LCOV_EXCL_LINE */
 
   mn = MP_ABS(m->_mp_size);
   itch = MPN_POWM_SEC_ITCH(mn);

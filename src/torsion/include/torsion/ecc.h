@@ -76,6 +76,7 @@ extern "C" {
 #define ecdsa_sig_normalize torsion_ecdsa_sig_normalize
 #define ecdsa_is_low_s torsion_ecdsa_is_low_s
 #define ecdsa_sign torsion_ecdsa_sign
+#define ecdsa_sign_internal torsion_ecdsa_sign_internal
 #define ecdsa_verify torsion_ecdsa_verify
 #define ecdsa_recover torsion_ecdsa_recover
 #define ecdsa_derive torsion_ecdsa_derive
@@ -179,6 +180,8 @@ extern "C" {
 #define eddsa_derive_with_scalar torsion_eddsa_derive_with_scalar
 #define eddsa_derive torsion_eddsa_derive
 
+#define test_ecc_internal __torsion_test_ecc_internal
+
 /*
  * Defs
  */
@@ -237,7 +240,7 @@ extern "C" {
 #define EDWARDS_CURVE_MAX 2
 
 /*
- * Structs
+ * Types
  */
 
 typedef struct wei_s wei_curve_t;
@@ -245,6 +248,8 @@ typedef struct wei_scratch_s wei_scratch_t;
 typedef struct mont_s mont_curve_t;
 typedef struct edwards_s edwards_curve_t;
 typedef struct edwards_scratch_s edwards_scratch_t;
+
+typedef void ecdsa_redefine_f(void *, size_t);
 
 /*
  * Short Weierstrass Curve
@@ -525,6 +530,15 @@ ecdsa_sign(const wei_curve_t *ec,
            const unsigned char *msg,
            size_t msg_len,
            const unsigned char *priv);
+
+TORSION_EXTERN int
+ecdsa_sign_internal(const wei_curve_t *ec,
+                    unsigned char *sig,
+                    unsigned int *param,
+                    const unsigned char *msg,
+                    size_t msg_len,
+                    const unsigned char *priv,
+                    ecdsa_redefine_f *redefine);
 
 TORSION_EXTERN int
 ecdsa_verify(const wei_curve_t *ec,
@@ -1131,6 +1145,15 @@ eddsa_derive(const edwards_curve_t *ec,
              unsigned char *secret,
              const unsigned char *pub,
              const unsigned char *priv);
+
+/*
+ * Testing
+ */
+
+struct hmac_drbg_s;
+
+TORSION_EXTERN void
+test_ecc_internal(struct hmac_drbg_s *rng);
 
 #ifdef __cplusplus
 }
