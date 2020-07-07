@@ -92,18 +92,18 @@
         "-Wstrict-prototypes",
         "-O2"
       ],
-      # "include_dirs": [
-      #   "./src/secp256k1",
-      #   "./src/secp256k1/include",
-      #   "./src/secp256k1/src"
-      # ],
+      "include_dirs": [
+        "./src/secp256k1",
+        "./src/secp256k1/include",
+        "./src/secp256k1/src"
+      ],
       "defines": [
         # "BCRYPTO_USE_SECP256K1_LATEST"
         "USE_NUM_NONE=1",
         "USE_FIELD_INV_BUILTIN=1",
         "USE_SCALAR_INV_BUILTIN=1",
-        # "ECMULT_WINDOW_SIZE=15",
-        # "ECMULT_GEN_PREC_BITS=4",
+        "ECMULT_WINDOW_SIZE=15",
+        "ECMULT_GEN_PREC_BITS=4",
         "USE_ENDOMORPHISM=1",
         "ENABLE_MODULE_ECDH=1",
         "ENABLE_MODULE_ELLIGATOR=1",

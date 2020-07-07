@@ -67,7 +67,6 @@ secp256k1_schnorrleg_sign(const secp256k1_context *ctx,
   secp256k1_ge pk;
   secp256k1_ge r;
   secp256k1_sha256 sha;
-  int overflow;
   unsigned char buf[33];
   size_t buflen = sizeof(buf);
 
@@ -78,9 +77,7 @@ secp256k1_schnorrleg_sign(const secp256k1_context *ctx,
 
   memset(sig, 0, sizeof(*sig));
 
-  secp256k1_scalar_set_b32(&x, seckey, &overflow);
-
-  if (overflow || secp256k1_scalar_is_zero(&x))
+  if (!secp256k1_scalar_set_b32_seckey(&x, seckey))
     return 0;
 
   secp256k1_ecmult_gen(&ctx->ecmult_gen_ctx, &pkj, &x);
@@ -190,6 +187,130 @@ secp256k1_schnorrleg_verify(const secp256k1_context *ctx,
   return 1;
 }
 
+#ifdef WORDS_BIGENDIAN
+#define LE32(p) ((((p) & 0x000000FF) << 24)  \
+               | (((p) & 0x0000FF00) <<  8)  \
+               | (((p) & 0x00FF0000) >>  8)  \
+               | (((p) & 0xFF000000) >> 24))
+#else
+#define LE32(p) (p)
+#endif
+
+#define ROTL32(x, n) ((x) << (n) | (x) >> (32 - (n)))
+
+#define QUARTERROUND(a, b, c, d) \
+  a += b; d = ROTL32(d ^ a, 16); \
+  c += d; b = ROTL32(b ^ c, 12); \
+  a += b; d = ROTL32(d ^ a, 8);  \
+  c += d; b = ROTL32(b ^ c, 7);
+
+static void
+secp256k1_schnorrleg_scalar_chacha20(secp256k1_scalar *r1,
+                                     secp256k1_scalar *r2,
+                                     const unsigned char *seed,
+                                     uint64_t idx) {
+#if defined(EXHAUSTIVE_TEST_ORDER)
+  *r1 = (seed[0] + idx) % EXHAUSTIVE_TEST_ORDER;
+  *r2 = (seed[1] + idx) % EXHAUSTIVE_TEST_ORDER;
+#else
+  size_t n;
+  size_t over_count = 0;
+  uint32_t seed32[8];
+  uint32_t x0, x1, x2, x3, x4, x5, x6, x7;
+  uint32_t x8, x9, x10, x11, x12, x13, x14, x15;
+  int over1, over2;
+
+  memcpy((void *)seed32, (const void *)seed, 32);
+
+  do {
+    x0 = 0x61707865;
+    x1 = 0x3320646e;
+    x2 = 0x79622d32;
+    x3 = 0x6b206574;
+    x4 = LE32(seed32[0]);
+    x5 = LE32(seed32[1]);
+    x6 = LE32(seed32[2]);
+    x7 = LE32(seed32[3]);
+    x8 = LE32(seed32[4]);
+    x9 = LE32(seed32[5]);
+    x10 = LE32(seed32[6]);
+    x11 = LE32(seed32[7]);
+    x12 = idx;
+    x13 = idx >> 32;
+    x14 = 0;
+    x15 = over_count;
+
+    n = 10;
+
+    while (n--) {
+      QUARTERROUND(x0, x4,  x8, x12)
+      QUARTERROUND(x1, x5,  x9, x13)
+      QUARTERROUND(x2, x6, x10, x14)
+      QUARTERROUND(x3, x7, x11, x15)
+      QUARTERROUND(x0, x5, x10, x15)
+      QUARTERROUND(x1, x6, x11, x12)
+      QUARTERROUND(x2, x7,  x8, x13)
+      QUARTERROUND(x3, x4,  x9, x14)
+    }
+
+    x0 += 0x61707865;
+    x1 += 0x3320646e;
+    x2 += 0x79622d32;
+    x3 += 0x6b206574;
+    x4 += LE32(seed32[0]);
+    x5 += LE32(seed32[1]);
+    x6 += LE32(seed32[2]);
+    x7 += LE32(seed32[3]);
+    x8 += LE32(seed32[4]);
+    x9 += LE32(seed32[5]);
+    x10 += LE32(seed32[6]);
+    x11 += LE32(seed32[7]);
+    x12 += idx;
+    x13 += idx >> 32;
+    x14 += 0;
+    x15 += over_count;
+
+#if defined(USE_SCALAR_4X64)
+    r1->d[3] = (((uint64_t) x0) << 32) |  x1;
+    r1->d[2] = (((uint64_t) x2) << 32) |  x3;
+    r1->d[1] = (((uint64_t) x4) << 32) |  x5;
+    r1->d[0] = (((uint64_t) x6) << 32) |  x7;
+    r2->d[3] = (((uint64_t) x8) << 32) |  x9;
+    r2->d[2] = (((uint64_t)x10) << 32) | x11;
+    r2->d[1] = (((uint64_t)x12) << 32) | x13;
+    r2->d[0] = (((uint64_t)x14) << 32) | x15;
+#elif defined(USE_SCALAR_8X32)
+    r1->d[7] = x0;
+    r1->d[6] = x1;
+    r1->d[5] = x2;
+    r1->d[4] = x3;
+    r1->d[3] = x4;
+    r1->d[2] = x5;
+    r1->d[1] = x6;
+    r1->d[0] = x7;
+    r2->d[7] = x8;
+    r2->d[6] = x9;
+    r2->d[5] = x10;
+    r2->d[4] = x11;
+    r2->d[3] = x12;
+    r2->d[2] = x13;
+    r2->d[1] = x14;
+    r2->d[0] = x15;
+#else
+#error "Please select scalar implementation"
+#endif
+
+    over1 = secp256k1_scalar_check_overflow(r1);
+    over2 = secp256k1_scalar_check_overflow(r2);
+    over_count++;
+  } while (over1 | over2);
+#endif
+}
+
+#undef ROTL32
+#undef QUARTERROUND
+#undef LE32
+
 typedef struct {
   const secp256k1_context *ctx;
   unsigned char chacha_seed[32];
@@ -210,15 +331,17 @@ secp256k1_schnorrleg_verify_batch_ecmult_callback(secp256k1_scalar *sc,
     (secp256k1_schnorrleg_verify_ecmult_context *)data;
 
   if (idx % 4 == 2) {
-    secp256k1_scalar_chacha20(&ecmult_context->randomizer_cache[0],
-                              &ecmult_context->randomizer_cache[1],
-                              ecmult_context->chacha_seed, idx / 4);
+    secp256k1_schnorrleg_scalar_chacha20(&ecmult_context->randomizer_cache[0],
+                                         &ecmult_context->randomizer_cache[1],
+                                         ecmult_context->chacha_seed, idx / 4);
   }
 
   if (idx % 2 == 0) {
     /* R */
     secp256k1_fe rx;
+
     *sc = ecmult_context->randomizer_cache[(idx / 2) % 2];
+
     if (!secp256k1_fe_set_b32(&rx, &ecmult_context->sig[idx / 2]->data[0]))
       return 0;
 
@@ -315,9 +438,9 @@ secp256k1_schnorrleg_verify_batch_sum_s(secp256k1_scalar *s,
     secp256k1_scalar term;
 
     if (i % 2 == 1) {
-      secp256k1_scalar_chacha20(&randomizer_cache[0],
-                                &randomizer_cache[1],
-                                chacha_seed, i / 2);
+      secp256k1_schnorrleg_scalar_chacha20(&randomizer_cache[0],
+                                           &randomizer_cache[1],
+                                           chacha_seed, i / 2);
     }
 
     secp256k1_scalar_set_b32(&term, &sig[i]->data[32], &overflow);
@@ -371,7 +494,6 @@ secp256k1_schnorrleg_verify_batch(const secp256k1_context *ctx,
 
   secp256k1_scalar_negate(&s, &s);
 
-#ifdef BCRYPTO_USE_SECP256K1_LATEST
   if (!secp256k1_ecmult_multi_var(&ctx->error_callback, &ctx->ecmult_ctx,
                                   scratch, &rj, &s,
                                   secp256k1_schnorrleg_verify_batch_ecmult_callback,
@@ -379,14 +501,6 @@ secp256k1_schnorrleg_verify_batch(const secp256k1_context *ctx,
                                   2 * n_sigs)) {
     return 0;
   }
-#else
-  if (!secp256k1_ecmult_multi_var(&ctx->ecmult_ctx, scratch, &rj, &s,
-                                  secp256k1_schnorrleg_verify_batch_ecmult_callback,
-                                  (void *)&ecmult_context,
-                                  2 * n_sigs)) {
-    return 0;
-  }
-#endif
 
   return secp256k1_gej_is_infinity(&rj);
 }

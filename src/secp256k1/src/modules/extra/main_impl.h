@@ -14,12 +14,11 @@
 #include "../../../include/secp256k1_extra.h"
 
 int
-secp256k1_ec_privkey_generate(const secp256k1_context *ctx,
-                              unsigned char *output,
-                              const unsigned char *entropy) {
+secp256k1_ec_seckey_generate(const secp256k1_context *ctx,
+                             unsigned char *output,
+                             const unsigned char *entropy) {
   secp256k1_rfc6979_hmac_sha256 rng;
   secp256k1_scalar sec;
-  int overflow;
 
   VERIFY_CHECK(ctx != NULL);
   ARG_CHECK(output != NULL);
@@ -27,15 +26,9 @@ secp256k1_ec_privkey_generate(const secp256k1_context *ctx,
 
   secp256k1_rfc6979_hmac_sha256_initialize(&rng, entropy, 32);
 
-  for (;;) {
+  do {
     secp256k1_rfc6979_hmac_sha256_generate(&rng, output, 32);
-    secp256k1_scalar_set_b32(&sec, output, &overflow);
-
-    if (overflow || secp256k1_scalar_is_zero(&sec))
-      continue;
-
-    break;
-  }
+  } while (!secp256k1_scalar_set_b32_seckey(&sec, output));
 
   secp256k1_rfc6979_hmac_sha256_finalize(&rng);
   secp256k1_scalar_clear(&sec);
@@ -43,55 +36,29 @@ secp256k1_ec_privkey_generate(const secp256k1_context *ctx,
   return 1;
 }
 
-/* Use this until #668 gets merged: */
-/* https://github.com/bitcoin-core/secp256k1/pull/668 */
 int
-secp256k1_ec_privkey_negate_safe(const secp256k1_context *ctx,
-                                 unsigned char *seckey) {
+secp256k1_ec_seckey_invert(const secp256k1_context *ctx,
+                           unsigned char *seckey) {
   secp256k1_scalar sec;
-  int overflow;
+  int ret;
 
   VERIFY_CHECK(ctx != NULL);
   ARG_CHECK(seckey != NULL);
 
-  secp256k1_scalar_set_b32(&sec, seckey, &overflow);
-
-  if (overflow || secp256k1_scalar_is_zero(&sec))
-    return 0;
-
-  secp256k1_scalar_negate(&sec, &sec);
-  secp256k1_scalar_get_b32(seckey, &sec);
-  secp256k1_scalar_clear(&sec);
-
-  return 1;
-}
-
-int
-secp256k1_ec_privkey_invert(const secp256k1_context *ctx,
-                            unsigned char *seckey) {
-  secp256k1_scalar sec;
-  int overflow;
-
-  VERIFY_CHECK(ctx != NULL);
-  ARG_CHECK(seckey != NULL);
-
-  secp256k1_scalar_set_b32(&sec, seckey, &overflow);
-
-  if (overflow || secp256k1_scalar_is_zero(&sec))
-    return 0;
+  ret = secp256k1_scalar_set_b32_seckey(&sec, seckey);
 
   secp256k1_scalar_inverse(&sec, &sec);
   secp256k1_scalar_get_b32(seckey, &sec);
   secp256k1_scalar_clear(&sec);
 
-  return 1;
+  return ret;
 }
 
 int
-secp256k1_ec_privkey_reduce(const secp256k1_context *ctx,
-                            unsigned char *output,
-                            const unsigned char *bytes,
-                            size_t len) {
+secp256k1_ec_seckey_reduce(const secp256k1_context *ctx,
+                           unsigned char *output,
+                           const unsigned char *bytes,
+                           size_t len) {
   secp256k1_scalar sec;
 
   VERIFY_CHECK(ctx != NULL);
@@ -101,7 +68,9 @@ secp256k1_ec_privkey_reduce(const secp256k1_context *ctx,
     len = 32;
 
   memset(output, 0x00, 32 - len);
-  memcpy(output + 32 - len, bytes, len);
+
+  if (len > 0)
+    memcpy(output + 32 - len, bytes, len);
 
   secp256k1_scalar_set_b32(&sec, output, NULL);
 
@@ -115,34 +84,31 @@ secp256k1_ec_privkey_reduce(const secp256k1_context *ctx,
 }
 
 int
-secp256k1_ec_privkey_export(const secp256k1_context *ctx,
-                            unsigned char *output,
-                            const unsigned char *seckey) {
+secp256k1_ec_seckey_export(const secp256k1_context *ctx,
+                           unsigned char *output,
+                           const unsigned char *seckey) {
   secp256k1_scalar sec;
-  int overflow;
+  int ret;
 
   VERIFY_CHECK(ctx != NULL);
   ARG_CHECK(output != NULL);
   ARG_CHECK(seckey != NULL);
 
-  secp256k1_scalar_set_b32(&sec, seckey, &overflow);
-
-  if (overflow || secp256k1_scalar_is_zero(&sec))
-    return 0;
+  ret = secp256k1_scalar_set_b32_seckey(&sec, seckey);
 
   secp256k1_scalar_get_b32(output, &sec);
   secp256k1_scalar_clear(&sec);
 
-  return 1;
+  return ret;
 }
 
 int
-secp256k1_ec_privkey_import(const secp256k1_context *ctx,
-                            unsigned char *output,
-                            const unsigned char *bytes,
-                            size_t len) {
+secp256k1_ec_seckey_import(const secp256k1_context *ctx,
+                           unsigned char *output,
+                           const unsigned char *bytes,
+                           size_t len) {
   secp256k1_scalar sec;
-  int overflow;
+  int ret;
 
   VERIFY_CHECK(ctx != NULL);
   ARG_CHECK(output != NULL);
@@ -156,17 +122,16 @@ secp256k1_ec_privkey_import(const secp256k1_context *ctx,
     return 0;
 
   memset(output, 0x00, 32 - len);
-  memcpy(output + 32 - len, bytes, len);
 
-  secp256k1_scalar_set_b32(&sec, output, &overflow);
+  if (len > 0)
+    memcpy(output + 32 - len, bytes, len);
 
-  if (overflow || secp256k1_scalar_is_zero(&sec))
-    return 0;
+  ret = secp256k1_scalar_set_b32_seckey(&sec, output);
 
   secp256k1_scalar_get_b32(output, &sec);
   secp256k1_scalar_clear(&sec);
 
-  return 1;
+  return ret;
 }
 
 int
@@ -221,10 +186,14 @@ secp256k1_ec_pubkey_import(const secp256k1_context *ctx,
     return 0;
 
   memset(xp, 0x00, 32 - x_len);
-  memcpy(xp + 32 - x_len, x, x_len);
+
+  if (x_len > 0)
+    memcpy(xp + 32 - x_len, x, x_len);
 
   memset(yp, 0x00, 32 - y_len);
-  memcpy(yp + 32 - y_len, y, y_len);
+
+  if (y_len > 0)
+    memcpy(yp + 32 - y_len, y, y_len);
 
   if (!secp256k1_fe_set_b32(&x0, xp))
     return 0;
@@ -290,7 +259,9 @@ secp256k1_ecdsa_reduce(const secp256k1_context *ctx,
     len = 32;
 
   memset(output, 0x00, 32 - len);
-  memcpy(output + 32 - len, msg, len);
+
+  if (len > 0)
+    memcpy(output + 32 - len, msg, len);
 }
 
 #endif /* SECP256K1_MODULE_EXTRA_MAIN_H */

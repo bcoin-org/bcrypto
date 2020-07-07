@@ -10284,13 +10284,8 @@ bcrypto_secp256k1_destroy(napi_env env, void *data, void *hint) {
   (void)env;
   (void)hint;
 
-  if (ec->scratch != NULL) {
-#ifdef BCRYPTO_USE_SECP256K1_LATEST
+  if (ec->scratch != NULL)
     secp256k1_scratch_space_destroy(ec->ctx, ec->scratch);
-#else
-    secp256k1_scratch_space_destroy(ec->scratch);
-#endif
-  }
 
   secp256k1_context_destroy(ec->ctx);
   bcrypto_free(ec);
@@ -10343,7 +10338,7 @@ bcrypto_secp256k1_context_randomize(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
-bcrypto_secp256k1_privkey_generate(napi_env env, napi_callback_info info) {
+bcrypto_secp256k1_seckey_generate(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   const uint8_t *entropy;
@@ -10360,7 +10355,7 @@ bcrypto_secp256k1_privkey_generate(napi_env env, napi_callback_info info) {
 
   JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
 
-  CHECK(secp256k1_ec_privkey_generate(ec->ctx, out, entropy));
+  CHECK(secp256k1_ec_seckey_generate(ec->ctx, out, entropy));
 
   CHECK(napi_create_buffer_copy(env, 32, out, NULL, &result) == napi_ok);
 
@@ -10370,7 +10365,7 @@ bcrypto_secp256k1_privkey_generate(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
-bcrypto_secp256k1_privkey_verify(napi_env env, napi_callback_info info) {
+bcrypto_secp256k1_seckey_verify(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   const uint8_t *priv;
@@ -10393,7 +10388,7 @@ bcrypto_secp256k1_privkey_verify(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
-bcrypto_secp256k1_privkey_export(napi_env env, napi_callback_info info) {
+bcrypto_secp256k1_seckey_export(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t out[32];
@@ -10409,7 +10404,7 @@ bcrypto_secp256k1_privkey_export(napi_env env, napi_callback_info info) {
                              &priv_len) == napi_ok);
 
   JS_ASSERT(priv_len == 32, JS_ERR_PRIVKEY_SIZE);
-  JS_ASSERT(secp256k1_ec_privkey_export(ec->ctx, out, priv), JS_ERR_PRIVKEY);
+  JS_ASSERT(secp256k1_ec_seckey_export(ec->ctx, out, priv), JS_ERR_PRIVKEY);
 
   CHECK(napi_create_buffer_copy(env, 32, out, NULL, &result) == napi_ok);
 
@@ -10417,7 +10412,7 @@ bcrypto_secp256k1_privkey_export(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
-bcrypto_secp256k1_privkey_import(napi_env env, napi_callback_info info) {
+bcrypto_secp256k1_seckey_import(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t out[32];
@@ -10432,7 +10427,7 @@ bcrypto_secp256k1_privkey_import(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
                              &priv_len) == napi_ok);
 
-  JS_ASSERT(secp256k1_ec_privkey_import(ec->ctx, out, priv, priv_len),
+  JS_ASSERT(secp256k1_ec_seckey_import(ec->ctx, out, priv, priv_len),
             JS_ERR_PRIVKEY);
 
   CHECK(napi_create_buffer_copy(env, 32, out, NULL, &result) == napi_ok);
@@ -10441,7 +10436,7 @@ bcrypto_secp256k1_privkey_import(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
-bcrypto_secp256k1_privkey_tweak_add(napi_env env, napi_callback_info info) {
+bcrypto_secp256k1_seckey_tweak_add(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
   uint8_t out[32];
@@ -10463,7 +10458,7 @@ bcrypto_secp256k1_privkey_tweak_add(napi_env env, napi_callback_info info) {
 
   memcpy(out, priv, 32);
 
-  JS_ASSERT(secp256k1_ec_privkey_tweak_add(ec->ctx, out, tweak),
+  JS_ASSERT(secp256k1_ec_seckey_tweak_add(ec->ctx, out, tweak),
             JS_ERR_PRIVKEY);
 
   CHECK(napi_create_buffer_copy(env, 32, out, NULL, &result) == napi_ok);
@@ -10472,7 +10467,7 @@ bcrypto_secp256k1_privkey_tweak_add(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
-bcrypto_secp256k1_privkey_tweak_mul(napi_env env, napi_callback_info info) {
+bcrypto_secp256k1_seckey_tweak_mul(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
   uint8_t out[32];
@@ -10494,7 +10489,7 @@ bcrypto_secp256k1_privkey_tweak_mul(napi_env env, napi_callback_info info) {
 
   memcpy(out, priv, 32);
 
-  JS_ASSERT(secp256k1_ec_privkey_tweak_mul(ec->ctx, out, tweak),
+  JS_ASSERT(secp256k1_ec_seckey_tweak_mul(ec->ctx, out, tweak),
             JS_ERR_PRIVKEY);
 
   CHECK(napi_create_buffer_copy(env, 32, out, NULL, &result) == napi_ok);
@@ -10503,7 +10498,7 @@ bcrypto_secp256k1_privkey_tweak_mul(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
-bcrypto_secp256k1_privkey_reduce(napi_env env, napi_callback_info info) {
+bcrypto_secp256k1_seckey_reduce(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t out[32];
@@ -10518,7 +10513,7 @@ bcrypto_secp256k1_privkey_reduce(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
                              &priv_len) == napi_ok);
 
-  JS_ASSERT(secp256k1_ec_privkey_reduce(ec->ctx, out, priv, priv_len),
+  JS_ASSERT(secp256k1_ec_seckey_reduce(ec->ctx, out, priv, priv_len),
             JS_ERR_PRIVKEY);
 
   CHECK(napi_create_buffer_copy(env, 32, out, NULL, &result) == napi_ok);
@@ -10527,7 +10522,7 @@ bcrypto_secp256k1_privkey_reduce(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
-bcrypto_secp256k1_privkey_negate(napi_env env, napi_callback_info info) {
+bcrypto_secp256k1_seckey_negate(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t out[32];
@@ -10546,7 +10541,7 @@ bcrypto_secp256k1_privkey_negate(napi_env env, napi_callback_info info) {
 
   memcpy(out, priv, 32);
 
-  JS_ASSERT(secp256k1_ec_privkey_negate_safe(ec->ctx, out), JS_ERR_PRIVKEY);
+  JS_ASSERT(secp256k1_ec_seckey_negate(ec->ctx, out), JS_ERR_PRIVKEY);
 
   CHECK(napi_create_buffer_copy(env, 32, out, NULL, &result) == napi_ok);
 
@@ -10554,7 +10549,7 @@ bcrypto_secp256k1_privkey_negate(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
-bcrypto_secp256k1_privkey_invert(napi_env env, napi_callback_info info) {
+bcrypto_secp256k1_seckey_invert(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t out[32];
@@ -10573,7 +10568,7 @@ bcrypto_secp256k1_privkey_invert(napi_env env, napi_callback_info info) {
 
   memcpy(out, priv, 32);
 
-  JS_ASSERT(secp256k1_ec_privkey_invert(ec->ctx, out), JS_ERR_PRIVKEY);
+  JS_ASSERT(secp256k1_ec_seckey_invert(ec->ctx, out), JS_ERR_PRIVKEY);
 
   CHECK(napi_create_buffer_copy(env, 32, out, NULL, &result) == napi_ok);
 
@@ -11770,7 +11765,7 @@ fail:
 
 #ifdef BCRYPTO_USE_SECP256K1_LATEST
 static napi_value
-bcrypto_secp256k1_xonly_privkey_export(napi_env env, napi_callback_info info) {
+bcrypto_secp256k1_xonly_seckey_export(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t d[32], x[32], y[32];
@@ -11789,13 +11784,13 @@ bcrypto_secp256k1_xonly_privkey_export(napi_env env, napi_callback_info info) {
                              &priv_len) == napi_ok);
 
   JS_ASSERT(priv_len == 32, JS_ERR_PRIVKEY_SIZE);
-  JS_ASSERT(secp256k1_ec_privkey_export(ec->ctx, d, priv), JS_ERR_PRIVKEY);
+  JS_ASSERT(secp256k1_ec_seckey_export(ec->ctx, d, priv), JS_ERR_PRIVKEY);
   JS_ASSERT(secp256k1_ec_pubkey_create(ec->ctx, &pubkey, priv), JS_ERR_PRIVKEY);
 
   CHECK(secp256k1_xonly_pubkey_from_pubkey(ec->ctx, &xonly, &negated, &pubkey));
 
   if (negated)
-    CHECK(secp256k1_ec_privkey_negate(ec->ctx, d));
+    CHECK(secp256k1_ec_seckey_negate(ec->ctx, d));
 
   CHECK(secp256k1_xonly_pubkey_export(ec->ctx, x, y, &xonly));
 
@@ -11812,8 +11807,8 @@ bcrypto_secp256k1_xonly_privkey_export(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
-bcrypto_secp256k1_xonly_privkey_tweak_add(napi_env env,
-                                          napi_callback_info info) {
+bcrypto_secp256k1_xonly_seckey_tweak_add(napi_env env,
+                                         napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
   uint8_t out[32];
@@ -13267,15 +13262,15 @@ bcrypto_init(napi_env env, napi_value exports) {
     /* Secp256k1 */
     { "secp256k1_context_create", bcrypto_secp256k1_context_create },
     { "secp256k1_context_randomize", bcrypto_secp256k1_context_randomize },
-    { "secp256k1_privkey_generate", bcrypto_secp256k1_privkey_generate },
-    { "secp256k1_privkey_verify", bcrypto_secp256k1_privkey_verify },
-    { "secp256k1_privkey_export", bcrypto_secp256k1_privkey_export },
-    { "secp256k1_privkey_import", bcrypto_secp256k1_privkey_import },
-    { "secp256k1_privkey_tweak_add", bcrypto_secp256k1_privkey_tweak_add },
-    { "secp256k1_privkey_tweak_mul", bcrypto_secp256k1_privkey_tweak_mul },
-    { "secp256k1_privkey_reduce", bcrypto_secp256k1_privkey_reduce },
-    { "secp256k1_privkey_negate", bcrypto_secp256k1_privkey_negate },
-    { "secp256k1_privkey_invert", bcrypto_secp256k1_privkey_invert },
+    { "secp256k1_seckey_generate", bcrypto_secp256k1_seckey_generate },
+    { "secp256k1_seckey_verify", bcrypto_secp256k1_seckey_verify },
+    { "secp256k1_seckey_export", bcrypto_secp256k1_seckey_export },
+    { "secp256k1_seckey_import", bcrypto_secp256k1_seckey_import },
+    { "secp256k1_seckey_tweak_add", bcrypto_secp256k1_seckey_tweak_add },
+    { "secp256k1_seckey_tweak_mul", bcrypto_secp256k1_seckey_tweak_mul },
+    { "secp256k1_seckey_reduce", bcrypto_secp256k1_seckey_reduce },
+    { "secp256k1_seckey_negate", bcrypto_secp256k1_seckey_negate },
+    { "secp256k1_seckey_invert", bcrypto_secp256k1_seckey_invert },
     { "secp256k1_pubkey_create", bcrypto_secp256k1_pubkey_create },
     { "secp256k1_pubkey_convert", bcrypto_secp256k1_pubkey_convert },
     { "secp256k1_pubkey_from_uniform", bcrypto_secp256k1_pubkey_from_uniform },
@@ -13308,8 +13303,8 @@ bcrypto_init(napi_env env, napi_value exports) {
     { "secp256k1_schnorr_legacy_verify", bcrypto_secp256k1_schnorr_legacy_verify },
     { "secp256k1_schnorr_legacy_verify_batch", bcrypto_secp256k1_schnorr_legacy_verify_batch },
 #ifdef BCRYPTO_USE_SECP256K1_LATEST
-    { "secp256k1_xonly_privkey_export", bcrypto_secp256k1_xonly_privkey_export },
-    { "secp256k1_xonly_privkey_tweak_add", bcrypto_secp256k1_xonly_privkey_tweak_add },
+    { "secp256k1_xonly_seckey_export", bcrypto_secp256k1_xonly_seckey_export },
+    { "secp256k1_xonly_seckey_tweak_add", bcrypto_secp256k1_xonly_seckey_tweak_add },
     { "secp256k1_xonly_create", bcrypto_secp256k1_xonly_create },
     { "secp256k1_xonly_from_uniform", bcrypto_secp256k1_xonly_from_uniform },
     { "secp256k1_xonly_to_uniform", bcrypto_secp256k1_xonly_to_uniform },

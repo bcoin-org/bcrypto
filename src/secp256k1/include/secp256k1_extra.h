@@ -15,24 +15,11 @@ extern "C" {
  *  In:     entropy:    pointer to a 32-byte random seed.
  */
 SECP256K1_API SECP256K1_WARN_UNUSED_RESULT int
-secp256k1_ec_privkey_generate(const secp256k1_context *ctx,
-                              unsigned char *output,
-                              const unsigned char *entropy) SECP256K1_ARG_NONNULL(1)
-                                                            SECP256K1_ARG_NONNULL(2)
-                                                            SECP256K1_ARG_NONNULL(3);
-
-/** Negates a private key in place.
- *
- *  Returns: 1 if seckey was successfully negated and 0 otherwise
- *  Args:   ctx:        pointer to a context object
- *  In/Out: seckey:     pointer to the 32-byte private key to be negated. The private
- *                      key should be valid according to secp256k1_ec_seckey_verify
- *                      (cannot be NULL)
- */
-SECP256K1_API SECP256K1_WARN_UNUSED_RESULT int
-secp256k1_ec_privkey_negate_safe(const secp256k1_context *ctx,
-                                 unsigned char *seckey) SECP256K1_ARG_NONNULL(1)
-                                                        SECP256K1_ARG_NONNULL(2);
+secp256k1_ec_seckey_generate(const secp256k1_context *ctx,
+                             unsigned char *output,
+                             const unsigned char *entropy) SECP256K1_ARG_NONNULL(1)
+                                                           SECP256K1_ARG_NONNULL(2)
+                                                           SECP256K1_ARG_NONNULL(3);
 
 /** Inverts a private key in place.
  *
@@ -43,9 +30,9 @@ secp256k1_ec_privkey_negate_safe(const secp256k1_context *ctx,
  *                      (cannot be NULL)
  */
 SECP256K1_API SECP256K1_WARN_UNUSED_RESULT int
-secp256k1_ec_privkey_invert(const secp256k1_context *ctx,
-                            unsigned char *seckey) SECP256K1_ARG_NONNULL(1)
-                                                   SECP256K1_ARG_NONNULL(2);
+secp256k1_ec_seckey_invert(const secp256k1_context *ctx,
+                           unsigned char *seckey) SECP256K1_ARG_NONNULL(1)
+                                                  SECP256K1_ARG_NONNULL(2);
 
 /** Reduces an arbitrary sized byte array to a private key.
  *
@@ -56,11 +43,11 @@ secp256k1_ec_privkey_invert(const secp256k1_context *ctx,
  *          len:        byte array length
  */
 SECP256K1_API SECP256K1_WARN_UNUSED_RESULT int
-secp256k1_ec_privkey_reduce(const secp256k1_context *ctx,
-                            unsigned char *output,
-                            const unsigned char *bytes,
-                            size_t len) SECP256K1_ARG_NONNULL(1)
-                                        SECP256K1_ARG_NONNULL(2);
+secp256k1_ec_seckey_reduce(const secp256k1_context *ctx,
+                           unsigned char *output,
+                           const unsigned char *bytes,
+                           size_t len) SECP256K1_ARG_NONNULL(1)
+                                       SECP256K1_ARG_NONNULL(2);
 
 /** Exports a private key to a byte array.
  *
@@ -70,11 +57,11 @@ secp256k1_ec_privkey_reduce(const secp256k1_context *ctx,
  *  In:     seckey:     pointer to a 32-byte array containing a private key
  */
 SECP256K1_API SECP256K1_WARN_UNUSED_RESULT int
-secp256k1_ec_privkey_export(const secp256k1_context *ctx,
-                            unsigned char *output,
-                            const unsigned char *seckey) SECP256K1_ARG_NONNULL(1)
-                                                         SECP256K1_ARG_NONNULL(2)
-                                                         SECP256K1_ARG_NONNULL(3);
+secp256k1_ec_seckey_export(const secp256k1_context *ctx,
+                           unsigned char *output,
+                           const unsigned char *seckey) SECP256K1_ARG_NONNULL(1)
+                                                        SECP256K1_ARG_NONNULL(2)
+                                                        SECP256K1_ARG_NONNULL(3);
 
 /** Imports a private key from a byte array.
  *
@@ -85,11 +72,11 @@ secp256k1_ec_privkey_export(const secp256k1_context *ctx,
  *          len:        byte array length
  */
 SECP256K1_API SECP256K1_WARN_UNUSED_RESULT int
-secp256k1_ec_privkey_import(const secp256k1_context *ctx,
-                            unsigned char *output,
-                            const unsigned char *bytes,
-                            size_t len) SECP256K1_ARG_NONNULL(1)
-                                        SECP256K1_ARG_NONNULL(2);
+secp256k1_ec_seckey_import(const secp256k1_context *ctx,
+                           unsigned char *output,
+                           const unsigned char *bytes,
+                           size_t len) SECP256K1_ARG_NONNULL(1)
+                                       SECP256K1_ARG_NONNULL(2);
 
 /** Exports a public key to x/y byte arrays.
  *
