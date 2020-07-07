@@ -10626,6 +10626,7 @@ bcrypto_secp256k1_pubkey_convert(napi_env env, napi_callback_info info) {
                              &pub_len) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[2], &compress) == napi_ok);
 
+  JS_ASSERT(pub_len > 0, JS_ERR_PUBKEY);
   JS_ASSERT(secp256k1_ec_pubkey_parse(ec->ctx, &pubkey, pub, pub_len),
             JS_ERR_PUBKEY);
 
@@ -10688,6 +10689,7 @@ bcrypto_secp256k1_pubkey_to_uniform(napi_env env, napi_callback_info info) {
                              &pub_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[2], &hint) == napi_ok);
 
+  JS_ASSERT(pub_len > 0, JS_ERR_PUBKEY);
   JS_ASSERT(secp256k1_ec_pubkey_parse(ec->ctx, &pubkey, pub, pub_len),
             JS_ERR_PUBKEY);
 
@@ -10752,6 +10754,7 @@ bcrypto_secp256k1_pubkey_to_hash(napi_env env, napi_callback_info info) {
 
   JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
 
+  JS_ASSERT(pub_len > 0, JS_ERR_PUBKEY);
   JS_ASSERT(secp256k1_ec_pubkey_parse(ec->ctx, &pubkey, pub, pub_len),
             JS_ERR_PUBKEY);
 
@@ -10782,7 +10785,7 @@ bcrypto_secp256k1_pubkey_verify(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
                              &pub_len) == napi_ok);
 
-  ok = secp256k1_ec_pubkey_parse(ec->ctx, &pubkey, pub, pub_len);
+  ok = pub_len > 0 && secp256k1_ec_pubkey_parse(ec->ctx, &pubkey, pub, pub_len);
 
   CHECK(napi_get_boolean(env, ok, &result) == napi_ok);
 
@@ -10807,6 +10810,7 @@ bcrypto_secp256k1_pubkey_export(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
                              &pub_len) == napi_ok);
 
+  JS_ASSERT(pub_len > 0, JS_ERR_PUBKEY);
   JS_ASSERT(secp256k1_ec_pubkey_parse(ec->ctx, &pubkey, pub, pub_len),
             JS_ERR_PUBKEY);
 
@@ -10882,6 +10886,7 @@ bcrypto_secp256k1_pubkey_tweak_add(napi_env env, napi_callback_info info) {
 
   JS_ASSERT(tweak_len == 32, JS_ERR_SCALAR_SIZE);
 
+  JS_ASSERT(pub_len > 0, JS_ERR_PUBKEY);
   JS_ASSERT(secp256k1_ec_pubkey_parse(ec->ctx, &pubkey, pub, pub_len),
             JS_ERR_PUBKEY);
 
@@ -10920,6 +10925,7 @@ bcrypto_secp256k1_pubkey_tweak_mul(napi_env env, napi_callback_info info) {
 
   JS_ASSERT(tweak_len == 32, JS_ERR_SCALAR_SIZE);
 
+  JS_ASSERT(pub_len > 0, JS_ERR_PUBKEY);
   JS_ASSERT(secp256k1_ec_pubkey_parse(ec->ctx, &pubkey, pub, pub_len),
             JS_ERR_PUBKEY);
 
@@ -10970,6 +10976,9 @@ bcrypto_secp256k1_pubkey_combine(napi_env env, napi_callback_info info) {
     CHECK(napi_get_buffer_info(env, item, (void **)&pub,
                                &pub_len) == napi_ok);
 
+    if (pub_len == 0)
+      goto fail;
+
     if (!secp256k1_ec_pubkey_parse(ec->ctx, &pubkey_data[i], pub, pub_len))
       goto fail;
 
@@ -11014,6 +11023,7 @@ bcrypto_secp256k1_pubkey_negate(napi_env env, napi_callback_info info) {
                              &pub_len) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[2], &compress) == napi_ok);
 
+  JS_ASSERT(pub_len > 0, JS_ERR_PUBKEY);
   JS_ASSERT(secp256k1_ec_pubkey_parse(ec->ctx, &pubkey, pub, pub_len),
             JS_ERR_PUBKEY);
 
@@ -11071,7 +11081,7 @@ bcrypto_secp256k1_signature_normalize_der(napi_env env,
   secp256k1_ecdsa_signature sigout;
   bcrypto_secp256k1_t *ec;
   napi_value result;
-  int ok;
+  int ok = 0;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
@@ -11079,7 +11089,9 @@ bcrypto_secp256k1_signature_normalize_der(napi_env env,
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&sig,
                              &sig_len) == napi_ok);
 
-  ok = ecdsa_signature_parse_der_lax(ec->ctx, &sigin, sig, sig_len);
+  if (sig_len > 0)
+    ok = ecdsa_signature_parse_der_lax(ec->ctx, &sigin, sig, sig_len);
+
   JS_ASSERT(ok, JS_ERR_SIGNATURE);
 
   secp256k1_ecdsa_signature_normalize(ec->ctx, &sigout, &sigin);
@@ -11140,6 +11152,7 @@ bcrypto_secp256k1_signature_import(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&sig,
                              &sig_len) == napi_ok);
 
+  JS_ASSERT(sig_len > 0, JS_ERR_SIGNATURE);
   JS_ASSERT(ecdsa_signature_parse_der_lax(ec->ctx, &sigin, sig, sig_len),
             JS_ERR_SIGNATURE);
 
@@ -11193,7 +11206,8 @@ bcrypto_secp256k1_is_low_der(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&sig,
                              &sig_len) == napi_ok);
 
-  ok = ecdsa_signature_parse_der_lax(ec->ctx, &sigin, sig, sig_len)
+  ok = sig_len > 0
+    && ecdsa_signature_parse_der_lax(ec->ctx, &sigin, sig, sig_len)
     && !secp256k1_ecdsa_signature_normalize(ec->ctx, NULL, &sigin);
 
   CHECK(napi_get_boolean(env, ok, &result) == napi_ok);
@@ -11384,7 +11398,7 @@ bcrypto_secp256k1_verify(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&sig, &sig_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[3], (void **)&pub, &pub_len) == napi_ok);
 
-  ok = sig_len == 64
+  ok = sig_len == 64 && pub_len > 0
     && secp256k1_ecdsa_signature_parse_compact(ec->ctx, &sigin, sig)
     && secp256k1_ec_pubkey_parse(ec->ctx, &pubkey, pub, pub_len);
 
@@ -11420,7 +11434,8 @@ bcrypto_secp256k1_verify_der(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&sig, &sig_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[3], (void **)&pub, &pub_len) == napi_ok);
 
-  ok = ecdsa_signature_parse_der_lax(ec->ctx, &sigin, sig, sig_len)
+  ok = sig_len > 0 && pub_len > 0
+    && ecdsa_signature_parse_der_lax(ec->ctx, &sigin, sig, sig_len)
     && secp256k1_ec_pubkey_parse(ec->ctx, &pubkey, pub, pub_len);
 
   if (ok) {
@@ -11515,6 +11530,9 @@ bcrypto_secp256k1_recover_der(napi_env env, napi_callback_info info) {
 
   JS_ASSERT((parm & 3) == parm, JS_ERR_RECOVERY_PARAM);
 
+  if (sig_len == 0)
+    goto fail;
+
   if (!ecdsa_signature_parse_der_lax(ec->ctx, &orig, sig, sig_len))
     goto fail;
 
@@ -11586,6 +11604,7 @@ bcrypto_secp256k1_derive(napi_env env, napi_callback_info info) {
 
   JS_ASSERT(priv_len == 32, JS_ERR_PRIVKEY_SIZE);
 
+  JS_ASSERT(pub_len > 0, JS_ERR_PUBKEY);
   JS_ASSERT(secp256k1_ec_pubkey_parse(ec->ctx, &pubkey, pub, pub_len),
             JS_ERR_PUBKEY);
 
@@ -11618,6 +11637,9 @@ bcrypto_secp256k1_schnorr_legacy_sign(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&priv,
                              &priv_len) == napi_ok);
 
+  if (msg_len == 0)
+    msg = out;
+
   JS_ASSERT(priv_len == 32, JS_ERR_PRIVKEY_SIZE);
   JS_ASSERT(secp256k1_schnorrleg_sign(ec->ctx, &sigout, msg, msg_len, priv),
             JS_ERR_SIGN);
@@ -11648,7 +11670,10 @@ bcrypto_secp256k1_schnorr_legacy_verify(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&sig, &sig_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[3], (void **)&pub, &pub_len) == napi_ok);
 
-  ok = sig_len == 64
+  if (msg_len == 0)
+    msg = sig;
+
+  ok = sig_len == 64 && pub_len > 0
     && secp256k1_schnorrleg_parse(ec->ctx, &sigin, sig)
     && secp256k1_ec_pubkey_parse(ec->ctx, &pubkey, pub, pub_len)
     && secp256k1_schnorrleg_verify(ec->ctx, &sigin, msg, msg_len, &pubkey);
@@ -11718,7 +11743,13 @@ bcrypto_secp256k1_schnorr_legacy_verify_batch(napi_env env,
     CHECK(napi_get_buffer_info(env, items[2], (void **)&pub,
                                &pub_len) == napi_ok);
 
+    if (msg_lens[i] == 0)
+      msgs[i] = sig;
+
     if (sig_len != 64)
+      goto fail;
+
+    if (pub_len == 0)
       goto fail;
 
     if (!secp256k1_schnorrleg_parse(ec->ctx, &sig_data[i], sig))
