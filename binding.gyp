@@ -10,13 +10,7 @@
     "cflags!": [
       "-Wall",
       "-Wextra",
-      "-Wno-unused-parameter",
-      "-pthread",
-      "-pthreads"
-    ],
-    "ldflags!": [
-      "-pthread",
-      "-pthreads"
+      "-Wno-unused-parameter"
     ],
     "xcode_settings": {
       # As low as we can go without losing support
