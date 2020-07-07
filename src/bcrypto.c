@@ -5041,7 +5041,7 @@ bcrypto_ecdsa_pubkey_combine(napi_env env, napi_callback_info info) {
                             compress);
 
 fail:
-  bcrypto_free(pubs);
+  bcrypto_free((void *)pubs);
   bcrypto_free(pub_lens);
 
   JS_ASSERT(ok, JS_ERR_PUBKEY);
@@ -6422,7 +6422,7 @@ bcrypto_eddsa_pubkey_combine(napi_env env, napi_callback_info info) {
   ok = eddsa_pubkey_combine(ec->ctx, out, pubs, length);
 
 fail:
-  bcrypto_free(pubs);
+  bcrypto_free((void *)pubs);
 
   JS_ASSERT(ok, JS_ERR_PUBKEY);
 
@@ -6737,7 +6737,7 @@ bcrypto_eddsa_verify_batch(napi_env env, napi_callback_info info) {
 fail:
   CHECK(napi_get_boolean(env, ok, &result) == napi_ok);
 
-  bcrypto_free(ptrs);
+  bcrypto_free((void *)ptrs);
   bcrypto_free(lens);
 
   return result;
@@ -9793,7 +9793,7 @@ bcrypto_schnorr_pubkey_combine(napi_env env, napi_callback_info info) {
   ok = schnorr_pubkey_combine(ec->ctx, out, pubs, length);
 
 fail:
-  bcrypto_free(pubs);
+  bcrypto_free((void *)pubs);
 
   JS_ASSERT(ok, JS_ERR_PUBKEY);
 
@@ -9930,7 +9930,7 @@ bcrypto_schnorr_verify_batch(napi_env env, napi_callback_info info) {
 fail:
   CHECK(napi_get_boolean(env, ok, &result) == napi_ok);
 
-  bcrypto_free(ptrs);
+  bcrypto_free((void *)ptrs);
   bcrypto_free(lens);
 
   return result;
@@ -10097,7 +10097,7 @@ bcrypto_schnorr_legacy_verify_batch(napi_env env, napi_callback_info info) {
 fail:
   CHECK(napi_get_boolean(env, ok, &result) == napi_ok);
 
-  bcrypto_free(ptrs);
+  bcrypto_free((void *)ptrs);
   bcrypto_free(lens);
 
   return result;
@@ -11784,7 +11784,7 @@ bcrypto_secp256k1_schnorr_legacy_verify_batch(napi_env env,
 fail:
   CHECK(napi_get_boolean(env, ok, &result) == napi_ok);
 
-  bcrypto_free(msgs);
+  bcrypto_free((void *)msgs);
   bcrypto_free(msg_lens);
   bcrypto_free(sigs);
   bcrypto_free(sig_data);

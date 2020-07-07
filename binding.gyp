@@ -11,22 +11,13 @@
       "-Wall",
       "-Wextra",
       "-Wno-unused-parameter",
-      "-O3",
       "-pthread",
       "-pthreads"
     ],
-    "cflags": [
-      # We may use some warning options that are
-      # known to GCC but not Clang. As a result,
-      # we need to disable warnings about unknown
-      # warnings for Clang. Appropriately enough,
-      # the Clang option to do this is unknown to
-      # GCC. For this reason, we must also disable
-      # warnings about unknown warnings for GCC.
-      "-Wno-unknown-warning", # GCC
-      "-Wno-unknown-warning-option" # Clang
+    "ldflags!": [
+      "-pthread",
+      "-pthreads"
     ],
-    "msvs_disabled_warnings=": [4146, 4244, 4267, 4334],
     "xcode_settings": {
       # As low as we can go without losing support
       # for clock_gettime(2) and getentropy(2).
@@ -69,8 +60,13 @@
         "-Wno-implicit-fallthrough",
         "-Wno-long-long",
         "-Wno-overlength-strings",
-        "-Wshadow",
-        "-O3"
+        "-Wshadow"
+      ],
+      "msvs_disabled_warnings=": [
+        4146, # negation of unsigned integer
+        4244, # implicit integer demotion
+        4267, # implicit size_t demotion
+        4334  # implicit 32->64 bit shift
       ],
       "include_dirs": [
         "./src/torsion/include"
@@ -93,10 +89,16 @@
         "-Wno-long-long",
         "-Wno-nonnull-compare", # GCC only
         "-Wno-overlength-strings",
+        "-Wno-unknown-warning", # GCC
+        "-Wno-unknown-warning-option", # Clang
         "-Wno-unused-function",
         "-Wshadow",
-        "-Wstrict-prototypes",
-        "-O2"
+        "-Wstrict-prototypes"
+      ],
+      "msvs_disabled_warnings=": [
+        4244, # implicit integer demotion
+        4267, # implicit size_t demotion
+        4334  # implicit 32->64 bit shift
       ],
       "include_dirs": [
         "./src/secp256k1",
@@ -148,8 +150,11 @@
       "cflags_c": [
         "-std=c99",
         "-Wall",
-        "-Wextra",
-        "-O3"
+        "-Wextra"
+      ],
+      "msvs_disabled_warnings=": [
+        4244, # implicit integer demotion
+        4267, # implicit size_t demotion
       ],
       "include_dirs": [
         "./src/torsion/include"
