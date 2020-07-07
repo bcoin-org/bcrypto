@@ -31,7 +31,7 @@
  */
 
 typedef struct poly1305_internal_s {
-#ifdef TORSION_HAVE_INT128
+#if defined(TORSION_HAVE_INT128)
   uint64_t r[3];
   uint64_t h[3];
   uint64_t pad[2];
@@ -49,7 +49,7 @@ STATIC_ASSERT(sizeof(poly1305_t) >= sizeof(poly1305_internal_t));
 void
 poly1305_init(poly1305_t *ctx, const unsigned char *key) {
   poly1305_internal_t *st = (poly1305_internal_t *)ctx;
-#ifdef TORSION_HAVE_INT128
+#if defined(TORSION_HAVE_INT128)
   uint64_t t0 = read64le(key + 0);
   uint64_t t1 = read64le(key + 8);
 
@@ -97,7 +97,7 @@ static void
 poly1305_blocks(poly1305_internal_t *st,
                 const unsigned char *data,
                 size_t len, int final) {
-#ifdef TORSION_HAVE_INT128
+#if defined(TORSION_HAVE_INT128)
   uint64_t hibit = final ? 0 : (UINT64_C(1) << 40); /* 1 << 128 */
   uint64_t r0 = st->r[0];
   uint64_t r1 = st->r[1];
@@ -184,10 +184,10 @@ poly1305_blocks(poly1305_internal_t *st,
 
   while (len >= 16) {
     /* h += m[i] */
-    h0 += (read32le(data + 0)) & 0x3ffffff;
-    h1 += (read32le(data + 3) >> 2) & 0x3ffffff;
-    h2 += (read32le(data + 6) >> 4) & 0x3ffffff;
-    h3 += (read32le(data + 9) >> 6) & 0x3ffffff;
+    h0 += (read32le(data +  0) >> 0) & 0x3ffffff;
+    h1 += (read32le(data +  3) >> 2) & 0x3ffffff;
+    h2 += (read32le(data +  6) >> 4) & 0x3ffffff;
+    h3 += (read32le(data +  9) >> 6) & 0x3ffffff;
     h4 += (read32le(data + 12) >> 8) | hibit;
 
     /* h *= r */
@@ -275,6 +275,7 @@ poly1305_update(poly1305_t *ctx, const unsigned char *data, size_t len) {
 
     len -= want;
     data += want;
+
     st->size += want;
 
     if (st->size < 16)
@@ -307,7 +308,7 @@ poly1305_update(poly1305_t *ctx, const unsigned char *data, size_t len) {
 void
 poly1305_final(poly1305_t *ctx, unsigned char *mac) {
   poly1305_internal_t *st = (poly1305_internal_t *)ctx;
-#ifdef TORSION_HAVE_INT128
+#if defined(TORSION_HAVE_INT128)
   uint64_t h0, h1, h2, c;
   uint64_t g0, g1, g2;
   uint64_t t0, t1;
@@ -397,8 +398,8 @@ poly1305_final(poly1305_t *ctx, unsigned char *mac) {
 #else /* TORSION_HAVE_INT128 */
   uint32_t h0, h1, h2, h3, h4, c;
   uint32_t g0, g1, g2, g3, g4;
-  uint64_t f;
   uint32_t mask;
+  uint64_t f;
 
   /* Process the remaining block. */
   if (st->size > 0) {

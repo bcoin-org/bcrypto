@@ -23,7 +23,4 @@
 #  define TORSION_EXTERN
 #endif
 
-#define TORSION_VERSION 0
-#define TORSION_ENTROPY_SIZE 32
-
 #endif /* _TORSION_COMMON_H */

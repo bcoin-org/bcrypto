@@ -585,29 +585,6 @@ bytes_lt(const unsigned char *a,
   return lt & (eq ^ 1);
 }
 
-static size_t
-bit_length(uint32_t x) {
-#if TORSION_GNUC_PREREQ(3, 4) || __has_builtin(__builtin_clz)
-  if (x == 0) /* Undefined behavior. */
-    return 0;
-
-  return sizeof(unsigned int) * CHAR_BIT - __builtin_clz(x);
-#else
-  /* http://aggregate.org/MAGIC/#Leading%20Zero%20Count */
-  x |= x >> 1;
-  x |= x >> 2;
-  x |= x >> 4;
-  x |= x >> 8;
-  x |= x >> 16;
-  x -= (x >> 1) & 0x55555555u;
-  x = ((x >> 2) & 0x33333333u) + (x & 0x33333333u);
-  x = ((x >> 4) + x) & 0x0f0f0f0fu;
-  x += x >> 8;
-  x += x >> 16;
-  return x & 0x0000003fu;
-#endif
-}
-
 static void
 reverse_copy(unsigned char *dst, const unsigned char *src, size_t size) {
   size_t i = 0;
@@ -856,27 +833,15 @@ sc_sub(const scalar_field_t *sc, sc_t r, const sc_t a, const sc_t b) {
 static void
 sc_mul_word(const scalar_field_t *sc, sc_t r, const sc_t a, unsigned int word) {
   /* Only constant-time if `word` is constant. */
-  int bits = bit_length(word);
-  int i;
+  ASSERT(word && (word & (word - 1)) == 0);
 
-  if (word > 1 && (word & (word - 1)) == 0) {
-    sc_add(sc, r, a, a);
+  sc_set(sc, r, a);
 
-    for (i = 1; i < bits - 1; i++)
-      sc_add(sc, r, r, r);
-  } else {
-    sc_t c;
+  word >>= 1;
 
-    sc_set(sc, c, a);
-    sc_zero(sc, r);
-
-    for (i = bits - 1; i >= 0; i--) {
-      if (i != bits - 1)
-        sc_add(sc, r, r, r);
-
-      if ((word >> i) & 1)
-        sc_add(sc, r, r, c);
-    }
+  while (word) {
+    sc_add(sc, r, r, r);
+    word >>= 1;
   }
 }
 
@@ -1458,11 +1423,11 @@ fe_set_word(const prime_field_t *fe, fe_t r, uint32_t word) {
     if (fe->endian == 1) {
       tmp[fe->size - 4] = (word >> 24) & 0xff;
       tmp[fe->size - 3] = (word >> 16) & 0xff;
-      tmp[fe->size - 2] = (word >> 8) & 0xff;
-      tmp[fe->size - 1] = word & 0xff;
+      tmp[fe->size - 2] = (word >>  8) & 0xff;
+      tmp[fe->size - 1] = (word >>  0) & 0xff;
     } else {
-      tmp[0] = word & 0xff;
-      tmp[1] = (word >> 8) & 0xff;
+      tmp[0] = (word >>  0) & 0xff;
+      tmp[1] = (word >>  8) & 0xff;
       tmp[2] = (word >> 16) & 0xff;
       tmp[3] = (word >> 24) & 0xff;
     }
@@ -1577,27 +1542,24 @@ fe_sub(const prime_field_t *fe, fe_t r, const fe_t a, const fe_t b) {
 static void
 fe_mul_word(const prime_field_t *fe, fe_t r, const fe_t a, unsigned int word) {
   /* Only constant-time if `word` is constant. */
-  int bits = bit_length(word);
-  int i;
+  int zero = 1;
+  fe_t x;
 
-  if (word > 1 && (word & (word - 1)) == 0) {
-    fe_add(fe, r, a, a);
+  fe_set(fe, x, a);
+  fe_zero(fe, r);
 
-    for (i = 1; i < bits - 1; i++)
-      fe_add(fe, r, r, r);
-  } else {
-    fe_t c;
+  while (word) {
+    if (word & 1) {
+      if (zero)
+        fe_set(fe, r, x);
+      else
+        fe_add(fe, r, r, x);
 
-    fe_set(fe, c, a);
-    fe_zero(fe, r);
-
-    for (i = bits - 1; i >= 0; i--) {
-      if (i != bits - 1)
-        fe_add(fe, r, r, r);
-
-      if ((word >> i) & 1)
-        fe_add(fe, r, r, c);
+      zero = 0;
     }
+
+    fe_add(fe, x, x, x);
+    word >>= 1;
   }
 }
 
@@ -5519,13 +5481,18 @@ pge_to_mge(const mont_t *ec, mge_t *r, const pge_t *p, int sign) {
 
 static void
 pge_mulh(const mont_t *ec, pge_t *r, const pge_t *p) {
-  int bits = bit_length(ec->h);
-  int i;
+  unsigned int h = ec->h;
+
+  ASSERT(h && (h & (h - 1)) == 0);
 
   pge_set(ec, r, p);
 
-  for (i = 0; i < bits - 1; i++)
+  h >>= 1;
+
+  while (h) {
     pge_dbl(ec, r, r);
+    h >>= 1;
+  }
 }
 
 static int
@@ -6465,13 +6432,18 @@ xge_sub(const edwards_t *ec, xge_t *r, const xge_t *a, const xge_t *b) {
 
 static void
 xge_mulh(const edwards_t *ec, xge_t *r, const xge_t *p) {
-  int bits = bit_length(ec->h);
-  int i;
+  unsigned int h = ec->h;
+
+  ASSERT(h && (h & (h - 1)) == 0);
 
   xge_set(ec, r, p);
 
-  for (i = 0; i < bits - 1; i++)
+  h >>= 1;
+
+  while (h) {
     xge_dbl(ec, r, r);
+    h >>= 1;
+  }
 }
 
 static int

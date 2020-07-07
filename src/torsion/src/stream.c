@@ -274,14 +274,14 @@ chacha20_block(chacha20_t *ctx, uint32_t *stream) {
     stream[i] = ctx->state[i];
 
   for (i = 0; i < 10; i++) {
-    QROUND(stream, 0, 4, 8, 12);
-    QROUND(stream, 1, 5, 9, 13);
+    QROUND(stream, 0, 4,  8, 12);
+    QROUND(stream, 1, 5,  9, 13);
     QROUND(stream, 2, 6, 10, 14);
     QROUND(stream, 3, 7, 11, 15);
     QROUND(stream, 0, 5, 10, 15);
     QROUND(stream, 1, 6, 11, 12);
-    QROUND(stream, 2, 7, 8, 13);
-    QROUND(stream, 3, 4, 9, 14);
+    QROUND(stream, 2, 7,  8, 13);
+    QROUND(stream, 3, 4,  9, 14);
   }
 
   for (i = 0; i < 16; i++)
@@ -345,19 +345,19 @@ chacha20_derive(unsigned char *out,
   state[15] = read32le(nonce16 + 12);
 
   for (i = 0; i < 10; i++) {
-    QROUND(state, 0, 4, 8, 12);
-    QROUND(state, 1, 5, 9, 13);
+    QROUND(state, 0, 4,  8, 12);
+    QROUND(state, 1, 5,  9, 13);
     QROUND(state, 2, 6, 10, 14);
     QROUND(state, 3, 7, 11, 15);
     QROUND(state, 0, 5, 10, 15);
     QROUND(state, 1, 6, 11, 12);
-    QROUND(state, 2, 7, 8, 13);
-    QROUND(state, 3, 4, 9, 14);
+    QROUND(state, 2, 7,  8, 13);
+    QROUND(state, 3, 4,  9, 14);
   }
 
-  write32le(out + 0, state[0]);
-  write32le(out + 4, state[1]);
-  write32le(out + 8, state[2]);
+  write32le(out +  0, state[0]);
+  write32le(out +  4, state[1]);
+  write32le(out +  8, state[2]);
   write32le(out + 12, state[3]);
   write32le(out + 16, state[12]);
   write32le(out + 20, state[13]);
@@ -632,13 +632,13 @@ salsa20_block(salsa20_t *ctx, uint32_t *stream) {
     stream[i] = ctx->state[i];
 
   for (i = 0; i < 10; i++) {
-    QROUND(stream, 0, 4, 8, 12);
-    QROUND(stream, 5, 9, 13, 1);
-    QROUND(stream, 10, 14, 2, 6);
-    QROUND(stream, 15, 3, 7, 11);
-    QROUND(stream, 0, 1, 2, 3);
-    QROUND(stream, 5, 6, 7, 4);
-    QROUND(stream, 10, 11, 8, 9);
+    QROUND(stream,  0,  4,  8, 12);
+    QROUND(stream,  5,  9, 13,  1);
+    QROUND(stream, 10, 14,  2,  6);
+    QROUND(stream, 15,  3,  7, 11);
+    QROUND(stream,  0,  1,  2,  3);
+    QROUND(stream,  5,  6,  7,  4);
+    QROUND(stream, 10, 11,  8,  9);
     QROUND(stream, 15, 12, 13, 14);
   }
 
@@ -703,19 +703,19 @@ salsa20_derive(unsigned char *out,
   state[15] = 0x6b206574;
 
   for (i = 0; i < 10; i++) {
-    QROUND(state, 0, 4, 8, 12);
-    QROUND(state, 5, 9, 13, 1);
-    QROUND(state, 10, 14, 2, 6);
-    QROUND(state, 15, 3, 7, 11);
-    QROUND(state, 0, 1, 2, 3);
-    QROUND(state, 5, 6, 7, 4);
-    QROUND(state, 10, 11, 8, 9);
+    QROUND(state,  0,  4,  8, 12);
+    QROUND(state,  5,  9, 13,  1);
+    QROUND(state, 10, 14,  2,  6);
+    QROUND(state, 15,  3,  7, 11);
+    QROUND(state,  0,  1,  2,  3);
+    QROUND(state,  5,  6,  7,  4);
+    QROUND(state, 10, 11,  8,  9);
     QROUND(state, 15, 12, 13, 14);
   }
 
-  write32le(out + 0, state[0]);
-  write32le(out + 4, state[5]);
-  write32le(out + 8, state[10]);
+  write32le(out +  0, state[0]);
+  write32le(out +  4, state[5]);
+  write32le(out +  8, state[10]);
   write32le(out + 12, state[15]);
   write32le(out + 16, state[6]);
   write32le(out + 20, state[7]);
