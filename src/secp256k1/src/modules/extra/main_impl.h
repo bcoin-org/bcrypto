@@ -11,7 +11,7 @@
 #ifndef SECP256K1_MODULE_EXTRA_MAIN_H
 #define SECP256K1_MODULE_EXTRA_MAIN_H
 
-#include "../../../include/secp256k1_extra.h"
+#include "include/secp256k1_extra.h"
 
 int
 secp256k1_ec_seckey_generate(const secp256k1_context *ctx,

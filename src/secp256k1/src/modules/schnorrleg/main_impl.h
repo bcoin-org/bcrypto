@@ -7,9 +7,9 @@
 #ifndef _SECP256K1_MODULE_SCHNORRLEG_MAIN_
 #define _SECP256K1_MODULE_SCHNORRLEG_MAIN_
 
-#include "../../../include/secp256k1.h"
-#include "../../../include/secp256k1_schnorrleg.h"
-#include "../../hash.h"
+#include "include/secp256k1.h"
+#include "include/secp256k1_schnorrleg.h"
+#include "hash.h"
 
 static int
 secp256k1_nonce_function_schnorrleg(unsigned char *nonce32,

@@ -24,7 +24,7 @@
 #ifndef SECP256K1_MODULE_ELLIGATOR_MAIN_H
 #define SECP256K1_MODULE_ELLIGATOR_MAIN_H
 
-#include "../../../include/secp256k1_elligator.h"
+#include "include/secp256k1_elligator.h"
 
 static void
 secp256k1_fe_sqrn(secp256k1_fe *out, const secp256k1_fe *in, int rounds) {
