@@ -67,10 +67,23 @@ sha512_update_tsc(sha512_t *hash) {
 }
 
 /*
+ * Structs
+ */
+
+typedef struct rng_s {
+  uint64_t key[4];
+  uint64_t zero;
+  uint64_t nonce;
+  uint32_t pool[16];
+  size_t pos;
+  int rdrand;
+} rng_t;
+
+/*
  * RNG
  */
 
-int
+static int
 rng_init(rng_t *rng) {
   unsigned char seed[64];
   sha512_t hash;
@@ -129,7 +142,7 @@ rng_init(rng_t *rng) {
   return 1;
 }
 
-void
+static void
 rng_generate(rng_t *rng, void *dst, size_t size) {
   unsigned char *key = (unsigned char *)rng->key;
   unsigned char *nonce = (unsigned char *)&rng->nonce;
@@ -168,7 +181,7 @@ rng_generate(rng_t *rng, void *dst, size_t size) {
   torsion_cleanse(&ctx, sizeof(ctx));
 }
 
-uint32_t
+static uint32_t
 rng_random(rng_t *rng) {
   if ((rng->pos & 15) == 0) {
     rng_generate(rng, rng->pool, 64);
@@ -178,7 +191,7 @@ rng_random(rng_t *rng) {
   return rng->pool[rng->pos++];
 }
 
-uint32_t
+static uint32_t
 rng_uniform(rng_t *rng, uint32_t max) {
   /* See: http://www.pcg-random.org/posts/bounded-rands.html */
   uint32_t x, r;
@@ -192,6 +205,35 @@ rng_uniform(rng_t *rng, uint32_t max) {
   } while (x - r > (-max));
 
   return r;
+}
+
+/*
+ * Global Lock
+ */
+
+#if !defined(TORSION_HAVE_TLS) && defined(TORSION_HAVE_PTHREAD)
+#  define TORSION_USE_PTHREAD
+#endif
+
+#ifdef TORSION_USE_PTHREAD
+#  include <pthread.h>
+static pthread_mutex_t rng_lock = PTHREAD_MUTEX_INITIALIZER;
+#endif
+
+static void
+rng_global_lock(void) {
+#ifdef TORSION_USE_PTHREAD
+  if (pthread_mutex_lock(&rng_lock) != 0)
+    torsion_abort();
+#endif
+}
+
+static void
+rng_global_unlock(void) {
+#ifdef TORSION_USE_PTHREAD
+  if (pthread_mutex_unlock(&rng_lock) != 0)
+    torsion_abort();
+#endif
 }
 
 /*
@@ -220,13 +262,15 @@ rng_global_init(void) {
 }
 
 /*
- * Global API
+ * Random
  */
 
 int
-torsion_is_reentrant(void) {
-#ifdef TORSION_HAVE_TLS
+torsion_reentrancy(void) {
+#if defined(TORSION_HAVE_TLS)
   return 1;
+#elif defined(TORSION_HAVE_PTHREAD)
+  return 2;
 #else
   return 0;
 #endif
@@ -239,30 +283,47 @@ torsion_getentropy(void *dst, size_t size) {
 
 int
 torsion_getrandom(void *dst, size_t size) {
-  if (!rng_global_init())
+  rng_global_lock();
+
+  if (!rng_global_init()) {
+    rng_global_unlock();
     return 0;
+  }
 
   rng_generate(&rng_state.rng, dst, size);
+  rng_global_unlock();
 
   return 1;
 }
 
 int
-torsion_random(uint32_t *out) {
-  if (!rng_global_init())
-    return 0;
+torsion_random(uint32_t *num) {
+  rng_global_lock();
 
-  *out = rng_random(&rng_state.rng);
+  if (!rng_global_init()) {
+    rng_global_unlock();
+    return 0;
+  }
+
+  *num = rng_random(&rng_state.rng);
+
+  rng_global_unlock();
 
   return 1;
 }
 
 int
-torsion_uniform(uint32_t *out, uint32_t max) {
-  if (!rng_global_init())
-    return 0;
+torsion_uniform(uint32_t *num, uint32_t max) {
+  rng_global_lock();
 
-  *out = rng_uniform(&rng_state.rng, max);
+  if (!rng_global_init()) {
+    rng_global_unlock();
+    return 0;
+  }
+
+  *num = rng_uniform(&rng_state.rng, max);
+
+  rng_global_unlock();
 
   return 1;
 }

@@ -16,49 +16,11 @@ extern "C" {
 #include "common.h"
 
 /*
- * Symbol Aliases
- */
-
-#define rng_init torsion_rng_init
-#define rng_generate torsion_rng_generate
-#define rng_random torsion_rng_random
-#define rng_uniform torsion_rng_uniform
-
-/*
- * Structs
- */
-
-typedef struct rng_s {
-  uint64_t key[4];
-  uint64_t zero;
-  uint64_t nonce;
-  uint32_t pool[16];
-  size_t pos;
-  int rdrand;
-} rng_t;
-
-/*
- * RNG
+ * Random
  */
 
 TORSION_EXTERN int
-rng_init(rng_t *rng);
-
-TORSION_EXTERN void
-rng_generate(rng_t *rng, void *dst, size_t size);
-
-TORSION_EXTERN uint32_t
-rng_random(rng_t *rng);
-
-TORSION_EXTERN uint32_t
-rng_uniform(rng_t *rng, uint32_t max);
-
-/*
- * Global API
- */
-
-TORSION_EXTERN int
-torsion_is_reentrant(void);
+torsion_reentrancy(void);
 
 TORSION_EXTERN int
 torsion_getentropy(void *dst, size_t size);
@@ -67,10 +29,10 @@ TORSION_EXTERN int
 torsion_getrandom(void *dst, size_t size);
 
 TORSION_EXTERN int
-torsion_random(uint32_t *out);
+torsion_random(uint32_t *num);
 
 TORSION_EXTERN int
-torsion_uniform(uint32_t *out, uint32_t max);
+torsion_uniform(uint32_t *num, uint32_t max);
 
 #ifdef __cplusplus
 }

@@ -412,9 +412,23 @@
 #  define TORSION_TLS
 #endif
 
-/* Allow override (for testing). */
+/* Fall back to pthread if available. */
+#if defined(__APPLE__) && defined(__MACH__)
+/* On Apple, libpthread.dylib is a symlink to libSystem.dylib. */
+#  define TORSION_HAVE_PTHREAD
+#elif defined(__unix) || defined(__unix__)
+#  ifdef _REENTRANT
+#    define TORSION_HAVE_PTHREAD
+#  endif
+#endif
+
+/* Allow overrides (for testing). */
 #ifdef TORSION_NO_TLS
 #  undef TORSION_HAVE_TLS
+#endif
+
+#ifdef TORSION_NO_PTHREAD
+#  undef TORSION_HAVE_PTHREAD
 #endif
 
 #else /* TORSION_HAVE_CONFIG */
