@@ -1,113 +1,149 @@
 {
-  "targets": [{
-    "target_name": "bcrypto",
-    "sources": [
-      "./src/torsion/src/aead.c",
-      "./src/torsion/src/asn1.c",
-      "./src/torsion/src/cipher.c",
-      "./src/torsion/src/drbg.c",
-      "./src/torsion/src/dsa.c",
-      "./src/torsion/src/ecc.c",
-      "./src/torsion/src/encoding.c",
-      "./src/torsion/src/entropy/env.c",
-      "./src/torsion/src/entropy/hw.c",
-      "./src/torsion/src/entropy/sys.c",
-      "./src/torsion/src/hash.c",
-      "./src/torsion/src/ies.c",
-      "./src/torsion/src/internal.c",
-      "./src/torsion/src/kdf.c",
-      "./src/torsion/src/mac.c",
-      "./src/torsion/src/mpi.c",
-      "./src/torsion/src/rand.c",
-      "./src/torsion/src/rsa.c",
-      "./src/torsion/src/stream.c",
-      "./src/torsion/src/util.c",
-      "./src/bcrypto.cc"
-    ],
-    "cflags": [
-      "-Wall",
-      "-Wextra",
-      "-Wno-implicit-fallthrough", # torsion
-      "-Wno-nonnull-compare", # secp256k1
-      "-Wno-unknown-warning", # gcc
-      "-Wno-unknown-warning-option", # clang
-      "-Wno-unused-function", # secp256k1
-      "-Wno-unused-parameter", # bsd
-      "-O3"
-    ],
-    "cflags_c": [
-      "-std=c89",
-      "-pedantic",
-      "-Wcast-align",
-      "-Wshadow",
-      "-Wno-declaration-after-statement",
-      "-Wno-long-long",
-      "-Wno-overlength-strings"
-    ],
-    "include_dirs": [
-      "./src/torsion/include"
-    ],
-    "variables": {
-      "with_secp256k1%": "true"
+  "variables": {
+    "with_secp256k1%": "true"
+  },
+  "targets": [
+    {
+      "target_name": "torsion",
+      "type": "static_library",
+      "sources": [
+        "./src/torsion/src/aead.c",
+        "./src/torsion/src/asn1.c",
+        "./src/torsion/src/cipher.c",
+        "./src/torsion/src/drbg.c",
+        "./src/torsion/src/dsa.c",
+        "./src/torsion/src/ecc.c",
+        "./src/torsion/src/encoding.c",
+        "./src/torsion/src/entropy/env.c",
+        "./src/torsion/src/entropy/hw.c",
+        "./src/torsion/src/entropy/sys.c",
+        "./src/torsion/src/hash.c",
+        "./src/torsion/src/ies.c",
+        "./src/torsion/src/internal.c",
+        "./src/torsion/src/kdf.c",
+        "./src/torsion/src/mac.c",
+        "./src/torsion/src/mpi.c",
+        "./src/torsion/src/rand.c",
+        "./src/torsion/src/rsa.c",
+        "./src/torsion/src/stream.c",
+        "./src/torsion/src/util.c"
+      ],
+      "cflags": [
+        "-std=c89",
+        "-pedantic",
+        "-Wall",
+        "-Wextra",
+        "-Wcast-align",
+        "-Wno-declaration-after-statement",
+        "-Wno-implicit-fallthrough",
+        "-Wno-long-long",
+        "-Wno-overlength-strings",
+        "-Wshadow",
+        "-O3"
+      ],
+      "include_dirs": [
+        "./src/torsion/include"
+      ]
     },
-    "conditions": [
-      ["OS=='win'", {
-        "msbuild_settings": {
-          "ClCompile": {
-            "ObjectFileName": "$(IntDir)/%(Directory)/%(Filename)"
-          },
-          "Link": {
-            "ImageHasSafeExceptionHandlers": "false"
-          }
-        }
-      }],
-      ["with_secp256k1=='true'", {
-        "defines": [
-          "BCRYPTO_USE_SECP256K1",
-          # "BCRYPTO_USE_SECP256K1_LATEST",
-          # "ECMULT_GEN_PREC_BITS=4",
-          # "ECMULT_WINDOW_SIZE=15",
-          "USE_NUM_NONE",
-          "USE_FIELD_INV_BUILTIN",
-          "USE_SCALAR_INV_BUILTIN",
-          "USE_ENDOMORPHISM",
-          "ENABLE_MODULE_ECDH",
-          "ENABLE_MODULE_ELLIGATOR",
-          "ENABLE_MODULE_EXTRA",
-          "ENABLE_MODULE_RECOVERY",
-          "ENABLE_MODULE_SCHNORRLEG"
-          # "ENABLE_MODULE_SCHNORRSIG"
-        ],
-        "sources": [
-          "./src/secp256k1/src/secp256k1.c",
-          "./src/secp256k1/contrib/lax_der_parsing.c"
-        ],
-        # "include_dirs": [
-        #   "./src/secp256k1",
-        #   "./src/secp256k1/include",
-        #   "./src/secp256k1/src"
-        # ],
-        "conditions": [
-          ["node_byteorder=='big'", {
-            "defines": [
-              "WORDS_BIGENDIAN"
-            ]
-          }],
-          ["target_arch=='x64' and OS!='win'", {
-            "defines": [
-              "HAVE___INT128",
-              "USE_ASM_X86_64",
-              "USE_FIELD_5X52",
-              "USE_SCALAR_4X64"
-            ]
-          }, {
-            "defines": [
-              "USE_FIELD_10X26",
-              "USE_SCALAR_8X32"
-            ]
-          }]
-        ]
-      }]
-    ]
-  }]
+    {
+      "target_name": "secp256k1",
+      "type": "static_library",
+      "sources": [
+        "./src/secp256k1/contrib/lax_der_parsing.c",
+        "./src/secp256k1/src/secp256k1.c"
+      ],
+      "cflags": [
+        "-std=c89",
+        "-pedantic",
+        "-Wall",
+        "-Wextra",
+        "-Wcast-align",
+        "-Wnested-externs",
+        "-Wno-long-long",
+        "-Wno-nonnull-compare", # secp256k1
+        "-Wno-overlength-strings",
+        "-Wno-unknown-warning", # gcc
+        "-Wno-unknown-warning-option", # clang
+        "-Wno-unused-function",
+        "-Wshadow",
+        "-Wstrict-prototypes",
+        "-O3"
+      ],
+      # "include_dirs": [
+      #   "./src/secp256k1",
+      #   "./src/secp256k1/include",
+      #   "./src/secp256k1/src"
+      # ],
+      "defines": [
+        # "BCRYPTO_USE_SECP256K1_LATEST"
+        "USE_NUM_NONE=1",
+        "USE_FIELD_INV_BUILTIN=1",
+        "USE_SCALAR_INV_BUILTIN=1",
+        # "ECMULT_WINDOW_SIZE=15",
+        # "ECMULT_GEN_PREC_BITS=4",
+        "USE_ENDOMORPHISM=1",
+        "ENABLE_MODULE_ECDH=1",
+        "ENABLE_MODULE_ELLIGATOR=1",
+        "ENABLE_MODULE_EXTRA=1",
+        "ENABLE_MODULE_RECOVERY=1",
+        "ENABLE_MODULE_SCHNORRLEG=1"
+        # "ENABLE_MODULE_SCHNORRSIG=1"
+      ],
+      "conditions": [
+        ["node_byteorder=='big'", {
+          "defines": [
+            "WORDS_BIGENDIAN=1"
+          ]
+        }],
+        ["target_arch=='x64' and OS!='win'", {
+          "defines": [
+            "HAVE___INT128=1",
+            "USE_ASM_X86_64=1",
+            "USE_FIELD_5X52=1",
+            "USE_SCALAR_4X64=1"
+          ]
+        }, {
+          "defines": [
+            "USE_FIELD_10X26=1",
+            "USE_SCALAR_8X32=1"
+          ]
+        }]
+      ]
+    },
+    {
+      "target_name": "bcrypto",
+      "dependencies": [
+        "torsion"
+      ],
+      "sources": [
+        "./src/bcrypto.cc"
+      ],
+      "cflags": [
+        "-Wall",
+        "-Wextra",
+        "-O3"
+      ],
+      "cflags_cc": [
+        "-Wunused-parameter"
+      ],
+      "include_dirs": [
+        "./src/torsion/include"
+      ],
+      "conditions": [
+        ["with_secp256k1=='true'", {
+          "dependencies": [
+            "secp256k1"
+          ],
+          "include_dirs": [
+            "./src/secp256k1/contrib",
+            "./src/secp256k1/include"
+          ],
+          "defines": [
+            "BCRYPTO_USE_SECP256K1"
+            # "BCRYPTO_USE_SECP256K1_LATEST"
+          ]
+        }]
+      ]
+    }
+  ]
 }
