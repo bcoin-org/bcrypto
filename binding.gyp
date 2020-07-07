@@ -4,8 +4,9 @@
   },
   "target_defaults": {
     # Remove flags inherited from common.gypi.
-    # This gives us a clean state. Note that
-    # we have to use cflags_c down below.
+    # This gives us a clean slate. Note that
+    # we have to use `cflags_c` down below
+    # because of this.
     "cflags!": [
       "-Wall",
       "-Wextra",
@@ -15,17 +16,22 @@
       "-pthreads"
     ],
     "cflags": [
-      "-Wno-unknown-warning", # gcc
-      "-Wno-unknown-warning-option" # clang
+      # We may use some warning options that are
+      # known to GCC but not Clang. As a result,
+      # we need to disable warnings about unknown
+      # warnings for Clang. Appropriately enough,
+      # the Clang option to do this is unknown to
+      # GCC. For this reason, we must also disable
+      # warnings about unknown warnings for GCC.
+      "-Wno-unknown-warning", # GCC
+      "-Wno-unknown-warning-option" # Clang
     ],
-    "conditions": [
-      ["OS=='mac'", {
-        "xcode_settings": {
-          # Pick 10.12 for getentropy(2) support.
-          "MACOSX_DEPLOYMENT_TARGET": "10.12"
-        }
-      }]
-    ]
+    "msvs_disabled_warnings=": [4146, 4244, 4267, 4334],
+    "xcode_settings": {
+      # As low as we can go without losing support
+      # for clock_gettime(2) and getentropy(2).
+      "MACOSX_DEPLOYMENT_TARGET": "10.12"
+    }
   },
   "targets": [
     {
@@ -85,7 +91,7 @@
         "-Wcast-align",
         "-Wnested-externs",
         "-Wno-long-long",
-        "-Wno-nonnull-compare", # gcc only
+        "-Wno-nonnull-compare", # GCC only
         "-Wno-overlength-strings",
         "-Wno-unused-function",
         "-Wshadow",
@@ -98,7 +104,6 @@
         "./src/secp256k1/src"
       ],
       "defines": [
-        # "BCRYPTO_USE_SECP256K1_LATEST"
         "USE_NUM_NONE=1",
         "USE_FIELD_INV_BUILTIN=1",
         "USE_SCALAR_INV_BUILTIN=1",
@@ -110,7 +115,6 @@
         "ENABLE_MODULE_EXTRA=1",
         "ENABLE_MODULE_RECOVERY=1",
         "ENABLE_MODULE_SCHNORRLEG=1"
-        # "ENABLE_MODULE_SCHNORRSIG=1"
       ],
       "conditions": [
         ["node_byteorder=='big'", {
@@ -161,7 +165,6 @@
           ],
           "defines": [
             "BCRYPTO_USE_SECP256K1"
-            # "BCRYPTO_USE_SECP256K1_LATEST"
           ]
         }]
       ]
