@@ -2,6 +2,31 @@
   "variables": {
     "with_secp256k1%": "true"
   },
+  "target_defaults": {
+    # Remove flags inherited from common.gypi.
+    # This gives us a clean state. Note that
+    # we have to use cflags_c down below.
+    "cflags!": [
+      "-Wall",
+      "-Wextra",
+      "-Wno-unused-parameter",
+      "-O3",
+      "-pthread",
+      "-pthreads"
+    ],
+    "cflags": [
+      "-Wno-unknown-warning", # gcc
+      "-Wno-unknown-warning-option" # clang
+    ],
+    "conditions": [
+      ["OS=='mac'", {
+        "xcode_settings": {
+          # Pick 10.12 for getentropy(2) support.
+          "MACOSX_DEPLOYMENT_TARGET": "10.12"
+        }
+      }]
+    ]
+  },
   "targets": [
     {
       "target_name": "torsion",
@@ -28,7 +53,7 @@
         "./src/torsion/src/stream.c",
         "./src/torsion/src/util.c"
       ],
-      "cflags": [
+      "cflags_c": [
         "-std=c89",
         "-pedantic",
         "-Wall",
@@ -52,7 +77,7 @@
         "./src/secp256k1/contrib/lax_der_parsing.c",
         "./src/secp256k1/src/secp256k1.c"
       ],
-      "cflags": [
+      "cflags_c": [
         "-std=c89",
         "-pedantic",
         "-Wall",
@@ -60,14 +85,12 @@
         "-Wcast-align",
         "-Wnested-externs",
         "-Wno-long-long",
-        "-Wno-nonnull-compare", # secp256k1
+        "-Wno-nonnull-compare", # gcc only
         "-Wno-overlength-strings",
-        "-Wno-unknown-warning", # gcc
-        "-Wno-unknown-warning-option", # clang
         "-Wno-unused-function",
         "-Wshadow",
         "-Wstrict-prototypes",
-        "-O3"
+        "-O2"
       ],
       # "include_dirs": [
       #   "./src/secp256k1",
@@ -116,15 +139,13 @@
         "torsion"
       ],
       "sources": [
-        "./src/bcrypto.cc"
+        "./src/bcrypto.c"
       ],
-      "cflags": [
+      "cflags_c": [
+        "-std=c99",
         "-Wall",
         "-Wextra",
         "-O3"
-      ],
-      "cflags_cc": [
-        "-Wunused-parameter"
       ],
       "include_dirs": [
         "./src/torsion/include"

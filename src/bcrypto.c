@@ -49,7 +49,7 @@
 #define SCRATCH_SIZE 64
 
 #define MAX_BUFFER_LENGTH \
-  (sizeof(uintptr_t) == 4 ? 0x3ffffffful : 0xfffffffful)
+  (sizeof(uintptr_t) == 4 ? 0x3ffffffful : 0xfffffffeul)
 
 #define MAX_STRING_LENGTH \
   (sizeof(uintptr_t) == 4 ? ((1ul << 28) - 16ul) : ((1ul << 29) - 24ul))
