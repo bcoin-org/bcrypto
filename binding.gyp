@@ -6,7 +6,9 @@
     # Remove flags inherited from common.gypi.
     # This gives us a clean slate. Note that
     # we have to use `cflags_c` down below
-    # because of this.
+    # because of this. Note that we allow
+    # common.gypi to choose our optimization
+    # levels (-O0 for debug, -O3 for release).
     "cflags!": [
       "-Wall",
       "-Wextra",
@@ -15,6 +17,7 @@
     "xcode_settings": {
       # As low as we can go without losing support
       # for clock_gettime(2) and getentropy(2).
+      # Identical to -mmacosx-version-min=10.12.
       "MACOSX_DEPLOYMENT_TARGET": "10.12"
     }
   },

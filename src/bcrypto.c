@@ -4,11 +4,11 @@
  * https://github.com/bcoin-org/bcrypto
  */
 
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 
 #include <node_api.h>
 
