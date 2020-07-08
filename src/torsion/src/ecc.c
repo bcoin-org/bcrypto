@@ -173,8 +173,6 @@ typedef uint32_t fe_word_t;
 #define MAX_FIELD_BITS 521
 #define MAX_FIELD_SIZE 66
 #define MAX_FIELD_LIMBS ((MAX_FIELD_BITS + MP_LIMB_BITS - 1) / MP_LIMB_BITS)
-#define MAX_FIELD_SHIFT \
-  ((MAX_FIELD_WORDS * FIELD_WORD_BITS * 2 + MP_LIMB_BITS - 1) / MP_LIMB_BITS)
 
 #define MAX_SCALAR_BITS 521
 #define MAX_SCALAR_SIZE 66
@@ -254,6 +252,7 @@ typedef void fe_sub_f(fe_word_t *, const fe_word_t *, const fe_word_t *);
 typedef void fe_opp_f(fe_word_t *, const fe_word_t *);
 typedef void fe_mul_f(fe_word_t *, const fe_word_t *, const fe_word_t *);
 typedef void fe_sqr_f(fe_word_t *, const fe_word_t *);
+typedef void fe_to_montgomery_f(fe_word_t *, const fe_word_t *);
 typedef void fe_from_montgomery_f(fe_word_t *, const fe_word_t *);
 typedef void fe_nonzero_f(fe_word_t *, const fe_word_t *);
 typedef void fe_selectznz_f(fe_word_t *, unsigned char,
@@ -276,12 +275,12 @@ typedef struct prime_field_s {
   mp_size_t limbs;
   unsigned char mask;
   unsigned char raw[MAX_FIELD_SIZE];
-  fe_t r2;
   fe_add_f *add;
   fe_sub_f *sub;
   fe_opp_f *opp;
   fe_mul_f *mul;
   fe_sqr_f *square;
+  fe_to_montgomery_f *to_montgomery;
   fe_from_montgomery_f *from_montgomery;
   fe_nonzero_f *nonzero;
   fe_selectznz_f *selectznz;
@@ -309,6 +308,7 @@ typedef struct prime_def_s {
   fe_opp_f *opp;
   fe_mul_f *mul;
   fe_sqr_f *square;
+  fe_to_montgomery_f *to_montgomery;
   fe_from_montgomery_f *from_montgomery;
   fe_nonzero_f *nonzero;
   fe_selectznz_f *selectznz;
@@ -1289,8 +1289,8 @@ fe_import(const prime_field_t *fe, fe_t r, const unsigned char *raw) {
   fe->from_bytes(r, tmp);
 
   /* Montgomerize/carry. */
-  if (fe->from_montgomery)
-    fe->mul(r, r, fe->r2);
+  if (fe->to_montgomery)
+    fe->to_montgomery(r, r);
   else
     fe->carry(r, r);
 
@@ -1869,31 +1869,6 @@ prime_field_init(prime_field_t *fe, const prime_def_t *def, int endian) {
   /* Keep a raw representation for byte comparisons. */
   mpn_export(fe->raw, fe->size, fe->p, fe->limbs, fe->endian);
 
-  /* We need to montgomerize field elements with:
-   *
-   *   r2 = (1 << (bits * 2)) mod p
-   *
-   * Note that `bits` will be aligned to the word size.
-   */
-  if (def->from_montgomery) {
-    mp_limb_t q[MAX_FIELD_SHIFT + 1 - MAX_FIELD_LIMBS + 1];
-    mp_limb_t r[MAX_FIELD_SHIFT + 1];
-    mp_size_t bits = fe->words * FIELD_WORD_BITS;
-    mp_size_t shift = (bits * 2) / MP_LIMB_BITS;
-    mp_size_t left = (bits * 2) % MP_LIMB_BITS;
-    unsigned char tmp[MAX_FIELD_SIZE];
-
-    mpn_zero(r, shift);
-
-    r[shift] = MP_LIMB_C(1) << left;
-
-    mpn_quorem(q, r, r, shift + 1, fe->p, fe->limbs);
-    mpn_export(tmp, fe->size, r, fe->limbs, -1);
-
-    /* Import our magic field element. */
-    def->from_bytes(fe->r2, tmp);
-  }
-
   /* Function pointers for field arithmetic. In
    * addition to fiat's default functions, we
    * have optimized addition chains for inversions,
@@ -1904,6 +1879,7 @@ prime_field_init(prime_field_t *fe, const prime_def_t *def, int endian) {
   fe->opp = def->opp;
   fe->mul = def->mul;
   fe->square = def->square;
+  fe->to_montgomery = def->to_montgomery;
   fe->from_montgomery = def->from_montgomery;
   fe->nonzero = def->nonzero;
   fe->selectznz = def->selectznz;
@@ -7427,6 +7403,7 @@ static const prime_def_t field_p192 = {
   fiat_p192_carry_square,
   NULL,
   NULL,
+  NULL,
   fiat_p192_selectznz,
   fiat_p192_to_bytes,
   fiat_p192_from_bytes,
@@ -7466,6 +7443,7 @@ static const prime_def_t field_p224 = {
   fiat_p224_opp,
   fiat_p224_mul,
   fiat_p224_square,
+  fiat_p224_to_montgomery,
   fiat_p224_from_montgomery,
   fiat_p224_nonzero,
   fiat_p224_selectznz,
@@ -7508,6 +7486,7 @@ static const prime_def_t field_p256 = {
   fiat_p256_opp,
   fiat_p256_mul,
   fiat_p256_square,
+  fiat_p256_to_montgomery,
   fiat_p256_from_montgomery,
   fiat_p256_nonzero,
   fiat_p256_selectznz,
@@ -7552,6 +7531,7 @@ static const prime_def_t field_p384 = {
   fiat_p384_opp,
   fiat_p384_mul,
   fiat_p384_square,
+  fiat_p384_to_montgomery,
   fiat_p384_from_montgomery,
   fiat_p384_nonzero,
   fiat_p384_selectznz,
@@ -7603,6 +7583,7 @@ static const prime_def_t field_p521 = {
   fiat_p521_carry_square,
   NULL,
   NULL,
+  NULL,
   fiat_p521_selectznz,
   fiat_p521_to_bytes,
   fiat_p521_from_bytes,
@@ -7648,6 +7629,7 @@ static const prime_def_t field_p256k1 = {
   fiat_secp256k1_opp,
   fiat_secp256k1_mul,
   fiat_secp256k1_square,
+  fiat_secp256k1_to_montgomery,
   fiat_secp256k1_from_montgomery,
   fiat_secp256k1_nonzero,
   fiat_secp256k1_selectznz,
@@ -7690,6 +7672,7 @@ static const prime_def_t field_p25519 = {
   fiat_p25519_opp,
   fiat_p25519_carry_mul,
   fiat_p25519_carry_square,
+  NULL,
   NULL,
   NULL,
   fiat_p25519_selectznz,
@@ -7737,6 +7720,7 @@ static const prime_def_t field_p448 = {
   fiat_p448_carry_square,
   NULL,
   NULL,
+  NULL,
   fiat_p448_selectznz,
   fiat_p448_to_bytes,
   fiat_p448_from_bytes,
@@ -7780,6 +7764,7 @@ static const prime_def_t field_p251 = {
   fiat_p251_opp,
   fiat_p251_carry_mul,
   fiat_p251_carry_square,
+  NULL,
   NULL,
   NULL,
   fiat_p251_selectznz,
@@ -9086,7 +9071,7 @@ int
 ecdsa_pubkey_combine(const wei_t *ec,
                      unsigned char *out,
                      size_t *out_len,
-                     const unsigned char **pubs,
+                     const unsigned char *const *pubs,
                      const size_t *pub_lens,
                      size_t len,
                      int compact) {
@@ -9904,10 +9889,10 @@ schnorr_legacy_verify(const wei_t *ec,
 
 int
 schnorr_legacy_verify_batch(const wei_t *ec,
-                            const unsigned char **msgs,
+                            const unsigned char *const *msgs,
                             const size_t *msg_lens,
-                            const unsigned char **sigs,
-                            const unsigned char **pubs,
+                            const unsigned char *const *sigs,
+                            const unsigned char *const *pubs,
                             const size_t *pub_lens,
                             size_t len,
                             struct wei_scratch_s *scratch) {
@@ -10408,7 +10393,7 @@ schnorr_pubkey_tweak_test(const wei_t *ec,
 int
 schnorr_pubkey_combine(const wei_t *ec,
                        unsigned char *out,
-                       const unsigned char **pubs,
+                       const unsigned char *const *pubs,
                        size_t len) {
   wge_t A;
   jge_t P;
@@ -10756,10 +10741,10 @@ schnorr_verify(const wei_t *ec,
 
 int
 schnorr_verify_batch(const wei_t *ec,
-                     const unsigned char **msgs,
+                     const unsigned char *const *msgs,
                      const size_t *msg_lens,
-                     const unsigned char **sigs,
-                     const unsigned char **pubs,
+                     const unsigned char *const *sigs,
+                     const unsigned char *const *pubs,
                      size_t len,
                      struct wei_scratch_s *scratch) {
   /* Schnorr Batch Verification.
@@ -11745,7 +11730,7 @@ eddsa_pubkey_tweak_mul(const edwards_t *ec,
 int
 eddsa_pubkey_combine(const edwards_t *ec,
                      unsigned char *out,
-                     const unsigned char **pubs,
+                     const unsigned char *const *pubs,
                      size_t len) {
   xge_t P, A;
   size_t i;
@@ -12162,10 +12147,10 @@ eddsa_verify_single(const edwards_t *ec,
 
 int
 eddsa_verify_batch(const edwards_t *ec,
-                   const unsigned char **msgs,
+                   const unsigned char *const *msgs,
                    const size_t *msg_lens,
-                   const unsigned char **sigs,
-                   const unsigned char **pubs,
+                   const unsigned char *const *sigs,
+                   const unsigned char *const *pubs,
                    size_t len,
                    int ph,
                    const unsigned char *ctx,

@@ -484,7 +484,7 @@ TORSION_EXTERN int
 ecdsa_pubkey_combine(const wei_curve_t *ec,
                      unsigned char *out,
                      size_t *out_len,
-                     const unsigned char **pubs,
+                     const unsigned char *const *pubs,
                      const size_t *pub_lens,
                      size_t len,
                      int compact);
@@ -620,10 +620,10 @@ schnorr_legacy_verify(const wei_curve_t *ec,
 
 TORSION_EXTERN int
 schnorr_legacy_verify_batch(const wei_curve_t *ec,
-                            const unsigned char **msgs,
+                            const unsigned char *const *msgs,
                             const size_t *msg_lens,
-                            const unsigned char **sigs,
-                            const unsigned char **pubs,
+                            const unsigned char *const *sigs,
+                            const unsigned char *const *pubs,
                             const size_t *pub_lens,
                             size_t len,
                             wei_scratch_t *scratch);
@@ -758,7 +758,7 @@ schnorr_pubkey_tweak_test(const wei_curve_t *ec,
 TORSION_EXTERN int
 schnorr_pubkey_combine(const wei_curve_t *ec,
                        unsigned char *out,
-                       const unsigned char **pubs,
+                       const unsigned char *const *pubs,
                        size_t len);
 
 TORSION_EXTERN int
@@ -778,10 +778,10 @@ schnorr_verify(const wei_curve_t *ec,
 
 TORSION_EXTERN int
 schnorr_verify_batch(const wei_curve_t *ec,
-                     const unsigned char **msgs,
+                     const unsigned char *const *msgs,
                      const size_t *msg_lens,
-                     const unsigned char **sigs,
-                     const unsigned char **pubs,
+                     const unsigned char *const *sigs,
+                     const unsigned char *const *pubs,
                      size_t len,
                      wei_scratch_t *scratch);
 
@@ -1051,7 +1051,7 @@ eddsa_pubkey_tweak_mul(const edwards_curve_t *ec,
 TORSION_EXTERN int
 eddsa_pubkey_combine(const edwards_curve_t *ec,
                      unsigned char *out,
-                     const unsigned char **pubs,
+                     const unsigned char *const *pubs,
                      size_t len);
 
 TORSION_EXTERN int
@@ -1124,10 +1124,10 @@ eddsa_verify_single(const edwards_curve_t *ec,
 
 TORSION_EXTERN int
 eddsa_verify_batch(const edwards_curve_t *ec,
-                   const unsigned char **msgs,
+                   const unsigned char *const *msgs,
                    const size_t *msg_lens,
-                   const unsigned char **sigs,
-                   const unsigned char **pubs,
+                   const unsigned char *const *sigs,
+                   const unsigned char *const *pubs,
                    size_t len,
                    int ph,
                    const unsigned char *ctx,

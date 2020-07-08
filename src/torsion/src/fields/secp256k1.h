@@ -33,6 +33,7 @@ typedef uint32_t secp256k1_fe_word_t;
 #ifdef TORSION_USE_LIBSECP256K1
 #define fiat_secp256k1_mul fiat_secp256k1_carry_mul
 #define fiat_secp256k1_square fiat_secp256k1_carry_square
+#define fiat_secp256k1_to_montgomery NULL
 #define fiat_secp256k1_from_montgomery NULL
 #else
 #define fiat_secp256k1_carry NULL
