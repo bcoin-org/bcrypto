@@ -67,7 +67,7 @@ sha512_update_tsc(sha512_t *hash) {
 }
 
 /*
- * Structs
+ * RNG
  */
 
 typedef struct rng_s {
@@ -78,10 +78,6 @@ typedef struct rng_s {
   size_t pos;
   int rdrand;
 } rng_t;
-
-/*
- * RNG
- */
 
 static int
 rng_init(rng_t *rng) {

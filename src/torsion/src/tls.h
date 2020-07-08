@@ -260,19 +260,19 @@
  * Everything else is formatted as VVRRPP.
  */
 #  if defined(__APPLE_EMBEDDED_SIMULATOR__)
-#    define TORSION__IOS_VERSION 100000 /* 10.0 */
+#    define TORSION__IOS_VERSION 100000 /* 10.0 (2016) */
 #  elif defined(__x86_64__) || defined(__aarch64__)
-#    define TORSION__IOS_VERSION 80000 /* 8.0 */
+#    define TORSION__IOS_VERSION 80000 /* 8.0 (2014) */
 #  else
-#    define TORSION__IOS_VERSION 90000 /* 9.0 */
+#    define TORSION__IOS_VERSION 90000 /* 9.0 (2015) */
 #  endif
 #  if defined(__APPLE_EMBEDDED_SIMULATOR__)
-#    define TORSION__WOS_VERSION 30000 /* 3.0 */
+#    define TORSION__WOS_VERSION 30000 /* 3.0 (2016) */
 #  else
-#    define TORSION__WOS_VERSION 20000 /* 2.0 */
+#    define TORSION__WOS_VERSION 20000 /* 2.0 (2015) */
 #  endif
 #  if defined(__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__)
-#    if __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ >= 1070 /* 10.7 */
+#    if __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ >= 1070 /* 10.7 (2011) */
 #      define TORSION__APPLE_OS
 #    endif
 #  elif defined(__ENVIRONMENT_IPHONE_OS_VERSION_MIN_REQUIRED__)
@@ -294,49 +294,49 @@
 #if defined(__EMSCRIPTEN__) || defined(__wasm__)
 #  define TORSION_TLS_NONE
 #elif defined(__DMC__)
-#  if defined(_M_IX86) && __DMC__ >= 0x843 /* 8.43 */
+#  if defined(_M_IX86) && __DMC__ >= 0x843 /* 8.43 (2005) */
 #    define TORSION_TLS_MSVC
 #  endif
 #elif defined(__HP_aCC)
-#  if _HP_aCC >= 55502 /* A.05.55.02 */
+#  if _HP_aCC >= 55502 /* A.05.55.02 (2004) */
 #    define TORSION_TLS_GNUC
 #  endif
 #elif defined(__HP_cc)
 #  define TORSION_TLS_GNUC
 #elif defined(__WATCOMC__)
-#  if __WATCOMC__ >= 1200 /* 12.0 */
+#  if __WATCOMC__ >= 1200 /* 12.0 (11.0c released in 2002) */
 #    define TORSION_TLS_MSVC
 #  endif
 #elif defined(__DCC__) && defined(__VERSION_NUMBER__)
-#  if __VERSION_NUMBER__ >= 5600 /* 5.6 */
+#  if __VERSION_NUMBER__ >= 5600 /* 5.6 (2007) */
 #    define TORSION_TLS_GNUC
 #  endif
 #elif defined(__NWCC__)
 #  define TORSION_TLS_GNUC
 #elif defined(__MWERKS__)
-#  if defined(__INTEL__) && __INTEL__ && __MWERKS__ >= 0x0710 /* CW 7.1 */
+#  if defined(__INTEL__) && __INTEL__ && __MWERKS__ >= 0x0710 /* CW 7.1 (1995) */
 #    define TORSION_TLS_MSVC
 #  endif
 #elif defined(__SUNPRO_C)
-#  if __SUNPRO_C >= 0x590 /* 5.9 */
+#  if __SUNPRO_C >= 0x590 /* 5.9 (2007) */
 #    define TORSION_TLS_GNUC
 #  endif
 #elif defined(__INTEL_COMPILER)
 #  if defined(__APPLE__) && defined(__MACH__)
-#    if defined(TORSION__APPLE_OS) && __INTEL_COMPILER >= 1500 /* 15.0.0 */
+#    if defined(TORSION__APPLE_OS) && __INTEL_COMPILER >= 1500 /* 15.0.0 (2014) */
 #      define TORSION_TLS_GNUC
 #    endif
-#  elif __INTEL_COMPILER >= 800 /* 8.0.0 */
+#  elif __INTEL_COMPILER >= 800 /* 8.0.0 (2003) */
 #    define TORSION_TLS_BOTH
 #  endif
 #elif defined(__clang__) && defined(__clang_major__)
 #  if defined(__apple_build_version__)
-#    if defined(TORSION__APPLE_OS) && __apple_build_version__ >= 8000038 /* 800.0.38 */
+#    if defined(TORSION__APPLE_OS) && __apple_build_version__ >= 8000038 /* 800.0.38 (2016) */
 #      define TORSION_TLS_GNUC
 #    endif
-#  elif __has_extension(c_thread_local)
+#  elif __has_extension(c_thread_local) /* 3.4 (late 2013) */
 #    if defined(__ANDROID__)
-#      if __clang_major__ >= 5 /* 5.0 */
+#      if __clang_major__ >= 5 /* 5.0 (2017) */
 #        define TORSION_TLS_GNUC
 #      endif
 #    else
@@ -372,11 +372,11 @@
 #  if defined(__ELF__) && (defined(__alpha__) || defined(__i386__)  \
                         || defined(__x86_64__) || defined(__ia64__) \
                         || defined(__s390__) || defined(__s390x__))
-#    if ((__GNUC__ << 16) + __GNUC_MINOR__ >= 0x30003) /* 3.3 */
+#    if ((__GNUC__ << 16) + __GNUC_MINOR__ >= 0x30003) /* 3.3 (2003) */
 #      define TORSION_TLS_GNUC
 #    endif
 #  else
-#    if ((__GNUC__ << 16) + __GNUC_MINOR__ >= 0x40003) /* 4.3 */
+#    if ((__GNUC__ << 16) + __GNUC_MINOR__ >= 0x40003) /* 4.3 (2008) */
 #      define TORSION_TLS_GNUC
 #    endif
 #  endif
@@ -412,9 +412,27 @@
 #  define TORSION_TLS
 #endif
 
+/* Fall back to pthread if available. */
+#if defined(TORSION_HAVE_PTHREAD)
+/* Already have pthread. */
+#elif defined(__EMSCRIPTEN__) || defined(__wasm__)
+/* No pthreads on wasm/emscripten. */
+#elif defined(__APPLE__) && defined(__MACH__)
+/* Apple libraries are always linked to
+   libSystem, which exposes pthread. */
+#  include <AvailabilityMacros.h>
+#  if MAC_OS_X_VERSION_MAX_ALLOWED >= 1040 /* 10.4 (2005) */
+#    define TORSION_HAVE_PTHREAD
+#  endif
+#endif
+
 /* Allow overrides (for testing). */
 #ifdef TORSION_NO_TLS
 #  undef TORSION_HAVE_TLS
+#endif
+
+#ifdef TORSION_NO_PTHREAD
+#  undef TORSION_HAVE_PTHREAD
 #endif
 
 #else /* TORSION_HAVE_CONFIG */
