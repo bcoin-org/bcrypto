@@ -64,6 +64,13 @@
       ],
       "include_dirs": [
         "./src/torsion/include"
+      ],
+      "conditions": [
+        ["OS in 'mac linux freebsd openbsd solaris aix'", {
+          "defines": [
+            "TORSION_HAVE_PTHREAD"
+          ]
+        }]
       ]
     },
     {

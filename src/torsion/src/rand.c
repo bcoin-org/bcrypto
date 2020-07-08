@@ -37,8 +37,8 @@
  * [2] https://github.com/bitcoin/bitcoin/blob/master/src/random.cpp
  */
 
+#include <stddef.h>
 #include <stdint.h>
-#include <stdlib.h>
 #include <string.h>
 #include <torsion/hash.h>
 #include <torsion/rand.h>
@@ -212,17 +212,17 @@ rng_uniform(rng_t *rng, uint32_t max) {
  */
 
 #if !defined(TORSION_HAVE_TLS) && defined(TORSION_HAVE_PTHREAD)
-#  define TORSION_USE_PTHREAD
+#  define TORSION_USE_LOCK
 #endif
 
-#ifdef TORSION_USE_PTHREAD
+#ifdef TORSION_USE_LOCK
 #  include <pthread.h>
 static pthread_mutex_t rng_lock = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
 static void
 rng_global_lock(void) {
-#ifdef TORSION_USE_PTHREAD
+#ifdef TORSION_USE_LOCK
   if (pthread_mutex_lock(&rng_lock) != 0)
     torsion_abort();
 #endif
@@ -230,7 +230,7 @@ rng_global_lock(void) {
 
 static void
 rng_global_unlock(void) {
-#ifdef TORSION_USE_PTHREAD
+#ifdef TORSION_USE_LOCK
   if (pthread_mutex_unlock(&rng_lock) != 0)
     torsion_abort();
 #endif
