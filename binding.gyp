@@ -53,7 +53,6 @@
         "-Wall",
         "-Wextra",
         "-Wcast-align",
-        "-Wno-declaration-after-statement",
         "-Wno-implicit-fallthrough",
         "-Wno-long-long",
         "-Wno-overlength-strings",
