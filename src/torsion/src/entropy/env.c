@@ -487,8 +487,8 @@ sha512_write_static_env(sha512_t *hash) {
   sha512_write_int(hash, __GNUC_PATCHLEVEL__);
 #endif
 
-#if defined(__clang_major__) \
- && defined(__clang_minor__) \
+#if defined(__clang_major__)      \
+ && defined(__clang_minor__)      \
  && defined(__clang_patchlevel__)
   sha512_write_int(hash, __clang_major__);
   sha512_write_int(hash, __clang_minor__);
@@ -865,10 +865,8 @@ sha512_write_static_env(sha512_t *hash) {
   {
     char cwd[4096 + 1]; /* PATH_MAX + 1 */
 
-    if (getcwd(cwd, sizeof(cwd)) != NULL) {
+    if (getcwd(cwd, sizeof(cwd)) != NULL)
       sha512_write_string(hash, cwd);
-      sha512_write_stat(hash, cwd);
-    }
   }
 
   /* Environment variables. */

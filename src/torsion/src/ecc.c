@@ -150,16 +150,6 @@
 #include "internal.h"
 #include "mpi.h"
 
-#include "fields/p192.h"
-#include "fields/p224.h"
-#include "fields/p256.h"
-#include "fields/p384.h"
-#include "fields/p521.h"
-#include "fields/secp256k1.h"
-#include "fields/p25519.h"
-#include "fields/p448.h"
-#include "fields/p251.h"
-
 #ifdef TORSION_HAVE_INT128
 typedef uint64_t fe_word_t;
 #define FIELD_WORD_BITS 64
@@ -169,6 +159,18 @@ typedef uint32_t fe_word_t;
 #define FIELD_WORD_BITS 32
 #define MAX_FIELD_WORDS 19
 #endif
+
+TORSION_BARRIER(fe_word_t, fiat)
+
+#include "fields/p192.h"
+#include "fields/p224.h"
+#include "fields/p256.h"
+#include "fields/p384.h"
+#include "fields/p521.h"
+#include "fields/secp256k1.h"
+#include "fields/p25519.h"
+#include "fields/p448.h"
+#include "fields/p251.h"
 
 #define MAX_FIELD_BITS 521
 #define MAX_FIELD_SIZE 66
@@ -1342,7 +1344,7 @@ fe_export(const prime_field_t *fe, unsigned char *raw, const fe_t a) {
 static void
 fe_swap(const prime_field_t *fe, fe_t a, fe_t b, unsigned int flag) {
   fe_word_t cond = (flag != 0);
-  fe_word_t mask = -cond;
+  fe_word_t mask = fiat_barrier(-cond);
   size_t i;
 
   for (i = 0; i < fe->words; i++) {

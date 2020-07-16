@@ -9,6 +9,7 @@
 #include <string.h>
 #include <torsion/util.h>
 #include "bio.h"
+#include "internal.h"
 
 /*
  * Memzero
@@ -22,15 +23,12 @@
  */
 
 #undef HAVE_SECUREZEROMEMORY
-#undef HAVE_INLINE_ASM
 
 #if defined(__EMSCRIPTEN__) || defined(__wasm__)
-/* Inline assembly not supported with emscripten/wasm. */
+/* Not supported with emscripten/wasm. */
 #elif defined(_WIN32)
 #  include <windows.h>
 #  define HAVE_SECUREZEROMEMORY
-#elif defined(__GNUC__) && __GNUC__ >= 4
-#  define HAVE_INLINE_ASM
 #endif
 
 void
@@ -38,10 +36,10 @@ torsion_cleanse(void *ptr, size_t len) {
 #if defined(HAVE_SECUREZEROMEMORY)
   if (len > 0)
     SecureZeroMemory(ptr, len);
-#elif defined(HAVE_INLINE_ASM)
+#elif defined(TORSION_HAVE_ASM)
   if (len > 0) {
     memset(ptr, 0, len);
-    __asm__ __volatile__("" : : "r" (ptr) : "memory");
+    __asm__ __volatile__("" :: "r" (ptr) : "memory");
   }
 #else
   static void *(*const volatile memset_ptr)(void *, int, size_t) = memset;
@@ -51,7 +49,6 @@ torsion_cleanse(void *ptr, size_t len) {
 }
 
 #undef HAVE_SECUREZEROMEMORY
-#undef HAVE_INLINE_ASM
 
 /*
  * Memequal

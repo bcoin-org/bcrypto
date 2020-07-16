@@ -233,6 +233,9 @@
  * r11 _also_ used Clang 3.8[6]. Instead, we must check for
  * NDK r15, which was upgraded to Clang 5.0[7].
  *
+ * As of Android NDK r16, __NDK_MAJOR__ does indeed exist[8],
+ * but this is not suitable for our purposes.
+ *
  * [1] https://stackoverflow.com/questions/27191214
  * [2] https://stackoverflow.com/a/27195324
  * [3] https://developer.android.com/ndk/downloads/revision_history
@@ -240,6 +243,7 @@
  * [5] https://github.com/android/ndk/issues/407
  * [6] https://github.com/android/ndk/blob/master/Changelogs/Changelog-r11.md#clang
  * [7] https://github.com/android/ndk/blob/master/Changelogs/Changelog-r15.md#clang
+ * [8] https://groups.google.com/forum/?_escaped_fragment_=topic/android-ndk/cf9_f1SLXls
  */
 
 #ifndef TORSION_HAVE_CONFIG
@@ -418,10 +422,15 @@
 #elif defined(__EMSCRIPTEN__) || defined(__wasm__)
 /* No pthreads on wasm/emscripten. */
 #elif defined(__APPLE__) && defined(__MACH__)
-/* Apple libraries are always linked to
-   libSystem, which exposes pthread. */
+/* Apple binaries link to libSystem (which exposes pthread). */
 #  include <AvailabilityMacros.h>
 #  if MAC_OS_X_VERSION_MAX_ALLOWED >= 1040 /* 10.4 (2005) */
+#    define TORSION_HAVE_PTHREAD
+#  endif
+#elif defined(__ANDROID__)
+/* Bionic has builtin pthread support. */
+#  include <sys/types.h>
+#  ifdef __BIONIC__
 #    define TORSION_HAVE_PTHREAD
 #  endif
 #endif

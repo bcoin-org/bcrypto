@@ -2584,6 +2584,8 @@ mpn_ctz(mp_srcptr xp, mp_size_t xn) {
  * Constant Time
  */
 
+TORSION_BARRIER(mp_limb_t, mpi)
+
 void
 mpn_cnd_select(mp_limb_t cnd,
                mp_ptr zp,
@@ -2591,8 +2593,8 @@ mpn_cnd_select(mp_limb_t cnd,
                mp_srcptr yp,
                mp_size_t n) {
   mp_limb_t cond = (cnd != 0);
-  mp_limb_t mask0 = cond - 1;
-  mp_limb_t mask1 = ~mask0;
+  mp_limb_t mask0 = mpi_barrier(cond - 1);
+  mp_limb_t mask1 = mpi_barrier(~mask0);
   mp_size_t i;
 
   for (i = 0; i < n; i++)
@@ -2601,7 +2603,8 @@ mpn_cnd_select(mp_limb_t cnd,
 
 void
 mpn_cnd_swap(mp_limb_t cnd, mp_ptr ap, mp_ptr bp, mp_size_t n) {
-  mp_limb_t mask = -(mp_limb_t)(cnd != 0);
+  mp_limb_t cond = (cnd != 0);
+  mp_limb_t mask = mpi_barrier(-cond);
   mp_size_t i;
 
   for (i = 0; i < n; i++) {
@@ -2617,7 +2620,7 @@ mpn_cnd_swap(mp_limb_t cnd, mp_ptr ap, mp_ptr bp, mp_size_t n) {
 void
 mpn_cnd_zero(mp_limb_t cnd, mp_ptr rp, mp_srcptr ap, mp_size_t n) {
   mp_limb_t cond = (cnd != 0);
-  mp_limb_t mask = cond - 1;
+  mp_limb_t mask = mpi_barrier(cond - 1);
   mp_size_t i;
 
   for (i = 0; i < n; i++)

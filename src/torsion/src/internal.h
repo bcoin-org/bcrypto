@@ -177,6 +177,7 @@ static const unsigned long __torsion_endian_check TORSION_UNUSED = 1;
  * [1] https://gcc.gnu.org/onlinedocs/gcc-2.95.3/gcc_4.html#SEC93
  */
 #  if TORSION_GNUC_PREREQ(4, 0)
+#    define TORSION_HAVE_ASM
 #    if defined(__amd64__) || defined(__x86_64__)
 #      define TORSION_HAVE_ASM_X64
 #    endif
@@ -213,16 +214,17 @@ static const unsigned long __torsion_endian_check TORSION_UNUSED = 1;
 #endif
 
 /* Allow some overrides (for testing). */
-#ifdef TORSION_FORCE_32BIT
-#  undef TORSION_HAVE_ASM_X64
-#  undef TORSION_HAVE_INT128
-#endif
-
 #ifdef TORSION_NO_ASM
+#  undef TORSION_HAVE_ASM
 #  undef TORSION_HAVE_ASM_X64
 #endif
 
 #ifdef TORSION_NO_INT128
+#  undef TORSION_HAVE_INT128
+#endif
+
+#ifdef TORSION_FORCE_32BIT
+#  undef TORSION_HAVE_ASM_X64
 #  undef TORSION_HAVE_INT128
 #endif
 
@@ -235,6 +237,25 @@ static const unsigned long __torsion_endian_check TORSION_UNUSED = 1;
 #ifdef TORSION_HAVE_INT128
 TORSION_EXTENSION typedef unsigned __int128 torsion_uint128_t;
 TORSION_EXTENSION typedef signed __int128 torsion_int128_t;
+#endif
+
+/*
+ * Value Barrier
+ */
+
+#if defined(TORSION_HAVE_ASM)
+#define TORSION_BARRIER(type, prefix) \
+static TORSION_INLINE type            \
+prefix ## _barrier(type x) {          \
+  __asm__ ("" : "+r" (x) ::);         \
+  return x;                           \
+}
+#else
+#define TORSION_BARRIER(type, prefix) \
+static TORSION_INLINE type            \
+prefix ## _barrier(type x) {          \
+  return x;                           \
+}
 #endif
 
 /*
