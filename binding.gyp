@@ -2,25 +2,6 @@
   "variables": {
     "with_secp256k1%": "true"
   },
-  "target_defaults": {
-    # Remove flags inherited from common.gypi.
-    # This gives us a clean slate. Note that
-    # we have to use `cflags_c` down below
-    # because of this. Note that we allow
-    # common.gypi to choose our optimization
-    # levels (-O0 for debug, -O3 for release).
-    "cflags!": [
-      "-Wall",
-      "-Wextra",
-      "-Wno-unused-parameter"
-    ],
-    "xcode_settings": {
-      # As low as we can go without losing support
-      # for clock_gettime(2) and getentropy(2).
-      # Identical to -mmacosx-version-min=10.12.
-      "MACOSX_DEPLOYMENT_TARGET": "10.12"
-    }
-  },
   "targets": [
     {
       "target_name": "torsion",
@@ -47,27 +28,43 @@
         "./src/torsion/src/stream.c",
         "./src/torsion/src/util.c"
       ],
-      "cflags_c": [
-        "-std=c89",
-        "-pedantic",
-        "-Wall",
-        "-Wextra",
-        "-Wcast-align",
-        "-Wno-implicit-fallthrough",
-        "-Wno-long-long",
-        "-Wno-overlength-strings",
-        "-Wshadow"
-      ],
-      "msvs_disabled_warnings=": [
-        4146, # negation of unsigned integer
-        4244, # implicit integer demotion
-        4267, # implicit size_t demotion
-        4334  # implicit 32->64 bit shift
-      ],
       "include_dirs": [
         "./src/torsion/include"
       ],
       "conditions": [
+        ["OS != 'mac' and OS != 'win'", {
+          "cflags": [
+            "-std=c89",
+            "-pedantic",
+            "-Wcast-align",
+            "-Wno-implicit-fallthrough",
+            "-Wno-long-long",
+            "-Wno-overlength-strings",
+            "-Wshadow"
+          ]
+        }],
+        ["OS == 'mac'", {
+          "xcode_settings": {
+            "MACOSX_DEPLOYMENT_TARGET": "10.12",
+            "GCC_C_LANGUAGE_STANDARD": "c89",
+            "GCC_WARN_PEDANTIC": "YES",
+            "GCC_WARN_SHADOW": "YES",
+            "WARNING_CFLAGS": [
+              "-Wcast-align",
+              "-Wno-implicit-fallthrough",
+              "-Wno-long-long",
+              "-Wno-overlength-strings"
+            ]
+          }
+        }],
+        ["OS == 'win'", {
+          "msvs_disabled_warnings=": [
+            4146, # negation of unsigned integer
+            4244, # implicit integer demotion
+            4267, # implicit size_t demotion
+            4334  # implicit 32->64 bit shift
+          ]
+        }],
         ["OS in 'mac linux freebsd openbsd solaris aix'", {
           "defines": [
             "TORSION_HAVE_PTHREAD"
@@ -81,27 +78,6 @@
       "sources": [
         "./src/secp256k1/contrib/lax_der_parsing.c",
         "./src/secp256k1/src/secp256k1.c"
-      ],
-      "cflags_c": [
-        "-std=c89",
-        "-pedantic",
-        "-Wall",
-        "-Wextra",
-        "-Wcast-align",
-        "-Wnested-externs",
-        "-Wno-long-long",
-        "-Wno-nonnull-compare", # GCC only
-        "-Wno-overlength-strings",
-        "-Wno-unknown-warning", # GCC
-        "-Wno-unknown-warning-option", # Clang
-        "-Wno-unused-function",
-        "-Wshadow",
-        "-Wstrict-prototypes"
-      ],
-      "msvs_disabled_warnings=": [
-        4244, # implicit integer demotion
-        4267, # implicit size_t demotion
-        4334  # implicit 32->64 bit shift
       ],
       "include_dirs": [
         "./src/secp256k1",
@@ -122,12 +98,51 @@
         "ENABLE_MODULE_SCHNORRLEG=1"
       ],
       "conditions": [
-        ["node_byteorder=='big'", {
+        ["OS != 'mac' and OS != 'win'", {
+          "cflags": [
+            "-std=c89",
+            "-pedantic",
+            "-Wcast-align",
+            "-Wnested-externs",
+            "-Wno-long-long",
+            "-Wno-nonnull-compare", # GCC only
+            "-Wno-overlength-strings",
+            "-Wno-unknown-warning", # GCC
+            "-Wno-unknown-warning-option", # Clang
+            "-Wno-unused-function",
+            "-Wshadow",
+            "-Wstrict-prototypes"
+          ]
+        }],
+        ["OS == 'mac'", {
+          "xcode_settings": {
+            "MACOSX_DEPLOYMENT_TARGET": "10.12",
+            "GCC_C_LANGUAGE_STANDARD": "c89",
+            "GCC_WARN_PEDANTIC": "YES",
+            "GCC_WARN_SHADOW": "YES",
+            "WARNING_CFLAGS": [
+              "-Wcast-align",
+              "-Wnested-externs",
+              "-Wno-long-long",
+              "-Wno-overlength-strings",
+              "-Wno-unused-function",
+              "-Wstrict-prototypes"
+            ]
+          }
+        }],
+        ["OS == 'win'", {
+          "msvs_disabled_warnings=": [
+            4244, # implicit integer demotion
+            4267, # implicit size_t demotion
+            4334  # implicit 32->64 bit shift
+          ]
+        }],
+        ["node_byteorder == 'big'", {
           "defines": [
             "WORDS_BIGENDIAN=1"
           ]
         }],
-        ["target_arch=='x64' and OS!='win'", {
+        ["target_arch == 'x64' and OS != 'win'", {
           "defines": [
             "HAVE___INT128=1",
             "USE_ASM_X86_64=1",
@@ -150,20 +165,30 @@
       "sources": [
         "./src/bcrypto.c"
       ],
-      "cflags_c": [
-        "-std=c99",
-        "-Wall",
-        "-Wextra"
-      ],
-      "msvs_disabled_warnings=": [
-        4244, # implicit integer demotion
-        4267, # implicit size_t demotion
-      ],
       "include_dirs": [
         "./src/torsion/include"
       ],
       "conditions": [
-        ["with_secp256k1=='true'", {
+        ["OS != 'mac' and OS != 'win'", {
+          "cflags": [
+            "-std=c99",
+            "-Wshadow"
+          ]
+        }],
+        ["OS == 'mac'", {
+          "xcode_settings": {
+            "MACOSX_DEPLOYMENT_TARGET": "10.12",
+            "GCC_C_LANGUAGE_STANDARD": "c99",
+            "GCC_WARN_SHADOW": "YES"
+          }
+        }],
+        ["OS == 'win'", {
+          "msvs_disabled_warnings=": [
+            4244, # implicit integer demotion
+            4267, # implicit size_t demotion
+          ]
+        }],
+        ["with_secp256k1 == 'true'", {
           "dependencies": [
             "secp256k1"
           ],
