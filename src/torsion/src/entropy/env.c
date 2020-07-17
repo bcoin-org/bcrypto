@@ -305,9 +305,11 @@ sha512_write_sockaddr(sha512_t *hash, const struct sockaddr *addr) {
     case AF_INET:
       sha512_write(hash, addr, sizeof(struct sockaddr_in));
       break;
+#ifdef AF_INET6
     case AF_INET6:
       sha512_write(hash, addr, sizeof(struct sockaddr_in6));
       break;
+#endif
     default:
       sha512_write(hash, &addr->sa_family, sizeof(addr->sa_family));
       break;

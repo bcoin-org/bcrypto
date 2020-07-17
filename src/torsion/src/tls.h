@@ -121,9 +121,14 @@
  *
  * - TLS not yet supported[46].
  *
+ * Portable C Compiler:
+ *
+ * - TLS supported via __thread and #pragma tls[47].
+ * - TLS first implemented in 1.0.0[48][49].
+ *
  * C11:
  *
- * - C11 specifies support for _Thread_local[47].
+ * - C11 specifies support for _Thread_local[50].
  * - Support can be tested by checking both:
  *
  *     __STDC_VERSION__ >= 201112L
@@ -131,7 +136,7 @@
  *
  *   However, some compilers do not define STDC_NO_THREADS
  *   or do not define it directly (in particular, Intel C
- *   versions less than 18.0.0[48]).
+ *   versions less than 18.0.0[51]).
  *
  * [1] https://gcc.gnu.org/onlinedocs/gcc-3.3.1/gcc/Thread-Local.html
  * [2] https://github.com/gcc-mirror/gcc/commit/8893239dc4ed32bd3bb4e00d6e43b859554ab82a
@@ -179,8 +184,11 @@
  * [44] http://nwcc.sourceforge.net/features.html
  * [45] http://index-of.co.uk/C++/CodeWarrior%20C%20and%20C++%20and%20Assembly%20Language%20Reference.pdf
  * [46] https://github.com/AbsInt/CompCert/issues/268
- * [47] https://en.cppreference.com/w/c/keyword/_Thread_local
- * [48] https://software.intel.com/en-us/forums/intel-c-compiler/topic/721059
+ * [47] https://github.com/IanHarvey/pcc/blob/master/cc/ccom/gcc_compat.c#L261
+ * [48] https://github.com/IanHarvey/pcc/commit/e2ad48a
+ * [49] https://github.com/IanHarvey/pcc/commit/109a8ee
+ * [50] https://en.cppreference.com/w/c/keyword/_Thread_local
+ * [51] https://software.intel.com/en-us/forums/intel-c-compiler/topic/721059
  */
 
 /* Apple Quirks
@@ -315,6 +323,10 @@
 #  if __VERSION_NUMBER__ >= 5600 /* 5.6 (2007) */
 #    define TORSION_TLS_GNUC
 #  endif
+#elif defined(__PCC__)
+#  if __PCC__ >= 1 /* 1.0.0 (2011) */
+#    define TORSION_TLS_GNUC
+#  endif
 #elif defined(__NWCC__)
 #  define TORSION_TLS_GNUC
 #elif defined(__MWERKS__)
@@ -429,7 +441,7 @@
 #  endif
 #elif defined(__ANDROID__)
 /* Bionic has builtin pthread support. */
-#  include <sys/types.h>
+#  include <sys/types.h> /* <sys/cdefs.h> */
 #  ifdef __BIONIC__
 #    define TORSION_HAVE_PTHREAD
 #  endif
