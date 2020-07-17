@@ -12796,7 +12796,7 @@ napi_value
 bcrypto_init(napi_env env, napi_value exports) {
   size_t i;
 
-  static struct {
+  static const struct {
     const char *name;
     napi_callback callback;
   } funcs[] = {
