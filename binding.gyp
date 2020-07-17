@@ -47,13 +47,13 @@
           "xcode_settings": {
             "MACOSX_DEPLOYMENT_TARGET": "10.12",
             "GCC_C_LANGUAGE_STANDARD": "c89",
-            "GCC_WARN_PEDANTIC": "YES",
-            "GCC_WARN_SHADOW": "YES",
             "WARNING_CFLAGS": [
+              "-pedantic",
               "-Wcast-align",
               "-Wno-implicit-fallthrough",
               "-Wno-long-long",
-              "-Wno-overlength-strings"
+              "-Wno-overlength-strings",
+              "-Wshadow"
             ]
           }
         }],
@@ -118,14 +118,14 @@
           "xcode_settings": {
             "MACOSX_DEPLOYMENT_TARGET": "10.12",
             "GCC_C_LANGUAGE_STANDARD": "c89",
-            "GCC_WARN_PEDANTIC": "YES",
-            "GCC_WARN_SHADOW": "YES",
             "WARNING_CFLAGS": [
+              "-pedantic",
               "-Wcast-align",
               "-Wnested-externs",
               "-Wno-long-long",
               "-Wno-overlength-strings",
               "-Wno-unused-function",
+              "-Wshadow",
               "-Wstrict-prototypes"
             ]
           }
@@ -172,6 +172,7 @@
         ["OS != 'mac' and OS != 'win'", {
           "cflags": [
             "-std=c99",
+            "-Wcast-align",
             "-Wshadow"
           ]
         }],
@@ -179,7 +180,10 @@
           "xcode_settings": {
             "MACOSX_DEPLOYMENT_TARGET": "10.12",
             "GCC_C_LANGUAGE_STANDARD": "c99",
-            "GCC_WARN_SHADOW": "YES"
+            "WARNING_CFLAGS": [
+              "-Wcast-align",
+              "-Wshadow"
+            ]
           }
         }],
         ["OS == 'win'", {
