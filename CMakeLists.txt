@@ -53,29 +53,6 @@ else()
   check_c_compiler_flag(-O3 BCRYPTO_HAS_O3)
 endif()
 
-list(APPEND bcrypto_defines NODE_GYP_MODULE_NAME=${CMAKE_PROJECT_NAME})
-list(APPEND bcrypto_defines BUILDING_NODE_EXTENSION)
-
-if(APPLE)
-  list(APPEND bcrypto_ldflags -undefined)
-  list(APPEND bcrypto_ldflags dynamic_lookup)
-  list(APPEND bcrypto_defines _DARWIN_USE_64_BIT_INODE=1)
-endif()
-
-if(NOT WIN32)
-  list(APPEND bcrypto_defines _LARGEFILE_SOURCE)
-  list(APPEND bcrypto_defines _FILE_OFFSET_BITS=64)
-endif()
-
-if(MSVC)
-  list(APPEND bcrypto_sources deps/win_delay_load_hook.cc)
-  list(APPEND bcrypto_ldflags /DELAYLOAD:NODE.EXE)
-  list(APPEND bcrypto_defines HOST_BINARY=node.exe)
-  list(APPEND bcrypto_cflags /wd4199)
-  # Unsure if this is necessary for C.
-  # list(APPEND bcrypto_ldflags /SAFESEH:NO)
-endif()
-
 if(BCRYPTO_ENABLE_DEBUG)
   if(BCRYPTO_HAS_G)
     list(APPEND bcrypto_cflags -g)
@@ -109,6 +86,22 @@ endif()
 
 list(APPEND bcrypto_sources src/bcrypto.c)
 list(APPEND bcrypto_libs torsion)
+
+list(APPEND bcrypto_defines NODE_GYP_MODULE_NAME=${CMAKE_PROJECT_NAME})
+list(APPEND bcrypto_defines BUILDING_NODE_EXTENSION)
+
+if(APPLE)
+  list(APPEND bcrypto_ldflags -undefined dynamic_lookup)
+endif()
+
+if(MSVC)
+  # Windows requires insane hacks to work properly.
+  list(APPEND bcrypto_libs ${NODE_LIB_FILE})
+  list(APPEND bcrypto_defines HOST_BINARY="${NODE_EXE_NAME}")
+  list(APPEND bcrypto_sources deps/win_delay_load_hook.c)
+  list(APPEND bcrypto_ldflags /delayload:${NODE_EXE_NAME})
+  list(APPEND bcrypto_ldflags /ignore:4199)
+endif()
 
 add_subdirectory(deps/torsion)
 

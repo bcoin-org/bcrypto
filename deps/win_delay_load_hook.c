@@ -5,6 +5,8 @@
  * return a handle to the process image.
  *
  * This allows compiled addons to work when the host executable is renamed.
+ *
+ * Modified to compile as C.
  */
 
 #ifdef _MSC_VER
@@ -12,7 +14,13 @@
 #pragma managed(push, off)
 
 #ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
+#  define WIN32_LEAN_AND_MEAN
+#endif
+
+#ifndef DELAYIMP_INSECURE_WRITABLE_HOOKS
+/* Hooks were non-const prior to VS 2015 Update 3. */
+/* Revert to this behavior for compatibility. */
+#  define DELAYIMP_INSECURE_WRITABLE_HOOKS
 #endif
 
 #include <windows.h>
@@ -37,7 +45,7 @@ load_exe_hook(unsigned int event, DelayLoadInfo *info) {
   return (FARPROC)m;
 }
 
-decltype(__pfnDliNotifyHook2) __pfnDliNotifyHook2 = load_exe_hook;
+ExternC PfnDliHook __pfnDliNotifyHook2 = load_exe_hook;
 
 #pragma managed(pop)
 
