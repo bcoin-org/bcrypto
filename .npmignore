@@ -8,10 +8,17 @@
 .mocharc*
 .yarnignore
 appveyor.yml
+bcrypto.node
 bench/
 build/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
 docs/
 etc/
+libsecp256k1.a
+libtorsion.a
+Makefile
 node_modules/
 npm-debug.log
 package-lock.json
