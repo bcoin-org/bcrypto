@@ -1,3 +1,16 @@
+*.a
+*.cmake
+*.dir
+*.filters
+*.node
+*.sln
+*.vcxproj
 build/
+CMakeCache.txt
+CMakeFiles/
+Debug/
+Makefile
 node_modules/
 npm-debug.log
+Release/
+x64/

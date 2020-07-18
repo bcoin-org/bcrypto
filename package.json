@@ -36,7 +36,10 @@
   },
   "dependencies": {
     "bufio": "~1.0.7",
-    "loady": "~0.0.1"
+    "loady": "~0.0.2"
+  },
+  "optionalDependencies": {
+    "node-cmk": "~0.0.2"
   },
   "devDependencies": {
     "bmocha": "^2.1.4",
