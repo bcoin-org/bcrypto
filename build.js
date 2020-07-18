@@ -40,11 +40,16 @@ function rm(file) {
   try {
     if (process.platform === 'win32') {
       file = path.normalize(file);
-      cp.spawnSync('rd', ['/s', '/q', `"${file}"`], {
-        shell: 'cmd.exe',
-        stdio: 'ignore',
-        windowsHide: true
-      });
+
+      if (fs.statSync(file).isDirectory()) {
+        cp.spawnSync('rd', ['/s', '/q', `"${file}"`], {
+          shell: 'cmd.exe',
+          stdio: 'ignore',
+          windowsHide: true
+        });
+      } else {
+        fs.unlinkSync(file);
+      }
     } else {
       spawn('rm', ['-rf', file]);
     }
@@ -132,11 +137,10 @@ function clean() {
       rm(`${dir}/${target}.dir`);
       rm(`${dir}/${project}.sln`);
       rm(`${dir}/${target}.vcxproj`);
-      rm(`${dir}/${target}.vxxproj.filters`);
+      rm(`${dir}/${target}.vcxproj.filters`);
     } else {
       rm(`${dir}/Makefile`);
       rm(`${dir}/lib${target}.a`);
-      rm(`${dir}/lib${target}.so`);
     }
   }
 }
