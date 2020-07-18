@@ -3,7 +3,7 @@
 # https://github.com/bcoin-org/bcrypto
 
 cmake_minimum_required(VERSION 3.4)
-project(secp256k1 LANGUAGES C)
+project(libsecp256k1 LANGUAGES C)
 
 include(CheckCCompilerFlag)
 include(TestBigEndian)
@@ -12,6 +12,7 @@ set(CMAKE_C_VISIBILITY_PRESET hidden)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 set(CMAKE_C_STANDARD 90)
+set(CMAKE_OSX_DEPLOYMENT_TARGET 10.12)
 
 option(SECP256K1_ENABLE_ASM "Use inline x86-64 assembly if available" ON)
 option(SECP256K1_ENABLE_DEBUG "Enable debug build" OFF)
@@ -207,7 +208,7 @@ add_library(secp256k1_o OBJECT ${secp256k1_sources})
 target_compile_definitions(secp256k1_o PRIVATE ${secp256k1_defines}
                                                SECP256K1_BUILD)
 target_compile_options(secp256k1_o PRIVATE ${secp256k1_cflags})
-target_include_directories(secp256k1_o PRIVATE ${PROJECT_SOURCE_DIR}/include)
+target_include_directories(secp256k1_o PRIVATE ${secp256k1_includes})
 set_property(TARGET secp256k1_o PROPERTY POSITION_INDEPENDENT_CODE 1)
 
 add_library(secp256k1 SHARED $<TARGET_OBJECTS:secp256k1_o>)
