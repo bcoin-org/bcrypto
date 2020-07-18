@@ -13,19 +13,19 @@ test -d "$prefix"
 test -d "$prefix/src"
 test -d "$prefix/include"
 
-if test ! -d src/torsion; then
-  mkdir src/torsion
+if test ! -d deps/torsion; then
+  mkdir deps/torsion
 fi
 
-if test ! -d src/torsion/src; then
-  mkdir src/torsion/src
+if test ! -d deps/torsion/src; then
+  mkdir deps/torsion/src
 fi
 
-if test ! -d src/torsion/include; then
-  mkdir src/torsion/include
+if test ! -d deps/torsion/include; then
+  mkdir deps/torsion/include
 fi
 
-cp -f "$prefix/LICENSE" src/torsion/
+cp -f "$prefix/LICENSE" deps/torsion/
 
 rsync -av --exclude '*.o' \
           --exclude '*.lo' \
@@ -33,6 +33,6 @@ rsync -av --exclude '*.o' \
           --exclude '.dirstamp' \
           --exclude '.libs' \
           --exclude '*.md' \
-          "$prefix/src/" src/torsion/src/
+          "$prefix/src/" deps/torsion/src/
 
-rsync -av "$prefix/include/" src/torsion/include/
+rsync -av "$prefix/include/" deps/torsion/include/

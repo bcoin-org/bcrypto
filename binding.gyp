@@ -7,29 +7,29 @@
       "target_name": "torsion",
       "type": "static_library",
       "sources": [
-        "./src/torsion/src/aead.c",
-        "./src/torsion/src/asn1.c",
-        "./src/torsion/src/cipher.c",
-        "./src/torsion/src/drbg.c",
-        "./src/torsion/src/dsa.c",
-        "./src/torsion/src/ecc.c",
-        "./src/torsion/src/encoding.c",
-        "./src/torsion/src/entropy/env.c",
-        "./src/torsion/src/entropy/hw.c",
-        "./src/torsion/src/entropy/sys.c",
-        "./src/torsion/src/hash.c",
-        "./src/torsion/src/ies.c",
-        "./src/torsion/src/internal.c",
-        "./src/torsion/src/kdf.c",
-        "./src/torsion/src/mac.c",
-        "./src/torsion/src/mpi.c",
-        "./src/torsion/src/rand.c",
-        "./src/torsion/src/rsa.c",
-        "./src/torsion/src/stream.c",
-        "./src/torsion/src/util.c"
+        "./deps/torsion/src/aead.c",
+        "./deps/torsion/src/asn1.c",
+        "./deps/torsion/src/cipher.c",
+        "./deps/torsion/src/drbg.c",
+        "./deps/torsion/src/dsa.c",
+        "./deps/torsion/src/ecc.c",
+        "./deps/torsion/src/encoding.c",
+        "./deps/torsion/src/entropy/env.c",
+        "./deps/torsion/src/entropy/hw.c",
+        "./deps/torsion/src/entropy/sys.c",
+        "./deps/torsion/src/hash.c",
+        "./deps/torsion/src/ies.c",
+        "./deps/torsion/src/internal.c",
+        "./deps/torsion/src/kdf.c",
+        "./deps/torsion/src/mac.c",
+        "./deps/torsion/src/mpi.c",
+        "./deps/torsion/src/rand.c",
+        "./deps/torsion/src/rsa.c",
+        "./deps/torsion/src/stream.c",
+        "./deps/torsion/src/util.c"
       ],
       "include_dirs": [
-        "./src/torsion/include"
+        "./deps/torsion/include"
       ],
       "conditions": [
         ["OS != 'mac' and OS != 'win'", {
@@ -76,13 +76,13 @@
       "target_name": "secp256k1",
       "type": "static_library",
       "sources": [
-        "./src/secp256k1/contrib/lax_der_parsing.c",
-        "./src/secp256k1/src/secp256k1.c"
+        "./deps/secp256k1/contrib/lax_der_parsing.c",
+        "./deps/secp256k1/src/secp256k1.c"
       ],
       "include_dirs": [
-        "./src/secp256k1",
-        "./src/secp256k1/include",
-        "./src/secp256k1/src"
+        "./deps/secp256k1",
+        "./deps/secp256k1/include",
+        "./deps/secp256k1/src"
       ],
       "defines": [
         "USE_NUM_NONE=1",
@@ -166,7 +166,7 @@
         "./src/bcrypto.c"
       ],
       "include_dirs": [
-        "./src/torsion/include"
+        "./deps/torsion/include"
       ],
       "conditions": [
         ["OS != 'mac' and OS != 'win'", {
@@ -197,8 +197,8 @@
             "secp256k1"
           ],
           "include_dirs": [
-            "./src/secp256k1/contrib",
-            "./src/secp256k1/include"
+            "./deps/secp256k1/contrib",
+            "./deps/secp256k1/include"
           ],
           "defines": [
             "BCRYPTO_USE_SECP256K1"

@@ -310,30 +310,30 @@ else()
 endif()
 
 set(torsion_sources
-    src/torsion/src/aead.c
-    src/torsion/src/asn1.c
-    src/torsion/src/cipher.c
-    src/torsion/src/ecc.c
-    src/torsion/src/encoding.c
-    src/torsion/src/entropy/env.c
-    src/torsion/src/entropy/hw.c
-    src/torsion/src/entropy/sys.c
-    src/torsion/src/drbg.c
-    src/torsion/src/dsa.c
-    src/torsion/src/hash.c
-    src/torsion/src/ies.c
-    src/torsion/src/internal.c
-    src/torsion/src/kdf.c
-    src/torsion/src/mac.c
-    src/torsion/src/mpi.c
-    src/torsion/src/rand.c
-    src/torsion/src/rsa.c
-    src/torsion/src/stream.c
-    src/torsion/src/util.c)
+    deps/torsion/src/aead.c
+    deps/torsion/src/asn1.c
+    deps/torsion/src/cipher.c
+    deps/torsion/src/ecc.c
+    deps/torsion/src/encoding.c
+    deps/torsion/src/entropy/env.c
+    deps/torsion/src/entropy/hw.c
+    deps/torsion/src/entropy/sys.c
+    deps/torsion/src/drbg.c
+    deps/torsion/src/dsa.c
+    deps/torsion/src/hash.c
+    deps/torsion/src/ies.c
+    deps/torsion/src/internal.c
+    deps/torsion/src/kdf.c
+    deps/torsion/src/mac.c
+    deps/torsion/src/mpi.c
+    deps/torsion/src/rand.c
+    deps/torsion/src/rsa.c
+    deps/torsion/src/stream.c
+    deps/torsion/src/util.c)
 
 set(secp256k1_sources
-    src/secp256k1/contrib/lax_der_parsing.c
-    src/secp256k1/src/secp256k1.c)
+    deps/secp256k1/contrib/lax_der_parsing.c
+    deps/secp256k1/src/secp256k1.c)
 
 set(bcrypto_sources src/bcrypto.c)
 set(bcrypto_libs torsion)
@@ -349,7 +349,7 @@ add_library(torsion STATIC ${torsion_sources})
 target_compile_definitions(torsion PRIVATE ${torsion_defines} TORSION_BUILD)
 target_compile_options(torsion PRIVATE ${torsion_cflags})
 target_include_directories(torsion PRIVATE
-                           ${PROJECT_SOURCE_DIR}/src/torsion/include)
+                           ${PROJECT_SOURCE_DIR}/deps/torsion/include)
 target_link_libraries(torsion INTERFACE ${torsion_libs})
 set_property(TARGET torsion PROPERTY POSITION_INDEPENDENT_CODE 1)
 
@@ -359,9 +359,9 @@ if(BCRYPTO_ENABLE_LIBSECP256K1)
                                                SECP256K1_BUILD)
   target_compile_options(secp256k1 PRIVATE ${secp256k1_cflags})
   target_include_directories(secp256k1 PRIVATE
-                             ${PROJECT_SOURCE_DIR}/src/secp256k1
-                             ${PROJECT_SOURCE_DIR}/src/secp256k1/include
-                             ${PROJECT_SOURCE_DIR}/src/secp256k1/src)
+                             ${PROJECT_SOURCE_DIR}/deps/secp256k1
+                             ${PROJECT_SOURCE_DIR}/deps/secp256k1/include
+                             ${PROJECT_SOURCE_DIR}/deps/secp256k1/src)
   set_property(TARGET secp256k1 PROPERTY POSITION_INDEPENDENT_CODE 1)
   list(APPEND bcrypto_defines BCRYPTO_USE_SECP256K1)
   list(APPEND bcrypto_libs secp256k1)
@@ -371,9 +371,9 @@ add_library(bcrypto SHARED ${bcrypto_sources})
 target_compile_definitions(bcrypto PRIVATE ${bcrypto_defines})
 target_compile_options(bcrypto PRIVATE ${bcrypto_cflags})
 target_include_directories(bcrypto PRIVATE
-                           ${PROJECT_SOURCE_DIR}/src/torsion/include
-                           ${PROJECT_SOURCE_DIR}/src/secp256k1/contrib
-                           ${PROJECT_SOURCE_DIR}/src/secp256k1/include
+                           ${PROJECT_SOURCE_DIR}/deps/torsion/include
+                           ${PROJECT_SOURCE_DIR}/deps/secp256k1/contrib
+                           ${PROJECT_SOURCE_DIR}/deps/secp256k1/include
                            /usr/local/include/node
                            /usr/include/node)
 target_link_options(bcrypto PRIVATE ${bcrypto_ldflags})
