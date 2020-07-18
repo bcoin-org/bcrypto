@@ -108,14 +108,14 @@ else()
 endif()
 
 list(APPEND bcrypto_sources src/bcrypto.c)
-list(APPEND bcrypto_libs torsion_static)
+list(APPEND bcrypto_libs torsion)
 
 add_subdirectory(deps/torsion)
 
 if(BCRYPTO_ENABLE_LIBSECP256K1)
   add_subdirectory(deps/secp256k1)
   list(APPEND bcrypto_defines BCRYPTO_USE_SECP256K1)
-  list(APPEND bcrypto_libs secp256k1_static)
+  list(APPEND bcrypto_libs secp256k1)
 endif()
 
 add_library(bcrypto SHARED ${bcrypto_sources})

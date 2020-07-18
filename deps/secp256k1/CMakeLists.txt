@@ -195,28 +195,11 @@ else()
   endif()
 endif()
 
-set(secp256k1_sources
-    contrib/lax_der_parsing.c
-    src/secp256k1.c)
-
-set(secp256k1_includes
-    ${PROJECT_SOURCE_DIR}
-    ${PROJECT_SOURCE_DIR}/include
-    ${PROJECT_SOURCE_DIR}/src)
-
-add_library(secp256k1_o OBJECT ${secp256k1_sources})
-target_compile_definitions(secp256k1_o PRIVATE ${secp256k1_defines}
-                                               SECP256K1_BUILD)
-target_compile_options(secp256k1_o PRIVATE ${secp256k1_cflags})
-target_include_directories(secp256k1_o PRIVATE ${secp256k1_includes})
-set_property(TARGET secp256k1_o PROPERTY POSITION_INDEPENDENT_CODE 1)
-
-add_library(secp256k1 SHARED $<TARGET_OBJECTS:secp256k1_o>)
-target_compile_definitions(secp256k1 PRIVATE ${secp256k1_defines})
+add_library(secp256k1 STATIC contrib/lax_der_parsing.c src/secp256k1.c)
+target_compile_definitions(secp256k1 PRIVATE ${secp256k1_defines}
+                                             SECP256K1_BUILD)
 target_compile_options(secp256k1 PRIVATE ${secp256k1_cflags})
-target_include_directories(secp256k1 PRIVATE ${secp256k1_includes})
-
-add_library(secp256k1_static STATIC $<TARGET_OBJECTS:secp256k1_o>)
-target_compile_definitions(secp256k1_static PRIVATE ${secp256k1_defines})
-target_compile_options(secp256k1_static PRIVATE ${secp256k1_cflags})
-target_include_directories(secp256k1_static PRIVATE ${secp256k1_includes})
+target_include_directories(secp256k1 PRIVATE ${PROJECT_SOURCE_DIR}
+                                             ${PROJECT_SOURCE_DIR}/include
+                                             ${PROJECT_SOURCE_DIR}/src)
+set_property(TARGET secp256k1 PROPERTY POSITION_INDEPENDENT_CODE 1)
