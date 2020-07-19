@@ -26,7 +26,6 @@
     "install": "node-cmk rebuild",
     "lint": "eslint *.js bench/*.js lib/ scripts/ test/ || exit 0",
     "lint-ci": "eslint *.js bench/*.js lib/ scripts/ test/",
-    "rebuild": "node-cmk rebuild",
     "test": "bmocha -S 'test/*-test.js'",
     "test-browser": "bmocha -B js -H -S 'test/*-test.js'",
     "test-js": "bmocha -B js -S 'test/*-test.js'",
