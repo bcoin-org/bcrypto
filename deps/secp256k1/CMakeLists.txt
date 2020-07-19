@@ -195,11 +195,10 @@ else()
   endif()
 endif()
 
-add_library(secp256k1 STATIC contrib/lax_der_parsing.c src/secp256k1.c)
+add_node_library(secp256k1 STATIC contrib/lax_der_parsing.c src/secp256k1.c)
 target_compile_definitions(secp256k1 PRIVATE ${secp256k1_defines}
                                              SECP256K1_BUILD)
 target_compile_options(secp256k1 PRIVATE ${secp256k1_cflags})
 target_include_directories(secp256k1 PRIVATE ${PROJECT_SOURCE_DIR}
                                              ${PROJECT_SOURCE_DIR}/include
                                              ${PROJECT_SOURCE_DIR}/src)
-set_property(TARGET secp256k1 PROPERTY POSITION_INDEPENDENT_CODE 1)
