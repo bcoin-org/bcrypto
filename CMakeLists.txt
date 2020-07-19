@@ -84,26 +84,8 @@ else()
   endif()
 endif()
 
-list(APPEND bcrypto_sources src/bcrypto.c)
-list(APPEND bcrypto_libs torsion)
-
-list(APPEND bcrypto_defines NODE_GYP_MODULE_NAME=${CMAKE_PROJECT_NAME})
-list(APPEND bcrypto_defines BUILDING_NODE_EXTENSION)
-
-if(APPLE)
-  list(APPEND bcrypto_ldflags -undefined dynamic_lookup)
-endif()
-
-if(MSVC)
-  # Windows requires insane hacks to work properly.
-  list(APPEND bcrypto_libs ${NODE_LIB_FILE})
-  list(APPEND bcrypto_defines HOST_BINARY="${NODE_EXE_NAME}")
-  list(APPEND bcrypto_sources deps/win_delay_load_hook.c)
-  list(APPEND bcrypto_ldflags /delayload:${NODE_EXE_NAME})
-  list(APPEND bcrypto_ldflags /ignore:4199)
-endif()
-
 add_subdirectory(deps/torsion)
+list(APPEND bcrypto_libs torsion)
 
 if(BCRYPTO_ENABLE_LIBSECP256K1)
   add_subdirectory(deps/secp256k1)
@@ -111,15 +93,11 @@ if(BCRYPTO_ENABLE_LIBSECP256K1)
   list(APPEND bcrypto_libs secp256k1)
 endif()
 
-add_library(bcrypto SHARED ${bcrypto_sources})
+add_node_module(bcrypto src/bcrypto.c)
 target_compile_definitions(bcrypto PRIVATE ${bcrypto_defines})
 target_compile_options(bcrypto PRIVATE ${bcrypto_cflags})
 target_include_directories(bcrypto PRIVATE
                            ${PROJECT_SOURCE_DIR}/deps/torsion/include
                            ${PROJECT_SOURCE_DIR}/deps/secp256k1/contrib
-                           ${PROJECT_SOURCE_DIR}/deps/secp256k1/include
-                           ${PROJECT_SOURCE_DIR}/deps/node)
-target_link_options(bcrypto PRIVATE ${bcrypto_ldflags})
+                           ${PROJECT_SOURCE_DIR}/deps/secp256k1/include)
 target_link_libraries(bcrypto PRIVATE ${bcrypto_libs})
-set_property(TARGET bcrypto PROPERTY PREFIX "")
-set_property(TARGET bcrypto PROPERTY SUFFIX ".node")

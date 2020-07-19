@@ -36,11 +36,12 @@
   },
   "dependencies": {
     "bufio": "~1.0.7",
-    "loady": "~0.0.1"
+    "loady": "~0.0.2"
   },
   "devDependencies": {
     "bmocha": "^2.1.4",
-    "bsert": "~0.0.10"
+    "bsert": "~0.0.10",
+    "node-cmk": "~0.0.0"
   },
   "engines": {
     "node": ">=8.0.0"
