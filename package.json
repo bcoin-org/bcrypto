@@ -39,7 +39,7 @@
     "loady": "~0.0.3"
   },
   "optionalDependencies": {
-    "node-cmk": "~0.0.5"
+    "node-cmk": "~0.0.6"
   },
   "devDependencies": {
     "bmocha": "^2.1.4",
