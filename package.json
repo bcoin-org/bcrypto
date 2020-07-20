@@ -23,10 +23,10 @@
   "author": "Christopher Jeffrey <chjjeffrey@gmail.com>",
   "main": "./lib/bcrypto.js",
   "scripts": {
-    "install": "node-cmk rebuild --fallback --production",
+    "install": "cmake-node rebuild --fallback --production",
     "lint": "eslint bench/*.js lib/ scripts/ test/ || exit 0",
     "lint-ci": "eslint bench/*.js lib/ scripts/ test/",
-    "rebuild": "node-cmk rebuild --fallback",
+    "rebuild": "cmake-node rebuild --fallback",
     "test": "bmocha -S 'test/*-test.js'",
     "test-browser": "bmocha -B js -H -S 'test/*-test.js'",
     "test-js": "bmocha -B js -S 'test/*-test.js'",
@@ -37,8 +37,8 @@
   },
   "dependencies": {
     "bufio": "~1.0.7",
-    "loady": "~0.0.3",
-    "node-cmk": "~0.0.8"
+    "cmake-node": "~0.0.9",
+    "loady": "~0.0.3"
   },
   "devDependencies": {
     "bmocha": "^2.1.4",
