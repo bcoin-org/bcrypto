@@ -5,8 +5,10 @@
 cmake_minimum_required(VERSION 3.4)
 project(libtorsion LANGUAGES C)
 
-include(CheckCCompilerFlag)
-include(CheckIncludeFile)
+set(CMAKE_MODULE_PATH
+    "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_LIST_DIR}/../../cmake")
+
+include(AppendCCompilerFlag)
 
 set(CMAKE_C_VISIBILITY_PRESET hidden)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -23,47 +25,26 @@ option(TORSION_ENABLE_PTHREAD "Use pthread as a fallback for TLS" ON)
 option(TORSION_ENABLE_TLS "Enable TLS" ON)
 option(TORSION_ENABLE_VERIFY "Enable scalar bounds checks" OFF)
 
+set(torsion_cflags)
+
 if(MSVC)
-  # CMake defaults for windows:
-  #
-  #   CMAKE_C_FLAGS: /DWIN32 /D_WINDOWS /W3
-  #   CMAKE_C_FLAGS_RELEASE: /MD /O2 /Ob2 /DNDEBUG
-  #   CMAKE_C_FLAGS_DEBUG: /MDd /Zi /Ob0 /Od /RTC1
-  #
-  # For this reason, we don't mess with optimization
-  # levels here.  We assume the person building will
-  # pass `--config [build-type]` when building. e.g.
-  #
-  #   $ cmake --build . --config Release
-  set(CMAKE_C_FLAGS_DEBUG "/MDd /Zi /O2 /Ob2 /DTORSION_DEBUG")
-  check_c_compiler_flag(/wd4146 TORSION_HAS_WMINUS_UNSIGNED)
-  check_c_compiler_flag(/wd4244 TORSION_HAS_WCONV_DATA_LOSS1)
-  check_c_compiler_flag(/wd4267 TORSION_HAS_WCONV_DATA_LOSS2)
-  check_c_compiler_flag(/wd4334 TORSION_HAS_W64BIT_SHIFT)
+  set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /DTORSION_DEBUG")
+
+  append_c_compiler_flag(torsion_cflags /wd4146)
+  append_c_compiler_flag(torsion_cflags /wd4244)
+  append_c_compiler_flag(torsion_cflags /wd4267)
+  append_c_compiler_flag(torsion_cflags /wd4334)
 else()
-  # CMake defaults for unix:
-  #
-  #   CMAKE_C_FLAGS:
-  #   CMAKE_C_FLAGS_DEBUG: -g
-  #   CMAKE_C_FLAGS_RELEASE: -O3 -NDEBUG
-  #
-  # For Makefiles, -DCMAKE_BUILD_TYPE=[build-type]
-  # must be passed on the command line for any of
-  # the defaults to have an effect. We assume that
-  # CMAKE_BUILD_TYPE is empty and pick debug and
-  # optimization flags ourselves.
-  set(CMAKE_C_FLAGS_DEBUG "-g -DTORSION_DEBUG")
-  set(CMAKE_C_FLAGS_RELEASE "")
-  check_c_compiler_flag(-g TORSION_HAS_G)
-  check_c_compiler_flag(-pedantic TORSION_HAS_PEDANTIC)
-  check_c_compiler_flag(-Wall TORSION_HAS_WALL)
-  check_c_compiler_flag(-Wextra TORSION_HAS_WEXTRA)
-  check_c_compiler_flag(-Wcast-align TORSION_HAS_WCAST_ALIGN)
-  check_c_compiler_flag(-Wno-implicit-fallthrough TORSION_HAS_WFALLTHROUGH)
-  check_c_compiler_flag(-Wno-long-long TORSION_HAS_WLONGLONG)
-  check_c_compiler_flag(-Wno-overlength-strings TORSION_HAS_WOVERLENGTH)
-  check_c_compiler_flag(-Wshadow TORSION_HAS_WSHADOW)
-  check_c_compiler_flag(-O3 TORSION_HAS_O3)
+  set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -DTORSION_DEBUG")
+
+  append_c_compiler_flag(torsion_cflags -pedantic)
+  append_c_compiler_flag(torsion_cflags -Wall)
+  append_c_compiler_flag(torsion_cflags -Wextra)
+  append_c_compiler_flag(torsion_cflags -Wcast-align)
+  append_c_compiler_flag(torsion_cflags -Wno-implicit-fallthrough)
+  append_c_compiler_flag(torsion_cflags -Wno-long-long)
+  append_c_compiler_flag(torsion_cflags -Wno-overlength-strings)
+  append_c_compiler_flag(torsion_cflags -Wshadow)
 endif()
 
 check_c_source_compiles([=[
@@ -135,6 +116,8 @@ else()
   endif()
 endif()
 
+set(torsion_defines)
+
 list(APPEND torsion_defines TORSION_HAVE_CONFIG)
 
 if(TORSION_ENABLE_ASM AND TORSION_HAS_ASM)
@@ -150,9 +133,6 @@ if(TORSION_ENABLE_CRT)
 endif()
 
 if(TORSION_ENABLE_DEBUG)
-  if(TORSION_HAS_G)
-    list(APPEND torsion_cflags -g)
-  endif()
   list(APPEND torsion_defines TORSION_DEBUG)
 endif()
 
@@ -170,49 +150,6 @@ endif()
 
 if(TORSION_ENABLE_VERIFY)
   list(APPEND torsion_defines TORSION_VERIFY)
-endif()
-
-if(MSVC)
-  if(TORSION_HAS_WMINUS_UNSIGNED)
-    list(APPEND torsion_cflags /wd4146)
-  endif()
-  if(TORSION_HAS_WCONV_DATA_LOSS1)
-    list(APPEND torsion_cflags /wd4244)
-  endif()
-  if(TORSION_HAS_WCONV_DATA_LOSS2)
-    list(APPEND torsion_cflags /wd4267)
-  endif()
-  if(TORSION_HAS_W64BIT_SHIFT)
-    list(APPEND torsion_cflags /wd4334)
-  endif()
-else()
-  if(TORSION_HAS_PEDANTIC)
-    list(APPEND torsion_cflags -pedantic)
-  endif()
-  if(TORSION_HAS_WALL)
-    list(APPEND torsion_cflags -Wall)
-  endif()
-  if(TORSION_HAS_WEXTRA)
-    list(APPEND torsion_cflags -Wextra)
-  endif()
-  if(TORSION_HAS_WCAST_ALIGN)
-    list(APPEND torsion_cflags -Wcast-align)
-  endif()
-  if(TORSION_HAS_WFALLTHROUGH)
-    list(APPEND torsion_cflags -Wno-implicit-fallthrough)
-  endif()
-  if(TORSION_HAS_WLONGLONG)
-    list(APPEND torsion_cflags -Wno-long-long)
-  endif()
-  if(TORSION_HAS_WOVERLENGTH)
-    list(APPEND torsion_cflags -Wno-overlength-strings)
-  endif()
-  if(TORSION_HAS_WSHADOW)
-    list(APPEND torsion_cflags -Wshadow)
-  endif()
-  if(TORSION_HAS_O3)
-    list(APPEND torsion_cflags -O3)
-  endif()
 endif()
 
 set(torsion_sources
@@ -236,6 +173,8 @@ set(torsion_sources
     src/rsa.c
     src/stream.c
     src/util.c)
+
+set(torsion_libs)
 
 if(TORSION_ENABLE_PTHREAD AND TORSION_HAS_THREADS AND NOT WIN32)
   if(NOT TORSION_ENABLE_TLS OR NOT TORSION_HAS_TLS)
