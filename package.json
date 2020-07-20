@@ -37,8 +37,7 @@
   },
   "dependencies": {
     "bufio": "~1.0.7",
-    "cmake-node": "~0.0.9",
-    "loady": "~0.0.3"
+    "cmake-node": "~0.0.10"
   },
   "devDependencies": {
     "bmocha": "^2.1.4",
