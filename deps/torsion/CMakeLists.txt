@@ -7,7 +7,6 @@ project(libtorsion LANGUAGES C)
 
 include(../../cmake/AppendCCompilerFlag.cmake)
 
-set(CMAKE_C_VISIBILITY_PRESET hidden)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 set(CMAKE_C_STANDARD 90)
@@ -80,8 +79,8 @@ typedef char check_64bit_t[sizeof(void *) == 8 ? 1 : -1];
 typedef signed __int128 int128_t;
 typedef unsigned __int128 uint128_t;
 int main(void) {
-  uint128_t r;
-  r = ((uint128_t)1) << 64;
+  uint128_t r = 1;
+  r <<= 64;
   r *= 113;
   r >>= 65;
   return r & 1;
@@ -189,7 +188,7 @@ if(TORSION_ENABLE_PTHREAD AND TORSION_HAS_THREADS AND NOT WIN32)
 endif()
 
 add_node_library(torsion STATIC ${torsion_sources})
-target_compile_definitions(torsion PRIVATE ${torsion_defines} TORSION_BUILD)
+target_compile_definitions(torsion PRIVATE ${torsion_defines})
 target_compile_options(torsion PRIVATE ${torsion_cflags})
 target_include_directories(torsion PRIVATE ${PROJECT_SOURCE_DIR}/include)
 target_link_libraries(torsion INTERFACE ${torsion_libs})

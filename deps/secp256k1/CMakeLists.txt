@@ -8,7 +8,6 @@ project(libsecp256k1 LANGUAGES C)
 include(../../cmake/AppendCCompilerFlag.cmake)
 include(TestBigEndian)
 
-set(CMAKE_C_VISIBILITY_PRESET hidden)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 set(CMAKE_C_STANDARD 90)
@@ -94,8 +93,7 @@ else()
 endif()
 
 add_node_library(secp256k1 STATIC contrib/lax_der_parsing.c src/secp256k1.c)
-target_compile_definitions(secp256k1 PRIVATE ${secp256k1_defines}
-                                             SECP256K1_BUILD)
+target_compile_definitions(secp256k1 PRIVATE ${secp256k1_defines})
 target_compile_options(secp256k1 PRIVATE ${secp256k1_cflags})
 target_include_directories(secp256k1 PRIVATE ${PROJECT_SOURCE_DIR}
                                              ${PROJECT_SOURCE_DIR}/include
