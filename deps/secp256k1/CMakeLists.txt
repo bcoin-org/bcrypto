@@ -5,10 +5,7 @@
 cmake_minimum_required(VERSION 3.4)
 project(libsecp256k1 LANGUAGES C)
 
-set(CMAKE_MODULE_PATH
-    "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_LIST_DIR}/../../cmake")
-
-include(AppendCCompilerFlag)
+include(../../cmake/AppendCCompilerFlag.cmake)
 include(TestBigEndian)
 
 set(CMAKE_C_VISIBILITY_PRESET hidden)

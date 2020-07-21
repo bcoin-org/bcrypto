@@ -5,16 +5,13 @@
 cmake_minimum_required(VERSION 3.4)
 project(libtorsion LANGUAGES C)
 
-set(CMAKE_MODULE_PATH
-    "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_LIST_DIR}/../../cmake")
-
-include(AppendCCompilerFlag)
+include(../../cmake/AppendCCompilerFlag.cmake)
 
 set(CMAKE_C_VISIBILITY_PRESET hidden)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 set(CMAKE_C_STANDARD 90)
-set(CMAKE_OSX_DEPLOYMENT_TARGET 10.12)
+set(CMAKE_OSX_DEPLOYMENT_TARGET 10.7)
 
 option(TORSION_ENABLE_ASM "Use inline x86-64 assembly if available" ON)
 option(TORSION_ENABLE_CRT "Enable chinese remainder theorem for RSA" OFF)
@@ -119,6 +116,14 @@ endif()
 set(torsion_defines)
 
 list(APPEND torsion_defines TORSION_HAVE_CONFIG)
+
+if(WIN32)
+  list(APPEND torsion_defines _WIN32_WINNT=0x0600)
+endif()
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  list(APPEND torsion_defines _POSIX_C_SOURCE=200112)
+endif()
 
 if(TORSION_ENABLE_ASM AND TORSION_HAS_ASM)
   list(APPEND torsion_defines TORSION_HAVE_ASM)
