@@ -12792,8 +12792,14 @@ bcrypto_wei_curve_randomize(napi_env env, napi_callback_info info) {
  * Module
  */
 
-napi_value
-bcrypto_init(napi_env env, napi_value exports) {
+#ifndef NAPI_MODULE_INIT
+#define NAPI_MODULE_INIT()                                        \
+static napi_value bcrypto_init(napi_env env, napi_value exports); \
+NAPI_MODULE(NODE_GYP_MODULE_NAME, bcrypto_init)                   \
+static napi_value bcrypto_init(napi_env env, napi_value exports)
+#endif
+
+NAPI_MODULE_INIT() {
   size_t i;
 
   static const struct {
@@ -13340,5 +13346,3 @@ bcrypto_init(napi_env env, napi_value exports) {
 
   return exports;
 }
-
-NAPI_MODULE(NODE_GYP_MODULE_NAME, bcrypto_init)
