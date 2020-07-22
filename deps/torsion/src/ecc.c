@@ -12351,8 +12351,8 @@ eddsa_derive(const edwards_t *ec,
  * Testing
  */
 
-#ifdef TORSION_DEBUG
-#include "../test/ecc_internal.h"
+#if defined(TORSION_DEBUG) && !defined(BUILDING_NODE_EXTENSION)
+#  include "../test/ecc_internal.h"
 #else
 void
 test_ecc_internal(drbg_t *rng) {
