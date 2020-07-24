@@ -26,21 +26,21 @@ set(torsion_cflags)
 if(MSVC)
   set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /DTORSION_DEBUG")
 
-  append_c_compiler_flag(torsion_cflags /wd4146)
-  append_c_compiler_flag(torsion_cflags /wd4244)
-  append_c_compiler_flag(torsion_cflags /wd4267)
-  append_c_compiler_flag(torsion_cflags /wd4334)
+  append_c_compiler_flag(torsion_cflags /wd4146
+                                        /wd4244
+                                        /wd4267
+                                        /wd4334)
 else()
   set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -DTORSION_DEBUG")
 
-  append_c_compiler_flag(torsion_cflags -pedantic)
-  append_c_compiler_flag(torsion_cflags -Wall)
-  append_c_compiler_flag(torsion_cflags -Wextra)
-  append_c_compiler_flag(torsion_cflags -Wcast-align)
-  append_c_compiler_flag(torsion_cflags -Wno-implicit-fallthrough)
-  append_c_compiler_flag(torsion_cflags -Wno-long-long)
-  append_c_compiler_flag(torsion_cflags -Wno-overlength-strings)
-  append_c_compiler_flag(torsion_cflags -Wshadow)
+  append_c_compiler_flag(torsion_cflags -pedantic
+                                        -Wall
+                                        -Wextra
+                                        -Wcast-align
+                                        -Wno-implicit-fallthrough
+                                        -Wno-long-long
+                                        -Wno-overlength-strings
+                                        -Wshadow)
 endif()
 
 check_c_source_compiles([=[
@@ -156,27 +156,26 @@ if(TORSION_ENABLE_VERIFY)
   list(APPEND torsion_defines TORSION_VERIFY)
 endif()
 
-set(torsion_sources
-    src/aead.c
-    src/asn1.c
-    src/cipher.c
-    src/ecc.c
-    src/encoding.c
-    src/entropy/env.c
-    src/entropy/hw.c
-    src/entropy/sys.c
-    src/drbg.c
-    src/dsa.c
-    src/hash.c
-    src/ies.c
-    src/internal.c
-    src/kdf.c
-    src/mac.c
-    src/mpi.c
-    src/rand.c
-    src/rsa.c
-    src/stream.c
-    src/util.c)
+set(torsion_sources src/aead.c
+                    src/asn1.c
+                    src/cipher.c
+                    src/ecc.c
+                    src/encoding.c
+                    src/entropy/env.c
+                    src/entropy/hw.c
+                    src/entropy/sys.c
+                    src/drbg.c
+                    src/dsa.c
+                    src/hash.c
+                    src/ies.c
+                    src/internal.c
+                    src/kdf.c
+                    src/mac.c
+                    src/mpi.c
+                    src/rand.c
+                    src/rsa.c
+                    src/stream.c
+                    src/util.c)
 
 set(torsion_libs)
 
@@ -190,5 +189,5 @@ endif()
 add_node_library(torsion STATIC ${torsion_sources})
 target_compile_definitions(torsion PRIVATE ${torsion_defines})
 target_compile_options(torsion PRIVATE ${torsion_cflags})
-target_include_directories(torsion PRIVATE ${PROJECT_SOURCE_DIR}/include)
+target_include_directories(torsion PUBLIC ${PROJECT_SOURCE_DIR}/include)
 target_link_libraries(torsion INTERFACE ${torsion_libs})

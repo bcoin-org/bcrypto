@@ -18,22 +18,22 @@ option(SECP256K1_ENABLE_INT128 "Use __int128 if available" ON)
 set(secp256k1_cflags)
 
 if(MSVC)
-  append_c_compiler_flag(secp256k1_cflags /wd4244)
-  append_c_compiler_flag(secp256k1_cflags /wd4267)
-  append_c_compiler_flag(secp256k1_cflags /wd4334)
+  append_c_compiler_flag(secp256k1_cflags /wd4244
+                                          /wd4267
+                                          /wd4334)
 else()
-  append_c_compiler_flag(secp256k1_cflags -pedantic)
-  append_c_compiler_flag(secp256k1_cflags -Wall)
-  append_c_compiler_flag(secp256k1_cflags -Wextra)
-  append_c_compiler_flag(secp256k1_cflags -Wcast-align)
-  append_c_compiler_flag(secp256k1_cflags -Wnested-externs)
-  append_c_compiler_flag(secp256k1_cflags -Wno-implicit-fallthrough)
-  append_c_compiler_flag(secp256k1_cflags -Wno-long-long)
-  append_c_compiler_flag(secp256k1_cflags -Wno-nonnull-compare)
-  append_c_compiler_flag(secp256k1_cflags -Wno-overlength-strings)
-  append_c_compiler_flag(secp256k1_cflags -Wno-unused-function)
-  append_c_compiler_flag(secp256k1_cflags -Wshadow)
-  append_c_compiler_flag(secp256k1_cflags -Wstrict-prototypes)
+  append_c_compiler_flag(secp256k1_cflags -pedantic
+                                          -Wall
+                                          -Wextra
+                                          -Wcast-align
+                                          -Wnested-externs
+                                          -Wno-implicit-fallthrough
+                                          -Wno-long-long
+                                          -Wno-nonnull-compare
+                                          -Wno-overlength-strings
+                                          -Wno-unused-function
+                                          -Wshadow
+                                          -Wstrict-prototypes)
 endif()
 
 check_c_source_compiles([=[
@@ -48,20 +48,19 @@ int main(void) {
 
 check_type_size("__int128" SECP256K1_HAS_INT128)
 
-TEST_BIG_ENDIAN(SECP256K1_BIGENDIAN)
+test_big_endian(SECP256K1_BIGENDIAN)
 
-set(secp256k1_defines
-    USE_NUM_NONE=1
-    USE_FIELD_INV_BUILTIN=1
-    USE_SCALAR_INV_BUILTIN=1
-    ECMULT_WINDOW_SIZE=15
-    ECMULT_GEN_PREC_BITS=4
-    USE_ENDOMORPHISM=1
-    ENABLE_MODULE_ECDH=1
-    ENABLE_MODULE_ELLIGATOR=1
-    ENABLE_MODULE_EXTRA=1
-    ENABLE_MODULE_RECOVERY=1
-    ENABLE_MODULE_SCHNORRLEG=1)
+set(secp256k1_defines USE_NUM_NONE=1
+                      USE_FIELD_INV_BUILTIN=1
+                      USE_SCALAR_INV_BUILTIN=1
+                      ECMULT_WINDOW_SIZE=15
+                      ECMULT_GEN_PREC_BITS=4
+                      USE_ENDOMORPHISM=1
+                      ENABLE_MODULE_ECDH=1
+                      ENABLE_MODULE_ELLIGATOR=1
+                      ENABLE_MODULE_EXTRA=1
+                      ENABLE_MODULE_RECOVERY=1
+                      ENABLE_MODULE_SCHNORRLEG=1)
 
 set(SECP256K1_USE_ASM OFF)
 set(SECP256K1_USE_INT128 OFF)
@@ -96,5 +95,6 @@ add_node_library(secp256k1 STATIC contrib/lax_der_parsing.c src/secp256k1.c)
 target_compile_definitions(secp256k1 PRIVATE ${secp256k1_defines})
 target_compile_options(secp256k1 PRIVATE ${secp256k1_cflags})
 target_include_directories(secp256k1 PRIVATE ${PROJECT_SOURCE_DIR}
-                                             ${PROJECT_SOURCE_DIR}/include
-                                             ${PROJECT_SOURCE_DIR}/src)
+                                             ${PROJECT_SOURCE_DIR}/src
+                                     PUBLIC ${PROJECT_SOURCE_DIR}/include
+                                     INTERFACE ${PROJECT_SOURCE_DIR}/contrib)

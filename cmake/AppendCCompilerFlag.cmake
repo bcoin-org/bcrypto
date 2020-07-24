@@ -10,14 +10,20 @@ set(__APPEND_C_COMPILER_FLAG__ 1)
 
 include(CheckCCompilerFlag)
 
-function(append_c_compiler_flag list flag)
-  string(TOUPPER "CMAKE_HAVE_C_FLAG${flag}" name)
-  string(REGEX REPLACE "[^A-Z0-9]" "_" name "${name}")
+function(append_c_compiler_flag list)
+  set(flags ${ARGV})
+  list(REMOVE_AT flags 0)
 
-  check_c_compiler_flag(${flag} ${name})
+  foreach(flag IN LISTS flags)
+    string(TOUPPER "CMAKE_HAVE_C_FLAG${flag}" name)
+    string(REGEX REPLACE "[^A-Z0-9]" "_" name "${name}")
 
-  if(${name})
-    list(APPEND ${list} ${flag})
-    set(${list} ${${list}} PARENT_SCOPE)
-  endif()
+    check_c_compiler_flag(${flag} ${name})
+
+    if(${name})
+      list(APPEND ${list} ${flag})
+    endif()
+  endforeach()
+
+  set(${list} ${${list}} PARENT_SCOPE)
 endfunction()

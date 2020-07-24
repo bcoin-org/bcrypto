@@ -45,7 +45,7 @@
         }],
         ["OS == 'mac'", {
           "xcode_settings": {
-            "MACOSX_DEPLOYMENT_TARGET": "10.12",
+            "MACOSX_DEPLOYMENT_TARGET": "10.7",
             "GCC_C_LANGUAGE_STANDARD": "c89",
             "WARNING_CFLAGS": [
               "-pedantic",
@@ -116,7 +116,6 @@
         }],
         ["OS == 'mac'", {
           "xcode_settings": {
-            "MACOSX_DEPLOYMENT_TARGET": "10.12",
             "GCC_C_LANGUAGE_STANDARD": "c89",
             "WARNING_CFLAGS": [
               "-pedantic",
@@ -178,7 +177,6 @@
         }],
         ["OS == 'mac'", {
           "xcode_settings": {
-            "MACOSX_DEPLOYMENT_TARGET": "10.12",
             "GCC_C_LANGUAGE_STANDARD": "c99",
             "WARNING_CFLAGS": [
               "-Wcast-align",

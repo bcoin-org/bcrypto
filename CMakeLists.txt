@@ -18,13 +18,13 @@ set(bcrypto_defines)
 set(bcrypto_libs)
 
 if(MSVC)
-  append_c_compiler_flag(bcrypto_cflags /wd4244)
-  append_c_compiler_flag(bcrypto_cflags /wd4267)
+  append_c_compiler_flag(bcrypto_cflags /wd4244
+                                        /wd4267)
 else()
-  append_c_compiler_flag(bcrypto_cflags -Wall)
-  append_c_compiler_flag(bcrypto_cflags -Wextra)
-  append_c_compiler_flag(bcrypto_cflags -Wcast-align)
-  append_c_compiler_flag(bcrypto_cflags -Wshadow)
+  append_c_compiler_flag(bcrypto_cflags -Wall
+                                        -Wextra
+                                        -Wcast-align
+                                        -Wshadow)
 endif()
 
 add_subdirectory(deps/torsion)
@@ -39,8 +39,4 @@ endif()
 add_node_module(bcrypto src/bcrypto.c)
 target_compile_definitions(bcrypto PRIVATE ${bcrypto_defines})
 target_compile_options(bcrypto PRIVATE ${bcrypto_cflags})
-target_include_directories(bcrypto PRIVATE
-                           ${PROJECT_SOURCE_DIR}/deps/torsion/include
-                           ${PROJECT_SOURCE_DIR}/deps/secp256k1/contrib
-                           ${PROJECT_SOURCE_DIR}/deps/secp256k1/include)
 target_link_libraries(bcrypto PRIVATE ${bcrypto_libs})
