@@ -6,6 +6,7 @@ cmake_minimum_required(VERSION 3.4)
 project(libsecp256k1 LANGUAGES C)
 
 include(../../cmake/AppendCCompilerFlag.cmake)
+include(NodeJS)
 include(TestBigEndian)
 
 set(CMAKE_C_STANDARD_REQUIRED ON)

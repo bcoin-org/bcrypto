@@ -6,6 +6,7 @@ cmake_minimum_required(VERSION 3.4)
 project(libtorsion LANGUAGES C)
 
 include(../../cmake/AppendCCompilerFlag.cmake)
+include(NodeJS)
 
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
