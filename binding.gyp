@@ -31,6 +31,11 @@
       "include_dirs": [
         "./deps/torsion/include"
       ],
+      "direct_dependent_settings": {
+        "include_dirs": [
+          "./deps/torsion/include"
+        ]
+      },
       "conditions": [
         ["OS != 'mac' and OS != 'win'", {
           "cflags": [
@@ -84,6 +89,12 @@
         "./deps/secp256k1/include",
         "./deps/secp256k1/src"
       ],
+      "direct_dependent_settings": {
+        "include_dirs": [
+          "./deps/secp256k1/contrib",
+          "./deps/secp256k1/include"
+        ]
+      },
       "defines": [
         "USE_NUM_NONE=1",
         "USE_FIELD_INV_BUILTIN=1",
@@ -164,9 +175,6 @@
       "sources": [
         "./src/bcrypto.c"
       ],
-      "include_dirs": [
-        "./deps/torsion/include"
-      ],
       "conditions": [
         ["OS != 'mac' and OS != 'win'", {
           "cflags": [
@@ -193,10 +201,6 @@
         ["with_secp256k1 == 'true'", {
           "dependencies": [
             "secp256k1"
-          ],
-          "include_dirs": [
-            "./deps/secp256k1/contrib",
-            "./deps/secp256k1/include"
           ],
           "defines": [
             "BCRYPTO_USE_SECP256K1"
