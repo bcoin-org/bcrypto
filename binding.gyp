@@ -195,7 +195,7 @@
         ["OS == 'win'", {
           "msvs_disabled_warnings=": [
             4244, # implicit integer demotion
-            4267, # implicit size_t demotion
+            4267  # implicit size_t demotion
           ]
         }],
         ["with_secp256k1 == 'true'", {
