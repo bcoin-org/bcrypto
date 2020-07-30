@@ -2,11 +2,9 @@
 # Copyright (c) 2020, Christopher Jeffrey (MIT License).
 # https://github.com/chjj
 
-if(DEFINED __APPEND_C_COMPILER_FLAG__)
+if(COMMAND append_c_compiler_flag)
   return()
 endif()
-
-set(__APPEND_C_COMPILER_FLAG__ 1)
 
 include(CheckCCompilerFlag)
 
