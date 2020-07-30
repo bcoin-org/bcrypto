@@ -8,8 +8,10 @@
 #define _TORSION_COMMON_H
 
 #ifdef TORSION_BUILD
-#  if defined(__EMSCRIPTEN__) || defined(__wasm__)
+#  if defined(__EMSCRIPTEN__)
 #    define TORSION_EXTERN __attribute__((used))
+#  elif defined(__wasm__)
+#    define TORSION_EXTERN __attribute__((visibility("default")))
 #  elif defined(_MSC_VER) || defined(__BORLANDC__)
 #    define TORSION_EXTERN __declspec(dllexport)
 #  elif defined(__GNUC__) && __GNUC__ >= 4
