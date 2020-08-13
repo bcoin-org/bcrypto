@@ -79,13 +79,7 @@
 #undef HAVE_GETSID
 #undef HAVE_OS_IPHONE
 
-#if defined(__CloudABI__)
-/* Could gather static entropy from filesystem in the future. */
-#elif defined(__wasi__)
-/* Could gather static entropy from args/env in the future. */
-#elif defined(__EMSCRIPTEN__) || defined(__wasm__)
-/* No reliable entropy sources available for emscripten/wasm. */
-#elif defined(_WIN32)
+#if defined(_WIN32)
 #  include <winsock2.h> /* required by iphlpapi.h */
 #  include <iphlpapi.h> /* GetAdaptersAddresses */
 #  include <psapi.h> /* GetProcessMemoryInfo */
@@ -97,8 +91,14 @@
 #  define HAVE_MANUAL_ENTROPY
 #elif defined(__vxworks)
 /* Unsupported. */
-#elif defined(__Fuchsia__)
+#elif defined(__Fuchsia__) || defined(__fuchsia__)
 /* Unsupported. */
+#elif defined(__CloudABI__)
+/* Could gather static entropy from filesystem in the future. */
+#elif defined(__EMSCRIPTEN__)
+/* No reliable entropy sources available for emscripten. */
+#elif defined(__wasi__)
+/* Could gather static entropy from args/env in the future. */
 #elif defined(__unix) || defined(__unix__)     \
   || (defined(__APPLE__) && defined(__MACH__))
 #  include <sys/types.h> /* open */
@@ -110,7 +110,7 @@
 #  include <unistd.h> /* stat, read, close, gethostname */
 #  include <time.h> /* clock_gettime */
 #  ifdef __linux__
-#    ifdef __GLIBC_PREREQ
+#    if defined(__GLIBC_PREREQ)
 #      define TORSION_GLIBC_PREREQ(maj, min) __GLIBC_PREREQ(maj, min)
 #    else
 #      define TORSION_GLIBC_PREREQ(maj, min) 0
@@ -466,7 +466,9 @@ sha512_write_perfdata(sha512_t *hash, size_t max) {
 
   if (ret == ERROR_SUCCESS) {
     sha512_write_data(hash, data, nread);
+#ifdef SecureZeroMemory
     SecureZeroMemory(data, nread);
+#endif
   }
 
   if (data)
@@ -526,6 +528,10 @@ sha512_write_static_env(sha512_t *hash) {
   sha512_write_string(hash, __VERSION__);
 #endif
 
+#ifdef PACKAGE_STRING
+  sha512_write_string(hash, PACKAGE_STRING);
+#endif
+
   /* CPU features. */
   if (torsion_has_cpuid())
     sha512_write_cpuids(hash);
@@ -537,7 +543,7 @@ sha512_write_static_env(sha512_t *hash) {
   sha512_write_ptr(hash, &environ);
 #endif
 
-#ifdef _WIN32
+#if defined(_WIN32)
   /* System information. */
   {
     SYSTEM_INFO info;
@@ -670,7 +676,7 @@ sha512_write_static_env(sha512_t *hash) {
   /* Process/Thread ID. */
   sha512_write_int(hash, GetCurrentProcessId());
   sha512_write_int(hash, GetCurrentThreadId());
-#else /* _WIN32 */
+#else /* !_WIN32 */
   /* UNIX kernel information. */
   {
     struct utsname name;
@@ -892,12 +898,12 @@ sha512_write_static_env(sha512_t *hash) {
   sha512_write_int(hash, geteuid());
   sha512_write_int(hash, getgid());
   sha512_write_int(hash, getegid());
-#endif /* _WIN32 */
+#endif /* !_WIN32 */
 }
 
 static void
 sha512_write_dynamic_env(sha512_t *hash) {
-#ifdef _WIN32
+#if defined(_WIN32)
   /* System time. */
   {
     FILETIME ftime;
@@ -996,7 +1002,7 @@ sha512_write_dynamic_env(sha512_t *hash) {
   /* Performance data. */
   sha512_write_perfdata(hash, 10000000);
 #endif
-#else /* _WIN32 */
+#else /* !_WIN32 */
   /* System time. */
   {
     struct timeval tv;
@@ -1094,7 +1100,7 @@ sha512_write_dynamic_env(sha512_t *hash) {
 #endif
 #endif /* CTL_VM */
 #endif /* HAVE_SYSCTL */
-#endif /* _WIN32 */
+#endif /* !_WIN32 */
 
   /* High-resolution time. */
   sha512_write_int(hash, torsion_hrtime());
@@ -1115,7 +1121,7 @@ sha512_write_dynamic_env(sha512_t *hash) {
 
 int
 torsion_envrand(unsigned char *seed) {
-#ifdef HAVE_MANUAL_ENTROPY
+#if defined(HAVE_MANUAL_ENTROPY)
   sha512_t hash;
   sha512_init(&hash);
   sha512_write_ptr(&hash, seed);
@@ -1126,8 +1132,8 @@ torsion_envrand(unsigned char *seed) {
   sha512_write_tsc(&hash);
   sha512_final(&hash, seed);
   return 1;
-#else
+#else /* !HAVE_MANUAL_ENTROPY */
   (void)seed;
   return 0;
-#endif /* HAVE_MANUAL_ENTROPY */
+#endif /* !HAVE_MANUAL_ENTROPY */
 }

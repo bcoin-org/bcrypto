@@ -137,7 +137,7 @@
 #  define TORSION_UNUSED
 #endif
 
-#ifdef __GNUC__
+#if defined(__GNUC__)
 #  define TORSION_EXTENSION __extension__
 #else
 #  define TORSION_EXTENSION
@@ -163,11 +163,9 @@ static const unsigned long __torsion_endian_check TORSION_UNUSED = 1;
    Otherwise, auto configuration is useful if
    you're using an awful build system like gyp. */
 
-/* Detect inline ASM support for x86-64. */
-#if defined(__EMSCRIPTEN__) || defined(__wasm__)
-/* No inline ASM support for emscripten/wasm. */
-#else
-/* GCC inline assembly has been documented as
+/* Detect inline ASM support for x86-64.
+ *
+ * GCC inline assembly has been documented as
  * far back as 2.95[1]. It appears in the GCC
  * codebase as early as 2.0. However, early
  * implementations may not have the features
@@ -176,24 +174,16 @@ static const unsigned long __torsion_endian_check TORSION_UNUSED = 1;
  *
  * [1] https://gcc.gnu.org/onlinedocs/gcc-2.95.3/gcc_4.html#SEC93
  */
-#  if TORSION_GNUC_PREREQ(4, 0)
-#    define TORSION_HAVE_ASM
-#    if defined(__amd64__) || defined(__x86_64__)
-#      define TORSION_HAVE_ASM_X64
-#    endif
+#if TORSION_GNUC_PREREQ(4, 0)
+#  define TORSION_HAVE_ASM
+#  if defined(__amd64__) || defined(__x86_64__)
+#    define TORSION_HAVE_ASM_X64
 #  endif
 #endif
 
-/* Detect __int128 support. */
-#if defined(__EMSCRIPTEN__) || defined(__wasm__)
-/* According to libsodium[1][2], __int128 is
- * currently broken in emscripten/wasm builds.
+/* Detect __int128 support.
  *
- * [1] https://github.com/jedisct1/libsodium/blob/8360706/configure.ac#L685
- * [2] https://github.com/jedisct1/libsodium/commit/fff87d5
- */
-#else
-/* Support for __int128 (verified on godbolt):
+ * Support (verified on godbolt):
  *
  *   x86-64:
  *     gcc 4.6.4 (gnuc 4.6)
@@ -204,12 +194,14 @@ static const unsigned long __torsion_endian_check TORSION_UNUSED = 1;
  *     gcc <=5.4.0 (gnuc 5.4)
  *     clang <=9.0 (gnuc 4.2)
  *
+ *   wasm32/wasm64:
+ *     clang <=7.0 (gnuc 4.2)
+ *
  * See: https://stackoverflow.com/a/54815033
  */
-#  if defined(__GNUC__) && defined(__SIZEOF_INT128__)
-#    if defined(__amd64__) || defined(__x86_64__)
-#      define TORSION_HAVE_INT128
-#    endif
+#if defined(__GNUC__) && defined(__SIZEOF_INT128__)
+#  if defined(__amd64__) || defined(__x86_64__) || defined(__wasm__)
+#    define TORSION_HAVE_INT128
 #  endif
 #endif
 

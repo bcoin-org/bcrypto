@@ -53,6 +53,10 @@
  *   from 2009 suggests it existed in VS .NET 2002 (7.0).
  * - Another project dating from 1996-2003 suggests
  *   TLS was supported in Visual Studio 6.0 (1998)[28].
+ * - Usage of TLS appears on the MSDN Library CD for
+ *   Visual Studio 6.0 (1998). The author of the code
+ *   samples claims to have written them in 1995. This
+ *   means TLS would have been supported in MSVC 4.0.
  *
  * Sun Pro C / Sun Studio / Solaris Studio:
  *
@@ -75,7 +79,7 @@
  * Digital Mars C/C++:
  *
  * - Supports TLS via __declspec(thread) (32 bit only)[35].
- * - TLS supported since at least 2005 (8.42n)[36].
+ * - TLS supported since at least 2001 (8.22)[36].
  *
  * ARM CC:
  *
@@ -102,6 +106,8 @@
  * NWCC:
  *
  * - TLS supported via __thread[44].
+ * - TLS first implemented in NWCC 0.7.5 (2008).
+ *   See develop/oldnews/NEWS-0.7.5.
  *
  * Metrowerks C:
  *
@@ -116,19 +122,22 @@
  *   CodeWarrior 7 (again, _not_ CW Pro).
  * - Notable as this is the earliest TLS support
  *   mentioned by this document.
+ * - The QuickTime header files suggest that
+ *   `__declspec` itself was only usable after
+ *   CodeWarrior Pro 2 (1997) was released[46].
  *
  * CompCert:
  *
- * - TLS not yet supported[46].
+ * - TLS not yet supported[47].
  *
  * Portable C Compiler:
  *
- * - TLS supported via __thread and #pragma tls[47].
- * - TLS first implemented in 1.0.0[48][49].
+ * - TLS supported via __thread and #pragma tls[48].
+ * - TLS first implemented in 1.0.0[49][50].
  *
  * C11:
  *
- * - C11 specifies support for _Thread_local[50].
+ * - C11 specifies support for _Thread_local[51].
  * - Support can be tested by checking both:
  *
  *     __STDC_VERSION__ >= 201112L
@@ -136,7 +145,7 @@
  *
  *   However, some compilers do not define STDC_NO_THREADS
  *   or do not define it directly (in particular, Intel C
- *   versions less than 18.0.0[51]).
+ *   versions less than 18.0.0[52]).
  *
  * [1] https://gcc.gnu.org/onlinedocs/gcc-3.3.1/gcc/Thread-Local.html
  * [2] https://github.com/gcc-mirror/gcc/commit/8893239dc4ed32bd3bb4e00d6e43b859554ab82a
@@ -163,7 +172,7 @@
  * [23] https://community.intel.com/t5/Intel-C-Compiler/Thread-local-storage-support-on-Windows/td-p/949321
  * [24] https://community.intel.com/t5/Intel-C-Compiler/thread-local-storage-linking-problems/td-p/932631
  * [25] https://community.intel.com/t5/Intel-C-Compiler/Mach-O-thread-local-storage/td-p/948267
- * [26] https://docs.microsoft.com/en-us/cpp/c-language/thread-local-storage?view=vs-2019
+ * [26] https://docs.microsoft.com/en-us/cpp/c-language/thread-local-storage
  * [27] https://github.com/snaewe/loki-lib/commit/7d8e59abc8f48785d564ddabab5ba3f01cd24444
  * [28] http://www.simkin.co.uk/Docs/cpp/api/skGeneral_8h-source.html
  * [29] https://docs.oracle.com/cd/E18659_01/html/821-1383/bkaeg.html
@@ -172,8 +181,8 @@
  * [32] https://www.ibm.com/support/pages/node/318521#6
  * [33] http://docs.embarcadero.com/products/rad_studio/delphiAndcpp2009/HelpUpdate2/EN/html/devwin32/threadsusingthreadlocalvariables_xml.html
  * [34] http://docwiki.embarcadero.com/RADStudio/Sydney/en/Declspec(thread)
- * [35] https://digitalmars.com/ctg/ctgLanguageImplementation.html#declspec
- * [36] https://www.digitalmars.com/d/archives/c++/setjmp_longjmp_code_crashing_5923.html
+ * [35] https://web.archive.org/web/20010222185824/https://www.digitalmars.com/ctg/ctgLanguageImplementation.html
+ * [36] https://digitalmars.com/changelog.html#new822
  * [37] https://developer.arm.com/docs/dui0472/latest/compiler-specific-features/__declspecthread
  * [38] https://developer.arm.com/docs/dui0491/g/compiler-specific-features/__declspec-attributes
  * [39] https://lists.gnu.org/archive/html/bug-gnulib/2019-06/msg00063.html
@@ -183,12 +192,13 @@
  * [43] http://read.pudn.com/downloads259/doc/1193608/wr_compiler_error_messages_reference_5.6.pdf
  * [44] http://nwcc.sourceforge.net/features.html
  * [45] http://index-of.co.uk/C++/CodeWarrior%20C%20and%20C++%20and%20Assembly%20Language%20Reference.pdf
- * [46] https://github.com/AbsInt/CompCert/issues/268
- * [47] https://github.com/IanHarvey/pcc/blob/master/cc/ccom/gcc_compat.c#L261
- * [48] https://github.com/IanHarvey/pcc/commit/e2ad48a
- * [49] https://github.com/IanHarvey/pcc/commit/109a8ee
- * [50] https://en.cppreference.com/w/c/keyword/_Thread_local
- * [51] https://software.intel.com/en-us/forums/intel-c-compiler/topic/721059
+ * [46] https://github.com/OPK/xpwn/blob/master/idevice/QuicktimeSDK/CIncludes/ConditionalMacros.h
+ * [47] https://github.com/AbsInt/CompCert/issues/268
+ * [48] https://github.com/IanHarvey/pcc/blob/master/cc/ccom/gcc_compat.c#L261
+ * [49] https://github.com/IanHarvey/pcc/commit/e2ad48a
+ * [50] https://github.com/IanHarvey/pcc/commit/109a8ee
+ * [51] https://en.cppreference.com/w/c/keyword/_Thread_local
+ * [52] https://software.intel.com/en-us/forums/intel-c-compiler/topic/721059
  */
 
 /* Apple Quirks
@@ -254,7 +264,20 @@
  * [8] https://groups.google.com/forum/?_escaped_fragment_=topic/android-ndk/cf9_f1SLXls
  */
 
-#ifndef TORSION_HAVE_CONFIG
+#if defined(TORSION_HAVE_CONFIG)
+
+/* Pick thread-local keyword. */
+#if defined(TORSION_HAVE_TLS)
+#  if defined(_WIN32) && !defined(__MINGW32__)
+#    define TORSION_TLS __declspec(thread)
+#  else
+#    define TORSION_TLS __thread
+#  endif
+#else
+#  define TORSION_TLS
+#endif
+
+#else /* !TORSION_HAVE_CONFIG */
 
 #ifndef __has_extension
 #  define __has_extension(x) 0
@@ -303,24 +326,21 @@
 #endif
 
 /* Detect TLS support. */
-#if defined(__EMSCRIPTEN__) || defined(__wasm__)
-#  define TORSION_TLS_NONE
-#elif defined(__DMC__)
-#  if defined(_M_IX86) && __DMC__ >= 0x843 /* 8.43 (2005) */
+#if defined(__DMC__)
+#  if defined(_M_IX86) && __DMC__ >= 0x822 /* 8.22 (2001) */
 #    define TORSION_TLS_MSVC
-#  endif
-#elif defined(__HP_aCC)
-#  if _HP_aCC >= 55502 /* A.05.55.02 (2004) */
-#    define TORSION_TLS_GNUC
 #  endif
 #elif defined(__HP_cc)
+#  if __HP_cc >= 55502 /* A.05.55.02 (2004) */
+#    define TORSION_TLS_GNUC
+#  endif
 #  define TORSION_TLS_GNUC
 #elif defined(__WATCOMC__)
-#  if __WATCOMC__ >= 1200 /* 12.0 (11.0c released in 2002) */
+#  if __WATCOMC__ >= 1200 /* Open Watcom 1.0 (2003) */
 #    define TORSION_TLS_MSVC
 #  endif
-#elif defined(__DCC__) && defined(__VERSION_NUMBER__)
-#  if __VERSION_NUMBER__ >= 5600 /* 5.6 (2007) */
+#elif defined(__DCC__)
+#  if defined(__VERSION_NUMBER__) && __VERSION_NUMBER__ >= 5600 /* 5.6 (2007) */
 #    define TORSION_TLS_GNUC
 #  endif
 #elif defined(__PCC__)
@@ -328,9 +348,9 @@
 #    define TORSION_TLS_GNUC
 #  endif
 #elif defined(__NWCC__)
-#  define TORSION_TLS_GNUC
+#  define TORSION_TLS_GNUC /* 0.7.5 (2008) */
 #elif defined(__MWERKS__)
-#  if defined(__INTEL__) && __INTEL__ && __MWERKS__ >= 0x0710 /* CW 7.1 (1995) */
+#  if defined(__INTEL__) && __INTEL__ && __MWERKS__ >= 0x2000 /* CW Pro 2 (1997) */
 #    define TORSION_TLS_MSVC
 #  endif
 #elif defined(__SUNPRO_C)
@@ -345,14 +365,14 @@
 #  elif __INTEL_COMPILER >= 800 /* 8.0.0 (2003) */
 #    define TORSION_TLS_BOTH
 #  endif
-#elif defined(__clang__) && defined(__clang_major__)
+#elif defined(__clang__)
 #  if defined(__apple_build_version__)
 #    if defined(TORSION__APPLE_OS) && __apple_build_version__ >= 8000038 /* 800.0.38 (2016) */
 #      define TORSION_TLS_GNUC
 #    endif
 #  elif __has_extension(c_thread_local) /* 3.4 (late 2013) */
 #    if defined(__ANDROID__)
-#      if __clang_major__ >= 5 /* 5.0 (2017) */
+#      if defined(__clang_major__) && __clang_major__ >= 5 /* 5.0 (2017) */
 #        define TORSION_TLS_GNUC
 #      endif
 #    else
@@ -362,17 +382,17 @@
 #elif defined(__xlC__)
 /* Newer XL C versions are based on clang and should be caught above. */
 #  if defined(__linux__)
-#    if __xlC__ >= 0x0800 /* 8.0.0 */
+#    if __xlC__ >= 0x0800 /* 8.0.0 (unknown) */
 #      define TORSION_TLS_GNUC
 #    endif
 #  elif defined(_AIX)
-#    if __xlC__ >= 0x0A01 /* 10.1.0 */
+#    if __xlC__ >= 0x0A01 /* 10.1.0 (2008) */
 #      define TORSION_TLS_GNUC
 #    endif
 #  endif
-#elif defined(__CC_ARM) && defined(__ARMCC_VERSION)
+#elif defined(__CC_ARM)
 /* Newer ARM CC versions are based on clang and should be caught above. */
-#  if __ARMCC_VERSION >= 510000 /* 5.1 */
+#  if defined(__ARMCC_VERSION) && __ARMCC_VERSION >= 510000 /* 5.1 (2011) */
 #    define TORSION_TLS_BOTH
 #  endif
 #elif defined(__BORLANDC__)
@@ -381,7 +401,7 @@
 #    define TORSION_TLS_BOTH
 #  endif
 #elif defined(_MSC_VER)
-#  if _MSC_VER >= 1300 /* VS .NET 2002 (7.0) */
+#  if _MSC_VER >= 1200 /* Visual Studio 6.0 (1998) */
 #    define TORSION_TLS_MSVC
 #  endif
 #elif defined(__GNUC__) && defined(__GNUC_MINOR__)
@@ -404,7 +424,7 @@
 #endif
 
 #ifdef TORSION_TLS_BOTH
-#  ifdef _WIN32
+#  if defined(_WIN32) && !defined(__MINGW32__)
 #    define TORSION_TLS_MSVC
 #  else
 #    define TORSION_TLS_GNUC
@@ -412,10 +432,7 @@
 #endif
 
 /* Pick thread-local keyword. */
-#if defined(TORSION_TLS_NONE)
-#  define TORSION_HAVE_TLS
-#  define TORSION_TLS
-#elif defined(TORSION_TLS_MSVC)
+#if defined(TORSION_TLS_MSVC)
 #  define TORSION_HAVE_TLS
 #  define TORSION_TLS __declspec(thread)
 #elif defined(TORSION_TLS_GNUC)
@@ -431,8 +448,6 @@
 /* Fall back to pthread if available. */
 #if defined(TORSION_HAVE_PTHREAD)
 /* Already have pthread. */
-#elif defined(__EMSCRIPTEN__) || defined(__wasm__)
-/* No pthreads on wasm/emscripten. */
 #elif defined(__APPLE__) && defined(__MACH__)
 /* Apple binaries link to libSystem (which exposes pthread). */
 #  include <AvailabilityMacros.h>
@@ -450,27 +465,14 @@
 /* Allow overrides (for testing). */
 #ifdef TORSION_NO_TLS
 #  undef TORSION_HAVE_TLS
+#  undef TORSION_TLS
+#  define TORSION_TLS
 #endif
 
 #ifdef TORSION_NO_PTHREAD
 #  undef TORSION_HAVE_PTHREAD
 #endif
 
-#else /* TORSION_HAVE_CONFIG */
-
-/* Pick thread-local keyword. */
-#ifdef TORSION_HAVE_TLS
-#  if defined(__EMSCRIPTEN__) || defined(__wasm__)
-#    define TORSION_TLS
-#  elif defined(_WIN32) && !defined(__MINGW32__)
-#    define TORSION_TLS __declspec(thread)
-#  else
-#    define TORSION_TLS __thread
-#  endif
-#else
-#  define TORSION_TLS
-#endif
-
-#endif /* TORSION_HAVE_CONFIG */
+#endif /* !TORSION_HAVE_CONFIG */
 
 #endif /* _TORSION_TLS_H */

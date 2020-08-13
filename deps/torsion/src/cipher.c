@@ -4030,8 +4030,8 @@ des_ede_decrypt(const des_ede_t *ctx,
 
 void
 des_ede3_init(des_ede3_t *ctx, const unsigned char *key) {
-  des_init(&ctx->x, key + 0);
-  des_init(&ctx->y, key + 8);
+  des_init(&ctx->x, key +  0);
+  des_init(&ctx->y, key +  8);
   des_init(&ctx->z, key + 16);
 }
 
@@ -5422,7 +5422,8 @@ pkcs7_unpad(unsigned char *dst,
     res &= ((i - end) >> 31) | (((ch ^ left) - 1) >> 31);
   }
 
-  memcpy(dst, src, size);
+  for (i = 0; i < size; i++)
+    dst[i] = src[i];
 
   *len = end & -res;
 
@@ -6894,13 +6895,13 @@ ccm_digest(ccm_t *mode, const cipher_t *cipher, unsigned char *mac) {
 typedef struct __cmac_s cmac_t;
 
 static void
-cmac_init(cmac_t *ctx, const cipher_t *cipher, unsigned char flag) {
+cmac_init(cmac_t *ctx, const cipher_t *cipher, int flag) {
   memset(ctx->mac, 0, cipher->size);
 
   ctx->pos = 0;
 
-  if (flag != 0xff) {
-    ctx->mac[cipher->size - 1] ^= flag;
+  if (flag != -1) {
+    ctx->mac[cipher->size - 1] ^= (unsigned char)flag;
     ctx->pos = cipher->size;
   }
 }
@@ -7325,8 +7326,6 @@ cipher_mode_verify(cipher_mode_t *ctx,
                    const unsigned char *tag,
                    size_t tag_len) {
   unsigned char mac[CIPHER_MAX_TAG_SIZE];
-  uint32_t res = 0;
-  size_t i;
 
   if (tag_len == 0 || tag_len > CIPHER_MAX_TAG_SIZE)
     return 0;
@@ -7336,10 +7335,7 @@ cipher_mode_verify(cipher_mode_t *ctx,
 
   cipher_mode_digest(ctx, cipher, mac);
 
-  for (i = 0; i < tag_len; i++)
-    res |= (uint32_t)mac[i] ^ (uint32_t)tag[i];
-
-  return (res - 1) >> 31;
+  return torsion_memequal(mac, tag, tag_len);
 }
 
 /*
@@ -7373,6 +7369,9 @@ cipher_stream_init(cipher_stream_t *ctx,
       goto fail;
 
     key_len /= 2;
+
+    if (torsion_memequal(key, key + key_len, key_len))
+      goto fail;
   }
 
   if (!cipher_init(&ctx->cipher, type, key, key_len))

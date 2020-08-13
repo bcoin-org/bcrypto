@@ -937,7 +937,7 @@ rsa_priv_decrypt(const rsa_priv_t *k,
   mpz_mul(c, c, b);
   mpz_mod(c, c, k->n);
 
-#ifdef TORSION_USE_CRT
+#if defined(TORSION_USE_CRT)
   /* Leverage Chinese Remainder Theorem.
    *
    * Computation:

@@ -262,17 +262,6 @@ rng_global_init(void) {
  */
 
 int
-torsion_reentrancy(void) {
-#if defined(TORSION_HAVE_TLS)
-  return 1;
-#elif defined(TORSION_HAVE_PTHREAD)
-  return 2;
-#else
-  return 0;
-#endif
-}
-
-int
 torsion_getentropy(void *dst, size_t size) {
   return torsion_sysrand(dst, size);
 }
@@ -328,8 +317,19 @@ torsion_uniform(uint32_t *num, uint32_t max) {
  * Testing
  */
 
-TORSION_EXTERN uintptr_t
-__torsion_rng_global_addr(void) {
+int
+torsion_reentrancy(void) {
+#if defined(TORSION_HAVE_TLS)
+  return TORSION_REENT_TLS;
+#elif defined(TORSION_HAVE_PTHREAD)
+  return TORSION_REENT_MUTEX;
+#else
+  return TORSION_REENT_NONE;
+#endif
+}
+
+uintptr_t
+torsion_randomaddr(void) {
   void *ptr = (void *)&rng_state;
   return (uintptr_t)ptr;
 }

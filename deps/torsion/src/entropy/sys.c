@@ -52,6 +52,20 @@
  *   https://docs.oracle.com/cd/E88353_01/html/E37841/getrandom-2.html
  *   https://docs.oracle.com/cd/E36784_01/html/E36884/random-7d.html
  *
+ * IBM i (PASE):
+ *   https://www.ibm.com/support/knowledgecenter/en/ssw_ibm_i_71/rzalf/rzalf.pdf
+ *
+ * AIX:
+ *   https://www.ibm.com/support/knowledgecenter/ssw_aix_71/filesreference/random.html
+ *
+ * Haiku:
+ *   No official documentation for /dev/random.
+ *
+ * Redox:
+ *   https://github.com/redox-os/randd/blob/2f0ad18/src/main.rs
+ *   https://github.com/redox-os/relibc/blob/a6fffd3/src/platform/redox/mod.rs#L559
+ *   https://github.com/redox-os/relibc/commit/a6fffd3
+ *
  * VxWorks:
  *   https://docs.windriver.com/bundle/vxworks_7_application_core_os_sr0630-enus/page/CORE/randomNumGenLib.html
  *
@@ -73,6 +87,8 @@
  *   https://emscripten.org/docs/api_reference/emscripten.h.html
  *   https://developer.mozilla.org/en-US/docs/Web/API/Crypto/getRandomValues
  *   https://nodejs.org/api/crypto.html#crypto_crypto_randomfillsync_buffer_offset_size
+ *   https://github.com/emscripten-core/emscripten/blob/7c3ced6/src/library_uuid.js#L31
+ *   https://github.com/emscripten-core/emscripten/blob/32e1d73/system/include/uuid/uuid.h
  */
 
 /**
@@ -157,13 +173,25 @@
  *   Fallback: /dev/random
  *   Support: getrandom(2) added in Solaris 11.3 (2015) (SunOS 5.11.3).
  *
+ * IBM i (PASE):
+ *   Source: /dev/urandom
+ *   Fallback: none
+ *
+ * AIX:
+ *   Source: /dev/random
+ *   Fallback: none
+ *
  * Haiku:
  *   Source: /dev/random
  *   Fallback: none
  *
+ * Redox:
+ *   Source: rand:
+ *   Fallback: none
+ *
  * Unix:
  *   Source: /dev/urandom
- *   Fallback: none
+ *   Fallback: /dev/random
  *
  * VxWorks:
  *   Source: randABytes (after polling randSecure)
@@ -206,34 +234,20 @@
 #include "entropy.h"
 
 #undef HAVE_BCRYPTGENRANDOM
-#undef HAVE_RANDBYTES
+#undef HAVE_RANDABYTES
 #undef HAVE_GETRANDOM
 #undef HAVE_SYSCTL_UUID
 #undef HAVE_GETENTROPY
 #undef HAVE_SYSCTL_ARND
+#undef HAVE_DEV_RANDOM
 #undef HAVE_GETPID
 #undef DEV_RANDOM_NAME
+#undef ALT_RANDOM_NAME
 
-#if defined(__CloudABI__)
-uint16_t
-cloudabi_sys_random_get(void *buf, size_t buf_len);
-#elif defined(__wasi__)
-/* Could call getentropy(3) directly with wasi-libc,
-   but this is unsupported by emscripten's libc. */
-uint16_t
-__wasi_random_get(uint8_t *buf, size_t buf_len) __attribute__((
-  __import_module__("wasi_snapshot_preview1"),
-  __import_name__("random_get"),
-  __warn_unused_result__
-));
-#elif defined(__EMSCRIPTEN__)
-#  include <emscripten.h> /* EM_ASM_INT */
-#elif defined(__wasm__)
-/* No entropy sources for plain wasm. */
-#elif defined(_WIN32)
+#if defined(_WIN32)
 #  include <windows.h> /* _WIN32_WINNT */
 #  if defined(_MSC_VER) && _MSC_VER > 1500 /* VS 2008 */ \
-   && defined(_WIN32_WINNT) && _WIN32_WINNT >= 0x0600 /* >= Vista (2007) */
+   && defined(_WIN32_WINNT) && _WIN32_WINNT >= 0x0600 /* Vista (2007) */
 #    include <bcrypt.h> /* BCryptGenRandom */
 #    ifndef STATUS_SUCCESS
 #      define STATUS_SUCCESS ((NTSTATUS)0)
@@ -251,10 +265,16 @@ RtlGenRandom(PVOID RandomBuffer, ULONG RandomBufferLength);
 #  if defined(_WRS_VXWORKS_MAJOR) && _WRS_VXWORKS_MAJOR >= 7 /* 7 (2016) */
 #    include <randomNumGen.h> /* randABytes, randSecure */
 #    include <taskLib.h> /* taskDelay */
-#    define HAVE_RANDBYTES
+#    define HAVE_RANDABYTES
 #  endif
-#elif defined(__Fuchsia__)
-#  include <zircon/syscalls.h>
+#elif defined(__Fuchsia__) || defined(__fuchsia__)
+#  include <zircon/syscalls.h> /* zx_cprng_draw */
+#elif defined(__CloudABI__)
+#  include <cloudabi_syscalls.h> /* cloudabi_sys_random_get */
+#elif defined(__EMSCRIPTEN__)
+#  include <emscripten.h> /* EM_JS */
+#elif defined(__wasi__)
+#  include <wasi/api.h> /* __wasi_random_get */
 #elif defined(__unix) || defined(__unix__)     \
   || (defined(__APPLE__) && defined(__MACH__))
 #  include <sys/types.h> /* open */
@@ -276,9 +296,6 @@ RtlGenRandom(PVOID RandomBuffer, ULONG RandomBufferLength);
 #    include <AvailabilityMacros.h>
 #    if MAC_OS_X_VERSION_MAX_ALLOWED >= 101200 /* 10.12 (2016) */
 #      include <sys/random.h> /* getentropy */
-#      ifdef __GNUC__
-#        pragma GCC diagnostic ignored "-Waddress"
-#      endif
 #      define HAVE_GETENTROPY
 #    endif
 #    define DEV_RANDOM_NAME "/dev/random"
@@ -330,14 +347,25 @@ RtlGenRandom(PVOID RandomBuffer, ULONG RandomBufferLength);
 #      define HAVE_GETRANDOM
 #    endif
 #    define DEV_RANDOM_NAME "/dev/random"
+#  elif defined(__PASE__)
+#    define DEV_RANDOM_NAME "/dev/urandom"
+#  elif defined(_AIX)
+#    define DEV_RANDOM_NAME "/dev/random"
 #  elif defined(__HAIKU__)
 #    define DEV_RANDOM_NAME "/dev/random"
+#  elif defined(__redox__)
+#    define DEV_RANDOM_NAME "rand:"
 #  else
 #    define DEV_RANDOM_NAME "/dev/urandom"
+#    define ALT_RANDOM_NAME "/dev/random"
+#  endif
+#  ifdef __GNUC__
+#    pragma GCC diagnostic ignored "-Waddress"
 #  endif
 #  ifndef S_ISNAM
 #    define S_ISNAM(x) 0
 #  endif
+#  define HAVE_DEV_RANDOM
 #  define HAVE_GETPID
 #endif
 
@@ -345,7 +373,7 @@ RtlGenRandom(PVOID RandomBuffer, ULONG RandomBufferLength);
  * Helpers
  */
 
-#ifdef DEV_RANDOM_NAME
+#ifdef HAVE_DEV_RANDOM
 static int
 torsion_open(const char *name, int flags) {
   int fd, r;
@@ -381,7 +409,60 @@ torsion_open(const char *name, int flags) {
 
   return fd;
 }
-#endif
+#endif /* HAVE_DEV_RANDOM */
+
+/*
+ * Emscripten Entropy
+ */
+
+#ifdef __EMSCRIPTEN__
+EM_JS(unsigned short, js_random_get, (unsigned char *dst, unsigned long len), {
+  if (ENVIRONMENT_IS_NODE) {
+    var crypto = module.require('crypto');
+    var buf = Buffer.from(HEAPU8.buffer, dst, len);
+
+    try {
+      crypto.randomFillSync(buf, 0, len);
+    } catch (e) {
+      return 1;
+    }
+
+    return 0;
+  }
+
+  if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
+    var global = ENVIRONMENT_IS_WORKER ? self : window;
+    var crypto = global.crypto || global.msCrypto;
+    var max = 65536;
+
+    if (!crypto || !crypto.getRandomValues)
+      return 1;
+
+    while (len > 0) {
+      if (max > len)
+        max = len;
+
+      var buf = HEAPU8.subarray(dst, dst + max);
+
+      crypto.getRandomValues(buf);
+
+      dst += max;
+      len -= max;
+    }
+
+    return 0;
+  }
+
+  if (ENVIRONMENT_IS_SHELL) {
+    while (len--)
+      HEAPU8[dst++] = Math.floor(Math.random() * 0x100);
+
+    return 0;
+  }
+
+  return 1;
+})
+#endif /* __EMSCRIPTEN__ */
 
 /*
  * Syscall Entropy
@@ -389,59 +470,12 @@ torsion_open(const char *name, int flags) {
 
 static int
 torsion_callrand(void *dst, size_t size) {
-#if defined(__CloudABI__)
-  return cloudabi_sys_random_get(dst, size) == 0;
-#elif defined(__wasi__)
-  return __wasi_random_get((uint8_t *)dst, size) == 0;
-#elif defined(__EMSCRIPTEN__)
-  if (size > (size_t)INT_MAX)
-    return 0;
-
-  return EM_ASM_INT({
-    try {
-      var ptr = $0;
-      var len = $1;
-      var crypto = null;
-
-      if (typeof window !== 'undefined' && window)
-        crypto = window.crypto || window.msCrypto;
-      else if (typeof self !== 'undefined' && self)
-        crypto = self.crypto || self.msCrypto;
-
-      if (crypto) {
-        var max = 65536;
-
-        while (len > 0) {
-          if (max > len)
-            max = len;
-
-          var buf = HEAPU8.subarray(ptr, ptr + max);
-
-          crypto.getRandomValues(buf);
-
-          ptr += max;
-          len -= max;
-        }
-      } else {
-        var Buffer = require('buffer').Buffer;
-        var buf = Buffer.from(HEAPU8.buffer, ptr, len);
-
-        require('crypto').randomFillSync(buf, 0, len);
-      }
-
-      return 1;
-    } catch (e) {
-      return 0;
-    }
-  }, dst, size);
-#elif defined(__wasm__)
-  return 0;
-#elif defined(HAVE_BCRYPTGENRANDOM) /* _WIN32 */
+#if defined(HAVE_BCRYPTGENRANDOM) /* _WIN32 */
   return BCryptGenRandom(NULL, (PUCHAR)dst, (ULONG)size,
                          BCRYPT_USE_SYSTEM_PREFERRED_RNG) == STATUS_SUCCESS;
 #elif defined(_WIN32)
   return RtlGenRandom((PVOID)dst, (ULONG)size) == TRUE;
-#elif defined(HAVE_RANDBYTES) /* __vxworks */
+#elif defined(HAVE_RANDABYTES) /* __vxworks */
   unsigned char *data = (unsigned char *)dst;
   size_t max = (size_t)INT_MAX;
   int ret;
@@ -472,9 +506,15 @@ torsion_callrand(void *dst, size_t size) {
   }
 
   return 1;
-#elif defined(__Fuchsia__)
+#elif defined(__Fuchsia__) || defined(__fuchsia__)
   zx_cprng_draw(dst, size);
   return 1;
+#elif defined(__CloudABI__)
+  return cloudabi_sys_random_get(dst, size) == 0;
+#elif defined(__EMSCRIPTEN__)
+  return js_random_get((uint8_t *)dst, size) == 0;
+#elif defined(__wasi__)
+  return __wasi_random_get((uint8_t *)dst, size) == 0;
 #elif defined(HAVE_GETRANDOM)
   unsigned char *data = (unsigned char *)dst;
   size_t max = 256;
@@ -553,6 +593,83 @@ torsion_callrand(void *dst, size_t size) {
 }
 
 /*
+ * Device Entropy
+ */
+
+#ifdef HAVE_DEV_RANDOM
+static int
+torsion_devrand(const char *name, void *dst, size_t size) {
+  unsigned char *data = (unsigned char *)dst;
+  struct stat st;
+  ssize_t nread;
+  int fd;
+#ifdef __linux__
+  struct pollfd pfd;
+  int r;
+
+  do {
+    fd = torsion_open("/dev/random", O_RDONLY);
+  } while (fd == -1 && errno == EINTR);
+
+  if (fd == -1)
+    return 0;
+
+  if (fstat(fd, &st) != 0)
+    goto fail;
+
+  if (!S_ISCHR(st.st_mode))
+    goto fail;
+
+  pfd.fd = fd;
+  pfd.events = POLLIN;
+  pfd.revents = 0;
+
+  do {
+    r = poll(&pfd, 1, -1);
+  } while (r == -1 && errno == EINTR);
+
+  if (r != 1)
+    goto fail;
+
+  close(fd);
+#endif
+
+  do {
+    fd = torsion_open(name, O_RDONLY);
+  } while (fd == -1 && errno == EINTR);
+
+  if (fd == -1)
+    return 0;
+
+  if (fstat(fd, &st) != 0)
+    goto fail;
+
+  if (!S_ISCHR(st.st_mode) && !S_ISNAM(st.st_mode))
+    goto fail;
+
+  while (size > 0) {
+    do {
+      nread = read(fd, data, size);
+    } while (nread < 0 && (errno == EINTR || errno == EAGAIN));
+
+    if (nread <= 0)
+      break;
+
+    if ((size_t)nread > size)
+      abort();
+
+    data += nread;
+    size -= nread;
+  }
+
+fail:
+  close(fd);
+
+  return size == 0;
+}
+#endif /* HAVE_DEV_RANDOM */
+
+/*
  * Random UUID (Linux)
  */
 
@@ -610,93 +727,12 @@ torsion_uuidrand(void *dst, size_t size) {
 #endif /* HAVE_SYSCTL_UUID */
 
 /*
- * Device Entropy
- */
-
-static int
-torsion_devrand(void *dst, size_t size) {
-#ifdef DEV_RANDOM_NAME
-  unsigned char *data = (unsigned char *)dst;
-  struct stat st;
-  ssize_t nread;
-  int fd;
-#ifdef __linux__
-  struct pollfd pfd;
-  int r;
-
-  do {
-    fd = torsion_open("/dev/random", O_RDONLY);
-  } while (fd == -1 && errno == EINTR);
-
-  if (fd == -1)
-    return 0;
-
-  if (fstat(fd, &st) != 0)
-    goto fail;
-
-  if (!S_ISCHR(st.st_mode))
-    goto fail;
-
-  pfd.fd = fd;
-  pfd.events = POLLIN;
-  pfd.revents = 0;
-
-  do {
-    r = poll(&pfd, 1, -1);
-  } while (r == -1 && errno == EINTR);
-
-  if (r != 1)
-    goto fail;
-
-  close(fd);
-#endif
-
-  do {
-    fd = torsion_open(DEV_RANDOM_NAME, O_RDONLY);
-  } while (fd == -1 && errno == EINTR);
-
-  if (fd == -1)
-    return 0;
-
-  if (fstat(fd, &st) != 0)
-    goto fail;
-
-  if (!S_ISCHR(st.st_mode) && !S_ISNAM(st.st_mode))
-    goto fail;
-
-  while (size > 0) {
-    do {
-      nread = read(fd, data, size);
-    } while (nread < 0 && (errno == EINTR || errno == EAGAIN));
-
-    if (nread <= 0)
-      break;
-
-    if ((size_t)nread > size)
-      abort();
-
-    data += nread;
-    size -= nread;
-  }
-
-fail:
-  close(fd);
-
-  return size == 0;
-#else /* DEV_RANDOM_NAME */
-  (void)dst;
-  (void)size;
-  return 0;
-#endif /* DEV_RANDOM_NAME */
-}
-
-/*
  * PID (exposed for a fork-aware RNG)
  */
 
 uint64_t
 torsion_getpid(void) {
-#ifdef HAVE_GETPID
+#if defined(HAVE_GETPID)
   return (uint64_t)getpid();
 #else
   return 0;
@@ -715,8 +751,15 @@ torsion_sysrand(void *dst, size_t size) {
   if (torsion_callrand(dst, size))
     return 1;
 
-  if (torsion_devrand(dst, size))
+#ifdef DEV_RANDOM_NAME
+  if (torsion_devrand(DEV_RANDOM_NAME, dst, size))
     return 1;
+#endif
+
+#ifdef ALT_RANDOM_NAME
+  if (torsion_devrand(ALT_RANDOM_NAME, dst, size))
+    return 1;
+#endif
 
 #ifdef HAVE_SYSCTL_UUID
   if (torsion_uuidrand(dst, size))

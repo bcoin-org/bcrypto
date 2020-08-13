@@ -62,7 +62,7 @@
 
 struct mp_div_inverse {
   /* Normalization shift count. */
-  unsigned shift;
+  unsigned int shift;
   /* Normalized divisor (d0 unused for mpn_div_qr_1) */
   mp_limb_t d1, d0;
   /* Inverse, for 2/1 or 3/2. */
@@ -106,7 +106,7 @@ enum mpz_div_round_mode { MP_DIV_FLOOR, MP_DIV_CEIL, MP_DIV_TRUNC };
  * See: https://gmplib.org/repo/gmp-6.2/file/tip/longlong.h#l1044
  */
 
-#ifdef MPI_USE_ASM
+#if defined(MPI_USE_ASM)
 
 #define MP_CLZ(count, x) do { \
   uint64_t __cbtmp;           \
@@ -156,11 +156,11 @@ enum mpz_div_round_mode { MP_DIV_FLOOR, MP_DIV_CEIL, MP_DIV_TRUNC };
       "rm" ((uint64_t)(v))         \
   )
 
-#else /* MPI_USE_ASM */
+#else /* !MPI_USE_ASM */
 
 #define MP_CLZ(count, x) do {                                      \
   mp_limb_t __clz_x = (x);                                         \
-  unsigned __clz_c = 0;                                            \
+  unsigned int __clz_c = 0;                                        \
   for (; (__clz_x & (MP_LIMB_C(0xff) << (MP_LIMB_BITS - 8))) == 0; \
          __clz_c += 8) {                                           \
     __clz_x <<= 8;                                                 \
@@ -172,7 +172,7 @@ enum mpz_div_round_mode { MP_DIV_FLOOR, MP_DIV_CEIL, MP_DIV_TRUNC };
 
 #define MP_CTZ(count, x) do {           \
   mp_limb_t __ctz_x = (x);              \
-  unsigned __ctz_c = 0;                 \
+  unsigned int __ctz_c = 0;             \
   MP_CLZ(__ctz_c, __ctz_x & -__ctz_x);  \
   (count) = MP_LIMB_BITS - 1 - __ctz_c; \
 } while (0)
@@ -191,16 +191,16 @@ enum mpz_div_round_mode { MP_DIV_FLOOR, MP_DIV_CEIL, MP_DIV_TRUNC };
   (sl) = __x;                                      \
 } while (0)
 
-#ifdef MP_HAS_WIDE
+#if defined(MP_HAS_WIDE)
 #define MP_UMUL_PPMM(w1, w0, u, v) do {     \
   mp_wide_t __ww = (mp_wide_t)(u) * (v);    \
   (w0) = (mp_limb_t)__ww;                   \
   (w1) = (mp_limb_t)(__ww >> MP_LIMB_BITS); \
 } while (0)
-#else
+#else /* !MP_HAS_WIDE */
 #define MP_UMUL_PPMM(w1, w0, u, v) do {                                    \
   mp_limb_t __x0, __x1, __x2, __x3;                                        \
-  unsigned __ul, __vl, __uh, __vh;                                         \
+  unsigned int __ul, __vl, __uh, __vh;                                     \
   mp_limb_t __u = (u), __v = (v);                                          \
                                                                            \
   __ul = __u & MP_LLIMB_MASK;                                              \
@@ -222,9 +222,9 @@ enum mpz_div_round_mode { MP_DIV_FLOOR, MP_DIV_CEIL, MP_DIV_TRUNC };
   (w1) = __x3 + (__x1 >> (MP_LIMB_BITS / 2));                              \
   (w0) = (__x1 << (MP_LIMB_BITS / 2)) + (__x0 & MP_LLIMB_MASK);            \
 } while (0)
-#endif
+#endif /* !MP_HAS_WIDE */
 
-#endif /* MPI_USE_ASM */
+#endif /* !MPI_USE_ASM */
 
 #define MP_UDIV_QRNND_PREINV(q, r, nh, nl, d, di) do {       \
   mp_limb_t _qh, _ql, _r, _mask;                             \
@@ -489,7 +489,7 @@ mpn_cleanse(mp_ptr xp, mp_size_t xn) {
 
 void
 mpn_copyi(mp_ptr d, mp_srcptr s, mp_size_t n) {
-#ifdef MPI_USE_ASM
+#if defined(MPI_USE_ASM)
   /* From:
    * https://gmplib.org/repo/gmp-6.2/file/tip/mpn/x86_64/copyi.asm
    *
@@ -548,7 +548,7 @@ mpn_copyi(mp_ptr d, mp_srcptr s, mp_size_t n) {
 
 void
 mpn_copyd(mp_ptr d, mp_srcptr s, mp_size_t n) {
-#ifdef MPI_USE_ASM
+#if defined(MPI_USE_ASM)
   /* From:
    * https://gmplib.org/repo/gmp-6.2/file/tip/mpn/x86_64/copyd.asm
    *
@@ -788,7 +788,7 @@ mpn_cmp4(mp_srcptr ap, mp_size_t an, mp_srcptr bp, mp_size_t bn) {
 
 mp_limb_t
 mpn_add_1(mp_ptr rp, mp_srcptr ap, mp_size_t n, mp_limb_t b) {
-#ifdef MPI_USE_ASM
+#if defined(MPI_USE_ASM)
   AORS_1("addq", "adcq")
   return b;
 #else
@@ -811,7 +811,7 @@ mpn_add_1(mp_ptr rp, mp_srcptr ap, mp_size_t n, mp_limb_t b) {
 
 mp_limb_t
 mpn_add_n(mp_ptr rp, mp_srcptr ap, mp_srcptr bp, mp_size_t n) {
-#ifdef MPI_USE_ASM
+#if defined(MPI_USE_ASM)
   mp_limb_t cy;
   AORS_N("adcq")
   return cy;
@@ -853,7 +853,7 @@ mpn_add(mp_ptr rp, mp_srcptr ap, mp_size_t an, mp_srcptr bp, mp_size_t bn) {
 
 mp_limb_t
 mpn_sub_1(mp_ptr rp, mp_srcptr ap, mp_size_t n, mp_limb_t b) {
-#ifdef MPI_USE_ASM
+#if defined(MPI_USE_ASM)
   AORS_1("subq", "sbbq")
   return b;
 #else
@@ -877,7 +877,7 @@ mpn_sub_1(mp_ptr rp, mp_srcptr ap, mp_size_t n, mp_limb_t b) {
 
 mp_limb_t
 mpn_sub_n(mp_ptr rp, mp_srcptr ap, mp_srcptr bp, mp_size_t n) {
-#ifdef MPI_USE_ASM
+#if defined(MPI_USE_ASM)
   mp_limb_t cy;
   AORS_N("sbbq")
   return cy;
@@ -918,7 +918,7 @@ mpn_sub(mp_ptr rp, mp_srcptr ap, mp_size_t an, mp_srcptr bp, mp_size_t bn) {
 
 mp_limb_t
 mpn_mul_1(mp_ptr rp, mp_srcptr up, mp_size_t n, mp_limb_t vl) {
-#ifdef MPI_USE_ASM
+#if defined(MPI_USE_ASM)
   /* From:
    * https://gmplib.org/repo/gmp-6.2/file/tip/mpn/x86_64/mul_1.asm
    *
@@ -1179,7 +1179,7 @@ mpn_mul_1(mp_ptr rp, mp_srcptr up, mp_size_t n, mp_limb_t vl) {
 
 mp_limb_t
 mpn_addmul_1(mp_ptr rp, mp_srcptr up, mp_size_t n, mp_limb_t vl) {
-#ifdef MPI_USE_ASM
+#if defined(MPI_USE_ASM)
   mp_limb_t cy;
   AORSMUL_1("addq")
   return cy;
@@ -1209,7 +1209,7 @@ mpn_addmul_1(mp_ptr rp, mp_srcptr up, mp_size_t n, mp_limb_t vl) {
 
 mp_limb_t
 mpn_submul_1(mp_ptr rp, mp_srcptr up, mp_size_t n, mp_limb_t vl) {
-#ifdef MPI_USE_ASM
+#if defined(MPI_USE_ASM)
   mp_limb_t cy;
   AORSMUL_1("subq")
   return cy;
@@ -1334,7 +1334,7 @@ mpn_sqr_diag_addlsh1(mp_ptr rp, mp_srcptr tp, mp_srcptr up, mp_size_t n) {
 
 void
 mpn_sqr(mp_ptr rp, mp_srcptr up, mp_size_t n) {
-#ifdef MPI_USE_ASM
+#if defined(MPI_USE_ASM)
   /* https://gmplib.org/repo/gmp-6.2/file/tip/mpn/generic/sqr_basecase.c */
   ASSERT(n >= 1);
   ASSERT(!MPN_OVERLAP_P(rp, 2 * n, up, n));
@@ -1446,7 +1446,7 @@ mpn_invert_3by2(mp_limb_t u1, mp_limb_t u0) {
 
   {
     mp_limb_t p, ql;
-    unsigned ul, uh, qh;
+    unsigned int ul, uh, qh;
 
     /* For notation, let b denote the half-limb base,
        so that B = b^2. Split u1 = b uh + ul. */
@@ -1558,7 +1558,7 @@ mpn_invert_3by2(mp_limb_t u1, mp_limb_t u0) {
 
 static void
 mpn_div_qr_1_invert(struct mp_div_inverse *inv, mp_limb_t d) {
-  unsigned shift;
+  unsigned int shift;
 
   ASSERT(d > 0);
 
@@ -1572,7 +1572,7 @@ mpn_div_qr_1_invert(struct mp_div_inverse *inv, mp_limb_t d) {
 static void
 mpn_div_qr_2_invert(struct mp_div_inverse *inv,
                     mp_limb_t d1, mp_limb_t d0) {
-  unsigned shift;
+  unsigned int shift;
 
   ASSERT(d1 > 0);
 
@@ -1600,7 +1600,7 @@ mpn_div_qr_invert(struct mp_div_inverse *inv,
   } else if (dn == 2) {
     mpn_div_qr_2_invert(inv, dp[1], dp[0]);
   } else {
-    unsigned shift;
+    unsigned int shift;
     mp_limb_t d1, d0;
 
     d1 = dp[dn - 1];
@@ -1661,7 +1661,7 @@ mpn_div_qr_1_preinv(mp_ptr qp, mp_srcptr np, mp_size_t nn,
 static void
 mpn_div_qr_2_preinv(mp_ptr qp, mp_ptr np, mp_size_t nn,
                     const struct mp_div_inverse *inv) {
-  unsigned shift;
+  unsigned int shift;
   mp_size_t i;
   mp_limb_t d1, d0, di, r1, r0;
 
@@ -1770,7 +1770,7 @@ mpn_div_qr_preinv(mp_ptr qp, mp_ptr np, mp_size_t nn,
     mpn_div_qr_2_preinv(qp, np, nn, inv);
   } else {
     mp_limb_t nh;
-    unsigned shift;
+    unsigned int shift;
 
     ASSERT(inv->d1 == dp[dn - 1]);
     ASSERT(inv->d0 == dp[dn - 2]);
@@ -1845,7 +1845,7 @@ mpn_quorem(mp_ptr qp, mp_ptr rp,
 
 mp_limb_t
 mpn_lshift(mp_ptr rp, mp_srcptr up, mp_size_t n, unsigned int cnt) {
-#ifdef MPI_USE_ASM
+#if defined(MPI_USE_ASM)
   /* From:
    * https://gmplib.org/repo/gmp-6.2/file/tip/mpn/x86_64/lshift.asm
    *
@@ -2018,7 +2018,7 @@ mpn_lshift(mp_ptr rp, mp_srcptr up, mp_size_t n, unsigned int cnt) {
 
 mp_limb_t
 mpn_rshift(mp_ptr rp, mp_srcptr up, mp_size_t n, unsigned int cnt) {
-#ifdef MPI_USE_ASM
+#if defined(MPI_USE_ASM)
   /* From:
    * https://gmplib.org/repo/gmp-6.2/file/tip/mpn/x86_64/rshift.asm
    *
@@ -2250,7 +2250,7 @@ mpn_clr_bit(mp_ptr xp, mp_size_t xn, mp_bitcnt_t pos) {
 
 static mp_limb_t
 mpn_gcd_11(mp_limb_t u, mp_limb_t v) {
-  unsigned shift;
+  unsigned int shift;
 
   ASSERT((u | v) > 0);
 
@@ -3606,7 +3606,7 @@ void
 mpz_lshift(mpz_t r, const mpz_t u, mp_bitcnt_t bits) {
   mp_size_t un, rn;
   mp_size_t limbs;
-  unsigned shift;
+  unsigned int shift;
   mp_ptr rp;
 
   un = MP_ABS(u->_mp_size);
@@ -4091,7 +4091,7 @@ mpz_powm(mpz_t r, const mpz_t b, const mpz_t e, const mpz_t m) {
   mp_size_t en, mn;
   mp_srcptr mp;
   struct mp_div_inverse minv;
-  unsigned shift;
+  unsigned int shift;
   mp_ptr tp = NULL;
 
   en = MP_ABS(e->_mp_size);

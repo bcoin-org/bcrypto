@@ -5,11 +5,17 @@
  *
  * Resources:
  *   https://en.wikipedia.org/wiki/Time_Stamp_Counter
+ *   https://en.wikipedia.org/wiki/CPUID
  *   https://en.wikipedia.org/wiki/RDRAND
  *
  * Windows:
- *   https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/ftime-ftime32-ftime64?view=vs-2019
- *   https://docs.microsoft.com/en-us/cpp/intrinsics/rdtsc?view=vs-2019
+ *   https://docs.microsoft.com/en-us/cpp/intrinsics/rdtsc
+ *   https://docs.microsoft.com/en-us/cpp/intrinsics/cpuid-cpuidex
+ *   https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_rdrand32_step
+ *   https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_rdrand64_step
+ *   https://docs.microsoft.com/en-us/windows/win32/api/profileapi/nf-profileapi-queryperformancecounter
+ *   https://docs.microsoft.com/en-us/windows/win32/api/profileapi/nf-profileapi-queryperformancefrequency
+ *   https://docs.microsoft.com/en-us/windows/win32/api/sysinfoapi/nf-sysinfoapi-getsystemtimeasfiletime
  *
  * Unix:
  *   http://man7.org/linux/man-pages/man2/gettimeofday.2.html
@@ -37,6 +43,10 @@
  *   https://www.felixcloutier.com/x86/rdtsc
  *   https://www.felixcloutier.com/x86/rdrand
  *   https://www.felixcloutier.com/x86/rdseed
+ *
+ * POWER9/POWER10 (darn):
+ *   https://www.docdroid.net/tWT7hjD/powerisa-v30-pdf
+ *   https://openpowerfoundation.org/?resource_lib=power-isa-version-3-0
  */
 
 /**
@@ -50,25 +60,25 @@
  * For non-x86 hardware, we fallback to whatever system clocks
  * are available. This includes:
  *
- *   - QueryPerformanceCounter, _ftime (win32)
+ *   - QueryPerformanceCounter, GetSystemTimeAsFileTime (win32)
  *   - mach_absolute_time (apple)
  *   - clock_gettime (vxworks)
  *   - zx_clock_get_monotonic (fuchsia)
  *   - clock_gettime (unix)
  *   - gettimeofday (unix legacy)
- *   - cloudabi_sys_clock_time_get (cloud abi)
+ *   - cloudabi_sys_clock_time_get (cloudabi)
  *   - __wasi_clock_time_get (wasi)
- *   - Date.now, process.hrtime (wasm, asm.js)
+ *   - emscripten_get_now (emscripten)
  *
  * Note that the only clocks which do not have nanosecond
- * precision are `_ftime`, `gettimeofday`, and `Date.now`.
+ * precision are `GetSystemTimeAsFileTime` and `gettimeofday`.
  *
  * If no OS clocks are present, we fall back to standard
  * C89 time functions (i.e. time(2)).
  *
  * Furthermore, QueryPerformance{Counter,Frequency} may fail
  * on Windows 2000. For this reason, we require Windows XP or
- * above (otherwise we fall back to _ftime).
+ * above (otherwise we fall back to GetSystemTimeAsFileTime).
  *
  * The CPUID instruction can serve as good source of "static"
  * entropy for seeding (see env.c).
@@ -78,7 +88,11 @@
  * be backdoored in some way. This is not an issue as we only
  * use hardware entropy to supplement our full entropy pool.
  *
- * For non-x86 hardware, torsion_rdrand and torsion_rdseed are
+ * On POWER9 and POWER10, the `darn` (Deliver A Random Number)
+ * instruction is available. We have `torsion_rdrand` return
+ * the output of `darn` if this is the case.
+ *
+ * For other hardware, torsion_rdrand and torsion_rdseed are
  * no-ops returning zero. torsion_has_rd{rand,seed} MUST be
  * checked before calling torsion_rd{rand,seed}.
  */
@@ -95,54 +109,35 @@
 
 #undef HAVE_QPC
 #undef HAVE_CLOCK_GETTIME
+#undef HAVE_GETTIMEOFDAY
 #undef HAVE_CPUIDEX
 #undef HAVE_RDTSC
 #undef HAVE_INLINE_ASM
 #undef HAVE_CPUID
+#undef HAVE_DARN
 
-#if defined(__CloudABI__)
-uint16_t
-cloudabi_sys_clock_time_get(uint32_t clock_id,
-                            uint64_t precision,
-                            uint64_t *time);
-#  define CLOUDABI_CLOCK_MONOTONIC 1
-#elif defined(__wasi__)
-#  ifdef TORSION_WASM_BIGINT
-/* Requires --experimental-wasm-bigint at the moment. */
-uint16_t
-__wasi_clock_time_get(uint32_t clock_id,
-                      uint64_t precision,
-                      uint64_t *time) __attribute__((
-  __import_module__("wasi_snapshot_preview1"),
-  __import_name__("clock_time_get"),
-  __warn_unused_result__
-));
-#    define __WASI_CLOCKID_MONOTONIC 1
-#  endif
-#elif defined(__EMSCRIPTEN__)
-#  include <emscripten.h> /* EM_ASM_INT */
-#elif defined(__wasm__)
-/* No hardware entropy for plain wasm. */
-#elif defined(_WIN32)
-#  include <windows.h> /* _WIN32_WINNT, QueryPerformance{Counter,Frequency} */
-#  if defined(_WIN32_WINNT) && _WIN32_WINNT >= 0x0501 /* >= Windows XP */
-#    pragma comment(lib, "kernel32.lib")
+#if defined(_WIN32)
+#  include <windows.h> /* QueryPerformanceCounter, GetSystemTimeAsFileTime */
+#  pragma comment(lib, "kernel32.lib")
+#  if defined(_WIN32_WINNT) && _WIN32_WINNT >= 0x0501 /* Windows XP */
 #    define HAVE_QPC
-#  else
-#    include <sys/timeb.h> /* _timeb, _ftime */
-#    ifdef __BORLANDC__
-#      define _timeb timeb
-#      define _ftime ftime
-#    endif
-#    pragma warning(disable: 4996) /* deprecation warning */
 #  endif
 #elif defined(__APPLE__) && defined(__MACH__)
 #  include <mach/mach.h> /* KERN_SUCCESS */
 #  include <mach/mach_time.h> /* mach_timebase_info, mach_absolute_time */
 #elif defined(__vxworks)
-#  include <time.h> /* clock_gettime */
-#elif defined(__Fuchsia__)
+#  include <time.h> /* clock_gettime, time */
+#  if defined(CLOCK_REALTIME) && defined(CLOCK_MONOTONIC)
+#    define HAVE_CLOCK_GETTIME
+#  endif
+#elif defined(__Fuchsia__) || defined(__fuchsia__)
 #  include <zircon/syscalls.h> /* zx_clock_get_monotonic */
+#elif defined(__CloudABI__)
+#  include <cloudabi_syscalls.h> /* cloudabi_sys_clock_time_get */
+#elif defined(__EMSCRIPTEN__)
+#  include <emscripten.h> /* emscripten_get_now */
+#elif defined(__wasi__)
+#  include <wasi/api.h> /* __wasi_clock_time_get */
 #elif defined(__unix) || defined(__unix__)
 #  include <time.h> /* clock_gettime */
 #  include <unistd.h> /* _POSIX_VERSION */
@@ -153,14 +148,13 @@ __wasi_clock_time_get(uint32_t clock_id,
 #  endif
 #  ifndef HAVE_CLOCK_GETTIME
 #    include <sys/time.h> /* gettimeofday */
+#    define HAVE_GETTIMEOFDAY
 #  endif
 #else
 #  include <time.h> /* time */
 #endif
 
-#if defined(__EMSCRIPTEN__) || defined(__wasm__)
-/* No inline assembly or intrinsics for emscripten/wasm. */
-#elif defined(_MSC_VER) && _MSC_VER >= 1900 /* VS 2015 */
+#if defined(_MSC_VER) && _MSC_VER >= 1900 /* VS 2015 */
 #  if defined(_M_IX86) || defined(_M_AMD64) || defined(_M_X64)
 #    include <intrin.h> /* __cpuidex, __rdtsc */
 #    include <immintrin.h> /* _rd{rand,seed}{32,64}_step */
@@ -172,6 +166,8 @@ __wasi_clock_time_get(uint32_t clock_id,
 #  define HAVE_INLINE_ASM
 #  if defined(__i386__) || defined(__amd64__) || defined(__x86_64__)
 #    define HAVE_CPUID
+#  elif defined(__powerpc64__) && (defined(_ARCH_PWR9) || defined(_ARCH_PWR10))
+#    define HAVE_DARN
 #  endif
 #endif
 
@@ -181,60 +177,7 @@ __wasi_clock_time_get(uint32_t clock_id,
 
 uint64_t
 torsion_hrtime(void) {
-#if defined(__CloudABI__)
-  uint64_t time;
-
-  if (cloudabi_sys_clock_time_get(CLOUDABI_CLOCK_MONOTONIC, 0, &time) != 0)
-    abort();
-
-  return time;
-#elif defined(__wasi__)
-#ifdef TORSION_WASM_BIGINT
-  uint64_t time;
-
-  if (__wasi_clock_time_get(__WASI_CLOCKID_MONOTONIC, 0, &time) != 0)
-    abort();
-
-  return time;
-#else
-  return 0;
-#endif
-#elif defined(__EMSCRIPTEN__)
-  uint32_t sec, nsec;
-
-  /* Note: we could call emscripten_get_now(), but it
-     unfortunately returns a double in milliseconds. */
-  int ret = EM_ASM_INT({
-    try {
-      if (typeof process !== 'undefined' && process
-          && typeof process.hrtime === 'function') {
-        var times = process.hrtime();
-
-        HEAPU32[$0 >>> 2] = times[0];
-        HEAPU32[$1 >>> 2] = times[1];
-
-        return 1;
-      }
-
-      var now = Date.now ? Date.now() : +new Date();
-      var ms = now % 1000;
-
-      HEAPU32[$0 >>> 2] = (now - ms) / 1000;
-      HEAPU32[$1 >>> 2] = ms * 1e6;
-
-      return 1;
-    } catch (e) {
-      return 0;
-    }
-  }, (void *)&sec, (void *)&nsec);
-
-  if (ret != 1)
-    abort();
-
-  return (uint64_t)sec * 1000000000 + (uint64_t)nsec;
-#elif defined(__wasm__)
-  return 0;
-#elif defined(HAVE_QPC) /* _WIN32 */
+#if defined(HAVE_QPC) /* _WIN32 */
   static unsigned int scale = 1000000000;
   LARGE_INTEGER freq, ctr;
   double scaled, result;
@@ -262,19 +205,29 @@ torsion_hrtime(void) {
 
   return (uint64_t)result;
 #elif defined(_WIN32)
-  /* We could convert GetSystemTimeAsFileTime into
-   * unix time like libuv[1], but we opt for the
-   * simpler `_ftime()` call a la libsodium[2].
+  /* There was no reliable nanosecond precision
+   * time available on Windows prior to XP. We
+   * borrow some more code from libuv[1] in order
+   * to convert NT time to unix time. Note that the
+   * libuv code was originally based on postgres[2].
+   *
+   * NT's epoch[3] begins on January 1st, 1601: 369
+   * years earlier than the unix epoch.
    *
    * [1] https://github.com/libuv/libuv/blob/7967448/src/win/util.c#L1942
-   * [2] https://github.com/jedisct1/libsodium/blob/d54f072/src/
-   *     libsodium/randombytes/internal/randombytes_internal_random.c#L140
+   * [2] https://doxygen.postgresql.org/gettimeofday_8c_source.html
+   * [3] https://en.wikipedia.org/wiki/Epoch_(computing)
    */
-  struct _timeb tb;
+  static const uint64_t epoch = UINT64_C(116444736000000000);
+  ULARGE_INTEGER ul;
+  FILETIME ft;
 
-  _ftime(&tb);
+  GetSystemTimeAsFileTime(&ft);
 
-  return (uint64_t)tb.time * 1000000000 + (uint64_t)tb.millitm * 1000000;
+  ul.LowPart = ft.dwLowDateTime;
+  ul.HighPart = ft.dwHighDateTime;
+
+  return (uint64_t)(ul.QuadPart - epoch) * 100;
 #elif defined(__APPLE__) && defined(__MACH__)
   mach_timebase_info_data_t info;
 
@@ -285,15 +238,27 @@ torsion_hrtime(void) {
     abort();
 
   return mach_absolute_time() * info.numer / info.denom;
-#elif defined(__vxworks)
-  struct timespec ts;
+#elif defined(__Fuchsia__) || defined(__fuchsia__)
+  return zx_clock_get_monotonic();
+#elif defined(__CloudABI__)
+  uint64_t ts;
 
-  if (clock_gettime(CLOCK_REALTIME, &ts) != 0)
+  if (cloudabi_sys_clock_time_get(CLOUDABI_CLOCK_MONOTONIC, 1, &ts) != 0)
     abort();
 
-  return (uint64_t)ts.tv_sec * 1000000000 + (uint64_t)ts.tv_nsec;
-#elif defined(__Fuchsia__)
-  return zx_clock_get_monotonic();
+  return ts;
+#elif defined(__EMSCRIPTEN__)
+  return emscripten_get_now() * 1000000.0;
+#elif defined(__wasi__)
+  uint64_t ts = 0;
+
+#ifdef TORSION_WASM_BIGINT
+  /* Requires --experimental-wasm-bigint at the moment. */
+  if (__wasi_clock_time_get(__WASI_CLOCKID_MONOTONIC, 1, &ts) != 0)
+    abort();
+#endif
+
+  return ts;
 #elif defined(HAVE_CLOCK_GETTIME)
   struct timespec ts;
 
@@ -303,7 +268,7 @@ torsion_hrtime(void) {
   }
 
   return (uint64_t)ts.tv_sec * 1000000000 + (uint64_t)ts.tv_nsec;
-#elif defined(__unix) || defined(__unix__)
+#elif defined(HAVE_GETTIMEOFDAY)
   struct timeval tv;
 
   if (gettimeofday(&tv, NULL) != 0)
@@ -388,9 +353,9 @@ torsion_has_cpuid(void) {
   );
 
   return ((ax ^ bx) >> 21) & 1;
-#else /* __i386__ */
+#else /* !__i386__ */
   return 1;
-#endif /* __i386__ */
+#endif /* !__i386__ */
 #else
   return 0;
 #endif
@@ -434,13 +399,13 @@ torsion_cpuid(uint32_t *a,
       : "0" (leaf), "2" (subleaf)
     );
   }
-#else /* __i386__ */
+#else /* !__i386__ */
   __asm__ __volatile__(
     "cpuid\n"
     : "=a" (*a), "=b" (*b), "=c" (*c), "=d" (*d)
     : "0" (leaf), "2" (subleaf)
   );
-#endif /* __i386__ */
+#endif /* !__i386__ */
 #else
   (void)leaf;
   (void)subleaf;
@@ -464,6 +429,9 @@ torsion_has_rdrand(void) {
   torsion_cpuid(&eax, &ebx, &ecx, &edx, 1, 0);
 
   return (ecx >> 30) & 1;
+#elif defined(HAVE_DARN)
+  /* We have `darn` masquerade as `rdrand`. */
+  return 1;
 #else
   return 0;
 #endif
@@ -500,7 +468,7 @@ torsion_rdrand(void) {
   }
 
   return ((uint64_t)hi << 32) | lo;
-#else /* _M_IX86 */
+#else /* !_M_IX86 */
   unsigned __int64 r;
   int i;
 
@@ -510,7 +478,7 @@ torsion_rdrand(void) {
   }
 
   return r;
-#endif /* _M_IX86 */
+#endif /* !_M_IX86 */
 #elif defined(HAVE_CPUID)
 #if defined(__i386__)
   /* Borrowed from Bitcoin Core. */
@@ -545,7 +513,7 @@ torsion_rdrand(void) {
   }
 
   return ((uint64_t)hi << 32) | lo;
-#else /* __i386__ */
+#else /* !__i386__ */
   /* Borrowed from Bitcoin Core. */
   uint8_t ok;
   uint64_t r;
@@ -565,7 +533,28 @@ torsion_rdrand(void) {
   }
 
   return r;
-#endif /* __i386__ */
+#endif /* !__i386__ */
+#elif defined(HAVE_DARN)
+  uint64_t r = 0;
+  int i;
+
+  for (i = 0; i < 10; i++) {
+    /* Note that `darn %0, 1` can be spelled out as:
+     *
+     *   .long (0x7c0005e6 | (%0 << 21) | (1 << 16))
+     *
+     * The above was taken from the linux kernel
+     * (after stripping out a load of preprocessor).
+     */
+    __asm__ __volatile__("darn %0, 1\n" : "=r" (r));
+
+    if (r != UINT64_MAX)
+      break;
+
+    r = 0;
+  }
+
+  return r;
 #else
   return 0;
 #endif
@@ -596,7 +585,7 @@ torsion_rdseed(void) {
   }
 
   return ((uint64_t)hi << 32) | lo;
-#else /* _M_IX86 */
+#else /* !_M_IX86 */
   unsigned __int64 r;
 
   for (;;) {
@@ -609,7 +598,7 @@ torsion_rdseed(void) {
   }
 
   return r;
-#endif /* _M_IX86 */
+#endif /* !_M_IX86 */
 #elif defined(HAVE_CPUID)
 #if defined(__i386__)
   /* Borrowed from Bitcoin Core. */
@@ -647,7 +636,7 @@ torsion_rdseed(void) {
   }
 
   return ((uint64_t)hi << 32) | lo;
-#else /* __i386__ */
+#else /* !__i386__ */
   /* Borrowed from Bitcoin Core. */
   uint64_t r;
   uint8_t ok;
@@ -668,7 +657,7 @@ torsion_rdseed(void) {
   }
 
   return r;
-#endif /* __i386__ */
+#endif /* !__i386__ */
 #else
   return 0;
 #endif
@@ -680,7 +669,7 @@ torsion_rdseed(void) {
 
 int
 torsion_hwrand(void *dst, size_t size) {
-#if defined(HAVE_CPUIDEX) || defined(HAVE_CPUID)
+#if defined(HAVE_CPUIDEX) || defined(HAVE_CPUID) || defined(HAVE_DARN)
   unsigned char *data = (unsigned char *)dst;
   int has_rdrand = torsion_has_rdrand();
   int has_rdseed = torsion_has_rdseed();

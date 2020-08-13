@@ -961,7 +961,10 @@ fail:
 
 static void
 blkcpy(uint8_t *dest, uint8_t *src, size_t len) {
-  memcpy(dest, src, len);
+  size_t i;
+
+  for (i = 0; i < len; i++)
+    dest[i] = src[i];
 }
 
 static void

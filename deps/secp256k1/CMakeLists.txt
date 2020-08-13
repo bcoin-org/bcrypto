@@ -14,6 +14,7 @@ project(libsecp256k1 LANGUAGES C)
 #
 
 include(../../cmake/AppendCCompilerFlag.cmake)
+include(CheckCSourceCompiles)
 include(NodeJS)
 include(TestBigEndian)
 

@@ -774,7 +774,7 @@ keccak_init(keccak_t *ctx, size_t bits) {
 
 static void
 keccak_permute(keccak_t *ctx) {
-#ifdef TORSION_HAVE_ASM_X64
+#if defined(TORSION_HAVE_ASM_X64)
   /* Borrowed from:
    * https://github.com/gnutls/nettle/blob/master/x86_64/sha3-permute.asm
    *
@@ -1218,7 +1218,7 @@ keccak_permute(keccak_t *ctx) {
   };
 
   uint64_t C[5], D[5], T, X;
-  unsigned i, y;
+  unsigned int i, y;
 
 #define A ctx->state
 
@@ -1932,7 +1932,7 @@ ripemd160_transform(ripemd160_t *ctx, const unsigned char *chunk) {
   uint32_t x[16];
 
   if (TORSION_BIGENDIAN) {
-    int i;
+    unsigned int i;
     for (i = 0; i < 16; i++, chunk += 4)
       x[i] = read32le(chunk);
   } else {
@@ -2255,7 +2255,7 @@ static void
 sha1_transform(sha1_t *ctx, const unsigned char *chunk) {
   uint32_t data[16];
   uint32_t A, B, C, D, E;
-  int i;
+  unsigned int i;
 
   for (i = 0; i < 16; i++, chunk += 4)
     data[i] = read32be(chunk);
@@ -2527,7 +2527,7 @@ sha256_init(sha256_t *ctx) {
 
 static void
 sha256_transform(sha256_t *ctx, const unsigned char *chunk) {
-#ifdef TORSION_HAVE_ASM_X64
+#if defined(TORSION_HAVE_ASM_X64)
   /* Borrowed from:
    * https://github.com/gnutls/nettle/blob/master/x86_64/sha256-compress.asm
    *
@@ -3737,7 +3737,7 @@ sha256_transform(sha256_t *ctx, const unsigned char *chunk) {
   const uint32_t *k = sha256_K;
   uint32_t data[16];
   uint32_t A, B, C, D, E, F, G, H;
-  unsigned i;
+  unsigned int i;
   uint32_t *d;
 
   for (i = 0; i < 16; i++, chunk += 4)
@@ -3997,7 +3997,7 @@ sha512_init(sha512_t *ctx) {
 
 static void
 sha512_transform(sha512_t *ctx, const unsigned char *chunk) {
-#ifdef TORSION_HAVE_ASM_X64
+#if defined(TORSION_HAVE_ASM_X64)
   /* Borrowed from:
    * https://github.com/gnutls/nettle/blob/master/x86_64/sha512-compress.asm
    *
@@ -5207,7 +5207,7 @@ sha512_transform(sha512_t *ctx, const unsigned char *chunk) {
   const uint64_t *k = sha512_K;
   uint64_t data[16];
   uint64_t A, B, C, D, E, F, G, H;
-  unsigned i;
+  unsigned int i;
   uint64_t *d;
 
   for (i = 0; i < 16; i++, chunk += 8)

@@ -150,7 +150,7 @@
 #include "internal.h"
 #include "mpi.h"
 
-#ifdef TORSION_HAVE_INT128
+#if defined(TORSION_HAVE_INT128)
 typedef uint64_t fe_word_t;
 #define FIELD_WORD_BITS 64
 #define MAX_FIELD_WORDS 9
@@ -1366,7 +1366,10 @@ fe_select(const prime_field_t *fe,
 
 static void
 fe_set(const prime_field_t *fe, fe_t r, const fe_t a) {
-  memcpy(r, a, fe->words * sizeof(fe_word_t));
+  size_t i = fe->words;
+
+  while (i--)
+    r[i] = a[i];
 }
 
 static int
@@ -4528,7 +4531,7 @@ wei_sswui(const wei_t *ec, fe_t u, const wge_t *p, unsigned int hint) {
   const prime_field_t *fe = &ec->fe;
   fe_t a2x2, abx2, b23, axb, c, n0, n1, d0, d1;
   unsigned int r = hint & 3;
-  unsigned s0, s1;
+  unsigned int s0, s1;
 
   fe_sqr(fe, n0, ec->a);
   fe_sqr(fe, n1, p->x);
@@ -5581,6 +5584,7 @@ mont_clamp(const mont_t *ec, unsigned char *out, const unsigned char *scalar) {
   const prime_field_t *fe = &ec->fe;
   const scalar_field_t *sc = &ec->sc;
   size_t top = ec->fe.bits & 7;
+  size_t i;
 
   ASSERT(sc->size <= fe->size);
 
@@ -5588,7 +5592,8 @@ mont_clamp(const mont_t *ec, unsigned char *out, const unsigned char *scalar) {
     top = 8;
 
   /* Copy. */
-  memcpy(out, scalar, sc->size);
+  for (i = 0; i < sc->size; i++)
+    out[i] = scalar[i];
 
   /* Adjust for low order. */
   if (sc->size < fe->size)
@@ -6608,6 +6613,7 @@ edwards_clamp(const edwards_t *ec,
   const prime_field_t *fe = &ec->fe;
   const scalar_field_t *sc = &ec->sc;
   size_t top = ec->fe.bits & 7;
+  size_t i;
 
   ASSERT(sc->size <= fe->size);
 
@@ -6615,7 +6621,8 @@ edwards_clamp(const edwards_t *ec,
     top = 8;
 
   /* Copy. */
-  memcpy(out, scalar, sc->size);
+  for (i = 0; i < sc->size; i++)
+    out[i] = scalar[i];
 
   /* Adjust for low order. */
   if (sc->size < fe->size)
@@ -8680,10 +8687,12 @@ ecdsa_privkey_export(const wei_t *ec,
                      const unsigned char *priv) {
   const scalar_field_t *sc = &ec->sc;
   int ret = 1;
+  size_t i;
 
   ret &= ecdsa_privkey_verify(ec, priv);
 
-  memcpy(out, priv, sc->size);
+  for (i = 0; i < sc->size; i++)
+    out[i] = priv[i];
 
   return ret;
 }
@@ -10948,7 +10957,12 @@ int
 ecdh_privkey_export(const mont_t *ec,
                     unsigned char *out,
                     const unsigned char *priv) {
-  memcpy(out, priv, ec->sc.size);
+  const scalar_field_t *sc = &ec->sc;
+  size_t i;
+
+  for (i = 0; i < sc->size; i++)
+    out[i] = priv[i];
+
   return 1;
 }
 
@@ -11333,7 +11347,12 @@ int
 eddsa_privkey_export(const edwards_t *ec,
                      unsigned char *out,
                      const unsigned char *priv) {
-  memcpy(out, priv, ec->fe.adj_size);
+  const prime_field_t *fe = &ec->fe;
+  size_t i;
+
+  for (i = 0; i < fe->adj_size; i++)
+    out[i] = priv[i];
+
   return 1;
 }
 
@@ -11342,12 +11361,18 @@ eddsa_privkey_import(const edwards_t *ec,
                      unsigned char *out,
                      const unsigned char *bytes,
                      size_t len) {
-  if (len != ec->fe.adj_size)
-    return 0;
+  const prime_field_t *fe = &ec->fe;
+  int ret = 1;
+  size_t i;
 
-  memcpy(out, bytes, ec->fe.adj_size);
+  ret &= (len == fe->adj_size);
 
-  return 1;
+  len *= ret;
+
+  for (i = 0; i < len; i++)
+    out[i] = bytes[i];
+
+  return ret;
 }
 
 int

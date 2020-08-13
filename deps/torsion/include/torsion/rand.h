@@ -16,11 +16,23 @@ extern "C" {
 #include "common.h"
 
 /*
- * Random
+ * Symbol Aliases
  */
 
-TORSION_EXTERN int
-torsion_reentrancy(void);
+#define torsion_reentrancy __torsion_reentrancy
+#define torsion_randomaddr __torsion_randomaddr
+
+/*
+ * Defs
+ */
+
+#define TORSION_REENT_NONE 0
+#define TORSION_REENT_TLS 1
+#define TORSION_REENT_MUTEX 2
+
+/*
+ * Random
+ */
 
 TORSION_EXTERN int
 torsion_getentropy(void *dst, size_t size);
@@ -33,6 +45,16 @@ torsion_random(uint32_t *num);
 
 TORSION_EXTERN int
 torsion_uniform(uint32_t *num, uint32_t max);
+
+/*
+ * Testing
+ */
+
+TORSION_EXTERN int
+torsion_reentrancy(void);
+
+TORSION_EXTERN uintptr_t
+torsion_randomaddr(void);
 
 #ifdef __cplusplus
 }

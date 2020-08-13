@@ -9,7 +9,8 @@
 
 #ifdef TORSION_BUILD
 #  if defined(__EMSCRIPTEN__)
-#    define TORSION_EXTERN __attribute__((used))
+#    include <emscripten.h>
+#    define TORSION_EXTERN EMSCRIPTEN_KEEPALIVE
 #  elif defined(__wasm__)
 #    define TORSION_EXTERN __attribute__((visibility("default")))
 #  elif defined(_MSC_VER) || defined(__BORLANDC__)

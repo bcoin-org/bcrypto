@@ -8,35 +8,35 @@
  *   https://github.com/bitcoin-core/secp256k1
  */
 
-#ifdef TORSION_USE_LIBSECP256K1
-#ifdef TORSION_HAVE_INT128
+#if defined(TORSION_USE_LIBSECP256K1)
+#  if defined(TORSION_HAVE_INT128)
 typedef uint64_t secp256k1_fe_word_t;
-#define SECP256K1_FIELD_WORDS 5
-#include "libsecp256k1_64.h"
-#else
+#    define SECP256K1_FIELD_WORDS 5
+#    include "libsecp256k1_64.h"
+#  else
 typedef uint32_t secp256k1_fe_word_t;
-#define SECP256K1_FIELD_WORDS 10
-#include "libsecp256k1_32.h"
-#endif
-#else /* TORSION_USE_LIBSECP256K1 */
-#ifdef TORSION_HAVE_INT128
+#    define SECP256K1_FIELD_WORDS 10
+#    include "libsecp256k1_32.h"
+#  endif
+#else /* !TORSION_USE_LIBSECP256K1 */
+#  if defined(TORSION_HAVE_INT128)
 typedef uint64_t secp256k1_fe_word_t;
-#define SECP256K1_FIELD_WORDS 4
-#include "secp256k1_64.h"
-#else
+#    define SECP256K1_FIELD_WORDS 4
+#    include "secp256k1_64.h"
+#  else
 typedef uint32_t secp256k1_fe_word_t;
-#define SECP256K1_FIELD_WORDS 8
-#include "secp256k1_32.h"
-#endif
-#endif
+#    define SECP256K1_FIELD_WORDS 8
+#    include "secp256k1_32.h"
+#  endif
+#endif /* !TORSION_USE_LIBSECP256K1 */
 
-#ifdef TORSION_USE_LIBSECP256K1
-#define fiat_secp256k1_mul fiat_secp256k1_carry_mul
-#define fiat_secp256k1_square fiat_secp256k1_carry_square
-#define fiat_secp256k1_to_montgomery NULL
-#define fiat_secp256k1_from_montgomery NULL
+#if defined(TORSION_USE_LIBSECP256K1)
+#  define fiat_secp256k1_mul fiat_secp256k1_carry_mul
+#  define fiat_secp256k1_square fiat_secp256k1_carry_square
+#  define fiat_secp256k1_to_montgomery NULL
+#  define fiat_secp256k1_from_montgomery NULL
 #else
-#define fiat_secp256k1_carry NULL
+#  define fiat_secp256k1_carry NULL
 #endif
 
 typedef secp256k1_fe_word_t secp256k1_fe_t[SECP256K1_FIELD_WORDS];
@@ -50,7 +50,7 @@ typedef secp256k1_fe_word_t secp256k1_fe_t[SECP256K1_FIELD_WORDS];
 
 static void
 secp256k1_fe_set(secp256k1_fe_t out, const secp256k1_fe_t in) {
-#ifdef TORSION_USE_LIBSECP256K1
+#if defined(TORSION_USE_LIBSECP256K1)
   out[0] = in[0];
   out[1] = in[1];
   out[2] = in[2];
@@ -63,7 +63,7 @@ secp256k1_fe_set(secp256k1_fe_t out, const secp256k1_fe_t in) {
   out[8] = in[8];
   out[9] = in[9];
 #endif
-#else /* TORSION_USE_LIBSECP256K1 */
+#else /* !TORSION_USE_LIBSECP256K1 */
   out[0] = in[0];
   out[1] = in[1];
   out[2] = in[2];
@@ -74,25 +74,25 @@ secp256k1_fe_set(secp256k1_fe_t out, const secp256k1_fe_t in) {
   out[6] = in[6];
   out[7] = in[7];
 #endif
-#endif
+#endif /* !TORSION_USE_LIBSECP256K1 */
 }
 
 static int
 secp256k1_fe_equal(const secp256k1_fe_t a, const secp256k1_fe_t b) {
   secp256k1_fe_word_t z = 0;
 
-#ifdef TORSION_USE_LIBSECP256K1
+#if defined(TORSION_USE_LIBSECP256K1)
   secp256k1_fe_t c;
   secp256k1_fe_sub(c, a, b);
   secp256k1_fe_nonzero(&z, c);
-#else
+#else /* !TORSION_USE_LIBSECP256K1 */
   size_t i;
 
   for (i = 0; i < SECP256K1_FIELD_WORDS; i++)
     z |= a[i] ^ b[i];
 
   z = (z >> 1) | (z & 1);
-#endif
+#endif /* !TORSION_USE_LIBSECP256K1 */
 
   return (z - 1) >> (sizeof(z) * CHAR_BIT - 1);
 }

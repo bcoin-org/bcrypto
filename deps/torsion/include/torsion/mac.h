@@ -11,8 +11,8 @@
 extern "C" {
 #endif
 
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
 #include "common.h"
 
 /*
@@ -32,8 +32,20 @@ extern "C" {
  */
 
 typedef struct poly1305_s {
-  size_t aligner;
-  unsigned char opaque[136];
+  union {
+    struct poly1305_32_s {
+      uint32_t r[5];
+      uint32_t h[5];
+      uint32_t pad[4];
+    } u32;
+    struct poly1305_64_s {
+      uint64_t r[3];
+      uint64_t h[3];
+      uint64_t pad[2];
+    } u64;
+  } state;
+  unsigned char block[16];
+  size_t size;
 } poly1305_t;
 
 /*
