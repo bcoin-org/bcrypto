@@ -2,16 +2,24 @@
 # Copyright (c) 2020, Christopher Jeffrey (MIT License).
 # https://github.com/bcoin-org/libtorsion
 
+#
+# Initialization
+#
+
 cmake_minimum_required(VERSION 3.4)
 project(libtorsion LANGUAGES C)
 
+#
+# Includes
+#
+
 include(../../cmake/AppendCCompilerFlag.cmake)
+include(CheckCSourceCompiles)
 include(NodeJS)
 
-set(CMAKE_C_STANDARD_REQUIRED ON)
-set(CMAKE_C_EXTENSIONS OFF)
-set(CMAKE_C_STANDARD 90)
-set(CMAKE_OSX_DEPLOYMENT_TARGET 10.7)
+#
+# Options
+#
 
 option(TORSION_ENABLE_ASM "Use inline x86-64 assembly if available" ON)
 option(TORSION_ENABLE_CRT "Enable chinese remainder theorem for RSA" OFF)
@@ -19,21 +27,26 @@ option(TORSION_ENABLE_DEBUG "Enable debug build" OFF)
 option(TORSION_ENABLE_INT128 "Use __int128 if available" ON)
 option(TORSION_ENABLE_LIBSECP256K1 "Use libsecp256k1 field element backend" OFF)
 option(TORSION_ENABLE_PTHREAD "Use pthread as a fallback for TLS" ON)
-option(TORSION_ENABLE_TLS "Enable TLS" ON)
+option(TORSION_ENABLE_TLS "Enable thread-local storage" ON)
 option(TORSION_ENABLE_VERIFY "Enable scalar bounds checks" OFF)
+
+#
+# Flags
+#
 
 set(torsion_cflags)
 
-if(MSVC)
-  set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /DTORSION_DEBUG")
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_EXTENSIONS OFF)
+set(CMAKE_C_STANDARD 90)
+set(CMAKE_OSX_DEPLOYMENT_TARGET 10.7)
 
+if(MSVC)
   append_c_compiler_flag(torsion_cflags /wd4146
                                         /wd4244
                                         /wd4267
                                         /wd4334)
 else()
-  set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -DTORSION_DEBUG")
-
   append_c_compiler_flag(torsion_cflags -pedantic
                                         -Wall
                                         -Wextra
@@ -44,74 +57,110 @@ else()
                                         -Wshadow)
 endif()
 
-check_c_source_compiles([=[
-int main(void) {
-  unsigned char ptr[32];
-  int x = 0;
-  __asm__ ("" : "+r" (x) ::);
-  __asm__ __volatile__("" :: "r" (ptr) : "memory");
-  return x;
-}
-]=] TORSION_HAS_ASM)
-
-check_c_source_compiles([=[
-#include <stdint.h>
-#if !defined(__amd64__) && !defined(__x86_64__)
-#  error "not an x64 platform"
-#endif
-int main(void) {
-  uint32_t stream[8], state[8];
-  __asm__ __volatile__(
-    "movups (%%rsi), %%xmm0\\n"
-    "movups 16(%%rsi), %%xmm1\\n"
-    "pxor %%xmm1, %%xmm0\\n"
-    "movups %%xmm0,(%%rdi)\\n"
-    "movups %%xmm1,16(%%rdi)\\n"
-    :
-    : "D" (stream), "S" (state)
-    : "xmm0", "xmm1", "cc", "memory"
-  );
-  return 0;
-}
-]=] TORSION_HAS_ASM_X64)
-
-check_c_source_compiles([=[
-typedef char check_64bit_t[sizeof(void *) == 8 ? 1 : -1];
-typedef signed __int128 int128_t;
-typedef unsigned __int128 uint128_t;
-int main(void) {
-  uint128_t r = 1;
-  r <<= 64;
-  r *= 113;
-  r >>= 65;
-  return r & 1;
-}
-]=] TORSION_HAS_INT128)
-
-check_c_source_compiles([=[
-#if defined(_WIN32) && !defined(__MINGW32__)
-#  define TLS __declspec(thread)
-#else
-#  define TLS __thread
-#endif
-static TLS int value;
-int main(void) {
-  value = 1;
-  return 0;
-}
-]=] TORSION_HAS_TLS)
-
-set(TORSION_HAS_THREADS OFF)
-
-if(WIN32)
-  set(TORSION_HAS_THREADS ON)
-else()
-  set(THREADS_PREFER_PTHREAD_FLAG ON)
-  find_package(Threads)
-  if(CMAKE_USE_PTHREADS_INIT)
-    set(TORSION_HAS_THREADS ON)
+if(TORSION_ENABLE_DEBUG)
+  if(MSVC)
+    append_c_compiler_flag(torsion_cflags /Zi)
+  else()
+    append_c_compiler_flag(torsion_cflags -g)
   endif()
 endif()
+
+#
+# Feature Testing
+#
+
+if(TORSION_ENABLE_ASM)
+  check_c_source_compiles([=[
+    int main(void) {
+      unsigned char ptr[32];
+      int x = 0;
+      __asm__ ("" : "+r" (x) ::);
+      __asm__ __volatile__("" :: "r" (ptr) : "memory");
+      return x;
+    }
+  ]=] TORSION_HAS_ASM)
+else()
+  set(TORSION_HAS_ASM)
+endif()
+
+if(TORSION_ENABLE_ASM)
+  check_c_source_compiles([=[
+    #if !defined(__amd64__) && !defined(__x86_64__)
+    #  error "not an x64 platform"
+    #endif
+    #include <stdint.h>
+    int main(void) {
+      uint32_t stream[8], state[8];
+      __asm__ __volatile__(
+        "movups (%%rsi), %%xmm0\\n"
+        "movups 16(%%rsi), %%xmm1\\n"
+        "pxor %%xmm1, %%xmm0\\n"
+        "movups %%xmm0,(%%rdi)\\n"
+        "movups %%xmm1,16(%%rdi)\\n"
+        :
+        : "D" (stream), "S" (state)
+        : "xmm0", "xmm1", "cc", "memory"
+      );
+      return 0;
+    }
+  ]=] TORSION_HAS_ASM_X64)
+else()
+  set(TORSION_HAS_ASM_X64)
+endif()
+
+if(TORSION_ENABLE_INT128)
+  check_c_source_compiles([=[
+    typedef char check_64bit_t[sizeof(void *) == 8 ? 1 : -1];
+    typedef signed __int128 int128_t;
+    typedef unsigned __int128 uint128_t;
+    int main(void) {
+      uint128_t r = 1;
+      r <<= 64;
+      r *= 113;
+      r >>= 65;
+      return r & 1;
+    }
+  ]=] TORSION_HAS_INT128)
+else()
+  set(TORSION_HAS_INT128)
+endif()
+
+if(TORSION_ENABLE_PTHREAD)
+  set(THREADS_PREFER_PTHREAD_FLAG ON)
+
+  find_package(Threads)
+
+  set(TORSION_HAS_PTHREAD ${CMAKE_USE_PTHREADS_INIT})
+else()
+  set(TORSION_HAS_PTHREAD 0)
+endif()
+
+if(TORSION_ENABLE_TLS)
+  check_c_source_compiles([=[
+    #if defined(_WIN32) && !defined(__MINGW32__)
+    #  define TLS __declspec(thread)
+    #else
+    #  define TLS __thread
+    #endif
+    static TLS int value;
+    int main(void) {
+      value = 1;
+      return 0;
+    }
+  ]=] TORSION_HAS_TLS)
+else()
+  set(TORSION_HAS_TLS)
+endif()
+
+if(NOT TORSION_HAS_TLS)
+  set(TORSION_HAS_TLS_FALLBACK ${TORSION_HAS_PTHREAD})
+else()
+  set(TORSION_HAS_TLS_FALLBACK 0)
+endif()
+
+#
+# Defines
+#
 
 set(torsion_defines)
 
@@ -125,11 +174,11 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   list(APPEND torsion_defines _POSIX_C_SOURCE=200112)
 endif()
 
-if(TORSION_ENABLE_ASM AND TORSION_HAS_ASM)
+if(TORSION_HAS_ASM)
   list(APPEND torsion_defines TORSION_HAVE_ASM)
 endif()
 
-if(TORSION_ENABLE_ASM AND TORSION_HAS_ASM_X64)
+if(TORSION_HAS_ASM_X64)
   list(APPEND torsion_defines TORSION_HAVE_ASM_X64)
 endif()
 
@@ -139,9 +188,11 @@ endif()
 
 if(TORSION_ENABLE_DEBUG)
   list(APPEND torsion_defines TORSION_DEBUG)
+else()
+  list(APPEND torsion_defines $<$<CONFIG:Debug>:TORSION_DEBUG>)
 endif()
 
-if(TORSION_ENABLE_INT128 AND TORSION_HAS_INT128)
+if(TORSION_HAS_INT128)
   list(APPEND torsion_defines TORSION_HAVE_INT128)
 endif()
 
@@ -149,22 +200,27 @@ if(TORSION_ENABLE_LIBSECP256K1)
   list(APPEND torsion_defines TORSION_USE_LIBSECP256K1)
 endif()
 
-if(TORSION_ENABLE_TLS AND TORSION_HAS_TLS)
+if(TORSION_HAS_TLS)
   list(APPEND torsion_defines TORSION_HAVE_TLS)
+endif()
+
+if(TORSION_HAS_TLS_FALLBACK)
+  list(APPEND torsion_defines TORSION_HAVE_PTHREAD)
 endif()
 
 if(TORSION_ENABLE_VERIFY)
   list(APPEND torsion_defines TORSION_VERIFY)
 endif()
 
+#
+# Targets
+#
+
 set(torsion_sources src/aead.c
                     src/asn1.c
                     src/cipher.c
                     src/ecc.c
                     src/encoding.c
-                    src/entropy/env.c
-                    src/entropy/hw.c
-                    src/entropy/sys.c
                     src/drbg.c
                     src/dsa.c
                     src/hash.c
@@ -173,22 +229,23 @@ set(torsion_sources src/aead.c
                     src/kdf.c
                     src/mac.c
                     src/mpi.c
-                    src/rand.c
                     src/rsa.c
                     src/stream.c
-                    src/util.c)
+                    src/util.c
+                    src/entropy/env.c
+                    src/entropy/hw.c
+                    src/entropy/sys.c
+                    src/rand.c)
 
+set(torsion_includes ${PROJECT_SOURCE_DIR}/include)
 set(torsion_libs)
 
-if(TORSION_ENABLE_PTHREAD AND TORSION_HAS_THREADS AND NOT WIN32)
-  if(NOT TORSION_ENABLE_TLS OR NOT TORSION_HAS_TLS)
-    list(APPEND torsion_defines TORSION_HAVE_PTHREAD)
-    list(APPEND torsion_libs Threads::Threads)
-  endif()
+if(TORSION_HAS_TLS_FALLBACK)
+  list(APPEND torsion_libs Threads::Threads)
 endif()
 
 add_node_library(torsion STATIC ${torsion_sources})
 target_compile_definitions(torsion PRIVATE ${torsion_defines})
 target_compile_options(torsion PRIVATE ${torsion_cflags})
-target_include_directories(torsion PUBLIC ${PROJECT_SOURCE_DIR}/include)
+target_include_directories(torsion PUBLIC ${torsion_includes})
 target_link_libraries(torsion INTERFACE ${torsion_libs})
