@@ -60,7 +60,7 @@ describe('SPKI', function() {
 
     assert(dsa.publicKeyVerify(key));
 
-    assert.strictEqual(spki.toPEM(), dsaPubPem);
+    assert.strictEqual(spki.toPEM(), dsaPubPem.replace(/\r\n/g, '\n'));
   });
 
   // eslint-disable-next-line

@@ -27,7 +27,7 @@ describe('OpenSSL', function() {
     assert.strictEqual(key.q.value.toString('hex'), json.q);
     assert.strictEqual(key.g.value.toString('hex'), json.g);
 
-    assert.strictEqual(key.toPEM(), dsaParamsPem);
+    assert.strictEqual(key.toPEM(), dsaParamsPem.replace(/\r\n/g, '\n'));
   });
 
   it('should deserialize DSA private key', () => {
@@ -41,7 +41,7 @@ describe('OpenSSL', function() {
     assert.strictEqual(key.y.value.toString('hex'), json.y);
     assert.strictEqual(key.x.value.toString('hex'), json.x);
 
-    assert.strictEqual(key.toPEM(), dsaPrivatePem);
+    assert.strictEqual(key.toPEM(), dsaPrivatePem.replace(/\r\n/g, '\n'));
   });
 
   it('should deserialize DSA public key', () => {
@@ -53,7 +53,7 @@ describe('OpenSSL', function() {
     assert.strictEqual(key.g.value.toString('hex'), json.g);
     assert.strictEqual(key.y.value.toString('hex'), json.y);
 
-    assert.strictEqual(key.toPEM(), dsaPublicPem);
+    assert.strictEqual(key.toPEM(), dsaPublicPem.replace(/\r\n/g, '\n'));
   });
 
   it('should deserialize DSA private key (backend)', () => {
@@ -71,7 +71,7 @@ describe('OpenSSL', function() {
     assert.bufferEqual(data, data2);
     const pem2 = pem.toPEM(data2, 'DSA PRIVATE KEY');
 
-    assert.strictEqual(pem2, dsaPrivatePem);
+    assert.strictEqual(pem2, dsaPrivatePem.replace(/\r\n/g, '\n'));
   });
 
   it('should deserialize DSA public key (backend)', () => {
@@ -88,6 +88,6 @@ describe('OpenSSL', function() {
     assert.bufferEqual(data, data2);
     const pem2 = pem.toPEM(data2, 'DSA PUBLIC KEY');
 
-    assert.strictEqual(pem2, dsaPublicPem);
+    assert.strictEqual(pem2, dsaPublicPem.replace(/\r\n/g, '\n'));
   });
 });

@@ -58,7 +58,7 @@ describe('PKCS8', function() {
 
     assert(dsa.publicKeyVerify(key));
 
-    assert.strictEqual(pki.toPEM(), dsaPubPem);
+    assert.strictEqual(pki.toPEM(), dsaPubPem.replace(/\r\n/g, '\n'));
   });
 
   // eslint-disable-next-line

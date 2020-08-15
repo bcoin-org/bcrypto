@@ -19,6 +19,6 @@ describe('RFC3279', function() {
     assert.strictEqual(key.q.value.toString('hex'), json.q);
     assert.strictEqual(key.g.value.toString('hex'), json.g);
 
-    assert.strictEqual(key.toPEM(), dsaParamsPem);
+    assert.strictEqual(key.toPEM(), dsaParamsPem.replace(/\r\n/g, '\n'));
   });
 });

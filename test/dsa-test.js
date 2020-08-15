@@ -11,6 +11,7 @@ const params = require('./data/dsa-params.json');
 const vectors = require('./data/dsa.json');
 const custom = require('./data/sign/dsa.json');
 
+const FAST = dsa.native === 2 && process.platform !== 'win32';
 const PEM_PATH = Path.resolve(__dirname, 'data', 'testdsapub.pem');
 const PEM_TXT = fs.readFileSync(PEM_PATH, 'utf8');
 
@@ -29,7 +30,7 @@ function createParams(json) {
 }
 
 describe('DSA', function() {
-  this.timeout(30000);
+  this.timeout(120000);
 
   it('should sign and verify', () => {
     const params = createParams(P2048_256);
@@ -69,7 +70,7 @@ describe('DSA', function() {
   });
 
   it('should sign and verify (DER)', () => {
-    const size = dsa.native < 2 ? 1024 : 2048;
+    const size = FAST ? 2048 : 1024;
     const params = dsa.paramsGenerate(size);
     const priv = dsa.privateKeyCreate(params);
     const pub = dsa.publicKeyCreate(priv);
@@ -95,7 +96,7 @@ describe('DSA', function() {
   });
 
   it('should sign and verify (async)', async () => {
-    const size = dsa.native < 2 ? 1024 : 2048;
+    const size = FAST ? 2048 : 1024;
     const params = await dsa.paramsGenerateAsync(size);
     const priv = dsa.privateKeyCreate(params);
     const pub = dsa.publicKeyCreate(priv);

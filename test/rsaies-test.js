@@ -7,6 +7,8 @@ const rsa = require('../lib/rsa');
 const rsaies = require('../lib/rsaies');
 const vectors = require('./data/ies/rsa.json');
 
+const FAST = rsa.native === 2 && process.platform !== 'win32';
+
 describe('RSAIES', function() {
   if (process.env.BMOCHA_VALGRIND)
     this.skip();
@@ -16,7 +18,7 @@ describe('RSAIES', function() {
   const badPriv = rsa.privateKeyGenerate(1024);
 
   for (const size of [1024, 2048, 4096]) {
-    if (size > 1024 && rsa.native < 2)
+    if (size > 1024 && !FAST)
       continue;
 
     it(`should encrypt and decrypt (${size})`, () => {
