@@ -26,12 +26,12 @@
     "install": "node-gyp rebuild",
     "lint": "eslint bench/*.js lib/ scripts/ test/ || exit 0",
     "lint-ci": "eslint bench/*.js lib/ scripts/ test/",
-    "test": "bmocha -S 'test/*-test.js'",
-    "test-browser": "bmocha -B js -H -S 'test/*-test.js'",
-    "test-js": "bmocha -B js -S 'test/*-test.js'",
-    "test-bigint": "bmocha -B js -e BCRYPTO_FORCE_BIGINT=1 -S 'test/*-test.js'",
-    "test-torsion": "bmocha -B native -e BCRYPTO_FORCE_TORSION=1 -S 'test/*-test.js'",
-    "test-native": "bmocha -B native -S 'test/*-test.js'",
+    "test": "bmocha -S test/*-test.js",
+    "test-browser": "bmocha -B js -H -S test/*-test.js",
+    "test-js": "bmocha -B js -S test/*-test.js",
+    "test-bigint": "bmocha -B js -e BCRYPTO_FORCE_BIGINT=1 -S test/*-test.js",
+    "test-torsion": "bmocha -B native -e BCRYPTO_FORCE_TORSION=1 -S test/*-test.js",
+    "test-native": "bmocha -B native -S test/*-test.js",
     "test-all": "npm run test-browser && npm run test-js && npm run test-bigint && npm run test-torsion && npm run test-native"
   },
   "dependencies": {
