@@ -49,10 +49,10 @@
 #define SCRATCH_SIZE 64
 
 #define MAX_BUFFER_LENGTH \
-  (sizeof(uintptr_t) == 4 ? 0x3ffffffful : 0xfffffffeul)
+  (sizeof(void *) == 4 ? 0x3ffffffful : 0xfffffffeul)
 
 #define MAX_STRING_LENGTH \
-  (sizeof(uintptr_t) == 4 ? ((1ul << 28) - 16ul) : ((1ul << 29) - 24ul))
+  (sizeof(void *) == 4 ? ((1ul << 28) - 16ul) : ((1ul << 29) - 24ul))
 
 #define JS_ERR_CONTEXT "Could not create context."
 #define JS_ERR_FINAL "Could not finalize context."
@@ -1619,8 +1619,11 @@ bcrypto_bcrypt_pbkdf_async(napi_env env, napi_callback_info info) {
     JS_THROW(JS_ERR_DERIVE);
   }
 
-  memcpy(worker->pass, pass, pass_len);
-  memcpy(worker->salt, salt, salt_len);
+  if (pass_len > 0)
+    memcpy(worker->pass, pass, pass_len);
+
+  if (salt_len > 0)
+    memcpy(worker->salt, salt, salt_len);
 
   CHECK(napi_create_string_latin1(env, "bcrypto:bcrypt_pbkdf",
                                   NAPI_AUTO_LENGTH, &workname) == napi_ok);
@@ -7995,8 +7998,11 @@ bcrypto_pbkdf2_derive_async(napi_env env, napi_callback_info info) {
     JS_THROW(JS_ERR_DERIVE);
   }
 
-  memcpy(worker->pass, pass, pass_len);
-  memcpy(worker->salt, salt, salt_len);
+  if (pass_len > 0)
+    memcpy(worker->pass, pass, pass_len);
+
+  if (salt_len > 0)
+    memcpy(worker->salt, salt, salt_len);
 
   CHECK(napi_create_string_latin1(env, "bcrypto:pbkdf2_derive",
                                   NAPI_AUTO_LENGTH, &workname) == napi_ok);
@@ -10179,8 +10185,11 @@ bcrypto_scrypt_derive_async(napi_env env, napi_callback_info info) {
     JS_THROW(JS_ERR_DERIVE);
   }
 
-  memcpy(worker->pass, pass, pass_len);
-  memcpy(worker->salt, salt, salt_len);
+  if (pass_len > 0)
+    memcpy(worker->pass, pass, pass_len);
+
+  if (salt_len > 0)
+    memcpy(worker->salt, salt, salt_len);
 
   CHECK(napi_create_string_latin1(env, "bcrypto:scrypt_derive",
                                   NAPI_AUTO_LENGTH, &workname) == napi_ok);
@@ -13303,7 +13312,7 @@ NAPI_MODULE_INIT() {
 #undef F
   };
 
-  static struct {
+  static const struct {
     const char *name;
     int value;
   } flags[] = {
