@@ -416,7 +416,7 @@ typedef struct wei_def_s {
   const endo_def_t *endo;
 } wei_def_t;
 
-struct wei_scratch_s {
+typedef struct wei_scratch_s {
   size_t size;
   jge_t *wnd;
   jge_t **wnds;
@@ -424,7 +424,7 @@ struct wei_scratch_s {
   int **nafs;
   wge_t *points;
   sc_t *coeffs;
-};
+} wei__scratch_t;
 
 /*
  * Montgomery
@@ -537,7 +537,7 @@ typedef struct edwards_def_s {
   const subgroup_def_t *torsion;
 } edwards_def_t;
 
-struct edwards_scratch_s {
+typedef struct edwards_scratch_s {
   size_t size;
   xge_t *wnd;
   xge_t **wnds;
@@ -545,7 +545,7 @@ struct edwards_scratch_s {
   int **nafs;
   xge_t *points;
   sc_t *coeffs;
-};
+} edwards__scratch_t;
 
 /*
  * Helpers
@@ -1157,14 +1157,14 @@ sc_jsf_var0(const scalar_field_t *sc, int *naf,
   /* JSF->NAF conversion table. */
   static const int table[9] = {
     -3, /* -1 -1 */
-    -1, /* -1 0 */
-    -5, /* -1 1 */
-    -7, /* 0 -1 */
-    0, /* 0 0 */
-    7, /* 0 1 */
-    5, /* 1 -1 */
-    1, /* 1 0 */
-    3  /* 1 1 */
+    -1, /* -1  0 */
+    -5, /* -1  1 */
+    -7, /*  0 -1 */
+     0, /*  0  0 */
+     7, /*  0  1 */
+     5, /*  1 -1 */
+     1, /*  1  0 */
+     3  /*  1  1 */
   };
 
   ASSERT(bits <= max);
@@ -1266,7 +1266,10 @@ sc_random(const scalar_field_t *sc, sc_t k, drbg_t *rng) {
 
 static void
 fe_zero(const prime_field_t *fe, fe_t r) {
-  memset(r, 0, fe->words * sizeof(fe_word_t));
+  size_t i = fe->words;
+
+  while (i--)
+    r[i] = 0;
 }
 
 static void
@@ -1308,6 +1311,51 @@ fe_import_be(const prime_field_t *fe, fe_t r, const unsigned char *raw) {
   }
 
   return fe_import(fe, r, raw);
+}
+
+static int
+fe_import_pad(const prime_field_t *fe, fe_t r,
+              const unsigned char *raw, size_t len) {
+  unsigned char tmp[MAX_FIELD_SIZE];
+  int ret;
+
+  if (fe->endian == 1) {
+    while (len > 0 && raw[0] == 0x00) {
+      len -= 1;
+      raw += 1;
+    }
+
+    if (len > fe->size) {
+      fe_zero(fe, r);
+      return 0;
+    }
+
+    memset(tmp, 0x00, fe->size - len);
+
+    if (len > 0)
+      memcpy(tmp + fe->size - len, raw, len);
+  } else if (fe->endian == -1) {
+    while (len > 0 && raw[len - 1] == 0x00)
+      len -= 1;
+
+    if (len > fe->size) {
+      fe_zero(fe, r);
+      return 0;
+    }
+
+    if (len > 0)
+      memcpy(tmp, raw, len);
+
+    memset(tmp + len, 0x00, fe->size - len);
+  } else {
+    torsion_abort(); /* LCOV_EXCL_LINE */
+  }
+
+  ret = fe_import(fe, r, tmp);
+
+  cleanse(tmp, fe->size);
+
+  return ret;
 }
 
 static void
@@ -1782,7 +1830,7 @@ fe_random(const prime_field_t *fe, fe_t x, drbg_t *rng) {
 static void
 scalar_field_init(scalar_field_t *sc, const scalar_def_t *def, int endian) {
   /* Scalar field using Barrett reduction. */
-  memset(sc, 0, sizeof(scalar_field_t));
+  memset(sc, 0, sizeof(*sc));
 
   /* Field constants. */
   sc->endian = endian;
@@ -1792,7 +1840,7 @@ scalar_field_init(scalar_field_t *sc, const scalar_def_t *def, int endian) {
   sc->endo_bits = (def->bits + 1) / 2 + 1;
   sc->shift = sc->limbs * 2 + 2;
 
-  /* Deserialize order into GMP limbs. */
+  /* Deserialize order into limbs. */
   mpn_import(sc->n, MAX_REDUCE_LIMBS, def->n, sc->size, 1);
 
   /* Keep a raw representation for byte comparisons. */
@@ -1853,7 +1901,7 @@ scalar_field_init(scalar_field_t *sc, const scalar_def_t *def, int endian) {
 static void
 prime_field_init(prime_field_t *fe, const prime_def_t *def, int endian) {
   /* Prime field using a fiat backend. */
-  memset(fe, 0, sizeof(prime_field_t));
+  memset(fe, 0, sizeof(*fe));
 
   /* Field constants. */
   fe->endian = endian;
@@ -1868,7 +1916,7 @@ prime_field_init(prime_field_t *fe, const prime_def_t *def, int endian) {
   if ((fe->bits & 7) != 0)
     fe->mask = (1 << (fe->bits & 7)) - 1;
 
-  /* Deserialize prime into GMP limbs. */
+  /* Deserialize prime into limbs. */
   mpn_import(fe->p, MAX_REDUCE_LIMBS, def->p, fe->size, 1);
 
   /* Keep a raw representation for byte comparisons. */
@@ -2195,7 +2243,7 @@ wge_is_even(const wei_t *ec, const wge_t *p) {
   return (fe_is_odd(&ec->fe, p->y) ^ 1) & (p->inf ^ 1);
 }
 
-TORSION_UNUSED static int
+static int
 wge_equal_x(const wei_t *ec, const wge_t *p, const fe_t x) {
   return fe_equal(&ec->fe, p->x, x) & (p->inf ^ 1);
 }
@@ -2592,7 +2640,7 @@ jge_zero(const wei_t *ec, jge_t *r) {
   fe_zero(fe, r->z);
 }
 
-TORSION_UNUSED static void
+static void
 jge_cleanse(const wei_t *ec, jge_t *r) {
   const prime_field_t *fe = &ec->fe;
 
@@ -3665,7 +3713,7 @@ wei_init(wei_t *ec, const wei_def_t *def) {
   unsigned int i;
   fe_t m3;
 
-  memset(ec, 0, sizeof(wei_t));
+  memset(ec, 0, sizeof(*ec));
 
   ec->hash = def->hash;
   ec->h = def->h;
@@ -4219,7 +4267,7 @@ wei_jmul_multi_normal_var(const wei_t *ec,
                           const wge_t *points,
                           const sc_t *coeffs,
                           size_t len,
-                          struct wei_scratch_s *scratch) {
+                          wei__scratch_t *scratch) {
   /* Multiple point multiplication, also known
    * as "Shamir's trick" (with interleaved NAFs).
    *
@@ -4305,7 +4353,7 @@ wei_jmul_multi_endo_var(const wei_t *ec,
                         const wge_t *points,
                         const sc_t *coeffs,
                         size_t len,
-                        struct wei_scratch_s *scratch) {
+                        wei__scratch_t *scratch) {
   /* Multiple point multiplication, also known
    * as "Shamir's trick" (with interleaved NAFs).
    *
@@ -4383,7 +4431,7 @@ wei_jmul_multi_var(const wei_t *ec,
                    const wge_t *points,
                    const sc_t *coeffs,
                    size_t len,
-                   struct wei_scratch_s *scratch) {
+                   wei__scratch_t *scratch) {
   if (ec->endo)
     wei_jmul_multi_endo_var(ec, r, k0, points, coeffs, len, scratch);
   else
@@ -4397,7 +4445,7 @@ wei_mul_multi_var(const wei_t *ec,
                   const wge_t *points,
                   const sc_t *coeffs,
                   size_t len,
-                  struct wei_scratch_s *scratch) {
+                  wei__scratch_t *scratch) {
   jge_t j;
   wei_jmul_multi_var(ec, &j, k0, points, coeffs, len, scratch);
   jge_to_wge_var(ec, r, &j);
@@ -4966,7 +5014,7 @@ mge_set_x(const mont_t *ec, mge_t *r, const fe_t x, int sign) {
   return ret;
 }
 
-TORSION_UNUSED static int
+static int
 mge_set_xy(const mont_t *ec, mge_t *r, const fe_t x, const fe_t y) {
   const prime_field_t *fe = &ec->fe;
   int ret = mont_validate_xy(ec, x, y);
@@ -5499,7 +5547,7 @@ mont_init(mont_t *ec, const mont_def_t *def) {
   scalar_field_t *sc = &ec->sc;
   unsigned int i;
 
-  memset(ec, 0, sizeof(mont_t));
+  memset(ec, 0, sizeof(*ec));
 
   ec->h = def->h;
 
@@ -6502,7 +6550,7 @@ edwards_init(edwards_t *ec, const edwards_def_t *def) {
   scalar_field_t *sc = &ec->sc;
   unsigned int i;
 
-  memset(ec, 0, sizeof(edwards_t));
+  memset(ec, 0, sizeof(*ec));
 
   ec->hash = def->hash;
   ec->context = def->context;
@@ -6810,7 +6858,7 @@ edwards_mul_multi_var(const edwards_t *ec,
                       const xge_t *points,
                       const sc_t *coeffs,
                       size_t len,
-                      struct edwards_scratch_s *scratch) {
+                      edwards__scratch_t *scratch) {
   /* Multiple point multiplication, also known
    * as "Shamir's trick" (with interleaved NAFs).
    *
@@ -8459,9 +8507,9 @@ wei_curve_field_bits(const wei_t *ec) {
   return ec->fe.bits;
 }
 
-struct wei_scratch_s *
+wei__scratch_t *
 wei_scratch_create(const wei_t *ec, size_t size) {
-  struct wei_scratch_s *scratch = checked_malloc(sizeof(struct wei_scratch_s));
+  wei__scratch_t *scratch = checked_malloc(sizeof(wei__scratch_t));
   size_t length = ec->endo ? size : size / 2;
   size_t bits = ec->endo ? ec->sc.endo_bits : ec->sc.bits;
   size_t i;
@@ -8484,7 +8532,7 @@ wei_scratch_create(const wei_t *ec, size_t size) {
 }
 
 void
-wei_scratch_destroy(const wei_t *ec, struct wei_scratch_s *scratch) {
+wei_scratch_destroy(const wei_t *ec, wei__scratch_t *scratch) {
   (void)ec;
 
   if (scratch != NULL) {
@@ -8594,10 +8642,9 @@ edwards_curve_field_bits(const edwards_t *ec) {
   return ec->fe.bits;
 }
 
-struct edwards_scratch_s *
+edwards__scratch_t *
 edwards_scratch_create(const edwards_t *ec, size_t size) {
-  struct edwards_scratch_s *scratch =
-    checked_malloc(sizeof(struct edwards_scratch_s));
+  edwards__scratch_t *scratch = checked_malloc(sizeof(edwards__scratch_t));
   size_t length = size / 2;
   size_t bits = ec->sc.bits;
   size_t i;
@@ -8620,8 +8667,7 @@ edwards_scratch_create(const edwards_t *ec, size_t size) {
 }
 
 void
-edwards_scratch_destroy(const edwards_t *ec,
-                        struct edwards_scratch_s *scratch) {
+edwards_scratch_destroy(const edwards_t *ec, edwards__scratch_t *scratch) {
   (void)ec;
 
   if (scratch != NULL) {
@@ -8660,12 +8706,13 @@ ecdsa_privkey_generate(const wei_t *ec,
                        const unsigned char *entropy) {
   const scalar_field_t *sc = &ec->sc;
   drbg_t rng;
+  sc_t a;
 
   drbg_init(&rng, HASH_SHA256, entropy, ENTROPY_SIZE);
 
-  do {
-    drbg_generate(&rng, out, sc->size);
-  } while (!ecdsa_privkey_verify(ec, out));
+  sc_random(sc, a, &rng);
+  sc_export(sc, out, a);
+  sc_cleanse(sc, a);
 
   cleanse(&rng, sizeof(rng));
 }
@@ -8674,9 +8721,12 @@ int
 ecdsa_privkey_verify(const wei_t *ec, const unsigned char *priv) {
   const scalar_field_t *sc = &ec->sc;
   int ret = 1;
+  sc_t a;
 
-  ret &= bytes_zero(priv, sc->size) ^ 1;
-  ret &= bytes_lt(priv, sc->raw, sc->size, sc->endian);
+  ret &= sc_import(sc, a, priv);
+  ret &= sc_is_zero(sc, a) ^ 1;
+
+  sc_cleanse(sc, a);
 
   return ret;
 }
@@ -8687,12 +8737,13 @@ ecdsa_privkey_export(const wei_t *ec,
                      const unsigned char *priv) {
   const scalar_field_t *sc = &ec->sc;
   int ret = 1;
-  size_t i;
+  sc_t a;
 
-  ret &= ecdsa_privkey_verify(ec, priv);
+  ret &= sc_import(sc, a, priv);
+  ret &= sc_is_zero(sc, a) ^ 1;
 
-  for (i = 0; i < sc->size; i++)
-    out[i] = priv[i];
+  sc_export(sc, out, a);
+  sc_cleanse(sc, a);
 
   return ret;
 }
@@ -8705,24 +8756,28 @@ ecdsa_privkey_import(const wei_t *ec,
   const scalar_field_t *sc = &ec->sc;
   unsigned char key[MAX_SCALAR_SIZE];
   int ret = 1;
+  sc_t a;
 
   while (len > 0 && bytes[0] == 0x00) {
     len -= 1;
     bytes += 1;
   }
 
-  ret &= (len <= sc->size);
-
-  len *= ret;
+  if (len > sc->size) {
+    memset(out, 0x00, sc->size);
+    return 0;
+  }
 
   memset(key, 0x00, sc->size - len);
 
   if (len > 0)
     memcpy(key + sc->size - len, bytes, len);
 
-  ret &= ecdsa_privkey_verify(ec, key);
+  ret &= sc_import(sc, a, key);
+  ret &= sc_is_zero(sc, a) ^ 1;
 
-  memcpy(out, key, sc->size);
+  sc_export(sc, out, a);
+  sc_cleanse(sc, a);
 
   cleanse(key, sc->size);
 
@@ -8976,43 +9031,15 @@ ecdsa_pubkey_import(const wei_t *ec,
                     int sign,
                     int compact) {
   const prime_field_t *fe = &ec->fe;
-  unsigned char xp[MAX_FIELD_SIZE];
-  unsigned char yp[MAX_FIELD_SIZE];
   int has_x = (x_len > 0);
   int has_y = (y_len > 0);
   int ret = 1;
   fe_t x, y;
   wge_t A;
 
-  while (x_len > 0 && x_raw[0] == 0x00) {
-    x_len -= 1;
-    x_raw += 1;
-  }
-
-  while (y_len > 0 && y_raw[0] == 0x00) {
-    y_len -= 1;
-    y_raw += 1;
-  }
-
-  ret &= (x_len <= fe->size);
-  ret &= (y_len <= fe->size);
-
-  x_len *= ret;
-  y_len *= ret;
-
-  memset(xp, 0x00, fe->size - x_len);
-
-  if (x_len > 0)
-    memcpy(xp + fe->size - x_len, x_raw, x_len);
-
-  memset(yp, 0x00, fe->size - y_len);
-
-  if (y_len > 0)
-    memcpy(yp + fe->size - y_len, y_raw, y_len);
-
   ret &= has_x;
-  ret &= fe_import(fe, x, xp);
-  ret &= fe_import(fe, y, yp);
+  ret &= fe_import_pad(fe, x, x_raw, x_len);
+  ret &= fe_import_pad(fe, y, y_raw, y_len);
 
   if (has_x && has_y)
     ret &= wge_set_xy(ec, &A, x, y);
@@ -9225,17 +9252,17 @@ ecdsa_reduce(const wei_t *ec, sc_t r,
   /* Note that the message length is not secret. */
   if (msg_len * 8 > sc->bits) {
     size_t shift = msg_len * 8 - sc->bits;
-    unsigned char mask = (1 << shift) - 1;
-    unsigned char cy = 0;
+    unsigned int mask = (1 << shift) - 1;
+    unsigned int cy = 0;
     size_t i;
 
     ASSERT(shift > 0);
     ASSERT(shift < 8);
 
     for (i = 0; i < sc->size; i++) {
-      unsigned char ch = tmp[i];
+      unsigned int ch = tmp[i];
 
-      tmp[i] = (cy << (8 - shift)) | (ch >> shift);
+      tmp[i] = ((cy << (8 - shift)) | (ch >> shift)) & 0xff;
       cy = ch & mask;
     }
   }
@@ -9837,6 +9864,7 @@ schnorr_legacy_verify(const wei_t *ec,
    *   - Let `r` and `s` be signature elements.
    *   - Let `A` be a valid group element.
    *   - r^3 + a * r + b is square in F(p).
+   *   - sqrt(r^3 + a * r + b) is square in F(p).
    *   - r < p, s < n.
    *   - R != O.
    *
@@ -9906,7 +9934,7 @@ schnorr_legacy_verify_batch(const wei_t *ec,
                             const unsigned char *const *pubs,
                             const size_t *pub_lens,
                             size_t len,
-                            struct wei_scratch_s *scratch) {
+                            wei__scratch_t *scratch) {
   /* Schnorr Batch Verification.
    *
    * [SCHNORR] "Batch Verification".
@@ -9919,6 +9947,7 @@ schnorr_legacy_verify_batch(const wei_t *ec,
    *   - Let `A` be a valid group element.
    *   - Let `i` be the batch item index.
    *   - r^3 + a * r + b is square in F(p).
+   *   - sqrt(r^3 + a * r + b) is square in F(p).
    *   - r < p, s < n.
    *   - a1 = 1 mod n.
    *
@@ -10055,13 +10084,6 @@ schnorr_legacy_verify_batch(const wei_t *ec,
 /*
  * Schnorr
  */
-
-int
-schnorr_support(const wei_t *ec) {
-  /* [BIP340] "Footnotes". */
-  /* Must be congruent to 3 mod 4. */
-  return (ec->fe.p[0] & 3) == 3;
-}
 
 size_t
 schnorr_privkey_size(const wei_t *ec) {
@@ -10286,29 +10308,25 @@ int
 schnorr_pubkey_import(const wei_t *ec,
                       unsigned char *out,
                       const unsigned char *x_raw,
-                      size_t x_len) {
+                      size_t x_len,
+                      const unsigned char *y_raw,
+                      size_t y_len) {
   const prime_field_t *fe = &ec->fe;
-  unsigned char xp[MAX_FIELD_SIZE];
   int has_x = (x_len > 0);
-  wge_t A;
+  int has_y = (y_len > 0);
   int ret = 1;
-
-  while (x_len > 0 && x_raw[0] == 0x00) {
-    x_len -= 1;
-    x_raw += 1;
-  }
-
-  ret &= (x_len <= fe->size);
-
-  x_len *= ret;
-
-  memset(xp, 0x00, fe->size - x_len);
-
-  if (x_len > 0)
-    memcpy(xp + fe->size - x_len, x_raw, x_len);
+  fe_t x, y;
+  wge_t A;
 
   ret &= has_x;
-  ret &= wge_import_even(ec, &A, xp);
+  ret &= fe_import_pad(fe, x, x_raw, x_len);
+  ret &= fe_import_pad(fe, y, y_raw, y_len);
+
+  if (has_x && has_y)
+    ret &= wge_set_xy(ec, &A, x, y);
+  else
+    ret &= wge_set_x(ec, &A, x, -1);
+
   ret &= wge_export_x(ec, out, &A);
 
   return ret;
@@ -10455,19 +10473,19 @@ schnorr_hash_aux(const wei_t *ec,
   if (ec->hash == HASH_SHA256) {
     sha256_t *sha = &hash.ctx.sha256;
 
-    sha->state[0] = 0x5d74a872;
-    sha->state[1] = 0xd57064d4;
-    sha->state[2] = 0x89495bec;
-    sha->state[3] = 0x910f46f5;
-    sha->state[4] = 0xcbc6fd3e;
-    sha->state[5] = 0xaf05d9d0;
-    sha->state[6] = 0xcb781ce6;
-    sha->state[7] = 0x062930ac;
+    sha->state[0] = 0x24dd3219;
+    sha->state[1] = 0x4eba7e70;
+    sha->state[2] = 0xca0fabb9;
+    sha->state[3] = 0x0fa3166d;
+    sha->state[4] = 0x3afbe4b1;
+    sha->state[5] = 0x4c44df97;
+    sha->state[6] = 0x4aac2739;
+    sha->state[7] = 0x249e850a;
     sha->size = 64;
 
     hash.type = HASH_SHA256;
   } else {
-    schnorr_hash_init(&hash, ec->hash, "BIP340/aux");
+    schnorr_hash_init(&hash, ec->hash, "BIP0340/aux");
   }
 
   hash_update(&hash, aux, 32);
@@ -10497,7 +10515,10 @@ schnorr_hash_nonce(const wei_t *ec, sc_t k,
 
   STATIC_ASSERT(MAX_SCALAR_SIZE >= HASH_MAX_OUTPUT_SIZE);
 
-  schnorr_hash_aux(ec, secret, scalar, aux);
+  if (aux != NULL)
+    schnorr_hash_aux(ec, secret, scalar, aux);
+  else
+    memcpy(secret, scalar, sc->size);
 
   if (sc->size > hash_size) {
     off = sc->size - hash_size;
@@ -10507,19 +10528,19 @@ schnorr_hash_nonce(const wei_t *ec, sc_t k,
   if (ec->hash == HASH_SHA256) {
     sha256_t *sha = &hash.ctx.sha256;
 
-    sha->state[0] = 0xa96e75cb;
-    sha->state[1] = 0x74f9f0ac;
-    sha->state[2] = 0xc49e3c98;
-    sha->state[3] = 0x202f99ba;
-    sha->state[4] = 0x8946a616;
-    sha->state[5] = 0x4accf415;
-    sha->state[6] = 0x86e335c3;
-    sha->state[7] = 0x48d0a072;
+    sha->state[0] = 0x46615b35;
+    sha->state[1] = 0xf4bfbff7;
+    sha->state[2] = 0x9f8dc671;
+    sha->state[3] = 0x83627ab3;
+    sha->state[4] = 0x60217180;
+    sha->state[5] = 0x57358661;
+    sha->state[6] = 0x21a29e54;
+    sha->state[7] = 0x68b07b4c;
     sha->size = 64;
 
     hash.type = HASH_SHA256;
   } else {
-    schnorr_hash_init(&hash, ec->hash, "BIP340/nonce");
+    schnorr_hash_init(&hash, ec->hash, "BIP0340/nonce");
   }
 
   hash_update(&hash, secret, sc->size);
@@ -10557,19 +10578,19 @@ schnorr_hash_challenge(const wei_t *ec, sc_t e,
   if (ec->hash == HASH_SHA256) {
     sha256_t *sha = &hash.ctx.sha256;
 
-    sha->state[0] = 0x71985ac9;
-    sha->state[1] = 0x198317a2;
-    sha->state[2] = 0x60b6e581;
-    sha->state[3] = 0x54c109b6;
-    sha->state[4] = 0x64bac2fd;
-    sha->state[5] = 0x91231de2;
-    sha->state[6] = 0x7301ebde;
-    sha->state[7] = 0x87635f83;
+    sha->state[0] = 0x9cecba11;
+    sha->state[1] = 0x23925381;
+    sha->state[2] = 0x11679112;
+    sha->state[3] = 0xd1627e0f;
+    sha->state[4] = 0x97c87550;
+    sha->state[5] = 0x003cc765;
+    sha->state[6] = 0x90f61164;
+    sha->state[7] = 0x33e9b66a;
     sha->size = 64;
 
     hash.type = HASH_SHA256;
   } else {
-    schnorr_hash_init(&hash, ec->hash, "BIP340/challenge");
+    schnorr_hash_init(&hash, ec->hash, "BIP0340/challenge");
   }
 
   hash_update(&hash, R, fe->size);
@@ -10607,12 +10628,12 @@ schnorr_sign(const wei_t *ec,
    *   A = G * a
    *   a = -a mod n, if y(A) is not even
    *   x = x(A)
-   *   t = a xor H("BIP340/aux", d)
-   *   k = H("BIP340/nonce", t, x, m) mod n
+   *   t = a xor H("BIP0340/aux", d)
+   *   k = H("BIP0340/nonce", t, x, m) mod n
    *   R = G * k
-   *   k = -k mod n, if y(R) is not square
+   *   k = -k mod n, if y(R) is not even
    *   r = x(R)
-   *   e = H("BIP340/challenge", r, x, m) mod n
+   *   e = H("BIP0340/challenge", r, x, m) mod n
    *   s = (k + e * a) mod n
    *   S = (r, s)
    *
@@ -10647,7 +10668,7 @@ schnorr_sign(const wei_t *ec,
 
   wei_mul_g(ec, &R, k);
 
-  sc_neg_cond(sc, k, k, wge_is_square(ec, &R) ^ 1);
+  sc_neg_cond(sc, k, k, wge_is_even(ec, &R) ^ 1);
 
   ret &= wge_export_x(ec, Rraw, &R);
 
@@ -10689,7 +10710,9 @@ schnorr_verify(const wei_t *ec,
    *   - Let `r` and `s` be signature elements.
    *   - Let `x` be a field element.
    *   - r^3 + a * r + b is square in F(p).
-   *   - x^3 + a * x + b is even in F(p).
+   *   - x^3 + a * x + b is square in F(p).
+   *   - sqrt(r^3 + a * r + b) is even in F(p).
+   *   - sqrt(x^3 + a * x + b) is even in F(p).
    *   - r < p, s < n, x < p.
    *   - R != O.
    *
@@ -10697,25 +10720,16 @@ schnorr_verify(const wei_t *ec,
    *
    *   R = (r, sqrt(r^3 + a * r + b))
    *   A = (x, sqrt(x^3 + a * x + b))
-   *   e = H("BIP340/challenge", r, x, m) mod n
+   *   e = H("BIP0340/challenge", r, x, m) mod n
    *   R == G * s - A * e
    *
    * We can skip a square root with:
    *
    *   A = (x, sqrt(x^3 + a * x + b))
-   *   e = H("BIP340/challenge", r, x, m) mod n
+   *   e = H("BIP0340/challenge", r, x, m) mod n
    *   R = G * s - A * e
-   *   y(R) is square
+   *   y(R) is even
    *   x(R) == r
-   *
-   * We can also avoid affinization by
-   * replacing the two assertions with:
-   *
-   *   (y(R) * z(R) mod p) is square
-   *   x(R) == r * z(R)^2 mod p
-   *
-   * Furthermore, squareness can be calculated
-   * with a variable time Jacobi symbol algorithm.
    */
   const prime_field_t *fe = &ec->fe;
   const scalar_field_t *sc = &ec->sc;
@@ -10723,8 +10737,7 @@ schnorr_verify(const wei_t *ec,
   const unsigned char *sraw = sig + fe->size;
   fe_t r;
   sc_t s, e;
-  wge_t A;
-  jge_t R;
+  wge_t A, R;
 
   if (!fe_import(fe, r, Rraw))
     return 0;
@@ -10739,12 +10752,12 @@ schnorr_verify(const wei_t *ec,
 
   sc_neg(sc, e, e);
 
-  wei_jmul_double_var(ec, &R, s, &A, e);
+  wei_mul_double_var(ec, &R, s, &A, e);
 
-  if (!jge_is_square_var(ec, &R))
+  if (!wge_is_even(ec, &R))
     return 0;
 
-  if (!jge_equal_x(ec, &R, r))
+  if (!wge_equal_x(ec, &R, r))
     return 0;
 
   return 1;
@@ -10757,7 +10770,7 @@ schnorr_verify_batch(const wei_t *ec,
                      const unsigned char *const *sigs,
                      const unsigned char *const *pubs,
                      size_t len,
-                     struct wei_scratch_s *scratch) {
+                     wei__scratch_t *scratch) {
   /* Schnorr Batch Verification.
    *
    * [BIP340] "Batch Verification".
@@ -10770,7 +10783,9 @@ schnorr_verify_batch(const wei_t *ec,
    *   - Let `x` be a field element.
    *   - Let `i` be the batch item index.
    *   - r^3 + a * r + b is square in F(p).
-   *   - x^3 + a * x + b is even in F(p).
+   *   - x^3 + a * x + b is square in F(p).
+   *   - sqrt(r^3 + a * r + b) is even in F(p).
+   *   - sqrt(x^3 + a * x + b) is even in F(p).
    *   - r < p, s < n, x < p.
    *   - a1 = 1 mod n.
    *
@@ -10778,7 +10793,7 @@ schnorr_verify_batch(const wei_t *ec,
    *
    *   Ri = (ri, sqrt(ri^3 + a * ri + b))
    *   Ai = (xi, sqrt(xi^3 + a * xi + b))
-   *   ei = H("BIP340/challenge", ri, xi, mi) mod n
+   *   ei = H("BIP0340/challenge", ri, xi, mi) mod n
    *   ai = random integer in [1,n-1]
    *   lhs = si * ai + ... mod n
    *   rhs = Ri * ai + Ai * (ei * ai mod n) + ...
@@ -10839,7 +10854,7 @@ schnorr_verify_batch(const wei_t *ec,
     if (!sc_import(sc, s, sraw))
       return 0;
 
-    if (!wge_import_square(ec, &R, Rraw))
+    if (!wge_import_even(ec, &R, Rraw))
       return 0;
 
     if (!wge_import_even(ec, &A, pub))
@@ -10973,14 +10988,14 @@ ecdh_privkey_import(const mont_t *ec,
                     size_t len) {
   const scalar_field_t *sc = &ec->sc;
   unsigned char key[MAX_SCALAR_SIZE];
-  int ret = 1;
 
   while (len > 0 && bytes[len - 1] == 0x00)
     len -= 1;
 
-  ret &= (len <= sc->size);
-
-  len *= ret;
+  if (len > sc->size) {
+    memset(out, 0x00, sc->size);
+    return 0;
+  }
 
   if (len > 0)
     memcpy(key, bytes, len);
@@ -10990,7 +11005,7 @@ ecdh_privkey_import(const mont_t *ec,
 
   cleanse(key, sc->size);
 
-  return ret;
+  return 1;
 }
 
 void
@@ -11151,28 +11166,26 @@ int
 ecdh_pubkey_import(const mont_t *ec,
                    unsigned char *out,
                    const unsigned char *x_raw,
-                   size_t x_len) {
+                   size_t x_len,
+                   const unsigned char *y_raw,
+                   size_t y_len) {
   const prime_field_t *fe = &ec->fe;
-  unsigned char xp[MAX_FIELD_SIZE];
   int has_x = (x_len > 0);
-  pge_t A;
+  int has_y = (y_len > 0);
   int ret = 1;
-
-  while (x_len > 0 && x_raw[x_len - 1] == 0x00)
-    x_len -= 1;
-
-  ret &= (x_len <= fe->size);
-
-  x_len *= ret;
-
-  if (x_len > 0)
-    memcpy(xp, x_raw, x_len);
-
-  memset(xp + x_len, 0x00, fe->size - x_len);
+  fe_t x, y;
+  mge_t A;
 
   ret &= has_x;
-  ret &= pge_import(ec, &A, xp);
-  ret &= pge_export(ec, out, &A);
+  ret &= fe_import_pad(fe, x, x_raw, x_len);
+  ret &= fe_import_pad(fe, y, y_raw, y_len);
+
+  if (has_x && has_y)
+    ret &= mge_set_xy(ec, &A, x, y);
+  else
+    ret &= mge_set_x(ec, &A, x, -1);
+
+  ret &= mge_export(ec, out, &A);
 
   return ret;
 }
@@ -11362,17 +11375,17 @@ eddsa_privkey_import(const edwards_t *ec,
                      const unsigned char *bytes,
                      size_t len) {
   const prime_field_t *fe = &ec->fe;
-  int ret = 1;
   size_t i;
 
-  ret &= (len == fe->adj_size);
+  if (len != fe->adj_size) {
+    memset(out, 0x00, fe->adj_size);
+    return 0;
+  }
 
-  len *= ret;
-
-  for (i = 0; i < len; i++)
+  for (i = 0; i < fe->adj_size; i++)
     out[i] = bytes[i];
 
-  return ret;
+  return 1;
 }
 
 int
@@ -11624,39 +11637,15 @@ eddsa_pubkey_import(const edwards_t *ec,
                     size_t y_len,
                     int sign) {
   const prime_field_t *fe = &ec->fe;
-  unsigned char xp[MAX_FIELD_SIZE];
-  unsigned char yp[MAX_FIELD_SIZE];
   int has_x = (x_len > 0);
   int has_y = (y_len > 0);
   fe_t x, y;
   xge_t A;
   int ret = 1;
 
-  while (x_len > 0 && x_raw[x_len - 1] == 0x00)
-    x_len -= 1;
-
-  while (y_len > 0 && y_raw[y_len - 1] == 0x00)
-    y_len -= 1;
-
-  ret &= (x_len <= fe->size);
-  ret &= (y_len <= fe->size);
-
-  x_len *= ret;
-  y_len *= ret;
-
-  if (x_len > 0)
-    memcpy(xp, x_raw, x_len);
-
-  memset(xp + x_len, 0x00, fe->size - x_len);
-
-  if (y_len > 0)
-    memcpy(yp, y_raw, y_len);
-
-  memset(yp + y_len, 0x00, fe->size - y_len);
-
   ret &= has_x | has_y;
-  ret &= fe_import(fe, x, xp);
-  ret &= fe_import(fe, y, yp);
+  ret &= fe_import_pad(fe, x, x_raw, x_len);
+  ret &= fe_import_pad(fe, y, y_raw, y_len);
 
   if (has_x && has_y)
     ret &= xge_set_xy(ec, &A, x, y);
@@ -12182,7 +12171,7 @@ eddsa_verify_batch(const edwards_t *ec,
                    int ph,
                    const unsigned char *ctx,
                    size_t ctx_len,
-                   struct edwards_scratch_s *scratch) {
+                   edwards__scratch_t *scratch) {
   /* EdDSA Batch Verification.
    *
    * [EDDSA] Page 16, Section 5.

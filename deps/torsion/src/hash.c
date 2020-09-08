@@ -82,7 +82,7 @@ blake2b_init(blake2b_t *ctx,
   CHECK(outlen >= 1 && outlen <= 64);
   CHECK(keylen <= 64);
 
-  memset(ctx, 0, sizeof(blake2b_t));
+  memset(ctx, 0, sizeof(*ctx));
 
   ctx->outlen = outlen;
 
@@ -286,7 +286,7 @@ blake2s_init(blake2s_t *ctx,
   CHECK(outlen >= 1 && outlen <= 32);
   CHECK(keylen <= 32);
 
-  memset(ctx, 0, sizeof(blake2s_t));
+  memset(ctx, 0, sizeof(*ctx));
 
   ctx->outlen = outlen;
 
@@ -624,7 +624,7 @@ gost94_sum(gost94_t *ctx, const uint8_t m[32]) {
 
 void
 gost94_init(gost94_t *ctx) {
-  memset(ctx, 0, sizeof(gost94_t));
+  memset(ctx, 0, sizeof(*ctx));
 }
 
 static void
@@ -843,7 +843,6 @@ keccak_permute(keccak_t *ctx) {
     "pxor %%xmm9, %%xmm11\n"
 
     ".align 16\n"
-
     "1:\n"
 
     "pshufd $0x4e, %%xmm11, %%xmm11\n"
@@ -1436,7 +1435,7 @@ static const uint8_t md2_S[256] = {
 
 void
 md2_init(md2_t *ctx) {
-  memset(ctx, 0, sizeof(md2_t));
+  memset(ctx, 0, sizeof(*ctx));
 }
 
 static void
@@ -2557,8 +2556,8 @@ sha256_transform(sha256_t *ctx, const unsigned char *chunk) {
     "movl 24(%%rdi), %%r11d\n"
     "movl 28(%%rdi), %%r12d\n"
     "xorq %%r14, %%r14\n"
-    ".align 16\n"
 
+    ".align 16\n"
     "1:\n"
 
     "movl (%%rsi, %%r14, 4), %%r15d\n"
@@ -4027,8 +4026,8 @@ sha512_transform(sha512_t *ctx, const unsigned char *chunk) {
     "movq 48(%%rdi), %%r11\n"
     "movq 56(%%rdi), %%r12\n"
     "xorq %%r14, %%r14\n"
-    ".align 16\n"
 
+    ".align 16\n"
     "1:\n"
 
     "movq (%%rsi, %%r14, 8), %%r15\n"
@@ -6464,7 +6463,7 @@ static const unsigned char whirlpool_P[64] = {
 
 void
 whirlpool_init(whirlpool_t *ctx) {
-  memset(ctx, 0, sizeof(whirlpool_t));
+  memset(ctx, 0, sizeof(*ctx));
 }
 
 static void

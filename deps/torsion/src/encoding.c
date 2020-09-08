@@ -898,8 +898,8 @@ base64_encode0(char *dst, size_t *dstlen,
 
     dst[j++] = charset[c1 >> 2];
     dst[j++] = charset[((c1 & 3) << 4) | (c2 >> 4)];
-    dst[j++] = charset[((c2 & 0x0f) << 2) | (c3 >> 6)];
-    dst[j++] = charset[c3 & 0x3f];
+    dst[j++] = charset[((c2 & 15) << 2) | (c3 >> 6)];
+    dst[j++] = charset[c3 & 63];
 
     left -= 3;
   }
@@ -925,7 +925,7 @@ base64_encode0(char *dst, size_t *dstlen,
 
       dst[j++] = charset[c1 >> 2];
       dst[j++] = charset[((c1 & 3) << 4) | (c2 >> 4)];
-      dst[j++] = charset[(c2 & 0x0f) << 2];
+      dst[j++] = charset[(c2 & 15) << 2];
 
       if (pad)
         dst[j++] = '=';

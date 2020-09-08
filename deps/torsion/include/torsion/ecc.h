@@ -87,7 +87,6 @@ extern "C" {
 #define schnorr_legacy_verify torsion_schnorr_legacy_verify
 #define schnorr_legacy_verify_batch torsion_schnorr_legacy_verify_batch
 
-#define schnorr_support torsion_schnorr_support
 #define schnorr_privkey_size torsion_schnorr_privkey_size
 #define schnorr_pubkey_size torsion_schnorr_pubkey_size
 #define schnorr_sig_size torsion_schnorr_sig_size
@@ -634,9 +633,6 @@ schnorr_legacy_verify_batch(const wei_curve_t *ec,
  * Schnorr
  */
 
-TORSION_EXTERN int
-schnorr_support(const wei_curve_t *ec);
-
 TORSION_EXTERN size_t
 schnorr_privkey_size(const wei_curve_t *ec);
 
@@ -731,7 +727,9 @@ TORSION_EXTERN int
 schnorr_pubkey_import(const wei_curve_t *ec,
                       unsigned char *out,
                       const unsigned char *x_raw,
-                      size_t x_len);
+                      size_t x_len,
+                      const unsigned char *y_raw,
+                      size_t y_len);
 
 TORSION_EXTERN int
 schnorr_pubkey_tweak_add(const wei_curve_t *ec,
@@ -869,7 +867,9 @@ TORSION_EXTERN int
 ecdh_pubkey_import(const mont_curve_t *ec,
                    unsigned char *out,
                    const unsigned char *x_raw,
-                   size_t x_len);
+                   size_t x_len,
+                   const unsigned char *y_raw,
+                   size_t y_len);
 
 TORSION_EXTERN int
 ecdh_pubkey_is_small(const mont_curve_t *ec, const unsigned char *pub);

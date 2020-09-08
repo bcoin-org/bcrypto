@@ -4315,20 +4315,22 @@ bcrypto_ecdh_pubkey_export(napi_env env, napi_callback_info info) {
 
 static napi_value
 bcrypto_ecdh_pubkey_import(napi_env env, napi_callback_info info) {
-  napi_value argv[2];
-  size_t argc = 2;
+  napi_value argv[3];
+  size_t argc = 3;
   uint8_t out[ECDH_MAX_PUB_SIZE];
-  const uint8_t *x;
-  size_t x_len;
+  const uint8_t *x, *y;
+  size_t x_len, y_len;
   bcrypto_mont_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
-  CHECK(argc == 2);
+  CHECK(argc == 3);
   CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&x, &x_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], (void **)&y, &y_len) == napi_ok);
 
-  JS_ASSERT(ecdh_pubkey_import(ec->ctx, out, x, x_len), JS_ERR_PUBKEY);
+  JS_ASSERT(ecdh_pubkey_import(ec->ctx, out, x, x_len, y, y_len),
+            JS_ERR_PUBKEY);
 
   CHECK(napi_create_buffer_copy(env,
                                 ec->field_size,
@@ -9528,20 +9530,22 @@ bcrypto_schnorr_pubkey_export(napi_env env, napi_callback_info info) {
 
 static napi_value
 bcrypto_schnorr_pubkey_import(napi_env env, napi_callback_info info) {
-  napi_value argv[2];
-  size_t argc = 2;
+  napi_value argv[3];
+  size_t argc = 3;
   uint8_t out[SCHNORR_MAX_PUB_SIZE];
-  const uint8_t *x;
-  size_t x_len;
+  const uint8_t *x, *y;
+  size_t x_len, y_len;
   bcrypto_wei_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
-  CHECK(argc == 2);
+  CHECK(argc == 3);
   CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&x, &x_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], (void **)&y, &y_len) == napi_ok);
 
-  JS_ASSERT(schnorr_pubkey_import(ec->ctx, out, x, x_len), JS_ERR_PUBKEY);
+  JS_ASSERT(schnorr_pubkey_import(ec->ctx, out, x, x_len, y, y_len),
+            JS_ERR_PUBKEY);
 
   CHECK(napi_create_buffer_copy(env,
                                 ec->field_size,

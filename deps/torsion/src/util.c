@@ -7,13 +7,12 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
-#include <torsion/util.h>
-#include "bio.h"
-#include "internal.h"
-
 #ifdef _WIN32
 #  include <windows.h> /* SecureZeroMemory */
 #endif
+#include <torsion/util.h>
+#include "bio.h"
+#include "internal.h"
 
 /*
  * Memzero

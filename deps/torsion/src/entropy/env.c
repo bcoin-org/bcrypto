@@ -636,6 +636,14 @@ sha512_write_static_env(sha512_t *hash) {
       sha512_write_string(hash, cwd);
   }
 
+  /* Console title. */
+  {
+    char title[1024 + 1];
+
+    if (GetConsoleTitleA(title, sizeof(title)))
+      sha512_write_string(hash, title);
+  }
+
   /* Command line. */
   {
     char *cmd = GetCommandLineA();

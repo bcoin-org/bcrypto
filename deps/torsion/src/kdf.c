@@ -57,107 +57,119 @@
 static const char base64_charset[] =
   "./ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
-static const unsigned char base64_table[128] = {
-  255, 255, 255, 255, 255, 255, 255, 255,
-  255, 255, 255, 255, 255, 255, 255, 255,
-  255, 255, 255, 255, 255, 255, 255, 255,
-  255, 255, 255, 255, 255, 255, 255, 255,
-  255, 255, 255, 255, 255, 255, 255, 255,
-  255, 255, 255, 255, 255, 255,   0,   1,
-   54,  55,  56,  57,  58,  59,  60,  61,
-   62,  63, 255, 255, 255, 255, 255, 255,
-  255,   2,   3,   4,   5,   6,   7,   8,
-    9,  10,  11,  12,  13,  14,  15,  16,
-   17,  18,  19,  20,  21,  22,  23,  24,
-   25,  26,  27, 255, 255, 255, 255, 255,
-  255,  28,  29,  30,  31,  32,  33,  34,
-   35,  36,  37,  38,  39,  40,  41,  42,
-   43,  44,  45,  46,  47,  48,  49,  50,
-   51,  52,  53, 255, 255, 255, 255, 255
+static const int8_t base64_table[256] = {
+  -1, -1, -1, -1, -1, -1, -1, -1,
+  -1, -1, -1, -1, -1, -1, -1, -1,
+  -1, -1, -1, -1, -1, -1, -1, -1,
+  -1, -1, -1, -1, -1, -1, -1, -1,
+  -1, -1, -1, -1, -1, -1, -1, -1,
+  -1, -1, -1, -1, -1, -1,  0,  1,
+  54, 55, 56, 57, 58, 59, 60, 61,
+  62, 63, -1, -1, -1, -1, -1, -1,
+  -1,  2,  3,  4,  5,  6,  7,  8,
+   9, 10, 11, 12, 13, 14, 15, 16,
+  17, 18, 19, 20, 21, 22, 23, 24,
+  25, 26, 27, -1, -1, -1, -1, -1,
+  -1, 28, 29, 30, 31, 32, 33, 34,
+  35, 36, 37, 38, 39, 40, 41, 42,
+  43, 44, 45, 46, 47, 48, 49, 50,
+  51, 52, 53, -1, -1, -1, -1, -1,
+  -1, -1, -1, -1, -1, -1, -1, -1,
+  -1, -1, -1, -1, -1, -1, -1, -1,
+  -1, -1, -1, -1, -1, -1, -1, -1,
+  -1, -1, -1, -1, -1, -1, -1, -1,
+  -1, -1, -1, -1, -1, -1, -1, -1,
+  -1, -1, -1, -1, -1, -1, -1, -1,
+  -1, -1, -1, -1, -1, -1, -1, -1,
+  -1, -1, -1, -1, -1, -1, -1, -1,
+  -1, -1, -1, -1, -1, -1, -1, -1,
+  -1, -1, -1, -1, -1, -1, -1, -1,
+  -1, -1, -1, -1, -1, -1, -1, -1,
+  -1, -1, -1, -1, -1, -1, -1, -1,
+  -1, -1, -1, -1, -1, -1, -1, -1,
+  -1, -1, -1, -1, -1, -1, -1, -1,
+  -1, -1, -1, -1, -1, -1, -1, -1,
+  -1, -1, -1, -1, -1, -1, -1, -1
 };
 
-#define unbase64(c) ((c) > 127 ? 255 : base64_table[(c)])
-
 static char *
-base64_encode(char *str, const unsigned char *data, size_t len) {
-  const unsigned char *end = data + len;
-  unsigned char c1, c2;
+base64_encode(char *dst, const uint8_t *src, size_t len) {
+  uint8_t c1, c2;
+  size_t i = 0;
+  size_t j = 0;
 
-  while (data < end) {
-    c1 = *data++;
-    *str++ = base64_charset[c1 >> 2];
+  while (i < len) {
+    c1 = src[i++];
+    dst[j++] = base64_charset[c1 >> 2];
     c1 = (c1 & 3) << 4;
 
-    if (data >= end) {
-      *str++ = base64_charset[c1];
+    if (i >= len) {
+      dst[j++] = base64_charset[c1];
       break;
     }
 
-    c2 = *data++;
+    c2 = src[i++];
     c1 |= (c2 >> 4) & 15;
-    *str++ = base64_charset[c1];
+    dst[j++] = base64_charset[c1];
     c1 = (c2 & 15) << 2;
 
-    if (data >= end) {
-      *str++ = base64_charset[c1];
+    if (i >= len) {
+      dst[j++] = base64_charset[c1];
       break;
     }
 
-    c2 = *data++;
+    c2 = src[i++];
     c1 |= (c2 >> 6) & 3;
-    *str++ = base64_charset[c1];
-    *str++ = base64_charset[c2 & 63];
+    dst[j++] = base64_charset[c1];
+    dst[j++] = base64_charset[c2 & 63];
   }
 
-  *str = '\0';
+  dst[j] = '\0';
 
-  return str;
+  return dst + j;
 }
 
 static const char *
-base64_decode(unsigned char *data, size_t len, const char *str) {
-  const unsigned char *end = data + len;
-  unsigned char c1, c2, c3, c4;
+base64_decode(uint8_t *dst, size_t len, const char *src) {
+  uint8_t c1, c2, c3, c4;
+  size_t i = 0;
+  size_t j = 0;
 
-  while (data < end) {
-    c1 = unbase64((unsigned char)*str);
-    str += 1;
+  while (j < len) {
+    c1 = base64_table[(uint8_t)src[i++]];
 
-    if (c1 == 255)
+    if (c1 & 0x80)
       return NULL;
 
-    c2 = unbase64((unsigned char)*str);
-    str += 1;
+    c2 = base64_table[(uint8_t)src[i++]];
 
-    if (c2 == 255)
+    if (c2 & 0x80)
       return NULL;
 
-    *data++ = (c1 << 2) | ((c2 & 48) >> 4);
+    dst[j++] = (c1 << 2) | ((c2 & 48) >> 4);
 
-    if (data >= end)
+    if (j >= len)
       break;
 
-    c3 = unbase64((unsigned char)*str);
-    str += 1;
+    c3 = base64_table[(uint8_t)src[i++]];
 
-    if (c3 == 255)
+    if (c3 & 0x80)
       return NULL;
 
-    *data++ = ((c2 & 15) << 4) | ((c3 & 60) >> 2);
+    dst[j++] = ((c2 & 15) << 4) | ((c3 & 60) >> 2);
 
-    if (data >= end)
+    if (j >= len)
       break;
 
-    c4 = unbase64((unsigned char)*str);
-    str += 1;
+    c4 = base64_table[(uint8_t)src[i++]];
 
-    if (c4 == 255)
+    if (c4 & 0x80)
       return NULL;
 
-    *data++ = ((c3 & 3) << 6) | c4;
+    dst[j++] = ((c3 & 3) << 6) | c4;
   }
 
-  return str;
+  return src + i;
 }
 
 static void
@@ -364,7 +376,8 @@ bcrypt_pbkdf(unsigned char *key,
         out[j] ^= tmpout[j];
     }
 
-    amt = amt < keylen ? amt : keylen;
+    if (amt > keylen)
+      amt = keylen;
 
     for (i = 0; i < amt; i++) {
       dest = i * stride + (count - 1);
@@ -597,10 +610,10 @@ hkdf_expand(unsigned char *out,
             size_t len) {
   size_t hash_size = hash_output_size(type);
   unsigned char prev[HASH_MAX_OUTPUT_SIZE];
-  unsigned char ctr = 0;
   size_t prev_len = 0;
   hmac_t pmac, hmac;
   size_t i, blocks;
+  uint8_t ctr = 0;
 
   if (!hash_has_backend(type))
     return 0;
@@ -878,11 +891,11 @@ pgpdf_derive_iterated(unsigned char *out,
  *   https://github.com/Tarsnap/scrypt/blob/master/lib/crypto/crypto_scrypt-ref.c
  */
 
-static void blkcpy(uint8_t *, uint8_t *, size_t);
-static void blkxor(uint8_t *, uint8_t *, size_t);
+static void blkcpy(uint8_t *, const uint8_t *, size_t);
+static void blkxor(uint8_t *, const uint8_t *, size_t);
 static void salsa20_8(uint8_t *);
 static void blockmix_salsa8(uint8_t *, uint8_t *, size_t);
-static uint64_t integerify(uint8_t *, size_t);
+static uint64_t integerify(const uint8_t *, size_t);
 static void smix(uint8_t *, size_t, uint64_t, uint8_t *, uint8_t *);
 
 int
@@ -960,19 +973,19 @@ fail:
 }
 
 static void
-blkcpy(uint8_t *dest, uint8_t *src, size_t len) {
+blkcpy(uint8_t *dst, const uint8_t *src, size_t len) {
   size_t i;
 
   for (i = 0; i < len; i++)
-    dest[i] = src[i];
+    dst[i] = src[i];
 }
 
 static void
-blkxor(uint8_t *dest, uint8_t *src, size_t len) {
+blkxor(uint8_t *dst, const uint8_t *src, size_t len) {
   size_t i;
 
   for (i = 0; i < len; i++)
-    dest[i] ^= src[i];
+    dst[i] ^= src[i];
 }
 
 static void
@@ -1071,8 +1084,8 @@ blockmix_salsa8(uint8_t *B, uint8_t *Y, size_t r) {
 }
 
 static uint64_t
-integerify(uint8_t *B, size_t r) {
-  uint8_t *X = &B[(2 * r - 1) * 64];
+integerify(const uint8_t *B, size_t r) {
+  const uint8_t *X = &B[(2 * r - 1) * 64];
 
   return read64le(X);
 }

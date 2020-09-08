@@ -176,7 +176,6 @@ chacha20_block(chacha20_t *ctx, uint32_t *stream) {
     "movups 48(%%rsi), %%xmm3\n"
 
     ".align 16\n"
-
     "1:\n"
 
     "paddd %%xmm1, %%xmm0\n"
@@ -502,7 +501,6 @@ salsa20_block(salsa20_t *ctx, uint32_t *stream) {
     "pxor %%xmm4, %%xmm0\n"
 
     ".align 16\n"
-
     "1:\n"
 
     "movaps %%xmm3, %%xmm4\n"
