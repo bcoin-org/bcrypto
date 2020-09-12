@@ -226,6 +226,7 @@ typedef struct scalar_field_s {
   size_t endo_bits;
   mp_size_t shift;
   mp_limb_t n[MAX_REDUCE_LIMBS];
+  unsigned char mask;
   unsigned char raw[MAX_SCALAR_SIZE];
   mp_limb_t nh[MAX_REDUCE_LIMBS];
   mp_limb_t m[MAX_REDUCE_LIMBS];
@@ -368,6 +369,7 @@ typedef struct jge_s {
 
 typedef struct wei_s {
   int hash;
+  int xof;
   prime_field_t fe;
   scalar_field_t sc;
   unsigned int h;
@@ -403,6 +405,7 @@ typedef struct wei_s {
 
 typedef struct wei_def_s {
   int hash;
+  int xof;
   const prime_def_t *fe;
   const scalar_def_t *sc;
   unsigned int h;
@@ -1839,6 +1842,11 @@ scalar_field_init(scalar_field_t *sc, const scalar_def_t *def, int endian) {
   sc->bits = def->bits;
   sc->endo_bits = (def->bits + 1) / 2 + 1;
   sc->shift = sc->limbs * 2 + 2;
+  sc->mask = 0xff;
+
+  /* Mask to ignore high bits during hashing (schnorr). */
+  if ((sc->bits & 7) != 0)
+    sc->mask = (1 << (sc->bits & 7)) - 1;
 
   /* Deserialize order into limbs. */
   mpn_import(sc->n, MAX_REDUCE_LIMBS, def->n, sc->size, 1);
@@ -1912,7 +1920,7 @@ prime_field_init(prime_field_t *fe, const prime_def_t *def, int endian) {
   fe->adj_size = fe->size + ((fe->bits & 7) == 0);
   fe->mask = 0xff;
 
-  /* Masks to ignore high bits during deserialization. */
+  /* Mask to ignore high bits during deserialization. */
   if ((fe->bits & 7) != 0)
     fe->mask = (1 << (fe->bits & 7)) - 1;
 
@@ -3716,6 +3724,7 @@ wei_init(wei_t *ec, const wei_def_t *def) {
   memset(ec, 0, sizeof(*ec));
 
   ec->hash = def->hash;
+  ec->xof = def->xof;
   ec->h = def->h;
 
   prime_field_init(fe, def->fe, 1);
@@ -7901,6 +7910,7 @@ static const endo_def_t endo_secp256k1 = {
 
 static const wei_def_t curve_p192 = {
   HASH_SHA256,
+  HASH_SHA256,
   &field_p192,
   &field_q192,
   1,
@@ -7934,6 +7944,7 @@ static const wei_def_t curve_p192 = {
 };
 
 static const wei_def_t curve_p224 = {
+  HASH_SHA256,
   HASH_SHA256,
   &field_p224,
   &field_q224,
@@ -7973,6 +7984,7 @@ static const wei_def_t curve_p224 = {
 
 static const wei_def_t curve_p256 = {
   HASH_SHA256,
+  HASH_SHA256,
   &field_p256,
   &field_q256,
   1,
@@ -8010,6 +8022,7 @@ static const wei_def_t curve_p256 = {
 };
 
 static const wei_def_t curve_p384 = {
+  HASH_SHA384,
   HASH_SHA384,
   &field_p384,
   &field_q384,
@@ -8057,6 +8070,7 @@ static const wei_def_t curve_p384 = {
 
 static const wei_def_t curve_p521 = {
   HASH_SHA512,
+  HASH_SHAKE256,
   &field_p521,
   &field_q521,
   1,
@@ -8114,6 +8128,7 @@ static const wei_def_t curve_p521 = {
 };
 
 static const wei_def_t curve_secp256k1 = {
+  HASH_SHA256,
   HASH_SHA256,
   &field_p256k1,
   &field_q256k1,
@@ -9711,24 +9726,19 @@ schnorr_legacy_hash_nonce(const wei_t *ec, sc_t k,
                           const unsigned char *msg,
                           size_t msg_len) {
   const scalar_field_t *sc = &ec->sc;
-  size_t hash_size = hash_output_size(ec->hash);
   unsigned char bytes[MAX_SCALAR_SIZE];
-  size_t off = 0;
   hash_t hash;
 
   STATIC_ASSERT(MAX_SCALAR_SIZE >= HASH_MAX_OUTPUT_SIZE);
 
-  if (sc->size > hash_size) {
-    off = sc->size - hash_size;
-    memset(bytes, 0x00, off);
-  }
-
-  hash_init(&hash, ec->hash);
+  hash_init(&hash, ec->xof);
   hash_update(&hash, scalar, sc->size);
   hash_update(&hash, msg, msg_len);
-  hash_final(&hash, bytes + off, hash_size);
+  hash_final(&hash, bytes, sc->size);
 
-  sc_import_reduce(sc, k, bytes);
+  bytes[0] &= sc->mask;
+
+  sc_import_weak(sc, k, bytes);
 
   cleanse(bytes, sc->size);
   cleanse(&hash, sizeof(hash));
@@ -9742,25 +9752,20 @@ schnorr_legacy_hash_challenge(const wei_t *ec, sc_t e,
                               size_t msg_len) {
   const prime_field_t *fe = &ec->fe;
   const scalar_field_t *sc = &ec->sc;
-  size_t hash_size = hash_output_size(ec->hash);
   unsigned char bytes[MAX_SCALAR_SIZE];
-  size_t off = 0;
   hash_t hash;
 
   STATIC_ASSERT(MAX_SCALAR_SIZE >= HASH_MAX_OUTPUT_SIZE);
 
-  if (sc->size > hash_size) {
-    off = sc->size - hash_size;
-    memset(bytes, 0x00, off);
-  }
-
-  hash_init(&hash, ec->hash);
+  hash_init(&hash, ec->xof);
   hash_update(&hash, R, fe->size);
   hash_update(&hash, A, fe->size + 1);
   hash_update(&hash, msg, msg_len);
-  hash_final(&hash, bytes + off, hash_size);
+  hash_final(&hash, bytes, sc->size);
 
-  sc_import_reduce(sc, e, bytes);
+  bytes[0] &= sc->mask;
+
+  sc_import_weak(sc, e, bytes);
 
   cleanse(bytes, sc->size);
   cleanse(&hash, sizeof(hash));
@@ -10448,9 +10453,16 @@ static void
 schnorr_hash_init(hash_t *hash, int type, const char *tag) {
   /* [BIP340] "Tagged Hashes". */
   size_t hash_size = hash_output_size(type);
-  unsigned char bytes[HASH_MAX_OUTPUT_SIZE];
+  size_t block_size = hash_block_size(type);
+  unsigned char bytes[HASH_MAX_BLOCK_SIZE / 2];
 
-  hash_init(hash, type);
+  if (hash_size != block_size / 2) {
+    hash_init(hash, HASH_SHAKE256);
+    hash_size = block_size / 2;
+  } else {
+    hash_init(hash, type);
+  }
+
   hash_update(hash, tag, strlen(tag));
   hash_final(hash, bytes, hash_size);
 
@@ -10465,12 +10477,13 @@ schnorr_hash_aux(const wei_t *ec,
                  const unsigned char *scalar,
                  const unsigned char *aux) {
   const scalar_field_t *sc = &ec->sc;
-  size_t hash_size = hash_output_size(ec->hash);
-  unsigned char bytes[HASH_MAX_OUTPUT_SIZE];
+  unsigned char bytes[MAX_SCALAR_SIZE];
   hash_t hash;
   size_t i;
 
-  if (ec->hash == HASH_SHA256) {
+  STATIC_ASSERT(MAX_SCALAR_SIZE >= HASH_MAX_OUTPUT_SIZE);
+
+  if (ec->xof == HASH_SHA256) {
     sha256_t *sha = &hash.ctx.sha256;
 
     sha->state[0] = 0x24dd3219;
@@ -10485,16 +10498,16 @@ schnorr_hash_aux(const wei_t *ec,
 
     hash.type = HASH_SHA256;
   } else {
-    schnorr_hash_init(&hash, ec->hash, "BIP0340/aux");
+    schnorr_hash_init(&hash, ec->xof, "BIP0340/aux");
   }
 
   hash_update(&hash, aux, 32);
-  hash_final(&hash, bytes, hash_size);
+  hash_final(&hash, bytes, sc->size);
 
   for (i = 0; i < sc->size; i++)
-    out[i] = scalar[i] ^ bytes[i % hash_size];
+    out[i] = scalar[i] ^ bytes[i];
 
-  cleanse(bytes, hash_size);
+  cleanse(bytes, sc->size);
   cleanse(&hash, sizeof(hash));
 }
 
@@ -10507,10 +10520,8 @@ schnorr_hash_nonce(const wei_t *ec, sc_t k,
                    const unsigned char *aux) {
   const prime_field_t *fe = &ec->fe;
   const scalar_field_t *sc = &ec->sc;
-  size_t hash_size = hash_output_size(ec->hash);
   unsigned char secret[MAX_SCALAR_SIZE];
   unsigned char bytes[MAX_SCALAR_SIZE];
-  size_t off = 0;
   hash_t hash;
 
   STATIC_ASSERT(MAX_SCALAR_SIZE >= HASH_MAX_OUTPUT_SIZE);
@@ -10520,12 +10531,7 @@ schnorr_hash_nonce(const wei_t *ec, sc_t k,
   else
     memcpy(secret, scalar, sc->size);
 
-  if (sc->size > hash_size) {
-    off = sc->size - hash_size;
-    memset(bytes, 0x00, off);
-  }
-
-  if (ec->hash == HASH_SHA256) {
+  if (ec->xof == HASH_SHA256) {
     sha256_t *sha = &hash.ctx.sha256;
 
     sha->state[0] = 0x46615b35;
@@ -10540,15 +10546,17 @@ schnorr_hash_nonce(const wei_t *ec, sc_t k,
 
     hash.type = HASH_SHA256;
   } else {
-    schnorr_hash_init(&hash, ec->hash, "BIP0340/nonce");
+    schnorr_hash_init(&hash, ec->xof, "BIP0340/nonce");
   }
 
   hash_update(&hash, secret, sc->size);
   hash_update(&hash, point, fe->size);
   hash_update(&hash, msg, msg_len);
-  hash_final(&hash, bytes + off, hash_size);
+  hash_final(&hash, bytes, sc->size);
 
-  sc_import_reduce(sc, k, bytes);
+  bytes[0] &= sc->mask;
+
+  sc_import_weak(sc, k, bytes);
 
   cleanse(secret, sc->size);
   cleanse(bytes, sc->size);
@@ -10563,19 +10571,12 @@ schnorr_hash_challenge(const wei_t *ec, sc_t e,
                        size_t msg_len) {
   const prime_field_t *fe = &ec->fe;
   const scalar_field_t *sc = &ec->sc;
-  size_t hash_size = hash_output_size(ec->hash);
   unsigned char bytes[MAX_SCALAR_SIZE];
-  size_t off = 0;
   hash_t hash;
 
   STATIC_ASSERT(MAX_SCALAR_SIZE >= HASH_MAX_OUTPUT_SIZE);
 
-  if (sc->size > hash_size) {
-    off = sc->size - hash_size;
-    memset(bytes, 0x00, off);
-  }
-
-  if (ec->hash == HASH_SHA256) {
+  if (ec->xof == HASH_SHA256) {
     sha256_t *sha = &hash.ctx.sha256;
 
     sha->state[0] = 0x9cecba11;
@@ -10590,15 +10591,17 @@ schnorr_hash_challenge(const wei_t *ec, sc_t e,
 
     hash.type = HASH_SHA256;
   } else {
-    schnorr_hash_init(&hash, ec->hash, "BIP0340/challenge");
+    schnorr_hash_init(&hash, ec->xof, "BIP0340/challenge");
   }
 
   hash_update(&hash, R, fe->size);
   hash_update(&hash, A, fe->size);
   hash_update(&hash, msg, msg_len);
-  hash_final(&hash, bytes + off, hash_size);
+  hash_final(&hash, bytes, sc->size);
 
-  sc_import_reduce(sc, e, bytes);
+  bytes[0] &= sc->mask;
+
+  sc_import_weak(sc, e, bytes);
 
   cleanse(bytes, sc->size);
   cleanse(&hash, sizeof(hash));
