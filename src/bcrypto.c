@@ -9763,7 +9763,11 @@ bcrypto_schnorr_sign(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[3], (void **)&aux, &aux_len) == napi_ok);
 
   JS_ASSERT(priv_len == ec->scalar_size, JS_ERR_PRIVKEY_SIZE);
-  JS_ASSERT(aux_len == 32, JS_ERR_PRIVKEY_SIZE);
+  JS_ASSERT(aux_len == 0 || aux_len == 32, JS_ERR_PRIVKEY_SIZE);
+
+  if (aux_len == 0)
+    aux = NULL;
+
   JS_ASSERT(schnorr_sign(ec->ctx, out, msg, msg_len, priv, aux), JS_ERR_SIGN);
 
   CHECK(napi_create_buffer_copy(env,
@@ -12281,7 +12285,10 @@ bcrypto_secp256k1_schnorr_sign(napi_env env, napi_callback_info info) {
 
   JS_ASSERT(msg_len == 32, JS_ERR_MSG_SIZE);
   JS_ASSERT(priv_len == 32, JS_ERR_PRIVKEY_SIZE);
-  JS_ASSERT(aux_len == 32, JS_ERR_ENTROPY_SIZE);
+  JS_ASSERT(aux_len == 0 || aux_len == 32, JS_ERR_ENTROPY_SIZE);
+
+  if (aux_len == 0)
+    aux = NULL;
 
   ok = secp256k1_schnorrsig_sign(ec->ctx,
                                  &sigout,
