@@ -839,8 +839,9 @@ describe('Elliptic', function() {
           }
         ],
         pre: [
-          '012511cfe811d0f4e6bc688b4f1d8d',
-          '-71169be7330b3038edb025f1d0f9'
+          256,
+          '012511cfe811d0f4e6bc688b4f1d8ccf8538b55e6f',
+          '-71169be7330b3038edb025f1d0f885ee42a60a2e'
         ]
       });
 
@@ -885,8 +886,9 @@ describe('Elliptic', function() {
           }
         ],
         pre: [
-          '024875c369ae2c27793ef01406d217bf31',
-          '-d719e0fa994eb9112afb3ace0b206f48'
+          320,
+          '01243ae1b4d71613bc9f780a03690bdf98be31116fb699ea8a6760',
+          '-6b8cf07d4ca75c88957d9d67059037a4208027beaad46e56a2d5'
         ]
       });
 
@@ -923,8 +925,9 @@ describe('Elliptic', function() {
         b1: new BN('-602889891024722752429129', 10),
         a2: new BN('602889891024722752429129', 10),
         b2: new BN('1391809321217130704211319', 10),
-        g1: new BN('182427231350571755662385731766', 10),
-        g2: new BN('-79021983796392460606390678378', 10),
+        shift: 192,
+        g1: new BN('5977775516895535289545055658493944', 10),
+        g2: new BN('-2589392365040188149150209749093577', 10),
 
         // Example 3.75, Page 127, Section 3.5.
         rl: new BN('2180728751409538655993509', 10),
@@ -953,8 +956,9 @@ describe('Elliptic', function() {
       assert(curve.endo.basis[0].b.eq(vector.b1));
       assert(curve.endo.basis[1].a.eq(vector.a2));
       assert(curve.endo.basis[1].b.eq(vector.b2));
-      assert(curve.endo.pre[0].eq(vector.g1));
-      assert(curve.endo.pre[1].eq(vector.g2));
+      assert(curve.endo.pre[0] === vector.shift);
+      assert(curve.endo.pre[1].eq(vector.g1));
+      assert(curve.endo.pre[2].eq(vector.g2));
 
       {
         const [, beta] = curve._getEndoRoots(curve.p);
@@ -992,8 +996,9 @@ describe('Elliptic', function() {
 
       {
         const {basis} = curve.endo;
-        const [g1, g2] = curve._getEndoPrecomp(basis);
+        const [shift, g1, g2] = curve._getEndoPrecomp(basis);
 
+        assert(shift === vector.shift);
         assert(g1.eq(vector.g1));
         assert(g2.eq(vector.g2));
       }
@@ -1008,9 +1013,9 @@ describe('Elliptic', function() {
       }
 
       {
-        const {g1, g2, k} = vector;
-        const c1 = k.mulShift(g1, 177);
-        const c2 = k.mulShift(g2, 177).ineg();
+        const {shift, g1, g2, k} = vector;
+        const c1 = k.mulShift(g1, shift);
+        const c2 = k.mulShift(g2, shift).ineg();
 
         assert(c1.eq(vector.c1));
         assert(c2.eq(vector.c2));
@@ -1088,10 +1093,11 @@ describe('Elliptic', function() {
       assert.strictEqual(curve.endo.basis[1].b.toString(16),
                          '3086d221a7d46bcde86c90e49284eb15');
 
-      assert.strictEqual(curve.endo.pre[0].toString(16),
-                         '3086d221a7d46bcde86c90e49284eb153dab');
+      assert.strictEqual(curve.endo.pre[0], 384);
       assert.strictEqual(curve.endo.pre[1].toString(16),
-                         '-e4437ed6010e88286f547fa90abfe4c42212');
+                         '3086d221a7d46bcde86c90e49284eb153daa8a1471e8ca7fe893209a45dbb031');
+      assert.strictEqual(curve.endo.pre[2].toString(16),
+                         '-e4437ed6010e88286f547fa90abfe4c4221208ac9df506c61571b4ae8ac47f71');
 
       for (let i = 0; i < 10; i++) {
         const k = curve.randomScalar(rng);
@@ -1109,9 +1115,8 @@ describe('Elliptic', function() {
       }
 
       const endoSplit2 = (k) => {
-        const shift = curve.scalarBits + 16;
         const [v1, v2] = curve.endo.basis;
-        const [g1, g2] = curve.endo.pre;
+        const [shift, g1, g2] = curve.endo.pre;
 
         const c1 = k.mulShift(g1, shift);
         const c2 = k.mulShift(g2, shift).ineg();
@@ -1143,10 +1148,9 @@ describe('Elliptic', function() {
       }
 
       const endoSplit3 = (k) => {
-        const shift = curve.scalarBits + 16;
         const {lambda} = curve.endo;
         const [v1, v2] = curve.endo.basis;
-        const [g1, g2] = curve.endo.pre;
+        const [shift, g1, g2] = curve.endo.pre;
 
         k = k.mod(curve.n);
 
