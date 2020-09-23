@@ -210,7 +210,7 @@ fail:
 
 int
 asn1_read_version(const unsigned char **data, size_t *len,
-                  unsigned char version, int strict) {
+                  unsigned int version, int strict) {
   int ret = 0;
   mpz_t n;
 
@@ -309,7 +309,7 @@ asn1_size_mpz(const mpz_t n) {
 }
 
 size_t
-asn1_size_version(unsigned char version) {
+asn1_size_version(unsigned int version) {
   (void)version;
   return 3;
 }
@@ -325,11 +325,13 @@ asn1_write_size(unsigned char *data, size_t pos, size_t size) {
     data[pos++] = size;
   } else {
     /* 0x82 [size-hi] [size-lo] */
-    ASSERT(size <= 0xffff);
+    CHECK(size <= 0xffff);
+
     data[pos++] = 0x82;
     data[pos++] = size >> 8;
     data[pos++] = size & 0xff;
   }
+
   return pos;
 }
 
@@ -401,10 +403,13 @@ asn1_write_mpz(unsigned char *data, size_t pos, const mpz_t n) {
 }
 
 size_t
-asn1_write_version(unsigned char *data, size_t pos, unsigned char version) {
+asn1_write_version(unsigned char *data, size_t pos, unsigned int version) {
+  CHECK(version <= 0xff);
+
   data[pos++] = 0x02;
   data[pos++] = 0x01;
   data[pos++] = version;
+
   return pos;
 }
 
@@ -412,8 +417,10 @@ size_t
 asn1_write_dumb(unsigned char *data, size_t pos, const mpz_t n) {
   size_t size = mpz_bytelen(n);
 
+  CHECK(size <= 0xffff);
+
   data[pos++] = size >> 8;
-  data[pos++] = size;
+  data[pos++] = size & 0xff;
 
   mpz_export(data + pos, n, size, 1);
 

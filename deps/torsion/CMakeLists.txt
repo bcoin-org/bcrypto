@@ -14,6 +14,7 @@ project(libtorsion LANGUAGES C)
 #
 
 include(../../cmake/AppendCCompilerFlag.cmake)
+include(../../cmake/CheckCThreadLocalStorage.cmake)
 include(CheckCSourceCompiles)
 include(NodeJS)
 
@@ -136,23 +137,12 @@ else()
 endif()
 
 if(TORSION_ENABLE_TLS)
-  check_c_source_compiles([=[
-    #if defined(_WIN32) && !defined(__MINGW32__)
-    #  define TLS __declspec(thread)
-    #else
-    #  define TLS __thread
-    #endif
-    static TLS int value;
-    int main(void) {
-      value = 1;
-      return 0;
-    }
-  ]=] TORSION_HAS_TLS)
+  check_c_thread_local_storage(TORSION_TLS)
 else()
-  set(TORSION_HAS_TLS)
+  set(TORSION_TLS)
 endif()
 
-if(NOT TORSION_HAS_TLS)
+if(NOT TORSION_TLS)
   set(TORSION_HAS_TLS_FALLBACK ${TORSION_HAS_PTHREAD})
 else()
   set(TORSION_HAS_TLS_FALLBACK 0)
@@ -200,8 +190,11 @@ if(TORSION_ENABLE_LIBSECP256K1)
   list(APPEND torsion_defines TORSION_USE_LIBSECP256K1)
 endif()
 
-if(TORSION_HAS_TLS)
+if(TORSION_TLS)
   list(APPEND torsion_defines TORSION_HAVE_TLS)
+  list(APPEND torsion_defines TORSION_TLS=${TORSION_TLS})
+else()
+  list(APPEND torsion_defines TORSION_TLS=)
 endif()
 
 if(TORSION_HAS_TLS_FALLBACK)

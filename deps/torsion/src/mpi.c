@@ -685,102 +685,102 @@ mpn_cmp4(mp_srcptr ap, mp_size_t an, mp_srcptr bp, mp_size_t bn) {
  *   %rdx = vp (r8)
  *   %rcx = n (r9)
  */
-#define AORS_N(ADCSBB)                      \
-  __asm__ __volatile__(                     \
-    "movl $0, %%eax\n"                      \
-    "testl %%ecx, %%ecx\n"                  \
-    "jle 7f\n" /* exit */                   \
-                                            \
-    "movl %%ecx, %%eax\n"                   \
-    "shrq $2, %%rcx\n"                      \
-    "andl $3, %%eax\n"                      \
-    "jrcxz 1f\n" /* lt4 */                  \
-                                            \
-    "movq (%%rsi), %%r8\n"                  \
-    "movq 8(%%rsi), %%r9\n"                 \
-    "decq %%rcx\n"                          \
-    "jmp 5f\n" /* mid */                    \
-                                            \
-    "1:\n" /* lt4 */                        \
-    "decl %%eax\n"                          \
-    "movq (%%rsi), %%r8\n"                  \
-    "jnz 2f\n" /* 2 */                      \
-    ADCSBB " (%%rdx), %%r8\n"               \
-    "movq %%r8, (%%rdi)\n"                  \
-    "adcl %%eax, %%eax\n"                   \
-    "jmp 7f\n" /* exit */                   \
-                                            \
-    "2:\n" /* 2 */                          \
-    "decl %%eax\n"                          \
-    "movq 8(%%rsi), %%r9\n"                 \
-    "jnz 3f\n" /* 3 */                      \
-    ADCSBB " (%%rdx), %%r8\n"               \
-    ADCSBB " 8(%%rdx), %%r9\n"              \
-    "movq %%r8, (%%rdi)\n"                  \
-    "movq %%r9, 8(%%rdi)\n"                 \
-    "adcl %%eax, %%eax\n"                   \
-    "jmp 7f\n" /* exit */                   \
-                                            \
-    "3:\n" /* 3 */                          \
-    "movq 16(%%rsi), %%r10\n"               \
-    ADCSBB " (%%rdx), %%r8\n"               \
-    ADCSBB " 8(%%rdx), %%r9\n"              \
-    ADCSBB " 16(%%rdx), %%r10\n"            \
-    "movq %%r8, (%%rdi)\n"                  \
-    "movq %%r9, 8(%%rdi)\n"                 \
-    "movq %%r10, 16(%%rdi)\n"               \
-    "setc %%al\n"                           \
-    "jmp 7f\n" /* exit */                   \
-                                            \
-    ".align 16\n"                           \
-    "4:\n" /* top */                        \
-    ADCSBB " (%%rdx), %%r8\n"               \
-    ADCSBB " 8(%%rdx), %%r9\n"              \
-    ADCSBB " 16(%%rdx), %%r10\n"            \
-    ADCSBB " 24(%%rdx), %%r11\n"            \
-    "movq %%r8, (%%rdi)\n"                  \
-    "leaq 32(%%rsi), %%rsi\n"               \
-    "movq %%r9, 8(%%rdi)\n"                 \
-    "movq %%r10, 16(%%rdi)\n"               \
-    "decq %%rcx\n"                          \
-    "movq %%r11, 24(%%rdi)\n"               \
-    "leaq 32(%%rdx), %%rdx\n"               \
-    "movq (%%rsi), %%r8\n"                  \
-    "movq 8(%%rsi), %%r9\n"                 \
-    "leaq 32(%%rdi), %%rdi\n"               \
-    "5:\n" /* mid */                        \
-    "movq 16(%%rsi), %%r10\n"               \
-    "movq 24(%%rsi), %%r11\n"               \
-    "jnz 4b\n" /* top */                    \
-                                            \
-    "6:\n" /* end */                        \
-    "leaq 32(%%rsi), %%rsi\n"               \
-    ADCSBB " (%%rdx), %%r8\n"               \
-    ADCSBB " 8(%%rdx), %%r9\n"              \
-    ADCSBB " 16(%%rdx), %%r10\n"            \
-    ADCSBB " 24(%%rdx), %%r11\n"            \
-    "leaq 32(%%rdx), %%rdx\n"               \
-    "movq %%r8, (%%rdi)\n"                  \
-    "movq %%r9, 8(%%rdi)\n"                 \
-    "movq %%r10, 16(%%rdi)\n"               \
-    "movq %%r11, 24(%%rdi)\n"               \
-    "leaq 32(%%rdi), %%rdi\n"               \
-                                            \
-    "incl %%eax\n"                          \
-    "decl %%eax\n"                          \
-    "jnz 1b\n" /* lt4 */                    \
-    "adcl %%eax, %%eax\n"                   \
-    "7:\n" /* exit */                       \
-    "movq $0, %q0\n"                        \
-    "movb %%al, %q0\n"                      \
-    : "=m" (cy),                            \
-      "+D" (rp), "+S" (ap),                 \
-      "+d" (bp), "+c" (n)                   \
-    :                                       \
-    : "al", "eax", "ebx",                   \
-      "rax", "rbx", "r8", "r9",             \
-      "r10", "r11", "cc", "memory"          \
-  );                                        \
+#define AORS_N(ADCSBB)             \
+  __asm__ __volatile__(            \
+    "movl $0, %%eax\n"             \
+    "testl %%ecx, %%ecx\n"         \
+    "jle 7f\n" /* exit */          \
+                                   \
+    "movl %%ecx, %%eax\n"          \
+    "shrq $2, %%rcx\n"             \
+    "andl $3, %%eax\n"             \
+    "jrcxz 1f\n" /* lt4 */         \
+                                   \
+    "movq (%%rsi), %%r8\n"         \
+    "movq 8(%%rsi), %%r9\n"        \
+    "decq %%rcx\n"                 \
+    "jmp 5f\n" /* mid */           \
+                                   \
+    "1:\n" /* lt4 */               \
+    "decl %%eax\n"                 \
+    "movq (%%rsi), %%r8\n"         \
+    "jnz 2f\n" /* 2 */             \
+    ADCSBB " (%%rdx), %%r8\n"      \
+    "movq %%r8, (%%rdi)\n"         \
+    "adcl %%eax, %%eax\n"          \
+    "jmp 7f\n" /* exit */          \
+                                   \
+    "2:\n" /* 2 */                 \
+    "decl %%eax\n"                 \
+    "movq 8(%%rsi), %%r9\n"        \
+    "jnz 3f\n" /* 3 */             \
+    ADCSBB " (%%rdx), %%r8\n"      \
+    ADCSBB " 8(%%rdx), %%r9\n"     \
+    "movq %%r8, (%%rdi)\n"         \
+    "movq %%r9, 8(%%rdi)\n"        \
+    "adcl %%eax, %%eax\n"          \
+    "jmp 7f\n" /* exit */          \
+                                   \
+    "3:\n" /* 3 */                 \
+    "movq 16(%%rsi), %%r10\n"      \
+    ADCSBB " (%%rdx), %%r8\n"      \
+    ADCSBB " 8(%%rdx), %%r9\n"     \
+    ADCSBB " 16(%%rdx), %%r10\n"   \
+    "movq %%r8, (%%rdi)\n"         \
+    "movq %%r9, 8(%%rdi)\n"        \
+    "movq %%r10, 16(%%rdi)\n"      \
+    "setc %%al\n"                  \
+    "jmp 7f\n" /* exit */          \
+                                   \
+    ".align 16\n"                  \
+    "4:\n" /* top */               \
+    ADCSBB " (%%rdx), %%r8\n"      \
+    ADCSBB " 8(%%rdx), %%r9\n"     \
+    ADCSBB " 16(%%rdx), %%r10\n"   \
+    ADCSBB " 24(%%rdx), %%r11\n"   \
+    "movq %%r8, (%%rdi)\n"         \
+    "leaq 32(%%rsi), %%rsi\n"      \
+    "movq %%r9, 8(%%rdi)\n"        \
+    "movq %%r10, 16(%%rdi)\n"      \
+    "decq %%rcx\n"                 \
+    "movq %%r11, 24(%%rdi)\n"      \
+    "leaq 32(%%rdx), %%rdx\n"      \
+    "movq (%%rsi), %%r8\n"         \
+    "movq 8(%%rsi), %%r9\n"        \
+    "leaq 32(%%rdi), %%rdi\n"      \
+    "5:\n" /* mid */               \
+    "movq 16(%%rsi), %%r10\n"      \
+    "movq 24(%%rsi), %%r11\n"      \
+    "jnz 4b\n" /* top */           \
+                                   \
+    "6:\n" /* end */               \
+    "leaq 32(%%rsi), %%rsi\n"      \
+    ADCSBB " (%%rdx), %%r8\n"      \
+    ADCSBB " 8(%%rdx), %%r9\n"     \
+    ADCSBB " 16(%%rdx), %%r10\n"   \
+    ADCSBB " 24(%%rdx), %%r11\n"   \
+    "leaq 32(%%rdx), %%rdx\n"      \
+    "movq %%r8, (%%rdi)\n"         \
+    "movq %%r9, 8(%%rdi)\n"        \
+    "movq %%r10, 16(%%rdi)\n"      \
+    "movq %%r11, 24(%%rdi)\n"      \
+    "leaq 32(%%rdi), %%rdi\n"      \
+                                   \
+    "incl %%eax\n"                 \
+    "decl %%eax\n"                 \
+    "jnz 1b\n" /* lt4 */           \
+    "adcl %%eax, %%eax\n"          \
+    "7:\n" /* exit */              \
+    "movq $0, %q0\n"               \
+    "movb %%al, %q0\n"             \
+    : "=m" (cy),                   \
+      "+D" (rp), "+S" (ap),        \
+      "+d" (bp), "+c" (n)          \
+    :                              \
+    : "al", "eax", "ebx",          \
+      "rax", "rbx", "r8", "r9",    \
+      "r10", "r11", "cc", "memory" \
+  );                               \
 
 /*
  * Addition
@@ -1648,7 +1648,7 @@ mpn_div_qr_1_preinv(mp_ptr qp, mp_srcptr np, mp_size_t nn,
 
     MP_UDIV_QRNND_PREINV(q, r, r, np[nn], d, di);
 
-    if (qp)
+    if (qp != NULL)
       qp[nn] = q;
   }
 
@@ -1686,12 +1686,13 @@ mpn_div_qr_2_preinv(mp_ptr qp, mp_ptr np, mp_size_t nn,
     n0 = np[i];
     MP_UDIV_QR_3BY2(q, r1, r0, r1, r0, n0, d1, d0, di);
 
-    if (qp)
+    if (qp != NULL)
       qp[i] = q;
   } while (--i >= 0);
 
   if (shift > 0) {
     ASSERT((r0 & (MP_LIMB_MAX >> (MP_LIMB_BITS - shift))) == 0);
+
     r0 = (r0 >> shift) | (r1 << (MP_LIMB_BITS - shift));
     r1 >>= shift;
   }
@@ -1750,7 +1751,7 @@ mpn_div_qr_pi1(mp_ptr qp,
       }
     }
 
-    if (qp)
+    if (qp != NULL)
       qp[i] = q;
   } while (--i >= 0);
 
@@ -1808,7 +1809,7 @@ mpn_div_qr(mp_ptr qp, mp_ptr np, mp_size_t nn, mp_srcptr dp, mp_size_t dn) {
 
   mpn_div_qr_preinv(qp, np, nn, dp, dn, &inv);
 
-  if (tp)
+  if (tp != NULL)
     mp_free_limbs(tp);
 }
 
@@ -1832,7 +1833,7 @@ mpn_quorem(mp_ptr qp, mp_ptr rp,
     mpn_copyi(tp, np, nn);
     mpn_div_qr(qp, tp, nn, dp, dn);
 
-    if (rp)
+    if (rp != NULL)
       mpn_copyi(rp, tp, dn);
 
     mp_free_limbs(tp);
@@ -2387,7 +2388,6 @@ mpn_jacobi(mp_srcptr xp, mp_size_t xs,
   mp_ptr ap = &scratch[0 * yn];
   mp_ptr bp = &scratch[1 * yn];
   mp_size_t an, bn, bits;
-  mp_limb_t bmod8;
   int j = 1;
 
   if (yn == 0 || (yp[0] & 1) == 0)
@@ -2407,9 +2407,7 @@ mpn_jacobi(mp_srcptr xp, mp_size_t xs,
     ASSERT(bn > 0);
 
     if (bits & 1) {
-      bmod8 = bp[0] & 7;
-
-      if (bmod8 == 3 || bmod8 == 5)
+      if ((bp[0] & 7) == 3 || (bp[0] & 7) == 5)
         j = -j;
     }
 
@@ -2423,9 +2421,7 @@ mpn_jacobi(mp_srcptr xp, mp_size_t xs,
     MPN_SUB(ap, an, bp, bn);
     MPN_RSHIFT(ap, an, 1);
 
-    bmod8 = bp[0] & 7;
-
-    if (bmod8 == 3 || bmod8 == 5)
+    if ((bp[0] & 7) == 3 || (bp[0] & 7) == 5)
       j = -j;
   }
 
@@ -3394,10 +3390,10 @@ mpz_div_qr(mpz_t q, mpz_t r, const mpz_t n, const mpz_t d,
     torsion_abort(); /* LCOV_EXCL_LINE */
 
   if (ns == 0) {
-    if (q)
+    if (q != NULL)
       q->_mp_size = 0;
 
-    if (r)
+    if (r != NULL)
       r->_mp_size = 0;
 
     return 0;
@@ -3411,24 +3407,24 @@ mpz_div_qr(mpz_t q, mpz_t r, const mpz_t n, const mpz_t d,
   if (nn < dn) {
     if (mode == MP_DIV_FLOOR && qs < 0) {
       /* q = -1, r = n + d */
-      if (q)
+      if (q != NULL)
         mpz_set_si(q, -1);
 
-      if (r)
+      if (r != NULL)
         mpz_add(r, n, d);
     } else if (mode == MP_DIV_CEIL && qs >= 0) {
       /* q = 1, r = n - d */
-      if (q)
+      if (q != NULL)
         mpz_set_ui(q, 1);
 
-      if (r)
+      if (r != NULL)
         mpz_sub(r, n, d);
     } else {
       /* q = 0, r = n */
-      if (q)
+      if (q != NULL)
         q->_mp_size = 0;
 
-      if (r)
+      if (r != NULL)
         mpz_set(r, n);
     }
 
@@ -3443,7 +3439,7 @@ mpz_div_qr(mpz_t q, mpz_t r, const mpz_t n, const mpz_t d,
 
     qn = nn - dn + 1;
 
-    if (q) {
+    if (q != NULL) {
       mpz_init2(tq, qn * MP_LIMB_BITS);
       qp = tq->_mp_d;
     } else {
@@ -3452,7 +3448,7 @@ mpz_div_qr(mpz_t q, mpz_t r, const mpz_t n, const mpz_t d,
 
     mpn_div_qr(qp, np, nn, d->_mp_d, dn);
 
-    if (qp) {
+    if (qp != NULL) {
       qn -= (qp[qn - 1] == 0);
 
       tq->_mp_size = qs < 0 ? -qn : qn;
@@ -3463,26 +3459,26 @@ mpz_div_qr(mpz_t q, mpz_t r, const mpz_t n, const mpz_t d,
 
     if (mode == MP_DIV_FLOOR && qs < 0 && rn != 0) {
       /* q -= 1, r += d */
-      if (q)
+      if (q != NULL)
         mpz_sub_ui(tq, tq, 1);
 
-      if (r)
+      if (r != NULL)
         mpz_add(tr, tr, d);
     } else if (mode == MP_DIV_CEIL && qs >= 0 && rn != 0) {
       /* q += 1, r -= d */
-      if (q)
+      if (q != NULL)
         mpz_add_ui(tq, tq, 1);
 
-      if (r)
+      if (r != NULL)
         mpz_sub(tr, tr, d);
     }
 
-    if (q) {
+    if (q != NULL) {
       mpz_swap(tq, q);
       mpz_clear(tq);
     }
 
-    if (r)
+    if (r != NULL)
       mpz_swap(tr, r);
 
     mpz_clear(tr);
@@ -3504,7 +3500,7 @@ mpz_div_qr_ui(mpz_t q, mpz_t r, const mpz_t n, mp_limb_t d,
 
   ret = mpz_get_ui(rr);
 
-  if (r)
+  if (r != NULL)
     mpz_swap(r, rr);
 
   mpz_clear(rr);
@@ -3840,10 +3836,10 @@ mpz_gcdext(mpz_t g, mpz_t s, mpz_t t, const mpz_t u, const mpz_t v) {
 
     mpz_abs(g, v);
 
-    if (s)
+    if (s != NULL)
       s->_mp_size = 0;
 
-    if (t)
+    if (t != NULL)
       mpz_set_si(t, sign);
 
     return;
@@ -3855,10 +3851,10 @@ mpz_gcdext(mpz_t g, mpz_t s, mpz_t t, const mpz_t u, const mpz_t v) {
 
     mpz_abs(g, u);
 
-    if (s)
+    if (s != NULL)
       mpz_set_si(s, sign);
 
-    if (t)
+    if (t != NULL)
       t->_mp_size = 0;
 
     return;
@@ -4012,10 +4008,10 @@ mpz_gcdext(mpz_t g, mpz_t s, mpz_t t, const mpz_t u, const mpz_t v) {
 
   mpz_swap(g, tv);
 
-  if (s)
+  if (s != NULL)
     mpz_swap(s, s0);
 
-  if (t)
+  if (t != NULL)
     mpz_swap(t, t0);
 
   mpz_clear(tu);
@@ -4179,7 +4175,7 @@ mpz_powm(mpz_t r, const mpz_t b, const mpz_t e, const mpz_t m) {
     tr->_mp_size = mpn_normalized_size(tr->_mp_d, mn);
   }
 
-  if (tp)
+  if (tp != NULL)
     mp_free_limbs(tp);
 
   mpz_swap(r, tr);

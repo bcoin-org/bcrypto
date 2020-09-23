@@ -89,13 +89,13 @@ blake2b_init(blake2b_t *ctx,
   for (i = 0; i < 8; i++)
     ctx->h[i] = blake2b_iv[i];
 
-  ctx->h[0] ^= 0x01010000 ^ (keylen << 8) ^ outlen;
+  ctx->h[0] ^= 0x01010000 | (keylen << 8) | outlen;
 
   if (keylen > 0) {
     unsigned char block[128];
 
-    memset(block, 0x00, 128);
     memcpy(block, key, keylen);
+    memset(block + keylen, 0x00, 128 - keylen);
 
     blake2b_update(ctx, block, 128);
 
@@ -199,6 +199,7 @@ blake2b_update(blake2b_t *ctx, const void *data, size_t len) {
     }
 
     memcpy(ctx->buf + ctx->buflen, in, len);
+
     ctx->buflen += len;
   }
 }
@@ -293,13 +294,13 @@ blake2s_init(blake2s_t *ctx,
   for (i = 0; i < 8; i++)
     ctx->h[i] = blake2s_iv[i];
 
-  ctx->h[0] ^= 0x01010000 ^ (keylen << 8) ^ outlen;
+  ctx->h[0] ^= 0x01010000 | (keylen << 8) | outlen;
 
   if (keylen > 0) {
     unsigned char block[64];
 
-    memset(block, 0x00, 64);
     memcpy(block, key, keylen);
+    memset(block + keylen, 0x00, 64 - keylen);
 
     blake2s_update(ctx, block, 64);
 
@@ -383,6 +384,7 @@ blake2s_update(blake2s_t *ctx, const void *data, size_t len) {
 
     if (len > fill) {
       ctx->buflen = 0;
+
       memcpy(ctx->buf + left, in, fill);
 
       blake2s_increment(ctx, 64);
@@ -401,6 +403,7 @@ blake2s_update(blake2s_t *ctx, const void *data, size_t len) {
     }
 
     memcpy(ctx->buf + ctx->buflen, in, len);
+
     ctx->buflen += len;
   }
 }
@@ -1455,6 +1458,7 @@ md2_transform(md2_t *ctx, const unsigned char *chunk) {
       ctx->state[k] ^= md2_S[t];
       t = ctx->state[k];
     }
+
     t += (uint8_t)j;
   }
 
@@ -1568,7 +1572,7 @@ md4_transform(md4_t *ctx, const unsigned char *chunk) {
 #define G(x, y, z) (((y) & (x)) | ((z) & (x)) | ((y) & (z)))
 #define H(x, y, z) ((x) ^ (y) ^ (z))
 #define ROUND(f, w, x, y, z, data, s) \
-  (w += f(x, y, z) + data,  w = w << s | w >> (32 - s))
+  (w += f(x, y, z) + data, w = w << s | w >> (32 - s))
 
   ROUND(F, a, b, c, d, data[ 0], 3);
   ROUND(F, d, a, b, c, data[ 1], 7);
@@ -1735,7 +1739,7 @@ md5_transform(md5_t *ctx, const unsigned char *chunk) {
 #define F3(x, y, z) ((x) ^ (y) ^ (z))
 #define F4(x, y, z) ((y) ^ ((x) | ~(z)))
 #define ROUND(f, w, x, y, z, data, s) \
-  (w += f(x, y, z) + data,  w = w << s | w >> (32 - s), w += x)
+  (w += f(x, y, z) + data, w = w << s | w >> (32 - s), w += x)
 
   ROUND(F1, a, b, c, d, data[ 0] + 0xd76aa478, 7);
   ROUND(F1, d, a, b, c, data[ 1] + 0xe8c7b756, 12);
@@ -2265,17 +2269,16 @@ sha1_transform(sha1_t *ctx, const unsigned char *chunk) {
   D = ctx->state[3];
   E = ctx->state[4];
 
-#define f1(x,y,z) (z ^ (x & (y ^ z)))
-#define f2(x,y,z) (x ^ y ^ z )
-#define f3(x,y,z) ((x & y) | (z & (x | y)))
+#define f1(x, y, z) (z ^ (x & (y ^ z)))
+#define f2(x, y, z) (x ^ y ^ z)
+#define f3(x, y, z) ((x & y) | (z & (x | y)))
 #define f4 f2
 #define K1 0x5a827999
 #define K2 0x6ed9eba1
 #define K3 0x8f1bbcdc
 #define K4 0xca62c1d6
-#define expand(W, i) (W[i & 15] =         \
-  ROTL32(1, (W[i & 15] ^ W[(i - 14) & 15] \
-  ^ W[(i - 8) & 15] ^ W[(i - 3) & 15])))
+#define expand(W, i) (W[i & 15] = \
+  ROTL32(1, (W[i & 15] ^ W[(i - 14) & 15] ^ W[(i - 8) & 15] ^ W[(i - 3) & 15])))
 #define subround(a, b, c, d, e, f, k, data) \
   (e += ROTL32(5, a) + f(b, c, d) + k + data, b = ROTL32(30, b))
 
@@ -2469,6 +2472,7 @@ sha224_final(sha224_t *ctx, unsigned char *out) {
   sha256_final(ctx, tmp);
 
   memcpy(out, tmp, 28);
+
   torsion_cleanse(tmp, sizeof(tmp));
 }
 
@@ -3760,8 +3764,8 @@ sha256_transform(sha256_t *ctx, const unsigned char *chunk) {
 #define s0(x) (ROTL32(25, (x)) ^ ROTL32(14, (x)) ^ ((x) >> 3))
 #define s1(x) (ROTL32(15, (x)) ^ ROTL32(13, (x)) ^ ((x) >> 10))
 
-#define EXPAND(W,i) \
-  (W[(i) & 15] += (s1(W[((i)-2) & 15]) + W[((i)-7) & 15] + s0(W[((i)-15) & 15])))
+#define EXPAND(W, i) (W[(i) & 15] += \
+  (s1(W[((i) - 2) & 15]) + W[((i) - 7) & 15] + s0(W[((i) - 15) & 15])))
 
 #define ROUND(a, b, c, d, e, f, g, h, k, data) do { \
   h += S1(e) + Ch(e, f, g) + k + data;              \
@@ -3907,6 +3911,7 @@ sha384_final(sha384_t *ctx, unsigned char *out) {
   sha512_final(ctx, tmp);
 
   memcpy(out, tmp, 48);
+
   torsion_cleanse(tmp, sizeof(tmp));
 }
 
@@ -5230,8 +5235,8 @@ sha512_transform(sha512_t *ctx, const unsigned char *chunk) {
 #define s0(x) (ROTL64(63, (x)) ^ ROTL64(56, (x)) ^ ((x) >> 7))
 #define s1(x) (ROTL64(45, (x)) ^ ROTL64(3, (x)) ^ ((x) >> 6))
 
-#define EXPAND(W,i) \
-  (W[(i) & 15] += (s1(W[((i)-2) & 15]) + W[((i)-7) & 15] + s0(W[((i)-15) & 15])))
+#define EXPAND(W, i) (W[(i) & 15] += \
+  (s1(W[((i) - 2) & 15]) + W[((i) - 7) & 15] + s0(W[((i) - 15) & 15])))
 
 #define ROUND(a, b, c, d, e, f, g, h, k, data) do { \
   h += S1(e) + Ch(e, f, g) + k + data;              \

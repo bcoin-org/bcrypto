@@ -271,10 +271,21 @@ prefix ## _barrier(type x) {          \
 
 #define torsion_abort __torsion_abort
 
+#if defined(__GNUC__) && !defined(__clang__) && !defined(__INTEL_COMPILER)
+/* Avoid a GCC bug: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=95189 */
+#  define torsion_memcmp __torsion_memcmp
+#else
+/* Note: caller must include <string.h>. */
+#  define torsion_memcmp memcmp
+#endif
+
 TORSION_NORETURN void
 __torsion_assert_fail(const char *file, int line, const char *expr);
 
 TORSION_NORETURN void
 __torsion_abort(void);
+
+int
+__torsion_memcmp(const void *s1, const void *s2, size_t n);
 
 #endif /* _TORSION_INTERNAL_H */

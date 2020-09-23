@@ -89,7 +89,7 @@ base16_encode0(char *dst, size_t *dstlen,
 
   dst[j] = '\0';
 
-  if (dstlen)
+  if (dstlen != NULL)
     *dstlen = j;
 }
 
@@ -127,7 +127,7 @@ base16_decode0(uint8_t *dst, size_t *dstlen,
   if (z & 0x80)
     return 0;
 
-  if (dstlen)
+  if (dstlen != NULL)
     *dstlen = j;
 
   return 1;
@@ -371,7 +371,7 @@ base32_encode0(char *dst, size_t *dstlen,
 
   dst[j] = '\0';
 
-  if (dstlen)
+  if (dstlen != NULL)
     *dstlen = j;
 }
 
@@ -473,7 +473,7 @@ base32_decode0(uint8_t *dst, size_t *dstlen,
       return 0;
   }
 
-  if (dstlen)
+  if (dstlen != NULL)
     *dstlen = j;
 
   return 1;
@@ -692,7 +692,7 @@ base58_encode(char *dst, size_t *dstlen,
 
   dst[j] = '\0';
 
-  if (dstlen)
+  if (dstlen != NULL)
     *dstlen = j;
 
   free(b58);
@@ -762,7 +762,7 @@ base58_decode(uint8_t *dst, size_t *dstlen,
   while (i < size)
     dst[j++] = b256[i++];
 
-  if (dstlen)
+  if (dstlen != NULL)
     *dstlen = j;
 
   free(b256);
@@ -936,7 +936,7 @@ base64_encode0(char *dst, size_t *dstlen,
 
   dst[j] = '\0';
 
-  if (dstlen)
+  if (dstlen != NULL)
     *dstlen = j;
 }
 
@@ -1030,7 +1030,7 @@ base64_decode0(uint8_t *dst, size_t *dstlen,
     }
   }
 
-  if (dstlen)
+  if (dstlen != NULL)
     *dstlen = j;
 
   return 1;
@@ -1406,7 +1406,7 @@ bech32_convert_bits(uint8_t *dst,
       return 0;
   }
 
-  if (dstlen)
+  if (dstlen != NULL)
     *dstlen = j;
 
   return 1;
@@ -1748,7 +1748,7 @@ cash32_convert_bits(uint8_t *dst,
       return 0;
   }
 
-  if (dstlen)
+  if (dstlen != NULL)
     *dstlen = j;
 
   return 1;

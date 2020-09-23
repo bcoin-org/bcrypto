@@ -348,6 +348,9 @@ bcrypt_pbkdf(unsigned char *key,
   sha512_update(&hash, pass, pass_len);
   sha512_final(&hash, sha2pass);
 
+  /* Zero for struct assignment. */
+  memset(&shash, 0, sizeof(shash));
+
   sha512_init(&shash);
   sha512_update(&shash, salt, salt_len);
 
@@ -629,6 +632,9 @@ hkdf_expand(unsigned char *out,
   if (len == 0)
     return 1;
 
+  /* Zero for struct assignment. */
+  memset(&pmac, 0, sizeof(pmac));
+
   hmac_init(&pmac, type, prk, hash_size);
 
   for (i = 0; i < blocks; i++) {
@@ -700,6 +706,10 @@ pbkdf2_derive(unsigned char *out,
 
   if (len == 0)
     return 1;
+
+  /* Zero for struct assignment. */
+  memset(&pmac, 0, sizeof(pmac));
+  memset(&smac, 0, sizeof(smac));
 
   hmac_init(&pmac, type, pass, pass_len);
 
@@ -912,22 +922,27 @@ scrypt_derive(unsigned char *out,
   uint8_t *B = NULL;
   uint8_t *V = NULL;
   uint8_t *XY = NULL;
-  uint32_t i;
+  size_t R = r;
+  size_t P = p;
   int ret = 0;
+  uint32_t i;
 
-  if (r == 0 || p == 0 || N == 0)
+  if (N == 0 || R == 0 || P == 0)
     return 0;
 
-  if (N > UINT32_MAX)
+  if ((uint64_t)len > ((UINT64_C(1) << 32) - 1) * 32)
     return 0;
 
-  if ((uint64_t)r * (uint64_t)p >= (UINT64_C(1) << 25))
+  if ((uint64_t)R * (uint64_t)P >= (UINT64_C(1) << 30))
     return 0;
 
-  if (r >= (UINT32_C(1) << 24))
+  if (R > SIZE_MAX / 128 / P)
     return 0;
 
-  if ((uint64_t)r * N >= (UINT64_C(1) << 25))
+  if (R > SIZE_MAX / 256)
+    return 0;
+
+  if (N > SIZE_MAX / 128 / R)
     return 0;
 
   if ((N & (N - 1)) != 0)
@@ -936,36 +951,36 @@ scrypt_derive(unsigned char *out,
   if (len == 0)
     return 1;
 
-  B = malloc(128 * r * p);
-  XY = malloc(256 * r);
-  V = malloc(128 * r * N);
+  B = malloc(128 * R * P);
+  XY = malloc(256 * R);
+  V = malloc(128 * R * N);
 
   if (B == NULL || XY == NULL || V == NULL)
     goto fail;
 
-  if (!pbkdf2_derive(B, t, pass, pass_len, salt, salt_len, 1, p * 128 * r))
+  if (!pbkdf2_derive(B, t, pass, pass_len, salt, salt_len, 1, P * 128 * R))
     goto fail;
 
-  for (i = 0; i < p; i++)
-    smix(&B[i * 128 * r], r, N, V, XY);
+  for (i = 0; i < P; i++)
+    smix(&B[i * 128 * R], R, N, V, XY);
 
-  if (!pbkdf2_derive(out, t, pass, pass_len, B, p * 128 * r, 1, len))
+  if (!pbkdf2_derive(out, t, pass, pass_len, B, P * 128 * R, 1, len))
     goto fail;
 
   ret = 1;
 fail:
   if (B != NULL) {
-    torsion_cleanse(B, 128 * r * p);
+    torsion_cleanse(B, 128 * R * P);
     free(B);
   }
 
   if (XY != NULL) {
-    torsion_cleanse(XY, 256 * r);
+    torsion_cleanse(XY, 256 * R);
     free(XY);
   }
 
   if (V != NULL) {
-    torsion_cleanse(V, 128 * r * N);
+    torsion_cleanse(V, 128 * R * N);
     free(V);
   }
 

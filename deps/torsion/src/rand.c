@@ -26,7 +26,7 @@
  * pthreads and deal with other OS compat issues.
  *
  * If TLS is not supported, we try to fall back
- * to pthread (assuming _REENTRANT is defined).
+ * to pthread.
  *
  * The RNG below is not used anywhere internally,
  * and as such, libtorsion can build without it (in

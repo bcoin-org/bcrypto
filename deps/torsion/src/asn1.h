@@ -52,7 +52,7 @@ asn1_read_mpz(mpz_t n, const unsigned char **data, size_t *len, int strict);
 
 int
 asn1_read_version(const unsigned char **data, size_t *len,
-                  unsigned char version, int strict);
+                  unsigned int version, int strict);
 
 int
 asn1_read_dumb(mpz_t n, const unsigned char **data, size_t *len);
@@ -67,7 +67,7 @@ size_t
 asn1_size_mpz(const mpz_t n);
 
 size_t
-asn1_size_version(unsigned char version);
+asn1_size_version(unsigned int version);
 
 size_t
 asn1_write_size(unsigned char *data, size_t pos, size_t size);
@@ -83,7 +83,7 @@ size_t
 asn1_write_mpz(unsigned char *data, size_t pos, const mpz_t n);
 
 size_t
-asn1_write_version(unsigned char *data, size_t pos, unsigned char version);
+asn1_write_version(unsigned char *data, size_t pos, unsigned int version);
 
 size_t
 asn1_write_dumb(unsigned char *data, size_t pos, const mpz_t n);

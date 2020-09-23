@@ -471,7 +471,7 @@ sha512_write_perfdata(sha512_t *hash, size_t max) {
 #endif
   }
 
-  if (data)
+  if (data != NULL)
     free(data);
 }
 #endif /* TORSION_USE_PERFDATA */
@@ -621,7 +621,7 @@ sha512_write_static_env(sha512_t *hash) {
     if (ret == ERROR_SUCCESS)
       sha512_write_data(hash, addrs, size);
 
-    if (addrs)
+    if (addrs != NULL)
       free(addrs);
   }
 
@@ -632,7 +632,7 @@ sha512_write_static_env(sha512_t *hash) {
 
     len = GetCurrentDirectoryA(sizeof(cwd), cwd);
 
-    if (len != 0 && len <= MAX_PATH)
+    if (len >= 1 && len <= MAX_PATH)
       sha512_write_string(hash, cwd);
   }
 
@@ -648,7 +648,7 @@ sha512_write_static_env(sha512_t *hash) {
   {
     char *cmd = GetCommandLineA();
 
-    if (cmd) {
+    if (cmd != NULL) {
       sha512_write_ptr(hash, cmd);
       sha512_write_string(hash, cmd);
     }
@@ -658,7 +658,7 @@ sha512_write_static_env(sha512_t *hash) {
   {
     char *env = GetEnvironmentStringsA();
 
-    if (env) {
+    if (env != NULL) {
       char *penv = env;
 
       sha512_write_ptr(hash, env);
@@ -716,7 +716,7 @@ sha512_write_static_env(sha512_t *hash) {
     const unsigned char *random_aux =
       (const unsigned char *)getauxval(AT_RANDOM);
 
-    if (random_aux) {
+    if (random_aux != NULL) {
       sha512_write_ptr(hash, random_aux);
       sha512_write(hash, random_aux, 16);
     }
@@ -726,7 +726,7 @@ sha512_write_static_env(sha512_t *hash) {
   {
     const char *platform_str = (const char *)getauxval(AT_PLATFORM);
 
-    if (platform_str) {
+    if (platform_str != NULL) {
       sha512_write_ptr(hash, platform_str);
       sha512_write_string(hash, platform_str);
     }
@@ -736,7 +736,7 @@ sha512_write_static_env(sha512_t *hash) {
   {
     const char *exec_str = (const char *)getauxval(AT_EXECFN);
 
-    if (exec_str) {
+    if (exec_str != NULL) {
       sha512_write_ptr(hash, exec_str);
       sha512_write_string(hash, exec_str);
     }
@@ -886,7 +886,7 @@ sha512_write_static_env(sha512_t *hash) {
   }
 
   /* Environment variables. */
-  if (environ) {
+  if (environ != NULL) {
     size_t i;
 
     sha512_write_ptr(hash, environ);
@@ -1119,7 +1119,7 @@ sha512_write_dynamic_env(sha512_t *hash) {
 
     sha512_write_ptr(hash, &addr);
 
-    if (addr) {
+    if (addr != NULL) {
       sha512_write_ptr(hash, addr);
       free(addr);
     }

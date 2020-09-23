@@ -528,7 +528,7 @@ static int
 rsa_priv_verify(const rsa_priv_t *k) {
   /* [RFC8017] Page 9, Section 3.2. */
   mpz_t pm1, qm1, phi, lam, tmp;
-  int r = 0;
+  int ret = 0;
 
   if (!rsa_priv_is_sane(k))
     return 0;
@@ -616,14 +616,14 @@ rsa_priv_verify(const rsa_priv_t *k) {
   if (mpz_cmp_ui(tmp, 1) != 0)
     goto fail;
 
-  r = 1;
+  ret = 1;
 fail:
   mpz_cleanse(pm1);
   mpz_cleanse(qm1);
   mpz_cleanse(phi);
   mpz_cleanse(lam);
   mpz_cleanse(tmp);
-  return r;
+  return ret;
 }
 
 static int
@@ -632,7 +632,7 @@ rsa_priv_from_pqe(rsa_priv_t *out,
   /* Recover from (p, q, e). */
   mpz_t p, q, pm1, qm1, lam;
   rsa_priv_t k;
-  int r = 0;
+  int ret = 0;
 
   rsa_priv_init(&k);
 
@@ -691,7 +691,7 @@ rsa_priv_from_pqe(rsa_priv_t *out,
   ASSERT(rsa_priv_verify(&k));
 
   rsa_priv_set(out, &k);
-  r = 1;
+  ret = 1;
 fail:
   rsa_priv_clear(&k);
   mpz_cleanse(p);
@@ -699,7 +699,7 @@ fail:
   mpz_cleanse(pm1);
   mpz_cleanse(qm1);
   mpz_cleanse(lam);
-  return r;
+  return ret;
 }
 
 static int
@@ -707,7 +707,7 @@ rsa_priv_from_pqd(rsa_priv_t *out,
                   const mpz_t p, const mpz_t q, const mpz_t d) {
   /* Recover from (p, q, d). */
   mpz_t pm1, qm1, phi, lam, tmp, e;
-  int r = 0;
+  int ret = 0;
 
   mpz_init(pm1);
   mpz_init(qm1);
@@ -739,7 +739,7 @@ rsa_priv_from_pqd(rsa_priv_t *out,
     goto fail;
 
   /* Recover from (p, q, e). */
-  r = rsa_priv_from_pqe(out, p, q, e);
+  ret = rsa_priv_from_pqe(out, p, q, e);
 fail:
   mpz_cleanse(pm1);
   mpz_cleanse(qm1);
@@ -747,7 +747,7 @@ fail:
   mpz_cleanse(lam);
   mpz_cleanse(tmp);
   mpz_cleanse(e);
-  return r;
+  return ret;
 }
 
 static int
@@ -765,7 +765,7 @@ rsa_priv_from_ned(rsa_priv_t *out,
   mpz_t f, nm1, nm3, g, a, b, c, p, q;
   size_t i, j, s;
   drbg_t rng;
-  int r = 0;
+  int ret = 0;
 
   mpz_init(f);
   mpz_init(nm1);
@@ -838,7 +838,7 @@ rsa_priv_from_ned(rsa_priv_t *out,
         mpz_gcd(q, n, c);
 
         /* Recover from (p, q, e). */
-        r = rsa_priv_from_pqe(out, p, q, e);
+        ret = rsa_priv_from_pqe(out, p, q, e);
 
         goto done;
       }
@@ -861,7 +861,7 @@ done:
   mpz_cleanse(c);
   mpz_cleanse(p);
   mpz_cleanse(q);
-  return r;
+  return ret;
 }
 
 static int
@@ -878,7 +878,7 @@ rsa_priv_decrypt(const rsa_priv_t *k,
   mpz_t mp, mq, md;
 #endif
   drbg_t rng;
-  int r = 0;
+  int ret = 0;
 
   drbg_init(&rng, HASH_SHA256, entropy, ENTROPY_SIZE);
 
@@ -972,7 +972,7 @@ rsa_priv_decrypt(const rsa_priv_t *k,
   mpz_mod(m, m, k->n);
   mpz_export(out, m, mpz_bytelen(k->n), 1);
 
-  r = 1;
+  ret = 1;
 fail:
   mpz_cleanse(t);
   mpz_cleanse(s);
@@ -985,7 +985,7 @@ fail:
   mpz_cleanse(mq);
   mpz_cleanse(md);
 #endif
-  return r;
+  return ret;
 }
 
 /*
@@ -1097,7 +1097,7 @@ rsa_pub_encrypt(const rsa_pub_t *k,
    *           Page 16, Section 5.2.2.
    */
   mpz_t m;
-  int r = 0;
+  int ret = 0;
 
   mpz_init(m);
 
@@ -1113,10 +1113,10 @@ rsa_pub_encrypt(const rsa_pub_t *k,
   mpz_powm(m, m, k->e, k->n);
   mpz_export(out, m, mpz_bytelen(k->n), 1);
 
-  r = 1;
+  ret = 1;
 fail:
   mpz_cleanse(m);
-  return r;
+  return ret;
 }
 
 static int
@@ -1192,7 +1192,7 @@ rsa_pub_unveil(const rsa_pub_t *k,
                const unsigned char *msg,
                size_t msg_len,
                size_t bits) {
-  int r = 0;
+  int ret = 0;
   mpz_t v;
 
   mpz_init(v);
@@ -1204,10 +1204,10 @@ rsa_pub_unveil(const rsa_pub_t *k,
   mpz_mod(v, v, k->n);
   mpz_export(out, v, mpz_bytelen(k->n), 1);
 
-  r = 1;
+  ret = 1;
 fail:
   mpz_cleanse(v);
-  return r;
+  return ret;
 }
 
 /*
@@ -1224,7 +1224,7 @@ get_digest_info(const unsigned char **data, size_t *len, int type) {
     return 1;
   }
 
-  if (type < 0 || type > HASH_MAX)
+  if (type < 0 || (size_t)type > ARRAY_SIZE(digest_info))
     return 0;
 
   info = digest_info[type];
@@ -1252,6 +1252,9 @@ mgf1xor(int type,
   hash_t cache, hash;
   size_t i = 0;
   size_t j;
+
+  /* Zero for struct assignment. */
+  memset(&cache, 0, sizeof(cache));
 
   hash_init(&cache, type);
   hash_update(&cache, seed, seed_len);
@@ -1299,7 +1302,7 @@ pss_encode(unsigned char *out,
   size_t slen = salt_len;
   size_t emlen = (embits + 7) >> 3;
   size_t dlen = emlen - hlen - 1;
-  unsigned char mask = 0xff >> (8 * emlen - embits);
+  unsigned int mask = 0xff >> (8 * emlen - embits);
   unsigned char h0[HASH_MAX_OUTPUT_SIZE];
   unsigned char *db, *h;
   hash_t hash;
@@ -1352,7 +1355,7 @@ pss_verify(int type,
   size_t slen = salt_len;
   size_t emlen = (embits + 7) >> 3;
   size_t dlen = emlen - hlen - 1;
-  unsigned char mask = 0xff >> (8 * emlen - embits);
+  unsigned int mask = 0xff >> (8 * emlen - embits);
   unsigned char h0[HASH_MAX_OUTPUT_SIZE];
   unsigned char *db, *h, *salt;
   hash_t hash;
@@ -1427,7 +1430,7 @@ rsa_privkey_generate(unsigned char *out,
                      uint64_t exp,
                      const unsigned char *entropy) {
   rsa_priv_t k;
-  int r = 0;
+  int ret = 0;
 
   rsa_priv_init(&k);
 
@@ -1435,16 +1438,16 @@ rsa_privkey_generate(unsigned char *out,
     goto fail;
 
   rsa_priv_export(out, out_len, &k);
-  r = 1;
+  ret = 1;
 fail:
   rsa_priv_clear(&k);
-  return r;
+  return ret;
 }
 
 size_t
 rsa_privkey_bits(const unsigned char *key, size_t key_len) {
   rsa_priv_t k;
-  size_t r = 0;
+  size_t size = 0;
 
   rsa_priv_init(&k);
 
@@ -1454,16 +1457,16 @@ rsa_privkey_bits(const unsigned char *key, size_t key_len) {
   if (!rsa_priv_verify(&k))
     goto fail;
 
-  r = mpz_bitlen(k.n);
+  size = mpz_bitlen(k.n);
 fail:
   rsa_priv_clear(&k);
-  return r;
+  return size;
 }
 
 int
 rsa_privkey_verify(const unsigned char *key, size_t key_len) {
   rsa_priv_t k;
-  int r = 0;
+  int ret = 0;
 
   rsa_priv_init(&k);
 
@@ -1473,10 +1476,10 @@ rsa_privkey_verify(const unsigned char *key, size_t key_len) {
   if (!rsa_priv_verify(&k))
     goto fail;
 
-  r = 1;
+  ret = 1;
 fail:
   rsa_priv_clear(&k);
-  return r;
+  return ret;
 }
 
 int
@@ -1486,7 +1489,7 @@ rsa_privkey_import(unsigned char *out,
                    size_t key_len,
                    const unsigned char *entropy) {
   rsa_priv_t k;
-  int r = 0;
+  int ret = 0;
 
   rsa_priv_init(&k);
 
@@ -1496,22 +1499,22 @@ rsa_privkey_import(unsigned char *out,
   if (!rsa_priv_verify(&k)) {
     if (mpz_sgn(k.p) > 0 && mpz_sgn(k.q) > 0) {
       if (mpz_sgn(k.e) > 0)
-        r = rsa_priv_from_pqe(&k, k.p, k.q, k.e);
+        ret = rsa_priv_from_pqe(&k, k.p, k.q, k.e);
       else
-        r = rsa_priv_from_pqd(&k, k.p, k.q, k.d);
+        ret = rsa_priv_from_pqd(&k, k.p, k.q, k.d);
     } else {
-      r = rsa_priv_from_ned(&k, k.n, k.e, k.d, entropy);
+      ret = rsa_priv_from_ned(&k, k.n, k.e, k.d, entropy);
     }
 
-    if (!r)
+    if (!ret)
       goto fail;
   }
 
   rsa_priv_export(out, out_len, &k);
-  r = 1;
+  ret = 1;
 fail:
   rsa_priv_clear(&k);
-  return r;
+  return ret;
 }
 
 int
@@ -1520,7 +1523,7 @@ rsa_privkey_export(unsigned char *out,
                    const unsigned char *key,
                    size_t key_len) {
   rsa_priv_t k;
-  int r = 0;
+  int ret = 0;
 
   rsa_priv_init(&k);
 
@@ -1531,10 +1534,10 @@ rsa_privkey_export(unsigned char *out,
     goto fail;
 
   rsa_priv_export_dumb(out, out_len, &k);
-  r = 1;
+  ret = 1;
 fail:
   rsa_priv_clear(&k);
-  return r;
+  return ret;
 }
 
 int
@@ -1544,7 +1547,7 @@ rsa_pubkey_create(unsigned char *out,
                   size_t key_len) {
   rsa_priv_t k;
   rsa_pub_t p;
-  int r = 0;
+  int ret = 0;
 
   rsa_priv_init(&k);
 
@@ -1558,16 +1561,16 @@ rsa_pubkey_create(unsigned char *out,
   mpz_roset(p.e, k.e);
 
   rsa_pub_export(out, out_len, &p);
-  r = 1;
+  ret = 1;
 fail:
   rsa_priv_clear(&k);
-  return r;
+  return ret;
 }
 
 size_t
 rsa_pubkey_bits(const unsigned char *key, size_t key_len) {
   rsa_pub_t k;
-  size_t r = 0;
+  size_t size = 0;
 
   rsa_pub_init(&k);
 
@@ -1577,16 +1580,16 @@ rsa_pubkey_bits(const unsigned char *key, size_t key_len) {
   if (!rsa_pub_verify(&k))
     goto fail;
 
-  r = mpz_bitlen(k.n);
+  size = mpz_bitlen(k.n);
 fail:
   rsa_pub_clear(&k);
-  return r;
+  return size;
 }
 
 int
 rsa_pubkey_verify(const unsigned char *key, size_t key_len) {
   rsa_pub_t k;
-  int r = 0;
+  int ret = 0;
 
   rsa_pub_init(&k);
 
@@ -1596,10 +1599,10 @@ rsa_pubkey_verify(const unsigned char *key, size_t key_len) {
   if (!rsa_pub_verify(&k))
     goto fail;
 
-  r = 1;
+  ret = 1;
 fail:
   rsa_pub_clear(&k);
-  return r;
+  return ret;
 }
 
 int
@@ -1608,7 +1611,7 @@ rsa_pubkey_import(unsigned char *out,
                   const unsigned char *key,
                   size_t key_len) {
   rsa_pub_t k;
-  int r = 0;
+  int ret = 0;
 
   rsa_pub_init(&k);
 
@@ -1619,10 +1622,10 @@ rsa_pubkey_import(unsigned char *out,
     goto fail;
 
   rsa_pub_export(out, out_len, &k);
-  r = 1;
+  ret = 1;
 fail:
   rsa_pub_clear(&k);
-  return r;
+  return ret;
 }
 
 int
@@ -1631,7 +1634,7 @@ rsa_pubkey_export(unsigned char *out,
                   const unsigned char *key,
                   size_t key_len) {
   rsa_pub_t k;
-  int r = 0;
+  int ret = 0;
 
   rsa_pub_init(&k);
 
@@ -1642,10 +1645,10 @@ rsa_pubkey_export(unsigned char *out,
     goto fail;
 
   rsa_pub_export_dumb(out, out_len, &k);
-  r = 1;
+  ret = 1;
 fail:
   rsa_pub_clear(&k);
-  return r;
+  return ret;
 }
 
 int
@@ -1665,7 +1668,7 @@ rsa_sign(unsigned char *out,
   const unsigned char *prefix;
   unsigned char *em = out;
   rsa_priv_t k;
-  int r = 0;
+  int ret = 0;
 
   rsa_priv_init(&k);
 
@@ -1709,10 +1712,10 @@ rsa_sign(unsigned char *out,
     goto fail;
 
   *out_len = klen;
-  r = 1;
+  ret = 1;
 fail:
   rsa_priv_clear(&k);
-  return r;
+  return ret;
 }
 
 int
@@ -1733,7 +1736,7 @@ rsa_verify(int type,
   unsigned char *em = NULL;
   uint32_t ok;
   rsa_pub_t k;
-  int r = 0;
+  int ret = 0;
 
   rsa_pub_init(&k);
 
@@ -1782,11 +1785,11 @@ rsa_verify(int type,
   ok &= safe_cmp(em + klen - tlen, prefix, prefix_len);
   ok &= safe_cmp(em + klen - hlen, msg, msg_len);
 
-  r = (ok == 1);
+  ret = (ok == 1);
 fail:
   rsa_pub_clear(&k);
   if (em != NULL) free(em);
-  return r;
+  return ret;
 }
 
 int
@@ -1803,7 +1806,7 @@ rsa_encrypt(unsigned char *out,
   size_t klen = 0;
   rsa_pub_t k;
   drbg_t rng;
-  int r = 0;
+  int ret = 0;
 
   drbg_init(&rng, HASH_SHA256, entropy, ENTROPY_SIZE);
 
@@ -1846,12 +1849,12 @@ rsa_encrypt(unsigned char *out,
     goto fail;
 
   *out_len = klen;
-  r = 1;
+  ret = 1;
 fail:
   rsa_pub_clear(&k);
   torsion_cleanse(&rng, sizeof(rng));
-  if (r == 0) torsion_cleanse(out, klen);
-  return r;
+  if (ret == 0) torsion_cleanse(out, klen);
+  return ret;
 }
 
 int
@@ -1868,7 +1871,7 @@ rsa_decrypt(unsigned char *out,
   uint32_t equals0, validps, valid, offset;
   size_t klen = 0;
   rsa_priv_t k;
-  int r = 0;
+  int ret = 0;
 
   rsa_priv_init(&k);
 
@@ -1911,11 +1914,11 @@ rsa_decrypt(unsigned char *out,
   *out_len = klen - offset;
   memmove(out, em + offset, *out_len);
 
-  r = 1;
+  ret = 1;
 fail:
   rsa_priv_clear(&k);
-  if (r == 0) torsion_cleanse(out, klen);
-  return r;
+  if (ret == 0) torsion_cleanse(out, klen);
+  return ret;
 }
 
 int
@@ -1936,7 +1939,7 @@ rsa_sign_pss(unsigned char *out,
   size_t klen = 0;
   rsa_priv_t k;
   drbg_t rng;
-  int r = 0;
+  int ret = 0;
 
   rsa_priv_init(&k);
 
@@ -1989,13 +1992,13 @@ rsa_sign_pss(unsigned char *out,
     goto fail;
 
   *out_len = klen;
-  r = 1;
+  ret = 1;
 fail:
   rsa_priv_clear(&k);
   torsion_cleanse(&rng, sizeof(rng));
   if (salt != NULL) free(salt);
-  if (r == 0) torsion_cleanse(out, klen);
-  return r;
+  if (ret == 0) torsion_cleanse(out, klen);
+  return ret;
 }
 
 int
@@ -2013,7 +2016,7 @@ rsa_verify_pss(int type,
   size_t klen = 0;
   size_t bits;
   rsa_pub_t k;
-  int r = 0;
+  int ret = 0;
 
   rsa_pub_init(&k);
 
@@ -2068,11 +2071,11 @@ rsa_verify_pss(int type,
       goto fail;
   }
 
-  r = 1;
+  ret = 1;
 fail:
   rsa_pub_clear(&k);
   if (em != NULL) free(em);
-  return r;
+  return ret;
 }
 
 int
@@ -2097,7 +2100,7 @@ rsa_encrypt_oaep(unsigned char *out,
   rsa_pub_t k;
   hash_t hash;
   drbg_t rng;
-  int r = 0;
+  int ret = 0;
 
   rsa_pub_init(&k);
 
@@ -2148,13 +2151,13 @@ rsa_encrypt_oaep(unsigned char *out,
     goto fail;
 
   *out_len = klen;
-  r = 1;
+  ret = 1;
 fail:
   rsa_pub_clear(&k);
   torsion_cleanse(&rng, sizeof(drbg_t));
   torsion_cleanse(&hash, sizeof(hash_t));
-  if (r == 0) torsion_cleanse(out, klen);
-  return r;
+  if (ret == 0) torsion_cleanse(out, klen);
+  return ret;
 }
 
 int
@@ -2179,7 +2182,7 @@ rsa_decrypt_oaep(unsigned char *out,
   unsigned char expect[HASH_MAX_OUTPUT_SIZE];
   rsa_priv_t k;
   hash_t hash;
-  int r = 0;
+  int ret = 0;
 
   rsa_priv_init(&k);
 
@@ -2242,12 +2245,12 @@ rsa_decrypt_oaep(unsigned char *out,
   *out_len = rlen - (index + 1);
   memmove(out, rest + index + 1, *out_len);
 
-  r = 1;
+  ret = 1;
 fail:
   rsa_priv_clear(&k);
   torsion_cleanse(&hash, sizeof(hash));
-  if (r == 0) torsion_cleanse(out, klen);
-  return r;
+  if (ret == 0) torsion_cleanse(out, klen);
+  return ret;
 }
 
 int
@@ -2261,7 +2264,7 @@ rsa_veil(unsigned char *out,
          const unsigned char *entropy) {
   rsa_pub_t k;
   drbg_t rng;
-  int r = 0;
+  int ret = 0;
 
   rsa_pub_init(&k);
 
@@ -2278,11 +2281,11 @@ rsa_veil(unsigned char *out,
     goto fail;
 
   *out_len = (bits + 7) / 8;
-  r = 1;
+  ret = 1;
 fail:
   torsion_cleanse(&rng, sizeof(rng));
   rsa_pub_clear(&k);
-  return r;
+  return ret;
 }
 
 int
@@ -2295,7 +2298,7 @@ rsa_unveil(unsigned char *out,
            size_t key_len) {
   size_t klen = 0;
   rsa_pub_t k;
-  int r = 0;
+  int ret = 0;
 
   rsa_pub_init(&k);
 
@@ -2314,8 +2317,8 @@ rsa_unveil(unsigned char *out,
     goto fail;
 
   *out_len = klen;
-  r = 1;
+  ret = 1;
 fail:
   rsa_pub_clear(&k);
-  return r;
+  return ret;
 }
