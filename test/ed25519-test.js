@@ -817,14 +817,17 @@ describe('Ed25519', function() {
   });
 
   it('should modulo scalar', () => {
-    const scalar0 = Buffer.alloc(0);
+    const scalar0 = Buffer.alloc(32, 0x00);
     const mod0 = ed25519.scalarReduce(scalar0);
 
     assert.bufferEqual(mod0,
       '0000000000000000000000000000000000000000000000000000000000000000',
       'hex');
 
-    const scalar1 = Buffer.alloc(1, 0x0a);
+    const scalar1 = Buffer.alloc(32, 0x00);
+
+    scalar1[0] = 0x0a;
+
     const mod1 = ed25519.scalarReduce(scalar1);
 
     assert.bufferEqual(mod1,
@@ -837,14 +840,6 @@ describe('Ed25519', function() {
     assert.bufferEqual(mod2,
       '1c95988d7431ecd670cf7d73f45befc6feffffffffffffffffffffffffffff0f',
       'hex');
-
-    const scalar3 = Buffer.alloc(33, 0xff);
-
-    scalar3[32] = 0x0a;
-
-    const mod3 = ed25519.scalarReduce(scalar3);
-
-    assert.bufferEqual(mod3, mod2);
   });
 
   it('should convert to montgomery and back', () => {

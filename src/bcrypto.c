@@ -5868,7 +5868,9 @@ bcrypto_eddsa_scalar_reduce(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&scalar,
                              &scalar_len) == napi_ok);
 
-  eddsa_scalar_reduce(ec->ctx, out, scalar, scalar_len);
+  JS_ASSERT(scalar_len == ec->scalar_size, JS_ERR_SCALAR_SIZE);
+
+  eddsa_scalar_reduce(ec->ctx, out, scalar);
 
   CHECK(napi_create_buffer_copy(env,
                                 ec->scalar_size,
