@@ -203,11 +203,11 @@ describe('Schnorr', function() {
       const negated = result[0] === 0x03;
       const xonly = pub.slice(1);
       const expect = result.slice(1);
-      const yes = schnorr.publicKeyTweakTest(xonly, tweak, expect, negated);
+      const yes = schnorr.publicKeyTweakCheck(xonly, tweak, expect, negated);
 
       assert.strictEqual(yes, true);
 
-      const no = schnorr.publicKeyTweakTest(xonly, tweak, expect, !negated);
+      const no = schnorr.publicKeyTweakCheck(xonly, tweak, expect, !negated);
 
       assert.strictEqual(no, false);
     }
@@ -219,11 +219,11 @@ describe('Schnorr', function() {
       const pub = schnorr.publicKeyCreate(priv);
       const tweak = schnorr.privateKeyGenerate();
       const [expect, negated] = schnorr.publicKeyTweakSum(pub, tweak);
-      const yes = schnorr.publicKeyTweakTest(pub, tweak, expect, negated);
+      const yes = schnorr.publicKeyTweakCheck(pub, tweak, expect, negated);
 
       assert.strictEqual(yes, true);
 
-      const no = schnorr.publicKeyTweakTest(pub, tweak, expect, !negated);
+      const no = schnorr.publicKeyTweakCheck(pub, tweak, expect, !negated);
 
       assert.strictEqual(no, false);
     }

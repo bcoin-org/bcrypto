@@ -9660,7 +9660,7 @@ bcrypto_schnorr_pubkey_tweak_sum(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
-bcrypto_schnorr_pubkey_tweak_test(napi_env env, napi_callback_info info) {
+bcrypto_schnorr_pubkey_tweak_check(napi_env env, napi_callback_info info) {
   napi_value argv[5];
   size_t argc = 5;
   const uint8_t *pub, *tweak, *expect;
@@ -9687,7 +9687,7 @@ bcrypto_schnorr_pubkey_tweak_test(napi_env env, napi_callback_info info) {
     goto fail;
   }
 
-  schnorr_pubkey_tweak_test(ec->ctx, &ok, pub, tweak, expect, negated);
+  ok = schnorr_pubkey_tweak_add_check(ec->ctx, pub, tweak, expect, negated);
 
 fail:
   CHECK(napi_get_boolean(env, ok, &result) == napi_ok);
@@ -12162,7 +12162,7 @@ bcrypto_secp256k1_xonly_tweak_sum(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
-bcrypto_secp256k1_xonly_tweak_test(napi_env env, napi_callback_info info) {
+bcrypto_secp256k1_xonly_tweak_check(napi_env env, napi_callback_info info) {
   napi_value argv[5];
   size_t argc = 5;
   secp256k1_xonly_pubkey pubkey;
@@ -12190,11 +12190,11 @@ bcrypto_secp256k1_xonly_tweak_test(napi_env env, napi_callback_info info) {
   if (!secp256k1_xonly_pubkey_parse(ec->ctx, &pubkey, pub))
     goto fail;
 
-  ok = secp256k1_xonly_pubkey_tweak_test(ec->ctx,
-                                         expect,
-                                         negated,
-                                         &pubkey,
-                                         tweak);
+  ok = secp256k1_xonly_pubkey_tweak_add_check(ec->ctx,
+                                              expect,
+                                              negated,
+                                              &pubkey,
+                                              tweak);
 
 fail:
   CHECK(napi_get_boolean(env, ok, &result) == napi_ok);
@@ -13221,7 +13221,7 @@ NAPI_MODULE_INIT() {
     F(schnorr_pubkey_tweak_add),
     F(schnorr_pubkey_tweak_mul),
     F(schnorr_pubkey_tweak_sum),
-    F(schnorr_pubkey_tweak_test),
+    F(schnorr_pubkey_tweak_check),
     F(schnorr_pubkey_combine),
     F(schnorr_sign),
     F(schnorr_verify),
@@ -13295,7 +13295,7 @@ NAPI_MODULE_INIT() {
     F(secp256k1_xonly_tweak_add),
     F(secp256k1_xonly_tweak_mul),
     F(secp256k1_xonly_tweak_sum),
-    F(secp256k1_xonly_tweak_test),
+    F(secp256k1_xonly_tweak_check),
     F(secp256k1_xonly_combine),
     F(secp256k1_schnorr_sign),
     F(secp256k1_schnorr_verify),
