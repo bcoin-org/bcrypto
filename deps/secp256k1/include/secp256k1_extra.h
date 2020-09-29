@@ -34,21 +34,6 @@ secp256k1_ec_seckey_invert(const secp256k1_context *ctx,
                            unsigned char *seckey) SECP256K1_ARG_NONNULL(1)
                                                   SECP256K1_ARG_NONNULL(2);
 
-/** Reduces an arbitrary sized byte array to a private key.
- *
- *  Returns: 1 if bytes were successfully reduced and 0 otherwise
- *  Args:   ctx:        pointer to a context object
- *  Out:    output:     pointer to a 32-byte array to be filled by the function
- *  In:     bytes:      pointer to an arbitrary sized byte array
- *          len:        byte array length
- */
-SECP256K1_API SECP256K1_WARN_UNUSED_RESULT int
-secp256k1_ec_seckey_reduce(const secp256k1_context *ctx,
-                           unsigned char *output,
-                           const unsigned char *bytes,
-                           size_t len) SECP256K1_ARG_NONNULL(1)
-                                       SECP256K1_ARG_NONNULL(2);
-
 /** Exports a private key to a byte array.
  *
  *  Returns: 1 if key was successfully exported and 0 otherwise

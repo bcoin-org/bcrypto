@@ -209,32 +209,6 @@ describe('ECDSA', function() {
         assert.bufferEqual(parent, priv);
       });
 
-      it(`should modulo key (${ec.id})`, () => {
-        const key0 = Buffer.alloc(0);
-
-        assert.throws(() => ec.privateKeyReduce(key0));
-
-        const key1 = Buffer.alloc(1, 0x0a);
-        const mod1 = ec.privateKeyReduce(key1);
-        const exp1 = Buffer.alloc(ec.size, 0x00);
-
-        exp1[ec.size - 1] = 0x0a;
-        assert.bufferEqual(mod1, exp1);
-
-        const key2 = Buffer.alloc(ec.size, 0xff);
-        const mod2 = ec.privateKeyReduce(key2);
-
-        assert(ec.privateKeyVerify(mod2));
-
-        const key3 = Buffer.alloc(ec.size + 1, 0xff);
-
-        key3[ec.size] = 0x0a;
-
-        const mod3 = ec.privateKeyReduce(key3);
-
-        assert.bufferEqual(mod3, mod2);
-      });
-
       it(`should do ECDH (${ec.id})`, () => {
         const alicePriv = ec.privateKeyGenerate();
         const alicePub = ec.publicKeyCreate(alicePriv);
@@ -577,7 +551,6 @@ describe('ECDSA', function() {
           const tweakInv = curve.privateKeyInvert(tweak);
 
           assert.bufferEqual(curve.publicKeyCreate(priv), pub);
-          assert.bufferEqual(curve.privateKeyReduce(priv), priv);
           assert.bufferEqual(curve.privateKeyTweakAdd(priv, tweak), privAdd);
           assert.bufferEqual(curve.privateKeyTweakAdd(privAdd, tweakNeg), priv);
           assert.bufferEqual(curve.privateKeyTweakMul(priv, tweak), privMul);

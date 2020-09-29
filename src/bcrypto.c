@@ -4593,33 +4593,6 @@ bcrypto_ecdsa_privkey_tweak_mul(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
-bcrypto_ecdsa_privkey_reduce(napi_env env, napi_callback_info info) {
-  napi_value argv[2];
-  size_t argc = 2;
-  uint8_t out[ECDSA_MAX_PRIV_SIZE];
-  const uint8_t *priv;
-  size_t priv_len;
-  bcrypto_wei_curve_t *ec;
-  napi_value result;
-
-  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
-  CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
-                             &priv_len) == napi_ok);
-
-  JS_ASSERT(ecdsa_privkey_reduce(ec->ctx, out, priv, priv_len), JS_ERR_PRIVKEY);
-
-  CHECK(napi_create_buffer_copy(env,
-                                ec->scalar_size,
-                                out,
-                                NULL,
-                                &result) == napi_ok);
-
-  return result;
-}
-
-static napi_value
 bcrypto_ecdsa_privkey_negate(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
@@ -9277,34 +9250,6 @@ bcrypto_schnorr_privkey_tweak_mul(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
-bcrypto_schnorr_privkey_reduce(napi_env env, napi_callback_info info) {
-  napi_value argv[2];
-  size_t argc = 2;
-  uint8_t out[SCHNORR_MAX_PRIV_SIZE];
-  const uint8_t *priv;
-  size_t priv_len;
-  bcrypto_wei_curve_t *ec;
-  napi_value result;
-
-  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
-  CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
-                             &priv_len) == napi_ok);
-
-  JS_ASSERT(schnorr_privkey_reduce(ec->ctx, out, priv, priv_len),
-            JS_ERR_PRIVKEY);
-
-  CHECK(napi_create_buffer_copy(env,
-                                ec->scalar_size,
-                                out,
-                                NULL,
-                                &result) == napi_ok);
-
-  return result;
-}
-
-static napi_value
 bcrypto_schnorr_privkey_invert(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
@@ -10435,30 +10380,6 @@ bcrypto_secp256k1_seckey_tweak_mul(napi_env env, napi_callback_info info) {
   memcpy(out, priv, 32);
 
   JS_ASSERT(secp256k1_ec_seckey_tweak_mul(ec->ctx, out, tweak),
-            JS_ERR_PRIVKEY);
-
-  CHECK(napi_create_buffer_copy(env, 32, out, NULL, &result) == napi_ok);
-
-  return result;
-}
-
-static napi_value
-bcrypto_secp256k1_seckey_reduce(napi_env env, napi_callback_info info) {
-  napi_value argv[2];
-  size_t argc = 2;
-  uint8_t out[32];
-  const uint8_t *priv;
-  size_t priv_len;
-  bcrypto_secp256k1_t *ec;
-  napi_value result;
-
-  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
-  CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
-                             &priv_len) == napi_ok);
-
-  JS_ASSERT(secp256k1_ec_seckey_reduce(ec->ctx, out, priv, priv_len),
             JS_ERR_PRIVKEY);
 
   CHECK(napi_create_buffer_copy(env, 32, out, NULL, &result) == napi_ok);
@@ -13016,7 +12937,6 @@ NAPI_MODULE_INIT() {
     F(ecdsa_privkey_import),
     F(ecdsa_privkey_tweak_add),
     F(ecdsa_privkey_tweak_mul),
-    F(ecdsa_privkey_reduce),
     F(ecdsa_privkey_negate),
     F(ecdsa_privkey_invert),
     F(ecdsa_pubkey_create),
@@ -13208,7 +13128,6 @@ NAPI_MODULE_INIT() {
     F(schnorr_privkey_import),
     F(schnorr_privkey_tweak_add),
     F(schnorr_privkey_tweak_mul),
-    F(schnorr_privkey_reduce),
     F(schnorr_privkey_invert),
     F(schnorr_pubkey_create),
     F(schnorr_pubkey_from_uniform),
@@ -13247,7 +13166,6 @@ NAPI_MODULE_INIT() {
     F(secp256k1_seckey_import),
     F(secp256k1_seckey_tweak_add),
     F(secp256k1_seckey_tweak_mul),
-    F(secp256k1_seckey_reduce),
     F(secp256k1_seckey_negate),
     F(secp256k1_seckey_invert),
     F(secp256k1_pubkey_create),

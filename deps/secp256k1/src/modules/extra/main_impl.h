@@ -55,35 +55,6 @@ secp256k1_ec_seckey_invert(const secp256k1_context *ctx,
 }
 
 int
-secp256k1_ec_seckey_reduce(const secp256k1_context *ctx,
-                           unsigned char *output,
-                           const unsigned char *bytes,
-                           size_t len) {
-  secp256k1_scalar sec;
-
-  VERIFY_CHECK(ctx != NULL);
-  ARG_CHECK(output != NULL);
-
-  if (len > 32)
-    len = 32;
-
-  memset(output, 0x00, 32 - len);
-
-  if (len > 0)
-    memcpy(output + 32 - len, bytes, len);
-
-  secp256k1_scalar_set_b32(&sec, output, NULL);
-
-  if (secp256k1_scalar_is_zero(&sec))
-    return 0;
-
-  secp256k1_scalar_get_b32(output, &sec);
-  secp256k1_scalar_clear(&sec);
-
-  return 1;
-}
-
-int
 secp256k1_ec_seckey_export(const secp256k1_context *ctx,
                            unsigned char *output,
                            const unsigned char *seckey) {
