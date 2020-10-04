@@ -254,9 +254,9 @@ describe('Ristretto', function() {
     }
   });
 
-  it.skip('should decode and encode ristretto points (h = 8, a != -1)', () => {
-    const ed25519 = new curves.ED25519();
-    const curve = ed25519.toEdwards(ed25519.field(4));
+  it('should decode and encode ristretto points (h = 8, a = -1)', () => {
+    const m221 = new curves.M221();
+    const curve = m221.toEdwards(m221.field(-1));
     const ristretto = new Ristretto(curve);
 
     let p = curve.point();
