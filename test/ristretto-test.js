@@ -285,6 +285,25 @@ describe('Ristretto', function() {
       '582b5c76df886991eeba7308d67099fd266ccde69d820b426555fd6e6e0e9470'
     ];
 
+    const totals = [
+      3,
+      5,
+      2,
+      4,
+      4,
+      5,
+      5,
+      4,
+      7,
+      5,
+      4,
+      5,
+      6,
+      4,
+      5,
+      6
+    ];
+
     for (let i = 0; i < 16; i++) {
       const raw = Buffer.from(bytes[i], 'hex');
       const image = Buffer.from(images[i], 'hex');
@@ -293,13 +312,26 @@ describe('Ristretto', function() {
 
       assert.bufferEqual(ristretto.encode(p0), image);
 
+      let total = 0;
+
       for (let j = 0; j < 8; j++) {
-        const r1 = ristretto.pointToUniform(p0, j);
+        let r1;
+
+        try {
+          r1 = ristretto.pointToUniform(p0, j);
+        } catch (e) {
+          continue;
+        }
+
         const p1 = ristretto.pointFromUniform(r1);
 
         assert.strictEqual(ristretto.eq(p1, p0), true);
         assert.strictEqual(p1.mulH().eq(p0.mulH()), true);
+
+        total += 1;
       }
+
+      assert.strictEqual(total, totals[i]);
     }
   });
 
@@ -431,6 +463,25 @@ describe('Ristretto', function() {
       '6b446dbff3411c571cf0771406f68cb9a3403470d636e5a6ce1b84cc'
     ];
 
+    const totals = [
+      2,
+      2,
+      2,
+      3,
+      1,
+      3,
+      3,
+      3,
+      1,
+      3,
+      1,
+      3,
+      2,
+      3,
+      2,
+      3
+    ];
+
     for (let i = 0; i < 32; i += 2) {
       const raw = Buffer.from(bytes[i] + bytes[i + 1], 'hex');
       const image = Buffer.from(images[i] + images[i + 1], 'hex');
@@ -439,13 +490,26 @@ describe('Ristretto', function() {
 
       assert.bufferEqual(ristretto.encode(p0), image);
 
+      let total = 0;
+
       for (let j = 0; j < 4; j++) {
-        const r1 = ristretto.pointToUniform(p0, j);
+        let r1;
+
+        try {
+          r1 = ristretto.pointToUniform(p0, j);
+        } catch (e) {
+          continue;
+        }
+
         const p1 = ristretto.pointFromUniform(r1);
 
         assert.strictEqual(ristretto.eq(p1, p0), true);
         assert.strictEqual(p1.mulH().eq(p0.mulH()), true);
+
+        total += 1;
       }
+
+      assert.strictEqual(total, totals[i / 2]);
     }
   });
 
@@ -524,6 +588,25 @@ describe('Ristretto', function() {
       '6808ea767a96d67610c37a0b90a31e81267df42c8cfa377e83dc6c2e'
     ];
 
+    const totals = [
+      2,
+      3,
+      3,
+      3,
+      3,
+      2,
+      2,
+      3,
+      2,
+      2,
+      2,
+      2,
+      4,
+      3,
+      2,
+      2
+    ];
+
     for (let i = 0; i < 32; i += 2) {
       const raw = Buffer.from(bytes[i] + bytes[i + 1], 'hex');
       const image = Buffer.from(images[i] + images[i + 1], 'hex');
@@ -532,13 +615,26 @@ describe('Ristretto', function() {
 
       assert.bufferEqual(ristretto.encode(p0), image);
 
+      let total = 0;
+
       for (let j = 0; j < 4; j++) {
-        const r1 = ristretto.pointToUniform(p0, j);
+        let r1;
+
+        try {
+          r1 = ristretto.pointToUniform(p0, j);
+        } catch (e) {
+          continue;
+        }
+
         const p1 = ristretto.pointFromUniform(r1);
 
         assert.strictEqual(ristretto.eq(p1, p0), true);
         assert.strictEqual(p1.mulH().eq(p0.mulH()), true);
+
+        total += 1;
       }
+
+      assert.strictEqual(total, totals[i / 2]);
     }
   });
 
