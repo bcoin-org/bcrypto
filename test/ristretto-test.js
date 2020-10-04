@@ -5,6 +5,7 @@ const elliptic = require('../lib/js/elliptic');
 const Ristretto = require('../lib/js/ristretto');
 const SHA512 = require('../lib/sha512');
 const rng = require('../lib/random');
+const extra = require('./util/curves');
 const {curves} = elliptic;
 
 describe('Ristretto', function() {
@@ -205,6 +206,65 @@ describe('Ristretto', function() {
       assert.bufferEqual(ristretto.encode(p), raw);
 
       p = p.add(curve.g);
+    }
+  });
+
+  it('should decode and encode ristretto points (extra curves)', () => {
+    for (const curve of [new extra.ED1174(),
+                         new extra.E222(),
+                         new extra.E382(),
+                         new extra.E521(),
+                         new extra.MDC()]) {
+      const ristretto = new Ristretto(curve);
+
+      let p = curve.point();
+
+      for (let i = 0; i < 16; i++) {
+        const raw = ristretto.encode(p);
+        const q = ristretto.decode(raw);
+
+        assert.strictEqual(ristretto.eq(q, p), true);
+        assert.strictEqual(q.mulH().eq(p.mulH()), true);
+        assert.bufferEqual(ristretto.encode(q), raw);
+
+        p = p.add(curve.g);
+      }
+    }
+  });
+
+  it('should compute elligator (extra curves)', () => {
+    for (const curve of [new extra.ED1174(),
+                         new extra.E222(),
+                         new extra.E382(),
+                         new extra.E521(),
+                         new extra.MDC()]) {
+      const ristretto = new Ristretto(curve);
+
+      for (let i = 0; i < 16; i++) {
+        const r0 = curve.randomField(rng);
+        const p0 = ristretto.pointFromUniform(r0);
+
+        let total = 0;
+
+        for (let j = 0; j < 8; j++) {
+          let r1;
+
+          try {
+            r1 = ristretto.pointToUniform(p0, j);
+          } catch (e) {
+            continue;
+          }
+
+          const p1 = ristretto.pointFromUniform(r1);
+
+          assert.strictEqual(ristretto.eq(p1, p0), true);
+          assert.strictEqual(p1.mulH().eq(p0.mulH()), true);
+
+          total += 1;
+        }
+
+        assert(total >= 1);
+      }
     }
   });
 
