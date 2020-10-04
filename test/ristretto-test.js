@@ -212,6 +212,25 @@ describe('Ristretto', function() {
     }
   });
 
+  it.skip('should decode and encode ristretto points (h = 8, a != -1)', () => {
+    const ed25519 = new curves.ED25519();
+    const curve = ed25519.toEdwards(ed25519.field(4));
+    const ristretto = new Ristretto(curve);
+
+    let p = curve.point();
+
+    for (let i = 0; i < 16; i++) {
+      const raw = ristretto.encode(p);
+      const q = ristretto.decode(raw);
+
+      assert.strictEqual(ristretto.eq(q, p), true);
+      assert.strictEqual(q.mulH().eq(p.mulH()), true);
+      assert.bufferEqual(ristretto.encode(q), raw);
+
+      p = p.add(curve.g);
+    }
+  });
+
   it('should decode and encode ristretto points (extra curves)', () => {
     for (const curve of [new extra.ED1174(),
                          new extra.E222(),
