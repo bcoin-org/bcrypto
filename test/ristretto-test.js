@@ -36,20 +36,34 @@ describe('Ristretto', function() {
       'e0c418f7c8d9c4cdd7395b93ea124f3ad99021bb681dfc3302a9d99a2e53e64e'
     ];
 
+    const points = [];
+
     let p = curve.point();
 
-    for (const str of json) {
-      const raw = Buffer.from(str, 'hex');
+    for (let i = 0; i < 16; i++) {
+      const raw = Buffer.from(json[i], 'hex');
       const q = ristretto.decode(raw);
 
       assert.strictEqual(ristretto.eq(q, p), true);
       assert.strictEqual(q.mulH().eq(p.mulH()), true);
       assert.bufferEqual(ristretto.encode(p), raw);
 
-      assert.strictEqual(ristretto.isInfinity(q), str === json[0]);
-      assert.strictEqual(ristretto.isInfinity(p), str === json[0]);
+      assert.strictEqual(ristretto.isInfinity(q), i === 0);
+      assert.strictEqual(ristretto.isInfinity(p), i === 0);
+
+      points.push(p);
 
       p = p.add(curve.g);
+    }
+
+    const batched = ristretto.encodeBatch(points);
+
+    for (let i = 0; i < 16; i++) {
+      const q = ristretto.decode(batched[i]);
+      const p = points[i].dbl();
+
+      assert.strictEqual(ristretto.eq(q, p), true);
+      assert.strictEqual(q.mulH().eq(p.mulH()), true);
     }
   });
 
@@ -142,6 +156,8 @@ describe('Ristretto', function() {
       '58f342272e3a5e575a055ddb051390c54c24c6ecb1e0aceb075f6056'
     ];
 
+    const points = [];
+
     let p = curve.point();
 
     for (let i = 0; i < json.length; i += 2) {
@@ -153,7 +169,19 @@ describe('Ristretto', function() {
       assert.strictEqual(q.mulH().eq(p.mulH()), true);
       assert.bufferEqual(ristretto.encode(p), raw);
 
+      points.push(p);
+
       p = p.add(curve.g);
+    }
+
+    const batched = ristretto.encodeBatch(points);
+
+    for (let i = 0; i < 16; i++) {
+      const q = ristretto.decode(batched[i]);
+      const p = points[i].dbl();
+
+      assert.strictEqual(ristretto.eq(q, p), true);
+      assert.strictEqual(q.mulH().eq(p.mulH()), true);
     }
   });
 
@@ -197,6 +225,8 @@ describe('Ristretto', function() {
       '977690f8217b98bb57dafdaac15f276cef4aac9b4a3e163b07216468'
     ];
 
+    const points = [];
+
     let p = curve.point();
 
     for (let i = 0; i < json.length; i += 2) {
@@ -208,7 +238,19 @@ describe('Ristretto', function() {
       assert.strictEqual(q.mulH().eq(p.mulH()), true);
       assert.bufferEqual(ristretto.encode(p), raw);
 
+      points.push(p);
+
       p = p.add(curve.g);
+    }
+
+    const batched = ristretto.encodeBatch(points);
+
+    for (let i = 0; i < 16; i++) {
+      const q = ristretto.decode(batched[i]);
+      const p = points[i].dbl();
+
+      assert.strictEqual(ristretto.eq(q, p), true);
+      assert.strictEqual(q.mulH().eq(p.mulH()), true);
     }
   });
 
