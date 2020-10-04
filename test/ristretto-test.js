@@ -46,6 +46,9 @@ describe('Ristretto', function() {
       assert.strictEqual(q.mulH().eq(p.mulH()), true);
       assert.bufferEqual(ristretto.encode(p), raw);
 
+      assert.strictEqual(ristretto.isInfinity(q), str === json[0]);
+      assert.strictEqual(ristretto.isInfinity(p), str === json[0]);
+
       p = p.add(curve.g);
     }
   });
