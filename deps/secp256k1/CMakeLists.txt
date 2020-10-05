@@ -91,33 +91,27 @@ set(secp256k1_defines USE_NUM_NONE=1
                       ECMULT_GEN_PREC_BITS=4
                       USE_ENDOMORPHISM=1
                       ENABLE_MODULE_ECDH=1
-                      ENABLE_MODULE_ELLIGATOR=1
-                      ENABLE_MODULE_EXTRA=1
                       ENABLE_MODULE_RECOVERY=1
-                      ENABLE_MODULE_SCHNORRLEG=1)
+                      ENABLE_MODULE_EXTRAKEYS=1
+                      ENABLE_MODULE_SCHNORRSIG=1
+                      ENABLE_MODULE_SCHNORRLEG=1
+                      ENABLE_MODULE_ELLIGATOR=1
+                      ENABLE_MODULE_EXTRA=1)
 
 if(SECP256K1_HAS_ASM_X64)
   list(APPEND secp256k1_defines USE_ASM_X86_64=1)
 endif()
 
 if(SECP256K1_HAS_INT128)
-  list(APPEND secp256k1_defines HAVE___INT128=1)
+  list(APPEND secp256k1_defines USE_FORCE_WIDEMUL_INT128=1)
+else()
+  list(APPEND secp256k1_defines USE_FORCE_WIDEMUL_INT64=1)
 endif()
 
 if(SECP256K1_BIGENDIAN)
-  list(APPEND secp256k1_defines WORDS_BIGENDIAN=1)
-endif()
-
-if(SECP256K1_HAS_ASM_X64 OR SECP256K1_HAS_ASM_X64)
-  list(APPEND secp256k1_defines USE_FIELD_5X52=1)
+  list(APPEND secp256k1_defines SECP256K1_BIG_ENDIAN)
 else()
-  list(APPEND secp256k1_defines USE_FIELD_10X26=1)
-endif()
-
-if(SECP256K1_HAS_ASM_X64)
-  list(APPEND secp256k1_defines USE_SCALAR_4X64=1)
-else()
-  list(APPEND secp256k1_defines USE_SCALAR_8X32=1)
+  list(APPEND secp256k1_defines SECP256K1_LITTLE_ENDIAN)
 endif()
 
 #

@@ -187,7 +187,7 @@ secp256k1_schnorrleg_verify(const secp256k1_context *ctx,
   return 1;
 }
 
-#ifdef WORDS_BIGENDIAN
+#ifdef SECP256K1_BIG_ENDIAN
 #define LE32(p) ((((p) & 0x000000FF) << 24)  \
                | (((p) & 0x0000FF00) <<  8)  \
                | (((p) & 0x00FF0000) >>  8)  \
@@ -270,7 +270,7 @@ secp256k1_schnorrleg_scalar_chacha20(secp256k1_scalar *r1,
     x14 += 0;
     x15 += over_count;
 
-#if defined(USE_SCALAR_4X64)
+#if defined(SECP256K1_WIDEMUL_INT128)
     r1->d[3] = (((uint64_t) x0) << 32) |  x1;
     r1->d[2] = (((uint64_t) x2) << 32) |  x3;
     r1->d[1] = (((uint64_t) x4) << 32) |  x5;
@@ -279,7 +279,7 @@ secp256k1_schnorrleg_scalar_chacha20(secp256k1_scalar *r1,
     r2->d[2] = (((uint64_t)x10) << 32) | x11;
     r2->d[1] = (((uint64_t)x12) << 32) | x13;
     r2->d[0] = (((uint64_t)x14) << 32) | x15;
-#elif defined(USE_SCALAR_8X32)
+#elif defined(SECP256K1_WIDEMUL_INT64)
     r1->d[7] = x0;
     r1->d[6] = x1;
     r1->d[5] = x2;
@@ -297,7 +297,7 @@ secp256k1_schnorrleg_scalar_chacha20(secp256k1_scalar *r1,
     r2->d[1] = x14;
     r2->d[0] = x15;
 #else
-#error "Please select scalar implementation"
+#error "Please select wide multiplication implementation"
 #endif
 
     over1 = secp256k1_scalar_check_overflow(r1);
