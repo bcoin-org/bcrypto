@@ -5037,7 +5037,7 @@ describe('Elliptic', function() {
       const ex = d.redSub(a).redDiv(py.redMuln(4));
 
       assert.throws(() => edwards.pointFromX(ex), {
-        message: 'Not invertible.'
+        message: 'X is not a square mod P.'
       });
 
       const d5 = d.redMuln(5);

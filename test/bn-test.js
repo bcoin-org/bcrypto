@@ -6875,11 +6875,11 @@ describe('BN.js', function() {
         assert(zero.redDivSqrt(one).eq(zero));
 
         assert.throws(() => zero.redDivSqrt(zero), {
-          message: 'Not invertible.'
+          message: 'X is not a square mod P.'
         });
 
         assert.throws(() => one.redDivSqrt(zero), {
-          message: 'Not invertible.'
+          message: 'X is not a square mod P.'
         });
 
         while (pairs.length < 10) {
