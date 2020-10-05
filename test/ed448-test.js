@@ -654,7 +654,7 @@ describe('Ed448', function() {
   });
 
   it('should modulo scalar', () => {
-    const scalar0 = Buffer.alloc(32, 0x00);
+    const scalar0 = Buffer.alloc(56, 0x00);
     const mod0 = ed448.scalarReduce(scalar0);
 
     assert.bufferEqual(mod0, ''
@@ -662,7 +662,7 @@ describe('Ed448', function() {
       + '00000000000000000000000000000000000000000000000000000000',
       'hex');
 
-    const scalar1 = Buffer.alloc(32, 0x00);
+    const scalar1 = Buffer.alloc(56, 0x00);
 
     scalar1[0] = 0x0a;
 
