@@ -11487,7 +11487,6 @@ static napi_value
 bcrypto_secp256k1_schnorr_legacy_sign(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
-  secp256k1_schnorrleg sigout;
   uint8_t out[64];
   const uint8_t *msg, *priv;
   size_t msg_len, priv_len;
@@ -11505,10 +11504,8 @@ bcrypto_secp256k1_schnorr_legacy_sign(napi_env env, napi_callback_info info) {
     msg = out;
 
   JS_ASSERT(priv_len == 32, JS_ERR_PRIVKEY_SIZE);
-  JS_ASSERT(secp256k1_schnorrleg_sign(ec->ctx, &sigout, msg, msg_len, priv),
+  JS_ASSERT(secp256k1_schnorrleg_sign(ec->ctx, out, msg, msg_len, priv),
             JS_ERR_SIGN);
-
-  secp256k1_schnorrleg_serialize(ec->ctx, out, &sigout);
 
   CHECK(napi_create_buffer_copy(env, 64, out, NULL, &result) == napi_ok);
 
@@ -11521,7 +11518,6 @@ bcrypto_secp256k1_schnorr_legacy_verify(napi_env env, napi_callback_info info) {
   size_t argc = 4;
   const uint8_t *msg, *sig, *pub;
   size_t msg_len, sig_len, pub_len;
-  secp256k1_schnorrleg sigin;
   secp256k1_pubkey pubkey;
   bcrypto_secp256k1_t *ec;
   napi_value result;
@@ -11538,9 +11534,8 @@ bcrypto_secp256k1_schnorr_legacy_verify(napi_env env, napi_callback_info info) {
     msg = sig;
 
   ok = sig_len == 64 && pub_len > 0
-    && secp256k1_schnorrleg_parse(ec->ctx, &sigin, sig)
     && secp256k1_ec_pubkey_parse(ec->ctx, &pubkey, pub, pub_len)
-    && secp256k1_schnorrleg_verify(ec->ctx, &sigin, msg, msg_len, &pubkey);
+    && secp256k1_schnorrleg_verify(ec->ctx, sig, msg, msg_len, &pubkey);
 
   CHECK(napi_get_boolean(env, ok, &result) == napi_ok);
 
@@ -11553,12 +11548,11 @@ bcrypto_secp256k1_schnorr_legacy_verify_batch(napi_env env,
   napi_value argv[2];
   size_t argc = 2;
   uint32_t i, length, item_len;
-  const uint8_t *sig, *pub;
+  const uint8_t *pub;
   size_t sig_len, pub_len;
   const uint8_t **msgs;
   size_t *msg_lens;
-  const secp256k1_schnorrleg **sigs;
-  secp256k1_schnorrleg *sig_data;
+  const unsigned char **sigs;
   const secp256k1_pubkey **pubkeys;
   secp256k1_pubkey *pubkey_data;
   bcrypto_secp256k1_t *ec;
@@ -11578,13 +11572,11 @@ bcrypto_secp256k1_schnorr_legacy_verify_batch(napi_env env,
 
   msgs = bcrypto_malloc(length * sizeof(unsigned char *));
   msg_lens = bcrypto_malloc(length * sizeof(size_t));
-  sigs = bcrypto_malloc(length * sizeof(secp256k1_schnorrleg *));
-  sig_data = bcrypto_malloc(length * sizeof(secp256k1_schnorrleg));
+  sigs = bcrypto_malloc(length * sizeof(unsigned char *));
   pubkeys = bcrypto_malloc(length * sizeof(secp256k1_pubkey *));
   pubkey_data = bcrypto_malloc(length * sizeof(secp256k1_pubkey));
 
-  if (msgs == NULL || msg_lens == NULL
-      || sigs == NULL || sig_data == NULL
+  if (msgs == NULL || msg_lens == NULL || sigs == NULL
       || pubkeys == NULL || pubkey_data == NULL) {
     goto fail;
   }
@@ -11601,14 +11593,14 @@ bcrypto_secp256k1_schnorr_legacy_verify_batch(napi_env env,
     CHECK(napi_get_buffer_info(env, items[0], (void **)&msgs[i],
                                &msg_lens[i]) == napi_ok);
 
-    CHECK(napi_get_buffer_info(env, items[1], (void **)&sig,
+    CHECK(napi_get_buffer_info(env, items[1], (void **)&sigs[i],
                                &sig_len) == napi_ok);
 
     CHECK(napi_get_buffer_info(env, items[2], (void **)&pub,
                                &pub_len) == napi_ok);
 
     if (msg_lens[i] == 0)
-      msgs[i] = sig;
+      msgs[i] = sigs[i];
 
     if (sig_len != 64)
       goto fail;
@@ -11616,13 +11608,9 @@ bcrypto_secp256k1_schnorr_legacy_verify_batch(napi_env env,
     if (pub_len == 0)
       goto fail;
 
-    if (!secp256k1_schnorrleg_parse(ec->ctx, &sig_data[i], sig))
-      goto fail;
-
     if (!secp256k1_ec_pubkey_parse(ec->ctx, &pubkey_data[i], pub, pub_len))
       goto fail;
 
-    sigs[i] = &sig_data[i];
     pubkeys[i] = &pubkey_data[i];
   }
 
@@ -11649,7 +11637,6 @@ fail:
   bcrypto_free((void *)msgs);
   bcrypto_free(msg_lens);
   bcrypto_free((void *)sigs);
-  bcrypto_free(sig_data);
   bcrypto_free((void *)pubkeys);
   bcrypto_free(pubkey_data);
 
