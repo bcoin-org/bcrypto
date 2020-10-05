@@ -192,6 +192,38 @@ secp256k1_ec_pubkey_import(const secp256k1_context *ctx,
 
 #ifdef ENABLE_MODULE_EXTRAKEYS
 int
+secp256k1_keypair_priv(const secp256k1_context* ctx,
+                       unsigned char *seckey,
+                       const secp256k1_keypair *keypair) {
+  VERIFY_CHECK(ctx != NULL);
+  ARG_CHECK(seckey != NULL);
+
+  memset(seckey, 0, 32);
+
+  ARG_CHECK(keypair != NULL);
+
+  memcpy(seckey, keypair->data, 32);
+
+  return 1;
+}
+
+int
+secp256k1_pubkey_from_xonly_pubkey(const secp256k1_context *ctx,
+                                   secp256k1_pubkey *pubkey,
+                                   const secp256k1_xonly_pubkey *xonly_pubkey) {
+  VERIFY_CHECK(ctx != NULL);
+  ARG_CHECK(pubkey != NULL);
+
+  memset(pubkey->data, 0, 64);
+
+  ARG_CHECK(xonly_pubkey != NULL);
+
+  memcpy(pubkey->data, xonly_pubkey->data, 64);
+
+  return 1;
+}
+
+int
 secp256k1_xonly_pubkey_export(const secp256k1_context *ctx,
                               unsigned char *x,
                               unsigned char *y,

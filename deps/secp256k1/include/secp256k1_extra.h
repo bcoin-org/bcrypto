@@ -102,6 +102,42 @@ secp256k1_ec_pubkey_import(const secp256k1_context *ctx,
                            int sign) SECP256K1_ARG_NONNULL(1)
                                      SECP256K1_ARG_NONNULL(2);
 
+/** Get the secret key from a keypair.
+ *
+ *  Returns: 0 if the arguments are invalid. 1 otherwise.
+ *  Args:    ctx: pointer to a context object (cannot be NULL)
+ *  Out: seckey: pointer to a 32-byte array. If 1 is returned, it is set to
+ *               the keypair secret key. If not, it's set to an invalid value.
+ *               (cannot be NULL)
+ *  In: keypair: pointer to a keypair (cannot be NULL)
+ */
+SECP256K1_API SECP256K1_WARN_UNUSED_RESULT int
+secp256k1_keypair_priv(const secp256k1_context* ctx,
+                       unsigned char *seckey,
+                       const secp256k1_keypair *keypair) SECP256K1_ARG_NONNULL(1)
+                                                         SECP256K1_ARG_NONNULL(2);
+
+/** Converts a secp256k1_xonly_pubkey into a secp256k1_pubkey.
+ *
+ *  Returns: 1 if the public key was successfully converted
+ *           0 otherwise
+ *
+ *  Args:         ctx: pointer to a context object (cannot be NULL)
+ *  Out:       pubkey: pointer to a public key object for placing the
+ *                     converted public key (cannot be NULL)
+ *          pk_parity: pointer to an integer that will be set to 1 if the point
+ *                     encoded by xonly_pubkey is the negation of the pubkey and
+ *                     set to 0 otherwise. (can be NULL)
+ *  In:  xonly_pubkey: pointer to an x-only public key that is converted
+ *                     (cannot be NULL)
+ */
+SECP256K1_API SECP256K1_WARN_UNUSED_RESULT int
+secp256k1_pubkey_from_xonly_pubkey(const secp256k1_context *ctx,
+                                   secp256k1_pubkey *pubkey,
+                                   const secp256k1_xonly_pubkey *xonly_pubkey) SECP256K1_ARG_NONNULL(1)
+                                                                               SECP256K1_ARG_NONNULL(2)
+                                                                               SECP256K1_ARG_NONNULL(3);
+
 /** Exports an x-only public key to x/y byte arrays.
  *
  *  Returns: 1 if key was successfully exported and 0 otherwise
