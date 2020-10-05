@@ -2,6 +2,7 @@
 #define SECP256K1_ELLIGATOR_H
 
 #include "secp256k1.h"
+#include "secp256k1_extrakeys.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -75,7 +76,6 @@ secp256k1_ec_pubkey_to_hash(const secp256k1_context *ctx,
                                                           SECP256K1_ARG_NONNULL(3)
                                                           SECP256K1_ARG_NONNULL(4);
 
-#ifdef BCRYPTO_USE_SECP256K1_LATEST
 /** Hash bytes to a point using the Shallue-van de Woestijne map.
  *
  *  Returns: 1: the byte array was sucessfully mapped.
@@ -143,7 +143,6 @@ secp256k1_xonly_pubkey_to_hash(const secp256k1_context *ctx,
                                                              SECP256K1_ARG_NONNULL(2)
                                                              SECP256K1_ARG_NONNULL(3)
                                                              SECP256K1_ARG_NONNULL(4);
-#endif
 
 #ifdef __cplusplus
 }

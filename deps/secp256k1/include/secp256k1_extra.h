@@ -2,6 +2,7 @@
 #define SECP256K1_EXTRA_H
 
 #include "secp256k1.h"
+#include "secp256k1_extrakeys.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -101,7 +102,6 @@ secp256k1_ec_pubkey_import(const secp256k1_context *ctx,
                            int sign) SECP256K1_ARG_NONNULL(1)
                                      SECP256K1_ARG_NONNULL(2);
 
-#ifdef BCRYPTO_USE_SECP256K1_LATEST
 /** Exports an x-only public key to x/y byte arrays.
  *
  *  Returns: 1 if key was successfully exported and 0 otherwise
@@ -138,7 +138,6 @@ secp256k1_xonly_pubkey_import(const secp256k1_context *ctx,
                               const unsigned char *y,
                               size_t y_len) SECP256K1_ARG_NONNULL(1)
                                             SECP256K1_ARG_NONNULL(2);
-#endif
 
 /** Truncates an ECDSA message.
  *

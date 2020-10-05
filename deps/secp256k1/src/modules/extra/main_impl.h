@@ -190,7 +190,7 @@ secp256k1_ec_pubkey_import(const secp256k1_context *ctx,
   return 1;
 }
 
-#ifdef BCRYPTO_USE_SECP256K1_LATEST
+#ifdef ENABLE_MODULE_EXTRAKEYS
 int
 secp256k1_xonly_pubkey_export(const secp256k1_context *ctx,
                               unsigned char *x,
@@ -207,14 +207,12 @@ secp256k1_xonly_pubkey_import(const secp256k1_context *ctx,
                               size_t x_len,
                               const unsigned char *y,
                               size_t y_len) {
-  if (!secp256k1_ec_pubkey_import(ctx, (secp256k1_pubkey *)pubkey,
-                                  x, x_len, y, y_len, -1)) {
+  secp256k1_pubkey pub;
+
+  if (!secp256k1_ec_pubkey_import(ctx, &pub, x, x_len, y, y_len, -1))
     return 0;
-  }
 
-  secp256k1_ec_pubkey_even_y(ctx, (secp256k1_pubkey *)pubkey, NULL);
-
-  return 1;
+  return secp256k1_xonly_pubkey_from_pubkey(ctx, pubkey, NULL, &pub);
 }
 #endif
 

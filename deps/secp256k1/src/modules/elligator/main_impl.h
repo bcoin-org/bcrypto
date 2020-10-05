@@ -38,7 +38,7 @@ secp256k1_fe_sqrn(secp256k1_fe *out, const secp256k1_fe *in, int rounds) {
 
 static void
 secp256k1_fe_pow_pm3d4(secp256k1_fe *out, const secp256k1_fe *in) {
-  /* Compute a^((p - 3) / 4) with a modification of the square root chain. */
+  /* Compute a^((p - 3) / 4) with a modification of the inversion chain. */
   /* 14M + 254S */
   secp256k1_fe x1, x2, x3, x6, x9, x11, x22, x44, x88, x176, x220, x223;
 
@@ -521,19 +521,17 @@ secp256k1_ec_pubkey_to_hash(const secp256k1_context *ctx,
   return 1;
 }
 
-#ifdef BCRYPTO_USE_SECP256K1_LATEST
+#ifdef ENABLE_MODULE_EXTRAKEYS
 int
 secp256k1_xonly_pubkey_from_uniform(const secp256k1_context *ctx,
                                     secp256k1_xonly_pubkey *pubkey,
                                     const unsigned char *bytes32) {
-  if (!secp256k1_ec_pubkey_from_uniform(ctx, (secp256k1_pubkey *)pubkey,
-                                        bytes32)) {
+  secp256k1_pubkey pub;
+
+  if (!secp256k1_ec_pubkey_from_uniform(ctx, &pub, bytes32))
     return 0;
-  }
 
-  secp256k1_ec_pubkey_even_y(ctx, (secp256k1_pubkey *)pubkey, NULL);
-
-  return 1;
+  return secp256k1_xonly_pubkey_from_pubkey(ctx, pubkey, NULL, &pub);
 }
 
 int
@@ -551,14 +549,12 @@ int
 secp256k1_xonly_pubkey_from_hash(const secp256k1_context *ctx,
                                  secp256k1_xonly_pubkey *pubkey,
                                  const unsigned char *bytes64) {
-  if (!secp256k1_ec_pubkey_from_hash(ctx, (secp256k1_pubkey *)pubkey,
-                                     bytes64)) {
+  secp256k1_pubkey pub;
+
+  if (!secp256k1_ec_pubkey_from_hash(ctx, &pub, bytes64))
     return 0;
-  }
 
-  secp256k1_ec_pubkey_even_y(ctx, (secp256k1_pubkey *)pubkey, NULL);
-
-  return 1;
+  return secp256k1_xonly_pubkey_from_pubkey(ctx, pubkey, NULL, &pub);
 }
 
 int
