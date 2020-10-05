@@ -18,12 +18,9 @@
  * more information.
  *
  * We expose a global fork-aware and thread-safe
- * RNG. However, instead of using locks or atomics
- * for thread safety, we use thread local storage
- * for the global context, meaning the context is
- * not actually global, rather, it is local to
- * each thread. This avoids us having to link to
- * pthreads and deal with other OS compat issues.
+ * RNG. We use thread local storage for the global
+ * context. This avoids us having to link to
+ * pthread and deal with other OS compat issues.
  *
  * If TLS is not supported, we try to fall back
  * to pthread.

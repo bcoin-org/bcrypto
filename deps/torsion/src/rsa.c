@@ -202,12 +202,12 @@ static const unsigned char pss_prefix[8] = {0, 0, 0, 0, 0, 0, 0, 0};
  * Structs
  */
 
-typedef struct _rsa_pub_s {
+typedef struct rsa_pub_s {
   mpz_t n;
   mpz_t e;
 } rsa_pub_t;
 
-typedef struct _rsa_priv_s {
+typedef struct rsa_priv_s {
   mpz_t n;
   mpz_t e;
   mpz_t d;

@@ -2649,9 +2649,9 @@ mpn_sec_eq(mp_srcptr xp, mp_srcptr yp, mp_size_t n) {
   return (w - 1) >> (MP_LIMB_BITS - 1);
 }
 
-int
-mpn_sec_lt(mp_srcptr xp, mp_srcptr yp, mp_size_t n) {
-  /* Compute (x < y) in constant time. */
+static int
+mpn_sec_compare(mp_srcptr xp, mp_srcptr yp, mp_size_t n) {
+  /* Compare in constant time. */
   size_t shift = MP_LIMB_BITS - 1;
   mp_size_t i = n * 2;
   mp_limb_t eq = 1;
@@ -2661,9 +2661,29 @@ mpn_sec_lt(mp_srcptr xp, mp_srcptr yp, mp_size_t n) {
   while (i--) {
     a = (xp[i / 2] >> ((i % 2) * (MP_LIMB_BITS / 2))) & MP_LLIMB_MASK;
     b = (yp[i / 2] >> ((i % 2) * (MP_LIMB_BITS / 2))) & MP_LLIMB_MASK;
-    lt = ((eq ^ 1) & lt) | (eq & ((a - b) >> shift));
+    lt |= eq & ((a - b) >> shift);
     eq &= ((a ^ b) - 1) >> shift;
   }
+
+  return (lt << 1) | eq;
+}
+
+int
+mpn_sec_cmp(mp_srcptr xp, mp_srcptr yp, mp_size_t n) {
+  /* Compute mpn_cmp(x, y) in constant time. */
+  int cmp = mpn_sec_compare(xp, yp, n);
+  int lt = cmp >> 1;
+  int eq = cmp & 1;
+
+  return ((lt ^ 1) - lt) & -(eq ^ 1);
+}
+
+int
+mpn_sec_lt(mp_srcptr xp, mp_srcptr yp, mp_size_t n) {
+  /* Compute (x < y) in constant time. */
+  int cmp = mpn_sec_compare(xp, yp, n);
+  int lt = cmp >> 1;
+  int eq = cmp & 1;
 
   return lt & (eq ^ 1);
 }
@@ -2671,18 +2691,9 @@ mpn_sec_lt(mp_srcptr xp, mp_srcptr yp, mp_size_t n) {
 int
 mpn_sec_lte(mp_srcptr xp, mp_srcptr yp, mp_size_t n) {
   /* Compute (x <= y) in constant time. */
-  size_t shift = MP_LIMB_BITS - 1;
-  mp_size_t i = n * 2;
-  mp_limb_t eq = 1;
-  mp_limb_t lt = 0;
-  mp_limb_t a, b;
-
-  while (i--) {
-    a = (xp[i / 2] >> ((i % 2) * (MP_LIMB_BITS / 2))) & MP_LLIMB_MASK;
-    b = (yp[i / 2] >> ((i % 2) * (MP_LIMB_BITS / 2))) & MP_LLIMB_MASK;
-    lt = ((eq ^ 1) & lt) | (eq & ((a - b) >> shift));
-    eq &= ((a ^ b) - 1) >> shift;
-  }
+  int cmp = mpn_sec_compare(xp, yp, n);
+  int lt = cmp >> 1;
+  int eq = cmp & 1;
 
   return lt | eq;
 }
@@ -2690,13 +2701,21 @@ mpn_sec_lte(mp_srcptr xp, mp_srcptr yp, mp_size_t n) {
 int
 mpn_sec_gt(mp_srcptr xp, mp_srcptr yp, mp_size_t n) {
   /* Compute (x > y) in constant time. */
-  return mpn_sec_lte(xp, yp, n) ^ 1;
+  int cmp = mpn_sec_compare(xp, yp, n);
+  int lt = cmp >> 1;
+  int eq = cmp & 1;
+
+  return (lt | eq) ^ 1;
 }
 
 int
 mpn_sec_gte(mp_srcptr xp, mp_srcptr yp, mp_size_t n) {
   /* Compute (x >= y) in constant time. */
-  return mpn_sec_lt(xp, yp, n) ^ 1;
+  int cmp = mpn_sec_compare(xp, yp, n);
+  int lt = cmp >> 1;
+  int eq = cmp & 1;
+
+  return (lt ^ 1) | eq;
 }
 
 /*

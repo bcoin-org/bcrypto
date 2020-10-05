@@ -135,6 +135,18 @@
  *
  *   [ECPM] Elliptic Curve Point Multiplication (wikipedia)
  *     https://en.wikipedia.org/wiki/Elliptic_curve_point_multiplication
+ *
+ *   [DECAF] Decaf: Eliminating cofactors through point compression
+ *     Mike Hamburg
+ *     https://www.shiftleft.org/papers/decaf/decaf.pdf
+ *
+ *   [RIST] The Ristretto Group
+ *     Henry de Valence, Isis Lovecruft, Tony Arcieri
+ *     https://ristretto.group
+ *
+ *   [RIST255] The ristretto255 Group
+ *     H. de Valence, J. Grigg, G. Tankersley, F. Valsorda, I. Lovecruft
+ *     https://tools.ietf.org/html/draft-hdevalence-cfrg-ristretto-01
  */
 
 #include <limits.h>
@@ -204,6 +216,8 @@ TORSION_BARRIER(fe_word_t, fiat)
 #define NAF_WIDTH_PRE 12
 #define NAF_SIZE_PRE (1 << (NAF_WIDTH_PRE - 2)) /* 1024 */
 
+#define JSF_SIZE 4
+
 #define ECC_MIN(a, b) ((a) < (b) ? (a) : (b))
 #define ECC_MAX(a, b) ((a) > (b) ? (a) : (b))
 
@@ -217,29 +231,28 @@ struct scalar_field_s;
 
 typedef mp_limb_t sc_t[MAX_SCALAR_LIMBS]; /* 72 bytes */
 
-typedef void sc_invert_func(const struct scalar_field_s *, sc_t, const sc_t);
+typedef void sc_invert_f(const struct scalar_field_s *, sc_t, const sc_t);
 
 typedef struct scalar_field_s {
   int endian;
+  mp_size_t limbs;
   size_t size;
   size_t bits;
   size_t endo_bits;
   mp_size_t shift;
-  mp_limb_t n[MAX_REDUCE_LIMBS];
   unsigned int mask;
-  unsigned char raw[MAX_SCALAR_SIZE];
+  mp_limb_t n[MAX_REDUCE_LIMBS];
   mp_limb_t nh[MAX_REDUCE_LIMBS];
   mp_limb_t m[MAX_REDUCE_LIMBS];
   mp_limb_t k;
   mp_limb_t r2[MAX_SCALAR_LIMBS * 2 + 1];
-  mp_size_t limbs;
-  sc_invert_func *invert;
+  sc_invert_f *invert;
 } scalar_field_t;
 
 typedef struct scalar_def_s {
   size_t bits;
   const unsigned char n[MAX_FIELD_SIZE];
-  sc_invert_func *invert;
+  sc_invert_f *invert;
 } scalar_def_t;
 
 static const sc_t sc_one = {1, 0};
@@ -263,20 +276,21 @@ typedef void fe_selectznz_f(fe_word_t *, unsigned char,
 typedef void fe_to_bytes_f(uint8_t *, const fe_word_t *);
 typedef void fe_from_bytes_f(fe_word_t *, const uint8_t *);
 typedef void fe_carry_f(fe_word_t *, const fe_word_t *);
-typedef void fe_scmul_121666_f(fe_word_t *, const fe_word_t *);
+typedef void fe_scmul_f(fe_word_t *, const fe_word_t *);
 typedef void fe_invert_f(fe_word_t *, const fe_word_t *);
 typedef int fe_sqrt_f(fe_word_t *, const fe_word_t *);
 typedef int fe_isqrt_f(fe_word_t *, const fe_word_t *, const fe_word_t *);
+typedef void fe_legendre_f(fe_word_t *, const fe_word_t *);
 
 typedef struct prime_field_s {
   int endian;
+  mp_size_t limbs;
   size_t size;
   size_t bits;
   size_t words;
   size_t adj_size;
-  mp_limb_t p[MAX_REDUCE_LIMBS];
-  mp_size_t limbs;
   unsigned int mask;
+  mp_limb_t p[MAX_REDUCE_LIMBS];
   unsigned char raw[MAX_FIELD_SIZE];
   fe_add_f *add;
   fe_sub_f *sub;
@@ -290,10 +304,11 @@ typedef struct prime_field_s {
   fe_to_bytes_f *to_bytes;
   fe_from_bytes_f *from_bytes;
   fe_carry_f *carry;
-  fe_scmul_121666_f *scmul_121666;
+  fe_scmul_f *scmul_a24;
   fe_invert_f *invert;
   fe_sqrt_f *sqrt;
   fe_isqrt_f *isqrt;
+  fe_legendre_f *legendre;
   fe_t zero;
   fe_t one;
   fe_t two;
@@ -318,10 +333,11 @@ typedef struct prime_def_s {
   fe_to_bytes_f *to_bytes;
   fe_from_bytes_f *from_bytes;
   fe_carry_f *carry;
-  fe_scmul_121666_f *scmul_121666;
+  fe_scmul_f *scmul_a24;
   fe_invert_f *invert;
   fe_sqrt_f *sqrt;
   fe_isqrt_f *isqrt;
+  fe_legendre_f *legendre;
 } prime_def_t;
 
 /*
@@ -485,6 +501,36 @@ typedef struct mont_def_s {
 } mont_def_t;
 
 /*
+ * Ristretto
+ */
+
+typedef struct ristretto_s {
+  fe_t qnr; /* non-square in F(p), sqrt(a) for h=8 */
+  fe_t qnrds; /* sqrt(qnr * d) */
+  fe_t adm1s; /* sqrt(a * d - 1) */
+  fe_t adm1si; /* 1 / sqrt(a * d - 1) */
+  fe_t dmaddpa; /* (d + a) / (d - a) */
+  fe_t amdsi; /* 1 / sqrt(a - d) (h=8 only) */
+  fe_t dmasi; /* 1 / sqrt(d - a) (h=8 only) */
+} ristretto_t;
+
+typedef struct ristretto_def_s {
+  const unsigned char qnr[MAX_FIELD_SIZE];
+  const unsigned char qnrds[MAX_FIELD_SIZE];
+  const unsigned char adm1s[MAX_FIELD_SIZE];
+  const unsigned char adm1si[MAX_FIELD_SIZE];
+  const unsigned char dmaddpa[MAX_FIELD_SIZE];
+  const unsigned char amdsi[MAX_FIELD_SIZE];
+  const unsigned char dmasi[MAX_FIELD_SIZE];
+} ristretto_def_t;
+
+/* qge = jacobi quartic group element */
+typedef struct qge_s {
+  fe_t s;
+  fe_t t;
+} qge_t;
+
+/*
  * Edwards
  */
 
@@ -523,6 +569,7 @@ typedef struct edwards_s {
   xge_t wnd_fixed[FIXED_MAX_LENGTH]; /* 589.5kb */
   xge_t wnd_naf[NAF_SIZE_PRE]; /* 288kb */
   xge_t torsion[8];
+  ristretto_t rs;
 } edwards_t;
 
 typedef struct edwards_def_s {
@@ -540,6 +587,7 @@ typedef struct edwards_def_s {
   const unsigned char y[MAX_FIELD_SIZE];
   const unsigned char c[MAX_FIELD_SIZE];
   const subgroup_def_t *torsion;
+  const ristretto_def_t *ristretto;
 } edwards_def_t;
 
 typedef struct edwards_scratch_s {
@@ -552,64 +600,61 @@ typedef struct edwards_scratch_s {
   sc_t *coeffs;
 } edwards__scratch_t;
 
+/* rge = ristretto group element */
+typedef xge_t rge_t;
+
 /*
  * Helpers
  */
 
 static int
-bytes_zero(const unsigned char *a, size_t size) {
+bytes_zero(const unsigned char *a, size_t len) {
   /* Compute (a == 0) in constant time. */
   uint32_t z = 0;
   size_t i;
 
-  for (i = 0; i < size; i++)
+  for (i = 0; i < len; i++)
     z |= (uint32_t)a[i];
 
   return (z - 1) >> 31;
 }
 
 static int
-bytes_lt(const unsigned char *a,
-         const unsigned char *b,
-         size_t size,
-         int endian) {
+bytes_lt(const unsigned char *a, const unsigned char *b, size_t len) {
   /* Compute (a < b) in constant time. */
-  size_t i = endian < 0 ? size - 1 : 0;
+  size_t i = len;
   uint32_t eq = 1;
   uint32_t lt = 0;
   uint32_t x, y;
 
-  ASSERT(endian == -1 || endian == 1);
-
-  while (size--) {
+  while (i--) {
     x = a[i];
     y = b[i];
-    lt = ((eq ^ 1) & lt) | (eq & ((x - y) >> 31));
+    lt |= eq & ((x - y) >> 31);
     eq &= ((x ^ y) - 1) >> 31;
-    i += endian;
   }
 
   return lt & (eq ^ 1);
 }
 
 static void
-reverse_copy(unsigned char *dst, const unsigned char *src, size_t size) {
+reverse_copy(unsigned char *dst, const unsigned char *src, size_t len) {
   size_t i = 0;
-  size_t j = size - 1;
+  size_t j = len - 1;
 
-  while (size--)
+  while (len--)
     dst[i++] = src[j--];
 }
 
 static void
-reverse_bytes(unsigned char *raw, size_t size) {
+reverse_bytes(unsigned char *raw, size_t len) {
   size_t i = 0;
-  size_t j = size - 1;
+  size_t j = len - 1;
   unsigned char tmp;
 
-  size >>= 1;
+  len >>= 1;
 
-  while (size--) {
+  while (len--) {
     tmp = raw[i];
     raw[i++] = raw[j];
     raw[j--] = tmp;
@@ -653,9 +698,11 @@ sc_import_raw(const scalar_field_t *sc, sc_t r, const unsigned char *raw) {
 
 static int
 sc_import(const scalar_field_t *sc, sc_t r, const unsigned char *raw) {
-  int ret = bytes_lt(raw, sc->raw, sc->size, sc->endian);
+  int ret = 1;
 
   sc_import_raw(sc, r, raw);
+
+  ret &= mpn_sec_lt(r, sc->n, sc->limbs);
 
   mpn_cnd_zero(ret ^ 1, r, r, sc->limbs);
 
@@ -682,25 +729,28 @@ sc_import_weak(const scalar_field_t *sc, sc_t r, const unsigned char *raw) {
   return cy != 0;
 }
 
-static void
+static int
 sc_import_wide(const scalar_field_t *sc, sc_t r,
                const unsigned char *raw, size_t size) {
   mp_limb_t rp[MAX_REDUCE_LIMBS];
+  int ret = 1;
 
   ASSERT(size * 8 <= (size_t)sc->shift * MP_LIMB_BITS);
 
   mpn_import(rp, sc->shift, raw, size, sc->endian);
 
+  ret &= mpn_sec_lt(rp, sc->n, sc->shift);
+
   sc_reduce(sc, r, rp);
 
   mpn_cleanse(rp, sc->shift);
+
+  return ret;
 }
 
 static int
 sc_import_strong(const scalar_field_t *sc, sc_t r, const unsigned char *raw) {
-  sc_import_wide(sc, r, raw, sc->size);
-
-  return bytes_lt(raw, sc->raw, sc->size, sc->endian);
+  return sc_import_wide(sc, r, raw, sc->size);
 }
 
 static int
@@ -709,6 +759,44 @@ sc_import_reduce(const scalar_field_t *sc, sc_t r, const unsigned char *raw) {
     return sc_import_weak(sc, r, raw);
 
   return sc_import_strong(sc, r, raw);
+}
+
+static int
+sc_import_pad_raw(const scalar_field_t *sc, sc_t r,
+                  const unsigned char *raw, size_t len) {
+  if (sc->endian == 1) {
+    while (len > sc->size && raw[0] == 0x00) {
+      len -= 1;
+      raw += 1;
+    }
+  } else if (sc->endian == -1) {
+    while (len > sc->size && raw[len - 1] == 0x00)
+      len -= 1;
+  } else {
+    torsion_abort(); /* LCOV_EXCL_LINE */
+  }
+
+  if (len > sc->size) {
+    mpn_zero(r, sc->limbs);
+    return 0;
+  }
+
+  mpn_import(r, sc->limbs, raw, len, sc->endian);
+
+  return 1;
+}
+
+static int
+sc_import_pad(const scalar_field_t *sc, sc_t r,
+              const unsigned char *raw, size_t len) {
+  int ret = 1;
+
+  ret &= sc_import_pad_raw(sc, r, raw, len);
+  ret &= mpn_sec_lt(r, sc->n, sc->limbs);
+
+  mpn_cnd_zero(ret ^ 1, r, r, sc->limbs);
+
+  return ret;
 }
 
 static void
@@ -754,10 +842,7 @@ sc_set_fe(const scalar_field_t *sc,
     /* Import as scalar and reduce (wide). */
     fe_export(fe, raw, a);
 
-    sc_import_wide(sc, r, raw, fe->size);
-
-    ret &= bytes_zero(raw, fe->size - sc->size);
-    ret &= bytes_lt(raw + fe->size - sc->size, sc->raw, sc->size, sc->endian);
+    ret &= sc_import_wide(sc, r, raw, fe->size);
   } else {
     /* Import as scalar and reduce (normal). */
     fe_export(fe, raw, a);
@@ -769,7 +854,7 @@ sc_set_fe(const scalar_field_t *sc,
 }
 
 static void
-sc_set_word(const scalar_field_t *sc, sc_t r, uint32_t word) {
+sc_set_word(const scalar_field_t *sc, sc_t r, mp_limb_t word) {
   r[0] = word;
   mpn_zero(r + 1, sc->limbs - 1);
 }
@@ -851,7 +936,7 @@ sc_sub(const scalar_field_t *sc, sc_t r, const sc_t a, const sc_t b) {
 }
 
 static void
-sc_mul_word(const scalar_field_t *sc, sc_t r, const sc_t a, unsigned int word) {
+sc_mul_word(const scalar_field_t *sc, sc_t r, const sc_t a, mp_limb_t word) {
   /* Only constant-time if `word` is constant. */
   ASSERT(word && (word & (word - 1)) == 0);
 
@@ -981,6 +1066,29 @@ sc_montsqr(const scalar_field_t *sc, sc_t r, const sc_t a) {
 }
 
 static void
+sc_montsqrn(const scalar_field_t *sc, sc_t r, const sc_t a, int rounds) {
+  mp_limb_t scratch[MAX_SCALAR_LIMBS * 4]; /* 288 bytes */
+  mp_limb_t *x = scratch;
+  mp_limb_t *y = scratch + MAX_SCALAR_LIMBS * 2;
+  mp_limb_t *t;
+  int i;
+
+  ASSERT(rounds >= 1);
+
+  mpn_montmul(x, a, a, sc->n, sc->k, sc->limbs);
+
+  for (i = 1; i < rounds; i++) {
+    mpn_montmul(y, x, x, sc->n, sc->k, sc->limbs);
+
+    t = x;
+    x = y;
+    y = t;
+  }
+
+  mpn_copyi(r, x, sc->limbs);
+}
+
+static void
 sc_mont(const scalar_field_t *sc, sc_t r, const sc_t a) {
   sc_montmul(sc, r, a, sc->r2);
 }
@@ -992,7 +1100,7 @@ sc_normal(const scalar_field_t *sc, sc_t r, const sc_t a) {
 
 static int
 sc_invert_var(const scalar_field_t *sc, sc_t r, const sc_t a) {
-  mp_limb_t scratch[MPN_INVERT_ITCH(MAX_SCALAR_LIMBS)];
+  mp_limb_t scratch[MPN_INVERT_ITCH(MAX_SCALAR_LIMBS)]; /* 320 bytes */
 
   return mpn_invert_n(r, a, sc->n, sc->limbs, scratch);
 }
@@ -1003,7 +1111,7 @@ sc_pow(const scalar_field_t *sc, sc_t r, const sc_t a, const mp_limb_t *e) {
   /* Note that our exponent is not secret. */
   mp_size_t start = WND_STEPS(sc->bits) - 1;
   sc_t wnd[WND_SIZE]; /* 1152 bytes */
-  mp_size_t i, j;
+  mp_size_t i;
   mp_limb_t b;
 
   sc_mont(sc, wnd[0], sc_one);
@@ -1022,9 +1130,7 @@ sc_pow(const scalar_field_t *sc, sc_t r, const sc_t a, const mp_limb_t *e) {
     if (i == start) {
       sc_set(sc, r, wnd[b]);
     } else {
-      for (j = 0; j < WND_WIDTH; j++)
-        sc_montsqr(sc, r, r);
-
+      sc_montsqrn(sc, r, r, WND_WIDTH);
       sc_montmul(sc, r, r, wnd[b]);
     }
   }
@@ -1046,6 +1152,7 @@ sc_invert(const scalar_field_t *sc, sc_t r, const sc_t a) {
     /* e = n - 2 */
     mpn_sub_1(e, sc->n, sc->limbs, 2);
 
+    /* r = a^e mod n */
     sc_pow(sc, r, a, e);
   }
 
@@ -1301,6 +1408,7 @@ fe_cleanse(const prime_field_t *fe, fe_t r) {
 static int
 fe_import(const prime_field_t *fe, fe_t r, const unsigned char *raw) {
   unsigned char tmp[MAX_FIELD_SIZE];
+  int ret = 1;
 
   /* Swap endianness if necessary. */
   if (fe->endian == 1)
@@ -1308,19 +1416,20 @@ fe_import(const prime_field_t *fe, fe_t r, const unsigned char *raw) {
   else
     memcpy(tmp, raw, fe->size);
 
+  /* Ensure 0 <= x < p. */
+  ret &= bytes_lt(tmp, fe->raw, fe->size);
+
   /* Ignore the high bits. */
   tmp[fe->size - 1] &= fe->mask;
 
   /* Deserialize. */
   fe->from_bytes(r, tmp);
 
-  /* Montgomerize/carry. */
+  /* Montgomerize. */
   if (fe->to_montgomery != NULL)
     fe->to_montgomery(r, r);
-  else
-    fe->carry(r, r);
 
-  return bytes_lt(raw, fe->raw, fe->size, fe->endian);
+  return ret;
 }
 
 static int
@@ -1339,10 +1448,10 @@ static int
 fe_import_pad(const prime_field_t *fe, fe_t r,
               const unsigned char *raw, size_t len) {
   unsigned char tmp[MAX_FIELD_SIZE];
-  int ret;
+  int ret = 1;
 
   if (fe->endian == 1) {
-    while (len > 0 && raw[0] == 0x00) {
+    while (len > fe->size && raw[0] == 0x00) {
       len -= 1;
       raw += 1;
     }
@@ -1357,7 +1466,7 @@ fe_import_pad(const prime_field_t *fe, fe_t r,
     if (len > 0)
       memcpy(tmp + fe->size - len, raw, len);
   } else if (fe->endian == -1) {
-    while (len > 0 && raw[len - 1] == 0x00)
+    while (len > fe->size && raw[len - 1] == 0x00)
       len -= 1;
 
     if (len > fe->size) {
@@ -1373,7 +1482,7 @@ fe_import_pad(const prime_field_t *fe, fe_t r,
     torsion_abort(); /* LCOV_EXCL_LINE */
   }
 
-  ret = fe_import(fe, r, tmp);
+  ret &= fe_import(fe, r, tmp);
 
   cleanse(tmp, fe->size);
 
@@ -1384,25 +1493,8 @@ static void
 fe_export(const prime_field_t *fe, unsigned char *raw, const fe_t a) {
   if (fe->from_montgomery != NULL) {
     fe_t b;
-
-    /* Demontgomerize. */
     fe->from_montgomery(b, a);
-
-    if (fe->size * 8 != fe->words * FIELD_WORD_BITS) {
-      /* Fiat accepts bytes serialized as full
-       * words. In particular, this affects the
-       * P224 64 bit backend. This is a non-issue
-       * during deserialization as fiat will zero
-       * the remaining limbs.
-       */
-      unsigned char tmp[MAX_FIELD_SIZE];
-
-      fe->to_bytes(tmp, b);
-
-      memcpy(raw, tmp, fe->size);
-    } else {
-      fe->to_bytes(raw, b);
-    }
+    fe->to_bytes(raw, b);
   } else {
     fe->to_bytes(raw, a);
   }
@@ -1496,33 +1588,18 @@ fe_set_sc(const prime_field_t *fe,
 }
 
 static void
-fe_set_word(const prime_field_t *fe, fe_t r, uint32_t word) {
-  if (fe->from_montgomery != NULL) {
-    unsigned char tmp[MAX_FIELD_SIZE];
+fe_set_word(const prime_field_t *fe, fe_t r, fe_word_t word) {
+  size_t i;
 
-    memset(tmp, 0x00, fe->size);
+  r[0] = word;
 
-    if (fe->endian == 1) {
-      tmp[fe->size - 4] = (word >> 24) & 0xff;
-      tmp[fe->size - 3] = (word >> 16) & 0xff;
-      tmp[fe->size - 2] = (word >>  8) & 0xff;
-      tmp[fe->size - 1] = (word >>  0) & 0xff;
-    } else {
-      tmp[0] = (word >>  0) & 0xff;
-      tmp[1] = (word >>  8) & 0xff;
-      tmp[2] = (word >> 16) & 0xff;
-      tmp[3] = (word >> 24) & 0xff;
-    }
+  for (i = 1; i < fe->words; i++)
+    r[i] = 0;
 
-    ASSERT(fe_import(fe, r, tmp));
-  } else {
-    /* Note: the limit of the word size here depends
-     * on how saturated the field implementation is.
-     */
-    fe_zero(fe, r);
-
-    r[0] = word;
-  }
+  if (fe->to_montgomery != NULL)
+    fe->to_montgomery(r, r);
+  else
+    fe->carry(r, r);
 }
 
 static int
@@ -1591,7 +1668,7 @@ fe_is_odd(const prime_field_t *fe, const fe_t a) {
   return sign;
 }
 
-static void
+static TORSION_INLINE void
 fe_neg(const prime_field_t *fe, fe_t r, const fe_t a) {
   fe->opp(r, a);
 
@@ -1611,7 +1688,7 @@ fe_set_odd(const prime_field_t *fe, fe_t r, const fe_t a, unsigned int odd) {
   fe_neg_cond(fe, r, a, fe_is_odd(fe, a) ^ (odd != 0));
 }
 
-static void
+static TORSION_INLINE void
 fe_add(const prime_field_t *fe, fe_t r, const fe_t a, const fe_t b) {
   fe->add(r, a, b);
 
@@ -1619,7 +1696,7 @@ fe_add(const prime_field_t *fe, fe_t r, const fe_t a, const fe_t b) {
     fe->carry(r, r);
 }
 
-static void
+static TORSION_INLINE void
 fe_sub(const prime_field_t *fe, fe_t r, const fe_t a, const fe_t b) {
   fe->sub(r, a, b);
 
@@ -1627,8 +1704,18 @@ fe_sub(const prime_field_t *fe, fe_t r, const fe_t a, const fe_t b) {
     fe->carry(r, r);
 }
 
+static TORSION_INLINE void
+fe_add_nc(const prime_field_t *fe, fe_t r, const fe_t a, const fe_t b) {
+  fe->add(r, a, b);
+}
+
+static TORSION_INLINE void
+fe_sub_nc(const prime_field_t *fe, fe_t r, const fe_t a, const fe_t b) {
+  fe->sub(r, a, b);
+}
+
 static void
-fe_mul_word(const prime_field_t *fe, fe_t r, const fe_t a, unsigned int word) {
+fe_mul_word(const prime_field_t *fe, fe_t r, const fe_t a, fe_word_t word) {
   /* Only constant-time if `word` is constant. */
   int zero = 1;
   fe_t x;
@@ -1651,12 +1738,12 @@ fe_mul_word(const prime_field_t *fe, fe_t r, const fe_t a, unsigned int word) {
   }
 }
 
-static void
+static TORSION_INLINE void
 fe_mul(const prime_field_t *fe, fe_t r, const fe_t a, const fe_t b) {
   fe->mul(r, a, b);
 }
 
-static void
+static TORSION_INLINE void
 fe_sqr(const prime_field_t *fe, fe_t r, const fe_t a) {
   fe->square(r, a);
 }
@@ -1695,13 +1782,13 @@ fe_pow(const prime_field_t *fe, fe_t r, const fe_t a, const mp_limb_t *e) {
 
 static int
 fe_invert_var(const prime_field_t *fe, fe_t r, const fe_t a) {
-  mp_limb_t scratch[MPN_INVERT_ITCH(MAX_FIELD_LIMBS)];
+  mp_limb_t scratch[MPN_INVERT_ITCH(MAX_FIELD_LIMBS)]; /* 320 bytes */
   mp_limb_t rp[MAX_FIELD_LIMBS];
-  int ret;
+  int ret = 1;
 
   fe_get_limbs(fe, rp, a);
 
-  ret = mpn_invert_n(rp, rp, fe->p, fe->limbs, scratch);
+  ret &= mpn_invert_n(rp, rp, fe->p, fe->limbs, scratch);
 
   ASSERT(fe_set_limbs(fe, r, rp, fe->limbs));
 
@@ -1722,6 +1809,7 @@ fe_invert(const prime_field_t *fe, fe_t r, const fe_t a) {
     /* e = p - 2 */
     mpn_sub_1(e, fe->p, fe->limbs, 2);
 
+    /* r = a^e mod p */
     fe_pow(fe, r, a, e);
   }
 
@@ -1730,20 +1818,22 @@ fe_invert(const prime_field_t *fe, fe_t r, const fe_t a) {
 
 static int
 fe_sqrt(const prime_field_t *fe, fe_t r, const fe_t a) {
-  int ret;
+  int ret = 1;
 
   if (fe->sqrt != NULL) {
     /* Fast square root chain. */
-    ret = fe->sqrt(r, a);
+    ret &= fe->sqrt(r, a);
   } else {
     /* Handle p = 3 mod 4 and p = 5 mod 8. */
     mp_limb_t e[MAX_FIELD_LIMBS + 1];
     fe_t b, b2;
 
     if ((fe->p[0] & 3) == 3) {
-      /* b = a^((p + 1) / 4) mod p */
+      /* e = (p + 1) / 4 */
       mpn_add_1(e, fe->p, fe->limbs + 1, 1);
       mpn_rshift(e, e, fe->limbs + 1, 2);
+
+      /* b = a^e mod p */
       fe_pow(fe, b, a, e);
     } else if ((fe->p[0] & 7) == 5) {
       fe_t a2, c;
@@ -1751,15 +1841,17 @@ fe_sqrt(const prime_field_t *fe, fe_t r, const fe_t a) {
       /* a2 = a * 2 mod p */
       fe_add(fe, a2, a, a);
 
-      /* c = a2^((p - 5) / 8) mod p */
+      /* e = (p - 5) / 8 */
       mpn_sub_1(e, fe->p, fe->limbs, 5);
       mpn_rshift(e, e, fe->limbs, 3);
+
+      /* c = a2^e mod p */
       fe_pow(fe, c, a2, e);
 
       /* b = (c^2 * a2 - 1) * a * c mod p */
       fe_sqr(fe, b, c);
       fe_mul(fe, b, b, a2);
-      fe_sub(fe, b, b, fe->one);
+      fe_sub_nc(fe, b, b, fe->one);
       fe_mul(fe, b, b, a);
       fe_mul(fe, b, b, c);
     } else {
@@ -1769,7 +1861,7 @@ fe_sqrt(const prime_field_t *fe, fe_t r, const fe_t a) {
     /* b2 = b^2 mod p */
     fe_sqr(fe, b2, b);
 
-    ret = fe_equal(fe, b2, a);
+    ret &= fe_equal(fe, b2, a);
 
     fe_set(fe, r, b);
   }
@@ -1779,7 +1871,7 @@ fe_sqrt(const prime_field_t *fe, fe_t r, const fe_t a) {
 
 static int
 fe_is_square_var(const prime_field_t *fe, const fe_t a) {
-  mp_limb_t scratch[MPN_JACOBI_ITCH(MAX_FIELD_LIMBS)];
+  mp_limb_t scratch[MPN_JACOBI_ITCH(MAX_FIELD_LIMBS)]; /* 144 bytes */
   mp_limb_t ap[MAX_FIELD_LIMBS];
 
   fe_get_limbs(fe, ap, a);
@@ -1789,31 +1881,37 @@ fe_is_square_var(const prime_field_t *fe, const fe_t a) {
 
 static int
 fe_is_square(const prime_field_t *fe, const fe_t a) {
-  int ret;
+  int ret = 1;
+  fe_t b;
 
-  if (fe->sqrt != NULL && fe->bits != 224) {
+  if (fe->legendre != NULL) {
+    /* Fast legendre chain (P224). */
+    fe->legendre(b, a);
+
+    ret &= fe_equal(fe, b, fe->mone) ^ 1;
+  } else if (fe->sqrt != NULL) {
     /* Fast square root chain. */
-    fe_t tmp;
-    ret = fe->sqrt(tmp, a);
+    ret &= fe->sqrt(b, a);
   } else {
     /* Euler's criterion. */
     mp_limb_t e[MAX_FIELD_LIMBS];
     int x, y, z;
-    fe_t b;
 
     /* e = (p - 1) / 2 */
     mpn_sub_1(e, fe->p, fe->limbs, 1);
     mpn_rshift(e, e, fe->limbs, 1);
 
+    /* b = a^e mod p */
     fe_pow(fe, b, a, e);
 
-    x = fe_is_zero(fe, a);
+    /* Must be 0, 1, or -1. */
+    x = fe_is_zero(fe, b);
     y = fe_equal(fe, b, fe->one);
     z = fe_equal(fe, b, fe->mone);
 
     ASSERT(x + y + z == 1);
 
-    ret = x | y;
+    ret &= x | y;
   }
 
   return ret;
@@ -1829,12 +1927,26 @@ fe_isqrt(const prime_field_t *fe, fe_t r, const fe_t u, const fe_t v) {
   } else {
     fe_t z;
 
+    /* z = v^-1 mod p */
     ret &= fe_invert(fe, z, v);
 
+    /* z = u * z mod p */
     fe_mul(fe, z, z, u);
 
+    /* r = z^(1 / 2) mod p */
     ret &= fe_sqrt(fe, r, z);
   }
+
+  return ret;
+}
+
+static int
+fe_rsqrt(const prime_field_t *fe, fe_t r, const fe_t u, const fe_t v) {
+  /* [RIST] "Extracting an Inverse Square Root". */
+  /* [RIST255] Page 6, Section 3.1.3. */
+  int ret = fe_isqrt(fe, r, u, v);
+
+  fe_set_odd(fe, r, r, 0);
 
   return ret;
 }
@@ -1882,9 +1994,6 @@ scalar_field_init(scalar_field_t *sc, const scalar_def_t *def, int endian) {
 
   /* Deserialize order into limbs. */
   mpn_import(sc->n, MAX_REDUCE_LIMBS, def->n, sc->size, 1);
-
-  /* Keep a raw representation for byte comparisons. */
-  mpn_export(sc->raw, sc->size, sc->n, sc->limbs, sc->endian);
 
   /* Store `n / 2` for ECDSA checks and scalar minimization. */
   mpn_rshift(sc->nh, sc->n, MAX_REDUCE_LIMBS, 1);
@@ -1960,7 +2069,7 @@ prime_field_init(prime_field_t *fe, const prime_def_t *def, int endian) {
   mpn_import(fe->p, MAX_REDUCE_LIMBS, def->p, fe->size, 1);
 
   /* Keep a raw representation for byte comparisons. */
-  mpn_export(fe->raw, fe->size, fe->p, fe->limbs, fe->endian);
+  mpn_export(fe->raw, fe->size, fe->p, fe->limbs, -1);
 
   /* Function pointers for field arithmetic. In
    * addition to fiat's default functions, we
@@ -1979,10 +2088,11 @@ prime_field_init(prime_field_t *fe, const prime_def_t *def, int endian) {
   fe->to_bytes = def->to_bytes;
   fe->from_bytes = def->from_bytes;
   fe->carry = def->carry;
-  fe->scmul_121666 = def->scmul_121666;
+  fe->scmul_a24 = def->scmul_a24;
   fe->invert = def->invert;
   fe->sqrt = def->sqrt;
   fe->isqrt = def->isqrt;
+  fe->legendre = def->legendre;
 
   /* Pre-montgomerized constants. */
   fe_set_word(fe, fe->zero, 0);
@@ -2344,7 +2454,7 @@ wge_dbl_var(const wei_t *ec, wge_t *r, const wge_t *p) {
   fe_sqr(fe, t, p->x);
   fe_add(fe, l, t, t);
   fe_add(fe, l, l, t);
-  fe_add(fe, l, l, ec->a);
+  fe_add_nc(fe, l, l, ec->a);
   fe_add(fe, t, p->y, p->y);
   ASSERT(fe_invert_var(fe, t, t));
   fe_mul(fe, l, l, t);
@@ -2355,7 +2465,7 @@ wge_dbl_var(const wei_t *ec, wge_t *r, const wge_t *p) {
   fe_sub(fe, x3, x3, p->x);
 
   /* Y3 = L * (X1 - X3) - Y1 */
-  fe_sub(fe, t, p->x, x3);
+  fe_sub_nc(fe, t, p->x, x3);
   fe_mul(fe, y3, l, t);
   fe_sub(fe, y3, y3, p->y);
 
@@ -2393,14 +2503,13 @@ wge_add_var(const wei_t *ec, wge_t *r, const wge_t *a, const wge_t *b) {
 
   /* P + P, P + -P */
   if (fe_equal(fe, a->x, b->x)) {
-    /* P + -P = O */
-    if (!fe_equal(fe, a->y, b->y)) {
+    if (fe_equal(fe, a->y, b->y)) {
+      /* P + P = 2P */
+      wge_dbl_var(ec, r, a);
+    } else {
+      /* P + -P = O */
       wge_zero(ec, r);
-      return;
     }
-
-    /* P + P = 2P */
-    wge_dbl_var(ec, r, a);
     return;
   }
 
@@ -2422,7 +2531,7 @@ wge_add_var(const wei_t *ec, wge_t *r, const wge_t *a, const wge_t *b) {
   }
 
   /* L = (Y1 - Y2) / (X1 - X2) */
-  fe_sub(fe, l, a->y, b->y);
+  fe_sub_nc(fe, l, a->y, b->y);
   fe_sub(fe, t, a->x, b->x);
   ASSERT(fe_invert_var(fe, t, t));
   fe_mul(fe, l, l, t);
@@ -2469,7 +2578,7 @@ wge_dbl(const wei_t *ec, wge_t *r, const wge_t *p) {
   fe_sqr(fe, t, p->x);
   fe_add(fe, l, t, t);
   fe_add(fe, l, l, t);
-  fe_add(fe, l, l, ec->a);
+  fe_add_nc(fe, l, l, ec->a);
   fe_add(fe, t, p->y, p->y);
   fe_invert(fe, t, t);
   fe_mul(fe, l, l, t);
@@ -2480,7 +2589,7 @@ wge_dbl(const wei_t *ec, wge_t *r, const wge_t *p) {
   fe_sub(fe, x3, x3, p->x);
 
   /* Y3 = L * (X1 - X3) - Y1 */
-  fe_sub(fe, t, p->x, x3);
+  fe_sub_nc(fe, t, p->x, x3);
   fe_mul(fe, y3, l, t);
   fe_sub(fe, y3, y3, p->y);
 
@@ -2515,7 +2624,7 @@ wge_add(const wei_t *ec, wge_t *r, const wge_t *a, const wge_t *b) {
   fe_add(fe, m, a->y, b->y);
 
   /* R = (X1 + X2)^2 - X1 * X2 + a */
-  fe_add(fe, t, a->x, b->x);
+  fe_add_nc(fe, t, a->x, b->x);
   fe_sqr(fe, t, t);
   fe_mul(fe, l, a->x, b->x);
   fe_sub(fe, r0, t, l);
@@ -2529,7 +2638,7 @@ wge_add(const wei_t *ec, wge_t *r, const wge_t *a, const wge_t *b) {
   fe_select(fe, m, m, t, degenerate);
 
   /* R = Y1 - Y2 (if degenerate) */
-  fe_sub(fe, t, a->y, b->y);
+  fe_sub_nc(fe, t, a->y, b->y);
   fe_select(fe, r0, r0, t, degenerate);
 
   /* Check for negation (X1 = X2, Y1 = -Y2). */
@@ -2545,7 +2654,7 @@ wge_add(const wei_t *ec, wge_t *r, const wge_t *a, const wge_t *b) {
   fe_sub(fe, x3, x3, b->x);
 
   /* Y3 = L * (X1 - X3) - Y1 */
-  fe_sub(fe, t, a->x, x3);
+  fe_sub_nc(fe, t, a->x, x3);
   fe_mul(fe, y3, l, t);
   fe_sub(fe, y3, y3, a->y);
 
@@ -2803,7 +2912,7 @@ jge_is_affine(const wei_t *ec, const jge_t *a) {
   return fe_equal(fe, a->z, fe->one);
 }
 
-static int
+TORSION_UNUSED static int
 jge_equal(const wei_t *ec, const jge_t *a, const jge_t *b) {
   const prime_field_t *fe = &ec->fe;
   int inf1 = jge_is_zero(ec, a);
@@ -2954,7 +3063,7 @@ jge_dblj(const wei_t *ec, jge_t *r, const jge_t *p) {
   fe_add(fe, m, m, xx);
   fe_sqr(fe, t, zz);
   fe_mul(fe, t, t, ec->a);
-  fe_add(fe, m, m, t);
+  fe_add_nc(fe, m, m, t);
 
   /* T = M^2 - 2 * S */
   fe_sqr(fe, t, m);
@@ -2969,7 +3078,7 @@ jge_dblj(const wei_t *ec, jge_t *r, const jge_t *p) {
   fe_set(fe, r->x, t);
 
   /* Y3 = M * (S - T) - 8 * YY^2 */
-  fe_sub(fe, xx, s, t);
+  fe_sub_nc(fe, xx, s, t);
   fe_sqr(fe, zz, yy);
   fe_add(fe, zz, zz, zz);
   fe_add(fe, zz, zz, zz);
@@ -2997,7 +3106,7 @@ jge_dbl0(const wei_t *ec, jge_t *r, const jge_t *p) {
   fe_sqr(fe, c, b);
 
   /* D = 2 * ((X1 + B)^2 - A - C) */
-  fe_add(fe, d, p->x, b);
+  fe_add_nc(fe, d, p->x, b);
   fe_sqr(fe, d, d);
   fe_sub(fe, d, d, a);
   fe_sub(fe, d, d, c);
@@ -3005,7 +3114,7 @@ jge_dbl0(const wei_t *ec, jge_t *r, const jge_t *p) {
 
   /* E = 3 * A */
   fe_add(fe, e, a, a);
-  fe_add(fe, e, e, a);
+  fe_add_nc(fe, e, e, a);
 
   /* F = E^2 */
   fe_sqr(fe, f, e);
@@ -3047,13 +3156,13 @@ jge_dbl3(const wei_t *ec, jge_t *r, const jge_t *p) {
 
   /* alpha = 3 * (X1 - delta) * (X1 + delta) */
   fe_sub(fe, t1, p->x, delta);
-  fe_add(fe, t2, p->x, delta);
+  fe_add_nc(fe, t2, p->x, delta);
   fe_add(fe, alpha, t1, t1);
-  fe_add(fe, alpha, alpha, t1);
+  fe_add_nc(fe, alpha, alpha, t1);
   fe_mul(fe, alpha, alpha, t2);
 
   /* Z3 = (Y1 + Z1)^2 - gamma - delta */
-  fe_add(fe, r->z, p->y, p->z);
+  fe_add_nc(fe, r->z, p->y, p->z);
   fe_sqr(fe, r->z, r->z);
   fe_sub(fe, r->z, r->z, gamma);
   fe_sub(fe, r->z, r->z, delta);
@@ -3066,7 +3175,7 @@ jge_dbl3(const wei_t *ec, jge_t *r, const jge_t *p) {
   fe_sub(fe, r->x, r->x, t2);
 
   /* Y3 = alpha * (4 * beta - X3) - 8 * gamma^2 */
-  fe_sub(fe, r->y, t1, r->x);
+  fe_sub_nc(fe, r->y, t1, r->x);
   fe_mul(fe, r->y, r->y, alpha);
   fe_sqr(fe, gamma, gamma);
   fe_add(fe, gamma, gamma, gamma);
@@ -3141,12 +3250,11 @@ jge_addsub_var(const wei_t *ec, jge_t *r,
 
   /* H = 0 */
   if (fe_is_zero(fe, h)) {
-    if (!fe_is_zero(fe, r0)) {
+    if (fe_is_zero(fe, r0))
+      jge_dbl_var(ec, r, a);
+    else
       jge_zero(ec, r);
-      return;
-    }
 
-    jge_dbl_var(ec, r, a);
     return;
   }
 
@@ -3170,7 +3278,7 @@ jge_addsub_var(const wei_t *ec, jge_t *r,
   fe_sub(fe, r->x, r->x, v);
 
   /* Y3 = r * (V - X3) - S1 * HHH */
-  fe_sub(fe, u1, v, r->x);
+  fe_sub_nc(fe, u1, v, r->x);
   fe_mul(fe, u2, s1, hhh);
   fe_mul(fe, r->y, r0, u1);
   fe_sub(fe, r->y, r->y, u2);
@@ -3255,17 +3363,16 @@ jge_mixed_addsub_var(const wei_t *ec, jge_t *r, const jge_t *a,
 
   /* H = 0 */
   if (fe_is_zero(fe, h)) {
-    if (!fe_is_zero(fe, r0)) {
+    if (fe_is_zero(fe, r0))
+      jge_dbl_var(ec, r, a);
+    else
       jge_zero(ec, r);
-      return;
-    }
 
-    jge_dbl_var(ec, r, a);
     return;
   }
 
   /* I = (2 * H)^2 */
-  fe_add(fe, i, h, h);
+  fe_add_nc(fe, i, h, h);
   fe_sqr(fe, i, i);
 
   /* J = H * I */
@@ -3281,7 +3388,7 @@ jge_mixed_addsub_var(const wei_t *ec, jge_t *r, const jge_t *a,
   fe_sub(fe, r->x, r->x, v);
 
   /* Y3 = r * (V - X3) - 2 * Y1 * J */
-  fe_sub(fe, u2, v, r->x);
+  fe_sub_nc(fe, u2, v, r->x);
   fe_mul(fe, s2, a->y, j);
   fe_add(fe, s2, s2, s2);
   fe_mul(fe, r->y, r0, u2);
@@ -3406,7 +3513,7 @@ jge_add(const wei_t *ec, jge_t *r, const jge_t *a, const jge_t *b) {
   fe_mul(fe, z, a->z, b->z);
 
   /* T = U1 + U2 */
-  fe_add(fe, t, u1, u2);
+  fe_add_nc(fe, t, u1, u2);
 
   /* M = S1 + S2 */
   fe_add(fe, m, s1, s2);
@@ -3428,11 +3535,11 @@ jge_add(const wei_t *ec, jge_t *r, const jge_t *a, const jge_t *b) {
   degenerate = fe_is_zero(fe, m) & fe_is_zero(fe, r0);
 
   /* M = U1 - U2 (if degenerate) */
-  fe_sub(fe, l, u1, u2);
+  fe_sub_nc(fe, l, u1, u2);
   fe_select(fe, m, m, l, degenerate);
 
   /* R = S1 - S2 (if degenerate) */
-  fe_sub(fe, l, s1, s2);
+  fe_sub_nc(fe, l, s1, s2);
   fe_select(fe, r0, r0, l, degenerate);
 
   /* L = M^2 */
@@ -3457,7 +3564,7 @@ jge_add(const wei_t *ec, jge_t *r, const jge_t *a, const jge_t *b) {
   fe_add(fe, h, g, g);
   fe_add(fe, h, h, g);
   fe_sub(fe, h, h, w);
-  fe_sub(fe, h, h, w);
+  fe_sub_nc(fe, h, h, w);
 
   /* X3 = 4 * (W - G) */
   fe_sub(fe, x3, w, g);
@@ -3529,8 +3636,6 @@ jge_mixed_add(const wei_t *ec, jge_t *r, const jge_t *a, const wge_t *b) {
   int degenerate, inf1, inf2, inf3;
 
   /* Save some stack space. */
-#define u1 a->x
-#define s1 a->y
 #define ll l
 #define f m
 #define r0 z1z1
@@ -3541,26 +3646,22 @@ jge_mixed_add(const wei_t *ec, jge_t *r, const jge_t *a, const wge_t *b) {
   /* Z1Z1 = Z1^2 */
   fe_sqr(fe, z1z1, a->z);
 
-  /* U1 = X1 */
-
   /* U2 = X2 * Z1Z1 */
   fe_mul(fe, u2, b->x, z1z1);
-
-  /* S1 = Y1 */
 
   /* S2 = Y2 * Z1Z1 * Z1 */
   fe_mul(fe, s2, b->y, z1z1);
   fe_mul(fe, s2, s2, a->z);
 
-  /* T = U1 + U2 */
-  fe_add(fe, t, u1, u2);
+  /* T = X1 + U2 */
+  fe_add_nc(fe, t, a->x, u2);
 
-  /* M = S1 + S2 */
-  fe_add(fe, m, s1, s2);
+  /* M = Y1 + S2 */
+  fe_add(fe, m, a->y, s2);
 
-  /* R = T^2 - U1 * U2 */
+  /* R = T^2 - X1 * U2 */
   fe_sqr(fe, r0, t);
-  fe_mul(fe, l, u1, u2);
+  fe_mul(fe, l, a->x, u2);
   fe_sub(fe, r0, r0, l);
 
   /* R = R + a * Z1^4 (if a != 0) */
@@ -3574,12 +3675,12 @@ jge_mixed_add(const wei_t *ec, jge_t *r, const jge_t *a, const wge_t *b) {
   /* Check for degenerate case (X1 != X2, Y1 = -Y2). */
   degenerate = fe_is_zero(fe, m) & fe_is_zero(fe, r0);
 
-  /* M = U1 - U2 (if degenerate) */
-  fe_sub(fe, l, u1, u2);
+  /* M = X1 - U2 (if degenerate) */
+  fe_sub_nc(fe, l, a->x, u2);
   fe_select(fe, m, m, l, degenerate);
 
-  /* R = S1 - S2 (if degenerate) */
-  fe_sub(fe, l, s1, s2);
+  /* R = Y1 - S2 (if degenerate) */
+  fe_sub_nc(fe, l, a->y, s2);
   fe_select(fe, r0, r0, l, degenerate);
 
   /* L = M^2 */
@@ -3604,7 +3705,7 @@ jge_mixed_add(const wei_t *ec, jge_t *r, const jge_t *a, const wge_t *b) {
   fe_add(fe, h, g, g);
   fe_add(fe, h, h, g);
   fe_sub(fe, h, h, w);
-  fe_sub(fe, h, h, w);
+  fe_sub_nc(fe, h, h, w);
 
   /* X3 = 4 * (W - G) */
   fe_sub(fe, x3, w, g);
@@ -3645,8 +3746,6 @@ jge_mixed_add(const wei_t *ec, jge_t *r, const jge_t *a, const wge_t *b) {
   fe_set(fe, r->y, y3);
   fe_set(fe, r->z, z3);
 
-#undef u1
-#undef s1
 #undef ll
 #undef f
 #undef r0
@@ -4255,7 +4354,7 @@ wei_jmul_double_endo_var(const wei_t *ec,
   int naf1[MAX_ENDO_BITS + 1]; /* 1048 bytes */
   int naf2[MAX_ENDO_BITS + 1]; /* 1048 bytes */
   int naf3[MAX_ENDO_BITS + 1]; /* 1048 bytes */
-  jge_t wnd3[4]; /* 608 bytes */
+  jge_t wnd3[JSF_SIZE]; /* 608 bytes */
   sc_t c1, c2, c3, c4; /* 288 bytes */
   size_t i, max, max1, max2;
 
@@ -4586,9 +4685,10 @@ wei_sswu(const wei_t *ec, wge_t *p, const fe_t u) {
   fe_mul(fe, x1, ec->z, u2);
   fe_mul(fe, t1, z2, u4);
   fe_add(fe, t1, t1, x1);
+
   zero = fe_invert(fe, t1, t1) ^ 1;
 
-  fe_add(fe, t1, t1, fe->one);
+  fe_add_nc(fe, t1, t1, fe->one);
   fe_mul(fe, x1, ba, t1);
 
   fe_select(fe, x1, x1, bza, zero);
@@ -4648,7 +4748,7 @@ wei_sswui(const wei_t *ec, fe_t u, const wge_t *p, unsigned int hint) {
   const prime_field_t *fe = &ec->fe;
   fe_t a2x2, abx2, b23, axb, c, n0, n1, d0, d1;
   unsigned int r = hint & 3;
-  unsigned int s0, s1;
+  int ret = 1;
 
   fe_sqr(fe, n0, ec->a);
   fe_sqr(fe, n1, p->x);
@@ -4666,7 +4766,8 @@ wei_sswui(const wei_t *ec, fe_t u, const wge_t *p, unsigned int hint) {
 
   fe_sub(fe, c, a2x2, abx2);
   fe_sub(fe, c, c, b23);
-  s0 = fe_sqrt(fe, c, c);
+
+  ret &= fe_sqrt(fe, c, c);
 
   fe_sub(fe, n0, axb, c);
   fe_neg(fe, n0, n0);
@@ -4683,11 +4784,13 @@ wei_sswui(const wei_t *ec, fe_t u, const wge_t *p, unsigned int hint) {
   fe_select(fe, n0, n0, n1, r & 1); /* r = 1 or 3 */
   fe_select(fe, d0, d0, d1, r >> 1); /* r = 2 or 3 */
 
-  s1 = fe_isqrt(fe, u, n0, d0);
+  ret &= fe_isqrt(fe, u, n0, d0);
 
   fe_set_odd(fe, u, u, fe_is_odd(fe, p->y));
 
-  return s0 & s1 & (p->inf ^ 1);
+  ret &= p->inf ^ 1;
+
+  return ret;
 }
 
 static void
@@ -4736,7 +4839,7 @@ wei_svdwf(const wei_t *ec, fe_t x, fe_t y, const fe_t u) {
   fe_sqr(fe, u2, u);
   fe_sqr(fe, u4, u2);
 
-  fe_add(fe, t1, u2, gz);
+  fe_add_nc(fe, t1, u2, gz);
 
   fe_mul(fe, t2, u2, t1);
   fe_invert(fe, t2, t2);
@@ -4747,11 +4850,11 @@ wei_svdwf(const wei_t *ec, fe_t x, fe_t y, const fe_t u) {
   fe_sqr(fe, t4, t1);
   fe_mul(fe, t4, t4, t1);
 
-  fe_sub(fe, x1, ec->c, ec->z);
+  fe_sub_nc(fe, x1, ec->c, ec->z);
   fe_mul(fe, x1, x1, ec->i2);
   fe_sub(fe, x1, x1, t3);
 
-  fe_add(fe, y1, ec->c, ec->z);
+  fe_add_nc(fe, y1, ec->c, ec->z);
   fe_mul(fe, y1, y1, ec->i2);
   fe_sub(fe, x2, t3, y1);
 
@@ -4841,7 +4944,8 @@ wei_svdwi(const wei_t *ec, fe_t u, const wge_t *p, unsigned int hint) {
   const prime_field_t *fe = &ec->fe;
   fe_t z2, z3, z4, gz, c0, c1, t4, t5, n0, n1, n2, n3, d0;
   uint32_t r = hint & 3;
-  uint32_t s0, s1, s2, s3;
+  uint32_t ret = 1;
+  uint32_t sqr;
 
   fe_sqr(fe, z2, ec->z);
   fe_mul(fe, z3, z2, ec->z);
@@ -4856,15 +4960,16 @@ wei_svdwi(const wei_t *ec, fe_t u, const wge_t *p, unsigned int hint) {
   fe_mul(fe, n1, p->x, z3);
   fe_mul_word(fe, n1, n1, 18);
 
-  fe_sub(fe, n2, p->x, ec->z);
+  fe_sub_nc(fe, n2, p->x, ec->z);
   fe_mul(fe, n2, n2, gz);
   fe_mul_word(fe, n2, n2, 12);
 
   fe_sub(fe, t4, n0, n1);
   fe_add(fe, t4, t4, n2);
-  s0 = fe_sqrt(fe, t4, t4);
-  s1 = ((r - 2) >> 31) | s0;
+  sqr = fe_sqrt(fe, t4, t4);
   fe_mul(fe, t4, t4, ec->z);
+
+  ret &= ((r - 2) >> 31) | sqr;
 
   fe_mul(fe, n0, p->x, z2);
   fe_add(fe, n1, gz, gz);
@@ -4890,15 +4995,17 @@ wei_svdwi(const wei_t *ec, fe_t u, const wge_t *p, unsigned int hint) {
   fe_select(fe, d0, d0, c1, ((r ^ 0) - 1) >> 31); /* r = 0 */
   fe_select(fe, d0, d0, c0, ((r ^ 1) - 1) >> 31); /* r = 1 */
 
-  s2 = fe_isqrt(fe, u, n0, d0);
+  ret &= fe_isqrt(fe, u, n0, d0);
 
   wei_svdwf(ec, n0, n1, u);
 
-  s3 = fe_equal(fe, n0, p->x);
+  ret &= fe_equal(fe, n0, p->x);
 
   fe_set_odd(fe, u, u, fe_is_odd(fe, p->y));
 
-  return s1 & s2 & s3 & (p->inf ^ 1);
+  ret &= p->inf ^ 1;
+
+  return ret;
 }
 
 static void
@@ -4921,11 +5028,23 @@ wei_point_to_uniform(const wei_t *ec,
                      unsigned char *bytes,
                      const wge_t *p,
                      unsigned int hint) {
+  /* Convert a short weierstrass point to a field
+   * element by inverting either the SSWU or SVDW
+   * map.
+   *
+   * Hint Layout:
+   *
+   *   [00000000] [0000] [0000]
+   *        |        |      |
+   *        |        |      +-- preimage index
+   *        |        +--- subgroup
+   *        +-- bits to OR with uniform bytes
+   */
   const prime_field_t *fe = &ec->fe;
   unsigned int subgroup = (hint >> 4) & 15;
+  int ret = 1;
   wge_t p0;
   fe_t u;
-  int ret;
 
   if (ec->h > 1)
     wge_add(ec, &p0, p, &ec->torsion[subgroup % ec->h]);
@@ -4933,9 +5052,9 @@ wei_point_to_uniform(const wei_t *ec,
     wge_set(ec, &p0, p);
 
   if (ec->zero_a)
-    ret = wei_svdwi(ec, u, &p0, hint);
+    ret &= wei_svdwi(ec, u, &p0, hint);
   else
-    ret = wei_sswui(ec, u, &p0, hint);
+    ret &= wei_sswui(ec, u, &p0, hint);
 
   fe_export(fe, bytes, u);
 
@@ -4984,6 +5103,7 @@ wei_point_to_hash(const wei_t *ec,
 
   for (;;) {
     drbg_generate(&rng, bytes, fe->size);
+
     wei_point_from_uniform(ec, &p1, bytes);
 
     /* Avoid 2-torsion points. */
@@ -5031,8 +5151,8 @@ static int
 mont_validate_x(const mont_t *ec, const fe_t x);
 
 static void
-_edwards_to_mont(const prime_field_t *fe, mge_t *r,
-                 const xge_t *p, const fe_t c,
+_mont_to_edwards(const prime_field_t *fe, xge_t *r,
+                 const mge_t *p, const fe_t c,
                  int invert, int isogeny);
 
 /*
@@ -5189,13 +5309,13 @@ mge_dbl(const mont_t *ec, mge_t *r, const mge_t *p) {
   fe_t l, t, x3, y3;
 
   /* L = (3 * X1^2 + 2 * a * X1 + 1) / (2 * b * Y1) */
-  fe_add(fe, x3, ec->a, ec->a);
+  fe_add_nc(fe, x3, ec->a, ec->a);
   fe_mul(fe, x3, x3, p->x);
   fe_add(fe, x3, x3, fe->one);
   fe_sqr(fe, t, p->x);
   fe_add(fe, l, t, t);
   fe_add(fe, l, l, t);
-  fe_add(fe, l, l, x3);
+  fe_add_nc(fe, l, l, x3);
   fe_add(fe, t, p->y, p->y);
   mont_mul_b(ec, t, t);
   fe_invert(fe, t, t);
@@ -5209,7 +5329,7 @@ mge_dbl(const mont_t *ec, mge_t *r, const mge_t *p) {
   fe_sub(fe, x3, x3, p->x);
 
   /* Y3 = L * (X1 - X3) - Y1 */
-  fe_sub(fe, y3, p->x, x3);
+  fe_sub_nc(fe, y3, p->x, x3);
   fe_mul(fe, y3, y3, l);
   fe_sub(fe, y3, y3, p->y);
 
@@ -5246,13 +5366,13 @@ mge_add(const mont_t *ec, mge_t *r, const mge_t *a, const mge_t *b) {
   fe_sub(fe, r0, b->y, a->y);
 
   /* M = (3 * X1^2) + (2 * a * X1) + 1 */
-  fe_add(fe, x3, ec->a, ec->a);
+  fe_add_nc(fe, x3, ec->a, ec->a);
   fe_mul(fe, x3, x3, a->x);
   fe_add(fe, x3, x3, fe->one);
   fe_sqr(fe, z, a->x);
   fe_add(fe, m, z, z);
   fe_add(fe, m, m, z);
-  fe_add(fe, m, m, x3);
+  fe_add_nc(fe, m, m, x3);
 
   /* Z = 2 * b * Y1 */
   fe_add(fe, z, a->y, a->y);
@@ -5319,8 +5439,9 @@ mge_set_pge(const mont_t *ec, mge_t *r, const pge_t *p, int sign) {
    * 1I + 1M
    */
   const prime_field_t *fe = &ec->fe;
-  int inf, ret;
+  int ret = 1;
   fe_t a, x;
+  int inf;
 
   /* A = 1 / Z1 */
   inf = fe_invert(fe, a, p->z) ^ 1;
@@ -5329,7 +5450,7 @@ mge_set_pge(const mont_t *ec, mge_t *r, const pge_t *p, int sign) {
   fe_mul(fe, x, p->x, a);
 
   /* Computes (0, 0) if infinity. */
-  ret = mge_set_x(ec, r, x, sign);
+  ret &= mge_set_x(ec, r, x, sign);
 
   /* Handle infinity. */
   r->inf = inf;
@@ -5338,8 +5459,8 @@ mge_set_pge(const mont_t *ec, mge_t *r, const pge_t *p, int sign) {
 }
 
 static void
-mge_set_xge(const edwards_t *ec, mge_t *r, const xge_t *p) {
-  _edwards_to_mont(&ec->fe, r, p, ec->c, ec->invert, 1);
+mge_export_xge(const mont_t *ec, xge_t *r, const mge_t *p) {
+  _mont_to_edwards(&ec->fe, r, p, ec->c, ec->invert, 1);
 }
 
 /*
@@ -5411,10 +5532,10 @@ pge_export(const mont_t *ec,
           const pge_t *p) {
   /* [RFC7748] Section 5. */
   const prime_field_t *fe = &ec->fe;
+  int ret = 1;
   fe_t a, x;
-  int ret;
 
-  ret = fe_invert(fe, a, p->z);
+  ret &= fe_invert(fe, a, p->z);
 
   fe_mul(fe, x, p->x, a);
   fe_export(fe, raw, x);
@@ -5459,17 +5580,17 @@ pge_equal(const mont_t *ec, const pge_t *a, const pge_t *b) {
   const prime_field_t *fe = &ec->fe;
   int inf1 = pge_is_zero(ec, a);
   int inf2 = pge_is_zero(ec, b);
-  fe_t e1, e2;
+  fe_t lhs, rhs;
   int ret = 1;
 
   /* P != O, Q != O */
   ret &= (inf1 | inf2) ^ 1;
 
   /* X1 * Z2 == X2 * Z1 */
-  fe_mul(fe, e1, a->x, b->z);
-  fe_mul(fe, e2, b->x, a->z);
+  fe_mul(fe, lhs, a->x, b->z);
+  fe_mul(fe, rhs, b->x, a->z);
 
-  ret &= fe_equal(fe, e1, e2);
+  ret &= fe_equal(fe, lhs, rhs);
 
   return ret | (inf1 & inf2);
 }
@@ -5483,26 +5604,26 @@ pge_dbl(const mont_t *ec, pge_t *r, const pge_t *p) {
   fe_t a, aa, b, bb, c;
 
   /* A = X1 + Z1 */
-  fe_add(fe, a, p->x, p->z);
+  fe_add_nc(fe, a, p->x, p->z);
 
   /* AA = A^2 */
   fe_sqr(fe, aa, a);
 
   /* B = X1 - Z1 */
-  fe_sub(fe, b, p->x, p->z);
+  fe_sub_nc(fe, b, p->x, p->z);
 
   /* BB = B^2 */
   fe_sqr(fe, bb, b);
 
   /* C = AA - BB */
-  fe_sub(fe, c, aa, bb);
+  fe_sub_nc(fe, c, aa, bb);
 
   /* X3 = AA * BB */
   fe_mul(fe, r->x, aa, bb);
 
   /* Z3 = C * (BB + a24 * C) */
   mont_mul_a24(ec, r->z, c);
-  fe_add(fe, r->z, r->z, bb);
+  fe_add_nc(fe, r->z, r->z, bb);
   fe_mul(fe, r->z, r->z, c);
 }
 
@@ -5524,25 +5645,25 @@ pge_ladder(const mont_t *ec,
   ASSERT(p4 != p5);
 
   /* A = X2 + Z2 */
-  fe_add(fe, a, p2->x, p2->z);
+  fe_add_nc(fe, a, p2->x, p2->z);
 
   /* AA = A^2 */
   fe_sqr(fe, aa, a);
 
   /* B = X2 - Z2 */
-  fe_sub(fe, b, p2->x, p2->z);
+  fe_sub_nc(fe, b, p2->x, p2->z);
 
   /* BB = B^2 */
   fe_sqr(fe, bb, b);
 
   /* E = AA - BB */
-  fe_sub(fe, e, aa, bb);
+  fe_sub_nc(fe, e, aa, bb);
 
   /* C = X3 + Z3 */
-  fe_add(fe, c, p3->x, p3->z);
+  fe_add_nc(fe, c, p3->x, p3->z);
 
   /* D = X3 - Z3 */
-  fe_sub(fe, d, p3->x, p3->z);
+  fe_sub_nc(fe, d, p3->x, p3->z);
 
   /* DA = D * A */
   fe_mul(fe, da, d, a);
@@ -5551,14 +5672,14 @@ pge_ladder(const mont_t *ec,
   fe_mul(fe, cb, c, b);
 
   /* X5 = Z1 * (DA + CB)^2 */
-  fe_add(fe, p5->x, da, cb);
+  fe_add_nc(fe, p5->x, da, cb);
   fe_sqr(fe, p5->x, p5->x);
 
   if (!affine)
     fe_mul(fe, p5->x, p5->x, p1->z);
 
   /* Z5 = X1 * (DA - CB)^2 */
-  fe_sub(fe, p5->z, da, cb);
+  fe_sub_nc(fe, p5->z, da, cb);
   fe_sqr(fe, p5->z, p5->z);
   fe_mul(fe, p5->z, p5->z, p1->x);
 
@@ -5567,7 +5688,7 @@ pge_ladder(const mont_t *ec,
 
   /* Z4 = E * (BB + a24 * E) */
   mont_mul_a24(ec, p4->z, e);
-  fe_add(fe, p4->z, p4->z, bb);
+  fe_add_nc(fe, p4->z, p4->z, bb);
   fe_mul(fe, p4->z, p4->z, e);
 }
 
@@ -5756,8 +5877,8 @@ static void
 mont_mul_a24(const mont_t *ec, fe_t r, const fe_t a) {
   const prime_field_t *fe = &ec->fe;
 
-  if (fe->scmul_121666 != NULL)
-    fe->scmul_121666(r, a);
+  if (fe->scmul_a24 != NULL)
+    fe->scmul_a24(r, a);
   else
     fe_mul(fe, r, a, ec->a24);
 }
@@ -5987,7 +6108,7 @@ mont_invert2(const mont_t *ec, fe_t u, const mge_t *p, unsigned int hint) {
    */
   const prime_field_t *fe = &ec->fe;
   fe_t x0, y0, n, d;
-  int ret;
+  int ret = 1;
 
   mont_div_b(ec, x0, p->x);
   mont_div_b(ec, y0, p->y);
@@ -6000,11 +6121,13 @@ mont_invert2(const mont_t *ec, fe_t u, const mge_t *p, unsigned int hint) {
   fe_neg(fe, n, n);
   fe_mul(fe, d, d, ec->z);
 
-  ret = fe_isqrt(fe, u, n, d);
+  ret &= fe_isqrt(fe, u, n, d);
 
   fe_set_odd(fe, u, u, fe_is_odd(fe, y0));
 
-  return ret & (p->inf ^ 1);
+  ret &= p->inf ^ 1;
+
+  return ret;
 }
 
 static void
@@ -6025,15 +6148,26 @@ mont_point_to_uniform(const mont_t *ec,
                       unsigned char *bytes,
                       const mge_t *p,
                       unsigned int hint) {
+  /* Convert a montgomery point to a field
+   * element by inverting the elligator2 map.
+   *
+   * Hint Layout:
+   *
+   *   [00000000] [0000] [0000]
+   *        |        |      |
+   *        |        |      +-- preimage index
+   *        |        +--- subgroup
+   *        +-- bits to OR with uniform bytes
+   */
   const prime_field_t *fe = &ec->fe;
   unsigned int subgroup = (hint >> 4) & 15;
+  int ret = 1;
   mge_t p0;
   fe_t u;
-  int ret;
 
   mge_add(ec, &p0, p, &ec->torsion[subgroup % ec->h]);
 
-  ret = mont_invert2(ec, u, &p0, hint);
+  ret &= mont_invert2(ec, u, &p0, hint);
 
   fe_export(fe, bytes, u);
 
@@ -6079,6 +6213,7 @@ mont_point_to_hash(const mont_t *ec,
 
   for (;;) {
     drbg_generate(&rng, bytes, fe->size);
+
     mont_point_from_uniform(ec, &p1, bytes);
 
     /* Avoid 2-torsion points. */
@@ -6114,8 +6249,8 @@ static int
 edwards_validate_xy(const edwards_t *ec, const fe_t x, const fe_t y);
 
 static void
-_mont_to_edwards(const prime_field_t *fe, xge_t *r,
-                 const mge_t *p, const fe_t c,
+_edwards_to_mont(const prime_field_t *fe, mge_t *r,
+                 const xge_t *p, const fe_t c,
                  int invert, int isogeny);
 
 /*
@@ -6158,7 +6293,7 @@ xge_validate(const edwards_t *ec, const xge_t *p) {
 
   edwards_mul_a(ec, ax2, x2);
 
-  fe_add(fe, lhs, ax2, y2);
+  fe_add_nc(fe, lhs, ax2, y2);
   fe_mul(fe, lhs, lhs, z2);
 
   fe_mul(fe, rhs, x2, y2);
@@ -6348,20 +6483,20 @@ xge_is_zero(const edwards_t *ec, const xge_t *a) {
 static int
 xge_equal(const edwards_t *ec, const xge_t *a, const xge_t *b) {
   const prime_field_t *fe = &ec->fe;
-  fe_t e1, e2;
+  fe_t lhs, rhs;
   int ret = 1;
 
   /* X1 * Z2 == X2 * Z1 */
-  fe_mul(fe, e1, a->x, b->z);
-  fe_mul(fe, e2, b->x, a->z);
+  fe_mul(fe, lhs, a->x, b->z);
+  fe_mul(fe, rhs, b->x, a->z);
 
-  ret &= fe_equal(fe, e1, e2);
+  ret &= fe_equal(fe, lhs, rhs);
 
   /* Y1 * Z2 == Y2 * Z1 */
-  fe_mul(fe, e1, a->y, b->z);
-  fe_mul(fe, e2, b->y, a->z);
+  fe_mul(fe, lhs, a->y, b->z);
+  fe_mul(fe, rhs, b->y, a->z);
 
-  ret &= fe_equal(fe, e1, e2);
+  ret &= fe_equal(fe, lhs, rhs);
 
   return ret;
 }
@@ -6408,19 +6543,19 @@ xge_dbl(const edwards_t *ec, xge_t *r, const xge_t *p) {
   edwards_mul_a(ec, d, a);
 
   /* E = (X1 + Y1)^2 - A - B */
-  fe_add(fe, e, p->x, p->y);
+  fe_add_nc(fe, e, p->x, p->y);
   fe_sqr(fe, e, e);
   fe_sub(fe, e, e, a);
-  fe_sub(fe, e, e, b);
+  fe_sub_nc(fe, e, e, b);
 
   /* G = D + B */
   fe_add(fe, g, d, b);
 
   /* F = G - C */
-  fe_sub(fe, f, g, c);
+  fe_sub_nc(fe, f, g, c);
 
   /* H = D - B */
-  fe_sub(fe, h, d, b);
+  fe_sub_nc(fe, h, d, b);
 
   /* X3 = E * F */
   fe_mul(fe, r->x, e, f);
@@ -6457,21 +6592,21 @@ xge_add_a(const edwards_t *ec, xge_t *r, const xge_t *a, const xge_t *b) {
   fe_mul(fe, d, a->z, b->z);
 
   /* E = (X1 + Y1) * (X2 + Y2) - A - B */
-  fe_add(fe, f, a->x, a->y);
-  fe_add(fe, g, b->x, b->y);
+  fe_add_nc(fe, f, a->x, a->y);
+  fe_add_nc(fe, g, b->x, b->y);
   fe_mul(fe, e, f, g);
   fe_sub(fe, e, e, A);
-  fe_sub(fe, e, e, B);
+  fe_sub_nc(fe, e, e, B);
 
   /* F = D - C */
-  fe_sub(fe, f, d, c);
+  fe_sub_nc(fe, f, d, c);
 
   /* G = D + C */
-  fe_add(fe, g, d, c);
+  fe_add_nc(fe, g, d, c);
 
   /* H = B - a * A */
   edwards_mul_a(ec, h, A);
-  fe_sub(fe, h, B, h);
+  fe_sub_nc(fe, h, B, h);
 
   /* X3 = E * F */
   fe_mul(fe, r->x, e, f);
@@ -6497,13 +6632,13 @@ xge_add_m1(const edwards_t *ec, xge_t *r, const xge_t *a, const xge_t *b) {
   fe_t A, B, c, d, e, f, g, h;
 
   /* A = (Y1 - X1) * (Y2 - X2) */
-  fe_sub(fe, c, a->y, a->x);
-  fe_sub(fe, d, b->y, b->x);
+  fe_sub_nc(fe, c, a->y, a->x);
+  fe_sub_nc(fe, d, b->y, b->x);
   fe_mul(fe, A, c, d);
 
   /* B = (Y1 + X1) * (Y2 + X2) */
-  fe_add(fe, c, a->y, a->x);
-  fe_add(fe, d, b->y, b->x);
+  fe_add_nc(fe, c, a->y, a->x);
+  fe_add_nc(fe, d, b->y, b->x);
   fe_mul(fe, B, c, d);
 
   /* C = T1 * k * T2 */
@@ -6515,16 +6650,16 @@ xge_add_m1(const edwards_t *ec, xge_t *r, const xge_t *a, const xge_t *b) {
   fe_add(fe, d, d, d);
 
   /* E = B - A */
-  fe_sub(fe, e, B, A);
+  fe_sub_nc(fe, e, B, A);
 
   /* F = D - C */
-  fe_sub(fe, f, d, c);
+  fe_sub_nc(fe, f, d, c);
 
   /* G = D + C */
-  fe_add(fe, g, d, c);
+  fe_add_nc(fe, g, d, c);
 
   /* H = B + A */
-  fe_add(fe, h, B, A);
+  fe_add_nc(fe, h, B, A);
 
   /* X3 = E * F */
   fe_mul(fe, r->x, e, f);
@@ -6629,8 +6764,8 @@ xge_jsf_points(const edwards_t *ec, xge_t *out,
 }
 
 static void
-xge_set_mge(const mont_t *ec, xge_t *r, const mge_t *p) {
-  _mont_to_edwards(&ec->fe, r, p, ec->c, ec->invert, 1);
+xge_export_mge(const edwards_t *ec, mge_t *r, const xge_t *p) {
+  _edwards_to_mont(&ec->fe, r, p, ec->c, ec->invert, 1);
 }
 
 /*
@@ -6639,6 +6774,9 @@ xge_set_mge(const mont_t *ec, xge_t *r, const mge_t *p) {
 
 static void
 edwards_init_isomorphism(edwards_t *ec, const edwards_def_t *def);
+
+static void
+ristretto_init(edwards_t *ec, const ristretto_def_t *def);
 
 static void
 edwards_init(edwards_t *ec, const edwards_def_t *def) {
@@ -6692,6 +6830,8 @@ edwards_init(edwards_t *ec, const edwards_def_t *def) {
     fe_set(fe, ec->torsion[i].z, fe->one);
     fe_mul(fe, ec->torsion[i].t, ec->torsion[i].x, ec->torsion[i].y);
   }
+
+  ristretto_init(ec, def->ristretto);
 }
 
 static void
@@ -7127,8 +7267,8 @@ edwards_elligator2(const edwards_t *ec, xge_t *r, const fe_t u) {
    */
   const prime_field_t *fe = &ec->fe;
   fe_t lhs, rhs, x1, x2, y1, y2;
-  mge_t m;
   int alpha;
+  mge_t m;
 
   fe_neg(fe, lhs, ec->A0);
   fe_sqr(fe, rhs, u);
@@ -7189,8 +7329,8 @@ edwards_invert2(const edwards_t *ec, fe_t u,
    */
   const prime_field_t *fe = &ec->fe;
   fe_t x0, y0, n, d;
+  int ret = 1;
   mge_t m;
-  int ret;
 
   _edwards_to_mont(fe, &m, p, ec->c, ec->invert, 0);
 
@@ -7205,11 +7345,13 @@ edwards_invert2(const edwards_t *ec, fe_t u,
   fe_neg(fe, n, n);
   fe_mul(fe, d, d, ec->z);
 
-  ret = fe_isqrt(fe, u, n, d);
+  ret &= fe_isqrt(fe, u, n, d);
 
   fe_set_odd(fe, u, u, fe_is_odd(fe, y0));
 
-  return ret & (m.inf ^ 1);
+  ret &= m.inf ^ 1;
+
+  return ret;
 }
 
 static void
@@ -7230,15 +7372,26 @@ edwards_point_to_uniform(const edwards_t *ec,
                          unsigned char *bytes,
                          const xge_t *p,
                          unsigned int hint) {
+  /* Convert an edwards point to a field
+   * element by inverting the elligator2 map.
+   *
+   * Hint Layout:
+   *
+   *   [00000000] [0000] [0000]
+   *        |        |      |
+   *        |        |      +-- preimage index
+   *        |        +--- subgroup
+   *        +-- bits to OR with uniform bytes
+   */
   const prime_field_t *fe = &ec->fe;
   unsigned int subgroup = (hint >> 4) & 15;
+  int ret = 1;
   xge_t p0;
   fe_t u;
-  int ret;
 
   xge_add(ec, &p0, p, &ec->torsion[subgroup % ec->h]);
 
-  ret = edwards_invert2(ec, u, &p0, hint);
+  ret &= edwards_invert2(ec, u, &p0, hint);
 
   fe_export(fe, bytes, u);
 
@@ -7285,6 +7438,7 @@ edwards_point_to_hash(const edwards_t *ec,
 
   for (;;) {
     drbg_generate(&rng, bytes, fe->size);
+
     edwards_point_from_uniform(ec, &p1, bytes);
 
     /* Avoid 2-torsion points. */
@@ -7307,6 +7461,964 @@ edwards_point_to_hash(const edwards_t *ec,
   xge_cleanse(ec, &p0);
   xge_cleanse(ec, &p1);
   xge_cleanse(ec, &p2);
+}
+
+/*
+ * Ristretto
+ *
+ * Resources:
+ *   https://git.zx2c4.com/goldilocks/tree/_aux/ristretto/ristretto.sage
+ *   https://git.zx2c4.com/goldilocks/tree/src/per_curve/decaf.tmpl.c
+ *   https://git.zx2c4.com/goldilocks/tree/src/per_curve/elligator.tmpl.c
+ *   https://github.com/dalek-cryptography/curve25519-dalek/blob/9a62386/src/ristretto.rs
+ *   https://github.com/bwesterb/go-ristretto/blob/9343fcb/edwards25519/elligator.go
+ */
+
+static void
+qge_import_rge(const edwards_t *ec, qge_t r[4], const rge_t *p);
+
+static int
+qge_invert(const edwards_t *ec, fe_t r, const qge_t *p, unsigned int sign);
+
+static void
+ristretto_init(edwards_t *ec, const ristretto_def_t *def) {
+  /* [RIST] "The Ristretto Group".
+   *
+   * Assumptions (h = 4):
+   *
+   *   - p = 3 (mod 4).
+   *   - a = 1 mod p.
+   *   - d is non-square in F(p).
+   *
+   * Assumptions (h = 8):
+   *
+   *   - p = 5 (mod 8).
+   *   - a = -1 mod p.
+   *   - d is non-square in F(p).
+   *
+   * No other parameters are acceptable.
+   */
+  const prime_field_t *fe = &ec->fe;
+  ristretto_t *rs = &ec->rs;
+
+  fe_import_be(fe, rs->qnr, def->qnr); /* non-square in F(p) */
+  fe_import_be(fe, rs->qnrds, def->qnrds); /* sqrt(qnr * d) */
+  fe_import_be(fe, rs->adm1s, def->adm1s); /* sqrt(a * d - 1) */
+  fe_import_be(fe, rs->adm1si, def->adm1si); /* 1 / sqrt(a * d - 1) */
+  fe_import_be(fe, rs->dmaddpa, def->dmaddpa); /* (d + a) / (d - a) */
+  fe_import_be(fe, rs->amdsi, def->amdsi); /* 1 / sqrt(a - d) (h=8 only) */
+  fe_import_be(fe, rs->dmasi, def->dmasi); /* 1 / sqrt(d - a) (h=8 only) */
+}
+
+static void
+ristretto_elligator(const edwards_t *ec, rge_t *r, const fe_t r0) {
+  /* [DECAF] Page 12, Section 6.
+   *         Page 19, Appendix C.
+   * [RIST] "Elligator in Extended Coordinates".
+   * [RIST255] Page 10, Section 3.2.4.
+   *
+   * Affine Formula:
+   *
+   *   w = (d * r - a) * (a * r - d)
+   *   s = +sqrt((a * (r + 1) * (d + a) * (d - a)) / w
+   *   t = +(a * (r - 1) * (d + a)^2) / w - 1
+   *
+   * Or:
+   *
+   *   w = (d * r - a) * (a * r - d)
+   *   s = -sqrt((a * r * (r + 1) * (d + a) * (d - a)) / w
+   *   t = -(a * r * (r - 1) * (d + a)^2) / w - 1
+   *
+   * Depending on which square root exists, preferring
+   * the second when r = 0 or both are square.
+   */
+  const prime_field_t *fe = &ec->fe;
+  const ristretto_t *rs = &ec->rs;
+  fe_t R, ns, c, d, s, sp, nt, as2, w0, w1, w2, w3;
+  int sqr;
+
+  /* R = qnr * R0^2 */
+  fe_sqr(fe, R, r0);
+  fe_mul(fe, R, R, rs->qnr);
+
+  /* NS = a * (R + 1) * (d + a) * (d - a) */
+  fe_add_nc(fe, w0, ec->d, ec->a);
+  fe_sub_nc(fe, w1, ec->d, ec->a);
+  fe_add_nc(fe, ns, R, fe->one);
+  fe_mul(fe, ns, ns, w0);
+  fe_mul(fe, ns, ns, w1);
+  edwards_mul_a(ec, ns, ns);
+
+  /* C = -1 */
+  fe_set(fe, c, fe->mone);
+
+  /* D = (d * R - a) * (a * R - d) */
+  fe_mul(fe, w2, ec->d, R);
+  fe_sub_nc(fe, w2, w2, ec->a);
+  edwards_mul_a(ec, w3, R);
+  fe_sub_nc(fe, w3, w3, ec->d);
+  fe_mul(fe, d, w2, w3);
+
+  /* S = sqrt(NS / D) */
+  sqr = fe_rsqrt(fe, s, ns, d);
+
+  /* S' = S * R0 */
+  fe_mul(fe, sp, s, r0);
+
+  /* S' = -S' if S' >= 0 */
+  fe_set_odd(fe, sp, sp, 1);
+
+  /* S = S' if NS / D is not square */
+  fe_select(fe, s, s, sp, sqr ^ 1);
+
+  /* C = R if NS / D is not square */
+  fe_select(fe, c, c, R, sqr ^ 1);
+
+  /* NT = C * (R - 1) * (d + a)^2 - D */
+  fe_sqr(fe, w0, w0);
+  fe_sub_nc(fe, nt, R, fe->one);
+  fe_mul(fe, nt, nt, c);
+  fe_mul(fe, nt, nt, w0);
+  fe_sub_nc(fe, nt, nt, d);
+
+  /* AS2 = a * S^2 */
+  fe_sqr(fe, as2, s);
+  edwards_mul_a(ec, as2, as2);
+
+  /* W0 = 2 * S * D */
+  fe_add_nc(fe, w0, s, s);
+  fe_mul(fe, w0, w0, d);
+
+  /* W1 = NT * sqrt(a * d - 1) */
+  fe_mul(fe, w1, nt, rs->adm1s);
+
+  /* W2 = 1 + AS2 */
+  fe_add_nc(fe, w2, fe->one, as2);
+
+  /* W3 = 1 - AS2 */
+  fe_sub_nc(fe, w3, fe->one, as2);
+
+  /* X = W0 * W3 */
+  fe_mul(fe, r->x, w0, w3);
+
+  /* Y = W2 * W1 */
+  fe_mul(fe, r->y, w2, w1);
+
+  /* Z = W1 * W3 */
+  fe_mul(fe, r->z, w1, w3);
+
+  /* T = W0 * W2 */
+  fe_mul(fe, r->t, w0, w2);
+}
+
+static int
+ristretto_invert(const edwards_t *ec, fe_t u,
+                 const rge_t *p, unsigned int hint) {
+  /* [RIST] "Isogenies".
+   *
+   * In order to invert the ristretto elligator, we
+   * must first first map the edwards point to an
+   * isogenous jacobi quartic curve.
+   *
+   * Isogeny: E(a,d) -> J(a^2,a-2d)
+   *
+   * This gives us a maximum of `h` possible points
+   * to work with in the jacobi quartic space.
+   *
+   * After a jacobi quartic point is chosen, it is
+   * run through the inverse elligator 2 map, and
+   * oddness is set according to the sign in the
+   * hint.
+   *
+   * Note that the upper half of all jacobi quartic
+   * points will be the negations of the lower half.
+   */
+  const prime_field_t *fe = &ec->fe;
+  unsigned int sign = (hint >> 4) & 15;
+  unsigned int index = hint & 15;
+  size_t len = ec->h >> 1;
+  qge_t quartic[8];
+  size_t i;
+
+  ASSERT(ec->h <= ARRAY_SIZE(quartic));
+
+  qge_import_rge(ec, quartic, p);
+
+  for (i = 0; i < len; i++) {
+    fe_neg(fe, quartic[len + i].s, quartic[i].s);
+    fe_neg(fe, quartic[len + i].t, quartic[i].t);
+  }
+
+  return qge_invert(ec, u, &quartic[index % ec->h], sign);
+}
+
+static void
+ristretto_point_from_uniform(const edwards_t *ec, rge_t *p,
+                             const unsigned char *bytes) {
+  const prime_field_t *fe = &ec->fe;
+  fe_t u;
+
+  fe_import(fe, u, bytes);
+
+  ristretto_elligator(ec, p, u);
+
+  fe_cleanse(fe, u);
+}
+
+static int
+ristretto_point_to_uniform(const edwards_t *ec,
+                           unsigned char *bytes,
+                           const rge_t *p,
+                           unsigned int hint) {
+  /* Convert a ristretto group element to a field
+   * element by inverting the ristretto-flavored
+   * elligator.
+   *
+   * Hint Layout:
+   *
+   *   [00000000] 000[0] [0000]
+   *        |         |     |
+   *        |         |     +-- index for jacobi quartic point
+   *        |         +-- sign bit
+   *        +-- bits to OR with uniform bytes
+   */
+  const prime_field_t *fe = &ec->fe;
+  int ret = 1;
+  fe_t u;
+
+  ret &= ristretto_invert(ec, u, p, hint);
+
+  fe_export(fe, bytes, u);
+
+  bytes[fe->size - 1] |= (hint >> 8) & ~fe->mask;
+
+  fe_cleanse(fe, u);
+
+  return ret;
+}
+
+static void
+ristretto_point_from_hash(const edwards_t *ec, rge_t *p,
+                          const unsigned char *bytes) {
+  /* [RIST] "Hash-to-Group with Elligator". */
+  /* [RIST255] Page 10, Section 3.2.4. */
+  const prime_field_t *fe = &ec->fe;
+  rge_t p1, p2;
+
+  ristretto_point_from_uniform(ec, &p1, bytes);
+  ristretto_point_from_uniform(ec, &p2, bytes + fe->size);
+
+  xge_add(ec, p, &p1, &p2);
+
+  xge_cleanse(ec, &p1);
+  xge_cleanse(ec, &p2);
+}
+
+static void
+ristretto_point_to_hash(const edwards_t *ec,
+                        unsigned char *bytes,
+                        const rge_t *p,
+                        const unsigned char *entropy) {
+  /* [SQUARED] Algorithm 1, Page 8, Section 3.3. */
+  const prime_field_t *fe = &ec->fe;
+  unsigned int hint;
+  rge_t p1, p2;
+  drbg_t rng;
+
+  drbg_init(&rng, HASH_SHA256, entropy, ENTROPY_SIZE);
+
+  for (;;) {
+    drbg_generate(&rng, bytes, fe->size);
+
+    ristretto_point_from_uniform(ec, &p1, bytes);
+
+    xge_sub(ec, &p2, p, &p1);
+
+    drbg_generate(&rng, &hint, sizeof(hint));
+
+    if (!ristretto_point_to_uniform(ec, bytes + fe->size, &p2, hint))
+      continue;
+
+    break;
+  }
+
+  cleanse(&rng, sizeof(rng));
+  cleanse(&hint, sizeof(hint));
+
+  xge_cleanse(ec, &p1);
+  xge_cleanse(ec, &p2);
+}
+
+/*
+ * Ristretto Point
+ */
+
+static int
+rge_import(const edwards_t *ec, rge_t *r, const unsigned char *raw) {
+  /* [DECAF] Page 8, Section 4.3.
+   *         Page 16, Appendix A.2.
+   * [RIST] "Decoding to Extended Coordinates".
+   * [RIST255] Page 7, Section 3.2.1.
+   *
+   * Assumptions:
+   *
+   *   - Let s be a canonically encoded field element.
+   *   - s >= 0.
+   *   - (4 * s^2 / (a * d * (1 + w)^2 - (1 - w)^2)) is square in F(p).
+   *   - if h = 8 then t >= 0 and y != 0.
+   *
+   * Affine Formula:
+   *
+   *   y = (1 + a * s^2) / (1 - a * s^2)
+   *   w = a * s^2
+   *   x = +sqrt(4 * s^2 / (a * d * (1 + w)^2 - (1 - w)^2))
+   */
+  const prime_field_t *fe = &ec->fe;
+  fe_t s, as2, u1, u2, u2u2, v, i, dx, dy;
+  int ret = 1;
+
+  /* Check for canonical encoding. */
+  ret &= fe_import(fe, s, raw);
+
+  /* Reject if S < 0. */
+  ret &= fe_is_odd(fe, s) ^ 1;
+
+  /* AS2 = a * S^2 */
+  fe_sqr(fe, as2, s);
+  edwards_mul_a(ec, as2, as2);
+
+  /* U1 = 1 + AS2 */
+  fe_add_nc(fe, u1, fe->one, as2);
+
+  /* U2 = 1 - AS2 */
+  fe_sub_nc(fe, u2, fe->one, as2);
+
+  /* U2U2 = U2^2 */
+  fe_sqr(fe, u2u2, u2);
+
+  /* V = a * d * U1^2 - U2^2 */
+  fe_sqr(fe, v, u1);
+  fe_mul(fe, v, v, ec->d);
+  edwards_mul_a(ec, v, v);
+  fe_sub_nc(fe, v, v, u2u2);
+
+  /* I = 1 / sqrt(V * U2^2) */
+  fe_mul(fe, i, v, u2u2);
+
+  /* Reject if V * U2^2 is not square. */
+  ret &= fe_rsqrt(fe, i, fe->one, i);
+
+  /* DX = I * U2 */
+  fe_mul(fe, dx, i, u2);
+
+  /* DY = I * DX * V */
+  fe_mul(fe, dy, i, dx);
+  fe_mul(fe, dy, dy, v);
+
+  /* X = 2 * S * DX */
+  fe_add_nc(fe, r->x, s, s);
+  fe_mul(fe, r->x, r->x, dx);
+
+  /* X = -X if X < 0 */
+  fe_set_odd(fe, r->x, r->x, 0);
+
+  /* Y = U1 * DY */
+  fe_mul(fe, r->y, u1, dy);
+
+  /* Z = 1 */
+  fe_set(fe, r->z, fe->one);
+
+  /* T = X * Y */
+  fe_mul(fe, r->t, r->x, r->y);
+
+  /* h = 8 */
+  if (ec->h == 8) {
+    /* Reject if T < 0. */
+    ret &= fe_is_odd(fe, r->t) ^ 1;
+
+    /* Reject if Y = 0. */
+    ret &= fe_is_zero(fe, r->y) ^ 1;
+  }
+
+  /* P = (X : Y : Z : T) */
+  return ret;
+}
+
+static void
+rge_export(const edwards_t *ec, unsigned char *raw, const rge_t *p) {
+  /* [DECAF] Page 8, Section 4.2.
+   *         Page 15, Appendix A.1.
+   * [RIST] "Encoding from Extended Coordinates".
+   * [RIST255] Page 8, Section 3.2.2.
+   *
+   * Affine Formula:
+   *
+   *   If h = 8 and x * y < 0 or x = 0 then (x, y) = (x, y) + Q
+   *   If x < 0 or y = -1 then (x, y) = (-x, -y)
+   *   s = +sqrt(-a * (1 - y) / (1 + y))
+   *
+   *   Where Q is a 4-torsion point.
+   *
+   * Note that the U1 calculation stated in the
+   * formula is actually:
+   *
+   *   U1 = (Z0 + Y0) * (Z0 - Y0)
+   *
+   * The calculation of S stated in the formula is:
+   *
+   *   S = sqrt(-a) * (Z0 - Y) * D
+   *
+   * We move the `sqrt(-a)` in S to U1 with the
+   * following modifications:
+   *
+   *   U1 = -a * (Z0 + Y0) * (Z0 - Y0)
+   *   S = (Z0 - Y) * D
+   */
+  const prime_field_t *fe = &ec->fe;
+  const ristretto_t *rs = &ec->rs;
+  fe_t u1, u2, i, d1, d2, zi, x, y, d, s;
+  int rotate;
+
+  /* U1 = -a * (Z0 + Y0) * (Z0 - Y0) */
+  fe_add_nc(fe, d1, p->y, p->z);
+  fe_sub_nc(fe, d2, p->y, p->z);
+  fe_mul(fe, u1, d1, d2);
+  edwards_mul_a(ec, u1, u1);
+
+  /* U2 = X0 * Y0 */
+  fe_mul(fe, u2, p->x, p->y);
+
+  /* I = 1 / sqrt(U1 * U2^2) */
+  fe_sqr(fe, i, u2);
+  fe_mul(fe, i, i, u1);
+  fe_rsqrt(fe, i, fe->one, i);
+
+  /* D1 = U1 * I */
+  fe_mul(fe, d1, u1, i);
+
+  /* D2 = U2 * I */
+  fe_mul(fe, d2, u2, i);
+
+  /* Zinv = D1 * D2 * T0 */
+  fe_mul(fe, zi, d1, d2);
+  fe_mul(fe, zi, zi, p->t);
+
+  /* X = X0 */
+  fe_set(fe, x, p->x);
+
+  /* Y = Y0 */
+  fe_set(fe, y, p->y);
+
+  /* D = D2 */
+  fe_set(fe, d, d2);
+
+  /* h = 8 */
+  if (ec->h == 8) {
+    /* rotate = T0 * Zinv < 0 */
+    fe_mul(fe, s, p->t, zi);
+
+    rotate = fe_is_odd(fe, s);
+
+    /* X = Y0 * sqrt(a) if rotate */
+    fe_mul(fe, s, p->y, rs->qnr);
+    fe_select(fe, x, x, s, rotate);
+
+    /* Y = X0 * sqrt(a) if rotate */
+    fe_mul(fe, s, p->x, rs->qnr);
+    fe_select(fe, y, y, s, rotate);
+
+    /* D = D1 / sqrt(a - d) if rotate */
+    fe_mul(fe, s, d1, rs->amdsi);
+    fe_select(fe, d, d, s, rotate);
+  }
+
+  /* Y = -Y if X * Zinv < 0 */
+  fe_mul(fe, s, x, zi);
+  fe_neg_cond(fe, y, y, fe_is_odd(fe, s));
+
+  /* S = (Z0 - Y) * D */
+  fe_sub_nc(fe, s, p->z, y);
+  fe_mul(fe, s, s, d);
+
+  /* S = -S if S < 0 */
+  fe_set_odd(fe, s, s, 0);
+
+  /* Return the byte encoding of S. */
+  fe_export(fe, raw, s);
+}
+
+TORSION_UNUSED static void
+rge_export_batch(const edwards_t *ec, unsigned char **out,
+                 const rge_t *points, size_t len) {
+  /* [DECAF] Page 9, Section 4.7.
+   * [RIST] "Batched Double-and-Encode".
+   *
+   * Affine Formula:
+   *
+   *   e = 2 * x * y
+   *   f = 1 + ((x * y)^2 * d)
+   *   g = y^2 - a * x^2
+   *   h = 1 - ((x * y)^2 * d)
+   *
+   *   if h = 8 and e * g / (f * h) < 0
+   *     e = g, g = -e
+   *     h = f * sqrt(a)
+   *     magic = sqrt(a)
+   *   else
+   *     magic = 1 / sqrt(a - d) if h = 8
+   *           = 1 / sqrt(a * d - 1) otherwise
+   *
+   *   g = -g if h * e / (f * h) < 0
+   *   s = +((h - g) * magic * g / (e * g))
+   *
+   * The trick here is that the inverses can be
+   * batched. Every product of (e * g * f * h)
+   * can be inverted with montgomery's trick.
+   * The necessary inverses can then be retrieved
+   * from each value with:
+   *
+   *   (e * g) / (e * g * f * h) = 1 / (f * h)
+   *   (f * h) / (e * g * f * h) = 1 / (e * g)
+   */
+  const prime_field_t *fe = &ec->fe;
+  const ristretto_t *rs = &ec->rs;
+  fe_t prod[16];
+  fe_t invs[16];
+  fe_t acc, tmp;
+  size_t i;
+
+  struct rge_state_s {
+    fe_t e;
+    fe_t f;
+    fe_t g;
+    fe_t h;
+    fe_t eg;
+    fe_t fh;
+  } states[16];
+
+  ASSERT(len <= 16);
+
+  /* Set up state. */
+  for (i = 0; i < len; i++) {
+    struct rge_state_s *st = &states[i];
+    const rge_t *p = &points[i];
+    fe_t xx, yy, zz, dtt;
+
+    /* XX = X0^2 */
+    fe_sqr(fe, xx, p->x);
+
+    /* YY = Y0^2 */
+    fe_sqr(fe, yy, p->y);
+
+    /* ZZ = Z0^2 */
+    fe_sqr(fe, zz, p->z);
+
+    /* DTT = T0^2 * d */
+    fe_sqr(fe, dtt, p->t);
+    fe_mul(fe, dtt, dtt, ec->d);
+
+    /* E = 2 * X0 * Y0 */
+    fe_add_nc(fe, st->e, p->y, p->y);
+    fe_mul(fe, st->e, st->e, p->x);
+
+    /* F = ZZ + DTT */
+    fe_add_nc(fe, st->f, zz, dtt);
+
+    /* G = YY - a * XX */
+    edwards_mul_a(ec, st->g, xx);
+    fe_sub(fe, st->g, yy, st->g);
+
+    /* H = ZZ - DTT */
+    fe_sub(fe, st->h, zz, dtt);
+
+    /* EG = E * G */
+    fe_mul(fe, st->eg, st->e, st->g);
+
+    /* FH = F * H */
+    fe_mul(fe, st->fh, st->f, st->h);
+
+    /* EFGH = EG * FH */
+    fe_mul(fe, prod[i], st->eg, st->fh);
+  }
+
+  /* Montgomery's trick. */
+  fe_set(fe, acc, fe->one);
+
+  for (i = 0; i < len; i++) {
+    int zero = fe_is_zero(fe, prod[i]);
+
+    fe_select(fe, invs[i], acc, fe->zero, zero);
+    fe_select(fe, tmp, prod[i], fe->one, zero);
+    fe_mul(fe, acc, acc, tmp);
+  }
+
+  ASSERT(fe_invert(fe, acc, acc));
+
+  for (i = len; i-- > 0;) {
+    int zero = fe_is_zero(fe, prod[i]);
+
+    fe_mul(fe, invs[i], invs[i], acc);
+    fe_select(fe, tmp, prod[i], fe->one, zero);
+    fe_mul(fe, acc, acc, tmp);
+  }
+
+  /* Output encoded points. */
+  for (i = 0; i < len; i++) {
+    struct rge_state_s *st = &states[i];
+    fe_t zinv, tinv, magic, me, fqnr, s;
+    int rotate;
+
+    /* Zinv = EG / EFGH */
+    fe_mul(fe, zinv, st->eg, invs[i]);
+
+    /* Tinv = FH / EFGH */
+    fe_mul(fe, tinv, st->fh, invs[i]);
+
+    /* h = 8 */
+    if (ec->h == 8) {
+      /* magic = 1 / sqrt(a - d) */
+      fe_set(fe, magic, rs->amdsi);
+
+      /* rotate = EG * Zinv < 0 */
+      fe_mul(fe, s, st->eg, zinv);
+
+      rotate = fe_is_odd(fe, s);
+
+      /* ME = -E */
+      fe_neg(fe, me, st->e);
+
+      /* FQNR = F * sqrt(a) */
+      fe_mul(fe, fqnr, st->f, rs->qnr);
+
+      /* E = G if rotate */
+      fe_select(fe, st->e, st->e, st->g, rotate);
+
+      /* G = ME if rotate */
+      fe_select(fe, st->g, st->g, me, rotate);
+
+      /* H = FQNR if rotate */
+      fe_select(fe, st->h, st->h, fqnr, rotate);
+
+      /* magic = sqrt(a) if rotate */
+      fe_select(fe, magic, magic, rs->qnr, rotate);
+    } else {
+      /* magic = 1 / sqrt(a * d - 1) */
+      fe_set(fe, magic, rs->adm1si);
+    }
+
+    /* G = -G if H * E * Zinv < 0 */
+    fe_mul(fe, s, st->h, st->e);
+    fe_mul(fe, s, s, zinv);
+    fe_neg_cond(fe, st->g, st->g, fe_is_odd(fe, s));
+
+    /* S = (H - G) * magic * G * Tinv */
+    fe_sub(fe, s, st->h, st->g);
+    fe_mul(fe, s, s, magic);
+    fe_mul(fe, s, s, st->g);
+    fe_mul(fe, s, s, tinv);
+
+    /* S = -S if S < 0 */
+    fe_set_odd(fe, s, s, 0);
+
+    /* Output the byte encoding of S. */
+    fe_export(fe, out[i], s);
+  }
+}
+
+TORSION_UNUSED static int
+rge_equal(const edwards_t *ec, const rge_t *a, const rge_t *b) {
+  /* [DECAF] Page 9, Section 4.5.
+   * [RIST] "Testing Equality".
+   * [RIST255] Page 9, Section 3.2.3.
+   *
+   * Affine Formula (h = 4):
+   *
+   *   x1 * y2 = y1 * x2
+   *
+   * Affine Formula (h = 8):
+   *
+   *   x1 * y2 = y1 * x2 or
+   *   y1 * y2 = -a * x1 * x2
+   */
+  const prime_field_t *fe = &ec->fe;
+  fe_t lhs, rhs;
+  int ret = 0;
+
+  /* X1 * Y2 == Y1 * X2 */
+  fe_mul(fe, lhs, a->x, b->y);
+  fe_mul(fe, rhs, a->y, b->x);
+
+  ret |= fe_equal(fe, lhs, rhs);
+
+  /* h = 8 */
+  if (ec->h == 8) {
+    /* Y1 * Y2 == -a * X1 * X2 */
+    fe_mul(fe, lhs, a->y, b->y);
+    fe_mul(fe, rhs, a->x, b->x);
+
+    ret |= fe_equal(fe, lhs, rhs);
+  }
+
+  return ret;
+}
+
+static int
+rge_is_zero(const edwards_t *ec, const rge_t *p) {
+  /* See above for references.
+   *
+   * Affine Formula (h = 4):
+   *
+   *   x = 0
+   *
+   * Affine Formula (h = 8):
+   *
+   *   x = 0 or y = 0
+   */
+  const prime_field_t *fe = &ec->fe;
+  int ret = 0;
+
+  /* X1 == 0 */
+  ret |= fe_is_zero(fe, p->x);
+
+  /* h = 8 */
+  if (ec->h == 8) {
+    /* Y1 == 0 */
+    ret |= fe_is_zero(fe, p->y);
+  }
+
+  return ret;
+}
+
+/*
+ * Jacobi Quartic Point
+ */
+
+static void
+qge_import_rge(const edwards_t *ec, qge_t r[4], const rge_t *p) {
+  /* [DECAF] Page 7, Section 4.1.
+   * [RIST] "Isogenies".
+   *
+   * Affine Formula:
+   *
+   *   g = sqrt(y^4 * x^2 * (1 - y^2))
+   *
+   *   d1 = y^2 / g
+   *   s1 = d1 * (1 - y) * x
+   *   t1 = 2 * d1 * (1 - y) / sqrt(a * d - 1)
+   *   s2 = -d1 * (1 + y) * x
+   *   t2 = 2 * d1 * (1 + y) / sqrt(a * d - 1)
+   *
+   *   if h = 8
+   *     d2 = -(1 - y^2) / (g * sqrt(d - a))
+   *     s3 = d2 * (sqrt(a) - x) * y
+   *     t3 = 2 * d2 * (sqrt(a) - x) * sqrt(a) / sqrt(a * d - 1)
+   *     s4 = -d2 * (sqrt(a) + x) * y
+   *     t4 = 2 * d2 * (sqrt(a) + x) * sqrt(a) / sqrt(a * d - 1)
+   *
+   * Undefined for x = 0 or y = 0.
+   *
+   * The exceptional cases must be handled as:
+   *
+   *   (s1, t1) = (0, 1)
+   *   (s2, t2) = (0, 1)
+   *   (s3, t3) = (+1, 2 * sqrt(a) / sqrt(a * d - 1))
+   *   (s4, t4) = (-1, 2 * sqrt(a) / sqrt(a * d - 1))
+   */
+  const prime_field_t *fe = &ec->fe;
+  const ristretto_t *rs = &ec->rs;
+  int xyz = fe_is_zero(fe, p->x) | fe_is_zero(fe, p->y);
+  fe_t x2, y2, y4, z2, z2my2, g, d0, sx, spxp, h0;
+  fe_t d1, iz, sy, spyp, h1, h2;
+
+#define s0 (r[0].s)
+#define s1 (r[1].s)
+#define s2 (r[2].s)
+#define s3 (r[3].s)
+#define t0 (r[0].t)
+#define t1 (r[1].t)
+#define t2 (r[2].t)
+#define t3 (r[3].t)
+
+  /* X2 = X0^2 */
+  fe_sqr(fe, x2, p->x);
+
+  /* Y2 = Y0^2 */
+  fe_sqr(fe, y2, p->y);
+
+  /* Y4 = Y2^2 */
+  fe_sqr(fe, y4, y2);
+
+  /* Z2 = Z0^2 */
+  fe_sqr(fe, z2, p->z);
+
+  /* Z2MY2 = Z2 - Y2 */
+  fe_sub_nc(fe, z2my2, z2, y2);
+
+  /* G = 1 / sqrt(Y4 * X2 * Z2MY2) */
+  fe_mul(fe, g, y4, x2);
+  fe_mul(fe, g, g, z2my2);
+  fe_rsqrt(fe, g, fe->one, g);
+
+  /* D0 = G * Y0^2 */
+  fe_mul(fe, d0, g, y2);
+
+  /* SX = D0 * (Z0 - Y0) */
+  fe_sub_nc(fe, t0, p->z, p->y);
+  fe_mul(fe, sx, d0, t0);
+
+  /* SPXP = D0 * (Z0 + Y0) */
+  fe_add_nc(fe, t0, p->z, p->y);
+  fe_mul(fe, spxp, d0, t0);
+
+  /* S0 = SX * X0 */
+  fe_mul(fe, s0, sx, p->x);
+
+  /* S1 = -SPXP * X0 */
+  fe_mul(fe, s1, spxp, p->x);
+  fe_neg(fe, s1, s1);
+
+  /* H0 = 2 * Z0 / sqrt(a * d - 1) */
+  fe_mul(fe, h0, rs->adm1si, p->z);
+  fe_add_nc(fe, h0, h0, h0);
+
+  /* T0 = H0 * SX */
+  fe_mul(fe, t0, h0, sx);
+
+  /* T1 = H0 * SPXP */
+  fe_mul(fe, t1, h0, spxp);
+
+  /* S0 = 0, T0 = 1 if X0 = 0 or Y0 = 0 */
+  fe_select(fe, s0, s0, fe->zero, xyz);
+  fe_select(fe, t0, t0, fe->one, xyz);
+
+  /* S1 = 0, T1 = 1 if X0 = 0 or Y0 = 0 */
+  fe_select(fe, s1, s1, fe->zero, xyz);
+  fe_select(fe, t1, t1, fe->one, xyz);
+
+  /* h = 8 */
+  if (ec->h == 8) {
+    /* D1 = -Z2MY2 * G / sqrt(d - a) */
+    fe_mul(fe, d1, rs->dmasi, z2my2);
+    fe_mul(fe, d1, d1, g);
+    fe_neg(fe, d1, d1);
+
+    /* IZ = sqrt(a) * Z0 */
+    fe_mul(fe, iz, rs->qnr, p->z);
+
+    /* SY = D1 * (IZ - X0) */
+    fe_sub_nc(fe, t2, iz, p->x);
+    fe_mul(fe, sy, d1, t2);
+
+    /* SPYP = D1 * (IZ + X0) */
+    fe_add_nc(fe, t2, iz, p->x);
+    fe_mul(fe, spyp, d1, t2);
+
+    /* S2 = SY * Y0 */
+    fe_mul(fe, s2, sy, p->y);
+
+    /* S3 = -SPYP * Y0 */
+    fe_mul(fe, s3, spyp, p->y);
+    fe_neg(fe, s3, s3);
+
+    /* H1 = 2 * IZ / sqrt(a * d - 1) */
+    fe_mul(fe, h1, rs->adm1si, iz);
+    fe_add_nc(fe, h1, h1, h1);
+
+    /* T2 = H1 * SY */
+    fe_mul(fe, t2, h1, sy);
+
+    /* T3 = H1 * SPYP */
+    fe_mul(fe, t3, h1, spyp);
+
+    /* H2 = 2 * sqrt(a) / sqrt(a * d - 1) */
+    fe_mul(fe, h2, rs->qnr, rs->adm1si);
+    fe_add(fe, h2, h2, h2);
+
+    /* S2 = 1, T2 = H2 if X0 = 0 or Y0 = 0 */
+    fe_select(fe, s2, s2, fe->one, xyz);
+    fe_select(fe, t2, t2, h2, xyz);
+
+    /* S3 = -1, T3 = H2 if X0 = 0 or Y0 = 0 */
+    fe_select(fe, s3, s3, fe->mone, xyz);
+    fe_select(fe, t3, t3, h2, xyz);
+  }
+
+  /* Return ((S0, T0), ...). */
+#undef s0
+#undef s1
+#undef s2
+#undef s3
+#undef t0
+#undef t1
+#undef t2
+#undef t3
+}
+
+static int
+qge_invert(const edwards_t *ec, fe_t r, const qge_t *p, unsigned int hint) {
+  /* [DECAF] Page 13, Section 6.
+   *
+   * Assumptions:
+   *
+   *   - qnr * (s^4 - w^2) is square in F(p).
+   *   - s != 0, t != +-1.
+   *
+   * Affine Formula:
+   *
+   *   w = (t + 1) * (d - a) / (d + a)
+   *   r = (w + s^2) / sqrt(qnr * (s^4 - w^2))
+   *
+   * Undefined for s = 0 and t = +-1.
+   *
+   * The exceptional cases must be handled as:
+   *
+   *   (0, +1) -> sqrt(qnr * d)
+   *   (0, -1) -> 0
+   */
+  const prime_field_t *fe = &ec->fe;
+  const ristretto_t *rs = &ec->rs;
+  int s_zero = fe_is_zero(fe, p->s);
+  int t_one = fe_equal(fe, p->t, fe->one);
+  fe_t a, a2, s2, s4, y;
+  int ret = s_zero;
+
+  /* A = (T + 1) * (d - a) / (d + a) */
+  fe_add_nc(fe, a, p->t, fe->one);
+  fe_mul(fe, a, a, rs->dmaddpa);
+
+  /* A2 = A^2 */
+  fe_sqr(fe, a2, a);
+
+  /* S2 = S^2 */
+  fe_sqr(fe, s2, p->s);
+
+  /* S4 = S2^2 */
+  fe_sqr(fe, s4, s2);
+
+  /* Y = 1 / sqrt(qnr * (S4 - A2)) */
+  fe_sub_nc(fe, y, s4, a2);
+  fe_mul(fe, y, y, rs->qnr);
+
+  /* Fail if (qnr * (S4 - A2)) is not square and S != 0. */
+  ret |= fe_rsqrt(fe, y, fe->one, y);
+
+  /* S2 = -S2 if S < 0 */
+  fe_neg_cond(fe, s2, s2, fe_is_odd(fe, p->s));
+
+  /* R = (A + S2) * Y */
+  fe_add_nc(fe, r, a, s2);
+  fe_mul(fe, r, r, y);
+
+  /* R = sqrt(qnr * d) if S = 0, T = 1 */
+  fe_select(fe, r, r, rs->qnrds, s_zero & t_one);
+
+  /* R = 0 if S = 0, T = -1 */
+  fe_select(fe, r, r, fe->zero, s_zero & (t_one ^ 1));
+
+  /* R = -R if R < 0 (or random) */
+  fe_set_odd(fe, r, r, hint & 1);
+
+  return ret;
 }
 
 /*
@@ -7352,8 +8464,8 @@ _mont_to_edwards(const prime_field_t *fe, xge_t *r,
     fe_sqr(fe, v2, p->y);
 
     fe_add(fe, a, p->y, p->y); /* x4 */
-    fe_add(fe, a, a, a);
-    fe_sub(fe, b, u2, fe->one);
+    fe_add_nc(fe, a, a, a);
+    fe_sub_nc(fe, b, u2, fe->one);
     fe_add(fe, d, u2, u2); /* x2 */
     fe_add(fe, e, v2, v2); /* x4 */
     fe_add(fe, e, e, e);
@@ -7369,7 +8481,7 @@ _mont_to_edwards(const prime_field_t *fe, xge_t *r,
 
     fe_sub(fe, xz, u4, d);
     fe_add(fe, xz, xz, e);
-    fe_add(fe, xz, xz, fe->one);
+    fe_add_nc(fe, xz, xz, fe->one);
 
     fe_sub(fe, yy, u5, f);
     fe_sub(fe, yy, yy, g);
@@ -7379,7 +8491,7 @@ _mont_to_edwards(const prime_field_t *fe, xge_t *r,
     fe_sub(fe, yz, u5, h);
     fe_sub(fe, yz, yz, f);
     fe_sub(fe, yz, yz, i);
-    fe_add(fe, yz, yz, p->x);
+    fe_add_nc(fe, yz, yz, p->x);
 
     /* Handle 2-torsion as infinity. */
     inf |= tor;
@@ -7403,8 +8515,8 @@ _mont_to_edwards(const prime_field_t *fe, xge_t *r,
      */
     fe_mul(fe, xx, c, p->x);
     fe_select(fe, xz, p->y, fe->one, tor);
-    fe_add(fe, yy, p->x, fe->one);
-    fe_sub(fe, yz, p->x, fe->one);
+    fe_add_nc(fe, yy, p->x, fe->one);
+    fe_sub_nc(fe, yz, p->x, fe->one);
   } else {
     /* Isomorphic maps for M(A,B)->E(a,d):
      *
@@ -7425,8 +8537,8 @@ _mont_to_edwards(const prime_field_t *fe, xge_t *r,
      */
     fe_mul(fe, xx, c, p->x);
     fe_select(fe, xz, p->y, fe->one, tor);
-    fe_sub(fe, yy, p->x, fe->one);
-    fe_add(fe, yz, p->x, fe->one);
+    fe_sub_nc(fe, yy, p->x, fe->one);
+    fe_add_nc(fe, yz, p->x, fe->one);
   }
 
   /* Completed point. */
@@ -7474,7 +8586,7 @@ _edwards_to_mont(const prime_field_t *fe, mge_t *r,
     fe_sqr(fe, uu, p->y);
     fe_sqr(fe, uz, p->x);
     fe_sub(fe, vv, two, uz);
-    fe_sub(fe, vv, vv, uu);
+    fe_sub_nc(fe, vv, vv, uu);
     fe_mul(fe, vv, vv, p->y);
     fe_mul(fe, vz, uz, p->x);
   } else if (invert) {
@@ -7492,8 +8604,8 @@ _edwards_to_mont(const prime_field_t *fe, mge_t *r,
      * Unexceptional Cases:
      *   - (+-sqrt(1 / a), 0) -> (-1, +-sqrt((A - 2) / B))
      */
-    fe_add(fe, uu, p->y, p->z);
-    fe_sub(fe, uz, p->y, p->z);
+    fe_add_nc(fe, uu, p->y, p->z);
+    fe_sub_nc(fe, uz, p->y, p->z);
     fe_mul(fe, vv, c, p->z);
     fe_mul(fe, vv, vv, uu);
     fe_mul(fe, vz, p->x, uz);
@@ -7512,8 +8624,8 @@ _edwards_to_mont(const prime_field_t *fe, mge_t *r,
      * Unexceptional Cases:
      *   - (+-sqrt(1 / a), 0) -> (1, +-sqrt((A + 2) / B))
      */
-    fe_add(fe, uu, p->z, p->y);
-    fe_sub(fe, uz, p->z, p->y);
+    fe_add_nc(fe, uu, p->z, p->y);
+    fe_sub_nc(fe, uz, p->z, p->y);
     fe_mul(fe, vv, c, p->z);
     fe_mul(fe, vv, vv, uu);
     fe_mul(fe, vz, p->x, uz);
@@ -7569,6 +8681,7 @@ static const prime_def_t field_p192 = {
   NULL,
   p192_fe_invert,
   p192_fe_sqrt,
+  p192_fe_isqrt,
   NULL
 };
 
@@ -7579,7 +8692,7 @@ static const scalar_def_t field_q192 = {
     0xff, 0xff, 0xff, 0xff, 0x99, 0xde, 0xf8, 0x36,
     0x14, 0x6b, 0xc9, 0xb1, 0xb4, 0xd2, 0x28, 0x31
   },
-  NULL
+  q192_sc_invert
 };
 
 /*
@@ -7610,8 +8723,9 @@ static const prime_def_t field_p224 = {
   NULL,
   NULL,
   p224_fe_invert,
-  p224_fe_sqrt_var,
-  NULL
+  p224_fe_sqrt,
+  NULL,
+  p224_fe_legendre
 };
 
 static const scalar_def_t field_q224 = {
@@ -7622,7 +8736,7 @@ static const scalar_def_t field_q224 = {
     0xe0, 0xb8, 0xf0, 0x3e, 0x13, 0xdd, 0x29, 0x45,
     0x5c, 0x5c, 0x2a, 0x3d
   },
-  NULL
+  q224_sc_invert
 };
 
 /*
@@ -7654,6 +8768,7 @@ static const prime_def_t field_p256 = {
   NULL,
   p256_fe_invert,
   p256_fe_sqrt,
+  p256_fe_isqrt,
   NULL
 };
 
@@ -7699,6 +8814,7 @@ static const prime_def_t field_p384 = {
   NULL,
   p384_fe_invert,
   p384_fe_sqrt,
+  p384_fe_isqrt,
   NULL
 };
 
@@ -7749,6 +8865,7 @@ static const prime_def_t field_p521 = {
   NULL,
   p521_fe_invert,
   p521_fe_sqrt,
+  p521_fe_isqrt,
   NULL
 };
 
@@ -7765,7 +8882,7 @@ static const scalar_def_t field_q521 = {
     0x47, 0xae, 0xbb, 0x6f, 0xb7, 0x1e, 0x91, 0x38,
     0x64, 0x09
   },
-  NULL
+  q521_sc_invert
 };
 
 /*
@@ -7797,7 +8914,8 @@ static const prime_def_t field_p256k1 = {
   NULL,
   secp256k1_fe_invert,
   secp256k1_fe_sqrt,
-  secp256k1_fe_isqrt
+  secp256k1_fe_isqrt,
+  NULL
 };
 
 static const scalar_def_t field_q256k1 = {
@@ -7840,7 +8958,8 @@ static const prime_def_t field_p25519 = {
   fiat_p25519_carry_scmul_121666,
   p25519_fe_invert,
   p25519_fe_sqrt,
-  p25519_fe_isqrt
+  p25519_fe_isqrt,
+  NULL
 };
 
 static const scalar_def_t field_q25519 = {
@@ -7883,10 +9002,11 @@ static const prime_def_t field_p448 = {
   fiat_p448_to_bytes,
   fiat_p448_from_bytes,
   fiat_p448_carry,
-  NULL,
+  fiat_p448_carry_scmul_39082,
   p448_fe_invert,
   p448_fe_sqrt,
-  p448_fe_isqrt
+  p448_fe_isqrt,
+  NULL
 };
 
 static const scalar_def_t field_q448 = {
@@ -7900,7 +9020,7 @@ static const scalar_def_t field_q448 = {
     0x21, 0x6c, 0xc2, 0x72, 0x8d, 0xc5, 0x8f, 0x55,
     0x23, 0x78, 0xc2, 0x92, 0xab, 0x58, 0x44, 0xf3
   },
-  NULL
+  q448_sc_invert
 };
 
 /*
@@ -7932,7 +9052,8 @@ static const prime_def_t field_p251 = {
   NULL,
   p251_fe_invert,
   p251_fe_sqrt,
-  p251_fe_isqrt
+  p251_fe_isqrt,
+  NULL
 };
 
 static const scalar_def_t field_q251 = {
@@ -7943,7 +9064,7 @@ static const scalar_def_t field_q251 = {
     0xf7, 0x79, 0x65, 0xc4, 0xdf, 0xd3, 0x07, 0x34,
     0x89, 0x44, 0xd4, 0x5f, 0xd1, 0x66, 0xc9, 0x71
   },
-  NULL
+  q251_sc_invert
 };
 
 /*
@@ -7996,6 +9117,145 @@ static const endo_def_t endo_secp256k1 = {
  */
 
 #include "subgroups.h"
+
+/*
+ * Ristretto
+ */
+
+static const ristretto_def_t ristretto_ed25519 = {
+  {
+    0x2b, 0x83, 0x24, 0x80, 0x4f, 0xc1, 0xdf, 0x0b,
+    0x2b, 0x4d, 0x00, 0x99, 0x3d, 0xfb, 0xd7, 0xa7,
+    0x2f, 0x43, 0x18, 0x06, 0xad, 0x2f, 0xe4, 0x78,
+    0xc4, 0xee, 0x1b, 0x27, 0x4a, 0x0e, 0xa0, 0xb0
+  },
+  {
+    0x7a, 0x4c, 0xaa, 0xa7, 0x0b, 0x84, 0x14, 0x68,
+    0x8a, 0xcb, 0xab, 0x66, 0x8c, 0x14, 0x91, 0xea,
+    0x32, 0x43, 0x56, 0xd2, 0xf1, 0x15, 0x92, 0x55,
+    0x8a, 0xcf, 0xd5, 0x34, 0xb5, 0xa3, 0xe4, 0x45
+  },
+  {
+    0x37, 0x69, 0x31, 0xbf, 0x2b, 0x83, 0x48, 0xac,
+    0x0f, 0x3c, 0xfc, 0xc9, 0x31, 0xf5, 0xd1, 0xfd,
+    0xaf, 0x9d, 0x8e, 0x0c, 0x1b, 0x78, 0x54, 0xbd,
+    0x7e, 0x97, 0xf6, 0xa0, 0x49, 0x7b, 0x2e, 0x1b
+  },
+  {
+    0x07, 0x93, 0x76, 0xfa, 0x30, 0x50, 0x03, 0x5d,
+    0xe9, 0x3d, 0x84, 0x6e, 0x01, 0xfe, 0x27, 0xbf,
+    0x62, 0xd0, 0xe9, 0xe8, 0xa5, 0xbe, 0x8d, 0x41,
+    0x66, 0x37, 0x02, 0x55, 0x7f, 0xa2, 0xbf, 0x03
+  },
+  {
+    0x0e, 0x67, 0xc8, 0x30, 0xa7, 0xe8, 0xd8, 0x9d,
+    0xae, 0xf8, 0xd9, 0x5f, 0x99, 0x9f, 0x18, 0x24,
+    0x48, 0x9a, 0xe7, 0xf1, 0xcd, 0x24, 0x1d, 0xc8,
+    0x27, 0x7f, 0xac, 0x5f, 0x9b, 0x81, 0xbb, 0x2c
+  },
+  {
+    0x78, 0x6c, 0x89, 0x05, 0xcf, 0xaf, 0xfc, 0xa2,
+    0x16, 0xc2, 0x7b, 0x91, 0xfe, 0x01, 0xd8, 0x40,
+    0x9d, 0x2f, 0x16, 0x17, 0x5a, 0x41, 0x72, 0xbe,
+    0x99, 0xc8, 0xfd, 0xaa, 0x80, 0x5d, 0x40, 0xea
+  },
+  {
+    0x0a, 0x0d, 0x85, 0xb4, 0x03, 0x2b, 0x1e, 0xa8,
+    0x1e, 0xf0, 0x2c, 0x42, 0x94, 0x05, 0xac, 0x88,
+    0x4e, 0x52, 0xf7, 0x1c, 0x6b, 0xda, 0xb6, 0x4e,
+    0x0b, 0x2e, 0xdb, 0x88, 0x31, 0xbb, 0xdd, 0xec
+  }
+};
+
+static const ristretto_def_t ristretto_ed448 = {
+  {
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xfe, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe
+  },
+  {
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0xdd, 0x26, 0x9d, 0x04, 0x14, 0xdb, 0x08, 0x97,
+    0xc4, 0x09, 0x72, 0x8d, 0xd0, 0x5d, 0x95, 0x5f,
+    0x5e, 0x0e, 0x58, 0x47, 0x5a, 0x47, 0x2a, 0xb4,
+    0x9b, 0x5d, 0x28, 0x7e, 0x69, 0x73, 0xeb, 0x45,
+    0x7c, 0x65, 0x99, 0x0b, 0x02, 0x91, 0x21, 0x2d,
+    0x9f, 0xcc, 0x84, 0x09, 0x55, 0xdf, 0x31, 0xad,
+    0x69, 0xbd, 0x10, 0xf0, 0xba, 0xa8, 0xd8, 0xc9
+  },
+  {
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x12, 0xfe, 0xc0, 0xc0, 0xb2, 0x5b, 0x7a, 0x49,
+    0x44, 0x3b, 0x87, 0x48, 0x73, 0x4a, 0xdc, 0xac,
+    0x46, 0x28, 0xc5, 0xf6, 0x56, 0xa4, 0x9f, 0x7b,
+    0x42, 0x4d, 0x97, 0x70, 0x51, 0xe6, 0x5c, 0xa6,
+    0xf1, 0x4c, 0x06, 0x5a, 0x18, 0x9a, 0xab, 0xde,
+    0xea, 0x38, 0x88, 0x8d, 0xb4, 0x2b, 0x4f, 0x01,
+    0x79, 0xd2, 0xe2, 0x18, 0x36, 0x74, 0x9f, 0x46
+  },
+  {
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0xdf, 0x64, 0x97, 0xe8, 0x36, 0xd1, 0x56, 0x79,
+    0x5a, 0x71, 0x30, 0xf4, 0x3e, 0x77, 0x86, 0x9a,
+    0x11, 0x73, 0xae, 0x0c, 0x1e, 0x2c, 0x4c, 0x2b,
+    0xdb, 0x8c, 0x92, 0x72, 0x39, 0xe1, 0x7c, 0xe7,
+    0x70, 0xc6, 0xd2, 0xf9, 0x23, 0x37, 0x17, 0x9c,
+    0x9e, 0x17, 0x76, 0xf8, 0x78, 0x82, 0xd3, 0x05,
+    0x5a, 0x06, 0x38, 0xbe, 0xa7, 0x8f, 0x0f, 0xeb
+  },
+  {
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x18, 0xa4, 0xc3, 0x28, 0x4c, 0xb8, 0xad, 0x25,
+    0xad, 0xee, 0xea, 0x76, 0x1f, 0x20, 0xf6, 0x83,
+    0xbf, 0x3a, 0x1e, 0x14, 0xa5, 0xcf, 0x79, 0x00,
+    0xfe, 0xe6, 0x44, 0xdc, 0x37, 0x38, 0xdc, 0x1a,
+    0x33, 0xe1, 0x9a, 0xdb, 0x94, 0x0b, 0x87, 0x77,
+    0xbf, 0x04, 0x74, 0x56, 0xfe, 0x2a, 0x72, 0xc4,
+    0x85, 0x1c, 0x09, 0x6e, 0xd6, 0x56, 0x78, 0x03
+  },
+  {0},
+  {0}
+};
+
+static const ristretto_def_t ristretto_ed1174 = {
+  {
+    0x07, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xf6
+  },
+  {
+    0x05, 0xb7, 0x8c, 0xa2, 0x46, 0xe7, 0x0f, 0x1f,
+    0xe2, 0x8c, 0x50, 0x57, 0xb5, 0xcf, 0xfc, 0x39,
+    0xf1, 0xcd, 0x31, 0x16, 0xed, 0xde, 0xcf, 0x99,
+    0x03, 0x37, 0xa8, 0x4a, 0x0f, 0xdb, 0xb3, 0xdf
+  },
+  {
+    0x00, 0x5c, 0xfb, 0xdd, 0x72, 0xb1, 0xed, 0x48,
+    0x2a, 0xaf, 0xda, 0x05, 0xd6, 0x92, 0xe7, 0x90,
+    0x79, 0x11, 0x64, 0x99, 0x07, 0xe7, 0x97, 0xf9,
+    0x98, 0xa6, 0x34, 0x7b, 0xc5, 0x5d, 0xd8, 0xa7
+  },
+  {
+    0x07, 0xd2, 0xc2, 0xfe, 0x02, 0x7e, 0x84, 0x73,
+    0x50, 0xdd, 0xf1, 0x96, 0x8e, 0x04, 0x7b, 0x83,
+    0x48, 0x38, 0x02, 0x0b, 0xe5, 0x35, 0x5b, 0xa2,
+    0xbe, 0xc4, 0xa9, 0x8c, 0xa2, 0x0c, 0x10, 0x0e,
+  },
+  {
+    0x04, 0x30, 0x03, 0x7d, 0xed, 0x3b, 0x24, 0xe2,
+    0x19, 0xc0, 0xb5, 0x94, 0x30, 0x03, 0x7d, 0xed,
+    0x3b, 0x24, 0xe2, 0x19, 0xc0, 0xb5, 0x94, 0x30,
+    0x03, 0x7d, 0xed, 0x3b, 0x24, 0xe2, 0x19, 0xbd
+  },
+  {0},
+  {0}
+};
 
 /*
  * Short Weierstrass Curves
@@ -8425,7 +9685,8 @@ static const edwards_def_t curve_ed25519 = {
     0xc5, 0xa1, 0xd3, 0xd1, 0x4b, 0x7d, 0x1a, 0x82,
     0xcc, 0x6e, 0x04, 0xaa, 0xff, 0x45, 0x7e, 0x06
   },
-  subgroups_ed25519
+  subgroups_ed25519,
+  &ristretto_ed25519
 };
 
 static const edwards_def_t curve_ed448 = {
@@ -8488,7 +9749,8 @@ static const edwards_def_t curve_ed448 = {
     0xc3, 0xd1, 0x12, 0x0f, 0x0e, 0xfa, 0x59, 0xf5,
     0x4b, 0xf3, 0x8e, 0x82, 0xb0, 0xe1, 0xe0, 0x28
   },
-  subgroups_ed448
+  subgroups_ed448,
+  &ristretto_ed448
 };
 
 static const edwards_def_t curve_ed1174 = {
@@ -8536,7 +9798,8 @@ static const edwards_def_t curve_ed1174 = {
     0x6f, 0x8f, 0xfb, 0xe8, 0x35, 0x95, 0x48, 0xba,
     0x82, 0x76, 0xac, 0xe6, 0xbb, 0xe7, 0xdf, 0xd2
   },
-  subgroups_ed1174
+  subgroups_ed1174,
+  &ristretto_ed1174
 };
 
 /*
@@ -8623,13 +9886,13 @@ wei_scratch_create(const wei_t *ec, size_t size) {
   size_t i;
 
   scratch->size = size;
-  scratch->wnd = checked_malloc(length * 4 * sizeof(jge_t));
+  scratch->wnd = checked_malloc(length * JSF_SIZE * sizeof(jge_t));
   scratch->wnds = checked_malloc(length * sizeof(jge_t *));
   scratch->naf = checked_malloc(length * (bits + 1) * sizeof(int));
   scratch->nafs = checked_malloc(length * sizeof(int *));
 
   for (i = 0; i < length; i++) {
-    scratch->wnds[i] = &scratch->wnd[i * 4];
+    scratch->wnds[i] = &scratch->wnd[i * JSF_SIZE];
     scratch->nafs[i] = &scratch->naf[i * (bits + 1)];
   }
 
@@ -8758,13 +10021,13 @@ edwards_scratch_create(const edwards_t *ec, size_t size) {
   size_t i;
 
   scratch->size = size;
-  scratch->wnd = checked_malloc(length * 4 * sizeof(xge_t));
+  scratch->wnd = checked_malloc(length * JSF_SIZE * sizeof(xge_t));
   scratch->wnds = checked_malloc(length * sizeof(xge_t *));
   scratch->naf = checked_malloc(length * (bits + 1) * sizeof(int));
   scratch->nafs = checked_malloc(length * sizeof(int *));
 
   for (i = 0; i < length; i++) {
-    scratch->wnds[i] = &scratch->wnd[i * 4];
+    scratch->wnds[i] = &scratch->wnd[i * JSF_SIZE];
     scratch->nafs[i] = &scratch->naf[i * (bits + 1)];
   }
 
@@ -8820,7 +10083,6 @@ ecdsa_privkey_generate(const wei_t *ec,
 
   sc_random(sc, a, &rng);
   sc_export(sc, out, a);
-
   sc_cleanse(sc, a);
 
   cleanse(&rng, sizeof(rng));
@@ -8863,32 +10125,14 @@ ecdsa_privkey_import(const wei_t *ec,
                      const unsigned char *bytes,
                      size_t len) {
   const scalar_field_t *sc = &ec->sc;
-  unsigned char key[MAX_SCALAR_SIZE];
   int ret = 1;
   sc_t a;
 
-  while (len > 0 && bytes[0] == 0x00) {
-    len -= 1;
-    bytes += 1;
-  }
-
-  if (len > sc->size) {
-    memset(out, 0x00, sc->size);
-    return 0;
-  }
-
-  memset(key, 0x00, sc->size - len);
-
-  if (len > 0)
-    memcpy(key + sc->size - len, bytes, len);
-
-  ret &= sc_import(sc, a, key);
+  ret &= sc_import_pad(sc, a, bytes, len);
   ret &= sc_is_zero(sc, a) ^ 1;
 
   sc_export(sc, out, a);
   sc_cleanse(sc, a);
-
-  cleanse(key, sc->size);
 
   return ret;
 }
@@ -8937,36 +10181,6 @@ ecdsa_privkey_tweak_mul(const wei_t *ec,
   sc_export(sc, out, a);
   sc_cleanse(sc, a);
   sc_cleanse(sc, t);
-
-  return ret;
-}
-
-int
-ecdsa_privkey_reduce(const wei_t *ec,
-                     unsigned char *out,
-                     const unsigned char *bytes,
-                     size_t len) {
-  const scalar_field_t *sc = &ec->sc;
-  unsigned char key[MAX_SCALAR_SIZE];
-  int ret = 1;
-  sc_t a;
-
-  if (len > sc->size)
-    len = sc->size;
-
-  memset(key, 0x00, sc->size - len);
-
-  if (len > 0)
-    memcpy(key + sc->size - len, bytes, len);
-
-  sc_import_reduce(sc, a, key);
-
-  ret &= sc_is_zero(sc, a) ^ 1;
-
-  sc_export(sc, out, a);
-  sc_cleanse(sc, a);
-
-  cleanse(key, sc->size);
 
   return ret;
 }
@@ -9346,7 +10560,7 @@ ecdsa_reduce(const wei_t *ec, sc_t r,
    */
   const scalar_field_t *sc = &ec->sc;
   unsigned char tmp[MAX_SCALAR_SIZE];
-  int ret;
+  int ret = 1;
 
   /* Truncate. */
   if (msg_len > sc->size)
@@ -9377,7 +10591,7 @@ ecdsa_reduce(const wei_t *ec, sc_t r,
     }
   }
 
-  ret = sc_import_weak(sc, r, tmp);
+  ret &= sc_import_weak(sc, r, tmp);
 
   cleanse(tmp, sc->size);
 
@@ -10232,10 +11446,14 @@ schnorr_privkey_export(const wei_t *ec,
 
   wei_mul_g(ec, &A, a);
 
+  ret &= wge_is_zero(ec, &A) ^ 1;
+
   sc_neg_cond(sc, a, a, wge_is_even(ec, &A) ^ 1);
+
   wge_neg_cond(ec, &A, &A, wge_is_even(ec, &A) ^ 1);
 
   sc_export(sc, d_raw, a);
+
   fe_export(fe, x_raw, A.x);
   fe_export(fe, y_raw, A.y);
 
@@ -10291,14 +11509,6 @@ schnorr_privkey_tweak_mul(const wei_t *ec,
                           const unsigned char *priv,
                           const unsigned char *tweak) {
   return ecdsa_privkey_tweak_mul(ec, out, priv, tweak);
-}
-
-int
-schnorr_privkey_reduce(const wei_t *ec,
-                       unsigned char *out,
-                       const unsigned char *bytes,
-                       size_t len) {
-  return ecdsa_privkey_reduce(ec, out, bytes, len);
 }
 
 int
@@ -10467,6 +11677,24 @@ schnorr_pubkey_tweak_add(const wei_t *ec,
 }
 
 int
+schnorr_pubkey_tweak_add_check(const wei_t *ec,
+                               const unsigned char *pub,
+                               const unsigned char *tweak,
+                               const unsigned char *expect,
+                               int negated) {
+  const prime_field_t *fe = &ec->fe;
+  unsigned char raw[MAX_FIELD_SIZE];
+  int ret = 1;
+  int sign;
+
+  ret &= schnorr_pubkey_tweak_add(ec, raw, &sign, pub, tweak);
+  ret &= torsion_memequal(raw, expect, fe->size);
+  ret &= (sign == (negated != 0));
+
+  return ret;
+}
+
+int
 schnorr_pubkey_tweak_mul(const wei_t *ec,
                          unsigned char *out,
                          int *negated,
@@ -10493,32 +11721,19 @@ schnorr_pubkey_tweak_mul(const wei_t *ec,
 }
 
 int
-schnorr_pubkey_tweak_test(const wei_t *ec,
-                          int *result,
-                          const unsigned char *pub,
-                          const unsigned char *tweak,
-                          const unsigned char *expect,
-                          int negated) {
-  const scalar_field_t *sc = &ec->sc;
+schnorr_pubkey_tweak_mul_check(const wei_t *ec,
+                               const unsigned char *pub,
+                               const unsigned char *tweak,
+                               const unsigned char *expect,
+                               int negated) {
+  const prime_field_t *fe = &ec->fe;
+  unsigned char raw[MAX_FIELD_SIZE];
   int ret = 1;
-  wge_t A, Q;
-  jge_t T, J;
-  sc_t t;
+  int sign;
 
-  ret &= wge_import_even(ec, &A, pub);
-  ret &= sc_import(sc, t, tweak);
-  ret &= wge_import_even(ec, &Q, expect);
-
-  wei_jmul_g(ec, &T, t);
-
-  jge_mixed_add(ec, &T, &T, &A);
-  jge_neg_cond(ec, &T, &T, negated);
-
-  jge_set_wge(ec, &J, &Q);
-
-  *result = ret & jge_equal(ec, &T, &J);
-
-  sc_cleanse(sc, t);
+  ret &= schnorr_pubkey_tweak_mul(ec, raw, &sign, pub, tweak);
+  ret &= torsion_memequal(raw, expect, fe->size);
+  ret &= (sign == (negated != 0));
 
   return ret;
 }
@@ -11055,7 +12270,6 @@ ecdh_privkey_generate(const mont_t *ec,
   drbg_t rng;
 
   drbg_init(&rng, HASH_SHA256, entropy, ENTROPY_SIZE);
-
   drbg_generate(&rng, out, sc->size);
 
   mont_clamp(ec, out, out);
@@ -11089,25 +12303,15 @@ ecdh_privkey_import(const mont_t *ec,
                     const unsigned char *bytes,
                     size_t len) {
   const scalar_field_t *sc = &ec->sc;
-  unsigned char key[MAX_SCALAR_SIZE];
+  int ret = 1;
+  sc_t a;
 
-  while (len > 0 && bytes[len - 1] == 0x00)
-    len -= 1;
+  ret &= sc_import_pad_raw(sc, a, bytes, len);
 
-  if (len > sc->size) {
-    memset(out, 0x00, sc->size);
-    return 0;
-  }
+  sc_export(sc, out, a);
+  sc_cleanse(sc, a);
 
-  if (len > 0)
-    memcpy(key, bytes, len);
-
-  memset(key + len, 0x00, sc->size - len);
-  memcpy(out, key, sc->size);
-
-  cleanse(key, sc->size);
-
-  return 1;
+  return ret;
 }
 
 void
@@ -11159,7 +12363,7 @@ ecdh_pubkey_convert(const mont_t *ec,
   }
 
   /* Convert to Edwards. */
-  xge_set_mge(ec, &e, &A);
+  mge_export_xge(ec, &e, &A);
 
   /* Invert (should never fail). */
   ASSERT(fe_invert(fe, e.z, e.z));
@@ -11397,7 +12601,6 @@ eddsa_privkey_generate(const edwards_t *ec,
   drbg_t rng;
 
   drbg_init(&rng, HASH_SHA256, entropy, ENTROPY_SIZE);
-
   drbg_generate(&rng, out, fe->adj_size);
 
   cleanse(&rng, sizeof(rng));
@@ -11411,7 +12614,6 @@ eddsa_scalar_generate(const edwards_t *ec,
   drbg_t rng;
 
   drbg_init(&rng, HASH_SHA256, entropy, ENTROPY_SIZE);
-
   drbg_generate(&rng, out, sc->size);
 
   edwards_clamp(ec, out, out);
@@ -11503,12 +12705,12 @@ eddsa_scalar_verify(const edwards_t *ec, const unsigned char *scalar) {
 int
 eddsa_scalar_is_zero(const edwards_t *ec, const unsigned char *scalar) {
   const scalar_field_t *sc = &ec->sc;
-  int ret;
+  int ret = 1;
   sc_t a;
 
   sc_import_reduce(sc, a, scalar);
 
-  ret = sc_is_zero(sc, a);
+  ret &= sc_is_zero(sc, a);
 
   sc_cleanse(sc, a);
 
@@ -11555,25 +12757,13 @@ eddsa_scalar_tweak_mul(const edwards_t *ec,
 void
 eddsa_scalar_reduce(const edwards_t *ec,
                     unsigned char *out,
-                    const unsigned char *bytes,
-                    size_t len) {
+                    const unsigned char *scalar) {
   const scalar_field_t *sc = &ec->sc;
-  unsigned char scalar[MAX_SCALAR_SIZE];
   sc_t a;
-
-  if (len > sc->size)
-    len = sc->size;
-
-  if (len > 0)
-    memcpy(scalar, bytes, len);
-
-  memset(scalar + len, 0x00, sc->size - len);
 
   sc_import_reduce(sc, a, scalar);
   sc_export(sc, out, a);
   sc_cleanse(sc, a);
-
-  cleanse(scalar, sc->size);
 }
 
 void
@@ -11645,7 +12835,7 @@ eddsa_pubkey_convert(const edwards_t *ec,
 
   ret &= xge_import(ec, &A, pub);
 
-  mge_set_xge(ec, &p, &A);
+  xge_export_mge(ec, &p, &A);
 
   ret &= p.inf ^ 1;
 
@@ -11767,13 +12957,10 @@ eddsa_pubkey_import(const edwards_t *ec,
 
 int
 eddsa_pubkey_is_infinity(const edwards_t *ec, const unsigned char *pub) {
-  int ret = 1;
-  xge_t A;
+  static const unsigned char inf[MAX_FIELD_SIZE + 1] = {1, 0};
+  const prime_field_t *fe = &ec->fe;
 
-  ret &= xge_import(ec, &A, pub);
-  ret &= xge_is_zero(ec, &A);
-
-  return ret;
+  return torsion_memequal(pub, inf, fe->adj_size);
 }
 
 int
@@ -12017,12 +13204,12 @@ eddsa_sign_with_scalar(const edwards_t *ec,
 
   eddsa_hash_nonce(ec, k, prefix, msg, msg_len, ph, ctx, ctx_len);
 
-  edwards_mul_g(ec, &R, k);
-  xge_export(ec, Rraw, &R);
-
   sc_import_reduce(sc, a, scalar);
 
+  edwards_mul_g(ec, &R, k);
   edwards_mul_g(ec, &A, a);
+
+  xge_export(ec, Rraw, &R);
   xge_export(ec, Araw, &A);
 
   eddsa_hash_challenge(ec, e, Rraw, Araw, msg, msg_len, ph, ctx, ctx_len);
@@ -12457,13 +13644,388 @@ eddsa_derive(const edwards_t *ec,
              const unsigned char *priv) {
   const scalar_field_t *sc = &ec->sc;
   unsigned char scalar[MAX_SCALAR_SIZE];
-  int ret;
+  int ret = 1;
 
   eddsa_privkey_convert(ec, scalar, priv);
 
-  ret = eddsa_derive_with_scalar(ec, secret, pub, scalar);
+  ret &= eddsa_derive_with_scalar(ec, secret, pub, scalar);
 
   cleanse(scalar, sc->size);
+
+  return ret;
+}
+
+/*
+ * Ristretto
+ */
+
+size_t
+ristretto_privkey_size(const edwards_t *ec) {
+  return ec->sc.size;
+}
+
+size_t
+ristretto_pubkey_size(const edwards_t *ec) {
+  return ec->fe.size;
+}
+
+void
+ristretto_privkey_generate(const edwards_t *ec,
+                           unsigned char *out,
+                           const unsigned char *entropy) {
+  const scalar_field_t *sc = &ec->sc;
+  drbg_t rng;
+  sc_t a;
+
+  drbg_init(&rng, HASH_SHA256, entropy, ENTROPY_SIZE);
+
+  sc_random(sc, a, &rng);
+  sc_export(sc, out, a);
+  sc_cleanse(sc, a);
+
+  cleanse(&rng, sizeof(rng));
+}
+
+void
+ristretto_privkey_from_uniform(const edwards_t *ec,
+                               unsigned char *out,
+                               const unsigned char *bytes) {
+  const scalar_field_t *sc = &ec->sc;
+  sc_t a;
+
+  sc_import_wide(sc, a, bytes, sc->size * 2);
+  sc_export(sc, out, a);
+  sc_cleanse(sc, a);
+}
+
+int
+ristretto_privkey_verify(const edwards_t *ec, const unsigned char *priv) {
+  const scalar_field_t *sc = &ec->sc;
+  int ret = 1;
+  sc_t a;
+
+  ret &= sc_import(sc, a, priv);
+
+  sc_cleanse(sc, a);
+
+  return ret;
+}
+
+int
+ristretto_privkey_is_zero(const edwards_t *ec, const unsigned char *priv) {
+  static const unsigned char zero[MAX_SCALAR_SIZE] = {0};
+  const scalar_field_t *sc = &ec->sc;
+
+  return torsion_memequal(priv, zero, sc->size);
+}
+
+int
+ristretto_privkey_export(const edwards_t *ec,
+                         unsigned char *out,
+                         const unsigned char *priv) {
+  const scalar_field_t *sc = &ec->sc;
+  int ret = 1;
+  sc_t a;
+
+  ret &= sc_import(sc, a, priv);
+
+  sc_export(sc, out, a);
+  sc_cleanse(sc, a);
+
+  return ret;
+}
+
+int
+ristretto_privkey_import(const edwards_t *ec,
+                         unsigned char *out,
+                         const unsigned char *bytes,
+                         size_t len) {
+  const scalar_field_t *sc = &ec->sc;
+  int ret = 1;
+  sc_t a;
+
+  ret &= sc_import_pad(sc, a, bytes, len);
+
+  sc_export(sc, out, a);
+  sc_cleanse(sc, a);
+
+  return ret;
+}
+
+int
+ristretto_privkey_tweak_add(const edwards_t *ec,
+                            unsigned char *out,
+                            const unsigned char *priv,
+                            const unsigned char *tweak) {
+  const scalar_field_t *sc = &ec->sc;
+  int ret = 1;
+  sc_t a, t;
+
+  ret &= sc_import(sc, a, priv);
+  ret &= sc_import(sc, t, tweak);
+
+  sc_add(sc, a, a, t);
+
+  sc_export(sc, out, a);
+  sc_cleanse(sc, a);
+  sc_cleanse(sc, t);
+
+  return ret;
+}
+
+int
+ristretto_privkey_tweak_mul(const edwards_t *ec,
+                            unsigned char *out,
+                            const unsigned char *priv,
+                            const unsigned char *tweak) {
+  const scalar_field_t *sc = &ec->sc;
+  int ret = 1;
+  sc_t a, t;
+
+  ret &= sc_import(sc, a, priv);
+  ret &= sc_import(sc, t, tweak);
+
+  sc_mul(sc, a, a, t);
+
+  ret &= sc_is_zero(sc, a) ^ 1;
+
+  sc_export(sc, out, a);
+  sc_cleanse(sc, a);
+  sc_cleanse(sc, t);
+
+  return ret;
+}
+
+int
+ristretto_privkey_negate(const edwards_t *ec,
+                         unsigned char *out,
+                         const unsigned char *priv) {
+  const scalar_field_t *sc = &ec->sc;
+  int ret = 1;
+  sc_t a;
+
+  ret &= sc_import(sc, a, priv);
+
+  sc_neg(sc, a, a);
+
+  sc_export(sc, out, a);
+  sc_cleanse(sc, a);
+
+  return ret;
+}
+
+int
+ristretto_privkey_invert(const edwards_t *ec,
+                         unsigned char *out,
+                         const unsigned char *priv) {
+  const scalar_field_t *sc = &ec->sc;
+  int ret = 1;
+  sc_t a;
+
+  ret &= sc_import(sc, a, priv);
+
+  sc_invert(sc, a, a);
+
+  sc_export(sc, out, a);
+  sc_cleanse(sc, a);
+
+  return ret;
+}
+
+int
+ristretto_pubkey_create(const edwards_t *ec,
+                        unsigned char *pub,
+                        const unsigned char *priv) {
+  const scalar_field_t *sc = &ec->sc;
+  int ret = 1;
+  rge_t A;
+  sc_t a;
+
+  ret &= sc_import(sc, a, priv);
+
+  edwards_mul_g(ec, &A, a);
+
+  rge_export(ec, pub, &A);
+
+  sc_cleanse(sc, a);
+
+  xge_cleanse(ec, &A);
+
+  return ret;
+}
+
+void
+ristretto_pubkey_from_uniform(const edwards_t *ec,
+                              unsigned char *out,
+                              const unsigned char *bytes) {
+  rge_t A;
+
+  ristretto_point_from_uniform(ec, &A, bytes);
+
+  rge_export(ec, out, &A);
+}
+
+int
+ristretto_pubkey_to_uniform(const edwards_t *ec,
+                            unsigned char *out,
+                            const unsigned char *pub,
+                            unsigned int hint) {
+  int ret = 1;
+  rge_t A;
+
+  ret &= rge_import(ec, &A, pub);
+  ret &= ristretto_point_to_uniform(ec, out, &A, hint);
+
+  return ret;
+}
+
+void
+ristretto_pubkey_from_hash(const edwards_t *ec,
+                           unsigned char *out,
+                           const unsigned char *bytes) {
+  rge_t A;
+
+  ristretto_point_from_hash(ec, &A, bytes);
+
+  rge_export(ec, out, &A);
+}
+
+int
+ristretto_pubkey_to_hash(const edwards_t *ec,
+                         unsigned char *out,
+                         const unsigned char *pub,
+                         const unsigned char *entropy) {
+  int ret = 1;
+  rge_t A;
+
+  ret &= rge_import(ec, &A, pub);
+
+  ristretto_point_to_hash(ec, out, &A, entropy);
+
+  return ret;
+}
+
+int
+ristretto_pubkey_verify(const edwards_t *ec, const unsigned char *pub) {
+  rge_t A;
+
+  return rge_import(ec, &A, pub);
+}
+
+int
+ristretto_pubkey_is_infinity(const edwards_t *ec, const unsigned char *pub) {
+  static const unsigned char inf[MAX_FIELD_SIZE] = {0};
+  const prime_field_t *fe = &ec->fe;
+
+  return torsion_memequal(pub, inf, fe->size);
+}
+
+int
+ristretto_pubkey_tweak_add(const edwards_t *ec,
+                           unsigned char *out,
+                           const unsigned char *pub,
+                           const unsigned char *tweak) {
+  const scalar_field_t *sc = &ec->sc;
+  int ret = 1;
+  rge_t A, T;
+  sc_t t;
+
+  ret &= rge_import(ec, &A, pub);
+  ret &= sc_import(sc, t, tweak);
+
+  edwards_mul_g(ec, &T, t);
+
+  xge_add(ec, &A, &A, &T);
+  rge_export(ec, out, &A);
+
+  sc_cleanse(sc, t);
+
+  return ret;
+}
+
+int
+ristretto_pubkey_tweak_mul(const edwards_t *ec,
+                           unsigned char *out,
+                           const unsigned char *pub,
+                           const unsigned char *tweak) {
+  const scalar_field_t *sc = &ec->sc;
+  int ret = 1;
+  rge_t A;
+  sc_t t;
+
+  ret &= rge_import(ec, &A, pub);
+  ret &= sc_import(sc, t, tweak);
+
+  edwards_mul(ec, &A, &A, t);
+
+  ret &= rge_is_zero(ec, &A) ^ 1;
+
+  rge_export(ec, out, &A);
+
+  sc_cleanse(sc, t);
+
+  return ret;
+}
+
+int
+ristretto_pubkey_combine(const edwards_t *ec,
+                         unsigned char *out,
+                         const unsigned char *const *pubs,
+                         size_t len) {
+  int ret = 1;
+  rge_t P, A;
+  size_t i;
+
+  xge_zero(ec, &P);
+
+  for (i = 0; i < len; i++) {
+    ret &= rge_import(ec, &A, pubs[i]);
+
+    xge_add(ec, &P, &P, &A);
+  }
+
+  rge_export(ec, out, &P);
+
+  return ret;
+}
+
+int
+ristretto_pubkey_negate(const edwards_t *ec,
+                        unsigned char *out,
+                        const unsigned char *pub) {
+  int ret = 1;
+  rge_t A;
+
+  ret &= rge_import(ec, &A, pub);
+
+  xge_neg(ec, &A, &A);
+
+  rge_export(ec, out, &A);
+
+  return ret;
+}
+
+int
+ristretto_derive(const edwards_t *ec,
+                 unsigned char *secret,
+                 const unsigned char *pub,
+                 const unsigned char *priv) {
+  const scalar_field_t *sc = &ec->sc;
+  int ret = 1;
+  rge_t A, P;
+  sc_t a;
+
+  ret &= sc_import(sc, a, priv);
+  ret &= rge_import(ec, &A, pub);
+
+  edwards_mul(ec, &P, &A, a);
+
+  rge_export(ec, secret, &P);
+
+  sc_cleanse(sc, a);
+
+  xge_cleanse(ec, &A);
+  xge_cleanse(ec, &P);
 
   return ret;
 }

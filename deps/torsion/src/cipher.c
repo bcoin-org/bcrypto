@@ -6449,7 +6449,8 @@ gfe_mul(gfe_t *r, const gfe_t *x, const gfe_t *table) {
     }
   }
 
-  *r = z;
+  r->lo = z.lo;
+  r->hi = z.hi;
 }
 
 static void
@@ -6510,6 +6511,9 @@ static void
 ghash_init(ghash_t *ctx, const unsigned char *key) {
   gfe_t x = {0, 0};
   size_t i;
+
+  /* Zero for struct assignment. */
+  memset(&x, 0, sizeof(x));
 
   ctx->state = x;
   ctx->table[0] = x;

@@ -11,8 +11,9 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#include <torsion/hash.h>
+#include <torsion/cipher.h>
 #include <torsion/drbg.h>
+#include <torsion/hash.h>
 #include "bio.h"
 #include "internal.h"
 
@@ -43,7 +44,7 @@ hmac_drbg_update(hmac_drbg_t *drbg,
   hmac_update(&drbg->kmac, drbg->V, drbg->size);
   hmac_final(&drbg->kmac, drbg->V);
 
-  if (seed_len != 0) {
+  if (seed_len > 0) {
     hmac_init(&drbg->kmac, drbg->type, drbg->K, drbg->size);
     hmac_update(&drbg->kmac, drbg->V, drbg->size);
     hmac_update(&drbg->kmac, ONE, 1);
@@ -54,9 +55,6 @@ hmac_drbg_update(hmac_drbg_t *drbg,
     hmac_update(&drbg->kmac, drbg->V, drbg->size);
     hmac_final(&drbg->kmac, drbg->V);
   }
-
-  /* Zero for struct assignment. */
-  memset(&drbg->kmac, 0, sizeof(drbg->kmac));
 
   hmac_init(&drbg->kmac, drbg->type, drbg->K, drbg->size);
 }
@@ -75,6 +73,9 @@ hmac_drbg_init(hmac_drbg_t *drbg,
 
   memset(drbg->K, 0x00, drbg->size);
   memset(drbg->V, 0x01, drbg->size);
+
+  /* Zero for struct assignment. */
+  memset(&drbg->kmac, 0, sizeof(drbg->kmac));
 
   hmac_drbg_update(drbg, seed, seed_len);
 }
@@ -140,9 +141,9 @@ hash_drbg_init(hash_drbg_t *drbg,
   drbg->length = length;
 
   state[0] = 0x01;
-  state[1] = length >> 21;
-  state[2] = length >> 13;
-  state[3] = length >> 5;
+  state[1] = (length >> 21) & 0xff;
+  state[2] = (length >> 13) & 0xff;
+  state[3] = (length >> 5) & 0xff;
   state[4] = (length & 0x1f) << 3;
   state[5] = 0x00;
 
@@ -189,9 +190,9 @@ hash_drbg_reseed(hash_drbg_t *drbg,
   size_t i, blocks;
 
   state[0] = 0x01;
-  state[1] = length >> 21;
-  state[2] = length >> 13;
-  state[3] = length >> 5;
+  state[1] = (length >> 21) & 0xff;
+  state[2] = (length >> 13) & 0xff;
+  state[3] = (length >> 5) & 0xff;
   state[4] = (length & 0x1f) << 3;
   state[5] = 0x01;
 
@@ -282,6 +283,7 @@ hash_drbg_generate(hash_drbg_t *drbg,
     hash_update(&drbg->hash, drbg->V, drbg->length);
     hash_update(&drbg->hash, add, add_len);
     hash_final(&drbg->hash, H, drbg->size);
+
     accumulate(drbg->V, drbg->length, H, drbg->size);
   }
 
@@ -293,7 +295,9 @@ hash_drbg_generate(hash_drbg_t *drbg,
 
     if (len < drbg->size) {
       hash_final(&drbg->hash, H, drbg->size);
+
       memcpy(raw, H, len);
+
       break;
     }
 
@@ -322,13 +326,15 @@ hash_drbg_rng(void *out, size_t size, void *arg) {
 #define MAX_KEY_SIZE 32
 #define MAX_BLK_SIZE 16
 #define MAX_ENT_SIZE (MAX_KEY_SIZE + MAX_BLK_SIZE)
-#define MAX_ENT_BLKS ((MAX_ENT_SIZE + MAX_BLK_SIZE - 1) / MAX_BLK_SIZE)
+#define MAX_NONCE_SIZE 512
+#define MAX_SER_SIZE (MAX_NONCE_SIZE * 2 + MAX_BLK_SIZE * 2)
 
 static void
 ctr_drbg_rekey(ctr_drbg_t *drbg,
                const unsigned char *key,
                const unsigned char *iv) {
   aes_init_encrypt(&drbg->aes, drbg->key_size * 8, key);
+
   memcpy(drbg->state, iv, drbg->blk_size);
 }
 
@@ -366,31 +372,21 @@ ctr_drbg_serialize(ctr_drbg_t *drbg,
                    const unsigned char *nonce, size_t nonce_len,
                    const unsigned char *pers, size_t pers_len) {
   size_t N = drbg->ent_size;
-  size_t L = nonce_len + pers_len;
-  size_t size;
+  size_t L, size;
 
-  if (L > 256) {
-    size_t extra = L - 256;
+  if (nonce_len > MAX_NONCE_SIZE)
+    nonce_len = MAX_NONCE_SIZE;
 
-    if (pers_len >= extra) {
-      pers_len -= extra;
-    } else {
-      nonce_len += pers_len;
-      nonce_len -= extra;
-      pers_len = 0;
-    }
+  if (pers_len > MAX_NONCE_SIZE)
+    pers_len = MAX_NONCE_SIZE;
 
-    L -= extra;
-
-    ASSERT(L == nonce_len + pers_len);
-  }
-
+  L = nonce_len + pers_len;
   size = drbg->blk_size + 4 + 4 + L + 1;
 
   if (size % drbg->blk_size)
     size += drbg->blk_size - (size % drbg->blk_size);
 
-  ASSERT(size <= 288);
+  ASSERT(size <= MAX_SER_SIZE);
   ASSERT((size % drbg->blk_size) == 0);
 
   /* S = IV || (L || N || input || 0x80 || 0x00...) */
@@ -424,14 +420,14 @@ ctr_drbg_derive(ctr_drbg_t *drbg,
                 size_t nonce_len,
                 const unsigned char *pers,
                 size_t pers_len) {
-  size_t bits = drbg->key_size * 8;
-  unsigned char tmp[MAX_ENT_BLKS * MAX_BLK_SIZE];
-  unsigned char slab[MAX_ENT_BLKS * MAX_BLK_SIZE];
-  unsigned char *x = slab + drbg->key_size;
+  unsigned char tmp[MAX_ENT_SIZE + MAX_BLK_SIZE];
+  unsigned char slab[MAX_ENT_SIZE + MAX_BLK_SIZE];
   unsigned char chain[MAX_BLK_SIZE];
   unsigned char K[MAX_KEY_SIZE];
+  unsigned char S[MAX_SER_SIZE];
+  unsigned char *x = slab + drbg->key_size;
+  size_t bits = drbg->key_size * 8;
   size_t i, j, k, blocks, N;
-  unsigned char S[288];
   aes_t aes;
 
   ctr_drbg_serialize(drbg, S, &N, nonce, nonce_len, pers, pers_len);
@@ -463,6 +459,7 @@ ctr_drbg_derive(ctr_drbg_t *drbg,
 
   for (i = 0; i < blocks; i++) {
     aes_encrypt(&aes, x, x);
+
     memcpy(tmp + i * drbg->blk_size, x, drbg->blk_size);
   }
 

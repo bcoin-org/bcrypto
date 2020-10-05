@@ -3,9 +3,8 @@
  * Copyright (c) 2020, Christopher Jeffrey (MIT License).
  * https://github.com/bcoin-org/libtorsion
  *
- * Parts of this software are based on bitcoin-core/secp256k1:
- *   Copyright (c) 2013 Pieter Wuille
- *   https://github.com/bitcoin-core/secp256k1
+ * Resources:
+ *   https://briansmith.org/ecc-inversion-addition-chains-01#secp256k1_field_inversion
  */
 
 #if defined(TORSION_USE_LIBSECP256K1)
@@ -49,47 +48,47 @@ typedef secp256k1_fe_word_t secp256k1_fe_t[SECP256K1_FIELD_WORDS];
 #define secp256k1_fe_nonzero fiat_secp256k1_nonzero
 
 static void
-secp256k1_fe_set(secp256k1_fe_t out, const secp256k1_fe_t in) {
+secp256k1_fe_set(secp256k1_fe_t r, const secp256k1_fe_t x) {
 #if defined(TORSION_USE_LIBSECP256K1)
-  out[0] = in[0];
-  out[1] = in[1];
-  out[2] = in[2];
-  out[3] = in[3];
-  out[4] = in[4];
+  r[0] = x[0];
+  r[1] = x[1];
+  r[2] = x[2];
+  r[3] = x[3];
+  r[4] = x[4];
 #if SECP256K1_FIELD_WORDS == 10
-  out[5] = in[5];
-  out[6] = in[6];
-  out[7] = in[7];
-  out[8] = in[8];
-  out[9] = in[9];
+  r[5] = x[5];
+  r[6] = x[6];
+  r[7] = x[7];
+  r[8] = x[8];
+  r[9] = x[9];
 #endif
 #else /* !TORSION_USE_LIBSECP256K1 */
-  out[0] = in[0];
-  out[1] = in[1];
-  out[2] = in[2];
-  out[3] = in[3];
+  r[0] = x[0];
+  r[1] = x[1];
+  r[2] = x[2];
+  r[3] = x[3];
 #if SECP256K1_FIELD_WORDS == 8
-  out[4] = in[4];
-  out[5] = in[5];
-  out[6] = in[6];
-  out[7] = in[7];
+  r[4] = x[4];
+  r[5] = x[5];
+  r[6] = x[6];
+  r[7] = x[7];
 #endif
 #endif /* !TORSION_USE_LIBSECP256K1 */
 }
 
 static int
-secp256k1_fe_equal(const secp256k1_fe_t a, const secp256k1_fe_t b) {
+secp256k1_fe_equal(const secp256k1_fe_t x, const secp256k1_fe_t y) {
   secp256k1_fe_word_t z = 0;
 
 #if defined(TORSION_USE_LIBSECP256K1)
   secp256k1_fe_t c;
-  secp256k1_fe_sub(c, a, b);
+  secp256k1_fe_sub(c, x, y);
   secp256k1_fe_nonzero(&z, c);
 #else /* !TORSION_USE_LIBSECP256K1 */
   size_t i;
 
   for (i = 0; i < SECP256K1_FIELD_WORDS; i++)
-    z |= a[i] ^ b[i];
+    z |= x[i] ^ y[i];
 
   z = (z >> 1) | (z & 1);
 #endif /* !TORSION_USE_LIBSECP256K1 */
@@ -98,190 +97,188 @@ secp256k1_fe_equal(const secp256k1_fe_t a, const secp256k1_fe_t b) {
 }
 
 static void
-secp256k1_fe_sqrn(secp256k1_fe_t out, const secp256k1_fe_t in, int rounds) {
+secp256k1_fe_sqrn(secp256k1_fe_t r, const secp256k1_fe_t x, int rounds) {
   int i;
 
-  secp256k1_fe_sqr(out, in);
+  secp256k1_fe_sqr(r, x);
 
   for (i = 1; i < rounds; i++)
-    secp256k1_fe_sqr(out, out);
+    secp256k1_fe_sqr(r, r);
 }
 
 static void
-secp256k1_fe_invert(secp256k1_fe_t out, const secp256k1_fe_t in) {
-  /* https://briansmith.org/ecc-inversion-addition-chains-01#secp256k1_field_inversion */
-  /* https://github.com/bitcoin-core/secp256k1/blob/master/src/field_impl.h */
-  /* 15M + 255S */
-  secp256k1_fe_t x1, x2, x3, x6, x9, x11, x22, x44, x88, x176, x220, x223;
+secp256k1_fe_pow_core(secp256k1_fe_t r,
+                      const secp256k1_fe_t x1,
+                      const secp256k1_fe_t x2) {
+  /* Exponent: (p - 47) / 64 */
+  /* Bits: 223x1 1x0 22x1 4x0 */
+  secp256k1_fe_t t1, t2, t3, t4;
 
-  secp256k1_fe_set(x1, in);
+  /* x3 = x2^(2^1) * x1 */
+  secp256k1_fe_sqr(t1, x2);
+  secp256k1_fe_mul(t1, t1, x1);
 
+  /* x6 = x3^(2^3) * x3 */
+  secp256k1_fe_sqrn(t2, t1, 3);
+  secp256k1_fe_mul(t2, t2, t1);
+
+  /* x9 = x6^(2^3) * x3 */
+  secp256k1_fe_sqrn(t3, t2, 3);
+  secp256k1_fe_mul(t3, t3, t1);
+
+  /* x11 = x9^(2^2) * x2 */
+  secp256k1_fe_sqrn(t2, t3, 2);
+  secp256k1_fe_mul(t2, t2, x2);
+
+  /* x22 = x11^(2^11) * x11 */
+  secp256k1_fe_sqrn(t3, t2, 11);
+  secp256k1_fe_mul(t3, t3, t2);
+
+  /* x44 = x22^(2^22) * x22 */
+  secp256k1_fe_sqrn(t2, t3, 22);
+  secp256k1_fe_mul(t2, t2, t3);
+
+  /* x88 = x44^(2^44) * x44 */
+  secp256k1_fe_sqrn(t4, t2, 44);
+  secp256k1_fe_mul(t4, t4, t2);
+
+  /* x176 = x88^(2^88) * x88 */
+  secp256k1_fe_sqrn(r, t4, 88);
+  secp256k1_fe_mul(r, r, t4);
+
+  /* x220 = x176^(2^44) * x44 */
+  secp256k1_fe_sqrn(r, r, 44);
+  secp256k1_fe_mul(r, r, t2);
+
+  /* x223 = x220^(2^3) * x3 */
+  secp256k1_fe_sqrn(r, r, 3);
+  secp256k1_fe_mul(r, r, t1);
+
+  /* r = x223^(2^1) */
+  secp256k1_fe_sqr(r, r);
+
+  /* r = r^(2^22) * x22 */
+  secp256k1_fe_sqrn(r, r, 22);
+  secp256k1_fe_mul(r, r, t3);
+
+  /* r = r^(2^4) */
+  secp256k1_fe_sqrn(r, r, 4);
+}
+
+static void
+secp256k1_fe_pow_pm3d4(secp256k1_fe_t r, const secp256k1_fe_t x) {
+  /* Exponent: (p - 3) / 4 */
+  /* Bits: 223x1 1x0 22x1 4x0 1x1 1x0 2x1 */
+  secp256k1_fe_t x1, x2;
+
+  /* x1 = x */
+  secp256k1_fe_set(x1, x);
+
+  /* x2 = x1^(2^1) * x1 */
   secp256k1_fe_sqr(x2, x1);
   secp256k1_fe_mul(x2, x2, x1);
 
-  secp256k1_fe_sqr(x3, x2);
-  secp256k1_fe_mul(x3, x3, x1);
+  /* r = x1^((p - 47) / 64) */
+  secp256k1_fe_pow_core(r, x1, x2);
 
-  secp256k1_fe_sqrn(x6, x3, 3);
-  secp256k1_fe_mul(x6, x6, x3);
+  /* r = r^(2^1) * x1 */
+  secp256k1_fe_sqr(r, r);
+  secp256k1_fe_mul(r, r, x1);
 
-  secp256k1_fe_sqrn(x9, x6, 3);
-  secp256k1_fe_mul(x9, x9, x3);
+  /* r = r^(2^1) */
+  secp256k1_fe_sqr(r, r);
 
-  secp256k1_fe_sqrn(x11, x9, 2);
-  secp256k1_fe_mul(x11, x11, x2);
+  /* r = r^(2^2) * x2 */
+  secp256k1_fe_sqrn(r, r, 2);
+  secp256k1_fe_mul(r, r, x2);
+}
 
-  secp256k1_fe_sqrn(x22, x11, 11);
-  secp256k1_fe_mul(x22, x22, x11);
+static void
+secp256k1_fe_invert(secp256k1_fe_t r, const secp256k1_fe_t x) {
+  /* Exponent: p - 2 */
+  /* Bits: 223x1 1x0 22x1 4x0 1x1 1x0 2x1 1x0 1x1 */
+  secp256k1_fe_t x1, x2;
 
-  secp256k1_fe_sqrn(x44, x22, 22);
-  secp256k1_fe_mul(x44, x44, x22);
+  /* x1 = x */
+  secp256k1_fe_set(x1, x);
 
-  secp256k1_fe_sqrn(x88, x44, 44);
-  secp256k1_fe_mul(x88, x88, x44);
+  /* x2 = x1^(2^1) * x1 */
+  secp256k1_fe_sqr(x2, x1);
+  secp256k1_fe_mul(x2, x2, x1);
 
-  secp256k1_fe_sqrn(x176, x88, 88);
-  secp256k1_fe_mul(x176, x176, x88);
+  /* r = x1^((p - 47) / 64) */
+  secp256k1_fe_pow_core(r, x1, x2);
 
-  secp256k1_fe_sqrn(x220, x176, 44);
-  secp256k1_fe_mul(x220, x220, x44);
+  /* r = r^(2^1) * x1 */
+  secp256k1_fe_sqr(r, r);
+  secp256k1_fe_mul(r, r, x1);
 
-  secp256k1_fe_sqrn(x223, x220, 3);
-  secp256k1_fe_mul(x223, x223, x3);
+  /* r = r^(2^1) */
+  secp256k1_fe_sqr(r, r);
 
-  secp256k1_fe_sqrn(out, x223, 23);
-  secp256k1_fe_mul(out, out, x22);
-  secp256k1_fe_sqrn(out, out, 5);
-  secp256k1_fe_mul(out, out, x1);
-  secp256k1_fe_sqrn(out, out, 3);
-  secp256k1_fe_mul(out, out, x2);
-  secp256k1_fe_sqrn(out, out, 2);
-  secp256k1_fe_mul(out, out, x1);
+  /* r = r^(2^2) * x2 */
+  secp256k1_fe_sqrn(r, r, 2);
+  secp256k1_fe_mul(r, r, x2);
+
+  /* r = r^(2^1) */
+  secp256k1_fe_sqr(r, r);
+
+  /* r = r^(2^1) * x1 */
+  secp256k1_fe_sqr(r, r);
+  secp256k1_fe_mul(r, r, x1);
 }
 
 static int
-secp256k1_fe_sqrt(secp256k1_fe_t out, const secp256k1_fe_t in) {
-  /* https://github.com/bitcoin-core/secp256k1/blob/master/src/field_impl.h */
-  /* 13M + 254S */
-  secp256k1_fe_t x1, x2, x3, x6, x9, x11, x22, x44, x88, x176, x220, x223;
+secp256k1_fe_sqrt(secp256k1_fe_t r, const secp256k1_fe_t x) {
+  /* Exponent: (p + 1) / 4 */
+  /* Bits: 223x1 1x0 22x1 4x0 2x1 2x0 */
+  secp256k1_fe_t x1, x2;
 
-  secp256k1_fe_set(x1, in);
+  /* x1 = x */
+  secp256k1_fe_set(x1, x);
 
+  /* x2 = x1^(2^1) * x1 */
   secp256k1_fe_sqr(x2, x1);
   secp256k1_fe_mul(x2, x2, x1);
 
-  secp256k1_fe_sqr(x3, x2);
-  secp256k1_fe_mul(x3, x3, x1);
+  /* r = x1^((p - 47) / 64) */
+  secp256k1_fe_pow_core(r, x1, x2);
 
-  secp256k1_fe_sqrn(x6, x3, 3);
-  secp256k1_fe_mul(x6, x6, x3);
+  /* r = r^(2^2) * x2 */
+  secp256k1_fe_sqrn(r, r, 2);
+  secp256k1_fe_mul(r, r, x2);
 
-  secp256k1_fe_sqrn(x9, x6, 3);
-  secp256k1_fe_mul(x9, x9, x3);
+  /* r = r^(2^2) */
+  secp256k1_fe_sqrn(r, r, 2);
 
-  secp256k1_fe_sqrn(x11, x9, 2);
-  secp256k1_fe_mul(x11, x11, x2);
-
-  secp256k1_fe_sqrn(x22, x11, 11);
-  secp256k1_fe_mul(x22, x22, x11);
-
-  secp256k1_fe_sqrn(x44, x22, 22);
-  secp256k1_fe_mul(x44, x44, x22);
-
-  secp256k1_fe_sqrn(x88, x44, 44);
-  secp256k1_fe_mul(x88, x88, x44);
-
-  secp256k1_fe_sqrn(x176, x88, 88);
-  secp256k1_fe_mul(x176, x176, x88);
-
-  secp256k1_fe_sqrn(x220, x176, 44);
-  secp256k1_fe_mul(x220, x220, x44);
-
-  secp256k1_fe_sqrn(x223, x220, 3);
-  secp256k1_fe_mul(x223, x223, x3);
-
-  secp256k1_fe_sqrn(out, x223, 23);
-  secp256k1_fe_mul(out, out, x22);
-  secp256k1_fe_sqrn(out, out, 6);
-  secp256k1_fe_mul(out, out, x2);
-  secp256k1_fe_sqrn(out, out, 2);
-
-  secp256k1_fe_sqr(x2, out);
+  /* r^2 == x1 */
+  secp256k1_fe_sqr(x2, r);
 
   return secp256k1_fe_equal(x2, x1);
-}
-
-static void
-secp256k1_fe_pow_pm3d4(secp256k1_fe_t out, const secp256k1_fe_t in) {
-  /* Compute a^((p - 3) / 4) with a modification of the square root chain. */
-  /* 14M + 254S */
-  secp256k1_fe_t x1, x2, x3, x6, x9, x11, x22, x44, x88, x176, x220, x223;
-
-  secp256k1_fe_set(x1, in);
-
-  secp256k1_fe_sqr(x2, x1);
-  secp256k1_fe_mul(x2, x2, x1);
-
-  secp256k1_fe_sqr(x3, x2);
-  secp256k1_fe_mul(x3, x3, x1);
-
-  secp256k1_fe_sqrn(x6, x3, 3);
-  secp256k1_fe_mul(x6, x6, x3);
-
-  secp256k1_fe_sqrn(x9, x6, 3);
-  secp256k1_fe_mul(x9, x9, x3);
-
-  secp256k1_fe_sqrn(x11, x9, 2);
-  secp256k1_fe_mul(x11, x11, x2);
-
-  secp256k1_fe_sqrn(x22, x11, 11);
-  secp256k1_fe_mul(x22, x22, x11);
-
-  secp256k1_fe_sqrn(x44, x22, 22);
-  secp256k1_fe_mul(x44, x44, x22);
-
-  secp256k1_fe_sqrn(x88, x44, 44);
-  secp256k1_fe_mul(x88, x88, x44);
-
-  secp256k1_fe_sqrn(x176, x88, 88);
-  secp256k1_fe_mul(x176, x176, x88);
-
-  secp256k1_fe_sqrn(x220, x176, 44);
-  secp256k1_fe_mul(x220, x220, x44);
-
-  secp256k1_fe_sqrn(x223, x220, 3);
-  secp256k1_fe_mul(x223, x223, x3);
-
-  secp256k1_fe_sqrn(out, x223, 23);
-  secp256k1_fe_mul(out, out, x22);
-  secp256k1_fe_sqrn(out, out, 5);
-  secp256k1_fe_mul(out, out, x1);
-  secp256k1_fe_sqrn(out, out, 3);
-  secp256k1_fe_mul(out, out, x2);
 }
 
 static int
 secp256k1_fe_isqrt(secp256k1_fe_t r,
                    const secp256k1_fe_t u,
                    const secp256k1_fe_t v) {
-  /* 21M + 257S */
-  secp256k1_fe_t u2, u3, u5, v3, p, x, c;
+  secp256k1_fe_t t, x, c;
   int ret;
 
   /* x = u^3 * v * (u^5 * v^3)^((p - 3) / 4) mod p */
-  secp256k1_fe_sqr(u2, u);
-  secp256k1_fe_mul(u3, u2, u);
-  secp256k1_fe_mul(u5, u3, u2);
-  secp256k1_fe_sqr(v3, v);
-  secp256k1_fe_mul(v3, v3, v);
-  secp256k1_fe_mul(p, u5, v3);
-  secp256k1_fe_pow_pm3d4(p, p);
-  secp256k1_fe_mul(x, u3, v);
-  secp256k1_fe_mul(x, x, p);
+  secp256k1_fe_sqr(t, u);       /* u^2 */
+  secp256k1_fe_mul(c, t, u);    /* u^3 */
+  secp256k1_fe_mul(t, t, c);    /* u^5 */
+  secp256k1_fe_sqr(x, v);       /* v^2 */
+  secp256k1_fe_mul(x, x, v);    /* v^3 */
+  secp256k1_fe_mul(x, x, t);    /* v^3 * u^5 */
+  secp256k1_fe_pow_pm3d4(x, x); /* (v^3 * u^5)^((p - 3) / 4) */
+  secp256k1_fe_mul(x, x, v);    /* (v^3 * u^5)^((p - 3) / 4) * v */
+  secp256k1_fe_mul(x, x, c);    /* (v^3 * u^5)^((p - 3) / 4) * v * u^3 */
 
   /* x^2 * v == u */
   secp256k1_fe_sqr(c, x);
   secp256k1_fe_mul(c, c, v);
+
   ret = secp256k1_fe_equal(c, u);
 
   secp256k1_fe_set(r, x);

@@ -97,6 +97,7 @@ extern "C" {
 #define mpn_cnd_zero __torsion_mpn_cnd_zero
 #define mpn_sec_zero_p __torsion_mpn_sec_zero_p
 #define mpn_sec_eq __torsion_mpn_sec_eq
+#define mpn_sec_cmp __torsion_mpn_sec_cmp
 #define mpn_sec_lt __torsion_mpn_sec_lt
 #define mpn_sec_lte __torsion_mpn_sec_lte
 #define mpn_sec_gt __torsion_mpn_sec_gt
@@ -373,6 +374,7 @@ void mpn_cnd_swap(mp_limb_t, mp_ptr, mp_ptr, mp_size_t);
 void mpn_cnd_zero(mp_limb_t, mp_ptr, mp_srcptr, mp_size_t);
 int mpn_sec_zero_p(mp_srcptr, mp_size_t);
 int mpn_sec_eq(mp_srcptr, mp_srcptr, mp_size_t);
+int mpn_sec_cmp(mp_srcptr xp, mp_srcptr yp, mp_size_t n);
 int mpn_sec_lt(mp_srcptr, mp_srcptr, mp_size_t);
 int mpn_sec_lte(mp_srcptr, mp_srcptr, mp_size_t);
 int mpn_sec_gt(mp_srcptr, mp_srcptr, mp_size_t);

@@ -38,20 +38,20 @@
  * Structs
  */
 
-typedef struct _dsa_group_s {
+typedef struct dsa_group_s {
   mpz_t p;
   mpz_t q;
   mpz_t g;
 } dsa_group_t;
 
-typedef struct _dsa_pub_s {
+typedef struct dsa_pub_s {
   mpz_t p;
   mpz_t q;
   mpz_t g;
   mpz_t y;
 } dsa_pub_t;
 
-typedef struct _dsa_priv_s {
+typedef struct dsa_priv_s {
   mpz_t p;
   mpz_t q;
   mpz_t g;
@@ -59,7 +59,7 @@ typedef struct _dsa_priv_s {
   mpz_t x;
 } dsa_priv_t;
 
-typedef struct _dsa_sig_s {
+typedef struct dsa_sig_s {
   mpz_t r;
   mpz_t s;
 } dsa_sig_t;
@@ -303,7 +303,7 @@ dsa_group_verify(const dsa_group_t *group) {
   mpz_init(t);
   mpz_powm(t, group->g, group->q, group->p);
 
-  ret = mpz_cmp_ui(t, 1) == 0;
+  ret = (mpz_cmp_ui(t, 1) == 0);
 
   mpz_cleanse(t);
 

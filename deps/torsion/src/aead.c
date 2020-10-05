@@ -116,7 +116,7 @@ chachapoly_auth(chachapoly_t *aead, const unsigned char *data, size_t len) {
 
 void
 chachapoly_final(chachapoly_t *aead, unsigned char *tag) {
-  uint8_t len[16];
+  unsigned char len[16];
 
   write64le(len + 0, aead->adlen);
   write64le(len + 8, aead->ctlen);
