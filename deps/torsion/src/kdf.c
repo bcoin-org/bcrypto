@@ -526,10 +526,9 @@ eb2k_derive(unsigned char *key,
             size_t iv_len) {
   size_t hash_size = hash_output_size(type);
   unsigned char prev[HASH_MAX_OUTPUT_SIZE];
-  size_t prev_pos, avail, want, use;
+  unsigned char *block;
+  size_t block_len, want;
   size_t prev_len = 0;
-  size_t key_pos = 0;
-  size_t iv_pos = 0;
   hash_t hash;
 
   if (salt_len > 8)
@@ -541,36 +540,43 @@ eb2k_derive(unsigned char *key,
   if (salt_len != 0 && salt_len != 8)
     return 0;
 
-  while (key_pos < key_len || iv_pos < iv_len) {
+  while (key_len + iv_len > 0) {
     hash_init(&hash, type);
     hash_update(&hash, prev, prev_len);
     hash_update(&hash, passwd, passwd_len);
     hash_update(&hash, salt, salt_len);
     hash_final(&hash, prev, hash_size);
 
-    prev_pos = 0;
     prev_len = hash_size;
 
-    if (key_pos < key_len) {
-      avail = prev_len - prev_pos;
-      want = key_len - key_pos;
-      use = avail < want ? avail : want;
+    block = prev;
+    block_len = prev_len;
 
-      memcpy(key + key_pos, prev + prev_pos, use);
+    if (key_len > 0) {
+      want = block_len;
 
-      key_pos += use;
-      prev_pos += use;
+      if (want > key_len)
+        want = key_len;
+
+      memcpy(key, block, want);
+
+      key += want;
+      key_len -= want;
+
+      block += want;
+      block_len -= want;
     }
 
-    if (iv_pos < iv_len) {
-      avail = prev_len - prev_pos;
-      want = iv_len - iv_pos;
-      use = avail < want ? avail : want;
+    if (iv_len > 0) {
+      want = block_len;
 
-      memcpy(iv + iv_pos, prev + prev_pos, use);
+      if (want > iv_len)
+        want = iv_len;
 
-      iv_pos += use;
-      prev_pos += use;
+      memcpy(iv, block, want);
+
+      iv += want;
+      iv_len -= want;
     }
   }
 
@@ -930,8 +936,10 @@ scrypt_derive(unsigned char *out,
   if (N == 0 || R == 0 || P == 0)
     return 0;
 
+#if SIZE_MAX > UINT32_MAX
   if ((uint64_t)len > ((UINT64_C(1) << 32) - 1) * 32)
     return 0;
+#endif
 
   if ((uint64_t)R * (uint64_t)P >= (UINT64_C(1) << 30))
     return 0;

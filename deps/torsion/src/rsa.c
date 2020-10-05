@@ -222,23 +222,29 @@ typedef struct rsa_priv_s {
  * Helpers
  */
 
+TORSION_BARRIER(uint32_t, u32)
+
+#define B u32_barrier
+
 static TORSION_INLINE uint32_t
 safe_equal(uint32_t x, uint32_t y) {
-  return ((x ^ y) - 1) >> 31;
+  return ((B(x) ^ B(y)) - 1) >> 31;
 }
 
 static TORSION_INLINE uint32_t
 safe_select(uint32_t x, uint32_t y, uint32_t v) {
-  return (x & (v - 1)) | (y & ~(v - 1));
+  return (B(x) & (B(v) - 1)) | (B(y) & ~(B(v) - 1));
 }
 
 static TORSION_INLINE uint32_t
 safe_lte(uint32_t x, uint32_t y) {
-  return (x - y - 1) >> 31;
+  return (B(x) - B(y) - 1) >> 31;
 }
 
+#undef B
+
 static TORSION_INLINE uint32_t
-safe_cmp(const unsigned char *x, const unsigned char *y, size_t len) {
+safe_memequal(const unsigned char *x, const unsigned char *y, size_t len) {
   uint32_t v = 0;
   size_t i;
 
@@ -627,8 +633,10 @@ fail:
 }
 
 static int
-rsa_priv_from_pqe(rsa_priv_t *out,
-                  const mpz_t p0, const mpz_t q0, const mpz_t e) {
+rsa_priv_set_pqe(rsa_priv_t *out,
+                 const mpz_t p0,
+                 const mpz_t q0,
+                 const mpz_t e) {
   /* Recover from (p, q, e). */
   mpz_t p, q, pm1, qm1, lam;
   rsa_priv_t k;
@@ -703,8 +711,7 @@ fail:
 }
 
 static int
-rsa_priv_from_pqd(rsa_priv_t *out,
-                  const mpz_t p, const mpz_t q, const mpz_t d) {
+rsa_priv_set_pqd(rsa_priv_t *out, const mpz_t p, const mpz_t q, const mpz_t d) {
   /* Recover from (p, q, d). */
   mpz_t pm1, qm1, phi, lam, tmp, e;
   int ret = 0;
@@ -739,7 +746,7 @@ rsa_priv_from_pqd(rsa_priv_t *out,
     goto fail;
 
   /* Recover from (p, q, e). */
-  ret = rsa_priv_from_pqe(out, p, q, e);
+  ret = rsa_priv_set_pqe(out, p, q, e);
 fail:
   mpz_cleanse(pm1);
   mpz_cleanse(qm1);
@@ -751,9 +758,11 @@ fail:
 }
 
 static int
-rsa_priv_from_ned(rsa_priv_t *out,
-                  const mpz_t n, const mpz_t e, const mpz_t d,
-                  const unsigned char *entropy) {
+rsa_priv_set_ned(rsa_priv_t *out,
+                 const mpz_t n,
+                 const mpz_t e,
+                 const mpz_t d,
+                 const unsigned char *entropy) {
   /* Factor an RSA modulus given (n, e, d).
    *
    * This is basically the same logic as the
@@ -762,6 +771,7 @@ rsa_priv_from_ned(rsa_priv_t *out,
    * [1] https://crypto.stackexchange.com/questions/11509
    * [2] https://crypto.stackexchange.com/questions/22374
    */
+  static const unsigned char default_entropy[ENTROPY_SIZE] = {0};
   mpz_t f, nm1, nm3, g, a, b, c, p, q;
   size_t i, j, s;
   drbg_t rng;
@@ -809,6 +819,10 @@ rsa_priv_from_ned(rsa_priv_t *out,
   /* g = f >> s */
   mpz_rshift(g, f, s);
 
+  /* Use all zeroes if no entropy is available. */
+  if (entropy == NULL)
+    entropy = default_entropy;
+
   /* Seed RNG. */
   drbg_init(&rng, HASH_SHA256, entropy, ENTROPY_SIZE);
 
@@ -838,7 +852,7 @@ rsa_priv_from_ned(rsa_priv_t *out,
         mpz_gcd(q, n, c);
 
         /* Recover from (p, q, e). */
-        ret = rsa_priv_from_pqe(out, p, q, e);
+        ret = rsa_priv_set_pqe(out, p, q, e);
 
         goto done;
       }
@@ -1416,7 +1430,7 @@ pss_verify(int type,
   hash_update(&hash, salt, slen);
   hash_final(&hash, h0, hlen);
 
-  return safe_cmp(h0, h, hlen);
+  return safe_memequal(h0, h, hlen);
 }
 
 /*
@@ -1499,11 +1513,11 @@ rsa_privkey_import(unsigned char *out,
   if (!rsa_priv_verify(&k)) {
     if (mpz_sgn(k.p) > 0 && mpz_sgn(k.q) > 0) {
       if (mpz_sgn(k.e) > 0)
-        ret = rsa_priv_from_pqe(&k, k.p, k.q, k.e);
+        ret = rsa_priv_set_pqe(&k, k.p, k.q, k.e);
       else
-        ret = rsa_priv_from_pqd(&k, k.p, k.q, k.d);
+        ret = rsa_priv_set_pqd(&k, k.p, k.q, k.d);
     } else {
-      ret = rsa_priv_from_ned(&k, k.n, k.e, k.d, entropy);
+      ret = rsa_priv_set_ned(&k, k.n, k.e, k.d, entropy);
     }
 
     if (!ret)
@@ -1782,8 +1796,8 @@ rsa_verify(int type,
     ok &= safe_equal(em[i], 0xff);
 
   ok &= safe_equal(em[klen - tlen - 1], 0x00);
-  ok &= safe_cmp(em + klen - tlen, prefix, prefix_len);
-  ok &= safe_cmp(em + klen - hlen, msg, msg_len);
+  ok &= safe_memequal(em + klen - tlen, prefix, prefix_len);
+  ok &= safe_memequal(em + klen - hlen, msg, msg_len);
 
   ret = (ok == 1);
 fail:
@@ -2221,7 +2235,7 @@ rsa_decrypt_oaep(unsigned char *out,
   mgf1xor(type, db, dlen, seed, slen);
 
   lhash = &db[0];
-  lvalid = safe_cmp(lhash, expect, hlen);
+  lvalid = safe_memequal(lhash, expect, hlen);
   rest = &db[hlen];
   rlen = dlen - hlen;
 

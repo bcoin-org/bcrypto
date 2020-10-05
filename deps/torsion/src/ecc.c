@@ -172,6 +172,7 @@ typedef uint32_t fe_word_t;
 #define MAX_FIELD_WORDS 19
 #endif
 
+TORSION_BARRIER(int, int)
 TORSION_BARRIER(fe_word_t, fiat)
 
 #include "fields/p192.h"
@@ -1922,7 +1923,31 @@ fe_isqrt(const prime_field_t *fe, fe_t r, const fe_t u, const fe_t v) {
   int ret = 1;
 
   if (fe->isqrt != NULL) {
-    /* Fast inverse square root chain. */
+    /* Fast inverse square root chain.
+     *
+     * The inverse square root formulae notably
+     * do not fail when both the numerator and
+     * denominator are zero.
+     *
+     * We account for this below by explicitly
+     * checking for zero. `0 / 0` is extremely
+     * uncommon, and does not occur at all in
+     * Ristretto, for example. However, unlike
+     * SVDW and Elligator 2, the SSWU map can
+     * compute `0 / 0` when x = -b / a.
+     *
+     * Full list of cases for `0 / 0`:
+     *
+     *   - SSWU with x = -b / a.
+     *   - Elligator 2 with A = 0.
+     *   - Ristretto Elligator with a = d.
+     *   - Edwards point decoding on an
+     *     incomplete curve.
+     *
+     * Only the first is cause for concern,
+     * as the others are rather unrealistic.
+     */
+    ret &= fe_is_zero(fe, v) ^ 1;
     ret &= fe->isqrt(r, u, v);
   } else {
     fe_t z;
@@ -2324,7 +2349,7 @@ wge_export_x(const wei_t *ec, unsigned char *raw, const wge_t *p) {
 TORSION_UNUSED static void
 wge_swap(const wei_t *ec, wge_t *a, wge_t *b, unsigned int flag) {
   const prime_field_t *fe = &ec->fe;
-  int cond = (flag != 0);
+  int cond = int_barrier(flag != 0);
   int inf1 = a->inf;
   int inf2 = b->inf;
 
@@ -2342,7 +2367,7 @@ wge_select(const wei_t *ec,
            const wge_t *b,
            unsigned int flag) {
   const prime_field_t *fe = &ec->fe;
-  int cond = (flag != 0);
+  int cond = int_barrier(flag != 0);
 
   fe_select(fe, r->x, a->x, b->x, flag);
   fe_select(fe, r->y, a->y, b->y, flag);
@@ -5240,7 +5265,7 @@ mge_export(const mont_t *ec, unsigned char *raw, const mge_t *p) {
 TORSION_UNUSED static void
 mge_swap(const mont_t *ec, mge_t *a, mge_t *b, unsigned int flag) {
   const prime_field_t *fe = &ec->fe;
-  int cond = (flag != 0);
+  int cond = int_barrier(flag != 0);
   int inf1 = a->inf;
   int inf2 = b->inf;
 
