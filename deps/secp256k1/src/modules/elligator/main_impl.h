@@ -1,4 +1,4 @@
-/*
+/*!
  * main_impl.h - elligator module for libsecp256k1
  * Copyright (c) 2019, Christopher Jeffrey (MIT License).
  * https://github.com/bcoin-org/bcrypto

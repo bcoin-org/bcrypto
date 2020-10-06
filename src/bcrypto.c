@@ -11500,9 +11500,6 @@ bcrypto_secp256k1_schnorr_legacy_sign(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&priv,
                              &priv_len) == napi_ok);
 
-  if (msg_len == 0)
-    msg = out;
-
   JS_ASSERT(priv_len == 32, JS_ERR_PRIVKEY_SIZE);
   JS_ASSERT(secp256k1_schnorrleg_sign(ec->ctx, out, msg, msg_len, priv),
             JS_ERR_SIGN);
@@ -11529,9 +11526,6 @@ bcrypto_secp256k1_schnorr_legacy_verify(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&sig, &sig_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[3], (void **)&pub, &pub_len) == napi_ok);
-
-  if (msg_len == 0)
-    msg = sig;
 
   ok = sig_len == 64 && pub_len > 0
     && secp256k1_ec_pubkey_parse(ec->ctx, &pubkey, pub, pub_len)
@@ -11598,9 +11592,6 @@ bcrypto_secp256k1_schnorr_legacy_verify_batch(napi_env env,
 
     CHECK(napi_get_buffer_info(env, items[2], (void **)&pub,
                                &pub_len) == napi_ok);
-
-    if (msg_lens[i] == 0)
-      msgs[i] = sigs[i];
 
     if (sig_len != 64)
       goto fail;
