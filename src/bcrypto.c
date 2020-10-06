@@ -12152,7 +12152,7 @@ bcrypto_secp256k1_xonly_combine(napi_env env, napi_callback_info info) {
   }
 
   ok = secp256k1_ec_pubkey_combine(ec->ctx, &pubkey,
-                                   (const secp256k1_pubkey **)pubkeys,
+                                   (const secp256k1_pubkey *const *)pubkeys,
                                    length);
 fail:
   bcrypto_free((void *)pubkeys);
@@ -12374,7 +12374,7 @@ bcrypto_secp256k1_xonly_derive(napi_env env, napi_callback_info info) {
 
   ok = secp256k1_ecdh(ec->ctx,
                       out,
-                      (secp256k1_pubkey *)&pubkey,
+                      (const secp256k1_pubkey *)&pubkey,
                       priv,
                       hashfp,
                       NULL);
