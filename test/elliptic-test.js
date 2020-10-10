@@ -1188,6 +1188,76 @@ describe('Elliptic', function() {
       }
     });
 
+    it('should verify scalar decomposition bounds', () => {
+      // See: https://github.com/bitcoin-core/secp256k1/pull/822
+      const curve = new curves.SECP256K1();
+      const {lambda, basis} = curve.endo;
+      const a1 = basis[0].a;
+      const b1 = basis[0].b;
+      const a2 = basis[1].a;
+      const b2 = basis[1].b;
+      const {n} = curve;
+      const scalars = [];
+
+      // Generate scalar decomposition bounds.
+      //
+      //   k1_bound = (a1 + a2 - 1) / 2
+      //   k2_bound = (-b1 + b2) / 2
+      const k1Bound = a1.add(a2).isubn(1).iushrn(1).imod(n);
+      const k2Bound = b1.neg().iadd(b2).iushrn(1).imod(n);
+
+      assert(k1Bound.toString(16) === 'a2a8918ca85bafe22016d0b917e4dd76');
+      assert(k2Bound.toString(16) === '8a65287bd47179fb2be08846cea267ec');
+
+      assert(k1Bound.bitLength() <= 128);
+      assert(k2Bound.bitLength() <= 128);
+
+      // Check random scalars.
+      for (let i = 0; i < 100; i++) {
+        const k = curve.randomScalar(rng);
+        const [k1, k2] = curve._endoSplit(k);
+        const s = lambda.mul(k2).iadd(k1).imod(n);
+
+        assert(s.cmp(k) === 0);
+        assert(k1.ucmp(k1Bound) <= 0);
+        assert(k2.ucmp(k2Bound) <= 0);
+      }
+
+      // Generate scalars that split near bounds.
+      //
+      //   k = (a * lambda + (n + b) / 2) mod n
+      //
+      // Where a = (-2, -1, 0, 1, 2)
+      //       b = (-3, -1, 1, 3)
+      for (const a of [-2, -1, 0, 1, 2]) {
+        for (const b of [-3, -1, 1, 3]) {
+          const k = lambda.muln(a).iadd(n.addn(b).iushrn(1)).imod(n);
+          const [k1, k2] = curve._endoSplit(k);
+          const s = lambda.mul(k2).iadd(k1).imod(n);
+
+          assert(s.cmp(k) === 0);
+          assert(k1.ucmp(k1Bound) <= 0);
+          assert(k2.ucmp(k2Bound) <= 0);
+
+          scalars.push(k);
+        }
+      }
+
+      // Verify P * k + P * r + P * -(k + r) = O.
+      // Where r is a random integer in [1,n-1].
+      for (const k of scalars) {
+        const k1 = curve.randomScalar(rng);
+        const k2 = k.add(k1).ineg().imod(n);
+        const g = curve.randomPoint(rng);
+        const p0 = g.mul(k);
+        const p1 = g.mul(k1);
+        const p2 = g.mul(k2);
+
+        assert(k1.add(k2).imod(n).cmp(k.neg().imod(n)) === 0);
+        assert(p0.add(p1).add(p2).isInfinity());
+      }
+    });
+
     it('should compute this problematic secp256k1 multiplication', () => {
       const curve = new curves.SECP256K1();
       const g1 = curve.g;
