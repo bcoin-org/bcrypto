@@ -4565,6 +4565,13 @@ describe('BN.js', function() {
     }
 
     testMethod('Plain', BN.red);
+
+    testMethod('Plain (no prime)', (p) => {
+      if (typeof p === 'string')
+        return BN.red(BN.prime(p));
+      return BN.red(p);
+    });
+
     testMethod('Montgomery', BN.mont);
 
     describe('Pseudo-Mersenne Primes', () => {
@@ -5101,144 +5108,6 @@ describe('BN.js', function() {
 
         assert.strictEqual(a.toString(10), '-200');
         assert.strictEqual(b.toString(10), '100');
-      });
-    });
-
-    describe('.csign()', () => {
-      it('should get sign in constant time', () => {
-        assert.strictEqual(new BN(0).csign(), 0);
-        assert.strictEqual(new BN(-1).csign(), -1);
-        assert.strictEqual(new BN(1).csign(), 1);
-        assert.strictEqual(new BN(-0x3fffffe).csign(), -1);
-        assert.strictEqual(new BN(0x3fffffe).csign(), 1);
-        assert.strictEqual(new BN(-0x43fffffe).csign(), -1);
-        assert.strictEqual(new BN(0x43fffffe).csign(), 1);
-        assert.strictEqual(new BN(-42).csign(), -1);
-        assert.strictEqual(new BN(42).csign(), 1);
-        assert.strictEqual(1 / new BN(0).csign(), Infinity);
-      });
-    });
-
-    describe('.czero()', () => {
-      it('should return true for zero', () => {
-        assert.strictEqual(new BN(0).czero(), 1);
-        assert.strictEqual(new BN(1).czero(), 0);
-        assert.strictEqual(new BN(0xffffffff).czero(), 0);
-        assert.strictEqual(new BN(-1).czero(), 0);
-        assert.strictEqual(new BN(-0xffffffff).czero(), 0);
-        assert.strictEqual(new BN(1e9).czero(), 0);
-        assert.strictEqual(new BN(-1e9).czero(), 0);
-      });
-    });
-
-    describe('.cneg()', () => {
-      it('should return true for negative numbers', () => {
-        assert.strictEqual(new BN(-1).cneg(), 1);
-        assert.strictEqual(new BN(1).cneg(), 0);
-        assert.strictEqual(new BN(0).cneg(), 0);
-        assert.strictEqual(new BN('-0', 10).cneg(), 0);
-      });
-    });
-
-    describe('.cpos()', () => {
-      it('should return true for positive numbers', () => {
-        assert.strictEqual(new BN(-1).cpos(), 0);
-        assert.strictEqual(new BN(1).cpos(), 1);
-        assert.strictEqual(new BN(0).cpos(), 1);
-        assert.strictEqual(new BN('-0', 10).cpos(), 1);
-      });
-    });
-
-    describe('.ceq()', () => {
-      it('should return 0, 1 correctly', () => {
-        assert.strictEqual(new BN(42).ceq(new BN(42)), 1);
-        assert.strictEqual(new BN(42).ceq(new BN(43)), 0);
-        assert.strictEqual(new BN(42).ceq(new BN(41)), 0);
-        assert.strictEqual(new BN(0x3fffffe).ceq(new BN(0x3fffffe)), 1);
-        assert.strictEqual(new BN(0x3fffffe).ceq(new BN(0x3ffffff)), 0);
-        assert.strictEqual(new BN(0x3fffffe).ceq(new BN(0x3fffffd)), 0);
-        assert.strictEqual(new BN(0x3fffffe).ceq(new BN(0x4000000)), 0);
-        assert.strictEqual(new BN(42).ceq(new BN(-42)), 0);
-        assert.strictEqual(new BN(-42).ceq(new BN(42)), 0);
-        assert.strictEqual(new BN(-42).ceq(new BN(-42)), 1);
-        assert.strictEqual(new BN(1e9).ceq(new BN(1e9 - 1)), 0);
-        assert.strictEqual(new BN(1e9).ceq(new BN(1e9)), 1);
-        assert.strictEqual(new BN(-1e9).ceq(new BN(1e9)), 0);
-        assert.strictEqual(new BN(1e9).ceq(new BN(-1e9)), 0);
-      });
-    });
-
-    describe('.ceqn()', () => {
-      it('should return 0, 1 correctly', () => {
-        assert.strictEqual(new BN(42).ceqn(42), 1);
-        assert.strictEqual(new BN(42).ceqn(43), 0);
-        assert.strictEqual(new BN(42).ceqn(41), 0);
-        assert.strictEqual(new BN(0x3fffffe).ceqn(0x3fffffe), 1);
-        assert.strictEqual(new BN(0x3fffffe).ceqn(0x3ffffff), 0);
-        assert.strictEqual(new BN(0x3fffffe).ceqn(0x3fffffd), 0);
-        assert.strictEqual(new BN(42).ceqn(-42), 0);
-        assert.strictEqual(new BN(-42).ceqn(42), 0);
-        assert.strictEqual(new BN(-42).ceqn(-42), 1);
-        assert.strictEqual(new BN(-1e9).ceqn(1e6), 0);
-        assert.strictEqual(new BN(1e9).ceqn(-1e6), 0);
-      });
-    });
-
-    describe('.cswap()', () => {
-      it('should swap two bignums in-place', () => {
-        const a = new BN(100);
-        const b = new BN(-200);
-
-        a.cswap(b, 0);
-
-        assert.strictEqual(a.toString(10), '100');
-        assert.strictEqual(b.toString(10), '-200');
-
-        a.cswap(b, 1);
-
-        assert.strictEqual(a.toString(10), '-200');
-        assert.strictEqual(b.toString(10), '100');
-
-        a.cswap(b, 0);
-
-        assert.strictEqual(a.toString(10), '-200');
-        assert.strictEqual(b.toString(10), '100');
-
-        a.cswap(b, 1);
-
-        assert.strictEqual(a.toString(10), '100');
-        assert.strictEqual(b.toString(10), '-200');
-      });
-    });
-
-    describe('.cinject()', () => {
-      it('should conditionally inject', () => {
-        const a = new BN(100);
-        const b = new BN(-200);
-
-        a.cinject(b, 0);
-
-        assert.strictEqual(a.toString(10), '100');
-        assert.strictEqual(b.toString(10), '-200');
-
-        a.cinject(b, 1);
-
-        assert.strictEqual(a.toString(10), '-200');
-        assert.strictEqual(b.toString(10), '-200');
-      });
-    });
-
-    describe('.cset()', () => {
-      it('should conditionally set', () => {
-        const a = new BN(100);
-
-        a.cset(-200, 0);
-
-        assert.strictEqual(a.toString(10), '100');
-
-        a.cset(-200, 1);
-
-        assert.strictEqual(a.toString(10), '-200');
       });
     });
   });
@@ -6859,11 +6728,57 @@ describe('BN.js', function() {
       assert.strictEqual(new BN(14).mulShift(new BN(-13), 2).toString(), '-46');
     });
 
-    it('should do inverse square root', () => {
+    it('should do inverse square root (1)', () => {
       const p192 = BN.red('p192');
       const p224 = BN.red('p224');
       const p25519 = BN.red('p25519');
       const p255192 = BN.red('p25519');
+
+      p25519.precompute();
+
+      for (const red of [p192, p224, p25519, p255192]) {
+        const zero = new BN(0).toRed(red);
+        const one = new BN(1).toRed(red);
+        const pairs = [];
+
+        assert(zero.redDivSqrt(one).eq(zero));
+
+        assert.throws(() => zero.redDivSqrt(zero), {
+          message: 'X is not a square mod P.'
+        });
+
+        assert.throws(() => one.redDivSqrt(zero), {
+          message: 'X is not a square mod P.'
+        });
+
+        while (pairs.length < 10) {
+          const u = BN.random(rng, 0, red.m).toRed(red);
+          const v = BN.random(rng, 1, red.m).toRed(red);
+          const uv = u.redMul(v.redInvert());
+
+          if (uv.redJacobi() === -1)
+            continue;
+
+          pairs.push([u, v]);
+        }
+
+        for (const [u, v] of pairs) {
+          const e = u.redMul(v.redInvert()).redSqrt();
+          const r = u.redDivSqrt(v);
+
+          if (r.redIsOdd() !== e.redIsOdd())
+            r.redINeg();
+
+          assert(r.eq(e));
+        }
+      }
+    });
+
+    it('should do inverse square root (2)', () => {
+      const p192 = BN.red(BN.prime('p192'));
+      const p224 = BN.red(BN.prime('p224'));
+      const p25519 = BN.red(BN.prime('p25519'));
+      const p255192 = BN.red(BN.prime('p25519'));
 
       p25519.precompute();
 
