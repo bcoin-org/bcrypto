@@ -114,9 +114,7 @@ secp256k1_fe_isqrt(secp256k1_fe *r,
 }
 
 static void
-shallue_van_de_woestijne_xy2(secp256k1_fe *x,
-                             secp256k1_fe *y,
-                             const secp256k1_fe *u) {
+secp256k1_svdwf(secp256k1_fe *x, secp256k1_fe *y, const secp256k1_fe *u) {
   /* Copyright (c) 2016 Andrew Poelstra & Pieter Wuille */
 
   /*
@@ -211,12 +209,12 @@ shallue_van_de_woestijne_xy2(secp256k1_fe *x,
 }
 
 static void
-shallue_van_de_woestijne(secp256k1_ge *ge, const secp256k1_fe *u) {
+secp256k1_svdw(secp256k1_ge *ge, const secp256k1_fe *u) {
   /* Note: `u` must be normalized for the is_odd() call. */
   secp256k1_fe x, y, y2;
   int flip;
 
-  shallue_van_de_woestijne_xy2(&x, &y2, u);
+  secp256k1_svdwf(&x, &y2, u);
   secp256k1_fe_sqrt(&y, &y2);
   secp256k1_fe_normalize(&y);
 
@@ -228,9 +226,9 @@ shallue_van_de_woestijne(secp256k1_ge *ge, const secp256k1_fe *u) {
 }
 
 static int
-shallue_van_de_woestijne_invert(secp256k1_fe* u,
-                                const secp256k1_ge *ge,
-                                unsigned int hint) {
+secp256k1_svdw_invert(secp256k1_fe *u,
+                      const secp256k1_ge *ge,
+                      unsigned int hint) {
   size_t shift = sizeof(unsigned int) * 8 - 1;
 
   static const secp256k1_fe c = SECP256K1_FE_CONST(0x0a2d2ba9, 0x3507f1df,
@@ -242,8 +240,9 @@ shallue_van_de_woestijne_invert(secp256k1_fe* u,
                                                      0, 0, 0, 1);
 
   secp256k1_fe x, y, c0, c1, n0, n1, n2, n3, d0, t, tmp;
-  unsigned int s0, s1, s2, s3, flip;
   unsigned int r = hint & 3;
+  unsigned int sqr, flip;
+  unsigned int ret = 1;
 
   /*
    * Map:
@@ -283,8 +282,8 @@ shallue_van_de_woestijne_invert(secp256k1_fe* u,
   secp256k1_fe_negate(&tmp, &tmp, 1); /* mag 2 */
   secp256k1_fe_add(&t, &tmp); /* mag 12 */
   secp256k1_fe_normalize(&t); /* mag 1 */
-  s0 = secp256k1_fe_sqrt(&tmp, &t); /* mag 1 */
-  s1 = ((r - 2) >> shift) | s0; /* r < 2 or t is square */
+  sqr = secp256k1_fe_sqrt(&tmp, &t); /* mag 1 */
+  ret &= ((r - 2) >> shift) | sqr; /* r < 2 or t is square */
   t = tmp; /* mag 1 */
 
   /* c1 = c + 2 * x + 1 */
@@ -336,12 +335,12 @@ shallue_van_de_woestijne_invert(secp256k1_fe* u,
   secp256k1_fe_cmov(&d0, &c0, ((r ^ 1) - 1) >> shift); /* r = 1 */
 
   /* t = sqrt(n0 / d0) */
-  s2 = secp256k1_fe_isqrt(&t, &n0, &d0); /* mag 1 */
+  ret &= secp256k1_fe_isqrt(&t, &n0, &d0); /* mag 1 */
   secp256k1_fe_normalize(&t);
 
   /* (n0, d0) = svdw(t) */
-  shallue_van_de_woestijne_xy2(&n0, &d0, &t); /* mag 1 */
-  s3 = secp256k1_fe_equal(&n0, &x);
+  secp256k1_svdwf(&n0, &d0, &t); /* mag 1 */
+  ret &= secp256k1_fe_equal(&n0, &x);
 
   /* t = sign(y) * abs(t) */
   flip = secp256k1_fe_is_odd(&t) ^ secp256k1_fe_is_odd(&y);
@@ -350,7 +349,7 @@ shallue_van_de_woestijne_invert(secp256k1_fe* u,
 
   *u = t;
 
-  return s1 & s2 & s3;
+  return ret;
 }
 
 static void
@@ -389,7 +388,7 @@ secp256k1_ec_pubkey_from_uniform(const secp256k1_context *ctx,
   secp256k1_fe_set_b32(&u, bytes32);
   secp256k1_fe_normalize(&u);
 
-  shallue_van_de_woestijne(&p, &u);
+  secp256k1_svdw(&p, &u);
 
   secp256k1_pubkey_save(pubkey, &p);
 
@@ -415,7 +414,7 @@ secp256k1_ec_pubkey_to_uniform(const secp256k1_context *ctx,
   if (!secp256k1_pubkey_load(ctx, &p, pubkey))
     return 0;
 
-  ret = shallue_van_de_woestijne_invert(&u, &p, hint);
+  ret = secp256k1_svdw_invert(&u, &p, hint);
 
   secp256k1_fe_normalize(&u);
   secp256k1_fe_get_b32(bytes32, &u);
@@ -445,8 +444,8 @@ secp256k1_ec_pubkey_from_hash(const secp256k1_context *ctx,
   secp256k1_fe_normalize(&u1);
   secp256k1_fe_normalize(&u2);
 
-  shallue_van_de_woestijne(&p1, &u1);
-  shallue_van_de_woestijne(&p2, &u2);
+  secp256k1_svdw(&p1, &u1);
+  secp256k1_svdw(&p2, &u2);
 
   secp256k1_gej_set_ge(&j, &p1);
   secp256k1_gej_add_ge(&r, &j, &p2);
@@ -489,19 +488,16 @@ secp256k1_ec_pubkey_to_hash(const secp256k1_context *ctx,
   secp256k1_gej_set_ge(&j, &p);
   secp256k1_rfc6979_hmac_sha256_initialize(&rng, entropy, 32);
 
-  for (;;) {
+  do {
     secp256k1_fe_random(&u1, &rng);
-    shallue_van_de_woestijne(&p1, &u1);
+    secp256k1_svdw(&p1, &u1);
 
     secp256k1_ge_neg(&p1, &p1);
     secp256k1_gej_add_ge(&r, &j, &p1);
     secp256k1_ge_set_gej(&p2, &r);
 
     hint = secp256k1_random_int(&rng);
-
-    if (shallue_van_de_woestijne_invert(&u2, &p2, hint))
-      break;
-  }
+  } while (!secp256k1_svdw_invert(&u2, &p2, hint));
 
   secp256k1_fe_normalize(&u1);
   secp256k1_fe_normalize(&u2);
