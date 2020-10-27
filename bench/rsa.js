@@ -173,4 +173,8 @@ const big = Buffer.from('308209290201000282020100cc8846dbd34e6c746cd54dc5'
   bench('rsa verify (pkcs1v1.5)', rounds, () => {
     rsa.verify(SHA256, msg, sig, pub);
   });
+
+  bench('rsa sign (pkcs1v1.5)', rounds / 10, () => {
+    rsa.sign(SHA256, msg, key);
+  });
 }
