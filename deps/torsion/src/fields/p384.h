@@ -48,7 +48,7 @@ p384_fe_set(p384_fe_t r, const p384_fe_t x) {
 static int
 p384_fe_equal(const p384_fe_t x, const p384_fe_t y) {
   p384_fe_word_t z = 0;
-  size_t i;
+  int i;
 
   for (i = 0; i < P384_FIELD_WORDS; i++)
     z |= x[i] ^ y[i];
@@ -59,12 +59,12 @@ p384_fe_equal(const p384_fe_t x, const p384_fe_t y) {
 }
 
 static void
-p384_fe_sqrn(p384_fe_t r, const p384_fe_t x, int rounds) {
+p384_fe_sqrn(p384_fe_t r, const p384_fe_t x, int n) {
   int i;
 
   p384_fe_sqr(r, x);
 
-  for (i = 1; i < rounds; i++)
+  for (i = 1; i < n; i++)
     p384_fe_sqr(r, r);
 }
 
@@ -253,4 +253,24 @@ p384_fe_isqrt(p384_fe_t r, const p384_fe_t u, const p384_fe_t v) {
   p384_fe_set(r, x);
 
   return ret;
+}
+
+static void
+fiat_p384_scmul_3(p384_fe_t r, const p384_fe_t x) {
+  p384_fe_t t;
+  fiat_p384_add(t, x, x);
+  fiat_p384_add(r, t, x);
+}
+
+static void
+fiat_p384_scmul_4(p384_fe_t r, const p384_fe_t x) {
+  fiat_p384_add(r, x, x);
+  fiat_p384_add(r, r, r);
+}
+
+static void
+fiat_p384_scmul_8(p384_fe_t r, const p384_fe_t x) {
+  fiat_p384_add(r, x, x);
+  fiat_p384_add(r, r, r);
+  fiat_p384_add(r, r, r);
 }

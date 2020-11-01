@@ -294,13 +294,13 @@ wei_curve_randomize(wei_curve_t *ec, const unsigned char *entropy);
 TORSION_EXTERN size_t
 wei_curve_scalar_size(const wei_curve_t *ec);
 
-TORSION_EXTERN size_t
+TORSION_EXTERN unsigned int
 wei_curve_scalar_bits(const wei_curve_t *ec);
 
 TORSION_EXTERN size_t
 wei_curve_field_size(const wei_curve_t *ec);
 
-TORSION_EXTERN size_t
+TORSION_EXTERN unsigned int
 wei_curve_field_bits(const wei_curve_t *ec);
 
 TORSION_EXTERN wei_scratch_t *
@@ -322,13 +322,13 @@ mont_curve_destroy(mont_curve_t *ec);
 TORSION_EXTERN size_t
 mont_curve_scalar_size(const mont_curve_t *ec);
 
-TORSION_EXTERN size_t
+TORSION_EXTERN unsigned int
 mont_curve_scalar_bits(const mont_curve_t *ec);
 
 TORSION_EXTERN size_t
 mont_curve_field_size(const mont_curve_t *ec);
 
-TORSION_EXTERN size_t
+TORSION_EXTERN unsigned int
 mont_curve_field_bits(const mont_curve_t *ec);
 
 /*
@@ -347,13 +347,13 @@ edwards_curve_randomize(edwards_curve_t *ec, const unsigned char *entropy);
 TORSION_EXTERN size_t
 edwards_curve_scalar_size(const edwards_curve_t *ec);
 
-TORSION_EXTERN size_t
+TORSION_EXTERN unsigned int
 edwards_curve_scalar_bits(const edwards_curve_t *ec);
 
 TORSION_EXTERN size_t
 edwards_curve_field_size(const edwards_curve_t *ec);
 
-TORSION_EXTERN size_t
+TORSION_EXTERN unsigned int
 edwards_curve_field_bits(const edwards_curve_t *ec);
 
 TORSION_EXTERN edwards_scratch_t *

@@ -43,7 +43,7 @@ p251_fe_equal(const p251_fe_t x, const p251_fe_t y) {
   uint32_t z = 0;
   uint8_t u[32];
   uint8_t v[32];
-  size_t i;
+  int i;
 
   fiat_p251_to_bytes(u, x);
   fiat_p251_to_bytes(v, y);
@@ -55,12 +55,12 @@ p251_fe_equal(const p251_fe_t x, const p251_fe_t y) {
 }
 
 static void
-p251_fe_sqrn(p251_fe_t r, const p251_fe_t x, int rounds) {
+p251_fe_sqrn(p251_fe_t r, const p251_fe_t x, int n) {
   int i;
 
   p251_fe_sqr(r, x);
 
-  for (i = 1; i < rounds; i++)
+  for (i = 1; i < n; i++)
     p251_fe_sqr(r, r);
 }
 
@@ -205,4 +205,10 @@ p251_fe_isqrt(p251_fe_t r, const p251_fe_t u, const p251_fe_t v) {
   p251_fe_set(r, x);
 
   return ret;
+}
+
+static void
+fiat_p251_carry_scmul_m1174(p251_fe_t r, const p251_fe_t x) {
+  fiat_p251_opp(r, x);
+  fiat_p251_carry_scmul_1174(r, r);
 }

@@ -51,7 +51,7 @@ p448_fe_equal(const p448_fe_t x, const p448_fe_t y) {
   uint32_t z = 0;
   uint8_t u[56];
   uint8_t v[56];
-  size_t i;
+  int i;
 
   fiat_p448_to_bytes(u, x);
   fiat_p448_to_bytes(v, y);
@@ -63,12 +63,12 @@ p448_fe_equal(const p448_fe_t x, const p448_fe_t y) {
 }
 
 static void
-p448_fe_sqrn(p448_fe_t r, const p448_fe_t x, int rounds) {
+p448_fe_sqrn(p448_fe_t r, const p448_fe_t x, int n) {
   int i;
 
   p448_fe_sqr(r, x);
 
-  for (i = 1; i < rounds; i++)
+  for (i = 1; i < n; i++)
     p448_fe_sqr(r, r);
 }
 
@@ -180,7 +180,7 @@ p448_fe_sqrt(p448_fe_t r, const p448_fe_t x) {
   p448_fe_sqr(x2, x1);
   p448_fe_mul(x2, x2, x1);
 
-  /* x222 = x1^(2^222 - 1) */
+  /* r = x1^(2^222 - 1) */
   p448_fe_pow_core(r, x1, x2);
 
   /* r = r^(2^2) * x2 */
@@ -221,4 +221,10 @@ p448_fe_isqrt(p448_fe_t r, const p448_fe_t u, const p448_fe_t v) {
   p448_fe_set(r, x);
 
   return ret;
+}
+
+static void
+fiat_p448_carry_scmul_m39081(p448_fe_t r, const p448_fe_t x) {
+  fiat_p448_opp(r, x);
+  fiat_p448_carry_scmul_39081(r, r);
 }

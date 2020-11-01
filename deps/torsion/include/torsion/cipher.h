@@ -182,7 +182,7 @@ extern "C" {
  */
 
 typedef struct aes_s {
-  unsigned int rounds;
+  int rounds;
   uint32_t enckey[60];
   uint32_t deckey[60];
 } aes_t;

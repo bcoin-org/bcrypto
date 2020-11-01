@@ -407,8 +407,7 @@ rsa_priv_export_dumb(unsigned char *out, size_t *out_len, const rsa_priv_t *k) {
 }
 
 static int
-rsa_priv_generate(rsa_priv_t *k,
-                  size_t bits, uint64_t exp,
+rsa_priv_generate(rsa_priv_t *k, int bits, uint64_t exp,
                   const unsigned char *entropy) {
   /* [RFC8017] Page 9, Section 3.2.
    * [FIPS186] Page 51, Appendix B.3.1
@@ -696,7 +695,9 @@ rsa_priv_set_pqe(rsa_priv_t *out,
   if (!mpz_invert(k.qi, q, p))
     goto fail;
 
+#ifdef TORSION_DEBUG
   ASSERT(rsa_priv_verify(&k));
+#endif
 
   rsa_priv_set(out, &k);
   ret = 1;
@@ -773,7 +774,7 @@ rsa_priv_set_ned(rsa_priv_t *out,
    */
   static const unsigned char default_entropy[ENTROPY_SIZE] = {0};
   mpz_t f, nm1, nm3, g, a, b, c, p, q;
-  size_t i, j, s;
+  int i, j, s;
   drbg_t rng;
   int ret = 0;
 
@@ -882,17 +883,15 @@ static int
 rsa_priv_decrypt(const rsa_priv_t *k,
                  unsigned char *out,
                  const unsigned char *msg,
-                 size_t msg_len,
+                 size_t msg_len, int use_crt,
                  const unsigned char *entropy) {
   /* [RFC8017] Page 13, Section 5.1.2.
    *           Page 15, Section 5.2.1.
    */
   mpz_t t, s, b, bi, c, m;
-#ifdef TORSION_USE_CRT
   mpz_t mp, mq, md;
-#endif
-  drbg_t rng;
   int ret = 0;
+  drbg_t rng;
 
   drbg_init(&rng, HASH_SHA256, entropy, ENTROPY_SIZE);
 
@@ -902,11 +901,9 @@ rsa_priv_decrypt(const rsa_priv_t *k,
   mpz_init(bi);
   mpz_init(c);
   mpz_init(m);
-#ifdef TORSION_USE_CRT
   mpz_init(mp);
   mpz_init(mq);
   mpz_init(md);
-#endif
 
   if (mpz_sgn(k->n) <= 0 || mpz_sgn(k->d) <= 0)
     goto fail;
@@ -915,13 +912,11 @@ rsa_priv_decrypt(const rsa_priv_t *k,
   if (mpz_sgn(k->d) <= 0 || !mpz_odd_p(k->n))
     goto fail;
 
-#ifdef TORSION_USE_CRT
   if (mpz_sgn(k->dp) <= 0 || !mpz_odd_p(k->p))
     goto fail;
 
   if (mpz_sgn(k->dq) <= 0 || !mpz_odd_p(k->q))
     goto fail;
-#endif
 
   mpz_import(c, msg, msg_len, 1);
 
@@ -951,35 +946,35 @@ rsa_priv_decrypt(const rsa_priv_t *k,
   mpz_mul(c, c, b);
   mpz_mod(c, c, k->n);
 
-#if defined(TORSION_USE_CRT)
-  /* Leverage Chinese Remainder Theorem.
-   *
-   * Computation:
-   *
-   *   mp = c^(d mod p-1) mod p
-   *   mq = c^(d mod q-1) mod q
-   *   md = (mp - mq) / q mod p
-   *   m = (md * q + mq) mod n
-   */
-  mpz_powm_sec(mp, c, k->dp, k->p);
-  mpz_powm_sec(mq, c, k->dq, k->q);
+  if (use_crt) {
+    /* Leverage Chinese Remainder Theorem.
+     *
+     * Computation:
+     *
+     *   mp = c^(d mod p-1) mod p
+     *   mq = c^(d mod q-1) mod q
+     *   md = (mp - mq) / q mod p
+     *   m = (md * q + mq) mod n
+     */
+    mpz_powm_sec(mp, c, k->dp, k->p);
+    mpz_powm_sec(mq, c, k->dq, k->q);
 
-  mpz_sub(md, mp, mq);
-  mpz_mul(md, md, k->qi);
-  mpz_mod(md, md, k->p);
+    mpz_sub(md, mp, mq);
+    mpz_mul(md, md, k->qi);
+    mpz_mod(md, md, k->p);
 
-  mpz_mul(m, md, k->q);
-  mpz_add(m, m, mq);
-  mpz_mod(m, m, k->n);
+    mpz_mul(m, md, k->q);
+    mpz_add(m, m, mq);
+    mpz_mod(m, m, k->n);
 
-  mpz_powm(mp, m, k->e, k->n);
+    mpz_powm(mp, m, k->e, k->n);
 
-  if (mpz_cmp(mp, c) != 0)
-    goto fail;
-#else
-  /* m = c^d mod n */
-  mpz_powm_sec(m, c, k->d, k->n);
-#endif
+    if (mpz_cmp(mp, c) != 0)
+      goto fail;
+  } else {
+    /* m = c^d mod n */
+    mpz_powm_sec(m, c, k->d, k->n);
+  }
 
   /* m = m * bi mod n (unblind) */
   mpz_mul(m, m, bi);
@@ -994,11 +989,9 @@ fail:
   mpz_cleanse(bi);
   mpz_cleanse(c);
   mpz_cleanse(m);
-#ifdef TORSION_USE_CRT
   mpz_cleanse(mp);
   mpz_cleanse(mq);
   mpz_cleanse(md);
-#endif
   return ret;
 }
 
@@ -1079,7 +1072,7 @@ rsa_pub_export_dumb(unsigned char *out, size_t *out_len, const rsa_pub_t *k) {
 
 static int
 rsa_pub_verify(const rsa_pub_t *k) {
-  size_t bits = mpz_bitlen(k->n);
+  int bits = mpz_bitlen(k->n);
 
   if (mpz_sgn(k->n) < 0)
     return 0;
@@ -1137,8 +1130,7 @@ static int
 rsa_pub_veil(const rsa_pub_t *k,
              unsigned char *out,
              const unsigned char *msg,
-             size_t msg_len,
-             size_t bits,
+             size_t msg_len, int bits,
              const unsigned char *entropy) {
   mpz_t vmax, rmax, c, v, r;
   int ret = 0;
@@ -1205,11 +1197,12 @@ rsa_pub_unveil(const rsa_pub_t *k,
                unsigned char *out,
                const unsigned char *msg,
                size_t msg_len,
-               size_t bits) {
+               int bits) {
   int ret = 0;
   mpz_t v;
 
   mpz_init(v);
+
   mpz_import(v, msg, msg_len, 1);
 
   if (bits != 0 && mpz_bitlen(v) > bits)
@@ -1307,7 +1300,7 @@ pss_encode(unsigned char *out,
            int type,
            const unsigned char *msg,
            size_t msg_len,
-           size_t embits,
+           int embits,
            const unsigned char *salt,
            size_t salt_len) {
   /* [RFC8017] Page 42, Section 9.1.1. */
@@ -1362,7 +1355,7 @@ pss_verify(int type,
            const unsigned char *msg,
            size_t msg_len,
            unsigned char *em,
-           size_t embits,
+           int embits,
            size_t salt_len) {
   /* [RFC8017] Page 44, Section 9.1.2. */
   size_t hlen = hash_output_size(type);
@@ -1440,13 +1433,16 @@ pss_verify(int type,
 int
 rsa_privkey_generate(unsigned char *out,
                      size_t *out_len,
-                     unsigned long bits,
+                     unsigned int bits,
                      uint64_t exp,
                      const unsigned char *entropy) {
   rsa_priv_t k;
   int ret = 0;
 
   rsa_priv_init(&k);
+
+  if (bits > RSA_MAX_MOD_BITS)
+    goto fail;
 
   if (!rsa_priv_generate(&k, bits, exp, entropy))
     goto fail;
@@ -1458,10 +1454,10 @@ fail:
   return ret;
 }
 
-size_t
+unsigned int
 rsa_privkey_bits(const unsigned char *key, size_t key_len) {
+  unsigned int bits = 0;
   rsa_priv_t k;
-  size_t size = 0;
 
   rsa_priv_init(&k);
 
@@ -1471,10 +1467,10 @@ rsa_privkey_bits(const unsigned char *key, size_t key_len) {
   if (!rsa_priv_verify(&k))
     goto fail;
 
-  size = mpz_bitlen(k.n);
+  bits = mpz_bitlen(k.n);
 fail:
   rsa_priv_clear(&k);
-  return size;
+  return bits;
 }
 
 int
@@ -1581,10 +1577,10 @@ fail:
   return ret;
 }
 
-size_t
+unsigned int
 rsa_pubkey_bits(const unsigned char *key, size_t key_len) {
+  unsigned int bits = 0;
   rsa_pub_t k;
-  size_t size = 0;
 
   rsa_pub_init(&k);
 
@@ -1594,10 +1590,10 @@ rsa_pubkey_bits(const unsigned char *key, size_t key_len) {
   if (!rsa_pub_verify(&k))
     goto fail;
 
-  size = mpz_bitlen(k.n);
+  bits = mpz_bitlen(k.n);
 fail:
   rsa_pub_clear(&k);
-  return size;
+  return bits;
 }
 
 int
@@ -1722,7 +1718,7 @@ rsa_sign(unsigned char *out,
   if (msg_len > 0)
     memcpy(em + klen - hlen, msg, msg_len);
 
-  if (!rsa_priv_decrypt(&k, out, em, klen, entropy))
+  if (!rsa_priv_decrypt(&k, out, em, klen, 1, entropy))
     goto fail;
 
   *out_len = klen;
@@ -1903,7 +1899,7 @@ rsa_decrypt(unsigned char *out,
   if (klen < 11)
     goto fail;
 
-  if (!rsa_priv_decrypt(&k, em, msg, msg_len, entropy))
+  if (!rsa_priv_decrypt(&k, em, msg, msg_len, 1, entropy))
     goto fail;
 
   /* EM = 0x00 || 0x02 || PS || 0x00 || M */
@@ -1943,17 +1939,18 @@ rsa_sign_pss(unsigned char *out,
              size_t msg_len,
              const unsigned char *key,
              size_t key_len,
-             int salt_len,
+             size_t salt_len,
              const unsigned char *entropy) {
   /* [RFC8017] Page 33, Section 8.1.1. */
   size_t hlen = hash_output_size(type);
   unsigned char *salt = NULL;
   unsigned char *em = out;
-  size_t emlen, bits;
   size_t klen = 0;
+  size_t emlen;
   rsa_priv_t k;
   drbg_t rng;
   int ret = 0;
+  int bits;
 
   rsa_priv_init(&k);
 
@@ -1973,16 +1970,16 @@ rsa_sign_pss(unsigned char *out,
   klen = (bits + 7) / 8;
   emlen = (bits + 6) / 8;
 
-  if (salt_len == RSA_SALT_LENGTH_AUTO) {
+  if (salt_len == (size_t)RSA_SALT_LENGTH_AUTO) {
     if (emlen < 2 + hlen)
       goto fail;
 
     salt_len = emlen - 2 - hlen;
-  } else if (salt_len == RSA_SALT_LENGTH_HASH) {
+  } else if (salt_len == (size_t)RSA_SALT_LENGTH_HASH) {
     salt_len = hlen;
   }
 
-  if (salt_len < 0 || (size_t)salt_len > klen)
+  if (salt_len > klen)
     goto fail;
 
   if (salt_len > 0) {
@@ -2002,7 +1999,7 @@ rsa_sign_pss(unsigned char *out,
    * than the modulus size in the case
    * of (bits - 1) mod 8 == 0.
    */
-  if (!rsa_priv_decrypt(&k, out, em, emlen, entropy))
+  if (!rsa_priv_decrypt(&k, out, em, emlen, 1, entropy))
     goto fail;
 
   *out_len = klen;
@@ -2023,14 +2020,14 @@ rsa_verify_pss(int type,
                size_t sig_len,
                const unsigned char *key,
                size_t key_len,
-               int salt_len) {
+               size_t salt_len) {
   /* [RFC8017] Page 34, Section 8.1.2. */
-  unsigned char *em = NULL;
   size_t hlen = hash_output_size(type);
+  unsigned char *em = NULL;
   size_t klen = 0;
-  size_t bits;
   rsa_pub_t k;
   int ret = 0;
+  int bits;
 
   rsa_pub_init(&k);
 
@@ -2052,12 +2049,12 @@ rsa_verify_pss(int type,
   if (sig_len != klen)
     goto fail;
 
-  if (salt_len == RSA_SALT_LENGTH_AUTO)
+  if (salt_len == (size_t)RSA_SALT_LENGTH_AUTO)
     salt_len = 0; /* Handled in pss_verify. */
-  else if (salt_len == RSA_SALT_LENGTH_HASH)
+  else if (salt_len == (size_t)RSA_SALT_LENGTH_HASH)
     salt_len = hlen;
 
-  if (salt_len < 0 || (size_t)salt_len > klen)
+  if (salt_len > klen)
     goto fail;
 
   em = malloc(klen);
@@ -2217,7 +2214,7 @@ rsa_decrypt_oaep(unsigned char *out,
   if (klen < hlen * 2 + 2)
     goto fail;
 
-  if (!rsa_priv_decrypt(&k, em, msg, msg_len, entropy))
+  if (!rsa_priv_decrypt(&k, em, msg, msg_len, 1, entropy))
     goto fail;
 
   hash_init(&hash, type);
@@ -2272,7 +2269,7 @@ rsa_veil(unsigned char *out,
          size_t *out_len,
          const unsigned char *msg,
          size_t msg_len,
-         size_t bits,
+         unsigned int bits,
          const unsigned char *key,
          size_t key_len,
          const unsigned char *entropy) {
@@ -2291,6 +2288,9 @@ rsa_veil(unsigned char *out,
   if (msg_len != mpz_bytelen(k.n))
     goto fail;
 
+  if (bits > RSA_MAX_MOD_BITS + 8)
+    goto fail;
+
   if (!rsa_pub_veil(&k, out, msg, msg_len, bits, entropy))
     goto fail;
 
@@ -2307,7 +2307,7 @@ rsa_unveil(unsigned char *out,
            size_t *out_len,
            const unsigned char *msg,
            size_t msg_len,
-           size_t bits,
+           unsigned int bits,
            const unsigned char *key,
            size_t key_len) {
   size_t klen = 0;
@@ -2325,6 +2325,12 @@ rsa_unveil(unsigned char *out,
   klen = mpz_bytelen(k.n);
 
   if (msg_len < klen)
+    goto fail;
+
+  if (msg_len > RSA_MAX_MOD_SIZE + 1)
+    goto fail;
+
+  if (bits > RSA_MAX_MOD_BITS + 8)
     goto fail;
 
   if (!rsa_pub_unveil(&k, out, msg, msg_len, bits))

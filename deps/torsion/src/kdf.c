@@ -253,7 +253,9 @@ bcrypt_hash192(unsigned char *out,
   static const unsigned char ciphertext[] = BCRYPT_CIPHERTEXT192;
   uint32_t cdata[BCRYPT_BLOCKS192];
   blowfish_t state;
-  size_t i, off;
+  uint32_t i;
+  size_t off;
+  int j;
 
   if (rounds < 4)
     rounds = 4;
@@ -262,21 +264,21 @@ bcrypt_hash192(unsigned char *out,
 
   blowfish_init(&state, pass, pass_len, salt, salt_len);
 
-  for (i = 0; i < ((size_t)1 << rounds); i++) {
+  for (i = 0; i < (UINT32_C(1) << rounds); i++) {
     blowfish_expand0state(&state, pass, pass_len);
     blowfish_expand0state(&state, salt, salt_len);
   }
 
   off = 0;
 
-  for (i = 0; i < BCRYPT_BLOCKS192; i++)
-    cdata[i] = blowfish_stream2word(ciphertext, BCRYPT_SIZE192, &off);
+  for (j = 0; j < BCRYPT_BLOCKS192; j++)
+    cdata[j] = blowfish_stream2word(ciphertext, BCRYPT_SIZE192, &off);
 
-  for (i = 0; i < 64; i++)
+  for (j = 0; j < 64; j++)
     blowfish_enc(&state, cdata, BCRYPT_BLOCKS192);
 
-  for (i = 0; i < BCRYPT_BLOCKS192; i++)
-    write32be(out + i * 4, cdata[i]);
+  for (j = 0; j < BCRYPT_BLOCKS192; j++)
+    write32be(out + j * 4, cdata[j]);
 
   torsion_cleanse(cdata, sizeof(cdata));
   torsion_cleanse(&state, sizeof(state));
@@ -290,7 +292,9 @@ bcrypt_hash256(unsigned char *out,
   static const unsigned char ciphertext[] = BCRYPT_CIPHERTEXT256;
   uint32_t cdata[BCRYPT_BLOCKS256];
   blowfish_t state;
-  size_t i, off;
+  uint32_t i;
+  size_t off;
+  int j;
 
   if (rounds < 4)
     rounds = 4;
@@ -299,21 +303,21 @@ bcrypt_hash256(unsigned char *out,
 
   blowfish_init(&state, pass, pass_len, salt, salt_len);
 
-  for (i = 0; i < ((size_t)1 << rounds); i++) {
+  for (i = 0; i < (UINT32_C(1) << rounds); i++) {
     blowfish_expand0state(&state, salt, salt_len);
     blowfish_expand0state(&state, pass, pass_len);
   }
 
   off = 0;
 
-  for (i = 0; i < BCRYPT_BLOCKS256; i++)
-    cdata[i] = blowfish_stream2word(ciphertext, BCRYPT_SIZE256, &off);
+  for (j = 0; j < BCRYPT_BLOCKS256; j++)
+    cdata[j] = blowfish_stream2word(ciphertext, BCRYPT_SIZE256, &off);
 
-  for (i = 0; i < 64; i++)
+  for (j = 0; j < 64; j++)
     blowfish_enc(&state, cdata, BCRYPT_BLOCKS256);
 
-  for (i = 0; i < BCRYPT_BLOCKS256; i++)
-    write32le(out + i * 4, cdata[i]);
+  for (j = 0; j < BCRYPT_BLOCKS256; j++)
+    write32le(out + j * 4, cdata[j]);
 
   torsion_cleanse(cdata, sizeof(cdata));
   torsion_cleanse(&state, sizeof(state));
@@ -931,7 +935,7 @@ scrypt_derive(unsigned char *out,
   size_t R = r;
   size_t P = p;
   int ret = 0;
-  uint32_t i;
+  size_t i;
 
   if (N == 0 || R == 0 || P == 0)
     return 0;
@@ -1015,7 +1019,7 @@ static void
 salsa20_8(uint8_t *B) {
   uint32_t B32[16];
   uint32_t x[16];
-  size_t i;
+  int i;
 
   /* Convert little-endian values in. */
   for (i = 0; i < 16; i++)

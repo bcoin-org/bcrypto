@@ -60,7 +60,7 @@ p25519_fe_equal(const p25519_fe_t x, const p25519_fe_t y) {
   uint32_t z = 0;
   uint8_t u[32];
   uint8_t v[32];
-  size_t i;
+  int i;
 
   fiat_p25519_to_bytes(u, x);
   fiat_p25519_to_bytes(v, y);
@@ -72,12 +72,12 @@ p25519_fe_equal(const p25519_fe_t x, const p25519_fe_t y) {
 }
 
 static void
-p25519_fe_sqrn(p25519_fe_t r, const p25519_fe_t x, int rounds) {
+p25519_fe_sqrn(p25519_fe_t r, const p25519_fe_t x, int n) {
   int i;
 
   p25519_fe_sqr(r, x);
 
-  for (i = 1; i < rounds; i++)
+  for (i = 1; i < n; i++)
     p25519_fe_sqr(r, r);
 }
 

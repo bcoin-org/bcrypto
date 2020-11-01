@@ -512,7 +512,7 @@ q521_sc_invert(const scalar_field_t *sc, sc_t r, const sc_t x) {
 }
 
 static void
-q256k1_sc_invert(const scalar_field_t *sc, sc_t r, const sc_t x) {
+secq256k1_sc_invert(const scalar_field_t *sc, sc_t r, const sc_t x) {
   /* https://briansmith.org/ecc-inversion-addition-chains-01#secp256k1_scalar_inversion */
   /* https://github.com/bitcoin-core/secp256k1/blob/master/src/scalar_impl.h */
   sc_t x2, x3, x6, x8, x14, x28, x56, x112, x126;

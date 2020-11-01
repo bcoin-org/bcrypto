@@ -77,7 +77,7 @@ blake2b_init(blake2b_t *ctx,
              size_t outlen,
              const unsigned char *key,
              size_t keylen) {
-  size_t i;
+  int i;
 
   CHECK(outlen >= 1 && outlen <= 64);
   CHECK(keylen <= 64);
@@ -113,7 +113,7 @@ static void
 blake2b_compress(blake2b_t *ctx, const unsigned char *chunk, uint64_t f0) {
   uint64_t m[16];
   uint64_t v[16];
-  size_t i;
+  int i;
 
   for (i = 0; i < 16; i++)
     m[i] = read64le(chunk + i * 8);
@@ -176,16 +176,16 @@ blake2b_update(blake2b_t *ctx, const void *data, size_t len) {
   const unsigned char *in = (const unsigned char *)data;
 
   if (len > 0) {
-    size_t left = ctx->buflen;
+    size_t left = ctx->size;
     size_t fill = 128 - left;
 
     if (len > fill) {
-      ctx->buflen = 0;
+      ctx->size = 0;
 
-      memcpy(ctx->buf + left, in, fill);
+      memcpy(ctx->block + left, in, fill);
 
       blake2b_increment(ctx, 128);
-      blake2b_compress(ctx, ctx->buf, 0);
+      blake2b_compress(ctx, ctx->block, 0);
 
       in += fill;
       len -= fill;
@@ -198,22 +198,22 @@ blake2b_update(blake2b_t *ctx, const void *data, size_t len) {
       }
     }
 
-    memcpy(ctx->buf + ctx->buflen, in, len);
+    memcpy(ctx->block + ctx->size, in, len);
 
-    ctx->buflen += len;
+    ctx->size += len;
   }
 }
 
 void
 blake2b_final(blake2b_t *ctx, unsigned char *out) {
   unsigned char buffer[64];
-  size_t i;
+  int i;
 
-  blake2b_increment(ctx, ctx->buflen);
+  blake2b_increment(ctx, ctx->size);
 
-  memset(ctx->buf + ctx->buflen, 0x00, 128 - ctx->buflen);
+  memset(ctx->block + ctx->size, 0x00, 128 - ctx->size);
 
-  blake2b_compress(ctx, ctx->buf, (uint64_t)-1);
+  blake2b_compress(ctx, ctx->block, (uint64_t)-1);
 
   for (i = 0; i < 8; i++)
     write64le(buffer + i * 8, ctx->h[i]);
@@ -282,7 +282,7 @@ blake2s_init(blake2s_t *ctx,
              size_t outlen,
              const unsigned char *key,
              size_t keylen) {
-  size_t i;
+  int i;
 
   CHECK(outlen >= 1 && outlen <= 32);
   CHECK(keylen <= 32);
@@ -318,7 +318,7 @@ static void
 blake2s_compress(blake2s_t *ctx, const unsigned char *chunk, uint32_t f0) {
   uint32_t m[16];
   uint32_t v[16];
-  size_t i;
+  int i;
 
   for (i = 0; i < 16; i++)
     m[i] = read32le(chunk + i * 4);
@@ -379,16 +379,16 @@ blake2s_update(blake2s_t *ctx, const void *data, size_t len) {
   const unsigned char *in = (const unsigned char *)data;
 
   if (len > 0) {
-    size_t left = ctx->buflen;
+    size_t left = ctx->size;
     size_t fill = 64 - left;
 
     if (len > fill) {
-      ctx->buflen = 0;
+      ctx->size = 0;
 
-      memcpy(ctx->buf + left, in, fill);
+      memcpy(ctx->block + left, in, fill);
 
       blake2s_increment(ctx, 64);
-      blake2s_compress(ctx, ctx->buf, 0);
+      blake2s_compress(ctx, ctx->block, 0);
 
       in += fill;
       len -= fill;
@@ -402,22 +402,22 @@ blake2s_update(blake2s_t *ctx, const void *data, size_t len) {
       }
     }
 
-    memcpy(ctx->buf + ctx->buflen, in, len);
+    memcpy(ctx->block + ctx->size, in, len);
 
-    ctx->buflen += len;
+    ctx->size += len;
   }
 }
 
 void
 blake2s_final(blake2s_t *ctx, unsigned char *out) {
   unsigned char buffer[32];
-  size_t i;
+  int i;
 
-  blake2s_increment(ctx, (uint32_t)ctx->buflen);
+  blake2s_increment(ctx, (uint32_t)ctx->size);
 
-  memset(ctx->buf + ctx->buflen, 0, 64 - ctx->buflen);
+  memset(ctx->block + ctx->size, 0, 64 - ctx->size);
 
-  blake2s_compress(ctx, ctx->buf, (uint32_t)-1);
+  blake2s_compress(ctx, ctx->block, (uint32_t)-1);
 
   for (i = 0; i < 8; i++)
     write32le(buffer + i * 4, ctx->h[i]);
@@ -468,7 +468,7 @@ static uint32_t
 gost94_sbox(uint32_t a) {
   uint32_t v = 0;
   uint32_t k;
-  size_t i, shift;
+  int i, shift;
 
   for (i = 0; i < 8; i++) {
     shift = 4 * i;
@@ -491,7 +491,7 @@ gost94_encrypt(unsigned char *msg, const unsigned char *key) {
   uint32_t a = read32le(msg + 0);
   uint32_t b = read32le(msg + 4);
   uint32_t t;
-  size_t i, x;
+  int i, x;
 
   for (i = 0; i < 8; i++)
     k[i] = read32le(key + i * 4);
@@ -504,7 +504,7 @@ gost94_encrypt(unsigned char *msg, const unsigned char *key) {
     }
   }
 
-  for (i = 8; i-- > 0;) {
+  for (i = 8 - 1; i >= 0; i--) {
     t = b ^ gost94_g(a, k[i]);
     b = a;
     a = t;
@@ -516,7 +516,7 @@ gost94_encrypt(unsigned char *msg, const unsigned char *key) {
 
 static void
 gost94_x(uint8_t out[32], const uint8_t a[32], const uint8_t b[32]) {
-  size_t i;
+  int i;
 
   for (i = 0; i < 32; i++)
     out[i] = a[i] ^ b[i];
@@ -524,7 +524,7 @@ gost94_x(uint8_t out[32], const uint8_t a[32], const uint8_t b[32]) {
 
 static void
 gost94_a(uint8_t out[32], const uint8_t x[32]) {
-  size_t i;
+  int i;
 
   memcpy(out, x + 8, 24);
 
@@ -534,7 +534,7 @@ gost94_a(uint8_t out[32], const uint8_t x[32]) {
 
 static void
 gost94_p(uint8_t out[32], const uint8_t y[32]) {
-  size_t i, k;
+  int i, k;
 
   for (i = 0; i < 4; i++) {
     for (k = 0; k < 8; k++)
@@ -570,7 +570,7 @@ gost94_psi(uint8_t block[32]) {
 static void
 gost94_compress(gost94_t *ctx, const uint8_t m[32]) {
   uint8_t s[32], k[32], u[32], v[32], t[32];
-  size_t i;
+  int i;
 
   memcpy(s, ctx->state, 32);
 
@@ -616,7 +616,7 @@ gost94_compress(gost94_t *ctx, const uint8_t m[32]) {
 static void
 gost94_sum(gost94_t *ctx, const uint8_t m[32]) {
   uint32_t c = 0;
-  size_t i;
+  int i;
 
   for (i = 0; i < 32; i++) {
     c += ctx->sigma[i] + m[i];
@@ -762,8 +762,8 @@ hash256_final(hash256_t *ctx, unsigned char *out) {
  */
 
 void
-keccak_init(keccak_t *ctx, size_t bits) {
-  size_t rate = 1600 - bits * 2;
+keccak_init(keccak_t *ctx, unsigned int bits) {
+  unsigned int rate = 1600 - bits * 2;
 
   CHECK(bits >= 128);
   CHECK(bits <= 512);
@@ -1220,7 +1220,7 @@ keccak_permute(keccak_t *ctx) {
   };
 
   uint64_t C[5], D[5], T, X;
-  unsigned int i, y;
+  int i, y;
 
 #define A ctx->state
 
@@ -1444,7 +1444,7 @@ md2_init(md2_t *ctx) {
 static void
 md2_transform(md2_t *ctx, const unsigned char *chunk) {
   uint8_t t, l;
-  size_t j, k;
+  int j, k;
 
   for (j = 0; j < 16; j++) {
     ctx->state[16 + j] = chunk[j];
@@ -1473,13 +1473,13 @@ md2_transform(md2_t *ctx, const unsigned char *chunk) {
 void
 md2_update(md2_t *ctx, const void *data, size_t len) {
   const unsigned char *bytes = (const unsigned char *)data;
-  size_t pos = ctx->size & 15;
+  size_t pos = ctx->pos;
   size_t off = 0;
 
   if (len == 0)
     return;
 
-  ctx->size += len;
+  ctx->pos = (ctx->pos + len) & 15;
 
   if (pos > 0) {
     size_t want = 16 - pos;
@@ -1511,8 +1511,7 @@ md2_update(md2_t *ctx, const void *data, size_t len) {
 
 void
 md2_final(md2_t *ctx, unsigned char *out) {
-  size_t pos = ctx->size & 15;
-  size_t left = 16 - pos;
+  size_t left = 16 - ctx->pos;
   unsigned char pad[16];
   size_t i;
 
@@ -1558,7 +1557,7 @@ static void
 md4_transform(md4_t *ctx, const unsigned char *chunk) {
   uint32_t data[16];
   uint32_t a, b, c, d;
-  unsigned int i;
+  int i;
 
   for (i = 0; i < 16; i++, chunk += 4)
     data[i] = read32le(chunk);
@@ -1680,7 +1679,7 @@ md4_final(md4_t *ctx, unsigned char *out) {
   size_t pos = ctx->size & 63;
   uint64_t len = ctx->size << 3;
   unsigned char D[8];
-  size_t i;
+  int i;
 
   write64le(D, len);
 
@@ -1724,7 +1723,7 @@ static void
 md5_transform(md5_t *ctx, const unsigned char *chunk) {
   uint32_t data[16];
   uint32_t a, b, c, d;
-  unsigned int i;
+  int i;
 
   for (i = 0; i < 16; i++, chunk += 4)
     data[i] = read32le(chunk);
@@ -1865,7 +1864,7 @@ md5_final(md5_t *ctx, unsigned char *out) {
   size_t pos = ctx->size & 63;
   uint64_t len = ctx->size << 3;
   unsigned char D[8];
-  size_t i;
+  int i;
 
   write64le(D, len);
 
@@ -1935,7 +1934,7 @@ ripemd160_transform(ripemd160_t *ctx, const unsigned char *chunk) {
   uint32_t x[16];
 
   if (TORSION_BIGENDIAN) {
-    unsigned int i;
+    int i;
     for (i = 0; i < 16; i++, chunk += 4)
       x[i] = read32le(chunk);
   } else {
@@ -2212,7 +2211,7 @@ ripemd160_final(ripemd160_t *ctx, unsigned char *out) {
   size_t pos = ctx->size & 63;
   uint64_t len = ctx->size << 3;
   unsigned char D[8];
-  size_t i;
+  int i;
 
   write64le(D, len);
 
@@ -2258,7 +2257,7 @@ static void
 sha1_transform(sha1_t *ctx, const unsigned char *chunk) {
   uint32_t data[16];
   uint32_t A, B, C, D, E;
-  unsigned int i;
+  int i;
 
   for (i = 0; i < 16; i++, chunk += 4)
     data[i] = read32be(chunk);
@@ -2428,7 +2427,7 @@ sha1_final(sha1_t *ctx, unsigned char *out) {
   size_t pos = ctx->size & 63;
   uint64_t len = ctx->size << 3;
   unsigned char D[8];
-  size_t i;
+  int i;
 
   write64be(D, len);
 
@@ -3740,8 +3739,8 @@ sha256_transform(sha256_t *ctx, const unsigned char *chunk) {
   const uint32_t *k = sha256_K;
   uint32_t data[16];
   uint32_t A, B, C, D, E, F, G, H;
-  unsigned int i;
   uint32_t *d;
+  int i;
 
   for (i = 0; i < 16; i++, chunk += 4)
     data[i] = read32be(chunk);
@@ -3867,7 +3866,7 @@ sha256_final(sha256_t *ctx, unsigned char *out) {
   size_t pos = ctx->size & 63;
   uint64_t len = ctx->size << 3;
   unsigned char D[8];
-  size_t i;
+  int i;
 
   write64be(D, len);
 
@@ -5211,8 +5210,8 @@ sha512_transform(sha512_t *ctx, const unsigned char *chunk) {
   const uint64_t *k = sha512_K;
   uint64_t data[16];
   uint64_t A, B, C, D, E, F, G, H;
-  unsigned int i;
   uint64_t *d;
+  int i;
 
   for (i = 0; i < 16; i++, chunk += 8)
     data[i] = read64be(chunk);
@@ -5338,7 +5337,7 @@ sha512_final(sha512_t *ctx, unsigned char *out) {
   size_t pos = ctx->size & 127;
   uint64_t len = ctx->size << 3;
   unsigned char D[16];
-  size_t i;
+  int i;
 
   write64be(D + 0, 0);
   write64be(D + 8, len);
@@ -6474,7 +6473,7 @@ whirlpool_init(whirlpool_t *ctx) {
 static void
 whirlpool_transform(whirlpool_t *ctx, const unsigned char *chunk) {
   uint64_t B[8], S[8], K[8], L[8];
-  size_t i, r;
+  int i, r;
 
   for (i = 0; i < 8; i++) {
     B[i] = read64be(chunk + i * 8);
@@ -6562,7 +6561,7 @@ whirlpool_final(whirlpool_t *ctx, unsigned char *out) {
   size_t pos = ctx->size & 63;
   uint64_t len = ctx->size << 3;
   unsigned char D[32];
-  size_t i;
+  int i;
 
   memset(D, 0x00, 32);
 

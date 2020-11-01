@@ -267,7 +267,7 @@ chacha20_block(chacha20_t *ctx, uint32_t *stream) {
   );
 #else
   uint64_t c;
-  size_t i;
+  int i;
 
   for (i = 0; i < 16; i++)
     stream[i] = ctx->state[i];
@@ -322,7 +322,7 @@ chacha20_derive(unsigned char *out,
                 size_t key_len,
                 const unsigned char *nonce16) {
   uint32_t state[16];
-  size_t i;
+  int i;
 
   CHECK(key_len == 16 || key_len == 32);
 
@@ -624,7 +624,7 @@ salsa20_block(salsa20_t *ctx, uint32_t *stream) {
   );
 #else
   uint64_t c;
-  size_t i;
+  int i;
 
   for (i = 0; i < 16; i++)
     stream[i] = ctx->state[i];
@@ -679,7 +679,7 @@ salsa20_derive(unsigned char *out,
                size_t key_len,
                const unsigned char *nonce16) {
   uint32_t state[16];
-  size_t i;
+  int i;
 
   CHECK(key_len == 16 || key_len == 32);
 

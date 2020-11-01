@@ -99,11 +99,11 @@ extern "C" {
 TORSION_EXTERN int
 rsa_privkey_generate(unsigned char *out,
                      size_t *out_len,
-                     unsigned long bits,
+                     unsigned int bits,
                      uint64_t exp,
                      const unsigned char *entropy);
 
-TORSION_EXTERN size_t
+TORSION_EXTERN unsigned int
 rsa_privkey_bits(const unsigned char *key, size_t key_len);
 
 TORSION_EXTERN int
@@ -128,7 +128,7 @@ rsa_pubkey_create(unsigned char *out,
                   const unsigned char *key,
                   size_t key_len);
 
-TORSION_EXTERN size_t
+TORSION_EXTERN unsigned int
 rsa_pubkey_bits(const unsigned char *key, size_t key_len);
 
 TORSION_EXTERN int
@@ -191,7 +191,7 @@ rsa_sign_pss(unsigned char *out,
              size_t msg_len,
              const unsigned char *key,
              size_t key_len,
-             int salt_len,
+             size_t salt_len,
              const unsigned char *entropy);
 
 TORSION_EXTERN int
@@ -202,7 +202,7 @@ rsa_verify_pss(int type,
                size_t sig_len,
                const unsigned char *key,
                size_t key_len,
-               int salt_len);
+               size_t salt_len);
 
 TORSION_EXTERN int
 rsa_encrypt_oaep(unsigned char *out,
@@ -233,7 +233,7 @@ rsa_veil(unsigned char *out,
          size_t *out_len,
          const unsigned char *msg,
          size_t msg_len,
-         size_t bits,
+         unsigned int bits,
          const unsigned char *key,
          size_t key_len,
          const unsigned char *entropy);
@@ -243,7 +243,7 @@ rsa_unveil(unsigned char *out,
            size_t *out_len,
            const unsigned char *msg,
            size_t msg_len,
-           size_t bits,
+           unsigned int bits,
            const unsigned char *key,
            size_t key_len);
 

@@ -182,16 +182,16 @@ extern "C" {
 typedef struct blake2b_s {
   uint64_t h[8];
   uint64_t t[2];
-  unsigned char buf[128];
-  size_t buflen;
+  unsigned char block[128];
+  size_t size;
   size_t outlen;
 } blake2b_t;
 
 typedef struct blake2s_s {
   uint32_t h[8];
   uint32_t t[2];
-  unsigned char buf[64];
-  size_t buflen;
+  unsigned char block[64];
+  size_t size;
   size_t outlen;
 } blake2s_t;
 
@@ -213,7 +213,7 @@ typedef struct md2_s {
   uint8_t state[48];
   uint8_t checksum[16];
   unsigned char block[16];
-  size_t size;
+  size_t pos;
 } md2_t;
 
 typedef struct md5_s {
@@ -394,7 +394,7 @@ hash256_final(hash256_t *ctx, unsigned char *out);
  */
 
 TORSION_EXTERN void
-keccak_init(keccak_t *ctx, size_t bits);
+keccak_init(keccak_t *ctx, unsigned int bits);
 
 TORSION_EXTERN void
 keccak_update(keccak_t *ctx, const void *data, size_t len);

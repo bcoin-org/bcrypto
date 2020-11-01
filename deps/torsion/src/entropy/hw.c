@@ -674,7 +674,7 @@ torsion_hwrand(void *dst, size_t size) {
   int has_rdrand = torsion_has_rdrand();
   int has_rdseed = torsion_has_rdseed();
   uint64_t x;
-  size_t i;
+  int i;
 
   if (!has_rdrand && !has_rdseed)
     return 0;

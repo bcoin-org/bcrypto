@@ -661,8 +661,8 @@ void
 aes_init_encrypt(aes_t *ctx, unsigned int bits, const unsigned char *key) {
   uint32_t *K = ctx->enckey;
   uint32_t tmp;
-  size_t p = 0;
-  size_t i = 0;
+  int p = 0;
+  int i = 0;
 
   CHECK(bits == 128 || bits == 192 || bits == 256);
 
@@ -785,8 +785,8 @@ void
 aes_init_decrypt(aes_t *ctx) {
   uint32_t *K = ctx->deckey;
   uint32_t tmp;
-  size_t p = 0;
-  size_t i, j;
+  int p = 0;
+  int i, j;
 
   memcpy(K, ctx->enckey, sizeof(ctx->enckey));
 
@@ -841,8 +841,8 @@ aes_encrypt(const aes_t *ctx, unsigned char *dst, const unsigned char *src) {
   uint32_t s2 = read32be(src +  8) ^ K[2];
   uint32_t s3 = read32be(src + 12) ^ K[3];
   uint32_t t0, t1, t2, t3;
-  size_t r = ctx->rounds >> 1;
-  size_t p = 0;
+  int r = ctx->rounds >> 1;
+  int p = 0;
 
   for (;;) {
     t0 = TE0[(s0 >> 24) & 0xff]
@@ -938,8 +938,8 @@ aes_decrypt(const aes_t *ctx, unsigned char *dst, const unsigned char *src) {
   uint32_t s2 = read32be(src +  8) ^ K[2];
   uint32_t s3 = read32be(src + 12) ^ K[3];
   uint32_t t0, t1, t2, t3;
-  size_t r = ctx->rounds >> 1;
-  size_t p = 0;
+  int r = ctx->rounds >> 1;
+  int p = 0;
 
   for (;;) {
     t0 = TD0[(s0 >> 24) & 0xff]
@@ -1745,7 +1745,7 @@ blowfish_expand0state(blowfish_t *ctx,
   uint32_t xl = 0;
   uint32_t xr = 0;
   size_t off = 0;
-  size_t i, k;
+  int i, k;
 
   for (i = 0; i < 18; i++)
     ctx->P[i] ^= blowfish_stream2word(key, key_len, &off);
@@ -1774,7 +1774,7 @@ blowfish_expandstate(blowfish_t *ctx,
   uint32_t xl = 0;
   uint32_t xr = 0;
   size_t off = 0;
-  size_t i, k;
+  int i, k;
 
   for (i = 0; i < 18; i++)
     ctx->P[i] ^= blowfish_stream2word(key, key_len, &off);
@@ -3441,11 +3441,11 @@ f3(uint32_t d, uint32_t m, uint32_t r) {
 
 void
 cast5_init(cast5_t *ctx, const unsigned char *key) {
-  uint32_t t[8];
+  int i, half, r, j;
   uint32_t k[32];
-  size_t i, half, r, j;
-  size_t ki = 0;
+  uint32_t t[8];
   uint32_t w;
+  int ki = 0;
 
   /* Defensive memset. */
   memset(ctx, 0, sizeof(*ctx));
@@ -3479,8 +3479,7 @@ cast5_init(cast5_t *ctx, const unsigned char *key) {
 
         w ^= S[4 + j][(t[b[4] >> 2] >> (24 - 8 * (b[4] & 3))) & 0xff];
 
-        k[ki] = w;
-        ki += 1;
+        k[ki++] = w;
       }
     }
   }
@@ -3795,7 +3794,7 @@ des_pc1(uint32_t *xl, uint32_t *xr) {
 }
 
 static TORSION_INLINE uint32_t
-des_r28shl(uint32_t x, size_t b) {
+des_r28shl(uint32_t x, unsigned int b) {
   return ((x << b) & 0xfffffff) | (x >> (28 - b));
 }
 
@@ -3805,7 +3804,7 @@ des_pc2(uint32_t *xl, uint32_t *xr) {
   uint32_t r = *xr;
   uint32_t u = 0;
   uint32_t v = 0;
-  size_t i = 0;
+  int i = 0;
 
   for (; i < 24; i++) {
     u <<= 1;
@@ -3849,7 +3848,7 @@ static TORSION_INLINE uint32_t
 des_substitute(uint32_t l, uint32_t r) {
   uint32_t s = 0;
   uint32_t b;
-  size_t i;
+  int i;
 
   for (i = 0; i < 4; i++) {
     b = (l >> (18 - i * 6)) & 0x3f;
@@ -3867,7 +3866,7 @@ des_substitute(uint32_t l, uint32_t r) {
 static TORSION_INLINE uint32_t
 des_permute(uint32_t s) {
   uint32_t f = 0;
-  size_t i;
+  int i;
 
   for (i = 0; i < 32; i++) {
     f <<= 1;
@@ -3882,7 +3881,7 @@ des_encipher(const des_t *ctx, uint32_t *xl, uint32_t *xr) {
   uint32_t l = *xl;
   uint32_t r = *xr;
   uint32_t kl, kr, b1, b2, s, f, t;
-  size_t i;
+  int i;
 
   /* Initial Permutation */
   des_ip(&l, &r);
@@ -3953,7 +3952,7 @@ void
 des_init(des_t *ctx, const unsigned char *key) {
   uint32_t kl = read32be(key + 0);
   uint32_t kr = read32be(key + 4);
-  size_t i, shift;
+  int i, shift;
 
   /* Defensive memset. */
   memset(ctx, 0, sizeof(*ctx));
@@ -4124,9 +4123,9 @@ idea_init(idea_t *ctx, const unsigned char *key) {
 void
 idea_init_encrypt(idea_t *ctx, const unsigned char *key) {
   uint16_t *K = ctx->enckey;
-  size_t p = 0;
-  size_t j = 0;
-  size_t i = 0;
+  int p = 0;
+  int j = 0;
+  int i = 0;
 
   /* Defensive memset. */
   memset(ctx, 0, sizeof(*ctx));
@@ -4150,8 +4149,8 @@ idea_init_decrypt(idea_t *ctx) {
   uint16_t *K = ctx->enckey;
   uint16_t *D = ctx->deckey;
   uint16_t t1, t2, t3;
-  size_t di = 52 - 1;
-  size_t ki = 0;
+  int di = 52 - 1;
+  int ki = 0;
   int i;
 
   t1 = inv16(K[ki++]);
@@ -4202,7 +4201,7 @@ idea_crypt(unsigned char *dst, const unsigned char *src, const uint16_t *K) {
   uint16_t x4 = read16be(src + 6);
   uint16_t s2 = 0;
   uint16_t s3 = 0;
-  size_t p = 0;
+  int p = 0;
   int i;
 
   for (i = 8 - 1; i >= 0; i--) {
@@ -5051,7 +5050,7 @@ gf_mul(uint8_t a, uint8_t b, uint32_t p) {
   uint32_t B[2];
   uint32_t P[2];
   uint32_t res = 0;
-  size_t i;
+  int i;
 
   B[0] = 0;
   B[1] = b;
@@ -5071,7 +5070,7 @@ gf_mul(uint8_t a, uint8_t b, uint32_t p) {
 }
 
 static uint32_t
-mds_mul(uint8_t v, size_t col) {
+mds_mul(uint8_t v, int col) {
   static const uint32_t MDS_POLY = 0x169; /* x^8 + x^6 + x^5 + x^3 + 1 */
   uint32_t x = v;
   uint32_t y = gf_mul(v, 0x5b, MDS_POLY);
@@ -5094,10 +5093,10 @@ mds_mul(uint8_t v, size_t col) {
 }
 
 static uint32_t
-h_gen(const uint8_t *v, const uint8_t *key, size_t off, size_t k) {
+h_gen(const uint8_t *v, const uint8_t *key, size_t off, int k) {
   uint32_t mult;
   uint8_t y[4];
-  size_t i;
+  int i;
 
   for (i = 0; i < 4; i++)
     y[i] = v[i];
@@ -5143,23 +5142,23 @@ h_gen(const uint8_t *v, const uint8_t *key, size_t off, size_t k) {
 }
 
 static TORSION_INLINE uint32_t
-rol32(uint32_t x, size_t y) {
+rol32(uint32_t x, unsigned int y) {
   return (x << (y & 31)) | (x >> (32 - (y & 31)));
 }
 
 static TORSION_INLINE uint32_t
-ror32(uint32_t x, size_t y) {
+ror32(uint32_t x, unsigned int y) {
   return (x >> (y & 31)) | (x << (32 - (y & 31)));
 }
 
 void
 twofish_init(twofish_t *ctx, unsigned int bits, const unsigned char *key) {
   static const uint32_t RS_POLY = 0x14d; /* x^8 + x^6 + x^3 + x^2 + 1 */
-  size_t k = bits >> 6;
-  size_t i, j, v;
+  int k = bits >> 6;
   uint8_t W[4 * 4];
   uint8_t tmp[4];
   uint32_t A, B;
+  int i, j, v;
 
   CHECK(bits == 128 || bits == 192 || bits == 256);
 
@@ -5242,7 +5241,7 @@ twofish_encrypt(const twofish_t *ctx,
   uint32_t id = read32le(src + 12);
   uint32_t t1, t2, ta, tb, tc, td;
   const uint32_t *k;
-  size_t i;
+  int i;
 
   /* Pre-whitening. */
   ia ^= ctx->k[0];
@@ -5900,7 +5899,7 @@ cipher_decrypt(const cipher_t *ctx,
 void
 ecb_encrypt(const cipher_t *cipher, unsigned char *dst,
             const unsigned char *src, size_t len) {
-  CHECK((len % cipher->size) == 0);
+  CHECK((len & (cipher->size - 1)) == 0);
 
   while (len > 0) {
     cipher_encrypt(cipher, dst, src);
@@ -5914,7 +5913,7 @@ ecb_encrypt(const cipher_t *cipher, unsigned char *dst,
 void
 ecb_decrypt(const cipher_t *cipher, unsigned char *dst,
             const unsigned char *src, size_t len) {
-  CHECK((len % cipher->size) == 0);
+  CHECK((len & (cipher->size - 1)) == 0);
 
   while (len > 0) {
     cipher_decrypt(cipher, dst, src);
@@ -5977,7 +5976,7 @@ cbc_encrypt(cbc_t *mode, const cipher_t *cipher,
             unsigned char *dst, const unsigned char *src, size_t len) {
   size_t i;
 
-  CHECK((len % cipher->size) == 0);
+  CHECK((len & (cipher->size - 1)) == 0);
 
   while (len > 0) {
     for (i = 0; i < cipher->size; i++)
@@ -5998,7 +5997,7 @@ cbc_decrypt(cbc_t *mode, const cipher_t *cipher,
             unsigned char *dst, const unsigned char *src, size_t len) {
   size_t i;
 
-  CHECK((len % cipher->size) == 0);
+  CHECK((len & (cipher->size - 1)) == 0);
 
   if (dst == src) {
     unsigned char prev[CIPHER_MAX_BLOCK_SIZE];
@@ -6134,7 +6133,7 @@ xts_encrypt(xts_t *mode, const cipher_t *cipher,
             unsigned char *dst, const unsigned char *src, size_t len) {
   size_t i;
 
-  CHECK((len % cipher->size) == 0);
+  CHECK((len & (cipher->size - 1)) == 0);
 
   while (len > 0) {
     for (i = 0; i < cipher->size; i++)
@@ -6158,7 +6157,7 @@ xts_decrypt(xts_t *mode, const cipher_t *cipher,
             unsigned char *dst, const unsigned char *src, size_t len) {
   size_t i;
 
-  CHECK((len % cipher->size) == 0);
+  CHECK((len & (cipher->size - 1)) == 0);
 
   while (len > 0) {
     if (len == cipher->size)
@@ -6277,15 +6276,14 @@ void
 ctr_crypt(ctr_t *mode, const cipher_t *cipher,
           unsigned char *dst, const unsigned char *src, size_t len) {
   size_t mask = cipher->size - 1;
-  size_t i, j;
+  size_t i;
+  int j;
 
   for (i = 0; i < len; i++) {
     if ((mode->pos & mask) == 0) {
       cipher_encrypt(cipher, mode->state, mode->ctr);
 
-      j = cipher->size;
-
-      while (j--) {
+      for (j = cipher->size - 1; j >= 0; j--) {
         if (++mode->ctr[j] != 0x00)
           break;
       }
@@ -6396,11 +6394,11 @@ static const uint16_t ghash_reduction[16] = {
   0x9180, 0x8da0, 0xa9c0, 0xb5e0
 };
 
-static size_t
-revbits(size_t i) {
-  i = ((i << 2) & 0x0c) | ((i >> 2) & 0x03);
-  i = ((i << 1) & 0x0a) | ((i >> 1) & 0x05);
-  return i;
+static unsigned int
+revbits(unsigned int x) {
+  x = ((x << 2) & 0x0c) | ((x >> 2) & 0x03);
+  x = ((x << 1) & 0x0a) | ((x >> 1) & 0x05);
+  return x;
 }
 
 static void
@@ -6424,7 +6422,7 @@ gfe_mul(gfe_t *r, const gfe_t *x, const gfe_t *table) {
   uint64_t word, msw;
   gfe_t z = {0, 0};
   const gfe_t *t;
-  size_t i, j;
+  int i, j;
 
   for (i = 0; i < 2; i++) {
     word = x->hi;
@@ -6510,7 +6508,7 @@ ghash_pad(ghash_t *ctx) {
 static void
 ghash_init(ghash_t *ctx, const unsigned char *key) {
   gfe_t x = {0, 0};
-  size_t i;
+  int i;
 
   /* Zero for struct assignment. */
   memset(&x, 0, sizeof(x));
@@ -6579,18 +6577,18 @@ gcm_crypt(gcm_t *mode,
           const unsigned char *src,
           size_t len) {
   unsigned int cy;
-  size_t i, j;
+  size_t i;
+  int j;
 
   for (i = 0; i < len; i++) {
     if ((mode->pos & 15) == 0) {
       cipher_encrypt(cipher, mode->state, mode->ctr);
 
       cy = 1;
-      j = 4;
 
-      while (j--) {
-        cy += (unsigned int)mode->ctr[12 + j];
-        mode->ctr[12 + j] = cy;
+      for (j = 16 - 1; j >= 12; j--) {
+        cy += (unsigned int)mode->ctr[j];
+        mode->ctr[j] = cy;
         cy >>= 8;
       }
 
@@ -6656,7 +6654,7 @@ gcm_decrypt(gcm_t *mode, const cipher_t *cipher,
 
 void
 gcm_digest(gcm_t *mode, unsigned char *mac) {
-  size_t i;
+  int i;
 
   ghash_final(&mode->hash, mac);
 
@@ -6743,9 +6741,9 @@ fail:
   return 0;
 }
 
-static size_t
+static unsigned int
 ccm_log256(size_t lm) {
-  size_t L = 0;
+  unsigned int L = 0;
 
   while (lm > 0) {
     L += 1;
@@ -6844,13 +6842,14 @@ ccm_setup(ccm_t *mode, const cipher_t *cipher,
 static void
 ccm_crypt(ccm_t *mode, const cipher_t *cipher,
           unsigned char *dst, const unsigned char *src, size_t len) {
-  size_t i, j;
+  size_t i;
+  int j;
 
   for (i = 0; i < len; i++) {
     if ((mode->pos & 15) == 0) {
       cipher_encrypt(cipher, mode->state, mode->ctr);
 
-      for (j = 15; j >= 1; j--) {
+      for (j = 16 - 1; j >= 1; j--) {
         if (++mode->ctr[j] != 0x00)
           break;
       }
@@ -6878,7 +6877,7 @@ ccm_decrypt(ccm_t *mode, const cipher_t *cipher,
 
 void
 ccm_digest(ccm_t *mode, const cipher_t *cipher, unsigned char *mac) {
-  size_t i = 16 - ((mode->ctr[0] & 7) + 1);
+  int i = 16 - ((mode->ctr[0] & 7) + 1);
 
   cbcmac_final(&mode->hash, cipher, mac);
 
@@ -7008,16 +7007,16 @@ eax_crypt(eax_t *mode,
           size_t len) {
   size_t mask = cipher->size - 1;
   unsigned int cy;
-  size_t i, j;
+  size_t i;
+  int j;
 
   for (i = 0; i < len; i++) {
     if ((mode->pos & mask) == 0) {
       cipher_encrypt(cipher, mode->state, mode->ctr);
 
       cy = 1;
-      j = cipher->size;
 
-      while (j--) {
+      for (j = cipher->size - 1; j >= 0; j--) {
         cy += (unsigned int)mode->ctr[j];
         mode->ctr[j] = cy;
         cy >>= 8;
@@ -7551,7 +7550,7 @@ cipher_stream_update(cipher_stream_t *ctx,
   }
 
   if (input_len >= ctx->block_size) {
-    size_t aligned = input_len - (input_len % ctx->block_size);
+    size_t aligned = input_len - (input_len & (ctx->block_size - 1));
 
     cipher_stream_encipher(ctx, output, input, aligned);
 
@@ -7599,7 +7598,7 @@ cipher_stream_update_size(const cipher_stream_t *ctx, size_t input_len) {
   }
 
   if (input_len >= ctx->block_size)
-    output_len += input_len - (input_len % ctx->block_size);
+    output_len += input_len - (input_len & (ctx->block_size - 1));
 
   ASSERT(output_len >= ctx->block_size);
 
@@ -7619,7 +7618,7 @@ cipher_stream_crypt(cipher_stream_t *ctx,
   if (ctx->unpad || ctx->block_pos != 0)
     return 0;
 
-  if ((len % ctx->block_size) != 0)
+  if ((len & (ctx->block_size - 1)) != 0)
     return 0;
 
   cipher_stream_encipher(ctx, dst, src, len);

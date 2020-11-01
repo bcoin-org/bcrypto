@@ -42,7 +42,7 @@ p256_fe_set(p256_fe_t r, const p256_fe_t x) {
 static int
 p256_fe_equal(const p256_fe_t x, const p256_fe_t y) {
   p256_fe_word_t z = 0;
-  size_t i;
+  int i;
 
   for (i = 0; i < P256_FIELD_WORDS; i++)
     z |= x[i] ^ y[i];
@@ -53,12 +53,12 @@ p256_fe_equal(const p256_fe_t x, const p256_fe_t y) {
 }
 
 static void
-p256_fe_sqrn(p256_fe_t r, const p256_fe_t x, int rounds) {
+p256_fe_sqrn(p256_fe_t r, const p256_fe_t x, int n) {
   int i;
 
   p256_fe_sqr(r, x);
 
-  for (i = 1; i < rounds; i++)
+  for (i = 1; i < n; i++)
     p256_fe_sqr(r, r);
 }
 
@@ -219,4 +219,24 @@ p256_fe_isqrt(p256_fe_t r, const p256_fe_t u, const p256_fe_t v) {
   p256_fe_set(r, x);
 
   return ret;
+}
+
+static void
+fiat_p256_scmul_3(p256_fe_t r, const p256_fe_t x) {
+  p256_fe_t t;
+  fiat_p256_add(t, x, x);
+  fiat_p256_add(r, t, x);
+}
+
+static void
+fiat_p256_scmul_4(p256_fe_t r, const p256_fe_t x) {
+  fiat_p256_add(r, x, x);
+  fiat_p256_add(r, r, r);
+}
+
+static void
+fiat_p256_scmul_8(p256_fe_t r, const p256_fe_t x) {
+  fiat_p256_add(r, x, x);
+  fiat_p256_add(r, r, r);
+  fiat_p256_add(r, r, r);
 }
