@@ -91,7 +91,7 @@ static void fiat_p448_cmovznz_u64(uint64_t* out1, fiat_p448_uint1 arg1, uint64_t
   uint64_t x3;
   x1 = (!(!arg1));
   x2 = ((fiat_p448_int1)(0x0 - x1) & UINT64_C(0xffffffffffffffff));
-  x3 = ((fiat_barrier(x2) & arg3) | (fiat_barrier(~x2) & arg2));
+  x3 = ((fe_word_barrier(x2) & arg3) | (fe_word_barrier(~x2) & arg2));
   *out1 = x3;
 }
 

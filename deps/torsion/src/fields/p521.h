@@ -23,27 +23,27 @@ typedef p521_fe_word_t p521_fe_t[P521_FIELD_WORDS];
 #define p521_fe_sqr fiat_p521_carry_square
 
 static void
-p521_fe_set(p521_fe_t r, const p521_fe_t x) {
-  r[0] = x[0];
-  r[1] = x[1];
-  r[2] = x[2];
-  r[3] = x[3];
-  r[4] = x[4];
-  r[5] = x[5];
-  r[6] = x[6];
-  r[7] = x[7];
-  r[8] = x[8];
+p521_fe_set(p521_fe_t z, const p521_fe_t x) {
+  z[0] = x[0];
+  z[1] = x[1];
+  z[2] = x[2];
+  z[3] = x[3];
+  z[4] = x[4];
+  z[5] = x[5];
+  z[6] = x[6];
+  z[7] = x[7];
+  z[8] = x[8];
 #if P521_FIELD_WORDS == 19
-  r[9] = x[9];
-  r[10] = x[10];
-  r[11] = x[11];
-  r[12] = x[12];
-  r[13] = x[13];
-  r[14] = x[14];
-  r[15] = x[15];
-  r[16] = x[16];
-  r[17] = x[17];
-  r[18] = x[18];
+  z[9] = x[9];
+  z[10] = x[10];
+  z[11] = x[11];
+  z[12] = x[12];
+  z[13] = x[13];
+  z[14] = x[14];
+  z[15] = x[15];
+  z[16] = x[16];
+  z[17] = x[17];
+  z[18] = x[18];
 #endif
 }
 
@@ -64,17 +64,17 @@ p521_fe_equal(const p521_fe_t x, const p521_fe_t y) {
 }
 
 static void
-p521_fe_sqrn(p521_fe_t r, const p521_fe_t x, int n) {
+p521_fe_sqrn(p521_fe_t z, const p521_fe_t x, int n) {
   int i;
 
-  p521_fe_sqr(r, x);
+  p521_fe_sqr(z, x);
 
   for (i = 1; i < n; i++)
-    p521_fe_sqr(r, r);
+    p521_fe_sqr(z, z);
 }
 
 static void
-p521_fe_pow_core(p521_fe_t r, const p521_fe_t x1) {
+p521_fe_pow_core(p521_fe_t z, const p521_fe_t x1) {
   /* Exponent: 2^519 - 1 */
   /* Bits: 519x1 */
   p521_fe_t t1, t2, t3;
@@ -120,25 +120,25 @@ p521_fe_pow_core(p521_fe_t r, const p521_fe_t x1) {
   p521_fe_mul(t3, t3, t2);
 
   /* x512 = x256^(2^256) * x256 */
-  p521_fe_sqrn(r, t3, 256);
-  p521_fe_mul(r, r, t3);
+  p521_fe_sqrn(z, t3, 256);
+  p521_fe_mul(z, z, t3);
 
   /* x519 = x512^(2^7) * x7 */
-  p521_fe_sqrn(r, r, 7);
-  p521_fe_mul(r, r, t1);
+  p521_fe_sqrn(z, z, 7);
+  p521_fe_mul(z, z, t1);
 }
 
 static void
-p521_fe_pow_pm3d4(p521_fe_t r, const p521_fe_t x) {
+p521_fe_pow_pm3d4(p521_fe_t z, const p521_fe_t x) {
   /* Exponent: 2^519 - 1 */
   /* Bits: 519x1 */
 
-  /* r = x^(2^519 - 1) */
-  p521_fe_pow_core(r, x);
+  /* z = x^(2^519 - 1) */
+  p521_fe_pow_core(z, x);
 }
 
 static void
-p521_fe_invert(p521_fe_t r, const p521_fe_t x) {
+p521_fe_invert(p521_fe_t z, const p521_fe_t x) {
   /* Exponent: p - 2 */
   /* Bits: 519x1 1x0 1x1 */
   p521_fe_t x1;
@@ -146,19 +146,19 @@ p521_fe_invert(p521_fe_t r, const p521_fe_t x) {
   /* x1 = x */
   p521_fe_set(x1, x);
 
-  /* r = x1^(2^519 - 1) */
-  p521_fe_pow_core(r, x1);
+  /* z = x1^(2^519 - 1) */
+  p521_fe_pow_core(z, x1);
 
-  /* r = r^(2^1) */
-  p521_fe_sqr(r, r);
+  /* z = z^(2^1) */
+  p521_fe_sqr(z, z);
 
-  /* r = r^(2^1) * x1 */
-  p521_fe_sqr(r, r);
-  p521_fe_mul(r, r, x1);
+  /* z = z^(2^1) * x1 */
+  p521_fe_sqr(z, z);
+  p521_fe_mul(z, z, x1);
 }
 
 static int
-p521_fe_sqrt(p521_fe_t r, const p521_fe_t x) {
+p521_fe_sqrt(p521_fe_t z, const p521_fe_t x) {
   /* Exponent: (p + 1) / 4 */
   /* Bits: 1x1 519x0 */
   p521_fe_t x1, c;
@@ -166,17 +166,17 @@ p521_fe_sqrt(p521_fe_t r, const p521_fe_t x) {
   /* x1 = x */
   p521_fe_set(x1, x);
 
-  /* r = x1^(2^519) */
-  p521_fe_sqrn(r, x1, 519);
+  /* z = x1^(2^519) */
+  p521_fe_sqrn(z, x1, 519);
 
-  /* r^2 == x1 */
-  p521_fe_sqr(c, r);
+  /* z^2 == x1 */
+  p521_fe_sqr(c, z);
 
   return p521_fe_equal(c, x1);
 }
 
 static int
-p521_fe_isqrt(p521_fe_t r, const p521_fe_t u, const p521_fe_t v) {
+p521_fe_isqrt(p521_fe_t z, const p521_fe_t u, const p521_fe_t v) {
   p521_fe_t t, x, c;
   int ret;
 
@@ -197,7 +197,7 @@ p521_fe_isqrt(p521_fe_t r, const p521_fe_t u, const p521_fe_t v) {
 
   ret = p521_fe_equal(c, u);
 
-  p521_fe_set(r, x);
+  p521_fe_set(z, x);
 
   return ret;
 }

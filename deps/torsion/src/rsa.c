@@ -222,9 +222,9 @@ typedef struct rsa_priv_s {
  * Helpers
  */
 
-TORSION_BARRIER(uint32_t, u32)
+TORSION_BARRIER(uint32_t, uint32)
 
-#define B u32_barrier
+#define B uint32_barrier
 
 static TORSION_INLINE uint32_t
 safe_equal(uint32_t x, uint32_t y) {
@@ -447,11 +447,13 @@ rsa_priv_generate(rsa_priv_t *k, int bits, uint64_t exp,
   mpz_init(lam);
   mpz_init(tmp);
 
-  mpz_set_u64(k->e, exp);
+  mpz_set_ui(k->e, exp >> 32);
+  mpz_mul_2exp(k->e, k->e, 32);
+  mpz_ior_ui(k->e, k->e, exp & UINT32_MAX);
 
   for (;;) {
-    mpz_random_prime(k->p, (bits >> 1) + (bits & 1), drbg_rng, &rng);
-    mpz_random_prime(k->q, bits >> 1, drbg_rng, &rng);
+    mpz_randprime(k->p, (bits >> 1) + (bits & 1), drbg_rng, &rng);
+    mpz_randprime(k->q, bits >> 1, drbg_rng, &rng);
 
     if (mpz_cmp(k->p, k->q) == 0)
       continue;
@@ -775,8 +777,8 @@ rsa_priv_set_ned(rsa_priv_t *out,
   static const unsigned char default_entropy[ENTROPY_SIZE] = {0};
   mpz_t f, nm1, nm3, g, a, b, c, p, q;
   int i, j, s;
-  drbg_t rng;
   int ret = 0;
+  drbg_t rng;
 
   mpz_init(f);
   mpz_init(nm1);
@@ -818,7 +820,7 @@ rsa_priv_set_ned(rsa_priv_t *out,
   s = mpz_ctz(f);
 
   /* g = f >> s */
-  mpz_rshift(g, f, s);
+  mpz_quo_2exp(g, f, s);
 
   /* Use all zeroes if no entropy is available. */
   if (entropy == NULL)
@@ -829,7 +831,7 @@ rsa_priv_set_ned(rsa_priv_t *out,
 
   for (i = 0; i < 128; i++) {
     /* a = random int in [2,n-1] */
-    mpz_random_int(a, nm3, drbg_rng, &rng);
+    mpz_urandomm(a, nm3, drbg_rng, &rng);
     mpz_add_ui(a, a, 2);
 
     /* b = a^g mod n */
@@ -840,7 +842,7 @@ rsa_priv_set_ned(rsa_priv_t *out,
 
     for (j = 1; j < s; j++) {
       /* c = b^2 mod n */
-      mpz_mul(c, b, b);
+      mpz_sqr(c, b);
       mpz_mod(c, c, n);
 
       if (mpz_cmp_ui(c, 1) == 0) {
@@ -929,7 +931,7 @@ rsa_priv_decrypt(const rsa_priv_t *k,
   /* Generate blinding factor. */
   for (;;) {
     /* s = random integer in [1,n-1] */
-    mpz_random_int(s, t, drbg_rng, &rng);
+    mpz_urandomm(s, t, drbg_rng, &rng);
     mpz_add_ui(s, s, 1);
 
     /* bi = s^-1 mod n */
@@ -1152,8 +1154,8 @@ rsa_pub_veil(const rsa_pub_t *k,
     goto fail;
 
   /* vmax = 1 << bits */
-  mpz_set_ui(vmax, 1);
-  mpz_lshift(vmax, vmax, bits);
+  mpz_set_ui(vmax, 0);
+  mpz_setbit(vmax, bits);
 
   /* rmax = (vmax - c + n - 1) / n */
   mpz_sub(rmax, vmax, c);
@@ -1168,7 +1170,7 @@ rsa_pub_veil(const rsa_pub_t *k,
   drbg_init(&rng, HASH_SHA256, entropy, ENTROPY_SIZE);
 
   while (mpz_cmp(v, vmax) >= 0) {
-    mpz_random_int(r, rmax, drbg_rng, &rng);
+    mpz_urandomm(r, rmax, drbg_rng, &rng);
 
     /* v = c + r * n */
     mpz_mul(r, r, k->n);

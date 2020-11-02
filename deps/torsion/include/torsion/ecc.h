@@ -67,6 +67,7 @@ extern "C" {
 #define ecdsa_pubkey_import torsion_ecdsa_pubkey_import
 #define ecdsa_pubkey_tweak_add torsion_ecdsa_pubkey_tweak_add
 #define ecdsa_pubkey_tweak_mul torsion_ecdsa_pubkey_tweak_mul
+#define ecdsa_pubkey_add torsion_ecdsa_pubkey_add
 #define ecdsa_pubkey_combine torsion_ecdsa_pubkey_combine
 #define ecdsa_pubkey_negate torsion_ecdsa_pubkey_negate
 #define ecdsa_sig_export torsion_ecdsa_sig_export
@@ -108,6 +109,7 @@ extern "C" {
 #define schnorr_pubkey_tweak_add_check torsion_schnorr_pubkey_tweak_add_check
 #define schnorr_pubkey_tweak_mul torsion_schnorr_pubkey_tweak_mul
 #define schnorr_pubkey_tweak_mul_check torsion_schnorr_pubkey_tweak_mul_check
+#define schnorr_pubkey_add torsion_schnorr_pubkey_add
 #define schnorr_pubkey_combine torsion_schnorr_pubkey_combine
 #define schnorr_sign torsion_schnorr_sign
 #define schnorr_verify torsion_schnorr_verify
@@ -166,6 +168,7 @@ extern "C" {
 #define eddsa_pubkey_has_torsion torsion_eddsa_pubkey_has_torsion
 #define eddsa_pubkey_tweak_add torsion_eddsa_pubkey_tweak_add
 #define eddsa_pubkey_tweak_mul torsion_eddsa_pubkey_tweak_mul
+#define eddsa_pubkey_add torsion_eddsa_pubkey_add
 #define eddsa_pubkey_combine torsion_eddsa_pubkey_combine
 #define eddsa_pubkey_negate torsion_eddsa_pubkey_negate
 #define eddsa_sign_with_scalar torsion_eddsa_sign_with_scalar
@@ -199,6 +202,7 @@ extern "C" {
 #define ristretto_pubkey_is_infinity torsion_ristretto_pubkey_is_infinity
 #define ristretto_pubkey_tweak_add torsion_ristretto_pubkey_tweak_add
 #define ristretto_pubkey_tweak_mul torsion_ristretto_pubkey_tweak_mul
+#define ristretto_pubkey_add torsion_ristretto_pubkey_add
 #define ristretto_pubkey_combine torsion_ristretto_pubkey_combine
 #define ristretto_pubkey_negate torsion_ristretto_pubkey_negate
 #define ristretto_derive torsion_ristretto_derive
@@ -502,6 +506,16 @@ ecdsa_pubkey_tweak_mul(const wei_curve_t *ec,
                        int compact);
 
 TORSION_EXTERN int
+ecdsa_pubkey_add(const wei_curve_t *ec,
+                 unsigned char *out,
+                 size_t *out_len,
+                 const unsigned char *pub1,
+                 size_t pub_len1,
+                 const unsigned char *pub2,
+                 size_t pub_len2,
+                 int compact);
+
+TORSION_EXTERN int
 ecdsa_pubkey_combine(const wei_curve_t *ec,
                      unsigned char *out,
                      size_t *out_len,
@@ -620,6 +634,7 @@ schnorr_legacy_sig_size(const wei_curve_t *ec);
 #define schnorr_legacy_pubkey_import ecdsa_pubkey_import
 #define schnorr_legacy_pubkey_tweak_add ecdsa_pubkey_tweak_add
 #define schnorr_legacy_pubkey_tweak_mul ecdsa_pubkey_tweak_mul
+#define schnorr_legacy_pubkey_add ecdsa_pubkey_add
 #define schnorr_legacy_pubkey_combine ecdsa_pubkey_combine
 #define schnorr_legacy_pubkey_negate ecdsa_pubkey_negate
 
@@ -773,6 +788,12 @@ schnorr_pubkey_tweak_mul_check(const wei_curve_t *ec,
                                const unsigned char *tweak,
                                const unsigned char *expect,
                                int negated);
+
+TORSION_EXTERN int
+schnorr_pubkey_add(const wei_curve_t *ec,
+                   unsigned char *out,
+                   const unsigned char *pub1,
+                   const unsigned char *pub2);
 
 TORSION_EXTERN int
 schnorr_pubkey_combine(const wei_curve_t *ec,
@@ -1069,6 +1090,12 @@ eddsa_pubkey_tweak_mul(const edwards_curve_t *ec,
                        const unsigned char *tweak);
 
 TORSION_EXTERN int
+eddsa_pubkey_add(const edwards_curve_t *ec,
+                 unsigned char *out,
+                 const unsigned char *pub1,
+                 const unsigned char *pub2);
+
+TORSION_EXTERN int
 eddsa_pubkey_combine(const edwards_curve_t *ec,
                      unsigned char *out,
                      const unsigned char *const *pubs,
@@ -1270,6 +1297,12 @@ ristretto_pubkey_tweak_mul(const edwards_curve_t *ec,
                            unsigned char *out,
                            const unsigned char *pub,
                            const unsigned char *tweak);
+
+TORSION_EXTERN int
+ristretto_pubkey_add(const edwards_curve_t *ec,
+                     unsigned char *out,
+                     const unsigned char *pub1,
+                     const unsigned char *pub2);
 
 TORSION_EXTERN int
 ristretto_pubkey_combine(const edwards_curve_t *ec,

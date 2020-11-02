@@ -300,7 +300,7 @@ asn1_size_mpz(const mpz_t n) {
   size_t size = (bits + 7) / 8;
 
   if (bits > 0 && (bits & 7) == 0)
-    size += mpz_get_bit(n, bits - 1);
+    size += mpz_tstbit(n, bits - 1);
 
   if (bits == 0)
     size = 1;
@@ -383,7 +383,7 @@ asn1_write_mpz(unsigned char *data, size_t pos, const mpz_t n) {
   size_t pad = 0;
 
   if (bits > 0 && (bits & 7) == 0)
-    pad = mpz_get_bit(n, bits - 1);
+    pad = mpz_tstbit(n, bits - 1);
 
   if (bits == 0)
     size = 1;

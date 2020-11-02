@@ -22,8 +22,8 @@ typedef p25519_fe_word_t p25519_fe_t[P25519_FIELD_WORDS];
 #define p25519_fe_mul fiat_p25519_carry_mul
 #define p25519_fe_sqr fiat_p25519_carry_square
 #define p25519_fe_carry fiat_p25519_carry
-#define p25519_fe_select(r, a, b, flag) \
-  fiat_p25519_selectznz(r, (flag) != 0, a, b)
+#define p25519_fe_select(z, x, y, flag) \
+  fiat_p25519_selectznz(z, (flag) != 0, x, y)
 
 #if defined(TORSION_HAVE_INT128)
 static const p25519_fe_t p25519_sqrtneg1 = {
@@ -40,18 +40,18 @@ static const p25519_fe_t p25519_sqrtneg1 = {
 #endif
 
 static void
-p25519_fe_set(p25519_fe_t r, const p25519_fe_t x) {
-  r[0] = x[0];
-  r[1] = x[1];
-  r[2] = x[2];
-  r[3] = x[3];
-  r[4] = x[4];
+p25519_fe_set(p25519_fe_t z, const p25519_fe_t x) {
+  z[0] = x[0];
+  z[1] = x[1];
+  z[2] = x[2];
+  z[3] = x[3];
+  z[4] = x[4];
 #if P25519_FIELD_WORDS == 10
-  r[5] = x[5];
-  r[6] = x[6];
-  r[7] = x[7];
-  r[8] = x[8];
-  r[9] = x[9];
+  z[5] = x[5];
+  z[6] = x[6];
+  z[7] = x[7];
+  z[8] = x[8];
+  z[9] = x[9];
 #endif
 }
 
@@ -72,17 +72,17 @@ p25519_fe_equal(const p25519_fe_t x, const p25519_fe_t y) {
 }
 
 static void
-p25519_fe_sqrn(p25519_fe_t r, const p25519_fe_t x, int n) {
+p25519_fe_sqrn(p25519_fe_t z, const p25519_fe_t x, int n) {
   int i;
 
-  p25519_fe_sqr(r, x);
+  p25519_fe_sqr(z, x);
 
   for (i = 1; i < n; i++)
-    p25519_fe_sqr(r, r);
+    p25519_fe_sqr(z, z);
 }
 
 static void
-p25519_fe_pow_core(p25519_fe_t r, const p25519_fe_t x1, const p25519_fe_t x2) {
+p25519_fe_pow_core(p25519_fe_t z, const p25519_fe_t x1, const p25519_fe_t x2) {
   /* Exponent: 2^250 - 1 */
   /* Bits: 250x1 */
   p25519_fe_t t1, t2, t3;
@@ -116,16 +116,16 @@ p25519_fe_pow_core(p25519_fe_t r, const p25519_fe_t x1, const p25519_fe_t x2) {
   p25519_fe_mul(t2, t2, t1);
 
   /* x200 = x100^(2^100) * x100 */
-  p25519_fe_sqrn(r, t2, 100);
-  p25519_fe_mul(r, r, t2);
+  p25519_fe_sqrn(z, t2, 100);
+  p25519_fe_mul(z, z, t2);
 
   /* x250 = x200^(2^50) * x50 */
-  p25519_fe_sqrn(r, r, 50);
-  p25519_fe_mul(r, r, t1);
+  p25519_fe_sqrn(z, z, 50);
+  p25519_fe_mul(z, z, t1);
 }
 
 static void
-p25519_fe_pow_pm5d8(p25519_fe_t r, const p25519_fe_t x) {
+p25519_fe_pow_pm5d8(p25519_fe_t z, const p25519_fe_t x) {
   /* Exponent: (p - 5) / 8 */
   /* Bits: 250x1 1x0 1x1 */
   p25519_fe_t x1, x2;
@@ -137,19 +137,19 @@ p25519_fe_pow_pm5d8(p25519_fe_t r, const p25519_fe_t x) {
   p25519_fe_sqr(x2, x1);
   p25519_fe_mul(x2, x2, x1);
 
-  /* r = x1^(2^250 - 1) */
-  p25519_fe_pow_core(r, x1, x2);
+  /* z = x1^(2^250 - 1) */
+  p25519_fe_pow_core(z, x1, x2);
 
-  /* r = r^(2^1) */
-  p25519_fe_sqr(r, r);
+  /* z = z^(2^1) */
+  p25519_fe_sqr(z, z);
 
-  /* r = r^(2^1) * x1 */
-  p25519_fe_sqr(r, r);
-  p25519_fe_mul(r, r, x1);
+  /* z = z^(2^1) * x1 */
+  p25519_fe_sqr(z, z);
+  p25519_fe_mul(z, z, x1);
 }
 
 static void
-p25519_fe_invert(p25519_fe_t r, const p25519_fe_t x) {
+p25519_fe_invert(p25519_fe_t z, const p25519_fe_t x) {
   /* Exponent: p - 2 */
   /* Bits: 250x1 1x0 1x1 1x0 2x1 */
   p25519_fe_t x1, x2;
@@ -161,26 +161,26 @@ p25519_fe_invert(p25519_fe_t r, const p25519_fe_t x) {
   p25519_fe_sqr(x2, x1);
   p25519_fe_mul(x2, x2, x1);
 
-  /* r = x1^(2^250 - 1) */
-  p25519_fe_pow_core(r, x1, x2);
+  /* z = x1^(2^250 - 1) */
+  p25519_fe_pow_core(z, x1, x2);
 
-  /* r = r^(2^1) */
-  p25519_fe_sqr(r, r);
+  /* z = z^(2^1) */
+  p25519_fe_sqr(z, z);
 
-  /* r = r^(2^1) * x1 */
-  p25519_fe_sqr(r, r);
-  p25519_fe_mul(r, r, x1);
+  /* z = z^(2^1) * x1 */
+  p25519_fe_sqr(z, z);
+  p25519_fe_mul(z, z, x1);
 
-  /* r = r^(2^1) */
-  p25519_fe_sqr(r, r);
+  /* z = z^(2^1) */
+  p25519_fe_sqr(z, z);
 
-  /* r = r^(2^2) * x2 */
-  p25519_fe_sqrn(r, r, 2);
-  p25519_fe_mul(r, r, x2);
+  /* z = z^(2^2) * x2 */
+  p25519_fe_sqrn(z, z, 2);
+  p25519_fe_mul(z, z, x2);
 }
 
 static int
-p25519_fe_sqrt(p25519_fe_t r, const p25519_fe_t x) {
+p25519_fe_sqrt(p25519_fe_t z, const p25519_fe_t x) {
   /* Exponent: (p + 3) / 8 */
   /* Bits: 251x1 1x0 */
   p25519_fe_t x1, x2, c, t;
@@ -192,29 +192,29 @@ p25519_fe_sqrt(p25519_fe_t r, const p25519_fe_t x) {
   p25519_fe_sqr(x2, x1);
   p25519_fe_mul(x2, x2, x1);
 
-  /* r = x1^(2^250 - 1) */
-  p25519_fe_pow_core(r, x1, x2);
+  /* z = x1^(2^250 - 1) */
+  p25519_fe_pow_core(z, x1, x2);
 
-  /* r = r^(2^1) * x1 */
-  p25519_fe_sqr(r, r);
-  p25519_fe_mul(r, r, x1);
+  /* z = z^(2^1) * x1 */
+  p25519_fe_sqr(z, z);
+  p25519_fe_mul(z, z, x1);
 
-  /* r = r^(2^1) */
-  p25519_fe_sqr(r, r);
+  /* z = z^(2^1) */
+  p25519_fe_sqr(z, z);
 
-  /* r = r * sqrt(-1) if r^2 != x1 */
-  p25519_fe_sqr(c, r);
-  p25519_fe_mul(t, r, p25519_sqrtneg1);
-  p25519_fe_select(r, r, t, p25519_fe_equal(c, x1) ^ 1);
+  /* z = z * sqrt(-1) if z^2 != x1 */
+  p25519_fe_sqr(c, z);
+  p25519_fe_mul(t, z, p25519_sqrtneg1);
+  p25519_fe_select(z, z, t, p25519_fe_equal(c, x1) ^ 1);
 
-  /* r^2 == x1 */
-  p25519_fe_sqr(c, r);
+  /* z^2 == x1 */
+  p25519_fe_sqr(c, z);
 
   return p25519_fe_equal(c, x1);
 }
 
 static int
-p25519_fe_isqrt(p25519_fe_t r, const p25519_fe_t u, const p25519_fe_t v) {
+p25519_fe_isqrt(p25519_fe_t z, const p25519_fe_t u, const p25519_fe_t v) {
   p25519_fe_t t, x, c;
   int css, fss, fssi;
 
@@ -248,7 +248,7 @@ p25519_fe_isqrt(p25519_fe_t r, const p25519_fe_t u, const p25519_fe_t v) {
 
   /* x = x * sqrt(-1) if c == -u */
   p25519_fe_mul(t, x, p25519_sqrtneg1);
-  p25519_fe_select(r, x, t, fss | fssi);
+  p25519_fe_select(z, x, t, fss | fssi);
 
   return css | fss;
 }

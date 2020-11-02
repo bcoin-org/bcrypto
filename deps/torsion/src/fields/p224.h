@@ -21,7 +21,7 @@ typedef p224_fe_word_t p224_fe_t[P224_FIELD_WORDS];
 #define p224_fe_neg fiat_p224_opp
 #define p224_fe_mul fiat_p224_mul
 #define p224_fe_sqr fiat_p224_square
-#define p224_fe_select(r, a, b, flag) fiat_p224_selectznz(r, (flag) != 0, a, b)
+#define p224_fe_select(z, x, y, flag) fiat_p224_selectznz(z, (flag) != 0, x, y)
 
 #if defined(TORSION_HAVE_INT128)
 static const p224_fe_t p224_zero = {0, 0, 0, 0};
@@ -54,15 +54,15 @@ static const p224_fe_t p224_g = {
 #endif
 
 static void
-p224_fe_set(p224_fe_t r, const p224_fe_t x) {
-  r[0] = x[0];
-  r[1] = x[1];
-  r[2] = x[2];
-  r[3] = x[3];
+p224_fe_set(p224_fe_t z, const p224_fe_t x) {
+  z[0] = x[0];
+  z[1] = x[1];
+  z[2] = x[2];
+  z[3] = x[3];
 #if P224_FIELD_WORDS == 7
-  r[4] = x[4];
-  r[5] = x[5];
-  r[6] = x[6];
+  z[4] = x[4];
+  z[5] = x[5];
+  z[6] = x[6];
 #endif
 }
 
@@ -80,23 +80,23 @@ p224_fe_equal(const p224_fe_t x, const p224_fe_t y) {
 }
 
 static void
-p224_fe_sqrn(p224_fe_t r, const p224_fe_t x, int n) {
+p224_fe_sqrn(p224_fe_t z, const p224_fe_t x, int n) {
   int i;
 
   /* Handle zero for the tonelli-shanks loop. */
   if (n == 0) {
-    p224_fe_set(r, x);
+    p224_fe_set(z, x);
     return;
   }
 
-  p224_fe_sqr(r, x);
+  p224_fe_sqr(z, x);
 
   for (i = 1; i < n; i++)
-    p224_fe_sqr(r, r);
+    p224_fe_sqr(z, z);
 }
 
 static void
-p224_fe_pow_s(p224_fe_t r, const p224_fe_t x1) {
+p224_fe_pow_s(p224_fe_t z, const p224_fe_t x1) {
   /* Exponent: 2^128 - 1 */
   /* Bits: 128x1 */
   p224_fe_t t1, t2;
@@ -126,21 +126,21 @@ p224_fe_pow_s(p224_fe_t r, const p224_fe_t x1) {
   p224_fe_mul(t2, t2, t1);
 
   /* x128 = x64^(2^64) * x64 */
-  p224_fe_sqrn(r, t2, 64);
-  p224_fe_mul(r, r, t2);
+  p224_fe_sqrn(z, t2, 64);
+  p224_fe_mul(z, z, t2);
 }
 
 static void
-p224_fe_pow_e(p224_fe_t r, const p224_fe_t x) {
+p224_fe_pow_e(p224_fe_t z, const p224_fe_t x) {
   /* Exponent: 2^127 */
   /* Bits: 1x1 127x0 */
 
-  /* r = x^(2^127) */
-  p224_fe_sqrn(r, x, 127);
+  /* z = x^(2^127) */
+  p224_fe_sqrn(z, x, 127);
 }
 
 static void
-p224_fe_pow_em1(p224_fe_t r, const p224_fe_t x1) {
+p224_fe_pow_em1(p224_fe_t z, const p224_fe_t x1) {
   /* Exponent: 2^127 - 1 */
   /* Bits: 127x1 */
   p224_fe_t t1, t2, t3, t4;
@@ -178,16 +178,16 @@ p224_fe_pow_em1(p224_fe_t r, const p224_fe_t x1) {
   p224_fe_mul(t4, t4, t3);
 
   /* x124 = x62^(2^62) * x62 */
-  p224_fe_sqrn(r, t4, 62);
-  p224_fe_mul(r, r, t4);
+  p224_fe_sqrn(z, t4, 62);
+  p224_fe_mul(z, z, t4);
 
   /* x127 = x124^(2^3) * x3 */
-  p224_fe_sqrn(r, r, 3);
-  p224_fe_mul(r, r, t1);
+  p224_fe_sqrn(z, z, 3);
+  p224_fe_mul(z, z, t1);
 }
 
 static void
-p224_fe_invert(p224_fe_t r, const p224_fe_t x) {
+p224_fe_invert(p224_fe_t z, const p224_fe_t x) {
   /* Exponent: p - 2 */
   /* Bits: 127x1 1x0 96x1 */
   p224_fe_t t0, t1, t2, t3, t4;
@@ -224,27 +224,27 @@ p224_fe_invert(p224_fe_t r, const p224_fe_t x) {
   p224_fe_mul(t4, t4, t1);
 
   /* x120 = x96^(2^24) * x24 */
-  p224_fe_sqrn(r, t4, 24);
-  p224_fe_mul(r, r, t3);
+  p224_fe_sqrn(z, t4, 24);
+  p224_fe_mul(z, z, t3);
 
   /* x126 = x120^(2^6) * x6 */
-  p224_fe_sqrn(r, r, 6);
-  p224_fe_mul(r, r, t2);
+  p224_fe_sqrn(z, z, 6);
+  p224_fe_mul(z, z, t2);
 
   /* x127 = x126^(2^1) * x1 */
-  p224_fe_sqr(r, r);
-  p224_fe_mul(r, r, t0);
+  p224_fe_sqr(z, z);
+  p224_fe_mul(z, z, t0);
 
-  /* r = r^(2^1) */
-  p224_fe_sqr(r, r);
+  /* z = z^(2^1) */
+  p224_fe_sqr(z, z);
 
-  /* r = r^(2^96) * x96 */
-  p224_fe_sqrn(r, r, 96);
-  p224_fe_mul(r, r, t4);
+  /* z = z^(2^96) * x96 */
+  p224_fe_sqrn(z, z, 96);
+  p224_fe_mul(z, z, t4);
 }
 
 static int
-p224_fe_sqrt(p224_fe_t r, const p224_fe_t x) {
+p224_fe_sqrt(p224_fe_t z, const p224_fe_t x) {
   /* Tonelli-Shanks for P224 (constant time).
    *
    * Resources:
@@ -289,15 +289,17 @@ p224_fe_sqrt(p224_fe_t r, const p224_fe_t x) {
    *
    *   return z
    */
-  p224_fe_t z, t, b, c, v;
-  int i, equal, ret;
+  p224_fe_t x1, t, b, c, v;
+  int i, eq;
 
-  p224_fe_pow_em1(z, x);
+  p224_fe_set(x1, x);
+
+  p224_fe_pow_em1(z, x1);
 
   p224_fe_sqr(t, z);
-  p224_fe_mul(t, t, x);
+  p224_fe_mul(t, t, x1);
 
-  p224_fe_mul(z, z, x);
+  p224_fe_mul(z, z, x1);
 
   p224_fe_set(b, t);
   p224_fe_set(c, p224_g);
@@ -305,30 +307,26 @@ p224_fe_sqrt(p224_fe_t r, const p224_fe_t x) {
   for (i = 96 - 2; i >= 0; i--) {
     p224_fe_sqrn(b, b, i);
 
-    equal = p224_fe_equal(b, p224_one);
+    eq = p224_fe_equal(b, p224_one);
 
     p224_fe_mul(v, z, c);
-    p224_fe_select(z, z, v, equal ^ 1);
+    p224_fe_select(z, z, v, eq ^ 1);
 
     p224_fe_sqr(c, c);
 
     p224_fe_mul(v, t, c);
-    p224_fe_select(t, t, v, equal ^ 1);
+    p224_fe_select(t, t, v, eq ^ 1);
 
     p224_fe_set(b, t);
   }
 
   p224_fe_sqr(v, z);
 
-  ret = p224_fe_equal(v, x);
-
-  p224_fe_set(r, z);
-
-  return ret;
+  return p224_fe_equal(v, x1);
 }
 
 TORSION_UNUSED static int
-p224_fe_sqrt_var(p224_fe_t r, const p224_fe_t x) {
+p224_fe_sqrt_var(p224_fe_t z, const p224_fe_t x) {
   /* Tonelli-Shanks for P224 (variable time).
    *
    * Constants:
@@ -381,7 +379,7 @@ p224_fe_sqrt_var(p224_fe_t r, const p224_fe_t x) {
   p224_fe_pow_e(y, x);
   p224_fe_pow_s(b, x);
 
-  p224_fe_set(r, p224_zero);
+  p224_fe_set(z, p224_zero);
 
   /* Note that b happens to be the first
    * step of Euler's criterion. Squaring
@@ -425,39 +423,39 @@ p224_fe_sqrt_var(p224_fe_t r, const p224_fe_t x) {
     k = m;
   }
 
-  p224_fe_set(r, y);
+  p224_fe_set(z, y);
 
   return 1;
 }
 
 static void
-p224_fe_legendre(p224_fe_t r, const p224_fe_t x) {
+p224_fe_legendre(p224_fe_t z, const p224_fe_t x) {
   /* Exponent: (p - 1) / 2 */
   /* Bits: 128x1 95x0 */
 
-  /* r = x^(2^128 - 1) */
-  p224_fe_pow_s(r, x);
+  /* z = x^(2^128 - 1) */
+  p224_fe_pow_s(z, x);
 
-  /* r = r^(2^95) */
-  p224_fe_sqrn(r, r, 95);
+  /* z = z^(2^95) */
+  p224_fe_sqrn(z, z, 95);
 }
 
 static void
-fiat_p224_scmul_3(p224_fe_t r, const p224_fe_t x) {
+fiat_p224_scmul_3(p224_fe_t z, const p224_fe_t x) {
   p224_fe_t t;
   fiat_p224_add(t, x, x);
-  fiat_p224_add(r, t, x);
+  fiat_p224_add(z, t, x);
 }
 
 static void
-fiat_p224_scmul_4(p224_fe_t r, const p224_fe_t x) {
-  fiat_p224_add(r, x, x);
-  fiat_p224_add(r, r, r);
+fiat_p224_scmul_4(p224_fe_t z, const p224_fe_t x) {
+  fiat_p224_add(z, x, x);
+  fiat_p224_add(z, z, z);
 }
 
 static void
-fiat_p224_scmul_8(p224_fe_t r, const p224_fe_t x) {
-  fiat_p224_add(r, x, x);
-  fiat_p224_add(r, r, r);
-  fiat_p224_add(r, r, r);
+fiat_p224_scmul_8(p224_fe_t z, const p224_fe_t x) {
+  fiat_p224_add(z, x, x);
+  fiat_p224_add(z, z, z);
+  fiat_p224_add(z, z, z);
 }

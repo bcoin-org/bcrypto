@@ -26,16 +26,16 @@ typedef p256_fe_word_t p256_fe_t[P256_FIELD_WORDS];
 #define p256_fe_sqr fiat_p256_square
 
 static void
-p256_fe_set(p256_fe_t r, const p256_fe_t x) {
-  r[0] = x[0];
-  r[1] = x[1];
-  r[2] = x[2];
-  r[3] = x[3];
+p256_fe_set(p256_fe_t z, const p256_fe_t x) {
+  z[0] = x[0];
+  z[1] = x[1];
+  z[2] = x[2];
+  z[3] = x[3];
 #if P256_FIELD_WORDS == 8
-  r[4] = x[4];
-  r[5] = x[5];
-  r[6] = x[6];
-  r[7] = x[7];
+  z[4] = x[4];
+  z[5] = x[5];
+  z[6] = x[6];
+  z[7] = x[7];
 #endif
 }
 
@@ -53,17 +53,17 @@ p256_fe_equal(const p256_fe_t x, const p256_fe_t y) {
 }
 
 static void
-p256_fe_sqrn(p256_fe_t r, const p256_fe_t x, int n) {
+p256_fe_sqrn(p256_fe_t z, const p256_fe_t x, int n) {
   int i;
 
-  p256_fe_sqr(r, x);
+  p256_fe_sqr(z, x);
 
   for (i = 1; i < n; i++)
-    p256_fe_sqr(r, r);
+    p256_fe_sqr(z, z);
 }
 
 static void
-p256_fe_pow_pm3d4(p256_fe_t r, const p256_fe_t x) {
+p256_fe_pow_pm3d4(p256_fe_t z, const p256_fe_t x) {
   /* Exponent: (p - 3) / 4 */
   /* Bits: 32x1 31x0 1x1 96x0 94x1 */
   p256_fe_t t0, t1, t2, t3, t4;
@@ -99,31 +99,31 @@ p256_fe_pow_pm3d4(p256_fe_t r, const p256_fe_t x) {
   p256_fe_sqrn(t3, t2, 2);
   p256_fe_mul(t3, t3, t1);
 
-  /* r = x32^(2^31) */
-  p256_fe_sqrn(r, t3, 31);
+  /* z = x32^(2^31) */
+  p256_fe_sqrn(z, t3, 31);
 
-  /* r = r^(2^1) * x1 */
-  p256_fe_sqr(r, r);
-  p256_fe_mul(r, r, t0);
+  /* z = z^(2^1) * x1 */
+  p256_fe_sqr(z, z);
+  p256_fe_mul(z, z, t0);
 
-  /* r = r^(2^96) */
-  p256_fe_sqrn(r, r, 96);
+  /* z = z^(2^96) */
+  p256_fe_sqrn(z, z, 96);
 
-  /* r = r^(2^32) * x32 */
-  p256_fe_sqrn(r, r, 32);
-  p256_fe_mul(r, r, t3);
+  /* z = z^(2^32) * x32 */
+  p256_fe_sqrn(z, z, 32);
+  p256_fe_mul(z, z, t3);
 
-  /* r = r^(2^32) * x32 */
-  p256_fe_sqrn(r, r, 32);
-  p256_fe_mul(r, r, t3);
+  /* z = z^(2^32) * x32 */
+  p256_fe_sqrn(z, z, 32);
+  p256_fe_mul(z, z, t3);
 
-  /* r = r^(2^30) * x30 */
-  p256_fe_sqrn(r, r, 30);
-  p256_fe_mul(r, r, t2);
+  /* z = z^(2^30) * x30 */
+  p256_fe_sqrn(z, z, 30);
+  p256_fe_mul(z, z, t2);
 }
 
 static void
-p256_fe_invert(p256_fe_t r, const p256_fe_t x) {
+p256_fe_invert(p256_fe_t z, const p256_fe_t x) {
   /* Exponent: p - 2 */
   /* Bits: 32x1 31x0 1x1 96x0 94x1 1x0 1x1 */
   p256_fe_t x1;
@@ -131,19 +131,19 @@ p256_fe_invert(p256_fe_t r, const p256_fe_t x) {
   /* x1 = x */
   p256_fe_set(x1, x);
 
-  /* r = x1^((p - 3) / 4) */
-  p256_fe_pow_pm3d4(r, x1);
+  /* z = x1^((p - 3) / 4) */
+  p256_fe_pow_pm3d4(z, x1);
 
-  /* r = r^(2^1) */
-  p256_fe_sqr(r, r);
+  /* z = z^(2^1) */
+  p256_fe_sqr(z, z);
 
-  /* r = r^(2^1) * x1 */
-  p256_fe_sqr(r, r);
-  p256_fe_mul(r, r, x1);
+  /* z = z^(2^1) * x1 */
+  p256_fe_sqr(z, z);
+  p256_fe_mul(z, z, x1);
 }
 
 static int
-p256_fe_sqrt(p256_fe_t r, const p256_fe_t x) {
+p256_fe_sqrt(p256_fe_t z, const p256_fe_t x) {
   /* Exponent: (p + 1) / 4 */
   /* Bits: 32x1 31x0 1x1 95x0 1x1 94x0 */
   p256_fe_t t0, t1, t2;
@@ -168,34 +168,34 @@ p256_fe_sqrt(p256_fe_t r, const p256_fe_t x) {
   p256_fe_mul(t2, t2, t1);
 
   /* x32 = x16^(2^16) * x16 */
-  p256_fe_sqrn(r, t2, 16);
-  p256_fe_mul(r, r, t2);
+  p256_fe_sqrn(z, t2, 16);
+  p256_fe_mul(z, z, t2);
 
-  /* r = x32^(2^31) */
-  p256_fe_sqrn(r, r, 31);
+  /* z = x32^(2^31) */
+  p256_fe_sqrn(z, z, 31);
 
-  /* r = r^(2^1) * x1 */
-  p256_fe_sqr(r, r);
-  p256_fe_mul(r, r, t0);
+  /* z = z^(2^1) * x1 */
+  p256_fe_sqr(z, z);
+  p256_fe_mul(z, z, t0);
 
-  /* r = r^(2^95) */
-  p256_fe_sqrn(r, r, 95);
+  /* z = z^(2^95) */
+  p256_fe_sqrn(z, z, 95);
 
-  /* r = r^(2^1) * x1 */
-  p256_fe_sqr(r, r);
-  p256_fe_mul(r, r, t0);
+  /* z = z^(2^1) * x1 */
+  p256_fe_sqr(z, z);
+  p256_fe_mul(z, z, t0);
 
-  /* r = r^(2^94) */
-  p256_fe_sqrn(r, r, 94);
+  /* z = z^(2^94) */
+  p256_fe_sqrn(z, z, 94);
 
-  /* r^2 == x1 */
-  p256_fe_sqr(t1, r);
+  /* z^2 == x1 */
+  p256_fe_sqr(t1, z);
 
   return p256_fe_equal(t1, t0);
 }
 
 static int
-p256_fe_isqrt(p256_fe_t r, const p256_fe_t u, const p256_fe_t v) {
+p256_fe_isqrt(p256_fe_t z, const p256_fe_t u, const p256_fe_t v) {
   p256_fe_t t, x, c;
   int ret;
 
@@ -216,27 +216,27 @@ p256_fe_isqrt(p256_fe_t r, const p256_fe_t u, const p256_fe_t v) {
 
   ret = p256_fe_equal(c, u);
 
-  p256_fe_set(r, x);
+  p256_fe_set(z, x);
 
   return ret;
 }
 
 static void
-fiat_p256_scmul_3(p256_fe_t r, const p256_fe_t x) {
+fiat_p256_scmul_3(p256_fe_t z, const p256_fe_t x) {
   p256_fe_t t;
   fiat_p256_add(t, x, x);
-  fiat_p256_add(r, t, x);
+  fiat_p256_add(z, t, x);
 }
 
 static void
-fiat_p256_scmul_4(p256_fe_t r, const p256_fe_t x) {
-  fiat_p256_add(r, x, x);
-  fiat_p256_add(r, r, r);
+fiat_p256_scmul_4(p256_fe_t z, const p256_fe_t x) {
+  fiat_p256_add(z, x, x);
+  fiat_p256_add(z, z, z);
 }
 
 static void
-fiat_p256_scmul_8(p256_fe_t r, const p256_fe_t x) {
-  fiat_p256_add(r, x, x);
-  fiat_p256_add(r, r, r);
-  fiat_p256_add(r, r, r);
+fiat_p256_scmul_8(p256_fe_t z, const p256_fe_t x) {
+  fiat_p256_add(z, x, x);
+  fiat_p256_add(z, z, z);
+  fiat_p256_add(z, z, z);
 }

@@ -23,26 +23,26 @@ typedef p448_fe_word_t p448_fe_t[P448_FIELD_WORDS];
 #define p448_fe_sqr fiat_p448_carry_square
 
 static void
-p448_fe_set(p448_fe_t r, const p448_fe_t x) {
-  r[0] = x[0];
-  r[1] = x[1];
-  r[2] = x[2];
-  r[3] = x[3];
-  r[4] = x[4];
-  r[5] = x[5];
-  r[6] = x[6];
-  r[7] = x[7];
+p448_fe_set(p448_fe_t z, const p448_fe_t x) {
+  z[0] = x[0];
+  z[1] = x[1];
+  z[2] = x[2];
+  z[3] = x[3];
+  z[4] = x[4];
+  z[5] = x[5];
+  z[6] = x[6];
+  z[7] = x[7];
 #if P448_FIELD_WORDS == 18
-  r[8] = x[8];
-  r[9] = x[9];
-  r[10] = x[10];
-  r[11] = x[11];
-  r[12] = x[12];
-  r[13] = x[13];
-  r[14] = x[14];
-  r[15] = x[15];
-  r[16] = x[16];
-  r[17] = x[17];
+  z[8] = x[8];
+  z[9] = x[9];
+  z[10] = x[10];
+  z[11] = x[11];
+  z[12] = x[12];
+  z[13] = x[13];
+  z[14] = x[14];
+  z[15] = x[15];
+  z[16] = x[16];
+  z[17] = x[17];
 #endif
 }
 
@@ -63,17 +63,17 @@ p448_fe_equal(const p448_fe_t x, const p448_fe_t y) {
 }
 
 static void
-p448_fe_sqrn(p448_fe_t r, const p448_fe_t x, int n) {
+p448_fe_sqrn(p448_fe_t z, const p448_fe_t x, int n) {
   int i;
 
-  p448_fe_sqr(r, x);
+  p448_fe_sqr(z, x);
 
   for (i = 1; i < n; i++)
-    p448_fe_sqr(r, r);
+    p448_fe_sqr(z, z);
 }
 
 static void
-p448_fe_pow_core(p448_fe_t r, const p448_fe_t x1, const p448_fe_t x2) {
+p448_fe_pow_core(p448_fe_t z, const p448_fe_t x1, const p448_fe_t x2) {
   /* Exponent: 2^222 - 1 */
   /* Bits: 222x1 */
   p448_fe_t t1, t2;
@@ -107,20 +107,20 @@ p448_fe_pow_core(p448_fe_t r, const p448_fe_t x1, const p448_fe_t x2) {
   p448_fe_mul(t2, t2, t1);
 
   /* x176 = x88^(2^88) * x88 */
-  p448_fe_sqrn(r, t2, 88);
-  p448_fe_mul(r, r, t2);
+  p448_fe_sqrn(z, t2, 88);
+  p448_fe_mul(z, z, t2);
 
   /* x220 = x176^(2^44) * x44 */
-  p448_fe_sqrn(r, r, 44);
-  p448_fe_mul(r, r, t1);
+  p448_fe_sqrn(z, z, 44);
+  p448_fe_mul(z, z, t1);
 
   /* x222 = x220^(2^2) * x2 */
-  p448_fe_sqrn(r, r, 2);
-  p448_fe_mul(r, r, x2);
+  p448_fe_sqrn(z, z, 2);
+  p448_fe_mul(z, z, x2);
 }
 
 static void
-p448_fe_pow_pm3d4(p448_fe_t r, const p448_fe_t x) {
+p448_fe_pow_pm3d4(p448_fe_t z, const p448_fe_t x) {
   /* Exponent: (p - 3) / 4 */
   /* Bits: 223x1 1x0 222x1 */
   p448_fe_t x1, x2, x222;
@@ -135,20 +135,20 @@ p448_fe_pow_pm3d4(p448_fe_t r, const p448_fe_t x) {
   /* x222 = x1^(2^222 - 1) */
   p448_fe_pow_core(x222, x1, x2);
 
-  /* r = x222^(2^1) * x1 */
-  p448_fe_sqr(r, x222);
-  p448_fe_mul(r, r, x1);
+  /* z = x222^(2^1) * x1 */
+  p448_fe_sqr(z, x222);
+  p448_fe_mul(z, z, x1);
 
-  /* r = r^(2^1) */
-  p448_fe_sqr(r, r);
+  /* z = z^(2^1) */
+  p448_fe_sqr(z, z);
 
-  /* r = r^(2^222) * x222 */
-  p448_fe_sqrn(r, r, 222);
-  p448_fe_mul(r, r, x222);
+  /* z = z^(2^222) * x222 */
+  p448_fe_sqrn(z, z, 222);
+  p448_fe_mul(z, z, x222);
 }
 
 static void
-p448_fe_invert(p448_fe_t r, const p448_fe_t x) {
+p448_fe_invert(p448_fe_t z, const p448_fe_t x) {
   /* Exponent: p - 2 */
   /* Bits: 223x1 1x0 222x1 1x0 1x1 */
   p448_fe_t x1;
@@ -156,19 +156,19 @@ p448_fe_invert(p448_fe_t r, const p448_fe_t x) {
   /* x1 = x */
   p448_fe_set(x1, x);
 
-  /* r = x1^((p - 3) / 4) */
-  p448_fe_pow_pm3d4(r, x1);
+  /* z = x1^((p - 3) / 4) */
+  p448_fe_pow_pm3d4(z, x1);
 
-  /* r = r^(2^1) */
-  p448_fe_sqr(r, r);
+  /* z = z^(2^1) */
+  p448_fe_sqr(z, z);
 
-  /* r = r^(2^1) * x1 */
-  p448_fe_sqr(r, r);
-  p448_fe_mul(r, r, x1);
+  /* z = z^(2^1) * x1 */
+  p448_fe_sqr(z, z);
+  p448_fe_mul(z, z, x1);
 }
 
 static int
-p448_fe_sqrt(p448_fe_t r, const p448_fe_t x) {
+p448_fe_sqrt(p448_fe_t z, const p448_fe_t x) {
   /* Exponent: (p + 1) / 4 */
   /* Bits: 224x1 222x0 */
   p448_fe_t x1, x2;
@@ -180,24 +180,24 @@ p448_fe_sqrt(p448_fe_t r, const p448_fe_t x) {
   p448_fe_sqr(x2, x1);
   p448_fe_mul(x2, x2, x1);
 
-  /* r = x1^(2^222 - 1) */
-  p448_fe_pow_core(r, x1, x2);
+  /* z = x1^(2^222 - 1) */
+  p448_fe_pow_core(z, x1, x2);
 
-  /* r = r^(2^2) * x2 */
-  p448_fe_sqrn(r, r, 2);
-  p448_fe_mul(r, r, x2);
+  /* z = z^(2^2) * x2 */
+  p448_fe_sqrn(z, z, 2);
+  p448_fe_mul(z, z, x2);
 
-  /* r = r^(2^222) */
-  p448_fe_sqrn(r, r, 222);
+  /* z = z^(2^222) */
+  p448_fe_sqrn(z, z, 222);
 
-  /* r^2 == x1 */
-  p448_fe_sqr(x2, r);
+  /* z^2 == x1 */
+  p448_fe_sqr(x2, z);
 
   return p448_fe_equal(x2, x1);
 }
 
 static int
-p448_fe_isqrt(p448_fe_t r, const p448_fe_t u, const p448_fe_t v) {
+p448_fe_isqrt(p448_fe_t z, const p448_fe_t u, const p448_fe_t v) {
   p448_fe_t t, x, c;
   int ret;
 
@@ -218,13 +218,13 @@ p448_fe_isqrt(p448_fe_t r, const p448_fe_t u, const p448_fe_t v) {
 
   ret = p448_fe_equal(c, u);
 
-  p448_fe_set(r, x);
+  p448_fe_set(z, x);
 
   return ret;
 }
 
 static void
-fiat_p448_carry_scmul_m39081(p448_fe_t r, const p448_fe_t x) {
-  fiat_p448_opp(r, x);
-  fiat_p448_carry_scmul_39081(r, r);
+fiat_p448_carry_scmul_m39081(p448_fe_t z, const p448_fe_t x) {
+  fiat_p448_opp(z, x);
+  fiat_p448_carry_scmul_39081(z, z);
 }

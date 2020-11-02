@@ -26,22 +26,22 @@ typedef p384_fe_word_t p384_fe_t[P384_FIELD_WORDS];
 #define p384_fe_sqr fiat_p384_square
 
 static void
-p384_fe_set(p384_fe_t r, const p384_fe_t x) {
-  r[0] = x[0];
-  r[1] = x[1];
-  r[2] = x[2];
-  r[3] = x[3];
-  r[4] = x[4];
-  r[5] = x[5];
+p384_fe_set(p384_fe_t z, const p384_fe_t x) {
+  z[0] = x[0];
+  z[1] = x[1];
+  z[2] = x[2];
+  z[3] = x[3];
+  z[4] = x[4];
+  z[5] = x[5];
 #if P384_FIELD_WORDS == 12
-  r[4] = x[4];
-  r[5] = x[5];
-  r[6] = x[6];
-  r[7] = x[7];
-  r[8] = x[8];
-  r[9] = x[9];
-  r[10] = x[10];
-  r[11] = x[11];
+  z[4] = x[4];
+  z[5] = x[5];
+  z[6] = x[6];
+  z[7] = x[7];
+  z[8] = x[8];
+  z[9] = x[9];
+  z[10] = x[10];
+  z[11] = x[11];
 #endif
 }
 
@@ -59,17 +59,17 @@ p384_fe_equal(const p384_fe_t x, const p384_fe_t y) {
 }
 
 static void
-p384_fe_sqrn(p384_fe_t r, const p384_fe_t x, int n) {
+p384_fe_sqrn(p384_fe_t z, const p384_fe_t x, int n) {
   int i;
 
-  p384_fe_sqr(r, x);
+  p384_fe_sqr(z, x);
 
   for (i = 1; i < n; i++)
-    p384_fe_sqr(r, r);
+    p384_fe_sqr(z, z);
 }
 
 static void
-p384_fe_pow_pm3d4(p384_fe_t r, const p384_fe_t x1) {
+p384_fe_pow_pm3d4(p384_fe_t z, const p384_fe_t x1) {
   /* Exponent: (p - 3) / 4 */
   /* Bits: 255x1 1x0 32x1 64x0 30x1 */
   p384_fe_t t1, t2, t3, t4, t5;
@@ -107,34 +107,34 @@ p384_fe_pow_pm3d4(p384_fe_t r, const p384_fe_t x1) {
   p384_fe_mul(t5, t5, t4);
 
   /* x240 = x120^(2^120) * x120 */
-  p384_fe_sqrn(r, t5, 120);
-  p384_fe_mul(r, r, t5);
+  p384_fe_sqrn(z, t5, 120);
+  p384_fe_mul(z, z, t5);
 
   /* x255 = x240^(2^15) * x15 */
-  p384_fe_sqrn(r, r, 15);
-  p384_fe_mul(r, r, t3);
+  p384_fe_sqrn(z, z, 15);
+  p384_fe_mul(z, z, t3);
 
-  /* r = x255^(2^1) */
-  p384_fe_sqr(r, r);
+  /* z = x255^(2^1) */
+  p384_fe_sqr(z, z);
 
-  /* r = r^(2^30) * x30 */
-  p384_fe_sqrn(r, r, 30);
-  p384_fe_mul(r, r, t2);
+  /* z = z^(2^30) * x30 */
+  p384_fe_sqrn(z, z, 30);
+  p384_fe_mul(z, z, t2);
 
-  /* r = r^(2^2) * x2 */
-  p384_fe_sqrn(r, r, 2);
-  p384_fe_mul(r, r, t1);
+  /* z = z^(2^2) * x2 */
+  p384_fe_sqrn(z, z, 2);
+  p384_fe_mul(z, z, t1);
 
-  /* r = r^(2^64) */
-  p384_fe_sqrn(r, r, 64);
+  /* z = z^(2^64) */
+  p384_fe_sqrn(z, z, 64);
 
-  /* r = r^(2^30) * x30 */
-  p384_fe_sqrn(r, r, 30);
-  p384_fe_mul(r, r, t2);
+  /* z = z^(2^30) * x30 */
+  p384_fe_sqrn(z, z, 30);
+  p384_fe_mul(z, z, t2);
 }
 
 static void
-p384_fe_invert(p384_fe_t r, const p384_fe_t x) {
+p384_fe_invert(p384_fe_t z, const p384_fe_t x) {
   /* Exponent: p - 2 */
   /* Bits: 255x1 1x0 32x1 64x0 30x1 1x0 1x1 */
   p384_fe_t x1;
@@ -142,19 +142,19 @@ p384_fe_invert(p384_fe_t r, const p384_fe_t x) {
   /* x1 = x */
   p384_fe_set(x1, x);
 
-  /* r = x1^((p - 3) / 4) */
-  p384_fe_pow_pm3d4(r, x1);
+  /* z = x1^((p - 3) / 4) */
+  p384_fe_pow_pm3d4(z, x1);
 
-  /* r = r^(2^1) */
-  p384_fe_sqr(r, r);
+  /* z = z^(2^1) */
+  p384_fe_sqr(z, z);
 
-  /* r = r^(2^1) * x1 */
-  p384_fe_sqr(r, r);
-  p384_fe_mul(r, r, x1);
+  /* z = z^(2^1) * x1 */
+  p384_fe_sqr(z, z);
+  p384_fe_mul(z, z, x1);
 }
 
 static int
-p384_fe_sqrt(p384_fe_t r, const p384_fe_t x) {
+p384_fe_sqrt(p384_fe_t z, const p384_fe_t x) {
   /* Exponent: (p + 1) / 4 */
   /* Bits: 255x1 1x0 32x1 63x0 1x1 30x0 */
   p384_fe_t t0, t1, t2, t3, t4, t5;
@@ -194,42 +194,42 @@ p384_fe_sqrt(p384_fe_t r, const p384_fe_t x) {
   p384_fe_mul(t5, t5, t4);
 
   /* x240 = x120^(2^120) * x120 */
-  p384_fe_sqrn(r, t5, 120);
-  p384_fe_mul(r, r, t5);
+  p384_fe_sqrn(z, t5, 120);
+  p384_fe_mul(z, z, t5);
 
   /* x255 = x240^(2^15) * x15 */
-  p384_fe_sqrn(r, r, 15);
-  p384_fe_mul(r, r, t3);
+  p384_fe_sqrn(z, z, 15);
+  p384_fe_mul(z, z, t3);
 
-  /* r = x255^(2^1) */
-  p384_fe_sqr(r, r);
+  /* z = x255^(2^1) */
+  p384_fe_sqr(z, z);
 
-  /* r = r^(2^30) * x30 */
-  p384_fe_sqrn(r, r, 30);
-  p384_fe_mul(r, r, t2);
+  /* z = z^(2^30) * x30 */
+  p384_fe_sqrn(z, z, 30);
+  p384_fe_mul(z, z, t2);
 
-  /* r = r^(2^2) * x2 */
-  p384_fe_sqrn(r, r, 2);
-  p384_fe_mul(r, r, t1);
+  /* z = z^(2^2) * x2 */
+  p384_fe_sqrn(z, z, 2);
+  p384_fe_mul(z, z, t1);
 
-  /* r = r^(2^63) */
-  p384_fe_sqrn(r, r, 63);
+  /* z = z^(2^63) */
+  p384_fe_sqrn(z, z, 63);
 
-  /* r = r^(2^1) * x1 */
-  p384_fe_sqr(r, r);
-  p384_fe_mul(r, r, t0);
+  /* z = z^(2^1) * x1 */
+  p384_fe_sqr(z, z);
+  p384_fe_mul(z, z, t0);
 
-  /* r = r^(2^30) */
-  p384_fe_sqrn(r, r, 30);
+  /* z = z^(2^30) */
+  p384_fe_sqrn(z, z, 30);
 
-  /* r^2 == x1 */
-  p384_fe_sqr(t1, r);
+  /* z^2 == x1 */
+  p384_fe_sqr(t1, z);
 
   return p384_fe_equal(t1, t0);
 }
 
 static int
-p384_fe_isqrt(p384_fe_t r, const p384_fe_t u, const p384_fe_t v) {
+p384_fe_isqrt(p384_fe_t z, const p384_fe_t u, const p384_fe_t v) {
   p384_fe_t t, x, c;
   int ret;
 
@@ -250,27 +250,27 @@ p384_fe_isqrt(p384_fe_t r, const p384_fe_t u, const p384_fe_t v) {
 
   ret = p384_fe_equal(c, u);
 
-  p384_fe_set(r, x);
+  p384_fe_set(z, x);
 
   return ret;
 }
 
 static void
-fiat_p384_scmul_3(p384_fe_t r, const p384_fe_t x) {
+fiat_p384_scmul_3(p384_fe_t z, const p384_fe_t x) {
   p384_fe_t t;
   fiat_p384_add(t, x, x);
-  fiat_p384_add(r, t, x);
+  fiat_p384_add(z, t, x);
 }
 
 static void
-fiat_p384_scmul_4(p384_fe_t r, const p384_fe_t x) {
-  fiat_p384_add(r, x, x);
-  fiat_p384_add(r, r, r);
+fiat_p384_scmul_4(p384_fe_t z, const p384_fe_t x) {
+  fiat_p384_add(z, x, x);
+  fiat_p384_add(z, z, z);
 }
 
 static void
-fiat_p384_scmul_8(p384_fe_t r, const p384_fe_t x) {
-  fiat_p384_add(r, x, x);
-  fiat_p384_add(r, r, r);
-  fiat_p384_add(r, r, r);
+fiat_p384_scmul_8(p384_fe_t z, const p384_fe_t x) {
+  fiat_p384_add(z, x, x);
+  fiat_p384_add(z, z, z);
+  fiat_p384_add(z, z, z);
 }
