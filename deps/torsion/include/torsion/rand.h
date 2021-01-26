@@ -19,16 +19,16 @@ extern "C" {
  * Symbol Aliases
  */
 
-#define torsion_reentrancy __torsion_reentrancy
+#define torsion_threadsafety __torsion_threadsafety
 #define torsion_randomaddr __torsion_randomaddr
 
 /*
  * Defs
  */
 
-#define TORSION_REENT_NONE 0
-#define TORSION_REENT_TLS 1
-#define TORSION_REENT_MUTEX 2
+#define TORSION_THREAD_SAFETY_NONE 0
+#define TORSION_THREAD_SAFETY_TLS 1
+#define TORSION_THREAD_SAFETY_MUTEX 2
 
 /*
  * Random
@@ -51,9 +51,9 @@ torsion_uniform(uint32_t *num, uint32_t max);
  */
 
 TORSION_EXTERN int
-torsion_reentrancy(void);
+torsion_threadsafety(void);
 
-TORSION_EXTERN uintptr_t
+TORSION_EXTERN uint64_t
 torsion_randomaddr(void);
 
 #ifdef __cplusplus

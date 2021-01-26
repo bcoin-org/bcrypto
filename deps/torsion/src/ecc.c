@@ -759,7 +759,7 @@ sc_is_zero(const scalar_field_t *sc, const sc_t x) {
 
 static int
 sc_equal(const scalar_field_t *sc, const sc_t x, const sc_t y) {
-  return mpn_sec_equal(x, y, sc->limbs);
+  return mpn_sec_equal_p(x, y, sc->limbs);
 }
 
 static int
@@ -769,12 +769,12 @@ sc_cmp_var(const scalar_field_t *sc, const sc_t x, const sc_t y) {
 
 static int
 sc_is_canonical(const scalar_field_t *sc, const sc_t x) {
-  return mpn_sec_lt(x, sc->n, sc->limbs);
+  return mpn_sec_lt_p(x, sc->n, sc->limbs);
 }
 
 static int
 sc_is_high(const scalar_field_t *sc, const sc_t x) {
-  return mpn_sec_gt(x, sc->nh, sc->limbs);
+  return mpn_sec_gt_p(x, sc->nh, sc->limbs);
 }
 
 static int
@@ -965,7 +965,7 @@ sc_import_wide(const scalar_field_t *sc, sc_t z,
 
   mpn_import(zp, sc->shift, raw, len, sc->endian);
 
-  ret &= mpn_sec_lt(zp, sc->n, sc->limbs);
+  ret &= mpn_sec_lt_p(zp, sc->n, sc->limbs);
 
   if (len > sc->size)
     ret &= mpn_sec_zero_p(zp + sc->limbs, sc->shift - sc->limbs);
@@ -1495,7 +1495,7 @@ fe_set_sc(const prime_field_t *fe,
   mpn_export(raw, fe->size, x, sc->limbs, fe->endian);
 
   if (sc->size > fe->size) {
-    ret &= mpn_sec_lt(x, fe->p, fe->limbs);
+    ret &= mpn_sec_lt_p(x, fe->p, fe->limbs);
     ret &= mpn_sec_zero_p(x + fe->limbs, sc->limbs - fe->limbs);
   }
 
@@ -5189,7 +5189,7 @@ wei_point_to_uniform(const wei_t *ec,
 
   fe_export(fe, bytes, u);
 
-  bytes[0] |= (hint >> 8) & ~fe->mask;
+  bytes[0] |= (hint >> 8) & ~fe->mask & 0xff;
 
   fe_cleanse(fe, u);
   wge_cleanse(ec, &p0);
@@ -6314,7 +6314,7 @@ mont_point_to_uniform(const mont_t *ec,
 
   fe_export(fe, bytes, u);
 
-  bytes[fe->size - 1] |= (hint >> 8) & ~fe->mask;
+  bytes[fe->size - 1] |= (hint >> 8) & ~fe->mask & 0xff;
 
   fe_cleanse(fe, u);
   mge_cleanse(ec, &p0);
@@ -7769,7 +7769,7 @@ edwards_point_to_uniform(const edwards_t *ec,
 
   fe_export(fe, bytes, u);
 
-  bytes[fe->size - 1] |= (hint >> 8) & ~fe->mask;
+  bytes[fe->size - 1] |= (hint >> 8) & ~fe->mask & 0xff;
 
   fe_cleanse(fe, u);
   xge_cleanse(ec, &p0);
@@ -8063,7 +8063,7 @@ ristretto_point_to_uniform(const edwards_t *ec,
 
   fe_export(fe, bytes, u);
 
-  bytes[fe->size - 1] |= (hint >> 8) & ~fe->mask;
+  bytes[fe->size - 1] |= (hint >> 8) & ~fe->mask & 0xff;
 
   fe_cleanse(fe, u);
 

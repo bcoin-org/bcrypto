@@ -11,8 +11,10 @@
  * Clang Compat
  */
 
-#ifndef __has_builtin
-#  define __has_builtin(x) 0
+#if defined(__has_builtin)
+#  define TORSION_HAS_BUILTIN __has_builtin
+#else
+#  define TORSION_HAS_BUILTIN(x) 0
 #endif
 
 /*
@@ -33,7 +35,7 @@
 #undef LIKELY
 #undef UNLIKELY
 
-#if TORSION_GNUC_PREREQ(3, 0) || __has_builtin(__builtin_expect)
+#if TORSION_GNUC_PREREQ(3, 0) || TORSION_HAS_BUILTIN(__builtin_expect)
 #  define LIKELY(x) __builtin_expect(!!(x), 1)
 #  define UNLIKELY(x) __builtin_expect(!!(x), 0)
 #else
@@ -178,6 +180,8 @@ static const unsigned long __torsion_endian_check TORSION_UNUSED = 1;
 #  define TORSION_HAVE_ASM
 #  if defined(__amd64__) || defined(__x86_64__)
 #    define TORSION_HAVE_ASM_X64
+#  elif defined(__i386__)
+#    define TORSION_HAVE_ASM_X86
 #  endif
 #endif
 
@@ -186,21 +190,34 @@ static const unsigned long __torsion_endian_check TORSION_UNUSED = 1;
  * Support (verified on godbolt):
  *
  *   x86-64:
- *     gcc 4.6.4 (gnuc 4.6)
- *     clang 3.1 (gnuc 4.2) (__SIZEOF_INT128__ defined in 3.3)
- *     icc <=13.0.1 (gnuc 4.7) (__SIZEOF_INT128__ defined in 16.0.3)
+ *     gcc 4.6.4 (gnuc 4.6.4)
+ *     clang 3.1 (gnuc 4.2.1) (__SIZEOF_INT128__ defined in 3.3.0)
+ *     icc <=13.0.1 (gnuc 4.7.0) (__SIZEOF_INT128__ defined in 16.0.3)
  *
  *   arm64:
- *     gcc <=5.4.0 (gnuc 5.4)
- *     clang <=9.0 (gnuc 4.2)
+ *     gcc <=5.4.0 (gnuc 5.4.9)
+ *     clang <=9.0 (gnuc 4.2.1)
+ *
+ *   mips64:
+ *     gcc <=5.4.0 (gnuc 5.4.9)
+ *
+ *   power64/power64le:
+ *     gcc <=6.3.0 (gnuc 6.3.0)
+ *     clang <=12.0.0 (gnuc 4.2.1)
+ *     at <=12.0.0 (gnuc 8.2.1)
+ *
+ *   risc-v64:
+ *     gcc <=8.2.0 (gnuc 8.2.0)
+ *     clang <=12.0.0 (gnuc 4.2.1)
  *
  *   wasm32/wasm64:
- *     clang <=7.0 (gnuc 4.2)
+ *     clang <=7.0 (gnuc 4.2.1)
  *
  * See: https://stackoverflow.com/a/54815033
  */
-#if defined(__GNUC__) && defined(__SIZEOF_INT128__)
-#  if defined(__amd64__) || defined(__x86_64__) || defined(__wasm__)
+#if defined(__GNUC__) && defined(__SIZEOF_INT128__)  \
+                      && defined(__SIZEOF_POINTER__)
+#  if __SIZEOF_POINTER__ >= 8
 #    define TORSION_HAVE_INT128
 #  endif
 #endif
@@ -208,6 +225,7 @@ static const unsigned long __torsion_endian_check TORSION_UNUSED = 1;
 /* Allow some overrides (for testing). */
 #ifdef TORSION_NO_ASM
 #  undef TORSION_HAVE_ASM
+#  undef TORSION_HAVE_ASM_X86
 #  undef TORSION_HAVE_ASM_X64
 #endif
 
@@ -256,6 +274,10 @@ prefix ## _barrier(type x) {          \
 
 #if (-1 & 3) != 3
 #  error "Two's complement is required."
+#endif
+
+#if '0' != 48 || 'A' != 65 || 'a' != 97
+#  error "ASCII support is required."
 #endif
 
 /*

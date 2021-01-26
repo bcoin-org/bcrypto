@@ -449,7 +449,7 @@ dsa_pub_verify(const dsa_pub_t *k) {
   mpz_init(t);
   mpz_powm(t, k->y, k->q, k->p);
 
-  ret = mpz_cmp_ui(t, 1) == 0;
+  ret = (mpz_cmp_ui(t, 1) == 0);
 
   mpz_cleanse(t);
 

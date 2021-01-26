@@ -153,119 +153,6 @@ chacha20_init(chacha20_t *ctx,
 
 static void
 chacha20_block(chacha20_t *ctx, uint32_t *stream) {
-#if defined(TORSION_HAVE_ASM_X64)
-  /* Borrowed from:
-   * https://github.com/gnutls/nettle/blob/master/x86_64/chacha-core-internal.asm
-   *
-   * Registers:
-   *
-   *   %rdi = dst pointer (stream)
-   *   %rsi = src pointer (ctx->state)
-   *   %edx = rounds integer (nettle does `20 >> 1`)
-   *
-   * For reference, our full range of clobbered registers:
-   *
-   *   %rsi, %rdi, %edx, %xmm[0-5]
-   */
-  __asm__ __volatile__(
-    "movl $10, %%edx\n"
-
-    "movups (%%rsi), %%xmm0\n"
-    "movups 16(%%rsi), %%xmm1\n"
-    "movups 32(%%rsi), %%xmm2\n"
-    "movups 48(%%rsi), %%xmm3\n"
-
-    ".align 16\n"
-    "1:\n"
-
-    "paddd %%xmm1, %%xmm0\n"
-    "pxor %%xmm0, %%xmm3\n"
-    "movaps %%xmm3, %%xmm4\n"
-
-    "pshufhw $0xb1, %%xmm3, %%xmm3\n"
-    "pshuflw $0xb1, %%xmm3, %%xmm3\n"
-
-    "paddd %%xmm3, %%xmm2\n"
-    "pxor %%xmm2, %%xmm1\n"
-    "movaps %%xmm1, %%xmm4\n"
-    "pslld $12, %%xmm1\n"
-    "psrld $20, %%xmm4\n"
-    "por %%xmm4, %%xmm1\n"
-
-    "paddd %%xmm1, %%xmm0\n"
-    "pxor %%xmm0, %%xmm3\n"
-    "movaps %%xmm3, %%xmm4\n"
-    "pslld $8, %%xmm3\n"
-    "psrld $24, %%xmm4\n"
-    "por %%xmm4, %%xmm3\n"
-
-    "paddd %%xmm3, %%xmm2\n"
-    "pxor %%xmm2, %%xmm1\n"
-    "movaps %%xmm1, %%xmm4\n"
-    "pslld $7, %%xmm1\n"
-    "psrld $25, %%xmm4\n"
-    "por %%xmm4, %%xmm1\n"
-
-    "pshufd $0x39, %%xmm1, %%xmm1\n"
-    "pshufd $0x4e, %%xmm2, %%xmm2\n"
-    "pshufd $0x93, %%xmm3, %%xmm3\n"
-
-    "paddd %%xmm1, %%xmm0\n"
-    "pxor %%xmm0, %%xmm3\n"
-    "movaps %%xmm3, %%xmm4\n"
-
-    "pshufhw $0xb1, %%xmm3, %%xmm3\n"
-    "pshuflw $0xb1, %%xmm3, %%xmm3\n"
-
-    "paddd %%xmm3, %%xmm2\n"
-    "pxor %%xmm2, %%xmm1\n"
-    "movaps %%xmm1, %%xmm4\n"
-    "pslld $12, %%xmm1\n"
-    "psrld $20, %%xmm4\n"
-    "por %%xmm4, %%xmm1\n"
-
-    "paddd %%xmm1, %%xmm0\n"
-    "pxor %%xmm0, %%xmm3\n"
-    "movaps %%xmm3, %%xmm4\n"
-    "pslld $8, %%xmm3\n"
-    "psrld $24, %%xmm4\n"
-    "por %%xmm4, %%xmm3\n"
-
-    "paddd %%xmm3, %%xmm2\n"
-    "pxor %%xmm2, %%xmm1\n"
-    "movaps %%xmm1, %%xmm4\n"
-    "pslld $7, %%xmm1\n"
-    "psrld $25, %%xmm4\n"
-    "por %%xmm4, %%xmm1\n"
-
-    "pshufd $0x93, %%xmm1, %%xmm1\n"
-    "pshufd $0x4e, %%xmm2, %%xmm2\n"
-    "pshufd $0x39, %%xmm3, %%xmm3\n"
-
-    "decl %%edx\n"
-    "jnz 1b\n"
-
-    "movups (%%rsi), %%xmm4\n"
-    "movups 16(%%rsi), %%xmm5\n"
-    "paddd %%xmm4, %%xmm0\n"
-    "paddd %%xmm5, %%xmm1\n"
-    "movups %%xmm0,(%%rdi)\n"
-    "movups %%xmm1,16(%%rdi)\n"
-    "movups 32(%%rsi), %%xmm4\n"
-    "movups 48(%%rsi), %%xmm5\n"
-    "paddd %%xmm4, %%xmm2\n"
-    "paddd %%xmm5, %%xmm3\n"
-    "movups %%xmm2,32(%%rdi)\n"
-    "movups %%xmm3,48(%%rdi)\n"
-
-    "incq 48(%%rsi)\n"
-    :
-    : "D" (stream), "S" (ctx->state)
-    : "edx", "xmm0", "xmm1", "xmm2",
-      "xmm3", "xmm4", "xmm5", "cc",
-      "memory"
-  );
-#else
   uint64_t c;
   int i;
 
@@ -295,7 +182,6 @@ chacha20_block(chacha20_t *ctx, uint32_t *stream) {
 
   ctx->state[12] = c;
   ctx->state[13] += (uint32_t)(c >> 32);
-#endif
 }
 
 void
@@ -380,7 +266,7 @@ chacha20_derive(unsigned char *out,
  *   http://www.ecrypt.eu.org/stream/salsa20pf.html
  */
 
-#define ROTL32(v, n) ((v) << (n)) | ((v) >> (32 - (n)))
+#define ROTL32(x, y) ((x) << (y)) | ((x) >> (32 - (y)))
 
 #define QROUND(x, a, b, c, d)      \
   x[b] ^= ROTL32(x[a] + x[d], 7);  \
@@ -447,182 +333,6 @@ salsa20_init(salsa20_t *ctx,
 
 static void
 salsa20_block(salsa20_t *ctx, uint32_t *stream) {
-#if defined(TORSION_HAVE_ASM_X64)
-  /* Borrowed from:
-   * https://github.com/gnutls/nettle/blob/master/x86_64/salsa20-core-internal.asm
-   *
-   * Layout:
-   *
-   *   %rdi = dst pointer (stream)
-   *   %rsi = src pointer (ctx->state)
-   *   %edx = rounds integer (nettle does `20 >> 1`)
-   *
-   * For reference, our full range of clobbered registers:
-   *
-   *   %rsi, %rdi, %edx, %xmm[0-8]
-   */
-  __asm__ __volatile__(
-    "movl $-1, %%edx\n"
-    "movd %%edx, %%xmm6\n"
-
-    "movl $10, %%edx\n"
-
-    "pshufd $0x09, %%xmm6, %%xmm8\n"
-    "pshufd $0x41, %%xmm6, %%xmm7\n"
-    "pshufd $0x22, %%xmm6, %%xmm6\n"
-
-    "movups (%%rsi), %%xmm0\n"
-    "movups 16(%%rsi), %%xmm1\n"
-    "movups 32(%%rsi), %%xmm2\n"
-    "movups 48(%%rsi), %%xmm3\n"
-
-    "movaps %%xmm0, %%xmm4\n"
-    "pxor %%xmm1, %%xmm0\n"
-    "pand %%xmm6, %%xmm0\n"
-    "pxor %%xmm0, %%xmm1\n"
-    "pxor %%xmm4, %%xmm0\n"
-
-    "movaps %%xmm2, %%xmm4\n"
-    "pxor %%xmm3, %%xmm2\n"
-    "pand %%xmm6, %%xmm2\n"
-    "pxor %%xmm2, %%xmm3\n"
-    "pxor %%xmm4, %%xmm2\n"
-
-    "movaps %%xmm1, %%xmm4\n"
-    "pxor %%xmm3, %%xmm1\n"
-    "pand %%xmm7, %%xmm1\n"
-    "pxor %%xmm1, %%xmm3\n"
-    "pxor %%xmm4, %%xmm1\n"
-
-    "movaps %%xmm0, %%xmm4\n"
-    "pxor %%xmm2, %%xmm0\n"
-    "pand %%xmm8, %%xmm0\n"
-    "pxor %%xmm0, %%xmm2\n"
-    "pxor %%xmm4, %%xmm0\n"
-
-    ".align 16\n"
-    "1:\n"
-
-    "movaps %%xmm3, %%xmm4\n"
-    "paddd %%xmm0, %%xmm4\n"
-    "movaps %%xmm4, %%xmm5\n"
-    "pslld $7, %%xmm4\n"
-    "psrld $25, %%xmm5\n"
-    "pxor %%xmm4, %%xmm1\n"
-    "pxor %%xmm5, %%xmm1\n"
-
-    "movaps %%xmm0, %%xmm4\n"
-    "paddd %%xmm1, %%xmm4\n"
-    "movaps %%xmm4, %%xmm5\n"
-    "pslld $9, %%xmm4\n"
-    "psrld $23, %%xmm5\n"
-    "pxor %%xmm4, %%xmm2\n"
-    "pxor %%xmm5, %%xmm2\n"
-
-    "movaps %%xmm1, %%xmm4\n"
-    "paddd %%xmm2, %%xmm4\n"
-    "movaps %%xmm4, %%xmm5\n"
-    "pslld $13, %%xmm4\n"
-    "psrld $19, %%xmm5\n"
-    "pxor %%xmm4, %%xmm3\n"
-    "pxor %%xmm5, %%xmm3\n"
-
-    "movaps %%xmm2, %%xmm4\n"
-    "paddd %%xmm3, %%xmm4\n"
-    "movaps %%xmm4, %%xmm5\n"
-    "pslld $18, %%xmm4\n"
-    "psrld $14, %%xmm5\n"
-    "pxor %%xmm4, %%xmm0\n"
-    "pxor %%xmm5, %%xmm0\n"
-
-    "pshufd $0x93, %%xmm1, %%xmm1\n"
-    "pshufd $0x4e, %%xmm2, %%xmm2\n"
-    "pshufd $0x39, %%xmm3, %%xmm3\n"
-
-    "movaps %%xmm1, %%xmm4\n"
-    "paddd %%xmm0, %%xmm4\n"
-    "movaps %%xmm4, %%xmm5\n"
-    "pslld $7, %%xmm4\n"
-    "psrld $25, %%xmm5\n"
-    "pxor %%xmm4, %%xmm3\n"
-    "pxor %%xmm5, %%xmm3\n"
-
-    "movaps %%xmm0, %%xmm4\n"
-    "paddd %%xmm3, %%xmm4\n"
-    "movaps %%xmm4, %%xmm5\n"
-    "pslld $9, %%xmm4\n"
-    "psrld $23, %%xmm5\n"
-    "pxor %%xmm4, %%xmm2\n"
-    "pxor %%xmm5, %%xmm2\n"
-
-    "movaps %%xmm3, %%xmm4\n"
-    "paddd %%xmm2, %%xmm4\n"
-    "movaps %%xmm4, %%xmm5\n"
-    "pslld $13, %%xmm4\n"
-    "psrld $19, %%xmm5\n"
-    "pxor %%xmm4, %%xmm1\n"
-    "pxor %%xmm5, %%xmm1\n"
-
-    "movaps %%xmm2, %%xmm4\n"
-    "paddd %%xmm1, %%xmm4\n"
-    "movaps %%xmm4, %%xmm5\n"
-    "pslld $18, %%xmm4\n"
-    "psrld $14, %%xmm5\n"
-    "pxor %%xmm4, %%xmm0\n"
-    "pxor %%xmm5, %%xmm0\n"
-
-    "pshufd $0x39, %%xmm1, %%xmm1\n"
-    "pshufd $0x4e, %%xmm2, %%xmm2\n"
-    "pshufd $0x93, %%xmm3, %%xmm3\n"
-
-    "decl %%edx\n"
-    "jnz 1b\n"
-
-    "movaps %%xmm0, %%xmm4\n"
-    "pxor %%xmm2, %%xmm0\n"
-    "pand %%xmm8, %%xmm0\n"
-    "pxor %%xmm0, %%xmm2\n"
-    "pxor %%xmm4, %%xmm0\n"
-
-    "movaps %%xmm1, %%xmm4\n"
-    "pxor %%xmm3, %%xmm1\n"
-    "pand %%xmm7, %%xmm1\n"
-    "pxor %%xmm1, %%xmm3\n"
-    "pxor %%xmm4, %%xmm1\n"
-
-    "movaps %%xmm0, %%xmm4\n"
-    "pxor %%xmm1, %%xmm0\n"
-    "pand %%xmm6, %%xmm0\n"
-    "pxor %%xmm0, %%xmm1\n"
-    "pxor %%xmm4, %%xmm0\n"
-
-    "movaps %%xmm2, %%xmm4\n"
-    "pxor %%xmm3, %%xmm2\n"
-    "pand %%xmm6, %%xmm2\n"
-    "pxor %%xmm2, %%xmm3\n"
-    "pxor %%xmm4, %%xmm2\n"
-
-    "movups (%%rsi), %%xmm4\n"
-    "movups 16(%%rsi), %%xmm5\n"
-    "paddd %%xmm4, %%xmm0\n"
-    "paddd %%xmm5, %%xmm1\n"
-    "movups %%xmm0,(%%rdi)\n"
-    "movups %%xmm1,16(%%rdi)\n"
-    "movups 32(%%rsi), %%xmm4\n"
-    "movups 48(%%rsi), %%xmm5\n"
-    "paddd %%xmm4, %%xmm2\n"
-    "paddd %%xmm5, %%xmm3\n"
-    "movups %%xmm2,32(%%rdi)\n"
-    "movups %%xmm3,48(%%rdi)\n"
-
-    "incq 32(%%rsi)\n"
-    :
-    : "D" (stream), "S" (ctx->state)
-    : "edx", "xmm0", "xmm1", "xmm2",
-      "xmm3", "xmm4", "xmm5", "xmm6",
-      "xmm7", "xmm8", "cc", "memory"
-  );
-#else
   uint64_t c;
   int i;
 
@@ -652,7 +362,6 @@ salsa20_block(salsa20_t *ctx, uint32_t *stream) {
 
   ctx->state[8] = c;
   ctx->state[9] += (uint32_t)(c >> 32);
-#endif
 }
 
 void

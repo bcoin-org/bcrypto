@@ -227,7 +227,7 @@ write64be(void *dst, uint64_t w) {
  *   https://stackoverflow.com/a/2637138
  */
 
-#if TORSION_GNUC_PREREQ(4, 8) || __has_builtin(__builtin_bswap16)
+#if TORSION_GNUC_PREREQ(4, 8) || TORSION_HAS_BUILTIN(__builtin_bswap16)
 #  define torsion_bswap16(x) __builtin_bswap16(x)
 #else
 static TORSION_INLINE uint16_t
@@ -236,7 +236,7 @@ torsion_bswap16(uint16_t x) {
 }
 #endif
 
-#if TORSION_GNUC_PREREQ(4, 3) || __has_builtin(__builtin_bswap32)
+#if TORSION_GNUC_PREREQ(4, 3) || TORSION_HAS_BUILTIN(__builtin_bswap32)
 #  define torsion_bswap32(x) __builtin_bswap32(x)
 #else
 static TORSION_INLINE uint32_t
@@ -247,7 +247,7 @@ torsion_bswap32(uint32_t x) {
 }
 #endif
 
-#if TORSION_GNUC_PREREQ(4, 3) || __has_builtin(__builtin_bswap64)
+#if TORSION_GNUC_PREREQ(4, 3) || TORSION_HAS_BUILTIN(__builtin_bswap64)
 #  define torsion_bswap64(x) __builtin_bswap64(x)
 #else
 static TORSION_INLINE uint64_t

@@ -308,7 +308,10 @@ torsion_rdtsc(void) {
   /* Borrowed from Bitcoin Core. */
   uint64_t ts = 0;
 
-  __asm__ __volatile__("rdtsc\n" : "=A" (ts));
+  __asm__ __volatile__ (
+    "rdtsc\n"
+    : "=A" (ts)
+  );
 
   return ts;
 #elif defined(HAVE_INLINE_ASM) && (defined(__amd64__) || defined(__x86_64__))
@@ -316,7 +319,11 @@ torsion_rdtsc(void) {
   uint64_t lo = 0;
   uint64_t hi = 0;
 
-  __asm__ __volatile__("rdtsc\n" : "=a" (lo), "=d" (hi));
+  __asm__ __volatile__ (
+    "rdtsc\n"
+    : "=a" (lo),
+      "=d" (hi)
+  );
 
   return (hi << 32) | lo;
 #else
@@ -337,19 +344,21 @@ torsion_has_cpuid(void) {
 #if defined(__i386__)
   uint32_t ax, bx;
 
-  __asm__ __volatile__(
+  __asm__ __volatile__ (
     "pushfl\n"
     "pushfl\n"
-    "popl %0\n"
-    "movl %0, %1\n"
-    "xorl %2, %0\n"
-    "pushl %0\n"
+    "popl %k0\n"
+    "movl %k0, %k1\n"
+    "xorl $0x00200000, %k0\n"
+    "pushl %k0\n"
     "popfl\n"
     "pushfl\n"
-    "popl %0\n"
+    "popl %k0\n"
     "popfl\n"
-    : "=&r" (ax), "=&r" (bx)
-    : "i" (0x00200000)
+    : "=&r" (ax),
+      "=&r" (bx)
+    :
+    : "cc"
   );
 
   return ((ax ^ bx) >> 21) & 1;
@@ -391,7 +400,7 @@ torsion_cpuid(uint32_t *a,
    * [1] https://gcc.gnu.org/bugzilla/show_bug.cgi?id=54232
    */
   if (torsion_has_cpuid()) {
-    __asm__ __volatile__(
+    __asm__ __volatile__ (
       "xchgl %%ebx, %k1\n"
       "cpuid\n"
       "xchgl %%ebx, %k1\n"
@@ -400,7 +409,7 @@ torsion_cpuid(uint32_t *a,
     );
   }
 #else /* !__i386__ */
-  __asm__ __volatile__(
+  __asm__ __volatile__ (
     "cpuid\n"
     : "=a" (*a), "=b" (*b), "=c" (*c), "=d" (*d)
     : "0" (leaf), "2" (subleaf)
@@ -487,9 +496,9 @@ torsion_rdrand(void) {
   int i;
 
   for (i = 0; i < 10; i++) {
-    __asm__ __volatile__(
+    __asm__ __volatile__ (
       ".byte 0x0f, 0xc7, 0xf0\n" /* rdrand %eax */
-      "setc %1\n"
+      "setc %b1\n"
       : "=a" (lo), "=q" (ok)
       :
       : "cc"
@@ -500,9 +509,9 @@ torsion_rdrand(void) {
   }
 
   for (i = 0; i < 10; i++) {
-    __asm__ __volatile__(
+    __asm__ __volatile__ (
       ".byte 0x0f, 0xc7, 0xf0\n" /* rdrand %eax */
-      "setc %1\n"
+      "setc %b1\n"
       : "=a" (hi), "=q" (ok)
       :
       : "cc"
@@ -520,9 +529,9 @@ torsion_rdrand(void) {
   int i;
 
   for (i = 0; i < 10; i++) {
-    __asm__ __volatile__(
+    __asm__ __volatile__ (
       ".byte 0x48, 0x0f, 0xc7, 0xf0\n" /* rdrand %rax */
-      "setc %1\n"
+      "setc %b1\n"
       : "=a" (r), "=q" (ok)
       :
       : "cc"
@@ -546,7 +555,10 @@ torsion_rdrand(void) {
      * The above was taken from the linux kernel
      * (after stripping out a load of preprocessor).
      */
-    __asm__ __volatile__("darn %0, 1\n" : "=r" (r));
+    __asm__ __volatile__ (
+      "darn %0, 1\n"
+      : "=r" (r)
+    );
 
     if (r != UINT64_MAX)
       break;
@@ -606,9 +618,9 @@ torsion_rdseed(void) {
   uint8_t ok;
 
   for (;;) {
-    __asm__ __volatile__(
+    __asm__ __volatile__ (
       ".byte 0x0f, 0xc7, 0xf8\n" /* rdseed %eax */
-      "setc %1\n"
+      "setc %b1\n"
       : "=a" (lo), "=q" (ok)
       :
       : "cc"
@@ -617,13 +629,13 @@ torsion_rdseed(void) {
     if (ok)
       break;
 
-    __asm__ __volatile__("pause\n");
+    __asm__ __volatile__ ("pause\n");
   }
 
   for (;;) {
-    __asm__ __volatile__(
+    __asm__ __volatile__ (
       ".byte 0x0f, 0xc7, 0xf8\n" /* rdseed %eax */
-      "setc %1\n"
+      "setc %b1\n"
       : "=a" (hi), "=q" (ok)
       :
       : "cc"
@@ -632,7 +644,7 @@ torsion_rdseed(void) {
     if (ok)
       break;
 
-    __asm__ __volatile__("pause\n");
+    __asm__ __volatile__ ("pause\n");
   }
 
   return ((uint64_t)hi << 32) | lo;
@@ -642,9 +654,9 @@ torsion_rdseed(void) {
   uint8_t ok;
 
   for (;;) {
-    __asm__ __volatile__(
+    __asm__ __volatile__ (
       ".byte 0x48, 0x0f, 0xc7, 0xf8\n" /* rdseed %rax */
-      "setc %1\n"
+      "setc %b1\n"
       : "=a" (r), "=q" (ok)
       :
       : "cc"
@@ -653,7 +665,7 @@ torsion_rdseed(void) {
     if (ok)
       break;
 
-    __asm__ __volatile__("pause\n");
+    __asm__ __volatile__ ("pause\n");
   }
 
   return r;

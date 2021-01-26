@@ -2061,7 +2061,7 @@ bcrypto_blake2b_final(napi_env env, napi_callback_info info) {
 
   JS_ASSERT(blake->started, JS_ERR_INIT);
 
-  out_len = blake->ctx.outlen;
+  out_len = blake->ctx.len;
 
   blake2b_final(&blake->ctx, out);
   blake->started = 0;
@@ -2256,7 +2256,7 @@ bcrypto_blake2s_final(napi_env env, napi_callback_info info) {
 
   JS_ASSERT(blake->started, JS_ERR_INIT);
 
-  out_len = blake->ctx.outlen;
+  out_len = blake->ctx.len;
 
   blake2s_final(&blake->ctx, out);
   blake->started = 0;

@@ -266,8 +266,10 @@
 
 #ifndef TORSION_HAVE_CONFIG
 
-#ifndef __has_extension
-#  define __has_extension(x) 0
+#if defined(__has_extension)
+#  define TORSION__HAS_EXTENSION __has_extension
+#else
+#  define TORSION__HAS_EXTENSION(x) 0
 #endif
 
 /* Detect Apple version. */
@@ -352,12 +354,20 @@
 #  elif __INTEL_COMPILER >= 800 /* 8.0.0 (2003) */
 #    define TORSION_TLS_BOTH
 #  endif
+#elif defined(__ICC)
+#  if !defined(__APPLE__) && __ICC >= 800 /* 8.0.0 (2003) */
+#    define TORSION_TLS_GNUC
+#  endif
+#elif defined(__ICL)
+#  if __ICL >= 800 /* 8.0.0 (2003) */
+#    define TORSION_TLS_MSVC
+#  endif
 #elif defined(__clang__)
 #  if defined(__apple_build_version__)
 #    if defined(TORSION__APPLE_OS) && __apple_build_version__ >= 8000038 /* 800.0.38 (2016) */
 #      define TORSION_TLS_GNUC
 #    endif
-#  elif __has_extension(c_thread_local) /* 3.4 (late 2013) */
+#  elif TORSION__HAS_EXTENSION(c_thread_local) /* 3.4 (late 2013) */
 #    if defined(__ANDROID__)
 #      if defined(__clang_major__) && __clang_major__ >= 5 /* 5.0 (2017) */
 #        define TORSION_TLS_GNUC
@@ -372,7 +382,7 @@
 #    if __xlC__ >= 0x0800 /* 8.0.0 (unknown) */
 #      define TORSION_TLS_GNUC
 #    endif
-#  elif defined(_AIX)
+#  else /* _AIX */
 #    if __xlC__ >= 0x0A01 /* 10.1.0 (2008) */
 #      define TORSION_TLS_GNUC
 #    endif

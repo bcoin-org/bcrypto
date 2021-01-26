@@ -183,16 +183,16 @@ typedef struct blake2b_s {
   uint64_t h[8];
   uint64_t t[2];
   unsigned char block[128];
-  size_t size;
-  size_t outlen;
+  size_t pos;
+  size_t len;
 } blake2b_t;
 
 typedef struct blake2s_s {
   uint32_t h[8];
   uint32_t t[2];
   unsigned char block[64];
-  size_t size;
-  size_t outlen;
+  size_t pos;
+  size_t len;
 } blake2s_t;
 
 typedef struct gost94_s {
@@ -205,8 +205,9 @@ typedef struct gost94_s {
 typedef struct keccak_s {
   size_t bs;
   uint64_t state[25];
-  unsigned char block[200];
+  unsigned char block[192];
   size_t pos;
+  int std;
 } keccak_t;
 
 typedef struct md2_s {
@@ -294,7 +295,7 @@ typedef struct hmac_s {
 
 TORSION_EXTERN void
 blake2b_init(blake2b_t *ctx,
-             size_t outlen,
+             size_t len,
              const unsigned char *key,
              size_t keylen);
 
@@ -331,7 +332,7 @@ __TORSION_DEFINE_BLAKE2(blake2b, 512)
 
 TORSION_EXTERN void
 blake2s_init(blake2s_t *ctx,
-             size_t outlen,
+             size_t len,
              const unsigned char *key,
              size_t keylen);
 
@@ -400,7 +401,7 @@ TORSION_EXTERN void
 keccak_update(keccak_t *ctx, const void *data, size_t len);
 
 TORSION_EXTERN void
-keccak_final(keccak_t *ctx, unsigned char *out, unsigned char pad, size_t len);
+keccak_final(keccak_t *ctx, unsigned char *out, unsigned int pad, size_t len);
 
 /*
  * Keccak{224,256,384,512}
