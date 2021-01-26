@@ -76,7 +76,7 @@ if(TORSION_ENABLE_ASM)
       unsigned char ptr[32];
       int x = 0;
       __asm__ ("" : "+r" (x) ::);
-      __asm__ __volatile__("" :: "r" (ptr) : "memory");
+      __asm__ __volatile__ ("" :: "r" (ptr) : "memory");
       return x;
     }
   ]=] TORSION_HAS_ASM)
@@ -86,20 +86,44 @@ endif()
 
 if(TORSION_ENABLE_ASM)
   check_c_source_compiles([=[
+    #if defined(__amd64__) || defined(__x86_64__)
+    #  error "not an x86 platform"
+    #endif
+    #ifndef __i386__
+    #  error "not an x86 platform"
+    #endif
+    int main(void) {
+      unsigned int n1 = 0;
+      unsigned int n0 = 100;
+      unsigned int d = 3;
+      unsigned int q0, r0;
+      __asm__ __volatile__ (
+        "divl %k4\\n"
+        : "=a" (q0), "=d" (r0)
+        : "0" (n0), "1" (n1), "rm" (d)
+      );
+      return 0;
+    }
+  ]=] TORSION_HAS_ASM_X86)
+else()
+  set(TORSION_HAS_ASM_X86)
+endif()
+
+if(TORSION_ENABLE_ASM)
+  check_c_source_compiles([=[
     #if !defined(__amd64__) && !defined(__x86_64__)
     #  error "not an x64 platform"
     #endif
-    #include <stdint.h>
     int main(void) {
-      uint32_t stream[8], state[8];
-      __asm__ __volatile__(
+      unsigned int dst[8], src[8];
+      __asm__ __volatile__ (
         "movups (%%rsi), %%xmm0\\n"
         "movups 16(%%rsi), %%xmm1\\n"
         "pxor %%xmm1, %%xmm0\\n"
         "movups %%xmm0,(%%rdi)\\n"
         "movups %%xmm1,16(%%rdi)\\n"
         :
-        : "D" (stream), "S" (state)
+        : "D" (dst), "S" (src)
         : "xmm0", "xmm1", "cc", "memory"
       );
       return 0;
@@ -111,7 +135,7 @@ endif()
 
 if(TORSION_ENABLE_INT128)
   check_c_source_compiles([=[
-    typedef char check_64bit_t[sizeof(void *) == 8 ? 1 : -1];
+    typedef char check_64bit_t[sizeof(void *) >= 8 ? 1 : -1];
     typedef signed __int128 int128_t;
     typedef unsigned __int128 uint128_t;
     int main(void) {
@@ -166,6 +190,10 @@ endif()
 
 if(TORSION_HAS_ASM)
   list(APPEND torsion_defines TORSION_HAVE_ASM)
+endif()
+
+if(TORSION_HAS_ASM_X86)
+  list(APPEND torsion_defines TORSION_HAVE_ASM_X86)
 endif()
 
 if(TORSION_HAS_ASM_X64)
