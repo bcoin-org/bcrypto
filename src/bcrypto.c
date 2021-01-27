@@ -102,6 +102,7 @@
 #define JS_ERR_GET "Could not get value."
 #define JS_ERR_CRYPT "Could not encipher."
 #define JS_ERR_RNG "RNG failure."
+#define JS_ERR_DATA_SIZE "Invalid data size."
 
 #define JS_THROW(msg) do {                              \
   CHECK(napi_throw_error(env, NULL, (msg)) == napi_ok); \
@@ -11082,28 +11083,35 @@ bcrypto_secp256k1_is_low_der(napi_env env, napi_callback_info info) {
 static napi_value
 bcrypto_secp256k1_sign(napi_env env, napi_callback_info info) {
   secp256k1_nonce_function noncefn = secp256k1_nonce_function_rfc6979;
-  napi_value argv[3];
-  size_t argc = 3;
+  napi_value argv[4];
+  size_t argc = 4;
   uint8_t out[64];
   secp256k1_ecdsa_signature sigout;
   unsigned char msg32[32];
-  const uint8_t *msg, *priv;
-  size_t msg_len, priv_len;
+  const uint8_t *msg, *priv, *data = NULL;
+  size_t msg_len, priv_len, data_len = 0;
   bcrypto_secp256k1_t *ec;
   napi_value result;
+  napi_valuetype data_type;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
-  CHECK(argc == 3);
+  CHECK(argc == 4);
   CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&priv,
                              &priv_len) == napi_ok);
+  CHECK(napi_typeof(env, argv[3], &data_type) == napi_ok);
+  if (data_type != napi_undefined) {
+    CHECK(napi_get_buffer_info(env, argv[3], (void **)&data,
+                               &data_len) == napi_ok);
+  }
 
   JS_ASSERT(priv_len == 32, JS_ERR_PRIVKEY_SIZE);
+  JS_ASSERT(data_len == 0 || data_len == 32, JS_ERR_DATA_SIZE);
 
   secp256k1_ecdsa_reduce(ec->ctx, msg32, msg, msg_len);
 
-  JS_ASSERT(secp256k1_ecdsa_sign(ec->ctx, &sigout, msg32, priv, noncefn, NULL),
+  JS_ASSERT(secp256k1_ecdsa_sign(ec->ctx, &sigout, msg32, priv, noncefn, data),
             JS_ERR_SIGN);
 
   secp256k1_ecdsa_signature_serialize_compact(ec->ctx, out, &sigout);
@@ -11116,31 +11124,38 @@ bcrypto_secp256k1_sign(napi_env env, napi_callback_info info) {
 static napi_value
 bcrypto_secp256k1_sign_recoverable(napi_env env, napi_callback_info info) {
   secp256k1_nonce_function noncefn = secp256k1_nonce_function_rfc6979;
-  napi_value argv[3];
-  size_t argc = 3;
+  napi_value argv[4];
+  size_t argc = 4;
   uint8_t out[64];
   secp256k1_ecdsa_recoverable_signature sigout;
   unsigned char msg32[32];
   int param;
-  const uint8_t *msg, *priv;
-  size_t msg_len, priv_len;
+  const uint8_t *msg, *priv, *data = NULL;
+  size_t msg_len, priv_len, data_len = 0;
   bcrypto_secp256k1_t *ec;
   napi_value sigval, paramval, result;
   int ok;
+  napi_valuetype data_type;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
-  CHECK(argc == 3);
+  CHECK(argc == 4);
   CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&priv,
                              &priv_len) == napi_ok);
+  CHECK(napi_typeof(env, argv[3], &data_type) == napi_ok);
+  if (data_type != napi_undefined) {
+    CHECK(napi_get_buffer_info(env, argv[3], (void **)&data,
+                               &data_len) == napi_ok);
+  }
 
   JS_ASSERT(priv_len == 32, JS_ERR_PRIVKEY_SIZE);
+  JS_ASSERT(data_len == 0 || data_len == 32, JS_ERR_DATA_SIZE);
 
   secp256k1_ecdsa_reduce(ec->ctx, msg32, msg, msg_len);
 
   ok = secp256k1_ecdsa_sign_recoverable(ec->ctx, &sigout, msg32,
-                                        priv, noncefn, NULL);
+                                        priv, noncefn, data);
   JS_ASSERT(ok, JS_ERR_SIGN);
 
   secp256k1_ecdsa_recoverable_signature_serialize_compact(ec->ctx, out,
@@ -11159,30 +11174,37 @@ bcrypto_secp256k1_sign_recoverable(napi_env env, napi_callback_info info) {
 static napi_value
 bcrypto_secp256k1_sign_der(napi_env env, napi_callback_info info) {
   secp256k1_nonce_function noncefn = secp256k1_nonce_function_rfc6979;
-  napi_value argv[3];
-  size_t argc = 3;
+  napi_value argv[4];
+  size_t argc = 4;
   uint8_t out[72];
   size_t out_len = 72;
   secp256k1_ecdsa_signature sigout;
   unsigned char msg32[32];
-  const uint8_t *msg, *priv;
-  size_t msg_len, priv_len;
+  const uint8_t *msg, *priv, *data = NULL;
+  size_t msg_len, priv_len, data_len = 0;
   bcrypto_secp256k1_t *ec;
   napi_value result;
   int ok;
+  napi_valuetype data_type;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
-  CHECK(argc == 3);
+  CHECK(argc == 4);
   CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&priv,
                              &priv_len) == napi_ok);
+  CHECK(napi_typeof(env, argv[3], &data_type) == napi_ok);
+  if (data_type != napi_undefined) {
+    CHECK(napi_get_buffer_info(env, argv[3], (void **)&data,
+                               &data_len) == napi_ok);
+  }
 
   JS_ASSERT(priv_len == 32, JS_ERR_PRIVKEY_SIZE);
+  JS_ASSERT(data_len == 0 || data_len == 32, JS_ERR_DATA_SIZE);
 
   secp256k1_ecdsa_reduce(ec->ctx, msg32, msg, msg_len);
 
-  ok = secp256k1_ecdsa_sign(ec->ctx, &sigout, msg32, priv, noncefn, NULL)
+  ok = secp256k1_ecdsa_sign(ec->ctx, &sigout, msg32, priv, noncefn, data)
     && secp256k1_ecdsa_signature_serialize_der(ec->ctx, out, &out_len, &sigout);
 
   JS_ASSERT(ok, JS_ERR_SIGN);
@@ -11195,33 +11217,40 @@ bcrypto_secp256k1_sign_der(napi_env env, napi_callback_info info) {
 static napi_value
 bcrypto_secp256k1_sign_recoverable_der(napi_env env, napi_callback_info info) {
   secp256k1_nonce_function noncefn = secp256k1_nonce_function_rfc6979;
-  napi_value argv[3];
-  size_t argc = 3;
+  napi_value argv[4];
+  size_t argc = 4;
   uint8_t out[72];
   size_t out_len = 72;
   secp256k1_ecdsa_recoverable_signature sigout;
   secp256k1_ecdsa_signature cmpct;
   unsigned char msg32[32];
   int param;
-  const uint8_t *msg, *priv;
-  size_t msg_len, priv_len;
+  const uint8_t *msg, *priv, *data = NULL;
+  size_t msg_len, priv_len, data_len = 0;
   bcrypto_secp256k1_t *ec;
   napi_value sigval, paramval, result;
   int ok;
+  napi_valuetype data_type;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
-  CHECK(argc == 3);
+  CHECK(argc == 4);
   CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&priv,
                              &priv_len) == napi_ok);
+  CHECK(napi_typeof(env, argv[3], &data_type) == napi_ok);
+  if (data_type != napi_undefined) {
+    CHECK(napi_get_buffer_info(env, argv[3], (void **)&data,
+                               &data_len) == napi_ok);
+  }
 
   JS_ASSERT(priv_len == 32, JS_ERR_PRIVKEY_SIZE);
+  JS_ASSERT(data_len == 0 || data_len == 32, JS_ERR_DATA_SIZE);
 
   secp256k1_ecdsa_reduce(ec->ctx, msg32, msg, msg_len);
 
   ok = secp256k1_ecdsa_sign_recoverable(ec->ctx, &sigout, msg32,
-                                        priv, noncefn, NULL);
+                                        priv, noncefn, data);
   JS_ASSERT(ok, JS_ERR_SIGN);
 
   secp256k1_ecdsa_recoverable_signature_serialize_compact(ec->ctx, out,
