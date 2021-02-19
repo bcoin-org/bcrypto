@@ -21,6 +21,7 @@ extern "C" {
 
 #define poly1305_init torsion_poly1305_init
 #define poly1305_update torsion_poly1305_update
+#define poly1305_pad torsion_poly1305_pad
 #define poly1305_final torsion_poly1305_final
 #define siphash_sum torsion_siphash_sum
 #define siphash_mod torsion_siphash_mod
@@ -45,7 +46,7 @@ typedef struct poly1305_s {
     } u64;
   } state;
   unsigned char block[16];
-  size_t size;
+  size_t pos;
 } poly1305_t;
 
 /*
@@ -57,6 +58,9 @@ poly1305_init(poly1305_t *ctx, const unsigned char *key);
 
 TORSION_EXTERN void
 poly1305_update(poly1305_t *ctx, const unsigned char *data, size_t len);
+
+TORSION_EXTERN void
+poly1305_pad(poly1305_t *ctx);
 
 TORSION_EXTERN void
 poly1305_final(poly1305_t *ctx, unsigned char *mac);

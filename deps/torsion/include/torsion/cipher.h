@@ -28,11 +28,6 @@ extern "C" {
 #define arc2_encrypt torsion_arc2_encrypt
 #define arc2_decrypt torsion_arc2_decrypt
 #define blowfish_init torsion_blowfish_init
-#define blowfish_stream2word torsion_blowfish_stream2word
-#define blowfish_expand0state torsion_blowfish_expand0state
-#define blowfish_expandstate torsion_blowfish_expandstate
-#define blowfish_enc torsion_blowfish_enc
-#define blowfish_dec torsion_blowfish_dec
 #define blowfish_encrypt torsion_blowfish_encrypt
 #define blowfish_decrypt torsion_blowfish_decrypt
 #define camellia_init torsion_camellia_init
@@ -115,6 +110,7 @@ extern "C" {
 #define cipher_stream_crypt torsion_cipher_stream_crypt
 #define cipher_stream_update_size torsion_cipher_stream_update_size
 #define cipher_stream_final torsion_cipher_stream_final
+#define cipher_stream_final_size torsion_cipher_stream_final_size
 #define cipher_static_encrypt torsion_cipher_static_encrypt
 #define cipher_static_decrypt torsion_cipher_static_decrypt
 
@@ -253,31 +249,22 @@ typedef struct cipher_s {
   } ctx;
 } cipher_t;
 
-typedef struct cbc_s {
-  unsigned char prev[CIPHER_MAX_BLOCK_SIZE];
-} cbc_t;
-
-typedef struct xts_s {
+typedef struct block_mode_s {
   unsigned char tweak[CIPHER_MAX_BLOCK_SIZE];
   unsigned char prev[CIPHER_MAX_BLOCK_SIZE];
-} xts_t;
+} block_mode_t;
 
-typedef struct ctr_s {
-  uint8_t ctr[CIPHER_MAX_BLOCK_SIZE];
+typedef struct stream_mode_s {
   unsigned char state[CIPHER_MAX_BLOCK_SIZE];
+  unsigned char iv[CIPHER_MAX_BLOCK_SIZE];
   size_t pos;
-} ctr_t;
+} stream_mode_t;
 
-typedef struct cfb_s {
-  unsigned char state[CIPHER_MAX_BLOCK_SIZE];
-  unsigned char prev[CIPHER_MAX_BLOCK_SIZE];
-  size_t pos;
-} cfb_t;
-
-typedef struct ofb_s {
-  unsigned char state[CIPHER_MAX_BLOCK_SIZE];
-  size_t pos;
-} ofb_t;
+typedef block_mode_t cbc_t;
+typedef block_mode_t xts_t;
+typedef stream_mode_t ctr_t;
+typedef stream_mode_t cfb_t;
+typedef stream_mode_t ofb_t;
 
 struct __ghash_fe_s {
   uint64_t lo;
@@ -290,15 +277,13 @@ struct __ghash_s {
   unsigned char block[16];
   uint64_t adlen;
   uint64_t ctlen;
-  size_t size;
+  size_t pos;
 };
 
 typedef struct gcm_s {
+  ctr_t ctr;
   struct __ghash_s hash;
-  uint8_t ctr[16];
-  unsigned char state[16];
   unsigned char mask[16];
-  size_t pos;
 } gcm_t;
 
 struct __cmac_s {
@@ -307,29 +292,22 @@ struct __cmac_s {
 };
 
 typedef struct ccm_s {
+  ctr_t ctr;
   struct __cmac_s hash;
-  unsigned char state[16];
-  uint8_t ctr[16];
-  size_t pos;
 } ccm_t;
 
 typedef struct eax_s {
+  ctr_t ctr;
   struct __cmac_s hash1;
   struct __cmac_s hash2;
-  unsigned char state[CIPHER_MAX_BLOCK_SIZE];
   unsigned char mask[CIPHER_MAX_BLOCK_SIZE];
-  uint8_t ctr[CIPHER_MAX_BLOCK_SIZE];
-  size_t pos;
 } eax_t;
 
 struct __cipher_mode_s {
   int type;
   union {
-    cbc_t cbc;
-    xts_t xts;
-    ctr_t ctr;
-    cfb_t cfb;
-    ofb_t ofb;
+    block_mode_t block;
+    stream_mode_t stream;
     gcm_t gcm;
     ccm_t ccm;
     eax_t eax;
@@ -395,25 +373,6 @@ TORSION_EXTERN void
 blowfish_init(blowfish_t *ctx,
               const unsigned char *key, size_t key_len,
               const unsigned char *salt, size_t salt_len);
-
-TORSION_EXTERN uint32_t
-blowfish_stream2word(const unsigned char *data, size_t len, size_t *off);
-
-TORSION_EXTERN void
-blowfish_expand0state(blowfish_t *ctx,
-                      const unsigned char *key,
-                      size_t key_len);
-
-TORSION_EXTERN void
-blowfish_expandstate(blowfish_t *ctx,
-                     const unsigned char *key, size_t key_len,
-                     const unsigned char *data, size_t data_len);
-
-TORSION_EXTERN void
-blowfish_enc(const blowfish_t *ctx, uint32_t *data, size_t len);
-
-TORSION_EXTERN void
-blowfish_dec(const blowfish_t *ctx, uint32_t *data, size_t len);
 
 TORSION_EXTERN void
 blowfish_encrypt(const blowfish_t *ctx,
@@ -841,6 +800,9 @@ TORSION_EXTERN int
 cipher_stream_final(cipher_stream_t *ctx,
                     unsigned char *output,
                     size_t *output_len);
+
+TORSION_EXTERN size_t
+cipher_stream_final_size(const cipher_stream_t *ctx);
 
 /*
  * Static Encryption/Decryption

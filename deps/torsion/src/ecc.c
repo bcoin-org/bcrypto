@@ -210,7 +210,7 @@ TORSION_BARRIER(fe_word_t, fe_word)
 #define ECC_MIN(x, y) ((x) < (y) ? (x) : (y))
 #define ECC_MAX(x, y) ((x) > (y) ? (x) : (y))
 
-#define cleanse torsion_cleanse
+#define cleanse torsion_memzero
 
 /*
  * Scalar Field
@@ -744,12 +744,14 @@ sc_set_word(const scalar_field_t *sc, sc_t z, mp_limb_t x) {
 static void
 sc_select(const scalar_field_t *sc, sc_t z,
           const sc_t x, const sc_t y, int flag) {
-  mpn_select(z, x, y, sc->limbs, flag);
+  mpn_cnd_select(z, x, y, sc->limbs, flag);
 }
 
 static void
 sc_select_zero(const scalar_field_t *sc, sc_t z, const sc_t x, int flag) {
-  mpn_select_zero(z, x, sc->limbs, flag);
+  static const sc_t y = {0};
+
+  sc_select(sc, z, x, y, flag);
 }
 
 static int
@@ -1421,16 +1423,15 @@ fe_export(const prime_field_t *fe, unsigned char *raw, const fe_t x) {
 
 static void
 fe_swap(const prime_field_t *fe, fe_t x, fe_t y, int flag) {
-  fe_word_t cond = (flag != 0);
-  fe_word_t mask = fe_word_barrier(-cond);
-  fe_word_t word;
+  fe_word_t m = -fe_word_barrier(flag != 0);
+  fe_word_t w;
   int i;
 
   for (i = 0; i < fe->words; i++) {
-    word = (x[i] ^ y[i]) & mask;
+    w = (x[i] ^ y[i]) & m;
 
-    x[i] ^= word;
-    y[i] ^= word;
+    x[i] ^= w;
+    y[i] ^= w;
   }
 }
 

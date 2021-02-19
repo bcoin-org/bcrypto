@@ -73,64 +73,9 @@ base16_encode_size0(size_t len) {
   return len * 2;
 }
 
-static void
-base16_encode0(char *dst, size_t *dstlen,
-               const uint8_t *src, size_t srclen,
-               int endian) {
-  size_t i = endian < 0 ? srclen - 1 : 0;
-  size_t j = 0;
-
-  while (srclen--) {
-    dst[j++] = base16_charset[src[i] >> 4];
-    dst[j++] = base16_charset[src[i] & 15];
-
-    i += endian;
-  }
-
-  dst[j] = '\0';
-
-  if (dstlen != NULL)
-    *dstlen = j;
-}
-
 static size_t
 base16_decode_size0(size_t len) {
   return len / 2;
-}
-
-static int
-base16_decode0(uint8_t *dst, size_t *dstlen,
-               const char *src, size_t srclen,
-               int endian) {
-  size_t i = endian < 0 ? srclen - 2 : 0;
-  size_t j = 0;
-  uint8_t z = 0;
-
-  if (srclen & 1)
-    return 0;
-
-  srclen /= 2;
-  endian *= 2;
-
-  while (srclen--) {
-    uint8_t hi = base16_table[(uint8_t)src[i + 0]];
-    uint8_t lo = base16_table[(uint8_t)src[i + 1]];
-
-    z |= hi | lo;
-
-    dst[j++] = (hi << 4) | lo;
-
-    i += endian;
-  }
-
-  /* Check for errors at the end. */
-  if (z & 0x80)
-    return 0;
-
-  if (dstlen != NULL)
-    *dstlen = j;
-
-  return 1;
 }
 
 static int
@@ -158,7 +103,20 @@ base16_encode_size(size_t len) {
 void
 base16_encode(char *dst, size_t *dstlen,
               const uint8_t *src, size_t srclen) {
-  base16_encode0(dst, dstlen, src, srclen, 1);
+  size_t i = 0;
+  size_t j = 0;
+
+  while (srclen--) {
+    uint8_t ch = src[i++];
+
+    dst[j++] = base16_charset[ch >> 4];
+    dst[j++] = base16_charset[ch & 15];
+  }
+
+  dst[j] = '\0';
+
+  if (dstlen != NULL)
+    *dstlen = j;
 }
 
 size_t
@@ -169,7 +127,32 @@ base16_decode_size(size_t len) {
 int
 base16_decode(uint8_t *dst, size_t *dstlen,
               const char *src, size_t srclen) {
-  return base16_decode0(dst, dstlen, src, srclen, 1);
+  size_t i = 0;
+  size_t j = 0;
+  uint8_t z = 0;
+
+  if (srclen & 1)
+    return 0;
+
+  srclen >>= 1;
+
+  while (srclen--) {
+    uint8_t hi = base16_table[(uint8_t)src[i++]];
+    uint8_t lo = base16_table[(uint8_t)src[i++]];
+
+    z |= hi | lo;
+
+    dst[j++] = (hi << 4) | lo;
+  }
+
+  /* Check for errors at the end. */
+  if (z & 0x80)
+    return 0;
+
+  if (dstlen != NULL)
+    *dstlen = j;
+
+  return 1;
 }
 
 int
@@ -189,7 +172,20 @@ base16le_encode_size(size_t len) {
 void
 base16le_encode(char *dst, size_t *dstlen,
                 const uint8_t *src, size_t srclen) {
-  base16_encode0(dst, dstlen, src, srclen, -1);
+  size_t i = srclen;
+  size_t j = 0;
+
+  while (srclen--) {
+    uint8_t ch = src[--i];
+
+    dst[j++] = base16_charset[ch >> 4];
+    dst[j++] = base16_charset[ch & 15];
+  }
+
+  dst[j] = '\0';
+
+  if (dstlen != NULL)
+    *dstlen = j;
 }
 
 size_t
@@ -200,7 +196,32 @@ base16le_decode_size(size_t len) {
 int
 base16le_decode(uint8_t *dst, size_t *dstlen,
                 const char *src, size_t srclen) {
-  return base16_decode0(dst, dstlen, src, srclen, -1);
+  size_t i = srclen;
+  size_t j = 0;
+  uint8_t z = 0;
+
+  if (srclen & 1)
+    return 0;
+
+  srclen >>= 1;
+
+  while (srclen--) {
+    uint8_t lo = base16_table[(uint8_t)src[--i]];
+    uint8_t hi = base16_table[(uint8_t)src[--i]];
+
+    z |= hi | lo;
+
+    dst[j++] = (hi << 4) | lo;
+  }
+
+  /* Check for errors at the end. */
+  if (z & 0x80)
+    return 0;
+
+  if (dstlen != NULL)
+    *dstlen = j;
+
+  return 1;
 }
 
 int

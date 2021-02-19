@@ -199,7 +199,7 @@ typedef struct gost94_s {
   uint8_t state[32];
   uint8_t sigma[32];
   unsigned char block[32];
-  uint64_t size;
+  uint64_t size[4];
 } gost94_t;
 
 typedef struct keccak_s {
@@ -249,13 +249,13 @@ typedef struct sha256_s {
 typedef struct sha512_s {
   uint64_t state[8];
   unsigned char block[128];
-  uint64_t size;
+  uint64_t size[2];
 } sha512_t;
 
 typedef struct whirlpool_s {
   uint64_t state[8];
   unsigned char block[64];
-  uint64_t size;
+  uint64_t size[4];
 } whirlpool_t;
 
 typedef md5_t md4_t;

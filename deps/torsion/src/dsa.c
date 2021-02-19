@@ -252,7 +252,7 @@ done:
   mpz_cleanse(e);
   mpz_cleanse(g);
 
-  torsion_cleanse(&rng, sizeof(rng));
+  torsion_memzero(&rng, sizeof(rng));
 
   return 1;
 }
@@ -620,7 +620,7 @@ dsa_priv_create(dsa_priv_t *k,
 
   mpz_powm_sec(k->y, k->g, k->x, k->p);
 
-  torsion_cleanse(&rng, sizeof(rng));
+  torsion_memzero(&rng, sizeof(rng));
 }
 
 static int
@@ -644,9 +644,9 @@ dsa_priv_generate(dsa_priv_t *k, int bits, const unsigned char *entropy) {
   ret = 1;
 fail:
   dsa_group_clear(&group);
-  torsion_cleanse(&rng, sizeof(rng));
-  torsion_cleanse(entropy1, sizeof(entropy1));
-  torsion_cleanse(entropy2, sizeof(entropy2));
+  torsion_memzero(&rng, sizeof(rng));
+  torsion_memzero(entropy1, sizeof(entropy1));
+  torsion_memzero(entropy2, sizeof(entropy2));
   return ret;
 }
 
@@ -1414,9 +1414,9 @@ fail:
   mpz_cleanse(r);
   mpz_cleanse(s);
   dsa_priv_clear(&priv);
-  torsion_cleanse(&drbg, sizeof(drbg));
-  torsion_cleanse(&rng, sizeof(rng));
-  torsion_cleanse(bytes, sizeof(bytes));
+  torsion_memzero(&drbg, sizeof(drbg));
+  torsion_memzero(&rng, sizeof(rng));
+  torsion_memzero(bytes, sizeof(bytes));
   return ret;
 }
 

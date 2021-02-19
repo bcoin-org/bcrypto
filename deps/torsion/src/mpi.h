@@ -18,9 +18,6 @@
  * Symbol Aliases
  */
 
-#define mp_alloc_limbs __torsion_mp_alloc_limbs
-#define mp_realloc_limbs __torsion_mp_realloc_limbs
-#define mp_free_limbs __torsion_mp_free_limbs
 #define mpn_zero __torsion_mpn_zero
 #define mpn_cleanse __torsion_mpn_cleanse
 #define mpn_set_1 __torsion_mpn_set_1
@@ -84,19 +81,21 @@
 #define mpn_gcd_1 __torsion_mpn_gcd_1
 #define mpn_invert __torsion_mpn_invert
 #define mpn_invert_n __torsion_mpn_invert_n
+#define mpn_sec_invert __torsion_mpn_sec_invert
+#define mpn_sec_invert_n __torsion_mpn_sec_invert_n
 #define mpn_jacobi __torsion_mpn_jacobi
 #define mpn_jacobi_n __torsion_mpn_jacobi_n
 #define mpn_powm __torsion_mpn_powm
 #define mpn_sec_powm __torsion_mpn_sec_powm
-#define mpn_strip __torsion_mpn_strip
-#define mpn_odd_p __torsion_mpn_odd_p
-#define mpn_even_p __torsion_mpn_even_p
 #define mpn_ctz __torsion_mpn_ctz
 #define mpn_bitlen __torsion_mpn_bitlen
 #define mpn_bytelen __torsion_mpn_bytelen
 #define mpn_sizeinbase __torsion_mpn_sizeinbase
-#define mpn_select __torsion_mpn_select
-#define mpn_select_zero __torsion_mpn_select_zero
+#define mpn_cnd_select __torsion_mpn_cnd_select
+#define mpn_cnd_swap __torsion_mpn_cnd_swap
+#define mpn_cnd_add_n __torsion_mpn_cnd_add_n
+#define mpn_cnd_sub_n __torsion_mpn_cnd_sub_n
+#define mpn_sec_tabselect __torsion_mpn_sec_tabselect
 #define mpn_sec_zero_p __torsion_mpn_sec_zero_p
 #define mpn_sec_equal_p __torsion_mpn_sec_equal_p
 #define mpn_sec_lt_p __torsion_mpn_sec_lt_p
@@ -110,6 +109,7 @@
 #define mpn_get_str __torsion_mpn_get_str
 #define mpn_print __torsion_mpn_print
 #define mpn_random __torsion_mpn_random
+#define mpn_randomm __torsion_mpn_randomm
 #define mpz_init __torsion_mpz_init
 #define mpz_init2 __torsion_mpz_init2
 #define mpz_init_set __torsion_mpz_init_set
@@ -235,6 +235,7 @@
 #define mpz_primorial_ui __torsion_mpz_primorial_ui
 #define mpz_bin_ui __torsion_mpz_bin_ui
 #define mpz_bin_uiui __torsion_mpz_bin_uiui
+#define mpz_bin_siui __torsion_mpz_bin_siui
 #define mpz_fib_ui __torsion_mpz_fib_ui
 #define mpz_fib2_ui __torsion_mpz_fib2_ui
 #define mpz_lucnum_ui __torsion_mpz_lucnum_ui
@@ -358,6 +359,7 @@ typedef void mp_end_f(uint64_t *start, uint64_t ops);
 #define MPN_GCD_ITCH(xn, yn) ((xn) + (yn))
 #define MPN_GCD_1_ITCH(xn) (xn)
 #define MPN_INVERT_ITCH(n) (4 * ((n) + 1))
+#define MPN_SEC_INVERT_ITCH(n) ((n) + MPN_SEC_POWM_ITCH(n))
 #define MPN_JACOBI_ITCH(n) (2 * (n))
 #define MPN_SLIDE_ITCH(yn, mn) ((yn) > 2 ? (MP_SLIDE_SIZE * (mn)) : 0)
 #define MPN_POWM_ITCH(yn, mn) (6 * (mn) + MPN_SLIDE_ITCH(yn, mn))
@@ -371,19 +373,6 @@ typedef void mp_end_f(uint64_t *start, uint64_t ops);
  */
 
 #define MPZ_ROINIT_N(xp, xs) {{(mp_limb_t *)(xp), 0, (xs)}}
-
-/*
- * Allocation
- */
-
-mp_limb_t *
-mp_alloc_limbs(mp_size_t size);
-
-mp_limb_t *
-mp_realloc_limbs(mp_limb_t *ptr, mp_size_t size);
-
-void
-mp_free_limbs(mp_limb_t *ptr);
 
 /*
  * MPN Interface
@@ -759,6 +748,17 @@ mpn_invert_n(mp_limb_t *zp, const mp_limb_t *xp,
                             mp_limb_t *scratch);
 
 int
+mpn_sec_invert(mp_limb_t *zp, const mp_limb_t *xp, mp_size_t xn,
+                              const mp_limb_t *mp, mp_size_t mn,
+                              mp_limb_t *scratch);
+
+int
+mpn_sec_invert_n(mp_limb_t *zp, const mp_limb_t *xp,
+                                const mp_limb_t *yp,
+                                mp_size_t n,
+                                mp_limb_t *scratch);
+
+int
 mpn_jacobi(const mp_limb_t *xp, mp_size_t xn,
            const mp_limb_t *yp, mp_size_t yn,
            mp_limb_t *scratch);
@@ -785,15 +785,6 @@ mpn_sec_powm(mp_limb_t *zp, const mp_limb_t *xp, mp_size_t xn,
  * Helpers
  */
 
-mp_size_t
-mpn_strip(const mp_limb_t *xp, mp_size_t xn);
-
-int
-mpn_odd_p(const mp_limb_t *xp, mp_size_t xn);
-
-int
-mpn_even_p(const mp_limb_t *xp, mp_size_t xn);
-
 mp_bits_t
 mpn_ctz(const mp_limb_t *xp, mp_size_t xn);
 
@@ -811,13 +802,32 @@ mpn_sizeinbase(const mp_limb_t *xp, mp_size_t xn, int base);
  */
 
 void
-mpn_select(mp_limb_t *zp, const mp_limb_t *xp,
-                          const mp_limb_t *yp,
-                          mp_size_t n,
-                          int flag);
+mpn_cnd_select(mp_limb_t *zp, const mp_limb_t *xp,
+                              const mp_limb_t *yp,
+                              mp_size_t n,
+                              mp_limb_t cnd);
 
 void
-mpn_select_zero(mp_limb_t *zp, const mp_limb_t *xp, mp_size_t n, int flag);
+mpn_cnd_swap(mp_limb_t *xp, mp_limb_t *yp, mp_size_t n, mp_limb_t cnd);
+
+mp_limb_t
+mpn_cnd_add_n(mp_limb_t *zp, const mp_limb_t *xp,
+                             const mp_limb_t *yp,
+                             mp_size_t n,
+                             mp_limb_t cnd);
+
+mp_limb_t
+mpn_cnd_sub_n(mp_limb_t *zp, const mp_limb_t *xp,
+                             const mp_limb_t *yp,
+                             mp_size_t n,
+                             mp_limb_t cnd);
+
+void
+mpn_sec_tabselect(mp_limb_t *zp,
+                  const mp_limb_t *tp,
+                  mp_size_t n,
+                  mp_size_t nents,
+                  mp_size_t which);
 
 int
 mpn_sec_zero_p(const mp_limb_t *xp, mp_size_t xn);
@@ -885,6 +895,11 @@ mpn_print(const mp_limb_t *xp, mp_size_t xn, int base, mp_puts_f *mp_puts);
 
 void
 mpn_random(mp_limb_t *zp, mp_size_t zn, mp_rng_f *rng, void *arg);
+
+void
+mpn_randomm(mp_limb_t *zp,
+            const mp_limb_t *xp, mp_size_t xn,
+            mp_rng_f *rng, void *arg);
 
 /*
  * MPZ Interface
@@ -1378,16 +1393,19 @@ void
 mpz_bin_uiui(mpz_t z, mp_limb_t n, mp_limb_t k);
 
 void
-mpz_fib_ui(mpz_t z, mp_limb_t n);
+mpz_bin_siui(mpz_t z, mp_long_t n, mp_limb_t k);
 
 void
-mpz_fib2_ui(mpz_t z, mpz_t p, mp_limb_t n);
+mpz_fib_ui(mpz_t fn, mp_limb_t n);
 
 void
-mpz_lucnum_ui(mpz_t z, mp_limb_t n);
+mpz_fib2_ui(mpz_t fn, mpz_t fn1, mp_limb_t n);
 
 void
-mpz_lucnum2_ui(mpz_t z, mpz_t p, mp_limb_t n);
+mpz_lucnum_ui(mpz_t ln, mp_limb_t n);
+
+void
+mpz_lucnum2_ui(mpz_t ln, mpz_t ln1, mp_limb_t n);
 
 /*
  * Primality Testing

@@ -36,7 +36,6 @@ extern "C" {
 typedef struct chachapoly_s {
   chacha20_t chacha;
   poly1305_t poly;
-  int mode;
   uint64_t adlen;
   uint64_t ctlen;
 } chachapoly_t;

@@ -26,6 +26,7 @@
 #include <torsion/rsa.h>
 #include <torsion/util.h>
 #include "asn1.h"
+#include "bio.h"
 #include "internal.h"
 #include "mpi.h"
 
@@ -429,6 +430,9 @@ rsa_priv_generate(rsa_priv_t *k, int bits, uint64_t exp,
    * [1] https://crypto.stackexchange.com/a/29595
    */
   mpz_t pm1, qm1, phi, lam, tmp;
+#if MP_LIMB_BITS == 32
+  mp_limb_t *limbs;
+#endif
   drbg_t rng;
 
   if (bits < RSA_MIN_MOD_BITS
@@ -447,9 +451,16 @@ rsa_priv_generate(rsa_priv_t *k, int bits, uint64_t exp,
   mpz_init(lam);
   mpz_init(tmp);
 
-  mpz_set_ui(k->e, exp >> 32);
-  mpz_mul_2exp(k->e, k->e, 32);
-  mpz_ior_ui(k->e, k->e, exp & UINT32_MAX);
+#if MP_LIMB_BITS == 64
+  mpz_set_ui(k->e, exp);
+#else
+  limbs = mpz_limbs_write(k->e, 2);
+
+  limbs[0] = (mp_limb_t)(exp >>  0);
+  limbs[1] = (mp_limb_t)(exp >> 32);
+
+  mpz_limbs_finish(k->e, 2);
+#endif
 
   for (;;) {
     mpz_randprime(k->p, (bits >> 1) + (bits & 1), drbg_rng, &rng);
@@ -499,7 +510,7 @@ rsa_priv_generate(rsa_priv_t *k, int bits, uint64_t exp,
     break;
   }
 
-  torsion_cleanse(&rng, sizeof(rng));
+  torsion_memzero(&rng, sizeof(rng));
 
   mpz_cleanse(pm1);
   mpz_cleanse(qm1);
@@ -865,12 +876,12 @@ rsa_priv_set_ned(rsa_priv_t *out,
       if (mpz_cmp(c, nm1) == 0)
         break;
 
-      mpz_set(b, c);
+      mpz_swap(b, c);
     }
   }
 
 done:
-  torsion_cleanse(&rng, sizeof(rng));
+  torsion_memzero(&rng, sizeof(rng));
   mpz_cleanse(f);
   mpz_cleanse(nm1);
   mpz_cleanse(nm3);
@@ -1175,7 +1186,7 @@ rsa_pub_veil(const rsa_pub_t *k,
   mpz_export(out, v, (bits + 7) / 8, 1);
   ret = 1;
 fail:
-  torsion_cleanse(&rng, sizeof(rng));
+  torsion_memzero(&rng, sizeof(rng));
   mpz_cleanse(vmax);
   mpz_cleanse(rmax);
   mpz_cleanse(c);
@@ -1268,18 +1279,13 @@ mgf1xor(int type,
     while (i < out_len && j < hash_size)
       out[i++] ^= digest[j++];
 
-    j = 4;
-
-    while (j--) {
-      if (++ctr[j] != 0x00)
-        break;
-    }
+    increment_be_var(ctr, 4);
   }
 
-  torsion_cleanse(ctr, sizeof(ctr));
-  torsion_cleanse(digest, sizeof(digest));
-  torsion_cleanse(&cache, sizeof(cache));
-  torsion_cleanse(&hash, sizeof(hash));
+  torsion_memzero(ctr, sizeof(ctr));
+  torsion_memzero(digest, sizeof(digest));
+  torsion_memzero(&cache, sizeof(cache));
+  torsion_memzero(&hash, sizeof(hash));
 }
 
 /*
@@ -1854,8 +1860,8 @@ rsa_encrypt(unsigned char *out,
   ret = 1;
 fail:
   rsa_pub_clear(&k);
-  torsion_cleanse(&rng, sizeof(rng));
-  if (ret == 0) torsion_cleanse(out, klen);
+  torsion_memzero(&rng, sizeof(rng));
+  if (ret == 0) torsion_memzero(out, klen);
   return ret;
 }
 
@@ -1919,7 +1925,7 @@ rsa_decrypt(unsigned char *out,
   ret = 1;
 fail:
   rsa_priv_clear(&k);
-  if (ret == 0) torsion_cleanse(out, klen);
+  if (ret == 0) torsion_memzero(out, klen);
   return ret;
 }
 
@@ -1998,9 +2004,9 @@ rsa_sign_pss(unsigned char *out,
   ret = 1;
 fail:
   rsa_priv_clear(&k);
-  torsion_cleanse(&rng, sizeof(rng));
+  torsion_memzero(&rng, sizeof(rng));
   if (salt != NULL) free(salt);
-  if (ret == 0) torsion_cleanse(out, klen);
+  if (ret == 0) torsion_memzero(out, klen);
   return ret;
 }
 
@@ -2157,9 +2163,9 @@ rsa_encrypt_oaep(unsigned char *out,
   ret = 1;
 fail:
   rsa_pub_clear(&k);
-  torsion_cleanse(&rng, sizeof(drbg_t));
-  torsion_cleanse(&hash, sizeof(hash_t));
-  if (ret == 0) torsion_cleanse(out, klen);
+  torsion_memzero(&rng, sizeof(drbg_t));
+  torsion_memzero(&hash, sizeof(hash_t));
+  if (ret == 0) torsion_memzero(out, klen);
   return ret;
 }
 
@@ -2251,8 +2257,8 @@ rsa_decrypt_oaep(unsigned char *out,
   ret = 1;
 fail:
   rsa_priv_clear(&k);
-  torsion_cleanse(&hash, sizeof(hash));
-  if (ret == 0) torsion_cleanse(out, klen);
+  torsion_memzero(&hash, sizeof(hash));
+  if (ret == 0) torsion_memzero(out, klen);
   return ret;
 }
 
@@ -2289,7 +2295,7 @@ rsa_veil(unsigned char *out,
   *out_len = (bits + 7) / 8;
   ret = 1;
 fail:
-  torsion_cleanse(&rng, sizeof(rng));
+  torsion_memzero(&rng, sizeof(rng));
   rsa_pub_clear(&k);
   return ret;
 }

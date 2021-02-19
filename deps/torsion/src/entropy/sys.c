@@ -85,10 +85,12 @@
  *
  * Emscripten (wasm, asm.js):
  *   https://emscripten.org/docs/api_reference/emscripten.h.html
+ *   https://github.com/emscripten-core/emscripten/pull/6220
  *   https://developer.mozilla.org/en-US/docs/Web/API/Crypto/getRandomValues
  *   https://nodejs.org/api/crypto.html#crypto_crypto_randomfillsync_buffer_offset_size
  *   https://github.com/emscripten-core/emscripten/blob/7c3ced6/src/library_uuid.js#L31
  *   https://github.com/emscripten-core/emscripten/blob/32e1d73/system/include/uuid/uuid.h
+ *   https://github.com/emscripten-core/emscripten/commit/385a660
  */
 
 /**
@@ -212,11 +214,13 @@
  *
  * Emscripten (wasm, asm.js):
  *   Browser:
- *     Source: window.crypto.getRandomValues
- *     Fallback: none
+ *     Source: window.crypto.getRandomValues w/ EM_JS
+ *     Fallback: uuid_generate(3)
  *   Node.js
- *     Source: crypto.randomFillSync
- *     Fallback: none
+ *     Source: crypto.randomFillSync w/ EM_JS
+ *     Fallback: uuid_generate(3)
+ *   Support: EM_JS added in Emscripten 1.37.36 (2018).
+ *            uuid_generate(3) added in Emscripten 1.8.6 (2014).
  *
  * [1] https://docs.rs/getrandom/0.1.14/getrandom/
  */
@@ -273,6 +277,9 @@ RtlGenRandom(PVOID RandomBuffer, ULONG RandomBufferLength);
 #  include <cloudabi_syscalls.h> /* cloudabi_sys_random_get */
 #elif defined(__EMSCRIPTEN__)
 #  include <emscripten.h> /* EM_JS */
+#  ifndef EM_JS /* 1.37.36 (2018) */
+#    include <uuid/uuid.h> /* uuid_generate (1.8.6 (2014)) */
+#  endif
 #elif defined(__wasi__)
 #  include <wasi/api.h> /* __wasi_random_get */
 #elif defined(__unix) || defined(__unix__)     \
@@ -416,6 +423,7 @@ torsion_open(const char *name, int flags) {
  */
 
 #ifdef __EMSCRIPTEN__
+#if defined(EM_JS)
 EM_JS(unsigned short, js_random_get, (unsigned char *dst, unsigned long len), {
   if (ENVIRONMENT_IS_NODE) {
     var crypto = module.require('crypto');
@@ -462,6 +470,30 @@ EM_JS(unsigned short, js_random_get, (unsigned char *dst, unsigned long len), {
 
   return 1;
 })
+#else /* !EM_JS */
+static uint16_t
+js_random_get(uint8_t *dst, size_t len) {
+  unsigned char uuid[16];
+  size_t max = 14;
+
+  while (len > 0) {
+    if (max > len)
+      max = len;
+
+    uuid_generate(uuid);
+
+    uuid[6] = uuid[14];
+    uuid[8] = uuid[15];
+
+    memcpy(dst, uuid, max);
+
+    dst += max;
+    len -= max;
+  }
+
+  return 0;
+}
+#endif /* !EM_JS */
 #endif /* __EMSCRIPTEN__ */
 
 /*
