@@ -34,7 +34,12 @@
  * Constants
  */
 
-static const unsigned char digest_info[32][24] = {
+static const unsigned char digest_info[33][24] = {
+  { /* NONE */
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+  },
   { /* BLAKE2B160 */
     0x15, 0x30, 0x27, 0x30, 0x0f, 0x06, 0x0b, 0x2b,
     0x06, 0x01, 0x04, 0x01, 0x8d, 0x3a, 0x0c, 0x02,
@@ -1225,14 +1230,8 @@ fail:
  */
 
 static int
-get_digest_info(const unsigned char **data, size_t *len, int type) {
+get_digest_info(const unsigned char **data, size_t *len, hash_id_t type) {
   const unsigned char *info;
-
-  if (type == -1) {
-    *data = NULL;
-    *len = 0;
-    return 1;
-  }
 
   if (type < 0 || (size_t)type > ARRAY_SIZE(digest_info))
     return 0;
@@ -1250,7 +1249,7 @@ get_digest_info(const unsigned char **data, size_t *len, int type) {
  */
 
 static void
-mgf1xor(int type,
+mgf1xor(hash_id_t type,
         unsigned char *out,
         size_t out_len,
         const unsigned char *seed,
@@ -1295,7 +1294,7 @@ mgf1xor(int type,
 static int
 pss_encode(unsigned char *out,
            size_t *out_len,
-           int type,
+           hash_id_t type,
            const unsigned char *msg,
            size_t msg_len,
            int embits,
@@ -1349,7 +1348,7 @@ pss_encode(unsigned char *out,
 }
 
 static int
-pss_verify(int type,
+pss_verify(hash_id_t type,
            const unsigned char *msg,
            size_t msg_len,
            unsigned char *em,
@@ -1662,7 +1661,7 @@ fail:
 int
 rsa_sign(unsigned char *out,
          size_t *out_len,
-         int type,
+         hash_id_t type,
          const unsigned char *msg,
          size_t msg_len,
          const unsigned char *key,
@@ -1683,7 +1682,7 @@ rsa_sign(unsigned char *out,
   if (!get_digest_info(&prefix, &prefix_len, type))
     goto fail;
 
-  if (type == -1)
+  if (type == HASH_NONE)
     hlen = msg_len;
 
   if (msg_len != hlen)
@@ -1727,7 +1726,7 @@ fail:
 }
 
 int
-rsa_verify(int type,
+rsa_verify(hash_id_t type,
            const unsigned char *msg,
            size_t msg_len,
            const unsigned char *sig,
@@ -1751,7 +1750,7 @@ rsa_verify(int type,
   if (!get_digest_info(&prefix, &prefix_len, type))
     goto fail;
 
-  if (type == -1)
+  if (type == HASH_NONE)
     hlen = msg_len;
 
   if (msg_len != hlen)
@@ -1932,7 +1931,7 @@ fail:
 int
 rsa_sign_pss(unsigned char *out,
              size_t *out_len,
-             int type,
+             hash_id_t type,
              const unsigned char *msg,
              size_t msg_len,
              const unsigned char *key,
@@ -2011,7 +2010,7 @@ fail:
 }
 
 int
-rsa_verify_pss(int type,
+rsa_verify_pss(hash_id_t type,
                const unsigned char *msg,
                size_t msg_len,
                const unsigned char *sig,
@@ -2090,7 +2089,7 @@ fail:
 int
 rsa_encrypt_oaep(unsigned char *out,
                  size_t *out_len,
-                 int type,
+                 hash_id_t type,
                  const unsigned char *msg,
                  size_t msg_len,
                  const unsigned char *key,
@@ -2172,7 +2171,7 @@ fail:
 int
 rsa_decrypt_oaep(unsigned char *out,
                  size_t *out_len,
-                 int type,
+                 hash_id_t type,
                  const unsigned char *msg,
                  size_t msg_len,
                  const unsigned char *key,

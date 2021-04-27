@@ -5489,7 +5489,7 @@ pkcs7_unpad(unsigned char *dst,
  */
 
 size_t
-cipher_key_size(int type) {
+cipher_key_size(cipher_id_t type) {
   switch (type) {
     case CIPHER_AES128:
       return 16;
@@ -5545,7 +5545,7 @@ cipher_key_size(int type) {
 }
 
 size_t
-cipher_block_size(int type) {
+cipher_block_size(cipher_id_t type) {
   switch (type) {
     case CIPHER_AES128:
       return 16;
@@ -5601,7 +5601,10 @@ cipher_block_size(int type) {
 }
 
 int
-cipher_init(cipher_t *ctx, int type, const unsigned char *key, size_t key_len) {
+cipher_init(cipher_t *ctx,
+            cipher_id_t type,
+            const unsigned char *key,
+            size_t key_len) {
   ctx->type = type;
   ctx->size = cipher_block_size(type);
 
@@ -7154,7 +7157,7 @@ typedef struct __cipher_mode_s cipher_mode_t;
 
 static int
 cipher_mode_init(cipher_mode_t *ctx, const cipher_t *cipher,
-                 int type, const unsigned char *iv, size_t iv_len) {
+                 mode_id_t type, const unsigned char *iv, size_t iv_len) {
   ctx->type = type;
 
   switch (ctx->type) {
@@ -7437,7 +7440,7 @@ cipher_mode_verify(cipher_mode_t *ctx,
 
 int
 cipher_stream_init(cipher_stream_t *ctx,
-                   int type, int mode, int encrypt,
+                   cipher_id_t type, mode_id_t mode, int encrypt,
                    const unsigned char *key, size_t key_len,
                    const unsigned char *iv, size_t iv_len) {
   int is_pad = mode == CIPHER_MODE_ECB || mode == CIPHER_MODE_CBC;
@@ -7815,6 +7818,10 @@ cipher_stream_final(cipher_stream_t *ctx,
 
       break;
     }
+
+    default: {
+      break;
+    }
   }
 
   return 1;
@@ -7838,6 +7845,10 @@ cipher_stream_final_size(const cipher_stream_t *ctx) {
 
       return ctx->block_size + ctx->block_pos;
     }
+
+    default: {
+      break;
+    }
   }
 
   return 0;
@@ -7850,8 +7861,8 @@ cipher_stream_final_size(const cipher_stream_t *ctx) {
 static int
 cipher_static_crypt(unsigned char *output,
                     size_t *output_len,
-                    int type,
-                    int mode,
+                    cipher_id_t type,
+                    mode_id_t mode,
                     int encrypt,
                     const unsigned char *key,
                     size_t key_len,
@@ -7886,8 +7897,8 @@ fail:
 int
 cipher_static_encrypt(unsigned char *ct,
                       size_t *ct_len,
-                      int type,
-                      int mode,
+                      cipher_id_t type,
+                      mode_id_t mode,
                       const unsigned char *key,
                       size_t key_len,
                       const unsigned char *iv,
@@ -7904,8 +7915,8 @@ cipher_static_encrypt(unsigned char *ct,
 int
 cipher_static_decrypt(unsigned char *pt,
                       size_t *pt_len,
-                      int type,
-                      int mode,
+                      cipher_id_t type,
+                      mode_id_t mode,
                       const unsigned char *key,
                       size_t key_len,
                       const unsigned char *iv,

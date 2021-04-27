@@ -61,7 +61,7 @@ hmac_drbg_update(hmac_drbg_t *drbg,
 
 void
 hmac_drbg_init(hmac_drbg_t *drbg,
-               int type,
+               hash_id_t type,
                const unsigned char *seed,
                size_t seed_len) {
   size_t size = hash_output_size(type);
@@ -125,7 +125,7 @@ hmac_drbg_rng(void *out, size_t size, void *arg) {
 
 void
 hash_drbg_init(hash_drbg_t *drbg,
-               int type,
+               hash_id_t type,
                const unsigned char *seed,
                size_t seed_len) {
   size_t size = hash_output_size(type);

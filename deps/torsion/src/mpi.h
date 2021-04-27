@@ -28,9 +28,13 @@
 #define mpn_add_1 __torsion_mpn_add_1
 #define mpn_add_n __torsion_mpn_add_n
 #define mpn_add __torsion_mpn_add
+#define mpn_sec_add_1 __torsion_mpn_sec_add_1
+#define mpn_sec_add __torsion_mpn_sec_add
 #define mpn_sub_1 __torsion_mpn_sub_1
 #define mpn_sub_n __torsion_mpn_sub_n
 #define mpn_sub __torsion_mpn_sub
+#define mpn_sec_sub_1 __torsion_mpn_sec_sub_1
+#define mpn_sec_sub __torsion_mpn_sec_sub
 #define mpn_mul_1 __torsion_mpn_mul_1
 #define mpn_addmul_1 __torsion_mpn_addmul_1
 #define mpn_submul_1 __torsion_mpn_submul_1
@@ -38,12 +42,6 @@
 #define mpn_mul __torsion_mpn_mul
 #define mpn_sqr __torsion_mpn_sqr
 #define mpn_mulshift __torsion_mpn_mulshift
-#define mpn_reduce_weak __torsion_mpn_reduce_weak
-#define mpn_barrett __torsion_mpn_barrett
-#define mpn_reduce __torsion_mpn_reduce
-#define mpn_mont __torsion_mpn_mont
-#define mpn_montmul __torsion_mpn_montmul
-#define mpn_montmul_var __torsion_mpn_montmul_var
 #define mpn_divmod_1 __torsion_mpn_divmod_1
 #define mpn_div_1 __torsion_mpn_div_1
 #define mpn_mod_1 __torsion_mpn_mod_1
@@ -52,8 +50,6 @@
 #define mpn_mod __torsion_mpn_mod
 #define mpn_divexact_1 __torsion_mpn_divexact_1
 #define mpn_divexact __torsion_mpn_divexact
-#define mpn_divround_1 __torsion_mpn_divround_1
-#define mpn_divround __torsion_mpn_divround
 #define mpn_and_n __torsion_mpn_and_n
 #define mpn_ior_n __torsion_mpn_ior_n
 #define mpn_xor_n __torsion_mpn_xor_n
@@ -77,6 +73,12 @@
 #define mpn_hamdist __torsion_mpn_hamdist
 #define mpn_mask __torsion_mask
 #define mpn_neg __torsion_mpn_neg
+#define mpn_reduce_weak __torsion_mpn_reduce_weak
+#define mpn_barrett __torsion_mpn_barrett
+#define mpn_reduce __torsion_mpn_reduce
+#define mpn_mont __torsion_mpn_mont
+#define mpn_montmul __torsion_mpn_montmul
+#define mpn_sec_montmul __torsion_mpn_sec_montmul
 #define mpn_gcd __torsion_mpn_gcd
 #define mpn_gcd_1 __torsion_mpn_gcd_1
 #define mpn_invert __torsion_mpn_invert
@@ -95,6 +97,7 @@
 #define mpn_cnd_swap __torsion_mpn_cnd_swap
 #define mpn_cnd_add_n __torsion_mpn_cnd_add_n
 #define mpn_cnd_sub_n __torsion_mpn_cnd_sub_n
+#define mpn_cnd_neg __torsion_mpn_cnd_neg
 #define mpn_sec_tabselect __torsion_mpn_sec_tabselect
 #define mpn_sec_zero_p __torsion_mpn_sec_zero_p
 #define mpn_sec_equal_p __torsion_mpn_sec_equal_p
@@ -432,6 +435,17 @@ mpn_add(mp_limb_t *zp, const mp_limb_t *xp, mp_size_t xn,
                        const mp_limb_t *yp, mp_size_t yn);
 
 /*
+ * Secure Addition
+ */
+
+mp_limb_t
+mpn_sec_add_1(mp_limb_t *zp, const mp_limb_t *xp, mp_size_t xn, mp_limb_t y);
+
+mp_limb_t
+mpn_sec_add(mp_limb_t *zp, const mp_limb_t *xp, mp_size_t xn,
+                           const mp_limb_t *yp, mp_size_t yn);
+
+/*
  * Subtraction
  */
 
@@ -446,6 +460,17 @@ mpn_sub_n(mp_limb_t *zp, const mp_limb_t *xp,
 mp_limb_t
 mpn_sub(mp_limb_t *zp, const mp_limb_t *xp, mp_size_t xn,
                        const mp_limb_t *yp, mp_size_t yn);
+
+/*
+ * Secure Subtraction
+ */
+
+mp_limb_t
+mpn_sec_sub_1(mp_limb_t *zp, const mp_limb_t *xp, mp_size_t xn, mp_limb_t y);
+
+mp_limb_t
+mpn_sec_sub(mp_limb_t *zp, const mp_limb_t *xp, mp_size_t xn,
+                           const mp_limb_t *yp, mp_size_t yn);
 
 /*
  * Multiplication
@@ -484,62 +509,6 @@ mpn_mulshift(mp_limb_t *zp, const mp_limb_t *xp,
                             mp_limb_t *scratch);
 
 /*
- * Weak Reduction
- */
-
-int
-mpn_reduce_weak(mp_limb_t *zp, const mp_limb_t *xp,
-                               const mp_limb_t *np,
-                               mp_size_t n,
-                               mp_limb_t hi,
-                               mp_limb_t *scratch);
-
-/*
- * Barrett Reduction
- */
-
-void
-mpn_barrett(mp_limb_t *mp, const mp_limb_t *np,
-                           mp_size_t n,
-                           mp_size_t shift,
-                           mp_limb_t *scratch);
-
-void
-mpn_reduce(mp_limb_t *zp, const mp_limb_t *xp,
-                          const mp_limb_t *mp,
-                          const mp_limb_t *np,
-                          mp_size_t n,
-                          mp_size_t shift,
-                          mp_limb_t *scratch);
-
-/*
- * Montgomery Multiplication
- */
-
-void
-mpn_mont(mp_limb_t *kp,
-         mp_limb_t *rp,
-         const mp_limb_t *mp,
-         mp_size_t n,
-         mp_limb_t *scratch);
-
-void
-mpn_montmul(mp_limb_t *zp, const mp_limb_t *xp,
-                           const mp_limb_t *yp,
-                           const mp_limb_t *mp,
-                           mp_size_t n,
-                           mp_limb_t k,
-                           mp_limb_t *scratch);
-
-void
-mpn_montmul_var(mp_limb_t *zp, const mp_limb_t *xp,
-                               const mp_limb_t *yp,
-                               const mp_limb_t *mp,
-                               mp_size_t n,
-                               mp_limb_t k,
-                               mp_limb_t *scratch);
-
-/*
  * Division
  */
 
@@ -574,17 +543,6 @@ mpn_divexact_1(mp_limb_t *qp, const mp_limb_t *np, mp_size_t nn, mp_limb_t d);
 
 void
 mpn_divexact(mp_limb_t *qp, const mp_limb_t *np, mp_size_t nn,
-                            const mp_limb_t *dp, mp_size_t dn);
-
-/*
- * Round Division
- */
-
-void
-mpn_divround_1(mp_limb_t *qp, const mp_limb_t *np, mp_size_t nn, mp_limb_t d);
-
-void
-mpn_divround(mp_limb_t *qp, const mp_limb_t *np, mp_size_t nn,
                             const mp_limb_t *dp, mp_size_t dn);
 
 /*
@@ -725,6 +683,62 @@ mp_limb_t
 mpn_neg(mp_limb_t *zp, const mp_limb_t *xp, mp_size_t xn);
 
 /*
+ * Weak Reduction
+ */
+
+int
+mpn_reduce_weak(mp_limb_t *zp, const mp_limb_t *xp,
+                               const mp_limb_t *np,
+                               mp_size_t n,
+                               mp_limb_t hi,
+                               mp_limb_t *scratch);
+
+/*
+ * Barrett Reduction
+ */
+
+void
+mpn_barrett(mp_limb_t *mp, const mp_limb_t *np,
+                           mp_size_t n,
+                           mp_size_t shift,
+                           mp_limb_t *scratch);
+
+void
+mpn_reduce(mp_limb_t *zp, const mp_limb_t *xp,
+                          const mp_limb_t *mp,
+                          const mp_limb_t *np,
+                          mp_size_t n,
+                          mp_size_t shift,
+                          mp_limb_t *scratch);
+
+/*
+ * Montgomery Multiplication
+ */
+
+void
+mpn_mont(mp_limb_t *kp,
+         mp_limb_t *rp,
+         const mp_limb_t *mp,
+         mp_size_t n,
+         mp_limb_t *scratch);
+
+void
+mpn_montmul(mp_limb_t *zp, const mp_limb_t *xp,
+                           const mp_limb_t *yp,
+                           const mp_limb_t *mp,
+                           mp_size_t n,
+                           mp_limb_t k,
+                           mp_limb_t *scratch);
+
+void
+mpn_sec_montmul(mp_limb_t *zp, const mp_limb_t *xp,
+                               const mp_limb_t *yp,
+                               const mp_limb_t *mp,
+                               mp_size_t n,
+                               mp_limb_t k,
+                               mp_limb_t *scratch);
+
+/*
  * Number Theoretic Functions
  */
 
@@ -822,6 +836,9 @@ mpn_cnd_sub_n(mp_limb_t *zp, const mp_limb_t *xp,
                              mp_size_t n,
                              mp_limb_t cnd);
 
+mp_limb_t
+mpn_cnd_neg(mp_limb_t *zp, const mp_limb_t *xp, mp_size_t xn, mp_limb_t cnd);
+
 void
 mpn_sec_tabselect(mp_limb_t *zp,
                   const mp_limb_t *tp,
@@ -856,7 +873,7 @@ mpn_sec_cmp(const mp_limb_t *xp, const mp_limb_t *yp, mp_size_t n);
 
 void
 mpn_import(mp_limb_t *zp, mp_size_t zn,
-           const unsigned char *raw, size_t len,
+           const unsigned char *xp, size_t xn,
            int endian);
 
 /*
@@ -864,7 +881,7 @@ mpn_import(mp_limb_t *zp, mp_size_t zn,
  */
 
 void
-mpn_export(unsigned char *raw, size_t len,
+mpn_export(unsigned char *zp, size_t zn,
            const mp_limb_t *xp, mp_size_t xn,
            int endian);
 

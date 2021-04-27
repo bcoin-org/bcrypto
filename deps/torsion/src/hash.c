@@ -4025,9 +4025,11 @@ whirlpool_final(whirlpool_t *ctx, unsigned char *out) {
  */
 
 void
-hash_init(hash_t *hash, int type) {
+hash_init(hash_t *hash, hash_id_t type) {
   hash->type = type;
   switch (hash->type) {
+    case HASH_NONE:
+      break;
     case HASH_BLAKE2B_160:
       blake2b_init(&hash->ctx.blake2b, 20, NULL, 0);
       break;
@@ -4131,6 +4133,8 @@ hash_init(hash_t *hash, int type) {
 void
 hash_update(hash_t *hash, const void *data, size_t len) {
   switch (hash->type) {
+    case HASH_NONE:
+      break;
     case HASH_BLAKE2B_160:
     case HASH_BLAKE2B_256:
     case HASH_BLAKE2B_384:
@@ -4202,6 +4206,8 @@ hash_update(hash_t *hash, const void *data, size_t len) {
 void
 hash_final(hash_t *hash, unsigned char *out, size_t len) {
   switch (hash->type) {
+    case HASH_NONE:
+      break;
     case HASH_BLAKE2B_160:
     case HASH_BLAKE2B_256:
     case HASH_BLAKE2B_384:
@@ -4279,8 +4285,10 @@ hash_final(hash_t *hash, unsigned char *out, size_t len) {
 }
 
 int
-hash_has_backend(int type) {
+hash_has_backend(hash_id_t type) {
   switch (type) {
+    case HASH_NONE:
+      return 0;
     case HASH_BLAKE2B_160:
     case HASH_BLAKE2B_256:
     case HASH_BLAKE2B_384:
@@ -4319,8 +4327,10 @@ hash_has_backend(int type) {
 }
 
 size_t
-hash_output_size(int type) {
+hash_output_size(hash_id_t type) {
   switch (type) {
+    case HASH_NONE:
+      return 0;
     case HASH_BLAKE2B_160:
       return 20;
     case HASH_BLAKE2B_256:
@@ -4391,8 +4401,10 @@ hash_output_size(int type) {
 }
 
 size_t
-hash_block_size(int type) {
+hash_block_size(hash_id_t type) {
   switch (type) {
+    case HASH_NONE:
+      return 0;
     case HASH_BLAKE2B_160:
       return 128;
     case HASH_BLAKE2B_256:
@@ -4472,7 +4484,7 @@ hash_block_size(int type) {
  */
 
 void
-hmac_init(hmac_t *hmac, int type, const unsigned char *key, size_t len) {
+hmac_init(hmac_t *hmac, hash_id_t type, const unsigned char *key, size_t len) {
   size_t hash_size = hash_output_size(type);
   size_t block_size = hash_block_size(type);
   unsigned char tmp[HASH_MAX_OUTPUT_SIZE];

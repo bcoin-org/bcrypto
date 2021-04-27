@@ -87,7 +87,7 @@ bcrypt_verify(const unsigned char *pass, size_t pass_len, const char *record);
 TORSION_EXTERN int
 eb2k_derive(unsigned char *key,
             unsigned char *iv,
-            int type,
+            hash_id_t type,
             const unsigned char *passwd,
             size_t passwd_len,
             const unsigned char *salt,
@@ -100,13 +100,13 @@ eb2k_derive(unsigned char *key,
  */
 
 TORSION_EXTERN int
-hkdf_extract(unsigned char *out, int type,
+hkdf_extract(unsigned char *out, hash_id_t type,
              const unsigned char *ikm, size_t ikm_len,
              const unsigned char *salt, size_t salt_len);
 
 TORSION_EXTERN int
 hkdf_expand(unsigned char *out,
-            int type,
+            hash_id_t type,
             const unsigned char *prk,
             const unsigned char *info,
             size_t info_len,
@@ -118,7 +118,7 @@ hkdf_expand(unsigned char *out,
 
 TORSION_EXTERN int
 pbkdf2_derive(unsigned char *out,
-              int type,
+              hash_id_t type,
               const unsigned char *pass,
               size_t pass_len,
               const unsigned char *salt,
@@ -132,14 +132,14 @@ pbkdf2_derive(unsigned char *out,
 
 TORSION_EXTERN int
 pgpdf_derive_simple(unsigned char *out,
-                    int type,
+                    hash_id_t type,
                     const unsigned char *pass,
                     size_t pass_len,
                     size_t len);
 
 TORSION_EXTERN int
 pgpdf_derive_salted(unsigned char *out,
-                    int type,
+                    hash_id_t type,
                     const unsigned char *pass,
                     size_t pass_len,
                     const unsigned char *salt,
@@ -148,7 +148,7 @@ pgpdf_derive_salted(unsigned char *out,
 
 TORSION_EXTERN int
 pgpdf_derive_iterated(unsigned char *out,
-                      int type,
+                      hash_id_t type,
                       const unsigned char *pass,
                       size_t pass_len,
                       const unsigned char *salt,

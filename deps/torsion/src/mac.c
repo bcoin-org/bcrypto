@@ -57,7 +57,7 @@ typedef torsion_uint128_t poly1305_uint128_t;
 #define poly1305_shr(x, n) ((uint64_t)((x) >> (n)))
 #define poly1305_lo(x) ((uint64_t)(x))
 
-#elif defined(HAVE_UMUL128) /* !TORSION_HAVE_INT128 */
+#elif defined(HAVE_UMUL128) || defined(HAVE_UMULH) /* !TORSION_HAVE_INT128 */
 
 #define POLY1305_HAVE_64BIT
 
@@ -66,9 +66,16 @@ typedef struct poly1305_uint128_s {
   uint64_t hi;
 } poly1305_uint128_t;
 
+#if defined(HAVE_UMUL128)
 #define poly1305_mul(z, x, y) do {      \
   (z).lo = _umul128((x), (y), &(z).hi); \
 } while (0)
+#else
+#define poly1305_mul(z, x, y) do { \
+  (z).hi = __umulh(x, y);          \
+  (z).lo = (x) * (y);              \
+} while (0)
+#endif
 
 #define poly1305_add(z, x) do {      \
   uint64_t _lo = (z).lo + (x).lo;    \

@@ -118,45 +118,6 @@ extern "C" {
  * Definitions
  */
 
-#define CIPHER_AES128 0
-#define CIPHER_AES192 1
-#define CIPHER_AES256 2
-#define CIPHER_ARC2 3
-#define CIPHER_ARC2_GUTMANN 4
-#define CIPHER_ARC2_40 5
-#define CIPHER_ARC2_64 6
-#define CIPHER_ARC2_128 7
-#define CIPHER_ARC2_128_GUTMANN 8
-#define CIPHER_BLOWFISH 9
-#define CIPHER_CAMELLIA128 10
-#define CIPHER_CAMELLIA192 11
-#define CIPHER_CAMELLIA256 12
-#define CIPHER_CAST5 13
-#define CIPHER_DES 14
-#define CIPHER_DES_EDE 15
-#define CIPHER_DES_EDE3 16
-#define CIPHER_IDEA 17
-#define CIPHER_SERPENT128 18
-#define CIPHER_SERPENT192 19
-#define CIPHER_SERPENT256 20
-#define CIPHER_TWOFISH128 21
-#define CIPHER_TWOFISH192 22
-#define CIPHER_TWOFISH256 23
-#define CIPHER_MAX 23
-
-#define CIPHER_MODE_RAW 0
-#define CIPHER_MODE_ECB 1
-#define CIPHER_MODE_CBC 2
-#define CIPHER_MODE_CTS 3
-#define CIPHER_MODE_XTS 4
-#define CIPHER_MODE_CTR 5
-#define CIPHER_MODE_CFB 6
-#define CIPHER_MODE_OFB 7
-#define CIPHER_MODE_GCM 8
-#define CIPHER_MODE_CCM 9
-#define CIPHER_MODE_EAX 10
-#define CIPHER_MODE_MAX 10
-
 #define CIPHER_MAX_BLOCK_SIZE 16
 #define CIPHER_MAX_TAG_SIZE 16
 
@@ -172,6 +133,49 @@ extern "C" {
 
 #define CIPHER_MAX_ENCRYPT_SIZE(n) CIPHER_MAX_UPDATE_SIZE(n)
 #define CIPHER_MAX_DECRYPT_SIZE(n) CIPHER_MAX_UPDATE_SIZE(n)
+
+typedef enum cipher_id {
+  CIPHER_AES128 = 0,
+  CIPHER_AES192,
+  CIPHER_AES256,
+  CIPHER_ARC2,
+  CIPHER_ARC2_GUTMANN,
+  CIPHER_ARC2_40,
+  CIPHER_ARC2_64,
+  CIPHER_ARC2_128,
+  CIPHER_ARC2_128_GUTMANN,
+  CIPHER_BLOWFISH,
+  CIPHER_CAMELLIA128,
+  CIPHER_CAMELLIA192,
+  CIPHER_CAMELLIA256,
+  CIPHER_CAST5,
+  CIPHER_DES,
+  CIPHER_DES_EDE,
+  CIPHER_DES_EDE3,
+  CIPHER_IDEA,
+  CIPHER_SERPENT128,
+  CIPHER_SERPENT192,
+  CIPHER_SERPENT256,
+  CIPHER_TWOFISH128,
+  CIPHER_TWOFISH192,
+  CIPHER_TWOFISH256,
+  CIPHER_MAX = CIPHER_TWOFISH256
+} cipher_id_t;
+
+typedef enum mode_id {
+  CIPHER_MODE_RAW = 0,
+  CIPHER_MODE_ECB,
+  CIPHER_MODE_CBC,
+  CIPHER_MODE_CTS,
+  CIPHER_MODE_XTS,
+  CIPHER_MODE_CTR,
+  CIPHER_MODE_CFB,
+  CIPHER_MODE_OFB,
+  CIPHER_MODE_GCM,
+  CIPHER_MODE_CCM,
+  CIPHER_MODE_EAX,
+  CIPHER_MODE_MAX = CIPHER_MODE_EAX
+} mode_id_t;
 
 /*
  * Structs
@@ -232,7 +236,7 @@ typedef struct twofish_s {
 } twofish_t;
 
 typedef struct cipher_s {
-  int type;
+  cipher_id_t type;
   size_t size;
   union {
     aes_t aes;
@@ -304,7 +308,7 @@ typedef struct eax_s {
 } eax_t;
 
 struct __cipher_mode_s {
-  int type;
+  mode_id_t type;
   union {
     block_mode_t block;
     stream_mode_t stream;
@@ -539,13 +543,16 @@ pkcs7_unpad(unsigned char *dst,
  */
 
 TORSION_EXTERN size_t
-cipher_key_size(int type);
+cipher_key_size(cipher_id_t type);
 
 TORSION_EXTERN size_t
-cipher_block_size(int type);
+cipher_block_size(cipher_id_t type);
 
 TORSION_EXTERN int
-cipher_init(cipher_t *ctx, int type, const unsigned char *key, size_t key_len);
+cipher_init(cipher_t *ctx,
+            cipher_id_t type,
+            const unsigned char *key,
+            size_t key_len);
 
 TORSION_EXTERN void
 cipher_encrypt(const cipher_t *ctx,
@@ -755,7 +762,7 @@ eax_digest(eax_t *mode, const cipher_t *cipher, unsigned char *mac);
 
 TORSION_EXTERN int
 cipher_stream_init(cipher_stream_t *ctx,
-                   int type, int mode, int encrypt,
+                   cipher_id_t type, mode_id_t mode, int encrypt,
                    const unsigned char *key, size_t key_len,
                    const unsigned char *iv, size_t iv_len);
 
@@ -811,8 +818,8 @@ cipher_stream_final_size(const cipher_stream_t *ctx);
 TORSION_EXTERN int
 cipher_static_encrypt(unsigned char *ct,
                       size_t *ct_len,
-                      int type,
-                      int mode,
+                      cipher_id_t type,
+                      mode_id_t mode,
                       const unsigned char *key,
                       size_t key_len,
                       const unsigned char *iv,
@@ -823,8 +830,8 @@ cipher_static_encrypt(unsigned char *ct,
 TORSION_EXTERN int
 cipher_static_decrypt(unsigned char *pt,
                       size_t *pt_len,
-                      int type,
-                      int mode,
+                      cipher_id_t type,
+                      mode_id_t mode,
                       const unsigned char *key,
                       size_t key_len,
                       const unsigned char *iv,

@@ -149,7 +149,7 @@ rsa_pubkey_export(unsigned char *out,
 TORSION_EXTERN int
 rsa_sign(unsigned char *out,
          size_t *out_len,
-         int type,
+         hash_id_t type,
          const unsigned char *msg,
          size_t msg_len,
          const unsigned char *key,
@@ -157,7 +157,7 @@ rsa_sign(unsigned char *out,
          const unsigned char *entropy);
 
 TORSION_EXTERN int
-rsa_verify(int type,
+rsa_verify(hash_id_t type,
            const unsigned char *msg,
            size_t msg_len,
            const unsigned char *sig,
@@ -186,7 +186,7 @@ rsa_decrypt(unsigned char *out,
 TORSION_EXTERN int
 rsa_sign_pss(unsigned char *out,
              size_t *out_len,
-             int type,
+             hash_id_t type,
              const unsigned char *msg,
              size_t msg_len,
              const unsigned char *key,
@@ -195,7 +195,7 @@ rsa_sign_pss(unsigned char *out,
              const unsigned char *entropy);
 
 TORSION_EXTERN int
-rsa_verify_pss(int type,
+rsa_verify_pss(hash_id_t type,
                const unsigned char *msg,
                size_t msg_len,
                const unsigned char *sig,
@@ -207,7 +207,7 @@ rsa_verify_pss(int type,
 TORSION_EXTERN int
 rsa_encrypt_oaep(unsigned char *out,
                  size_t *out_len,
-                 int type,
+                 hash_id_t type,
                  const unsigned char *msg,
                  size_t msg_len,
                  const unsigned char *key,
@@ -219,7 +219,7 @@ rsa_encrypt_oaep(unsigned char *out,
 TORSION_EXTERN int
 rsa_decrypt_oaep(unsigned char *out,
                  size_t *out_len,
-                 int type,
+                 hash_id_t type,
                  const unsigned char *msg,
                  size_t msg_len,
                  const unsigned char *key,

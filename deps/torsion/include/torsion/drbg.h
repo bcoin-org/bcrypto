@@ -40,7 +40,7 @@ extern "C" {
  */
 
 typedef struct hmac_drbg_s {
-  int type;
+  hash_id_t type;
   size_t size;
   hmac_t kmac;
   unsigned char K[HASH_MAX_OUTPUT_SIZE];
@@ -48,7 +48,7 @@ typedef struct hmac_drbg_s {
 } hmac_drbg_t;
 
 typedef struct hash_drbg_s {
-  int type;
+  hash_id_t type;
   hash_t hash;
   size_t size;
   size_t length;
@@ -87,7 +87,7 @@ typedef hmac_drbg_t drbg_t;
 
 TORSION_EXTERN void
 hmac_drbg_init(hmac_drbg_t *drbg,
-               int type,
+               hash_id_t type,
                const unsigned char *seed,
                size_t seed_len);
 
@@ -107,7 +107,7 @@ hmac_drbg_rng(void *out, size_t size, void *arg);
 
 TORSION_EXTERN void
 hash_drbg_init(hash_drbg_t *drbg,
-               int type,
+               hash_id_t type,
                const unsigned char *seed,
                size_t seed_len);
 
