@@ -28,6 +28,7 @@ include(CheckCSourceCompiles)
 include(CheckIncludeFile)
 include(CheckLibraryExists)
 include(CheckSymbolExists)
+include(CheckTypeSize)
 include(CTest)
 include(GNUInstallDirs)
 
@@ -74,9 +75,9 @@ endif()
 set(torsion_cflags)
 set(torsion_ldflags)
 
-set(CMAKE_C_STANDARD_REQUIRED ON)
-set(CMAKE_C_EXTENSIONS OFF)
-set(CMAKE_C_STANDARD 90)
+unset(CMAKE_C_STANDARD_REQUIRED)
+unset(CMAKE_C_EXTENSIONS)
+unset(CMAKE_C_STANDARD)
 
 if(NOT TORSION_WASM)
   set(CMAKE_C_VISIBILITY_PRESET hidden)
@@ -98,7 +99,6 @@ else()
                                         -Wextra
                                         -Wcast-align
                                         -Wno-implicit-fallthrough
-                                        -Wno-long-long
                                         -Wno-overlength-strings
                                         -Wshadow)
 endif()

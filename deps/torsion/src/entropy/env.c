@@ -55,8 +55,6 @@
  * be re-enabled by defining TORSION_USE_PERFDATA.
  */
 
-#include "ftm.h"
-
 #include <errno.h>
 #include <limits.h>
 #include <stdint.h>
@@ -68,7 +66,6 @@
 #undef HAVE_MANUAL_ENTROPY
 #undef HAVE_GETTIMEOFDAY
 #undef HAVE_GETRUSAGE
-#undef HAVE_DLITERATEPHDR
 #undef HAVE_GETIFADDRS
 #undef HAVE_GETAUXVAL
 #undef HAVE_REALTIME
@@ -114,12 +111,6 @@
 #  endif
 #  if defined(__GLIBC__) && defined(__GLIBC_PREREQ)
 #    if __GLIBC_PREREQ(2, 3)
-#      if defined(__GNUC__) && defined(__SIZEOF_POINTER__)
-#        if __SIZEOF_POINTER__ == 4 || defined(__SIZEOF_INT128__)
-#          include <link.h> /* dl_iterate_phdr */
-#          define HAVE_DLITERATEPHDR
-#        endif
-#      endif
 #      include <sys/socket.h> /* sockaddr, AF_INET{,6} */
 #      include <netinet/in.h> /* sockaddr_in{,6} */
 #      include <ifaddrs.h> /* getifaddrs */
@@ -281,22 +272,6 @@ done:
   close(fd);
 }
 #endif /* !_WIN32 */
-
-#ifdef HAVE_DLITERATEPHDR
-static int
-sha512_write_phdr(struct dl_phdr_info *info, size_t size, void *data) {
-  sha512_t *hash = (sha512_t *)data;
-
-  (void)size;
-
-  sha512_write(hash, &info->dlpi_addr, sizeof(info->dlpi_addr));
-  sha512_write_ptr(hash, info->dlpi_name);
-  sha512_write_string(hash, info->dlpi_name);
-  sha512_write_ptr(hash, info->dlpi_phdr);
-
-  return 0;
-}
-#endif /* HAVE_DLITERATEPHDR */
 
 #ifdef HAVE_GETIFADDRS
 static void
@@ -706,11 +681,6 @@ sha512_write_static_env(sha512_t *hash) {
       sha512_write_string(hash, name.machine);
     }
   }
-
-#ifdef HAVE_DLITERATEPHDR
-  /* Shared objects. */
-  dl_iterate_phdr(sha512_write_phdr, hash);
-#endif /* HAVE_DLITERATEPHDR */
 
 #ifdef HAVE_GETAUXVAL
   /* Information available through getauxval(). */

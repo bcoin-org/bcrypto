@@ -40,7 +40,6 @@
       "conditions": [
         ["OS != 'mac' and OS != 'win'", {
           "cflags": [
-            "-std=c89",
             "-pedantic",
             "-Wcast-align",
             "-Wno-implicit-fallthrough",
@@ -52,7 +51,6 @@
         ["OS == 'mac'", {
           "xcode_settings": {
             "MACOSX_DEPLOYMENT_TARGET": "10.7",
-            "GCC_C_LANGUAGE_STANDARD": "c89",
             "WARNING_CFLAGS": [
               "-pedantic",
               "-Wcast-align",

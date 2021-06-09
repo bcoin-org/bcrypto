@@ -88,8 +88,6 @@
  * above (otherwise we fall back to GetSystemTimeAsFileTime).
  */
 
-#include "ftm.h"
-
 #include <stddef.h>
 #include <stdint.h>
 #include "entropy.h"
@@ -108,6 +106,7 @@
 #    define HAVE_QUERYPERFORMANCECOUNTER
 #  endif
 #elif defined(__VMS)
+#  define __NEW_STARLET 1
 #  include <ssdef.h> /* SS$_NORMAL */
 #  include <starlet.h> /* sys$gettim{,_prec} */
 #  ifdef __DECC
