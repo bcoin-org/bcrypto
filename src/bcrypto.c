@@ -116,25 +116,47 @@
  * Structs
  */
 
+#define DEFINE_UNWRAPPER(name)                                         \
+static napi_status                                                     \
+name ## _unwrap(napi_env env, napi_value value, name ## _t **result) { \
+  napi_status ret;                                                     \
+  void *ptr;                                                           \
+                                                                       \
+  ret = napi_get_value_external(env, value, &ptr);                     \
+                                                                       \
+  if (ret == napi_ok)                                                  \
+    *result = ptr;                                                     \
+                                                                       \
+  return ret;                                                          \
+}
+
 typedef struct bcrypto_aead_s {
   chachapoly_t ctx;
   int mode;
 } bcrypto_aead_t;
+
+DEFINE_UNWRAPPER(bcrypto_aead)
 
 typedef struct bcrypto_blake2b_s {
   blake2b_t ctx;
   int started;
 } bcrypto_blake2b_t;
 
+DEFINE_UNWRAPPER(bcrypto_blake2b)
+
 typedef struct bcrypto_blake2s_s {
   blake2s_t ctx;
   int started;
 } bcrypto_blake2s_t;
 
+DEFINE_UNWRAPPER(bcrypto_blake2s)
+
 typedef struct bcrypto_chacha20_s {
   chacha20_t ctx;
   int started;
 } bcrypto_chacha20_t;
+
+DEFINE_UNWRAPPER(bcrypto_chacha20)
 
 typedef struct bcrypto_cipher_s {
   cipher_stream_t ctx;
@@ -145,12 +167,16 @@ typedef struct bcrypto_cipher_s {
   int has_tag;
 } bcrypto_cipher_t;
 
+DEFINE_UNWRAPPER(bcrypto_cipher)
+
 typedef struct bcrypto_ctr_drbg_s {
   ctr_drbg_t ctx;
   uint32_t bits;
   int derivation;
   int started;
 } bcrypto_ctr_drbg_t;
+
+DEFINE_UNWRAPPER(bcrypto_ctr_drbg)
 
 typedef struct bcrypto_mont_s {
   mont_curve_t *ctx;
@@ -159,6 +185,8 @@ typedef struct bcrypto_mont_s {
   size_t field_size;
   size_t field_bits;
 } bcrypto_mont_curve_t;
+
+DEFINE_UNWRAPPER(bcrypto_mont_curve)
 
 typedef struct bcrypto_edwards_s {
   edwards_curve_t *ctx;
@@ -172,11 +200,15 @@ typedef struct bcrypto_edwards_s {
   size_t sig_size;
 } bcrypto_edwards_curve_t;
 
+DEFINE_UNWRAPPER(bcrypto_edwards_curve)
+
 typedef struct bcrypto_hash_s {
   hash_t ctx;
   int type;
   int started;
 } bcrypto_hash_t;
+
+DEFINE_UNWRAPPER(bcrypto_hash)
 
 typedef struct bcrypto_hash_drbg_s {
   hash_drbg_t ctx;
@@ -184,11 +216,15 @@ typedef struct bcrypto_hash_drbg_s {
   int started;
 } bcrypto_hash_drbg_t;
 
+DEFINE_UNWRAPPER(bcrypto_hash_drbg)
+
 typedef struct bcrypto_hmac_s {
   hmac_t ctx;
   int type;
   int started;
 } bcrypto_hmac_t;
+
+DEFINE_UNWRAPPER(bcrypto_hmac)
 
 typedef struct bcrypto_hmac_drbg_s {
   hmac_drbg_t ctx;
@@ -196,25 +232,35 @@ typedef struct bcrypto_hmac_drbg_s {
   int started;
 } bcrypto_hmac_drbg_t;
 
+DEFINE_UNWRAPPER(bcrypto_hmac_drbg)
+
 typedef struct bcrypto_keccak_s {
   keccak_t ctx;
   int started;
 } bcrypto_keccak_t;
+
+DEFINE_UNWRAPPER(bcrypto_keccak)
 
 typedef struct bcrypto_poly1305_s {
   poly1305_t ctx;
   int started;
 } bcrypto_poly1305_t;
 
+DEFINE_UNWRAPPER(bcrypto_poly1305)
+
 typedef struct bcrypto_arc4_s {
   arc4_t ctx;
   int started;
 } bcrypto_arc4_t;
 
+DEFINE_UNWRAPPER(bcrypto_arc4)
+
 typedef struct bcrypto_salsa20_s {
   salsa20_t ctx;
   int started;
 } bcrypto_salsa20_t;
+
+DEFINE_UNWRAPPER(bcrypto_salsa20)
 
 #ifdef BCRYPTO_USE_SECP256K1
 typedef struct bcrypto_secp256k1_s {
@@ -222,6 +268,8 @@ typedef struct bcrypto_secp256k1_s {
   secp256k1_scratch_space *scratch;
 } bcrypto_secp256k1_t;
 #endif
+
+DEFINE_UNWRAPPER(bcrypto_secp256k1)
 
 typedef struct bcrypto_wei_s {
   wei_curve_t *ctx;
@@ -234,6 +282,8 @@ typedef struct bcrypto_wei_s {
   size_t bipschnorr_size;
   size_t bip340_size;
 } bcrypto_wei_curve_t;
+
+DEFINE_UNWRAPPER(bcrypto_wei_curve)
 
 /*
  * Assertions
@@ -351,15 +401,15 @@ static napi_value
 bcrypto_aead_init(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
-  const uint8_t *key, *iv;
+  void *key, *iv;
   size_t key_len, iv_len;
   bcrypto_aead_t *aead;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&aead) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&key, &key_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&iv, &iv_len) == napi_ok);
+  CHECK(bcrypto_aead_unwrap(env, argv[0], &aead) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &iv, &iv_len) == napi_ok);
 
   JS_ASSERT(key_len >= 32, JS_ERR_KEY_SIZE);
   JS_ASSERT(iv_len == 8 || iv_len == 12 || iv_len == 16
@@ -376,14 +426,14 @@ static napi_value
 bcrypto_aead_aad(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  const uint8_t *aad;
+  void *aad;
   size_t aad_len;
   bcrypto_aead_t *aead;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&aead) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&aad, &aad_len) == napi_ok);
+  CHECK(bcrypto_aead_unwrap(env, argv[0], &aead) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &aad, &aad_len) == napi_ok);
 
   JS_ASSERT(aead->mode != -1, JS_ERR_INIT);
   JS_ASSERT(aead->mode == 0, JS_ERR_STATE);
@@ -397,14 +447,14 @@ static napi_value
 bcrypto_aead_encrypt(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  uint8_t *msg;
+  void *msg;
   size_t msg_len;
   bcrypto_aead_t *aead;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&aead) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
+  CHECK(bcrypto_aead_unwrap(env, argv[0], &aead) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &msg, &msg_len) == napi_ok);
 
   JS_ASSERT(aead->mode != -1, JS_ERR_INIT);
   JS_ASSERT(aead->mode == 0 || aead->mode == 1, JS_ERR_STATE);
@@ -421,14 +471,14 @@ static napi_value
 bcrypto_aead_decrypt(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  uint8_t *msg;
+  void *msg;
   size_t msg_len;
   bcrypto_aead_t *aead;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&aead) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
+  CHECK(bcrypto_aead_unwrap(env, argv[0], &aead) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &msg, &msg_len) == napi_ok);
 
   JS_ASSERT(aead->mode != -1, JS_ERR_INIT);
   JS_ASSERT(aead->mode == 0 || aead->mode == 2, JS_ERR_STATE);
@@ -445,14 +495,14 @@ static napi_value
 bcrypto_aead_auth(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  const uint8_t *msg;
+  void *msg;
   size_t msg_len;
   bcrypto_aead_t *aead;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&aead) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
+  CHECK(bcrypto_aead_unwrap(env, argv[0], &aead) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &msg, &msg_len) == napi_ok);
 
   JS_ASSERT(aead->mode != -1, JS_ERR_INIT);
   JS_ASSERT(aead->mode == 0 || aead->mode == 3, JS_ERR_STATE);
@@ -475,7 +525,7 @@ bcrypto_aead_final(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&aead) == napi_ok);
+  CHECK(bcrypto_aead_unwrap(env, argv[0], &aead) == napi_ok);
 
   JS_ASSERT(aead->mode != -1, JS_ERR_INIT);
 
@@ -496,7 +546,7 @@ bcrypto_aead_destroy(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&aead) == napi_ok);
+  CHECK(bcrypto_aead_unwrap(env, argv[0], &aead) == napi_ok);
 
   aead->mode = -1;
 
@@ -508,7 +558,7 @@ bcrypto_aead_verify(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t mac[16];
-  const uint8_t *tag;
+  void *tag;
   size_t tag_len;
   bcrypto_aead_t *aead;
   napi_value result;
@@ -516,8 +566,8 @@ bcrypto_aead_verify(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&aead) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&tag, &tag_len) == napi_ok);
+  CHECK(bcrypto_aead_unwrap(env, argv[0], &aead) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &tag, &tag_len) == napi_ok);
 
   JS_ASSERT(aead->mode != -1, JS_ERR_INIT);
   JS_ASSERT(tag_len == 16, JS_ERR_TAG_SIZE);
@@ -538,19 +588,19 @@ bcrypto_aead_static_encrypt(napi_env env, napi_callback_info info) {
   napi_value argv[4];
   size_t argc = 4;
   uint8_t out[16];
-  const uint8_t *key, *iv, *aad;
+  void *key, *iv, *aad;
   size_t key_len, iv_len, aad_len;
-  uint8_t *msg;
+  void *msg;
   size_t msg_len;
   chachapoly_t ctx;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&key, &key_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&iv, &iv_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[3], (void **)&aad, &aad_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &iv, &iv_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[3], &aad, &aad_len) == napi_ok);
 
   JS_ASSERT(key_len >= 32, JS_ERR_KEY_SIZE);
   JS_ASSERT(iv_len == 8 || iv_len == 12 || iv_len == 16
@@ -573,9 +623,9 @@ bcrypto_aead_static_decrypt(napi_env env, napi_callback_info info) {
   napi_value argv[5];
   size_t argc = 5;
   uint8_t mac[16];
-  const uint8_t *key, *iv, *tag, *aad;
+  void *key, *iv, *tag, *aad;
   size_t key_len, iv_len, tag_len, aad_len;
-  uint8_t *msg;
+  void *msg;
   size_t msg_len;
   chachapoly_t ctx;
   napi_value result;
@@ -583,11 +633,11 @@ bcrypto_aead_static_decrypt(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 5);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&key, &key_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&iv, &iv_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[3], (void **)&tag, &tag_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[4], (void **)&aad, &aad_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &iv, &iv_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[3], &tag, &tag_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[4], &aad, &aad_len) == napi_ok);
 
   JS_ASSERT(key_len >= 32, JS_ERR_KEY_SIZE);
   JS_ASSERT(iv_len == 8 || iv_len == 12 || iv_len == 16
@@ -613,7 +663,7 @@ bcrypto_aead_static_auth(napi_env env, napi_callback_info info) {
   napi_value argv[5];
   size_t argc = 5;
   uint8_t mac[16];
-  const uint8_t *key, *iv, *msg, *tag, *aad;
+  void *key, *iv, *msg, *tag, *aad;
   size_t key_len, iv_len, msg_len, tag_len, aad_len;
   chachapoly_t ctx;
   napi_value result;
@@ -621,11 +671,11 @@ bcrypto_aead_static_auth(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 5);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&key, &key_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&iv, &iv_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[3], (void **)&tag, &tag_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[4], (void **)&aad, &aad_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &iv, &iv_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[3], &tag, &tag_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[4], &aad, &aad_len) == napi_ok);
 
   JS_ASSERT(key_len >= 32, JS_ERR_KEY_SIZE);
   JS_ASSERT(iv_len == 8 || iv_len == 12 || iv_len == 16
@@ -680,14 +730,14 @@ static napi_value
 bcrypto_arc4_init(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  const uint8_t *key;
+  void *key;
   size_t key_len;
   bcrypto_arc4_t *arc4;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&arc4) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&key, &key_len) == napi_ok);
+  CHECK(bcrypto_arc4_unwrap(env, argv[0], &arc4) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &key, &key_len) == napi_ok);
 
   JS_ASSERT(key_len >= 1 && key_len <= 256, JS_ERR_KEY_SIZE);
 
@@ -701,14 +751,14 @@ static napi_value
 bcrypto_arc4_crypt(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  uint8_t *msg;
+  void *msg;
   size_t msg_len;
   bcrypto_arc4_t *arc4;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&arc4) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
+  CHECK(bcrypto_arc4_unwrap(env, argv[0], &arc4) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &msg, &msg_len) == napi_ok);
 
   JS_ASSERT(arc4->started, JS_ERR_INIT);
 
@@ -725,7 +775,7 @@ bcrypto_arc4_destroy(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&arc4) == napi_ok);
+  CHECK(bcrypto_arc4_unwrap(env, argv[0], &arc4) == napi_ok);
 
   arc4->started = 0;
 
@@ -742,14 +792,13 @@ bcrypto_base16_encode(napi_env env, napi_callback_info info) {
   size_t argc = 1;
   char *out;
   size_t out_len;
-  const uint8_t *data;
+  void *data;
   size_t data_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&data,
-                             &data_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &data, &data_len) == napi_ok);
 
   JS_ASSERT(data_len <= 0x7fffffff, JS_ERR_ENCODE);
 
@@ -778,7 +827,7 @@ static napi_value
 bcrypto_base16_decode(napi_env env, napi_callback_info info) {
   napi_value argv[1];
   size_t argc = 1;
-  uint8_t *out;
+  void *out;
   size_t out_len;
   char *str;
   size_t str_len;
@@ -794,7 +843,7 @@ bcrypto_base16_decode(napi_env env, napi_callback_info info) {
   if (out_len > MAX_BUFFER_LENGTH)
     goto fail;
 
-  if (napi_create_buffer(env, out_len, (void **)&out, &result) != napi_ok)
+  if (napi_create_buffer(env, out_len, &out, &result) != napi_ok)
     goto fail;
 
   if (!base16_decode(out, &out_len, str, str_len))
@@ -841,14 +890,13 @@ bcrypto_base16le_encode(napi_env env, napi_callback_info info) {
   size_t argc = 1;
   char *out;
   size_t out_len;
-  const uint8_t *data;
+  void *data;
   size_t data_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&data,
-                             &data_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &data, &data_len) == napi_ok);
 
   JS_ASSERT(data_len <= 0x7fffffff, JS_ERR_ENCODE);
 
@@ -877,7 +925,7 @@ static napi_value
 bcrypto_base16le_decode(napi_env env, napi_callback_info info) {
   napi_value argv[1];
   size_t argc = 1;
-  uint8_t *out;
+  void *out;
   size_t out_len;
   char *str;
   size_t str_len;
@@ -893,7 +941,7 @@ bcrypto_base16le_decode(napi_env env, napi_callback_info info) {
   if (out_len > MAX_BUFFER_LENGTH)
     goto fail;
 
-  if (napi_create_buffer(env, out_len, (void **)&out, &result) != napi_ok)
+  if (napi_create_buffer(env, out_len, &out, &result) != napi_ok)
     goto fail;
 
   if (!base16le_decode(out, &out_len, str, str_len))
@@ -940,15 +988,14 @@ bcrypto_base32_encode(napi_env env, napi_callback_info info) {
   size_t argc = 2;
   char *out;
   size_t out_len;
-  const uint8_t *data;
+  void *data;
   size_t data_len;
   bool pad;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&data,
-                             &data_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &data, &data_len) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[1], &pad) == napi_ok);
 
   JS_ASSERT(data_len <= 0x7fffffff, JS_ERR_ENCODE);
@@ -978,7 +1025,7 @@ static napi_value
 bcrypto_base32_decode(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  uint8_t *out;
+  void *out;
   size_t out_len;
   char *str;
   size_t str_len;
@@ -997,7 +1044,7 @@ bcrypto_base32_decode(napi_env env, napi_callback_info info) {
   if (out_len > MAX_BUFFER_LENGTH)
     goto fail;
 
-  if (napi_create_buffer(env, out_len, (void **)&out, &result) != napi_ok)
+  if (napi_create_buffer(env, out_len, &out, &result) != napi_ok)
     goto fail;
 
   if (!base32_decode(out, &out_len, str, str_len, unpad))
@@ -1047,15 +1094,14 @@ bcrypto_base32hex_encode(napi_env env, napi_callback_info info) {
   size_t argc = 2;
   char *out;
   size_t out_len;
-  const uint8_t *data;
+  void *data;
   size_t data_len;
   bool pad;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&data,
-                             &data_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &data, &data_len) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[1], &pad) == napi_ok);
 
   JS_ASSERT(data_len <= 0x7fffffff, JS_ERR_ENCODE);
@@ -1085,7 +1131,7 @@ static napi_value
 bcrypto_base32hex_decode(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  uint8_t *out;
+  void *out;
   size_t out_len;
   char *str;
   size_t str_len;
@@ -1104,7 +1150,7 @@ bcrypto_base32hex_decode(napi_env env, napi_callback_info info) {
   if (out_len > MAX_BUFFER_LENGTH)
     goto fail;
 
-  if (napi_create_buffer(env, out_len, (void **)&out, &result) != napi_ok)
+  if (napi_create_buffer(env, out_len, &out, &result) != napi_ok)
     goto fail;
 
   if (!base32hex_decode(out, &out_len, str, str_len, unpad))
@@ -1154,14 +1200,13 @@ bcrypto_base58_encode(napi_env env, napi_callback_info info) {
   size_t argc = 1;
   char *out;
   size_t out_len;
-  const uint8_t *data;
+  void *data;
   size_t data_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&data,
-                             &data_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &data, &data_len) == napi_ok);
 
   JS_ASSERT(data_len <= 0x7fffffff, JS_ERR_ENCODE);
 
@@ -1191,7 +1236,7 @@ static napi_value
 bcrypto_base58_decode(napi_env env, napi_callback_info info) {
   napi_value argv[1];
   size_t argc = 1;
-  uint8_t *out;
+  void *out;
   size_t out_len;
   char *str;
   size_t str_len;
@@ -1210,7 +1255,7 @@ bcrypto_base58_decode(napi_env env, napi_callback_info info) {
   if (out_len > MAX_BUFFER_LENGTH)
     goto fail;
 
-  if (napi_create_arraybuffer(env, out_len, (void **)&out, &ab) != napi_ok)
+  if (napi_create_arraybuffer(env, out_len, &out, &ab) != napi_ok)
     goto fail;
 
   if (!base58_decode(out, &out_len, str, str_len))
@@ -1260,14 +1305,13 @@ bcrypto_base64_encode(napi_env env, napi_callback_info info) {
   size_t argc = 1;
   char *out;
   size_t out_len;
-  const uint8_t *data;
+  void *data;
   size_t data_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&data,
-                             &data_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &data, &data_len) == napi_ok);
 
   JS_ASSERT(data_len <= 0x7fffffff, JS_ERR_ENCODE);
 
@@ -1296,7 +1340,7 @@ static napi_value
 bcrypto_base64_decode(napi_env env, napi_callback_info info) {
   napi_value argv[1];
   size_t argc = 1;
-  uint8_t *out;
+  void *out;
   size_t out_len;
   char *str;
   size_t str_len;
@@ -1312,7 +1356,7 @@ bcrypto_base64_decode(napi_env env, napi_callback_info info) {
   if (out_len > MAX_BUFFER_LENGTH)
     goto fail;
 
-  if (napi_create_buffer(env, out_len, (void **)&out, &result) != napi_ok)
+  if (napi_create_buffer(env, out_len, &out, &result) != napi_ok)
     goto fail;
 
   if (!base64_decode(out, &out_len, str, str_len))
@@ -1359,14 +1403,13 @@ bcrypto_base64url_encode(napi_env env, napi_callback_info info) {
   size_t argc = 1;
   char *out;
   size_t out_len;
-  const uint8_t *data;
+  void *data;
   size_t data_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&data,
-                             &data_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &data, &data_len) == napi_ok);
 
   JS_ASSERT(data_len <= 0x7fffffff, JS_ERR_ENCODE);
 
@@ -1395,7 +1438,7 @@ static napi_value
 bcrypto_base64url_decode(napi_env env, napi_callback_info info) {
   napi_value argv[1];
   size_t argc = 1;
-  uint8_t *out;
+  void *out;
   size_t out_len;
   char *str;
   size_t str_len;
@@ -1411,7 +1454,7 @@ bcrypto_base64url_decode(napi_env env, napi_callback_info info) {
   if (out_len > MAX_BUFFER_LENGTH)
     goto fail;
 
-  if (napi_create_buffer(env, out_len, (void **)&out, &result) != napi_ok)
+  if (napi_create_buffer(env, out_len, &out, &result) != napi_ok)
     goto fail;
 
   if (!base64url_decode(out, &out_len, str, str_len))
@@ -1458,16 +1501,14 @@ bcrypto_bcrypt_hash192(napi_env env, napi_callback_info info) {
   size_t argc = 3;
   uint8_t out[24];
   uint32_t rounds;
-  const uint8_t *pass, *salt;
+  void *pass, *salt;
   size_t pass_len, salt_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&pass,
-                             &pass_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&salt,
-                             &salt_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &pass, &pass_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &salt, &salt_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[2], &rounds) == napi_ok);
 
   JS_ASSERT(rounds >= 4 && rounds <= 31, JS_ERR_DERIVE);
@@ -1485,16 +1526,14 @@ bcrypto_bcrypt_hash256(napi_env env, napi_callback_info info) {
   size_t argc = 3;
   uint8_t out[32];
   uint32_t rounds;
-  const uint8_t *pass, *salt;
+  void *pass, *salt;
   size_t pass_len, salt_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&pass,
-                             &pass_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&salt,
-                             &salt_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &pass, &pass_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &salt, &salt_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[2], &rounds) == napi_ok);
 
   JS_ASSERT(rounds >= 4 && rounds <= 31, JS_ERR_DERIVE);
@@ -1510,24 +1549,22 @@ static napi_value
 bcrypto_bcrypt_pbkdf(napi_env env, napi_callback_info info) {
   napi_value argv[4];
   size_t argc = 4;
-  uint8_t *out;
+  void *out;
   uint32_t rounds, out_len;
-  const uint8_t *pass, *salt;
+  void *pass, *salt;
   size_t pass_len, salt_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&pass,
-                             &pass_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&salt,
-                             &salt_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &pass, &pass_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &salt, &salt_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[2], &rounds) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[3], &out_len) == napi_ok);
 
   JS_ASSERT(out_len <= MAX_BUFFER_LENGTH, JS_ERR_ALLOC);
 
-  JS_CHECK_ALLOC(napi_create_buffer(env, out_len, (void **)&out, &result));
+  JS_CHECK_ALLOC(napi_create_buffer(env, out_len, &out, &result));
 
   JS_ASSERT(bcrypt_pbkdf(out, pass, pass_len, salt, salt_len, rounds, out_len),
             JS_ERR_DERIVE);
@@ -1599,16 +1636,14 @@ bcrypto_bcrypt_pbkdf_async(napi_env env, napi_callback_info info) {
   size_t argc = 4;
   uint8_t *out;
   uint32_t rounds, out_len;
-  const uint8_t *pass, *salt;
+  void *pass, *salt;
   size_t pass_len, salt_len;
   napi_value workname, result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&pass,
-                             &pass_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&salt,
-                             &salt_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &pass, &pass_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &salt, &salt_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[2], &rounds) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[3], &out_len) == napi_ok);
 
@@ -1667,16 +1702,14 @@ bcrypto_bcrypt_derive(napi_env env, napi_callback_info info) {
   size_t argc = 4;
   uint8_t out[31];
   uint32_t rounds, minor;
-  const uint8_t *pass, *salt;
+  void *pass, *salt;
   size_t pass_len, salt_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&pass,
-                             &pass_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&salt,
-                             &salt_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &pass, &pass_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &salt, &salt_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[2], &rounds) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[3], &minor) == napi_ok);
 
@@ -1694,16 +1727,14 @@ bcrypto_bcrypt_generate(napi_env env, napi_callback_info info) {
   size_t argc = 4;
   char out[62];
   uint32_t rounds, minor;
-  const uint8_t *pass, *salt;
+  void *pass, *salt;
   size_t pass_len, salt_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&pass,
-                             &pass_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&salt,
-                             &salt_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &pass, &pass_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &salt, &salt_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[2], &rounds) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[3], &minor) == napi_ok);
 
@@ -1722,7 +1753,7 @@ bcrypto_bcrypt_generate_with_salt64(napi_env env, napi_callback_info info) {
   size_t argc = 4;
   char out[62];
   uint32_t rounds, minor;
-  const uint8_t *pass;
+  void *pass;
   char salt[23 + 1];
   size_t pass_len, salt_len;
   napi_value result;
@@ -1730,8 +1761,7 @@ bcrypto_bcrypt_generate_with_salt64(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&pass,
-                             &pass_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &pass, &pass_len) == napi_ok);
   CHECK(napi_get_value_string_latin1(env, argv[1], salt, sizeof(salt),
                                      &salt_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[2], &rounds) == napi_ok);
@@ -1753,7 +1783,7 @@ static napi_value
 bcrypto_bcrypt_verify(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  const uint8_t *pass;
+  void *pass;
   char record[62 + 1];
   size_t pass_len, record_len;
   napi_value result;
@@ -1761,8 +1791,7 @@ bcrypto_bcrypt_verify(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&pass,
-                             &pass_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &pass, &pass_len) == napi_ok);
   CHECK(napi_get_value_string_latin1(env, argv[1], record, sizeof(record),
                                      &record_len) == napi_ok);
 
@@ -1784,7 +1813,7 @@ bcrypto_bech32_serialize(napi_env env, napi_callback_info info) {
   size_t argc = 3;
   char str[BECH32_MAX_SERIALIZE_SIZE + 1];
   char hrp[BECH32_MAX_HRP_SIZE + 2];
-  const uint8_t *data;
+  void *data;
   size_t hrp_len, data_len;
   uint32_t checksum;
   napi_value result;
@@ -1793,8 +1822,7 @@ bcrypto_bech32_serialize(napi_env env, napi_callback_info info) {
   CHECK(argc == 3);
   CHECK(napi_get_value_string_latin1(env, argv[0], hrp, sizeof(hrp),
                                      &hrp_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&data,
-                             &data_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &data, &data_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[2], &checksum) == napi_ok);
 
   JS_ASSERT(hrp_len != sizeof(hrp) - 1, JS_ERR_ENCODE);
@@ -1872,9 +1900,9 @@ static napi_value
 bcrypto_bech32_convert_bits(napi_env env, napi_callback_info info) {
   napi_value argv[4];
   size_t argc = 4;
-  uint8_t *out;
+  void *out;
   size_t out_len;
-  const uint8_t *data;
+  void *data;
   size_t data_len;
   uint32_t srcbits, dstbits;
   bool pad;
@@ -1884,8 +1912,7 @@ bcrypto_bech32_convert_bits(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&data,
-                             &data_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &data, &data_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[1], &srcbits) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[2], &dstbits) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[3], &pad) == napi_ok);
@@ -1898,7 +1925,7 @@ bcrypto_bech32_convert_bits(napi_env env, napi_callback_info info) {
 
   JS_ASSERT(out_len <= MAX_BUFFER_LENGTH, JS_ERR_ALLOC);
 
-  JS_CHECK_ALLOC(napi_create_buffer(env, out_len, (void **)&out, &result));
+  JS_CHECK_ALLOC(napi_create_buffer(env, out_len, &out, &result));
 
   ok = bech32_convert_bits(out, &tmp_len, dstbits,
                            data, data_len, srcbits, pad);
@@ -1918,7 +1945,7 @@ bcrypto_bech32_encode(napi_env env, napi_callback_info info) {
   char hrp[BECH32_MAX_HRP_SIZE + 2];
   size_t hrp_len;
   uint32_t version;
-  const uint8_t *data;
+  void *data;
   size_t data_len;
   uint32_t checksum;
   napi_value result;
@@ -1928,8 +1955,7 @@ bcrypto_bech32_encode(napi_env env, napi_callback_info info) {
   CHECK(napi_get_value_string_latin1(env, argv[0], hrp, sizeof(hrp),
                                      &hrp_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[1], &version) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&data,
-                             &data_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &data, &data_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[3], &checksum) == napi_ok);
 
   JS_ASSERT(hrp_len != sizeof(hrp) - 1, JS_ERR_ENCODE);
@@ -2043,15 +2069,15 @@ bcrypto_blake2b_init(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
   uint32_t out_len;
-  const uint8_t *key;
+  void *key;
   size_t key_len;
   bcrypto_blake2b_t *blake;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&blake) == napi_ok);
+  CHECK(bcrypto_blake2b_unwrap(env, argv[0], &blake) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[1], &out_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &key, &key_len) == napi_ok);
 
   JS_ASSERT(out_len != 0 && out_len <= 64, JS_ERR_OUTPUT_SIZE);
   JS_ASSERT(key_len <= 64, JS_ERR_KEY_SIZE);
@@ -2066,14 +2092,14 @@ static napi_value
 bcrypto_blake2b_update(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  const uint8_t *in;
+  void *in;
   size_t in_len;
   bcrypto_blake2b_t *blake;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&blake) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&in, &in_len) == napi_ok);
+  CHECK(bcrypto_blake2b_unwrap(env, argv[0], &blake) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &in, &in_len) == napi_ok);
 
   JS_ASSERT(blake->started, JS_ERR_INIT);
 
@@ -2093,7 +2119,7 @@ bcrypto_blake2b_final(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&blake) == napi_ok);
+  CHECK(bcrypto_blake2b_unwrap(env, argv[0], &blake) == napi_ok);
 
   JS_ASSERT(blake->started, JS_ERR_INIT);
 
@@ -2112,7 +2138,7 @@ bcrypto_blake2b_digest(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
   uint8_t out[64];
-  const uint8_t *in, *key;
+  void *in, *key;
   size_t in_len, key_len;
   uint32_t out_len;
   blake2b_t ctx;
@@ -2120,9 +2146,9 @@ bcrypto_blake2b_digest(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&in, &in_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &in, &in_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[1], &out_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &key, &key_len) == napi_ok);
 
   JS_ASSERT(out_len != 0 && out_len <= 64, JS_ERR_OUTPUT_SIZE);
   JS_ASSERT(key_len <= 64, JS_ERR_KEY_SIZE);
@@ -2141,7 +2167,7 @@ bcrypto_blake2b_root(napi_env env, napi_callback_info info) {
   napi_value argv[4];
   size_t argc = 4;
   uint8_t out[64];
-  const uint8_t *left, *right, *key;
+  void *left, *right, *key;
   size_t left_len, right_len, key_len;
   uint32_t out_len;
   blake2b_t ctx;
@@ -2149,12 +2175,10 @@ bcrypto_blake2b_root(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&left,
-                             &left_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&right,
-                             &right_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &left, &left_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &right, &right_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[2], &out_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[3], (void **)&key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[3], &key, &key_len) == napi_ok);
 
   JS_ASSERT(out_len != 0 && out_len <= 64, JS_ERR_OUTPUT_SIZE);
   JS_ASSERT(key_len <= 64, JS_ERR_KEY_SIZE);
@@ -2175,7 +2199,7 @@ bcrypto_blake2b_multi(napi_env env, napi_callback_info info) {
   napi_value argv[5];
   size_t argc = 5;
   uint8_t out[64];
-  const uint8_t *x, *y, *z, *key;
+  void *x, *y, *z, *key;
   size_t x_len, y_len, z_len, key_len;
   uint32_t out_len;
   blake2b_t ctx;
@@ -2183,11 +2207,11 @@ bcrypto_blake2b_multi(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 5);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&x, &x_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&y, &y_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&z, &z_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &x, &x_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &y, &y_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &z, &z_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[3], &out_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[4], (void **)&key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[4], &key, &key_len) == napi_ok);
 
   JS_ASSERT(out_len != 0 && out_len <= 64, JS_ERR_OUTPUT_SIZE);
   JS_ASSERT(key_len <= 64, JS_ERR_KEY_SIZE);
@@ -2238,15 +2262,15 @@ bcrypto_blake2s_init(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
   uint32_t out_len;
-  const uint8_t *key;
+  void *key;
   size_t key_len;
   bcrypto_blake2s_t *blake;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&blake) == napi_ok);
+  CHECK(bcrypto_blake2s_unwrap(env, argv[0], &blake) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[1], &out_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &key, &key_len) == napi_ok);
 
   JS_ASSERT(out_len != 0 && out_len <= 64, JS_ERR_OUTPUT_SIZE);
   JS_ASSERT(key_len <= 64, JS_ERR_KEY_SIZE);
@@ -2261,14 +2285,14 @@ static napi_value
 bcrypto_blake2s_update(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  const uint8_t *in;
+  void *in;
   size_t in_len;
   bcrypto_blake2s_t *blake;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&blake) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&in, &in_len) == napi_ok);
+  CHECK(bcrypto_blake2s_unwrap(env, argv[0], &blake) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &in, &in_len) == napi_ok);
 
   JS_ASSERT(blake->started, JS_ERR_INIT);
 
@@ -2288,7 +2312,7 @@ bcrypto_blake2s_final(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&blake) == napi_ok);
+  CHECK(bcrypto_blake2s_unwrap(env, argv[0], &blake) == napi_ok);
 
   JS_ASSERT(blake->started, JS_ERR_INIT);
 
@@ -2307,7 +2331,7 @@ bcrypto_blake2s_digest(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
   uint8_t out[64];
-  const uint8_t *in, *key;
+  void *in, *key;
   size_t in_len, key_len;
   uint32_t out_len;
   blake2s_t ctx;
@@ -2315,9 +2339,9 @@ bcrypto_blake2s_digest(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&in, &in_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &in, &in_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[1], &out_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &key, &key_len) == napi_ok);
 
   JS_ASSERT(out_len != 0 && out_len <= 64, JS_ERR_OUTPUT_SIZE);
   JS_ASSERT(key_len <= 64, JS_ERR_KEY_SIZE);
@@ -2336,7 +2360,7 @@ bcrypto_blake2s_root(napi_env env, napi_callback_info info) {
   napi_value argv[4];
   size_t argc = 4;
   uint8_t out[64];
-  const uint8_t *left, *right, *key;
+  void *left, *right, *key;
   size_t left_len, right_len, key_len;
   uint32_t out_len;
   blake2s_t ctx;
@@ -2344,12 +2368,10 @@ bcrypto_blake2s_root(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&left,
-                             &left_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&right,
-                             &right_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &left, &left_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &right, &right_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[2], &out_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[3], (void **)&key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[3], &key, &key_len) == napi_ok);
 
   JS_ASSERT(out_len != 0 && out_len <= 64, JS_ERR_OUTPUT_SIZE);
   JS_ASSERT(key_len <= 64, JS_ERR_KEY_SIZE);
@@ -2370,7 +2392,7 @@ bcrypto_blake2s_multi(napi_env env, napi_callback_info info) {
   napi_value argv[5];
   size_t argc = 5;
   uint8_t out[64];
-  const uint8_t *x, *y, *z, *key;
+  void *x, *y, *z, *key;
   size_t x_len, y_len, z_len, key_len;
   uint32_t out_len;
   blake2s_t ctx;
@@ -2378,11 +2400,11 @@ bcrypto_blake2s_multi(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 5);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&x, &x_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&y, &y_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&z, &z_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &x, &x_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &y, &y_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &z, &z_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[3], &out_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[4], (void **)&key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[4], &key, &key_len) == napi_ok);
 
   JS_ASSERT(out_len != 0 && out_len <= 64, JS_ERR_OUTPUT_SIZE);
   JS_ASSERT(key_len <= 64, JS_ERR_KEY_SIZE);
@@ -2409,7 +2431,7 @@ bcrypto_cash32_serialize(napi_env env, napi_callback_info info) {
   char str[CASH32_MAX_SERIALIZE_SIZE + 1];
   char prefix[CASH32_MAX_PREFIX_SIZE + 2];
   size_t prefix_len;
-  const uint8_t *data;
+  void *data;
   size_t data_len;
   napi_value result;
 
@@ -2417,8 +2439,7 @@ bcrypto_cash32_serialize(napi_env env, napi_callback_info info) {
   CHECK(argc == 2);
   CHECK(napi_get_value_string_latin1(env, argv[0], prefix, sizeof(prefix),
                                      &prefix_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&data,
-                             &data_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &data, &data_len) == napi_ok);
 
   JS_ASSERT(prefix_len != sizeof(prefix) - 1, JS_ERR_ENCODE);
   JS_ASSERT(prefix_len == strlen(prefix), JS_ERR_ENCODE);
@@ -2502,9 +2523,9 @@ static napi_value
 bcrypto_cash32_convert_bits(napi_env env, napi_callback_info info) {
   napi_value argv[4];
   size_t argc = 4;
-  uint8_t *out;
+  void *out;
   size_t out_len;
-  const uint8_t *data;
+  void *data;
   size_t data_len;
   uint32_t srcbits, dstbits;
   bool pad;
@@ -2514,8 +2535,7 @@ bcrypto_cash32_convert_bits(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&data,
-                             &data_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &data, &data_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[1], &srcbits) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[2], &dstbits) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[3], &pad) == napi_ok);
@@ -2528,7 +2548,7 @@ bcrypto_cash32_convert_bits(napi_env env, napi_callback_info info) {
 
   JS_ASSERT(out_len <= MAX_BUFFER_LENGTH, JS_ERR_ALLOC);
 
-  JS_CHECK_ALLOC(napi_create_buffer(env, out_len, (void **)&out, &result));
+  JS_CHECK_ALLOC(napi_create_buffer(env, out_len, &out, &result));
 
   ok = cash32_convert_bits(out, &tmp_len, dstbits,
                            data, data_len, srcbits, pad);
@@ -2548,7 +2568,7 @@ bcrypto_cash32_encode(napi_env env, napi_callback_info info) {
   char prefix[CASH32_MAX_PREFIX_SIZE + 2];
   size_t prefix_len;
   uint32_t type;
-  const uint8_t *data;
+  void *data;
   size_t data_len;
   napi_value result;
 
@@ -2557,8 +2577,7 @@ bcrypto_cash32_encode(napi_env env, napi_callback_info info) {
   CHECK(napi_get_value_string_latin1(env, argv[0], prefix, sizeof(prefix),
                                      &prefix_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[1], &type) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&data,
-                             &data_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &data, &data_len) == napi_ok);
 
   JS_ASSERT(prefix_len != sizeof(prefix) - 1, JS_ERR_ENCODE);
   JS_ASSERT(prefix_len == strlen(prefix), JS_ERR_ENCODE);
@@ -2670,17 +2689,16 @@ static napi_value
 bcrypto_chacha20_init(napi_env env, napi_callback_info info) {
   napi_value argv[4];
   size_t argc = 4;
-  const uint8_t *key, *nonce;
+  void *key, *nonce;
   size_t key_len, nonce_len;
   int64_t ctr;
   bcrypto_chacha20_t *chacha;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&chacha) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&key, &key_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&nonce,
-                             &nonce_len) == napi_ok);
+  CHECK(bcrypto_chacha20_unwrap(env, argv[0], &chacha) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &nonce, &nonce_len) == napi_ok);
   CHECK(napi_get_value_int64(env, argv[3], &ctr) == napi_ok);
 
   JS_ASSERT(key_len == 16 || key_len == 32, JS_ERR_KEY_SIZE);
@@ -2698,14 +2716,14 @@ static napi_value
 bcrypto_chacha20_crypt(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  uint8_t *msg;
+  void *msg;
   size_t msg_len;
   bcrypto_chacha20_t *chacha;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&chacha) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
+  CHECK(bcrypto_chacha20_unwrap(env, argv[0], &chacha) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &msg, &msg_len) == napi_ok);
 
   JS_ASSERT(chacha->started, JS_ERR_INIT);
 
@@ -2722,7 +2740,7 @@ bcrypto_chacha20_destroy(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&chacha) == napi_ok);
+  CHECK(bcrypto_chacha20_unwrap(env, argv[0], &chacha) == napi_ok);
 
   chacha->started = 0;
 
@@ -2734,15 +2752,14 @@ bcrypto_chacha20_derive(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t out[32];
-  const uint8_t *key, *nonce;
+  void *key, *nonce;
   size_t key_len, nonce_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&key, &key_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&nonce,
-                             &nonce_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &nonce, &nonce_len) == napi_ok);
 
   JS_ASSERT(key_len == 16 || key_len == 32, JS_ERR_KEY_SIZE);
   JS_ASSERT(nonce_len == 16, JS_ERR_NONCE_SIZE);
@@ -2781,9 +2798,6 @@ bcrypto_cipher_create(napi_env env, napi_callback_info info) {
   CHECK(napi_get_value_uint32(env, argv[1], &mode) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[2], &encrypt) == napi_ok);
 
-  JS_ASSERT(type <= CIPHER_MAX, JS_ERR_CONTEXT);
-  JS_ASSERT(mode <= CIPHER_MODE_MAX, JS_ERR_CONTEXT);
-
   cipher = bcrypto_xmalloc(sizeof(bcrypto_cipher_t));
   cipher->type = type;
   cipher->mode = mode;
@@ -2804,16 +2818,16 @@ static napi_value
 bcrypto_cipher_init(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
-  const uint8_t *key, *iv;
+  void *key, *iv;
   size_t key_len, iv_len;
   bcrypto_cipher_t *cipher;
   int ok;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&cipher) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&key, &key_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&iv, &iv_len) == napi_ok);
+  CHECK(bcrypto_cipher_unwrap(env, argv[0], &cipher) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &iv, &iv_len) == napi_ok);
 
   ok = cipher_stream_init(&cipher->ctx,
                           cipher->type,
@@ -2839,7 +2853,7 @@ bcrypto_cipher_set_padding(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&cipher) == napi_ok);
+  CHECK(bcrypto_cipher_unwrap(env, argv[0], &cipher) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[1], &padding) == napi_ok);
 
   JS_ASSERT(cipher->started, JS_ERR_INIT);
@@ -2852,14 +2866,14 @@ static napi_value
 bcrypto_cipher_set_aad(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  const uint8_t *aad;
+  void *aad;
   size_t aad_len;
   bcrypto_cipher_t *cipher;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&cipher) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&aad, &aad_len) == napi_ok);
+  CHECK(bcrypto_cipher_unwrap(env, argv[0], &cipher) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &aad, &aad_len) == napi_ok);
 
   JS_ASSERT(cipher->started, JS_ERR_INIT);
   JS_ASSERT(cipher_stream_set_aad(&cipher->ctx, aad, aad_len), JS_ERR_OPT);
@@ -2871,7 +2885,7 @@ static napi_value
 bcrypto_cipher_set_ccm(napi_env env, napi_callback_info info) {
   napi_value argv[4];
   size_t argc = 4;
-  const uint8_t *aad;
+  void *aad;
   size_t aad_len;
   uint32_t msg_len, tag_len;
   bcrypto_cipher_t *cipher;
@@ -2879,10 +2893,10 @@ bcrypto_cipher_set_ccm(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&cipher) == napi_ok);
+  CHECK(bcrypto_cipher_unwrap(env, argv[0], &cipher) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[1], &msg_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[2], &tag_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[3], (void **)&aad, &aad_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[3], &aad, &aad_len) == napi_ok);
 
   JS_ASSERT(cipher->started, JS_ERR_INIT);
 
@@ -2900,14 +2914,14 @@ static napi_value
 bcrypto_cipher_set_tag(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  const uint8_t *tag;
+  void *tag;
   size_t tag_len;
   bcrypto_cipher_t *cipher;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&cipher) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&tag, &tag_len) == napi_ok);
+  CHECK(bcrypto_cipher_unwrap(env, argv[0], &cipher) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &tag, &tag_len) == napi_ok);
 
   JS_ASSERT(cipher->started, JS_ERR_INIT);
   JS_ASSERT(cipher_stream_set_tag(&cipher->ctx, tag, tag_len), JS_ERR_OPT);
@@ -2926,7 +2940,7 @@ bcrypto_cipher_get_tag(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&cipher) == napi_ok);
+  CHECK(bcrypto_cipher_unwrap(env, argv[0], &cipher) == napi_ok);
 
   JS_ASSERT(cipher->has_tag, JS_ERR_INIT);
   JS_ASSERT(cipher_stream_get_tag(&cipher->ctx, out, &out_len), JS_ERR_GET);
@@ -2940,17 +2954,17 @@ static napi_value
 bcrypto_cipher_update(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  uint8_t *out;
+  void *out;
   size_t out_len;
-  const uint8_t *in;
+  void *in;
   size_t in_len;
   bcrypto_cipher_t *cipher;
   napi_value ab, result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&cipher) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&in, &in_len) == napi_ok);
+  CHECK(bcrypto_cipher_unwrap(env, argv[0], &cipher) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &in, &in_len) == napi_ok);
 
   JS_ASSERT(cipher->started, JS_ERR_INIT);
 
@@ -2958,7 +2972,7 @@ bcrypto_cipher_update(napi_env env, napi_callback_info info) {
 
   JS_ASSERT(out_len <= MAX_BUFFER_LENGTH, JS_ERR_ALLOC);
 
-  JS_CHECK_ALLOC(napi_create_arraybuffer(env, out_len, (void **)&out, &ab));
+  JS_CHECK_ALLOC(napi_create_arraybuffer(env, out_len, &out, &ab));
 
   cipher_stream_update(&cipher->ctx, out, &out_len, in, in_len);
 
@@ -2972,17 +2986,17 @@ static napi_value
 bcrypto_cipher_crypt(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
-  uint8_t *out;
-  const uint8_t *in;
+  void *out;
+  void *in;
   size_t out_len, in_len;
   bcrypto_cipher_t *cipher;
   int ok;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&cipher) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&out, &out_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&in, &in_len) == napi_ok);
+  CHECK(bcrypto_cipher_unwrap(env, argv[0], &cipher) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &out, &out_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &in, &in_len) == napi_ok);
 
   JS_ASSERT(cipher->started, JS_ERR_INIT);
   JS_ASSERT(out_len == in_len, JS_ERR_CRYPT);
@@ -3005,7 +3019,7 @@ bcrypto_cipher_final(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&cipher) == napi_ok);
+  CHECK(bcrypto_cipher_unwrap(env, argv[0], &cipher) == napi_ok);
 
   JS_ASSERT(cipher->started, JS_ERR_INIT);
   JS_ASSERT(cipher_stream_final(&cipher->ctx, out, &out_len), JS_ERR_FINAL);
@@ -3026,7 +3040,7 @@ bcrypto_cipher_destroy(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&cipher) == napi_ok);
+  CHECK(bcrypto_cipher_unwrap(env, argv[0], &cipher) == napi_ok);
 
   cipher->started = 0;
 
@@ -3037,10 +3051,10 @@ static napi_value
 bcrypto_cipher_encrypt(napi_env env, napi_callback_info info) {
   napi_value argv[5];
   size_t argc = 5;
-  uint8_t *out;
+  void *out;
   size_t out_len;
   uint32_t type, mode;
-  const uint8_t *key, *iv, *in;
+  void *key, *iv, *in;
   size_t key_len, iv_len, in_len;
   napi_value ab, result;
   int ok;
@@ -3049,18 +3063,15 @@ bcrypto_cipher_encrypt(napi_env env, napi_callback_info info) {
   CHECK(argc == 5);
   CHECK(napi_get_value_uint32(env, argv[0], &type) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[1], &mode) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&key, &key_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[3], (void **)&iv, &iv_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[4], (void **)&in, &in_len) == napi_ok);
-
-  JS_ASSERT(type <= CIPHER_MAX, JS_ERR_CONTEXT);
-  JS_ASSERT(mode <= CIPHER_MODE_MAX, JS_ERR_CONTEXT);
+  CHECK(napi_get_buffer_info(env, argv[2], &key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[3], &iv, &iv_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[4], &in, &in_len) == napi_ok);
 
   out_len = CIPHER_MAX_ENCRYPT_SIZE(in_len);
 
   JS_ASSERT(out_len <= MAX_BUFFER_LENGTH, JS_ERR_ALLOC);
 
-  JS_CHECK_ALLOC(napi_create_arraybuffer(env, out_len, (void **)&out, &ab));
+  JS_CHECK_ALLOC(napi_create_arraybuffer(env, out_len, &out, &ab));
 
   ok = cipher_static_encrypt(out, &out_len,
                              type, mode,
@@ -3080,10 +3091,10 @@ static napi_value
 bcrypto_cipher_decrypt(napi_env env, napi_callback_info info) {
   napi_value argv[5];
   size_t argc = 5;
-  uint8_t *out;
+  void *out;
   size_t out_len;
   uint32_t type, mode;
-  const uint8_t *key, *iv, *in;
+  void *key, *iv, *in;
   size_t key_len, iv_len, in_len;
   napi_value ab, result;
   int ok;
@@ -3092,18 +3103,15 @@ bcrypto_cipher_decrypt(napi_env env, napi_callback_info info) {
   CHECK(argc == 5);
   CHECK(napi_get_value_uint32(env, argv[0], &type) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[1], &mode) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&key, &key_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[3], (void **)&iv, &iv_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[4], (void **)&in, &in_len) == napi_ok);
-
-  JS_ASSERT(type <= CIPHER_MAX, JS_ERR_CONTEXT);
-  JS_ASSERT(mode <= CIPHER_MODE_MAX, JS_ERR_CONTEXT);
+  CHECK(napi_get_buffer_info(env, argv[2], &key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[3], &iv, &iv_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[4], &in, &in_len) == napi_ok);
 
   out_len = CIPHER_MAX_DECRYPT_SIZE(in_len);
 
   JS_ASSERT(out_len <= MAX_BUFFER_LENGTH, JS_ERR_ALLOC);
 
-  JS_CHECK_ALLOC(napi_create_arraybuffer(env, out_len, (void **)&out, &ab));
+  JS_CHECK_ALLOC(napi_create_arraybuffer(env, out_len, &out, &ab));
 
   ok = cipher_static_decrypt(out, &out_len,
                              type, mode,
@@ -3127,12 +3135,12 @@ static napi_value
 bcrypto_cleanse(napi_env env, napi_callback_info info) {
   napi_value argv[1];
   size_t argc = 1;
-  uint8_t *buf;
+  void *buf;
   size_t buf_len;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&buf, &buf_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &buf, &buf_len) == napi_ok);
 
   torsion_memzero(buf, buf_len);
 
@@ -3185,17 +3193,15 @@ static napi_value
 bcrypto_ctr_drbg_init(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
-  uint8_t *nonce, *pers;
+  void *nonce, *pers;
   size_t nonce_len, pers_len;
   bcrypto_ctr_drbg_t *drbg;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&drbg) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&nonce,
-                             &nonce_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&pers,
-                             &pers_len) == napi_ok);
+  CHECK(bcrypto_ctr_drbg_unwrap(env, argv[0], &drbg) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &nonce, &nonce_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &pers, &pers_len) == napi_ok);
 
   ctr_drbg_init(&drbg->ctx, drbg->bits, drbg->derivation,
                 nonce, nonce_len, pers, pers_len);
@@ -3209,16 +3215,15 @@ static napi_value
 bcrypto_ctr_drbg_reseed(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
-  uint8_t *nonce, *add;
+  void *nonce, *add;
   size_t nonce_len, add_len;
   bcrypto_ctr_drbg_t *drbg;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&drbg) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&nonce,
-                             &nonce_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&add, &add_len) == napi_ok);
+  CHECK(bcrypto_ctr_drbg_unwrap(env, argv[0], &drbg) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &nonce, &nonce_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &add, &add_len) == napi_ok);
 
   JS_ASSERT(drbg->started, JS_ERR_INIT);
 
@@ -3231,23 +3236,23 @@ static napi_value
 bcrypto_ctr_drbg_generate(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
-  uint8_t *out;
+  void *out;
   uint32_t out_len;
-  const uint8_t *add;
+  void *add;
   size_t add_len;
   bcrypto_ctr_drbg_t *drbg;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&drbg) == napi_ok);
+  CHECK(bcrypto_ctr_drbg_unwrap(env, argv[0], &drbg) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[1], &out_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&add, &add_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &add, &add_len) == napi_ok);
 
   JS_ASSERT(drbg->started, JS_ERR_INIT);
   JS_ASSERT(out_len <= MAX_BUFFER_LENGTH, JS_ERR_ALLOC);
 
-  JS_CHECK_ALLOC(napi_create_buffer(env, out_len, (void **)&out, &result));
+  JS_CHECK_ALLOC(napi_create_buffer(env, out_len, &out, &result));
 
   ctr_drbg_generate(&drbg->ctx, out, out_len, add, add_len);
 
@@ -3264,13 +3269,13 @@ bcrypto_dsa_params_create(napi_env env, napi_callback_info info) {
   size_t argc = 1;
   uint8_t out[DSA_MAX_PARAMS_SIZE];
   size_t out_len = DSA_MAX_PARAMS_SIZE;
-  const uint8_t *key;
+  void *key;
   size_t key_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &key, &key_len) == napi_ok);
 
   JS_ASSERT(dsa_params_create(out, &out_len, key, key_len), JS_ERR_KEY);
 
@@ -3286,22 +3291,21 @@ bcrypto_dsa_params_generate(napi_env env, napi_callback_info info) {
   uint8_t out[DSA_MAX_PARAMS_SIZE];
   size_t out_len = DSA_MAX_PARAMS_SIZE;
   uint32_t bits;
-  const uint8_t *entropy;
+  void *entropy;
   size_t entropy_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
   CHECK(napi_get_value_uint32(env, argv[0], &bits) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&entropy,
-                             &entropy_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &entropy, &entropy_len) == napi_ok);
 
   JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
   JS_ASSERT(dsa_params_generate(out, &out_len, bits, entropy), JS_ERR_GENERATE);
 
   CHECK(napi_create_buffer_copy(env, out_len, out, NULL, &result) == napi_ok);
 
-  torsion_memzero((void *)entropy, entropy_len);
+  torsion_memzero(entropy, entropy_len);
 
   return result;
 }
@@ -3359,15 +3363,14 @@ bcrypto_dsa_params_generate_async(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint32_t bits;
-  const uint8_t *entropy;
+  void *entropy;
   size_t entropy_len;
   napi_value workname, result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
   CHECK(napi_get_value_uint32(env, argv[0], &bits) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&entropy,
-                             &entropy_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &entropy, &entropy_len) == napi_ok);
 
   JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
 
@@ -3393,7 +3396,7 @@ bcrypto_dsa_params_generate_async(napi_env env, napi_callback_info info) {
 
   CHECK(napi_queue_async_work(env, worker->work) == napi_ok);
 
-  torsion_memzero((void *)entropy, entropy_len);
+  torsion_memzero(entropy, entropy_len);
 
   return result;
 }
@@ -3403,13 +3406,13 @@ bcrypto_dsa_params_bits(napi_env env, napi_callback_info info) {
   napi_value argv[1];
   size_t argc = 1;
   size_t bits;
-  const uint8_t *key;
+  void *key;
   size_t key_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &key, &key_len) == napi_ok);
 
   bits = dsa_params_bits(key, key_len);
 
@@ -3425,13 +3428,13 @@ bcrypto_dsa_params_qbits(napi_env env, napi_callback_info info) {
   napi_value argv[1];
   size_t argc = 1;
   size_t bits;
-  const uint8_t *key;
+  void *key;
   size_t key_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &key, &key_len) == napi_ok);
 
   bits = dsa_params_qbits(key, key_len);
 
@@ -3446,14 +3449,14 @@ static napi_value
 bcrypto_dsa_params_verify(napi_env env, napi_callback_info info) {
   napi_value argv[1];
   size_t argc = 1;
-  const uint8_t *key;
+  void *key;
   size_t key_len;
   napi_value result;
   int ok;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &key, &key_len) == napi_ok);
 
   ok = dsa_params_verify(key, key_len);
 
@@ -3468,19 +3471,19 @@ bcrypto_dsa_params_import(napi_env env, napi_callback_info info) {
   size_t argc = 1;
   uint8_t out[DSA_MAX_PARAMS_SIZE];
   size_t out_len = DSA_MAX_PARAMS_SIZE;
-  const uint8_t *key;
+  void *key;
   size_t key_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &key, &key_len) == napi_ok);
 
   JS_ASSERT(dsa_params_import(out, &out_len, key, key_len), JS_ERR_PARAMS);
 
   CHECK(napi_create_buffer_copy(env, out_len, out, NULL, &result) == napi_ok);
 
-  torsion_memzero((void *)key, key_len);
+  torsion_memzero(key, key_len);
 
   return result;
 }
@@ -3491,13 +3494,13 @@ bcrypto_dsa_params_export(napi_env env, napi_callback_info info) {
   size_t argc = 1;
   uint8_t out[DSA_MAX_PARAMS_SIZE];
   size_t out_len = DSA_MAX_PARAMS_SIZE;
-  const uint8_t *key;
+  void *key;
   size_t key_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &key, &key_len) == napi_ok);
 
   JS_ASSERT(dsa_params_export(out, &out_len, key, key_len), JS_ERR_PARAMS);
 
@@ -3512,15 +3515,14 @@ bcrypto_dsa_privkey_create(napi_env env, napi_callback_info info) {
   size_t argc = 2;
   uint8_t out[DSA_MAX_PRIV_SIZE];
   size_t out_len = DSA_MAX_PRIV_SIZE;
-  const uint8_t *key, *entropy;
+  void *key, *entropy;
   size_t key_len, entropy_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&key, &key_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&entropy,
-                             &entropy_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &entropy, &entropy_len) == napi_ok);
 
   JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
   JS_ASSERT(dsa_privkey_create(out, &out_len, key, key_len, entropy),
@@ -3528,7 +3530,7 @@ bcrypto_dsa_privkey_create(napi_env env, napi_callback_info info) {
 
   CHECK(napi_create_buffer_copy(env, out_len, out, NULL, &result) == napi_ok);
 
-  torsion_memzero((void *)entropy, entropy_len);
+  torsion_memzero(entropy, entropy_len);
   torsion_memzero(out, out_len);
 
   return result;
@@ -3539,13 +3541,13 @@ bcrypto_dsa_privkey_bits(napi_env env, napi_callback_info info) {
   napi_value argv[1];
   size_t argc = 1;
   size_t bits;
-  const uint8_t *key;
+  void *key;
   size_t key_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &key, &key_len) == napi_ok);
 
   bits = dsa_privkey_bits(key, key_len);
 
@@ -3561,13 +3563,13 @@ bcrypto_dsa_privkey_qbits(napi_env env, napi_callback_info info) {
   napi_value argv[1];
   size_t argc = 1;
   size_t bits;
-  const uint8_t *key;
+  void *key;
   size_t key_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &key, &key_len) == napi_ok);
 
   bits = dsa_privkey_qbits(key, key_len);
 
@@ -3582,14 +3584,14 @@ static napi_value
 bcrypto_dsa_privkey_verify(napi_env env, napi_callback_info info) {
   napi_value argv[1];
   size_t argc = 1;
-  const uint8_t *key;
+  void *key;
   size_t key_len;
   napi_value result;
   int ok;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &key, &key_len) == napi_ok);
 
   ok = dsa_privkey_verify(key, key_len);
 
@@ -3604,19 +3606,19 @@ bcrypto_dsa_privkey_import(napi_env env, napi_callback_info info) {
   size_t argc = 1;
   uint8_t out[DSA_MAX_PRIV_SIZE];
   size_t out_len = DSA_MAX_PRIV_SIZE;
-  const uint8_t *key;
+  void *key;
   size_t key_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &key, &key_len) == napi_ok);
 
   JS_ASSERT(dsa_privkey_import(out, &out_len, key, key_len), JS_ERR_PRIVKEY);
 
   CHECK(napi_create_buffer_copy(env, out_len, out, NULL, &result) == napi_ok);
 
-  torsion_memzero((void *)key, key_len);
+  torsion_memzero(key, key_len);
   torsion_memzero(out, out_len);
 
   return result;
@@ -3628,13 +3630,13 @@ bcrypto_dsa_privkey_export(napi_env env, napi_callback_info info) {
   size_t argc = 1;
   uint8_t out[DSA_MAX_PRIV_SIZE];
   size_t out_len = DSA_MAX_PRIV_SIZE;
-  const uint8_t *key;
+  void *key;
   size_t key_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &key, &key_len) == napi_ok);
 
   JS_ASSERT(dsa_privkey_export(out, &out_len, key, key_len), JS_ERR_PRIVKEY);
 
@@ -3651,13 +3653,13 @@ bcrypto_dsa_pubkey_create(napi_env env, napi_callback_info info) {
   size_t argc = 1;
   uint8_t out[DSA_MAX_PUB_SIZE];
   size_t out_len = DSA_MAX_PUB_SIZE;
-  const uint8_t *key;
+  void *key;
   size_t key_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &key, &key_len) == napi_ok);
 
   JS_ASSERT(dsa_pubkey_create(out, &out_len, key, key_len), JS_ERR_PRIVKEY);
 
@@ -3671,13 +3673,13 @@ bcrypto_dsa_pubkey_bits(napi_env env, napi_callback_info info) {
   napi_value argv[1];
   size_t argc = 1;
   size_t bits;
-  const uint8_t *key;
+  void *key;
   size_t key_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &key, &key_len) == napi_ok);
 
   bits = dsa_pubkey_bits(key, key_len);
 
@@ -3693,13 +3695,13 @@ bcrypto_dsa_pubkey_qbits(napi_env env, napi_callback_info info) {
   napi_value argv[1];
   size_t argc = 1;
   size_t bits;
-  const uint8_t *key;
+  void *key;
   size_t key_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &key, &key_len) == napi_ok);
 
   bits = dsa_pubkey_qbits(key, key_len);
 
@@ -3714,14 +3716,14 @@ static napi_value
 bcrypto_dsa_pubkey_verify(napi_env env, napi_callback_info info) {
   napi_value argv[1];
   size_t argc = 1;
-  const uint8_t *key;
+  void *key;
   size_t key_len;
   napi_value result;
   int ok;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &key, &key_len) == napi_ok);
 
   ok = dsa_pubkey_verify(key, key_len);
 
@@ -3736,19 +3738,19 @@ bcrypto_dsa_pubkey_import(napi_env env, napi_callback_info info) {
   size_t argc = 1;
   uint8_t out[DSA_MAX_PUB_SIZE];
   size_t out_len = DSA_MAX_PUB_SIZE;
-  const uint8_t *key;
+  void *key;
   size_t key_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &key, &key_len) == napi_ok);
 
   JS_ASSERT(dsa_pubkey_import(out, &out_len, key, key_len), JS_ERR_PUBKEY);
 
   CHECK(napi_create_buffer_copy(env, out_len, out, NULL, &result) == napi_ok);
 
-  torsion_memzero((void *)key, key_len);
+  torsion_memzero(key, key_len);
 
   return result;
 }
@@ -3759,13 +3761,13 @@ bcrypto_dsa_pubkey_export(napi_env env, napi_callback_info info) {
   size_t argc = 1;
   uint8_t out[DSA_MAX_PUB_SIZE];
   size_t out_len = DSA_MAX_PUB_SIZE;
-  const uint8_t *key;
+  void *key;
   size_t key_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &key, &key_len) == napi_ok);
 
   JS_ASSERT(dsa_pubkey_export(out, &out_len, key, key_len), JS_ERR_PUBKEY);
 
@@ -3780,14 +3782,14 @@ bcrypto_dsa_signature_export(napi_env env, napi_callback_info info) {
   size_t argc = 2;
   uint8_t out[DSA_MAX_DER_SIZE];
   size_t out_len = DSA_MAX_DER_SIZE;
-  const uint8_t *sig;
+  void *sig;
   size_t sig_len;
   uint32_t size;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&sig, &sig_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &sig, &sig_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[1], &size) == napi_ok);
 
   JS_ASSERT(dsa_sig_export(out, &out_len, sig, sig_len, size),
@@ -3804,14 +3806,14 @@ bcrypto_dsa_signature_import(napi_env env, napi_callback_info info) {
   size_t argc = 2;
   uint8_t out[DSA_MAX_SIG_SIZE];
   size_t out_len = DSA_MAX_SIG_SIZE;
-  const uint8_t *der;
+  void *der;
   size_t der_len;
   uint32_t size;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&der, &der_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &der, &der_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[1], &size) == napi_ok);
 
   JS_ASSERT(dsa_sig_import(out, &out_len, der, der_len, size),
@@ -3828,16 +3830,15 @@ bcrypto_dsa_sign(napi_env env, napi_callback_info info) {
   size_t argc = 3;
   uint8_t out[DSA_MAX_SIG_SIZE];
   size_t out_len = DSA_MAX_SIG_SIZE;
-  const uint8_t *msg, *key, *entropy;
+  void *msg, *key, *entropy;
   size_t msg_len, key_len, entropy_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&key, &key_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&entropy,
-                             &entropy_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &entropy, &entropy_len) == napi_ok);
 
   JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
   JS_ASSERT(dsa_sign(out, &out_len, msg, msg_len, key, key_len, entropy),
@@ -3845,7 +3846,7 @@ bcrypto_dsa_sign(napi_env env, napi_callback_info info) {
 
   CHECK(napi_create_buffer_copy(env, out_len, out, NULL, &result) == napi_ok);
 
-  torsion_memzero((void *)entropy, entropy_len);
+  torsion_memzero(entropy, entropy_len);
 
   return result;
 }
@@ -3856,16 +3857,15 @@ bcrypto_dsa_sign_der(napi_env env, napi_callback_info info) {
   size_t argc = 3;
   uint8_t out[DSA_MAX_DER_SIZE];
   size_t out_len = DSA_MAX_DER_SIZE;
-  const uint8_t *msg, *key, *entropy;
+  void *msg, *key, *entropy;
   size_t msg_len, key_len, entropy_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&key, &key_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&entropy,
-                             &entropy_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &entropy, &entropy_len) == napi_ok);
 
   JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
   JS_ASSERT(dsa_sign(out, &out_len, msg, msg_len, key, key_len, entropy),
@@ -3875,7 +3875,7 @@ bcrypto_dsa_sign_der(napi_env env, napi_callback_info info) {
 
   CHECK(napi_create_buffer_copy(env, out_len, out, NULL, &result) == napi_ok);
 
-  torsion_memzero((void *)entropy, entropy_len);
+  torsion_memzero(entropy, entropy_len);
 
   return result;
 }
@@ -3884,16 +3884,16 @@ static napi_value
 bcrypto_dsa_verify(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
-  const uint8_t *msg, *sig, *key;
+  void *msg, *sig, *key;
   size_t msg_len, sig_len, key_len;
   napi_value result;
   int ok;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&sig, &sig_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &sig, &sig_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &key, &key_len) == napi_ok);
 
   ok = dsa_verify(msg, msg_len, sig, sig_len, key, key_len);
 
@@ -3908,16 +3908,16 @@ bcrypto_dsa_verify_der(napi_env env, napi_callback_info info) {
   size_t argc = 3;
   uint8_t sig[DSA_MAX_SIG_SIZE];
   size_t sig_len = DSA_MAX_SIG_SIZE;
-  const uint8_t *msg, *der, *key;
+  void *msg, *der, *key;
   size_t msg_len, der_len, key_len, size;
   napi_value result;
   int ok;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&der, &der_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &der, &der_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &key, &key_len) == napi_ok);
 
   size = (dsa_pubkey_qbits(key, key_len) + 7) / 8;
 
@@ -3936,15 +3936,14 @@ bcrypto_dsa_derive(napi_env env, napi_callback_info info) {
   size_t argc = 2;
   uint8_t out[DSA_MAX_SIZE];
   size_t out_len = DSA_MAX_SIZE;
-  const uint8_t *pub, *priv;
+  void *pub, *priv;
   size_t pub_len, priv_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&pub, &pub_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
-                             &priv_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &pub, &pub_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &priv, &priv_len) == napi_ok);
 
   JS_ASSERT(dsa_derive(out, &out_len, pub, pub_len, priv, priv_len),
             JS_ERR_PUBKEY);
@@ -3964,27 +3963,25 @@ static napi_value
 bcrypto_eb2k_derive(napi_env env, napi_callback_info info) {
   napi_value argv[5];
   size_t argc = 5;
-  uint8_t *key, *iv;
+  void *key, *iv;
   uint32_t type, key_len, iv_len;
-  const uint8_t *pass, *salt;
+  void *pass, *salt;
   size_t pass_len, salt_len;
   napi_value keyval, ivval, result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 5);
   CHECK(napi_get_value_uint32(env, argv[0], &type) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pass,
-                             &pass_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&salt,
-                             &salt_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pass, &pass_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &salt, &salt_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[3], &key_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[4], &iv_len) == napi_ok);
 
   JS_ASSERT(key_len <= MAX_BUFFER_LENGTH, JS_ERR_ALLOC);
   JS_ASSERT(iv_len <= MAX_BUFFER_LENGTH, JS_ERR_ALLOC);
 
-  JS_CHECK_ALLOC(napi_create_buffer(env, key_len, (void **)&key, &keyval));
-  JS_CHECK_ALLOC(napi_create_buffer(env, iv_len, (void **)&iv, &ivval));
+  JS_CHECK_ALLOC(napi_create_buffer(env, key_len, &key, &keyval));
+  JS_CHECK_ALLOC(napi_create_buffer(env, iv_len, &iv, &ivval));
 
   if (!eb2k_derive(key, iv, type, pass, pass_len,
                    salt, salt_len, key_len, iv_len)) {
@@ -4010,7 +4007,7 @@ static napi_value
 bcrypto_ecdh_privkey_generate(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  const uint8_t *entropy;
+  void *entropy;
   size_t entropy_len;
   uint8_t out[ECDH_MAX_PRIV_SIZE];
   bcrypto_mont_curve_t *ec;
@@ -4018,9 +4015,8 @@ bcrypto_ecdh_privkey_generate(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&entropy,
-                             &entropy_len) == napi_ok);
+  CHECK(bcrypto_mont_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &entropy, &entropy_len) == napi_ok);
 
   JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
 
@@ -4032,7 +4028,7 @@ bcrypto_ecdh_privkey_generate(napi_env env, napi_callback_info info) {
                                 NULL,
                                 &result) == napi_ok);
 
-  torsion_memzero((void *)entropy, entropy_len);
+  torsion_memzero(entropy, entropy_len);
 
   return result;
 }
@@ -4041,7 +4037,7 @@ static napi_value
 bcrypto_ecdh_privkey_verify(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  const uint8_t *priv;
+  void *priv;
   size_t priv_len;
   bcrypto_mont_curve_t *ec;
   napi_value result;
@@ -4049,9 +4045,8 @@ bcrypto_ecdh_privkey_verify(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
-                             &priv_len) == napi_ok);
+  CHECK(bcrypto_mont_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &priv, &priv_len) == napi_ok);
 
   ok = priv_len == ec->scalar_size && ecdh_privkey_verify(ec->ctx, priv);
 
@@ -4065,16 +4060,15 @@ bcrypto_ecdh_privkey_export(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t out[ECDH_MAX_PRIV_SIZE];
-  const uint8_t *priv;
+  void *priv;
   size_t priv_len;
   bcrypto_mont_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
-                             &priv_len) == napi_ok);
+  CHECK(bcrypto_mont_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &priv, &priv_len) == napi_ok);
 
   JS_ASSERT(priv_len == ec->scalar_size, JS_ERR_PRIVKEY_SIZE);
   JS_ASSERT(ecdh_privkey_export(ec->ctx, out, priv), JS_ERR_PRIVKEY);
@@ -4093,16 +4087,15 @@ bcrypto_ecdh_privkey_import(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t out[ECDH_MAX_PRIV_SIZE];
-  const uint8_t *priv;
+  void *priv;
   size_t priv_len;
   bcrypto_mont_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
-                             &priv_len) == napi_ok);
+  CHECK(bcrypto_mont_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &priv, &priv_len) == napi_ok);
 
   JS_ASSERT(ecdh_privkey_import(ec->ctx, out, priv, priv_len),
             JS_ERR_PRIVKEY);
@@ -4121,16 +4114,15 @@ bcrypto_ecdh_pubkey_create(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t out[ECDH_MAX_PUB_SIZE];
-  const uint8_t *priv;
+  void *priv;
   size_t priv_len;
   bcrypto_mont_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
-                             &priv_len) == napi_ok);
+  CHECK(bcrypto_mont_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &priv, &priv_len) == napi_ok);
 
   JS_ASSERT(priv_len == ec->scalar_size, JS_ERR_PRIVKEY_SIZE);
 
@@ -4151,7 +4143,7 @@ bcrypto_ecdh_pubkey_convert(napi_env env, napi_callback_info info) {
   size_t argc = 3;
   uint8_t out[EDDSA_MAX_PUB_SIZE];
   size_t out_len;
-  const uint8_t *pub;
+  void *pub;
   size_t pub_len;
   int32_t sign;
   bcrypto_mont_curve_t *ec;
@@ -4159,8 +4151,8 @@ bcrypto_ecdh_pubkey_convert(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub, &pub_len) == napi_ok);
+  CHECK(bcrypto_mont_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
   CHECK(napi_get_value_int32(env, argv[2], &sign) == napi_ok);
 
   JS_ASSERT(pub_len == ec->field_size, JS_ERR_PUBKEY_SIZE);
@@ -4178,16 +4170,15 @@ bcrypto_ecdh_pubkey_from_uniform(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t out[ECDH_MAX_PUB_SIZE];
-  const uint8_t *data;
+  void *data;
   size_t data_len;
   bcrypto_mont_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&data,
-                             &data_len) == napi_ok);
+  CHECK(bcrypto_mont_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &data, &data_len) == napi_ok);
 
   JS_ASSERT(data_len == ec->field_size, JS_ERR_PREIMAGE_SIZE);
 
@@ -4207,7 +4198,7 @@ bcrypto_ecdh_pubkey_to_uniform(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
   uint8_t out[MONT_MAX_FIELD_SIZE];
-  const uint8_t *pub;
+  void *pub;
   size_t pub_len;
   uint32_t hint;
   bcrypto_mont_curve_t *ec;
@@ -4215,9 +4206,8 @@ bcrypto_ecdh_pubkey_to_uniform(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
+  CHECK(bcrypto_mont_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[2], &hint) == napi_ok);
 
   JS_ASSERT(pub_len == ec->field_size, JS_ERR_PUBKEY_SIZE);
@@ -4234,7 +4224,7 @@ bcrypto_ecdh_pubkey_from_hash(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
   uint8_t out[ECDH_MAX_PUB_SIZE];
-  const uint8_t *data;
+  void *data;
   size_t data_len;
   bool pake;
   bcrypto_mont_curve_t *ec;
@@ -4242,9 +4232,8 @@ bcrypto_ecdh_pubkey_from_hash(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&data,
-                             &data_len) == napi_ok);
+  CHECK(bcrypto_mont_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &data, &data_len) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[2], &pake) == napi_ok);
 
   JS_ASSERT(data_len == ec->field_size * 2, JS_ERR_PREIMAGE_SIZE);
@@ -4264,7 +4253,7 @@ bcrypto_ecdh_pubkey_to_hash(napi_env env, napi_callback_info info) {
   napi_value argv[4];
   size_t argc = 4;
   uint8_t out[MONT_MAX_FIELD_SIZE * 2];
-  const uint8_t *pub, *entropy;
+  void *pub, *entropy;
   size_t pub_len, entropy_len;
   uint32_t subgroup;
   bcrypto_mont_curve_t *ec;
@@ -4272,12 +4261,10 @@ bcrypto_ecdh_pubkey_to_hash(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
+  CHECK(bcrypto_mont_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[2], &subgroup) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[3], (void **)&entropy,
-                             &entropy_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[3], &entropy, &entropy_len) == napi_ok);
 
   JS_ASSERT(pub_len == ec->field_size, JS_ERR_PUBKEY_SIZE);
   JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
@@ -4287,7 +4274,7 @@ bcrypto_ecdh_pubkey_to_hash(napi_env env, napi_callback_info info) {
   CHECK(napi_create_buffer_copy(env, ec->field_size * 2,
                                 out, NULL, &result) == napi_ok);
 
-  torsion_memzero((void *)entropy, entropy_len);
+  torsion_memzero(entropy, entropy_len);
 
   return result;
 }
@@ -4296,7 +4283,7 @@ static napi_value
 bcrypto_ecdh_pubkey_verify(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  const uint8_t *pub;
+  void *pub;
   size_t pub_len;
   bcrypto_mont_curve_t *ec;
   napi_value result;
@@ -4304,9 +4291,8 @@ bcrypto_ecdh_pubkey_verify(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
+  CHECK(bcrypto_mont_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
 
   ok = pub_len == ec->field_size && ecdh_pubkey_verify(ec->ctx, pub);
 
@@ -4321,7 +4307,7 @@ bcrypto_ecdh_pubkey_export(napi_env env, napi_callback_info info) {
   size_t argc = 3;
   uint8_t x[MONT_MAX_FIELD_SIZE];
   uint8_t y[MONT_MAX_FIELD_SIZE];
-  const uint8_t *pub;
+  void *pub;
   size_t pub_len;
   int32_t sign;
   bcrypto_mont_curve_t *ec;
@@ -4329,9 +4315,8 @@ bcrypto_ecdh_pubkey_export(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
+  CHECK(bcrypto_mont_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
   CHECK(napi_get_value_int32(env, argv[2], &sign) == napi_ok);
 
   JS_ASSERT(pub_len == ec->field_size, JS_ERR_PUBKEY_SIZE);
@@ -4352,16 +4337,16 @@ bcrypto_ecdh_pubkey_import(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
   uint8_t out[ECDH_MAX_PUB_SIZE];
-  const uint8_t *x, *y;
+  void *x, *y;
   size_t x_len, y_len;
   bcrypto_mont_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&x, &x_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&y, &y_len) == napi_ok);
+  CHECK(bcrypto_mont_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &x, &x_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &y, &y_len) == napi_ok);
 
   JS_ASSERT(ecdh_pubkey_import(ec->ctx, out, x, x_len, y, y_len),
             JS_ERR_PUBKEY);
@@ -4379,7 +4364,7 @@ static napi_value
 bcrypto_ecdh_pubkey_is_small(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  const uint8_t *pub;
+  void *pub;
   size_t pub_len;
   bcrypto_mont_curve_t *ec;
   napi_value result;
@@ -4387,9 +4372,8 @@ bcrypto_ecdh_pubkey_is_small(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
+  CHECK(bcrypto_mont_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
 
   ok = pub_len == ec->field_size && ecdh_pubkey_is_small(ec->ctx, pub);
 
@@ -4402,7 +4386,7 @@ static napi_value
 bcrypto_ecdh_pubkey_has_torsion(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  const uint8_t *pub;
+  void *pub;
   size_t pub_len;
   bcrypto_mont_curve_t *ec;
   napi_value result;
@@ -4410,9 +4394,8 @@ bcrypto_ecdh_pubkey_has_torsion(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
+  CHECK(bcrypto_mont_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
 
   ok = pub_len == ec->field_size && ecdh_pubkey_has_torsion(ec->ctx, pub);
 
@@ -4426,17 +4409,16 @@ bcrypto_ecdh_derive(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
   uint8_t out[ECDH_MAX_PUB_SIZE];
-  const uint8_t *pub, *priv;
+  void *pub, *priv;
   size_t pub_len, priv_len;
   bcrypto_mont_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub, &pub_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&priv,
-                             &priv_len) == napi_ok);
+  CHECK(bcrypto_mont_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &priv, &priv_len) == napi_ok);
 
   JS_ASSERT(pub_len == ec->field_size, JS_ERR_PUBKEY_SIZE);
   JS_ASSERT(priv_len == ec->scalar_size, JS_ERR_PRIVKEY_SIZE);
@@ -4459,7 +4441,7 @@ static napi_value
 bcrypto_ecdsa_privkey_generate(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  const uint8_t *entropy;
+  void *entropy;
   size_t entropy_len;
   uint8_t out[ECDSA_MAX_PRIV_SIZE];
   bcrypto_wei_curve_t *ec;
@@ -4467,9 +4449,8 @@ bcrypto_ecdsa_privkey_generate(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&entropy,
-                             &entropy_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &entropy, &entropy_len) == napi_ok);
 
   JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
 
@@ -4481,7 +4462,7 @@ bcrypto_ecdsa_privkey_generate(napi_env env, napi_callback_info info) {
                                 NULL,
                                 &result) == napi_ok);
 
-  torsion_memzero((void *)entropy, entropy_len);
+  torsion_memzero(entropy, entropy_len);
 
   return result;
 }
@@ -4490,7 +4471,7 @@ static napi_value
 bcrypto_ecdsa_privkey_verify(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  const uint8_t *priv;
+  void *priv;
   size_t priv_len;
   bcrypto_wei_curve_t *ec;
   napi_value result;
@@ -4498,9 +4479,8 @@ bcrypto_ecdsa_privkey_verify(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
-                             &priv_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &priv, &priv_len) == napi_ok);
 
   ok = priv_len == ec->scalar_size && ecdsa_privkey_verify(ec->ctx, priv);
 
@@ -4514,16 +4494,15 @@ bcrypto_ecdsa_privkey_export(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t out[ECDSA_MAX_PRIV_SIZE];
-  const uint8_t *priv;
+  void *priv;
   size_t priv_len;
   bcrypto_wei_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
-                             &priv_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &priv, &priv_len) == napi_ok);
 
   JS_ASSERT(priv_len == ec->scalar_size, JS_ERR_PRIVKEY_SIZE);
   JS_ASSERT(ecdsa_privkey_export(ec->ctx, out, priv), JS_ERR_PRIVKEY);
@@ -4542,16 +4521,15 @@ bcrypto_ecdsa_privkey_import(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t out[ECDSA_MAX_PRIV_SIZE];
-  const uint8_t *priv;
+  void *priv;
   size_t priv_len;
   bcrypto_wei_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
-                             &priv_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &priv, &priv_len) == napi_ok);
 
   JS_ASSERT(ecdsa_privkey_import(ec->ctx, out, priv, priv_len), JS_ERR_PRIVKEY);
 
@@ -4569,18 +4547,16 @@ bcrypto_ecdsa_privkey_tweak_add(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
   uint8_t out[ECDSA_MAX_PRIV_SIZE];
-  const uint8_t *priv, *tweak;
+  void *priv, *tweak;
   size_t priv_len, tweak_len;
   bcrypto_wei_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
-                             &priv_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&tweak,
-                             &tweak_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &priv, &priv_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &tweak, &tweak_len) == napi_ok);
 
   JS_ASSERT(priv_len == ec->scalar_size, JS_ERR_PRIVKEY_SIZE);
   JS_ASSERT(tweak_len == ec->scalar_size, JS_ERR_SCALAR_SIZE);
@@ -4600,18 +4576,16 @@ bcrypto_ecdsa_privkey_tweak_mul(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
   uint8_t out[ECDSA_MAX_PRIV_SIZE];
-  const uint8_t *priv, *tweak;
+  void *priv, *tweak;
   size_t priv_len, tweak_len;
   bcrypto_wei_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
-                             &priv_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&tweak,
-                             &tweak_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &priv, &priv_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &tweak, &tweak_len) == napi_ok);
 
   JS_ASSERT(priv_len == ec->scalar_size, JS_ERR_PRIVKEY_SIZE);
   JS_ASSERT(tweak_len == ec->scalar_size, JS_ERR_SCALAR_SIZE);
@@ -4631,16 +4605,15 @@ bcrypto_ecdsa_privkey_negate(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t out[ECDSA_MAX_PRIV_SIZE];
-  const uint8_t *priv;
+  void *priv;
   size_t priv_len;
   bcrypto_wei_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
-                             &priv_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &priv, &priv_len) == napi_ok);
 
   JS_ASSERT(priv_len == ec->scalar_size, JS_ERR_PRIVKEY_SIZE);
   JS_ASSERT(ecdsa_privkey_negate(ec->ctx, out, priv), JS_ERR_PRIVKEY);
@@ -4659,16 +4632,15 @@ bcrypto_ecdsa_privkey_invert(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t out[ECDSA_MAX_PRIV_SIZE];
-  const uint8_t *priv;
+  void *priv;
   size_t priv_len;
   bcrypto_wei_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
-                             &priv_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &priv, &priv_len) == napi_ok);
 
   JS_ASSERT(priv_len == ec->scalar_size, JS_ERR_PRIVKEY_SIZE);
   JS_ASSERT(ecdsa_privkey_invert(ec->ctx, out, priv), JS_ERR_PRIVKEY);
@@ -4688,7 +4660,7 @@ bcrypto_ecdsa_pubkey_create(napi_env env, napi_callback_info info) {
   size_t argc = 3;
   uint8_t out[ECDSA_MAX_PUB_SIZE];
   size_t out_len = ECDSA_MAX_PUB_SIZE;
-  const uint8_t *priv;
+  void *priv;
   size_t priv_len;
   bool compress;
   bcrypto_wei_curve_t *ec;
@@ -4696,9 +4668,8 @@ bcrypto_ecdsa_pubkey_create(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
-                             &priv_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &priv, &priv_len) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[2], &compress) == napi_ok);
 
   JS_ASSERT(priv_len == ec->scalar_size, JS_ERR_PRIVKEY_SIZE);
@@ -4716,7 +4687,7 @@ bcrypto_ecdsa_pubkey_convert(napi_env env, napi_callback_info info) {
   size_t argc = 3;
   uint8_t out[ECDSA_MAX_PUB_SIZE];
   size_t out_len = ECDSA_MAX_PUB_SIZE;
-  const uint8_t *pub;
+  void *pub;
   size_t pub_len;
   bool compress;
   bcrypto_wei_curve_t *ec;
@@ -4725,9 +4696,8 @@ bcrypto_ecdsa_pubkey_convert(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[2], &compress) == napi_ok);
 
   ok = ecdsa_pubkey_convert(ec->ctx, out, &out_len, pub, pub_len, compress);
@@ -4745,7 +4715,7 @@ bcrypto_ecdsa_pubkey_from_uniform(napi_env env, napi_callback_info info) {
   size_t argc = 3;
   uint8_t out[ECDSA_MAX_PUB_SIZE];
   size_t out_len = ECDSA_MAX_PUB_SIZE;
-  const uint8_t *data;
+  void *data;
   size_t data_len;
   bool compress;
   bcrypto_wei_curve_t *ec;
@@ -4753,9 +4723,8 @@ bcrypto_ecdsa_pubkey_from_uniform(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&data,
-                             &data_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &data, &data_len) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[2], &compress) == napi_ok);
 
   JS_ASSERT(data_len == ec->field_size, JS_ERR_PREIMAGE_SIZE);
@@ -4772,7 +4741,7 @@ bcrypto_ecdsa_pubkey_to_uniform(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
   uint8_t out[WEI_MAX_FIELD_SIZE];
-  const uint8_t *pub;
+  void *pub;
   size_t pub_len;
   uint32_t hint;
   bcrypto_wei_curve_t *ec;
@@ -4780,9 +4749,8 @@ bcrypto_ecdsa_pubkey_to_uniform(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[2], &hint) == napi_ok);
 
   JS_ASSERT(ecdsa_pubkey_to_uniform(ec->ctx, out, pub, pub_len, hint),
@@ -4800,7 +4768,7 @@ bcrypto_ecdsa_pubkey_from_hash(napi_env env, napi_callback_info info) {
   size_t argc = 3;
   uint8_t out[ECDSA_MAX_PUB_SIZE];
   size_t out_len = ECDSA_MAX_PUB_SIZE;
-  const uint8_t *data;
+  void *data;
   size_t data_len;
   bool compress;
   bcrypto_wei_curve_t *ec;
@@ -4808,9 +4776,8 @@ bcrypto_ecdsa_pubkey_from_hash(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&data,
-                             &data_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &data, &data_len) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[2], &compress) == napi_ok);
 
   JS_ASSERT(data_len == ec->field_size * 2, JS_ERR_PREIMAGE_SIZE);
@@ -4827,18 +4794,16 @@ bcrypto_ecdsa_pubkey_to_hash(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
   uint8_t out[WEI_MAX_FIELD_SIZE * 2];
-  const uint8_t *pub, *entropy;
+  void *pub, *entropy;
   size_t pub_len, entropy_len;
   bcrypto_wei_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&entropy,
-                             &entropy_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &entropy, &entropy_len) == napi_ok);
 
   JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
   JS_ASSERT(ecdsa_pubkey_to_hash(ec->ctx, out, pub, pub_len, 0, entropy),
@@ -4847,7 +4812,7 @@ bcrypto_ecdsa_pubkey_to_hash(napi_env env, napi_callback_info info) {
   CHECK(napi_create_buffer_copy(env, ec->field_size * 2,
                                 out, NULL, &result) == napi_ok);
 
-  torsion_memzero((void *)entropy, entropy_len);
+  torsion_memzero(entropy, entropy_len);
 
   return result;
 }
@@ -4856,7 +4821,7 @@ static napi_value
 bcrypto_ecdsa_pubkey_verify(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  const uint8_t *pub;
+  void *pub;
   size_t pub_len;
   bcrypto_wei_curve_t *ec;
   napi_value result;
@@ -4864,9 +4829,8 @@ bcrypto_ecdsa_pubkey_verify(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
 
   ok = ecdsa_pubkey_verify(ec->ctx, pub, pub_len);
 
@@ -4881,16 +4845,15 @@ bcrypto_ecdsa_pubkey_export(napi_env env, napi_callback_info info) {
   size_t argc = 2;
   uint8_t x[WEI_MAX_FIELD_SIZE];
   uint8_t y[WEI_MAX_FIELD_SIZE];
-  const uint8_t *pub;
+  void *pub;
   size_t pub_len;
   bcrypto_wei_curve_t *ec;
   napi_value bx, by, result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
 
   JS_ASSERT(ecdsa_pubkey_export(ec->ctx, x, y, pub, pub_len), JS_ERR_PUBKEY);
 
@@ -4910,7 +4873,7 @@ bcrypto_ecdsa_pubkey_import(napi_env env, napi_callback_info info) {
   size_t argc = 5;
   uint8_t out[ECDSA_MAX_PUB_SIZE];
   size_t out_len = ECDSA_MAX_PUB_SIZE;
-  const uint8_t *x, *y;
+  void *x, *y;
   size_t x_len, y_len;
   int32_t sign;
   bool compress;
@@ -4920,9 +4883,9 @@ bcrypto_ecdsa_pubkey_import(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 5);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&x, &x_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&y, &y_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &x, &x_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &y, &y_len) == napi_ok);
   CHECK(napi_get_value_int32(env, argv[3], &sign) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[4], &compress) == napi_ok);
 
@@ -4943,7 +4906,7 @@ bcrypto_ecdsa_pubkey_tweak_add(napi_env env, napi_callback_info info) {
   size_t argc = 4;
   uint8_t out[ECDSA_MAX_PUB_SIZE];
   size_t out_len = ECDSA_MAX_PUB_SIZE;
-  const uint8_t *pub, *tweak;
+  void *pub, *tweak;
   size_t pub_len, tweak_len;
   bool compress;
   bcrypto_wei_curve_t *ec;
@@ -4952,11 +4915,9 @@ bcrypto_ecdsa_pubkey_tweak_add(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&tweak,
-                             &tweak_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &tweak, &tweak_len) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[3], &compress) == napi_ok);
 
   JS_ASSERT(tweak_len == ec->scalar_size, JS_ERR_SCALAR_SIZE);
@@ -4977,7 +4938,7 @@ bcrypto_ecdsa_pubkey_tweak_mul(napi_env env, napi_callback_info info) {
   size_t argc = 4;
   uint8_t out[ECDSA_MAX_PUB_SIZE];
   size_t out_len = ECDSA_MAX_PUB_SIZE;
-  const uint8_t *pub, *tweak;
+  void *pub, *tweak;
   size_t pub_len, tweak_len;
   bool compress;
   bcrypto_wei_curve_t *ec;
@@ -4986,11 +4947,9 @@ bcrypto_ecdsa_pubkey_tweak_mul(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&tweak,
-                             &tweak_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &tweak, &tweak_len) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[3], &compress) == napi_ok);
 
   JS_ASSERT(tweak_len == ec->scalar_size, JS_ERR_SCALAR_SIZE);
@@ -5014,6 +4973,7 @@ bcrypto_ecdsa_pubkey_combine(napi_env env, napi_callback_info info) {
   uint32_t i, length;
   const uint8_t **pubs;
   size_t *pub_lens;
+  void *pub;
   bool compress;
   bcrypto_wei_curve_t *ec;
   napi_value item, result;
@@ -5021,7 +4981,7 @@ bcrypto_ecdsa_pubkey_combine(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
   CHECK(napi_get_array_length(env, argv[1], &length) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[2], &compress) == napi_ok);
 
@@ -5035,8 +4995,9 @@ bcrypto_ecdsa_pubkey_combine(napi_env env, napi_callback_info info) {
 
   for (i = 0; i < length; i++) {
     CHECK(napi_get_element(env, argv[1], i, &item) == napi_ok);
-    CHECK(napi_get_buffer_info(env, item, (void **)&pubs[i],
-                               &pub_lens[i]) == napi_ok);
+    CHECK(napi_get_buffer_info(env, item, &pub, &pub_lens[i]) == napi_ok);
+
+    pubs[i] = pub;
   }
 
   ok = ecdsa_pubkey_combine(ec->ctx, out, &out_len,
@@ -5060,7 +5021,7 @@ bcrypto_ecdsa_pubkey_negate(napi_env env, napi_callback_info info) {
   size_t argc = 3;
   uint8_t out[ECDSA_MAX_PUB_SIZE];
   size_t out_len = ECDSA_MAX_PUB_SIZE;
-  const uint8_t *pub;
+  void *pub;
   size_t pub_len;
   bool compress;
   bcrypto_wei_curve_t *ec;
@@ -5069,9 +5030,8 @@ bcrypto_ecdsa_pubkey_negate(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[2], &compress) == napi_ok);
 
   ok = ecdsa_pubkey_negate(ec->ctx, out, &out_len, pub, pub_len, compress);
@@ -5088,16 +5048,15 @@ bcrypto_ecdsa_signature_normalize(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t out[ECDSA_MAX_SIG_SIZE];
-  const uint8_t *sig;
+  void *sig;
   size_t sig_len;
   bcrypto_wei_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&sig,
-                             &sig_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &sig, &sig_len) == napi_ok);
 
   JS_ASSERT(sig_len == ec->sig_size, JS_ERR_SIGNATURE_SIZE);
   JS_ASSERT(ecdsa_sig_normalize(ec->ctx, out, sig), JS_ERR_SIGNATURE);
@@ -5117,16 +5076,15 @@ bcrypto_ecdsa_signature_normalize_der(napi_env env, napi_callback_info info) {
   size_t argc = 2;
   uint8_t out[ECDSA_MAX_DER_SIZE];
   size_t out_len = ECDSA_MAX_DER_SIZE;
-  const uint8_t *sig;
+  void *sig;
   size_t sig_len;
   bcrypto_wei_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&sig,
-                             &sig_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &sig, &sig_len) == napi_ok);
 
   JS_ASSERT(ecdsa_sig_import_lax(ec->ctx, out, sig, sig_len), JS_ERR_SIGNATURE);
   JS_ASSERT(ecdsa_sig_normalize(ec->ctx, out, out), JS_ERR_SIGNATURE);
@@ -5143,16 +5101,15 @@ bcrypto_ecdsa_signature_export(napi_env env, napi_callback_info info) {
   size_t argc = 2;
   uint8_t out[ECDSA_MAX_DER_SIZE];
   size_t out_len = ECDSA_MAX_DER_SIZE;
-  const uint8_t *sig;
+  void *sig;
   size_t sig_len;
   bcrypto_wei_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&sig,
-                             &sig_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &sig, &sig_len) == napi_ok);
 
   JS_ASSERT(sig_len == ec->sig_size, JS_ERR_SIGNATURE_SIZE);
   JS_ASSERT(ecdsa_sig_export(ec->ctx, out, &out_len, sig), JS_ERR_SIGNATURE);
@@ -5167,16 +5124,15 @@ bcrypto_ecdsa_signature_import(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t out[ECDSA_MAX_SIG_SIZE];
-  const uint8_t *sig;
+  void *sig;
   size_t sig_len;
   bcrypto_wei_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&sig,
-                             &sig_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &sig, &sig_len) == napi_ok);
 
   JS_ASSERT(ecdsa_sig_import_lax(ec->ctx, out, sig, sig_len), JS_ERR_SIGNATURE);
 
@@ -5193,7 +5149,7 @@ static napi_value
 bcrypto_ecdsa_is_low_s(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  const uint8_t *sig;
+  void *sig;
   size_t sig_len;
   bcrypto_wei_curve_t *ec;
   napi_value result;
@@ -5201,9 +5157,8 @@ bcrypto_ecdsa_is_low_s(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&sig,
-                             &sig_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &sig, &sig_len) == napi_ok);
 
   ok = sig_len == ec->sig_size && ecdsa_is_low_s(ec->ctx, sig);
 
@@ -5217,7 +5172,7 @@ bcrypto_ecdsa_is_low_der(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t tmp[ECDSA_MAX_SIG_SIZE];
-  const uint8_t *sig;
+  void *sig;
   size_t sig_len;
   bcrypto_wei_curve_t *ec;
   napi_value result;
@@ -5225,9 +5180,8 @@ bcrypto_ecdsa_is_low_der(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&sig,
-                             &sig_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &sig, &sig_len) == napi_ok);
 
   ok = ecdsa_sig_import_lax(ec->ctx, tmp, sig, sig_len)
     && ecdsa_is_low_s(ec->ctx, tmp);
@@ -5242,17 +5196,16 @@ bcrypto_ecdsa_sign(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
   uint8_t out[ECDSA_MAX_SIG_SIZE];
-  const uint8_t *msg, *priv;
+  void *msg, *priv;
   size_t msg_len, priv_len;
   bcrypto_wei_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&priv,
-                             &priv_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &priv, &priv_len) == napi_ok);
 
   JS_ASSERT(priv_len == ec->scalar_size, JS_ERR_PRIVKEY_SIZE);
   JS_ASSERT(ecdsa_sign(ec->ctx, out, NULL, msg, msg_len, priv), JS_ERR_SIGN);
@@ -5272,17 +5225,16 @@ bcrypto_ecdsa_sign_recoverable(napi_env env, napi_callback_info info) {
   size_t argc = 3;
   uint8_t out[ECDSA_MAX_SIG_SIZE];
   unsigned int param;
-  const uint8_t *msg, *priv;
+  void *msg, *priv;
   size_t msg_len, priv_len;
   bcrypto_wei_curve_t *ec;
   napi_value sigval, paramval, result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&priv,
-                             &priv_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &priv, &priv_len) == napi_ok);
 
   JS_ASSERT(priv_len == ec->scalar_size, JS_ERR_PRIVKEY_SIZE);
   JS_ASSERT(ecdsa_sign(ec->ctx, out, &param, msg, msg_len, priv), JS_ERR_SIGN);
@@ -5308,17 +5260,16 @@ bcrypto_ecdsa_sign_der(napi_env env, napi_callback_info info) {
   size_t argc = 3;
   uint8_t out[ECDSA_MAX_DER_SIZE];
   size_t out_len = ECDSA_MAX_DER_SIZE;
-  const uint8_t *msg, *priv;
+  void *msg, *priv;
   size_t msg_len, priv_len;
   bcrypto_wei_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&priv,
-                             &priv_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &priv, &priv_len) == napi_ok);
 
   JS_ASSERT(priv_len == ec->scalar_size, JS_ERR_PRIVKEY_SIZE);
   JS_ASSERT(ecdsa_sign(ec->ctx, out, NULL, msg, msg_len, priv), JS_ERR_SIGN);
@@ -5336,17 +5287,16 @@ bcrypto_ecdsa_sign_recoverable_der(napi_env env, napi_callback_info info) {
   uint8_t out[ECDSA_MAX_DER_SIZE];
   size_t out_len = ECDSA_MAX_DER_SIZE;
   unsigned int param;
-  const uint8_t *msg, *priv;
+  void *msg, *priv;
   size_t msg_len, priv_len;
   bcrypto_wei_curve_t *ec;
   napi_value sigval, paramval, result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&priv,
-                             &priv_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &priv, &priv_len) == napi_ok);
 
   JS_ASSERT(priv_len == ec->scalar_size, JS_ERR_PRIVKEY_SIZE);
   JS_ASSERT(ecdsa_sign(ec->ctx, out, &param, msg, msg_len, priv), JS_ERR_SIGN);
@@ -5367,7 +5317,7 @@ bcrypto_ecdsa_verify(napi_env env, napi_callback_info info) {
   napi_value argv[4];
   size_t argc = 4;
   uint8_t tmp[ECDSA_MAX_SIG_SIZE];
-  const uint8_t *msg, *sig, *pub;
+  void *msg, *sig, *pub;
   size_t msg_len, sig_len, pub_len;
   bcrypto_wei_curve_t *ec;
   napi_value result;
@@ -5375,10 +5325,10 @@ bcrypto_ecdsa_verify(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&sig, &sig_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[3], (void **)&pub, &pub_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &sig, &sig_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[3], &pub, &pub_len) == napi_ok);
 
   ok = sig_len == ec->sig_size
     && ecdsa_sig_normalize(ec->ctx, tmp, sig)
@@ -5394,7 +5344,7 @@ bcrypto_ecdsa_verify_der(napi_env env, napi_callback_info info) {
   napi_value argv[4];
   size_t argc = 4;
   uint8_t tmp[ECDSA_MAX_SIG_SIZE];
-  const uint8_t *msg, *sig, *pub;
+  void *msg, *sig, *pub;
   size_t msg_len, sig_len, pub_len;
   bcrypto_wei_curve_t *ec;
   napi_value result;
@@ -5402,10 +5352,10 @@ bcrypto_ecdsa_verify_der(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&sig, &sig_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[3], (void **)&pub, &pub_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &sig, &sig_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[3], &pub, &pub_len) == napi_ok);
 
   ok = ecdsa_sig_import_lax(ec->ctx, tmp, sig, sig_len)
     && ecdsa_sig_normalize(ec->ctx, tmp, tmp)
@@ -5423,7 +5373,7 @@ bcrypto_ecdsa_recover(napi_env env, napi_callback_info info) {
   uint8_t tmp[ECDSA_MAX_SIG_SIZE];
   uint8_t out[ECDSA_MAX_PUB_SIZE];
   size_t out_len = ECDSA_MAX_PUB_SIZE;
-  const uint8_t *msg, *sig;
+  void *msg, *sig;
   size_t msg_len, sig_len;
   uint32_t parm;
   bool compress;
@@ -5433,9 +5383,9 @@ bcrypto_ecdsa_recover(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 5);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&sig, &sig_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &sig, &sig_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[3], &parm) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[4], &compress) == napi_ok);
 
@@ -5460,7 +5410,7 @@ bcrypto_ecdsa_recover_der(napi_env env, napi_callback_info info) {
   uint8_t tmp[ECDSA_MAX_SIG_SIZE];
   uint8_t out[ECDSA_MAX_PUB_SIZE];
   size_t out_len = ECDSA_MAX_PUB_SIZE;
-  const uint8_t *msg, *sig;
+  void *msg, *sig;
   size_t msg_len, sig_len;
   uint32_t parm;
   bool compress;
@@ -5470,9 +5420,9 @@ bcrypto_ecdsa_recover_der(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 5);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&sig, &sig_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &sig, &sig_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[3], &parm) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[4], &compress) == napi_ok);
 
@@ -5496,7 +5446,7 @@ bcrypto_ecdsa_derive(napi_env env, napi_callback_info info) {
   size_t argc = 4;
   uint8_t out[ECDSA_MAX_PUB_SIZE];
   size_t out_len = ECDSA_MAX_PUB_SIZE;
-  const uint8_t *pub, *priv;
+  void *pub, *priv;
   size_t pub_len, priv_len;
   bool compress;
   bcrypto_wei_curve_t *ec;
@@ -5504,10 +5454,9 @@ bcrypto_ecdsa_derive(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub, &pub_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&priv,
-                             &priv_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &priv, &priv_len) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[3], &compress) == napi_ok);
 
   JS_ASSERT(priv_len == ec->scalar_size, JS_ERR_PRIVKEY_SIZE);
@@ -5532,7 +5481,7 @@ bcrypto_eddsa_pubkey_size(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(bcrypto_edwards_curve_unwrap(env, argv[0], &ec) == napi_ok);
   CHECK(napi_create_uint32(env, ec->pub_size, &result) == napi_ok);
 
   return result;
@@ -5542,7 +5491,7 @@ static napi_value
 bcrypto_eddsa_privkey_generate(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  const uint8_t *entropy;
+  void *entropy;
   size_t entropy_len;
   uint8_t out[EDDSA_MAX_PRIV_SIZE];
   bcrypto_edwards_curve_t *ec;
@@ -5550,9 +5499,8 @@ bcrypto_eddsa_privkey_generate(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&entropy,
-                             &entropy_len) == napi_ok);
+  CHECK(bcrypto_edwards_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &entropy, &entropy_len) == napi_ok);
 
   JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
 
@@ -5564,7 +5512,7 @@ bcrypto_eddsa_privkey_generate(napi_env env, napi_callback_info info) {
                                 NULL,
                                 &result) == napi_ok);
 
-  torsion_memzero((void *)entropy, entropy_len);
+  torsion_memzero(entropy, entropy_len);
 
   return result;
 }
@@ -5573,7 +5521,7 @@ static napi_value
 bcrypto_eddsa_privkey_verify(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  const uint8_t *priv;
+  void *priv;
   size_t priv_len;
   bcrypto_edwards_curve_t *ec;
   napi_value result;
@@ -5581,9 +5529,8 @@ bcrypto_eddsa_privkey_verify(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
-                             &priv_len) == napi_ok);
+  CHECK(bcrypto_edwards_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &priv, &priv_len) == napi_ok);
 
   ok = priv_len == ec->priv_size && eddsa_privkey_verify(ec->ctx, priv);
 
@@ -5597,16 +5544,15 @@ bcrypto_eddsa_privkey_export(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t out[EDDSA_MAX_PRIV_SIZE];
-  const uint8_t *priv;
+  void *priv;
   size_t priv_len;
   bcrypto_edwards_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
-                             &priv_len) == napi_ok);
+  CHECK(bcrypto_edwards_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &priv, &priv_len) == napi_ok);
 
   JS_ASSERT(priv_len == ec->priv_size, JS_ERR_PRIVKEY_SIZE);
   JS_ASSERT(eddsa_privkey_export(ec->ctx, out, priv), JS_ERR_PRIVKEY);
@@ -5625,16 +5571,15 @@ bcrypto_eddsa_privkey_import(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t out[EDDSA_MAX_PRIV_SIZE];
-  const uint8_t *priv;
+  void *priv;
   size_t priv_len;
   bcrypto_edwards_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
-                             &priv_len) == napi_ok);
+  CHECK(bcrypto_edwards_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &priv, &priv_len) == napi_ok);
 
   JS_ASSERT(eddsa_privkey_import(ec->ctx, out, priv, priv_len), JS_ERR_PRIVKEY);
 
@@ -5653,16 +5598,15 @@ bcrypto_eddsa_privkey_expand(napi_env env, napi_callback_info info) {
   size_t argc = 2;
   uint8_t scalar[EDWARDS_MAX_SCALAR_SIZE];
   uint8_t prefix[EDDSA_MAX_PREFIX_SIZE];
-  const uint8_t *priv;
+  void *priv;
   size_t priv_len;
   bcrypto_edwards_curve_t *ec;
   napi_value scalarval, prefixval, result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
-                             &priv_len) == napi_ok);
+  CHECK(bcrypto_edwards_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &priv, &priv_len) == napi_ok);
 
   JS_ASSERT(priv_len == ec->priv_size, JS_ERR_PRIVKEY_SIZE);
 
@@ -5692,16 +5636,15 @@ bcrypto_eddsa_privkey_convert(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t out[EDWARDS_MAX_SCALAR_SIZE];
-  const uint8_t *priv;
+  void *priv;
   size_t priv_len;
   bcrypto_edwards_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
-                             &priv_len) == napi_ok);
+  CHECK(bcrypto_edwards_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &priv, &priv_len) == napi_ok);
 
   JS_ASSERT(priv_len == ec->priv_size, JS_ERR_PRIVKEY_SIZE);
 
@@ -5721,16 +5664,15 @@ bcrypto_eddsa_scalar_generate(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t out[EDWARDS_MAX_SCALAR_SIZE];
-  const uint8_t *entropy;
+  void *entropy;
   size_t entropy_len;
   bcrypto_edwards_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&entropy,
-                             &entropy_len) == napi_ok);
+  CHECK(bcrypto_edwards_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &entropy, &entropy_len) == napi_ok);
 
   JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
 
@@ -5742,7 +5684,7 @@ bcrypto_eddsa_scalar_generate(napi_env env, napi_callback_info info) {
                                 NULL,
                                 &result) == napi_ok);
 
-  torsion_memzero((void *)entropy, entropy_len);
+  torsion_memzero(entropy, entropy_len);
 
   return result;
 }
@@ -5751,7 +5693,7 @@ static napi_value
 bcrypto_eddsa_scalar_verify(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  const uint8_t *scalar;
+  void *scalar;
   size_t scalar_len;
   bcrypto_edwards_curve_t *ec;
   napi_value result;
@@ -5759,9 +5701,8 @@ bcrypto_eddsa_scalar_verify(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&scalar,
-                             &scalar_len) == napi_ok);
+  CHECK(bcrypto_edwards_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &scalar, &scalar_len) == napi_ok);
 
   ok = scalar_len == ec->scalar_size && eddsa_scalar_verify(ec->ctx, scalar);
 
@@ -5775,16 +5716,15 @@ bcrypto_eddsa_scalar_clamp(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t out[EDWARDS_MAX_SCALAR_SIZE];
-  const uint8_t *scalar;
+  void *scalar;
   size_t scalar_len;
   bcrypto_edwards_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&scalar,
-                             &scalar_len) == napi_ok);
+  CHECK(bcrypto_edwards_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &scalar, &scalar_len) == napi_ok);
 
   JS_ASSERT(scalar_len == ec->scalar_size, JS_ERR_SCALAR_SIZE);
 
@@ -5803,7 +5743,7 @@ static napi_value
 bcrypto_eddsa_scalar_is_zero(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  const uint8_t *scalar;
+  void *scalar;
   size_t scalar_len;
   bcrypto_edwards_curve_t *ec;
   napi_value result;
@@ -5811,9 +5751,8 @@ bcrypto_eddsa_scalar_is_zero(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&scalar,
-                             &scalar_len) == napi_ok);
+  CHECK(bcrypto_edwards_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &scalar, &scalar_len) == napi_ok);
 
   ok = scalar_len == ec->scalar_size && eddsa_scalar_is_zero(ec->ctx, scalar);
 
@@ -5827,18 +5766,16 @@ bcrypto_eddsa_scalar_tweak_add(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
   uint8_t out[EDWARDS_MAX_SCALAR_SIZE];
-  const uint8_t *scalar, *tweak;
+  void *scalar, *tweak;
   size_t scalar_len, tweak_len;
   bcrypto_edwards_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&scalar,
-                             &scalar_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&tweak,
-                             &tweak_len) == napi_ok);
+  CHECK(bcrypto_edwards_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &scalar, &scalar_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &tweak, &tweak_len) == napi_ok);
 
   JS_ASSERT(scalar_len == ec->scalar_size, JS_ERR_SCALAR_SIZE);
   JS_ASSERT(tweak_len == ec->scalar_size, JS_ERR_SCALAR_SIZE);
@@ -5859,18 +5796,16 @@ bcrypto_eddsa_scalar_tweak_mul(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
   uint8_t out[EDWARDS_MAX_SCALAR_SIZE];
-  const uint8_t *scalar, *tweak;
+  void *scalar, *tweak;
   size_t scalar_len, tweak_len;
   bcrypto_edwards_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&scalar,
-                             &scalar_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&tweak,
-                             &tweak_len) == napi_ok);
+  CHECK(bcrypto_edwards_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &scalar, &scalar_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &tweak, &tweak_len) == napi_ok);
 
   JS_ASSERT(scalar_len == ec->scalar_size, JS_ERR_SCALAR_SIZE);
   JS_ASSERT(tweak_len == ec->scalar_size, JS_ERR_SCALAR_SIZE);
@@ -5891,16 +5826,15 @@ bcrypto_eddsa_scalar_reduce(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t out[EDWARDS_MAX_SCALAR_SIZE];
-  const uint8_t *scalar;
+  void *scalar;
   size_t scalar_len;
   bcrypto_edwards_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&scalar,
-                             &scalar_len) == napi_ok);
+  CHECK(bcrypto_edwards_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &scalar, &scalar_len) == napi_ok);
 
   JS_ASSERT(scalar_len == ec->scalar_size, JS_ERR_SCALAR_SIZE);
 
@@ -5920,16 +5854,15 @@ bcrypto_eddsa_scalar_negate(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t out[EDWARDS_MAX_SCALAR_SIZE];
-  const uint8_t *scalar;
+  void *scalar;
   size_t scalar_len;
   bcrypto_edwards_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&scalar,
-                             &scalar_len) == napi_ok);
+  CHECK(bcrypto_edwards_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &scalar, &scalar_len) == napi_ok);
 
   JS_ASSERT(scalar_len == ec->scalar_size, JS_ERR_SCALAR_SIZE);
 
@@ -5949,16 +5882,15 @@ bcrypto_eddsa_scalar_invert(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t out[EDWARDS_MAX_SCALAR_SIZE];
-  const uint8_t *scalar;
+  void *scalar;
   size_t scalar_len;
   bcrypto_edwards_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&scalar,
-                             &scalar_len) == napi_ok);
+  CHECK(bcrypto_edwards_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &scalar, &scalar_len) == napi_ok);
 
   JS_ASSERT(scalar_len == ec->scalar_size, JS_ERR_SCALAR_SIZE);
 
@@ -5978,16 +5910,15 @@ bcrypto_eddsa_pubkey_create(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t out[EDDSA_MAX_PUB_SIZE];
-  const uint8_t *priv;
+  void *priv;
   size_t priv_len;
   bcrypto_edwards_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
-                             &priv_len) == napi_ok);
+  CHECK(bcrypto_edwards_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &priv, &priv_len) == napi_ok);
 
   JS_ASSERT(priv_len == ec->priv_size, JS_ERR_PRIVKEY_SIZE);
 
@@ -6007,16 +5938,15 @@ bcrypto_eddsa_pubkey_from_scalar(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t out[EDDSA_MAX_PUB_SIZE];
-  const uint8_t *scalar;
+  void *scalar;
   size_t scalar_len;
   bcrypto_edwards_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&scalar,
-                             &scalar_len) == napi_ok);
+  CHECK(bcrypto_edwards_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &scalar, &scalar_len) == napi_ok);
 
   JS_ASSERT(scalar_len == ec->scalar_size, JS_ERR_SCALAR_SIZE);
 
@@ -6036,16 +5966,15 @@ bcrypto_eddsa_pubkey_convert(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t out[ECDH_MAX_PUB_SIZE];
-  const uint8_t *pub;
+  void *pub;
   size_t pub_len;
   bcrypto_edwards_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
+  CHECK(bcrypto_edwards_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
 
   JS_ASSERT(pub_len == ec->pub_size, JS_ERR_PUBKEY_SIZE);
   JS_ASSERT(eddsa_pubkey_convert(ec->ctx, out, pub), JS_ERR_PUBKEY);
@@ -6064,16 +5993,15 @@ bcrypto_eddsa_pubkey_from_uniform(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t out[EDDSA_MAX_PUB_SIZE];
-  const uint8_t *data;
+  void *data;
   size_t data_len;
   bcrypto_edwards_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&data,
-                             &data_len) == napi_ok);
+  CHECK(bcrypto_edwards_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &data, &data_len) == napi_ok);
 
   JS_ASSERT(data_len == ec->field_size, JS_ERR_PREIMAGE_SIZE);
 
@@ -6093,7 +6021,7 @@ bcrypto_eddsa_pubkey_to_uniform(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
   uint8_t out[EDWARDS_MAX_FIELD_SIZE];
-  const uint8_t *pub;
+  void *pub;
   size_t pub_len;
   uint32_t hint;
   bcrypto_edwards_curve_t *ec;
@@ -6101,9 +6029,8 @@ bcrypto_eddsa_pubkey_to_uniform(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
+  CHECK(bcrypto_edwards_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[2], &hint) == napi_ok);
 
   JS_ASSERT(pub_len == ec->pub_size, JS_ERR_PUBKEY_SIZE);
@@ -6120,7 +6047,7 @@ bcrypto_eddsa_pubkey_from_hash(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
   uint8_t out[EDDSA_MAX_PUB_SIZE];
-  const uint8_t *data;
+  void *data;
   size_t data_len;
   bool pake;
   bcrypto_edwards_curve_t *ec;
@@ -6128,9 +6055,8 @@ bcrypto_eddsa_pubkey_from_hash(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&data,
-                             &data_len) == napi_ok);
+  CHECK(bcrypto_edwards_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &data, &data_len) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[2], &pake) == napi_ok);
 
   JS_ASSERT(data_len == ec->field_size * 2, JS_ERR_PREIMAGE_SIZE);
@@ -6151,7 +6077,7 @@ bcrypto_eddsa_pubkey_to_hash(napi_env env, napi_callback_info info) {
   napi_value argv[4];
   size_t argc = 4;
   uint8_t out[EDWARDS_MAX_FIELD_SIZE * 2];
-  const uint8_t *pub, *entropy;
+  void *pub, *entropy;
   size_t pub_len, entropy_len;
   uint32_t subgroup;
   bcrypto_edwards_curve_t *ec;
@@ -6159,12 +6085,10 @@ bcrypto_eddsa_pubkey_to_hash(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
+  CHECK(bcrypto_edwards_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[2], &subgroup) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[3], (void **)&entropy,
-                             &entropy_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[3], &entropy, &entropy_len) == napi_ok);
 
   JS_ASSERT(pub_len == ec->pub_size, JS_ERR_PUBKEY_SIZE);
   JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
@@ -6174,7 +6098,7 @@ bcrypto_eddsa_pubkey_to_hash(napi_env env, napi_callback_info info) {
   CHECK(napi_create_buffer_copy(env, ec->field_size * 2,
                                 out, NULL, &result) == napi_ok);
 
-  torsion_memzero((void *)entropy, entropy_len);
+  torsion_memzero(entropy, entropy_len);
 
   return result;
 }
@@ -6183,7 +6107,7 @@ static napi_value
 bcrypto_eddsa_pubkey_verify(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  const uint8_t *pub;
+  void *pub;
   size_t pub_len;
   bcrypto_edwards_curve_t *ec;
   napi_value result;
@@ -6191,9 +6115,8 @@ bcrypto_eddsa_pubkey_verify(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
+  CHECK(bcrypto_edwards_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
 
   ok = pub_len == ec->pub_size && eddsa_pubkey_verify(ec->ctx, pub);
 
@@ -6208,16 +6131,15 @@ bcrypto_eddsa_pubkey_export(napi_env env, napi_callback_info info) {
   size_t argc = 2;
   uint8_t x[EDWARDS_MAX_FIELD_SIZE];
   uint8_t y[EDWARDS_MAX_FIELD_SIZE];
-  const uint8_t *pub;
+  void *pub;
   size_t pub_len;
   bcrypto_edwards_curve_t *ec;
   napi_value bx, by, result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
+  CHECK(bcrypto_edwards_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
 
   JS_ASSERT(pub_len == ec->pub_size, JS_ERR_PUBKEY_SIZE);
   JS_ASSERT(eddsa_pubkey_export(ec->ctx, x, y, pub), JS_ERR_PUBKEY);
@@ -6237,7 +6159,7 @@ bcrypto_eddsa_pubkey_import(napi_env env, napi_callback_info info) {
   napi_value argv[4];
   size_t argc = 4;
   uint8_t out[EDDSA_MAX_PUB_SIZE];
-  const uint8_t *x, *y;
+  void *x, *y;
   size_t x_len, y_len;
   int32_t sign;
   bcrypto_edwards_curve_t *ec;
@@ -6245,9 +6167,9 @@ bcrypto_eddsa_pubkey_import(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&x, &x_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&y, &y_len) == napi_ok);
+  CHECK(bcrypto_edwards_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &x, &x_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &y, &y_len) == napi_ok);
   CHECK(napi_get_value_int32(env, argv[3], &sign) == napi_ok);
 
   JS_ASSERT(eddsa_pubkey_import(ec->ctx, out, x, x_len, y, y_len, sign),
@@ -6266,7 +6188,7 @@ static napi_value
 bcrypto_eddsa_pubkey_is_infinity(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  const uint8_t *pub;
+  void *pub;
   size_t pub_len;
   bcrypto_edwards_curve_t *ec;
   napi_value result;
@@ -6274,9 +6196,8 @@ bcrypto_eddsa_pubkey_is_infinity(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
+  CHECK(bcrypto_edwards_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
 
   ok = pub_len == ec->pub_size && eddsa_pubkey_is_infinity(ec->ctx, pub);
 
@@ -6289,7 +6210,7 @@ static napi_value
 bcrypto_eddsa_pubkey_is_small(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  const uint8_t *pub;
+  void *pub;
   size_t pub_len;
   bcrypto_edwards_curve_t *ec;
   napi_value result;
@@ -6297,9 +6218,8 @@ bcrypto_eddsa_pubkey_is_small(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
+  CHECK(bcrypto_edwards_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
 
   ok = pub_len == ec->pub_size && eddsa_pubkey_is_small(ec->ctx, pub);
 
@@ -6312,7 +6232,7 @@ static napi_value
 bcrypto_eddsa_pubkey_has_torsion(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  const uint8_t *pub;
+  void *pub;
   size_t pub_len;
   bcrypto_edwards_curve_t *ec;
   napi_value result;
@@ -6320,9 +6240,8 @@ bcrypto_eddsa_pubkey_has_torsion(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
+  CHECK(bcrypto_edwards_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
 
   ok = pub_len == ec->pub_size && eddsa_pubkey_has_torsion(ec->ctx, pub);
 
@@ -6336,18 +6255,16 @@ bcrypto_eddsa_pubkey_tweak_add(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
   uint8_t out[EDDSA_MAX_PUB_SIZE];
-  const uint8_t *pub, *tweak;
+  void *pub, *tweak;
   size_t pub_len, tweak_len;
   bcrypto_edwards_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&tweak,
-                             &tweak_len) == napi_ok);
+  CHECK(bcrypto_edwards_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &tweak, &tweak_len) == napi_ok);
 
   JS_ASSERT(pub_len == ec->pub_size, JS_ERR_PUBKEY_SIZE);
   JS_ASSERT(tweak_len == ec->scalar_size, JS_ERR_SCALAR_SIZE);
@@ -6367,18 +6284,16 @@ bcrypto_eddsa_pubkey_tweak_mul(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
   uint8_t out[EDDSA_MAX_PUB_SIZE];
-  const uint8_t *pub, *tweak;
+  void *pub, *tweak;
   size_t pub_len, tweak_len;
   bcrypto_edwards_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&tweak,
-                             &tweak_len) == napi_ok);
+  CHECK(bcrypto_edwards_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &tweak, &tweak_len) == napi_ok);
 
   JS_ASSERT(pub_len == ec->pub_size, JS_ERR_PUBKEY_SIZE);
   JS_ASSERT(tweak_len == ec->scalar_size, JS_ERR_SCALAR_SIZE);
@@ -6400,6 +6315,7 @@ bcrypto_eddsa_pubkey_combine(napi_env env, napi_callback_info info) {
   uint8_t out[EDDSA_MAX_PUB_SIZE];
   uint32_t i, length;
   const uint8_t **pubs;
+  void *pub;
   size_t pub_len;
   bcrypto_edwards_curve_t *ec;
   napi_value item, result;
@@ -6407,7 +6323,7 @@ bcrypto_eddsa_pubkey_combine(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(bcrypto_edwards_curve_unwrap(env, argv[0], &ec) == napi_ok);
   CHECK(napi_get_array_length(env, argv[1], &length) == napi_ok);
 
   pubs = bcrypto_malloc(length * sizeof(uint8_t *));
@@ -6417,8 +6333,9 @@ bcrypto_eddsa_pubkey_combine(napi_env env, napi_callback_info info) {
 
   for (i = 0; i < length; i++) {
     CHECK(napi_get_element(env, argv[1], i, &item) == napi_ok);
-    CHECK(napi_get_buffer_info(env, item, (void **)&pubs[i],
-                               &pub_len) == napi_ok);
+    CHECK(napi_get_buffer_info(env, item, &pub, &pub_len) == napi_ok);
+
+    pubs[i] = pub;
 
     if (pub_len != ec->pub_size)
       goto fail;
@@ -6445,16 +6362,15 @@ bcrypto_eddsa_pubkey_negate(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t out[EDDSA_MAX_PUB_SIZE];
-  const uint8_t *pub;
+  void *pub;
   size_t pub_len;
   bcrypto_edwards_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
+  CHECK(bcrypto_edwards_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
 
   JS_ASSERT(pub_len == ec->pub_size, JS_ERR_PUBKEY_SIZE);
   JS_ASSERT(eddsa_pubkey_negate(ec->ctx, out, pub), JS_ERR_PUBKEY);
@@ -6473,7 +6389,7 @@ bcrypto_eddsa_sign(napi_env env, napi_callback_info info) {
   napi_value argv[5];
   size_t argc = 5;
   uint8_t out[EDDSA_MAX_SIG_SIZE];
-  const uint8_t *msg, *priv, *ctx;
+  void *msg, *priv, *ctx;
   size_t msg_len, priv_len, ctx_len;
   int32_t ph;
   bcrypto_edwards_curve_t *ec;
@@ -6481,12 +6397,12 @@ bcrypto_eddsa_sign(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 5);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&priv,
+  CHECK(bcrypto_edwards_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &priv,
                              &priv_len) == napi_ok);
   CHECK(napi_get_value_int32(env, argv[3], &ph) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[4], (void **)&ctx, &ctx_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[4], &ctx, &ctx_len) == napi_ok);
 
   JS_ASSERT(priv_len == ec->priv_size, JS_ERR_PRIVKEY_SIZE);
 
@@ -6506,7 +6422,7 @@ bcrypto_eddsa_sign_with_scalar(napi_env env, napi_callback_info info) {
   napi_value argv[6];
   size_t argc = 6;
   uint8_t out[EDDSA_MAX_SIG_SIZE];
-  const uint8_t *msg, *scalar, *prefix, *ctx;
+  void *msg, *scalar, *prefix, *ctx;
   size_t msg_len, scalar_len, prefix_len, ctx_len;
   int32_t ph;
   bcrypto_edwards_curve_t *ec;
@@ -6514,14 +6430,12 @@ bcrypto_eddsa_sign_with_scalar(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 6);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&scalar,
-                             &scalar_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[3], (void **)&prefix,
-                             &prefix_len) == napi_ok);
+  CHECK(bcrypto_edwards_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &scalar, &scalar_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[3], &prefix, &prefix_len) == napi_ok);
   CHECK(napi_get_value_int32(env, argv[4], &ph) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[5], (void **)&ctx, &ctx_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[5], &ctx, &ctx_len) == napi_ok);
 
   JS_ASSERT(scalar_len == ec->scalar_size, JS_ERR_SCALAR_SIZE);
   JS_ASSERT(prefix_len == ec->pub_size, JS_ERR_PREFIX_SIZE);
@@ -6543,7 +6457,7 @@ bcrypto_eddsa_sign_tweak_add(napi_env env, napi_callback_info info) {
   napi_value argv[6];
   size_t argc = 6;
   uint8_t out[EDDSA_MAX_SIG_SIZE];
-  const uint8_t *msg, *priv, *tweak, *ctx;
+  void *msg, *priv, *tweak, *ctx;
   size_t msg_len, priv_len, tweak_len, ctx_len;
   int32_t ph;
   bcrypto_edwards_curve_t *ec;
@@ -6551,14 +6465,12 @@ bcrypto_eddsa_sign_tweak_add(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 6);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&priv,
-                             &priv_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[3], (void **)&tweak,
-                             &tweak_len) == napi_ok);
+  CHECK(bcrypto_edwards_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &priv, &priv_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[3], &tweak, &tweak_len) == napi_ok);
   CHECK(napi_get_value_int32(env, argv[4], &ph) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[5], (void **)&ctx, &ctx_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[5], &ctx, &ctx_len) == napi_ok);
 
   JS_ASSERT(priv_len == ec->priv_size, JS_ERR_PRIVKEY_SIZE);
   JS_ASSERT(tweak_len == ec->scalar_size, JS_ERR_SCALAR_SIZE);
@@ -6580,7 +6492,7 @@ bcrypto_eddsa_sign_tweak_mul(napi_env env, napi_callback_info info) {
   napi_value argv[6];
   size_t argc = 6;
   uint8_t out[EDDSA_MAX_SIG_SIZE];
-  const uint8_t *msg, *priv, *tweak, *ctx;
+  void *msg, *priv, *tweak, *ctx;
   size_t msg_len, priv_len, tweak_len, ctx_len;
   int32_t ph;
   bcrypto_edwards_curve_t *ec;
@@ -6588,14 +6500,12 @@ bcrypto_eddsa_sign_tweak_mul(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 6);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&priv,
-                             &priv_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[3], (void **)&tweak,
-                             &tweak_len) == napi_ok);
+  CHECK(bcrypto_edwards_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &priv, &priv_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[3], &tweak, &tweak_len) == napi_ok);
   CHECK(napi_get_value_int32(env, argv[4], &ph) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[5], (void **)&ctx, &ctx_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[5], &ctx, &ctx_len) == napi_ok);
 
   JS_ASSERT(priv_len == ec->priv_size, JS_ERR_PRIVKEY_SIZE);
   JS_ASSERT(tweak_len == ec->scalar_size, JS_ERR_SCALAR_SIZE);
@@ -6616,7 +6526,7 @@ static napi_value
 bcrypto_eddsa_verify(napi_env env, napi_callback_info info) {
   napi_value argv[6];
   size_t argc = 6;
-  const uint8_t *msg, *sig, *pub, *ctx;
+  void *msg, *sig, *pub, *ctx;
   size_t msg_len, sig_len, pub_len, ctx_len;
   int32_t ph;
   bcrypto_edwards_curve_t *ec;
@@ -6625,12 +6535,12 @@ bcrypto_eddsa_verify(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 6);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&sig, &sig_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[3], (void **)&pub, &pub_len) == napi_ok);
+  CHECK(bcrypto_edwards_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &sig, &sig_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[3], &pub, &pub_len) == napi_ok);
   CHECK(napi_get_value_int32(env, argv[4], &ph) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[5], (void **)&ctx, &ctx_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[5], &ctx, &ctx_len) == napi_ok);
 
   ok = sig_len == ec->sig_size
     && pub_len == ec->pub_size
@@ -6645,7 +6555,7 @@ static napi_value
 bcrypto_eddsa_verify_single(napi_env env, napi_callback_info info) {
   napi_value argv[6];
   size_t argc = 6;
-  const uint8_t *msg, *sig, *pub, *ctx;
+  void *msg, *sig, *pub, *ctx;
   size_t msg_len, sig_len, pub_len, ctx_len;
   int32_t ph;
   bcrypto_edwards_curve_t *ec;
@@ -6654,12 +6564,12 @@ bcrypto_eddsa_verify_single(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 6);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&sig, &sig_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[3], (void **)&pub, &pub_len) == napi_ok);
+  CHECK(bcrypto_edwards_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &sig, &sig_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[3], &pub, &pub_len) == napi_ok);
   CHECK(napi_get_value_int32(env, argv[4], &ph) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[5], (void **)&ctx, &ctx_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[5], &ctx, &ctx_len) == napi_ok);
 
   ok = sig_len == ec->sig_size
     && pub_len == ec->pub_size
@@ -6675,9 +6585,10 @@ bcrypto_eddsa_verify_batch(napi_env env, napi_callback_info info) {
   napi_value argv[4];
   size_t argc = 4;
   uint32_t i, length, item_len;
-  const uint8_t *ctx;
+  void *ctx;
   const uint8_t **ptrs, **msgs, **pubs, **sigs;
   size_t *lens, *msg_lens;
+  void *msg, *pub, *sig;
   size_t sig_len, pub_len, ctx_len;
   int32_t ph;
   bcrypto_edwards_curve_t *ec;
@@ -6687,10 +6598,10 @@ bcrypto_eddsa_verify_batch(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(bcrypto_edwards_curve_unwrap(env, argv[0], &ec) == napi_ok);
   CHECK(napi_get_array_length(env, argv[1], &length) == napi_ok);
   CHECK(napi_get_value_int32(env, argv[2], &ph) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[3], (void **)&ctx, &ctx_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[3], &ctx, &ctx_len) == napi_ok);
 
   if (length == 0) {
     CHECK(napi_get_boolean(env, true, &result) == napi_ok);
@@ -6717,14 +6628,13 @@ bcrypto_eddsa_verify_batch(napi_env env, napi_callback_info info) {
     CHECK(napi_get_element(env, item, 1, &items[1]) == napi_ok);
     CHECK(napi_get_element(env, item, 2, &items[2]) == napi_ok);
 
-    CHECK(napi_get_buffer_info(env, items[0], (void **)&msgs[i],
-                               &msg_lens[i]) == napi_ok);
+    CHECK(napi_get_buffer_info(env, items[0], &msg, &msg_lens[i]) == napi_ok);
+    CHECK(napi_get_buffer_info(env, items[1], &pub, &sig_len) == napi_ok);
+    CHECK(napi_get_buffer_info(env, items[2], &sig, &pub_len) == napi_ok);
 
-    CHECK(napi_get_buffer_info(env, items[1], (void **)&sigs[i],
-                               &sig_len) == napi_ok);
-
-    CHECK(napi_get_buffer_info(env, items[2], (void **)&pubs[i],
-                               &pub_len) == napi_ok);
+    msgs[i] = msg;
+    sigs[i] = pub;
+    pubs[i] = sig;
 
     if (sig_len != ec->sig_size || pub_len != ec->pub_size)
       goto fail;
@@ -6753,17 +6663,16 @@ bcrypto_eddsa_derive(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
   uint8_t out[EDDSA_MAX_PUB_SIZE];
-  const uint8_t *pub, *priv;
+  void *pub, *priv;
   size_t pub_len, priv_len;
   bcrypto_edwards_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub, &pub_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&priv,
-                             &priv_len) == napi_ok);
+  CHECK(bcrypto_edwards_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &priv, &priv_len) == napi_ok);
 
   JS_ASSERT(pub_len == ec->pub_size, JS_ERR_PUBKEY_SIZE);
   JS_ASSERT(priv_len == ec->priv_size, JS_ERR_PRIVKEY_SIZE);
@@ -6783,17 +6692,16 @@ bcrypto_eddsa_derive_with_scalar(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
   uint8_t out[EDDSA_MAX_PUB_SIZE];
-  const uint8_t *pub, *scalar;
+  void *pub, *scalar;
   size_t pub_len, scalar_len;
   bcrypto_edwards_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub, &pub_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&scalar,
-                             &scalar_len) == napi_ok);
+  CHECK(bcrypto_edwards_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &scalar, &scalar_len) == napi_ok);
 
   JS_ASSERT(pub_len == ec->pub_size, JS_ERR_PUBKEY_SIZE);
   JS_ASSERT(scalar_len == ec->scalar_size, JS_ERR_SCALAR_SIZE);
@@ -6870,7 +6778,7 @@ bcrypto_edwards_curve_field_size(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(bcrypto_edwards_curve_unwrap(env, argv[0], &ec) == napi_ok);
   CHECK(napi_create_uint32(env, ec->field_size, &result) == napi_ok);
 
   return result;
@@ -6885,7 +6793,7 @@ bcrypto_edwards_curve_field_bits(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(bcrypto_edwards_curve_unwrap(env, argv[0], &ec) == napi_ok);
   CHECK(napi_create_uint32(env, ec->field_bits, &result) == napi_ok);
 
   return result;
@@ -6895,21 +6803,20 @@ static napi_value
 bcrypto_edwards_curve_randomize(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  const uint8_t *entropy;
+  void *entropy;
   size_t entropy_len;
   bcrypto_edwards_curve_t *ec;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&entropy,
-                             &entropy_len) == napi_ok);
+  CHECK(bcrypto_edwards_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &entropy, &entropy_len) == napi_ok);
 
   JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
 
   edwards_curve_randomize(ec->ctx, entropy);
 
-  torsion_memzero((void *)entropy, entropy_len);
+  torsion_memzero(entropy, entropy_len);
 
   return argv[0];
 }
@@ -6961,7 +6868,7 @@ bcrypto_hash_init(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&hash) == napi_ok);
+  CHECK(bcrypto_hash_unwrap(env, argv[0], &hash) == napi_ok);
 
   hash_init(&hash->ctx, hash->type);
   hash->started = 1;
@@ -6973,14 +6880,14 @@ static napi_value
 bcrypto_hash_update(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  const uint8_t *in;
+  void *in;
   size_t in_len;
   bcrypto_hash_t *hash;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&hash) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&in, &in_len) == napi_ok);
+  CHECK(bcrypto_hash_unwrap(env, argv[0], &hash) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &in, &in_len) == napi_ok);
 
   JS_ASSERT(hash->started, JS_ERR_INIT);
 
@@ -7000,7 +6907,7 @@ bcrypto_hash_final(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&hash) == napi_ok);
+  CHECK(bcrypto_hash_unwrap(env, argv[0], &hash) == napi_ok);
 
   JS_ASSERT(hash->started, JS_ERR_INIT);
 
@@ -7021,7 +6928,7 @@ bcrypto_hash_digest(napi_env env, napi_callback_info info) {
   uint8_t out[HASH_MAX_OUTPUT_SIZE];
   size_t out_len;
   uint32_t type;
-  const uint8_t *in;
+  void *in;
   size_t in_len;
   hash_t ctx;
   napi_value result;
@@ -7029,7 +6936,7 @@ bcrypto_hash_digest(napi_env env, napi_callback_info info) {
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
   CHECK(napi_get_value_uint32(env, argv[0], &type) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&in, &in_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &in, &in_len) == napi_ok);
 
   JS_ASSERT(hash_has_backend(type), JS_ERR_ARG);
 
@@ -7051,7 +6958,7 @@ bcrypto_hash_root(napi_env env, napi_callback_info info) {
   uint8_t out[HASH_MAX_OUTPUT_SIZE];
   size_t out_len;
   uint32_t type;
-  const uint8_t *left, *right;
+  void *left, *right;
   size_t left_len, right_len;
   hash_t ctx;
   napi_value result;
@@ -7059,10 +6966,8 @@ bcrypto_hash_root(napi_env env, napi_callback_info info) {
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
   CHECK(napi_get_value_uint32(env, argv[0], &type) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&left,
-                             &left_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&right,
-                             &right_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &left, &left_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &right, &right_len) == napi_ok);
 
   JS_ASSERT(hash_has_backend(type), JS_ERR_ARG);
 
@@ -7087,7 +6992,7 @@ bcrypto_hash_multi(napi_env env, napi_callback_info info) {
   uint8_t out[HASH_MAX_OUTPUT_SIZE];
   size_t out_len;
   uint32_t type;
-  const uint8_t *x, *y, *z;
+  void *x, *y, *z;
   size_t x_len, y_len, z_len;
   hash_t ctx;
   napi_value result;
@@ -7095,9 +7000,9 @@ bcrypto_hash_multi(napi_env env, napi_callback_info info) {
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
   CHECK(napi_get_value_uint32(env, argv[0], &type) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&x, &x_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&y, &y_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[3], (void **)&z, &z_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &x, &x_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &y, &y_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[3], &z, &z_len) == napi_ok);
 
   JS_ASSERT(hash_has_backend(type), JS_ERR_ARG);
 
@@ -7157,15 +7062,14 @@ static napi_value
 bcrypto_hash_drbg_init(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  uint8_t *seed;
+  void *seed;
   size_t seed_len;
   bcrypto_hash_drbg_t *drbg;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&drbg) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&seed,
-                             &seed_len) == napi_ok);
+  CHECK(bcrypto_hash_drbg_unwrap(env, argv[0], &drbg) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &seed, &seed_len) == napi_ok);
 
   hash_drbg_init(&drbg->ctx, drbg->type, seed, seed_len);
   drbg->started = 1;
@@ -7177,15 +7081,14 @@ static napi_value
 bcrypto_hash_drbg_reseed(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  uint8_t *seed;
+  void *seed;
   size_t seed_len;
   bcrypto_hash_drbg_t *drbg;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&drbg) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&seed,
-                             &seed_len) == napi_ok);
+  CHECK(bcrypto_hash_drbg_unwrap(env, argv[0], &drbg) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &seed, &seed_len) == napi_ok);
 
   JS_ASSERT(drbg->started, JS_ERR_INIT);
 
@@ -7198,23 +7101,23 @@ static napi_value
 bcrypto_hash_drbg_generate(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
-  uint8_t *out;
+  void *out;
   uint32_t out_len;
-  const uint8_t *add;
+  void *add;
   size_t add_len;
   bcrypto_hash_drbg_t *drbg;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&drbg) == napi_ok);
+  CHECK(bcrypto_hash_drbg_unwrap(env, argv[0], &drbg) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[1], &out_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&add, &add_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &add, &add_len) == napi_ok);
 
   JS_ASSERT(drbg->started, JS_ERR_INIT);
   JS_ASSERT(out_len <= MAX_BUFFER_LENGTH, JS_ERR_ALLOC);
 
-  JS_CHECK_ALLOC(napi_create_buffer(env, out_len, (void **)&out, &result));
+  JS_CHECK_ALLOC(napi_create_buffer(env, out_len, &out, &result));
 
   hash_drbg_generate(&drbg->ctx, out, out_len, add, add_len);
 
@@ -7231,17 +7134,15 @@ bcrypto_hkdf_extract(napi_env env, napi_callback_info info) {
   size_t argc = 3;
   uint8_t out[HASH_MAX_OUTPUT_SIZE];
   uint32_t type, out_len;
-  const uint8_t *ikm, *salt;
+  void *ikm, *salt;
   size_t ikm_len, salt_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
   CHECK(napi_get_value_uint32(env, argv[0], &type) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&ikm,
-                             &ikm_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&salt,
-                             &salt_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &ikm, &ikm_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &salt, &salt_len) == napi_ok);
 
   JS_ASSERT(hkdf_extract(out, type, ikm, ikm_len, salt, salt_len),
             JS_ERR_DERIVE);
@@ -7257,26 +7158,24 @@ static napi_value
 bcrypto_hkdf_expand(napi_env env, napi_callback_info info) {
   napi_value argv[4];
   size_t argc = 4;
-  uint8_t *out;
+  void *out;
   uint32_t type, out_len;
-  const uint8_t *prk, *info_;
+  void *prk, *info_;
   size_t prk_len, info_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
   CHECK(napi_get_value_uint32(env, argv[0], &type) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&prk,
-                             &prk_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&info_,
-                             &info_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &prk, &prk_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &info_, &info_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[3], &out_len) == napi_ok);
 
   JS_ASSERT(hash_has_backend(type), JS_ERR_DERIVE);
   JS_ASSERT(prk_len == hash_output_size(type), JS_ERR_DERIVE);
   JS_ASSERT(out_len <= MAX_BUFFER_LENGTH, JS_ERR_ALLOC);
 
-  JS_CHECK_ALLOC(napi_create_buffer(env, out_len, (void **)&out, &result));
+  JS_CHECK_ALLOC(napi_create_buffer(env, out_len, &out, &result));
 
   JS_ASSERT(hkdf_expand(out, type, prk, info_, info_len, out_len),
             JS_ERR_DERIVE);
@@ -7327,14 +7226,14 @@ static napi_value
 bcrypto_hmac_init(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  const uint8_t *key;
+  void *key;
   size_t key_len;
   bcrypto_hmac_t *hmac;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&hmac) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&key, &key_len) == napi_ok);
+  CHECK(bcrypto_hmac_unwrap(env, argv[0], &hmac) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &key, &key_len) == napi_ok);
 
   hmac_init(&hmac->ctx, hmac->type, key, key_len);
   hmac->started = 1;
@@ -7346,14 +7245,14 @@ static napi_value
 bcrypto_hmac_update(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  const uint8_t *in;
+  void *in;
   size_t in_len;
   bcrypto_hmac_t *hmac;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&hmac) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&in, &in_len) == napi_ok);
+  CHECK(bcrypto_hmac_unwrap(env, argv[0], &hmac) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &in, &in_len) == napi_ok);
 
   JS_ASSERT(hmac->started, JS_ERR_INIT);
 
@@ -7373,7 +7272,7 @@ bcrypto_hmac_final(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&hmac) == napi_ok);
+  CHECK(bcrypto_hmac_unwrap(env, argv[0], &hmac) == napi_ok);
 
   JS_ASSERT(hmac->started, JS_ERR_INIT);
 
@@ -7394,7 +7293,7 @@ bcrypto_hmac_digest(napi_env env, napi_callback_info info) {
   uint8_t out[HASH_MAX_OUTPUT_SIZE];
   size_t out_len;
   uint32_t type;
-  const uint8_t *in, *key;
+  void *in, *key;
   size_t in_len, key_len;
   hmac_t ctx;
   napi_value result;
@@ -7402,8 +7301,8 @@ bcrypto_hmac_digest(napi_env env, napi_callback_info info) {
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
   CHECK(napi_get_value_uint32(env, argv[0], &type) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&in, &in_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &in, &in_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &key, &key_len) == napi_ok);
 
   JS_ASSERT(hash_has_backend(type), JS_ERR_ARG);
 
@@ -7461,15 +7360,14 @@ static napi_value
 bcrypto_hmac_drbg_init(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  uint8_t *seed;
+  void *seed;
   size_t seed_len;
   bcrypto_hmac_drbg_t *drbg;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&drbg) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&seed,
-                             &seed_len) == napi_ok);
+  CHECK(bcrypto_hmac_drbg_unwrap(env, argv[0], &drbg) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &seed, &seed_len) == napi_ok);
 
   hmac_drbg_init(&drbg->ctx, drbg->type, seed, seed_len);
   drbg->started = 1;
@@ -7481,15 +7379,14 @@ static napi_value
 bcrypto_hmac_drbg_reseed(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  uint8_t *seed;
+  void *seed;
   size_t seed_len;
   bcrypto_hmac_drbg_t *drbg;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&drbg) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&seed,
-                             &seed_len) == napi_ok);
+  CHECK(bcrypto_hmac_drbg_unwrap(env, argv[0], &drbg) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &seed, &seed_len) == napi_ok);
 
   JS_ASSERT(drbg->started, JS_ERR_INIT);
 
@@ -7502,23 +7399,23 @@ static napi_value
 bcrypto_hmac_drbg_generate(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
-  uint8_t *out;
+  void *out;
   uint32_t out_len;
-  const uint8_t *add;
+  void *add;
   size_t add_len;
   bcrypto_hmac_drbg_t *drbg;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&drbg) == napi_ok);
+  CHECK(bcrypto_hmac_drbg_unwrap(env, argv[0], &drbg) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[1], &out_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&add, &add_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &add, &add_len) == napi_ok);
 
   JS_ASSERT(drbg->started, JS_ERR_INIT);
   JS_ASSERT(out_len <= MAX_BUFFER_LENGTH, JS_ERR_ALLOC);
 
-  JS_CHECK_ALLOC(napi_create_buffer(env, out_len, (void **)&out, &result));
+  JS_CHECK_ALLOC(napi_create_buffer(env, out_len, &out, &result));
 
   hmac_drbg_generate(&drbg->ctx, out, out_len, add, add_len);
 
@@ -7564,7 +7461,7 @@ bcrypto_keccak_init(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&keccak) == napi_ok);
+  CHECK(bcrypto_keccak_unwrap(env, argv[0], &keccak) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[1], &bits) == napi_ok);
 
   rate = 1600 - bits * 2;
@@ -7581,14 +7478,14 @@ static napi_value
 bcrypto_keccak_update(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  const uint8_t *in;
+  void *in;
   size_t in_len;
   bcrypto_keccak_t *keccak;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&keccak) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&in, &in_len) == napi_ok);
+  CHECK(bcrypto_keccak_unwrap(env, argv[0], &keccak) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &in, &in_len) == napi_ok);
 
   JS_ASSERT(keccak->started, JS_ERR_INIT);
 
@@ -7608,7 +7505,7 @@ bcrypto_keccak_final(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&keccak) == napi_ok);
+  CHECK(bcrypto_keccak_unwrap(env, argv[0], &keccak) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[1], &pad) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[2], &out_len) == napi_ok);
 
@@ -7631,7 +7528,7 @@ bcrypto_keccak_digest(napi_env env, napi_callback_info info) {
   napi_value argv[4];
   size_t argc = 4;
   uint8_t out[200];
-  const uint8_t *in;
+  void *in;
   size_t in_len;
   uint32_t bits, pad, out_len, rate, bs;
   keccak_t ctx;
@@ -7639,7 +7536,7 @@ bcrypto_keccak_digest(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&in, &in_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &in, &in_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[1], &bits) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[2], &pad) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[3], &out_len) == napi_ok);
@@ -7667,7 +7564,7 @@ bcrypto_keccak_root(napi_env env, napi_callback_info info) {
   napi_value argv[5];
   size_t argc = 5;
   uint8_t out[200];
-  const uint8_t *left, *right;
+  void *left, *right;
   size_t left_len, right_len;
   uint32_t bits, pad, out_len, rate, bs;
   keccak_t ctx;
@@ -7675,10 +7572,8 @@ bcrypto_keccak_root(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 5);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&left,
-                             &left_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&right,
-                             &right_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &left, &left_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &right, &right_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[2], &bits) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[3], &pad) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[4], &out_len) == napi_ok);
@@ -7708,7 +7603,7 @@ bcrypto_keccak_multi(napi_env env, napi_callback_info info) {
   napi_value argv[6];
   size_t argc = 6;
   uint8_t out[200];
-  const uint8_t *x, *y, *z;
+  void *x, *y, *z;
   size_t x_len, y_len, z_len;
   uint32_t bits, pad, out_len, rate, bs;
   keccak_t ctx;
@@ -7716,9 +7611,9 @@ bcrypto_keccak_multi(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 6);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&x, &x_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&y, &y_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&z, &z_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &x, &x_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &y, &y_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &z, &z_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[3], &bits) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[4], &pad) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[5], &out_len) == napi_ok);
@@ -7798,7 +7693,7 @@ bcrypto_mont_curve_field_size(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(bcrypto_mont_curve_unwrap(env, argv[0], &ec) == napi_ok);
   CHECK(napi_create_uint32(env, ec->field_size, &result) == napi_ok);
 
   return result;
@@ -7813,7 +7708,7 @@ bcrypto_mont_curve_field_bits(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(bcrypto_mont_curve_unwrap(env, argv[0], &ec) == napi_ok);
   CHECK(napi_create_uint32(env, ec->field_bits, &result) == napi_ok);
 
   return result;
@@ -7828,14 +7723,14 @@ bcrypto_murmur3_sum(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint32_t out;
-  const uint8_t *msg;
+  void *msg;
   size_t msg_len;
   uint32_t seed;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &msg, &msg_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[1], &seed) == napi_ok);
 
   out = murmur3_sum(msg, msg_len, seed);
@@ -7850,14 +7745,14 @@ bcrypto_murmur3_tweak(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
   uint32_t out;
-  const uint8_t *msg;
+  void *msg;
   size_t msg_len;
   uint32_t n, tweak;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &msg, &msg_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[1], &n) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[2], &tweak) == napi_ok);
 
@@ -7876,9 +7771,9 @@ static napi_value
 bcrypto_pbkdf2_derive(napi_env env, napi_callback_info info) {
   napi_value argv[5];
   size_t argc = 5;
-  uint8_t *out;
+  void *out;
   uint32_t type, iter, out_len;
-  const uint8_t *pass, *salt;
+  void *pass, *salt;
   size_t pass_len, salt_len;
   napi_value result;
   int ok;
@@ -7886,16 +7781,14 @@ bcrypto_pbkdf2_derive(napi_env env, napi_callback_info info) {
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 5);
   CHECK(napi_get_value_uint32(env, argv[0], &type) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pass,
-                             &pass_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&salt,
-                             &salt_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pass, &pass_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &salt, &salt_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[3], &iter) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[4], &out_len) == napi_ok);
 
   JS_ASSERT(out_len <= MAX_BUFFER_LENGTH, JS_ERR_ALLOC);
 
-  JS_CHECK_ALLOC(napi_create_buffer(env, out_len, (void **)&out, &result));
+  JS_CHECK_ALLOC(napi_create_buffer(env, out_len, &out, &result));
 
   ok = pbkdf2_derive(out, type, pass, pass_len,
                      salt, salt_len, iter, out_len);
@@ -7969,17 +7862,15 @@ bcrypto_pbkdf2_derive_async(napi_env env, napi_callback_info info) {
   size_t argc = 5;
   uint8_t *out;
   uint32_t type, iter, out_len;
-  const uint8_t *pass, *salt;
+  void *pass, *salt;
   size_t pass_len, salt_len;
   napi_value workname, result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 5);
   CHECK(napi_get_value_uint32(env, argv[0], &type) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pass,
-                             &pass_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&salt,
-                             &salt_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pass, &pass_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &salt, &salt_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[3], &iter) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[4], &out_len) == napi_ok);
 
@@ -8041,22 +7932,21 @@ static napi_value
 bcrypto_pgpdf_derive_simple(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
-  uint8_t *out;
+  void *out;
   uint32_t type, out_len;
-  const uint8_t *pass;
+  void *pass;
   size_t pass_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
   CHECK(napi_get_value_uint32(env, argv[0], &type) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pass,
-                             &pass_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pass, &pass_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[2], &out_len) == napi_ok);
 
   JS_ASSERT(out_len <= MAX_BUFFER_LENGTH, JS_ERR_ALLOC);
 
-  JS_CHECK_ALLOC(napi_create_buffer(env, out_len, (void **)&out, &result));
+  JS_CHECK_ALLOC(napi_create_buffer(env, out_len, &out, &result));
 
   JS_ASSERT(pgpdf_derive_simple(out, type, pass, pass_len, out_len),
             JS_ERR_DERIVE);
@@ -8068,9 +7958,9 @@ static napi_value
 bcrypto_pgpdf_derive_salted(napi_env env, napi_callback_info info) {
   napi_value argv[4];
   size_t argc = 4;
-  uint8_t *out;
+  void *out;
   uint32_t type, out_len;
-  const uint8_t *pass, *salt;
+  void *pass, *salt;
   size_t pass_len, salt_len;
   napi_value result;
   int ok;
@@ -8078,15 +7968,13 @@ bcrypto_pgpdf_derive_salted(napi_env env, napi_callback_info info) {
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
   CHECK(napi_get_value_uint32(env, argv[0], &type) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pass,
-                             &pass_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&salt,
-                             &salt_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pass, &pass_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &salt, &salt_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[3], &out_len) == napi_ok);
 
   JS_ASSERT(out_len <= MAX_BUFFER_LENGTH, JS_ERR_ALLOC);
 
-  JS_CHECK_ALLOC(napi_create_buffer(env, out_len, (void **)&out, &result));
+  JS_CHECK_ALLOC(napi_create_buffer(env, out_len, &out, &result));
 
   ok = pgpdf_derive_salted(out, type, pass, pass_len,
                            salt, salt_len, out_len);
@@ -8100,9 +7988,9 @@ static napi_value
 bcrypto_pgpdf_derive_iterated(napi_env env, napi_callback_info info) {
   napi_value argv[5];
   size_t argc = 5;
-  uint8_t *out;
+  void *out;
   uint32_t type, count, out_len;
-  const uint8_t *pass, *salt;
+  void *pass, *salt;
   size_t pass_len, salt_len;
   napi_value result;
   int ok;
@@ -8110,16 +7998,14 @@ bcrypto_pgpdf_derive_iterated(napi_env env, napi_callback_info info) {
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 5);
   CHECK(napi_get_value_uint32(env, argv[0], &type) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pass,
-                             &pass_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&salt,
-                             &salt_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pass, &pass_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &salt, &salt_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[3], &count) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[4], &out_len) == napi_ok);
 
   JS_ASSERT(out_len <= MAX_BUFFER_LENGTH, JS_ERR_ALLOC);
 
-  JS_CHECK_ALLOC(napi_create_buffer(env, out_len, (void **)&out, &result));
+  JS_CHECK_ALLOC(napi_create_buffer(env, out_len, &out, &result));
 
   ok = pgpdf_derive_iterated(out, type, pass, pass_len,
                              salt, salt_len, count, out_len);
@@ -8163,14 +8049,14 @@ static napi_value
 bcrypto_poly1305_init(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  const uint8_t *key;
+  void *key;
   size_t key_len;
   bcrypto_poly1305_t *poly;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&poly) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&key, &key_len) == napi_ok);
+  CHECK(bcrypto_poly1305_unwrap(env, argv[0], &poly) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &key, &key_len) == napi_ok);
 
   JS_ASSERT(key_len == 32, JS_ERR_KEY_SIZE);
 
@@ -8184,14 +8070,14 @@ static napi_value
 bcrypto_poly1305_update(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  uint8_t *msg;
+  void *msg;
   size_t msg_len;
   bcrypto_poly1305_t *poly;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&poly) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
+  CHECK(bcrypto_poly1305_unwrap(env, argv[0], &poly) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &msg, &msg_len) == napi_ok);
 
   JS_ASSERT(poly->started, JS_ERR_INIT);
 
@@ -8210,7 +8096,7 @@ bcrypto_poly1305_final(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&poly) == napi_ok);
+  CHECK(bcrypto_poly1305_unwrap(env, argv[0], &poly) == napi_ok);
 
   JS_ASSERT(poly->started, JS_ERR_INIT);
 
@@ -8230,7 +8116,7 @@ bcrypto_poly1305_destroy(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&poly) == napi_ok);
+  CHECK(bcrypto_poly1305_unwrap(env, argv[0], &poly) == napi_ok);
 
   poly->started = 0;
 
@@ -8242,15 +8128,15 @@ bcrypto_poly1305_verify(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t mac[16];
-  const uint8_t *tag;
+  void *tag;
   size_t tag_len;
   bcrypto_poly1305_t *poly;
   napi_value result;
   int ok;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&poly) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&tag, &tag_len) == napi_ok);
+  CHECK(bcrypto_poly1305_unwrap(env, argv[0], &poly) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &tag, &tag_len) == napi_ok);
 
   JS_ASSERT(tag_len == 16, JS_ERR_TAG_SIZE);
   JS_ASSERT(poly->started, JS_ERR_INIT);
@@ -8273,12 +8159,12 @@ static napi_value
 bcrypto_getentropy(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
-  uint8_t *out;
+  void *out;
   size_t out_len;
   uint32_t off, size;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&out, &out_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &out, &out_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[1], &off) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[2], &size) == napi_ok);
 
@@ -8295,12 +8181,12 @@ static napi_value
 bcrypto_getrandom(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
-  uint8_t *out;
+  void *out;
   size_t out_len;
   uint32_t off, size;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&out, &out_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &out, &out_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[1], &off) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[2], &size) == napi_ok);
 
@@ -8358,7 +8244,7 @@ bcrypto_rsa_privkey_generate(napi_env env, napi_callback_info info) {
   size_t out_len = RSA_MAX_PRIV_SIZE;
   uint32_t bits;
   int64_t exp;
-  const uint8_t *entropy;
+  void *entropy;
   size_t entropy_len;
   napi_value result;
 
@@ -8366,8 +8252,7 @@ bcrypto_rsa_privkey_generate(napi_env env, napi_callback_info info) {
   CHECK(argc == 3);
   CHECK(napi_get_value_uint32(env, argv[0], &bits) == napi_ok);
   CHECK(napi_get_value_int64(env, argv[1], &exp) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&entropy,
-                             &entropy_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &entropy, &entropy_len) == napi_ok);
 
   JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
   JS_ASSERT(rsa_privkey_generate(out, &out_len, bits, exp, entropy),
@@ -8375,7 +8260,7 @@ bcrypto_rsa_privkey_generate(napi_env env, napi_callback_info info) {
 
   CHECK(napi_create_buffer_copy(env, out_len, out, NULL, &result) == napi_ok);
 
-  torsion_memzero((void *)entropy, entropy_len);
+  torsion_memzero(entropy, entropy_len);
   torsion_memzero(out, out_len);
 
   return result;
@@ -8438,7 +8323,7 @@ bcrypto_rsa_privkey_generate_async(napi_env env, napi_callback_info info) {
   size_t argc = 3;
   uint32_t bits;
   int64_t exp;
-  const uint8_t *entropy;
+  void *entropy;
   size_t entropy_len;
   napi_value workname, result;
 
@@ -8446,8 +8331,7 @@ bcrypto_rsa_privkey_generate_async(napi_env env, napi_callback_info info) {
   CHECK(argc == 3);
   CHECK(napi_get_value_uint32(env, argv[0], &bits) == napi_ok);
   CHECK(napi_get_value_int64(env, argv[1], &exp) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&entropy,
-                             &entropy_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &entropy, &entropy_len) == napi_ok);
 
   JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
 
@@ -8474,7 +8358,7 @@ bcrypto_rsa_privkey_generate_async(napi_env env, napi_callback_info info) {
 
   CHECK(napi_queue_async_work(env, worker->work) == napi_ok);
 
-  torsion_memzero((void *)entropy, entropy_len);
+  torsion_memzero(entropy, entropy_len);
 
   return result;
 }
@@ -8484,13 +8368,13 @@ bcrypto_rsa_privkey_bits(napi_env env, napi_callback_info info) {
   napi_value argv[1];
   size_t argc = 1;
   size_t bits;
-  const uint8_t *key;
+  void *key;
   size_t key_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &key, &key_len) == napi_ok);
 
   bits = rsa_privkey_bits(key, key_len);
 
@@ -8505,14 +8389,14 @@ static napi_value
 bcrypto_rsa_privkey_verify(napi_env env, napi_callback_info info) {
   napi_value argv[1];
   size_t argc = 1;
-  const uint8_t *key;
+  void *key;
   size_t key_len;
   napi_value result;
   int ok;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &key, &key_len) == napi_ok);
 
   ok = rsa_privkey_verify(key, key_len);
 
@@ -8527,15 +8411,14 @@ bcrypto_rsa_privkey_import(napi_env env, napi_callback_info info) {
   size_t argc = 2;
   uint8_t out[RSA_MAX_PRIV_SIZE];
   size_t out_len = RSA_MAX_PRIV_SIZE;
-  const uint8_t *key, *entropy;
+  void *key, *entropy;
   size_t key_len, entropy_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&key, &key_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&entropy,
-                             &entropy_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &entropy, &entropy_len) == napi_ok);
 
   JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
   JS_ASSERT(rsa_privkey_import(out, &out_len, key, key_len, entropy),
@@ -8543,8 +8426,8 @@ bcrypto_rsa_privkey_import(napi_env env, napi_callback_info info) {
 
   CHECK(napi_create_buffer_copy(env, out_len, out, NULL, &result) == napi_ok);
 
-  torsion_memzero((void *)entropy, entropy_len);
-  torsion_memzero((void *)key, key_len);
+  torsion_memzero(entropy, entropy_len);
+  torsion_memzero(key, key_len);
   torsion_memzero(out, out_len);
 
   return result;
@@ -8556,13 +8439,13 @@ bcrypto_rsa_privkey_export(napi_env env, napi_callback_info info) {
   size_t argc = 1;
   uint8_t out[RSA_MAX_PRIV_SIZE];
   size_t out_len = RSA_MAX_PRIV_SIZE;
-  const uint8_t *key;
+  void *key;
   size_t key_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &key, &key_len) == napi_ok);
 
   JS_ASSERT(rsa_privkey_export(out, &out_len, key, key_len), JS_ERR_PRIVKEY);
 
@@ -8579,13 +8462,13 @@ bcrypto_rsa_pubkey_create(napi_env env, napi_callback_info info) {
   size_t argc = 1;
   uint8_t out[RSA_MAX_PUB_SIZE];
   size_t out_len = RSA_MAX_PUB_SIZE;
-  const uint8_t *key;
+  void *key;
   size_t key_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &key, &key_len) == napi_ok);
 
   JS_ASSERT(rsa_pubkey_create(out, &out_len, key, key_len), JS_ERR_PRIVKEY);
 
@@ -8599,13 +8482,13 @@ bcrypto_rsa_pubkey_bits(napi_env env, napi_callback_info info) {
   napi_value argv[1];
   size_t argc = 1;
   size_t bits;
-  const uint8_t *key;
+  void *key;
   size_t key_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &key, &key_len) == napi_ok);
 
   bits = rsa_pubkey_bits(key, key_len);
 
@@ -8620,14 +8503,14 @@ static napi_value
 bcrypto_rsa_pubkey_verify(napi_env env, napi_callback_info info) {
   napi_value argv[1];
   size_t argc = 1;
-  const uint8_t *key;
+  void *key;
   size_t key_len;
   napi_value result;
   int ok;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &key, &key_len) == napi_ok);
 
   ok = rsa_pubkey_verify(key, key_len);
 
@@ -8642,19 +8525,19 @@ bcrypto_rsa_pubkey_import(napi_env env, napi_callback_info info) {
   size_t argc = 1;
   uint8_t out[RSA_MAX_PUB_SIZE];
   size_t out_len = RSA_MAX_PUB_SIZE;
-  const uint8_t *key;
+  void *key;
   size_t key_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &key, &key_len) == napi_ok);
 
   JS_ASSERT(rsa_pubkey_import(out, &out_len, key, key_len), JS_ERR_PUBKEY);
 
   CHECK(napi_create_buffer_copy(env, out_len, out, NULL, &result) == napi_ok);
 
-  torsion_memzero((void *)key, key_len);
+  torsion_memzero(key, key_len);
 
   return result;
 }
@@ -8665,13 +8548,13 @@ bcrypto_rsa_pubkey_export(napi_env env, napi_callback_info info) {
   size_t argc = 1;
   uint8_t out[RSA_MAX_PUB_SIZE];
   size_t out_len = RSA_MAX_PUB_SIZE;
-  const uint8_t *key;
+  void *key;
   size_t key_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &key, &key_len) == napi_ok);
 
   JS_ASSERT(rsa_pubkey_export(out, &out_len, key, key_len), JS_ERR_PUBKEY);
 
@@ -8687,17 +8570,16 @@ bcrypto_rsa_sign(napi_env env, napi_callback_info info) {
   uint8_t out[RSA_MAX_MOD_SIZE];
   size_t out_len = RSA_MAX_MOD_SIZE;
   uint32_t type;
-  const uint8_t *msg, *key, *entropy;
+  void *msg, *key, *entropy;
   size_t msg_len, key_len, entropy_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
   CHECK(napi_get_value_uint32(env, argv[0], &type) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&key, &key_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[3], (void **)&entropy,
-                             &entropy_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[3], &entropy, &entropy_len) == napi_ok);
 
   JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
   JS_ASSERT(rsa_sign(out, &out_len, type, msg, msg_len, key, key_len, entropy),
@@ -8705,7 +8587,7 @@ bcrypto_rsa_sign(napi_env env, napi_callback_info info) {
 
   CHECK(napi_create_buffer_copy(env, out_len, out, NULL, &result) == napi_ok);
 
-  torsion_memzero((void *)entropy, entropy_len);
+  torsion_memzero(entropy, entropy_len);
 
   return result;
 }
@@ -8715,7 +8597,7 @@ bcrypto_rsa_verify(napi_env env, napi_callback_info info) {
   napi_value argv[4];
   size_t argc = 4;
   uint32_t type;
-  const uint8_t *msg, *sig, *key;
+  void *msg, *sig, *key;
   size_t msg_len, sig_len, key_len;
   napi_value result;
   int ok;
@@ -8723,9 +8605,9 @@ bcrypto_rsa_verify(napi_env env, napi_callback_info info) {
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
   CHECK(napi_get_value_uint32(env, argv[0], &type) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&sig, &sig_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[3], (void **)&key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &sig, &sig_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[3], &key, &key_len) == napi_ok);
 
   ok = rsa_verify(type, msg, msg_len, sig, sig_len, key, key_len);
 
@@ -8740,16 +8622,15 @@ bcrypto_rsa_encrypt(napi_env env, napi_callback_info info) {
   size_t argc = 3;
   uint8_t out[RSA_MAX_MOD_SIZE];
   size_t out_len = RSA_MAX_MOD_SIZE;
-  const uint8_t *msg, *key, *entropy;
+  void *msg, *key, *entropy;
   size_t msg_len, key_len, entropy_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&key, &key_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&entropy,
-                             &entropy_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &entropy, &entropy_len) == napi_ok);
 
   JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
   JS_ASSERT(rsa_encrypt(out, &out_len, msg, msg_len, key, key_len, entropy),
@@ -8757,7 +8638,7 @@ bcrypto_rsa_encrypt(napi_env env, napi_callback_info info) {
 
   CHECK(napi_create_buffer_copy(env, out_len, out, NULL, &result) == napi_ok);
 
-  torsion_memzero((void *)entropy, entropy_len);
+  torsion_memzero(entropy, entropy_len);
 
   return result;
 }
@@ -8768,16 +8649,15 @@ bcrypto_rsa_decrypt(napi_env env, napi_callback_info info) {
   size_t argc = 3;
   uint8_t out[RSA_MAX_MOD_SIZE];
   size_t out_len = RSA_MAX_MOD_SIZE;
-  const uint8_t *msg, *key, *entropy;
+  void *msg, *key, *entropy;
   size_t msg_len, key_len, entropy_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&key, &key_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&entropy,
-                             &entropy_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &entropy, &entropy_len) == napi_ok);
 
   JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
   JS_ASSERT(rsa_decrypt(out, &out_len, msg, msg_len, key, key_len, entropy),
@@ -8785,7 +8665,7 @@ bcrypto_rsa_decrypt(napi_env env, napi_callback_info info) {
 
   CHECK(napi_create_buffer_copy(env, out_len, out, NULL, &result) == napi_ok);
 
-  torsion_memzero((void *)entropy, entropy_len);
+  torsion_memzero(entropy, entropy_len);
   torsion_memzero(out, out_len);
 
   return result;
@@ -8798,7 +8678,7 @@ bcrypto_rsa_sign_pss(napi_env env, napi_callback_info info) {
   uint8_t out[RSA_MAX_MOD_SIZE];
   size_t out_len = RSA_MAX_MOD_SIZE;
   uint32_t type;
-  const uint8_t *msg, *key, *entropy;
+  void *msg, *key, *entropy;
   size_t msg_len, key_len, entropy_len;
   int32_t salt_len;
   napi_value result;
@@ -8807,11 +8687,10 @@ bcrypto_rsa_sign_pss(napi_env env, napi_callback_info info) {
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 5);
   CHECK(napi_get_value_uint32(env, argv[0], &type) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &key, &key_len) == napi_ok);
   CHECK(napi_get_value_int32(env, argv[3], &salt_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[4], (void **)&entropy,
-                             &entropy_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[4], &entropy, &entropy_len) == napi_ok);
 
   JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
 
@@ -8822,7 +8701,7 @@ bcrypto_rsa_sign_pss(napi_env env, napi_callback_info info) {
 
   CHECK(napi_create_buffer_copy(env, out_len, out, NULL, &result) == napi_ok);
 
-  torsion_memzero((void *)entropy, entropy_len);
+  torsion_memzero(entropy, entropy_len);
 
   return result;
 }
@@ -8832,7 +8711,7 @@ bcrypto_rsa_verify_pss(napi_env env, napi_callback_info info) {
   napi_value argv[5];
   size_t argc = 5;
   uint32_t type;
-  const uint8_t *msg, *sig, *key;
+  void *msg, *sig, *key;
   size_t msg_len, sig_len, key_len;
   int32_t salt_len;
   napi_value result;
@@ -8841,9 +8720,9 @@ bcrypto_rsa_verify_pss(napi_env env, napi_callback_info info) {
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 5);
   CHECK(napi_get_value_uint32(env, argv[0], &type) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&sig, &sig_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[3], (void **)&key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &sig, &sig_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[3], &key, &key_len) == napi_ok);
   CHECK(napi_get_value_int32(env, argv[4], &salt_len) == napi_ok);
 
   ok = rsa_verify_pss(type, msg, msg_len, sig, sig_len, key, key_len, salt_len);
@@ -8860,7 +8739,7 @@ bcrypto_rsa_encrypt_oaep(napi_env env, napi_callback_info info) {
   uint8_t out[RSA_MAX_MOD_SIZE];
   size_t out_len = RSA_MAX_MOD_SIZE;
   uint32_t type;
-  const uint8_t *msg, *key, *label, *entropy;
+  void *msg, *key, *label, *entropy;
   size_t msg_len, key_len, label_len, entropy_len;
   napi_value result;
   int ok;
@@ -8868,12 +8747,10 @@ bcrypto_rsa_encrypt_oaep(napi_env env, napi_callback_info info) {
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 5);
   CHECK(napi_get_value_uint32(env, argv[0], &type) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&key, &key_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[3], (void **)&label,
-                             &label_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[4], (void **)&entropy,
-                             &entropy_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[3], &label, &label_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[4], &entropy, &entropy_len) == napi_ok);
 
   JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
 
@@ -8884,7 +8761,7 @@ bcrypto_rsa_encrypt_oaep(napi_env env, napi_callback_info info) {
 
   CHECK(napi_create_buffer_copy(env, out_len, out, NULL, &result) == napi_ok);
 
-  torsion_memzero((void *)entropy, entropy_len);
+  torsion_memzero(entropy, entropy_len);
 
   return result;
 }
@@ -8896,7 +8773,7 @@ bcrypto_rsa_decrypt_oaep(napi_env env, napi_callback_info info) {
   uint8_t out[RSA_MAX_MOD_SIZE];
   size_t out_len = RSA_MAX_MOD_SIZE;
   uint32_t type;
-  const uint8_t *msg, *key, *label, *entropy;
+  void *msg, *key, *label, *entropy;
   size_t msg_len, key_len, label_len, entropy_len;
   napi_value result;
   int ok;
@@ -8904,12 +8781,10 @@ bcrypto_rsa_decrypt_oaep(napi_env env, napi_callback_info info) {
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 5);
   CHECK(napi_get_value_uint32(env, argv[0], &type) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&key, &key_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[3], (void **)&label,
-                             &label_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[4], (void **)&entropy,
-                             &entropy_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[3], &label, &label_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[4], &entropy, &entropy_len) == napi_ok);
 
   JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
 
@@ -8920,7 +8795,7 @@ bcrypto_rsa_decrypt_oaep(napi_env env, napi_callback_info info) {
 
   CHECK(napi_create_buffer_copy(env, out_len, out, NULL, &result) == napi_ok);
 
-  torsion_memzero((void *)entropy, entropy_len);
+  torsion_memzero(entropy, entropy_len);
 
   return result;
 }
@@ -8932,17 +8807,16 @@ bcrypto_rsa_veil(napi_env env, napi_callback_info info) {
   uint8_t out[RSA_MAX_MOD_SIZE + 1];
   size_t out_len = RSA_MAX_MOD_SIZE + 1;
   uint32_t bits;
-  const uint8_t *msg, *key, *entropy;
+  void *msg, *key, *entropy;
   size_t msg_len, key_len, entropy_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &msg, &msg_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[1], &bits) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&key, &key_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[3], (void **)&entropy,
-                             &entropy_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[3], &entropy, &entropy_len) == napi_ok);
 
   JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
   JS_ASSERT(bits <= RSA_MAX_MOD_BITS + 8, JS_ERR_VEIL);
@@ -8952,7 +8826,7 @@ bcrypto_rsa_veil(napi_env env, napi_callback_info info) {
 
   CHECK(napi_create_buffer_copy(env, out_len, out, NULL, &result) == napi_ok);
 
-  torsion_memzero((void *)entropy, entropy_len);
+  torsion_memzero(entropy, entropy_len);
 
   return result;
 }
@@ -8964,15 +8838,15 @@ bcrypto_rsa_unveil(napi_env env, napi_callback_info info) {
   uint8_t out[RSA_MAX_MOD_SIZE];
   size_t out_len = RSA_MAX_MOD_SIZE;
   uint32_t bits;
-  const uint8_t *msg, *key;
+  void *msg, *key;
   size_t msg_len, key_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &msg, &msg_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[1], &bits) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &key, &key_len) == napi_ok);
 
   JS_ASSERT(rsa_unveil(out, &out_len, msg, msg_len, bits, key, key_len),
             JS_ERR_UNVEIL);
@@ -9018,16 +8892,16 @@ static napi_value
 bcrypto_salsa20_init(napi_env env, napi_callback_info info) {
   napi_value argv[4];
   size_t argc = 4;
-  const uint8_t *key, *nonce;
+  void *key, *nonce;
   size_t key_len, nonce_len;
   int64_t ctr;
   bcrypto_salsa20_t *salsa;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&salsa) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&key, &key_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&nonce,
+  CHECK(bcrypto_salsa20_unwrap(env, argv[0], &salsa) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &nonce,
                              &nonce_len) == napi_ok);
   CHECK(napi_get_value_int64(env, argv[3], &ctr) == napi_ok);
 
@@ -9046,14 +8920,14 @@ static napi_value
 bcrypto_salsa20_crypt(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  uint8_t *msg;
+  void *msg;
   size_t msg_len;
   bcrypto_salsa20_t *salsa;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&salsa) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
+  CHECK(bcrypto_salsa20_unwrap(env, argv[0], &salsa) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &msg, &msg_len) == napi_ok);
 
   JS_ASSERT(salsa->started, JS_ERR_INIT);
 
@@ -9070,7 +8944,7 @@ bcrypto_salsa20_destroy(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&salsa) == napi_ok);
+  CHECK(bcrypto_salsa20_unwrap(env, argv[0], &salsa) == napi_ok);
 
   salsa->started = 0;
 
@@ -9082,15 +8956,14 @@ bcrypto_salsa20_derive(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t out[32];
-  const uint8_t *key, *nonce;
+  void *key, *nonce;
   size_t key_len, nonce_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&key, &key_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&nonce,
-                             &nonce_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &nonce, &nonce_len) == napi_ok);
 
   JS_ASSERT(key_len == 16 || key_len == 32, JS_ERR_KEY_SIZE);
   JS_ASSERT(nonce_len == 16, JS_ERR_NONCE_SIZE);
@@ -9110,7 +8983,7 @@ static napi_value
 bcrypto_schnorr_privkey_generate(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  const uint8_t *entropy;
+  void *entropy;
   size_t entropy_len;
   uint8_t out[BIP340_MAX_PRIV_SIZE];
   bcrypto_wei_curve_t *ec;
@@ -9118,9 +8991,8 @@ bcrypto_schnorr_privkey_generate(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&entropy,
-                             &entropy_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &entropy, &entropy_len) == napi_ok);
 
   JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
 
@@ -9132,7 +9004,7 @@ bcrypto_schnorr_privkey_generate(napi_env env, napi_callback_info info) {
                                 NULL,
                                 &result) == napi_ok);
 
-  torsion_memzero((void *)entropy, entropy_len);
+  torsion_memzero(entropy, entropy_len);
 
   return result;
 }
@@ -9141,7 +9013,7 @@ static napi_value
 bcrypto_schnorr_privkey_verify(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  const uint8_t *priv;
+  void *priv;
   size_t priv_len;
   bcrypto_wei_curve_t *ec;
   napi_value result;
@@ -9149,9 +9021,8 @@ bcrypto_schnorr_privkey_verify(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
-                             &priv_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &priv, &priv_len) == napi_ok);
 
   ok = priv_len == ec->scalar_size && bip340_privkey_verify(ec->ctx, priv);
 
@@ -9167,16 +9038,15 @@ bcrypto_schnorr_privkey_export(napi_env env, napi_callback_info info) {
   uint8_t d[BIP340_MAX_PRIV_SIZE];
   uint8_t x[WEI_MAX_FIELD_SIZE];
   uint8_t y[WEI_MAX_FIELD_SIZE];
-  const uint8_t *priv;
+  void *priv;
   size_t priv_len;
   bcrypto_wei_curve_t *ec;
   napi_value bd, bx, by, result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
-                             &priv_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &priv, &priv_len) == napi_ok);
 
   JS_ASSERT(priv_len == ec->scalar_size, JS_ERR_PRIVKEY_SIZE);
   JS_ASSERT(bip340_privkey_export(ec->ctx, d, x, y, priv), JS_ERR_PRIVKEY);
@@ -9198,16 +9068,15 @@ bcrypto_schnorr_privkey_import(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t out[BIP340_MAX_PRIV_SIZE];
-  const uint8_t *priv;
+  void *priv;
   size_t priv_len;
   bcrypto_wei_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
-                             &priv_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &priv, &priv_len) == napi_ok);
 
   JS_ASSERT(bip340_privkey_import(ec->ctx, out, priv, priv_len),
             JS_ERR_PRIVKEY);
@@ -9226,18 +9095,16 @@ bcrypto_schnorr_privkey_tweak_add(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
   uint8_t out[BIP340_MAX_PRIV_SIZE];
-  const uint8_t *priv, *tweak;
+  void *priv, *tweak;
   size_t priv_len, tweak_len;
   bcrypto_wei_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
-                             &priv_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&tweak,
-                             &tweak_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &priv, &priv_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &tweak, &tweak_len) == napi_ok);
 
   JS_ASSERT(priv_len == ec->scalar_size, JS_ERR_PRIVKEY_SIZE);
   JS_ASSERT(tweak_len == ec->scalar_size, JS_ERR_SCALAR_SIZE);
@@ -9258,18 +9125,16 @@ bcrypto_schnorr_privkey_tweak_mul(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
   uint8_t out[BIP340_MAX_PRIV_SIZE];
-  const uint8_t *priv, *tweak;
+  void *priv, *tweak;
   size_t priv_len, tweak_len;
   bcrypto_wei_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
-                             &priv_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&tweak,
-                             &tweak_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &priv, &priv_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &tweak, &tweak_len) == napi_ok);
 
   JS_ASSERT(priv_len == ec->scalar_size, JS_ERR_PRIVKEY_SIZE);
   JS_ASSERT(tweak_len == ec->scalar_size, JS_ERR_SCALAR_SIZE);
@@ -9290,16 +9155,15 @@ bcrypto_schnorr_privkey_invert(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t out[BIP340_MAX_PRIV_SIZE];
-  const uint8_t *priv;
+  void *priv;
   size_t priv_len;
   bcrypto_wei_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
-                             &priv_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &priv, &priv_len) == napi_ok);
 
   JS_ASSERT(priv_len == ec->scalar_size, JS_ERR_PRIVKEY_SIZE);
   JS_ASSERT(bip340_privkey_invert(ec->ctx, out, priv), JS_ERR_PRIVKEY);
@@ -9318,16 +9182,15 @@ bcrypto_schnorr_pubkey_create(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t out[BIP340_MAX_PUB_SIZE];
-  const uint8_t *priv;
+  void *priv;
   size_t priv_len;
   bcrypto_wei_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
-                             &priv_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &priv, &priv_len) == napi_ok);
 
   JS_ASSERT(priv_len == ec->scalar_size, JS_ERR_PRIVKEY_SIZE);
   JS_ASSERT(bip340_pubkey_create(ec->ctx, out, priv), JS_ERR_PRIVKEY);
@@ -9346,16 +9209,15 @@ bcrypto_schnorr_pubkey_from_uniform(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t out[BIP340_MAX_PUB_SIZE];
-  const uint8_t *data;
+  void *data;
   size_t data_len;
   bcrypto_wei_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&data,
-                             &data_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &data, &data_len) == napi_ok);
 
   JS_ASSERT(data_len == ec->field_size, JS_ERR_PREIMAGE_SIZE);
 
@@ -9375,7 +9237,7 @@ bcrypto_schnorr_pubkey_to_uniform(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
   uint8_t out[WEI_MAX_FIELD_SIZE];
-  const uint8_t *pub;
+  void *pub;
   size_t pub_len;
   uint32_t hint;
   bcrypto_wei_curve_t *ec;
@@ -9383,9 +9245,8 @@ bcrypto_schnorr_pubkey_to_uniform(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[2], &hint) == napi_ok);
 
   JS_ASSERT(pub_len == ec->field_size, JS_ERR_PUBKEY_SIZE);
@@ -9402,16 +9263,15 @@ bcrypto_schnorr_pubkey_from_hash(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t out[BIP340_MAX_PUB_SIZE];
-  const uint8_t *data;
+  void *data;
   size_t data_len;
   bcrypto_wei_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&data,
-                             &data_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &data, &data_len) == napi_ok);
 
   JS_ASSERT(data_len == ec->field_size * 2, JS_ERR_PREIMAGE_SIZE);
   JS_ASSERT(bip340_pubkey_from_hash(ec->ctx, out, data), JS_ERR_PREIMAGE);
@@ -9430,18 +9290,16 @@ bcrypto_schnorr_pubkey_to_hash(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
   uint8_t out[WEI_MAX_FIELD_SIZE * 2];
-  const uint8_t *pub, *entropy;
+  void *pub, *entropy;
   size_t pub_len, entropy_len;
   bcrypto_wei_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&entropy,
-                             &entropy_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &entropy, &entropy_len) == napi_ok);
 
   JS_ASSERT(pub_len == ec->field_size, JS_ERR_PUBKEY_SIZE);
   JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
@@ -9451,7 +9309,7 @@ bcrypto_schnorr_pubkey_to_hash(napi_env env, napi_callback_info info) {
   CHECK(napi_create_buffer_copy(env, ec->field_size * 2,
                                 out, NULL, &result) == napi_ok);
 
-  torsion_memzero((void *)entropy, entropy_len);
+  torsion_memzero(entropy, entropy_len);
 
   return result;
 }
@@ -9460,7 +9318,7 @@ static napi_value
 bcrypto_schnorr_pubkey_verify(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  const uint8_t *pub;
+  void *pub;
   size_t pub_len;
   bcrypto_wei_curve_t *ec;
   napi_value result;
@@ -9468,9 +9326,8 @@ bcrypto_schnorr_pubkey_verify(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
 
   ok = pub_len == ec->field_size && bip340_pubkey_verify(ec->ctx, pub);
 
@@ -9485,16 +9342,15 @@ bcrypto_schnorr_pubkey_export(napi_env env, napi_callback_info info) {
   size_t argc = 2;
   uint8_t x[WEI_MAX_FIELD_SIZE];
   uint8_t y[WEI_MAX_FIELD_SIZE];
-  const uint8_t *pub;
+  void *pub;
   size_t pub_len;
   bcrypto_wei_curve_t *ec;
   napi_value bx, by, result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
 
   JS_ASSERT(pub_len == ec->field_size, JS_ERR_PUBKEY_SIZE);
   JS_ASSERT(bip340_pubkey_export(ec->ctx, x, y, pub), JS_ERR_PUBKEY);
@@ -9514,16 +9370,16 @@ bcrypto_schnorr_pubkey_import(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
   uint8_t out[BIP340_MAX_PUB_SIZE];
-  const uint8_t *x, *y;
+  void *x, *y;
   size_t x_len, y_len;
   bcrypto_wei_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&x, &x_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&y, &y_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &x, &x_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &y, &y_len) == napi_ok);
 
   JS_ASSERT(bip340_pubkey_import(ec->ctx, out, x, x_len, y, y_len),
             JS_ERR_PUBKEY);
@@ -9542,18 +9398,16 @@ bcrypto_schnorr_pubkey_tweak_add(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
   uint8_t out[BIP340_MAX_PUB_SIZE];
-  const uint8_t *pub, *tweak;
+  void *pub, *tweak;
   size_t pub_len, tweak_len;
   bcrypto_wei_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&tweak,
-                             &tweak_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &tweak, &tweak_len) == napi_ok);
 
   JS_ASSERT(pub_len == ec->field_size, JS_ERR_PUBKEY_SIZE);
   JS_ASSERT(tweak_len == ec->scalar_size, JS_ERR_SCALAR_SIZE);
@@ -9574,18 +9428,16 @@ bcrypto_schnorr_pubkey_tweak_mul(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
   uint8_t out[BIP340_MAX_PUB_SIZE];
-  const uint8_t *pub, *tweak;
+  void *pub, *tweak;
   size_t pub_len, tweak_len;
   bcrypto_wei_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&tweak,
-                             &tweak_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &tweak, &tweak_len) == napi_ok);
 
   JS_ASSERT(pub_len == ec->field_size, JS_ERR_PUBKEY_SIZE);
   JS_ASSERT(tweak_len == ec->scalar_size, JS_ERR_SCALAR_SIZE);
@@ -9607,18 +9459,16 @@ bcrypto_schnorr_pubkey_tweak_sum(napi_env env, napi_callback_info info) {
   size_t argc = 3;
   uint8_t out[BIP340_MAX_PUB_SIZE];
   int negated;
-  const uint8_t *pub, *tweak;
+  void *pub, *tweak;
   size_t pub_len, tweak_len;
   bcrypto_wei_curve_t *ec;
   napi_value outval, negval, result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&tweak,
-                             &tweak_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &tweak, &tweak_len) == napi_ok);
 
   JS_ASSERT(pub_len == ec->field_size, JS_ERR_PUBKEY_SIZE);
   JS_ASSERT(tweak_len == ec->scalar_size, JS_ERR_SCALAR_SIZE);
@@ -9644,7 +9494,7 @@ static napi_value
 bcrypto_schnorr_pubkey_tweak_check(napi_env env, napi_callback_info info) {
   napi_value argv[5];
   size_t argc = 5;
-  const uint8_t *pub, *tweak, *expect;
+  void *pub, *tweak, *expect;
   size_t pub_len, tweak_len, expect_len;
   bool negated;
   bcrypto_wei_curve_t *ec;
@@ -9653,13 +9503,10 @@ bcrypto_schnorr_pubkey_tweak_check(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 5);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&tweak,
-                             &tweak_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[3], (void **)&expect,
-                             &expect_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &tweak, &tweak_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[3], &expect, &expect_len) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[4], &negated) == napi_ok);
 
   if (pub_len != ec->field_size
@@ -9683,6 +9530,7 @@ bcrypto_schnorr_pubkey_combine(napi_env env, napi_callback_info info) {
   uint8_t out[BIP340_MAX_PUB_SIZE];
   uint32_t i, length;
   const uint8_t **pubs;
+  void *pub;
   size_t pub_len;
   bcrypto_wei_curve_t *ec;
   napi_value item, result;
@@ -9690,7 +9538,7 @@ bcrypto_schnorr_pubkey_combine(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
   CHECK(napi_get_array_length(env, argv[1], &length) == napi_ok);
 
   JS_ASSERT(length != 0, JS_ERR_PUBKEY);
@@ -9702,8 +9550,9 @@ bcrypto_schnorr_pubkey_combine(napi_env env, napi_callback_info info) {
 
   for (i = 0; i < length; i++) {
     CHECK(napi_get_element(env, argv[1], i, &item) == napi_ok);
-    CHECK(napi_get_buffer_info(env, item, (void **)&pubs[i],
-                               &pub_len) == napi_ok);
+    CHECK(napi_get_buffer_info(env, item, &pub, &pub_len) == napi_ok);
+
+    pubs[i] = pub;
 
     if (pub_len != ec->field_size)
       goto fail;
@@ -9730,18 +9579,17 @@ bcrypto_schnorr_sign(napi_env env, napi_callback_info info) {
   napi_value argv[4];
   size_t argc = 4;
   uint8_t out[BIP340_MAX_SIG_SIZE];
-  const uint8_t *msg, *priv, *aux;
+  void *msg, *priv, *aux;
   size_t msg_len, priv_len, aux_len;
   bcrypto_wei_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&priv,
-                             &priv_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[3], (void **)&aux, &aux_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &priv, &priv_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[3], &aux, &aux_len) == napi_ok);
 
   JS_ASSERT(priv_len == ec->scalar_size, JS_ERR_PRIVKEY_SIZE);
   JS_ASSERT(aux_len == 0 || aux_len == 32, JS_ERR_PRIVKEY_SIZE);
@@ -9764,7 +9612,7 @@ static napi_value
 bcrypto_schnorr_verify(napi_env env, napi_callback_info info) {
   napi_value argv[4];
   size_t argc = 4;
-  const uint8_t *msg, *sig, *pub;
+  void *msg, *sig, *pub;
   size_t msg_len, sig_len, pub_len;
   bcrypto_wei_curve_t *ec;
   napi_value result;
@@ -9772,10 +9620,10 @@ bcrypto_schnorr_verify(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&sig, &sig_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[3], (void **)&pub, &pub_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &sig, &sig_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[3], &pub, &pub_len) == napi_ok);
 
   ok = sig_len == ec->bip340_size
     && pub_len == ec->field_size
@@ -9793,6 +9641,7 @@ bcrypto_schnorr_verify_batch(napi_env env, napi_callback_info info) {
   uint32_t i, length, item_len;
   const uint8_t **ptrs, **msgs, **pubs, **sigs;
   size_t *lens, *msg_lens;
+  void *msg, *pub, *sig;
   size_t sig_len, pub_len;
   bcrypto_wei_curve_t *ec;
   napi_value item, result;
@@ -9801,7 +9650,7 @@ bcrypto_schnorr_verify_batch(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
   CHECK(napi_get_array_length(env, argv[1], &length) == napi_ok);
 
   if (length == 0) {
@@ -9829,14 +9678,13 @@ bcrypto_schnorr_verify_batch(napi_env env, napi_callback_info info) {
     CHECK(napi_get_element(env, item, 1, &items[1]) == napi_ok);
     CHECK(napi_get_element(env, item, 2, &items[2]) == napi_ok);
 
-    CHECK(napi_get_buffer_info(env, items[0], (void **)&msgs[i],
-                               &msg_lens[i]) == napi_ok);
+    CHECK(napi_get_buffer_info(env, items[0], &msg, &msg_lens[i]) == napi_ok);
+    CHECK(napi_get_buffer_info(env, items[1], &pub, &sig_len) == napi_ok);
+    CHECK(napi_get_buffer_info(env, items[2], &sig, &pub_len) == napi_ok);
 
-    CHECK(napi_get_buffer_info(env, items[1], (void **)&sigs[i],
-                               &sig_len) == napi_ok);
-
-    CHECK(napi_get_buffer_info(env, items[2], (void **)&pubs[i],
-                               &pub_len) == napi_ok);
+    msgs[i] = msg;
+    pubs[i] = pub;
+    sigs[i] = sig;
 
     if (sig_len != ec->bip340_size || pub_len != ec->field_size)
       goto fail;
@@ -9864,17 +9712,16 @@ bcrypto_schnorr_derive(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
   uint8_t out[BIP340_MAX_PUB_SIZE];
-  const uint8_t *pub, *priv;
+  void *pub, *priv;
   size_t pub_len, priv_len;
   bcrypto_wei_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub, &pub_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&priv,
-                             &priv_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &priv, &priv_len) == napi_ok);
 
   JS_ASSERT(pub_len == ec->field_size, JS_ERR_PUBKEY_SIZE);
   JS_ASSERT(priv_len == ec->scalar_size, JS_ERR_PRIVKEY_SIZE);
@@ -9898,17 +9745,16 @@ bcrypto_schnorr_legacy_sign(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
   uint8_t out[BIPSCHNORR_MAX_SIG_SIZE];
-  const uint8_t *msg, *priv;
+  void *msg, *priv;
   size_t msg_len, priv_len;
   bcrypto_wei_curve_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&priv,
-                             &priv_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &priv, &priv_len) == napi_ok);
 
   JS_ASSERT(bipschnorr_support(ec->ctx), JS_ERR_NO_SCHNORR);
   JS_ASSERT(priv_len == ec->scalar_size, JS_ERR_PRIVKEY_SIZE);
@@ -9927,7 +9773,7 @@ static napi_value
 bcrypto_schnorr_legacy_verify(napi_env env, napi_callback_info info) {
   napi_value argv[4];
   size_t argc = 4;
-  const uint8_t *msg, *sig, *pub;
+  void *msg, *sig, *pub;
   size_t msg_len, sig_len, pub_len;
   bcrypto_wei_curve_t *ec;
   napi_value result;
@@ -9935,10 +9781,10 @@ bcrypto_schnorr_legacy_verify(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&sig, &sig_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[3], (void **)&pub, &pub_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &sig, &sig_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[3], &pub, &pub_len) == napi_ok);
 
   JS_ASSERT(bipschnorr_support(ec->ctx), JS_ERR_NO_SCHNORR);
 
@@ -9957,6 +9803,7 @@ bcrypto_schnorr_legacy_verify_batch(napi_env env, napi_callback_info info) {
   uint32_t i, length, item_len;
   const uint8_t **ptrs, **msgs, **pubs, **sigs;
   size_t *lens, *msg_lens, *pub_lens;
+  void *msg, *pub, *sig;
   size_t sig_len;
   bcrypto_wei_curve_t *ec;
   napi_value item, result;
@@ -9965,7 +9812,7 @@ bcrypto_schnorr_legacy_verify_batch(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
   CHECK(napi_get_array_length(env, argv[1], &length) == napi_ok);
 
   JS_ASSERT(bipschnorr_support(ec->ctx), JS_ERR_NO_SCHNORR);
@@ -9996,14 +9843,13 @@ bcrypto_schnorr_legacy_verify_batch(napi_env env, napi_callback_info info) {
     CHECK(napi_get_element(env, item, 1, &items[1]) == napi_ok);
     CHECK(napi_get_element(env, item, 2, &items[2]) == napi_ok);
 
-    CHECK(napi_get_buffer_info(env, items[0], (void **)&msgs[i],
-                               &msg_lens[i]) == napi_ok);
+    CHECK(napi_get_buffer_info(env, items[0], &msg, &msg_lens[i]) == napi_ok);
+    CHECK(napi_get_buffer_info(env, items[1], &sig, &sig_len) == napi_ok);
+    CHECK(napi_get_buffer_info(env, items[2], &pub, &pub_lens[i]) == napi_ok);
 
-    CHECK(napi_get_buffer_info(env, items[1], (void **)&sigs[i],
-                               &sig_len) == napi_ok);
-
-    CHECK(napi_get_buffer_info(env, items[2], (void **)&pubs[i],
-                               &pub_lens[i]) == napi_ok);
+    msgs[i] = msg;
+    pubs[i] = pub;
+    sigs[i] = sig;
 
     if (sig_len != ec->bipschnorr_size)
       goto fail;
@@ -10034,9 +9880,9 @@ static napi_value
 bcrypto_scrypt_derive(napi_env env, napi_callback_info info) {
   napi_value argv[6];
   size_t argc = 6;
-  uint8_t *out;
+  void *out;
   uint32_t out_len;
-  const uint8_t *pass, *salt;
+  void *pass, *salt;
   size_t pass_len, salt_len;
   int64_t N;
   uint32_t r, p;
@@ -10045,10 +9891,8 @@ bcrypto_scrypt_derive(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 6);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&pass,
-                             &pass_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&salt,
-                             &salt_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &pass, &pass_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &salt, &salt_len) == napi_ok);
   CHECK(napi_get_value_int64(env, argv[2], &N) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[3], &r) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[4], &p) == napi_ok);
@@ -10056,7 +9900,7 @@ bcrypto_scrypt_derive(napi_env env, napi_callback_info info) {
 
   JS_ASSERT(out_len <= MAX_BUFFER_LENGTH, JS_ERR_ALLOC);
 
-  JS_CHECK_ALLOC(napi_create_buffer(env, out_len, (void **)&out, &result));
+  JS_CHECK_ALLOC(napi_create_buffer(env, out_len, &out, &result));
 
   ok = scrypt_derive(out, pass, pass_len, salt, salt_len, N, r, p, out_len);
 
@@ -10128,9 +9972,9 @@ bcrypto_scrypt_derive_async(napi_env env, napi_callback_info info) {
   bcrypto_scrypt_worker_t *worker;
   napi_value argv[6];
   size_t argc = 6;
-  uint8_t *out;
+  void *out;
   uint32_t out_len;
-  const uint8_t *pass, *salt;
+  void *pass, *salt;
   size_t pass_len, salt_len;
   int64_t N;
   uint32_t r, p;
@@ -10138,10 +9982,8 @@ bcrypto_scrypt_derive_async(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 6);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&pass,
-                             &pass_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&salt,
-                             &salt_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &pass, &pass_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &salt, &salt_len) == napi_ok);
   CHECK(napi_get_value_int64(env, argv[2], &N) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[3], &r) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[4], &p) == napi_ok);
@@ -10245,20 +10087,19 @@ static napi_value
 bcrypto_secp256k1_context_randomize(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  const uint8_t *entropy;
+  void *entropy;
   size_t entropy_len;
   bcrypto_secp256k1_t *ec;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&entropy,
-                             &entropy_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &entropy, &entropy_len) == napi_ok);
 
   JS_ASSERT(entropy_len == 32, JS_ERR_ENTROPY_SIZE);
   JS_ASSERT(secp256k1_context_randomize(ec->ctx, entropy), JS_ERR_RANDOM);
 
-  torsion_memzero((void *)entropy, entropy_len);
+  torsion_memzero(entropy, entropy_len);
 
   return argv[0];
 }
@@ -10267,7 +10108,7 @@ static napi_value
 bcrypto_secp256k1_seckey_generate(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  const uint8_t *entropy;
+  void *entropy;
   size_t entropy_len;
   uint8_t out[32];
   bcrypto_secp256k1_t *ec;
@@ -10275,9 +10116,8 @@ bcrypto_secp256k1_seckey_generate(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&entropy,
-                             &entropy_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &entropy, &entropy_len) == napi_ok);
 
   JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
 
@@ -10285,7 +10125,7 @@ bcrypto_secp256k1_seckey_generate(napi_env env, napi_callback_info info) {
 
   CHECK(napi_create_buffer_copy(env, 32, out, NULL, &result) == napi_ok);
 
-  torsion_memzero((void *)entropy, entropy_len);
+  torsion_memzero(entropy, entropy_len);
 
   return result;
 }
@@ -10294,7 +10134,7 @@ static napi_value
 bcrypto_secp256k1_seckey_verify(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  const uint8_t *priv;
+  void *priv;
   size_t priv_len;
   bcrypto_secp256k1_t *ec;
   napi_value result;
@@ -10302,9 +10142,8 @@ bcrypto_secp256k1_seckey_verify(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
-                             &priv_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &priv, &priv_len) == napi_ok);
 
   ok = priv_len == 32 && secp256k1_ec_seckey_verify(ec->ctx, priv);
 
@@ -10318,16 +10157,15 @@ bcrypto_secp256k1_seckey_export(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t out[32];
-  const uint8_t *priv;
+  void *priv;
   size_t priv_len;
   bcrypto_secp256k1_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
-                             &priv_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &priv, &priv_len) == napi_ok);
 
   JS_ASSERT(priv_len == 32, JS_ERR_PRIVKEY_SIZE);
   JS_ASSERT(secp256k1_ec_seckey_export(ec->ctx, out, priv), JS_ERR_PRIVKEY);
@@ -10342,16 +10180,15 @@ bcrypto_secp256k1_seckey_import(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t out[32];
-  const uint8_t *priv;
+  void *priv;
   size_t priv_len;
   bcrypto_secp256k1_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
-                             &priv_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &priv, &priv_len) == napi_ok);
 
   JS_ASSERT(secp256k1_ec_seckey_import(ec->ctx, out, priv, priv_len),
             JS_ERR_PRIVKEY);
@@ -10366,18 +10203,16 @@ bcrypto_secp256k1_seckey_tweak_add(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
   uint8_t out[32];
-  const uint8_t *priv, *tweak;
+  void *priv, *tweak;
   size_t priv_len, tweak_len;
   bcrypto_secp256k1_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
-                             &priv_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&tweak,
-                             &tweak_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &priv, &priv_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &tweak, &tweak_len) == napi_ok);
 
   JS_ASSERT(priv_len == 32, JS_ERR_PRIVKEY_SIZE);
   JS_ASSERT(tweak_len == 32, JS_ERR_SCALAR_SIZE);
@@ -10397,18 +10232,16 @@ bcrypto_secp256k1_seckey_tweak_mul(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
   uint8_t out[32];
-  const uint8_t *priv, *tweak;
+  void *priv, *tweak;
   size_t priv_len, tweak_len;
   bcrypto_secp256k1_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
-                             &priv_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&tweak,
-                             &tweak_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &priv, &priv_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &tweak, &tweak_len) == napi_ok);
 
   JS_ASSERT(priv_len == 32, JS_ERR_PRIVKEY_SIZE);
   JS_ASSERT(tweak_len == 32, JS_ERR_SCALAR_SIZE);
@@ -10428,16 +10261,15 @@ bcrypto_secp256k1_seckey_negate(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t out[32];
-  const uint8_t *priv;
+  void *priv;
   size_t priv_len;
   bcrypto_secp256k1_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
-                             &priv_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &priv, &priv_len) == napi_ok);
 
   JS_ASSERT(priv_len == 32, JS_ERR_PRIVKEY_SIZE);
 
@@ -10455,16 +10287,15 @@ bcrypto_secp256k1_seckey_invert(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t out[32];
-  const uint8_t *priv;
+  void *priv;
   size_t priv_len;
   bcrypto_secp256k1_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
-                             &priv_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &priv, &priv_len) == napi_ok);
 
   JS_ASSERT(priv_len == 32, JS_ERR_PRIVKEY_SIZE);
 
@@ -10484,7 +10315,7 @@ bcrypto_secp256k1_pubkey_create(napi_env env, napi_callback_info info) {
   uint8_t out[65];
   size_t out_len = 65;
   secp256k1_pubkey pubkey;
-  const uint8_t *priv;
+  void *priv;
   size_t priv_len;
   bool compress;
   bcrypto_secp256k1_t *ec;
@@ -10492,9 +10323,8 @@ bcrypto_secp256k1_pubkey_create(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
-                             &priv_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &priv, &priv_len) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[2], &compress) == napi_ok);
 
   JS_ASSERT(priv_len == 32, JS_ERR_PRIVKEY_SIZE);
@@ -10515,7 +10345,7 @@ bcrypto_secp256k1_pubkey_convert(napi_env env, napi_callback_info info) {
   uint8_t out[65];
   size_t out_len = 65;
   secp256k1_pubkey pubkey;
-  const uint8_t *pub;
+  void *pub;
   size_t pub_len;
   bool compress;
   bcrypto_secp256k1_t *ec;
@@ -10523,9 +10353,8 @@ bcrypto_secp256k1_pubkey_convert(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[2], &compress) == napi_ok);
 
   JS_ASSERT(pub_len > 0, JS_ERR_PUBKEY);
@@ -10547,7 +10376,7 @@ bcrypto_secp256k1_pubkey_from_uniform(napi_env env, napi_callback_info info) {
   uint8_t out[65];
   size_t out_len = 65;
   secp256k1_pubkey pubkey;
-  const uint8_t *data;
+  void *data;
   size_t data_len;
   bool compress;
   bcrypto_secp256k1_t *ec;
@@ -10555,9 +10384,8 @@ bcrypto_secp256k1_pubkey_from_uniform(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&data,
-                             &data_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &data, &data_len) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[2], &compress) == napi_ok);
 
   JS_ASSERT(data_len == 32, JS_ERR_PREIMAGE_SIZE);
@@ -10577,7 +10405,7 @@ bcrypto_secp256k1_pubkey_to_uniform(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
   uint8_t out[32];
-  const uint8_t *pub;
+  void *pub;
   size_t pub_len;
   secp256k1_pubkey pubkey;
   uint32_t hint;
@@ -10586,9 +10414,8 @@ bcrypto_secp256k1_pubkey_to_uniform(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[2], &hint) == napi_ok);
 
   JS_ASSERT(pub_len > 0, JS_ERR_PUBKEY);
@@ -10610,7 +10437,7 @@ bcrypto_secp256k1_pubkey_from_hash(napi_env env, napi_callback_info info) {
   uint8_t out[65];
   size_t out_len = 65;
   secp256k1_pubkey pubkey;
-  const uint8_t *data;
+  void *data;
   size_t data_len;
   bool compress;
   bcrypto_secp256k1_t *ec;
@@ -10618,9 +10445,8 @@ bcrypto_secp256k1_pubkey_from_hash(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&data,
-                             &data_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &data, &data_len) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[2], &compress) == napi_ok);
 
   JS_ASSERT(data_len == 64, JS_ERR_PREIMAGE_SIZE);
@@ -10640,7 +10466,7 @@ bcrypto_secp256k1_pubkey_to_hash(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
   uint8_t out[64];
-  const uint8_t *pub, *entropy;
+  void *pub, *entropy;
   size_t pub_len, entropy_len;
   secp256k1_pubkey pubkey;
   bcrypto_secp256k1_t *ec;
@@ -10648,11 +10474,9 @@ bcrypto_secp256k1_pubkey_to_hash(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&entropy,
-                             &entropy_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &entropy, &entropy_len) == napi_ok);
 
   JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
 
@@ -10665,7 +10489,7 @@ bcrypto_secp256k1_pubkey_to_hash(napi_env env, napi_callback_info info) {
 
   CHECK(napi_create_buffer_copy(env, 64, out, NULL, &result) == napi_ok);
 
-  torsion_memzero((void *)entropy, entropy_len);
+  torsion_memzero(entropy, entropy_len);
 
   return result;
 }
@@ -10674,7 +10498,7 @@ static napi_value
 bcrypto_secp256k1_pubkey_verify(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  const uint8_t *pub;
+  void *pub;
   size_t pub_len;
   secp256k1_pubkey pubkey;
   bcrypto_secp256k1_t *ec;
@@ -10683,9 +10507,8 @@ bcrypto_secp256k1_pubkey_verify(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
 
   ok = pub_len > 0 && secp256k1_ec_pubkey_parse(ec->ctx, &pubkey, pub, pub_len);
 
@@ -10700,7 +10523,7 @@ bcrypto_secp256k1_pubkey_export(napi_env env, napi_callback_info info) {
   size_t argc = 2;
   uint8_t x[32];
   uint8_t y[32];
-  const uint8_t *pub;
+  void *pub;
   size_t pub_len;
   secp256k1_pubkey pubkey;
   bcrypto_secp256k1_t *ec;
@@ -10708,9 +10531,8 @@ bcrypto_secp256k1_pubkey_export(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
 
   JS_ASSERT(pub_len > 0, JS_ERR_PUBKEY);
   JS_ASSERT(secp256k1_ec_pubkey_parse(ec->ctx, &pubkey, pub, pub_len),
@@ -10736,7 +10558,7 @@ bcrypto_secp256k1_pubkey_import(napi_env env, napi_callback_info info) {
   uint8_t out[65];
   size_t out_len = 65;
   secp256k1_pubkey pubkey;
-  const uint8_t *x, *y;
+  void *x, *y;
   size_t x_len, y_len;
   int32_t sign;
   bool compress;
@@ -10746,9 +10568,9 @@ bcrypto_secp256k1_pubkey_import(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 5);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&x, &x_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&y, &y_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &x, &x_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &y, &y_len) == napi_ok);
   CHECK(napi_get_value_int32(env, argv[3], &sign) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[4], &compress) == napi_ok);
 
@@ -10771,7 +10593,7 @@ bcrypto_secp256k1_pubkey_tweak_add(napi_env env, napi_callback_info info) {
   uint8_t out[65];
   size_t out_len = 65;
   secp256k1_pubkey pubkey;
-  const uint8_t *pub, *tweak;
+  void *pub, *tweak;
   size_t pub_len, tweak_len;
   bool compress;
   bcrypto_secp256k1_t *ec;
@@ -10779,11 +10601,9 @@ bcrypto_secp256k1_pubkey_tweak_add(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&tweak,
-                             &tweak_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &tweak, &tweak_len) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[3], &compress) == napi_ok);
 
   JS_ASSERT(tweak_len == 32, JS_ERR_SCALAR_SIZE);
@@ -10810,7 +10630,7 @@ bcrypto_secp256k1_pubkey_tweak_mul(napi_env env, napi_callback_info info) {
   uint8_t out[65];
   size_t out_len = 65;
   secp256k1_pubkey pubkey;
-  const uint8_t *pub, *tweak;
+  void *pub, *tweak;
   size_t pub_len, tweak_len;
   bool compress;
   bcrypto_secp256k1_t *ec;
@@ -10818,11 +10638,9 @@ bcrypto_secp256k1_pubkey_tweak_mul(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&tweak,
-                             &tweak_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &tweak, &tweak_len) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[3], &compress) == napi_ok);
 
   JS_ASSERT(tweak_len == 32, JS_ERR_SCALAR_SIZE);
@@ -10852,7 +10670,7 @@ bcrypto_secp256k1_pubkey_combine(napi_env env, napi_callback_info info) {
   uint32_t i, length;
   const secp256k1_pubkey **pubkeys;
   secp256k1_pubkey *pubkey_data;
-  const uint8_t *pub;
+  void *pub;
   size_t pub_len;
   bool compress;
   bcrypto_secp256k1_t *ec;
@@ -10861,7 +10679,7 @@ bcrypto_secp256k1_pubkey_combine(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
   CHECK(napi_get_array_length(env, argv[1], &length) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[2], &compress) == napi_ok);
 
@@ -10875,8 +10693,7 @@ bcrypto_secp256k1_pubkey_combine(napi_env env, napi_callback_info info) {
 
   for (i = 0; i < length; i++) {
     CHECK(napi_get_element(env, argv[1], i, &item) == napi_ok);
-    CHECK(napi_get_buffer_info(env, item, (void **)&pub,
-                               &pub_len) == napi_ok);
+    CHECK(napi_get_buffer_info(env, item, &pub, &pub_len) == napi_ok);
 
     if (pub_len == 0)
       goto fail;
@@ -10910,7 +10727,7 @@ bcrypto_secp256k1_pubkey_negate(napi_env env, napi_callback_info info) {
   uint8_t out[65];
   size_t out_len = 65;
   secp256k1_pubkey pubkey;
-  const uint8_t *pub;
+  void *pub;
   size_t pub_len;
   bool compress;
   bcrypto_secp256k1_t *ec;
@@ -10918,9 +10735,8 @@ bcrypto_secp256k1_pubkey_negate(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[2], &compress) == napi_ok);
 
   JS_ASSERT(pub_len > 0, JS_ERR_PUBKEY);
@@ -10942,7 +10758,7 @@ bcrypto_secp256k1_signature_normalize(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t out[64];
-  const uint8_t *sig;
+  void *sig;
   size_t sig_len;
   secp256k1_ecdsa_signature sigin;
   secp256k1_ecdsa_signature sigout;
@@ -10951,9 +10767,8 @@ bcrypto_secp256k1_signature_normalize(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&sig,
-                             &sig_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &sig, &sig_len) == napi_ok);
 
   JS_ASSERT(sig_len == 64, JS_ERR_SIGNATURE_SIZE);
 
@@ -10975,7 +10790,7 @@ bcrypto_secp256k1_signature_normalize_der(napi_env env,
   size_t argc = 2;
   uint8_t out[72];
   size_t out_len = 72;
-  const uint8_t *sig;
+  void *sig;
   size_t sig_len;
   secp256k1_ecdsa_signature sigin;
   secp256k1_ecdsa_signature sigout;
@@ -10985,9 +10800,8 @@ bcrypto_secp256k1_signature_normalize_der(napi_env env,
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&sig,
-                             &sig_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &sig, &sig_len) == napi_ok);
 
   if (sig_len > 0)
     ok = ecdsa_signature_parse_der_lax(ec->ctx, &sigin, sig, sig_len);
@@ -11011,7 +10825,7 @@ bcrypto_secp256k1_signature_export(napi_env env, napi_callback_info info) {
   uint8_t out[72];
   size_t out_len = 72;
   secp256k1_ecdsa_signature sigin;
-  const uint8_t *sig;
+  void *sig;
   size_t sig_len;
   bcrypto_secp256k1_t *ec;
   napi_value result;
@@ -11019,9 +10833,8 @@ bcrypto_secp256k1_signature_export(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&sig,
-                             &sig_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &sig, &sig_len) == napi_ok);
 
   JS_ASSERT(sig_len == 64, JS_ERR_SIGNATURE_SIZE);
 
@@ -11040,7 +10853,7 @@ bcrypto_secp256k1_signature_import(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t out[64];
-  const uint8_t *sig;
+  void *sig;
   size_t sig_len;
   secp256k1_ecdsa_signature sigin;
   bcrypto_secp256k1_t *ec;
@@ -11048,9 +10861,8 @@ bcrypto_secp256k1_signature_import(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&sig,
-                             &sig_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &sig, &sig_len) == napi_ok);
 
   JS_ASSERT(sig_len > 0, JS_ERR_SIGNATURE);
   JS_ASSERT(ecdsa_signature_parse_der_lax(ec->ctx, &sigin, sig, sig_len),
@@ -11067,7 +10879,7 @@ static napi_value
 bcrypto_secp256k1_is_low_s(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  const uint8_t *sig;
+  void *sig;
   size_t sig_len;
   secp256k1_ecdsa_signature sigin;
   bcrypto_secp256k1_t *ec;
@@ -11076,9 +10888,8 @@ bcrypto_secp256k1_is_low_s(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&sig,
-                             &sig_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &sig, &sig_len) == napi_ok);
 
   ok = sig_len == 64
     && secp256k1_ecdsa_signature_parse_compact(ec->ctx, &sigin, sig)
@@ -11093,7 +10904,7 @@ static napi_value
 bcrypto_secp256k1_is_low_der(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  const uint8_t *sig;
+  void *sig;
   size_t sig_len;
   secp256k1_ecdsa_signature sigin;
   bcrypto_secp256k1_t *ec;
@@ -11102,9 +10913,8 @@ bcrypto_secp256k1_is_low_der(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&sig,
-                             &sig_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &sig, &sig_len) == napi_ok);
 
   ok = sig_len > 0
     && ecdsa_signature_parse_der_lax(ec->ctx, &sigin, sig, sig_len)
@@ -11123,17 +10933,16 @@ bcrypto_secp256k1_sign(napi_env env, napi_callback_info info) {
   uint8_t out[64];
   secp256k1_ecdsa_signature sigout;
   unsigned char msg32[32];
-  const uint8_t *msg, *priv;
+  void *msg, *priv;
   size_t msg_len, priv_len;
   bcrypto_secp256k1_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&priv,
-                             &priv_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &priv, &priv_len) == napi_ok);
 
   JS_ASSERT(priv_len == 32, JS_ERR_PRIVKEY_SIZE);
 
@@ -11158,7 +10967,7 @@ bcrypto_secp256k1_sign_recoverable(napi_env env, napi_callback_info info) {
   secp256k1_ecdsa_recoverable_signature sigout;
   unsigned char msg32[32];
   int param;
-  const uint8_t *msg, *priv;
+  void *msg, *priv;
   size_t msg_len, priv_len;
   bcrypto_secp256k1_t *ec;
   napi_value sigval, paramval, result;
@@ -11166,10 +10975,9 @@ bcrypto_secp256k1_sign_recoverable(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&priv,
-                             &priv_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &priv, &priv_len) == napi_ok);
 
   JS_ASSERT(priv_len == 32, JS_ERR_PRIVKEY_SIZE);
 
@@ -11201,7 +11009,7 @@ bcrypto_secp256k1_sign_der(napi_env env, napi_callback_info info) {
   size_t out_len = 72;
   secp256k1_ecdsa_signature sigout;
   unsigned char msg32[32];
-  const uint8_t *msg, *priv;
+  void *msg, *priv;
   size_t msg_len, priv_len;
   bcrypto_secp256k1_t *ec;
   napi_value result;
@@ -11209,10 +11017,9 @@ bcrypto_secp256k1_sign_der(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&priv,
-                             &priv_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &priv, &priv_len) == napi_ok);
 
   JS_ASSERT(priv_len == 32, JS_ERR_PRIVKEY_SIZE);
 
@@ -11239,7 +11046,7 @@ bcrypto_secp256k1_sign_recoverable_der(napi_env env, napi_callback_info info) {
   secp256k1_ecdsa_signature cmpct;
   unsigned char msg32[32];
   int param;
-  const uint8_t *msg, *priv;
+  void *msg, *priv;
   size_t msg_len, priv_len;
   bcrypto_secp256k1_t *ec;
   napi_value sigval, paramval, result;
@@ -11247,10 +11054,9 @@ bcrypto_secp256k1_sign_recoverable_der(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&priv,
-                             &priv_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &priv, &priv_len) == napi_ok);
 
   JS_ASSERT(priv_len == 32, JS_ERR_PRIVKEY_SIZE);
 
@@ -11285,7 +11091,7 @@ bcrypto_secp256k1_verify(napi_env env, napi_callback_info info) {
   secp256k1_ecdsa_signature sigin;
   secp256k1_pubkey pubkey;
   unsigned char msg32[32];
-  const uint8_t *msg, *sig, *pub;
+  void *msg, *sig, *pub;
   size_t msg_len, sig_len, pub_len;
   bcrypto_secp256k1_t *ec;
   napi_value result;
@@ -11293,10 +11099,10 @@ bcrypto_secp256k1_verify(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&sig, &sig_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[3], (void **)&pub, &pub_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &sig, &sig_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[3], &pub, &pub_len) == napi_ok);
 
   ok = sig_len == 64 && pub_len > 0
     && secp256k1_ecdsa_signature_parse_compact(ec->ctx, &sigin, sig)
@@ -11321,7 +11127,7 @@ bcrypto_secp256k1_verify_der(napi_env env, napi_callback_info info) {
   secp256k1_ecdsa_signature sigin;
   secp256k1_pubkey pubkey;
   unsigned char msg32[32];
-  const uint8_t *msg, *sig, *pub;
+  void *msg, *sig, *pub;
   size_t msg_len, sig_len, pub_len;
   bcrypto_secp256k1_t *ec;
   napi_value result;
@@ -11329,10 +11135,10 @@ bcrypto_secp256k1_verify_der(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&sig, &sig_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[3], (void **)&pub, &pub_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &sig, &sig_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[3], &pub, &pub_len) == napi_ok);
 
   ok = sig_len > 0 && pub_len > 0
     && ecdsa_signature_parse_der_lax(ec->ctx, &sigin, sig, sig_len)
@@ -11359,7 +11165,7 @@ bcrypto_secp256k1_recover(napi_env env, napi_callback_info info) {
   secp256k1_ecdsa_recoverable_signature sigin;
   secp256k1_pubkey pubkey;
   unsigned char msg32[32];
-  const uint8_t *msg, *sig;
+  void *msg, *sig;
   size_t msg_len, sig_len;
   uint32_t parm;
   bool compress;
@@ -11368,9 +11174,9 @@ bcrypto_secp256k1_recover(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 5);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&sig, &sig_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &sig, &sig_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[3], &parm) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[4], &compress) == napi_ok);
 
@@ -11413,7 +11219,7 @@ bcrypto_secp256k1_recover_der(napi_env env, napi_callback_info info) {
   uint8_t out[65];
   size_t out_len = 65;
   unsigned char msg32[32];
-  const uint8_t *msg, *sig;
+  void *msg, *sig;
   size_t msg_len, sig_len;
   uint32_t parm;
   bool compress;
@@ -11422,9 +11228,9 @@ bcrypto_secp256k1_recover_der(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 5);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&sig, &sig_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &sig, &sig_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[3], &parm) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[4], &compress) == napi_ok);
 
@@ -11488,7 +11294,7 @@ bcrypto_secp256k1_derive(napi_env env, napi_callback_info info) {
   secp256k1_pubkey pubkey;
   uint8_t out[65];
   size_t out_len = 65;
-  const uint8_t *pub, *priv;
+  void *pub, *priv;
   size_t pub_len, priv_len;
   bool compress;
   bcrypto_secp256k1_t *ec;
@@ -11496,10 +11302,9 @@ bcrypto_secp256k1_derive(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub, &pub_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&priv,
-                             &priv_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &priv, &priv_len) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[3], &compress) == napi_ok);
 
   JS_ASSERT(priv_len == 32, JS_ERR_PRIVKEY_SIZE);
@@ -11524,17 +11329,16 @@ bcrypto_secp256k1_schnorr_legacy_sign(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
   uint8_t out[64];
-  const uint8_t *msg, *priv;
+  void *msg, *priv;
   size_t msg_len, priv_len;
   bcrypto_secp256k1_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&priv,
-                             &priv_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &priv, &priv_len) == napi_ok);
 
   JS_ASSERT(priv_len == 32, JS_ERR_PRIVKEY_SIZE);
   JS_ASSERT(secp256k1_schnorrleg_sign(ec->ctx, out, msg, msg_len, priv),
@@ -11549,7 +11353,7 @@ static napi_value
 bcrypto_secp256k1_schnorr_legacy_verify(napi_env env, napi_callback_info info) {
   napi_value argv[4];
   size_t argc = 4;
-  const uint8_t *msg, *sig, *pub;
+  void *msg, *sig, *pub;
   size_t msg_len, sig_len, pub_len;
   secp256k1_pubkey pubkey;
   bcrypto_secp256k1_t *ec;
@@ -11558,10 +11362,10 @@ bcrypto_secp256k1_schnorr_legacy_verify(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&sig, &sig_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[3], (void **)&pub, &pub_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &sig, &sig_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[3], &pub, &pub_len) == napi_ok);
 
   ok = sig_len == 64 && pub_len > 0
     && secp256k1_ec_pubkey_parse(ec->ctx, &pubkey, pub, pub_len)
@@ -11578,11 +11382,11 @@ bcrypto_secp256k1_schnorr_legacy_verify_batch(napi_env env,
   napi_value argv[2];
   size_t argc = 2;
   uint32_t i, length, item_len;
-  const uint8_t *pub;
+  void *msg, *sig, *pub;
   size_t sig_len, pub_len;
   const uint8_t **msgs;
   size_t *msg_lens;
-  const unsigned char **sigs;
+  const uint8_t **sigs;
   const secp256k1_pubkey **pubkeys;
   secp256k1_pubkey *pubkey_data;
   bcrypto_secp256k1_t *ec;
@@ -11592,7 +11396,7 @@ bcrypto_secp256k1_schnorr_legacy_verify_batch(napi_env env,
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
   CHECK(napi_get_array_length(env, argv[1], &length) == napi_ok);
 
   if (length == 0) {
@@ -11620,14 +11424,12 @@ bcrypto_secp256k1_schnorr_legacy_verify_batch(napi_env env,
     CHECK(napi_get_element(env, item, 1, &items[1]) == napi_ok);
     CHECK(napi_get_element(env, item, 2, &items[2]) == napi_ok);
 
-    CHECK(napi_get_buffer_info(env, items[0], (void **)&msgs[i],
-                               &msg_lens[i]) == napi_ok);
+    CHECK(napi_get_buffer_info(env, items[0], &msg, &msg_lens[i]) == napi_ok);
+    CHECK(napi_get_buffer_info(env, items[1], &sig, &sig_len) == napi_ok);
+    CHECK(napi_get_buffer_info(env, items[2], &pub, &pub_len) == napi_ok);
 
-    CHECK(napi_get_buffer_info(env, items[1], (void **)&sigs[i],
-                               &sig_len) == napi_ok);
-
-    CHECK(napi_get_buffer_info(env, items[2], (void **)&pub,
-                               &pub_len) == napi_ok);
+    msgs[i] = msg;
+    sigs[i] = sig;
 
     if (sig_len != 64)
       goto fail;
@@ -11675,7 +11477,7 @@ bcrypto_secp256k1_xonly_seckey_export(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t d[32], x[32], y[32];
-  const uint8_t *priv;
+  void *priv;
   size_t priv_len;
   secp256k1_pubkey pubkey;
   secp256k1_xonly_pubkey xonly;
@@ -11685,9 +11487,8 @@ bcrypto_secp256k1_xonly_seckey_export(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
-                             &priv_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &priv, &priv_len) == napi_ok);
 
   JS_ASSERT(priv_len == 32, JS_ERR_PRIVKEY_SIZE);
   JS_ASSERT(secp256k1_ec_seckey_export(ec->ctx, d, priv), JS_ERR_PRIVKEY);
@@ -11717,7 +11518,7 @@ bcrypto_secp256k1_xonly_seckey_tweak_add(napi_env env,
                                          napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
-  const uint8_t *priv, *tweak;
+  void *priv, *tweak;
   size_t priv_len, tweak_len;
   bcrypto_secp256k1_t *ec;
   secp256k1_keypair pair;
@@ -11725,11 +11526,9 @@ bcrypto_secp256k1_xonly_seckey_tweak_add(napi_env env,
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
-                             &priv_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&tweak,
-                             &tweak_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &priv, &priv_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &tweak, &tweak_len) == napi_ok);
 
   JS_ASSERT(priv_len == 32, JS_ERR_PRIVKEY_SIZE);
   JS_ASSERT(tweak_len == 32, JS_ERR_SCALAR_SIZE);
@@ -11751,16 +11550,15 @@ bcrypto_secp256k1_xonly_create(napi_env env, napi_callback_info info) {
   uint8_t out[32];
   secp256k1_keypair pair;
   secp256k1_xonly_pubkey pubkey;
-  const uint8_t *priv;
+  void *priv;
   size_t priv_len;
   bcrypto_secp256k1_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
-                             &priv_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &priv, &priv_len) == napi_ok);
 
   JS_ASSERT(priv_len == 32, JS_ERR_PRIVKEY_SIZE);
 
@@ -11781,16 +11579,15 @@ bcrypto_secp256k1_xonly_from_uniform(napi_env env, napi_callback_info info) {
   size_t argc = 2;
   uint8_t out[32];
   secp256k1_xonly_pubkey pubkey;
-  const uint8_t *data;
+  void *data;
   size_t data_len;
   bcrypto_secp256k1_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&data,
-                             &data_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &data, &data_len) == napi_ok);
 
   JS_ASSERT(data_len == 32, JS_ERR_PREIMAGE_SIZE);
 
@@ -11808,7 +11605,7 @@ bcrypto_secp256k1_xonly_to_uniform(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
   uint8_t out[32];
-  const uint8_t *pub;
+  void *pub;
   size_t pub_len;
   secp256k1_xonly_pubkey pubkey;
   uint32_t hint;
@@ -11817,9 +11614,8 @@ bcrypto_secp256k1_xonly_to_uniform(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[2], &hint) == napi_ok);
 
   JS_ASSERT(pub_len == 32, JS_ERR_PUBKEY_SIZE);
@@ -11840,16 +11636,15 @@ bcrypto_secp256k1_xonly_from_hash(napi_env env, napi_callback_info info) {
   size_t argc = 2;
   uint8_t out[32];
   secp256k1_xonly_pubkey pubkey;
-  const uint8_t *data;
+  void *data;
   size_t data_len;
   bcrypto_secp256k1_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&data,
-                             &data_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &data, &data_len) == napi_ok);
 
   JS_ASSERT(data_len == 64, JS_ERR_PREIMAGE_SIZE);
   JS_ASSERT(secp256k1_xonly_pubkey_from_hash(ec->ctx, &pubkey, data),
@@ -11867,7 +11662,7 @@ bcrypto_secp256k1_xonly_to_hash(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
   uint8_t out[64];
-  const uint8_t *pub, *entropy;
+  void *pub, *entropy;
   size_t pub_len, entropy_len;
   secp256k1_xonly_pubkey pubkey;
   bcrypto_secp256k1_t *ec;
@@ -11875,11 +11670,9 @@ bcrypto_secp256k1_xonly_to_hash(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&entropy,
-                             &entropy_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &entropy, &entropy_len) == napi_ok);
 
   JS_ASSERT(pub_len == 32, JS_ERR_PUBKEY_SIZE);
   JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
@@ -11891,7 +11684,7 @@ bcrypto_secp256k1_xonly_to_hash(napi_env env, napi_callback_info info) {
 
   CHECK(napi_create_buffer_copy(env, 64, out, NULL, &result) == napi_ok);
 
-  torsion_memzero((void *)entropy, entropy_len);
+  torsion_memzero(entropy, entropy_len);
 
   return result;
 }
@@ -11900,7 +11693,7 @@ static napi_value
 bcrypto_secp256k1_xonly_verify(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  const uint8_t *pub;
+  void *pub;
   size_t pub_len;
   secp256k1_xonly_pubkey pubkey;
   bcrypto_secp256k1_t *ec;
@@ -11909,9 +11702,8 @@ bcrypto_secp256k1_xonly_verify(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
 
   ok = pub_len == 32 && secp256k1_xonly_pubkey_parse(ec->ctx, &pubkey, pub);
 
@@ -11926,7 +11718,7 @@ bcrypto_secp256k1_xonly_export(napi_env env, napi_callback_info info) {
   size_t argc = 2;
   uint8_t x[32];
   uint8_t y[32];
-  const uint8_t *pub;
+  void *pub;
   size_t pub_len;
   secp256k1_xonly_pubkey pubkey;
   bcrypto_secp256k1_t *ec;
@@ -11934,9 +11726,8 @@ bcrypto_secp256k1_xonly_export(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
 
   JS_ASSERT(pub_len == 32, JS_ERR_PUBKEY_SIZE);
 
@@ -11961,7 +11752,7 @@ bcrypto_secp256k1_xonly_import(napi_env env, napi_callback_info info) {
   size_t argc = 3;
   uint8_t out[32];
   secp256k1_xonly_pubkey pubkey;
-  const uint8_t *x, *y;
+  void *x, *y;
   size_t x_len, y_len;
   bcrypto_secp256k1_t *ec;
   napi_value result;
@@ -11969,9 +11760,9 @@ bcrypto_secp256k1_xonly_import(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&x, &x_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&y, &y_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &x, &x_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &y, &y_len) == napi_ok);
 
   ok = secp256k1_xonly_pubkey_import(ec->ctx, &pubkey,
                                      x, x_len, y, y_len);
@@ -11992,18 +11783,16 @@ bcrypto_secp256k1_xonly_tweak_add(napi_env env, napi_callback_info info) {
   uint8_t out[32];
   secp256k1_xonly_pubkey xonly;
   secp256k1_pubkey pubkey;
-  const uint8_t *pub, *tweak;
+  void *pub, *tweak;
   size_t pub_len, tweak_len;
   bcrypto_secp256k1_t *ec;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&tweak,
-                             &tweak_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &tweak, &tweak_len) == napi_ok);
 
   JS_ASSERT(pub_len == 32, JS_ERR_PUBKEY_SIZE);
   JS_ASSERT(tweak_len == 32, JS_ERR_SCALAR_SIZE);
@@ -12028,7 +11817,7 @@ bcrypto_secp256k1_xonly_tweak_mul(napi_env env, napi_callback_info info) {
   size_t argc = 3;
   uint8_t out[32];
   secp256k1_xonly_pubkey pubkey;
-  const uint8_t *pub, *tweak;
+  void *pub, *tweak;
   size_t pub_len, tweak_len;
   bcrypto_secp256k1_t *ec;
   napi_value result;
@@ -12036,11 +11825,9 @@ bcrypto_secp256k1_xonly_tweak_mul(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&tweak,
-                             &tweak_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &tweak, &tweak_len) == napi_ok);
 
   JS_ASSERT(pub_len == 32, JS_ERR_PUBKEY_SIZE);
   JS_ASSERT(tweak_len == 32, JS_ERR_SCALAR_SIZE);
@@ -12068,18 +11855,16 @@ bcrypto_secp256k1_xonly_tweak_sum(napi_env env, napi_callback_info info) {
   int negated;
   secp256k1_xonly_pubkey xonly;
   secp256k1_pubkey pubkey;
-  const uint8_t *pub, *tweak;
+  void *pub, *tweak;
   size_t pub_len, tweak_len;
   bcrypto_secp256k1_t *ec;
   napi_value outval, negval, result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&tweak,
-                             &tweak_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &tweak, &tweak_len) == napi_ok);
 
   JS_ASSERT(pub_len == 32, JS_ERR_PUBKEY_SIZE);
   JS_ASSERT(tweak_len == 32, JS_ERR_SCALAR_SIZE);
@@ -12108,7 +11893,7 @@ bcrypto_secp256k1_xonly_tweak_check(napi_env env, napi_callback_info info) {
   napi_value argv[5];
   size_t argc = 5;
   secp256k1_xonly_pubkey pubkey;
-  const uint8_t *pub, *tweak, *expect;
+  void *pub, *tweak, *expect;
   size_t pub_len, tweak_len, expect_len;
   bool negated;
   bcrypto_secp256k1_t *ec;
@@ -12117,13 +11902,10 @@ bcrypto_secp256k1_xonly_tweak_check(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 5);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
-                             &pub_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&tweak,
-                             &tweak_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[3], (void **)&expect,
-                             &expect_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &tweak, &tweak_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[3], &expect, &expect_len) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[4], &negated) == napi_ok);
 
   if (pub_len != 32 || tweak_len != 32 || expect_len != 32)
@@ -12154,7 +11936,7 @@ bcrypto_secp256k1_xonly_combine(napi_env env, napi_callback_info info) {
   uint32_t i, length;
   const secp256k1_xonly_pubkey **pubkeys;
   secp256k1_xonly_pubkey *pubkey_data;
-  const uint8_t *pub;
+  void *pub;
   size_t pub_len;
   bcrypto_secp256k1_t *ec;
   napi_value item, result;
@@ -12162,7 +11944,7 @@ bcrypto_secp256k1_xonly_combine(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
   CHECK(napi_get_array_length(env, argv[1], &length) == napi_ok);
 
   JS_ASSERT(length != 0, JS_ERR_PUBKEY);
@@ -12175,8 +11957,7 @@ bcrypto_secp256k1_xonly_combine(napi_env env, napi_callback_info info) {
 
   for (i = 0; i < length; i++) {
     CHECK(napi_get_element(env, argv[1], i, &item) == napi_ok);
-    CHECK(napi_get_buffer_info(env, item, (void **)&pub,
-                               &pub_len) == napi_ok);
+    CHECK(napi_get_buffer_info(env, item, &pub, &pub_len) == napi_ok);
 
     if (pub_len != 32)
       goto fail;
@@ -12210,7 +11991,7 @@ bcrypto_secp256k1_schnorr_sign(napi_env env, napi_callback_info info) {
   napi_value argv[4];
   size_t argc = 4;
   uint8_t out[64];
-  const uint8_t *msg, *priv, *aux;
+  void *msg, *priv, *aux;
   size_t msg_len, priv_len, aux_len;
   bcrypto_secp256k1_t *ec;
   secp256k1_keypair pair;
@@ -12219,12 +12000,10 @@ bcrypto_secp256k1_schnorr_sign(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&priv,
-                             &priv_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[3], (void **)&aux,
-                             &aux_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &priv, &priv_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[3], &aux, &aux_len) == napi_ok);
 
   JS_ASSERT(msg_len == 32, JS_ERR_MSG_SIZE);
   JS_ASSERT(priv_len == 32, JS_ERR_PRIVKEY_SIZE);
@@ -12248,7 +12027,7 @@ static napi_value
 bcrypto_secp256k1_schnorr_verify(napi_env env, napi_callback_info info) {
   napi_value argv[4];
   size_t argc = 4;
-  const uint8_t *msg, *sig, *pub;
+  void *msg, *sig, *pub;
   size_t msg_len, sig_len, pub_len;
   secp256k1_xonly_pubkey pubkey;
   bcrypto_secp256k1_t *ec;
@@ -12257,10 +12036,10 @@ bcrypto_secp256k1_schnorr_verify(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&sig, &sig_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[3], (void **)&pub, &pub_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &sig, &sig_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[3], &pub, &pub_len) == napi_ok);
 
   ok = msg_len == 32 && sig_len == 64 && pub_len == 32
     && secp256k1_xonly_pubkey_parse(ec->ctx, &pubkey, pub)
@@ -12276,7 +12055,7 @@ bcrypto_secp256k1_schnorr_verify_batch(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint32_t i, length, item_len;
-  const uint8_t *pub;
+  void *msg, *sig, *pub;
   size_t msg_len, sig_len, pub_len;
   const uint8_t **msgs;
   const uint8_t **sigs;
@@ -12289,7 +12068,7 @@ bcrypto_secp256k1_schnorr_verify_batch(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
   CHECK(napi_get_array_length(env, argv[1], &length) == napi_ok);
 
   if (length == 0) {
@@ -12314,14 +12093,12 @@ bcrypto_secp256k1_schnorr_verify_batch(napi_env env, napi_callback_info info) {
     CHECK(napi_get_element(env, item, 1, &items[1]) == napi_ok);
     CHECK(napi_get_element(env, item, 2, &items[2]) == napi_ok);
 
-    CHECK(napi_get_buffer_info(env, items[0], (void **)&msgs[i],
-                               &msg_len) == napi_ok);
+    CHECK(napi_get_buffer_info(env, items[0], &msg, &msg_len) == napi_ok);
+    CHECK(napi_get_buffer_info(env, items[1], &sig, &sig_len) == napi_ok);
+    CHECK(napi_get_buffer_info(env, items[2], &pub, &pub_len) == napi_ok);
 
-    CHECK(napi_get_buffer_info(env, items[1], (void **)&sigs[i],
-                               &sig_len) == napi_ok);
-
-    CHECK(napi_get_buffer_info(env, items[2], (void **)&pub,
-                               &pub_len) == napi_ok);
+    msgs[i] = msg;
+    sigs[i] = sig;
 
     if (msg_len != 32 || sig_len != 64 || pub_len != 32)
       goto fail;
@@ -12390,7 +12167,7 @@ bcrypto_secp256k1_xonly_derive(napi_env env, napi_callback_info info) {
   size_t argc = 3;
   secp256k1_xonly_pubkey pubkey;
   uint8_t out[32];
-  const uint8_t *pub, *priv;
+  void *pub, *priv;
   size_t pub_len, priv_len;
   bcrypto_secp256k1_t *ec;
   napi_value result;
@@ -12398,10 +12175,9 @@ bcrypto_secp256k1_xonly_derive(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub, &pub_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&priv,
-                             &priv_len) == napi_ok);
+  CHECK(bcrypto_secp256k1_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &pub, &pub_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &priv, &priv_len) == napi_ok);
 
   JS_ASSERT(pub_len == 32, JS_ERR_PUBKEY_SIZE);
   JS_ASSERT(priv_len == 32, JS_ERR_PRIVKEY_SIZE);
@@ -12431,17 +12207,17 @@ static napi_value
 bcrypto_secretbox_seal(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
-  uint8_t *out;
+  void *out;
   size_t out_len;
-  const uint8_t *msg, *key, *nonce;
+  void *msg, *key, *nonce;
   size_t msg_len, key_len, nonce_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&key, &key_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&nonce,
+  CHECK(napi_get_buffer_info(env, argv[0], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &nonce,
                              &nonce_len) == napi_ok);
 
   JS_ASSERT(key_len == 32, JS_ERR_KEY_SIZE);
@@ -12451,7 +12227,7 @@ bcrypto_secretbox_seal(napi_env env, napi_callback_info info) {
 
   JS_ASSERT(out_len <= MAX_BUFFER_LENGTH, JS_ERR_ALLOC);
 
-  JS_CHECK_ALLOC(napi_create_buffer(env, out_len, (void **)&out, &result));
+  JS_CHECK_ALLOC(napi_create_buffer(env, out_len, &out, &result));
 
   secretbox_seal(out, msg, msg_len, key, nonce);
 
@@ -12462,19 +12238,17 @@ static napi_value
 bcrypto_secretbox_open(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
-  uint8_t *out;
+  void *out;
   size_t out_len;
-  const uint8_t *sealed, *key, *nonce;
+  void *sealed, *key, *nonce;
   size_t sealed_len, key_len, nonce_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 3);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&sealed,
-                             &sealed_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&key, &key_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&nonce,
-                             &nonce_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &sealed, &sealed_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &nonce, &nonce_len) == napi_ok);
 
   JS_ASSERT(key_len == 32, JS_ERR_KEY_SIZE);
   JS_ASSERT(nonce_len == 24, JS_ERR_NONCE_SIZE);
@@ -12483,7 +12257,7 @@ bcrypto_secretbox_open(napi_env env, napi_callback_info info) {
 
   JS_ASSERT(out_len <= MAX_BUFFER_LENGTH, JS_ERR_ALLOC);
 
-  JS_CHECK_ALLOC(napi_create_buffer(env, out_len, (void **)&out, &result));
+  JS_CHECK_ALLOC(napi_create_buffer(env, out_len, &out, &result));
 
   JS_ASSERT(secretbox_open(out, sealed, sealed_len, key, nonce),
             JS_ERR_DECRYPT);
@@ -12496,14 +12270,13 @@ bcrypto_secretbox_derive(napi_env env, napi_callback_info info) {
   napi_value argv[1];
   size_t argc = 1;
   uint8_t out[32];
-  const uint8_t *secret;
+  void *secret;
   size_t secret_len;
   napi_value result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&secret,
-                             &secret_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &secret, &secret_len) == napi_ok);
 
   JS_ASSERT(secret_len == 32, JS_ERR_SECRET_SIZE);
 
@@ -12523,14 +12296,14 @@ bcrypto_siphash_sum(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint64_t out;
-  const uint8_t *msg, *key;
+  void *msg, *key;
   size_t msg_len, key_len;
   napi_value hival, loval, result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &key, &key_len) == napi_ok);
 
   JS_ASSERT(key_len >= 16, JS_ERR_KEY_SIZE);
 
@@ -12552,14 +12325,14 @@ bcrypto_siphash_mod(napi_env env, napi_callback_info info) {
   size_t argc = 4;
   uint64_t out, mod;
   uint32_t mhi, mlo;
-  const uint8_t *msg, *key;
+  void *msg, *key;
   size_t msg_len, key_len;
   napi_value hival, loval, result;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 4);
-  CHECK(napi_get_buffer_info(env, argv[0], (void **)&msg, &msg_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[0], &msg, &msg_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &key, &key_len) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[2], &mhi) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[3], &mlo) == napi_ok);
 
@@ -12584,7 +12357,7 @@ bcrypto_siphash128_sum(napi_env env, napi_callback_info info) {
   size_t argc = 3;
   uint64_t out, num;
   uint32_t hi, lo;
-  const uint8_t *key;
+  void *key;
   size_t key_len;
   napi_value hival, loval, result;
 
@@ -12592,7 +12365,7 @@ bcrypto_siphash128_sum(napi_env env, napi_callback_info info) {
   CHECK(argc == 3);
   CHECK(napi_get_value_uint32(env, argv[0], &hi) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[1], &lo) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &key, &key_len) == napi_ok);
 
   JS_ASSERT(key_len >= 16, JS_ERR_KEY_SIZE);
 
@@ -12615,7 +12388,7 @@ bcrypto_siphash256_sum(napi_env env, napi_callback_info info) {
   size_t argc = 3;
   uint64_t out, num;
   uint32_t hi, lo;
-  const uint8_t *key;
+  void *key;
   size_t key_len;
   napi_value hival, loval, result;
 
@@ -12623,7 +12396,7 @@ bcrypto_siphash256_sum(napi_env env, napi_callback_info info) {
   CHECK(argc == 3);
   CHECK(napi_get_value_uint32(env, argv[0], &hi) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[1], &lo) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[2], (void **)&key, &key_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[2], &key, &key_len) == napi_ok);
 
   JS_ASSERT(key_len >= 32, JS_ERR_KEY_SIZE);
 
@@ -12702,7 +12475,7 @@ bcrypto_wei_curve_field_size(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
   CHECK(napi_create_uint32(env, ec->field_size, &result) == napi_ok);
 
   return result;
@@ -12717,7 +12490,7 @@ bcrypto_wei_curve_field_bits(napi_env env, napi_callback_info info) {
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
   CHECK(napi_create_uint32(env, ec->field_bits, &result) == napi_ok);
 
   return result;
@@ -12727,21 +12500,20 @@ static napi_value
 bcrypto_wei_curve_randomize(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  const uint8_t *entropy;
+  void *entropy;
   size_t entropy_len;
   bcrypto_wei_curve_t *ec;
 
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 2);
-  CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], (void **)&entropy,
-                             &entropy_len) == napi_ok);
+  CHECK(bcrypto_wei_curve_unwrap(env, argv[0], &ec) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &entropy, &entropy_len) == napi_ok);
 
   JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
 
   wei_curve_randomize(ec->ctx, entropy);
 
-  torsion_memzero((void *)entropy, entropy_len);
+  torsion_memzero(entropy, entropy_len);
 
   return argv[0];
 }
