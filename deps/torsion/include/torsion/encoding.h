@@ -4,8 +4,8 @@
  * https://github.com/bcoin-org/libtorsion
  */
 
-#ifndef _TORSION_ENCODING_H
-#define _TORSION_ENCODING_H
+#ifndef TORSION_ENCODING_H
+#define TORSION_ENCODING_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -358,4 +358,4 @@ cash32_test(const char *addr, const char *expect);
 }
 #endif
 
-#endif /* _TORSION_ENCODING_H */
+#endif /* TORSION_ENCODING_H */

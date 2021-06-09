@@ -675,7 +675,7 @@ base58_encode(char *dst, size_t *dstlen,
   }
 
   size = (uint64_t)(srclen - zeroes) * 138 / 100 + 1;
-  b58 = malloc(size);
+  b58 = (uint8_t *)malloc(size);
 
   if (b58 == NULL)
     return 0;
@@ -742,7 +742,7 @@ base58_decode(uint8_t *dst, size_t *dstlen,
   }
 
   size = (uint64_t)srclen * 733 / 1000 + 1;
-  b256 = malloc(size);
+  b256 = (uint8_t *)malloc(size);
 
   if (b256 == NULL)
     return 0;

@@ -8,45 +8,36 @@
  *   https://en.wikipedia.org/wiki/CPUID
  *   https://en.wikipedia.org/wiki/RDRAND
  *
- * Windows:
+ * Windows (x86, x64):
  *   https://docs.microsoft.com/en-us/cpp/intrinsics/rdtsc
  *   https://docs.microsoft.com/en-us/cpp/intrinsics/cpuid-cpuidex
  *   https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_rdrand32_step
  *   https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_rdrand64_step
- *   https://docs.microsoft.com/en-us/windows/win32/api/profileapi/nf-profileapi-queryperformancecounter
- *   https://docs.microsoft.com/en-us/windows/win32/api/profileapi/nf-profileapi-queryperformancefrequency
- *   https://docs.microsoft.com/en-us/windows/win32/api/sysinfoapi/nf-sysinfoapi-getsystemtimeasfiletime
+ *   https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_rdseed32_step
+ *   https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_rdseed64_step
  *
- * Unix:
- *   http://man7.org/linux/man-pages/man2/gettimeofday.2.html
+ * Windows (arm64):
+ *   https://docs.microsoft.com/en-us/cpp/intrinsics/arm64-intrinsics
  *
- * VxWorks:
- *   https://docs.windriver.com/bundle/vxworks_7_application_core_os_sr0630-enus/page/CORE/clockLib.html
- *
- * Fuchsia:
- *   https://fuchsia.dev/fuchsia-src/reference/syscalls/clock_get_monotonic
- *
- * CloudABI:
- *   https://nuxi.nl/cloudabi/#clock_time_get
- *
- * WASI:
- *   https://github.com/WebAssembly/WASI/blob/5d10b2c/design/WASI-core.md#clock_time_get
- *   https://github.com/WebAssembly/WASI/blob/2627acd/phases/snapshot/witx/wasi_snapshot_preview1.witx#L58
- *   https://github.com/emscripten-core/emscripten/blob/b45948b/system/include/wasi/api.h#L1751
- *
- * Emscripten (wasm, asm.js):
- *   https://emscripten.org/docs/api_reference/emscripten.h.html
- *   https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/now
- *   https://nodejs.org/api/process.html#process_process_hrtime_time
- *
- * x86{,-64}:
+ * x86{,-64} (rdtsc, rdrand, rdseed):
  *   https://www.felixcloutier.com/x86/rdtsc
+ *   https://www.felixcloutier.com/x86/cpuid
  *   https://www.felixcloutier.com/x86/rdrand
  *   https://www.felixcloutier.com/x86/rdseed
  *
- * POWER9/POWER10 (darn):
- *   https://www.docdroid.net/tWT7hjD/powerisa-v30-pdf
+ * ARMv8.5-A (cntvct, rndr, rndrrs):
+ *   https://developer.arm.com/documentation/dui0068/b/ARM-Instruction-Reference/Miscellaneous-ARM-instructions/MRS
+ *   https://developer.arm.com/documentation/ddi0595/2021-03/AArch64-Registers/CNTVCT-EL0--Counter-timer-Virtual-Count-register
+ *   https://developer.arm.com/documentation/ddi0595/2021-03/AArch64-Registers/ID-AA64ISAR0-EL1--AArch64-Instruction-Set-Attribute-Register-0
+ *   https://developer.arm.com/documentation/ddi0595/2021-03/AArch64-Registers/RNDR--Random-Number
+ *   https://developer.arm.com/documentation/ddi0595/2021-03/AArch64-Registers/RNDRRS--Reseeded-Random-Number
+ *
+ * POWER9/POWER10 (mftb, darn):
  *   https://openpowerfoundation.org/?resource_lib=power-isa-version-3-0
+ *
+ * RISC-V (mentropy, pollentropy, rdcycle):
+ *   https://github.com/riscv/riscv-isa-manual/releases
+ *   https://github.com/riscv/riscv-crypto/releases
  */
 
 /**
@@ -54,31 +45,14 @@
  *
  * One simple source of hardware entropy is the current cycle
  * count. This is accomplished via RDTSC on x86 CPUs. We only
- * call RDTSC if there is an instrinsic for it (win32) or if
+ * use RDTSC if there is an instrinsic for it (win32) or if
  * the compiler supports inline ASM (gcc/clang).
  *
- * For non-x86 hardware, we fallback to whatever system clocks
- * are available. This includes:
+ * For ARM, PPC and RISC-V, we use PMCCNTR, MFTB, and RDCYCLE
+ * respectively.
  *
- *   - QueryPerformanceCounter, GetSystemTimeAsFileTime (win32)
- *   - mach_absolute_time (apple)
- *   - clock_gettime (vxworks)
- *   - zx_clock_get_monotonic (fuchsia)
- *   - clock_gettime (unix)
- *   - gettimeofday (unix legacy)
- *   - cloudabi_sys_clock_time_get (cloudabi)
- *   - __wasi_clock_time_get (wasi)
- *   - emscripten_get_now (emscripten)
- *
- * Note that the only clocks which do not have nanosecond
- * precision are `GetSystemTimeAsFileTime` and `gettimeofday`.
- *
- * If no OS clocks are present, we fall back to standard
- * C89 time functions (i.e. time(2)).
- *
- * Furthermore, QueryPerformance{Counter,Frequency} may fail
- * on Windows 2000. For this reason, we require Windows XP or
- * above (otherwise we fall back to GetSystemTimeAsFileTime).
+ * For other hardware, we fallback to whatever system clocks
+ * are available. See `hrt.c` for a list of functions.
  *
  * The CPUID instruction can serve as good source of "static"
  * entropy for seeding (see env.c).
@@ -89,205 +63,189 @@
  * use hardware entropy to supplement our full entropy pool.
  *
  * On POWER9 and POWER10, the `darn` (Deliver A Random Number)
- * instruction is available. We have `torsion_rdrand` return
- * the output of `darn` if this is the case.
+ * instruction is available. We have `torsion_rdrand` as well
+ * as `torsion_rdseed` return the output of `darn` if this is
+ * the case.
+ *
+ * ARMv8.5-A provides new system registers (RNDR and RNDRRS)
+ * to be used with the MRS instruction. Similar to `darn`, we
+ * have `torsion_{rdrand,rdseed}` output the proper values.
+ *
+ * The very bleeding edge of RISC-V specifies `pollentropy`,
+ * a pseudo-instruction which reads from a special `mentropy`
+ * register, similar to ARM. We have preliminary support for
+ * this. `mentropy` can only be read in machine mode as of
+ * right now, but this may change in the future (hopefully).
  *
  * For other hardware, torsion_rdrand and torsion_rdseed are
  * no-ops returning zero. torsion_has_rd{rand,seed} MUST be
  * checked before calling torsion_rd{rand,seed}.
  */
 
-#if !defined(_WIN32) && !defined(_GNU_SOURCE)
-/* For clock_gettime(2). */
-#  define _GNU_SOURCE
-#endif
-
+#include <stddef.h>
 #include <stdint.h>
-#include <stdlib.h>
 #include <string.h>
 #include "entropy.h"
 
-#undef HAVE_QPC
-#undef HAVE_CLOCK_GETTIME
-#undef HAVE_GETTIMEOFDAY
-#undef HAVE_CPUIDEX
+#undef HAVE_ASM_RDTSC
 #undef HAVE_RDTSC
-#undef HAVE_INLINE_ASM
-#undef HAVE_CPUID
-#undef HAVE_DARN
+#undef HAVE_CPUIDEX
+#undef HAVE_RDRAND
+#undef HAVE_RDRAND32
+#undef HAVE_RDRAND64
+#undef HAVE_RDSEED
+#undef HAVE_RDSEED32
+#undef HAVE_RDSEED64
+#undef HAVE_MRS
+#undef HAVE_ASM_INTEL
+#undef HAVE_ASM_X86
+#undef HAVE_ASM_X64
+#undef HAVE_ASM_ARM64
+#undef HAVE_ASM_PPC
+#undef HAVE_ASM_PPC32
+#undef HAVE_ASM_PPC64
+#undef HAVE_ASM_RISCV
+#undef HAVE_ASM_RISCV32
+#undef HAVE_ASM_RISCV64
+#undef HAVE_GETAUXVAL
+#undef HAVE_ELF_AUX_INFO
+#undef HAVE_POWER_SET
+#undef HAVE_AUXVAL
+#undef HAVE_MACHINE /* Define if RISC-V code is in machine mode. */
 
-#if defined(_WIN32)
-#  include <windows.h> /* QueryPerformanceCounter, GetSystemTimeAsFileTime */
-#  pragma comment(lib, "kernel32.lib")
-#  if defined(_WIN32_WINNT) && _WIN32_WINNT >= 0x0501 /* Windows XP */
-#    define HAVE_QPC
+/* Detect intrinsic and ASM support. */
+#if defined(_MSC_VER)
+#  if defined(_M_IX86) || defined(_M_AMD64) || defined(_M_X64)
+#    if _MSC_VER >= 1400 /* VS 2005 */
+#      include <intrin.h> /* __cpuidex, __rdtsc */
+#      pragma intrinsic(__rdtsc)
+#      define HAVE_RDTSC
+#    endif
+#    if _MSC_VER >= 1600 /* VS 2010 */
+#      pragma intrinsic(__cpuidex)
+#      define HAVE_CPUIDEX
+#    endif
+#    if _MSC_VER >= 1700 /* VS 2012 */
+#      include <immintrin.h> /* _rd{rand,seed}{32,64}_step */
+#      define HAVE_RDRAND
+#      if defined(_M_AMD64) || defined(_M_X64)
+#        define HAVE_RDRAND64
+#      else
+#        define HAVE_RDRAND32
+#      endif
+#    endif
+#    if _MSC_VER >= 1800 /* VS 2013 */
+#      define HAVE_RDSEED
+#      if defined(_M_AMD64) || defined(_M_X64)
+#        define HAVE_RDSEED64
+#      else
+#        define HAVE_RDSEED32
+#      endif
+#    endif
+#    if !defined(HAVE_RDTSC) && defined(_M_IX86)
+#      define HAVE_ASM_RDTSC /* fallback to _asm */
+#    endif
+#  elif defined(_M_ARM64)
+#    include <intrin.h> /* _ReadStatusReg */
+#    define HAVE_MRS
 #  endif
-#elif defined(__APPLE__) && defined(__MACH__)
-#  include <mach/mach.h> /* KERN_SUCCESS */
-#  include <mach/mach_time.h> /* mach_timebase_info, mach_absolute_time */
-#elif defined(__vxworks)
-#  include <time.h> /* clock_gettime, time */
-#  if defined(CLOCK_REALTIME) && defined(CLOCK_MONOTONIC)
-#    define HAVE_CLOCK_GETTIME
-#  endif
-#elif defined(__Fuchsia__) || defined(__fuchsia__)
-#  include <zircon/syscalls.h> /* zx_clock_get_monotonic */
-#elif defined(__CloudABI__)
-#  include <cloudabi_syscalls.h> /* cloudabi_sys_clock_time_get */
-#elif defined(__EMSCRIPTEN__)
-#  include <emscripten.h> /* emscripten_get_now */
-#elif defined(__wasi__)
-#  include <wasi/api.h> /* __wasi_clock_time_get */
-#elif defined(__unix) || defined(__unix__)
-#  include <time.h> /* clock_gettime */
-#  include <unistd.h> /* _POSIX_VERSION */
-#  if defined(_POSIX_VERSION) && _POSIX_VERSION >= 199309L
-#    if defined(CLOCK_REALTIME) && defined(CLOCK_MONOTONIC)
-#      define HAVE_CLOCK_GETTIME
+#elif (defined(__GNUC__) && __GNUC__ >= 4) || defined(__IBM_GCC_ASM)
+#  if defined(__amd64__) || defined(__x86_64__)
+#    define HAVE_ASM_INTEL
+#    define HAVE_ASM_X64
+#  elif defined(__i386__)
+#    define HAVE_ASM_INTEL
+#    define HAVE_ASM_X86
+#  elif defined(__aarch64__)
+#    define HAVE_ASM_ARM64
+#  elif defined(__powerpc64__) || defined(_ARCH_PPC64) || defined(__PPC64__)
+#    define HAVE_ASM_PPC
+#    define HAVE_ASM_PPC64
+#  elif defined(__powerpc__) || defined(_ARCH_PPC) || defined(__PPC__)
+#    define HAVE_ASM_PPC
+#    define HAVE_ASM_PPC32
+#  elif defined(__riscv) && defined(__riscv_xlen) && defined(HAVE_MACHINE)
+#    if __riscv_xlen == 32
+#      define HAVE_ASM_RISCV
+#      define HAVE_ASM_RISCV32
+#      define riscv_word_t uint32_t
+#    elif __riscv_xlen == 64
+#      define HAVE_ASM_RISCV
+#      define HAVE_ASM_RISCV64
+#      define riscv_word_t uint64_t
 #    endif
 #  endif
-#  ifndef HAVE_CLOCK_GETTIME
-#    include <sys/time.h> /* gettimeofday */
-#    define HAVE_GETTIMEOFDAY
+#  ifndef __GNUC__
+#    define __volatile__ volatile
 #  endif
-#else
-#  include <time.h> /* time */
 #endif
 
-#if defined(_MSC_VER) && _MSC_VER >= 1900 /* VS 2015 */
-#  if defined(_M_IX86) || defined(_M_AMD64) || defined(_M_X64)
-#    include <intrin.h> /* __cpuidex, __rdtsc */
-#    include <immintrin.h> /* _rd{rand,seed}{32,64}_step */
-#    pragma intrinsic(__cpuidex, __rdtsc)
-#    define HAVE_CPUIDEX
-#    define HAVE_RDTSC
+/* Determine step word width. */
+#if defined(HAVE_RDRAND64)  \
+ || defined(HAVE_RDSEED64)  \
+ || defined(HAVE_MRS)       \
+ || defined(HAVE_ASM_X64)   \
+ || defined(HAVE_ASM_ARM64) \
+ || defined(HAVE_ASM_PPC64)
+#  define step_word_t uint64_t
+#  define step_word_size 64
+#elif defined(HAVE_ASM_RISCV)
+#  define step_word_t uint16_t
+#  define step_word_size 16
+#else
+#  define step_word_t uint32_t
+#  define step_word_size 32
+#endif
+
+/* Some insanity to detect features at runtime. */
+#if defined(HAVE_ASM_ARM64) || defined(HAVE_ASM_PPC)
+#  if defined(__GLIBC__) && defined(__GLIBC_PREREQ)
+#    if __GLIBC_PREREQ(2, 16)
+#      include <sys/auxv.h> /* getauxval */
+#      define HAVE_GETAUXVAL
+#      define HAVE_AUXVAL
+#    endif
+#  elif defined(__FreeBSD__)
+#    include <sys/param.h>
+#    if defined(__FreeBSD_version) && __FreeBSD_version >= 1200000 /* 12.0 */
+#      include <sys/auxv.h> /* elf_aux_info */
+#      define HAVE_ELF_AUX_INFO
+#      define HAVE_AUXVAL
+#    endif
+#  elif defined(HAVE_ASM_PPC) && defined(_AIX53) && !defined(__PASE__)
+#    include <sys/systemcfg.h> /* __power_set */
+#    ifndef __power_set
+#      define __power_set(x) (_system_configuration.implementation & (x))
+#    endif
+#    define HAVE_POWER_SET
 #  endif
-#elif defined(__GNUC__) && __GNUC__ >= 4
-#  define HAVE_INLINE_ASM
-#  if defined(__i386__) || defined(__amd64__) || defined(__x86_64__)
-#    define HAVE_CPUID
-#  elif defined(__powerpc64__) && (defined(_ARCH_PWR9) || defined(_ARCH_PWR10))
-#    define HAVE_DARN
+#  ifdef HAVE_AUXVAL
+#    ifndef AT_HWCAP
+#      define AT_HWCAP 16
+#    endif
+#    ifndef AT_HWCAP2
+#      define AT_HWCAP2 26
+#    endif
 #  endif
 #endif
 
 /*
- * High-Resolution Time
+ * Auxiliary Value
  */
 
-uint64_t
-torsion_hrtime(void) {
-#if defined(HAVE_QPC) /* _WIN32 */
-  static unsigned int scale = 1000000000;
-  LARGE_INTEGER freq, ctr;
-  double scaled, result;
+#if defined(HAVE_GETAUXVAL)
+#  define torsion_auxval getauxval
+#elif defined(HAVE_ELF_AUX_INFO)
+__attribute__((unused)) static unsigned long
+torsion_auxval(unsigned long type) {
+  unsigned long val;
 
-  if (!QueryPerformanceFrequency(&freq))
-    abort();
-
-  if (!QueryPerformanceCounter(&ctr))
-    abort();
-
-  if (freq.QuadPart == 0)
-    abort();
-
-  /* We have no idea of the magnitude of `freq`,
-   * so we must resort to double arithmetic[1].
-   * Furthermore, we use some wacky arithmetic
-   * to avoid a bug in Visual Studio 2019[2][3].
-   *
-   * [1] https://github.com/libuv/libuv/blob/7967448/src/win/util.c#L503
-   * [2] https://github.com/libuv/libuv/issues/1633
-   * [3] https://github.com/libuv/libuv/pull/2866
-   */
-  scaled = (double)freq.QuadPart / scale;
-  result = (double)ctr.QuadPart / scaled;
-
-  return (uint64_t)result;
-#elif defined(_WIN32)
-  /* There was no reliable nanosecond precision
-   * time available on Windows prior to XP. We
-   * borrow some more code from libuv[1] in order
-   * to convert NT time to unix time. Note that the
-   * libuv code was originally based on postgres[2].
-   *
-   * NT's epoch[3] begins on January 1st, 1601: 369
-   * years earlier than the unix epoch.
-   *
-   * [1] https://github.com/libuv/libuv/blob/7967448/src/win/util.c#L1942
-   * [2] https://doxygen.postgresql.org/gettimeofday_8c_source.html
-   * [3] https://en.wikipedia.org/wiki/Epoch_(computing)
-   */
-  static const uint64_t epoch = UINT64_C(116444736000000000);
-  ULARGE_INTEGER ul;
-  FILETIME ft;
-
-  GetSystemTimeAsFileTime(&ft);
-
-  ul.LowPart = ft.dwLowDateTime;
-  ul.HighPart = ft.dwHighDateTime;
-
-  return (uint64_t)(ul.QuadPart - epoch) * 100;
-#elif defined(__APPLE__) && defined(__MACH__)
-  mach_timebase_info_data_t info;
-
-  if (mach_timebase_info(&info) != KERN_SUCCESS)
-    abort();
-
-  if (info.denom == 0)
-    abort();
-
-  return mach_absolute_time() * info.numer / info.denom;
-#elif defined(__Fuchsia__) || defined(__fuchsia__)
-  return zx_clock_get_monotonic();
-#elif defined(__CloudABI__)
-  uint64_t ts;
-
-  if (cloudabi_sys_clock_time_get(CLOUDABI_CLOCK_MONOTONIC, 1, &ts) != 0)
-    abort();
-
-  return ts;
-#elif defined(__EMSCRIPTEN__)
-  return emscripten_get_now() * 1000000.0;
-#elif defined(__wasi__)
-  uint64_t ts = 0;
-
-#ifdef TORSION_WASM_BIGINT
-  /* Requires --experimental-wasm-bigint at the moment. */
-  if (__wasi_clock_time_get(__WASI_CLOCKID_MONOTONIC, 1, &ts) != 0)
-    abort();
-#endif
-
-  return ts;
-#elif defined(HAVE_CLOCK_GETTIME)
-  struct timespec ts;
-
-  if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
-    if (clock_gettime(CLOCK_REALTIME, &ts) != 0)
-      abort();
-  }
-
-  return (uint64_t)ts.tv_sec * 1000000000 + (uint64_t)ts.tv_nsec;
-#elif defined(HAVE_GETTIMEOFDAY)
-  struct timeval tv;
-
-  if (gettimeofday(&tv, NULL) != 0)
-    abort();
-
-  return (uint64_t)tv.tv_sec * 1000000000 + (uint64_t)tv.tv_usec * 1000;
-#else
-  /* The encoding of the value returned from
-     time(2) is unspecified according to C89.
-     However, on most systems, it is the number
-     of seconds elapsed since the unix epoch. */
-  time_t ts = time(NULL);
-
-  if (ts == (time_t)-1)
+  if (elf_aux_info(type, &val, sizeof(val)) != 0)
     return 0;
 
-  return (uint64_t)ts * 1000000000;
-#endif
+  return val;
 }
+#endif
 
 /*
  * Timestamp Counter
@@ -295,18 +253,14 @@ torsion_hrtime(void) {
 
 uint64_t
 torsion_rdtsc(void) {
-#if defined(HAVE_RDTSC)
+#if defined(HAVE_ASM_RDTSC)
+  _asm rdtsc
+#elif defined(HAVE_RDTSC)
   return __rdtsc();
-#elif defined(HAVE_QPC)
-  LARGE_INTEGER ctr;
-
-  if (!QueryPerformanceCounter(&ctr))
-    abort();
-
-  return (uint64_t)ctr.QuadPart;
-#elif defined(HAVE_INLINE_ASM) && defined(__i386__)
-  /* Borrowed from Bitcoin Core. */
-  uint64_t ts = 0;
+#elif defined(HAVE_MRS)
+  return _ReadStatusReg(0x5f02); /* CNTVCT_EL0 */
+#elif defined(HAVE_ASM_X86)
+  uint64_t ts;
 
   __asm__ __volatile__ (
     "rdtsc\n"
@@ -314,10 +268,8 @@ torsion_rdtsc(void) {
   );
 
   return ts;
-#elif defined(HAVE_INLINE_ASM) && (defined(__amd64__) || defined(__x86_64__))
-  /* Borrowed from Bitcoin Core. */
-  uint64_t lo = 0;
-  uint64_t hi = 0;
+#elif defined(HAVE_ASM_X64)
+  uint64_t lo, hi;
 
   __asm__ __volatile__ (
     "rdtsc\n"
@@ -326,6 +278,63 @@ torsion_rdtsc(void) {
   );
 
   return (hi << 32) | lo;
+#elif defined(HAVE_ASM_ARM64)
+  uint64_t ts;
+
+  __asm__ __volatile__ (
+    "mrs %0, s3_3_c14_c0_2\n" /* CNTVCT_EL0 */
+    : "=r" (ts)
+  );
+
+  return ts;
+#elif defined(HAVE_ASM_PPC32)
+  uint32_t hi, lo, c;
+
+  do {
+    __asm__ __volatile__ (
+      "mftbu %0\n" /* mfspr %0, 269 */
+      "mftb  %1\n" /* mfspr %1, 268 */
+      "mftbu %2\n" /* mfspr %2, 269 */
+      : "=r" (hi),
+        "=r" (lo),
+        "=r" (c)
+    );
+  } while (hi != c);
+
+  return ((uint64_t)hi << 32) | lo;
+#elif defined(HAVE_ASM_PPC64)
+  uint64_t ts;
+
+  __asm__ __volatile__ (
+    "mfspr %0, 268\n" /* mftb %0 */
+    : "=r" (ts)
+  );
+
+  return ts;
+#elif defined(HAVE_ASM_RISCV32)
+  uint32_t hi, lo, c;
+
+  do {
+    __asm__ __volatile__ (
+      "rdcycleh %0\n"
+      "rdcycle  %1\n"
+      "rdcycleh %2\n"
+      : "=r" (hi),
+        "=r" (lo),
+        "=r" (c)
+    );
+  } while (hi != c);
+
+  return ((uint64_t)hi << 32) | lo;
+#elif defined(HAVE_ASM_RISCV64)
+  uint64_t ts;
+
+  __asm__ __volatile__ (
+    "rdcycle %0\n"
+    : "=r" (ts)
+  );
+
+  return ts;
 #else
   /* Fall back to high-resolution time. */
   return torsion_hrtime();
@@ -340,8 +349,7 @@ int
 torsion_has_cpuid(void) {
 #if defined(HAVE_CPUIDEX)
   return 1;
-#elif defined(HAVE_CPUID)
-#if defined(__i386__)
+#elif defined(HAVE_ASM_X86)
   uint32_t ax, bx;
 
   __asm__ __volatile__ (
@@ -349,7 +357,7 @@ torsion_has_cpuid(void) {
     "pushfl\n"
     "popl %k0\n"
     "movl %k0, %k1\n"
-    "xorl $0x00200000, %k0\n"
+    "xorl $0x200000, %k0\n"
     "pushl %k0\n"
     "popfl\n"
     "pushfl\n"
@@ -357,14 +365,12 @@ torsion_has_cpuid(void) {
     "popfl\n"
     : "=&r" (ax),
       "=&r" (bx)
-    :
-    : "cc"
+    :: "cc"
   );
 
   return ((ax ^ bx) >> 21) & 1;
-#else /* !__i386__ */
+#elif defined(HAVE_ASM_X64)
   return 1;
-#endif /* !__i386__ */
 #else
   return 0;
 #endif
@@ -386,19 +392,7 @@ torsion_cpuid(uint32_t *a,
   *b = regs[1];
   *c = regs[2];
   *d = regs[3];
-#elif defined(HAVE_CPUID)
-  *a = 0;
-  *b = 0;
-  *c = 0;
-  *d = 0;
-#if defined(__i386__)
-  /* Older GCC versions reserve %ebx as the global
-   * offset table register when compiling position
-   * independent code[1]. We borrow some assembly
-   * from libsodium to work around this.
-   *
-   * [1] https://gcc.gnu.org/bugzilla/show_bug.cgi?id=54232
-   */
+#elif defined(HAVE_ASM_X86)
   if (torsion_has_cpuid()) {
     __asm__ __volatile__ (
       "xchgl %%ebx, %k1\n"
@@ -407,14 +401,20 @@ torsion_cpuid(uint32_t *a,
       : "=a" (*a), "=&r" (*b), "=c" (*c), "=d" (*d)
       : "0" (leaf), "2" (subleaf)
     );
+  } else {
+    *a = 0;
+    *b = 0;
+    *c = 0;
+    *d = 0;
   }
-#else /* !__i386__ */
+#elif defined(HAVE_ASM_X64)
   __asm__ __volatile__ (
+    "xchgq %%rbx, %q1\n"
     "cpuid\n"
-    : "=a" (*a), "=b" (*b), "=c" (*c), "=d" (*d)
+    "xchgq %%rbx, %q1\n"
+    : "=a" (*a), "=&r" (*b), "=c" (*c), "=d" (*d)
     : "0" (leaf), "2" (subleaf)
   );
-#endif /* !__i386__ */
 #else
   (void)leaf;
   (void)subleaf;
@@ -427,20 +427,82 @@ torsion_cpuid(uint32_t *a,
 }
 
 /*
- * RDRAND/RDSEED
+ * Pause
+ */
+
+#if defined(HAVE_RDSEED32)
+#  define torsion_pause() _asm { rep nop }
+#elif defined(HAVE_RDSEED64)
+#  define torsion_pause _mm_pause
+#elif defined(HAVE_MRS)
+#  define torsion_pause __yield
+#elif defined(HAVE_ASM_X86)
+#  define torsion_pause() __asm__ __volatile__ (".byte 0xf3, 0x90\n")
+#elif defined(HAVE_ASM_X64)
+#  define torsion_pause() __asm__ __volatile__ ("pause\n")
+#elif defined(HAVE_ASM_ARM64)
+#  define torsion_pause() __asm__ __volatile__ ("yield\n")
+#elif defined(HAVE_ASM_PPC)
+/* https://stackoverflow.com/questions/5425506 */
+#  define torsion_pause() __asm__ __volatile__ ("or 27, 27, 27\n" ::: "cc")
+#elif defined(HAVE_ASM_RISCV)
+#  define torsion_pause() __asm__ __volatile__ ("wfi\n")
+#else
+#  define torsion_pause() do { } while (0)
+#endif
+
+/*
+ * Feature Testing
  */
 
 int
 torsion_has_rdrand(void) {
-#if defined(HAVE_CPUIDEX) || defined(HAVE_CPUID)
+#if defined(HAVE_ASM_INTEL) && defined(__RDRND__)
+  /* Explicitly built with RDRAND support (-mrdrnd). */
+  return 1;
+#elif defined(HAVE_RDRAND) || defined(HAVE_ASM_INTEL)
   uint32_t eax, ebx, ecx, edx;
+
+  torsion_cpuid(&eax, &ebx, &ecx, &edx, 0, 0);
+
+  if (eax < 1)
+    return 0;
 
   torsion_cpuid(&eax, &ebx, &ecx, &edx, 1, 0);
 
   return (ecx >> 30) & 1;
-#elif defined(HAVE_DARN)
-  /* We have `darn` masquerade as `rdrand`. */
+#elif defined(HAVE_ASM_ARM64) && defined(__ARM_FEATURE_RNG)
+  /* Explicitly built with ARM RNG support (-march=armv8.5-a+rng). */
   return 1;
+#elif defined(HAVE_ASM_ARM64) && defined(HAVE_AUXVAL)
+  /* Bit 16 = RNG support (HWCAP2_RNG) */
+  if ((torsion_auxval(AT_HWCAP2) >> 16) & 1)
+    return 1;
+
+  /* Bit 11 = MRS emulation (HWCAP_CPUID) */
+  /* https://www.kernel.org/doc/html/latest/arm64/cpu-feature-registers.html */
+  if ((torsion_auxval(AT_HWCAP) >> 11) & 1) {
+    uint64_t isar0;
+
+    __asm__ __volatile__ (
+      "mrs %0, s3_0_c0_c6_0\n" /* ID_AA64ISAR0_EL1 */
+      : "=r" (isar0)
+    );
+
+    /* Bits 63-60 = RNDR (0b0001) */
+    return (isar0 >> 60) >= 1;
+  }
+
+  return 0;
+#elif defined(HAVE_ASM_PPC) && (defined(_ARCH_PWR9) || defined(_ARCH_PWR10))
+  /* Explicitly built for POWER9 (-mcpu=power9 or -mpower9-vector). */
+  return 1;
+#elif defined(HAVE_ASM_PPC) && defined(HAVE_AUXVAL)
+  /* Bit 21 = DARN support (PPC_FEATURE2_DARN) */
+  return (torsion_auxval(AT_HWCAP2) >> 21) & 1;
+#elif defined(HAVE_ASM_PPC) && defined(HAVE_POWER_SET)
+  /* Check for POWER9 or greater. */
+  return __power_set(0xffffffffU << 17) != 0;
 #else
   return 0;
 #endif
@@ -448,230 +510,282 @@ torsion_has_rdrand(void) {
 
 int
 torsion_has_rdseed(void) {
-#if defined(HAVE_CPUIDEX) || defined(HAVE_CPUID)
+#if defined(HAVE_ASM_INTEL) && defined(__RDSEED__)
+  /* Explicitly built with RDSEED support (-mrdseed). */
+  return 1;
+#elif defined(HAVE_RDSEED) || defined(HAVE_ASM_INTEL)
   uint32_t eax, ebx, ecx, edx;
+
+  torsion_cpuid(&eax, &ebx, &ecx, &edx, 0, 0);
+
+  if (eax < 7)
+    return 0;
 
   torsion_cpuid(&eax, &ebx, &ecx, &edx, 7, 0);
 
   return (ebx >> 18) & 1;
+#elif defined(HAVE_ASM_ARM64)
+  return torsion_has_rdrand();
+#elif defined(HAVE_ASM_PPC64)
+  return torsion_has_rdrand();
+#elif defined(HAVE_ASM_RISCV) && defined(__riscv_zkr)
+  /* Explicitly built with TRNG support (-march=rv{32,64}ik). */
+  return 1;
+#elif defined(HAVE_ASM_RISCV)
+  riscv_word_t misa;
+
+  __asm__ __volatile__ (
+    "csrr %0, 0x301\n" /* MISA */
+    : "=r" (misa)
+  );
+
+  return (misa >> 10) & 1;
 #else
   return 0;
 #endif
 }
 
-uint64_t
+/*
+ * Intrinsics
+ */
+
+static int
+torsion_rdrand_step(step_word_t *z) {
+#if defined(HAVE_RDRAND32)
+  return _rdrand32_step((unsigned int *)z);
+#elif defined(HAVE_RDRAND64)
+  return _rdrand64_step(z);
+#elif defined(HAVE_ASM_X86)
+  uint8_t c;
+
+  __asm__ __volatile__ (
+    ".byte 0x0f, 0xc7, 0xf0\n" /* rdrand %eax */
+    "setc %b1\n"
+    : "=a" (*z), "=q" (c)
+    :: "cc"
+  );
+
+  return c;
+#elif defined(HAVE_ASM_X64)
+  uint8_t c;
+
+  __asm__ __volatile__ (
+    ".byte 0x48, 0x0f, 0xc7, 0xf0\n" /* rdrand %rax */
+    "setc %b1\n"
+    : "=a" (*z), "=q" (c)
+    :: "cc"
+  );
+
+  return c;
+#elif defined(HAVE_ASM_ARM64)
+  uint32_t c;
+
+  __asm__ __volatile__ (
+    "mrs %0, s3_3_c2_c4_0\n" /* RNDR */
+    "cset %w1, ne\n"
+    : "=r" (*z), "=r" (c)
+    :: "cc"
+  );
+
+  return c;
+#elif defined(HAVE_ASM_PPC32)
+  __asm__ __volatile__ (
+    ".long (0x7c0005e6 | (%0 << 21))\n" /* darn %0, 0 */
+    : "=r" (*z)
+  );
+
+  return *z != UINT32_MAX;
+#elif defined(HAVE_ASM_PPC64)
+  __asm__ __volatile__ (
+    ".long (0x7c0105e6 | (%0 << 21))\n" /* darn %0, 1 */
+    : "=r" (*z)
+  );
+
+  return *z != UINT64_MAX;
+#else
+  *z = 0;
+  return 1;
+#endif
+}
+
+static int
+torsion_rdseed_step(step_word_t *z) {
+#if defined(HAVE_RDSEED32)
+  return _rdseed32_step((unsigned int *)z);
+#elif defined(HAVE_RDSEED64)
+  return _rdseed64_step(z);
+#elif defined(HAVE_ASM_X86)
+  uint8_t c;
+
+  __asm__ __volatile__ (
+    ".byte 0x0f, 0xc7, 0xf8\n" /* rdseed %eax */
+    "setc %b1\n"
+    : "=a" (*z), "=q" (c)
+    :: "cc"
+  );
+
+  return c;
+#elif defined(HAVE_ASM_X64)
+  uint8_t c;
+
+  __asm__ __volatile__ (
+    ".byte 0x48, 0x0f, 0xc7, 0xf8\n" /* rdseed %rax */
+    "setc %b1\n"
+    : "=a" (*z), "=q" (c)
+    :: "cc"
+  );
+
+  return c;
+#elif defined(HAVE_ASM_ARM64)
+  uint32_t c;
+
+  __asm__ __volatile__ (
+    "mrs %0, s3_3_c2_c4_1\n" /* RNDRRS */
+    "cset %w1, ne\n"
+    : "=r" (*z), "=r" (c)
+    :: "cc"
+  );
+
+  return c;
+#elif defined(HAVE_ASM_PPC64)
+  __asm__ __volatile__ (
+    ".long (0x7c0205e6 | (%0 << 21))\n" /* darn %0, 2 */
+    : "=r" (*z)
+  );
+
+  return *z != UINT64_MAX;
+#elif defined(HAVE_ASM_RISCV)
+  riscv_word_t w;
+
+  __asm__ __volatile__ (
+    "csrrs %0, 0xf15, x0\n" /* MENTROPY */
+    : "=r" (w)
+  );
+
+  *z = w & 0xffff;
+
+  return ((w >> 30) & 3) == 1; /* ES16 */
+#else
+  *z = 0;
+  return 1;
+#endif
+}
+
+/*
+ * Polling
+ */
+
+static step_word_t
 torsion_rdrand(void) {
-#if defined(HAVE_CPUIDEX)
-#if defined(_M_IX86)
-  unsigned int lo, hi;
+  step_word_t z;
   int i;
 
   for (i = 0; i < 10; i++) {
-    if (_rdrand32_step(&lo))
+    if (torsion_rdrand_step(&z))
       break;
   }
 
-  for (i = 0; i < 10; i++) {
-    if (_rdrand32_step(&hi))
+  return z;
+}
+
+static step_word_t
+torsion_rdseed(void) {
+  step_word_t z;
+
+  for (;;) {
+    if (torsion_rdseed_step(&z))
       break;
+
+    torsion_pause();
   }
 
-  return ((uint64_t)hi << 32) | lo;
-#else /* !_M_IX86 */
-  unsigned __int64 r;
+  return z;
+}
+
+static int
+torsion_rdtest(void) {
+  step_word_t z;
   int i;
 
   for (i = 0; i < 10; i++) {
-    if (_rdrand64_step(&r))
-      break;
+    if (torsion_rdseed_step(&z))
+      return 1;
+
+    torsion_pause();
   }
 
-  return r;
-#endif /* !_M_IX86 */
-#elif defined(HAVE_CPUID)
-#if defined(__i386__)
-  /* Borrowed from Bitcoin Core. */
-  uint32_t lo, hi;
-  uint8_t ok;
-  int i;
-
-  for (i = 0; i < 10; i++) {
-    __asm__ __volatile__ (
-      ".byte 0x0f, 0xc7, 0xf0\n" /* rdrand %eax */
-      "setc %b1\n"
-      : "=a" (lo), "=q" (ok)
-      :
-      : "cc"
-    );
-
-    if (ok)
-      break;
-  }
-
-  for (i = 0; i < 10; i++) {
-    __asm__ __volatile__ (
-      ".byte 0x0f, 0xc7, 0xf0\n" /* rdrand %eax */
-      "setc %b1\n"
-      : "=a" (hi), "=q" (ok)
-      :
-      : "cc"
-    );
-
-    if (ok)
-      break;
-  }
-
-  return ((uint64_t)hi << 32) | lo;
-#else /* !__i386__ */
-  /* Borrowed from Bitcoin Core. */
-  uint8_t ok;
-  uint64_t r;
-  int i;
-
-  for (i = 0; i < 10; i++) {
-    __asm__ __volatile__ (
-      ".byte 0x48, 0x0f, 0xc7, 0xf0\n" /* rdrand %rax */
-      "setc %b1\n"
-      : "=a" (r), "=q" (ok)
-      :
-      : "cc"
-    );
-
-    if (ok)
-      break;
-  }
-
-  return r;
-#endif /* !__i386__ */
-#elif defined(HAVE_DARN)
-  uint64_t r = 0;
-  int i;
-
-  for (i = 0; i < 10; i++) {
-    /* Note that `darn %0, 1` can be spelled out as:
-     *
-     *   .long (0x7c0005e6 | (%0 << 21) | (1 << 16))
-     *
-     * The above was taken from the linux kernel
-     * (after stripping out a load of preprocessor).
-     */
-    __asm__ __volatile__ (
-      "darn %0, 1\n"
-      : "=r" (r)
-    );
-
-    if (r != UINT64_MAX)
-      break;
-
-    r = 0;
-  }
-
-  return r;
-#else
   return 0;
+}
+
+/*
+ * RDRAND/RDSEED
+ */
+
+uint32_t
+torsion_rdrand32(void) {
+#if step_word_size == 16
+  step_word_t hi = torsion_rdrand();
+  step_word_t lo = torsion_rdrand();
+
+  return ((uint32_t)hi << 16) | lo;
+#else
+  return (uint32_t)torsion_rdrand();
+#endif
+}
+
+uint32_t
+torsion_rdseed32(void) {
+#if step_word_size == 16
+  step_word_t hi = torsion_rdseed();
+  step_word_t lo = torsion_rdseed();
+
+  return ((uint32_t)hi << 16) | lo;
+#else
+  return (uint32_t)torsion_rdseed();
 #endif
 }
 
 uint64_t
-torsion_rdseed(void) {
-#if defined(HAVE_CPUIDEX)
-#if defined(_M_IX86)
-  unsigned int lo, hi;
+torsion_rdrand64(void) {
+#if step_word_size == 16
+  step_word_t a = torsion_rdrand();
+  step_word_t b = torsion_rdrand();
+  step_word_t c = torsion_rdrand();
+  step_word_t d = torsion_rdrand();
 
-  for (;;) {
-    if (_rdseed32_step(&lo))
-      break;
-
-#ifdef YieldProcessor
-    YieldProcessor();
-#endif
-  }
-
-  for (;;) {
-    if (_rdseed32_step(&hi))
-      break;
-
-#ifdef YieldProcessor
-    YieldProcessor();
-#endif
-  }
+  return ((uint64_t)a << 48)
+       | ((uint64_t)b << 32)
+       | ((uint64_t)c << 16)
+       | ((uint64_t)d <<  0);
+#elif step_word_size == 32
+  step_word_t hi = torsion_rdrand();
+  step_word_t lo = torsion_rdrand();
 
   return ((uint64_t)hi << 32) | lo;
-#else /* !_M_IX86 */
-  unsigned __int64 r;
-
-  for (;;) {
-    if (_rdseed64_step(&r))
-      break;
-
-#ifdef YieldProcessor
-    YieldProcessor();
-#endif
-  }
-
-  return r;
-#endif /* !_M_IX86 */
-#elif defined(HAVE_CPUID)
-#if defined(__i386__)
-  /* Borrowed from Bitcoin Core. */
-  uint32_t lo, hi;
-  uint8_t ok;
-
-  for (;;) {
-    __asm__ __volatile__ (
-      ".byte 0x0f, 0xc7, 0xf8\n" /* rdseed %eax */
-      "setc %b1\n"
-      : "=a" (lo), "=q" (ok)
-      :
-      : "cc"
-    );
-
-    if (ok)
-      break;
-
-    __asm__ __volatile__ ("pause\n");
-  }
-
-  for (;;) {
-    __asm__ __volatile__ (
-      ".byte 0x0f, 0xc7, 0xf8\n" /* rdseed %eax */
-      "setc %b1\n"
-      : "=a" (hi), "=q" (ok)
-      :
-      : "cc"
-    );
-
-    if (ok)
-      break;
-
-    __asm__ __volatile__ ("pause\n");
-  }
-
-  return ((uint64_t)hi << 32) | lo;
-#else /* !__i386__ */
-  /* Borrowed from Bitcoin Core. */
-  uint64_t r;
-  uint8_t ok;
-
-  for (;;) {
-    __asm__ __volatile__ (
-      ".byte 0x48, 0x0f, 0xc7, 0xf8\n" /* rdseed %rax */
-      "setc %b1\n"
-      : "=a" (r), "=q" (ok)
-      :
-      : "cc"
-    );
-
-    if (ok)
-      break;
-
-    __asm__ __volatile__ ("pause\n");
-  }
-
-  return r;
-#endif /* !__i386__ */
 #else
-  return 0;
+  return torsion_rdrand();
+#endif
+}
+
+uint64_t
+torsion_rdseed64(void) {
+#if step_word_size == 16
+  step_word_t a = torsion_rdseed();
+  step_word_t b = torsion_rdseed();
+  step_word_t c = torsion_rdseed();
+  step_word_t d = torsion_rdseed();
+
+  return ((uint64_t)a << 48)
+       | ((uint64_t)b << 32)
+       | ((uint64_t)c << 16)
+       | ((uint64_t)d <<  0);
+#elif step_word_size == 32
+  step_word_t hi = torsion_rdseed();
+  step_word_t lo = torsion_rdseed();
+
+  return ((uint64_t)hi << 32) | lo;
+#else
+  return torsion_rdseed();
 #endif
 }
 
@@ -681,15 +795,17 @@ torsion_rdseed(void) {
 
 int
 torsion_hwrand(void *dst, size_t size) {
-#if defined(HAVE_CPUIDEX) || defined(HAVE_CPUID) || defined(HAVE_DARN)
   unsigned char *data = (unsigned char *)dst;
   int has_rdrand = torsion_has_rdrand();
   int has_rdseed = torsion_has_rdseed();
-  uint64_t x;
+  step_word_t x;
   int i;
 
   if (!has_rdrand && !has_rdseed)
-    return 0;
+    goto fail;
+
+  if (has_rdseed && !torsion_rdtest())
+    goto fail;
 
   while (size > 0) {
     if (has_rdseed) {
@@ -702,21 +818,21 @@ torsion_hwrand(void *dst, size_t size) {
         x ^= torsion_rdrand();
     }
 
-    if (size < 8) {
+    if (size < sizeof(x)) {
       memcpy(data, &x, size);
       break;
     }
 
-    memcpy(data, &x, 8);
+    memcpy(data, &x, sizeof(x));
 
-    data += 8;
-    size -= 8;
+    data += sizeof(x);
+    size -= sizeof(x);
   }
 
   return 1;
-#else
-  (void)dst;
-  (void)size;
+fail:
+  if (size > 0)
+    memset(dst, 0, size);
+
   return 0;
-#endif
 }

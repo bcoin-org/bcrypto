@@ -4,8 +4,8 @@
  * https://github.com/bcoin-org/libtorsion
  */
 
-#ifndef _TORSION_AEAD_H
-#define _TORSION_AEAD_H
+#ifndef TORSION_AEAD_H
+#define TORSION_AEAD_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -30,7 +30,7 @@ extern "C" {
 #define chachapoly_final torsion_chachapoly_final
 
 /*
- * Structs
+ * Types
  */
 
 typedef struct chachapoly_s {
@@ -88,4 +88,4 @@ chachapoly_final(chachapoly_t *aead, unsigned char *tag);
 }
 #endif
 
-#endif /* _TORSION_AEAD_H */
+#endif /* TORSION_AEAD_H */

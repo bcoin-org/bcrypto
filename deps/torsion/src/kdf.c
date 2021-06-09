@@ -932,7 +932,7 @@ scrypt_derive(unsigned char *out,
               uint32_t r,
               uint32_t p,
               size_t len) {
-  int t = HASH_SHA256;
+  hash_id_t t = HASH_SHA256;
   uint8_t *B = NULL;
   uint8_t *V = NULL;
   uint8_t *XY = NULL;
@@ -965,9 +965,9 @@ scrypt_derive(unsigned char *out,
   if (len == 0)
     return 1;
 
-  B = malloc(128 * R * P);
-  XY = malloc(256 * R);
-  V = malloc(128 * R * N);
+  B = (uint8_t *)malloc(128 * R * P);
+  XY = (uint8_t *)malloc(256 * R);
+  V = (uint8_t *)malloc(128 * R * N);
 
   if (B == NULL || XY == NULL || V == NULL)
     goto fail;

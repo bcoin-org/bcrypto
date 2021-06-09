@@ -15,6 +15,7 @@
         "./deps/torsion/src/ecc.c",
         "./deps/torsion/src/encoding.c",
         "./deps/torsion/src/entropy/env.c",
+        "./deps/torsion/src/entropy/hrt.c",
         "./deps/torsion/src/entropy/hw.c",
         "./deps/torsion/src/entropy/sys.c",
         "./deps/torsion/src/hash.c",

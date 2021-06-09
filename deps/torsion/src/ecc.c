@@ -242,7 +242,7 @@ typedef struct scalar_field_s {
 
 typedef struct scalar_def_s {
   mp_bits_t bits;
-  const unsigned char n[MAX_FIELD_SIZE];
+  unsigned char n[MAX_FIELD_SIZE];
   sc_invert_f *invert;
 } scalar_def_t;
 
@@ -315,7 +315,7 @@ typedef struct prime_field_s {
 typedef struct prime_def_s {
   mp_bits_t bits;
   fe_size_t words;
-  const unsigned char p[MAX_FIELD_SIZE];
+  unsigned char p[MAX_FIELD_SIZE];
   fe_add_f *add;
   fe_sub_f *sub;
   fe_opp_f *opp;
@@ -344,12 +344,12 @@ typedef struct prime_def_s {
  */
 
 typedef struct endo_def_s {
-  const unsigned char beta[MAX_FIELD_SIZE];
-  const unsigned char lambda[MAX_SCALAR_SIZE];
-  const unsigned char b1[MAX_SCALAR_SIZE];
-  const unsigned char b2[MAX_SCALAR_SIZE];
-  const unsigned char g1[MAX_SCALAR_SIZE];
-  const unsigned char g2[MAX_SCALAR_SIZE];
+  unsigned char beta[MAX_FIELD_SIZE];
+  unsigned char lambda[MAX_SCALAR_SIZE];
+  unsigned char b1[MAX_SCALAR_SIZE];
+  unsigned char b2[MAX_SCALAR_SIZE];
+  unsigned char g1[MAX_SCALAR_SIZE];
+  unsigned char g2[MAX_SCALAR_SIZE];
   mp_bits_t prec;
 } endo_def_t;
 
@@ -358,8 +358,8 @@ typedef struct endo_def_s {
  */
 
 typedef struct subgroup_def_s {
-  const unsigned char x[MAX_FIELD_SIZE];
-  const unsigned char y[MAX_FIELD_SIZE];
+  unsigned char x[MAX_FIELD_SIZE];
+  unsigned char y[MAX_FIELD_SIZE];
   int inf;
 } subgroup_def_t;
 
@@ -429,11 +429,11 @@ typedef struct wei_def_s {
   const scalar_def_t *sc;
   unsigned int h;
   int z;
-  const unsigned char a[MAX_FIELD_SIZE];
-  const unsigned char b[MAX_FIELD_SIZE];
-  const unsigned char x[MAX_FIELD_SIZE];
-  const unsigned char y[MAX_FIELD_SIZE];
-  const unsigned char c[MAX_FIELD_SIZE];
+  unsigned char a[MAX_FIELD_SIZE];
+  unsigned char b[MAX_FIELD_SIZE];
+  unsigned char x[MAX_FIELD_SIZE];
+  unsigned char y[MAX_FIELD_SIZE];
+  unsigned char c[MAX_FIELD_SIZE];
   const subgroup_def_t *torsion;
   const endo_def_t *endo;
 } wei_def_t;
@@ -493,11 +493,11 @@ typedef struct mont_def_s {
   unsigned int h;
   int z;
   int invert;
-  const unsigned char a[MAX_FIELD_SIZE];
-  const unsigned char b[MAX_FIELD_SIZE];
-  const unsigned char x[MAX_FIELD_SIZE];
-  const unsigned char y[MAX_FIELD_SIZE];
-  const unsigned char c[MAX_FIELD_SIZE];
+  unsigned char a[MAX_FIELD_SIZE];
+  unsigned char b[MAX_FIELD_SIZE];
+  unsigned char x[MAX_FIELD_SIZE];
+  unsigned char y[MAX_FIELD_SIZE];
+  unsigned char c[MAX_FIELD_SIZE];
   const subgroup_def_t *torsion;
 } mont_def_t;
 
@@ -516,13 +516,13 @@ typedef struct ristretto_s {
 } ristretto_t;
 
 typedef struct ristretto_def_s {
-  const unsigned char qnr[MAX_FIELD_SIZE];
-  const unsigned char qnrds[MAX_FIELD_SIZE];
-  const unsigned char adm1s[MAX_FIELD_SIZE];
-  const unsigned char adm1si[MAX_FIELD_SIZE];
-  const unsigned char dmaddpa[MAX_FIELD_SIZE];
-  const unsigned char amdsi[MAX_FIELD_SIZE];
-  const unsigned char dmasi[MAX_FIELD_SIZE];
+  unsigned char qnr[MAX_FIELD_SIZE];
+  unsigned char qnrds[MAX_FIELD_SIZE];
+  unsigned char adm1s[MAX_FIELD_SIZE];
+  unsigned char adm1si[MAX_FIELD_SIZE];
+  unsigned char dmaddpa[MAX_FIELD_SIZE];
+  unsigned char amdsi[MAX_FIELD_SIZE];
+  unsigned char dmasi[MAX_FIELD_SIZE];
 } ristretto_def_t;
 
 /* qge = jacobi quartic group element */
@@ -582,11 +582,11 @@ typedef struct edwards_def_s {
   unsigned int h;
   int z;
   int invert;
-  const unsigned char a[MAX_FIELD_SIZE];
-  const unsigned char d[MAX_FIELD_SIZE];
-  const unsigned char x[MAX_FIELD_SIZE];
-  const unsigned char y[MAX_FIELD_SIZE];
-  const unsigned char c[MAX_FIELD_SIZE];
+  unsigned char a[MAX_FIELD_SIZE];
+  unsigned char d[MAX_FIELD_SIZE];
+  unsigned char x[MAX_FIELD_SIZE];
+  unsigned char y[MAX_FIELD_SIZE];
+  unsigned char c[MAX_FIELD_SIZE];
   const subgroup_def_t *torsion;
   const ristretto_def_t *ristretto;
 } edwards_def_t;
@@ -609,16 +609,15 @@ typedef xge_t rge_t;
  */
 
 static int
-bytes_lt(const unsigned char *x, const unsigned char *y, size_t len) {
+bytes_lt(const unsigned char *xp, const unsigned char *yp, size_t n) {
   /* Compute (x < y) in constant time. */
-  size_t i = len;
   uint32_t eq = 1;
   uint32_t lt = 0;
   uint32_t a, b;
 
-  while (i--) {
-    a = x[i];
-    b = y[i];
+  while (n--) {
+    a = xp[n];
+    b = yp[n];
     lt |= eq & ((a - b) >> 31);
     eq &= ((a ^ b) - 1) >> 31;
   }
@@ -627,81 +626,80 @@ bytes_lt(const unsigned char *x, const unsigned char *y, size_t len) {
 }
 
 static void
-reverse_copy(unsigned char *dst, const unsigned char *src, size_t len) {
-  size_t i = 0;
-  size_t j = len - 1;
+reverse_copy(unsigned char *zp, const unsigned char *xp, size_t n) {
+  xp += n;
 
-  while (len--)
-    dst[i++] = src[j--];
+  while (n--)
+    *zp++ = *--xp;
 }
 
 static void
-reverse_bytes(unsigned char *raw, size_t len) {
+reverse_bytes(unsigned char *zp, size_t n) {
   size_t i = 0;
-  size_t j = len - 1;
-  unsigned char tmp;
+  size_t j = n - 1;
+  unsigned char zpi;
 
-  len >>= 1;
+  n >>= 1;
 
-  while (len--) {
-    tmp = raw[i];
-    raw[i++] = raw[j];
-    raw[j--] = tmp;
+  while (n--) {
+    zpi = zp[i];
+    zp[i++] = zp[j];
+    zp[j--] = zpi;
   }
 }
 
 static int
-byte_pad_be(unsigned char *out, size_t size,
-            const unsigned char *raw, size_t len) {
-  while (len > size && raw[0] == 0x00) {
-    raw += 1;
-    len -= 1;
+byte_pad_be(unsigned char *zp, size_t zn,
+            const unsigned char *xp, size_t xn) {
+  while (xn > zn && xp[0] == 0x00) {
+    xp += 1;
+    xn -= 1;
   }
 
-  if (len > size) {
-    memset(out, 0, size);
+  if (xn > zn) {
+    memset(zp, 0, zn);
     return 0;
   }
 
-  memset(out, 0, size - len);
+  memset(zp, 0, zn - xn);
 
-  if (len > 0)
-    memcpy(out + size - len, raw, len);
+  if (xn > 0)
+    memcpy(zp + zn - xn, xp, xn);
 
   return 1;
 }
 
 static int
-byte_pad_le(unsigned char *out, size_t size,
-            const unsigned char *raw, size_t len) {
-  while (len > size && raw[len - 1] == 0x00)
-    len -= 1;
+byte_pad_le(unsigned char *zp, size_t zn,
+            const unsigned char *xp, size_t xn) {
+  while (xn > zn && xp[xn - 1] == 0x00)
+    xn -= 1;
 
-  if (len > size) {
-    memset(out, 0, size);
+  if (xn > zn) {
+    memset(zp, 0, zn);
     return 0;
   }
 
-  if (len > 0)
-    memcpy(out, raw, len);
+  if (xn > 0)
+    memcpy(zp, xp, xn);
 
-  memset(out + len, 0, size - len);
+  memset(zp + xn, 0, zn - xn);
 
   return 1;
 }
 
 static int
-byte_pad(unsigned char *out, size_t size,
-         const unsigned char *raw, size_t len,
+byte_pad(unsigned char *zp, size_t zn,
+         const unsigned char *xp, size_t xn,
          int endian) {
   int ret = 0;
 
   if (endian == 1)
-    ret = byte_pad_be(out, size, raw, len);
+    ret = byte_pad_be(zp, zn, xp, xn);
   else if (endian == -1)
-    ret = byte_pad_le(out, size, raw, len);
+    ret = byte_pad_le(zp, zn, xp, xn);
   else
-    memset(out, 0, size);
+    memset(zp, 0, zn);
 
   return ret;
 }
@@ -721,7 +719,7 @@ checked_malloc(size_t size) {
  */
 
 static void
-fe_export(const prime_field_t *fe, unsigned char *raw, const fe_t x);
+fe_export(const prime_field_t *fe, unsigned char *zp, const fe_t x);
 
 static void
 sc_zero(const scalar_field_t *sc, sc_t z) {
@@ -751,9 +749,7 @@ sc_select(const scalar_field_t *sc, sc_t z,
 
 static void
 sc_select_zero(const scalar_field_t *sc, sc_t z, const sc_t x, int flag) {
-  static const sc_t y = {0};
-
-  sc_select(sc, z, x, y, flag);
+  mpn_cnd_zero(z, x, sc->limbs, flag);
 }
 
 static int
@@ -943,15 +939,15 @@ sc_normal(const scalar_field_t *sc, sc_t z, const sc_t x) {
 }
 
 static void
-sc_import_raw(const scalar_field_t *sc, sc_t z, const unsigned char *raw) {
-  mpn_import(z, sc->limbs, raw, sc->size, sc->endian);
+sc_import_raw(const scalar_field_t *sc, sc_t z, const unsigned char *xp) {
+  mpn_import(z, sc->limbs, xp, sc->size, sc->endian);
 }
 
 static int
-sc_import(const scalar_field_t *sc, sc_t z, const unsigned char *raw) {
+sc_import(const scalar_field_t *sc, sc_t z, const unsigned char *xp) {
   int ret = 1;
 
-  sc_import_raw(sc, z, raw);
+  sc_import_raw(sc, z, xp);
 
   ret &= sc_is_canonical(sc, z);
 
@@ -962,17 +958,17 @@ sc_import(const scalar_field_t *sc, sc_t z, const unsigned char *raw) {
 
 static int
 sc_import_wide(const scalar_field_t *sc, sc_t z,
-               const unsigned char *raw, size_t len) {
+               const unsigned char *xp, size_t xn) {
   mp_limb_t zp[MAX_REDUCE_LIMBS]; /* 160 bytes */
   int ret = 1;
 
-  ASSERT(len * 8 <= (size_t)sc->shift * MP_LIMB_BITS);
+  ASSERT(xn * 8 <= (size_t)sc->shift * MP_LIMB_BITS);
 
-  mpn_import(zp, sc->shift, raw, len, sc->endian);
+  mpn_import(zp, sc->shift, xp, xn, sc->endian);
 
   ret &= mpn_sec_lt_p(zp, sc->n, sc->limbs);
 
-  if (len > sc->size)
+  if (xn > sc->size)
     ret &= mpn_sec_zero_p(zp + sc->limbs, sc->shift - sc->limbs);
 
   sc_reduce(sc, z, zp);
@@ -983,54 +979,54 @@ sc_import_wide(const scalar_field_t *sc, sc_t z,
 }
 
 static int
-sc_import_weak(const scalar_field_t *sc, sc_t z, const unsigned char *raw) {
-  sc_import_raw(sc, z, raw);
+sc_import_weak(const scalar_field_t *sc, sc_t z, const unsigned char *xp) {
+  sc_import_raw(sc, z, xp);
 
   return sc_reduce_weak(sc, z, z, 0) ^ 1;
 }
 
 static int
-sc_import_strong(const scalar_field_t *sc, sc_t z, const unsigned char *raw) {
-  return sc_import_wide(sc, z, raw, sc->size);
+sc_import_strong(const scalar_field_t *sc, sc_t z, const unsigned char *xp) {
+  return sc_import_wide(sc, z, xp, sc->size);
 }
 
 static int
-sc_import_reduce(const scalar_field_t *sc, sc_t z, const unsigned char *raw) {
+sc_import_reduce(const scalar_field_t *sc, sc_t z, const unsigned char *xp) {
   if ((sc->bits & 7) == 0)
-    return sc_import_weak(sc, z, raw);
+    return sc_import_weak(sc, z, xp);
 
-  return sc_import_strong(sc, z, raw);
+  return sc_import_strong(sc, z, xp);
 }
 
 static int
 sc_import_pad_raw(const scalar_field_t *sc, sc_t z,
-                  const unsigned char *raw, size_t len) {
+                  const unsigned char *xp, size_t xn) {
   if (sc->endian == 1) {
-    while (len > sc->size && raw[0] == 0x00) {
-      raw += 1;
-      len -= 1;
+    while (xn > sc->size && xp[0] == 0x00) {
+      xp += 1;
+      xn -= 1;
     }
   } else {
-    while (len > sc->size && raw[len - 1] == 0x00)
-      len -= 1;
+    while (xn > sc->size && xp[xn - 1] == 0x00)
+      xn -= 1;
   }
 
-  if (len > sc->size) {
+  if (xn > sc->size) {
     mpn_zero(z, sc->limbs);
     return 0;
   }
 
-  mpn_import(z, sc->limbs, raw, len, sc->endian);
+  mpn_import(z, sc->limbs, xp, xn, sc->endian);
 
   return 1;
 }
 
 static int
 sc_import_pad(const scalar_field_t *sc, sc_t z,
-              const unsigned char *raw, size_t len) {
+              const unsigned char *xp, size_t xn) {
   int ret = 1;
 
-  ret &= sc_import_pad_raw(sc, z, raw, len);
+  ret &= sc_import_pad_raw(sc, z, xp, xn);
   ret &= sc_is_canonical(sc, z);
 
   sc_select_zero(sc, z, z, ret ^ 1);
@@ -1039,8 +1035,8 @@ sc_import_pad(const scalar_field_t *sc, sc_t z,
 }
 
 static void
-sc_export(const scalar_field_t *sc, unsigned char *raw, const sc_t x) {
-  mpn_export(raw, sc->size, x, sc->limbs, sc->endian);
+sc_export(const scalar_field_t *sc, unsigned char *zp, const sc_t x) {
+  mpn_export(zp, sc->size, x, sc->limbs, sc->endian);
 }
 
 static int
@@ -1363,15 +1359,15 @@ fe_cleanse(const prime_field_t *fe, fe_t z) {
 }
 
 static int
-fe_import(const prime_field_t *fe, fe_t z, const unsigned char *raw) {
+fe_import(const prime_field_t *fe, fe_t z, const unsigned char *xp) {
   unsigned char tmp[MAX_FIELD_SIZE];
   int ret = 1;
 
   /* Swap endianness if necessary. */
   if (fe->endian == 1)
-    reverse_copy(tmp, raw, fe->size);
+    reverse_copy(tmp, xp, fe->size);
   else
-    memcpy(tmp, raw, fe->size);
+    memcpy(tmp, xp, fe->size);
 
   /* Ensure 0 <= x < p. */
   ret &= bytes_lt(tmp, fe->raw, fe->size);
@@ -1390,24 +1386,24 @@ fe_import(const prime_field_t *fe, fe_t z, const unsigned char *raw) {
 }
 
 static int
-fe_import_be(const prime_field_t *fe, fe_t z, const unsigned char *raw) {
+fe_import_be(const prime_field_t *fe, fe_t z, const unsigned char *xp) {
   unsigned char tmp[MAX_FIELD_SIZE];
 
   if (fe->endian == -1) {
-    reverse_copy(tmp, raw, fe->size);
-    raw = tmp;
+    reverse_copy(tmp, xp, fe->size);
+    xp = tmp;
   }
 
-  return fe_import(fe, z, raw);
+  return fe_import(fe, z, xp);
 }
 
 static int
 fe_import_pad(const prime_field_t *fe, fe_t z,
-              const unsigned char *raw, size_t len) {
+              const unsigned char *xp, size_t xn) {
   unsigned char tmp[MAX_FIELD_SIZE];
   int ret = 1;
 
-  ret &= byte_pad(tmp, fe->size, raw, len, fe->endian);
+  ret &= byte_pad(tmp, fe->size, xp, xn, fe->endian);
   ret &= fe_import(fe, z, tmp);
 
   cleanse(tmp, fe->size);
@@ -1416,17 +1412,17 @@ fe_import_pad(const prime_field_t *fe, fe_t z,
 }
 
 static void
-fe_export(const prime_field_t *fe, unsigned char *raw, const fe_t x) {
+fe_export(const prime_field_t *fe, unsigned char *zp, const fe_t x) {
   if (fe->from_montgomery != NULL) {
     fe_t t;
     fe->from_montgomery(t, x);
-    fe->to_bytes(raw, t);
+    fe->to_bytes(zp, t);
   } else {
-    fe->to_bytes(raw, x);
+    fe->to_bytes(zp, x);
   }
 
   if (fe->endian == 1)
-    reverse_bytes(raw, fe->size);
+    reverse_bytes(zp, fe->size);
 }
 
 static void
@@ -2288,12 +2284,12 @@ wge_select(const wei_t *ec,
            const wge_t *p2,
            int flag) {
   const prime_field_t *fe = &ec->fe;
-  int cond = int_barrier(flag != 0);
+  int m = -int_barrier(flag != 0);
 
   fe_select(fe, p3->x, p1->x, p2->x, flag);
   fe_select(fe, p3->y, p1->y, p2->y, flag);
 
-  p3->inf = (p1->inf & (cond ^ 1)) | (p2->inf & cond);
+  p3->inf = (p1->inf & ~m) | (p2->inf & m);
 }
 
 static void
@@ -2756,7 +2752,7 @@ wge_fixed_points_var(const wei_t *ec, wge_t *out, const wge_t *p) {
   const scalar_field_t *sc = &ec->sc;
   mp_bits_t steps = FIXED_STEPS(sc->bits);
   mp_bits_t size = steps * FIXED_SIZE;
-  jge_t *wnds = checked_malloc(size * sizeof(jge_t)); /* 442.2kb */
+  jge_t *wnds = (jge_t *)checked_malloc(size * sizeof(jge_t)); /* 442.2kb */
   mp_bits_t i, j;
   jge_t g;
 
@@ -2783,7 +2779,7 @@ static void
 wge_naf_points_var(const wei_t *ec, wge_t *out, const wge_t *p, int width) {
   /* NOTE: Only called on initialization. */
   int size = 1 << (width - 2);
-  jge_t *wnd = checked_malloc(size * sizeof(jge_t)); /* 216kb */
+  jge_t *wnd = (jge_t *)checked_malloc(size * sizeof(jge_t)); /* 216kb */
   jge_t j, dbl;
   int i;
 
@@ -2844,14 +2840,14 @@ jge_select(const wei_t *ec,
            const jge_t *p2,
            int flag) {
   const prime_field_t *fe = &ec->fe;
-  int cond = int_barrier(flag != 0);
+  int m = -int_barrier(flag != 0);
 
   fe_select(fe, p3->x, p1->x, p2->x, flag);
   fe_select(fe, p3->y, p1->y, p2->y, flag);
   fe_select(fe, p3->z, p1->z, p2->z, flag);
 
-  p3->inf = (p1->inf & (cond ^ 1)) | (p2->inf & cond);
-  p3->aff = (p1->aff & (cond ^ 1)) | (p2->aff & cond);
+  p3->inf = (p1->inf & ~m) | (p2->inf & m);
+  p3->aff = (p1->aff & ~m) | (p2->aff & m);
 }
 
 static void
@@ -5289,9 +5285,9 @@ static int
 mont_validate_x(const mont_t *ec, const fe_t x);
 
 static void
-_mont_to_edwards(const prime_field_t *fe, xge_t *r,
-                 const mge_t *p, const fe_t c,
-                 int invert, int isogeny);
+mont_to_edwards(const prime_field_t *fe, xge_t *r,
+                const mge_t *p, const fe_t c,
+                int invert, int isogeny);
 
 static void
 mont_mul(const mont_t *ec, pge_t *r, const pge_t *p, const sc_t k, int affine);
@@ -5596,7 +5592,7 @@ mge_set_pge(const mont_t *ec, mge_t *r, const pge_t *p, int sign) {
 
 static void
 mge_export_xge(const mont_t *ec, xge_t *r, const mge_t *p) {
-  _mont_to_edwards(&ec->fe, r, p, ec->c, ec->invert, 1);
+  mont_to_edwards(&ec->fe, r, p, ec->c, ec->invert, 1);
 }
 
 /*
@@ -6408,9 +6404,9 @@ static void
 edwards_mul(const edwards_t *ec, xge_t *r, const xge_t *p, const sc_t k);
 
 static void
-_edwards_to_mont(const prime_field_t *fe, mge_t *r,
-                 const xge_t *p, const fe_t c,
-                 int invert, int isogeny);
+edwards_to_mont(const prime_field_t *fe, mge_t *r,
+                const xge_t *p, const fe_t c,
+                int invert, int isogeny);
 
 /*
  * Edwards Extended Point
@@ -7055,7 +7051,7 @@ xge_normalize_all_var(const edwards_t *ec, xge_t *out,
                       const xge_t *in, size_t len) {
   /* Montgomery's trick. */
   const prime_field_t *fe = &ec->fe;
-  fe_t *invs = checked_malloc(len * sizeof(fe_t));
+  fe_t *invs = (fe_t *)checked_malloc(len * sizeof(fe_t));
   fe_t acc;
   size_t i;
 
@@ -7142,7 +7138,7 @@ xge_jsf_points(const edwards_t *ec, xge_t *out,
 
 static void
 xge_export_mge(const edwards_t *ec, mge_t *r, const xge_t *p) {
-  _edwards_to_mont(&ec->fe, r, p, ec->c, ec->invert, 1);
+  edwards_to_mont(&ec->fe, r, p, ec->c, ec->invert, 1);
 }
 
 /*
@@ -7686,7 +7682,7 @@ edwards_elligator2(const edwards_t *ec, xge_t *r, const fe_t u) {
 
   m.inf = 0;
 
-  _mont_to_edwards(fe, r, &m, ec->c, ec->invert, 0);
+  mont_to_edwards(fe, r, &m, ec->c, ec->invert, 0);
 }
 
 static int
@@ -7717,7 +7713,7 @@ edwards_invert2(const edwards_t *ec, fe_t u,
   int ret = 1;
   mge_t m;
 
-  _edwards_to_mont(fe, &m, p, ec->c, ec->invert, 0);
+  edwards_to_mont(fe, &m, p, ec->c, ec->invert, 0);
 
   fe_mul(fe, x0, m.x, ec->Bi);
   fe_mul(fe, y0, m.y, ec->Bi);
@@ -8019,7 +8015,7 @@ ristretto_invert(const edwards_t *ec, fe_t u,
    */
   const prime_field_t *fe = &ec->fe;
   unsigned int sign = (hint >> 4) & 15;
-  unsigned int index = hint & 15;
+  unsigned int idx = hint & 15;
   int len = ec->h >> 1;
   qge_t quartic[8];
   int i;
@@ -8033,7 +8029,7 @@ ristretto_invert(const edwards_t *ec, fe_t u,
     fe_neg(fe, quartic[len + i].t, quartic[i].t);
   }
 
-  return qge_invert(ec, u, &quartic[index % ec->h], sign);
+  return qge_invert(ec, u, &quartic[idx % ec->h], sign);
 }
 
 static void
@@ -8810,9 +8806,9 @@ qge_invert(const edwards_t *ec, fe_t r, const qge_t *p, unsigned int hint) {
  */
 
 static void
-_mont_to_edwards(const prime_field_t *fe, xge_t *r,
-                 const mge_t *p, const fe_t c,
-                 int invert, int isogeny) {
+mont_to_edwards(const prime_field_t *fe, xge_t *r,
+                const mge_t *p, const fe_t c,
+                int invert, int isogeny) {
   /* [RFC7748] Section 4.1 & 4.2. */
   /* [MONT3] Page 6, Section 2.5. */
   /* [TWISTED] Theorem 3.2, Page 4, Section 3. */
@@ -8937,9 +8933,9 @@ _mont_to_edwards(const prime_field_t *fe, xge_t *r,
 }
 
 static void
-_edwards_to_mont(const prime_field_t *fe, mge_t *r,
-                 const xge_t *p, const fe_t c,
-                 int invert, int isogeny) {
+edwards_to_mont(const prime_field_t *fe, mge_t *r,
+                const xge_t *p, const fe_t c,
+                int invert, int isogeny) {
   /* [RFC7748] Section 4.1 & 4.2. */
   /* [MONT3] Page 6, Section 2.5. */
   /* [TWISTED] Theorem 3.2, Page 4, Section 3. */
@@ -10270,10 +10266,10 @@ wei_t *
 wei_curve_create(wei_curve_id_t type) {
   wei_t *ec = NULL;
 
-  if (type < 0 || (size_t)type > ARRAY_SIZE(wei_curves))
+  if (type < 0 || (size_t)type >= ARRAY_SIZE(wei_curves))
     return NULL;
 
-  ec = checked_malloc(sizeof(wei_t));
+  ec = (wei_t *)checked_malloc(sizeof(wei_t));
 
   wei_init(ec, wei_curves[type]);
 
@@ -10316,24 +10312,25 @@ wei_curve_field_bits(const wei_t *ec) {
 
 wei__scratch_t *
 wei_scratch_create(const wei_t *ec, size_t size) {
-  wei__scratch_t *scratch = checked_malloc(sizeof(wei__scratch_t));
+  wei__scratch_t *scratch =
+    (wei__scratch_t *)checked_malloc(sizeof(wei__scratch_t));
   size_t length = ec->endo ? size : size / 2;
   size_t bits = ec->endo ? ec->sc.endo_bits : ec->sc.bits;
   size_t i;
 
   scratch->size = size;
-  scratch->wnd = checked_malloc(length * JSF_SIZE * sizeof(jge_t));
-  scratch->wnds = checked_malloc(length * sizeof(jge_t *));
-  scratch->naf = checked_malloc(length * (bits + 1) * sizeof(int));
-  scratch->nafs = checked_malloc(length * sizeof(int *));
+  scratch->wnd = (jge_t *)checked_malloc(length * JSF_SIZE * sizeof(jge_t));
+  scratch->wnds = (jge_t **)checked_malloc(length * sizeof(jge_t *));
+  scratch->naf = (int *)checked_malloc(length * (bits + 1) * sizeof(int));
+  scratch->nafs = (int **)checked_malloc(length * sizeof(int *));
 
   for (i = 0; i < length; i++) {
     scratch->wnds[i] = &scratch->wnd[i * JSF_SIZE];
     scratch->nafs[i] = &scratch->naf[i * (bits + 1)];
   }
 
-  scratch->points = checked_malloc(size * sizeof(wge_t));
-  scratch->coeffs = checked_malloc(size * sizeof(sc_t));
+  scratch->points = (wge_t *)checked_malloc(size * sizeof(wge_t));
+  scratch->coeffs = (sc_t *)checked_malloc(size * sizeof(sc_t));
 
   return scratch;
 }
@@ -10361,10 +10358,10 @@ mont_t *
 mont_curve_create(mont_curve_id_t type) {
   mont_t *ec = NULL;
 
-  if (type < 0 || (size_t)type > ARRAY_SIZE(mont_curves))
+  if (type < 0 || (size_t)type >= ARRAY_SIZE(mont_curves))
     return NULL;
 
-  ec = checked_malloc(sizeof(mont_t));
+  ec = (mont_t *)checked_malloc(sizeof(mont_t));
 
   mont_init(ec, mont_curves[type]);
 
@@ -10405,10 +10402,10 @@ edwards_t *
 edwards_curve_create(edwards_curve_id_t type) {
   edwards_t *ec = NULL;
 
-  if (type < 0 || (size_t)type > ARRAY_SIZE(edwards_curves))
+  if (type < 0 || (size_t)type >= ARRAY_SIZE(edwards_curves))
     return NULL;
 
-  ec = checked_malloc(sizeof(edwards_t));
+  ec = (edwards_t *)checked_malloc(sizeof(edwards_t));
 
   edwards_init(ec, edwards_curves[type]);
 
@@ -10451,24 +10448,25 @@ edwards_curve_field_bits(const edwards_t *ec) {
 
 edwards__scratch_t *
 edwards_scratch_create(const edwards_t *ec, size_t size) {
-  edwards__scratch_t *scratch = checked_malloc(sizeof(edwards__scratch_t));
+  edwards__scratch_t *scratch =
+    (edwards__scratch_t *)checked_malloc(sizeof(edwards__scratch_t));
   size_t length = size / 2;
   size_t bits = ec->sc.bits;
   size_t i;
 
   scratch->size = size;
-  scratch->wnd = checked_malloc(length * JSF_SIZE * sizeof(xge_t));
-  scratch->wnds = checked_malloc(length * sizeof(xge_t *));
-  scratch->naf = checked_malloc(length * (bits + 1) * sizeof(int));
-  scratch->nafs = checked_malloc(length * sizeof(int *));
+  scratch->wnd = (xge_t *)checked_malloc(length * JSF_SIZE * sizeof(xge_t));
+  scratch->wnds = (xge_t **)checked_malloc(length * sizeof(xge_t *));
+  scratch->naf = (int *)checked_malloc(length * (bits + 1) * sizeof(int));
+  scratch->nafs = (int **)checked_malloc(length * sizeof(int *));
 
   for (i = 0; i < length; i++) {
     scratch->wnds[i] = &scratch->wnd[i * JSF_SIZE];
     scratch->nafs[i] = &scratch->naf[i * (bits + 1)];
   }
 
-  scratch->points = checked_malloc(size * sizeof(xge_t));
-  scratch->coeffs = checked_malloc(size * sizeof(sc_t));
+  scratch->points = (xge_t *)checked_malloc(size * sizeof(xge_t));
+  scratch->coeffs = (sc_t *)checked_malloc(size * sizeof(sc_t));
 
   return scratch;
 }

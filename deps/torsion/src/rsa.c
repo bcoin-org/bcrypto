@@ -13,6 +13,10 @@
  *     K. Moriarty, B. Kaliski, J. Jonsson, A. Rusch
  *     https://tools.ietf.org/html/rfc8017
  *
+ *   [RFC5246] The Transport Layer Security (TLS) Protocol Version 1.2
+ *     T. Dierks, E. Rescorla
+ *     https://tools.ietf.org/html/rfc5246
+ *
  *   [FIPS186] Federal Information Processing Standards Publication 186-4
  *     National Institute of Standards and Technology
  *     https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.186-4.pdf
@@ -135,10 +139,10 @@ static const unsigned char digest_info[33][24] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
   },
-  { /* RIPEMD160 */
-    0x10, 0x30, 0x22, 0x30, 0x0a, 0x06, 0x06, 0x28,
-    0xcf, 0x06, 0x03, 0x00, 0x31, 0x05, 0x00, 0x04,
-    0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+  { /* RIPEMD160 (RFC4880) */
+    0x0f, 0x30, 0x21, 0x30, 0x09, 0x06, 0x05, 0x2b,
+    0x24, 0x03, 0x02, 0x01, 0x05, 0x00, 0x04, 0x14,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
   },
   { /* SHA1 */
     0x0f, 0x30, 0x21, 0x30, 0x09, 0x06, 0x05, 0x2b,
@@ -225,39 +229,39 @@ typedef struct rsa_priv_s {
 } rsa_priv_t;
 
 /*
- * Helpers
+ * Constant Time
  */
 
 TORSION_BARRIER(uint32_t, uint32)
 
-#define B uint32_barrier
-
 static TORSION_INLINE uint32_t
-safe_equal(uint32_t x, uint32_t y) {
-  return ((B(x) ^ B(y)) - 1) >> 31;
+cnd_select(uint32_t x, uint32_t y, uint32_t c) {
+  uint32_t m = -uint32_barrier(c != 0);
+  return (x & ~m) | (y & m);
 }
 
-static TORSION_INLINE uint32_t
-safe_select(uint32_t x, uint32_t y, uint32_t v) {
-  return (B(x) & (B(v) - 1)) | (B(y) & ~(B(v) - 1));
-}
-
-static TORSION_INLINE uint32_t
-safe_lte(uint32_t x, uint32_t y) {
-  return (B(x) - B(y) - 1) >> 31;
-}
-
-#undef B
-
-static TORSION_INLINE uint32_t
-safe_memequal(const unsigned char *x, const unsigned char *y, size_t len) {
-  uint32_t v = 0;
+static TORSION_INLINE void
+cnd_memcpy(unsigned char *z, const unsigned char *x, size_t n, uint32_t c) {
+  uint32_t m = -uint32_barrier(c != 0);
   size_t i;
 
-  for (i = 0; i < len; i++)
-    v |= (uint32_t)x[i] ^ (uint32_t)y[i];
+  for (i = 0; i < n; i++)
+    z[i] = (z[i] & ~m) | (x[i] & m);
+}
 
-  return (v - 1) >> 31;
+static TORSION_INLINE uint32_t
+sec_equal(uint32_t x, uint32_t y) {
+  return ((x ^ y) - 1) >> 31;
+}
+
+static TORSION_INLINE uint32_t
+sec_lte(uint32_t x, uint32_t y) {
+  return (x - y - 1) >> 31;
+}
+
+static TORSION_INLINE uint32_t
+sec_memequal(const unsigned char *x, const unsigned char *y, size_t n) {
+  return torsion_memequal(x, y, n);
 }
 
 /*
@@ -413,7 +417,9 @@ rsa_priv_export_dumb(unsigned char *out, size_t *out_len, const rsa_priv_t *k) {
 }
 
 static int
-rsa_priv_generate(rsa_priv_t *k, int bits, uint64_t exp,
+rsa_priv_generate(rsa_priv_t *k,
+                  mp_bits_t bits,
+                  uint64_t exp,
                   const unsigned char *entropy) {
   /* [RFC8017] Page 9, Section 3.2.
    * [FIPS186] Page 51, Appendix B.3.1
@@ -792,9 +798,10 @@ rsa_priv_set_ned(rsa_priv_t *out,
    */
   mpz_t f, nm1, nm3, g, a, b, c, p, q;
   size_t entropy_len = ENTROPY_SIZE;
-  int i, j, s;
+  mp_bits_t j, s;
   int ret = 0;
   drbg_t rng;
+  int i;
 
   mpz_init(f);
   mpz_init(nm1);
@@ -1080,7 +1087,7 @@ rsa_pub_export_dumb(unsigned char *out, size_t *out_len, const rsa_pub_t *k) {
 
 static int
 rsa_pub_verify(const rsa_pub_t *k) {
-  int bits = mpz_bitlen(k->n);
+  mp_bits_t bits = mpz_bitlen(k->n);
 
   if (mpz_sgn(k->n) < 0)
     return 0;
@@ -1111,8 +1118,8 @@ rsa_pub_encrypt(const rsa_pub_t *k,
   /* [RFC8017] Page 13, Section 5.1.1.
    *           Page 16, Section 5.2.2.
    */
-  mpz_t m;
   int ret = 0;
+  mpz_t m;
 
   mpz_init(m);
 
@@ -1138,7 +1145,8 @@ static int
 rsa_pub_veil(const rsa_pub_t *k,
              unsigned char *out,
              const unsigned char *msg,
-             size_t msg_len, int bits,
+             size_t msg_len,
+             mp_bits_t bits,
              const unsigned char *entropy) {
   mpz_t vmax, rmax, c, v, r;
   int ret = 0;
@@ -1205,7 +1213,7 @@ rsa_pub_unveil(const rsa_pub_t *k,
                unsigned char *out,
                const unsigned char *msg,
                size_t msg_len,
-               int bits) {
+               mp_bits_t bits) {
   int ret = 0;
   mpz_t v;
 
@@ -1233,7 +1241,7 @@ static int
 get_digest_info(const unsigned char **data, size_t *len, hash_id_t type) {
   const unsigned char *info;
 
-  if (type < 0 || (size_t)type > ARRAY_SIZE(digest_info))
+  if (type < 0 || (size_t)type >= ARRAY_SIZE(digest_info))
     return 0;
 
   info = digest_info[type];
@@ -1297,7 +1305,7 @@ pss_encode(unsigned char *out,
            hash_id_t type,
            const unsigned char *msg,
            size_t msg_len,
-           int embits,
+           mp_bits_t embits,
            const unsigned char *salt,
            size_t salt_len) {
   /* [RFC8017] Page 42, Section 9.1.1. */
@@ -1352,7 +1360,7 @@ pss_verify(hash_id_t type,
            const unsigned char *msg,
            size_t msg_len,
            unsigned char *em,
-           int embits,
+           mp_bits_t embits,
            size_t salt_len) {
   /* [RFC8017] Page 44, Section 9.1.2. */
   size_t hlen = hash_output_size(type);
@@ -1420,7 +1428,7 @@ pss_verify(hash_id_t type,
   hash_update(&hash, salt, slen);
   hash_final(&hash, h0, hlen);
 
-  return safe_memequal(h0, h, hlen);
+  return sec_memequal(h0, h, hlen);
 }
 
 /*
@@ -1453,7 +1461,7 @@ fail:
 
 unsigned int
 rsa_privkey_bits(const unsigned char *key, size_t key_len) {
-  unsigned int bits = 0;
+  mp_bits_t bits = 0;
   rsa_priv_t k;
 
   rsa_priv_init(&k);
@@ -1576,7 +1584,7 @@ fail:
 
 unsigned int
 rsa_pubkey_bits(const unsigned char *key, size_t key_len) {
-  unsigned int bits = 0;
+  mp_bits_t bits = 0;
   rsa_pub_t k;
 
   rsa_pub_init(&k);
@@ -1737,11 +1745,11 @@ rsa_verify(hash_id_t type,
    *           Page 45, Section 9.2.
    */
   size_t hlen = hash_output_size(type);
-  size_t i, prefix_len, tlen;
-  size_t klen = 0;
   const unsigned char *prefix;
+  size_t i, prefix_len, tlen;
   unsigned char *em = NULL;
-  uint32_t ok;
+  size_t klen = 0;
+  uint32_t ok = 1;
   rsa_pub_t k;
   int ret = 0;
 
@@ -1771,7 +1779,7 @@ rsa_verify(hash_id_t type,
   if (klen < tlen + 11)
     goto fail;
 
-  em = malloc(klen);
+  em = (unsigned char *)malloc(klen);
 
   if (em == NULL)
     goto fail;
@@ -1780,17 +1788,15 @@ rsa_verify(hash_id_t type,
     goto fail;
 
   /* EM = 0x00 || 0x01 || PS || 0x00 || T */
-  ok = 1;
-
-  ok &= safe_equal(em[0], 0x00);
-  ok &= safe_equal(em[1], 0x01);
+  ok &= sec_equal(em[0], 0x00);
+  ok &= sec_equal(em[1], 0x01);
 
   for (i = 2; i < klen - tlen - 1; i++)
-    ok &= safe_equal(em[i], 0xff);
+    ok &= sec_equal(em[i], 0xff);
 
-  ok &= safe_equal(em[klen - tlen - 1], 0x00);
-  ok &= safe_memequal(em + klen - tlen, prefix, prefix_len);
-  ok &= safe_memequal(em + klen - hlen, msg, msg_len);
+  ok &= sec_equal(em[klen - tlen - 1], 0x00);
+  ok &= sec_memequal(em + klen - tlen, prefix, prefix_len);
+  ok &= sec_memequal(em + klen - hlen, msg, msg_len);
 
   ret = (ok == 1);
 fail:
@@ -1812,8 +1818,8 @@ rsa_encrypt(unsigned char *out,
   size_t i, mlen, plen;
   size_t klen = 0;
   rsa_pub_t k;
-  drbg_t rng;
   int ret = 0;
+  drbg_t rng;
 
   drbg_init(&rng, HASH_SHA256, entropy, ENTROPY_SIZE);
 
@@ -1844,7 +1850,7 @@ rsa_encrypt(unsigned char *out,
 
   for (i = 2; i < 2 + plen; i++) {
     while (em[i] == 0x00)
-      drbg_generate(&rng, em + i, 1);
+      drbg_generate(&rng, &em[i], 1);
   }
 
   em[klen - mlen - 1] = 0x00;
@@ -1864,6 +1870,34 @@ fail:
   return ret;
 }
 
+static int
+pkcs1v15_unpad(size_t *off, const unsigned char *em, size_t len) {
+  /* [RFC8017] Page 29, Section 7.2.2. */
+  uint32_t klen = len;
+  uint32_t offset = 0;
+  uint32_t looking = 1;
+  uint32_t equals0;
+  uint32_t ok = 1;
+  uint32_t i;
+
+  /* EM = 0x00 || 0x02 || PS || 0x00 || M */
+  ok &= sec_equal(em[0], 0x00);
+  ok &= sec_equal(em[1], 0x02);
+
+  for (i = 2; i < klen; i++) {
+    equals0 = sec_equal(em[i], 0x00);
+    offset = cnd_select(offset, i, looking & equals0);
+    looking = cnd_select(looking, 0, equals0);
+  }
+
+  ok &= (looking ^ 1);
+  ok &= sec_lte(2 + 8, offset);
+
+  *off = cnd_select(0, offset + 1, ok);
+
+  return ok;
+}
+
 int
 rsa_decrypt(unsigned char *out,
             size_t *out_len,
@@ -1874,9 +1908,8 @@ rsa_decrypt(unsigned char *out,
             const unsigned char *entropy) {
   /* [RFC8017] Page 29, Section 7.2.2. */
   unsigned char *em = out;
-  uint32_t i, zero, two, index, looking;
-  uint32_t equals0, validps, valid, offset;
   size_t klen = 0;
+  size_t offset;
   rsa_priv_t k;
   int ret = 0;
 
@@ -1899,32 +1932,92 @@ rsa_decrypt(unsigned char *out,
   if (!rsa_priv_decrypt(&k, em, msg, msg_len, 1, entropy))
     goto fail;
 
-  /* EM = 0x00 || 0x02 || PS || 0x00 || M */
-  zero = safe_equal(em[0], 0x00);
-  two = safe_equal(em[1], 0x02);
-  index = 0;
-  looking = 1;
-
-  for (i = 2; i < klen; i++) {
-    equals0 = safe_equal(em[i], 0x00);
-    index = safe_select(index, i, looking & equals0);
-    looking = safe_select(looking, 0, equals0);
-  }
-
-  validps = safe_lte(2 + 8, index);
-  valid = zero & two & (looking ^ 1) & validps;
-  offset = safe_select(0, index + 1, valid);
-
-  if (valid == 0)
+  if (!pkcs1v15_unpad(&offset, em, klen))
     goto fail;
 
-  *out_len = klen - offset;
-  memmove(out, em + offset, *out_len);
+  memmove(out, em + offset, klen - offset);
 
+  *out_len = klen - offset;
   ret = 1;
 fail:
   rsa_priv_clear(&k);
   if (ret == 0) torsion_memzero(out, klen);
+  return ret;
+}
+
+int
+rsa_decrypt_key(unsigned char *out,
+                size_t out_len,
+                const unsigned char *msg,
+                size_t msg_len,
+                const unsigned char *key,
+                size_t key_len,
+                const unsigned char *entropy) {
+  /* Mitigation for Bleichenbacher's attack. */
+  /* [RFC8017] Page 29, Section 7.2.2. */
+  /* [RFC5246] Page 59, Section 7.4.7.1. */
+  unsigned char blind[ENTROPY_SIZE];
+  unsigned char *em = NULL;
+  size_t klen = 0;
+  size_t offset;
+  rsa_priv_t k;
+  int ret = 0;
+  int ok = 1;
+  drbg_t rng;
+
+  rsa_priv_init(&k);
+
+  drbg_init(&rng, HASH_SHA256, entropy, ENTROPY_SIZE);
+
+  if (out_len > RSA_MAX_MOD_SIZE - 11)
+    goto fail;
+
+  if (!rsa_priv_import(&k, key, key_len))
+    goto fail;
+
+  if (!rsa_priv_verify(&k))
+    goto fail;
+
+  klen = mpz_bytelen(k.n);
+
+  if (msg_len != klen)
+    goto fail;
+
+  if (klen < out_len + 11)
+    goto fail;
+
+  em = (unsigned char *)malloc(klen);
+
+  if (em == NULL)
+    goto fail;
+
+  drbg_generate(&rng, blind, ENTROPY_SIZE);
+
+  if (!rsa_priv_decrypt(&k, em, msg, msg_len, 1, blind))
+    goto fail;
+
+  drbg_generate(&rng, out, out_len);
+
+  ok &= pkcs1v15_unpad(&offset, em, klen);
+  ok &= sec_equal(klen - offset, out_len);
+
+  cnd_memcpy(out, em + klen - out_len, out_len, ok);
+
+  ret = 1;
+fail:
+  rsa_priv_clear(&k);
+
+  torsion_memzero(&rng, sizeof(rng));
+  torsion_memzero(blind, sizeof(blind));
+
+  if (em != NULL) {
+    torsion_memzero(em, klen);
+    free(em);
+  }
+
+  if (ret == 0)
+    torsion_memzero(out, out_len);
+
   return ret;
 }
 
@@ -1940,16 +2033,19 @@ rsa_sign_pss(unsigned char *out,
              const unsigned char *entropy) {
   /* [RFC8017] Page 33, Section 8.1.1. */
   size_t hlen = hash_output_size(type);
+  unsigned char blind[ENTROPY_SIZE];
   unsigned char *salt = NULL;
   unsigned char *em = out;
   size_t klen = 0;
+  mp_bits_t bits;
   size_t emlen;
   rsa_priv_t k;
-  drbg_t rng;
   int ret = 0;
-  int bits;
+  drbg_t rng;
 
   rsa_priv_init(&k);
+
+  drbg_init(&rng, HASH_SHA256, entropy, ENTROPY_SIZE);
 
   if (!hash_has_backend(type))
     goto fail;
@@ -1980,23 +2076,24 @@ rsa_sign_pss(unsigned char *out,
     goto fail;
 
   if (salt_len > 0) {
-    salt = malloc(salt_len);
+    salt = (unsigned char *)malloc(salt_len);
 
     if (salt == NULL)
       goto fail;
   }
 
-  drbg_init(&rng, HASH_SHA512, entropy, ENTROPY_SIZE);
   drbg_generate(&rng, salt, salt_len);
 
   if (!pss_encode(em, &emlen, type, msg, msg_len, bits - 1, salt, salt_len))
     goto fail;
 
+  drbg_generate(&rng, blind, ENTROPY_SIZE);
+
   /* Note that `em` may be one byte less
    * than the modulus size in the case
    * of (bits - 1) mod 8 == 0.
    */
-  if (!rsa_priv_decrypt(&k, out, em, emlen, 1, entropy))
+  if (!rsa_priv_decrypt(&k, out, em, emlen, 1, blind))
     goto fail;
 
   *out_len = klen;
@@ -2004,6 +2101,7 @@ rsa_sign_pss(unsigned char *out,
 fail:
   rsa_priv_clear(&k);
   torsion_memzero(&rng, sizeof(rng));
+  torsion_memzero(blind, sizeof(blind));
   if (salt != NULL) free(salt);
   if (ret == 0) torsion_memzero(out, klen);
   return ret;
@@ -2022,9 +2120,9 @@ rsa_verify_pss(hash_id_t type,
   size_t hlen = hash_output_size(type);
   unsigned char *em = NULL;
   size_t klen = 0;
+  mp_bits_t bits;
   rsa_pub_t k;
   int ret = 0;
-  int bits;
 
   rsa_pub_init(&k);
 
@@ -2054,7 +2152,7 @@ rsa_verify_pss(hash_id_t type,
   if (salt_len > klen)
     goto fail;
 
-  em = malloc(klen);
+  em = (unsigned char *)malloc(klen);
 
   if (em == NULL)
     goto fail;
@@ -2107,8 +2205,8 @@ rsa_encrypt_oaep(unsigned char *out,
   size_t slen, dlen;
   rsa_pub_t k;
   hash_t hash;
-  drbg_t rng;
   int ret = 0;
+  drbg_t rng;
 
   rsa_pub_init(&k);
 
@@ -2149,8 +2247,8 @@ rsa_encrypt_oaep(unsigned char *out,
 
   db[dlen - mlen - 1] = 0x01;
 
-  if (mlen > 0)
-    memcpy(db + dlen - mlen, msg, mlen);
+  if (msg_len > 0)
+    memcpy(db + dlen - mlen, msg, msg_len);
 
   mgf1xor(type, db, dlen, seed, slen);
   mgf1xor(type, seed, slen, db, dlen);
@@ -2185,7 +2283,7 @@ rsa_decrypt_oaep(unsigned char *out,
   size_t i, slen, dlen, rlen;
   size_t hlen = hash_output_size(type);
   size_t klen = 0;
-  uint32_t zero, lvalid, looking, index;
+  uint32_t zero, lvalid, looking, offset;
   uint32_t invalid, valid, equals0, equals1;
   unsigned char expect[HASH_MAX_OUTPUT_SIZE];
   rsa_priv_t k;
@@ -2219,7 +2317,7 @@ rsa_decrypt_oaep(unsigned char *out,
   hash_final(&hash, expect, hlen);
 
   /* EM = 0x00 || (seed) || (Hash(L) || PS || 0x01 || M) */
-  zero = safe_equal(em[0], 0x00);
+  zero = sec_equal(em[0], 0x00);
   seed = &em[1];
   slen = hlen;
   db = &em[hlen + 1];
@@ -2229,20 +2327,20 @@ rsa_decrypt_oaep(unsigned char *out,
   mgf1xor(type, db, dlen, seed, slen);
 
   lhash = &db[0];
-  lvalid = safe_memequal(lhash, expect, hlen);
+  lvalid = sec_memequal(lhash, expect, hlen);
   rest = &db[hlen];
   rlen = dlen - hlen;
 
   looking = 1;
-  index = 0;
+  offset = 0;
   invalid = 0;
 
   for (i = 0; i < rlen; i++) {
-    equals0 = safe_equal(rest[i], 0x00);
-    equals1 = safe_equal(rest[i], 0x01);
-    index = safe_select(index, i, looking & equals1);
-    looking = safe_select(looking, 0, equals1);
-    invalid = safe_select(invalid, 1, looking & (equals0 ^ 1));
+    equals0 = sec_equal(rest[i], 0x00);
+    equals1 = sec_equal(rest[i], 0x01);
+    offset = cnd_select(offset, i, looking & equals1);
+    looking = cnd_select(looking, 0, equals1);
+    invalid = cnd_select(invalid, 1, looking & (equals0 ^ 1));
   }
 
   valid = zero & lvalid & (invalid ^ 1) & (looking ^ 1);
@@ -2250,9 +2348,11 @@ rsa_decrypt_oaep(unsigned char *out,
   if (valid == 0)
     goto fail;
 
-  *out_len = rlen - (index + 1);
-  memmove(out, rest + index + 1, *out_len);
+  offset += 1;
 
+  memmove(out, rest + offset, rlen - offset);
+
+  *out_len = rlen - offset;
   ret = 1;
 fail:
   rsa_priv_clear(&k);
@@ -2271,8 +2371,8 @@ rsa_veil(unsigned char *out,
          size_t key_len,
          const unsigned char *entropy) {
   rsa_pub_t k;
-  drbg_t rng;
   int ret = 0;
+  drbg_t rng;
 
   rsa_pub_init(&k);
 

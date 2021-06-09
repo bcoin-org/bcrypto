@@ -10,22 +10,31 @@ prefix="$1"
 
 test -f package.json
 test -d "$prefix"
-test -d "$prefix/src"
+test -d "$prefix/cmake"
 test -d "$prefix/include"
+test -d "$prefix/src"
 
 if test ! -d deps/torsion; then
   mkdir deps/torsion
 fi
 
-if test ! -d deps/torsion/src; then
-  mkdir deps/torsion/src
+if test ! -d deps/torsion/cmake; then
+  mkdir deps/torsion/cmake
 fi
 
 if test ! -d deps/torsion/include; then
   mkdir deps/torsion/include
 fi
 
+if test ! -d deps/torsion/src; then
+  mkdir deps/torsion/src
+fi
+
+cp -f "$prefix/CMakeLists.txt" deps/torsion/
 cp -f "$prefix/LICENSE" deps/torsion/
+
+rsync -av "$prefix/cmake/" deps/torsion/cmake/
+rsync -av "$prefix/include/" deps/torsion/include/
 
 rsync -av --exclude '*.o' \
           --exclude '*.lo' \
@@ -34,5 +43,3 @@ rsync -av --exclude '*.o' \
           --exclude '.libs' \
           --exclude '*.md' \
           "$prefix/src/" deps/torsion/src/
-
-rsync -av "$prefix/include/" deps/torsion/include/

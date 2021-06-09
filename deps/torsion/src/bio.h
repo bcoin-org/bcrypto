@@ -14,8 +14,8 @@
  * the read/write.
  */
 
-#ifndef _TORSION_BIO_H
-#define _TORSION_BIO_H
+#ifndef TORSION_BIO_H
+#define TORSION_BIO_H
 
 #include <limits.h>
 #include <stddef.h>
@@ -286,4 +286,4 @@ increment_be_var(uint8_t *x, size_t n) {
   }
 }
 
-#endif /* _TORSION_BIO_H */
+#endif /* TORSION_BIO_H */

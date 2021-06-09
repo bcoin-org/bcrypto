@@ -55,11 +55,7 @@
  * be re-enabled by defining TORSION_USE_PERFDATA.
  */
 
-#if !defined(_WIN32) && !defined(_GNU_SOURCE)
-/* For gethostname(3), getsid(3), getpgid(3),
-   clock_gettime(2), dl_iterate_phdr(3). */
-#  define _GNU_SOURCE
-#endif
+#include "ftm.h"
 
 #include <errno.h>
 #include <limits.h>
@@ -70,9 +66,12 @@
 #include "entropy.h"
 
 #undef HAVE_MANUAL_ENTROPY
+#undef HAVE_GETTIMEOFDAY
+#undef HAVE_GETRUSAGE
 #undef HAVE_DLITERATEPHDR
 #undef HAVE_GETIFADDRS
 #undef HAVE_GETAUXVAL
+#undef HAVE_REALTIME
 #undef HAVE_SYSCTL
 #undef HAVE_CLOCK_GETTIME
 #undef HAVE_GETHOSTNAME
@@ -88,9 +87,11 @@
 #  pragma comment(lib, "kernel32.lib")
 #  pragma comment(lib, "psapi.lib")
 #  define HAVE_MANUAL_ENTROPY
+#elif defined(__VMS)
+/* Unsupported. */
 #elif defined(__vxworks)
 /* Unsupported. */
-#elif defined(__Fuchsia__) || defined(__fuchsia__)
+#elif defined(__Fuchsia__)
 /* Unsupported. */
 #elif defined(__CloudABI__)
 /* Could gather static entropy from filesystem in the future. */
@@ -98,44 +99,46 @@
 /* No reliable entropy sources available for emscripten. */
 #elif defined(__wasi__)
 /* Could gather static entropy from args/env in the future. */
-#elif defined(__unix) || defined(__unix__)     \
-  || (defined(__APPLE__) && defined(__MACH__))
-#  include <sys/types.h> /* open */
-#  include <sys/stat.h> /* open, stat */
-#  include <sys/time.h> /* gettimeofday, timeval */
-#  include <sys/resource.h> /* getrusage */
+#else
+#  include <sys/types.h> /* mode_t, off_t, pid_t */
+#  include <sys/stat.h> /* stat, fstat */
 #  include <sys/utsname.h> /* uname */
-#  include <fcntl.h> /* open */
-#  include <unistd.h> /* stat, read, close, gethostname */
+#  include <fcntl.h> /* open, O_* */
+#  include <unistd.h> /* read, close, get{*id,cwd,hostname} */
 #  include <time.h> /* clock_gettime */
-#  ifdef __linux__
-#    if defined(__GLIBC_PREREQ)
-#      define TORSION_GLIBC_PREREQ(maj, min) __GLIBC_PREREQ(maj, min)
-#    else
-#      define TORSION_GLIBC_PREREQ(maj, min) 0
-#    endif
-#    if TORSION_GLIBC_PREREQ(2, 3)
-#      if defined(__GNUC__) && defined(__SIZEOF_INT128__)
-#        include <link.h> /* dl_iterate_phdr */
-#        define HAVE_DLITERATEPHDR
+#  if defined(_XOPEN_VERSION) && _XOPEN_VERSION >= 500
+#    include <sys/time.h> /* gettimeofday */
+#    include <sys/resource.h> /* getrusage */
+#    define HAVE_GETTIMEOFDAY
+#    define HAVE_GETRUSAGE
+#  endif
+#  if defined(__GLIBC__) && defined(__GLIBC_PREREQ)
+#    if __GLIBC_PREREQ(2, 3)
+#      if defined(__GNUC__) && defined(__SIZEOF_POINTER__)
+#        if __SIZEOF_POINTER__ == 4 || defined(__SIZEOF_INT128__)
+#          include <link.h> /* dl_iterate_phdr */
+#          define HAVE_DLITERATEPHDR
+#        endif
 #      endif
-#      include <sys/socket.h> /* AF_INET{,6} */
+#      include <sys/socket.h> /* sockaddr, AF_INET{,6} */
 #      include <netinet/in.h> /* sockaddr_in{,6} */
 #      include <ifaddrs.h> /* getifaddrs */
 #      define HAVE_GETIFADDRS
 #    endif
-#    if TORSION_GLIBC_PREREQ(2, 16)
+#    if __GLIBC_PREREQ(2, 16)
 #      include <sys/auxv.h> /* getauxval */
 #      define HAVE_GETAUXVAL
 #    endif
-#  endif
-#  if defined(__APPLE__)     \
-   || defined(__FreeBSD__)   \
-   || defined(__OpenBSD__)   \
-   || defined(__NetBSD__)    \
-   || defined(__DragonFly__)
-#    include <sys/sysctl.h> /* sysctl */
-#    include <sys/socket.h> /* AF_INET{,6} */
+#    if __GLIBC_PREREQ(2, 17)
+#      define HAVE_REALTIME
+#    endif
+#  elif defined(__APPLE__)     \
+     || defined(__FreeBSD__)   \
+     || defined(__OpenBSD__)   \
+     || defined(__NetBSD__)    \
+     || defined(__DragonFly__)
+#    include <sys/sysctl.h> /* sysctl, {CTL,HW,KERN,VM}_* */
+#    include <sys/socket.h> /* sockaddr, AF_INET{,6} */
 #    include <netinet/in.h> /* sockaddr_in{,6} */
 #    include <ifaddrs.h> /* getifaddrs */
 #    define HAVE_SYSCTL
@@ -155,12 +158,14 @@
 extern char **environ;
 #    endif
 #  endif
-#  ifdef _POSIX_VERSION
-#    if _POSIX_VERSION >= 199309L
+#  if defined(_POSIX_TIMERS) && (_POSIX_TIMERS + 0) > 0
+#    if !defined(__GLIBC__) || defined(HAVE_REALTIME)
 #      if defined(CLOCK_REALTIME) || defined(CLOCK_MONOTONIC)
 #        define HAVE_CLOCK_GETTIME
 #      endif
 #    endif
+#  endif
+#  ifdef _POSIX_VERSION
 #    if _POSIX_VERSION >= 200112L
 #      define HAVE_GETHOSTNAME
 #    endif
@@ -205,11 +210,12 @@ static void
 sha512_write_ptr(sha512_t *hash, const void *ptr) {
 #if defined(UINTPTR_MAX)
   uintptr_t uptr = (uintptr_t)ptr;
-#else
-  size_t uptr = (size_t)ptr;
-#endif
 
   sha512_write(hash, &uptr, sizeof(uptr));
+#else
+  (void)hash;
+  (void)ptr;
+#endif
 }
 
 #ifndef _WIN32
@@ -279,7 +285,7 @@ done:
 #ifdef HAVE_DLITERATEPHDR
 static int
 sha512_write_phdr(struct dl_phdr_info *info, size_t size, void *data) {
-  sha512_t *hash = data;
+  sha512_t *hash = (sha512_t *)data;
 
   (void)size;
 
@@ -430,7 +436,7 @@ sha512_write_cpuids(sha512_t *hash) {
 static void
 sha512_write_perfdata(sha512_t *hash, size_t max) {
   size_t size = max < 80 ? max : max / 40;
-  BYTE *data = malloc(size);
+  BYTE *data = (BYTE *)malloc(size);
   DWORD nread;
   LSTATUS ret;
 
@@ -453,7 +459,7 @@ sha512_write_perfdata(sha512_t *hash, size_t max) {
     if (size > max)
       size = max;
 
-    data = realloc(data, size);
+    data = (BYTE *)realloc(data, size);
 
     if (data == NULL)
       break;
@@ -523,12 +529,16 @@ sha512_write_static_env(sha512_t *hash) {
   sha512_write_int(hash, _XOPEN_VERSION);
 #endif
 
-#ifdef __VERSION__
-  sha512_write_string(hash, __VERSION__);
-#endif
-
 #ifdef PACKAGE_STRING
   sha512_write_string(hash, PACKAGE_STRING);
+#endif
+
+#ifdef __STDC_VERSION__
+  sha512_write_int(hash, __STDC_VERSION__);
+#endif
+
+#ifdef __cplusplus
+  sha512_write_int(hash, __cplusplus + 0L);
 #endif
 
   /* CPU features. */
@@ -604,7 +614,7 @@ sha512_write_static_env(sha512_t *hash) {
       ret = GetAdaptersAddresses(AF_UNSPEC, flags, NULL, addrs, &size);
 
       if (ret == ERROR_BUFFER_OVERFLOW) {
-        addrs = realloc(addrs, size);
+        addrs = (IP_ADAPTER_ADDRESSES *)realloc(addrs, size);
 
         if (addrs == NULL)
           break;
@@ -1010,6 +1020,7 @@ sha512_write_dynamic_env(sha512_t *hash) {
   sha512_write_perfdata(hash, 10000000);
 #endif
 #else /* !_WIN32 */
+#ifdef HAVE_GETTIMEOFDAY
   /* System time. */
   {
     struct timeval tv;
@@ -1019,6 +1030,7 @@ sha512_write_dynamic_env(sha512_t *hash) {
     if (gettimeofday(&tv, NULL) == 0)
       sha512_write(hash, &tv, sizeof(tv));
   }
+#endif /* HAVE_GETTIMEOFDAY */
 
 #ifdef HAVE_CLOCK_GETTIME
   /* Various clocks. */
@@ -1054,6 +1066,7 @@ sha512_write_dynamic_env(sha512_t *hash) {
   }
 #endif /* HAVE_CLOCK_GETTIME */
 
+#ifdef HAVE_GETRUSAGE
   /* Current resource usage. */
   {
     struct rusage usage;
@@ -1063,11 +1076,22 @@ sha512_write_dynamic_env(sha512_t *hash) {
     if (getrusage(RUSAGE_SELF, &usage) == 0)
       sha512_write(hash, &usage, sizeof(usage));
 
+#ifdef RUSAGE_CHILDREN
+    if (getrusage(RUSAGE_CHILDREN, &usage) == 0)
+      sha512_write(hash, &usage, sizeof(usage));
+#endif
+
 #ifdef RUSAGE_THREAD
     if (getrusage(RUSAGE_THREAD, &usage) == 0)
       sha512_write(hash, &usage, sizeof(usage));
 #endif
+
+#if defined(RUSAGE_LWP) && !defined(RUSAGE_THREAD)
+    if (getrusage(RUSAGE_LWP, &usage) == 0)
+      sha512_write(hash, &usage, sizeof(usage));
+#endif
   }
+#endif
 
 #ifdef __linux__
   sha512_write_file(hash, "/proc/diskstats");
@@ -1140,7 +1164,7 @@ torsion_envrand(unsigned char *seed) {
   sha512_final(&hash, seed);
   return 1;
 #else /* !HAVE_MANUAL_ENTROPY */
-  (void)seed;
+  memset(seed, 0, 64);
   return 0;
 #endif /* !HAVE_MANUAL_ENTROPY */
 }

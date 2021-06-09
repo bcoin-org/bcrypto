@@ -4,8 +4,8 @@
  * https://github.com/bcoin-org/libtorsion
  */
 
-#ifndef _TORSION_MAC_H
-#define _TORSION_MAC_H
+#ifndef TORSION_MAC_H
+#define TORSION_MAC_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -29,21 +29,25 @@ extern "C" {
 #define siphash256_sum torsion_siphash256_sum
 
 /*
- * Structs
+ * Types
  */
+
+struct poly1305_32_s {
+  uint32_t r[5];
+  uint32_t h[5];
+  uint32_t pad[4];
+};
+
+struct poly1305_64_s {
+  uint64_t r[3];
+  uint64_t h[3];
+  uint64_t pad[2];
+};
 
 typedef struct poly1305_s {
   union {
-    struct poly1305_32_s {
-      uint32_t r[5];
-      uint32_t h[5];
-      uint32_t pad[4];
-    } u32;
-    struct poly1305_64_s {
-      uint64_t r[3];
-      uint64_t h[3];
-      uint64_t pad[2];
-    } u64;
+    struct poly1305_32_s u32;
+    struct poly1305_64_s u64;
   } state;
   unsigned char block[16];
   size_t pos;
@@ -88,4 +92,4 @@ siphash256_sum(uint64_t num, const unsigned char *key);
 }
 #endif
 
-#endif /* _TORSION_MAC_H */
+#endif /* TORSION_MAC_H */

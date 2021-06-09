@@ -4,18 +4,18 @@
  * https://github.com/bcoin-org/libtorsion
  */
 
-#ifndef _TORSION_BF_H
-#define _TORSION_BF_H
+#ifndef TORSION_BF_H
+#define TORSION_BF_H
 
 #include <stddef.h>
 #include <stdint.h>
 #include <torsion/cipher.h>
 
-#define blowfish_stream2word __torsion_blowfish_stream2word
-#define blowfish_expand0state __torsion_blowfish_expand0state
-#define blowfish_expandstate __torsion_blowfish_expandstate
-#define blowfish_enc __torsion_blowfish_enc
-#define blowfish_dec __torsion_blowfish_dec
+#define blowfish_stream2word torsion__blowfish_stream2word
+#define blowfish_expand0state torsion__blowfish_expand0state
+#define blowfish_expandstate torsion__blowfish_expandstate
+#define blowfish_enc torsion__blowfish_enc
+#define blowfish_dec torsion__blowfish_dec
 
 uint32_t
 blowfish_stream2word(const unsigned char *data, size_t len, size_t *off);
@@ -36,4 +36,4 @@ blowfish_enc(const blowfish_t *ctx, uint32_t *data, size_t len);
 void
 blowfish_dec(const blowfish_t *ctx, uint32_t *data, size_t len);
 
-#endif /* _TORSION_BF_H */
+#endif /* TORSION_BF_H */

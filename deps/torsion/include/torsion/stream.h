@@ -4,8 +4,8 @@
  * https://github.com/bcoin-org/libtorsion
  */
 
-#ifndef _TORSION_STREAM_H
-#define _TORSION_STREAM_H
+#ifndef TORSION_STREAM_H
+#define TORSION_STREAM_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -29,7 +29,7 @@ extern "C" {
 #define salsa20_derive torsion_salsa20_derive
 
 /*
- * Structs
+ * Types
  */
 
 typedef struct arc4_s {
@@ -115,4 +115,4 @@ salsa20_derive(unsigned char *out,
 }
 #endif
 
-#endif /* _TORSION_STREAM_H */
+#endif /* TORSION_STREAM_H */

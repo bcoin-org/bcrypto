@@ -4,8 +4,8 @@
  * https://github.com/bcoin-org/libtorsion
  */
 
-#ifndef _TORSION_RSA_H
-#define _TORSION_RSA_H
+#ifndef TORSION_RSA_H
+#define TORSION_RSA_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -14,6 +14,7 @@ extern "C" {
 #include <stddef.h>
 #include <stdint.h>
 #include "common.h"
+#include "hash.h"
 
 /*
  * Symbol Aliases
@@ -43,7 +44,7 @@ extern "C" {
 #define rsa_unveil torsion_rsa_unveil
 
 /*
- * Defs
+ * Definitions
  */
 
 #define RSA_DEFAULT_MOD_BITS 2048
@@ -184,6 +185,15 @@ rsa_decrypt(unsigned char *out,
             const unsigned char *entropy);
 
 TORSION_EXTERN int
+rsa_decrypt_key(unsigned char *out,
+                size_t out_len,
+                const unsigned char *msg,
+                size_t msg_len,
+                const unsigned char *key,
+                size_t key_len,
+                const unsigned char *entropy);
+
+TORSION_EXTERN int
 rsa_sign_pss(unsigned char *out,
              size_t *out_len,
              hash_id_t type,
@@ -251,4 +261,4 @@ rsa_unveil(unsigned char *out,
 }
 #endif
 
-#endif /* _TORSION_RSA_H */
+#endif /* TORSION_RSA_H */

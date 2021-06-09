@@ -553,7 +553,7 @@ gost94_p(uint8_t *zp, const uint8_t *xp) {
 }
 
 static void
-gost94_s(uint8_t *zp, const uint8_t *xp) {
+gost94_z(uint8_t *zp, const uint8_t *xp) {
   uint8_t z30 = xp[0] ^ xp[2] ^ xp[4] ^ xp[6] ^ xp[24] ^ xp[30];
   uint8_t z31 = xp[1] ^ xp[3] ^ xp[5] ^ xp[7] ^ xp[25] ^ xp[31];
   int i;
@@ -608,14 +608,14 @@ gost94_compress(gost94_t *ctx, const uint8_t *mp) {
   gost94_e(tp + 24, kp);
 
   for (i = 0; i < 12; i++)
-    gost94_s(tp, tp);
+    gost94_z(tp, tp);
 
   gost94_x(tp, tp, mp);
-  gost94_s(tp, tp);
+  gost94_z(tp, tp);
   gost94_x(sp, sp, tp);
 
   for (i = 0; i < 61; i++)
-    gost94_s(sp, sp);
+    gost94_z(sp, sp);
 }
 
 static void

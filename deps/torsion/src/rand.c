@@ -34,6 +34,8 @@
  * [2] https://github.com/bitcoin/bitcoin/blob/master/src/random.cpp
  */
 
+#include "entropy/ftm.h"
+
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
@@ -50,17 +52,6 @@
  */
 
 static void
-sha512_update_ptr(sha512_t *hash, const void *ptr) {
-#if defined(UINTPTR_MAX)
-  uintptr_t uptr = (uintptr_t)ptr;
-#else
-  size_t uptr = (size_t)ptr;
-#endif
-
-  sha512_update(hash, &uptr, sizeof(uptr));
-}
-
-static void
 sha512_update_tsc(sha512_t *hash) {
   uint64_t tsc = torsion_rdtsc();
 
@@ -72,10 +63,10 @@ sha512_update_tsc(sha512_t *hash) {
  */
 
 typedef struct rng_s {
-  uint64_t key[4];
+  uint32_t key[8];
   uint64_t zero;
   uint64_t nonce;
-  uint32_t pool[16];
+  uint32_t pool[128];
   size_t pos;
   int rdrand;
 } rng_t;
@@ -88,13 +79,11 @@ rng_init(rng_t *rng) {
   memset(rng, 0, sizeof(*rng));
 
   sha512_init(&hash);
-  sha512_update_ptr(&hash, rng);
-  sha512_update_ptr(&hash, seed);
   sha512_update_tsc(&hash);
 
   /* OS entropy (64 bytes). */
   if (!torsion_sysrand(seed, 64))
-    return 0;
+    return 0; /* LCOV_EXCL_LINE */
 
   sha512_update(&hash, seed, 64);
   sha512_update_tsc(&hash);
@@ -140,26 +129,42 @@ rng_init(rng_t *rng) {
 }
 
 static void
-rng_generate(rng_t *rng, void *dst, size_t size) {
-  unsigned char *key = (unsigned char *)rng->key;
-  unsigned char *nonce = (unsigned char *)&rng->nonce;
+rng_crypt(const rng_t *rng, void *data, size_t size) {
   chacha20_t ctx;
 
+  chacha20_init(&ctx, (const unsigned char *)rng->key, 32,
+                      (const unsigned char *)&rng->nonce, 8,
+                      rng->zero);
+
+  chacha20_crypt(&ctx, (unsigned char *)data,
+                       (const unsigned char *)data,
+                       size);
+
+  torsion_memzero(&ctx, sizeof(ctx));
+}
+
+static void
+rng_read(const rng_t *rng, void *dst, size_t size) {
   if (size > 0)
     memset(dst, 0, size);
 
+  rng_crypt(rng, dst, size);
+}
+
+static void
+rng_generate(rng_t *rng, void *dst, size_t size) {
   /* Read the keystream. */
-  chacha20_init(&ctx, key, 32, nonce, 8, rng->zero);
-  chacha20_crypt(&ctx, dst, dst, size);
+  rng_read(rng, dst, size);
 
   /* Mix in some user entropy. */
-  rng->key[0] ^= size;
+  rng->key[0] ^= (uint32_t)size;
+  rng->key[1] ^= (uint32_t)((uint64_t)size >> 32);
 
   /* Mix in some hardware entropy. We sacrifice
      only 32 bits here, lest RDRAND is backdoored.
      See: https://pastebin.com/A07q3nL3 */
   if (rng->rdrand)
-    rng->key[3] ^= (uint32_t)torsion_rdrand();
+    rng->key[7] ^= torsion_rdrand32();
 
   /* Re-key immediately. */
   rng->nonce++;
@@ -171,21 +176,38 @@ rng_generate(rng_t *rng, void *dst, size_t size) {
      there's probably not really a difference in
      terms of security, as the outputs in both
      scenarios are dependent on the key. */
-  chacha20_init(&ctx, key, 32, nonce, 8, rng->zero);
-  chacha20_crypt(&ctx, key, key, 32);
-
-  /* Cleanse the chacha state. */
-  torsion_memzero(&ctx, sizeof(ctx));
+  rng_crypt(rng, rng->key, 32);
 }
 
 static uint32_t
 rng_random(rng_t *rng) {
-  if ((rng->pos & 15) == 0) {
-    rng_generate(rng, rng->pool, 64);
-    rng->pos = 0;
+  uint32_t x;
+  size_t i;
+
+  if (rng->pos == 0) {
+    /* Read the keystream. */
+    rng_read(rng, rng->pool, 512);
+
+    /* Mix in some hardware entropy. */
+    if (rng->rdrand)
+      rng->key[7] ^= torsion_rdrand32();
+
+    /* Re-key every 512 bytes. */
+    for (i = 0; i < 8; i++)
+      rng->key[i] ^= rng->pool[120 + i];
+
+    for (i = 0; i < 8; i++)
+      rng->pool[120 + i] = 0;
+
+    rng->nonce++;
+    rng->pos = 120;
   }
 
-  return rng->pool[rng->pos++];
+  x = rng->pool[--rng->pos];
+
+  rng->pool[rng->pos] = 0;
+
+  return x;
 }
 
 static uint32_t
@@ -221,7 +243,7 @@ static void
 rng_global_lock(void) {
 #ifdef TORSION_USE_LOCK
   if (pthread_mutex_lock(&rng_lock) != 0)
-    torsion_abort();
+    torsion_abort(); /* LCOV_EXCL_LINE */
 #endif
 }
 
@@ -229,7 +251,7 @@ static void
 rng_global_unlock(void) {
 #ifdef TORSION_USE_LOCK
   if (pthread_mutex_unlock(&rng_lock) != 0)
-    torsion_abort();
+    torsion_abort(); /* LCOV_EXCL_LINE */
 #endif
 }
 
@@ -240,16 +262,16 @@ rng_global_unlock(void) {
 static TORSION_TLS struct {
   rng_t rng;
   int started;
-  uint64_t pid;
+  long pid;
 } rng_state;
 
 static int
 rng_global_init(void) {
-  uint64_t pid = torsion_getpid();
+  long pid = torsion_getpid();
 
   if (!rng_state.started || rng_state.pid != pid) {
     if (!rng_init(&rng_state.rng))
-      return 0;
+      return 0; /* LCOV_EXCL_LINE */
 
     rng_state.started = 1;
     rng_state.pid = pid;
@@ -271,10 +293,16 @@ int
 torsion_getrandom(void *dst, size_t size) {
   rng_global_lock();
 
+  /* LCOV_EXCL_START */
   if (!rng_global_init()) {
+    if (size > 0)
+      memset(dst, 0, size);
+
     rng_global_unlock();
+
     return 0;
   }
+  /* LCOV_EXCL_STOP */
 
   rng_generate(&rng_state.rng, dst, size);
   rng_global_unlock();
@@ -286,10 +314,13 @@ int
 torsion_random(uint32_t *num) {
   rng_global_lock();
 
+  /* LCOV_EXCL_START */
   if (!rng_global_init()) {
+    *num = 0;
     rng_global_unlock();
     return 0;
   }
+  /* LCOV_EXCL_STOP */
 
   *num = rng_random(&rng_state.rng);
 
@@ -302,10 +333,13 @@ int
 torsion_uniform(uint32_t *num, uint32_t max) {
   rng_global_lock();
 
+  /* LCOV_EXCL_START */
   if (!rng_global_init()) {
+    *num = 0;
     rng_global_unlock();
     return 0;
   }
+  /* LCOV_EXCL_STOP */
 
   *num = rng_uniform(&rng_state.rng, max);
 
@@ -321,20 +355,15 @@ torsion_uniform(uint32_t *num, uint32_t max) {
 int
 torsion_threadsafety(void) {
 #if defined(TORSION_HAVE_TLS)
-  return TORSION_THREAD_SAFETY_TLS;
+  return TORSION_THREADSAFETY_TLS;
 #elif defined(TORSION_HAVE_PTHREAD)
-  return TORSION_THREAD_SAFETY_MUTEX;
+  return TORSION_THREADSAFETY_MUTEX;
 #else
-  return TORSION_THREAD_SAFETY_NONE;
+  return TORSION_THREADSAFETY_NONE;
 #endif
 }
 
-uint64_t
+void *
 torsion_randomaddr(void) {
-  void *ptr = (void *)&rng_state;
-#if defined(UINTPTR_MAX)
-  return (uintptr_t)ptr;
-#else
-  return (size_t)ptr;
-#endif
+  return (void *)&rng_state;
 }

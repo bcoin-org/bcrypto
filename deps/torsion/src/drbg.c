@@ -18,15 +18,6 @@
 #include "internal.h"
 
 /*
- * Constants
- */
-
-static const unsigned char ZERO[1] = {0x00};
-static const unsigned char ONE[1] = {0x01};
-static const unsigned char TWO[1] = {0x02};
-static const unsigned char THREE[1] = {0x03};
-
-/*
  * HMAC-DRBG
  */
 
@@ -34,9 +25,12 @@ static void
 hmac_drbg_update(hmac_drbg_t *drbg,
                  const unsigned char *seed,
                  size_t seed_len) {
+  static const unsigned char zero[1] = {0x00};
+  static const unsigned char one[1] = {0x01};
+
   hmac_init(&drbg->kmac, drbg->type, drbg->K, drbg->size);
   hmac_update(&drbg->kmac, drbg->V, drbg->size);
-  hmac_update(&drbg->kmac, ZERO, 1);
+  hmac_update(&drbg->kmac, zero, 1);
   hmac_update(&drbg->kmac, seed, seed_len);
   hmac_final(&drbg->kmac, drbg->K);
 
@@ -47,7 +41,7 @@ hmac_drbg_update(hmac_drbg_t *drbg,
   if (seed_len > 0) {
     hmac_init(&drbg->kmac, drbg->type, drbg->K, drbg->size);
     hmac_update(&drbg->kmac, drbg->V, drbg->size);
-    hmac_update(&drbg->kmac, ONE, 1);
+    hmac_update(&drbg->kmac, one, 1);
     hmac_update(&drbg->kmac, seed, seed_len);
     hmac_final(&drbg->kmac, drbg->K);
 
@@ -251,11 +245,12 @@ accumulate(unsigned char *dst, size_t dlen,
 
 static void
 hash_drbg_update(hash_drbg_t *drbg) {
+  static const unsigned char three[1] = {0x03};
   unsigned char H[HASH_MAX_OUTPUT_SIZE];
   unsigned char L[8];
 
   hash_init(&drbg->hash, drbg->type);
-  hash_update(&drbg->hash, THREE, 1);
+  hash_update(&drbg->hash, three, 1);
   hash_update(&drbg->hash, drbg->V, drbg->length);
   hash_final(&drbg->hash, H, drbg->size);
 
@@ -273,13 +268,15 @@ hash_drbg_generate(hash_drbg_t *drbg,
                    size_t len,
                    const unsigned char *add,
                    size_t add_len) {
+  static const unsigned char one[1] = {0x01};
+  static const unsigned char two[1] = {0x02};
   unsigned char *raw = (unsigned char *)out;
   unsigned char H[HASH_MAX_OUTPUT_SIZE];
   unsigned char V[111];
 
   if (add_len > 0) {
     hash_init(&drbg->hash, drbg->type);
-    hash_update(&drbg->hash, TWO, 1);
+    hash_update(&drbg->hash, two, 1);
     hash_update(&drbg->hash, drbg->V, drbg->length);
     hash_update(&drbg->hash, add, add_len);
     hash_final(&drbg->hash, H, drbg->size);
@@ -303,7 +300,7 @@ hash_drbg_generate(hash_drbg_t *drbg,
 
     hash_final(&drbg->hash, raw, drbg->size);
 
-    accumulate(V, drbg->length, ONE, 1);
+    accumulate(V, drbg->length, one, 1);
 
     raw += drbg->size;
     len -= drbg->size;

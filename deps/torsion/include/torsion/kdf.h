@@ -4,8 +4,8 @@
  * https://github.com/bcoin-org/libtorsion
  */
 
-#ifndef _TORSION_KDF_H
-#define _TORSION_KDF_H
+#ifndef TORSION_KDF_H
+#define TORSION_KDF_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -14,6 +14,7 @@ extern "C" {
 #include <stddef.h>
 #include <stdint.h>
 #include "common.h"
+#include "hash.h"
 
 /*
  * Symbol Aliases
@@ -175,4 +176,4 @@ scrypt_derive(unsigned char *out,
 }
 #endif
 
-#endif /* _TORSION_KDF_H */
+#endif /* TORSION_KDF_H */

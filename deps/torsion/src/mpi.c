@@ -55,12 +55,9 @@
 #  error "Two's complement is required."
 #endif
 
-#if '0' != 48 || 'A' != 65 || 'a' != 97
+#if ' ' != 32 || '0' != 48 || 'A' != 65 || 'a' != 97
 #  error "ASCII support is required."
 #endif
-
-STATIC_ASSERT((-1 & 3) == 3);
-STATIC_ASSERT((0u - 1u) == UINT_MAX);
 
 /*
  * Options
@@ -221,6 +218,12 @@ TORSION_BARRIER(mp_limb_t, mp_limb)
 #  if defined(MP_GNUC_3_4) || mp_has_builtin(__builtin_ctzll)
 #    define mp_builtin_ctz __builtin_ctzll
 #  endif
+#endif
+
+#ifdef __PCC__
+/* PCC tries to call out to a
+   function that isn't linked. */
+#  undef mp_builtin_popcount
 #endif
 
 /*
@@ -639,6 +642,26 @@ TORSION_BARRIER(mp_limb_t, mp_limb)
   (lo) = _lo;                  \
 } while (0)
 
+#elif defined(MP_HAVE_ASM_X64) /* !MP_HAVE_WIDE */
+
+/* [hi, lo] = x * y */
+#define mp_mul(hi, lo, x, y) \
+  __asm__ (                  \
+    "mulq %q3\n"             \
+    : "=a" (lo), "=d" (hi)   \
+    : "%0" (x), "rm" (y)     \
+    : "cc"                   \
+  )
+
+/* [hi, lo] = x^2 */
+#define mp_sqr(hi, lo, x)  \
+  __asm__ (                \
+    "mulq %%rax\n"         \
+    : "=a" (lo), "=d" (hi) \
+    : "0" (x)              \
+    : "cc"                 \
+  )
+
 #else /* !MP_HAVE_WIDE */
 
 /* [hi, lo] = x * y (muldwu.c in Hacker's Delight) */
@@ -829,7 +852,7 @@ mp_alloc_limbs(mp_size_t size) {
 
   CHECK(size > 0);
 
-  ptr = malloc(size * sizeof(mp_limb_t));
+  ptr = (mp_limb_t *)malloc(size * sizeof(mp_limb_t));
 
   if (ptr == NULL)
     torsion_abort(); /* LCOV_EXCL_LINE */
@@ -841,7 +864,7 @@ static mp_limb_t *
 mp_realloc_limbs(mp_limb_t *ptr, mp_size_t size) {
   CHECK(size > 0);
 
-  ptr = realloc(ptr, size * sizeof(mp_limb_t));
+  ptr = (mp_limb_t *)realloc(ptr, size * sizeof(mp_limb_t));
 
   if (ptr == NULL)
     torsion_abort(); /* LCOV_EXCL_LINE */
@@ -860,7 +883,7 @@ mp_alloc_str(size_t size) {
 
   CHECK(size != 0);
 
-  ptr = malloc(size);
+  ptr = (char *)malloc(size);
 
   if (ptr == NULL)
     torsion_abort(); /* LCOV_EXCL_LINE */
@@ -879,7 +902,19 @@ mp_free_str(char *ptr) {
 
 static TORSION_INLINE mp_bits_t
 mp_popcount(mp_limb_t x) {
-#if defined(mp_builtin_popcount)
+#if defined(MP_HAVE_ASM_X64) && defined(__POPCNT__)
+  /* Explicitly built with POPCNT support (-mpopcnt). */
+  mp_limb_t z;
+
+  __asm__ (
+    "popcntq %q1, %q0\n"
+    : "=r" (z)
+    : "rm" (x)
+    : "cc"
+  );
+
+  return z;
+#elif defined(mp_builtin_popcount)
   return mp_builtin_popcount(x);
 #else
   /* https://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel */
@@ -1097,6 +1132,12 @@ mp_str_limbs(const char *str, int base) {
   return (len + limb_len - 1) / limb_len;
 }
 
+static int
+mp_host_endian(void) {
+  static const mp_limb_t x = 1;
+  return *((const unsigned char *)&x) == 0 ? 1 : -1;
+}
+
 static TORSION_INLINE mp_limb_t
 mp_import_le(const unsigned char *xp) {
 #if MP_LIMB_BITS == 64
@@ -1174,6 +1215,12 @@ mp_export_be(unsigned char *zp, mp_limb_t x) {
 }
 
 /*
+ * Globals
+ */
+
+const int mp_bits_per_limb = MP_LIMB_BITS;
+
+/*
  * MPN Interface
  */
 
@@ -1193,6 +1240,9 @@ mpn_zero(mp_limb_t *zp, mp_size_t zn) {
  * Uninitialization
  */
 
+#ifdef __cplusplus
+extern "C"
+#endif
 void
 torsion_memzero(void *, size_t);
 
@@ -1775,44 +1825,27 @@ static void MP_MSVC_CDECL
 mp_div(mp_limb_t *q, mp_limb_t *r,
        mp_limb_t n1, mp_limb_t n0,
        mp_limb_t d) {
-#if defined(MP_HAVE_ASM_X86) || defined(MP_HAVE_ASM_X64)
-  mp_limb_t q0, r0;
-
-  /* [q, r] = (n1, n0) / d */
-  __asm__ (
 #if defined(MP_HAVE_ASM_X64)
+  __asm__ (
     "divq %q4\n"
-#else
-    "divl %k4\n"
-#endif
-    : "=a" (q0), "=d" (r0)
+    : "=a" (*q), "=d" (*r)
     : "0" (n0), "1" (n1), "rm" (d)
     : "cc"
   );
-
-  if (q != NULL)
-    *q = q0;
-
-  if (r != NULL)
-    *r = r0;
-#elif defined(MP_HAVE_UDIV64) || defined(MP_HAVE_UDIV128)
-  mp_limb_t q0, r0;
-
-  /* [q, r] = (n1, n0) / d */
-#if defined(MP_HAVE_UDIV128)
-  q0 = _udiv128(n1, n0, d, &r0);
-#else
+#elif defined(MP_HAVE_ASM_X86)
+  __asm__ (
+    "divl %k4\n"
+    : "=a" (*q), "=d" (*r)
+    : "0" (n0), "1" (n1), "rm" (d)
+    : "cc"
+  );
+#elif defined(MP_HAVE_UDIV128)
+  *q = _udiv128(n1, n0, d, r);
+#elif defined(MP_HAVE_UDIV64)
   mp_wide_t n = ((mp_wide_t)n1 << MP_LIMB_BITS) | n0;
 
-  q0 = _udiv64(n, d, (unsigned int *)&r0);
-#endif
-
-  if (q != NULL)
-    *q = q0;
-
-  if (r != NULL)
-    *r = r0;
-#elif defined(MP_MSVC_ASM_X86) || defined(MP_MSVC_ASM_X64)
+  *q = _udiv64(n, d, (unsigned int *)r);
+#elif defined(MP_MSVC_ASM_X64)
   /* Utilize a clever hack[1][2] from fahickman/r128[3] in
    * order to implement the _udiv128 and _udiv64 intrinsics
    * on older versions of MSVC, keeping in mind windows'
@@ -1825,10 +1858,6 @@ mp_div(mp_limb_t *q, mp_limb_t *r,
    * [3] https://github.com/fahickman/r128
    * [4] https://docs.microsoft.com/en-us/cpp/build/x64-calling-convention
    */
-  mp_limb_t q0, r0;
-
-  /* [q, r] = (n1, n0) / d */
-#if defined(MP_MSVC_ASM_X64)
   typedef mp_limb_t udiv128_f(mp_limb_t n1, mp_limb_t n0,
                               mp_limb_t d, mp_limb_t *r);
 
@@ -1841,22 +1870,20 @@ mp_div(mp_limb_t *q, mp_limb_t *r,
     0xc3              /* retq */
   };
 
-  q0 = ((udiv128_f *)udiv128_code)(n1, n0, d, &r0);
-#else
-  __asm {
+  *q = ((udiv128_f *)udiv128_code)(n1, n0, d, r);
+#elif defined(MP_MSVC_ASM_X86)
+  mp_limb_t q0, r0;
+
+  _asm {
     mov eax, n0
     mov edx, n1
     div d
     mov q0, eax
     mov r0, edx
   }
-#endif
 
-  if (q != NULL)
-    *q = q0;
-
-  if (r != NULL)
-    *r = r0;
+  *q = q0;
+  *r = r0;
 #else
   /* Code adapted from the `divlu2` function
    * in Hacker's Delight[1].
@@ -1873,14 +1900,8 @@ mp_div(mp_limb_t *q, mp_limb_t *r,
   mp_bits_t s;
 
   if (n1 == 0) {
-    q0 = n0 / d;
-
-    if (q != NULL)
-      *q = q0;
-
-    if (r != NULL)
-      *r = n0 - q0 * d;
-
+    *q = n0 / d;
+    *r = n0 - (*q) * d;
     return;
   }
 
@@ -1935,12 +1956,8 @@ mp_div(mp_limb_t *q, mp_limb_t *r,
       break;
   }
 
-  if (q != NULL)
-    *q = q1 * b + q0;
-
-  /* If remainder is wanted, return it. */
-  if (r != NULL)
-    *r = (un21 * b + un0 - q0 * d) >> s;
+  *q = q1 * b + q0;
+  *r = (un21 * b + un0 - q0 * d) >> s;
 #endif
 }
 
@@ -1994,11 +2011,11 @@ mp_inv_2by1(mp_limb_t d) {
    * [1] https://go-review.googlesource.com/c/go/+/250417
    * [2] https://go-review.googlesource.com/c/go/+/250417/comment/380e8f18_ad97735c/
    */
-  mp_limb_t q;
+  mp_limb_t q, r;
 
   ASSERT(d >= MP_LIMB_HI);
 
-  mp_div(&q, NULL, ~d, MP_LIMB_MAX, d);
+  mp_div(&q, &r, ~d, MP_LIMB_MAX, d);
 
   return q;
 }
@@ -2133,7 +2150,7 @@ mp_div_2by1(mp_limb_t *q, mp_limb_t *r,
 
   r0 = u0 - q1 * d;
 
-  if (r0 > q0) {
+  if (UNPREDICTABLE(r0 > q0)) {
     q1 -= 1;
     r0 += d;
   }
@@ -2287,11 +2304,11 @@ mp_div_3by2(mp_limb_t *q, mp_limb_t *k1, mp_limb_t *k0,
                            /* (t1, t0) = (rdx, rax) */
 
     /* (r1, r0) = (r1, u0) - ((t1, t0) + (d1, d0)) */
-    "addq %q7, %%rax\n"    /* t0 += d0 */
-    "adcq %q6, %%rdx\n"    /* t1 += d1 + cf */
     "movq %q5, %q2\n"      /* r0 = u0 */
     "subq %%rax, %q2\n"    /* r0 -= t0 */
     "sbbq %%rdx, %q1\n"    /* r1 -= t1 + cf */
+    "subq %q7, %q2\n"      /* r0 -= d0 */
+    "sbbq %q6, %q1\n"      /* r1 -= d1 + cf */
 
     /* q1 += 1 */
     "addq $1, %q0\n" /* q1 += 1 */
@@ -2334,15 +2351,16 @@ mp_div_3by2(mp_limb_t *q, mp_limb_t *k1, mp_limb_t *k0,
   q0 += u1;
   q1 += u2 + (q0 < u1);
 
+  r0 = u0;
   r1 = u1 - d1 * q1;
 
   mp_mul(t1, t0, d0, q1);
 
-  t0 += d0;
-  t1 += d1 + (t0 < d0);
+  r1 -= t1 + (r0 < t0);
+  r0 -= t0;
 
-  r0 = u0 - t0;
-  r1 = r1 - t1 - (r0 > u0);
+  r1 -= d1 + (r0 < d0);
+  r0 -= d0;
 
   /* At this point, we have computed:
    *
@@ -2385,7 +2403,7 @@ mp_div_3by2(mp_limb_t *q, mp_limb_t *k1, mp_limb_t *k0,
    */
   q1 += 1;
 
-  if (r1 >= q0) {
+  if (UNPREDICTABLE(r1 >= q0)) {
     q1 -= 1;
     r0 += d0;
     r1 += d1 + (r0 < d0);
@@ -2393,9 +2411,8 @@ mp_div_3by2(mp_limb_t *q, mp_limb_t *k1, mp_limb_t *k0,
 
   if (UNLIKELY(r1 > d1 || (r1 == d1 && r0 >= d0))) {
     q1 += 1;
-    t0 = r0 - d0;
-    r1 = r1 - d1 - (t0 > r0);
-    r0 = t0;
+    r1 -= d1 + (r0 < d0);
+    r0 -= d0;
   }
 
   *q = q1;
@@ -3162,7 +3179,7 @@ mpn_nior_n(mp_limb_t *zp, const mp_limb_t *xp,
  */
 
 void
-mpn_nxor_n(mp_limb_t *zp, const mp_limb_t *xp,
+mpn_xnor_n(mp_limb_t *zp, const mp_limb_t *xp,
                           const mp_limb_t *yp,
                           mp_size_t n) {
   mp_size_t i;
@@ -3233,36 +3250,36 @@ mpn_rshift(mp_limb_t *zp, const mp_limb_t *xp, mp_size_t xn, mp_bits_t bits) {
 
 mp_limb_t
 mpn_getbit(const mp_limb_t *xp, mp_size_t xn, mp_bits_t pos) {
-  mp_size_t index = pos / MP_LIMB_BITS;
+  mp_size_t s = pos / MP_LIMB_BITS;
 
-  if (index >= xn)
+  if (s >= xn)
     return 0;
 
-  return (xp[index] >> (pos % MP_LIMB_BITS)) & 1;
+  return (xp[s] >> (pos % MP_LIMB_BITS)) & 1;
 }
 
 mp_limb_t
 mpn_getbits(const mp_limb_t *xp, mp_size_t xn, mp_bits_t pos, mp_bits_t width) {
-  mp_size_t index = pos / MP_LIMB_BITS;
-  mp_bits_t shift, more;
-  mp_limb_t bits, next;
+  mp_size_t s = pos / MP_LIMB_BITS;
+  mp_bits_t r, m;
+  mp_limb_t z, b;
 
   ASSERT(width < MP_LIMB_BITS);
 
-  if (index >= xn)
+  if (s >= xn)
     return 0;
 
-  shift = pos % MP_LIMB_BITS;
-  bits = (xp[index] >> shift) & MP_MASK(width);
+  r = pos % MP_LIMB_BITS;
+  z = (xp[s] >> r) & MP_MASK(width);
 
-  if (shift + width > MP_LIMB_BITS && index + 1 < xn) {
-    more = shift + width - MP_LIMB_BITS;
-    next = xp[index + 1] & MP_MASK(more);
+  if (r + width > MP_LIMB_BITS && s + 1 < xn) {
+    m = r + width - MP_LIMB_BITS;
+    b = xp[s + 1] & MP_MASK(m);
 
-    bits |= next << (MP_LIMB_BITS - shift);
+    z |= b << (MP_LIMB_BITS - r);
   }
 
-  return bits;
+  return z;
 }
 
 int
@@ -4392,6 +4409,15 @@ mpn_sizeinbase(const mp_limb_t *xp, mp_size_t xn, int base) {
  */
 
 void
+mpn_cnd_zero(mp_limb_t *zp, const mp_limb_t *xp, mp_size_t xn, mp_limb_t cnd) {
+  mp_limb_t m = -mp_limb_barrier(cnd != 0);
+  mp_size_t i;
+
+  for (i = 0; i < xn; i++)
+    zp[i] = xp[i] & ~m;
+}
+
+void
 mpn_cnd_select(mp_limb_t *zp, const mp_limb_t *xp,
                               const mp_limb_t *yp,
                               mp_size_t n,
@@ -4486,7 +4512,7 @@ mpn_sec_tabselect(mp_limb_t *zp,
 
 int
 mpn_sec_zero_p(const mp_limb_t *xp, mp_size_t xn) {
-  /* Compute (x == y) in constant time. */
+  /* Compute (x == 0) in constant time. */
   mp_limb_t w = 0;
   mp_size_t i;
 
@@ -4591,7 +4617,8 @@ mpn_import(mp_limb_t *zp, mp_size_t zn,
   mp_size_t i = 0;
   mp_limb_t z;
 
-  CHECK(endian == 1 || endian == -1);
+  if (endian == 0)
+    endian = mp_host_endian();
 
   if (endian == 1) {
     xp += xn;
@@ -4613,7 +4640,7 @@ mpn_import(mp_limb_t *zp, mp_size_t zn,
 
       zp[i++] = z;
     }
-  } else {
+  } else if (endian == -1) {
     while (i < zn && xn >= MP_LIMB_BYTES) {
       zp[i++] = mp_import_le(xp);
       xp += MP_LIMB_BYTES;
@@ -4631,6 +4658,8 @@ mpn_import(mp_limb_t *zp, mp_size_t zn,
 
       zp[i++] = z;
     }
+  } else {
+    torsion_abort(); /* LCOV_EXCL_LINE */
   }
 
   while (i < zn)
@@ -4648,7 +4677,8 @@ mpn_export(unsigned char *zp, size_t zn,
   mp_size_t i = 0;
   mp_limb_t x;
 
-  CHECK(endian == 1 || endian == -1);
+  if (endian == 0)
+    endian = mp_host_endian();
 
   if (endian == 1) {
     zp += zn;
@@ -4670,7 +4700,7 @@ mpn_export(unsigned char *zp, size_t zn,
 
     while (zn--)
       *--zp = 0;
-  } else {
+  } else if (endian == -1) {
     while (i < xn && zn >= MP_LIMB_BYTES) {
       mp_export_le(zp, xp[i++]);
       zp += MP_LIMB_BYTES;
@@ -4688,6 +4718,8 @@ mpn_export(unsigned char *zp, size_t zn,
 
     while (zn--)
       *zp++ = 0;
+  } else {
+    torsion_abort(); /* LCOV_EXCL_LINE */
   }
 }
 
@@ -5107,13 +5139,15 @@ mpz_roset_n(mpz_t z, const mp_limb_t *xp, mp_size_t xs) {
   z->size = xs;
 }
 
-void
+const struct mpz_s *
 mpz_roinit_n(mpz_t z, const mp_limb_t *xp, mp_size_t xs) {
   mp_size_t zn = mpn_strip(xp, MP_ABS(xs));
 
   z->limbs = (mp_limb_t *)xp;
   z->alloc = 0;
   z->size = xs < 0 ? -zn : zn;
+
+  return z;
 }
 
 void
@@ -8767,7 +8801,7 @@ mpz_getlimbn(const mpz_t x, mp_size_t n) {
   return x->limbs[n];
 }
 
-mp_size_t
+size_t
 mpz_size(const mpz_t x) {
   return MP_ABS(x->size);
 }

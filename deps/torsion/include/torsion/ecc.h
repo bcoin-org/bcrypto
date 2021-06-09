@@ -4,8 +4,8 @@
  * https://github.com/bcoin-org/libtorsion
  */
 
-#ifndef _TORSION_ECC_H
-#define _TORSION_ECC_H
+#ifndef TORSION_ECC_H
+#define TORSION_ECC_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -207,11 +207,11 @@ extern "C" {
 #define ristretto_pubkey_negate torsion_ristretto_pubkey_negate
 #define ristretto_derive torsion_ristretto_derive
 
-#define test_ecc_internal __torsion_test_ecc_internal
+#define test_ecc_internal torsion__test_ecc_internal
 
 
 /*
- * Defs
+ * Definitions
  */
 
 #define WEI_MAX_FIELD_SIZE 66
@@ -254,26 +254,23 @@ extern "C" {
  */
 
 typedef enum wei_curve_id {
-  WEI_CURVE_P192 = 0,
+  WEI_CURVE_P192,
   WEI_CURVE_P224,
   WEI_CURVE_P256,
   WEI_CURVE_P384,
   WEI_CURVE_P521,
-  WEI_CURVE_SECP256K1,
-  WEI_CURVE_MAX = WEI_CURVE_SECP256K1
+  WEI_CURVE_SECP256K1
 } wei_curve_id_t;
 
 typedef enum mont_curve_id {
-  MONT_CURVE_X25519 = 0,
-  MONT_CURVE_X448,
-  MONT_CURVE_MAX = MONT_CURVE_X448
+  MONT_CURVE_X25519,
+  MONT_CURVE_X448
 } mont_curve_id_t;
 
 typedef enum edwards_curve_id {
-  EDWARDS_CURVE_ED25519 = 0,
+  EDWARDS_CURVE_ED25519,
   EDWARDS_CURVE_ED448,
-  EDWARDS_CURVE_ED1174,
-  EDWARDS_CURVE_MAX = EDWARDS_CURVE_ED1174
+  EDWARDS_CURVE_ED1174
 } edwards_curve_id_t;
 
 /*
@@ -1340,4 +1337,4 @@ test_ecc_internal(struct hmac_drbg_s *rng);
 }
 #endif
 
-#endif /* _TORSION_ECC_H */
+#endif /* TORSION_ECC_H */
