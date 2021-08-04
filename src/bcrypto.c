@@ -1496,56 +1496,6 @@ bcrypto_base64url_test(napi_env env, napi_callback_info info) {
  */
 
 static napi_value
-bcrypto_bcrypt_hash192(napi_env env, napi_callback_info info) {
-  napi_value argv[3];
-  size_t argc = 3;
-  uint8_t out[24];
-  uint32_t rounds;
-  void *pass, *salt;
-  size_t pass_len, salt_len;
-  napi_value result;
-
-  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
-  CHECK(argc == 3);
-  CHECK(napi_get_buffer_info(env, argv[0], &pass, &pass_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], &salt, &salt_len) == napi_ok);
-  CHECK(napi_get_value_uint32(env, argv[2], &rounds) == napi_ok);
-
-  JS_ASSERT(rounds >= 4 && rounds <= 31, JS_ERR_DERIVE);
-
-  bcrypt_hash192(out, pass, pass_len, salt, salt_len, rounds);
-
-  CHECK(napi_create_buffer_copy(env, 24, out, NULL, &result) == napi_ok);
-
-  return result;
-}
-
-static napi_value
-bcrypto_bcrypt_hash256(napi_env env, napi_callback_info info) {
-  napi_value argv[3];
-  size_t argc = 3;
-  uint8_t out[32];
-  uint32_t rounds;
-  void *pass, *salt;
-  size_t pass_len, salt_len;
-  napi_value result;
-
-  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
-  CHECK(argc == 3);
-  CHECK(napi_get_buffer_info(env, argv[0], &pass, &pass_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], &salt, &salt_len) == napi_ok);
-  CHECK(napi_get_value_uint32(env, argv[2], &rounds) == napi_ok);
-
-  JS_ASSERT(rounds >= 4 && rounds <= 31, JS_ERR_DERIVE);
-
-  bcrypt_hash256(out, pass, pass_len, salt, salt_len, rounds);
-
-  CHECK(napi_create_buffer_copy(env, 32, out, NULL, &result) == napi_ok);
-
-  return result;
-}
-
-static napi_value
 bcrypto_bcrypt_pbkdf(napi_env env, napi_callback_info info) {
   napi_value argv[4];
   size_t argc = 4;
@@ -1697,31 +1647,6 @@ bcrypto_bcrypt_pbkdf_async(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
-bcrypto_bcrypt_derive(napi_env env, napi_callback_info info) {
-  napi_value argv[4];
-  size_t argc = 4;
-  uint8_t out[31];
-  uint32_t rounds, minor;
-  void *pass, *salt;
-  size_t pass_len, salt_len;
-  napi_value result;
-
-  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
-  CHECK(argc == 4);
-  CHECK(napi_get_buffer_info(env, argv[0], &pass, &pass_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], &salt, &salt_len) == napi_ok);
-  CHECK(napi_get_value_uint32(env, argv[2], &rounds) == napi_ok);
-  CHECK(napi_get_value_uint32(env, argv[3], &minor) == napi_ok);
-
-  JS_ASSERT(bcrypt_derive(out, pass, pass_len, salt, salt_len, rounds, minor),
-            JS_ERR_DERIVE);
-
-  CHECK(napi_create_buffer_copy(env, 31, out, NULL, &result) == napi_ok);
-
-  return result;
-}
-
-static napi_value
 bcrypto_bcrypt_generate(napi_env env, napi_callback_info info) {
   napi_value argv[4];
   size_t argc = 4;
@@ -1740,38 +1665,6 @@ bcrypto_bcrypt_generate(napi_env env, napi_callback_info info) {
 
   JS_ASSERT(bcrypt_generate(out, pass, pass_len, salt, salt_len, rounds, minor),
             JS_ERR_DERIVE);
-
-  CHECK(napi_create_string_latin1(env, out, NAPI_AUTO_LENGTH,
-                                  &result) == napi_ok);
-
-  return result;
-}
-
-static napi_value
-bcrypto_bcrypt_generate_with_salt64(napi_env env, napi_callback_info info) {
-  napi_value argv[4];
-  size_t argc = 4;
-  char out[62];
-  uint32_t rounds, minor;
-  void *pass;
-  char salt[23 + 1];
-  size_t pass_len, salt_len;
-  napi_value result;
-  int ok;
-
-  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
-  CHECK(argc == 4);
-  CHECK(napi_get_buffer_info(env, argv[0], &pass, &pass_len) == napi_ok);
-  CHECK(napi_get_value_string_latin1(env, argv[1], salt, sizeof(salt),
-                                     &salt_len) == napi_ok);
-  CHECK(napi_get_value_uint32(env, argv[2], &rounds) == napi_ok);
-  CHECK(napi_get_value_uint32(env, argv[3], &minor) == napi_ok);
-
-  JS_ASSERT(salt_len != sizeof(salt) - 1, JS_ERR_DERIVE);
-
-  ok = bcrypt_generate_with_salt64(out, pass, pass_len, salt, rounds, minor);
-
-  JS_ASSERT(ok, JS_ERR_DERIVE);
 
   CHECK(napi_create_string_latin1(env, out, NAPI_AUTO_LENGTH,
                                   &result) == napi_ok);
@@ -12593,13 +12486,9 @@ NAPI_MODULE_INIT() {
     F(base64url_test),
 
     /* Bcrypt */
-    F(bcrypt_hash192),
-    F(bcrypt_hash256),
     F(bcrypt_pbkdf),
     F(bcrypt_pbkdf_async),
-    F(bcrypt_derive),
     F(bcrypt_generate),
-    F(bcrypt_generate_with_salt64),
     F(bcrypt_verify),
 
     /* Bech32 */

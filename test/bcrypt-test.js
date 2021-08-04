@@ -4,8 +4,6 @@
 
 const assert = require('bsert');
 const bcrypt = require('../lib/bcrypt');
-const hash192 = require('./data/bcrypt-hash192.json');
-const hash256 = require('./data/bcrypt-hash256.json');
 // https://github.com/patrickfav/bcrypt/wiki/Published-Test-Vectors
 const bsd = require('./data/bcrypt-bsd.json');
 
@@ -43,26 +41,10 @@ const pbkdf = [
 describe('Bcrypt', function() {
   this.timeout(10000);
 
-  describe('Hash192', () => {
-    for (const [pass_, salt_, rounds, expect_] of hash192) {
-      const pass = Buffer.from(pass_, 'hex');
-      const salt = Buffer.from(salt_, 'hex');
-      const expect = Buffer.from(expect_, 'hex');
-      const text = expect_.slice(0, 32) + '...';
-
-      it(`should derive key (hash192): ${text}`, () => {
-        if (rounds > 8 && !process.env.CI)
-          this.skip();
-
-        const key = bcrypt.hash192(pass, salt, rounds);
-        assert.bufferEqual(key, expect);
-      });
-    }
-  });
-
   describe('Generate', () => {
-    for (const [pass, rounds, salt, expect] of bsd) {
+    for (const [pass, rounds, saltstr, expect] of bsd) {
       const text = expect.slice(0, 32) + '...';
+      const salt = Buffer.from(saltstr, 'hex');
 
       it(`should derive hash (bsd): ${text}`, () => {
         if (rounds > 8 && !process.env.CI)
@@ -82,20 +64,6 @@ describe('Bcrypt', function() {
           this.skip();
 
         assert.strictEqual(bcrypt.verify(pass, expect), true);
-      });
-    }
-  });
-
-  describe('Hash256', () => {
-    for (const [pass_, salt_, rounds, expect_] of hash256) {
-      const pass = Buffer.from(pass_, 'hex');
-      const salt = Buffer.from(salt_, 'hex');
-      const expect = Buffer.from(expect_, 'hex');
-      const text = expect_.slice(0, 32) + '...';
-
-      it(`should derive key (hash256): ${text}`, () => {
-        const key = bcrypt.hash256(pass, salt, rounds);
-        assert.bufferEqual(key, expect);
       });
     }
   });
