@@ -8067,7 +8067,7 @@ bcrypto_getentropy(napi_env env, napi_callback_info info) {
   JS_ASSERT(off + size <= out_len, JS_ERR_RNG);
 
   if (size > 0)
-    JS_ASSERT(torsion_getentropy(out + off, size), JS_ERR_RNG);
+    JS_ASSERT(torsion_getentropy((unsigned char *)out + off, size), JS_ERR_RNG);
 
   return argv[0];
 }
@@ -8089,7 +8089,7 @@ bcrypto_getrandom(napi_env env, napi_callback_info info) {
   JS_ASSERT(off + size <= out_len, JS_ERR_RNG);
 
   if (size > 0)
-    JS_ASSERT(torsion_getrandom(out + off, size), JS_ERR_RNG);
+    JS_ASSERT(torsion_getrandom((unsigned char *)out + off, size), JS_ERR_RNG);
 
   return argv[0];
 }
