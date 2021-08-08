@@ -102,6 +102,7 @@
 #define JS_ERR_GET "Could not get value."
 #define JS_ERR_CRYPT "Could not encipher."
 #define JS_ERR_RNG "RNG failure."
+#define JS_ERR_SALT_SIZE "Invalid salt size."
 
 #define JS_THROW(msg) do {                              \
   CHECK(napi_throw_error(env, NULL, (msg)) == napi_ok); \
@@ -1496,6 +1497,57 @@ bcrypto_base64url_test(napi_env env, napi_callback_info info) {
  */
 
 static napi_value
+bcrypto_bcrypt_generate(napi_env env, napi_callback_info info) {
+  napi_value argv[4];
+  size_t argc = 4;
+  char out[62];
+  uint32_t rounds, minor;
+  void *pass, *salt;
+  size_t pass_len, salt_len;
+  napi_value result;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 4);
+  CHECK(napi_get_buffer_info(env, argv[0], &pass, &pass_len) == napi_ok);
+  CHECK(napi_get_buffer_info(env, argv[1], &salt, &salt_len) == napi_ok);
+  CHECK(napi_get_value_uint32(env, argv[2], &rounds) == napi_ok);
+  CHECK(napi_get_value_uint32(env, argv[3], &minor) == napi_ok);
+
+  JS_ASSERT(salt_len == 16, JS_ERR_SALT_SIZE);
+  JS_ASSERT(bcrypt_generate(out, pass, pass_len, salt, rounds, minor),
+            JS_ERR_DERIVE);
+
+  CHECK(napi_create_string_latin1(env, out, NAPI_AUTO_LENGTH,
+                                  &result) == napi_ok);
+
+  return result;
+}
+
+static napi_value
+bcrypto_bcrypt_verify(napi_env env, napi_callback_info info) {
+  napi_value argv[2];
+  size_t argc = 2;
+  void *pass;
+  char record[62 + 1];
+  size_t pass_len, record_len;
+  napi_value result;
+  int ok;
+
+  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
+  CHECK(argc == 2);
+  CHECK(napi_get_buffer_info(env, argv[0], &pass, &pass_len) == napi_ok);
+  CHECK(napi_get_value_string_latin1(env, argv[1], record, sizeof(record),
+                                     &record_len) == napi_ok);
+
+  ok = record_len != sizeof(record) - 1
+    && bcrypt_verify(pass, pass_len, record);
+
+  CHECK(napi_get_boolean(env, ok, &result) == napi_ok);
+
+  return result;
+}
+
+static napi_value
 bcrypto_bcrypt_pbkdf(napi_env env, napi_callback_info info) {
   napi_value argv[4];
   size_t argc = 4;
@@ -1642,56 +1694,6 @@ bcrypto_bcrypt_pbkdf_async(napi_env env, napi_callback_info info) {
                                &worker->work) == napi_ok);
 
   CHECK(napi_queue_async_work(env, worker->work) == napi_ok);
-
-  return result;
-}
-
-static napi_value
-bcrypto_bcrypt_generate(napi_env env, napi_callback_info info) {
-  napi_value argv[4];
-  size_t argc = 4;
-  char out[62];
-  uint32_t rounds, minor;
-  void *pass, *salt;
-  size_t pass_len, salt_len;
-  napi_value result;
-
-  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
-  CHECK(argc == 4);
-  CHECK(napi_get_buffer_info(env, argv[0], &pass, &pass_len) == napi_ok);
-  CHECK(napi_get_buffer_info(env, argv[1], &salt, &salt_len) == napi_ok);
-  CHECK(napi_get_value_uint32(env, argv[2], &rounds) == napi_ok);
-  CHECK(napi_get_value_uint32(env, argv[3], &minor) == napi_ok);
-
-  JS_ASSERT(bcrypt_generate(out, pass, pass_len, salt, salt_len, rounds, minor),
-            JS_ERR_DERIVE);
-
-  CHECK(napi_create_string_latin1(env, out, NAPI_AUTO_LENGTH,
-                                  &result) == napi_ok);
-
-  return result;
-}
-
-static napi_value
-bcrypto_bcrypt_verify(napi_env env, napi_callback_info info) {
-  napi_value argv[2];
-  size_t argc = 2;
-  void *pass;
-  char record[62 + 1];
-  size_t pass_len, record_len;
-  napi_value result;
-  int ok;
-
-  CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
-  CHECK(argc == 2);
-  CHECK(napi_get_buffer_info(env, argv[0], &pass, &pass_len) == napi_ok);
-  CHECK(napi_get_value_string_latin1(env, argv[1], record, sizeof(record),
-                                     &record_len) == napi_ok);
-
-  ok = record_len != sizeof(record) - 1
-    && bcrypt_verify(pass, pass_len, record);
-
-  CHECK(napi_get_boolean(env, ok, &result) == napi_ok);
 
   return result;
 }
@@ -12486,10 +12488,10 @@ NAPI_MODULE_INIT() {
     F(base64url_test),
 
     /* Bcrypt */
-    F(bcrypt_pbkdf),
-    F(bcrypt_pbkdf_async),
     F(bcrypt_generate),
     F(bcrypt_verify),
+    F(bcrypt_pbkdf),
+    F(bcrypt_pbkdf_async),
 
     /* Bech32 */
     F(bech32_serialize),

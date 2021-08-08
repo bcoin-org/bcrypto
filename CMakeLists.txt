@@ -5,12 +5,8 @@
 cmake_minimum_required(VERSION 3.4)
 project(bcrypto LANGUAGES C)
 
-include(cmake/AppendCCompilerFlag.cmake)
+include(deps/torsion/cmake/AppendCCompilerFlag.cmake)
 include(NodeJS)
-
-set(CMAKE_C_STANDARD_REQUIRED ON)
-set(CMAKE_C_EXTENSIONS OFF)
-set(CMAKE_C_STANDARD 99)
 
 option(BCRYPTO_ENABLE_LIBSECP256K1 "Use libsecp256k1" ON)
 

@@ -13,7 +13,7 @@ project(libsecp256k1 LANGUAGES C)
 # Includes
 #
 
-include(../../cmake/AppendCCompilerFlag.cmake)
+include(../torsion/cmake/AppendCCompilerFlag.cmake)
 include(CheckCSourceCompiles)
 include(CheckTypeSize)
 include(NodeJS)
@@ -35,13 +35,6 @@ set(secp256k1_cflags)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 set(CMAKE_C_STANDARD 90)
-
-check_type_size("long long" SECP256K1_LONGLONG)
-check_type_size("__int64" SECP256K1_INT64)
-
-if(NOT SECP256K1_LONGLONG AND NOT SECP256K1_INT64)
-  set(CMAKE_C_STANDARD 99)
-endif()
 
 if(MSVC)
   append_c_compiler_flag(secp256k1_cflags /wd4244
