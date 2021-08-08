@@ -21,9 +21,9 @@ function(_check_c_emutls result code flags)
 
   try_compile(RESULT_VAR ${CMAKE_BINARY_DIR} ${src}
               CMAKE_FLAGS -DCOMPILE_DEFINITIONS:STRING=${flags}
-              COPY_FILE ${bin})
+              COPY_FILE ${bin} COPY_FILE_ERROR ERROR_VAR)
 
-  if(RESULT_VAR AND EXISTS "${bin}")
+  if(RESULT_VAR AND NOT ERROR_VAR AND EXISTS "${bin}")
     # There is evidence that some non-GNU platforms also do TLS
     # emulation. It's possible this includes 32-bit AIX, but I
     # cannot confirm this.
