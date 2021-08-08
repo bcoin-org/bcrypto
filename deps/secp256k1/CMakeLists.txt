@@ -37,22 +37,26 @@ set(CMAKE_C_EXTENSIONS OFF)
 set(CMAKE_C_STANDARD 90)
 
 if(MSVC)
-  append_c_compiler_flag(secp256k1_cflags /wd4244
-                                          /wd4267
-                                          /wd4334)
+  append_c_compiler_flag(secp256k1_cflags /wd4244  # implicit integer demotion
+                                          /wd4267  # implicit size_t demotion
+                                          /wd4334) # implicit 32->64 bit shift
 else()
+  # Note: libsecp256k1's build doesn't set
+  #       -Wno-nonnull-compare for some reason.
   append_c_compiler_flag(secp256k1_cflags -pedantic
                                           -Wall
                                           -Wextra
                                           -Wcast-align
+                                          -Wcast-align=strict
+                                          -Wconditional-uninitialized
                                           -Wnested-externs
-                                          -Wno-implicit-fallthrough
                                           -Wno-long-long
                                           -Wno-nonnull-compare
                                           -Wno-overlength-strings
                                           -Wno-unused-function
                                           -Wshadow
-                                          -Wstrict-prototypes)
+                                          -Wstrict-prototypes
+                                          -Wundef)
 endif()
 
 #

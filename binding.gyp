@@ -14,8 +14,6 @@
         "./deps/torsion/src/dsa.c",
         "./deps/torsion/src/ecc.c",
         "./deps/torsion/src/encoding.c",
-        "./deps/torsion/src/entropy/env.c",
-        "./deps/torsion/src/entropy/hrt.c",
         "./deps/torsion/src/entropy/hw.c",
         "./deps/torsion/src/entropy/sys.c",
         "./deps/torsion/src/hash.c",
@@ -42,10 +40,13 @@
           "cflags": [
             "-pedantic",
             "-Wcast-align",
+            "-Wmissing-prototypes",
             "-Wno-implicit-fallthrough",
             "-Wno-long-long",
             "-Wno-overlength-strings",
-            "-Wshadow"
+            "-Wshadow",
+            "-Wstrict-prototypes",
+            "-Wundef"
           ]
         }],
         ["OS == 'mac'", {
@@ -54,10 +55,13 @@
             "WARNING_CFLAGS": [
               "-pedantic",
               "-Wcast-align",
+              "-Wmissing-prototypes",
               "-Wno-implicit-fallthrough",
               "-Wno-long-long",
               "-Wno-overlength-strings",
-              "-Wshadow"
+              "-Wshadow",
+              "-Wstrict-prototypes",
+              "-Wundef"
             ]
           }
         }],
@@ -67,11 +71,6 @@
             4244, # implicit integer demotion
             4267, # implicit size_t demotion
             4334  # implicit 32->64 bit shift
-          ]
-        }],
-        ["OS in 'mac linux freebsd openbsd solaris aix'", {
-          "defines": [
-            "TORSION_HAVE_PTHREAD"
           ]
         }]
       ]
@@ -117,13 +116,13 @@
             "-Wcast-align",
             "-Wnested-externs",
             "-Wno-long-long",
-            "-Wno-nonnull-compare", # GCC only
+            "-Wno-nonnull-compare", # Used to be GCC only
             "-Wno-overlength-strings",
-            "-Wno-unknown-warning", # GCC
             "-Wno-unknown-warning-option", # Clang
             "-Wno-unused-function",
             "-Wshadow",
-            "-Wstrict-prototypes"
+            "-Wstrict-prototypes",
+            "-Wundef"
           ]
         }],
         ["OS == 'mac'", {
@@ -134,10 +133,13 @@
               "-Wcast-align",
               "-Wnested-externs",
               "-Wno-long-long",
+              "-Wno-nonnull-compare", # Used to be GCC only
               "-Wno-overlength-strings",
+              "-Wno-unknown-warning-option", # Clang
               "-Wno-unused-function",
               "-Wshadow",
-              "-Wstrict-prototypes"
+              "-Wstrict-prototypes",
+              "-Wundef"
             ]
           }
         }],
@@ -180,14 +182,12 @@
       "conditions": [
         ["OS != 'mac' and OS != 'win'", {
           "cflags": [
-            "-std=c99",
             "-Wcast-align",
             "-Wshadow"
           ]
         }],
         ["OS == 'mac'", {
           "xcode_settings": {
-            "GCC_C_LANGUAGE_STANDARD": "c99",
             "WARNING_CFLAGS": [
               "-Wcast-align",
               "-Wshadow"
