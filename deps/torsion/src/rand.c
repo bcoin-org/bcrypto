@@ -22,9 +22,6 @@
  * context. This avoids us having to link to
  * pthread and deal with other OS compat issues.
  *
- * If TLS is not supported, we try to fall back
- * to pthread.
- *
  * The RNG below is not used anywhere internally,
  * and as such, libtorsion can build without it (in
  * the case that more portability is desired).
@@ -43,18 +40,6 @@
 #include <torsion/util.h>
 #include "entropy/entropy.h"
 #include "internal.h"
-#include "tls.h"
-
-/*
- * Helpers
- */
-
-static void
-sha512_update_tsc(sha512_t *hash) {
-  uint64_t tsc = torsion_rdtsc();
-
-  sha512_update(hash, &tsc, sizeof(tsc));
-}
 
 /*
  * RNG
@@ -62,62 +47,43 @@ sha512_update_tsc(sha512_t *hash) {
 
 typedef struct rng_s {
   uint32_t key[8];
-  uint64_t zero;
   uint64_t nonce;
   uint32_t pool[128];
   size_t pos;
   int rdrand;
+  int started;
+  long pid;
 } rng_t;
 
 static int
 rng_init(rng_t *rng) {
+  unsigned char *key = (unsigned char *)rng->key;
   unsigned char seed[64];
-  sha512_t hash;
+  sha256_t hash;
 
   memset(rng, 0, sizeof(*rng));
 
-  sha512_init(&hash);
-  sha512_update_tsc(&hash);
+  sha256_init(&hash);
 
-  /* OS entropy (64 bytes). */
-  if (!torsion_sysrand(seed, 64))
-    return 0; /* LCOV_EXCL_LINE */
+  /* LCOV_EXCL_START */
+  if (!torsion_has_sysrand()) {
+    if (!torsion_hwrand(seed, 64))
+      return 0;
 
-  sha512_update(&hash, seed, 64);
-  sha512_update_tsc(&hash);
+    sha256_update(&hash, seed, 64);
+  } else {
+    if (!torsion_sysrand(seed, 64))
+      return 0;
 
-  /* Hardware entropy (32 bytes). */
-  if (torsion_hwrand(seed, 32)) {
-    sha512_update(&hash, seed, 32);
-    sha512_update_tsc(&hash);
+    sha256_update(&hash, seed, 64);
+
+    if (torsion_hwrand(seed, 64))
+      sha256_update(&hash, seed, 64);
   }
+  /* LCOV_EXCL_STOP */
 
-  /* Manual entropy (64 bytes). */
-  if (torsion_envrand(seed)) {
-    sha512_update(&hash, seed, 64);
-    sha512_update_tsc(&hash);
-  }
+  sha256_final(&hash, key);
 
-  /* At this point, only one of the above
-     entropy sources needs to be strong in
-     order for our RNG to work. It's extremely
-     unlikely that all three would somehow
-     be compromised. */
-  sha512_final(&hash, seed);
-
-  /* We use XChaCha20 to reduce the first
-     48 bytes down to 32. This allows us to
-     use the entire 64 byte hash as entropy. */
-  chacha20_derive(seed, seed, 32, seed + 32);
-
-  /* Read our initial ChaCha20 state. `zero`
-     becomes our random "zero value" for the
-     initial counter. */
-  memcpy(rng->key, seed, 32);
-  memcpy(&rng->zero, seed + 48, 8);
-  memcpy(&rng->nonce, seed + 56, 8);
-
-  /* Cache the rdrand check. */
   rng->rdrand = torsion_has_rdrand();
 
   torsion_memzero(seed, sizeof(seed));
@@ -132,7 +98,7 @@ rng_crypt(const rng_t *rng, void *data, size_t size) {
 
   chacha20_init(&ctx, (const unsigned char *)rng->key, 32,
                       (const unsigned char *)&rng->nonce, 8,
-                      rng->zero);
+                      0);
 
   chacha20_crypt(&ctx, (unsigned char *)data,
                        (const unsigned char *)data,
@@ -156,7 +122,6 @@ rng_generate(rng_t *rng, void *dst, size_t size) {
 
   /* Mix in some user entropy. */
   rng->key[0] ^= (uint32_t)size;
-  rng->key[1] ^= (uint32_t)((uint64_t)size >> 32);
 
   /* Mix in some hardware entropy. We sacrifice
      only 32 bits here, lest RDRAND is backdoored.
@@ -228,18 +193,73 @@ rng_uniform(rng_t *rng, uint32_t max) {
  * Global Lock
  */
 
-#if !defined(TORSION_HAVE_TLS) && defined(TORSION_HAVE_PTHREAD)
-#  define TORSION_USE_LOCK
+#if defined(__MINGW32__) && defined(_WIN32)
+/* MinGW autolinks to libwinpthread when TLS
+ * is used. This means our library will not be
+ * redistributable on Windows unless we ship
+ * libwinpthread.dll as well.
+ *
+ * To avoid this, we utilize the win32 API
+ * directly and use a global lock instead.
+ */
+
+#undef TORSION_TLS
+
+#include <windows.h>
+
+static CRITICAL_SECTION rng_lock;
+
+static void
+rng_global_lock(void) {
+  static int initialized = 0;
+  static HANDLE event = NULL;
+  HANDLE created, existing;
+
+  if (initialized == 0) {
+    created = CreateEvent(NULL, 1, 0, NULL);
+
+    if (created == NULL)
+      torsion_abort(); /* LCOV_EXCL_LINE */
+
+    existing = InterlockedCompareExchangePointer(&event, created, NULL);
+
+    if (existing == NULL) {
+      InitializeCriticalSection(&rng_lock);
+
+      if (!SetEvent(created))
+        torsion_abort(); /* LCOV_EXCL_LINE */
+
+      initialized = 1;
+    } else {
+      CloseHandle(created);
+
+      if (WaitForSingleObject(existing, INFINITE) != WAIT_OBJECT_0)
+        torsion_abort(); /* LCOV_EXCL_LINE */
+    }
+  }
+
+  EnterCriticalSection(&rng_lock);
+}
+
+static void
+rng_global_unlock(void) {
+  LeaveCriticalSection(&rng_lock);
+}
+
+#else /* !__MINGW32__ */
+
+#if !defined(TORSION_TLS) && defined(TORSION_HAVE_PTHREAD)
+#  define TORSION_USE_PTHREAD
 #endif
 
-#ifdef TORSION_USE_LOCK
+#ifdef TORSION_USE_PTHREAD
 #  include <pthread.h>
 static pthread_mutex_t rng_lock = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
 static void
 rng_global_lock(void) {
-#ifdef TORSION_USE_LOCK
+#ifdef TORSION_USE_PTHREAD
   if (pthread_mutex_lock(&rng_lock) != 0)
     torsion_abort(); /* LCOV_EXCL_LINE */
 #endif
@@ -247,28 +267,30 @@ rng_global_lock(void) {
 
 static void
 rng_global_unlock(void) {
-#ifdef TORSION_USE_LOCK
+#ifdef TORSION_USE_PTHREAD
   if (pthread_mutex_unlock(&rng_lock) != 0)
     torsion_abort(); /* LCOV_EXCL_LINE */
 #endif
 }
 
+#endif /* !__MINGW32__ */
+
 /*
  * Global Context
  */
 
-static TORSION_TLS struct {
-  rng_t rng;
-  int started;
-  long pid;
-} rng_state;
+#if defined(TORSION_TLS)
+static TORSION_TLS rng_t rng_state;
+#else
+static rng_t rng_state;
+#endif
 
 static int
 rng_global_init(void) {
   long pid = torsion_getpid();
 
   if (!rng_state.started || rng_state.pid != pid) {
-    if (!rng_init(&rng_state.rng))
+    if (!rng_init(&rng_state))
       return 0; /* LCOV_EXCL_LINE */
 
     rng_state.started = 1;
@@ -284,6 +306,8 @@ rng_global_init(void) {
 
 int
 torsion_getentropy(void *dst, size_t size) {
+  if (!torsion_has_sysrand())
+    return torsion_hwrand(dst, size);
   return torsion_sysrand(dst, size);
 }
 
@@ -302,7 +326,7 @@ torsion_getrandom(void *dst, size_t size) {
   }
   /* LCOV_EXCL_STOP */
 
-  rng_generate(&rng_state.rng, dst, size);
+  rng_generate(&rng_state, dst, size);
   rng_global_unlock();
 
   return 1;
@@ -320,7 +344,7 @@ torsion_random(uint32_t *num) {
   }
   /* LCOV_EXCL_STOP */
 
-  *num = rng_random(&rng_state.rng);
+  *num = rng_random(&rng_state);
 
   rng_global_unlock();
 
@@ -339,29 +363,9 @@ torsion_uniform(uint32_t *num, uint32_t max) {
   }
   /* LCOV_EXCL_STOP */
 
-  *num = rng_uniform(&rng_state.rng, max);
+  *num = rng_uniform(&rng_state, max);
 
   rng_global_unlock();
 
   return 1;
-}
-
-/*
- * Testing
- */
-
-int
-torsion_threadsafety(void) {
-#if defined(TORSION_HAVE_TLS)
-  return TORSION_THREADSAFETY_TLS;
-#elif defined(TORSION_HAVE_PTHREAD)
-  return TORSION_THREADSAFETY_MUTEX;
-#else
-  return TORSION_THREADSAFETY_NONE;
-#endif
-}
-
-void *
-torsion_randomaddr(void) {
-  return (void *)&rng_state;
 }

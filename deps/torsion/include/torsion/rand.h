@@ -16,21 +16,6 @@ extern "C" {
 #include "common.h"
 
 /*
- * Symbol Aliases
- */
-
-#define torsion_threadsafety torsion__threadsafety
-#define torsion_randomaddr torsion__randomaddr
-
-/*
- * Definitions
- */
-
-#define TORSION_THREADSAFETY_NONE 0
-#define TORSION_THREADSAFETY_TLS 1
-#define TORSION_THREADSAFETY_MUTEX 2
-
-/*
  * Random
  */
 
@@ -45,16 +30,6 @@ torsion_random(uint32_t *num);
 
 TORSION_EXTERN int
 torsion_uniform(uint32_t *num, uint32_t max);
-
-/*
- * Testing
- */
-
-TORSION_EXTERN int
-torsion_threadsafety(void);
-
-TORSION_EXTERN void *
-torsion_randomaddr(void);
 
 #ifdef __cplusplus
 }

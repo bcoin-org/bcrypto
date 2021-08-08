@@ -8,7 +8,7 @@
 #define TORSION_ASN1_H
 
 #include <stddef.h>
-#include "mpi.h"
+#include <torsion/mpi.h>
 
 /*
  * Alias

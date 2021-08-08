@@ -29,10 +29,10 @@
 #include <torsion/drbg.h>
 #include <torsion/dsa.h>
 #include <torsion/hash.h>
+#include <torsion/mpi.h>
 #include <torsion/util.h>
 #include "asn1.h"
 #include "internal.h"
-#include "mpi.h"
 
 /*
  * Structs

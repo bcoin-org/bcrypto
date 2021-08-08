@@ -40,7 +40,7 @@ torsion_memzero(void *ptr, size_t len) {
     );
   }
 #else
-  static void *(*const volatile memset_ptr)(void *, int, size_t) = memset;
+  static void *(*volatile memset_ptr)(void *, int, size_t) = memset;
 
   if (len > 0)
     memset_ptr(ptr, 0, len);

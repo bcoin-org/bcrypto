@@ -156,11 +156,11 @@
 #include <torsion/drbg.h>
 #include <torsion/ecc.h>
 #include <torsion/hash.h>
+#include <torsion/mpi.h>
 #include <torsion/util.h>
 
 #include "asn1.h"
 #include "internal.h"
-#include "mpi.h"
 
 #if defined(TORSION_HAVE_INT128)
 typedef uint64_t fe_word_t;
@@ -547,7 +547,8 @@ typedef struct xge_s {
 typedef struct edwards_s {
   hash_id_t hash;
   int context;
-  const char *prefix;
+  const unsigned char *prefix;
+  size_t prefix_len;
   prime_field_t fe;
   scalar_field_t sc;
   unsigned int h;
@@ -576,7 +577,8 @@ typedef struct edwards_s {
 typedef struct edwards_def_s {
   hash_id_t hash;
   int context;
-  const char *prefix;
+  unsigned char prefix[32];
+  size_t prefix_len;
   const prime_def_t *fe;
   const scalar_def_t *sc;
   unsigned int h;
@@ -4556,7 +4558,7 @@ wei_jmul_multi_normal_var(const wei_t *ec,
                           jge_t *r,
                           const sc_t k0,
                           const wge_t *points,
-                          const sc_t *coeffs,
+                          sc_t *coeffs,
                           size_t len,
                           wei__scratch_t *scratch) {
   /* Multiple point multiplication, also known
@@ -4643,7 +4645,7 @@ wei_jmul_multi_endo_var(const wei_t *ec,
                         jge_t *r,
                         const sc_t k0,
                         const wge_t *points,
-                        const sc_t *coeffs,
+                        sc_t *coeffs,
                         size_t len,
                         wei__scratch_t *scratch) {
   /* Multiple point multiplication, also known
@@ -4722,7 +4724,7 @@ wei_jmul_multi_var(const wei_t *ec,
                    jge_t *r,
                    const sc_t k0,
                    const wge_t *points,
-                   const sc_t *coeffs,
+                   sc_t *coeffs,
                    size_t len,
                    wei__scratch_t *scratch) {
   if (ec->endo)
@@ -4736,7 +4738,7 @@ wei_mul_multi_var(const wei_t *ec,
                   wge_t *r,
                   const sc_t k0,
                   const wge_t *points,
-                  const sc_t *coeffs,
+                  sc_t *coeffs,
                   size_t len,
                   wei__scratch_t *scratch) {
   jge_t j;
@@ -5233,7 +5235,7 @@ wei_point_to_hash(const wei_t *ec,
   unsigned int flag = (subgroup & 15) << 4;
   unsigned char *u1 = bytes;
   unsigned char *u2 = bytes + fe->size;
-  unsigned int hint;
+  unsigned int hint = 0;
   wge_t p1, p2;
   drbg_t rng;
 
@@ -6358,7 +6360,7 @@ mont_point_to_hash(const mont_t *ec,
   unsigned int flag = (subgroup & 15) << 4;
   unsigned char *u1 = bytes;
   unsigned char *u2 = bytes + fe->size;
-  unsigned int hint;
+  unsigned int hint = 0;
   mge_t p1, p2;
   drbg_t rng;
 
@@ -7162,6 +7164,7 @@ edwards_init(edwards_t *ec, const edwards_def_t *def) {
   ec->hash = def->hash;
   ec->context = def->context;
   ec->prefix = def->prefix;
+  ec->prefix_len = def->prefix_len;
   ec->h = def->h;
 
   prime_field_init(fe, def->fe, -1);
@@ -7473,7 +7476,7 @@ edwards_mul_multi_var(const edwards_t *ec,
                       xge_t *r,
                       const sc_t k0,
                       const xge_t *points,
-                      const sc_t *coeffs,
+                      sc_t *coeffs,
                       size_t len,
                       edwards__scratch_t *scratch) {
   /* Multiple point multiplication, also known
@@ -7814,7 +7817,7 @@ edwards_point_to_hash(const edwards_t *ec,
   unsigned int flag = (subgroup & 15) << 4;
   unsigned char *u1 = bytes;
   unsigned char *u2 = bytes + fe->size;
-  unsigned int hint;
+  unsigned int hint = 0;
   xge_t p1, p2;
   drbg_t rng;
 
@@ -8105,7 +8108,7 @@ ristretto_point_to_hash(const edwards_t *ec,
   const prime_field_t *fe = &ec->fe;
   unsigned char *u1 = bytes;
   unsigned char *u2 = bytes + fe->size;
-  unsigned int hint;
+  unsigned int hint = 0;
   rge_t p1, p2;
   drbg_t rng;
 
@@ -10073,7 +10076,14 @@ static const mont_def_t curve_x448 = {
 static const edwards_def_t curve_ed25519 = {
   HASH_SHA512,
   0,
-  "SigEd25519 no Ed25519 collisions",
+  {
+    /* "SigEd25519 no Ed25519 collisions" */
+    0x53, 0x69, 0x67, 0x45, 0x64, 0x32, 0x35, 0x35,
+    0x31, 0x39, 0x20, 0x6e, 0x6f, 0x20, 0x45, 0x64,
+    0x32, 0x35, 0x35, 0x31, 0x39, 0x20, 0x63, 0x6f,
+    0x6c, 0x6c, 0x69, 0x73, 0x69, 0x6f, 0x6e, 0x73
+  },
+  32,
   &field_p25519,
   &field_q25519,
   8,
@@ -10124,7 +10134,14 @@ static const edwards_def_t curve_ed25519 = {
 static const edwards_def_t curve_ed448 = {
   HASH_SHAKE256,
   1,
-  "SigEd448",
+  {
+    /* "SigEd448" */
+    0x53, 0x69, 0x67, 0x45, 0x64, 0x34, 0x34, 0x38,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+  },
+  8,
   &field_p448,
   &field_q448,
   4,
@@ -10188,7 +10205,14 @@ static const edwards_def_t curve_ed448 = {
 static const edwards_def_t curve_ed1174 = {
   HASH_SHA512,
   1,
-  "SigEd1174",
+  {
+    /* "SigEd1174" */
+    0x53, 0x69, 0x67, 0x45, 0x64, 0x31, 0x31, 0x37,
+    0x34, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+  },
+  9,
   &field_p251,
   &field_q251,
   4,
@@ -10264,7 +10288,7 @@ static const edwards_def_t *edwards_curves[3] = {
 
 wei_t *
 wei_curve_create(wei_curve_id_t type) {
-  wei_t *ec = NULL;
+  wei_t *ec;
 
   if (type < 0 || (size_t)type >= ARRAY_SIZE(wei_curves))
     return NULL;
@@ -10278,11 +10302,9 @@ wei_curve_create(wei_curve_id_t type) {
 
 void
 wei_curve_destroy(wei_t *ec) {
-  if (ec != NULL) {
-    sc_cleanse(&ec->sc, ec->blind);
-    jge_cleanse(ec, &ec->unblind);
-    free(ec);
-  }
+  sc_cleanse(&ec->sc, ec->blind);
+  jge_cleanse(ec, &ec->unblind);
+  free(ec);
 }
 
 void
@@ -10339,15 +10361,13 @@ void
 wei_scratch_destroy(const wei_t *ec, wei__scratch_t *scratch) {
   (void)ec;
 
-  if (scratch != NULL) {
-    free(scratch->wnd);
-    free(scratch->wnds);
-    free(scratch->naf);
-    free(scratch->nafs);
-    free(scratch->points);
-    free(scratch->coeffs);
-    free(scratch);
-  }
+  free(scratch->wnd);
+  free(scratch->wnds);
+  free(scratch->naf);
+  free(scratch->nafs);
+  free(scratch->points);
+  free(scratch->coeffs);
+  free(scratch);
 }
 
 /*
@@ -10356,7 +10376,7 @@ wei_scratch_destroy(const wei_t *ec, wei__scratch_t *scratch) {
 
 mont_t *
 mont_curve_create(mont_curve_id_t type) {
-  mont_t *ec = NULL;
+  mont_t *ec;
 
   if (type < 0 || (size_t)type >= ARRAY_SIZE(mont_curves))
     return NULL;
@@ -10370,8 +10390,7 @@ mont_curve_create(mont_curve_id_t type) {
 
 void
 mont_curve_destroy(mont_t *ec) {
-  if (ec != NULL)
-    free(ec);
+  free(ec);
 }
 
 size_t
@@ -10400,7 +10419,7 @@ mont_curve_field_bits(const mont_t *ec) {
 
 edwards_t *
 edwards_curve_create(edwards_curve_id_t type) {
-  edwards_t *ec = NULL;
+  edwards_t *ec;
 
   if (type < 0 || (size_t)type >= ARRAY_SIZE(edwards_curves))
     return NULL;
@@ -10414,11 +10433,9 @@ edwards_curve_create(edwards_curve_id_t type) {
 
 void
 edwards_curve_destroy(edwards_t *ec) {
-  if (ec != NULL) {
-    sc_cleanse(&ec->sc, ec->blind);
-    xge_cleanse(ec, &ec->unblind);
-    free(ec);
-  }
+  sc_cleanse(&ec->sc, ec->blind);
+  xge_cleanse(ec, &ec->unblind);
+  free(ec);
 }
 
 void
@@ -10475,15 +10492,13 @@ void
 edwards_scratch_destroy(const edwards_t *ec, edwards__scratch_t *scratch) {
   (void)ec;
 
-  if (scratch != NULL) {
-    free(scratch->wnd);
-    free(scratch->wnds);
-    free(scratch->naf);
-    free(scratch->nafs);
-    free(scratch->points);
-    free(scratch->coeffs);
-    free(scratch);
-  }
+  free(scratch->wnd);
+  free(scratch->wnds);
+  free(scratch->naf);
+  free(scratch->nafs);
+  free(scratch->points);
+  free(scratch->coeffs);
+  free(scratch);
 }
 
 /*
@@ -11814,7 +11829,7 @@ bipschnorr_verify_batch(const wei_t *ec,
     if (j == scratch->size - (scratch->size & 1)) {
       sc_neg(sc, sum, sum);
 
-      wei_jmul_multi_var(ec, &r, sum, points, (const sc_t *)coeffs, j, scratch);
+      wei_jmul_multi_var(ec, &r, sum, points, coeffs, j, scratch);
 
       if (!jge_is_zero(ec, &r))
         return 0;
@@ -11828,7 +11843,7 @@ bipschnorr_verify_batch(const wei_t *ec,
   if (j > 0) {
     sc_neg(sc, sum, sum);
 
-    wei_jmul_multi_var(ec, &r, sum, points, (const sc_t *)coeffs, j, scratch);
+    wei_jmul_multi_var(ec, &r, sum, points, coeffs, j, scratch);
 
     if (!jge_is_zero(ec, &r))
       return 0;
@@ -12227,7 +12242,10 @@ bip340_pubkey_combine(const wei_t *ec,
 }
 
 static void
-bip340_hash_init(hash_t *hash, hash_id_t type, const char *tag) {
+bip340_hash_init(hash_t *hash,
+                 hash_id_t type,
+                 const unsigned char *tag,
+                 size_t tag_len) {
   /* [BIP340] "Tagged Hashes". */
   size_t hash_size = hash_output_size(type);
   size_t block_size = hash_block_size(type);
@@ -12240,7 +12258,7 @@ bip340_hash_init(hash_t *hash, hash_id_t type, const char *tag) {
     hash_init(hash, type);
   }
 
-  hash_update(hash, tag, strlen(tag));
+  hash_update(hash, tag, tag_len);
   hash_final(hash, bytes, hash_size);
 
   hash_init(hash, type);
@@ -12275,7 +12293,14 @@ bip340_hash_aux(const wei_t *ec,
 
     hash.type = HASH_SHA256;
   } else {
-    bip340_hash_init(&hash, ec->xof, "BIP0340/aux");
+    static const unsigned char tag[11] = {
+      /* "BIP0340/aux" */
+      0x42, 0x49, 0x50, 0x30,
+      0x33, 0x34, 0x30, 0x2f,
+      0x61, 0x75, 0x78
+    };
+
+    bip340_hash_init(&hash, ec->xof, tag, sizeof(tag));
   }
 
   hash_update(&hash, aux, 32);
@@ -12323,7 +12348,15 @@ bip340_hash_nonce(const wei_t *ec, sc_t k,
 
     hash.type = HASH_SHA256;
   } else {
-    bip340_hash_init(&hash, ec->xof, "BIP0340/nonce");
+    static const unsigned char tag[13] = {
+      /* "BIP0340/nonce" */
+      0x42, 0x49, 0x50, 0x30,
+      0x33, 0x34, 0x30, 0x2f,
+      0x6e, 0x6f, 0x6e, 0x63,
+      0x65
+    };
+
+    bip340_hash_init(&hash, ec->xof, tag, sizeof(tag));
   }
 
   hash_update(&hash, secret, sc->size);
@@ -12368,7 +12401,16 @@ bip340_hash_challenge(const wei_t *ec, sc_t e,
 
     hash.type = HASH_SHA256;
   } else {
-    bip340_hash_init(&hash, ec->xof, "BIP0340/challenge");
+    static const unsigned char tag[17] = {
+      /* "BIP0340/challenge" */
+      0x42, 0x49, 0x50, 0x30,
+      0x33, 0x34, 0x30, 0x2f,
+      0x63, 0x68, 0x61, 0x6c,
+      0x6c, 0x65, 0x6e, 0x67,
+      0x65
+    };
+
+    bip340_hash_init(&hash, ec->xof, tag, sizeof(tag));
   }
 
   hash_update(&hash, R, fe->size);
@@ -12662,7 +12704,7 @@ bip340_verify_batch(const wei_t *ec,
     if (j == scratch->size - (scratch->size & 1)) {
       sc_neg(sc, sum, sum);
 
-      wei_jmul_multi_var(ec, &r, sum, points, (const sc_t *)coeffs, j, scratch);
+      wei_jmul_multi_var(ec, &r, sum, points, coeffs, j, scratch);
 
       if (!jge_is_zero(ec, &r))
         return 0;
@@ -12676,7 +12718,7 @@ bip340_verify_batch(const wei_t *ec,
   if (j > 0) {
     sc_neg(sc, sum, sum);
 
-    wei_jmul_multi_var(ec, &r, sum, points, (const sc_t *)coeffs, j, scratch);
+    wei_jmul_multi_var(ec, &r, sum, points, coeffs, j, scratch);
 
     if (!jge_is_zero(ec, &r))
       return 0;
@@ -13560,9 +13602,7 @@ eddsa_hash_init(const edwards_t *ec,
     uint8_t prehash = (ph > 0);
     uint8_t length = ctx_len;
 
-    if (ec->prefix != NULL)
-      hash_update(hash, ec->prefix, strlen(ec->prefix));
-
+    hash_update(hash, ec->prefix, ec->prefix_len);
     hash_update(hash, &prehash, sizeof(prehash));
     hash_update(hash, &length, sizeof(length));
     hash_update(hash, ctx, ctx_len);
@@ -14050,8 +14090,7 @@ eddsa_verify_batch(const edwards_t *ec,
       sc_mul_word(sc, sum, sum, ec->h);
       sc_neg(sc, sum, sum);
 
-      edwards_mul_multi_var(ec, &R, sum, points,
-                            (const sc_t *)coeffs, j, scratch);
+      edwards_mul_multi_var(ec, &R, sum, points, coeffs, j, scratch);
 
       if (!xge_is_zero(ec, &R))
         return 0;
@@ -14066,8 +14105,7 @@ eddsa_verify_batch(const edwards_t *ec,
     sc_mul_word(sc, sum, sum, ec->h);
     sc_neg(sc, sum, sum);
 
-    edwards_mul_multi_var(ec, &R, sum, points,
-                          (const sc_t *)coeffs, j, scratch);
+    edwards_mul_multi_var(ec, &R, sum, points, coeffs, j, scratch);
 
     if (!xge_is_zero(ec, &R))
       return 0;
@@ -14531,7 +14569,7 @@ ristretto_derive(const edwards_t *ec,
 #  include "../test/ecc_internal.h"
 #else
 void
-test_ecc_internal(drbg_t *rng) {
+ecc_run_tests(drbg_t *rng) {
   (void)rng;
 }
 #endif

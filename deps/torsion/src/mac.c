@@ -23,7 +23,7 @@
 #undef HAVE_UMUL128
 #undef HAVE_UMULH
 
-#if defined(_MSC_VER) && _MSC_VER >= 1400 /* VS 2005 */
+#if defined(TORSION_MSVC) && _MSC_VER >= 1400 /* VS 2005 */
 #  include <intrin.h>
 #  if defined(_M_AMD64) || defined(_M_X64)
 #    pragma intrinsic(_umul128)

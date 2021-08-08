@@ -84,7 +84,7 @@ base16_test0(const char *str, size_t len) {
     return 0;
 
   while (len--) {
-    if (base16_table[(uint8_t)str[len]] == -1)
+    if (base16_table[torsion_ascii(str[len])] == -1)
       return 0;
   }
 
@@ -137,8 +137,8 @@ base16_decode(uint8_t *dst, size_t *dstlen,
   srclen >>= 1;
 
   while (srclen--) {
-    uint8_t hi = base16_table[(uint8_t)src[i++]];
-    uint8_t lo = base16_table[(uint8_t)src[i++]];
+    uint8_t hi = base16_table[torsion_ascii(src[i++])];
+    uint8_t lo = base16_table[torsion_ascii(src[i++])];
 
     z |= hi | lo;
 
@@ -206,8 +206,8 @@ base16le_decode(uint8_t *dst, size_t *dstlen,
   srclen >>= 1;
 
   while (srclen--) {
-    uint8_t lo = base16_table[(uint8_t)src[--i]];
-    uint8_t hi = base16_table[(uint8_t)src[--i]];
+    uint8_t lo = base16_table[torsion_ascii(src[--i])];
+    uint8_t hi = base16_table[torsion_ascii(src[--i])];
 
     z |= hi | lo;
 
@@ -434,7 +434,7 @@ base32_decode0(uint8_t *dst, size_t *dstlen,
   size_t i;
 
   for (i = 0; i < srclen; i++) {
-    uint8_t val = table[(uint8_t)src[i]];
+    uint8_t val = table[torsion_ascii(src[i])];
 
     if (val & 0x80)
       break;
@@ -506,7 +506,7 @@ base32_test0(const char *src, size_t srclen,
   size_t i, mode;
 
   for (i = 0; i < srclen; i++) {
-    if (table[(uint8_t)src[i]] == -1)
+    if (table[torsion_ascii(src[i])] == -1)
       break;
   }
 
@@ -516,23 +516,23 @@ base32_test0(const char *src, size_t srclen,
     case 1:
       return 0;
     case 2:
-      if (table[(uint8_t)src[i - 1]] & 3)
+      if (table[torsion_ascii(src[i - 1])] & 3)
         return 0;
       break;
     case 3:
       return 0;
     case 4:
-      if (table[(uint8_t)src[i - 1]] & 15)
+      if (table[torsion_ascii(src[i - 1])] & 15)
         return 0;
       break;
     case 5:
-      if (table[(uint8_t)src[i - 1]] & 1)
+      if (table[torsion_ascii(src[i - 1])] & 1)
         return 0;
       break;
     case 6:
       return 0;
     case 7:
-      if (table[(uint8_t)src[i - 1]] & 7)
+      if (table[torsion_ascii(src[i - 1])] & 7)
         return 0;
       break;
   }
@@ -731,8 +731,10 @@ base58_decode(uint8_t *dst, size_t *dstlen,
   uint8_t *b256;
   uint8_t val;
 
+#if SIZE_MAX > UINT32_MAX
   if (srclen > 0xffffffff)
     return 0;
+#endif
 
   for (i = 0; i < srclen; i++) {
     if (src[i] != '1')
@@ -750,7 +752,7 @@ base58_decode(uint8_t *dst, size_t *dstlen,
   memset(b256, 0, size);
 
   for (; i < srclen; i++) {
-    val = base58_table[(uint8_t)src[i]];
+    val = base58_table[torsion_ascii(src[i])];
 
     if (val & 0x80) {
       free(b256);
@@ -794,7 +796,7 @@ base58_decode(uint8_t *dst, size_t *dstlen,
 int
 base58_test(const char *str, size_t len) {
   while (len--) {
-    if (base58_table[(uint8_t)str[len]] == -1)
+    if (base58_table[torsion_ascii(str[len])] == -1)
       return 0;
   }
 
@@ -998,10 +1000,10 @@ base64_decode0(uint8_t *dst, size_t *dstlen,
     return 0;
 
   while (left >= 4) {
-    uint8_t t1 = table[(uint8_t)src[i++]];
-    uint8_t t2 = table[(uint8_t)src[i++]];
-    uint8_t t3 = table[(uint8_t)src[i++]];
-    uint8_t t4 = table[(uint8_t)src[i++]];
+    uint8_t t1 = table[torsion_ascii(src[i++])];
+    uint8_t t2 = table[torsion_ascii(src[i++])];
+    uint8_t t3 = table[torsion_ascii(src[i++])];
+    uint8_t t4 = table[torsion_ascii(src[i++])];
 
     if ((t1 | t2 | t3 | t4) & 0x80)
       return 0;
@@ -1019,8 +1021,8 @@ base64_decode0(uint8_t *dst, size_t *dstlen,
     }
 
     case 2: {
-      uint8_t t1 = table[(uint8_t)src[i++]];
-      uint8_t t2 = table[(uint8_t)src[i++]];
+      uint8_t t1 = table[torsion_ascii(src[i++])];
+      uint8_t t2 = table[torsion_ascii(src[i++])];
 
       if ((t1 | t2) & 0x80)
         return 0;
@@ -1034,9 +1036,9 @@ base64_decode0(uint8_t *dst, size_t *dstlen,
     }
 
     case 3: {
-      uint8_t t1 = table[(uint8_t)src[i++]];
-      uint8_t t2 = table[(uint8_t)src[i++]];
-      uint8_t t3 = table[(uint8_t)src[i++]];
+      uint8_t t1 = table[torsion_ascii(src[i++])];
+      uint8_t t2 = table[torsion_ascii(src[i++])];
+      uint8_t t3 = table[torsion_ascii(src[i++])];
 
       if ((t1 | t2 | t3) & 0x80)
         return 0;
@@ -1071,7 +1073,7 @@ base64_test0(const char *str, size_t len, const int8_t *table) {
     return 0;
 
   for (i = 0; i < len; i++) {
-    if (table[(uint8_t)str[i]] == -1)
+    if (table[torsion_ascii(str[i])] == -1)
       return 0;
   }
 
@@ -1079,9 +1081,9 @@ base64_test0(const char *str, size_t len, const int8_t *table) {
     case 1:
       return 0;
     case 2:
-      return (table[(uint8_t)str[len - 1]] & 15) == 0;
+      return (table[torsion_ascii(str[len - 1])] & 15) == 0;
     case 3:
-      return (table[(uint8_t)str[len - 1]] & 3) == 0;
+      return (table[torsion_ascii(str[len - 1])] & 3) == 0;
   }
 
   return 1;
@@ -1249,15 +1251,15 @@ bech32_serialize(char *str,
   size_t j = 0;
 
   for (hlen = 0; hlen < BECH32_MAX_HRP_SIZE; hlen++) {
-    int ch = hrp[hlen];
+    int ch = torsion_ascii(hrp[hlen]);
 
-    if (ch == '\0')
+    if (ch == 0)
       break;
 
-    if (ch < '!' || ch > '~')
+    if (ch < 33 || ch > 126)
       return 0;
 
-    if (ch >= 'A' && ch <= 'Z')
+    if (ch >= 65 && ch <= 90)
       return 0;
 
     chk = bech32_polymod(chk) ^ (ch >> 5);
@@ -1272,11 +1274,11 @@ bech32_serialize(char *str,
   chk = bech32_polymod(chk);
 
   for (i = 0; i < hlen; i++) {
-    int ch = hrp[i];
+    int ch = torsion_ascii(hrp[i]);
 
     chk = bech32_polymod(chk) ^ (ch & 0x1f);
 
-    str[j++] = ch;
+    str[j++] = hrp[i];
   }
 
   str[j++] = '1';
@@ -1318,19 +1320,19 @@ bech32_deserialize(char *hrp,
   size_t j = 0;
 
   for (slen = 0; slen < BECH32_MAX_SERIALIZE_SIZE; slen++) {
-    int ch = str[slen];
+    int ch = torsion_ascii(str[slen]);
 
-    if (ch == '\0')
+    if (ch == 0)
       break;
 
-    if (ch < '!' || ch > '~')
+    if (ch < 33 || ch > 126)
       return 0;
 
-    if (ch >= 'a' && ch <= 'z')
+    if (ch >= 97 && ch <= 122)
       lower = 1;
-    else if (ch >= 'A' && ch <= 'Z')
+    else if (ch >= 65 && ch <= 90)
       upper = 1;
-    else if (ch == '1')
+    else if (ch == 49)
       hlen = slen;
   }
 
@@ -1347,14 +1349,14 @@ bech32_deserialize(char *hrp,
     return 0;
 
   for (i = 0; i < hlen; i++) {
-    int ch = str[i];
+    int ch = torsion_ascii(str[i]);
 
-    if (ch >= 'A' && ch <= 'Z')
-      ch += ' ';
+    if (ch >= 65 && ch <= 90)
+      ch += 32;
 
     chk = bech32_polymod(chk) ^ (ch >> 5);
 
-    hrp[i] = ch;
+    hrp[i] = torsion_native(ch);
   }
 
   hrp[i] = '\0';
@@ -1362,10 +1364,10 @@ bech32_deserialize(char *hrp,
   chk = bech32_polymod(chk);
 
   for (i = 0; i < hlen; i++)
-    chk = bech32_polymod(chk) ^ (str[i] & 0x1f);
+    chk = bech32_polymod(chk) ^ (torsion_ascii(str[i]) & 0x1f);
 
   for (i = hlen + 1; i < slen; i++) {
-    uint8_t val = bech32_table[(uint8_t)str[i]];
+    uint8_t val = bech32_table[torsion_ascii(str[i])];
 
     if (val & 0x80)
       return 0;
@@ -1561,12 +1563,12 @@ cash32_serialize(char *str,
     return 0;
 
   for (plen = 0; plen < CASH32_MAX_PREFIX_SIZE; plen++) {
-    int ch = prefix[plen];
+    int ch = torsion_ascii(prefix[plen]);
 
-    if (ch == '\0')
+    if (ch == 0)
       break;
 
-    if (ch < 'a' || ch > 'z')
+    if (ch < 97 || ch > 122)
       return 0;
   }
 
@@ -1574,11 +1576,11 @@ cash32_serialize(char *str,
     return 0;
 
   for (i = 0; i < plen; i++) {
-    int ch = prefix[i];
+    int ch = torsion_ascii(prefix[i]);
 
     chk = cash32_polymod(chk) ^ (ch & 0x1f);
 
-    str[j++] = ch;
+    str[j++] = prefix[i];
   }
 
   chk = cash32_polymod(chk);
@@ -1624,27 +1626,27 @@ cash32_deserialize(char *prefix,
   size_t j = 0;
 
   for (slen = 0; slen < CASH32_MAX_SERIALIZE_SIZE; slen++) {
-    int ch = str[slen];
+    int ch = torsion_ascii(str[slen]);
 
-    if (ch == '\0')
+    if (ch == 0)
       break;
 
-    if (ch >= 'a' && ch <= 'z') {
+    if (ch >= 97 && ch <= 122) {
       lower = 1;
       continue;
     }
 
-    if (ch >= 'A' && ch <= 'Z') {
+    if (ch >= 65 && ch <= 90) {
       upper = 1;
       continue;
     }
 
-    if (ch >= '0' && ch <= '9') {
+    if (ch >= 48 && ch <= 57) {
       number = 1;
       continue;
     }
 
-    if (ch == ':') {
+    if (ch == 58) {
       if (number || slen == 0 || plen != 0)
         return 0;
 
@@ -1664,17 +1666,17 @@ cash32_deserialize(char *prefix,
 
   if (plen == 0) {
     for (i = 0; i < CASH32_MAX_PREFIX_SIZE; i++) {
-      int ch = fallback[i];
+      int ch = torsion_ascii(fallback[i]);
 
-      if (ch == '\0')
+      if (ch == 0)
         break;
 
-      if (ch < 'a' || ch > 'z')
+      if (ch < 97 || ch > 122)
         return 0;
 
       chk = cash32_polymod(chk) ^ (ch & 0x1f);
 
-      prefix[i] = ch;
+      prefix[i] = fallback[i];
     }
 
     prefix[i] = '\0';
@@ -1688,11 +1690,11 @@ cash32_deserialize(char *prefix,
       return 0;
 
     for (i = 0; i < plen; i++) {
-      int ch = str[i] | ' ';
+      int ch = torsion_ascii(str[i]) | 32;
 
       chk = cash32_polymod(chk) ^ (ch & 0x1f);
 
-      prefix[i] = ch;
+      prefix[i] = torsion_native(ch);
     }
 
     prefix[i] = '\0';
@@ -1706,7 +1708,7 @@ cash32_deserialize(char *prefix,
   chk = cash32_polymod(chk);
 
   for (i = slen - dlen; i < slen; i++) {
-    uint8_t val = cash32_table[(uint8_t)str[i]];
+    uint8_t val = cash32_table[torsion_ascii(str[i])];
 
     if (val & 0x80)
       return 0;

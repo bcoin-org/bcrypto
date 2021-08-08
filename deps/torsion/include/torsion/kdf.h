@@ -20,13 +20,11 @@ extern "C" {
  * Symbol Aliases
  */
 
-#define bcrypt_hash192 torsion_bcrypt_hash192
-#define bcrypt_hash256 torsion_bcrypt_hash256
-#define bcrypt_pbkdf torsion_bcrypt_pbkdf
-#define bcrypt_derive torsion_bcrypt_derive
 #define bcrypt_generate torsion_bcrypt_generate
-#define bcrypt_generate_with_salt64 torsion_bcrypt_generate_with_salt64
 #define bcrypt_verify torsion_bcrypt_verify
+#define bcrypt_hash torsion_bcrypt_hash
+#define bcrypt_check torsion_bcrypt_check
+#define bcrypt_pbkdf torsion_bcrypt_pbkdf
 #define eb2k_derive torsion_eb2k_derive
 #define hkdf_extract torsion_hkdf_extract
 #define hkdf_expand torsion_hkdf_expand
@@ -40,46 +38,32 @@ extern "C" {
  * Bcrypt
  */
 
-TORSION_EXTERN void
-bcrypt_hash192(unsigned char *out,
-               const unsigned char *pass, size_t pass_len,
-               const unsigned char *salt, size_t salt_len,
-               unsigned int rounds);
+TORSION_EXTERN int
+bcrypt_generate(char *out,
+                const unsigned char *pass,
+                size_t pass_len,
+                const unsigned char *salt,
+                unsigned int rounds,
+                char minor);
 
-TORSION_EXTERN void
-bcrypt_hash256(unsigned char *out,
-               const unsigned char *pass, size_t pass_len,
-               const unsigned char *salt, size_t salt_len,
-               unsigned int rounds);
+TORSION_EXTERN int
+bcrypt_verify(const unsigned char *pass, size_t pass_len, const char *record);
+
+TORSION_EXTERN int
+bcrypt_hash(char *out,
+            const char *pass,
+            const unsigned char *salt,
+            unsigned int rounds,
+            char minor);
+
+TORSION_EXTERN int
+bcrypt_check(const char *pass, const char *record);
 
 TORSION_EXTERN int
 bcrypt_pbkdf(unsigned char *key,
              const unsigned char *pass, size_t pass_len,
              const unsigned char *salt, size_t salt_len,
              unsigned int rounds, size_t size);
-
-TORSION_EXTERN int
-bcrypt_derive(unsigned char *out,
-              const unsigned char *pass, size_t pass_len,
-              const unsigned char *salt, size_t salt_len,
-              unsigned int rounds, char minor);
-
-TORSION_EXTERN int
-bcrypt_generate(char *out,
-                const unsigned char *pass, size_t pass_len,
-                const unsigned char *salt, size_t salt_len,
-                unsigned int rounds, char minor);
-
-TORSION_EXTERN int
-bcrypt_generate_with_salt64(char *out,
-                            const unsigned char *pass,
-                            size_t pass_len,
-                            const char *salt64,
-                            unsigned int rounds,
-                            char minor);
-
-TORSION_EXTERN int
-bcrypt_verify(const unsigned char *pass, size_t pass_len, const char *record);
 
 /*
  * EB2K (OpenSSL Legacy)

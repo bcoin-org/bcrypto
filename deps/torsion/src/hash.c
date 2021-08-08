@@ -1194,7 +1194,7 @@ md2_transform(md2_t *ctx, const unsigned char *chunk) {
 
 #define S (ctx->state)
 #define C (ctx->checksum)
-#define W ((uint8_t *)(chunk))
+#define W ((const uint8_t *)(chunk))
 
   for (j = 0; j < 16; j++) {
     c = W[j];

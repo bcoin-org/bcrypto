@@ -34,6 +34,7 @@ extern "C" {
 #define rsa_verify torsion_rsa_verify
 #define rsa_encrypt torsion_rsa_encrypt
 #define rsa_decrypt torsion_rsa_decrypt
+#define rsa_decrypt_key torsion_rsa_decrypt_key
 #define rsa_encrypt_oaep torsion_rsa_encrypt_oaep
 #define rsa_decrypt_oaep torsion_rsa_decrypt_oaep
 #define rsa_sign_pss torsion_rsa_sign_pss

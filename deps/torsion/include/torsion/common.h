@@ -17,9 +17,6 @@
 #    define TORSION_EXTERN __declspec(dllexport)
 #  elif defined(__GNUC__) && __GNUC__ >= 4
 #    define TORSION_EXTERN __attribute__((visibility("default")))
-#  elif (defined(__SUNPRO_C) && __SUNPRO_C >= 0x550) \
-     || (defined(__SUNPRO_CC) && __SUNPRO_CC >= 0x550)
-#    define TORSION_EXTERN __global
 #  endif
 #endif
 

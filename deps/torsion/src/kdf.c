@@ -28,6 +28,7 @@
 #include <torsion/util.h>
 #include "bf.h"
 #include "bio.h"
+#include "internal.h"
 
 /*
  * Bcrypt
@@ -45,13 +46,24 @@
 
 #define BCRYPT_VERSION '2'
 
-#define BCRYPT_CIPHERTEXT192 "OrpheanBeholderScryDoubt"
+#define BCRYPT_CIPHERTEXT192 {                    \
+  /* "OrpheanBeholderScryDoubt" */                \
+  0x4f, 0x72, 0x70, 0x68, 0x65, 0x61, 0x6e, 0x42, \
+  0x65, 0x68, 0x6f, 0x6c, 0x64, 0x65, 0x72, 0x53, \
+  0x63, 0x72, 0x79, 0x44, 0x6f, 0x75, 0x62, 0x74  \
+}
 #define BCRYPT_BLOCKS192 6
 #define BCRYPT_SIZE192 24
 #define BCRYPT_SALT192 16
 #define BCRYPT_HASH192 23
 
-#define BCRYPT_CIPHERTEXT256 "OxychromaticBlowfishSwatDynamite"
+#define BCRYPT_CIPHERTEXT256 {                    \
+  /* "OxychromaticBlowfishSwatDynamite" */        \
+  0x4f, 0x78, 0x79, 0x63, 0x68, 0x72, 0x6f, 0x6d, \
+  0x61, 0x74, 0x69, 0x63, 0x42, 0x6c, 0x6f, 0x77, \
+  0x66, 0x69, 0x73, 0x68, 0x53, 0x77, 0x61, 0x74, \
+  0x44, 0x79, 0x6e, 0x61, 0x6d, 0x69, 0x74, 0x65  \
+}
 #define BCRYPT_BLOCKS256 8
 #define BCRYPT_SIZE256 32
 
@@ -137,12 +149,12 @@ base64_decode(uint8_t *dst, size_t len, const char *src) {
   size_t j = 0;
 
   while (j < len) {
-    c1 = base64_table[(uint8_t)src[i++]];
+    c1 = base64_table[torsion_ascii(src[i++])];
 
     if (c1 & 0x80)
       return NULL;
 
-    c2 = base64_table[(uint8_t)src[i++]];
+    c2 = base64_table[torsion_ascii(src[i++])];
 
     if (c2 & 0x80)
       return NULL;
@@ -152,7 +164,7 @@ base64_decode(uint8_t *dst, size_t len, const char *src) {
     if (j >= len)
       break;
 
-    c3 = base64_table[(uint8_t)src[i++]];
+    c3 = base64_table[torsion_ascii(src[i++])];
 
     if (c3 & 0x80)
       return NULL;
@@ -162,7 +174,7 @@ base64_decode(uint8_t *dst, size_t len, const char *src) {
     if (j >= len)
       break;
 
-    c4 = base64_table[(uint8_t)src[i++]];
+    c4 = base64_table[torsion_ascii(src[i++])];
 
     if (c4 & 0x80)
       return NULL;
@@ -185,8 +197,8 @@ bcrypt_encode(char *out,
   *out++ = BCRYPT_VERSION;
   *out++ = minor;
   *out++ = '$';
-  *out++ = '0' + (rounds / 10);
-  *out++ = '0' + (rounds % 10);
+  *out++ = '0' + (int)(rounds / 10);
+  *out++ = '0' + (int)(rounds % 10);
   *out++ = '$';
 
   out = base64_encode(out, salt, BCRYPT_SALT192);
@@ -215,8 +227,8 @@ bcrypt_decode(char *minor,
   if (str[4] == '\0' || str[5] == '\0')
     return 0;
 
-  hi = (int)str[4] - 0x30;
-  lo = (int)str[5] - 0x30;
+  hi = (int)str[4] - '0';
+  lo = (int)str[5] - '0';
 
   if (hi < 0 || hi > 9 || lo < 0 || lo > 9)
     return 0;
@@ -246,7 +258,25 @@ bcrypt_decode(char *minor,
   return 1;
 }
 
-void
+static int
+bcrypt_ascii_key(unsigned char *key, size_t *key_len, const char *pass) {
+  size_t len = 0;
+
+  while (*pass != '\0' && len < 255) {
+    int ch = torsion_ascii(*pass++);
+
+    if ((ch < 7 || ch > 13) && (ch < 32 || ch > 126))
+      return 0;
+
+    key[len++] = ch;
+  }
+
+  *key_len = len;
+
+  return 1;
+}
+
+static void
 bcrypt_hash192(unsigned char *out,
                const unsigned char *pass, size_t pass_len,
                const unsigned char *salt, size_t salt_len,
@@ -285,7 +315,7 @@ bcrypt_hash192(unsigned char *out,
   torsion_memzero(&state, sizeof(state));
 }
 
-void
+static void
 bcrypt_hash256(unsigned char *out,
                const unsigned char *pass, size_t pass_len,
                const unsigned char *salt, size_t salt_len,
@@ -322,6 +352,123 @@ bcrypt_hash256(unsigned char *out,
 
   torsion_memzero(cdata, sizeof(cdata));
   torsion_memzero(&state, sizeof(state));
+}
+
+static int
+bcrypt_derive(unsigned char *out,
+              const unsigned char *pass,
+              size_t pass_len,
+              const unsigned char *salt,
+              unsigned int rounds,
+              char minor) {
+  unsigned char tmp[BCRYPT_SIZE192];
+  unsigned char key[255];
+  size_t key_len;
+
+  if (rounds < 4 || rounds > 31)
+    return 0;
+
+  if (pass_len >= 255) {
+    memcpy(key, pass, 255);
+  } else {
+    if (pass_len > 0)
+      memcpy(key, pass, pass_len);
+
+    key[pass_len] = 0;
+  }
+
+  switch (minor) {
+    case 'a':
+      key_len = (pass_len + 1) & 0xff;
+      break;
+    case 'b':
+      key_len = pass_len;
+      if (key_len > 72)
+        key_len = 72;
+      key_len += 1;
+      break;
+    default:
+      return 0;
+  }
+
+  bcrypt_hash192(tmp, key, key_len, salt, BCRYPT_SALT192, rounds);
+
+  memcpy(out, tmp, BCRYPT_HASH192);
+
+  torsion_memzero(tmp, sizeof(tmp));
+  torsion_memzero(key, sizeof(key));
+
+  return 1;
+}
+
+int
+bcrypt_generate(char *out,
+                const unsigned char *pass,
+                size_t pass_len,
+                const unsigned char *salt,
+                unsigned int rounds,
+                char minor) {
+  unsigned char hash[BCRYPT_HASH192];
+
+  if (!bcrypt_derive(hash, pass, pass_len, salt, rounds, minor))
+    return 0;
+
+  bcrypt_encode(out, minor, rounds, salt, hash);
+
+  return 1;
+}
+
+int
+bcrypt_verify(const unsigned char *pass, size_t pass_len, const char *record) {
+  char minor;
+  unsigned int rounds;
+  unsigned char salt[BCRYPT_SALT192];
+  unsigned char expect[BCRYPT_HASH192];
+  unsigned char hash[BCRYPT_HASH192];
+
+  if (!bcrypt_decode(&minor, &rounds, salt, expect, record))
+    return 0;
+
+  if (!bcrypt_derive(hash, pass, pass_len, salt, rounds, minor))
+    return 0;
+
+  return torsion_memequal(hash, expect, BCRYPT_HASH192);
+}
+
+int
+bcrypt_hash(char *out,
+            const char *pass,
+            const unsigned char *salt,
+            unsigned int rounds,
+            char minor) {
+  unsigned char key[255];
+  size_t key_len;
+  int r;
+
+  if (!bcrypt_ascii_key(key, &key_len, pass))
+    return 0;
+
+  r = bcrypt_generate(out, key, key_len, salt, rounds, minor);
+
+  torsion_memzero(key, sizeof(key));
+
+  return r;
+}
+
+int
+bcrypt_check(const char *pass, const char *record) {
+  unsigned char key[255];
+  size_t key_len;
+  int r;
+
+  if (!bcrypt_ascii_key(key, &key_len, pass))
+    return 0;
+
+  r = bcrypt_verify(key, key_len, record);
+
+  torsion_memzero(key, sizeof(key));
+
+  return r;
 }
 
 int
@@ -409,109 +556,6 @@ bcrypt_pbkdf(unsigned char *key,
   return 1;
 }
 
-int
-bcrypt_derive(unsigned char *out,
-              const unsigned char *pass, size_t pass_len,
-              const unsigned char *salt, size_t salt_len,
-              unsigned int rounds, char minor) {
-  unsigned char tmp[BCRYPT_SIZE192];
-  unsigned char key[255];
-  size_t key_len;
-
-  if (rounds < 4 || rounds > 31)
-    return 0;
-
-  if (salt_len != BCRYPT_SALT192)
-    return 0;
-
-  if (pass_len >= 255) {
-    memcpy(key, pass, 255);
-  } else {
-    if (pass_len > 0)
-      memcpy(key, pass, pass_len);
-
-    key[pass_len] = 0;
-  }
-
-  switch (minor) {
-    case 'a':
-      key_len = (pass_len + 1) & 0xff;
-      break;
-    case 'b':
-      key_len = pass_len;
-      if (key_len > 72)
-        key_len = 72;
-      key_len += 1;
-      break;
-    default:
-      return 0;
-  }
-
-  bcrypt_hash192(tmp, key, key_len, salt, salt_len, rounds);
-
-  memcpy(out, tmp, BCRYPT_HASH192);
-
-  torsion_memzero(tmp, sizeof(tmp));
-  torsion_memzero(key, sizeof(key));
-
-  return 1;
-}
-
-int
-bcrypt_generate(char *out,
-                const unsigned char *pass, size_t pass_len,
-                const unsigned char *salt, size_t salt_len,
-                unsigned int rounds, char minor) {
-  unsigned char hash[BCRYPT_HASH192];
-
-  if (!bcrypt_derive(hash, pass, pass_len, salt, salt_len, rounds, minor))
-    return 0;
-
-  bcrypt_encode(out, minor, rounds, salt, hash);
-
-  return 1;
-}
-
-int
-bcrypt_generate_with_salt64(char *out,
-                            const unsigned char *pass,
-                            size_t pass_len,
-                            const char *salt64,
-                            unsigned int rounds,
-                            char minor) {
-  /* Useful for testing. */
-  unsigned char salt[BCRYPT_SALT192];
-
-  salt64 = base64_decode(salt, BCRYPT_SALT192, salt64);
-
-  if (salt64 == NULL)
-    return 0;
-
-  if (*salt64 != '\0')
-    return 0;
-
-  return bcrypt_generate(out, pass, pass_len,
-                              salt, sizeof(salt),
-                              rounds, minor);
-}
-
-int
-bcrypt_verify(const unsigned char *pass, size_t pass_len, const char *record) {
-  char minor;
-  unsigned int rounds;
-  unsigned char salt[BCRYPT_SALT192];
-  unsigned char expect[BCRYPT_HASH192];
-  unsigned char hash[BCRYPT_HASH192];
-
-  if (!bcrypt_decode(&minor, &rounds, salt, expect, record))
-    return 0;
-
-  if (!bcrypt_derive(hash, pass, pass_len, salt, sizeof(salt), rounds, minor))
-    return 0;
-
-  return torsion_memequal(hash, expect, BCRYPT_HASH192);
-}
-
 /*
  * EB2K (OpenSSL Legacy)
  *
@@ -545,10 +589,7 @@ eb2k_derive(unsigned char *key,
   if (salt_len != 0 && salt_len != 8)
     return 0;
 
-  if (key_len + iv_len < iv_len)
-    return 0;
-
-  while (key_len + iv_len > 0) {
+  while ((key_len | iv_len) > 0) {
     hash_init(&hash, type);
     hash_update(&hash, prev, prev_len);
     hash_update(&hash, passwd, passwd_len);
@@ -715,8 +756,10 @@ pbkdf2_derive(unsigned char *out,
 
   blocks = (len + hash_size - 1) / hash_size;
 
+#if SIZE_MAX > UINT32_MAX
   if (blocks > UINT32_MAX)
     return 0;
+#endif
 
   if (len == 0)
     return 1;
@@ -840,22 +883,19 @@ pgpdf_derive_iterated(unsigned char *out,
   static const unsigned char zero = 0;
   size_t hash_size = hash_output_size(type);
   unsigned char buf[HASH_MAX_OUTPUT_SIZE];
-  size_t i, j, w, combined, todo;
+  size_t i, j, total, left;
   hash_t hash;
 
   if (!hash_has_backend(type))
     return 0;
 
-  combined = salt_len + pass_len;
+  total = salt_len + pass_len;
 
-  if (combined < salt_len)
+  if (total < salt_len)
     return 0;
 
-  if (count < combined)
-    count = combined;
-
-  if (count + combined < count)
-    return 0;
+  if (count < total)
+    count = total;
 
   i = 0;
 
@@ -865,26 +905,22 @@ pgpdf_derive_iterated(unsigned char *out,
     for (j = 0; j < i; j++)
       hash_update(&hash, &zero, 1);
 
-    w = 0;
+    left = count;
 
-    while (w < count) {
-      if (w + combined > count) {
-        todo = count - w;
-
-        if (todo < salt_len) {
-          hash_update(&hash, salt, todo);
-        } else {
-          hash_update(&hash, salt, salt_len);
-          hash_update(&hash, pass, todo - salt_len);
-        }
-
-        break;
-      }
-
+    while (left >= total) {
       hash_update(&hash, salt, salt_len);
       hash_update(&hash, pass, pass_len);
 
-      w += combined;
+      left -= total;
+    }
+
+    if (left > 0) {
+      if (left > salt_len) {
+        hash_update(&hash, salt, salt_len);
+        hash_update(&hash, pass, left - salt_len);
+      } else {
+        hash_update(&hash, salt, left);
+      }
     }
 
     hash_final(&hash, buf, hash_size);
@@ -944,8 +980,10 @@ scrypt_derive(unsigned char *out,
   if (N == 0 || R == 0 || P == 0)
     return 0;
 
-  if (len + 31 < len || (len + 31) / 32 > UINT32_MAX)
+#if SIZE_MAX > UINT32_MAX
+  if (len > ((UINT64_C(1) << 32) - 1) * 32)
     return 0;
+#endif
 
   if ((uint64_t)R * (uint64_t)P >= (UINT64_C(1) << 30))
     return 0;

@@ -7,9 +7,9 @@
 #include <limits.h>
 #include <stddef.h>
 #include <string.h>
+#include <torsion/mpi.h>
 #include "asn1.h"
 #include "internal.h"
-#include "mpi.h"
 
 /*
  * ASN1

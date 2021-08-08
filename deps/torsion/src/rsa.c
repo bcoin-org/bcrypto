@@ -27,12 +27,12 @@
 #include <string.h>
 #include <torsion/drbg.h>
 #include <torsion/hash.h>
+#include <torsion/mpi.h>
 #include <torsion/rsa.h>
 #include <torsion/util.h>
 #include "asn1.h"
 #include "bio.h"
 #include "internal.h"
-#include "mpi.h"
 
 /*
  * Constants

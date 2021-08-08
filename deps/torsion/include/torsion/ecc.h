@@ -207,7 +207,7 @@ extern "C" {
 #define ristretto_pubkey_negate torsion_ristretto_pubkey_negate
 #define ristretto_derive torsion_ristretto_derive
 
-#define test_ecc_internal torsion__test_ecc_internal
+#define ecc_run_tests torsion__ecc_run_tests
 
 
 /*
@@ -1331,7 +1331,7 @@ ristretto_derive(const edwards_curve_t *ec,
 struct hmac_drbg_s;
 
 TORSION_EXTERN void
-test_ecc_internal(struct hmac_drbg_s *rng);
+ecc_run_tests(struct hmac_drbg_s *rng);
 
 #ifdef __cplusplus
 }
