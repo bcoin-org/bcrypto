@@ -39,15 +39,15 @@ const validAddresses = [
   ],
   [
     'bc1pw508d6qejxtdg4y5r3zarvary0c5xw7kw508d6qejxtdg4y5r3zarvary0c5xw7k7grplx',
-    '8128751e76e8199196d454941c45d1b3a323f1433bd6751e76e8199196d454941c45d1b3a323f1433bd6'
+    '5128751e76e8199196d454941c45d1b3a323f1433bd6751e76e8199196d454941c45d1b3a323f1433bd6'
   ],
   [
     'BC1SW50QA3JX3S',
-    '9002751e'
+    '6002751e'
   ],
   [
     'bc1zw508d6qejxtdg4y5r3zarvaryvg6kdaj',
-    '8210751e76e8199196d454941c45d1b3a323'
+    '5210751e76e8199196d454941c45d1b3a323'
   ],
   [
     'tb1qqqqqp399et2xygdj5xreqhjjvcmzhxw4aywxecjdzew6hylgvsesrxh6hy',
@@ -198,7 +198,8 @@ function decodeManual(expect, addr, lax = false) {
 
 function program(version, hash) {
   const data = Buffer.alloc(2 + hash.length);
-  data[0] = version ? version + 0x80 : 0;
+  // Bitcoin PUSH opcodes > 0 start at 0x50
+  data[0] = version ? version + 0x50 : 0;
   data[1] = hash.length;
   hash.copy(data, 2);
   return data;
