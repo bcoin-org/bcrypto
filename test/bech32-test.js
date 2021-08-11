@@ -78,7 +78,7 @@ const invalidIs = [
   'bcfbbqhelpnoshitwe2z7anje5j3wvz8hw3rxadzcppgghm0aec23ttfstphjegfx08hwk5uhmusa7j28yrk8cx4qj'
 ];
 
-const invalidTest = [
+let invalidTest = [
   'bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t5',
   'bc10w508d6qejxtdg4y5r3zarvary0c5xw7kw508d6qejxtdg4y5r3zarvary0c5xw7kw5rljs90',
   'bca0w508d6qejxtdg4y5r3zarvary0c5xw7kw508d6qejxtdg4y5r3zarvary0c5xw7kw5rljs90234567789035',
@@ -86,6 +86,18 @@ const invalidTest = [
   'wtfbbqhelpnoshitwe2z5nuhllhu6z8pptu8m36clzge37dnfsdquht73wsx4cmwcwql322x3gmmwq2gjuxp6eaaus',
   'bcfbbqhelpnoshitwe2z7anje5j3wvz8hw3rxadzcppgghm0aec23ttfstphjegfx08hwk5uhmusa7j28yrk8cx4qj'
 ];
+
+// valid bech32m strings
+// https://github.com/bitcoin/bips/blob/master/bip-0350.mediawiki#test-vectors
+invalidTest = invalidTest.concat([
+  'A1LQFN3A',
+  'a1lqfn3a',
+  'an83characterlonghumanreadablepartthatcontainsthetheexcludedcharactersbioandnumber11sg7hg6',
+  'abcdef1l7aum6echk45nj3s0wdvt2fg8x9yrzpqzd3ryx',
+  '11llllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllludsr8',
+  'split1checkupstagehandshakeupstreamerranterredcaperredlc445v',
+  '?1v759aa'
+]);
 
 const validStrings = [
   [
