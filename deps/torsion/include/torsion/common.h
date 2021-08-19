@@ -7,7 +7,7 @@
 #ifndef TORSION_COMMON_H
 #define TORSION_COMMON_H
 
-#ifdef TORSION_BUILD
+#ifdef TORSION_EXPORT
 #  if defined(__EMSCRIPTEN__)
 #    include <emscripten.h>
 #    define TORSION_EXTERN EMSCRIPTEN_KEEPALIVE

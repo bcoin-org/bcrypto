@@ -82,9 +82,7 @@ if(NOT PROJECT_NAME STREQUAL CMAKE_PROJECT_NAME)
   unset(CMAKE_OSX_DEPLOYMENT_TARGET)
 endif()
 
-if(NOT WASI AND NOT EMSCRIPTEN)
-  set(CMAKE_C_VISIBILITY_PRESET hidden)
-endif()
+set(CMAKE_C_VISIBILITY_PRESET hidden)
 
 if(APPLE)
   set(CMAKE_OSX_DEPLOYMENT_TARGET 10.7)
@@ -173,7 +171,9 @@ if(TORSION_ENABLE_ASM)
         ""
 #   endif
         : "+r" (z), "=&r" (c)
-#   if defined(__TINYC__)
+#   if defined(__wasi__) || defined(__EMSCRIPTEN__)
+        :
+#   elif defined(__TINYC__)
         : "rm" (x), "rm" (y)
 #   else
         : "%rm" (x), "rm" (y)
@@ -260,9 +260,6 @@ endif()
 
 if(TORSION_ENABLE_PTHREAD AND NOT EMSCRIPTEN)
   check_c_source_compiles([=[
-#   ifdef __MVS__
-#     define _ALL_SOURCE
-#   endif
 #   include <pthread.h>
     static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
     int main(void) {
@@ -340,8 +337,6 @@ elseif(BORLAND)
 elseif(CMAKE_C_COMPILER_ID MATCHES "Watcom$")
   append_c_compiler_flag(torsion_cflags -wcd=201  # unreachable code
                                         -wcd=202) # unused symbol
-elseif(CMAKE_C_COMPILER_ID STREQUAL "DigitalMars")
-# None.
 else()
   append_c_compiler_flag(torsion_cflags -pedantic
                                         -Wall
@@ -370,8 +365,6 @@ if(TORSION_ENABLE_DEBUG)
     append_c_compiler_flag(torsion_cflags -v)
   elseif(CMAKE_C_COMPILER_ID MATCHES "Watcom$")
     append_c_compiler_flag(torsion_cflags -d2)
-  elseif(CMAKE_C_COMPILER_ID STREQUAL "DigitalMars")
-    append_c_compiler_flag(torsion_cflags -g)
   else()
     append_c_compiler_flag(torsion_cflags -g)
   endif()
@@ -464,10 +457,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "AIX")
   list(APPEND torsion_defines _THREAD_SAFE_ERRNO)
 endif()
 
-if(CMAKE_SYSTEM_NAME STREQUAL "OS390")
-  list(APPEND torsion_defines _ALL_SOURCE)
-endif()
-
 #
 # Libraries
 #
@@ -524,26 +513,19 @@ endif()
 
 if(NOT PROJECT_NAME STREQUAL CMAKE_PROJECT_NAME)
   # Bulding a subproject. Keep it simple.
-  if(WASI OR EMSCRIPTEN)
-    add_library(torsion OBJECT ${torsion_sources})
-    target_compile_definitions(torsion PRIVATE ${torsion_defines})
-    target_compile_options(torsion PRIVATE ${torsion_cflags})
-    target_include_directories(torsion PUBLIC ${torsion_includes})
+  if(COMMAND add_node_library)
+    add_node_library(torsion STATIC ${torsion_sources})
   else()
-    if(COMMAND add_node_library)
-      add_node_library(torsion STATIC ${torsion_sources})
-    else()
-      add_library(torsion STATIC ${torsion_sources})
-      set_property(TARGET torsion PROPERTY POSITION_INDEPENDENT_CODE
-                                           ${TORSION_ENABLE_PIC})
-    endif()
-
-    target_compile_definitions(torsion PRIVATE ${torsion_defines})
-    target_compile_options(torsion PRIVATE ${torsion_cflags})
-    target_include_directories(torsion PUBLIC ${torsion_includes})
-    target_link_options(torsion INTERFACE ${torsion_ldflags})
-    target_link_libraries(torsion INTERFACE ${torsion_libs})
+    add_library(torsion STATIC ${torsion_sources})
+    set_property(TARGET torsion PROPERTY POSITION_INDEPENDENT_CODE
+                                         ${TORSION_ENABLE_PIC})
   endif()
+
+  target_compile_definitions(torsion PRIVATE ${torsion_defines})
+  target_compile_options(torsion PRIVATE ${torsion_cflags})
+  target_include_directories(torsion PUBLIC ${torsion_includes})
+  target_link_options(torsion INTERFACE ${torsion_ldflags})
+  target_link_libraries(torsion INTERFACE ${torsion_libs})
 elseif(WASI OR EMSCRIPTEN)
   if(WASI)
     set(torsion_ldflags -Wl,--allow-undefined
@@ -570,23 +552,28 @@ elseif(WASI OR EMSCRIPTEN)
     set(torsion_exeflags "SHELL:-s EXPORTED_FUNCTIONS=@etc/exports.json")
   endif()
 
-  add_library(torsion_object OBJECT ${torsion_sources})
-  target_compile_definitions(torsion_object PUBLIC ${torsion_defines}
-                                            PRIVATE TORSION_BUILD)
-  target_compile_options(torsion_object PUBLIC ${torsion_cflags})
-  target_include_directories(torsion_object PUBLIC ${torsion_includes})
-  target_link_options(torsion_object INTERFACE ${torsion_ldflags})
+  add_library(torsion_static STATIC ${torsion_sources})
+  target_compile_definitions(torsion_static PUBLIC ${torsion_defines})
+  target_compile_options(torsion_static PUBLIC ${torsion_cflags})
+  target_include_directories(torsion_static PUBLIC ${torsion_includes})
+  target_link_options(torsion_static INTERFACE ${torsion_ldflags})
+  set_property(TARGET torsion_static PROPERTY OUTPUT_NAME torsion)
 
-  add_executable(torsion "")
-  target_link_options(torsion PRIVATE ${torsion_exeflags})
-  target_link_libraries(torsion PRIVATE torsion_object)
+  add_executable(torsion_reactor ${torsion_sources})
+  target_compile_definitions(torsion_reactor PRIVATE ${torsion_defines}
+                                                     TORSION_EXPORT)
+  target_compile_options(torsion_reactor PRIVATE ${torsion_cflags})
+  target_include_directories(torsion_reactor PRIVATE ${torsion_includes})
+  target_link_options(torsion_reactor PRIVATE ${torsion_ldflags}
+                                              ${torsion_exeflags})
+  set_property(TARGET torsion_reactor PROPERTY OUTPUT_NAME torsion)
 
   if(TORSION_ENABLE_TESTS)
     add_executable(torsion_bench ${bench_sources})
-    target_link_libraries(torsion_bench PRIVATE torsion_object)
+    target_link_libraries(torsion_bench PRIVATE torsion_static)
 
     add_executable(torsion_test ${test_sources})
-    target_link_libraries(torsion_test PRIVATE torsion_object)
+    target_link_libraries(torsion_test PRIVATE torsion_static)
     add_test(NAME test_wasm COMMAND torsion_test)
 
     if(CMAKE_GENERATOR STREQUAL "Unix Makefiles")
@@ -602,26 +589,22 @@ else()
     set(torsion_targets torsion_static)
   endif()
 
-  add_library(torsion_object OBJECT ${torsion_sources})
-  target_compile_definitions(torsion_object PRIVATE ${torsion_defines}
-                                                    TORSION_BUILD)
-  target_compile_options(torsion_object PRIVATE ${torsion_cflags})
-  target_include_directories(torsion_object PRIVATE ${torsion_includes})
-  set_property(TARGET torsion_object PROPERTY POSITION_INDEPENDENT_CODE
-                                              ${TORSION_ENABLE_PIC})
-
-  add_library(torsion_static STATIC $<TARGET_OBJECTS:torsion_object>)
-  target_compile_definitions(torsion_static INTERFACE ${torsion_defines})
-  target_compile_options(torsion_static INTERFACE ${torsion_cflags})
-  target_include_directories(torsion_static INTERFACE ${torsion_includes})
+  add_library(torsion_static STATIC ${torsion_sources})
+  target_compile_definitions(torsion_static PUBLIC ${torsion_defines})
+  target_compile_options(torsion_static PUBLIC ${torsion_cflags})
+  target_include_directories(torsion_static PUBLIC ${torsion_includes})
   target_link_options(torsion_static INTERFACE ${torsion_ldflags})
   target_link_libraries(torsion_static INTERFACE ${torsion_libs})
 
+  set_property(TARGET torsion_static PROPERTY POSITION_INDEPENDENT_CODE
+                                              ${TORSION_ENABLE_PIC})
+
   if(TORSION_ENABLE_SHARED)
-    add_library(torsion_shared SHARED $<TARGET_OBJECTS:torsion_object>)
-    target_compile_definitions(torsion_shared INTERFACE ${torsion_defines})
-    target_compile_options(torsion_shared INTERFACE ${torsion_cflags})
-    target_include_directories(torsion_shared INTERFACE ${torsion_includes})
+    add_library(torsion_shared SHARED ${torsion_sources})
+    target_compile_definitions(torsion_shared PUBLIC ${torsion_defines}
+                                              PRIVATE TORSION_EXPORT)
+    target_compile_options(torsion_shared PUBLIC ${torsion_cflags})
+    target_include_directories(torsion_shared PUBLIC ${torsion_includes})
     target_link_options(torsion_shared PUBLIC ${torsion_ldflags})
     target_link_libraries(torsion_shared PRIVATE ${torsion_libs})
 

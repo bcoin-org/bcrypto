@@ -9,7 +9,7 @@ endif()
 include(CheckCCompilerFlag)
 
 function(append_c_compiler_flag result)
-  set(flags)
+  set(flags ${${result}})
 
   check_c_compiler_flag(-Werror=unknown-warning-option
                         HAVE_UNKNOWN_WARNING_OPTION)

@@ -230,10 +230,8 @@ torsion_auxval(unsigned long type) {
   int oldno = errno;
   unsigned long val;
 
-  if (elf_aux_info(type, &val, sizeof(val)) != 0) {
-    errno = oldno;
-    return 0;
-  }
+  if (elf_aux_info(type, &val, sizeof(val)) != 0)
+    val = 0;
 
   errno = oldno;
 

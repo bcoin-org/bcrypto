@@ -2937,10 +2937,33 @@ jge_equal_x(const wei_t *ec, const jge_t *p, const fe_t x) {
 
 static int
 jge_equal_r_var(const wei_t *ec, const jge_t *p, const sc_t x) {
-  /* See: https://github.com/bitcoin-core/secp256k1/commit/ce7eb6f */
+  /* Optimized function for checking `x(R) == r`
+   * in the jacobian space (where `r` has been
+   * previously reduced by `n`).
+   *
+   * There are two possibilities, assuming `p > n`
+   * and `p < 2n`. The first is the obvious:
+   *
+   *   x(R) == r * z(R)^2 in F(p)
+   *
+   * Otherwise, if `r < p mod n`, the following
+   * possibility also applies:
+   *
+   *   x(R) == (r + n) * z(R)^2 in F(p)
+   *
+   * If `p <= n`, only the first possibility
+   * applies.
+   *
+   * If `p >= 2n`, there are more than two
+   * possibilities and we skip this optimization.
+   *
+   * See: https://github.com/bitcoin-core/secp256k1/commit/ce7eb6f
+   */
   const prime_field_t *fe = &ec->fe;
   const scalar_field_t *sc = &ec->sc;
   fe_t rx, rn, zz;
+
+  ASSERT(ec->small_gap == 1);
 
   if (p->inf)
     return 0;
@@ -11303,8 +11326,7 @@ ecdsa_verify(const wei_t *ec,
    *
    * Furthermore, we can avoid affinization
    * of `R` by scaling `r` by `z^2` and
-   * repeatedly adding `n * z^2` to it up
-   * to a certain threshold.
+   * adding `n * z^2` to it when possible.
    */
   const prime_field_t *fe = &ec->fe;
   const scalar_field_t *sc = &ec->sc;

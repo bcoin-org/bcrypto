@@ -218,7 +218,7 @@ TORSION_BARRIER(mp_limb_t, mp_limb)
 #  if TORSION_GNUC_PREREQ(3, 4) || TORSION_HAS_BUILTIN(__builtin_ctzl)
 #    define mp_builtin_ctz __builtin_ctzl
 #  endif
-#elif defined(ULLONG_MAX) && MP_LIMB_MAX == ULLONG_MAX
+#else /* MP_LIMB_MAX == ULLONG_MAX */
 #  if TORSION_GNUC_PREREQ(3, 4) || TORSION_HAS_BUILTIN(__builtin_popcountll)
 #    define mp_builtin_popcount __builtin_popcountll
 #  endif
