@@ -35,6 +35,7 @@ set(secp256k1_cflags)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 set(CMAKE_C_STANDARD 90)
+set(CMAKE_C_VISIBILITY_PRESET hidden)
 
 if(MSVC)
   append_c_compiler_flag(secp256k1_cflags /wd4244  # implicit integer demotion

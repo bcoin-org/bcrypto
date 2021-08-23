@@ -1,6 +1,22 @@
 {
   "variables": {
-    "with_secp256k1%": "true"
+    "enable_secp256k1%": "yes",
+    "conditions": [
+      ["OS == 'win'", {
+        "enable_asm%": "no",
+        "enable_int128%": "no",
+        "tls_keyword%": "__declspec(thread)"
+      }, {
+        "enable_asm%": "<!(./deps/checks/check_asm.sh)",
+        "enable_int128%": "<!(./deps/checks/check_int128.sh)",
+        "tls_keyword%": "<!(./deps/checks/check_tls.sh)"
+      }],
+      ["OS in 'mac linux freebsd openbsd solaris aix'", {
+        "enable_pthread%": "yes"
+      }, {
+        "enable_pthread%": "no"
+      }]
+    ]
   },
   "targets": [
     {
@@ -35,9 +51,13 @@
           "./deps/torsion/include"
         ]
       },
+      "defines": [
+        "TORSION_HAVE_CONFIG"
+      ],
       "conditions": [
         ["OS != 'mac' and OS != 'win'", {
           "cflags": [
+            "-fvisibility=hidden",
             "-pedantic",
             "-Wcast-align",
             "-Wmissing-prototypes",
@@ -51,6 +71,7 @@
         }],
         ["OS == 'mac'", {
           "xcode_settings": {
+            "GCC_SYMBOLS_PRIVATE_EXTERN": "YES",
             "MACOSX_DEPLOYMENT_TARGET": "10.7",
             "WARNING_CFLAGS": [
               "-pedantic",
@@ -72,6 +93,24 @@
             4267, # implicit size_t demotion
             4334  # implicit 32->64 bit shift
           ]
+        }],
+        ["enable_asm == 'yes'", {
+          "defines": ["TORSION_HAVE_ASM"]
+        }],
+        ["enable_int128 == 'yes'", {
+          "defines": ["TORSION_HAVE_INT128"]
+        }],
+        ["enable_pthread == 'yes'", {
+          "defines": ["TORSION_HAVE_PTHREAD"]
+        }],
+        ["tls_keyword != 'none'", {
+          "defines": ["TORSION_TLS=<(tls_keyword)"]
+        }],
+        ["OS == 'solaris'", {
+          "defines": ["_TS_ERRNO"]
+        }],
+        ["OS == 'aix'", {
+          "defines": ["_THREAD_SAFE_ERRNO"]
         }]
       ]
     },
@@ -111,6 +150,7 @@
       "conditions": [
         ["OS != 'mac' and OS != 'win'", {
           "cflags": [
+            "-fvisibility=hidden",
             "-std=c89",
             "-pedantic",
             "-Wcast-align",
@@ -127,6 +167,7 @@
         }],
         ["OS == 'mac'", {
           "xcode_settings": {
+            "GCC_SYMBOLS_PRIVATE_EXTERN": "YES",
             "GCC_C_LANGUAGE_STANDARD": "c89",
             "WARNING_CFLAGS": [
               "-pedantic",
@@ -150,24 +191,18 @@
             4334  # implicit 32->64 bit shift
           ]
         }],
-        ["node_byteorder == 'big'", {
-          "defines": [
-            "SECP256K1_BIG_ENDIAN"
-          ]
-        }, {
-          "defines": [
-            "SECP256K1_LITTLE_ENDIAN"
-          ]
+        ["enable_asm == 'yes' and target_arch == 'x64'", {
+          "defines": ["USE_ASM_X86_64=1"]
         }],
-        ["target_arch == 'x64' and OS != 'win'", {
-          "defines": [
-            "USE_ASM_X86_64=1",
-            "USE_FORCE_WIDEMUL_INT128=1"
-          ]
+        ["enable_int128 == 'yes'", {
+          "defines": ["USE_FORCE_WIDEMUL_INT128=1"]
         }, {
-          "defines": [
-            "USE_FORCE_WIDEMUL_INT64=1"
-          ]
+          "defines": ["USE_FORCE_WIDEMUL_INT64=1"]
+        }],
+        ["node_byteorder == 'big'", {
+          "defines": ["SECP256K1_BIG_ENDIAN"]
+        }, {
+          "defines": ["SECP256K1_LITTLE_ENDIAN"]
         }]
       ]
     },
@@ -200,13 +235,9 @@
             4267  # implicit size_t demotion
           ]
         }],
-        ["with_secp256k1 == 'true'", {
-          "dependencies": [
-            "secp256k1"
-          ],
-          "defines": [
-            "BCRYPTO_USE_SECP256K1"
-          ]
+        ["enable_secp256k1 == 'yes'", {
+          "dependencies": ["secp256k1"],
+          "defines": ["BCRYPTO_USE_SECP256K1"]
         }]
       ]
     }
