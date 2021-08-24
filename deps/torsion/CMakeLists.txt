@@ -51,7 +51,7 @@ option(TORSION_ENABLE_ASM "Use inline assembly if available" ON)
 option(TORSION_ENABLE_COVERAGE "Enable coverage" OFF)
 option(TORSION_ENABLE_DEBUG "Enable debug build (forces -g or /Zi)" OFF)
 option(TORSION_ENABLE_INT128 "Use __int128 if available" ON)
-option(TORSION_ENABLE_MPI "Export MPI functions" ON)
+option(TORSION_ENABLE_MPI "Export MPI functions" OFF)
 option(TORSION_ENABLE_PIC "Enable PIC" ON)
 option(TORSION_ENABLE_PTHREAD "Use pthread if present in libc" ON)
 option(TORSION_ENABLE_RNG "Enable RNG" ON)
@@ -129,6 +129,16 @@ if(TORSION_HAVE_NWCC)
   set(TORSION_ENABLE_SHARED OFF)
 endif()
 
+# chibicc doesn't support .so versioning.
+# Furthermore, CMake doesn't know about chibicc's -fPIC.
+check_symbol_exists(__chibicc__ "" TORSION_HAVE_CHIBICC)
+
+if(TORSION_HAVE_CHIBICC)
+  set(CMAKE_C_COMPILE_OPTIONS_PIC "-fPIC")
+  set(CMAKE_SHARED_LIBRARY_C_FLAGS "-fPIC")
+  set(TORSION_ENABLE_SHARED OFF)
+endif()
+
 # OpenWatcom-Linux can't create shared libraries.
 if(CMAKE_C_COMPILER_ID STREQUAL "OpenWatcom")
   if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
@@ -171,7 +181,7 @@ if(TORSION_ENABLE_ASM)
         ""
 #   endif
         : "+r" (z), "=&r" (c)
-#   if defined(__wasi__) || defined(__EMSCRIPTEN__)
+#   if defined(__wasm__) || defined(__EMSCRIPTEN__)
         :
 #   elif defined(__TINYC__)
         : "rm" (x), "rm" (y)

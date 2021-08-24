@@ -9,7 +9,6 @@ include(deps/torsion/cmake/AppendCCompilerFlag.cmake)
 include(NodeJS)
 
 option(BCRYPTO_ENABLE_LIBSECP256K1 "Use libsecp256k1" ON)
-option(TORSION_ENABLE_MPI "Export MPI functions" OFF)
 
 set(bcrypto_cflags)
 set(bcrypto_defines)

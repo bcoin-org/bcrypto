@@ -142,7 +142,7 @@
 
 #undef STATIC_ASSERT
 
-#if TORSION_STDC_VERSION >= 201112L
+#if TORSION_STDC_VERSION >= 201112L && !defined(__chibicc__)
 #  define STATIC_ASSERT(expr) _Static_assert(expr, "check failed")
 #elif TORSION_CPP_VERSION >= 201703L
 #  define STATIC_ASSERT(expr) static_assert(expr)
@@ -306,6 +306,8 @@ static const unsigned long torsion__endian_check TORSION_UNUSED = 1;
 /* No threads in UEFI. */
 #elif defined(_TLIBC_CDECL_)
 #  define TORSION_TLS __thread
+#elif defined(__COSMOPOLITAN__)
+/* Not portable. */
 #elif defined(__clang__) || defined(__llvm__)
 #  ifdef __has_feature
 #    if __has_feature(tls)
@@ -359,6 +361,7 @@ static const unsigned long torsion__endian_check TORSION_UNUSED = 1;
    || (defined(__HP_cc) && __HP_cc >= 53600)         \
    || (defined(__HP_aCC) && __HP_aCC >= 53600)       \
    || (defined(__PCC__) && __PCC__ >= 1)             \
+   || (defined(__chibicc__))                         \
    || (defined(__NWCC__))
 #  define TORSION_TLS __thread
 #elif defined(__xlC__) && defined(_AIX)
@@ -380,14 +383,8 @@ static const unsigned long torsion__endian_check TORSION_UNUSED = 1;
 /* Requires -lsgx_pthread. We could use the
    sgx_thread API which is guaranteed to be
    available, but we don't need it. */
-#elif defined(BUILDING_NODE_EXTENSION) && (defined(__APPLE__)   \
-                                        || defined(__linux__)   \
-                                        || defined(__FreeBSD__) \
-                                        || defined(__OpenBSD__) \
-                                        || defined(__sun)       \
-                                        || defined(_AIX))
-/* node-gyp always links to pthread. */
-#  define TORSION_HAVE_PTHREAD
+#elif defined(__COSMOPOLITAN__)
+/* No pthread support (yet). */
 #elif defined(__linux__)
 #  if defined(__GLIBC__)
 #    ifdef __GLIBC_PREREQ
