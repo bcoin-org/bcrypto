@@ -226,8 +226,8 @@ typedef struct bcrypto_wei_s {
   size_t field_size;
   size_t field_bits;
   size_t sig_size;
-  size_t legacy_size;
-  size_t schnorr_size;
+  size_t bipschnorr_size;
+  size_t bip340_size;
 } bcrypto_wei_curve_t;
 
 /*
@@ -320,7 +320,7 @@ static void
 bcrypto_aead_destroy_(napi_env env, void *data, void *hint) {
   (void)env;
   (void)hint;
-  torsion_cleanse(data, sizeof(aead_t));
+  torsion_memzero(data, sizeof(aead_t));
   bcrypto_free(data);
 }
 
@@ -330,8 +330,6 @@ bcrypto_aead_create(napi_env env, napi_callback_info info) {
   napi_value handle;
 
   (void)info;
-
-  ctx->mode = -1;
 
   CHECK(napi_create_external(env,
                              ctx,
@@ -378,9 +376,6 @@ bcrypto_aead_aad(napi_env env, napi_callback_info info) {
   CHECK(napi_get_value_external(env, argv[0], (void **)&ctx) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&aad, &aad_len) == napi_ok);
 
-  JS_ASSERT(ctx->mode != -1, JS_ERR_INIT);
-  JS_ASSERT(ctx->mode == 0, JS_ERR_STATE);
-
   aead_aad(ctx, aad, aad_len);
 
   return argv[0];
@@ -398,9 +393,6 @@ bcrypto_aead_encrypt(napi_env env, napi_callback_info info) {
   CHECK(argc == 2);
   CHECK(napi_get_value_external(env, argv[0], (void **)&ctx) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
-
-  JS_ASSERT(ctx->mode != -1, JS_ERR_INIT);
-  JS_ASSERT(ctx->mode == 0 || ctx->mode == 1, JS_ERR_STATE);
 
   aead_encrypt(ctx, msg, msg, msg_len);
 
@@ -420,9 +412,6 @@ bcrypto_aead_decrypt(napi_env env, napi_callback_info info) {
   CHECK(napi_get_value_external(env, argv[0], (void **)&ctx) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
 
-  JS_ASSERT(ctx->mode != -1, JS_ERR_INIT);
-  JS_ASSERT(ctx->mode == 0 || ctx->mode == 2, JS_ERR_STATE);
-
   aead_decrypt(ctx, msg, msg, msg_len);
 
   return argv[1];
@@ -441,9 +430,6 @@ bcrypto_aead_auth(napi_env env, napi_callback_info info) {
   CHECK(napi_get_value_external(env, argv[0], (void **)&ctx) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&msg, &msg_len) == napi_ok);
 
-  JS_ASSERT(ctx->mode != -1, JS_ERR_INIT);
-  JS_ASSERT(ctx->mode == 0 || ctx->mode == 3, JS_ERR_STATE);
-
   aead_auth(ctx, msg, msg_len);
 
   return argv[1];
@@ -461,8 +447,6 @@ bcrypto_aead_final(napi_env env, napi_callback_info info) {
   CHECK(argc == 1);
   CHECK(napi_get_value_external(env, argv[0], (void **)&ctx) == napi_ok);
 
-  JS_ASSERT(ctx->mode != -1, JS_ERR_INIT);
-
   aead_final(ctx, out);
 
   CHECK(napi_create_buffer_copy(env, 16, out, NULL, &result) == napi_ok);
@@ -479,8 +463,6 @@ bcrypto_aead_destroy(napi_env env, napi_callback_info info) {
   CHECK(napi_get_cb_info(env, info, &argc, argv, NULL, NULL) == napi_ok);
   CHECK(argc == 1);
   CHECK(napi_get_value_external(env, argv[0], (void **)&ctx) == napi_ok);
-
-  ctx->mode = -1;
 
   return argv[0];
 }
@@ -501,7 +483,6 @@ bcrypto_aead_verify(napi_env env, napi_callback_info info) {
   CHECK(napi_get_value_external(env, argv[0], (void **)&ctx) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&tag, &tag_len) == napi_ok);
 
-  JS_ASSERT(ctx->mode != -1, JS_ERR_INIT);
   JS_ASSERT(tag_len == 16, JS_ERR_TAG_SIZE);
 
   aead_final(ctx, mac);
@@ -541,7 +522,7 @@ bcrypto_aead_static_encrypt(napi_env env, napi_callback_info info) {
   aead_encrypt(&ctx, msg, msg, msg_len);
   aead_final(&ctx, out);
 
-  torsion_cleanse(&ctx, sizeof(aead_t));
+  torsion_memzero(&ctx, sizeof(aead_t));
 
   CHECK(napi_create_buffer_copy(env, 16, out, NULL, &result) == napi_ok);
 
@@ -579,7 +560,7 @@ bcrypto_aead_static_decrypt(napi_env env, napi_callback_info info) {
   aead_decrypt(&ctx, msg, msg, msg_len);
   aead_final(&ctx, mac);
 
-  torsion_cleanse(&ctx, sizeof(aead_t));
+  torsion_memzero(&ctx, sizeof(aead_t));
 
   ok = torsion_memequal(mac, tag, 16);
 
@@ -617,7 +598,7 @@ bcrypto_aead_static_auth(napi_env env, napi_callback_info info) {
   aead_auth(&ctx, msg, msg_len);
   aead_final(&ctx, mac);
 
-  torsion_cleanse(&ctx, sizeof(aead_t));
+  torsion_memzero(&ctx, sizeof(aead_t));
 
   ok = torsion_memequal(mac, tag, 16);
 
@@ -634,7 +615,7 @@ static void
 bcrypto_arc4_destroy_(napi_env env, void *data, void *hint) {
   (void)env;
   (void)hint;
-  torsion_cleanse(data, sizeof(bcrypto_arc4_t));
+  torsion_memzero(data, sizeof(bcrypto_arc4_t));
   bcrypto_free(data);
 }
 
@@ -1540,8 +1521,8 @@ bcrypto_bcrypt_execute_(napi_env env, void *data) {
     w->error = JS_ERR_DERIVE;
   }
 
-  torsion_cleanse(w->pass, w->pass_len);
-  torsion_cleanse(w->salt, w->salt_len);
+  torsion_memzero(w->pass, w->pass_len);
+  torsion_memzero(w->salt, w->salt_len);
 }
 
 static void
@@ -1996,7 +1977,7 @@ static void
 bcrypto_blake2b_destroy(napi_env env, void *data, void *hint) {
   (void)env;
   (void)hint;
-  torsion_cleanse(data, sizeof(bcrypto_blake2b_t));
+  torsion_memzero(data, sizeof(bcrypto_blake2b_t));
   bcrypto_free(data);
 }
 
@@ -2191,7 +2172,7 @@ static void
 bcrypto_blake2s_destroy(napi_env env, void *data, void *hint) {
   (void)env;
   (void)hint;
-  torsion_cleanse(data, sizeof(bcrypto_blake2s_t));
+  torsion_memzero(data, sizeof(bcrypto_blake2s_t));
   bcrypto_free(data);
 }
 
@@ -2624,7 +2605,7 @@ static void
 bcrypto_chacha20_destroy_(napi_env env, void *data, void *hint) {
   (void)env;
   (void)hint;
-  torsion_cleanse(data, sizeof(bcrypto_chacha20_t));
+  torsion_memzero(data, sizeof(bcrypto_chacha20_t));
   bcrypto_free(data);
 }
 
@@ -2742,7 +2723,7 @@ static void
 bcrypto_cipher_destroy_(napi_env env, void *data, void *hint) {
   (void)env;
   (void)hint;
-  torsion_cleanse(data, sizeof(bcrypto_cipher_t));
+  torsion_memzero(data, sizeof(bcrypto_cipher_t));
   bcrypto_free(data);
 }
 
@@ -2760,9 +2741,6 @@ bcrypto_cipher_create(napi_env env, napi_callback_info info) {
   CHECK(napi_get_value_uint32(env, argv[0], &type) == napi_ok);
   CHECK(napi_get_value_uint32(env, argv[1], &mode) == napi_ok);
   CHECK(napi_get_value_bool(env, argv[2], &encrypt) == napi_ok);
-
-  JS_ASSERT(type <= CIPHER_MAX, JS_ERR_CONTEXT);
-  JS_ASSERT(mode <= CIPHER_MODE_MAX, JS_ERR_CONTEXT);
 
   cipher = bcrypto_xmalloc(sizeof(bcrypto_cipher_t));
   cipher->type = type;
@@ -3033,9 +3011,6 @@ bcrypto_cipher_encrypt(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[3], (void **)&iv, &iv_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[4], (void **)&in, &in_len) == napi_ok);
 
-  JS_ASSERT(type <= CIPHER_MAX, JS_ERR_CONTEXT);
-  JS_ASSERT(mode <= CIPHER_MODE_MAX, JS_ERR_CONTEXT);
-
   out_len = CIPHER_MAX_ENCRYPT_SIZE(in_len);
 
   JS_ASSERT(out_len <= MAX_BUFFER_LENGTH, JS_ERR_ALLOC);
@@ -3076,9 +3051,6 @@ bcrypto_cipher_decrypt(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[3], (void **)&iv, &iv_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[4], (void **)&in, &in_len) == napi_ok);
 
-  JS_ASSERT(type <= CIPHER_MAX, JS_ERR_CONTEXT);
-  JS_ASSERT(mode <= CIPHER_MODE_MAX, JS_ERR_CONTEXT);
-
   out_len = CIPHER_MAX_DECRYPT_SIZE(in_len);
 
   JS_ASSERT(out_len <= MAX_BUFFER_LENGTH, JS_ERR_ALLOC);
@@ -3114,7 +3086,7 @@ bcrypto_cleanse(napi_env env, napi_callback_info info) {
   CHECK(argc == 1);
   CHECK(napi_get_buffer_info(env, argv[0], (void **)&buf, &buf_len) == napi_ok);
 
-  torsion_cleanse(buf, buf_len);
+  torsion_memzero(buf, buf_len);
 
   return argv[0];
 }
@@ -3127,7 +3099,7 @@ static void
 bcrypto_ctr_drbg_destroy(napi_env env, void *data, void *hint) {
   (void)env;
   (void)hint;
-  torsion_cleanse(data, sizeof(bcrypto_ctr_drbg_t));
+  torsion_memzero(data, sizeof(bcrypto_ctr_drbg_t));
   bcrypto_free(data);
 }
 
@@ -3281,7 +3253,7 @@ bcrypto_dsa_params_generate(napi_env env, napi_callback_info info) {
 
   CHECK(napi_create_buffer_copy(env, out_len, out, NULL, &result) == napi_ok);
 
-  torsion_cleanse((void *)entropy, entropy_len);
+  torsion_memzero((void *)entropy, entropy_len);
 
   return result;
 }
@@ -3305,7 +3277,7 @@ bcrypto_dsa_execute_(napi_env env, void *data) {
   if (!dsa_params_generate(w->out, &w->out_len, w->bits, w->entropy))
     w->error = JS_ERR_GENERATE;
 
-  torsion_cleanse(w->entropy, ENTROPY_SIZE);
+  torsion_memzero(w->entropy, ENTROPY_SIZE);
 }
 
 static void
@@ -3373,7 +3345,7 @@ bcrypto_dsa_params_generate_async(napi_env env, napi_callback_info info) {
 
   CHECK(napi_queue_async_work(env, worker->work) == napi_ok);
 
-  torsion_cleanse((void *)entropy, entropy_len);
+  torsion_memzero((void *)entropy, entropy_len);
 
   return result;
 }
@@ -3460,7 +3432,7 @@ bcrypto_dsa_params_import(napi_env env, napi_callback_info info) {
 
   CHECK(napi_create_buffer_copy(env, out_len, out, NULL, &result) == napi_ok);
 
-  torsion_cleanse((void *)key, key_len);
+  torsion_memzero((void *)key, key_len);
 
   return result;
 }
@@ -3508,8 +3480,8 @@ bcrypto_dsa_privkey_create(napi_env env, napi_callback_info info) {
 
   CHECK(napi_create_buffer_copy(env, out_len, out, NULL, &result) == napi_ok);
 
-  torsion_cleanse((void *)entropy, entropy_len);
-  torsion_cleanse(out, out_len);
+  torsion_memzero((void *)entropy, entropy_len);
+  torsion_memzero(out, out_len);
 
   return result;
 }
@@ -3596,8 +3568,8 @@ bcrypto_dsa_privkey_import(napi_env env, napi_callback_info info) {
 
   CHECK(napi_create_buffer_copy(env, out_len, out, NULL, &result) == napi_ok);
 
-  torsion_cleanse((void *)key, key_len);
-  torsion_cleanse(out, out_len);
+  torsion_memzero((void *)key, key_len);
+  torsion_memzero(out, out_len);
 
   return result;
 }
@@ -3620,7 +3592,7 @@ bcrypto_dsa_privkey_export(napi_env env, napi_callback_info info) {
 
   CHECK(napi_create_buffer_copy(env, out_len, out, NULL, &result) == napi_ok);
 
-  torsion_cleanse(out, out_len);
+  torsion_memzero(out, out_len);
 
   return result;
 }
@@ -3728,7 +3700,7 @@ bcrypto_dsa_pubkey_import(napi_env env, napi_callback_info info) {
 
   CHECK(napi_create_buffer_copy(env, out_len, out, NULL, &result) == napi_ok);
 
-  torsion_cleanse((void *)key, key_len);
+  torsion_memzero((void *)key, key_len);
 
   return result;
 }
@@ -3825,7 +3797,7 @@ bcrypto_dsa_sign(napi_env env, napi_callback_info info) {
 
   CHECK(napi_create_buffer_copy(env, out_len, out, NULL, &result) == napi_ok);
 
-  torsion_cleanse((void *)entropy, entropy_len);
+  torsion_memzero((void *)entropy, entropy_len);
 
   return result;
 }
@@ -3855,7 +3827,7 @@ bcrypto_dsa_sign_der(napi_env env, napi_callback_info info) {
 
   CHECK(napi_create_buffer_copy(env, out_len, out, NULL, &result) == napi_ok);
 
-  torsion_cleanse((void *)entropy, entropy_len);
+  torsion_memzero((void *)entropy, entropy_len);
 
   return result;
 }
@@ -3931,7 +3903,7 @@ bcrypto_dsa_derive(napi_env env, napi_callback_info info) {
 
   CHECK(napi_create_buffer_copy(env, out_len, out, NULL, &result) == napi_ok);
 
-  torsion_cleanse(out, out_len);
+  torsion_memzero(out, out_len);
 
   return result;
 }
@@ -4012,7 +3984,7 @@ bcrypto_ecdh_privkey_generate(napi_env env, napi_callback_info info) {
                                 NULL,
                                 &result) == napi_ok);
 
-  torsion_cleanse((void *)entropy, entropy_len);
+  torsion_memzero((void *)entropy, entropy_len);
 
   return result;
 }
@@ -4267,7 +4239,7 @@ bcrypto_ecdh_pubkey_to_hash(napi_env env, napi_callback_info info) {
   CHECK(napi_create_buffer_copy(env, ec->field_size * 2,
                                 out, NULL, &result) == napi_ok);
 
-  torsion_cleanse((void *)entropy, entropy_len);
+  torsion_memzero((void *)entropy, entropy_len);
 
   return result;
 }
@@ -4461,7 +4433,7 @@ bcrypto_ecdsa_privkey_generate(napi_env env, napi_callback_info info) {
                                 NULL,
                                 &result) == napi_ok);
 
-  torsion_cleanse((void *)entropy, entropy_len);
+  torsion_memzero((void *)entropy, entropy_len);
 
   return result;
 }
@@ -4827,7 +4799,7 @@ bcrypto_ecdsa_pubkey_to_hash(napi_env env, napi_callback_info info) {
   CHECK(napi_create_buffer_copy(env, ec->field_size * 2,
                                 out, NULL, &result) == napi_ok);
 
-  torsion_cleanse((void *)entropy, entropy_len);
+  torsion_memzero((void *)entropy, entropy_len);
 
   return result;
 }
@@ -5544,7 +5516,7 @@ bcrypto_eddsa_privkey_generate(napi_env env, napi_callback_info info) {
                                 NULL,
                                 &result) == napi_ok);
 
-  torsion_cleanse((void *)entropy, entropy_len);
+  torsion_memzero((void *)entropy, entropy_len);
 
   return result;
 }
@@ -5722,7 +5694,7 @@ bcrypto_eddsa_scalar_generate(napi_env env, napi_callback_info info) {
                                 NULL,
                                 &result) == napi_ok);
 
-  torsion_cleanse((void *)entropy, entropy_len);
+  torsion_memzero((void *)entropy, entropy_len);
 
   return result;
 }
@@ -6154,7 +6126,7 @@ bcrypto_eddsa_pubkey_to_hash(napi_env env, napi_callback_info info) {
   CHECK(napi_create_buffer_copy(env, ec->field_size * 2,
                                 out, NULL, &result) == napi_ok);
 
-  torsion_cleanse((void *)entropy, entropy_len);
+  torsion_memzero((void *)entropy, entropy_len);
 
   return result;
 }
@@ -6889,7 +6861,7 @@ bcrypto_edwards_curve_randomize(napi_env env, napi_callback_info info) {
 
   edwards_curve_randomize(ec->ctx, entropy);
 
-  torsion_cleanse((void *)entropy, entropy_len);
+  torsion_memzero((void *)entropy, entropy_len);
 
   return argv[0];
 }
@@ -6902,7 +6874,7 @@ static void
 bcrypto_hash_destroy(napi_env env, void *data, void *hint) {
   (void)env;
   (void)hint;
-  torsion_cleanse(data, sizeof(bcrypto_hash_t));
+  torsion_memzero(data, sizeof(bcrypto_hash_t));
   bcrypto_free(data);
 }
 
@@ -7102,7 +7074,7 @@ static void
 bcrypto_hash_drbg_destroy(napi_env env, void *data, void *hint) {
   (void)env;
   (void)hint;
-  torsion_cleanse(data, sizeof(bcrypto_hash_drbg_t));
+  torsion_memzero(data, sizeof(bcrypto_hash_drbg_t));
   bcrypto_free(data);
 }
 
@@ -7272,7 +7244,7 @@ static void
 bcrypto_hmac_destroy(napi_env env, void *data, void *hint) {
   (void)env;
   (void)hint;
-  torsion_cleanse(data, sizeof(bcrypto_hmac_t));
+  torsion_memzero(data, sizeof(bcrypto_hmac_t));
   bcrypto_free(data);
 }
 
@@ -7406,7 +7378,7 @@ static void
 bcrypto_hmac_drbg_destroy(napi_env env, void *data, void *hint) {
   (void)env;
   (void)hint;
-  torsion_cleanse(data, sizeof(bcrypto_hmac_drbg_t));
+  torsion_memzero(data, sizeof(bcrypto_hmac_drbg_t));
   bcrypto_free(data);
 }
 
@@ -7513,7 +7485,7 @@ static void
 bcrypto_keccak_destroy(napi_env env, void *data, void *hint) {
   (void)env;
   (void)hint;
-  torsion_cleanse(data, sizeof(bcrypto_keccak_t));
+  torsion_memzero(data, sizeof(bcrypto_keccak_t));
   bcrypto_free(data);
 }
 
@@ -7910,8 +7882,8 @@ bcrypto_pbkdf2_execute_(napi_env env, void *data) {
     w->error = JS_ERR_DERIVE;
   }
 
-  torsion_cleanse(w->pass, w->pass_len);
-  torsion_cleanse(w->salt, w->salt_len);
+  torsion_memzero(w->pass, w->pass_len);
+  torsion_memzero(w->salt, w->salt_len);
 }
 
 static void
@@ -8117,7 +8089,7 @@ static void
 bcrypto_poly1305_destroy_(napi_env env, void *data, void *hint) {
   (void)env;
   (void)hint;
-  torsion_cleanse(data, sizeof(bcrypto_poly1305_t));
+  torsion_memzero(data, sizeof(bcrypto_poly1305_t));
   bcrypto_free(data);
 }
 
@@ -8355,8 +8327,8 @@ bcrypto_rsa_privkey_generate(napi_env env, napi_callback_info info) {
 
   CHECK(napi_create_buffer_copy(env, out_len, out, NULL, &result) == napi_ok);
 
-  torsion_cleanse((void *)entropy, entropy_len);
-  torsion_cleanse(out, out_len);
+  torsion_memzero((void *)entropy, entropy_len);
+  torsion_memzero(out, out_len);
 
   return result;
 }
@@ -8381,7 +8353,7 @@ bcrypto_rsa_execute_(napi_env env, void *data) {
   if (!rsa_privkey_generate(w->out, &w->out_len, w->bits, w->exp, w->entropy))
     w->error = JS_ERR_GENERATE;
 
-  torsion_cleanse(w->entropy, ENTROPY_SIZE);
+  torsion_memzero(w->entropy, ENTROPY_SIZE);
 }
 
 static void
@@ -8406,7 +8378,7 @@ bcrypto_rsa_complete_(napi_env env, napi_status status, void *data) {
 
   CHECK(napi_delete_async_work(env, w->work) == napi_ok);
 
-  torsion_cleanse(w->out, w->out_len);
+  torsion_memzero(w->out, w->out_len);
 
   bcrypto_free(w);
 }
@@ -8454,7 +8426,7 @@ bcrypto_rsa_privkey_generate_async(napi_env env, napi_callback_info info) {
 
   CHECK(napi_queue_async_work(env, worker->work) == napi_ok);
 
-  torsion_cleanse((void *)entropy, entropy_len);
+  torsion_memzero((void *)entropy, entropy_len);
 
   return result;
 }
@@ -8523,9 +8495,9 @@ bcrypto_rsa_privkey_import(napi_env env, napi_callback_info info) {
 
   CHECK(napi_create_buffer_copy(env, out_len, out, NULL, &result) == napi_ok);
 
-  torsion_cleanse((void *)entropy, entropy_len);
-  torsion_cleanse((void *)key, key_len);
-  torsion_cleanse(out, out_len);
+  torsion_memzero((void *)entropy, entropy_len);
+  torsion_memzero((void *)key, key_len);
+  torsion_memzero(out, out_len);
 
   return result;
 }
@@ -8548,7 +8520,7 @@ bcrypto_rsa_privkey_export(napi_env env, napi_callback_info info) {
 
   CHECK(napi_create_buffer_copy(env, out_len, out, NULL, &result) == napi_ok);
 
-  torsion_cleanse(out, out_len);
+  torsion_memzero(out, out_len);
 
   return result;
 }
@@ -8634,7 +8606,7 @@ bcrypto_rsa_pubkey_import(napi_env env, napi_callback_info info) {
 
   CHECK(napi_create_buffer_copy(env, out_len, out, NULL, &result) == napi_ok);
 
-  torsion_cleanse((void *)key, key_len);
+  torsion_memzero((void *)key, key_len);
 
   return result;
 }
@@ -8685,7 +8657,7 @@ bcrypto_rsa_sign(napi_env env, napi_callback_info info) {
 
   CHECK(napi_create_buffer_copy(env, out_len, out, NULL, &result) == napi_ok);
 
-  torsion_cleanse((void *)entropy, entropy_len);
+  torsion_memzero((void *)entropy, entropy_len);
 
   return result;
 }
@@ -8737,7 +8709,7 @@ bcrypto_rsa_encrypt(napi_env env, napi_callback_info info) {
 
   CHECK(napi_create_buffer_copy(env, out_len, out, NULL, &result) == napi_ok);
 
-  torsion_cleanse((void *)entropy, entropy_len);
+  torsion_memzero((void *)entropy, entropy_len);
 
   return result;
 }
@@ -8765,8 +8737,8 @@ bcrypto_rsa_decrypt(napi_env env, napi_callback_info info) {
 
   CHECK(napi_create_buffer_copy(env, out_len, out, NULL, &result) == napi_ok);
 
-  torsion_cleanse((void *)entropy, entropy_len);
-  torsion_cleanse(out, out_len);
+  torsion_memzero((void *)entropy, entropy_len);
+  torsion_memzero(out, out_len);
 
   return result;
 }
@@ -8802,7 +8774,7 @@ bcrypto_rsa_sign_pss(napi_env env, napi_callback_info info) {
 
   CHECK(napi_create_buffer_copy(env, out_len, out, NULL, &result) == napi_ok);
 
-  torsion_cleanse((void *)entropy, entropy_len);
+  torsion_memzero((void *)entropy, entropy_len);
 
   return result;
 }
@@ -8864,7 +8836,7 @@ bcrypto_rsa_encrypt_oaep(napi_env env, napi_callback_info info) {
 
   CHECK(napi_create_buffer_copy(env, out_len, out, NULL, &result) == napi_ok);
 
-  torsion_cleanse((void *)entropy, entropy_len);
+  torsion_memzero((void *)entropy, entropy_len);
 
   return result;
 }
@@ -8900,7 +8872,7 @@ bcrypto_rsa_decrypt_oaep(napi_env env, napi_callback_info info) {
 
   CHECK(napi_create_buffer_copy(env, out_len, out, NULL, &result) == napi_ok);
 
-  torsion_cleanse((void *)entropy, entropy_len);
+  torsion_memzero((void *)entropy, entropy_len);
 
   return result;
 }
@@ -8932,7 +8904,7 @@ bcrypto_rsa_veil(napi_env env, napi_callback_info info) {
 
   CHECK(napi_create_buffer_copy(env, out_len, out, NULL, &result) == napi_ok);
 
-  torsion_cleanse((void *)entropy, entropy_len);
+  torsion_memzero((void *)entropy, entropy_len);
 
   return result;
 }
@@ -8959,7 +8931,7 @@ bcrypto_rsa_unveil(napi_env env, napi_callback_info info) {
 
   CHECK(napi_create_buffer_copy(env, out_len, out, NULL, &result) == napi_ok);
 
-  torsion_cleanse(out, out_len);
+  torsion_memzero(out, out_len);
 
   return result;
 }
@@ -8972,7 +8944,7 @@ static void
 bcrypto_salsa20_destroy_(napi_env env, void *data, void *hint) {
   (void)env;
   (void)hint;
-  torsion_cleanse(data, sizeof(bcrypto_salsa20_t));
+  torsion_memzero(data, sizeof(bcrypto_salsa20_t));
   bcrypto_free(data);
 }
 
@@ -9083,16 +9055,16 @@ bcrypto_salsa20_derive(napi_env env, napi_callback_info info) {
 }
 
 /*
- * Schnorr
+ * Schnorr BIP340
  */
 
 static napi_value
-bcrypto_schnorr_privkey_generate(napi_env env, napi_callback_info info) {
+bcrypto_bip340_privkey_generate(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   const uint8_t *entropy;
   size_t entropy_len;
-  uint8_t out[SCHNORR_MAX_PRIV_SIZE];
+  uint8_t out[BIP340_MAX_PRIV_SIZE];
   bcrypto_wei_curve_t *ec;
   napi_value result;
 
@@ -9104,7 +9076,7 @@ bcrypto_schnorr_privkey_generate(napi_env env, napi_callback_info info) {
 
   JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
 
-  schnorr_privkey_generate(ec->ctx, out, entropy);
+  bip340_privkey_generate(ec->ctx, out, entropy);
 
   CHECK(napi_create_buffer_copy(env,
                                 ec->scalar_size,
@@ -9112,13 +9084,13 @@ bcrypto_schnorr_privkey_generate(napi_env env, napi_callback_info info) {
                                 NULL,
                                 &result) == napi_ok);
 
-  torsion_cleanse((void *)entropy, entropy_len);
+  torsion_memzero((void *)entropy, entropy_len);
 
   return result;
 }
 
 static napi_value
-bcrypto_schnorr_privkey_verify(napi_env env, napi_callback_info info) {
+bcrypto_bip340_privkey_verify(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   const uint8_t *priv;
@@ -9133,7 +9105,7 @@ bcrypto_schnorr_privkey_verify(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
                              &priv_len) == napi_ok);
 
-  ok = priv_len == ec->scalar_size && schnorr_privkey_verify(ec->ctx, priv);
+  ok = priv_len == ec->scalar_size && bip340_privkey_verify(ec->ctx, priv);
 
   CHECK(napi_get_boolean(env, ok, &result) == napi_ok);
 
@@ -9141,10 +9113,10 @@ bcrypto_schnorr_privkey_verify(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
-bcrypto_schnorr_privkey_export(napi_env env, napi_callback_info info) {
+bcrypto_bip340_privkey_export(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  uint8_t d[SCHNORR_MAX_PRIV_SIZE];
+  uint8_t d[BIP340_MAX_PRIV_SIZE];
   uint8_t x[WEI_MAX_FIELD_SIZE];
   uint8_t y[WEI_MAX_FIELD_SIZE];
   const uint8_t *priv;
@@ -9159,7 +9131,7 @@ bcrypto_schnorr_privkey_export(napi_env env, napi_callback_info info) {
                              &priv_len) == napi_ok);
 
   JS_ASSERT(priv_len == ec->scalar_size, JS_ERR_PRIVKEY_SIZE);
-  JS_ASSERT(schnorr_privkey_export(ec->ctx, d, x, y, priv), JS_ERR_PRIVKEY);
+  JS_ASSERT(bip340_privkey_export(ec->ctx, d, x, y, priv), JS_ERR_PRIVKEY);
 
   CHECK(napi_create_buffer_copy(env, ec->scalar_size, d, NULL, &bd) == napi_ok);
   CHECK(napi_create_buffer_copy(env, ec->field_size, x, NULL, &bx) == napi_ok);
@@ -9174,10 +9146,10 @@ bcrypto_schnorr_privkey_export(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
-bcrypto_schnorr_privkey_import(napi_env env, napi_callback_info info) {
+bcrypto_bip340_privkey_import(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  uint8_t out[SCHNORR_MAX_PRIV_SIZE];
+  uint8_t out[BIP340_MAX_PRIV_SIZE];
   const uint8_t *priv;
   size_t priv_len;
   bcrypto_wei_curve_t *ec;
@@ -9189,7 +9161,7 @@ bcrypto_schnorr_privkey_import(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&priv,
                              &priv_len) == napi_ok);
 
-  JS_ASSERT(schnorr_privkey_import(ec->ctx, out, priv, priv_len),
+  JS_ASSERT(bip340_privkey_import(ec->ctx, out, priv, priv_len),
             JS_ERR_PRIVKEY);
 
   CHECK(napi_create_buffer_copy(env,
@@ -9202,10 +9174,10 @@ bcrypto_schnorr_privkey_import(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
-bcrypto_schnorr_privkey_tweak_add(napi_env env, napi_callback_info info) {
+bcrypto_bip340_privkey_tweak_add(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
-  uint8_t out[SCHNORR_MAX_PRIV_SIZE];
+  uint8_t out[BIP340_MAX_PRIV_SIZE];
   const uint8_t *priv, *tweak;
   size_t priv_len, tweak_len;
   bcrypto_wei_curve_t *ec;
@@ -9221,7 +9193,7 @@ bcrypto_schnorr_privkey_tweak_add(napi_env env, napi_callback_info info) {
 
   JS_ASSERT(priv_len == ec->scalar_size, JS_ERR_PRIVKEY_SIZE);
   JS_ASSERT(tweak_len == ec->scalar_size, JS_ERR_SCALAR_SIZE);
-  JS_ASSERT(schnorr_privkey_tweak_add(ec->ctx, out, priv, tweak),
+  JS_ASSERT(bip340_privkey_tweak_add(ec->ctx, out, priv, tweak),
             JS_ERR_PRIVKEY);
 
   CHECK(napi_create_buffer_copy(env,
@@ -9234,10 +9206,10 @@ bcrypto_schnorr_privkey_tweak_add(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
-bcrypto_schnorr_privkey_tweak_mul(napi_env env, napi_callback_info info) {
+bcrypto_bip340_privkey_tweak_mul(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
-  uint8_t out[SCHNORR_MAX_PRIV_SIZE];
+  uint8_t out[BIP340_MAX_PRIV_SIZE];
   const uint8_t *priv, *tweak;
   size_t priv_len, tweak_len;
   bcrypto_wei_curve_t *ec;
@@ -9253,7 +9225,7 @@ bcrypto_schnorr_privkey_tweak_mul(napi_env env, napi_callback_info info) {
 
   JS_ASSERT(priv_len == ec->scalar_size, JS_ERR_PRIVKEY_SIZE);
   JS_ASSERT(tweak_len == ec->scalar_size, JS_ERR_SCALAR_SIZE);
-  JS_ASSERT(schnorr_privkey_tweak_mul(ec->ctx, out, priv, tweak),
+  JS_ASSERT(bip340_privkey_tweak_mul(ec->ctx, out, priv, tweak),
             JS_ERR_PRIVKEY);
 
   CHECK(napi_create_buffer_copy(env,
@@ -9266,10 +9238,10 @@ bcrypto_schnorr_privkey_tweak_mul(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
-bcrypto_schnorr_privkey_invert(napi_env env, napi_callback_info info) {
+bcrypto_bip340_privkey_invert(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  uint8_t out[SCHNORR_MAX_PRIV_SIZE];
+  uint8_t out[BIP340_MAX_PRIV_SIZE];
   const uint8_t *priv;
   size_t priv_len;
   bcrypto_wei_curve_t *ec;
@@ -9282,7 +9254,7 @@ bcrypto_schnorr_privkey_invert(napi_env env, napi_callback_info info) {
                              &priv_len) == napi_ok);
 
   JS_ASSERT(priv_len == ec->scalar_size, JS_ERR_PRIVKEY_SIZE);
-  JS_ASSERT(schnorr_privkey_invert(ec->ctx, out, priv), JS_ERR_PRIVKEY);
+  JS_ASSERT(bip340_privkey_invert(ec->ctx, out, priv), JS_ERR_PRIVKEY);
 
   CHECK(napi_create_buffer_copy(env,
                                 ec->scalar_size,
@@ -9294,10 +9266,10 @@ bcrypto_schnorr_privkey_invert(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
-bcrypto_schnorr_pubkey_create(napi_env env, napi_callback_info info) {
+bcrypto_bip340_pubkey_create(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  uint8_t out[SCHNORR_MAX_PUB_SIZE];
+  uint8_t out[BIP340_MAX_PUB_SIZE];
   const uint8_t *priv;
   size_t priv_len;
   bcrypto_wei_curve_t *ec;
@@ -9310,7 +9282,7 @@ bcrypto_schnorr_pubkey_create(napi_env env, napi_callback_info info) {
                              &priv_len) == napi_ok);
 
   JS_ASSERT(priv_len == ec->scalar_size, JS_ERR_PRIVKEY_SIZE);
-  JS_ASSERT(schnorr_pubkey_create(ec->ctx, out, priv), JS_ERR_PRIVKEY);
+  JS_ASSERT(bip340_pubkey_create(ec->ctx, out, priv), JS_ERR_PRIVKEY);
 
   CHECK(napi_create_buffer_copy(env,
                                 ec->field_size,
@@ -9322,10 +9294,10 @@ bcrypto_schnorr_pubkey_create(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
-bcrypto_schnorr_pubkey_from_uniform(napi_env env, napi_callback_info info) {
+bcrypto_bip340_pubkey_from_uniform(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  uint8_t out[SCHNORR_MAX_PUB_SIZE];
+  uint8_t out[BIP340_MAX_PUB_SIZE];
   const uint8_t *data;
   size_t data_len;
   bcrypto_wei_curve_t *ec;
@@ -9339,7 +9311,7 @@ bcrypto_schnorr_pubkey_from_uniform(napi_env env, napi_callback_info info) {
 
   JS_ASSERT(data_len == ec->field_size, JS_ERR_PREIMAGE_SIZE);
 
-  schnorr_pubkey_from_uniform(ec->ctx, out, data);
+  bip340_pubkey_from_uniform(ec->ctx, out, data);
 
   CHECK(napi_create_buffer_copy(env,
                                 ec->field_size,
@@ -9351,7 +9323,7 @@ bcrypto_schnorr_pubkey_from_uniform(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
-bcrypto_schnorr_pubkey_to_uniform(napi_env env, napi_callback_info info) {
+bcrypto_bip340_pubkey_to_uniform(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
   uint8_t out[WEI_MAX_FIELD_SIZE];
@@ -9369,7 +9341,7 @@ bcrypto_schnorr_pubkey_to_uniform(napi_env env, napi_callback_info info) {
   CHECK(napi_get_value_uint32(env, argv[2], &hint) == napi_ok);
 
   JS_ASSERT(pub_len == ec->field_size, JS_ERR_PUBKEY_SIZE);
-  JS_ASSERT(schnorr_pubkey_to_uniform(ec->ctx, out, pub, hint), JS_ERR_PUBKEY);
+  JS_ASSERT(bip340_pubkey_to_uniform(ec->ctx, out, pub, hint), JS_ERR_PUBKEY);
 
   CHECK(napi_create_buffer_copy(env, ec->field_size,
                                 out, NULL, &result) == napi_ok);
@@ -9378,10 +9350,10 @@ bcrypto_schnorr_pubkey_to_uniform(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
-bcrypto_schnorr_pubkey_from_hash(napi_env env, napi_callback_info info) {
+bcrypto_bip340_pubkey_from_hash(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  uint8_t out[SCHNORR_MAX_PUB_SIZE];
+  uint8_t out[BIP340_MAX_PUB_SIZE];
   const uint8_t *data;
   size_t data_len;
   bcrypto_wei_curve_t *ec;
@@ -9394,7 +9366,7 @@ bcrypto_schnorr_pubkey_from_hash(napi_env env, napi_callback_info info) {
                              &data_len) == napi_ok);
 
   JS_ASSERT(data_len == ec->field_size * 2, JS_ERR_PREIMAGE_SIZE);
-  JS_ASSERT(schnorr_pubkey_from_hash(ec->ctx, out, data), JS_ERR_PREIMAGE);
+  JS_ASSERT(bip340_pubkey_from_hash(ec->ctx, out, data), JS_ERR_PREIMAGE);
 
   CHECK(napi_create_buffer_copy(env,
                                 ec->field_size,
@@ -9406,7 +9378,7 @@ bcrypto_schnorr_pubkey_from_hash(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
-bcrypto_schnorr_pubkey_to_hash(napi_env env, napi_callback_info info) {
+bcrypto_bip340_pubkey_to_hash(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
   uint8_t out[WEI_MAX_FIELD_SIZE * 2];
@@ -9425,19 +9397,19 @@ bcrypto_schnorr_pubkey_to_hash(napi_env env, napi_callback_info info) {
 
   JS_ASSERT(pub_len == ec->field_size, JS_ERR_PUBKEY_SIZE);
   JS_ASSERT(entropy_len == ENTROPY_SIZE, JS_ERR_ENTROPY_SIZE);
-  JS_ASSERT(schnorr_pubkey_to_hash(ec->ctx, out, pub, 0, entropy),
+  JS_ASSERT(bip340_pubkey_to_hash(ec->ctx, out, pub, 0, entropy),
             JS_ERR_PUBKEY);
 
   CHECK(napi_create_buffer_copy(env, ec->field_size * 2,
                                 out, NULL, &result) == napi_ok);
 
-  torsion_cleanse((void *)entropy, entropy_len);
+  torsion_memzero((void *)entropy, entropy_len);
 
   return result;
 }
 
 static napi_value
-bcrypto_schnorr_pubkey_verify(napi_env env, napi_callback_info info) {
+bcrypto_bip340_pubkey_verify(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   const uint8_t *pub;
@@ -9452,7 +9424,7 @@ bcrypto_schnorr_pubkey_verify(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&pub,
                              &pub_len) == napi_ok);
 
-  ok = pub_len == ec->field_size && schnorr_pubkey_verify(ec->ctx, pub);
+  ok = pub_len == ec->field_size && bip340_pubkey_verify(ec->ctx, pub);
 
   CHECK(napi_get_boolean(env, ok, &result) == napi_ok);
 
@@ -9460,7 +9432,7 @@ bcrypto_schnorr_pubkey_verify(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
-bcrypto_schnorr_pubkey_export(napi_env env, napi_callback_info info) {
+bcrypto_bip340_pubkey_export(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint8_t x[WEI_MAX_FIELD_SIZE];
@@ -9477,7 +9449,7 @@ bcrypto_schnorr_pubkey_export(napi_env env, napi_callback_info info) {
                              &pub_len) == napi_ok);
 
   JS_ASSERT(pub_len == ec->field_size, JS_ERR_PUBKEY_SIZE);
-  JS_ASSERT(schnorr_pubkey_export(ec->ctx, x, y, pub), JS_ERR_PUBKEY);
+  JS_ASSERT(bip340_pubkey_export(ec->ctx, x, y, pub), JS_ERR_PUBKEY);
 
   CHECK(napi_create_buffer_copy(env, ec->field_size, x, NULL, &bx) == napi_ok);
   CHECK(napi_create_buffer_copy(env, ec->field_size, y, NULL, &by) == napi_ok);
@@ -9490,10 +9462,10 @@ bcrypto_schnorr_pubkey_export(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
-bcrypto_schnorr_pubkey_import(napi_env env, napi_callback_info info) {
+bcrypto_bip340_pubkey_import(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
-  uint8_t out[SCHNORR_MAX_PUB_SIZE];
+  uint8_t out[BIP340_MAX_PUB_SIZE];
   const uint8_t *x, *y;
   size_t x_len, y_len;
   bcrypto_wei_curve_t *ec;
@@ -9505,7 +9477,7 @@ bcrypto_schnorr_pubkey_import(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[1], (void **)&x, &x_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&y, &y_len) == napi_ok);
 
-  JS_ASSERT(schnorr_pubkey_import(ec->ctx, out, x, x_len, y, y_len),
+  JS_ASSERT(bip340_pubkey_import(ec->ctx, out, x, x_len, y, y_len),
             JS_ERR_PUBKEY);
 
   CHECK(napi_create_buffer_copy(env,
@@ -9518,10 +9490,10 @@ bcrypto_schnorr_pubkey_import(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
-bcrypto_schnorr_pubkey_tweak_add(napi_env env, napi_callback_info info) {
+bcrypto_bip340_pubkey_tweak_add(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
-  uint8_t out[SCHNORR_MAX_PUB_SIZE];
+  uint8_t out[BIP340_MAX_PUB_SIZE];
   const uint8_t *pub, *tweak;
   size_t pub_len, tweak_len;
   bcrypto_wei_curve_t *ec;
@@ -9537,7 +9509,7 @@ bcrypto_schnorr_pubkey_tweak_add(napi_env env, napi_callback_info info) {
 
   JS_ASSERT(pub_len == ec->field_size, JS_ERR_PUBKEY_SIZE);
   JS_ASSERT(tweak_len == ec->scalar_size, JS_ERR_SCALAR_SIZE);
-  JS_ASSERT(schnorr_pubkey_tweak_add(ec->ctx, out, NULL, pub, tweak),
+  JS_ASSERT(bip340_pubkey_tweak_add(ec->ctx, out, NULL, pub, tweak),
             JS_ERR_PUBKEY);
 
   CHECK(napi_create_buffer_copy(env,
@@ -9550,10 +9522,10 @@ bcrypto_schnorr_pubkey_tweak_add(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
-bcrypto_schnorr_pubkey_tweak_mul(napi_env env, napi_callback_info info) {
+bcrypto_bip340_pubkey_tweak_mul(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
-  uint8_t out[SCHNORR_MAX_PUB_SIZE];
+  uint8_t out[BIP340_MAX_PUB_SIZE];
   const uint8_t *pub, *tweak;
   size_t pub_len, tweak_len;
   bcrypto_wei_curve_t *ec;
@@ -9569,7 +9541,7 @@ bcrypto_schnorr_pubkey_tweak_mul(napi_env env, napi_callback_info info) {
 
   JS_ASSERT(pub_len == ec->field_size, JS_ERR_PUBKEY_SIZE);
   JS_ASSERT(tweak_len == ec->scalar_size, JS_ERR_SCALAR_SIZE);
-  JS_ASSERT(schnorr_pubkey_tweak_mul(ec->ctx, out, NULL, pub, tweak),
+  JS_ASSERT(bip340_pubkey_tweak_mul(ec->ctx, out, NULL, pub, tweak),
             JS_ERR_PUBKEY);
 
   CHECK(napi_create_buffer_copy(env,
@@ -9582,10 +9554,10 @@ bcrypto_schnorr_pubkey_tweak_mul(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
-bcrypto_schnorr_pubkey_tweak_sum(napi_env env, napi_callback_info info) {
+bcrypto_bip340_pubkey_tweak_sum(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
-  uint8_t out[SCHNORR_MAX_PUB_SIZE];
+  uint8_t out[BIP340_MAX_PUB_SIZE];
   int negated;
   const uint8_t *pub, *tweak;
   size_t pub_len, tweak_len;
@@ -9602,7 +9574,7 @@ bcrypto_schnorr_pubkey_tweak_sum(napi_env env, napi_callback_info info) {
 
   JS_ASSERT(pub_len == ec->field_size, JS_ERR_PUBKEY_SIZE);
   JS_ASSERT(tweak_len == ec->scalar_size, JS_ERR_SCALAR_SIZE);
-  JS_ASSERT(schnorr_pubkey_tweak_add(ec->ctx, out, &negated, pub, tweak),
+  JS_ASSERT(bip340_pubkey_tweak_add(ec->ctx, out, &negated, pub, tweak),
             JS_ERR_PUBKEY);
 
   CHECK(napi_create_buffer_copy(env,
@@ -9621,7 +9593,7 @@ bcrypto_schnorr_pubkey_tweak_sum(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
-bcrypto_schnorr_pubkey_tweak_check(napi_env env, napi_callback_info info) {
+bcrypto_bip340_pubkey_tweak_check(napi_env env, napi_callback_info info) {
   napi_value argv[5];
   size_t argc = 5;
   const uint8_t *pub, *tweak, *expect;
@@ -9648,7 +9620,7 @@ bcrypto_schnorr_pubkey_tweak_check(napi_env env, napi_callback_info info) {
     goto fail;
   }
 
-  ok = schnorr_pubkey_tweak_add_check(ec->ctx, pub, tweak, expect, negated);
+  ok = bip340_pubkey_tweak_add_check(ec->ctx, pub, tweak, expect, negated);
 
 fail:
   CHECK(napi_get_boolean(env, ok, &result) == napi_ok);
@@ -9657,10 +9629,10 @@ fail:
 }
 
 static napi_value
-bcrypto_schnorr_pubkey_combine(napi_env env, napi_callback_info info) {
+bcrypto_bip340_pubkey_combine(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
-  uint8_t out[SCHNORR_MAX_PUB_SIZE];
+  uint8_t out[BIP340_MAX_PUB_SIZE];
   uint32_t i, length;
   const uint8_t **pubs;
   size_t pub_len;
@@ -9689,7 +9661,7 @@ bcrypto_schnorr_pubkey_combine(napi_env env, napi_callback_info info) {
       goto fail;
   }
 
-  ok = schnorr_pubkey_combine(ec->ctx, out, pubs, length);
+  ok = bip340_pubkey_combine(ec->ctx, out, pubs, length);
 
 fail:
   bcrypto_free((void *)pubs);
@@ -9706,10 +9678,10 @@ fail:
 }
 
 static napi_value
-bcrypto_schnorr_sign(napi_env env, napi_callback_info info) {
+bcrypto_bip340_sign(napi_env env, napi_callback_info info) {
   napi_value argv[4];
   size_t argc = 4;
-  uint8_t out[SCHNORR_MAX_SIG_SIZE];
+  uint8_t out[BIP340_MAX_SIG_SIZE];
   const uint8_t *msg, *priv, *aux;
   size_t msg_len, priv_len, aux_len;
   bcrypto_wei_curve_t *ec;
@@ -9729,10 +9701,10 @@ bcrypto_schnorr_sign(napi_env env, napi_callback_info info) {
   if (aux_len == 0)
     aux = NULL;
 
-  JS_ASSERT(schnorr_sign(ec->ctx, out, msg, msg_len, priv, aux), JS_ERR_SIGN);
+  JS_ASSERT(bip340_sign(ec->ctx, out, msg, msg_len, priv, aux), JS_ERR_SIGN);
 
   CHECK(napi_create_buffer_copy(env,
-                                ec->schnorr_size,
+                                ec->bip340_size,
                                 out,
                                 NULL,
                                 &result) == napi_ok);
@@ -9741,7 +9713,7 @@ bcrypto_schnorr_sign(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
-bcrypto_schnorr_verify(napi_env env, napi_callback_info info) {
+bcrypto_bip340_verify(napi_env env, napi_callback_info info) {
   napi_value argv[4];
   size_t argc = 4;
   const uint8_t *msg, *sig, *pub;
@@ -9757,9 +9729,9 @@ bcrypto_schnorr_verify(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&sig, &sig_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[3], (void **)&pub, &pub_len) == napi_ok);
 
-  ok = sig_len == ec->schnorr_size
+  ok = sig_len == ec->bip340_size
     && pub_len == ec->field_size
-    && schnorr_verify(ec->ctx, msg, msg_len, sig, pub);
+    && bip340_verify(ec->ctx, msg, msg_len, sig, pub);
 
   CHECK(napi_get_boolean(env, ok, &result) == napi_ok);
 
@@ -9767,7 +9739,7 @@ bcrypto_schnorr_verify(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
-bcrypto_schnorr_verify_batch(napi_env env, napi_callback_info info) {
+bcrypto_bip340_verify_batch(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint32_t i, length, item_len;
@@ -9818,7 +9790,7 @@ bcrypto_schnorr_verify_batch(napi_env env, napi_callback_info info) {
     CHECK(napi_get_buffer_info(env, items[2], (void **)&pubs[i],
                                &pub_len) == napi_ok);
 
-    if (sig_len != ec->schnorr_size || pub_len != ec->field_size)
+    if (sig_len != ec->bip340_size || pub_len != ec->field_size)
       goto fail;
   }
 
@@ -9827,7 +9799,7 @@ bcrypto_schnorr_verify_batch(napi_env env, napi_callback_info info) {
 
   CHECK(ec->scratch != NULL);
 
-  ok = schnorr_verify_batch(ec->ctx, msgs, msg_lens, sigs,
+  ok = bip340_verify_batch(ec->ctx, msgs, msg_lens, sigs,
                             pubs, length, ec->scratch);
 
 fail:
@@ -9840,10 +9812,10 @@ fail:
 }
 
 static napi_value
-bcrypto_schnorr_derive(napi_env env, napi_callback_info info) {
+bcrypto_bip340_derive(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
-  uint8_t out[SCHNORR_MAX_PUB_SIZE];
+  uint8_t out[BIP340_MAX_PUB_SIZE];
   const uint8_t *pub, *priv;
   size_t pub_len, priv_len;
   bcrypto_wei_curve_t *ec;
@@ -9858,7 +9830,7 @@ bcrypto_schnorr_derive(napi_env env, napi_callback_info info) {
 
   JS_ASSERT(pub_len == ec->field_size, JS_ERR_PUBKEY_SIZE);
   JS_ASSERT(priv_len == ec->scalar_size, JS_ERR_PRIVKEY_SIZE);
-  JS_ASSERT(schnorr_derive(ec->ctx, out, pub, priv), JS_ERR_PUBKEY);
+  JS_ASSERT(bip340_derive(ec->ctx, out, pub, priv), JS_ERR_PUBKEY);
 
   CHECK(napi_create_buffer_copy(env,
                                 ec->field_size,
@@ -9874,10 +9846,10 @@ bcrypto_schnorr_derive(napi_env env, napi_callback_info info) {
  */
 
 static napi_value
-bcrypto_schnorr_legacy_sign(napi_env env, napi_callback_info info) {
+bcrypto_bipschnorr_sign(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
-  uint8_t out[SCHNORR_LEGACY_MAX_SIG_SIZE];
+  uint8_t out[BIPSCHNORR_MAX_SIG_SIZE];
   const uint8_t *msg, *priv;
   size_t msg_len, priv_len;
   bcrypto_wei_curve_t *ec;
@@ -9890,12 +9862,12 @@ bcrypto_schnorr_legacy_sign(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&priv,
                              &priv_len) == napi_ok);
 
-  JS_ASSERT(schnorr_legacy_support(ec->ctx), JS_ERR_NO_SCHNORR);
+  JS_ASSERT(bipschnorr_support(ec->ctx), JS_ERR_NO_SCHNORR);
   JS_ASSERT(priv_len == ec->scalar_size, JS_ERR_PRIVKEY_SIZE);
-  JS_ASSERT(schnorr_legacy_sign(ec->ctx, out, msg, msg_len, priv), JS_ERR_SIGN);
+  JS_ASSERT(bipschnorr_sign(ec->ctx, out, msg, msg_len, priv), JS_ERR_SIGN);
 
   CHECK(napi_create_buffer_copy(env,
-                                ec->legacy_size,
+                                ec->bipschnorr_size,
                                 out,
                                 NULL,
                                 &result) == napi_ok);
@@ -9904,7 +9876,7 @@ bcrypto_schnorr_legacy_sign(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
-bcrypto_schnorr_legacy_verify(napi_env env, napi_callback_info info) {
+bcrypto_bipschnorr_verify(napi_env env, napi_callback_info info) {
   napi_value argv[4];
   size_t argc = 4;
   const uint8_t *msg, *sig, *pub;
@@ -9920,10 +9892,10 @@ bcrypto_schnorr_legacy_verify(napi_env env, napi_callback_info info) {
   CHECK(napi_get_buffer_info(env, argv[2], (void **)&sig, &sig_len) == napi_ok);
   CHECK(napi_get_buffer_info(env, argv[3], (void **)&pub, &pub_len) == napi_ok);
 
-  JS_ASSERT(schnorr_legacy_support(ec->ctx), JS_ERR_NO_SCHNORR);
+  JS_ASSERT(bipschnorr_support(ec->ctx), JS_ERR_NO_SCHNORR);
 
-  ok = sig_len == ec->legacy_size
-    && schnorr_legacy_verify(ec->ctx, msg, msg_len, sig, pub, pub_len);
+  ok = sig_len == ec->bipschnorr_size
+    && bipschnorr_verify(ec->ctx, msg, msg_len, sig, pub, pub_len);
 
   CHECK(napi_get_boolean(env, ok, &result) == napi_ok);
 
@@ -9931,7 +9903,7 @@ bcrypto_schnorr_legacy_verify(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
-bcrypto_schnorr_legacy_verify_batch(napi_env env, napi_callback_info info) {
+bcrypto_bipschnorr_verify_batch(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint32_t i, length, item_len;
@@ -9948,7 +9920,7 @@ bcrypto_schnorr_legacy_verify_batch(napi_env env, napi_callback_info info) {
   CHECK(napi_get_value_external(env, argv[0], (void **)&ec) == napi_ok);
   CHECK(napi_get_array_length(env, argv[1], &length) == napi_ok);
 
-  JS_ASSERT(schnorr_legacy_support(ec->ctx), JS_ERR_NO_SCHNORR);
+  JS_ASSERT(bipschnorr_support(ec->ctx), JS_ERR_NO_SCHNORR);
 
   if (length == 0) {
     CHECK(napi_get_boolean(env, true, &result) == napi_ok);
@@ -9985,7 +9957,7 @@ bcrypto_schnorr_legacy_verify_batch(napi_env env, napi_callback_info info) {
     CHECK(napi_get_buffer_info(env, items[2], (void **)&pubs[i],
                                &pub_lens[i]) == napi_ok);
 
-    if (sig_len != ec->legacy_size)
+    if (sig_len != ec->bipschnorr_size)
       goto fail;
   }
 
@@ -9994,7 +9966,7 @@ bcrypto_schnorr_legacy_verify_batch(napi_env env, napi_callback_info info) {
 
   CHECK(ec->scratch != NULL);
 
-  ok = schnorr_legacy_verify_batch(ec->ctx, msgs, msg_lens, sigs,
+  ok = bipschnorr_verify_batch(ec->ctx, msgs, msg_lens, sigs,
                                    pubs, pub_lens, length, ec->scratch);
 
 fail:
@@ -10071,8 +10043,8 @@ bcrypto_scrypt_execute_(napi_env env, void *data) {
     w->error = JS_ERR_DERIVE;
   }
 
-  torsion_cleanse(w->pass, w->pass_len);
-  torsion_cleanse(w->salt, w->salt_len);
+  torsion_memzero(w->pass, w->pass_len);
+  torsion_memzero(w->salt, w->salt_len);
 }
 
 static void
@@ -10238,7 +10210,7 @@ bcrypto_secp256k1_context_randomize(napi_env env, napi_callback_info info) {
   JS_ASSERT(entropy_len == 32, JS_ERR_ENTROPY_SIZE);
   JS_ASSERT(secp256k1_context_randomize(ec->ctx, entropy), JS_ERR_RANDOM);
 
-  torsion_cleanse((void *)entropy, entropy_len);
+  torsion_memzero((void *)entropy, entropy_len);
 
   return argv[0];
 }
@@ -10265,7 +10237,7 @@ bcrypto_secp256k1_seckey_generate(napi_env env, napi_callback_info info) {
 
   CHECK(napi_create_buffer_copy(env, 32, out, NULL, &result) == napi_ok);
 
-  torsion_cleanse((void *)entropy, entropy_len);
+  torsion_memzero((void *)entropy, entropy_len);
 
   return result;
 }
@@ -10645,7 +10617,7 @@ bcrypto_secp256k1_pubkey_to_hash(napi_env env, napi_callback_info info) {
 
   CHECK(napi_create_buffer_copy(env, 64, out, NULL, &result) == napi_ok);
 
-  torsion_cleanse((void *)entropy, entropy_len);
+  torsion_memzero((void *)entropy, entropy_len);
 
   return result;
 }
@@ -11500,7 +11472,7 @@ bcrypto_secp256k1_derive(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
-bcrypto_secp256k1_schnorr_legacy_sign(napi_env env, napi_callback_info info) {
+bcrypto_secp256k1_bipschnorr_sign(napi_env env, napi_callback_info info) {
   napi_value argv[3];
   size_t argc = 3;
   uint8_t out[64];
@@ -11526,7 +11498,7 @@ bcrypto_secp256k1_schnorr_legacy_sign(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
-bcrypto_secp256k1_schnorr_legacy_verify(napi_env env, napi_callback_info info) {
+bcrypto_secp256k1_bipschnorr_verify(napi_env env, napi_callback_info info) {
   napi_value argv[4];
   size_t argc = 4;
   const uint8_t *msg, *sig, *pub;
@@ -11553,7 +11525,7 @@ bcrypto_secp256k1_schnorr_legacy_verify(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
-bcrypto_secp256k1_schnorr_legacy_verify_batch(napi_env env,
+bcrypto_secp256k1_bipschnorr_verify_batch(napi_env env,
                                               napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
@@ -11871,7 +11843,7 @@ bcrypto_secp256k1_xonly_to_hash(napi_env env, napi_callback_info info) {
 
   CHECK(napi_create_buffer_copy(env, 64, out, NULL, &result) == napi_ok);
 
-  torsion_cleanse((void *)entropy, entropy_len);
+  torsion_memzero((void *)entropy, entropy_len);
 
   return result;
 }
@@ -12186,7 +12158,7 @@ fail:
 }
 
 static napi_value
-bcrypto_secp256k1_schnorr_sign(napi_env env, napi_callback_info info) {
+bcrypto_secp256k1_bip340_sign(napi_env env, napi_callback_info info) {
   napi_value argv[4];
   size_t argc = 4;
   uint8_t out[64];
@@ -12225,7 +12197,7 @@ bcrypto_secp256k1_schnorr_sign(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
-bcrypto_secp256k1_schnorr_verify(napi_env env, napi_callback_info info) {
+bcrypto_secp256k1_bip340_verify(napi_env env, napi_callback_info info) {
   napi_value argv[4];
   size_t argc = 4;
   const uint8_t *msg, *sig, *pub;
@@ -12252,7 +12224,7 @@ bcrypto_secp256k1_schnorr_verify(napi_env env, napi_callback_info info) {
 }
 
 static napi_value
-bcrypto_secp256k1_schnorr_verify_batch(napi_env env, napi_callback_info info) {
+bcrypto_secp256k1_bip340_verify_batch(napi_env env, napi_callback_info info) {
   napi_value argv[2];
   size_t argc = 2;
   uint32_t i, length, item_len;
@@ -12661,8 +12633,8 @@ bcrypto_wei_curve_create(napi_env env, napi_callback_info info) {
   ec->field_size = wei_curve_field_size(ec->ctx);
   ec->field_bits = wei_curve_field_bits(ec->ctx);
   ec->sig_size = ecdsa_sig_size(ec->ctx);
-  ec->legacy_size = schnorr_legacy_sig_size(ec->ctx);
-  ec->schnorr_size = schnorr_sig_size(ec->ctx);
+  ec->bipschnorr_size = bipschnorr_sig_size(ec->ctx);
+  ec->bip340_size = bip340_sig_size(ec->ctx);
 
   CHECK(napi_create_external(env,
                              ec,
@@ -12721,7 +12693,7 @@ bcrypto_wei_curve_randomize(napi_env env, napi_callback_info info) {
 
   wei_curve_randomize(ec->ctx, entropy);
 
-  torsion_cleanse((void *)entropy, entropy_len);
+  torsion_memzero((void *)entropy, entropy_len);
 
   return argv[0];
 }
@@ -13118,36 +13090,36 @@ NAPI_MODULE_INIT() {
     F(salsa20_destroy),
     F(salsa20_derive),
 
-    /* Schnorr */
-    F(schnorr_privkey_generate),
-    F(schnorr_privkey_verify),
-    F(schnorr_privkey_export),
-    F(schnorr_privkey_import),
-    F(schnorr_privkey_tweak_add),
-    F(schnorr_privkey_tweak_mul),
-    F(schnorr_privkey_invert),
-    F(schnorr_pubkey_create),
-    F(schnorr_pubkey_from_uniform),
-    F(schnorr_pubkey_to_uniform),
-    F(schnorr_pubkey_from_hash),
-    F(schnorr_pubkey_to_hash),
-    F(schnorr_pubkey_verify),
-    F(schnorr_pubkey_export),
-    F(schnorr_pubkey_import),
-    F(schnorr_pubkey_tweak_add),
-    F(schnorr_pubkey_tweak_mul),
-    F(schnorr_pubkey_tweak_sum),
-    F(schnorr_pubkey_tweak_check),
-    F(schnorr_pubkey_combine),
-    F(schnorr_sign),
-    F(schnorr_verify),
-    F(schnorr_verify_batch),
-    F(schnorr_derive),
+    /* Schnorr BIP340*/
+    F(bip340_privkey_generate),
+    F(bip340_privkey_verify),
+    F(bip340_privkey_export),
+    F(bip340_privkey_import),
+    F(bip340_privkey_tweak_add),
+    F(bip340_privkey_tweak_mul),
+    F(bip340_privkey_invert),
+    F(bip340_pubkey_create),
+    F(bip340_pubkey_from_uniform),
+    F(bip340_pubkey_to_uniform),
+    F(bip340_pubkey_from_hash),
+    F(bip340_pubkey_to_hash),
+    F(bip340_pubkey_verify),
+    F(bip340_pubkey_export),
+    F(bip340_pubkey_import),
+    F(bip340_pubkey_tweak_add),
+    F(bip340_pubkey_tweak_mul),
+    F(bip340_pubkey_tweak_sum),
+    F(bip340_pubkey_tweak_check),
+    F(bip340_pubkey_combine),
+    F(bip340_sign),
+    F(bip340_verify),
+    F(bip340_verify_batch),
+    F(bip340_derive),
 
     /* Schnorr Legacy */
-    F(schnorr_legacy_sign),
-    F(schnorr_legacy_verify),
-    F(schnorr_legacy_verify_batch),
+    F(bipschnorr_sign),
+    F(bipschnorr_verify),
+    F(bipschnorr_verify_batch),
 
     /* Scrypt */
     F(scrypt_derive),
@@ -13193,9 +13165,9 @@ NAPI_MODULE_INIT() {
     F(secp256k1_recover),
     F(secp256k1_recover_der),
     F(secp256k1_derive),
-    F(secp256k1_schnorr_legacy_sign),
-    F(secp256k1_schnorr_legacy_verify),
-    F(secp256k1_schnorr_legacy_verify_batch),
+    F(secp256k1_bipschnorr_sign),
+    F(secp256k1_bipschnorr_verify),
+    F(secp256k1_bipschnorr_verify_batch),
     F(secp256k1_xonly_seckey_export),
     F(secp256k1_xonly_seckey_tweak_add),
     F(secp256k1_xonly_create),
@@ -13211,9 +13183,9 @@ NAPI_MODULE_INIT() {
     F(secp256k1_xonly_tweak_sum),
     F(secp256k1_xonly_tweak_check),
     F(secp256k1_xonly_combine),
-    F(secp256k1_schnorr_sign),
-    F(secp256k1_schnorr_verify),
-    F(secp256k1_schnorr_verify_batch),
+    F(secp256k1_bip340_sign),
+    F(secp256k1_bip340_verify),
+    F(secp256k1_bip340_verify_batch),
     F(secp256k1_xonly_derive),
 #endif
 
