@@ -1245,7 +1245,8 @@ int
 bech32_serialize(char *str,
                  const char *hrp,
                  const uint8_t *data,
-                 size_t data_len) {
+                 size_t data_len,
+                 uint32_t checksum) {
   uint32_t chk = 1;
   size_t i, hlen;
   size_t j = 0;
@@ -1297,7 +1298,7 @@ bech32_serialize(char *str,
   for (i = 0; i < 6; i++)
     chk = bech32_polymod(chk);
 
-  chk ^= 1;
+  chk ^= checksum;
 
   for (i = 0; i < 6; i++)
     str[j++] = bech32_charset[(chk >> ((5 - i) * 5)) & 0x1f];
@@ -1311,7 +1312,8 @@ int
 bech32_deserialize(char *hrp,
                    uint8_t *data,
                    size_t *data_len,
-                   const char *str) {
+                   const char *str,
+                   uint32_t checksum) {
   uint32_t chk = 1;
   size_t hlen = 0;
   size_t i, slen;
@@ -1378,7 +1380,7 @@ bech32_deserialize(char *hrp,
       data[j++] = val;
   }
 
-  if (chk != 1)
+  if (chk != checksum)
     return 0;
 
   *data_len = j;
@@ -1387,12 +1389,12 @@ bech32_deserialize(char *hrp,
 }
 
 int
-bech32_is(const char *str) {
+bech32_is(const char *str, uint32_t checksum) {
   char hrp[BECH32_MAX_HRP_SIZE + 1];
   uint8_t data[BECH32_MAX_DESERIALIZE_SIZE];
   size_t data_len;
 
-  return bech32_deserialize(hrp, data, &data_len, str);
+  return bech32_deserialize(hrp, data, &data_len, str, checksum);
 }
 
 int
@@ -1440,7 +1442,8 @@ bech32_encode(char *addr,
               const char *hrp,
               unsigned int version,
               const uint8_t *hash,
-              size_t hash_len) {
+              size_t hash_len,
+              uint32_t checksum) {
   uint8_t data[BECH32_MAX_DATA_SIZE];
   size_t data_len;
 
@@ -1461,7 +1464,7 @@ bech32_encode(char *addr,
 
   data_len += 1;
 
-  return bech32_serialize(addr, hrp, data, data_len);
+  return bech32_serialize(addr, hrp, data, data_len, checksum);
 }
 
 int
@@ -1469,11 +1472,12 @@ bech32_decode(char *hrp,
               unsigned int *version,
               uint8_t *hash,
               size_t *hash_len,
-              const char *addr) {
+              const char *addr,
+              uint32_t checksum) {
   uint8_t data[BECH32_MAX_DESERIALIZE_SIZE];
   size_t data_len;
 
-  if (!bech32_deserialize(hrp, data, &data_len, addr))
+  if (!bech32_deserialize(hrp, data, &data_len, addr, checksum))
     return 0;
 
   if (data_len == 0 || data_len > BECH32_MAX_DATA_SIZE)
@@ -1498,13 +1502,13 @@ bech32_decode(char *hrp,
 }
 
 int
-bech32_test(const char *addr) {
+bech32_test(const char *addr, uint32_t checksum) {
   char hrp[BECH32_MAX_HRP_SIZE + 1];
   unsigned int version;
   uint8_t hash[BECH32_MAX_DECODE_SIZE];
   size_t hash_len;
 
-  return bech32_decode(hrp, &version, hash, &hash_len, addr);
+  return bech32_decode(hrp, &version, hash, &hash_len, addr, checksum);
 }
 
 /*

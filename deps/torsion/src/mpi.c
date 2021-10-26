@@ -5182,6 +5182,12 @@ mpz_init_set_si(mpz_ptr z, mp_long_t x) {
   mpz_set_si(z, x);
 }
 
+void
+mpz_init_set_compact(mpz_ptr z, mp_limb_t x) {
+  mpz_init(z);
+  mpz_set_compact(z, x);
+}
+
 int
 mpz_init_set_str(mpz_ptr z, const char *str, int base) {
   mpz_init(z);
@@ -5341,6 +5347,32 @@ mpz_set_si(mpz_ptr z, mp_long_t x) {
   (z)->alloc = 0;                 \
   (z)->size = (x) < 0 ? -_n : _n
 
+void
+mpz_set_compact(mpz_ptr z, mp_limb_t x) {
+  mp_limb_t exponent, mantissa;
+  int negative;
+
+  if (x == 0) {
+    mpz_set_ui(z, 0);
+    return;
+  }
+
+  exponent = (x >> 24) & 0xff;
+  negative = (x >> 23) & 1;
+  mantissa = x & 0x7fffff;
+
+  if (exponent <= 3) {
+    mantissa >>= 8 * (3 - exponent);
+    mpz_set_ui(z, mantissa);
+  } else {
+    mpz_set_ui(z, mantissa);
+    mpz_mul_2exp(z, z, 8 * (exponent - 3));
+  }
+
+  if (negative)
+    mpz_neg(z, z);
+}
+
 /*
  * Conversion
  */
@@ -5356,6 +5388,46 @@ mpz_get_ui(mpz_srcptr x) {
 mp_long_t
 mpz_get_si(mpz_srcptr x) {
   return mp_long_cast(mpz_get_ui(x), x->size);
+}
+
+mp_limb_t
+mpz_get_compact(mpz_srcptr x) {
+  mp_limb_t z, exponent, mantissa;
+  int negative;
+  mpz_t t;
+
+  if (x->size == 0)
+    return 0;
+
+  exponent = mpz_bytelen(x);
+  negative = (x->size < 0);
+
+  if (exponent <= 3) {
+    mantissa = mpz_get_ui(x);
+    mantissa <<= 8 * (3 - exponent);
+  } else {
+    mpz_init(t);
+    mpz_quo_2exp(t, x, 8 * (exponent - 3));
+    mantissa = mpz_get_ui(t);
+    mpz_clear(t);
+  }
+
+  if (mantissa & 0x800000) {
+    mantissa >>= 8;
+    exponent += 1;
+  }
+
+#if MP_LIMB_BITS == 64
+  exponent &= 0xff;
+  mantissa &= MP_LOW_MASK;
+#endif
+
+  z = (exponent << 24) | mantissa;
+
+  if (negative)
+    z |= 0x800000;
+
+  return z;
 }
 
 /*
