@@ -49,36 +49,36 @@ blake2b_init(blake2b_t *ctx,
              size_t len,
              const unsigned char *key,
              size_t keylen) {
+  int i;
+
   CHECK(len >= 1 && len <= 64);
   CHECK(keylen <= 64);
 
-  ctx->h[0] = blake2b_iv[0] ^ (0x01010000 | (keylen << 8) | len);
-  ctx->h[1] = blake2b_iv[1];
-  ctx->h[2] = blake2b_iv[2];
-  ctx->h[3] = blake2b_iv[3];
-  ctx->h[4] = blake2b_iv[4];
-  ctx->h[5] = blake2b_iv[5];
-  ctx->h[6] = blake2b_iv[6];
-  ctx->h[7] = blake2b_iv[7];
+  memset(ctx, 0, sizeof(*ctx));
 
-  ctx->t[0] = 0;
-  ctx->t[1] = 0;
-
-  ctx->pos = 0;
   ctx->len = len;
 
-  if (keylen > 0) {
-    memset(ctx->block, 0x00, 128);
-    memcpy(ctx->block, key, keylen);
+  for (i = 0; i < 8; i++)
+    ctx->h[i] = blake2b_iv[i];
 
-    ctx->pos = 128;
+  ctx->h[0] ^= 0x01010000 | (keylen << 8) | len;
+
+  if (keylen > 0) {
+    unsigned char block[128];
+
+    memcpy(block, key, keylen);
+    memset(block + keylen, 0x00, 128 - keylen);
+
+    blake2b_update(ctx, block, 128);
+
+    torsion_cleanse(block, 128);
   }
 }
 
 static void
-blake2b_increment(blake2b_t *ctx, uint64_t c) {
-  ctx->t[0] += c;
-  ctx->t[1] += (ctx->t[0] < c);
+blake2b_increment(blake2b_t *ctx, uint64_t x) {
+  ctx->t[0] += x;
+  ctx->t[1] += (ctx->t[0] < x);
 }
 
 static void
@@ -179,43 +179,40 @@ blake2b_update(blake2b_t *ctx, const void *data, size_t len) {
   size_t pos = ctx->pos;
   size_t want = 128 - pos;
 
+  if (len == 0)
+    return;
+
   if (len > want) {
-    if (pos > 0) {
-      memcpy(ctx->block + pos, raw, want);
+    memcpy(ctx->block + pos, raw, want);
 
-      raw += want;
-      len -= want;
-      pos = 0;
+    raw += want;
+    len -= want;
 
-      blake2b_transform(ctx, ctx->block);
-    }
+    blake2b_transform(ctx, ctx->block);
 
     while (len > 128) {
       blake2b_transform(ctx, raw);
       raw += 128;
       len -= 128;
     }
+
+    ctx->pos = 0;
   }
 
-  if (len > 0) {
-    memcpy(ctx->block + pos, raw, len);
-    pos += len;
-  }
+  memcpy(ctx->block + ctx->pos, raw, len);
 
-  ctx->pos = pos;
+  ctx->pos += len;
 }
 
 void
 blake2b_final(blake2b_t *ctx, unsigned char *out) {
   size_t count = ctx->len >> 3;
-  size_t pos = ctx->pos;
   size_t i;
 
-  while (pos < 128)
-    ctx->block[pos++] = 0x00;
+  memset(ctx->block + ctx->pos, 0x00, 128 - ctx->pos);
 
   blake2b_increment(ctx, ctx->pos);
-  blake2b_compress(ctx, ctx->block, -1);
+  blake2b_compress(ctx, ctx->block, UINT64_MAX);
 
   for (i = 0; i < count; i++)
     write64le(out + i * 8, ctx->h[i]);
@@ -270,36 +267,36 @@ blake2s_init(blake2s_t *ctx,
              size_t len,
              const unsigned char *key,
              size_t keylen) {
+  int i;
+
   CHECK(len >= 1 && len <= 32);
   CHECK(keylen <= 32);
 
-  ctx->h[0] = blake2s_iv[0] ^ (0x01010000 | (keylen << 8) | len);
-  ctx->h[1] = blake2s_iv[1];
-  ctx->h[2] = blake2s_iv[2];
-  ctx->h[3] = blake2s_iv[3];
-  ctx->h[4] = blake2s_iv[4];
-  ctx->h[5] = blake2s_iv[5];
-  ctx->h[6] = blake2s_iv[6];
-  ctx->h[7] = blake2s_iv[7];
+  memset(ctx, 0, sizeof(*ctx));
 
-  ctx->t[0] = 0;
-  ctx->t[1] = 0;
-
-  ctx->pos = 0;
   ctx->len = len;
 
-  if (keylen > 0) {
-    memset(ctx->block, 0x00, 64);
-    memcpy(ctx->block, key, keylen);
+  for (i = 0; i < 8; i++)
+    ctx->h[i] = blake2s_iv[i];
 
-    ctx->pos = 64;
+  ctx->h[0] ^= 0x01010000 | (keylen << 8) | len;
+
+  if (keylen > 0) {
+    unsigned char block[64];
+
+    memcpy(block, key, keylen);
+    memset(block + keylen, 0x00, 64 - keylen);
+
+    blake2s_update(ctx, block, 64);
+
+    torsion_cleanse(block, 64);
   }
 }
 
 static void
-blake2s_increment(blake2s_t *ctx, uint32_t c) {
-  ctx->t[0] += c;
-  ctx->t[1] += (ctx->t[0] < c);
+blake2s_increment(blake2s_t *ctx, uint32_t x) {
+  ctx->t[0] += x;
+  ctx->t[1] += (ctx->t[0] < x);
 }
 
 static void
@@ -396,43 +393,40 @@ blake2s_update(blake2s_t *ctx, const void *data, size_t len) {
   size_t pos = ctx->pos;
   size_t want = 64 - pos;
 
+  if (len == 0)
+    return;
+
   if (len > want) {
-    if (pos > 0) {
-      memcpy(ctx->block + pos, raw, want);
+    memcpy(ctx->block + pos, raw, want);
 
-      raw += want;
-      len -= want;
-      pos = 0;
+    raw += want;
+    len -= want;
 
-      blake2s_transform(ctx, ctx->block);
-    }
+    blake2s_transform(ctx, ctx->block);
 
     while (len > 64) {
       blake2s_transform(ctx, raw);
       raw += 64;
       len -= 64;
     }
+
+    ctx->pos = 0;
   }
 
-  if (len > 0) {
-    memcpy(ctx->block + pos, raw, len);
-    pos += len;
-  }
+  memcpy(ctx->block + ctx->pos, raw, len);
 
-  ctx->pos = pos;
+  ctx->pos += len;
 }
 
 void
 blake2s_final(blake2s_t *ctx, unsigned char *out) {
   size_t count = ctx->len >> 2;
-  size_t pos = ctx->pos;
   size_t i;
 
-  while (pos < 64)
-    ctx->block[pos++] = 0x00;
+  memset(ctx->block + ctx->pos, 0x00, 64 - ctx->pos);
 
   blake2s_increment(ctx, ctx->pos);
-  blake2s_compress(ctx, ctx->block, -1);
+  blake2s_compress(ctx, ctx->block, UINT32_MAX);
 
   for (i = 0; i < count; i++)
     write32le(out + i * 4, ctx->h[i]);
@@ -553,7 +547,7 @@ gost94_p(uint8_t *zp, const uint8_t *xp) {
 }
 
 static void
-gost94_z(uint8_t *zp, const uint8_t *xp) {
+gost94_s(uint8_t *zp, const uint8_t *xp) {
   uint8_t z30 = xp[0] ^ xp[2] ^ xp[4] ^ xp[6] ^ xp[24] ^ xp[30];
   uint8_t z31 = xp[1] ^ xp[3] ^ xp[5] ^ xp[7] ^ xp[25] ^ xp[31];
   int i;
@@ -608,14 +602,14 @@ gost94_compress(gost94_t *ctx, const uint8_t *mp) {
   gost94_e(tp + 24, kp);
 
   for (i = 0; i < 12; i++)
-    gost94_z(tp, tp);
+    gost94_s(tp, tp);
 
   gost94_x(tp, tp, mp);
-  gost94_z(tp, tp);
+  gost94_s(tp, tp);
   gost94_x(sp, sp, tp);
 
   for (i = 0; i < 61; i++)
-    gost94_z(sp, sp);
+    gost94_s(sp, sp);
 }
 
 static void
@@ -624,7 +618,7 @@ gost94_sum(gost94_t *ctx, const uint8_t *mp) {
   int i;
 
   for (i = 0; i < 32; i++) {
-    c += (unsigned int)ctx->sigma[i] + mp[i];
+    c += ctx->sigma[i] + mp[i];
     ctx->sigma[i] = c;
     c >>= 8;
   }
@@ -641,61 +635,58 @@ gost94_transform(gost94_t *ctx, const unsigned char *chunk) {
   gost94_sum(ctx, chunk);
 }
 
-static void
-gost94_increment(gost94_t *ctx, uint64_t c) {
-  ctx->size[0] += c; c = (ctx->size[0] < c);
-  ctx->size[1] += c; c = (ctx->size[1] < c);
-  ctx->size[2] += c; c = (ctx->size[2] < c);
-  ctx->size[3] += c;
-}
-
 void
 gost94_update(gost94_t *ctx, const void *data, size_t len) {
   const unsigned char *raw = (const unsigned char *)data;
-  size_t pos = ctx->size[0] & 31;
-  size_t want = 32 - pos;
+  size_t pos = ctx->size & 31;
 
-  gost94_increment(ctx, len);
+  if (len == 0)
+    return;
 
-  if (len >= want) {
-    if (pos > 0) {
-      memcpy(ctx->block + pos, raw, want);
-
-      raw += want;
-      len -= want;
-      pos = 0;
-
-      gost94_transform(ctx, ctx->block);
-    }
-
-    while (len >= 32) {
-      gost94_transform(ctx, raw);
-      raw += 32;
-      len -= 32;
-    }
-  }
-
-  if (len > 0)
-    memcpy(ctx->block + pos, raw, len);
-}
-
-void
-gost94_final(gost94_t *ctx, unsigned char *out) {
-  size_t pos = ctx->size[0] & 31;
+  ctx->size += len;
 
   if (pos > 0) {
-    while (pos < 32)
-      ctx->block[pos++] = 0x00;
+    size_t want = 32 - pos;
+
+    if (want > len)
+      want = len;
+
+    memcpy(ctx->block + pos, raw, want);
+
+    pos += want;
+    len -= want;
+    raw += want;
+
+    if (pos < 32)
+      return;
 
     gost94_transform(ctx, ctx->block);
   }
 
-  write64le(ctx->block +  0, ctx->size[0] << 3);
-  write64le(ctx->block +  8, (ctx->size[1] << 3) | (ctx->size[0] >> 61));
-  write64le(ctx->block + 16, (ctx->size[2] << 3) | (ctx->size[1] >> 61));
-  write64le(ctx->block + 24, (ctx->size[3] << 3) | (ctx->size[2] >> 61));
+  while (len >= 32) {
+    gost94_transform(ctx, raw);
+    raw += 32;
+    len -= 32;
+  }
 
-  gost94_compress(ctx, ctx->block);
+  if (len > 0)
+    memcpy(ctx->block, raw, len);
+}
+
+void
+gost94_final(gost94_t *ctx, unsigned char *out) {
+  uint64_t bits = ctx->size << 3;
+  size_t pos = ctx->size & 31;
+  unsigned char D[32];
+
+  memset(D, 0x00, 32);
+
+  if (pos != 0)
+    gost94_update(ctx, D, 32 - pos);
+
+  write64le(D, bits);
+
+  gost94_compress(ctx, D);
   gost94_compress(ctx, ctx->sigma);
 
   memcpy(out, ctx->state, 32);
@@ -729,7 +720,7 @@ hash160_final(hash160_t *ctx, unsigned char *out) {
   ripemd160_update(&rmd, tmp, 32);
   ripemd160_final(&rmd, out);
 
-  torsion_memzero(tmp, sizeof(tmp));
+  torsion_cleanse(tmp, sizeof(tmp));
 }
 
 /*
@@ -1056,37 +1047,44 @@ void
 keccak_update(keccak_t *ctx, const void *data, size_t len) {
   const unsigned char *raw = (const unsigned char *)data;
   size_t pos = ctx->pos;
-  size_t want = ctx->bs - pos;
 
-  if (len >= want) {
-    if (pos > 0) {
-      memcpy(ctx->block + pos, raw, want);
+  if (len == 0)
+    return;
 
-      raw += want;
-      len -= want;
-      pos = 0;
+  if (pos > 0) {
+    size_t want = ctx->bs - pos;
 
-      keccak_transform(ctx, ctx->block);
+    if (want > len)
+      want = len;
+
+    memcpy(ctx->block + pos, raw, want);
+
+    pos += want;
+    len -= want;
+    raw += want;
+
+    if (pos < ctx->bs) {
+      ctx->pos = pos;
+      return;
     }
 
-    while (len >= ctx->bs) {
-      keccak_transform(ctx, raw);
-      raw += ctx->bs;
-      len -= ctx->bs;
-    }
+    keccak_transform(ctx, ctx->block);
   }
 
-  if (len > 0) {
-    memcpy(ctx->block + pos, raw, len);
-    pos += len;
+  while (len >= ctx->bs) {
+    keccak_transform(ctx, raw);
+    raw += ctx->bs;
+    len -= ctx->bs;
   }
 
-  ctx->pos = pos;
+  if (len > 0)
+    memcpy(ctx->block, raw, len);
+
+  ctx->pos = len;
 }
 
 void
 keccak_final(keccak_t *ctx, unsigned char *out, unsigned int pad, size_t len) {
-  size_t pos = ctx->pos;
   size_t i, count;
 
   if (pad == 0)
@@ -1097,11 +1095,9 @@ keccak_final(keccak_t *ctx, unsigned char *out, unsigned int pad, size_t len) {
 
   CHECK(len <= 200);
 
-  ctx->block[pos++] = pad & 0xff;
+  memset(ctx->block + ctx->pos, 0x00, ctx->bs - ctx->pos);
 
-  while (pos < ctx->bs)
-    ctx->block[pos++] = 0x00;
-
+  ctx->block[ctx->pos] |= (pad & 0xff);
   ctx->block[ctx->bs - 1] |= 0x80;
 
   keccak_transform(ctx, ctx->block);
@@ -1196,8 +1192,16 @@ md2_transform(md2_t *ctx, const unsigned char *chunk) {
 #define C (ctx->checksum)
 #define W ((uint8_t *)(chunk))
 
+  /* The RFC doesn't describe the specifics
+     of XOR'ing the checksum, but OpenSSL
+     seems to do this. */
+  l = C[15];
+
   for (j = 0; j < 16; j++) {
     c = W[j];
+    l = C[j] ^ K[c ^ l];
+
+    C[j] = l;
 
     S[16 + j] = c;
     S[32 + j] = c ^ S[j];
@@ -1214,18 +1218,6 @@ md2_transform(md2_t *ctx, const unsigned char *chunk) {
     t = (t + j) & 0xff;
   }
 
-  /* The RFC doesn't describe the specifics
-     of XOR'ing the checksum, but OpenSSL
-     seems to do this. */
-  l = C[15];
-
-  for (j = 0; j < 16; j++) {
-    c = W[j];
-    l = C[j] ^ K[c ^ l];
-
-    C[j] = l;
-  }
-
 #undef S
 #undef C
 #undef W
@@ -1235,44 +1227,53 @@ void
 md2_update(md2_t *ctx, const void *data, size_t len) {
   const unsigned char *raw = (const unsigned char *)data;
   size_t pos = ctx->pos;
-  size_t want = 16 - pos;
 
-  if (len >= want) {
-    if (pos > 0) {
-      memcpy(ctx->block + pos, raw, want);
+  if (len == 0)
+    return;
 
-      raw += want;
-      len -= want;
-      pos = 0;
+  if (pos > 0) {
+    size_t want = 16 - pos;
 
-      md2_transform(ctx, ctx->block);
+    if (want > len)
+      want = len;
+
+    memcpy(ctx->block + pos, raw, want);
+
+    pos += want;
+    len -= want;
+    raw += want;
+
+    if (pos < 16) {
+      ctx->pos = pos;
+      return;
     }
 
-    while (len >= 16) {
-      md2_transform(ctx, raw);
-      raw += 16;
-      len -= 16;
-    }
+    md2_transform(ctx, ctx->block);
   }
 
-  if (len > 0) {
-    memcpy(ctx->block + pos, raw, len);
-    pos += len;
+  while (len >= 16) {
+    md2_transform(ctx, raw);
+    raw += 16;
+    len -= 16;
   }
 
-  ctx->pos = pos;
+  if (len > 0)
+    memcpy(ctx->block, raw, len);
+
+  ctx->pos = len;
 }
 
 void
 md2_final(md2_t *ctx, unsigned char *out) {
-  size_t pos = ctx->pos;
-  size_t left = 16 - pos;
+  size_t left = 16 - ctx->pos;
+  unsigned char pad[16];
+  size_t i;
 
-  while (pos < 16)
-    ctx->block[pos++] = left;
+  for (i = 0; i < left; i++)
+    pad[i] = left;
 
-  md2_transform(ctx, ctx->block);
-  md2_transform(ctx, ctx->checksum);
+  md2_update(ctx, pad, left);
+  md2_update(ctx, ctx->checksum, 16);
 
   memcpy(out, ctx->state, 16);
 }
@@ -1391,54 +1392,51 @@ void
 md4_update(md4_t *ctx, const void *data, size_t len) {
   const unsigned char *raw = (const unsigned char *)data;
   size_t pos = ctx->size & 63;
-  size_t want = 64 - pos;
+
+  if (len == 0)
+    return;
 
   ctx->size += len;
 
-  if (len >= want) {
-    if (pos > 0) {
-      memcpy(ctx->block + pos, raw, want);
+  if (pos > 0) {
+    size_t want = 64 - pos;
 
-      raw += want;
-      len -= want;
-      pos = 0;
+    if (want > len)
+      want = len;
 
-      md4_transform(ctx, ctx->block);
-    }
+    memcpy(ctx->block + pos, raw, want);
 
-    while (len >= 64) {
-      md4_transform(ctx, raw);
-      raw += 64;
-      len -= 64;
-    }
+    pos += want;
+    len -= want;
+    raw += want;
+
+    if (pos < 64)
+      return;
+
+    md4_transform(ctx, ctx->block);
+  }
+
+  while (len >= 64) {
+    md4_transform(ctx, raw);
+    raw += 64;
+    len -= 64;
   }
 
   if (len > 0)
-    memcpy(ctx->block + pos, raw, len);
+    memcpy(ctx->block, raw, len);
 }
 
 void
 md4_final(md4_t *ctx, unsigned char *out) {
+  static const unsigned char P[64] = { 0x80, 0x00 };
   size_t pos = ctx->size & 63;
+  unsigned char D[8];
   int i;
 
-  ctx->block[pos++] = 0x80;
+  write64le(D, ctx->size << 3);
 
-  if (pos > 56) {
-    while (pos < 64)
-      ctx->block[pos++] = 0x00;
-
-    md4_transform(ctx, ctx->block);
-
-    pos = 0;
-  }
-
-  while (pos < 56)
-    ctx->block[pos++] = 0x00;
-
-  write64le(ctx->block + 56, ctx->size << 3);
-
-  md4_transform(ctx, ctx->block);
+  md4_update(ctx, P, 1 + ((119 - pos) & 63));
+  md4_update(ctx, D, 8);
 
   for (i = 0; i < 4; i++)
     write32le(out + i * 4, ctx->state[i]);
@@ -1570,54 +1568,51 @@ void
 md5_update(md5_t *ctx, const void *data, size_t len) {
   const unsigned char *raw = (const unsigned char *)data;
   size_t pos = ctx->size & 63;
-  size_t want = 64 - pos;
+
+  if (len == 0)
+    return;
 
   ctx->size += len;
 
-  if (len >= want) {
-    if (pos > 0) {
-      memcpy(ctx->block + pos, raw, want);
+  if (pos > 0) {
+    size_t want = 64 - pos;
 
-      raw += want;
-      len -= want;
-      pos = 0;
+    if (want > len)
+      want = len;
 
-      md5_transform(ctx, ctx->block);
-    }
+    memcpy(ctx->block + pos, raw, want);
 
-    while (len >= 64) {
-      md5_transform(ctx, raw);
-      raw += 64;
-      len -= 64;
-    }
+    pos += want;
+    len -= want;
+    raw += want;
+
+    if (pos < 64)
+      return;
+
+    md5_transform(ctx, ctx->block);
+  }
+
+  while (len >= 64) {
+    md5_transform(ctx, raw);
+    raw += 64;
+    len -= 64;
   }
 
   if (len > 0)
-    memcpy(ctx->block + pos, raw, len);
+    memcpy(ctx->block, raw, len);
 }
 
 void
 md5_final(md5_t *ctx, unsigned char *out) {
+  static const unsigned char P[64] = { 0x80, 0x00 };
   size_t pos = ctx->size & 63;
+  unsigned char D[8];
   int i;
 
-  ctx->block[pos++] = 0x80;
+  write64le(D, ctx->size << 3);
 
-  if (pos > 56) {
-    while (pos < 64)
-      ctx->block[pos++] = 0x00;
-
-    md5_transform(ctx, ctx->block);
-
-    pos = 0;
-  }
-
-  while (pos < 56)
-    ctx->block[pos++] = 0x00;
-
-  write64le(ctx->block + 56, ctx->size << 3);
-
-  md5_transform(ctx, ctx->block);
+  md5_update(ctx, P, 1 + ((119 - pos) & 63));
+  md5_update(ctx, D, 8);
 
   for (i = 0; i < 4; i++)
     write32le(out + i * 4, ctx->state[i]);
@@ -1915,54 +1910,51 @@ void
 ripemd160_update(ripemd160_t *ctx, const void *data, size_t len) {
   const unsigned char *raw = (const unsigned char *)data;
   size_t pos = ctx->size & 63;
-  size_t want = 64 - pos;
+
+  if (len == 0)
+    return;
 
   ctx->size += len;
 
-  if (len >= want) {
-    if (pos > 0) {
-      memcpy(ctx->block + pos, raw, want);
+  if (pos > 0) {
+    size_t want = 64 - pos;
 
-      raw += want;
-      len -= want;
-      pos = 0;
+    if (want > len)
+      want = len;
 
-      ripemd160_transform(ctx, ctx->block);
-    }
+    memcpy(ctx->block + pos, raw, want);
 
-    while (len >= 64) {
-      ripemd160_transform(ctx, raw);
-      raw += 64;
-      len -= 64;
-    }
+    pos += want;
+    len -= want;
+    raw += want;
+
+    if (pos < 64)
+      return;
+
+    ripemd160_transform(ctx, ctx->block);
+  }
+
+  while (len >= 64) {
+    ripemd160_transform(ctx, raw);
+    raw += 64;
+    len -= 64;
   }
 
   if (len > 0)
-    memcpy(ctx->block + pos, raw, len);
+    memcpy(ctx->block, raw, len);
 }
 
 void
 ripemd160_final(ripemd160_t *ctx, unsigned char *out) {
+  static const unsigned char P[64] = { 0x80, 0x00 };
   size_t pos = ctx->size & 63;
+  unsigned char D[8];
   int i;
 
-  ctx->block[pos++] = 0x80;
+  write64le(D, ctx->size << 3);
 
-  if (pos > 56) {
-    while (pos < 64)
-      ctx->block[pos++] = 0x00;
-
-    ripemd160_transform(ctx, ctx->block);
-
-    pos = 0;
-  }
-
-  while (pos < 56)
-    ctx->block[pos++] = 0x00;
-
-  write64le(ctx->block + 56, ctx->size << 3);
-
-  ripemd160_transform(ctx, ctx->block);
+  ripemd160_update(ctx, P, 1 + ((119 - pos) & 63));
+  ripemd160_update(ctx, D, 8);
 
   for (i = 0; i < 5; i++)
     write32le(out + i * 4, ctx->state[i]);
@@ -2160,54 +2152,51 @@ void
 sha1_update(sha1_t *ctx, const void *data, size_t len) {
   const unsigned char *raw = (const unsigned char *)data;
   size_t pos = ctx->size & 63;
-  size_t want = 64 - pos;
+
+  if (len == 0)
+    return;
 
   ctx->size += len;
 
-  if (len >= want) {
-    if (pos > 0) {
-      memcpy(ctx->block + pos, raw, want);
+  if (pos > 0) {
+    size_t want = 64 - pos;
 
-      raw += want;
-      len -= want;
-      pos = 0;
+    if (want > len)
+      want = len;
 
-      sha1_transform(ctx, ctx->block);
-    }
+    memcpy(ctx->block + pos, raw, want);
 
-    while (len >= 64) {
-      sha1_transform(ctx, raw);
-      raw += 64;
-      len -= 64;
-    }
+    pos += want;
+    len -= want;
+    raw += want;
+
+    if (pos < 64)
+      return;
+
+    sha1_transform(ctx, ctx->block);
+  }
+
+  while (len >= 64) {
+    sha1_transform(ctx, raw);
+    raw += 64;
+    len -= 64;
   }
 
   if (len > 0)
-    memcpy(ctx->block + pos, raw, len);
+    memcpy(ctx->block, raw, len);
 }
 
 void
 sha1_final(sha1_t *ctx, unsigned char *out) {
+  static const unsigned char P[64] = { 0x80, 0x00 };
   size_t pos = ctx->size & 63;
+  unsigned char D[8];
   int i;
 
-  ctx->block[pos++] = 0x80;
+  write64be(D, ctx->size << 3);
 
-  if (pos > 56) {
-    while (pos < 64)
-      ctx->block[pos++] = 0x00;
-
-    sha1_transform(ctx, ctx->block);
-
-    pos = 0;
-  }
-
-  while (pos < 56)
-    ctx->block[pos++] = 0x00;
-
-  write64be(ctx->block + 56, ctx->size << 3);
-
-  sha1_transform(ctx, ctx->block);
+  sha1_update(ctx, P, 1 + ((119 - pos) & 63));
+  sha1_update(ctx, D, 8);
 
   for (i = 0; i < 5; i++)
     write32be(out + i * 4, ctx->state[i]);
@@ -2247,7 +2236,7 @@ sha224_final(sha224_t *ctx, unsigned char *out) {
 
   memcpy(out, tmp, 28);
 
-  torsion_memzero(tmp, sizeof(tmp));
+  torsion_cleanse(tmp, sizeof(tmp));
 }
 
 /*
@@ -2431,54 +2420,51 @@ void
 sha256_update(sha256_t *ctx, const void *data, size_t len) {
   const unsigned char *raw = (const unsigned char *)data;
   size_t pos = ctx->size & 63;
-  size_t want = 64 - pos;
+
+  if (len == 0)
+    return;
 
   ctx->size += len;
 
-  if (len >= want) {
-    if (pos > 0) {
-      memcpy(ctx->block + pos, raw, want);
+  if (pos > 0) {
+    size_t want = 64 - pos;
 
-      raw += want;
-      len -= want;
-      pos = 0;
+    if (want > len)
+      want = len;
 
-      sha256_transform(ctx, ctx->block);
-    }
+    memcpy(ctx->block + pos, raw, want);
 
-    while (len >= 64) {
-      sha256_transform(ctx, raw);
-      raw += 64;
-      len -= 64;
-    }
+    pos += want;
+    len -= want;
+    raw += want;
+
+    if (pos < 64)
+      return;
+
+    sha256_transform(ctx, ctx->block);
+  }
+
+  while (len >= 64) {
+    sha256_transform(ctx, raw);
+    raw += 64;
+    len -= 64;
   }
 
   if (len > 0)
-    memcpy(ctx->block + pos, raw, len);
+    memcpy(ctx->block, raw, len);
 }
 
 void
 sha256_final(sha256_t *ctx, unsigned char *out) {
+  static const unsigned char P[64] = { 0x80, 0x00 };
   size_t pos = ctx->size & 63;
+  unsigned char D[8];
   int i;
 
-  ctx->block[pos++] = 0x80;
+  write64be(D, ctx->size << 3);
 
-  if (pos > 56) {
-    while (pos < 64)
-      ctx->block[pos++] = 0x00;
-
-    sha256_transform(ctx, ctx->block);
-
-    pos = 0;
-  }
-
-  while (pos < 56)
-    ctx->block[pos++] = 0x00;
-
-  write64be(ctx->block + 56, ctx->size << 3);
-
-  sha256_transform(ctx, ctx->block);
+  sha256_update(ctx, P, 1 + ((119 - pos) & 63));
+  sha256_update(ctx, D, 8);
 
   for (i = 0; i < 8; i++)
     write32be(out + i * 4, ctx->state[i]);
@@ -2502,9 +2488,7 @@ sha384_init(sha384_t *ctx) {
   ctx->state[5] = UINT64_C(0x8eb44a8768581511);
   ctx->state[6] = UINT64_C(0xdb0c2e0d64f98fa7);
   ctx->state[7] = UINT64_C(0x47b5481dbefa4fa4);
-
-  ctx->size[0] = 0;
-  ctx->size[1] = 0;
+  ctx->size = 0;
 }
 
 void
@@ -2520,7 +2504,7 @@ sha384_final(sha384_t *ctx, unsigned char *out) {
 
   memcpy(out, tmp, 48);
 
-  torsion_memzero(tmp, sizeof(tmp));
+  torsion_cleanse(tmp, sizeof(tmp));
 }
 
 /*
@@ -2541,9 +2525,7 @@ sha512_init(sha512_t *ctx) {
   ctx->state[5] = UINT64_C(0x9b05688c2b3e6c1f);
   ctx->state[6] = UINT64_C(0x1f83d9abfb41bd6b);
   ctx->state[7] = UINT64_C(0x5be0cd19137e2179);
-
-  ctx->size[0] = 0;
-  ctx->size[1] = 0;
+  ctx->size = 0;
 }
 
 static void
@@ -2718,65 +2700,56 @@ sha512_transform(sha512_t *ctx, const unsigned char *chunk) {
   ctx->state[7] += H;
 }
 
-static void
-sha512_increment(sha512_t *ctx, uint64_t c) {
-  ctx->size[0] += c;
-  ctx->size[1] += (ctx->size[0] < c);
-}
-
 void
 sha512_update(sha512_t *ctx, const void *data, size_t len) {
   const unsigned char *raw = (const unsigned char *)data;
-  size_t pos = ctx->size[0] & 127;
-  size_t want = 128 - pos;
+  size_t pos = ctx->size & 127;
 
-  sha512_increment(ctx, len);
+  if (len == 0)
+    return;
 
-  if (len >= want) {
-    if (pos > 0) {
-      memcpy(ctx->block + pos, raw, want);
+  ctx->size += len;
 
-      raw += want;
-      len -= want;
-      pos = 0;
+  if (pos > 0) {
+    size_t want = 128 - pos;
 
-      sha512_transform(ctx, ctx->block);
-    }
+    if (want > len)
+      want = len;
 
-    while (len >= 128) {
-      sha512_transform(ctx, raw);
-      raw += 128;
-      len -= 128;
-    }
+    memcpy(ctx->block + pos, raw, want);
+
+    pos += want;
+    len -= want;
+    raw += want;
+
+    if (pos < 128)
+      return;
+
+    sha512_transform(ctx, ctx->block);
+  }
+
+  while (len >= 128) {
+    sha512_transform(ctx, raw);
+    raw += 128;
+    len -= 128;
   }
 
   if (len > 0)
-    memcpy(ctx->block + pos, raw, len);
+    memcpy(ctx->block, raw, len);
 }
 
 void
 sha512_final(sha512_t *ctx, unsigned char *out) {
-  size_t pos = ctx->size[0] & 127;
+  static const unsigned char P[128] = { 0x80, 0x00 };
+  size_t pos = ctx->size & 127;
+  unsigned char D[16];
   int i;
 
-  ctx->block[pos++] = 0x80;
+  write64be(D + 0, ctx->size >> (64 - 3));
+  write64be(D + 8, ctx->size << 3);
 
-  if (pos > 112) {
-    while (pos < 128)
-      ctx->block[pos++] = 0x00;
-
-    sha512_transform(ctx, ctx->block);
-
-    pos = 0;
-  }
-
-  while (pos < 112)
-    ctx->block[pos++] = 0x00;
-
-  write64be(ctx->block + 112, (ctx->size[1] << 3) | (ctx->size[0] >> 61));
-  write64be(ctx->block + 120, ctx->size[0] << 3);
-
-  sha512_transform(ctx, ctx->block);
+  sha512_update(ctx, P, 1 + ((239 - pos) & 127));
+  sha512_update(ctx, D, 16);
 
   for (i = 0; i < 8; i++)
     write64be(out + i * 8, ctx->state[i]);
@@ -3887,19 +3860,7 @@ static const uint64_t whirlpool_C7[256] = {
 
 void
 whirlpool_init(whirlpool_t *ctx) {
-  ctx->state[0] = UINT64_C(0x0000000000000000);
-  ctx->state[1] = UINT64_C(0x0000000000000000);
-  ctx->state[2] = UINT64_C(0x0000000000000000);
-  ctx->state[3] = UINT64_C(0x0000000000000000);
-  ctx->state[4] = UINT64_C(0x0000000000000000);
-  ctx->state[5] = UINT64_C(0x0000000000000000);
-  ctx->state[6] = UINT64_C(0x0000000000000000);
-  ctx->state[7] = UINT64_C(0x0000000000000000);
-
-  ctx->size[0] = 0;
-  ctx->size[1] = 0;
-  ctx->size[2] = 0;
-  ctx->size[3] = 0;
+  memset(ctx, 0, sizeof(*ctx));
 }
 
 static void
@@ -3952,69 +3913,58 @@ whirlpool_transform(whirlpool_t *ctx, const unsigned char *chunk) {
     ctx->state[i] ^= S[i] ^ B[i];
 }
 
-static void
-whirlpool_increment(whirlpool_t *ctx, uint64_t c) {
-  ctx->size[0] += c; c = (ctx->size[0] < c);
-  ctx->size[1] += c; c = (ctx->size[1] < c);
-  ctx->size[2] += c; c = (ctx->size[2] < c);
-  ctx->size[3] += c;
-}
-
 void
 whirlpool_update(whirlpool_t *ctx, const void *data, size_t len) {
   const unsigned char *raw = (const unsigned char *)data;
-  size_t pos = ctx->size[0] & 63;
-  size_t want = 64 - pos;
+  size_t pos = ctx->size & 63;
 
-  whirlpool_increment(ctx, len);
+  if (len == 0)
+    return;
 
-  if (len >= want) {
-    if (pos > 0) {
-      memcpy(ctx->block + pos, raw, want);
+  ctx->size += len;
 
-      raw += want;
-      len -= want;
-      pos = 0;
+  if (pos > 0) {
+    size_t want = 64 - pos;
 
-      whirlpool_transform(ctx, ctx->block);
-    }
+    if (want > len)
+      want = len;
 
-    while (len >= 64) {
-      whirlpool_transform(ctx, raw);
-      raw += 64;
-      len -= 64;
-    }
+    memcpy(ctx->block + pos, raw, want);
+
+    pos += want;
+    len -= want;
+    raw += want;
+
+    if (pos < 64)
+      return;
+
+    whirlpool_transform(ctx, ctx->block);
+  }
+
+  while (len >= 64) {
+    whirlpool_transform(ctx, raw);
+    raw += 64;
+    len -= 64;
   }
 
   if (len > 0)
-    memcpy(ctx->block + pos, raw, len);
+    memcpy(ctx->block, raw, len);
 }
 
 void
 whirlpool_final(whirlpool_t *ctx, unsigned char *out) {
-  size_t pos = ctx->size[0] & 63;
+  static const unsigned char P[64] = { 0x80, 0x00 };
+  size_t pos = ctx->size & 63;
+  unsigned char D[32];
   int i;
 
-  ctx->block[pos++] = 0x80;
+  memset(D, 0x00, 16);
 
-  if (pos > 32) {
-    while (pos < 64)
-      ctx->block[pos++] = 0x00;
+  write64be(D + 16, ctx->size >> (64 - 3));
+  write64be(D + 24, ctx->size << 3);
 
-    whirlpool_transform(ctx, ctx->block);
-
-    pos = 0;
-  }
-
-  while (pos < 32)
-    ctx->block[pos++] = 0x00;
-
-  write64be(ctx->block + 32, (ctx->size[3] << 3) | (ctx->size[2] >> 61));
-  write64be(ctx->block + 40, (ctx->size[2] << 3) | (ctx->size[1] >> 61));
-  write64be(ctx->block + 48, (ctx->size[1] << 3) | (ctx->size[0] >> 61));
-  write64be(ctx->block + 56, ctx->size[0] << 3);
-
-  whirlpool_transform(ctx, ctx->block);
+  whirlpool_update(ctx, P, 1 + ((95 - pos) & 63));
+  whirlpool_update(ctx, D, 32);
 
   for (i = 0; i < 8; i++)
     write64be(out + i * 8, ctx->state[i]);
@@ -4025,11 +3975,9 @@ whirlpool_final(whirlpool_t *ctx, unsigned char *out) {
  */
 
 void
-hash_init(hash_t *hash, hash_id_t type) {
+hash_init(hash_t *hash, int type) {
   hash->type = type;
   switch (hash->type) {
-    case HASH_NONE:
-      break;
     case HASH_BLAKE2B_160:
       blake2b_init(&hash->ctx.blake2b, 20, NULL, 0);
       break;
@@ -4133,8 +4081,6 @@ hash_init(hash_t *hash, hash_id_t type) {
 void
 hash_update(hash_t *hash, const void *data, size_t len) {
   switch (hash->type) {
-    case HASH_NONE:
-      break;
     case HASH_BLAKE2B_160:
     case HASH_BLAKE2B_256:
     case HASH_BLAKE2B_384:
@@ -4206,8 +4152,6 @@ hash_update(hash_t *hash, const void *data, size_t len) {
 void
 hash_final(hash_t *hash, unsigned char *out, size_t len) {
   switch (hash->type) {
-    case HASH_NONE:
-      break;
     case HASH_BLAKE2B_160:
     case HASH_BLAKE2B_256:
     case HASH_BLAKE2B_384:
@@ -4285,10 +4229,8 @@ hash_final(hash_t *hash, unsigned char *out, size_t len) {
 }
 
 int
-hash_has_backend(hash_id_t type) {
+hash_has_backend(int type) {
   switch (type) {
-    case HASH_NONE:
-      return 0;
     case HASH_BLAKE2B_160:
     case HASH_BLAKE2B_256:
     case HASH_BLAKE2B_384:
@@ -4327,10 +4269,8 @@ hash_has_backend(hash_id_t type) {
 }
 
 size_t
-hash_output_size(hash_id_t type) {
+hash_output_size(int type) {
   switch (type) {
-    case HASH_NONE:
-      return 0;
     case HASH_BLAKE2B_160:
       return 20;
     case HASH_BLAKE2B_256:
@@ -4401,10 +4341,8 @@ hash_output_size(hash_id_t type) {
 }
 
 size_t
-hash_block_size(hash_id_t type) {
+hash_block_size(int type) {
   switch (type) {
-    case HASH_NONE:
-      return 0;
     case HASH_BLAKE2B_160:
       return 128;
     case HASH_BLAKE2B_256:
@@ -4484,7 +4422,7 @@ hash_block_size(hash_id_t type) {
  */
 
 void
-hmac_init(hmac_t *hmac, hash_id_t type, const unsigned char *key, size_t len) {
+hmac_init(hmac_t *hmac, int type, const unsigned char *key, size_t len) {
   size_t hash_size = hash_output_size(type);
   size_t block_size = hash_block_size(type);
   unsigned char tmp[HASH_MAX_OUTPUT_SIZE];
@@ -4521,8 +4459,8 @@ hmac_init(hmac_t *hmac, hash_id_t type, const unsigned char *key, size_t len) {
   hash_init(&hmac->outer, type);
   hash_update(&hmac->outer, pad, block_size);
 
-  torsion_memzero(tmp, hash_size);
-  torsion_memzero(pad, block_size);
+  torsion_cleanse(tmp, hash_size);
+  torsion_cleanse(pad, block_size);
 }
 
 void

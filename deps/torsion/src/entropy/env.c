@@ -77,6 +77,7 @@
 #undef HAVE_CLOCK_GETTIME
 #undef HAVE_GETHOSTNAME
 #undef HAVE_GETSID
+#undef HAVE_OS_IPHONE
 
 #if defined(_WIN32)
 #  include <winsock2.h> /* required by iphlpapi.h */
@@ -110,7 +111,7 @@
 #  include <time.h> /* clock_gettime */
 #  ifdef __linux__
 #    if defined(__GLIBC_PREREQ)
-#      define TORSION_GLIBC_PREREQ __GLIBC_PREREQ
+#      define TORSION_GLIBC_PREREQ(maj, min) __GLIBC_PREREQ(maj, min)
 #    else
 #      define TORSION_GLIBC_PREREQ(maj, min) 0
 #    endif
@@ -146,8 +147,11 @@
 #  endif
 #  ifdef __APPLE__
 #    include <TargetConditionals.h>
+#    if defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE
+#      define HAVE_OS_IPHONE
+#    endif
 #  endif
-#  if defined(__APPLE__) && !TARGET_OS_IPHONE
+#  if defined(__APPLE__) && !defined(HAVE_OS_IPHONE)
 #    include <crt_externs.h>
 #    define environ (*_NSGetEnviron())
 #  else
@@ -279,7 +283,7 @@ done:
 #ifdef HAVE_DLITERATEPHDR
 static int
 sha512_write_phdr(struct dl_phdr_info *info, size_t size, void *data) {
-  sha512_t *hash = (sha512_t *)data;
+  sha512_t *hash = data;
 
   (void)size;
 
@@ -389,7 +393,7 @@ sha512_write_cpuids(sha512_t *hash) {
     for (subleaf = 0; subleaf <= 0xff; subleaf++) {
       sha512_write_cpuid(hash, &ax, &bx, &cx, &dx, leaf, subleaf);
 
-      /* Iterate subleaves for leaf values 4, 7, 11, 13. */
+      /* Iterate subleafs for leaf values 4, 7, 11, 13. */
       if (leaf == 4) {
         if ((ax & 0x1f) == 0)
           break;
@@ -403,7 +407,7 @@ sha512_write_cpuids(sha512_t *hash) {
         if ((cx & 0xff00) == 0)
           break;
       } else if (leaf == 13) {
-        if ((ax | bx | cx | dx) == 0)
+        if (ax == 0 && bx == 0 && cx == 0 && dx == 0)
           break;
       } else {
         /* For any other leaf, stop after subleaf 0. */
@@ -430,7 +434,7 @@ sha512_write_cpuids(sha512_t *hash) {
 static void
 sha512_write_perfdata(sha512_t *hash, size_t max) {
   size_t size = max < 80 ? max : max / 40;
-  BYTE *data = (BYTE *)malloc(size);
+  BYTE *data = malloc(size);
   DWORD nread;
   LSTATUS ret;
 
@@ -453,7 +457,7 @@ sha512_write_perfdata(sha512_t *hash, size_t max) {
     if (size > max)
       size = max;
 
-    data = (BYTE *)realloc(data, size);
+    data = realloc(data, size);
 
     if (data == NULL)
       break;
@@ -604,7 +608,7 @@ sha512_write_static_env(sha512_t *hash) {
       ret = GetAdaptersAddresses(AF_UNSPEC, flags, NULL, addrs, &size);
 
       if (ret == ERROR_BUFFER_OVERFLOW) {
-        addrs = (IP_ADAPTER_ADDRESSES *)realloc(addrs, size);
+        addrs = realloc(addrs, size);
 
         if (addrs == NULL)
           break;

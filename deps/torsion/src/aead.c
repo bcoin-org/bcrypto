@@ -15,6 +15,12 @@
 #include "internal.h"
 
 /*
+ * Constants
+ */
+
+static const unsigned char zero64[64] = {0};
+
+/*
  * ChaCha20-Poly1305
  *
  * Resources:
@@ -27,7 +33,6 @@ chachapoly_init(chachapoly_t *aead,
                 const unsigned char *key,
                 const unsigned char *iv,
                 size_t iv_len) {
-  static const unsigned char zero64[64] = {0};
   unsigned char polykey[64];
 
   chacha20_init(&aead->chacha, key, 32, iv, iv_len, 0);
@@ -35,16 +40,28 @@ chachapoly_init(chachapoly_t *aead,
 
   poly1305_init(&aead->poly, polykey);
 
+  aead->mode = 0;
   aead->adlen = 0;
   aead->ctlen = 0;
 
-  torsion_memzero(polykey, sizeof(polykey));
+  torsion_cleanse(polykey, sizeof(polykey));
 }
 
 void
 chachapoly_aad(chachapoly_t *aead, const unsigned char *aad, size_t len) {
-  aead->adlen += len;
+  CHECK(aead->mode == 0);
+
   poly1305_update(&aead->poly, aad, len);
+
+  aead->adlen += len;
+}
+
+static void
+chachapoly_pad16(chachapoly_t *aead, uint64_t size) {
+  uint64_t pos = size & 15;
+
+  if (pos > 0)
+    poly1305_update(&aead->poly, zero64, 16 - pos);
 }
 
 void
@@ -52,13 +69,17 @@ chachapoly_encrypt(chachapoly_t *aead,
                    unsigned char *dst,
                    const unsigned char *src,
                    size_t len) {
-  if (aead->ctlen == 0)
-    poly1305_pad(&aead->poly);
+  if (aead->mode == 0) {
+    chachapoly_pad16(aead, aead->adlen);
+    aead->mode = 1;
+  }
 
-  aead->ctlen += len;
+  CHECK(aead->mode == 1);
 
   chacha20_crypt(&aead->chacha, dst, src, len);
   poly1305_update(&aead->poly, dst, len);
+
+  aead->ctlen += len;
 }
 
 void
@@ -66,8 +87,12 @@ chachapoly_decrypt(chachapoly_t *aead,
                    unsigned char *dst,
                    const unsigned char *src,
                    size_t len) {
-  if (aead->ctlen == 0)
-    poly1305_pad(&aead->poly);
+  if (aead->mode == 0) {
+    chachapoly_pad16(aead, aead->adlen);
+    aead->mode = 2;
+  }
+
+  CHECK(aead->mode == 2);
 
   aead->ctlen += len;
 
@@ -77,8 +102,12 @@ chachapoly_decrypt(chachapoly_t *aead,
 
 void
 chachapoly_auth(chachapoly_t *aead, const unsigned char *data, size_t len) {
-  if (aead->ctlen == 0)
-    poly1305_pad(&aead->poly);
+  if (aead->mode == 0) {
+    chachapoly_pad16(aead, aead->adlen);
+    aead->mode = 3;
+  }
+
+  CHECK(aead->mode == 3);
 
   aead->ctlen += len;
 
@@ -92,7 +121,13 @@ chachapoly_final(chachapoly_t *aead, unsigned char *tag) {
   write64le(len + 0, aead->adlen);
   write64le(len + 8, aead->ctlen);
 
-  poly1305_pad(&aead->poly);
+  if (aead->mode == 0)
+    chachapoly_pad16(aead, aead->adlen);
+
+  chachapoly_pad16(aead, aead->ctlen);
+
   poly1305_update(&aead->poly, len, 16);
   poly1305_final(&aead->poly, tag);
+
+  aead->mode = -1;
 }

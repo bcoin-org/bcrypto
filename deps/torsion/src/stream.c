@@ -24,17 +24,11 @@
  *   https://github.com/golang/go/blob/master/src/crypto/rc4/rc4.go
  */
 
-#define swap(x, y) do { \
-  uint8_t _x = (x);     \
-  (x) = (y);            \
-  (y) = _x;             \
-} while (0)
-
 void
 arc4_init(arc4_t *ctx, const unsigned char *key, size_t key_len) {
-  uint8_t *s = ctx->s;
   size_t k = key_len;
-  uint8_t j = 0;
+  uint8_t *s = ctx->s;
+  uint8_t j, si;
   size_t i;
 
   CHECK(k >= 1 && k <= 256);
@@ -42,10 +36,15 @@ arc4_init(arc4_t *ctx, const unsigned char *key, size_t key_len) {
   for (i = 0; i < 256; i++)
     s[i] = i;
 
-  for (i = 0; i < 256; i++) {
-    j = (j + s[i] + key[i % k]) & 0xff;
+  j = 0;
 
-    swap(s[i], s[j]);
+  for (i = 0; i < 256; i++) {
+    j += s[i] + key[i % k];
+    j &= 0xff;
+
+    si = s[i];
+    s[i] = s[j];
+    s[j] = si;
   }
 
   ctx->i = 0;
@@ -60,22 +59,25 @@ arc4_crypt(arc4_t *ctx,
   uint8_t *s = ctx->s;
   uint8_t i = ctx->i;
   uint8_t j = ctx->j;
+  uint8_t x, y;
   size_t k;
 
   for (k = 0; k < len; k++) {
     i = (i + 1) & 0xff;
-    j = (j + s[i]) & 0xff;
+    x = s[i];
 
-    swap(s[i], s[j]);
+    j = (j + x) & 0xff;
+    y = s[j];
 
-    dst[k] = src[k] ^ s[(s[i] + s[j]) & 0xff];
+    s[i] = y;
+    s[j] = x;
+
+    dst[k] = src[k] ^ s[(x + y) & 0xff];
   }
 
   ctx->i = i;
   ctx->j = j;
 }
-
-#undef swap
 
 /*
  * ChaCha20
@@ -146,11 +148,12 @@ chacha20_init(chacha20_t *ctx,
 
   ctx->pos = 0;
 
-  torsion_memzero(tmp, sizeof(tmp));
+  torsion_cleanse(tmp, sizeof(tmp));
 }
 
 static void
 chacha20_block(chacha20_t *ctx, uint32_t *stream) {
+  uint64_t c;
   int i;
 
   for (i = 0; i < 16; i++)
@@ -175,50 +178,28 @@ chacha20_block(chacha20_t *ctx, uint32_t *stream) {
       stream[i] = torsion_bswap32(stream[i]);
   }
 
-  ctx->state[12] += 1;
-  ctx->state[13] += (ctx->state[12] < 1);
+  c = (uint64_t)ctx->state[12] + 1;
+
+  ctx->state[12] = c;
+  ctx->state[13] += (uint32_t)(c >> 32);
 }
 
 void
 chacha20_crypt(chacha20_t *ctx,
-               unsigned char *dst,
-               const unsigned char *src,
+               unsigned char *out,
+               const unsigned char *data,
                size_t len) {
   unsigned char *bytes = (unsigned char *)ctx->stream;
-  size_t pos = ctx->pos;
-  size_t want = 64 - pos;
+  size_t i;
 
-  if (len >= want) {
-    if (pos > 0) {
-      torsion_memxor3(dst, src, bytes + pos, want);
-
-      dst += want;
-      src += want;
-      len -= want;
-      pos = 0;
+  for (i = 0; i < len; i++) {
+    if ((ctx->pos & 63) == 0) {
+      chacha20_block(ctx, ctx->stream);
+      ctx->pos = 0;
     }
 
-    while (len >= 64) {
-      chacha20_block(ctx, ctx->stream);
-
-      torsion_memxor3(dst, src, bytes, 64);
-
-      dst += 64;
-      src += 64;
-      len -= 64;
-    }
+    out[i] = data[i] ^ bytes[ctx->pos++];
   }
-
-  if (len > 0) {
-    if (pos == 0)
-      chacha20_block(ctx, ctx->stream);
-
-    torsion_memxor3(dst, src, bytes + pos, len);
-
-    pos += len;
-  }
-
-  ctx->pos = pos;
 }
 
 void
@@ -268,7 +249,7 @@ chacha20_derive(unsigned char *out,
   write32le(out + 24, state[14]);
   write32le(out + 28, state[15]);
 
-  torsion_memzero(state, sizeof(state));
+  torsion_cleanse(state, sizeof(state));
 }
 
 #undef ROTL32
@@ -347,11 +328,12 @@ salsa20_init(salsa20_t *ctx,
 
   ctx->pos = 0;
 
-  torsion_memzero(tmp, sizeof(tmp));
+  torsion_cleanse(tmp, sizeof(tmp));
 }
 
 static void
 salsa20_block(salsa20_t *ctx, uint32_t *stream) {
+  uint64_t c;
   int i;
 
   for (i = 0; i < 16; i++)
@@ -376,50 +358,28 @@ salsa20_block(salsa20_t *ctx, uint32_t *stream) {
       stream[i] = torsion_bswap32(stream[i]);
   }
 
-  ctx->state[8] += 1;
-  ctx->state[9] += (ctx->state[8] < 1);
+  c = (uint64_t)ctx->state[8] + 1;
+
+  ctx->state[8] = c;
+  ctx->state[9] += (uint32_t)(c >> 32);
 }
 
 void
 salsa20_crypt(salsa20_t *ctx,
-              unsigned char *dst,
-              const unsigned char *src,
+              unsigned char *out,
+              const unsigned char *data,
               size_t len) {
   unsigned char *bytes = (unsigned char *)ctx->stream;
-  size_t pos = ctx->pos;
-  size_t want = 64 - pos;
+  size_t i;
 
-  if (len >= want) {
-    if (pos > 0) {
-      torsion_memxor3(dst, src, bytes + pos, want);
-
-      dst += want;
-      src += want;
-      len -= want;
-      pos = 0;
+  for (i = 0; i < len; i++) {
+    if ((ctx->pos & 63) == 0) {
+      salsa20_block(ctx, ctx->stream);
+      ctx->pos = 0;
     }
 
-    while (len >= 64) {
-      salsa20_block(ctx, ctx->stream);
-
-      torsion_memxor3(dst, src, bytes, 64);
-
-      dst += 64;
-      src += 64;
-      len -= 64;
-    }
+    out[i] = data[i] ^ bytes[ctx->pos++];
   }
-
-  if (len > 0) {
-    if (pos == 0)
-      salsa20_block(ctx, ctx->stream);
-
-    torsion_memxor3(dst, src, bytes + pos, len);
-
-    pos += len;
-  }
-
-  ctx->pos = pos;
 }
 
 void
@@ -469,7 +429,7 @@ salsa20_derive(unsigned char *out,
   write32le(out + 24, state[8]);
   write32le(out + 28, state[9]);
 
-  torsion_memzero(state, sizeof(state));
+  torsion_cleanse(state, sizeof(state));
 }
 
 #undef ROTL32

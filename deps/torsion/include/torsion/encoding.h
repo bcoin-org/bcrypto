@@ -4,8 +4,8 @@
  * https://github.com/bcoin-org/libtorsion
  */
 
-#ifndef TORSION_ENCODING_H
-#define TORSION_ENCODING_H
+#ifndef _TORSION_ENCODING_H
+#define _TORSION_ENCODING_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -254,18 +254,16 @@ TORSION_EXTERN int
 bech32_serialize(char *str,
                  const char *hrp,
                  const uint8_t *data,
-                 size_t data_len,
-                 uint32_t checksum);
+                 size_t data_len);
 
 TORSION_EXTERN int
 bech32_deserialize(char *hrp,
                    uint8_t *data,
                    size_t *data_len,
-                   const char *str,
-                   uint32_t checksum);
+                   const char *str);
 
 TORSION_EXTERN int
-bech32_is(const char *str, uint32_t checksum);
+bech32_is(const char *str);
 
 TORSION_EXTERN int
 bech32_convert_bits(uint8_t *dst,
@@ -281,19 +279,17 @@ bech32_encode(char *addr,
               const char *hrp,
               unsigned int version,
               const uint8_t *hash,
-              size_t hash_len,
-              uint32_t checksum);
+              size_t hash_len);
 
 TORSION_EXTERN int
 bech32_decode(char *hrp,
               unsigned int *version,
               uint8_t *hash,
               size_t *hash_len,
-              const char *addr,
-              uint32_t checksum);
+              const char *addr);
 
 TORSION_EXTERN int
-bech32_test(const char *addr, uint32_t checksum);
+bech32_test(const char *addr);
 
 /*
  * Cash32
@@ -362,4 +358,4 @@ cash32_test(const char *addr, const char *expect);
 }
 #endif
 
-#endif /* TORSION_ENCODING_H */
+#endif /* _TORSION_ENCODING_H */

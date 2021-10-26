@@ -172,8 +172,6 @@ typedef uint32_t fe_word_t;
 #  define MAX_FIELD_WORDS 19
 #endif
 
-typedef int fe_size_t;
-
 TORSION_BARRIER(int, int)
 TORSION_BARRIER(fe_word_t, fe_word)
 
@@ -212,7 +210,7 @@ TORSION_BARRIER(fe_word_t, fe_word)
 #define ECC_MIN(x, y) ((x) < (y) ? (x) : (y))
 #define ECC_MAX(x, y) ((x) > (y) ? (x) : (y))
 
-#define cleanse torsion_memzero
+#define cleanse torsion_cleanse
 
 /*
  * Scalar Field
@@ -226,10 +224,10 @@ typedef void sc_invert_f(const struct scalar_field_s *, sc_t, const sc_t);
 
 typedef struct scalar_field_s {
   int endian;
-  mp_bits_t bits;
-  mp_bits_t endo_bits;
-  mp_size_t limbs;
-  mp_size_t shift;
+  int bits;
+  int endo_bits;
+  int limbs;
+  int shift;
   size_t size;
   unsigned int mask;
   mp_limb_t n[MAX_SCALAR_LIMBS];
@@ -241,7 +239,7 @@ typedef struct scalar_field_s {
 } scalar_field_t;
 
 typedef struct scalar_def_s {
-  mp_bits_t bits;
+  int bits;
   const unsigned char n[MAX_FIELD_SIZE];
   sc_invert_f *invert;
 } scalar_def_t;
@@ -275,9 +273,9 @@ typedef void fe_legendre_f(fe_word_t *, const fe_word_t *);
 
 typedef struct prime_field_s {
   int endian;
-  mp_bits_t bits;
-  fe_size_t words;
-  mp_size_t limbs;
+  int bits;
+  int words;
+  int limbs;
   size_t size;
   size_t adj_size;
   unsigned int mask;
@@ -313,8 +311,8 @@ typedef struct prime_field_s {
 } prime_field_t;
 
 typedef struct prime_def_s {
-  mp_bits_t bits;
-  fe_size_t words;
+  int bits;
+  int words;
   const unsigned char p[MAX_FIELD_SIZE];
   fe_add_f *add;
   fe_sub_f *sub;
@@ -350,7 +348,7 @@ typedef struct endo_def_s {
   const unsigned char b2[MAX_SCALAR_SIZE];
   const unsigned char g1[MAX_SCALAR_SIZE];
   const unsigned char g2[MAX_SCALAR_SIZE];
-  mp_bits_t prec;
+  int prec;
 } endo_def_t;
 
 /*
@@ -386,8 +384,8 @@ typedef struct jge_s {
 } jge_t;
 
 typedef struct wei_s {
-  hash_id_t hash;
-  hash_id_t xof;
+  int hash;
+  int xof;
   prime_field_t fe;
   scalar_field_t sc;
   unsigned int h;
@@ -419,12 +417,12 @@ typedef struct wei_s {
   sc_t g1;
   sc_t g2;
   wge_t wnd_endo[NAF_SIZE_PRE]; /* 19kb */
-  mp_bits_t prec;
+  int prec;
 } wei_t;
 
 typedef struct wei_def_s {
-  hash_id_t hash;
-  hash_id_t xof;
+  int hash;
+  int xof;
   const prime_def_t *fe;
   const scalar_def_t *sc;
   unsigned int h;
@@ -545,7 +543,7 @@ typedef struct xge_s {
 } xge_t;
 
 typedef struct edwards_s {
-  hash_id_t hash;
+  int hash;
   int context;
   const char *prefix;
   prime_field_t fe;
@@ -574,7 +572,7 @@ typedef struct edwards_s {
 } edwards_t;
 
 typedef struct edwards_def_s {
-  hash_id_t hash;
+  int hash;
   int context;
   const char *prefix;
   const prime_def_t *fe;
@@ -746,14 +744,12 @@ sc_set_word(const scalar_field_t *sc, sc_t z, mp_limb_t x) {
 static void
 sc_select(const scalar_field_t *sc, sc_t z,
           const sc_t x, const sc_t y, int flag) {
-  mpn_cnd_select(z, x, y, sc->limbs, flag);
+  mpn_select(z, x, y, sc->limbs, flag);
 }
 
 static void
 sc_select_zero(const scalar_field_t *sc, sc_t z, const sc_t x, int flag) {
-  static const sc_t y = {0};
-
-  sc_select(sc, z, x, y, flag);
+  mpn_select_zero(z, x, sc->limbs, flag);
 }
 
 static int
@@ -786,19 +782,18 @@ sc_is_high_var(const scalar_field_t *sc, const sc_t x) {
   return mpn_cmp(x, sc->nh, sc->limbs) > 0;
 }
 
-static mp_bits_t
+static int
 sc_bitlen_var(const scalar_field_t *sc, const sc_t x) {
   return mpn_bitlen(x, sc->limbs);
 }
 
-static mp_limb_t
-sc_get_bit(const scalar_field_t *sc, const sc_t x, mp_bits_t pos) {
+static int
+sc_get_bit(const scalar_field_t *sc, const sc_t x, int pos) {
   return mpn_getbit(x, sc->limbs, pos);
 }
 
-static mp_limb_t
-sc_get_bits(const scalar_field_t *sc, const sc_t x,
-            mp_bits_t pos, mp_bits_t width) {
+static int
+sc_get_bits(const scalar_field_t *sc, const sc_t x, int pos, int width) {
   return mpn_getbits(x, sc->limbs, pos, width);
 }
 
@@ -850,10 +845,10 @@ sc_reduce(const scalar_field_t *sc, sc_t z, const mp_limb_t *xp) {
 }
 
 static void
-sc_mod(const scalar_field_t *sc, sc_t z, const mp_limb_t *xp, mp_size_t xn) {
+sc_mod(const scalar_field_t *sc, sc_t z, const mp_limb_t *xp, int xn) {
   /* Called on initialization only. */
   mp_limb_t zp[MAX_REDUCE_LIMBS]; /* 160 bytes */
-  mp_size_t zn = sc->shift;
+  int zn = sc->shift;
 
   ASSERT(xn <= zn);
 
@@ -866,7 +861,7 @@ sc_mod(const scalar_field_t *sc, sc_t z, const mp_limb_t *xp, mp_size_t xn) {
 static void
 sc_mul(const scalar_field_t *sc, sc_t z, const sc_t x, const sc_t y) {
   mp_limb_t zp[MAX_REDUCE_LIMBS]; /* 160 bytes */
-  mp_size_t zn = sc->limbs * 2;
+  int zn = sc->limbs * 2;
 
   mpn_mul_n(zp, x, y, sc->limbs);
 
@@ -879,7 +874,7 @@ TORSION_UNUSED static void
 sc_sqr(const scalar_field_t *sc, sc_t z, const sc_t x) {
   mp_limb_t scratch[MPN_SQR_ITCH(MAX_SCALAR_LIMBS)]; /* 144 bytes */
   mp_limb_t zp[MAX_REDUCE_LIMBS]; /* 160 bytes */
-  mp_size_t zn = sc->limbs * 2;
+  int zn = sc->limbs * 2;
 
   mpn_sqr(zp, x, sc->limbs, scratch);
 
@@ -891,7 +886,7 @@ sc_sqr(const scalar_field_t *sc, sc_t z, const sc_t x) {
 static void
 sc_mul_word(const scalar_field_t *sc, sc_t z, const sc_t x, mp_limb_t y) {
   mp_limb_t zp[MAX_REDUCE_LIMBS]; /* 160 bytes */
-  mp_size_t zn = sc->limbs + 1;
+  int zn = sc->limbs + 1;
 
   zp[sc->limbs] = mpn_mul_1(zp, x, sc->limbs, y);
 
@@ -902,7 +897,7 @@ sc_mul_word(const scalar_field_t *sc, sc_t z, const sc_t x, mp_limb_t y) {
 
 static void
 sc_mulshift(const scalar_field_t *sc, sc_t z,
-            const sc_t x, const sc_t y, mp_bits_t shift) {
+            const sc_t x, const sc_t y, int shift) {
   mp_limb_t scratch[MPN_MULSHIFT_ITCH(MAX_SCALAR_LIMBS)]; /* 144 bytes */
 
   ASSERT(mpn_mulshift(z, x, y, sc->limbs, shift, scratch) == 0);
@@ -912,7 +907,7 @@ static void
 sc_montmul(const scalar_field_t *sc, sc_t z, const sc_t x, const sc_t y) {
   mp_limb_t scratch[MPN_MONTMUL_ITCH(MAX_SCALAR_LIMBS)]; /* 144 bytes */
 
-  mpn_sec_montmul(z, x, y, sc->n, sc->limbs, sc->k, scratch);
+  mpn_montmul(z, x, y, sc->n, sc->limbs, sc->k, scratch);
 }
 
 static void
@@ -1066,10 +1061,9 @@ static void
 sc_pow(const scalar_field_t *sc, sc_t z, const sc_t x, const mp_limb_t *ep) {
   /* Used for inversion if not available otherwise. */
   /* Note that our exponent is not secret. */
-  mp_bits_t steps = WND_STEPS(sc->bits);
+  int steps = WND_STEPS(sc->bits);
   sc_t wnd[WND_SIZE]; /* 1152 bytes */
-  mp_bits_t i;
-  mp_limb_t b;
+  int i, b;
 
   sc_mont(sc, wnd[0], sc_one);
   sc_mont(sc, wnd[1], x);
@@ -1142,13 +1136,10 @@ sc_minimize_var(const scalar_field_t *sc, sc_t z, const sc_t x) {
   return high;
 }
 
-static mp_bits_t
+static int
 sc_naf_var0(const scalar_field_t *sc,
-            int *naf,
-            const sc_t k,
-            int sign,
-            mp_bits_t width,
-            mp_bits_t max) {
+            int *naf, const sc_t k,
+            int sign, int width, int max) {
   /* Computing the width-w NAF of a positive integer.
    *
    * [GECC] Algorithm 3.35, Page 100, Section 3.3.
@@ -1157,10 +1148,10 @@ sc_naf_var0(const scalar_field_t *sc,
    * method of recoding. The more optimal method
    * below was ported from libsecp256k1.
    */
-  mp_bits_t bits = sc_bitlen_var(sc, k) + 1;
-  mp_bits_t len = 0;
-  mp_bits_t i = 0;
+  int bits = sc_bitlen_var(sc, k) + 1;
   int carry = 0;
+  int len = 0;
+  int i = 0;
   int word;
 
   ASSERT(bits <= max);
@@ -1169,7 +1160,7 @@ sc_naf_var0(const scalar_field_t *sc,
     naf[max] = 0;
 
   while (i < bits) {
-    if (sc_get_bit(sc, k, i) == (mp_limb_t)carry) {
+    if (sc_get_bit(sc, k, i) == carry) {
       i += 1;
       continue;
     }
@@ -1190,21 +1181,20 @@ sc_naf_var0(const scalar_field_t *sc,
   return len;
 }
 
-static mp_bits_t
-sc_naf_var(const scalar_field_t *sc, int *naf, const sc_t k, mp_bits_t width) {
+static int
+sc_naf_var(const scalar_field_t *sc, int *naf, const sc_t k, int width) {
   return sc_naf_var0(sc, naf, k, 1, width, sc->bits + 1);
 }
 
-static mp_bits_t
+static int
 sc_naf_endo_var(const scalar_field_t *sc,
                 int *naf1,
                 int *naf2,
                 const sc_t k1,
                 const sc_t k2,
-                mp_bits_t width) {
-  mp_bits_t len1, len2;
+                int width) {
+  int s1, s2, len1, len2;
   sc_t c1, c2;
-  int s1, s2;
 
   /* Minimize scalars. */
   s1 = sc_minimize_var(sc, c1, k1) ? -1 : 1;
@@ -1217,24 +1207,24 @@ sc_naf_endo_var(const scalar_field_t *sc,
   return ECC_MAX(len1, len2);
 }
 
-static mp_bits_t
+static int
 sc_jsf_var0(const scalar_field_t *sc,
             int *naf,
             const sc_t k1,
             int s1,
             const sc_t k2,
             int s2,
-            mp_bits_t max) {
+            int max) {
   /* Joint sparse form.
    *
    * [GECC] Algorithm 3.50, Page 111, Section 3.3.
    */
-  mp_bits_t bits1 = sc_bitlen_var(sc, k1) + 1;
-  mp_bits_t bits2 = sc_bitlen_var(sc, k2) + 1;
-  mp_bits_t bits = ECC_MAX(bits1, bits2);
-  mp_bits_t i;
+  int bits1 = sc_bitlen_var(sc, k1) + 1;
+  int bits2 = sc_bitlen_var(sc, k2) + 1;
+  int bits = ECC_MAX(bits1, bits2);
   int d1 = 0;
   int d2 = 0;
+  int i;
 
   /* JSF->NAF conversion table. */
   static const int table[9] = {
@@ -1305,12 +1295,12 @@ sc_jsf_var0(const scalar_field_t *sc,
   return i;
 }
 
-static mp_bits_t
+static int
 sc_jsf_var(const scalar_field_t *sc, int *naf, const sc_t k1, const sc_t k2) {
   return sc_jsf_var0(sc, naf, k1, 1, k2, 1, sc->bits + 1);
 }
 
-static mp_bits_t
+static int
 sc_jsf_endo_var(const scalar_field_t *sc,
                 int *naf,
                 const sc_t k1,
@@ -1351,7 +1341,7 @@ sc_random(const scalar_field_t *sc, sc_t z, drbg_t *rng) {
 
 static void
 fe_zero(const prime_field_t *fe, fe_t z) {
-  fe_size_t i;
+  int i;
 
   for (i = 0; i < fe->words; i++)
     z[i] = 0;
@@ -1431,15 +1421,16 @@ fe_export(const prime_field_t *fe, unsigned char *raw, const fe_t x) {
 
 static void
 fe_swap(const prime_field_t *fe, fe_t x, fe_t y, int flag) {
-  fe_word_t m = -fe_word_barrier(flag != 0);
-  fe_word_t w;
-  fe_size_t i;
+  fe_word_t cond = (flag != 0);
+  fe_word_t mask = fe_word_barrier(-cond);
+  fe_word_t word;
+  int i;
 
   for (i = 0; i < fe->words; i++) {
-    w = (x[i] ^ y[i]) & m;
+    word = (x[i] ^ y[i]) & mask;
 
-    x[i] ^= w;
-    y[i] ^= w;
+    x[i] ^= word;
+    y[i] ^= word;
   }
 }
 
@@ -1454,7 +1445,7 @@ fe_select(const prime_field_t *fe,
 
 static void
 fe_set(const prime_field_t *fe, fe_t z, const fe_t x) {
-  fe_size_t i;
+  int i;
 
   for (i = 0; i < fe->words; i++)
     z[i] = x[i];
@@ -1479,10 +1470,10 @@ fe_get_limbs(const prime_field_t *fe, mp_limb_t *zp, const fe_t x) {
 }
 
 static void
-fe_mod(const prime_field_t *fe, fe_t z, const mp_limb_t *xp, mp_size_t xn) {
+fe_mod(const prime_field_t *fe, fe_t z, const mp_limb_t *xp, int xn) {
   /* Called on initialization only. */
   mp_limb_t zp[MAX_FIELD_LIMBS];
-  mp_size_t zn = fe->limbs;
+  int zn = fe->limbs;
 
   if (xn >= fe->limbs) {
     mpn_mod(zp, xp, xn, fe->p, fe->limbs);
@@ -1515,7 +1506,7 @@ fe_set_sc(const prime_field_t *fe,
 
 static void
 fe_set_word(const prime_field_t *fe, fe_t z, fe_word_t x) {
-  fe_size_t i;
+  int i;
 
   z[0] = x;
 
@@ -1567,7 +1558,7 @@ fe_equal(const prime_field_t *fe, const fe_t x, const fe_t y) {
   fe_word_t z = 0;
 
   if (fe->from_montgomery != NULL) {
-    fe_size_t i;
+    int i;
 
     for (i = 0; i < fe->words; i++)
       z |= x[i] ^ y[i];
@@ -1696,10 +1687,9 @@ fe_mul8(const prime_field_t *fe, fe_t z, const fe_t x) {
 static void
 fe_pow(const prime_field_t *fe, fe_t z, const fe_t x, const mp_limb_t *ep) {
   /* Used for inversion and square roots if not available otherwise. */
-  mp_bits_t steps = WND_STEPS(fe->bits);
+  int steps = WND_STEPS(fe->bits);
   fe_t wnd[WND_SIZE]; /* 1152 bytes */
-  mp_bits_t i, j;
-  mp_limb_t b;
+  int i, j, b;
 
   fe_set(fe, wnd[0], fe->one);
   fe_set(fe, wnd[1], x);
@@ -2754,10 +2744,10 @@ static void
 wge_fixed_points_var(const wei_t *ec, wge_t *out, const wge_t *p) {
   /* NOTE: Only called on initialization. */
   const scalar_field_t *sc = &ec->sc;
-  mp_bits_t steps = FIXED_STEPS(sc->bits);
-  mp_bits_t size = steps * FIXED_SIZE;
-  jge_t *wnds = (jge_t *)checked_malloc(size * sizeof(jge_t)); /* 442.2kb */
-  mp_bits_t i, j;
+  int steps = FIXED_STEPS(sc->bits);
+  int size = steps * FIXED_SIZE;
+  jge_t *wnds = checked_malloc(size * sizeof(jge_t)); /* 442.2kb */
+  int i, j;
   jge_t g;
 
   jge_set_wge(ec, &g, p);
@@ -2783,7 +2773,7 @@ static void
 wge_naf_points_var(const wei_t *ec, wge_t *out, const wge_t *p, int width) {
   /* NOTE: Only called on initialization. */
   int size = 1 << (width - 2);
-  jge_t *wnd = (jge_t *)checked_malloc(size * sizeof(jge_t)); /* 216kb */
+  jge_t *wnd = checked_malloc(size * sizeof(jge_t)); /* 216kb */
   jge_t j, dbl;
   int i;
 
@@ -4234,8 +4224,8 @@ wei_jmul_g(const wei_t *ec, jge_t *r, const sc_t k) {
    */
   const scalar_field_t *sc = &ec->sc;
   const wge_t *wnds = ec->wnd_fixed;
-  mp_bits_t steps = FIXED_STEPS(sc->bits);
-  mp_bits_t i, j, b;
+  int steps = FIXED_STEPS(sc->bits);
+  int i, j, b;
   sc_t k0;
   wge_t t;
 
@@ -4278,9 +4268,9 @@ wei_jmul_normal(const wei_t *ec, jge_t *r, const wge_t *p, const sc_t k) {
    * [GECC] Page 95, Section 3.3.
    */
   const scalar_field_t *sc = &ec->sc;
-  mp_bits_t steps = WND_STEPS(sc->bits);
+  int steps = WND_STEPS(sc->bits);
   jge_t wnd[WND_SIZE]; /* 3456 bytes */
-  mp_bits_t i, j, b;
+  int i, j, b;
   jge_t t;
 
   /* Create window. */
@@ -4324,13 +4314,12 @@ wei_jmul_endo(const wei_t *ec, jge_t *r, const wge_t *p, const sc_t k) {
    * [GECC] Page 95, Section 3.3.
    */
   const scalar_field_t *sc = &ec->sc;
-  mp_bits_t steps = WND_STEPS(sc->endo_bits);
+  int steps = WND_STEPS(sc->endo_bits);
   jge_t wnd1[WND_SIZE]; /* 3456 bytes */
   jge_t wnd2[WND_SIZE]; /* 3456 bytes */
-  mp_bits_t i, j, b1, b2;
+  int i, j, s1, s2, b1, b2;
   jge_t t1, t2;
   sc_t k1, k2;
-  int s1, s2;
 
   ASSERT(ec->endo == 1);
 
@@ -4435,7 +4424,7 @@ wei_jmul_double_normal_var(const wei_t *ec,
   int naf1[MAX_SCALAR_BITS + 1]; /* 2088 bytes */
   int naf2[MAX_SCALAR_BITS + 1]; /* 2088 bytes */
   jge_t wnd2[NAF_SIZE]; /* 1728 bytes */
-  mp_bits_t i, max, max1, max2;
+  int i, max, max1, max2;
 
   /* Compute NAFs. */
   max1 = sc_naf_var(sc, naf1, k1, NAF_WIDTH_PRE);
@@ -4486,7 +4475,7 @@ wei_jmul_double_endo_var(const wei_t *ec,
   int naf3[MAX_ENDO_BITS + 1]; /* 1048 bytes */
   jge_t wnd3[JSF_SIZE]; /* 608 bytes */
   sc_t c1, c2, c3, c4; /* 288 bytes */
-  mp_bits_t i, max, max1, max2;
+  int i, max, max1, max2;
 
   ASSERT(ec->endo == 1);
 
@@ -4576,7 +4565,7 @@ wei_jmul_multi_normal_var(const wei_t *ec,
   int naf1[MAX_SCALAR_BITS + 1]; /* 2088 bytes */
   jge_t **wnds = scratch->wnds;
   int **nafs = scratch->nafs;
-  mp_bits_t i, max, size;
+  int i, max, size;
   size_t j;
 
   ASSERT(len <= scratch->size);
@@ -4663,7 +4652,7 @@ wei_jmul_multi_endo_var(const wei_t *ec,
   int naf1[MAX_ENDO_BITS + 1]; /* 1048 bytes */
   jge_t **wnds = scratch->wnds;
   int **nafs = scratch->nafs;
-  mp_bits_t i, max, size;
+  int i, max, size;
   sc_t k1, k2;
   size_t j;
 
@@ -5977,7 +5966,7 @@ mont_clamp(const mont_t *ec, unsigned char *out, const unsigned char *scalar) {
   /* [RFC7748] Page 8, Section 5. */
   const prime_field_t *fe = &ec->fe;
   const scalar_field_t *sc = &ec->sc;
-  mp_bits_t top = fe->bits & 7;
+  int top = fe->bits & 7;
   size_t i;
 
   ASSERT(sc->size <= fe->size);
@@ -6086,10 +6075,10 @@ mont_mul(const mont_t *ec, pge_t *r, const pge_t *p, const sc_t k, int affine) {
    */
   const prime_field_t *fe = &ec->fe;
   const scalar_field_t *sc = &ec->sc;
-  mp_limb_t swap = 0;
-  mp_limb_t bit = 0;
-  mp_bits_t i;
+  int swap = 0;
+  int bit = 0;
   pge_t a, b;
+  int i;
 
   pge_zero(ec, &a);
   pge_set(ec, &b, p);
@@ -7055,7 +7044,7 @@ xge_normalize_all_var(const edwards_t *ec, xge_t *out,
                       const xge_t *in, size_t len) {
   /* Montgomery's trick. */
   const prime_field_t *fe = &ec->fe;
-  fe_t *invs = (fe_t *)checked_malloc(len * sizeof(fe_t));
+  fe_t *invs = checked_malloc(len * sizeof(fe_t));
   fe_t acc;
   size_t i;
 
@@ -7086,9 +7075,9 @@ xge_normalize_all_var(const edwards_t *ec, xge_t *out,
 static void
 xge_fixed_points(const edwards_t *ec, xge_t *out, const xge_t *p) {
   const scalar_field_t *sc = &ec->sc;
-  mp_bits_t steps = FIXED_STEPS(sc->bits);
-  mp_bits_t size = steps * FIXED_SIZE;
-  mp_bits_t i, j;
+  int steps = FIXED_STEPS(sc->bits);
+  int size = steps * FIXED_SIZE;
+  int i, j;
   xge_t g;
 
   xge_set(ec, &g, p);
@@ -7268,7 +7257,7 @@ edwards_clamp(const edwards_t *ec,
   /* [RFC8032] Section 5.1.5 & 5.2.5. */
   const prime_field_t *fe = &ec->fe;
   const scalar_field_t *sc = &ec->sc;
-  mp_bits_t top = fe->bits & 7;
+  int top = fe->bits & 7;
   size_t i;
 
   ASSERT(sc->size <= fe->size);
@@ -7350,8 +7339,8 @@ edwards_mul_g(const edwards_t *ec, xge_t *r, const sc_t k) {
    */
   const scalar_field_t *sc = &ec->sc;
   const xge_t *wnds = ec->wnd_fixed;
-  mp_bits_t steps = FIXED_STEPS(sc->bits);
-  mp_bits_t i, j, b;
+  int steps = FIXED_STEPS(sc->bits);
+  int i, j, b;
   sc_t k0;
   xge_t t;
 
@@ -7386,9 +7375,9 @@ edwards_mul(const edwards_t *ec, xge_t *r, const xge_t *p, const sc_t k) {
    */
   const prime_field_t *fe = &ec->fe;
   const scalar_field_t *sc = &ec->sc;
-  mp_bits_t steps = WND_STEPS(fe->bits);
+  int steps = WND_STEPS(fe->bits);
   xge_t wnd[WND_SIZE]; /* 4608 bytes */
-  mp_bits_t i, j, b;
+  int i, j, b;
   xge_t t;
 
   /* Create window. */
@@ -7440,7 +7429,7 @@ edwards_mul_double_var(const edwards_t *ec,
   int naf1[MAX_SCALAR_BITS + 1]; /* 2088 bytes */
   int naf2[MAX_SCALAR_BITS + 1]; /* 2088 bytes */
   xge_t wnd2[NAF_SIZE]; /* 2304 bytes */
-  mp_bits_t i, max, max1, max2;
+  int i, max, max1, max2;
 
   /* Compute NAFs. */
   max1 = sc_naf_var(sc, naf1, k1, NAF_WIDTH_PRE);
@@ -7493,7 +7482,7 @@ edwards_mul_multi_var(const edwards_t *ec,
   int naf1[MAX_SCALAR_BITS + 1]; /* 2088 bytes */
   xge_t **wnds = scratch->wnds;
   int **nafs = scratch->nafs;
-  mp_bits_t i, max, size;
+  int i, max, size;
   size_t j;
 
   ASSERT(len <= scratch->size);
@@ -10267,13 +10256,13 @@ static const edwards_def_t *edwards_curves[3] = {
  */
 
 wei_t *
-wei_curve_create(wei_curve_id_t type) {
+wei_curve_create(int type) {
   wei_t *ec = NULL;
 
-  if (type < 0 || (size_t)type >= ARRAY_SIZE(wei_curves))
+  if (type < 0 || (size_t)type > ARRAY_SIZE(wei_curves))
     return NULL;
 
-  ec = (wei_t *)checked_malloc(sizeof(wei_t));
+  ec = checked_malloc(sizeof(wei_t));
 
   wei_init(ec, wei_curves[type]);
 
@@ -10316,25 +10305,24 @@ wei_curve_field_bits(const wei_t *ec) {
 
 wei__scratch_t *
 wei_scratch_create(const wei_t *ec, size_t size) {
-  wei__scratch_t *scratch =
-    (wei__scratch_t *)checked_malloc(sizeof(wei__scratch_t));
+  wei__scratch_t *scratch = checked_malloc(sizeof(wei__scratch_t));
   size_t length = ec->endo ? size : size / 2;
   size_t bits = ec->endo ? ec->sc.endo_bits : ec->sc.bits;
   size_t i;
 
   scratch->size = size;
-  scratch->wnd = (jge_t *)checked_malloc(length * JSF_SIZE * sizeof(jge_t));
-  scratch->wnds = (jge_t **)checked_malloc(length * sizeof(jge_t *));
-  scratch->naf = (int *)checked_malloc(length * (bits + 1) * sizeof(int));
-  scratch->nafs = (int **)checked_malloc(length * sizeof(int *));
+  scratch->wnd = checked_malloc(length * JSF_SIZE * sizeof(jge_t));
+  scratch->wnds = checked_malloc(length * sizeof(jge_t *));
+  scratch->naf = checked_malloc(length * (bits + 1) * sizeof(int));
+  scratch->nafs = checked_malloc(length * sizeof(int *));
 
   for (i = 0; i < length; i++) {
     scratch->wnds[i] = &scratch->wnd[i * JSF_SIZE];
     scratch->nafs[i] = &scratch->naf[i * (bits + 1)];
   }
 
-  scratch->points = (wge_t *)checked_malloc(size * sizeof(wge_t));
-  scratch->coeffs = (sc_t *)checked_malloc(size * sizeof(sc_t));
+  scratch->points = checked_malloc(size * sizeof(wge_t));
+  scratch->coeffs = checked_malloc(size * sizeof(sc_t));
 
   return scratch;
 }
@@ -10359,13 +10347,13 @@ wei_scratch_destroy(const wei_t *ec, wei__scratch_t *scratch) {
  */
 
 mont_t *
-mont_curve_create(mont_curve_id_t type) {
+mont_curve_create(int type) {
   mont_t *ec = NULL;
 
-  if (type < 0 || (size_t)type >= ARRAY_SIZE(mont_curves))
+  if (type < 0 || (size_t)type > ARRAY_SIZE(mont_curves))
     return NULL;
 
-  ec = (mont_t *)checked_malloc(sizeof(mont_t));
+  ec = checked_malloc(sizeof(mont_t));
 
   mont_init(ec, mont_curves[type]);
 
@@ -10403,13 +10391,13 @@ mont_curve_field_bits(const mont_t *ec) {
  */
 
 edwards_t *
-edwards_curve_create(edwards_curve_id_t type) {
+edwards_curve_create(int type) {
   edwards_t *ec = NULL;
 
-  if (type < 0 || (size_t)type >= ARRAY_SIZE(edwards_curves))
+  if (type < 0 || (size_t)type > ARRAY_SIZE(edwards_curves))
     return NULL;
 
-  ec = (edwards_t *)checked_malloc(sizeof(edwards_t));
+  ec = checked_malloc(sizeof(edwards_t));
 
   edwards_init(ec, edwards_curves[type]);
 
@@ -10452,25 +10440,24 @@ edwards_curve_field_bits(const edwards_t *ec) {
 
 edwards__scratch_t *
 edwards_scratch_create(const edwards_t *ec, size_t size) {
-  edwards__scratch_t *scratch =
-    (edwards__scratch_t *)checked_malloc(sizeof(edwards__scratch_t));
+  edwards__scratch_t *scratch = checked_malloc(sizeof(edwards__scratch_t));
   size_t length = size / 2;
   size_t bits = ec->sc.bits;
   size_t i;
 
   scratch->size = size;
-  scratch->wnd = (xge_t *)checked_malloc(length * JSF_SIZE * sizeof(xge_t));
-  scratch->wnds = (xge_t **)checked_malloc(length * sizeof(xge_t *));
-  scratch->naf = (int *)checked_malloc(length * (bits + 1) * sizeof(int));
-  scratch->nafs = (int **)checked_malloc(length * sizeof(int *));
+  scratch->wnd = checked_malloc(length * JSF_SIZE * sizeof(xge_t));
+  scratch->wnds = checked_malloc(length * sizeof(xge_t *));
+  scratch->naf = checked_malloc(length * (bits + 1) * sizeof(int));
+  scratch->nafs = checked_malloc(length * sizeof(int *));
 
   for (i = 0; i < length; i++) {
     scratch->wnds[i] = &scratch->wnd[i * JSF_SIZE];
     scratch->nafs[i] = &scratch->naf[i * (bits + 1)];
   }
 
-  scratch->points = (xge_t *)checked_malloc(size * sizeof(xge_t));
-  scratch->coeffs = (sc_t *)checked_malloc(size * sizeof(sc_t));
+  scratch->points = checked_malloc(size * sizeof(xge_t));
+  scratch->coeffs = checked_malloc(size * sizeof(sc_t));
 
   return scratch;
 }
@@ -11460,26 +11447,26 @@ ecdsa_derive(const wei_t *ec,
 }
 
 /*
- * BIP-Schnorr
+ * Schnorr Legacy
  */
 
 int
-bipschnorr_support(const wei_t *ec) {
+schnorr_legacy_support(const wei_t *ec) {
   /* [SCHNORR] "Footnotes". */
   /* Must be congruent to 3 mod 4. */
   return (ec->fe.p[0] & 3) == 3;
 }
 
 size_t
-bipschnorr_sig_size(const wei_t *ec) {
+schnorr_legacy_sig_size(const wei_t *ec) {
   return ec->fe.size + ec->sc.size;
 }
 
 static void
-bipschnorr_hash_nonce(const wei_t *ec, sc_t k,
-                      const unsigned char *scalar,
-                      const unsigned char *msg,
-                      size_t msg_len) {
+schnorr_legacy_hash_nonce(const wei_t *ec, sc_t k,
+                          const unsigned char *scalar,
+                          const unsigned char *msg,
+                          size_t msg_len) {
   const scalar_field_t *sc = &ec->sc;
   unsigned char bytes[MAX_SCALAR_SIZE];
   hash_t hash;
@@ -11500,11 +11487,11 @@ bipschnorr_hash_nonce(const wei_t *ec, sc_t k,
 }
 
 static void
-bipschnorr_hash_challenge(const wei_t *ec, sc_t e,
-                          const unsigned char *R,
-                          const unsigned char *A,
-                          const unsigned char *msg,
-                          size_t msg_len) {
+schnorr_legacy_hash_challenge(const wei_t *ec, sc_t e,
+                              const unsigned char *R,
+                              const unsigned char *A,
+                              const unsigned char *msg,
+                              size_t msg_len) {
   const prime_field_t *fe = &ec->fe;
   const scalar_field_t *sc = &ec->sc;
   unsigned char bytes[MAX_SCALAR_SIZE];
@@ -11527,12 +11514,12 @@ bipschnorr_hash_challenge(const wei_t *ec, sc_t e,
 }
 
 int
-bipschnorr_sign(const wei_t *ec,
-                unsigned char *sig,
-                const unsigned char *msg,
-                size_t msg_len,
-                const unsigned char *priv) {
-  /* BIP-Schnorr Signing.
+schnorr_legacy_sign(const wei_t *ec,
+                    unsigned char *sig,
+                    const unsigned char *msg,
+                    size_t msg_len,
+                    const unsigned char *priv) {
+  /* Schnorr Signing.
    *
    * [SCHNORR] "Signing".
    * [CASH] "Recommended practices for secure signature generation".
@@ -11574,7 +11561,7 @@ bipschnorr_sign(const wei_t *ec,
 
   wei_mul_g(ec, &A, a);
 
-  bipschnorr_hash_nonce(ec, k, priv, msg, msg_len);
+  schnorr_legacy_hash_nonce(ec, k, priv, msg, msg_len);
 
   ret &= sc_is_zero(sc, k) ^ 1;
 
@@ -11585,7 +11572,7 @@ bipschnorr_sign(const wei_t *ec,
   ret &= wge_export_x(ec, Rraw, &R);
   ret &= wge_export(ec, Araw, NULL, &A, 1);
 
-  bipschnorr_hash_challenge(ec, e, Rraw, Araw, msg, msg_len);
+  schnorr_legacy_hash_challenge(ec, e, Rraw, Araw, msg, msg_len);
 
   sc_mul(sc, s, e, a);
   sc_add(sc, s, s, k);
@@ -11606,13 +11593,13 @@ bipschnorr_sign(const wei_t *ec,
 }
 
 int
-bipschnorr_verify(const wei_t *ec,
-                  const unsigned char *msg,
-                  size_t msg_len,
-                  const unsigned char *sig,
-                  const unsigned char *pub,
-                  size_t pub_len) {
-  /* BIP-Schnorr Verification.
+schnorr_legacy_verify(const wei_t *ec,
+                      const unsigned char *msg,
+                      size_t msg_len,
+                      const unsigned char *sig,
+                      const unsigned char *pub,
+                      size_t pub_len) {
+  /* Schnorr Verification.
    *
    * [SCHNORR] "Verification".
    * [CASH] "Signature verification algorithm".
@@ -11671,7 +11658,7 @@ bipschnorr_verify(const wei_t *ec,
 
   ASSERT(wge_export(ec, Araw, NULL, &A, 1));
 
-  bipschnorr_hash_challenge(ec, e, Rraw, Araw, msg, msg_len);
+  schnorr_legacy_hash_challenge(ec, e, Rraw, Araw, msg, msg_len);
 
   sc_neg(sc, e, e);
 
@@ -11687,15 +11674,15 @@ bipschnorr_verify(const wei_t *ec,
 }
 
 int
-bipschnorr_verify_batch(const wei_t *ec,
-                        const unsigned char *const *msgs,
-                        const size_t *msg_lens,
-                        const unsigned char *const *sigs,
-                        const unsigned char *const *pubs,
-                        const size_t *pub_lens,
-                        size_t len,
-                        wei__scratch_t *scratch) {
-  /* BIP-Schnorr Batch Verification.
+schnorr_legacy_verify_batch(const wei_t *ec,
+                            const unsigned char *const *msgs,
+                            const size_t *msg_lens,
+                            const unsigned char *const *sigs,
+                            const unsigned char *const *pubs,
+                            const size_t *pub_lens,
+                            size_t len,
+                            wei__scratch_t *scratch) {
+  /* Schnorr Batch Verification.
    *
    * [SCHNORR] "Batch Verification".
    *
@@ -11796,7 +11783,7 @@ bipschnorr_verify_batch(const wei_t *ec,
 
     ASSERT(wge_export(ec, Araw, NULL, &A, 1));
 
-    bipschnorr_hash_challenge(ec, e, Rraw, Araw, msg, msg_len);
+    schnorr_legacy_hash_challenge(ec, e, Rraw, Araw, msg, msg_len);
 
     if (j == 0)
       sc_set_word(sc, a, 1);
@@ -11842,42 +11829,42 @@ bipschnorr_verify_batch(const wei_t *ec,
 }
 
 /*
- * BIP340
+ * Schnorr
  */
 
 size_t
-bip340_privkey_size(const wei_t *ec) {
+schnorr_privkey_size(const wei_t *ec) {
   return ec->sc.size;
 }
 
 size_t
-bip340_pubkey_size(const wei_t *ec) {
+schnorr_pubkey_size(const wei_t *ec) {
   return ec->fe.size;
 }
 
 size_t
-bip340_sig_size(const wei_t *ec) {
+schnorr_sig_size(const wei_t *ec) {
   return ec->fe.size + ec->sc.size;
 }
 
 void
-bip340_privkey_generate(const wei_t *ec,
-                        unsigned char *out,
-                        const unsigned char *entropy) {
+schnorr_privkey_generate(const wei_t *ec,
+                         unsigned char *out,
+                         const unsigned char *entropy) {
   ecdsa_privkey_generate(ec, out, entropy);
 }
 
 int
-bip340_privkey_verify(const wei_t *ec, const unsigned char *priv) {
+schnorr_privkey_verify(const wei_t *ec, const unsigned char *priv) {
   return ecdsa_privkey_verify(ec, priv);
 }
 
 int
-bip340_privkey_export(const wei_t *ec,
-                      unsigned char *d_raw,
-                      unsigned char *x_raw,
-                      unsigned char *y_raw,
-                      const unsigned char *priv) {
+schnorr_privkey_export(const wei_t *ec,
+                       unsigned char *d_raw,
+                       unsigned char *x_raw,
+                       unsigned char *y_raw,
+                       const unsigned char *priv) {
   const prime_field_t *fe = &ec->fe;
   const scalar_field_t *sc = &ec->sc;
   int ret = 1;
@@ -11908,18 +11895,18 @@ bip340_privkey_export(const wei_t *ec,
 }
 
 int
-bip340_privkey_import(const wei_t *ec,
-                      unsigned char *out,
-                      const unsigned char *bytes,
-                      size_t len) {
+schnorr_privkey_import(const wei_t *ec,
+                       unsigned char *out,
+                       const unsigned char *bytes,
+                       size_t len) {
   return ecdsa_privkey_import(ec, out, bytes, len);
 }
 
 int
-bip340_privkey_tweak_add(const wei_t *ec,
-                         unsigned char *out,
-                         const unsigned char *priv,
-                         const unsigned char *tweak) {
+schnorr_privkey_tweak_add(const wei_t *ec,
+                          unsigned char *out,
+                          const unsigned char *priv,
+                          const unsigned char *tweak) {
   const scalar_field_t *sc = &ec->sc;
   int ret = 1;
   sc_t a, t;
@@ -11947,24 +11934,24 @@ bip340_privkey_tweak_add(const wei_t *ec,
 }
 
 int
-bip340_privkey_tweak_mul(const wei_t *ec,
-                         unsigned char *out,
-                         const unsigned char *priv,
-                         const unsigned char *tweak) {
+schnorr_privkey_tweak_mul(const wei_t *ec,
+                          unsigned char *out,
+                          const unsigned char *priv,
+                          const unsigned char *tweak) {
   return ecdsa_privkey_tweak_mul(ec, out, priv, tweak);
 }
 
 int
-bip340_privkey_invert(const wei_t *ec,
-                      unsigned char *out,
-                      const unsigned char *priv) {
+schnorr_privkey_invert(const wei_t *ec,
+                       unsigned char *out,
+                       const unsigned char *priv) {
   return ecdsa_privkey_invert(ec, out, priv);
 }
 
 int
-bip340_pubkey_create(const wei_t *ec,
-                     unsigned char *pub,
-                     const unsigned char *priv) {
+schnorr_pubkey_create(const wei_t *ec,
+                      unsigned char *pub,
+                      const unsigned char *priv) {
   const scalar_field_t *sc = &ec->sc;
   int ret = 1;
   wge_t A;
@@ -11985,9 +11972,9 @@ bip340_pubkey_create(const wei_t *ec,
 }
 
 void
-bip340_pubkey_from_uniform(const wei_t *ec,
-                           unsigned char *out,
-                           const unsigned char *bytes) {
+schnorr_pubkey_from_uniform(const wei_t *ec,
+                            unsigned char *out,
+                            const unsigned char *bytes) {
   wge_t A;
 
   wei_point_from_uniform(ec, &A, bytes);
@@ -11996,10 +11983,10 @@ bip340_pubkey_from_uniform(const wei_t *ec,
 }
 
 int
-bip340_pubkey_to_uniform(const wei_t *ec,
-                         unsigned char *out,
-                         const unsigned char *pub,
-                         unsigned int hint) {
+schnorr_pubkey_to_uniform(const wei_t *ec,
+                          unsigned char *out,
+                          const unsigned char *pub,
+                          unsigned int hint) {
   int ret = 1;
   wge_t A;
 
@@ -12010,9 +11997,9 @@ bip340_pubkey_to_uniform(const wei_t *ec,
 }
 
 int
-bip340_pubkey_from_hash(const wei_t *ec,
-                        unsigned char *out,
-                        const unsigned char *bytes) {
+schnorr_pubkey_from_hash(const wei_t *ec,
+                         unsigned char *out,
+                         const unsigned char *bytes) {
   wge_t A;
 
   wei_point_from_hash(ec, &A, bytes);
@@ -12021,11 +12008,11 @@ bip340_pubkey_from_hash(const wei_t *ec,
 }
 
 int
-bip340_pubkey_to_hash(const wei_t *ec,
-                      unsigned char *out,
-                      const unsigned char *pub,
-                      unsigned int subgroup,
-                      const unsigned char *entropy) {
+schnorr_pubkey_to_hash(const wei_t *ec,
+                       unsigned char *out,
+                       const unsigned char *pub,
+                       unsigned int subgroup,
+                       const unsigned char *entropy) {
   int ret = 1;
   wge_t A;
 
@@ -12037,17 +12024,17 @@ bip340_pubkey_to_hash(const wei_t *ec,
 }
 
 int
-bip340_pubkey_verify(const wei_t *ec, const unsigned char *pub) {
+schnorr_pubkey_verify(const wei_t *ec, const unsigned char *pub) {
   wge_t A;
 
   return wge_import_even(ec, &A, pub);
 }
 
 int
-bip340_pubkey_export(const wei_t *ec,
-                     unsigned char *x_raw,
-                     unsigned char *y_raw,
-                     const unsigned char *pub) {
+schnorr_pubkey_export(const wei_t *ec,
+                      unsigned char *x_raw,
+                      unsigned char *y_raw,
+                      const unsigned char *pub) {
   const prime_field_t *fe = &ec->fe;
   int ret = 1;
   wge_t A;
@@ -12061,12 +12048,12 @@ bip340_pubkey_export(const wei_t *ec,
 }
 
 int
-bip340_pubkey_import(const wei_t *ec,
-                     unsigned char *out,
-                     const unsigned char *x_raw,
-                     size_t x_len,
-                     const unsigned char *y_raw,
-                     size_t y_len) {
+schnorr_pubkey_import(const wei_t *ec,
+                      unsigned char *out,
+                      const unsigned char *x_raw,
+                      size_t x_len,
+                      const unsigned char *y_raw,
+                      size_t y_len) {
   const prime_field_t *fe = &ec->fe;
   int has_x = (x_len > 0);
   int has_y = (y_len > 0);
@@ -12089,11 +12076,11 @@ bip340_pubkey_import(const wei_t *ec,
 }
 
 int
-bip340_pubkey_tweak_add(const wei_t *ec,
-                        unsigned char *out,
-                        int *negated,
-                        const unsigned char *pub,
-                        const unsigned char *tweak) {
+schnorr_pubkey_tweak_add(const wei_t *ec,
+                         unsigned char *out,
+                         int *negated,
+                         const unsigned char *pub,
+                         const unsigned char *tweak) {
   const scalar_field_t *sc = &ec->sc;
   int ret = 1;
   wge_t A;
@@ -12120,17 +12107,17 @@ bip340_pubkey_tweak_add(const wei_t *ec,
 }
 
 int
-bip340_pubkey_tweak_add_check(const wei_t *ec,
-                              const unsigned char *pub,
-                              const unsigned char *tweak,
-                              const unsigned char *expect,
-                              int negated) {
+schnorr_pubkey_tweak_add_check(const wei_t *ec,
+                               const unsigned char *pub,
+                               const unsigned char *tweak,
+                               const unsigned char *expect,
+                               int negated) {
   const prime_field_t *fe = &ec->fe;
   unsigned char raw[MAX_FIELD_SIZE];
   int ret = 1;
   int sign;
 
-  ret &= bip340_pubkey_tweak_add(ec, raw, &sign, pub, tweak);
+  ret &= schnorr_pubkey_tweak_add(ec, raw, &sign, pub, tweak);
   ret &= torsion_memequal(raw, expect, fe->size);
   ret &= (sign == (negated != 0));
 
@@ -12138,11 +12125,11 @@ bip340_pubkey_tweak_add_check(const wei_t *ec,
 }
 
 int
-bip340_pubkey_tweak_mul(const wei_t *ec,
-                        unsigned char *out,
-                        int *negated,
-                        const unsigned char *pub,
-                        const unsigned char *tweak) {
+schnorr_pubkey_tweak_mul(const wei_t *ec,
+                         unsigned char *out,
+                         int *negated,
+                         const unsigned char *pub,
+                         const unsigned char *tweak) {
   const scalar_field_t *sc = &ec->sc;
   int ret = 1;
   wge_t A;
@@ -12164,17 +12151,17 @@ bip340_pubkey_tweak_mul(const wei_t *ec,
 }
 
 int
-bip340_pubkey_tweak_mul_check(const wei_t *ec,
-                              const unsigned char *pub,
-                              const unsigned char *tweak,
-                              const unsigned char *expect,
-                              int negated) {
+schnorr_pubkey_tweak_mul_check(const wei_t *ec,
+                               const unsigned char *pub,
+                               const unsigned char *tweak,
+                               const unsigned char *expect,
+                               int negated) {
   const prime_field_t *fe = &ec->fe;
   unsigned char raw[MAX_FIELD_SIZE];
   int ret = 1;
   int sign;
 
-  ret &= bip340_pubkey_tweak_mul(ec, raw, &sign, pub, tweak);
+  ret &= schnorr_pubkey_tweak_mul(ec, raw, &sign, pub, tweak);
   ret &= torsion_memequal(raw, expect, fe->size);
   ret &= (sign == (negated != 0));
 
@@ -12182,10 +12169,10 @@ bip340_pubkey_tweak_mul_check(const wei_t *ec,
 }
 
 int
-bip340_pubkey_add(const wei_t *ec,
-                  unsigned char *out,
-                  const unsigned char *pub1,
-                  const unsigned char *pub2) {
+schnorr_pubkey_add(const wei_t *ec,
+                   unsigned char *out,
+                   const unsigned char *pub1,
+                   const unsigned char *pub2) {
   int ret = 1;
   wge_t P, Q;
 
@@ -12200,10 +12187,10 @@ bip340_pubkey_add(const wei_t *ec,
 }
 
 int
-bip340_pubkey_combine(const wei_t *ec,
-                      unsigned char *out,
-                      const unsigned char *const *pubs,
-                      size_t len) {
+schnorr_pubkey_combine(const wei_t *ec,
+                       unsigned char *out,
+                       const unsigned char *const *pubs,
+                       size_t len) {
   int ret = 1;
   size_t i;
   wge_t A;
@@ -12231,7 +12218,7 @@ bip340_pubkey_combine(const wei_t *ec,
 }
 
 static void
-bip340_hash_init(hash_t *hash, hash_id_t type, const char *tag) {
+schnorr_hash_init(hash_t *hash, int type, const char *tag) {
   /* [BIP340] "Tagged Hashes". */
   size_t hash_size = hash_output_size(type);
   size_t block_size = hash_block_size(type);
@@ -12253,10 +12240,10 @@ bip340_hash_init(hash_t *hash, hash_id_t type, const char *tag) {
 }
 
 static void
-bip340_hash_aux(const wei_t *ec,
-                unsigned char *out,
-                const unsigned char *scalar,
-                const unsigned char *aux) {
+schnorr_hash_aux(const wei_t *ec,
+                 unsigned char *out,
+                 const unsigned char *scalar,
+                 const unsigned char *aux) {
   const scalar_field_t *sc = &ec->sc;
   unsigned char bytes[MAX_SCALAR_SIZE];
   hash_t hash;
@@ -12279,7 +12266,7 @@ bip340_hash_aux(const wei_t *ec,
 
     hash.type = HASH_SHA256;
   } else {
-    bip340_hash_init(&hash, ec->xof, "BIP0340/aux");
+    schnorr_hash_init(&hash, ec->xof, "BIP0340/aux");
   }
 
   hash_update(&hash, aux, 32);
@@ -12293,12 +12280,12 @@ bip340_hash_aux(const wei_t *ec,
 }
 
 static void
-bip340_hash_nonce(const wei_t *ec, sc_t k,
-                  const unsigned char *scalar,
-                  const unsigned char *point,
-                  const unsigned char *msg,
-                  size_t msg_len,
-                  const unsigned char *aux) {
+schnorr_hash_nonce(const wei_t *ec, sc_t k,
+                   const unsigned char *scalar,
+                   const unsigned char *point,
+                   const unsigned char *msg,
+                   size_t msg_len,
+                   const unsigned char *aux) {
   const prime_field_t *fe = &ec->fe;
   const scalar_field_t *sc = &ec->sc;
   unsigned char secret[MAX_SCALAR_SIZE];
@@ -12308,7 +12295,7 @@ bip340_hash_nonce(const wei_t *ec, sc_t k,
   STATIC_ASSERT(MAX_SCALAR_SIZE >= HASH_MAX_OUTPUT_SIZE);
 
   if (aux != NULL)
-    bip340_hash_aux(ec, secret, scalar, aux);
+    schnorr_hash_aux(ec, secret, scalar, aux);
   else
     memcpy(secret, scalar, sc->size);
 
@@ -12327,7 +12314,7 @@ bip340_hash_nonce(const wei_t *ec, sc_t k,
 
     hash.type = HASH_SHA256;
   } else {
-    bip340_hash_init(&hash, ec->xof, "BIP0340/nonce");
+    schnorr_hash_init(&hash, ec->xof, "BIP0340/nonce");
   }
 
   hash_update(&hash, secret, sc->size);
@@ -12345,11 +12332,11 @@ bip340_hash_nonce(const wei_t *ec, sc_t k,
 }
 
 static void
-bip340_hash_challenge(const wei_t *ec, sc_t e,
-                      const unsigned char *R,
-                      const unsigned char *A,
-                      const unsigned char *msg,
-                      size_t msg_len) {
+schnorr_hash_challenge(const wei_t *ec, sc_t e,
+                       const unsigned char *R,
+                       const unsigned char *A,
+                       const unsigned char *msg,
+                       size_t msg_len) {
   const prime_field_t *fe = &ec->fe;
   const scalar_field_t *sc = &ec->sc;
   unsigned char bytes[MAX_SCALAR_SIZE];
@@ -12372,7 +12359,7 @@ bip340_hash_challenge(const wei_t *ec, sc_t e,
 
     hash.type = HASH_SHA256;
   } else {
-    bip340_hash_init(&hash, ec->xof, "BIP0340/challenge");
+    schnorr_hash_init(&hash, ec->xof, "BIP0340/challenge");
   }
 
   hash_update(&hash, R, fe->size);
@@ -12389,13 +12376,13 @@ bip340_hash_challenge(const wei_t *ec, sc_t e,
 }
 
 int
-bip340_sign(const wei_t *ec,
-            unsigned char *sig,
-            const unsigned char *msg,
-            size_t msg_len,
-            const unsigned char *priv,
-            const unsigned char *aux) {
-  /* BIP340 Signing.
+schnorr_sign(const wei_t *ec,
+             unsigned char *sig,
+             const unsigned char *msg,
+             size_t msg_len,
+             const unsigned char *priv,
+             const unsigned char *aux) {
+  /* Schnorr Signing.
    *
    * [BIP340] "Default Signing".
    *
@@ -12446,7 +12433,7 @@ bip340_sign(const wei_t *ec,
 
   ret &= wge_export_x(ec, Araw, &A);
 
-  bip340_hash_nonce(ec, k, araw, Araw, msg, msg_len, aux);
+  schnorr_hash_nonce(ec, k, araw, Araw, msg, msg_len, aux);
 
   ret &= sc_is_zero(sc, k) ^ 1;
 
@@ -12456,7 +12443,7 @@ bip340_sign(const wei_t *ec,
 
   ret &= wge_export_x(ec, Rraw, &R);
 
-  bip340_hash_challenge(ec, e, Rraw, Araw, msg, msg_len);
+  schnorr_hash_challenge(ec, e, Rraw, Araw, msg, msg_len);
 
   sc_mul(sc, s, e, a);
   sc_add(sc, s, s, k);
@@ -12478,12 +12465,12 @@ bip340_sign(const wei_t *ec,
 }
 
 int
-bip340_verify(const wei_t *ec,
-              const unsigned char *msg,
-              size_t msg_len,
-              const unsigned char *sig,
-              const unsigned char *pub) {
-  /* BIP340 Verification.
+schnorr_verify(const wei_t *ec,
+               const unsigned char *msg,
+               size_t msg_len,
+               const unsigned char *sig,
+               const unsigned char *pub) {
+  /* Schnorr Verification.
    *
    * [BIP340] "Verification".
    *
@@ -12532,7 +12519,7 @@ bip340_verify(const wei_t *ec,
   if (!wge_import_even(ec, &A, pub))
     return 0;
 
-  bip340_hash_challenge(ec, e, Rraw, pub, msg, msg_len);
+  schnorr_hash_challenge(ec, e, Rraw, pub, msg, msg_len);
 
   sc_neg(sc, e, e);
 
@@ -12548,14 +12535,14 @@ bip340_verify(const wei_t *ec,
 }
 
 int
-bip340_verify_batch(const wei_t *ec,
-                    const unsigned char *const *msgs,
-                    const size_t *msg_lens,
-                    const unsigned char *const *sigs,
-                    const unsigned char *const *pubs,
-                    size_t len,
-                    wei__scratch_t *scratch) {
-  /* BIP340 Batch Verification.
+schnorr_verify_batch(const wei_t *ec,
+                     const unsigned char *const *msgs,
+                     const size_t *msg_lens,
+                     const unsigned char *const *sigs,
+                     const unsigned char *const *pubs,
+                     size_t len,
+                     wei__scratch_t *scratch) {
+  /* Schnorr Batch Verification.
    *
    * [BIP340] "Batch Verification".
    *
@@ -12644,7 +12631,7 @@ bip340_verify_batch(const wei_t *ec,
     if (!wge_import_even(ec, &A, pub))
       return 0;
 
-    bip340_hash_challenge(ec, e, Rraw, pub, msg, msg_len);
+    schnorr_hash_challenge(ec, e, Rraw, pub, msg, msg_len);
 
     if (j == 0)
       sc_set_word(sc, a, 1);
@@ -12690,10 +12677,10 @@ bip340_verify_batch(const wei_t *ec,
 }
 
 int
-bip340_derive(const wei_t *ec,
-              unsigned char *secret,
-              const unsigned char *pub,
-              const unsigned char *priv) {
+schnorr_derive(const wei_t *ec,
+               unsigned char *secret,
+               const unsigned char *pub,
+               const unsigned char *priv) {
   const scalar_field_t *sc = &ec->sc;
   int ret = 1;
   wge_t A, P;

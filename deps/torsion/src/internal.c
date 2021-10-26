@@ -11,8 +11,8 @@
 #include <stdlib.h>
 #include "internal.h"
 
-TORSION_NORETURN void
-torsion__assert_fail(const char *file, int line, const char *expr) {
+void
+__torsion_assert_fail(const char *file, int line, const char *expr) {
   /* LCOV_EXCL_START */
 #if defined(TORSION_DEBUG)
   fprintf(stderr, "%s:%d: Assertion `%s' failed.\n", file, line, expr);
@@ -26,15 +26,15 @@ torsion__assert_fail(const char *file, int line, const char *expr) {
   /* LCOV_EXCL_STOP */
 }
 
-TORSION_NORETURN void
-torsion__abort(void) {
+void
+__torsion_abort(void) {
   abort(); /* LCOV_EXCL_LINE */
 }
 
 int
-torsion__memcmp(const void *s1, const void *s2, size_t n) {
-  const unsigned char *x = (const unsigned char *)s1;
-  const unsigned char *y = (const unsigned char *)s2;
+__torsion_memcmp(const void *s1, const void *s2, size_t n) {
+  const unsigned char *x = s1;
+  const unsigned char *y = s2;
   size_t i;
 
   for (i = 0; i < n; i++) {

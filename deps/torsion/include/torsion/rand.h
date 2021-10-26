@@ -4,8 +4,8 @@
  * https://github.com/bcoin-org/libtorsion
  */
 
-#ifndef TORSION_RAND_H
-#define TORSION_RAND_H
+#ifndef _TORSION_RAND_H
+#define _TORSION_RAND_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -19,16 +19,16 @@ extern "C" {
  * Symbol Aliases
  */
 
-#define torsion_threadsafety torsion__threadsafety
-#define torsion_randomaddr torsion__randomaddr
+#define torsion_threadsafety __torsion_threadsafety
+#define torsion_randomaddr __torsion_randomaddr
 
 /*
- * Definitions
+ * Defs
  */
 
-#define TORSION_THREADSAFETY_NONE 0
-#define TORSION_THREADSAFETY_TLS 1
-#define TORSION_THREADSAFETY_MUTEX 2
+#define TORSION_THREAD_SAFETY_NONE 0
+#define TORSION_THREAD_SAFETY_TLS 1
+#define TORSION_THREAD_SAFETY_MUTEX 2
 
 /*
  * Random
@@ -60,4 +60,4 @@ torsion_randomaddr(void);
 }
 #endif
 
-#endif /* TORSION_RAND_H */
+#endif /* _TORSION_RAND_H */
