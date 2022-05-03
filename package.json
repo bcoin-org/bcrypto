@@ -43,7 +43,7 @@
     "bsert": "~0.0.10"
   },
   "engines": {
-    "node": ">=8.0.0"
+    "node": ">=8.6.0"
   },
   "gypfile": true,
   "browser": {
