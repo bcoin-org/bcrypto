@@ -1,37 +1,65 @@
 name: node.js
 on: [push, pull_request]
 jobs:
+  general-build:
+    name: General
+    runs-on: ubuntu-latest
+    # Run these in parallel.
+    strategy:
+      matrix:
+        include:
+          - name: Lint
+            script: lint-ci
+          - name: Test Browser
+            script: test-browser
+          - name: Test JS
+            script: test-js
+          - name: Test JS with BigInt
+            script: test-bigint
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Node.js v18
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18.x
+
+      - name: Install & Build
+        if: ${{ matrix.script != 'lint-ci' }}
+        run: npm install
+
+      - name: Install Browserify & Babel Eslint
+        if: ${{matrix.script == 'test-browser'}}
+        run: npm install --location=global browserify babel-eslint
+
+      - name: Install Bslint
+        if: ${{matrix.script == 'lint-ci'}}
+        run: npm install --location=global bslint
+
+      - name: ${{ matrix.name }}
+        run: npm run ${{ matrix.script }}
+
   build:
+    name: Build Native & libtorsion
     runs-on: ${{matrix.os}}
     strategy:
       matrix:
         os: [windows-latest, macos-latest, ubuntu-latest]
-        node: [14.x]
+        node: [12.x, 14.x, 16.x, 18.x]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Setup Node.js ${{matrix.node}}
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v3
         with:
           node-version: ${{matrix.node}}
+
+      - name: Update npm
+        run: npm i -g npm
+
       - name: Install & Build
         run: npm install
-      - name: Install Dependencies
-        if: matrix.os == 'ubuntu-latest'
-        run: npm install eslint babel-eslint browserify
-      - name: Lint
-        if: matrix.os == 'ubuntu-latest'
-        run: npm run lint
-      - name: Test (Browser)
-        if: matrix.os == 'ubuntu-latest'
-        run: npm run test-browser
-      - name: Test (JS)
-        if: matrix.os == 'ubuntu-latest'
-        run: npm run test-js
-      - name: Test (JS, BigInt)
-        if: matrix.os == 'ubuntu-latest'
-        run: npm run test-bigint
-      - name: Test (Native, libtorsion)
-        if: matrix.os == 'ubuntu-latest'
-        run: npm run test-torsion
+
       - name: Test (Native)
         run: npm run test-native
+
+      - name: Test (torsion)
+        run: npm run test-torsion
