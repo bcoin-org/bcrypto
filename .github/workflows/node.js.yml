@@ -1,37 +1,107 @@
-name: node.js
+name: Node.js
 on: [push, pull_request]
+
 jobs:
-  build:
-    runs-on: ${{matrix.os}}
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20.x
+
+      - name: Install tools
+        run: npm install --location=global bslint
+
+      - name: Lint
+        run: npm run lint
+
+  general:
+    name: Javascript & Bigint
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        os: [windows-latest, macos-latest, ubuntu-latest]
-        node: [14.x]
+        node: [14.x, 16.x, 18.x, 20.x]
+        script: [test-js, test-bigint]
     steps:
-      - uses: actions/checkout@v2
-      - name: Setup Node.js ${{matrix.node}}
-        uses: actions/setup-node@v1
+      - uses: actions/checkout@v3
+      - name: Setup
+        uses: actions/setup-node@v3
         with:
-          node-version: ${{matrix.node}}
+          node-version: ${{ matrix.node }}
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: ${{ matrix.script }}
+        run: npm run ${{ matrix.script }}
+
+  browser:
+    name: Browser
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Install browserify tools
+        run: npm install --location=global browserify babel-eslint
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: ${{ matrix.script }}
+        run: npm run ${{ matrix.script }}
+
+
+  build-native:
+    name: Native
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+        node: [14.x, 16.x, 18.x, 20.x]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Update npm
+        run: npm i -g npm
+
       - name: Install & Build
         run: npm install
-      - name: Install Dependencies
-        if: matrix.os == 'ubuntu-latest'
-        run: npm install eslint babel-eslint browserify
-      - name: Lint
-        if: matrix.os == 'ubuntu-latest'
-        run: npm run lint
-      - name: Test (Browser)
-        if: matrix.os == 'ubuntu-latest'
-        run: npm run test-browser
-      - name: Test (JS)
-        if: matrix.os == 'ubuntu-latest'
-        run: npm run test-js
-      - name: Test (JS, BigInt)
-        if: matrix.os == 'ubuntu-latest'
-        run: npm run test-bigint
-      - name: Test (Native, libtorsion)
-        if: matrix.os == 'ubuntu-latest'
-        run: npm run test-torsion
-      - name: Test (Native)
+
+      - name: Test Native
         run: npm run test-native
+
+  build-torsion:
+    name: Native w/ Torsion
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+        node: [14.x, 16.x, 18.x, 20.x]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Update npm
+        run: npm i -g npm
+
+      - name: Install & Build
+        run: npm install
+
+      - name: Test libtorsion
+        run: npm run test-torsion
