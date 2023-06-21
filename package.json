@@ -24,8 +24,7 @@
   "main": "./lib/bcrypto.js",
   "scripts": {
     "install": "node-gyp rebuild",
-    "lint": "eslint bench/*.js lib/ scripts/ test/ || exit 0",
-    "lint-ci": "eslint bench/*.js lib/ scripts/ test/",
+    "lint": "eslint bench/*.js lib/ scripts/ test/",
     "test": "bmocha -S test/*-test.js",
     "test-browser": "bmocha -B js -H -S test/*-test.js",
     "test-js": "bmocha -B js -S test/*-test.js",
@@ -43,7 +42,7 @@
     "bsert": "~0.0.10"
   },
   "engines": {
-    "node": ">=8.0.0"
+    "node": ">=14.0.0"
   },
   "gypfile": true,
   "browser": {
