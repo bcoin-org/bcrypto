@@ -56,8 +56,8 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: ${{ matrix.script }}
-        run: npm run ${{ matrix.script }}
+      - name: Browser
+        run: npm run test-browser
 
 
   build-native:

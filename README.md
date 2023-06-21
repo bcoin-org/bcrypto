@@ -1,6 +1,6 @@
 # bcrypto
 
-![node.js](https://github.com/bcoin-org/bcrypto/workflows/node.js/badge.svg)
+[![Node.js](https://github.com/bcoin-org/bcrypto/actions/workflows/node.js.yml/badge.svg)](https://github.com/bcoin-org/bcrypto/actions/workflows/node.js.yml)
 
 The missing crypto module for Node.js. Bcrypto provides you with a consistent
 interface across Node.js and the browser. It is implemented as a [Node.js
