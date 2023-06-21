@@ -9574,8 +9574,8 @@ bcrypto_schnorr_verify_batch(napi_env env, napi_callback_info info) {
     CHECK(napi_get_element(env, item, 2, &items[2]) == napi_ok);
 
     CHECK(napi_get_buffer_info(env, items[0], &msg, &msg_lens[i]) == napi_ok);
-    CHECK(napi_get_buffer_info(env, items[1], &pub, &sig_len) == napi_ok);
-    CHECK(napi_get_buffer_info(env, items[2], &sig, &pub_len) == napi_ok);
+    CHECK(napi_get_buffer_info(env, items[1], &sig, &sig_len) == napi_ok);
+    CHECK(napi_get_buffer_info(env, items[2], &pub, &pub_len) == napi_ok);
 
     msgs[i] = msg;
     pubs[i] = pub;
