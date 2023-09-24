@@ -74,9 +74,6 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
 
-      - name: Update npm
-        run: npm i -g npm
-
       - name: Install & Build
         run: npm install
 
@@ -96,9 +93,6 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node }}
-
-      - name: Update npm
-        run: npm i -g npm
 
       - name: Install & Build
         run: npm install
