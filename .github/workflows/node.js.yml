@@ -14,10 +14,16 @@ jobs:
           node-version: 20.x
 
       - name: Install tools
-        run: npm install --location=global bslint
+        run: npm install --location=global bslint typescript
+
+      - name: Install dependencies
+        run: npm install
 
       - name: Lint
         run: npm run lint
+
+      - name: Lint types
+        run: npm run lint-types
 
   general:
     name: Javascript & Bigint
