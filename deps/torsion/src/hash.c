@@ -4506,7 +4506,7 @@ hmac_init(hmac_t *hmac, hash_id_t type, const unsigned char *key, size_t len) {
   for (i = 0; i < len; i++)
     pad[i] = key[i] ^ 0x36;
 
-  for (i = len; i < block_size; i++)
+  for (i = len; i < sizeof(pad); i++)
     pad[i] = 0x36;
 
   hash_init(&hmac->inner, type);
@@ -4515,7 +4515,7 @@ hmac_init(hmac_t *hmac, hash_id_t type, const unsigned char *key, size_t len) {
   for (i = 0; i < len; i++)
     pad[i] = key[i] ^ 0x5c;
 
-  for (i = len; i < block_size; i++)
+  for (i = len; i < sizeof(pad); i++)
     pad[i] = 0x5c;
 
   hash_init(&hmac->outer, type);
