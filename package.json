@@ -39,7 +39,8 @@
   },
   "devDependencies": {
     "bmocha": "^2.2.1",
-    "bsert": "~0.0.13"
+    "bsert": "~0.0.13",
+    "bslint-extra": "~0.0.2"
   },
   "engines": {
     "node": ">=8.0.0"
