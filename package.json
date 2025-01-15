@@ -34,7 +34,7 @@
     "test-all": "npm run test-browser && npm run test-js && npm run test-bigint && npm run test-torsion && npm run test-native"
   },
   "dependencies": {
-    "bufio": "~1.2.1",
+    "bufio": "~1.2.3",
     "loady": "~0.0.5"
   },
   "devDependencies": {
