@@ -7,9 +7,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Setup
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 22.x
 
@@ -24,14 +24,20 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [18.x, 20.x]
+        node: [14.x, 16.x, 18.x, 20.x, 22.x]
         script: [test-js, test-bigint]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Setup
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
+
+      # Pythong 3.10->3.11 broke node-gyp. This upgrades node-gyp for older nodejs.
+      # https://github.com/nodejs/node-gyp/issues/2219
+      - name: Update npm.
+        if: contains(matrix.node, '14.x')
+        run: npm i -g npm@9
 
       - name: Install dependencies
         run: npm install
@@ -44,11 +50,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Setup
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node }}
+          node-version: 22.x
 
       - name: Install browserify tools
         run: npm install --location=global browserify
@@ -59,20 +65,30 @@ jobs:
       - name: Browser
         run: npm run test-browser
 
-
   build-native:
     name: Native
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest]
-        node: [18.x, 20.x]
+        node: [14.x, 16.x, 18.x, 20.x, 22.x]
+        exclude:
+          - os: macos-latest
+            node: 14.x
+          - os: macos-latest
+            node: 16.x
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Setup
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
+
+      # Pythong 3.10->3.11 broke node-gyp. This upgrades node-gyp for older nodejs.
+      # https://github.com/nodejs/node-gyp/issues/2219
+      - name: Update npm.
+        if: contains(matrix.node, '14.x')
+        run: npm i -g npm@9
 
       - name: Install & Build
         run: npm install
@@ -86,13 +102,24 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest]
-        node: [18.x, 20.x]
+        node: [14.x, 16.x, 18.x, 20.x, 22.x]
+        exclude:
+          - os: macos-latest
+            node: 14.x
+          - os: macos-latest
+            node: 16.x
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Setup
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
+
+      # Pythong 3.10->3.11 broke node-gyp. This upgrades node-gyp for older nodejs.
+      # https://github.com/nodejs/node-gyp/issues/2219
+      - name: Update npm.
+        if: contains(matrix.node, '14.x')
+        run: npm i -g npm@9
 
       - name: Install & Build
         run: npm install
