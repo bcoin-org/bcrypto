@@ -1,14 +1,14 @@
 'use strict';
 
-const js = require('bslint-extra');
+const rc = require('bslintrc');
 
 module.exports = [
-  js.configs.recommended,
-  js.configs.bcoin,
+  rc.configs.recommended,
+  rc.configs.bcoin,
   {
     languageOptions: {
       globals: {
-        ...js.globals.node
+        ...rc.globals.node
       },
       ecmaVersion: 'latest'
     }
@@ -26,7 +26,7 @@ module.exports = [
     files: ['test/{,**/}*.{js,cjs,mjs}'],
     languageOptions: {
       globals: {
-        ...js.globals.mocha,
+        ...rc.globals.mocha,
         register: 'readable'
       }
     },
