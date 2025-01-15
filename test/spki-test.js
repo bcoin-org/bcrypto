@@ -1,5 +1,3 @@
-/* eslint no-unused-vars: "off" */
-
 'use strict';
 
 const assert = require('bsert');
@@ -25,7 +23,6 @@ function readPEM(name) {
   return fs.readFileSync(path, 'utf8');
 }
 
-// eslint-disable-next-line
 const keys = [
   ['DSA', dsa, readPEM('dsa-spki')],
   ['RSA', rsa, readPEM('rsa-spki')],

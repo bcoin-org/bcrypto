@@ -111,6 +111,7 @@
     "no-unused-vars": ["error", {
       "vars": "all",
       "args": "none",
+      "caughtErrors": "none",
       "ignoreRestSiblings": false
     }],
     "no-use-before-define": ["error", {
@@ -135,7 +136,6 @@
     "space-before-blocks": "error",
     "strict": "error",
     "unicode-bom": ["error", "never"],
-    "valid-jsdoc": "error",
     "wrap-iife": ["error", "inside"]
   }
 }
