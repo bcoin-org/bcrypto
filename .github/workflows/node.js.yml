@@ -16,6 +16,9 @@ jobs:
       - name: Install tools
         run: npm install --location=global bslint
 
+      - name: Install bslint extra
+        run: npm install bslint-extra
+
       - name: Lint
         run: npm run lint
 
