@@ -51,7 +51,7 @@ jobs:
           node-version: ${{ matrix.node }}
 
       - name: Install browserify tools
-        run: npm install --location=global browserify babel-eslint
+        run: npm install --location=global browserify
 
       - name: Install dependencies
         run: npm install
@@ -66,7 +66,7 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest]
-        node: [14.x, 16.x, 18.x, 20.x]
+        node: [16.x, 18.x, 20.x]
     steps:
       - uses: actions/checkout@v3
       - name: Setup
@@ -86,7 +86,7 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest]
-        node: [14.x, 16.x, 18.x, 20.x]
+        node: [16.x, 18.x, 20.x]
     steps:
       - uses: actions/checkout@v3
       - name: Setup
